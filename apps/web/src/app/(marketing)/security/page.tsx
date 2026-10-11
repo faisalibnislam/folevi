@@ -4,8 +4,10 @@ import { Icon } from "@/components/marketing/icons";
 import { Play } from "@/components/marketing/Play";
 import { pageMetadata } from "@/components/marketing/seo";
 import { SECURITY_EMAIL } from "@/components/marketing/site";
-import { PageHeader, container, cx } from "@/components/marketing/ui";
-import { PageFrame } from "@/components/marketing/cards";
+import { Eyebrow, container, cx } from "@/components/marketing/ui";
+import { HeaderCard, PageFrame } from "@/components/marketing/cards";
+import { Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
+import { SyncPiece } from "@/components/marketing/pieces";
 
 export const metadata = pageMetadata({
   title: "Security and privacy for your notes",
@@ -52,7 +54,7 @@ function Section({
   children,
 }: {
   id: string;
-  title: string;
+  title: ReactNode;
   lead: ReactNode;
   items?: ReactNode[];
   className?: string;
@@ -61,10 +63,10 @@ function Section({
   return (
     <section id={id} aria-labelledby={`${id}-title`} className={cx("mk-box scroll-mt-8 px-5 py-8 sm:p-8 lg:p-10", className)}>
       <div className="min-w-0">
-        <h2 id={`${id}-title`} className="mk-h3 text-[22px]">
+        <h2 id={`${id}-title`} className="mk-display text-[30px] leading-[1.05] sm:text-[36px]">
           {title}
         </h2>
-        <p className="mt-2 max-w-[60ch] text-[15px] leading-relaxed text-muted">{lead}</p>
+        <p className="mt-3 max-w-[60ch] text-[15.5px] leading-relaxed text-muted">{lead}</p>
         <Checks items={items} className="mt-5" />
       </div>
       {children}
@@ -76,7 +78,7 @@ function Section({
 function CodePicture() {
   return (
     <Play className="mt-7">
-      <div role="img" aria-label="Signing in asks for the 6-digit code from your authenticator app." className="mk-panel rounded-panel p-4 sm:p-5">
+      <div role="img" aria-label="Signing in asks for the 6-digit code from your authenticator app." data-tilt="3" className="mk-panel rounded-panel p-4 sm:p-5">
         <p className="text-[12.5px] font-medium text-muted">6-digit code</p>
         <div className="mt-2 flex gap-1.5">
           {["4", "8", "1", "9", "2", "7"].map((digit, i) => (
@@ -94,13 +96,14 @@ function CodePicture() {
   );
 }
 
-/** A public link as the Share dialog lists it: expiry, password, and Revoke. */
+/** A public link as the Share dialog lists it: expiry, password, and Revoke. A sticker sits on its corner. */
 function LinkPicture() {
   return (
-    <Play>
+    <Play className="relative">
       <div
         role="img"
         aria-label="A public link in the Share dialog: it expires on a set date, is password protected, and has a Revoke button."
+        data-tilt="3"
         className="mk-panel rounded-panel p-4 sm:p-6"
       >
         <div className="mk-app-pop rounded-panel p-4 text-[13px]">
@@ -123,18 +126,56 @@ function LinkPicture() {
           </div>
         </div>
       </div>
+      {/* After the picture, so the tilted picture never paints over it. */}
+      <span aria-hidden="true" className="pointer-events-none absolute -top-4 right-4 z-10 sm:right-8">
+        <Sticker tone="violet" rotate={6}>
+          Private by default
+        </Sticker>
+      </span>
     </Play>
+  );
+}
+
+/** A small piece of the sign-in settings, floating in the header. */
+function TwoStepPiece() {
+  return (
+    <div className="mk-app-pop flex w-max items-center gap-2.5 rounded-panel px-3 py-2.5 text-[12.5px] text-ink">
+      <Icon name="key" size={14} />
+      <span className="font-medium text-(--color-heading)">Two-step verification</span>
+      <span className="rounded-chip bg-(--mk-violet-soft) px-1.5 py-0.5 text-[11px] font-semibold text-(--mk-violet-ink)">On</span>
+    </div>
   );
 }
 
 export default function SecurityPage() {
   return (
     <PageFrame>
-      <PageHeader eyebrow="Security" title="Private by default. Plain about the rest." lede="What protects your account and notes today, stated plainly." />
-      <div className={cx(container, "grid gap-(--mk-stack-gap) lg:grid-cols-2")}>
+      <HeaderCard>
+        <Float depth={0.14} className="right-[18%] top-[7%] max-xl:hidden [--tilt:3deg]">
+          <TwoStepPiece />
+        </Float>
+        <Float depth={0.08} delay={800} className="right-[5%] top-[56%] max-xl:hidden [--tilt:-2deg]">
+          <SyncPiece label="Encrypted on the way" />
+        </Float>
+        <div aria-hidden="true" className="pointer-events-none absolute right-10 top-10 z-10 hidden lg:block xl:bottom-8 xl:right-[9%] xl:top-auto">
+          <Sticker tone="ink" rotate={-6}>
+            No trackers here
+          </Sticker>
+        </div>
+        <Eyebrow>Security</Eyebrow>
+        <h1 className="mk-display mt-5 max-w-[15ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
+          <Mark>Private</Mark> by default. Plain about the rest.
+        </h1>
+        <p className="mk-lede mt-6 max-w-[60ch]">What protects your account and notes today, stated plainly.</p>
+      </HeaderCard>
+      <div className={cx(container, "grid grid-cols-1 gap-(--mk-stack-gap) lg:grid-cols-2")}>
         <Section
           id="account"
-          title="Your account"
+          title={
+            <>
+              Your <Mark>account</Mark>
+            </>
+          }
           lead="A verified email, plus an optional second step."
           items={[
             <>Email verified before you can open Folevi</>,
@@ -156,12 +197,21 @@ export default function SecurityPage() {
             title="Not end-to-end encrypted"
             lead="Our servers process your notes, so search, sharing and sync work."
             items={[<>For notes no provider may ever read, use an end-to-end encrypted tool</>]}
-          />
+            className="relative"
+          >
+            <div aria-hidden="true" className="pointer-events-none absolute right-8 top-8 max-xl:hidden">
+              <Hand rotate={5}>worth knowing</Hand>
+            </div>
+          </Section>
         </div>
 
         <Section
           id="sharing"
-          title="Sharing"
+          title={
+            <>
+              <Mark kind="squiggle">Sharing</Mark>
+            </>
+          }
           lead="Nothing is public until you make a link."
           items={[<>Give a link an expiry date</>, <>Require a password</>, <>Revoke it, and it stops working at once</>]}
           className="grid items-center gap-8 lg:col-span-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"
@@ -171,7 +221,11 @@ export default function SecurityPage() {
 
         <Section
           id="access"
-          title="Who can see your notes"
+          title={
+            <>
+              Who can see your <Mark>notes</Mark>
+            </>
+          }
           lead="You, and the people you share with."
           items={[<>Admin tools have no content viewer</>, <>Sync logs never hold your text, titles or files</>]}
         />

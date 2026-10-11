@@ -1,5 +1,8 @@
 "use client";
 
+import { HERO_STYLES, siteArt } from "./home/heroStyles";
+import type { CoverArt } from "@/lib/cover";
+import { MarketingMotion } from "./MarketingMotion";
 import { AiIcon } from "@/components/ai/AiIcon";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -10,6 +13,7 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -94,6 +98,16 @@ export function useSiteAmbient(image: string | null) {
   }, [image, set]);
   useEffect(() => () => set(null), [set]);
 }
+
+/* The site's note theme -------------------------------------------------------------------------- */
+
+/**
+ * The note theme picked on Home (the hero's picker or its Style panel): it lights every marketing page,
+ * its backdrop and its accent colours, and it's remembered on this device. Until one is picked, the first.
+ */
+const SiteThemeContext = createContext<{ art: CoverArt; pick: (art: CoverArt) => void }>({ art: HERO_STYLES[0]!, pick: () => undefined });
+export const useSiteTheme = () => useContext(SiteThemeContext);
+const SITE_THEME_KEY = "folevi:site-theme";
 
 /* The sidebar ------------------------------------------------------------------------------------ */
 
@@ -581,6 +595,24 @@ export function SiteShell({
   // Every page is lit by an artwork: the site's default (the home note's first theme) unless the page sets
   // its own; the home page's theme picker changes it from there.
   const [pageAmbient, setAmbient] = useState<string | null>(null);
+  const [themeArt, setThemeArt] = useState<CoverArt>(HERO_STYLES[0]!);
+  useEffect(() => {
+    try {
+      const saved = siteArt(window.localStorage.getItem(SITE_THEME_KEY));
+      if (saved.id !== HERO_STYLES[0]!.id) setThemeArt(saved);
+    } catch {
+      // Storage blocked: the default theme.
+    }
+  }, []);
+  const pickTheme = useCallback((art: CoverArt) => {
+    setThemeArt(art);
+    try {
+      window.localStorage.setItem(SITE_THEME_KEY, art.id);
+    } catch {
+      // Storage blocked: the pick lasts this visit.
+    }
+  }, []);
+  const siteTheme = useMemo(() => ({ art: themeArt, pick: pickTheme }), [themeArt, pickTheme]);
   const ambient = pageAmbient ?? homeAmbient;
   const [open, setOpen] = useState(false);
   const drawerId = useId();
@@ -610,6 +642,7 @@ export function SiteShell({
   }, []);
 
   return (
+    <SiteThemeContext.Provider value={siteTheme}>
     <AmbientContext.Provider value={setAmbient}>
       <AmbientImageContext.Provider value={ambient}>
         <div className="mk-root mk-shell text-ink">
@@ -617,6 +650,7 @@ export function SiteShell({
             Skip to content
           </a>
           <Ambient image={ambient} />
+          <MarketingMotion />
 
           <div className="mk-frame">
             <header className="mk-sidebar hidden lg:block">
@@ -677,6 +711,7 @@ export function SiteShell({
         </div>
       </AmbientImageContext.Provider>
     </AmbientContext.Provider>
+    </SiteThemeContext.Provider>
   );
 }
 

@@ -18,6 +18,8 @@ import { Play } from "@/components/marketing/Play";
 import { pageMetadata } from "@/components/marketing/seo";
 import { SIGN_UP_URL } from "@/components/marketing/site";
 import { ButtonLink, Eyebrow, Kbd, SectionHeading } from "@/components/marketing/ui";
+import { Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
+import { AiPiece, CursorPiece } from "@/components/marketing/pieces";
 import { CREDIT_PACKS, MONTHLY_CREDITS, TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/plans";
 
 export const metadata = pageMetadata({
@@ -30,7 +32,7 @@ export const metadata = pageMetadata({
 /** One more thing Foli AI does, as a small tile with an icon (and the plans it's on, when not every plan). */
 function Extra({ icon, title, plans }: { icon: ReactNode; title: string; plans?: string }) {
   return (
-    <li className="mk-card flex items-center gap-3.5 p-4">
+    <li data-tilt="4" className="mk-card flex items-center gap-3.5 p-4">
       <span aria-hidden="true" className="grid size-9 flex-none place-items-center rounded-control bg-(--glass-hover) text-(--color-heading)">
         {icon}
       </span>
@@ -63,7 +65,9 @@ export default function FoliPage() {
           <div>
             <AiIcon size={36} />
             <Eyebrow className="mt-6">Foli AI</Eyebrow>
-            <h1 className="mk-display mt-4 max-w-[16ch] text-[44px] sm:text-[60px] lg:text-[68px]">The assistant that knows your notes.</h1>
+            <h1 className="mk-display mt-5 max-w-[14ch] text-[44px] leading-[0.98] sm:text-[60px] lg:text-[54px] xl:text-[66px] 2xl:text-[80px]">
+              The assistant that <Mark kind="squiggle">knows</Mark> your notes.
+            </h1>
             <p className="mk-lede mt-6 max-w-[52ch]">Answers from your notes, and edits you approve first.</p>
             <div className="mt-8 flex flex-wrap gap-2.5">
               <ButtonLink href={SIGN_UP_URL} icon="arrow-right">
@@ -74,7 +78,12 @@ export default function FoliPage() {
               </ButtonLink>
             </div>
           </div>
-          <div className="mk-card p-6 sm:p-7">
+          <div data-tilt="3" className="mk-card relative p-6 sm:p-7">
+            <span aria-hidden="true" className="pointer-events-none absolute -top-4 right-4">
+              <Sticker tone="violet" rotate={7}>
+                Try ⌘J
+              </Sticker>
+            </span>
             <p className="mk-caps">Where to find it</p>
             <ul className="mt-3">
               {PLACES.map((place, i) => (
@@ -85,10 +94,25 @@ export default function FoliPage() {
             </ul>
           </div>
         </div>
+        <Float depth={0.14} delay={500} className="right-[38%] top-24 hidden xl:block">
+          <CursorPiece name="Foli AI" />
+        </Float>
       </HeaderCard>
 
-      <Card aria-labelledby="ask-title">
-        <SectionHeading id="ask-title" eyebrow="Ask and change" title="Ask a question, or ask for a change." lede="One chat for both." />
+      <Card aria-labelledby="ask-title" className="relative">
+        <Float depth={0.12} className="right-[9%] top-20 hidden xl:block [--tilt:3deg]">
+          <AiPiece text="Found it in 3 notes. Want the short version?" />
+        </Float>
+        <SectionHeading
+          id="ask-title"
+          eyebrow="Ask and change"
+          title={
+            <>
+              Ask a question, or ask for a <Mark>change</Mark>.
+            </>
+          }
+          lede="One chat for both."
+        />
         <div className="mt-12 space-y-10 sm:space-y-12">
           <Feature
             eyebrow="Ask"
@@ -122,7 +146,12 @@ export default function FoliPage() {
         </div>
       </Card>
 
-      <Card aria-labelledby="write-title">
+      <Card tint aria-labelledby="write-title" className="relative">
+        <div aria-hidden="true" className="pointer-events-none absolute right-[12%] top-[176px] hidden xl:block">
+          <Hand rotate={5} arrow="down-left">
+            no copy and paste
+          </Hand>
+        </div>
         <SectionHeading id="write-title" eyebrow="Write and edit" title="Write with it, right in the page." lede="It uses the note you’re in as context." />
         <div className="mt-12 space-y-10 sm:space-y-12">
           <Feature
@@ -166,8 +195,17 @@ export default function FoliPage() {
         </div>
       </Card>
 
-      <Card aria-labelledby="think-title">
-        <SectionHeading id="think-title" eyebrow="Think, study and meet" title="Decide, learn and follow up." lede="On the note you’re in, or just a selection." />
+      <Card aria-labelledby="think-title" className="relative">
+        <SectionHeading
+          id="think-title"
+          eyebrow="Think, study and meet"
+          title={
+            <>
+              Decide, learn and <Mark kind="circle">follow up</Mark>.
+            </>
+          }
+          lede="On the note you’re in, or just a selection."
+        />
         <div className="mt-12 space-y-10 sm:space-y-12">
           <Feature
             eyebrow="Think it through"
@@ -221,7 +259,7 @@ export default function FoliPage() {
         </div>
       </Card>
 
-      <Card aria-labelledby="research-title">
+      <Card tint aria-labelledby="research-title">
         <h2 id="research-title" className="sr-only">
           Research
         </h2>
@@ -244,7 +282,15 @@ export default function FoliPage() {
       </Card>
 
       <Card aria-labelledby="more-title">
-        <SectionHeading id="more-title" eyebrow="Around your notes" title="And the quieter things." />
+        <SectionHeading
+          id="more-title"
+          eyebrow="Around your notes"
+          title={
+            <>
+              And the <Mark kind="squiggle">quieter</Mark> things.
+            </>
+          }
+        />
         <div className="mt-10 grid gap-6 lg:grid-cols-2">
           <SmallFeature art="art-30" picture={<CatchUpDemo />} title="Catch me up" body="A short brief of your week, from Home." />
           <SmallFeature art="art-01" picture={<TitleDemo />} title="Titles" body="A title from what the note says." />
@@ -259,17 +305,33 @@ export default function FoliPage() {
         </ul>
       </Card>
 
-      <Card aria-labelledby="private-title">
+      <Card tint aria-labelledby="private-title">
         <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
-          <SectionHeading id="private-title" eyebrow="Private and in your control" title="Your notes stay yours." lede="Foli AI reads only the notes you can open." />
-          <Checks
-            className="lg:text-[16px]"
-            items={[
-              <>Not used to train AI models</>,
-              <>Every change needs your approval</>,
-              <>Switch it off in Settings</>,
-            ]}
+          <SectionHeading
+            id="private-title"
+            eyebrow="Private and in your control"
+            title={
+              <>
+                Your notes stay <Mark kind="circle">yours</Mark>.
+              </>
+            }
+            lede="Foli AI reads only the notes you can open."
           />
+          <div className="relative">
+            <div aria-hidden="true" className="pointer-events-none absolute -top-14 right-2 hidden xl:block">
+              <Hand rotate={-5} arrow="down-left">
+                pinky promise
+              </Hand>
+            </div>
+            <Checks
+              className="lg:text-[16px]"
+              items={[
+                <>Not used to train AI models</>,
+                <>Every change needs your approval</>,
+                <>Switch it off in Settings</>,
+              ]}
+            />
+          </div>
         </div>
       </Card>
 
@@ -282,9 +344,16 @@ export default function FoliPage() {
             ["Pro", `${MONTHLY_CREDITS.pro} credits a month`],
             ["Pro AI", `${MONTHLY_CREDITS.pro_ai} credits a month`],
           ].map(([plan, credits]) => (
-            <div key={plan} className="mk-card p-5">
+            <div key={plan} data-tilt="4" className="mk-card relative p-5">
               <dt className="mk-caps">{plan}</dt>
               <dd className="mk-h3 mt-2 text-[19px]">{credits}</dd>
+              {plan === "Pro AI" ? (
+                <span aria-hidden="true" className="pointer-events-none absolute -top-3.5 right-3">
+                  <Sticker tone="ink" rotate={6} className="text-[12px]">
+                    Most credits
+                  </Sticker>
+                </span>
+              ) : null}
             </div>
           ))}
         </dl>

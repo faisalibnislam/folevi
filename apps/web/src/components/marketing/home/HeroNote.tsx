@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState, type ComponentType, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ComponentType, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
 import { preload } from "react-dom";
 import { paletteVars, type CoverArt } from "@/lib/cover";
 import { artVars } from "../product/Replica";
-import { useSiteAmbient } from "../SiteShell";
+import { useSiteAmbient, useSiteTheme } from "../SiteShell";
 import { cx } from "../ui";
 import type { HeroEditorProps } from "./HeroEditor";
 import { HERO_PHONE_MEDIA, HERO_STYLES, heroBand as band, heroBandSet as bandSet, heroGlow as glow, heroPhone as phone } from "./heroStyles";
@@ -29,13 +29,11 @@ type Layer = { key: number; art: CoverArt };
  * all of it, as changing a note's theme does in the app. `children` is the note's body (its blocks); `actions`
  * sit in their own card under the note, beside the theme picker.
  */
-export function HeroNote({ title, children, actions }: { title: ReactNode; children: ReactNode; actions: ReactNode }) {
-  const [index, setIndex] = useState(0);
+export function HeroNote({ title, children, extras }: { title: ReactNode; children: ReactNode; extras?: ReactNode }) {
+  const [art, setArt] = useState<CoverArt>(HERO_STYLES[0]!);
   // The artwork shown, newest last: a new theme fades in over the one before it once its image has loaded.
   const [layers, setLayers] = useState<Layer[]>([{ key: 0, art: HERO_STYLES[0]! }]);
   const nextKey = useRef(1);
-  const refs = useRef<Array<HTMLButtonElement | null>>([]);
-  const art = HERO_STYLES[index]!;
   // The note's theme lights the site's chrome too, as a note's theme lights the app's glass.
   useSiteAmbient(glow(art));
 
@@ -85,24 +83,28 @@ export function HeroNote({ title, children, actions }: { title: ReactNode; child
   }, []);
   const onReady = useCallback((ed: Editor) => setEditor(ed), []);
 
-  const pick = (next: number) => {
-    if (next === index) return;
-    setIndex(next);
-    setLayers((current) => [...current, { key: nextKey.current++, art: HERO_STYLES[next]! }]);
+  // Picking a theme here picks it for the whole site (SiteShell remembers it); a pick made on another page
+  // or an earlier visit shows here as the site's theme arrives.
+  const site = useSiteTheme();
+  const show = (next: CoverArt) => {
+    if (next.id === art.id) return;
+    setArt(next);
+    setLayers((current) => [...current, { key: nextKey.current++, art: next }]);
   };
+  const pick = (next: CoverArt) => {
+    show(next);
+    site.pick(next);
+  };
+  const shownSite = useRef(HERO_STYLES[0]!.id);
+  useEffect(() => {
+    if (shownSite.current === site.art.id) return;
+    shownSite.current = site.art.id;
+    show(site.art);
+  });
+
   // Once a cover has faded in, the artwork under it is hidden: let it go.
   const shown = (key: number) => {
     window.setTimeout(() => setLayers((current) => current.slice(Math.max(0, current.findIndex((layer) => layer.key === key)))), 700);
-  };
-
-  const onKey = (event: KeyboardEvent<HTMLButtonElement>) => {
-    const step = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0;
-    const jump = event.key === "Home" ? 0 : event.key === "End" ? HERO_STYLES.length - 1 : null;
-    if (!step && jump === null) return;
-    event.preventDefault();
-    const next = jump ?? (index + step + HERO_STYLES.length) % HERO_STYLES.length;
-    pick(next);
-    refs.current[next]?.focus();
   };
 
   return (
@@ -164,37 +166,9 @@ export function HeroNote({ title, children, actions }: { title: ReactNode; child
           {/* The page tools dock sticks to the bottom of the note while it's on screen. */}
           <div ref={setDockSlot} className="mk-hero-dock-slot" />
         </article>
+        {/* Doodles, stickers and app pieces around the note (decorative, beside the text, never over it). */}
+        {extras}
 
-        <div className="mk-hero-actions">
-          <div className="min-w-0">{actions}</div>
-          <div className="mk-hero-picker">
-            <p id="hero-note-style" className="text-[13.5px] text-(--color-ink-muted)">
-              Note theme: <span className="font-semibold text-(--color-heading)">{art.name}</span>
-            </p>
-            <div role="radiogroup" aria-labelledby="hero-note-style" className="flex items-center gap-2">
-              {HERO_STYLES.map((style, i) => {
-                const checked = i === index;
-                return (
-                  <button
-                    key={style.id}
-                    ref={(node) => {
-                      refs.current[i] = node;
-                    }}
-                    type="button"
-                    role="radio"
-                    aria-checked={checked}
-                    aria-label={style.name}
-                    tabIndex={checked ? 0 : -1}
-                    onClick={() => pick(i)}
-                    onKeyDown={onKey}
-                    className="mk-hero-swatch"
-                    style={{ backgroundImage: `url("${glow(style)}")` }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

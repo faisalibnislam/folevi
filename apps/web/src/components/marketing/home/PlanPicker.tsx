@@ -5,6 +5,7 @@ import { Check } from "lucide-react";
 import { PLANS, PLAN_ORDER, TRIAL_DAYS, TRIAL_TIER, WORKSPACE_PLANS, formatPrice, monthlyEquivalent, yearlySavingPercent, type PersonalPlanCard, type WorkspacePlanCard } from "@/lib/plans";
 import { SIGN_UP_URL } from "../site";
 import { ButtonLink, cx } from "../ui";
+import { Hand, Sticker } from "../fun";
 
 type Audience = "personal" | "team";
 type Interval = "month" | "year";
@@ -55,7 +56,7 @@ function FeatureList({ items }: { items: string[] }) {
     <ul className="mt-5 flex-1 space-y-2.5 border-t mk-hair pt-5">
       {items.map((item) => (
         <li key={item} className="flex items-start gap-2.5 text-[14.5px] leading-snug text-ink">
-          <Check size={16} aria-hidden="true" className="mt-px flex-none text-(--color-heading)" />
+          <Check size={16} strokeWidth={2.5} aria-hidden="true" className="mt-px flex-none text-(--mk-violet-strong)" />
           {item}
         </li>
       ))}
@@ -85,18 +86,24 @@ function PlanCard({ card, audience, interval, headingLevel }: { card: PersonalPl
       note = `${monthlyEquivalent(card.yearlyCents)} ${perMember}a month, billed yearly (save ${saving}%)`;
     }
   }
-  const chip = featured && !team ? `${TRIAL_DAYS}-day free trial` : card.tier === "core" ? "No AI" : null;
+  // Core is the plan with no AI at all, Pro AI the one with as much AI as you need (as on Home).
+  const sticker = card.tier === "core" ? "No AI" : card.tier === "pro_ai" ? "Unlimited AI" : null;
   const cta = free ? "Start free" : featured && !team ? `Try ${card.name} free for ${TRIAL_DAYS} days` : `Start with ${card.name}`;
   return (
     <div
       role="group"
       aria-label={`${card.name} plan`}
-      className={cx("mk-card flex flex-col p-6 sm:p-7", featured && "shadow-[var(--shadow-card),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]")}
+      className={cx("mk-card relative flex flex-col p-6 sm:p-7", sticker ? "shadow-[var(--shadow-card),inset_0_0_0_1.5px_var(--mk-violet)]" : featured && "shadow-[var(--shadow-card),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]")}
     >
       <div className="flex min-h-7 items-center gap-2">
         <Heading className="text-[16px] font-semibold text-(--color-heading)">{card.name}</Heading>
-        {chip ? <span className="mk-chip ml-auto">{chip}</span> : null}
       </div>
+      {/* Stuck on the card's corner; it says something, so it stays readable. */}
+      {sticker ? (
+        <Sticker tone="violet" rotate={card.tier === "pro_ai" ? 6 : -6} className="absolute -top-3 right-4 text-[12.5px]">
+          {sticker}
+        </Sticker>
+      ) : null}
       <p className="mt-5 flex flex-wrap items-baseline gap-x-1.5">
         <span className="mk-display text-[44px] leading-none">{price}</span>
         {unit ? <span className="text-[14.5px] text-muted">{unit}</span> : null}
@@ -104,7 +111,7 @@ function PlanCard({ card, audience, interval, headingLevel }: { card: PersonalPl
       <p className="mt-2 min-h-[40px] text-[13.5px] leading-snug text-muted">{note}</p>
       <p className="mt-3 text-[14.5px] leading-relaxed text-ink">{card.blurb}</p>
       <FeatureList items={card.features} />
-      <ButtonLink href={SIGN_UP_URL} className="mt-7 w-full" icon="arrow-right" size="lg" variant={featured ? undefined : "secondary"}>
+      <ButtonLink href={SIGN_UP_URL} className="mt-7 h-auto! min-h-11 w-full gap-1.5 whitespace-normal px-2.5! py-2.5 text-center leading-tight" icon="arrow-right" size="md" variant={featured ? undefined : "secondary"}>
         {cta}
       </ButtonLink>
     </div>
@@ -140,6 +147,12 @@ export function PlanPicker({ headingLevel = "h3", align = "left" }: { headingLev
             { value: "year", label: "Yearly" },
           ]}
         />
+        {/* A nudge towards yearly; the same note stays mounted so its arrow is drawn once. */}
+        <span aria-hidden="true" className="relative ml-8 mt-9 max-sm:hidden">
+          <Hand rotate={-3} arrow="up-left">
+            {interval === "year" ? "nice, that saves a bit" : "save with yearly"}
+          </Hand>
+        </span>
       </div>
       <p aria-live="polite" className={cx("mt-4 max-w-[64ch] text-[14.5px] leading-relaxed text-muted", align === "center" && "mx-auto text-center")}>
         {team

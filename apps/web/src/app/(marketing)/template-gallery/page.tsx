@@ -8,6 +8,11 @@ import { SignUpPanel } from "@/components/marketing/parts";
 import { JsonLd, pageMetadata } from "@/components/marketing/seo";
 import { absoluteUrl } from "@/components/marketing/site";
 import { Eyebrow } from "@/components/marketing/ui";
+import { Float, Hand, Mark } from "@/components/marketing/fun";
+import { SlashPiece, TaskPiece } from "@/components/marketing/pieces";
+
+/** The templates people start from most, each with a sticker. */
+const POPULAR = new Set(["meeting-notes", "weekly-reset", "travel-plan"]);
 
 /** Re-check hourly which templates an admin has switched off. */
 export const revalidate = 3600;
@@ -47,7 +52,9 @@ export default async function TemplateGalleryPage() {
           ]}
         >
           <Eyebrow>Template gallery</Eyebrow>
-          <h1 className="mk-display mt-4 max-w-[18ch] text-[40px] sm:text-[56px] lg:text-[64px]">Free note templates for Folevi.</h1>
+          <h1 className="mk-display mt-5 max-w-[13ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[80px]">
+            Free note <Mark>templates</Mark> for Folevi.
+          </h1>
           <p className="mk-lede mt-5 max-w-[60ch]">{count} templates, free on every plan.</p>
           <Checks
             className="mt-6"
@@ -73,9 +80,20 @@ export default async function TemplateGalleryPage() {
               ))}
             </ul>
           </nav>
+          <div aria-hidden="true" className="pointer-events-none absolute right-[25%] top-[50%] hidden xl:block">
+            <Hand rotate={-5} arrow="down-right">
+              help yourself
+            </Hand>
+          </div>
+          <Float depth={0.12} className="right-[6%] top-[62%] hidden xl:block [--tilt:-3deg]">
+            <SlashPiece />
+          </Float>
+          <Float depth={0.18} delay={800} className="right-[26%] top-20 hidden xl:block [--tilt:3deg]">
+            <TaskPiece text="Pack the chargers" due="Fri" done />
+          </Float>
         </HeaderCard>
-        {groups.map((group) => (
-          <Card key={group.id} id={group.id} aria-labelledby={`${group.id}-title`} className="scroll-mt-8">
+        {groups.map((group, gi) => (
+          <Card tint={gi % 2 === 1} key={group.id} id={group.id} aria-labelledby={`${group.id}-title`} className="relative scroll-mt-8">
             <h2 id={`${group.id}-title`} className="mk-h2 text-[30px] sm:text-[38px]">
               {group.name}
             </h2>
@@ -83,7 +101,7 @@ export default async function TemplateGalleryPage() {
             <ul className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {group.templates.map((t) => (
                 <li key={t.key}>
-                  <TemplateCard template={t} />
+                  <TemplateCard template={t} tilt sticker={POPULAR.has(t.key) ? "Popular" : undefined} />
                 </li>
               ))}
             </ul>

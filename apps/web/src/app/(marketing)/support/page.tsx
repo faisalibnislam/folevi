@@ -3,9 +3,11 @@ import { SupportForm } from "@/components/support/SupportForm";
 import { FaqSection } from "@/components/marketing/parts";
 import { pageMetadata, type FaqItem } from "@/components/marketing/seo";
 import { SECURITY_EMAIL, SUPPORT_EMAIL, WEB_APP_URL } from "@/components/marketing/site";
-import { PageHeader, container, cx } from "@/components/marketing/ui";
+import { Eyebrow, container, cx } from "@/components/marketing/ui";
+import { Float, Hand, Mark } from "@/components/marketing/fun";
+import { MentionPiece } from "@/components/marketing/pieces";
 import { MONTHLY_CREDITS, PLANS, TRIAL_CREDITS, TRIAL_DAYS, formatPrice, sizeLabel } from "@/lib/plans";
-import { PageFrame } from "@/components/marketing/cards";
+import { HeaderCard, PageFrame } from "@/components/marketing/cards";
 
 export const metadata = pageMetadata({
   title: "Folevi support: contact us and quick answers",
@@ -116,15 +118,25 @@ const elsewhere: Array<{ title: string; body: React.ReactNode }> = [
 export default function SupportPage() {
   return (
     <PageFrame>
-      <PageHeader
-        eyebrow="Support"
-        title="How can we help?"
-        lede="A person on the Folevi team replies by email."
-      />
+      <HeaderCard>
+        <Float depth={0.08} className="bottom-[18%] right-[24%] max-xl:hidden [--tilt:-3deg]">
+          <MentionPiece name="Folevi" />
+        </Float>
+        <div aria-hidden="true" className="pointer-events-none absolute bottom-12 right-[8%] z-10 hidden lg:block">
+          <Hand rotate={-5} arrow="up-left">
+            real people, promise
+          </Hand>
+        </div>
+        <Eyebrow>Support</Eyebrow>
+        <h1 className="mk-display mt-5 max-w-[15ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
+          How can we <Mark kind="circle">help?</Mark>
+        </h1>
+        <p className="mk-lede mt-6 max-w-[60ch]">A person on the Folevi team replies by email.</p>
+      </HeaderCard>
       <div className={cx(container, "grid gap-(--mk-stack-gap) lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]")}>
         <section aria-labelledby="contact-title" className="mk-box relative px-5 py-8 sm:p-8 lg:p-10">
-          <h2 id="contact-title" className="mk-h3 text-[22px]">
-            Contact support
+          <h2 id="contact-title" className="mk-display text-[30px] leading-[1.05] sm:text-[36px]">
+            Contact <Mark>support</Mark>
           </h2>
           <p className="mt-1.5 text-[15px] text-muted">We’ll confirm by email with a request number.</p>
           <div className="mt-6">

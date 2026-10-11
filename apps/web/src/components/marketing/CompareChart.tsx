@@ -2,6 +2,7 @@ import Link from "next/link";
 import { COMPARE_CHECKED, COMPETITORS, FOLEVI_ROWS, comparePath } from "./content/compare";
 import { formatDay } from "./site";
 import { cx } from "./ui";
+import { Sticker } from "./fun";
 
 // Every product side by side (the /compare page): one row per topic, Folevi first and highlighted, then each
 // product as its own page has it. A topic a product's page doesn't cover reads "Not listed". The topic names
@@ -9,6 +10,8 @@ import { cx } from "./ui";
 
 const KEYS = Object.keys(FOLEVI_ROWS) as (keyof typeof FOLEVI_ROWS)[];
 const cell = "border-b mk-hair px-4 py-3.5 align-top text-[13.5px] leading-relaxed";
+// Folevi's column: a light wash of the accent, so the eye finds it first.
+const us = "bg-[color-mix(in_oklab,var(--mk-violet)_9%,var(--color-surface))]";
 
 export function CompareChart() {
   return (
@@ -22,8 +25,15 @@ export function CompareChart() {
             <th scope="col" className="sticky left-0 z-10 w-[160px] bg-(--color-surface) px-4 py-3.5">
               <span className="sr-only">Topic</span>
             </th>
-            <th scope="col" className="w-[220px] bg-(--color-surface-sunken) px-4 py-3.5 text-[14px] font-semibold text-(--color-heading)">
-              Folevi
+            <th scope="col" className={cx("w-[220px] px-4 pb-3.5 pt-5 text-[14px] font-semibold text-(--color-heading)", us)}>
+              <span className="flex items-center gap-2.5">
+                Folevi
+                <span aria-hidden="true">
+                  <Sticker tone="violet" rotate={-6} className="px-2.5 py-1 text-[11.5px]">
+                    That’s us
+                  </Sticker>
+                </span>
+              </span>
             </th>
             {COMPETITORS.map((x) => (
               <th key={x.slug} scope="col" className="w-[190px] px-4 py-3.5 text-[14px] font-semibold text-(--color-heading)">
@@ -40,7 +50,7 @@ export function CompareChart() {
               <th scope="row" className={cx(cell, "sticky left-0 z-10 bg-(--color-surface) font-semibold text-(--color-heading)")}>
                 {FOLEVI_ROWS[key].label}
               </th>
-              <td className={cx(cell, "bg-(--color-surface-sunken) text-ink")}>{FOLEVI_ROWS[key].value}</td>
+              <td className={cx(cell, us, "text-ink")}>{FOLEVI_ROWS[key].value}</td>
               {COMPETITORS.map((x) => {
                 const row = x.rows.find((r) => r.key === key);
                 return (

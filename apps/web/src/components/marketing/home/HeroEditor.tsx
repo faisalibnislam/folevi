@@ -28,11 +28,13 @@ import { IconButton } from "@/components/ui/Button";
 import { ToastProvider } from "@/components/ui/Toast";
 import { StaticAppStateProvider, type AppState, type Profile } from "@/lib/app/state";
 import { StaticRouterProvider, type RouterValue } from "@/lib/app/router";
-import { COVER_ART, type CoverArt } from "@/lib/cover";
+import { COVER_ART, coverArtThumbUrl, type CoverArt } from "@/lib/cover";
 import type { SyncEngine } from "@/lib/sync/engine";
 import { TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/plans";
 import { SIGN_UP_URL } from "../site";
-import { heroGlow } from "./heroStyles";
+import { siteArt } from "./heroStyles";
+import { ThemeGallery } from "@/components/doc/ThemeGallery";
+import { allThemes, PLAIN_DEFAULTS as THEME_PLAIN_DEFAULTS } from "@/lib/themes";
 import { seedDoc } from "./heroNoteSeed";
 
 /*
@@ -105,7 +107,7 @@ export type HeroEditorProps = {
   staticBody: ReactNode;
   art: CoverArt;
   styles: readonly CoverArt[];
-  onPickStyle: (index: number) => void;
+  onPickStyle: (art: CoverArt) => void;
   /** Where the dock goes: a sticky slot at the bottom of the note. */
   dockSlot: HTMLElement | null;
   /** Id of the text that says changes aren't saved. */
@@ -236,7 +238,7 @@ function DemoNote({ staticBody, art, styles, onPickStyle, dockSlot, describedBy,
 type Open = { kind: "panel"; tab: InspectorTab } | { kind: "notice" } | null;
 
 /** The page tools dock at the bottom of the note, with its panels floating above it (as in the app). */
-function DemoDock({ editor, art, styles, onPickStyle, notice, setNotice }: { editor: Editor; art: CoverArt; styles: readonly CoverArt[]; onPickStyle: (i: number) => void; notice: Notice | null; setNotice: (n: Notice | null) => void }) {
+function DemoDock({ editor, art, styles, onPickStyle, notice, setNotice }: { editor: Editor; art: CoverArt; styles: readonly CoverArt[]; onPickStyle: (art: CoverArt) => void; notice: Notice | null; setNotice: (n: Notice | null) => void }) {
   const [open, setOpen] = useState<Open>(null);
   const buttons = useRef<Partial<Record<InspectorTab, HTMLButtonElement | null>>>({});
   const extraButtons = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -337,34 +339,46 @@ function DemoDock({ editor, art, styles, onPickStyle, notice, setNotice }: { edi
   );
 }
 
-/** The Style panel's note themes: the ones the home page offers, picked the way the app picks them. */
-function StylePanel({ art, styles, onPick }: { art: CoverArt; styles: readonly CoverArt[]; onPick: (i: number) => void }) {
-  const labelId = useId();
+/**
+ * The Style panel as in the app: the note's theme, and a button that opens the theme gallery with every
+ * note theme (no Plain and no upload here: there's no account to keep an image in). Picking one dresses the
+ * note and, from there, the whole site.
+ */
+function StylePanel({ art, onPick }: { art: CoverArt; styles?: readonly CoverArt[]; onPick: (art: CoverArt) => void }) {
+  const [gallery, setGallery] = useState(false);
+  const themes = useMemo(() => allThemes().filter((t) => t.status === "published" && COVER_ART.some((a) => a.id === t.id)), []);
   return (
-    <div className="px-1">
-      <p id={labelId} className="ui-caps">
-        Note theme
-      </p>
-      <div role="radiogroup" aria-labelledby={labelId} className="mt-2 grid grid-cols-5 gap-2">
-        {styles.map((s, i) => {
-          const on = s.id === art.id;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              aria-label={`Note theme: ${s.name}`}
-              onClick={() => onPick(i)}
-              className={`aspect-square rounded-control bg-cover bg-center outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-focus ${on ? "shadow-[0_0_0_2px_var(--color-surface-raised),0_0_0_4px_var(--color-heading)]" : "shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] hover:shadow-[0_0_0_2px_var(--color-surface-raised),0_0_0_4px_var(--color-line-strong)]"}`}
-              style={{ backgroundImage: `url("${heroGlow(s)}")` }}
-            />
-          );
-        })}
+    <div className="space-y-4 px-1 text-sm">
+      <div aria-hidden className="relative block h-28 w-full overflow-hidden rounded-chip bg-cover bg-center shadow-[var(--shadow-card)]" style={{ backgroundImage: `url("${coverArtThumbUrl(art.id)}")` }}>
+        <span className="absolute bottom-0 left-1/2 top-3 w-[38%] -translate-x-1/2 rounded-t-chip px-2 pt-2 text-left shadow-[0_6px_18px_-6px_rgb(0_0_0/0.35)]" style={{ background: art.paper, color: art.ink }}>
+          <span className="block text-[10.5px] font-semibold leading-tight">{art.name}</span>
+          <span className="mt-1.5 block h-1 w-4/5 rounded-tiny opacity-25" style={{ background: art.ink }} />
+          <span className="mt-1 block h-1 w-3/5 rounded-tiny opacity-25" style={{ background: art.ink }} />
+        </span>
       </div>
-      <p className="mt-3 text-[13px] text-muted">
-        {art.name}. The theme colours the cover, the paper, the text and the checkboxes. Your own notes have {COVER_ART.length} themes, or a picture of your own.
-      </p>
+      <fieldset>
+        <legend className="ui-caps mb-1 px-1">Note Theme</legend>
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          onClick={() => setGallery(true)}
+          className="flex h-10 w-full items-center justify-between rounded-chip px-1 text-left text-[13.5px] text-ink transition-colors hover:bg-accent-soft/60"
+        >
+          {art.name}
+          <span aria-hidden className="inline-block h-7 w-9 rounded-chip bg-cover bg-center shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ backgroundImage: `url("${coverArtThumbUrl(art.id)}")` }} />
+        </button>
+      </fieldset>
+      <p className="px-1 text-[12.5px] text-muted">The theme you pick dresses this whole website too.</p>
+      <ThemeGallery
+        open={gallery}
+        onClose={() => setGallery(false)}
+        themes={themes}
+        currentId={art.id}
+        plain={THEME_PLAIN_DEFAULTS}
+        ownImage={null}
+        plan={null}
+        onPickTheme={(t) => onPick(siteArt(t.id))}
+      />
     </div>
   );
 }

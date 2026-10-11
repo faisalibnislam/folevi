@@ -65,7 +65,7 @@ export function Wordmark({ className, markSize = 22 }: { className?: string; mar
 
 /** A small caps label that introduces a section (the app's section labels). */
 export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
-  return <p className={cx("mk-caps", className)}>{children}</p>;
+  return <p className={cx("mk-eyebrow", className)}>{children}</p>;
 }
 
 export function Kbd({ children }: { children: ReactNode }) {
@@ -91,7 +91,7 @@ export function SectionHeading({
   return (
     <div className={cx(center && "mx-auto text-center", className)}>
       <Eyebrow>{eyebrow}</Eyebrow>
-      <h2 id={id} className={cx("mk-h2 mt-4 max-w-[20ch]", center && "mx-auto")}>
+      <h2 id={id} className={cx("mk-h2 mt-5 max-w-[18ch]", center && "mx-auto")}>
         {title}
       </h2>
       {lede ? <p className={cx("mk-lede mt-4 max-w-[54ch]", center && "mx-auto")}>{lede}</p> : null}

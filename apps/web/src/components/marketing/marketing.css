@@ -45,6 +45,12 @@
   --mk-title-shade-deep: rgb(0 0 0 / 0.42);
   --mk-title-shade-light: rgb(255 255 255 / 0.5);
   --cover-art-tint: transparent;
+  /* The one accent (Foli AI's violet): doodles, stickers, ticks and highlights. Buttons stay black and white, as in the app. */
+  --mk-violet: #7C6CF0;
+  --mk-violet-strong: #5F4FD8;
+  --mk-violet-ink: #4B3BC4;
+  --mk-violet-soft: rgb(124 108 240 / 0.14);
+  --color-selection: rgb(124 108 240 / 0.24);
 }
 
 :root[data-theme="dark"]:has(.mk-root),
@@ -80,6 +86,11 @@
   --shadow-lift: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 10px 24px -6px rgba(0, 0, 0, 0.6), 0 40px 80px -30px rgba(0, 0, 0, 0.8);
   --mk-well: #17171A;
   --cover-art-tint: rgb(0 0 0 / 0.18);
+  --mk-violet: #9D90FF;
+  --mk-violet-strong: #6D5DE6;
+  --mk-violet-ink: #B8AEFF;
+  --mk-violet-soft: rgb(157 144 255 / 0.18);
+  --color-selection: rgb(157 144 255 / 0.3);
 }
 
 @media (prefers-contrast: more) {
@@ -113,9 +124,9 @@
   font-family: var(--font-display);
   font-weight: 600;
   color: var(--color-heading);
-  font-size: clamp(32px, 4vw, 46px);
-  line-height: 1.08;
-  letter-spacing: -0.018em;
+  font-size: clamp(36px, 4.8vw, 58px);
+  line-height: 1.02;
+  letter-spacing: -0.026em;
   text-wrap: balance;
 }
 .mk-h3 {
@@ -141,12 +152,12 @@
   color: var(--color-heading);
   font-weight: 550;
   text-decoration: underline;
-  text-decoration-color: color-mix(in oklab, currentColor 30%, transparent);
+  text-decoration-color: color-mix(in oklab, var(--mk-violet) 55%, transparent);
   text-underline-offset: 4px;
-  text-decoration-thickness: 1px;
+  text-decoration-thickness: 1.5px;
   transition: text-decoration-color var(--motion-fast, 140ms) var(--mk-ease);
 }
-.mk-link:hover { text-decoration-color: currentColor; }
+.mk-link:hover { text-decoration-color: var(--mk-violet); }
 
 /* Hairlines ------------------------------------------------------------------------------------ */
 .mk-hair { border-color: var(--mk-hair); }
@@ -231,7 +242,7 @@
     padding: 8px;
     overflow: hidden;
   }
-  .mk-sidebar { flex: none; width: 248px; height: 100%; }
+  .mk-sidebar { flex: none; width: 198px; height: 100%; }
   .mk-column {
     display: flex;
     flex: 1;
@@ -744,6 +755,14 @@
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.2), 0 24px 48px -24px rgb(0 0 0 / 0.55);
 }
 .mk-dark .mk-btn-primary:hover { filter: brightness(0.92); }
+/* A card in the site theme's paper, as the hero note's page is (the theme picked on Home): every page's
+   header, and a few sections between white ones. Its wells and stages keep their own colours. */
+.mk-box.mk-tint {
+  background: var(--art-paper, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--art-ink, #000) 9%, transparent), 0 1px 2px rgb(0 0 0 / 0.04), 0 18px 40px -26px rgb(20 20 40 / 0.2);
+  transition: background-color var(--motion-page, 320ms) var(--mk-ease);
+}
+.mk-tint .mk-lede, .mk-tint .text-muted { color: color-mix(in oklab, var(--art-ink, var(--color-ink-muted)) 72%, var(--art-paper, #fff)); }
 
 :root[data-theme="dark"] .mk-box { box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.3), 0 18px 40px -24px rgb(0 0 0 / 0.6); }
 @media (min-width: 640px) { .mk-box { border-radius: var(--radius-container); } }
@@ -932,13 +951,19 @@
 }
 .mk-hero-stage[data-tone="light"] .mk-hero-title { color: var(--art-ink); text-shadow: 0 1px 12px rgb(255 255 255 / 0.5); }
 
-/* "notes app" in the title, underlined in the title's own colour (white on deep covers, ink on light). */
+/* "notes app" in the title: a violet highlighter swipe behind the words (plain CSS: the title is editable). */
 .mk-hero-mark {
-  text-decoration-line: underline;
-  text-decoration-thickness: 0.06em;
-  text-underline-offset: 0.14em;
-  text-decoration-skip-ink: auto;
+  background-image: linear-gradient(100deg, transparent 0.5%, rgb(124 108 240 / 0.78) 2%, rgb(124 108 240 / 0.62) 96%, transparent 99%);
+  background-repeat: no-repeat;
+  background-size: 100% 0.42em;
+  background-position: 0 88%;
+  padding-inline: 0.06em;
+  border-radius: var(--radius-tiny);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
+.mk-motion .mk-hero-mark { animation: mk-swipe 900ms cubic-bezier(0.6, 0.1, 0.3, 1) 300ms both; }
+@keyframes mk-swipe { from { background-size: 0% 0.42em; } }
 
 /* The note's body: the editor (editor.css) on the note's Serif font in the theme's
    colours (fb-sheet data-sheet/data-text/data-palette read the --art-* and --pal-* variables set above).
@@ -1136,7 +1161,7 @@
   margin-top: 1px;
   border-radius: var(--radius-tiny);
   color: #fff;
-  background: var(--color-moss-ink);
+  background: var(--mk-violet-strong);
 }
 
 /* Pictures that play on scroll (Play.tsx): marked parts appear in turn, then the sequence loops. Before the
@@ -1152,4 +1177,134 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .mk-play [data-step] { animation: none !important; opacity: 1 !important; }
+}
+
+/* Playful touches (fun.tsx, MarketingMotion.tsx) ------------------------------------------------- */
+@layer components {
+/* The accent follows the note theme lighting the page (its backdrop; on Home, the theme picked in the hero,
+   which copies its colours onto .mk-home). Strokes are the theme's accent a little deeper, text deeper still
+   so it reads on white, washes a light tint. The --mk-violet names are the accent's (violet is the fallback). */
+.mk-home {
+  --mk-accent-base: var(--art-accent, var(--art-ink, #7C6CF0));
+  --mk-violet: color-mix(in oklab, var(--mk-accent-base) 88%, black);
+  --mk-violet-strong: color-mix(in oklab, var(--mk-accent-base) 80%, black);
+  --mk-violet-ink: color-mix(in oklab, var(--mk-accent-base) 70%, black);
+  --mk-violet-soft: color-mix(in oklab, var(--mk-accent-base) 16%, transparent);
+  --color-selection: color-mix(in oklab, var(--mk-accent-base) 26%, transparent);
+}
+.mk-home .mk-dark {
+  --mk-accent-base: var(--art-accent-dark, var(--art-accent, #9D90FF));
+  --mk-violet: color-mix(in oklab, var(--mk-accent-base) 90%, white);
+  --mk-violet-strong: color-mix(in oklab, var(--mk-accent-base) 80%, black);
+  --mk-violet-ink: color-mix(in oklab, var(--mk-accent-base) 65%, white);
+  --mk-violet-soft: color-mix(in oklab, var(--mk-accent-base) 22%, transparent);
+}
+.mk-hero-mark {
+  background-image: linear-gradient(100deg, transparent 0.5%, color-mix(in oklab, var(--mk-accent-base) 80%, transparent) 2%, color-mix(in oklab, var(--mk-accent-base) 64%, transparent) 96%, transparent 99%);
+}
+/* Section labels: a strip of violet washi tape, a little crooked, with torn ends. */
+.mk-eyebrow {
+  --tear: 5px;
+  display: inline-block;
+  padding: 5px 16px 4px;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: var(--tracking-caps, 0.06em);
+  text-transform: uppercase;
+  color: var(--mk-violet-ink);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 6px, rgb(255 255 255 / 0.16) 6px 7px),
+    color-mix(in oklab, var(--mk-violet) 24%, transparent);
+  rotate: -1.6deg;
+  clip-path: polygon(
+    0 0, 100% 0,
+    calc(100% - var(--tear)) 20%, 100% 40%, calc(100% - var(--tear)) 60%, 100% 80%, calc(100% - var(--tear)) 100%,
+    0 100%,
+    var(--tear) 80%, 0 60%, var(--tear) 40%, 0 20%, var(--tear) 0
+  );
+}
+:root[data-theme="dark"] .mk-eyebrow, .mk-dark .mk-eyebrow { background: color-mix(in oklab, var(--mk-violet) 30%, transparent); }
+.mk-eyebrow:nth-of-type(even) { rotate: 1.4deg; }
+
+/* Doodles: violet strokes that draw themselves once seen. */
+.mk-doodle { overflow: visible; }
+.mk-doodle path {
+  stroke: var(--mk-violet);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.mk-motion .mk-doodle path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+/* Chrome can show a sliver of a stretched (non-scaling) stroke before it's drawn: hidden until seen. */
+.mk-motion .mk-doodle:not([data-seen]) { visibility: hidden; }
+.mk-motion .mk-doodle[data-seen] path { animation: mk-draw 900ms cubic-bezier(0.6, 0.1, 0.3, 1) var(--d, 0ms) forwards; }
+@keyframes mk-draw { to { stroke-dashoffset: 0; } }
+
+/* A word with a doodle behind it. */
+.mk-mark { position: relative; display: inline; white-space: nowrap; z-index: 0; }
+.mk-mark-doodle { position: absolute; z-index: -1; }
+.mk-mark[data-kind="underline"] .mk-mark-doodle,
+.mk-mark[data-kind="squiggle"] .mk-mark-doodle { left: -2%; right: -2%; bottom: -0.12em; width: 104%; height: 0.32em; }
+.mk-mark[data-kind="circle"] .mk-mark-doodle { left: -9%; top: -14%; width: 118%; height: 128%; }
+
+/* Handwritten asides. */
+.mk-hand {
+  position: relative;
+  display: inline-block;
+  font-family: var(--font-mali), "Comic Sans MS", cursive;
+  font-weight: 600;
+  font-size: 17px;
+  line-height: 1.25;
+  color: var(--mk-violet-ink);
+  rotate: var(--r, -4deg);
+}
+.mk-hand-arrow { position: absolute; width: 46px; height: 46px; }
+.mk-hand-arrow[data-dir="down-left"] { left: -30px; top: 100%; rotate: 70deg; }
+.mk-hand-arrow[data-dir="down-right"] { right: -34px; top: 90%; }
+.mk-hand-arrow[data-dir="up-left"] { left: -36px; bottom: 90%; rotate: 180deg; }
+.mk-hand-arrow[data-dir="up-right"] { right: -30px; bottom: 100%; rotate: -100deg; }
+.mk-hand-arrow[data-dir="loop"] { left: 100%; top: 40%; width: 64px; height: 50px; }
+
+/* Stickers. */
+.mk-sticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: var(--radius-chip);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  rotate: var(--r, -6deg);
+  color: var(--color-heading);
+  background: var(--color-surface-raised);
+  /* The app's soft popover shadow, no outline. */
+  box-shadow: var(--shadow-pop);
+  transition: rotate 260ms cubic-bezier(0.3, 1.6, 0.5, 1), scale 260ms cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.mk-sticker[data-tone="violet"] {
+  color: #fff;
+  background: var(--mk-violet-strong);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 2px rgb(0 0 0 / 0.1), 0 10px 24px -10px color-mix(in oklab, var(--mk-violet-strong) 70%, transparent);
+}
+.mk-sticker[data-tone="ink"] { color: var(--color-canvas); background: var(--color-heading); box-shadow: var(--shadow-primary); }
+.mk-sticker-icon { display: inline-flex; }
+.mk-motion .mk-sticker:hover { rotate: calc(var(--r, -6deg) * -0.6); scale: 1.06; }
+
+/* Floating pieces: placed by their parent, bobbing gently; MarketingMotion adds the scroll drift. */
+.mk-float { position: absolute; z-index: 2; will-change: translate; }
+.mk-motion .mk-float-bob { animation: mk-bob 6s ease-in-out var(--bob-delay, 0ms) infinite; }
+@keyframes mk-bob {
+  0%, 100% { transform: translateY(0) rotate(var(--tilt, 0deg)); }
+  50% { transform: translateY(-8px) rotate(calc(var(--tilt, 0deg) + 1.2deg)); }
+}
+
+/* Cards that lean towards the pointer. */
+[data-tilt] { transition: transform 300ms var(--mk-ease), box-shadow 200ms var(--mk-ease); transform-style: preserve-3d; }
+
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-float-bob { animation: none !important; }
+  .mk-sticker { transition: none; }
+}
 }

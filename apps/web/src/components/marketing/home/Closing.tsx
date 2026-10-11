@@ -4,6 +4,8 @@ import { FoleviMark } from "@/components/brand/FoleviMark";
 import { Icon, type IconName } from "../icons";
 import { SIGN_UP_URL } from "../site";
 import { ButtonLink, SectionHeading, box, container, cx } from "../ui";
+import { Float, Hand, Mark, Sticker } from "../fun";
+import { AiPiece, CursorPiece, TaskPiece, ThemesPiece } from "../pieces";
 
 export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: string }> = [
   {
@@ -56,7 +58,11 @@ export function PricingSection() {
           align="center"
           id="pricing-title"
           eyebrow="Pricing"
-          title="Start free. Upgrade for room or AI."
+          title={
+            <>
+              Start <Mark>free</Mark>. Upgrade for room or AI.
+            </>
+          }
           lede={`Every new account gets ${TIER_NAMES[TRIAL_TIER]} free for ${TRIAL_DAYS} days, no card.`}
         />
         <ul className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -69,12 +75,16 @@ export function PricingSection() {
                 className={cx(
                   "mk-card flex flex-col p-6",
                   badge &&
-                    "shadow-[var(--shadow-card),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]",
+                    "shadow-[var(--shadow-card),inset_0_0_0_1.5px_var(--mk-violet)]",
                 )}
               >
                 <div className="flex min-h-7 items-center gap-2">
                   <h3 className="text-[16px] font-semibold text-(--color-heading)">{plan.name}</h3>
-                  {badge ? <span className="mk-chip ml-auto">{badge}</span> : null}
+                  {badge ? (
+                    <Sticker tone="violet" rotate={tier === "pro_ai" ? 6 : -6} className="ml-auto text-[12px]">
+                      {badge}
+                    </Sticker>
+                  ) : null}
                 </div>
                 <p className="mt-4 flex flex-wrap items-baseline gap-x-1.5">
                   <span className="mk-display text-[36px] leading-none">
@@ -100,15 +110,30 @@ export function PricingSection() {
 export function FinalCta() {
   return (
     <section aria-labelledby="cta-title" className={container}>
-      <div className="mk-box px-6 py-16 text-center sm:px-10 sm:py-24">
+      <div className="mk-box mk-tint relative overflow-hidden px-6 py-20 text-center sm:px-10 sm:py-28">
+        <Float depth={0.18} className="left-[7%] top-14 [--tilt:-5deg]">
+          <TaskPiece text="Write the first note" done />
+        </Float>
+        <Float depth={0.1} delay={800} className="left-[5%] bottom-10 [--tilt:4deg]">
+          <ThemesPiece arts={["art-30", "art-41", "art-03"]} />
+        </Float>
+        <Float depth={0.22} delay={300} className="right-[6%] top-16 [--tilt:4deg]">
+          <AiPiece text="Welcome in. Ask me anything about your notes." />
+        </Float>
+        <Float depth={0.12} delay={1400} className="right-[8%] bottom-14">
+          <CursorPiece name="You" tone="ink" />
+        </Float>
         <FoleviMark size={48} className="mx-auto block" />
         <h2
           id="cta-title"
-          className="mk-display mx-auto mt-7 max-w-[16ch] text-[38px] sm:text-[56px]"
+          className="mk-display relative mx-auto mt-7 max-w-[16ch] text-[44px] sm:text-[72px]"
         >
-          Start with one note.
+          Start with one <Mark kind="circle">note</Mark>.
         </h2>
         <p className="mk-lede mx-auto mt-5 max-w-[46ch]">The Free plan has no time limit.</p>
+        <div aria-hidden="true" className="mt-3">
+          <Hand rotate={-3}>you&apos;ll like it here</Hand>
+        </div>
         <div className="mt-9 flex flex-wrap justify-center gap-2.5">
           <ButtonLink href={SIGN_UP_URL} icon="arrow-right" size="lg">
             Start writing

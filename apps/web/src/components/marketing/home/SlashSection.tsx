@@ -4,6 +4,7 @@ import { SlashDemo } from "./SlashDemo";
 import { Checks } from "../Checks";
 import { Icon } from "../icons";
 import { Kbd, SectionHeading, box, container, cx } from "../ui";
+import { Hand, Mark } from "../fun";
 
 /*
  * What the "/" menu inserts, in three short lines. Labels are the slash menu's own
@@ -13,10 +14,15 @@ import { Kbd, SectionHeading, box, container, cx } from "../ui";
 export function SlashSection() {
   return (
     <section id="slash" aria-labelledby="slash-title" className={cx(container, "scroll-mt-20")}>
-      <div className={box}>
+      <div className={cx(box, "relative")}>
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
           <div>
-            <SectionHeading id="slash-title" eyebrow="The / menu" title="Type / and pick what comes next." />
+            <SectionHeading id="slash-title" eyebrow="The / menu" title={
+                <>
+                  Type / and <Mark>pick</Mark> what comes next.
+                </>
+              }
+            />
             <p className="mk-lede mt-5 max-w-[46ch]">
               On any line, type <Kbd>/</Kbd> and a few letters to filter.
             </p>
@@ -28,8 +34,15 @@ export function SlashSection() {
               Blocks and the / menu <Icon name="arrow-right" size={15} />
             </Link>
           </div>
-          <div className="mk-stage px-3 py-8 sm:px-10 sm:py-10" style={{ ["--stage-art" as string]: artThumb(artById("art-30")) }}>
-            <SlashDemo />
+          <div className="relative">
+            <div aria-hidden="true" className="pointer-events-none absolute -top-9 right-6 z-10 max-lg:hidden">
+              <Hand rotate={5} arrow="down-right">
+                it plays by itself
+              </Hand>
+            </div>
+            <div data-tilt="2.5" className="mk-stage px-3 py-8 sm:px-10 sm:py-10" style={{ ["--stage-art" as string]: artThumb(artById("art-30")) }}>
+              <SlashDemo />
+            </div>
           </div>
         </div>
       </div>

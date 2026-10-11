@@ -17,11 +17,13 @@ import {
   sizeLabel,
 } from "@/lib/plans";
 import { pageMetadata, type FaqItem } from "@/components/marketing/seo";
-import { Card, PageFrame } from "@/components/marketing/cards";
+import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { Checks } from "@/components/marketing/Checks";
 import { FaqSection } from "@/components/marketing/parts";
 import { Play } from "@/components/marketing/Play";
-import { PageHeader, cx } from "@/components/marketing/ui";
+import { Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
+import { CursorPiece, TaskPiece } from "@/components/marketing/pieces";
+import { Eyebrow, cx } from "@/components/marketing/ui";
 
 const trialName = TIER_NAMES[TRIAL_TIER];
 const gb = sizeLabel;
@@ -119,11 +121,26 @@ export default function PricingPage() {
   const maxCredits = Math.max(...PLAN_ORDER.map((tier) => MONTHLY_CREDITS[tier]));
   return (
     <PageFrame>
-      <PageHeader
-        eyebrow="Pricing"
-        title="Start free. Pay for room, or for AI."
-        lede={`Try ${trialName} free for ${TRIAL_DAYS} days, with ${TRIAL_CREDITS} AI credits. No card.`}
-      />
+      <HeaderCard>
+        <Float depth={0.04} className="right-[2%] top-3 max-xl:hidden [--tilt:4deg]">
+          <TaskPiece text="Pick a plan" due="Later" />
+        </Float>
+        <Float depth={0.08} delay={900} className="bottom-[10%] right-[33%] max-xl:hidden">
+          <CursorPiece name="You" tone="ink" />
+        </Float>
+        <div aria-hidden="true" className="pointer-events-none absolute bottom-10 right-[8%] z-10 hidden lg:block">
+          <Sticker tone="violet" rotate={7}>
+            Cancel any time
+          </Sticker>
+        </div>
+        <Eyebrow>Pricing</Eyebrow>
+        <h1 className="mk-display mt-5 max-w-[15ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
+          Start <Mark kind="circle">free.</Mark> Pay for room, or for AI.
+        </h1>
+        <p className="mk-lede mt-6 max-w-[60ch]">
+          Try {trialName} free for {TRIAL_DAYS} days, with {TRIAL_CREDITS} AI credits. No card.
+        </p>
+      </HeaderCard>
       <Card aria-label="Plans">
         <PlanPicker headingLevel="h2" />
         <p className="mt-5 text-[13.5px] text-muted">
@@ -131,10 +148,17 @@ export default function PricingPage() {
         </p>
       </Card>
 
-      <Card aria-labelledby="credits-title">
-        <h2 id="credits-title" className="mk-h2">
-          AI credits
-        </h2>
+      <Card tint aria-labelledby="credits-title">
+        <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
+          <h2 id="credits-title" className="mk-h2">
+            AI <Mark>credits</Mark>
+          </h2>
+          <div aria-hidden="true" className="relative pb-1 pr-10 max-lg:hidden">
+            <Hand rotate={4} arrow="down-right">
+              top up when you run low
+            </Hand>
+          </div>
+        </div>
         <p className="mk-lede mt-3 max-w-[60ch]">One credit is one cent of what our AI costs.</p>
         <div className="mt-8 grid gap-4 lg:grid-cols-2">
           <div className="mk-card p-6 sm:p-7">

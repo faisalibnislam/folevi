@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Float } from "./fun";
+import { CursorPiece, TaskPiece } from "./pieces";
 import type { ReactNode } from "react";
 import { FoleviMark } from "@/components/brand/FoleviMark";
 import { Icon } from "./icons";
@@ -79,7 +81,7 @@ export function FaqSection({
                   <span>{item.q}</span>
                   <span
                     aria-hidden="true"
-                    className="text-[20px] font-normal text-muted transition-transform duration-150 group-open:rotate-45"
+                    className="grid size-7 flex-none place-items-center rounded-chip text-[18px] font-normal text-(--mk-violet-ink) bg-(--mk-violet-soft) transition-transform duration-200 group-open:rotate-45"
                   >
                     +
                   </span>
@@ -144,8 +146,9 @@ export function LinkCard({
   return (
     <div
       id={id}
+      data-tilt={wide ? "1.5" : "3"}
       className={cx(
-        "mk-card group relative flex h-full scroll-mt-24 flex-col transition-shadow duration-150 hover:shadow-(--shadow-pop)",
+        "mk-card group relative flex h-full scroll-mt-24 flex-col hover:shadow-(--shadow-pop)",
         wide && "lg:flex-row",
         cover ? "overflow-hidden" : "p-5 sm:p-6",
         className,
@@ -200,11 +203,17 @@ export function SignUpPanel({
 }) {
   return (
     <section aria-labelledby="signup-title" className={container}>
-      <div className="mk-box px-6 py-14 text-center sm:px-10 sm:py-20">
+      <div className="mk-box mk-tint relative overflow-hidden px-6 py-16 text-center sm:px-10 sm:py-24">
+        <Float depth={0.16} className="left-[7%] top-14 [--tilt:-5deg]">
+          <TaskPiece text="Write the first note" done />
+        </Float>
+        <Float depth={0.1} delay={900} className="bottom-14 right-[7%]">
+          <CursorPiece name="You" tone="ink" />
+        </Float>
         <FoleviMark size={44} className="mx-auto block" />
         <h2
           id="signup-title"
-          className="mk-display mx-auto mt-6 max-w-[18ch] text-[34px] sm:text-[48px]"
+          className="mk-display relative mx-auto mt-6 max-w-[18ch] text-[38px] sm:text-[60px]"
         >
           {title}
         </h2>

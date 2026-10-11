@@ -7,6 +7,8 @@ import { JsonLd, pageMetadata, softwareLd } from "@/components/marketing/seo";
 import { SIGN_UP_URL, WEB_APP_URL } from "@/components/marketing/site";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { ButtonLink, Eyebrow, SectionHeading, cx } from "@/components/marketing/ui";
+import { Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
+import { KeysPiece, SyncPiece } from "@/components/marketing/pieces";
 
 export const metadata = pageMetadata({
   title: "Folevi for Mac: notes, Quick Add and offline (coming soon)",
@@ -34,12 +36,18 @@ export default function MacPage() {
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-end lg:gap-16">
             <div>
               <Eyebrow>Folevi for Mac</Eyebrow>
-              <h1 className="mk-display mt-4 max-w-[15ch] text-[44px] sm:text-[60px] lg:text-[68px]">Folevi, in a window of its own.</h1>
+              <h1 className="mk-display mt-5 max-w-[13ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[80px]">
+                Folevi, in a window of <Mark>its own</Mark>.
+              </h1>
               <p className="mk-lede mt-6 max-w-[50ch]">Quick Add, a menu bar icon and Mac notifications.</p>
             </div>
-            <div className="mk-card p-6 sm:p-7">
-              <p className="mk-chip">Coming soon</p>
-              <p className="mt-4 text-[15px] leading-relaxed text-muted">Create an account and we’ll email you when it’s ready.</p>
+            <div data-tilt="3" className="mk-card relative p-6 pt-12 sm:p-7 sm:pt-14">
+              <p className="absolute -top-5 left-5 sm:-left-4">
+                <Sticker tone="violet" rotate={-8} className="px-5 py-2.5 text-[19px] sm:text-[22px]">
+                  Coming soon
+                </Sticker>
+              </p>
+              <p className="text-[15px] leading-relaxed text-muted">Create an account and we’ll email you when it’s ready.</p>
               <div className="mt-6 flex flex-wrap gap-2.5">
                 <ButtonLink href={SIGN_UP_URL} icon="arrow-right">
                   Create an account
@@ -51,10 +59,12 @@ export default function MacPage() {
               <p className="mt-5 text-[13px] text-muted">macOS 13 or later, Apple silicon.</p>
             </div>
           </div>
-
+          <Float depth={0.14} delay={300} className="right-[5%] top-5 hidden xl:block [--tilt:4deg]">
+            <KeysPiece keys={["⌥", "Space"]} label="Quick Add" />
+          </Float>
         </HeaderCard>
         <Card as="div" inner="p-4 sm:p-5">
-          <div className="mk-stage p-4 sm:p-8" style={{ ["--stage-art" as string]: artThumb(art) }}>
+          <div data-tilt="1.5" className="mk-stage p-4 sm:p-8" style={{ ["--stage-art" as string]: artThumb(art) }}>
             <MacMenuBar initial="File" />
             <AppWindow
               art={art}
@@ -68,11 +78,23 @@ export default function MacPage() {
           </div>
         </Card>
 
-        <Card aria-labelledby="why-title">
-          <SectionHeading id="why-title" eyebrow="What it adds" title="Everything on the web, plus more." lede="Notes are kept on your Mac, so writing never waits." />
+        <Card tint aria-labelledby="why-title" className="relative">
+          <Float depth={0.12} className="right-[10%] top-24 hidden xl:block [--tilt:3deg]">
+            <SyncPiece label="Saved on this Mac" />
+          </Float>
+          <SectionHeading
+            id="why-title"
+            eyebrow="What it adds"
+            title={
+              <>
+                Everything on the web, plus <Mark kind="circle">more</Mark>.
+              </>
+            }
+            lede="Notes are kept on your Mac, so writing never waits."
+          />
           <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature) => (
-              <li key={feature.title} className="mk-card flex items-center gap-3.5 p-4 sm:p-5">
+              <li key={feature.title} data-tilt="4" className="mk-card flex items-center gap-3.5 p-4 sm:p-5">
                 <span className="mk-tile flex-none">
                   <Icon name={feature.icon} size={17} />
                 </span>
@@ -98,7 +120,7 @@ export default function MacPage() {
             </div>
             <div className="relative self-center">
               <h3 className="mk-caps">System requirements</h3>
-              <dl className="mk-card mt-4 px-5 text-[15px]">
+              <dl data-tilt="2" className="mk-card mt-4 px-5 text-[15px]">
                 {[
                   ["macOS", "macOS 13 or later"],
                   ["Mac", "Apple silicon (M1 or later)"],
@@ -115,15 +137,25 @@ export default function MacPage() {
           </div>
         </Card>
 
-        <Card aria-labelledby="keys-title">
+        <Card tint aria-labelledby="keys-title">
           <div className="grid gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16">
-            <SectionHeading
-              id="keys-title"
-              eyebrow="Keyboard"
-              title="Hands stay on the keys."
-              lede="Most work on the web too; ⌘N, ⇧⌘N and ⌥Space are Mac only."
-              className="lg:sticky lg:top-12 lg:self-start"
-            />
+            <div className="lg:sticky lg:top-12 lg:self-start">
+              <SectionHeading
+                id="keys-title"
+                eyebrow="Keyboard"
+                title={
+                  <>
+                    Hands stay on the <Mark kind="squiggle">keys</Mark>.
+                  </>
+                }
+                lede="Most work on the web too; ⌘N, ⇧⌘N and ⌥Space are Mac only."
+              />
+              <div aria-hidden="true" className="pointer-events-none mt-12 hidden pl-16 xl:block">
+                <Hand rotate={-5} arrow="up-left">
+                  try ⌥Space first
+                </Hand>
+              </div>
+            </div>
             <div className="mk-card p-5 sm:p-7">
               <ShortcutTable caption="Keyboard shortcuts in Folevi for Mac" />
             </div>
@@ -135,10 +167,14 @@ export default function MacPage() {
             align="center"
             id="web-title"
             eyebrow="Also on the web"
-            title="The same notes in any browser."
+            title={
+              <>
+                The same notes in <Mark kind="squiggle">any browser</Mark>.
+              </>
+            }
             lede="Syncs in real time with your Mac, and works offline once loaded."
           />
-          <div className="mx-auto mt-12 max-w-[1080px]">
+          <div data-tilt="1.5" className="mx-auto mt-12 max-w-[1080px]">
             <AppWindow
               art={artById("art-03")}
               label="Folevi on the web: the page sidebar with the note’s table of contents, and a note called Seed library in the Irises theme."

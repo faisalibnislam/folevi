@@ -8,6 +8,8 @@ import { LinkCard, SignUpPanel } from "@/components/marketing/parts";
 import { JsonLd, pageMetadata } from "@/components/marketing/seo";
 import { absoluteUrl } from "@/components/marketing/site";
 import { Eyebrow, container, cx } from "@/components/marketing/ui";
+import { Doodle, Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
+import { SearchPiece, TaskPiece } from "@/components/marketing/pieces";
 
 export const metadata = pageMetadata({
   title: "Notes app features: tasks, offline sync and AI",
@@ -66,6 +68,25 @@ const LAYOUT: { slug: string; size: Size }[] = [
   { slug: "mac", size: "half" },
 ];
 
+/** A sticker on a few cards, placed after the card so the card's tilt never paints over it. Decorative. */
+const STICKERS: Record<string, { text: string; tone: "paper" | "violet" | "ink"; rotate: number }> = {
+  "offline-notes": { text: "Most loved", tone: "violet", rotate: -7 },
+  tasks: { text: "Due today", tone: "paper", rotate: 6 },
+  mac: { text: "Coming soon", tone: "ink", rotate: -5 },
+};
+
+function CardSticker({ slug }: { slug: string }) {
+  const sticker = STICKERS[slug];
+  if (!sticker) return null;
+  return (
+    <span aria-hidden="true" className={cx("pointer-events-none absolute -top-3 z-10", sticker.rotate > 0 ? "right-3" : "-left-1.5")}>
+      <Sticker tone={sticker.tone} rotate={sticker.rotate} className="text-[12.5px]">
+        {sticker.text}
+      </Sticker>
+    </span>
+  );
+}
+
 const SPAN: Record<Size, string> = {
   wide: "sm:col-span-2 lg:col-span-6",
   half: "lg:col-span-3",
@@ -96,8 +117,21 @@ export default function FeaturesPage() {
           ]}
         >
           <Eyebrow>Features</Eyebrow>
-          <h1 className="mk-display mt-4 max-w-[18ch] text-[40px] sm:text-[56px] lg:text-[64px]">Everything Folevi does, one page each.</h1>
-          <p className="mk-lede mt-5 max-w-[60ch]">Notes, tasks and linked pages that work offline.</p>
+          <h1 className="mk-display mt-5 max-w-[14ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[80px]">
+            Everything Folevi does, <Mark>one page</Mark> each.
+          </h1>
+          <p className="mk-lede mt-6 max-w-[60ch]">Notes, tasks and linked pages that work offline.</p>
+          <div aria-hidden="true" className="pointer-events-none absolute bottom-[72px] right-[24%] hidden xl:block">
+            <Hand rotate={-6} arrow="down-left">
+              pick one, any one
+            </Hand>
+          </div>
+          <Float depth={0.1} className="right-14 top-[56%] hidden xl:block [--tilt:-3deg]">
+            <TaskPiece text="Water the seedlings" due="Today" />
+          </Float>
+          <Float depth={0.18} delay={700} className="right-[30%] top-16 hidden xl:block [--tilt:2deg]">
+            <SearchPiece query="seed labels" />
+          </Float>
         </HeaderCard>
         <Card as="div" aria-label="Feature pages">
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
@@ -105,7 +139,7 @@ export default function FeaturesPage() {
               const layout = size === "wide" ? "wide" : "grow";
               if (slug === "mac") {
                 return (
-                  <li key="mac" className={SPAN[size]}>
+                  <li key="mac" className={cx("relative", SPAN[size])}>
                     <LinkCard
                       href="/mac"
                       title="Mac app"
@@ -114,13 +148,14 @@ export default function FeaturesPage() {
                       headingLevel="h2"
                       layout={layout}
                     />
+                    <CardSticker slug="mac" />
                   </li>
                 );
               }
               const feature = bySlug.get(slug);
               if (!feature) return null;
               return (
-                <li key={slug} className={SPAN[size]}>
+                <li key={slug} className={cx("relative", SPAN[size])}>
                   <LinkCard
                     href={featurePath(slug)}
                     title={feature.name}
@@ -129,13 +164,15 @@ export default function FeaturesPage() {
                     headingLevel="h2"
                     layout={layout}
                   />
+                  <CardSticker slug={slug} />
                 </li>
               );
             })}
           </ul>
         </Card>
         <div className={cx(container, "grid gap-(--mk-stack-gap) md:grid-cols-2")}>
-          <div className="mk-box p-6 sm:p-8">
+          <div className="mk-box relative p-6 sm:p-8">
+            <Doodle kind="squiggle" className="absolute right-8 top-9 h-4 w-20 max-sm:hidden" />
             <h2 className="mk-h3 text-[19px]">Template gallery</h2>
             <p className="mt-2 text-[15px] leading-relaxed text-muted">
               {GALLERY_TEMPLATES.length} free templates, each with a preview.

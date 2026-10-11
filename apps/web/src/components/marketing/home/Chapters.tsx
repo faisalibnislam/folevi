@@ -4,7 +4,9 @@ import { ReturnDemo } from "../demos/ReturnDemo";
 import { artById, artThumb } from "../product/Replica";
 import { Checks } from "../Checks";
 import { Icon } from "../icons";
-import { Kbd, box, container, cx } from "../ui";
+import { Eyebrow, Kbd, box, container, cx } from "../ui";
+import { Float, Hand, Mark } from "../fun";
+import { TaskPiece } from "../pieces";
 
 function Chapter({
   id,
@@ -24,7 +26,7 @@ function Chapter({
   name: string;
   /** The note theme that lights the stage, as a note's theme lights the app's canvas. */
   art: string;
-  title: string;
+  title: ReactNode;
   /** One short line under the title. */
   lead: ReactNode;
   /** Up to three checkmark lines. */
@@ -35,7 +37,7 @@ function Chapter({
   reverse?: boolean;
 }) {
   return (
-    <article id={id} aria-labelledby={`${id}-title`} className={cx(box, "scroll-mt-20")}>
+    <article id={id} aria-labelledby={`${id}-title`} className={cx(box, "mk-tint relative scroll-mt-20")}>
       <div
         className={cx(
           "grid items-center gap-8 lg:gap-16",
@@ -43,11 +45,11 @@ function Chapter({
         )}
       >
         <div className={cx("max-w-[420px]", reverse && "lg:order-2")}>
-          <p className="mk-caps">
+          <Eyebrow>
             {number ? <span className="tabular-nums">{number} · </span> : null}
             {name}
-          </p>
-          <h3 id={`${id}-title`} className="mk-display mt-3 text-[32px] leading-[1.08] sm:text-[40px]">
+          </Eyebrow>
+          <h3 id={`${id}-title`} className="mk-h2 mt-5">
             {title}
           </h3>
           <p className="mt-4 text-[16.5px] leading-relaxed text-muted">{lead}</p>
@@ -56,7 +58,7 @@ function Chapter({
             {more.label} <Icon name="arrow-right" size={15} />
           </Link>
         </div>
-        <div className={cx("mk-stage p-4 sm:p-8", reverse && "lg:order-1")} style={{ ["--stage-art" as string]: artThumb(artById(art)) }}>
+        <div data-tilt="2.5" className={cx("mk-stage p-4 sm:p-8", reverse && "lg:order-1")} style={{ ["--stage-art" as string]: artThumb(artById(art)) }}>
           {demo}
         </div>
       </div>
@@ -67,12 +69,24 @@ function Chapter({
 /** The home page's editor chapter: finding things again, with a working search and task list. */
 export function Chapters() {
   return (
-    <section id="chapters" aria-label="Writing in Folevi" className={cx(container, "mk-stack scroll-mt-20")}>
+    <section id="chapters" aria-label="Writing in Folevi" className={cx(container, "mk-stack relative scroll-mt-20")}>
+      <Float depth={0.14} className="-top-6 right-14 [--tilt:-3deg]">
+        <TaskPiece text="Print seed labels" due="Fri" />
+      </Float>
+      <div aria-hidden="true" className="pointer-events-none absolute bottom-16 right-16 z-10 hidden xl:block">
+        <Hand rotate={-6} arrow="up-left">
+          it really searches, try it
+        </Hand>
+      </div>
       <Chapter
         id="return"
         name="Return"
         art="art-41"
-        title="Find it again."
+        title={
+          <>
+            Find it <Mark kind="squiggle">again</Mark>.
+          </>
+        }
         reverse
         lead={
           <>

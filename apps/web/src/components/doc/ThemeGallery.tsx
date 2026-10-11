@@ -96,9 +96,11 @@ export function ThemeGallery({
   ownImage: string | null;
   plan: ThemePlan | null;
   onPickTheme: (t: NoteTheme) => void;
-  onPickPlain: () => void;
-  onUpload: (file: File) => void;
-  uploading: boolean;
+  /** Without it, there's no Plain card (the website's gallery). */
+  onPickPlain?: () => void;
+  /** Without it, there's no upload (the website's gallery: themes only). */
+  onUpload?: (file: File) => void;
+  uploading?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -127,6 +129,8 @@ export function ThemeGallery({
       description="A theme sets the cover and background, the colours, the separator and the font. You can change any of them afterwards."
       footer={
         <div className="flex w-full flex-wrap items-center gap-3">
+          {onUpload ? (
+            <>
           <input
             ref={fileInput}
             type="file"
@@ -146,6 +150,10 @@ export function ThemeGallery({
             {uploading ? "Uploading…" : ownImage ? "Replace your image…" : "Use your own image…"}
           </Button>
           <p className="min-w-0 flex-1 text-[12px] text-muted">{COVER_IMAGE_HINT}</p>
+            </>
+          ) : (
+            <span className="flex-1" />
+          )}
           <Button variant="primary" onClick={onClose}>
             Done
           </Button>
@@ -173,7 +181,7 @@ export function ThemeGallery({
         </p>
       ) : null}
       <div role="radiogroup" aria-label="Note theme" ref={group.ref} onKeyDown={group.onKeyDown} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {extras ? (
+        {extras && onPickPlain ? (
           <Card label="Plain" on={currentId === "plain"} onPick={onPickPlain} art={PLAIN_PAPER} footer={<><span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-heading">Plain</span><span className="text-[11.5px] text-muted">Serif</span></>}>
             <Sheet name="Plain" defaults={plain} fonts={STANDARD_FONTS} paper={dark ? "#1c1c1f" : "#ffffff"} ink={dark ? "#f2f2f4" : "#1c1c1f"} />
           </Card>

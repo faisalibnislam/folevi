@@ -5,6 +5,8 @@ import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { LinkCard, SignUpPanel } from "@/components/marketing/parts";
 import { JsonLd, pageMetadata } from "@/components/marketing/seo";
 import { absoluteUrl } from "@/components/marketing/site";
+import { Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
+import { SlashPiece } from "@/components/marketing/pieces";
 import { Eyebrow } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
@@ -37,8 +39,16 @@ export default function DocsIndexPage() {
             { name: "Documentation", path: "/docs" },
           ]}
         >
+          <Float depth={0.16} className="right-[20%] top-[10%] max-xl:hidden [--tilt:4deg]">
+            <SlashPiece />
+          </Float>
+          <div aria-hidden="true" className="pointer-events-none absolute bottom-12 right-[7%] z-10 hidden xl:block">
+            <Hand rotate={-4}>short reads, promise</Hand>
+          </div>
           <Eyebrow>Documentation</Eyebrow>
-          <h1 className="mk-display mt-4 max-w-[20ch] text-[40px] sm:text-[56px] lg:text-[64px]">How Folevi works.</h1>
+          <h1 className="mk-display mt-5 max-w-[14ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
+            How Folevi <Mark kind="circle">works.</Mark>
+          </h1>
           <p className="mk-lede mt-5 max-w-[60ch]">
             The essentials, one topic per article. Something wrong?{" "}
             <Link href="/support" className="mk-link">
@@ -50,9 +60,17 @@ export default function DocsIndexPage() {
         <Card as="div">
           <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {DOC_ARTICLES.map((article) => (
-              <li key={article.slug}>
+              <li key={article.slug} className="relative">
                 {/* The card keeps the section's old anchor (/docs#sync), so old links still land on it. */}
                 <LinkCard id={article.legacyAnchor} href={docPath(article.slug)} title={article.title} body={article.description} headingLevel="h2" />
+                {/* After the card, so the tilting card never paints over it. */}
+                {article.slug === "getting-started" ? (
+                  <span aria-hidden="true" className="pointer-events-none absolute -top-5 right-4 z-10">
+                    <Sticker tone="violet" rotate={6}>
+                      Start here
+                    </Sticker>
+                  </span>
+                ) : null}
               </li>
             ))}
           </ol>

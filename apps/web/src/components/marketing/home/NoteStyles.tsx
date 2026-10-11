@@ -8,6 +8,7 @@ import { NoteCard, artById } from "../product/Replica";
 import { Checks } from "../Checks";
 import { Play } from "../Play";
 import { SectionHeading, box, container, cx } from "../ui";
+import { Mark, Sticker } from "../fun";
 
 const CARDS = [
   { art: "art-03", title: "Seed library", folder: "Projects", lines: ["Swap day is the first Saturday in April.", "Print seed labels by Friday."] },
@@ -34,9 +35,22 @@ function PanelHeader({ icon, title }: { icon: ReactNode; title: string }) {
 export function NoteStyles() {
   return (
     <section id="styles" aria-labelledby="styles-title" className={cx(container, "scroll-mt-20")}>
-      <div className={box}>
+      <div className={cx(box, "mk-tint")}>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end lg:gap-16">
-          <SectionHeading id="styles-title" eyebrow="Note themes and folders" title="Your notes bring the colour." />
+          <div className="relative">
+            <SectionHeading
+              id="styles-title"
+              eyebrow="Note themes and folders"
+              title={
+                <>
+                  Your notes bring the <Mark kind="squiggle">colour</Mark>.
+                </>
+              }
+            />
+            <Sticker tone="violet" rotate={9} className="absolute -top-2 right-0 max-sm:hidden">
+              {COVER_ART.length} themes
+            </Sticker>
+          </div>
           <div className="lg:pb-1">
             <p className="mk-lede">{COVER_ART.length} note themes for your pages, and a colour for each folder.</p>
             <Checks

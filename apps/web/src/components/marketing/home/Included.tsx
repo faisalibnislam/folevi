@@ -1,10 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, Check, CloudOff, FileCode, FileText, Moon, Printer, Sun } from "lucide-react";
-import { COVER_ART } from "@/lib/cover";
 import { artById, artVars } from "../product/Replica";
 import { Play } from "../Play";
-import { container } from "../ui";
+import { Eyebrow, container, cx } from "../ui";
+import { Hand, Mark, Sticker } from "../fun";
 
 /*
  * What every plan includes, each with a small picture of it drawn from the app's own pieces (the sync status
@@ -29,7 +29,7 @@ const TILES: Tile[] = [
     picture: <SyncPicture />,
   },
   {
-    title: `${COVER_ART.length} note themes`,
+    title: "Note themes",
     href: "/features/note-themes",
     label: "Five note theme artworks fanned out, and a note in the Summer sky theme.",
     picture: (
@@ -64,18 +64,35 @@ const TILES: Tile[] = [
 export function Included() {
   return (
     <section aria-labelledby="included-title" className={container}>
-      <div className="mk-box px-5 py-7 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
-        <h2 id="included-title" className="mk-caps">
-          Included in every plan
-        </h2>
-        <ul className="mt-5 grid gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-6 lg:gap-x-5">
-          {TILES.map((tile) => (
-            <li key={tile.title} className={tile.wide ? "lg:col-span-3" : "lg:col-span-2"}>
-              <div role="img" aria-label={tile.label} className="mk-mini-stage">
+      <div className="mk-box relative px-5 py-9 sm:px-10 sm:py-12 lg:px-14 lg:py-14">
+        <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
+          <div>
+            <Eyebrow>Included in every plan</Eyebrow>
+            <h2 id="included-title" className="mk-h2 mt-5 max-w-[16ch]">
+              The good stuff is on <Mark kind="circle">Free</Mark> too.
+            </h2>
+          </div>
+          <div className="relative pb-2 max-sm:hidden">
+            <Hand rotate={4} arrow="down-right">
+              no card, no time limit
+            </Hand>
+          </div>
+        </div>
+        <ul className="mt-10 grid gap-x-4 gap-y-7 sm:grid-cols-2 lg:grid-cols-6 lg:gap-x-5">
+          {TILES.map((tile, i) => (
+            <li key={tile.title} className={cx("relative", tile.wide ? "lg:col-span-3" : "lg:col-span-2")}>
+              <div role="img" aria-label={tile.label} className="mk-mini-stage" data-tilt="5">
                 <div aria-hidden="true" className="contents">
                   {tile.picture}
                 </div>
               </div>
+              {i === 0 ? (
+                <span aria-hidden="true" className="absolute left-3 -top-3 z-10">
+                  <Sticker tone="ink" rotate={-8} className="text-[12px]">
+                    Even on a plane
+                  </Sticker>
+                </span>
+              ) : null}
               <h3 className="mk-h3 mt-3 text-[15.5px]">
                 {tile.href ? (
                   <Link href={tile.href} className="group inline-flex min-h-11 items-center gap-1.5 hover:underline">

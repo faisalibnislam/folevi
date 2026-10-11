@@ -101,7 +101,7 @@ export default async function TemplateGalleryPage() {
             <ul className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {group.templates.map((t) => (
                 <li key={t.key}>
-                  <TemplateCard template={t} tilt sticker={POPULAR.has(t.key) ? "Popular" : undefined} />
+                  <TemplateCard template={t} sticker={POPULAR.has(t.key) ? "Popular" : undefined} />
                 </li>
               ))}
             </ul>

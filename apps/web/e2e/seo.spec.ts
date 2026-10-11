@@ -100,7 +100,7 @@ const PAGES = [
   { path: "/template-gallery", h1: "Free note templates for Folevi." },
   { path: "/docs", h1: "How Folevi works." },
   // Pages that gained links to the new ones.
-  { path: "/", h1: "A quiet notes app for ideas that keep growing." },
+  { path: "/", h1: "Folevi is a digital workspace for notes, documentation, collaboration and publishing." },
   { path: "/pricing", h1: "Start free. Pay for room, or for AI." },
   // Comparison pages and the blog.
   { path: "/compare", h1: "How Folevi compares." },
@@ -120,7 +120,8 @@ for (const scheme of ["light", "dark"] as const) {
       await page.goto(`${SITE}${path}`);
       // The site is always light, whatever the system setting; dark mode is an app setting only.
       await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-      if (h1) await expect(page.getByRole("heading", { level: 1 })).toHaveText(h1);
+      // Its name as assistive tech reads it (the home title's typing is hidden from it, the sentence isn't).
+      if (h1) await expect(page.getByRole("heading", { level: 1 })).toHaveAccessibleName(h1);
       await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
       const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
       const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");

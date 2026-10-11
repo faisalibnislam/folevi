@@ -41,7 +41,7 @@ const UPDATES: Array<{ idea: string; draft: Draft }> = [
     draft: {
       ...REFUND,
       id: "approval",
-      nodes: [...REFUND.nodes.slice(0, 2), { id: "approve", shape: "process", text: "Manager approves", color: "purple" }, ...REFUND.nodes.slice(2)],
+      nodes: [...REFUND.nodes.slice(0, 2), { id: "approve", shape: "process", text: "Manager approves", color: "blue" }, ...REFUND.nodes.slice(2)],
       edges: [e("start", "check"), e("check", "approve"), e("approve", "days"), ...REFUND.edges.slice(2)],
     },
   },
@@ -240,7 +240,7 @@ export function FlowchartDemo() {
               </div>
             ) : null}
             <form onSubmit={submit} className="flex items-start gap-2 p-2">
-              <AiIcon size={15} className="mt-[3px] flex-none text-[#7c6cf0]" />
+              <AiIcon size={15} className="mt-[3px] flex-none text-[var(--mk-violet)]" />
               <label htmlFor="fc-demo-input" className="sr-only">
                 {mode === "create" ? "Describe the process" : "What should change?"}
               </label>
@@ -265,7 +265,7 @@ export function FlowchartDemo() {
             </form>
             {busy ? (
               <p className="flex items-center gap-2 px-3.5 pb-3 text-[13px] text-muted" role="status">
-                <AiIcon size={12} className="animate-pulse text-[#7c6cf0]" />
+                <AiIcon size={12} className="animate-pulse text-[var(--mk-violet)]" />
                 {busy === "drawing" ? "Drawing your flowchart…" : "Updating the flowchart…"}
               </p>
             ) : hint ? (
@@ -297,7 +297,7 @@ export function FlowchartDemo() {
                 <p className="max-w-[24ch]">{busy ? "" : "Describe a process and Folevi draws it here."}</p>
               </div>
             )}
-            {busy ? <div className="absolute inset-0 animate-pulse bg-[radial-gradient(circle_at_50%_40%,color-mix(in_oklab,#8b7cf6_14%,transparent),transparent_60%)]" /> : null}
+            {busy ? <div className="absolute inset-0 animate-pulse bg-[radial-gradient(circle_at_50%_40%,color-mix(in_oklab,var(--mk-violet)_14%,transparent),transparent_60%)]" /> : null}
           </div>
         </div>
       </div>

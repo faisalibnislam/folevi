@@ -126,7 +126,7 @@ export function EditDemo({ compact = false }: { compact?: boolean } = {}) {
             aria-label="Select the sentence"
           >
             {words.map((w, i) => (
-              <span key={i} className={cx(i < highlightWords && "bg-[color-mix(in_oklab,#7c6cf0_24%,transparent)]")}>
+              <span key={i} className={cx(i < highlightWords && "bg-[color-mix(in_oklab,var(--mk-violet)_24%,transparent)]")}>
                 {w}
                 {i < words.length - 1 ? " " : ""}
               </span>
@@ -146,14 +146,14 @@ export function EditDemo({ compact = false }: { compact?: boolean } = {}) {
           {phase.kind === "busy" || phase.kind === "result" ? (
             <div className="border-b border-(--color-line) px-4 pb-2.5 pt-3">
               <p className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-muted">
-                <AiIcon size={12} className={cx("text-[#7c6cf0]", phase.kind === "busy" && "animate-pulse")} />
+                <AiIcon size={12} className={cx("text-[var(--mk-violet)]", phase.kind === "busy" && "animate-pulse")} />
                 {ACTIONS[phase.action]!.label === "Translate to…" ? "Translate to Spanish" : ACTIONS[phase.action]!.label}
                 {phase.kind === "busy" ? "…" : ""}
               </p>
               {phase.kind === "busy" ? (
                 <div className="space-y-2 pb-1">
                   {[92, 70].map((w) => (
-                    <div key={w} className="h-2.5 animate-pulse rounded-tiny bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))]" style={{ width: `${w}%` }} />
+                    <div key={w} className="h-2.5 animate-pulse rounded-tiny bg-[linear-gradient(90deg,color-mix(in_oklab,var(--mk-violet)_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))]" style={{ width: `${w}%` }} />
                   ))}
                 </div>
               ) : (
@@ -162,7 +162,7 @@ export function EditDemo({ compact = false }: { compact?: boolean } = {}) {
             </div>
           ) : null}
           <div className="flex items-center gap-2 px-3 py-2.5">
-            <AiIcon size={16} className="flex-none text-[#7c6cf0]" />
+            <AiIcon size={16} className="flex-none text-[var(--mk-violet)]" />
             <span className="min-w-0 flex-1 truncate text-[14px] text-faint">{phase.kind === "result" ? "Tell Foli AI what to change… (⏎ to accept)" : "Ask Foli AI to edit the selected text…"}</span>
             <button
               type="button"
@@ -239,7 +239,7 @@ export function EditDemo({ compact = false }: { compact?: boolean } = {}) {
               }}
               className="inline-flex items-center gap-1.5 rounded-chip bg-(--glass-hover) px-3 py-1 text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-(--glass-active)"
             >
-              <AiIcon size={13} className="text-[#7c6cf0]" /> Select the text and press ⌘J
+              <AiIcon size={13} className="text-[var(--mk-violet)]" /> Select the text and press ⌘J
             </button>
           ) : null}
         </p>

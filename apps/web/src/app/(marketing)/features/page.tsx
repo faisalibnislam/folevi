@@ -68,7 +68,7 @@ const LAYOUT: { slug: string; size: Size }[] = [
   { slug: "mac", size: "half" },
 ];
 
-/** A sticker on a few cards, placed after the card so the card's tilt never paints over it. Decorative. */
+/** A sticker on a few cards, placed after the card so it sits on top. Decorative. */
 const STICKERS: Record<string, { text: string; tone: "paper" | "violet" | "ink"; rotate: number }> = {
   "offline-notes": { text: "Most loved", tone: "violet", rotate: -7 },
   tasks: { text: "Due today", tone: "paper", rotate: 6 },

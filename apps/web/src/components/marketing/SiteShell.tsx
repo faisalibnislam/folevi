@@ -1,5 +1,6 @@
 "use client";
 
+import { artVars } from "./product/Replica";
 import { HERO_STYLES, siteArt } from "./home/heroStyles";
 import { loadLiveThemes } from "./liveThemes";
 import type { CoverArt } from "@/lib/cover";
@@ -654,7 +655,7 @@ export function SiteShell({
     <SiteThemeContext.Provider value={siteTheme}>
     <AmbientContext.Provider value={setAmbient}>
       <AmbientImageContext.Provider value={ambient}>
-        <div className="mk-root mk-shell text-ink">
+        <div className="mk-root mk-shell text-ink" style={artVars(themeArt)}>
           <a href="#main" className="mk-skip sr-only-focusable">
             Skip to content
           </a>

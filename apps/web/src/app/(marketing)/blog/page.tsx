@@ -65,7 +65,7 @@ export default function BlogIndexPage() {
           <ol className="grid gap-(--mk-stack-gap) lg:grid-cols-2">
             {BLOG_POSTS.map((post, i) => (
               <li key={post.slug} className="relative">
-                <article data-tilt="2" className="mk-box group relative flex h-full flex-col p-6 hover:shadow-(--shadow-pop) sm:p-8">
+                <article className="mk-box group relative flex h-full flex-col p-6 hover:shadow-(--shadow-pop) sm:p-8">
                   <p className="text-[13px] text-muted">
                     <time dateTime={post.published}>{formatDay(post.published)}</time>
                     <span aria-hidden="true"> · </span>

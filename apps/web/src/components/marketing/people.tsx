@@ -10,7 +10,7 @@ import { cx } from "./ui";
 export type PersonId = "maya" | "ines" | "sam" | "theo" | "jonas" | "alex";
 
 export const PEOPLE: Record<PersonId, { name: string; full: string; color: string }> = {
-  maya: { name: "Maya", full: "Maya Chen", color: "#6C5CE0" },
+  maya: { name: "Maya", full: "Maya Chen", color: "#C2456E" },
   ines: { name: "Ines", full: "Ines Moreau", color: "#22927F" },
   sam: { name: "Sam", full: "Sam Rivera", color: "#D9603F" },
   theo: { name: "Theo", full: "Theo Park", color: "#C2861B" },

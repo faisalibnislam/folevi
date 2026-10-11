@@ -45,12 +45,12 @@
   --mk-title-shade-deep: rgb(0 0 0 / 0.42);
   --mk-title-shade-light: rgb(255 255 255 / 0.5);
   --cover-art-tint: transparent;
-  /* The one accent (Foli AI's violet): doodles, stickers, ticks and highlights. Buttons stay black and white, as in the app. */
-  --mk-violet: #7C6CF0;
-  --mk-violet-strong: #5F4FD8;
-  --mk-violet-ink: #4B3BC4;
-  --mk-violet-soft: rgb(124 108 240 / 0.14);
-  --color-selection: rgb(124 108 240 / 0.24);
+  /* The one accent comes from the site's note theme (.mk-root and .mk-home below): doodles, stickers, ticks,
+     links and highlights. Without a theme it's the ink. Buttons stay black and white, as in the app. */
+  --mk-violet: #1F1F22;
+  --mk-violet-strong: #1F1F22;
+  --mk-violet-ink: #1F1F22;
+  --mk-violet-soft: rgb(0 0 0 / 0.06);
 }
 
 :root[data-theme="dark"]:has(.mk-root),
@@ -379,7 +379,9 @@
 .mk-stage {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  /* clip, not hidden: a scroll container's minimum height is zero, which let grid rows shrink a stage
+     below its picture (and cut the picture off). */
+  overflow: clip;
   border-radius: var(--radius-panel);
   background: var(--glass-canvas);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--mk-hair) 60%, transparent);
@@ -490,7 +492,7 @@
 .mk-app {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  overflow: clip;
   border-radius: var(--radius-container);
   background: var(--glass-canvas);
   box-shadow: var(--shadow-lift);
@@ -789,12 +791,15 @@
   position: relative;
   display: grid;
   place-items: center;
-  height: 168px;
-  overflow: hidden;
+  height: 188px;
+  /* Room on every side, so a card and its shadow never meet the stage's edge. */
+  padding: 20px;
+  overflow: clip;
   border-radius: var(--radius-control);
   background: var(--mk-well);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--mk-hair) 70%, transparent);
 }
+.mk-mini-stage > * > * { max-width: 100%; }
 .mk-mini-card {
   display: block;
   border-radius: var(--radius-control);
@@ -875,7 +880,6 @@
 .mk-hero {
   position: relative;
   isolation: isolate;
-  overflow: clip;
 }
 .mk-hero-stage { position: relative; padding-top: 4rem; }
 /* Beside the sidebar there is no top bar: the note starts at the top of the content panel. */
@@ -948,7 +952,7 @@
 
 /* "notes app" in the title: a violet highlighter swipe behind the words (plain CSS: the title is editable). */
 .mk-hero-mark {
-  background-image: linear-gradient(100deg, transparent 0.5%, rgb(124 108 240 / 0.78) 2%, rgb(124 108 240 / 0.62) 96%, transparent 99%);
+  background-image: linear-gradient(100deg, transparent 0.5%, color-mix(in oklab, var(--mk-accent-base, #1F1F22) 78%, transparent) 2%, color-mix(in oklab, var(--mk-accent-base, #1F1F22) 62%, transparent) 96%, transparent 99%);
   background-repeat: no-repeat;
   background-size: 100% 0.42em;
   background-position: 0 88%;
@@ -1177,25 +1181,18 @@
 /* Playful touches (fun.tsx, MarketingMotion.tsx) ------------------------------------------------- */
 @layer components {
 /* The accent follows the note theme lighting the page (its backdrop; on Home, the theme picked in the hero,
-   which copies its colours onto .mk-home). Strokes are the theme's accent a little deeper, text deeper still
-   so it reads on white, washes a light tint. The --mk-violet names are the accent's (violet is the fallback). */
-.mk-home {
-  --mk-accent-base: var(--art-accent, var(--art-ink, #7C6CF0));
+   which copies its colours onto .mk-home; the shell, .mk-root, takes the site's theme too). Strokes are the theme's accent a little deeper, text deeper still
+   so it reads on white, washes a light tint. The --mk-violet names are historical: they hold the theme's accent. */
+.mk-root, .mk-home {
+  --mk-accent-base: var(--art-accent, var(--art-ink, #1F1F22));
   --mk-violet: color-mix(in oklab, var(--mk-accent-base) 88%, black);
   --mk-violet-strong: color-mix(in oklab, var(--mk-accent-base) 80%, black);
   --mk-violet-ink: color-mix(in oklab, var(--mk-accent-base) 70%, black);
   --mk-violet-soft: color-mix(in oklab, var(--mk-accent-base) 16%, transparent);
   --color-selection: color-mix(in oklab, var(--mk-accent-base) 26%, transparent);
 }
-/* The dark card's fallback accent (a theme without colours); themed pages override it just below. */
-.mk-dark {
-  --mk-violet: #9D90FF;
-  --mk-violet-strong: #6D5DE6;
-  --mk-violet-ink: #B8AEFF;
-  --mk-violet-soft: rgb(157 144 255 / 0.18);
-}
-.mk-home .mk-dark {
-  --mk-accent-base: var(--art-accent-dark, var(--art-accent, #9D90FF));
+.mk-root .mk-dark {
+  --mk-accent-base: var(--art-accent-dark, var(--art-accent, #F2F2F3));
   --mk-violet: color-mix(in oklab, var(--mk-accent-base) 90%, white);
   --mk-violet-strong: color-mix(in oklab, var(--mk-accent-base) 80%, black);
   --mk-violet-ink: color-mix(in oklab, var(--mk-accent-base) 65%, white);
@@ -1327,8 +1324,6 @@
   50% { transform: translateY(-8px) rotate(calc(var(--tilt, 0deg) + 1.2deg)); }
 }
 
-/* Cards that lean towards the pointer. */
-[data-tilt] { transition: transform 300ms var(--mk-ease), box-shadow 200ms var(--mk-ease); transform-style: preserve-3d; }
 
 
 @media (prefers-reduced-motion: reduce) {
@@ -1385,5 +1380,15 @@
   text-shadow: none;
   white-space: nowrap;
   box-shadow: 0 2px 8px -2px rgb(0 0 0 / 0.3);
+}
+}
+
+/* Polish: app windows inside a picture's stage keep a shadow that fits the stage (the popover's deep shadow
+   ran past the stage's clipped edges). */
+@layer components {
+.mk-stage .mk-app-pop,
+.mk-mini-stage .mk-app-pop,
+.mk-stage .mk-app {
+  box-shadow: var(--glass-edge), 0 1px 2px rgb(0 0 0 / 0.06), 0 10px 24px -12px rgb(0 0 0 / 0.28);
 }
 }

@@ -33,7 +33,7 @@ import { isStill } from "../demos/autoplay";
 
 type Item = { label: string; keywords: string; icon: ReactNode; hint?: string };
 
-const ai = <AiIcon size={15} className="text-[#7c6cf0]" />;
+const ai = <AiIcon size={15} className="text-[var(--mk-violet)]" />;
 const ITEMS: Item[] = [
   { label: "Text", keywords: "text paragraph plain", icon: <Text size={15} /> },
   { label: "Heading 1", hint: "#", keywords: "heading title h1 large", icon: <Heading1 size={15} /> },
@@ -273,7 +273,7 @@ function DemoBlock({ block }: { block: Block }) {
       );
     case "summary":
       return (
-        <div className="min-h-10 rounded-control bg-[color-mix(in_oklab,#7c6cf0_10%,transparent)] px-3 py-2">
+        <div className="min-h-10 rounded-control bg-[color-mix(in_oklab,var(--mk-violet)_10%,transparent)] px-3 py-2">
           <p className="flex items-center gap-1.5 text-[11.5px] font-semibold text-muted">{ai} Summary</p>
           <p className="mt-1">{block.text || <Caret />}</p>
         </div>

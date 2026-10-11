@@ -32,7 +32,7 @@ export const metadata = pageMetadata({
 /** One more thing Foli AI does, as a small tile with an icon (and the plans it's on, when not every plan). */
 function Extra({ icon, title, plans }: { icon: ReactNode; title: string; plans?: string }) {
   return (
-    <li data-tilt="4" className="mk-card flex items-center gap-3.5 p-4">
+    <li className="mk-card flex items-center gap-3.5 p-4">
       <span aria-hidden="true" className="grid size-9 flex-none place-items-center rounded-control bg-(--glass-hover) text-(--color-heading)">
         {icon}
       </span>
@@ -78,7 +78,7 @@ export default function FoliPage() {
               </ButtonLink>
             </div>
           </div>
-          <div data-tilt="3" className="mk-card relative p-6 sm:p-7">
+          <div className="mk-card relative p-6 sm:p-7">
             <span aria-hidden="true" className="pointer-events-none absolute -top-4 right-4">
               <Sticker tone="violet" rotate={7}>
                 Try ⌘J
@@ -344,7 +344,7 @@ export default function FoliPage() {
             ["Pro", `${MONTHLY_CREDITS.pro} credits a month`],
             ["Pro AI", `${MONTHLY_CREDITS.pro_ai} credits a month`],
           ].map(([plan, credits]) => (
-            <div key={plan} data-tilt="4" className="mk-card relative p-5">
+            <div key={plan} className="mk-card relative p-5">
               <dt className="mk-caps">{plan}</dt>
               <dd className="mk-h3 mt-2 text-[19px]">{credits}</dd>
               {plan === "Pro AI" ? (

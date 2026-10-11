@@ -41,7 +41,7 @@ export default function MacPage() {
               </h1>
               <p className="mk-lede mt-6 max-w-[50ch]">Quick Add, a menu bar icon and Mac notifications.</p>
             </div>
-            <div data-tilt="3" className="mk-card relative p-6 pt-12 sm:p-7 sm:pt-14">
+            <div className="mk-card relative p-6 pt-12 sm:p-7 sm:pt-14">
               <p className="absolute -top-5 left-5 sm:-left-4">
                 <Sticker tone="violet" rotate={-8} className="px-5 py-2.5 text-[19px] sm:text-[22px]">
                   Coming soon
@@ -64,7 +64,7 @@ export default function MacPage() {
           </Float>
         </HeaderCard>
         <Card as="div" inner="p-4 sm:p-5">
-          <div data-tilt="1.5" className="mk-stage p-4 sm:p-8" style={{ ["--stage-art" as string]: artThumb(art) }}>
+          <div className="mk-stage p-4 sm:p-8" style={{ ["--stage-art" as string]: artThumb(art) }}>
             <MacMenuBar initial="File" />
             <AppWindow
               art={art}
@@ -94,7 +94,7 @@ export default function MacPage() {
           />
           <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature) => (
-              <li key={feature.title} data-tilt="4" className="mk-card flex items-center gap-3.5 p-4 sm:p-5">
+              <li key={feature.title} className="mk-card flex items-center gap-3.5 p-4 sm:p-5">
                 <span className="mk-tile flex-none">
                   <Icon name={feature.icon} size={17} />
                 </span>
@@ -120,7 +120,7 @@ export default function MacPage() {
             </div>
             <div className="relative self-center">
               <h3 className="mk-caps">System requirements</h3>
-              <dl data-tilt="2" className="mk-card mt-4 px-5 text-[15px]">
+              <dl className="mk-card mt-4 px-5 text-[15px]">
                 {[
                   ["macOS", "macOS 13 or later"],
                   ["Mac", "Apple silicon (M1 or later)"],
@@ -174,7 +174,7 @@ export default function MacPage() {
             }
             lede="Syncs in real time with your Mac, and works offline once loaded."
           />
-          <div data-tilt="1.5" className="mx-auto mt-12 max-w-[1080px]">
+          <div className="mx-auto mt-12 max-w-[1080px]">
             <AppWindow
               art={artById("art-03")}
               label="Folevi on the web: the page sidebar with the note’s table of contents, and a note called Seed library in the Irises theme."

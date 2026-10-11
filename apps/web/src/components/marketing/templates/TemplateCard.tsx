@@ -2,29 +2,23 @@ import Link from "next/link";
 import { TemplateTile } from "@/components/ui/TemplateIcon";
 import { templatePath, type GalleryTemplate } from "../content/templates";
 import { Sticker } from "../fun";
-import { cx } from "../ui";
 
 /**
  * A gallery card: the template's tile, name and description; the whole card opens the template's page. On the
- * gallery it leans towards the pointer (tilt), and a few carry a decorative sticker.
+ * gallery a few carry a decorative sticker.
  */
 export function TemplateCard({
   template,
   headingLevel = "h3",
-  tilt = false,
   sticker,
 }: {
   template: GalleryTemplate;
   headingLevel?: "h2" | "h3";
-  tilt?: boolean;
   sticker?: string;
 }) {
   const Heading = headingLevel;
   return (
-    <div
-      data-tilt={tilt ? "4" : undefined}
-      className={cx("mk-card group relative flex h-full items-start gap-3.5 p-5 hover:shadow-(--shadow-pop)", !tilt && "transition-shadow duration-150")}
-    >
+    <div className="mk-card group relative flex h-full items-start gap-3.5 p-5 transition-shadow duration-150 hover:shadow-(--shadow-pop)">
       <TemplateTile name={template.icon} />
       <div className="min-w-0">
         <Heading className="text-[15.5px] font-semibold leading-snug text-(--color-heading)">

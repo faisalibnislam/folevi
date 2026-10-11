@@ -40,7 +40,7 @@ export function SlashSection() {
                 it plays by itself
               </Hand>
             </div>
-            <div data-tilt="2.5" className="mk-stage px-3 py-8 sm:px-10 sm:py-10" style={{ ["--stage-art" as string]: artThumb(artById("art-30")) }}>
+            <div className="mk-stage px-3 py-8 sm:px-10 sm:py-10" style={{ ["--stage-art" as string]: artThumb(artById("art-30")) }}>
               <SlashDemo />
             </div>
           </div>

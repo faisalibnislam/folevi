@@ -1,17 +1,16 @@
 import Link from "next/link";
-import { Avatar, PEOPLE, type PersonId } from "../people";
 import type { ReactNode } from "react";
 import { ArrowRight, Check, CloudOff, History, Play as PlayIcon } from "lucide-react";
+import { Avatar, PEOPLE, type PersonId } from "../people";
 import { artById, artVars } from "../product/Replica";
-import { Play } from "../Play";
 import { Eyebrow, container, cx } from "../ui";
 import { Hand, Mark } from "../fun";
 
 /*
- * What every plan includes, each with a small picture of it drawn from the app's own pieces (the sync status
- * pill, a note, the page menu's export items, the note themes, and light and dark mode). Pictures are decorative:
- * each is one image to assistive tech, described by its label. The labels are the app's own strings. The
- * offline and sync pictures animate by themselves (CSS); the others play when they scroll into view (Play).
+ * What every plan includes, each with a small picture drawn from the app's own pieces. One design for all of
+ * them: a stage of the same height, and inside it one card (or a pair) of the same width, padding and type,
+ * centred, never past the stage's edges. They hold still (only the offline pill and the typed line move, by
+ * CSS), so a tile never shows half a picture. Each is one image to assistive tech, described by its label.
  */
 
 type Tile = { title: string; href?: string; label: string; picture: ReactNode; wide?: boolean };
@@ -33,62 +32,38 @@ const TILES: Tile[] = [
     title: "Note themes",
     href: "/features/note-themes",
     label: "Five note theme artworks fanned out, and a note in the Summer sky theme.",
-    picture: (
-      <Play>
-        <StylesPicture />
-      </Play>
-    ),
+    picture: <StylesPicture />,
   },
   {
     title: "Audio recordings",
     href: "/features/audio-recordings",
     label: "A voice note in a page: a play button, its waveform and its length, 0:42.",
-    picture: (
-      <Play>
-        <AudioPicture />
-      </Play>
-    ),
+    picture: <AudioPicture />,
   },
   {
     title: "Flowcharts",
     href: "/features/flowcharts",
     label: "A small flowchart in a note: Idea, then Draft, then two arrows to Share and Keep.",
-    picture: (
-      <Play>
-        <FlowPicture />
-      </Play>
-    ),
+    picture: <FlowPicture />,
   },
   {
     title: "Version history",
     href: "/features/version-history",
     label: "A page's versions: Now, an hour ago by Maya, yesterday by you, with a Restore button.",
-    picture: (
-      <Play>
-        <HistoryPicture />
-      </Play>
-    ),
+    picture: <HistoryPicture />,
   },
   {
     title: "Edit together",
     href: "/features/sharing",
     label: "A shared note with three people in it, a line Maya is typing, and a comment mentioning Sam.",
-    picture: (
-      <Play>
-        <TogetherPicture />
-      </Play>
-    ),
+    picture: <TogetherPicture />,
     wide: true,
   },
   {
     title: "Tasks and a calendar",
     href: "/features/tasks",
     label: "Today's tasks from your notes, with dates, beside a small week calendar.",
-    picture: (
-      <Play>
-        <TasksPicture />
-      </Play>
-    ),
+    picture: <TasksPicture />,
     wide: true,
   },
 ];
@@ -110,15 +85,15 @@ export function Included() {
             </Hand>
           </div>
         </div>
-        <ul className="mt-10 grid gap-x-4 gap-y-7 sm:grid-cols-2 lg:grid-cols-6 lg:gap-x-5">
+        <ul className="mt-10 grid gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-6 lg:gap-x-5">
           {TILES.map((tile) => (
             <li key={tile.title} className={cx("relative", tile.wide ? "lg:col-span-3" : "lg:col-span-2")}>
-              <div role="img" aria-label={tile.label} className="mk-mini-stage" data-tilt="5">
+              <div role="img" aria-label={tile.label} className="mk-mini-stage">
                 <div aria-hidden="true" className="contents">
                   {tile.picture}
                 </div>
               </div>
-              <h3 className="mk-h3 mt-3 text-[15.5px]">
+              <h3 className="mk-h3 mt-2 text-[15.5px]">
                 {tile.href ? (
                   <Link href={tile.href} className="group inline-flex min-h-11 items-center gap-1.5 hover:underline">
                     {tile.title} <ArrowRight size={14} aria-hidden="true" className="text-muted transition-transform group-hover:translate-x-0.5" />
@@ -137,6 +112,11 @@ export function Included() {
 
 /* Pictures ---------------------------------------------------------------------------------------- */
 
+/** The card every picture is built on: one width, padding and type. */
+const cardBase = "mk-mini-card px-3.5 py-3";
+const card = cx(cardBase, "w-full max-w-[248px]");
+const title = "block truncate text-[12px] font-semibold text-(--color-heading)";
+
 function MiniLines({ widths }: { widths: string[] }) {
   return (
     <span className="mt-2 block space-y-1.5">
@@ -150,23 +130,21 @@ function MiniLines({ widths }: { widths: string[] }) {
 /** The sync status pill (components/app/SyncStatus.tsx): Offline with changes waiting, then Saved. */
 function OfflinePicture() {
   return (
-    <div className="mk-mini-card w-[78%] max-w-[260px] px-4 pb-4 pt-3">
+    <div className={card}>
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-[12.5px] font-semibold text-(--color-heading)">Train notes</span>
+        <span className={title}>Train notes</span>
         <span className="mk-mini-pills">
           <span className="mk-mini-pill mk-mini-pill-offline" data-step="1">
-            <span className="size-1.5 flex-none rounded-tiny bg-(--color-ink-faint)" />
             <CloudOff size={12} />
             Offline <span className="tabular-nums">· 3</span>
           </span>
           <span className="mk-mini-pill" data-step="2">
-            <span className="size-1.5 flex-none rounded-tiny bg-moss" />
             <Check size={12} className="text-moss-ink" />
             Saved
           </span>
         </span>
       </div>
-      <MiniLines widths={["92%", "78%", "86%", "40%"]} />
+      <MiniLines widths={["92%", "78%", "86%", "44%"]} />
     </div>
   );
 }
@@ -174,26 +152,26 @@ function OfflinePicture() {
 /** One note open on a laptop and on a phone; the line typed on one appears on the other. */
 function SyncPicture() {
   return (
-    <div className="flex items-end gap-3">
-      <div className="mk-mini-card w-[170px] overflow-hidden sm:w-[190px]">
+    <div className="flex w-full max-w-[248px] items-end gap-2.5">
+      <div className="mk-mini-card min-w-0 flex-1 overflow-hidden">
         <div className="flex items-center gap-1 border-b border-(--color-line) px-2.5 py-1.5">
-          <span className="size-1.5 rounded-tiny bg-(--color-line-strong)" />
-          <span className="size-1.5 rounded-tiny bg-(--color-line-strong)" />
-          <span className="size-1.5 rounded-tiny bg-(--color-line-strong)" />
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="size-1.5 rounded-tiny bg-(--color-line-strong)" />
+          ))}
         </div>
         <div className="px-3 pb-3 pt-2">
-          <span className="block text-[11.5px] font-semibold text-(--color-heading)">Seed library</span>
+          <span className={title}>Seed library</span>
           <MiniLines widths={["90%", "70%"]} />
-          <span className="mk-mini-typed mt-1.5 block text-[10.5px] text-ink">
+          <span className="mk-mini-typed mt-2 block text-[10.5px] text-ink">
             Print seed labels<span className="mk-mini-caret" />
           </span>
         </div>
       </div>
-      <div className="mk-mini-card w-[74px] overflow-hidden rounded-panel px-2 pb-3 pt-3">
+      <div className="mk-mini-card w-[66px] flex-none overflow-hidden rounded-panel px-2 pb-2.5 pt-2.5">
         <span className="mx-auto mb-2 block h-1 w-5 rounded-tiny bg-(--color-line-strong)" />
-        <span className="block truncate text-[9.5px] font-semibold text-(--color-heading)">Seed library</span>
+        <span className="block truncate text-[9px] font-semibold text-(--color-heading)">Seed library</span>
         <MiniLines widths={["92%", "68%"]} />
-        <span className="mk-mini-arrive mt-1.5 block truncate rounded-chip text-[8.5px] text-ink">Print seed labels</span>
+        <span className="mk-mini-arrive mt-1.5 block truncate rounded-tiny text-[8px] text-ink">Print seed labels</span>
       </div>
     </div>
   );
@@ -205,17 +183,15 @@ const FAN = ["art-03", "art-01", "art-30", "art-49", "art-39"].map(artById);
 function StylesPicture() {
   const note = artById("art-30");
   return (
-    <div className="relative h-[124px] w-[240px]">
+    <div className="relative h-[118px] w-[210px]">
       {FAN.map((art, i) => (
-        // The step is the wrapper, so playing it never replaces the card's own rotation.
-        <span key={art.id} data-step className="absolute top-2" style={{ left: `${i * 30}px`, zIndex: i }}>
-          <span
-            className="mk-mini-art block"
-            style={{ backgroundImage: `url("/marketing/mini/${art.id}.webp")`, transform: `rotate(${(i - 2) * 5}deg)` }}
-          />
-        </span>
+        <span
+          key={art.id}
+          className="mk-mini-art absolute top-1"
+          style={{ left: `${6 + i * 24}px`, zIndex: i, backgroundImage: `url("/marketing/mini/${art.id}.webp")`, transform: `rotate(${(i - 2) * 5}deg)` }}
+        />
       ))}
-      <span data-step className="mk-note absolute bottom-0 right-0 z-10 w-[112px] overflow-hidden shadow-(--shadow-pop)" style={artVars(note)}>
+      <span className="mk-note absolute bottom-2 right-0 z-10 w-[104px] overflow-hidden rounded-control shadow-(--shadow-card)" style={artVars(note)}>
         <span className="block h-7 bg-cover bg-center" style={{ backgroundImage: `url("/marketing/mini/${note.id}.webp")` }} />
         <span className="block px-2.5 pb-2.5 pt-1.5">
           <span className="mk-note-h block text-[11px]">Trip sketch</span>
@@ -229,60 +205,53 @@ function StylesPicture() {
 
 /** A voice note in a page (the /record block): play, waveform, length. */
 function AudioPicture() {
-  const bars = [6, 12, 18, 10, 22, 16, 8, 20, 14, 24, 12, 18, 9, 15, 21, 11, 7, 16, 13, 6];
+  const bars = [6, 12, 18, 10, 20, 15, 8, 19, 13, 22, 11, 17, 9, 14, 19, 10, 7, 13];
   return (
-    <div className="mk-mini-card w-[82%] max-w-[270px] px-3.5 py-3">
-      <span className="block text-[11.5px] font-semibold text-(--color-heading)">Standup, Tuesday</span>
-      <span className="mt-2.5 flex items-center gap-2.5">
-        <span data-step className="grid size-7 flex-none place-items-center rounded-chip bg-(--color-heading) text-(--color-canvas)">
+    <div className={card}>
+      <span className={title}>Standup, Tuesday</span>
+      <span className="mt-3 flex items-center gap-2.5">
+        <span className="grid size-7 flex-none place-items-center rounded-chip bg-(--color-heading) text-(--color-canvas)">
           <PlayIcon size={11} fill="currentColor" />
         </span>
-        <span data-step className="flex h-6 flex-1 items-center gap-[2px]">
+        <span className="flex h-6 min-w-0 flex-1 items-center justify-between">
           {bars.map((h, i) => (
-            <span key={i} className="w-[3px] rounded-tiny" style={{ height: h, background: i < 8 ? "var(--mk-violet)" : "color-mix(in oklab, var(--color-ink) 22%, transparent)" }} />
+            <span key={i} className="w-[3px] flex-none rounded-tiny" style={{ height: h, background: i < 7 ? "var(--mk-violet)" : "color-mix(in oklab, var(--color-ink) 22%, transparent)" }} />
           ))}
         </span>
-        <span className="text-[10.5px] tabular-nums text-muted">0:42</span>
+        <span className="flex-none text-[10.5px] tabular-nums text-muted">0:42</span>
       </span>
     </div>
   );
 }
 
-/** A flowchart block in a note: nodes on a grid, square connectors, a decision with Yes and No. */
+/** A flowchart block in a note: nodes on one row, square connectors, a decision with Yes and No. */
 function FlowPicture() {
-  const line = "color-mix(in oklab, var(--color-ink) 38%, transparent)";
-  const node = { fill: "var(--color-surface)", stroke: "color-mix(in oklab, var(--color-ink) 22%, transparent)" };
+  const line = "color-mix(in oklab, var(--color-ink) 40%, transparent)";
+  const node = { fill: "var(--color-surface)", stroke: "color-mix(in oklab, var(--color-ink) 24%, transparent)", strokeWidth: 1 };
   const text = { fontFamily: "var(--font-sans)", fontSize: 9.5, fontWeight: 600, fill: "var(--color-heading)", textAnchor: "middle" as const, dominantBaseline: "central" as const };
+  const small = { fontFamily: "var(--font-sans)", fontSize: 8.5, fill: "var(--color-ink-muted)" };
   return (
-    <div className="mk-mini-card w-[88%] max-w-[280px] px-3 pb-3 pt-2.5">
-      <span className="block text-[11.5px] font-semibold text-(--color-heading)">Launch plan</span>
-      <svg aria-hidden="true" viewBox="0 0 240 104" className="mt-2 block w-full" fill="none">
+    <div className={card}>
+      <span className={title}>Launch plan</span>
+      <svg aria-hidden="true" viewBox="0 0 220 78" className="mt-2 block w-full" fill="none">
         <defs>
-          <marker id="mk-flow-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <marker id="mk-flow-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M0 0.8 7 4 0 7.2z" fill={line} />
           </marker>
         </defs>
-        <g data-step stroke={line} strokeWidth="1.2" markerEnd="url(#mk-flow-arrow)">
-          <path d="M62 30h22" />
-          <path d="M146 30h24" />
-          <path d="M115 48v26H41V49" />
+        <g stroke={line} strokeWidth="1.1" markerEnd="url(#mk-flow-arrow)">
+          <path d="M56 24h20" />
+          <path d="M138 24h22" />
+          <path d="M107 42v20H30V37" />
         </g>
-        <g data-step>
-          <rect x="6" y="18" width="56" height="24" rx="6" {...node} />
-          <text x="34" y="30" {...text}>Draft</text>
-        </g>
-        <g data-step>
-          <path d="M115 10 146 30 115 50 84 30z" fill="var(--mk-violet-soft)" stroke="var(--mk-violet)" strokeWidth="1.2" />
-          <text x="115" y="30" {...text} fill="var(--mk-violet-ink)">Ready?</text>
-        </g>
-        <g data-step>
-          <rect x="172" y="18" width="62" height="24" rx="6" {...node} />
-          <text x="203" y="30" {...text}>Publish</text>
-        </g>
-        <g data-step fontFamily="var(--font-sans)" fontSize="8.5" fill="var(--color-ink-muted)">
-          <text x="158" y="22" textAnchor="middle">Yes</text>
-          <text x="124" y="66">No</text>
-        </g>
+        <rect x="4" y="12" width="52" height="24" rx="6" {...node} />
+        <text x="30" y="24" {...text}>Draft</text>
+        <path d="M107 6 138 24 107 42 76 24z" fill="var(--mk-violet-soft)" stroke="var(--mk-violet)" strokeWidth="1.1" />
+        <text x="107" y="24" {...text} fill="var(--mk-violet-ink)">Ready?</text>
+        <rect x="162" y="12" width="54" height="24" rx="6" {...node} />
+        <text x="189" y="24" {...text}>Publish</text>
+        <text x="149" y="16" textAnchor="middle" {...small}>Yes</text>
+        <text x="113" y="56" {...small}>No</text>
       </svg>
     </div>
   );
@@ -292,17 +261,17 @@ function FlowPicture() {
 function HistoryPicture() {
   const rows = [
     { when: "Now", who: "Current", on: true },
-    { when: "1 hour ago", who: "Maya" },
+    { when: "1 hour ago", who: "Maya", restore: true },
     { when: "Yesterday", who: "You" },
   ];
   return (
-    <div className="mk-mini-card w-[82%] max-w-[260px] p-1.5">
+    <div className={cx(card, "px-1.5 py-1.5")}>
       {rows.map((r) => (
-        <span key={r.when} data-step className={`flex items-center gap-1.5 whitespace-nowrap rounded-small px-2 py-1.5 text-[10.5px] ${r.on ? "bg-(--glass-hover)" : ""}`}>
+        <span key={r.when} className={cx("flex items-center gap-2 whitespace-nowrap rounded-small px-2 py-1.5 text-[10.5px]", r.on && "bg-(--glass-hover)")}>
           <History size={11} className="flex-none text-muted" />
           <span className="font-semibold text-(--color-heading)">{r.when}</span>
           <span className="min-w-0 flex-1 truncate text-muted">{r.who}</span>
-          {r.when === "1 hour ago" ? <span className="flex-none rounded-chip bg-(--color-heading) px-1.5 py-0.5 text-[9.5px] font-semibold text-(--color-canvas)">Restore</span> : null}
+          {r.restore ? <span className="flex-none rounded-chip bg-(--color-heading) px-1.5 py-0.5 text-[9.5px] font-semibold text-(--color-canvas)">Restore</span> : null}
         </span>
       ))}
     </div>
@@ -313,20 +282,18 @@ function HistoryPicture() {
 function TogetherPicture() {
   const people: PersonId[] = ["maya", "sam", "alex"];
   return (
-    <div className="flex items-start gap-3">
-      <div className="mk-mini-card w-[200px] px-3 pb-3 pt-2.5">
-        <span className="flex items-center justify-between">
-          <span className="text-[11.5px] font-semibold text-(--color-heading)">Trip plan</span>
-          <span className="flex -space-x-1.5">
+    <div className="flex w-full max-w-[440px] items-center justify-center gap-3">
+      <div className={cx(cardBase, "w-[212px] flex-none")}>
+        <span className="flex items-center justify-between gap-2">
+          <span className={title}>Trip plan</span>
+          <span className="flex flex-none -space-x-1.5">
             {people.map((p) => (
-              <span key={p} data-step>
-                <Avatar who={p} size={20} className="ring-2 ring-(--color-surface)" />
-              </span>
+              <Avatar key={p} who={p} size={20} className="ring-2 ring-(--color-surface)" />
             ))}
           </span>
         </span>
         <MiniLines widths={["92%", "70%"]} />
-        <span data-step className="mt-1.5 flex items-center gap-1 text-[10.5px] text-ink">
+        <span className="mt-2 flex items-center gap-1 whitespace-nowrap text-[10.5px] text-ink">
           Book the ferry
           <span className="h-3 w-[2px] rounded-tiny" style={{ background: PEOPLE.maya.color }} />
           <span className="inline-flex items-center gap-1 rounded-chip py-px pl-px pr-1.5 text-[9px] font-semibold text-white" style={{ background: PEOPLE.maya.color }}>
@@ -335,12 +302,12 @@ function TogetherPicture() {
           </span>
         </span>
       </div>
-      <div data-step className="mk-app-pop mt-6 w-[150px] rounded-control p-2.5 text-[10.5px] text-ink max-sm:hidden">
-        <span className="flex items-center gap-1.5 font-semibold text-(--color-heading)">
-          <Avatar who="sam" size={16} /> Sam
+      <div className={cx(cardBase, "w-[172px] flex-none max-xl:hidden")}>
+        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-(--color-heading)">
+          <Avatar who="sam" size={18} /> Sam
         </span>
-        <span className="mt-0.5 block">
-          <span className="rounded-tiny bg-(--mk-violet-soft) px-0.5 font-semibold text-(--mk-violet-ink)">@Maya</span> can you check the times?
+        <span className="mt-1.5 block text-[10.5px] leading-snug text-ink">
+          <span className="rounded-tiny bg-(--mk-violet-soft) px-0.5 font-semibold text-(--mk-violet-ink)">@Maya</span> can you check the ferry times?
         </span>
       </div>
     </div>
@@ -355,25 +322,27 @@ function TasksPicture() {
     { t: "Send the deck", d: "Mon" },
   ];
   return (
-    <div className="flex items-start gap-3">
-      <div className="mk-mini-card w-[200px] p-2.5">
-        <span className="block text-[11.5px] font-semibold text-(--color-heading)">Today</span>
+    <div className="flex w-full max-w-[440px] items-center justify-center gap-3">
+      <div className={cx(cardBase, "w-[212px] flex-none")}>
+        <span className={title}>Today</span>
         {tasks.map((x) => (
-          <span key={x.t} data-step className="mt-1.5 flex items-center gap-1.5 text-[10.5px]">
-            <span className={`grid size-3 flex-none place-items-center rounded-tiny ${x.done ? "bg-(--mk-violet-strong) text-white" : "shadow-[inset_0_0_0_1.2px_var(--color-line-strong)]"}`}>
+          <span key={x.t} className="mt-2 flex items-center gap-1.5 text-[10.5px]">
+            <span className={cx("grid size-3 flex-none place-items-center rounded-tiny", x.done ? "bg-(--mk-violet-strong) text-white" : "shadow-[inset_0_0_0_1.2px_var(--color-line-strong)]")}>
               {x.done ? <Check size={8} strokeWidth={3} /> : null}
             </span>
-            <span className={`flex-1 ${x.done ? "text-muted line-through" : "text-ink"}`}>{x.t}</span>
-            <span className="rounded-chip bg-(--color-surface-sunken) px-1.5 text-[9.5px] text-muted">{x.d}</span>
+            <span className={cx("min-w-0 flex-1 truncate", x.done ? "text-muted line-through" : "text-ink")}>{x.t}</span>
+            <span className="flex-none rounded-chip bg-(--color-surface-sunken) px-1.5 text-[9.5px] text-muted">{x.d}</span>
           </span>
         ))}
       </div>
-      <div data-step className="mk-mini-card grid w-[120px] grid-cols-7 gap-0.5 p-2 text-center text-[8.5px] text-muted max-sm:hidden">
+      <div className="mk-mini-card grid w-[148px] flex-none grid-cols-7 gap-0.5 px-2.5 py-2.5 text-center text-[8.5px] text-muted max-xl:hidden">
         {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-          <span key={i} className="font-semibold">{d}</span>
+          <span key={i} className="font-semibold">
+            {d}
+          </span>
         ))}
         {Array.from({ length: 14 }, (_, i) => (
-          <span key={i} className={`rounded-tiny py-0.5 ${i === 2 ? "bg-(--color-heading) text-(--color-canvas)" : i === 4 || i === 7 ? "bg-(--mk-violet-soft) text-(--mk-violet-ink)" : ""}`}>
+          <span key={i} className={cx("rounded-tiny py-0.5", i === 2 ? "bg-(--color-heading) text-(--color-canvas)" : i === 4 || i === 7 ? "bg-(--mk-violet-soft) text-(--mk-violet-ink)" : "")}>
             {i + 8}
           </span>
         ))}

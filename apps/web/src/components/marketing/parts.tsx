@@ -146,7 +146,6 @@ export function LinkCard({
   return (
     <div
       id={id}
-      data-tilt={wide ? "1.5" : "3"}
       className={cx(
         "mk-card group relative flex h-full scroll-mt-24 flex-col hover:shadow-(--shadow-pop)",
         wide && "lg:flex-row",

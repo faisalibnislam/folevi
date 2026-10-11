@@ -78,7 +78,7 @@ function Section({
 function CodePicture() {
   return (
     <Play className="mt-7">
-      <div role="img" aria-label="Signing in asks for the 6-digit code from your authenticator app." data-tilt="3" className="mk-panel rounded-panel p-4 sm:p-5">
+      <div role="img" aria-label="Signing in asks for the 6-digit code from your authenticator app." className="mk-panel rounded-panel p-4 sm:p-5">
         <p className="text-[12.5px] font-medium text-muted">6-digit code</p>
         <div className="mt-2 flex gap-1.5">
           {["4", "8", "1", "9", "2", "7"].map((digit, i) => (
@@ -103,7 +103,6 @@ function LinkPicture() {
       <div
         role="img"
         aria-label="A public link in the Share dialog: it expires on a set date, is password protected, and has a Revoke button."
-        data-tilt="3"
         className="mk-panel rounded-panel p-4 sm:p-6"
       >
         <div className="mk-app-pop rounded-panel p-4 text-[13px]">

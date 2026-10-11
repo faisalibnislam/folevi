@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { SETTLE_MS, settlePending } from "./lib/editSettle";
 import { paginationOptsValidator } from "convex/server";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -953,6 +954,15 @@ export const emptyTrash = mutation({
 
 /** Follow-up pages of emptyTrash. Re-checks that the person may still do this before each page. */
 /** A page's derived fields (search text, excerpt, counts, preview), refreshed after a large batch of edits. */
+/** The end of a note's settle window (lib/editSettle.ts): writes a waiting edit and opens the next window. */
+export const settleEdits = internalMutation({
+  args: { documentId: v.id("documents") },
+  handler: async (ctx, args) => {
+    if (await settlePending(ctx, args.documentId)) await ctx.scheduler.runAfter(SETTLE_MS, internal.documents.settleEdits, { documentId: args.documentId });
+    return null;
+  },
+});
+
 export const refreshDerivedLater = internalMutation({
   args: { documentId: v.id("documents") },
   handler: async (ctx, args) => {
@@ -1273,6 +1283,8 @@ export async function snapshot(
   reason: Doc<"documentSnapshots">["reason"],
   name?: string,
 ): Promise<{ created: boolean; id?: string }> {
+  // An edit still waiting to reach the note's row is part of this version.
+  if (await settlePending(ctx, doc._id)) doc = (await ctx.db.get(doc._id))!;
   const last = await ctx.db
     .query("documentSnapshots")
     .withIndex("by_document", (q) => q.eq("documentId", doc._id))

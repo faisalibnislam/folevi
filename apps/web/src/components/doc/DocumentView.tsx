@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Editor as TiptapEditor } from "@tiptap/react";
@@ -81,13 +82,49 @@ const CollectionRowProperties = lazy(() => import("@/components/editor/Collectio
 
 const IDLE_SNAPSHOT_MS = 2 * 60_000;
 
+type NoteBlocks = NonNullable<FunctionReturnType<typeof api.blocks.list>>;
+/** Changes held on top of the loaded copy before it's folded in and the subscription restarts from there. */
+const REBASE_AFTER = 100;
+
+/**
+ * The note's blocks as the server has them: loaded once (blocks.list), then only what changed since
+ * (blocks.changes), merged here. Each save re-reads the blocks it changed, not the whole note. undefined
+ * while loading; null when the note isn't there or can't be opened.
+ */
+function useNoteBlocks(documentId: string): NoteBlocks | null | undefined {
+  const [base, setBase] = useState<{ documentId: string; note: NoteBlocks } | null>(null);
+  const held = base?.documentId === documentId ? base.note : null;
+  const listed = useQuery(api.blocks.list, held ? "skip" : { documentId });
+  const changes = useQuery(api.blocks.changes, held ? { documentId, since: held.head } : "skip");
+  useEffect(() => {
+    if (!held && listed) setBase({ documentId, note: listed });
+  }, [held, listed, documentId]);
+  const merged = useMemo(() => {
+    if (!held || !changes) return held;
+    if (!changes.blocks.length && !changes.deleted.length && changes.revision === held.revision && changes.contentSeq === held.contentSeq) return held;
+    const byId = new Map(held.blocks.map((b) => [b.id, b]));
+    for (const id of changes.deleted) byId.delete(id);
+    for (const b of changes.blocks) byId.set(b.id, b);
+    return { documentId: held.documentId, revision: changes.revision, contentSeq: changes.contentSeq, head: changes.head, blocks: [...byId.values()] };
+  }, [held, changes]);
+  // Too many changes to send each time (or more than one call returns): fold them in, or load again.
+  useEffect(() => {
+    if (!held || !changes || !merged) return;
+    if (changes.more) setBase(null);
+    else if (changes.blocks.length + changes.deleted.length > REBASE_AFTER) setBase({ documentId, note: merged });
+  }, [held, changes, merged, documentId]);
+  if (!held) return listed;
+  if (changes === null) return null;
+  return merged;
+}
+
 /** When the pointer last went down (to tell a panel opened by mouse from one opened by keyboard). */
 let lastPointerDown = 0;
 
 export function DocumentView({ documentId }: { documentId: string }) {
   const { engine, profile, online, scopeKey } = useAppState();
   const meta = useQuery(api.documents.get, { documentId });
-  const server = useQuery(api.blocks.list, { documentId });
+  const server = useNoteBlocks(documentId);
   const settings = useQuery(api.settings.status, {});
   // Who else can open it (the bar's Share button says "Shared"); once the server knows the note.
   const sharing = useQuery(api.sharing.get, meta ? { documentId } : "skip");

@@ -12,6 +12,7 @@ import { fail } from "../../errors";
 import { liveBlocks, toWireBlock } from "../../documents";
 import { cloneBlocks, createDocument } from "../../create";
 import { nextSeq } from "../../seq";
+import { settlePending } from "../../editSettle";
 import { insertScoped, inScope, type Scope } from "../../scope";
 import { randomFolderColor } from "../../folderColors";
 import { SyncEngine, MAX_BATCH } from "../../syncEngine";
@@ -112,11 +113,15 @@ async function targetFolder(ctx: MutationCtx, env: ExecEnv, op: AgentOp, ops: Ag
 async function beforeChange(ctx: MutationCtx, env: ExecEnv, doc: Doc<"documents">, notes: RunNote[]): Promise<void> {
   if (notes.some((n) => n.noteId === doc.publicId)) return;
   const saved = await snapshot(ctx, doc, env.profile._id, "ai_run");
-  notes.push({ noteId: doc.publicId, title: doc.title || "Untitled", snapshotId: saved.id!, contentSeqAfter: doc.contentSeq, titleAfter: doc.title });
+  // The version settled any edit still waiting to reach the note's row (lib/editSettle.ts): read it again.
+  const now = (await ctx.db.get(doc._id)) ?? doc;
+  notes.push({ noteId: doc.publicId, title: now.title || "Untitled", snapshotId: saved.id!, contentSeqAfter: now.contentSeq, titleAfter: now.title });
 }
 
 /** Records how a note was left after a change (Undo compares it with how it is then). */
 async function afterChange(ctx: MutationCtx, doc: Doc<"documents">, notes: RunNote[]): Promise<void> {
+  // The run's own edit may be waiting to reach the note's row: written now, so Undo compares like with like.
+  await settlePending(ctx, doc._id);
   const fresh = (await ctx.db.get(doc._id))!;
   const n = notes.find((x) => x.noteId === doc.publicId);
   if (n) {
@@ -432,7 +437,12 @@ export async function changedSince(ctx: QueryCtx, env: ExecEnv, part: UndoPart, 
     const n = notes.find((x) => `note:${x.noteId}` === part.key)!;
     const doc = await getDocumentByPublicId(ctx, n.noteId);
     if (!doc) return null;
-    return doc.contentSeq !== n.contentSeqAfter || doc.title !== n.titleAfter ? `${q(doc.title)} was edited after the AI changed it.` : null;
+    // An edit since that hasn't reached the note's row yet counts too (the run's own were settled).
+    const waiting = await ctx.db
+      .query("documentEdits")
+      .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+      .first();
+    return waiting || doc.contentSeq !== n.contentSeqAfter || doc.title !== n.titleAfter ? `${q(doc.title)} was edited after the AI changed it.` : null;
   }
   const op = ops.find((o) => `op:${o.id}` === part.key)!;
   const r = op.result ?? {};

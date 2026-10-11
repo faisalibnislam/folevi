@@ -253,6 +253,8 @@ export default defineSchema({
     lastEditedBy: v.id("profiles"),
     /** When the automatic version for the edits since the last one is due (documents.autoVersion). */
     versionDueAt: v.optional(v.number()),
+    /** Until then, edits to the note's blocks wait in `documentEdits` instead of touching this row (lib/editSettle.ts). */
+    settleAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
     archivedAt: v.optional(v.number()),
@@ -412,7 +414,9 @@ export default defineSchema({
     .index("by_deleted", ["deletedAt"])
     .index("by_block_id", ["blockId"])
     .index("by_workspace_seq", ["workspaceId", "seq"])
-    .index("by_owner_seq", ["ownerProfileId", "seq"]),
+    .index("by_owner_seq", ["ownerProfileId", "seq"])
+    // An open note's changes since it loaded (blocks.changes), tombstones included.
+    .index("by_document_seq", ["documentId", "seq"]),
 
   documentSnapshots: defineTable({
     documentId: v.id("documents"),
@@ -975,6 +979,19 @@ export default defineSchema({
     .index("by_owner", ["ownerProfileId", "kind", "score"]),
 
   /** What each note's graph was built from (its content hash), so an unchanged note isn't read again. */
+  /**
+   * The latest edit to a note's blocks that its own row doesn't show yet (lib/editSettle.ts): who and when.
+   * While someone types, the note's row (its edited time, counters, search text and preview) is updated at
+   * most every 30 seconds, so the many queries that read note rows (the page tree, titles, comments) don't
+   * re-run on every save. One row per note at most; gone once settled.
+   */
+  documentEdits: defineTable({
+    documentId: v.id("documents"),
+    profileId: v.id("profiles"),
+    at: v.number(),
+    bulk: v.boolean(),
+  }).index("by_document", ["documentId"]),
+
   aiGraphState: defineTable({
     documentId: v.id("documents"),
     ...scoped,

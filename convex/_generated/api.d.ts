@@ -89,6 +89,7 @@ import type * as lib_credits from "../lib/credits.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_devices from "../lib/devices.js";
 import type * as lib_documents from "../lib/documents.js";
+import type * as lib_editSettle from "../lib/editSettle.js";
 import type * as lib_entitlements from "../lib/entitlements.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_fileCopies from "../lib/fileCopies.js";
@@ -225,6 +226,7 @@ declare const fullApi: ApiFromModules<{
   "lib/crypto": typeof lib_crypto;
   "lib/devices": typeof lib_devices;
   "lib/documents": typeof lib_documents;
+  "lib/editSettle": typeof lib_editSettle;
   "lib/entitlements": typeof lib_entitlements;
   "lib/errors": typeof lib_errors;
   "lib/fileCopies": typeof lib_fileCopies;

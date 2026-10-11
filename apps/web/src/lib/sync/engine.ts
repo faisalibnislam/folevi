@@ -146,6 +146,8 @@ export class SyncEngine {
       writeJournal(key, this.state, this.journalClosing);
       // A save still waiting for its moment starts now: timers may not run again in a hidden page.
       this.writeState();
+      // Edits waiting for the next batch go now too.
+      if (this.state.pending.length) this.scheduleFlush(0);
     };
     // Capture, so this runs before the editor's own flush on the same event (which writes the journal again).
     // A page kept for back/forward (persisted) isn't closing: its journal stays its own.
@@ -320,7 +322,7 @@ export class SyncEngine {
     // Blocks whose attachment is still uploading are held back until the upload finishes.
     const upload = this.state.uploads.find((u) => u.blockId === block.id && u.state !== "done");
     this.commit(sync.localUpsert(this.state, { opId: ulid(), documentId, block, fields, blockedBy: upload?.uploadId, baseRevision }));
-    this.scheduleFlush();
+    this.scheduleFlush(BLOCK_SAVE_DELAY);
   }
 
   queueUpload(documentId: string, blockId: string, uploadId: string) {
@@ -368,7 +370,7 @@ export class SyncEngine {
     }
     this.deletedHere.add(blockId);
     this.commit(sync.localDelete(this.state, { opId: ulid(), documentId, blockId, baseRevision }));
-    this.scheduleFlush();
+    this.scheduleFlush(BLOCK_SAVE_DELAY);
   }
 
   /**
@@ -385,7 +387,7 @@ export class SyncEngine {
   restoreBlock(documentId: string, blockId: string) {
     this.deletedHere.delete(blockId);
     this.commit(sync.localRestore(this.state, { opId: ulid(), documentId, blockId }));
-    this.scheduleFlush();
+    this.scheduleFlush(BLOCK_SAVE_DELAY);
   }
 
   createDocument(document: WireDocumentCreate): string {
@@ -616,9 +618,20 @@ export class SyncEngine {
     this.scheduleFlush(0);
   }
 
+  /** When the scheduled flush runs; an earlier request moves it sooner, a later one leaves it. */
+  private flushAt = 0;
+
   scheduleFlush(delay = 150) {
-    if (this.retryTimer) clearTimeout(this.retryTimer);
-    this.retryTimer = setTimeout(() => void this.flush(), delay);
+    const at = Date.now() + delay;
+    if (this.retryTimer) {
+      if (this.flushAt <= at) return;
+      clearTimeout(this.retryTimer);
+    }
+    this.flushAt = at;
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      void this.flush();
+    }, delay);
   }
 
   async flush(): Promise<void> {
@@ -690,6 +703,13 @@ function wireOp(op: SyncOp): SyncOp {
 }
 
 const contentOf = (b: Pick<WireBlock, "type" | "text" | "props">) => canonicalJson({ t: b.type, x: b.text, p: b.props });
+
+/**
+ * How long block edits wait to be sent, so typing goes to the server as one save every few seconds rather
+ * than one a second (each save re-runs the open note's queries). They're on this device (IndexedDB) at once;
+ * page and title changes, uploads and reconnecting still send straight away, and so does hiding the page.
+ */
+const BLOCK_SAVE_DELAY = 2_500;
 
 /** How long a commit may wait for others to share its save (see `writeState`). */
 const SAVE_DELAY = 100;

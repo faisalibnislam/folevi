@@ -9,6 +9,8 @@
 //   Action item:   a line that isn't a to-do yet and reads like one: "TODO ...", "Action: ...", "Next step:
 //                  ...", "Follow-up: ...", "@Sam will ...", "we need to ...".
 
+import { flattenTree, plainText, type InlineNode, type WireBlock } from "@folevi/editor-schema";
+
 /** A line of a note as the rules see it (document order). */
 export interface SuggestionLine {
   id: string;
@@ -94,3 +96,25 @@ export function suggestionKey(kind: "connection" | "duplicate" | "question" | "a
 
 /** A dismissal key as clients send it back: one of ours, short, nothing else. */
 export const validSuggestionKey = (key: string) => /^(link|dup|q|act):[0-9A-Za-z_-]{1,64}$/.test(key);
+
+/** Every bit of a line's text is struck through. */
+const allStruck = (nodes: readonly InlineNode[]) => {
+  const text = nodes.filter((n) => n.type !== "text" || n.text.trim());
+  return text.length > 0 && text.every((n) => n.type === "text" && (n.marks ?? []).some((m) => m.type === "strike"));
+};
+
+/** A note's blocks as the rules read them (the server's copy, or the one open on this device). */
+export function suggestionLines(blocks: WireBlock[]): SuggestionLine[] {
+  return flattenTree(blocks).map((e) => ({ id: e.block.id, type: e.block.type, text: plainText(e.block.text), depth: e.depth, struck: allStruck(e.block.text) }));
+}
+
+/** The suggestion chips for these hits (questions and action items), leaving out dismissed ones. */
+export function patternItems(hits: PatternHit[], dismissed: ReadonlySet<string>) {
+  return hits
+    .map((hit) =>
+      hit.kind === "question"
+        ? { key: suggestionKey("question", hit.blockId), kind: "question" as const, label: hit.text, blockId: hit.blockId }
+        : { key: suggestionKey("action", hit.blockId), kind: "action" as const, label: hit.text, blockId: hit.blockId, strip: hit.strip },
+    )
+    .filter((s) => !dismissed.has(s.key));
+}

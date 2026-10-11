@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import type { Editor } from "@tiptap/core";
@@ -11,6 +11,9 @@ import { ulid } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
 import { useToast, errorMessage } from "@/components/ui/Toast";
+import { useAppState } from "@/lib/app/state";
+import { useEngineSelector } from "@/lib/hooks/useEngine";
+import { patternItems, patternSuggestions, suggestionLines, type PatternHit } from "@/lib/suggestions";
 
 type Data = FunctionReturnType<typeof api.aiSuggestions.forNote>;
 export type NoteSuggestion = Data["items"][number];
@@ -162,6 +165,8 @@ export function appendPageLink(editor: Editor, documentId: string, title: string
   return true;
 }
 
+const sameHits = (a: PatternHit[], b: PatternHit[]) => a.length === b.length && a.every((h, i) => JSON.stringify(h) === JSON.stringify(b[i]));
+
 /** The suggestions under a note (nothing while they're off, or there are none). */
 export function NoteSuggestions({
   documentId,
@@ -174,14 +179,23 @@ export function NoteSuggestions({
   readOnly: boolean;
   onJump: (blockId: string) => void;
 }) {
-  const data = useQuery(api.aiSuggestions.forNote, { documentId });
+  // The graph's suggestions come from the server; questions and action items are found here, in the note as
+  // this device holds it, so the server query doesn't re-read the note on every save.
+  const data = useQuery(api.aiSuggestions.forNote, { documentId, lines: false });
+  const { engine } = useAppState();
+  const hits = useEngineSelector(
+    engine,
+    useCallback(() => (engine ? patternSuggestions(suggestionLines(engine.documentBlocks(documentId))) : []), [engine, documentId]),
+    sameHits,
+  );
   const dismiss = useMutation(api.aiSuggestions.dismiss);
   const { navigate } = useAppRouter();
   const toast = useToast();
   // Hidden at once while the dismissal saves.
   const [gone, setGone] = useState<Set<string>>(() => new Set());
   if (!data?.on) return null;
-  const items = data.items.filter((s) => !gone.has(s.key));
+  const dismissed = new Set(data.dismissed);
+  const items = [...data.items, ...patternItems(hits, dismissed)].filter((s) => !gone.has(s.key));
   const drop = (s: NoteSuggestion) => {
     setGone((g) => new Set(g).add(s.key));
     void dismiss({ documentId, key: s.key }).catch((e) => {

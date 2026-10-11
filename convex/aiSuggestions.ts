@@ -14,7 +14,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import { flattenTree, plainText, type InlineNode } from "@folevi/editor-schema";
 import { accessAtLeast, documentAccess, getDocumentByPublicId, requireDocument, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { aiBlockedIn } from "./lib/credits";
@@ -23,7 +22,7 @@ import { liveBlocks, toWireBlock } from "./lib/documents";
 import { ReaderLabels } from "./lib/linkLabels";
 import { aiPrefsOf } from "./lib/ai/prefs";
 import { DUPLICATE_MIN, likelyDuplicate, sharedReason } from "./lib/ai/graph";
-import { patternSuggestions, suggestionKey, validSuggestionKey } from "./lib/ai/suggestions";
+import { patternItems, patternSuggestions, suggestionKey, suggestionLines, validSuggestionKey } from "./lib/ai/suggestions";
 import { linkedNotes, noteFor, noteRelations, openable, sharedEntityNotes } from "./aiGraph";
 
 /** Shown at most, of each graph kind. */
@@ -47,22 +46,19 @@ export interface Suggestion {
   strip?: number;
 }
 
-/** Every bit of a line's text is struck through. */
-const allStruck = (nodes: InlineNode[]) => {
-  const text = nodes.filter((n) => n.type !== "text" || n.text.trim());
-  return text.length > 0 && text.every((n) => n.type === "text" && (n.marks ?? []).some((m) => m.type === "strike"));
-};
-
 /**
  * The suggestions for a note, for the person looking at it. `on` is false while suggestions (or AI) are
  * off or the scope has no AI, and then nothing is computed. `canEdit`: they can act on the note (link,
  * turn into a task); otherwise only open and dismiss.
  */
 export const forNote = query({
-  args: { documentId: v.string() },
-  handler: async (ctx, args): Promise<{ on: boolean; canEdit: boolean; items: Suggestion[] }> => {
+  // `lines: false`: the caller finds questions and action items in its own copy of the note
+  // (patternSuggestions), so this reads only the graph, not the note's blocks, and doesn't re-run on every
+  // save. Its `dismissed` keys apply to those too.
+  args: { documentId: v.string(), lines: v.optional(v.boolean()) },
+  handler: async (ctx, args): Promise<{ on: boolean; canEdit: boolean; items: Suggestion[]; dismissed: string[] }> => {
     const profile = await requireProfile(ctx);
-    const off = { on: false, canEdit: false, items: [] };
+    const off = { on: false, canEdit: false, items: [], dismissed: [] };
     if (!aiPrefsOf(profile).suggestions || profile.aiEnabled === false) return off;
     const doc = await getDocumentByPublicId(ctx, args.documentId);
     if (!doc || !hasValidScope(doc) || doc.inTrash || doc.deletedAt !== undefined || doc.kind === "template") return off;
@@ -117,13 +113,12 @@ export const forNote = query({
       }
     }
 
-    // From the note's own lines (link labels as this person may see them).
-    const blocks = await new ReaderLabels(ctx, profile).blocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
-    const lines = flattenTree(blocks).map((e) => ({ id: e.block.id, type: e.block.type, text: plainText(e.block.text), depth: e.depth, struck: allStruck(e.block.text) }));
-    for (const hit of patternSuggestions(lines)) {
-      add(hit.kind === "question" ? { key: suggestionKey("question", hit.blockId), kind: "question", label: hit.text, blockId: hit.blockId } : { key: suggestionKey("action", hit.blockId), kind: "action", label: hit.text, blockId: hit.blockId, strip: hit.strip });
+    // From the note's own lines (link labels as this person may see them), unless the caller reads them.
+    if (args.lines !== false) {
+      const blocks = await new ReaderLabels(ctx, profile).blocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
+      items.push(...patternItems(patternSuggestions(suggestionLines(blocks)), dismissed));
     }
-    return { on: true, canEdit: accessAtLeast(access, "write"), items };
+    return { on: true, canEdit: accessAtLeast(access, "write"), items, dismissed: [...dismissed] };
   },
 });
 

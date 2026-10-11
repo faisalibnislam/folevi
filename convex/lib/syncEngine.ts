@@ -34,7 +34,7 @@ import { ReaderLabels, titleIsShared } from "./linkLabels";
 import { copyCollectionsInto } from "./collections";
 import { FileCopies } from "./fileCopies";
 import { internal } from "../_generated/api";
-import { queueIndex } from "./ai/indexing";
+import { noteEdited } from "./editSettle";
 
 export const MAX_BATCH = 100;
 
@@ -869,21 +869,8 @@ export class SyncEngine {
     for (const { doc, changedBlocks } of this.touched.values()) {
       if (changedBlocks.size === 0) continue;
       const fresh = (await this.ctx.db.get(doc._id))!;
-      const seq = await this.seq.for(scopeOfRow(fresh));
-      // The first edit after a version schedules the next one (documents.autoVersion), so a long stretch of
-      // editing still gets a version every few minutes, whichever app made it and whether or not it stays open.
-      // (A due time long past means that run never happened, e.g. it failed: schedule again rather than never.)
-      const versionDue = fresh.versionDueAt === undefined || fresh.versionDueAt < Date.now() - AUTO_VERSION_MS;
-      await this.ctx.db.patch(fresh._id, {
-        updatedAt: Date.now(),
-        lastEditedBy: this.profile._id,
-        contentSeq: fresh.contentSeq + 1,
-        seq,
-        ...(versionDue ? { versionDueAt: Date.now() + AUTO_VERSION_MS } : {}),
-      });
-      if (versionDue) await this.ctx.scheduler.runAfter(AUTO_VERSION_MS, internal.documents.autoVersion, { documentId: fresh._id });
-      // Semantic search re-reads the note a little later (one job per burst of edits; eligible plans only).
-      await queueIndex(this.ctx, fresh);
+      // The note's own row: now for the first save of a burst, then about every half minute (lib/editSettle.ts).
+      await noteEdited(this.ctx, fresh, this.profile._id, { seq: await this.seq.for(scopeOfRow(fresh)), bulk: changedBlocks.size >= BULK_DERIVED });
       for (const rowId of changedBlocks) {
         if (this.plainNewRows.has(rowId)) continue;
         const row = await this.ctx.db.get(rowId);
@@ -894,17 +881,12 @@ export class SyncEngine {
         if (!fresh_ || row.type === "todo") await syncTaskProjection(this.ctx, row, fresh, this.profile._id);
         if (!fresh_ || hasLinkTargets(row)) await syncLinks(this.ctx, fresh, row);
       }
-      // A big batch (a paste of many lines) gets its search text, counts and preview a moment later, so
-      // saving it doesn't wait on reading the whole page each time; small edits update them at once.
-      if (changedBlocks.size >= BULK_DERIVED) await this.ctx.scheduler.runAfter(0, internal.documents.refreshDerivedLater, { documentId: fresh._id });
-      else await refreshDerived(this.ctx, (await this.ctx.db.get(fresh._id))!);
     }
   }
 }
 
 const BULK_DERIVED = 20;
-/** However long someone keeps typing, the page gets a version at least this often (documents.autoVersion). */
-export const AUTO_VERSION_MS = 10 * 60_000;
+export { AUTO_VERSION_MS } from "./editSettle";
 
 function keepsCollapse(existing: Doc<"blocks">, incoming: WireBlock, op: Extract<SyncOp, { kind: "block.upsert" }>): boolean {
   if (existing.type !== "toggle" || incoming.type !== "toggle" || op.fields.includes("collapsed")) return false;

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { SCHEMA_VERSION, rankSequence, type WireBlock } from "@folevi/editor-schema";
-import { actionItem, patternSuggestions, suggestionKey, validSuggestionKey, type SuggestionLine } from "../../convex/lib/ai/suggestions";
+import { actionItem, patternItems, patternSuggestions, suggestionKey, suggestionLines, validSuggestionKey, type SuggestionLine } from "../../convex/lib/ai/suggestions";
 import { join, person, PERSONAL, setup, teamWorkspace, ulid, type ScopeArg, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
@@ -159,6 +159,14 @@ describe("suggestions on a note", () => {
     // Someone else on the same note still sees it.
     expect((await member.as.query(api.aiSuggestions.forNote, { documentId: note.id })).items.map((i) => i.key)).toContain(deck.key);
     await expect(owner.as.mutation(api.aiSuggestions.dismiss, { documentId: note.id, key: "nope" })).rejects.toThrow(/isn't valid/);
+
+    // The app finds questions and action items in its own copy (`lines: false`): the server skips the
+    // note's lines and hands back the dismissals, and the same rules over the same blocks give the same chips.
+    const graphOnly = await owner.as.query(api.aiSuggestions.forNote, { documentId: note.id, lines: false });
+    expect(graphOnly.items).toEqual([]);
+    expect(graphOnly.dismissed).toEqual([deck.key]);
+    const blocks = (await owner.as.query(api.blocks.list, { documentId: note.id }))!.blocks;
+    expect(patternItems(patternSuggestions(suggestionLines(blocks)), new Set(graphOnly.dismissed))).toEqual(after.items);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -171,7 +179,7 @@ describe("suggestions on a note", () => {
     const { workspaceId, scope } = await teamWorkspace(owner, "Private");
     await join(t, owner, viewer, "sugg-viewer@example.com", workspaceId, "viewer");
     const note = await writeNote(owner, scope, "Plans", ["TODO: write the plan"]);
-    expect(await stranger.as.query(api.aiSuggestions.forNote, { documentId: note.id })).toEqual({ on: false, canEdit: false, items: [] });
+    expect(await stranger.as.query(api.aiSuggestions.forNote, { documentId: note.id })).toEqual({ on: false, canEdit: false, items: [], dismissed: [] });
     await expect(stranger.as.mutation(api.aiSuggestions.dismiss, { documentId: note.id, key: "act:x" })).rejects.toThrow(/not found/i);
     const seen = await viewer.as.query(api.aiSuggestions.forNote, { documentId: note.id });
     expect(seen.items).toHaveLength(1);
@@ -185,7 +193,7 @@ describe("suggestions on a note", () => {
     const note = await writeNote(a, PERSONAL, "Plans", ["TODO: write the plan"]);
     expect((await a.as.query(api.aiSuggestions.forNote, { documentId: note.id })).items).toHaveLength(1);
     await a.as.mutation(api.users.updateProfile, { aiPrefs: { suggestions: false } });
-    expect(await a.as.query(api.aiSuggestions.forNote, { documentId: note.id })).toEqual({ on: false, canEdit: false, items: [] });
+    expect(await a.as.query(api.aiSuggestions.forNote, { documentId: note.id })).toEqual({ on: false, canEdit: false, items: [], dismissed: [] });
     await a.as.mutation(api.users.updateProfile, { aiPrefs: { suggestions: true }, aiEnabled: false });
     expect((await a.as.query(api.aiSuggestions.forNote, { documentId: note.id })).on).toBe(false);
     await a.as.mutation(api.users.updateProfile, { aiEnabled: true });
@@ -194,7 +202,7 @@ describe("suggestions on a note", () => {
     const core = await person(t, "sugg-core@example.com");
     await core.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
     const theirs = await writeNote(core, PERSONAL, "Plans", ["TODO: write the plan"]);
-    expect(await core.as.query(api.aiSuggestions.forNote, { documentId: theirs.id })).toEqual({ on: false, canEdit: false, items: [] });
+    expect(await core.as.query(api.aiSuggestions.forNote, { documentId: theirs.id })).toEqual({ on: false, canEdit: false, items: [], dismissed: [] });
   });
 });
 

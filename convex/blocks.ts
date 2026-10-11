@@ -22,7 +22,40 @@ export const list = query({
     if (!accessAtLeast(access, "read")) return null;
     const rows = await liveBlocks(ctx, doc._id);
     const blocks = await new ReaderLabels(ctx, profile).blocks(rows.map(toWireBlock));
-    return { documentId: doc.publicId, revision: doc.revision, contentSeq: doc.contentSeq, blocks };
+    // `head`: every later change to these blocks has a higher seq (blocks.changes picks up from here).
+    const head = rows.reduce((max, r) => Math.max(max, r.seq), 0);
+    return { documentId: doc.publicId, revision: doc.revision, contentSeq: doc.contentSeq, head, blocks };
+  },
+});
+
+/** Changes per `changes` call before the caller should load the note again from `list` (or a later `since`). */
+const CHANGES_MAX = 500;
+
+/**
+ * An open note's blocks changed after `since` (a seq from `list` or an earlier call): the live ones as they
+ * are now, and the ids of those deleted. The editor loads a note once with `list` and then subscribes to
+ * this, so each save re-reads only what changed instead of the whole note. `more`: there were more than
+ * this call returns; load from `list` again.
+ */
+export const changes = query({
+  args: { documentId: v.string(), since: v.number() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const doc = await getDocumentByPublicId(ctx, args.documentId);
+    if (!doc) return null;
+    const access = await documentAccess(ctx, profile, doc);
+    if (!accessAtLeast(access, "read")) return null;
+    const rows = await ctx.db
+      .query("blocks")
+      .withIndex("by_document_seq", (q) => q.eq("documentId", doc._id).gt("seq", args.since))
+      .take(CHANGES_MAX + 1);
+    const more = rows.length > CHANGES_MAX;
+    const kept = rows.slice(0, CHANGES_MAX);
+    const live = kept.filter((r) => r.deletedAt === undefined);
+    const blocks = await new ReaderLabels(ctx, profile).blocks(live.map(toWireBlock));
+    const deleted = kept.filter((r) => r.deletedAt !== undefined).map((r) => r.blockId);
+    const head = kept.reduce((max, r) => Math.max(max, r.seq), args.since);
+    return { documentId: doc.publicId, revision: doc.revision, contentSeq: doc.contentSeq, head, blocks, deleted, more };
   },
 });
 

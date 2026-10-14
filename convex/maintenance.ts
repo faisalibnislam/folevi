@@ -164,6 +164,11 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     .withIndex("by_document", (q) => q.eq("documentId", docId))
     .collect();
   for (const p of presence) await ctx.db.delete(p._id);
+  const cursors = await ctx.db
+    .query("presenceCursors")
+    .withIndex("by_document", (q) => q.eq("documentId", docId))
+    .collect();
+  for (const c of cursors) await ctx.db.delete(c._id);
   if (hasValidScope(doc)) {
     const scope = scopeOfRow(doc);
     await adjustDocumentCount(ctx, scope, -1);

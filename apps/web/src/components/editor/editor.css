@@ -98,6 +98,25 @@
 }
 /* A [[ page link whose page is in Trash or gone. */
 .fb-editor .fb-page-link-gone, .fb-editor .fb-page-link-gone .fb-page-link { color: var(--color-ink-muted); text-decoration: line-through; }
+/* Live carets: someone else's caret in their colour, with their first name over it for a few seconds after it
+   moves (remoteCarets.ts), and a soft wash over what they've selected. The line's own name tag steps aside. */
+.fb-remote-caret {
+  position: relative; display: inline-block; width: 0; height: 1.25em; margin: 0 -1px;
+  vertical-align: text-bottom; border-left: 2px solid var(--caret); pointer-events: none; user-select: none;
+}
+.fb-remote-caret-label {
+  position: absolute; left: -2px; bottom: 100%;
+  font: 500 10.5px/1.5 var(--font-sans); white-space: nowrap;
+  color: var(--color-canvas); background: var(--caret-ink, var(--caret));
+  padding: 0 5px; border-radius: var(--radius-tiny) var(--radius-tiny) var(--radius-tiny) 0;
+  /* (With reduced motion the fade has no length: the name just goes after the delay.) */
+  animation: fb-caret-label 400ms var(--motion-easing) 3s forwards;
+}
+:root[data-theme="dark"] .fb-remote-caret-label { background: var(--caret); }
+@keyframes fb-caret-label { to { opacity: 0; } }
+.fb-editor .fb-remote-range { background: color-mix(in oklab, var(--caret) 18%, transparent); border-radius: var(--radius-tiny); }
+.fb-editor > .fb.fb-remote-block { background: color-mix(in oklab, var(--caret) 12%, transparent); }
+.fb-editor.fb-has-carets > .fb.fb-presence::after { content: none; }
 /* The text a link is being added to, while focus is in the link field. */
 .fb-editor .fb-range-highlight { background: var(--color-selection); border-radius: var(--radius-tiny); }
 /* The "2 comments · 8:18 AM" line under a block with open comments (a widget between blocks), in the note's accent. */

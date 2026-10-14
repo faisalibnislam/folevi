@@ -7,6 +7,7 @@ import { FindReplace } from "./findReplace";
 import { Autolink } from "./autolink";
 import { BlockHighlight } from "./blockHighlight";
 import { PageLinkStatus } from "./pageLinkStatus";
+import { RemoteCarets } from "./remoteCarets";
 
 /**
  * The editor's extensions: every block and mark, their node views, undo, the drop and gap cursors, the
@@ -54,6 +55,7 @@ export function editorExtensions({
     FindReplace,
     Autolink,
     BlockHighlight,
+    RemoteCarets,
     PageLinkStatus,
     Triggers.configure({ onChange: onTrigger }),
   ];

@@ -68,6 +68,7 @@ import { useDocTab } from "@/lib/app/tabs";
 import { ShareDialog } from "./ShareDialog";
 import { TitleAi, TitleAiPill, type TitleRange } from "./TitleAi";
 import { VersionHistory } from "./VersionHistory";
+import { LiveCarets } from "./LiveCarets";
 import { MoveNoteDialog } from "./MoveNoteDialog";
 import { ExportDialog } from "./ExportDialog";
 import { FindBar } from "./FindBar";
@@ -888,6 +889,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
               )}
             </div>
           </article>
+          {/* Where the others' carets are, and ours for them, while someone else is in the note. */}
+          {meta && online ? <LiveCarets editor={editor} documentId={documentId} sessionId={sessionId} present={others.map((p) => p.profileId)} /> : null}
           {/* Quiet suggestions (open questions, action items, related notes), found without a model call. */}
           {aiOn && meta ? <NoteSuggestions documentId={documentId} editor={editor} readOnly={readOnly} onJump={(id) => editorRef.current?.focusBlock(id)} /> : null}
           <Backlinks documentId={documentId} />

@@ -1992,4 +1992,25 @@ export default defineSchema({
     .index("by_document", ["documentId", "updatedAt"])
     .index("by_session", ["sessionKey", "documentId"])
     .index("by_updated", ["updatedAt"]),
+
+  /**
+   * Live carets: where each open session's selection is in a note, as block ids and text offsets (never any
+   * text). Kept apart from `presence` so a moving caret doesn't re-run the "who's here" list. One row per
+   * session and note, deleted on leave and swept with presence (convex/presence.ts).
+   */
+  presenceCursors: defineTable({
+    documentId: v.id("documents"),
+    profileId: v.id("profiles"),
+    sessionKey: v.string(),
+    anchorBlockId: v.string(),
+    anchorOffset: v.number(),
+    headBlockId: v.string(),
+    headOffset: v.number(),
+    /** Whole blocks are selected (block selection, or a picture or other block that has no text). */
+    block: v.boolean(),
+    updatedAt: v.number(),
+  })
+    .index("by_document", ["documentId", "updatedAt"])
+    .index("by_session", ["sessionKey", "documentId"])
+    .index("by_updated", ["updatedAt"]),
 });

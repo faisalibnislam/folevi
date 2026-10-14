@@ -287,6 +287,10 @@ export const DOC_ARTICLES: DocArticle[] = [
         <p>
           People who can comment or edit can also leave <Link href="/features/comments">comments</Link>. More in <Link href="/features/sharing">Sharing notes</Link> and on the <Link href="/security#sharing">Security</Link> page.
         </p>
+        <h2 id="together">Working on a note together</h2>
+        <p>
+          When someone else has the same note open, their picture shows at the top of the page and edits reach each other within a moment. You also see their caret in the note, in their colour, with their first name over it for a few seconds after it moves. Text they select is lightly highlighted. Only the caret’s place in the note is shared this way, never any text, and nobody sees carets on a public link.
+        </p>
       </>
     ),
   },

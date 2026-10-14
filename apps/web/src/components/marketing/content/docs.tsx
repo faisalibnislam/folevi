@@ -173,7 +173,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "Any checklist item in Folevi is a task. Give it a date, time and priority, find it in Today, Tasks and the Calendar, and add tasks with Quick Add.",
     legacyAnchor: "tasks",
     published: "2026-09-25",
-    updated: "2026-09-30",
+    updated: "2026-10-14",
     body: () => (
       <>
         <p>
@@ -204,6 +204,20 @@ export const DOC_ARTICLES: DocArticle[] = [
           </li>
         </ul>
         <p>A task can also have an assignee (in a workspace) and a reminder. At the reminder time, Folevi adds a notification.</p>
+        <h2 id="calendar">Calendar</h2>
+        <p>The Calendar has three layouts, and remembers the one you last used on each device.</p>
+        <ul>
+          <li>
+            <strong>Month</strong>: every dated task on a month grid. Drag a task to another day to move it; its time stays the same.
+          </li>
+          <li>
+            <strong>Week</strong>: Monday to Sunday, with an all-day row for tasks that have a date but no time, and an hour grid where timed tasks sit at their time. Drag a task to a time to set the date and time (in half-hour steps), or to the all-day row to keep just the date. On a phone you see three days at a time.
+          </li>
+          <li>
+            <strong>Agenda</strong>: the next 30 days as a list, with anything overdue at the top.
+          </li>
+        </ul>
+        <p>Every move can be undone from the message that appears. Tasks without a date are listed under the calendar, ready to drag onto a day.</p>
       </>
     ),
   },

@@ -132,3 +132,38 @@ test("a repeating to-do comes back at its next date when checked off", async ({ 
   await page.getByRole("link", { name: /^Upcoming( \d+)?$/ }).click();
   await expect(page.getByRole("listitem").filter({ hasText: "Water the plants" })).toContainText("Tomorrow");
 });
+
+test("calendar week view: a timed task sits at its time and moves by drag", async ({ browser }) => {
+  const { page } = await newPerson(browser, "Week Planner");
+  await showFolders(page);
+  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
+  await page.getByRole("button", { name: "Add task" }).click();
+  const dialog = page.getByRole("dialog", { name: "Quick add task" });
+  await dialog.getByLabel("Task").fill("Stretch break today 3pm");
+  await expect(dialog.getByText("Due Today, 15:00")).toBeVisible();
+  await dialog.getByRole("button", { name: "Add task" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Task added" })).toBeVisible();
+  const today = await page.evaluate(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+
+  await page.getByRole("link", { name: "Calendar" }).first().click();
+  await page.getByRole("radio", { name: "week" }).click();
+  const block = page.getByRole("button", { name: /^Stretch break, 15:00/ });
+  await expect(block).toBeVisible();
+
+  // Dropped on the 17:00 slot of the same day: the time moves, the date stays.
+  await block.dragTo(page.locator(`[data-day-column="${today}"] [data-hour="17"]`), { targetPosition: { x: 12, y: 6 } });
+  await expect(page.getByRole("status").filter({ hasText: /Moved to .*17:00/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Stretch break, 17:00/ })).toBeVisible();
+
+  // Dropped on the all-day row: the time goes, the date stays.
+  await page.getByRole("button", { name: /^Stretch break, 17:00/ }).dragTo(page.locator(`[role="gridcell"][data-date="${today}"]`));
+  await expect(page.locator(`[role="gridcell"][data-date="${today}"]`).getByRole("button", { name: "Stretch break" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Stretch break, \d/ })).toHaveCount(0);
+
+  // The layout is remembered on this device.
+  await page.reload();
+  await expect(page.getByRole("radio", { name: "week" })).toHaveAttribute("aria-checked", "true");
+});

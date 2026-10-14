@@ -5,7 +5,7 @@ import { APP, createWorkspace, newPerson, showFolders, pick, settle } from "./he
 test("tasks: quick add with priority, My Tasks in Personal, edit/cancel from the list, schedule from the calendar", async ({ browser }) => {
   const { page } = await newPerson(browser, "Planner");
   await showFolders(page);
-  await page.getByRole("link", { name: /^Tasks/ }).click();
+  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
   await page.getByRole("button", { name: "Add task" }).click();
   const dialog = page.getByRole("dialog", { name: "Quick add task" });
   await dialog.getByLabel("Task").fill("Plan the herb bed");
@@ -40,7 +40,7 @@ test("tasks: quick add with priority, My Tasks in Personal, edit/cancel from the
   await expect(unscheduled.getByText("Plan the herb bed")).toHaveCount(0);
 
   // Quick Add can put a task into any page, found by search.
-  await page.getByRole("link", { name: /^Tasks/ }).click();
+  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
   await page.getByRole("button", { name: "Add task" }).click();
   await dialog.getByLabel("Task").fill("Book the seed swap table");
   await dialog.getByRole("combobox", { name: "Add to" }).fill("Atlas Brief");

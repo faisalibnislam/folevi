@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarPlus, ChevronLeft, ChevronRight, Rss } from "lucide-react";
 import { addDays } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -13,6 +13,22 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome } from "@/components/app/Shell";
 import { TaskEditDialog, TaskItem, useToggleTask, type TaskRow } from "./TasksView";
 import { CalendarFeedDialog } from "./CalendarFeedDialog";
+import { CalendarWeek } from "./CalendarWeek";
+import { visibleDays } from "./calendarLayout";
+import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
+
+type Layout = "month" | "week" | "agenda";
+const LAYOUT_KEY = "folevi:calendar-layout";
+
+/** The layout last picked on this device (month when nothing is stored or storage is off). */
+function storedLayout(): Layout {
+  try {
+    const v = localStorage.getItem(LAYOUT_KEY);
+    return v === "week" || v === "agenda" ? v : "month";
+  } catch {
+    return "month";
+  }
+}
 
 function monthStart(month: string) {
   return `${month}-01`;
@@ -28,17 +44,33 @@ function weekdayOf(date: string): number {
   return (d + 6) % 7;
 }
 
-/** Month grid and agenda for dated tasks. Drag a task to a day to reschedule it (with Undo). */
+/**
+ * Month grid, week grid and agenda for dated tasks. Drag a task to a day to reschedule it, or in the week
+ * to a time (with Undo). The layout is remembered on this device; narrow screens get three days at a time.
+ */
 export function CalendarView({ month }: { month: string | null }) {
   const { scope, today, deviceId } = useAppState();
   const { navigate } = useAppRouter();
   const current = month ?? today.slice(0, 7);
-  const [mode, setMode] = useState<"month" | "agenda">("month");
+  const [mode, setModeState] = useState<Layout>("month");
+  useEffect(() => setModeState(storedLayout()), []);
+  const setMode = (next: Layout) => {
+    setModeState(next);
+    try {
+      localStorage.setItem(LAYOUT_KEY, next);
+    } catch {
+      /* storage unavailable: the choice lasts for this visit */
+    }
+  };
+  const narrow = useMediaQuery("(max-width: 767px)");
+  // The week view's first day (any day of the week on wide screens; the first of three on narrow ones).
+  const [anchor, setAnchor] = useState(today);
+  const weekDays = visibleDays(anchor, narrow ? 3 : 7);
   const first = monthStart(current);
   const gridStart = addDays(first, -weekdayOf(first));
   const days = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
-  const from = mode === "month" ? days[0]! : today;
-  const to = mode === "month" ? days[41]! : addDays(today, 30);
+  const from = mode === "month" ? days[0]! : mode === "week" ? weekDays[0]! : today;
+  const to = mode === "month" ? days[41]! : mode === "week" ? weekDays[weekDays.length - 1]! : addDays(today, 30);
   const tasks = useQuery(api.tasks.range, { scope, from, to, includeCompleted: true });
   // The agenda starts with anything still open from before today; undated tasks can be scheduled from here.
   const overdue = useQuery(api.tasks.range, mode === "agenda" ? { scope, from: "0000-01-01", to: addDays(today, -1) } : "skip");
@@ -63,14 +95,17 @@ export function CalendarView({ month }: { month: string | null }) {
     return m;
   }, [tasks]);
 
-  const reschedule = (blockId: string, date: string) => {
+  /** Gives a task a new date; `time` sets its time too (null: all day), undefined keeps the one it has. */
+  const reschedule = (blockId: string, date: string, time?: string | null) => {
     const task = tasks?.find((t) => t.blockId === blockId) ?? unscheduled.find((t) => t.blockId === blockId) ?? overdue?.find((t) => t.blockId === blockId);
-    if (!task || task.dueDate === date) return;
-    const previous = task.dueDate;
-    update({ blockId, dueDate: date, deviceId: deviceId ?? undefined }).then(
+    if (!task || (task.dueDate === date && (time === undefined || time === task.dueTime))) return;
+    const previous = { dueDate: task.dueDate, dueTime: task.dueTime };
+    const device = deviceId ?? undefined;
+    const when = formatCalendarDate(date, { month: "short", day: "numeric" }) + (time ? `, ${time}` : "");
+    update({ blockId, dueDate: date, ...(time !== undefined ? { dueTime: time } : {}), deviceId: device }).then(
       () =>
-        toast.show(`Moved to ${formatCalendarDate(date, { month: "short", day: "numeric" })}`, {
-          action: { label: "Undo", onClick: () => void update({ blockId, dueDate: previous ?? null, deviceId: deviceId ?? undefined }) },
+        toast.show(`Moved to ${when}`, {
+          action: { label: "Undo", onClick: () => void update({ blockId, dueDate: previous.dueDate, dueTime: previous.dueDate ? previous.dueTime : null, deviceId: device }) },
         }),
       (e) => toast.show(errorMessage(e), { tone: "error" }),
     );
@@ -85,11 +120,25 @@ export function CalendarView({ month }: { month: string | null }) {
     if (next.slice(0, 7) !== current) navigate(`/calendar/${next.slice(0, 7)}`, { replace: true });
     requestAnimationFrame(() => gridRef.current?.querySelector<HTMLElement>(`[data-date="${next}"]`)?.focus());
   };
+  // In the week, arrows past either end page to the days before or after.
+  const moveWeekFocus = (date: string, delta: number) => {
+    const next = addDays(date, delta);
+    setSelected(next);
+    if (!weekDays.includes(next)) setAnchor(narrow && delta < 0 ? addDays(next, -2) : next);
+    requestAnimationFrame(() => requestAnimationFrame(() => gridRef.current?.querySelector<HTMLElement>(`[data-date="${next}"]`)?.focus()));
+  };
+  const pickLayout = (next: Layout) => {
+    if (next === mode) return;
+    if (next === "week") setAnchor(selected);
+    if (next === "month" && mode === "week" && anchor.slice(0, 7) !== current) navigate(`/calendar/${anchor.slice(0, 7)}`, { replace: true });
+    setMode(next);
+  };
+  const weekLabel = `${formatCalendarDate(weekDays[0]!, { month: "short", day: "numeric" })} to ${formatCalendarDate(weekDays[weekDays.length - 1]!, { month: "short", day: "numeric", year: "numeric" })}`;
 
   return (
     <ViewChrome
       title={<h1 className="text-sm font-semibold">Calendar</h1>}
-      subtitle={mode === "month" ? monthLabel : "Next 30 days"}
+      subtitle={mode === "month" ? monthLabel : mode === "week" ? weekLabel : "Next 30 days"}
       tabTitle="Calendar"
       actions={
         <>
@@ -97,8 +146,8 @@ export function CalendarView({ month }: { month: string | null }) {
             <Rss size={14} aria-hidden /> Subscribe
           </Button>
           <div role="radiogroup" aria-label="Calendar layout" className="flex ui-well rounded-control p-1 text-xs">
-            {(["month", "agenda"] as const).map((m) => (
-              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={`h-7 rounded-chip px-2.5 capitalize ${mode === m ? "bg-raised shadow-sm" : "text-muted"}`}>
+            {(["month", "week", "agenda"] as const).map((m) => (
+              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => pickLayout(m)} className={`h-7 rounded-chip px-2.5 capitalize ${mode === m ? "bg-raised shadow-sm" : "text-muted"}`}>
                 {m}
               </button>
             ))}
@@ -120,10 +169,45 @@ export function CalendarView({ month }: { month: string | null }) {
                 <ChevronRight size={16} aria-hidden />
               </IconButton>
             </div>
+          ) : mode === "week" ? (
+            <div className="ml-auto flex items-center gap-1">
+              <IconButton label={narrow ? "Previous days" : "Previous week"} onClick={() => setAnchor(addDays(anchor, -weekDays.length))}>
+                <ChevronLeft size={16} aria-hidden />
+              </IconButton>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setAnchor(today);
+                  setSelected(today);
+                }}
+              >
+                Today
+              </Button>
+              <IconButton label={narrow ? "Next days" : "Next week"} onClick={() => setAnchor(addDays(anchor, weekDays.length))}>
+                <ChevronRight size={16} aria-hidden />
+              </IconButton>
+            </div>
           ) : null}
         </div>
 
-        {mode === "month" ? (
+        {mode === "week" ? (
+          <>
+            <CalendarWeek
+              days={weekDays}
+              today={today}
+              label={weekLabel}
+              tasksByDate={byDate}
+              selected={selected}
+              gridRef={gridRef}
+              onSelect={setSelected}
+              onArrow={moveWeekFocus}
+              onMove={reschedule}
+              onEdit={setEditing}
+            />
+            <p className="mt-3 text-xs text-muted">Drag a task to a time to set it, or to the all-day row to keep just the date. Select a task to edit it.</p>
+            <Unscheduled tasks={unscheduled} today={today} target={weekDays.includes(selected) ? selected : today} onSchedule={reschedule} onToggle={toggle} onEdit={setEditing} />
+          </>
+        ) : mode === "month" ? (
           <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
             <div ref={gridRef} role="grid" aria-label={monthLabel} className="overflow-hidden ui-card rounded-control">
               <div role="row" className="grid grid-cols-7 border-b border-line bg-surface text-center text-xs font-medium text-muted">

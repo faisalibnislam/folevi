@@ -54,8 +54,9 @@ import {
   ImagePlus,
   LayoutGrid,
   Columns3,
+  MonitorPlay,
 } from "lucide-react";
-import { FLOWCHART_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT, addDays, repeatProps, repeatRule, sanitizeHref, ulid } from "@folevi/editor-schema";
+import { FLOWCHART_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT, addDays, embedFor, embedProblem, repeatProps, repeatRule, sanitizeHref, ulid } from "@folevi/editor-schema";
 import { RepeatField } from "./RepeatField";
 import { api } from "@/lib/convex/api";
 import { parseNaturalDate } from "@/lib/nlDate";
@@ -118,7 +119,7 @@ interface MenuItem {
 }
 
 /** Everything the Insert panel (and the slash menu) can add that needs more than a plain block. */
-export type SpecialInsert = "image" | "unsplash" | "file" | "record" | "page" | "card" | "bookmark" | "collection" | "gallery" | "board" | "date" | "pickDate";
+export type SpecialInsert = "image" | "unsplash" | "file" | "record" | "page" | "card" | "bookmark" | "embed" | "collection" | "gallery" | "board" | "date" | "pickDate";
 
 /** Asks the editor's menus to run a special insert (the Insert panel lives outside the editor). */
 /** `placeholder`: the id of an empty line made for this insert (a drop), removed if the insert is cancelled. */
@@ -387,6 +388,7 @@ export function EditorMenus({
   const imageInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const [bookmarkPrompt, setBookmarkPrompt] = useState(false);
+  const [embedPrompt, setEmbedPrompt] = useState(false);
   const [unsplashOpen, setUnsplashOpen] = useState(false);
   const [datePicker, setDatePicker] = useState<{ mode: "insert" } | { mode: "edit"; pos: number } | null>(null);
   const dropPlaceholder = useRef<string | null>(null);
@@ -581,6 +583,7 @@ export function EditorMenus({
       page: account("Sub-pages", async () => navigate(`/d/${await createNestedPage("", false, "link")}?new=1`)),
       card: account("Sub-pages", async () => navigate(`/d/${await createNestedPage("", false, "card")}?new=1`)),
       bookmark: account("Bookmarks", () => setBookmarkPrompt(true)),
+      embed: () => setEmbedPrompt(true),
       collection: account("Collections", () => insertCollection("table", "Collection")),
       gallery: account("Collections", () => insertCollection("gallery", "Gallery")),
       board: account("Collections", () => insertCollection("board", "Kanban")),
@@ -765,7 +768,8 @@ export function EditorMenus({
       { id: "unsplash", label: "Image from Unsplash", keywords: "image picture photo unsplash stock search", icon: <ImagePlus size={15} />, run: special.unsplash },
       { id: "file", label: "File", keywords: "file attachment upload pdf", icon: <Paperclip size={15} />, run: special.file },
       { id: "record", label: "Audio recording", keywords: "audio record recording voice memo microphone mic sound dictate", icon: <Mic size={15} />, run: special.record },
-      { id: "bookmark", label: "Bookmark", keywords: "bookmark web link url embed", icon: <LinkIcon size={15} />, run: special.bookmark },
+      { id: "bookmark", label: "Bookmark", keywords: "bookmark web link url", icon: <LinkIcon size={15} />, run: special.bookmark },
+      { id: "embed", label: "Embed", keywords: "embed video youtube vimeo loom figma map google maps iframe", icon: <MonitorPlay size={15} />, run: special.embed },
       { id: "collection", label: "Collection", keywords: "collection database table", icon: <LayoutList size={15} />, run: special.collection },
       { id: "gallery", label: "Gallery", keywords: "gallery collection database cards grid", icon: <LayoutGrid size={15} />, run: special.gallery },
       { id: "board", label: "Kanban", keywords: "kanban board collection database columns", icon: <Columns3 size={15} />, run: special.board },
@@ -1021,6 +1025,23 @@ export function EditorMenus({
           insertBlockAfterCurrent(editor, "bookmark", { url, title: host });
         }}
       />
+      <LinkPrompt
+        open={embedPrompt}
+        title="Embed a video, design or map"
+        action="Embed"
+        hint="A YouTube, Vimeo, Loom, Figma or Google Maps link."
+        check={(value) => (embedFor(value) ? { href: value.trim() } : { error: embedProblem(value) ?? "That address can't be embedded." })}
+        onClose={() => {
+          setEmbedPrompt(false);
+          dropLeftover();
+          editor.view.focus();
+        }}
+        onSubmit={(url) => {
+          const embed = embedFor(url);
+          setEmbedPrompt(false);
+          if (embed) insertBlockAfterCurrent(editor, "embed", { url, provider: embed.provider });
+        }}
+      />
       {recorderAnchor ? (
         <Popover anchor={recorderAnchor} label="Audio recording" width={320} scroll={false}>
           <Suspense fallback={<div className="h-40" aria-busy aria-label="Loading recorder" />}>
@@ -1058,6 +1079,39 @@ export function EditorMenus({
 }
 
 function BookmarkPrompt({ open, onClose, onSubmit }: { open: boolean; onClose: () => void; onSubmit: (url: string) => void }) {
+  return (
+    <LinkPrompt
+      open={open}
+      title="Add a bookmark"
+      action="Add bookmark"
+      check={(value) => {
+        const href = webAddressIn(value);
+        return href ? { href } : { error: "Enter a web address starting with http:// or https://" };
+      }}
+      onClose={onClose}
+      onSubmit={onSubmit}
+    />
+  );
+}
+
+/** Asks for a web address (a bookmark's, an embed's) and checks it before it's used. */
+function LinkPrompt({
+  open,
+  title,
+  action,
+  hint,
+  check,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  title: string;
+  action: string;
+  hint?: string;
+  check: (value: string) => { href: string } | { error: string };
+  onClose: () => void;
+  onSubmit: (url: string) => void;
+}) {
   const [value, setValue] = useState("https://");
   const [error, setError] = useState<string | null>(null);
   const formId = useId();
@@ -1071,7 +1125,7 @@ function BookmarkPrompt({ open, onClose, onSubmit }: { open: boolean; onClose: (
     <Dialog
       open={open}
       onClose={onClose}
-      title="Add a bookmark"
+      title={title}
       size="sm"
       footer={
         <>
@@ -1079,7 +1133,7 @@ function BookmarkPrompt({ open, onClose, onSubmit }: { open: boolean; onClose: (
             Cancel
           </Button>
           <Button variant="primary" type="submit" form={formId}>
-            Add bookmark
+            {action}
           </Button>
         </>
       }
@@ -1088,12 +1142,12 @@ function BookmarkPrompt({ open, onClose, onSubmit }: { open: boolean; onClose: (
         id={formId}
         onSubmit={(e) => {
           e.preventDefault();
-          const href = webAddressIn(value);
-          if (!href) {
-            setError("Enter a web address starting with http:// or https://");
+          const result = check(value);
+          if ("error" in result) {
+            setError(result.error);
             return;
           }
-          onSubmit(href);
+          onSubmit(result.href);
         }}
       >
         <label htmlFor={`${formId}-url`} className="text-sm font-medium">
@@ -1106,8 +1160,13 @@ function BookmarkPrompt({ open, onClose, onSubmit }: { open: boolean; onClose: (
           onChange={(e) => setValue(e.target.value)}
           className="mt-2 h-10 w-full ui-input rounded-chip px-4"
           aria-invalid={Boolean(error)}
-          aria-describedby={error ? `${formId}-err` : undefined}
+          aria-describedby={error ? `${formId}-err` : hint ? `${formId}-hint` : undefined}
         />
+        {hint && !error ? (
+          <p id={`${formId}-hint`} className="mt-1 text-xs text-muted">
+            {hint}
+          </p>
+        ) : null}
         {error ? (
           <p id={`${formId}-err`} className="mt-1 text-xs text-danger">
             {error}

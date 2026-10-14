@@ -5,6 +5,7 @@
 // adds it to its own scripts automatically when it finds `'nonce-…'` in the request's CSP header) and
 // scripts they load ('strict-dynamic') can run. Without a nonce (statically prerendered pages, where no
 // per-request value exists) the policy keeps 'unsafe-inline' for Next's inline bootstrap scripts.
+import { EMBED_FRAME_ORIGINS } from "@folevi/editor-schema";
 
 export interface CspOptions {
   /** Base64 nonce for this request; omit for the static policy. */
@@ -56,7 +57,8 @@ export function buildContentSecurityPolicy(opts: CspOptions): string {
     `media-src 'self' blob: ${site}`,
     "font-src 'self'",
     `connect-src 'self' ${convex} ${convexWs} ${site} ${extra}${opts.dev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
-    `frame-src ${site}`,
+    // Embed blocks: only the players that packages/editor-schema/src/embeds.ts builds addresses for.
+    `frame-src ${site} ${EMBED_FRAME_ORIGINS.join(" ")}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     `form-action 'self' ${app} ${extra}`,

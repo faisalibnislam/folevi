@@ -8,6 +8,7 @@ import {
 import type { BlockChange } from "@/lib/history/diff";
 import { FormulaRender, MermaidDiagram, WhiteboardStatic } from "@/components/editor/RichBlocks";
 import { AudioPlayer } from "@/components/editor/AudioPlayer";
+import { EmbedFrame } from "@/components/editor/EmbedFrame";
 import { FlowchartStatic } from "@/components/editor/flowchart/render";
 
 function Inline({ nodes }: { nodes: InlineNode[] }) {
@@ -443,6 +444,12 @@ export function ReadOnlyBlocks({
             case "collection":
               return (
                 <ReadOnlyCollection key={block.id} data={collections?.[String(p.collectionId)]} />
+              );
+            case "embed":
+              return (
+                <div key={block.id} className="fb">
+                  <EmbedFrame url={String(p.url ?? "")} />
+                </div>
               );
             case "bookmark": {
               const href = sanitizeHref(String(p.url ?? ""));

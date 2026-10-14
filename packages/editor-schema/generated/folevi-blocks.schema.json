@@ -311,6 +311,22 @@
       "if": {
         "properties": {
           "type": {
+            "const": "embed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/EmbedProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
             "const": "collection"
           }
         }
@@ -444,6 +460,15 @@
       "enum": [
         "link",
         "card"
+      ]
+    },
+    "EmbedProvider": {
+      "enum": [
+        "youtube",
+        "vimeo",
+        "loom",
+        "figma",
+        "googleMaps"
       ]
     },
     "DocumentFont": {
@@ -1225,6 +1250,22 @@
       },
       "required": [
         "url"
+      ],
+      "additionalProperties": false
+    },
+    "EmbedProps": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/EmbedProvider"
+        }
+      },
+      "required": [
+        "url",
+        "provider"
       ],
       "additionalProperties": false
     },

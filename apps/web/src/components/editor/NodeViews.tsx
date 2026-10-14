@@ -37,6 +37,7 @@ import {
   AudioBlock,
   BookmarkBlock,
   CollectionBlock,
+  EmbedBlock,
   FileBlock,
   FlowchartBlock,
   FormulaBlock,
@@ -51,6 +52,7 @@ import { useEditorEnvironment } from "./environment";
 import { useDraft } from "./useDraft";
 import { useEditable } from "./useEditable";
 import { AudioPlayer } from "./AudioPlayer";
+import { EmbedFrame } from "./EmbedFrame";
 import { TranscribeButton, useCanTranscribe, useTranscription } from "@/components/ai/AudioTranscribe";
 
 // The whiteboard, flowchart and collection blocks are large and most notes have none: each loads the first
@@ -1122,6 +1124,25 @@ function selectBlock(editor: ReactNodeViewProps["editor"], getPos: ReactNodeView
   editor.view.focus();
 }
 
+/** An embedded video, design file or map. The bar under the frame selects the block; its link opens the original. */
+function EmbedView({ node, selected, editor, getPos }: ReactNodeViewProps) {
+  const a = node.attrs as { url: string | null; provider: string | null };
+  return (
+    <Frame selected={selected} label="Embed">
+      <div
+        contentEditable={false}
+        onMouseDown={(e) => {
+          if (e.target instanceof Element && e.target.closest("a, iframe")) return;
+          e.preventDefault();
+          selectBlock(editor, getPos);
+        }}
+      >
+        <EmbedFrame url={a.url ?? ""} />
+      </div>
+    </Frame>
+  );
+}
+
 export const NODE_VIEW_EXTENSIONS = [
   ImageBlock.extend({
     addNodeView: () => blockView(ImageView, ({ event }) => event.target instanceof HTMLInputElement || event.target instanceof HTMLButtonElement),
@@ -1142,6 +1163,10 @@ export const NODE_VIEW_EXTENSIONS = [
   }),
   CollectionBlock.extend({
     addNodeView: () => blockView(CollectionView, () => true),
+  }),
+  // The frame and the Open link handle their own input; a click on the bar selects the block.
+  EmbedBlock.extend({
+    addNodeView: () => blockView(EmbedView, ({ event }) => event.target instanceof Element && Boolean(event.target.closest("a, iframe"))),
   }),
   UnknownBlock.extend({ addNodeView: () => blockView(UnknownView) }),
   FormulaBlock.extend({

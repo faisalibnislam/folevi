@@ -59,7 +59,8 @@ const MORE: InsertItem[] = [
   { label: "Toggle", type: "toggle", attrs: () => ({ collapsed: false }), preview: "toggle", keywords: "collapse disclosure details" },
   { label: "Quote", type: "quote", preview: "quote", keywords: "blockquote citation" },
   { label: "Callout", type: "callout", attrs: () => ({ tone: "note" }), preview: "callout", keywords: "note tip info warning" },
-  { label: "Bookmark", special: "bookmark", preview: "bookmark", keywords: "web link url embed" },
+  { label: "Bookmark", special: "bookmark", preview: "bookmark", keywords: "web link url" },
+  { label: "Embed", special: "embed", preview: "embed", keywords: "video youtube vimeo loom figma map google maps iframe" },
   { label: "Date", special: "pickDate", preview: "date", keywords: "day calendar mention today" },
 ];
 

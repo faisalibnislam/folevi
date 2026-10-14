@@ -31,6 +31,7 @@ function inside(node: PMNode): DOMOutputSpec[] {
         ],
       ];
     }
+    case "embed":
     case "bookmark": {
       const href = typeof a.url === "string" ? sanitizeHref(a.url) : null;
       return href ? [["a", { href }, String(a.title || a.url)]] : [];

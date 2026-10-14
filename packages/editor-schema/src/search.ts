@@ -33,6 +33,9 @@ export function blockSearchText(block: Pick<WireBlock, "type" | "text" | "props"
     case "table":
       for (const row of (p.rows as InlineNode[][][]) ?? []) for (const cell of row) parts.push(plainText(cell));
       break;
+    case "embed":
+      parts.push(String(p.url ?? ""));
+      break;
     case "bookmark":
       parts.push(String(p.title ?? ""), String(p.description ?? ""), String(p.url ?? ""));
       break;

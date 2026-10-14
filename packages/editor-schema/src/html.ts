@@ -4,6 +4,8 @@ import { flattenTree } from "./tree";
 import { sanitizeHref } from "./richtext";
 import { whiteboardToSvg } from "./whiteboard";
 import { flowchartToSvg } from "./flowchartSvg";
+import { EMBED_PROVIDER_LABEL } from "./embeds";
+import type { EmbedProvider } from "./generated/schema";
 
 export function escapeHtml(value: string): string {
   return value
@@ -254,6 +256,12 @@ export function blocksToHtml(
           opts.resolveDocumentTitle?.(String(p.documentId)) || String(p.titleCache || "Untitled"),
         );
         parts.push(`<p>${href ? `<a href="${escapeHtml(href)}">${label}</a>` : label}</p>`);
+        break;
+      }
+      case "embed": {
+        const href = sanitizeHref(String(p.url));
+        const label = EMBED_PROVIDER_LABEL[p.provider as EmbedProvider] ?? "Embed";
+        parts.push(`<p><a href="${escapeHtml(href ?? "#")}" rel="noopener noreferrer">${escapeHtml(label)}: ${escapeHtml(String(p.url))}</a></p>`);
         break;
       }
       case "bookmark": {

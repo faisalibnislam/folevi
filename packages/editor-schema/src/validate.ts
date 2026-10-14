@@ -5,6 +5,7 @@ import { isValidRank } from "./rank";
 import { plainText } from "./richtext";
 import { whiteboardDataIssue } from "./whiteboard";
 import { flowchartDataIssue } from "./flowchart";
+import { embedFor } from "./embeds";
 
 export interface ValidationIssue {
   path: string;
@@ -273,6 +274,11 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
         if (value !== undefined && (typeof value !== "string" || value.length > 2048 || !/^https?:\/\//i.test(value)))
           issues.push({ path: `props.${key}`, code: "format", message: "http(s) url required" });
       }
+      break;
+    case "embed":
+      // Only an address Folevi knows how to frame, from the provider it names.
+      if ((p.url as string).length > 2048 || embedFor(p.url as string)?.provider !== p.provider)
+        issues.push({ path: "props.url", code: "format", message: "not an embeddable address" });
       break;
     case "formula":
       if ((p.latex as string).length > LIMITS.maxFormulaLength)

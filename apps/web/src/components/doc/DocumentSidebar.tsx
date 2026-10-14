@@ -284,6 +284,7 @@ function AttachmentsPanel({ documentId, onJump, onNavigate }: { documentId: stri
   const links: { key: string; blockId: string; label: string; href: string; internal: boolean }[] = [];
   for (const b of blocks) {
     const p = b.props as { url?: string; title?: string };
+    if (b.type === "embed" && p.url) links.push({ key: `${b.id}-embed`, blockId: b.id, label: hostOf(p.url), href: p.url, internal: false });
     if (b.type === "bookmark" && p.url) links.push({ key: `${b.id}-bm`, blockId: b.id, label: p.title || hostOf(p.url), href: p.url, internal: false });
     (b.text as InlineNode[]).forEach((n, i) => {
       if (n.type === "pageLink") links.push({ key: `${b.id}-${i}`, blockId: b.id, label: n.label || "Untitled", href: `/d/${n.documentId}`, internal: true });

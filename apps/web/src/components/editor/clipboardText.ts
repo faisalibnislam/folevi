@@ -79,6 +79,7 @@ export function sliceToText(slice: Slice): string {
       case "image":
         lines.push(String(node.attrs.alt || node.attrs.caption || node.attrs.url || ""));
         break;
+      case "embed":
       case "bookmark":
         lines.push(String(node.attrs.url ?? ""));
         break;

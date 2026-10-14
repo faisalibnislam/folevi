@@ -12,6 +12,7 @@
     "TaskPriority": { "type": "string", "values": ["none", "low", "medium", "high"] },
     "TaskRepeat": { "type": "string", "values": ["daily", "weekdays", "weekly", "monthly", "yearly"] },
     "PageDisplay": { "type": "string", "values": ["link", "card"] },
+    "EmbedProvider": { "type": "string", "values": ["youtube", "vimeo", "loom", "figma", "googleMaps"] },
     "DocumentFont": { "type": "string", "values": ["sans", "serif", "mono", "rounded"] },
     "DocumentWidth": { "type": "string", "values": ["narrow", "default", "wide"] },
     "DocumentBackground": { "type": "string", "values": ["paper", "plain", "tinted", "grid"] },
@@ -229,6 +230,11 @@
         "image": "string?",
         "icon": "string?"
       }
+    },
+    "embed": {
+      "text": false,
+      "webOnly": true,
+      "props": { "url": "string", "provider": "EmbedProvider" }
     },
     "collection": {
       "text": false,

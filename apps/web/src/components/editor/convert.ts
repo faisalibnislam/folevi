@@ -41,6 +41,7 @@ export const NODE_PROPS: Record<string, string[]> = {
   table: ["rows", "headerRow"],
   page: ["documentId", "display", "titleCache", "iconCache"],
   bookmark: ["url", "title", "description", "siteName", "image", "icon"],
+  embed: ["url", "provider"],
   collection: ["collectionId", "viewId"],
   formula: ["latex"],
   whiteboard: ["data", "height"],

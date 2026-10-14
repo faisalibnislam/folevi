@@ -26,6 +26,7 @@ export type PreviewKind =
   | "flowchart"
   | "whiteboard"
   | "bookmark"
+  | "embed"
   | "date"
   | "gallery"
   | "kanban"
@@ -269,6 +270,13 @@ function Picture({ kind }: { kind: PreviewKind }) {
           <Bar x={7} y={17} w={17} h={2.5} />
           <circle cx={8.5} cy={23.5} r={1.5} fill={ACCENT} fillOpacity={0.5} />
           <Bar x={12} y={22.5} w={10} h={2} o={0.18} />
+        </>
+      );
+    case "embed":
+      return (
+        <>
+          <Sheet x={3} y={5} w={42} h={26} />
+          <path d="M21 13.5v9l7.5-4.5z" fill={ACCENT} fillOpacity={0.75} />
         </>
       );
     case "date":

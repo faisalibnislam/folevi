@@ -8,6 +8,8 @@ import { normalizeInline, plainText, sanitizeHref, splitInline, textLength } fro
 import { whiteboardToSvg } from "./whiteboard";
 import { parseFlowchart } from "./flowchart";
 import { flowchartToMermaid } from "./flowchartMermaid";
+import { EMBED_PROVIDER_LABEL } from "./embeds";
+import type { EmbedProvider } from "./generated/schema";
 
 // ---------------------------------------------------------------- export
 
@@ -235,6 +237,9 @@ export function blocksToMarkdown(
         lines.push(`${indent}${target ? `[${escapeMd(label)}](${pathTarget(target)})` : `[[${label}]]`}`, "");
         break;
       }
+      case "embed":
+        lines.push(`${indent}[${escapeMd(EMBED_PROVIDER_LABEL[p.provider as EmbedProvider] ?? "Embed")}](${linkTarget(String(p.url))})`, "");
+        break;
       case "bookmark":
         lines.push(`${indent}[${escapeMd(String(p.title ?? p.url))}](${linkTarget(String(p.url))})`, "");
         break;

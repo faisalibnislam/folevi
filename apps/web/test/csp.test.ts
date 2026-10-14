@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { buildContentSecurityPolicy, createNonce } from "@/lib/security/csp";
+import { EMBED_FRAME_ORIGINS, embedFor } from "@folevi/editor-schema";
 
 const env = {
   convexUrl: "https://happy-otter-123.convex.cloud",
@@ -25,6 +26,14 @@ describe("content security policy", () => {
     expect(policy).toContain("frame-ancestors 'none'");
     expect(policy).toContain("object-src 'none'");
     expect(policy).not.toMatch(/\s{2,}/);
+  });
+
+  test("embeds may frame exactly the players they're built for", () => {
+    const frames = buildContentSecurityPolicy({ ...env, dev: false }).split("; ").find((d) => d.startsWith("frame-src"))!;
+    for (const o of EMBED_FRAME_ORIGINS) expect(frames).toContain(o);
+    for (const url of ["https://youtu.be/dQw4w9WgXcQ", "https://vimeo.com/76979871", "https://www.loom.com/share/0281766fa2d04bb788eaf19e65135184", "https://www.figma.com/design/AbCdEfGhIjKlMnOp/x", "https://www.google.com/maps/place/Oban"]) {
+      expect(EMBED_FRAME_ORIGINS).toContain(new URL(embedFor(url)!.src).origin);
+    }
   });
 
   test("nonces are unique and unguessable-length", () => {

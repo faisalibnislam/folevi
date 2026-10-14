@@ -8,7 +8,7 @@ import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, P
 import { fail } from "./lib/errors";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { SyncEngine } from "./lib/syncEngine";
-import { inScope, sameScopeRows, vScopeArg, type Scope, type ScopeArg } from "./lib/scope";
+import { inScope, sameScopeRows, scopeOfRow, vScopeArg, type Scope, type ScopeArg } from "./lib/scope";
 import { setTrashState } from "./documents";
 import { appUrl } from "./lib/notify";
 
@@ -339,12 +339,23 @@ async function legacyPersonalInbox(ctx: MutationCtx, owner: Doc<"profiles">["_id
 
 /** Moves a task (and nothing else) into another document: new block there, tombstone here. */
 export const moveToDocument = mutation({
-  args: { blockId: v.string(), documentId: v.string(), deviceId: v.optional(v.string()) },
+  /** `documentId` unset: the person's Inbox page in the task's scope. */
+  args: { blockId: v.string(), documentId: v.optional(v.string()), deviceId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { row, doc } = await taskBlock(ctx, profile, args.blockId);
-    const target = await getDocumentByPublicId(ctx, args.documentId);
+    let targetId = args.documentId;
+    if (!targetId) {
+      // Someone else's Personal page has no Inbox of yours: there it must be a chosen page.
+      const scope = scopeOfRow(doc);
+      if (scope.kind === "personal" && scope.profileId !== profile._id) fail("invalid_argument", "Choose a page to move it to.");
+      const workspace = doc.workspaceId ? await ctx.db.get(doc.workspaceId) : null;
+      const scopeArg: ScopeArg = workspace ? { kind: "workspace", workspaceId: workspace.publicId } : { kind: "personal" };
+      targetId = await ensureInbox(ctx, profile, scope, scopeArg, args.deviceId ?? "server");
+    }
+    if (targetId === doc.publicId) return { blockId: row.blockId };
+    const target = await getDocumentByPublicId(ctx, targetId);
     // Tasks never move between Personal and a workspace.
     if (!target || !sameScopeRows(target, doc)) fail("not_found", "Document not found.");
     const roots = (await liveBlocks(ctx, target._id)).filter((b) => b.parentId === null).sort((a, b) => (a.rank < b.rank ? -1 : 1));

@@ -3,7 +3,8 @@
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useDeferredValue, useMemo, useRef, useState, type ReactNode } from "react";
-import { CalendarDays, Check, ExternalLink, FileText, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { ArrowRightLeft, CalendarDays, Check, ExternalLink, FileText, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { DocumentPicker, type Target } from "@/components/app/QuickAddTask";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -35,11 +36,48 @@ function useTasks(view: View) {
   return useQuery(api.tasks.list, { scope, view, today });
 }
 
+/** Moves a task (its to-do) to the end of another page, or to the Inbox page. */
+function MoveTaskDialog({ task, onClose }: { task: TaskRow; onClose: () => void }) {
+  const { scope, deviceId } = useAppState();
+  const move = useMutation(api.tasks.moveToDocument);
+  const toast = useToast();
+  const [target, setTarget] = useState<Target>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <Dialog open onClose={onClose} title="Move task" description={`Move “${task.title || "Untitled task"}” to the end of another page.`} size="sm">
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          try {
+            await move({ blockId: task.blockId, documentId: target?.id, deviceId: deviceId ?? undefined });
+            toast.show(`Task moved to ${target ? target.title || "Untitled" : "Inbox"}`, { tone: "success" });
+            onClose();
+          } catch (err) {
+            toast.show(errorMessage(err), { tone: "error" });
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <DocumentPicker scope={scope} value={target} onChange={setTarget} label="Move to" exclude={task.documentId} />
+        <div className="mt-5 flex justify-end gap-2">
+          <Button onClick={onClose}>Cancel</Button>
+          <Button type="submit" variant="primary" aria-busy={busy || undefined}>
+            Move
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
 export function TaskItem({ task, today, onToggle, onEdit, draggable = true, action }: { task: TaskRow; today: string; onToggle: (t: TaskRow) => void; onEdit?: (t: TaskRow) => void; draggable?: boolean; action?: ReactNode }) {
   const overdue = task.status === "open" && task.dueDate !== null && task.dueDate < today;
   const closed = task.status !== "open";
   const { navigate } = useAppRouter();
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
+  const [moving, setMoving] = useState(false);
   const noteHref = `/d/${task.documentId}#block-${task.blockId}`;
   return (
     <li
@@ -62,12 +100,14 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
               ? { label: "Mark as done", icon: <Check size={14} />, onSelect: () => onToggle(task) }
               : { label: task.status === "canceled" ? "Reopen" : "Mark as not done", icon: <RotateCcw size={14} />, onSelect: () => onToggle(task) },
             ...(onEdit ? [{ label: "Edit task…", icon: <SlidersHorizontal size={14} />, onSelect: () => onEdit(task) }] : []),
+            { label: "Move to…", icon: <ArrowRightLeft size={14} />, onSelect: () => setMoving(true) },
             "separator",
             { label: "Open note", icon: <FileText size={14} />, onSelect: () => navigate(noteHref) },
             { label: "Open in new tab", icon: <ExternalLink size={14} />, onSelect: () => window.open(noteHref, "_blank", "noopener") },
           ]}
         />
       ) : null}
+      {moving ? <MoveTaskDialog task={task} onClose={() => setMoving(false)} /> : null}
       <button
         type="button"
         role="checkbox"

@@ -15,7 +15,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Select } from "@/components/ui/Select";
 
 type Priority = "none" | "low" | "medium" | "high";
-type Target = { id: string; title: string; icon: string | null } | null;
+export type Target = { id: string; title: string; icon: string | null } | null;
 
 /**
  * Quick Add Task (⇧⌘A). The task becomes a checklist block in the chosen document: the open page by
@@ -157,7 +157,7 @@ export function QuickAddForm({ onClose, currentDoc, onAdded }: { onClose: () => 
 }
 
 /** "Add to" field: the Inbox, or any page in the current context (Personal or a workspace) found by search. */
-function DocumentPicker({ scope, value, onChange }: { scope: WireScope; value: Target; onChange: (t: Target) => void }) {
+export function DocumentPicker({ scope, value, onChange, label = "Add to", exclude }: { scope: WireScope; value: Target; onChange: (t: Target) => void; label?: string; exclude?: string }) {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState(false);
@@ -169,7 +169,7 @@ function DocumentPicker({ scope, value, onChange }: { scope: WireScope; value: T
   }, [query]);
   const results = useQuery(api.search.documents, open && debounced ? { scope, query: debounced, limit: 8 } : "skip");
   const recent = useQuery(api.documents.recent, open && !debounced ? { scope, limit: 6 } : "skip");
-  const docs = ((debounced ? results : recent) ?? []).filter((d) => d.kind !== "template");
+  const docs = ((debounced ? results : recent) ?? []).filter((d) => d.kind !== "template" && d.id !== exclude);
   const options: Target[] = [null, ...docs.map((d) => ({ id: d.id, title: d.title, icon: d.icon }))];
   const choose = (t: Target) => {
     onChange(t);
@@ -197,7 +197,7 @@ function DocumentPicker({ scope, value, onChange }: { scope: WireScope; value: T
   return (
     <div className="mt-3 text-sm">
       <label htmlFor={`${listId}-input`} className="block text-muted">
-        Add to
+        {label}
       </label>
       <div className="mt-1 flex items-center gap-2">
         {value && !open ? (

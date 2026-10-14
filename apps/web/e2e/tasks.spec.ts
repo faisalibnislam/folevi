@@ -89,3 +89,26 @@ test("quick add reads a date written in the task", async ({ browser }) => {
   await dialog.getByRole("button", { name: "Add task" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Task added" }).last()).toBeVisible();
 });
+
+test("a task can be moved to another page from its menu", async ({ browser }) => {
+  const { page } = await newPerson(browser, "Task Mover");
+  await showFolders(page);
+  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
+  await page.getByRole("button", { name: "Add task" }).click();
+  const dialog = page.getByRole("dialog", { name: "Quick add task" });
+  await dialog.getByLabel("Task").fill("Book the venue");
+  await dialog.getByRole("button", { name: "Add task" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Task added" })).toBeVisible();
+  await page.getByRole("link", { name: /^All( \d+)?$/ }).click();
+  const row = page.getByRole("listitem").filter({ hasText: "Book the venue" });
+  await expect(row.getByRole("link")).toContainText("Inbox");
+
+  await row.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Move to…" }).click();
+  const move = page.getByRole("dialog", { name: "Move task" });
+  await move.getByLabel("Move to").fill("Atlas");
+  await move.getByRole("option", { name: /Project Atlas Brief/ }).click();
+  await move.getByRole("button", { name: "Move", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Task moved to Project Atlas Brief" })).toBeVisible();
+  await expect(row.getByRole("link")).toContainText("Project Atlas Brief");
+});

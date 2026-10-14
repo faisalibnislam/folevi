@@ -1072,7 +1072,7 @@ export const FEATURES: Feature[] = [
       { q: "Can I password-protect a shared link?", a: "Yes. A public link can require a password of at least 8 characters, and it can have an expiry date." },
       { q: "Can I stop sharing a public link?", a: "Yes. Revoke it from the Share menu and it stops working immediately." },
       { q: "Do guests cost anything?", a: "No. Guests are free on every plan." },
-      { q: "Can search engines find my shared pages?", a: "No. Public links aren’t indexed by search engines." },
+      { q: "Can search engines find my shared pages?", a: "Only if you say so. A public link is hidden from search engines unless you switch on “Let search engines find it” when you create it." },
     ],
     related: ["comments", "team-workspaces", "security-and-privacy"],
   },

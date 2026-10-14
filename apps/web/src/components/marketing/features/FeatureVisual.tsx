@@ -391,7 +391,7 @@ function SharePanel() {
           <p className="flex items-center gap-2 text-[13px] font-semibold text-(--color-heading)">
             <Globe size={14} /> Public link
           </p>
-          <p className="mt-1 text-[12px] leading-relaxed text-muted">Off by default. Anyone with the link can read this page (not its comments or nested pages). Links aren’t indexed by search engines and can be revoked instantly.</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-muted">Off by default. Anyone with the link can read this page (not its comments or nested pages). Search engines skip it unless you let them find it, and you can revoke it instantly.</p>
           <div className="mt-3 flex items-center gap-3 rounded-chip border border-(--color-line) px-3 py-2">
             <span className="min-w-0 flex-1">
               <span className="block truncate font-mono text-[11.5px] text-ink">…/s/k3Jd••••••••</span>

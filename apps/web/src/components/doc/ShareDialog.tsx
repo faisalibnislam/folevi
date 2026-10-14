@@ -10,6 +10,7 @@ import { Button, IconButton } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime } from "@/lib/format";
 import { Select } from "@/components/ui/Select";
+import { Switch } from "@/components/ui/Switch";
 import { useRadioGroup } from "@/lib/a11y/radioGroup";
 
 /** `personal`: the page is in someone's Personal, which has no members. Only the people added here (and its owner) can open it. */
@@ -24,7 +25,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
   const toast = useToast();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"viewer" | "commenter" | "editor">("viewer");
-  const [linkForm, setLinkForm] = useState({ expires: "", password: "" });
+  const [linkForm, setLinkForm] = useState({ expires: "", password: "", index: false });
   const [freshLink, setFreshLink] = useState<string | null>(null);
   const accessGroup = useRadioGroup();
   // Managers: access mode, public links, anyone's grants. Sharers (members who can edit): add people and
@@ -171,7 +172,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
               <h3 className="mb-1 flex items-center gap-2 font-semibold">
                 <Globe size={15} aria-hidden /> Public link
               </h3>
-              <p className="text-xs text-muted">Off by default. Anyone with the link can read this page (not its comments or nested pages). Links aren’t indexed by search engines and can be revoked instantly.</p>
+              <p className="text-xs text-muted">Off by default. Anyone with the link can read this page (not its comments or nested pages). Search engines skip it unless you let them find it, and you can revoke it instantly.</p>
               {!data.publicLinksAvailable ? <p className="mt-2 text-xs text-warning">Public links are temporarily turned off for Folevi.</p> : null}
               {freshLink ? (
                 <div className="mt-3 rounded-chip border border-success/40 bg-success-soft p-3">
@@ -191,7 +192,8 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                       <span className="block font-mono text-xs">…/s/{l.tokenHint}••••••••</span>
                       <span className="block text-xs text-muted">
                         {l.expired ? "Expired" : l.expiresAt ? `Expires ${formatDateTime(l.expiresAt)}` : "No expiry"}
-                        {l.hasPassword ? " · Password protected" : ""} · {l.viewCount} view{l.viewCount === 1 ? "" : "s"}
+                        {l.hasPassword ? " · Password protected" : ""}
+                        {l.allowIndexing ? " · Search engines can find it" : ""} · {l.viewCount} view{l.viewCount === 1 ? "" : "s"}
                       </span>
                     </span>
                     <Button size="sm" variant="quiet" className="text-danger" onClick={() => void run(revokeLink({ linkId: l.id }), "Link revoked")}>
@@ -214,9 +216,10 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                         documentId,
                         expiresAt: linkForm.expires ? new Date(linkForm.expires).getTime() : undefined,
                         password: linkForm.password || undefined,
+                        allowIndexing: linkForm.index && !linkForm.password,
                       });
                       setFreshLink(`${location.origin}/s/${r.token}`);
-                      setLinkForm({ expires: "", password: "" });
+                      setLinkForm({ expires: "", password: "", index: false });
                     } catch (err) {
                       toast.show(errorMessage(err), { tone: "error" });
                     }
@@ -233,6 +236,21 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                       Password
                     </label>
                     <input id="share-link-password" type="password" autoComplete="new-password" placeholder="None" value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="block h-9 w-full ui-input rounded-chip px-3 text-sm" />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-medium text-ink">Let search engines find it</span>
+                      <span id="share-link-index-hint" className="block text-xs text-muted">
+                        {linkForm.password ? "Not for a password-protected page." : "Google and others may list the page and show its title."}
+                      </span>
+                    </span>
+                    <Switch
+                      checked={linkForm.index && !linkForm.password}
+                      disabled={Boolean(linkForm.password)}
+                      label="Let search engines find it"
+                      describedBy="share-link-index-hint"
+                      onChange={(on) => setLinkForm({ ...linkForm, index: on })}
+                    />
                   </div>
                   <div className="flex justify-end">
                     <Button type="submit" variant="primary">

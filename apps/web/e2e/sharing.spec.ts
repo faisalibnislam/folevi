@@ -33,6 +33,15 @@ test("share a page with another person, comment, and publish a revocable public 
   await expect(share.page().getByRole("status").filter({ hasText: "Link revoked" })).toBeVisible();
   await anonPage.reload();
   await expect(anonPage.getByRole("heading", { name: "Page unavailable" })).toBeVisible();
+
+  // A link the owner lets search engines find carries its title and index robots.
+  await share.getByRole("switch", { name: "Let search engines find it" }).click();
+  await share.getByRole("button", { name: "Create link" }).click();
+  await expect(share.getByText("Search engines can find it")).toBeVisible();
+  await anonPage.goto(await share.getByLabel("Public link").inputValue());
+  await expect(anonPage.locator('meta[name="robots"]')).toHaveAttribute("content", /^index/);
+  await expect(anonPage).toHaveTitle(/Project Atlas Brief/);
+  await anon.close();
   await share.getByRole("button", { name: "Close" }).click();
 
   // Guest sees it under Shared with Me, can comment but not edit.

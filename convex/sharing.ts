@@ -577,7 +577,8 @@ export const createPublicLink = mutation({
       expiresAt: args.expiresAt,
       passwordHash,
       passwordSalt,
-      allowIndexing: args.allowIndexing ?? false,
+      // A password-protected page can't be read by a search engine, so it is never offered to one.
+      allowIndexing: !passwordHash && (args.allowIndexing ?? false),
       createdBy: profile._id,
       createdAt: Date.now(),
       viewCount: 0,

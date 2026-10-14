@@ -95,7 +95,7 @@ iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
 - Ownership transfer; the only owner can't leave without transferring or deleting the workspace;
   deleting a workspace takes effect after 7 days (the owner can cancel), and removing a member never
   touches their Personal or their plan.
-- Public links: off by default, optional expiry and password, `noindex`, revocable at once.
+- Public links: off by default, optional expiry and password, `noindex` unless the owner lets search engines find it (never for a password-protected link), revocable at once.
 
 ### Sync and offline
 - Every edit is written to a durable local queue first (IndexedDB, on the web and in Folevi for Mac) and

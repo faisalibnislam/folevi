@@ -11,7 +11,7 @@ const appHost = new URL(APP_URL).host;
 const MARKETING_ONLY = /^\/($|mac$|mac\/|features|template-gallery|security|pricing|changelog|privacy|terms|docs|status|support|compare|blog)/;
 // Paths that only exist on the product host (app + admin + auth + share pages).
 const APP_ONLY =
-  /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|daily|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|admin|signin|signup|connect|verify-email|forgot-password|reset-password|two-factor|signout|s\/|api\/|offline|dev\/)/;
+  /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|daily|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|admin|signin|signup|connect|verify-email|forgot-password|reset-password|two-factor|signout|s\/|api\/|offline|dev\/|oauth\/|mcp(?:\/|$)|\.well-known\/oauth-)/;
 
 function isAppPath(pathname: string): boolean {
   return APP_ONLY.test(pathname);

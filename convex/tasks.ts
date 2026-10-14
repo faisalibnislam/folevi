@@ -76,37 +76,45 @@ export const list = query({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const { scope } = await resolveScope(ctx, profile, args.scope);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(args.today)) fail("invalid_argument", "Invalid date.");
-    // In your own Personal unassigned tasks are yours (a Personal scope is always the caller's own).
-    const personal = scope.kind === "personal";
-    let rows: Doc<"tasks">[];
-    if (args.view === "completed") {
-      // Closed tasks: done and canceled, most recently closed first.
-      const closed: Doc<"tasks">[] = [];
-      for (const status of ["done", "canceled"] as const) closed.push(...(await tasksByCompleted(ctx, scope, status).take(200)));
-      rows = closed.sort((a, b) => (b.completedAt ?? b.updatedAt) - (a.completedAt ?? a.updatedAt)).slice(0, 200);
-    } else if (args.view === "mine" && !personal) {
-      rows = (
-        await ctx.db
-          .query("tasks")
-          .withIndex("by_assignee_status", (q) => q.eq("assigneeId", profile._id).eq("status", "open"))
-          .take(500)
-      ).filter((t) => inScope(t, scope));
-    } else {
-      rows = await tasksByDue(ctx, scope, "open").take(1000);
-      rows = rows.filter((t) => taskViews({ status: t.status, dueDate: t.dueDate ?? null, assigneeId: t.assigneeId ?? null }, args.today, profile._id, { personal }).includes(args.view));
-    }
-    rows = rows.filter((t) => !t.documentInTrash);
-    const presented = await present(ctx, profile, rows);
-    if (args.view !== "completed") {
-      presented.sort(
-        (a, b) =>
-          (a.dueDate ?? "9999") < (b.dueDate ?? "9999") ? -1 : (a.dueDate ?? "9999") > (b.dueDate ?? "9999") ? 1 : (a.dueTime ?? "99") < (b.dueTime ?? "99") ? -1 : b.updatedAt - a.updatedAt,
-      );
-    }
-    return presented;
+    return await listTasks(ctx, profile, scope, args.view, args.today);
   },
 });
+
+export type TaskView = "inbox" | "today" | "upcoming" | "all" | "completed" | "mine";
+
+/** A task view of a scope for a person in it (also used by the MCP server, convex/mcp.ts). */
+export async function listTasks(ctx: QueryCtx, profile: Doc<"profiles">, scope: Scope, view: TaskView, today: string) {
+  const args = { view, today };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(args.today)) fail("invalid_argument", "Invalid date.");
+  // In your own Personal unassigned tasks are yours (a Personal scope is always the caller's own).
+  const personal = scope.kind === "personal";
+  let rows: Doc<"tasks">[];
+  if (args.view === "completed") {
+    // Closed tasks: done and canceled, most recently closed first.
+    const closed: Doc<"tasks">[] = [];
+    for (const status of ["done", "canceled"] as const) closed.push(...(await tasksByCompleted(ctx, scope, status).take(200)));
+    rows = closed.sort((a, b) => (b.completedAt ?? b.updatedAt) - (a.completedAt ?? a.updatedAt)).slice(0, 200);
+  } else if (args.view === "mine" && !personal) {
+    rows = (
+      await ctx.db
+        .query("tasks")
+        .withIndex("by_assignee_status", (q) => q.eq("assigneeId", profile._id).eq("status", "open"))
+        .take(500)
+    ).filter((t) => inScope(t, scope));
+  } else {
+    rows = await tasksByDue(ctx, scope, "open").take(1000);
+    rows = rows.filter((t) => taskViews({ status: t.status, dueDate: t.dueDate ?? null, assigneeId: t.assigneeId ?? null }, args.today, profile._id, { personal }).includes(args.view));
+  }
+  rows = rows.filter((t) => !t.documentInTrash);
+  const presented = await present(ctx, profile, rows);
+  if (args.view !== "completed") {
+    presented.sort(
+      (a, b) =>
+        (a.dueDate ?? "9999") < (b.dueDate ?? "9999") ? -1 : (a.dueDate ?? "9999") > (b.dueDate ?? "9999") ? 1 : (a.dueTime ?? "99") < (b.dueTime ?? "99") ? -1 : b.updatedAt - a.updatedAt,
+    );
+  }
+  return presented;
+}
 
 export const counts = query({
   args: { scope: vScopeArg, today: v.string() },
@@ -146,7 +154,7 @@ export const range = query({
   },
 });
 
-async function taskBlock(ctx: MutationCtx, profile: Doc<"profiles">, blockId: string) {
+export async function taskBlock(ctx: MutationCtx, profile: Doc<"profiles">, blockId: string) {
   const row = await ctx.db
     .query("blocks")
     .withIndex("by_block_id", (q) => q.eq("blockId", blockId))

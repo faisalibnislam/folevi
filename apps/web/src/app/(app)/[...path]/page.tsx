@@ -12,12 +12,15 @@ export const metadata: Metadata = { title: { absolute: "Folevi" }, robots: { ind
  * shell; routing inside it is client-side so the app keeps working offline. The HTML carries no
  * private data. Everything is loaded through the authenticated Convex connection.
  */
-export default async function ProductPage({ params }: { params: Promise<{ path: string[] }> }) {
+export default async function ProductPage({ params, searchParams }: { params: Promise<{ path: string[] }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { path } = await params;
   const head = path[0] ?? "";
   if (!APP_ROUTE_HEADS.has(head)) notFound();
   if (!(await hasSessionCookie())) {
-    const returnTo = `/${path.map(encodeURIComponent).join("/")}`;
+    // The query comes along: a connected app's sign-in (/oauth/consent?…) needs every parameter back.
+    const query = new URLSearchParams();
+    for (const [k, v] of Object.entries(await searchParams)) for (const one of Array.isArray(v) ? v : v === undefined ? [] : [v]) query.append(k, one);
+    const returnTo = `/${path.map(encodeURIComponent).join("/")}${query.size ? `?${query}` : ""}`;
     redirect(`/signin?returnTo=${encodeURIComponent(returnTo)}`);
   }
   return <ProductApp />;

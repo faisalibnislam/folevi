@@ -30,17 +30,19 @@ export type Route =
   | { name: "notes" }
   | { name: "tags" }
   | { name: "tag"; id: string }
-  | { name: "settings"; section: "account" | "ai" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop" }
+  | { name: "settings"; section: "account" | "ai" | "billing" | "security" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop" }
   | { name: "help" }
   | { name: "onboarding" }
   /** The Mac app's Quick Add window (apps/desktop). */
   | { name: "quick-add" }
+  /** Connecting an app (MCP) to Folevi: the OAuth consent screen. */
+  | { name: "oauth-consent" }
   | { name: "invite"; token: string }
   | { name: "share-invite"; token: string }
   | { name: "not_found" };
 
 const TASK_VIEWS = ["inbox", "today", "upcoming", "all", "completed", "mine"] as const;
-const SETTINGS = ["account", "ai", "billing", "security", "devices", "appearance", "notifications", "workspace", "members", "workspace-guests", "workspace-billing", "workspace-data", "sync", "data", "desktop"] as const;
+const SETTINGS = ["account", "ai", "billing", "security", "devices", "connected-apps", "appearance", "notifications", "workspace", "members", "workspace-guests", "workspace-billing", "workspace-data", "sync", "data", "desktop"] as const;
 
 export function parseRoute(pathname: string): Route {
   const parts = pathname.split("/").filter(Boolean).map(decodeURIComponent);
@@ -81,6 +83,8 @@ export function parseRoute(pathname: string): Route {
       return a ? { name: "tag", id: a } : { name: "tags" };
     case "settings":
       return { name: "settings", section: (SETTINGS as readonly string[]).includes(a ?? "") ? (a as (typeof SETTINGS)[number]) : "account" };
+    case "oauth":
+      return a === "consent" ? { name: "oauth-consent" } : { name: "not_found" };
     case "invite":
       return a ? { name: "invite", token: a } : { name: "not_found" };
     case "share-invite":

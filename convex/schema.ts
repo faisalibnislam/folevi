@@ -107,6 +107,8 @@ export default defineSchema({
     deletionScheduledFor: v.optional(v.number()),
   })
     .index("by_token", ["tokenIdentifier"])
+    // Connected apps (MCP) arrive with a Better Auth user id, not a session: their profile is found by it.
+    .index("by_auth_subject", ["authSubject"])
     .index("by_email", ["email"])
     .index("by_status", ["status"])
     .index("by_platform_role", ["platformRole"])
@@ -422,7 +424,7 @@ export default defineSchema({
     documentId: v.id("documents"),
     ...scoped,
     publicId: v.string(),
-    reason: v.union(v.literal("idle"), v.literal("close"), v.literal("before_restore"), v.literal("manual"), v.literal("import"), v.literal("ai_run")),
+    reason: v.union(v.literal("idle"), v.literal("close"), v.literal("before_restore"), v.literal("manual"), v.literal("import"), v.literal("ai_run"), v.literal("mcp")),
     title: v.string(),
     content: v.optional(v.string()),
     chunkCount: v.optional(v.number()),
@@ -1290,6 +1292,51 @@ export default defineSchema({
     .index("by_public_id", ["publicId"])
     .index("by_workspace", ["workspaceId"])
     .index("by_owner", ["ownerProfileId"]),
+
+  /**
+   * Connected apps (MCP, convex/mcp.ts): what a person let one OAuth client reach, chosen on the consent
+   * screen. One row per person and client; revoking deletes it and the client's tokens.
+   */
+  mcpGrants: defineTable({
+    profileId: v.id("profiles"),
+    /** The Better Auth OAuth client (oauthClient.clientId). */
+    clientId: v.string(),
+    /** What the app calls itself, and where it sends people back (both from its own registration). */
+    clientName: v.string(),
+    redirectHost: v.string(),
+    /** Places it may use: your Personal, and these workspaces. */
+    personal: v.boolean(),
+    workspaceIds: v.array(v.id("workspaces")),
+    /** Pages other people shared with you (outside these places), read only. */
+    includeShared: v.boolean(),
+    /** Only create notes and add to them, never change what's already written. */
+    createOnly: v.boolean(),
+    /** OAuth scopes accepted at consent (notes:read, notes:write, tasks:read, tasks:write). */
+    scopes: v.array(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_profile", ["profileId"])
+    .index("by_profile_client", ["profileId", "clientId"]),
+
+  /** What connected apps did, shown under Settings → Connected apps. Arguments are hashed, never stored. */
+  mcpEvents: defineTable({
+    grantId: v.id("mcpGrants"),
+    profileId: v.id("profiles"),
+    tool: v.string(),
+    /** Public ids of the notes or tasks it touched. */
+    targets: v.array(v.string()),
+    outcome: v.union(v.literal("ok"), v.literal("error"), v.literal("denied")),
+    /** A write's idempotency key (hash of the grant, the request id and the arguments), for retries. */
+    requestKey: v.optional(v.string()),
+    /** A write's result, so a retried request gets the same answer instead of a second change. */
+    result: v.optional(v.string()),
+    at: v.number(),
+  })
+    .index("by_grant", ["grantId", "at"])
+    .index("by_profile", ["profileId", "at"])
+    .index("by_request", ["requestKey"]),
 
   notifications: defineTable({
     profileId: v.id("profiles"),

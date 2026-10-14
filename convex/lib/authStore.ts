@@ -1,5 +1,5 @@
-// Read/revoke helpers over the Better Auth component's tables (sessions, users). All access to the
-// component's data from Folevi functions goes through here.
+// Read/revoke helpers over the Better Auth component's tables (sessions, users, connected apps' OAuth
+// clients and tokens). All access to the component's data from Folevi functions goes through here.
 import { components } from "../_generated/api";
 import type { ActionCtx, MutationCtx, QueryCtx } from "../_generated/server";
 
@@ -75,9 +75,68 @@ export async function deleteUserSessions(ctx: WriteCtx, userId: string, keepSess
   return ended;
 }
 
-/** Removes the Better Auth user and everything attached to it (sessions, credentials, 2FA). */
+// ---------------------------------------------------------------- connected apps (OAuth, MCP)
+
+export interface OAuthAccessToken {
+  _id: string;
+  token: string;
+  clientId: string;
+  userId?: string | null;
+  sessionId?: string | null;
+  expiresAt?: number | null;
+  scopes: string[];
+}
+
+export interface OAuthClient {
+  _id: string;
+  clientId: string;
+  name?: string | null;
+  uri?: string | null;
+  icon?: string | null;
+  redirectUris: string[];
+  disabled?: boolean | null;
+}
+
+/** The access token stored under this hash (the provider stores base64url SHA-256 of the token), if any. */
+export async function findOAuthAccessToken(ctx: ReadCtx, tokenHash: string): Promise<OAuthAccessToken | null> {
+  const doc = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "oauthAccessToken", where: [{ field: "token", value: tokenHash }] });
+  return (doc as OAuthAccessToken | null) ?? null;
+}
+
+export async function findOAuthClient(ctx: ReadCtx, clientId: string): Promise<OAuthClient | null> {
+  const doc = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "oauthClient", where: [{ field: "clientId", value: clientId }] });
+  return (doc as OAuthClient | null) ?? null;
+}
+
+/**
+ * Ends a connected app's access for one person: their access and refresh tokens for the client and their
+ * consent to it, so the next request fails and the app has to ask again.
+ */
+export async function revokeOAuthClient(ctx: WriteCtx, userId: string, clientId: string): Promise<void> {
+  for (const model of ["oauthAccessToken", "oauthRefreshToken"] as const) {
+    let cursor: string | null = null;
+    for (let i = 0; i < 20; i++) {
+      const page = (await ctx.runQuery(components.betterAuth.adapter.findMany, {
+        model,
+        where: [{ field: "userId", value: userId }],
+        paginationOpts: { numItems: 100, cursor },
+      })) as { page: { _id: string; clientId: string }[]; isDone: boolean; continueCursor: string };
+      for (const row of page.page) {
+        if (row.clientId === clientId) await ctx.runMutation(components.betterAuth.adapter.deleteOne, { input: { model, where: [{ field: "_id", value: row._id }] } });
+      }
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+  }
+  await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
+    input: { model: "oauthConsent", where: [{ field: "clientId", value: clientId }, { field: "userId", value: userId }] },
+    paginationOpts: { numItems: 100, cursor: null },
+  });
+}
+
+/** Removes the Better Auth user and everything attached to it (sessions, credentials, 2FA, connected apps). */
 export async function deleteAuthUser(ctx: WriteCtx, userId: string): Promise<void> {
-  for (const model of ["session", "account", "twoFactor"] as const) {
+  for (const model of ["session", "account", "twoFactor", "oauthAccessToken", "oauthRefreshToken", "oauthConsent"] as const) {
     let cursor: string | null = null;
     for (let i = 0; i < 20; i++) {
       const res = (await ctx.runMutation(components.betterAuth.adapter.deleteMany, {

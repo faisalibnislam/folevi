@@ -12,6 +12,7 @@ import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { bearer } from "better-auth/plugins/bearer";
+import { oauthProvider } from "@better-auth/oauth-provider";
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
@@ -19,6 +20,7 @@ import authSchema from "./betterAuth/schema";
 import { CLAIM_EMAIL_VERIFIED, CLAIM_MFA } from "./lib/claims";
 import { CLIENT_IP_HEADER } from "./lib/clientIp";
 import { nativeAuth } from "./lib/nativeAuth";
+import { ACCESS_TOKEN_PREFIX, mcpResourceUrl, OAUTH_SCOPES, REFRESH_TOKEN_PREFIX } from "./lib/mcp/config";
 
 export const authComponent = createClient<DataModel, typeof authSchema>(components.betterAuth, {
   local: { schema: authSchema },
@@ -53,6 +55,9 @@ function rateLimitRules() {
     "/change-password": rule(60 * 60, 5),
     "/native/authorize": rule(60, 10),
     "/native/token": rule(60, 10),
+    // Connected apps (MCP): registering, and trading codes and refresh tokens.
+    "/oauth2/register": rule(60 * 60, 20),
+    "/oauth2/token": rule(60, 30),
   };
 }
 
@@ -146,6 +151,23 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
         totpOptions: { digits: 6, period: 30 },
         backupCodeOptions: { amount: 10, length: 10 },
         trustDeviceMaxAge: 60 * 60 * 24 * 30,
+      }),
+      // Connected apps (Claude, ChatGPT, Cursor, …) reaching notes through the MCP server: OAuth 2.1 with
+      // PKCE, apps registering themselves (RFC 7591), opaque access tokens checked by convex/mcp/http.ts.
+      // Sign-in and consent both happen on /oauth/consent, where the person also picks which places the app
+      // may use (convex/mcp/grants.ts).
+      oauthProvider({
+        loginPage: "/oauth/consent",
+        consentPage: "/oauth/consent",
+        scopes: [...OAUTH_SCOPES],
+        allowDynamicClientRegistration: true,
+        allowUnauthenticatedClientRegistration: true,
+        disableJwtPlugin: true,
+        validAudiences: [mcpResourceUrl()],
+        accessTokenExpiresIn: 60 * 60,
+        refreshTokenExpiresIn: 60 * 60 * 24 * 30,
+        prefix: { opaqueAccessToken: ACCESS_TOKEN_PREFIX, refreshToken: REFRESH_TOKEN_PREFIX },
+        silenceWarnings: { oauthAuthServerConfig: true },
       }),
       // The native apps' sign-in (lib/nativeAuth.ts) and their `Authorization: Bearer <session token>`.
       nativeAuth(),

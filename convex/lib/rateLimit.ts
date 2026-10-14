@@ -45,6 +45,11 @@ export const DEFAULT_RATE_RULES = {
   supportSubmitEmail: { limit: 5, windowMs: 60 * 60_000 },
   /** Inbound support email per sender address (beyond it, messages are dropped, not queued). */
   supportInbound: { limit: 20, windowMs: 60 * 60_000 },
+  /** Connected apps (MCP), per connection: tool calls that read, searches (each runs a full-text query), writes. */
+  mcpRead: { limit: 300, windowMs: 60_000 },
+  mcpSearch: { limit: 120, windowMs: 60_000 },
+  mcpWrite: { limit: 30, windowMs: 60_000 },
+  mcpWriteDaily: { limit: 500, windowMs: 24 * 60 * 60_000 },
 } satisfies Record<string, RateRule>;
 
 export type RateRuleName = keyof typeof DEFAULT_RATE_RULES;

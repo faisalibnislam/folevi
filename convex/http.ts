@@ -1,5 +1,6 @@
 import { httpRouter } from "convex/server";
 import { polarWebhook } from "./billing";
+import { mcpHttp } from "./mcpServer";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import {
@@ -235,6 +236,12 @@ http.route({
     return new Response("ok", { status: 200 });
   }),
 });
+
+/**
+ * Folevi's MCP server (convex/mcpServer.ts): connected apps reach notes and tasks here, with an OAuth
+ * access token. Apps use https://app.folevi.com/mcp, which the web app forwards to this route.
+ */
+for (const method of ["POST", "GET", "DELETE", "OPTIONS"] as const) http.route({ path: "/mcp", method, handler: mcpHttp });
 
 http.route({
   path: "/health",

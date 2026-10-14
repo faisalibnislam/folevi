@@ -3,6 +3,7 @@
 import { createAuthClient } from "better-auth/react";
 import { twoFactorClient } from "better-auth/client/plugins";
 import { convexClient } from "@convex-dev/better-auth/client/plugins";
+import { oauthProviderClient } from "@better-auth/oauth-provider/client";
 
 /**
  * Browser client for Folevi's built-in accounts (email + password, verified email, authenticator-app
@@ -10,7 +11,8 @@ import { convexClient } from "@convex-dev/better-auth/client/plugins";
  * HTTP-only first-party cookie and never in script-readable storage.
  */
 export const authClient = createAuthClient({
-  plugins: [convexClient(), twoFactorClient()],
+  // oauthProviderClient: on the connected-app consent page (/oauth/consent), sends its signed query along.
+  plugins: [convexClient(), twoFactorClient(), oauthProviderClient()],
 });
 
 export type AuthErrorLike = { code?: string; message?: string; status?: number } | null | undefined;

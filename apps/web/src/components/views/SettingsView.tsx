@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plus, RefreshCw, ShieldCheck, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
+import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, ShieldCheck, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { ViewChrome } from "@/components/app/Shell";
@@ -21,10 +21,11 @@ import { WorkspaceBillingSection } from "./settings/WorkspaceBillingSection";
 import { SyncSection } from "./settings/SyncSection";
 import { DataSection } from "./settings/DataSection";
 import { DesktopSection } from "./settings/DesktopSection";
+import { ConnectedAppsSection } from "./settings/ConnectedAppsSection";
 import { Card } from "./settings/Card";
 import { desktop } from "@/lib/desktop";
 
-type Section = "account" | "ai" | "billing" | "security" | "devices" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop";
+type Section = "account" | "ai" | "billing" | "security" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop";
 type Item = { id: Section; label: string; icon: LucideIcon };
 /** Things about you (your account and your Personal), the same whichever context is open. */
 const YOU: Item[] = [
@@ -33,6 +34,7 @@ const YOU: Item[] = [
   { id: "billing", label: "Plan & billing", icon: CreditCard },
   { id: "security", label: "Security", icon: ShieldCheck },
   { id: "devices", label: "Devices", icon: MonitorSmartphone },
+  { id: "connected-apps", label: "Connected apps", icon: Plug },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "sync", label: "Offline & sync", icon: RefreshCw },
@@ -110,6 +112,7 @@ export function SettingsView({ section }: { section: Section }) {
           {section === "billing" ? <BillingSection /> : null}
           {section === "security" ? <SecuritySection /> : null}
           {section === "devices" ? <DevicesSection /> : null}
+          {section === "connected-apps" ? <ConnectedAppsSection /> : null}
           {section === "appearance" ? <AppearanceSection /> : null}
           {section === "notifications" ? <NotificationsSection /> : null}
           {noWorkspace ? <NoWorkspaceCard /> : null}

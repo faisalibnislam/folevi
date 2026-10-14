@@ -228,7 +228,7 @@ function PasskeysCard() {
       {supported === false ? (
         <p className="mt-3 text-sm text-muted">
           {desktop()
-            ? "The Mac app can't use passkeys yet. Add one in your browser and sign in there with it."
+            ? `The ${desktop()?.platform === "windows" ? "Windows" : "Mac"} app can't use passkeys yet. Add one in your browser and sign in there with it.`
             : "This browser can't create passkeys. Add one from a browser like Safari, Chrome, Edge or Firefox."}
         </p>
       ) : (

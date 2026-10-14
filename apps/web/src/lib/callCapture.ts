@@ -2,15 +2,16 @@
 // one recording. The page asks for the screen with sound (getDisplayMedia); the Mac app answers with the
 // whole screen and its system audio ("loopback"), and the recorder drops the picture at once, keeping only
 // the sound. macOS asks for Screen & System Audio Recording permission the first time. In a browser, or in
-// a Mac app from before call capture (no `callCapture` on its bridge), only the microphone is offered.
-import type { DesktopBridge } from "./desktop";
+// a Mac app from before call capture (no `callCapture` on its bridge), only the microphone is offered. The
+// Windows app does the same with everything the PC plays (Windows asks no permission for it).
+import type { DesktopBridge, DesktopPlatform } from "./desktop";
 
 /** Where a recording's sound comes from: the microphone, or a call (the microphone and this Mac's sound). */
 export type RecordingSource = "mic" | "call";
 
-/** Whether calls can be recorded here: only in a Mac app that says it can. */
+/** Whether calls can be recorded here: only in a Mac or Windows app that says it can. */
 export function canRecordCalls(bridge: Pick<DesktopBridge, "platform" | "callCapture"> | null): boolean {
-  return Boolean(bridge && bridge.platform === "mac" && bridge.callCapture === true);
+  return Boolean(bridge && (bridge.platform === "mac" || bridge.platform === "windows") && bridge.callCapture === true);
 }
 
 export const CALL_PERMISSION =
@@ -20,9 +21,11 @@ const CALL_FAILED = "The call’s sound couldn’t be recorded. Try again, or re
 /**
  * What went wrong getting this Mac's sound, as a sentence, and whether System Settings would fix it. A
  * refusal (or a capture that can't start, which is how macOS answers without the permission) points to
- * the permission; so does a capture that came back without any sound.
+ * the permission; so does a capture that came back without any sound. Windows has no such permission, so
+ * there it's always the plain message.
  */
-export function callProblem(error: unknown): { message: string; settings: boolean } {
+export function callProblem(error: unknown, platform: DesktopPlatform = "mac"): { message: string; settings: boolean } {
+  if (platform === "windows") return { message: CALL_FAILED, settings: false };
   const name = error instanceof DOMException ? error.name : error instanceof Error ? error.name : "";
   if (["NotAllowedError", "SecurityError", "NotReadableError", "AbortError", "NoSystemAudio"].includes(name)) return { message: CALL_PERMISSION, settings: true };
   return { message: CALL_FAILED, settings: false };

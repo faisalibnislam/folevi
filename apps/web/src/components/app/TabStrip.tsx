@@ -206,7 +206,8 @@ export function TabStrip() {
   const tabOff = "bg-[var(--glass-hover)] text-muted hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
 
   return (
-    <div className="ui-drag ui-glass ui-glass-sidebar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-panel px-1">
+    // (In the Windows app it ends before the window's buttons, at the top right: ui-clear-window-controls.)
+    <div className="ui-drag ui-clear-window-controls ui-glass ui-glass-sidebar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-panel px-1">
       {/* While the sidebar is hidden, its menu waits here; otherwise it sits in the sidebar. */}
       {!sidebarOpen ? (
         <>

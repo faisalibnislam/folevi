@@ -204,6 +204,37 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+  desktop-windows:
+    name: Folevi for Windows (Electron shell) typecheck, tests & unsigned installers
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+      # electron-builder downloads the Windows Electron it packages, so the local binary isn't needed.
+      - run: pnpm install --ignore-workspace --frozen-lockfile
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+      - run: pnpm typecheck
+      - run: pnpm test
+      # x64 and arm64 NSIS installers, unsigned (no certificate, no secrets).
+      - run: pnpm package:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: folevi-windows-installers
+          path: apps/desktop/release-win/*-setup.exe
+          retention-days: 7
+
   clipper:
     name: Folevi Web Clipper (Chrome and Edge extension) typecheck, tests & package
     runs-on: ubuntu-latest

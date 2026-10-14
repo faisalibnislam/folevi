@@ -1,5 +1,7 @@
 // Folevi for Mac: app.folevi.com in a window of its own, plus what a browser tab can't do: Quick Add from any
-// app (⌥Space), a menu bar icon, opening at login, Mac notifications and the Dock badge.
+// app (⌥Space), a menu bar icon, opening at login, Mac notifications and the Dock badge. The same shell is
+// Folevi for Windows (Ctrl+Alt+Space, a system tray icon, Windows notifications, an unread dot on the
+// taskbar button); src/platform.ts says what differs.
 import {
   app,
   BrowserWindow,
@@ -18,6 +20,7 @@ import {
   type IpcMainEvent,
   type IpcMainInvokeEvent,
   type MenuItemConstructorOptions,
+  type NativeImage,
   type Session,
   type WebContents,
 } from "electron";
@@ -25,6 +28,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { appUrl, APP_URL, dragFileName, isAppUrl, isExternalSafe, parseDeepLink, SCHEME, systemSettingsUrl } from "./urls";
 import { installUpdate, startUpdates, type UpdateState } from "./updates";
+import { badgeDescription, badgeDot, linkFromArgv, LOGIN_ARG, menuAccelerator, platformOf, titleBarOverlay, WINDOWS_APP_ID } from "./platform";
 import { cleanSettings, loadSettings, saveSettings, type DesktopSettings } from "./settings";
 import { restoreWindow, saveWindow } from "./windowState";
 
@@ -32,6 +36,8 @@ const PARTITION = "persist:folevi";
 const settingsFile = () => join(app.getPath("userData"), "settings.json");
 const windowFile = () => join(app.getPath("userData"), "window.json");
 const asset = (name: string) => join(__dirname, "..", "assets", name);
+const platform = platformOf();
+const windows = platform === "windows";
 
 let settings: DesktopSettings;
 let mainWindow: BrowserWindow | null = null;
@@ -43,17 +49,21 @@ let recent: { id: string; title: string }[] = [];
 let status = "";
 let update: UpdateState = { state: "idle" };
 let checkForUpdates: (() => void) | null = null;
-/** A folevi:// link that arrived before the app was ready. */
-let pendingLink: string | null = null;
+/** A folevi:// link that arrived before the app was ready (on Windows, the link that started it). */
+let pendingLink: string | null = linkFromArgv(process.argv);
+/** The unread count, kept for main windows opened later (Windows shows it on each one's taskbar button). */
+let unread = 0;
 
 // Test runs keep their own sign-in and settings, apart from the installed app's.
 if (process.env.FOLEVI_USER_DATA) app.setPath("userData", process.env.FOLEVI_USER_DATA);
+// Windows matches toasts and the taskbar button to the Start menu shortcut the installer made by this id.
+if (windows) app.setAppUserModelId(WINDOWS_APP_ID);
 
 // ---------------------------------------------------------------- one Folevi at a time
 
 if (!app.requestSingleInstanceLock()) app.quit();
 app.on("second-instance", (_e, argv) => {
-  const link = argv.find((a) => a.startsWith(`${SCHEME}:`));
+  const link = linkFromArgv(argv);
   if (link) openLink(link);
   else showMain();
 });
@@ -61,6 +71,8 @@ app.on("second-instance", (_e, argv) => {
 // ---------------------------------------------------------------- folevi:// links
 
 // macOS hands links over with open-url, which can come before the app is ready (a link opened Folevi).
+// Windows passes them as arguments instead: to a running Folevi through second-instance, above, and to
+// one starting up in process.argv (pendingLink).
 app.on("will-finish-launching", () => {
   app.on("open-url", (event, url) => {
     event.preventDefault();
@@ -163,13 +175,21 @@ function createMainWindow(path = "/documents"): BrowserWindow {
     title: "Folevi",
     // Seamless: no title bar; the window buttons sit in the app's own top bar, which the page makes draggable.
     titleBarStyle: "hidden",
-    trafficLightPosition: { x: 20, y: 22 },
+    // On Windows, minimize, maximize and close are drawn over the page's top right corner (the page keeps it
+    // clear); on a Mac the traffic lights go where the page keeps room for them (desktop:window-buttons).
+    ...(windows ? { titleBarOverlay: titleBarOverlay(nativeTheme.shouldUseDarkColors) } : { trafficLightPosition: { x: 20, y: 22 } }),
     backgroundColor: background(),
     webPreferences: webPreferences(),
   });
   if (first) {
     mainWindow = win;
     if (saved.maximized) win.maximize();
+  }
+  if (windows) {
+    // No menu bar on Windows (its shortcuts still work: buildMenu), and the unread dot on this window too
+    // (once it has a taskbar button).
+    win.setMenuBarVisibility(false);
+    win.once("show", () => setTaskbarBadge(win));
   }
   guardNavigation(win.webContents);
   win.once("ready-to-show", () => win.show());
@@ -179,12 +199,14 @@ function createMainWindow(path = "/documents"): BrowserWindow {
   };
   win.on("resize", remember);
   win.on("move", remember);
-  // Closing the first window hides it (Quick Add and the menu bar keep working); ⌘Q quits.
+  // Closing the first window hides it (Quick Add and the menu bar keep working); ⌘Q quits. On Windows
+  // without the tray icon nothing would show Folevi is still running, so there closing it quits.
   win.on("close", (event) => {
     if (win === mainWindow && !quitting) {
       event.preventDefault();
       remember();
-      win.hide();
+      if (windows && !tray) app.quit();
+      else win.hide();
     }
   });
   win.on("closed", () => {
@@ -234,7 +256,8 @@ function createQuickAdd() {
     backgroundColor: background(),
     webPreferences: webPreferences(),
   });
-  quickAdd.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  // (Spaces are a Mac thing; on Windows it shows on the current virtual desktop.)
+  if (!windows) quickAdd.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   guardNavigation(quickAdd.webContents);
   // Clicking elsewhere puts it away, like Spotlight.
   quickAdd.on("blur", () => quickAdd?.hide());
@@ -280,10 +303,13 @@ function updateTray() {
     return;
   }
   if (!tray) {
-    const icon = nativeImage.createFromPath(asset("trayTemplate.png"));
-    icon.setTemplateImage(true);
+    // Mac: the F alone, tinted by the system. Windows: the round mark in colour (16 to 48 px in one .ico).
+    const icon = nativeImage.createFromPath(asset(windows ? "tray.ico" : "trayTemplate.png"));
+    if (!windows) icon.setTemplateImage(true);
     tray = new Tray(icon);
     tray.setToolTip("Folevi");
+    // Windows: a click on the tray icon opens Folevi, a right click shows the menu (the system does that).
+    if (windows) tray.on("click", () => showMain());
   }
   const items: MenuItemConstructorOptions[] = [
     { label: "Quick Add Task…", accelerator: settings.quickAddShortcut || undefined, registerAccelerator: false, click: toggleQuickAdd },
@@ -308,6 +334,10 @@ function updateTray() {
 // ---------------------------------------------------------------- the app menu
 
 function buildMenu() {
+  if (windows) {
+    Menu.setApplicationMenu(Menu.buildFromTemplate(windowsMenu()));
+    return;
+  }
   const template: MenuItemConstructorOptions[] = [
     {
       label: "Folevi",
@@ -369,6 +399,59 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+/**
+ * Windows: the same commands with Windows' keys. The menu bar stays hidden (Windows apps like this one have
+ * none), but its shortcuts work: Ctrl+N, Ctrl+Shift+N, Ctrl+, and the View menu's.
+ */
+function windowsMenu(): MenuItemConstructorOptions[] {
+  const key = (accelerator: string) => menuAccelerator(accelerator, platform);
+  return [
+    {
+      label: "File",
+      submenu: [
+        { label: "New Note", accelerator: key("Command+N"), click: () => commandMain({ type: "new-note" }) },
+        { label: "Quick Add Task…", accelerator: settings.quickAddShortcut || undefined, registerAccelerator: false, click: toggleQuickAdd },
+        { label: "New Window", accelerator: key("Command+Shift+N"), click: () => createMainWindow() },
+        { type: "separator" },
+        { label: "Settings…", accelerator: key("Command+,"), click: () => showMain("/settings/desktop") },
+        { type: "separator" },
+        { role: "close", label: "Close Window" },
+        { role: "quit", label: "Quit Folevi" },
+      ],
+    },
+    { role: "editMenu" },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools", accelerator: key("Command+Shift+I") },
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    },
+    {
+      label: "Go",
+      submenu: [
+        { label: "Back", accelerator: "Alt+Left", click: (_i, win) => (win as BrowserWindow | undefined)?.webContents.navigationHistory.goBack() },
+        { label: "Forward", accelerator: "Alt+Right", click: (_i, win) => (win as BrowserWindow | undefined)?.webContents.navigationHistory.goForward() },
+        { type: "separator" },
+        { label: "Notes", click: () => showMain("/documents") },
+        { label: "Tasks", click: () => showMain("/tasks/today") },
+        { label: "Calendar", click: () => showMain("/calendar") },
+      ],
+    },
+    {
+      label: "Help",
+      submenu: [{ label: "Folevi Help", click: () => showMain("/help") }, { type: "separator" }, { role: "about", label: "About Folevi" }],
+    },
+  ];
+}
+
 function updateMenuItems(): MenuItemConstructorOptions[] {
   if (!checkForUpdates) return [];
   if (update.state === "ready") return [{ label: `Restart to Update${update.version ? ` to ${update.version}` : ""}`, click: installUpdate }];
@@ -379,8 +462,11 @@ function updateMenuItems(): MenuItemConstructorOptions[] {
 // ---------------------------------------------------------------- settings
 
 function applyLoginItem() {
-  // Only the installed app registers itself (a development run would register the Electron binary).
-  if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: settings.openAtLogin });
+  // Only the installed app registers itself (a development run would register the Electron binary). Windows
+  // can't tell a launch at sign-in from any other, so its entry passes LOGIN_ARG.
+  if (!app.isPackaged) return;
+  if (windows) app.setLoginItemSettings({ openAtLogin: settings.openAtLogin, args: [LOGIN_ARG] });
+  else app.setLoginItemSettings({ openAtLogin: settings.openAtLogin });
 }
 
 function applySettings(next: DesktopSettings) {
@@ -403,12 +489,33 @@ function applySettings(next: DesktopSettings) {
 // ---------------------------------------------------------------- the page's calls
 
 const fromFolevi = (e: IpcMainEvent | IpcMainInvokeEvent) => isAppUrl(e.senderFrame?.url ?? "");
+
+/**
+ * Windows has no badge with a number: a red dot over the taskbar button while anything is unread (the count
+ * is in its description, for screen readers). Every main window gets it, or just `only`.
+ */
+function setTaskbarBadge(only?: BrowserWindow) {
+  let dot: NativeImage | null = null;
+  if (unread > 0) {
+    dot = nativeImage.createFromBitmap(badgeDot(16), { width: 16, height: 16 });
+    dot.addRepresentation({ scaleFactor: 2, width: 32, height: 32, buffer: badgeDot(32) });
+  }
+  for (const win of only ? [only] : BrowserWindow.getAllWindows()) {
+    if (win !== quickAdd && !win.isDestroyed()) win.setOverlayIcon(dot, dot ? badgeDescription(unread) : "");
+  }
+}
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");
 
 function listen() {
   ipcMain.on("desktop:badge", (e, count: unknown) => {
     if (!fromFolevi(e)) return;
     const n = typeof count === "number" && Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+    if (windows) {
+      if (n === unread) return;
+      unread = n;
+      setTaskbarBadge();
+      return;
+    }
     app.dock?.setBadge(n === 0 ? "" : n > 99 ? "99+" : String(n));
   });
   ipcMain.on("desktop:notify", (e, input: unknown) => {
@@ -444,7 +551,8 @@ function listen() {
   });
   ipcMain.on("desktop:window-buttons", (e, spot: unknown) => {
     const win = BrowserWindow.fromWebContents(e.sender);
-    if (!fromFolevi(e) || !win || win === quickAdd || !spot || typeof spot !== "object") return;
+    // (Windows draws its buttons at the top right itself: the page keeps that corner clear instead.)
+    if (windows || !fromFolevi(e) || !win || win === quickAdd || !spot || typeof spot !== "object") return;
     const { x, y, height } = spot as Record<string, unknown>;
     if (![x, y, height].every((n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n < 400)) return;
     // The buttons are 14 points tall: centred on the page's top bar.
@@ -465,7 +573,7 @@ function listen() {
     quickAdd.setContentSize(w, h);
   });
   // A note dragged out of the app (the Export dialog's file): written to a temporary file the drag carries
-  // to Finder or another app.
+  // to Finder (File Explorer) or another app.
   ipcMain.on("desktop:drag-file", (e, input: unknown) => {
     if (!fromFolevi(e) || !input || typeof input !== "object") return;
     const { name, text: body } = input as Record<string, unknown>;
@@ -477,7 +585,7 @@ function listen() {
       writeFileSync(file, body, "utf8");
       void app
         .getFileIcon(file, { size: "normal" })
-        .catch(() => nativeImage.createFromPath(asset("trayTemplate@2x.png")))
+        .catch(() => nativeImage.createFromPath(asset(windows ? "icon-48.png" : "trayTemplate@2x.png")))
         .then((icon) => e.sender.startDrag({ file, icon }))
         .catch(() => undefined);
     } catch {
@@ -490,7 +598,7 @@ function listen() {
   // Recording a call without the permission: the page offers to open the right System Settings pane.
   ipcMain.on("desktop:system-settings", (e, pane: unknown) => {
     const url = systemSettingsUrl(pane);
-    if (fromFolevi(e) && url) void shell.openExternal(url);
+    if (!windows && fromFolevi(e) && url) void shell.openExternal(url);
   });
   ipcMain.on("desktop:open", (e, path: unknown) => {
     if (!fromFolevi(e)) return;
@@ -501,13 +609,27 @@ function listen() {
 
 // ---------------------------------------------------------------- start
 
-app.setAboutPanelOptions({ applicationName: "Folevi", applicationVersion: app.getVersion(), copyright: "© 2026 Folevi", website: "https://folevi.com" });
+app.setAboutPanelOptions({
+  applicationName: "Folevi",
+  applicationVersion: app.getVersion(),
+  copyright: "© 2026 Folevi",
+  website: "https://folevi.com",
+  // Windows' About box shows this (48 px reads best there); macOS uses the app's own icon.
+  ...(windows ? { iconPath: asset("icon-48.png") } : {}),
+});
 
 app.whenReady().then(() => {
   // Earlier drags' files: nothing needs them once the app has restarted.
   rmSync(join(app.getPath("temp"), "Folevi drag"), { recursive: true, force: true });
   // The installed app answers folevi:// links (a development run would register the Electron binary).
   if (app.isPackaged) app.setAsDefaultProtocolClient(SCHEME);
+  // Windows: New Note and Quick Add in the taskbar button's jump list (they arrive as folevi:// links).
+  if (windows && app.isPackaged) {
+    app.setUserTasks([
+      { program: process.execPath, arguments: `${SCHEME}://new`, iconPath: process.execPath, iconIndex: 0, title: "New Note", description: "Start a new note" },
+      { program: process.execPath, arguments: `${SCHEME}://quick-add`, iconPath: process.execPath, iconIndex: 0, title: "Quick Add Task", description: "Add a task from anywhere" },
+    ]);
+  }
   settings = loadSettings(settingsFile());
   setUpSession();
   listen();
@@ -516,7 +638,7 @@ app.whenReady().then(() => {
   applyLoginItem();
   updateTray();
   // Opened at login (or by a link): quietly, ready for Quick Add. Otherwise the main window.
-  const atLogin = app.getLoginItemSettings().wasOpenedAtLogin;
+  const atLogin = app.getLoginItemSettings().wasOpenedAtLogin || process.argv.includes(LOGIN_ARG);
   if (!atLogin && !pendingLink) createMainWindow();
   createQuickAdd();
   if (pendingLink) {
@@ -529,7 +651,10 @@ app.whenReady().then(() => {
   });
   buildMenu();
   nativeTheme.on("updated", () => {
-    for (const win of BrowserWindow.getAllWindows()) win.setBackgroundColor(background());
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.setBackgroundColor(background());
+      if (windows && win !== quickAdd) win.setTitleBarOverlay(titleBarOverlay(nativeTheme.shouldUseDarkColors));
+    }
   });
   console.log(`Folevi is showing ${APP_URL.origin}`);
 });

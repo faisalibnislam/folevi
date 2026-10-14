@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, Pause, Play, PhoneCall, Square, X } from "lucide-react";
 import { errorMessage, useToast } from "@/components/ui/Toast";
-import { desktop } from "@/lib/desktop";
+import { desktop, deviceName } from "@/lib/desktop";
 import { callProblem, canRecordCalls, mixAudio, type RecordingSource } from "@/lib/callCapture";
 
 /*
@@ -11,7 +11,8 @@ import { callProblem, canRecordCalls, mixAudio, type RecordingSource } from "@/l
  * recording to the editor, which stores it like any attachment (saved on the device first, uploaded when
  * online). Nothing leaves the browser until Save. Cancel, or closing the panel, throws the audio away.
  * In the Mac app it first asks what to record: the microphone, or a call (the microphone mixed with this
- * Mac's sound, lib/callCapture.ts), with a reminder to tell the people on the call.
+ * Mac's sound, lib/callCapture.ts), with a reminder to tell the people on the call. The Windows app the same,
+ * with the PC's sound.
  */
 
 /** Longest recording, so a forgotten recorder can't fill the storage quota. */
@@ -89,8 +90,10 @@ export function AudioRecorder({
   onSave: (file: File, durationSeconds: number) => Promise<void> | void;
   onClose: () => void;
 }) {
-  // Calls can be recorded in a Mac app that says so (older installed apps can't).
+  // Calls can be recorded in a Mac app that says so (older installed apps can't), and in the Windows app.
   const [calls] = useState(() => canRecordCalls(desktop()) && Boolean(navigator.mediaDevices?.getDisplayMedia));
+  // "Mac" or "PC" in the choice's words.
+  const [windows] = useState(() => desktop()?.platform === "windows");
   const [phase, setPhase] = useState<Phase>(() =>
     canRecordAudio()
       ? calls
@@ -175,7 +178,7 @@ export function AudioRecorder({
       } catch (error) {
         system?.getTracks().forEach((t) => t.stop());
         if (!stale()) {
-          const problem = callProblem(error);
+          const problem = callProblem(error, desktop()?.platform);
           setPhase({ kind: "error", message: problem.message, settings: problem.settings });
         }
         return;
@@ -402,16 +405,16 @@ export function AudioRecorder({
             <button
               type="button"
               onClick={() => void begin("call")}
-              aria-label="Call (mic and Mac sound)"
+              aria-label={windows ? "Call (mic and PC sound)" : "Call (mic and Mac sound)"}
               className="ui-btn ui-btn-secondary h-auto flex-col gap-0.5 whitespace-normal rounded-control px-3 py-2.5 text-center text-[13px]"
             >
               <PhoneCall size={16} aria-hidden className="mb-0.5" />
               <span>Call</span>
-              <span className="text-[11.5px] font-normal text-muted">Your mic and this Mac’s sound</span>
+              <span className="text-[11.5px] font-normal text-muted">Your mic and {windows ? "this PC’s" : "this Mac’s"} sound</span>
             </button>
           </div>
           <p className="text-xs text-muted">
-            A call recording has your microphone and everything this Mac plays. Let everyone on the call know you’re recording.
+            A call recording has your microphone and everything {deviceName(windows ? "windows" : "mac")} plays. Let everyone on the call know you’re recording.
           </p>
         </div>
       ) : phase.kind === "error" ? (

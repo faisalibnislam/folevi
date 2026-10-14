@@ -3,7 +3,7 @@
   "productName": "Folevi",
   "version": "1.3.0",
   "private": true,
-  "description": "Folevi for Mac: the web app in a window of its own, with Quick Add, a menu bar icon and notifications.",
+  "description": "Folevi for Mac and Windows: the web app in a window of its own, with Quick Add, a menu bar (or system tray) icon and notifications.",
   "main": "dist/main.js",
   "type": "commonjs",
   "scripts": {
@@ -13,6 +13,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "package": "pnpm build && electron-builder --mac dir --arm64",
+    "package:win": "pnpm build && electron-builder --win --x64 --arm64 --config electron-builder.win.yml --publish never",
     "install-app": "node scripts/install-app.mjs",
     "bump": "node scripts/bump-version.mjs",
     "release": "pnpm bump && pnpm package && pnpm install-app",

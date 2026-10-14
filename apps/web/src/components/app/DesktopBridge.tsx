@@ -8,7 +8,7 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { useEngineStatus } from "@/lib/hooks/useEngine";
-import { desktop } from "@/lib/desktop";
+import { desktop, deviceName, windowControlsWidth, type DesktopPlatform } from "@/lib/desktop";
 import { useCreateDocument } from "./useCreateDocument";
 
 const STATUS: Record<string, string> = {
@@ -19,6 +19,12 @@ const STATUS: Record<string, string> = {
   conflict: "A change needs your review",
   error: "Some changes couldn't be saved",
 };
+
+/** The save state as the menu bar (or Windows' tray) menu says it. */
+function statusText(status: string, platform: DesktopPlatform): string {
+  const text = STATUS[status] ?? "";
+  return platform === "windows" ? text.replace("this Mac", deviceName(platform)) : text;
+}
 
 export function DesktopBridge() {
   return desktop() ? <Bridge /> : null;
@@ -57,11 +63,12 @@ function Bridge() {
     if (recent) bridge.setRecent(recent.map((d) => ({ id: d.id, title: d.title })));
   }, [bridge, recent]);
   useEffect(() => {
-    bridge.setStatus(STATUS[status] ?? "");
+    bridge.setStatus(statusText(status, bridge.platform));
   }, [bridge, status]);
 
   // The window buttons sit in the space the top bar keeps for them, wherever that is (sidebar shown or hidden).
   useEffect(() => {
+    if (bridge.platform !== "mac") return;
     let frame = 0;
     let last = "";
     const place = () => {
@@ -88,6 +95,24 @@ function Bridge() {
     };
   }, [bridge]);
 
+  // Windows draws its own buttons at the top right: the tab strip ends before them (globals.css), as wide as
+  // Windows says they are (they're wider with larger text or scaling, and change with it).
+  useEffect(() => {
+    if (bridge.platform !== "windows") return;
+    const overlay = (navigator as Navigator & { windowControlsOverlay?: WindowControlsOverlayLike }).windowControlsOverlay;
+    const measure = () => {
+      const width = windowControlsWidth(overlay?.visible ? overlay.getTitlebarAreaRect() : null, window.innerWidth);
+      document.documentElement.style.setProperty("--ui-window-controls", `${width}px`);
+    };
+    measure();
+    overlay?.addEventListener("geometrychange", measure);
+    window.addEventListener("resize", measure);
+    return () => {
+      overlay?.removeEventListener("geometrychange", measure);
+      window.removeEventListener("resize", measure);
+    };
+  }, [bridge]);
+
   useEffect(
     () =>
       bridge.onCommand((command) => {
@@ -97,4 +122,10 @@ function Bridge() {
     [bridge, navigate, createDocument],
   );
   return null;
+}
+
+/** The Window Controls Overlay API (Chromium; not in every TypeScript DOM library yet). */
+interface WindowControlsOverlayLike extends EventTarget {
+  visible: boolean;
+  getTitlebarAreaRect(): DOMRect;
 }

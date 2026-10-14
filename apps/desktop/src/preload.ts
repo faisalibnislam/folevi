@@ -5,14 +5,21 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 
 type Command = { type: "navigate"; path: string } | { type: "new-note" } | { type: "quick-add-shown" };
 
+// The same preload runs in Folevi for Windows. (A sandboxed preload can't load the shell's other files, so
+// this is platform.ts's platformOf written out again.)
+const platform: "mac" | "windows" = process.platform === "win32" ? "windows" : "mac";
+
 const bridge = {
-  platform: "mac" as const,
-  /** getDisplayMedia answers with this Mac's sound (main.ts), so the recorder can record both sides of a call. */
+  platform,
+  /**
+   * getDisplayMedia answers with this Mac's sound (main.ts), so the recorder can record both sides of a call.
+   * On Windows the same "loopback" capture gets everything the PC plays, with no permission to ask for.
+   */
   callCapture: true,
-  /** Whether macOS lets Folevi record the screen and its sound: "granted", "denied"… */
+  /** Whether macOS lets Folevi record the screen and its sound: "granted", "denied"… (always "granted" on Windows) */
   screenAccess: () => ipcRenderer.invoke("desktop:screen-access"),
-  /** Opens System Settings at a privacy pane (only Screen & System Audio Recording, for recording calls). */
-  openSystemSettings: (pane: "screen-recording") => ipcRenderer.send("desktop:system-settings", pane),
+  /** Opens System Settings at a privacy pane (only Screen & System Audio Recording, for recording calls). Mac only. */
+  ...(platform === "mac" ? { openSystemSettings: (pane: "screen-recording") => ipcRenderer.send("desktop:system-settings", pane) } : {}),
   /** The number on the Dock icon (unread notifications); 0 clears it. */
   setBadge: (count: number) => ipcRenderer.send("desktop:badge", count),
   /** A Mac notification; clicking it brings Folevi forward at `path`. */
@@ -46,7 +53,8 @@ const bridge = {
 
 contextBridge.exposeInMainWorld("foleviDesktop", bridge);
 
-// The page knows from its first paint that it's in the Mac app (room for the window buttons, a draggable top).
-const mark = () => document.documentElement?.setAttribute("data-desktop", "mac");
+// The page knows from its first paint that it's in the Mac app (room for the window buttons, a draggable top),
+// or in the Windows app ("windows": the top right corner kept clear for Windows' buttons).
+const mark = () => document.documentElement?.setAttribute("data-desktop", platform);
 mark();
 if (!document.documentElement) document.addEventListener("DOMContentLoaded", mark, { once: true });

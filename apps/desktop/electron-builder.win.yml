@@ -1,0 +1,61 @@
+# Folevi for Windows: the same shell as the Mac app (src/platform.ts says what differs), as an NSIS
+# installer for 64-bit Intel/AMD (x64) and ARM (arm64) PCs. `pnpm package:win` builds both on Windows, on
+# a Mac or in CI (.github/workflows/ci.yml). docs/DESKTOP.md has the details.
+#   Not code signed yet: Windows SmartScreen warns about the installer ("Windows protected your PC" > More
+#   info > Run anyway) until it's signed with a code signing certificate. Then set CSC_LINK and
+#   CSC_KEY_PASSWORD (or win.azureSignOptions for Azure Trusted Signing) and fill in publisherName.
+#   No auto-update yet (src/updates.ts): a new version installs over the old one, keeping sign-in and settings.
+appId: com.folevi.app
+productName: Folevi
+copyright: Copyright © 2026 Folevi
+directories:
+  output: release-win
+  buildResources: build
+files:
+  - dist/**
+  - "!dist/**/*.test.js"
+  - assets/**
+  - "!assets/trayTemplate*.png"
+  - package.json
+  - "!**/node_modules/**"
+npmRebuild: false
+electronLanguages:
+  - en
+# folevi://d/<id> links open notes in the app; the installer registers the scheme for this user.
+protocols:
+  - name: Folevi
+    schemes:
+      - folevi
+artifactName: Folevi-${version}-${arch}-setup.${ext}
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+        - arm64
+  # 16 to 256 px (scripts/windows-icons.mjs).
+  icon: build/icon.ico
+  legalTrademarks: Folevi
+  # Nothing is signed while there's no certificate (electron-builder skips signing without CSC_LINK; the
+  # executable still gets Folevi's icon and version details).
+  signtoolOptions:
+    # A placeholder: the name on the certificate, once there is one.
+    publisherName: Folevi
+nsis:
+  # A short wizard (where to install, for this user or everyone), not a one-click install: an unsigned
+  # installer that asks nothing would be harder to trust.
+  oneClick: false
+  # For this user by default (no administrator prompt), into %LOCALAPPDATA%\Programs\Folevi.
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Folevi
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  uninstallDisplayName: Folevi
+  # Sign-in and settings stay in %APPDATA%\Folevi when the app is removed (reinstalling picks them up).
+  deleteAppDataOnUninstall: false
+  # One installer for both architectures would be twice the download: each gets its own.
+  buildUniversalInstaller: false

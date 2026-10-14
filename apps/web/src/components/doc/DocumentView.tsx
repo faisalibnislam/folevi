@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   ChevronRight,
   Copy,
+  CopyPlus,
   Download,
   FileText,
   Folder,
@@ -71,6 +72,7 @@ import { VersionHistory } from "./VersionHistory";
 import { LiveCarets } from "./LiveCarets";
 import { AwayBanner, awayMarks } from "./AwayBanner";
 import { MoveNoteDialog } from "./MoveNoteDialog";
+import { CopyToDialog, useCanCopyElsewhere } from "@/components/views/CopyToDialog";
 import { ExportDialog } from "./ExportDialog";
 import { FindBar } from "./FindBar";
 import { useNoteActions } from "@/components/views/noteActions";
@@ -171,6 +173,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [copyOpen, setCopyOpen] = useState(false);
+  const canCopy = useCanCopyElsewhere();
   const [exportOpen, setExportOpen] = useState(false);
   // The find & replace bar: open with or without the replace row; `key` bumps on every ⌘F to refocus it.
   const [findBar, setFindBar] = useState<{ replace: boolean; key: number } | null>(null);
@@ -654,6 +658,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
     },
     onDelete: () => setDeleteOpen(true),
     onMove: () => setMoveOpen(true),
+    // A copy in Personal or a workspace (your own places; a page shared with you can be copied into them too).
+    onCopyTo: meta && !meta.inTrash && (canCopy || !meta.isMember) ? () => setCopyOpen(true) : undefined,
     onFind: editor ? () => openFind(!readOnly) : undefined,
     onExport: () => setExportOpen(true),
     canMove: canFile || canNest,
@@ -1070,6 +1076,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
           onPickFolder={(folder) => void notes.moveTo([documentId], folder)}
         />
       ) : null}
+      {copyOpen && meta ? <CopyToDialog open onClose={() => setCopyOpen(false)} documentIds={[documentId]} noteTitle={summary?.title ?? ""} from={meta.isMember ? documentScope(meta.document) : null} /> : null}
       <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} title={summary?.title ?? ""} blocks={() => engine?.documentBlocks(documentId) ?? []} />
     </ViewChrome>
     </NotePaletteProvider>
@@ -1669,6 +1676,7 @@ function useDocumentActions({
   onRelated,
   onDelete,
   onMove,
+  onCopyTo,
   onFind,
   onExport,
   canMove,
@@ -1695,6 +1703,8 @@ function useDocumentActions({
   onRelated?: () => void;
   onDelete: () => void;
   onMove: () => void;
+  /** Opens Copy to (absent when there's nowhere else to copy it). */
+  onCopyTo?: () => void;
   /** Opens the find & replace bar (absent until the editor is ready). */
   onFind?: () => void;
   /** Opens the Export dialog (Markdown, web page, PDF). */
@@ -1731,6 +1741,7 @@ function useDocumentActions({
         { label: "Export…", icon: <Download size={14} />, onSelect: onExport },
         "separator" as const,
         { label: "Duplicate", icon: <Copy size={14} />, onSelect: () => void duplicate({ documentId }).then((d) => navigate(`/d/${d.id}`), (e) => toast.show(errorMessage(e), { tone: "error" })) },
+        ...(onCopyTo ? [{ label: "Copy to…", icon: <CopyPlus size={14} />, onSelect: onCopyTo }] : []),
         ...(kind !== "template" ? [{ label: "Save as template", icon: <LayoutTemplate size={14} />, onSelect: () => void act(duplicate({ documentId, asTemplate: true }), "Saved to Templates") }] : []),
         archived
           ? { label: "Unarchive", icon: <ArchiveRestore size={14} />, onSelect: () => void act(setArchived({ documentId, archived: false }), "Moved out of Archive") }

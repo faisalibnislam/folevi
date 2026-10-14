@@ -310,7 +310,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "Your Personal and a Folevi workspace compared: roles, per-member plans, separate storage and AI credits, and what happens when someone leaves.",
     legacyAnchor: "workspaces",
     published: "2026-09-25",
-    updated: "2026-09-30",
+    updated: "2026-10-14",
     body: () => (
       <>
         <p>
@@ -325,6 +325,9 @@ export const DOC_ARTICLES: DocArticle[] = [
           </li>
           <li>
             <strong>Separate plans.</strong> A personal plan never upgrades a workspace, and a workspace plan never changes your Personal. On Free, your Personal and the free workspaces you own share {sizeLabel(STORAGE_BYTES.free)}, and in a free workspace each member uses their own personal AI credits. On paid plans, storage and AI credits are per person. If a space goes over its limit, nothing is deleted. New uploads wait until there’s room.
+          </li>
+          <li>
+            <strong>Copying between places.</strong> Notes don’t move between your Personal and a workspace, but you can copy them: choose <strong>Copy to</strong> from a note’s ••• menu (or with several notes selected), pick Personal or a workspace where you can add pages, and a folder there if you like. The copy is a new note in that place, with its sub-pages unless you turn that off. Links between the copied pages lead to the copies, images and files are copied and count toward the storage there, and a collection becomes a table of what it showed. Comments and version history stay with the original.
           </li>
           <li>
             <strong>Leaving and deleting.</strong> Content in a workspace belongs to the workspace and stays when someone leaves. The owner can’t leave until they transfer ownership or delete the workspace; a deleted workspace is removed after 7 days, and the owner can cancel until then.

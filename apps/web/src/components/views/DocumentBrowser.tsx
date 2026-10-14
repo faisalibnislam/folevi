@@ -3,7 +3,7 @@
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { api } from "@/lib/convex/api";
@@ -27,6 +27,7 @@ import { FolderBadge } from "./FolderBadge";
 import { pendingByDocument, type PendingDocument } from "@/lib/hooks/usePendingDocs";
 import { Select } from "@/components/ui/Select";
 import { MoveToFolderDialog } from "./MoveToFolderDialog";
+import { CopyToDialog, useCanCopyElsewhere } from "./CopyToDialog";
 import { SelectionBar, type SelectionAction } from "./SelectionBar";
 import { useCardSelection } from "./useCardSelection";
 import { useNoteActions } from "./noteActions";
@@ -147,7 +148,9 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [ctx, setCtx] = useState<{ doc: Summary; at: { x: number; y: number } } | null>(null);
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const [bulkCopy, setBulkCopy] = useState<{ ids: string[]; title?: string } | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const canCopy = useCanCopyElsewhere();
   const reorder = useMutation(api.documents.reorder);
 
   // Keep a last-known copy for offline reloads. Results change with every edit anywhere in the list (and
@@ -217,6 +220,19 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         ]
       : [
           { label: "Move to folder…", icon: <FolderInput size={15} />, onClick: () => setBulkMoveOpen(true) },
+          ...(canCopy
+            ? [
+                {
+                  label: "Copy to…",
+                  icon: <CopyPlus size={15} />,
+                  onClick: () => {
+                    // The dialog keeps the notes it was opened for; the selection is done with.
+                    setBulkCopy({ ids: selection.selectedIds, title: selectedDocs[0]?.title });
+                    selection.clear();
+                  },
+                },
+              ]
+            : []),
           selectedDocs.every((d) => d.starred)
             ? { label: "Unstar", icon: <StarOff size={15} />, onClick: () => bulk((ids) => notes.star(ids, false)) }
             : { label: "Star", icon: <Star size={15} />, onClick: () => bulk((ids) => notes.star(ids, true)) },
@@ -543,6 +559,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         currentFolderId={sharedFolder}
         onPick={(folder) => bulk((ids) => notes.moveTo(ids, folder))}
       />
+      <CopyToDialog open={bulkCopy !== null} onClose={() => setBulkCopy(null)} documentIds={bulkCopy?.ids ?? []} noteTitle={bulkCopy?.title} />
       <Dialog
         open={bulkDeleteOpen}
         onClose={() => setBulkDeleteOpen(false)}
@@ -657,7 +674,9 @@ function useDocMenu({ doc, view, arrange, select, recent }: DocMenuProps): { ite
   const toast = useToast();
   const { navigate } = useAppRouter();
   const [moveOpen, setMoveOpen] = useState(false);
+  const [copyOpen, setCopyOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const canCopy = useCanCopyElsewhere();
   const ids = [doc.id];
 
   const items: (MenuItem | "separator")[] =
@@ -677,6 +696,7 @@ function useDocMenu({ doc, view, arrange, select, recent }: DocMenuProps): { ite
             : { label: "Star", icon: <Star size={14} />, onSelect: () => void notes.star(ids, true) },
           { label: "Duplicate", icon: <Copy size={14} />, onSelect: () => void duplicate({ documentId: doc.id }).then(() => toast.show("Duplicated"), (e) => toast.show(errorMessage(e), { tone: "error" })) },
           ...(doc.kind !== "template" ? [{ label: "Move to folder…", icon: <FolderInput size={14} />, onSelect: () => setMoveOpen(true) }] : []),
+          ...(canCopy ? [{ label: "Copy to…", icon: <CopyPlus size={14} />, onSelect: () => setCopyOpen(true) }] : []),
           doc.archivedAt
             ? { label: "Unarchive", icon: <ArchiveRestore size={14} />, onSelect: () => void notes.archive(ids, false) }
             : { label: "Archive", icon: <Archive size={14} />, onSelect: () => void notes.archive(ids, true) },
@@ -692,10 +712,11 @@ function useDocMenu({ doc, view, arrange, select, recent }: DocMenuProps): { ite
   const dialogs = (
     <>
       <MoveToFolderDialog open={moveOpen} onClose={() => setMoveOpen(false)} noteTitle={doc.title} currentFolderId={doc.folderId} onPick={(folder) => void notes.moveTo(ids, folder)} />
+      {copyOpen ? <CopyToDialog open onClose={() => setCopyOpen(false)} documentIds={ids} noteTitle={doc.title} /> : null}
       <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={doc.id} title={doc.title} />
     </>
   );
-  return { items, dialogs, dialogOpen: moveOpen || deleteOpen };
+  return { items, dialogs, dialogOpen: moveOpen || copyOpen || deleteOpen };
 }
 
 export function DocMenu(props: DocMenuProps) {

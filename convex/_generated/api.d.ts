@@ -37,6 +37,7 @@ import type * as calendarFeeds from "../calendarFeeds.js";
 import type * as changes from "../changes.js";
 import type * as collections from "../collections.js";
 import type * as comments from "../comments.js";
+import type * as copies from "../copies.js";
 import type * as crons from "../crons.js";
 import type * as digest from "../digest.js";
 import type * as documents from "../documents.js";
@@ -200,6 +201,7 @@ declare const fullApi: ApiFromModules<{
   changes: typeof changes;
   collections: typeof collections;
   comments: typeof comments;
+  copies: typeof copies;
   crons: typeof crons;
   digest: typeof digest;
   documents: typeof documents;

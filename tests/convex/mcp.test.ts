@@ -1,8 +1,8 @@
 // Connected apps (MCP): the protocol rules, sign-in through an OAuth access token, grants and places,
 // and each tool through POST /mcp, as an app would call it.
 import { createHash } from "node:crypto";
-import { describe, expect, test } from "vitest";
-import { api, components } from "../../convex/_generated/api";
+import { describe, expect, test, vi } from "vitest";
+import { api, components, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { decodeHeaderValue, parseMessage } from "../../convex/lib/mcp/protocol";
 import { checkArgs, TOOL_BY_NAME } from "../../convex/lib/mcp/tools";
@@ -259,5 +259,29 @@ describe("POST /mcp", () => {
     const done = await call(t, bearer, "complete_task", { taskId: added.data!.taskId as string });
     expect(done.isError).toBe(true);
     expect(done.text).toMatch(/only add new notes and tasks/);
+  });
+});
+
+describe("account deletion", () => {
+  test("a deleted account's connected apps and their log go with it", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = setup();
+      const a = await person(t, "mcp-leaving@example.com");
+      await connect(t, a);
+      const profileId = a.profileId as Id<"profiles">;
+      const now = Date.now();
+      await t.run(async (ctx) => {
+        const grant = (await ctx.db.query("mcpGrants").withIndex("by_profile", (q) => q.eq("profileId", profileId)).first())!;
+        await ctx.db.insert("mcpEvents", { grantId: grant._id, profileId, tool: "search_notes", targets: [], outcome: "ok", at: now });
+        await ctx.db.patch(profileId, { status: "pending_deletion" });
+        await ctx.db.insert("deletionJobs", { kind: "account", targetId: a.profileId, requestedBy: profileId, requestedByAdmin: false, reason: "test", scheduledFor: now - 1, status: "scheduled", progress: 0, createdAt: now });
+      });
+      for (let i = 0; i < 20; i++) await t.mutation(internal.maintenance.runDeletionJobs, {});
+      const left = await t.run(async (ctx) => ({ grants: await ctx.db.query("mcpGrants").collect(), events: await ctx.db.query("mcpEvents").collect() }));
+      expect(left).toEqual({ grants: [], events: [] });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

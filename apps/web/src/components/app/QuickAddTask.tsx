@@ -2,8 +2,9 @@
 
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useId, useState, type KeyboardEvent } from "react";
-import { Inbox, X, FileText } from "lucide-react";
+import { useEffect, useId, useMemo, useState, type KeyboardEvent } from "react";
+import { Inbox, X, FileText, CalendarDays } from "lucide-react";
+import { naturalDateLabel, parseNaturalDate } from "@/lib/nlDate";
 import type { WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -44,6 +45,14 @@ export function QuickAddForm({ onClose, currentDoc, onAdded }: { onClose: () => 
   const [target, setTarget] = useState<Target | undefined>(undefined); // undefined = not chosen yet
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A date written in the task ("call Sam tomorrow 3pm") sets the due date, unless one was picked by hand
+  // or the person said to keep those words as text.
+  const [keptAsText, setKeptAsText] = useState<string | null>(null);
+  const parsed = useMemo(() => {
+    if (due) return null;
+    const p = parseNaturalDate(title);
+    return p && p.text !== keptAsText && p.rest ? p : null;
+  }, [title, due, keptAsText]);
   const currentInfo = currentDoc ? current?.[currentDoc] : undefined;
   // Default: the open page (if it's a normal page you can see), otherwise the Inbox.
   const effective: Target = target !== undefined ? target : currentDoc && currentInfo && !currentInfo.inTrash ? { id: currentDoc, title: currentInfo.title, icon: currentInfo.icon } : null;
@@ -62,10 +71,10 @@ export function QuickAddForm({ onClose, currentDoc, onAdded }: { onClose: () => 
         try {
           const r = await quickAdd({
             scope,
-            title,
+            title: parsed ? parsed.rest : title,
             today,
-            dueDate: due || undefined,
-            dueTime: due && time ? time : undefined,
+            dueDate: due || parsed?.date || undefined,
+            dueTime: due ? time || undefined : parsed?.time,
             priority: priority === "none" ? undefined : priority,
             documentId: effective?.id,
             deviceId: deviceId ?? undefined,
@@ -95,8 +104,21 @@ export function QuickAddForm({ onClose, currentDoc, onAdded }: { onClose: () => 
         placeholder="What needs doing?"
         maxLength={500}
         aria-invalid={error ? true : undefined}
+        aria-describedby={parsed ? "qa-when" : undefined}
         className="h-11 w-full ui-input rounded-chip px-3 text-[15px] outline-none"
       />
+      {parsed ? (
+        <p id="qa-when" className="mt-2 flex items-center gap-2 text-[13px] text-muted">
+          <span className="ui-chip bg-accent-soft text-accent-soft-ink">
+            <CalendarDays size={13} aria-hidden />
+            <span>Due {naturalDateLabel(parsed, today)}</span>
+            <button type="button" aria-label={`Keep “${parsed.text.trim()}” as text`} title="Keep as text" onClick={() => setKeptAsText(parsed.text)} className="-mr-1 grid h-5 w-5 place-items-center rounded-chip hover:bg-[var(--glass-hover)]">
+              <X size={12} aria-hidden />
+            </button>
+          </span>
+          <span className="truncate">from “{parsed.text.trim()}”</span>
+        </p>
+      ) : null}
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <div className="text-sm">
           <span className="block text-muted">Due date</span>

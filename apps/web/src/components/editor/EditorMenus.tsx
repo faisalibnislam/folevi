@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import { FLOWCHART_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT, addDays, sanitizeHref, ulid } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
+import { parseNaturalDate } from "@/lib/nlDate";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { useEditorEnvironment } from "./environment";
@@ -831,9 +832,12 @@ export function EditorMenus({
       { label: "Tomorrow", date: addDays(today, 1) },
       { label: "Next week", date: addDays(today, 7) },
     ];
-    const explicit = /^\d{4}-\d{2}-\d{2}$/.test(open.query.trim()) ? [{ label: formatDate(open.query.trim()), date: open.query.trim() }] : [];
+    const typed = open.query.trim();
+    // "@next friday", "@12 nov", "@2026-11-12": the day it names, first.
+    const said = typed.length >= 3 ? parseNaturalDate(typed) : null;
+    const explicit = said && !dates.some((d) => d.date === said.date) ? [{ label: formatDate(said.date), date: said.date }] : [];
     const dateItems: MenuItem[] = [...explicit, ...dates]
-      .filter((d) => !mq || d.label.toLowerCase().includes(mq) || d.date.startsWith(mq) || explicit.length)
+      .filter((d) => !mq || d === explicit[0] || d.label.toLowerCase().includes(mq) || d.date.startsWith(mq) || d.date === said?.date)
       .map((d) => ({
         id: `date-${d.date}-${d.label}`,
         label: d.label,

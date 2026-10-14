@@ -12,7 +12,8 @@ const KEY_RE = /^[A-Za-z0-9_-]{10,200}$/;
 /** The server's public key (browsers need it to subscribe), or null when push isn't set up here. */
 export const publicKey = query({
   args: {},
-  handler: async () => {
+  handler: async (ctx) => {
+    await requireProfile(ctx);
     const key = process.env.VAPID_PUBLIC_KEY;
     return key && key !== "none" ? key : null;
   },

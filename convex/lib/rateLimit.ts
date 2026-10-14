@@ -22,6 +22,8 @@ export const DEFAULT_RATE_RULES = {
   comment: { limit: 120, windowMs: 60_000 },
   export: { limit: 20, windowMs: 60 * 60_000 },
   search: { limit: 600, windowMs: 60_000 },
+  /** ⌘K search by meaning (each embeds the query), per person. */
+  searchMeaning: { limit: 300, windowMs: 60 * 60_000 },
   deviceRegister: { limit: 60, windowMs: 60 * 60_000 },
   unsplash: { limit: 60, windowMs: 60 * 60_000 },
   /** Reading a bookmarked page's title, description and image. */

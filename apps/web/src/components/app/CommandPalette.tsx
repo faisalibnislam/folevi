@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { ArrowRight, CalendarDays, CheckSquare, FileText, House as Home, Moon, Plus, Search, Settings, Sun, Trash2 } from "lucide-react";
@@ -19,7 +19,7 @@ import { Select } from "@/components/ui/Select";
 
 type Item =
   | { kind: "action"; id: string; label: string; hint?: string; icon: React.ReactNode; run: () => void }
-  | { kind: "doc"; id: string; title: string; icon: string | null; snippet?: string; updatedAt: number };
+  | { kind: "doc"; id: string; title: string; icon: string | null; snippet?: string; updatedAt?: number; place?: string; meaning?: boolean };
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -48,10 +48,33 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const recent = useQuery(api.documents.recent, open ? { scope, limit: 8 } : "skip");
   // Coarse "updated after" so the query stays cacheable.
   const updatedAfter = filters.updated ? Math.floor((Date.now() - Number(filters.updated) * 86_400_000) / 3_600_000) * 3_600_000 : undefined;
-  const results = useQuery(
+  // "All places": Personal and every workspace at once (no folder, tag or person filters: they belong to one place).
+  const [everywhere, setEverywhere] = useState(false);
+  const workspaces = useQuery(api.workspaces.mine, open ? {} : "skip");
+  const manyPlaces = (workspaces?.length ?? 0) > 0;
+  const allPlaces = everywhere && manyPlaces;
+  const here = useQuery(
     api.search.documents,
-    open && debounced ? { scope, query: debounced, limit: 20, folderId: filters.folderId, tagId: filters.tagId, creatorId: filters.creatorId, updatedAfter } : "skip",
+    open && debounced && !allPlaces ? { scope, query: debounced, limit: 20, folderId: filters.folderId, tagId: filters.tagId, creatorId: filters.creatorId, updatedAfter } : "skip",
   );
+  const all = useQuery(api.search.everywhere, open && debounced && allPlaces ? { query: debounced, limit: 24 } : "skip");
+  const results = allPlaces ? all : here;
+  // Search by meaning (plans with the notes index): extra notes about what was typed, after a pause.
+  const meaningOn = useQuery(api.search.meaningAvailable, open ? { scope } : "skip");
+  const byMeaning = useAction(api.search.byMeaning);
+  const slow = useDebounced(query.trim(), 450);
+  const [meaning, setMeaning] = useState<{ q: string; notes: { id: string; title: string; snippet: string }[] } | null>(null);
+  useEffect(() => {
+    if (!open || !meaningOn || allPlaces || slow.length < 3) return;
+    let live = true;
+    byMeaning({ scope, query: slow }).then(
+      (notes) => live && setMeaning({ q: slow, notes }),
+      () => live && setMeaning({ q: slow, notes: [] }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [open, meaningOn, allPlaces, slow, scope, byMeaning]);
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -89,8 +112,15 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const items: Item[] = useMemo(() => {
     const matchingActions = q ? actions.filter((a) => a.kind === "action" && a.label.toLowerCase().includes(q)) : actions.slice(0, 4);
     const docs: Item[] = debounced
-      ? (results ?? []).map((r) => ({ kind: "doc" as const, id: r.id, title: r.title, icon: r.icon, snippet: r.snippet, updatedAt: r.updatedAt }))
+      ? (results ?? []).map((r) => ({ kind: "doc" as const, id: r.id, title: r.title, icon: r.icon, snippet: r.snippet, updatedAt: r.updatedAt, place: "place" in r ? (r.place as { name: string }).name : undefined }))
       : (recent ?? []).map((r) => ({ kind: "doc" as const, id: r.id, title: r.title, icon: r.icon, updatedAt: r.updatedAt }));
+    // By meaning: only notes the keyword search didn't already find, for what's typed now.
+    const seen = new Set(docs.map((d) => d.id));
+    const extra: Item[] =
+      debounced && meaning && meaning.q === debounced && !allPlaces
+        ? meaning.notes.filter((n) => !seen.has(n.id)).map((n) => ({ kind: "doc" as const, id: n.id, title: n.title, icon: null, snippet: n.snippet, meaning: true }))
+        : [];
+    docs.push(...extra);
     // Ask AI: with a query typed, "Ask AI: …" sends it straight to the assistant.
     const askAi: Item = {
       kind: "action",
@@ -101,7 +131,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       run: () => openAsk(query.trim() || undefined),
     };
     return [...docs, ...(aiOn ? [askAi] : []), ...matchingActions];
-  }, [q, query, actions, debounced, results, recent, openAsk, aiOn]);
+  }, [q, query, actions, debounced, results, recent, openAsk, aiOn, meaning, allPlaces]);
 
   useEffect(() => setActive(0), [debounced]);
 
@@ -174,7 +204,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             <Kbd>Esc</Kbd>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 px-5 py-2.5 text-xs shadow-[inset_0_-1px_0_var(--color-line)]" role="group" aria-label="Search filters">
-            <Select aria-label="Folder" value={filters.folderId ?? ""} onChange={(e) => setFilters({ ...filters, folderId: e.target.value || undefined })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
+            <Select aria-label="Folder" disabled={allPlaces} value={filters.folderId ?? ""} onChange={(e) => setFilters({ ...filters, folderId: e.target.value || undefined })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
               <option value="">Any folder</option>
               {org?.folders.map((f) => (
                 <option key={f.id} value={f.id}>
@@ -182,7 +212,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 </option>
               ))}
             </Select>
-            <Select aria-label="Tag" value={filters.tagId ?? ""} onChange={(e) => setFilters({ ...filters, tagId: e.target.value || undefined })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
+            <Select aria-label="Tag" disabled={allPlaces} value={filters.tagId ?? ""} onChange={(e) => setFilters({ ...filters, tagId: e.target.value || undefined })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
               <option value="">Any tag</option>
               {org?.tags.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -191,7 +221,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               ))}
             </Select>
             {workspace ? (
-              <Select aria-label="Created by" value={filters.creatorId ?? ""} onChange={(e) => setFilters({ ...filters, creatorId: e.target.value || undefined })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
+              <Select aria-label="Created by" disabled={allPlaces} value={filters.creatorId ?? ""} onChange={(e) => setFilters({ ...filters, creatorId: e.target.value || undefined })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
                 <option value="">Anyone</option>
                 {members?.members.map((m) => (
                   <option key={m.profileId} value={m.profileId}>
@@ -206,7 +236,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               <option value="30">Past month</option>
               <option value="365">Past year</option>
             </Select>
-            <span className="ml-auto text-faint">{workspace ? workspace.name : "Personal"}</span>
+            {manyPlaces ? (
+              <Select aria-label="Where" value={allPlaces ? "all" : "here"} onChange={(e) => setEverywhere(e.target.value === "all")} className="ui-well ml-auto h-7 rounded-chip px-2.5 text-muted">
+                <option value="here">{workspace ? workspace.name : "Personal"}</option>
+                <option value="all">All places</option>
+              </Select>
+            ) : (
+              <span className="ml-auto text-faint">{workspace ? workspace.name : "Personal"}</span>
+            )}
           </div>
           <div className="max-h-[55vh] overflow-y-auto p-2">
             {debounced && results === undefined ? <p className="px-3 py-2 text-sm text-muted">Searching…</p> : null}
@@ -216,10 +253,15 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               {items.map((item, i) => {
                 const selected = i === active;
                 const cls = `flex cursor-pointer items-start gap-3 rounded-chip px-3 py-2.5 transition-colors ${selected ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_18%,transparent)]" : ""}`;
+                const prev = items[i - 1];
                 const header =
                   i === docCount && item.kind === "action" ? (
                     <li role="presentation" className="ui-caps px-3 pb-1.5 pt-3">
                       Actions
+                    </li>
+                  ) : item.kind === "doc" && item.meaning && !(prev?.kind === "doc" && prev.meaning) ? (
+                    <li role="presentation" className="ui-caps px-3 pb-1.5 pt-3">
+                      By meaning
                     </li>
                   ) : null;
                 return (
@@ -236,11 +278,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                             </span>
                             {item.snippet ? (
                               <span className="line-clamp-2 block text-xs text-muted">
+                                {item.place ? <span className="text-faint">{item.place} · </span> : null}
                                 <Highlight text={item.snippet} query={debounced} />
                               </span>
-                            ) : (
-                              <span className="block text-xs text-faint">Edited {formatRelative(item.updatedAt)}</span>
-                            )}
+                            ) : item.updatedAt ? (
+                              <span className="block text-xs text-faint">
+                                {item.place ? `${item.place} · ` : ""}Edited {formatRelative(item.updatedAt)}
+                              </span>
+                            ) : null}
                           </span>
                           {selected ? <ArrowRight size={14} className="mt-1" aria-hidden /> : null}
                         </>

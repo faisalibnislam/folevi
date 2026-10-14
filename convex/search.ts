@@ -1,10 +1,14 @@
 import { v } from "convex/values";
-import { query, type QueryCtx } from "./_generated/server";
+import { action, internalMutation, query, type QueryCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { hybridSearch } from "./aiIndex";
+import { indexEligible } from "./lib/ai/indexing";
+import { consume } from "./lib/rateLimit";
 import type { Doc, Id } from "./_generated/dataModel";
 import { normalizeForSearch, searchSnippet } from "@folevi/editor-schema";
-import { accessAtLeast, documentAccess, requireProfile, resolveScope } from "./lib/auth";
+import { accessAtLeast, documentAccess, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
 import { HomeFolders } from "./lib/documents";
-import { inScope, vScopeArg, type Scope } from "./lib/scope";
+import { inScope, personalScope, vScopeArg, workspaceScope, type Scope } from "./lib/scope";
 
 /**
  * Full-text search of one scope (your Personal, or a workspace you're in) over titles, text blocks (incl.
@@ -135,3 +139,74 @@ export async function searchDocuments(ctx: QueryCtx, profile: Doc<"profiles">, s
   }
   return out;
 }
+
+/** At most this many places are searched at once ("All places"). */
+const MAX_PLACES = 8;
+
+/**
+ * Search every place the person is in at once (⌘K, "All places"): their Personal and each workspace,
+ * a few results from each, labelled with the place.
+ */
+export const everywhere = query({
+  args: { query: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const q = args.query.trim();
+    if (!q) return [];
+    const limit = Math.min(args.limit ?? 20, 40);
+    const places: { id: string; name: string; scope: Scope }[] = [{ id: "personal", name: "Personal", scope: personalScope(profile._id) }];
+    const memberships = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_profile", (x) => x.eq("profileId", profile._id))
+      .take(MAX_PLACES);
+    for (const m of memberships) {
+      const w = await ctx.db.get(m.workspaceId);
+      if (w && w.status !== "deleting" && places.length < MAX_PLACES) places.push({ id: w.publicId, name: w.name, scope: workspaceScope(w._id) });
+    }
+    const perPlace = Math.max(4, Math.ceil(limit / places.length) + 2);
+    const out = [];
+    for (const p of places) {
+      for (const r of await searchDocuments(ctx, profile, p.scope, { query: q, limit: perPlace })) out.push({ ...r, place: { id: p.id, name: p.name } });
+    }
+    // Title matches first (as within one place), then the most recently edited.
+    const lower = q.toLowerCase();
+    out.sort((a, b) => Number(b.title.toLowerCase().includes(lower)) - Number(a.title.toLowerCase().includes(lower)) || b.updatedAt - a.updatedAt);
+    return out.slice(0, limit);
+  },
+});
+
+/** Whether this place has search by meaning (the plan includes the notes index). */
+export const meaningAvailable = query({
+  args: { scope: vScopeArg },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { scope } = await resolveScope(ctx, profile, args.scope);
+    return await indexEligible(ctx, scope);
+  },
+});
+
+export const limitMeaning = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await requireProfile(ctx);
+    await consume(ctx, "searchMeaning", profile._id);
+    return null;
+  },
+});
+
+/**
+ * Search by meaning (⌘K, Pro plans): notes about what was typed even when they don't use those words,
+ * from the same index Foli AI answers with. Keyword matches come from `documents`; these are extra.
+ */
+export const byMeaning = action({
+  args: { scope: vScopeArg, query: v.string() },
+  handler: async (ctx, args): Promise<{ id: string; title: string; snippet: string }[]> => {
+    // Signed in (checked here), then the person and their rate limit (limitMeaning), then scope access (hybridSearch).
+    await requireIdentity(ctx);
+    const q = args.query.trim().slice(0, 200);
+    if (q.length < 3) return [];
+    await ctx.runMutation(internal.search.limitMeaning, {});
+    const notes = await hybridSearch(ctx, { scope: args.scope, question: q, queries: [q], limit: 8 });
+    return notes.filter((n) => !n.recent).map((n) => ({ id: n.id, title: n.title, snippet: n.text.replace(/\s+/g, " ").trim().slice(0, 160) }));
+  },
+});

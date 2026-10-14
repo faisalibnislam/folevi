@@ -6,6 +6,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { ArrowRight, CalendarDays, CheckSquare, FileDiff, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2 } from "lucide-react";
 import { flattenFolders } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
+import { useFolderTree } from "@/lib/app/folders";
 import { openNextInNewTab } from "@/lib/app/tabs";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
@@ -43,7 +44,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const listId = useId();
   const [filters, setFilters] = useState<{ folderId?: string; tagId?: string; creatorId?: string; updated?: "7" | "30" | "365" }>({});
   // Search, recents and filters follow the current context (Personal or a workspace).
-  const org = useQuery(api.organization.sidebar, open ? { scope } : "skip");
+  const org = useFolderTree(open ? scope : "skip");
   // Personal has no members: everything in it is yours, so the "Created by" filter is for workspaces.
   const members = useQuery(api.workspaces.members, open && workspace ? { workspaceId: workspace.id } : "skip");
   const recent = useQuery(api.documents.recent, open ? { scope, limit: 8 } : "skip");

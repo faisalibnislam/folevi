@@ -4,6 +4,8 @@ import { useMutation } from "convex/react";
 import { useCallback, useMemo } from "react";
 import { api } from "@/lib/convex/api";
 import { useToast, errorMessage } from "@/components/ui/Toast";
+import { useAppState } from "@/lib/app/state";
+import { requireOutbox } from "@/lib/app/folders";
 
 /** The server takes at most this many notes per bulk call (documents.MAX_BULK); bigger sets go in turns. */
 const CHUNK = 50;
@@ -34,21 +36,39 @@ export function useNoteActions() {
   const hide = useMutation(api.documents.hideFromRecent);
   const unhide = useMutation(api.documents.showInRecent);
   const toast = useToast();
+  const { outbox, online } = useAppState();
 
   const run = useCallback(
     async (ids: string[], action: Action) => {
       const done: string[] = [];
       const previousFolders: Record<string, string | null> = {};
       let skipped = 0;
+      if (action.kind === "move") {
+        // Moves go through the outbox, after the folder they name (it may have been made offline). With no
+        // connection they're shown at once and reported as done (Undo needs the server's answer).
+        const sent = [];
+        for (let i = 0; i < ids.length; i += CHUNK) {
+          const documentIds = ids.slice(i, i + CHUNK);
+          const keys = [...(action.folderId ? [`folder:${action.folderId}`] : []), ...documentIds.map((id) => `note:${id}`)];
+          sent.push(requireOutbox(outbox).enqueue("documents.bulkUpdate", { documentIds, action }, { keys, label: documentIds.length === 1 ? "Move a note" : `Move ${notes(documentIds.length)}`, after: documentIds.map((documentId) => ({ documentId, blockId: null })) }).result);
+        }
+        if (!online) return { done: ids, skipped: 0, previousFolders, queued: true };
+        for (const r of (await Promise.all(sent)) as { done: string[]; skipped: number; previousFolders: Record<string, string | null> }[]) {
+          done.push(...r.done);
+          skipped += r.skipped;
+          Object.assign(previousFolders, r.previousFolders);
+        }
+        return { done, skipped, previousFolders, queued: false };
+      }
       for (let i = 0; i < ids.length; i += CHUNK) {
         const r = await bulk({ documentIds: ids.slice(i, i + CHUNK), action });
         done.push(...r.done);
         skipped += r.skipped;
         Object.assign(previousFolders, r.previousFolders);
       }
-      return { done, skipped, previousFolders };
+      return { done, skipped, previousFolders, queued: false };
     },
-    [bulk],
+    [bulk, outbox, online],
   );
 
   /** Runs an action and reports it: `message(n)` on success (with Undo when given), and any skipped notes. */
@@ -58,7 +78,7 @@ export function useNoteActions() {
       try {
         const r = await run(ids, action);
         if (r.skipped) toast.show(`${notes(r.skipped)} couldn’t be changed. You may not have permission.`, { tone: "error" });
-        if (r.done.length) toast.show(message(r.done.length), undo ? { action: { label: "Undo", onClick: () => undo(r) } } : undefined);
+        if (r.done.length) toast.show(message(r.done.length), undo && !r.queued ? { action: { label: "Undo", onClick: () => undo(r) } } : undefined);
         return r.done.length > 0;
       } catch (e) {
         toast.show(errorMessage(e), { tone: "error" });

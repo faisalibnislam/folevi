@@ -20,7 +20,7 @@ import { AppContextMenu } from "./AppContextMenu";
 import { AskAiChat } from "@/components/ai/AskAiChat";
 import { AI_FOCUS_EVENT } from "@/components/ai/chat/ChatThread";
 import { useAiAccess } from "@/components/ai/useAi";
-import { SyncStatus } from "./SyncStatus";
+import { OutboxRefusals, SyncStatus } from "./SyncStatus";
 import { useCreateDocument } from "./useCreateDocument";
 import { captureTemplateFromUrl, clearPendingTemplate, pendingTemplate } from "@/lib/pendingTemplate";
 import { DesktopBridge } from "./DesktopBridge";
@@ -360,6 +360,7 @@ export function Shell() {
       <AppContextMenu />
       <DesktopBridge />
       <WarmNotes />
+      <OutboxRefusals />
       <QuickAddTask open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
       {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
       {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} /> : null}

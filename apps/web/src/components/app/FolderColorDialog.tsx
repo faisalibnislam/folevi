@@ -1,7 +1,6 @@
 "use client";
 
-import { useMutation } from "convex/react";
-import { api } from "@/lib/convex/api";
+import { useFolderActions } from "@/lib/app/folders";
 import { Check } from "lucide-react";
 import { FOLDER_COLORS, folderColorId } from "@/lib/folderColors";
 import { Dialog } from "@/components/ui/Dialog";
@@ -9,7 +8,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 
 /** Pick a folder colour from the palette's 25. */
 export function FolderColorDialog({ open, onClose, folder }: { open: boolean; onClose: () => void; folder: { id: string; name: string; color: string | null } }) {
-  const setColor = useMutation(api.organization.setFolderColor);
+  const folderActions = useFolderActions();
   const toast = useToast();
   const current = folderColorId(folder.color);
   return (
@@ -26,7 +25,12 @@ export function FolderColorDialog({ open, onClose, folder }: { open: boolean; on
               aria-label={c.name}
               title={c.name}
               onClick={() => {
-                void setColor({ folderId: folder.id, color: c.id }).then(onClose, (e) => toast.show(errorMessage(e), { tone: "error" }));
+                try {
+                  folderActions.setColor(folder.id, c.id);
+                  onClose();
+                } catch (e) {
+                  toast.show(errorMessage(e), { tone: "error" });
+                }
               }}
               style={{ background: c.hex }}
               className={`grid aspect-square place-items-center rounded-chip shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-surface" : ""}`}

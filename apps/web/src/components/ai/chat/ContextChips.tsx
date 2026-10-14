@@ -3,6 +3,7 @@
 import { useQuery } from "convex/react";
 import { FileText, Folder, Layers, Plus, X } from "lucide-react";
 import { api } from "@/lib/convex/api";
+import { useFolderTree } from "@/lib/app/folders";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
@@ -19,7 +20,7 @@ export function ContextChips({ context, names, onChange, disabled }: { context: 
   const { scope, context: place } = useAppState();
   const { route } = useAppRouter();
   const recent = useQuery(api.documents.list, { scope, view: "all", paginationOpts: { numItems: 6, cursor: null } });
-  const org = useQuery(api.organization.sidebar, route.name === "folder" ? { scope } : "skip");
+  const org = useFolderTree(route.name === "folder" ? scope : "skip");
   const currentNoteId = route.name === "doc" ? route.id : null;
   const currentNote = useQuery(api.documents.titles, currentNoteId ? { documentIds: [currentNoteId] } : "skip");
   const folder = route.name === "folder" ? org?.folders.find((f) => f.id === route.id) : undefined;

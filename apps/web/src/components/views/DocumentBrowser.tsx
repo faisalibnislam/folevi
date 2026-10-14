@@ -7,6 +7,9 @@ import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, Chevro
 import { folderAncestors } from "@folevi/editor-schema";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { api } from "@/lib/convex/api";
+import { useFolderTree, useFolderTreeState } from "@/lib/app/folders";
+import { useOutboxEntries } from "@/lib/sync/queryCache";
+import { pendingNoteFolders } from "@/lib/sync/overlays";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useEngineSelector, useLocalStorage } from "@/lib/hooks/useEngine";
@@ -87,11 +90,13 @@ export type Summary = NonNullable<ReturnType<typeof usePaginatedQuery<typeof api
 
 export function DocumentBrowser({ view, folderId, tagId, title }: { view: View; folderId?: string; tagId?: string; title?: string }) {
   const { scope } = useAppState();
-  const org = useQuery(api.organization.sidebar, { scope });
+  const { data: org, fromCache } = useFolderTreeState(scope);
   // A folder/tag link that doesn't resolve in the current context (deleted, mistyped, or from Personal while a
   // workspace is open, or the other way round) gets a real not-found page instead of a failing list query.
+  // (The copy kept on this device may not know a folder made elsewhere yet: only the server's answer counts.)
   const missing =
     org !== undefined &&
+    !fromCache &&
     ((view === "folder" && !org.folders.some((f) => f.id === folderId)) || (view === "tag" && !org.tags.some((t) => t.id === tagId)));
   if (missing) return <MissingContainer kind={view === "folder" ? "folder" : "tag"} />;
   return <DocumentList view={view} folderId={folderId} tagId={tagId} org={org} titleOverride={title} />;
@@ -116,7 +121,7 @@ function MissingContainer({ kind }: { kind: "folder" | "tag" }) {
   );
 }
 
-type Org = ReturnType<typeof useQuery<typeof api.organization.sidebar>>;
+type Org = ReturnType<typeof useFolderTree>;
 
 /** Where the pointer (or, from the keyboard, the element) is, for a context menu. */
 export function contextPoint(e: React.MouseEvent): { x: number; y: number } {
@@ -126,7 +131,7 @@ export function contextPoint(e: React.MouseEvent): { x: number; y: number } {
 }
 
 function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
-  const { scope, scopeKey, profile, online, engine } = useAppState();
+  const { scope, scopeKey, profile, online, engine, outbox } = useAppState();
   const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
   const [sort, setSort] = useLocalStorage<Sort>(`folevi:sort:${view}`, "updated");
   const { results, status, loadMore } = usePaginatedQuery(
@@ -192,8 +197,16 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const title =
     titleOverride ?? (view === "folder" ? (org?.folders.find((f) => f.id === folderId)?.name ?? "Folder") : view === "tag" ? `#${org?.tags.find((t) => t.id === tagId)?.name ?? "tag"}` : TITLES[view]);
   const fromCache = status === "LoadingFirstPage" && cached !== null;
-  const docs = useMemo(() => (fromCache ? cached.slice(0, cachedShown) : results), [fromCache, cached, cachedShown, results]);
-  const moreCached = fromCache && cached.length > cachedShown;
+  // The saved copies, with notes moved while offline in their new folders, and a folder's view showing its own.
+  const waiting = useOutboxEntries(outbox);
+  const kept = useMemo(() => {
+    if (!cached) return null;
+    const moved = pendingNoteFolders(waiting);
+    const placed = moved.size ? cached.map((d) => (moved.has(d.id) ? { ...d, folderId: moved.get(d.id) ?? null } : d)) : cached;
+    return view === "folder" ? placed.filter((d) => d.folderId === folderId) : placed;
+  }, [cached, waiting, view, folderId]);
+  const docs = useMemo(() => (fromCache && kept ? kept.slice(0, cachedShown) : results), [fromCache, kept, cachedShown, results]);
+  const moreCached = fromCache && (kept?.length ?? 0) > cachedShown;
   const canLoadMore = status === "CanLoadMore" || moreCached;
   const loading = status === "LoadingFirstPage" && !cached;
   const canArrange = sort === "manual" && view !== "trash";

@@ -1,9 +1,10 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { useEffect, useId, useState } from "react";
 import { flattenFolders, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
+import { useFolderTree } from "@/lib/app/folders";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { Button } from "@/components/ui/Button";
@@ -66,7 +67,7 @@ export function CopyToDialog({
   }, [open]);
 
   const destination: WireScope = place === PERSONAL ? { kind: "personal" } : { kind: "workspace", workspaceId: place };
-  const org = useQuery(api.organization.sidebar, open ? { scope: destination } : "skip");
+  const org = useFolderTree(open ? destination : "skip");
   const placeName = places.find((p) => p.key === place)?.name ?? "Personal";
   const count = documentIds.length;
   const what = count === 1 ? `“${noteTitle?.trim() || "Untitled"}”` : `${count.toLocaleString()} notes`;

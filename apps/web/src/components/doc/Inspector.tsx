@@ -2,7 +2,7 @@
 
 import type { Editor } from "@tiptap/react";
 import { useConvex, useMutation, useQuery } from "convex/react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
 import {
   CalendarDays,
@@ -17,6 +17,9 @@ import {
 } from "lucide-react";
 import { flattenFolders, type DocumentStyle } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
+import { requireOutbox, useFolderTree } from "@/lib/app/folders";
+import { useOutboxEntries } from "@/lib/sync/queryCache";
+import { pendingNoteFolders } from "@/lib/sync/overlays";
 import { useAppState } from "@/lib/app/state";
 import { documentScope } from "@/lib/app/scope";
 import { IconButton, Button } from "@/components/ui/Button";
@@ -523,10 +526,13 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
   const info = useQuery(api.documents.info, meta ? { documentId } : "skip");
   // Tags come from the note's own scope (it may be open from another context than the current one).
   const home = meta?.isMember ? documentScope(meta.document) : null;
-  const org = useQuery(api.organization.sidebar, home ? { scope: home } : "skip");
+  const org = useFolderTree(home ? home : "skip");
   const setTags = useMutation(api.organization.setDocumentTags);
   const createTag = useMutation(api.organization.createTag);
-  const move = useMutation(api.documents.move);
+  const { outbox } = useAppState();
+  // A move still waiting to be sent shows where the note is going.
+  const waiting = useOutboxEntries(outbox);
+  const pendingFolder = useMemo(() => pendingNoteFolders(waiting).get(documentId), [waiting, documentId]);
   const toast = useToast();
   const [newTag, setNewTag] = useState("");
   const [moveOpen, setMoveOpen] = useState(false);
@@ -574,8 +580,16 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
         <h3 className="ui-caps mb-2 px-1">Location</h3>
         <Select
           disabled={disabled}
-          value={meta.folder?.id ?? ""}
-          onChange={(e) => void move({ documentId, folderId: e.target.value || null }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}
+          value={(pendingFolder !== undefined ? pendingFolder : meta.folder?.id) ?? ""}
+          onChange={(e) => {
+            const folderId = e.target.value || null;
+            try {
+              const keys = [...(folderId ? [`folder:${folderId}`] : []), `note:${documentId}`];
+              requireOutbox(outbox).enqueue("documents.move", { documentId, folderId }, { keys, label: "Move a note", after: [{ documentId, blockId: null }] });
+            } catch (err) {
+              toast.show(errorMessage(err), { tone: "error" });
+            }
+          }}
           className="ui-input h-9 w-full rounded-chip px-3 text-sm"
           aria-label="Folder"
         >

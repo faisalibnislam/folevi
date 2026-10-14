@@ -1,16 +1,20 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useTopLayer } from "@/components/ui/topLayer";
 import { useQueries } from "convex/react";
-import { AlertTriangle, Check, Cloud, CloudOff, FileText, GitMerge, Loader2, Paperclip, RefreshCw } from "lucide-react";
+import { AlertTriangle, Check, Cloud, CloudOff, FileText, GitMerge, ListTodo, Loader2, Paperclip, RefreshCw } from "lucide-react";
+import type { SyncStatus as EngineStatus } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
 import { useEngineSelector, useEngineStatus } from "@/lib/hooks/useEngine";
 import { usePendingDocs, type PendingDocument } from "@/lib/hooks/usePendingDocs";
 import { localDb } from "@/lib/sync/db";
+import type { Outbox } from "@/lib/sync/outbox";
+import { useOutboxEntries } from "@/lib/sync/queryCache";
 import { t } from "@/i18n";
+import { useToast } from "@/components/ui/Toast";
 
 const LABELS = {
   saved: "Saved",
@@ -29,15 +33,17 @@ const LIST_LIMIT = 6;
  * The details popover lists which pages still have changes waiting on this device.
  */
 export function SyncStatus({ documentId, compact = true, align = "end" }: { documentId?: string; /** Icon only (the default). */ compact?: boolean; /** Which edge the details popover lines up with. */ align?: "start" | "end" }) {
-  const { engine } = useAppState();
+  const { engine, outbox, online } = useAppState();
   // Counts and flags only: it's always on screen, and should re-render when they change, not on every
-  // change to the queue.
-  const pending = useEngineSelector(engine, (s) => s.pending.length + s.inflight.length);
+  // change to the queue. Page edits (the engine) and other changes (the outbox) count together.
+  const queued = useEngineSelector(engine, (s) => s.pending.length + s.inflight.length);
+  const waiting = useOutboxEntries(outbox).length;
+  const pending = queued + waiting;
   const conflicts = useEngineSelector(engine, (s) => (documentId ? s.conflicts.filter((c) => c.documentId === documentId).length : s.conflicts.length));
   const allConflicts = useEngineSelector(engine, (s) => s.conflicts.length);
   const authRequired = useEngineSelector(engine, (s) => s.authRequired);
   const errors = useEngineSelector(engine, (s) => s.errors, sameErrors);
-  const status = useEngineStatus(engine);
+  const status = combinedStatus(useEngineStatus(engine), useOutboxStatus(outbox), online);
   const [open, setOpen] = useState(false);
   const [announce, setAnnounce] = useState("");
   const last = useRef(status);
@@ -145,6 +151,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
               (authRequired ? "Your session needs to be refreshed. Sign in again; your changes are kept on this device." : "Some changes were rejected by the server and were not saved.")}
           </p>
           <PendingList onNavigate={() => setOpen(false)} />
+          <OutboxList />
           {errors.length ? (
             <ul className="mt-2 list-disc pl-5 text-xs text-muted">
               {errors.slice(-3).map((e) => (
@@ -161,6 +168,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
                 onClick={() => {
                   engine?.authRefreshed();
                   engine?.scheduleFlush(0);
+                  outbox?.authRefreshed();
                 }}
               >
                 <RefreshCw size={12} aria-hidden /> Retry now
@@ -177,6 +185,85 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
       ) : null}
     </div>
   );
+}
+
+/**
+ * The status of page edits and of the other changes together: a refused change shows as an error, and
+ * anything waiting keeps it from reading "Saved". Exported for tests.
+ */
+export function combinedStatus(engine: EngineStatus, outbox: ReturnType<Outbox["status"]>, online: boolean): EngineStatus {
+  if (engine === "conflict") return "conflict";
+  if (engine === "error" || outbox === "failed") return "error";
+  if (engine === "offline" || outbox === "idle") return engine;
+  if (!online) return "offline";
+  if (engine === "syncing" || outbox === "sending") return "syncing";
+  return "saving";
+}
+
+function useOutboxStatus(outbox: Outbox | null): ReturnType<Outbox["status"]> {
+  return useSyncExternalStore(
+    (cb) => (outbox ? outbox.subscribe(cb) : () => undefined),
+    () => outbox?.status() ?? "idle",
+    () => "idle" as const,
+  );
+}
+
+/**
+ * Folder, comment and collection changes waiting on this device, oldest first. One the server refused says
+ * why, with Retry and Discard: it's never dropped without the person choosing to.
+ */
+function OutboxList() {
+  const { outbox } = useAppState();
+  const entries = useOutboxEntries(outbox);
+  if (!entries.length) return null;
+  const shown = entries.slice(0, LIST_LIMIT);
+  return (
+    <div className="mt-3 border-t border-line pt-3" data-testid="sync-outbox-list">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Other changes</p>
+      <ul className="mt-1.5 space-y-1">
+        {shown.map((e) => (
+          <li key={e.id} className="flex items-start gap-2 py-0.5">
+            <ListTodo size={14} aria-hidden className="mt-0.5 flex-none text-muted" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-ink">{e.label}</p>
+              {e.failed ? (
+                <>
+                  <p className="text-xs text-danger">Not saved: {e.failed.message}</p>
+                  <div className="mt-1 flex gap-1.5">
+                    <button type="button" className="ui-btn ui-btn-secondary h-7 px-2.5 text-xs" onClick={() => outbox?.retry(e.id)}>
+                      Retry
+                    </button>
+                    <button type="button" className="ui-btn ui-btn-quiet h-7 px-2.5 text-xs" onClick={() => outbox?.discard(e.id)}>
+                      Discard
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-muted">{outbox?.sending === e.id ? "Sending…" : "Waiting to send"}</p>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+      {entries.length > LIST_LIMIT ? <p className="mt-1 text-xs text-muted">{t("sync.outbox.more", { count: entries.length - LIST_LIMIT })}</p> : null}
+    </div>
+  );
+}
+
+/** Tells the person, once, when the server refuses a change from the outbox (the sync details keep it). */
+export function OutboxRefusals() {
+  const { outbox } = useAppState();
+  const entries = useOutboxEntries(outbox);
+  const toast = useToast();
+  const told = useRef(new Set<string>());
+  useEffect(() => {
+    for (const e of entries) {
+      if (!e.failed || told.current.has(e.id)) continue;
+      told.current.add(e.id);
+      toast.show(`${e.label} wasn’t saved. ${e.failed.message}`, { tone: "error" });
+    }
+  }, [entries, toast]);
+  return null;
 }
 
 /** Pages with changes still waiting on this device, with a link to each. */

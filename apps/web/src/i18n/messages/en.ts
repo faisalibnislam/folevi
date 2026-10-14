@@ -14,6 +14,7 @@ export const en = {
   "sync.pending.untitled": "Untitled",
   "sync.pending.newPage": "New page",
   "sync.pending.uploads": "{count, plural, one {# file waiting to upload} other {# files waiting to upload}}",
+  "sync.outbox.more": "{count, plural, one {…and # more change} other {…and # more changes}}",
 
   // Notifications (components/app/NotificationsButton.tsx)
   "notifications.button.label": "{count, plural, =0 {Notifications} other {Notifications, # unread}}",

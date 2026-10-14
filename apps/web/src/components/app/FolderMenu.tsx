@@ -1,12 +1,10 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
 import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { FilePlus2, FolderInput, FolderPlus, Link2, MoreHorizontal, Palette, PencilLine, Trash2, Undo2, UserPlus } from "lucide-react";
 import { canNestFolderIn } from "@folevi/editor-schema";
-import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -14,7 +12,7 @@ import { MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { PromptDialog } from "@/components/ui/PromptDialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { MoveFolderDialog } from "@/components/views/MoveToFolderDialog";
-import { useMoveFolder, useOpenFolders } from "@/lib/app/folders";
+import { useFolderActions, useMoveFolder, useOpenFolders, useFolderTree } from "@/lib/app/folders";
 import { FolderColorDialog } from "./FolderColorDialog";
 import { useCreateDocument } from "./useCreateDocument";
 import { InviteDialog } from "./InviteDialog";
@@ -38,13 +36,11 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
   const { openAsk } = useShell();
   const aiOn = useAiEnabled();
   const createDocument = useCreateDocument();
-  const rename = useMutation(api.organization.renameFolder);
-  const createFolder = useMutation(api.organization.createFolder);
+  const folderActions = useFolderActions();
   const moveFolder = useMoveFolder();
-  const del = useMutation(api.organization.deleteFolder);
   const [, setFolderOpen] = useOpenFolders();
   // The folder tree (shared with the sidebar's subscription): whether there's room for a folder inside.
-  const org = useQuery(api.organization.sidebar, canEdit ? { scope } : "skip");
+  const org = useFolderTree(canEdit ? scope : "skip");
   const folders = org?.folders ?? [];
   const roomInside = canNestFolderIn(folders, folder.id) || !folders.some((f) => f.id === folder.id);
   const subfolders = folders.filter((f) => f.parentFolderId === folder.id).length;
@@ -92,7 +88,7 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
   const dialogs = (
     <>
       {coloring ? <FolderColorDialog open onClose={() => setColoring(false)} folder={folder} /> : null}
-      <PromptDialog open={renaming} title="Rename folder" label="Folder name" initial={folder.name} onClose={() => setRenaming(false)} onSubmit={(name) => act(rename({ folderId: folder.id, name }), "Renamed")} />
+      <PromptDialog open={renaming} title="Rename folder" label="Folder name" initial={folder.name} onClose={() => setRenaming(false)} onSubmit={(name) => act(Promise.resolve().then(() => folderActions.rename(folder.id, name)), "Renamed")} />
       <PromptDialog
         open={addingInside}
         title={`New folder in “${folder.name}”`}
@@ -101,7 +97,7 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
         onClose={() => setAddingInside(false)}
         onSubmit={async (name) => {
           try {
-            await createFolder({ scope, name, parentFolderId: folder.id });
+            folderActions.create(name, folder.id);
             // Open the folder in the sidebar so the new one shows.
             setFolderOpen(folder.id, true);
           } catch (e) {
@@ -138,7 +134,7 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
               variant="danger"
               onClick={() => {
                 setDeleting(false);
-                void act(del({ folderId: folder.id }), "Folder deleted");
+                void act(Promise.resolve().then(() => folderActions.remove(folder.id, folder.name)), "Folder deleted");
               }}
             >
               Delete folder

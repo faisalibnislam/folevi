@@ -240,11 +240,30 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "How offline editing works in Folevi, what the Saved, Saving, Offline, Syncing, Conflict and Not saved statuses mean, and how version snapshots work.",
     legacyAnchor: "sync",
     published: "2026-09-25",
-    updated: "2026-09-30",
+    updated: "2026-10-14",
     body: () => (
       <>
         <p>
           Folevi saves every change on your device first, then syncs it. On the web, your notes are kept in the browser’s storage; Folevi for Mac keeps them the same way, on your Mac. You can keep writing with no connection at all.
+        </p>
+        <h2 id="offline">What works offline</h2>
+        <p>With no connection you can:</p>
+        <ul>
+          <li>
+            <strong>Write and edit notes</strong>, including new ones.
+          </li>
+          <li>
+            <strong>Organize folders</strong>: make, rename, recolor, move and delete them, and move notes into a folder you just made.
+          </li>
+          <li>
+            <strong>Comment</strong>: start a thread (also on a line you wrote offline), reply, edit, resolve, delete and react.
+          </li>
+          <li>
+            <strong>Work in collections</strong>: change values, add, rename, reorder and delete rows, and change a view’s filters, sorting, grouping or calendar date.
+          </li>
+        </ul>
+        <p>
+          The folders, comments and collections you’ve opened before on this device stay readable offline, even after the page reloads. Your changes wait on the device, and the sync status counts them, for example “Offline, 3 changes waiting”. Open it to see the list. When you’re back online they’re sent in the order you made them, each one once. If the server turns one down, for example because you no longer have access to the page, it isn’t thrown away: it stays in the list marked <strong>Not saved</strong>, with <strong>Retry</strong> and <strong>Discard</strong>.
         </p>
         <h2 id="statuses">Sync statuses</h2>
         <p>Each page shows one of these statuses:</p>

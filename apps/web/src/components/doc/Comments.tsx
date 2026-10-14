@@ -6,10 +6,15 @@ import type { Editor } from "@tiptap/react";
 import { useMutation, useQuery } from "convex/react";
 import type { OptimisticLocalStore } from "convex/browser";
 import type { FunctionReturnType } from "convex/server";
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ulid } from "@folevi/editor-schema";
 import { ArrowUp, Bell, BellMinus, BellOff, BellPlus, Check, ChevronLeft, ChevronRight, CornerDownRight, Link2, MoreHorizontal, RotateCcw, SmilePlus, Trash2, Unlink, X, Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
+import { requireOutbox } from "@/lib/app/folders";
+import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
+import { overlayThreads, type OverlayComment, type OverlayThread, type OverlayThreads } from "@/lib/sync/overlays";
+import type { OutboxArgs, OutboxMeta, OutboxName } from "@/lib/sync/outbox";
 import { Button, IconButton } from "@/components/ui/Button";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { Select } from "@/components/ui/Select";
@@ -19,11 +24,11 @@ import { formatRelative } from "@/lib/format";
 import { MentionInput, textToCommentBody, type MentionInputHandle, type MentionPerson } from "./MentionInput";
 import { addressIn } from "@/components/editor/autolink";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
-import { ReactionChips, ReactionPicker, toggleReaction, type ReactionKind } from "./CommentReactions";
+import { ReactionChips, ReactionPicker, type ReactionKind } from "./CommentReactions";
 
-export type CommentsData = FunctionReturnType<typeof api.comments.threads>;
-export type CommentThread = CommentsData["threads"][number];
-type Comment = CommentThread["comments"][number];
+export type CommentsData = OverlayThreads;
+export type CommentThread = OverlayThread;
+type Comment = OverlayComment;
 type BodyNode = { type: string; text?: string; label?: string };
 
 /** A link that opens the note on this thread (`#comment-<id>`). */
@@ -80,124 +85,75 @@ export function CommentBody({ body, links = true }: { body: BodyNode[]; links?: 
 
 const bodyToText = (body: BodyNode[]) => body.map((n) => (n.type === "text" ? n.text : n.type === "mention" ? `@${n.label}` : "")).join("");
 
-const isPending = (id: string) => id.startsWith("pending-");
+/** A thread or comment that's still on this device (not yet on the server). */
+const isPending = (x: { waiting?: unknown }) => x.waiting !== undefined;
+
+/** A comment's text in a few words, for the sync details. */
+function excerpt(body: unknown[]): string {
+  const text = bodyToText(body as BodyNode[]).trim().replace(/\s+/g, " ");
+  return text.length > 40 ? `${text.slice(0, 39)}…` : text;
+}
 
 /**
- * Comment mutations with optimistic updates on the note's thread list, so sending, resolving and
- * deleting feel instant (the server's answer replaces the guess a moment later).
+ * A note's comment threads: the last answer seen on this device while there's no connection, with the
+ * comments, replies, edits and reactions still waiting to be sent already in place (marked `waiting`).
+ * `skip` leaves the query off (a page known not to exist).
+ */
+export function useCommentThreads(documentId: string, skip = false): CommentsData | undefined {
+  const { profile, outbox } = useAppState();
+  const data = useOfflineQuery(api.comments.threads, skip ? "skip" : { documentId });
+  const entries = useOutboxEntries(outbox);
+  const me = useMemo(() => ({ id: profile.id, name: profile.displayName, avatarUrl: profile.avatarUrl ?? null }), [profile.id, profile.displayName, profile.avatarUrl]);
+  return useMemo(() => (data ? overlayThreads(data, entries, documentId, me) : undefined), [data, entries, documentId, me]);
+}
+
+/**
+ * Comment changes. Writing, replying, editing, resolving, deleting and reacting go through the outbox:
+ * shown at once (see `useCommentThreads`), kept on this device, and sent in order when there's a connection.
+ * A new comment has its ids from the start, so it can be replied to and reacted to before it's sent; one on
+ * a line typed a moment ago waits for that line to reach the server. Read marks are this person's own and
+ * only matter online: they're sent straight away.
  */
 export function useCommentActions(documentId: string) {
-  const { profile } = useAppState();
+  const { outbox, engine } = useAppState();
   const args = { documentId };
-  const me = { id: profile.id, name: profile.displayName, avatarUrl: profile.avatarUrl ?? null };
-  const pendingComment = (body: unknown[]): Comment => ({
-    id: `pending-${Math.random().toString(36).slice(2)}`,
-    authorId: me.id,
-    authorName: me.name,
-    authorAvatarUrl: me.avatarUrl,
-    body: body as Comment["body"],
-    deleted: false,
-    createdAt: Date.now(),
-    editedAt: null,
-    mine: true,
-    canEdit: false,
-    canDelete: false,
-    reactions: [],
-  });
-  const withThreads = (store: OptimisticLocalStore, fn: (data: CommentsData) => CommentsData) => {
+  const withThreads = (store: OptimisticLocalStore, fn: (data: FunctionReturnType<typeof api.comments.threads>) => FunctionReturnType<typeof api.comments.threads>) => {
     const cur = store.getQuery(api.comments.threads, args);
     if (cur) store.setQuery(api.comments.threads, args, fn(cur));
   };
-  return {
-    create: useMutation(api.comments.create).withOptimisticUpdate((store, a) =>
-      withThreads(store, (d) => {
-        const now = Date.now();
-        const thread: CommentThread = {
-          id: `pending-${now}`,
-          blockId: a.blockId ?? null,
-          blockExists: a.blockId ? true : null,
-          blockText: null,
-          status: "open",
-          createdAt: now,
-          lastActivityAt: now,
-          resolvedBy: null,
-          resolvedAt: null,
-          unread: false,
-          canResolve: true,
-          canDelete: false,
-          comments: [pendingComment(a.body)],
-        };
-        const blocks = a.blockId ? bumpBlock(d.blocks, a.blockId, now, me, true) : d.blocks;
-        return { ...d, threads: [thread, ...d.threads], blocks };
-      }),
-    ),
-    reply: useMutation(api.comments.reply).withOptimisticUpdate((store, a) =>
-      withThreads(store, (d) => {
-        const now = Date.now();
-        const target = d.threads.find((t) => t.id === a.threadId);
-        const blocks = target?.blockId && target.status === "open" ? bumpBlock(d.blocks, target.blockId, now, me, false) : d.blocks;
-        return {
-          ...d,
-          blocks,
-          threads: d.threads.map((t) => (t.id === a.threadId ? { ...t, status: "open" as const, resolvedBy: null, lastActivityAt: now, comments: [...t.comments, pendingComment(a.body)] } : t)),
-        };
-      }),
-    ),
-    edit: useMutation(api.comments.edit).withOptimisticUpdate((store, a) =>
-      withThreads(store, (d) => ({
-        ...d,
-        threads: d.threads.map((t) => ({ ...t, comments: t.comments.map((c) => (c.id === a.commentId ? { ...c, body: a.body as Comment["body"], editedAt: Date.now() } : c)) })),
-      })),
-    ),
-    remove: useMutation(api.comments.remove).withOptimisticUpdate((store, a) =>
-      withThreads(store, (d) => ({
-        ...d,
-        threads: d.threads
-          .map((t) => ({ ...t, comments: t.comments.map((c) => (c.id === a.commentId ? { ...c, deleted: true, body: [] } : c)) }))
-          .filter((t) => t.comments.some((c) => !c.deleted)),
-      })),
-    ),
-    setResolved: useMutation(api.comments.setResolved).withOptimisticUpdate((store, a) =>
-      withThreads(store, (d) => ({
-        ...d,
-        threads: d.threads.map((t) => (t.id === a.threadId ? { ...t, status: a.resolved ? ("resolved" as const) : ("open" as const), resolvedBy: a.resolved ? me.name : null, resolvedAt: a.resolved ? Date.now() : null } : t)),
-        blocks: a.resolved ? dropThread(d, a.threadId) : d.blocks,
-      })),
-    ),
-    deleteThread: useMutation(api.comments.deleteThread).withOptimisticUpdate((store, a) =>
-      withThreads(store, (d) => ({ ...d, threads: d.threads.filter((t) => t.id !== a.threadId), blocks: dropThread(d, a.threadId) })),
-    ),
-    markThreadRead: useMutation(api.comments.markThreadRead).withOptimisticUpdate((store, a) =>
-      withThreads(store, (d) => ({ ...d, threads: d.threads.map((t) => (t.id === a.threadId ? { ...t, unread: false } : t)) })),
-    ),
-    react: useMutation(api.comments.react).withOptimisticUpdate((store, a) =>
-      withThreads(store, (d) => ({
-        ...d,
-        threads: d.threads.map((t) => ({ ...t, comments: t.comments.map((c) => (c.id === a.commentId ? { ...c, reactions: toggleReaction(c.reactions, a.kind) } : c)) })),
-      })),
-    ),
-    markThreadUnread: useMutation(api.comments.markThreadUnread).withOptimisticUpdate((store, a) =>
-      withThreads(store, (d) => ({ ...d, threads: d.threads.map((t) => (t.id === a.threadId ? { ...t, unread: true } : t)) })),
-    ),
-  };
-}
-
-/** The per-block summary without one (open) thread. */
-function dropThread(d: CommentsData, threadId: string): CommentsData["blocks"] {
-  const t = d.threads.find((x) => x.id === threadId);
-  if (!t || !t.blockId || t.status !== "open") return d.blocks;
-  const live = t.comments.filter((c) => !c.deleted).length;
-  return d.blocks.flatMap((b) => (b.blockId !== t.blockId ? [b] : b.threads <= 1 ? [] : [{ ...b, threads: b.threads - 1, comments: Math.max(0, b.comments - live) }]));
-}
-
-function bumpBlock(blocks: CommentsData["blocks"], blockId: string, at: number, me: { name: string; avatarUrl: string | null }, newThread: boolean): CommentsData["blocks"] {
-  const found = blocks.find((b) => b.blockId === blockId);
-  if (!found) return [...blocks, { blockId, threads: 1, comments: 1, lastActivityAt: at, unread: false, authors: [{ name: me.name, avatarUrl: me.avatarUrl }] }];
-  return blocks.map((b) =>
-    b.blockId === blockId
-      ? { ...b, threads: b.threads + (newThread ? 1 : 0), comments: b.comments + 1, lastActivityAt: at, authors: [{ name: me.name, avatarUrl: me.avatarUrl }, ...b.authors.filter((x) => x.name !== me.name)].slice(0, 3) }
-      : b,
+  const markThreadRead = useMutation(api.comments.markThreadRead).withOptimisticUpdate((store, a) =>
+    withThreads(store, (d) => ({ ...d, threads: d.threads.map((t) => (t.id === a.threadId ? { ...t, unread: false } : t)) })),
   );
+  const markThreadUnread = useMutation(api.comments.markThreadUnread).withOptimisticUpdate((store, a) =>
+    withThreads(store, (d) => ({ ...d, threads: d.threads.map((t) => (t.id === a.threadId ? { ...t, unread: true } : t)) })),
+  );
+  // Throws (so the caller's `catch` hears it) only while the outbox is still opening.
+  const queue = <N extends OutboxName>(name: N, a: OutboxArgs<N>, meta: OutboxMeta) => {
+    requireOutbox(outbox).enqueue(name, a, meta);
+  };
+  return {
+    create: async (a: { documentId: string; blockId?: string; body: unknown[] }) => {
+      const threadId = ulid();
+      const commentId = ulid();
+      queue("comments.create", { ...a, threadId, commentId }, { keys: [`thread:${threadId}`, `comment:${commentId}`], label: `Comment “${excerpt(a.body)}”`, after: [{ documentId: a.documentId, blockId: a.blockId ?? null }] });
+      // A line typed a moment ago is sent now rather than after the usual pause, so the comment can follow.
+      if (engine?.waitsToSync(a.documentId, a.blockId ?? null)) engine.scheduleFlush(0);
+      return { threadId, commentId };
+    },
+    reply: async (a: { threadId: string; body: unknown[] }) => {
+      const commentId = ulid();
+      queue("comments.reply", { ...a, commentId }, { keys: [`thread:${a.threadId}`, `comment:${commentId}`], label: `Reply “${excerpt(a.body)}”` });
+      return { commentId };
+    },
+    edit: async (a: { commentId: string; body: unknown[] }) => queue("comments.edit", a, { keys: [`comment:${a.commentId}`], label: `Edit comment “${excerpt(a.body)}”` }),
+    remove: async (a: { commentId: string }) => queue("comments.remove", a, { keys: [`comment:${a.commentId}`], label: "Delete a comment" }),
+    setResolved: async (a: { threadId: string; resolved: boolean }) => queue("comments.setResolved", a, { keys: [`thread:${a.threadId}`], label: a.resolved ? "Resolve a thread" : "Reopen a thread" }),
+    deleteThread: async (a: { threadId: string }) => queue("comments.deleteThread", a, { keys: [`thread:${a.threadId}`], label: "Delete a thread" }),
+    /** Sets the caller's reaction of `kind` on or off (`on` comes from what's shown, so a resend lands as meant). */
+    react: async (a: { commentId: string; kind: ReactionKind; on: boolean }) => queue("comments.react", a, { keys: [`comment:${a.commentId}`], label: a.on ? "Add a reaction" : "Remove a reaction" }),
+    markThreadRead,
+    markThreadUnread,
+  };
 }
 
 /**
@@ -231,7 +187,6 @@ export function CommentThreadCard({
   autoFocus?: boolean;
 }) {
   const actions = useCommentActions(documentId);
-  const { engine } = useAppState();
   const toast = useToast();
   const titleId = useId();
   const hintId = useId();
@@ -251,7 +206,7 @@ export function CommentThreadCard({
   const markedRead = useRef<string | null>(null);
   useEffect(() => {
     const seen = thread ? `${thread.id}:${thread.lastActivityAt}` : null;
-    if (!thread || !thread.unread || isPending(thread.id) || markedRead.current === seen) return;
+    if (!thread || !thread.unread || isPending(thread) || markedRead.current === seen) return;
     markedRead.current = seen;
     void actions.markThreadRead({ threadId: thread.id }).catch(() => undefined);
   }, [thread, actions]);
@@ -273,9 +228,8 @@ export function CommentThreadCard({
     const body = textToCommentBody(text, inputRef.current?.picked() ?? [], people);
     setDraft("");
     inputRef.current?.reset();
-    // A new thread on a line typed a moment ago: the line's own save goes first, so the server knows it.
-    const lineSaved = blockId && engine ? engine.whenBlockOnServer(documentId, blockId) : Promise.resolve();
-    const done = threadId && !isPending(threadId) ? actions.reply({ threadId, body }) : lineSaved.then(() => actions.create({ documentId, blockId: blockId ?? undefined, body }));
+    // Queued (a new thread on a line typed a moment ago waits for the line's own save, in the outbox).
+    const done = threadId ? actions.reply({ threadId, body }) : actions.create({ documentId, blockId: blockId ?? undefined, body });
     done.catch((e) => {
       setDraft(text);
       fail(e);
@@ -289,7 +243,7 @@ export function CommentThreadCard({
     actions.edit({ commentId: editing.id, body }).catch(fail);
   };
 
-  const menu: MenuItem[] = thread && !isPending(thread.id)
+  const menu: MenuItem[] = thread && !isPending(thread)
     ? [
         {
           label: "Copy link to comment",
@@ -360,7 +314,7 @@ export function CommentThreadCard({
             items={menu}
           />
         ) : null}
-        {thread && thread.canResolve && !isPending(thread.id) ? (
+        {thread && thread.canResolve && thread.waiting !== "failed" ? (
           <IconButton
             label={resolved ? "Reopen thread" : "Resolve thread"}
             aria-pressed={resolved}
@@ -426,7 +380,7 @@ export function CommentThreadCard({
               onEditSave={saveEdit}
               onDelete={() => actions.remove({ commentId: c.id }).then(() => toast.show("Comment deleted"), fail)}
               canReact={canComment}
-              onReact={(kind) => void actions.react({ commentId: c.id, kind }).catch(fail)}
+              onReact={(kind) => void actions.react({ commentId: c.id, kind, on: !c.reactions.find((r) => r.kind === kind)?.mine }).catch(fail)}
             />
           ))}
         </ul>
@@ -497,10 +451,12 @@ function CommentRow({
   canReact: boolean;
   onReact: (kind: ReactionKind) => void;
 }) {
+  const { online, outbox } = useAppState();
   const isEditing = editing !== null;
   const reactAnchor = useRef<HTMLButtonElement>(null);
   const [picking, setPicking] = useState(false);
-  const reactable = canReact && !c.deleted && !isPending(c.id);
+  const failed = c.waiting === "failed";
+  const reactable = canReact && !c.deleted && !failed;
   useEffect(() => {
     if (isEditing) requestAnimationFrame(() => editRef.current?.focus());
   }, [isEditing, editRef]);
@@ -509,13 +465,13 @@ function CommentRow({
     ...(c.canDelete ? [{ label: "Delete", danger: true, onSelect: onDelete }] : []),
   ];
   return (
-    <li data-ctx-host="" className={`group relative flex gap-2.5 px-4 py-2 ${isPending(c.id) ? "opacity-60" : ""}`}>
+    <li data-ctx-host="" className={`group relative flex gap-2.5 px-4 py-2 ${isPending(c) ? "opacity-60" : ""}`}>
       <Avatar name={c.authorName} url={c.authorAvatarUrl} size={24} className="mt-0.5" />
       <div className="min-w-0 flex-1">
         <p className={`flex items-baseline gap-1 text-[12.5px] ${reactable ? "pr-14" : "pr-7"}`}>
           <span className="truncate font-semibold text-heading">{c.authorName}</span>
           <span className="flex-none text-faint">
-            · {isPending(c.id) ? "Sending…" : formatRelative(c.createdAt)}
+            · {failed ? "Not sent" : isPending(c) ? (online ? "Sending…" : "Waiting to send") : formatRelative(c.createdAt)}
             {c.editedAt && !c.deleted ? " · edited" : ""}
           </span>
         </p>
@@ -552,7 +508,19 @@ function CommentRow({
         ) : (
           <p className={`mt-0.5 whitespace-pre-wrap break-words text-[13.5px] leading-snug ${c.deleted ? "italic text-faint" : "text-ink"}`}>{c.deleted ? "Comment deleted" : <CommentBody body={c.body} />}</p>
         )}
-        {c.deleted ? null : <ReactionChips reactions={c.reactions} canReact={canReact && !isPending(c.id)} onToggle={onReact} />}
+        {failed && c.entryId ? (
+          // The server refused it: the text stays here until the person sends it again or lets it go.
+          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-danger">
+            <span>This comment wasn’t saved.</span>
+            <button type="button" className="rounded-chip px-1.5 py-0.5 font-medium text-heading hover:bg-accent-soft" onClick={() => outbox?.retry(c.entryId!)}>
+              Retry
+            </button>
+            <button type="button" className="rounded-chip px-1.5 py-0.5 font-medium text-muted hover:bg-accent-soft" onClick={() => outbox?.discard(c.entryId!)}>
+              Discard
+            </button>
+          </p>
+        ) : null}
+        {c.deleted ? null : <ReactionChips reactions={c.reactions} canReact={canReact && !failed} onToggle={onReact} />}
       </div>
       {reactable && editing === null ? (
         <>
@@ -573,7 +541,7 @@ function CommentRow({
           <ReactionPicker open={picking} anchor={reactAnchor} reactions={c.reactions} onToggle={onReact} onClose={() => setPicking(false)} />
         </>
       ) : null}
-      {items.length && editing === null && !isPending(c.id) ? (
+      {items.length && editing === null && !failed ? (
         <MenuButton
           label={`Options for ${c.authorName}'s comment`}
           className="!absolute right-2 top-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
@@ -724,7 +692,7 @@ export function BlockThread({
   const siblings = [...(thread?.status === "resolved" ? onBlock : open)].sort((a, b) => a.createdAt - b.createdAt);
   // Stay on the thread being shown (so resolving it shows it resolved rather than switching away).
   useEffect(() => {
-    if (!threadId && thread && !isPending(thread.id)) onSelect(thread.id);
+    if (!threadId && thread) onSelect(thread.id);
   }, [threadId, thread, onSelect]);
   const close = () => {
     onClose();
@@ -761,7 +729,7 @@ function anchorLabel(t: CommentThread): ReactNode {
  * open right here.
  */
 export function CommentsOverview({ documentId, onOpenThread, focusThreadId = null }: { documentId: string; onOpenThread: (thread: CommentThread) => void; focusThreadId?: string | null }) {
-  const data = useQuery(api.comments.threads, { documentId });
+  const data = useCommentThreads(documentId);
   const people = useQuery(api.comments.mentionable, { documentId });
   // Remembered, so the tab opens on the list last looked at.
   const [filter, setFilter] = useLocalStorage<"open" | "resolved">("folevi:comments-filter", "open");
@@ -895,7 +863,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
             const inline = !t.blockId || t.blockExists === false || focusThreadId === t.id;
             return (
               <li key={t.id} data-ctx-host="" className="group/thread relative">
-                {!isPending(t.id) ? (
+                {!isPending(t) ? (
                   <MenuButton
                     label="Thread actions"
                     align="end"
@@ -926,10 +894,6 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
                 <button
                   type="button"
                   aria-expanded={inline ? expanded === t.id : undefined}
-                  // A thread still being saved has a temporary id that's replaced when the server answers;
-                  // opening it before then would open a thread that's about to disappear.
-                  disabled={isPending(t.id)}
-                  aria-busy={isPending(t.id) || undefined}
                   onClick={() => (inline ? setExpanded(expanded === t.id ? null : t.id) : onOpenThread(t))}
                   className="block w-full rounded-control px-2.5 py-2 text-left transition-colors hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-progress"
                 >
@@ -937,7 +901,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
                   <span className="mt-1.5 flex items-center gap-2">
                     <Avatar name={first.authorName} url={first.authorAvatarUrl} size={20} />
                     <span className="min-w-0 flex-1 truncate text-[12.5px]">
-                      <span className="font-semibold text-heading">{first.authorName}</span> <span className="text-faint">· {formatRelative(t.lastActivityAt)}</span>
+                      <span className="font-semibold text-heading">{first.authorName}</span> <span className="text-faint">· {t.waiting === "failed" ? "Not sent" : isPending(t) ? "Waiting to send" : formatRelative(t.lastActivityAt)}</span>
                     </span>
                     {t.unread ? <span className="h-2 w-2 flex-none rounded-tiny bg-coral" aria-label="Unread" role="img" /> : null}
                   </span>

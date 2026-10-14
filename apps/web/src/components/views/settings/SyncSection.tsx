@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAppState } from "@/lib/app/state";
 import { useEngineState } from "@/lib/hooks/useEngine";
 import { clearAllLocalData } from "@/lib/sync/db";
+import { useOutboxEntries } from "@/lib/sync/queryCache";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast } from "@/components/ui/Toast";
@@ -11,11 +12,12 @@ import { Card } from "./Card";
 import { t } from "@/i18n";
 
 export function SyncSection() {
-  const { engine, deviceId, online } = useAppState();
+  const { engine, outbox, deviceId, online } = useAppState();
   const state = useEngineState(engine);
   const toast = useToast();
   const [confirm, setConfirm] = useState(false);
-  const unsent = state.pending.length + state.inflight.length;
+  // Page edits and the other changes (folders, comments, collections) waiting in the outbox.
+  const unsent = state.pending.length + state.inflight.length + useOutboxEntries(outbox).length;
   return (
     <>
       <Card title="This device" description="Folevi keeps your recent documents and every unsent change in this browser, so you can keep writing offline and nothing is lost if the tab closes.">
@@ -34,7 +36,14 @@ export function SyncSection() {
           <dd className="truncate font-mono text-xs">{deviceId}</dd>
         </dl>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={() => engine?.scheduleFlush(0)}>Sync now</Button>
+          <Button
+            onClick={() => {
+              engine?.scheduleFlush(0);
+              outbox?.scheduleFlush(0);
+            }}
+          >
+            Sync now
+          </Button>
           <Button variant="quiet" className="text-danger" onClick={() => setConfirm(true)}>
             Clear data on this device…
           </Button>

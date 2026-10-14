@@ -1,12 +1,10 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, CornerLeftUp, Inbox, Search } from "lucide-react";
 import { flattenFolders, folderAncestors, folderMoveProblem, type WireScope } from "@folevi/editor-schema";
-import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
-import { folderMoveMessage } from "@/lib/app/folders";
+import { folderMoveMessage, useFolderTree } from "@/lib/app/folders";
 import { Dialog } from "@/components/ui/Dialog";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import type { FolderTarget } from "./noteActions";
@@ -80,7 +78,7 @@ export function FolderPicker({
 }) {
   const { scope: here } = useAppState();
   const scope = scopeOverride ?? here;
-  const org = useQuery(api.organization.sidebar, open ? { scope } : "skip");
+  const org = useFolderTree(open ? scope : "skip");
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
   const baseId = useId();

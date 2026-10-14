@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { useId, useMemo, useState } from "react";
 import { FolderPlus, Hash, LayoutGrid, MoreHorizontal, Rows3, Search, X } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
@@ -9,6 +9,9 @@ import { FOLDER_CARD_BOX, FOLDER_CARD_FRAME, FOLDER_CARD_MENU, FolderCardArt, ty
 import { FolderMenu } from "@/components/app/FolderMenu";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
+import { useFolderActions } from "@/lib/app/folders";
+import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
+import { overlayFolderIndex } from "@/lib/sync/overlays";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { formatRelative } from "@/lib/format";
@@ -108,9 +111,11 @@ export function FolderCard({ folder: f, parentName }: { folder: FolderSummary; p
 
 /** Every folder in the current context (Personal or a workspace), with search and sorting (the sidebar only lists the first few). */
 export function FoldersIndex() {
-  const { scope, canEdit } = useAppState();
-  const data = useQuery(api.organization.index, { scope, only: "folders" });
-  const createFolder = useMutation(api.organization.createFolder);
+  const { scope, canEdit, outbox } = useAppState();
+  const served = useOfflineQuery(api.organization.index, { scope, only: "folders" });
+  const waiting = useOutboxEntries(outbox);
+  const data = useMemo(() => (served ? overlayFolderIndex(served, waiting, scope) : served), [served, waiting, scope]);
+  const folderActions = useFolderActions();
   const { navigate } = useAppRouter();
   const toast = useToast();
   const [q, setQ] = useState("");
@@ -216,9 +221,9 @@ export function FoldersIndex() {
         onClose={() => setCreating(false)}
         onSubmit={async (name) => {
           try {
-            const r = await createFolder({ scope, name });
+            const id = folderActions.create(name);
             setCreating(false);
-            navigate(`/folders/${r.id}`);
+            navigate(`/folders/${id}`);
           } catch (e) {
             toast.show(errorMessage(e), { tone: "error" });
           }

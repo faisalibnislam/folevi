@@ -36,6 +36,9 @@ import {
 } from "lucide-react";
 import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, folderAncestors, rankForPosition, type DocumentStyle, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
+import { useFolderTree } from "@/lib/app/folders";
+import { useOutboxEntries } from "@/lib/sync/queryCache";
+import { pendingNoteFolders } from "@/lib/sync/overlays";
 import { formatRelative } from "@/lib/format";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAppState } from "@/lib/app/state";
@@ -62,7 +65,7 @@ import { NotePaletteProvider } from "@/components/editor/notePalette";
 import { useCoverImage } from "@/lib/app/coverImage";
 import { PermanentDeleteDialog } from "@/components/views/DocumentBrowser";
 import { Inspector, type InspectorTab } from "./Inspector";
-import { BlockThread, useNoteNotifyItems } from "./Comments";
+import { BlockThread, useCommentThreads, useNoteNotifyItems } from "./Comments";
 import { AI_OPEN_EVENT, AI_RUN_EVENT, NoteAiContext, useAi, useAiEnabled, type AiRunDetail, type NoteAi } from "@/components/ai/useAi";
 import { DocumentSidebar, type Crumb, type DocSidebarTab } from "./DocumentSidebar";
 import { useDocTab } from "@/lib/app/tabs";
@@ -128,7 +131,7 @@ function useNoteBlocks(documentId: string): NoteBlocks | null | undefined {
 let lastPointerDown = 0;
 
 export function DocumentView({ documentId }: { documentId: string }) {
-  const { engine, profile, online, scopeKey } = useAppState();
+  const { engine, outbox, profile, online, scopeKey } = useAppState();
   const meta = useQuery(api.documents.get, { documentId });
   const server = useNoteBlocks(documentId);
   const settings = useQuery(api.settings.status, {});
@@ -359,7 +362,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
     };
   }, [documentId, engine, createSnapshot, markSeen]);
 
-  const threads = useQuery(api.comments.threads, meta ? { documentId } : "skip");
+  const threads = useCommentThreads(documentId, meta === null);
   const openBlockThread = useCallback((blockId: string, threadId: string | null = null) => setOpenThread({ blockId, threadId }), []);
   // The note's conflicted blocks, kept as the same array while they don't change, so the editor's
   // decorations aren't re-sent on every render of this view.
@@ -432,8 +435,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
 
   // A folder inside other folders shows the folders above it in the breadcrumb too (the nearest two, after
   // "…" when there are more). Read from the note's own scope (it may be open from another context).
-  const org = useQuery(api.organization.sidebar, meta?.folder && meta.isMember ? { scope: documentScope(meta.document) } : "skip");
-  const folderAbove = meta?.folder && org ? folderAncestors(org.folders, meta.folder.id) : [];
+  // A move still waiting to be sent (offline) shows where the note is going, and folder names as they'll be.
+  const waitingChanges = useOutboxEntries(outbox);
+  const movedTo = useMemo(() => pendingNoteFolders(waitingChanges).get(documentId), [waitingChanges, documentId]);
+  const org = useFolderTree((meta?.folder || movedTo) && meta?.isMember ? documentScope(meta.document) : "skip");
+  const folderId = movedTo !== undefined ? movedTo : (meta?.folder?.id ?? null);
+  const folder = folderId ? { id: folderId, name: org?.folders.find((f) => f.id === folderId)?.name ?? (meta?.folder?.id === folderId ? meta.folder.name : "Folder") } : null;
+  const folderAbove = folder && org ? folderAncestors(org.folders, folder.id) : [];
   const shownAbove = folderAbove.slice(-2);
 
   const summary = meta?.document ?? null;
@@ -703,7 +711,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
 
   const trail: Crumb[] = [
     ...folderAbove.map((f) => ({ href: `/folders/${f.id}`, label: f.name })),
-    meta?.folder ? { href: `/folders/${meta.folder.id}`, label: meta.folder.name } : { href: "/drafts", label: "Drafts" },
+    folder ? { href: `/folders/${folder.id}`, label: folder.name } : { href: "/drafts", label: "Drafts" },
     ...(meta?.breadcrumbs ?? []).map((b) => ({ href: `/d/${b.id}`, label: b.title || "Untitled", icon: null })),
   ];
   const pageTitle = summary?.title || localTitle || "Untitled";
@@ -779,11 +787,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
               <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
             </Fragment>
           ))}
-          <AppLink href={meta?.folder ? `/folders/${meta.folder.id}` : "/documents"} className="flex min-w-0 max-w-[12rem] items-center gap-1.5 truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
-            {meta?.folder ? (
+          <AppLink href={folder ? `/folders/${folder.id}` : "/documents"} className="flex min-w-0 max-w-[12rem] items-center gap-1.5 truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+            {folder ? (
               <>
                 <Folder size={14} className="flex-none" aria-hidden />
-                <span className="truncate">{meta.folder.name}</span>
+                <span className="truncate">{folder.name}</span>
               </>
             ) : (
               <>
@@ -1068,7 +1076,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
           onClose={() => setMoveOpen(false)}
           documentId={documentId}
           title={summary?.title ?? ""}
-          folder={meta.folder ?? null}
+          folder={folder}
           parent={meta.breadcrumbs.length ? { id: meta.breadcrumbs[meta.breadcrumbs.length - 1]!.id, title: meta.breadcrumbs[meta.breadcrumbs.length - 1]!.title } : null}
           canFile={canFile}
           canNest={canNest}

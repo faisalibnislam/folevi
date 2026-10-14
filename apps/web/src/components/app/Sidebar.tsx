@@ -43,7 +43,7 @@ import { openNextInNewTab } from "@/lib/app/tabs";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { useNoteActions } from "@/components/views/noteActions";
 import { draggedNoteIds, isNoteDrag } from "@/lib/app/noteDrag";
-import { draggedFolderId, draggingFolderId, endFolderDrag, folderMoveMessage, isFolderDrag, startFolderDrag, useMoveFolder, useOpenFolders } from "@/lib/app/folders";
+import { draggedFolderId, draggingFolderId, endFolderDrag, folderMoveMessage, isFolderDrag, startFolderDrag, useFolderActions, useMoveFolder, useOpenFolders, useFolderTree } from "@/lib/app/folders";
 import { flattenFolders, folderAncestors, folderMoveProblem } from "@folevi/editor-schema";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiEnabled } from "@/components/ai/useAi";
@@ -436,13 +436,13 @@ export function SidebarTopBar({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { scope, canEdit, today } = useAppState();
-  const org = useQuery(api.organization.sidebar, { scope });
+  const org = useFolderTree(scope);
   const counts = useQuery(api.tasks.counts, { scope, today });
   const drafts = useQuery(api.organization.draftCount, { scope });
   // Reviews (flashcards due today, everywhere): listed once there's something to study.
   const reviews = useQuery(api.study.summary, useReviewWindow(5 * 60_000));
   const starred = useQuery(api.documents.list, { scope, view: "starred", paginationOpts: { numItems: 8, cursor: null } });
-  const createFolder = useMutation(api.organization.createFolder);
+  const folderActions = useFolderActions();
   const { route } = useAppRouter();
   // Changes others made in notes you've opened (everywhere), leaving out the note in front of you.
   const changes = useQuery(api.changes.list, route.name === "doc" ? { exclude: route.id } : {});
@@ -631,7 +631,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         onClose={() => setFolderDialog(false)}
         onSubmit={async (name) => {
           try {
-            await createFolder({ scope, name });
+            folderActions.create(name);
           } catch (e) {
             toast.show(errorMessage(e), { tone: "error" });
           }

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { ChevronDown, ChevronRight, ChevronUp, CircleCheck, ExternalLink, FileText, House, Image as ImageIcon, List, MessageSquare, Mic, PanelLeft, Paperclip, Search, X } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
-import { CommentsOverview, type CommentThread } from "./Comments";
+import { CommentsOverview, useCommentThreads, type CommentThread } from "./Comments";
 import { flattenTree, plainText, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
@@ -74,7 +74,7 @@ export function DocumentSidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new request switches tabs
   }, [request?.at]);
   // An unread open thread puts a dot on the Comments tab.
-  const threads = useQuery(api.comments.threads, { documentId });
+  const threads = useCommentThreads(documentId);
   const unread = Boolean(threads?.threads.some((t) => t.unread && t.status === "open"));
   return (
     <div className="flex h-full flex-col">

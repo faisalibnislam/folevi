@@ -448,15 +448,15 @@ const recording = (size: number) => {
 const MB = 1024 * 1024;
 
 describe("long recordings", () => {
-  test("windows: one call up to 35 minutes, equal windows of about 30 minutes after that; prompts, joins and lengths", () => {
+  test("windows: one call up to 100 minutes, equal windows of about 90 minutes after that; prompts, joins and lengths", () => {
     expect(transcriptWindows(20 * 60)).toEqual([{ start: 0, end: 1200 }]);
-    expect(transcriptWindows(35 * 60)).toHaveLength(1);
-    expect(transcriptWindows(92 * 60)).toEqual([
-      { start: 0, end: 1840 },
-      { start: 1840, end: 3680 },
-      { start: 3680, end: 5520 },
+    expect(transcriptWindows(92 * 60)).toEqual([{ start: 0, end: 5520 }]);
+    expect(transcriptWindows(100 * 60)).toHaveLength(1);
+    expect(transcriptWindows(3 * 3600)).toEqual([
+      { start: 0, end: 5400 },
+      { start: 5400, end: 10800 },
     ]);
-    expect(transcriptWindows(3 * 3600)).toHaveLength(6);
+    expect(transcriptWindows(4 * 3600)).toHaveLength(3);
     expect(windowPrompt({ start: 1840, end: 3680 }, 5520)).toMatch(/1:32:00 long.*only the part from 30:40 to 1:01:20.*starts at or after 30:40.*before 1:01:20/);
     expect(windowPrompt({ start: 0, end: 1840 }, 5520)).toMatch(/from the start to 30:40/);
     expect(windowPrompt({ start: 3680, end: 5520 }, 5520)).toMatch(/from 1:01:20 to the end/);
@@ -477,7 +477,7 @@ describe("long recordings", () => {
     const { noteId, fileId } = await noteWithFile(t, a, { filename: "meeting.webm", bytes: WEBM, mimeType: "audio/webm", kind: "audio", duration: 92 * 60 });
     const models = { main: geminiModel(), fast: geminiFastModel() };
     const long = await a.as.query(api.aiAttachments.transcribeEstimate, { documentId: noteId, fileId });
-    expect(long).toEqual({ seconds: 5520, minutes: 92, windows: 3, credits: estimateCredits(transcriptPlan(5520, "estimate"), models), confirm: true });
+    expect(long).toEqual({ seconds: 5520, minutes: 92, windows: 1, credits: estimateCredits(transcriptPlan(5520, "estimate"), models), confirm: true });
     expect(long!.credits).toBeGreaterThan(0);
     const { noteId: memoNote, fileId: memo } = await noteWithFile(t, a, { filename: "memo.webm", bytes: WEBM, mimeType: "audio/webm", kind: "audio", duration: 95 });
     const short = await a.as.query(api.aiAttachments.transcribeEstimate, { documentId: memoNote, fileId: memo });
@@ -525,26 +525,25 @@ describe("long recordings", () => {
   test("a long recording is transcribed in windows over one upload, joined in order, and charged for every call", async () => {
     const t = setup();
     const a = await person(t, "attach-windows@example.com");
-    // A 92-minute recording holds more than a trial's 100 credits.
+    // A 3-hour recording holds more than a trial's 100 credits.
     await a.as.mutation(api.billing.testPurchase, { plan: "pro_ai", interval: "month" });
     const { calls, generations } = filesApi({
-      transcript: (prompt) => (/from the start/.test(prompt) ? "Speaker 1: We start with the budget." : /from 30:40/.test(prompt) ? "Speaker 2: Then the ferry." : "[no speech]"),
+      transcript: (prompt) => (/from the start/.test(prompt) ? "Speaker 1: We start with the budget." : /from 1:30:00/.test(prompt) ? "Speaker 2: Then the ferry." : "[no speech]"),
     });
-    const { noteId, fileId } = await noteWithFile(t, a, { filename: "meeting.webm", bytes: recording(20 * MB), mimeType: "audio/webm", kind: "audio", duration: 92 * 60 });
+    const { noteId, fileId } = await noteWithFile(t, a, { filename: "meeting.webm", bytes: recording(20 * MB), mimeType: "audio/webm", kind: "audio", duration: 3 * 3600 });
     const before = await balance(a);
     const out = await a.as.action(api.aiAttachments.transcribe, { scope: a.scope, documentId: noteId, fileId });
     expect(out.text).toBe("Speaker 1: We start with the budget.\n\nSpeaker 2: Then the ferry.");
     expect(before - (await balance(a))).toBe(out.credits);
-    // One upload and one delete; three calls, each over the same uploaded file, one per window.
+    // One upload and one delete; two calls, each over the same uploaded file, one per window.
     expect(calls.filter((c) => c.url.endsWith("/upload/v1beta/files"))).toHaveLength(1);
     expect(calls.filter((c) => c.method === "DELETE")).toHaveLength(1);
     const bodies = generations();
-    expect(bodies).toHaveLength(3);
+    expect(bodies).toHaveLength(2);
     for (const b of bodies) expect(b.contents[0]!.parts[1]).toEqual({ fileData: { mimeType: "audio/webm", fileUri: FILE_URI } });
     const prompts = bodies.map((b) => String(b.contents[0]!.parts[0]!.text)).sort();
-    expect(prompts.some((p) => p.includes("from the start to 30:40"))).toBe(true);
-    expect(prompts.some((p) => p.includes("from 30:40 to 1:01:20"))).toBe(true);
-    expect(prompts.some((p) => p.includes("from 1:01:20 to the end"))).toBe(true);
+    expect(prompts.some((p) => p.includes("from the start to 1:30:00"))).toBe(true);
+    expect(prompts.some((p) => p.includes("from 1:30:00 to the end"))).toBe(true);
     // The delete comes after every call.
     const last = calls.map((c) => c.url.includes("GenerateContent")).lastIndexOf(true);
     expect(calls.findIndex((c) => c.method === "DELETE")).toBeGreaterThan(last);

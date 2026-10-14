@@ -5,10 +5,11 @@
 //
 //   A recording up to the inline limit goes with the request (lib/ai/attachments.ts); a larger one is
 //   uploaded once to the Gemini Files API (lib/ai/geminiFiles.ts). A recording over WINDOW_SECONDS (plus
-//   a little slack) is transcribed in equal windows of about 30 minutes, one call each over the same
-//   uploaded file ("transcribe from 30:40 to 1:01:20"), and the parts are joined in order. Every call
+//   a little slack) is transcribed in equal windows of about 90 minutes, one call each over the same
+//   uploaded file ("transcribe from 1:30:00 to the end"), and the parts are joined in order. Every call
 //   reads the whole recording (Gemini can't be sent part of a file), so each window pays for all of its
-//   audio: that's in the estimate.
+//   audio: that's in the estimate, and why windows are as long as one reply can be (most meetings are
+//   one call).
 import type { PlannedCall } from "../credits";
 
 /** Audio tokens a second of recording costs (Gemini counts 32). */
@@ -17,12 +18,12 @@ export const AUDIO_TOKENS_PER_SECOND = 32;
 const BYTES_PER_SECOND = 8_000;
 /** Transcript tokens a minute of speech, about 150 words: for the estimate shown before transcribing. */
 export const TRANSCRIPT_TOKENS_PER_MINUTE = 200;
-/** The most one call may write: about an hour of fast speech, so a 35-minute window has room to spare. */
-export const TRANSCRIPT_TOKENS = 16_384;
+/** The most one call may write: about two and a half hours of speech, so a 100-minute window has room. */
+export const TRANSCRIPT_TOKENS = 32_768;
 /** A long recording is transcribed in windows of about this long. */
-export const WINDOW_SECONDS = 30 * 60;
-/** A recording up to this much over one window is still done in one call (no 2-minute last window). */
-const WINDOW_SLACK_SECONDS = 5 * 60;
+export const WINDOW_SECONDS = 90 * 60;
+/** A recording up to this much over one window is still done in one call (no short last window). */
+const WINDOW_SLACK_SECONDS = 10 * 60;
 /** The longest recording that can be transcribed (Gemini holds about 9 hours of audio in one request). */
 export const MAX_TRANSCRIBE_SECONDS = 4 * 3600;
 /** Recordings longer than this show what they'll cost and ask first. */
@@ -46,8 +47,8 @@ export function recordingSeconds(duration: number | null | undefined, size: numb
 }
 
 /**
- * The windows a recording is transcribed in: one for a recording up to 35 minutes, otherwise equal windows
- * of at most about 30 minutes (whole seconds), the last one running to the end.
+ * The windows a recording is transcribed in: one for a recording up to 100 minutes, otherwise equal windows
+ * of at most about 90 minutes (whole seconds), the last one running to the end.
  */
 export function transcriptWindows(seconds: number): TranscriptWindow[] {
   const total = Math.max(1, Math.ceil(seconds));

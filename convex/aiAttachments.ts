@@ -11,7 +11,7 @@
 //                images, PDFs and audio through one model call that writes out what's in them.
 //   transcribe:  an audio block's recording, transcribed on request (never automatically), of any length
 //                up to MAX_TRANSCRIBE_SECONDS: a small one inline, a larger one uploaded once to the Gemini
-//                Files API (lib/ai/geminiFiles.ts), a long one in windows of about 30 minutes over that one
+//                Files API (lib/ai/geminiFiles.ts), a long one in windows of about 90 minutes over that one
 //                upload (lib/ai/transcription.ts). transcribeEstimate says what it will cost first.
 //
 // Every file is checked again as the person when it's read (they can still open it, the setting is on,

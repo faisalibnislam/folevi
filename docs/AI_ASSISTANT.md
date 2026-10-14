@@ -120,8 +120,8 @@ As built (milestone 5):
 - Recordings of any length (`convex/lib/ai/transcription.ts`, `convex/lib/ai/geminiFiles.ts`), up to 4 hours: one up
   to the inline limit (14 MB) goes with the request; a larger one is uploaded once to the Gemini Files API (a
   resumable upload, polled until ACTIVE for up to 2 minutes, referenced as a `fileData` part) and deleted in a
-  `finally` however the work ends. A recording over 35 minutes is transcribed in equal windows of at most about 30
-  minutes ("transcribe from 30:40 to 1:01:20", starting and ending on whole sentences, speakers numbered across the
+  `finally` however the work ends. A recording over 100 minutes is transcribed in equal windows of at most about
+  90 minutes ("transcribe from 1:30:00 to the end", starting and ending on whole sentences, speakers numbered across the
   whole recording), three calls at a time over the one upload, each streamed so a long reply gets the stream's
   deadline, and the parts are joined in order. The length is the one measured while recording (the audio block's
   `duration`), or guessed from the size at 64 kbit/s.

@@ -466,35 +466,51 @@ export const contradictions = query({
       state = await fullGraph(ctx, profile, scope);
       if (!state.full) return { ...state, items: [] };
       reader = await PageReader.forScope(ctx, profile, scope);
-      rows = [];
-      for (const kind of ["contradicts", "supersedes"] as const) {
-        rows.push(
-          ...(await (
-            scope.kind === "personal"
-              ? ctx.db.query("aiRelations").withIndex("by_owner", (q) => q.eq("ownerProfileId", scope.profileId).eq("kind", kind))
-              : ctx.db.query("aiRelations").withIndex("by_workspace", (q) => q.eq("workspaceId", scope.workspaceId).eq("kind", kind))
-          ).take(200)),
-        );
-      }
+      rows = await scopeContradictionRows(ctx, scope);
     } else return { full: false, note: null, items: [] };
-    const seen = new Set<string>();
-    const items: { kind: "contradicts" | "supersedes"; from: NoteRef & { blockId: string; quote: string }; to: NoteRef & { blockId: string; quote: string }; reason: string | null }[] = [];
-    for (const r of rows) {
-      if (items.length >= CONTRADICTIONS_LIMIT) break;
-      if ((r.kind !== "contradicts" && r.kind !== "supersedes") || !r.toDocumentId || !r.sourceBlockId || !r.targetBlockId) continue;
-      const key = r.kind === "contradicts" ? `c:${[`${r.sourceDocumentId}/${r.sourceBlockId}`, `${r.toDocumentId}/${r.targetBlockId}`].sort().join(":")}` : `s:${r.sourceDocumentId}/${r.sourceBlockId}:${r.toDocumentId}/${r.targetBlockId}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const [a, b] = [await ctx.db.get(r.sourceDocumentId), await ctx.db.get(r.toDocumentId)];
-      if (!a || !b || !(await openable(reader, a)) || !(await openable(reader, b))) continue;
-      const [qa, qb] = [await blockText(ctx, a._id, r.sourceBlockId), await blockText(ctx, b._id, r.targetBlockId)];
-      // Either line was edited (or deleted) since: it may not hold any more.
-      if (!qa || !qb || (r.sourceKey && textKey(qa) !== r.sourceKey) || (r.targetKey && textKey(qb) !== r.targetKey)) continue;
-      items.push({ kind: r.kind, from: { ...refOf(a), blockId: r.sourceBlockId, quote: qa.slice(0, QUOTE_CHARS) }, to: { ...refOf(b), blockId: r.targetBlockId, quote: qb.slice(0, QUOTE_CHARS) }, reason: r.reason ?? null });
-    }
-    return { full: state.full, note: state.note, items };
+    return { full: state.full, note: state.note, items: await contradictionItems(ctx, reader, rows, CONTRADICTIONS_LIMIT) };
   },
 });
+
+/** A scope's stored contradictions and supersessions (a few hundred at most). */
+export async function scopeContradictionRows(ctx: QueryCtx, scope: Scope): Promise<Doc<"aiRelations">[]> {
+  const rows: Doc<"aiRelations">[] = [];
+  for (const kind of ["contradicts", "supersedes"] as const) {
+    rows.push(
+      ...(await (
+        scope.kind === "personal"
+          ? ctx.db.query("aiRelations").withIndex("by_owner", (q) => q.eq("ownerProfileId", scope.profileId).eq("kind", kind))
+          : ctx.db.query("aiRelations").withIndex("by_workspace", (q) => q.eq("workspaceId", scope.workspaceId).eq("kind", kind))
+      ).take(200)),
+    );
+  }
+  return rows;
+}
+
+export type ContradictionItem = { kind: "contradicts" | "supersedes"; from: NoteRef & { blockId: string; quote: string }; to: NoteRef & { blockId: string; quote: string }; reason: string | null };
+
+/**
+ * Relation rows as items people may see, each side quoted as it reads now: both notes ones `reader` can
+ * open, both lines unchanged since it was found, each pair once. Also Open loops' (convex/routines.ts).
+ */
+export async function contradictionItems(ctx: QueryCtx, reader: PageReader, rows: Doc<"aiRelations">[], limit: number): Promise<ContradictionItem[]> {
+  const seen = new Set<string>();
+  const items: ContradictionItem[] = [];
+  for (const r of rows) {
+    if (items.length >= limit) break;
+    if ((r.kind !== "contradicts" && r.kind !== "supersedes") || !r.toDocumentId || !r.sourceBlockId || !r.targetBlockId) continue;
+    const key = r.kind === "contradicts" ? `c:${[`${r.sourceDocumentId}/${r.sourceBlockId}`, `${r.toDocumentId}/${r.targetBlockId}`].sort().join(":")}` : `s:${r.sourceDocumentId}/${r.sourceBlockId}:${r.toDocumentId}/${r.targetBlockId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const [a, b] = [await ctx.db.get(r.sourceDocumentId), await ctx.db.get(r.toDocumentId)];
+    if (!a || !b || !(await openable(reader, a)) || !(await openable(reader, b))) continue;
+    const [qa, qb] = [await blockText(ctx, a._id, r.sourceBlockId), await blockText(ctx, b._id, r.targetBlockId)];
+    // Either line was edited (or deleted) since: it may not hold any more.
+    if (!qa || !qb || (r.sourceKey && textKey(qa) !== r.sourceKey) || (r.targetKey && textKey(qb) !== r.targetKey)) continue;
+    items.push({ kind: r.kind, from: { ...refOf(a), blockId: r.sourceBlockId, quote: qa.slice(0, QUOTE_CHARS) }, to: { ...refOf(b), blockId: r.targetBlockId, quote: qb.slice(0, QUOTE_CHARS) }, reason: r.reason ?? null });
+  }
+  return items;
+}
 
 /** Notes that mention the same people, projects or topics as this one but aren't linked to it either way. */
 export const missingConnections = query({

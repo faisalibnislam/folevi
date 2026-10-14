@@ -41,6 +41,8 @@ export const DEFAULT_RATE_RULES = {
   aiResearch: { limit: 10, windowMs: 60 * 60_000 },
   /** Notes read for the knowledge graph per account (a Personal or a workspace); platform-paid. */
   aiGraph: { limit: 300, windowMs: 60 * 60_000 },
+  /** Foli AI routines started by hand ("Run now"), per person (each run also holds and pays credits). */
+  routineRunNow: { limit: 5, windowMs: 60 * 60_000 },
   /** Support requests from the support page or the app, per client (hashed IP). */
   supportSubmit: { limit: 10, windowMs: 60 * 60_000 },
   /** Support requests and in-app replies per requester address. */

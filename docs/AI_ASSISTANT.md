@@ -180,6 +180,44 @@ As built (milestone 8, part A: `convex/aiMemory.ts`, `convex/aiSuggestions.ts`, 
   to add pages there, the model failed) is told once per reason in the bell. Note content is never emailed.
   Digests or AI off: `due` clears the schedule and nothing runs.
 
+### Routines (`convex/routines.ts`, `convex/lib/ai/routines.ts`)
+
+Scheduled Foli AI jobs that write a new note for the person, generalising the digest's pattern and sharing
+its helpers (`nextDigestAt`, `localDay`, `placeOf`, `saveToInbox`, `holdFor`, `metered`). Pro and Pro AI only
+(the credit account's tier from `aiAccountFor`; a Pro AI trial counts): Free and Core are refused when
+turning one on and Settings > AI shows the rows locked with a link to Plan & billing.
+
+- `routines`: one row per person and kind, off by default. `morning` (Morning brief) runs daily at an hour
+  (default 08:00); `openLoops` (Open loops) weekly on a day at an hour (default Monday 09:00), both in the
+  person's time zone. Each is about their Personal or a workspace where they can add pages (`save` checks
+  `resolveScope(..., "edit")`), and refuses to turn on while Foli AI is off.
+- Credits: each run holds `estimateCredits(plan, models())` like any request (feature `routines` on the
+  usage card) and settles what it really cost. `list` shows the estimate before turning one on: the brief
+  holds about 2 credits a run (up to 31 runs, so up to about 62 a month), Open loops about 1 on the fast model
+  (up to 5 runs a month). Each routine has a monthly cap the person picks (10, 30, 60 or 100; 30 by default).
+  Spend is kept per routine per calendar month on the person's clock (`spend.period`, "2026-10"); the
+  settled credits of every run (`metered`'s `onSettled`) are added to it. A run whose estimate would go past
+  what's left is skipped before anything is read, and the person is told once that month ("paused until
+  1 November ... Raise the limit in Settings > AI"). `runNow` starts one at once within the same checks,
+  5 an hour (`routineRunNow`).
+- Morning brief: open to-dos due today or overdue (in a workspace only theirs: assigned to or made by them),
+  notes someone else edited last since the previous brief, and other people's comments since then, only what
+  the person can open. Nothing at all: no note, nothing spent. One call on the main model writes "## Today",
+  "## Changed by others", "## Comments" (empty ones left out, under 200 words); links to the changed notes
+  follow.
+- Open loops: found without AI, at most 7, one kind in turn (`pickLoops`): overdue to-dos, to-dos open for more
+  than 7 days, contradictions from the knowledge graph where it's built (`aiGraph.contradictionItems`, both
+  notes openable, both lines unchanged) and questions (a prose line ending in "?") in notes the person edited
+  in the last 30 days. Each item is a bullet whose text links to its block (`/d/<note>#block-<blockId>`,
+  the anchor DocumentView scrolls to), then why it's listed and the note's title. The fast model only writes
+  a 2 to 4 sentence intro; if that call fails the list is still saved. None found: nothing spent.
+- Delivery: always a new note under the person's Inbox page there (restricted in a workspace), a card for it
+  on the Inbox, an in-app notification linking to it and a web push (title and link only). Existing notes are
+  never edited. Note text goes to the model wrapped as untrusted data (`untrusted`, `UNTRUSTED_RULE`) and is
+  never logged or emailed. Skips (plan, credits, cap, access, model failure) are told once per reason in the
+  bell. Routine or AI off: the 15-minute cron (`routines.due`) clears the schedule and nothing runs. Rows go
+  with the account and with a workspace they're about.
+
 ### Study, meetings, translation, frameworks (`convex/lib/ai/studyTools.ts`, `convex/lib/ai/translate.ts`, `convex/aiStudy.ts`)
 
 As built (milestone 8, part B):

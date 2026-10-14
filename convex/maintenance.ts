@@ -245,8 +245,8 @@ async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, b
     return false;
   }
   // Folders, tags, everyone's AI conversations here (with their messages), semantic search's and the graph's
-  // rows, memory kept for this workspace and dismissed suggestions.
-  for (const table of ["folders", "tags", "aiRuns", "aiResearch", "aiMessages", "aiConversations", "aiChunks", "aiIndexState", "aiIndexScopes", "aiEntities", "aiMentions", "aiRelations", "aiGraphState", "aiMemories", "aiSuggestionDismissals"] as const) {
+  // rows, memory kept for this workspace, dismissed suggestions and routines about it.
+  for (const table of ["folders", "tags", "aiRuns", "aiResearch", "aiMessages", "aiConversations", "aiChunks", "aiIndexState", "aiIndexScopes", "aiEntities", "aiMentions", "aiRelations", "aiGraphState", "aiMemories", "aiSuggestionDismissals", "routines"] as const) {
     const rows = await ctx.db
       .query(table)
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
@@ -362,10 +362,11 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("aiResearch").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiMessages").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiConversations").withIndex("by_profile_place", (q) => q.eq("profileId", profileId)).take(200),
-    // Their memory in workspaces (the entries for everywhere went with their Personal), dismissed suggestions and digest schedule.
+    // Their memory in workspaces (the entries for everywhere went with their Personal), dismissed suggestions, digest schedule and routines.
     () => ctx.db.query("aiMemories").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiSuggestionDismissals").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiDigests").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("routines").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
   ] as never;
   // Files they uploaded into AI chats in workspaces (the ones in their Personal went with it above).
   const chats = await ctx.db.query("aiConversations").withIndex("by_profile_place", (q) => q.eq("profileId", profileId)).take(200);

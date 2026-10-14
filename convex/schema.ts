@@ -1069,6 +1069,38 @@ export default defineSchema({
     .index("by_next", ["nextAt"])
     .index("by_context", ["contextWorkspaceId"]),
 
+  /**
+   * Foli AI routines (convex/routines.ts): the Morning brief and Open loops, one row per person and kind, on
+   * Pro and Pro AI. Each run is a note under their Inbox in `workspaceId` (their Personal when unset), paid in
+   * AI credits up to the monthly cap they picked. `nextAt` is set only while it's on.
+   */
+  routines: defineTable({
+    profileId: v.id("profiles"),
+    /** Where it's about and saved: a workspace where they can add pages (unset = their Personal). */
+    workspaceId: v.optional(v.id("workspaces")),
+    kind: v.union(v.literal("morning"), v.literal("openLoops")),
+    /** Hour of the day (0 to 23) in the person's time zone. */
+    hour: v.number(),
+    /** Open loops: day of the week (0 Sunday to 6 Saturday). */
+    weekday: v.number(),
+    /** The most credits it may spend in a month (lib/ai/routines.ts CAP_CHOICES). */
+    monthlyCap: v.number(),
+    /** Credits spent in a month on the person's clock ("2026-10"); an older month counts as nothing. */
+    spend: v.optional(v.object({ period: v.string(), credits: v.number() })),
+    enabled: v.boolean(),
+    nextAt: v.optional(v.number()),
+    /** When the last one ran (the next brief covers changes since then). */
+    lastAt: v.optional(v.number()),
+    lastDocumentId: v.optional(v.id("documents")),
+    /** Why the last one was skipped (told once per reason, not every time). */
+    lastSkip: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_profile", ["profileId", "kind"])
+    .index("by_next", ["nextAt"])
+    .index("by_workspace", ["workspaceId"]),
+
   tasks: defineTable({
     blockId: v.string(),
     blockDocId: v.id("blocks"),

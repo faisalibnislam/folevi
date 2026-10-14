@@ -198,10 +198,13 @@ async function skip(ctx: MutationCtx, row: Doc<"aiDigests">, reason: Skip): Prom
   return { status: "skipped", reason };
 }
 
-/** Where a digest is about and saved, if the person can still add pages there. */
-async function placeOf(ctx: Ctx, profile: Doc<"profiles">, row: Doc<"aiDigests">): Promise<{ scope: Scope; scopeArg: ScopeArg } | null> {
-  if (!row.contextWorkspaceId) return { scope: personalScope(profile._id), scopeArg: { kind: "personal" } };
-  const ws = await ctx.db.get(row.contextWorkspaceId);
+/** A place a digest (or a routine, convex/routines.ts) is about and saved: Personal, or a workspace. */
+export type Place = { scope: Scope; scopeArg: ScopeArg };
+
+/** Where a digest (or a routine) is about and saved, if the person can still add pages there. */
+export async function placeOf(ctx: Ctx, profile: Doc<"profiles">, workspaceId: Id<"workspaces"> | undefined): Promise<Place | null> {
+  if (!workspaceId) return { scope: personalScope(profile._id), scopeArg: { kind: "personal" } };
+  const ws = await ctx.db.get(workspaceId);
   if (!ws) return null;
   const scopeArg: ScopeArg = { kind: "workspace", workspaceId: ws.publicId };
   try {
@@ -212,9 +215,9 @@ async function placeOf(ctx: Ctx, profile: Doc<"profiles">, row: Doc<"aiDigests">
   return { scope: workspaceScope(ws._id), scopeArg };
 }
 
-/** The person's Inbox page, or a digest note of theirs (both are kept out of the next digest). */
-const isInboxOrDigest = (d: Doc<"documents">, profileId: Id<"profiles">) =>
-  d.createdBy === profileId && (d.publicId.startsWith("inbox-") || (d.parentDocumentId !== undefined && /^(Daily|Weekly) digest\b/.test(d.title)));
+/** The person's Inbox page, or a digest or routine note of theirs (all kept out of the next digest). */
+export const isInboxOrDigest = (d: Doc<"documents">, profileId: Id<"profiles">) =>
+  d.createdBy === profileId && (d.publicId.startsWith("inbox-") || (d.parentDocumentId !== undefined && /^((Daily|Weekly) digest|Morning brief|Open loops)\b/.test(d.title)));
 
 /** What changed in a place since `since`, as the person can see it (a few of each kind). */
 async function material(ctx: Ctx, profile: Doc<"profiles">, scope: Scope, since: number, now: number, weekly: boolean): Promise<DigestMaterial> {
@@ -315,7 +318,7 @@ export const start = internalMutation({
     if (!row) return { status: "skipped", reason: "off" };
     const profile = await ctx.db.get(row.profileId);
     if (!wantsDigests(profile)) return { status: "skipped", reason: "off" };
-    const place = await placeOf(ctx, profile, row);
+    const place = await placeOf(ctx, profile, row.contextWorkspaceId);
     if (!place) return await skip(ctx, row, "access");
     // No AI on the plan here: nothing is read or sent.
     if (!(await aiAccountFor(ctx, profile, place.scope)).allowed) return await skip(ctx, row, "plan");
@@ -347,11 +350,8 @@ export const deliver = internalMutation({
     if (!row) return { status: "skipped", reason: "off" };
     const profile = await ctx.db.get(row.profileId);
     if (!wantsDigests(profile)) return { status: "skipped", reason: "off" };
-    const place = await placeOf(ctx, profile, row);
+    const place = await placeOf(ctx, profile, row.contextWorkspaceId);
     if (!place) return await skip(ctx, row, "access");
-    const inboxId = await ensureInbox(ctx, profile, place.scope, place.scopeArg);
-    const inbox = (await getDocumentByPublicId(ctx, inboxId))!;
-
     // The digest, then links to the notes it covered (the ones the person can still open).
     const { blocks } = markdownToBlocks(unfence(args.markdown).trim(), { titleFromHeading: false });
     const body: WireBlock[] = blocks.slice(0, MAX_DIGEST_BLOCKS);
@@ -366,28 +366,7 @@ export const deliver = internalMutation({
       body.push({ id: ulid(), type: "heading", parentId: null, rank: ranks[0]!, schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text: "Notes" }], props: { level: 2 } });
       links.forEach((d, i) => body.push({ id: ulid(), type: "bulleted", parentId: null, rank: ranks[i + 1]!, schemaVersion: SCHEMA_VERSION, text: [{ type: "pageLink", documentId: d.publicId, label: d.title || "Untitled" }], props: {} }));
     }
-    const title = digestTitle(row.frequency, args.since, args.until, profile.timeZone, profile.locale);
-    const doc = await createDocument(ctx, {
-      scope: place.scope,
-      actor: profile,
-      title,
-      parentDocumentId: inbox._id,
-      blocks: body,
-      // In a workspace it's theirs alone (it may name pages only they can open).
-      ...(place.scope.kind === "workspace" ? { accessMode: "restricted" as const } : {}),
-    });
-    // A card for it at the end of the Inbox page.
-    const roots = (await liveBlocks(ctx, inbox._id)).filter((b) => b.parentId === null).sort((a, b) => (a.rank < b.rank ? -1 : 1));
-    const card: WireBlock = {
-      id: ulid(),
-      type: "page",
-      parentId: null,
-      rank: rankBetween(roots[roots.length - 1]?.rank ?? null, null),
-      schemaVersion: SCHEMA_VERSION,
-      text: [],
-      props: { documentId: doc.publicId, display: "card", titleCache: doc.title, ...(doc.icon ? { iconCache: doc.icon } : {}) },
-    };
-    await new SyncEngine(ctx, profile, "server").applyAll(place.scopeArg, [{ opId: ulid(), kind: "block.upsert", documentId: inbox.publicId, block: card, baseRevision: null, fields: ["content", "position"] }]);
+    const doc = await saveToInbox(ctx, profile, place, digestTitle(row.frequency, args.since, args.until, profile.timeZone, profile.locale), body);
     await ctx.db.insert("notifications", {
       profileId: profile._id,
       ...(place.scope.kind === "workspace" ? { workspaceId: place.scope.workspaceId } : {}),
@@ -400,6 +379,35 @@ export const deliver = internalMutation({
     return { status: "delivered", documentId: doc.publicId };
   },
 });
+
+/**
+ * Saves a note the person's AI wrote for them (a digest, a routine) under their Inbox page in `place`, with a
+ * card for it at the end of the Inbox. In a workspace it's theirs alone (it may name pages only they can open).
+ */
+export async function saveToInbox(ctx: MutationCtx, profile: Doc<"profiles">, place: Place, title: string, blocks: WireBlock[]): Promise<Doc<"documents">> {
+  const inboxId = await ensureInbox(ctx, profile, place.scope, place.scopeArg);
+  const inbox = (await getDocumentByPublicId(ctx, inboxId))!;
+  const doc = await createDocument(ctx, {
+    scope: place.scope,
+    actor: profile,
+    title,
+    parentDocumentId: inbox._id,
+    blocks,
+    ...(place.scope.kind === "workspace" ? { accessMode: "restricted" as const } : {}),
+  });
+  const roots = (await liveBlocks(ctx, inbox._id)).filter((b) => b.parentId === null).sort((a, b) => (a.rank < b.rank ? -1 : 1));
+  const card: WireBlock = {
+    id: ulid(),
+    type: "page",
+    parentId: null,
+    rank: rankBetween(roots[roots.length - 1]?.rank ?? null, null),
+    schemaVersion: SCHEMA_VERSION,
+    text: [],
+    props: { documentId: doc.publicId, display: "card", titleCache: doc.title, ...(doc.icon ? { iconCache: doc.icon } : {}) },
+  };
+  await new SyncEngine(ctx, profile, "server").applyAll(place.scopeArg, [{ opId: ulid(), kind: "block.upsert", documentId: inbox.publicId, block: card, baseRevision: null, fields: ["content", "position"] }]);
+  return doc;
+}
 
 /** A digest the model couldn't write: told once, and the next one covers this stretch too. */
 export const failed = internalMutation({

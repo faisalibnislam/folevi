@@ -155,10 +155,10 @@ describe("recording use by feature", () => {
       }
       for (const m of s.matchAll(/await holdFor\(([^;]*?)\);/g)) {
         found++;
-        if (!/"(chat|agent|writing|research|attachments|transcription|digests)"/.test(m[1]!)) missing.push(`${f}: ${m[0].slice(0, 60)}`);
+        if (!/"(chat|agent|writing|research|attachments|transcription|digests|routines)"/.test(m[1]!)) missing.push(`${f}: ${m[0].slice(0, 60)}`);
       }
     }
-    // Chat, agent, research, Ask AI, writing, flowcharts, catch-up, translation, transcription and digests.
+    // Chat, agent, research, Ask AI, writing, flowcharts, catch-up, translation, transcription, digests and routines.
     expect(found).toBeGreaterThanOrEqual(10);
     expect(missing).toEqual([]);
   });

@@ -11,6 +11,7 @@ import { Card } from "./Card";
 import { AiSettingCard } from "./AccountSection";
 import { AiMemoryCard } from "./AiMemory";
 import { AiDigestCard } from "./AiDigest";
+import { AiRoutinesCard } from "./AiRoutines";
 import { AiUsageCard } from "./AiUsage";
 import { AiExportCard } from "./AiExport";
 
@@ -117,6 +118,7 @@ export function AiSection() {
       </Card>
       <AiMemoryCard />
       <AiDigestCard />
+      <AiRoutinesCard />
       <AiExportCard />
     </>
   );

@@ -9,7 +9,7 @@ import type { Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 
 /** What credits were spent on, in the order the usage card lists them. */
-export const AI_FEATURES = ["chat", "agent", "writing", "research", "attachments", "transcription", "digests", "other"] as const;
+export const AI_FEATURES = ["chat", "agent", "writing", "research", "attachments", "transcription", "digests", "routines", "other"] as const;
 export const vAiFeature = v.union(
   v.literal("chat"),
   v.literal("agent"),
@@ -18,6 +18,7 @@ export const vAiFeature = v.union(
   v.literal("attachments"),
   v.literal("transcription"),
   v.literal("digests"),
+  v.literal("routines"),
   v.literal("other"),
 );
 export type AiFeature = Infer<typeof vAiFeature>;
@@ -31,6 +32,7 @@ export const FEATURE_LABELS: Record<AiFeature, string> = {
   attachments: "Attachments",
   transcription: "Transcription",
   digests: "Digests",
+  routines: "Routines",
   other: "Other",
 };
 

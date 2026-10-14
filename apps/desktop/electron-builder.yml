@@ -1,5 +1,6 @@
 # Folevi for Mac. Built for this Mac only: signed with the personal Apple Development certificate (no
 # notarization, so it isn't for sharing). `pnpm release` builds, signs, puts it in /Applications and opens it.
+# The build for everyone (Developer ID, notarized, universal, with updates) is electron-builder.dist.yml.
 appId: com.folevi.mac
 productName: Folevi
 copyright: Copyright © 2026 Folevi
@@ -15,6 +16,11 @@ files:
   - package.json
   - "!**/node_modules/**"
 npmRebuild: false
+# folevi://d/<id> links open notes in the app (src/urls.ts parseDeepLink).
+protocols:
+  - name: Folevi
+    schemes:
+      - folevi
 # English only (Chromium ships dozens of interface languages; the app's own text is English).
 electronLanguages:
   - en

@@ -1,0 +1,51 @@
+# Folevi for Mac, for everyone: a universal build (Apple silicon and Intel) signed with a Developer ID
+# Application certificate, notarized by Apple, as a DMG to install and a ZIP for updates. Built and uploaded
+# by `pnpm publish-mac` (scripts/publish.mjs), which checks the certificate and Apple's credentials first.
+#   Signing: a "Developer ID Application" identity in the keychain (or CSC_LINK + CSC_KEY_PASSWORD).
+#   Notarizing: APPLE_API_KEY (path to the .p8), APPLE_API_KEY_ID and APPLE_API_ISSUER, or APPLE_ID,
+#   APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID.
+appId: com.folevi.mac
+productName: Folevi
+copyright: Copyright © 2026 Folevi
+directories:
+  output: release-dist
+  buildResources: build
+files:
+  - dist/**
+  - "!dist/**/*.test.js"
+  - assets/**
+  - package.json
+  - "!**/node_modules/**"
+npmRebuild: false
+electronLanguages:
+  - en
+protocols:
+  - name: Folevi
+    schemes:
+      - folevi
+artifactName: Folevi-${version}-${arch}-mac.${ext}
+mac:
+  target:
+    - target: dmg
+      arch: universal
+    # Squirrel.Mac (src/updates.ts) installs updates from the ZIP.
+    - target: zip
+      arch: universal
+  category: public.app-category.productivity
+  icon: build/Folevi.icon
+  # Picks the keychain's Developer ID Application certificate.
+  identity: null
+  type: distribution
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  notarize: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  minimumSystemVersion: "13.0"
+  extendInfo:
+    NSMicrophoneUsageDescription: Folevi uses the microphone when you record audio into a note.
+    LSApplicationCategoryType: public.app-category.productivity
+    NSUserNotificationAlertStyle: alert
+dmg:
+  title: Folevi
+  artifactName: Folevi-${version}-mac.${ext}

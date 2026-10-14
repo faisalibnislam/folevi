@@ -24,6 +24,8 @@ const bridge = {
   /** Quick Add window: done (or Escape), and its height as drawn. */
   closeQuickAdd: () => ipcRenderer.send("desktop:quick-add-close"),
   sizeQuickAdd: (height: number) => ipcRenderer.send("desktop:quick-add-size", height),
+  /** Starts dragging a note out of the app as a Markdown file (call from a dragstart, after preventDefault). */
+  dragFile: (file: { name: string; text: string }) => ipcRenderer.send("desktop:drag-file", file),
   /** Opens a path in the main window and brings it forward (from Quick Add). */
   openInMain: (path: string) => ipcRenderer.send("desktop:open", path),
   /** Menu, menu bar and notification commands for the page; returns the function that stops listening. */

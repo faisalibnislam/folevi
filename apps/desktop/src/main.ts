@@ -19,8 +19,10 @@ import {
   type Session,
   type WebContents,
 } from "electron";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { appUrl, APP_URL, isAppUrl, isExternalSafe } from "./urls";
+import { appUrl, APP_URL, dragFileName, isAppUrl, isExternalSafe, parseDeepLink, SCHEME } from "./urls";
+import { installUpdate, startUpdates, type UpdateState } from "./updates";
 import { cleanSettings, loadSettings, saveSettings, type DesktopSettings } from "./settings";
 import { restoreWindow, saveWindow } from "./windowState";
 
@@ -37,6 +39,10 @@ let quitting = false;
 let shortcutError: string | null = null;
 let recent: { id: string; title: string }[] = [];
 let status = "";
+let update: UpdateState = { state: "idle" };
+let checkForUpdates: (() => void) | null = null;
+/** A folevi:// link that arrived before the app was ready. */
+let pendingLink: string | null = null;
 
 // Test runs keep their own sign-in and settings, apart from the installed app's.
 if (process.env.FOLEVI_USER_DATA) app.setPath("userData", process.env.FOLEVI_USER_DATA);
@@ -44,7 +50,30 @@ if (process.env.FOLEVI_USER_DATA) app.setPath("userData", process.env.FOLEVI_USE
 // ---------------------------------------------------------------- one Folevi at a time
 
 if (!app.requestSingleInstanceLock()) app.quit();
-app.on("second-instance", () => showMain());
+app.on("second-instance", (_e, argv) => {
+  const link = argv.find((a) => a.startsWith(`${SCHEME}:`));
+  if (link) openLink(link);
+  else showMain();
+});
+
+// ---------------------------------------------------------------- folevi:// links
+
+// macOS hands links over with open-url, which can come before the app is ready (a link opened Folevi).
+app.on("will-finish-launching", () => {
+  app.on("open-url", (event, url) => {
+    event.preventDefault();
+    if (app.isReady()) openLink(url);
+    else pendingLink = url;
+  });
+});
+
+function openLink(url: string) {
+  const link = parseDeepLink(url);
+  if (!link) return;
+  if (link.type === "new-note") commandMain({ type: "new-note" });
+  else if (link.type === "quick-add") toggleQuickAdd();
+  else showMain(link.path);
+}
 
 // ---------------------------------------------------------------- the session every window shares
 
@@ -263,6 +292,7 @@ function buildMenu() {
       label: "Folevi",
       submenu: [
         { role: "about", label: "About Folevi" },
+        ...updateMenuItems(),
         { type: "separator" },
         { label: "Settings…", accelerator: "Command+,", click: () => showMain("/settings/desktop") },
         { type: "separator" },
@@ -316,6 +346,13 @@ function buildMenu() {
     { role: "help", submenu: [{ label: "Folevi Help", click: () => showMain("/help") }] },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+function updateMenuItems(): MenuItemConstructorOptions[] {
+  if (!checkForUpdates) return [];
+  if (update.state === "ready") return [{ label: `Restart to Update${update.version ? ` to ${update.version}` : ""}`, click: installUpdate }];
+  const busy = update.state === "checking" || update.state === "downloading";
+  return [{ label: update.state === "downloading" ? "Downloading Update…" : "Check for Updates…", enabled: !busy, click: () => checkForUpdates?.() }];
 }
 
 // ---------------------------------------------------------------- settings
@@ -406,6 +443,26 @@ function listen() {
     const [w] = quickAdd.getContentSize() as [number, number];
     quickAdd.setContentSize(w, h);
   });
+  // A note dragged out of the app (the Export dialog's file): written to a temporary file the drag carries
+  // to Finder or another app.
+  ipcMain.on("desktop:drag-file", (e, input: unknown) => {
+    if (!fromFolevi(e) || !input || typeof input !== "object") return;
+    const { name, text: body } = input as Record<string, unknown>;
+    if (typeof body !== "string" || body.length > 5_000_000) return;
+    const dir = join(app.getPath("temp"), "Folevi drag", String(Date.now()));
+    try {
+      mkdirSync(dir, { recursive: true });
+      const file = join(dir, dragFileName(text(name, 200), "md"));
+      writeFileSync(file, body, "utf8");
+      void app
+        .getFileIcon(file, { size: "normal" })
+        .catch(() => nativeImage.createFromPath(asset("trayTemplate@2x.png")))
+        .then((icon) => e.sender.startDrag({ file, icon }))
+        .catch(() => undefined);
+    } catch {
+      /* The drag simply carries nothing. */
+    }
+  });
   ipcMain.on("desktop:open", (e, path: unknown) => {
     if (!fromFolevi(e)) return;
     quickAdd?.hide();
@@ -418,6 +475,10 @@ function listen() {
 app.setAboutPanelOptions({ applicationName: "Folevi", applicationVersion: app.getVersion(), copyright: "© 2026 Folevi", website: "https://folevi.com" });
 
 app.whenReady().then(() => {
+  // Earlier drags' files: nothing needs them once the app has restarted.
+  rmSync(join(app.getPath("temp"), "Folevi drag"), { recursive: true, force: true });
+  // The installed app answers folevi:// links (a development run would register the Electron binary).
+  if (app.isPackaged) app.setAsDefaultProtocolClient(SCHEME);
   settings = loadSettings(settingsFile());
   setUpSession();
   listen();
@@ -425,10 +486,19 @@ app.whenReady().then(() => {
   shortcutError = registerShortcut();
   applyLoginItem();
   updateTray();
-  // Opened at login: quietly, ready for Quick Add. Otherwise the main window.
+  // Opened at login (or by a link): quietly, ready for Quick Add. Otherwise the main window.
   const atLogin = app.getLoginItemSettings().wasOpenedAtLogin;
-  if (!atLogin) createMainWindow();
+  if (!atLogin && !pendingLink) createMainWindow();
   createQuickAdd();
+  if (pendingLink) {
+    openLink(pendingLink);
+    pendingLink = null;
+  }
+  checkForUpdates = startUpdates((next) => {
+    update = next;
+    buildMenu();
+  });
+  buildMenu();
   nativeTheme.on("updated", () => {
     for (const win of BrowserWindow.getAllWindows()) win.setBackgroundColor(background());
   });

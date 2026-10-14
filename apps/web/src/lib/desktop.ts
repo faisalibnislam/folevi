@@ -24,6 +24,8 @@ export interface DesktopBridge {
   closeQuickAdd(): void;
   sizeQuickAdd(height: number): void;
   openInMain(path: string): void;
+  /** Drags a note out as a Markdown file (from a dragstart). Missing in Mac app builds before 1.2. */
+  dragFile?(file: { name: string; text: string }): void;
   onCommand(listener: (command: DesktopCommand) => void): () => void;
 }
 

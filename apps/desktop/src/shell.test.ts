@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import { cleanSettings, DEFAULT_SETTINGS, isValidShortcut, loadSettings, saveSettings } from "./settings";
-import { appUrl, isAppUrl, isExternalSafe } from "./urls";
+import { appUrl, dragFileName, isAppUrl, isExternalSafe, parseDeepLink } from "./urls";
 import { restoreWindow, saveWindow } from "./windowState";
 
 const dirs: string[] = [];
@@ -69,5 +69,26 @@ describe("window place", () => {
     expect(restoreWindow(file, screen)).toEqual({ bounds: { width: 1100, height: 800 }, maximized: false });
     saveWindow(file, { bounds: { x: 0, y: 0, width: 10, height: 10 }, maximized: false });
     expect(restoreWindow(file, screen).bounds).toEqual({ width: 1280, height: 840 });
+  });
+});
+
+describe("folevi:// links", () => {
+  test("open a note (with its block), an app page, a new note or Quick Add; nothing else", () => {
+    expect(parseDeepLink("folevi://d/01JAZ3XQ5V8K2M4N6P7R9S0T1U")).toEqual({ type: "open", path: "/d/01JAZ3XQ5V8K2M4N6P7R9S0T1U" });
+    expect(parseDeepLink("folevi://d/01jaz3xq5v8k2m4n6p7r9s0t1u#b123")).toEqual({ type: "open", path: "/d/01JAZ3XQ5V8K2M4N6P7R9S0T1U#b123" });
+    expect(parseDeepLink("folevi:///d/01JAZ3XQ5V8K2M4N6P7R9S0T1U")).toEqual({ type: "open", path: "/d/01JAZ3XQ5V8K2M4N6P7R9S0T1U" });
+    expect(parseDeepLink("folevi://tasks/today")).toEqual({ type: "open", path: "/tasks/today" });
+    expect(parseDeepLink("folevi://")).toEqual({ type: "open", path: "/documents" });
+    expect(parseDeepLink("folevi://new")).toEqual({ type: "new-note" });
+    expect(parseDeepLink("folevi://quick-add")).toEqual({ type: "quick-add" });
+    for (const bad of ["folevi://d/nope", "folevi://d/01JAZ3XQ5V8K2M4N6P7R9S0T1U/x", "folevi://admin", "folevi://d/%2F%2Fevil.com", "folevi://tasks/..%2F..%2Fx", "https://app.folevi.com/d/01JAZ3XQ5V8K2M4N6P7R9S0T1U", "folevi://new/x"]) {
+      expect(parseDeepLink(bad)).toBeNull();
+    }
+  });
+
+  test("a dragged note's file name is safe for Finder", () => {
+    expect(dragFileName("Trip: day 1/2", "md")).toBe("Trip- day 1-2.md");
+    expect(dragFileName("..hidden", "md")).toBe("hidden.md");
+    expect(dragFileName("", "md")).toBe("Untitled.md");
   });
 });

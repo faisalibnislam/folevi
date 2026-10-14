@@ -2,13 +2,14 @@
 
 import { useState, type ReactNode } from "react";
 import { useConvex } from "convex/react";
-import { FileCode, FileText, Loader2, Paperclip, Printer } from "lucide-react";
+import { FileCode, FileText, GripVertical, Loader2, Paperclip, Printer } from "lucide-react";
 import type { WireBlock } from "@folevi/editor-schema";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { useRadioGroup } from "@/lib/a11y/radioGroup";
-import { exportHtml, exportMarkdown, exportPdf, type ExportReport } from "./export";
+import { desktop } from "@/lib/desktop";
+import { exportHtml, exportMarkdown, exportPdf, markdownNow, type ExportReport } from "./export";
 
 // Export a note: one dialog (like Share) instead of three menu items. Pick a format, see what happens to
 // the note's attachments, then export. The last format picked is remembered on this device.
@@ -47,6 +48,9 @@ export function ExportDialog({ open, onClose, title, blocks }: { open: boolean; 
   const [busy, setBusy] = useState(false);
   const files = open ? blocks().filter((b) => typeof (b.props as { fileId?: unknown }).fileId === "string").length : 0;
   const chosen = FORMATS.find((f) => f.id === format)!;
+  // In the Mac app, the Markdown file can also be dragged straight to Finder or another app.
+  const bridge = open ? desktop() : null;
+  const canDrag = Boolean(bridge?.dragFile) && format === "markdown";
 
   const pick = (f: Format) => {
     setFormat(f);
@@ -128,6 +132,23 @@ export function ExportDialog({ open, onClose, title, blocks }: { open: boolean; 
             );
           })}
         </div>
+        {canDrag ? (
+          <div
+            draggable
+            onDragStart={(e) => {
+              e.preventDefault();
+              bridge?.dragFile?.({ name: title || "Untitled", text: markdownNow(title, blocks()) });
+            }}
+            className="flex cursor-grab items-center gap-3 rounded-control border border-dashed border-line px-3 py-2.5 active:cursor-grabbing"
+          >
+            <FileText size={18} className="flex-none text-muted" aria-hidden />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium text-heading">{(title || "Untitled").replace(/[/\\:*?"<>|]+/g, "-")}.md</span>
+              <span className="block text-xs text-muted">Drag to Finder or another app{files ? ". Attachments stay links to the note." : "."}</span>
+            </span>
+            <GripVertical size={16} className="flex-none text-faint" aria-hidden />
+          </div>
+        ) : null}
         {files ? (
           <p className="flex items-start gap-2 rounded-control bg-[var(--glass-hover)] px-3 py-2.5 text-xs text-muted">
             <Paperclip size={14} className="mt-px flex-none" aria-hidden />

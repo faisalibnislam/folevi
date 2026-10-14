@@ -1,7 +1,7 @@
 // The Mac app (apps/desktop) driving this site: the window marks the page as the Mac app, keeps room for
 // the window buttons, adds Settings > Desktop app, and its menus and Quick Add window work end to end.
 // Needs a built shell: `cd apps/desktop && pnpm install --ignore-workspace && pnpm build`.
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -76,10 +76,15 @@ test("the Mac app: seamless window, Settings > Desktop app, New Note from the me
     };
     await expect.poll(buttons).toEqual(await expected());
     const withSidebar = await expected();
-    await page.keyboard.press("Meta+\\");
-    await expect.poll(async () => (await expected()).y).not.toBe(withSidebar.y);
+    // (From the Sidebar menu: a key press may not reach a window the test runner hasn't focused.)
+    const sidebar = async (item: string) => {
+      await page.getByRole("button", { name: "Sidebar" }).filter({ visible: true }).first().click();
+      await page.getByRole("menuitem", { name: item }).click();
+    };
+    await sidebar("Hide sidebar");
+    await expect(page.getByRole("navigation", { name: "Folio" })).toBeHidden();
     await expect.poll(buttons).toEqual(await expected());
-    await page.keyboard.press("Meta+\\");
+    await sidebar("Show sidebar");
     await expect.poll(buttons).toEqual(withSidebar);
 
     // Settings > Desktop app: the shortcut and the Mac switches.
@@ -96,6 +101,30 @@ test("the Mac app: seamless window, Settings > Desktop app, New Note from the me
     // File > New Note opens a new note.
     await clickMenu(app, "File", "New Note");
     await page.waitForURL(/\/d\/[0-9A-Z]{26}/, { timeout: 20_000 });
+
+    // Export in the Mac app offers the note as a file to drag out: it's written for the drag as Markdown.
+    await page.getByRole("textbox", { name: "Title" }).fill("Drag me out");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Packed and ready");
+    await page.getByRole("button", { name: "Document actions" }).click();
+    await page.getByRole("menuitem", { name: "Export…" }).click();
+    const exportDialog = page.getByRole("dialog", { name: /^Export “/ });
+    const tile = exportDialog.getByText("Drag me out.md");
+    await expect(tile).toBeVisible();
+    await tile.dispatchEvent("dragstart");
+    const dragDir = join(await app.evaluate(({ app: a }) => a.getPath("temp")), "Folevi drag");
+    const dragged = () => (existsSync(dragDir) ? readdirSync(dragDir).flatMap((d) => readdirSync(join(dragDir, d)).map((f) => join(dragDir, d, f))) : []);
+    await expect.poll(() => dragged().map((f) => f.split("/").pop())).toContain("Drag me out.md");
+    expect(readFileSync(dragged().find((f) => f.endsWith("Drag me out.md"))!, "utf8")).toContain("Packed and ready");
+    await page.keyboard.press("Escape");
+
+    // A folevi:// link (from Shortcuts, Raycast, another app) opens the page it names; anything else is ignored.
+    const openLink = (url: string) => app.evaluate(({ app: a }, u) => void a.emit("open-url", { preventDefault() {} }, u), url);
+    await openLink("folevi://tasks/today");
+    await page.waitForURL(/\/tasks\/today/, { timeout: 20_000 });
+    await openLink("folevi://admin");
+    await page.waitForTimeout(500);
+    expect(page.url()).toMatch(/\/tasks\/today/);
 
     // File > Quick Add Task…: the small window, then the task lands in the Inbox.
     await clickMenu(app, "File", "Quick Add Task…");

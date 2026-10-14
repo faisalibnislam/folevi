@@ -13,6 +13,7 @@ export type TemplateKey =
   | "comment_digest"
   | "share_notification"
   | "access_changed"
+  | "task_reminder"
   | "support_ticket_received"
   | "support_reply"
   | "support_staff_notice";
@@ -49,7 +50,7 @@ export interface TemplateDefinition {
   /** false for identity/security (never unsubscribable); product notifications honor Folevi preferences. */
   unsubscribable: boolean;
   /** Folevi-side preference enforced by the caller before sending. */
-  preferenceKey?: "mentions" | "comments" | "shares" | "invites" | "digest";
+  preferenceKey?: "mentions" | "comments" | "shares" | "invites" | "digest" | "reminders";
   variables: Record<string, VariableSpec>;
   /** Preview/test data. Fictional; only @example.com addresses. */
   fixture: Record<string, string | number>;

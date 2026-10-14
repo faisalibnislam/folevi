@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { Card } from "./Card";
 
 type Prefs = ReturnType<typeof useAppState>["profile"]["notificationPrefs"];
-type Topic = "comments" | "replies" | "mentions" | "shares" | "access";
+type Topic = "comments" | "replies" | "mentions" | "shares" | "access" | "reminders";
 
 const ROWS: { topic: Topic; label: string; hint: string }[] = [
   { topic: "comments", label: "Comments", hint: "On notes you created or follow" },
@@ -17,9 +17,10 @@ const ROWS: { topic: Topic; label: string; hint: string }[] = [
   { topic: "mentions", label: "Mentions", hint: "When someone @mentions you in a note or a comment" },
   { topic: "shares", label: "Shares and invitations", hint: "Pages shared with you and workspace invitations" },
   { topic: "access", label: "Access changes", hint: "When your access to a page or workspace changes" },
+  { topic: "reminders", label: "Task reminders", hint: "When a reminder you set on a to-do is due. The email shows that to-do line." },
 ];
 
-const ALL_IN_APP = { comments: true, replies: true, mentions: true, shares: true, access: true };
+const ALL_IN_APP = { comments: true, replies: true, mentions: true, shares: true, access: true, reminders: true };
 
 /** The email switch for a topic (replies and access changes follow comments and shares until set). */
 function emailOn(prefs: Prefs, topic: Topic): boolean {
@@ -34,6 +35,8 @@ function emailOn(prefs: Prefs, topic: Topic): boolean {
       return prefs.shares && prefs.invites;
     case "access":
       return prefs.access ?? prefs.shares;
+    case "reminders":
+      return prefs.reminders ?? true;
   }
 }
 
@@ -56,7 +59,7 @@ export function NotificationsSection() {
     <div className="space-y-4">
       <Card
         title="Notifications"
-        description="Choose what reaches you in the app (the bell) and by email. Emails say who did what and where, with a link. They never include your notes or comment text. Security emails (new sign-ins, account deletion) can't be turned off."
+        description="Choose what reaches you in the app (the bell) and by email. Emails say who did what and where, with a link. They never include your notes or comment text; a reminder shows only its own to-do line. Security emails (new sign-ins, account deletion) can't be turned off."
       >
         <div role="table" aria-label="Notification preferences" className="max-w-xl">
           <div role="row" className="grid grid-cols-[1fr_72px_72px] items-end gap-2 border-b border-line pb-2 text-xs font-medium text-muted">
@@ -77,7 +80,7 @@ export function NotificationsSection() {
                 </span>
               </span>
               <span role="cell" className="flex justify-center">
-                <Switch checked={inApp[r.topic]} label={`${r.label} in the app`} describedBy={`notify-${r.topic}-hint`} onChange={(on) => void set({ inApp: { ...inApp, [r.topic]: on } })} />
+                <Switch checked={inApp[r.topic] ?? true} label={`${r.label} in the app`} describedBy={`notify-${r.topic}-hint`} onChange={(on) => void set({ inApp: { ...inApp, [r.topic]: on } })} />
               </span>
               <span role="cell" className="flex justify-center">
                 <Switch checked={emailOn(prefs, r.topic)} label={`${r.label} by email`} describedBy={`notify-${r.topic}-hint`} onChange={(on) => void set(emailPatch(r.topic, on))} />

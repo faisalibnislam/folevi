@@ -36,6 +36,7 @@ const ALL_KEYS: TemplateKey[] = [
   "comment_digest",
   "share_notification",
   "access_changed",
+  "task_reminder",
   "support_ticket_received",
   "support_reply",
   "support_staff_notice",

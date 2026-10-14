@@ -10,6 +10,7 @@ import { liveBlocks, toWireBlock } from "./lib/documents";
 import { SyncEngine } from "./lib/syncEngine";
 import { inScope, sameScopeRows, vScopeArg, type Scope, type ScopeArg } from "./lib/scope";
 import { setTrashState } from "./documents";
+import { appUrl } from "./lib/notify";
 
 /** A scope's tasks of one status (Personal: by owner; a workspace: by workspace), by due date. */
 function tasksByDue(ctx: QueryCtx, scope: Scope, status: Doc<"tasks">["status"], range?: { from: string; to: string }) {
@@ -362,7 +363,19 @@ export const moveToDocument = mutation({
 /** Reminders sent per run; a full batch schedules the next one right away. */
 const REMINDER_BATCH = 200;
 
-/** Creates in-app notifications for due reminders (the Mac app also shows them as Mac notifications). */
+/** "Fri 17 Oct, 15:00" for a task's due date and time (calendar dates, no time zone shift). */
+export function reminderDueText(dueDate?: string, dueTime?: string): string {
+  if (!dueDate) return "No due date";
+  const [y, m, d] = dueDate.split("-").map(Number) as [number, number, number];
+  const day = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  return dueTime ? `${day}, ${dueTime}` : day;
+}
+
+/**
+ * Sends due reminders: a bell notification (the Mac app also shows it as a Mac notification) and an email
+ * with the to-do line and a link to it. Each follows the person's choice (Settings → Notifications,
+ * "Task reminders"; both on unless turned off).
+ */
 export const processReminders = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -382,15 +395,36 @@ export const processReminders = internalMutation({
       .take(REMINDER_BATCH);
     for (const t of due) {
       const recipient = t.assigneeId ?? t.createdBy;
-      await ctx.db.insert("notifications", {
-        profileId: recipient,
-        workspaceId: t.workspaceId,
-        kind: "system",
-        documentId: t.documentId,
-        title: `Reminder: ${t.title.slice(0, 120) || "Task"}`,
-        createdAt: now,
-      });
+      const profile = await ctx.db.get(recipient);
       await ctx.db.patch(t._id, { reminderSentAt: now });
+      if (!profile || profile.status === "deleted") continue;
+      const title = t.title.slice(0, 200) || "Task";
+      if (profile.notificationPrefs.inApp?.reminders !== false) {
+        await ctx.db.insert("notifications", {
+          profileId: recipient,
+          workspaceId: t.workspaceId,
+          kind: "system",
+          documentId: t.documentId,
+          blockId: t.blockId,
+          title: `Reminder: ${title.slice(0, 120)}`,
+          createdAt: now,
+        });
+      }
+      const doc = await ctx.db.get(t.documentId);
+      if (doc && profile.notificationPrefs.reminders !== false) {
+        await ctx.scheduler.runAfter(0, internal.email.sendTemplate, {
+          key: "task_reminder",
+          profileId: recipient,
+          idempotencyKey: `reminder:${t._id}:${t.reminderAt}`,
+          dataVariables: {
+            taskTitle: title,
+            documentTitle: (doc.title || "Untitled").slice(0, 120),
+            due: reminderDueText(t.dueDate, t.dueTime),
+            taskUrl: `${appUrl()}/d/${doc.publicId}#block-${t.blockId}`,
+            preferencesUrl: `${appUrl()}/settings/notifications`,
+          },
+        });
+      }
     }
     if (due.length === REMINDER_BATCH) await ctx.scheduler.runAfter(0, internal.tasks.processReminders, {});
     return due.length;

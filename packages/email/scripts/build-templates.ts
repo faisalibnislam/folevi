@@ -233,6 +233,16 @@ export const CONTENT: Record<TemplateKey, Content> = {
     ],
     reason: "You received this because someone shared a page in Folevi with this email address.",
   },
+  task_reminder: {
+    eyebrow: "Reminder",
+    heading: "{{taskTitle}}",
+    blocks: [
+      { kind: "p", text: "A reminder you set on a to-do in [[documentTitle]] is due." },
+      { kind: "details", rows: [["Due", "{{due}}"]] },
+      { kind: "button", label: "Open the to-do", urlVar: "taskUrl" },
+    ],
+    reason: "You received this because you set a reminder on a to-do in Folevi. Only the to-do line is included, never the rest of the page.",
+  },
   access_changed: {
     eyebrow: "Access",
     heading: "Your access changed",

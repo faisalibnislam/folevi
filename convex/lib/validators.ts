@@ -54,6 +54,8 @@ export const vInAppPrefs = v.object({
   mentions: v.boolean(),
   shares: v.boolean(),
   access: v.boolean(),
+  /** Task reminders in the bell (and as Mac notifications). Unset = on. */
+  reminders: v.optional(v.boolean()),
 });
 /** Notification preferences. The top-level booleans are email choices (kept for existing rows). */
 export const vNotificationPrefs = v.object({
@@ -67,6 +69,8 @@ export const vNotificationPrefs = v.object({
   replies: v.optional(v.boolean()),
   /** Email when your access to a page or workspace changes. Unset = follows `shares`. */
   access: v.optional(v.boolean()),
+  /** Email when a task reminder you set comes due (the email shows the to-do line). Unset = on. */
+  reminders: v.optional(v.boolean()),
   /** In-app (bell) notifications per kind. Unset = all on. */
   inApp: v.optional(vInAppPrefs),
 });

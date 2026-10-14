@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { naturalDateLabel, parseNaturalDate } from "../src/lib/nlDate";
 
-// Tuesday 14 October 2026, 10:00 local time.
+// Wednesday 14 October 2026, 10:00 local time.
 const NOW = new Date(2026, 9, 14, 10, 0, 0);
 
 describe("parseNaturalDate", () => {

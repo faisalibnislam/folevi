@@ -12,7 +12,7 @@ import { checkAttachment, checkInlineBudget, MAX_ATTACHMENTS, type AttachmentKin
 
 // Files in an AI chat (docs/AI_ASSISTANT.md, "Attachments"): the Attach control in the composer, the
 // chips for what's attached, and the checks made before anything is uploaded. A file the assistant can't
-// read (a Word file, a GIF, one too large) is refused here with the reason, never uploaded; the server
+// read (an Excel file, a GIF, one too large) is refused here with the reason, never uploaded; the server
 // checks every file again when the message is sent.
 
 /** A file attached to the next message: uploading, or ready to send (its file id). */

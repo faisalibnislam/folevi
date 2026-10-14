@@ -3,13 +3,13 @@ import { APP, newPerson } from "./helpers";
 
 // Attachments and audio in the AI. Without a model key on the server (CI, local dev) nothing can be read,
 // so this covers what works without one: attaching a file to a chat message (it uploads, shows as a chip
-// and stays on the message), a Word file refused before anything is sent, and an audio block's Transcribe
+// and stays on the message), an Excel file refused before anything is sent, and an audio block's Transcribe
 // action saying plainly that the assistant isn't set up.
 
 // Chromium's fake microphone (a steady tone) with the permission prompt answered.
 test.use({ launchOptions: { args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] } });
 
-test("a file attached in the chat shows as a chip and stays on the message; a Word file is refused first", async ({ browser }) => {
+test("a file attached in the chat shows as a chip and stays on the message; an Excel file is refused first", async ({ browser }) => {
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Attach Person");
   await page.goto(`${APP}/ai`);
@@ -17,7 +17,7 @@ test("a file attached in the chat shows as a chip and stays on the message; a Wo
   await expect(page.getByRole("button", { name: "Attach files", exact: true })).toBeVisible();
   const picker = page.locator('input[type="file"]');
 
-  await picker.setInputFiles({ name: "report.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: Buffer.from("PK\u0003\u0004 not really a document") });
+  await picker.setInputFiles({ name: "budget.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("PK\u0003\u0004 not really a sheet") });
   const refused = page.getByRole("alert").filter({ hasText: "isn't supported yet" });
   await expect(refused).toBeVisible();
   await expect(page.getByRole("list", { name: "Attached files" })).toHaveCount(0);

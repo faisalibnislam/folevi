@@ -6,8 +6,8 @@
 //   Images (PNG, JPEG, WebP) and PDFs go to the model as inline data, as does audio. Everything inline in
 //   one request stays under INLINE_BUDGET_BYTES (Gemini refuses requests over 20 MB, and base64 adds a
 //   third); a larger PDF or recording is refused with the limit rather than sent through the Files API.
-//   Text, Markdown, CSV, HTML (stripped to its text) and JSON are read here and sent as text.
-//   Word, Excel and PowerPoint files: no parser exists in the app yet, so they're "not supported yet".
+//   Text, Markdown, CSV, HTML (stripped to its text), JSON and Word (.docx, lib/ai/docx.ts) are read here
+//   and sent as text. Older Word (.doc), Excel and PowerPoint files have no parser yet: "not supported yet".
 
 const MB = 1024 * 1024;
 
@@ -16,7 +16,7 @@ export const MAX_ATTACHMENTS = 5;
 /** Raw bytes sent inline in one request (images, PDFs, audio): about 19 MB once base64-encoded. */
 export const INLINE_BUDGET_BYTES = 14 * MB;
 /** The largest file of each kind. */
-export const ATTACHMENT_LIMITS = { image: 7 * MB, pdf: 14 * MB, audio: 14 * MB, text: 2 * MB } as const;
+export const ATTACHMENT_LIMITS = { image: 7 * MB, pdf: 14 * MB, audio: 14 * MB, text: 2 * MB, docx: 10 * MB } as const;
 /** The largest file a chat can upload (the largest of the limits). */
 export const MAX_ATTACHMENT_UPLOAD = 14 * MB;
 /** Characters of one text file the model reads (the rest is cut, and it's told so). */
@@ -24,7 +24,7 @@ export const TEXT_CHARS = 100_000;
 /** Characters of all of a request's text files together. */
 export const TEXT_BUDGET_CHARS = 200_000;
 
-export type AttachmentKind = "image" | "pdf" | "audio" | "text" | "markdown" | "csv" | "html" | "json";
+export type AttachmentKind = "image" | "pdf" | "audio" | "text" | "markdown" | "csv" | "html" | "json" | "docx";
 
 /** What the active model can take in (lib/ai/capabilities.ts). */
 export interface ModelInputs {
@@ -35,7 +35,10 @@ export interface ModelInputs {
 export type AttachmentCheck = { ok: true; kind: AttachmentKind } | { ok: false; reason: string };
 
 const IMAGE_MIMES = new Set(["image/png", "image/jpeg", "image/webp"]);
-const OFFICE = /\.(docx?|xlsx?|pptx?|odt|ods|odp|pages|numbers|key|rtf)$/i;
+const OFFICE = /\.(doc|xlsx?|pptx?|odt|ods|odp|pages|numbers|key|rtf)$/i;
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+/** Types a .docx may arrive as: the browser's, or "application/zip" once the server has sniffed it. */
+const DOCX_MIMES = new Set([DOCX_MIME, "application/zip", "application/octet-stream", ""]);
 const TEXT_EXT: Record<string, AttachmentKind> = {
   txt: "text",
   text: "text",
@@ -69,6 +72,8 @@ export function attachmentKind(file: { filename: string; mimeType: string }): At
   if (IMAGE_MIMES.has(mime)) return "image";
   if (mime === "application/pdf") return "pdf";
   if (mime.startsWith("audio/")) return "audio";
+  if (ext === "docx" && DOCX_MIMES.has(mime)) return "docx";
+  if (mime === DOCX_MIME) return "docx";
   if (TEXT_EXT[ext] && (GENERIC_MIMES.has(mime) || TEXT_MIME[mime] || mime.startsWith("text/"))) return TEXT_EXT[ext]!;
   if (TEXT_MIME[mime]) return TEXT_MIME[mime]!;
   return null;
@@ -80,7 +85,7 @@ export const isTextKind = (kind: AttachmentKind) => kind !== "image" && kind !==
 export const isSheet = (kind: AttachmentKind) => kind === "csv";
 
 const mb = (bytes: number) => `${Math.round(bytes / MB)} MB`;
-const LABEL: Record<AttachmentKind, string> = { image: "Images", pdf: "PDFs", audio: "Recordings", text: "Text files", markdown: "Text files", csv: "Text files", html: "Text files", json: "Text files" };
+const LABEL: Record<AttachmentKind, string> = { image: "Images", pdf: "PDFs", audio: "Recordings", text: "Text files", markdown: "Text files", csv: "Text files", html: "Text files", json: "Text files", docx: "Word documents" };
 
 /**
  * Whether the assistant can read a file: a kind it reads, within its size limit, and something the active
@@ -88,13 +93,13 @@ const LABEL: Record<AttachmentKind, string> = { image: "Images", pdf: "PDFs", au
  */
 export function checkAttachment(file: { filename: string; mimeType: string; size: number }, caps?: ModelInputs): AttachmentCheck {
   const name = file.filename || "That file";
-  if (OFFICE.test(file.filename)) return { ok: false, reason: `“${name}” isn't supported yet. Word, Excel and PowerPoint files can't be read yet: save it as a PDF or CSV and attach that.` };
+  if (OFFICE.test(file.filename)) return { ok: false, reason: `“${name}” isn't supported yet. Older Word (.doc), Excel and PowerPoint files can't be read yet: save it as a .docx, PDF or CSV and attach that.` };
   const kind = attachmentKind(file);
   if (!kind) {
     if (mimeOf(file.mimeType).startsWith("image/")) return { ok: false, reason: `“${name}” isn't supported yet. Images can be PNG, JPEG or WebP.` };
-    return { ok: false, reason: `“${name}” isn't supported yet. The assistant reads PDFs, images, text, Markdown, CSV, HTML and JSON.` };
+    return { ok: false, reason: `“${name}” isn't supported yet. Foli AI reads PDFs, images, Word documents, text, Markdown, CSV, HTML and JSON.` };
   }
-  const limit = isTextKind(kind) ? ATTACHMENT_LIMITS.text : ATTACHMENT_LIMITS[kind as "image" | "pdf" | "audio"];
+  const limit = kind === "docx" ? ATTACHMENT_LIMITS.docx : isTextKind(kind) ? ATTACHMENT_LIMITS.text : ATTACHMENT_LIMITS[kind as "image" | "pdf" | "audio"];
   if (file.size > limit) return { ok: false, reason: `“${name}” is too large. ${LABEL[kind]} can be up to ${mb(limit)}.` };
   if (caps && (kind === "image" || kind === "pdf") && !caps.vision) return { ok: false, reason: `The AI model in use can't read ${kind === "pdf" ? "PDFs" : "images"}.` };
   if (caps && kind === "audio" && !caps.audioIn) return { ok: false, reason: "The AI model in use can't listen to recordings." };

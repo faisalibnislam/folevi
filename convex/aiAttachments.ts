@@ -12,8 +12,8 @@
 //   transcribe:  an audio block's recording, transcribed on request (never automatically).
 //
 // Every file is checked again as the person when it's read (they can still open it, the setting is on,
-// the model takes it in). Word, Excel and PowerPoint files have no parser in the app yet: they're refused
-// as "not supported yet", never guessed at. A PDF or recording over the inline limit is refused with the
+// the model takes it in). Word (.docx) files are read as their text (lib/ai/docx.ts); older Word, Excel
+// and PowerPoint files have no parser yet: they're refused as "not supported yet", never guessed at. A PDF or recording over the inline limit is refused with the
 // limit rather than sent through the Gemini Files API (lib/ai/attachments.ts). Credits: every call goes
 // through `metered`, so a file's tokens (Gemini's usage metadata counts them) are charged like any other.
 //
@@ -47,6 +47,7 @@ import {
 } from "./lib/ai/attachments";
 import { ATTACHMENTS_OFF, canAttach, FILE_GONE, fileByPublicId, readableKind } from "./lib/ai/attachmentFiles";
 import { calculate } from "./lib/ai/tools/calculate";
+import { docxToText } from "./lib/ai/docx";
 import { toolDeclarations } from "./lib/ai/tools";
 import { untrusted } from "./lib/ai/tools/untrusted";
 import { FOLLOW_UPS, metered, splitFollowUps, type AnswerOutput, type AnswerSink, type Settled, type SourceNote } from "./ai";
@@ -175,7 +176,7 @@ async function bytesOf(ctx: ActionCtx, f: FileForModel): Promise<Uint8Array> {
 
 /** A text file's content for the model (null when the bytes aren't text). */
 function textOfFile(f: FileForModel, bytes: Uint8Array, max: number): { text: string; cut: boolean } | null {
-  const raw = decodeText(bytes);
+  const raw = f.kind === "docx" ? docxToText(bytes) : decodeText(bytes);
   return raw === null ? null : textForModel(f.kind, raw, max);
 }
 

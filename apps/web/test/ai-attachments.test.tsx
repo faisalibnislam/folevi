@@ -46,19 +46,19 @@ afterEach(() => {
 const MB = 1024 * 1024;
 
 describe("picking files", () => {
-  test("readable files are attached; Word files, GIFs, files too large and the sixth file are refused with the reason", () => {
+  test("readable files are attached; Excel files, GIFs, files too large and the sixth file are refused with the reason", () => {
     const caps = { vision: true, audioIn: true };
     const plan = planAttachments([], [
       { name: "timetable.pdf", size: 2 * MB, type: "application/pdf" },
-      { name: "report.docx", size: 1000, type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+      { name: "budget.xlsx", size: 1000, type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
       { name: "budget.csv", size: 300, type: "text/csv" },
       { name: "notes.md", size: 300, type: "" },
       { name: "anim.gif", size: 300, type: "image/gif" },
       { name: "scan.pdf", size: 20 * MB, type: "application/pdf" },
     ], caps);
     expect(plan.accepted.map((a) => a.kind)).toEqual(["pdf", "csv", "markdown"]);
-    expect(plan.refused.map((r) => r.name)).toEqual(["report.docx", "anim.gif", "scan.pdf"]);
-    expect(plan.refused[0]!.reason).toMatch(/isn't supported yet.*Word, Excel and PowerPoint/);
+    expect(plan.refused.map((r) => r.name)).toEqual(["budget.xlsx", "anim.gif", "scan.pdf"]);
+    expect(plan.refused[0]!.reason).toMatch(/isn't supported yet.*Excel and PowerPoint/);
     expect(plan.refused[2]!.reason).toMatch(/too large/);
     const five = Array.from({ length: 5 }, () => ({ kind: "text" as const, size: 10 }));
     expect(planAttachments(five, [{ name: "six.txt", size: 10, type: "text/plain" }], caps).refused[0]!.reason).toBe("Attach up to 5 files to one message.");
@@ -98,7 +98,7 @@ describe("the Attach control", () => {
           ]}
           onRemove={onRemove}
         />
-        <AttachmentProblems problems={[{ name: "report.docx", reason: "“report.docx” isn't supported yet." }]} onDismiss={onDismiss} />
+        <AttachmentProblems problems={[{ name: "budget.xlsx", reason: "“budget.xlsx” isn't supported yet." }]} onDismiss={onDismiss} />
       </>,
     );
     const chips = [...host.querySelectorAll('ul[aria-label="Attached files"] li')];

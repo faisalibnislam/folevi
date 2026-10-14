@@ -104,8 +104,10 @@ As built (milestone 5):
 - Kinds and limits: PNG, JPEG and WebP images (7 MB), PDFs (14 MB), recordings (14 MB), and text, Markdown, CSV, HTML
   (stripped to its text) and JSON (2 MB, the first 100,000 characters read, 200,000 per message). At most 5 files per
   message, and at most 14 MB of images, PDFs and recordings together (base64 keeps a request under Gemini's 20 MB).
-  A larger PDF or recording is refused with the limit: the Gemini Files API isn't used yet. No DOCX, XLSX or PPTX
-  parser exists in the app, so those are "not supported yet", refused in the composer before anything is uploaded.
+  A larger PDF or recording is refused with the limit: the Gemini Files API isn't used yet. Word documents (.docx,
+  10 MB) are read as their text (`convex/lib/ai/docx.ts`: headings, list items and tables kept, deleted text left
+  out) and sent like a text file. Older Word (.doc), XLSX and PPTX files have no parser, so those are "not supported
+  yet", refused in the composer before anything is uploaded.
 - Every file is checked again as the person when it's read (they can still open it, Settings > AI allows it, the
   model takes it in), and its text reaches the model wrapped as untrusted. Follow-ups carry the conversation's
   earlier files (up to the same limits). A message with files is answered from them and the conversation's notes

@@ -26,6 +26,9 @@ const SCOPES: { scope: string; label: string; required?: boolean }[] = [
  * back with it). The person sees the app as it named itself and where it will send them back, chooses
  * what it may do and in which places, and then approves (saving the grant first: convex/mcp.ts) or
  * cancels. Either way Better Auth answers with where to go next: back to the app, with a code or an error.
+ *
+ * An app that asks only to write (Folevi Web Clipper asks for notes:write alone) isn't offered reading,
+ * and its grant only ever adds new things (saveGrant enforces that too).
  */
 export function OauthConsent() {
   const { search } = useAppRouter();
@@ -33,7 +36,8 @@ export function OauthConsent() {
   const requested = useMemo(() => new Set((search.get("scope") ?? "notes:read").split(/\s+/).filter(Boolean)), [search]);
   const info = useQuery(api.mcp.consentInfo, clientId ? { clientId } : "skip");
   const saveGrant = useMutation(api.mcp.saveGrant);
-  const offered = SCOPES.filter((s) => s.required || requested.has(s.scope));
+  const writeOnly = [...requested].some((s) => s.endsWith(":write")) && !requested.has("notes:read") && !requested.has("tasks:read");
+  const offered = SCOPES.filter((s) => (writeOnly ? requested.has(s.scope) : s.required || requested.has(s.scope)));
   const [scopes, setScopes] = useState<Set<string> | null>(null);
   const [places, setPlaces] = useState<{ personal: boolean; workspaceIds: string[] } | null>(null);
   const [includeShared, setIncludeShared] = useState(false);
@@ -50,7 +54,7 @@ export function OauthConsent() {
     setError(null);
     try {
       if (accept) {
-        await saveGrant({ clientId, scopes: [...chosenScopes], personal: chosenPlaces.personal, workspaceIds: chosenPlaces.workspaceIds, includeShared, createOnly });
+        await saveGrant({ clientId, scopes: [...chosenScopes], personal: chosenPlaces.personal, workspaceIds: chosenPlaces.workspaceIds, includeShared: includeShared && !writeOnly, createOnly: createOnly || writeOnly });
       }
       const scope = accept ? [...chosenScopes, ...(requested.has("offline_access") ? ["offline_access"] : [])].join(" ") : undefined;
       const res = await authClient.$fetch<{ redirect_uri?: string; url?: string }>("/oauth2/consent", { method: "POST", body: { accept, ...(scope ? { scope } : {}) } });
@@ -97,13 +101,14 @@ export function OauthConsent() {
   const togglePlace = (id: string, on: boolean) =>
     setPlaces({ ...chosenPlaces, workspaceIds: on ? [...chosenPlaces.workspaceIds, id] : chosenPlaces.workspaceIds.filter((w) => w !== id) });
   const nothingChosen = !chosenPlaces.personal && chosenPlaces.workspaceIds.length === 0;
+  const noScopes = chosenScopes.size === 0;
   const writes = chosenScopes.has("notes:write") || chosenScopes.has("tasks:write");
 
   return card(
     <>
       <h1 className="ui-display text-[30px] leading-[1.1]">Connect {info.name} to Folevi</h1>
       <p className="mt-2 text-[15px] leading-relaxed text-muted">
-        <strong className="text-ink">{info.name}</strong> wants to use your notes as <strong className="text-ink">{info.email}</strong>. It will send you back to{" "}
+        <strong className="text-ink">{info.name}</strong> wants to {writeOnly ? "add notes to Folevi" : "use your notes"} as <strong className="text-ink">{info.email}</strong>. It will send you back to{" "}
         <strong className="text-ink">{info.redirectHosts.join(", ") || "the app"}</strong>.
       </p>
       <p className="mt-2 inline-flex items-center gap-1.5 rounded-chip bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] px-2 py-0.5 text-[12px] text-muted">
@@ -146,30 +151,32 @@ export function OauthConsent() {
       </fieldset>
 
       <div className="mt-5 space-y-3">
-        <label className="flex items-center justify-between gap-3">
-          <span className="min-w-0">
-            <span className="block text-[14px] text-ink">Pages shared with you</span>
-            <span id="consent-shared-hint" className="block text-xs text-muted">
-              Read pages other people shared with you from elsewhere.
+        {writeOnly ? null : (
+          <label className="flex items-center justify-between gap-3">
+            <span className="min-w-0">
+              <span className="block text-[14px] text-ink">Pages shared with you</span>
+              <span id="consent-shared-hint" className="block text-xs text-muted">
+                Read pages other people shared with you from elsewhere.
+              </span>
             </span>
-          </span>
-          <Switch checked={includeShared} onChange={setIncludeShared} label="Pages shared with you" describedBy="consent-shared-hint" />
-        </label>
+            <Switch checked={includeShared} onChange={setIncludeShared} label="Pages shared with you" describedBy="consent-shared-hint" />
+          </label>
+        )}
         {writes ? (
           <label className="flex items-center justify-between gap-3">
             <span className="min-w-0">
               <span className="block text-[14px] text-ink">Only add new things</span>
               <span id="consent-add-only-hint" className="block text-xs text-muted">
-                It can create notes and tasks and add to notes, but never change what’s already there.
+                {writeOnly ? "It asked only to add, so it can’t read your notes or change what’s already there." : "It can create notes and tasks and add to notes, but never change what’s already there."}
               </span>
             </span>
-            <Switch checked={createOnly} onChange={setCreateOnly} label="Only add new things" describedBy="consent-add-only-hint" />
+            <Switch checked={createOnly || writeOnly} onChange={setCreateOnly} disabled={writeOnly} label="Only add new things" describedBy="consent-add-only-hint" />
           </label>
         ) : null}
       </div>
 
       <p className="mt-5 text-[12.5px] leading-relaxed text-muted">
-        Notes can hold text other people wrote, and {info.name} may act on what it reads. Every change it makes is saved in the note’s version history. You can disconnect it any time in Settings → Connected apps.
+        {writeOnly ? `${info.name} can’t read your notes.` : `Notes can hold text other people wrote, and ${info.name} may act on what it reads.`} Every change it makes is saved in the note’s version history. You can disconnect it any time in Settings → Connected apps.
       </p>
 
       {error ? (
@@ -182,7 +189,7 @@ export function OauthConsent() {
         <Button className="flex-1" onClick={() => void finish(false)} disabled={busy !== null} aria-busy={busy === "deny" || undefined}>
           Cancel
         </Button>
-        <Button className="flex-1" variant="primary" onClick={() => void finish(true)} disabled={busy !== null || nothingChosen} aria-busy={busy === "allow" || undefined}>
+        <Button className="flex-1" variant="primary" onClick={() => void finish(true)} disabled={busy !== null || nothingChosen || noScopes} aria-busy={busy === "allow" || undefined}>
           Allow
         </Button>
       </div>

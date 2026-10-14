@@ -1,0 +1,203 @@
+/* Folevi Web Clipper's popup: Folevi's neutral chrome (packages/design-tokens, tokens.chrome), white in
+   light mode and near-black in dark, with the system font. No native selects; the place picker is a list. */
+:root {
+  --canvas: #ffffff;
+  --surface: #ffffff;
+  --sunken: rgba(0, 0, 0, 0.05);
+  --ink: #18181b;
+  --heading: #0b0b0c;
+  --muted: #56565e;
+  --line: #e2e2e6;
+  --line-strong: #cfcfd5;
+  --accent: #1f1f22;
+  --accent-ink: #ffffff;
+  --focus: #1f1f22;
+  --danger: #b3342c;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #101011;
+    --surface: #1c1c1e;
+    --sunken: rgba(255, 255, 255, 0.07);
+    --ink: #f2f2f3;
+    --heading: #fafafa;
+    --muted: #a6a6ae;
+    --line: #2c2c2f;
+    --line-strong: #3e3e43;
+    --accent: #f2f2f3;
+    --accent-ink: #101011;
+    --focus: #f2f2f3;
+    --danger: #ff8a80;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+body {
+  width: 340px;
+  padding: 14px 16px 16px;
+}
+.top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.brand {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--heading);
+}
+h1 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--heading);
+}
+p {
+  margin: 0 0 10px;
+}
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 12px;
+}
+.error {
+  color: var(--danger);
+}
+label,
+.label {
+  display: block;
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+input[type="text"] {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+input[type="text"]:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.field {
+  margin-bottom: 12px;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+}
+.btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 500;
+}
+.btn.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.places {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.place {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+.place:hover {
+  background: var(--sunken);
+}
+.place[aria-checked="true"] {
+  background: var(--sunken);
+  font-weight: 600;
+}
+.place .check {
+  visibility: hidden;
+  width: 14px;
+  height: 14px;
+}
+.place[aria-checked="true"] .check {
+  visibility: visible;
+}
+.done {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.done a {
+  color: var(--heading);
+  font-weight: 600;
+}
+.status {
+  min-height: 18px;
+  margin: 10px 0 0;
+}
+.foot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}

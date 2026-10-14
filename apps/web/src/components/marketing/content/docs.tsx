@@ -454,9 +454,65 @@ export const DOC_ARTICLES: DocArticle[] = [
           <li>Reads: up to 300 a minute. Searches: up to 120 a minute.</li>
           <li>Writes: up to 30 a minute and 500 a day.</li>
           <li>A note is read up to 40,000 characters at a time.</li>
+          <li>A new note can hold up to 100,000 characters of Markdown, and an addition to a note up to 20,000.</li>
         </ul>
         <p>
           Using Folevi through another app doesn’t spend your Folevi AI credits: the other app does the AI work. Anything Folevi sends it is your note’s content, so the other app’s own privacy terms apply to what it does with it.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: "web-clipper",
+    title: "Clip web pages with Folevi Web Clipper",
+    nav: "Web clipper",
+    description: "Save the article you’re reading, or the part you selected, as a clean note in your Folevi Inbox, from Chrome or Microsoft Edge.",
+    published: "2026-10-14",
+    updated: "2026-10-14",
+    body: () => (
+      <>
+        <p>
+          Folevi Web Clipper is a browser extension for Chrome and Microsoft Edge. It saves the article you’re reading as a clean note in your Inbox: the text, headings, lists, quotes, tables, links and images, without the menus, ads and comment threads around them.
+        </p>
+        <p>
+          The clipper isn’t listed in the Chrome Web Store or Edge Add-ons yet. This page will link to it once it is.
+        </p>
+        <h2 id="connect">Connect it to Folevi</h2>
+        <p>
+          Click the Folevi button in the browser’s toolbar and choose <strong>Sign in to Folevi</strong>. Folevi opens in a small window. Sign in if you need to, choose where clips may go (your Personal, and any workspaces you pick), then press Allow.
+        </p>
+        <p>
+          The clipper only asks to add notes. It can’t read, search or change anything you’ve written, and Folevi records the connection as <strong>Only add new things</strong>. It uses the same connection as other <Link href="/docs/connected-apps">connected apps</Link>.
+        </p>
+        <h2 id="clip">Clip a page</h2>
+        <ul>
+          <li>
+            <strong>Clip article:</strong> open the clipper on a page. It finds the article, shows its title (change it if you like) and saves it.
+          </li>
+          <li>
+            <strong>Clip selection:</strong> select some text first, and the clipper offers to save just that.
+          </li>
+          <li>
+            <strong>Right-click:</strong> choose <strong>Clip to Folevi</strong> on a page, a selection or a link. A link is saved as a note holding that link. The toolbar button shows OK when the clip is saved.
+          </li>
+        </ul>
+        <p>
+          If the connection can use more than one place, the clipper asks which one under <strong>Save to</strong> and remembers your choice. Pages the browser keeps to itself, like the new tab page, settings and extension stores, can’t be clipped.
+        </p>
+        <h2 id="what-a-clip-looks-like">What a clip looks like</h2>
+        <p>
+          Each clip becomes a page under your <strong>Inbox</strong> page, ready to move somewhere else when you sort it. It starts with where it came from and when (for example, “Clipped from How we ship on 14 October 2026”, with a link back), then the author and site when the page names them, then the content.
+        </p>
+        <p>
+          Images stay where they are on the original site: the note shows them from there and nothing is copied into your storage. Very long pages are cut at 100,000 characters, at the end of a paragraph, and the note says so.
+        </p>
+        <h2 id="privacy">Privacy</h2>
+        <p>
+          The clipper reads a page only when you open it there or clip. It sends what you clip (the text, title and address of the page) to Folevi and nowhere else, over the same encrypted connection as the app. It keeps its sign-in in the browser’s storage for extensions and never sees your password.
+        </p>
+        <h2 id="disconnect">Sign out or disconnect</h2>
+        <p>
+          <strong>Sign out</strong> in the clipper forgets its sign-in on that browser. To take its access away everywhere, open Settings → Connected apps in Folevi and disconnect Folevi Web Clipper. Notes it already saved stay yours.
         </p>
       </>
     ),

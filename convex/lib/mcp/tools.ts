@@ -5,6 +5,8 @@
 import type { McpScope } from "./config";
 
 export const MAX_MARKDOWN = 20_000;
+/** A new note can be longer than an addition (a clipped article, a long write-up). */
+export const MAX_CREATE_MARKDOWN = 100_000;
 export const MAX_NOTE_CHARS = 40_000;
 
 type Schema = Record<string, unknown>;
@@ -14,6 +16,8 @@ export interface ToolDef {
   title: string;
   description: string;
   scope: McpScope;
+  /** Other scopes that also allow it (list_places: any connection may see where it can work). */
+  alsoWith?: McpScope[];
   /** Changes nothing (reads), or changes notes/tasks. */
   kind: "read" | "write";
   /** Writes that change what's already there (not allowed when the person chose "Only add new things"). */
@@ -36,6 +40,7 @@ export const TOOLS: ToolDef[] = [
     title: "List places",
     description: "The places this connection can use: your Personal and any workspaces you allowed, with their ids.",
     scope: "notes:read",
+    alsoWith: ["notes:write", "tasks:read", "tasks:write"],
     kind: "read",
     inputSchema: object({}),
   },
@@ -100,15 +105,16 @@ export const TOOLS: ToolDef[] = [
   {
     name: "create_note",
     title: "Create a note",
-    description: "Creates a new note from Markdown, optionally in a folder. Returns its id and link.",
+    description: "Creates a new note from Markdown, optionally in a folder or under your Inbox page. Returns its id and link.",
     scope: "notes:write",
     kind: "write",
     inputSchema: object(
       {
         title: { type: "string", description: "The note's title.", minLength: 1, maxLength: 200 },
-        markdown: { type: "string", description: "The note's content in Markdown (headings, lists, to-dos with - [ ], tables, code).", maxLength: MAX_MARKDOWN },
+        markdown: { type: "string", description: "The note's content in Markdown (headings, lists, to-dos with - [ ], tables, code).", maxLength: MAX_CREATE_MARKDOWN },
         place: PLACE,
         folderId: { type: "string", description: "A folder id from list_folders (same place).", maxLength: 64 },
+        inInbox: { type: "boolean", description: "Put the note under your Inbox page in that place, to sort later (not with folderId)." },
       },
       ["title", "markdown"],
     ),
@@ -171,6 +177,11 @@ export const TOOLS: ToolDef[] = [
 ];
 
 export const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
+
+/** Whether a connection with these scopes may list and call the tool. */
+export function toolAllowed(t: ToolDef, scopes: readonly string[]): boolean {
+  return scopes.includes(t.scope) || (t.alsoWith ?? []).some((s) => scopes.includes(s));
+}
 
 /** A tool as tools/list describes it (annotations tell clients which ones change things). */
 export function describeTool(t: ToolDef): Record<string, unknown> {

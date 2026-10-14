@@ -204,6 +204,27 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+  clipper:
+    name: Folevi Web Clipper (Chrome and Edge extension) typecheck, tests & package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/clipper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: apps/clipper/pnpm-lock.yaml
+      # apps/clipper is outside the pnpm workspace (its own lockfile), like apps/desktop.
+      - run: pnpm install --ignore-workspace --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm package
+
   security:
     name: Secret scan & dependency audit
     runs-on: ubuntu-latest

@@ -87,7 +87,7 @@ export function ConnectedAppsSection() {
                       {g.lastUsedAt ? ` · last used ${formatRelative(g.lastUsedAt)}` : " · not used yet"}
                     </p>
                     <p className="mt-1.5 text-[13px] text-ink">
-                      {g.canWrite ? (g.createOnly ? "Reads and adds new things" : "Reads and makes changes") : "Reads only"} in {g.places.join(", ") || "no places"}
+                      {!g.canRead ? "Only adds new things" : g.canWrite ? (g.createOnly ? "Reads and adds new things" : "Reads and makes changes") : "Reads only"} in {g.places.join(", ") || "no places"}
                       {g.includeShared ? ", plus pages shared with you" : ""}
                     </p>
                     {g.recent.length ? (

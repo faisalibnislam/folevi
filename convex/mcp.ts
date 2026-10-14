@@ -31,6 +31,7 @@ import { MCP_SCOPES, type McpScope } from "./lib/mcp/config";
 import { searchDocuments } from "./search";
 import { ensureInbox, listTasks, taskBlock, type TaskView } from "./tasks";
 import { snapshot } from "./documents";
+import { saveToInbox } from "./aiDigest";
 
 /** What a token is worth, once checked. */
 export type Authorized =
@@ -116,6 +117,8 @@ function writePlace(places: Place[], arg: unknown): Place {
   if (places.length === 1) return places[0]!;
   fail("invalid_argument", 'Say which place with "place" (see list_places).');
 }
+
+const scopeArgOf = (place: Place): ScopeArg => (place.id === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: place.id });
 
 const link = (publicId: string) => `${appUrl()}/d/${publicId}`;
 
@@ -325,11 +328,17 @@ export const write = internalMutation({
           if (!folder || folder.deletedAt || !inScope(folder, place.scope)) fail("not_found", "That folder isn't in this place.");
           folderId = folder._id;
         }
+        if (a.inInbox === true && folderId) fail("invalid_argument", "Use folderId or inInbox, not both.");
         const blocks = blocksFrom(str(a.markdown), null);
         if (blocks.length > LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "That note would be too long.");
-        const doc = await createDocument(ctx, { scope: place.scope, actor: profile, title: str(a.title).trim().slice(0, 200), folderId, blocks });
+        const title = str(a.title).trim().slice(0, 200);
+        // Under the Inbox page (Folevi Web Clipper's clips): a page there, with a card for it at the end of the Inbox.
+        const doc =
+          a.inInbox === true
+            ? await saveToInbox(ctx, profile, { scope: place.scope, scopeArg: scopeArgOf(place) }, title, blocks)
+            : await createDocument(ctx, { scope: place.scope, actor: profile, title, folderId, blocks });
         targets = [doc.publicId];
-        result = { noteId: doc.publicId, title: doc.title || "Untitled", place: place.name, url: link(doc.publicId) };
+        result = { noteId: doc.publicId, title: doc.title || "Untitled", place: place.name, ...(a.inInbox === true ? { inInbox: true } : {}), url: link(doc.publicId) };
         break;
       }
 
@@ -352,8 +361,7 @@ export const write = internalMutation({
         } else {
           const place = writePlace(places, a.place);
           await requireCreate(ctx, profile, place.scope);
-          const scopeArg: ScopeArg = place.id === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: place.id };
-          doc = (await getDocumentByPublicId(ctx, await ensureInbox(ctx, profile, place.scope, scopeArg, `mcp:${clientId}`.slice(0, 64))))!;
+          doc = (await getDocumentByPublicId(ctx, await ensureInbox(ctx, profile, place.scope, scopeArgOf(place), `mcp:${clientId}`.slice(0, 64))))!;
         }
         const rows = await liveBlocks(ctx, doc._id);
         const props: Record<string, unknown> = { checked: false };
@@ -508,7 +516,9 @@ export const saveGrant = mutation({
     const client = await findOAuthClient(ctx, args.clientId);
     if (!client || client.disabled) fail("not_found", "This app isn't registered any more. Start connecting again from the app.");
     const scopes = [...new Set(args.scopes.filter((s) => SCOPE_SET.has(s)))];
-    if (!scopes.length) fail("invalid_argument", "Allow at least reading your notes.");
+    if (!scopes.length) fail("invalid_argument", "Allow at least one thing it can do.");
+    // An app that can't read (Folevi Web Clipper asks only for notes:write) only ever adds new things.
+    const canRead = scopes.some((s) => s.endsWith(":read"));
     const workspaceIds: Id<"workspaces">[] = [];
     for (const publicId of [...new Set(args.workspaceIds)].slice(0, 50)) {
       const { scope } = await resolveScope(ctx, profile, { kind: "workspace", workspaceId: publicId });
@@ -521,8 +531,8 @@ export const saveGrant = mutation({
       redirectHost: [...new Set(client.redirectUris.map(hostOf).filter(Boolean))].join(", ").slice(0, 200),
       personal: args.personal,
       workspaceIds,
-      includeShared: args.includeShared,
-      createOnly: args.createOnly,
+      includeShared: canRead && args.includeShared,
+      createOnly: args.createOnly || !canRead,
       scopes,
       updatedAt: now,
     };
@@ -565,6 +575,7 @@ export const listGrants = query({
         places: [...(g.personal ? ["Personal"] : []), ...workspaceNames],
         includeShared: g.includeShared,
         createOnly: g.createOnly,
+        canRead: g.scopes.some((s) => s.endsWith(":read")),
         canWrite: g.scopes.some((s) => s.endsWith(":write")),
         connectedAt: g.createdAt,
         lastUsedAt: g.lastUsedAt ?? null,

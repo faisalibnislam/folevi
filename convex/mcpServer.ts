@@ -25,7 +25,7 @@ import {
   type Era,
   type RpcId,
 } from "./lib/mcp/protocol";
-import { checkArgs, describeTool, PROMPTS, TOOL_BY_NAME, TOOLS, weeklyReviewMessages } from "./lib/mcp/tools";
+import { checkArgs, describeTool, PROMPTS, TOOL_BY_NAME, toolAllowed, TOOLS, weeklyReviewMessages } from "./lib/mcp/tools";
 import type { Authorized } from "./mcp";
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -41,12 +41,14 @@ export function resourceMetadataUrl(): string {
 
 /**
  * An Origin the server accepts (DNS-rebinding protection). Folevi is remote and bearer-only (no cookies),
- * so browser-based clients on https sites may call it; anything else sending an Origin is refused.
+ * so browser-based clients on https sites may call it, and so may browser extensions (Folevi Web Clipper
+ * sends its chrome-extension:// origin); anything else sending an Origin is refused.
  */
 export function originAllowed(origin: string | null): boolean {
   if (!origin) return true;
   try {
     const u = new URL(origin);
+    if (u.protocol === "chrome-extension:") return /^[a-p]{32}$/.test(u.hostname);
     return u.protocol === "https:" || u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname.endsWith(".localhost");
   } catch {
     return false;
@@ -157,7 +159,7 @@ export const mcpHttp = httpAction(async (ctx, request) => {
       return ok({});
 
     case "tools/list":
-      return ok({ tools: TOOLS.filter((t) => auth.scopes.includes(t.scope)).map(describeTool), ...cacheable(era, 5 * 60 * 1000) });
+      return ok({ tools: TOOLS.filter((t) => toolAllowed(t, auth.scopes)).map(describeTool), ...cacheable(era, 5 * 60 * 1000) });
 
     case "tools/call":
       return await callTool(ctx, { id, era, auth, params: rpc.params, ok, err, log, origin });
@@ -213,7 +215,7 @@ async function callTool(ctx: Parameters<Parameters<typeof httpAction>[0]>[0], in
   const tool = TOOL_BY_NAME.get(name);
   if (!tool) return err(ERR.invalidParams, `Unknown tool: ${name.slice(0, 80)}`);
   const grantId = auth.grantId as Id<"mcpGrants">;
-  if (!auth.scopes.includes(tool.scope)) {
+  if (!toolAllowed(tool, auth.scopes)) {
     log({ tool: name, outcome: "insufficient_scope" });
     await ctx.runMutation(internal.mcp.record, { grantId, tool: name, outcome: "denied" });
     return json(403, rpcError(id, ERR.invalidRequest, `This connection isn't allowed to use ${name}. Connect again and allow it.`), origin, { "www-authenticate": challenge("insufficient_scope", tool.scope) });

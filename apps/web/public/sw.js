@@ -67,3 +67,47 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data === "clear") event.waitUntil(Promise.all([STATIC, SHELL].map((k) => caches.delete(k))));
 });
+
+// Push (reminders and mentions; convex/pushSend.ts). The payload says what to show and where it leads.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const title = typeof data.title === "string" && data.title ? data.title : "Folevi";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: typeof data.body === "string" ? data.body : undefined,
+      tag: typeof data.tag === "string" ? data.tag : undefined,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: typeof data.url === "string" ? data.url : "/" },
+    }),
+  );
+});
+
+// Clicking one opens its page in Folevi (an open tab if there is one); only ever a page of this site.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  let target = "/documents";
+  try {
+    const url = new URL(event.notification.data && event.notification.data.url ? event.notification.data.url : "/", self.location.origin);
+    if (url.origin === self.location.origin) target = url.pathname + url.search + url.hash;
+  } catch {
+    // Keep the default.
+  }
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const w of windows) {
+        if (new URL(w.url).origin === self.location.origin) {
+          await w.focus();
+          return w.navigate(target);
+        }
+      }
+      return self.clients.openWindow(target);
+    })(),
+  );
+});

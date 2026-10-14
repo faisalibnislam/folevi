@@ -101,3 +101,43 @@ describe("repeating tasks", () => {
     expect(after.status).toBe("done");
   });
 });
+
+describe("web push", () => {
+  const sub = (n: string) => ({ endpoint: `https://push.example.com/send/${n}${"x".repeat(12)}`, p256dh: `p256dh-key-${n}-abcdefgh`, auth: `auth-key-${n}-abcd`, label: "Chrome on macOS" });
+
+  test("a browser subscribes and unsubscribes; an endpoint belongs to one account", async () => {
+    const t = setup();
+    const a = await person(t, "push-a@example.com");
+    const b = await person(t, "push-b@example.com");
+    await a.as.mutation(api.push.subscribe, sub("1"));
+    expect(await a.as.query(api.push.status, { endpoint: sub("1").endpoint })).toEqual({ devices: 1, thisDevice: true });
+    // The same browser signed in as someone else now: it's theirs.
+    await b.as.mutation(api.push.subscribe, sub("1"));
+    expect(await a.as.query(api.push.status, { endpoint: sub("1").endpoint })).toEqual({ devices: 0, thisDevice: false });
+    // Only the owner can remove it.
+    await a.as.mutation(api.push.unsubscribe, { endpoint: sub("1").endpoint });
+    expect((await b.as.query(api.push.status, {})).devices).toBe(1);
+    await b.as.mutation(api.push.unsubscribe, { endpoint: sub("1").endpoint });
+    expect((await b.as.query(api.push.status, {})).devices).toBe(0);
+    await expect(a.as.mutation(api.push.subscribe, { ...sub("2"), endpoint: "http://insecure.example.com/x" })).rejects.toThrow();
+  });
+
+  test("a due reminder is pushed with its to-do line; one turned off in the bell isn't", async () => {
+    const t = setup();
+    const a = await person(t, "push-reminder@example.com");
+    await a.as.mutation(api.push.subscribe, sub("3"));
+    await dueTodo(a, "Take the bins out");
+    await t.mutation(internal.tasks.processReminders, {});
+    const pushes = await t.run(async (ctx) => (await ctx.db.system.query("_scheduled_functions").collect()).filter((j) => j.name.includes("pushSend")));
+    expect(pushes.map((p) => (p.args[0] as { title: string }).title)).toEqual(["Reminder: Take the bins out"]);
+  });
+
+  test("gone subscriptions are dropped after a send", async () => {
+    const t = setup();
+    const a = await person(t, "push-gone@example.com");
+    await a.as.mutation(api.push.subscribe, sub("4"));
+    const [s] = await t.query(internal.push.subscriptionsFor, { profileId: a.profileId as never });
+    await t.mutation(internal.push.afterSend, { gone: [s!.id], sent: [] });
+    expect((await a.as.query(api.push.status, {})).devices).toBe(0);
+  });
+});

@@ -176,6 +176,15 @@ export async function notify(
     createdAt: now,
     ...(inApp ? {} : { silent: true, readAt: now }),
   });
+  // Mentions also reach the person's browsers that asked for push (only who and where, never note text).
+  if (inApp && input.kind === "mention" && input.doc) {
+    await ctx.scheduler.runAfter(0, internal.pushSend.sendToProfile, {
+      profileId: input.recipientId,
+      title: input.title.slice(0, 120),
+      url: `${appUrl()}/d/${input.doc.publicId}${input.blockId ? `#block-${input.blockId}` : ""}`,
+      tag: `mention:${notificationId}`,
+    });
+  }
   if (!input.email || !input.doc || !emailNow) return;
   const vars: Record<string, string | number> = {
     actorName: input.actor.displayName.slice(0, 80),

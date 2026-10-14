@@ -131,6 +131,8 @@ import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as organization from "../organization.js";
 import type * as presence from "../presence.js";
+import type * as push from "../push.js";
+import type * as pushSend from "../pushSend.js";
 import type * as search from "../search.js";
 import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
@@ -275,6 +277,8 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   organization: typeof organization;
   presence: typeof presence;
+  push: typeof push;
+  pushSend: typeof pushSend;
   search: typeof search;
   seed: typeof seed;
   settings: typeof settings;

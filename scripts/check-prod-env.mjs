@@ -39,6 +39,8 @@ if (env === "production") {
       } else {
         problems.push("Convex RESEND_API_KEY is not set (no email provider: sign-up confirmation and password reset emails can't be sent).");
       }
+      if (has("VAPID_PUBLIC_KEY") !== has("VAPID_PRIVATE_KEY")) problems.push("Convex VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be set together (web push).");
+      else if (!has("VAPID_PUBLIC_KEY")) warn.push("Convex VAPID_PUBLIC_KEY is not set: no push notifications for reminders and mentions (the Settings card is hidden).");
       if (["support@folevi.com", "security@folevi.com"].includes((get("SUPPORT_NOTIFY_EMAIL") ?? "").trim().toLowerCase())) {
         warn.push("Convex SUPPORT_NOTIFY_EMAIL must not be the support or security mailbox (it is ignored); use a staff address.");
       }

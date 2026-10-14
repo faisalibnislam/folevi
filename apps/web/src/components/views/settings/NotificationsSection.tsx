@@ -7,6 +7,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Switch } from "@/components/ui/Switch";
 import { Select } from "@/components/ui/Select";
 import { Card } from "./Card";
+import { PushCard } from "./PushCard";
 
 type Prefs = ReturnType<typeof useAppState>["profile"]["notificationPrefs"];
 type Topic = "comments" | "replies" | "mentions" | "shares" | "access" | "reminders";
@@ -89,6 +90,7 @@ export function NotificationsSection() {
           ))}
         </div>
       </Card>
+      <PushCard />
       <Card title="Email delivery" description="How comment, reply and mention emails arrive. Shares, invitations and access changes are always sent as they happen.">
         <div className="flex max-w-xl items-center justify-between gap-4">
           <label htmlFor="notify-digest" className="text-sm">

@@ -460,6 +460,7 @@ export const processReminders = internalMutation({
       await ctx.db.patch(t._id, { reminderSentAt: now });
       if (!profile || profile.status === "deleted") continue;
       const title = t.title.slice(0, 200) || "Task";
+      const doc = await ctx.db.get(t.documentId);
       if (profile.notificationPrefs.inApp?.reminders !== false) {
         await ctx.db.insert("notifications", {
           profileId: recipient,
@@ -470,8 +471,17 @@ export const processReminders = internalMutation({
           title: `Reminder: ${title.slice(0, 120)}`,
           createdAt: now,
         });
+        // And to the browsers that asked for push.
+        if (doc) {
+          await ctx.scheduler.runAfter(0, internal.pushSend.sendToProfile, {
+            profileId: recipient,
+            title: `Reminder: ${title.slice(0, 110)}`,
+            body: doc.title ? `In ${doc.title}` : undefined,
+            url: `${appUrl()}/d/${doc.publicId}#block-${t.blockId}`,
+            tag: `reminder:${t._id}`,
+          });
+        }
       }
-      const doc = await ctx.db.get(t.documentId);
       if (doc && profile.notificationPrefs.reminders !== false) {
         await ctx.scheduler.runAfter(0, internal.email.sendTemplate, {
           key: "task_reminder",

@@ -1323,6 +1323,24 @@ export default defineSchema({
     .index("by_profile_client", ["profileId", "clientId"]),
 
   /**
+   * Browsers that asked for push notifications (Settings → Notifications), one row per device. Reminders
+   * and mentions are pushed to them (convex/pushSend.ts); a subscription the browser dropped is removed
+   * when sending to it fails with 404 or 410.
+   */
+  pushSubscriptions: defineTable({
+    profileId: v.id("profiles"),
+    endpoint: v.string(),
+    p256dh: v.string(),
+    auth: v.string(),
+    /** A short label for Settings ("Chrome on macOS"), from the browser. */
+    label: v.optional(v.string()),
+    createdAt: v.number(),
+    lastSentAt: v.optional(v.number()),
+  })
+    .index("by_profile", ["profileId"])
+    .index("by_endpoint", ["endpoint"]),
+
+  /**
    * A person's private calendar feed of dated tasks (convex/calendarFeeds.ts), subscribed to from a calendar
    * app. Only a hash of the link's token is kept; a new link replaces the old one.
    */

@@ -15,14 +15,14 @@ repository).
 Do these in order. Nothing here is copied from this document into DNS: always copy the exact records
 from Resend → **Domains** for your account.
 
-1. **Add the sending domain.** Resend → **Domains** → **Add Domain** → `mail.folevi.com`. (Use a
-   separate domain such as `mail-staging.folevi.com` if you ever send real mail from a non-production
+1. **Add the domain.** Resend → **Domains** → **Add Domain** → `folevi.com`, with both **Sending** and
+   **Receiving** on. One domain sends Folevi's mail and receives support mail and email-to-note. (Use a
+   separate domain such as `staging.folevi.com` if you ever send real mail from a non-production
    deployment; normally non-production only reaches test addresses, section 4.)
-2. **Add its DNS records at the DNS host** (folevi.com's DNS is at Namecheap: **Domain List** → `folevi.com` → **Advanced DNS**; host names are relative, e.g. `resend._domainkey.mail`). Resend
-   shows the records to add for `mail.folevi.com`: a **DKIM** TXT record on `resend._domainkey.mail`, and
-   an **MX** and an **SPF** TXT record on `send.mail` for the return path. In Vercel the *Name* is the
-   part before `.folevi.com` (for `resend._domainkey.mail.folevi.com` enter `resend._domainkey.mail`).
-   - **SPF: one TXT record per name.** Resend's SPF record lives on `send.mail.folevi.com`, so it
+2. **Add its DNS records at the DNS host** (folevi.com's DNS is at Namecheap: **Domain List** → `folevi.com` → **Advanced DNS**; host names are relative). Resend
+   shows the records: a **DKIM** TXT record on `resend._domainkey`, an **MX** and an **SPF** TXT record
+   on `send` for the return path, a CNAME on `rsend`, and the receiving **MX** on `@` (section 7a).
+   - **SPF: one TXT record per name.** Resend's SPF record lives on `send.folevi.com`, so it
      normally stands alone. If a name already has a `v=spf1 …` record, **merge** the `include:` into it
      instead of adding a second one; two SPF records on the same name make SPF fail.
    - **DMARC: keep ours.** `_dmarc.folevi.com` is Folevi's own policy (section 2). Don't replace it
@@ -66,7 +66,7 @@ input and stores them on Convex ([DEPLOYMENT.md](./DEPLOYMENT.md)).
 
 ### Verification checklist
 
-- [ ] `mail.folevi.com` shows **Verified** in Resend → Domains; open and click tracking are off.
+- [ ] `folevi.com` shows **Verified** in Resend → Domains (sending and receiving); open and click tracking are off.
 - [ ] `RESEND_API_KEY` (full access) and `RESEND_WEBHOOK_SECRET` are set on Convex production; no
       `MAILTRAP_*` or `LOOPS_*` variable is left (the production build warns about them).
 - [ ] The webhook points at `/webhooks/resend` on the production `.convex.site` host, with the seven
@@ -82,16 +82,16 @@ input and stores them on Convex ([DEPLOYMENT.md](./DEPLOYMENT.md)).
 
 ## 2. Sending domain, alignment and DMARC
 
-- **Dedicated subdomain:** `mail.folevi.com`. It keeps the reputation of `folevi.com` (human mail)
-  separate from automated mail. The From domain comes from the manifest (`EMAIL_SENDING_DOMAIN` in
-  `packages/email/src/manifest.ts`); a deployment can override it with the Convex env var
-  `EMAIL_SENDING_DOMAIN`.
-- **Alignment.** DKIM signs with `d=mail.folevi.com` (the From domain), so DKIM aligns. The return path
-  is `send.mail.folevi.com`, under the From domain, so SPF aligns in relaxed mode too. DMARC passes if
-  either aligns.
+- **One domain:** `folevi.com` sends and receives (decided 2026-10-14, replacing a separate
+  `mail.folevi.com`). Only Folevi's own transactional mail is sent from it, so its reputation stays
+  clean; keep bulk or marketing mail off it (use a subdomain for that if it ever exists). The From
+  domain comes from the manifest (`EMAIL_SENDING_DOMAIN` in `packages/email/src/manifest.ts`); a
+  deployment can override it with the Convex env var `EMAIL_SENDING_DOMAIN`.
+- **Alignment.** DKIM signs with `d=folevi.com` (the From domain), so DKIM aligns. The return path is
+  `send.folevi.com`, under the From domain, so SPF aligns in relaxed mode too. DMARC passes if either
+  aligns.
 - **DMARC** (our own record):
-  1. `_dmarc.folevi.com  TXT  "v=DMARC1; p=none; rua=mailto:dmarc-reports@folevi.com; fo=1"`; the
-     subdomain inherits it unless `_dmarc.mail.folevi.com` exists.
+  1. `_dmarc.folevi.com  TXT  "v=DMARC1; p=none; rua=mailto:dmarc-reports@folevi.com; fo=1"`.
   2. Read the aggregate reports for at least 2 weeks. Every legitimate source (Resend, and anything
      else that sends as folevi.com) must pass. The reports arrive through Resend's receiving like any
      other folevi.com mail; Folevi ignores them, so read them in Resend's received emails or point
@@ -103,10 +103,10 @@ input and stores them on Convex ([DEPLOYMENT.md](./DEPLOYMENT.md)).
 
 | Identity                            | Used by                                 | Notes                                                                                   |
 | ----------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------- |
-| `Folevi <security@mail.folevi.com>` | all `identity` and `security` templates | Required mail. No unsubscribe.                                                          |
-| `Folevi <hello@mail.folevi.com>`    | all `product` templates                 | Folevi-side preferences, with a link to `preferencesUrl`.                               |
-| `Folevi Support <support@mail.folevi.com>` | `support_ticket_received`, `support_reply` | Reply-To is always `support@folevi.com` (replies become ticket messages); see [SUPPORT.md](./SUPPORT.md). |
-| `Folevi <support@mail.folevi.com>`  | `support_staff_notice`                  | To `SUPPORT_NOTIFY_EMAIL` only. No Reply-To, so it can't loop into a ticket.            |
+| `Folevi <security@folevi.com>`      | all `identity` and `security` templates | Required mail. No unsubscribe.                                                          |
+| `Folevi <hello@folevi.com>`         | all `product` templates                 | Folevi-side preferences, with a link to `preferencesUrl`.                               |
+| `Folevi Support <support@folevi.com>` | `support_ticket_received`, `support_reply` | Reply-To is always `support@folevi.com` (replies become ticket messages); see [SUPPORT.md](./SUPPORT.md). |
+| `Folevi <support@folevi.com>`       | `support_staff_notice`                  | To `SUPPORT_NOTIFY_EMAIL` only, no Reply-To. Mail from folevi.com and auto-replies never become tickets, so it can't loop; a person replying by hand opens one ticket. |
 | Reply-To                            | every other email, when `EMAIL_REPLY_TO` is set | A **monitored** mailbox (e.g. `support@folevi.com`). Never a no-reply address. |
 
 The From name and address come from `emailManifest[key].sender` (and a template may fix its Reply-To with
@@ -257,7 +257,7 @@ All on the **Convex** deployment (`npx convex env set NAME …`); none belong in
 | `RESEND_API_KEY`             | Convex (required in production) | Resend API key with **full access**: sends all email and reads received mail. Selects Resend as the provider. |
 | `RESEND_WEBHOOK_SECRET`      | Convex                        | Signing secret (`whsec_…`) for `/webhooks/resend`. Without it the endpoint refuses everything: no delivery tracking, no suppression, no tickets from email. |
 | `EMAIL_REPLY_TO`             | Convex (optional)             | Reply-To on every email without a fixed one (a monitored mailbox).                                |
-| `EMAIL_SENDING_DOMAIN`       | Convex (optional)             | Overrides the From domain (default `mail.folevi.com`).                                            |
+| `EMAIL_SENDING_DOMAIN`       | Convex (optional)             | Overrides the From domain (default `folevi.com`).                                            |
 | `EMAIL_BRAND_BASE_URL`       | Convex (optional)             | https base for the logo images (default `https://folevi.com/brand/email`).                        |
 | `FOLEVI_EMAIL_ALLOWLIST`     | Convex, non-production        | Comma-separated exact addresses allowed besides `@example.com` / `@test.com`.                     |
 | `FOLEVI_HASH_SALT`           | Convex                        | Salt for `hashRecipient()` (attempts, events, suppressions). Secret; never rotated without a migration. |
@@ -274,7 +274,7 @@ All on the **Convex** deployment (`npx convex env set NAME …`); none belong in
 | --- | --- |
 | Admin → Emails says **No email provider configured**; attempts fail as `provider_not_configured` | `RESEND_API_KEY` isn't set on this Convex deployment. |
 | Attempts fail as `unauthorized` | The API key is wrong or was revoked. Create a new full-access key and set `RESEND_API_KEY`. |
-| Attempts fail as `provider_rejected` | Resend refused the message; the attempt shows its reason. Usually `mail.folevi.com` isn't verified, or `EMAIL_SENDING_DOMAIN` names a domain Resend doesn't have. |
+| Attempts fail as `provider_rejected` | Resend refused the message; the attempt shows its reason. Usually `folevi.com` isn't verified for sending, or `EMAIL_SENDING_DOMAIN` names a domain Resend doesn't have. |
 | Attempts fail as `idempotency_conflict` | Resend saw the same idempotency key with a different request. Not retried automatically; resend it from Admin → Emails (a new attempt gets a new key). |
 | Attempts are `skipped / recipient_not_allowed` | A non-production deployment and a real address (section 4). Use a test address or add it to `FOLEVI_EMAIL_ALLOWLIST`. |
 | Attempts are `skipped / recipient_suppressed` | The address bounced, complained or is suppressed by Resend (section 7). Lift it only once the person has fixed their mailbox. |

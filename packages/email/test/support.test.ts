@@ -38,7 +38,7 @@ describe("support templates", () => {
       { env: { RESEND_API_KEY: "t", EMAIL_REPLY_TO: "other@example.com" }, policy: { environment: "production" }, fetchImpl },
     );
     const body = JSON.parse(String((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body));
-    expect(body.from).toBe("Folevi Support <support@mail.folevi.com>");
+    expect(body.from).toBe("Folevi Support <support@folevi.com>");
     expect(body.reply_to).toBe("support@folevi.com");
     expect(body.headers).toEqual({ "In-Reply-To": "<CAB123@mail.example.com>", References: "<first@mail.example.com> <CAB123@mail.example.com>" });
   });
@@ -50,7 +50,7 @@ describe("support templates", () => {
       { env: { RESEND_API_KEY: "t", EMAIL_REPLY_TO: "support@folevi.com" }, policy: { environment: "production" }, fetchImpl },
     );
     const body = JSON.parse(String((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body));
-    expect(body.from).toBe("Folevi <support@mail.folevi.com>");
+    expect(body.from).toBe("Folevi <support@folevi.com>");
     expect(body.reply_to).toBeUndefined();
   });
 

@@ -8,7 +8,7 @@ How Folevi's support requests work: where they come from, how staff answer them,
 
 ```
 folevi.com/support ─┐                                   ┌─ confirmation email "[Folevi #1042] We got your message"
-app: Help / menu ───┼─ POST /api/support ─ support.submit ─┤  (from support@mail.folevi.com, Reply-To support@folevi.com)
+app: Help / menu ───┼─ POST /api/support ─ support.submit ─┤  (from support@folevi.com, Reply-To support@folevi.com)
                     │   (web server)       (Convex)        └─ staff notified (in-app, and SUPPORT_NOTIFY_EMAIL if set)
 email to support@ ──┴─ Resend receiving ─ POST <convex-site>/webhooks/resend (email.received) ─ support.ingestInbound
 ```
@@ -26,7 +26,7 @@ email to support@ ──┴─ Resend receiving ─ POST <convex-site>/webhooks/
 - **Statuses.** `open` (waiting on us), `pending` (we replied; waiting on them), `closed`. A staff reply
   sets `pending`. A message from the requester (by email or from the app) reopens the ticket as `open`
   and marks it unread for staff.
-- **Staff replies** are emailed from `support@mail.folevi.com` (Reply-To `support@folevi.com`) with `[Folevi #N] Reply from Folevi support`,
+- **Staff replies** are emailed from `support@folevi.com` (Reply-To `support@folevi.com`) with `[Folevi #N] Reply from Folevi support`,
   threaded (In-Reply-To / References) to the requester's latest email when there is one. They also show in
   the requester's **Help → Your support requests** list (when the ticket came from their account), and
   they get an in-app notification.
@@ -98,9 +98,9 @@ the exact records from Resend → **Domains** for your account.
 
 ### Sending support mail
 
-Support mail comes **from `Folevi Support <support@mail.folevi.com>`** with **Reply-To
-`support@folevi.com`**, so replies come back to the support mailbox. `mail.folevi.com` is already a verified
-Resend sending domain (EMAIL_OPERATIONS.md), so nothing extra is needed to send.
+Support mail comes **from `Folevi Support <support@folevi.com>`** with **Reply-To
+`support@folevi.com`**, so replies come back to the support mailbox. `folevi.com` is Folevi's one Resend
+domain, verified for sending and receiving (EMAIL_OPERATIONS.md), so nothing extra is needed to send.
 
 ### Receiving support@folevi.com
 

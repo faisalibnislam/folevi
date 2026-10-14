@@ -58,7 +58,7 @@ describe("sendTemplate via Resend", () => {
       { name: "attempt", value: row!._id },
     ]);
     expect((init.headers as Record<string, string>)["Idempotency-Key"]).toBe(`folevi-${row!._id}`);
-    expect(body.from).toBe("Folevi <security@mail.folevi.com>");
+    expect(body.from).toBe("Folevi <security@folevi.com>");
     expect(body.html).toContain("Safari on macOS");
   });
 
@@ -151,7 +151,7 @@ function evt(type: string, data: Record<string, unknown> = {}) {
   return JSON.stringify({
     type,
     created_at: new Date().toISOString(),
-    data: { email_id: "msg-0001", from: "Folevi <hello@mail.folevi.com>", to: ["reader@example.com"], subject: "Hi", tags: { template: "mention_notification" }, ...data },
+    data: { email_id: "msg-0001", from: "Folevi <hello@folevi.com>", to: ["reader@example.com"], subject: "Hi", tags: { template: "mention_notification" }, ...data },
   });
 }
 

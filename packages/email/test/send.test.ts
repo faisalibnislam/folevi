@@ -58,9 +58,9 @@ describe("selectProvider", () => {
   });
 
   it("sending domain comes from the manifest unless a valid override is set", () => {
-    expect(sendingDomain({})).toBe("mail.folevi.com");
+    expect(sendingDomain({})).toBe("folevi.com");
     expect(sendingDomain({ EMAIL_SENDING_DOMAIN: "mail-staging.folevi.com" })).toBe("mail-staging.folevi.com");
-    expect(sendingDomain({ EMAIL_SENDING_DOMAIN: "evil.com>\r\nBcc: x" })).toBe("mail.folevi.com");
+    expect(sendingDomain({ EMAIL_SENDING_DOMAIN: "evil.com>\r\nBcc: x" })).toBe("folevi.com");
   });
 });
 
@@ -79,7 +79,7 @@ describe("sendEmail via Resend", () => {
     expect(headers["Idempotency-Key"]).toBe("folevi-j57abc123def456");
     const body = JSON.parse(String(init.body));
     expect(Object.keys(body).sort()).toEqual(["from", "html", "reply_to", "subject", "tags", "text", "to"]);
-    expect(body.from).toBe("Folevi <hello@mail.folevi.com>");
+    expect(body.from).toBe("Folevi <hello@folevi.com>");
     expect(body.to).toEqual(["reader@example.com"]);
     expect(body.reply_to).toBe("support@folevi.com");
     expect(body.subject).toBe("You were mentioned in Folevi");
@@ -97,7 +97,7 @@ describe("sendEmail via Resend", () => {
     const { fetchImpl, calls } = setup([res(200)]);
     await sendEmail(input({ key: "auth_password_reset", dataVariables: { ...emailManifest.auth_password_reset.fixture } }), { env: LIVE_ENV, policy: PROD, fetchImpl });
     const body = JSON.parse(String(calls[0]![1].body));
-    expect(body.from).toBe("Folevi <security@mail.folevi.com>");
+    expect(body.from).toBe("Folevi <security@folevi.com>");
     expect(body).not.toHaveProperty("reply_to");
     expect(resendRequestBody({ from: { email: "a@b.co", name: "F" }, to: "c@d.co", subject: "s", text: "t", html: "h", tags: { template: "k", attempt: "a" } })).not.toHaveProperty("reply_to");
     // A tag value Resend would refuse is left out rather than failing the send.

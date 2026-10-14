@@ -23,8 +23,8 @@ const PRODUCT_SENDER = { name: "Folevi", localPart: "hello" } as const;
 
 /**
  * The support mailbox. Replies to support mail go to it (Reply-To), and Resend receiving turns them into
- * ticket messages (docs/SUPPORT.md). The mail itself comes from support@ on the sending domain
- * (support@mail.folevi.com), which is already verified, so folevi.com needs no sending records of its own.
+ * ticket messages (docs/SUPPORT.md). The mail itself comes from support@ on the sending domain, which is
+ * folevi.com too: one Resend domain sends and receives.
  */
 export const SUPPORT_ADDRESS = "support@folevi.com";
 const SUPPORT_SENDER = { name: "Folevi Support", localPart: "support" } as const;
@@ -41,7 +41,7 @@ const ticket = () => num("The support ticket number Folevi assigned (also in the
 const FIX_APP = "https://app.folevi.com";
 
 /** Default sending domain (From: security@… / hello@…). Deployments may override it with EMAIL_SENDING_DOMAIN. */
-export const EMAIL_SENDING_DOMAIN = "mail.folevi.com";
+export const EMAIL_SENDING_DOMAIN = "folevi.com";
 
 /**
  * Where emails load the logo from: the only images an email may contain. Written by

@@ -9,7 +9,7 @@ exact steps the account owner follows to set up or rebuild it. Every secret live
 | --- | --- | --- | --- | --- |
 | Local | `localhost:3000`, `app.localhost:3000` | anonymous local backend; Better Auth runs inside it | captured in the development mailbox (`/dev/mailbox`) | not configured, or a key that only reaches test addresses |
 | Preview | Vercel preview URLs | Convex preview deployment per branch | development mailbox if `FOLEVI_DEV_MAILBOX_SECRET` is set | its own Resend key, restricted to test and allowlisted addresses (`FOLEVI_ENV=preview`) |
-| Production | `folevi.com`, `app.folevi.com` | production deployment | Resend only; no mailbox | Resend, sending from `mail.folevi.com`, receiving on `folevi.com` |
+| Production | `folevi.com`, `app.folevi.com` | production deployment | Resend only; no mailbox | Resend, sending and receiving on `folevi.com` |
 
 **Previews are switched off for now.** No Preview deploy key is set in Vercel, so every branch build failed
 at `convex deploy`. `apps/web/vercel.json`'s `ignoreCommand` skips any build that isn't production; pull
@@ -84,14 +84,14 @@ through the web app's `/api/auth/*` proxy so cookies are first-party on `app.fol
 
 - `SITE_URL` and `BETTER_AUTH_SECRET` set on the Convex production deployment (above). Store a copy of
   the secret in the team's password manager: losing it makes every stored TOTP secret unreadable.
-- `RESEND_API_KEY` is set and `mail.folevi.com` is verified in Resend (section 4); without them
+- `RESEND_API_KEY` is set and `folevi.com` is verified in Resend (section 4); without them
   nobody can confirm an address or reset a password in production.
 - Admin → Configuration → Feature flags → `new_signups` controls whether new accounts can be created.
 - There is no DNS for identity (no `auth.folevi.com`); sign-in lives at `https://app.folevi.com/signin`.
 
 ## 4. Email (Resend)
 
-Follow `docs/EMAIL_OPERATIONS.md` §1: add `mail.folevi.com` as a Resend domain, copy the exact records
+Follow `docs/EMAIL_OPERATIONS.md` §1: add `folevi.com` as a Resend domain (sending and receiving), copy the exact records
 from Resend → Domains into folevi.com's DNS at Namecheap (keep our DMARC), verify, **turn off open and click tracking**,
 create a **full-access** API key and set `RESEND_API_KEY` on Convex production, create the webhook
 `https://fastidious-clownfish-123.convex.site/webhooks/resend` (`email.delivered`,

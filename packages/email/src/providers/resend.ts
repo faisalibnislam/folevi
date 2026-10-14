@@ -28,7 +28,7 @@ export interface ResendMessage {
 /** Resend tag values: ASCII letters, numbers, underscores and dashes, at most 256 characters. */
 const TAG_VALUE_RE = /^[A-Za-z0-9_-]{1,256}$/;
 
-/** `Folevi <notify@mail.folevi.com>`, with the name stripped of anything that would break the header. */
+/** `Folevi <notify@folevi.com>`, with the name stripped of anything that would break the header. */
 export function formatFrom(from: { email: string; name: string }): string {
   const name = from.name.replace(/[\r\n"<>]/g, "").trim();
   return name ? `${name} <${from.email}>` : from.email;

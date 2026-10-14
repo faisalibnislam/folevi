@@ -112,7 +112,7 @@ describe("submitting a request", () => {
     expect(sent).toHaveLength(2);
     const bodies = fetchMock.mock.calls.map((c) => JSON.parse(String((c[1] as RequestInit).body)));
     const confirmation = bodies.find((b) => b.subject === "[Folevi #1001] We got your message");
-    expect(confirmation.from).toBe("Folevi Support <support@mail.folevi.com>");
+    expect(confirmation.from).toBe("Folevi Support <support@folevi.com>");
     expect(confirmation.reply_to).toBe("support@folevi.com");
     expect(confirmation.text).toContain("My notes didn't sync");
   });
@@ -265,7 +265,7 @@ describe("the admin Support inbox", () => {
     expect(reply).toMatchObject({ status: "accepted", category: "support" });
     const body = fetchMock.mock.calls.map((c) => JSON.parse(String((c[1] as RequestInit).body))).find((b) => b.tags?.some((tag: { name: string; value: string }) => tag.name === "template" && tag.value === "support_reply"));
     expect(body.subject).toBe("[Folevi #1001] Reply from Folevi support");
-    expect(body.from).toBe("Folevi Support <support@mail.folevi.com>");
+    expect(body.from).toBe("Folevi Support <support@folevi.com>");
     expect(body.text).toContain("Try opening the page while online.");
   });
 

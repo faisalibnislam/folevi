@@ -20,7 +20,7 @@ const delivered = (data: Record<string, unknown> = {}, type = "email.delivered")
     created_at: "2026-09-21T14:13:20.000Z",
     data: {
       email_id: "4ef9a417-02e9-4d39-ad75-9611e0fcc33c",
-      from: "Folevi <hello@mail.folevi.com>",
+      from: "Folevi <hello@folevi.com>",
       to: ["reader@example.com"],
       subject: "You were mentioned in Folevi",
       tags: { template: "mention_notification", attempt: "j57abc123def456" },
@@ -74,7 +74,7 @@ describe("parseResendWebhook", () => {
         category: "mention_notification",
         attemptId: "j57abc123def456",
       },
-      from: "hello@mail.folevi.com",
+      from: "hello@folevi.com",
     });
   });
 

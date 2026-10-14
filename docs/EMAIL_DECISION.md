@@ -18,7 +18,7 @@
    compiled at build time from one shared layout (`packages/email/scripts/build-templates.ts` →
    `src/generated/templates.ts`); `renderEmail()` fills in the variables at send time, HTML-escaping every
    value and accepting only https (or app-relative) links. The provider receives finished HTML + text.
-2. **Resend sends it** (`mail.folevi.com`): one `POST https://api.resend.com/emails` per email with
+2. **Resend sends it** (from `folevi.com`): one `POST https://api.resend.com/emails` per email with
    `from`, `to`, optional `reply_to`, `subject`, `html`, `text` and `tags` (`template` = the template key,
    `attempt` = our attempt id; no personal data), and an `Idempotency-Key` header of
    `folevi-<attempt id>`.
@@ -53,7 +53,7 @@
 - **Sending and receiving in one place.** The support inbox is a Resend receiving domain and arrives on
   the same signed webhook; the message is read, already parsed, from Resend's API.
 - **One vendor, one domain, one reputation.** Identity, security and product mail share
-  `mail.folevi.com` with separate sender identities (`security@`, `hello@`, `support@`).
+  `folevi.com` (which also receives) with separate sender identities (`security@`, `hello@`, `support@`).
 
 Trade-offs accepted: there is no sandbox inbox, so non-production relies on the recipient policy (test
 and allowlisted addresses only) and the development mailbox. Rendering in the repo means the copy is only
@@ -92,7 +92,7 @@ The facts this integration relies on (from Resend's documentation, Oct 2026; re-
 |             | Identity / security | Product |
 | ----------- | ------------------- | ------- |
 | Templates   | `auth_verify_email`, `auth_password_reset`, `security_new_device`, `account_deletion_*` | `workspace_invite`, `mention_notification`, `comment_notification`, `comment_digest`, `share_notification`, `access_changed` |
-| Sender      | `Folevi <security@mail.folevi.com>` | `Folevi <hello@mail.folevi.com>` |
+| Sender      | `Folevi <security@folevi.com>` | `Folevi <hello@folevi.com>` |
 | Unsubscribe | never (no unsubscribe or preferences link, test-enforced) | Folevi-side preference checked **before** sending; every email links to `preferencesUrl` |
 | Suppression | never suppressed | skipped after a hard bounce, spam complaint or Resend suppression |
 | Content     | one link, plus expiry | names, titles and a link; never note or comment text |

@@ -153,7 +153,7 @@ suspension).
   Web: `FOLEVI_DEV_MAILBOX_SECRET` locally only. There are no `AUTH0_*` or `FOLEVI_DEV_AUTH_*` variables
   any more. See `.env.example`, `scripts/setup-local.mjs` and `docs/DEPLOYMENT.md`.
 - **Identity email** depends on the email provider being configured (`RESEND_API_KEY` and a verified
-  `mail.folevi.com`); without it nobody can confirm an address or reset a password. The templates
+  `folevi.com`); without it nobody can confirm an address or reset a password. The templates
   (`auth_verify_email`, `auth_password_reset`) ship with the code.
 
 ### Rotating `BETTER_AUTH_SECRET`

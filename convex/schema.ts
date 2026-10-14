@@ -1469,14 +1469,14 @@ export default defineSchema({
     resendPayload: v.optional(v.record(v.string(), v.union(v.string(), v.number()))),
     /**
      * Historical (Loops era, no longer written): the Loops transactional id of a send made before the move
-     * to Mailtrap. Kept because production rows still carry it; the admin email log labels such rows "Loops".
+     * to Mailtrap (and later Resend). Kept because production rows still carry it; the admin email log labels such rows "Loops".
      */
     transactionalId: v.optional(v.string()),
-    /** Provider message id, when the provider returns one (Mailtrap: message_ids[0]). */
+    /** Provider message id, when the provider returns one (Resend: the email id). */
     providerMessageId: v.optional(v.string()),
-    /** Which provider handled the send: "mailtrap" or "mailtrap_sandbox" ("loops" on historical rows, no longer written). */
+    /** Which provider handled the send: "resend" ("mailtrap", "mailtrap_sandbox" and "loops" on historical rows, no longer written). */
     provider: v.optional(v.string()),
-    /** Latest delivery state from signed provider webhooks (delivered, soft_bounced, bounced, spam_complaint, rejected, suspended). */
+    /** Latest delivery state from signed provider webhooks (delivered, soft_bounced, bounced, spam_complaint, rejected, suppressed; suspended on Mailtrap-era rows). */
     deliveryStatus: v.optional(v.string()),
     deliveryUpdatedAt: v.optional(v.number()),
   })
@@ -1498,11 +1498,11 @@ export default defineSchema({
     receivedAt: v.number(),
     /** The send attempt this event was matched to on receipt (provider message id, else the attempt id the email carries). */
     attemptId: v.optional(v.id("emailSendAttempts")),
-    /** "mailtrap" (webhookId is "mailtrap:<event_id>"); unset on historical Loops-era events (no longer written). */
+    /** "resend" (webhookId is "resend:<svix-id>"); "mailtrap" on historical rows; unset on Loops-era events (no longer written). */
     provider: v.optional(v.string()),
-    /** Mailtrap category = our template key. */
+    /** Our template key (the `template` tag). */
     category: v.optional(v.string()),
-    /** Bounce details kept for diagnosis: Mailtrap's bounce category and the SMTP code (never the SMTP text). */
+    /** Bounce details kept for diagnosis: the provider's bounce type and the SMTP code when given (never the SMTP text). */
     bounceCategory: v.optional(v.string()),
     responseCode: v.optional(v.number()),
   })
@@ -1565,7 +1565,7 @@ export default defineSchema({
     createdAt: v.number(),
     /** RFC Message-ID of an inbound email (without brackets), for threading and de-duplication. */
     emailMessageId: v.optional(v.string()),
-    /** Mailtrap's id of the inbound message (de-duplicates webhook retries). */
+    /** The provider's id of the received email (Resend email id; Mailtrap message id on older rows). De-duplicates webhook retries. */
     inboundMessageId: v.optional(v.string()),
   })
     .index("by_ticket", ["ticketId", "createdAt"])

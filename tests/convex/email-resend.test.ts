@@ -1,4 +1,4 @@
-// Transactional email through Mailtrap: sendTemplate (fetch mocked) and the signed webhook.
+// Transactional email through Resend: sendTemplate (fetch mocked) and the signed webhook.
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { internal } from "../../convex/_generated/api";
@@ -6,30 +6,24 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { emailManifest, hashRecipient } from "@folevi/email";
 import { setup, type T } from "./helpers";
 
-const TOKEN = "mt-test-token-SECRET"; // gitleaks:allow (fake test value)
-const WEBHOOK_SECRET = "mt-webhook-signing-secret"; // gitleaks:allow (fake test value)
-const EMAIL_ENV = [
-  "MAILTRAP_API_TOKEN",
-  "MAILTRAP_WEBHOOK_SECRET",
-  "MAILTRAP_SANDBOX_INBOX_ID",
-  "MAILTRAP_SANDBOX_TOKEN",
-  "EMAIL_REPLY_TO",
-  "FOLEVI_EMAIL_ALLOWLIST",
-] as const;
+const TOKEN = "re_test_key_SECRET"; // gitleaks:allow (fake test value)
+const KEY_B64 = Buffer.from("resend-webhook-signing-secret-for-tests").toString("base64");
+const WEBHOOK_SECRET = `whsec_${KEY_B64}`; // gitleaks:allow (fake test value)
+const EMAIL_ENV = ["RESEND_API_KEY", "RESEND_WEBHOOK_SECRET", "EMAIL_REPLY_TO", "FOLEVI_EMAIL_ALLOWLIST"] as const;
 
 let saved: Record<string, string | undefined> = {};
 let fetchMock: ReturnType<typeof vi.fn>;
 
-function mailtrapOk(id = "msg-0001") {
-  return new Response(JSON.stringify({ success: true, message_ids: [id] }), { status: 200, headers: { "content-type": "application/json" } });
+function resendOk(id = "msg-0001") {
+  return new Response(JSON.stringify({ id }), { status: 200, headers: { "content-type": "application/json" } });
 }
 
 beforeEach(() => {
   saved = Object.fromEntries(EMAIL_ENV.map((k) => [k, process.env[k]]));
   for (const k of EMAIL_ENV) delete process.env[k];
-  process.env.MAILTRAP_API_TOKEN = TOKEN;
-  process.env.MAILTRAP_WEBHOOK_SECRET = WEBHOOK_SECRET;
-  fetchMock = vi.fn(async () => mailtrapOk());
+  process.env.RESEND_API_KEY = TOKEN;
+  process.env.RESEND_WEBHOOK_SECRET = WEBHOOK_SECRET;
+  fetchMock = vi.fn(async () => resendOk());
   vi.stubGlobal("fetch", fetchMock);
 });
 
@@ -48,20 +42,23 @@ async function attempts(t: T) {
   return await t.run(async (ctx) => await ctx.db.query("emailSendAttempts").collect());
 }
 
-describe("sendTemplate via Mailtrap", () => {
+describe("sendTemplate via Resend", () => {
   test("records the attempt with the provider message id and sends the rendered template", async () => {
     const t = setup();
     const res = await t.action(internal.email.sendTemplate, { key: "security_new_device", to: "reader@example.com", dataVariables: deviceVars(), idempotencyKey: "device:1" });
     expect(res).toEqual({ status: "accepted" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("https://send.api.mailtrap.io/api/send");
+    expect(url).toBe("https://api.resend.com/emails");
     const body = JSON.parse(String(init.body));
     const [row] = await attempts(t);
-    expect(row).toMatchObject({ status: "accepted", provider: "mailtrap", providerMessageId: "msg-0001", attempts: 1, recipientHint: "r***@e***.com" });
-    expect(body.custom_variables).toEqual({ attempt: row!._id, template: "security_new_device" });
-    expect(body.category).toBe("security_new_device");
-    expect(body.from.email).toBe("security@mail.folevi.com");
+    expect(row).toMatchObject({ status: "accepted", provider: "resend", providerMessageId: "msg-0001", attempts: 1, recipientHint: "r***@e***.com" });
+    expect(body.tags).toEqual([
+      { name: "template", value: "security_new_device" },
+      { name: "attempt", value: row!._id },
+    ]);
+    expect((init.headers as Record<string, string>)["Idempotency-Key"]).toBe(`folevi-${row!._id}`);
+    expect(body.from).toBe("Folevi <security@mail.folevi.com>");
     expect(body.html).toContain("Safari on macOS");
   });
 
@@ -99,7 +96,7 @@ describe("sendTemplate via Mailtrap", () => {
 
   test("a failed attempt can be retried with the same key", async () => {
     const t = setup();
-    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ success: false, errors: ["bad"] }), { status: 400 }));
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ statusCode: 422, name: "validation_error", message: "bad" }), { status: 422 }));
     const args = { key: "security_new_device", to: "reader@example.com", dataVariables: deviceVars(), idempotencyKey: "device:5" };
     expect(await t.action(internal.email.sendTemplate, args)).toEqual({ status: "failed" });
     expect(await t.action(internal.email.sendTemplate, args)).toEqual({ status: "accepted" });
@@ -107,22 +104,20 @@ describe("sendTemplate via Mailtrap", () => {
     expect(rows.map((r) => [r.status, r.errorCode ?? null])).toEqual([["failed", "provider_rejected"], ["accepted", null]]);
   });
 
-  test("outside production, real addresses are skipped on the live API but captured by the sandbox", async () => {
+  test("outside production, real addresses are skipped; allowlisted ones go", async () => {
     const t = setup();
     const live = await t.action(internal.email.sendTemplate, { key: "security_new_device", to: "person@gmail.com", dataVariables: deviceVars(), idempotencyKey: "device:6" });
     expect(live).toEqual({ status: "skipped" });
     expect(fetchMock).not.toHaveBeenCalled();
 
-    process.env.MAILTRAP_SANDBOX_INBOX_ID = "777";
-    process.env.MAILTRAP_SANDBOX_TOKEN = "sandbox-token";
-    const sandboxed = await t.action(internal.email.sendTemplate, { key: "security_new_device", to: "person@gmail.com", dataVariables: deviceVars(), idempotencyKey: "device:7" });
-    expect(sandboxed).toEqual({ status: "accepted" });
-    expect((fetchMock.mock.calls[0] as [string])[0]).toBe("https://sandbox.api.mailtrap.io/api/send/777");
-    expect((await attempts(t)).find((a) => a.idempotencyKey === "device:7")?.provider).toBe("mailtrap_sandbox");
+    process.env.FOLEVI_EMAIL_ALLOWLIST = "person@gmail.com";
+    const allowed = await t.action(internal.email.sendTemplate, { key: "security_new_device", to: "person@gmail.com", dataVariables: deviceVars(), idempotencyKey: "device:7" });
+    expect(allowed).toEqual({ status: "accepted" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   test("no provider configured: recorded as failed, nothing sent", async () => {
-    delete process.env.MAILTRAP_API_TOKEN;
+    delete process.env.RESEND_API_KEY;
     const t = setup();
     expect(await t.action(internal.email.sendTemplate, { key: "security_new_device", to: "reader@example.com", dataVariables: deviceVars(), idempotencyKey: "device:8" })).toEqual({ status: "failed" });
     expect((await attempts(t))[0]).toMatchObject({ status: "failed", errorCode: "provider_not_configured" });
@@ -145,26 +140,29 @@ describe("sendTemplate via Mailtrap", () => {
 
 // ---------------------------------------------------------------- webhook
 
-const sign = (body: string, secret = WEBHOOK_SECRET) => createHmac("sha256", secret).update(body).digest("hex");
+let seq = 0;
+const nextId = () => `msg_${Date.now().toString(36)}${(seq++).toString(36)}`;
 
-function mtEvent(overrides: Record<string, unknown> = {}) {
-  return {
-    event: "delivery",
-    message_id: "msg-0001",
-    email: "reader@example.com",
-    timestamp: Math.floor(Date.now() / 1000),
-    event_id: `evt-${Math.random().toString(36).slice(2)}`,
-    sending_stream: "transactional",
-    category: "mention_notification",
-    ...overrides,
-  };
+function sign(id: string, timestamp: string, body: string, key = KEY_B64) {
+  return `v1,${createHmac("sha256", Buffer.from(key, "base64")).update(`${id}.${timestamp}.${body}`).digest("base64")}`;
 }
 
-async function post(t: T, body: string, signature: string | null = sign(body)) {
-  return await t.fetch("/webhooks/mailtrap", {
+function evt(type: string, data: Record<string, unknown> = {}) {
+  return JSON.stringify({
+    type,
+    created_at: new Date().toISOString(),
+    data: { email_id: "msg-0001", from: "Folevi <hello@mail.folevi.com>", to: ["reader@example.com"], subject: "Hi", tags: { template: "mention_notification" }, ...data },
+  });
+}
+
+async function post(t: T, body: string, opts: { id?: string; signature?: string | null; key?: string } = {}) {
+  const id = opts.id ?? nextId();
+  const ts = String(Math.floor(Date.now() / 1000));
+  const signature = opts.signature === undefined ? sign(id, ts, body, opts.key) : opts.signature;
+  return await t.fetch("/webhooks/resend", {
     method: "POST",
     body,
-    headers: { "content-type": "application/json", ...(signature !== null ? { "mailtrap-signature": signature } : {}) },
+    headers: { "content-type": "application/json", "svix-id": id, "svix-timestamp": ts, ...(signature !== null ? { "svix-signature": signature } : {}) },
   });
 }
 
@@ -183,7 +181,7 @@ async function sentAttempt(t: T, overrides: { to?: string; key?: string; message
       requestId: "req",
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      provider: "mailtrap",
+      provider: "resend",
       providerMessageId: overrides.messageId,
     }),
   );
@@ -193,16 +191,18 @@ async function events(t: T) {
   return await t.run(async (ctx) => await ctx.db.query("emailProviderEvents").collect());
 }
 
-describe("POST /webhooks/mailtrap", () => {
+describe("POST /webhooks/resend (delivery events)", () => {
   test("accepts a valid signature; rejects bad, missing and unconfigured ones", async () => {
     const t = setup();
-    const body = JSON.stringify({ events: [mtEvent()] });
+    const body = evt("email.delivered");
     expect((await post(t, body)).status).toBe(200);
-    expect((await post(t, body, sign(body, "wrong-secret"))).status).toBe(401);
-    expect((await post(t, body.replace("delivery", "bounce"), sign(body))).status).toBe(401);
-    expect((await post(t, body, null)).status).toBe(401);
-    process.env.MAILTRAP_WEBHOOK_SECRET = "";
-    expect((await post(t, body, sign(body, ""))).status).toBe(401);
+    expect((await post(t, body, { key: Buffer.from("another-secret").toString("base64") })).status).toBe(401);
+    const id = nextId();
+    const ts = String(Math.floor(Date.now() / 1000));
+    expect((await post(t, body.replace("delivered", "bounced"), { id, signature: sign(id, ts, body) })).status).toBe(401);
+    expect((await post(t, body, { signature: null })).status).toBe(401);
+    process.env.RESEND_WEBHOOK_SECRET = "";
+    expect((await post(t, body)).status).toBe(401);
     expect(await events(t)).toHaveLength(1);
   });
 
@@ -211,49 +211,45 @@ describe("POST /webhooks/mailtrap", () => {
     expect((await post(t, "{not json")).status).toBe(400);
   });
 
-  test("matches by message id, then by the attempt custom variable; stores hashes only", async () => {
+  test("matches by email id, then by the attempt tag; stores hashes only", async () => {
     const t = setup();
     const byMessage = await sentAttempt(t, { messageId: "msg-A" });
-    const byVariable = await sentAttempt(t, { to: "b@example.com" });
-    const body = JSON.stringify({
-      events: [
-        mtEvent({ event_id: "e1", message_id: "msg-A" }),
-        mtEvent({ event_id: "e2", message_id: "unknown", email: "b@example.com", custom_variables: { attempt: byVariable, template: "mention_notification" } }),
-        // An attempt id that doesn't match the recipient is not trusted.
-        mtEvent({ event_id: "e3", message_id: "unknown-2", email: "c@example.com", custom_variables: { attempt: byVariable } }),
-      ],
-    });
-    expect((await post(t, body)).status).toBe(200);
+    const byTag = await sentAttempt(t, { to: "b@example.com" });
+    await post(t, evt("email.delivered", { email_id: "msg-A" }), { id: "msg_e1" });
+    await post(t, evt("email.delivered", { email_id: "unknown", to: ["b@example.com"], tags: { template: "mention_notification", attempt: byTag } }), { id: "msg_e2" });
+    // An attempt id that doesn't match the recipient is not trusted.
+    await post(t, evt("email.delivered", { email_id: "unknown-2", to: ["c@example.com"], tags: { attempt: byTag } }), { id: "msg_e3" });
     const byId = Object.fromEntries((await events(t)).map((e) => [e.webhookId, e]));
-    expect(byId["mailtrap:e1"]!.attemptId).toBe(byMessage);
-    expect(byId["mailtrap:e2"]!.attemptId).toBe(byVariable);
-    expect(byId["mailtrap:e3"]!.attemptId).toBeUndefined();
-    expect(byId["mailtrap:e1"]).toMatchObject({ provider: "mailtrap", eventName: "delivered", recipientHash: await hashRecipient("reader@example.com", "test-salt") });
+    expect(byId["resend:msg_e1"]!.attemptId).toBe(byMessage);
+    expect(byId["resend:msg_e2"]!.attemptId).toBe(byTag);
+    expect(byId["resend:msg_e3"]!.attemptId).toBeUndefined();
+    expect(byId["resend:msg_e1"]).toMatchObject({ provider: "resend", eventName: "delivered", recipientHash: await hashRecipient("reader@example.com", "test-salt") });
     expect(JSON.stringify(Object.values(byId))).not.toContain("@example.com");
     const attempt = await t.run(async (ctx) => ctx.db.get(byMessage));
     expect(attempt?.deliveryStatus).toBe("delivered");
   });
 
-  test("accepts JSON Lines and dedupes on event_id (retries are harmless)", async () => {
+  test("dedupes on svix-id (retries are harmless); a delivery after a delay shows as delivered", async () => {
     const t = setup();
     const id = await sentAttempt(t, { messageId: "msg-L" });
-    const lines = [JSON.stringify(mtEvent({ event_id: "L1", message_id: "msg-L", event: "soft bounce" })), JSON.stringify(mtEvent({ event_id: "L2", message_id: "msg-L" }))].join("\n");
-    expect((await post(t, lines)).status).toBe(200);
-    expect((await post(t, lines)).status).toBe(200);
+    const delayed = evt("email.delivery_delayed", { email_id: "msg-L" });
+    const delivered = evt("email.delivered", { email_id: "msg-L" });
+    expect((await post(t, delayed, { id: "msg_L1" })).status).toBe(200);
+    expect((await post(t, delayed, { id: "msg_L1" })).status).toBe(200);
+    expect((await post(t, delivered, { id: "msg_L2" })).status).toBe(200);
     expect(await events(t)).toHaveLength(2);
-    // A delivery after a soft bounce shows as delivered.
     expect((await t.run(async (ctx) => ctx.db.get(id)))?.deliveryStatus).toBe("delivered");
   });
 
   test("hard bounces and complaints suppress product email; security email still goes", async () => {
     const t = setup();
     const id = await sentAttempt(t, { messageId: "msg-B", to: "gone@example.com" });
-    const body = JSON.stringify({ events: [mtEvent({ event_id: "B1", message_id: "msg-B", email: "gone@example.com", event: "bounce", bounce_category: "bad_mailbox", response_code: 550, response: "550 5.1.1 <gone@example.com> unknown" })] });
-    expect((await post(t, body)).status).toBe(200);
+    const bounce = evt("email.bounced", { email_id: "msg-B", to: ["gone@example.com"], bounce: { type: "Permanent", subType: "General", message: "550 5.1.1 <gone@example.com> unknown" } });
+    expect((await post(t, bounce, { id: "msg_B1" })).status).toBe(200);
     const [suppression] = await t.run(async (ctx) => ctx.db.query("emailSuppressions").collect());
-    expect(suppression).toMatchObject({ reason: "hard_bounce", provider: "mailtrap", recipientHash: await hashRecipient("gone@example.com", "test-salt") });
-    const [event] = (await events(t)).filter((e) => e.webhookId === "mailtrap:B1");
-    expect(event).toMatchObject({ bounceCategory: "bad_mailbox", responseCode: 550 });
+    expect(suppression).toMatchObject({ reason: "hard_bounce", provider: "resend", recipientHash: await hashRecipient("gone@example.com", "test-salt") });
+    const [event] = (await events(t)).filter((e) => e.webhookId === "resend:msg_B1");
+    expect(event).toMatchObject({ bounceCategory: "Permanent:General" });
     expect(JSON.stringify(event)).not.toContain("unknown");
     expect((await t.run(async (ctx) => ctx.db.get(id)))?.deliveryStatus).toBe("bounced");
 
@@ -266,9 +262,17 @@ describe("POST /webhooks/mailtrap", () => {
     expect(rows.find((r) => r.idempotencyKey === "mention:gone")).toMatchObject({ status: "skipped", errorCode: "recipient_suppressed" });
 
     // A later spam complaint upgrades the reason; nothing is duplicated.
-    await post(t, JSON.stringify({ events: [mtEvent({ event_id: "B2", message_id: "msg-B", email: "gone@example.com", event: "spam" })] }));
+    await post(t, evt("email.complained", { email_id: "msg-B", to: ["gone@example.com"] }), { id: "msg_B2" });
     const all = await t.run(async (ctx) => ctx.db.query("emailSuppressions").collect());
     expect(all).toHaveLength(1);
     expect(all[0]!.reason).toBe("spam_complaint");
+  });
+
+  test("a transient bounce is a soft bounce and suppresses nothing", async () => {
+    const t = setup();
+    await sentAttempt(t, { messageId: "msg-S", to: "full@example.com" });
+    await post(t, evt("email.bounced", { email_id: "msg-S", to: ["full@example.com"], bounce: { type: "Transient", subType: "MailboxFull" } }), { id: "msg_S1" });
+    expect((await events(t))[0]).toMatchObject({ eventName: "soft_bounced" });
+    expect(await t.run(async (ctx) => ctx.db.query("emailSuppressions").collect())).toHaveLength(0);
   });
 });

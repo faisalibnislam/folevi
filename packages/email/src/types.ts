@@ -80,13 +80,13 @@ export interface SendPolicy {
 }
 
 /** Which provider a send went through. */
-export type EmailProviderKind = "mailtrap" | "mailtrap_sandbox";
+export type EmailProviderKind = "resend";
 
 export interface SendEmailInput {
   key: TemplateKey;
   to: string;
   dataVariables: Record<string, unknown>;
-  /** Our send-attempt id (emailSendAttempts): sent as a custom variable so webhooks can be matched. */
+  /** Our send-attempt id (emailSendAttempts): sent as a tag (and the Idempotency-Key) so webhooks can be matched. */
   attemptId: string;
   /** Threading headers for a reply (RFC 5322 message ids, with or without angle brackets). */
   thread?: { inReplyTo?: string; references?: string[] };
@@ -101,18 +101,18 @@ export interface SendOutcome {
   attempts: number;
   /** Provider message id, when the provider returned one with its 2xx response. */
   providerMessageId?: string;
-  /** The provider's own reason for a refusal (e.g. Mailtrap's `errors`), with addresses and tokens masked. */
+  /** The provider's own reason for a refusal (Resend's `message`), with addresses and tokens masked. */
   providerError?: string;
 }
 
-// ------------------------------------------------------------------ Mailtrap webhooks
+// ------------------------------------------------------------------ provider webhooks
 
-/** Mailtrap event names, normalised (Mailtrap sends e.g. "soft bounce"; we store "soft_bounced"). */
-export type MailtrapEventName =
+/** Delivery event names, normalised from the provider's own ("email.bounced" → "bounced"). */
+export type EmailEventName =
   | "delivered"
   | "soft_bounced"
   | "bounced"
-  | "suspended"
+  | "suppressed"
   | "unsubscribed"
   | "opened"
   | "clicked"
@@ -120,19 +120,22 @@ export type MailtrapEventName =
   | "rejected"
   | "other";
 
-/** The fields Folevi keeps from one Mailtrap webhook event (never IPs, user agents, URLs or SMTP text). */
-export interface MailtrapEvent {
+/** The fields Folevi keeps from one delivery event (never IPs, user agents, URLs or SMTP text). */
+export interface EmailEvent {
+  /** The provider's event id (Resend: the svix-id header), unique per event and stable across retries. */
   eventId: string;
-  eventName: MailtrapEventName;
+  eventName: EmailEventName;
   /** Milliseconds since the epoch. */
   eventTime: number;
+  /** The provider's email id. */
   messageId?: string;
   /** Hashed by the caller before storage; never stored or logged as is. */
   recipient?: string;
-  /** Our template key (sent as the Mailtrap category). */
+  /** Our template key (sent as the `template` tag). */
   category?: string;
-  /** Our attempt id (sent as custom variable `attempt`). */
+  /** Our attempt id (sent as the `attempt` tag). */
   attemptId?: string;
+  /** Bounce details kept for diagnosis: the provider's bounce type and subtype (never the SMTP text). */
   bounceCategory?: string;
   responseCode?: number;
 }

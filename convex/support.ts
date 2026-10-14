@@ -1,5 +1,5 @@
 // Support requests: the support page and the app's "Contact support" (through the web server's
-// /api/support route), email to support@folevi.com (Mailtrap Email Inbound → http.ts), the requester's own
+// /api/support route), email to support@folevi.com (Resend receiving → http.ts), the requester's own
 // list in the app, and the admin console's Support inbox. See docs/SUPPORT.md.
 //
 // Privacy and safety:
@@ -283,7 +283,7 @@ export const replyToMyRequest = mutation({
 
 // ---------------------------------------------------------------- inbound email
 
-/** Whether this Mailtrap inbound message was already handled (webhooks retry). */
+/** Whether this received email was already handled (webhooks retry). */
 export const inboundSeen = internalQuery({
   args: { inboundMessageId: v.string() },
   handler: async (ctx, args) => {
@@ -297,11 +297,11 @@ export const inboundSeen = internalQuery({
 
 /**
  * Files one inbound email (already signature-checked, fetched and parsed by http.ts):
- * - de-duplicated by Mailtrap's message id and by the RFC Message-ID;
+ * - de-duplicated by Resend's email id and by the RFC Message-ID;
  * - auto-replies and bounces, mail from Folevi's own domain and mail for other folevi.com mailboxes are ignored;
  * - "[Folevi #N]" in the subject, from that ticket's requester, adds to ticket N (reopening it); anything
  *   else (no tag, or a different sender) opens a new ticket with source "email";
- * - rate limited per sender; over the limit the message is dropped (Mailtrap keeps its copy).
+ * - rate limited per sender; over the limit the message is dropped (Resend keeps its copy).
  */
 export const ingestInbound = internalMutation({
   args: {

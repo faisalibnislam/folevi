@@ -46,12 +46,13 @@ export function productEmailAllowed(key: string, preferenceKey: string, prefs: R
 }
 
 /**
- * Sends one transactional email through Mailtrap. Records every
- * attempt locally; a 2xx from the provider is recorded as "accepted" (accepted by provider), never as
- * "delivered". Delivery state only comes from signed webhooks.
+ * Sends one transactional email through Resend. Records every attempt locally; a 2xx from the provider is
+ * recorded as "accepted" (accepted by provider), never as "delivered". Delivery state only comes from
+ * signed webhooks.
  *
- * Mailtrap has no idempotency key, so the attempt row is the guard: `beginAttempt` refuses to start a
- * second send for an idempotency key that was already accepted or is still in flight.
+ * The attempt row is the guard against a second send for the same notification: `beginAttempt` refuses
+ * to start one for an idempotency key that was already accepted or is still in flight. Within one attempt,
+ * Resend's Idempotency-Key (the attempt id) makes retried requests safe.
  */
 export const sendTemplate = internalAction({
   args: {
@@ -168,8 +169,8 @@ export const beginAttempt = internalMutation({
         .query("emailSendAttempts")
         .withIndex("by_idempotency", (q) => q.eq("idempotencyKey", args.idempotencyKey))
         .take(20);
-      // Mailtrap has no idempotency key: this row is what stops a retried or duplicated action from
-      // sending twice. Accepted → never again; queued and recent → another run is sending it right now.
+      // This row is what stops a retried or duplicated action from sending twice (each attempt gets its own
+      // provider idempotency key). Accepted → never again; queued and recent → another run is sending it now.
       const accepted = previous.find((p) => p.status === "accepted");
       if (accepted) return { attemptId: accepted._id, alreadyAccepted: true, inFlight: false, suppressed: false };
       const running = previous.find((p) => p.status === "queued" && now - p.updatedAt < IN_FLIGHT_MS);
@@ -276,7 +277,7 @@ export const profileByEmail = internalQuery({
   },
 });
 
-// ---------------------------------------------------------------- Mailtrap webhooks
+// ---------------------------------------------------------------- provider webhooks
 
 /**
  * How much each delivery state says about a send: a later, weaker event never hides a stronger one
@@ -286,6 +287,7 @@ const DELIVERY_RANK: Record<string, number> = {
   soft_bounced: 1,
   delivered: 2,
   suspended: 3,
+  suppressed: 3,
   rejected: 3,
   bounced: 3,
   spam_complaint: 4,
@@ -293,6 +295,8 @@ const DELIVERY_RANK: Record<string, number> = {
 
 const SUPPRESSING: Record<string, SuppressionReason> = {
   bounced: "hard_bounce",
+  // Resend refused to send because the address is on its suppression list (an earlier bounce or complaint).
+  suppressed: "hard_bounce",
   spam_complaint: "spam_complaint",
   unsubscribed: "unsubscribe",
 };
@@ -301,9 +305,10 @@ const DELIVERY_METRICS: Record<string, MetricKey> = {
   bounced: "email_bounced",
   spam_complaint: "email_spam_complaint",
   rejected: "email_rejected",
+  suppressed: "email_rejected",
 };
 
-const vMailtrapEvent = v.object({
+const vProviderEvent = v.object({
   eventId: v.string(),
   eventName: v.string(),
   eventTime: v.number(),
@@ -316,17 +321,17 @@ const vMailtrapEvent = v.object({
 });
 
 /**
- * Stores a batch of signature-verified Mailtrap events (http.ts → /webhooks/mailtrap).
+ * Stores a batch of signature-verified Resend events (http.ts → /webhooks/resend).
  *
- * - Deduplicated on Mailtrap's `event_id` (Mailtrap retries failed deliveries).
+ * - Deduplicated on the event id (svix-id; Resend retries failed deliveries with the same one).
  * - Matched to exactly one send: by the provider message id first, then by our attempt id (sent as the
- *   custom variable `attempt`), which must agree with the event's hashed recipient and template.
+ *   `attempt` tag), which must agree with the event's hashed recipient and template.
  * - The attempt's delivery state is updated; hard bounces, spam complaints and unsubscribes suppress
  *   further product email to that (hashed) address.
  * - Addresses are hashed before storage; nothing else from the event is kept.
  */
-export const recordMailtrapEvents = internalMutation({
-  args: { events: v.array(vMailtrapEvent) },
+export const recordProviderEvents = internalMutation({
+  args: { events: v.array(vProviderEvent) },
   handler: async (ctx, { events }) => {
     if (events.length > 200) throw new Error("too many events in one batch");
     const salt = secretOrDevFallback(["FOLEVI_HASH_SALT"], "folevi-development-salt");
@@ -334,7 +339,7 @@ export const recordMailtrapEvents = internalMutation({
     let duplicates = 0;
     let matched = 0;
     for (const e of events) {
-      const webhookId = `mailtrap:${e.eventId}`.slice(0, 200);
+      const webhookId = `resend:${e.eventId}`.slice(0, 200);
       const dup = await ctx.db
         .query("emailProviderEvents")
         .withIndex("by_webhook_id", (q) => q.eq("webhookId", webhookId))
@@ -354,7 +359,7 @@ export const recordMailtrapEvents = internalMutation({
       if (!attempt && e.attemptId) {
         const id = ctx.db.normalizeId("emailSendAttempts", e.attemptId);
         const candidate = id ? await ctx.db.get(id) : null;
-        // The custom variable only links an event whose recipient and template agree with the send.
+        // The tag only links an event whose recipient and template agree with the send.
         if (
           candidate &&
           (!recipientHash || candidate.recipientHash === recipientHash) &&
@@ -371,7 +376,7 @@ export const recordMailtrapEvents = internalMutation({
         recipientHash,
         receivedAt: Date.now(),
         attemptId: attempt?._id,
-        provider: "mailtrap",
+        provider: "resend",
         category: e.category,
         bounceCategory: e.bounceCategory,
         responseCode: e.responseCode,
@@ -387,7 +392,7 @@ export const recordMailtrapEvents = internalMutation({
       }
       const reason = SUPPRESSING[e.eventName];
       const hash = recipientHash ?? attempt?.recipientHash;
-      if (reason && hash) await suppress(ctx, { recipientHash: hash, reason, provider: "mailtrap", eventId: e.eventId, attemptId: attempt?._id });
+      if (reason && hash) await suppress(ctx, { recipientHash: hash, reason, provider: "resend", eventId: e.eventId, attemptId: attempt?._id });
       const metric = DELIVERY_METRICS[e.eventName];
       if (metric) await bump(ctx, metric);
     }

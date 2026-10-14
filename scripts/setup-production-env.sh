@@ -6,7 +6,7 @@
 #
 # The random secrets (server secret, Better Auth secret, hash salt, file-URL secret) are generated here and
 # go straight into Vercel and Convex. They are never printed, logged or written to a file. The script asks
-# for your Mailtrap sending token and webhook signing secret, with hidden input. Keys you already have are left alone unless you pass --rotate.
+# for your Resend API key and webhook signing secret, with hidden input. Keys you already have are left alone unless you pass --rotate.
 # Rotating BETTER_AUTH_SECRET signs everyone out (see docs/AUTH_DECISION.md).
 set -euo pipefail
 
@@ -81,16 +81,16 @@ convex_set FOLEVI_FILE_URL_SECRET "$(random)"
 # The deploy key itself, for Vercel's build (it runs `npx convex deploy`).
 vercel_set CONVEX_DEPLOY_KEY "$CONVEX_DEPLOY_KEY"
 
-# Mailtrap (transactional email; docs/EMAIL_OPERATIONS.md). Hidden input; skip with Enter and add it later.
-if ! convex_has MAILTRAP_API_TOKEN || [[ "$ROTATE" == "--rotate" ]]; then
-  read -r -s -p "Mailtrap sending API token (hidden; Enter to skip): " mailtrap; echo
-  if [[ -n "$mailtrap" ]]; then convex_put MAILTRAP_API_TOKEN "$mailtrap"; fi
-  unset mailtrap
+# Resend (all email: sending and the support inbox; docs/EMAIL_OPERATIONS.md). Hidden input; skip with Enter and add it later.
+if ! convex_has RESEND_API_KEY || [[ "$ROTATE" == "--rotate" ]]; then
+  read -r -s -p "Resend API key, full access (hidden; Enter to skip): " rekey; echo
+  if [[ -n "$rekey" ]]; then convex_put RESEND_API_KEY "$rekey"; fi
+  unset rekey
 fi
-if ! convex_has MAILTRAP_WEBHOOK_SECRET || [[ "$ROTATE" == "--rotate" ]]; then
-  read -r -s -p "Mailtrap webhook signing secret (hidden; Enter to skip): " mtsecret; echo
-  if [[ -n "$mtsecret" ]]; then convex_put MAILTRAP_WEBHOOK_SECRET "$mtsecret"; fi
-  unset mtsecret
+if ! convex_has RESEND_WEBHOOK_SECRET || [[ "$ROTATE" == "--rotate" ]]; then
+  read -r -s -p "Resend webhook signing secret, whsec_… (hidden; Enter to skip): " resecret; echo
+  if [[ -n "$resecret" ]]; then convex_put RESEND_WEBHOOK_SECRET "$resecret"; fi
+  unset resecret
 fi
 
 echo

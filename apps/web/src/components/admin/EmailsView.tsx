@@ -19,8 +19,8 @@ const STATUSES = ["queued", "accepted", "failed", "skipped"] as const;
 type EmailStatus = (typeof STATUSES)[number];
 type Attempt = FunctionReturnType<typeof api.admin.listEmails>["attempts"][number];
 
-/** `loops` only labels historical rows sent before the move to Mailtrap; nothing sends through it any more. */
-const PROVIDER_LABELS: Record<string, string> = { mailtrap: "Mailtrap", mailtrap_sandbox: "Mailtrap sandbox", loops: "Loops (legacy)" };
+/** `mailtrap` and `loops` only label historical rows sent before the move to Resend; nothing sends through them any more. */
+const PROVIDER_LABELS: Record<string, string> = { resend: "Resend", mailtrap: "Mailtrap (legacy)", mailtrap_sandbox: "Mailtrap sandbox (legacy)", loops: "Loops (legacy)" };
 const DELIVERY_LABELS: Record<string, string> = {
   delivered: "Delivered",
   soft_bounced: "Soft bounce",
@@ -71,13 +71,13 @@ export function EmailsView() {
           </p>
           <p className="mt-1.5">
             Addresses that hard-bounce, complain or unsubscribe stop getting product email (<Mono>recipient_suppressed</Mono>); security and sign-in email still goes. To look deeper, open
-            Mailtrap → <strong>Email Logs</strong> and search by message id.
+            Resend → <strong>Emails</strong> and search by the email id.
           </p>
         </Callout>
         {data ? (
           data.activeProvider === "none" ? (
             <Callout tone="warning" title="No email provider configured">
-              Nothing can be sent from this environment. Set <Mono>MAILTRAP_API_TOKEN</Mono> (or the sandbox pair outside production) on the Convex deployment. See docs/EMAIL_OPERATIONS.md.
+              Nothing can be sent from this environment. Set <Mono>RESEND_API_KEY</Mono> on the Convex deployment. See docs/EMAIL_OPERATIONS.md.
             </Callout>
           ) : data.webhooksConfigured ? (
             <Callout title={`Sending through ${PROVIDER_LABELS[data.activeProvider] ?? data.activeProvider}; webhook configured`}>
@@ -87,7 +87,7 @@ export function EmailsView() {
           ) : (
             <Callout tone="warning" title="Delivery webhook not configured">
               Sending through {PROVIDER_LABELS[data.activeProvider] ?? data.activeProvider}, but no delivery, bounce or complaint information is available. Set{" "}
-              <Mono>MAILTRAP_WEBHOOK_SECRET</Mono> and create the webhook in Mailtrap (see docs/EMAIL_OPERATIONS.md).
+              <Mono>RESEND_WEBHOOK_SECRET</Mono> and create the webhook in Resend (see docs/EMAIL_OPERATIONS.md).
             </Callout>
           )
         ) : null}

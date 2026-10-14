@@ -1,19 +1,15 @@
 // Provider selection and the one entry point Convex uses to send a template.
 import { EMAIL_SENDING_DOMAIN, emailManifest } from "./manifest";
 import { isRecipientAllowed } from "./policy";
-import { MAILTRAP_SANDBOX_ENDPOINT, MAILTRAP_SEND_ENDPOINT, postToMailtrap } from "./providers/mailtrap";
+import { postToResend } from "./providers/resend";
 import { EmailRenderError, renderEmail } from "./render";
 import type { EmailProviderKind, SendEmailInput, SendOutcome, SendPolicy } from "./types";
 import { isPlausibleEmail } from "./validate";
 
 type Env = Record<string, string | undefined>;
 
-export type ProviderSelection =
-  | { kind: "mailtrap"; token: string; endpoint: string }
-  | { kind: "mailtrap_sandbox"; token: string; endpoint: string }
-  | { kind: "none" };
+export type ProviderSelection = { kind: "resend"; apiKey: string } | { kind: "none" };
 
-const INBOX_ID_RE = /^\d{1,12}$/;
 const HOSTNAME_RE = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
 const ATTEMPT_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 /** An RFC 5322 msg-id without the angle brackets: printable, no spaces, no brackets, one "@". */
@@ -44,23 +40,12 @@ const value = (env: Env, name: string): string | undefined => {
 };
 
 /**
- * Which provider sends, in order:
- * 1. Outside production, when MAILTRAP_SANDBOX_INBOX_ID + MAILTRAP_SANDBOX_TOKEN are set: the Mailtrap
- *    sandbox (captured in a test inbox, never delivered). Ignored in production.
- * 2. MAILTRAP_API_TOKEN: Mailtrap's sending API.
- * 3. Otherwise nothing is configured.
+ * Which provider sends: Resend when RESEND_API_KEY is set, otherwise nothing is configured. Outside
+ * production, live sends only reach test or allowlisted addresses (policy.ts); everything else is skipped.
  */
-export function selectProvider(env: Env, environment: SendPolicy["environment"]): ProviderSelection {
-  if (environment !== "production") {
-    const inbox = value(env, "MAILTRAP_SANDBOX_INBOX_ID");
-    const token = value(env, "MAILTRAP_SANDBOX_TOKEN");
-    if (inbox && token && INBOX_ID_RE.test(inbox)) {
-      return { kind: "mailtrap_sandbox", token, endpoint: `${MAILTRAP_SANDBOX_ENDPOINT}/${inbox}` };
-    }
-  }
-  const token = value(env, "MAILTRAP_API_TOKEN");
-  if (token) return { kind: "mailtrap", token, endpoint: MAILTRAP_SEND_ENDPOINT };
-  return { kind: "none" };
+export function selectProvider(env: Env, _environment: SendPolicy["environment"]): ProviderSelection {
+  const apiKey = value(env, "RESEND_API_KEY");
+  return apiKey ? { kind: "resend", apiKey } : { kind: "none" };
 }
 
 /** The sending domain: EMAIL_SENDING_DOMAIN when it is a plain hostname, else the manifest default. */
@@ -122,16 +107,15 @@ export async function sendEmail(
     throw error;
   }
 
-  // The sandbox never delivers, so any recipient may be captured there; live sends outside production
-  // only go to test or allowlisted addresses.
-  if (provider.kind === "mailtrap" && !isRecipientAllowed(to, opts.policy)) {
+  // Outside production, live sends only go to test or allowlisted addresses.
+  if (!isRecipientAllowed(to, opts.policy)) {
     return { status: "skipped", errorCode: "recipient_not_allowed", retryable: false, attempts: 0, provider: provider.kind };
   }
 
   // A template may fix its Reply-To (support mail answers to the support mailbox) or have none (staff notices).
   const replyTo = def.replyTo === undefined ? value(opts.env, "EMAIL_REPLY_TO") : (def.replyTo ?? undefined);
   const headers = threadHeaders(input.thread);
-  const outcome = await postToMailtrap(
+  const outcome = await postToResend(
     {
       from: { email: def.sender.address ?? `${def.sender.localPart}@${sendingDomain(opts.env)}`, name: def.sender.name },
       to,
@@ -140,12 +124,11 @@ export async function sendEmail(
       subject: rendered.subject,
       text: rendered.text,
       html: rendered.html,
-      category: input.key,
-      customVariables: { attempt: input.attemptId, template: input.key },
+      tags: { template: input.key, attempt: input.attemptId },
     },
     {
-      token: provider.token,
-      endpoint: provider.endpoint,
+      apiKey: provider.apiKey,
+      idempotencyKey: `folevi-${input.attemptId}`,
       fetchImpl: opts.fetchImpl,
       sleep: opts.sleep,
       maxAttempts: opts.maxAttempts,

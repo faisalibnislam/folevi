@@ -7,30 +7,30 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { identity, person, setup, type T } from "./helpers";
 
 const SERVER = "a".repeat(64);
-const INBOUND_SECRET = "inbound-signing-secret-0123456789"; // gitleaks:allow (fake test value)
-const ENV = ["MAILTRAP_API_TOKEN", "MAILTRAP_INBOUND_WEBHOOK_SECRET", "MAILTRAP_INBOUND_API_TOKEN", "SUPPORT_NOTIFY_EMAIL", "EMAIL_REPLY_TO"] as const;
+const INBOUND_KEY = Buffer.from("inbound-signing-secret-0123456789").toString("base64");
+const INBOUND_SECRET = `whsec_${INBOUND_KEY}`; // gitleaks:allow (fake test value)
+const ENV = ["RESEND_API_KEY", "RESEND_WEBHOOK_SECRET", "SUPPORT_NOTIFY_EMAIL", "EMAIL_REPLY_TO"] as const;
 
 type Person = Awaited<ReturnType<typeof person>>;
 
 let saved: Record<string, string | undefined> = {};
 let fetchMock: ReturnType<typeof vi.fn>;
-/** Inbound messages the fake Messages API serves, by Mailtrap message id. */
+/** Received emails the fake Received emails API serves, by Resend email id. */
 let inbox: Record<string, Record<string, unknown>> = {};
 
 beforeEach(() => {
   saved = Object.fromEntries(ENV.map((k) => [k, process.env[k]]));
   for (const k of ENV) delete process.env[k];
-  process.env.MAILTRAP_API_TOKEN = "mt-send-token"; // gitleaks:allow (fake test value)
-  process.env.MAILTRAP_INBOUND_WEBHOOK_SECRET = INBOUND_SECRET;
-  process.env.MAILTRAP_INBOUND_API_TOKEN = "mt-inbound-token"; // gitleaks:allow (fake test value)
+  process.env.RESEND_API_KEY = "re-test-key"; // gitleaks:allow (fake test value)
+  process.env.RESEND_WEBHOOK_SECRET = INBOUND_SECRET;
   inbox = {};
   fetchMock = vi.fn(async (url: string) => {
-    const m = /\/api\/inbound\/inboxes\/\d+\/messages\/(\w+)$/.exec(String(url));
+    const m = /\/emails\/receiving\/([\w-]+)$/.exec(String(url));
     if (m) {
       const message = inbox[m[1]!];
       return message ? new Response(JSON.stringify(message), { status: 200 }) : new Response("{}", { status: 404 });
     }
-    return new Response(JSON.stringify({ success: true, message_ids: [`msg-${Math.random().toString(36).slice(2)}`] }), { status: 200 });
+    return new Response(JSON.stringify({ id: `msg-${Math.random().toString(36).slice(2)}` }), { status: 200 });
   });
   vi.stubGlobal("fetch", fetchMock);
 });
@@ -112,8 +112,8 @@ describe("submitting a request", () => {
     expect(sent).toHaveLength(2);
     const bodies = fetchMock.mock.calls.map((c) => JSON.parse(String((c[1] as RequestInit).body)));
     const confirmation = bodies.find((b) => b.subject === "[Folevi #1001] We got your message");
-    expect(confirmation.from).toEqual({ email: "support@mail.folevi.com", name: "Folevi Support" });
-    expect(confirmation.reply_to).toEqual({ email: "support@folevi.com" });
+    expect(confirmation.from).toBe("Folevi Support <support@mail.folevi.com>");
+    expect(confirmation.reply_to).toBe("support@folevi.com");
     expect(confirmation.text).toContain("My notes didn't sync");
   });
 
@@ -263,9 +263,9 @@ describe("the admin Support inbox", () => {
     await runScheduled(t);
     const reply = (await attempts(t)).find((a) => a.templateKey === "support_reply");
     expect(reply).toMatchObject({ status: "accepted", category: "support" });
-    const body = fetchMock.mock.calls.map((c) => JSON.parse(String((c[1] as RequestInit).body))).find((b) => b.category === "support_reply");
+    const body = fetchMock.mock.calls.map((c) => JSON.parse(String((c[1] as RequestInit).body))).find((b) => b.tags?.some((tag: { name: string; value: string }) => tag.name === "template" && tag.value === "support_reply"));
     expect(body.subject).toBe("[Folevi #1001] Reply from Folevi support");
-    expect(body.from.email).toBe("support@mail.folevi.com");
+    expect(body.from).toBe("Folevi Support <support@mail.folevi.com>");
     expect(body.text).toContain("Try opening the page while online.");
   });
 
@@ -306,49 +306,54 @@ describe("the admin Support inbox", () => {
 
 // ---------------------------------------------------------------- inbound email
 
-const sign = (body: string, secret = INBOUND_SECRET) => createHmac("sha256", secret).update(body).digest("hex");
+function sign(id: string, timestamp: string, body: string, key = INBOUND_KEY) {
+  return `v1,${createHmac("sha256", Buffer.from(key, "base64")).update(`${id}.${timestamp}.${body}`).digest("base64")}`;
+}
 
-function received(messageId: string, eventId = `evt_${messageId}`) {
-  return JSON.stringify({ events: [{ event: "inbound.message_received", event_id: eventId, timestamp: 1790000000, inbox_id: 15, message_id: messageId, sender: "Jane" }] });
+/** An email.received webhook for a Resend email id (the svix-id is derived from it, so retries match). */
+function received(emailId: string) {
+  return JSON.stringify({ type: "email.received", created_at: "2026-09-21T14:13:20.000Z", data: { email_id: emailId, from: "jane@example.com", to: ["support@folevi.com"], subject: "Can't sign in" } });
 }
 
 function mail(id: string, o: Record<string, unknown> = {}) {
   inbox[id] = {
+    object: "email",
     id,
-    inbox_id: 15,
     from: "Jane Reader <jane@example.com>",
     to: ["support@folevi.com"],
     cc: [],
     subject: "Can't sign in",
-    rfc_message_id: `<${id}@mail.example.com>`,
-    in_reply_to: null,
-    references: [],
+    message_id: `<${id}@mail.example.com>`,
     headers: {},
-    text_body: "I can't sign in since yesterday.",
-    html_body: null,
+    text: "I can't sign in since yesterday.",
+    html: null,
     ...o,
   };
 }
 
-async function deliver(t: T, body: string, signature: string | null = sign(body)) {
-  return await t.fetch("/webhooks/mailtrap-inbound", {
+async function deliver(t: T, body: string, opts: { signature?: string | null; key?: string } = {}) {
+  const id = `msg_${/"email_id":"([\w-]+)"/.exec(body)?.[1] ?? "x"}`;
+  const ts = String(Math.floor(Date.now() / 1000));
+  const signature = opts.signature === undefined ? sign(id, ts, body, opts.key) : opts.signature;
+  return await t.fetch("/webhooks/resend", {
     method: "POST",
     body,
-    headers: { "content-type": "application/json", ...(signature !== null ? { "mailtrap-signature": signature } : {}) },
+    headers: { "content-type": "application/json", "svix-id": id, "svix-timestamp": ts, ...(signature !== null ? { "svix-signature": signature } : {}) },
   });
 }
 
-describe("POST /webhooks/mailtrap-inbound", () => {
+describe("POST /webhooks/resend (received email)", () => {
   test("refuses a missing, wrong or unconfigured signature, and a malformed body", async () => {
     const t = setup();
     mail("m1");
     const body = received("m1");
-    expect((await deliver(t, body, null)).status).toBe(401);
-    expect((await deliver(t, body, sign(body, "wrong-secret"))).status).toBe(401);
-    expect((await deliver(t, body.replace("m1", "m2"), sign(body))).status).toBe(401);
-    process.env.MAILTRAP_INBOUND_WEBHOOK_SECRET = "";
-    expect((await deliver(t, body, sign(body, ""))).status).toBe(401);
-    process.env.MAILTRAP_INBOUND_WEBHOOK_SECRET = INBOUND_SECRET;
+    expect((await deliver(t, body, { signature: null })).status).toBe(401);
+    expect((await deliver(t, body, { key: Buffer.from("wrong-secret").toString("base64") })).status).toBe(401);
+    const ts = String(Math.floor(Date.now() / 1000));
+    expect((await deliver(t, body.replace("m1", "m2"), { signature: sign("msg_m2", ts, body) })).status).toBe(401);
+    process.env.RESEND_WEBHOOK_SECRET = "";
+    expect((await deliver(t, body)).status).toBe(401);
+    process.env.RESEND_WEBHOOK_SECRET = INBOUND_SECRET;
     expect((await deliver(t, "{nope")).status).toBe(400);
     expect(await tickets(t)).toHaveLength(0);
   });
@@ -359,17 +364,17 @@ describe("POST /webhooks/mailtrap-inbound", () => {
     const body = received("m1");
     expect((await deliver(t, body)).status).toBe(200);
     expect((await deliver(t, body)).status).toBe(200);
-    // The same email delivered again under another Mailtrap id (same Message-ID) is also a duplicate.
-    mail("m1b", { rfc_message_id: "<m1@mail.example.com>" });
+    // The same email delivered again under another Resend id (same Message-ID) is also a duplicate.
+    mail("m1b", { message_id: "<m1@mail.example.com>" });
     expect((await deliver(t, received("m1b"))).status).toBe(200);
     const all = await tickets(t);
     expect(all).toHaveLength(1);
     expect(all[0]).toMatchObject({ number: 1001, source: "email", requesterEmail: "jane@example.com", name: "Jane Reader", subject: "Can't sign in", topic: "other" });
     expect(all[0]!.profileId).toBeUndefined();
     expect(await messages(t)).toHaveLength(1);
-    const inboundCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes("/api/inbound/"));
+    const inboundCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes("/emails/receiving/"));
     expect(inboundCalls).toHaveLength(2);
-    expect((inboundCalls[0]![1] as RequestInit).headers).toMatchObject({ Authorization: "Bearer mt-inbound-token" });
+    expect((inboundCalls[0]![1] as RequestInit).headers).toMatchObject({ Authorization: "Bearer re-test-key" });
   });
 
   test("a reply tagged [Folevi #N] from the requester joins ticket N (reopening it), quotes stripped", async () => {
@@ -383,8 +388,8 @@ describe("POST /webhooks/mailtrap-inbound", () => {
     mail("m2", {
       from: "JANE@example.com",
       subject: "Re: [Folevi #1001] Reply from Folevi support",
-      text_body: "That worked, thank you.\n\nOn Mon, 1 Sep 2026, Folevi Support <support@folevi.com> wrote:\n> Try resetting your password.",
-      in_reply_to: "<x@folevi.com>",
+      text: "That worked, thank you.\n\nOn Mon, 1 Sep 2026, Folevi Support <support@folevi.com> wrote:\n> Try resetting your password.",
+      headers: { "in-reply-to": "<x@folevi.com>" },
     });
     expect((await deliver(t, received("m2"))).status).toBe(200);
     const all = await tickets(t);
@@ -402,7 +407,7 @@ describe("POST /webhooks/mailtrap-inbound", () => {
     const t = setup();
     mail("m1");
     await deliver(t, received("m1"));
-    mail("m2", { from: "mallory@example.com", subject: "Re: [Folevi #1001] We got your message", text_body: "Let me in to Jane's ticket." });
+    mail("m2", { from: "mallory@example.com", subject: "Re: [Folevi #1001] We got your message", text: "Let me in to Jane's ticket." });
     await deliver(t, received("m2"));
     const all = (await tickets(t)).sort((a, b) => a.number - b.number);
     expect(all.map((x) => [x.number, x.requesterEmail])).toEqual([
@@ -427,9 +432,9 @@ describe("POST /webhooks/mailtrap-inbound", () => {
     expect((await tickets(t))[0]).toMatchObject({ topic: "security", source: "email" });
   });
 
-  test("without the API token it asks Mailtrap to retry later, and nothing is filed", async () => {
+  test("without the API key it asks Resend to retry later, and nothing is filed", async () => {
     const t = setup();
-    delete process.env.MAILTRAP_INBOUND_API_TOKEN;
+    delete process.env.RESEND_API_KEY;
     mail("m1");
     expect((await deliver(t, received("m1"))).status).toBe(503);
     expect(await tickets(t)).toHaveLength(0);

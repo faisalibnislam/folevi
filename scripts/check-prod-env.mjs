@@ -33,26 +33,17 @@ if (env === "production") {
       for (const k of ["BETTER_AUTH_SECRET", "FOLEVI_HASH_SALT", "FOLEVI_FILE_URL_SECRET", "FOLEVI_SERVER_SECRET"]) {
         if (!has(k)) problems.push(`Convex ${k} is not set.`);
       }
-      // Email: Mailtrap is the only provider and is required in production.
-      if (has("MAILTRAP_API_TOKEN")) {
-        if (!has("MAILTRAP_WEBHOOK_SECRET")) warn.push("Convex MAILTRAP_WEBHOOK_SECRET is not set: no delivery, bounce or complaint tracking, and bounced addresses are never suppressed.");
+      // Email: Resend sends everything and receives support mail; required in production.
+      if (has("RESEND_API_KEY")) {
+        if (!has("RESEND_WEBHOOK_SECRET")) warn.push("Convex RESEND_WEBHOOK_SECRET is not set: no delivery, bounce or complaint tracking, bounced addresses are never suppressed, and email to support@folevi.com never becomes a ticket.");
       } else {
-        problems.push("Convex MAILTRAP_API_TOKEN is not set (no email provider: sign-up confirmation and password reset emails can't be sent).");
-      }
-      // Support inbox: optional, but half a setup means email to support@folevi.com never becomes a ticket.
-      if (has("MAILTRAP_INBOUND_WEBHOOK_SECRET") !== has("MAILTRAP_INBOUND_API_TOKEN")) {
-        warn.push("Convex MAILTRAP_INBOUND_WEBHOOK_SECRET and MAILTRAP_INBOUND_API_TOKEN must be set together, or email to support@folevi.com won't become tickets (docs/SUPPORT.md).");
-      } else if (!has("MAILTRAP_INBOUND_WEBHOOK_SECRET")) {
-        warn.push("Convex MAILTRAP_INBOUND_WEBHOOK_SECRET is not set: email to support@folevi.com isn't turned into support tickets (docs/SUPPORT.md).");
+        problems.push("Convex RESEND_API_KEY is not set (no email provider: sign-up confirmation and password reset emails can't be sent).");
       }
       if (["support@folevi.com", "security@folevi.com"].includes((get("SUPPORT_NOTIFY_EMAIL") ?? "").trim().toLowerCase())) {
         warn.push("Convex SUPPORT_NOTIFY_EMAIL must not be the support or security mailbox (it is ignored); use a staff address.");
       }
       // Leftovers from the old email provider are never read; flag them so they get deleted.
-      for (const [, k] of out.matchAll(/^(LOOPS_[A-Z0-9_]*)=/gm)) warn.push(`Convex ${k} is set but unused (Loops is no longer used); remove it.`);
-      for (const k of ["MAILTRAP_SANDBOX_INBOX_ID", "MAILTRAP_SANDBOX_TOKEN"]) {
-        if (has(k)) warn.push(`Convex ${k} is set in production; it is ignored there (the sandbox is for non-production only). Remove it.`);
-      }
+      for (const [, k] of out.matchAll(/^(LOOPS_[A-Z0-9_]*|MAILTRAP_[A-Z0-9_]*)=/gm)) warn.push(`Convex ${k} is set but unused (${k.startsWith("LOOPS") ? "Loops" : "Mailtrap"} is no longer used); remove it.`);
       // Billing (Polar, docs/BILLING.md): optional while billing isn't live, so these only warn. Secrets
       // stay in Convex; a NEXT_PUBLIC_ copy of any of them is refused above. Product ids aren't checked:
       // they're recorded in the database from Admin → Billing setup (POLAR_PRODUCT_* env vars are only a

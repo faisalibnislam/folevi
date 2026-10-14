@@ -601,7 +601,7 @@ export const listEmails = mutation({
       : await ctx.db.query("emailSendAttempts").withIndex("by_created").order("desc").take(100);
     const out = [];
     for (const r of rows) {
-      // Provider delivery state appears only if a signature-verified Mailtrap webhook reported it, and
+      // Provider delivery state appears only if a signature-verified Resend webhook reported it, and
       // only for events matched to this exact send at receipt.
       const events = await ctx.db
         .query("emailProviderEvents")
@@ -632,7 +632,7 @@ export const listEmails = mutation({
     return {
       attempts: out,
       activeProvider: active,
-      webhooksConfigured: webhookSecret("MAILTRAP_WEBHOOK_SECRET"),
+      webhooksConfigured: webhookSecret("RESEND_WEBHOOK_SECRET"),
     };
   },
 });

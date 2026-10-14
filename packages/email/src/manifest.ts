@@ -1,4 +1,4 @@
-// Source of truth for every transactional email Folevi sends (through Mailtrap).
+// Source of truth for every transactional email Folevi sends (through Resend).
 //
 // Each entry is one template. Its copy and layout live in scripts/build-templates.ts, which compiles
 // every template to final HTML + plain text in src/generated/templates.ts (with `{{variable}}`
@@ -22,7 +22,7 @@ const SECURITY_SENDER = { name: "Folevi", localPart: "security" } as const;
 const PRODUCT_SENDER = { name: "Folevi", localPart: "hello" } as const;
 
 /**
- * The support mailbox. Replies to support mail go to it (Reply-To), and Mailtrap Email Inbound turns them into
+ * The support mailbox. Replies to support mail go to it (Reply-To), and Resend receiving turns them into
  * ticket messages (docs/SUPPORT.md). The mail itself comes from support@ on the sending domain
  * (support@mail.folevi.com), which is already verified, so folevi.com needs no sending records of its own.
  */

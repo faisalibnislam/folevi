@@ -1,35 +1,20 @@
-// Mailtrap Email Inbound: the "inbound_receiving" webhook, the Messages API, and turning a received email
-// into plain support text.
+// Inbound email: reading a message Resend received, and turning it into plain support text.
 //
-// When a message lands in an inbound inbox, Mailtrap POSTs `{ "events": [...] }` (or JSON Lines) where
-// each event is `inbound.message_received` with an event id, a timestamp, the inbox id, Mailtrap's message
-// id and the sender's name. The body is signed like the sending webhook: `Mailtrap-Signature` is the hex
-// HMAC-SHA256 of the raw body with the webhook's signing secret (verifyMailtrapSignature). The event
-// carries no content: the message itself is read from
-//   GET https://mailtrap.io/api/inbound/inboxes/{inbox_id}/messages/{id}
-// which returns the parsed message (from, to, cc, subject, rfc_message_id, in_reply_to, references,
-// selected lowercased headers, text_body, html_body). See docs/SUPPORT.md.
+// Resend posts `email.received` webhooks (resendWebhook.ts) carrying only the email id; the message itself
+// is read from
+//   GET https://api.resend.com/emails/receiving/{id}
+// which returns the parsed message (from, to, cc, subject, text, html, headers, message_id). See
+// docs/SUPPORT.md. The text helpers below don't depend on the provider.
 //
 // Nothing here logs, and nothing returns more of a message than the caller asked for.
+import { RESEND_API } from "./resend";
 
-export const MAILTRAP_INBOUND_API = "https://mailtrap.io/api/inbound";
-
-/** Mailtrap batches events; anything larger than this is refused. */
-export const MAX_INBOUND_EVENTS = 100;
 /** Stored message text is capped (characters, after quote stripping). */
 export const MAX_INBOUND_TEXT = 20_000;
 export const MAX_INBOUND_SUBJECT = 200;
 
-const EVENT_ID_RE = /^[A-Za-z0-9_.:-]{1,128}$/;
-const MESSAGE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
-const INBOX_ID_RE = /^\d{1,12}$/;
+const EMAIL_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 const EMAIL_RE = /^[^\s@<>()[\]\\,;:"]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$/;
-
-export interface InboundEvent {
-  eventId: string;
-  inboxId: string;
-  messageId: string;
-}
 
 function str(value: unknown): string | undefined {
   if (typeof value === "string") return value;
@@ -37,78 +22,25 @@ function str(value: unknown): string | undefined {
   return undefined;
 }
 
-function readEvent(raw: unknown): InboundEvent | "ignored" | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  const e = raw as Record<string, unknown>;
-  const name = str(e.event) ?? str(e.type) ?? str(e.event_type) ?? "";
-  if (name !== "inbound.message_received") return "ignored";
-  const eventId = str(e.event_id) ?? str(e.id);
-  const inboxId = str(e.inbox_id) ?? str(e.inbound_inbox_id);
-  const messageId = str(e.message_id) ?? str(e.inbound_message_id);
-  if (!eventId || !EVENT_ID_RE.test(eventId)) return null;
-  if (!inboxId || !INBOX_ID_RE.test(inboxId)) return null;
-  if (!messageId || !MESSAGE_ID_RE.test(messageId)) return null;
-  return { eventId, inboxId, messageId };
-}
-
-/**
- * Parses a (signature-verified) inbound webhook body: `{events: [...]}`, a bare array, or JSON Lines.
- * Returns null when the body isn't valid JSON or an inbound event is malformed; other event types are
- * counted as ignored.
- */
-export function parseMailtrapInboundWebhook(rawBody: string): { events: InboundEvent[]; ignored: number } | null {
-  const chunks: unknown[] = [];
-  try {
-    chunks.push(JSON.parse(rawBody));
-  } catch {
-    for (const line of rawBody.split(/\r?\n/)) {
-      if (!line.trim()) continue;
-      try {
-        chunks.push(JSON.parse(line));
-      } catch {
-        return null;
-      }
-    }
-  }
-  const raw: unknown[] = [];
-  for (const chunk of chunks) {
-    if (Array.isArray(chunk)) raw.push(...chunk);
-    else if (chunk && typeof chunk === "object" && Array.isArray((chunk as { events?: unknown }).events)) raw.push(...(chunk as { events: unknown[] }).events);
-    else raw.push(chunk);
-  }
-  if (raw.length === 0 || raw.length > MAX_INBOUND_EVENTS) return null;
-  const events: InboundEvent[] = [];
-  let ignored = 0;
-  for (const r of raw) {
-    const e = readEvent(r);
-    if (e === null) return null;
-    if (e === "ignored") ignored++;
-    else events.push(e);
-  }
-  return { events, ignored };
-}
-
-// ---------------------------------------------------------------- the Messages API
+// ---------------------------------------------------------------- the Received emails API
 
 export type InboundFetchResult = { ok: true; message: unknown } | { ok: false; status: number; retryable: boolean };
 
-/** Reads one inbound message (the parsed JSON) with an API token that can read the inbox. */
-export async function fetchInboundMessage(opts: {
-  token: string;
-  inboxId: string;
-  messageId: string;
+/** Reads one received email (the parsed JSON) with a Resend API key that has full access. */
+export async function fetchReceivedEmail(opts: {
+  apiKey: string;
+  emailId: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 }): Promise<InboundFetchResult> {
-  if (!INBOX_ID_RE.test(opts.inboxId) || !MESSAGE_ID_RE.test(opts.messageId)) return { ok: false, status: 400, retryable: false };
+  if (!EMAIL_ID_RE.test(opts.emailId)) return { ok: false, status: 400, retryable: false };
   const fetchImpl = opts.fetchImpl ?? fetch;
   const controller = typeof AbortController === "function" ? new AbortController() : undefined;
   const timer = controller ? setTimeout(() => controller.abort(), opts.timeoutMs ?? 10_000) : undefined;
   try {
-    const res = await fetchImpl(`${MAILTRAP_INBOUND_API}/inboxes/${opts.inboxId}/messages/${opts.messageId}`, {
+    const res = await fetchImpl(`${RESEND_API}/emails/receiving/${opts.emailId}`, {
       method: "GET",
-      // Mailtrap documents the Api-Token header for API tokens; Bearer is what its other APIs take. Send both.
-      headers: { "Api-Token": opts.token, Authorization: `Bearer ${opts.token}`, Accept: "application/json" },
+      headers: { Authorization: `Bearer ${opts.apiKey}`, Accept: "application/json" },
       signal: controller?.signal,
     });
     if (res.status >= 200 && res.status < 300) {
@@ -118,7 +50,7 @@ export async function fetchInboundMessage(opts: {
         return { ok: false, status: 502, retryable: true };
       }
     }
-    // A message that is gone (deleted from the inbox) won't come back; everything else may.
+    // A message that is gone won't come back; everything else may.
     return { ok: false, status: res.status, retryable: res.status !== 404 && res.status !== 400 };
   } catch {
     return { ok: false, status: 0, retryable: true };
@@ -271,7 +203,7 @@ function msgId(value: unknown): string | null {
   return s && s.length <= 250 && /^[\x21-\x3b\x3d\x3f-\x7e]+$/.test(s) ? s : null;
 }
 
-/** Reads the fields support needs from a Messages API response. Null when there's no usable sender. */
+/** Reads the fields support needs from a Received emails API response. Null when there's no usable sender. */
 export function readInboundMessage(raw: unknown): InboundMessage | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const m = raw as Record<string, unknown>;
@@ -292,7 +224,8 @@ export function readInboundMessage(raw: unknown): InboundMessage | null {
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
     .slice(0, MAX_INBOUND_TEXT)
     .trim();
-  const references = (Array.isArray(m.references) ? m.references : typeof m.references === "string" ? m.references.split(/\s+/) : [])
+  const rawRefs = m.references ?? headers.references;
+  const references = (Array.isArray(rawRefs) ? rawRefs : typeof rawRefs === "string" ? rawRefs.split(/\s+/) : [])
     .map(msgId)
     .filter((r): r is string => r !== null)
     .slice(-20);

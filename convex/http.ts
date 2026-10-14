@@ -3,12 +3,11 @@ import { polarWebhook } from "./billing";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import {
-  fetchInboundMessage,
-  parseMailtrapInboundWebhook,
-  parseMailtrapWebhook,
+  fetchReceivedEmail,
+  parseResendWebhook,
   readInboundMessage,
   ticketNumberFromSubject,
-  verifyMailtrapSignature,
+  verifyResendSignature,
 } from "@folevi/email";
 import { verifyFileSignature } from "./lib/fileUrls";
 import { AUDIO_MIMES } from "./lib/images";
@@ -144,141 +143,86 @@ function corsFor(origin: string | null): Record<string, string> {
  */
 http.route({ path: "/webhooks/polar", method: "POST", handler: polarWebhook });
 
-/** Mailtrap sends at most 500 events per request; a few MB is plenty. */
-const MAX_WEBHOOK_BYTES = 5 * 1024 * 1024;
-const EVENTS_PER_MUTATION = 100;
+/** One Resend event per request, metadata only (bodies are fetched): small. */
+const MAX_WEBHOOK_BYTES = 256 * 1024;
 
 /**
- * Mailtrap delivery webhooks: delivery, soft bounce, bounce, suspension, reject, spam complaint (and
- * unsubscribe). `Mailtrap-Signature` must be the hex HMAC-SHA256 of the raw body under
- * MAILTRAP_WEBHOOK_SECRET (constant-time compare); without a secret every request is refused. Accepts
- * `{events: [...]}` JSON or JSON Lines. Events are deduplicated on event_id, so Mailtrap's retries are
- * harmless. Responses never echo the payload.
+ * Resend webhooks, one endpoint for everything Resend reports:
+ * - delivery events (email.delivered, email.bounced, email.complained, email.failed, email.suppressed, …)
+ *   update the send log and suppress addresses that hard-bounced or complained (email.recordProviderEvents);
+ * - email.received: mail to support@folevi.com (and security@) becomes support tickets (docs/SUPPORT.md).
+ *   The event carries only the email id; the message is read from Resend's Received emails API with
+ *   RESEND_API_KEY and filed by support.ingestInbound.
+ *
+ * Signed with Svix (svix-id, svix-timestamp, svix-signature) under RESEND_WEBHOOK_SECRET; without the
+ * secret every request is refused. Events are deduplicated on svix-id (stable across Resend's retries),
+ * received mail also on its email id. A failure Resend should retry (the API unreachable, the key missing)
+ * answers 5xx. Nothing is echoed, and logs carry counts and outcomes only, never addresses or text.
  */
 http.route({
-  path: "/webhooks/mailtrap",
+  path: "/webhooks/resend",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const secret = process.env.MAILTRAP_WEBHOOK_SECRET;
-    if (!secret || secret === "none")
-      return new Response("Webhook not configured", { status: 401 });
+    const secret = process.env.RESEND_WEBHOOK_SECRET;
+    if (!secret || secret === "none") return new Response("Webhook not configured", { status: 401 });
     const declared = Number(request.headers.get("content-length") ?? "0");
     if (declared > MAX_WEBHOOK_BYTES) return new Response("Too large", { status: 413 });
     const rawBody = await request.text();
     if (rawBody.length > MAX_WEBHOOK_BYTES) return new Response("Too large", { status: 413 });
-    const ok = await verifyMailtrapSignature({
+    const id = request.headers.get("svix-id");
+    const ok = await verifyResendSignature({
       rawBody,
-      signature: request.headers.get("mailtrap-signature"),
+      id,
+      timestamp: request.headers.get("svix-timestamp"),
+      signature: request.headers.get("svix-signature"),
       secret,
     });
-    if (!ok) return new Response("Invalid signature", { status: 401 });
-    const parsed = parseMailtrapWebhook(rawBody);
+    if (!ok || !id) return new Response("Invalid signature", { status: 401 });
+    const parsed = parseResendWebhook(rawBody, id);
     if (!parsed) return new Response("Malformed body", { status: 400 });
-    let stored = 0;
-    for (let i = 0; i < parsed.events.length; i += EVENTS_PER_MUTATION) {
-      const result = await ctx.runMutation(internal.email.recordMailtrapEvents, {
-        events: parsed.events.slice(i, i + EVENTS_PER_MUTATION),
-      });
-      stored += result.stored;
+
+    if (parsed.kind === "ignored") return new Response("ok", { status: 200 });
+
+    if (parsed.kind === "delivery") {
+      const result = await ctx.runMutation(internal.email.recordProviderEvents, { events: [parsed.event] });
+      console.log(JSON.stringify({ event: "email.webhook", provider: "resend", name: parsed.event.eventName, stored: result.stored }));
+      return new Response("ok", { status: 200 });
     }
-    console.log(
-      JSON.stringify({
-        event: "email.webhook",
-        provider: "mailtrap",
-        received: parsed.events.length,
-        stored,
-        ignored: parsed.ignored,
-      }),
-    );
-    return new Response("ok", { status: 200 });
-  }),
-});
 
-/** Inbound webhooks carry ids only (the message is fetched), so they are small. */
-const MAX_INBOUND_WEBHOOK_BYTES = 256 * 1024;
-
-/**
- * Mailtrap Email Inbound ("inbound_receiving" webhook): mail to support@folevi.com becomes support tickets
- * (docs/SUPPORT.md). `Mailtrap-Signature` must be the hex HMAC-SHA256 of the raw body under
- * MAILTRAP_INBOUND_WEBHOOK_SECRET (constant-time compare); without the secret every request is refused.
- * Each `inbound.message_received` event names a message, which is read from Mailtrap's Messages API with
- * MAILTRAP_INBOUND_API_TOKEN and filed by support.ingestInbound (de-duplicated, so retries are harmless).
- * A failure Mailtrap should retry (the API unreachable, the token missing) answers 5xx; nothing is echoed,
- * and logs carry counts and outcomes only, never addresses or text.
- */
-http.route({
-  path: "/webhooks/mailtrap-inbound",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const secret = process.env.MAILTRAP_INBOUND_WEBHOOK_SECRET;
-    if (!secret || secret === "none")
-      return new Response("Webhook not configured", { status: 401 });
-    const declared = Number(request.headers.get("content-length") ?? "0");
-    if (declared > MAX_INBOUND_WEBHOOK_BYTES) return new Response("Too large", { status: 413 });
-    const rawBody = await request.text();
-    if (rawBody.length > MAX_INBOUND_WEBHOOK_BYTES)
-      return new Response("Too large", { status: 413 });
-    const ok = await verifyMailtrapSignature({
-      rawBody,
-      signature: request.headers.get("mailtrap-signature"),
-      secret,
+    // email.received
+    const log = (outcome: string) => console.log(JSON.stringify({ event: "support.inbound", provider: "resend", outcome }));
+    if (await ctx.runQuery(internal.support.inboundSeen, { inboundMessageId: parsed.emailId })) {
+      log("duplicate");
+      return new Response("ok", { status: 200 });
+    }
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey || apiKey === "none") {
+      log("not_configured");
+      return new Response("Try again later", { status: 503 });
+    }
+    const fetched = await fetchReceivedEmail({ apiKey, emailId: parsed.emailId });
+    if (!fetched.ok) {
+      log(`fetch_${fetched.status}`);
+      return fetched.retryable ? new Response("Try again later", { status: 503 }) : new Response("ok", { status: 200 });
+    }
+    const message = readInboundMessage(fetched.message);
+    if (!message) {
+      log("unreadable");
+      return new Response("ok", { status: 200 });
+    }
+    const result = await ctx.runMutation(internal.support.ingestInbound, {
+      inboundMessageId: parsed.emailId,
+      fromAddress: message.fromAddress,
+      fromName: message.fromName,
+      to: message.to,
+      cc: message.cc,
+      subject: message.subject,
+      text: message.text,
+      rfcMessageId: message.rfcMessageId,
+      automated: message.automated,
+      ticketNumber: ticketNumberFromSubject(message.subject),
     });
-    if (!ok) return new Response("Invalid signature", { status: 401 });
-    const parsed = parseMailtrapInboundWebhook(rawBody);
-    if (!parsed) return new Response("Malformed body", { status: 400 });
-    const apiToken = process.env.MAILTRAP_INBOUND_API_TOKEN;
-    const outcomes: Record<string, number> = {};
-    const count = (k: string) => (outcomes[k] = (outcomes[k] ?? 0) + 1);
-    let retry = false;
-    for (const event of parsed.events) {
-      if (await ctx.runQuery(internal.support.inboundSeen, { inboundMessageId: event.messageId })) {
-        count("duplicate");
-        continue;
-      }
-      if (!apiToken || apiToken === "none") {
-        count("not_configured");
-        retry = true;
-        continue;
-      }
-      const fetched = await fetchInboundMessage({
-        token: apiToken,
-        inboxId: event.inboxId,
-        messageId: event.messageId,
-      });
-      if (!fetched.ok) {
-        count(`fetch_${fetched.status}`);
-        if (fetched.retryable) retry = true;
-        continue;
-      }
-      const message = readInboundMessage(fetched.message);
-      if (!message) {
-        count("unreadable");
-        continue;
-      }
-      const result = await ctx.runMutation(internal.support.ingestInbound, {
-        inboundMessageId: event.messageId,
-        fromAddress: message.fromAddress,
-        fromName: message.fromName,
-        to: message.to,
-        cc: message.cc,
-        subject: message.subject,
-        text: message.text,
-        rfcMessageId: message.rfcMessageId,
-        automated: message.automated,
-        ticketNumber: ticketNumberFromSubject(message.subject),
-      });
-      count(result.outcome);
-    }
-    console.log(
-      JSON.stringify({
-        event: "support.inbound",
-        received: parsed.events.length,
-        ignoredEvents: parsed.ignored,
-        outcomes,
-      }),
-    );
-    // Mailtrap retries non-2xx deliveries (every 5 minutes, up to 40 times); handled messages are skipped then.
-    if (retry) return new Response("Try again later", { status: 503 });
+    log(result.outcome);
     return new Response("ok", { status: 200 });
   }),
 });

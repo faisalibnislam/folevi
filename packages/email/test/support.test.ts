@@ -2,11 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   automatedReason,
   emailManifest,
-  fetchInboundMessage,
+  fetchReceivedEmail,
   htmlToText,
-  mailtrapRequestBody,
   parseAddress,
-  parseMailtrapInboundWebhook,
+  resendRequestBody,
   readInboundMessage,
   renderEmail,
   sendEmail,
@@ -27,7 +26,7 @@ describe("support templates", () => {
   });
 
   it("are sent from support@ on the sending domain with Reply-To support@folevi.com and threading headers", async () => {
-    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ success: true, message_ids: ["m1"] }), { status: 200 }));
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ id: "m1" }), { status: 200 }));
     await sendEmail(
       {
         key: "support_reply",
@@ -36,58 +35,47 @@ describe("support templates", () => {
         attemptId: "a1",
         thread: { inReplyTo: "CAB123@mail.example.com", references: ["<first@mail.example.com>", "not an id"] },
       },
-      { env: { MAILTRAP_API_TOKEN: "t", EMAIL_REPLY_TO: "other@example.com" }, policy: { environment: "production" }, fetchImpl },
+      { env: { RESEND_API_KEY: "t", EMAIL_REPLY_TO: "other@example.com" }, policy: { environment: "production" }, fetchImpl },
     );
     const body = JSON.parse(String((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body));
-    expect(body.from).toEqual({ email: "support@mail.folevi.com", name: "Folevi Support" });
-    expect(body.reply_to).toEqual({ email: "support@folevi.com" });
+    expect(body.from).toBe("Folevi Support <support@mail.folevi.com>");
+    expect(body.reply_to).toBe("support@folevi.com");
     expect(body.headers).toEqual({ "In-Reply-To": "<CAB123@mail.example.com>", References: "<first@mail.example.com> <CAB123@mail.example.com>" });
   });
 
   it("staff notices have no Reply-To at all, even with EMAIL_REPLY_TO set", async () => {
-    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ success: true, message_ids: ["m1"] }), { status: 200 }));
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ id: "m1" }), { status: 200 }));
     await sendEmail(
       { key: "support_staff_notice", to: "team@example.com", dataVariables: { ...emailManifest.support_staff_notice.fixture }, attemptId: "a2" },
-      { env: { MAILTRAP_API_TOKEN: "t", EMAIL_REPLY_TO: "support@folevi.com" }, policy: { environment: "production" }, fetchImpl },
+      { env: { RESEND_API_KEY: "t", EMAIL_REPLY_TO: "support@folevi.com" }, policy: { environment: "production" }, fetchImpl },
     );
     const body = JSON.parse(String((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body));
-    expect(body.from.email).toBe("support@mail.folevi.com");
+    expect(body.from).toBe("Folevi <support@mail.folevi.com>");
     expect(body.reply_to).toBeUndefined();
   });
 
   it("threadHeaders ignores anything that isn't a message id (no header injection)", () => {
     expect(threadHeaders({ inReplyTo: "x@y\r\nBcc: evil@example.com" })).toEqual({});
     expect(threadHeaders(undefined)).toEqual({});
-    expect(mailtrapRequestBody({ from: { email: "a@b.co", name: "A" }, to: "c@d.co", subject: "s", text: "t", html: "h", category: "c", customVariables: {} })).not.toHaveProperty("headers");
+    expect(resendRequestBody({ from: { email: "a@b.co", name: "A" }, to: "c@d.co", subject: "s", text: "t", html: "h", tags: { template: "c", attempt: "a" } })).not.toHaveProperty("headers");
   });
 });
 
-describe("inbound webhook parsing", () => {
-  const event = (o: Record<string, unknown> = {}) => ({ event: "inbound.message_received", event_id: "evt_1", timestamp: 1790000000, inbox_id: 15, message_id: "1866872391602282496", sender: "Ivan", ...o });
-
-  it("reads {events}, arrays and JSON Lines, and counts other events as ignored", () => {
-    expect(parseMailtrapInboundWebhook(JSON.stringify({ events: [event()] }))).toEqual({ events: [{ eventId: "evt_1", inboxId: "15", messageId: "1866872391602282496" }], ignored: 0 });
-    expect(parseMailtrapInboundWebhook(`${JSON.stringify(event())}\n${JSON.stringify(event({ event_id: "evt_2" }))}`)?.events).toHaveLength(2);
-    expect(parseMailtrapInboundWebhook(JSON.stringify([event(), { event: "delivery", event_id: "x" }]))).toMatchObject({ ignored: 1 });
-  });
-
-  it("refuses malformed bodies and ids", () => {
-    expect(parseMailtrapInboundWebhook("not json")).toBeNull();
-    expect(parseMailtrapInboundWebhook(JSON.stringify({ events: [] }))).toBeNull();
-    expect(parseMailtrapInboundWebhook(JSON.stringify({ events: [event({ inbox_id: "../1" })] }))).toBeNull();
-    expect(parseMailtrapInboundWebhook(JSON.stringify({ events: [event({ message_id: "a/b" })] }))).toBeNull();
-  });
-
-  it("fetches the message with the token and never retries a missing one", async () => {
+describe("reading a received email", () => {
+  it("fetches it with the API key and never retries a missing one", async () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ id: "1" }), { status: 200 }));
-    expect(await fetchInboundMessage({ token: "tok", inboxId: "15", messageId: "1", fetchImpl })).toEqual({ ok: true, message: { id: "1" } });
+    expect(await fetchReceivedEmail({ apiKey: "key", emailId: "4ef9a417-02e9-4d39-ad75-9611e0fcc33c", fetchImpl })).toEqual({ ok: true, message: { id: "1" } });
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe("https://mailtrap.io/api/inbound/inboxes/15/messages/1");
-    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok");
+    expect(url).toBe("https://api.resend.com/emails/receiving/4ef9a417-02e9-4d39-ad75-9611e0fcc33c");
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer key");
     const gone = vi.fn(async () => new Response("", { status: 404 }));
-    expect(await fetchInboundMessage({ token: "tok", inboxId: "15", messageId: "1", fetchImpl: gone })).toEqual({ ok: false, status: 404, retryable: false });
+    expect(await fetchReceivedEmail({ apiKey: "key", emailId: "1", fetchImpl: gone })).toEqual({ ok: false, status: 404, retryable: false });
     const down = vi.fn(async () => new Response("", { status: 503 }));
-    expect(await fetchInboundMessage({ token: "tok", inboxId: "15", messageId: "1", fetchImpl: down })).toMatchObject({ retryable: true });
+    expect(await fetchReceivedEmail({ apiKey: "key", emailId: "1", fetchImpl: down })).toMatchObject({ retryable: true });
+    // Ids are checked before anything is requested (no path tricks).
+    const never = vi.fn();
+    expect(await fetchReceivedEmail({ apiKey: "key", emailId: "../domains", fetchImpl: never as unknown as typeof fetch })).toEqual({ ok: false, status: 400, retryable: false });
+    expect(never).not.toHaveBeenCalled();
   });
 });
 
@@ -128,21 +116,19 @@ describe("reading an inbound message", () => {
     expect(automatedReason({ ...base, subject: "Out of Office: back Monday" })).toBe("auto_reply_subject");
   });
 
-  it("reads the Messages API shape, preferring text and falling back to HTML", () => {
+  it("reads the Received emails API shape, preferring text and falling back to HTML", () => {
     const m = readInboundMessage({
       id: "1",
       from: "Jane <Jane@Example.com>",
       to: ["support@folevi.com"],
       cc: [],
       subject: "Re: [Folevi #12] Reply from Folevi support",
-      rfc_message_id: "<abc@mail.example.com>",
-      in_reply_to: "<x@folevi.com>",
-      references: ["<x@folevi.com>"],
-      headers: { "Auto-Submitted": "no" },
-      text_body: null,
-      html_body: "<p>Still broken</p><div class=\"gmail_quote\">On Mon wrote: old</div>",
+      message_id: "<abc@mail.example.com>",
+      headers: { "Auto-Submitted": "no", "In-Reply-To": "<x@folevi.com>", References: "<first@folevi.com> <x@folevi.com>" },
+      text: null,
+      html: "<p>Still broken</p><div class=\"gmail_quote\">On Mon wrote: old</div>",
     });
-    expect(m).toMatchObject({ fromAddress: "jane@example.com", fromName: "Jane", to: ["support@folevi.com"], text: "Still broken", rfcMessageId: "abc@mail.example.com", inReplyTo: "x@folevi.com", automated: null });
+    expect(m).toMatchObject({ fromAddress: "jane@example.com", fromName: "Jane", to: ["support@folevi.com"], text: "Still broken", rfcMessageId: "abc@mail.example.com", inReplyTo: "x@folevi.com", references: ["first@folevi.com", "x@folevi.com"], automated: null });
     expect(readInboundMessage({ from: "no address" })).toBeNull();
   });
 });

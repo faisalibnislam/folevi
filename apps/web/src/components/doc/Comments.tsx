@@ -231,6 +231,7 @@ export function CommentThreadCard({
   autoFocus?: boolean;
 }) {
   const actions = useCommentActions(documentId);
+  const { engine } = useAppState();
   const toast = useToast();
   const titleId = useId();
   const hintId = useId();
@@ -272,7 +273,9 @@ export function CommentThreadCard({
     const body = textToCommentBody(text, inputRef.current?.picked() ?? [], people);
     setDraft("");
     inputRef.current?.reset();
-    const done = threadId && !isPending(threadId) ? actions.reply({ threadId, body }) : actions.create({ documentId, blockId: blockId ?? undefined, body });
+    // A new thread on a line typed a moment ago: the line's own save goes first, so the server knows it.
+    const lineSaved = blockId && engine ? engine.whenBlockOnServer(documentId, blockId) : Promise.resolve();
+    const done = threadId && !isPending(threadId) ? actions.reply({ threadId, body }) : lineSaved.then(() => actions.create({ documentId, blockId: blockId ?? undefined, body }));
     done.catch((e) => {
       setDraft(text);
       fail(e);

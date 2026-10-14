@@ -145,6 +145,28 @@ describe("account-wide sync queue (docs/SYNC_PROTOCOL.md §Routing)", () => {
     offline.createDocument({ id: "doc-offline", parentDocumentId: null, folderId: null, kind: "document", title: "", icon: null });
     await expect(offline.whenDocumentOnServer("doc-offline")).rejects.toThrow(/offline/);
   });
+
+  test("whenBlockOnServer sends a line just typed at once (not after the typing pause) and waits for it", async () => {
+    const { client, calls } = recordingClient(applied);
+    const engine = await SyncEngine.open(client, "acct-route-6", PERSONAL, "web-dev-r6");
+    engine.setOnline(true);
+    engine.createDocument({ id: "doc-new-line", parentDocumentId: null, folderId: null, kind: "document", title: "", icon: null });
+    engine.upsertBlock("doc-new-line", block("b-typed", "First line to discuss"), ["content", "position"]);
+    const started = Date.now();
+    await expect(engine.whenBlockOnServer("doc-new-line", "b-typed", 5_000)).resolves.toBeUndefined();
+    // Block edits otherwise wait 2.5 s to be sent.
+    expect(Date.now() - started).toBeLessThan(2_000);
+    const sent = calls.flatMap((c) => c.ops);
+    expect(sent.map((o) => o.kind)).toEqual(["document.create", "block.upsert"]);
+    expect(engine.serverRevision("b-typed")).toBe(1);
+    // Nothing queued for it: at once.
+    await expect(engine.whenBlockOnServer("doc-new-line", "b-typed")).resolves.toBeUndefined();
+
+    const offline = await SyncEngine.open(recordingClient(applied).client, "acct-route-7", PERSONAL, "web-dev-r7");
+    offline.setOnline(false);
+    offline.upsertBlock("doc-x", block("b-offline", "typed offline"), ["content", "position"]);
+    await expect(offline.whenBlockOnServer("doc-x", "b-offline")).rejects.toThrow(/offline/);
+  });
 });
 
 describe("local database upgrade to v3 (Personal is not a workspace)", () => {

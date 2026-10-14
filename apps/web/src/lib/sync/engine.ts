@@ -620,6 +620,41 @@ export class SyncEngine {
     });
   }
 
+  /**
+   * Resolves once nothing this device queued for a block (or for the page it's on, while the page itself is
+   * new) is still on its way to the server; what's waiting is sent at once instead of after the usual pause.
+   * Server features that name a line just typed (a comment on it) await this instead of failing with "Block
+   * not found". Rejects when offline, or after `timeoutMs`.
+   */
+  whenBlockOnServer(documentId: string, blockId: string, timeoutMs = 20_000): Promise<void> {
+    const queued = () =>
+      [...this.state.inflight, ...this.state.pending].some((op) =>
+        op.kind === "block.upsert"
+          ? op.block.id === blockId
+          : op.kind === "block.delete" || op.kind === "block.restore"
+            ? op.blockId === blockId
+            : op.kind === "document.create" && op.document.id === documentId,
+      );
+    if (!queued()) return Promise.resolve();
+    const offline = () => new Error("You’re offline. This line needs to sync before you can do that.");
+    if (this.state.connection === "offline") return Promise.reject(offline());
+    return new Promise<void>((resolve, reject) => {
+      const done = (error?: Error) => {
+        clearTimeout(timer);
+        unsubscribe();
+        if (error) reject(error);
+        else resolve();
+      };
+      const timer = setTimeout(() => done(new Error("This line hasn’t synced yet. Try again in a moment.")), timeoutMs);
+      const unsubscribe = this.subscribe((e) => {
+        if (e.type !== "state") return;
+        if (!queued()) done();
+        else if (this.state.connection === "offline") done(offline());
+      });
+      this.scheduleFlush(0);
+    });
+  }
+
   hasLocalWork(documentId: string): boolean {
     return [...this.state.pending, ...this.state.inflight].some((op) => ("documentId" in op ? op.documentId === documentId : false));
   }

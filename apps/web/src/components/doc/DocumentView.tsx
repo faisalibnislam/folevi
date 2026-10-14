@@ -606,8 +606,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
     if (editor && !editor.isDestroyed) setBlockHighlight(editor.view, highlightId);
   }, [editor, highlightId]);
 
-  // ⌘⌥M: comment on the block with the caret (or open the Comments panel).
-  const canComment = Boolean(threads?.canComment);
+  // ⌘⌥M: comment on the block with the caret (or open the Comments panel). On a page still on its way to the
+  // server (just created here) the comments aren't loaded yet: the line's thread opens as they arrive.
+  const mayComment = threads ? threads.canComment : !readOnly;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || !e.altKey || e.shiftKey || e.code !== "KeyM") return;
@@ -615,12 +616,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
       const $from = editor?.state.selection.$from;
       const inEditor = Boolean(editor && editor.view.dom.contains(document.activeElement));
       const blockId = inEditor && $from && $from.depth >= 1 ? ($from.node(1).attrs.id as string | null) : null;
-      if (blockId && canComment) openBlockThread(blockId);
+      if (blockId && mayComment) openBlockThread(blockId);
       else openComments();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [editor, canComment, openBlockThread, openComments]);
+  }, [editor, mayComment, openBlockThread, openComments]);
 
   const noteNotify = useNoteNotifyItems(documentId, Boolean(meta));
   // Move…: top-level notes of the current context (Personal or a workspace) can be filed in a folder (nested

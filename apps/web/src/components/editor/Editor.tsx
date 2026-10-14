@@ -2,6 +2,7 @@
 
 import { EditorContent, useEditor, type Editor as TiptapEditor } from "@tiptap/react";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import type { Node as PMNode } from "@tiptap/pm/model";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { LIMITS, ulid, type WireBlock } from "@folevi/editor-schema";
 import { useMutation } from "convex/react";
@@ -123,6 +124,18 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     [engine, documentId],
   );
 
+  // What the editor opened with (the engine's blocks as they were then): from here on, what differs from it is
+  // the person's own and is saved. Only ever a document from before any local change, never one with typing
+  // in it, or that typing would count as already saved and be lost.
+  const hydrate = useCallback(
+    (doc: PMNode) => {
+      shown.current = new Map(docToBlocks(doc, new Map(engine.documentBlocks(documentId).map((b) => [b.id, b]))).map((b) => [b.id, b]));
+      engine.markShown(documentId);
+      hydrated.current = true;
+    },
+    [engine, documentId],
+  );
+
   const editor = useEditor({
     extensions,
     editable,
@@ -190,17 +203,17 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       },
     },
     onCreate: ({ editor: ed }) => {
-      // What it opened with (the engine's blocks as they were then).
-      shown.current = new Map(docToBlocks(ed.state.doc, new Map(engine.documentBlocks(documentId).map((b) => [b.id, b]))).map((b) => [b.id, b]));
-      engine.markShown(documentId);
-      hydrated.current = true;
+      if (!hydrated.current) hydrate(ed.state.doc);
     },
     onUpdate: ({ editor: ed, transaction }) => {
       // Only genuine local document changes count (setEditable and meta-only transactions emit updates too).
       // Someone who can only read may still open and close toggles: that's theirs alone, never saved.
       if (!transaction.docChanged || transaction.getMeta("remote") || !ed.isEditable) return;
+      // Typed before the editor said it was ready (a new note's first line, typed right after the title's
+      // Enter): it opened with the document as it was before this change, and this change is the person's.
+      if (!hydrated.current) hydrate(transaction.before);
       dirty.current = true;
-      if (hydrated.current) engine.setEditing(documentId, true);
+      engine.setEditing(documentId, true);
       if (flushTimer.current) clearTimeout(flushTimer.current);
       // Steady typing keeps pushing the debounce back: still save at least once a second.
       if (!dirtySince.current) dirtySince.current = Date.now();

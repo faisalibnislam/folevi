@@ -49,6 +49,7 @@ import type * as lib_ai_attachments from "../lib/ai/attachments.js";
 import type * as lib_ai_capabilities from "../lib/ai/capabilities.js";
 import type * as lib_ai_chat from "../lib/ai/chat.js";
 import type * as lib_ai_digest from "../lib/ai/digest.js";
+import type * as lib_ai_docx from "../lib/ai/docx.js";
 import type * as lib_ai_gemini from "../lib/ai/gemini.js";
 import type * as lib_ai_graph from "../lib/ai/graph.js";
 import type * as lib_ai_graphStore from "../lib/ai/graphStore.js";
@@ -195,6 +196,7 @@ declare const fullApi: ApiFromModules<{
   "lib/ai/capabilities": typeof lib_ai_capabilities;
   "lib/ai/chat": typeof lib_ai_chat;
   "lib/ai/digest": typeof lib_ai_digest;
+  "lib/ai/docx": typeof lib_ai_docx;
   "lib/ai/gemini": typeof lib_ai_gemini;
   "lib/ai/graph": typeof lib_ai_graph;
   "lib/ai/graphStore": typeof lib_ai_graphStore;

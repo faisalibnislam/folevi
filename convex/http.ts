@@ -13,6 +13,8 @@ import {
 } from "@folevi/email";
 import { SUPPORT_DOMAIN } from "./lib/support";
 import { verifyFileSignature } from "./lib/fileUrls";
+import { sha256Hex } from "./lib/crypto";
+import type { Id } from "./_generated/dataModel";
 import { AUDIO_MIMES } from "./lib/images";
 import { createAuth } from "./auth";
 import { withTrustedClientIp } from "./lib/clientIp";
@@ -242,6 +244,25 @@ http.route({
  * access token. Apps use https://app.folevi.com/mcp, which the web app forwards to this route.
  */
 for (const method of ["POST", "GET", "DELETE", "OPTIONS"] as const) http.route({ path: "/mcp", method, handler: mcpHttp });
+
+/**
+ * A person's tasks as an iCalendar feed (convex/calendarFeeds.ts), for calendar apps. The token in the
+ * path is the secret; an unknown one is a plain 404.
+ */
+http.route({
+  pathPrefix: "/ical/",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const token = new URL(request.url).pathname.slice("/ical/".length).replace(/\.ics$/, "");
+    if (!/^[A-Za-z0-9_-]{20,80}$/.test(token)) return new Response("Not found", { status: 404 });
+    const feed = await ctx.runQuery(internal.calendarFeeds.render, { tokenHash: await sha256Hex(token) });
+    if (!feed) return new Response("Not found", { status: 404, headers: { "cache-control": "no-store" } });
+    await ctx.runMutation(internal.calendarFeeds.touch, { feedId: feed.feedId as Id<"calendarFeeds"> });
+    return new Response(feed.ics, {
+      headers: { "content-type": "text/calendar; charset=utf-8", "cache-control": "private, max-age=300", "content-disposition": 'inline; filename="folevi-tasks.ics"', "x-robots-tag": "noindex" },
+    });
+  }),
+});
 
 http.route({
   path: "/health",

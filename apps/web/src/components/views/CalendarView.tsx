@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { useMemo, useRef, useState } from "react";
-import { CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarPlus, ChevronLeft, ChevronRight, Rss } from "lucide-react";
 import { addDays } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -12,6 +12,7 @@ import { Button, IconButton } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome } from "@/components/app/Shell";
 import { TaskEditDialog, TaskItem, useToggleTask, type TaskRow } from "./TasksView";
+import { CalendarFeedDialog } from "./CalendarFeedDialog";
 
 function monthStart(month: string) {
   return `${month}-01`;
@@ -48,6 +49,7 @@ export function CalendarView({ month }: { month: string | null }) {
   const toast = useToast();
   const toggle = useToggleTask();
   const [selected, setSelected] = useState<string>(today);
+  const [feedOpen, setFeedOpen] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const byDate = useMemo(() => {
@@ -91,6 +93,9 @@ export function CalendarView({ month }: { month: string | null }) {
       tabTitle="Calendar"
       actions={
         <>
+          <Button size="sm" onClick={() => setFeedOpen(true)}>
+            <Rss size={14} aria-hidden /> Subscribe
+          </Button>
           <div role="radiogroup" aria-label="Calendar layout" className="flex ui-well rounded-control p-1 text-xs">
             {(["month", "agenda"] as const).map((m) => (
               <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={`h-7 rounded-chip px-2.5 capitalize ${mode === m ? "bg-raised shadow-sm" : "text-muted"}`}>
@@ -230,6 +235,7 @@ export function CalendarView({ month }: { month: string | null }) {
         )}
       </div>
       <TaskEditDialog task={editing} onClose={() => setEditing(null)} />
+      <CalendarFeedDialog open={feedOpen} onClose={() => setFeedOpen(false)} />
     </ViewChrome>
   );
 }

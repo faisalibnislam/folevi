@@ -1322,6 +1322,21 @@ export default defineSchema({
     .index("by_profile", ["profileId"])
     .index("by_profile_client", ["profileId", "clientId"]),
 
+  /**
+   * A person's private calendar feed of dated tasks (convex/calendarFeeds.ts), subscribed to from a calendar
+   * app. Only a hash of the link's token is kept; a new link replaces the old one.
+   */
+  calendarFeeds: defineTable({
+    profileId: v.id("profiles"),
+    tokenHash: v.string(),
+    /** Also workspace tasks assigned to you (Personal tasks are always in it). */
+    includeWorkspaces: v.boolean(),
+    createdAt: v.number(),
+    lastFetchedAt: v.optional(v.number()),
+  })
+    .index("by_profile", ["profileId"])
+    .index("by_token", ["tokenHash"]),
+
   /** What connected apps did, shown under Settings → Connected apps. Arguments are hashed, never stored. */
   mcpEvents: defineTable({
     grantId: v.id("mcpGrants"),

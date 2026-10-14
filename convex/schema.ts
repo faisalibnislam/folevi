@@ -1614,6 +1614,85 @@ export default defineSchema({
     .index("by_profile", ["profileId"])
     .index("by_created", ["createdAt"]),
 
+  /**
+   * Outbound webhooks (convex/webhooks.ts): an https endpoint someone added in Settings → Connected apps,
+   * the events and places it hears about, and its signing secret (sealed, lib/crypto.ts sealSecret).
+   */
+  webhooks: defineTable({
+    profileId: v.id("profiles"),
+    url: v.string(),
+    events: v.array(v.string()),
+    personal: v.boolean(),
+    workspaceIds: v.array(v.id("workspaces")),
+    /** The whsec_ secret, encrypted; shown once when the endpoint is added. */
+    secretSealed: v.string(),
+    enabled: v.boolean(),
+    /** Set when Folevi turned it off: every attempt of several deliveries in a row failed. */
+    disabledAt: v.optional(v.number()),
+    /** Deliveries in a row that ran out of attempts (reset by any success). */
+    failedInARow: v.number(),
+    createdAt: v.number(),
+    lastAttemptAt: v.optional(v.number()),
+  }).index("by_profile", ["profileId"]),
+
+  /** Who listens where: one row per webhook and place ("p:<profile>" or "w:<workspace>"), for the cheap check in lib/webhooks.ts. */
+  webhookPlaces: defineTable({
+    webhookId: v.id("webhooks"),
+    profileId: v.id("profiles"),
+    place: v.string(),
+    events: v.array(v.string()),
+  })
+    .index("by_place", ["place"])
+    .index("by_webhook", ["webhookId"])
+    .index("by_profile", ["profileId"]),
+
+  /** Events waiting to be fanned out to webhooks (an outbox, emptied by webhooks.fanout). */
+  webhookEvents: defineTable({
+    place: v.string(),
+    type: v.string(),
+    documentId: v.optional(v.id("documents")),
+    taskBlockId: v.optional(v.string()),
+    commentId: v.optional(v.id("comments")),
+    /** "note:<id>": a note's one waiting created/updated event, which later edits join. */
+    dedupeKey: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_dedupe", ["dedupeKey"]),
+
+  /** One event for one endpoint: its signed body until it's delivered or given up, and its attempts. */
+  webhookDeliveries: defineTable({
+    webhookId: v.id("webhooks"),
+    profileId: v.id("profiles"),
+    /** The event's id in the payload ("evt_…"), the same for every attempt. */
+    eventId: v.string(),
+    type: v.string(),
+    /** The JSON body; emptied once delivered or given up. */
+    payload: v.string(),
+    status: v.union(v.literal("pending"), v.literal("delivered"), v.literal("failed")),
+    attempts: v.number(),
+    /** A test from Settings: one attempt, and it doesn't count toward turning the endpoint off. */
+    test: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_webhook", ["webhookId", "createdAt"])
+    .index("by_profile", ["profileId"])
+    .index("by_updated", ["updatedAt"]),
+
+  /** The delivery log in Settings: the last attempts per endpoint, with the status code or what went wrong (never bodies). */
+  webhookAttempts: defineTable({
+    webhookId: v.id("webhooks"),
+    profileId: v.id("profiles"),
+    type: v.string(),
+    eventId: v.string(),
+    ok: v.boolean(),
+    statusCode: v.optional(v.number()),
+    error: v.optional(v.string()),
+    durationMs: v.number(),
+    at: v.number(),
+  })
+    .index("by_webhook", ["webhookId", "at"])
+    .index("by_profile", ["profileId"]),
+
   /** What connected apps did, shown under Settings → Connected apps. Arguments are hashed, never stored. */
   mcpEvents: defineTable({
     grantId: v.id("mcpGrants"),

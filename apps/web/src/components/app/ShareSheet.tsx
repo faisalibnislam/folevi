@@ -259,7 +259,7 @@ export function ShareSheet() {
       <label id="share-place-label" className="ui-caps mt-5 mb-1.5 block">
         Save to
       </label>
-      <Select value={place} onChange={(e) => setPlace(e.target.value)} aria-labelledby="share-place-label" className="w-full">
+      <Select value={place} onChange={(e) => setPlace(e.target.value)} aria-labelledby="share-place-label" className="h-10 w-full ui-input rounded-chip px-3">
         {places.map((p) => (
           <option key={p.id} value={p.id}>
             {`Inbox in ${p.name}`}

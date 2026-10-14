@@ -61,6 +61,8 @@ export const DEFAULT_RATE_RULES = {
   apiSearch: { limit: 120, windowMs: 60_000 },
   apiWrite: { limit: 30, windowMs: 60_000 },
   apiWriteDaily: { limit: 500, windowMs: 24 * 60 * 60_000 },
+  /** "Send test event" for a webhook, per person. */
+  webhookTest: { limit: 20, windowMs: 60 * 60_000 },
 } satisfies Record<string, RateRule>;
 
 export type RateRuleName = keyof typeof DEFAULT_RATE_RULES;

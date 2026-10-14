@@ -14,6 +14,7 @@ crons.interval("ai routines", { minutes: 15 }, internal.routines.due, {});
 crons.interval("expired plans", { minutes: 60 }, internal.billing.settleExpiredPlans, {});
 crons.interval("calendar subscriptions", { minutes: 30 }, internal.externalCalendars.refreshDue, {});
 crons.interval("api idempotency cleanup", { minutes: 60 }, internal.restApi.sweep, {});
+crons.daily("webhook delivery cleanup", { hourUTC: 4, minuteUTC: 50 }, internal.webhooks.sweep, {});
 crons.daily("trash retention", { hourUTC: 3, minuteUTC: 0 }, internal.maintenance.purgeExpiredTrash, {});
 crons.daily("tombstone retention", { hourUTC: 3, minuteUTC: 20 }, internal.maintenance.purgeTombstones, {});
 crons.daily("housekeeping", { hourUTC: 3, minuteUTC: 40 }, internal.maintenance.housekeeping, {});

@@ -36,6 +36,7 @@ import { copyCollectionsInto } from "./collections";
 import { FileCopies } from "./fileCopies";
 import { internal } from "../_generated/api";
 import { noteEdited } from "./editSettle";
+import { emitWebhook } from "./webhooks";
 
 export const MAX_BATCH = 100;
 
@@ -833,7 +834,10 @@ export class SyncEngine {
         updatedAt: now,
         lastEditedBy: this.profile._id,
       });
-      if (update.title !== undefined) await refreshDerived(this.ctx, (await this.ctx.db.get(doc._id))!);
+      if (update.title !== undefined) {
+        await refreshDerived(this.ctx, (await this.ctx.db.get(doc._id))!);
+        await emitWebhook(this.ctx, "note.updated", (await this.ctx.db.get(doc._id))!);
+      }
       if ("title" in update || "icon" in update) {
         await refreshLinkLabels(this.ctx, (await this.ctx.db.get(doc._id))!, this.profile._id);
       }

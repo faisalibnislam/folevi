@@ -10,6 +10,7 @@ import { identityImageUrl } from "./lib/identityImages";
 import { mentionedIds, notify } from "./lib/notify";
 import { insertScoped, scopeOfRow } from "./lib/scope";
 import { REACTION_KINDS, REACTION_NAMES_SHOWN, vReactionKind, type ReactionKind } from "./lib/reactions";
+import { emitWebhook } from "./lib/webhooks";
 
 function cleanBody(body: unknown): InlineNode[] {
   const issues = validateInline(body, "body");
@@ -367,7 +368,8 @@ export const create = mutation({
       lastActivityAt: now,
       commentCount: 1,
     });
-    await insertScoped(ctx, "comments", scopeOfRow(doc), { publicId: commentPublic, threadId, documentId: doc._id, authorId: profile._id, body, createdAt: now });
+    const commentId = await insertScoped(ctx, "comments", scopeOfRow(doc), { publicId: commentPublic, threadId, documentId: doc._id, authorId: profile._id, body, createdAt: now });
+    await emitWebhook(ctx, "comment.created", doc, { commentId });
     const thread = (await ctx.db.get(threadId))!;
     await setThreadRead(ctx, profile._id, thread);
     await notifyActivity(ctx, { actor: profile, doc, thread, commentId: commentPublic, body, reply: false });
@@ -406,7 +408,8 @@ export const reply = mutation({
     const body = cleanBody(args.body);
     const now = Date.now();
     const commentPublic = wanted ?? ulid();
-    await insertScoped(ctx, "comments", scopeOfRow(thread), { publicId: commentPublic, threadId: thread._id, documentId: thread.documentId, authorId: profile._id, body, createdAt: now });
+    const commentId = await insertScoped(ctx, "comments", scopeOfRow(thread), { publicId: commentPublic, threadId: thread._id, documentId: thread.documentId, authorId: profile._id, body, createdAt: now });
+    await emitWebhook(ctx, "comment.created", doc, { commentId });
     await ctx.db.patch(thread._id, { lastActivityAt: now, commentCount: thread.commentCount + 1, status: "open", resolvedAt: undefined, resolvedBy: undefined });
     await setThreadRead(ctx, profile._id, thread);
     await notifyActivity(ctx, { actor: profile, doc, thread, commentId: commentPublic, body, reply: true });

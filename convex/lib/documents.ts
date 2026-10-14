@@ -16,6 +16,7 @@ import {
 import { insertScoped, scopeOfRow, type Scope } from "./scope";
 import { accessAtLeast, documentAccess, membership } from "./auth";
 import { sharedLabels } from "./linkLabels";
+import { emitWebhook } from "./webhooks";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -319,6 +320,7 @@ export async function syncTaskProjection(
   // A task is in its document's scope (documents never change scope).
   if (!existing) {
     await insertScoped(ctx, "tasks", scopeOfRow(doc), { ...fields, createdBy: actorId, updatedAt: Date.now() });
+    await emitWebhook(ctx, "task.created", doc, { taskBlockId: row.blockId });
     return;
   }
   // Most block edits don't change the task; writing it anyway would wake every task list watching it.
@@ -327,6 +329,7 @@ export async function syncTaskProjection(
   // A reminder set to a new time is a new reminder: it goes out again even if the old one already did.
   const reminderMoved = existing.reminderSentAt !== undefined && existing.reminderAt !== fields.reminderAt;
   await ctx.db.patch(existing._id, { ...fields, ...(reminderMoved ? { reminderSentAt: undefined } : {}), updatedAt: Date.now() });
+  if (existing.status !== "done" && fields.status === "done") await emitWebhook(ctx, "task.completed", doc, { taskBlockId: row.blockId });
   // A repeating to-do just checked off comes back at its next date (right after this edit is saved).
   if (existing.status === "open" && fields.status === "done" && fields.repeat) {
     await ctx.scheduler.runAfter(0, internal.tasks.repeatTask, { blockId: row.blockId, actorId });

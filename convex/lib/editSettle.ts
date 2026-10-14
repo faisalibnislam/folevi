@@ -18,6 +18,7 @@ import { queueIndex } from "./ai/indexing";
 import { refreshDerived } from "./documents";
 import { nextSeq } from "./seq";
 import { scopeOfRow } from "./scope";
+import { emitWebhook } from "./webhooks";
 
 /** How long a note's row may lag behind its blocks while someone types. */
 export const SETTLE_MS = 30_000;
@@ -36,6 +37,8 @@ const pendingOf = async (ctx: MutationCtx, documentId: Id<"documents">) =>
  */
 export async function noteEdited(ctx: MutationCtx, doc: Doc<"documents">, actorId: Id<"profiles">, opts: { seq?: number; bulk?: boolean } = {}): Promise<void> {
   const now = Date.now();
+  // Webhooks hear of it (at most once a minute per note; nothing at all when no one listens).
+  await emitWebhook(ctx, "note.updated", doc);
   if (doc.settleAt !== undefined && doc.settleAt > now) {
     const pending = await pendingOf(ctx, doc._id);
     const bulk = Boolean(opts.bulk) || Boolean(pending?.bulk);

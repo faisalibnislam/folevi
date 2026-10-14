@@ -36,6 +36,7 @@ import { inScope, insertScoped, scopeOfRow, vScope, vScopeArg, type Scope } from
 import { vDocumentKind } from "./lib/validators";
 import { People } from "./lib/authors";
 import { queueIndex } from "./lib/ai/indexing";
+import { emitWebhook } from "./lib/webhooks";
 
 export const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -843,6 +844,7 @@ export async function setTrashState(ctx: MutationCtx, doc: Doc<"documents">, act
     for (const t of tasks) await ctx.db.patch(t._id, { documentInTrash: inTrash });
     // Semantic search drops a trashed note's chunks, and indexes a restored one again.
     await queueIndex(ctx, { ...d, inTrash, deletedAt: stamp });
+    if (inTrash) await emitWebhook(ctx, "note.deleted", (await ctx.db.get(d._id))!);
   }
 }
 

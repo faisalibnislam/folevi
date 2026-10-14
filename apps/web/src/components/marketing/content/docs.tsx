@@ -647,8 +647,107 @@ curl -X PATCH https://app.folevi.com/api/v1/tasks/TASK_ID \\
           <li>A new note can hold up to 100,000 characters of Markdown, and an addition up to 20,000.</li>
         </ul>
         <p>
-          Browsers can call the API from any site: it uses only the token, never your Folevi sign-in, so a page can’t use your session.
+          Browsers can call the API from any site: it uses only the token, never your Folevi sign-in, so a page can’t use your session. To hear about changes as they happen instead of asking, use <Link href="/docs/webhooks">webhooks</Link>.
         </p>
+      </>
+    ),
+  },
+  {
+    slug: "webhooks",
+    title: "Webhooks",
+    nav: "Webhooks",
+    description: "Have Folevi tell your server when notes, tasks and comments change, with signed requests you can verify.",
+    published: "2026-10-14",
+    updated: "2026-10-14",
+    body: () => (
+      <>
+        <p>
+          A webhook is an address on your server that Folevi calls when something happens in your notes: a note is created, changed or moved to Trash, a task is added or completed, a comment is written. It’s how Zapier, n8n, Make and your own code hear about changes without asking over and over. To read or add things, use the <Link href="/docs/rest-api">REST API</Link>.
+        </p>
+        <h2 id="add">Add a webhook</h2>
+        <p>
+          Open Settings → Connected apps and choose <strong>Add webhook</strong> under Webhooks. Enter an address that starts with <code>https://</code>, choose the events and the places (your Personal, and any workspaces you pick), then copy the signing secret. It starts with <code>whsec_</code> and is shown only once. You can have up to five webhooks. <strong>Send test event</strong> sends a <code>webhook.test</code> event to check your setup, and <strong>Recent deliveries</strong> shows the last 20 attempts with their status codes.
+        </p>
+        <Table
+          label="Webhook events"
+          head={["Event", "When it’s sent"]}
+          rows={[
+            ["note.created", "A note is created. Sent about 30 seconds later, so the title typed right after is included."],
+            ["note.updated", "A note’s text or title changes. At most once a minute per note: edits in that minute are one event."],
+            ["note.deleted", "A note is moved to Trash."],
+            ["task.created", "A to-do is added to a note."],
+            ["task.completed", "A to-do is checked off."],
+            ["comment.created", "A comment or a reply is written."],
+          ]}
+        />
+        <p>
+          You only get events for notes you can open yourself, in the places you chose. A page restricted to other people sends you nothing.
+        </p>
+        <h2 id="payload">What Folevi sends</h2>
+        <p>
+          Each event is a POST with a JSON body. Payloads are small on purpose: a note’s title and link, never its content. Tasks include their text, since that’s what a task is. Comments include ids and the note’s link, not what was written. Fetch more through the REST API if you need it.
+        </p>
+        <pre>
+          <code>{`{
+  "id": "evt_01JA2Z6Q3M8V4C2P9K7T5R1B0N",
+  "type": "task.completed",
+  "createdAt": "2026-10-14T09:12:44.000Z",
+  "place": { "id": "personal", "name": "Personal" },
+  "data": {
+    "id": "01JA2Z5X1T9QH3E8D2W6M4R7AA",
+    "text": "Send the summary",
+    "status": "done",
+    "dueDate": "2026-10-15",
+    "dueTime": null,
+    "priority": "high",
+    "note": { "id": "01JA2YQ8...", "title": "Meeting notes", "url": "https://app.folevi.com/d/01JA2YQ8..." },
+    "url": "https://app.folevi.com/d/01JA2YQ8...#block-01JA2Z5X..."
+  }
+}`}</code>
+        </pre>
+        <p>
+          Requests also carry <code>Folevi-Event-Id</code> and <code>Folevi-Event-Type</code> headers. The event id stays the same on every retry, so use it to ignore an event you’ve already handled.
+        </p>
+        <h2 id="verify">Check the signature</h2>
+        <p>
+          Every request has a <code>Folevi-Signature</code> header like <code>t=1792234364,v1=5257a8…</code>. <code>t</code> is when it was sent (Unix seconds) and <code>v1</code> is the HMAC-SHA256, in hex, of <code>t</code>, a full stop and the raw request body, keyed with your signing secret. Compute it yourself and compare, and turn away requests whose <code>t</code> is more than five minutes old. In Node:
+        </p>
+        <pre>
+          <code>{`import crypto from "node:crypto";
+import express from "express";
+
+const secret = process.env.FOLEVI_WEBHOOK_SECRET; // whsec_...
+const app = express();
+
+// Read the body raw: the signature covers the exact bytes Folevi sent.
+app.post("/folevi", express.raw({ type: "application/json" }), (req, res) => {
+  const parts = Object.fromEntries((req.get("Folevi-Signature") ?? "").split(",").map((p) => p.split("=")));
+  const expected = crypto.createHmac("sha256", secret).update(\`\${parts.t}.\${req.body}\`).digest("hex");
+  const valid = typeof parts.v1 === "string" && parts.v1.length === expected.length && crypto.timingSafeEqual(Buffer.from(parts.v1), Buffer.from(expected));
+  const recent = Math.abs(Date.now() / 1000 - Number(parts.t)) < 300;
+  if (!valid || !recent) return res.status(400).send("Bad signature");
+
+  const event = JSON.parse(req.body);
+  console.log(event.type, event.data.id);
+  res.sendStatus(200);
+});
+
+app.listen(3000);`}</code>
+        </pre>
+        <h2 id="retries">Answers, retries and turning off</h2>
+        <p>
+          Answer with any 2xx status within 10 seconds. Anything else counts as a failure, and so do redirects: Folevi never follows them. A failed event is tried again after 1 minute, 10 minutes, 1 hour, 6 hours and 16 hours, six attempts over about a day.
+        </p>
+        <p>
+          If three events in a row fail every attempt, Folevi turns the webhook off and tells you in the notifications bell. Fix the endpoint, then switch it back on in Settings. A test event never counts toward this.
+        </p>
+        <h2 id="security">Security</h2>
+        <ul>
+          <li>Only https addresses on the standard port are accepted, without a user name or password in them.</li>
+          <li>Folevi looks up the address before every attempt and never sends to private, local or link-local networks.</li>
+          <li>Your signing secret is stored encrypted and shown only when you add the webhook. If it leaks, delete the webhook and add it again.</li>
+          <li>Folevi doesn’t read or keep your server’s answer, only its status code and how long it took.</li>
+        </ul>
       </>
     ),
   },

@@ -43,6 +43,36 @@ export async function keyedHash(value: string, purpose: string): Promise<string>
   return toHex(await crypto.subtle.sign("HMAC", key, enc.encode(value))).slice(0, 32);
 }
 
+async function sealingKey(purpose: string): Promise<CryptoKey> {
+  const secret = secretOrDevFallback(["FOLEVI_HASH_SALT"], "folevi-development-salt");
+  const raw = await crypto.subtle.digest("SHA-256", enc.encode(`${secret}:seal:${purpose}`));
+  return await crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+
+const toB64 = (bytes: Uint8Array) => {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+};
+
+/**
+ * A secret Folevi must use again later (a webhook's signing secret), encrypted at rest with AES-GCM under
+ * a key derived from the server's own secret: the database alone never holds it in the clear.
+ */
+export async function sealSecret(plain: string, purpose: string): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await sealingKey(purpose), enc.encode(plain)));
+  return `v1.${toB64(iv)}.${toB64(sealed)}`;
+}
+
+export async function openSecret(sealed: string, purpose: string): Promise<string> {
+  const [version, iv, data] = sealed.split(".");
+  if (version !== "v1" || !iv || !data) throw new Error("Unknown sealed secret format");
+  const bytes = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: bytes(iv) }, await sealingKey(purpose), bytes(data));
+  return new TextDecoder().decode(plain);
+}
+
 /** URL-safe random token with `bytes` of entropy. */
 export function randomToken(bytes = 32): string {
   const buf = new Uint8Array(bytes);

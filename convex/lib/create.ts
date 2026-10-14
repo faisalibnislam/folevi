@@ -17,6 +17,7 @@ import { bump } from "./metrics";
 import { nextSeq } from "./seq";
 import { insertScoped, type Scope } from "./scope";
 import { queueIndex } from "./ai/indexing";
+import { emitWebhook } from "./webhooks";
 
 /** Compact authoring format for seed content, templates and programmatic documents. */
 export interface BlockSpec {
@@ -142,7 +143,9 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
   if (rows.length) await queueIndex(ctx, doc);
   await adjustDocumentCount(ctx, scope, 1);
   await bump(ctx, "documents_total");
-  return (await ctx.db.get(docId))!;
+  const created = (await ctx.db.get(docId))!;
+  await emitWebhook(ctx, "note.created", created);
+  return created;
 }
 
 /** Keeps a scope's document counter (admin views) in step. */

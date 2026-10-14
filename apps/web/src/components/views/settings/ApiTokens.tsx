@@ -229,7 +229,7 @@ function NewTokenDialog({ onClose }: { onClose: () => void }) {
       <label id="token-expiry-label" className="ui-caps mt-5 mb-1.5 block">
         Expires
       </label>
-      <Select value={expiry} onChange={(e) => setExpiry(e.target.value)} aria-labelledby="token-expiry-label" className="w-full">
+      <Select value={expiry} onChange={(e) => setExpiry(e.target.value)} aria-labelledby="token-expiry-label" className="h-9 w-full ui-input rounded-chip px-3">
         {EXPIRY.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

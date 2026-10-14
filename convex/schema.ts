@@ -1390,6 +1390,62 @@ export default defineSchema({
     .index("by_token", ["tokenHash"]),
 
   /**
+   * Calendars a person subscribes to by an iCalendar link, shown read-only in Calendar
+   * (convex/externalCalendars.ts). Each fetch writes a new generation of `externalEvents`; `generation` is
+   * the one shown, and older ones are deleted once a newer one is complete.
+   */
+  externalCalendars: defineTable({
+    profileId: v.id("profiles"),
+    name: v.string(),
+    /** Named after the calendar's own X-WR-CALNAME until the person names it. */
+    autoName: v.optional(v.boolean()),
+    /** The link to fetch (webcal:// saved as https://). Can carry a secret: never logged, shown only to its owner. */
+    url: v.string(),
+    /** A palette colour: accent, moss, marigold, plum, coral or muted. */
+    color: v.string(),
+    createdAt: v.number(),
+    /** Calendar last opened by its owner: only calendars looked at in the last 14 days are refreshed. */
+    lastViewedAt: v.number(),
+    lastFetchedAt: v.optional(v.number()),
+    /** Why the last fetch failed, in plain words (the events from before stay). */
+    lastError: v.optional(v.string()),
+    etag: v.optional(v.string()),
+    lastModified: v.optional(v.string()),
+    /** When the text was last read into events (unchanged text is read again after a while: the window moves). */
+    parsedAt: v.optional(v.number()),
+    contentHash: v.optional(v.string()),
+    eventCount: v.optional(v.number()),
+    /** More events than are kept fell in the window. */
+    truncated: v.optional(v.boolean()),
+    generation: v.number(),
+    /** The last generation handed to a fetch. */
+    lastGeneration: v.number(),
+    /** A fetch in flight (another isn't started for a minute). */
+    fetchStartedAt: v.optional(v.number()),
+  })
+    .index("by_profile", ["profileId"])
+    .index("by_viewed", ["lastViewedAt"]),
+
+  /** One instance of an event from a subscribed calendar, repeats expanded (60 days back to 180 ahead). */
+  externalEvents: defineTable({
+    calendarId: v.id("externalCalendars"),
+    profileId: v.id("profiles"),
+    generation: v.number(),
+    /** UID and instance, unique within the calendar. */
+    key: v.string(),
+    /** UTC ms. All-day events: UTC midnight of the first day; `end` is midnight after the last. */
+    start: v.number(),
+    end: v.number(),
+    allDay: v.boolean(),
+    title: v.string(),
+    location: v.optional(v.string()),
+    /** Plain text, shown as text (never as markup). */
+    description: v.optional(v.string()),
+  })
+    .index("by_profile_start", ["profileId", "start"])
+    .index("by_calendar_generation", ["calendarId", "generation"]),
+
+  /**
    * A person's private email-to-note address, n-<token>@folevi.com (convex/emailNotes.ts). One per person.
    * The token is kept as it is, not hashed: the person needs to see their address any time, and it already
    * travels in the headers of every email sent to it. What lets mail in is the sender check (see

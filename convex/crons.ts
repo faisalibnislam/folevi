@@ -12,6 +12,7 @@ crons.interval("ai research cleanup", { minutes: 30 }, internal.aiResearch.sweep
 crons.interval("ai digests", { minutes: 15 }, internal.aiDigest.due, {});
 crons.interval("ai routines", { minutes: 15 }, internal.routines.due, {});
 crons.interval("expired plans", { minutes: 60 }, internal.billing.settleExpiredPlans, {});
+crons.interval("calendar subscriptions", { minutes: 30 }, internal.externalCalendars.refreshDue, {});
 crons.daily("trash retention", { hourUTC: 3, minuteUTC: 0 }, internal.maintenance.purgeExpiredTrash, {});
 crons.daily("tombstone retention", { hourUTC: 3, minuteUTC: 20 }, internal.maintenance.purgeTombstones, {});
 crons.daily("housekeeping", { hourUTC: 3, minuteUTC: 40 }, internal.maintenance.housekeeping, {});

@@ -218,6 +218,14 @@ export const DOC_ARTICLES: DocArticle[] = [
           </li>
         </ul>
         <p>Every move can be undone from the message that appears. Tasks without a date are listed under the calendar, ready to drag onto a day.</p>
+        <h2 id="subscribed-calendars">Other calendars</h2>
+        <p>
+          You can show events from another calendar beside your tasks, read-only. Copy the calendar’s iCalendar link (it usually ends in <code>.ics</code> and may start with <code>webcal://</code>; Google Calendar calls it the secret address in iCal format), then choose <strong>Calendars</strong> in the Calendar, paste the link, give it a name if you like and pick a color. You can subscribe to up to 20 calendars.
+        </p>
+        <p>
+          Events appear in the month and week layouts with their calendar’s color and no checkbox, since they aren’t tasks. Select one to see its time, place and notes. To change an event, change it in the app it comes from: Folevi checks each calendar about once an hour, for two weeks after you last opened the Calendar, and whenever you choose <strong>Refresh</strong>. If a calendar can’t be loaded, <strong>Calendars</strong> says why, and the events from the last good check stay. Rename, recolor or remove a calendar there too.
+        </p>
+        <p>Only links to public web addresses work; links to private or local networks are refused.</p>
         <h2 id="collection-calendars">Collections on a calendar</h2>
         <p>
           A collection can also have a <strong>Calendar</strong> view (choose it from <strong>+ View</strong>, or insert one with <code>/calendar</code>). It places each row on a month grid by one of the collection’s date properties, picked in the view’s settings. Select a row to open its page, drag it to another day to change its date, or use the plus on a day to add a row dated that day. Rows without a date wait in the <strong>No date</strong> tray below the month; drag a row there to clear its date.

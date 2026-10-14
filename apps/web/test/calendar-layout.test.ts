@@ -1,7 +1,7 @@
 // The calendar week view's layout: weeks from Monday, times on the hour grid, drops snapped to 30
 // minutes, and overlapping items sharing a day's width.
 import { describe, expect, test } from "vitest";
-import { HOUR_PX, layoutOverlaps, minutesToPx, minutesToTime, monthGrid, shiftMonth, slotAt, startOfWeek, timeToMinutes, visibleDays, weekdayIndex } from "@/components/views/calendarLayout";
+import { HOUR_PX, eventSegments, layoutOverlaps, minutesToPx, minutesToTime, monthGrid, shiftMonth, slotAt, startOfWeek, timeToMinutes, visibleDays, weekdayIndex, zonedParts } from "@/components/views/calendarLayout";
 import { rowsByDate } from "@/components/views/collectionView";
 
 describe("weeks", () => {
@@ -102,5 +102,33 @@ describe("overlap columns", () => {
     const out = layoutOverlaps([span("c", "09:20", "09:50"), span("a", "09:00", "09:30"), span("b", "09:10", "09:40")]);
     expect(out.map((p) => p.cols)).toEqual([3, 3, 3]);
     expect(new Set(out.map((p) => p.col))).toEqual(new Set([0, 1, 2]));
+  });
+});
+
+describe("events from subscribed calendars", () => {
+  const at = (iso: string) => Date.parse(iso);
+
+  test("an instant's day and time in a zone", () => {
+    expect(zonedParts(at("2026-10-14T13:30:00Z"), "America/New_York")).toEqual({ date: "2026-10-14", minutes: 9 * 60 + 30 });
+    expect(zonedParts(at("2026-10-14T23:30:00Z"), "Asia/Tokyo")).toEqual({ date: "2026-10-15", minutes: 8 * 60 + 30 });
+    expect(zonedParts(at("2026-10-14T00:00:00Z"), "UTC")).toEqual({ date: "2026-10-14", minutes: 0 });
+  });
+
+  test("timed events sit in their day; one crossing midnight is split", () => {
+    expect(eventSegments({ start: at("2026-10-14T13:00:00Z"), end: at("2026-10-14T14:30:00Z"), allDay: false }, "America/New_York")).toEqual([{ date: "2026-10-14", allDay: false, start: 540, end: 630, first: true }]);
+    expect(eventSegments({ start: at("2026-10-14T22:00:00Z"), end: at("2026-10-15T01:00:00Z"), allDay: false }, "UTC")).toEqual([
+      { date: "2026-10-14", allDay: false, start: 1320, end: 1440, first: true },
+      { date: "2026-10-15", allDay: false, start: 0, end: 60, first: false },
+    ]);
+    // Ending exactly at midnight stays on its day.
+    expect(eventSegments({ start: at("2026-10-14T23:00:00Z"), end: at("2026-10-15T00:00:00Z"), allDay: false }, "UTC")).toEqual([{ date: "2026-10-14", allDay: false, start: 1380, end: 1440, first: true }]);
+  });
+
+  test("all-day events cover each of their days, whatever the zone; long timed ones join them", () => {
+    expect(eventSegments({ start: at("2026-10-20T00:00:00Z"), end: at("2026-10-22T00:00:00Z"), allDay: true }, "Pacific/Auckland").map((s) => [s.date, s.allDay, s.first])).toEqual([
+      ["2026-10-20", true, true],
+      ["2026-10-21", true, false],
+    ]);
+    expect(eventSegments({ start: at("2026-10-14T09:00:00Z"), end: at("2026-10-16T09:00:00Z"), allDay: false }, "UTC").map((s) => s.date)).toEqual(["2026-10-14", "2026-10-15", "2026-10-16"]);
   });
 });

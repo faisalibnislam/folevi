@@ -214,6 +214,16 @@ export function endTrial(email: string) {
   });
 }
 
+/** Subscribes an account to a calendar with the given iCalendar text, as if fetched (local deployment only). */
+export function seedExternalCalendar(email: string, name: string, color: string, ics: string) {
+  execFileSync("npx", ["convex", "run", "testSupport:seedExternalCalendar", JSON.stringify({ email, name, color, ics })], {
+    cwd: REPO_ROOT,
+    stdio: "ignore",
+    timeout: 60_000,
+    env: { ...process.env, CONVEX_AGENT_MODE: process.env.CONVEX_AGENT_MODE ?? "anonymous" },
+  });
+}
+
 export async function waitForSaved(page: Page) {
   await expect(page.getByTestId("sync-status")).toHaveAttribute("data-status", "saved", { timeout: 20_000 });
 }

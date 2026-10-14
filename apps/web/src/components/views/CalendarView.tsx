@@ -14,7 +14,8 @@ import { ViewChrome } from "@/components/app/Shell";
 import { TaskEditDialog, TaskItem, useToggleTask, type TaskRow } from "./TasksView";
 import { CalendarFeedDialog } from "./CalendarFeedDialog";
 import { CalendarWeek } from "./CalendarWeek";
-import { monthGrid, shiftMonth, visibleDays } from "./calendarLayout";
+import { CalendarsButton, EventPopover, calendarColor, eventWhen, useExternalEvents, type ExternalEvent, type PlacedEvent } from "./CalendarSubscriptions";
+import { minutesToTime, monthGrid, shiftMonth, visibleDays } from "./calendarLayout";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 
 type Layout = "month" | "week" | "agenda";
@@ -35,7 +36,7 @@ function storedLayout(): Layout {
  * to a time (with Undo). The layout is remembered on this device; narrow screens get three days at a time.
  */
 export function CalendarView({ month }: { month: string | null }) {
-  const { scope, today, deviceId } = useAppState();
+  const { scope, today, deviceId, timeZone } = useAppState();
   const { navigate } = useAppRouter();
   const current = month ?? today.slice(0, 7);
   const [mode, setModeState] = useState<Layout>("month");
@@ -68,6 +69,14 @@ export function CalendarView({ month }: { month: string | null }) {
   const [selected, setSelected] = useState<string>(today);
   const [feedOpen, setFeedOpen] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
+  // Events from subscribed calendars (read-only), and the one whose details are open.
+  const eventsByDate = useExternalEvents(mode === "week" ? weekDays : days, timeZone);
+  const [openEvent, setOpenEvent] = useState<ExternalEvent | null>(null);
+  const eventAnchor = useRef<HTMLElement | null>(null);
+  const showEvent = (e: ExternalEvent, anchor: HTMLElement) => {
+    eventAnchor.current = anchor;
+    setOpenEvent(e);
+  };
 
   const byDate = useMemo(() => {
     const m = new Map<string, TaskRow[]>();
@@ -127,6 +136,7 @@ export function CalendarView({ month }: { month: string | null }) {
       tabTitle="Calendar"
       actions={
         <>
+          <CalendarsButton />
           <Button size="sm" onClick={() => setFeedOpen(true)}>
             <Rss size={14} aria-hidden /> Subscribe
           </Button>
@@ -188,6 +198,8 @@ export function CalendarView({ month }: { month: string | null }) {
               onArrow={moveWeekFocus}
               onMove={reschedule}
               onEdit={setEditing}
+              eventsByDate={eventsByDate}
+              onOpenEvent={showEvent}
             />
             <p className="mt-3 text-xs text-muted">Drag a task to a time to set it, or to the all-day row to keep just the date. Select a task to edit it.</p>
             <Unscheduled tasks={unscheduled} today={today} target={weekDays.includes(selected) ? selected : today} onSchedule={reschedule} onToggle={toggle} onEdit={setEditing} />
@@ -207,6 +219,9 @@ export function CalendarView({ month }: { month: string | null }) {
                   {days.slice(week * 7, week * 7 + 7).map((date) => {
                     const inMonth = date.startsWith(current);
                     const items = byDate.get(date) ?? [];
+                    const evs = eventsByDate.get(date) ?? [];
+                    const room = Math.max(0, 3 - items.length);
+                    const hidden = Math.max(0, items.length - 3) + Math.max(0, evs.length - room);
                     const isToday = date === today;
                     return (
                       <div
@@ -215,7 +230,10 @@ export function CalendarView({ month }: { month: string | null }) {
                         aria-selected={selected === date}
                         tabIndex={selected === date ? 0 : -1}
                         data-date={date}
-                        aria-label={t("calendar.day.label", { date: formatCalendarDate(date, { weekday: "long", month: "long", day: "numeric" }), count: items.length })}
+                        aria-label={
+                          t("calendar.day.label", { date: formatCalendarDate(date, { weekday: "long", month: "long", day: "numeric" }), count: items.length }) +
+                          (evs.length ? `, ${evs.length === 1 ? "1 event" : `${evs.length} events`}` : "")
+                        }
                         onClick={() => setSelected(date)}
                         onKeyDown={(e) => {
                           const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : e.key === "ArrowDown" ? 7 : e.key === "ArrowUp" ? -7 : 0;
@@ -250,7 +268,12 @@ export function CalendarView({ month }: { month: string | null }) {
                               {t.title}
                             </li>
                           ))}
-                          {items.length > 3 ? <li className="px-1 text-[11px] text-muted">+{items.length - 3} more</li> : null}
+                          {evs.slice(0, room).map((p) => (
+                            <li key={p.event.id}>
+                              <EventChip placed={p} onOpen={showEvent} />
+                            </li>
+                          ))}
+                          {hidden ? <li className="px-1 text-[11px] text-muted">+{hidden} more</li> : null}
                         </ul>
                       </div>
                     );
@@ -266,6 +289,26 @@ export function CalendarView({ month }: { month: string | null }) {
                   <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} onEdit={setEditing} />
                 ))}
               </ul>
+              {(eventsByDate.get(selected) ?? []).length ? (
+                <section aria-label="Events" className="mt-4">
+                  <h4 className="mb-2 text-sm font-semibold">Events</h4>
+                  <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
+                    {(eventsByDate.get(selected) ?? []).map(({ event: ev }) => (
+                      <li key={ev.id}>
+                        <button type="button" onClick={(e) => showEvent(ev, e.currentTarget)} className="flex w-full items-start gap-2.5 px-4 py-2.5 text-left hover:bg-surface">
+                          <span aria-hidden className="mt-1.5 inline-block h-2.5 w-2.5 flex-none rounded-chip" style={{ background: calendarColor(ev.color) }} />
+                          <span className="min-w-0">
+                            <span className="block text-[15px] leading-snug">{ev.title || "Untitled event"}</span>
+                            <span className="block text-xs text-muted">
+                              {eventWhen(ev, timeZone)} · {ev.calendarName}
+                            </span>
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
               <p className="mt-3 text-xs text-muted">Drag tasks between days to reschedule, or use a task’s edit button to pick a date. Arrow keys move between days.</p>
               <Unscheduled tasks={unscheduled} today={today} target={selected} onSchedule={reschedule} onToggle={toggle} onEdit={setEditing} />
             </aside>
@@ -305,7 +348,28 @@ export function CalendarView({ month }: { month: string | null }) {
       </div>
       <TaskEditDialog task={editing} onClose={() => setEditing(null)} />
       <CalendarFeedDialog open={feedOpen} onClose={() => setFeedOpen(false)} />
+      <EventPopover event={openEvent} anchor={eventAnchor} timeZone={timeZone} onClose={() => setOpenEvent(null)} />
     </ViewChrome>
+  );
+}
+
+/** A subscribed calendar's event on a month day: muted, its calendar's colour as a dot, no checkbox. */
+function EventChip({ placed: { event: ev, segment }, onOpen }: { placed: PlacedEvent; onOpen: (e: ExternalEvent, anchor: HTMLElement) => void }) {
+  const time = !segment.allDay && segment.first ? minutesToTime(segment.start) : "";
+  return (
+    <button
+      type="button"
+      onClick={(e) => onOpen(ev, e.currentTarget)}
+      aria-label={`${ev.title || "Untitled event"}, ${time || "all day"}, from ${ev.calendarName}`}
+      title={ev.title}
+      className="flex w-full items-center gap-1 rounded-tiny bg-surface px-1 text-left text-[11.5px] leading-5 text-muted hover:bg-sunken"
+    >
+      <span aria-hidden className="inline-block h-1.5 w-1.5 flex-none rounded-chip" style={{ background: calendarColor(ev.color) }} />
+      <span className="truncate">
+        {time ? `${time} ` : ""}
+        {ev.title || "Untitled event"}
+      </span>
+    </button>
   );
 }
 

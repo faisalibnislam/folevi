@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { formatCalendarDate } from "@/i18n";
 import type { TaskRow } from "./TasksView";
+import { calendarColor, type ExternalEvent, type PlacedEvent } from "./CalendarSubscriptions";
 import { FIRST_VISIBLE_HOUR, HOUR_PX, TASK_MINUTES, layoutOverlaps, minutesToPx, minutesToTime, slotAt, timeToMinutes } from "./calendarLayout";
 
 const TASK_TYPE = "application/x-folevi-task";
@@ -36,17 +37,21 @@ export function CalendarWeek({
   today,
   label,
   tasksByDate,
+  eventsByDate,
   selected,
   gridRef,
   onSelect,
   onArrow,
   onMove,
   onEdit,
+  onOpenEvent,
 }: {
   days: string[];
   today: string;
   label: string;
   tasksByDate: Map<string, TaskRow[]>;
+  /** Events from subscribed calendars, read-only. */
+  eventsByDate: Map<string, PlacedEvent[]>;
   selected: string;
   gridRef: RefObject<HTMLDivElement | null>;
   onSelect: (date: string) => void;
@@ -55,6 +60,7 @@ export function CalendarWeek({
   /** A task dropped on a day: `time` null for the all-day row, "HH:MM" on the hour grid. */
   onMove: (blockId: string, date: string, time: string | null) => void;
   onEdit: (t: TaskRow) => void;
+  onOpenEvent: (e: ExternalEvent, anchor: HTMLElement) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<{ date: string; minutes: number } | null>(null);
@@ -92,6 +98,7 @@ export function CalendarWeek({
           </div>
           {days.map((date) => {
             const items = (tasksByDate.get(date) ?? []).filter((t) => timeToMinutes(t.dueTime) === null);
+            const allDayEvents = (eventsByDate.get(date) ?? []).filter((p) => p.segment.allDay);
             return (
               <div
                 key={date}
@@ -99,7 +106,7 @@ export function CalendarWeek({
                 data-date={date}
                 aria-selected={selected === date}
                 tabIndex={focusable === date ? 0 : -1}
-                aria-label={`${formatCalendarDate(date, { weekday: "long", month: "long", day: "numeric" })}, all day, ${items.length === 1 ? "1 task" : `${items.length} tasks`}`}
+                aria-label={`${formatCalendarDate(date, { weekday: "long", month: "long", day: "numeric" })}, all day, ${items.length === 1 ? "1 task" : `${items.length} tasks`}${allDayEvents.length ? `, ${allDayEvents.length === 1 ? "1 event" : `${allDayEvents.length} events`}` : ""}`}
                 onClick={() => onSelect(date)}
                 onKeyDown={(e) => {
                   if (e.target !== e.currentTarget) return;
@@ -134,6 +141,20 @@ export function CalendarWeek({
                       </button>
                     </li>
                   ))}
+                  {allDayEvents.map(({ event: ev }) => (
+                    <li key={ev.id}>
+                      <button
+                        type="button"
+                        onClick={(e) => onOpenEvent(ev, e.currentTarget)}
+                        aria-label={`${ev.title || "Untitled event"}, all day, from ${ev.calendarName}`}
+                        title={ev.title}
+                        className="block w-full truncate rounded-tiny border-l-2 bg-surface px-1 text-left text-[11.5px] leading-5 text-muted hover:bg-sunken"
+                        style={{ borderColor: calendarColor(ev.color) }}
+                      >
+                        {ev.title || "Untitled event"}
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               </div>
             );
@@ -154,7 +175,15 @@ export function CalendarWeek({
               const start = timeToMinutes(t.dueTime);
               return start === null ? [] : [{ task: t, start }];
             });
-            const placed = new Map(layoutOverlaps(timed.map(({ task, start }) => ({ id: task.blockId, start, end: start + TASK_MINUTES }))).map((p) => [p.id, p]));
+            const timedEvents = (eventsByDate.get(date) ?? []).filter((p) => !p.segment.allDay);
+            // Short events still get a block tall enough to read.
+            const eventEnd = (p: PlacedEvent) => Math.max(p.segment.end, p.segment.start + TASK_MINUTES);
+            const placed = new Map(
+              layoutOverlaps([
+                ...timed.map(({ task, start }) => ({ id: `t:${task.blockId}`, start, end: start + TASK_MINUTES })),
+                ...timedEvents.map((p) => ({ id: `e:${p.event.id}`, start: p.segment.start, end: eventEnd(p) })),
+              ]).map((p) => [p.id, p]),
+            );
             return (
               <div
                 key={date}
@@ -186,8 +215,35 @@ export function CalendarWeek({
                 {date === today ? (
                   <div aria-hidden className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-accent" style={{ top: minutesToPx(now) }} />
                 ) : null}
+                {timedEvents.map((pe) => {
+                  const p = placed.get(`e:${pe.event.id}`)!;
+                  const ev = pe.event;
+                  const time = `${minutesToTime(pe.segment.start)} to ${minutesToTime(Math.min(pe.segment.end, 24 * 60 - 1))}`;
+                  return (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={(e) => onOpenEvent(ev, e.currentTarget)}
+                      aria-label={`${ev.title || "Untitled event"}, ${time}, from ${ev.calendarName}`}
+                      title={`${time} ${ev.title}`}
+                      className="absolute overflow-hidden rounded-tiny border-l-2 bg-surface px-1 text-left text-[11px] leading-[14px] text-muted shadow-[0_0_0_1px_var(--color-canvas)] hover:bg-sunken"
+                      style={{
+                        top: minutesToPx(p.start) + 1,
+                        height: minutesToPx(p.end - p.start) - 2,
+                        left: `calc(${(p.col / p.cols) * 100}% + 2px)`,
+                        width: `calc(${100 / p.cols}% - 4px)`,
+                        borderColor: calendarColor(ev.color),
+                      }}
+                    >
+                      <span className="block truncate">
+                        {pe.segment.first ? <span className="mr-1 tabular-nums opacity-80">{minutesToTime(pe.segment.start)}</span> : null}
+                        {ev.title || "Untitled event"}
+                      </span>
+                    </button>
+                  );
+                })}
                 {timed.map(({ task: t, start }) => {
-                  const p = placed.get(t.blockId)!;
+                  const p = placed.get(`t:${t.blockId}`)!;
                   return (
                     <button
                       key={t.blockId}

@@ -113,3 +113,63 @@ export function shiftMonth(month: string, delta: number): string {
   const [y, m] = month.split("-").map(Number) as [number, number];
   return new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 7);
 }
+
+const partsFormat = new Map<string, Intl.DateTimeFormat>();
+
+/** An instant's wall-clock day (YYYY-MM-DD) and minutes after midnight in a time zone. */
+export function zonedParts(ms: number, timeZone: string): { date: string; minutes: number } {
+  let fmt = partsFormat.get(timeZone);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat("en-CA", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    partsFormat.set(timeZone, fmt);
+  }
+  const parts = fmt.formatToParts(new Date(ms));
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, minutes: (Number(get("hour")) % 24) * 60 + Number(get("minute")) };
+}
+
+export interface EventTime {
+  /** UTC ms (all-day: UTC midnight of the first day). */
+  start: number;
+  /** UTC ms (all-day: UTC midnight after the last day). */
+  end: number;
+  allDay: boolean;
+}
+
+export interface Segment {
+  date: string;
+  /** Shown in the all-day row (all-day events, and timed ones a day long or more). */
+  allDay: boolean;
+  /** Minutes after midnight on `date` (0 and 1440 for all-day segments). */
+  start: number;
+  end: number;
+  /** The event's first day (where its start time is shown). */
+  first: boolean;
+}
+
+/**
+ * The days an event shows on, in a time zone: all-day events on each of their days, timed ones split at
+ * midnight. Timed events of a day or longer go in the all-day row. At most 62 days.
+ */
+export function eventSegments(e: EventTime, timeZone: string): Segment[] {
+  const out: Segment[] = [];
+  const allDayRun = (from: string, to: string) => {
+    for (let d = from, i = 0; d <= to && i < 62; d = addDays(d, 1), i++) out.push({ date: d, allDay: true, start: 0, end: 24 * 60, first: i === 0 });
+    return out;
+  };
+  if (e.allDay) {
+    const from = new Date(e.start).toISOString().slice(0, 10);
+    const last = new Date(Math.max(e.start, e.end - 86_400_000)).toISOString().slice(0, 10);
+    return allDayRun(from, last);
+  }
+  const s = zonedParts(e.start, timeZone);
+  if (e.end - e.start >= 86_400_000) return allDayRun(s.date, zonedParts(e.end - 1, timeZone).date);
+  const end = Math.max(e.end, e.start);
+  const t = zonedParts(end, timeZone);
+  if (t.date === s.date || (t.minutes === 0 && addDays(s.date, 1) === t.date)) {
+    return [{ date: s.date, allDay: false, start: s.minutes, end: t.date === s.date ? t.minutes : 24 * 60, first: true }];
+  }
+  out.push({ date: s.date, allDay: false, start: s.minutes, end: 24 * 60, first: true });
+  if (t.minutes > 0) out.push({ date: t.date, allDay: false, start: 0, end: t.minutes, first: false });
+  return out;
+}

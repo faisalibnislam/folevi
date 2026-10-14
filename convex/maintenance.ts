@@ -371,6 +371,9 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     // Their email-to-note address (it stops working) and its receipts.
     () => ctx.db.query("emailNoteAddresses").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("emailNoteReceipts").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    // Their calendar subscriptions: the events first, then the calendars.
+    () => ctx.db.query("externalEvents").withIndex("by_profile_start", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("externalCalendars").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
   ] as never;
   // Files they uploaded into AI chats in workspaces (the ones in their Personal went with it above).
   const chats = await ctx.db.query("aiConversations").withIndex("by_profile_place", (q) => q.eq("profileId", profileId)).take(200);

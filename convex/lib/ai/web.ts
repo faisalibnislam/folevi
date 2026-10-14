@@ -153,7 +153,7 @@ export function checkUrl(raw: string): { ok: true; url: URL } | { ok: false; err
  * The addresses a host name points to, from a public DNS-over-HTTPS resolver (the platform's fetch can't
  * be asked). Null when it couldn't be looked up.
  */
-async function lookup(host: string): Promise<string[] | null> {
+export async function lookup(host: string): Promise<string[] | null> {
   const out: string[] = [];
   for (const type of ["A", "AAAA"] as const) {
     const controller = new AbortController();
@@ -237,7 +237,7 @@ export function domainOf(url: string): string {
 }
 
 /** Reads a response body up to `max` bytes (a longer one is cut off there and never downloaded). */
-async function readCapped(res: Response, max: number): Promise<Uint8Array> {
+export async function readCapped(res: Response, max: number): Promise<Uint8Array> {
   if (!res.body) return new Uint8Array(await res.arrayBuffer()).slice(0, max);
   const reader = res.body.getReader();
   const chunks: Uint8Array[] = [];

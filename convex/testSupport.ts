@@ -11,6 +11,7 @@ import { nextSeq } from "./lib/seq";
 import { insertScoped, personalScope } from "./lib/scope";
 import { FOLDER_COLORS } from "./lib/folderColors";
 import { deductCredits, personalAccount, seatAccount } from "./lib/credits";
+import { parseIcs } from "./lib/icsParse";
 
 function assertNotProduction() {
   if (process.env.FOLEVI_ENV === "production") throw new Error("testSupport functions are disabled in production.");
@@ -369,5 +370,51 @@ export const seedDemoNotes = internalMutation({
     const remaining = args.remaining - batch;
     if (remaining > 0) await ctx.scheduler.runAfter(0, internal.testSupport.seedDemoNotes, { email: args.email, remaining, seed: args.seed + 1 });
     return { created: batch, remaining };
+  },
+});
+
+/**
+ * Subscribes someone to a calendar whose iCalendar text is given here, read as if it had just been fetched
+ * (e2e: the deployment can't reach a test server). It isn't fetched again for an hour.
+ */
+export const seedExternalCalendar = internalMutation({
+  args: { email: v.string(), name: v.string(), color: v.string(), ics: v.string() },
+  handler: async (ctx, args) => {
+    assertNotProduction();
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_email", (q) => q.eq("email", args.email.trim().toLowerCase()))
+      .unique();
+    if (!profile) throw new Error("No profile with that email. Sign in once first.");
+    const now = Date.now();
+    const { events } = parseIcs(args.ics, { from: now - 60 * 86_400_000, to: now + 180 * 86_400_000 });
+    const calendarId = await ctx.db.insert("externalCalendars", {
+      profileId: profile._id,
+      name: args.name,
+      url: `https://calendar.example.com/${ulid()}.ics`,
+      color: args.color,
+      createdAt: now,
+      lastViewedAt: now,
+      lastFetchedAt: now,
+      parsedAt: now,
+      eventCount: events.length,
+      generation: 1,
+      lastGeneration: 1,
+    });
+    for (const e of events) {
+      await ctx.db.insert("externalEvents", {
+        calendarId,
+        profileId: profile._id,
+        generation: 1,
+        key: e.key,
+        start: e.start,
+        end: e.end,
+        allDay: e.allDay,
+        title: e.title,
+        location: e.location || undefined,
+        description: e.description || undefined,
+      });
+    }
+    return { events: events.length };
   },
 });

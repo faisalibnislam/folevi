@@ -7,7 +7,7 @@ import { useMutation, useQuery } from "convex/react";
 import type { OptimisticLocalStore } from "convex/browser";
 import type { FunctionReturnType } from "convex/server";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUp, Bell, BellMinus, BellOff, BellPlus, Check, ChevronLeft, ChevronRight, CornerDownRight, Link2, MoreHorizontal, RotateCcw, Trash2, Unlink, X, Eye, EyeOff } from "lucide-react";
+import { ArrowUp, Bell, BellMinus, BellOff, BellPlus, Check, ChevronLeft, ChevronRight, CornerDownRight, Link2, MoreHorizontal, RotateCcw, SmilePlus, Trash2, Unlink, X, Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { Button, IconButton } from "@/components/ui/Button";
@@ -19,6 +19,7 @@ import { formatRelative } from "@/lib/format";
 import { MentionInput, textToCommentBody, type MentionInputHandle, type MentionPerson } from "./MentionInput";
 import { addressIn } from "@/components/editor/autolink";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
+import { ReactionChips, ReactionPicker, toggleReaction, type ReactionKind } from "./CommentReactions";
 
 export type CommentsData = FunctionReturnType<typeof api.comments.threads>;
 export type CommentThread = CommentsData["threads"][number];
@@ -101,6 +102,7 @@ export function useCommentActions(documentId: string) {
     mine: true,
     canEdit: false,
     canDelete: false,
+    reactions: [],
   });
   const withThreads = (store: OptimisticLocalStore, fn: (data: CommentsData) => CommentsData) => {
     const cur = store.getQuery(api.comments.threads, args);
@@ -167,6 +169,12 @@ export function useCommentActions(documentId: string) {
     ),
     markThreadRead: useMutation(api.comments.markThreadRead).withOptimisticUpdate((store, a) =>
       withThreads(store, (d) => ({ ...d, threads: d.threads.map((t) => (t.id === a.threadId ? { ...t, unread: false } : t)) })),
+    ),
+    react: useMutation(api.comments.react).withOptimisticUpdate((store, a) =>
+      withThreads(store, (d) => ({
+        ...d,
+        threads: d.threads.map((t) => ({ ...t, comments: t.comments.map((c) => (c.id === a.commentId ? { ...c, reactions: toggleReaction(c.reactions, a.kind) } : c)) })),
+      })),
     ),
     markThreadUnread: useMutation(api.comments.markThreadUnread).withOptimisticUpdate((store, a) =>
       withThreads(store, (d) => ({ ...d, threads: d.threads.map((t) => (t.id === a.threadId ? { ...t, unread: true } : t)) })),
@@ -414,6 +422,8 @@ export function CommentThreadCard({
               onEditCancel={() => setEditing(null)}
               onEditSave={saveEdit}
               onDelete={() => actions.remove({ commentId: c.id }).then(() => toast.show("Comment deleted"), fail)}
+              canReact={canComment}
+              onReact={(kind) => void actions.react({ commentId: c.id, kind }).catch(fail)}
             />
           ))}
         </ul>
@@ -468,6 +478,8 @@ function CommentRow({
   onEditCancel,
   onEditSave,
   onDelete,
+  canReact,
+  onReact,
 }: {
   c: Comment;
   editing: string | null;
@@ -478,8 +490,14 @@ function CommentRow({
   onEditCancel: () => void;
   onEditSave: () => void;
   onDelete: () => void;
+  /** Whether the reader may react (anyone who can comment on the page). */
+  canReact: boolean;
+  onReact: (kind: ReactionKind) => void;
 }) {
   const isEditing = editing !== null;
+  const reactAnchor = useRef<HTMLButtonElement>(null);
+  const [picking, setPicking] = useState(false);
+  const reactable = canReact && !c.deleted && !isPending(c.id);
   useEffect(() => {
     if (isEditing) requestAnimationFrame(() => editRef.current?.focus());
   }, [isEditing, editRef]);
@@ -491,7 +509,7 @@ function CommentRow({
     <li data-ctx-host="" className={`group relative flex gap-2.5 px-4 py-2 ${isPending(c.id) ? "opacity-60" : ""}`}>
       <Avatar name={c.authorName} url={c.authorAvatarUrl} size={24} className="mt-0.5" />
       <div className="min-w-0 flex-1">
-        <p className="flex items-baseline gap-1 pr-7 text-[12.5px]">
+        <p className={`flex items-baseline gap-1 text-[12.5px] ${reactable ? "pr-14" : "pr-7"}`}>
           <span className="truncate font-semibold text-heading">{c.authorName}</span>
           <span className="flex-none text-faint">
             · {isPending(c.id) ? "Sending…" : formatRelative(c.createdAt)}
@@ -531,7 +549,27 @@ function CommentRow({
         ) : (
           <p className={`mt-0.5 whitespace-pre-wrap break-words text-[13.5px] leading-snug ${c.deleted ? "italic text-faint" : "text-ink"}`}>{c.deleted ? "Comment deleted" : <CommentBody body={c.body} />}</p>
         )}
+        {c.deleted ? null : <ReactionChips reactions={c.reactions} canReact={canReact && !isPending(c.id)} onToggle={onReact} />}
       </div>
+      {reactable && editing === null ? (
+        <>
+          <button
+            ref={reactAnchor}
+            type="button"
+            aria-label={`Add reaction to ${c.authorName}'s comment`}
+            title="Add reaction"
+            aria-haspopup="menu"
+            aria-expanded={picking}
+            onClick={() => setPicking((o) => !o)}
+            className={`absolute top-1.5 grid h-6 w-6 place-items-center rounded-chip text-muted transition-opacity hover:bg-accent-soft hover:text-heading focus-visible:opacity-100 group-hover:opacity-100 pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:opacity-100 ${
+              picking ? "opacity-100" : "opacity-0"
+            } ${items.length ? "right-9" : "right-2"}`}
+          >
+            <SmilePlus size={14} aria-hidden />
+          </button>
+          <ReactionPicker open={picking} anchor={reactAnchor} reactions={c.reactions} onToggle={onReact} onClose={() => setPicking(false)} />
+        </>
+      ) : null}
       {items.length && editing === null && !isPending(c.id) ? (
         <MenuButton
           label={`Options for ${c.authorName}'s comment`}

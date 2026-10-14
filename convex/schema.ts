@@ -30,6 +30,7 @@ import { vAgentOp, vRunNote, vRunStatus } from "./lib/ai/tools/ops";
 import { vReportSource, vResearchStep } from "./lib/ai/research";
 import { vMemoryKind } from "./lib/ai/memory";
 import { vAiFeature } from "./lib/ai/usage";
+import { vReactionKind } from "./lib/reactions";
 
 /**
  * Where a content row lives: exactly one of these is set (convex/lib/scope.ts).
@@ -1317,6 +1318,17 @@ export default defineSchema({
     .index("by_public_id", ["publicId"])
     .index("by_workspace", ["workspaceId"])
     .index("by_owner", ["ownerProfileId"]),
+
+  /** One person's reaction to one comment (convex/lib/reactions.ts). Removed with the comment and with the person's account. */
+  commentReactions: defineTable({
+    commentId: v.id("comments"),
+    profileId: v.id("profiles"),
+    kind: vReactionKind,
+    at: v.number(),
+  })
+    .index("by_comment", ["commentId", "at"])
+    .index("by_comment_profile", ["commentId", "profileId", "kind"])
+    .index("by_profile", ["profileId"]),
 
   readStates: defineTable({
     profileId: v.id("profiles"),

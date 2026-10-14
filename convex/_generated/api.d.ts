@@ -128,6 +128,7 @@ import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_plans from "../lib/plans.js";
 import type * as lib_polar from "../lib/polar.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
+import type * as lib_reactions from "../lib/reactions.js";
 import type * as lib_scope from "../lib/scope.js";
 import type * as lib_seats from "../lib/seats.js";
 import type * as lib_seedContent from "../lib/seedContent.js";
@@ -290,6 +291,7 @@ declare const fullApi: ApiFromModules<{
   "lib/plans": typeof lib_plans;
   "lib/polar": typeof lib_polar;
   "lib/rateLimit": typeof lib_rateLimit;
+  "lib/reactions": typeof lib_reactions;
   "lib/scope": typeof lib_scope;
   "lib/seats": typeof lib_seats;
   "lib/seedContent": typeof lib_seedContent;

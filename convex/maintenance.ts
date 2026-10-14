@@ -91,6 +91,13 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
       .withIndex("by_thread", (q) => q.eq("threadId", t._id))
       .take(Math.max(1, budget.left));
     for (const c of comments) {
+      const reactions = await ctx.db
+        .query("commentReactions")
+        .withIndex("by_comment", (q) => q.eq("commentId", c._id))
+        .take(Math.max(1, budget.left));
+      for (const r of reactions) await ctx.db.delete(r._id);
+      budget.spend(reactions.length);
+      if (budget.exhausted) return false;
       await ctx.db.delete(c._id);
       budget.spend();
     }
@@ -362,6 +369,8 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("sessionsMirror").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("documentPermissions").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("noteSubscriptions").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    // Their reactions to comments (the comments stay).
+    () => ctx.db.query("commentReactions").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     // AI credits: their periods, packs and holds (billing history stays on `payments`).
     () => ctx.db.query("aiCreditPeriods").withIndex("by_account_period", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiCreditPacks").withIndex("by_account_expires", (q) => q.eq("profileId", profileId)).take(200),

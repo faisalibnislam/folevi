@@ -566,14 +566,14 @@ export const FEATURES: Feature[] = [
   {
     slug: "comments",
     name: "Comments",
-    summary: "Comment, reply, @mention and resolve.",
+    summary: "Comment, reply, react, @mention and resolve.",
     title: "Comments and @mentions in your notes",
     description: "Comment on any block in a Folevi note or on the whole note, reply in threads, @mention people who can see the page and resolve threads when they’re done.",
     h1: "Talk about the page, on the page",
     intro:
       "Select a block and press ⌘⌥M, or pick Comment in its menu. The thread sits next to the text it’s about, with replies, @mentions and a button to resolve it.",
     plans: "Every plan, including Free.",
-    updated: "2026-10-01",
+    updated: "2026-10-14",
     art: "art-16",
     visual: "comments",
     sections: [
@@ -589,7 +589,11 @@ export const FEATURES: Feature[] = [
       {
         id: "threads",
         title: "Threads, replies and resolving",
-        body: <p>Reply in the thread, edit or delete your own comments, copy a link to a comment, or mark it unread. Resolve a thread when it’s done; replying to it opens it again.</p>,
+        body: (
+          <p>
+            Reply in the thread, edit or delete your own comments, copy a link to a comment, or mark it unread. React to a comment with one of six simple marks (Agree, Love it, Done, Looking, Funny, Idea) instead of writing “+1”; hover a reaction to see who added it. Reactions don’t send notifications. Resolve a thread when it’s done; replying to it opens it again.
+          </p>
+        ),
       },
       {
         id: "mentions",

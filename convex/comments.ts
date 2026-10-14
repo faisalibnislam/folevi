@@ -9,6 +9,7 @@ import { consume } from "./lib/rateLimit";
 import { identityImageUrl } from "./lib/identityImages";
 import { mentionedIds, notify } from "./lib/notify";
 import { insertScoped, scopeOfRow } from "./lib/scope";
+import { REACTION_KINDS, REACTION_NAMES_SHOWN, vReactionKind, type ReactionKind } from "./lib/reactions";
 
 function cleanBody(body: unknown): InlineNode[] {
   const issues = validateInline(body, "body");
@@ -29,10 +30,20 @@ async function liveBlock(ctx: QueryCtx, doc: Doc<"documents">, blockId: string):
   return block && block.documentId === doc._id && !block.deletedAt ? block : null;
 }
 
+/** Deletes a comment's reactions (the comment was deleted, or is about to be). */
+async function deleteReactions(ctx: MutationCtx, commentId: Id<"comments">) {
+  const rows = await ctx.db
+    .query("commentReactions")
+    .withIndex("by_comment", (q) => q.eq("commentId", commentId))
+    .take(1000);
+  for (const r of rows) await ctx.db.delete(r._id);
+}
+
 /**
  * Every comment thread on a document, newest activity first, plus a per-block summary of the open ones
- * (for the "2 comments · 8:18 AM" line under a block). Readers see comments; commenters and above may
- * add them; authors edit their own; authors and people who manage the page delete them.
+ * (for the "2 comments · 8:18 AM" line under a block). Readers see comments and their reactions;
+ * commenters and above may add them; authors edit their own; authors and people who manage the page
+ * delete them.
  */
 export const threads = query({
   args: { documentId: v.string() },
@@ -55,6 +66,23 @@ export const threads = query({
         people.set(id, p && p.status !== "deleted" ? { name: p.displayName, avatarUrl: await identityImageUrl(ctx, p.avatarFileId) } : { name: "Former member", avatarUrl: null });
       }
       return people.get(id)!;
+    };
+    // Reactions on a comment, one entry per kind in the usual order: how many, whether the caller is one of
+    // them, and who else (the first few names; the caller shows as "You" in the app).
+    const reactionsOf = async (commentId: Id<"comments">) => {
+      const rows = await ctx.db
+        .query("commentReactions")
+        .withIndex("by_comment", (q) => q.eq("commentId", commentId))
+        .take(500);
+      const groups = new Map<ReactionKind, { kind: ReactionKind; count: number; mine: boolean; names: string[] }>();
+      for (const r of rows) {
+        const g = groups.get(r.kind) ?? { kind: r.kind, count: 0, mine: false, names: [] };
+        g.count++;
+        if (r.profileId === profile._id) g.mine = true;
+        else if (g.names.length < REACTION_NAMES_SHOWN) g.names.push((await person(r.profileId)).name);
+        groups.set(r.kind, g);
+      }
+      return REACTION_KINDS.flatMap((k) => (groups.has(k) ? [groups.get(k)!] : []));
     };
     const blocks = new Map<string, Doc<"blocks"> | null>();
     const blockOf = async (id: string) => {
@@ -93,6 +121,7 @@ export const threads = query({
           mine,
           canEdit: mine && !c.deletedAt && accessAtLeast(access, "comment"),
           canDelete: !c.deletedAt && ((mine && accessAtLeast(access, "comment")) || canManage),
+          reactions: c.deletedAt ? [] : await reactionsOf(c._id),
         });
       }
       const block = t.blockId ? await blockOf(t.blockId) : null;
@@ -397,7 +426,10 @@ async function purgeThread(ctx: MutationCtx, thread: Doc<"commentThreads">) {
     .query("comments")
     .withIndex("by_thread", (q) => q.eq("threadId", thread._id))
     .take(500);
-  for (const c of comments) await ctx.db.delete(c._id);
+  for (const c of comments) {
+    await deleteReactions(ctx, c._id);
+    await ctx.db.delete(c._id);
+  }
   const notes = await ctx.db
     .query("notifications")
     .withIndex("by_thread", (q) => q.eq("threadId", thread._id))
@@ -423,6 +455,7 @@ export const remove = mutation({
     const own = comment.authorId === profile._id && accessAtLeast(access, "comment");
     if (!own && !accessAtLeast(access, "manage")) fail("forbidden", "You can't delete this comment.");
     await ctx.db.patch(comment._id, { deletedAt: Date.now(), body: [] });
+    await deleteReactions(ctx, comment._id);
     const thread = (await ctx.db.get(comment.threadId))!;
     const rest = await ctx.db
       .query("comments")
@@ -438,6 +471,30 @@ export const remove = mutation({
       .take(500);
     for (const n of notes) if (n.commentId === comment.publicId && n.body !== undefined) await ctx.db.patch(n._id, { body: undefined });
     return { threadDeleted: false };
+  },
+});
+
+/**
+ * Adds your reaction of `kind` to a comment, or takes it back if it's there. Anyone who can comment on the
+ * page can react (guests with comment access too). Reactions notify nobody.
+ */
+export const react = mutation({
+  args: { commentId: v.string(), kind: vReactionKind },
+  handler: async (ctx, args) => {
+    const { profile, comment, access } = await commentFor(ctx, args.commentId);
+    await assertWritable(ctx, profile);
+    if (!accessAtLeast(access, "comment")) fail("forbidden", "You can't react to comments on this document.");
+    await consume(ctx, "comment", profile._id);
+    const existing = await ctx.db
+      .query("commentReactions")
+      .withIndex("by_comment_profile", (q) => q.eq("commentId", comment._id).eq("profileId", profile._id).eq("kind", args.kind))
+      .first();
+    if (existing) {
+      await ctx.db.delete(existing._id);
+      return { reacted: false };
+    }
+    await ctx.db.insert("commentReactions", { commentId: comment._id, profileId: profile._id, kind: args.kind, at: Date.now() });
+    return { reacted: true };
   },
 });
 

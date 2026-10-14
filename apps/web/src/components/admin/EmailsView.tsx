@@ -70,7 +70,7 @@ export function EmailsView() {
             when the signed provider webhook is configured, and only for events whose signature was verified.
           </p>
           <p className="mt-1.5">
-            Addresses that hard-bounce, complain or unsubscribe stop getting product email (<Mono>recipient_suppressed</Mono>); security and sign-in email still goes. To look deeper, open
+            Addresses that hard-bounce, complain or that Resend has suppressed stop getting product email (<Mono>recipient_suppressed</Mono>); security and sign-in email still goes. To look deeper, open
             Resend → <strong>Emails</strong> and search by the email id.
           </p>
         </Callout>

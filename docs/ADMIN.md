@@ -216,16 +216,17 @@ attempts, quotas and the audit trail.
 
 ## 7. Email operations: honesty rules
 
-- **"Accepted" is not "delivered".** `accepted` means Mailtrap accepted the message for
+- **"Accepted" is not "delivered".** `accepted` means Resend accepted the message for
   sending. The console says so on the Emails page and the dashboard.
-- Delivery, bounce and complaint states appear only when the **signed Mailtrap webhook** is
-  configured (`MAILTRAP_WEBHOOK_SECRET`), and only for events whose signature was verified. If
+- Delivery, bounce and complaint states appear only when the **signed Resend webhook** is
+  configured (`RESEND_WEBHOOK_SECRET`), and only for events whose signature was verified. If
   it isn't configured, the Emails page says so plainly rather than showing empty states as
   good news.
 - Each attempt shows its **Delivery** state (delivered, soft bounce, bounced, spam complaint,
-  rejected) and the provider events behind it. For more detail, search Mailtrap's **Email
-  Logs** by message id.
-- Product email to an address that hard-bounced, complained or unsubscribed is skipped as
+  rejected, suppressed) and the provider events behind it. The provider shows as "Resend"; rows
+  from before the move show as "Mailtrap (legacy)" or "Loops (legacy)". For more detail, open
+  Resend → **Emails** and search by the email id.
+- Product email to an address that hard-bounced, complained or that Resend suppressed is skipped as
   `recipient_suppressed`; security and sign-in email still goes.
 - Recipients are shown only as redacted hints (`a***@e***.com`). Invite emails on workspace
   pages are redacted the same way.

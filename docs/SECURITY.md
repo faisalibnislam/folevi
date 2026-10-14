@@ -166,7 +166,7 @@ Exhausted windows are recorded in `rateLimitEvents` and every rejection is logge
 ## Encryption
 
 Traffic is encrypted in transit (TLS/HSTS). Data at rest is encrypted by the infrastructure providers
-(Convex, Vercel, Mailtrap). Folevi is **not** end-to-end encrypted: server-side search, sharing,
+(Convex, Vercel, Resend). Folevi is **not** end-to-end encrypted: server-side search, sharing,
 exports and abuse handling require the server to process content.
 
 ## Data retention
@@ -195,7 +195,7 @@ Backups: Convex provides deployment backups and point-in-time export (`npx conve
 | --- | --- | --- |
 | Convex | Database, backend functions, file storage, accounts (Better Auth runs here) | Account, workspace and document data, files, password hashes, encrypted two-step secrets, sessions |
 | Vercel | Web hosting | Request metadata, logs |
-| Mailtrap | Transactional email delivery (open/click tracking off); receiving email to support@folevi.com | Recipient email and the rendered email (names, titles, links; no note bodies); support emails people send us |
+| Resend | Transactional email delivery (open/click tracking off); receiving email to support@folevi.com | Recipient email and the rendered email (names, titles, links; no note bodies); support emails people send us |
 | Google (Gemini API) | AI Assistant, only when used | The request and the notes it needs (not stored or used for training) |
 | Polar | Merchant of record for paid plans and AI credit packs: checkout, tax, receipts, customer portal (not configured yet) | The buyer's email and billing details they enter at checkout, the product bought, seat count, and Folevi's internal ids (profile and workspace ids) in metadata; card details stay with Polar and its processor. Never note content |
 
@@ -210,5 +210,6 @@ Backups: Convex provides deployment backups and point-in-time export (`npx conve
   you can't open"); a visitor of its public link sees those titles in its links. Restricted pages' titles
   never appear.
 - Auth0 was previously a subprocessor; it is no longer used.
-- Loops (the previous email provider) is no longer used; Mailtrap sends all email. Its account, webhook
-  and DNS records are removed per `docs/EMAIL_OPERATIONS.md` §9.
+- Mailtrap and, before it, Loops (earlier email providers) are no longer used; Resend sends all email
+  and receives support mail. Their accounts, webhooks and DNS records are removed per
+  `docs/EMAIL_OPERATIONS.md` §10.

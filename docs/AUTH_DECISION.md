@@ -32,7 +32,7 @@ revocation model where a signed-out device kept a valid token until it expired.
 
 - **Fewer vendors and subprocessors.** Credentials live in the same Convex deployment as the rest of the
   account data. Auth0 is no longer a subprocessor (`docs/SECURITY.md`), and identity email goes through
-  the same email pipeline (now Mailtrap) as every other email (`docs/EMAIL_DECISION.md`) without link extraction.
+  the same email pipeline (now Resend) as every other email (`docs/EMAIL_DECISION.md`) without link extraction.
 - **Instant session revocation.** Sessions are rows in Folevi's own database. Every backend call checks
   that the session behind the token still exists (`requireActiveSession`), and because live queries read
   that row, revoking a session signs the device out at once, not when a token expires.
@@ -124,7 +124,7 @@ suspension).
 - **Development tools can't reach production:** the development mailbox is refused in Convex when
   `FOLEVI_ENV=production`, needs `FOLEVI_DEV_MAILBOX_SECRET` (compared in constant time) everywhere
   else, and `scripts/check-prod-env.mjs` fails a production build if that secret is set on Vercel or
-  Convex. Non-production sends go to the Mailtrap sandbox or only reach `@example.com`, `@test.com` or allowlisted addresses.
+  Convex. Non-production sends only reach `@example.com`, `@test.com` or allowlisted addresses.
 - **Logs:** identity actions log event names and outcome codes only; never tokens, links, codes or full
   addresses.
 
@@ -152,7 +152,7 @@ suspension).
   origin), `FOLEVI_ENV`; non-production only: `FOLEVI_DEV_MAILBOX_SECRET`, `FOLEVI_AUTH_RATE_LIMIT_SCALE`.
   Web: `FOLEVI_DEV_MAILBOX_SECRET` locally only. There are no `AUTH0_*` or `FOLEVI_DEV_AUTH_*` variables
   any more. See `.env.example`, `scripts/setup-local.mjs` and `docs/DEPLOYMENT.md`.
-- **Identity email** depends on the email provider being configured (`MAILTRAP_API_TOKEN` and a verified
+- **Identity email** depends on the email provider being configured (`RESEND_API_KEY` and a verified
   `mail.folevi.com`); without it nobody can confirm an address or reset a password. The templates
   (`auth_verify_email`, `auth_password_reset`) ship with the code.
 

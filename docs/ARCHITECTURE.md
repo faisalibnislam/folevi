@@ -20,7 +20,7 @@
           │ sync.ts: push (idempotent ops), pull (by workspace seq), head    │
           │ documents/blocks/tasks/comments/sharing/collections/search/files │
           │ admin.ts + adminAuditLogs (append-only)                          │
-          │ email.ts / authEmails.ts → @folevi/email → Mailtrap · identity.ts│
+          │ email.ts / authEmails.ts → @folevi/email → Resend · identity.ts  │
           │ crons: deletion jobs, reminders, retention, digest, metrics      │
           └──────────────────────────────────────────────────────────────────┘
 ```
@@ -102,7 +102,7 @@ Content tables all carry `workspaceId` and a `seq` stamped from the workspace ch
 - `devMailbox` (non-production only: captured identity emails)
 - Better Auth component tables (`convex/betterAuth/schema.ts`): users, sessions, credential accounts,
   verification tokens, two-factor secrets and backup codes, JWKS, rate limits
-- `emailSendAttempts`, `emailProviderEvents` (signed Mailtrap webhooks only), `emailSuppressions` (hashed addresses)
+- `emailSendAttempts`, `emailProviderEvents` (signed Resend webhooks only), `emailSuppressions` (hashed addresses)
 - `featureFlags`, `systemSettings`, `builtInTemplates`, `rateLimits`, `rateLimitEvents`
 - `adminAuditLogs` (append-only), `deletionJobs`, `metrics`, `metricsDaily`, `deployments`
 
@@ -140,11 +140,12 @@ export ZIPs after a day; any new table that stores `Id<"_storage">` must be adde
 
 `packages/email` defines every template (manifest, variable schema, and the HTML + plain text compiled in
 the repo into `src/generated/templates.ts`) and renders them with `renderEmail()`. Convex actions send
-through the Mailtrap Email API with bounded retries and a local attempt log that also guards against
-double sends; signed Mailtrap webhooks record delivery, bounces and complaints and suppress product email
-to bounced addresses. Identity emails (email confirmation, password reset) are created by Better Auth in
+through the Resend API with bounded retries, an idempotency key per attempt and a local attempt log
+that also guards against double sends; signed Resend webhooks (`/webhooks/resend`) record delivery,
+bounces and complaints and suppress product email to bounced addresses, and turn mail received for
+support@ and security@folevi.com into support tickets. Identity emails (email confirmation, password reset) are created by Better Auth in
 `convex/auth.ts` and sent by `convex/authEmails.ts` through the same pipeline; outside production they are
-also written to the development mailbox, and email goes to the Mailtrap sandbox or test addresses only. Details: `docs/EMAIL_DECISION.md`, `docs/EMAIL_OPERATIONS.md`.
+also written to the development mailbox, and email goes to test or allowlisted addresses only. Details: `docs/EMAIL_DECISION.md`, `docs/EMAIL_OPERATIONS.md`.
 
 ## Background jobs (convex/crons.ts)
 

@@ -15,7 +15,7 @@ This page describes what exists in this repository today, what has been verified
 | Admin console (`app.folevi.com/admin`) | **Live.** Server-enforced platform roles (two-step verification required), append-only audit log, no content viewer (`docs/ADMIN.md`). The first super admin was bootstrapped on production on 2026-09-29. |
 | Backend (Convex) | **Live** (production deployment `fastidious-clownfish-123`, deployed by the Vercel build). Integration tests run against `convex-test`, end-to-end tests against a local backend. |
 | Identity (built-in accounts) | **Live.** Better Auth inside Convex: email + password, confirmed email, optional authenticator-app two-step verification, backup codes, sessions with instant revocation (`docs/AUTH_DECISION.md`). |
-| Email (Mailtrap) | **Live.** All eleven templates (confirmation, password reset, new device, deletion, invites, mentions, comments, digest, shares, access changes) are rendered in the repository with the app's look and sent through Mailtrap, the only provider (`docs/EMAIL_OPERATIONS.md`). |
+| Email (Resend) | **Live.** All eleven templates (confirmation, password reset, new device, deletion, invites, mentions, comments, digest, shares, access changes) are rendered in the repository with the app's look and sent through Resend, the only provider, which also receives support@folevi.com mail (`docs/EMAIL_OPERATIONS.md`). |
 | AI Assistant (Gemini) | **Live.** Server-side only (`convex/ai.ts`); the key is a Convex environment variable. |
 | Payments (Polar) | **Not configured.** Personal and Team plans, the trial, AI credits, seats and limits work; paid plans and credit packs can't be bought until the Polar variables are set and the plan migration has run (`docs/BILLING.md`). |
 | Folevi for Mac (`apps/desktop`) | **Local use only.** An Electron shell that loads `app.folevi.com`, so it matches the web exactly; it adds Quick Add (⌥Space), a menu bar icon, open at login, Mac notifications and the Dock badge. Signed with a personal Apple Development certificate, not notarized, not distributed (`docs/DESKTOP.md`). The earlier native Swift app is archived on the tag `native-mac-archive`. |
@@ -138,9 +138,9 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
 
 - **Still to check on production:** signing out another session from Settings → Security, creating and
   revoking a public link, and export (`docs/DEPLOYMENT.md`, first-release checklist).
-- **Email:** Mailtrap sends everything, with its signed webhook reporting deliveries and bounces to the
-  admin email log (verified in production 2026-09-29). The Convex `LOOPS_*` variables are removed; the
-  Loops DNS records and sending domain are removed by the owner per `docs/EMAIL_OPERATIONS.md` §9.
+- **Email:** Resend sends everything and receives support mail, with its signed webhook reporting
+  deliveries and bounces to the admin email log and filing support email as tickets. Mailtrap and, before
+  it, Loops were used earlier; their leftovers are removed by the owner per `docs/EMAIL_OPERATIONS.md` §10.
 - **Payments:** Polar isn't configured on production yet, and the plan migration hasn't run there
   (`docs/BILLING.md`, owner checklist).
 - **Account model:** production runs the new model (Personal is not a workspace, workspace plans, members
@@ -158,8 +158,8 @@ Commands and suites are listed in `docs/TESTING.md`. As of 2026-09-29:
 ## Next
 
 1. Run the account-model migration on production (`docs/ACCOUNT_MODEL_PLAN.md` §3a).
-2. Finish the first-release checklist on production and remove the Loops leftovers
-   (`docs/EMAIL_OPERATIONS.md` §9).
+2. Finish the first-release checklist on production and remove the Mailtrap and Loops leftovers
+   (`docs/EMAIL_OPERATIONS.md` §10).
 3. Polar on production (sandbox first), then run the plan migration, so plans and credit packs can be
    bought (`docs/BILLING.md`).
 4. Folevi for Mac distribution: Developer ID signing, notarization, a universal build and updates.

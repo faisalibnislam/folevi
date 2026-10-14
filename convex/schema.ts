@@ -443,7 +443,7 @@ export default defineSchema({
     documentId: v.id("documents"),
     ...scoped,
     publicId: v.string(),
-    reason: v.union(v.literal("idle"), v.literal("close"), v.literal("before_restore"), v.literal("manual"), v.literal("import"), v.literal("ai_run"), v.literal("mcp")),
+    reason: v.union(v.literal("idle"), v.literal("close"), v.literal("before_restore"), v.literal("manual"), v.literal("import"), v.literal("ai_run"), v.literal("mcp"), v.literal("api")),
     title: v.string(),
     content: v.optional(v.string()),
     chunkCount: v.optional(v.number()),
@@ -1566,6 +1566,51 @@ export default defineSchema({
   })
     .index("by_email", ["emailId"])
     .index("by_address_message", ["addressId", "rfcMessageId"])
+    .index("by_profile", ["profileId"])
+    .index("by_created", ["createdAt"]),
+
+  /**
+   * Personal access tokens for Folevi's REST API (convex/apiTokens.ts, /api/v1): what a script may do
+   * (scopes, as for connected apps) and where (places). Only a hash of the token is kept; the token itself
+   * is shown once, when it's made.
+   */
+  apiTokens: defineTable({
+    profileId: v.id("profiles"),
+    name: v.string(),
+    /** base64url SHA-256 of the whole token ("fvpat_…"). */
+    tokenHash: v.string(),
+    /** The token's first characters, to tell tokens apart in Settings ("fvpat_Ab12…"). */
+    hint: v.string(),
+    /** notes:read, notes:write, tasks:read, tasks:write. */
+    scopes: v.array(v.string()),
+    /** Places it may use: your Personal, and these workspaces. */
+    personal: v.boolean(),
+    workspaceIds: v.array(v.id("workspaces")),
+    createdAt: v.number(),
+    /** Unset: it doesn't expire. */
+    expiresAt: v.optional(v.number()),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_hash", ["tokenHash"])
+    .index("by_profile", ["profileId"]),
+
+  /**
+   * REST API writes sent with an Idempotency-Key: the answer, kept for a day, so a retried request gets the
+   * same answer instead of making the change twice. Bodies hold ids, titles and links, never note content.
+   */
+  apiRequests: defineTable({
+    tokenId: v.id("apiTokens"),
+    profileId: v.id("profiles"),
+    /** base64url SHA-256 of the token id and the key the client sent. */
+    key: v.string(),
+    /** Hash of the method, path and body: the same key with another request is refused. */
+    requestHash: v.string(),
+    status: v.number(),
+    body: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_key", ["key"])
+    .index("by_token", ["tokenId"])
     .index("by_profile", ["profileId"])
     .index("by_created", ["createdAt"]),
 

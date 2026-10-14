@@ -12,6 +12,14 @@ export async function sha256Hex(value: string): Promise<string> {
   return toHex(await crypto.subtle.digest("SHA-256", enc.encode(value)));
 }
 
+/** base64url SHA-256 without padding: how bearer tokens are stored (OAuth access tokens, API tokens). */
+export async function sha256Base64url(value: string): Promise<string> {
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(value)));
+  let bin = "";
+  for (const b of digest) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 /**
  * A secret from the environment, or a fixed stand-in on development and test deployments. Production never
  * falls back: a known stand-in would let anyone forge signed links or reverse keyed hashes. (The deploy check,

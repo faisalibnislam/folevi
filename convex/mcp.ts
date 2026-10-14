@@ -13,7 +13,7 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { blocksToMarkdown, folderPath, localDate, markdownToBlocks, rankBetween, rankSequence, repeatProps, LIMITS, SCHEMA_VERSION, ulid, type RepeatRule, type SyncOp, type WireBlock } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireProfile, resolveScope } from "./lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { createDocument } from "./lib/create";
@@ -70,6 +70,18 @@ async function profileForAuthUser(ctx: QueryCtx, userId: string): Promise<Doc<"p
   return rows.find((p) => p.status === "active") ?? null;
 }
 
+/**
+ * What a caller may reach: places (Personal, workspaces), pages shared from elsewhere, and whether it may
+ * change what's already written. An MCP grant has it, and so does a personal access token (convex/api.ts).
+ */
+export type Reach = Pick<Doc<"mcpGrants">, "personal" | "workspaceIds" | "includeShared" | "createOnly">;
+
+/** Who a write is made by and how it shows: the sync device (`mcp:<client>`, `api:<token>`) and the version reason. */
+export interface Writer {
+  device: string;
+  reason: "mcp" | "api";
+}
+
 /** A grant with the person, still usable: the account is active and the grant hasn't been revoked. */
 async function grantContext(ctx: QueryCtx, grantId: Id<"mcpGrants">) {
   const grant = await ctx.db.get(grantId);
@@ -79,14 +91,14 @@ async function grantContext(ctx: QueryCtx, grantId: Id<"mcpGrants">) {
   return { grant, profile };
 }
 
-interface Place {
+export interface Place {
   id: string;
   name: string;
   scope: Scope;
 }
 
-/** The places a grant reaches that the person can still open (a workspace they left drops out). */
-async function grantPlaces(ctx: QueryCtx, grant: Doc<"mcpGrants">, profile: Doc<"profiles">): Promise<Place[]> {
+/** The places a grant (or token) reaches that the person can still open (a workspace they left drops out). */
+export async function grantPlaces(ctx: QueryCtx, grant: Pick<Reach, "personal" | "workspaceIds">, profile: Doc<"profiles">): Promise<Place[]> {
   const out: Place[] = [];
   if (grant.personal) out.push({ id: "personal", name: "Personal", scope: personalScope(profile._id) });
   for (const wid of grant.workspaceIds) {
@@ -120,10 +132,10 @@ function writePlace(places: Place[], arg: unknown): Place {
 
 const scopeArgOf = (place: Place): ScopeArg => (place.id === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: place.id });
 
-const link = (publicId: string) => `${appUrl()}/d/${publicId}`;
+export const link = (publicId: string) => `${appUrl()}/d/${publicId}`;
 
 /** A note this connection may read: in one of its places (or shared with the person, when allowed). */
-async function readableHere(ctx: QueryCtx, grant: Doc<"mcpGrants">, profile: Doc<"profiles">, places: Place[], noteId: string): Promise<Doc<"documents">> {
+export async function readableHere(ctx: QueryCtx, grant: Pick<Reach, "includeShared">, profile: Doc<"profiles">, places: Place[], noteId: string): Promise<Doc<"documents">> {
   const NOT_HERE = "There's no note with that id that this connection can open.";
   const doc = await getDocumentByPublicId(ctx, noteId);
   if (!doc || doc.inTrash || doc.deletedAt !== undefined || doc.kind === "template") fail("not_found", NOT_HERE);
@@ -133,7 +145,7 @@ async function readableHere(ctx: QueryCtx, grant: Doc<"mcpGrants">, profile: Doc
 }
 
 /** A note this connection may add to: in one of its places, where the person can edit. */
-async function writableHere(ctx: QueryCtx, profile: Doc<"profiles">, places: Place[], noteId: string): Promise<Doc<"documents">> {
+export async function writableHere(ctx: QueryCtx, profile: Doc<"profiles">, places: Place[], noteId: string): Promise<Doc<"documents">> {
   const doc = await getDocumentByPublicId(ctx, noteId);
   if (!doc || doc.inTrash || doc.deletedAt !== undefined || doc.kind === "template" || !places.some((p) => inScope(doc, p.scope))) {
     fail("not_found", "There's no note with that id that this connection can change.");
@@ -142,7 +154,7 @@ async function writableHere(ctx: QueryCtx, profile: Doc<"profiles">, places: Pla
   return doc;
 }
 
-async function placeOf(ctx: QueryCtx, doc: Doc<"documents">, places: Place[]): Promise<string> {
+export async function placeOf(ctx: QueryCtx, doc: Doc<"documents">, places: Place[]): Promise<string> {
   const p = places.find((x) => inScope(doc, x.scope));
   if (p) return p.name;
   const scope = scopeOfRow(doc);
@@ -155,109 +167,133 @@ type Args = Record<string, unknown>;
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 const int = (v: unknown, fallback: number) => (typeof v === "number" && Number.isInteger(v) ? v : fallback);
 
+/** A note's Markdown and where it lives: its place, folder (and the folder's path), tags and link. */
+export async function noteDetail(ctx: QueryCtx, profile: Doc<"profiles">, doc: Doc<"documents">, places: Place[]) {
+  const blocks = await new ReaderLabels(ctx, profile).blocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
+  const folder = doc.folderId ? await ctx.db.get(doc.folderId) : null;
+  let path: string | null = null;
+  if (folder && !folder.deletedAt) {
+    const folders = await scopeFolders(ctx, scopeOfRow(doc));
+    path = folderPath(
+      folders.map((f) => ({ id: f._id as string, name: f.name, parentFolderId: f.parentFolderId ?? null })),
+      folder._id,
+    );
+  }
+  const tags = await ctx.db
+    .query("documentTags")
+    .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+    .take(50);
+  const tagNames: string[] = [];
+  for (const t of tags) {
+    const tag = await ctx.db.get(t.tagId);
+    if (tag) tagNames.push(tag.name);
+  }
+  return {
+    markdown: blocksToMarkdown(blocks),
+    place: await placeOf(ctx, doc, places),
+    folder: folder && !folder.deletedAt ? { id: folder.publicId, name: folder.name, path: path || folder.name } : null,
+    tags: tagNames,
+  };
+}
+
 /** Runs a read tool as the grant's person. Returns structured content (note text wrapped as untrusted). */
 export const read = internalQuery({
   args: { grantId: v.id("mcpGrants"), tool: v.string(), args: v.any() },
   handler: async (ctx, { grantId, tool, args }): Promise<Record<string, unknown>> => {
     const { grant, profile } = await grantContext(ctx, grantId);
-    const places = await grantPlaces(ctx, grant, profile);
-    const a = (args ?? {}) as Args;
-    switch (tool) {
-      case "list_places":
-        return { places: places.map((p) => ({ id: p.id, name: p.name })), includesSharedPages: grant.includeShared };
-
-      case "search_notes": {
-        const limit = int(a.limit, 10);
-        const results: Record<string, unknown>[] = [];
-        for (const p of pickPlaces(places, a.place)) {
-          const found = await searchDocuments(ctx, profile, p.scope, { query: str(a.query), limit });
-          for (const r of found) results.push({ id: r.id, title: r.title || "Untitled", place: p.name, snippet: untrusted("note", { id: r.id }, r.snippet ?? ""), updated: new Date(r.updatedAt).toISOString().slice(0, 10), url: link(r.id) });
-        }
-        results.sort((x, y) => String(y.updated).localeCompare(String(x.updated)));
-        return { results: results.slice(0, limit) };
-      }
-
-      case "get_note": {
-        const doc = await readableHere(ctx, grant, profile, places, str(a.noteId));
-        const blocks = await new ReaderLabels(ctx, profile).blocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
-        const markdown = blocksToMarkdown(blocks);
-        const max = int(a.maxChars, MAX_NOTE_CHARS);
-        const folder = doc.folderId ? await ctx.db.get(doc.folderId) : null;
-        const tags = await ctx.db
-          .query("documentTags")
-          .withIndex("by_document", (q) => q.eq("documentId", doc._id))
-          .take(50);
-        const tagNames: string[] = [];
-        for (const t of tags) {
-          const tag = await ctx.db.get(t.tagId);
-          if (tag) tagNames.push(tag.name);
-        }
-        return {
-          id: doc.publicId,
-          title: doc.title || "Untitled",
-          place: await placeOf(ctx, doc, places),
-          folder: folder && !folder.deletedAt ? folder.name : null,
-          tags: tagNames,
-          updated: new Date(doc.updatedAt).toISOString(),
-          url: link(doc.publicId),
-          ...(markdown.length > max ? { truncated: `Showing the first ${max} of ${markdown.length} characters.` } : {}),
-          markdown: untrusted("note", { id: doc.publicId, title: doc.title || "Untitled" }, markdown.slice(0, max) || "(empty note)"),
-        };
-      }
-
-      case "list_recent_notes": {
-        const limit = int(a.limit, 15);
-        const out: Record<string, unknown>[] = [];
-        for (const p of pickPlaces(places, a.place)) {
-          const notes = await recentNotes(ctx, { profile, scope: p.scope, context: { kind: "none", ids: [] }, today: localDate(Date.now(), profile.timeZone) }, limit);
-          for (const d of notes) out.push({ id: d.publicId, title: d.title || "Untitled", place: p.name, updatedAt: d.updatedAt, url: link(d.publicId) });
-        }
-        out.sort((x, y) => Number(y.updatedAt) - Number(x.updatedAt));
-        return { notes: out.slice(0, limit).map((n) => ({ ...n, updatedAt: new Date(Number(n.updatedAt)).toISOString() })) };
-      }
-
-      case "list_folders": {
-        const out: Record<string, unknown>[] = [];
-        for (const p of pickPlaces(places, a.place)) {
-          const folders = await scopeFolders(ctx, p.scope);
-          // Nested folders also carry their path ("Work / Clients"), so same-named subfolders can be told apart.
-          const links = folders.map((f) => ({ id: f._id as string, name: f.name, parentFolderId: f.parentFolderId ?? null }));
-          for (const f of folders.slice(0, 200)) out.push({ id: f.publicId, name: f.name, path: folderPath(links, f._id), place: p.name });
-        }
-        return { folders: out };
-      }
-
-      case "list_tags": {
-        const out: Record<string, unknown>[] = [];
-        for (const p of pickPlaces(places, a.place)) for (const t of (await scopeTags(ctx, p.scope)).slice(0, 200)) out.push({ id: t.publicId, name: t.name, place: p.name });
-        return { tags: out };
-      }
-
-      case "list_tasks": {
-        const view = (str(a.view) || "today") as TaskView;
-        const today = localDate(Date.now(), profile.timeZone);
-        const out: Record<string, unknown>[] = [];
-        for (const p of pickPlaces(places, a.place)) {
-          for (const t of (await listTasks(ctx, profile, p.scope, view, today)).slice(0, 100)) {
-            out.push({
-              taskId: t.blockId,
-              text: untrusted("note", { task: t.blockId }, t.title || "Untitled task"),
-              status: t.status,
-              dueDate: t.dueDate ?? null,
-              dueTime: t.dueTime ?? null,
-              priority: t.priority,
-              note: { id: t.documentId, title: t.documentTitle || "Untitled" },
-              place: p.name,
-              url: `${link(t.documentId)}#block-${t.blockId}`,
-            });
-          }
-        }
-        return { today, view, tasks: out.slice(0, 150) };
-      }
-    }
-    fail("not_found", `Unknown tool "${tool}".`);
+    return await runRead(ctx, grant, profile, tool, args);
   },
 });
+
+/** A read tool, as a person through what `reach` allows (an MCP grant, or an API token). */
+export async function runRead(ctx: QueryCtx, reach: Reach, profile: Doc<"profiles">, tool: string, args: unknown): Promise<Record<string, unknown>> {
+  const grant = reach;
+  const places = await grantPlaces(ctx, grant, profile);
+  const a = (args ?? {}) as Args;
+  switch (tool) {
+    case "list_places":
+      return { places: places.map((p) => ({ id: p.id, name: p.name })), includesSharedPages: grant.includeShared };
+
+    case "search_notes": {
+      const limit = int(a.limit, 10);
+      const results: Record<string, unknown>[] = [];
+      for (const p of pickPlaces(places, a.place)) {
+        const found = await searchDocuments(ctx, profile, p.scope, { query: str(a.query), limit });
+        for (const r of found) results.push({ id: r.id, title: r.title || "Untitled", place: p.name, snippet: untrusted("note", { id: r.id }, r.snippet ?? ""), updated: new Date(r.updatedAt).toISOString().slice(0, 10), url: link(r.id) });
+      }
+      results.sort((x, y) => String(y.updated).localeCompare(String(x.updated)));
+      return { results: results.slice(0, limit) };
+    }
+
+    case "get_note": {
+      const doc = await readableHere(ctx, grant, profile, places, str(a.noteId));
+      const { markdown, place, folder, tags } = await noteDetail(ctx, profile, doc, places);
+      const max = int(a.maxChars, MAX_NOTE_CHARS);
+      return {
+        id: doc.publicId,
+        title: doc.title || "Untitled",
+        place,
+        folder: folder?.name ?? null,
+        tags,
+        updated: new Date(doc.updatedAt).toISOString(),
+        url: link(doc.publicId),
+        ...(markdown.length > max ? { truncated: `Showing the first ${max} of ${markdown.length} characters.` } : {}),
+        markdown: untrusted("note", { id: doc.publicId, title: doc.title || "Untitled" }, markdown.slice(0, max) || "(empty note)"),
+      };
+    }
+
+    case "list_recent_notes": {
+      const limit = int(a.limit, 15);
+      const out: Record<string, unknown>[] = [];
+      for (const p of pickPlaces(places, a.place)) {
+        const notes = await recentNotes(ctx, { profile, scope: p.scope, context: { kind: "none", ids: [] }, today: localDate(Date.now(), profile.timeZone) }, limit);
+        for (const d of notes) out.push({ id: d.publicId, title: d.title || "Untitled", place: p.name, updatedAt: d.updatedAt, url: link(d.publicId) });
+      }
+      out.sort((x, y) => Number(y.updatedAt) - Number(x.updatedAt));
+      return { notes: out.slice(0, limit).map((n) => ({ ...n, updatedAt: new Date(Number(n.updatedAt)).toISOString() })) };
+    }
+
+    case "list_folders": {
+      const out: Record<string, unknown>[] = [];
+      for (const p of pickPlaces(places, a.place)) {
+        const folders = await scopeFolders(ctx, p.scope);
+        // Nested folders also carry their path ("Work / Clients"), so same-named subfolders can be told apart.
+        const links = folders.map((f) => ({ id: f._id as string, name: f.name, parentFolderId: f.parentFolderId ?? null }));
+        for (const f of folders.slice(0, 200)) out.push({ id: f.publicId, name: f.name, path: folderPath(links, f._id), place: p.name });
+      }
+      return { folders: out };
+    }
+
+    case "list_tags": {
+      const out: Record<string, unknown>[] = [];
+      for (const p of pickPlaces(places, a.place)) for (const t of (await scopeTags(ctx, p.scope)).slice(0, 200)) out.push({ id: t.publicId, name: t.name, place: p.name });
+      return { tags: out };
+    }
+
+    case "list_tasks": {
+      const view = (str(a.view) || "today") as TaskView;
+      const today = localDate(Date.now(), profile.timeZone);
+      const out: Record<string, unknown>[] = [];
+      for (const p of pickPlaces(places, a.place)) {
+        for (const t of (await listTasks(ctx, profile, p.scope, view, today)).slice(0, 100)) {
+          out.push({
+            taskId: t.blockId,
+            text: untrusted("note", { task: t.blockId }, t.title || "Untitled task"),
+            status: t.status,
+            dueDate: t.dueDate ?? null,
+            dueTime: t.dueTime ?? null,
+            priority: t.priority,
+            note: { id: t.documentId, title: t.documentTitle || "Untitled" },
+            place: p.name,
+            url: `${link(t.documentId)}#block-${t.blockId}`,
+          });
+        }
+      }
+      return { today, view, tasks: out.slice(0, 150) };
+    }
+  }
+  fail("not_found", `Unknown tool "${tool}".`);
+}
 
 /** A note as an MCP resource (folevi://note/{id}): its Markdown. */
 export const readResource = internalQuery({
@@ -285,8 +321,8 @@ function blocksFrom(markdown: string, after: string | null): WireBlock[] {
 const lastRootRank = (rows: Doc<"blocks">[]) => rows.filter((r) => r.parentId === null).reduce<string | null>((m, r) => (m === null || r.rank > m ? r.rank : m), null);
 
 /** Applies sync operations as the person, as this connection's device; a refusal or conflict fails it all. */
-async function sync(ctx: MutationCtx, profile: Doc<"profiles">, clientId: string, ops: SyncOp[]): Promise<void> {
-  const engine = new SyncEngine(ctx, profile, `mcp:${clientId}`.slice(0, 64), "app");
+async function sync(ctx: MutationCtx, profile: Doc<"profiles">, device: string, ops: SyncOp[]): Promise<void> {
+  const engine = new SyncEngine(ctx, profile, device.slice(0, 64), "app");
   const results = await engine.applyAll(null, ops);
   const bad = results.find((r) => r.status === "rejected" || r.status === "conflict");
   if (bad) fail("conflict", bad.status === "conflict" ? "The note changed while this was being saved. Read it again and retry." : (bad.error?.message ?? "That couldn't be saved."));
@@ -310,122 +346,156 @@ export const write = internalMutation({
       .withIndex("by_request", (q) => q.eq("requestKey", requestKey))
       .first();
     if (earlier?.outcome === "ok" && earlier.result) return { ...(JSON.parse(earlier.result) as Record<string, unknown>), repeated: true };
-    if (def.changesExisting && grant.createOnly) fail("forbidden", "This connection may only add new notes and tasks, not change existing ones.");
-    await assertWritable(ctx, profile);
     await consume(ctx, "mcpWrite", grant._id);
     await consume(ctx, "mcpWriteDaily", grant._id);
-    const places = await grantPlaces(ctx, grant, profile);
-    const a = (args ?? {}) as Args;
-    const clientId = grant.clientId;
-    let result: Record<string, unknown>;
-    let targets: string[] = [];
-
-    switch (tool) {
-      case "create_note": {
-        const place = writePlace(places, a.place);
-        await requireCreate(ctx, profile, place.scope);
-        let folderId: Id<"folders"> | undefined;
-        if (a.folderId !== undefined) {
-          const folder = await ctx.db
-            .query("folders")
-            .withIndex("by_public_id", (q) => q.eq("publicId", str(a.folderId)))
-            .unique();
-          if (!folder || folder.deletedAt || !inScope(folder, place.scope)) fail("not_found", "That folder isn't in this place.");
-          folderId = folder._id;
-        }
-        if (a.inInbox === true && folderId) fail("invalid_argument", "Use folderId or inInbox, not both.");
-        const blocks = blocksFrom(str(a.markdown), null);
-        if (blocks.length > LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "That note would be too long.");
-        const title = str(a.title).trim().slice(0, 200);
-        // Under the Inbox page (Folevi Web Clipper's clips): a page there, with a card for it at the end of the Inbox.
-        const doc =
-          a.inInbox === true
-            ? await saveToInbox(ctx, profile, { scope: place.scope, scopeArg: scopeArgOf(place) }, title, blocks)
-            : await createDocument(ctx, { scope: place.scope, actor: profile, title, folderId, blocks });
-        targets = [doc.publicId];
-        result = { noteId: doc.publicId, title: doc.title || "Untitled", place: place.name, ...(a.inInbox === true ? { inInbox: true } : {}), url: link(doc.publicId) };
-        break;
-      }
-
-      case "append_to_note": {
-        const doc = await writableHere(ctx, profile, places, str(a.noteId));
-        const rows = await liveBlocks(ctx, doc._id);
-        const blocks = blocksFrom(str(a.markdown), lastRootRank(rows));
-        if (rows.length + blocks.length > LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "The note would have too many blocks.");
-        await snapshot(ctx, doc, profile._id, "mcp");
-        await sync(ctx, profile, clientId, blocks.map((b, i) => ({ opId: opId(requestKey, i), kind: "block.upsert", documentId: doc.publicId, block: b, baseRevision: null, fields: ["content", "position"] })));
-        targets = [doc.publicId];
-        result = { noteId: doc.publicId, title: doc.title || "Untitled", added: blocks.length, url: link(doc.publicId) };
-        break;
-      }
-
-      case "add_task": {
-        let doc: Doc<"documents">;
-        if (a.noteId !== undefined) {
-          doc = await writableHere(ctx, profile, places, str(a.noteId));
-        } else {
-          const place = writePlace(places, a.place);
-          await requireCreate(ctx, profile, place.scope);
-          doc = (await getDocumentByPublicId(ctx, await ensureInbox(ctx, profile, place.scope, scopeArgOf(place), `mcp:${clientId}`.slice(0, 64))))!;
-        }
-        const rows = await liveBlocks(ctx, doc._id);
-        const props: Record<string, unknown> = { checked: false };
-        if (typeof a.dueDate === "string") props.dueDate = a.dueDate;
-        if (typeof a.dueDate === "string" && typeof a.dueTime === "string") props.dueTime = a.dueTime;
-        if (typeof a.repeat === "string" && a.repeat !== "none") {
-          for (const [k, val] of Object.entries(repeatProps({ repeat: a.repeat as RepeatRule["repeat"] }))) if (val !== null) props[k] = val;
-          if (typeof props.dueDate !== "string") props.dueDate = localDate(Date.now(), profile.timeZone);
-        }
-        const block: WireBlock = { id: ulid(), type: "todo", parentId: null, rank: rankBetween(lastRootRank(rows), null), schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text: str(a.text).trim().slice(0, 500) }], props };
-        await sync(ctx, profile, clientId, [{ opId: opId(requestKey, 0), kind: "block.upsert", documentId: doc.publicId, block, baseRevision: null, fields: ["content", "position"] }]);
-        targets = [block.id];
-        result = { taskId: block.id, note: { id: doc.publicId, title: doc.title || "Untitled" }, url: `${link(doc.publicId)}#block-${block.id}` };
-        break;
-      }
-
-      case "complete_task":
-      case "update_task": {
-        const { row, doc } = await taskBlock(ctx, profile, str(a.taskId));
-        if (!places.some((p) => inScope(doc, p.scope))) fail("not_found", "Task not found.");
-        const wire = toWireBlock(row);
-        const props = { ...(wire.props as Record<string, unknown>) };
-        if (tool === "complete_task") props.checked = a.done !== false;
-        else {
-          if (a.dueDate === null) {
-            delete props.dueDate;
-            delete props.dueTime;
-          } else if (typeof a.dueDate === "string") props.dueDate = a.dueDate;
-          if (a.dueTime === null) delete props.dueTime;
-          else if (typeof a.dueTime === "string") {
-            if (typeof props.dueDate !== "string") fail("invalid_argument", "A time needs a due date.");
-            props.dueTime = a.dueTime;
-          }
-          if (typeof a.priority === "string") {
-            if (a.priority === "none") delete props.priority;
-            else props.priority = a.priority;
-          }
-          if (typeof a.repeat === "string") {
-            for (const [k, val] of Object.entries(repeatProps(a.repeat === "none" ? null : { repeat: a.repeat as RepeatRule["repeat"] }))) {
-              if (val === null) delete props[k];
-              else props[k] = val;
-            }
-          }
-        }
-        await snapshot(ctx, doc, profile._id, "mcp");
-        const { revision: _revision, ...block } = { ...wire, props };
-        await sync(ctx, profile, clientId, [{ opId: opId(requestKey, 0), kind: "block.upsert", documentId: doc.publicId, block, baseRevision: row.revision, fields: ["content"] }]);
-        targets = [row.blockId];
-        result = { taskId: row.blockId, done: props.checked === true, dueDate: (props.dueDate as string) ?? null, dueTime: (props.dueTime as string) ?? null, priority: (props.priority as string) ?? "none" };
-        break;
-      }
-
-      default:
-        fail("not_found", `Unknown tool "${tool}".`);
-    }
+    const { result, targets } = await runWrite(ctx, grant, profile, tool, args, requestKey, { device: `mcp:${grant.clientId}`, reason: "mcp" });
     await ctx.db.insert("mcpEvents", { grantId: grant._id, profileId: profile._id, tool, targets, outcome: "ok", requestKey, result: JSON.stringify(result), at: Date.now() });
     return result;
   },
 });
+
+/**
+ * A write tool, as a person through what `reach` allows (an MCP grant, or an API token). The caller has
+ * checked the scope and rate limits. Op ids come from `requestKey`, so a retried request changes nothing
+ * twice. Before an existing note changes, a version is saved with `writer.reason`.
+ */
+export async function runWrite(
+  ctx: MutationCtx,
+  reach: Reach,
+  profile: Doc<"profiles">,
+  tool: string,
+  args: unknown,
+  requestKey: string,
+  writer: Writer,
+): Promise<{ result: Record<string, unknown>; targets: string[] }> {
+  const grant = reach;
+  const def = TOOL_BY_NAME.get(tool);
+  if (!def || def.kind !== "write") fail("not_found", `Unknown tool "${tool}".`);
+  if (def.changesExisting && grant.createOnly) fail("forbidden", "This connection may only add new notes and tasks, not change existing ones.");
+  await assertWritable(ctx, profile);
+  const places = await grantPlaces(ctx, grant, profile);
+  const a = (args ?? {}) as Args;
+  const device = writer.device;
+  let result: Record<string, unknown>;
+  let targets: string[] = [];
+
+  switch (tool) {
+    case "create_note": {
+      const place = writePlace(places, a.place);
+      await requireCreate(ctx, profile, place.scope);
+      let folderId: Id<"folders"> | undefined;
+      if (a.folderId !== undefined) {
+        const folder = await ctx.db
+          .query("folders")
+          .withIndex("by_public_id", (q) => q.eq("publicId", str(a.folderId)))
+          .unique();
+        if (!folder || folder.deletedAt || !inScope(folder, place.scope)) fail("not_found", "That folder isn't in this place.");
+        folderId = folder._id;
+      }
+      if (a.inInbox === true && folderId) fail("invalid_argument", "Use folderId or inInbox, not both.");
+      const blocks = blocksFrom(str(a.markdown), null);
+      if (blocks.length > LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "That note would be too long.");
+      const title = str(a.title).trim().slice(0, 200);
+      // Under the Inbox page (Folevi Web Clipper's clips): a page there, with a card for it at the end of the Inbox.
+      const doc =
+        a.inInbox === true
+          ? await saveToInbox(ctx, profile, { scope: place.scope, scopeArg: scopeArgOf(place) }, title, blocks)
+          : await createDocument(ctx, { scope: place.scope, actor: profile, title, folderId, blocks });
+      targets = [doc.publicId];
+      result = { noteId: doc.publicId, title: doc.title || "Untitled", place: place.name, ...(a.inInbox === true ? { inInbox: true } : {}), url: link(doc.publicId) };
+      break;
+    }
+
+    case "append_to_note": {
+      const doc = await writableHere(ctx, profile, places, str(a.noteId));
+      const rows = await liveBlocks(ctx, doc._id);
+      const blocks = blocksFrom(str(a.markdown), lastRootRank(rows));
+      if (rows.length + blocks.length > LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "The note would have too many blocks.");
+      await snapshot(ctx, doc, profile._id, writer.reason);
+      await sync(ctx, profile, device, blocks.map((b, i) => ({ opId: opId(requestKey, i), kind: "block.upsert", documentId: doc.publicId, block: b, baseRevision: null, fields: ["content", "position"] })));
+      targets = [doc.publicId];
+      result = { noteId: doc.publicId, title: doc.title || "Untitled", added: blocks.length, url: link(doc.publicId) };
+      break;
+    }
+
+    case "add_task": {
+      let doc: Doc<"documents">;
+      if (a.noteId !== undefined) {
+        doc = await writableHere(ctx, profile, places, str(a.noteId));
+      } else {
+        const place = writePlace(places, a.place);
+        await requireCreate(ctx, profile, place.scope);
+        doc = (await getDocumentByPublicId(ctx, await ensureInbox(ctx, profile, place.scope, scopeArgOf(place), device.slice(0, 64))))!;
+      }
+      const rows = await liveBlocks(ctx, doc._id);
+      const props: Record<string, unknown> = { checked: false };
+      if (typeof a.dueDate === "string") props.dueDate = a.dueDate;
+      if (typeof a.dueDate === "string" && typeof a.dueTime === "string") props.dueTime = a.dueTime;
+      if (typeof a.priority === "string" && a.priority !== "none") props.priority = a.priority;
+      if (typeof a.assigneeId === "string") props.assigneeId = await checkedAssignee(ctx, profile, doc, a.assigneeId);
+      if (typeof a.repeat === "string" && a.repeat !== "none") {
+        for (const [k, val] of Object.entries(repeatProps({ repeat: a.repeat as RepeatRule["repeat"] }))) if (val !== null) props[k] = val;
+        if (typeof props.dueDate !== "string") props.dueDate = localDate(Date.now(), profile.timeZone);
+      }
+      const block: WireBlock = { id: ulid(), type: "todo", parentId: null, rank: rankBetween(lastRootRank(rows), null), schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text: str(a.text).trim().slice(0, 500) }], props };
+      await sync(ctx, profile, device, [{ opId: opId(requestKey, 0), kind: "block.upsert", documentId: doc.publicId, block, baseRevision: null, fields: ["content", "position"] }]);
+      targets = [block.id];
+      result = { taskId: block.id, note: { id: doc.publicId, title: doc.title || "Untitled" }, url: `${link(doc.publicId)}#block-${block.id}` };
+      break;
+    }
+
+    case "complete_task":
+    case "update_task": {
+      const { row, doc } = await taskBlock(ctx, profile, str(a.taskId));
+      if (!places.some((p) => inScope(doc, p.scope))) fail("not_found", "Task not found.");
+      const wire = toWireBlock(row);
+      const props = { ...(wire.props as Record<string, unknown>) };
+      if (tool === "complete_task") props.checked = a.done !== false;
+      else {
+        if (typeof a.done === "boolean") props.checked = a.done;
+        if (a.dueDate === null) {
+          delete props.dueDate;
+          delete props.dueTime;
+        } else if (typeof a.dueDate === "string") props.dueDate = a.dueDate;
+        if (a.dueTime === null) delete props.dueTime;
+        else if (typeof a.dueTime === "string") {
+          if (typeof props.dueDate !== "string") fail("invalid_argument", "A time needs a due date.");
+          props.dueTime = a.dueTime;
+        }
+        if (typeof a.priority === "string") {
+          if (a.priority === "none") delete props.priority;
+          else props.priority = a.priority;
+        }
+        if (typeof a.repeat === "string") {
+          for (const [k, val] of Object.entries(repeatProps(a.repeat === "none" ? null : { repeat: a.repeat as RepeatRule["repeat"] }))) {
+            if (val === null) delete props[k];
+            else props[k] = val;
+          }
+        }
+      }
+      await snapshot(ctx, doc, profile._id, writer.reason);
+      const { revision: _revision, ...block } = { ...wire, props };
+      await sync(ctx, profile, device, [{ opId: opId(requestKey, 0), kind: "block.upsert", documentId: doc.publicId, block, baseRevision: row.revision, fields: ["content"] }]);
+      targets = [row.blockId];
+      result = { taskId: row.blockId, done: props.checked === true, dueDate: (props.dueDate as string) ?? null, dueTime: (props.dueTime as string) ?? null, priority: (props.priority as string) ?? "none" };
+      break;
+    }
+
+    default:
+      fail("not_found", `Unknown tool "${tool}".`);
+  }
+  return { result, targets };
+}
+
+/** Who a new task may be assigned to: yourself, or in a workspace, one of its members. */
+async function checkedAssignee(ctx: QueryCtx, profile: Doc<"profiles">, doc: Doc<"documents">, id: string): Promise<string> {
+  if (id === profile._id) return id;
+  const scope = scopeOfRow(doc);
+  const pid = ctx.db.normalizeId("profiles", id);
+  if (!pid || scope.kind !== "workspace") fail("invalid_argument", "A task here can only be assigned to you.");
+  if (!(await membership(ctx, pid, scope.workspaceId))) fail("invalid_argument", "That person isn't a member of this workspace.");
+  return pid;
+}
 
 /** Records a read, a refusal or a failed write (writes that worked are recorded by `write`), and marks the grant used. */
 export const record = internalMutation({

@@ -27,6 +27,7 @@ import {
 } from "./lib/mcp/protocol";
 import { checkArgs, describeTool, PROMPTS, TOOL_BY_NAME, toolAllowed, TOOLS, weeklyReviewMessages } from "./lib/mcp/tools";
 import type { Authorized } from "./mcp";
+import { sha256Base64url } from "./lib/crypto";
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const NOTE_URI = /^folevi:\/\/note\/([0-9A-Za-z]{10,64})$/;
@@ -73,12 +74,7 @@ function cors(origin: string | null): Record<string, string> {
 }
 
 /** base64url SHA-256 without padding: how the OAuth provider stores tokens. */
-async function hashToken(token: string): Promise<string> {
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)));
-  let bin = "";
-  for (const b of digest) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
+const hashToken = sha256Base64url;
 
 function challenge(error?: "invalid_token" | "insufficient_scope", scope?: string): string {
   const parts = [`resource_metadata="${resourceMetadataUrl()}"`];

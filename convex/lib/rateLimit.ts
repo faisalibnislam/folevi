@@ -56,6 +56,11 @@ export const DEFAULT_RATE_RULES = {
   mcpSearch: { limit: 120, windowMs: 60_000 },
   mcpWrite: { limit: 30, windowMs: 60_000 },
   mcpWriteDaily: { limit: 500, windowMs: 24 * 60 * 60_000 },
+  /** The REST API (/api/v1), per personal access token: the same budgets as a connected app. */
+  apiRead: { limit: 300, windowMs: 60_000 },
+  apiSearch: { limit: 120, windowMs: 60_000 },
+  apiWrite: { limit: 30, windowMs: 60_000 },
+  apiWriteDaily: { limit: 500, windowMs: 24 * 60 * 60_000 },
 } satisfies Record<string, RateRule>;
 
 export type RateRuleName = keyof typeof DEFAULT_RATE_RULES;

@@ -138,6 +138,7 @@ export const TOOLS: ToolDef[] = [
         text: { type: "string", description: "What needs doing.", minLength: 1, maxLength: 500 },
         dueDate: DATE,
         dueTime: TIME,
+        priority: { type: "string", enum: ["none", "low", "medium", "high"] },
         repeat: REPEAT,
         noteId: NOTE_ID,
         place: PLACE,

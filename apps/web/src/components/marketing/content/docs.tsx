@@ -542,6 +542,117 @@ export const DOC_ARTICLES: DocArticle[] = [
     ),
   },
   {
+    slug: "rest-api",
+    title: "The Folevi REST API",
+    nav: "REST API",
+    description: "Read and add notes and tasks from your own scripts and from automation tools like Zapier, n8n and Make, with a personal access token.",
+    published: "2026-10-14",
+    updated: "2026-10-14",
+    body: () => (
+      <>
+        <p>
+          The REST API lets your own scripts, and tools like Zapier, n8n and Make, work with Folevi: search and read notes, create notes from Markdown, add to a note, and add, list and complete tasks. It answers in JSON at <code>https://app.folevi.com/api/v1</code>. The full description, for API explorers and code generators, is at{" "}
+          <a href="https://app.folevi.com/api/v1/openapi.json">/api/v1/openapi.json</a> (OpenAPI 3.1).
+        </p>
+        <h2 id="tokens">Make a token</h2>
+        <p>
+          Open Settings → Connected apps and choose <strong>New token</strong> under Personal access tokens. Give it a name, choose what it may do and where (your Personal, and any workspaces you pick), and when it expires: in 30 days, 90 days, a year, or never. Copy the token when it’s shown. It starts with <code>fvpat_</code> and appears only once: Folevi keeps just a fingerprint of it.
+        </p>
+        <Table
+          label="Token scopes"
+          head={["Scope", "What it allows"]}
+          rows={[
+            ["notes:read", "Search notes, list recent ones and read a note as Markdown."],
+            ["notes:write", "Create a note and add Markdown to the end of one."],
+            ["tasks:read", "List tasks by status and due date."],
+            ["tasks:write", "Add a task, complete it, or change its date, time, priority or repeat."],
+          ]}
+        />
+        <p>
+          A token works as you, so it never reaches more than you can open, and only in the places you gave it. Treat it like a password: keep it in your tool’s secret settings, never in code you share. Revoke it in Settings and it stops working at once. You can have up to 20 tokens.
+        </p>
+        <h2 id="requests">Send a request</h2>
+        <p>Send the token in the Authorization header. Replace <code>YOUR_TOKEN</code> with yours.</p>
+        <pre>
+          <code>{`curl https://app.folevi.com/api/v1/places \\
+  -H "Authorization: Bearer YOUR_TOKEN"`}</code>
+        </pre>
+        <p>Search notes, or leave out <code>q</code> to list the most recently edited, a page at a time (pass <code>nextCursor</code> back as <code>cursor</code>):</p>
+        <pre>
+          <code>{`curl "https://app.folevi.com/api/v1/notes?q=roadmap&limit=5" \\
+  -H "Authorization: Bearer YOUR_TOKEN"`}</code>
+        </pre>
+        <p>Read one note as Markdown, with its folder path, tags and link:</p>
+        <pre>
+          <code>{`curl https://app.folevi.com/api/v1/notes/NOTE_ID \\
+  -H "Authorization: Bearer YOUR_TOKEN"`}</code>
+        </pre>
+        <p>Create a note (in your Inbox here), then add to it:</p>
+        <pre>
+          <code>{`curl https://app.folevi.com/api/v1/notes \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: 4f1c2a9e-meeting-notes" \\
+  -d '{"title": "Meeting notes", "markdown": "## Decisions\\n\\n- Ship on Friday", "inInbox": true}'
+
+curl https://app.folevi.com/api/v1/notes/NOTE_ID/append \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"markdown": "- [ ] Send the summary"}'`}</code>
+        </pre>
+        <p>Add a task (to your Inbox page when no <code>noteId</code> is given), list what’s due, and check it off:</p>
+        <pre>
+          <code>{`curl https://app.folevi.com/api/v1/tasks \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"text": "Call the venue", "dueDate": "2026-10-20", "priority": "high"}'
+
+curl "https://app.folevi.com/api/v1/tasks?status=open&due_before=2026-10-31" \\
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+curl -X PATCH https://app.folevi.com/api/v1/tasks/TASK_ID \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"completed": true}'`}</code>
+        </pre>
+        <Table
+          label="Endpoints"
+          head={["Endpoint", "What it does"]}
+          rows={[
+            ["GET /places", "Your Personal and the workspaces the token may use, with their ids."],
+            ["GET /notes", "Search with q, or list recent notes. Filter with place; page with limit and cursor."],
+            ["GET /notes/{id}", "One note: title, place, folder and its path, tags, link, dates and Markdown."],
+            ["POST /notes", "Create a note: title, markdown, and optionally place, folderId or inInbox."],
+            ["POST /notes/{id}/append", "Add markdown to the end of a note."],
+            ["GET /tasks", "Tasks, filtered by place, status (open, done, all) and due_before."],
+            ["POST /tasks", "Add a task: text, and optionally noteId, place, dueDate, dueTime, priority, assigneeId and repeat."],
+            ["PATCH /tasks/{id}", "Complete a task or change its dueDate, dueTime, priority or repeat."],
+          ]}
+        />
+        <h2 id="safety">Retries and history</h2>
+        <p>
+          Send an <code>Idempotency-Key</code> header (any unique string, a UUID is ideal) with a write. If the same request arrives again within 24 hours, Folevi answers as it did the first time instead of creating a second note or task, and adds the header <code>Idempotent-Replayed: true</code>. The same key with a different request is refused.
+        </p>
+        <p>
+          Before the API changes a note that already exists, Folevi saves a version of it, so anything can be undone from the note’s history. Changes made through the API show in Changes as a connected app’s.
+        </p>
+        <h2 id="errors">Errors and limits</h2>
+        <p>
+          Errors always look like <code>{`{"error": {"code": "…", "message": "…"}}`}</code>, with the status that fits: 400 for a malformed request, 401 for a missing, revoked or expired token, 403 when the token lacks the scope (<code>insufficient_scope</code>) or the place, 404 for a note or task it can’t reach, 409 when a note changed while saving, 422 for a field that isn’t valid, and 429 when you’ve sent too many.
+        </p>
+        <ul>
+          <li>Reads: up to 300 a minute per token. Searches: up to 120 a minute.</li>
+          <li>Writes: up to 30 a minute and 500 a day per token.</li>
+          <li>A 429 comes with <code>Retry-After</code>, the seconds to wait.</li>
+          <li>A new note can hold up to 100,000 characters of Markdown, and an addition up to 20,000.</li>
+        </ul>
+        <p>
+          Browsers can call the API from any site: it uses only the token, never your Folevi sign-in, so a page can’t use your session.
+        </p>
+      </>
+    ),
+  },
+  {
     slug: "web-clipper",
     title: "Clip web pages with Folevi Web Clipper",
     nav: "Web clipper",

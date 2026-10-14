@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
+import { ApiTokensCard } from "./ApiTokens";
 
 /** How each tool reads in the activity list. */
 const TOOL_LABELS: Record<string, string> = {
@@ -134,6 +135,8 @@ export function ConnectedAppsSection() {
           </ul>
         )}
       </Card>
+
+      <ApiTokensCard />
     </div>
   );
 }

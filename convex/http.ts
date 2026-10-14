@@ -1,6 +1,7 @@
 import { httpRouter } from "convex/server";
 import { polarWebhook } from "./billing";
 import { mcpHttp } from "./mcpServer";
+import { restApiHttp } from "./restApiServer";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import {
@@ -258,6 +259,9 @@ http.route({
  * access token. Apps use https://app.folevi.com/mcp, which the web app forwards to this route.
  */
 for (const method of ["POST", "GET", "DELETE", "OPTIONS"] as const) http.route({ path: "/mcp", method, handler: mcpHttp });
+
+// Folevi's REST API v1 (convex/restApiServer.ts), served as https://app.folevi.com/api/v1.
+for (const method of ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"] as const) http.route({ pathPrefix: "/api/v1/", method, handler: restApiHttp });
 
 /**
  * A person's tasks as an iCalendar feed (convex/calendarFeeds.ts), for calendar apps. The token in the

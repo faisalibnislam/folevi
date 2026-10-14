@@ -1,0 +1,358 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Folevi REST API",
+    "version": "1.0.0",
+    "description": "Read and add notes and tasks in Folevi from scripts and automation tools. Authenticate with a personal access token from Settings > Connected apps, sent as `Authorization: Bearer fvpat_...`. Every request runs as you, limited to the places and scopes you gave the token. Errors are always `{ \"error\": { \"code\", \"message\" } }`.",
+    "contact": { "name": "Folevi support", "email": "support@folevi.com", "url": "https://folevi.com/docs/rest-api" }
+  },
+  "servers": [{ "url": "https://app.folevi.com/api/v1" }],
+  "security": [{ "personalAccessToken": [] }],
+  "tags": [
+    { "name": "Places", "description": "Your Personal and the workspaces the token may use." },
+    { "name": "Notes", "description": "Search, read, create and add to notes." },
+    { "name": "Tasks", "description": "To-dos in your notes." }
+  ],
+  "paths": {
+    "/places": {
+      "get": {
+        "tags": ["Places"],
+        "operationId": "listPlaces",
+        "summary": "List the places this token can use",
+        "description": "Works with any scope.",
+        "responses": {
+          "200": {
+            "description": "The places.",
+            "content": { "application/json": { "schema": { "type": "object", "required": ["data"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Place" } } } } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/notes": {
+      "get": {
+        "tags": ["Notes"],
+        "operationId": "listNotes",
+        "summary": "Search notes, or list the most recently edited",
+        "description": "With `q`, the best matches for the words (at most 20, no further pages). Without it, notes newest first, a page at a time: pass `nextCursor` back as `cursor` for the next page. Needs `notes:read`.",
+        "parameters": [
+          { "$ref": "#/components/parameters/Place" },
+          { "name": "q", "in": "query", "description": "Words to search for.", "schema": { "type": "string", "maxLength": 200 } },
+          { "name": "limit", "in": "query", "description": "At most this many (search: 1 to 20, default 10; recent: 1 to 50, default 20).", "schema": { "type": "integer", "minimum": 1, "maximum": 50 } },
+          { "name": "cursor", "in": "query", "description": "`nextCursor` from the previous page.", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of notes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "nextCursor"],
+                  "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/NoteSummary" } }, "nextCursor": { "type": ["string", "null"] } }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      },
+      "post": {
+        "tags": ["Notes"],
+        "operationId": "createNote",
+        "summary": "Create a note from Markdown",
+        "description": "Creates a note in a place (Personal when left out and allowed), optionally in a folder or under your Inbox page. Needs `notes:write`. Send an `Idempotency-Key` so a retry doesn't create it twice.",
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "markdown"],
+                "additionalProperties": false,
+                "properties": {
+                  "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+                  "markdown": { "type": "string", "maxLength": 100000, "description": "Headings, lists, to-dos (- [ ]), tables and code." },
+                  "place": { "type": "string", "description": "\"personal\" or a workspace id from /places." },
+                  "folderId": { "type": "string", "description": "A folder in that place." },
+                  "inInbox": { "type": "boolean", "description": "Put it under your Inbox page in that place (not with folderId)." }
+                }
+              },
+              "example": { "title": "Meeting notes", "markdown": "## Decisions\n\n- Ship on Friday\n- [ ] Send the summary", "inInbox": true }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Created.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreatedNote" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/notes/{id}": {
+      "get": {
+        "tags": ["Notes"],
+        "operationId": "getNote",
+        "summary": "Read a note as Markdown",
+        "description": "Needs `notes:read`. A note outside the token's places, or one you can't open, is a 404.",
+        "parameters": [{ "$ref": "#/components/parameters/NoteId" }],
+        "responses": {
+          "200": { "description": "The note.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Note" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/notes/{id}/append": {
+      "post": {
+        "tags": ["Notes"],
+        "operationId": "appendToNote",
+        "summary": "Add Markdown to the end of a note",
+        "description": "What's already in the note stays as it is; a version is saved first, so the change can be undone from version history. Needs `notes:write`.",
+        "parameters": [{ "$ref": "#/components/parameters/NoteId" }, { "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["markdown"], "additionalProperties": false, "properties": { "markdown": { "type": "string", "minLength": 1, "maxLength": 20000 } } } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Added.",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "id": { "type": "string" }, "title": { "type": "string" }, "added": { "type": "integer", "description": "Blocks added." }, "url": { "type": "string", "format": "uri" } } } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/tasks": {
+      "get": {
+        "tags": ["Tasks"],
+        "operationId": "listTasks",
+        "summary": "List tasks",
+        "description": "To-dos from your notes, by due date. Needs `tasks:read`.",
+        "parameters": [
+          { "$ref": "#/components/parameters/Place" },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["open", "done", "all"], "default": "open" } },
+          { "name": "due_before", "in": "query", "description": "Only tasks due on or before this date (YYYY-MM-DD). Tasks without a date are left out.", "schema": { "type": "string", "format": "date" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tasks.",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "required": ["data", "nextCursor"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Task" } }, "nextCursor": { "type": "null" } } }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      },
+      "post": {
+        "tags": ["Tasks"],
+        "operationId": "createTask",
+        "summary": "Add a task",
+        "description": "Adds a to-do to the end of a note, or to your Inbox page in the place when no note is given. Needs `tasks:write`.",
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["text"],
+                "additionalProperties": false,
+                "properties": {
+                  "text": { "type": "string", "minLength": 1, "maxLength": 500 },
+                  "noteId": { "type": "string" },
+                  "place": { "type": "string" },
+                  "dueDate": { "type": "string", "format": "date" },
+                  "dueTime": { "type": "string", "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$", "description": "HH:MM, only with dueDate." },
+                  "priority": { "$ref": "#/components/schemas/Priority" },
+                  "assigneeId": { "type": "string", "description": "You, or a member of the note's workspace." },
+                  "repeat": { "$ref": "#/components/schemas/Repeat" }
+                }
+              },
+              "example": { "text": "Call the venue", "dueDate": "2026-10-20", "priority": "high" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Added.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "id": { "type": "string" }, "note": { "type": "object", "properties": { "id": { "type": "string" }, "title": { "type": "string" }, "url": { "type": "string", "format": "uri" } } }, "url": { "type": "string", "format": "uri" } }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/tasks/{id}": {
+      "patch": {
+        "tags": ["Tasks"],
+        "operationId": "updateTask",
+        "summary": "Complete or change a task",
+        "description": "Checks a task off (or on again) and changes its date, time, priority or repeat. The task's text isn't changed. Needs `tasks:write`.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }, { "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": false,
+                "properties": {
+                  "completed": { "type": "boolean" },
+                  "dueDate": { "type": ["string", "null"], "format": "date", "description": "null clears it." },
+                  "dueTime": { "type": ["string", "null"], "description": "HH:MM, or null." },
+                  "priority": { "$ref": "#/components/schemas/Priority" },
+                  "repeat": { "$ref": "#/components/schemas/Repeat" }
+                }
+              },
+              "example": { "completed": true }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "id": { "type": "string" }, "completed": { "type": "boolean" }, "dueDate": { "type": ["string", "null"] }, "dueTime": { "type": ["string", "null"] }, "priority": { "$ref": "#/components/schemas/Priority" } }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "personalAccessToken": { "type": "http", "scheme": "bearer", "description": "A personal access token (fvpat_...) from Settings > Connected apps." }
+    },
+    "parameters": {
+      "Place": { "name": "place", "in": "query", "description": "\"personal\" or a workspace id from /places. Left out: every place the token can use.", "schema": { "type": "string" } },
+      "NoteId": { "name": "id", "in": "path", "required": true, "description": "A note id (the last part of its link, app.folevi.com/d/<id>).", "schema": { "type": "string" } },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "description": "Any unique string (a UUID). Sent again with the same request within 24 hours, it returns the first answer (with `Idempotent-Replayed: true`) instead of changing anything again. The same key with a different request is a 422.",
+        "schema": { "type": "string", "maxLength": 255 }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": { "error": { "type": "object", "required": ["code", "message"], "properties": { "code": { "type": "string" }, "message": { "type": "string" } } } }
+      },
+      "Place": { "type": "object", "required": ["id", "name"], "properties": { "id": { "type": "string", "description": "\"personal\" or a workspace id." }, "name": { "type": "string" } } },
+      "PlaceRef": { "type": "object", "properties": { "id": { "type": ["string", "null"] }, "name": { "type": "string" } } },
+      "NoteSummary": {
+        "type": "object",
+        "required": ["id", "title", "place", "updatedAt", "url"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "place": { "$ref": "#/components/schemas/PlaceRef" },
+          "snippet": { "type": "string", "description": "Search results only: where the words appear." },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "url": { "type": "string", "format": "uri" }
+        }
+      },
+      "Note": {
+        "type": "object",
+        "required": ["id", "title", "place", "folder", "tags", "url", "createdAt", "updatedAt", "markdown"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "place": { "$ref": "#/components/schemas/PlaceRef" },
+          "folder": { "type": ["object", "null"], "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "path": { "type": "string", "description": "Nested folders joined with \" / \"." } } },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "url": { "type": "string", "format": "uri" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "markdown": { "type": "string" }
+        }
+      },
+      "CreatedNote": {
+        "type": "object",
+        "properties": { "id": { "type": "string" }, "title": { "type": "string" }, "place": { "oneOf": [{ "$ref": "#/components/schemas/PlaceRef" }, { "type": "null" }] }, "inInbox": { "type": "boolean" }, "url": { "type": "string", "format": "uri" } }
+      },
+      "Task": {
+        "type": "object",
+        "required": ["id", "text", "status", "dueDate", "dueTime", "priority", "note", "place", "url"],
+        "properties": {
+          "id": { "type": "string" },
+          "text": { "type": "string" },
+          "status": { "type": "string", "enum": ["open", "done", "canceled"] },
+          "dueDate": { "type": ["string", "null"], "format": "date" },
+          "dueTime": { "type": ["string", "null"] },
+          "priority": { "$ref": "#/components/schemas/Priority" },
+          "assigneeId": { "type": ["string", "null"] },
+          "note": { "type": "object", "properties": { "id": { "type": "string" }, "title": { "type": "string" }, "url": { "type": "string", "format": "uri" } } },
+          "place": { "$ref": "#/components/schemas/PlaceRef" },
+          "url": { "type": "string", "format": "uri" }
+        }
+      },
+      "Priority": { "type": "string", "enum": ["none", "low", "medium", "high"] },
+      "Repeat": { "type": "string", "enum": ["none", "daily", "weekdays", "weekly", "monthly", "yearly"] }
+    },
+    "responses": {
+      "BadRequest": { "description": "Malformed request (not JSON, a bad parameter, a bad Idempotency-Key).", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Unauthorized": { "description": "No token, or one that's revoked or expired (`unauthorized`).", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Forbidden": { "description": "The token lacks the scope (`insufficient_scope`), can't use that place, or you can only read the note (`forbidden`).", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "NotFound": { "description": "No such note or task that this token can reach (`not_found`).", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Conflict": { "description": "The note changed while this was being saved (`conflict`). Read it again and retry.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "ValidationFailed": { "description": "A field isn't valid (`validation_failed`), or an Idempotency-Key was reused for another request (`idempotency_key_reused`).", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "RateLimited": {
+        "description": "Too many requests for this token (`rate_limited`): 300 reads, 120 searches and 30 writes a minute, 500 writes a day.",
+        "headers": { "Retry-After": { "description": "Seconds to wait.", "schema": { "type": "integer" } } },
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      }
+    }
+  }
+}

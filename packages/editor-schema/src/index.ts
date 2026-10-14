@@ -21,3 +21,4 @@ export * from "./flowchartSvg";
 export * from "./emoji";
 export * as sync from "./sync";
 export type { SyncOp, OpResult, SyncState, SyncStatus, ConflictRecord, ChangedField } from "./sync";
+export * from "./recurrence";

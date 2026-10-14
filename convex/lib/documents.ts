@@ -1,3 +1,4 @@
+import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import {
@@ -312,6 +313,7 @@ export async function syncTaskProjection(
     reminderAt: projection.reminderAt ?? undefined,
     completedAt: projection.completedAt ?? (projection.status === "done" ? doneAt : undefined),
     documentInTrash: doc.inTrash,
+    repeat: projection.repeat ?? undefined,
   };
   // A task is in its document's scope (documents never change scope).
   if (!existing) {
@@ -324,6 +326,10 @@ export async function syncTaskProjection(
   // A reminder set to a new time is a new reminder: it goes out again even if the old one already did.
   const reminderMoved = existing.reminderSentAt !== undefined && existing.reminderAt !== fields.reminderAt;
   await ctx.db.patch(existing._id, { ...fields, ...(reminderMoved ? { reminderSentAt: undefined } : {}), updatedAt: Date.now() });
+  // A repeating to-do just checked off comes back at its next date (right after this edit is saved).
+  if (existing.status === "open" && fields.status === "done" && fields.repeat) {
+    await ctx.scheduler.runAfter(0, internal.tasks.repeatTask, { blockId: row.blockId, actorId });
+  }
 }
 
 export async function lastRootRank(ctx: Ctx, scope: Scope): Promise<string | null> {

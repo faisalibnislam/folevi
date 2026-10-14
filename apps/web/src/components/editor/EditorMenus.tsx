@@ -55,7 +55,8 @@ import {
   LayoutGrid,
   Columns3,
 } from "lucide-react";
-import { FLOWCHART_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT, addDays, sanitizeHref, ulid } from "@folevi/editor-schema";
+import { FLOWCHART_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT, addDays, repeatProps, repeatRule, sanitizeHref, ulid } from "@folevi/editor-schema";
+import { RepeatField } from "./RepeatField";
 import { api } from "@/lib/convex/api";
 import { parseNaturalDate } from "@/lib/nlDate";
 import { useAppState } from "@/lib/app/state";
@@ -2218,8 +2219,13 @@ function TaskDetails({ editor }: { editor: Editor }) {
             <span className="text-xs text-muted">Reminder</span>
             <DateTimeField value={(node.attrs.reminderAt as number | null) ?? null} onChange={(ts) => set({ reminderAt: ts })} aria-label="Reminder" />
           </div>
+          <RepeatField
+            rule={repeatRule({ repeat: node.attrs.repeat, repeatEvery: node.attrs.repeatEvery, repeatDays: node.attrs.repeatDays })}
+            dueDate={(node.attrs.dueDate as string) ?? null}
+            onChange={(rule) => set(repeatProps(rule))}
+          />
           <div className="flex justify-between">
-            <button type="button" className="text-xs text-muted hover:text-ink" onClick={() => set({ dueDate: null, dueTime: null, priority: null, reminderAt: null, assigneeId: null })}>
+            <button type="button" className="text-xs text-muted hover:text-ink" onClick={() => set({ dueDate: null, dueTime: null, priority: null, reminderAt: null, assigneeId: null, ...repeatProps(null) })}>
               Clear all
             </button>
             <button type="submit" className="h-8 ui-btn ui-btn-primary px-3.5 text-xs">

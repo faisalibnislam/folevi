@@ -112,3 +112,23 @@ test("a task can be moved to another page from its menu", async ({ browser }) =>
   await expect(page.getByRole("status").filter({ hasText: "Task moved to Project Atlas Brief" })).toBeVisible();
   await expect(row.getByRole("link")).toContainText("Project Atlas Brief");
 });
+
+test("a repeating to-do comes back at its next date when checked off", async ({ browser }) => {
+  const { page } = await newPerson(browser, "Repeat Person");
+  await showFolders(page);
+  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
+  await page.getByRole("button", { name: "Add task" }).click();
+  const dialog = page.getByRole("dialog", { name: "Quick add task" });
+  await dialog.getByLabel("Task").fill("Water the plants every day");
+  await expect(dialog.getByText("Every day")).toBeVisible();
+  await dialog.getByRole("button", { name: "Add task" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Task added" })).toBeVisible();
+  const row = page.getByRole("listitem").filter({ hasText: "Water the plants" });
+  await expect(row).toBeVisible();
+  await expect(row).not.toContainText("every day");
+
+  // Checked off today: it moves to tomorrow (Upcoming), still open.
+  await row.getByRole("checkbox").click();
+  await page.getByRole("link", { name: /^Upcoming( \d+)?$/ }).click();
+  await expect(page.getByRole("listitem").filter({ hasText: "Water the plants" })).toContainText("Tomorrow");
+});

@@ -12,7 +12,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { blocksToMarkdown, localDate, markdownToBlocks, rankBetween, rankSequence, LIMITS, SCHEMA_VERSION, ulid, type SyncOp, type WireBlock } from "@folevi/editor-schema";
+import { blocksToMarkdown, localDate, markdownToBlocks, rankBetween, rankSequence, repeatProps, LIMITS, SCHEMA_VERSION, ulid, type RepeatRule, type SyncOp, type WireBlock } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { liveBlocks, toWireBlock } from "./lib/documents";
@@ -359,6 +359,10 @@ export const write = internalMutation({
         const props: Record<string, unknown> = { checked: false };
         if (typeof a.dueDate === "string") props.dueDate = a.dueDate;
         if (typeof a.dueDate === "string" && typeof a.dueTime === "string") props.dueTime = a.dueTime;
+        if (typeof a.repeat === "string" && a.repeat !== "none") {
+          for (const [k, val] of Object.entries(repeatProps({ repeat: a.repeat as RepeatRule["repeat"] }))) if (val !== null) props[k] = val;
+          if (typeof props.dueDate !== "string") props.dueDate = localDate(Date.now(), profile.timeZone);
+        }
         const block: WireBlock = { id: ulid(), type: "todo", parentId: null, rank: rankBetween(lastRootRank(rows), null), schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text: str(a.text).trim().slice(0, 500) }], props };
         await sync(ctx, profile, clientId, [{ opId: opId(requestKey, 0), kind: "block.upsert", documentId: doc.publicId, block, baseRevision: null, fields: ["content", "position"] }]);
         targets = [block.id];
@@ -386,6 +390,12 @@ export const write = internalMutation({
           if (typeof a.priority === "string") {
             if (a.priority === "none") delete props.priority;
             else props.priority = a.priority;
+          }
+          if (typeof a.repeat === "string") {
+            for (const [k, val] of Object.entries(repeatProps(a.repeat === "none" ? null : { repeat: a.repeat as RepeatRule["repeat"] }))) {
+              if (val === null) delete props[k];
+              else props[k] = val;
+            }
           }
         }
         await snapshot(ctx, doc, profile._id, "mcp");

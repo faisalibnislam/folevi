@@ -431,6 +431,15 @@
         "high"
       ]
     },
+    "TaskRepeat": {
+      "enum": [
+        "daily",
+        "weekdays",
+        "weekly",
+        "monthly",
+        "yearly"
+      ]
+    },
     "PageDisplay": {
       "enum": [
         "link",
@@ -960,6 +969,15 @@
         },
         "completedAt": {
           "type": "number"
+        },
+        "repeat": {
+          "$ref": "#/$defs/TaskRepeat"
+        },
+        "repeatEvery": {
+          "type": "number"
+        },
+        "repeatDays": {
+          "type": "string"
         },
         "decoration": {
           "$ref": "#/$defs/BlockDecoration"

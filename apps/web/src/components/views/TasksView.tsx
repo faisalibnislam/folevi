@@ -3,7 +3,7 @@
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useDeferredValue, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowRightLeft, CalendarDays, Check, ExternalLink, FileText, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { ArrowRightLeft, CalendarDays, Check, ExternalLink, FileText, Plus, Repeat, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { DocumentPicker, type Target } from "@/components/app/QuickAddTask";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -139,6 +139,11 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
       </div>
       {task.priority !== "none" ? (
         <span className={`mt-0.5 rounded-chip px-2 text-[11px] font-medium ${task.priority === "high" ? "bg-coral-soft text-coral-ink" : task.priority === "medium" ? "bg-marigold-soft text-marigold-ink" : "bg-sunken text-muted"}`}>{PRIORITY_LABEL[task.priority as Priority] ?? task.priority}</span>
+      ) : null}
+      {task.repeat ? (
+        <span className="mt-0.5 text-muted" title={task.repeat}>
+          <Repeat size={12} aria-label={task.repeat} />
+        </span>
       ) : null}
       {task.dueDate ? (
         <span className={`mt-0.5 whitespace-nowrap text-xs ${overdue ? "font-medium text-danger" : "text-muted"}`}>

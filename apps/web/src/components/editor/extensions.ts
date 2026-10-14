@@ -2,7 +2,7 @@
 // flat, with `id` (stable block id) and `depth` (nesting) attributes. See convert.ts for the mapping.
 import { Extension, Mark, Node, mergeAttributes, type Attributes, type Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
-import { normalizeLanguage, sanitizeHref } from "@folevi/editor-schema";
+import { normalizeLanguage, sanitizeHref, describeRepeat, repeatRule } from "@folevi/editor-schema";
 import { codeBlockNodeView, mermaidFocusPlugin } from "./codeView";
 
 const blockAttrs = (extra: Attributes = {}): Attributes => ({
@@ -119,6 +119,10 @@ export const Todo = Node.create({
       assigneeId: { ...r("assignee"), keepOnSplit: false, ...camel("assigneeId", "assignee") },
       reminderAt: { ...r("reminder", "number"), keepOnSplit: false, ...camel("reminderAt", "reminder", "number") },
       completedAt: { ...r("completed-at", "number"), keepOnSplit: false, ...camel("completedAt", "completed-at", "number") },
+      // Repeating (packages/editor-schema/src/recurrence.ts). A new line split off one starts plain.
+      repeat: { ...r("repeat"), keepOnSplit: false },
+      repeatEvery: { ...r("repeat-every", "number"), keepOnSplit: false, ...camel("repeatEvery", "repeat-every", "number") },
+      repeatDays: { ...r("repeat-days"), keepOnSplit: false, ...camel("repeatDays", "repeat-days") },
     }),
   parseHTML: () => [{ tag: 'div[data-block="todo"]' }, { tag: "li[data-list=todo]" }],
   renderHTML: ({ HTMLAttributes }) => ["div", mergeAttributes(HTMLAttributes, { "data-block": "todo", class: "fb fb-todo" }), 0],
@@ -158,6 +162,8 @@ export const Todo = Node.create({
         const parts: string[] = [];
         if (current.attrs.dueDate) parts.push(`${current.attrs.dueDate}${current.attrs.dueTime ? ` ${current.attrs.dueTime}` : ""}`);
         if (current.attrs.priority && current.attrs.priority !== "none") parts.push(`${current.attrs.priority} priority`);
+        const rule = repeatRule({ repeat: current.attrs.repeat, repeatEvery: current.attrs.repeatEvery, repeatDays: current.attrs.repeatDays });
+        if (rule) parts.push(describeRepeat(rule).toLowerCase());
         meta.textContent = "";
         meta.dataset.hasDue = current.attrs.dueDate ? "true" : "false";
         meta.dataset.priority = current.attrs.priority ?? "";
@@ -167,6 +173,11 @@ export const Todo = Node.create({
           chip.className = "fb-due-chip";
           chip.dataset.action = "task-details";
           chip.textContent = formatChip(current.attrs.dueDate, current.attrs.dueTime, current.attrs.priority);
+          if (rule) {
+            // A small repeat mark (the arrows of lucide's "repeat"), drawn, not a character.
+            chip.dataset.repeat = "true";
+            chip.insertAdjacentHTML("afterbegin", REPEAT_SVG);
+          }
           chip.setAttribute("aria-label", `Task details: ${parts.join(", ")}`);
           meta.append(chip);
         }
@@ -201,6 +212,9 @@ export const Todo = Node.create({
     };
   },
 });
+
+const REPEAT_SVG =
+  '<svg class="fb-repeat-mark" aria-hidden="true" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>';
 
 function formatChip(date: string | null, time: string | null, priority: string | null): string {
   let s = "";

@@ -26,6 +26,7 @@ const PLACE = { type: "string", description: 'Where to look or write: "personal"
 const NOTE_ID = { type: "string", description: "A note id from search_notes, list_recent_notes or a folevi://note link.", maxLength: 64 };
 const DATE = { type: "string", description: "A date as YYYY-MM-DD.", pattern: "^\\d{4}-\\d{2}-\\d{2}$" };
 const TIME = { type: "string", description: "A time as HH:MM (24-hour), only with a date.", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" };
+const REPEAT = { type: "string", enum: ["none", "daily", "weekdays", "weekly", "monthly", "yearly"], description: "How it repeats: checking it off brings it back at the next date (none stops repeating)." };
 
 const object = (properties: Schema, required: string[] = []): Schema => ({ type: "object", properties, required, additionalProperties: false });
 
@@ -131,6 +132,7 @@ export const TOOLS: ToolDef[] = [
         text: { type: "string", description: "What needs doing.", minLength: 1, maxLength: 500 },
         dueDate: DATE,
         dueTime: TIME,
+        repeat: REPEAT,
         noteId: NOTE_ID,
         place: PLACE,
       },
@@ -150,7 +152,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "update_task",
     title: "Update a task",
-    description: "Changes a to-do's due date, time or priority. The to-do's text isn't changed.",
+    description: "Changes a to-do's due date, time, priority or repeat. The to-do's text isn't changed.",
     scope: "tasks:write",
     kind: "write",
     changesExisting: true,
@@ -161,6 +163,7 @@ export const TOOLS: ToolDef[] = [
         dueDate: { anyOf: [DATE, { type: "null" }], description: "New due date, or null to clear it." },
         dueTime: { anyOf: [TIME, { type: "null" }], description: "New time, or null to clear it." },
         priority: { type: "string", enum: ["none", "low", "medium", "high"] },
+        repeat: REPEAT,
       },
       ["taskId"],
     ),

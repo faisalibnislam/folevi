@@ -232,6 +232,7 @@
   background: var(--color-surface-sunken); color: var(--color-ink-muted); margin-top: 0.15em;
 }
 .fb-due-chip:hover { color: var(--color-ink); }
+.fb-due-chip .fb-repeat-mark { display: inline-block; margin-right: 4px; vertical-align: -1px; }
 .fb-task-meta[data-priority="high"] .fb-due-chip { color: var(--color-coral-ink); background: var(--color-coral-soft); }
 
 /* Toggle */

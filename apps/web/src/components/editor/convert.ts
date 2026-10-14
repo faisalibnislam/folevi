@@ -28,7 +28,7 @@ export const NODE_PROPS: Record<string, string[]> = {
   heading: ["level", ...FORMAT],
   bulleted: [...FORMAT],
   numbered: [...FORMAT],
-  todo: ["checked", "canceled", "dueDate", "dueTime", "priority", "assigneeId", "reminderAt", "completedAt", ...FORMAT],
+  todo: ["checked", "canceled", "dueDate", "dueTime", "priority", "assigneeId", "reminderAt", "completedAt", "repeat", "repeatEvery", "repeatDays", ...FORMAT],
   toggle: ["collapsed", "study", ...FORMAT],
   quote: [...FORMAT],
   callout: ["tone", "icon"],

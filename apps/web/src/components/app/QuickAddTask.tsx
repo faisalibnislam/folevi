@@ -5,6 +5,8 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useState, type KeyboardEvent } from "react";
 import { Inbox, X, FileText, CalendarDays } from "lucide-react";
 import { naturalDateLabel, parseNaturalDate } from "@/lib/nlDate";
+import { describeRepeat, parseRepeatPhrase, repeatProps, stepOccurrence, type RepeatRule } from "@folevi/editor-schema";
+import { Repeat } from "lucide-react";
 import type { WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -48,11 +50,24 @@ export function QuickAddForm({ onClose, currentDoc, onAdded }: { onClose: () => 
   // A date written in the task ("call Sam tomorrow 3pm") sets the due date, unless one was picked by hand
   // or the person said to keep those words as text.
   const [keptAsText, setKeptAsText] = useState<string | null>(null);
+  const [repeatKept, setRepeatKept] = useState<string | null>(null);
+  // "water the plants every monday": a repeat, read first so its day isn't also taken as the due date.
+  const repeat = useMemo(() => {
+    const r = parseRepeatPhrase(title);
+    return r && r.text !== repeatKept && r.rest ? r : null;
+  }, [title, repeatKept]);
+  const text = repeat ? repeat.rest : title;
   const parsed = useMemo(() => {
     if (due) return null;
-    const p = parseNaturalDate(title);
+    const p = parseNaturalDate(text);
     return p && p.text !== keptAsText && p.rest ? p : null;
-  }, [title, due, keptAsText]);
+  }, [text, due, keptAsText]);
+  // A repeat with no date written starts on its first day from today (today itself when it fits).
+  const firstDate = (rule: RepeatRule) => {
+    if (rule.repeat === "monthly" || rule.repeat === "yearly") return today;
+    const yesterday = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1, +today.slice(8, 10)) - 86_400_000).toISOString().slice(0, 10);
+    return stepOccurrence(rule, yesterday, Number(today.slice(8, 10)));
+  };
   const currentInfo = currentDoc ? current?.[currentDoc] : undefined;
   // Default: the open page (if it's a normal page you can see), otherwise the Inbox.
   const effective: Target = target !== undefined ? target : currentDoc && currentInfo && !currentInfo.inTrash ? { id: currentDoc, title: currentInfo.title, icon: currentInfo.icon } : null;
@@ -71,10 +86,11 @@ export function QuickAddForm({ onClose, currentDoc, onAdded }: { onClose: () => 
         try {
           const r = await quickAdd({
             scope,
-            title: parsed ? parsed.rest : title,
+            title: parsed ? parsed.rest : text,
             today,
-            dueDate: due || parsed?.date || undefined,
+            dueDate: due || parsed?.date || (repeat ? firstDate(repeat.rule) : undefined),
             dueTime: due ? time || undefined : parsed?.time,
+            ...(repeat ? { repeat: repeatProps(repeat.rule) } : {}),
             priority: priority === "none" ? undefined : priority,
             documentId: effective?.id,
             deviceId: deviceId ?? undefined,
@@ -107,6 +123,17 @@ export function QuickAddForm({ onClose, currentDoc, onAdded }: { onClose: () => 
         aria-describedby={parsed ? "qa-when" : undefined}
         className="h-11 w-full ui-input rounded-chip px-3 text-[15px] outline-none"
       />
+      {repeat ? (
+        <p className="mt-2 flex items-center gap-2 text-[13px] text-muted">
+          <span className="ui-chip bg-accent-soft text-accent-soft-ink">
+            <Repeat size={13} aria-hidden />
+            <span>{describeRepeat(repeat.rule)}</span>
+            <button type="button" aria-label={`Keep “${repeat.text.trim()}” as text`} title="Keep as text" onClick={() => setRepeatKept(repeat.text)} className="-mr-1 grid h-5 w-5 place-items-center rounded-chip hover:bg-[var(--glass-hover)]">
+              <X size={12} aria-hidden />
+            </button>
+          </span>
+        </p>
+      ) : null}
       {parsed ? (
         <p id="qa-when" className="mt-2 flex items-center gap-2 text-[13px] text-muted">
           <span className="ui-chip bg-accent-soft text-accent-soft-ink">

@@ -1,6 +1,7 @@
 import type { TodoProps } from "./generated/schema";
 import type { WireBlock } from "./types";
 import { plainText } from "./richtext";
+import { describeRepeat, repeatRule } from "./recurrence";
 
 export type TaskStatus = "open" | "done" | "canceled";
 export type TaskView = "inbox" | "today" | "upcoming" | "all" | "completed" | "mine";
@@ -17,6 +18,8 @@ export interface TaskProjection {
   assigneeId: string | null;
   reminderAt: number | null;
   completedAt: number | null;
+  /** How it repeats, in words ("Every Monday"), or null. */
+  repeat: string | null;
 }
 
 /** Derives the task index row from its canonical todo block. The block stays the source of truth. */
@@ -35,6 +38,10 @@ export function projectTask(block: WireBlock, documentId: string): TaskProjectio
     assigneeId: p.assigneeId ?? null,
     reminderAt: p.reminderAt ?? null,
     completedAt: p.completedAt ?? null,
+    repeat: (() => {
+      const rule = repeatRule(block.props as Record<string, unknown>);
+      return rule ? describeRepeat(rule) : null;
+    })(),
   };
 }
 

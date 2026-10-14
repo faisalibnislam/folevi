@@ -1083,6 +1083,8 @@ export default defineSchema({
     reminderAt: v.optional(v.number()),
     reminderSentAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
+    /** How it repeats, in words ("Every Monday"); checking it off moves it to its next date (tasks.repeatTask). */
+    repeat: v.optional(v.string()),
     createdBy: v.id("profiles"),
     updatedAt: v.number(),
     documentInTrash: v.boolean(),

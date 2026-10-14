@@ -3,7 +3,7 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { inboxDocumentId, rankBetween, SCHEMA_VERSION, scopeIdKey, taskViews, ulid, type WireBlock } from "@folevi/editor-schema";
+import { inboxDocumentId, localDate, nextOccurrence, rankBetween, repeatProps, repeatRule, SCHEMA_VERSION, scopeIdKey, taskViews, ulid, type WireBlock } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, PageReader, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { liveBlocks, toWireBlock } from "./lib/documents";
@@ -63,6 +63,7 @@ async function present(ctx: QueryCtx, profile: Doc<"profiles">, tasks: Doc<"task
       assigneeId: t.assigneeId ?? null,
       assigneeName: assignee?.displayName ?? null,
       reminderAt: t.reminderAt ?? null,
+      repeat: t.repeat ?? null,
       completedAt: t.completedAt ?? null,
       updatedAt: t.updatedAt,
     });
@@ -267,6 +268,8 @@ export const quickAdd = mutation({
     priority: v.optional(v.union(v.literal("none"), v.literal("low"), v.literal("medium"), v.literal("high"))),
     documentId: v.optional(v.string()),
     deviceId: v.optional(v.string()),
+    /** A repeat (props repeat, repeatEvery, repeatDays; see editor-schema recurrence.ts). */
+    repeat: v.optional(v.object({ repeat: v.union(v.string(), v.null()), repeatEvery: v.union(v.number(), v.null()), repeatDays: v.union(v.string(), v.null()) })),
   },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
@@ -284,6 +287,8 @@ export const quickAdd = mutation({
     if (args.dueDate) props.dueDate = args.dueDate;
     if (args.dueDate && args.dueTime) props.dueTime = args.dueTime;
     if (args.priority && args.priority !== "none") props.priority = args.priority;
+    const rule = args.repeat ? repeatRule(args.repeat) : null;
+    if (rule) for (const [k, val] of Object.entries(repeatProps(rule))) if (val !== null) props[k] = val;
     const block: WireBlock = {
       id: ulid(),
       type: "todo",
@@ -376,6 +381,43 @@ export const moveToDocument = mutation({
     ]);
     if (results.some((r) => r.status !== "applied")) fail("conflict", "Could not move the task.");
     return { blockId: moved.id };
+  },
+});
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const daysBetween = (a: string, b: string) => Math.round((Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10)) - Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10))) / DAY_MS);
+
+/**
+ * A repeating to-do was checked off (lib/documents.ts syncTaskProjection): it comes back unchecked at its
+ * next date, with its reminder moved by as many days, as one edit by the person who checked it. Nothing
+ * happens if it was unchecked again meanwhile, stopped repeating, or its page went to Trash.
+ */
+export const repeatTask = internalMutation({
+  args: { blockId: v.string(), actorId: v.id("profiles") },
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("blocks")
+      .withIndex("by_block_id", (q) => q.eq("blockId", args.blockId))
+      .unique();
+    if (!row || row.deletedAt !== undefined || row.type !== "todo") return null;
+    const props = row.props as Record<string, unknown>;
+    const rule = repeatRule(props);
+    if (!rule || props.checked !== true || props.canceled === true) return null;
+    const doc = await ctx.db.get(row.documentId);
+    const actor = await ctx.db.get(args.actorId);
+    if (!doc || doc.inTrash || doc.deletedAt !== undefined || !actor || actor.status !== "active") return null;
+    const today = localDate(Date.now(), actor.timeZone);
+    const due = typeof props.dueDate === "string" ? props.dueDate : null;
+    const next = nextOccurrence(rule, due, today);
+    const shift = daysBetween(due ?? today, next);
+    const nextProps: Record<string, unknown> = { ...props, checked: false, dueDate: next };
+    delete nextProps.completedAt;
+    if (typeof props.reminderAt === "number") nextProps.reminderAt = props.reminderAt + shift * DAY_MS;
+    const block = { ...toWireBlock(row), props: nextProps };
+    delete block.revision;
+    const engine = new SyncEngine(ctx, actor, "server");
+    await engine.applyAll(null, [{ opId: ulid(), kind: "block.upsert", documentId: doc.publicId, block, baseRevision: row.revision, fields: ["content"] }]);
+    return null;
   },
 });
 

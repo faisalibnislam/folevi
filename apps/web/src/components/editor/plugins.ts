@@ -7,11 +7,47 @@ import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { LIMITS, normalizeLanguage, ulid } from "@folevi/editor-schema";
 import { blocksInSelection, changeDepth, deleteBlocks, duplicateBlocks, moveBlock, normalizeDepths, turnInto } from "./commands";
 import { TEXT_NODES } from "./convert";
-import { hiddenIndices, neighbourIndex } from "./blockSelectionState";
+import { hiddenIndices, neighbourIndex, syncDomSelection } from "./blockSelectionState";
 import { setBlockSelection } from "./blockSelection";
 import { sliceToText } from "./clipboardText";
 import { clipboardSerializer } from "./clipboardHtml";
 import { announce } from "@/lib/a11y/announce";
+
+/** How long after a click a key may arrive before the browser has said where the click put the caret. */
+const CLICK_SETTLE_MS = 500;
+
+/**
+ * A key pressed right after a click goes where the click put the caret. ProseMirror learns of the new caret
+ * from the browser's "selectionchange", which comes a moment after the click; a key that arrives first (the
+ * first click into a note that just opened, which also focuses it, is the usual case) would act on the old
+ * selection, the start of the note. So shortly after a click, the caret is read from the page before any
+ * key is handled.
+ */
+export const CaretAfterClick = Extension.create({
+  name: "caretAfterClick",
+  addProseMirrorPlugins() {
+    let clickedAt = 0;
+    return [
+      new Plugin({
+        key: new PluginKey("caretAfterClick"),
+        props: {
+          handleDOMEvents: {
+            mousedown: () => {
+              clickedAt = Date.now();
+              return false;
+            },
+            keydown: (view, event) => {
+              if (!clickedAt || Date.now() - clickedAt > CLICK_SETTLE_MS || event.isComposing || event.keyCode === 229) return false;
+              clickedAt = 0;
+              syncDomSelection(view);
+              return false;
+            },
+          },
+        },
+      }),
+    ];
+  },
+});
 
 /** Every top-level block has a unique id; depth is always valid. Runs after every transaction. */
 /** The empty line made for a composition that started over a selected block (see compositionend). */

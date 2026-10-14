@@ -18,9 +18,6 @@ async function addLine(page: Page, line: string) {
   const body = page.getByRole("textbox", { name: "Document body" });
   await expect(body).toHaveAttribute("contenteditable", "true");
   await body.locator("p").first().click();
-  // (A note that just opened may still place the caret at its start once it settles: click again after.)
-  await page.waitForTimeout(1000);
-  await body.locator("p").first().click();
   await page.keyboard.press("End");
   await page.keyboard.press("Enter");
   await page.keyboard.type(line);

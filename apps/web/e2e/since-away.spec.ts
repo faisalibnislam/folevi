@@ -38,8 +38,6 @@ test("back in a note someone changed: who changed it, show the lines, dismiss", 
   const body = guest.page.getByRole("textbox", { name: "Document body" });
   await expect(body).toHaveAttribute("contenteditable", "true");
   await body.locator("p").first().click();
-  await guest.page.waitForTimeout(1000);
-  await body.locator("p").first().click();
   await guest.page.keyboard.press("End");
   await guest.page.keyboard.press("Enter");
   await guest.page.keyboard.type("Where we are now");

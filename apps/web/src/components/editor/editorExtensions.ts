@@ -1,7 +1,7 @@
 import { Placeholder, UndoRedo, Dropcursor, Gapcursor } from "@tiptap/extensions";
 import { ALL_MARKS, ALL_NODES, BlockFormat } from "./extensions";
 import { NODE_VIEW_EXTENSIONS } from "./NodeViews";
-import { BlockDecorations, BlockIdentity, BlockKeymap, MarkdownShortcuts, Triggers, type TriggerState } from "./plugins";
+import { BlockDecorations, BlockIdentity, BlockKeymap, CaretAfterClick, MarkdownShortcuts, Triggers, type TriggerState } from "./plugins";
 import { BlockSelectionExtension } from "./blockSelection";
 import { FindReplace } from "./findReplace";
 import { Autolink } from "./autolink";
@@ -47,6 +47,7 @@ export function editorExtensions({
       showOnlyCurrent: true,
       includeChildren: false,
     }),
+    CaretAfterClick,
     BlockIdentity,
     BlockDecorations,
     BlockKeymap,

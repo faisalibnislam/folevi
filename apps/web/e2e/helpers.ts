@@ -143,7 +143,7 @@ export async function signIn(context: BrowserContext, account: Pick<Account, "em
   await page.goto(`${APP}/signin${opts.returnTo ? `?returnTo=${encodeURIComponent(opts.returnTo)}` : ""}`);
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password", { exact: true }).fill(account.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(/\/two-factor(\?|$)/, { timeout: 20_000 });
   // Avoid reusing a code in the same 30-second window as a previous verification for this account.
   await page.getByLabel("6-digit code").fill(totpCode(account.totpSecret));

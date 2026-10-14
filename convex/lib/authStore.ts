@@ -134,9 +134,9 @@ export async function revokeOAuthClient(ctx: WriteCtx, userId: string, clientId:
   });
 }
 
-/** Removes the Better Auth user and everything attached to it (sessions, credentials, 2FA, connected apps). */
+/** Removes the Better Auth user and everything attached to it (sessions, credentials, 2FA, passkeys, connected apps). */
 export async function deleteAuthUser(ctx: WriteCtx, userId: string): Promise<void> {
-  for (const model of ["session", "account", "twoFactor", "oauthAccessToken", "oauthRefreshToken", "oauthConsent"] as const) {
+  for (const model of ["session", "account", "twoFactor", "passkey", "oauthAccessToken", "oauthRefreshToken", "oauthConsent"] as const) {
     let cursor: string | null = null;
     for (let i = 0; i < 20; i++) {
       const res = (await ctx.runMutation(components.betterAuth.adapter.deleteMany, {

@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { ShieldCheck, ShieldOff } from "lucide-react";
+import { useEffect, useState } from "react";
+import { KeyRound, ShieldCheck, ShieldOff } from "lucide-react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
+import { defaultPasskeyName, passkeysAvailable } from "@/lib/auth/passkeys";
+import { desktop } from "@/lib/desktop";
+import { formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
+import { PromptDialog } from "@/components/ui/PromptDialog";
 import { useToast } from "@/components/ui/Toast";
+import { signOutNow } from "@/components/auth/SignOut";
 import { Alert, PasswordField } from "@/components/auth/fields";
 import { BackupCodes, TotpEnrollment } from "@/components/auth/TwoFactor";
 import { Card } from "./Card";
@@ -174,6 +179,135 @@ function TwoStepCard() {
   );
 }
 
+type PasskeyRow = { id: string; name?: string | null; createdAt?: string | Date | null; backedUp?: boolean };
+
+/** Settings > Security > Passkeys: sign in with Touch ID, Face ID, Windows Hello, a phone or a security key. */
+function PasskeysCard() {
+  const toast = useToast();
+  const { data, isPending } = authClient.useListPasskeys();
+  const passkeys = (data ?? []) as PasskeyRow[];
+  const [supported, setSupported] = useState<boolean | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [renaming, setRenaming] = useState<PasskeyRow | null>(null);
+  const [removing, setRemoving] = useState<PasskeyRow | null>(null);
+  const [signInAgain, setSignInAgain] = useState(false);
+  useEffect(() => {
+    void passkeysAvailable().then(setSupported);
+  }, []);
+  const label = (p: PasskeyRow) => p.name?.trim() || "Passkey";
+
+  return (
+    <Card
+      title="Passkeys"
+      description="Sign in with your fingerprint, face or screen lock instead of typing your password. A passkey only works on Folevi, so it can't be phished or reused."
+    >
+      <ul className="ui-card divide-y divide-line overflow-hidden rounded-control" aria-label="Your passkeys" aria-busy={isPending || undefined}>
+        {isPending ? <li className="px-4 py-3 text-sm text-muted">Loading…</li> : null}
+        {!isPending && passkeys.length === 0 ? <li className="px-4 py-3 text-sm text-muted">No passkeys yet.</li> : null}
+        {passkeys.map((p) => (
+          <li key={p.id} className="flex items-center gap-3 px-4 py-3">
+            <span aria-hidden className="grid h-9 w-9 flex-none place-items-center rounded-control bg-[var(--glass-hover)] text-heading">
+              <KeyRound size={17} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium text-heading">{label(p)}</span>
+              <span className="block text-xs text-muted">
+                {p.createdAt ? `Added ${formatDateTime(new Date(p.createdAt).getTime())}` : "Added earlier"}
+                {p.backedUp ? " · syncs across your devices" : " · on one device"}
+              </span>
+            </span>
+            <Button size="sm" aria-label={`Rename ${label(p)}`} onClick={() => setRenaming(p)}>
+              Rename
+            </Button>
+            <Button size="sm" aria-label={`Remove ${label(p)}`} onClick={() => setRemoving(p)}>
+              Remove
+            </Button>
+          </li>
+        ))}
+      </ul>
+      {supported === false ? (
+        <p className="mt-3 text-sm text-muted">
+          {desktop()
+            ? "The Mac app can't use passkeys yet. Add one in your browser and sign in there with it."
+            : "This browser can't create passkeys. Add one from a browser like Safari, Chrome, Edge or Firefox."}
+        </p>
+      ) : (
+        <Button className="mt-3" variant="primary" disabled={supported !== true} onClick={() => setAdding(true)}>
+          Add a passkey
+        </Button>
+      )}
+      <PromptDialog
+        open={adding}
+        title="Add a passkey"
+        label="Name"
+        initial={defaultPasskeyName()}
+        confirmLabel="Continue"
+        onClose={() => setAdding(false)}
+        onSubmit={async (name) => {
+          const result = await authClient.passkey.addPasskey({ name });
+          if (result?.error) {
+            if ((result.error as { code?: string }).code === "SESSION_NOT_FRESH") setSignInAgain(true);
+            else toast.show(authErrorMessage(result.error), { tone: "error" });
+            return;
+          }
+          toast.show("Passkey added. Next time, choose “Sign in with a passkey”.", { tone: "success" });
+        }}
+      />
+      <PromptDialog
+        open={renaming !== null}
+        title="Rename passkey"
+        label="Name"
+        initial={renaming ? label(renaming) : ""}
+        onClose={() => setRenaming(null)}
+        onSubmit={async (name) => {
+          if (!renaming) return;
+          const { error } = await authClient.passkey.updatePasskey({ id: renaming.id, name });
+          if (error) toast.show(authErrorMessage(error), { tone: "error" });
+        }}
+      />
+      <Dialog
+        open={removing !== null}
+        onClose={() => setRemoving(null)}
+        title="Remove this passkey?"
+        description={removing ? `“${label(removing)}” stops working for Folevi right away. You can also delete it from your device or password manager.` : undefined}
+        size="sm"
+        footer={
+          <>
+            <Button onClick={() => setRemoving(null)}>Cancel</Button>
+            <Button
+              variant="danger"
+              onClick={async () => {
+                const target = removing;
+                setRemoving(null);
+                if (!target) return;
+                const { error } = await authClient.passkey.deletePasskey({ id: target.id });
+                toast.show(error ? authErrorMessage(error) : "Passkey removed", { tone: error ? "error" : "success" });
+              }}
+            >
+              Remove
+            </Button>
+          </>
+        }
+      />
+      <Dialog
+        open={signInAgain}
+        onClose={() => setSignInAgain(false)}
+        title="Sign in again to add a passkey"
+        description="For your security, adding a passkey needs a sign-in from the last 10 minutes. Sign in again and you'll come back here."
+        size="sm"
+        footer={
+          <>
+            <Button onClick={() => setSignInAgain(false)}>Cancel</Button>
+            <Button variant="primary" onClick={() => void signOutNow(`/signin?returnTo=${encodeURIComponent("/settings/security")}`)}>
+              Sign in again
+            </Button>
+          </>
+        }
+      />
+    </Card>
+  );
+}
+
 function PasswordCard() {
   const toast = useToast();
   const [current, setCurrent] = useState("");
@@ -222,6 +356,7 @@ export function SecuritySection() {
   return (
     <>
       <TwoStepCard />
+      <PasskeysCard />
       <PasswordCard />
       <DeleteAccountCard />
     </>

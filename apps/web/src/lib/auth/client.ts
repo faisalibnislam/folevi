@@ -4,15 +4,16 @@ import { createAuthClient } from "better-auth/react";
 import { twoFactorClient } from "better-auth/client/plugins";
 import { convexClient } from "@convex-dev/better-auth/client/plugins";
 import { oauthProviderClient } from "@better-auth/oauth-provider/client";
+import { passkeyClient } from "@better-auth/passkey/client";
 
 /**
  * Browser client for Folevi's built-in accounts (email + password, verified email, authenticator-app
- * two-step verification). Talks to the same-origin /api/auth/* proxy; the session lives in an
+ * two-step verification, passkeys). Talks to the same-origin /api/auth/* proxy; the session lives in an
  * HTTP-only first-party cookie and never in script-readable storage.
  */
 export const authClient = createAuthClient({
   // oauthProviderClient: on the connected-app consent page (/oauth/consent), sends its signed query along.
-  plugins: [convexClient(), twoFactorClient(), oauthProviderClient()],
+  plugins: [convexClient(), twoFactorClient(), oauthProviderClient(), passkeyClient()],
 });
 
 export type AuthErrorLike = { code?: string; message?: string; status?: number } | null | undefined;
@@ -52,6 +53,27 @@ export function authErrorMessage(error: AuthErrorLike, fallback = "Something wen
       return "This link is invalid or has expired. Request a new one.";
     case "SIGNUPS_PAUSED":
       return "New sign-ups are paused right now. Please try again later.";
+    case "SESSION_NOT_FRESH":
+      return "For your security, sign in again first. Then try once more.";
+    case "AUTH_CANCELLED":
+    case "ERROR_CEREMONY_ABORTED":
+    case "REGISTRATION_CANCELLED":
+    case "ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY":
+      return "The passkey request was cancelled or timed out.";
+    case "PASSKEY_NOT_FOUND":
+    case "CHALLENGE_NOT_FOUND":
+    case "AUTHENTICATION_FAILED":
+      return "That passkey didn't work. Try again, or sign in with your email and password.";
+    case "ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED":
+    case "PREVIOUSLY_REGISTERED":
+      return "This device already has a passkey for your account.";
+    case "FAILED_TO_VERIFY_REGISTRATION":
+    case "ERROR_AUTHENTICATOR_GENERAL_ERROR":
+      return "The passkey couldn't be added. Please try again.";
+    case "PASSKEY_ADMIN_NEEDS_CODE":
+      return "Admin accounts sign in with a password and an authenticator code.";
+    case "PASSKEY_NOT_VERIFIED":
+      return "This passkey didn't check it's you, so it can't replace your authenticator code. Sign in with your password instead.";
     case "ACCOUNT_TEMPORARILY_LOCKED":
     case "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE":
       return "Too many incorrect codes. For your security this account is locked for a while. Try again later or reset your password.";

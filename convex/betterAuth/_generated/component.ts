@@ -99,6 +99,21 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               }
             | {
                 data: {
+                  aaguid?: null | string;
+                  backedUp: boolean;
+                  counter: number;
+                  createdAt?: null | number;
+                  credentialID: string;
+                  deviceType: string;
+                  name?: null | string;
+                  publicKey: string;
+                  transports?: null | string;
+                  userId: string;
+                };
+                model: "passkey";
+              }
+            | {
+                data: {
                   clientId: string;
                   clientSecret?: null | string;
                   contacts?: null | Array<string>;
@@ -355,6 +370,44 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "verified"
                     | "failedVerificationCount"
                     | "lockedUntil"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "passkey";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "name"
+                    | "publicKey"
+                    | "userId"
+                    | "credentialID"
+                    | "counter"
+                    | "deviceType"
+                    | "backedUp"
+                    | "transports"
+                    | "createdAt"
+                    | "aaguid"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -805,6 +858,44 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 }>;
               }
             | {
+                model: "passkey";
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "name"
+                    | "publicKey"
+                    | "userId"
+                    | "credentialID"
+                    | "counter"
+                    | "deviceType"
+                    | "backedUp"
+                    | "transports"
+                    | "createdAt"
+                    | "aaguid"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
                 model: "oauthClient";
                 where?: Array<{
                   connector?: "AND" | "OR";
@@ -1046,6 +1137,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | "account"
             | "verification"
             | "twoFactor"
+            | "passkey"
             | "oauthClient"
             | "oauthRefreshToken"
             | "oauthAccessToken"
@@ -1097,6 +1189,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | "account"
             | "verification"
             | "twoFactor"
+            | "passkey"
             | "oauthClient"
             | "oauthRefreshToken"
             | "oauthAccessToken"
@@ -1345,6 +1438,56 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "verified"
                     | "failedVerificationCount"
                     | "lockedUntil"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "passkey";
+                update: {
+                  aaguid?: null | string;
+                  backedUp?: boolean;
+                  counter?: number;
+                  createdAt?: null | number;
+                  credentialID?: string;
+                  deviceType?: string;
+                  name?: null | string;
+                  publicKey?: string;
+                  transports?: null | string;
+                  userId?: string;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "name"
+                    | "publicKey"
+                    | "userId"
+                    | "credentialID"
+                    | "counter"
+                    | "deviceType"
+                    | "backedUp"
+                    | "transports"
+                    | "createdAt"
+                    | "aaguid"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1893,6 +2036,56 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "verified"
                     | "failedVerificationCount"
                     | "lockedUntil"
+                    | "_id";
+                  mode?: "sensitive" | "insensitive";
+                  operator?:
+                    | "lt"
+                    | "lte"
+                    | "gt"
+                    | "gte"
+                    | "eq"
+                    | "in"
+                    | "not_in"
+                    | "ne"
+                    | "contains"
+                    | "starts_with"
+                    | "ends_with";
+                  value:
+                    | string
+                    | number
+                    | boolean
+                    | Array<string>
+                    | Array<number>
+                    | null;
+                }>;
+              }
+            | {
+                model: "passkey";
+                update: {
+                  aaguid?: null | string;
+                  backedUp?: boolean;
+                  counter?: number;
+                  createdAt?: null | number;
+                  credentialID?: string;
+                  deviceType?: string;
+                  name?: null | string;
+                  publicKey?: string;
+                  transports?: null | string;
+                  userId?: string;
+                };
+                where?: Array<{
+                  connector?: "AND" | "OR";
+                  field:
+                    | "name"
+                    | "publicKey"
+                    | "userId"
+                    | "credentialID"
+                    | "counter"
+                    | "deviceType"
+                    | "backedUp"
+                    | "transports"
+                    | "createdAt"
+                    | "aaguid"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:

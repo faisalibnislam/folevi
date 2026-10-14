@@ -1,5 +1,5 @@
-// Folevi identity: email + password, verified email, and an optional authenticator-app second factor (required for platform admins),
-// built on Better Auth (docs/AUTH_DECISION.md). Better Auth owns every piece of credential cryptography
+// Folevi identity: email + password, verified email, an optional authenticator-app second factor (required for platform admins)
+// and passkeys, built on Better Auth (docs/AUTH_DECISION.md). Better Auth owns every piece of credential cryptography
 // (password hashing, TOTP secrets, backup codes, session tokens); this file only configures it.
 //
 // Requests reach Better Auth through Convex HTTP routes (`authComponent.registerRoutes` in http.ts),
@@ -13,6 +13,7 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { bearer } from "better-auth/plugins/bearer";
 import { oauthProvider } from "@better-auth/oauth-provider";
+import { passkey, type PasskeyOptions } from "@better-auth/passkey";
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
@@ -33,6 +34,43 @@ export function siteUrl(): string {
 
 function isProduction(): boolean {
   return process.env.FOLEVI_ENV === "production";
+}
+
+/**
+ * Pages that may use passkeys: the app origin. Outside production, a second local dev server on another
+ * port (apps/web/src/lib/auth/server.ts, FOLEVI_DEV_AUTH_ORIGIN) presents the trusted origin to Better Auth,
+ * but the browser signs the page's real one, so the same host on the usual dev ports counts too.
+ */
+export function passkeyOrigins(): string[] {
+  const site = siteUrl();
+  if (isProduction()) return [site];
+  const { protocol, hostname } = new URL(site);
+  const local = Array.from({ length: 10 }, (_, i) => `${protocol}//${hostname}:${3000 + i}`);
+  return [site, ...local.filter((o) => o !== site)];
+}
+
+/**
+ * Passkey sign-in skips Better Auth's two-step check (that only guards password sign-in), so Folevi decides
+ * here, after the passkey's signature checks out and before a session exists:
+ * - platform admins keep signing in with a password and an authenticator code, since the admin console
+ *   requires that second step;
+ * - anyone else with two-step verification on needs a passkey that checked it's them (fingerprint, face or
+ *   PIN). That is what lets it stand in for the code.
+ */
+type PasskeyEndpointCtx = Parameters<NonNullable<NonNullable<PasskeyOptions["authentication"]>["afterVerification"]>>[0]["ctx"];
+
+async function checkPasskeySignIn(ctx: GenericCtx<DataModel>, authCtx: PasskeyEndpointCtx, credentialId: string, userVerified: boolean) {
+  const stored = (await authCtx.context.adapter.findOne({ model: "passkey", where: [{ field: "credentialID", value: credentialId }] })) as { userId: string } | null;
+  if (!stored) return;
+  const runQuery = (ctx as { runQuery?: (fn: never, args: never) => Promise<unknown> }).runQuery;
+  const admin = runQuery ? await runQuery(internal.authEmails.hasPlatformRole as never, { authSubject: stored.userId } as never) : false;
+  if (admin === true) {
+    throw new APIError("FORBIDDEN", { message: "Admin accounts sign in with a password and an authenticator code.", code: "PASSKEY_ADMIN_NEEDS_CODE" });
+  }
+  const user = (await authCtx.context.internalAdapter.findUserById(stored.userId)) as { twoFactorEnabled?: boolean | null } | null;
+  if (user?.twoFactorEnabled === true && !userVerified) {
+    throw new APIError("FORBIDDEN", { message: "This passkey didn't check it's you, so it can't replace your authenticator code.", code: "PASSKEY_NOT_VERIFIED" });
+  }
 }
 
 /**
@@ -58,6 +96,9 @@ function rateLimitRules() {
     // Connected apps (MCP): registering, and trading codes and refresh tokens.
     "/oauth2/register": rule(60 * 60, 20),
     "/oauth2/token": rule(60, 30),
+    "/passkey/generate-authenticate-options": rule(60, 20),
+    "/passkey/verify-authentication": rule(60, 10),
+    "/passkey/verify-registration": rule(60, 10),
   };
 }
 
@@ -168,6 +209,19 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
         refreshTokenExpiresIn: 60 * 60 * 24 * 30,
         prefix: { opaqueAccessToken: ACCESS_TOKEN_PREFIX, refreshToken: REFRESH_TOKEN_PREFIX },
         silenceWarnings: { oauthAuthServerConfig: true },
+      }),
+      // Passkeys (Settings > Security; "Sign in with a passkey"). Adding one needs a fresh session; signing
+      // in with one is checked by checkPasskeySignIn above.
+      passkey({
+        rpID: new URL(siteUrl()).hostname,
+        rpName: "Folevi",
+        origin: passkeyOrigins(),
+        // Discoverable credentials, so signing in needs no email and the browser can offer passkeys in autofill.
+        authenticatorSelection: { residentKey: "required", userVerification: "preferred" },
+        authentication: {
+          afterVerification: async ({ ctx: authCtx, verification, clientData }) =>
+            await checkPasskeySignIn(ctx, authCtx, clientData.id, verification.authenticationInfo.userVerified),
+        },
       }),
       // The native apps' sign-in (lib/nativeAuth.ts) and their `Authorization: Bearer <session token>`.
       nativeAuth(),

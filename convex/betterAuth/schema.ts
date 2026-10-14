@@ -6,7 +6,8 @@
  * fields that better-auth 1.6.33 stores (`failedVerificationCount`, `lockedUntil`). The OAuth tables
  * (oauthClient, oauthRefreshToken, oauthAccessToken, oauthConsent) are generated from
  * @better-auth/oauth-provider 1.6.33 (connected apps, convex/lib/mcp/config.ts); they replace the
- * unused tables of the older OIDC plugin. Field names must
+ * unused tables of the older OIDC plugin. The passkey table is generated from @better-auth/passkey 1.6.33,
+ * plus a credentialID index (passkey sign-in looks the credential up by it). Field names must
  * match Better Auth's model exactly; regenerate with `npx auth generate` from this directory after
  * changing plugins in convex/auth.ts, and keep any differences documented here.
  */
@@ -85,6 +86,20 @@ export const tables = {
   })
     .index("userId", ["userId"])
     .index("secret", ["secret"]),
+  passkey: defineTable({
+    name: v.optional(v.union(v.null(), v.string())),
+    publicKey: v.string(),
+    userId: v.string(),
+    credentialID: v.string(),
+    counter: v.number(),
+    deviceType: v.string(),
+    backedUp: v.boolean(),
+    transports: v.optional(v.union(v.null(), v.string())),
+    createdAt: v.optional(v.union(v.null(), v.number())),
+    aaguid: v.optional(v.union(v.null(), v.string())),
+  })
+    .index("userId", ["userId"])
+    .index("credentialID", ["credentialID"]),
   oauthClient: defineTable({
     clientId: v.string(),
     clientSecret: v.optional(v.union(v.null(), v.string())),

@@ -20,7 +20,7 @@ test("sign-up requires a confirmed email before signing in", async ({ page }) =>
   await page.goto(`${APP}/signin`);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "Verify your email address first" })).toBeVisible();
   // Signing in unverified re-sends the link; confirming it signs them straight in (no two-step setup).
   await confirmEmail(page, email);
@@ -67,16 +67,16 @@ test("sign-in: generic errors, authenticator code, single-use backup codes, trus
   await page.goto(`${APP}/signin`);
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password", { exact: true }).fill("not the password at all");
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "incorrect" })).toHaveText("The email or password is incorrect.");
   // Same message for an address that has no account (no enumeration).
   await page.getByLabel("Email").fill(uniqueEmail("nobody"));
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "incorrect" })).toHaveText("The email or password is incorrect.");
 
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password", { exact: true }).fill(account.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(/\/two-factor\?/);
   await page.getByLabel("6-digit code").fill("000000");
   await page.getByRole("button", { name: "Verify" }).click();
@@ -94,7 +94,7 @@ test("sign-in: generic errors, authenticator code, single-use backup codes, trus
   await p2.goto(`${APP}/signin`);
   await p2.getByLabel("Email").fill(account.email);
   await p2.getByLabel("Password", { exact: true }).fill(account.password);
-  await p2.getByRole("button", { name: "Sign in" }).click();
+  await p2.getByRole("button", { name: "Sign in", exact: true }).click();
   await p2.waitForURL(/\/two-factor\?/);
   await p2.getByRole("button", { name: "Use a backup code instead" }).click();
   await p2.getByLabel("Backup code").fill(account.backupCodes[0]!);
@@ -113,7 +113,7 @@ test("sign-in: generic errors, authenticator code, single-use backup codes, trus
   await p2.waitForURL(/\/signin/);
   await p2.getByLabel("Email").fill(account.email);
   await p2.getByLabel("Password", { exact: true }).fill(account.password);
-  await p2.getByRole("button", { name: "Sign in" }).click();
+  await p2.getByRole("button", { name: "Sign in", exact: true }).click();
   await p2.waitForURL((url) => !/\/(signin|two-factor)/.test(url.pathname));
 });
 

@@ -69,3 +69,15 @@ export const signupsOpen = internalQuery({
   args: {},
   handler: async (ctx) => await isFeatureEnabled(ctx, "new_signups"),
 });
+
+/** Whether the Better Auth user is a platform admin (passkey sign-in, convex/auth.ts checkPasskeySignIn). */
+export const hasPlatformRole = internalQuery({
+  args: { authSubject: v.string() },
+  handler: async (ctx, { authSubject }) => {
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_auth_subject", (q) => q.eq("authSubject", authSubject))
+      .first();
+    return Boolean(profile?.platformRole);
+  },
+});

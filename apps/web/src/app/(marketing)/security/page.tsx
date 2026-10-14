@@ -12,7 +12,7 @@ import { SyncPiece } from "@/components/marketing/pieces";
 export const metadata = pageMetadata({
   title: "Security and privacy for your notes",
   description:
-    "How Folevi protects your notes: verified email, two-step verification, encryption in transit and at rest, private sharing, full export and subprocessors.",
+    "How Folevi protects your notes: verified email, passkeys, two-step verification, encryption in transit and at rest, private sharing, full export and subprocessors.",
   path: "/security",
 });
 
@@ -175,9 +175,10 @@ export default function SecurityPage() {
               Your <Mark>account</Mark>
             </>
           }
-          lead="A verified email, plus an optional second step."
+          lead="A verified email, passkeys, and an optional second step."
           items={[
             <>Email verified before you can open Folevi</>,
+            <>Passkeys: sign in with your fingerprint, face or screen lock</>,
             <>Two-step codes from an authenticator app (TOTP)</>,
             <>One-time recovery codes, for a lost phone</>,
           ]}

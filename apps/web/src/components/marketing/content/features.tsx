@@ -1258,13 +1258,13 @@ export const FEATURES: Feature[] = [
   {
     slug: "security-and-privacy",
     name: "Security and privacy",
-    summary: "Two-step verification, private pages, no trackers.",
+    summary: "Passkeys, two-step verification, private pages, no trackers.",
     title: "Private and secure notes app",
     description: "Folevi needs a verified email, offers two-step verification, encrypts data in transit and at rest, and loads no trackers. It isn’t end-to-end encrypted.",
     h1: "Private notes, with plain answers about security",
     intro: "Here is what protects your account and your notes in Folevi today, and one thing it doesn’t do. The full details, with every subprocessor, are on the Security page.",
     plans: "Every plan, including Free.",
-    updated: "2026-09-30",
+    updated: "2026-10-14",
     art: "art-01",
     visual: "security",
     docs: { label: "Account security", href: "/docs/account-security" },
@@ -1275,6 +1275,7 @@ export const FEATURES: Feature[] = [
         body: (
           <ul>
             <li>You confirm your email address before you can open Folevi.</li>
+            <li>Sign in with a passkey (your fingerprint, face or screen lock) instead of a password, from Settings → Security.</li>
             <li>Two-step verification with an authenticator app is optional, with 10 single-use backup codes and an option to trust a device for 30 days.</li>
             <li>Settings → Devices lists every browser and app signed in to your account, and signs any of them out at once.</li>
           </ul>

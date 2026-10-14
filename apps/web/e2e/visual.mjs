@@ -55,7 +55,7 @@ async function signIn(page, account) {
   await page.goto(`${APP}/signin`);
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password", { exact: true }).fill(account.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(/\/two-factor(\?|$)/, { timeout: 20_000 });
   await page.getByLabel("6-digit code").fill(code(account.totpSecret));
   await page.getByRole("button", { name: "Verify" }).click();

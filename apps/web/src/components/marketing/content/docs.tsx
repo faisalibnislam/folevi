@@ -619,16 +619,22 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "account-security",
     title: "Account security",
     nav: "Account security",
-    description: "Email verification, two-step verification with an authenticator app, recovery codes and deleting your Folevi account.",
+    description: "Email verification, passkeys, two-step verification with an authenticator app, recovery codes and deleting your Folevi account.",
     legacyAnchor: "account-security",
     published: "2026-09-25",
-    updated: "2026-09-30",
+    updated: "2026-10-14",
     body: () => (
       <>
         <ul>
           <li>Email verification is required before you can open Folevi.</li>
           <li>Two-step verification with an authenticator app (TOTP) is optional; turn it on in Settings → Security.</li>
           <li>When you set up two-step verification you receive one-time recovery codes. Each works once. Store them somewhere safe, away from your password.</li>
+          <li>
+            Passkeys let you sign in with your fingerprint, face or screen lock instead of your password. Add one in Settings → Security (Folevi asks you to sign in again first if your last sign-in was more than 10 minutes ago), and rename or remove it there. A passkey only works on Folevi, so it can’t be phished.
+          </li>
+          <li>
+            With two-step verification on, a passkey that checks it’s you replaces both your password and the code. Admin accounts always sign in with a password and an authenticator code. Folevi for Mac can’t use passkeys yet; use them in your browser.
+          </li>
           <li>
             You can delete your account at any time. If you own a workspace other people use, transfer it or delete it first. After a 7-day grace period, your account, your Personal and any workspace only you use are deleted permanently.
           </li>

@@ -1,10 +1,12 @@
-// Inbound email: reading a message Resend received, and turning it into plain support text.
+// Inbound email: reading a message Resend received, and turning it into plain support text or into the
+// text of a note (email to note, convex/emailNotes.ts).
 //
 // Resend posts `email.received` webhooks (resendWebhook.ts) carrying only the email id; the message itself
 // is read from
 //   GET https://api.resend.com/emails/receiving/{id}
-// which returns the parsed message (from, to, cc, subject, text, html, headers, message_id). See
-// docs/SUPPORT.md. The text helpers below don't depend on the provider.
+// which returns the parsed message (from, to, cc, subject, text, html, headers, message_id, the
+// attachments' names and sizes, and the SPF/DKIM/DMARC results). See docs/SUPPORT.md. The text helpers
+// below don't depend on the provider.
 //
 // Nothing here logs, and nothing returns more of a message than the caller asked for.
 import { RESEND_API } from "./resend";
@@ -97,6 +99,15 @@ function addressList(value: unknown): string[] {
 // ---------------------------------------------------------------- text
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+const ENTITY_RE = /&(#x?[0-9a-f]+|[a-z]+);/gi;
+
+function decodeEntity(m: string, code: string): string {
+  if (code[0] === "#") {
+    const n = code[1]?.toLowerCase() === "x" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
+    return Number.isFinite(n) && n > 0 && n < 0x110000 ? String.fromCodePoint(n) : "";
+  }
+  return ENTITIES[code.toLowerCase()] ?? m;
+}
 
 /** A plain-text reading of an HTML body: no tags, no quoted blocks, entities decoded. */
 export function htmlToText(html: string): string {
@@ -108,13 +119,7 @@ export function htmlToText(html: string): string {
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|li|tr|h[1-6])\s*>/gi, "\n")
     .replace(/<[^>]*>/g, "")
-    .replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, code: string) => {
-      if (code[0] === "#") {
-        const n = code[1]?.toLowerCase() === "x" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
-        return Number.isFinite(n) && n > 0 && n < 0x110000 ? String.fromCodePoint(n) : "";
-      }
-      return ENTITIES[code.toLowerCase()] ?? m;
-    })
+    .replace(ENTITY_RE, decodeEntity)
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -240,5 +245,130 @@ export function readInboundMessage(raw: unknown): InboundMessage | null {
     inReplyTo: msgId(m.in_reply_to) ?? msgId(headers["in-reply-to"]),
     references,
     automated: automatedReason({ headers, fromAddress: from.address, subject }),
+  };
+}
+
+// ---------------------------------------------------------------- email to note
+
+/** A note made from an email keeps at most this much text (characters). */
+export const MAX_NOTE_TEXT = 100_000;
+
+export type AuthCheck = "pass" | "fail" | "gray" | "processing_failed" | "unknown";
+
+/**
+ * SPF, DKIM and DMARC as Resend's receiving server worked them out (the Received emails API's
+ * `authentication`). They come from the server, not from the message's headers, so a sender can't forge
+ * them. Null when the response has none.
+ */
+export interface MailAuthentication {
+  spf: AuthCheck;
+  dkim: AuthCheck;
+  dmarc: AuthCheck;
+}
+
+export interface NoteEmail {
+  /** Lowercased address in the From header (never Reply-To: the sender check is on From). */
+  fromAddress: string;
+  fromName: string;
+  subject: string;
+  /** The whole message as Markdown-style text: the plain-text part, else the HTML with links kept. Quotes and forwarded parts stay. */
+  text: string;
+  /** The text was cut at MAX_NOTE_TEXT. */
+  truncated: boolean;
+  rfcMessageId: string | null;
+  /** When Resend received it (ms), when the response says. */
+  receivedAt: number | null;
+  /** File names of the attachments (not inline images), for the note to list. */
+  attachments: string[];
+  authentication: MailAuthentication | null;
+}
+
+const AUTH_CHECKS = new Set<AuthCheck>(["pass", "fail", "gray", "processing_failed", "unknown"]);
+
+function authCheck(value: unknown): AuthCheck {
+  const s = str(value)?.trim().toLowerCase();
+  return s && AUTH_CHECKS.has(s as AuthCheck) ? (s as AuthCheck) : "unknown";
+}
+
+/** `[label](href)` for an http(s) or mailto link; the label alone for anything else. */
+function markdownLink(rawHref: string, rawLabel: string): string {
+  const href = rawHref.replace(ENTITY_RE, decodeEntity).trim();
+  const label = rawLabel
+    .replace(/<[^>]*>/g, "")
+    .replace(ENTITY_RE, decodeEntity)
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!/^(https?:\/\/|mailto:)/i.test(href) || href.length > 2000) return label;
+  const target = href.replace(/[\s()<>]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`);
+  const text = (label || href).replace(/([[\]\\])/g, "\\$1");
+  return `[${text}](${target})`;
+}
+
+/**
+ * An HTML email body as Markdown-style text for a note: paragraphs and line breaks kept, list items as
+ * "- ", links as [text](url) (http, https and mailto only), images, styles and scripts dropped. Unlike
+ * htmlToText, quoted and forwarded parts stay: forwarding a message is the point.
+ */
+export function htmlToNoteText(html: string): string {
+  return html
+    .slice(0, 1_000_000)
+    .replace(/<(head|style|script|title)\b[\s\S]*?<\/\1\s*>/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/<a\b[^>]*?\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>([\s\S]*?)<\/a\s*>/gi, (_m, d?: string, s?: string, u?: string, inner?: string) => markdownLink(d ?? s ?? u ?? "", inner ?? ""))
+    .replace(/<li\b[^>]*>/gi, "\n- ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?(p|h[1-6]|blockquote|ul|ol|table|pre)\b[^>]*>/gi, "\n\n")
+    .replace(/<\/(div|tr)\s*>/gi, "\n")
+    .replace(/<\/t[dh]\s*>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(ENTITY_RE, decodeEntity)
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** Reads what a note needs from a Received emails API response. Null when there's no usable From address. */
+export function readNoteEmail(raw: unknown): NoteEmail | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const m = raw as Record<string, unknown>;
+  const from = parseAddress(m.from);
+  if (!from) return null;
+  const subject = (str(m.subject) ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, MAX_INBOUND_SUBJECT);
+  const plain = str(m.text_body) ?? str(m.text) ?? "";
+  const html = str(m.html_body) ?? str(m.html) ?? "";
+  const source = plain.trim() ? plain.slice(0, MAX_NOTE_TEXT * 2) : htmlToNoteText(html);
+  const clean = source
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+    .trim();
+  const attachments: string[] = [];
+  if (Array.isArray(m.attachments)) {
+    for (const a of m.attachments.slice(0, 50)) {
+      if (!a || typeof a !== "object") continue;
+      const o = a as Record<string, unknown>;
+      if (str(o.content_disposition)?.toLowerCase() === "inline" && str(o.content_id)) continue;
+      const name = (str(o.filename) ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 120);
+      attachments.push(name || "unnamed file");
+    }
+  }
+  let authentication: MailAuthentication | null = null;
+  if (m.authentication && typeof m.authentication === "object" && !Array.isArray(m.authentication)) {
+    const a = m.authentication as Record<string, unknown>;
+    authentication = { spf: authCheck(a.spf), dkim: authCheck(a.dkim), dmarc: authCheck(a.dmarc) };
+  }
+  const created = Date.parse(str(m.created_at) ?? "");
+  return {
+    fromAddress: from.address,
+    fromName: from.name,
+    subject,
+    text: clean.slice(0, MAX_NOTE_TEXT),
+    truncated: clean.length > MAX_NOTE_TEXT,
+    rfcMessageId: msgId(m.rfc_message_id) ?? msgId(m.message_id),
+    receivedAt: Number.isFinite(created) ? created : null,
+    attachments,
+    authentication,
   };
 }

@@ -76,6 +76,9 @@ input and stores them on Convex ([DEPLOYMENT.md](./DEPLOYMENT.md)).
       Admin → Emails.
 - [ ] An email to `support@folevi.com` becomes a ticket in Admin → Support, with a confirmation in your
       inbox; replying to the confirmation adds to the same ticket.
+- [ ] Email to Folevi: create your address in Settings → Import & export and email it from your
+      account's address. Within a minute it's a note in your Inbox. The same email from another
+      address isn't saved, and the bell says so.
 
 ## 2. Sending domain, alignment and DMARC
 
@@ -214,7 +217,7 @@ this repository; Resend stores no templates.
 - **Rotating the secret:** rotate it in Resend, then `npx convex env set RESEND_WEBHOOK_SECRET …` right
   away; events signed with the old secret are refused and Resend retries them.
 
-## 7a. Inbound email (support@ and security@folevi.com)
+## 7a. Inbound email (support@, security@ and email-to-note addresses)
 
 `folevi.com`'s MX points at Resend's receiving, so mail for every folevi.com address arrives there. For
 each message Resend posts `email.received` to the same `/webhooks/resend` endpoint. The event carries
@@ -223,6 +226,27 @@ only metadata, so Convex reads the message from `GET https://api.resend.com/emai
 `support.ingestInbound`: mail to `support@` and `security@folevi.com` becomes tickets, mail to other
 folevi.com addresses is ignored. If the key is missing or Resend's API can't be reached the webhook
 answers `503` and Resend retries. DNS, threading and loop protection are in [SUPPORT.md](./SUPPORT.md).
+
+**Email to note.** People's private addresses, `n-<token>@folevi.com` (Settings → Import & export,
+`convex/emailNotes.ts`), share this route: same MX, same webhook, same secret and key, nothing extra to
+set up in Resend or DNS. The webhook routes on the local part. A recipient matching
+`n-[a-z0-9]{16,40}@folevi.com` goes to `emailNotes.receive`; every other folevi.com address goes to
+support as before. A message for both (support@ in To, an n- address in Cc) is fetched once and filed in
+both places. An n- address nobody has is dropped without fetching the message.
+
+For an existing address the message is saved as a note in the person's Inbox only when:
+
+- the From address is the account's own address, or one of up to five they added; and
+- Resend's receiving server reports `authentication.dmarc = "pass"` for it (the Received emails API's
+  SPF/DKIM/DMARC results come from Resend's server, not the message headers, so a sender can't forge
+  them). A From header alone is easy to spoof; DMARC is what ties it to the sender's domain. Mail from a
+  domain without DMARC, or with no results at all, is ignored as unverified.
+
+Ignored mail is counted on the address and the person is told in the bell at most once a day. A note is
+saved once per message (Resend email id, then `Message-ID`, kept 30 days in `emailNoteReceipts`); each
+address saves at most 50 a day (`emailNote` rate limit). Attachments aren't imported: the note lists
+their names and Resend keeps the files. The token in the address is 24 random characters and is stored
+as it is, so Settings can always show the address; "Get a new address" ends the old one at once.
 
 ## 8. Environment variables
 
@@ -257,6 +281,7 @@ All on the **Convex** deployment (`npx convex env set NAME …`); none belong in
 | Mail is *accepted* but never shows **Delivered** | The webhook isn't set up or is failing. Admin → Emails says when `RESEND_WEBHOOK_SECRET` is missing. In Resend → Webhooks, check the endpoint URL, the events and the answers: `401` means the secret on Convex doesn't match the endpoint's signing secret. |
 | Mail lands in spam | Check `Authentication-Results` for `dkim=pass` and `dmarc=pass`, and that every record still shows as verified in Resend → Domains. |
 | Email to `support@folevi.com` doesn't become a ticket | `dig MX folevi.com` must show only Resend's receiving MX, and the webhook must include `email.received`. Convex logs have one `support.inbound` line per message: `not_configured` (no API key; Resend retries), `fetch_401` or `fetch_403` (the key isn't full access), `ignored_mailbox`, `ignored_automated`, `ignored_own_domain`, `rate_limited` or `duplicate`. |
+| Email to someone's `n-…@folevi.com` address doesn't become a note | Same MX and webhook as support. Convex logs have one `email_note.inbound` line per message and address: `saved`, `rejected_sender` (From isn't the account's address or one they added), `rejected_unverified` (no DMARC pass), `rate_limited` (50 a day), `duplicate`, `inactive` (the account isn't active), `unknown_or_duplicate` (no such address, or already saved; nothing fetched), or `fetch_<status>` (`fetch_0`: no API key or Resend unreachable; Resend retries). |
 
 To look at a single message in more detail, open Resend → **Emails** and search by the email id (the
 attempt's provider message id in Admin → Emails).

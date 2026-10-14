@@ -18,6 +18,7 @@ import { hasValidScope, personalScope, SCOPED_TABLES, scopedRows, scopeOfRow, wo
 import { bumpSeq, deleteSeq } from "./lib/seq";
 import { dropNoteGraph } from "./lib/ai/graphStore";
 import { deleteFileBlob } from "./lib/fileCopies";
+import { purgeOldReceipts } from "./lib/emailNotes";
 
 const BUDGET = 400;
 const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -367,6 +368,9 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("aiSuggestionDismissals").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiDigests").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("routines").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    // Their email-to-note address (it stops working) and its receipts.
+    () => ctx.db.query("emailNoteAddresses").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("emailNoteReceipts").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
   ] as never;
   // Files they uploaded into AI chats in workspaces (the ones in their Personal went with it above).
   const chats = await ctx.db.query("aiConversations").withIndex("by_profile_place", (q) => q.eq("profileId", profileId)).take(200);
@@ -578,6 +582,7 @@ export const housekeeping = internalMutation({
       .take(500);
     for (const n of notes) await ctx.db.delete(n._id);
     backlog ||= notes.length === 500;
+    backlog ||= await purgeOldReceipts(ctx, now);
     if (backlog) await ctx.scheduler.runAfter(0, internal.maintenance.housekeeping, {});
   },
 });

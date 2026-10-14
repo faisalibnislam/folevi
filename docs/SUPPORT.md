@@ -80,7 +80,9 @@ to, cc, subject, text, HTML, headers and the RFC `Message-ID`.
      style subjects.
    - Mail **from folevi.com** itself is ignored (no loops).
    - Only mail to `support@` (and `security@`, filed with the topic Security) becomes a ticket; mail
-     addressed only to other folevi.com mailboxes is ignored. Mail whose To/Cc names no folevi.com
+     addressed only to other folevi.com mailboxes is ignored. Mail for an email-to-note address
+     (`n-<token>@folevi.com`) is routed to `emailNotes.receive` instead and never reaches support
+     unless support@ is a recipient too. Mail whose To/Cc names no folevi.com
      address at all (forwarded, or Bcc) is treated as support.
    - **Threading:** `[Folevi #N]` in the subject **and** the sender equal to ticket N's requester adds the
      message to ticket N (reopening it). A tag from anyone else opens a new ticket instead.
@@ -103,9 +105,10 @@ Resend sending domain (EMAIL_OPERATIONS.md), so nothing extra is needed to send.
 ### Receiving support@folevi.com
 
 1. **First check where folevi.com mail goes today:** `dig MX folevi.com`. Receiving on Resend takes
-   **all** mail for the domain. Folevi turns only `support@` and `security@` into tickets; mail for any
-   other folevi.com address (`dmarc-reports@`, …) stays in Resend's received emails and nothing else
-   delivers it.
+   **all** mail for the domain. Folevi turns only `support@` and `security@` into tickets, and mail to
+   people's email-to-note addresses (`n-<token>@folevi.com`) into notes (same MX and webhook, see
+   [EMAIL_OPERATIONS.md](./EMAIL_OPERATIONS.md) §7a); mail for any other folevi.com address
+   (`dmarc-reports@`, …) stays in Resend's received emails and nothing else delivers it.
 2. **Turn on receiving for `folevi.com`** in Resend → **Domains** (add the domain if it isn't there).
    Resend shows the MX record to add.
 3. **Add the MX record at the DNS host** (folevi.com's DNS is at Namecheap: **Domain List** → `folevi.com` → **Advanced DNS**), on the apex
@@ -158,6 +161,7 @@ All on the Convex deployment; none in Vercel.
 | Inbound webhook | `convex/http.ts` (`/webhooks/resend`, `email.received`) |
 | Webhook signature and event parsing | `packages/email/src/providers/resendWebhook.ts` |
 | Received-email fetch and parsing (message, quotes, auto-replies) | `packages/email/src/providers/inbound.ts` |
+| Email to note (n- addresses, sharing this route) | `convex/emailNotes.ts`, `convex/lib/emailNotes.ts` |
 | Templates `support_ticket_received`, `support_reply`, `support_staff_notice` | `packages/email/src/manifest.ts`, `scripts/build-templates.ts` |
 | Web server route | `apps/web/src/app/api/support/route.ts` |
 | Support page | `apps/web/src/app/(marketing)/support/page.tsx` |

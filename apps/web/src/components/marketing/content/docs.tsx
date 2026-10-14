@@ -322,6 +322,9 @@ export const DOC_ARTICLES: DocArticle[] = [
           </li>
         </ul>
         <p>Up to 400 pages go in one import, and Folevi lists anything it couldn’t bring across.</p>
+        <p>
+          You can also send or forward email to your private Folevi address and each one becomes a note in your Inbox. See <Link href="/docs/email-to-folevi">Email to Folevi</Link>.
+        </p>
         <h2 id="export">Export</h2>
         <ul>
           <li>Any page as Markdown, HTML or PDF.</li>
@@ -513,6 +516,47 @@ export const DOC_ARTICLES: DocArticle[] = [
         <h2 id="disconnect">Sign out or disconnect</h2>
         <p>
           <strong>Sign out</strong> in the clipper forgets its sign-in on that browser. To take its access away everywhere, open Settings → Connected apps in Folevi and disconnect Folevi Web Clipper. Notes it already saved stay yours.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: "email-to-folevi",
+    title: "Email to Folevi",
+    nav: "Email to Folevi",
+    description: "Send or forward email to your private Folevi address and it becomes a note in your Inbox. Only mail from your own address is saved.",
+    published: "2026-10-14",
+    updated: "2026-10-14",
+    body: () => (
+      <>
+        <p>
+          Every account can have a private email address. Send or forward an email to it and it becomes a note in your <strong>Inbox</strong>, ready to sort later: a booking confirmation, a newsletter worth keeping, a note to yourself from your phone.
+        </p>
+        <h2 id="set-up">Set it up</h2>
+        <p>
+          Open Settings → Import & export and choose <strong>Create my address</strong> under Email to Folevi. Your address looks like <code>n-k7q2…@folevi.com</code>. Copy it and save it as a contact so it’s quick to forward to. You can see it there any time.
+        </p>
+        <p>
+          Under <strong>Notes go to</strong>, choose your Personal or a workspace where you can add pages. In a workspace the note is private to you until you share it. If you later can’t add pages there, notes go to your Personal instead.
+        </p>
+        <h2 id="who-can-send">Who can send</h2>
+        <p>
+          Only email from your account’s own address is saved, and you can add up to five more addresses of yours (a work address, say). Mail from anyone else is ignored, and Folevi tells you about it in the notifications bell, at most once a day.
+        </p>
+        <p>
+          Folevi also checks that the mail really came from that address: your email provider must sign it so it passes DMARC. Gmail, Outlook, iCloud, Fastmail and most others do. Mail that can’t be verified is ignored the same way.
+        </p>
+        <h2 id="what-a-note-looks-like">What a note looks like</h2>
+        <p>
+          The subject becomes the title (or “Email from” and the sender, if there isn’t one). The note starts with who sent it and when, for example “From ada@example.com, 14 Oct 2026, 09:12”, then the email’s text with its paragraphs, lists and links. Forwarded messages keep the forwarded part.
+        </p>
+        <p>
+          Attachments aren’t imported yet. The note lists their names at the end so you know to save them from your mail app. Pictures in the email aren’t loaded either. Very long emails are cut at 100,000 characters, and the note says so.
+        </p>
+        <p>Each address saves up to 50 emails a day. Notes usually appear within a minute.</p>
+        <h2 id="new-address">Get a new address or turn it off</h2>
+        <p>
+          If your address ends up somewhere it shouldn’t, choose <strong>Get a new address</strong>. The old one stops working at once. <strong>Turn off</strong> ends it without a replacement. Notes you already saved stay either way.
         </p>
       </>
     ),

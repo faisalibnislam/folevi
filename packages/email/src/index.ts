@@ -35,6 +35,12 @@ export {
   ticketNumberFromSubject,
   automatedReason,
   MAX_INBOUND_TEXT,
+  readNoteEmail,
+  htmlToNoteText,
+  MAX_NOTE_TEXT,
   type InboundMessage,
   type InboundFetchResult,
+  type NoteEmail,
+  type MailAuthentication,
+  type AuthCheck,
 } from "./providers/inbound";

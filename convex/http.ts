@@ -12,6 +12,8 @@ import {
   verifyResendSignature,
 } from "@folevi/email";
 import { SUPPORT_DOMAIN } from "./lib/support";
+import { noteTokenOf } from "./lib/emailNotes";
+import { receiveNoteMail } from "./emailNotes";
 import { verifyFileSignature } from "./lib/fileUrls";
 import { sha256Hex } from "./lib/crypto";
 import type { Id } from "./_generated/dataModel";
@@ -155,9 +157,10 @@ const MAX_WEBHOOK_BYTES = 256 * 1024;
  * Resend webhooks, one endpoint for everything Resend reports:
  * - delivery events (email.delivered, email.bounced, email.complained, email.failed, email.suppressed, …)
  *   update the send log and suppress addresses that hard-bounced or complained (email.recordProviderEvents);
- * - email.received: mail to support@folevi.com (and security@) becomes support tickets (docs/SUPPORT.md).
+ * - email.received: mail to support@folevi.com (and security@) becomes support tickets (docs/SUPPORT.md),
+ *   and mail to a person's n-<token>@folevi.com address becomes a note in their Inbox (emailNotes.ts).
  *   The event carries only the email id; the message is read from Resend's Received emails API with
- *   RESEND_API_KEY and filed by support.ingestInbound.
+ *   RESEND_API_KEY and filed by support.ingestInbound or emailNotes.receive.
  *
  * Resend webhooks are account-wide, and the account may serve other domains too: delivery events count only
  * for mail sent from Folevi's sending domain, received mail only when it was for a folevi.com address.
@@ -200,19 +203,30 @@ http.route({
       return new Response("ok", { status: 200 });
     }
 
-    // email.received
-    if (!parsed.recipients.some((r) => r.endsWith(`@${SUPPORT_DOMAIN}`))) return new Response("ok", { status: 200 });
+    // email.received: for a person's email-to-note address (n-…@folevi.com), for support, or both. The
+    // message is fetched at most once.
+    const noteTokens = [...new Set(parsed.recipients.map(noteTokenOf).filter((t): t is string => t !== null))];
+    const forSupport = parsed.recipients.some((r) => r.endsWith(`@${SUPPORT_DOMAIN}`) && noteTokenOf(r) === null);
+    if (!noteTokens.length && !forSupport) return new Response("ok", { status: 200 });
+    const apiKey = process.env.RESEND_API_KEY;
+    let fetching: ReturnType<typeof fetchReceivedEmail> | null = null;
+    const fetchMessage = () =>
+      (fetching ??= !apiKey || apiKey === "none" ? Promise.resolve({ ok: false as const, status: 0, retryable: true }) : fetchReceivedEmail({ apiKey, emailId: parsed.emailId }));
+    if (noteTokens.length && (await receiveNoteMail(ctx, parsed.emailId, noteTokens, fetchMessage)) === "retry") {
+      return new Response("Try again later", { status: 503 });
+    }
+    if (!forSupport) return new Response("ok", { status: 200 });
+
     const log = (outcome: string) => console.log(JSON.stringify({ event: "support.inbound", provider: "resend", outcome }));
     if (await ctx.runQuery(internal.support.inboundSeen, { inboundMessageId: parsed.emailId })) {
       log("duplicate");
       return new Response("ok", { status: 200 });
     }
-    const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey || apiKey === "none") {
       log("not_configured");
       return new Response("Try again later", { status: 503 });
     }
-    const fetched = await fetchReceivedEmail({ apiKey, emailId: parsed.emailId });
+    const fetched = await fetchMessage();
     if (!fetched.ok) {
       log(`fetch_${fetched.status}`);
       return fetched.retryable ? new Response("Try again later", { status: 503 }) : new Response("ok", { status: 200 });

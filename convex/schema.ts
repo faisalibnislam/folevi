@@ -1387,6 +1387,53 @@ export default defineSchema({
     .index("by_profile", ["profileId"])
     .index("by_token", ["tokenHash"]),
 
+  /**
+   * A person's private email-to-note address, n-<token>@folevi.com (convex/emailNotes.ts). One per person.
+   * The token is kept as it is, not hashed: the person needs to see their address any time, and it already
+   * travels in the headers of every email sent to it. What lets mail in is the sender check (see
+   * emailNotes.ts). A new token ends the old address.
+   */
+  emailNoteAddresses: defineTable({
+    profileId: v.id("profiles"),
+    token: v.string(),
+    /** Where notes go: a team workspace where the person can add pages; unset for their Personal. */
+    workspaceId: v.optional(v.id("workspaces")),
+    /** Addresses besides the account's own that may add notes (lowercased, at most 5). */
+    extraSenders: v.array(v.string()),
+    createdAt: v.number(),
+    rotatedAt: v.optional(v.number()),
+    /** Notes made from email, and when the last one came. */
+    count: v.number(),
+    lastReceivedAt: v.optional(v.number()),
+    /** Mail ignored (another sender, or a sender that couldn't be verified), and when the last came. */
+    rejectedCount: v.number(),
+    lastRejectedAt: v.optional(v.number()),
+    /** When the person was last told about ignored mail, or about the daily limit (at most once a day each). */
+    lastRejectNoticeAt: v.optional(v.number()),
+    lastLimitNoticeAt: v.optional(v.number()),
+  })
+    .index("by_profile", ["profileId"])
+    .index("by_token", ["token"]),
+
+  /**
+   * One row per email that became a note, so a webhook delivered twice (or the same message under another
+   * Resend id) never makes two notes. Ids only, no content; kept 30 days.
+   */
+  emailNoteReceipts: defineTable({
+    addressId: v.id("emailNoteAddresses"),
+    profileId: v.id("profiles"),
+    /** Resend's id of the received email. */
+    emailId: v.string(),
+    /** The RFC Message-ID (without brackets), when the message had one. */
+    rfcMessageId: v.optional(v.string()),
+    documentId: v.id("documents"),
+    createdAt: v.number(),
+  })
+    .index("by_email", ["emailId"])
+    .index("by_address_message", ["addressId", "rfcMessageId"])
+    .index("by_profile", ["profileId"])
+    .index("by_created", ["createdAt"]),
+
   /** What connected apps did, shown under Settings → Connected apps. Arguments are hashed, never stored. */
   mcpEvents: defineTable({
     grantId: v.id("mcpGrants"),

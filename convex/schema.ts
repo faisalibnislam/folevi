@@ -366,6 +366,14 @@ export default defineSchema({
     /** The viewed document's scope. */
     ...scoped,
     viewedAt: v.number(),
+    /**
+     * How far this person has seen the note (Changes, convex/changes.ts): the newest block change (`blocks.seq`)
+     * when they last opened or left it or marked it seen, when that was, and the version that holds the note as
+     * it was then (for people who can edit it). Changes by others after `seenSeq` are new to them.
+     */
+    seenSeq: v.optional(v.number()),
+    seenAt: v.optional(v.number()),
+    seenVersionId: v.optional(v.id("documentSnapshots")),
   })
     .index("by_profile_viewed", ["profileId", "viewedAt"])
     .index("by_profile_document", ["profileId", "documentId"])
@@ -408,6 +416,8 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
     updatedBy: v.id("profiles"),
+    /** The last change came through a connected app ("app") or Foli AI ("ai") acting for `updatedBy` (Changes). */
+    updatedVia: v.optional(v.union(v.literal("app"), v.literal("ai"))),
     deletedAt: v.optional(v.number()),
   })
     .index("by_document", ["documentId"])

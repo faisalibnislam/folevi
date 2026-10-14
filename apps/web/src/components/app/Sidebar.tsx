@@ -7,6 +7,7 @@ import {
   CheckSquare,
   ChevronDown,
   ChevronRight,
+  FileDiff,
   FolderPlus,
   Hash,
   Files,
@@ -54,6 +55,7 @@ function isActive(route: Route, href: string): boolean {
     "/graph": (r) => r.name === "graph",
     "/tasks/today": (r) => r.name === "tasks",
     "/review": (r) => r.name === "review",
+    "/changes": (r) => r.name === "changes",
     "/shared": (r) => r.name === "shared",
     "/templates": (r) => r.name === "templates",
     "/starred": (r) => r.name === "starred",
@@ -376,6 +378,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const starred = useQuery(api.documents.list, { scope, view: "starred", paginationOpts: { numItems: 8, cursor: null } });
   const createFolder = useMutation(api.organization.createFolder);
   const { route } = useAppRouter();
+  // Changes others made in notes you've opened (everywhere), leaving out the note in front of you.
+  const changes = useQuery(api.changes.list, route.name === "doc" ? { exclude: route.id } : {});
   const toast = useToast();
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
   const [folderDialog, setFolderDialog] = useState(false);
@@ -434,6 +438,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <NavItem href="/tasks/today" icon={<CheckSquare size={16} />} label="Tasks" count={counts ? counts.today : undefined} onNavigate={onNavigate} />
           {reviews?.hasCards || route.name === "review" ? <NavItem href="/review" icon={<Layers size={16} />} label="Reviews" count={reviews ? reviews.due + reviews.new : undefined} onNavigate={onNavigate} /> : null}
           <NavItem href="/shared" icon={<Share2 size={16} />} label="Shared with Me" onNavigate={onNavigate} />
+          <NavItem href="/changes" icon={<FileDiff size={16} />} label="Changes" count={changes?.notes.length || undefined} onNavigate={onNavigate} />
           <NavItem href="/templates" icon={<LayoutTemplate size={16} />} label="Templates" onNavigate={onNavigate} />
         </div>
 

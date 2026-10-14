@@ -8,6 +8,7 @@ export const APP_ROUTE_HEADS = new Set([
   "tasks",
   "calendar",
   "review",
+  "changes",
   "daily",
   "shared",
   "templates",

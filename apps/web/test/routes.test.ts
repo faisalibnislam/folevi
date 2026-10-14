@@ -17,3 +17,10 @@ describe("reviews", () => {
     expect(APP_ROUTE_HEADS.has("review")).toBe(true);
   });
 });
+
+describe("changes", () => {
+  test("/changes is a product route", () => {
+    expect(parseRoute("/changes")).toEqual({ name: "changes" });
+    expect(APP_ROUTE_HEADS.has("changes")).toBe(true);
+  });
+});

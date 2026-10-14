@@ -39,6 +39,7 @@ import { noteEdited } from "./editSettle";
 
 export const MAX_BATCH = 100;
 
+
 export type ServerOpResult = OpResult & { document?: DocumentSummary };
 
 interface Touched {
@@ -61,6 +62,8 @@ export class SyncEngine {
     private ctx: MutationCtx,
     private profile: Doc<"profiles">,
     private deviceId: string,
+    /** Set when the changes aren't the person's own hand: a connected app's (convex/mcp.ts) or Foli AI's. */
+    private via?: Doc<"blocks">["updatedVia"],
   ) {
     this.seq = new SeqAllocator(ctx);
     this.ids = new IdResolver(ctx);
@@ -392,6 +395,7 @@ export class SyncEngine {
         createdAt: now,
         updatedAt: now,
         updatedBy: this.profile._id,
+        ...(this.via ? { updatedVia: this.via } : {}),
       };
       const rowId = await insertScoped(this.ctx, "blocks", scopeOfRow(doc), values);
       this.reparented(doc._id, incoming.id, rowId, null, parentId);
@@ -446,7 +450,7 @@ export class SyncEngine {
       return { opId: op.opId, status: "applied", revision: existing.revision, block: toWireBlock(existing), deleted: false };
     }
     const revision = existing.revision + 1;
-    const patch: Partial<Doc<"blocks">> = { revision, seq, updatedAt: now, updatedBy: this.profile._id };
+    const patch: Partial<Doc<"blocks">> = { revision, seq, updatedAt: now, updatedBy: this.profile._id, updatedVia: this.via };
     let keptCollapse = false;
     if (wantsContent && !contentConflict) {
       patch.type = incoming.type;
@@ -571,11 +575,11 @@ export class SyncEngine {
     const seq = await this.seq.for(scopeOfRow(doc));
     const now = Date.now();
     const revision = row.revision + 1;
-    await this.ctx.db.patch(row._id, { deletedAt: now, revision, positionRev: revision, seq, updatedAt: now, updatedBy: this.profile._id });
+    await this.ctx.db.patch(row._id, { deletedAt: now, revision, positionRev: revision, seq, updatedAt: now, updatedBy: this.profile._id, updatedVia: this.via });
     this.touch(doc, row._id);
     for (const child of descendants) {
       if (child.deletedAt !== undefined) continue;
-      await this.ctx.db.patch(child._id, { deletedAt: now, revision: child.revision + 1, seq, updatedAt: now, updatedBy: this.profile._id });
+      await this.ctx.db.patch(child._id, { deletedAt: now, revision: child.revision + 1, seq, updatedAt: now, updatedBy: this.profile._id, updatedVia: this.via });
       this.touch(doc, child._id);
     }
     const updated = (await this.ctx.db.get(row._id))!;
@@ -604,6 +608,7 @@ export class SyncEngine {
       seq,
       updatedAt: now,
       updatedBy: this.profile._id,
+      updatedVia: this.via,
     });
     if (parentId !== row.parentId) this.reparented(doc._id, row.blockId, row._id, row.parentId, parentId);
     this.touch(doc, row._id);

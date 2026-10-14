@@ -3,7 +3,7 @@
 import { useAction, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ArrowRight, CalendarDays, CheckSquare, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2 } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckSquare, FileDiff, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { openNextInNewTab } from "@/lib/app/tabs";
 import { useAppState } from "@/lib/app/state";
@@ -95,6 +95,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       { kind: "action", id: "tasks", label: "Go to Tasks · Today", icon: <CheckSquare size={16} />, run: () => navigate("/tasks/today") },
       { kind: "action", id: "calendar", label: "Go to Calendar", icon: <CalendarDays size={16} />, run: () => navigate("/calendar") },
       { kind: "action", id: "review", label: "Go to Reviews", icon: <Layers size={16} />, run: () => navigate("/review") },
+      { kind: "action", id: "changes", label: "Go to Changes", icon: <FileDiff size={16} />, run: () => navigate("/changes") },
       { kind: "action", id: "all", label: "Go to Home", icon: <Home size={16} />, run: () => navigate("/documents") },
       { kind: "action", id: "trash", label: "Open Trash", icon: <Trash2 size={16} />, run: () => navigate("/trash") },
       { kind: "action", id: "settings", label: "Open Settings", icon: <Settings size={16} />, run: () => navigate("/settings/account") },

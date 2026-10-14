@@ -314,15 +314,24 @@ export function DocumentView({ documentId }: { documentId: string }) {
   }, [createSnapshot, documentId]);
 
   // Leaving the page inside the app (another page, Home…) also saves a "close" version, after the
-  // page's queued edits have reached the server, so the version includes them.
+  // page's queued edits have reached the server, so the version includes them. Then the note counts as seen
+  // as it is (Changes): what others change from here on is new.
   const canSnapshot = Boolean(meta && meta.access !== "read" && meta.access !== "comment");
   const canSnapshotRef = useRef(canSnapshot);
   canSnapshotRef.current = canSnapshot;
+  const markSeen = useMutation(api.changes.markSeen);
+  const seenOnServer = useRef(false);
+  if (meta) seenOnServer.current = true;
   useEffect(() => {
     return () => {
-      if (!lastEditAt.current || !canSnapshotRef.current) return;
+      const edited = Boolean(lastEditAt.current && canSnapshotRef.current);
       lastEditAt.current = null;
-      const snap = () => void createSnapshot({ documentId, reason: "close" }).catch(() => undefined);
+      if (!edited && !seenOnServer.current) return;
+      const seen = () => void markSeen({ documentIds: [documentId] }).catch(() => undefined);
+      const snap = () => {
+        if (!edited) return seen();
+        void createSnapshot({ documentId, reason: "close" }).then(seen, seen);
+      };
       // Let the editor flush its last keystrokes into the queue first (its cleanup may run after ours).
       setTimeout(() => {
         if (!engine || !engine.hasLocalWork(documentId)) return snap();
@@ -340,7 +349,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         const timer = setTimeout(finish, 30_000);
       }, 0);
     };
-  }, [documentId, engine, createSnapshot]);
+  }, [documentId, engine, createSnapshot, markSeen]);
 
   const threads = useQuery(api.comments.threads, meta ? { documentId } : "skip");
   const openBlockThread = useCallback((blockId: string, threadId: string | null = null) => setOpenThread({ blockId, threadId }), []);

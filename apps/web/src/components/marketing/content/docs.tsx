@@ -291,6 +291,11 @@ export const DOC_ARTICLES: DocArticle[] = [
         <p>
           When someone else has the same note open, their picture shows at the top of the page and edits reach each other within a moment. You also see their caret in the note, in their colour, with their first name over it for a few seconds after it moves. Text they select is lightly highlighted. Only the caret’s place in the note is shared this way, never any text, and nobody sees carets on a public link.
         </p>
+        <h2 id="changes">Changes</h2>
+        <p>
+          <strong>Changes</strong> in the sidebar lists the notes you’ve opened that were changed since you last looked, by someone else, by a connected app working in your name, or by Foli AI. Each note shows who changed it, when, and the lines that were added, edited or removed, marked the way version history marks them. From there you can open the note, mark it as seen, or undo the change: the lines that were changed go back to how they were when you last looked, and the rest of the note stays as it is. Undo can be undone from the message that follows.
+        </p>
+        <p>Opening a note, or leaving it, counts as looking at it. People who can only view or comment on a note see what changed in it, but not removed text, and can’t undo.</p>
       </>
     ),
   },

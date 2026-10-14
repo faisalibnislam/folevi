@@ -281,7 +281,7 @@ const lastRootRank = (rows: Doc<"blocks">[]) => rows.filter((r) => r.parentId ==
 
 /** Applies sync operations as the person, as this connection's device; a refusal or conflict fails it all. */
 async function sync(ctx: MutationCtx, profile: Doc<"profiles">, clientId: string, ops: SyncOp[]): Promise<void> {
-  const engine = new SyncEngine(ctx, profile, `mcp:${clientId}`.slice(0, 64));
+  const engine = new SyncEngine(ctx, profile, `mcp:${clientId}`.slice(0, 64), "app");
   const results = await engine.applyAll(null, ops);
   const bad = results.find((r) => r.status === "rejected" || r.status === "conflict");
   if (bad) fail("conflict", bad.status === "conflict" ? "The note changed while this was being saved. Read it again and retry." : (bad.error?.message ?? "That couldn't be saved."));

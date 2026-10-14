@@ -35,7 +35,7 @@ const CHANGED = (title: string) => `${q(title)} changed after this was proposed,
 /** Applies sync operations as the person; anything the engine refuses or finds in conflict fails the whole operation. */
 async function sync(ctx: MutationCtx, env: ExecEnv, ops: SyncOp[]): Promise<void> {
   for (let i = 0; i < ops.length; i += MAX_BATCH) {
-    const engine = new SyncEngine(ctx, env.profile, DEVICE);
+    const engine = new SyncEngine(ctx, env.profile, DEVICE, "ai");
     const results = await engine.applyAll(null, ops.slice(i, i + MAX_BATCH));
     const bad = results.find((r) => r.status === "rejected" || r.status === "conflict");
     if (bad) fail("conflict", bad.error?.message && bad.status === "rejected" ? bad.error.message : "The note changed while this was being applied. Nothing was changed.");

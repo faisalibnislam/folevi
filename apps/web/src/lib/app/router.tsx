@@ -20,6 +20,8 @@ export type Route =
   | { name: "calendar"; month: string | null }
   /** Reviews: flashcards due today (spaced repetition). `?note=` reviews one note's cards. */
   | { name: "review" }
+  /** Changes: what others changed in your notes since you last looked. */
+  | { name: "changes" }
   | { name: "daily"; date: string | null }
   | { name: "shared" }
   | { name: "templates" }
@@ -67,6 +69,7 @@ export function parseRoute(pathname: string): Route {
     case "daily":
       return { name: "daily", date: a && /^\d{4}-\d{2}-\d{2}$/.test(a) ? a : null };
     case "review":
+    case "changes":
     case "shared":
     case "templates":
     case "starred":

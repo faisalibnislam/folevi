@@ -33,6 +33,7 @@ test("two people in a note see each other's caret and name", async ({ browser })
   await guest.page.getByRole("listitem").filter({ hasText: /Caret plan/ }).getByRole("link").click();
   const guestBody = guest.page.getByRole("textbox", { name: "Document body" });
   await expect(guestBody).toContainText("A second line");
+  await expect(guestBody).toHaveAttribute("contenteditable", "true");
   await guestBody.locator("p").first().click();
 
   // Both are here: each sees the other's caret, labelled with their first name.

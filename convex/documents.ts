@@ -557,21 +557,69 @@ export const recent = query({
   },
 });
 
+/** The newest block change in a note: its blocks' highest `seq` (0 while it has none). */
+export async function latestBlockSeq(ctx: QueryCtx | MutationCtx, documentId: Id<"documents">): Promise<number> {
+  const last = await ctx.db
+    .query("blocks")
+    .withIndex("by_document_seq", (q) => q.eq("documentId", documentId))
+    .order("desc")
+    .first();
+  return last?.seq ?? 0;
+}
+
+/**
+ * How far a person has now seen a note (recents.seenSeq, for Changes): its newest block change, and for people
+ * who can edit it, the version holding it as it is now, so what others change after can be shown word by word
+ * and undone. With `save` that version is saved now when the newest one is older (leaving the note, marking it
+ * seen); without (opening it), the newest one is used only when it already holds the note as it is, so opening
+ * a note never writes to it while its editor loads.
+ */
+export async function seenMark(ctx: MutationCtx, doc: Doc<"documents">, canEdit: boolean, save = true): Promise<{ seenSeq: number; seenAt: number; seenVersionId: Id<"documentSnapshots"> | undefined }> {
+  let seenVersionId: Id<"documentSnapshots"> | undefined;
+  if (canEdit && !doc.inTrash && !save) {
+    const last = await ctx.db
+      .query("documentSnapshots")
+      .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+      .order("desc")
+      .first();
+    const waiting = await ctx.db
+      .query("documentEdits")
+      .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+      .first();
+    if (last && !waiting && last.contentSeq === doc.contentSeq) seenVersionId = last._id;
+  } else if (canEdit && !doc.inTrash) {
+    const saved = await snapshot(ctx, doc, doc.lastEditedBy, "idle");
+    const row = saved.id
+      ? await ctx.db
+          .query("documentSnapshots")
+          .withIndex("by_public_id", (q) => q.eq("publicId", saved.id!))
+          .unique()
+      : null;
+    seenVersionId = row?._id;
+  }
+  return { seenSeq: await latestBlockSeq(ctx, doc._id), seenAt: Date.now(), seenVersionId };
+}
+
 export const recordView = mutation({
   args: { documentId: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const doc = await getDocumentByPublicId(ctx, args.documentId);
-    if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) return null;
+    const access = doc ? await documentAccess(ctx, profile, doc) : "none";
+    if (!doc || !accessAtLeast(access, "read")) return null;
+    const canEdit = accessAtLeast(access, "write");
     const existing = await ctx.db
       .query("recents")
       .withIndex("by_profile_document", (q) => q.eq("profileId", profile._id).eq("documentId", doc._id))
       .unique();
     const now = Date.now();
     if (existing) {
-      if (now - existing.viewedAt > 30_000) await ctx.db.patch(existing._id, { viewedAt: now });
+      // Opening a note is seeing it: what changed in it is no longer new in Changes.
+      const stale = now - existing.viewedAt > 30_000;
+      const unseen = existing.seenSeq !== (await latestBlockSeq(ctx, doc._id));
+      if (stale || unseen) await ctx.db.patch(existing._id, { ...(stale ? { viewedAt: now } : {}), ...(unseen ? await seenMark(ctx, doc, canEdit, false) : {}) });
     } else {
-      await insertScoped(ctx, "recents", scopeOfRow(doc), { profileId: profile._id, documentId: doc._id, viewedAt: now });
+      await insertScoped(ctx, "recents", scopeOfRow(doc), { profileId: profile._id, documentId: doc._id, viewedAt: now, ...(await seenMark(ctx, doc, canEdit, false)) });
     }
     // Opening a note removed from Recent notes brings it back there.
     const hidden = await ctx.db
@@ -1567,7 +1615,27 @@ export const restoreSnapshot = mutation({
 export async function restoreVersion(ctx: MutationCtx, writable: Doc<"documents">, snap: Doc<"documentSnapshots">, profile: Doc<"profiles">): Promise<{ undoVersionId: string | null }> {
   const raw = await snapshotText(ctx, snap);
   if (!raw) fail("not_found", "Version content is unavailable.");
-  const parsed = JSON.parse(raw) as VersionContent;
+  return await rewritePage(ctx, writable, JSON.parse(raw) as VersionContent, profile);
+}
+
+/** A stored version's blocks (null when it's gone or can't be read). */
+export async function versionBlocks(ctx: QueryCtx | MutationCtx, snap: Doc<"documentSnapshots">): Promise<WireBlock[] | null> {
+  const raw = await snapshotText(ctx, snap);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as VersionContent;
+    return Array.isArray(parsed.blocks) ? parsed.blocks : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Rewrites a page to hold exactly `parsed` (title, icon, style when given, and blocks, ids kept), after saving
+ * the page as it is now, so it can be undone. A whole version (restoreVersion), or the page with some of its
+ * lines put back as they were (Changes, "Undo this change"). Callers check the person may edit the page.
+ */
+export async function rewritePage(ctx: MutationCtx, writable: Doc<"documents">, parsed: Pick<VersionContent, "title" | "icon" | "style" | "blocks">, profile: Doc<"profiles">): Promise<{ undoVersionId: string | null }> {
   // The page as it is now is kept first, so a restore can be undone (by restoring that version).
   const before = await snapshot(ctx, writable, profile._id, "before_restore");
   const seq = await nextSeq(ctx, scopeOfRow(writable));
@@ -1601,6 +1669,7 @@ export async function restoreVersion(ctx: MutationCtx, writable: Doc<"documents"
         seq,
         updatedAt: now,
         updatedBy: profile._id,
+        updatedVia: undefined,
       });
     } else {
       await insertScoped(ctx, "blocks", scopeOfRow(writable), {
@@ -1624,7 +1693,7 @@ export async function restoreVersion(ctx: MutationCtx, writable: Doc<"documents"
   }
   for (const b of current) {
     if (!keep.has(b.blockId) && b.deletedAt === undefined) {
-      await ctx.db.patch(b._id, { deletedAt: now, revision: b.revision + 1, seq, updatedAt: now, updatedBy: profile._id });
+      await ctx.db.patch(b._id, { deletedAt: now, revision: b.revision + 1, seq, updatedAt: now, updatedBy: profile._id, updatedVia: undefined });
     }
   }
   const revision = writable.revision + 1;

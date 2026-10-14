@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
-import { MAX_FOLDER_DEPTH, canNestFolderIn, folderMoveProblem, normalizeForSearch, rankBetween, ulid, type FolderLink } from "@folevi/editor-schema";
+import { MAX_FOLDER_DEPTH, canNestFolderIn, folderMoveProblem, isValidId, normalizeForSearch, rankBetween, ulid, type FolderLink } from "@folevi/editor-schema";
 import { assertWritable, documentAccessInfo, PageReader, requireDocument, requireProfile, requireRowScope, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { nextSeq } from "./lib/seq";
@@ -178,12 +178,27 @@ export const recentFolders = query({
   },
 });
 
+/**
+ * `id`: the folder's id, chosen by the client (a folder made offline is named, moved into and filled before
+ * the server has it). Sending the same create again (its answer was lost) returns the folder it made, once.
+ */
 export const createFolder = mutation({
-  args: { scope: vScopeArg, name: v.string(), parentFolderId: v.optional(v.string()), icon: v.optional(v.string()) },
+  args: { scope: vScopeArg, name: v.string(), parentFolderId: v.optional(v.string()), icon: v.optional(v.string()), id: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
+    if (args.id !== undefined) {
+      if (!isValidId(args.id)) fail("invalid_argument", "Invalid folder id.");
+      const existing = await ctx.db
+        .query("folders")
+        .withIndex("by_public_id", (q) => q.eq("publicId", args.id!))
+        .unique();
+      if (existing) {
+        if (existing.createdBy !== profile._id || !inScope(existing, scope)) fail("invalid_argument", "That folder id is taken.");
+        return { id: existing.publicId };
+      }
+    }
     let parentFolderId: Id<"folders"> | undefined;
     if (args.parentFolderId) {
       const parent = await ctx.db
@@ -196,7 +211,7 @@ export const createFolder = mutation({
     const siblings = await scopeFolders(ctx, scope);
     if (parentFolderId && !canNestFolderIn(folderLinks(siblings), parentFolderId)) fail("invalid_argument", TOO_DEEP);
     const last = siblings.map((f) => f.rank).sort().pop() ?? null;
-    const publicId = ulid();
+    const publicId = args.id ?? ulid();
     const now = Date.now();
     await insertScoped(ctx, "folders", scope, {
       publicId,

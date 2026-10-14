@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { rankBetween, ulid } from "@folevi/editor-schema";
+import { isValidId, rankBetween, ulid } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, PageReader, requireDocument, requireProfile, type Access } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { addView, createCollection, normalizeValue } from "./lib/collections";
@@ -289,11 +289,35 @@ export const deleteProperty = mutation({
   },
 });
 
+/**
+ * Adds a row (a page under the host page). `id` and `documentId` (the row and its page) may be chosen by the
+ * client, so a row added offline can be filled in before the server has it; sending the same add again (its
+ * answer was lost) returns the row it made, once.
+ */
 export const addRow = mutation({
-  args: { collectionId: v.string(), title: v.optional(v.string()), values: v.optional(v.record(v.string(), v.any())), afterRowId: v.optional(v.string()) },
+  args: {
+    collectionId: v.string(),
+    title: v.optional(v.string()),
+    values: v.optional(v.record(v.string(), v.any())),
+    afterRowId: v.optional(v.string()),
+    id: v.optional(v.string()),
+    documentId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const { profile, collection, host } = await collectionFor(ctx, args.collectionId, "write");
     await assertWritable(ctx, profile);
+    if ((args.id !== undefined && !isValidId(args.id)) || (args.documentId !== undefined && !isValidId(args.documentId))) fail("invalid_argument", "Invalid row id.");
+    if (args.id !== undefined) {
+      const existing = await ctx.db
+        .query("collectionRows")
+        .withIndex("by_public_id", (q) => q.eq("publicId", args.id!))
+        .unique();
+      if (existing) {
+        if (existing.collectionId !== collection._id) fail("invalid_argument", "That row id is taken.");
+        const page = await ctx.db.get(existing.documentId);
+        return { id: existing.publicId, documentId: page?.publicId ?? args.documentId ?? "" };
+      }
+    }
     const rows = (
       await ctx.db
         .query("collectionRows")
@@ -311,6 +335,7 @@ export const addRow = mutation({
     const doc = await createDocument(ctx, {
       scope: scopeOfRow(collection),
       actor: profile,
+      publicId: args.documentId,
       title: (args.title ?? "").slice(0, 300),
       kind: "collectionRow",
       parentDocumentId: host._id,
@@ -319,7 +344,7 @@ export const addRow = mutation({
       blocks: specsToWireBlocks([{ type: "paragraph", md: "" }]),
     });
     const now = Date.now();
-    const publicId = ulid();
+    const publicId = args.id ?? ulid();
     const rowId = await ctx.db.insert("collectionRows", { publicId, collectionId: collection._id, documentId: doc._id, rank, createdAt: now, updatedAt: now });
     for (const [propPublic, value] of Object.entries(args.values ?? {})) {
       const prop = await propertyFor(ctx, collection, propPublic);

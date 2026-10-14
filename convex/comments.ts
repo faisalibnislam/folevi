@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { normalizeInline, plainText, ulid, validateInline, type InlineNode } from "@folevi/editor-schema";
+import { isValidId, normalizeInline, plainText, ulid, validateInline, type InlineNode } from "@folevi/editor-schema";
 import { assertWritable, getDocumentByPublicId, requireDocument, requireProfile, documentAccess, accessAtLeast, PageAudience, type Access } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
@@ -309,18 +309,54 @@ async function notifyActivity(
   }
 }
 
+/** A comment by its public id (a client-chosen id is checked against it before it's used). */
+async function commentByPublicId(ctx: QueryCtx, publicId: string): Promise<Doc<"comments"> | null> {
+  return await ctx.db
+    .query("comments")
+    .withIndex("by_public_id", (q) => q.eq("publicId", publicId))
+    .unique();
+}
+
+/** A client-chosen id: well formed, or the call is refused. */
+function clientId(id: string | undefined): string | undefined {
+  if (id !== undefined && !isValidId(id)) fail("invalid_argument", "Invalid comment id.");
+  return id;
+}
+
+/**
+ * Starts a thread with its first comment. `threadId` and `commentId` may be chosen by the client (a comment
+ * written offline is shown, replied to and reacted to before the server has it): sending the same create
+ * again (its answer was lost) returns the thread it made, once, with nobody notified twice.
+ */
 export const create = mutation({
-  args: { documentId: v.string(), blockId: v.optional(v.string()), body: v.array(v.any()) },
+  args: { documentId: v.string(), blockId: v.optional(v.string()), body: v.array(v.any()), threadId: v.optional(v.string()), commentId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "comment");
+    const wantedThread = clientId(args.threadId);
+    const wantedComment = clientId(args.commentId);
+    if (wantedThread) {
+      const existing = await ctx.db
+        .query("commentThreads")
+        .withIndex("by_public_id", (q) => q.eq("publicId", wantedThread))
+        .unique();
+      if (existing) {
+        if (existing.createdBy !== profile._id || existing.documentId !== doc._id) fail("invalid_argument", "That comment id is taken.");
+        const first = await ctx.db
+          .query("comments")
+          .withIndex("by_thread", (q) => q.eq("threadId", existing._id))
+          .first();
+        return { threadId: existing.publicId, commentId: first?.publicId ?? wantedComment ?? "" };
+      }
+    }
+    if (wantedComment && (await commentByPublicId(ctx, wantedComment))) fail("invalid_argument", "That comment id is taken.");
     await consume(ctx, "comment", profile._id);
     const body = cleanBody(args.body);
     if (args.blockId && !(await liveBlock(ctx, doc, args.blockId))) fail("not_found", "Block not found.");
     const now = Date.now();
-    const threadPublic = ulid();
-    const commentPublic = ulid();
+    const threadPublic = wantedThread ?? ulid();
+    const commentPublic = wantedComment ?? ulid();
     const threadId = await insertScoped(ctx, "commentThreads", scopeOfRow(doc), {
       publicId: threadPublic,
       documentId: doc._id,
@@ -354,15 +390,22 @@ async function threadFor(ctx: MutationCtx, threadPublicId: string, need: Access)
   return { profile, thread, doc, access };
 }
 
+/** Replies in a thread. `commentId` may be chosen by the client; sent again, it returns the reply it made, once. */
 export const reply = mutation({
-  args: { threadId: v.string(), body: v.array(v.any()) },
+  args: { threadId: v.string(), body: v.array(v.any()), commentId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const { profile, thread, doc } = await threadFor(ctx, args.threadId, "comment");
     await assertWritable(ctx, profile);
+    const wanted = clientId(args.commentId);
+    const existing = wanted ? await commentByPublicId(ctx, wanted) : null;
+    if (existing) {
+      if (existing.authorId !== profile._id || existing.threadId !== thread._id) fail("invalid_argument", "That comment id is taken.");
+      return { commentId: existing.publicId };
+    }
     await consume(ctx, "comment", profile._id);
     const body = cleanBody(args.body);
     const now = Date.now();
-    const commentPublic = ulid();
+    const commentPublic = wanted ?? ulid();
     await insertScoped(ctx, "comments", scopeOfRow(thread), { publicId: commentPublic, threadId: thread._id, documentId: thread.documentId, authorId: profile._id, body, createdAt: now });
     await ctx.db.patch(thread._id, { lastActivityAt: now, commentCount: thread.commentCount + 1, status: "open", resolvedAt: undefined, resolvedBy: undefined });
     await setThreadRead(ctx, profile._id, thread);
@@ -476,19 +519,21 @@ export const remove = mutation({
 
 /**
  * Adds your reaction of `kind` to a comment, or takes it back if it's there. Anyone who can comment on the
- * page can react (guests with comment access too). Reactions notify nobody.
+ * page can react (guests with comment access too). Reactions notify nobody. `on` sets it rather than
+ * toggling, so a reaction sent again (its answer was lost, or it waited offline) lands as meant.
  */
 export const react = mutation({
-  args: { commentId: v.string(), kind: vReactionKind },
+  args: { commentId: v.string(), kind: vReactionKind, on: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const { profile, comment, access } = await commentFor(ctx, args.commentId);
     await assertWritable(ctx, profile);
     if (!accessAtLeast(access, "comment")) fail("forbidden", "You can't react to comments on this document.");
-    await consume(ctx, "comment", profile._id);
     const existing = await ctx.db
       .query("commentReactions")
       .withIndex("by_comment_profile", (q) => q.eq("commentId", comment._id).eq("profileId", profile._id).eq("kind", args.kind))
       .first();
+    if (args.on !== undefined && args.on === Boolean(existing)) return { reacted: args.on };
+    await consume(ctx, "comment", profile._id);
     if (existing) {
       await ctx.db.delete(existing._id);
       return { reacted: false };

@@ -45,7 +45,7 @@ const blocks: Array<[string, string]> = [
   ["Mermaid diagram", "A code block in Mermaid syntax, drawn as a diagram. Flowchart diagrams can be converted to a flowchart block."],
   ["Whiteboard", "A canvas for sketches with a pen, a highlighter and an eraser."],
   ["TeX formula", "A maths formula written in TeX."],
-  ["Collection, Gallery, Kanban", "A set of pages with properties, shown as a table, as cards or as a board."],
+  ["Collection, Gallery, Kanban, Calendar", "A set of pages with properties, shown as a table, as cards, as a board or on a month calendar."],
 ];
 
 const statuses: Array<[string, ReactNode]> = [
@@ -218,6 +218,10 @@ export const DOC_ARTICLES: DocArticle[] = [
           </li>
         </ul>
         <p>Every move can be undone from the message that appears. Tasks without a date are listed under the calendar, ready to drag onto a day.</p>
+        <h2 id="collection-calendars">Collections on a calendar</h2>
+        <p>
+          A collection can also have a <strong>Calendar</strong> view (choose it from <strong>+ View</strong>, or insert one with <code>/calendar</code>). It places each row on a month grid by one of the collection’s date properties, picked in the view’s settings. Select a row to open its page, drag it to another day to change its date, or use the plus on a day to add a row dated that day. Rows without a date wait in the <strong>No date</strong> tray below the month; drag a row there to clear its date.
+        </p>
       </>
     ),
   },

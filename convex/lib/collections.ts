@@ -94,7 +94,7 @@ export async function createCollection(
 export async function addView(
   ctx: MutationCtx,
   collectionId: Id<"collections">,
-  view: { name: string; type: Doc<"collectionViews">["type"]; groupBy?: string; visibleProperties: string[]; rank: string },
+  view: { name: string; type: Doc<"collectionViews">["type"]; groupBy?: string; dateBy?: string; visibleProperties: string[]; rank: string },
 ): Promise<string> {
   const publicId = ulid();
   await ctx.db.insert("collectionViews", {
@@ -106,6 +106,7 @@ export async function addView(
       filters: [],
       sorts: [],
       groupBy: view.groupBy,
+      dateBy: view.dateBy,
       visibleProperties: view.visibleProperties,
       cardPreview: view.type === "gallery" ? "cover" : "none",
       cardSize: "medium",
@@ -180,6 +181,7 @@ export async function copyCollectionsInto(ctx: MutationCtx, doc: Doc<"documents"
           filters: c.filters.filter((f) => mapId(f.propertyId)).map((f) => ({ ...f, propertyId: mapId(f.propertyId)! })),
           sorts: c.sorts.filter((x) => mapId(x.propertyId)).map((x) => ({ ...x, propertyId: mapId(x.propertyId)! })),
           groupBy: c.groupBy ? mapId(c.groupBy) : undefined,
+          dateBy: c.dateBy ? mapId(c.dateBy) : undefined,
           visibleProperties: c.visibleProperties.map(mapId).filter((x): x is string => Boolean(x)),
         },
       });

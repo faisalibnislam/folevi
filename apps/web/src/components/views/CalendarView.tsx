@@ -14,7 +14,7 @@ import { ViewChrome } from "@/components/app/Shell";
 import { TaskEditDialog, TaskItem, useToggleTask, type TaskRow } from "./TasksView";
 import { CalendarFeedDialog } from "./CalendarFeedDialog";
 import { CalendarWeek } from "./CalendarWeek";
-import { visibleDays } from "./calendarLayout";
+import { monthGrid, shiftMonth, visibleDays } from "./calendarLayout";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 
 type Layout = "month" | "week" | "agenda";
@@ -28,20 +28,6 @@ function storedLayout(): Layout {
   } catch {
     return "month";
   }
-}
-
-function monthStart(month: string) {
-  return `${month}-01`;
-}
-function shiftMonth(month: string, delta: number): string {
-  const [y, m] = month.split("-").map(Number) as [number, number];
-  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
-  return d.toISOString().slice(0, 7);
-}
-function weekdayOf(date: string): number {
-  // Monday = 0
-  const d = new Date(`${date}T00:00:00Z`).getUTCDay();
-  return (d + 6) % 7;
 }
 
 /**
@@ -66,9 +52,8 @@ export function CalendarView({ month }: { month: string | null }) {
   // The week view's first day (any day of the week on wide screens; the first of three on narrow ones).
   const [anchor, setAnchor] = useState(today);
   const weekDays = visibleDays(anchor, narrow ? 3 : 7);
-  const first = monthStart(current);
-  const gridStart = addDays(first, -weekdayOf(first));
-  const days = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
+  const first = `${current}-01`;
+  const days = monthGrid(current);
   const from = mode === "month" ? days[0]! : mode === "week" ? weekDays[0]! : today;
   const to = mode === "month" ? days[41]! : mode === "week" ? weekDays[weekDays.length - 1]! : addDays(today, 30);
   const tasks = useQuery(api.tasks.range, { scope, from, to, includeCompleted: true });

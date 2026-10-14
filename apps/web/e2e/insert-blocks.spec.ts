@@ -36,7 +36,7 @@ test.describe("Insert panel", () => {
       Suggested: ["Text", "Page", "Card", "To-do", "Table", "Image"],
       Blocks: ["Heading 1", "Bulleted list", "Code block", "TeX formula", "Mermaid diagram", "Flowchart", "Whiteboard", "Date"],
       Media: ["Image", "Image from Unsplash", "File attachment", "Audio recording"],
-      Collections: ["Table", "Gallery", "Kanban"],
+      Collections: ["Table", "Gallery", "Kanban", "Calendar"],
       "Nested content": ["Page", "Card"],
       Separators: ["Divider, extra light", "Divider, strong", "Page break"],
     };

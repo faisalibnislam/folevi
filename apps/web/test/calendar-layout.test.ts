@@ -1,7 +1,8 @@
 // The calendar week view's layout: weeks from Monday, times on the hour grid, drops snapped to 30
 // minutes, and overlapping items sharing a day's width.
 import { describe, expect, test } from "vitest";
-import { HOUR_PX, layoutOverlaps, minutesToPx, minutesToTime, slotAt, startOfWeek, timeToMinutes, visibleDays, weekdayIndex } from "@/components/views/calendarLayout";
+import { HOUR_PX, layoutOverlaps, minutesToPx, minutesToTime, monthGrid, shiftMonth, slotAt, startOfWeek, timeToMinutes, visibleDays, weekdayIndex } from "@/components/views/calendarLayout";
+import { rowsByDate } from "@/components/views/collectionView";
 
 describe("weeks", () => {
   test("start on Monday", () => {
@@ -15,6 +16,37 @@ describe("weeks", () => {
   test("seven days from Monday, or three from the anchor on narrow screens", () => {
     expect(visibleDays("2026-10-14", 7)).toEqual(["2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18"]);
     expect(visibleDays("2026-12-31", 3)).toEqual(["2026-12-31", "2027-01-01", "2027-01-02"]);
+  });
+});
+
+describe("month grid", () => {
+  test("six weeks from the Monday on or before the 1st", () => {
+    const days = monthGrid("2026-10");
+    expect(days).toHaveLength(42);
+    expect(days[0]).toBe("2026-09-28");
+    expect(days[3]).toBe("2026-10-01");
+    expect(days[41]).toBe("2026-11-08");
+    expect(monthGrid("2026-06")[0]).toBe("2026-06-01"); // the 1st is a Monday
+  });
+
+  test("moves by months across years", () => {
+    expect(shiftMonth("2026-12", 1)).toBe("2027-01");
+    expect(shiftMonth("2026-01", -1)).toBe("2025-12");
+    expect(shiftMonth("2026-10", 0)).toBe("2026-10");
+  });
+
+  test("collection rows by a date property, with the undated ones apart", () => {
+    const rows = [
+      { title: "A", values: { d: "2026-10-14" } },
+      { title: "B", values: {} },
+      { title: "C", values: { d: "2026-10-14" } },
+      { title: "D", values: { d: "soon" } },
+      { title: "E", values: { d: "2026-10-15" } },
+    ];
+    const { byDate, undated } = rowsByDate(rows, "d");
+    expect(byDate.get("2026-10-14")!.map((r) => r.title)).toEqual(["A", "C"]);
+    expect(byDate.get("2026-10-15")!.map((r) => r.title)).toEqual(["E"]);
+    expect(undated.map((r) => r.title)).toEqual(["B", "D"]);
   });
 });
 

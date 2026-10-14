@@ -101,3 +101,15 @@ export function layoutOverlaps(items: Span[]): Placed[] {
   if (group.length) close();
   return out;
 }
+
+/** The 42 days (six weeks from Monday) a month grid shows for `month` (YYYY-MM). */
+export function monthGrid(month: string): string[] {
+  const first = startOfWeek(`${month}-01`);
+  return Array.from({ length: 42 }, (_, i) => addDays(first, i));
+}
+
+/** The month `delta` months from `month` (YYYY-MM). */
+export function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 7);
+}

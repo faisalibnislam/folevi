@@ -1209,6 +1209,8 @@ export default defineSchema({
       ),
       sorts: v.array(v.object({ propertyId: v.string(), direction: v.union(v.literal("asc"), v.literal("desc")) })),
       groupBy: v.optional(v.string()),
+      /** Calendar views: the date property rows are placed by. */
+      dateBy: v.optional(v.string()),
       visibleProperties: v.array(v.string()),
       cardPreview: v.union(v.literal("none"), v.literal("cover"), v.literal("content")),
       cardSize: v.union(v.literal("small"), v.literal("medium"), v.literal("large")),

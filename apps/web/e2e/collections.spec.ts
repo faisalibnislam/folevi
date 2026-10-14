@@ -73,7 +73,6 @@ test("collections: inline names, typed filters (option and date pickers), persis
   // A board view stays selected across reloads.
   await pick(coll.getByRole("combobox", { name: "Add view" }), "Board");
   await expect(coll.getByRole("group", { name: "Views" }).getByRole("button", { name: "Board" })).toHaveAttribute("aria-pressed", "true");
-  await page.reload();
   const again = page.getByRole("region", { name: "Collection Reading list" });
   await expect(again.getByRole("group", { name: "Views" }).getByRole("button", { name: "Board" })).toHaveAttribute("aria-pressed", "true");
   await again.getByRole("group", { name: "Views" }).getByRole("button", { name: "Table" }).click();
@@ -95,4 +94,61 @@ test("collections: inline names, typed filters (option and date pickers), persis
   await confirm.getByRole("button", { name: "Delete row" }).click();
   await expect(table.getByRole("textbox", { name: "Row name" })).toHaveCount(1);
   await expect(table.getByRole("textbox", { name: "Row name" })).toHaveValue("Dune");
+});
+
+test("collections: a calendar view places rows by date; drag to move, New on a day, the No date tray", async ({ browser }) => {
+  const { page } = await newPerson(browser, "Calendar Collector");
+  // Tall enough for the whole month and the tray: drags start and end on screen.
+  await page.setViewportSize({ width: 1440, height: 1500 });
+  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
+  await page.getByRole("textbox", { name: "Title" }).fill("Launch plan");
+  await page.keyboard.press("Enter");
+  await waitForSaved(page);
+  await page.keyboard.type("/calendar");
+  await expect(page.getByRole("option", { name: /^Calendar/ })).toBeVisible();
+  await page.keyboard.press("Enter");
+
+  const coll = page.getByRole("region", { name: "Collection Calendar" });
+  await expect(coll).toBeVisible({ timeout: 20_000 });
+  await expect(coll.getByRole("button", { name: /Calendar/ })).toHaveAttribute("aria-pressed", "true");
+  const today = await page.evaluate(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+  const day = (date: string) => coll.locator(`[role="gridcell"][data-date="${date}"]`);
+  const other = await page.evaluate((t) => {
+    const [y, m, d] = t.split("-").map(Number) as [number, number, number];
+    // Another day in the same month: the 10th, or the 20th when today is the 10th.
+    return `${y}-${String(m).padStart(2, "0")}-${d === 10 ? "20" : "10"}`;
+  }, today);
+
+  // New on a day adds a row dated that day.
+  await day(today).hover();
+  await day(today).getByRole("button", { name: /^New row on / }).click();
+  await expect(day(today).getByRole("link", { name: "Untitled" })).toBeVisible();
+
+  // Drag it to another day: its date changes.
+  await day(today).getByRole("link", { name: "Untitled" }).dragTo(day(other));
+  await expect(day(other).getByRole("link", { name: "Untitled" })).toBeVisible();
+  await expect(day(today).getByRole("link", { name: "Untitled" })).toHaveCount(0);
+
+  // Dropped on the No date tray, it loses its date.
+  const tray = coll.getByRole("region", { name: "No date" });
+  await day(other).getByRole("link", { name: "Untitled" }).dragTo(tray);
+  await expect(tray.getByRole("link", { name: "Untitled" })).toBeVisible();
+  await expect(day(other).getByRole("link", { name: "Untitled" })).toHaveCount(0);
+  // Saved, not just shown.
+  await page.waitForTimeout(1000);
+  await page.reload();
+  await expect(tray.getByRole("link", { name: "Untitled" })).toBeVisible({ timeout: 20_000 });
+
+  // The table view shows the same rows.
+  await pick(coll.getByRole("combobox", { name: "Add view" }), "Table");
+  await expect(coll.getByRole("textbox", { name: "Row name" })).toHaveCount(1);
+  await coll.getByRole("button", { name: /Calendar/ }).click();
+
+  // A chip opens the row's page.
+  await tray.getByRole("link", { name: "Untitled" }).click();
+  await expect(page.getByRole("region", { name: "Properties in Calendar" })).toBeVisible();
 });

@@ -47,6 +47,7 @@ const COLLECTIONS: InsertItem[] = [
   { label: "Table", special: "collection", preview: "table", keywords: "collection database table rows" },
   { label: "Gallery", special: "gallery", preview: "gallery", keywords: "collection database cards grid" },
   { label: "Kanban", special: "board", preview: "kanban", keywords: "collection database board columns" },
+  { label: "Calendar", special: "calendarView", preview: "monthGrid", keywords: "collection database calendar month dates" },
 ];
 
 const MORE: InsertItem[] = [
@@ -110,7 +111,7 @@ const SECTIONS: { title: string; tiles: Tile[] }[] = [
     tiles: tiles("blocks", ["Heading 1", "Heading 2", "Heading 3", "Bulleted list", "Numbered list", "Toggle", "Quote", "Callout", "Code block", "TeX formula", "Mermaid diagram", "Flowchart", "Whiteboard", "Bookmark", "Date"]),
   },
   { title: "Media", tiles: tiles("media", ["Image", "Image from Unsplash", "File attachment", "Audio recording"]) },
-  { title: "Collections", tiles: tiles("collections", ["Table", "Gallery", "Kanban"]) },
+  { title: "Collections", tiles: tiles("collections", ["Table", "Gallery", "Kanban", "Calendar"]) },
   { title: "Nested content", tiles: tiles("nested", ["Page", "Card"]) },
   { title: "Separators", tiles: SEPARATORS },
 ];

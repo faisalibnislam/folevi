@@ -165,7 +165,7 @@ export const vCollectionPropertyType = v.union(
   v.literal("person"),
   v.literal("relation"),
 );
-export const vCollectionViewType = v.union(v.literal("table"), v.literal("board"), v.literal("gallery"));
+export const vCollectionViewType = v.union(v.literal("table"), v.literal("board"), v.literal("gallery"), v.literal("calendar"));
 
 export const vWireBlock = v.object({
   id: v.string(),

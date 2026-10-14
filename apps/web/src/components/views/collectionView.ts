@@ -131,3 +131,23 @@ export function applyView<R extends ViewRow>(rows: R[], config: { filters: ViewF
   }
   return out;
 }
+
+/**
+ * Rows placed on a calendar by a date property: by day (YYYY-MM-DD, in the order given), and the rows
+ * with no date (or one that isn't a day) for the "No date" tray.
+ */
+export function rowsByDate<R extends ViewRow>(rows: R[], datePropertyId: string): { byDate: Map<string, R[]>; undated: R[] } {
+  const byDate = new Map<string, R[]>();
+  const undated: R[] = [];
+  for (const r of rows) {
+    const v = r.values[datePropertyId];
+    if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      undated.push(r);
+      continue;
+    }
+    const day = byDate.get(v);
+    if (day) day.push(r);
+    else byDate.set(v, [r]);
+  }
+  return { byDate, undated };
+}

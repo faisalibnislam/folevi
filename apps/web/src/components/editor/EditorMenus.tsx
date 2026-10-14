@@ -9,6 +9,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import {
   Bold,
   CalendarDays,
+  CalendarRange,
   CheckSquare,
   ChevronLeft,
   ChevronRight,
@@ -120,7 +121,7 @@ interface MenuItem {
 }
 
 /** Everything the Insert panel (and the slash menu) can add that needs more than a plain block. */
-export type SpecialInsert = "image" | "unsplash" | "file" | "record" | "page" | "card" | "bookmark" | "embed" | "collection" | "gallery" | "board" | "date" | "pickDate";
+export type SpecialInsert = "image" | "unsplash" | "file" | "record" | "page" | "card" | "bookmark" | "embed" | "collection" | "gallery" | "board" | "calendarView" | "date" | "pickDate";
 
 /** Asks the editor's menus to run a special insert (the Insert panel lives outside the editor). */
 /** `placeholder`: the id of an empty line made for this insert (a drop), removed if the insert is cancelled. */
@@ -545,7 +546,7 @@ export function EditorMenus({
   }, [editor, editingDate]);
 
   const insertCollection = useCallback(
-    async (view: "table" | "gallery" | "board", name: string) => {
+    async (view: "table" | "gallery" | "board" | "calendar", name: string) => {
       try {
         // A brand-new page may still be on its way to the server; the collection needs it to exist.
         // The block it was asked from (by id: the caret may move while the server answers).
@@ -588,6 +589,7 @@ export function EditorMenus({
       collection: account("Collections", () => insertCollection("table", "Collection")),
       gallery: account("Collections", () => insertCollection("gallery", "Gallery")),
       board: account("Collections", () => insertCollection("board", "Kanban")),
+      calendarView: account("Collections", () => insertCollection("calendar", "Calendar")),
       date: () => {
         ensureTextCaret();
         editor.chain().focus().insertContent({ type: "dateMention", attrs: { date: today } }).insertContent(" ").run();
@@ -786,6 +788,7 @@ export function EditorMenus({
       { id: "collection", label: "Collection", keywords: "collection database table", icon: <LayoutList size={15} />, run: special.collection },
       { id: "gallery", label: "Gallery", keywords: "gallery collection database cards grid", icon: <LayoutGrid size={15} />, run: special.gallery },
       { id: "board", label: "Kanban", keywords: "kanban board collection database columns", icon: <Columns3 size={15} />, run: special.board },
+      { id: "calendarView", label: "Calendar", keywords: "calendar collection database month dates", icon: <CalendarRange size={15} />, run: special.calendarView },
       { id: "date", label: "Today’s date", keywords: "date today mention calendar", icon: <CalendarDays size={15} />, run: special.date },
       { id: "pickdate", label: "Date…", keywords: "date pick choose calendar day", icon: <CalendarDays size={15} />, run: special.pickDate },
     ],

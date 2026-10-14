@@ -34,7 +34,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 /** A read-only snapshot of a collection embedded in a publicly shared page. */
 export interface PublicCollection {
   name: string;
-  viewType: "table" | "board" | "gallery";
+  viewType: Doc<"collectionViews">["type"];
   config: Doc<"collectionViews">["config"];
   properties: { id: string; name: string; type: Doc<"collectionProperties">["type"]; options: Doc<"collectionProperties">["options"] }[];
   rows: { id: string; title: string; icon: string | null; values: Record<string, unknown> }[];

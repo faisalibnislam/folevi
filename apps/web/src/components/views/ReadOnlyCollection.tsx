@@ -4,7 +4,8 @@ import { applyView, isEmptyValue, type ViewFilter, type ViewProperty, type ViewS
 
 export interface ReadOnlyCollectionData {
   name: string;
-  viewType: "table" | "board" | "gallery";
+  /** Calendar views are shown as a table here. */
+  viewType: "table" | "board" | "gallery" | "calendar";
   config: { filters: ViewFilter[]; sorts: ViewSort[]; visibleProperties: string[]; groupBy?: string };
   properties: ViewProperty[];
   /** Relation values arrive as a count; person values as a display name. */

@@ -3,18 +3,19 @@
 import { DateField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { ArrowDownUp, ArrowUpRight, Columns3, Filter, GalleryHorizontalEnd, Plus, Search, Settings2, Table2, Trash2, FileText } from "lucide-react";
+import { ArrowDownUp, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Columns3, Filter, GalleryHorizontalEnd, Plus, Search, Settings2, Table2, Trash2, FileText } from "lucide-react";
 import { api } from "@/lib/convex/api";
-import type { WireScope } from "@folevi/editor-schema";
+import { localDate, type WireScope } from "@folevi/editor-schema";
 import { AppLink } from "@/lib/app/router";
 import { documentScope } from "@/lib/app/scope";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Dialog } from "@/components/ui/Dialog";
-import { Button } from "@/components/ui/Button";
+import { Button, IconButton } from "@/components/ui/Button";
 import { coverBackground } from "@/lib/cover";
 import { useCoverImageUrl } from "@/lib/app/coverImage";
 import { formatCalendarDate, t } from "@/i18n";
-import { NO_VALUE_OPS, OPS, TITLE_ID, applyView, filterTargets, isEmptyValue, opLabel, resolveOption, type FilterTarget } from "@/components/views/collectionView";
+import { NO_VALUE_OPS, OPS, TITLE_ID, applyView, filterTargets, isEmptyValue, opLabel, resolveOption, rowsByDate, type FilterTarget } from "@/components/views/collectionView";
+import { monthGrid, shiftMonth } from "@/components/views/calendarLayout";
 import { Select } from "@/components/ui/Select";
 
 type CollectionData = NonNullable<ReturnType<typeof useCollection>>;
@@ -86,6 +87,15 @@ const TYPE_LABELS: Record<Property["type"], string> = {
 function optionColor(color: string) {
   const c = color === "muted" ? "ink-muted" : color;
   return { background: `var(--color-${c === "accent" ? "accent-soft" : c === "ink-muted" ? "surface-sunken" : `${c}-soft`})`, color: `var(--color-${c === "accent" ? "accent-soft-ink" : c === "ink-muted" ? "ink" : `${c}-ink`})` };
+}
+
+const VIEW_NAMES: Record<View["type"], string> = { table: "Table", board: "Board", gallery: "Gallery", calendar: "Calendar" };
+
+function ViewIcon({ type }: { type: View["type"] }) {
+  if (type === "table") return <Table2 size={13} aria-hidden />;
+  if (type === "board") return <Columns3 size={13} aria-hidden />;
+  if (type === "calendar") return <CalendarDays size={13} aria-hidden />;
+  return <GalleryHorizontalEnd size={13} aria-hidden />;
 }
 
 function storedView(collectionId: string): string | null {
@@ -170,7 +180,7 @@ function ConfirmDialog({ open, title, body, confirmLabel, onCancel, onConfirm }:
   );
 }
 
-/** A collection embedded in a document: typed properties with table, board and gallery views. */
+/** A collection embedded in a document: typed properties with table, board, gallery and calendar views. */
 export function CollectionEmbed({ collectionId, initialViewId, editable }: { collectionId: string; initialViewId: string | null; editable: boolean }) {
   const data = useCollection(collectionId);
   const [viewId, setViewIdState] = useState<string | null>(() => storedView(collectionId) ?? initialViewId);
@@ -222,7 +232,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
               onClick={() => setViewId(v.id)}
               className={`inline-flex h-7 items-center gap-1.5 rounded-chip px-2.5 text-xs ${v.id === view.id ? "bg-accent-soft text-accent-soft-ink" : "text-muted hover:bg-surface"}`}
             >
-              {v.type === "table" ? <Table2 size={13} aria-hidden /> : v.type === "board" ? <Columns3 size={13} aria-hidden /> : <GalleryHorizontalEnd size={13} aria-hidden />}
+              <ViewIcon type={v.type} />
               {v.name}
             </button>
           ))}
@@ -244,7 +254,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
                 onChange={(e) => {
                   const type = e.target.value as View["type"];
                   if (!type) return;
-                  addView({ collectionId, name: type === "table" ? "Table" : type === "board" ? "Board" : "Gallery", type }).then(
+                  addView({ collectionId, name: VIEW_NAMES[type], type }).then(
                     (r) => setViewId(r.id),
                     (err) => toast.show(errorMessage(err), { tone: "error" }),
                   );
@@ -255,6 +265,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
                 <option value="table">Table</option>
                 <option value="board">Board</option>
                 <option value="gallery">Gallery</option>
+                <option value="calendar">Calendar</option>
               </Select>
             </>
           ) : null}
@@ -267,6 +278,8 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
         <TableCollection data={data} rows={rows} visible={visible} canEdit={canEdit} />
       ) : view.type === "board" ? (
         <BoardCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onAdd={add} />
+      ) : view.type === "calendar" ? (
+        <CalendarCollection data={data} view={view} rows={rows} canEdit={canEdit} onAdd={add} />
       ) : (
         <GalleryCollection data={data} view={view} rows={rows} visible={visible} />
       )}
@@ -707,6 +720,148 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
   );
 }
 
+const ROW_TYPE = "application/x-folevi-row";
+
+/**
+ * Rows on a month grid by a date property. A row's chip opens its page; drag it to another day to change
+ * the date, or to the "No date" tray to clear it. "New" on a day adds a row with that date.
+ */
+function CalendarCollection({ data, view, rows, canEdit, onAdd }: { data: CollectionData; view: View; rows: Row[]; canEdit: boolean; onAdd: (values?: Record<string, unknown>) => Promise<void> }) {
+  const { setValue } = useCollectionMutations();
+  const toast = useToast();
+  const today = useMemo(() => localDate(Date.now(), Intl.DateTimeFormat().resolvedOptions().timeZone), []);
+  const [month, setMonth] = useState(() => today.slice(0, 7));
+  const [dragging, setDragging] = useState<string | null>(null);
+  const prop = data.properties.find((p) => p.id === view.config.dateBy && p.type === "date");
+  if (!prop) return <p className="p-4 text-sm text-muted">Choose a date property to place rows on this calendar (View settings).</p>;
+  const { byDate, undated } = rowsByDate(rows, prop.id);
+  const days = monthGrid(month);
+  const monthLabel = formatCalendarDate(`${month}-01`, { month: "long", year: "numeric" });
+  const weekdays = days.slice(0, 7).map((d) => formatCalendarDate(d, { weekday: "short" }));
+  const move = (rowId: string, date: string | null) => {
+    const row = data.rows.find((r) => r.id === rowId);
+    if (!row || (row.values[prop.id] ?? null) === date) return;
+    void setValue({ collectionId: data.id, rowId, propertyId: prop.id, value: date }).catch((e) => toast.show(errorMessage(e), { tone: "error" }));
+  };
+  const dropTarget = (date: string | null) =>
+    canEdit
+      ? {
+          onDragOver: (e: React.DragEvent) => {
+            if (e.dataTransfer.types.includes(ROW_TYPE)) e.preventDefault();
+          },
+          onDrop: (e: React.DragEvent) => {
+            e.preventDefault();
+            const id = e.dataTransfer.getData(ROW_TYPE) || dragging;
+            setDragging(null);
+            if (id) move(id, date);
+          },
+        }
+      : {};
+  const chip = (row: Row) => (
+    <AppLink
+      href={`/d/${row.documentId}`}
+      draggable={canEdit}
+      onDragStart={(e) => {
+        // Only the row id travels, so a chip dropped on the note around it doesn't paste a link there.
+        e.dataTransfer.clearData();
+        e.dataTransfer.setData(ROW_TYPE, row.id);
+        e.dataTransfer.effectAllowed = "move";
+        setDragging(row.id);
+      }}
+      onDragEnd={() => setDragging(null)}
+      title={row.title || "Untitled"}
+      className={`block truncate rounded-tiny bg-accent-soft px-1 text-[11.5px] leading-5 text-accent-soft-ink hover:underline ${canEdit ? "cursor-grab" : ""}`}
+    >
+      {row.title || "Untitled"}
+    </AppLink>
+  );
+  return (
+    <div className="p-3">
+      <div className="mb-2 flex items-center gap-1">
+        <h4 className="text-sm font-semibold">{monthLabel}</h4>
+        <div className="ml-auto flex items-center gap-1">
+          <IconButton label="Previous month" onClick={() => setMonth(shiftMonth(month, -1))}>
+            <ChevronLeft size={15} aria-hidden />
+          </IconButton>
+          <Button size="sm" onClick={() => setMonth(today.slice(0, 7))}>
+            Today
+          </Button>
+          <IconButton label="Next month" onClick={() => setMonth(shiftMonth(month, 1))}>
+            <ChevronRight size={15} aria-hidden />
+          </IconButton>
+        </div>
+      </div>
+      <div role="grid" aria-label={`${data.name}, ${monthLabel}`} className="overflow-hidden rounded-chip border border-line">
+        <div role="row" className="grid grid-cols-7 border-b border-line bg-surface text-center text-[11px] font-medium text-muted">
+          {weekdays.map((w) => (
+            <div key={w} role="columnheader" className="py-1.5">
+              {w}
+            </div>
+          ))}
+        </div>
+        {Array.from({ length: 6 }, (_, week) => (
+          <div role="row" key={week} className="grid grid-cols-7">
+            {days.slice(week * 7, week * 7 + 7).map((date) => {
+              const items = byDate.get(date) ?? [];
+              const inMonth = date.startsWith(month);
+              const long = formatCalendarDate(date, { weekday: "long", month: "long", day: "numeric" });
+              return (
+                <div
+                  key={date}
+                  role="gridcell"
+                  data-date={date}
+                  aria-label={`${long}, ${items.length === 1 ? "1 row" : `${items.length} rows`}`}
+                  {...dropTarget(date)}
+                  className={`group/day min-h-[88px] min-w-0 border-b border-r border-line p-1 last:border-r-0 ${inMonth ? "" : "bg-surface/60"}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`grid h-5 min-w-5 place-items-center rounded-chip px-1 text-[11px] tabular-nums ${date === today ? "bg-heading font-semibold text-canvas" : inMonth ? "text-ink" : "text-faint"}`}>{Number(date.slice(8))}</span>
+                    {canEdit ? (
+                      <button
+                        type="button"
+                        aria-label={`New row on ${long}`}
+                        title="New"
+                        onClick={() => void onAdd({ [prop.id]: date })}
+                        className="grid h-5 w-5 place-items-center rounded-tiny text-faint opacity-0 hover:bg-sunken hover:text-ink focus-visible:opacity-100 group-hover/day:opacity-100 pointer-coarse:opacity-100"
+                      >
+                        <Plus size={12} aria-hidden />
+                      </button>
+                    ) : null}
+                  </div>
+                  <ul className="mt-0.5 space-y-0.5">
+                    {items.slice(0, 4).map((row) => (
+                      <li key={row.id}>{chip(row)}</li>
+                    ))}
+                    {items.length > 4 ? <li className="px-1 text-[11px] text-muted">+{items.length - 4} more</li> : null}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      {undated.length || canEdit ? (
+        <section aria-label="No date" {...dropTarget(null)} className="mt-3 rounded-chip bg-sunken p-2">
+          <h4 className="mb-1.5 flex items-center gap-2 px-1 text-xs font-semibold">
+            No date <span className="font-normal text-faint">{undated.length}</span>
+          </h4>
+          {undated.length ? (
+            <ul className="flex flex-wrap gap-1">
+              {undated.map((row) => (
+                <li key={row.id} className="max-w-48">
+                  {chip(row)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-1 text-xs text-muted">Every row has a date. Drag one here to clear it.</p>
+          )}
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
 /** A gallery card's cover: the row's note theme (built-in artwork or the person's own image). */
 function GalleryCover({ cover, children }: { cover: Row["cover"]; children: React.ReactNode }) {
   const imageUrl = useCoverImageUrl(cover);
@@ -828,6 +983,7 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
   };
   const current = () => (latest.current?.viewId === view.id ? latest.current.config : config);
   const selectProps = useMemo(() => data.properties.filter((p) => p.type === "select"), [data.properties]);
+  const dateProps = useMemo(() => data.properties.filter((p) => p.type === "date"), [data.properties]);
   const targets = useMemo(() => filterTargets(data.properties), [data.properties]);
   const setFilter = (i: number, patch: Partial<ViewFilter>) => void save({ filters: current().filters.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
 
@@ -919,6 +1075,20 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
               <span className="font-semibold">Group by</span>
               <Select value={config.groupBy ?? ""} onChange={(e) => void save({ groupBy: e.target.value || undefined })} className="mt-1 flex h-8 ui-input rounded-chip px-3">
                 {selectProps.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          ) : null}
+          {view.type === "calendar" ? (
+            <label className="mt-6 block text-sm">
+              <span className="font-semibold">Show rows by</span>
+              <Select value={config.dateBy ?? ""} onChange={(e) => void save({ dateBy: e.target.value || undefined })} className="mt-1 flex h-8 ui-input rounded-chip px-3">
+                {config.dateBy && !dateProps.some((p) => p.id === config.dateBy) ? <option value={config.dateBy}>Deleted property</option> : null}
+                {dateProps.length === 0 ? <option value="">Add a date property first</option> : null}
+                {dateProps.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>

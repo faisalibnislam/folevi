@@ -30,6 +30,7 @@ export type PreviewKind =
   | "date"
   | "gallery"
   | "kanban"
+  | "monthGrid"
   | "pageBreak";
 
 const PAPER = "var(--color-surface-raised)";
@@ -306,6 +307,17 @@ function Picture({ kind }: { kind: PreviewKind }) {
               <Bar x={x! + 2} y={y! + 9} w={9} h={2} o={0.25} />
             </g>
           ))}
+        </>
+      );
+    case "monthGrid":
+      return (
+        <>
+          <Sheet x={5} y={5} w={38} h={28} r={2.5} />
+          {Array.from({ length: 4 }, (_, row) =>
+            Array.from({ length: 5 }, (_, col) => <rect key={`${row}-${col}`} x={8 + col * 6.8} y={8.5 + row * 6} width={5.6} height={4.8} rx={0.8} fill={C} fillOpacity={0.08} />),
+          )}
+          <rect x={14.8} y={14.5} width={12.4} height={2.4} rx={1} fill={ACCENT} fillOpacity={0.6} />
+          <rect x={28.4} y={26.5} width={5.6} height={2.4} rx={1} fill={ACCENT} fillOpacity={0.6} />
         </>
       );
     case "kanban":

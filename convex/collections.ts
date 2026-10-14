@@ -14,6 +14,7 @@ import { SyncEngine } from "./lib/syncEngine";
 import { queueIndex } from "./lib/ai/indexing";
 
 const OPTION_COLORS = ["accent", "moss", "marigold", "plum", "coral", "muted"];
+const VIEW_NAMES: Record<Doc<"collectionViews">["type"], string> = { table: "Table", board: "Board", gallery: "Gallery", calendar: "Calendar" };
 
 async function collectionFor(ctx: QueryCtx | MutationCtx, collectionPublicId: string, need: Access) {
   const profile = await requireProfile(ctx);
@@ -160,7 +161,7 @@ export const get = query({
 
 /** Creates a collection hosted by a document. The client then inserts a `collection` block pointing at it. */
 export const create = mutation({
-  // `view` picks the first view's layout (Insert → Table / Gallery / Kanban); defaults to a table.
+  // `view` picks the first view's layout (Insert → Table / Gallery / Kanban / Calendar); defaults to a table.
   args: { documentId: v.string(), name: v.optional(v.string()), view: v.optional(vCollectionViewType) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
@@ -187,12 +188,14 @@ export const create = mutation({
       ],
     });
     const status = coll.propertyPublicIds.get("status")!;
-    const vis = [status, coll.propertyPublicIds.get("date")!];
+    const date = coll.propertyPublicIds.get("date")!;
+    const vis = [status, date];
     const type = args.view ?? "table";
     const viewId = await addView(ctx, coll.collectionId, {
-      name: type === "board" ? "Board" : type === "gallery" ? "Gallery" : "Table",
+      name: VIEW_NAMES[type],
       type,
       groupBy: type === "board" ? status : undefined,
+      dateBy: type === "calendar" ? date : undefined,
       visibleProperties: vis,
       rank: "V",
     });
@@ -493,6 +496,7 @@ const vConfig = v.object({
   ),
   sorts: v.array(v.object({ propertyId: v.string(), direction: v.union(v.literal("asc"), v.literal("desc")) })),
   groupBy: v.optional(v.string()),
+  dateBy: v.optional(v.string()),
   visibleProperties: v.array(v.string()),
   cardPreview: v.union(v.literal("none"), v.literal("cover"), v.literal("content")),
   cardSize: v.union(v.literal("small"), v.literal("medium"), v.literal("large")),
@@ -516,10 +520,13 @@ export const addViewToCollection = mutation({
     if (views.length >= 20) fail("limit_exceeded", "Up to 20 views per collection.");
     const groupBy = args.type === "board" ? props.find((p) => p.type === "select")?.publicId : undefined;
     if (args.type === "board" && !groupBy) fail("invalid_argument", "Add a single-select property to group a board by.");
+    const dateBy = args.type === "calendar" ? props.find((p) => p.type === "date")?.publicId : undefined;
+    if (args.type === "calendar" && !dateBy) fail("invalid_argument", "Add a date property to show a calendar.");
     const id = await addView(ctx, collection._id, {
       name: args.name.trim().slice(0, 40) || "View",
       type: args.type,
       groupBy,
+      dateBy,
       visibleProperties: props.map((p) => p.publicId),
       rank: rankBetween(views.map((vw) => vw.rank).sort().pop() ?? null, null),
     });
@@ -543,6 +550,10 @@ export const updateView = mutation({
       if (view.type === "board" && args.config.groupBy) {
         const prop = await propertyFor(ctx, collection, args.config.groupBy);
         if (prop.type !== "select") fail("invalid_argument", "Boards group by a single-select property.");
+      }
+      if (view.type === "calendar" && args.config.dateBy) {
+        const prop = await propertyFor(ctx, collection, args.config.dateBy);
+        if (prop.type !== "date") fail("invalid_argument", "Calendars place rows by a date property.");
       }
       patch.config = { ...args.config, filters: args.config.filters.slice(0, 20), sorts: args.config.sorts.slice(0, 5) };
     }

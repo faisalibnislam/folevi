@@ -6,9 +6,11 @@ import {
   fetchReceivedEmail,
   parseResendWebhook,
   readInboundMessage,
+  sendingDomain,
   ticketNumberFromSubject,
   verifyResendSignature,
 } from "@folevi/email";
+import { SUPPORT_DOMAIN } from "./lib/support";
 import { verifyFileSignature } from "./lib/fileUrls";
 import { AUDIO_MIMES } from "./lib/images";
 import { createAuth } from "./auth";
@@ -154,6 +156,10 @@ const MAX_WEBHOOK_BYTES = 256 * 1024;
  *   The event carries only the email id; the message is read from Resend's Received emails API with
  *   RESEND_API_KEY and filed by support.ingestInbound.
  *
+ * Resend webhooks are account-wide, and the account may serve other domains too: delivery events count only
+ * for mail sent from Folevi's sending domain, received mail only when it was for a folevi.com address.
+ * Anything else is acknowledged and dropped without being stored or fetched.
+ *
  * Signed with Svix (svix-id, svix-timestamp, svix-signature) under RESEND_WEBHOOK_SECRET; without the
  * secret every request is refused. Events are deduplicated on svix-id (stable across Resend's retries),
  * received mail also on its email id. A failure Resend should retry (the API unreachable, the key missing)
@@ -184,12 +190,15 @@ http.route({
     if (parsed.kind === "ignored") return new Response("ok", { status: 200 });
 
     if (parsed.kind === "delivery") {
+      const ours = `@${sendingDomain(process.env as Record<string, string | undefined>)}`;
+      if (!parsed.from?.endsWith(ours)) return new Response("ok", { status: 200 });
       const result = await ctx.runMutation(internal.email.recordProviderEvents, { events: [parsed.event] });
       console.log(JSON.stringify({ event: "email.webhook", provider: "resend", name: parsed.event.eventName, stored: result.stored }));
       return new Response("ok", { status: 200 });
     }
 
     // email.received
+    if (!parsed.recipients.some((r) => r.endsWith(`@${SUPPORT_DOMAIN}`))) return new Response("ok", { status: 200 });
     const log = (outcome: string) => console.log(JSON.stringify({ event: "support.inbound", provider: "resend", outcome }));
     if (await ctx.runQuery(internal.support.inboundSeen, { inboundMessageId: parsed.emailId })) {
       log("duplicate");

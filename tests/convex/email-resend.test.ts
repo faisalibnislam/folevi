@@ -268,6 +268,15 @@ describe("POST /webhooks/resend (delivery events)", () => {
     expect(all[0]!.reason).toBe("spam_complaint");
   });
 
+  test("events for mail another domain on the same Resend account sent are dropped", async () => {
+    const t = setup();
+    await sentAttempt(t, { messageId: "msg-X", to: "someone@example.com" });
+    const other = evt("email.bounced", { email_id: "msg-X", from: "Other App <hi@other.app>", to: ["someone@example.com"], bounce: { type: "Permanent" } });
+    expect((await post(t, other)).status).toBe(200);
+    expect(await events(t)).toHaveLength(0);
+    expect(await t.run(async (ctx) => ctx.db.query("emailSuppressions").collect())).toHaveLength(0);
+  });
+
   test("a transient bounce is a soft bounce and suppresses nothing", async () => {
     const t = setup();
     await sentAttempt(t, { messageId: "msg-S", to: "full@example.com" });

@@ -6,7 +6,12 @@
 // part of the secret after its "whsec_" prefix. One request is one event: `{type, created_at, data}`.
 // Delivery events (email.delivered, email.bounced, …) carry the Resend email id and our tags; an inbound
 // message is `email.received` with metadata only (the body is read from the Received emails API).
+//
+// Webhooks are account-wide: a Resend account that also sends or receives for other domains reports those
+// too. Each parsed event therefore carries the addresses needed to keep only Folevi's own: the sender of
+// a delivery event, the recipients of a received email (see convex/http.ts).
 import type { EmailEvent, EmailEventName } from "../types";
+import { parseAddress } from "./inbound";
 
 /** How far a webhook's timestamp may be from now (Svix's own tolerance). */
 export const WEBHOOK_TOLERANCE_MS = 5 * 60 * 1000;
@@ -105,9 +110,22 @@ function readTags(raw: unknown): Record<string, string> {
 }
 
 export type ResendWebhook =
-  | { kind: "delivery"; event: EmailEvent }
-  | { kind: "received"; eventId: string; emailId: string }
+  /** `from`: the sender's lowercased address, to tell Folevi's own sends from other domains'. */
+  | { kind: "delivery"; event: EmailEvent; from: string | null }
+  /** `recipients`: every lowercased address it was for (to, cc, bcc, received_for). */
+  | { kind: "received"; eventId: string; emailId: string; recipients: string[] }
   | { kind: "ignored"; type: string };
+
+function addresses(...lists: unknown[]): string[] {
+  const out = new Set<string>();
+  for (const list of lists) {
+    for (const item of (Array.isArray(list) ? list : list === undefined || list === null ? [] : [list]).slice(0, 50)) {
+      const a = parseAddress(item);
+      if (a) out.add(a.address);
+    }
+  }
+  return [...out];
+}
 
 /**
  * Reads one (signature-verified) Resend webhook. `eventId` is the `svix-id` header: unique per event and
@@ -128,7 +146,7 @@ export function parseResendWebhook(rawBody: string, eventId: string, now: number
   const data = obj.data && typeof obj.data === "object" && !Array.isArray(obj.data) ? (obj.data as Record<string, unknown>) : null;
   if (!type || !data) return null;
   const emailId = typeof data.email_id === "string" && EMAIL_ID_RE.test(data.email_id) ? data.email_id : undefined;
-  if (type === "email.received") return emailId ? { kind: "received", eventId, emailId } : null;
+  if (type === "email.received") return emailId ? { kind: "received", eventId, emailId, recipients: addresses(data.to, data.cc, data.bcc, data.received_for) } : null;
   const known = EVENT_NAMES[type];
   if (!known && !type.startsWith("email.")) return { kind: "ignored", type: type.slice(0, 64) };
   const created = Date.parse(typeof obj.created_at === "string" ? obj.created_at : "");
@@ -146,5 +164,5 @@ export function parseResendWebhook(rawBody: string, eventId: string, now: number
   const bounce = data.bounce && typeof data.bounce === "object" ? (data.bounce as Record<string, unknown>) : null;
   const sub = bounce ? [bounce.type, bounce.subType].filter((s) => typeof s === "string").join(":") : "";
   if (sub && SHORT_TOKEN_RE.test(sub.replace(/:/g, "_"))) event.bounceCategory = sub.slice(0, 64);
-  return { kind: "delivery", event };
+  return { kind: "delivery", event, from: parseAddress(data.from)?.address ?? null };
 }

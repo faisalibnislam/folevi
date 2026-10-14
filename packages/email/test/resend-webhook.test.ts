@@ -74,6 +74,7 @@ describe("parseResendWebhook", () => {
         category: "mention_notification",
         attemptId: "j57abc123def456",
       },
+      from: "hello@mail.folevi.com",
     });
   });
 
@@ -106,7 +107,10 @@ describe("parseResendWebhook", () => {
 
   it("turns email.received into an id to fetch, with no content", () => {
     const body = JSON.stringify({ type: "email.received", created_at: "2026-09-21T14:13:20.000Z", data: { email_id: "56761188-7520-42d8-8898-ff6fc54ce618", from: "jane@example.com", to: ["support@folevi.com"], subject: "Help" } });
-    expect(parseResendWebhook(body, "msg_9", NOW)).toEqual({ kind: "received", eventId: "msg_9", emailId: "56761188-7520-42d8-8898-ff6fc54ce618" });
+    expect(parseResendWebhook(body, "msg_9", NOW)).toEqual({ kind: "received", eventId: "msg_9", emailId: "56761188-7520-42d8-8898-ff6fc54ce618", recipients: ["support@folevi.com"] });
+    // Every address it was for counts (a Bcc or a forward shows up only in bcc / received_for).
+    const bcc = JSON.stringify({ type: "email.received", data: { email_id: "e1", to: ["Team <team@other.app>"], bcc: ["security@folevi.com"], received_for: ["SUPPORT@folevi.com"] } });
+    expect(parseResendWebhook(bcc, "msg_9", NOW)).toMatchObject({ recipients: ["team@other.app", "security@folevi.com", "support@folevi.com"] });
     expect(parseResendWebhook(JSON.stringify({ type: "email.received", data: { email_id: "../x" } }), "msg_9", NOW)).toBeNull();
   });
 

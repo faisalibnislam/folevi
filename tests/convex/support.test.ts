@@ -432,6 +432,15 @@ describe("POST /webhooks/resend (received email)", () => {
     expect((await tickets(t))[0]).toMatchObject({ topic: "security", source: "email" });
   });
 
+  test("mail for another domain on the same Resend account is never fetched or filed", async () => {
+    const t = setup();
+    mail("o1", { to: ["hello@other.app"] });
+    const body = JSON.stringify({ type: "email.received", data: { email_id: "o1", from: "jane@example.com", to: ["hello@other.app"], subject: "Hi" } });
+    expect((await deliver(t, body)).status).toBe(200);
+    expect(fetchMock.mock.calls.filter((c) => String(c[0]).includes("/emails/receiving/"))).toHaveLength(0);
+    expect(await tickets(t)).toHaveLength(0);
+  });
+
   test("without the API key it asks Resend to retry later, and nothing is filed", async () => {
     const t = setup();
     delete process.env.RESEND_API_KEY;

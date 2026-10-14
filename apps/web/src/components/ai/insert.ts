@@ -2,7 +2,8 @@
 
 import type { Editor } from "@tiptap/react";
 import { TextSelection, type Transaction } from "@tiptap/pm/state";
-import { flattenTree, markdownToBlocks, ulid } from "@folevi/editor-schema";
+import { flattenTree, markdownToBlocks, ulid, type WireBlock } from "@folevi/editor-schema";
+import type { Node as PMNode } from "@tiptap/pm/model";
 import { blockToNode } from "@/components/editor/convert";
 import { closeHistory } from "@tiptap/pm/history";
 import { endHistoryGroup, normalizeDepths } from "@/components/editor/commands";
@@ -34,7 +35,12 @@ export interface InsertOptions {
 
 function nodesFor(editor: Editor, markdown: string, baseDepth: number, opts: InsertOptions = {}) {
   const { blocks } = markdownToBlocks(markdown.trim(), { titleFromHeading: false });
-  return flattenTree(linkPeople(blocks, opts.people)).map(({ block, depth }) => editor.schema.nodeFromJSON(blockToNode({ ...block, id: ulid() }, baseDepth + depth)));
+  return blockNodes(editor, linkPeople(blocks, opts.people), baseDepth);
+}
+
+/** Blocks (a tree, by parentId) as editor nodes with fresh ids, nested from `baseDepth`. */
+function blockNodes(editor: Editor, blocks: readonly WireBlock[], baseDepth: number): PMNode[] {
+  return flattenTree([...blocks]).map(({ block, depth }) => editor.schema.nodeFromJSON(blockToNode({ ...block, id: ulid() }, baseDepth + depth)));
 }
 
 /** Sends the change as its own undo step: one ⌘Z takes all of it back, and typing after it undoes separately. */
@@ -77,8 +83,22 @@ export function insertAiMarkdown(editor: Editor, markdown: string, placement: Ai
     commit(editor, tr);
     return true;
   }
+  return insertNodes(editor, (depth) => nodesFor(editor, markdown, depth, opts), placement);
+}
+
+/**
+ * Puts ready-made blocks into the note (to-dos with their dates and assignees, "Find to-dos"), as one undo
+ * step, anywhere but over a selection. They sync like typed blocks, so to-dos become tasks.
+ */
+export function insertAiBlocks(editor: Editor, blocks: readonly WireBlock[], placement: Exclude<AiPlacement, { kind: "replace" }>): boolean {
+  return insertNodes(editor, (depth) => blockNodes(editor, blocks, depth), placement);
+}
+
+/** Inserts the nodes `make` gives for a depth (the depth of where they go) at a placement other than replace. */
+function insertNodes(editor: Editor, make: (baseDepth: number) => PMNode[], placement: Exclude<AiPlacement, { kind: "replace" }>): boolean {
+  const { state } = editor;
   if (placement.kind === "after") {
-    const nodes = nodesFor(editor, markdown, placement.depth, opts);
+    const nodes = make(placement.depth);
     if (!nodes.length) return true;
     const pos = Math.max(0, Math.min(placement.pos, state.doc.content.size));
     const tr = state.tr.insert(pos, nodes);
@@ -89,9 +109,9 @@ export function insertAiMarkdown(editor: Editor, markdown: string, placement: Ai
   if (placement.kind === "above" || placement.kind === "below") {
     // Next to the top-level block holding `at` (the text the result is about), at that block's depth.
     const $at = state.doc.resolve(Math.max(0, Math.min(placement.at, state.doc.content.size)));
-    if ($at.depth < 1) return insertAiMarkdown(editor, markdown, { kind: "end" }, opts);
+    if ($at.depth < 1) return insertNodes(editor, make, { kind: "end" });
     const block = $at.node(1);
-    const nodes = nodesFor(editor, markdown, Number(block.attrs.depth ?? 0), opts);
+    const nodes = make(Number(block.attrs.depth ?? 0));
     if (!nodes.length) return true;
     const size = nodes.reduce((n, x) => n + x.nodeSize, 0);
     const tr = state.tr;
@@ -105,7 +125,7 @@ export function insertAiMarkdown(editor: Editor, markdown: string, placement: Ai
   const $sel = state.selection.$from;
   const atEnd = placement.kind === "end" || $sel.depth < 1;
   const depth = !atEnd ? Number($sel.node(1).attrs.depth ?? 0) : 0;
-  const nodes = nodesFor(editor, markdown, depth, opts);
+  const nodes = make(depth);
   if (!nodes.length) return true;
   const size = nodes.reduce((n, x) => n + x.nodeSize, 0);
   if (atEnd) {

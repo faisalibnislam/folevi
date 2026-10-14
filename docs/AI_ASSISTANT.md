@@ -260,6 +260,27 @@ As built (milestone 8, part B):
   (`aiStudy.versionBeforeReplace`, reason `ai_run`, "Before AI changes"), then swaps each block's text in the
   editor as one undo step.
 
+### Find to-dos: notes that schedule themselves (`convex/aiTodos.ts`, `convex/lib/ai/actionItems.ts`)
+
+- `aiTodos.find` reads the selected text, or the whole note, and asks for the action items as JSON: the to-do,
+  the owner's name as written ("me" for the writer) and the "when" words as written ("by Friday", "next
+  Tuesday 3pm"), plus the sentence each came from (kept only when it really is in the text). One call, held
+  and settled like writing help (feature "writing"); needs edit access to the note; note text goes as
+  untrusted data.
+- The model never works out a date. The browser reads the "when" words with chrono (`lib/nlDate.ts`) from the
+  person's today in their profile's time zone (`apps/web/src/lib/ai/actionItems.ts`). Words that name no day
+  ("after the launch") leave the to-do undated and say so.
+- Owners are matched on the server with editor-schema `matchOwner` (whole name, then first name, then "me",
+  case-insensitive, one match only) against the workspace's members, or in Personal only the person. A name
+  that matches nobody, or more than one person, stays unassigned with a "Sam?" hint, and the added to-do keeps
+  the name in front ("Sam: send the deck").
+- The proposal (`components/ai/FindTodos.tsx`) lists every to-do checked, with editable text, the date
+  picker, an assignee picker and "From: ..." under it. "Add N to-dos" inserts the checked ones as one undo
+  step: below the selection, or under a "To-dos" heading at the end of the note. They are ordinary to-do
+  blocks with `dueDate`, `dueTime` and `assigneeId`, so the task projection puts them in Tasks, Calendar,
+  the calendar feed and reminders. Offered in the "/" menu ("Foli AI: Find to-dos"), the inline composer
+  ("Find to-dos in this note", or in the selection) and the note's AI panel.
+
 ### Polish: onboarding, empty states, accessibility, the graph
 
 As built (milestone 9, part B). The assistant is called Foli AI in the interface.

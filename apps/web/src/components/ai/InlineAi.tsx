@@ -9,6 +9,7 @@ import {
   ArrowUp,
   ArrowUpToLine,
   BookOpen,
+  CalendarCheck,
   Check,
   CheckSquare,
   ChevronLeft,
@@ -48,6 +49,7 @@ import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiC
 import { useAppRouter } from "@/lib/app/router";
 import { useToast } from "@/components/ui/Toast";
 import { AiAnnouncer, useDoneAnnouncement } from "./announce";
+import { openFindTodos } from "./FindTodos";
 
 /** What the inline composer works on: a range of text (a selection or whole blocks), or the cursor. */
 export interface InlineAiRequest {
@@ -74,6 +76,8 @@ interface Suggestion {
   group?: string;
   /** More words it's found by. */
   keywords?: string;
+  /** Opens "Find to-dos" (dated, assigned to-dos to check before adding) instead of running. */
+  findTodos?: boolean;
 }
 
 const SELECTION_ICONS: Partial<Record<AiTask, React.ReactNode>> = {
@@ -100,6 +104,7 @@ const EDIT: Suggestion[] = [
   { id: "translate", label: "Translate to…", icon: <Languages size={15} />, menu: "languages", group: "edit" },
   ...selection("turn"),
   ...selection("use"),
+  { id: "findTodos", label: "Find to-dos in the selection", icon: <CalendarCheck size={15} />, findTodos: true, group: "use", keywords: "tasks todo action items dates due assign schedule meeting" },
 ];
 /** Meeting summary, flashcards, quiz and the frameworks: on the selected text, or the whole note. */
 const TOOLS: Suggestion[] = AI_TOOLS.map((t) => ({ id: t.task, label: t.label, icon: TOOL_ICONS[t.task] ?? <Wand2 size={15} />, task: t.task, group: t.group === "meeting" || t.group === "study" ? "study" : "think", keywords: t.keywords }));
@@ -107,6 +112,7 @@ const WRITE: Suggestion[] = [
   { id: "continue", label: "Continue writing", icon: <PenLine size={15} />, task: "continue", group: "write" },
   { id: "summarize", label: "Summarize this page", icon: <FileText size={15} />, task: "summarize", group: "write" },
   { id: "actions", label: "Find action items", icon: <ListChecks size={15} />, task: "actions", group: "write" },
+  { id: "findTodos", label: "Find to-dos in this note", icon: <CalendarCheck size={15} />, findTodos: true, group: "write", keywords: "tasks todo action items dates due assign schedule meeting" },
   { id: "outline", label: "Make an outline", icon: <ListTree size={15} />, task: "outline", group: "write" },
   { id: "brainstorm", label: "Brainstorm", icon: <Lightbulb size={15} />, task: "brainstorm", group: "write" },
   { id: "page", label: "Write a whole page…", icon: <FilePlus2 size={15} />, page: true, group: "write" },
@@ -221,6 +227,10 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
       setInput("");
       setPhase({ kind: "menu", menu: s.menu });
       return;
+    }
+    if (s.findTodos) {
+      openFindTodos(editor.view.dom, { target });
+      return close();
     }
     if (s.id === "custom-page") return void run({ task: "page", instruction: s.label }, "Page");
     if (s.page) {

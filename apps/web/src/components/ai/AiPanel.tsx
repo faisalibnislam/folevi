@@ -3,7 +3,7 @@
 import type { Editor } from "@tiptap/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ArrowDownToLine, ArrowUp, Check, Copy, CornerDownLeft, FilePlus2, FileText, Lightbulb, ListChecks, ListTree, Loader2, PenLine, RotateCcw, Type, Users, X } from "lucide-react";
+import { ArrowDownToLine, ArrowUp, CalendarCheck, Check, Copy, CornerDownLeft, FilePlus2, FileText, Lightbulb, ListChecks, ListTree, Loader2, PenLine, RotateCcw, Type, Users, X } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
@@ -23,6 +23,7 @@ import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiC
 import { ChatThread } from "./chat/ChatThread";
 import { AiAnnouncer, useDoneAnnouncement } from "./announce";
 import { asksToChange } from "./editIntent";
+import { openFindTodos } from "./FindTodos";
 
 const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "summarize", label: "Summarize", icon: <FileText size={15} /> },
@@ -327,6 +328,18 @@ export function AiPanel({
                 {a.label}
               </button>
             ))}
+            {/* Dated, assigned to-dos, checked in a proposal before any are added (the editor shows it). */}
+            <button
+              type="button"
+              disabled={Boolean(busy) || readOnly || !editor}
+              onClick={() => editor && openFindTodos(editor.view.dom, { target: selectionText() })}
+              className="flex h-10 items-center gap-2 rounded-control bg-[var(--glass-hover)] px-2.5 text-left text-[13px] text-ink transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
+            >
+              <span aria-hidden className="text-muted">
+                <CalendarCheck size={15} />
+              </span>
+              Find to-dos
+            </button>
           </div>
         </section>
       ) : null}

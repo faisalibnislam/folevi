@@ -57,3 +57,53 @@ export function linkPeople(blocks: readonly WireBlock[], people: readonly Mentio
     return { ...b, text: normalizeInline(text), props };
   });
 }
+
+/** Someone a proposed to-do can be assigned to; `isYou` is the person asking. */
+export interface AssignablePerson extends MentionablePerson {
+  isYou?: boolean;
+}
+
+/**
+ * How an owner's name, as a note wrote it, matched the people a to-do can go to: one person ("matched"),
+ * several ("ambiguous": two Sams), nobody ("unknown"), or no name was given ("none").
+ */
+export interface OwnerMatch {
+  assigneeId: string | null;
+  status: "matched" | "ambiguous" | "unknown" | "none";
+}
+
+/** Words that mean the person writing the note ("I'll send it", "me"). */
+const ME = new Set(["me", "i", "myself", "my self"]);
+const nameKey = (s: string) =>
+  s
+    .normalize("NFKC")
+    .replace(/^@+/, "")
+    .replace(/[.,;:!?)("']+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase();
+const firstName = (s: string) => nameKey(s).split(" ")[0] ?? "";
+
+/**
+ * Matches an action item's owner (a name as written, or "me") to one of `people`, case-insensitively: "me"
+ * is the person asking, then a whole display name, then a first name ("Sam" for Sam Rivera, or "Sam Lee"
+ * for someone called just Sam). Only a single match counts: two people with that first name is ambiguous,
+ * and the to-do stays unassigned. In Personal, `people` is only the person, so only their own name or "me"
+ * matches.
+ */
+export function matchOwner(owner: string | null | undefined, people: readonly AssignablePerson[]): OwnerMatch {
+  const key = nameKey(owner ?? "");
+  if (!key) return { assigneeId: null, status: "none" };
+  const one = (found: readonly AssignablePerson[]): OwnerMatch | null =>
+    found.length === 1 ? { assigneeId: found[0]!.profileId, status: "matched" } : found.length > 1 ? { assigneeId: null, status: "ambiguous" } : null;
+  const named = people.filter((p) => nameKey(p.displayName));
+  if (ME.has(key)) return one(named.filter((p) => p.isYou)) ?? { assigneeId: null, status: "unknown" };
+  return (
+    one(named.filter((p) => nameKey(p.displayName) === key)) ??
+    // "Sam" for Sam Rivera; "Sam Lee" for someone whose whole display name is Sam.
+    one(named.filter((p) => (!key.includes(" ") && firstName(p.displayName) === key) || (!nameKey(p.displayName).includes(" ") && firstName(key) === nameKey(p.displayName)))) ?? {
+      assigneeId: null,
+      status: "unknown",
+    }
+  );
+}

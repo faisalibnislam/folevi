@@ -95,6 +95,7 @@ import { colorName, useNotePalette } from "./notePalette";
 import { useShowInTopLayer } from "@/components/ui/topLayer";
 import { AI_TOOL_SLASH_ITEMS, INLINE_AI_EVENT, openInlineAi, useAiEnabled, type InlineAiOpen } from "@/components/ai/useAi";
 import { InlineAi, type InlineAiRequest } from "@/components/ai/InlineAi";
+import { FindTodosHost, openFindTodos } from "@/components/ai/FindTodos";
 import { newFormulaAttrs } from "./FormulaView";
 import { DIVIDER_STYLES, MERMAID_SAMPLE } from "./insertCatalog";
 import { Select } from "@/components/ui/Select";
@@ -741,6 +742,18 @@ export function EditorMenus({
             run: () => openInlineAi(editor.view.dom, { target: null, ...(open as Partial<InlineAiOpen> | undefined) }),
           }))
         : []),
+      // Dated, assigned to-dos from the note, checked in a proposal before any are added (FindTodos.tsx).
+      ...(aiOn
+        ? [
+            {
+              id: "ai-find-todos",
+              label: "Foli AI: Find to-dos",
+              keywords: "ai tasks todo action items meeting follow ups dates due assign schedule calendar",
+              icon: <AiIcon size={15} className="text-[#7c6cf0]" />,
+              run: () => openFindTodos(editor.view.dom, { target: null }),
+            },
+          ]
+        : []),
       // The meeting, study and "Think it through" tools, on the whole note (useAi.ts AI_TOOLS).
       ...(aiOn
         ? AI_TOOL_SLASH_ITEMS.map(({ task, ...item }) => ({
@@ -1070,6 +1083,7 @@ export function EditorMenus({
         />
       ) : null}
       {editable && aiOn && inlineAi ? <InlineAi key={inlineAi.id} editor={editor} documentId={documentId} request={inlineAi} onClose={() => setInlineAi(null)} /> : null}
+      <FindTodosHost editor={editor} documentId={documentId} enabled={editable && aiOn} />
       <EditorContextMenu editor={editor} editable={editable} onCommentBlock={onCommentBlock} />
       {editable ? <SelectionBubble editor={editor} onComment={onCommentBlock} /> : null}
       {editable ? <BlockHandle editor={editor} onDropBlock={onDropBlock} onCommentBlock={onCommentBlock} /> : null}

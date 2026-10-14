@@ -9,6 +9,7 @@ import {
   vDocumentKind,
   vDocumentStyle,
   vPlatformRole,
+  vPublishTheme,
   vNotificationPrefs,
   vProfileStatus,
   vMemberAccess,
@@ -1363,6 +1364,8 @@ export default defineSchema({
     passwordHash: v.optional(v.string()),
     passwordSalt: v.optional(v.string()),
     allowIndexing: v.boolean(),
+    /** How the public page looks (lib/validators.ts vPublishTheme); unset is the note's own style. */
+    theme: v.optional(vPublishTheme),
     createdBy: v.id("profiles"),
     createdAt: v.number(),
     revokedAt: v.optional(v.number()),

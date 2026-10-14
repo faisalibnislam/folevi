@@ -140,6 +140,7 @@ export function ReadOnlyBlocks({
   collections,
   changes,
   people,
+  anchors = false,
 }: {
   blocks: WireBlock[];
   fileUrls: Record<string, string>;
@@ -148,6 +149,8 @@ export function ReadOnlyBlocks({
   /** Version history: what changed in each block since the version before, and who the authors are. */
   changes?: ReadonlyMap<string, BlockChange>;
   people?: Record<string, ChangePerson>;
+  /** Headings get ids (`block-<id>`) so a table of contents can link to them (a published page's Docs theme). */
+  anchors?: boolean;
 }) {
   const flat = flattenTree(blocks);
   const counters: number[] = [];
@@ -184,7 +187,7 @@ export function ReadOnlyBlocks({
               const level = Math.min(3, Number(p.level) || 1);
               const Tag = (["h2", "h3", "h4"] as const)[level - 1]!;
               return (
-                <Tag key={block.id} className={`fb fb-heading fb-h${level}`} style={style} {...fa}>
+                <Tag key={block.id} id={anchors ? `block-${block.id}` : undefined} className={`fb fb-heading fb-h${level}`} style={style} {...fa}>
                   <BlockText block={block} change={changes?.get(block.id)} />
                 </Tag>
               );

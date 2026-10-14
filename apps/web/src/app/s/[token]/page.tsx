@@ -11,12 +11,14 @@ import { SheetPageBreaks } from "@/components/doc/SheetPageBreaks";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { coverArtOf, coverBackground, pageBackdrop, sheetProps } from "@/lib/cover";
 import { setThemeRows, themeFontVars, type ThemeRow } from "@/lib/themes";
+import { publishLook, publishTheme, tableOfContents } from "@/lib/publishThemes";
 import { formatDate, localeFromAcceptLanguage, tFor } from "@/i18n";
 import { currentRequestId, logEvent } from "@/lib/server/log";
 import { GRANT_COOKIE, GRANT_TTL_MS, openGrant, sealGrant } from "./grant";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
 import "@/components/editor/flowchart/flowchart.css";
+import "./publish.css";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +86,9 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
   // Shared pages are never indexed and never leak their title into link previews unless the owner
   // allowed indexing for this link (and it isn't password protected).
   if (result.status === "ok" && result.allowIndexing) {
-    return { title: result.document.title || "Untitled", robots: { index: true, follow: false } };
+    const title = result.document.title || "Untitled";
+    const description = result.description || undefined;
+    return { title, description, openGraph: { title, description, type: "article" }, robots: { index: true, follow: false } };
   }
   return { title: "Shared page", robots: { index: false, follow: false, nocache: true } };
 }
@@ -120,7 +124,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
   // ui-neutral-chrome: the app's neutral colours around the page, as in the app.
   const shell = (children: React.ReactNode) => (
     <div className="ui-neutral-chrome min-h-dvh bg-canvas">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
+      <header className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4 print:hidden">
         <a href={process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"} className="inline-flex items-center gap-2 text-ink">
           <FoleviLogo height={22} />
         </a>
@@ -167,35 +171,64 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
     );
   }
   const { document, blocks, fileUrls, collections } = result;
-  if (document.cover.kind === "art") await loadThemes();
-  const theme = coverArtOf(document.cover);
+  // The link's look (lib/publishThemes.ts): the note's own style, or Article, Docs or Minimal.
+  const publish = publishTheme(result.theme);
+  const look = publishLook(publish, document.style);
+  if (look.colors && document.cover.kind === "art") await loadThemes();
+  const art = look.colors ? coverArtOf(document.cover) : null;
   const coverUrl = (document as { coverUrl?: string | null }).coverUrl ?? null;
-  const bg = coverBackground(document.cover, document.style, coverUrl);
+  const bg = look.cover ? coverBackground(document.cover, document.style, coverUrl) : undefined;
   const updated = new Date(document.updatedAt);
-  const backdrop = pageBackdrop(document.style, document.cover, coverUrl);
+  const backdrop = look.backdrop ? pageBackdrop(document.style, document.cover, coverUrl) : undefined;
   const coverPalette = (document as { coverPalette?: { paper: string; ink: string; paperDark: string; inkDark: string } | null }).coverPalette ?? null;
-  const shareSheet = sheetProps(document.style, document.cover, coverPalette);
-  return shell(
-    // The page floats on its backdrop, as in the app.
-    <div className={backdrop ? "relative rounded-chip px-3 py-8 sm:px-8" : ""} style={backdrop && !document.style.blur ? { background: backdrop } : undefined}>
-    {backdrop && document.style.blur ? <BlurredBackdrop background={backdrop} /> : null}
+  const shareSheet = look.colors ? sheetProps(document.style, document.cover, coverPalette) : {};
+  const toc = look.toc ? tableOfContents(blocks) : [];
+  const page = (
     <article
-      className="fb-page fb-sheet relative mx-auto max-w-[calc(var(--editor-width)+8rem)] rounded-control border border-line"
-      data-font={document.style.font}
-      data-width={document.style.width}
-      data-background={document.style.background}
+      className="fb-page fb-sheet relative mx-auto max-w-[calc(var(--editor-width)+8rem)] min-w-0 rounded-control border border-line"
+      data-font={look.font}
+      data-width={look.width}
+      data-background={look.colors ? document.style.background : "plain"}
+      data-publish={publish}
       {...shareSheet}
       data-separator={document.style.separator}
-      style={{ ...shareSheet.style, ...themeFontVars(theme?.fonts), ["--doc-accent" as string]: document.style.accent === "accent" ? "var(--color-accent)" : `var(--color-${document.style.accent})` }}
+      style={{ ...shareSheet.style, ...themeFontVars(art?.fonts), ["--doc-accent" as string]: document.style.accent === "accent" ? "var(--color-accent)" : `var(--color-${document.style.accent})` }}
     >
       {backdrop ? <SheetPageBreaks /> : null}
       {bg ? <div className="h-36 rounded-t-chip" style={{ background: bg }} aria-hidden /> : <div className="h-8" />}
       <div className="px-5 pb-6 pt-4 sm:px-16">
-        <h1 className={`mt-2 text-[40px] leading-tight ${document.style.font === "serif" ? "ui-display [font-family:var(--note-serif,var(--font-serif))]" : document.style.font === "rounded" ? "font-semibold [font-family:var(--note-soft,var(--font-rounded))]" : document.style.font === "mono" ? "font-semibold [font-family:var(--note-mono,var(--font-mono))]" : "font-semibold tracking-tight [font-family:var(--note-modern,var(--font-modern))]"}`}>{document.title || "Untitled"}</h1>
+        <h1 className={`mt-2 text-[40px] leading-tight ${look.font === "serif" ? "ui-display [font-family:var(--note-serif,var(--font-serif))]" : look.font === "rounded" ? "font-semibold [font-family:var(--note-soft,var(--font-rounded))]" : look.font === "mono" ? "font-semibold [font-family:var(--note-mono,var(--font-mono))]" : "font-semibold tracking-tight [font-family:var(--note-modern,var(--font-modern))]"}`}>{document.title || "Untitled"}</h1>
         <p className="mb-6 mt-1 text-xs text-muted">{tFor(locale, "share.lastUpdated", { date: formatDate(updated, { dateStyle: "medium", timeZone: "UTC" }, locale) })}</p>
-        <ReadOnlyBlocks blocks={blocks} fileUrls={fileUrls} collections={collections} />
+        <ReadOnlyBlocks blocks={blocks} fileUrls={fileUrls} collections={collections} anchors={toc.length > 0} />
       </div>
     </article>
+  );
+  return shell(
+    // The page floats on its backdrop, as in the app.
+    <div className={backdrop ? "fb-publish-backdrop relative rounded-chip px-3 py-8 sm:px-8" : ""} style={backdrop && !document.style.blur ? { background: backdrop } : undefined}>
+    {backdrop && document.style.blur ? <BlurredBackdrop background={backdrop} /> : null}
+    {toc.length > 1 ? (
+      // Docs: the contents sit beside the page on wide screens, and stay in view while reading.
+      <div className="mx-auto max-w-[calc(var(--layout-editor-width-wide)+8rem+15rem)] xl:grid xl:grid-cols-[13rem_minmax(0,1fr)] xl:gap-8">
+        <nav aria-label="Contents" className="fb-publish-toc hidden xl:block">
+          <div className="sticky top-6 max-h-[calc(100dvh-3rem)] overflow-y-auto pt-10">
+            <p className="ui-caps mb-2 px-2">Contents</p>
+            <ol className="space-y-0.5 text-[13px]">
+              {toc.map((h) => (
+                <li key={h.id} style={{ paddingLeft: `${(h.level - 1) * 0.75}rem` }}>
+                  <a href={`#block-${h.id}`} className="block truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+                    {h.text}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </nav>
+        {page}
+      </div>
+    ) : (
+      page
+    )}
     </div>,
   );
 }

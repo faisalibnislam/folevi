@@ -25,7 +25,7 @@ import { sharedLabels } from "./lib/linkLabels";
 import { signFileUrl } from "./lib/fileUrls";
 import { appUrl, notify, notifyAccessChange, notifyAccessLostOnRestrict, shareRoleLabel } from "./lib/notify";
 import { sharePermissions } from "./lib/permissions";
-import { vShareRole } from "./lib/validators";
+import { vPublishTheme, vShareRole } from "./lib/validators";
 import { isFeatureEnabled } from "./lib/flags";
 import { insertScoped, scopeOfRow } from "./lib/scope";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -232,6 +232,7 @@ export const get = query({
             expired: l.expiresAt !== undefined && l.expiresAt < Date.now(),
             hasPassword: Boolean(l.passwordHash),
             allowIndexing: l.allowIndexing,
+            theme: l.theme ?? ("note" as const),
             viewCount: l.viewCount,
             createdAt: l.createdAt,
           }))
@@ -550,7 +551,7 @@ export const sharedWithMe = query({
 
 /** Creates an unguessable public link. The raw token is returned exactly once; only its hash is stored. */
 export const createPublicLink = mutation({
-  args: { documentId: v.string(), expiresAt: v.optional(v.number()), password: v.optional(v.string()), allowIndexing: v.optional(v.boolean()) },
+  args: { documentId: v.string(), expiresAt: v.optional(v.number()), password: v.optional(v.string()), allowIndexing: v.optional(v.boolean()), theme: v.optional(vPublishTheme) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
@@ -579,11 +580,32 @@ export const createPublicLink = mutation({
       passwordSalt,
       // A password-protected page can't be read by a search engine, so it is never offered to one.
       allowIndexing: !passwordHash && (args.allowIndexing ?? false),
+      // The note's own style needs nothing stored.
+      theme: args.theme === "note" ? undefined : args.theme,
       createdBy: profile._id,
       createdAt: Date.now(),
       viewCount: 0,
     });
     return { id: publicId, token };
+  },
+});
+
+/** Changes how a public link's page looks (it applies the next time the page is opened). */
+export const setPublicLinkTheme = mutation({
+  args: { linkId: v.string(), theme: vPublishTheme },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const link = await ctx.db
+      .query("publicLinks")
+      .withIndex("by_public_id", (q) => q.eq("publicId", args.linkId))
+      .unique();
+    if (!link || link.revokedAt) fail("not_found", "Link not found.");
+    const doc = await ctx.db.get(link.documentId);
+    if (!doc) fail("not_found", "Link not found.");
+    await requireDocument(ctx, profile, doc.publicId, "manage");
+    await ctx.db.patch(link._id, { theme: args.theme === "note" ? undefined : args.theme });
+    return null;
   },
 });
 
@@ -673,6 +695,9 @@ export const openPublicLink = mutation({
       fileUrls,
       collections,
       allowIndexing: found.allowIndexing,
+      theme: found.theme ?? ("note" as const),
+      // For search engines and link previews, only when the owner let search engines find the page.
+      description: found.allowIndexing ? doc.excerpt.slice(0, 200) : null,
     };
   },
 });

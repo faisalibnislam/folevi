@@ -47,6 +47,11 @@ export const vPaidPersonalTier = v.union(v.literal("core"), v.literal("pro"), v.
 export const vCreditPackId = v.union(v.literal("credits_500"), v.literal("credits_1000"));
 export const vInterval = v.union(v.literal("month"), v.literal("year"));
 export const vShareRole =v.union(v.literal("editor"), v.literal("commenter"), v.literal("viewer"));
+/**
+ * How a public link's page looks (the share page, /s/<token>): the note's own style, or a curated look.
+ * Article is serif and narrow, Docs is sans and wide with a table of contents, Minimal is plain paper.
+ */
+export const vPublishTheme = v.union(v.literal("note"), v.literal("article"), v.literal("docs"), v.literal("minimal"));
 /** Which kinds of notification appear in the bell (Settings → Notifications). */
 export const vInAppPrefs = v.object({
   comments: v.boolean(),

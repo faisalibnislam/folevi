@@ -263,10 +263,10 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "sharing-and-permissions",
     title: "Sharing and permissions",
     nav: "Sharing and permissions",
-    description: "Who can open a Folevi page, how to restrict one, share it by email to view, comment or edit, and make a public link with an expiry and password.",
+    description: "Who can open a Folevi page, how to restrict one, share it by email to view, comment or edit, and make a public link with an expiry, a password and a look.",
     legacyAnchor: "sharing",
     published: "2026-09-25",
-    updated: "2026-09-30",
+    updated: "2026-10-14",
     body: () => (
       <>
         <p>Pages in your Personal are private to you, and pages in a workspace are open to its members, by default. From a page’s Share menu you can:</p>
@@ -278,7 +278,10 @@ export const DOC_ARTICLES: DocArticle[] = [
             <strong>Share with people by email</strong>: they can view, comment or edit. People without a Folevi account get an invitation to accept first; people outside a workspace join that page as guests, who aren’t billed. They get an email and find the page under Shared.
           </li>
           <li>
-            <strong>Create a public link</strong> for anyone with the URL. You can set an expiry date, require a password of at least 8 characters, and revoke the link at any time. It stops working immediately.
+            <strong>Create a public link</strong> for anyone with the URL. You can set an expiry date, require a password of at least 5 characters, and revoke the link at any time. It stops working immediately.
+          </li>
+          <li>
+            <strong>Choose how the public page looks</strong>: Note keeps the note’s own style, Article sets it in a narrow serif column for reading, Docs makes it wide with the headings listed beside it on wide screens, and Minimal shows plain paper without the cover. Change it later from the link’s Look menu in Share. Every look follows the reader’s light or dark setting.
           </li>
         </ul>
         <p>

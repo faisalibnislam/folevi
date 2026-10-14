@@ -1,0 +1,30 @@
+/*
+ * Publishing themes on a public page (lib/publishThemes.ts). The page carries data-publish="<theme>"; type,
+ * width and the note's colours are set on it by the share page itself, these are the finishing touches.
+ * Colours come from the theme tokens, so each look follows light and dark like the rest of the page.
+ */
+
+/* Article: a longer line height and slightly larger type, for reading. */
+.fb-page[data-publish="article"] .fb-editor {
+  font-size: calc(19px * var(--editor-zoom, 1));
+  line-height: 1.78;
+}
+.fb-page[data-publish="article"] .fb-editor .fb-paragraph { margin-block: 0.35em; }
+
+/* Docs: headings land clear of the top when a contents link jumps to them. */
+.fb-page[data-publish="docs"] .fb-heading { scroll-margin-top: 1.5rem; }
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.fb-page[data-publish="docs"]) { scroll-behavior: smooth; }
+}
+
+/* Minimal: plain paper, no frame. */
+.fb-page[data-publish="minimal"] {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+@media print {
+  .fb-publish-toc { display: none !important; }
+  .fb-publish-backdrop { background: none !important; padding: 0 !important; }
+  .fb-page[data-publish] { border-color: transparent; box-shadow: none; }
+}

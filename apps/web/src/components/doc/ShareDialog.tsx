@@ -12,6 +12,8 @@ import { formatDateTime } from "@/lib/format";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { useRadioGroup } from "@/lib/a11y/radioGroup";
+import { PUBLISH_THEMES, publishTheme, type PublishTheme } from "@/lib/publishThemes";
+import { PublishThemePreview } from "./publishPreviews";
 
 /** `personal`: the page is in someone's Personal, which has no members. Only the people added here (and its owner) can open it. */
 export function ShareDialog({ open, onClose, documentId, title, personal = false }: { open: boolean; onClose: () => void; documentId: string; title: string; personal?: boolean }) {
@@ -22,12 +24,14 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
   const revokeInvite = useMutation(api.sharing.revokePageInvite);
   const createLink = useMutation(api.sharing.createPublicLink);
   const revokeLink = useMutation(api.sharing.revokePublicLink);
+  const setLinkTheme = useMutation(api.sharing.setPublicLinkTheme);
   const toast = useToast();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"viewer" | "commenter" | "editor">("viewer");
-  const [linkForm, setLinkForm] = useState({ expires: "", password: "", index: false });
+  const [linkForm, setLinkForm] = useState<{ expires: string; password: string; index: boolean; theme: PublishTheme }>({ expires: "", password: "", index: false, theme: "note" });
   const [freshLink, setFreshLink] = useState<string | null>(null);
   const accessGroup = useRadioGroup();
+  const lookGroup = useRadioGroup();
   // Managers: access mode, public links, anyone's grants. Sharers (members who can edit): add people and
   // change what they added. The server checks both again.
   const canManage = data?.canManage === true;
@@ -196,6 +200,13 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                         {l.allowIndexing ? " · Search engines can find it" : ""} · {l.viewCount} view{l.viewCount === 1 ? "" : "s"}
                       </span>
                     </span>
+                    <Select aria-label={`Look of the link …/s/${l.tokenHint}`} value={publishTheme(l.theme)} onChange={(e) => void run(setLinkTheme({ linkId: l.id, theme: e.target.value as PublishTheme }), "Look changed")} className="h-8 ui-input rounded-chip px-2.5 text-xs">
+                      {PUBLISH_THEMES.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </Select>
                     <Button size="sm" variant="quiet" className="text-danger" onClick={() => void run(revokeLink({ linkId: l.id }), "Link revoked")}>
                       Revoke
                     </Button>
@@ -217,9 +228,10 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                         expiresAt: linkForm.expires ? new Date(linkForm.expires).getTime() : undefined,
                         password: linkForm.password || undefined,
                         allowIndexing: linkForm.index && !linkForm.password,
+                        theme: linkForm.theme,
                       });
                       setFreshLink(`${location.origin}/s/${r.token}`);
-                      setLinkForm({ expires: "", password: "", index: false });
+                      setLinkForm({ expires: "", password: "", index: false, theme: "note" });
                     } catch (err) {
                       toast.show(errorMessage(err), { tone: "error" });
                     }
@@ -236,6 +248,31 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                       Password
                     </label>
                     <input id="share-link-password" type="password" autoComplete="new-password" placeholder="None" value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="block h-9 w-full ui-input rounded-chip px-3 text-sm" />
+                  </div>
+                  <div>
+                    <span id="share-link-look" className="block text-[13px] font-medium text-ink">
+                      Look
+                    </span>
+                    <span className="block text-xs text-muted">How the public page looks. You can change it later.</span>
+                    <div role="radiogroup" aria-labelledby="share-link-look" ref={lookGroup.ref} onKeyDown={lookGroup.onKeyDown} className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {PUBLISH_THEMES.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={linkForm.theme === t.id}
+                          aria-describedby={`share-look-${t.id}`}
+                          onClick={() => setLinkForm({ ...linkForm, theme: t.id })}
+                          className={`flex flex-col items-center gap-1 rounded-chip border px-2 pb-2 pt-2.5 text-center transition-colors ${linkForm.theme === t.id ? "border-heading bg-[var(--glass-active)] text-heading" : "border-line text-ink hover:bg-[var(--glass-hover)]"}`}
+                        >
+                          <PublishThemePreview theme={t.id} />
+                          <span className="text-[12.5px] font-medium">{t.name}</span>
+                          <span id={`share-look-${t.id}`} className="text-[11px] leading-tight text-muted">
+                            {t.hint}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <span className="min-w-0">

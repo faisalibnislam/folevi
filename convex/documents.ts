@@ -24,6 +24,7 @@ import {
 } from "./lib/auth";
 import { HomeFolders, IdResolver, liveBlocks, Placement, refreshDerived, syncTaskProjection, toWireBlock, type DocumentSummary, type HomeFolder } from "./lib/documents";
 import { SyncEngine, refreshLinkLabels, syncLinks } from "./lib/syncEngine";
+import { syncStudyCard } from "./lib/study";
 import { ReaderLabels } from "./lib/linkLabels";
 import { cloneBlocks, createDocument } from "./lib/create";
 import { fail } from "./lib/errors";
@@ -1646,6 +1647,7 @@ export async function restoreVersion(ctx: MutationCtx, writable: Doc<"documents"
     .collect();
   for (const r of rows) {
     await syncTaskProjection(ctx, r, fresh, profile._id);
+    await syncStudyCard(ctx, r, fresh);
     await syncLinks(ctx, fresh, r);
   }
   await refreshDerived(ctx, fresh);

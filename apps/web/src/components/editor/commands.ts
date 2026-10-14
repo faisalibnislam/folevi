@@ -354,6 +354,20 @@ export function insertBlockAfterCurrent(editor: Editor, type: string, attrs: Rec
 }
 
 /** Duplicates the selected blocks (and their nested blocks) right after them, with fresh ids. */
+/**
+ * Marks the toggle at `index` (a top-level block) as a flashcard, or clears the mark: its `study` prop, which
+ * study mode and the review queue read (the question is the toggle, the answer what's inside it).
+ */
+export function setFlashcard(editor: Editor, index: number, on: boolean): boolean {
+  const node = editor.state.doc.maybeChild(index);
+  if (node?.type.name !== "toggle") return false;
+  let pos = 0;
+  for (let i = 0; i < index; i++) pos += editor.state.doc.child(i).nodeSize;
+  editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, study: on ? "card" : null }));
+  announce(on ? "Now a flashcard. It comes up in Reviews." : "No longer a flashcard.");
+  return true;
+}
+
 export function duplicateBlocks(editor: Editor): boolean {
   const { state } = editor;
   const span = selectedSpan(state);

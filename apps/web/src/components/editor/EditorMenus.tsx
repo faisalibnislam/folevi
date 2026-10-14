@@ -26,6 +26,7 @@ import {
   IndentDecrease,
   IndentIncrease,
   Italic,
+  Layers,
   Link as LinkIcon,
   Link2,
   List,
@@ -84,6 +85,7 @@ import {
   moveBlock,
   removeLink,
   subtreeRange,
+  setFlashcard,
   setHighlight,
   setTextColor,
   turnInto,
@@ -2093,6 +2095,20 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                         run: () => {
                           onCommentBlock(single.attrs.id as string);
                           closeMenu(false);
+                        },
+                      },
+                    ]
+                  : []),
+                ...(single?.type.name === "toggle"
+                  ? [
+                      {
+                        // A flashcard comes up in Reviews (a quiz question Foli AI wrote counts as one too).
+                        label: single.attrs.study ? "Stop using as flashcard" : "Use as flashcard",
+                        hint: "",
+                        icon: <Layers size={14} />,
+                        run: () => {
+                          setFlashcard(editor, menu.from, !single.attrs.study);
+                          closeMenu();
                         },
                       },
                     ]

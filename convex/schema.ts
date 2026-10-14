@@ -1132,6 +1132,51 @@ export default defineSchema({
     // Reminders still to send (processReminders): open, on a page not in Trash, not sent yet.
     .index("by_reminder_pending", ["status", "documentInTrash", "reminderSentAt", "reminderAt"]),
 
+  /**
+   * Study cards (convex/study.ts): the toggles marked as a flashcard or quiz question, one row per block,
+   * kept in step with the block (lib/study.ts syncStudyCard). The block stays canonical: a card's question
+   * and answer are read from it when it's reviewed. Lets the review queue find cards nobody has reviewed yet.
+   */
+  studyCards: defineTable({
+    blockId: v.string(),
+    documentId: v.id("documents"),
+    ...scoped,
+    kind: v.union(v.literal("card"), v.literal("quiz")),
+    createdAt: v.number(),
+  })
+    .index("by_block", ["blockId"])
+    .index("by_document", ["documentId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /**
+   * A person's schedule for one card (FSRS, via ts-fsrs; lib/study.ts). Per person: a shared note's cards
+   * have each reader's own schedule. Made by the first review; a card never reviewed counts as new.
+   */
+  studyReviews: defineTable({
+    profileId: v.id("profiles"),
+    documentId: v.id("documents"),
+    blockId: v.string(),
+    due: v.number(),
+    stability: v.number(),
+    difficulty: v.number(),
+    elapsedDays: v.number(),
+    scheduledDays: v.number(),
+    /** Where it is in the (re)learning steps (ts-fsrs `learning_steps`). */
+    learningSteps: v.number(),
+    reps: v.number(),
+    lapses: v.number(),
+    /** ts-fsrs State: 0 new, 1 learning, 2 review, 3 relearning. */
+    state: v.number(),
+    lastReview: v.optional(v.number()),
+    /** When it was first reviewed (new cards a day are capped by these). */
+    firstReview: v.number(),
+  })
+    .index("by_profile_due", ["profileId", "due"])
+    .index("by_block", ["profileId", "blockId"])
+    .index("by_profile_first", ["profileId", "firstReview"])
+    .index("by_document", ["documentId"]),
+
   collections: defineTable({
     publicId: v.string(),
     ...scoped,

@@ -10,3 +10,10 @@ describe("members and guests routes", () => {
     expect(APP_ROUTE_HEADS.has("share-invite")).toBe(true);
   });
 });
+
+describe("reviews", () => {
+  test("/review (and /review?note=…) is a product route", () => {
+    expect(parseRoute("/review")).toEqual({ name: "review" });
+    expect(APP_ROUTE_HEADS.has("review")).toBe(true);
+  });
+});

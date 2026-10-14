@@ -5,6 +5,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { DocumentBrowser } from "@/components/views/DocumentBrowser";
 import { TasksView } from "@/components/views/TasksView";
 import { CalendarView } from "@/components/views/CalendarView";
+import { ReviewView } from "@/components/views/ReviewView";
 import { SharedView } from "@/components/views/SharedView";
 import { HelpView } from "@/components/views/HelpView";
 import { InviteView } from "@/components/views/InviteView";
@@ -89,6 +90,8 @@ function Routes() {
       return <TasksView view={route.view} />;
     case "calendar":
       return <CalendarView month={route.month} />;
+    case "review":
+      return <ReviewView />;
     case "daily":
       // Daily Notes were retired; old links land on Home.
       return <RedirectHome />;

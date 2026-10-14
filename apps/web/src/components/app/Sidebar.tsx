@@ -11,6 +11,7 @@ import {
   Hash,
   Files,
   Inbox,
+  Layers,
   LayoutTemplate,
   MoreHorizontal,
   Search,
@@ -43,6 +44,7 @@ import { useNoteActions } from "@/components/views/noteActions";
 import { draggedNoteIds, isNoteDrag } from "@/lib/app/noteDrag";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiEnabled } from "@/components/ai/useAi";
+import { useReviewWindow } from "@/components/study/review";
 
 function isActive(route: Route, href: string): boolean {
   const map: Record<string, (r: Route) => boolean> = {
@@ -51,6 +53,7 @@ function isActive(route: Route, href: string): boolean {
     "/ai": (r) => r.name === "ai",
     "/graph": (r) => r.name === "graph",
     "/tasks/today": (r) => r.name === "tasks",
+    "/review": (r) => r.name === "review",
     "/shared": (r) => r.name === "shared",
     "/templates": (r) => r.name === "templates",
     "/starred": (r) => r.name === "starred",
@@ -368,6 +371,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const org = useQuery(api.organization.sidebar, { scope });
   const counts = useQuery(api.tasks.counts, { scope, today });
   const drafts = useQuery(api.organization.draftCount, { scope });
+  // Reviews (flashcards due today, everywhere): listed once there's something to study.
+  const reviews = useQuery(api.study.summary, useReviewWindow(5 * 60_000));
   const starred = useQuery(api.documents.list, { scope, view: "starred", paginationOpts: { numItems: 8, cursor: null } });
   const createFolder = useMutation(api.organization.createFolder);
   const { route } = useAppRouter();
@@ -427,6 +432,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <NavItem href="/drafts" icon={<Inbox size={16} />} label="Drafts" count={drafts ?? undefined} onNavigate={onNavigate} draggableFolderId="" />
           <NavItem href="/notes" icon={<Files size={16} />} label="All notes" onNavigate={onNavigate} />
           <NavItem href="/tasks/today" icon={<CheckSquare size={16} />} label="Tasks" count={counts ? counts.today : undefined} onNavigate={onNavigate} />
+          {reviews?.hasCards || route.name === "review" ? <NavItem href="/review" icon={<Layers size={16} />} label="Reviews" count={reviews ? reviews.due + reviews.new : undefined} onNavigate={onNavigate} /> : null}
           <NavItem href="/shared" icon={<Share2 size={16} />} label="Shared with Me" onNavigate={onNavigate} />
           <NavItem href="/templates" icon={<LayoutTemplate size={16} />} label="Templates" onNavigate={onNavigate} />
         </div>

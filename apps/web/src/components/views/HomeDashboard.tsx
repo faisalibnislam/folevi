@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { CatchUp } from "@/components/ai/CatchUp";
 import { useAiEnabled } from "@/components/ai/useAi";
-import { ArrowRight, ChevronLeft, ChevronRight, Clock3, Folder, Star } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Clock3, Folder, Layers, Star } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
@@ -14,6 +14,7 @@ import { NOTE_CARD_ASPECT, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderCard } from "./OrganizeIndex";
 import { DocMenu, NoteContextMenu, contextPoint, type Summary as DocSummary } from "./DocumentBrowser";
 import { startNoteDrag } from "@/lib/app/noteDrag";
+import { cardCount, useReviewWindow } from "@/components/study/review";
 
 const CARD_WIDTH = 250;
 const FOLDER_MIN = 210;
@@ -173,6 +174,36 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
 }
 
 /**
+ * Today's reviews: how many flashcards are due (from every note you can read), with a way to start. Shown
+ * once there's something to study at all.
+ */
+function TodaysReviews() {
+  const today = useQuery(api.study.summary, useReviewWindow(5 * 60_000));
+  if (!today?.hasCards) return null;
+  const waiting = today.due + today.new;
+  return (
+    <section aria-labelledby="home-reviews" className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-container bg-[var(--glass-active)] px-5 py-4 shadow-[var(--glass-edge),var(--glass-shadow)]">
+      <span aria-hidden className="grid h-8 w-8 flex-none place-items-center rounded-chip bg-[var(--glass-hover)] text-heading">
+        <Layers size={17} strokeWidth={1.9} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <h2 id="home-reviews" className="text-[14px] font-semibold text-heading">
+          Today’s reviews
+        </h2>
+        <p className="text-[13px] text-muted">
+          {waiting ? `${cardCount(waiting)} to review${today.later ? `, ${today.later} more later today` : ""}.` : today.later ? `All caught up. ${cardCount(today.later)} later today.` : "All caught up for today."}
+        </p>
+      </div>
+      {waiting ? (
+        <AppLink href="/review" className="ui-btn ui-btn-primary h-8 gap-1.5 px-3.5 text-[13px]">
+          Start review <ArrowRight size={13} aria-hidden />
+        </AppLink>
+      ) : null}
+    </section>
+  );
+}
+
+/**
  * Home: recent notes and starred notes (the latest 10 each, in a sideways-scrolling row) and recent folders (two rows), each with
  * "See all". Rows are whole rows at any width.
  */
@@ -194,6 +225,7 @@ export function HomeDashboard() {
     >
       <div className="mx-auto max-w-[1400px] px-4 pb-8 pt-2 sm:px-8">
         {aiOn ? <CatchUp /> : null}
+        <TodaysReviews />
         <Section shelf title="Recent notes" icon={<Clock3 size={17} strokeWidth={1.9} />} href="/notes" empty={recent && !recent.length ? <p className="text-sm text-muted">No notes yet. Press New to write your first one.</p> : undefined}>
           <NoteCarousel docs={recent} label="Recent notes" recent />
         </Section>

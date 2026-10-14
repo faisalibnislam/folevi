@@ -19,6 +19,7 @@ import {
   History,
   LayoutTemplate,
   Info,
+  Layers,
   Link2,
   Lock,
   MessageSquare,
@@ -39,6 +40,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { useAppState } from "@/lib/app/state";
 import { documentScope, inCurrentScope, type DocumentHome } from "@/lib/app/scope";
 import { AppLink, useAppRouter } from "@/lib/app/router";
+import { cardCount, useReviewWindow } from "@/components/study/review";
 import { NoteSuggestions } from "./NoteSuggestions";
 import { sameItems, useEngineSelector, useLocalStorage } from "@/lib/hooks/useEngine";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
@@ -603,8 +605,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // pages follow their parent page); managers can nest a page under another one.
   const canFile = Boolean(meta && !readOnly && inCurrentScope(meta.document, meta.isMember, scopeKey) && !meta.document.parentDocumentId && meta.document.kind !== "template" && (meta.access === "write" || meta.access === "manage"));
   const canNest = Boolean(meta && !readOnly && (meta.access === "write" || meta.access === "manage"));
+  // The note's flashcards in the review queue: "Review 12 cards in this note".
+  const reviewWindow = useReviewWindow(5 * 60_000);
+  const studyCards = useQuery(api.study.summary, meta && !meta.inTrash ? { documentId, ...reviewWindow } : "skip");
   const docActions = useDocumentActions({
     documentId,
+    reviewCards: studyCards?.total ? studyCards.due + studyCards.new : undefined,
     starred: meta?.document.starred ?? false,
     archived: Boolean(meta?.document.archivedAt),
     inTrash: meta?.inTrash ?? false,
@@ -1621,8 +1627,11 @@ function useDocumentActions({
   onFind,
   onExport,
   canMove,
+  reviewCards,
 }: {
   documentId: string;
+  /** Cards to review now in this note, when it has any cards (opens Reviews for this note). */
+  reviewCards?: number;
   starred: boolean;
   archived: boolean;
   inTrash: boolean;
@@ -1669,6 +1678,7 @@ function useDocumentActions({
         ...(onComments ? [{ label: "Comments", icon: <MessageSquare size={14} />, onSelect: onComments }] : []),
         ...(onInfo ? [{ label: "Info", icon: <Info size={14} />, onSelect: onInfo }] : []),
         ...(onRelated ? [{ label: "Related notes", icon: <Waypoints size={14} />, onSelect: onRelated }] : []),
+        ...(reviewCards !== undefined ? [{ label: reviewCards ? `Review ${cardCount(reviewCards)} in this note` : "Review this note’s cards", icon: <Layers size={14} />, onSelect: () => navigate(`/review?note=${documentId}`) }] : []),
         ...(onHistory ? [{ label: "Version history…", icon: <History size={14} />, onSelect: onHistory }] : []),
         ...(onToggleEditors ? [{ label: showingEditors ? "Hide editors" : "Show editors", icon: <Users size={14} />, onSelect: onToggleEditors }] : []),
         ...(onFind ? [{ label: canManage ? "Find and replace…" : "Find in note…", icon: <Search size={14} />, shortcut: canManage ? "⌘⌥F" : "⌘F", onSelect: onFind }] : []),

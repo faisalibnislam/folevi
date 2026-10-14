@@ -30,6 +30,7 @@ import {
   IndentDecrease,
   IndentIncrease,
   Italic,
+  Layers,
   Link2,
   Link as LinkIcon,
   List,
@@ -61,7 +62,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { openInlineAi, useAiEnabled } from "@/components/ai/useAi";
 import { useToast } from "@/components/ui/Toast";
 import { useAppRouter } from "@/lib/app/router";
-import { emptyTableRows, focusInsideBlock, HIGHLIGHT_COLORS, TEXT_COLORS, blocksInSelection, changeDepth, clearFormatting, deleteBlocks, duplicateBlocks, insertBlockAt, moveBlock, removeLink, selectedSpan, setHighlight, setTextColor, turnInto } from "./commands";
+import { emptyTableRows, focusInsideBlock, HIGHLIGHT_COLORS, TEXT_COLORS, blocksInSelection, changeDepth, clearFormatting, deleteBlocks, duplicateBlocks, insertBlockAt, moveBlock, removeLink, selectedSpan, setFlashcard, setHighlight, setTextColor, turnInto } from "./commands";
 import { blockSelectionRange, clearBlockSelection } from "./blockSelection";
 import { syncDomSelection } from "./blockSelectionState";
 import { blockElements } from "./plugins";
@@ -440,6 +441,8 @@ function buildEntries({
           if (at?.node.type.name === "toggle") editor.view.dispatch(editor.state.tr.setNodeMarkup(at.pos, undefined, { ...at.node.attrs, collapsed: !at.node.attrs.collapsed }).setMeta("addToHistory", false));
         },
       });
+      // A flashcard (or a quiz question Foli AI wrote) comes up in Reviews.
+      if (editable) context.push({ label: "Flashcard", icon: <Layers size={14} />, checked: Boolean(block.attrs.study), run: () => setFlashcard(editor, target.index, !block.attrs.study) });
     } else if (name === "pageBreak" && editable) {
       // The pages either side join up again (the break was the only thing between them).
       context.push({

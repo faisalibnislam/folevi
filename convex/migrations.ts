@@ -5,6 +5,7 @@ import { internalAction, internalMutation, internalQuery } from "./_generated/se
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { liveBlocks, refreshDerived, syncTaskProjection } from "./lib/documents";
+import { studyKindOf, syncStudyCard } from "./lib/study";
 import { randomNoteEmoji, randomNoteCover } from "@folevi/editor-schema";
 import { currentFolderColor, isFolderColor, randomFolderColor } from "./lib/folderColors";
 import { startTrial } from "./lib/billing";
@@ -159,6 +160,29 @@ export const startBillingForExistingUsers = internalMutation({
   },
 });
 
+
+/**
+ * The review queue arrived: lists the flashcards and quiz questions made before it (toggles marked as study
+ * cards) in `studyCards`, so they show up as new cards. Walks every block once; idempotent.
+ *
+ *   npx convex run --deployment <prod> migrations:backfillStudyCards
+ */
+export const backfillStudyCards = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, args): Promise<{ cards: number; done: boolean }> => {
+    const page = await ctx.db.query("blocks").paginate({ cursor: args.cursor ?? null, numItems: 500 });
+    let cards = 0;
+    for (const row of page.page) {
+      if (!studyKindOf(row)) continue;
+      const doc = await ctx.db.get(row.documentId);
+      if (!doc) continue;
+      await syncStudyCard(ctx, row, doc);
+      cards++;
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.backfillStudyCards, { cursor: page.continueCursor });
+    return { cards, done: page.isDone };
+  },
+});
 
 // ---------------------------------------------------------------------------------------------------
 // Account model clean-up (docs/ACCOUNT_MODEL_PLAN.md §3b). Production was migrated (Personal is not a

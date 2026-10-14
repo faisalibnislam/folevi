@@ -262,6 +262,9 @@ export const Toggle = Node.create({
         dom.dataset.depth = String(current.attrs.depth ?? 0);
         dom.style.setProperty("--depth", String(current.attrs.depth ?? 0));
         dom.dataset.collapsed = current.attrs.collapsed ? "true" : "false";
+        // A flashcard (or quiz question): it comes up in Reviews.
+        if (current.attrs.study) dom.dataset.study = String(current.attrs.study);
+        else delete dom.dataset.study;
         applyBlockFormat(dom, current.attrs);
         btn.setAttribute("aria-expanded", current.attrs.collapsed ? "false" : "true");
         btn.setAttribute("aria-label", current.attrs.collapsed ? "Expand" : "Collapse");

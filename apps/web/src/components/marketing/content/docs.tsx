@@ -368,9 +368,9 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "ai-assistant",
     title: "Foli AI and AI credits",
     nav: "Foli AI and credits",
-    description: "How Foli AI, Folevi’s AI assistant, works: Ask Foli AI, editing and writing with ⌘J, titles, Catch me up and flowcharts, AI credits per plan, and turning AI off.",
+    description: "How Foli AI, Folevi’s AI assistant, works: Ask Foli AI, editing and writing with ⌘J, titles, Catch me up, flowcharts, flashcards and reviews, AI credits per plan, and turning AI off.",
     published: "2026-09-30",
-    updated: "2026-10-01",
+    updated: "2026-10-14",
     body: () => (
       <>
         <p>
@@ -398,6 +398,18 @@ export const DOC_ARTICLES: DocArticle[] = [
           </li>
         </ul>
         <p>Answers and rewrites appear word by word, and you can press Stop at any time.</p>
+        <h2 id="reviews">Flashcards and reviews</h2>
+        <p>
+          Foli AI can make flashcards or a quiz from a note (Study in the note’s AI panel, or the <code>/</code> menu). A flashcard is a toggle: the question is the toggle’s line and the answer is what’s inside it. You can make your own too: open a toggle’s block menu and pick Use as flashcard.
+        </p>
+        <ul>
+          <li>
+            <strong>Reviews</strong> brings your cards back when they’re due, from every note you can open, using spaced repetition (FSRS). Press Space to see the answer, then Again, Hard, Good or Easy (or <code>1</code> to <code>4</code>). Each button shows when the card will come back.
+          </li>
+          <li>Up to 20 new cards a day join your reviews. Each person who can open a note has their own schedule for its cards.</li>
+          <li>Reviews appears in the sidebar once you have cards, Home shows Today’s reviews, and a note’s … menu can review just that note’s cards.</li>
+          <li>Cards in Trash, or in notes you can no longer open, drop out of your reviews. Reviewing doesn’t use AI credits.</li>
+        </ul>
         <h2 id="credits">AI credits</h2>
         <p>
           AI use is counted in credits. A credit is one cent of what the AI costs to run, and each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Foli AI or a new flowchart usually 3 to 5. Before a request starts, Folevi sets a few credits aside so it can finish, and gives back what it didn’t use.

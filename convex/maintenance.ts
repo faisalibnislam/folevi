@@ -52,6 +52,9 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
   const batches: (() => Promise<{ _id: Id<never> }[]>)[] = [
     () => ctx.db.query("blocks").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("tasks").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
+    // Its study cards and everyone's schedules for them.
+    () => ctx.db.query("studyCards").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
+    () => ctx.db.query("studyReviews").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("documentTags").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("stars").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("recents").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
@@ -368,6 +371,8 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("aiSuggestionDismissals").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiDigests").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("routines").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    // Their study schedules (the cards stay with the notes).
+    () => ctx.db.query("studyReviews").withIndex("by_profile_due", (q) => q.eq("profileId", profileId)).take(200),
     // Their email-to-note address (it stops working) and its receipts.
     () => ctx.db.query("emailNoteAddresses").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("emailNoteReceipts").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),

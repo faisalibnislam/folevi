@@ -11,6 +11,7 @@ import {
   type WireBlock,
 } from "@folevi/editor-schema";
 import { DEFAULTS, lastRootRank, newDocumentRank, refreshDerived, sanitizeTitle, syncTaskProjection } from "./documents";
+import { studyKindOf, syncStudyCard } from "./study";
 import { fail } from "./errors";
 import { bump } from "./metrics";
 import { nextSeq } from "./seq";
@@ -136,6 +137,7 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
   }
   const doc = (await ctx.db.get(docId))!;
   for (const row of rows) if (row.type === "todo") await syncTaskProjection(ctx, row, doc, input.actor._id);
+  for (const row of rows) if (studyKindOf(row)) await syncStudyCard(ctx, row, doc);
   await refreshDerived(ctx, doc, rows);
   if (rows.length) await queueIndex(ctx, doc);
   await adjustDocumentCount(ctx, scope, 1);

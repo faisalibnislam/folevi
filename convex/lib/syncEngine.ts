@@ -14,6 +14,7 @@ import {
 } from "@folevi/editor-schema";
 import { accessAtLeast, documentAccess, documentAccessInfo, getDocumentByPublicId, membership, memberAtLeast, memberLevel, isScheduledForDeletion, DELETION_SCHEDULED_MESSAGE } from "./auth";
 import { IdResolver, liveBlocks, Placement, refreshDerived, sanitizeTitle, syncTaskProjection, toWireBlock, type DocumentSummary } from "./documents";
+import { studyKindOf, syncStudyCard } from "./study";
 import { createDocument, cloneBlocks } from "./create";
 import { builtInTemplateBlocks } from "./templates";
 import { bump } from "./metrics";
@@ -396,8 +397,8 @@ export class SyncEngine {
       this.reparented(doc._id, incoming.id, rowId, null, parentId);
       this.touch(doc, rowId);
       this.trackMentions(doc, [], incoming);
-      // A new block with no task and no page links has nothing to index afterwards (see finish()).
-      if (incoming.type !== "todo" && !hasLinkTargets(values as unknown as Doc<"blocks">)) this.plainNewRows.add(rowId);
+      // A new block with no task, no study card and no page links has nothing to index afterwards (see finish()).
+      if (incoming.type !== "todo" && !studyKindOf(values) && !hasLinkTargets(values as unknown as Doc<"blocks">)) this.plainNewRows.add(rowId);
       // What was just written (no need to read it back).
       return { opId: op.opId, status: "applied", revision: 1, block: toWireBlock(values as unknown as Doc<"blocks">), deleted: false, normalized: normalized || undefined };
     }
@@ -875,10 +876,12 @@ export class SyncEngine {
         if (this.plainNewRows.has(rowId)) continue;
         const row = await this.ctx.db.get(rowId);
         if (!row) continue;
-        // A block made in this batch has no task or backlinks yet: only a to-do needs a task, only a block
-        // with page links needs backlinks (a pasted page of plain lines skips both lookups per line).
+        // A block made in this batch has no task, card or backlinks yet: only a to-do needs a task, only a
+        // marked toggle a card, only a block with page links needs backlinks (a pasted page of plain lines
+        // skips these lookups per line).
         const fresh_ = this.newRows.has(row.blockId);
         if (!fresh_ || row.type === "todo") await syncTaskProjection(this.ctx, row, fresh, this.profile._id);
+        if (!fresh_ || studyKindOf(row)) await syncStudyCard(this.ctx, row, fresh);
         if (!fresh_ || hasLinkTargets(row)) await syncLinks(this.ctx, fresh, row);
       }
     }

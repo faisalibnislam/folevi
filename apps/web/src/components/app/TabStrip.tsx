@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
-import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, Calendar, CheckSquare, ChevronLeft, ChevronRight, FileText, Files, Folder, Hash, House, Inbox, LayoutList, LayoutTemplate, Plus, Share2, Star, Trash2, Waypoints, X, XCircle } from "lucide-react";
+import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, Calendar, CheckSquare, ChevronLeft, ChevronRight, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutList, LayoutTemplate, Plus, Share2, Star, Trash2, Waypoints, X, XCircle } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { tabHref, tabPage, useTabs } from "@/lib/app/tabs";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -27,6 +27,7 @@ const VIEW_NAMES: Record<string, string> = {
   notes: "All notes",
   tasks: "Tasks",
   calendar: "Calendar",
+  review: "Reviews",
   daily: "Daily note",
   shared: "Shared with Me",
   templates: "Templates",
@@ -59,6 +60,8 @@ function ViewIcon({ kind }: { kind: string }) {
     case "calendar":
     case "daily":
       return <Calendar size={14} aria-hidden className={c} />;
+    case "review":
+      return <Layers size={14} aria-hidden className={c} />;
     case "shared":
       return <Share2 size={14} aria-hidden className={c} />;
     case "templates":

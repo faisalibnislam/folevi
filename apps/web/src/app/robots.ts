@@ -13,6 +13,7 @@ const APP_PATHS = [
   "/documents",
   "/tasks",
   "/calendar",
+  "/review",
   "/daily",
   "/shared",
   "/templates",

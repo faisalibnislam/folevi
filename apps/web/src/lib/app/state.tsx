@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyn
 import { localDate, scopeIdKey, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { SyncEngine } from "@/lib/sync/engine";
+import { Outbox } from "@/lib/sync/outbox";
 import { deviceId as loadDeviceId } from "@/lib/sync/db";
 import { Uploader } from "@/lib/sync/uploads";
 import { saveAccountSnapshot } from "./offlineSnapshot";
@@ -93,6 +94,8 @@ export interface AppState {
   canManage: boolean;
   setContext: (scope: WireScope) => void;
   engine: SyncEngine | null;
+  /** Folder, comment and collection changes waiting to be sent (see outbox.ts). */
+  outbox: Outbox | null;
   uploader: Uploader | null;
   deviceId: string | null;
   online: boolean;
@@ -184,6 +187,7 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
   }, [liveWorkspaces, scope]);
 
   const [engine, setEngine] = useState<SyncEngine | null>(null);
+  const [outbox, setOutbox] = useState<Outbox | null>(null);
   const [uploader, setUploader] = useState<Uploader | null>(null);
   const [device, setDevice] = useState<string | null>(null);
   const online = useOnline();
@@ -207,18 +211,32 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
     if (!ready) return;
     let cancelled = false;
     let opened: SyncEngine | null = null;
+    let queue: Outbox | null = null;
+    let unwatch: (() => void) | null = null;
     let uploading: Uploader | null = null;
     (async () => {
       const id = await loadDeviceId(profile.id);
       // Your workspaces let page creates queued by an older build find their scope (engine.ts adoptLegacyCreates).
       const e = await SyncEngine.open(convex, profile.id, scopeRef.current, id, teamIdsRef.current);
       opened = e;
+      const o = await Outbox.open(convex, profile.id);
+      queue = o;
       if (cancelled) {
         e.dispose();
+        o.dispose();
         return;
       }
+      // The two queues wait for each other where one names what the other creates: a comment on a line
+      // typed offline goes after the line; a note filed in a folder made offline goes after the folder.
+      o.setWaits((after) => e.waitsToSync(after.documentId, after.blockId));
+      e.setHold((op) => o.holds(op));
+      o.onReleased = () => e.scheduleFlush(0);
+      unwatch = e.subscribe((ev) => {
+        if (ev.type === "state" && o.waitsForPages()) o.scheduleFlush(200);
+      });
       setDevice(id);
       setEngine(e);
+      setOutbox(o);
       const up = new Uploader(convex, profile.id, e, (message) => window.dispatchEvent(new CustomEvent("folevi:error", { detail: message })));
       uploading = up;
       setUploader(up);
@@ -230,14 +248,17 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
       // Replaced (another account) or unmounted: it stops listening to the page, and its uploader stops
       // retrying (its timer would otherwise keep running uploads for an engine nobody uses).
       opened?.dispose();
+      unwatch?.();
+      queue?.dispose();
       uploading?.stop();
     };
   }, [convex, profile.id, ready]);
 
   useEffect(() => {
     engine?.setOnline(effectivelyOnline);
+    outbox?.setOnline(effectivelyOnline);
     if (effectivelyOnline) uploader?.kick(0);
-  }, [engine, uploader, effectivelyOnline]);
+  }, [engine, outbox, uploader, effectivelyOnline]);
 
   // New attachments (Editor.insertFiles) start uploading right away, not on the next reload/reconnect.
   useEffect(() => {
@@ -285,6 +306,7 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
         setSelected(next.kind === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: next.workspaceId });
       },
       engine,
+      outbox,
       uploader,
       deviceId: device,
       online: effectivelyOnline,
@@ -296,7 +318,7 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
         applyAppearance(a);
       },
     };
-  }, [profile, workspaces, context, scope, engine, uploader, device, effectivelyOnline, today, timeZone, appearance]);
+  }, [profile, workspaces, context, scope, engine, outbox, uploader, device, effectivelyOnline, today, timeZone, appearance]);
 
   if (!value) {
     return <FullPageMessage title="Opening your folio…" busy />;

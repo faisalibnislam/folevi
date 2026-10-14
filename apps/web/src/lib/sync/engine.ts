@@ -627,14 +627,7 @@ export class SyncEngine {
    * not found". Rejects when offline, or after `timeoutMs`.
    */
   whenBlockOnServer(documentId: string, blockId: string, timeoutMs = 20_000): Promise<void> {
-    const queued = () =>
-      [...this.state.inflight, ...this.state.pending].some((op) =>
-        op.kind === "block.upsert"
-          ? op.block.id === blockId
-          : op.kind === "block.delete" || op.kind === "block.restore"
-            ? op.blockId === blockId
-            : op.kind === "document.create" && op.document.id === documentId,
-      );
+    const queued = () => this.waitsToSync(documentId, blockId);
     if (!queued()) return Promise.resolve();
     const offline = () => new Error("You’re offline. This line needs to sync before you can do that.");
     if (this.state.connection === "offline") return Promise.reject(offline());
@@ -653,6 +646,48 @@ export class SyncEngine {
       });
       this.scheduleFlush(0);
     });
+  }
+
+  /**
+   * Whether something this device queued for a block (or, with no block, for nothing but the page's own
+   * create) hasn't reached the server yet: a change in the outbox that names it (a comment on it) waits.
+   */
+  waitsToSync(documentId: string, blockId: string | null): boolean {
+    return [...this.state.inflight, ...this.state.pending].some((op) =>
+      op.kind === "block.upsert"
+        ? op.block.id === blockId
+        : op.kind === "block.delete" || op.kind === "block.restore"
+          ? op.blockId === blockId
+          : op.kind === "document.create" && op.document.id === documentId,
+    );
+  }
+
+  /**
+   * Ops that wait for a change outside the engine (see `setHold`), and everything that needs the page they
+   * create. They stay in the queue, in their places, and go with the first flush after they're let go.
+   */
+  private hold: ((op: SyncOp) => boolean) | null = null;
+
+  /**
+   * Holds back ops that name something still waiting in the outbox (a note filed in a folder made offline,
+   * a page under a row added offline): sent before it, the server would refuse them as not found.
+   */
+  setHold(hold: ((op: SyncOp) => boolean) | null) {
+    this.hold = hold;
+  }
+
+  /** The ops `hold` keeps back now: the ones it names, and the ops on (or under) pages whose create it keeps. */
+  private heldOps(): Set<SyncOp> {
+    const held = new Set<SyncOp>();
+    if (!this.hold) return held;
+    const pages = new Set<string>();
+    for (const op of this.state.pending) {
+      const page = op.kind === "document.create" ? op.document.parentDocumentId : op.documentId;
+      if (!this.hold(op) && !(page && pages.has(page))) continue;
+      held.add(op);
+      if (op.kind === "document.create") pages.add(op.document.id);
+    }
+    return held;
   }
 
   hasLocalWork(documentId: string): boolean {
@@ -694,8 +729,13 @@ export class SyncEngine {
     try {
       for (let rounds = 0; rounds < 20; rounds++) {
         // As many as the server takes in one request (MAX_BATCH): a big paste saves in fewer round trips.
-        const batched = sync.takeBatch(this.state, 100);
-        if (batched === this.state || batched.inflight.length === 0) break;
+        const held = this.heldOps();
+        const from = held.size ? { ...this.state, pending: this.state.pending.filter((op) => !held.has(op)) } : this.state;
+        const taken = sync.takeBatch(from, 100);
+        if (taken === from || taken.inflight.length === 0) break;
+        // What's held goes back in its place (the batch keeps the others as they were, in order).
+        const order = new Map(this.state.pending.map((op, i) => [op, i]));
+        const batched = held.size ? { ...taken, pending: [...taken.pending, ...held].sort((a, b) => order.get(a)! - order.get(b)!) } : taken;
         this.commit(batched);
         await this.persisted();
         let results: (OpResult & { document?: unknown })[];

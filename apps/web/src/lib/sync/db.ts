@@ -62,6 +62,17 @@ export const ACCOUNT_SYNC_KEY = "account";
 export const SYNC_BLOCK_PREFIX = "syncBlock:";
 export const syncBlockKeys = () => IDBKeyRange.bound(SYNC_BLOCK_PREFIX, `${SYNC_BLOCK_PREFIX}\uffff`);
 
+/**
+ * Changes other than page and block edits (folders, comments, collections) wait in the outbox, one `meta`
+ * record each, keyed `outbox:<entry id>` (ULIDs, so the keys sort in the order they were made). See outbox.ts.
+ */
+export const OUTBOX_PREFIX = "outbox:";
+export const outboxKeys = () => IDBKeyRange.bound(OUTBOX_PREFIX, `${OUTBOX_PREFIX}\uffff`);
+
+/** The last answer of a query seen on this device, for reading it offline (`query:<name>:<args>`; see queryCache.ts). */
+export const QUERY_PREFIX = "query:";
+export const queryKeys = () => IDBKeyRange.bound(QUERY_PREFIX, `${QUERY_PREFIX}\uffff`);
+
 const dbs = new Map<string, Promise<IDBPDatabase<FoleviDB>>>();
 
 export function localDb(accountKey: string): Promise<IDBPDatabase<FoleviDB>> {

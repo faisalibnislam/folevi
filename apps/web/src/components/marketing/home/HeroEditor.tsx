@@ -75,6 +75,7 @@ function demoState(): AppState {
     canManage: false,
     setContext: () => undefined,
     engine: null,
+    outbox: null,
     uploader: null,
     deviceId: null,
     online: true,

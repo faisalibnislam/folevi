@@ -557,6 +557,9 @@ export const recent = query({
   },
 });
 
+/** Opening a note again within this long of last seeing it (and without leaving it) is the same visit. */
+const VISIT_GAP_MS = 30_000;
+
 /** The newest block change in a note: its blocks' highest `seq` (0 while it has none). */
 export async function latestBlockSeq(ctx: QueryCtx | MutationCtx, documentId: Id<"documents">): Promise<number> {
   const last = await ctx.db
@@ -614,10 +617,19 @@ export const recordView = mutation({
       .unique();
     const now = Date.now();
     if (existing) {
-      // Opening a note is seeing it: what changed in it is no longer new in Changes.
+      // Opening a note is seeing it: what changed in it is no longer new in Changes. A new visit (they left it,
+      // or haven't been in it for a while) also starts "Since you were away" from where they'd seen it up to;
+      // opening it again straight away (a reload) is the same visit.
       const stale = now - existing.viewedAt > 30_000;
       const unseen = existing.seenSeq !== (await latestBlockSeq(ctx, doc._id));
-      if (stale || unseen) await ctx.db.patch(existing._id, { ...(stale ? { viewedAt: now } : {}), ...(unseen ? await seenMark(ctx, doc, canEdit, false) : {}) });
+      const newVisit = existing.leftAt !== undefined || now - (existing.seenAt ?? 0) > VISIT_GAP_MS;
+      if (stale || unseen || newVisit) {
+        await ctx.db.patch(existing._id, {
+          ...(stale ? { viewedAt: now } : {}),
+          ...(newVisit ? { awaySeq: existing.seenSeq, awayAt: existing.seenAt, leftAt: undefined } : {}),
+          ...(unseen ? await seenMark(ctx, doc, canEdit, false) : {}),
+        });
+      }
     } else {
       await insertScoped(ctx, "recents", scopeOfRow(doc), { profileId: profile._id, documentId: doc._id, viewedAt: now, ...(await seenMark(ctx, doc, canEdit, false)) });
     }

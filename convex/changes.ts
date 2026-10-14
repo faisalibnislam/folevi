@@ -166,29 +166,87 @@ export const note = query({
   },
 });
 
-async function markOne(ctx: MutationCtx, profile: Doc<"profiles">, doc: Doc<"documents">) {
+async function markOne(ctx: MutationCtx, profile: Doc<"profiles">, doc: Doc<"documents">, leaving: boolean) {
   const row = await seenRow(ctx, profile._id, doc._id);
   if (!row) return false;
   const access = await documentAccess(ctx, profile, doc);
   if (!accessAtLeast(access, "read")) return false;
-  await ctx.db.patch(row._id, await seenMark(ctx, doc, accessAtLeast(access, "write")));
+  await ctx.db.patch(row._id, { ...(await seenMark(ctx, doc, accessAtLeast(access, "write"))), ...(leaving ? { leftAt: Date.now() } : {}) });
   return true;
 }
 
 const MAX_MARK = 50;
 
-/** Marks notes' changes as seen (Changes' "Mark as seen" and "Mark all as seen"; leaving a note does too). */
+/**
+ * Marks notes' changes as seen (Changes' "Mark as seen" and "Mark all as seen"). Leaving a note does too
+ * (`leaving`), which also ends the visit: the next time it's opened, "Since you were away" starts from here.
+ */
 export const markSeen = mutation({
-  args: { documentIds: v.array(v.string()) },
+  args: { documentIds: v.array(v.string()), leaving: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     if (args.documentIds.length > MAX_MARK) fail("limit_exceeded", `At most ${MAX_MARK} notes at a time.`);
     let marked = 0;
     for (const id of new Set(args.documentIds)) {
       const doc = await getDocumentByPublicId(ctx, id);
-      if (doc && (await markOne(ctx, profile, doc))) marked++;
+      if (doc && (await markOne(ctx, profile, doc, Boolean(args.leaving)))) marked++;
     }
     return { marked };
+  },
+});
+
+/**
+ * "Since you were away", for the note being opened: who else changed it between the visit before and this one,
+ * and which of its lines they added or changed (people as keys into `people`), with how many they removed.
+ * Null on a first visit, and when nobody else changed anything. Lines only as ids: the note is open already.
+ */
+export const away = query({
+  args: { documentId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const doc = await getDocumentByPublicId(ctx, args.documentId);
+    if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) return null;
+    const row = await seenRow(ctx, profile._id, doc._id);
+    if (!row || row.awaySeq === undefined || row.awayAt === undefined || row.seenSeq === undefined || row.awaySeq >= row.seenSeq) return null;
+    const { awaySeq, awayAt, seenSeq } = row;
+    const rows = await ctx.db
+      .query("blocks")
+      .withIndex("by_document_seq", (q) => q.eq("documentId", doc._id).gt("seq", awaySeq).lte("seq", seenSeq))
+      .take(LINES_PER_DETAIL);
+    const people = new People(ctx);
+    const tally = new Map<string, number>();
+    const lines: [string, string, number, "added" | "edited"][] = [];
+    let removed = 0;
+    for (const b of rows.filter(byOthers(profile._id))) {
+      const kind = kindOf(b, awayAt);
+      if (!kind) continue;
+      const key = await actorKey(people, profile._id, b);
+      tally.set(key, (tally.get(key) ?? 0) + 1);
+      if (kind === "removed") removed++;
+      else lines.push([b.blockId, key, b.updatedAt, kind]);
+    }
+    if (!tally.size) return null;
+    const all: Record<string, PersonView> = { ...(await people.all()), [APP.key]: APP, [AI.key]: AI };
+    return {
+      since: awayAt,
+      people: [...tally.entries()].sort((a, b) => b[1] - a[1]).map(([key]) => all[key]!),
+      lines,
+      removed,
+      more: rows.length === LINES_PER_DETAIL,
+    };
+  },
+});
+
+/** "Dismiss" on "Since you were away": nothing to catch up on in this note until the next visit. */
+export const dismissAway = mutation({
+  args: { documentId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const doc = await getDocumentByPublicId(ctx, args.documentId);
+    if (!doc) return null;
+    const row = await seenRow(ctx, profile._id, doc._id);
+    if (row && row.seenSeq !== undefined) await ctx.db.patch(row._id, { awaySeq: row.seenSeq, awayAt: row.seenAt });
+    return null;
   },
 });
 

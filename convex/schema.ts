@@ -374,6 +374,13 @@ export default defineSchema({
     seenSeq: v.optional(v.number()),
     seenAt: v.optional(v.number()),
     seenVersionId: v.optional(v.id("documentSnapshots")),
+    /**
+     * "Since you were away": where this visit's catching up starts (the seen mark from before they opened it
+     * this time), and when they last left it (the next open is a new visit). See changes.away.
+     */
+    awaySeq: v.optional(v.number()),
+    awayAt: v.optional(v.number()),
+    leftAt: v.optional(v.number()),
   })
     .index("by_profile_viewed", ["profileId", "viewedAt"])
     .index("by_profile_document", ["profileId", "documentId"])

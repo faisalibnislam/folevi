@@ -57,7 +57,7 @@
 /* "Show editors": each block carries a bar in the colour of whoever last changed it; hover says who and when.
    The colour and label are variables from a stylesheet keyed by block id (authorSheet in plugins.ts); :where()
    keeps anything else marking a line (presence, a conflict, a selection) on top. */
-:where(.fb-editor.fb-show-editors > .fb) { box-shadow: inset 3px 0 0 var(--author); }
+:where(.fb-editor.fb-show-editors > .fb) { box-shadow: inset 3px 0 0 var(--author); background-color: var(--author-tint, transparent); }
 .fb-editor.fb-show-editors > .fb { border-top-left-radius: var(--author-radius, var(--radius-chip)); border-bottom-left-radius: var(--author-radius, var(--radius-chip)); }
 :where(.fb-editor.fb-show-editors > .fb:not(.is-empty, [data-decoration="focus"])):hover::after {
   content: var(--author-label);

@@ -296,6 +296,10 @@ export const DOC_ARTICLES: DocArticle[] = [
           <strong>Changes</strong> in the sidebar lists the notes you’ve opened that were changed since you last looked, by someone else, by a connected app working in your name, or by Foli AI. Each note shows who changed it, when, and the lines that were added, edited or removed, marked the way version history marks them. From there you can open the note, mark it as seen, or undo the change: the lines that were changed go back to how they were when you last looked, and the rest of the note stays as it is. Undo can be undone from the message that follows.
         </p>
         <p>Opening a note, or leaving it, counts as looking at it. People who can only view or comment on a note see what changed in it, but not removed text, and can’t undo.</p>
+        <h2 id="since-you-were-away">Since you were last here</h2>
+        <p>
+          When you come back to a note that someone else changed since your last visit, a slim line at the top says who changed it and when you were last there. <strong>Show changes</strong> marks the lines they added or edited, each in the colour of the person who changed it, and says how many lines were removed. <strong>Dismiss</strong> puts the line away until the next time the note changes while you’re away. It doesn’t show on your first visit, or for your own edits.
+        </p>
       </>
     ),
   },

@@ -69,6 +69,7 @@ import { ShareDialog } from "./ShareDialog";
 import { TitleAi, TitleAiPill, type TitleRange } from "./TitleAi";
 import { VersionHistory } from "./VersionHistory";
 import { LiveCarets } from "./LiveCarets";
+import { AwayBanner, awayMarks } from "./AwayBanner";
 import { MoveNoteDialog } from "./MoveNoteDialog";
 import { ExportDialog } from "./ExportDialog";
 import { FindBar } from "./FindBar";
@@ -251,8 +252,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
     [],
   );
 
+  // Opening the note is seeing it (Changes); "Since you were away" is asked for once that's recorded, so it
+  // compares with the visit before this one.
+  const [viewRecorded, setViewRecorded] = useState(false);
   useEffect(() => {
-    if (meta) void recordView({ documentId }).catch(() => undefined);
+    if (meta) void recordView({ documentId }).then(() => setViewRecorded(true), () => undefined);
   }, [meta?.document.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Presence heartbeat with the focused block (never leaves the authorization boundary: server-checked).
@@ -327,7 +331,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
       const edited = Boolean(lastEditAt.current && canSnapshotRef.current);
       lastEditAt.current = null;
       if (!edited && !seenOnServer.current) return;
-      const seen = () => void markSeen({ documentIds: [documentId] }).catch(() => undefined);
+      const seen = () => void markSeen({ documentIds: [documentId], leaving: true }).catch(() => undefined);
       const snap = () => {
         if (!edited) return seen();
         void createSnapshot({ documentId, reason: "close" }).then(seen, seen);
@@ -370,6 +374,14 @@ export function DocumentView({ documentId }: { documentId: string }) {
     }
     return marks;
   }, [blockAuthors]);
+  // "Since you were away": who else changed the note between the last visit and this one; "Show changes" marks
+  // those lines the way "Show editors" does, washed in each one's colour.
+  const away = useQuery(api.changes.away, meta && viewRecorded ? { documentId } : "skip");
+  const dismissAway = useMutation(api.changes.dismissAway);
+  const [awayShown, setAwayShown] = useState(false);
+  const [awayDismissed, setAwayDismissed] = useState(false);
+  const awayNow = away && !awayDismissed ? away : null;
+  const changeMarks = useMemo(() => (awayNow && awayShown ? awayMarks(awayNow) : undefined), [awayNow, awayShown]);
   const decorations: DecorationInputs = useMemo(
     () => ({
       presence: (presence ?? []).filter((p) => p.focusedBlockId).map((p) => ({ blockId: p.focusedBlockId!, color: p.color, name: p.name })),
@@ -378,9 +390,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
       conflictBlocks: new Set(conflictBlockIds),
       commentSummaries: new Map((threads?.blocks ?? []).map((b) => [b.blockId, { count: b.comments, lastActivityAt: b.lastActivityAt, unread: b.unread, authors: b.authors }])),
       onOpenComments: openBlockThread,
-      authors: authorMarks,
+      authors: changeMarks ?? authorMarks,
     }),
-    [presence, threads, conflictBlockIds, openBlockThread, authorMarks],
+    [presence, threads, conflictBlockIds, openBlockThread, authorMarks, changeMarks],
   );
 
   // Deep links: a block (#block-<id>) or a comment thread (#comment-<thread id>). Also re-run when a
@@ -860,7 +872,19 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 }}
               />
             ) : null}
-            {showEditors && blockAuthors ? <EditorsBar authors={blockAuthors} onHide={() => setShowEditors(false)} /> : null}
+            {awayNow ? (
+              <AwayBanner
+                away={awayNow}
+                showing={awayShown}
+                onToggle={() => setAwayShown((on) => !on)}
+                onDismiss={() => {
+                  setAwayDismissed(true);
+                  setAwayShown(false);
+                  void dismissAway({ documentId }).catch(() => undefined);
+                }}
+              />
+            ) : null}
+            {showEditors && blockAuthors && !changeMarks ? <EditorsBar authors={blockAuthors} onHide={() => setShowEditors(false)} /> : null}
             <div className="px-5 sm:px-16">
               {summary?.kind === "collectionRow" ? (
                 <Suspense fallback={null}>

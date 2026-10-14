@@ -200,8 +200,11 @@ export interface DecorationInputs {
   commentSummaries?: Map<string, CommentSummary>;
   /** Opens a block's comment thread (from that line). Keep it stable: lines are cached by content. */
   onOpenComments?: (blockId: string) => void;
-  /** "Show editors": who last changed each block, as a colour and a label ("Ann · 3 hours ago"). */
-  authors?: Map<string, { color: string; label: string }>;
+  /**
+   * "Show editors": who last changed each block, as a colour and a label ("Ann · 3 hours ago"). `tint` also
+   * washes the line in that colour ("Since you were away": the lines others changed).
+   */
+  authors?: Map<string, { color: string; label: string; tint?: boolean }>;
 }
 
 /** The top-level elements of blocks, in document order (skipping lines drawn between blocks, like comment lines). */
@@ -363,7 +366,8 @@ export function authorSheet(authors: DecorationInputs["authors"]): string {
   let css = "";
   for (const [id, a] of authors) {
     const color = /^[a-z0-9-]+$/i.test(a.color) ? a.color : "ink-muted";
-    css += `.fb-show-editors>[data-block-id=${cssString(id)}]{--author:var(--color-${color});--author-ink:${personInk(color)};--author-label:${cssString(a.label)};--author-radius:0}\n`;
+    const tint = a.tint ? `;--author-tint:color-mix(in oklab,var(--color-${color}) 10%,transparent)` : "";
+    css += `.fb-show-editors>[data-block-id=${cssString(id)}]{--author:var(--color-${color});--author-ink:${personInk(color)};--author-label:${cssString(a.label)};--author-radius:0${tint}}\n`;
   }
   return css;
 }

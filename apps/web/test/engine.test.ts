@@ -46,6 +46,35 @@ describe("web sync engine", () => {
     expect(engine.serverRevision("b1")).toBe(1);
   });
 
+  test("block edits wait 2.5 s alone, but go out within half a second when someone else is in the note", async () => {
+    const { client, calls } = fakeClient((ops) => ops.map((o) => ({ opId: o.opId, status: "applied", revision: 1, block: { ...block(o.block!.id, "x"), revision: 1 } })));
+    const engine = await SyncEngine.open(client, "acct-shared", PERSONAL, "web-dev-shared");
+    engine.setOnline(true);
+    await new Promise((r) => setTimeout(r, 50)); // let opening's own flush settle
+    vi.useFakeTimers();
+    try {
+      engine.upsertBlock("doc-1", block("b1", "alone"), ["content", "position"]);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(calls).toHaveLength(0);
+      // Someone opens the note: what's waiting goes now, on the short delay.
+      engine.setShared("doc-1", true);
+      await vi.advanceTimersByTimeAsync(500);
+      expect(calls).toHaveLength(1);
+      engine.upsertBlock("doc-1", block("b1", "together"), ["content"]);
+      await vi.advanceTimersByTimeAsync(500);
+      expect(calls).toHaveLength(2);
+      // Alone again: back to batching.
+      engine.setShared("doc-1", false);
+      engine.upsertBlock("doc-1", block("b1", "alone again"), ["content"]);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(calls).toHaveLength(2);
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(calls).toHaveLength(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test("an unauthenticated batch keeps every op and waits for re-auth", async () => {
     const { ConvexError } = await import("convex/values");
     const { client } = fakeClient(() => {

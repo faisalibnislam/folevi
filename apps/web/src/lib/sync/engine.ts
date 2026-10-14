@@ -322,7 +322,7 @@ export class SyncEngine {
     // Blocks whose attachment is still uploading are held back until the upload finishes.
     const upload = this.state.uploads.find((u) => u.blockId === block.id && u.state !== "done");
     this.commit(sync.localUpsert(this.state, { opId: ulid(), documentId, block, fields, blockedBy: upload?.uploadId, baseRevision }));
-    this.scheduleFlush(BLOCK_SAVE_DELAY);
+    this.scheduleFlush(this.blockSaveDelay(documentId));
   }
 
   queueUpload(documentId: string, blockId: string, uploadId: string) {
@@ -348,6 +348,25 @@ export class SyncEngine {
     this.commit(sync.localDelete(next, { opId: ulid(), documentId: record.documentId, blockId: record.blockId }));
   }
 
+  /** Notes someone else has open right now (from presence): their block edits are sent sooner. */
+  private shared = new Set<string>();
+
+  /**
+   * Says whether someone else is in this note. Alone, block edits are batched for BLOCK_SAVE_DELAY (fewer
+   * writes while typing); with company they go after SHARED_SAVE_DELAY so the others see the typing almost
+   * as it happens. Anything already waiting is sent on the shorter delay at once.
+   */
+  setShared(documentId: string, shared: boolean) {
+    if (shared === this.shared.has(documentId)) return;
+    if (shared) this.shared.add(documentId);
+    else this.shared.delete(documentId);
+    if (shared && this.state.pending.some((op) => "documentId" in op && op.documentId === documentId)) this.scheduleFlush(SHARED_SAVE_DELAY);
+  }
+
+  private blockSaveDelay(documentId: string): number {
+    return this.shared.has(documentId) ? SHARED_SAVE_DELAY : BLOCK_SAVE_DELAY;
+  }
+
   /** Blocks deleted on this device (in this session): only these come back when the person undoes. */
   private deletedHere = new Set<string>();
 
@@ -370,7 +389,7 @@ export class SyncEngine {
     }
     this.deletedHere.add(blockId);
     this.commit(sync.localDelete(this.state, { opId: ulid(), documentId, blockId, baseRevision }));
-    this.scheduleFlush(BLOCK_SAVE_DELAY);
+    this.scheduleFlush(this.blockSaveDelay(documentId));
   }
 
   /**
@@ -387,7 +406,7 @@ export class SyncEngine {
   restoreBlock(documentId: string, blockId: string) {
     this.deletedHere.delete(blockId);
     this.commit(sync.localRestore(this.state, { opId: ulid(), documentId, blockId }));
-    this.scheduleFlush(BLOCK_SAVE_DELAY);
+    this.scheduleFlush(this.blockSaveDelay(documentId));
   }
 
   createDocument(document: WireDocumentCreate): string {
@@ -710,6 +729,8 @@ const contentOf = (b: Pick<WireBlock, "type" | "text" | "props">) => canonicalJs
  * page and title changes, uploads and reconnecting still send straight away, and so does hiding the page.
  */
 const BLOCK_SAVE_DELAY = 2_500;
+/** Block edits in a note someone else has open: sent quickly so they see the typing. */
+const SHARED_SAVE_DELAY = 400;
 
 /** How long a commit may wait for others to share its save (see `writeState`). */
 const SAVE_DELAY = 100;

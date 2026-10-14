@@ -280,6 +280,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const lastPresence = useRef(livePresence);
   if (livePresence !== undefined) lastPresence.current = livePresence;
   const presence = meta ? (livePresence ?? lastPresence.current) : undefined;
+  // With someone else in the note, block edits go out within a moment so they see the typing.
+  const company = (presence?.length ?? 0) > 0;
+  useEffect(() => {
+    if (!engine) return;
+    engine.setShared(documentId, company);
+    return () => engine.setShared(documentId, false);
+  }, [engine, documentId, company]);
 
   // Idle and close snapshots: meaningful versions, never one per keystroke.
   const pendingForDoc = useEngineSelector(engine, (s) => s.pending.some((op) => "documentId" in op && op.documentId === documentId) || s.inflight.length > 0);

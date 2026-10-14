@@ -178,6 +178,7 @@ export default function SecurityPage() {
           lead="A verified email, passkeys, and an optional second step."
           items={[
             <>Email verified before you can open Folevi</>,
+            <>Passwords found in known data breaches are refused</>,
             <>Passkeys: sign in with your fingerprint, face or screen lock</>,
             <>Two-step codes from an authenticator app (TOTP)</>,
             <>One-time recovery codes, for a lost phone</>,

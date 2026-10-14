@@ -627,6 +627,9 @@ export const DOC_ARTICLES: DocArticle[] = [
       <>
         <ul>
           <li>Email verification is required before you can open Folevi.</li>
+          <li>
+            Folevi won’t accept a password that has appeared in a known data breach. It checks with Have I Been Pwned using only the first five characters of a scrambled (hashed) version of the password, so the password itself never leaves Folevi.
+          </li>
           <li>Two-step verification with an authenticator app (TOTP) is optional; turn it on in Settings → Security.</li>
           <li>When you set up two-step verification you receive one-time recovery codes. Each works once. Store them somewhere safe, away from your password.</li>
           <li>

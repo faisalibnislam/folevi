@@ -21,6 +21,7 @@ import authSchema from "./betterAuth/schema";
 import { CLAIM_EMAIL_VERIFIED, CLAIM_MFA } from "./lib/claims";
 import { CLIENT_IP_HEADER } from "./lib/clientIp";
 import { nativeAuth } from "./lib/nativeAuth";
+import { breachedPasswords } from "./lib/breachedPasswords";
 import { ACCESS_TOKEN_PREFIX, mcpResourceUrl, OAUTH_SCOPES, REFRESH_TOKEN_PREFIX } from "./lib/mcp/config";
 
 export const authComponent = createClient<DataModel, typeof authSchema>(components.betterAuth, {
@@ -187,6 +188,8 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
       }),
     },
     plugins: [
+      // New passwords found in Have I Been Pwned's list are refused (sign-up, change, reset).
+      breachedPasswords(),
       twoFactor({
         issuer: "Folevi",
         totpOptions: { digits: 6, period: 30 },

@@ -39,6 +39,8 @@ export function authErrorMessage(error: AuthErrorLike, fallback = "Something wen
       return "Use at least 10 characters for your password.";
     case "PASSWORD_TOO_LONG":
       return "Use at most 128 characters for your password.";
+    case "PASSWORD_COMPROMISED":
+      return "This password has appeared in a data breach. Choose a different one.";
     case "INVALID_CODE":
       return "That code didn't work. Check your authenticator app and try again.";
     case "INVALID_BACKUP_CODE":

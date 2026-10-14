@@ -56,6 +56,10 @@ export function SignUpForm({ template }: { template?: string }) {
           });
           setBusy(false);
           // An address that already has an account gets the same answer (no account enumeration).
+          if (err?.code === "PASSWORD_COMPROMISED") {
+            setFieldError({ password: authErrorMessage(err) });
+            return;
+          }
           if (err && err.code !== "USER_ALREADY_EXISTS" && err.code !== "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
             setError(authErrorMessage(err, undefined, "up to an hour"));
             return;

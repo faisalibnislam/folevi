@@ -91,6 +91,7 @@ import type * as lib_authStore from "../lib/authStore.js";
 import type * as lib_authors from "../lib/authors.js";
 import type * as lib_billing from "../lib/billing.js";
 import type * as lib_billingProducts from "../lib/billingProducts.js";
+import type * as lib_breachedPasswords from "../lib/breachedPasswords.js";
 import type * as lib_claims from "../lib/claims.js";
 import type * as lib_clientIp from "../lib/clientIp.js";
 import type * as lib_collections from "../lib/collections.js";
@@ -252,6 +253,7 @@ declare const fullApi: ApiFromModules<{
   "lib/authors": typeof lib_authors;
   "lib/billing": typeof lib_billing;
   "lib/billingProducts": typeof lib_billingProducts;
+  "lib/breachedPasswords": typeof lib_breachedPasswords;
   "lib/claims": typeof lib_claims;
   "lib/clientIp": typeof lib_clientIp;
   "lib/collections": typeof lib_collections;

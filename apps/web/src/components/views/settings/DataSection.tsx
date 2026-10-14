@@ -13,6 +13,7 @@ import { entriesFromFiles, entryMap } from "@/components/doc/importBundle";
 import { csvDoc, docxDoc, evernoteDocs, htmlDoc, isNotionExport, loadMarkdown, markdownDocs, notionDocs, type ImportDoc, type ImportImage } from "@/lib/import/sources";
 import { Card } from "./Card";
 import { EmailToNoteCard } from "./EmailToNote";
+import { SaveFromAnywhereCard } from "./SaveFromAnywhere";
 
 type Result = { name: string; id?: string; warnings: { line?: number; message: string }[]; error?: string; images?: number };
 
@@ -211,6 +212,7 @@ export function DataSection({ target }: { target: DataTarget }) {
         ) : null}
       </Card>
       {target.kind === "personal" ? <EmailToNoteCard /> : null}
+      {target.kind === "personal" ? <SaveFromAnywhereCard /> : null}
       <Card title={`Export ${where}`} description={`A ZIP with every document in ${where} as Markdown (in folders matching your sidebar), all attachments in an assets folder, and a manifest.json describing folders, documents and files. Single pages can be exported from their ••• menu as Markdown, HTML or PDF.`}>
         <Button
           variant="primary"

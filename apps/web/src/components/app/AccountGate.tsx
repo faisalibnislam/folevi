@@ -15,6 +15,7 @@ import { Shell } from "./Shell";
 import { DeviceLimitScreen } from "./DeviceLimit";
 import { DesktopQuickAdd } from "./DesktopQuickAdd";
 import { OauthConsent } from "./OauthConsent";
+import { ShareSheet } from "./ShareSheet";
 
 // Seen once per account, so it loads only for people who haven't finished it.
 const Onboarding = lazy(() => import("./Onboarding").then((m) => ({ default: m.Onboarding })));
@@ -104,7 +105,7 @@ export function AccountGate() {
   if (offlineStart && snapshot) {
     return (
       <AppStateProvider profile={snapshot.profile} offlineWorkspaces={snapshot.workspaces}>
-        <Shell />
+        {route.name === "share" ? <ShareSheet /> : <Shell />}
       </AppStateProvider>
     );
   }
@@ -162,6 +163,8 @@ export function AccountGate() {
             <OauthConsent />
           ) : route.name === "quick-add" && me.profile.onboardingStep === "done" ? (
             <DesktopQuickAdd />
+          ) : route.name === "share" && me.profile.onboardingStep === "done" ? (
+            <ShareSheet />
           ) : me.profile.onboardingStep !== "done" || route.name === "onboarding" ? (
             <Suspense fallback={<FullPageMessage title="Opening your folio…" busy />}>
               <Onboarding />

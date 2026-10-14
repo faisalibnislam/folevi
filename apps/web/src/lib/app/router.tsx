@@ -39,6 +39,8 @@ export type Route =
   | { name: "onboarding" }
   /** The Mac app's Quick Add window (apps/desktop). */
   | { name: "quick-add" }
+  /** Save to Folevi: a share from another app (share target) or the bookmarklet, saved to an Inbox. */
+  | { name: "share" }
   /** Connecting an app (MCP) to Folevi: the OAuth consent screen. */
   | { name: "oauth-consent" }
   | { name: "invite"; token: string }
@@ -78,6 +80,7 @@ export function parseRoute(pathname: string): Route {
     case "help":
     case "onboarding":
     case "quick-add":
+    case "share":
       return { name: head };
     // Drafts was called Unsorted; old /unsorted links keep working.
     case "drafts":

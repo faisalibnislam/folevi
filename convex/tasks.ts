@@ -339,6 +339,27 @@ export async function ensureInbox(ctx: MutationCtx, profile: Doc<"profiles">, sc
 }
 
 /**
+ * The person's Inbox page in a place (made, or brought back from Trash, when needed) and the rank after its
+ * last line. Save to Folevi (the share page) files a shared note under it through the sync engine, with
+ * its card at the end of the Inbox; offline it uses the deterministic id instead.
+ */
+export const inbox = mutation({
+  args: { scope: vScopeArg, deviceId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const { scope, workspace } = await resolveScope(ctx, profile, args.scope, "edit");
+    const scopeArg: ScopeArg = workspace ? { kind: "workspace", workspaceId: workspace.publicId } : { kind: "personal" };
+    const documentId = await ensureInbox(ctx, profile, scope, scopeArg, args.deviceId?.slice(0, 64) ?? "server");
+    const doc = await getDocumentByPublicId(ctx, documentId);
+    if (!doc) fail("not_found", "Could not find your Inbox.");
+    const roots = (await liveBlocks(ctx, doc._id)).filter((b) => b.parentId === null);
+    const lastRank = roots.reduce<string | null>((m, b) => (m === null || b.rank > m ? b.rank : m), null);
+    return { documentId, lastRank };
+  },
+});
+
+/**
  * The Inbox page someone made in their Personal back when it was a workspace (its deterministic id was
  * keyed by that workspace, which no longer exists): their own page titled Inbox with an "inbox-" id.
  */

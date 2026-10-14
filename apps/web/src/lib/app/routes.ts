@@ -26,4 +26,5 @@ export const APP_ROUTE_HEADS = new Set([
   "oauth",
   "invite",
   "share-invite",
+  "share",
 ]);

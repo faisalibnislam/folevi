@@ -4,24 +4,69 @@
  *   The shell HTML contains no private data. Documents load through the authenticated Convex
  *   connection and the per-account IndexedDB store.
  * - Never cached: /api, /auth, /admin, /s (public share pages), /signin, /signup, cross-origin requests.
+ * - Share target (manifest share_target): a POST to /share-target from another app's share sheet is kept
+ *   in SHARE (its title, text, link and files, on this device only) and the app opens /share?received=<id>,
+ *   which reads it, saves the note and deletes it. Shares left unread are dropped after a day.
  */
 const STATIC = "folevi-static-v2"; // v2: new brand icons (2026-09-29)
 const SHELL = "folevi-shell-v1";
-const APP = /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|review(?:\/|$)|changes(?:\/|$)|daily|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite)/;
+const SHARE = "folevi-share-v1";
+const APP = /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|review(?:\/|$)|changes(?:\/|$)|daily|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|share(?:\/|$))/;
+const SHARE_FILES = 10;
+const SHARE_FILE_BYTES = 20 * 1024 * 1024;
+const SHARE_TTL_MS = 24 * 60 * 60 * 1000;
 const NEVER = /^\/(api|auth|admin|s\/|signin|signup|signout|verify-email|dev-auth)/;
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      for (const key of await caches.keys()) if (key.startsWith("folevi-") && key !== STATIC && key !== SHELL) await caches.delete(key);
+      for (const key of await caches.keys()) if (key.startsWith("folevi-") && key !== STATIC && key !== SHELL && key !== SHARE) await caches.delete(key);
       await self.clients.claim();
     })(),
   );
 });
 
+/** A share from another app: kept on this device, then the app opens it (never sent anywhere from here). */
+async function receiveShare(req) {
+  const form = await req.formData();
+  const field = (name) => {
+    const v = form.get(name);
+    return typeof v === "string" ? v.slice(0, 20000) : "";
+  };
+  const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const cache = await caches.open(SHARE);
+  // Shares never opened (the app was closed before it loaded) don't pile up.
+  for (const key of await cache.keys()) {
+    const at = parseInt((new URL(key.url).pathname.split("/")[2] || "").split("-")[0], 36);
+    if (!at || Date.now() - at > SHARE_TTL_MS) await cache.delete(key);
+  }
+  const files = [];
+  const skipped = [];
+  for (const f of form.getAll("files")) {
+    if (typeof f === "string") continue;
+    if (files.length >= SHARE_FILES || f.size > SHARE_FILE_BYTES || f.size === 0) {
+      skipped.push(String(f.name || "file").slice(0, 120));
+      continue;
+    }
+    await cache.put(`/__share/${id}/file/${files.length}`, new Response(f, { headers: { "content-type": f.type || "application/octet-stream" } }));
+    files.push({ name: String(f.name || "file").slice(0, 200), type: f.type || "application/octet-stream" });
+  }
+  const meta = { title: field("title"), text: field("text"), url: field("url"), files, skipped };
+  await cache.put(`/__share/${id}/meta`, new Response(JSON.stringify(meta), { headers: { "content-type": "application/json" } }));
+  return Response.redirect(new URL(`/share?received=${id}`, self.location.origin).href, 303);
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
+  if (req.method === "POST") {
+    const target = new URL(req.url);
+    if (target.origin === self.location.origin && target.pathname === "/share-target") {
+      // If keeping it fails, the server's own /share-target still takes the text and link.
+      event.respondWith(receiveShare(req.clone()).catch(() => fetch(req)));
+    }
+    return;
+  }
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin || NEVER.test(url.pathname)) return;

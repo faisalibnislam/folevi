@@ -162,6 +162,20 @@ describe("the Related list", () => {
     unmount();
   });
 
+  test("notes you could link: one click links, and nothing to click without edit access", async () => {
+    const onLink = vi.fn(async () => {});
+    const missing = { full: true, note: null, items: [{ ...note("N7", "Atlas hiring"), entities: ["Project Atlas"], reason: "Both mention Project Atlas" }] };
+    const { host, unmount } = render(<RelatedList related={{ full: true, note: null, items: [] }} duplicates={undefined} contradictions={undefined} missing={missing} onOpen={vi.fn()} onLink={onLink} />);
+    expect([...host.querySelectorAll("h3")].map((h) => h.textContent)).toEqual(["You could link"]);
+    expect(host.textContent).toContain("Both mention Project Atlas");
+    await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Link “Atlas hiring” in this note"]')!.click());
+    expect(onLink).toHaveBeenCalledWith("N7", "Atlas hiring");
+    unmount();
+    const readOnly = render(<RelatedList related={{ full: true, note: null, items: [] }} duplicates={undefined} contradictions={undefined} missing={missing} onOpen={vi.fn()} />);
+    expect(readOnly.host.querySelector("button")).toBeNull();
+    readOnly.unmount();
+  });
+
   test("quiet when there's nothing, with the plan note below Pro", () => {
     const { host, unmount } = render(
       <RelatedList

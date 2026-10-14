@@ -1,25 +1,54 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { Copy, FileText, Split } from "lucide-react";
+import { useState } from "react";
+import { Copy, FileText, Link2, Split } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
+import { useAppState } from "@/lib/app/state";
+import { Button } from "@/components/ui/Button";
+import { errorMessage, useToast } from "@/components/ui/Toast";
 
 type Related = FunctionReturnType<typeof api.aiGraph.related>;
 type Duplicates = FunctionReturnType<typeof api.aiGraph.duplicates>;
 type Contradictions = FunctionReturnType<typeof api.aiGraph.contradictions>;
+type Missing = FunctionReturnType<typeof api.aiGraph.missingConnections>;
 
 /** Where a note (and a block in it) opens. */
 export const noteHref = (id: string, blockId?: string) => (blockId ? `/d/${id}#block-${blockId}` : `/d/${id}`);
 
-/** The Related tool in a note's sidebar: related notes with reasons, likely duplicates and contradictions. */
-export function RelatedPanel({ documentId }: { documentId: string }) {
+/**
+ * The Related tool in a note's sidebar: related notes with reasons, likely duplicates, contradictions, and
+ * notes about the same things that aren't linked yet (one click adds the link).
+ */
+export function RelatedPanel({ documentId, canEdit = true }: { documentId: string; canEdit?: boolean }) {
   const { navigate } = useAppRouter();
+  const { deviceId } = useAppState();
+  const toast = useToast();
   const related = useQuery(api.aiGraph.related, { documentId });
   const duplicates = useQuery(api.aiGraph.duplicates, { documentId });
   const contradictions = useQuery(api.aiGraph.contradictions, { documentId });
-  return <RelatedList related={related} duplicates={duplicates} contradictions={contradictions} onOpen={(id, blockId) => navigate(noteHref(id, blockId))} />;
+  const missing = useQuery(api.aiGraph.missingConnections, { documentId });
+  const linkNote = useMutation(api.aiGraph.linkNote);
+  return (
+    <RelatedList
+      related={related}
+      duplicates={duplicates}
+      contradictions={contradictions}
+      missing={missing}
+      onOpen={(id, blockId) => navigate(noteHref(id, blockId))}
+      onLink={
+        canEdit
+          ? (targetId, title) =>
+              linkNote({ documentId, targetId, deviceId: deviceId ?? undefined }).then(
+                () => toast.show(`Linked “${title || "Untitled"}” at the end of this note`, { tone: "success" }),
+                (e) => toast.show(errorMessage(e), { tone: "error" }),
+              )
+          : undefined
+      }
+    />
+  );
 }
 
 function NoteLink({ id, title, blockId, onOpen, children, className = "" }: { id: string; title: string; blockId?: string; onOpen: (id: string, blockId?: string) => void; children?: React.ReactNode; className?: string }) {
@@ -51,17 +80,24 @@ export function RelatedList({
   related,
   duplicates,
   contradictions,
+  missing,
   onOpen,
+  onLink,
 }: {
   related: Related | undefined;
   duplicates: Duplicates | undefined;
   contradictions: Contradictions | undefined;
+  missing?: Missing | undefined;
   onOpen: (id: string, blockId?: string) => void;
+  /** Adds a link to the note (absent: the person can't edit this one). */
+  onLink?: (targetId: string, title: string) => Promise<unknown>;
 }) {
+  const [linking, setLinking] = useState<string | null>(null);
   if (!related) return <p className="px-1 text-sm text-muted">Looking for related notes…</p>;
   const dupes = duplicates?.items ?? [];
   const clashes = contradictions?.items ?? [];
-  const empty = !related.items.length && !dupes.length && !clashes.length;
+  const unlinked = missing?.items ?? [];
+  const empty = !related.items.length && !dupes.length && !clashes.length && !unlinked.length;
   return (
     <div className="space-y-5 text-sm">
       {clashes.length ? (
@@ -123,6 +159,42 @@ export function RelatedList({
                     <span className="block text-[12px] text-muted">{r.reasons.join(" · ")}</span>
                   </span>
                 </NoteLink>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {unlinked.length ? (
+        <section aria-labelledby="related-unlinked">
+          <h3 id="related-unlinked" className="ui-caps mb-2 px-1">
+            You could link
+          </h3>
+          <ul className="space-y-0.5">
+            {unlinked.map((m) => (
+              <li key={m.id} className="flex items-start gap-1">
+                <NoteLink id={m.id} title={m.title} onOpen={onOpen} className="min-w-0 flex-1">
+                  <Link2 size={14} aria-hidden className="mt-0.5 flex-none text-muted" />
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-heading">{m.title || "Untitled"}</span>
+                    <span className="block text-[12px] text-muted">{m.reason}</span>
+                  </span>
+                </NoteLink>
+                {onLink ? (
+                  <Button
+                    size="sm"
+                    variant="quiet"
+                    className="mt-1 flex-none"
+                    aria-label={`Link “${m.title || "Untitled"}” in this note`}
+                    aria-busy={linking === m.id || undefined}
+                    disabled={linking !== null}
+                    onClick={() => {
+                      setLinking(m.id);
+                      void onLink(m.id, m.title).finally(() => setLinking(null));
+                    }}
+                  >
+                    Add link
+                  </Button>
+                ) : null}
               </li>
             ))}
           </ul>

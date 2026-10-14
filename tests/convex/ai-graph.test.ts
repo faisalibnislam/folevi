@@ -415,6 +415,18 @@ describe("what people see", () => {
     const og = await owner.as.query(api.aiGraph.graph, { scope: inWorkspace(workspaceId), kinds: ["organization"] });
     expect(og.nodes.filter((n) => n.kind !== "note").map((n) => n.id)).toEqual(["e:acme"]);
     expect((await owner.as.query(api.aiGraph.missingConnections, { documentId: open.id })).items).toEqual([expect.objectContaining({ id: secret.id, entities: ["Project Atlas"] })]);
+
+    // Linking it appends "Related: [[Board only]]"; then it's linked, so no longer suggested.
+    await owner.as.mutation(api.aiGraph.linkNote, { documentId: open.id, targetId: secret.id });
+    const blocks = await t.run(async (ctx) => {
+      const doc = await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", open.id)).unique();
+      return await ctx.db.query("blocks").withIndex("by_document", (q) => q.eq("documentId", doc!._id)).collect();
+    });
+    const last = blocks.filter((b) => b.deletedAt === undefined).sort((x, y) => (x.rank < y.rank ? -1 : 1)).at(-1)!;
+    expect(last.text).toEqual([{ type: "text", text: "Related: " }, expect.objectContaining({ type: "pageLink", documentId: secret.id })]);
+    expect((await owner.as.query(api.aiGraph.missingConnections, { documentId: open.id })).items).toEqual([]);
+    // The member can't link a note they can't open.
+    await expect(member.as.mutation(api.aiGraph.linkNote, { documentId: open.id, targetId: secret.id })).rejects.toThrow();
   });
 
   test("likely duplicates and contradictions are found, quoted from the notes", async () => {

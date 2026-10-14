@@ -182,7 +182,7 @@ export function Inspector({
         {tab === "info" ? <InfoPanel documentId={documentId} meta={meta} onHistory={onHistory} actions={actions} disabled={readOnly} /> : null}
         {tab === "comments" ? <CommentsOverview documentId={documentId} onOpenThread={onOpenThread} focusThreadId={focusThreadId} /> : null}
         {/* Related notes, likely duplicates and contradictions (the knowledge graph; links only below Pro). */}
-        {tab === "related" ? <RelatedPanel documentId={documentId} /> : null}
+        {tab === "related" ? <RelatedPanel documentId={documentId} canEdit={!readOnly} /> : null}
       </div>
       {bare ? <div aria-hidden className="ui-blur-bottom" /> : null}
       </div>

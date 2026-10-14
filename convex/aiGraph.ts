@@ -14,10 +14,14 @@
 // Explicit links stay in `documentLinks` and are read from there; only inferred relations are stored. Note
 // text is never logged; only counts are.
 import { v } from "convex/values";
-import { internalAction, internalMutation, internalQuery, query, type QueryCtx } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery, mutation, query, type QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { accessAtLeast, documentAccess, getDocumentByPublicId, PageReader, requireProfile, resolveScope } from "./lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, PageReader, requireProfile, resolveScope } from "./lib/auth";
+import { fail } from "./lib/errors";
+import { liveBlocks } from "./lib/documents";
+import { SyncEngine } from "./lib/syncEngine";
+import { rankBetween, SCHEMA_VERSION, ulid, type WireBlock } from "@folevi/editor-schema";
 import { consume } from "./lib/rateLimit";
 import { hasValidScope, inScope, scopeKey, scopeOfRow, vScope, vScopeArg, type Scope } from "./lib/scope";
 import { indexable, indexEligible } from "./lib/ai/indexing";
@@ -512,6 +516,42 @@ export const missingConnections = query({
       items.push({ ...refOf(d), entities: names.slice(0, 5), reason: sharedReason(names) });
     }
     return { full: true, note: null, items };
+  },
+});
+
+/**
+ * Links a note suggested by `missingConnections`: appends a line "Related: [[that note]]" to the end of
+ * this one, like any other edit (synced, in version history, undoable). Needs edit access here and that
+ * the other note can be opened.
+ */
+export const linkNote = mutation({
+  args: { documentId: v.string(), targetId: v.string(), deviceId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const doc = await getDocumentByPublicId(ctx, args.documentId);
+    if (!doc || doc.deletedAt !== undefined || doc.inTrash) fail("not_found", "Note not found.");
+    if (!accessAtLeast(await documentAccess(ctx, profile, doc), "write")) fail("forbidden", "You can’t edit this note.");
+    const target = await getDocumentByPublicId(ctx, args.targetId);
+    if (!target || target._id === doc._id || !(await openable(await PageReader.forScope(ctx, profile, scopeOfRow(target)), target))) fail("not_found", "That note can't be linked.");
+    const roots = (await liveBlocks(ctx, doc._id)).filter((b) => b.parentId === null).sort((a, b) => (a.rank < b.rank ? -1 : 1));
+    const block: WireBlock = {
+      id: ulid(),
+      type: "paragraph",
+      parentId: null,
+      rank: rankBetween(roots.at(-1)?.rank ?? null, null),
+      schemaVersion: SCHEMA_VERSION,
+      text: [
+        { type: "text", text: "Related: " },
+        { type: "pageLink", documentId: target.publicId, label: target.title || "Untitled" },
+      ],
+      props: {},
+    };
+    const [result] = await new SyncEngine(ctx, profile, args.deviceId ?? "server").applyAll(null, [
+      { opId: ulid(), kind: "block.upsert", documentId: doc.publicId, block, baseRevision: null, fields: ["content", "position"] },
+    ]);
+    if (!result || result.status !== "applied") fail("conflict", "Could not add the link. Try again.");
+    return { blockId: block.id };
   },
 });
 

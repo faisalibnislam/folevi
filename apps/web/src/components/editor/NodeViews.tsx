@@ -332,7 +332,7 @@ function AudioView({ node, selected, editor, getPos }: ReactNodeViewProps) {
   const preview = useLocalPreview(a.fileId, upload?.uploadId, file?.url);
   const editable = useEditable(editor);
   const canTranscribe = useCanTranscribe(file ? a.fileId : null);
-  const transcription = useTranscription({ fileId: a.fileId, editor, getPos, node, editable });
+  const transcription = useTranscription({ fileId: a.fileId, editor, getPos, node, editable, enabled: canTranscribe });
   const status = upload
     ? upload.state === "failed"
       ? "Upload interrupted, retrying"
@@ -355,7 +355,7 @@ function AudioView({ node, selected, editor, getPos }: ReactNodeViewProps) {
         size={a.size}
         duration={a.duration}
         status={status}
-        actions={canTranscribe ? <TranscribeButton onClick={transcription.start} busy={transcription.busy} /> : null}
+        actions={canTranscribe ? <TranscribeButton onClick={transcription.start} busy={transcription.busy} title={transcription.title} /> : null}
         className="my-1.5"
       />
       {transcription.preview}

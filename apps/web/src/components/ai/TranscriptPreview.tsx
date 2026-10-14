@@ -18,6 +18,7 @@ export type TranscriptView = "transcript" | "summary" | "meeting";
  */
 export function TranscriptPreview({
   working,
+  workingNote,
   transcript,
   summary,
   summarizing,
@@ -34,6 +35,8 @@ export function TranscriptPreview({
 }: {
   /** Transcribing (nothing to show yet). */
   working: boolean;
+  /** Said under the progress while transcribing (a long recording takes a while). */
+  workingNote?: string;
   transcript: string;
   summary: string | null;
   summarizing: boolean;
@@ -74,6 +77,7 @@ export function TranscriptPreview({
               <div key={w} className="h-2.5 animate-pulse rounded-tiny bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))] motion-reduce:animate-none" style={{ width: `${w}%` }} />
             ))}
           </div>
+          {workingNote ? <p className="mt-2 text-[12px] text-muted">{workingNote}</p> : null}
         </div>
       ) : transcript ? (
         <div className="max-h-[min(46vh,380px)] overflow-y-auto border-b border-line/60 px-4 pb-2.5 pt-3">

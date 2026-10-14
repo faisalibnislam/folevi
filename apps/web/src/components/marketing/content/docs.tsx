@@ -37,7 +37,7 @@ const blocks: Array<[string, string]> = [
   ["Code", "Monospaced code with a language label."],
   ["Table", "Rows and columns, with an optional header row."],
   ["Image and file", "Upload from your device or drag in from Finder."],
-  ["Audio recording", "Record from your microphone, up to an hour, and play it back in the note. Saved on your device first, then uploaded."],
+  ["Audio recording", "Record from your microphone, up to three hours, and play it back in the note. In the Mac app you can also record a call: your microphone and the Mac's sound. Saved on your device first, then uploaded."],
   ["Bookmark", "A link preview card for a web page."],
   ["Embed", "A YouTube, Vimeo or Loom video, a Figma file or a Google Map, playable in the note and on shared pages."],
   ["Page", "A sub-page, shown as a link or as a card."],

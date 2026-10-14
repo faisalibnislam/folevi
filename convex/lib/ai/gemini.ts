@@ -35,6 +35,7 @@ function charsSent(req: GenerateRequest): number {
     else if ("functionCall" in p) n += JSON.stringify(p.functionCall.args).length;
     else if ("functionResponse" in p) n += JSON.stringify(p.functionResponse.response).length;
     else if ("inlineData" in p) n += inlineChars(p.inlineData);
+    // A file the Files API holds (fileData, lib/ai/geminiFiles.ts) has no size here: Gemini's usage counts it.
   }
   return n;
 }

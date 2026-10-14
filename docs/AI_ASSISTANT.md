@@ -104,7 +104,7 @@ As built (milestone 5):
 - Kinds and limits: PNG, JPEG and WebP images (7 MB), PDFs (14 MB), recordings (14 MB), and text, Markdown, CSV, HTML
   (stripped to its text) and JSON (2 MB, the first 100,000 characters read, 200,000 per message). At most 5 files per
   message, and at most 14 MB of images, PDFs and recordings together (base64 keeps a request under Gemini's 20 MB).
-  A larger PDF or recording is refused with the limit: the Gemini Files API isn't used yet. Word documents (.docx,
+  A larger PDF or recording is refused with the limit in a chat (transcription has no such limit, below). Word documents (.docx,
   10 MB) are read as their text (`convex/lib/ai/docx.ts`: headings, list items and tables kept, deleted text left
   out) and sent like a text file. Older Word (.doc), XLSX and PPTX files have no parser, so those are "not supported
   yet", refused in the composer before anything is uploaded.
@@ -117,6 +117,20 @@ As built (milestone 5):
   is in them.
 - Transcribe on an audio block sends the recording to Gemini, shows the transcript in a preview under the block, and
   inserts it (or its summary, through the writing assistant's `summarizeText`) below the block only on Insert below.
+- Recordings of any length (`convex/lib/ai/transcription.ts`, `convex/lib/ai/geminiFiles.ts`), up to 4 hours: one up
+  to the inline limit (14 MB) goes with the request; a larger one is uploaded once to the Gemini Files API (a
+  resumable upload, polled until ACTIVE for up to 2 minutes, referenced as a `fileData` part) and deleted in a
+  `finally` however the work ends. A recording over 35 minutes is transcribed in equal windows of at most about 30
+  minutes ("transcribe from 30:40 to 1:01:20", starting and ending on whole sentences, speakers numbered across the
+  whole recording), three calls at a time over the one upload, each streamed so a long reply gets the stream's
+  deadline, and the parts are joined in order. The length is the one measured while recording (the audio block's
+  `duration`), or guessed from the size at 64 kbit/s.
+- Long recordings are paid in AI credits by the minute, shown first: `aiAttachments.transcribeEstimate` plans one
+  call per window, each reading the whole recording (32 audio tokens a second, Gemini can't be sent part of a file)
+  and writing about 200 tokens a minute of its window, priced with `estimateCredits` on the main model. The Transcribe
+  button's tooltip shows it; over 10 minutes, Transcribe first says "Transcribing this 92-minute recording uses
+  about N AI credits." with Transcribe and Cancel. The hold plans every call at its most output (16,384 tokens), so
+  it always covers the estimate; what's charged is what Gemini counted.
 - Settings > AI "Read attachments" off: uploads, attaching, `read_attachment` and transcription are refused on the
   server, and the Attach control and Transcribe action are hidden. Credits: every call goes through `metered()`;
   Gemini's usage metadata counts the files' tokens.

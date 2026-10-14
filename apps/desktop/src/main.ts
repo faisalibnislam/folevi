@@ -3,6 +3,7 @@
 import {
   app,
   BrowserWindow,
+  desktopCapturer,
   globalShortcut,
   ipcMain,
   Menu,
@@ -12,6 +13,7 @@ import {
   screen,
   session,
   shell,
+  systemPreferences,
   Tray,
   type IpcMainEvent,
   type IpcMainInvokeEvent,
@@ -21,7 +23,7 @@ import {
 } from "electron";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { appUrl, APP_URL, dragFileName, isAppUrl, isExternalSafe, parseDeepLink, SCHEME } from "./urls";
+import { appUrl, APP_URL, dragFileName, isAppUrl, isExternalSafe, parseDeepLink, SCHEME, systemSettingsUrl } from "./urls";
 import { installUpdate, startUpdates, type UpdateState } from "./updates";
 import { cleanSettings, loadSettings, saveSettings, type DesktopSettings } from "./settings";
 import { restoreWindow, saveWindow } from "./windowState";
@@ -82,13 +84,32 @@ function setUpSession(): Session {
   // The site can tell it's in the Mac app (e.g. to say "Open Folevi" rather than "Open in browser").
   ses.setUserAgent(`${ses.getUserAgent()} FoleviDesktop/${app.getVersion()}`);
   // Only Folevi's own pages get anything, and only what the web app uses: the microphone (audio notes),
-  // the clipboard (paste) and full screen (presenting).
-  const allowed = new Set(["media", "clipboard-read", "clipboard-sanitized-write", "fullscreen", "notifications"]);
+  // this Mac's sound (recording a call, below), the clipboard (paste) and full screen (presenting).
+  const allowed = new Set(["media", "display-capture", "clipboard-read", "clipboard-sanitized-write", "fullscreen", "notifications"]);
   ses.setPermissionRequestHandler((_wc, permission, callback, details) => {
     const audioOnly = permission !== "media" || ("mediaTypes" in details && (details.mediaTypes ?? []).every((t) => t === "audio"));
     callback(isAppUrl(details.requestingUrl) && allowed.has(permission) && audioOnly);
   });
   ses.setPermissionCheckHandler((_wc, permission, origin) => isAppUrl(origin) && allowed.has(permission));
+  // Recording a call (the web recorder's "Call" choice): getDisplayMedia from Folevi's own pages gets the
+  // whole screen with this Mac's sound ("loopback", ScreenCaptureKit on macOS 13+). The page drops the
+  // picture at once and records only the sound. Asking for the sources is what makes macOS ask for Screen &
+  // System Audio Recording the first time, so a missing permission isn't refused here: the page checks it
+  // afterwards (desktop:screen-access) and explains. Anyone else asking is refused (the page gets an
+  // AbortError). getDisplayMedia also passes the "media" permission check above, with no media types.
+  ses.setDisplayMediaRequestHandler(
+    (request, callback) => {
+      if (!isAppUrl(request.securityOrigin) || !request.audioRequested || systemPreferences.getMediaAccessStatus("screen") === "restricted") {
+        callback({});
+        return;
+      }
+      desktopCapturer
+        .getSources({ types: ["screen"], thumbnailSize: { width: 0, height: 0 } })
+        .then((sources) => callback(sources[0] ? { video: sources[0], audio: "loopback" } : {}))
+        .catch(() => callback({}));
+    },
+    { useSystemPicker: false },
+  );
   return ses;
 }
 
@@ -462,6 +483,14 @@ function listen() {
     } catch {
       /* The drag simply carries nothing. */
     }
+  });
+  // Whether this Mac lets Folevi record the screen and its sound (granted only once macOS has been told so
+  // and Folevi has restarted): a call recording checks it before it starts.
+  ipcMain.handle("desktop:screen-access", (e) => (fromFolevi(e) ? systemPreferences.getMediaAccessStatus("screen") : null));
+  // Recording a call without the permission: the page offers to open the right System Settings pane.
+  ipcMain.on("desktop:system-settings", (e, pane: unknown) => {
+    const url = systemSettingsUrl(pane);
+    if (fromFolevi(e) && url) void shell.openExternal(url);
   });
   ipcMain.on("desktop:open", (e, path: unknown) => {
     if (!fromFolevi(e)) return;

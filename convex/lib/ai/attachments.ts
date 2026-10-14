@@ -5,7 +5,8 @@
 //
 //   Images (PNG, JPEG, WebP) and PDFs go to the model as inline data, as does audio. Everything inline in
 //   one request stays under INLINE_BUDGET_BYTES (Gemini refuses requests over 20 MB, and base64 adds a
-//   third); a larger PDF or recording is refused with the limit rather than sent through the Files API.
+//   third); in a chat, a larger PDF or recording is refused with the limit. (Transcribing an audio block
+//   has no such limit: a larger recording goes through the Gemini Files API, lib/ai/transcription.ts.)
 //   Text, Markdown, CSV, HTML (stripped to its text), JSON and Word (.docx, lib/ai/docx.ts) are read here
 //   and sent as text. Older Word (.doc), Excel and PowerPoint files have no parser yet: "not supported yet".
 

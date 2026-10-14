@@ -15,7 +15,9 @@ import { useAiAccess, useNoteAi } from "./useAi";
 
 // Transcribe on an audio block (docs/AI_ASSISTANT.md, "Attachments"): never automatic. The recording goes
 // to the AI only when the person presses Transcribe; the transcript shows in a preview under the block,
-// can be summarized, and goes into the note only with Insert below (one undo step).
+// can be summarized, and goes into the note only with Insert below (one undo step). Long recordings are
+// paid in AI credits by the minute: the button's tooltip says about how many, and a recording over 10
+// minutes shows the cost and asks before anything is sent (aiAttachments.transcribeEstimate).
 
 /**
  * Whether an audio block can offer Transcribe: an uploaded recording in a note, AI on where the note
@@ -31,22 +33,50 @@ export function useCanTranscribe(fileId: string | null): boolean {
   return Boolean(fileId && note?.home?.id && !env.demo && ai.on && prefsOn && caps?.audioIn);
 }
 
-/** The Transcribe button for an audio block's controls. */
-export function TranscribeButton({ onClick, busy }: { onClick: () => void; busy: boolean }) {
+/** "about 1 AI credit", "about 94 AI credits". */
+export const aboutCredits = (n: number) => `about ${n.toLocaleString("en-US")} AI credit${n === 1 ? "" : "s"}`;
+
+/** The Transcribe button for an audio block's controls (its tooltip says what it costs, once known). */
+export function TranscribeButton({ onClick, busy, title = "Transcribe with Foli AI" }: { onClick: () => void; busy: boolean; title?: string }) {
   return (
-    <button type="button" onClick={onClick} disabled={busy} aria-label="Transcribe" title="Transcribe with AI" className="grid size-8 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40">
+    <button type="button" onClick={onClick} disabled={busy} aria-label="Transcribe" title={title} className="grid size-8 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40">
       <Captions size={15} aria-hidden />
     </button>
   );
 }
 
-type State = { phase: "idle" } | { phase: "working" } | { phase: "ready"; transcript: string; summary: string | null; meeting: string | null; view: TranscriptView } | { phase: "error"; problem: AiProblem };
+type State = { phase: "idle" } | { phase: "confirm" } | { phase: "working" } | { phase: "ready"; transcript: string; summary: string | null; meeting: string | null; view: TranscriptView } | { phase: "error"; problem: AiProblem };
+
+/**
+ * Asks before a long recording is transcribed: its length and about what it costs, with Transcribe and
+ * Cancel. Nothing is sent until Transcribe.
+ */
+export function TranscribeConfirm({ minutes, credits, onConfirm, onCancel }: { minutes: number; credits: number; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div role="region" aria-label="Transcribe this recording" className="ui-card ui-app-colors mt-1.5 overflow-hidden rounded-panel text-ink" contentEditable={false}>
+      <p className="px-4 pb-1 pt-3.5 text-[13.5px] leading-[1.5]">
+        Transcribing this {minutes}-minute recording uses {aboutCredits(credits)}.
+      </p>
+      <p className="px-4 text-[12px] text-muted">Long recordings take a few minutes. The transcript shows here before anything goes into the note.</p>
+      <div className="flex items-center gap-1.5 px-3 py-2.5">
+        <button type="button" onClick={onConfirm} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+          <Captions size={14} aria-hidden /> Transcribe
+        </button>
+        <button type="button" onClick={onCancel} className="ui-btn ui-btn-ghost h-8 px-2.5 text-[12.5px]">
+          Cancel
+        </button>
+      </div>
+      <p className="border-t border-line/60 px-3.5 py-1.5 text-[11px] text-faint">The recording is sent to Google Gemini.</p>
+    </div>
+  );
+}
 
 /**
  * An audio block's transcription: Transcribe (the button), and the preview under the block while there's
- * something to show. Insert below puts what's shown (the transcript or its summary) after the block.
+ * something to show. A recording over 10 minutes asks first, with what it costs. Insert below puts what's
+ * shown (the transcript or its summary) after the block.
  */
-export function useTranscription({ fileId, editor, getPos, node, editable }: { fileId: string | null; editor: Editor; getPos: () => number | undefined; node: PmNode; editable: boolean }) {
+export function useTranscription({ fileId, editor, getPos, node, editable, enabled = true }: { fileId: string | null; editor: Editor; getPos: () => number | undefined; node: PmNode; editable: boolean; enabled?: boolean }) {
   const { scope } = useAppState();
   const note = useNoteAi();
   const transcribe = useAction(api.aiAttachments.transcribe);
@@ -56,6 +86,17 @@ export function useTranscription({ fileId, editor, getPos, node, editable }: { f
   const [meetingBusy, setMeetingBusy] = useState(false);
   const [problem, setProblem] = useState<AiProblem | null>(null);
   const documentId = note?.home?.id;
+  // What transcribing would cost (null when it can't be: Transcribe then says why).
+  const estimate = useQuery(api.aiAttachments.transcribeEstimate, enabled && fileId && documentId ? { documentId, fileId } : "skip");
+  const title = estimate ? `Transcribe with Foli AI (${aboutCredits(estimate.credits)})` : "Transcribe with Foli AI";
+
+  const ask = () => {
+    if (state.phase === "working") return;
+    if (estimate?.confirm) {
+      setProblem(null);
+      setState({ phase: "confirm" });
+    } else void start();
+  };
 
   const start = async () => {
     if (!fileId || !documentId || state.phase === "working") return;
@@ -110,9 +151,14 @@ export function useTranscription({ fileId, editor, getPos, node, editable }: { f
   };
 
   const preview =
-    state.phase === "idle" ? null : (
+    state.phase === "idle" ? null : state.phase === "confirm" ? (
+      estimate ? (
+        <TranscribeConfirm minutes={estimate.minutes} credits={estimate.credits} onConfirm={() => void start()} onCancel={() => setState({ phase: "idle" })} />
+      ) : null
+    ) : (
       <TranscriptPreview
         working={state.phase === "working"}
+        workingNote={state.phase === "working" && estimate?.confirm ? "Long recordings take a few minutes." : undefined}
         transcript={state.phase === "ready" ? state.transcript : ""}
         summary={state.phase === "ready" ? state.summary : null}
         summarizing={summarizing}
@@ -132,5 +178,5 @@ export function useTranscription({ fileId, editor, getPos, node, editable }: { f
       />
     );
 
-  return { start: () => void start(), busy: state.phase === "working", preview };
+  return { start: ask, busy: state.phase === "working", preview, title };
 }

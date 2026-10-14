@@ -26,6 +26,12 @@ The native Swift app it replaces is archived on the git tag `native-mac-archive`
   Notes, Tasks, Calendar); Folevi > Settings (⌘,) opens Settings > Desktop app; Help opens Folevi Help.
 - Links to anywhere but Folevi open in the default browser; Folevi's own "open in new tab" opens a new
   window. The window's size and position are remembered.
+- **Record a call** (1.3): the audio recorder asks Microphone or Call (mic and Mac sound). A call answers the
+  page's `getDisplayMedia` with the whole screen and this Mac's sound (`audio: "loopback"`, in
+  `setDisplayMediaRequestHandler`); the page drops the picture at once and mixes the system sound with the
+  microphone in an AudioContext (`apps/web/src/lib/callCapture.ts`), reminding the person to tell everyone on
+  the call. macOS asks for Screen & System Audio Recording the first time (and may ask to reopen Folevi); without it,
+  the recorder says so and offers to open that System Settings pane.
 
 ## The bridge
 
@@ -51,7 +57,9 @@ On the web side:
 - Navigation to another origin is blocked in the window and handed to the browser (http, https and mailto
   only).
 - Permissions are granted only to the app's origin, and only: the microphone (audio only, for audio notes),
-  the clipboard, full screen and notifications. Everything else is refused.
+  screen capture with system sound (only through the display media handler, for recording a call), the
+  clipboard, full screen and notifications. Everything else is refused. The page can open one System Settings
+  pane (Screen & System Audio Recording) by name, never a URL it supplies.
 
 ## Offline
 

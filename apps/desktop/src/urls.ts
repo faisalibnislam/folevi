@@ -68,6 +68,17 @@ export function parseDeepLink(raw: string): DeepLink | null {
   return null;
 }
 
+/** System Settings at Privacy & Security > Screen & System Audio Recording (recording a call needs it). */
+export const SCREEN_RECORDING_SETTINGS = "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture";
+
+/**
+ * The System Settings address for a pane the page asks to open, or null. Only this exact address is ever
+ * opened: the page names a pane, never a URL.
+ */
+export function systemSettingsUrl(pane: unknown): string | null {
+  return pane === "screen-recording" ? SCREEN_RECORDING_SETTINGS : null;
+}
+
 /** A file name for a note dragged out of the app: the title without characters Finder refuses. */
 export function dragFileName(title: string, ext: "md"): string {
   const base = title.replace(/[\u0000-\u001F\u007F/\\:*?"<>|]+/g, "-").replace(/^\.+/, "").trim().slice(0, 120) || "Untitled";

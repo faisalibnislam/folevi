@@ -7,6 +7,12 @@ type Command = { type: "navigate"; path: string } | { type: "new-note" } | { typ
 
 const bridge = {
   platform: "mac" as const,
+  /** getDisplayMedia answers with this Mac's sound (main.ts), so the recorder can record both sides of a call. */
+  callCapture: true,
+  /** Whether macOS lets Folevi record the screen and its sound: "granted", "denied"… */
+  screenAccess: () => ipcRenderer.invoke("desktop:screen-access"),
+  /** Opens System Settings at a privacy pane (only Screen & System Audio Recording, for recording calls). */
+  openSystemSettings: (pane: "screen-recording") => ipcRenderer.send("desktop:system-settings", pane),
   /** The number on the Dock icon (unread notifications); 0 clears it. */
   setBadge: (count: number) => ipcRenderer.send("desktop:badge", count),
   /** A Mac notification; clicking it brings Folevi forward at `path`. */

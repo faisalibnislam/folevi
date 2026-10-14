@@ -16,6 +16,7 @@ vi.mock("@/components/editor/richRender", () => ({ renderMermaid: vi.fn(async ()
 
 const { AttachControl, AttachmentChips, AttachmentProblems, planAttachments } = await import("@/components/ai/chat/Attachments");
 const { TranscriptPreview } = await import("@/components/ai/TranscriptPreview");
+const { TranscribeConfirm, aboutCredits } = await import("@/components/ai/AudioTranscribe");
 const { insertAiMarkdown } = await import("@/components/ai/insert");
 const { ALL_MARKS, ALL_NODES, BlockFormat } = await import("@/components/editor/extensions");
 const { BlockIdentity } = await import("@/components/editor/plugins");
@@ -112,6 +113,21 @@ describe("the Attach control", () => {
 });
 
 describe("the transcript preview", () => {
+  test("a long recording shows what it costs and asks first: Transcribe or Cancel", async () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    const host = await render(<TranscribeConfirm minutes={92} credits={94} onConfirm={onConfirm} onCancel={onCancel} />);
+    expect(host.textContent).toContain("Transcribing this 92-minute recording uses about 94 AI credits.");
+    await act(async () => button(host, "Transcribe")!.click());
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    await act(async () => button(host, "Cancel")!.click());
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(aboutCredits(1)).toBe("about 1 AI credit");
+    expect(aboutCredits(1200)).toBe("about 1,200 AI credits");
+    act(() => root!.unmount());
+    root = null;
+  });
+
   const base = { summary: null, summarizing: false, view: "transcript" as const, onView: vi.fn(), problem: null, onInsert: vi.fn(), onSummarize: vi.fn(), onDiscard: vi.fn() };
 
   test("shows progress while transcribing, then the transcript with Insert below, Summarize, Copy and Discard", async () => {

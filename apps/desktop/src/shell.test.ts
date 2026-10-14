@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import { cleanSettings, DEFAULT_SETTINGS, isValidShortcut, loadSettings, saveSettings } from "./settings";
-import { appUrl, dragFileName, isAppUrl, isExternalSafe, parseDeepLink } from "./urls";
+import { appUrl, dragFileName, isAppUrl, isExternalSafe, parseDeepLink, SCREEN_RECORDING_SETTINGS, systemSettingsUrl } from "./urls";
 import { restoreWindow, saveWindow } from "./windowState";
 
 const dirs: string[] = [];
@@ -27,6 +27,12 @@ describe("addresses", () => {
     expect(isExternalSafe("mailto:hi@folevi.com")).toBe(true);
     expect(isExternalSafe("file:///etc/passwd")).toBe(false);
     expect(isExternalSafe("javascript:alert(1)")).toBe(false);
+  });
+
+  test("recording a call: the page can open only the Screen & System Audio Recording pane, never a URL it names", () => {
+    expect(systemSettingsUrl("screen-recording")).toBe("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture");
+    expect(SCREEN_RECORDING_SETTINGS).toBe(systemSettingsUrl("screen-recording"));
+    for (const bad of ["x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture", "microphone", "", null, undefined, 1, { pane: "screen-recording" }]) expect(systemSettingsUrl(bad)).toBeNull();
   });
 
   test("paths stay inside the app", () => {

@@ -44,6 +44,9 @@ mac:
   minimumSystemVersion: "13.0"
   extendInfo:
     NSMicrophoneUsageDescription: Folevi uses the microphone when you record audio into a note.
+    # Recording a call: macOS 14.2 and later ask for System Audio Recording with this text when the sound
+    # comes through a Core Audio tap (the screen capture itself needs no key, just the permission).
+    NSAudioCaptureUsageDescription: Folevi records this Mac's sound when you record a call into a note.
     LSApplicationCategoryType: public.app-category.productivity
     NSUserNotificationAlertStyle: alert
 dmg:

@@ -2,11 +2,15 @@
 // 5): what the assistant can read and the limits, chat uploads (private to the uploader, claimed by their
 // conversation, deleted with it), access checks before anything is read, inline images and PDFs, text
 // files as text, unsupported files refused, the Settings switch, `calculate` with spreadsheet data,
-// read_attachment for the agent, and transcription with its credits. Gemini is a stubbed `fetch`.
+// read_attachment for the agent, and transcription with its credits (inline, through the Files API, in
+// windows for long recordings, and the estimate shown first). Gemini is a stubbed `fetch`.
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import { attachmentKind, checkAttachment, checkInlineBudget, decodeText, htmlToText, toBase64 } from "../../convex/lib/ai/attachments";
 import { cleanTranscript } from "../../convex/aiAttachments";
+import { estimateCredits } from "../../convex/lib/credits";
+import { geminiFastModel, geminiModel } from "../../convex/lib/ai/gemini";
+import { joinTranscripts, recordingSeconds, transcriptPlan, transcriptWindows, windowPrompt } from "../../convex/lib/ai/transcription";
 import { docxToText, documentXmlToText } from "../../convex/lib/ai/docx";
 import { zipSync } from "fflate";
 import { SCHEMA_VERSION } from "@folevi/editor-schema";
@@ -93,7 +97,7 @@ async function attach(t: T, p: Person, filename: string, bytes: Uint8Array, mime
 }
 
 /** A note with a file in it (as an uploaded file block would leave it). Returns the note's and file's ids. */
-async function noteWithFile(t: T, p: Person, o: { filename: string; bytes: Uint8Array; mimeType: string; kind: "image" | "file" | "audio"; title?: string }) {
+async function noteWithFile(t: T, p: Person, o: { filename: string; bytes: Uint8Array; mimeType: string; kind: "image" | "file" | "audio"; title?: string; duration?: number }) {
   const note = await p.as.mutation(api.documents.create, { scope: p.scope, title: o.title ?? "Trip" });
   const fileId = ulid();
   await t.run(async (ctx) => {
@@ -101,7 +105,7 @@ async function noteWithFile(t: T, p: Person, o: { filename: string; bytes: Uint8
     const doc = (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", note.id)).unique())!;
     await ctx.db.insert("files", { publicId: fileId, storageId, ownerProfileId: doc.ownerProfileId, workspaceId: doc.workspaceId, documentId: doc._id, uploadedBy: doc.createdBy, filename: o.filename, mimeType: o.mimeType, size: o.bytes.length, sha256: "x", kind: o.kind, status: "ready", createdAt: Date.now() });
     const now = Date.now();
-    await ctx.db.insert("blocks", { blockId: ulid(), documentId: doc._id, ownerProfileId: doc.ownerProfileId, workspaceId: doc.workspaceId, parentId: null, rank: "z", type: o.kind, schemaVersion: SCHEMA_VERSION, text: [], props: { fileId, name: o.filename }, revision: 1, contentRev: 1, positionRev: 1, seq: 1, createdAt: now, updatedAt: now, updatedBy: doc.createdBy });
+    await ctx.db.insert("blocks", { blockId: ulid(), documentId: doc._id, ownerProfileId: doc.ownerProfileId, workspaceId: doc.workspaceId, parentId: null, rank: "z", type: o.kind, schemaVersion: SCHEMA_VERSION, text: [], props: { fileId, name: o.filename, ...(o.duration !== undefined ? { duration: o.duration } : {}) }, revision: 1, contentRev: 1, positionRev: 1, seq: 1, createdAt: now, updatedAt: now, updatedBy: doc.createdBy });
   });
   return { noteId: note.id, fileId };
 }
@@ -401,5 +405,169 @@ describe("transcription", () => {
     const { fileId: image } = await noteWithFile(t, a, { filename: "p.png", bytes: PNG, mimeType: "image/png", kind: "image" });
     await expect(a.as.action(api.aiAttachments.transcribe, { scope: a.scope, documentId: noteId, fileId: image })).rejects.toThrow(/isn't there anymore/);
     expect(modelBodies(calls)).toHaveLength(1);
+  });
+});
+
+type FilesCall = { method: string; url: string; headers: Record<string, string>; body: unknown };
+const FILE_URI = "https://generativelanguage.googleapis.com/v1beta/files/rec-1";
+const UPLOAD_URL = "https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=u1&upload_protocol=resumable";
+
+/**
+ * Stubs Gemini with the Files API: the upload's start (handing back the upload address), the bytes
+ * (the file comes back PROCESSING), polling (ACTIVE), streamed transcripts (`transcript` decides each
+ * window's text from its prompt, or answers with a Response) and the delete. Returns every request.
+ */
+function filesApi(o: { transcript?: (prompt: string) => string | Response } = {}) {
+  process.env.GEMINI_API_KEY = "test-key";
+  const calls: FilesCall[] = [];
+  const file = { name: "files/rec-1", uri: FILE_URI, mimeType: "audio/webm" };
+  const fetchMock = vi.fn(async (url: string, init: { method?: string; headers?: Record<string, string>; body?: unknown }) => {
+    const method = init.method ?? "GET";
+    calls.push({ method, url, headers: init.headers ?? {}, body: init.body });
+    if (url.endsWith("/upload/v1beta/files")) return new Response("{}", { status: 200, headers: { "x-goog-upload-url": UPLOAD_URL } });
+    if (url === UPLOAD_URL) return new Response(JSON.stringify({ file: { ...file, state: "PROCESSING" } }), { status: 200 });
+    if (url.endsWith("/v1beta/files/rec-1") && method === "GET") return new Response(JSON.stringify({ ...file, state: "ACTIVE" }), { status: 200 });
+    if (url.endsWith("/v1beta/files/rec-1") && method === "DELETE") return new Response("{}", { status: 200 });
+    if (url.includes(":batchEmbedContents")) return new Response("{}", { status: 500 });
+    const body = JSON.parse(String(init.body)) as { contents: { parts: { text?: string }[] }[] };
+    const prompt = body.contents[0]!.parts[0]!.text ?? "";
+    const out = o.transcript ? o.transcript(prompt) : "Speaker 1: Book the ferry for Friday.";
+    return typeof out === "string" ? streamed(out) : out;
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  const generations = () => calls.filter((c) => c.url.includes("GenerateContent")).map((c) => JSON.parse(String(c.body)) as { systemInstruction: { parts: { text: string }[] }; contents: { role: string; parts: Record<string, unknown>[] }[] });
+  return { calls, generations };
+}
+
+/** A recording's bytes: a WebM header and `size` bytes in all. */
+const recording = (size: number) => {
+  const bytes = new Uint8Array(size);
+  bytes.set(WEBM);
+  return bytes;
+};
+const MB = 1024 * 1024;
+
+describe("long recordings", () => {
+  test("windows: one call up to 35 minutes, equal windows of about 30 minutes after that; prompts, joins and lengths", () => {
+    expect(transcriptWindows(20 * 60)).toEqual([{ start: 0, end: 1200 }]);
+    expect(transcriptWindows(35 * 60)).toHaveLength(1);
+    expect(transcriptWindows(92 * 60)).toEqual([
+      { start: 0, end: 1840 },
+      { start: 1840, end: 3680 },
+      { start: 3680, end: 5520 },
+    ]);
+    expect(transcriptWindows(3 * 3600)).toHaveLength(6);
+    expect(windowPrompt({ start: 1840, end: 3680 }, 5520)).toMatch(/1:32:00 long.*only the part from 30:40 to 1:01:20.*starts at or after 30:40.*before 1:01:20/);
+    expect(windowPrompt({ start: 0, end: 1840 }, 5520)).toMatch(/from the start to 30:40/);
+    expect(windowPrompt({ start: 3680, end: 5520 }, 5520)).toMatch(/from 1:01:20 to the end/);
+    expect(joinTranscripts(["Speaker 1: Hi.", " [no speech] ", "", "Speaker 2: Bye."])).toBe("Speaker 1: Hi.\n\nSpeaker 2: Bye.");
+    expect(joinTranscripts(["[No speech]", ""])).toBe("[no speech]");
+    expect(recordingSeconds(5520, 10)).toBe(5520);
+    expect(recordingSeconds(undefined, 8_000 * 600)).toBe(600);
+    // The hold covers every call at its most, never less than the estimate.
+    const models = { main: geminiModel(), fast: geminiFastModel() };
+    expect(estimateCredits(transcriptPlan(5520, "hold"), models)).toBeGreaterThanOrEqual(estimateCredits(transcriptPlan(5520, "estimate"), models));
+  });
+
+  test("the estimate: credits by the minute before anything is sent, asking first over 10 minutes; null when it can't be transcribed", async () => {
+    const t = setup();
+    const a = await person(t, "attach-estimate@example.com");
+    const b = await person(t, "attach-estimate-other@example.com");
+    const { fetchMock } = gemini();
+    const { noteId, fileId } = await noteWithFile(t, a, { filename: "meeting.webm", bytes: WEBM, mimeType: "audio/webm", kind: "audio", duration: 92 * 60 });
+    const models = { main: geminiModel(), fast: geminiFastModel() };
+    const long = await a.as.query(api.aiAttachments.transcribeEstimate, { documentId: noteId, fileId });
+    expect(long).toEqual({ seconds: 5520, minutes: 92, windows: 3, credits: estimateCredits(transcriptPlan(5520, "estimate"), models), confirm: true });
+    expect(long!.credits).toBeGreaterThan(0);
+    const { noteId: memoNote, fileId: memo } = await noteWithFile(t, a, { filename: "memo.webm", bytes: WEBM, mimeType: "audio/webm", kind: "audio", duration: 95 });
+    const short = await a.as.query(api.aiAttachments.transcribeEstimate, { documentId: memoNote, fileId: memo });
+    expect(short).toMatchObject({ minutes: 2, windows: 1, confirm: false });
+    expect(short!.credits).toBeLessThan(long!.credits);
+    // Someone who can't open the note gets nothing; with Settings > AI off, nothing either.
+    expect(await b.as.query(api.aiAttachments.transcribeEstimate, { documentId: noteId, fileId })).toBeNull();
+    await a.as.mutation(api.users.updateProfile, { aiPrefs: { attachments: false } });
+    expect(await a.as.query(api.aiAttachments.transcribeEstimate, { documentId: noteId, fileId })).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("a recording over the inline limit goes through the Files API: upload, wait until active, transcribe from fileData, delete", async () => {
+    const t = setup();
+    const a = await person(t, "attach-files-api@example.com");
+    const { calls, generations } = filesApi();
+    const bytes = recording(15 * MB);
+    const { noteId, fileId } = await noteWithFile(t, a, { filename: "lecture.webm", bytes, mimeType: "audio/webm", kind: "audio", duration: 25 * 60 });
+    const before = await balance(a);
+    const out = await a.as.action(api.aiAttachments.transcribe, { scope: a.scope, documentId: noteId, fileId });
+    expect(out.text).toBe("Speaker 1: Book the ferry for Friday.");
+    expect(out.credits).toBeGreaterThan(0);
+    expect(before - (await balance(a))).toBe(out.credits);
+
+    const [start, upload, poll, generate, remove] = calls;
+    expect(calls).toHaveLength(5);
+    expect(start).toMatchObject({ method: "POST", url: "https://generativelanguage.googleapis.com/upload/v1beta/files" });
+    expect(start!.headers).toMatchObject({ "x-goog-api-key": "test-key", "X-Goog-Upload-Protocol": "resumable", "X-Goog-Upload-Command": "start", "X-Goog-Upload-Header-Content-Length": String(15 * MB), "X-Goog-Upload-Header-Content-Type": "audio/webm" });
+    expect(JSON.parse(String(start!.body))).toEqual({ file: { display_name: "Folevi recording" } });
+    expect(upload).toMatchObject({ method: "POST", url: UPLOAD_URL });
+    expect(upload!.headers).toMatchObject({ "X-Goog-Upload-Command": "upload, finalize", "X-Goog-Upload-Offset": "0" });
+    // The stored recording is sent as it is (never base64, never inline).
+    expect(upload!.body).toBeInstanceOf(Blob);
+    expect((upload!.body as Blob).size).toBe(15 * MB);
+    expect(poll).toMatchObject({ method: "GET", url: "https://generativelanguage.googleapis.com/v1beta/files/rec-1" });
+    expect(generate!.url).toContain(":streamGenerateContent");
+    const [body] = generations();
+    expect(body!.systemInstruction.parts[0]!.text).toMatch(/You transcribe recordings/);
+    expect(body!.contents[0]!.parts[0]!.text).toMatch(/^Transcribe this recording word for word/);
+    expect(body!.contents[0]!.parts[1]).toEqual({ fileData: { mimeType: "audio/webm", fileUri: FILE_URI } });
+    expect(JSON.stringify(body)).not.toContain("inlineData");
+    expect(remove).toMatchObject({ method: "DELETE", url: "https://generativelanguage.googleapis.com/v1beta/files/rec-1" });
+  });
+
+  test("a long recording is transcribed in windows over one upload, joined in order, and charged for every call", async () => {
+    const t = setup();
+    const a = await person(t, "attach-windows@example.com");
+    // A 92-minute recording holds more than a trial's 100 credits.
+    await a.as.mutation(api.billing.testPurchase, { plan: "pro_ai", interval: "month" });
+    const { calls, generations } = filesApi({
+      transcript: (prompt) => (/from the start/.test(prompt) ? "Speaker 1: We start with the budget." : /from 30:40/.test(prompt) ? "Speaker 2: Then the ferry." : "[no speech]"),
+    });
+    const { noteId, fileId } = await noteWithFile(t, a, { filename: "meeting.webm", bytes: recording(20 * MB), mimeType: "audio/webm", kind: "audio", duration: 92 * 60 });
+    const before = await balance(a);
+    const out = await a.as.action(api.aiAttachments.transcribe, { scope: a.scope, documentId: noteId, fileId });
+    expect(out.text).toBe("Speaker 1: We start with the budget.\n\nSpeaker 2: Then the ferry.");
+    expect(before - (await balance(a))).toBe(out.credits);
+    // One upload and one delete; three calls, each over the same uploaded file, one per window.
+    expect(calls.filter((c) => c.url.endsWith("/upload/v1beta/files"))).toHaveLength(1);
+    expect(calls.filter((c) => c.method === "DELETE")).toHaveLength(1);
+    const bodies = generations();
+    expect(bodies).toHaveLength(3);
+    for (const b of bodies) expect(b.contents[0]!.parts[1]).toEqual({ fileData: { mimeType: "audio/webm", fileUri: FILE_URI } });
+    const prompts = bodies.map((b) => String(b.contents[0]!.parts[0]!.text)).sort();
+    expect(prompts.some((p) => p.includes("from the start to 30:40"))).toBe(true);
+    expect(prompts.some((p) => p.includes("from 30:40 to 1:01:20"))).toBe(true);
+    expect(prompts.some((p) => p.includes("from 1:01:20 to the end"))).toBe(true);
+    // The delete comes after every call.
+    const last = calls.map((c) => c.url.includes("GenerateContent")).lastIndexOf(true);
+    expect(calls.findIndex((c) => c.method === "DELETE")).toBeGreaterThan(last);
+  });
+
+  test("the uploaded file is deleted even when transcribing fails, and nothing is charged", async () => {
+    const t = setup();
+    const a = await person(t, "attach-files-fail@example.com");
+    const { calls } = filesApi({ transcript: () => new Response("{}", { status: 400 }) });
+    const { noteId, fileId } = await noteWithFile(t, a, { filename: "lecture.webm", bytes: recording(15 * MB), mimeType: "audio/webm", kind: "audio", duration: 20 * 60 });
+    const before = await balance(a);
+    await expect(a.as.action(api.aiAttachments.transcribe, { scope: a.scope, documentId: noteId, fileId })).rejects.toThrow(/key was refused/);
+    expect(calls.filter((c) => c.method === "DELETE")).toHaveLength(1);
+    expect(calls[calls.length - 1]!.method).toBe("DELETE");
+    expect(await balance(a)).toBe(before);
+  });
+
+  test("a recording over 4 hours is refused with the limit, with nothing sent", async () => {
+    const t = setup();
+    const a = await person(t, "attach-too-long@example.com");
+    const { calls } = filesApi();
+    const { noteId, fileId } = await noteWithFile(t, a, { filename: "day.webm", bytes: WEBM, mimeType: "audio/webm", kind: "audio", duration: 5 * 3600 });
+    await expect(a.as.action(api.aiAttachments.transcribe, { scope: a.scope, documentId: noteId, fileId })).rejects.toThrow(/too long to transcribe. Recordings up to 4 hours/);
+    expect(calls).toHaveLength(0);
   });
 });

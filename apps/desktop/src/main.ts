@@ -638,7 +638,9 @@ app.whenReady().then(() => {
   applyLoginItem();
   updateTray();
   // Opened at login (or by a link): quietly, ready for Quick Add. Otherwise the main window.
-  const atLogin = app.getLoginItemSettings().wasOpenedAtLogin || process.argv.includes(LOGIN_ARG);
+  // Only the installed app is ever opened at login, and asking from a development run can hang on recent
+  // macOS (the unpackaged Electron isn't a registered login item), so it's only asked when packaged.
+  const atLogin = (app.isPackaged && app.getLoginItemSettings().wasOpenedAtLogin) || process.argv.includes(LOGIN_ARG);
   if (!atLogin && !pendingLink) createMainWindow();
   createQuickAdd();
   if (pendingLink) {

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "com.folevi/folevi",
+  "title": "Folevi",
+  "description": "Search and read your Folevi notes, add to them, and manage your tasks.",
+  "websiteUrl": "https://folevi.com/docs/connected-apps",
+  "version": "1.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://app.folevi.com/mcp"
+    }
+  ]
+}

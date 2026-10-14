@@ -39,6 +39,7 @@ const blocks: Array<[string, string]> = [
   ["Image and file", "Upload from your device or drag in from Finder."],
   ["Audio recording", "Record from your microphone, up to an hour, and play it back in the note. Saved on your device first, then uploaded."],
   ["Bookmark", "A link preview card for a web page."],
+  ["Embed", "A YouTube, Vimeo or Loom video, a Figma file or a Google Map, playable in the note and on shared pages."],
   ["Page", "A sub-page, shown as a link or as a card."],
   ["Flowchart", "Shapes and connectors on a canvas, with Tidy up and AI. See Flowcharts and diagrams."],
   ["Mermaid diagram", "A code block in Mermaid syntax, drawn as a diagram. Flowchart diagrams can be converted to a flowchart block."],
@@ -294,17 +295,33 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "import-and-export",
     title: "Import and export",
     nav: "Import and export",
-    description: "Import Markdown and text files, folders or ZIP archives into Folevi, and export any page as Markdown, HTML or PDF, or everything as a ZIP.",
+    description: "Import from Notion, Evernote, Word, HTML, CSV, Markdown and text into Folevi, and export any page as Markdown, HTML or PDF, or everything as a ZIP.",
     legacyAnchor: "import-export",
     published: "2026-09-25",
-    updated: "2026-09-30",
+    updated: "2026-10-14",
     body: () => (
       <>
         <h2 id="import">Import</h2>
-        <p>Bring in Markdown or plain text, and Folevi turns it into blocks: headings, lists, checklists and all.</p>
-        <p>
-          In Settings → Import & export, choose files (<code>.md</code>, <code>.markdown</code>, <code>.txt</code> or a <code>.zip</code>) or a whole folder. Images the Markdown points to by a relative path are uploaded and become image blocks. Up to 50 documents go in one batch, and Folevi lists anything it couldn’t bring across.
-        </p>
+        <p>Bring your notes in and Folevi turns them into blocks: headings, lists, checklists, tables and all.</p>
+        <p>In Settings → Import & export, choose files or a whole folder:</p>
+        <ul>
+          <li>
+            <strong>Notion:</strong> the ZIP from Notion’s Export (Markdown & CSV). Pages keep their nesting, links between them become page links, and databases come in as tables.
+          </li>
+          <li>
+            <strong>Evernote:</strong> <code>.enex</code> files. Each notebook becomes a folder, and images and to-dos come with the notes.
+          </li>
+          <li>
+            <strong>Word:</strong> <code>.docx</code> files, with headings, lists, tables and images.
+          </li>
+          <li>
+            <strong>Web pages and spreadsheets:</strong> <code>.html</code> files, and <code>.csv</code> files as tables.
+          </li>
+          <li>
+            <strong>Markdown and text:</strong> <code>.md</code>, <code>.markdown</code>, <code>.txt</code>, or a <code>.zip</code> of them. Images the Markdown points to by a relative path come in as image blocks.
+          </li>
+        </ul>
+        <p>Up to 400 pages go in one import, and Folevi lists anything it couldn’t bring across.</p>
         <h2 id="export">Export</h2>
         <ul>
           <li>Any page as Markdown, HTML or PDF.</li>
@@ -313,6 +330,7 @@ export const DOC_ARTICLES: DocArticle[] = [
         <p>
           A single page exports from its ••• menu. PDF uses your browser’s print dialog (Save as PDF). The ZIP holds every document as Markdown, in folders that match your sidebar, the attachments in an <code>assets</code> folder, and a <code>manifest.json</code> that describes the folders, documents and files.
         </p>
+        <p>In the Mac app, the Export window also shows the page as a Markdown file you can drag straight to Finder or another app.</p>
         <p>Exports are yours to keep. Nothing in Folevi is locked to Folevi.</p>
       </>
     ),
@@ -376,6 +394,69 @@ export const DOC_ARTICLES: DocArticle[] = [
         <h2 id="off">Turning it off</h2>
         <p>
           Turn Foli AI off in Settings at any time. While it’s off, none of your notes are sent to it. On Core, the server refuses every AI request and the app hides AI. See <Link href="/features/ai-notes">AI notes</Link> and the <Link href="/privacy#ai">Privacy</Link> page.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: "connected-apps",
+    title: "Connect Folevi to Claude, ChatGPT and other AI apps",
+    nav: "Connected apps (MCP)",
+    description: "Let Claude, ChatGPT, Cursor or any app that speaks MCP search and read your Folevi notes, add to them and manage your tasks, with your permission and revocable at any time.",
+    published: "2026-10-14",
+    updated: "2026-10-14",
+    body: () => (
+      <>
+        <p>
+          Folevi has an MCP server, so AI apps you already use can work with your notes. Ask Claude to find what you wrote about a project, have ChatGPT turn a meeting into tasks, or let Cursor read your spec while it codes. Every plan can connect apps.
+        </p>
+        <h2 id="connect">Connect an app</h2>
+        <p>
+          Add Folevi as a custom connector (some apps call it a remote MCP server) with this address:
+        </p>
+        <pre>
+          <code>https://app.folevi.com/mcp</code>
+        </pre>
+        <ul>
+          <li>
+            <strong>Claude:</strong> Settings → Connectors → Add custom connector. In Claude Code, run <code>claude mcp add --transport http folevi https://app.folevi.com/mcp</code>.
+          </li>
+          <li>
+            <strong>ChatGPT:</strong> add a connector with the address above (custom connectors may need developer mode turned on).
+          </li>
+          <li>
+            <strong>Cursor, VS Code and others:</strong> add a server with <code>&quot;url&quot;: &quot;https://app.folevi.com/mcp&quot;</code> to the app’s MCP settings.
+          </li>
+        </ul>
+        <p>
+          The app opens a Folevi page in your browser. Sign in if you need to, then choose what it may do and which places it may use (your Personal, and any workspaces you pick). Nothing is shared until you press Allow.
+        </p>
+        <h2 id="what-apps-can-do">What a connected app can do</h2>
+        <Table
+          label="What connected apps can do"
+          head={["Permission", "What it allows"]}
+          rows={[
+            ["Read notes", "Search notes, read a note as Markdown, list recent notes, folders and tags."],
+            ["Write notes", "Create a note and add text to the end of one. It can’t delete or rewrite what you wrote."],
+            ["Read tasks", "List your tasks, by date or by note."],
+            ["Write tasks", "Add a task (with a date, time, priority or repeat), complete one, or change one."],
+          ]}
+        />
+        <p>
+          A connected app only reaches the places you allowed, and only what you can open yourself. Changes it makes show in the page’s history like anyone else’s, so you can see them and undo them. There’s also a Weekly review prompt: the app looks back at the week’s notes and open tasks and helps you plan the next one.
+        </p>
+        <h2 id="manage">See and remove connected apps</h2>
+        <p>
+          Settings → Connected apps lists every app you’ve allowed, what it may do, which places it uses and when it was last used. Remove one and it loses access at once.
+        </p>
+        <h2 id="limits">Limits</h2>
+        <ul>
+          <li>Reads: up to 300 a minute. Searches: up to 120 a minute.</li>
+          <li>Writes: up to 30 a minute and 500 a day.</li>
+          <li>A note is read up to 40,000 characters at a time.</li>
+        </ul>
+        <p>
+          Using Folevi through another app doesn’t spend your Folevi AI credits: the other app does the AI work. Anything Folevi sends it is your note’s content, so the other app’s own privacy terms apply to what it does with it.
         </p>
       </>
     ),

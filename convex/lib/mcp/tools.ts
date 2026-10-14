@@ -23,7 +23,7 @@ export interface ToolDef {
 }
 
 const PLACE = { type: "string", description: 'Where to look or write: "personal", or a workspace id from list_places. Leave out for all places (reads) or your Personal (writes).', maxLength: 64 };
-const NOTE_ID = { type: "string", description: "A note id from search_notes, list_recent_notes or a folevi://note link.", maxLength: 64 };
+const NOTE_ID = { type: "string", description: "A note id from search_notes, list_recent_notes or a link to the note (app.folevi.com/d/<id> or folevi://d/<id>).", maxLength: 64 };
 const DATE = { type: "string", description: "A date as YYYY-MM-DD.", pattern: "^\\d{4}-\\d{2}-\\d{2}$" };
 const TIME = { type: "string", description: "A time as HH:MM (24-hour), only with a date.", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" };
 const REPEAT = { type: "string", enum: ["none", "daily", "weekdays", "weekly", "monthly", "yearly"], description: "How it repeats: checking it off brings it back at the next date (none stops repeating)." };

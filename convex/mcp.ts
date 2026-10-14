@@ -12,7 +12,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { blocksToMarkdown, localDate, markdownToBlocks, rankBetween, rankSequence, repeatProps, LIMITS, SCHEMA_VERSION, ulid, type RepeatRule, type SyncOp, type WireBlock } from "@folevi/editor-schema";
+import { blocksToMarkdown, folderPath, localDate, markdownToBlocks, rankBetween, rankSequence, repeatProps, LIMITS, SCHEMA_VERSION, ulid, type RepeatRule, type SyncOp, type WireBlock } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { liveBlocks, toWireBlock } from "./lib/documents";
@@ -218,7 +218,12 @@ export const read = internalQuery({
 
       case "list_folders": {
         const out: Record<string, unknown>[] = [];
-        for (const p of pickPlaces(places, a.place)) for (const f of (await scopeFolders(ctx, p.scope)).slice(0, 200)) out.push({ id: f.publicId, name: f.name, place: p.name });
+        for (const p of pickPlaces(places, a.place)) {
+          const folders = await scopeFolders(ctx, p.scope);
+          // Nested folders also carry their path ("Work / Clients"), so same-named subfolders can be told apart.
+          const links = folders.map((f) => ({ id: f._id as string, name: f.name, parentFolderId: f.parentFolderId ?? null }));
+          for (const f of folders.slice(0, 200)) out.push({ id: f.publicId, name: f.name, path: folderPath(links, f._id), place: p.name });
+        }
         return { folders: out };
       }
 

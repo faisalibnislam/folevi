@@ -1,10 +1,11 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { FilePlus2, Link2, MoreHorizontal, Palette, PencilLine, Trash2, Undo2, UserPlus } from "lucide-react";
+import { FilePlus2, FolderInput, FolderPlus, Link2, MoreHorizontal, Palette, PencilLine, Trash2, Undo2, UserPlus } from "lucide-react";
+import { canNestFolderIn } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +13,8 @@ import { Dialog } from "@/components/ui/Dialog";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { PromptDialog } from "@/components/ui/PromptDialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
+import { MoveFolderDialog } from "@/components/views/MoveToFolderDialog";
+import { useMoveFolder, useOpenFolders } from "@/lib/app/folders";
 import { FolderColorDialog } from "./FolderColorDialog";
 import { useCreateDocument } from "./useCreateDocument";
 import { InviteDialog } from "./InviteDialog";
@@ -26,19 +29,29 @@ export interface MenuFolder {
 }
 
 /**
- * The "…" menu for a folder (sidebar rows and folder cards): new note in it, rename, change colour,
- * copy link, invite people to the team workspace (a modal), and delete. Folders don't nest.
+ * The "…" menu for a folder (sidebar rows and folder cards): new note or folder in it, rename, change
+ * colour, move it (into another folder or to the top level), copy link, invite people to the team
+ * workspace (a modal), and delete.
  */
 export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder; trigger?: ReactNode; className?: string }) {
-  const { canEdit, canManage: managesWorkspace, workspace } = useAppState();
+  const { canEdit, canManage: managesWorkspace, workspace, scope } = useAppState();
   const { openAsk } = useShell();
   const aiOn = useAiEnabled();
   const createDocument = useCreateDocument();
   const rename = useMutation(api.organization.renameFolder);
-  const moveFolder = useMutation(api.organization.moveFolder);
+  const createFolder = useMutation(api.organization.createFolder);
+  const moveFolder = useMoveFolder();
   const del = useMutation(api.organization.deleteFolder);
+  const [, setFolderOpen] = useOpenFolders();
+  // The folder tree (shared with the sidebar's subscription): whether there's room for a folder inside.
+  const org = useQuery(api.organization.sidebar, canEdit ? { scope } : "skip");
+  const folders = org?.folders ?? [];
+  const roomInside = canNestFolderIn(folders, folder.id) || !folders.some((f) => f.id === folder.id);
+  const subfolders = folders.filter((f) => f.parentFolderId === folder.id).length;
   const toast = useToast();
   const [renaming, setRenaming] = useState(false);
+  const [addingInside, setAddingInside] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [coloring, setColoring] = useState(false);
@@ -58,11 +71,13 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
     ...(canEdit
       ? [
           { label: "New note in folder", icon: <FilePlus2 size={14} />, onSelect: () => void createDocument({ folderId: folder.id }) },
+          ...(roomInside ? [{ label: "New folder inside…", icon: <FolderPlus size={14} />, onSelect: () => setAddingInside(true) }] : []),
           "separator" as const,
           { label: "Rename…", icon: <PencilLine size={14} />, onSelect: () => setRenaming(true) },
           { label: "Change color…", icon: <Palette size={14} />, onSelect: () => setColoring(true) },
+          { label: "Move folder…", icon: <FolderInput size={14} />, onSelect: () => setMoving(true) },
           ...(folder.parentFolderId
-            ? [{ label: "Move to top level", icon: <Undo2 size={14} />, onSelect: () => void act(moveFolder({ folderId: folder.id, parentFolderId: null }), "Moved") }]
+            ? [{ label: "Move to top level", icon: <Undo2 size={14} />, onSelect: () => void act(moveFolder({ folderId: folder.id, parentFolderId: null }), "Moved to the top level") }]
             : []),
         ]
       : []),
@@ -78,12 +93,43 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
     <>
       {coloring ? <FolderColorDialog open onClose={() => setColoring(false)} folder={folder} /> : null}
       <PromptDialog open={renaming} title="Rename folder" label="Folder name" initial={folder.name} onClose={() => setRenaming(false)} onSubmit={(name) => act(rename({ folderId: folder.id, name }), "Renamed")} />
+      <PromptDialog
+        open={addingInside}
+        title={`New folder in “${folder.name}”`}
+        label="Folder name"
+        confirmLabel="Create folder"
+        onClose={() => setAddingInside(false)}
+        onSubmit={async (name) => {
+          try {
+            await createFolder({ scope, name, parentFolderId: folder.id });
+            // Open the folder in the sidebar so the new one shows.
+            setFolderOpen(folder.id, true);
+          } catch (e) {
+            toast.show(errorMessage(e), { tone: "error" });
+          }
+        }}
+      />
+      {moving ? (
+        <MoveFolderDialog
+          open
+          onClose={() => setMoving(false)}
+          folder={folder}
+          onPick={(parent) => {
+            if (parent.id) setFolderOpen(parent.id, true);
+            void act(moveFolder({ folderId: folder.id, parentFolderId: parent.id }), `Moved to ${parent.name}`);
+          }}
+        />
+      ) : null}
       {inviting && workspace ? <InviteDialog workspace={workspace} open onClose={() => setInviting(false)} /> : null}
       <Dialog
         open={deleting}
         onClose={() => setDeleting(false)}
         title={`Delete “${folder.name}”?`}
-        description="The folder is removed. Its documents are kept and move to Drafts."
+        description={
+          subfolders
+            ? `The folder is removed. Its documents are kept and move to Drafts. Its ${subfolders === 1 ? "subfolder moves" : "subfolders move"} up a level, with everything inside.`
+            : "The folder is removed. Its documents are kept and move to Drafts."
+        }
         size="sm"
         footer={
           <>

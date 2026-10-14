@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -33,7 +33,7 @@ import {
   Waypoints,
   House as Home,
 } from "lucide-react";
-import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, rankForPosition, type DocumentStyle, type WireBlock } from "@folevi/editor-schema";
+import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, folderAncestors, rankForPosition, type DocumentStyle, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { formatRelative } from "@/lib/format";
 import { Avatar } from "@/components/ui/Avatar";
@@ -426,11 +426,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
     } else showCommentsTab(t.id);
   }, [editor, threads, hashTick, documentId, showCommentsTab]);
 
-  // A folder inside another folder shows its parent in the breadcrumb too (folders nest one level).
-  // Read from the note's own scope (it may be open from another context than the current one).
+  // A folder inside other folders shows the folders above it in the breadcrumb too (the nearest two, after
+  // "…" when there are more). Read from the note's own scope (it may be open from another context).
   const org = useQuery(api.organization.sidebar, meta?.folder && meta.isMember ? { scope: documentScope(meta.document) } : "skip");
-  const folderInfo = meta?.folder ? org?.folders.find((f) => f.id === meta.folder!.id) : undefined;
-  const parentFolder = folderInfo?.parentFolderId ? (org?.folders.find((f) => f.id === folderInfo.parentFolderId) ?? null) : null;
+  const folderAbove = meta?.folder && org ? folderAncestors(org.folders, meta.folder.id) : [];
+  const shownAbove = folderAbove.slice(-2);
 
   const summary = meta?.document ?? null;
   const localTitle = pendingCreate && pendingCreate.kind === "document.create" ? pendingCreate.document.title : "";
@@ -696,7 +696,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const ready = everReady.current;
 
   const trail: Crumb[] = [
-    ...(parentFolder ? [{ href: `/folders/${parentFolder.id}`, label: parentFolder.name }] : []),
+    ...folderAbove.map((f) => ({ href: `/folders/${f.id}`, label: f.name })),
     meta?.folder ? { href: `/folders/${meta.folder.id}`, label: meta.folder.name } : { href: "/drafts", label: "Drafts" },
     ...(meta?.breadcrumbs ?? []).map((b) => ({ href: `/d/${b.id}`, label: b.title || "Untitled", icon: null })),
   ];
@@ -756,15 +756,23 @@ export function DocumentView({ documentId }: { documentId: string }) {
           readOnly ? <span className="ui-chip h-6 bg-sunken text-[11px] text-muted">{meta?.inTrash ? "In Trash" : "View only"}</span> : null
         ) : (
         <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-[13.5px]">
-          {parentFolder ? (
+          {folderAbove.length > shownAbove.length ? (
             <>
-              <AppLink href={`/folders/${parentFolder.id}`} className="flex min-w-0 max-w-[10rem] items-center gap-1.5 truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
-                <Folder size={14} className="flex-none" aria-hidden />
-                <span className="truncate">{parentFolder.name}</span>
-              </AppLink>
+              <span className="px-1 text-faint" title={folderAbove.map((f) => f.name).join(" / ")}>
+                …
+              </span>
               <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
             </>
           ) : null}
+          {shownAbove.map((f) => (
+            <Fragment key={f.id}>
+              <AppLink href={`/folders/${f.id}`} className="flex min-w-0 max-w-[10rem] items-center gap-1.5 truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+                <Folder size={14} className="flex-none" aria-hidden />
+                <span className="truncate">{f.name}</span>
+              </AppLink>
+              <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
+            </Fragment>
+          ))}
           <AppLink href={meta?.folder ? `/folders/${meta.folder.id}` : "/documents"} className="flex min-w-0 max-w-[12rem] items-center gap-1.5 truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
             {meta?.folder ? (
               <>

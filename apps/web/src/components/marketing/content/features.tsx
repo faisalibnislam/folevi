@@ -743,7 +743,7 @@ export const FEATURES: Feature[] = [
     intro:
       "Make a folder for each project, client or trip and file your notes in it. Every folder has a colour and a page that shows the notes inside. Notes you haven’t filed yet wait in Drafts.",
     plans: "Every plan, including Free.",
-    updated: "2026-09-30",
+    updated: "2026-10-14",
     art: "art-30",
     visual: "folders",
     docs: { label: "Getting started", href: "/docs/getting-started" },
@@ -753,7 +753,16 @@ export const FEATURES: Feature[] = [
         title: "Make a folder",
         body: (
           <p>
-            Press the new folder button next to Folders in the sidebar, or <strong>New folder</strong> on the Folders page, and give it a name. The sidebar lists your first five folders. The Folders page has all of them as folder cards, each showing how many notes it holds and its newest notes through the cover. You can search them, sort them by name, last update, most pages or newest, and switch to a list.
+            Press the new folder button next to Folders in the sidebar, or <strong>New folder</strong> on the Folders page, and give it a name. The sidebar lists your first five top-level folders. The Folders page has all of them as folder cards, each showing how many notes it holds and its newest notes through the cover. You can search them, sort them by name, last update, most pages or newest, and switch to a list.
+          </p>
+        ),
+      },
+      {
+        id: "nested",
+        title: "Folders inside folders",
+        body: (
+          <p>
+            Choose <strong>New folder inside</strong> from a folder’s menu to make a folder in it, up to five levels deep. The sidebar shows them as a tree you can open and close, and remembers which folders you left open on each device. Drag a folder onto another to put it inside, or use <strong>Move folder</strong> from its menu; it takes its notes and subfolders along. A folder’s page shows the folders above it and the ones inside it.
           </p>
         ),
       },
@@ -820,12 +829,13 @@ export const FEATURES: Feature[] = [
       {
         id: "menu",
         title: "Rename, link and delete",
-        body: <p>The folder’s menu also renames it, copies a link to it and deletes it. Deleting a folder keeps its notes: they move to Drafts. In a team workspace, owners and admins can invite people from the same menu.</p>,
+        body: <p>The folder’s menu also renames it, copies a link to it and deletes it. Deleting a folder keeps its notes: they move to Drafts, and the folders inside it move up a level. In a team workspace, owners and admins can invite people from the same menu.</p>,
       },
     ],
     faq: [
       { q: "Can a note be in more than one folder?", a: "No. A note is in one folder or in Drafts. Tags group notes across folders." },
-      { q: "What happens to the notes when I delete a folder?", a: "They stay. The folder is removed and its notes move to Drafts." },
+      { q: "What happens to the notes when I delete a folder?", a: "They stay. The folder is removed and its notes move to Drafts. Folders inside it move up a level, with their notes." },
+      { q: "Can folders go inside other folders?", a: "Yes, up to five levels deep. Use New folder inside from a folder’s menu, or drag one folder onto another." },
       { q: "Can I change a folder’s colour?", a: `Yes. Open the folder’s menu and choose Change color. There are ${FOLDER_COLOR_COUNT} colours to pick from.` },
       { q: "Are folders on the Free plan?", a: "Yes. Folders work the same way on every plan." },
     ],

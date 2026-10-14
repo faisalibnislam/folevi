@@ -15,7 +15,7 @@ import {
   X,
   ChevronRight,
 } from "lucide-react";
-import type { DocumentStyle } from "@folevi/editor-schema";
+import { flattenFolders, type DocumentStyle } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { documentScope } from "@/lib/app/scope";
@@ -580,9 +580,10 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
           aria-label="Folder"
         >
           <option value="">Drafts</option>
-          {org?.folders.map((f) => (
+          {flattenFolders(org?.folders ?? []).map(({ folder: f, depth }) => (
             <option key={f.id} value={f.id}>
-              {f.parentFolderId ? "- " : ""}
+              {/* Subfolders are indented under their folder. */}
+              {"\u00a0\u00a0\u00a0".repeat(depth)}
               {f.name}
             </option>
           ))}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Archive,
   CheckSquare,
@@ -43,6 +43,8 @@ import { openNextInNewTab } from "@/lib/app/tabs";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { useNoteActions } from "@/components/views/noteActions";
 import { draggedNoteIds, isNoteDrag } from "@/lib/app/noteDrag";
+import { draggedFolderId, draggingFolderId, endFolderDrag, folderMoveMessage, isFolderDrag, startFolderDrag, useMoveFolder, useOpenFolders } from "@/lib/app/folders";
+import { flattenFolders, folderAncestors, folderMoveProblem } from "@folevi/editor-schema";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { useReviewWindow } from "@/components/study/review";
@@ -74,11 +76,40 @@ function isActive(route: Route, href: string): boolean {
   return false;
 }
 
-function NavItem({ href, icon, label, count, onNavigate, draggableFolderId }: { href: string; icon: React.ReactNode; label: string; count?: number; onNavigate?: () => void; /** Makes the item a drop target for notes: a folder id, or "" for Drafts. */ draggableFolderId?: string }) {
+/** A folder row's part in dragging folders: it can be dragged, and other folders can be dropped into it. */
+interface FolderDrag {
+  id: string;
+  /** Whether the folder being dragged may go in here (not itself, a subfolder, or too deep). */
+  takes: (draggedId: string) => boolean;
+  onTake: (draggedId: string) => void;
+}
+
+function NavItem({
+  href,
+  icon,
+  label,
+  count,
+  onNavigate,
+  draggableFolderId,
+  folder,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  count?: number;
+  onNavigate?: () => void;
+  /** Makes the item a drop target for notes: a folder id, or "" for Drafts. */ draggableFolderId?: string;
+  folder?: FolderDrag;
+}) {
   const { route } = useAppRouter();
   const active = isActive(route, href);
   const notes = useNoteActions();
   const [over, setOver] = useState(false);
+  const takesFolder = (e: React.DragEvent) => {
+    if (!folder || !isFolderDrag(e)) return false;
+    const dragged = draggingFolderId();
+    return dragged === null || folder.takes(dragged);
+  };
   return (
     <AppLink
       href={href}
@@ -88,10 +119,13 @@ function NavItem({ href, icon, label, count, onNavigate, draggableFolderId }: { 
         onNavigate?.();
       }}
       aria-current={active ? "page" : undefined}
+      draggable={folder ? true : undefined}
+      onDragStart={folder ? (e) => startFolderDrag(e, folder.id) : undefined}
+      onDragEnd={folder ? endFolderDrag : undefined}
       onDragOver={
-        draggableFolderId !== undefined
+        draggableFolderId !== undefined || folder
           ? (e) => {
-              if (isNoteDrag(e)) {
+              if ((draggableFolderId !== undefined && isNoteDrag(e)) || takesFolder(e)) {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = "move";
                 setOver(true);
@@ -104,10 +138,17 @@ function NavItem({ href, icon, label, count, onNavigate, draggableFolderId }: { 
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false);
       }}
       onDrop={
-        draggableFolderId !== undefined
+        draggableFolderId !== undefined || folder
           ? (e) => {
               e.preventDefault();
               setOver(false);
+              if (folder && isFolderDrag(e)) {
+                // A folder dropped onto another goes inside it.
+                const dragged = draggedFolderId(e);
+                if (dragged && dragged !== folder.id) folder.onTake(dragged);
+                return;
+              }
+              if (draggableFolderId === undefined) return;
               // One note, or a whole selection; the toast offers Undo.
               const ids = draggedNoteIds(e);
               if (ids.length) void notes.moveTo(ids, { id: draggableFolderId || null, name: label });
@@ -191,6 +232,31 @@ function Section({ title, href, children, action, defaultOpen = true, onNavigate
 }
 
 const FOLDER_MENU_REVEAL = "opacity-0 transition-opacity focus-within:opacity-100 group-hover/folder:opacity-100 pointer-coarse:opacity-100";
+
+/** Where a dragged subfolder goes to become a top-level folder (shown only while one is dragged). */
+function TopLevelDrop({ onDrop }: { onDrop: (folderId: string) => void }) {
+  const [over, setOver] = useState(false);
+  return (
+    <div
+      onDragOver={(e) => {
+        if (!isFolderDrag(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setOver(false);
+        const id = draggedFolderId(e);
+        if (id) onDrop(id);
+      }}
+      className={`ml-5 flex h-8 items-center rounded-chip border border-dashed px-2.5 text-[12.5px] transition-colors ${over ? "border-heading bg-[var(--glass-active)] text-heading" : "border-line-strong text-muted"}`}
+    >
+      Move to the top level
+    </div>
+  );
+}
 
 const TAG_COLORS = [
   { id: "accent", label: "Cocoa" },
@@ -381,19 +447,99 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   // Changes others made in notes you've opened (everywhere), leaving out the note in front of you.
   const changes = useQuery(api.changes.list, route.name === "doc" ? { exclude: route.id } : {});
   const toast = useToast();
-  const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
+  const [folderOpen, setFolderOpen] = useOpenFolders();
+  const moveFolder = useMoveFolder();
+  const [folderDragging, setFolderDragging] = useState(false);
   const [folderDialog, setFolderDialog] = useState(false);
   const [starredOpen, setStarredOpen] = useLocalStorage("folevi:sidebar-starred-open", true);
   // The AI page, where AI is included and on (never on Core).
   const aiOn = useAiEnabled();
 
   const folders = org?.folders ?? [];
-  const roots = folders.filter((f) => !f.parentFolderId);
-  // Only the first few folders and tags are listed (plus the one you're in); "+N more" opens the full list.
+  // The folder tree: each folder followed by what's inside it.
+  const tree = flattenFolders(folders);
+  const roots = tree.filter((e) => e.depth === 0).map((e) => e.folder);
+  const childrenOf = (id: string) => {
+    const i = tree.findIndex((e) => e.folder.id === id);
+    const depth = tree[i]!.depth;
+    const out = [];
+    for (let j = i + 1; j < tree.length && tree[j]!.depth > depth; j++) if (tree[j]!.depth === depth + 1) out.push(tree[j]!.folder);
+    return out;
+  };
+  // Only the first few top-level folders and tags are listed (plus the one you're in, opened down to it);
+  // "+N more" opens the full list.
   const activeFolder = route.name === "folder" ? folders.find((f) => f.id === route.id) : undefined;
-  const activeRootId = activeFolder ? (activeFolder.parentFolderId ?? activeFolder.id) : null;
+  const activePath = activeFolder ? folderAncestors(folders, activeFolder.id) : [];
+  const activeRootId = activeFolder ? (activePath[0]?.id ?? activeFolder.id) : null;
   const shownRoots = roots.filter((f, i) => i < SIDEBAR_LIMIT || f.id === activeRootId);
-  const shownFolderCount = shownRoots.reduce((n, r) => n + 1 + folders.filter((c) => c.parentFolderId === r.id).length, 0);
+  const shownFolderCount = tree.reduce((n, e, i) => {
+    // A folder counts when its top-level folder is shown.
+    let root = i;
+    while (tree[root]!.depth > 0) root--;
+    return shownRoots.includes(tree[root]!.folder) ? n + 1 : n;
+  }, 0);
+  const isFolderOpen = (id: string) => folderOpen(id) || activePath.some((a) => a.id === id);
+
+  // While a folder is dragged, a drop zone for the top level shows under the tree.
+  useEffect(() => {
+    const sync = () => setTimeout(() => setFolderDragging(draggingFolderId() !== null), 0);
+    window.addEventListener("dragstart", sync);
+    window.addEventListener("dragend", sync);
+    window.addEventListener("drop", sync);
+    return () => {
+      window.removeEventListener("dragstart", sync);
+      window.removeEventListener("dragend", sync);
+      window.removeEventListener("drop", sync);
+    };
+  }, []);
+
+  /** Moves a folder (with what's inside it) into `parentId`, or to the top level; the toast offers Undo. */
+  const moveFolderInto = (folderId: string, parentId: string | null) => {
+    const folder = folders.find((f) => f.id === folderId);
+    if (!folder || folder.parentFolderId === parentId) return;
+    const problem = folderMoveProblem(folders, folderId, parentId);
+    if (problem) {
+      toast.show(folderMoveMessage(problem), { tone: "error" });
+      return;
+    }
+    const was = folder.parentFolderId;
+    const where = parentId ? (folders.find((f) => f.id === parentId)?.name ?? "the folder") : "the top level";
+    if (parentId) setFolderOpen(parentId, true);
+    moveFolder({ folderId, parentFolderId: parentId }).then(
+      () => toast.show(`Moved “${folder.name}” to ${where}`, { action: { label: "Undo", onClick: () => void moveFolder({ folderId, parentFolderId: was }).catch((e) => toast.show(errorMessage(e), { tone: "error" })) } }),
+      (e) => toast.show(errorMessage(e), { tone: "error" }),
+    );
+  };
+  const folderDrag = (id: string): FolderDrag | undefined =>
+    canEdit ? { id, takes: (dragged) => dragged !== id && !folderMoveProblem(folders, dragged, id), onTake: (dragged) => moveFolderInto(dragged, id) } : undefined;
+
+  const renderFolder = (f: (typeof folders)[number], depth: number): React.ReactNode => {
+    const children = childrenOf(f.id);
+    const open = isFolderOpen(f.id);
+    return (
+      <div key={f.id}>
+        <div data-ctx-host="" className="group/folder flex items-center" style={depth ? { paddingLeft: depth * 14 } : undefined}>
+          {children.length ? (
+            <button type="button" aria-label={open ? `Collapse ${f.name}` : `Expand ${f.name}`} aria-expanded={open} className="grid h-8 w-5 flex-none place-items-center rounded-chip text-faint hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" onClick={() => setFolderOpen(f.id, !open)}>
+              {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
+            </button>
+          ) : (
+            <span className="w-5 flex-none" />
+          )}
+          <div className="min-w-0 flex-1">
+            <NavItem href={`/folders/${f.id}`} icon={<FolderGlyph color={f.color} size={18} />} label={f.name} onNavigate={onNavigate} draggableFolderId={f.id} folder={folderDrag(f.id)} />
+          </div>
+          <FolderMenu folder={f} className={FOLDER_MENU_REVEAL} />
+        </div>
+        {open && children.length ? (
+          <div role="group" aria-label={`In ${f.name}`} className="space-y-0.5">
+            {children.map((c) => renderFolder(c, depth + 1))}
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+  const draggedIsNested = folderDragging && Boolean(folders.find((f) => f.id === draggingFolderId())?.parentFolderId);
   const allTags = org?.tags ?? [];
   const shownTags = allTags.filter((t, i) => i < SIDEBAR_LIMIT || (route.name === "tag" && route.id === t.id));
 
@@ -453,39 +599,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           }
         >
           {roots.length === 0 ? <p className="px-2 py-1 text-xs text-faint">No folders yet</p> : null}
-          {shownRoots.map((f) => {
-            const children = folders.filter((c) => c.parentFolderId === f.id);
-            const open = openFolders[f.id] ?? true;
-            return (
-              <div key={f.id}>
-                <div className="flex items-center">
-                  {children.length ? (
-                    <button type="button" aria-label={open ? `Collapse ${f.name}` : `Expand ${f.name}`} aria-expanded={open} className="grid h-8 w-5 place-items-center text-faint" onClick={() => setOpenFolders({ ...openFolders, [f.id]: !open })}>
-                      {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
-                    </button>
-                  ) : (
-                    <span className="w-5" />
-                  )}
-                  <div data-ctx-host="" className="group/folder flex min-w-0 flex-1 items-center">
-                    <div className="min-w-0 flex-1">
-                      <NavItem href={`/folders/${f.id}`} icon={<FolderGlyph color={f.color} size={18} />} label={f.name} onNavigate={onNavigate} draggableFolderId={f.id} />
-                    </div>
-                    <FolderMenu folder={f} className={FOLDER_MENU_REVEAL} />
-                  </div>
-                </div>
-                {open
-                  ? children.map((c) => (
-                      <div key={c.id} data-ctx-host="" className="group/folder flex items-center pl-7">
-                        <div className="min-w-0 flex-1">
-                          <NavItem href={`/folders/${c.id}`} icon={<FolderGlyph color={c.color} size={18} />} label={c.name} onNavigate={onNavigate} draggableFolderId={c.id} />
-                        </div>
-                        <FolderMenu folder={c} className={FOLDER_MENU_REVEAL} />
-                      </div>
-                    ))
-                  : null}
-              </div>
-            );
-          })}
+          {shownRoots.map((f) => renderFolder(f, 0))}
+          {draggedIsNested && canEdit ? <TopLevelDrop onDrop={(id) => moveFolderInto(id, null)} /> : null}
           <MoreLink href="/folders" count={folders.length - shownFolderCount} noun="folders" onNavigate={onNavigate} />
         </Section>
 

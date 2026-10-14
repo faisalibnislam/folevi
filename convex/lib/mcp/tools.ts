@@ -78,7 +78,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "list_folders",
     title: "List folders",
-    description: "Folders in a place, with ids to file new notes into.",
+    description: "Folders in a place, with ids to file new notes into. Folders can nest: each one has its path, like \"Work / Clients\".",
     scope: "notes:read",
     kind: "read",
     inputSchema: object({ place: PLACE }),

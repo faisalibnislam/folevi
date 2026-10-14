@@ -4,7 +4,7 @@
 // goes back wrapped as untrusted (untrusted.ts).
 import type { Doc } from "../../../_generated/dataModel";
 import type { QueryCtx } from "../../../_generated/server";
-import { blockSearchText, flattenTree, type WireBlock } from "@folevi/editor-schema";
+import { blockSearchText, flattenTree, folderPath, type WireBlock } from "@folevi/editor-schema";
 import { accessAtLeast, documentAccess, getDocumentByPublicId, PageReader } from "../../auth";
 import { fail } from "../../errors";
 import { liveBlocks, toWireBlock } from "../../documents";
@@ -157,9 +157,10 @@ export const READERS: Record<string, Reader> = {
 
   async list_folders(ctx, env) {
     const folders = await scopeFolders(ctx, env.scope);
-    const byId = new Map(folders.map((f) => [f._id, f]));
+    const links = folders.map((f) => ({ id: f._id as string, name: f.name, parentFolderId: f.parentFolderId ?? null }));
     return {
-      folders: folders.slice(0, 200).map((f) => ({ id: f.publicId, name: f.name, ...(f.parentFolderId && byId.get(f.parentFolderId) ? { inside: byId.get(f.parentFolderId)!.name } : {}) })),
+      // A nested folder also gives its path ("Work / Clients / Acme").
+      folders: folders.slice(0, 200).map((f) => ({ id: f.publicId, name: f.name, ...(f.parentFolderId && links.some((l) => l.id === f.parentFolderId) ? { path: folderPath(links, f._id) } : {}) })),
     };
   },
 

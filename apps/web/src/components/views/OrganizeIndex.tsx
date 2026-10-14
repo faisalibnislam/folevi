@@ -3,6 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { useId, useMemo, useState } from "react";
 import { FolderPlus, Hash, LayoutGrid, MoreHorizontal, Rows3, Search, X } from "lucide-react";
+import { folderAncestors } from "@folevi/editor-schema";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { FOLDER_CARD_BOX, FOLDER_CARD_FRAME, FOLDER_CARD_MENU, FolderCardArt, type FolderPreview } from "./FolderCardArt";
 import { FolderMenu } from "@/components/app/FolderMenu";
@@ -117,7 +118,11 @@ export function FoldersIndex() {
   const [layout, setLayout] = useLocalStorage<"grid" | "list">("folevi:folders-layout", "grid");
   const [creating, setCreating] = useState(false);
 
-  const names = useMemo(() => new Map((data?.folders ?? []).map((f) => [f.id, f.name])), [data]);
+  // Where each nested folder is ("Work / Clients"), shown with its name.
+  const names = useMemo(() => {
+    const folders = data?.folders ?? [];
+    return new Map(folders.map((f) => [f.id, folderAncestors(folders, f.id).map((a) => a.name).join(" / ")]));
+  }, [data]);
   const list = useMemo(() => {
     const needle = q.trim().toLocaleLowerCase();
     const rows = (data?.folders ?? []).filter((f) => !needle || f.name.toLocaleLowerCase().includes(needle));
@@ -180,7 +185,7 @@ export function FoldersIndex() {
           <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-x-8 gap-y-10" aria-label="Folders">
             {list.map((f) => (
               <li key={f.id}>
-                <FolderCard folder={f} parentName={f.parentFolderId ? names.get(f.parentFolderId) : undefined} />
+                <FolderCard folder={f} parentName={f.parentFolderId ? names.get(f.id) || undefined : undefined} />
               </li>
             ))}
           </ul>
@@ -192,7 +197,7 @@ export function FoldersIndex() {
                   <FolderGlyph color={f.color} size={24} />
                   <span className="min-w-0 flex-1 truncate font-medium">
                     {f.name}
-                    {f.parentFolderId ? <span className="ml-2 text-xs font-normal text-muted">in {names.get(f.parentFolderId) ?? "a folder"}</span> : null}
+                    {f.parentFolderId ? <span className="ml-2 text-xs font-normal text-muted">in {names.get(f.id) || "a folder"}</span> : null}
                   </span>
                   <span className="w-20 text-right text-xs tabular-nums text-muted">{pages(f.documentCount)}</span>
                   <span className="hidden w-32 text-right text-xs text-faint sm:block">{formatRelative(f.updatedAt)}</span>

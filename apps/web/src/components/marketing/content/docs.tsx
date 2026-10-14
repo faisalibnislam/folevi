@@ -90,7 +90,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "Create a Folevi account, write your first page, turn lines into blocks with the slash menu, link pages with [[ and find anything with ⌘K.",
     legacyAnchor: "getting-started",
     published: "2026-09-25",
-    updated: "2026-10-01",
+    updated: "2026-10-14",
     body: () => (
       <>
         <ol>
@@ -108,7 +108,7 @@ export const DOC_ARTICLES: DocArticle[] = [
           </li>
         </ol>
         <p>
-          Loose notes can live in <strong>Drafts</strong> until you decide where they belong. Pages can be nested inside other pages, filed in folders, tagged and starred.
+          Loose notes can live in <strong>Drafts</strong> until you decide where they belong. Pages can be nested inside other pages, filed in folders, tagged and starred. Folders can hold other folders, up to five levels deep: choose New folder inside from a folder’s menu, or drag one folder onto another in the sidebar.
         </p>
         <h2 id="next">Where to go next</h2>
         <ul>

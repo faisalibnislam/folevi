@@ -1,9 +1,9 @@
-// Folders (one level of nesting in v1) and tags.
+// Folders (nested up to MAX_FOLDER_DEPTH levels) and tags.
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
-import { normalizeForSearch, rankBetween, ulid } from "@folevi/editor-schema";
+import { MAX_FOLDER_DEPTH, canNestFolderIn, folderMoveProblem, normalizeForSearch, rankBetween, ulid, type FolderLink } from "@folevi/editor-schema";
 import { assertWritable, documentAccessInfo, PageReader, requireDocument, requireProfile, requireRowScope, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { nextSeq } from "./lib/seq";
@@ -17,6 +17,13 @@ async function scopeFolders(ctx: QueryCtx, scope: Scope): Promise<Doc<"folders">
   const base = ctx.db.query("folders");
   return await (scope.kind === "personal" ? base.withIndex("by_owner", (q) => q.eq("ownerProfileId", scope.profileId)) : base.withIndex("by_workspace", (q) => q.eq("workspaceId", scope.workspaceId))).collect();
 }
+
+/** A scope's live folders as a tree the shared folder helpers walk (ids are the Convex ids). */
+function folderLinks(folders: Doc<"folders">[]): FolderLink[] {
+  return folders.filter((f) => !f.deletedAt).map((f) => ({ id: f._id, parentFolderId: f.parentFolderId ?? null }));
+}
+
+const TOO_DEEP = `Folders can be nested up to ${MAX_FOLDER_DEPTH} levels deep.`;
 
 /** A scope's tags. */
 async function scopeTags(ctx: QueryCtx, scope: Scope): Promise<Doc<"tags">[]> {
@@ -184,10 +191,10 @@ export const createFolder = mutation({
         .withIndex("by_public_id", (q) => q.eq("publicId", args.parentFolderId!))
         .unique();
       if (!parent || !inScope(parent, scope) || parent.deletedAt) fail("not_found", "Folder not found.");
-      if (parent.parentFolderId) fail("invalid_argument", "Folders can be nested one level deep.");
       parentFolderId = parent._id;
     }
     const siblings = await scopeFolders(ctx, scope);
+    if (parentFolderId && !canNestFolderIn(folderLinks(siblings), parentFolderId)) fail("invalid_argument", TOO_DEEP);
     const last = siblings.map((f) => f.rank).sort().pop() ?? null;
     const publicId = ulid();
     const now = Date.now();
@@ -281,16 +288,16 @@ export const moveFolder = mutation({
         .query("folders")
         .withIndex("by_public_id", (q) => q.eq("publicId", args.parentFolderId!))
         .unique();
-      if (!parent || !inScope(parent, scope)) fail("not_found", "Folder not found.");
-      if (parent._id === folder._id || parent.parentFolderId) fail("invalid_argument", "Folders can be nested one level deep.");
-      const hasChildren = await ctx.db
-        .query("folders")
-        .withIndex("by_parent", (q) => q.eq("parentFolderId", folder._id))
-        .first();
-      if (hasChildren && !hasChildren.deletedAt) fail("invalid_argument", "Move this folder's subfolders out first.");
+      // Only into a folder of the same Personal or workspace (anything else reads as not found).
+      if (!parent || !inScope(parent, scope) || parent.deletedAt) fail("not_found", "Folder not found.");
       parentFolderId = parent._id;
     }
     const all = await scopeFolders(ctx, scope);
+    // The folder moves with everything inside it: never into itself or one of its subfolders, and never so
+    // that its deepest subfolder ends up past the deepest level.
+    const problem = folderMoveProblem(folderLinks(all), folder._id, parentFolderId ?? null);
+    if (problem === "self" || problem === "descendant") fail("invalid_argument", "A folder can't go inside itself or one of its subfolders.");
+    if (problem === "depth") fail("invalid_argument", TOO_DEEP);
     const siblings = all.filter((f) => f._id !== folder._id && (f.parentFolderId ?? null) === (parentFolderId ?? null) && !f.deletedAt).sort((a, b) => (a.rank < b.rank ? -1 : 1));
     let rank = folder.rank;
     if (args.afterFolderId !== undefined) {
@@ -304,7 +311,11 @@ export const moveFolder = mutation({
   },
 });
 
-/** Deleting a folder never deletes documents: they become unsorted. */
+/**
+ * Deleting a folder never deletes documents: they become unsorted (Drafts). Its subfolders aren't deleted
+ * either: they move up a level, into the deleted folder's parent (or to the top level), with everything
+ * inside them as it was.
+ */
 export const deleteFolder = mutation({
   args: { folderId: v.string() },
   handler: async (ctx, args) => {
@@ -315,7 +326,9 @@ export const deleteFolder = mutation({
       .query("folders")
       .withIndex("by_parent", (q) => q.eq("parentFolderId", folder._id))
       .collect();
-    for (const c of children) await ctx.db.patch(c._id, { parentFolderId: undefined, seq });
+    const parent = folder.parentFolderId ? await ctx.db.get(folder.parentFolderId) : null;
+    const newParent = parent && !parent.deletedAt ? parent._id : undefined;
+    for (const c of children) if (!c.deletedAt) await ctx.db.patch(c._id, { parentFolderId: newParent, updatedAt: Date.now(), seq });
     const docs = await ctx.db
       .query("documents")
       .withIndex("by_folder", (q) => q.eq("folderId", folder._id))

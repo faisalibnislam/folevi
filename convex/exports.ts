@@ -55,7 +55,7 @@ export const documentPage = internalQuery({
       const blocks = await labels.blocks((await liveBlocks(ctx, d._id)).map(toWireBlock));
       const parent = d.parentDocumentId ? await ctx.db.get(d.parentDocumentId) : null;
       const folder = d.folderId ? await ctx.db.get(d.folderId) : null;
-      // Folders nest (one level today); keep the whole path so the export mirrors the sidebar.
+      // Folders nest (up to five levels); keep the whole path so the export mirrors the sidebar.
       const folderPath: string[] = [];
       for (let f = folder, i = 0; f && !f.deletedAt && i < 8; i++) {
         folderPath.unshift(f.name);

@@ -4,6 +4,7 @@ import { useAction, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { ArrowRight, CalendarDays, CheckSquare, FileDiff, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2 } from "lucide-react";
+import { flattenFolders } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { openNextInNewTab } from "@/lib/app/tabs";
 import { useAppState } from "@/lib/app/state";
@@ -208,8 +209,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           <div className="flex flex-wrap items-center gap-1.5 px-5 py-2.5 text-xs shadow-[inset_0_-1px_0_var(--color-line)]" role="group" aria-label="Search filters">
             <Select aria-label="Folder" disabled={allPlaces} value={filters.folderId ?? ""} onChange={(e) => setFilters({ ...filters, folderId: e.target.value || undefined })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
               <option value="">Any folder</option>
-              {org?.folders.map((f) => (
+              {flattenFolders(org?.folders ?? []).map(({ folder: f, depth }) => (
                 <option key={f.id} value={f.id}>
+                  {"\u00a0\u00a0\u00a0".repeat(depth)}
                   {f.name}
                 </option>
               ))}

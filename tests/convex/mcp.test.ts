@@ -185,6 +185,18 @@ describe("POST /mcp", () => {
     expect((res.body?.result?.contents as { text: string }[])[0]!.text).toContain("# Garden plan");
   });
 
+  test("list_folders gives nested folders their path", async () => {
+    const t = setup();
+    const a = await person(t, "mcp-folders@example.com");
+    const work = (await a.as.mutation(api.organization.createFolder, { scope: PERSONAL, name: "Work" })).id;
+    const clients = (await a.as.mutation(api.organization.createFolder, { scope: PERSONAL, name: "Clients", parentFolderId: work })).id;
+    await a.as.mutation(api.organization.createFolder, { scope: PERSONAL, name: "Acme", parentFolderId: clients });
+    const bearer = await connect(t, a, { personal: true, workspaceIds: [] });
+    const folders = (await call(t, bearer, "list_folders")).data!.folders as { name: string; path: string; place: string }[];
+    expect(folders.map((f) => [f.name, f.path])).toEqual(expect.arrayContaining([["Work", "Work"], ["Clients", "Work / Clients"], ["Acme", "Work / Clients / Acme"]]));
+    expect(folders.every((f) => f.place === "Personal")).toBe(true);
+  });
+
   test("a workspace member's grant can't reach a page restricted away from them", async () => {
     const t = setup();
     const owner = await person(t, "mcp-owner@example.com");

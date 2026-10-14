@@ -3,7 +3,9 @@
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, Copy, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText } from "lucide-react";
+import { folderAncestors } from "@folevi/editor-schema";
+import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -282,9 +284,31 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       }`
     : "Counting the notes in Trash…";
 
+  // A folder inside other folders shows the way up (Work / Clients / Acme), and the folders inside it.
+  const allFolders = org?.folders ?? [];
+  const crumbs = view === "folder" && folderId ? folderAncestors(allFolders, folderId) : [];
+  const subfolders = view === "folder" && folderId ? allFolders.filter((f) => f.parentFolderId === folderId) : [];
+  const heading = <h1 className="truncate text-sm font-semibold">{title}</h1>;
+
   return (
     <ViewChrome
-      title={<h1 className="truncate text-sm font-semibold">{title}</h1>}
+      title={
+        crumbs.length ? (
+          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-sm">
+            {crumbs.map((c) => (
+              <span key={c.id} className="flex min-w-0 items-center gap-0.5">
+                <AppLink href={`/folders/${c.id}`} className="min-w-0 max-w-[10rem] truncate rounded-chip px-1.5 py-0.5 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+                  {c.name}
+                </AppLink>
+                <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
+              </span>
+            ))}
+            {heading}
+          </nav>
+        ) : (
+          heading
+        )
+      }
       tabTitle={title}
       // A folder's page takes a faint wash of its colour.
       tint={view === "folder" ? folderHex(org?.folders.find((f) => f.id === folderId)?.color) : undefined}
@@ -353,6 +377,17 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           {view === "templates" && aiOn ? <AiGenerateDialog open={generating} onClose={() => setGenerating(false)} kind="template" /> : null}
         </div>
 
+        {subfolders.length ? (
+          <nav aria-label="Folders inside" className="mb-6 flex flex-wrap gap-2">
+            {subfolders.map((f) => (
+              <AppLink key={f.id} href={`/folders/${f.id}`} className="inline-flex h-9 max-w-[16rem] items-center gap-2 rounded-chip px-3 text-sm ui-card transition-[box-shadow] hover:shadow-[var(--shadow-pop)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                <FolderGlyph color={f.color} size={17} />
+                <span className="truncate">{f.name}</span>
+              </AppLink>
+            ))}
+          </nav>
+        ) : null}
+
         {view === "templates" && builtIns?.length ? (
           <section aria-labelledby="builtin-title" className="mb-10">
             <h3 id="builtin-title" className="mb-3 text-[12px] font-semibold uppercase tracking-[0.06em] text-faint">
@@ -387,7 +422,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           </div>
         ) : docs.length === 0 ? (
           <div className="rounded-chip border border-dashed border-line-strong px-6 py-16 text-center">
-            <p className="ui-display text-2xl">{EMPTY[view]}</p>
+            <p className="ui-display text-2xl">{view === "folder" && subfolders.length ? "No notes directly in this folder yet." : EMPTY[view]}</p>
             {view === "all" || view === "folder" ? (
               // On a folder page the new note starts in that folder.
               <Button className="mt-6" variant="primary" onClick={() => void createDocument({})}>

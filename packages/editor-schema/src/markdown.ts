@@ -804,3 +804,24 @@ export function plainTextToBlocks(input: string, newId: () => string = () => uli
     props: {},
   }));
 }
+
+/**
+ * Imported pages that link to each other: a link whose target `resolve` knows (another page of the same
+ * import, by its path) becomes a page link to that page, keeping the link's text as its label. Works on
+ * text blocks and table cells, in place; returns the blocks.
+ */
+export function linkImportedPages(blocks: WireBlock[], resolve: (href: string) => string | null): WireBlock[] {
+  const fix = (nodes: InlineNode[]): InlineNode[] =>
+    nodes.map((n) => {
+      if (n.type !== "text" || !n.marks) return n;
+      const link = n.marks.find((m): m is Extract<Mark, { type: "link" }> => m.type === "link");
+      const documentId = link ? resolve(link.href) : null;
+      return documentId ? { type: "pageLink", documentId, label: n.text.trim().slice(0, 200) || "Untitled" } : n;
+    });
+  for (const b of blocks) {
+    if (Array.isArray(b.text)) b.text = fix(b.text as InlineNode[]);
+    const rows = (b.props as { rows?: unknown }).rows;
+    if (b.type === "table" && Array.isArray(rows)) (b.props as { rows: InlineNode[][][] }).rows = (rows as InlineNode[][][]).map((r) => r.map(fix));
+  }
+  return blocks;
+}

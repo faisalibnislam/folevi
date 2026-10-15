@@ -20,7 +20,7 @@ export function Checkbox({ checked, onChange, children, disabled, describedBy, c
     >
       <span
         aria-hidden
-        className={`mt-[1px] grid h-4 w-4 flex-none place-items-center rounded-tiny transition-colors ${
+        className={`mt-[calc((1lh-1rem)/2)] grid h-4 w-4 flex-none place-items-center rounded-tiny transition-colors ${
           checked ? "bg-heading text-canvas" : "bg-transparent shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-ink)_35%,transparent)] group-hover/check:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-ink)_55%,transparent)]"
         }`}
       >

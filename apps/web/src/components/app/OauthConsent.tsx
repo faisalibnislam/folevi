@@ -73,8 +73,10 @@ export function OauthConsent() {
         <span className="mb-6 inline-flex items-center gap-2 text-ink">
           <FoleviLogo height={28} title="Folevi" />
         </span>
-        <main id="main" className="ui-card rounded-control p-8">
-          {children}
+        {/* The sign-in pages' card ((auth)/layout.tsx), with the sheet behind it. */}
+        <main id="main" className="relative">
+          <div aria-hidden className="absolute inset-0 translate-x-2 translate-y-2 ui-card rounded-control" />
+          <div className="relative ui-card rounded-control p-8">{children}</div>
         </main>
       </div>
     </div>
@@ -83,17 +85,17 @@ export function OauthConsent() {
   if (!clientId || !signed) {
     return card(
       <>
-        <h1 className="ui-display text-[30px] leading-[1.1]">This link doesn’t work</h1>
-        <p className="mt-2 text-[15px] text-muted">Start connecting again from the app you were using.</p>
+        <h1 className="ui-display text-[34px] leading-[1.08]">This link doesn’t work</h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-muted">Start connecting again from the app you were using.</p>
       </>,
     );
   }
-  if (info === undefined) return card(<p className="text-muted">Loading…</p>);
+  if (info === undefined) return card(<p className="text-[15px] text-muted">Loading…</p>);
   if (info === null) {
     return card(
       <>
-        <h1 className="ui-display text-[30px] leading-[1.1]">This app isn’t registered</h1>
-        <p className="mt-2 text-[15px] text-muted">Start connecting again from the app you were using.</p>
+        <h1 className="ui-display text-[34px] leading-[1.08]">This app isn’t registered</h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-muted">Start connecting again from the app you were using.</p>
       </>,
     );
   }
@@ -106,13 +108,13 @@ export function OauthConsent() {
 
   return card(
     <>
-      <h1 className="ui-display text-[30px] leading-[1.1]">Connect {info.name} to Folevi</h1>
+      <h1 className="ui-display text-[34px] leading-[1.08]">Connect {info.name} to Folevi</h1>
       <p className="mt-2 text-[15px] leading-relaxed text-muted">
         <strong className="text-ink">{info.name}</strong> wants to {writeOnly ? "add notes to Folevi" : "use your notes"} as <strong className="text-ink">{info.email}</strong>. It will send you back to{" "}
         <strong className="text-ink">{info.redirectHosts.join(", ") || "the app"}</strong>.
       </p>
-      <p className="mt-2 inline-flex items-center gap-1.5 rounded-chip bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] px-2 py-0.5 text-[12px] text-muted">
-        <ShieldAlert size={12} aria-hidden /> The app named itself. Folevi hasn’t checked it.
+      <p className="mt-2 inline-flex items-start gap-1.5 rounded-chip bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] px-2 py-0.5 text-[12px] text-muted">
+        <ShieldAlert size={12} aria-hidden className="mt-[calc((1lh-12px)/2)] flex-none" /> The app named itself. Folevi hasn’t checked it.
       </p>
 
       <fieldset className="mt-6">
@@ -121,6 +123,7 @@ export function OauthConsent() {
           {offered.map((s) => (
             <Checkbox
               key={s.scope}
+              className="text-[14px]"
               checked={chosenScopes.has(s.scope)}
               disabled={s.required}
               onChange={(on) => {
@@ -130,7 +133,7 @@ export function OauthConsent() {
                 setScopes(next);
               }}
             >
-              <span className="text-[14px] text-ink">{s.label}</span>
+              <span className="text-ink">{s.label}</span>
             </Checkbox>
           ))}
         </div>
@@ -139,12 +142,12 @@ export function OauthConsent() {
       <fieldset className="mt-5">
         <legend className="ui-caps mb-2">Where</legend>
         <div className="space-y-2">
-          <Checkbox checked={chosenPlaces.personal} onChange={(on) => setPlaces({ ...chosenPlaces, personal: on })}>
-            <span className="text-[14px] text-ink">Personal</span>
+          <Checkbox className="text-[14px]" checked={chosenPlaces.personal} onChange={(on) => setPlaces({ ...chosenPlaces, personal: on })}>
+            <span className="text-ink">Personal</span>
           </Checkbox>
           {info.workspaces.map((w) => (
-            <Checkbox key={w.id} checked={chosenPlaces.workspaceIds.includes(w.id)} onChange={(on) => togglePlace(w.id, on)}>
-              <span className="text-[14px] text-ink">{w.name}</span>
+            <Checkbox key={w.id} className="text-[14px]" checked={chosenPlaces.workspaceIds.includes(w.id)} onChange={(on) => togglePlace(w.id, on)}>
+              <span className="text-ink">{w.name}</span>
             </Checkbox>
           ))}
         </div>

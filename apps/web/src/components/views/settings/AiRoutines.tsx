@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Card } from "./Card";
 import { hourLabel, nextLabel } from "./AiDigest";
+import { canPurchaseHere } from "@/lib/nativeApp";
 
 type Routine = FunctionReturnType<typeof api.routines.list>["routines"][number];
 type SaveArgs = FunctionArgs<typeof api.routines.save>;
@@ -156,9 +157,11 @@ export function AiRoutinesCard() {
       {locked ? (
         <p className="mb-3 text-sm text-muted">
           Routines are part of Pro and Pro AI.{" "}
-          <AppLink href="/settings/billing" className="font-medium text-heading underline underline-offset-2">
-            See plans
-          </AppLink>
+          {canPurchaseHere() ? (
+            <AppLink href="/settings/billing" className="font-medium text-heading underline underline-offset-2">
+              See plans
+            </AppLink>
+          ) : null}
         </p>
       ) : null}
       <div className="divide-y divide-line/70">

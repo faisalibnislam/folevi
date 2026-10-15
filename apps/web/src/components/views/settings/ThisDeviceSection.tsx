@@ -1,0 +1,91 @@
+"use client";
+// Settings > This device: what only the iPhone and iPad app does. Today the Face ID lock: off until turned
+// on, and kept by the app on this device (never on Folevi's servers). Turning it on asks for Face ID once,
+// so it's never on for someone who can't get back in.
+import { useEffect, useId, useState } from "react";
+import { nativeApp, type LockAfter, type NativeSettings } from "@/lib/nativeApp";
+import { Select } from "@/components/ui/Select";
+import { Switch } from "@/components/ui/Switch";
+import { Card } from "./Card";
+
+/** The unlock method as the device names it. */
+const METHOD: Record<NativeSettings["method"], string> = { faceID: "Face ID", touchID: "Touch ID", opticID: "Optic ID", passcode: "your passcode", none: "Face ID" };
+
+const AFTER: { value: LockAfter; label: string }[] = [
+  { value: 0, label: "Immediately" },
+  { value: 60, label: "After 1 minute" },
+  { value: 300, label: "After 5 minutes" },
+  { value: 900, label: "After 15 minutes" },
+];
+
+export function ThisDeviceSection() {
+  const bridge = nativeApp();
+  const [settings, setSettings] = useState<NativeSettings | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const hintId = useId();
+  const afterId = useId();
+  useEffect(() => {
+    void bridge?.getSettings().then(setSettings);
+  }, [bridge]);
+
+  if (!bridge) {
+    return (
+      <Card title="Folevi for iPhone and iPad" description="These settings are for the Folevi app on iPhone and iPad, like locking it with Face ID. Open Settings in the app to change them.">
+        <p className="text-sm text-muted">You're using Folevi in a browser.</p>
+      </Card>
+    );
+  }
+  if (!settings) return <p className="text-sm text-muted">Loading…</p>;
+
+  const method = METHOD[settings.method];
+  const save = async (patch: Partial<Pick<NativeSettings, "lock" | "lockAfter">>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      setSettings(await bridge.setSettings(patch));
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : "That didn't work. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const label = settings.method === "passcode" ? "Lock with passcode" : `Lock with ${method}`;
+  return (
+    <Card title="Lock" description={`Folevi asks for ${method} when it opens, and hides your notes in the app switcher. This is kept on this device only.`}>
+      <div className="max-w-xl divide-y divide-line/70">
+        <div className="flex items-center justify-between gap-6 py-3 first:pt-0">
+          <span className="min-w-0">
+            <span className="block text-sm text-ink">{label}</span>
+            <span id={hintId} className="block text-xs text-muted">
+              {settings.method === "none" ? "Set a passcode for this device in the Settings app first." : `Off unless you turn it on. Turning it on asks for ${method} once.`}
+            </span>
+          </span>
+          <Switch checked={settings.lock} onChange={(lock) => void save({ lock })} label={label} describedBy={hintId} disabled={busy || (settings.method === "none" && !settings.lock)} />
+        </div>
+        {settings.lock ? (
+          <div className="flex items-center justify-between gap-6 py-3 last:pb-0">
+            <span className="min-w-0">
+              <span id={afterId} className="block text-sm text-ink">
+                Ask again
+              </span>
+              <span className="block text-xs text-muted">When you come back after Folevi has been in the background this long.</span>
+            </span>
+            <Select value={String(settings.lockAfter)} onChange={(e) => void save({ lockAfter: Number(e.target.value) as LockAfter })} aria-labelledby={afterId} className="ui-input h-9 w-44 flex-none rounded-chip px-3 text-sm" disabled={busy}>
+              {AFTER.map((a) => (
+                <option key={a.value} value={String(a.value)}>
+                  {a.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        ) : null}
+      </div>
+      {error ? (
+        <p role="alert" className="mt-3 text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
+    </Card>
+  );
+}

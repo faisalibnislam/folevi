@@ -16,6 +16,7 @@ import { CreditLines, Tile, UsageMeter, formatBytes, plural } from "./BillingSec
 import { BuyCreditsDialog } from "./BuyCreditsDialog";
 import { PlanRow, PlanRows } from "./PlanRow";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { MANAGED_ELSEWHERE, canPurchaseHere } from "@/lib/nativeApp";
 
 // Billing dates are UTC, like the server and Polar, so a renewal and a credit reset never read a day apart.
 const dateOnly = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
@@ -29,7 +30,8 @@ const rank = (t: WorkspaceTier) => WORKSPACE_PLAN_ORDER.indexOf(t);
 /**
  * Settings → (workspace) Plan & billing: the workspace's own plan (Free, Core, Pro or Pro AI), billed per
  * member seat. Only its owner and admins the owner allowed can open it; the server refuses everyone else.
- * Nothing here touches anyone's Personal plan.
+ * Nothing here touches anyone's Personal plan. In the iOS app only the plan's name and state: plans are
+ * managed on folevi.com (App Store rule 3.1.1, lib/nativeApp.ts).
  */
 export function WorkspaceBillingSection({ workspace }: { workspace: Workspace }) {
   const data = useQuery(api.workspaceBilling.summary, { workspaceId: workspace.id });
@@ -60,6 +62,17 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
   const cancelScheduled = e.paid && Boolean(sub?.cancelAtPeriodEnd && sub.currentPeriodEnd);
   const trialing = e.paid && Boolean(sub?.trialEndsAt && sub.trialEndsAt > now);
   const status = !e.paid ? null : sub?.status === "past_due" ? "Past due" : cancelScheduled ? "Cancel scheduled" : trialing ? "Trial" : "Active";
+  if (!canPurchaseHere()) {
+    return (
+      <Card title="Workspace plan">
+        <p className="flex flex-wrap items-center gap-2">
+          <span className="ui-display text-[24px]">{current.name}</span>
+          {status ? <span className={`rounded-chip px-2 py-0.5 text-[12px] ${status === "Past due" ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-muted"}`}>{status}</span> : null}
+        </p>
+        <p className="mt-2 text-sm text-muted">{MANAGED_ELSEWHERE}</p>
+      </Card>
+    );
+  }
   // A Polar subscription that's running: plan changes are subscription updates (Polar prorates).
   const polarLive = polar && e.paid && sub?.status !== "canceled";
   const seatPrice = formatPrice(plan.seatPriceCents);

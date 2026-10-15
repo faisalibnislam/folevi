@@ -216,6 +216,29 @@
 :root[data-desktop]:has(.ui-desktop-quick-add) body::before { display: none; }
 .ui-desktop-quick-add { min-height: 100vh; }
 
+/* The iPhone and iPad app (apps/ios, data-native="ios"): the page fills the screen (viewport-fit=cover, set by
+   the app's bridge), so the app's frame keeps clear of the status bar, the home indicator and, in landscape,
+   the camera housing. The canvas's own colour shows behind the status bar. Things fixed to the screen's
+   edges (the sidebar drawer, toasts, the Ask Foli AI button and chat) move in by the same insets. */
+:root[data-native="ios"] .ui-shell {
+  padding-top: max(var(--ui-shell-pad, 0px), env(safe-area-inset-top));
+  padding-right: max(var(--ui-shell-pad, 0px), env(safe-area-inset-right));
+  padding-bottom: max(var(--ui-shell-pad, 0px), env(safe-area-inset-bottom));
+  padding-left: max(var(--ui-shell-pad, 0px), env(safe-area-inset-left));
+}
+:root[data-native="ios"] .ui-shell.p-2 { --ui-shell-pad: 0.5rem; }
+/* Other full-page canvases (sign in, connecting an app): a clear border, which keeps the page's own padding
+   and lets its background reach the screen's edges. Pages without a canvas (onboarding): the body. */
+:root[data-native="ios"] .ui-canvas:not(.ui-shell) { border: 0 solid transparent; border-width: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+:root[data-native="ios"]:not(:has(.ui-canvas)) body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+:root[data-native="ios"] .ui-drawer-panel { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left); }
+:root[data-native="ios"] :is(.ui-toasts, .ui-fab, .ui-fab-panel) { margin-bottom: env(safe-area-inset-bottom); }
+:root[data-native="ios"] .ui-fab { margin-right: env(safe-area-inset-right); }
+/* The logo above sign in goes to the public site, where plans are sold: in the app it's only the logo. */
+:root[data-native="ios"] .ui-site-link { pointer-events: none; }
+/* A long press opens Folevi's own menus (lib/touchContextMenu.ts), not iOS's link preview and callout. */
+:root[data-native="ios"] :is(a, img) { -webkit-touch-callout: none; }
+
 /* Room under scrolling views for the floating Ask Foli AI button (AskAiChat: 48px tall, 36px from the bottom,
    12px on phones) plus a 16px gap, only while the button is showing. Views pad their end by at least this. */
 :root { --fab-clearance: 0px; }

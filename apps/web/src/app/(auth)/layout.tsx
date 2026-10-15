@@ -9,7 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="ui-canvas ui-neutral-chrome grid min-h-dvh place-items-center px-4 py-12">
       <div className="w-full max-w-md">
-        <a href={marketing} className="mb-6 inline-flex items-center gap-2 text-ink" aria-label="Folevi home">
+        <a href={marketing} className="ui-site-link mb-6 inline-flex items-center gap-2 text-ink" aria-label="Folevi home">
           <FoleviLogo height={28} title={null} />
         </a>
         <main id="main" className="relative">

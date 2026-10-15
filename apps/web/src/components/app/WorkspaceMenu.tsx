@@ -12,6 +12,7 @@ import { useSafeSignOut } from "@/components/auth/SignOut";
 import { SupportDialog } from "@/components/support/SupportDialog";
 import { InviteDialog } from "./InviteDialog";
 import { NewWorkspaceDialog, workspaceRoleLabel } from "./NewWorkspaceDialog";
+import { canPurchaseHere } from "@/lib/nativeApp";
 
 /** A team workspace's mark: its square logo, or its initial on a neutral tile. */
 export function WorkspaceLogo({ workspace, size = 24, className = "" }: { workspace: Pick<Workspace, "name" | "logoUrl">; size?: number; className?: string }) {
@@ -122,15 +123,22 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
   ];
 
   // Personal plan: trial days left, or an upgrade nudge on Free; nothing once they're paying. Only shown in
-  // Personal, since a Personal plan doesn't change what a team workspace includes.
+  // Personal, since a Personal plan doesn't change what a team workspace includes. In the iOS app only the
+  // trial's days, and not as a way to plans (no buying there).
+  const store = canPurchaseHere();
   const ent = (profile as { entitlements?: { trialing: boolean; trialEndsAt: number | null; paid?: boolean } }).entitlements;
   const trialDays = ent?.trialing && ent.trialEndsAt ? Math.max(1, Math.ceil((ent.trialEndsAt - Date.now()) / 86_400_000)) : 0;
-  const pill = !ent || context.kind !== "personal" ? null : ent.trialing ? `${TIER_NAMES[TRIAL_TIER]} trial · ${trialDays} ${trialDays === 1 ? "day" : "days"} left` : ent.paid === false ? "Upgrade to Pro" : null;
+  const pill = !ent || context.kind !== "personal" ? null : ent.trialing ? `${TIER_NAMES[TRIAL_TIER]} trial · ${trialDays} ${trialDays === 1 ? "day" : "days"} left` : ent.paid === false && store ? "Upgrade to Pro" : null;
   const title = workspace ? workspace.name : profile.displayName;
 
   return (
     <>
-      {pill ? (
+      {pill && !store ? (
+        <p className="mb-1.5 flex h-8 w-full items-center gap-1.5 rounded-chip bg-[linear-gradient(100deg,color-mix(in_oklab,#8b7cf6_14%,transparent),color-mix(in_oklab,#f58ab8_12%,transparent))] px-2 text-xs font-medium text-heading shadow-[inset_0_0_0_1px_var(--glass-border)]">
+          <AiIcon size={13} aria-hidden className="text-[#7c6cf0]" />
+          <span className="flex-1 truncate">{pill}</span>
+        </p>
+      ) : pill ? (
         <button
           type="button"
           onClick={() => go("/settings/billing")}

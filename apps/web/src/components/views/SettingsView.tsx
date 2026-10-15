@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, ShieldCheck, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
+import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, ShieldCheck, Smartphone, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { ViewChrome } from "@/components/app/Shell";
@@ -21,11 +21,13 @@ import { WorkspaceBillingSection } from "./settings/WorkspaceBillingSection";
 import { SyncSection } from "./settings/SyncSection";
 import { DataSection } from "./settings/DataSection";
 import { DesktopSection } from "./settings/DesktopSection";
+import { ThisDeviceSection } from "./settings/ThisDeviceSection";
 import { ConnectedAppsSection } from "./settings/ConnectedAppsSection";
 import { Card } from "./settings/Card";
 import { desktop } from "@/lib/desktop";
+import { nativeApp } from "@/lib/nativeApp";
 
-type Section = "account" | "ai" | "billing" | "security" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop";
+type Section = "account" | "ai" | "billing" | "security" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop" | "this-device";
 type Item = { id: Section; label: string; icon: LucideIcon };
 /** Things about you (your account and your Personal), the same whichever context is open. */
 const YOU: Item[] = [
@@ -40,6 +42,7 @@ const YOU: Item[] = [
   { id: "sync", label: "Offline & sync", icon: RefreshCw },
   { id: "data", label: "Import & export", icon: ArrowDownUp },
   { id: "desktop", label: "Desktop app", icon: AppWindowMac },
+  { id: "this-device", label: "This device", icon: Smartphone },
 ];
 /**
  * The current team workspace's settings, only when a workspace is open. Personal has none of these.
@@ -62,8 +65,8 @@ export function SettingsView({ section }: { section: Section }) {
   const { workspace } = useAppState();
   const allowed = (who: (typeof WORKSPACE)[number]["who"]) => who === "everyone" || (who === "managers" ? workspace?.canManage === true : workspace?.canManageBilling === true);
   const workspaceItems = WORKSPACE.filter((i) => allowed(i.who));
-  // Desktop app: only in the Mac app (or when opened by its address).
-  const you = YOU.filter((i) => i.id !== "desktop" || desktop() !== null || section === "desktop");
+  // Desktop app: only in the Mac app; This device: only in the iPhone and iPad app (or opened by its address).
+  const you = YOU.filter((i) => (i.id !== "desktop" || desktop() !== null || section === "desktop") && (i.id !== "this-device" || nativeApp() !== null || section === "this-device"));
   const groups = [{ label: "You", items: you }, ...(workspace ? [{ label: workspace.name, items: workspaceItems }] : [])];
   const item = [...YOU, ...WORKSPACE].find((s) => s.id === section);
   const heading = (WORKSPACE_SECTIONS.has(section) && HEADINGS[section]) || item?.label;
@@ -129,6 +132,7 @@ export function SettingsView({ section }: { section: Section }) {
           {section === "sync" ? <SyncSection /> : null}
           {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
           {section === "desktop" ? <DesktopSection /> : null}
+          {section === "this-device" ? <ThisDeviceSection /> : null}
         </div>
       </div>
     </ViewChrome>

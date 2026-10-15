@@ -12,6 +12,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { TIER_NAMES, TRIAL_TIER } from "@/lib/plans";
 import { Card } from "./Card";
+import { canPurchaseHere } from "@/lib/nativeApp";
 
 function DeviceIcon({ client, label }: { client: string; label: string }) {
   const Icon = client === "mac" ? Laptop : /iPad/.test(label) ? Tablet : /iPhone|iOS|Android/.test(label) ? Smartphone : Monitor;
@@ -65,7 +66,7 @@ export function DevicesSection() {
               </div>
             ) : null}
           </div>
-          {limit !== null ? (
+          {limit !== null && canPurchaseHere() ? (
             <AppLink href="/settings/billing" className="ui-btn ui-btn-secondary h-9 px-4 text-sm">
               Get unlimited devices
             </AppLink>

@@ -18,6 +18,7 @@ import { BackupCodes, TotpEnrollment } from "@/components/auth/TwoFactor";
 import { Card } from "./Card";
 import { DeleteAccountCard } from "./DeleteAccountCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { nativeApp } from "@/lib/nativeApp";
 
 /** Asks for the current password before showing secrets (backup codes, authenticator key). */
 function PasswordGate({
@@ -238,9 +239,11 @@ function PasskeysCard() {
       </ul>
       {supported === false ? (
         <p className="mt-3 text-sm text-muted">
-          {desktop()
-            ? `The ${desktop()?.platform === "windows" ? "Windows" : "Mac"} app can't use passkeys yet. Add one in your browser and sign in there with it.`
-            : "This browser can't create passkeys. Add one from a browser like Safari, Chrome, Edge or Firefox."}
+          {nativeApp()
+            ? "The iPhone and iPad app can't use passkeys yet. Add one in your browser and sign in there with it."
+            : desktop()
+              ? `The ${desktop()?.platform === "windows" ? "Windows" : "Mac"} app can't use passkeys yet. Add one in your browser and sign in there with it.`
+              : "This browser can't create passkeys. Add one from a browser like Safari, Chrome, Edge or Firefox."}
         </p>
       ) : (
         <Button className="mt-3" variant="primary" disabled={supported !== true} onClick={() => setAdding(true)}>

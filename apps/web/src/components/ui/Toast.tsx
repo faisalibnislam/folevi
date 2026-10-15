@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
+import { withoutPurchaseHints } from "@/lib/nativeApp";
 
 type Tone = "neutral" | "success" | "error";
 interface Toast {
@@ -28,7 +29,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 px-4" role="region" aria-label="Notifications">
+      <div className="ui-toasts pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 px-4" role="region" aria-label="Notifications">
         <div aria-live="polite" className="contents">
           {toasts.map((t) => (
             <div
@@ -38,7 +39,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 t.tone === "error" ? "bg-danger-soft text-ink" : t.tone === "success" ? "bg-success-soft text-ink" : "bg-[var(--color-accent-strong)] text-[var(--color-accent-ink)]"
               }`}
             >
-              <span className="flex-1">{t.message}</span>
+              <span className="flex-1">{withoutPurchaseHints(t.message)}</span>
               {t.action ? (
                 <button
                   type="button"
@@ -71,7 +72,8 @@ export function useToast() {
 /** Converts Convex errors into short, human messages. */
 export function errorMessage(error: unknown): string {
   const data = (error as { data?: { message?: string; code?: string } })?.data;
-  if (data?.message) return data.message;
+  // In the iOS app, a server message's "Upgrade in Settings → Plan & billing." goes (lib/nativeApp.ts).
+  if (data?.message) return withoutPurchaseHints(data.message);
   if (error instanceof Error && /network|fetch|offline/i.test(error.message)) return "You're offline. Your changes are kept on this device.";
   return "Something went wrong. Please try again.";
 }

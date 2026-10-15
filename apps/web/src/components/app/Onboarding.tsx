@@ -18,6 +18,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { captureTemplateFromUrl, pendingTemplate } from "@/lib/pendingTemplate";
 import { OnboardingPreview, artOf, artThumb, type PreviewScene } from "./onboarding/OnboardingPreview";
 import "./onboarding/onboarding.css";
+import { withoutPurchaseHints } from "@/lib/nativeApp";
 
 /** The steps, in order, and the server step each one completes (convex/lib/onboarding.ts). */
 const STEPS = [
@@ -497,12 +498,14 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
   const descId = useId();
   const ends = entitlements.trialEndsAt ? new Date(entitlements.trialEndsAt).toLocaleDateString(undefined, { month: "long", day: "numeric" }) : null;
   // AI is counted in credits: the trial's fixed allowance, then the plan's monthly credits. Core has none.
-  const plan =
+  // (In the iOS app without the pointers to changing plans: nothing there sells them.)
+  const plan = withoutPurchaseHints(
     entitlements.ai && entitlements.aiSource === "trial"
       ? `Included in your ${TRIAL_DAYS}-day ${TIER_NAMES[TRIAL_TIER]} trial, with ${TRIAL_CREDITS} AI credits${ends ? ` until ${ends}` : ""}. After that, Foli AI needs Pro or Pro AI, which you can choose in Settings.`
       : entitlements.ai
         ? `Your plan includes ${entitlements.monthlyCredits} AI credits a month.`
-        : `Your plan, ${TIER_NAMES.core}, has no AI: nothing is sent to an AI model. You can change plans in Settings.`;
+        : `Your plan, ${TIER_NAMES.core}, has no AI: nothing is sent to an AI model. You can change plans in Settings.`,
+  );
   return (
     <>
       <FactList

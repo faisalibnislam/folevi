@@ -16,6 +16,7 @@ import { Card } from "./Card";
 import { BuyCreditsDialog, type CreditTarget } from "./BuyCreditsDialog";
 import { PlanRow, PlanRows } from "./PlanRow";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { MANAGED_ELSEWHERE, canPurchaseHere, withoutPurchaseHints } from "@/lib/nativeApp";
 
 export function formatBytes(bytes: number): string {
   // "1 GB", "1.5 GB", "20 GB": no trailing ".0".
@@ -62,7 +63,7 @@ export function Tile({ icon, title, children, wide = false }: { icon: ReactNode;
 /** One place's AI credits: what's left this period, when it resets, and any extra (bought or given) credits. */
 export function CreditLines({ c }: { c: { available: number; allowance: number; monthlyLeft: number; packCredits: number; resetsAt: number; nextPackExpiry: number | null; trialing: boolean } }) {
   // Free after its trial: no monthly credits and nothing bought to use.
-  if (noFreeAi(c)) return <p className="mt-1 text-sm text-muted">{FREE_NO_AI}</p>;
+  if (noFreeAi(c)) return <p className="mt-1 text-sm text-muted">{withoutPurchaseHints(FREE_NO_AI)}</p>;
   return (
     <>
       <p className="mt-1 text-sm text-muted">{creditCount(c.available)} left</p>
@@ -82,7 +83,8 @@ const FREE_NO_AI = "Foli AI comes with Pro and Pro AI. Upgrade to use it.";
 /**
  * Settings → Plan & billing: the person's Personal plan (Free, Core, Pro or Pro AI), storage, AI credits and
  * devices; choosing a plan; AI credits everywhere they have them (buying more); and personal payment
- * history. Team workspaces have their own plans and billing.
+ * history. Team workspaces have their own plans and billing. In the iOS app only the plan as it is: plans
+ * are managed on folevi.com (App Store rule 3.1.1, lib/nativeApp.ts).
  */
 export function BillingSection() {
   const data = useQuery(api.billing.mine, {});
@@ -122,6 +124,8 @@ export function BillingSection() {
   // Test and hand-set plans are canceled and resumed here.
   const selfServe = e.paid && (sub?.provider === "test" || sub?.provider === "manual");
   const canChoose = data.checkoutAvailable || data.testPurchases;
+  // In the iOS app: the plan as it is, and nothing to buy or change here.
+  const store = canPurchaseHere();
   const run = async (key: string, fn: () => Promise<unknown>, done?: string) => {
     setBusy(key);
     try {
@@ -168,9 +172,9 @@ export function BillingSection() {
             </p>
             <p className="mt-1 text-sm text-muted">
               {e.trialing
-                ? `${trialDaysLeft} ${trialDaysLeft === 1 ? "day" : "days"} of Pro AI left (until ${dateOnly(e.trialEndsAt!)}). Then you'll move to Free unless you choose a plan.`
+                ? `${trialDaysLeft} ${trialDaysLeft === 1 ? "day" : "days"} of Pro AI left (until ${dateOnly(e.trialEndsAt!)}). Then you'll move to Free${store ? " unless you choose a plan" : ""}.`
                 : e.paid && sub?.status === "past_due"
-                  ? polar
+                  ? polar && store
                     ? "Your last payment failed. Update your payment method in Manage billing to keep your plan."
                     : "Your last payment failed."
                   : e.paid && sub?.currentPeriodEnd
@@ -181,25 +185,28 @@ export function BillingSection() {
                       ? "Set by the Folevi team."
                       : current.blurb}
             </p>
+            {store ? null : <p className="mt-2 text-[12.5px] text-faint">{MANAGED_ELSEWHERE}</p>}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {polar ? (
-              <Button onClick={() => void openPortal()} aria-busy={busy === "portal" || undefined}>
-                <CreditCard size={15} aria-hidden /> Manage billing
-              </Button>
-            ) : null}
-            {selfServe ? (
-              cancelScheduled ? (
-                <Button onClick={() => run("resume", () => resume({}), "Your plan will keep renewing.")} aria-busy={busy === "resume" || undefined}>
-                  Resume subscription
+          {store ? (
+            <div className="flex flex-wrap gap-2">
+              {polar ? (
+                <Button onClick={() => void openPortal()} aria-busy={busy === "portal" || undefined}>
+                  <CreditCard size={15} aria-hidden /> Manage billing
                 </Button>
-              ) : (
-                <Button variant="ghost" onClick={() => void switchToFree()} aria-busy={busy === "free" || undefined}>
-                  Cancel plan
-                </Button>
-              )
-            ) : null}
-          </div>
+              ) : null}
+              {selfServe ? (
+                cancelScheduled ? (
+                  <Button onClick={() => run("resume", () => resume({}), "Your plan will keep renewing.")} aria-busy={busy === "resume" || undefined}>
+                    Resume subscription
+                  </Button>
+                ) : (
+                  <Button variant="ghost" onClick={() => void switchToFree()} aria-busy={busy === "free" || undefined}>
+                    Cancel plan
+                  </Button>
+                )
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -235,145 +242,149 @@ export function BillingSection() {
         </div>
       </Card>
 
-      <Card title="Choose a personal plan" description="Your plan applies to your personal account. Workspaces have their own plans, members, limits and billing.">
-        <div className="ui-seg ui-well mb-4 w-fit" role="group" aria-label="Billing period">
-          <button type="button" aria-pressed={interval === "month"} onClick={() => setInterval("month")} className="h-8 whitespace-nowrap !px-4">
-            Monthly
-          </button>
-          <button type="button" aria-pressed={interval === "year"} onClick={() => setInterval("year")} className="h-8 whitespace-nowrap !px-3.5">
-            Yearly
-            <span className="whitespace-nowrap rounded-chip bg-[color-mix(in_oklab,#2f9e62_14%,transparent)] px-2 py-0.5 text-[11px] font-semibold leading-none text-[#1f7a4a] dark:text-[#6fd39b]">Save up to {BEST_YEARLY_SAVING}%</span>
-          </button>
-        </div>
-        <PlanRows>
-          {PLAN_ORDER.map((id) => {
-            const plan = PLANS[id];
-            const paid = isPaidTier(id);
-            const price = interval === "year" ? plan.yearlyCents : plan.monthlyCents;
-            // Your tier (any interval), and your exact plan.
-            const sameTier = paid ? e.paid && e.paidPlan === id : !e.paid;
-            const isCurrent = paid ? e.paidPlanId === (interval === "year" ? plan.yearly : plan.monthly) : !e.paid;
-            const highlight = id === "pro_ai";
-            const label = sameTier
-              ? `Switch to ${interval === "year" ? "yearly" : "monthly"}`
-              : e.trialing
-                ? `Choose ${plan.name}`
-                : !e.paid || rank(id) > rank(e.paidPlan)
-                  ? `Upgrade to ${plan.name}`
-                  : `Change to ${plan.name}`;
-            return (
-              <PlanRow
-                key={id}
-                name={plan.name}
-                current={isCurrent}
-                highlight={highlight}
-                price={formatPrice(price)}
-                per={interval === "year" ? "year" : "month"}
-                note={!paid ? "No card required" : interval === "year" ? `${monthlyEquivalent(plan.yearlyCents)}/month, billed yearly` : "Billed monthly"}
-                blurb={plan.blurb}
-                features={plan.features}
-                action={
-                  isCurrent ? (
-                    <Button disabled className="w-full">
-                      Your plan
-                    </Button>
-                  ) : !paid ? (
-                    selfServe && !cancelScheduled ? (
-                      <Button variant="ghost" className="w-full" onClick={() => void switchToFree()} aria-busy={busy === "free" || undefined}>
-                        Switch to Free
+      {store ? (
+        <>
+          <Card title="Choose a personal plan" description="Your plan applies to your personal account. Workspaces have their own plans, members, limits and billing.">
+            <div className="ui-seg ui-well mb-4 w-fit" role="group" aria-label="Billing period">
+              <button type="button" aria-pressed={interval === "month"} onClick={() => setInterval("month")} className="h-8 whitespace-nowrap !px-4">
+                Monthly
+              </button>
+              <button type="button" aria-pressed={interval === "year"} onClick={() => setInterval("year")} className="h-8 whitespace-nowrap !px-3.5">
+                Yearly
+                <span className="whitespace-nowrap rounded-chip bg-[color-mix(in_oklab,#2f9e62_14%,transparent)] px-2 py-0.5 text-[11px] font-semibold leading-none text-[#1f7a4a] dark:text-[#6fd39b]">Save up to {BEST_YEARLY_SAVING}%</span>
+              </button>
+            </div>
+            <PlanRows>
+              {PLAN_ORDER.map((id) => {
+                const plan = PLANS[id];
+                const paid = isPaidTier(id);
+                const price = interval === "year" ? plan.yearlyCents : plan.monthlyCents;
+                // Your tier (any interval), and your exact plan.
+                const sameTier = paid ? e.paid && e.paidPlan === id : !e.paid;
+                const isCurrent = paid ? e.paidPlanId === (interval === "year" ? plan.yearly : plan.monthly) : !e.paid;
+                const highlight = id === "pro_ai";
+                const label = sameTier
+                  ? `Switch to ${interval === "year" ? "yearly" : "monthly"}`
+                  : e.trialing
+                    ? `Choose ${plan.name}`
+                    : !e.paid || rank(id) > rank(e.paidPlan)
+                      ? `Upgrade to ${plan.name}`
+                      : `Change to ${plan.name}`;
+                return (
+                  <PlanRow
+                    key={id}
+                    name={plan.name}
+                    current={isCurrent}
+                    highlight={highlight}
+                    price={formatPrice(price)}
+                    per={interval === "year" ? "year" : "month"}
+                    note={!paid ? "No card required" : interval === "year" ? `${monthlyEquivalent(plan.yearlyCents)}/month, billed yearly` : "Billed monthly"}
+                    blurb={plan.blurb}
+                    features={plan.features}
+                    action={
+                      isCurrent ? (
+                        <Button disabled className="w-full">
+                          Your plan
+                        </Button>
+                      ) : !paid ? (
+                        selfServe && !cancelScheduled ? (
+                          <Button variant="ghost" className="w-full" onClick={() => void switchToFree()} aria-busy={busy === "free" || undefined}>
+                            Switch to Free
+                          </Button>
+                        ) : polarLive && !sub?.cancelAtPeriodEnd ? (
+                          <p className="text-center text-[12.5px] text-muted">To switch to Free, cancel in Manage billing.</p>
+                        ) : null
+                      ) : canChoose ? (
+                        <Button variant={highlight ? "primary" : "secondary"} className="w-full" onClick={() => void choose(id)} aria-busy={busy === id || undefined} disabled={busy !== null && busy !== id}>
+                          {busy === id ? (!data.checkoutAvailable ? "Switching…" : polarLive ? "Changing…" : "Opening checkout…") : `${label}${!data.checkoutAvailable ? " (test)" : ""}`}
+                        </Button>
+                      ) : (
+                        <Button disabled className="w-full">
+                          Coming soon
+                        </Button>
+                      )
+                    }
+                  />
+                );
+              })}
+            </PlanRows>
+            <p className="mt-3 text-[12.5px] text-faint">
+              {data.checkoutAvailable
+                ? "Payments are handled by Polar. Any tax is added at checkout. "
+                : data.testPurchases
+                  ? "Payments aren't connected yet, so upgrades here are test purchases (development only), and nothing is charged. "
+                  : "Online payments are coming soon. "}
+              AI credits: a rewrite uses about 1, a Foli AI answer about 2, a flowchart 3 to 5.
+            </p>
+          </Card>
+
+          <Card title="AI credits" description={`Monthly credits reset each billing period. Extra credits you buy last ${PACK_VALID_MONTHS} months and are used after the monthly ones.`}>
+            {!accounts ? (
+              <p className="text-sm text-muted">Loading your AI credits…</p>
+            ) : (
+              <ul className="divide-y divide-line/70">
+                {accounts.accounts.map((a) => (
+                  <li key={a.workspaceId ?? "personal"} aria-label={`AI credits: ${a.name}`} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0">
+                    <div className="min-w-0 flex-1 basis-64">
+                      <p className="text-[14px] font-semibold text-heading">
+                        {a.name} <span className="font-normal text-muted">· {a.plan}</span>
+                      </p>
+                      {a.aiIncluded && noFreeAi(a) ? (
+                        <p className="mt-0.5 text-sm text-muted">{FREE_NO_AI}</p>
+                      ) : a.aiIncluded ? (
+                        <p className="mt-0.5 text-sm text-muted">
+                          {creditCount(a.available)} left · {a.monthlyLeft.toLocaleString()} of {a.allowance.toLocaleString()} {a.trialing ? `trial credits, trial ends on ${creditDate(a.resetsAt)}` : `monthly credits, resets on ${creditDate(a.resetsAt)}`}
+                          {a.packCredits > 0 ? ` · ${plural(a.packCredits, "extra credit")}${a.nextPackExpiry ? `, the first expiring on ${creditDate(a.nextPackExpiry)}` : ""}` : ""}
+                        </p>
+                      ) : (
+                        <p className="mt-0.5 text-sm text-muted">Not included in Core. Nothing is sent to an AI model.</p>
+                      )}
+                    </div>
+                    {a.canBuy ? (
+                      <Button size="sm" onClick={() => setBuyFor({ target: a.kind === "seat" && a.workspaceId ? { kind: "workspace", workspaceId: a.workspaceId } : { kind: "personal" }, name: a.name })}>
+                        Buy credits
                       </Button>
-                    ) : polarLive && !sub?.cancelAtPeriodEnd ? (
-                      <p className="text-center text-[12.5px] text-muted">To switch to Free, cancel in Manage billing.</p>
-                    ) : null
-                  ) : canChoose ? (
-                    <Button variant={highlight ? "primary" : "secondary"} className="w-full" onClick={() => void choose(id)} aria-busy={busy === id || undefined} disabled={busy !== null && busy !== id}>
-                      {busy === id ? (!data.checkoutAvailable ? "Switching…" : polarLive ? "Changing…" : "Opening checkout…") : `${label}${!data.checkoutAvailable ? " (test)" : ""}`}
-                    </Button>
-                  ) : (
-                    <Button disabled className="w-full">
-                      Coming soon
-                    </Button>
-                  )
-                }
-              />
-            );
-          })}
-        </PlanRows>
-        <p className="mt-3 text-[12.5px] text-faint">
-          {data.checkoutAvailable
-            ? "Payments are handled by Polar. Any tax is added at checkout. "
-            : data.testPurchases
-              ? "Payments aren't connected yet, so upgrades here are test purchases (development only), and nothing is charged. "
-              : "Online payments are coming soon. "}
-          AI credits: a rewrite uses about 1, a Foli AI answer about 2, a flowchart 3 to 5.
-        </p>
-      </Card>
+                    ) : a.kind === "personal" && a.aiIncluded && !noFreeAi(a) ? (
+                      <span className="text-[12.5px] text-faint">Extra credits come with Pro and Pro AI.</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-4 text-[12.5px] text-faint">In free workspaces, and on pages shared with you as a guest, AI uses your Personal credits.</p>
+          </Card>
+          {buyFor ? <BuyCreditsDialog open onClose={() => setBuyFor(null)} target={buyFor.target} name={buyFor.name} /> : null}
 
-      <Card title="AI credits" description={`Monthly credits reset each billing period. Extra credits you buy last ${PACK_VALID_MONTHS} months and are used after the monthly ones.`}>
-        {!accounts ? (
-          <p className="text-sm text-muted">Loading your AI credits…</p>
-        ) : (
-          <ul className="divide-y divide-line/70">
-            {accounts.accounts.map((a) => (
-              <li key={a.workspaceId ?? "personal"} aria-label={`AI credits: ${a.name}`} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0">
-                <div className="min-w-0 flex-1 basis-64">
-                  <p className="text-[14px] font-semibold text-heading">
-                    {a.name} <span className="font-normal text-muted">· {a.plan}</span>
-                  </p>
-                  {a.aiIncluded && noFreeAi(a) ? (
-                    <p className="mt-0.5 text-sm text-muted">{FREE_NO_AI}</p>
-                  ) : a.aiIncluded ? (
-                    <p className="mt-0.5 text-sm text-muted">
-                      {creditCount(a.available)} left · {a.monthlyLeft.toLocaleString()} of {a.allowance.toLocaleString()} {a.trialing ? `trial credits, trial ends on ${creditDate(a.resetsAt)}` : `monthly credits, resets on ${creditDate(a.resetsAt)}`}
-                      {a.packCredits > 0 ? ` · ${plural(a.packCredits, "extra credit")}${a.nextPackExpiry ? `, the first expiring on ${creditDate(a.nextPackExpiry)}` : ""}` : ""}
-                    </p>
-                  ) : (
-                    <p className="mt-0.5 text-sm text-muted">Not included in Core. Nothing is sent to an AI model.</p>
-                  )}
-                </div>
-                {a.canBuy ? (
-                  <Button size="sm" onClick={() => setBuyFor({ target: a.kind === "seat" && a.workspaceId ? { kind: "workspace", workspaceId: a.workspaceId } : { kind: "personal" }, name: a.name })}>
-                    Buy credits
-                  </Button>
-                ) : a.kind === "personal" && a.aiIncluded && !noFreeAi(a) ? (
-                  <span className="text-[12.5px] text-faint">Extra credits come with Pro and Pro AI.</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-        <p className="mt-4 text-[12.5px] text-faint">In free workspaces, and on pages shared with you as a guest, AI uses your Personal credits.</p>
-      </Card>
-      {buyFor ? <BuyCreditsDialog open onClose={() => setBuyFor(null)} target={buyFor.target} name={buyFor.name} /> : null}
-
-      <Card title="Billing history">
-        {data.payments.length ? (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-[12px] text-muted">
-                <th className="pb-2 font-medium">Date</th>
-                <th className="pb-2 font-medium">Plan</th>
-                <th className="pb-2 text-right font-medium">Amount</th>
-                <th className="pb-2 text-right font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.payments.map((p) => (
-                <tr key={p.id} className="border-t border-line/70">
-                  <td className="py-2">{formatDateTime(p.createdAt)}</td>
-                  <td className="py-2">{p.plan === "credits" ? creditCount(p.credits ?? 0) : `${TIER_NAMES[p.plan]} · ${p.interval === "year" ? "yearly" : "monthly"}`}</td>
-                  <td className="py-2 text-right tabular-nums">
-                    {formatPrice(p.amountCents)} {p.currency.toUpperCase()}
-                  </td>
-                  <td className={`py-2 text-right capitalize ${p.status === "failed" ? "text-danger" : "text-muted"}`}>{p.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <EmptyState size="inline" icon={Receipt} title="No payments yet" />
-        )}
-      </Card>
+          <Card title="Billing history">
+            {data.payments.length ? (
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-[12px] text-muted">
+                    <th className="pb-2 font-medium">Date</th>
+                    <th className="pb-2 font-medium">Plan</th>
+                    <th className="pb-2 text-right font-medium">Amount</th>
+                    <th className="pb-2 text-right font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.payments.map((p) => (
+                    <tr key={p.id} className="border-t border-line/70">
+                      <td className="py-2">{formatDateTime(p.createdAt)}</td>
+                      <td className="py-2">{p.plan === "credits" ? creditCount(p.credits ?? 0) : `${TIER_NAMES[p.plan]} · ${p.interval === "year" ? "yearly" : "monthly"}`}</td>
+                      <td className="py-2 text-right tabular-nums">
+                        {formatPrice(p.amountCents)} {p.currency.toUpperCase()}
+                      </td>
+                      <td className={`py-2 text-right capitalize ${p.status === "failed" ? "text-danger" : "text-muted"}`}>{p.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <EmptyState size="inline" icon={Receipt} title="No payments yet" />
+            )}
+          </Card>
+        </>
+      ) : null}
     </>
   );
 }

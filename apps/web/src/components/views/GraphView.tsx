@@ -32,6 +32,7 @@ import {
   type ViewTransform,
 } from "@/lib/graph/layout";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { canPurchaseHere } from "@/lib/nativeApp";
 
 const ENTITY_KINDS = ["person", "project", "organization", "topic", "decision"] as const;
 type EntityKind = (typeof ENTITY_KINDS)[number];
@@ -116,7 +117,7 @@ export function GraphView() {
         {data?.note || data?.truncated ? (
           <p className="flex-none px-4 pb-2 text-[12.5px] text-muted sm:px-6">
             {data.note}
-            {data.upgrade ? (
+            {data.upgrade && canPurchaseHere() ? (
               <>
                 {" "}
                 <AppLink href="/settings/billing" className="text-heading underline underline-offset-2">

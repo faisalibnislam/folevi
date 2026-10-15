@@ -8,6 +8,7 @@ import { AppLink } from "@/lib/app/router";
 import { Select } from "@/components/ui/Select";
 import { creditDate } from "@/components/ai/AiCredits";
 import { Card } from "./Card";
+import { canPurchaseHere, withoutPurchaseHints } from "@/lib/nativeApp";
 
 // The usage card in Settings > AI (billing.aiUsage): your Personal credits, or your seat in a paid workspace
 // (picked here), what's used and left this period, when they reset,
@@ -105,10 +106,12 @@ export function UsageSummary({ usage }: { usage: AiUsageData }) {
   if (!usage.aiIncluded) {
     return (
       <p className="text-sm text-muted">
-        {usage.blockedReason ?? "Foli AI isn't included here."}{" "}
-        <AppLink href="/settings/billing" className="underline underline-offset-2 hover:text-heading">
-          See plans
-        </AppLink>
+        {withoutPurchaseHints(usage.blockedReason ?? "Foli AI isn't included here.")}{" "}
+        {canPurchaseHere() ? (
+          <AppLink href="/settings/billing" className="underline underline-offset-2 hover:text-heading">
+            See plans
+          </AppLink>
+        ) : null}
       </p>
     );
   }
@@ -123,7 +126,7 @@ export function UsageSummary({ usage }: { usage: AiUsageData }) {
       </dl>
       <p className="text-[12.5px] text-muted">
         {usage.trialing ? `Your trial ends on ${creditDate(usage.resetsAt)}.` : `Monthly credits reset on ${creditDate(usage.resetsAt)}.`} Extra credits are used after the monthly ones.
-        {usage.canBuy ? (
+        {usage.canBuy && canPurchaseHere() ? (
           <>
             {" "}
             <AppLink href="/settings/billing" className="underline underline-offset-2 hover:text-heading">

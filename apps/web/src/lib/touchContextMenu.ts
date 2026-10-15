@@ -2,6 +2,8 @@
 // never fires `contextmenu` for a long press (Android does), so a held touch sends one: everything that
 // listens for right-clicks (the editor, note cards, tabs, AppContextMenu) works unchanged.
 
+import { haptic } from "./nativeApp";
+
 /** How long a finger rests before the menu opens; just under iOS's own text selection, so the menu wins. */
 const HOLD_MS = 450;
 /** A finger that moves further than this is scrolling or dragging, not holding. */
@@ -55,7 +57,8 @@ export function installTouchContextMenu(): () => void {
     start.target.dispatchEvent(event);
     start = null;
     if (!event.defaultPrevented) return;
-    // A menu opened: what the finger does next belongs to it.
+    // A menu opened: what the finger does next belongs to it (felt, in the iOS app).
+    haptic("medium");
     held = true;
     holdSelection(true);
   };

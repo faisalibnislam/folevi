@@ -9,6 +9,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatPrice } from "@/lib/plans";
+import { canPurchaseHere } from "@/lib/nativeApp";
 
 /** What an invitation offers: Member with full, comment-only or view-only access, or Admin (owner only). */
 type Offer = "member:edit" | "member:comment" | "member:view" | "admin";
@@ -79,8 +80,8 @@ export function InviteForm({ workspace, onSent }: { workspace: InviteWorkspace; 
           {error}
         </p>
       ) : null}
-      {/* On a paid plan, what one more member costs (the server bills it once they accept). */}
-      {data?.seats?.paid && data.seats.interval ? (
+      {/* On a paid plan, what one more member costs (the server bills it once they accept). No prices in the iOS app. */}
+      {data?.seats?.paid && data.seats.interval && canPurchaseHere() ? (
         <p className="mt-2 text-[12.5px] text-muted">
           Adds a seat when they accept: +{formatPrice(data.seats.seatPriceCents)}/{data.seats.interval === "year" ? "year" : "month"} on {data.seats.planName}.
         </p>

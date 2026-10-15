@@ -17,6 +17,7 @@ import { dueLabel, formatRelative } from "@/lib/format";
 import { formatCalendarDate } from "@/i18n";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { haptic } from "@/lib/nativeApp";
 
 type View = "inbox" | "today" | "upcoming" | "all" | "completed" | "mine";
 const VIEWS: { id: View; label: string; empty: { title: string; body?: string } }[] = [
@@ -181,6 +182,7 @@ export function useToggleTask() {
       return;
     }
     const checked = task.status !== "done";
+    if (checked) haptic("light");
     update({ blockId: task.blockId, checked, deviceId: deviceId ?? undefined }).then(
       () =>
         toast.show(checked ? "Task completed" : "Task reopened", {

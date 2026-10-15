@@ -26,6 +26,12 @@ describe("passkeysAvailable", () => {
     expect(await passkeysAvailable(fakeWindow({ desktop: true, platform: true }))).toBe(true);
   });
 
+  test("the iPhone and iPad app doesn't offer passkeys until it's linked to app.folevi.com", async () => {
+    const win = Object.assign(fakeWindow({ platform: true, autofill: true }), { foleviNative: { platform: "ios" } });
+    expect(await passkeysAvailable(win)).toBe(false);
+    expect(await passkeyAutofillAvailable(win)).toBe(false);
+  });
+
   test("autofill needs conditional mediation", async () => {
     expect(await passkeyAutofillAvailable(fakeWindow())).toBe(false);
     expect(await passkeyAutofillAvailable(fakeWindow({ autofill: true }))).toBe(true);

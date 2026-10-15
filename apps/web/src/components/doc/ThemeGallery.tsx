@@ -8,6 +8,7 @@ import { useRadioGroup } from "@/lib/a11y/radioGroup";
 import { COVER_IMAGE_ACCEPT } from "@/lib/app/coverImage";
 import { COVER_IMAGE_HINT, coverArtThumbUrl } from "@/lib/cover";
 import { familyFor, FONT_TYPES, planAllows, SHEETS, STANDARD_FONTS, TEXTS, THEME_PLANS, type FontType, type NoteTheme, type ThemeDefaults, type ThemeFonts, type ThemePlan } from "@/lib/themes";
+import { withoutPurchaseHints } from "@/lib/nativeApp";
 
 /** The sample every card writes in its theme's fonts. */
 const SAMPLE = "Slow mornings make fast afternoons. A list, a thought, a plan for later.";
@@ -177,7 +178,7 @@ export function ThemeGallery({
 
       {notice ? (
         <p role="status" className="mb-3 flex items-center gap-2 rounded-control bg-[var(--glass-hover)] px-3 py-2.5 text-[13px] text-heading">
-          <Lock size={14} aria-hidden className="flex-none" /> {notice}
+          <Lock size={14} aria-hidden className="flex-none" /> {withoutPurchaseHints(notice)}
         </p>
       ) : null}
       <div role="radiogroup" aria-label="Note theme" ref={group.ref} onKeyDown={group.onKeyDown} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

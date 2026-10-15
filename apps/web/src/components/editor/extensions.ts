@@ -4,6 +4,7 @@ import { Extension, Mark, Node, mergeAttributes, type Attributes, type Editor } 
 import { TextSelection } from "@tiptap/pm/state";
 import { normalizeLanguage, sanitizeHref, describeRepeat, repeatRule } from "@folevi/editor-schema";
 import { codeBlockNodeView, mermaidFocusPlugin } from "./codeView";
+import { haptic } from "@/lib/nativeApp";
 
 const blockAttrs = (extra: Attributes = {}): Attributes => ({
   id: { default: null, keepOnSplit: false, parseHTML: (el) => el.getAttribute("data-block-id"), renderHTML: (a) => (a.id ? { "data-block-id": a.id } : {}) },
@@ -191,6 +192,7 @@ export const Todo = Node.create({
         editor.view.dispatch(
           editor.view.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, checked, completedAt: checked ? Date.now() : null }),
         );
+        if (checked) haptic("light");
       });
       meta.addEventListener("mousedown", (e) => e.preventDefault());
       meta.addEventListener("click", (e) => {

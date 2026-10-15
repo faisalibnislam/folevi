@@ -13,6 +13,7 @@ import { IdentityImageField } from "./IdentityImageField";
 import { Switch } from "@/components/ui/Switch";
 import { useAiAccess } from "@/components/ai/useAi";
 import { AppLink } from "@/lib/app/router";
+import { canPurchaseHere } from "@/lib/nativeApp";
 
 export function AccountSection() {
   const { profile, timeZone } = useAppState();
@@ -104,9 +105,11 @@ export function AiSettingCard() {
           {core ? (
             <>
               <span className="font-medium text-heading">Not included in Core.</span> Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include Foli AI.{" "}
-              <AppLink href="/settings/billing" className="underline underline-offset-2">
-                See plans
-              </AppLink>
+              {canPurchaseHere() ? (
+                <AppLink href="/settings/billing" className="underline underline-offset-2">
+                  See plans
+                </AppLink>
+              ) : null}
             </>
           ) : (
             "Foli AI answers from your notes, helps you write and sums notes up, powered by Google Gemini. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden."

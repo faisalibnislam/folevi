@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/Select";
 import { InviteForm } from "@/components/app/InviteDialog";
 import { Switch } from "@/components/ui/Switch";
 import { formatPrice } from "@/lib/plans";
+import { canPurchaseHere } from "@/lib/nativeApp";
 
 type MemberAccess = "edit" | "comment" | "view";
 /** A role choice in the member list: Member with an access, or Admin. */
@@ -55,9 +56,12 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
   };
 
   const seatLine = data?.seats
-    ? data.seats.paid && data.seats.interval
+    ? data.seats.paid && data.seats.interval && canPurchaseHere()
       ? `Billable seats: ${data.seats.billable} × ${formatPrice(data.seats.seatPriceCents)} per ${data.seats.interval === "year" ? "year" : "month"} on ${data.seats.planName}. Owners, admins and members each take a seat; guests and pending invitations are free.`
-      : `Billable seats: ${data.seats.billable} (the ${data.seats.planName} plan is free). Guests and pending invitations never take a seat.`
+      : data.seats.paid
+        ? // The iOS app shows no prices: how many seats, and who takes one.
+          `Billable seats: ${data.seats.billable} on ${data.seats.planName}. Owners, admins and members each take a seat; guests and pending invitations are free.`
+        : `Billable seats: ${data.seats.billable} (the ${data.seats.planName} plan is free). Guests and pending invitations never take a seat.`
     : undefined;
 
   return (

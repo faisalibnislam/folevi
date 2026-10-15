@@ -1,5 +1,7 @@
 // Passkeys in the browser (Better Auth's passkey plugin, convex/auth.ts). Signing in with one and adding one
-// both need WebAuthn; the Mac app's window only offers it when macOS lets it use this Mac's passkeys.
+// both need WebAuthn; the Mac app's window only offers it when macOS lets it use this Mac's passkeys. The
+// iPhone and iPad app's web view can't until the app is linked to app.folevi.com (Associated Domains, which
+// needs Apple's Developer Program; docs/IOS.md), so it doesn't offer them yet.
 
 /**
  * Whether this page can use passkeys. In a browser, WebAuthn is enough (this device, a phone nearby or a
@@ -8,6 +10,7 @@
  */
 export async function passkeysAvailable(win: (Window & typeof globalThis) | undefined = typeof window !== "undefined" ? window : undefined): Promise<boolean> {
   if (!win || typeof win.PublicKeyCredential !== "function" || !win.navigator?.credentials) return false;
+  if (win.foleviNative) return false;
   if (!win.foleviDesktop) return true;
   try {
     return (await win.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.()) === true;

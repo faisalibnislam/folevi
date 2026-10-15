@@ -1,6 +1,7 @@
 "use client";
 
 import { AppLink } from "@/lib/app/router";
+import { canPurchaseHere } from "@/lib/nativeApp";
 import { AiIcon } from "./AiIcon";
 import type { AiAccess } from "./useAi";
 
@@ -24,9 +25,15 @@ export function aiUnavailableCopy(ai: Pick<AiAccess, "setting" | "context">): { 
   return { title: "Foli AI isn't part of your plan", body: `Core doesn't include Foli AI. Pro and Pro AI do: ${AI_INCLUDES.charAt(0).toLowerCase()}${AI_INCLUDES.slice(1)}`, link: { href: "/settings/billing", label: "Upgrade" } };
 }
 
+/** The copy, without the way to plans in the iOS app (no buying there). */
+function shownCopy(ai: Pick<AiAccess, "setting" | "context">) {
+  const copy = aiUnavailableCopy(ai);
+  return copy.link?.href === "/settings/billing" && !canPurchaseHere() ? { ...copy, link: null } : copy;
+}
+
 /** The plan-gated or turned-off state of an AI surface. `compact` for a sidebar panel. */
 export function AiUnavailable({ ai, compact = false, headingLevel = 2 }: { ai: Pick<AiAccess, "setting" | "context">; compact?: boolean; headingLevel?: 1 | 2 | 3 }) {
-  const copy = aiUnavailableCopy(ai);
+  const copy = shownCopy(ai);
   const Heading = `h${headingLevel}` as "h1" | "h2" | "h3";
   if (compact) {
     return (

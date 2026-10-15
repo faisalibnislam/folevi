@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, Pause, Play, PhoneCall, Square, X } from "lucide-react";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { desktop, deviceName } from "@/lib/desktop";
+import { inIosApp } from "@/lib/nativeApp";
 import { callProblem, canRecordCalls, mixAudio, type RecordingSource } from "@/lib/callCapture";
 
 /*
@@ -307,6 +308,30 @@ export function AudioRecorder({
     clock.current = { ...clock.current, since: performance.now() };
     setPhase({ kind: "recording" });
   };
+  // In the iOS app the microphone goes quiet while Folevi is in the background (iOS lets an app in the
+  // background record only with a background mode the app doesn't have). So the recording pauses when Folevi
+  // leaves the screen, rather than filling with silence, and goes on when it's back.
+  const latest = useRef({ pause, resume });
+  latest.current = { pause, resume };
+  const pausedAway = useRef(false);
+  useEffect(() => {
+    if (!inIosApp()) return;
+    const onVisibility = () => {
+      const state = recorder.current?.state;
+      if (document.hidden && state === "recording") {
+        pausedAway.current = true;
+        latest.current.pause();
+      } else if (!document.hidden && pausedAway.current) {
+        pausedAway.current = false;
+        if (state === "paused") {
+          latest.current.resume();
+          toast.show("The recording paused while Folevi was in the background. It’s recording again.");
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [toast]);
   const save = () => {
     const rec = recorder.current;
     if (!rec || rec.state === "inactive") return;

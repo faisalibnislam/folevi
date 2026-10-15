@@ -24,6 +24,7 @@ import { OutboxRefusals, SyncStatus } from "./SyncStatus";
 import { useCreateDocument } from "./useCreateDocument";
 import { captureTemplateFromUrl, clearPendingTemplate, pendingTemplate } from "@/lib/pendingTemplate";
 import { DesktopBridge } from "./DesktopBridge";
+import { NativeBridge } from "./NativeBridge";
 
 interface ShellValue {
   sidebarOpen: boolean;
@@ -136,7 +137,7 @@ function NavDrawer({ onClose, children }: { onClose: () => void; children: React
   }, []);
   return (
     <div ref={ref} id={DRAWER_ID} role="dialog" aria-modal="true" aria-label="Navigation" tabIndex={-1} className="fixed inset-0 z-40 flex outline-none">
-      <div className="ui-pop h-full w-[min(86vw,320px)] animate-[folio-settle_200ms_var(--ease-folio)] rounded-none motion-reduce:animate-none">
+      <div className="ui-pop ui-drawer-panel h-full w-[min(86vw,320px)] animate-[folio-settle_200ms_var(--ease-folio)] rounded-none motion-reduce:animate-none">
         {children}
       </div>
       <button type="button" aria-label="Close sidebar" className="flex-1 bg-[var(--color-scrim)] backdrop-blur-[2px]" onClick={onClose} />
@@ -320,7 +321,7 @@ export function Shell() {
         </div>
       ) : null}
       {/* The app never scrolls as a page: each region scrolls on its own (and nothing can push the tab strip away). */}
-      <div className={`ui-canvas flex h-dvh min-h-0 overflow-hidden text-ink ${isNarrow ? "" : "gap-2 p-2"}`}>
+      <div className={`ui-canvas ui-shell flex h-dvh min-h-0 overflow-hidden text-ink ${isNarrow ? "" : "gap-2 p-2"}`}>
         {/* Ambient light behind the glass: on a note, its theme image, heavily blurred and veiled. */}
         <div aria-hidden className={`ui-ambient pointer-events-none fixed inset-0 -z-[1] transition-opacity duration-500 ${ambient ? "opacity-100" : "opacity-0"}`}>
           {ambient ? <div className="absolute -inset-24 blur-[56px] saturate-[1.4]" style={{ background: ambient }} /> : null}
@@ -359,6 +360,7 @@ export function Shell() {
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppContextMenu />
       <DesktopBridge />
+      <NativeBridge />
       <WarmNotes />
       <OutboxRefusals />
       <QuickAddTask open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />

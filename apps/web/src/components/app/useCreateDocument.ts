@@ -6,6 +6,7 @@ import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { openNextInNewTab } from "@/lib/app/tabs";
 import { loadDocumentView } from "@/lib/app/noteView";
+import { haptic } from "@/lib/nativeApp";
 
 /**
  * Creates a document through the sync engine (works offline: the create is queued durably and the
@@ -36,6 +37,8 @@ export function useCreateDocument() {
         templateId: opts.templateId ?? null,
       });
       await engine.persisted();
+      // In the iOS app, a new note is felt as well as seen.
+      haptic("medium");
       if (opts.navigateTo !== false) {
         // The new note opens ready to type in, never on a placeholder that would swallow the first keys.
         await loadDocumentView().catch(() => undefined);

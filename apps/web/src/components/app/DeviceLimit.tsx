@@ -10,6 +10,7 @@ import { SignOutButton } from "@/components/auth/SignOut";
 import { FullPageMessage } from "@/lib/app/state";
 import { formatRelative } from "@/lib/format";
 import { PLANS, formatPrice } from "@/lib/plans";
+import { canPurchaseHere } from "@/lib/nativeApp";
 
 function DeviceIcon({ label, client }: { label: string; client: string }) {
   if (client === "mac") return <Laptop size={16} aria-hidden />;
@@ -52,12 +53,13 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
       else throw new Error("Online payments aren't available yet.");
     });
   const others = sessions?.filter((s) => !s.current) ?? [];
-  const canBuy = Boolean(billing?.checkoutAvailable || billing?.testPurchases);
+  // Never in the iOS app (no buying there): signing out of another device is the way on.
+  const canBuy = canPurchaseHere() && Boolean(billing?.checkoutAvailable || billing?.testPurchases);
 
   return (
     <FullPageMessage
       title={`You’re on ${limit} ${limit === 1 ? "device" : "devices"} already`}
-      body={`Your plan works on ${limit} ${limit === 1 ? "device" : "devices"} at a time. Sign out of one below to use Folevi here, or upgrade for unlimited devices.`}
+      body={`Your plan works on ${limit} ${limit === 1 ? "device" : "devices"} at a time. Sign out of one below to use Folevi here${canPurchaseHere() ? ", or upgrade for unlimited devices" : ""}.`}
     >
       <p className="ui-caps mb-2">Signed in on</p>
       <ul className="divide-y divide-line overflow-hidden rounded-control ui-card" aria-busy={sessions === undefined || undefined}>

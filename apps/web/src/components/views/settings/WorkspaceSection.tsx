@@ -13,6 +13,7 @@ import { uploadIdentityImage } from "@/lib/app/identityImages";
 import { workspaceRoleLabel } from "@/components/app/NewWorkspaceDialog";
 import { Card } from "./Card";
 import { IdentityImageField } from "./IdentityImageField";
+import { canPurchaseHere } from "@/lib/nativeApp";
 
 /** The current team workspace's general settings. Only shown when a workspace is open (Personal has none). */
 export function WorkspaceSection() {
@@ -107,7 +108,7 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
         </div>
         {workspace.storageUsedBytes > workspace.storageQuotaBytes ? (
           <p role="status" className="mt-2 max-w-md text-sm text-danger">
-            Over the storage limit. Everything already stored stays available; new uploads are paused until space is freed{workspace.canManageBilling ? " or the plan is upgraded" : ""}.
+            Over the storage limit. Everything already stored stays available; new uploads are paused until space is freed{workspace.canManageBilling && canPurchaseHere() ? " or the plan is upgraded" : ""}.
           </p>
         ) : null}
         <p className="mt-3 text-xs text-muted">

@@ -5,6 +5,7 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
 import { errorMessage } from "@/components/ui/Toast";
+import { canPurchaseHere } from "@/lib/nativeApp";
 
 // AI credits in the AI panels: a quiet note when credits run low, and the out-of-credits state when a
 // request is refused. The server decides (billing.credits, and every AI request); this only shows it.
@@ -38,8 +39,9 @@ export function aiProblem(error: unknown): AiProblem {
   return { message, kind: "other", action: "none" };
 }
 
-/** Where to go for more credits or a plan with AI. */
+/** Where to go for more credits or a plan with AI. Nothing in the iOS app (no buying there). */
 function CreditsLink({ action, className }: { action: "buy" | "upgrade"; className?: string }) {
+  if (!canPurchaseHere()) return null;
   return (
     <AppLink href="/settings/billing" className={className ?? "ui-btn ui-btn-secondary h-7 flex-none px-2.5 text-[12px]"}>
       {action === "buy" ? "Buy more" : "Upgrade"}

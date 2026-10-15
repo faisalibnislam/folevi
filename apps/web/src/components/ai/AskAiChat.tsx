@@ -114,7 +114,7 @@ export function AskAiChat({
             close();
           }
         }}
-        className={`ui-pop fixed bottom-[104px] right-9 z-[70] flex h-[min(640px,calc(100dvh-136px))] w-[min(420px,calc(100vw-2.5rem))] origin-bottom-right flex-col overflow-hidden !rounded-container animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none max-sm:bottom-[84px] max-sm:right-3 max-sm:w-[calc(100vw-1.5rem)]`}
+        className={`ui-pop ui-fab-panel fixed bottom-[104px] right-9 z-[70] flex h-[min(640px,calc(100dvh-136px))] w-[min(420px,calc(100vw-2.5rem))] origin-bottom-right flex-col overflow-hidden !rounded-container animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none max-sm:bottom-[84px] max-sm:right-3 max-sm:w-[calc(100vw-1.5rem)]`}
       >
         <header className="flex flex-none items-center gap-1 border-b border-line/70 py-3 pl-4 pr-3">
           <AiIcon size={20} aria-hidden className="mr-1.5 flex-none" />

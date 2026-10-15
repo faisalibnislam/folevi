@@ -94,9 +94,9 @@ export async function createCollection(
 export async function addView(
   ctx: MutationCtx,
   collectionId: Id<"collections">,
-  view: { name: string; type: Doc<"collectionViews">["type"]; groupBy?: string; dateBy?: string; visibleProperties: string[]; rank: string },
+  view: { name: string; type: Doc<"collectionViews">["type"]; groupBy?: string; dateBy?: string; visibleProperties: string[]; rank: string; publicId?: string },
 ): Promise<string> {
-  const publicId = ulid();
+  const publicId = view.publicId ?? ulid();
   await ctx.db.insert("collectionViews", {
     publicId,
     collectionId,

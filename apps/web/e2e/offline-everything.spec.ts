@@ -208,3 +208,125 @@ test("reopened with no connection, the sidebar, comments and a collection read a
   await expect(page.getByRole("tabpanel").getByText("Seen before the tunnel")).toBeVisible();
   await context.close();
 });
+
+test("a property with an option, a view and a read mark made offline reach the server once", async ({ browser }) => {
+  test.setTimeout(150_000);
+  const { page, context } = await newPerson(browser, "Offline Shelver");
+  const url = await newNote(page, "Book club", "Chapter one.");
+  await page.keyboard.press("ControlOrMeta+Alt+m");
+  await page.getByRole("textbox", { name: "Comment on this block" }).fill("Read by Friday?");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".fb-comment-chip")).toBeVisible({ timeout: 15_000 });
+  await page.keyboard.press("Escape");
+  await page.getByRole("textbox", { name: "Document body" }).click();
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("/collection");
+  await expect(page.getByRole("option", { name: /Collection/ })).toBeVisible();
+  await page.keyboard.press("Enter");
+  const coll = page.getByRole("region", { name: /^Collection / });
+  await coll.getByRole("button", { name: "New row" }).click();
+  await coll.getByRole("textbox", { name: "Row name" }).fill("Dune");
+  await coll.getByRole("textbox", { name: "Row name" }).press("Enter");
+  await expect(coll.getByRole("combobox", { name: "Status for Dune" })).toBeVisible();
+  // The thread is marked unread while online, to be read again offline.
+  await showDocument(page);
+  await page.getByRole("tab", { name: /^Comments/ }).click();
+  const panel = page.getByRole("tabpanel");
+  await panel.getByRole("listitem").hover();
+  await panel.getByRole("button", { name: "Thread actions" }).click();
+  await page.getByRole("menuitem", { name: "Mark as unread" }).click();
+  await expect(panel.getByRole("img", { name: "Unread" })).toBeVisible();
+  await waitForSaved(page);
+
+  await goOffline(page, context);
+  await panel.getByRole("listitem").hover();
+  await panel.getByRole("button", { name: "Thread actions" }).click();
+  await page.getByRole("menuitem", { name: "Mark as read" }).click();
+  await expect(panel.getByRole("img", { name: "Unread" })).toHaveCount(0);
+
+  // A single-select property with one option, set on the row.
+  await coll.getByRole("button", { name: /^View settings/ }).click();
+  const settings = page.getByRole("dialog", { name: "Table settings" });
+  await settings.getByLabel("New property").fill("Genre");
+  await pick(settings.getByRole("combobox", { name: "Property type" }), "Single select");
+  await settings.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(settings.getByRole("textbox", { name: "Name of property Genre" })).toBeVisible();
+  await settings.getByLabel("Options for Genre (comma-separated)").fill("Sci-fi");
+  await settings.getByLabel("Options for Genre (comma-separated)").press("Tab");
+  await page.keyboard.press("Escape");
+  await expect(settings).toHaveCount(0);
+  await pick(coll.getByRole("combobox", { name: "Genre for Dune" }), "Sci-fi");
+
+  // A board, renamed.
+  await pick(coll.getByRole("combobox", { name: "Add view" }), "Board");
+  await expect(coll.getByRole("button", { name: "Board", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await coll.getByRole("button", { name: /^View settings/ }).click();
+  const boardSettings = page.getByRole("dialog", { name: "Board settings" });
+  await boardSettings.getByRole("textbox", { name: "View name" }).fill("Shelves");
+  await boardSettings.getByRole("textbox", { name: "View name" }).press("Enter");
+  await page.keyboard.press("Escape");
+  await expect(coll.getByRole("button", { name: "Shelves", exact: true })).toBeVisible();
+  await expect(page.getByTestId("sync-status")).toHaveAccessibleName(/Sync status: Offline, [5-9] changes waiting/);
+
+  await context.setOffline(false);
+  await waitForSaved(page);
+
+  // On the server: one Genre property with its option, the value on the row, one renamed board, the thread read.
+  const { other, page: page2 } = await elsewhere(browser, context, url);
+  const coll2 = page2.getByRole("region", { name: /^Collection / });
+  await expect(coll2.getByRole("group", { name: "Views" }).getByRole("button")).toHaveCount(2);
+  await expect(coll2.getByRole("button", { name: "Shelves", exact: true })).toHaveCount(1);
+  await coll2.getByRole("button", { name: "Table", exact: true }).click();
+  await expect(coll2.getByRole("combobox", { name: "Genre for Dune" })).toContainText("Sci-fi");
+  await coll2.getByRole("button", { name: /^View settings/ }).click();
+  const settings2 = page2.getByRole("dialog", { name: "Table settings" });
+  await expect(settings2.getByRole("textbox", { name: "Name of property Genre" })).toHaveCount(1);
+  await expect(settings2.getByLabel("Options for Genre (comma-separated)")).toHaveValue("Sci-fi");
+  await page2.keyboard.press("Escape");
+  await showDocument(page2);
+  await page2.getByRole("tab", { name: /^Comments/ }).click();
+  await expect(page2.getByRole("tabpanel").getByText("Read by Friday?")).toBeVisible();
+  await expect(page2.getByRole("tabpanel").getByRole("img", { name: "Unread" })).toHaveCount(0);
+  await other.close();
+  await context.close();
+});
+
+test("a row added offline opens as a page, and what's typed there is saved after the row", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const { page, context } = await newPerson(browser, "Offline Row Writer");
+  await newNote(page, "Recipes");
+  const url = page.url().split("?")[0]!;
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("/collection");
+  await expect(page.getByRole("option", { name: /Collection/ })).toBeVisible();
+  await page.keyboard.press("Enter");
+  const coll = page.getByRole("region", { name: /^Collection / });
+  await expect(coll).toBeVisible();
+  await waitForSaved(page);
+
+  await goOffline(page, context);
+  await coll.getByRole("button", { name: "New row" }).click();
+  await coll.getByRole("textbox", { name: "Row name" }).fill("Soup");
+  await coll.getByRole("textbox", { name: "Row name" }).press("Enter");
+  await expect(coll.getByText("Waiting to send")).toBeVisible();
+  await coll.getByRole("link", { name: "Open Soup" }).click();
+  await page.waitForURL(/\/d\/[0-9A-Z]{26}$/);
+  const rowUrl = page.url();
+  await expect(page.getByRole("region", { name: "Properties in Collection" })).toBeVisible();
+  await page.getByRole("textbox", { name: "Document body" }).click();
+  await page.keyboard.type("Leeks, then stock.");
+  await expect(page.getByTestId("sync-status")).toHaveAccessibleName(/Sync status: Offline, [2-9] changes waiting/);
+
+  await context.setOffline(false);
+  await waitForSaved(page);
+
+  const { other, page: page2 } = await elsewhere(browser, context, rowUrl);
+  await expect(page2.getByRole("textbox", { name: "Document body" })).toContainText("Leeks, then stock.");
+  // One line: the page didn't get a second, empty one from the server.
+  await expect(page2.getByRole("textbox", { name: "Document body" }).locator("p")).toHaveCount(1);
+  await page2.goto(url);
+  await expect(page2.getByRole("region", { name: /^Collection / }).getByRole("textbox", { name: "Row name" })).toHaveCount(1);
+  await other.close();
+  await context.close();
+});

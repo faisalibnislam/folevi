@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { WireScope } from "@folevi/editor-schema";
 import type { OutboxEntry, OutboxName, OutboxArgs } from "@/lib/sync/outbox";
-import { overlayCollection, overlaySidebar, overlayThreads, pendingNoteFolders, type CollectionData, type SidebarData, type ThreadsData } from "@/lib/sync/overlays";
+import { overlayCollection, overlaySidebar, overlayThreads, pendingNoteFolders, waitingRowPage, type CollectionData, type SidebarData, type ThreadsData } from "@/lib/sync/overlays";
 
 const PERSONAL: WireScope = { kind: "personal" };
 const TEAM: WireScope = { kind: "workspace", workspaceId: "W1" };
@@ -130,6 +130,29 @@ describe("comments waiting to be sent", () => {
   });
 });
 
+describe("read marks waiting to be sent", () => {
+  const unreadData = (): ThreadsData => {
+    const d = threadsData();
+    return { ...d, threads: d.threads.map((t) => ({ ...t, unread: true, lastActivityAt: 50 })), blocks: d.blocks.map((b) => ({ ...b, unread: true })) };
+  };
+
+  test("a thread read offline shows read, and its line's summary too", () => {
+    const out = overlayThreads(unreadData(), [entry("comments.markThreadRead", { threadId: "T0", upTo: 50 })], "D", me);
+    expect(out.threads[0]!.unread).toBe(false);
+    expect(out.blocks[0]!.unread).toBe(false);
+  });
+
+  test("activity after what was read stays unread; marking unread again wins when it comes later", () => {
+    expect(overlayThreads(unreadData(), [entry("comments.markThreadRead", { threadId: "T0", upTo: 20 })], "D", me).threads[0]!.unread).toBe(true);
+    const out = overlayThreads(unreadData(), [entry("comments.markThreadRead", { threadId: "T0", upTo: 50 }), entry("comments.markThreadUnread", { threadId: "T0" })], "D", me);
+    expect(out.threads[0]!.unread).toBe(true);
+    expect(out.blocks[0]!.unread).toBe(true);
+    // Nothing to change: the same answer comes back.
+    const read = threadsData();
+    expect(overlayThreads(read, [entry("comments.markThreadRead", { threadId: "T0", upTo: 1 }), entry("comments.markThreadRead", { threadId: "Gone", upTo: 1 })], "D", me)).toBe(read);
+  });
+});
+
 const collection = (): CollectionData => ({
   id: "K",
   name: "Reading",
@@ -174,5 +197,62 @@ describe("collection changes waiting to be sent", () => {
       ["R2", "doing"],
       ["R1", "done"],
     ]);
+  });
+});
+
+describe("properties and views waiting to be sent", () => {
+  test("a property added offline shows in every view, with its options, and a row can use it", () => {
+    const out = overlayCollection(
+      collection(),
+      [
+        entry("collections.addProperty", { collectionId: "K", name: " Genre ", type: "select", id: "genre" }),
+        entry("collections.updateProperty", { collectionId: "K", propertyId: "genre", options: [{ id: "o1", name: "Sci-fi", color: "plum" }, { id: "o2", name: "Classic " }] }),
+        entry("collections.setValue", { collectionId: "K", rowId: "R1", propertyId: "genre", value: "o1" }),
+        entry("collections.updateProperty", { collectionId: "K", propertyId: "status", name: "Stage" }),
+      ],
+      "K",
+    );
+    expect(out.properties.map((p) => [p.id, p.name, p.type, p.options])).toEqual([
+      ["status", "Stage", "select", []],
+      ["genre", "Genre", "select", [{ id: "o1", name: "Sci-fi", color: "plum" }, { id: "o2", name: "Classic", color: "moss" }]],
+    ]);
+    expect(out.views[0]!.config.visibleProperties).toEqual(["status", "genre"]);
+    expect(out.rows[0]!.values).toEqual({ genre: "o1" });
+  });
+
+  test("once the server has the property it isn't added twice; a deleted one goes", () => {
+    const base = collection();
+    const add = entry("collections.addProperty", { collectionId: "K", name: "Status", type: "select", id: "status" });
+    expect(overlayCollection(base, [add], "K").properties).toHaveLength(1);
+    expect(overlayCollection(base, [entry("collections.deleteProperty", { collectionId: "K", propertyId: "status" })], "K").properties).toEqual([]);
+  });
+
+  test("a view added offline is made as the server makes it, renamed, set up and deleted as queued", () => {
+    const out = overlayCollection(
+      collection(),
+      [
+        entry("collections.addViewToCollection", { collectionId: "K", name: "Board", type: "board", id: "V2" }),
+        entry("collections.updateView", { collectionId: "K", viewId: "V2", name: "By status" }),
+        entry("collections.addViewToCollection", { collectionId: "K", name: "Calendar", type: "calendar", id: "V3" }),
+        entry("collections.addViewToCollection", { collectionId: "K", name: "Gallery", type: "gallery", id: "V4" }),
+        entry("collections.deleteView", { collectionId: "K", viewId: "V" }),
+      ],
+      "K",
+    );
+    // No date property: the calendar the server would refuse isn't shown.
+    expect(out.views.map((v) => [v.id, v.name, v.type, v.config.groupBy ?? null, v.config.cardPreview])).toEqual([
+      ["V2", "By status", "board", "status", "none"],
+      ["V4", "Gallery", "gallery", null, "cover"],
+    ]);
+    // The last view stays.
+    expect(overlayCollection(collection(), [entry("collections.deleteView", { collectionId: "K", viewId: "V" })], "K").views).toHaveLength(1);
+  });
+
+  test("a row added offline has a page that opens here, titled as last named, until it's deleted", () => {
+    const add = entry("collections.addRow", { collectionId: "K", title: "", id: "R3", documentId: "P3" });
+    expect(waitingRowPage([add], "P3")).toEqual({ collectionId: "K", rowId: "R3", title: "", waiting: "queued" });
+    expect(waitingRowPage([add, entry("collections.renameRow", { collectionId: "K", rowId: "R3", title: "Middlemarch" })], "P3")?.title).toBe("Middlemarch");
+    expect(waitingRowPage([add, entry("collections.deleteRow", { collectionId: "K", rowId: "R3" })], "P3")).toBeUndefined();
+    expect(waitingRowPage([add], "P1")).toBeUndefined();
   });
 });

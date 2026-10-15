@@ -559,18 +559,24 @@ export const deleteThread = mutation({
   },
 });
 
-/** Marks one thread read (opening it), along with your notifications about it. */
+/**
+ * Marks one thread read (opening it), along with your notifications about it. `upTo` is the thread's latest
+ * activity as the device showed it: a mark made offline and sent later leaves what came after it unread.
+ */
 export const markThreadRead = mutation({
-  args: { threadId: v.string() },
+  args: { threadId: v.string(), upTo: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const { profile, thread } = await threadFor(ctx, args.threadId, "read");
-    await setThreadRead(ctx, profile._id, thread);
+    const now = Date.now();
+    const upTo = args.upTo === undefined ? now : Math.min(Math.max(0, args.upTo), now);
+    await setThreadRead(ctx, profile._id, thread, upTo);
     const unread = await ctx.db
       .query("notifications")
       .withIndex("by_profile_unread", (q) => q.eq("profileId", profile._id).eq("readAt", undefined))
       .take(200);
-    const now = Date.now();
-    for (const n of unread) if (n.threadId === thread._id) await ctx.db.patch(n._id, { readAt: now });
+    // Caught up: every notification about it is read. Not (it moved on since): only the ones from before.
+    const caughtUp = upTo >= thread.lastActivityAt;
+    for (const n of unread) if (n.threadId === thread._id && (caughtUp || n._creationTime < upTo)) await ctx.db.patch(n._id, { readAt: now });
     return null;
   },
 });

@@ -38,7 +38,7 @@ import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, folderAncestors, rankForPosition
 import { api } from "@/lib/convex/api";
 import { useFolderTree } from "@/lib/app/folders";
 import { useOutboxEntries } from "@/lib/sync/queryCache";
-import { pendingNoteFolders } from "@/lib/sync/overlays";
+import { pendingNoteFolders, waitingRowPage } from "@/lib/sync/overlays";
 import { formatRelative } from "@/lib/format";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAppState } from "@/lib/app/state";
@@ -438,6 +438,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // A move still waiting to be sent (offline) shows where the note is going, and folder names as they'll be.
   const waitingChanges = useOutboxEntries(outbox);
   const movedTo = useMemo(() => pendingNoteFolders(waitingChanges).get(documentId), [waitingChanges, documentId]);
+  // A collection row added on this device and not sent yet: its page opens here (empty, like a new note), and
+  // what's typed in it waits for the row to reach the server (the engine holds it; see Outbox.holds).
+  const waitingRow = useMemo(() => (meta ? undefined : waitingRowPage(waitingChanges, documentId)), [meta, waitingChanges, documentId]);
   const org = useFolderTree((meta?.folder || movedTo) && meta?.isMember ? documentScope(meta.document) : "skip");
   const folderId = movedTo !== undefined ? movedTo : (meta?.folder?.id ?? null);
   const folder = folderId ? { id: folderId, name: org?.folders.find((f) => f.id === folderId)?.name ?? (meta?.folder?.id === folderId ? meta.folder.name : "Folder") } : null;
@@ -445,7 +448,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const shownAbove = folderAbove.slice(-2);
 
   const summary = meta?.document ?? null;
-  const localTitle = pendingCreate && pendingCreate.kind === "document.create" ? pendingCreate.document.title : "";
+  const localTitle = pendingCreate && pendingCreate.kind === "document.create" ? pendingCreate.document.title : (waitingRow?.title ?? "");
   const style: DocumentStyle = summary?.style ?? DEFAULT_DOCUMENT_STYLE;
   useDocTab(
     documentId,
@@ -675,7 +678,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // Plus following or muting this note's comment notifications.
   const actions: (MenuItem | "separator")[] = noteNotify.length ? [...docActions, "separator", ...noteNotify] : docActions;
 
-  if (meta === null && !pendingCreate && (server === null || server === undefined) && (online || cacheLoaded)) {
+  if (meta === null && !pendingCreate && !waitingRow && (server === null || server === undefined) && (online || cacheLoaded)) {
     if (meta === null && server === null) {
       return (
         <ViewChrome title="Unavailable">
@@ -703,7 +706,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // A note this device already holds (opened before, or synced here) shows at once from that copy, and catches
   // up when the server's arrives: switching tabs never waits on the network.
   const heldHere = Boolean(engine) && !pendingCreate && engine!.documentBlocks(documentId).length > 0;
-  const readyNow = Boolean(engine) && (reconciled || heldHere || (cacheLoaded && server === undefined) || freshLocalPage || (Boolean(pendingCreate) && !online));
+  const readyNow = Boolean(engine) && (reconciled || heldHere || (cacheLoaded && server === undefined) || freshLocalPage || Boolean(waitingRow) || (Boolean(pendingCreate) && !online));
   // Once mounted, the editor stays mounted: remounting would drop focus and unflushed keystrokes while
   // the page's queries settle (e.g. metadata arriving before its block list right after creation).
   if (readyNow) everReady.current = true;
@@ -909,7 +912,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
             ) : null}
             {showEditors && blockAuthors && !changeMarks ? <EditorsBar authors={blockAuthors} onHide={() => setShowEditors(false)} /> : null}
             <div className="px-5 sm:px-16">
-              {summary?.kind === "collectionRow" ? (
+              {summary?.kind === "collectionRow" || waitingRow ? (
                 <Suspense fallback={null}>
                   <CollectionRowProperties documentId={documentId} editable={!readOnly} />
                 </Suspense>

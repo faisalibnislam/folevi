@@ -4,8 +4,6 @@
 // block menu, the selection toolbar or ⌘⌥M), and the overview of every thread in the note (Comments panel).
 import type { Editor } from "@tiptap/react";
 import { useMutation, useQuery } from "convex/react";
-import type { OptimisticLocalStore } from "convex/browser";
-import type { FunctionReturnType } from "convex/server";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ulid } from "@folevi/editor-schema";
 import { ArrowUp, Bell, BellMinus, BellOff, BellPlus, Check, ChevronLeft, ChevronRight, CornerDownRight, Link2, MoreHorizontal, RotateCcw, SmilePlus, Trash2, Unlink, X, Eye, EyeOff } from "lucide-react";
@@ -111,22 +109,11 @@ export function useCommentThreads(documentId: string, skip = false): CommentsDat
  * Comment changes. Writing, replying, editing, resolving, deleting and reacting go through the outbox:
  * shown at once (see `useCommentThreads`), kept on this device, and sent in order when there's a connection.
  * A new comment has its ids from the start, so it can be replied to and reacted to before it's sent; one on
- * a line typed a moment ago waits for that line to reach the server. Read marks are this person's own and
- * only matter online: they're sent straight away.
+ * a line typed a moment ago waits for that line to reach the server. Read marks go the same way, in order
+ * with the thread's other changes.
  */
 export function useCommentActions(documentId: string) {
   const { outbox, engine } = useAppState();
-  const args = { documentId };
-  const withThreads = (store: OptimisticLocalStore, fn: (data: FunctionReturnType<typeof api.comments.threads>) => FunctionReturnType<typeof api.comments.threads>) => {
-    const cur = store.getQuery(api.comments.threads, args);
-    if (cur) store.setQuery(api.comments.threads, args, fn(cur));
-  };
-  const markThreadRead = useMutation(api.comments.markThreadRead).withOptimisticUpdate((store, a) =>
-    withThreads(store, (d) => ({ ...d, threads: d.threads.map((t) => (t.id === a.threadId ? { ...t, unread: false } : t)) })),
-  );
-  const markThreadUnread = useMutation(api.comments.markThreadUnread).withOptimisticUpdate((store, a) =>
-    withThreads(store, (d) => ({ ...d, threads: d.threads.map((t) => (t.id === a.threadId ? { ...t, unread: true } : t)) })),
-  );
   // Throws (so the caller's `catch` hears it) only while the outbox is still opening.
   const queue = <N extends OutboxName>(name: N, a: OutboxArgs<N>, meta: OutboxMeta) => {
     requireOutbox(outbox).enqueue(name, a, meta);
@@ -151,8 +138,9 @@ export function useCommentActions(documentId: string) {
     deleteThread: async (a: { threadId: string }) => queue("comments.deleteThread", a, { keys: [`thread:${a.threadId}`], label: "Delete a thread" }),
     /** Sets the caller's reaction of `kind` on or off (`on` comes from what's shown, so a resend lands as meant). */
     react: async (a: { commentId: string; kind: ReactionKind; on: boolean }) => queue("comments.react", a, { keys: [`comment:${a.commentId}`], label: a.on ? "Add a reaction" : "Remove a reaction" }),
-    markThreadRead,
-    markThreadUnread,
+    /** Reads a thread up to its latest activity as shown (`upTo`): what comes after, from others, stays unread. */
+    markThreadRead: async (a: { threadId: string; upTo: number }) => queue("comments.markThreadRead", a, { keys: [`thread:${a.threadId}`], label: "Mark a thread read" }),
+    markThreadUnread: async (a: { threadId: string }) => queue("comments.markThreadUnread", a, { keys: [`thread:${a.threadId}`], label: "Mark a thread unread" }),
   };
 }
 
@@ -208,7 +196,7 @@ export function CommentThreadCard({
     const seen = thread ? `${thread.id}:${thread.lastActivityAt}` : null;
     if (!thread || !thread.unread || isPending(thread) || markedRead.current === seen) return;
     markedRead.current = seen;
-    void actions.markThreadRead({ threadId: thread.id }).catch(() => undefined);
+    void actions.markThreadRead({ threadId: thread.id, upTo: thread.lastActivityAt }).catch(() => undefined);
   }, [thread, actions]);
 
   useEffect(() => {
@@ -770,7 +758,7 @@ export function CommentsOverview({ documentId, onOpenThread, focusThreadId = nul
         ]
       : []),
     t.unread
-      ? { label: "Mark as read", icon: <Eye size={14} />, onSelect: () => void actions.markThreadRead({ threadId: t.id }).catch(fail) }
+      ? { label: "Mark as read", icon: <Eye size={14} />, onSelect: () => void actions.markThreadRead({ threadId: t.id, upTo: t.lastActivityAt }).catch(fail) }
       : { label: "Mark as unread", icon: <EyeOff size={14} />, onSelect: () => void actions.markThreadUnread({ threadId: t.id }).catch(fail) },
     {
       label: "Copy link",

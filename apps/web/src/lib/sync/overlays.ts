@@ -210,6 +210,15 @@ export function overlayThreads(data: ThreadsData, entries: readonly OutboxEntry[
       const on = e.args.on;
       if (on === undefined) continue;
       editComment(e.args.commentId, (c) => ({ ...c, reactions: setReaction(c.reactions, e.args.kind, on) }));
+    } else if (is(e, "comments.markThreadRead") || is(e, "comments.markThreadUnread")) {
+      const t = threads.find((x) => x.id === e.args.threadId);
+      if (!t) continue;
+      // Read up to what was shown: activity that came after it (seen once back online) stays unread.
+      const upTo = (e.args as OutboxArgs<"comments.markThreadRead">).upTo;
+      const unread = e.name === "comments.markThreadUnread" ? true : upTo !== undefined && upTo < t.lastActivityAt;
+      if (t.unread === unread) continue;
+      threads = threads.map((x) => (x === t ? { ...x, unread } : x));
+      blocks = blocks.map((b) => (b.blockId === t.blockId ? { ...b, unread: threads.some((x) => x.blockId === b.blockId && x.status === "open" && x.unread) } : b));
     }
   }
   return threads === data.threads && blocks === data.blocks ? data : { ...data, threads, blocks };
@@ -219,6 +228,8 @@ export function overlayThreads(data: ThreadsData, entries: readonly OutboxEntry[
 
 export type CollectionData = FunctionReturnType<typeof api.collections.get>;
 type ServerRow = CollectionData["rows"][number];
+type ServerView = CollectionData["views"][number];
+type ServerProperty = CollectionData["properties"][number];
 export type OverlayRow = ServerRow & { waiting?: Waiting };
 export type OverlayCollection = Omit<CollectionData, "rows"> & { rows: OverlayRow[] };
 
@@ -282,7 +293,74 @@ export function overlayCollection(data: CollectionData, entries: readonly Outbox
     } else if (is(e, "collections.updateView")) {
       const a = e.args;
       out = { ...out, views: out.views.map((v) => (v.id === a.viewId ? { ...v, name: a.name?.trim() || v.name, config: a.config ?? v.config } : v)) };
+    } else if (is(e, "collections.addProperty")) {
+      const a = e.args;
+      if (!a.id || out.properties.some((p) => p.id === a.id)) continue;
+      const prop: ServerProperty = { id: a.id, name: a.name.trim().slice(0, 60) || "Property", type: a.type, options: [] };
+      // Last, and shown in every view, as the server adds it.
+      out = { ...out, properties: [...out.properties, prop], views: out.views.map((v) => ({ ...v, config: { ...v.config, visibleProperties: [...v.config.visibleProperties, prop.id] } })) };
+    } else if (is(e, "collections.updateProperty")) {
+      const a = e.args;
+      out = {
+        ...out,
+        properties: out.properties.map((p) => {
+          if (p.id !== a.propertyId) return p;
+          const name = a.name !== undefined ? a.name.trim().slice(0, 60) || p.name : p.name;
+          const options =
+            a.options && (p.type === "select" || p.type === "multiSelect")
+              ? a.options.slice(0, 100).map((o, i) => ({ id: o.id ?? `${e.id}-${i}`, name: o.name.trim().slice(0, 60) || "Option", color: o.color && OPTION_COLORS.includes(o.color) ? o.color : OPTION_COLORS[i % OPTION_COLORS.length]! }))
+              : p.options;
+          return { ...p, name, options };
+        }),
+      };
+    } else if (is(e, "collections.deleteProperty")) {
+      out = { ...out, properties: out.properties.filter((p) => p.id !== e.args.propertyId) };
+    } else if (is(e, "collections.addViewToCollection")) {
+      const a = e.args;
+      if (!a.id || out.views.some((v) => v.id === a.id)) continue;
+      const view = newView(a.id, a.name, a.type, out.properties);
+      if (view) out = { ...out, views: [...out.views, view] };
+    } else if (is(e, "collections.deleteView")) {
+      // A collection keeps at least one view (the server refuses to delete the last).
+      if (out.views.length > 1) out = { ...out, views: out.views.filter((v) => v.id !== e.args.viewId) };
     }
   }
   return out;
+}
+
+/** Option colours, in the order the server hands them out when none is chosen. */
+export const OPTION_COLORS = ["accent", "moss", "marigold", "plum", "coral", "muted"];
+
+/**
+ * A view as the server makes it (collections.addViewToCollection): every property shown, a board grouped by
+ * the first single-select, a calendar placed by the first date. Null when the server would refuse it.
+ */
+export function newView(id: string, name: string, type: ServerView["type"], properties: readonly ServerProperty[]): ServerView | null {
+  const groupBy = type === "board" ? properties.find((p) => p.type === "select")?.id : undefined;
+  const dateBy = type === "calendar" ? properties.find((p) => p.type === "date")?.id : undefined;
+  if ((type === "board" && !groupBy) || (type === "calendar" && !dateBy)) return null;
+  return {
+    id,
+    name: name.trim().slice(0, 40) || "View",
+    type,
+    config: { filters: [], sorts: [], groupBy, dateBy, visibleProperties: properties.map((p) => p.id), cardPreview: type === "gallery" ? "cover" : "none", cardSize: "medium" },
+  };
+}
+
+/**
+ * The row a page belongs to while that row is still waiting to be sent (added offline): its page opens on this
+ * device before the server has it. Its title is the latest one given in the collection. Undefined otherwise.
+ */
+export function waitingRowPage(entries: readonly OutboxEntry[], documentId: string): { collectionId: string; rowId: string; title: string; waiting: Waiting } | undefined {
+  let found: { collectionId: string; rowId: string; title: string; waiting: Waiting } | undefined;
+  for (const e of entries) {
+    if (is(e, "collections.addRow") && e.args.documentId === documentId && e.args.id) {
+      found = { collectionId: e.args.collectionId, rowId: e.args.id, title: (e.args.title ?? "").slice(0, 300), waiting: waitingOf(e) };
+    } else if (found && is(e, "collections.renameRow") && e.args.rowId === found.rowId) {
+      found = { ...found, title: e.args.title.slice(0, 300) };
+    } else if (found && is(e, "collections.deleteRow") && e.args.rowId === found.rowId) {
+      found = undefined;
+    }
+  }
+  return found;
 }

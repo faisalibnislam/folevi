@@ -9,7 +9,7 @@ import { OUTBOX_PREFIX, localDb, outboxKeys } from "./db";
 
 /**
  * The changes that wait in the outbox when there's no connection: folders, notes moved between them,
- * comments and collections. Page and block edits have the sync engine (engine.ts); these are ordinary
+ * comments (and read marks on threads) and collections (rows, values, properties and views). Page and block edits have the sync engine (engine.ts); these are ordinary
  * mutations, sent as they are, so each keeps the checks, notifications and limits the server already
  * applies. `done` lists the error codes that mean the change already landed (a delete sent twice).
  */
@@ -28,6 +28,8 @@ export const OUTBOX_MUTATIONS = {
   "comments.remove": { ref: api.comments.remove, done: ["not_found"] },
   "comments.deleteThread": { ref: api.comments.deleteThread, done: ["not_found"] },
   "comments.react": { ref: api.comments.react },
+  "comments.markThreadRead": { ref: api.comments.markThreadRead, done: ["not_found"] },
+  "comments.markThreadUnread": { ref: api.comments.markThreadUnread, done: ["not_found"] },
   "collections.rename": { ref: api.collections.rename },
   "collections.addRow": { ref: api.collections.addRow },
   "collections.setValue": { ref: api.collections.setValue },
@@ -35,6 +37,11 @@ export const OUTBOX_MUTATIONS = {
   "collections.moveRow": { ref: api.collections.moveRow },
   "collections.deleteRow": { ref: api.collections.deleteRow, done: ["not_found"] },
   "collections.updateView": { ref: api.collections.updateView },
+  "collections.addProperty": { ref: api.collections.addProperty },
+  "collections.updateProperty": { ref: api.collections.updateProperty },
+  "collections.deleteProperty": { ref: api.collections.deleteProperty, done: ["not_found"] },
+  "collections.addViewToCollection": { ref: api.collections.addViewToCollection },
+  "collections.deleteView": { ref: api.collections.deleteView, done: ["not_found"] },
 } as const satisfies Record<string, { ref: unknown; done?: readonly string[] }>;
 
 export type OutboxName = keyof typeof OUTBOX_MUTATIONS;

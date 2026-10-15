@@ -256,10 +256,10 @@ export const DOC_ARTICLES: DocArticle[] = [
             <strong>Organize folders</strong>: make, rename, recolor, move and delete them, and move notes into a folder you just made.
           </li>
           <li>
-            <strong>Comment</strong>: start a thread (also on a line you wrote offline), reply, edit, resolve, delete and react.
+            <strong>Comment</strong>: start a thread (also on a line you wrote offline), reply, edit, resolve, delete and react, and mark threads read or unread.
           </li>
           <li>
-            <strong>Work in collections</strong>: change values, add, rename, reorder and delete rows, and change a view’s filters, sorting, grouping or calendar date.
+            <strong>Work in collections</strong>: change values, add, rename, reorder and delete rows, add, rename and delete properties and their options, add, rename and delete views, and change a view’s filters, sorting, grouping or calendar date. A row you add offline opens as a page right away, and what you write in it is saved once the row is.
           </li>
         </ul>
         <p>

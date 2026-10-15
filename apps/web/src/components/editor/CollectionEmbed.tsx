@@ -1,7 +1,7 @@
 "use client";
 
 import { DateField } from "@/components/ui/DateField";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import type { AnchorHTMLAttributes } from "react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ArrowDownUp, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Columns3, Filter, GalleryHorizontalEnd, Plus, Search, Settings2, Table2, Trash2, FileText } from "lucide-react";
@@ -12,7 +12,7 @@ import { documentScope } from "@/lib/app/scope";
 import { useAppState } from "@/lib/app/state";
 import { requireOutbox } from "@/lib/app/folders";
 import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
-import { overlayCollection, type OverlayCollection } from "@/lib/sync/overlays";
+import { OPTION_COLORS, newView, overlayCollection, waitingRowPage, type OverlayCollection } from "@/lib/sync/overlays";
 import type { OutboxArgs, OutboxName } from "@/lib/sync/outbox";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Dialog } from "@/components/ui/Dialog";
@@ -47,7 +47,8 @@ function useCollection(collectionId: string | null) {
 /**
  * Collection changes, through the outbox: shown at once in every view, kept on this device, and sent in
  * order when there's a connection (one queue per collection, so a value set on a row added offline goes
- * after the row). Each resolves once it's queued.
+ * after the row, and a view's settings after the property they show). Each resolves once it's queued.
+ * Rows, properties and views get their ids here, so they can be used before the server has them.
  */
 function useCollectionMutations() {
   const { outbox } = useAppState();
@@ -73,26 +74,31 @@ function useCollectionMutations() {
         const documentId = ulid();
         return queue("collections.addRow", { ...args, id, documentId }, "New row", [documentId]).then(() => ({ id, documentId }));
       },
+      addProperty: (args: Omit<OutboxArgs<"collections.addProperty">, "id">) => {
+        const id = ulid();
+        return queue("collections.addProperty", { ...args, id }, `New property “${args.name.trim()}”`).then(() => ({ id }));
+      },
+      updateProperty: (args: OutboxArgs<"collections.updateProperty">) =>
+        queue("collections.updateProperty", args, args.options ? "Change a property’s options" : `Rename property to “${args.name ?? ""}”`),
+      deleteProperty: (args: OutboxArgs<"collections.deleteProperty">) => queue("collections.deleteProperty", args, "Delete a property"),
+      addView: (args: Omit<OutboxArgs<"collections.addViewToCollection">, "id">) => {
+        const id = ulid();
+        return queue("collections.addViewToCollection", { ...args, id }, `New view “${args.name}”`).then(() => ({ id }));
+      },
+      deleteView: (args: OutboxArgs<"collections.deleteView">) => queue("collections.deleteView", args, "Delete a view"),
     };
   }, [outbox]);
 }
 
 /**
- * A collection mutation that doesn't wait in the outbox (properties, and adding or deleting a view: they need
- * the server's answer), sent only once the collection's queued changes are, so it never lands before a
- * change made earlier (a view's settings saved after a new property would hide it again).
+ * A link to a row's page. A row added on this device opens before it's sent (its page is made here, and what's
+ * typed in it waits for the row); one the server refused has no page to open, so it isn't a link.
  */
-function useInOrder<A extends { collectionId: string }, R>(mutate: (args: A) => Promise<R>): (args: A) => Promise<R> {
-  const { outbox } = useAppState();
-  return (args: A) => (outbox ? outbox.settled(`collection:${args.collectionId}`) : Promise.resolve()).then(() => mutate(args));
-}
-
-/** A link to a row's page; a row still waiting to be sent has no page on the server yet, so it isn't a link. */
 function RowLink({ row, children, ...rest }: { row: Pick<Row, "documentId" | "waiting">; children: ReactNode } & AnchorHTMLAttributes<HTMLAnchorElement>) {
-  if (row.waiting) {
+  if (row.waiting === "failed") {
     const { className, draggable, onDragStart, onDragEnd } = rest;
     return (
-      <span className={className} draggable={draggable} onDragStart={onDragStart as never} onDragEnd={onDragEnd as never} title="This row opens once it’s saved">
+      <span className={className} draggable={draggable} onDragStart={onDragStart as never} onDragEnd={onDragEnd as never} title="This row wasn’t saved">
         {children}
       </span>
     );
@@ -217,8 +223,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
   const data = useCollection(collectionId);
   const [viewId, setViewIdState] = useState<string | null>(() => storedView(collectionId) ?? initialViewId);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const addView = useInOrder(useMutation(api.collections.addViewToCollection));
-  const { rename, addRow } = useCollectionMutations();
+  const { rename, addRow, addView } = useCollectionMutations();
   const toast = useToast();
 
   if (data === undefined) return <div className="h-40 animate-pulse ui-card rounded-control motion-reduce:animate-none" aria-busy />;
@@ -285,6 +290,11 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
                 onChange={(e) => {
                   const type = e.target.value as View["type"];
                   if (!type) return;
+                  // What the server would refuse is said now, not once the view is sent.
+                  if (data.views.length >= 20) return toast.show("Up to 20 views per collection.", { tone: "error" });
+                  if (!newView("", VIEW_NAMES[type], type, data.properties)) {
+                    return toast.show(type === "board" ? "Add a single-select property to group a board by." : "Add a date property to show a calendar.", { tone: "error" });
+                  }
                   addView({ collectionId, name: VIEW_NAMES[type], type }).then(
                     (r) => setViewId(r.id),
                     (err) => toast.show(errorMessage(err), { tone: "error" }),
@@ -608,7 +618,7 @@ function TableCollection({ data, rows, visible, canEdit }: { data: CollectionDat
                       {row.title || "Untitled"}
                     </RowLink>
                   )}
-                  {canEdit && !row.waiting ? (
+                  {canEdit && row.waiting !== "failed" ? (
                     <AppLink href={`/d/${row.documentId}`} aria-label={`Open ${row.title || "Untitled"}`} title="Open page" className="grid h-6 w-6 flex-none place-items-center rounded-chip text-faint hover:bg-sunken hover:text-ink">
                       <ArrowUpRight size={13} aria-hidden />
                     </AppLink>
@@ -988,11 +998,7 @@ function FilterValueEditor({ target, filter, people, onChange }: { target: Filte
 }
 
 function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: () => void; data: CollectionData; view: View }) {
-  const { updateView } = useCollectionMutations();
-  const addProperty = useInOrder(useMutation(api.collections.addProperty));
-  const updateProperty = useInOrder(useMutation(api.collections.updateProperty));
-  const deleteProperty = useInOrder(useMutation(api.collections.deleteProperty));
-  const deleteView = useInOrder(useMutation(api.collections.deleteView));
+  const { updateView, addProperty, updateProperty, deleteProperty, deleteView } = useCollectionMutations();
   const toast = useToast();
   const [newProp, setNewProp] = useState<{ name: string; type: Property["type"] }>({ name: "", type: "text" });
   const [confirmProp, setConfirmProp] = useState<Property | null>(null);
@@ -1185,8 +1191,12 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
                   defaultValue={p.options.map((o) => o.name).join(", ")}
                   onBlur={(e) => {
                     const names = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
-                    const options = names.map((name) => ({ id: p.options.find((o) => o.name === name)?.id, name, color: p.options.find((o) => o.name === name)?.color }));
                     if (names.join(",") === p.options.map((o) => o.name).join(",")) return;
+                    // A new option gets its id and colour here, so sending the list again changes nothing.
+                    const options = names.map((name, i) => {
+                      const kept = p.options.find((o) => o.name === name);
+                      return kept ? { id: kept.id, name, color: kept.color } : { id: ulid(), name, color: OPTION_COLORS[i % OPTION_COLORS.length] };
+                    });
                     void updateProperty({ collectionId: data.id, propertyId: p.id, options }).catch((err) => toast.show(errorMessage(err), { tone: "error" }));
                   }}
                   className="mt-1 block h-8 w-full ui-input rounded-chip px-3 text-sm"
@@ -1198,6 +1208,7 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
             onSubmit={(e) => {
               e.preventDefault();
               if (!newProp.name.trim()) return;
+              if (data.properties.length >= 40) return toast.show("A collection can have up to 40 properties.", { tone: "error" });
               addProperty({ collectionId: data.id, name: newProp.name, type: newProp.type }).then(
                 () => setNewProp({ name: "", type: "text" }),
                 (err) => toast.show(errorMessage(err), { tone: "error" }),
@@ -1268,20 +1279,27 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
  * access). Renders nothing for ordinary pages.
  */
 export function CollectionRowProperties({ documentId, editable }: { documentId: string; editable: boolean }) {
+  const { outbox } = useAppState();
   const info = useOfflineQuery(api.collections.rowForDocument, { documentId });
-  const data = useCollection(info ? info.collection.id : null);
-  if (!info || !data) return null;
-  const row = data.rows.find((r) => r.documentId === documentId) ?? { id: info.row.id, title: info.row.title, values: info.row.values };
-  const canEdit = editable && info.canEdit;
+  // A row added on this device and not sent yet: the server doesn't know its page, the collection on this device does.
+  const entries = useOutboxEntries(outbox);
+  const waiting = useMemo(() => (info ? undefined : waitingRowPage(entries, documentId)), [info, entries, documentId]);
+  const data = useCollection(info ? info.collection.id : (waiting?.collectionId ?? null));
+  if (!data || (!info && !waiting)) return null;
+  const row = data.rows.find((r) => r.documentId === documentId) ?? (info ? { id: info.row.id, title: info.row.title, values: info.row.values } : null);
+  if (!row) return null;
+  const canEdit = editable && (info ? info.canEdit : data.canEdit);
+  const name = info?.collection.name ?? data.name;
+  const hostDocumentId = info ? info.collection.hostDocumentId : data.hostDocumentId;
   return (
-    <section aria-label={`Properties in ${info.collection.name}`} className="mb-6 rounded-chip ui-well px-3 py-2 text-sm">
+    <section aria-label={`Properties in ${name}`} className="mb-6 rounded-chip ui-well px-3 py-2 text-sm">
       <p className="ui-caps mb-1.5">
-        {info.collection.hostDocumentId ? (
-          <AppLink href={`/d/${info.collection.hostDocumentId}`} className="hover:underline">
-            {info.collection.name}
+        {hostDocumentId ? (
+          <AppLink href={`/d/${hostDocumentId}`} className="hover:underline">
+            {name}
           </AppLink>
         ) : (
-          info.collection.name
+          name
         )}
       </p>
       <dl className="grid grid-cols-[minmax(7rem,auto)_1fr] items-center gap-x-4 gap-y-1.5">

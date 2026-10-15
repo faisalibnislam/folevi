@@ -155,3 +155,104 @@ describe("collection rows made offline", () => {
     await expect(a.as.mutation(api.collections.addRow, { collectionId: two.collectionId, id: ulid(), documentId: used })).rejects.toThrow(/already exists/);
   });
 });
+
+describe("read marks made offline", () => {
+  test("marking a thread read or unread twice lands once; a mark up to an older moment leaves newer activity unread", async () => {
+    const t = setup();
+    const owner = await person(t, "replay-read-owner@example.com");
+    const guest = await person(t, "replay-read-guest@example.com");
+    const docId = await newDoc(owner, "Plans");
+    await owner.as.mutation(api.sharing.grant, { documentId: docId, email: "replay-read-guest@example.com", role: "commenter" });
+    const threadId = ulid();
+    await owner.as.mutation(api.comments.create, { documentId: docId, body: text("Thoughts, @guest?"), threadId, commentId: ulid() });
+    const unreadOf = async () => (await guest.as.query(api.comments.threads, { documentId: docId })).threads[0]!.unread;
+    const seen = (await guest.as.query(api.comments.threads, { documentId: docId })).threads[0]!;
+    expect(seen.unread).toBe(true);
+
+    // Read up to something older than its latest activity (a mark made offline, before a reply came in).
+    await guest.as.mutation(api.comments.markThreadRead, { threadId, upTo: seen.lastActivityAt - 1 });
+    expect(await unreadOf()).toBe(true);
+    await guest.as.mutation(api.comments.markThreadRead, { threadId, upTo: seen.lastActivityAt });
+    await guest.as.mutation(api.comments.markThreadRead, { threadId, upTo: seen.lastActivityAt });
+    expect(await unreadOf()).toBe(false);
+    // One read state each (the owner's from writing it, the guest's), however often it's sent.
+    expect(await t.run(async (ctx) => (await ctx.db.query("readStates").collect()).length)).toBe(2);
+
+    await guest.as.mutation(api.comments.markThreadUnread, { threadId });
+    await guest.as.mutation(api.comments.markThreadUnread, { threadId });
+    expect(await unreadOf()).toBe(true);
+
+    // The thread is gone: the device counts not found as done.
+    await owner.as.mutation(api.comments.deleteThread, { threadId });
+    await expect(guest.as.mutation(api.comments.markThreadRead, { threadId, upTo: seen.lastActivityAt })).rejects.toThrow(/not found/i);
+    await expect(guest.as.mutation(api.comments.markThreadUnread, { threadId })).rejects.toThrow(/not found/i);
+  });
+});
+
+describe("collection properties and views made offline", () => {
+  test("a property added twice with the same id is one property; its options keep the ids sent", async () => {
+    const t = setup();
+    const a = await person(t, "replay-props@example.com");
+    const { collectionId } = await a.as.mutation(api.collections.create, { documentId: await newDoc(a, "Reading list") });
+    const id = ulid();
+    expect(await a.as.mutation(api.collections.addProperty, { collectionId, name: "Genre", type: "select", id })).toEqual({ id });
+    expect(await a.as.mutation(api.collections.addProperty, { collectionId, name: "Genre", type: "select", id })).toEqual({ id });
+    const options = [{ id: ulid(), name: "Sci-fi", color: "plum" }];
+    await a.as.mutation(api.collections.updateProperty, { collectionId, propertyId: id, options });
+    await a.as.mutation(api.collections.updateProperty, { collectionId, propertyId: id, options });
+    const data = await a.as.query(api.collections.get, { collectionId });
+    expect(data.properties.filter((p) => p.name === "Genre").map((p) => [p.id, p.options])).toEqual([[id, options]]);
+    // Shown in the view once.
+    expect(data.views[0]!.config.visibleProperties.filter((p) => p === id)).toHaveLength(1);
+
+    await a.as.mutation(api.collections.deleteProperty, { collectionId, propertyId: id });
+    await expect(a.as.mutation(api.collections.deleteProperty, { collectionId, propertyId: id })).rejects.toThrow(/Property not found/);
+    // Sent again after it was deleted, the add doesn't bring it back.
+    expect(await a.as.mutation(api.collections.addProperty, { collectionId, name: "Genre", type: "select", id })).toEqual({ id });
+    expect((await a.as.query(api.collections.get, { collectionId })).properties.some((p) => p.id === id)).toBe(false);
+  });
+
+  test("a property or view id from another collection, or a malformed one, is refused", async () => {
+    const t = setup();
+    const a = await person(t, "replay-props-taken@example.com");
+    const one = await a.as.mutation(api.collections.create, { documentId: await newDoc(a, "One") });
+    const two = await a.as.mutation(api.collections.create, { documentId: await newDoc(a, "Two") });
+    const prop = ulid();
+    await a.as.mutation(api.collections.addProperty, { collectionId: one.collectionId, name: "Pages", type: "number", id: prop });
+    await expect(a.as.mutation(api.collections.addProperty, { collectionId: two.collectionId, name: "Pages", type: "number", id: prop })).rejects.toThrow(/taken/);
+    await expect(a.as.mutation(api.collections.addProperty, { collectionId: two.collectionId, name: "Odd", type: "text", id: "not an id!" })).rejects.toThrow(/Invalid property id/);
+    await expect(a.as.mutation(api.collections.addViewToCollection, { collectionId: two.collectionId, name: "Table", type: "table", id: one.viewId })).rejects.toThrow(/taken/);
+    await expect(a.as.mutation(api.collections.addViewToCollection, { collectionId: two.collectionId, name: "Odd", type: "table", id: "not an id!" })).rejects.toThrow(/Invalid view id/);
+  });
+
+  test("a view added twice is one view; deleted twice, the second is not found even with one view left", async () => {
+    const t = setup();
+    const a = await person(t, "replay-views@example.com");
+    const { collectionId } = await a.as.mutation(api.collections.create, { documentId: await newDoc(a, "Reading list") });
+    const id = ulid();
+    expect(await a.as.mutation(api.collections.addViewToCollection, { collectionId, name: "Board", type: "board", id })).toEqual({ id });
+    expect(await a.as.mutation(api.collections.addViewToCollection, { collectionId, name: "Board", type: "board", id })).toEqual({ id });
+    await a.as.mutation(api.collections.updateView, { collectionId, viewId: id, name: "By status" });
+    const views = (await a.as.query(api.collections.get, { collectionId })).views;
+    expect(views.map((v) => [v.name, v.type])).toEqual([
+      ["Table", "table"],
+      ["By status", "board"],
+    ]);
+    await a.as.mutation(api.collections.deleteView, { collectionId, viewId: id });
+    await expect(a.as.mutation(api.collections.deleteView, { collectionId, viewId: id })).rejects.toThrow(/View not found/);
+    await expect(a.as.mutation(api.collections.deleteView, { collectionId, viewId: views[0]!.id })).rejects.toThrow(/at least one view/);
+  });
+
+  test("a row's page made with an id the device chose starts empty (its lines come from the device)", async () => {
+    const t = setup();
+    const a = await person(t, "replay-row-page@example.com");
+    const { collectionId } = await a.as.mutation(api.collections.create, { documentId: await newDoc(a, "Reading list") });
+    const documentId = ulid();
+    await a.as.mutation(api.collections.addRow, { collectionId, title: "Dune", id: ulid(), documentId });
+    const page = await a.as.query(api.blocks.list, { documentId });
+    expect(page?.blocks).toEqual([]);
+    // Added online without one, the page gets its first empty line from the server, as before.
+    const online = await a.as.mutation(api.collections.addRow, { collectionId, title: "Emma" });
+    expect((await a.as.query(api.blocks.list, { documentId: online.documentId }))?.blocks).toHaveLength(1);
+  });
+});

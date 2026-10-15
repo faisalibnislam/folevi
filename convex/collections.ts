@@ -213,18 +213,33 @@ export const rename = mutation({
   },
 });
 
+/**
+ * Adds a property, shown in every view. `id` may be chosen by the client (a property added offline, then set on
+ * rows before it's sent); sending the same add again returns the property it made.
+ */
 export const addProperty = mutation({
-  args: { collectionId: v.string(), name: v.string(), type: vCollectionPropertyType },
+  args: { collectionId: v.string(), name: v.string(), type: vCollectionPropertyType, id: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const { profile, collection } = await collectionFor(ctx, args.collectionId, "write");
     await assertWritable(ctx, profile);
+    if (args.id !== undefined) {
+      if (!isValidId(args.id)) fail("invalid_argument", "Invalid property id.");
+      const made = await ctx.db
+        .query("collectionProperties")
+        .withIndex("by_public_id", (q) => q.eq("publicId", args.id!))
+        .unique();
+      if (made) {
+        if (made.collectionId !== collection._id) fail("invalid_argument", "That property id is taken.");
+        return { id: made.publicId };
+      }
+    }
     const existing = await ctx.db
       .query("collectionProperties")
       .withIndex("by_collection", (q) => q.eq("collectionId", collection._id))
       .collect();
     if (existing.filter((p) => !p.deletedAt).length >= 40) fail("limit_exceeded", "A collection can have up to 40 properties.");
     const last = existing.map((p) => p.rank).sort().pop() ?? null;
-    const publicId = ulid();
+    const publicId = args.id ?? ulid();
     await ctx.db.insert("collectionProperties", {
       publicId,
       collectionId: collection._id,
@@ -252,6 +267,10 @@ async function propertyFor(ctx: MutationCtx, collection: Doc<"collections">, pro
   return prop;
 }
 
+/**
+ * Renames a property, or sets its options (the whole list: an option keeps its id, so rows that chose it keep
+ * it; a new one sent with an id keeps that id, so a resend changes nothing).
+ */
 export const updateProperty = mutation({
   args: {
     collectionId: v.string(),
@@ -341,7 +360,9 @@ export const addRow = mutation({
       parentDocumentId: host._id,
       collectionId: collection._id,
       accessMode: host.accessMode,
-      blocks: specsToWireBlocks([{ type: "paragraph", md: "" }]),
+      // A page whose id the client chose may already be open there, with lines typed into it before it was
+      // sent: it starts empty, like any new note, so those lines aren't joined by a second empty one.
+      blocks: args.documentId !== undefined ? [] : specsToWireBlocks([{ type: "paragraph", md: "" }]),
     });
     const now = Date.now();
     const publicId = args.id ?? ulid();
@@ -527,11 +548,23 @@ const vConfig = v.object({
   cardSize: v.union(v.literal("small"), v.literal("medium"), v.literal("large")),
 });
 
+/** Adds a view. `id` may be chosen by the client (a view added offline); sending it again returns that view. */
 export const addViewToCollection = mutation({
-  args: { collectionId: v.string(), name: v.string(), type: vCollectionViewType },
+  args: { collectionId: v.string(), name: v.string(), type: vCollectionViewType, id: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const { profile, collection } = await collectionFor(ctx, args.collectionId, "write");
     await assertWritable(ctx, profile);
+    if (args.id !== undefined) {
+      if (!isValidId(args.id)) fail("invalid_argument", "Invalid view id.");
+      const made = await ctx.db
+        .query("collectionViews")
+        .withIndex("by_public_id", (q) => q.eq("publicId", args.id!))
+        .unique();
+      if (made) {
+        if (made.collectionId !== collection._id) fail("invalid_argument", "That view id is taken.");
+        return { id: made.publicId };
+      }
+    }
     const props = (
       await ctx.db
         .query("collectionProperties")
@@ -554,6 +587,7 @@ export const addViewToCollection = mutation({
       dateBy,
       visibleProperties: props.map((p) => p.publicId),
       rank: rankBetween(views.map((vw) => vw.rank).sort().pop() ?? null, null),
+      publicId: args.id,
     });
     return { id };
   },
@@ -596,9 +630,10 @@ export const deleteView = mutation({
       .query("collectionViews")
       .withIndex("by_collection", (q) => q.eq("collectionId", collection._id))
       .collect();
-    if (views.length <= 1) fail("invalid_argument", "A collection needs at least one view.");
+    // Not found first: a delete sent again (its answer was lost) is told it's done, even when one view is left.
     const view = views.find((vw) => vw.publicId === args.viewId);
     if (!view) fail("not_found", "View not found.");
+    if (views.length <= 1) fail("invalid_argument", "A collection needs at least one view.");
     await ctx.db.delete(view._id);
     return null;
   },

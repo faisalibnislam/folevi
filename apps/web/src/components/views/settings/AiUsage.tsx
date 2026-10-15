@@ -176,7 +176,7 @@ export function AiUsageCard() {
     >
       {seats.length ? (
         <div className="mb-4">
-          <Select value={pick} onChange={(e) => setWhich(e.target.value)} aria-label="Credits for" className="w-56">
+          <Select value={pick} onChange={(e) => setWhich(e.target.value)} aria-label="Credits for" className="ui-input h-9 rounded-chip px-3 text-sm w-56">
             <option value="personal">Personal</option>
             {seats.map((a) => (
               <option key={a.workspaceId} value={a.workspaceId!}>

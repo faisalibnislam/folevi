@@ -658,7 +658,7 @@ function UseTemplateButton({ doc, raised }: { doc: Summary; raised?: boolean }) 
     <button
       type="button"
       onClick={() => void createDocument({ title: doc.title, templateId: doc.id })}
-      className={`ui-btn ${raised ? "ui-btn-secondary" : "ui-btn-ghost"} h-7 gap-1 px-2.5 text-xs`}
+      className={`ui-btn ${raised ? "ui-btn-secondary" : "ui-btn-ghost"} h-8 gap-1 px-2.5 text-xs`}
       aria-label={`New page from template ${doc.title || "Untitled"}`}
     >
       <FilePlus2 size={13} aria-hidden /> Use

@@ -87,7 +87,7 @@ export function EmailToNoteView({ status, places, ...on }: { status: EmailNoteSt
 
           <label className="block max-w-xs space-y-1">
             <span className="block font-medium text-heading">Notes go to</span>
-            <Select value={status.place.kind === "workspace" ? status.place.workspaceId : "personal"} onChange={(e) => void run(() => on.onSetPlace(e.target.value))} aria-label="Notes go to" className="w-full">
+            <Select value={status.place.kind === "workspace" ? status.place.workspaceId : "personal"} onChange={(e) => void run(() => on.onSetPlace(e.target.value))} aria-label="Notes go to" className="ui-input h-9 rounded-chip px-3 text-sm w-full">
               <option value="personal">Personal</option>
               {places.map((w) => (
                 <option key={w.id} value={w.id}>

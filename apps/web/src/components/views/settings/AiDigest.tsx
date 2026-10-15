@@ -53,7 +53,7 @@ export function AiDigestCard() {
       <div className="grid max-w-xl gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm">
           <span className="block font-medium text-heading">How often</span>
-          <Select value={digest.frequency} onChange={(e) => change({ frequency: e.target.value as "daily" | "weekly" })} aria-label="How often" className="w-full">
+          <Select value={digest.frequency} onChange={(e) => change({ frequency: e.target.value as "daily" | "weekly" })} aria-label="How often" className="ui-input h-9 rounded-chip px-3 text-sm w-full">
             <option value="daily">Every day</option>
             <option value="weekly">Every week</option>
           </Select>
@@ -61,7 +61,7 @@ export function AiDigestCard() {
         {digest.frequency === "weekly" ? (
           <label className="space-y-1 text-sm">
             <span className="block font-medium text-heading">Day</span>
-            <Select value={String(digest.weekday)} onChange={(e) => change({ weekday: Number(e.target.value) })} aria-label="Day" className="w-full">
+            <Select value={String(digest.weekday)} onChange={(e) => change({ weekday: Number(e.target.value) })} aria-label="Day" className="ui-input h-9 rounded-chip px-3 text-sm w-full">
               {DAY_ORDER.map((d) => (
                 <option key={d} value={String(d)}>
                   {DAYS[d]}
@@ -72,7 +72,7 @@ export function AiDigestCard() {
         ) : null}
         <label className="space-y-1 text-sm">
           <span className="block font-medium text-heading">Time</span>
-          <Select value={String(digest.hour)} onChange={(e) => change({ hour: Number(e.target.value) })} aria-label="Time" className="w-full">
+          <Select value={String(digest.hour)} onChange={(e) => change({ hour: Number(e.target.value) })} aria-label="Time" className="ui-input h-9 rounded-chip px-3 text-sm w-full">
             {Array.from({ length: 24 }, (_, h) => (
               <option key={h} value={String(h)}>
                 {hourLabel(h, locale)}
@@ -82,7 +82,7 @@ export function AiDigestCard() {
         </label>
         <label className="space-y-1 text-sm">
           <span className="block font-medium text-heading">About</span>
-          <Select value={where} onChange={(e) => change({ scope: e.target.value === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: e.target.value } })} aria-label="About" className="w-full">
+          <Select value={where} onChange={(e) => change({ scope: e.target.value === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: e.target.value } })} aria-label="About" className="ui-input h-9 rounded-chip px-3 text-sm w-full">
             <option value="personal">Personal</option>
             {places.map((w) => (
               <option key={w.id} value={w.id}>

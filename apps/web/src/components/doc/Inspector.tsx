@@ -676,12 +676,12 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
         <h3 className="ui-caps mb-2 flex items-center justify-between px-1">
           Activity
           {onHistory ? (
-            <button type="button" onClick={onHistory} className="inline-flex items-center gap-1 rounded-chip px-2 py-0.5 normal-case tracking-normal text-heading hover:bg-accent-soft">
+            <button type="button" onClick={onHistory} className="-mr-1 inline-flex items-center gap-1 rounded-chip px-2 py-0.5 normal-case tracking-normal text-heading hover:bg-accent-soft">
               <History size={12} aria-hidden /> Version history
             </button>
           ) : null}
         </h3>
-        <ul className="space-y-1.5">
+        <ul className="space-y-1.5 px-1">
           {info?.activity.length === 0 ? <li className="text-muted">Versions are saved after a pause in editing.</li> : null}
           {info?.activity.map((a, i) => (
             <li key={i} className="text-muted">

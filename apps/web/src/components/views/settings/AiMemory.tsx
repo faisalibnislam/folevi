@@ -36,7 +36,7 @@ const MAX_TEXT = 200;
 
 function KindSelect({ value, onChange, label }: { value: MemoryKind; onChange: (k: MemoryKind) => void; label: string }) {
   return (
-    <Select value={value} onChange={(e) => onChange(e.target.value as MemoryKind)} aria-label={label} className="w-36 flex-none">
+    <Select value={value} onChange={(e) => onChange(e.target.value as MemoryKind)} aria-label={label} className="ui-input h-9 rounded-chip px-3 text-sm w-36 flex-none">
       {MEMORY_KINDS.map((k) => (
         <option key={k.value} value={k.value}>
           {k.label}
@@ -146,7 +146,7 @@ export function MemoryList({
           <KindSelect value={kind} onChange={setKind} label="Kind" />
           <input value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX_TEXT} aria-label="What to remember" placeholder={PLACEHOLDER[kind]} className="ui-input h-9 min-w-0 flex-1 rounded-chip px-3 text-sm" />
           {workspaces.length ? (
-            <Select value={where} onChange={(e) => setWhere(e.target.value)} aria-label="Applies" className="w-44 flex-none">
+            <Select value={where} onChange={(e) => setWhere(e.target.value)} aria-label="Applies" className="ui-input h-9 rounded-chip px-3 text-sm w-44 flex-none">
               <option value="">Everywhere</option>
               {workspaces.map((w) => (
                 <option key={w.id} value={w.id}>

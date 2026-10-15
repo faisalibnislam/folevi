@@ -1,0 +1,28 @@
+{
+  "name": "@folevi/ios",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Folevi for iPhone and iPad: the web app in a Capacitor shell, with Face ID lock, haptics, in-app Safari for links and folevi:// links.",
+  "type": "module",
+  "scripts": {
+    "sync": "cap sync ios",
+    "sync:dev": "FOLEVI_URL=http://app.localhost:3002 cap sync ios",
+    "build": "node scripts/simulator.mjs build",
+    "start": "node scripts/simulator.mjs run",
+    "icon": "node scripts/app-icon.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/keyboard": "8.0.6",
+    "@capacitor/status-bar": "8.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3",
+    "@types/node": "24.13.6",
+    "typescript": "6.0.3"
+  }
+}

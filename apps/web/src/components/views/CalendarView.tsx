@@ -129,8 +129,7 @@ export function CalendarView({ month }: { month: string | null }) {
     setMode(next);
   };
   const weekLabel = `${formatCalendarDate(weekDays[0]!, { month: "short", day: "numeric" })} to ${formatCalendarDate(weekDays[weekDays.length - 1]!, { month: "short", day: "numeric", year: "numeric" })}`;
-  // The same height as the buttons beside it (32): 24px items in the 4px track. On phones it sits at the
-  // start of the row under the bar, which would otherwise overflow the screen.
+  // The same height as the buttons beside it (32): 24px items in the 4px track.
   const layoutSwitch = (
     <div role="radiogroup" aria-label="Calendar layout" className="ui-seg ui-well [&>*]:min-h-6">
       {(["month", "week", "agenda"] as const).map((m) => (
@@ -140,56 +139,57 @@ export function CalendarView({ month }: { month: string | null }) {
       ))}
     </div>
   );
+  const heading = mode === "month" ? monthLabel : mode === "week" ? weekLabel : "Next 30 days";
+  const pager =
+    mode === "month" ? (
+      <div className="flex items-center gap-1">
+        <IconButton label="Previous month" onClick={() => navigate(`/calendar/${shiftMonth(current, -1)}`)}>
+          <ChevronLeft size={16} aria-hidden />
+        </IconButton>
+        <Button size="sm" onClick={() => navigate(`/calendar/${today.slice(0, 7)}`)}>
+          Today
+        </Button>
+        <IconButton label="Next month" onClick={() => navigate(`/calendar/${shiftMonth(current, 1)}`)}>
+          <ChevronRight size={16} aria-hidden />
+        </IconButton>
+      </div>
+    ) : mode === "week" ? (
+      <div className="flex items-center gap-1">
+        <IconButton label={narrow ? "Previous days" : "Previous week"} onClick={() => setAnchor(addDays(anchor, -weekDays.length))}>
+          <ChevronLeft size={16} aria-hidden />
+        </IconButton>
+        <Button
+          size="sm"
+          onClick={() => {
+            setAnchor(today);
+            setSelected(today);
+          }}
+        >
+          Today
+        </Button>
+        <IconButton label={narrow ? "Next days" : "Next week"} onClick={() => setAnchor(addDays(anchor, weekDays.length))}>
+          <ChevronRight size={16} aria-hidden />
+        </IconButton>
+      </div>
+    ) : null;
 
   return (
-    <ViewChrome
-      title={<h1 className="text-sm font-semibold">Calendar</h1>}
-      subtitle={mode === "month" ? monthLabel : mode === "week" ? weekLabel : "Next 30 days"}
-      tabTitle="Calendar"
-      actions={
-        <>
-          <CalendarsButton />
-          <Button size="sm" onClick={() => setFeedOpen(true)}>
-            <Rss size={14} aria-hidden /> <span className="max-md:sr-only">Subscribe</span>
-          </Button>
-          {narrow ? null : layoutSwitch}
-        </>
-      }
-    >
-      <div className="mx-auto max-w-[1180px] px-4 pb-24 pt-3 sm:px-8">
-        <div className="mb-4 flex min-h-8 items-center gap-2 empty:hidden">
-          {narrow ? layoutSwitch : null}
-          {mode === "month" ? (
-            <div className="ml-auto flex items-center gap-1">
-              <IconButton label="Previous month" onClick={() => navigate(`/calendar/${shiftMonth(current, -1)}`)}>
-                <ChevronLeft size={16} aria-hidden />
-              </IconButton>
-              <Button size="sm" onClick={() => navigate(`/calendar/${today.slice(0, 7)}`)}>
-                Today
-              </Button>
-              <IconButton label="Next month" onClick={() => navigate(`/calendar/${shiftMonth(current, 1)}`)}>
-                <ChevronRight size={16} aria-hidden />
-              </IconButton>
-            </div>
-          ) : mode === "week" ? (
-            <div className="ml-auto flex items-center gap-1">
-              <IconButton label={narrow ? "Previous days" : "Previous week"} onClick={() => setAnchor(addDays(anchor, -weekDays.length))}>
-                <ChevronLeft size={16} aria-hidden />
-              </IconButton>
-              <Button
-                size="sm"
-                onClick={() => {
-                  setAnchor(today);
-                  setSelected(today);
-                }}
-              >
-                Today
-              </Button>
-              <IconButton label={narrow ? "Next days" : "Next week"} onClick={() => setAnchor(addDays(anchor, weekDays.length))}>
-                <ChevronRight size={16} aria-hidden />
-              </IconButton>
-            </div>
-          ) : null}
+    <ViewChrome title={<h1 className="text-sm font-semibold">Calendar</h1>} tabTitle="Calendar">
+      <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
+        {/* One row: the period (a section title, as on Home) with its paging, then the calendar's tools. On
+            phones the tools wrap onto a second line. */}
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <h2 aria-live="polite" className="ui-display text-[22px] leading-8">
+            {heading}
+          </h2>
+          {pager}
+          <div className="ml-auto flex items-center gap-1.5">
+            <CalendarsButton />
+            <Button size="sm" onClick={() => setFeedOpen(true)}>
+              <Rss size={14} aria-hidden /> <span className="max-md:sr-only">Subscribe</span>
+            </Button>
+            {layoutSwitch}
+          </div>
         </div>
 
         {mode === "week" ? (

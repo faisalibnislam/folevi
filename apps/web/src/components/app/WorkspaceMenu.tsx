@@ -138,7 +138,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
         >
           <AiIcon size={13} aria-hidden className="text-[#7c6cf0]" />
           <span className="flex-1 truncate">{pill}</span>
-          <span className="text-[11.5px] text-muted">{ent?.trialing ? "Choose plan" : "See plans"}</span>
+          <span className="flex-none text-[11.5px] text-muted">{ent?.trialing ? "Choose plan" : "See plans"}</span>
         </button>
       ) : null}
       <MenuButton

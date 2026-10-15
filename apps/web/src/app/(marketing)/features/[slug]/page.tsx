@@ -9,7 +9,7 @@ import { FaqSection, LinkCard, SignUpPanel } from "@/components/marketing/parts"
 import { JsonLd, pageMetadata } from "@/components/marketing/seo";
 import { SIGN_UP_URL, absoluteUrl } from "@/components/marketing/site";
 import { TIER_NAMES, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
-import { ButtonLink, Eyebrow, container, cx } from "@/components/marketing/ui";
+import { ButtonLink, Eyebrow, KeepHyphens, container, cx } from "@/components/marketing/ui";
 
 export const dynamicParams = false;
 
@@ -59,7 +59,7 @@ export default async function FeaturePage({ params }: Params) {
             <FeatureIcon slug={feature.slug} />
             <Eyebrow>{feature.name}</Eyebrow>
           </div>
-          <h1 className="mk-display mt-5 max-w-[20ch] text-[38px] sm:text-[52px] lg:text-[60px]">{feature.h1}</h1>
+          <h1 className="mk-display mt-5 max-w-[20ch] text-[38px] sm:text-[52px] lg:text-[60px]"><KeepHyphens text={feature.h1} /></h1>
           <p className="mk-lede mt-5 max-w-[60ch]">{feature.intro}</p>
           <div className="mt-8 flex flex-wrap items-center gap-2.5">
             <ButtonLink href={SIGN_UP_URL} icon="arrow-right" size="lg">
@@ -82,8 +82,8 @@ export default async function FeaturePage({ params }: Params) {
           <FeatureVisual visual={feature.visual} art={feature.art} />
         </Card>
 
-        <div className={cx(container, "grid gap-(--mk-stack-gap) lg:grid-cols-[minmax(0,1fr)_300px]")}>
-          <div className="mk-box min-w-0 px-5 py-8 sm:px-10 sm:py-12 lg:px-14">
+        <div className={cx(container, "grid gap-(--mk-stack-gap) xl:grid-cols-[minmax(0,1fr)_300px]")}>
+          <div className="mk-box min-w-0 px-5 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
             <div className="mk-prose max-w-[700px]">
               {feature.sections.map((section) => (
                 <section key={section.id} aria-labelledby={section.id} className="mt-14 first:mt-0 [&>*+*]:mt-[1em] [&>h2+*]:mt-[0.6em]">
@@ -93,8 +93,8 @@ export default async function FeaturePage({ params }: Params) {
               ))}
             </div>
           </div>
-          <div className="space-y-(--mk-stack-gap) self-start lg:sticky lg:top-8">
-            <nav aria-label="On this page" className="mk-box hidden px-3 py-4 lg:block">
+          <div className="space-y-(--mk-stack-gap) self-start xl:sticky xl:top-8">
+            <nav aria-label="On this page" className="mk-box hidden px-3 py-4 xl:block">
               <p className="mk-caps pb-2 pl-3.5">On this page</p>
               <ol className="border-l mk-hair">
                 {feature.sections.map((section) => (
@@ -109,7 +109,7 @@ export default async function FeaturePage({ params }: Params) {
                 ))}
               </ol>
             </nav>
-            <div className="mk-box p-5 sm:p-6">
+            <div className="mk-box p-5 sm:px-10 sm:py-8 lg:px-14 xl:p-6">
               <p className="text-[14.5px] font-semibold text-(--color-heading)">Plans</p>
               <p className="mt-1 text-[14px] leading-relaxed text-muted">{feature.plans}</p>
               <Link href="/pricing" className="mk-link mt-3 inline-flex min-h-8 items-center gap-1.5 text-[14px]">

@@ -52,7 +52,7 @@ export function SiteFooter() {
   const year = new Date().getFullYear();
   return (
     <footer className="mt-8 border-t mk-hair">
-      <div className={cx(container, "grid gap-10 py-12 sm:py-14 lg:grid-cols-[0.9fr_2.1fr]")}>
+      <div className={cx(container, "grid gap-10 py-12 sm:py-14 xl:grid-cols-[0.9fr_2.1fr]")}>
         <div>
           <Wordmark markSize={24} />
           <p className="mt-4 max-w-[34ch] text-[14.5px] leading-relaxed text-muted">

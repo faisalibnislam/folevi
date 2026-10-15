@@ -6,7 +6,7 @@ import { PageFrame } from "@/components/marketing/cards";
 import { Breadcrumbs } from "@/components/marketing/parts";
 import { JsonLd, articleLd, pageMetadata } from "@/components/marketing/seo";
 import { SUPPORT_EMAIL, formatDay } from "@/components/marketing/site";
-import { Eyebrow, container, cx } from "@/components/marketing/ui";
+import { Eyebrow, KeepHyphens, container, cx } from "@/components/marketing/ui";
 
 export const dynamicParams = false;
 
@@ -42,9 +42,9 @@ export default async function DocArticlePage({ params }: Params) {
         })}
       />
       <PageFrame>
-        <div className={cx(container, "grid gap-(--mk-stack-gap) lg:grid-cols-[260px_minmax(0,1fr)]")}>
+        <div className={cx(container, "grid gap-(--mk-stack-gap) xl:grid-cols-[260px_minmax(0,1fr)]")}>
           {/* The article reads as one note: its breadcrumbs, header, text and the next steps, in a single card. */}
-          <article className="mk-box min-w-0 px-5 pb-10 pt-5 sm:px-10 sm:pb-12 sm:pt-7 lg:col-start-2 lg:row-start-1 lg:px-14">
+          <article className="mk-box min-w-0 px-5 pb-10 pt-5 sm:px-10 sm:pb-12 sm:pt-7 xl:col-start-2 xl:row-start-1 lg:px-14">
             <Breadcrumbs
               className="-ml-1.5"
               items={[
@@ -56,7 +56,7 @@ export default async function DocArticlePage({ params }: Params) {
             <div className="max-w-[700px]">
             <header className="mt-6 sm:mt-8">
               <Eyebrow>Documentation</Eyebrow>
-              <h1 className="mk-display mt-4 text-[36px] sm:text-[48px] lg:text-[52px]">{article.title}</h1>
+              <h1 className="mk-display mt-4 text-[36px] sm:text-[48px] lg:text-[52px]"><KeepHyphens text={article.title} /></h1>
               <p className="mk-lede mt-4">{article.description}</p>
               <p className="mt-4 text-[13.5px] text-muted">
                 Updated <time dateTime={article.updated}>{formatDay(article.updated)}</time>
@@ -94,13 +94,13 @@ export default async function DocArticlePage({ params }: Params) {
             </div>
           </article>
 
-          <nav aria-label="Documentation" className="mk-box self-start px-3 py-4 lg:sticky lg:top-8 lg:col-start-1 lg:row-start-1">
-            <p className="mk-caps px-2.5 pb-2 lg:pl-3.5">
+          <nav aria-label="Documentation" className="mk-box self-start px-3 py-4 xl:sticky xl:top-8 xl:col-start-1 xl:row-start-1">
+            <p className="mk-caps px-2.5 pb-2 xl:pl-3.5">
               <Link href="/docs" className="hover:text-(--color-heading)">
                 Documentation
               </Link>
             </p>
-            <ol className="grid gap-0.5 sm:grid-cols-2 lg:block lg:space-y-0.5 lg:border-l mk-hair">
+            <ol className="grid gap-0.5 sm:grid-cols-2 xl:block xl:space-y-0.5 xl:border-l mk-hair">
               {DOC_ARTICLES.map((a) => {
                 const current = a.slug === article.slug;
                 return (
@@ -109,8 +109,8 @@ export default async function DocArticlePage({ params }: Params) {
                       href={docPath(a.slug)}
                       aria-current={current ? "page" : undefined}
                       className={cx(
-                        "flex min-h-11 items-center rounded-chip px-2.5 py-1 text-[14px] leading-snug transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading) lg:-ml-px lg:min-h-8 lg:rounded-l-none lg:border-l lg:pl-3.5",
-                        current ? "bg-(--color-surface-sunken) font-semibold text-(--color-heading) lg:border-(--color-heading) lg:bg-transparent" : "text-muted lg:border-transparent lg:hover:border-(--color-heading)",
+                        "flex min-h-11 items-center rounded-chip px-2.5 py-1 text-[14px] leading-snug transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading) xl:-ml-px xl:min-h-8 xl:rounded-l-none xl:border-l xl:pl-3.5",
+                        current ? "bg-(--color-surface-sunken) font-semibold text-(--color-heading) xl:border-(--color-heading) xl:bg-transparent" : "text-muted xl:border-transparent xl:hover:border-(--color-heading)",
                       )}
                     >
                       {a.nav}

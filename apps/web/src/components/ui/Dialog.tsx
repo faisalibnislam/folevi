@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { IconButton } from "./Button";
 
@@ -28,11 +28,16 @@ export function Dialog({
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descId = useId();
-  useEffect(() => {
+  // The content mounts once the dialog is open (before the browser paints), so a field marked autoFocus
+  // takes the focus. Rendered with the dialog still closed, its focus went nowhere and the browser then
+  // put it on the Close button, ringed, every time a dialog opened.
+  const [shown, setShown] = useState(false);
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (open && !el.open) el.showModal();
     if (!open && el.open) el.close();
+    setShown(open);
   }, [open]);
   const width = size === "sm" ? "max-w-sm" : size === "lg" ? "max-w-3xl" : size === "xl" ? "max-w-5xl" : "max-w-lg";
   return (
@@ -48,9 +53,9 @@ export function Dialog({
       onClick={(e) => {
         if (e.target === ref.current) onClose();
       }}
-      className={`m-auto w-[calc(100%-2rem)] ${width} ui-pop rounded-panel p-0 text-ink backdrop:bg-transparent shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-rise_180ms_var(--ease-folio)]`}
+      className={`m-auto w-[calc(100%-2rem)] ${width} ui-pop rounded-panel p-0 text-ink outline-none backdrop:bg-transparent shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-rise_180ms_var(--ease-folio)]`}
     >
-      {open ? (
+      {open && shown ? (
         <div className="flex max-h-[85dvh] flex-col">
           <header className="flex items-start gap-3 px-6 pb-2 pt-5">
             <div className="min-w-0 flex-1">

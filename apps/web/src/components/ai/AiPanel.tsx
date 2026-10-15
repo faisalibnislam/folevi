@@ -278,7 +278,7 @@ export function AiPanel({
       {/* Prompt */}
       <section aria-label="Ask Foli AI">
         {modes}
-        <div className="relative rounded-panel bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-focus)]">
+        <div className="relative rounded-panel bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
           <label htmlFor={`${uid}-prompt`} className="sr-only">
             Tell Foli AI what to write
           </label>

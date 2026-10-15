@@ -269,7 +269,7 @@ export function DocumentPicker({ scope, value, onChange, label = "Add to", exclu
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => choose(t)}
-              className="ui-menu-item flex cursor-pointer items-center gap-2 rounded-chip px-2 py-1.5"
+              className="ui-menu-item flex cursor-pointer items-center gap-2 px-2 py-1.5"
             >
               {t ? <FileText size={14} aria-hidden className="text-muted" /> : <Inbox size={14} aria-hidden className="text-muted" />}
               <span className="truncate">{t ? t.title || "Untitled" : "Inbox (your task page)"}</span>

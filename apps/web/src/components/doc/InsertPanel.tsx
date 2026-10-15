@@ -291,7 +291,7 @@ export function InsertPanel({ editor, disabled }: { editor: Editor | null; disab
   return (
     <div>
       <p className="mb-2 px-1 text-[12.5px] text-muted">Drag and drop any item to the document</p>
-      <label className="ui-well flex h-9 items-center gap-2 rounded-chip px-3 text-[13px] text-muted focus-within:shadow-[0_0_0_2px_var(--color-focus)]">
+      <label className="ui-well flex h-9 items-center gap-2 rounded-chip px-3 text-[13px] text-muted focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
         <Search size={14} aria-hidden />
         <input data-autofocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search blocks" className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-[var(--color-ink-faint)]" />
       </label>

@@ -79,7 +79,7 @@ export function UnsplashDialog({ open, onClose, onPick }: { open: boolean; onClo
             }}
             className="flex gap-2"
           >
-            <label className="ui-well flex h-10 min-w-0 flex-1 items-center gap-2 rounded-chip px-3.5 text-sm text-muted focus-within:shadow-[0_0_0_2px_var(--color-focus)]">
+            <label className="ui-well flex h-10 min-w-0 flex-1 items-center gap-2 rounded-chip px-3.5 text-sm text-muted focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
               <Search size={15} aria-hidden />
               <input
                 autoFocus

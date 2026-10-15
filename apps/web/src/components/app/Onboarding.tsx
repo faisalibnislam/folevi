@@ -275,7 +275,7 @@ export function Onboarding() {
             ) : null}
           </div>
 
-          <footer className="sticky bottom-0 z-10 -mx-4 flex items-center gap-2 border-t border-line bg-canvas/90 px-4 py-3 backdrop-blur-md sm:-mx-10 sm:px-10 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:pb-10 lg:pt-4 lg:backdrop-blur-none">
+          <footer className="ui-safe-bottom sticky bottom-0 z-10 -mx-4 flex items-center gap-2 border-t border-line bg-canvas/90 px-4 py-3 backdrop-blur-md sm:-mx-10 sm:px-10 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:pb-10 lg:pt-4 lg:backdrop-blur-none">
             {step > 0 ? (
               <Button variant="ghost" disabled={busy} onClick={() => go(step - 1)}>
                 <ArrowLeft size={16} aria-hidden />

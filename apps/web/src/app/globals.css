@@ -234,6 +234,8 @@
 :root[data-native="ios"] .ui-drawer-panel { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left); }
 :root[data-native="ios"] :is(.ui-toasts, .ui-fab, .ui-fab-panel) { margin-bottom: env(safe-area-inset-bottom); }
 :root[data-native="ios"] .ui-fab { margin-right: env(safe-area-inset-right); }
+/* A bar stuck to the bottom of a page (onboarding's Back and Continue) keeps its buttons above the home indicator. */
+@media (max-width: 1023px) { :root[data-native="ios"] .ui-safe-bottom { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); } }
 /* The logo above sign in goes to the public site, where plans are sold: in the app it's only the logo. */
 :root[data-native="ios"] .ui-site-link { pointer-events: none; }
 /* A long press opens Folevi's own menus (lib/touchContextMenu.ts), not iOS's link preview and callout. */

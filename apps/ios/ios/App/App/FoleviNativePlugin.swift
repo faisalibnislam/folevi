@@ -4,7 +4,8 @@
 // makes sure of it.
 //
 // Links: Folevi's own pages stay in the web view (one opened as a new window loads there too); a link to
-// another site opens in an in-app Safari view; mail, phone and folevi:// links go to the system.
+// another site opens in an in-app Safari view (never Folevi's pricing page); mail, phone and folevi:// links
+// go to the system.
 import Capacitor
 import SafariServices
 import UIKit
@@ -98,6 +99,8 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
             }
             // Embeds (a video in a note) load in their frame; leaving Folevi opens Safari over the app.
             guard topLevel else { return nil }
+            // Folevi's plans page is never opened from the app (App Store rule 3.1.1: no way to buying).
+            if Self.isPricing(url) { return true }
             DispatchQueue.main.async { _ = self.openOutside(url) }
             return true
         case "mailto", "tel", "sms", "folevi":
@@ -109,6 +112,13 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
             // javascript:, file: and other apps' schemes never load from a page.
             return true
         }
+    }
+
+    /// folevi.com/pricing (and the local dev server's): where plans are sold.
+    private static func isPricing(_ url: URL) -> Bool {
+        let host = url.host?.lowercased() ?? ""
+        let folevi = host == "folevi.com" || host.hasSuffix(".folevi.com") || host == "localhost"
+        return folevi && (url.path == "/pricing" || url.path.hasPrefix("/pricing/"))
     }
 
     /// Opens a link outside the web view: web pages in an in-app Safari view, the rest with the system.

@@ -39,6 +39,10 @@ for (let i = 0; i < 60; i++) {
 }
 try {
   execFileSync("pkill", ["-f", `${installed}/Contents/MacOS/Folevi`], { stdio: "ignore" });
+  execFileSync("sleep", ["2"]);
+  // A copy stuck inside a system call never acts on that signal: it's ended outright, or `open` below
+  // would bring the stuck copy forward instead of starting the new one.
+  execFileSync("pkill", ["-9", "-f", `${installed}/Contents/MacOS/Folevi`], { stdio: "ignore" });
 } catch {
   /* Already gone. */
 }

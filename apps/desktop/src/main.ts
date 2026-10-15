@@ -473,10 +473,14 @@ function updateMenuItems(): MenuItemConstructorOptions[] {
 
 function applyLoginItem() {
   // Only the installed app registers itself (a development run would register the Electron binary). Windows
-  // can't tell a launch at sign-in from any other, so its entry passes LOGIN_ARG.
+  // can't tell a launch at sign-in from any other, so its entry passes LOGIN_ARG. Only called when the
+  // setting changes, and after the page has its answer: on recent macOS the login item service can take
+  // its time (or never answer), and the call blocks the app while it waits, so it never runs at startup.
   if (!app.isPackaged) return;
-  if (windows) app.setLoginItemSettings({ openAtLogin: settings.openAtLogin, args: [LOGIN_ARG] });
-  else app.setLoginItemSettings({ openAtLogin: settings.openAtLogin });
+  setTimeout(() => {
+    if (windows) app.setLoginItemSettings({ openAtLogin: settings.openAtLogin, args: [LOGIN_ARG] });
+    else app.setLoginItemSettings({ openAtLogin: settings.openAtLogin });
+  }, 0);
 }
 
 function applySettings(next: DesktopSettings) {
@@ -645,12 +649,13 @@ app.whenReady().then(() => {
   listen();
   buildMenu();
   shortcutError = registerShortcut();
-  applyLoginItem();
   updateTray();
   // Opened at login (or by a link): quietly, ready for Quick Add. Otherwise the main window.
   // Only the installed app is ever opened at login, and asking from a development run can hang on recent
   // macOS (the unpackaged Electron isn't a registered login item), so it's only asked when packaged.
-  const atLogin = (app.isPackaged && app.getLoginItemSettings().wasOpenedAtLogin) || process.argv.includes(LOGIN_ARG);
+  // (Windows marks a launch at sign-in with LOGIN_ARG. macOS can only say so through the login item
+  // service, which can hang the app on recent macOS, so on a Mac the main window always opens.)
+  const atLogin = process.argv.includes(LOGIN_ARG);
   if (!atLogin && !pendingLink) createMainWindow();
   createQuickAdd();
   if (pendingLink) {

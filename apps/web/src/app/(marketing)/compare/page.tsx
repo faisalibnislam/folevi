@@ -99,7 +99,7 @@ export default function CompareIndexPage() {
               </>,
             ]}
           />
-          <p className="mt-6 text-[13px] text-muted">{trademarkLine(COMPETITORS.flatMap((x) => x.trademarks).filter((name, i, all) => all.indexOf(name) === i))}</p>
+          <p className="mt-6 max-w-[760px] text-[13px] text-muted">{trademarkLine(COMPETITORS.flatMap((x) => x.trademarks).filter((name, i, all) => all.indexOf(name) === i))}</p>
         </Card>
         <SignUpPanel body={TRIAL_LINE} secondary={{ label: "See pricing", href: "/pricing" }} />
       </PageFrame>

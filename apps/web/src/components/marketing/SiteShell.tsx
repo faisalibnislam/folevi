@@ -692,7 +692,8 @@ export function SiteShell({
                     aria-haspopup="dialog"
                     data-drawer-toggle=""
                     onClick={() => setOpen(true)}
-                    className="mk-btn mk-btn-secondary size-11 flex-none px-0"
+                    /* As tall as Sign up beside it; the ::after keeps a 44 px touch target. */
+                    className="mk-btn mk-btn-secondary relative size-9 flex-none px-0 after:absolute after:-inset-1 after:content-['']"
                   >
                     <Menu size={18} aria-hidden />
                   </button>

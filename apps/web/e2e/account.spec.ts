@@ -6,6 +6,7 @@ import {
   confirmEmail,
   createAccount,
   enrollTwoFactor,
+  landingUrl,
   mailboxLink,
   newPerson,
   signIn,
@@ -143,7 +144,7 @@ test("forgotten password: reset by email, other sessions end, sign in with the n
   await page.getByLabel("Email").fill(account.email);
   await page.getByRole("button", { name: "Send reset link" }).click();
   await expect(page.getByRole("status")).toContainText("a reset link is on its way");
-  await page.goto(await mailboxLink(ctx.request, account.email, "auth_password_reset"));
+  await page.goto(await landingUrl(ctx.request, await mailboxLink(ctx.request, account.email, "auth_password_reset")));
   await page.waitForURL(/\/reset-password\?token=/);
   const newPassword = "a brand new folio password";
   await page.getByLabel("New password", { exact: true }).fill(newPassword);

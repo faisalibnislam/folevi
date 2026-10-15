@@ -5,6 +5,8 @@ import { expect, type APIRequestContext, type Browser, type BrowserContext, type
 import { TOTP } from "otpauth";
 
 export const APP = process.env.E2E_BASE_URL ?? "http://app.localhost:3000";
+/** The marketing site: the app's host without "app." (src/proxy.ts), on the same server. */
+export const SITE = (process.env.E2E_SITE_URL ?? APP.replace("://app.", "://")).replace(/\/$/, "");
 export const PASSWORD = "quiet folio test password";
 const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 
@@ -89,6 +91,21 @@ export async function mailboxLink(request: APIRequestContext, email: string, key
     await new Promise((r) => setTimeout(r, 250));
   }
   throw new Error(`no ${key} email for ${email}`);
+}
+
+/**
+ * Where an email's link lands, on this server: the backend redirects to its own SITE_URL (the reset link
+ * goes to app.localhost:3000/reset-password?token=...), so each redirect is followed here and moved over.
+ */
+export async function landingUrl(request: APIRequestContext, link: string): Promise<string> {
+  let url = link;
+  for (let i = 0; i < 5; i++) {
+    const res = await request.get(url, { maxRedirects: 0 });
+    const to = res.headers()["location"];
+    if (res.status() < 300 || res.status() >= 400 || !to) return url;
+    url = onThisServer(new URL(to, url).toString());
+  }
+  return url;
 }
 
 /** Fills and submits the sign-up form; ends on "Check your inbox". */

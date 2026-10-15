@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { newPerson, settle } from "./helpers";
+import { SITE, newPerson, settle } from "./helpers";
 
 const VIEWS = ["/documents", "/tasks/today", "/calendar", "/settings/account", "/settings/security", "/settings/devices", "/help"];
 
@@ -24,7 +24,7 @@ for (const scheme of ["light", "dark"] as const) {
 }
 
 test("marketing home has no serious accessibility violations", async ({ page }) => {
-  await page.goto("http://localhost:3000/");
+  await page.goto(`${SITE}/`);
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
   expect(results.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
 });

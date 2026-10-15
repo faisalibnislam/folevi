@@ -127,9 +127,9 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
       <div className="min-w-0 flex-1">
         <p className={`text-[15px] leading-snug ${closed ? "text-muted line-through" : ""}`}>{task.title || "Untitled task"}</p>
         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
-          <AppLink href={noteHref} className="truncate hover:text-ink hover:underline">
-            {task.documentIcon ? `${task.documentIcon} ` : ""}
-            {task.documentTitle || "Untitled"}
+          <AppLink href={noteHref} className="inline-flex min-w-0 items-center gap-1 hover:text-ink hover:underline">
+            <FileText size={12} aria-hidden className="flex-none" />
+            <span className="truncate">{task.documentTitle || "Untitled"}</span>
           </AppLink>
           {task.assigneeName ? <span>· {task.assigneeName}</span> : null}
           {task.status === "canceled" ? <span className="rounded-chip bg-sunken px-1.5 text-[11px] font-medium text-muted">Canceled</span> : null}
@@ -361,8 +361,8 @@ export function TasksView({ view }: { view: View }) {
       tabTitle={`Tasks · ${meta.label}`}
       actions={
         <>
-          <AppLink href="/calendar" className="ui-btn ui-btn-secondary h-8 gap-1.5 px-3 text-sm">
-            <CalendarDays size={14} aria-hidden /> Calendar
+          <AppLink href="/calendar" className="ui-btn ui-btn-secondary h-8 gap-1.5 px-3 text-sm pointer-coarse:h-11">
+            <CalendarDays size={14} aria-hidden /> <span className="max-md:sr-only">Calendar</span>
           </AppLink>
           <Button size="sm" variant="primary" onClick={openQuickAdd}>
             <Plus size={14} aria-hidden /> Add task
@@ -399,7 +399,7 @@ export function TasksView({ view }: { view: View }) {
             ))}
           </div>
         ) : shown.length === 0 ? (
-          <p className="mt-10 text-center ui-display text-2xl text-muted">{query ? "No tasks match that filter." : empty}</p>
+          <p className="mt-16 text-center ui-display text-2xl text-muted">{query ? "No tasks match that filter." : empty}</p>
         ) : (
           list
         )}

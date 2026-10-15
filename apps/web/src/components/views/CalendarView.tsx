@@ -129,6 +129,17 @@ export function CalendarView({ month }: { month: string | null }) {
     setMode(next);
   };
   const weekLabel = `${formatCalendarDate(weekDays[0]!, { month: "short", day: "numeric" })} to ${formatCalendarDate(weekDays[weekDays.length - 1]!, { month: "short", day: "numeric", year: "numeric" })}`;
+  // The same height as the buttons beside it (32): 24px items in the 4px track. On phones it sits at the
+  // start of the row under the bar, which would otherwise overflow the screen.
+  const layoutSwitch = (
+    <div role="radiogroup" aria-label="Calendar layout" className="ui-seg ui-well [&>*]:min-h-6">
+      {(["month", "week", "agenda"] as const).map((m) => (
+        <button key={m} type="button" role="radio" aria-checked={mode === m} data-active={mode === m} onClick={() => pickLayout(m)} className="capitalize">
+          {m}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <ViewChrome
@@ -139,20 +150,15 @@ export function CalendarView({ month }: { month: string | null }) {
         <>
           <CalendarsButton />
           <Button size="sm" onClick={() => setFeedOpen(true)}>
-            <Rss size={14} aria-hidden /> Subscribe
+            <Rss size={14} aria-hidden /> <span className="max-md:sr-only">Subscribe</span>
           </Button>
-          <div role="radiogroup" aria-label="Calendar layout" className="flex ui-well rounded-control p-1 text-xs">
-            {(["month", "week", "agenda"] as const).map((m) => (
-              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => pickLayout(m)} className={`h-7 rounded-chip px-2.5 capitalize ${mode === m ? "bg-raised shadow-sm" : "text-muted"}`}>
-                {m}
-              </button>
-            ))}
-          </div>
+          {narrow ? null : layoutSwitch}
         </>
       }
     >
       <div className="mx-auto max-w-[1180px] px-4 pb-24 pt-3 sm:px-8">
         <div className="mb-4 flex min-h-8 items-center gap-2 empty:hidden">
+          {narrow ? layoutSwitch : null}
           {mode === "month" ? (
             <div className="ml-auto flex items-center gap-1">
               <IconButton label="Previous month" onClick={() => navigate(`/calendar/${shiftMonth(current, -1)}`)}>

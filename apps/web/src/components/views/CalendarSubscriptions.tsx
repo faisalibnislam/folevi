@@ -297,7 +297,7 @@ export function CalendarsButton() {
   return (
     <>
       <Button ref={anchor} size="sm" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((o) => !o)}>
-        <CalendarRange size={14} aria-hidden /> Calendars
+        <CalendarRange size={14} aria-hidden /> <span className="max-md:sr-only">Calendars</span>
         {failing ? (
           <>
             <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-chip bg-danger" />

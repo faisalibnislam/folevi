@@ -157,7 +157,7 @@ export function FoldersIndex() {
         ) : null
       }
     >
-      <div className="mx-auto max-w-6xl px-4 pb-24 pt-3 sm:px-8">
+      <div className="mx-auto max-w-[1180px] px-4 pb-24 pt-3 sm:px-8">
         <div className="flex flex-wrap items-center gap-3">
           <SearchField value={q} onChange={setQ} label="Search folders" />
           <p role="status" className="min-w-0 truncate text-[13px] text-muted">
@@ -250,7 +250,7 @@ export function TagsIndex() {
       title={<h1 className="text-sm font-semibold">Tags</h1>}
       tabTitle="Tags"
     >
-      <div className="mx-auto max-w-6xl px-4 pb-24 pt-3 sm:px-8">
+      <div className="mx-auto max-w-[1180px] px-4 pb-24 pt-3 sm:px-8">
         <div className="flex flex-wrap items-center gap-3">
           <SearchField value={q} onChange={setQ} label="Search tags" />
           <p role="status" className="min-w-0 truncate text-[13px] text-muted">

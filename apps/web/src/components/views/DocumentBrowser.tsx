@@ -358,14 +358,14 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           </p>
           <label className="flex items-center gap-2 text-sm text-muted">
             <span>Sort</span>
-            <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-8 ui-input rounded-chip px-3 text-ink">
+            <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-9 ui-input rounded-chip px-3 text-sm text-ink">
               <option value="updated">Last edited</option>
               <option value="created">Created</option>
               <option value="title">Title</option>
               <option value="manual">Manual order</option>
             </Select>
           </label>
-          <div role="radiogroup" aria-label="Layout" className="flex ui-well rounded-control p-1">
+          <div role="radiogroup" aria-label="Layout" className="ui-seg ui-well">
             {(
               [
                 ["grid", "Grid", <LayoutGrid key="g" size={15} />],
@@ -378,10 +378,10 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                 type="button"
                 role="radio"
                 aria-checked={layout === value}
+                data-active={layout === value}
                 aria-label={label}
                 title={label}
                 onClick={() => setLayout(value)}
-                className={`grid h-7 w-9 place-items-center rounded-chip transition-[background-color,box-shadow] ${layout === value ? "bg-raised text-heading shadow-[var(--shadow-control)]" : "text-muted hover:text-heading"}`}
               >
                 {icon}
               </button>
@@ -389,17 +389,17 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           </div>
           {/* Page actions share the toolbar row (new notes come from the tab bar). */}
           {view === "trash" && results.length ? (
-            <Button size="sm" variant="quiet" onClick={() => setConfirmEmpty(true)}>
+            <Button variant="quiet" onClick={() => setConfirmEmpty(true)}>
               Empty Trash
             </Button>
           ) : null}
           {view === "templates" && aiOn && online ? (
-            <Button size="sm" variant="secondary" onClick={() => setGenerating(true)}>
+            <Button variant="secondary" onClick={() => setGenerating(true)}>
               <AiIcon size={14} aria-hidden className="text-[#7c6cf0]" /> Generate with AI
             </Button>
           ) : null}
           {view === "templates" ? (
-            <Button size="sm" variant="primary" onClick={() => void createDocument({ folderId: null, kind: "template" })}>
+            <Button variant="primary" onClick={() => void createDocument({ folderId: null, kind: "template" })}>
               <Plus size={14} aria-hidden /> New template
             </Button>
           ) : null}

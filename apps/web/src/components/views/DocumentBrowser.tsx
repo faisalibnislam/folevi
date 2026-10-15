@@ -349,7 +349,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     >
       {/* The surface fills the scrolling area so a selection rectangle can start anywhere around the cards. */}
       <div className="min-h-full" onPointerDown={selection.onSurfacePointerDown}>
-      <div className="mx-auto max-w-[1180px] px-4 pb-24 pt-3 sm:px-8">
+      <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <p role="status" className="mr-auto min-w-0 truncate text-[13px] text-muted">
             {loading

@@ -15,7 +15,7 @@ export function SharedView() {
       subtitle={docs === undefined ? undefined : `${docs.length} ${docs.length === 1 ? "page" : "pages"} · from anyone`}
       tabTitle="Shared with Me"
     >
-      <div className="mx-auto max-w-3xl px-4 pb-24 pt-6 sm:px-8">
+      <div className="mx-auto max-w-3xl px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8">
         {docs === undefined ? (
           <div className="mt-6 h-24 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" aria-busy />
         ) : docs.length === 0 ? (

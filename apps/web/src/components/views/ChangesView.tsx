@@ -43,7 +43,7 @@ export function ChangesView() {
       : [waiting.length ? `${waiting.length} proposed` : null, notes.length ? `${notes.length} ${notes.length === 1 ? "note" : "notes"} changed since you last looked` : null].filter(Boolean).join(" · ") || "Nothing new";
   return (
     <ViewChrome title={<h1 className="text-sm font-semibold">Changes</h1>} subtitle={subtitle} tabTitle="Changes">
-      <div className="mx-auto max-w-3xl px-4 pb-24 pt-6 sm:px-8">
+      <div className="mx-auto max-w-3xl px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8">
         {waiting.length ? (
           <section aria-labelledby="changes-proposed" className="mb-10">
             <h2 id="changes-proposed" className="text-[15px] font-semibold text-heading">

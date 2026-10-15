@@ -43,7 +43,7 @@ export function HelpView() {
   const [contacting, setContacting] = useState(false);
   return (
     <ViewChrome title={<h1 className="text-sm font-semibold">Help</h1>} tabTitle="Help">
-      <div className="mx-auto max-w-3xl space-y-10 px-4 pb-24 pt-6 sm:px-8">
+      <div className="mx-auto max-w-3xl space-y-10 px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8">
         <header>
           <h2 className="ui-display text-[34px] leading-tight">Help</h2>
           <p className="text-muted">

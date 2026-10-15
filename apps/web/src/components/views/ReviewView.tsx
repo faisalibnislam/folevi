@@ -131,7 +131,7 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
         </>
       }
     >
-      <div ref={region} tabIndex={-1} aria-label="Review cards" role="region" className="mx-auto max-w-2xl px-4 pb-16 pt-6 outline-none sm:px-8">
+      <div ref={region} tabIndex={-1} aria-label="Review cards" role="region" className="mx-auto max-w-2xl px-4 pb-[max(4rem,var(--fab-clearance))] pt-6 outline-none sm:px-8">
         {target.documentId && data ? (
           <p className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted">
             <span>

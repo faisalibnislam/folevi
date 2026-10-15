@@ -223,7 +223,7 @@ export function HomeDashboard() {
       title={<h1 className="truncate text-sm font-semibold">Home</h1>}
       tabTitle="Home"
     >
-      <div className="mx-auto max-w-[1400px] px-4 pb-8 pt-2 sm:px-8">
+      <div className="mx-auto max-w-[1400px] px-4 pb-[max(2rem,var(--fab-clearance))] pt-2 sm:px-8">
         {aiOn ? <CatchUp /> : null}
         <TodaysReviews />
         <Section shelf title="Recent notes" icon={<Clock3 size={17} strokeWidth={1.9} />} href="/notes" empty={recent && !recent.length ? <p className="text-sm text-muted">No notes yet. Press New to write your first one.</p> : undefined}>

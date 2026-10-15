@@ -216,6 +216,12 @@
 :root[data-desktop]:has(.ui-desktop-quick-add) body::before { display: none; }
 .ui-desktop-quick-add { min-height: 100vh; }
 
+/* Room under scrolling views for the floating Ask Foli AI button (AskAiChat: 48px tall, 36px from the bottom,
+   12px on phones) plus a 16px gap, only while the button is showing. Views pad their end by at least this. */
+:root { --fab-clearance: 0px; }
+:root:has(.ui-fab) { --fab-clearance: 100px; }
+@media (max-width: 639px) { :root:has(.ui-fab) { --fab-clearance: 76px; } }
+
 @layer components {
   /* Canvas: a soft, neutral ambient light behind the floating glass panels. On a note, the note's own theme
      image shows through instead (Shell's ambient layer), so notes carry the colour and the chrome stays neutral. */

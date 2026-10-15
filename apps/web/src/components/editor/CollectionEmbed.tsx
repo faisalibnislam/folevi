@@ -180,7 +180,7 @@ function InlineText({ value, onCommit, label, placeholder, className, maxLength 
           e.currentTarget.blur();
         }
       }}
-      className={`min-w-0 rounded-chip border border-transparent bg-transparent px-1 outline-none hover:border-line focus:border-line-strong focus:bg-surface ${className ?? ""}`}
+      className={`min-w-0 text-ellipsis rounded-chip border border-transparent bg-transparent px-1 outline-none hover:border-line focus:border-line-strong focus:bg-surface ${className ?? ""}`}
     />
   );
 }
@@ -422,7 +422,7 @@ function PropertyEditor({
             const v = e.target.value.trim();
             if (v !== (value ?? "")) void save(v || null);
           }}
-          className="w-full bg-transparent outline-none"
+          className="w-full text-ellipsis bg-transparent outline-none"
           type={prop.type === "url" ? "url" : "text"}
           placeholder={prop.type === "url" ? "https://" : undefined}
         />

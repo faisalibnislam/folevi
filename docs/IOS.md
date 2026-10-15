@@ -21,7 +21,7 @@ apps/ios/
   ios/App/App/
     AppDelegate.swift          one scene; links and activities to Capacitor
     SceneDelegate.swift        the window, and the Face ID lock following the scene
-    FoleviViewController.swift Capacitor's view controller: swipe back, no page bounce, bridge.js
+    FoleviViewController.swift Capacitor's view controller: swipe back, no page bounce, bridge.js, NavigationGuard
     FoleviNativePlugin.swift   "FoleviNative": lock settings, links out, the offline page's retry
     AppLock.swift              the Face ID lock and its cover
     bridge.js                  window.foleviNative, data-native="ios", viewport-fit=cover
@@ -89,6 +89,11 @@ FoleviNativePlugin decides where every navigation goes:
 - Folevi's own pages stay in the web view; one opened as a new window (`target=_blank`, `window.open`) loads
   there too, since the app has one window.
 - Other sites open in an in-app Safari view over the app. Embeds (a video in a note) load in their frame.
+  Folevi's pricing page (folevi.com/pricing, reachable only through the app host's redirect of /pricing) is
+  never opened.
+- A navigation called off on purpose (a redirect sent to the Safari view) doesn't end on the offline page:
+  `NavigationGuard` in FoleviViewController.swift sits in front of Capacitor's navigation delegate and drops
+  those cancellations, which Capacitor would otherwise treat as a network failure.
 - `mailto:`, `tel:`, `sms:` and `folevi:` go to the system. `javascript:`, `file:` and other apps' schemes
   never load.
 - `folevi://` links from other apps reach the page through the App plugin; the page reads them with
@@ -149,6 +154,7 @@ Plans are sold on folevi.com. Inside the app nothing shows a price or offers to 
 - Server messages that end with where to buy ("Buy more in Settings → Plan & billing.") lose that sentence
   (`withoutPurchaseHints`, applied in `errorMessage` and the toasts).
 - The sign-in page's logo, which links to the marketing site, isn't a link in the app.
+- The app never opens folevi.com/pricing, even in its Safari view.
 
 Tests: `apps/web/test/native-app.test.tsx` (Plan & billing, AI panels and server messages in and out of the
 app) and `apps/web/e2e/ios-app.spec.ts` (the whole app with a stand-in bridge).

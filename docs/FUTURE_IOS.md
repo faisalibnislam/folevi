@@ -1,5 +1,8 @@
 # Future iOS client (intentionally not built)
 
+> Superseded: Folevi for iPhone and iPad is now the web app in a Capacitor shell (`apps/ios`, `docs/IOS.md`).
+> This note stays for the record of a fully native client.
+
 iOS, iPadOS, Android and Windows apps are out of scope for this delivery. Nothing in the repository
 targets them, and the marketing site doesn't mention them. This note records how an iOS client would be
 added without changing the backend or the other clients.

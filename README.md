@@ -108,4 +108,5 @@ See `docs/TESTING.md` for what each suite covers, and `docs/DESKTOP.md` for the 
 - `docs/DEPLOYMENT.md`: Vercel, Convex (including accounts), Resend, DNS, environments, backups, incidents
 - `docs/TESTING.md`: test suites and manual QA checklists
 - `docs/DESKTOP.md`: Folevi for Mac (the Electron shell), its bridge to the web app, build and release
-- `docs/FUTURE_IOS.md`: how an iOS client would be added (intentionally not built)
+- `docs/IOS.md`: Folevi for iPhone and iPad (`apps/ios`, the web app in a Capacitor shell), App Review notes
+- `docs/FUTURE_IOS.md`: how an iOS client would be added (superseded by docs/IOS.md)

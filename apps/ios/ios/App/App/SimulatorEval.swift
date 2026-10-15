@@ -5,8 +5,13 @@
 //   xcrun simctl spawn booted notifyutil -p com.folevi.ios.eval
 //
 // The script runs as an async function body (callAsyncJavaScript), so it can `await` and `return` a value.
+// Two more things the Simulator can't do from a script: a first line `//open folevi://...` opens that link as
+// if another app had (no "Open in Folevi?" prompt), and focusing a text field from a script raises the
+// keyboard (WebKit's input delegate, which only these builds set).
 #if DEBUG && targetEnvironment(simulator)
+import Capacitor
 import Foundation
+import UIKit
 import WebKit
 
 enum SimulatorEval {
@@ -14,6 +19,8 @@ enum SimulatorEval {
 
     static func install(on webView: WKWebView) {
         self.webView = webView
+        let setter = NSSelectorFromString("_setInputDelegate:")
+        if webView.responds(to: setter) { webView.perform(setter, with: inputDelegate) }
         let center = CFNotificationCenterGetDarwinNotifyCenter()
         CFNotificationCenterAddObserver(center, nil, { _, _, _, _, _ in
             DispatchQueue.main.async { SimulatorEval.run() }
@@ -25,6 +32,11 @@ enum SimulatorEval {
         let out = tmp.appendingPathComponent("eval-result.json")
         try? FileManager.default.removeItem(at: out)
         guard let webView, let script = try? String(contentsOf: tmp.appendingPathComponent("eval.js"), encoding: .utf8) else { return }
+        if script.hasPrefix("//open "), let url = URL(string: String(script.dropFirst(7)).trimmingCharacters(in: .whitespacesAndNewlines)) {
+            let opened = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: url, options: [:])
+            try? JSONSerialization.data(withJSONObject: ["value": opened]).write(to: out)
+            return
+        }
         webView.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { result in
             var answer: [String: Any] = [:]
             switch result {
@@ -37,5 +49,13 @@ enum SimulatorEval {
             try? data.write(to: out)
         }
     }
+
+    private static let inputDelegate = FocusDelegate()
+}
+
+/// Lets a focus() from a script start typing (WebKit only does that for a tap otherwise).
+private final class FocusDelegate: NSObject {
+    @objc(_webView:focusShouldStartInputSession:)
+    func webView(_ webView: WKWebView, focusShouldStartInputSession info: AnyObject) -> Bool { true }
 }
 #endif

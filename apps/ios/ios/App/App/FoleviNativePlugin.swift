@@ -81,8 +81,8 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    /// Capacitor asks every plugin before the web view goes somewhere: true cancels (handled here), nil
-    /// leaves it to Capacitor's usual rules.
+    /// Capacitor asks every plugin before the web view goes somewhere: true cancels (handled here), false
+    /// allows it, nil leaves it to Capacitor's usual rules.
     override func shouldOverrideLoad(_ navigationAction: WKNavigationAction) -> NSNumber? {
         guard let url = navigationAction.request.url, let scheme = url.scheme?.lowercased() else { return nil }
         let newWindow = navigationAction.targetFrame == nil
@@ -90,8 +90,9 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         switch scheme {
         case "http", "https":
             if AppOrigin.of(url) == appOrigin {
-                // window.open or target=_blank on Folevi's own page: there's one window, so it opens here.
-                guard newWindow else { return nil }
+                // Any of Folevi's pages stays in the web view (Capacitor would only keep those under the start
+                // page, /documents). window.open or target=_blank: there's one window, so it opens here.
+                guard newWindow else { return false }
                 DispatchQueue.main.async { self.bridge?.webView?.load(URLRequest(url: url)) }
                 return true
             }

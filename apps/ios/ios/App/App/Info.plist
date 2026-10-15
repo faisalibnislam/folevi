@@ -37,6 +37,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Folevi uses the camera when you take a photo or video to add to a note.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Folevi asks for Face ID to unlock the app when you turn on the lock in Settings.</string>
 	<key>NSMicrophoneUsageDescription</key>

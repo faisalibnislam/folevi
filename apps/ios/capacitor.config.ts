@@ -13,7 +13,9 @@ const config: CapacitorConfig = {
   // Only the offline page lives in the app; everything else comes from the site.
   webDir: "www",
   server: {
-    url: url.origin,
+    // Straight to the app's start page (the site's "/" is a server redirect to it): the service worker
+    // keeps app pages like /documents for offline launches, not that redirect.
+    url: `${url.origin}/documents`,
     // Plain http only for the local dev server (the Debug build also lets App Transport Security allow it).
     cleartext: dev,
     // Shown when neither the network nor the service worker's cache has the page (first launch offline).

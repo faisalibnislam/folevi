@@ -115,7 +115,7 @@ function Visual({ visual, art }: { visual: VisualKey; art: string }) {
   switch (visual) {
     case "ai":
       return (
-        <div className="grid items-start gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
           <AskDemo />
           <EditDemo />
         </div>

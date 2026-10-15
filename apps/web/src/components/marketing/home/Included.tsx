@@ -85,9 +85,9 @@ export function Included() {
             </Hand>
           </div>
         </div>
-        <ul className="mt-10 grid gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-6 lg:gap-x-5">
+        <ul className="mt-10 grid gap-x-4 gap-y-5 sm:grid-cols-2 xl:grid-cols-6 xl:gap-x-5">
           {TILES.map((tile) => (
-            <li key={tile.title} className={cx("relative", tile.wide ? "lg:col-span-3" : "lg:col-span-2")}>
+            <li key={tile.title} className={cx("relative", tile.wide ? "xl:col-span-3" : "xl:col-span-2")}>
               <div role="img" aria-label={tile.label} className="mk-mini-stage">
                 <div aria-hidden="true" className="contents">
                   {tile.picture}

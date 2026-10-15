@@ -65,7 +65,7 @@ export function NoteStyles() {
           <Play className="mk-panel p-4 sm:p-8">
             <div aria-hidden="true">
               <PanelHeader icon={<Clock size={16} />} title="Recent notes" />
-              <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <ul className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {CARDS.map((card) => (
                   <li key={card.title} data-step className="min-h-[216px]">
                     <NoteCard art={artById(card.art)} title={card.title} lines={card.lines} folder={card.folder} />

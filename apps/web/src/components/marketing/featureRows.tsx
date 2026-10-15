@@ -48,7 +48,7 @@ export function Feature({
   if (column) {
     // In a two-column grid the pair shares its rows (subgrid), so both pictures end, and both texts start, level.
     return (
-      <div className={cx(tinted, "grid gap-8 lg:row-span-2 lg:grid-rows-subgrid")}>
+      <div className={cx(tinted, "grid grid-cols-1 gap-8 lg:row-span-2 lg:grid-rows-subgrid")}>
         <div
           className="mk-stage flex items-center px-3 py-5 sm:px-6 sm:py-6"
           style={{ ["--stage-art" as string]: artThumb(artById(art)) }}
@@ -89,7 +89,7 @@ export function Feature({
     <div
       className={cx(
         tinted,
-        "grid items-center gap-8 lg:gap-14",
+        "grid grid-cols-1 items-center gap-8 lg:gap-14",
         reverse
           ? "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]"
           : "lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]",

@@ -1480,6 +1480,8 @@ export default defineSchema({
     url: v.string(),
     /** A palette colour: accent, moss, marigold, plum, coral or muted. */
     color: v.string(),
+    /** Turned off in the Calendars list: its events aren't shown anywhere (it keeps refreshing). */
+    hidden: v.optional(v.boolean()),
     createdAt: v.number(),
     /** Calendar last opened by its owner: only calendars looked at in the last 14 days are refreshed. */
     lastViewedAt: v.number(),

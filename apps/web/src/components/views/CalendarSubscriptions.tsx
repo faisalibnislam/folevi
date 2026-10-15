@@ -7,6 +7,7 @@ import { CalendarRange, MapPin, RefreshCw, Trash2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { Popover } from "@/components/ui/Popover";
+import { Switch } from "@/components/ui/Switch";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatCalendarDate } from "@/i18n";
 import { formatRelative } from "@/lib/format";
@@ -146,12 +147,17 @@ function SubscriptionRow({ cal }: { cal: Subscription }) {
       <div className="flex items-start gap-2">
         <span aria-hidden className="mt-1.5 inline-block h-2.5 w-2.5 flex-none rounded-chip" style={{ background: calendarColor(cal.color) }} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{cal.name}</p>
+          <p className={`truncate text-sm font-medium ${cal.visible ? "" : "text-muted"}`}>{cal.name}</p>
           <p className="truncate text-xs text-faint" title={host}>
             {host}
             {status ? ` · ${status}` : ""}
           </p>
         </div>
+        <Switch
+          checked={cal.visible}
+          label={`Show ${cal.name}`}
+          onChange={(visible) => void update({ calendarId: cal.id, visible }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}
+        />
         <button
           type="button"
           aria-expanded={editing}
@@ -302,7 +308,7 @@ export function CalendarsButton() {
       <Popover open={open} onClose={() => setOpen(false)} anchor={anchor} label="Calendars" align="end" className="w-[360px]">
         <div className="border-b border-line px-4 py-3">
           <h2 className="text-sm font-semibold">Calendars</h2>
-          <p className="mt-0.5 text-xs text-muted">Calendars you subscribe to by link show beside your tasks. They’re read-only here.</p>
+          <p className="mt-0.5 text-xs text-muted">Calendars you subscribe to by link show beside your tasks. They’re read-only here. Turn one off to hide its events.</p>
         </div>
         {cals?.length ? (
           <ul className="divide-y divide-line border-b border-line" aria-label="Subscribed calendars">

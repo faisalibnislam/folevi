@@ -87,6 +87,7 @@ export const list = query({
         name: c.name,
         url: c.url,
         color: c.color,
+        visible: !c.hidden,
         lastFetchedAt: c.lastFetchedAt ?? null,
         lastError: c.lastError ?? null,
         eventCount: c.eventCount ?? null,
@@ -96,7 +97,7 @@ export const list = query({
   },
 });
 
-/** Events from your calendars overlapping [from, to) (UTC ms). The client places them in its time zone. */
+/** Events from your shown calendars overlapping [from, to) (UTC ms). The client places them in its time zone. */
 export const events = query({
   args: { from: v.number(), to: v.number() },
   handler: async (ctx, args) => {
@@ -108,7 +109,9 @@ export const events = query({
           .query("externalCalendars")
           .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
           .take(MAX_CALENDARS + 5)
-      ).map((c) => [c._id as string, c]),
+      )
+        .filter((c) => !c.hidden)
+        .map((c) => [c._id as string, c]),
     );
     if (!cals.size) return [];
     const rows = await ctx.db
@@ -171,8 +174,9 @@ export const add = mutation({
   },
 });
 
+/** Renames or recolours a calendar, or shows or hides its events (`visible`, kept on the server so it follows you). */
 export const update = mutation({
-  args: { calendarId: v.string(), name: v.optional(v.string()), color: v.optional(vColor) },
+  args: { calendarId: v.string(), name: v.optional(v.string()), color: v.optional(vColor), visible: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
@@ -185,6 +189,7 @@ export const update = mutation({
       patch.autoName = undefined;
     }
     if (args.color !== undefined) patch.color = args.color;
+    if (args.visible !== undefined) patch.hidden = args.visible ? undefined : true;
     await ctx.db.patch(cal._id, patch);
     return null;
   },

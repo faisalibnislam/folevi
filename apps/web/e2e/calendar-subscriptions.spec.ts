@@ -59,6 +59,32 @@ test("subscribed calendar: events show read-only in month and week, with their d
   await page.getByRole("radio", { name: "week" }).click();
   await expect(page.getByRole("button", { name: "Design review, 10:00 to 11:00, from Team" })).toBeVisible();
   await expect(page.locator(`[role="gridcell"][data-date="${date}"]`).getByRole("button", { name: "Company holiday, all day, from Team" })).toBeVisible();
+
+  // The agenda lists them under today too, with the same details.
+  await page.getByRole("radio", { name: "agenda" }).click();
+  const today = page.getByRole("region", { name: date });
+  const agendaReview = today.getByRole("button", { name: /^Design review, .*10:00 to 11:00, from Team$/ });
+  await expect(agendaReview).toBeVisible();
+  await expect(today.getByRole("button", { name: /^Company holiday, .*all day, from Team$/ })).toBeVisible();
+  await agendaReview.click();
+  await expect(page.getByRole("dialog", { name: "Design review" })).toContainText("Room 5");
+  await page.keyboard.press("Escape");
+
+  // Turning the calendar off in Calendars hides its events everywhere; on again brings them back.
+  await page.getByRole("button", { name: "Calendars" }).click();
+  const show = page.getByRole("dialog", { name: "Calendars" }).getByRole("switch", { name: "Show Team" });
+  await expect(show).toHaveAttribute("aria-checked", "true");
+  await show.click();
+  await expect(show).toHaveAttribute("aria-checked", "false");
+  await expect(agendaReview).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await page.getByRole("radio", { name: "month" }).click();
+  await expect(cell.getByRole("button", { name: "Design review, 10:00, from Team" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Calendars" }).click();
+  await show.click();
+  await expect(show).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
+  await expect(cell.getByRole("button", { name: "Design review, 10:00, from Team" })).toBeVisible();
 });
 
 test("Calendars: private links are refused, a load error is said plainly, rename and remove", async ({ browser }) => {

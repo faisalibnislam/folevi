@@ -275,4 +275,24 @@ describe("editing and removing", () => {
     expect(await a.as.query(api.externalCalendars.list, {})).toEqual([]);
     expect(await eventRows(t, id)).toEqual([]);
   });
+
+  test("a hidden calendar's events aren't returned until it's shown again", async () => {
+    const t = setup();
+    const a = await person(t, "hide@example.com");
+    network({ "cal.example.com": "93.184.216.34" }, { "https://cal.example.com/team.ics": { body: ICS } });
+    const { id } = await a.as.mutation(api.externalCalendars.add, { url: "https://cal.example.com/team.ics" });
+    await settle(t);
+    expect((await a.as.query(api.externalCalendars.list, {}))[0]).toMatchObject({ visible: true });
+    expect(await a.as.query(api.externalCalendars.events, range)).toHaveLength(4);
+
+    await a.as.mutation(api.externalCalendars.update, { calendarId: id, visible: false });
+    expect((await a.as.query(api.externalCalendars.list, {}))[0]).toMatchObject({ visible: false, name: "Team holidays" });
+    expect(await a.as.query(api.externalCalendars.events, range)).toEqual([]);
+    // The events are kept: showing it again brings them straight back.
+    await a.as.mutation(api.externalCalendars.update, { calendarId: id, visible: true });
+    expect(await a.as.query(api.externalCalendars.events, range)).toHaveLength(4);
+
+    const b = await person(t, "hide-other@example.com");
+    await expect(b.as.mutation(api.externalCalendars.update, { calendarId: id, visible: false })).rejects.toThrow(/not found/i);
+  });
 });

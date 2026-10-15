@@ -55,6 +55,7 @@ export function CalendarView({ month }: { month: string | null }) {
   const weekDays = visibleDays(anchor, narrow ? 3 : 7);
   const first = `${current}-01`;
   const days = monthGrid(current);
+  const agendaDays = useMemo(() => Array.from({ length: 31 }, (_, i) => addDays(today, i)), [today]);
   const from = mode === "month" ? days[0]! : mode === "week" ? weekDays[0]! : today;
   const to = mode === "month" ? days[41]! : mode === "week" ? weekDays[weekDays.length - 1]! : addDays(today, 30);
   const tasks = useQuery(api.tasks.range, { scope, from, to, includeCompleted: true });
@@ -70,7 +71,7 @@ export function CalendarView({ month }: { month: string | null }) {
   const [feedOpen, setFeedOpen] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
   // Events from subscribed calendars (read-only), and the one whose details are open.
-  const eventsByDate = useExternalEvents(mode === "week" ? weekDays : days, timeZone);
+  const eventsByDate = useExternalEvents(mode === "week" ? weekDays : mode === "agenda" ? agendaDays : days, timeZone);
   const [openEvent, setOpenEvent] = useState<ExternalEvent | null>(null);
   const eventAnchor = useRef<HTMLElement | null>(null);
   const showEvent = (e: ExternalEvent, anchor: HTMLElement) => {
@@ -294,17 +295,7 @@ export function CalendarView({ month }: { month: string | null }) {
                   <h4 className="mb-2 text-sm font-semibold">Events</h4>
                   <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
                     {(eventsByDate.get(selected) ?? []).map(({ event: ev }) => (
-                      <li key={ev.id}>
-                        <button type="button" onClick={(e) => showEvent(ev, e.currentTarget)} className="flex w-full items-start gap-2.5 px-4 py-2.5 text-left hover:bg-surface">
-                          <span aria-hidden className="mt-1.5 inline-block h-2.5 w-2.5 flex-none rounded-chip" style={{ background: calendarColor(ev.color) }} />
-                          <span className="min-w-0">
-                            <span className="block text-[15px] leading-snug">{ev.title || "Untitled event"}</span>
-                            <span className="block text-xs text-muted">
-                              {eventWhen(ev, timeZone)} · {ev.calendarName}
-                            </span>
-                          </span>
-                        </button>
-                      </li>
+                      <EventRow key={ev.id} event={ev} timeZone={timeZone} onOpen={showEvent} />
                     ))}
                   </ul>
                 </section>
@@ -327,17 +318,20 @@ export function CalendarView({ month }: { month: string | null }) {
                 </ul>
               </section>
             ) : null}
-            {Array.from({ length: 31 }, (_, i) => addDays(today, i))
-              .filter((d) => byDate.has(d) || d === today)
+            {agendaDays
+              .filter((d) => byDate.has(d) || eventsByDate.has(d) || d === today)
               .map((d) => (
                 <section key={d} aria-label={d}>
                   <h3 className="mb-2 flex items-center gap-3 text-sm font-semibold">
                     {d === today ? "Today" : formatCalendarDate(d, { weekday: "long", month: "long", day: "numeric" })}
                   </h3>
                   <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
-                    {(byDate.get(d) ?? []).length === 0 ? <li className="px-4 py-3 text-sm text-muted">Nothing due.</li> : null}
+                    {(byDate.get(d) ?? []).length === 0 && !eventsByDate.has(d) ? <li className="px-4 py-3 text-sm text-muted">Nothing due.</li> : null}
                     {(byDate.get(d) ?? []).map((t) => (
                       <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} onEdit={setEditing} />
+                    ))}
+                    {(eventsByDate.get(d) ?? []).map(({ event: ev }) => (
+                      <EventRow key={ev.id} event={ev} timeZone={timeZone} onOpen={showEvent} />
                     ))}
                   </ul>
                 </section>
@@ -350,6 +344,23 @@ export function CalendarView({ month }: { month: string | null }) {
       <CalendarFeedDialog open={feedOpen} onClose={() => setFeedOpen(false)} />
       <EventPopover event={openEvent} anchor={eventAnchor} timeZone={timeZone} onClose={() => setOpenEvent(null)} />
     </ViewChrome>
+  );
+}
+
+/** A subscribed calendar's event in a list (the selected day, the agenda): muted, read-only, opens its details. */
+function EventRow({ event: ev, timeZone, onOpen }: { event: ExternalEvent; timeZone: string; onOpen: (e: ExternalEvent, anchor: HTMLElement) => void }) {
+  return (
+    <li>
+      <button type="button" onClick={(e) => onOpen(ev, e.currentTarget)} aria-label={`${ev.title || "Untitled event"}, ${eventWhen(ev, timeZone)}, from ${ev.calendarName}`} className="flex w-full items-start gap-2.5 px-4 py-2.5 text-left hover:bg-surface">
+        <span aria-hidden className="mt-1.5 inline-block h-2.5 w-2.5 flex-none rounded-chip" style={{ background: calendarColor(ev.color) }} />
+        <span className="min-w-0">
+          <span className="block text-[15px] leading-snug text-muted">{ev.title || "Untitled event"}</span>
+          <span className="block text-xs text-faint">
+            {eventWhen(ev, timeZone)} · {ev.calendarName}
+          </span>
+        </span>
+      </button>
+    </li>
   );
 }
 

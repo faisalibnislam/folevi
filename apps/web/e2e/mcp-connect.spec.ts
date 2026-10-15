@@ -35,13 +35,11 @@ test("an app connects through OAuth and the consent screen, then reads notes ove
   for (const [k, v] of Object.entries({ response_type: "code", client_id, redirect_uri: redirectUri, scope: "notes:read tasks:read offline_access", state: "s123", code_challenge: challenge, code_challenge_method: "S256", resource: prm.resource.replace(new URL(APP).origin, new URL(asMeta.issuer as string).origin) })) {
     authorize.searchParams.set(k, v);
   }
-  // The person's browser opens the authorize URL (signed in, so Folevi asks for consent).
-  const step = await page.request.get(authorize.toString(), { maxRedirects: 0, failOnStatusCode: false, headers: { accept: "text/html", "sec-fetch-mode": "navigate" } });
-  const location = step.headers()["location"] ?? ((await step.json().catch(() => ({}))) as { url?: string; redirect_uri?: string }).url;
-  expect(location).toContain("/oauth/consent?");
-  // (The development backend's issuer may be another local port; the signed query is what matters.)
-  const consent = new URL(location!, APP);
-  await page.goto(`${APP}${consent.pathname}${consent.search}`);
+  // The person's browser opens the authorize URL (signed in, so Folevi asks for consent): a real page load
+  // must be redirected to the consent page, never shown the provider's JSON.
+  await page.goto(authorize.toString());
+  await page.waitForURL(/\/oauth\/consent\?/);
+  expect(await page.locator("body").innerText()).not.toContain('"redirect":true');
   await expect(page.getByRole("heading", { name: "Connect E2E Assistant to Folevi" })).toBeVisible();
   await expect(page.getByText("It will send you back to")).toContainText("127.0.0.1:47619");
   await expect(page.getByRole("checkbox", { name: "Search and read your notes" })).toBeDisabled();

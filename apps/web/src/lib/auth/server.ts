@@ -62,8 +62,42 @@ async function withSignedClientIp(request: Request): Promise<Request> {
   return new Request(request.url, init);
 }
 
+/**
+ * The OAuth provider (connected apps, convex/auth.ts) answers a fetch() with `{ redirect: true, url }` and
+ * a page load with a real redirect, telling them apart by Sec-Fetch-Mode. Forwarded from here, every
+ * request reaches Convex looking like a fetch, so a browser opening the authorize link (Claude, ChatGPT)
+ * would be shown that JSON. A page load (not a cors fetch, not asking for JSON) gets the redirect it
+ * meant, with any cookies it set.
+ */
+async function redirectPageLoads(request: Request, response: Response): Promise<Response> {
+  if (!new URL(request.url).pathname.includes("/oauth2/")) return response;
+  if (request.headers.get("sec-fetch-mode") === "cors" || (request.headers.get("accept") ?? "").includes("application/json")) return response;
+  if (!(response.headers.get("content-type") ?? "").includes("application/json")) return response;
+  let body: unknown;
+  try {
+    body = await response.clone().json();
+  } catch {
+    return response;
+  }
+  const { redirect, url } = (body ?? {}) as { redirect?: unknown; url?: unknown };
+  if (redirect !== true || typeof url !== "string") return response;
+  // A path ("/oauth/consent?...") stays relative, so the browser stays on the host it asked (the request's
+  // own URL may name another one behind the proxy); an absolute one (the app's redirect_uri) must be http(s).
+  const location = url;
+  if (!(url.startsWith("/") && !url.startsWith("//"))) {
+    try {
+      if (!["https:", "http:"].includes(new URL(url).protocol)) return response;
+    } catch {
+      return response;
+    }
+  }
+  const headers = new Headers({ location, "cache-control": "no-store" });
+  for (const cookie of response.headers.getSetCookie()) headers.append("set-cookie", cookie);
+  return new Response(null, { status: 302, headers });
+}
+
 /** Proxies /api/auth/* to the Convex site URL (so auth cookies are first-party on the app host). */
 export const handler = {
-  GET: async (request: Request) => convexAuth.handler.GET(await withSignedClientIp(request)),
+  GET: async (request: Request) => redirectPageLoads(request, await convexAuth.handler.GET(await withSignedClientIp(request))),
   POST: async (request: Request) => convexAuth.handler.POST(await withSignedClientIp(request)),
 };

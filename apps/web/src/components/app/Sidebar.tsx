@@ -333,7 +333,7 @@ function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) 
               setError(null);
             }}
             aria-invalid={error ? true : undefined}
-            className="ui-input mt-2 h-10 w-full rounded-chip px-4"
+            className="ui-input mt-2 h-10 w-full rounded-chip px-3 text-sm"
           />
           <fieldset className="mt-4">
             <legend className="text-sm font-medium">Color</legend>

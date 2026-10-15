@@ -797,7 +797,7 @@ export function PermanentDeleteDialog({ open, onClose, documentId, title }: { op
       <label className="block text-sm" htmlFor="confirm-title">
         Document title
       </label>
-      <input id="confirm-title" value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus className="mt-1 h-10 w-full ui-input rounded-chip px-3" />
+      <input id="confirm-title" value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus className="mt-1 h-10 w-full ui-input rounded-chip px-3 text-sm" />
     </Dialog>
   );
 }

@@ -55,7 +55,7 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
             <label className="sr-only" htmlFor="ws-name">
               Workspace name
             </label>
-            <input id="ws-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} className="h-9 flex-1 ui-input rounded-chip px-3" />
+            <input id="ws-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} className="h-9 flex-1 ui-input rounded-chip px-3 text-sm" />
             <Button type="submit" disabled={!name.trim() || name.trim() === workspace.name}>
               Rename
             </Button>
@@ -217,7 +217,7 @@ function DeleteWorkspaceCard({ workspace }: { workspace: Workspace }) {
         <label className="text-sm" htmlFor="confirm-workspace-name">
           Type <strong>{workspace.name}</strong> to confirm
         </label>
-        <input id="confirm-workspace-name" value={typed} onChange={(e) => setTyped(e.target.value)} className="mt-2 h-10 w-full ui-input rounded-chip px-3" autoComplete="off" />
+        <input id="confirm-workspace-name" value={typed} onChange={(e) => setTyped(e.target.value)} className="mt-2 h-10 w-full ui-input rounded-chip px-3 text-sm" autoComplete="off" />
       </Dialog>
     </>
   );

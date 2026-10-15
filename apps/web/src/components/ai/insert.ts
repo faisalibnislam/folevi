@@ -31,11 +31,15 @@ function cursorAt(tr: Transaction, pos: number) {
 /** Options for inserting: people "@Name" can turn into mentions of (a meeting summary's owners). */
 export interface InsertOptions {
   people?: readonly MentionablePerson[];
+  /** Told the blocks about to be inserted (with their new ids), e.g. to find the to-dos in them afterwards. */
+  onNodes?: (nodes: readonly PMNode[]) => void;
 }
 
 function nodesFor(editor: Editor, markdown: string, baseDepth: number, opts: InsertOptions = {}) {
   const { blocks } = markdownToBlocks(markdown.trim(), { titleFromHeading: false });
-  return blockNodes(editor, linkPeople(blocks, opts.people), baseDepth);
+  const nodes = blockNodes(editor, linkPeople(blocks, opts.people), baseDepth);
+  opts.onNodes?.(nodes);
+  return nodes;
 }
 
 /** Blocks (a tree, by parentId) as editor nodes with fresh ids, nested from `baseDepth`. */
@@ -92,6 +96,27 @@ export function insertAiMarkdown(editor: Editor, markdown: string, placement: Ai
  */
 export function insertAiBlocks(editor: Editor, blocks: readonly WireBlock[], placement: Exclude<AiPlacement, { kind: "replace" }>): boolean {
   return insertNodes(editor, (depth) => blockNodes(editor, blocks, depth), placement);
+}
+
+/**
+ * Puts ready-made blocks where blocks of the note are (by id), at their depth, as one undo step: "Add dates
+ * and people" swaps a result's plain to-dos for dated, assigned ones. An empty list removes the block. Ids
+ * no longer in the note are skipped; returns how many were found.
+ */
+export function replaceBlocksById(editor: Editor, replacements: ReadonlyMap<string, readonly WireBlock[]>): number {
+  const found: { pos: number; size: number; depth: number; blocks: readonly WireBlock[] }[] = [];
+  editor.state.doc.forEach((n, pos) => {
+    const blocks = replacements.get(String(n.attrs.id));
+    if (blocks) found.push({ pos, size: n.nodeSize, depth: Number(n.attrs.depth ?? 0), blocks });
+  });
+  if (!found.length) return 0;
+  const tr = editor.state.tr;
+  // From the end back, so the positions before each change stay right.
+  for (const f of [...found].reverse()) tr.replaceWith(f.pos, f.pos + f.size, blockNodes(editor, f.blocks, f.depth));
+  const first = found[0]!;
+  cursorAt(tr, tr.mapping.map(first.pos + first.size, -1) - 1);
+  commit(editor, tr);
+  return found.length;
 }
 
 /** Inserts the nodes `make` gives for a depth (the depth of where they go) at a placement other than replace. */

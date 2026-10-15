@@ -423,7 +423,7 @@ export const DOC_ARTICLES: DocArticle[] = [
             <strong>Editing a selection</strong>: select text and press <code>⌘J</code>, or use the AI button in the selection toolbar or Ask Foli AI… in a block’s handle menu. Improve it, fix spelling and grammar, make it shorter or longer, simplify it, make it sound professional or casual, translate it into one of 15 languages, explain it or summarize it. Or type your own instruction. Then Replace, Insert below, Try again, or tweak the result with Shorter, Longer, Simpler, More formal or More casual.
           </li>
           <li>
-            <strong>Writing</strong>: on an empty line, type <code>/</code> and pick an AI item, or press <code>⌘J</code>, to continue writing, summarize the note, make an outline, brainstorm ideas or find the action items (written as to-dos, so they appear in Tasks). The AI panel in a note’s dock has the same tools, plus questions about the note.
+            <strong>Writing</strong>: on an empty line, type <code>/</code> and pick an AI item, or press <code>⌘J</code>, to continue writing, summarize the note, make an outline, brainstorm ideas or find the action items (written as to-dos, so they appear in Tasks). On action items or a meeting summary, <strong>Add dates and people</strong> inserts the result and lets you check each to-do’s due date and who it’s for before they’re set. The AI panel in a note’s dock has the same tools, plus questions about the note.
           </li>
           <li>
             <strong>Titles</strong>: select words in a title for Edit with AI, or let it suggest a title from the note. Untitled notes with some text offer Suggest a title.

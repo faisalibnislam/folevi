@@ -167,4 +167,26 @@ describe("aiTodos.find", () => {
     expect(calls).toHaveLength(0);
     expect(await t.run(async (ctx) => (await ctx.db.query("aiCreditHolds").collect()).length)).toBe(0);
   });
+
+  test("aiTodos.people: who a meeting summary's to-dos can go to, without a model call; editors only", async () => {
+    const t = setup();
+    const owner = await person(t, "people-owner@example.com");
+    const sam = await person(t, "people-sam@example.com");
+    const viewer = await person(t, "people-viewer@example.com");
+    await rename(t, owner.profileId, "Faisal Islam");
+    await rename(t, sam.profileId, "Sam Rivera");
+    const { workspaceId, scope } = await teamWorkspace(owner, "People Team");
+    await join(t, owner, sam, "people-sam@example.com", workspaceId, "editor");
+    await join(t, owner, viewer, "people-viewer@example.com", workspaceId, "viewer");
+    const { id } = await owner.as.mutation(api.aiWriting.saveDraft, { scope, kind: "note", title: "Weekly sync", markdown: MEETING });
+    const calls = gemini(REPLY);
+    const people = await sam.as.query(api.aiTodos.people, { documentId: id });
+    expect(people.map((p) => [p.displayName, p.isYou])).toEqual([
+      ["Sam Rivera", true],
+      ["Faisal Islam", false],
+      [expect.any(String), false],
+    ]);
+    await expect(viewer.as.query(api.aiTodos.people, { documentId: id })).rejects.toThrow(/permission/);
+    expect(calls).toHaveLength(0);
+  });
 });

@@ -49,7 +49,8 @@ import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiC
 import { useAppRouter } from "@/lib/app/router";
 import { useToast } from "@/components/ui/Toast";
 import { AiAnnouncer, useDoneAnnouncement } from "./announce";
-import { openFindTodos } from "./FindTodos";
+import { openFindTodos, scheduleResultTodos } from "./FindTodos";
+import { hasTodoLines } from "@/lib/ai/actionItems";
 
 /** What the inline composer works on: a range of text (a selection or whole blocks), or the cursor. */
 export interface InlineAiRequest {
@@ -335,6 +336,15 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
     onClose();
   };
   const primary = () => accept(replaceable ? "replace" : isPage && noteIsEmpty(editor) ? "end" : "below");
+  /** A meeting summary or action items with to-dos: insert it, then give the to-dos dates and people (Find to-dos). */
+  const schedulable = Boolean(result && (result.last.task === "meetingSummary" || result.last.task === "actions") && hasTodoLines(result.text));
+  const schedule = () => {
+    if (!result) return;
+    const meeting = result.last.task === "meetingSummary";
+    const at = target ? { kind: "below" as const, at: Math.min(target.to, editor.state.doc.content.size) } : { kind: "cursor" as const };
+    scheduleResultTodos(editor, result.text, at, { people: meeting ? people : undefined, structured: meeting });
+    onClose();
+  };
 
   const save = async (kind: "note" | "template") => {
     if (!result || saving) return;
@@ -582,6 +592,11 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
             {isTool ? (
               <button type="button" disabled={saving} onClick={() => void save("note")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
                 <FilePlus2 size={14} aria-hidden /> Create note
+              </button>
+            ) : null}
+            {schedulable ? (
+              <button type="button" onClick={schedule} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+                <CalendarCheck size={14} aria-hidden /> Add dates and people
               </button>
             ) : null}
             {isPage ? (

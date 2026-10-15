@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchOwner, ownerHint, proposalsFrom, resolveWhen, todoBlocksFor, wallClockNow, type ActionItemIn } from "../src/lib/ai/actionItems";
+import { hasTodoLines, matchOwner, meetingActionItems, ownerHint, proposalsFrom, resolveWhen, todoBlocksFor, wallClockNow, type ActionItemIn } from "../src/lib/ai/actionItems";
 
 // Wednesday 14 October 2026, 10:00 local time.
 const NOW = new Date(2026, 9, 14, 10, 0, 0);
@@ -112,5 +112,24 @@ describe("the proposal", () => {
     // Ranks keep their order.
     expect([...blocks].sort((a, b) => (a.rank < b.rank ? -1 : 1)).map((b) => b.id)).toEqual(blocks.map((b) => b.id));
     expect(todoBlocksFor(rows.map((r) => ({ ...r, checked: false })))).toEqual([]);
+  });
+});
+
+describe("a meeting summary's action items, handed over as they are", () => {
+  it("reads the owner and the due date the summary wrote, in order", () => {
+    const md = ["We agreed the launch plan.", "", "## Action items", "", "- [ ] @Sam Rivera: Send the deck (due 2026-10-16)", "- [ ] @Priya: Book the hall", "- [ ] Order chairs (due 2026-10-20)", "", "## Next steps", "", "- Review next week"].join("\n");
+    expect(hasTodoLines(md)).toBe(true);
+    expect(meetingActionItems(md)).toEqual([
+      { text: "Send the deck", owner: "Sam Rivera", when: "2026-10-16", quote: "@Sam Rivera: Send the deck (due 2026-10-16)" },
+      { text: "Book the hall", owner: "Priya", when: null, quote: "@Priya: Book the hall" },
+      { text: "Order chairs", owner: null, when: "2026-10-20", quote: "Order chairs (due 2026-10-20)" },
+    ]);
+    // The date as written reads as that day.
+    expect(resolveWhen("2026-10-16", NOW)).toEqual({ date: "2026-10-16", time: null });
+  });
+
+  it("nothing to schedule without open to-dos", () => {
+    expect(hasTodoLines("- Review next week\n- [x] Done already")).toBe(false);
+    expect(meetingActionItems("Just a summary.")).toEqual([]);
   });
 });

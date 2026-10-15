@@ -23,7 +23,8 @@ import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiC
 import { ChatThread } from "./chat/ChatThread";
 import { AiAnnouncer, useDoneAnnouncement } from "./announce";
 import { asksToChange } from "./editIntent";
-import { openFindTodos } from "./FindTodos";
+import { openFindTodos, scheduleResultTodos } from "./FindTodos";
+import { hasTodoLines } from "@/lib/ai/actionItems";
 
 const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "summarize", label: "Summarize", icon: <FileText size={15} /> },
@@ -174,6 +175,14 @@ export function AiPanel({
       insertAiMarkdown(editor, result.text, { kind: "cursor" }, opts);
       setNotice("The selected text changed, so the result was inserted below it.");
     }
+    setResult(null);
+  };
+
+  /** A meeting summary or action items with to-dos: inserted, then their dates and people checked in Find to-dos. */
+  const schedule = () => {
+    if (!editor || !result || result.kind !== "write") return;
+    const meeting = result.task === "meetingSummary";
+    scheduleResultTodos(editor, result.text, result.placement.kind === "replace" ? { kind: "cursor" } : result.placement, { people: meeting ? people : undefined, structured: meeting });
     setResult(null);
   };
 
@@ -436,6 +445,11 @@ export function AiPanel({
                 <CornerDownLeft size={14} aria-hidden /> {result.kind === "write" && result.placement.kind === "end" ? "Add to the end" : "Insert into note"}
               </button>
             )}
+            {result.kind === "write" && (result.task === "meetingSummary" || result.task === "actions") && hasTodoLines(result.text) ? (
+              <button type="button" disabled={readOnly || !editor} onClick={schedule} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+                <CalendarCheck size={14} aria-hidden /> Add dates and people
+              </button>
+            ) : null}
             <button type="button" onClick={copy} aria-label="Copy" title="Copy" className="ui-btn ui-btn-ghost h-8 w-8 px-0">
               <Copy size={14} aria-hidden />
             </button>

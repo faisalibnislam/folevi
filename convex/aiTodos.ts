@@ -7,7 +7,9 @@
 // Credits: one call, held up front and settled from what it really cost (ai.begin, ai.metered), as writing
 // help. Same gates as every AI request; nothing from a Core scope is sent.
 import { v } from "convex/values";
-import { action, internalQuery } from "./_generated/server";
+import { action, internalQuery, query } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+import type { QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { blocksToMarkdown, matchOwner, type AssignablePerson } from "@folevi/editor-schema";
 import { requireDocument, requireIdentity, requireProfile } from "./lib/auth";
@@ -25,8 +27,7 @@ const NOTE_CHARS = 30_000;
 
 /**
  * What finding to-dos in a note needs, if this person can edit it (the to-dos go into it): the note as
- * Markdown (unless only selected text is read), and who its to-dos can be assigned to. In a workspace the
- * person belongs to, its members; anywhere else (Personal, or a workspace they're a guest in) only them.
+ * Markdown (unless only selected text is read), and who its to-dos can be assigned to (assignablePeople).
  */
 export const source = internalQuery({
   args: { documentId: v.string(), withNote: v.boolean() },
@@ -42,27 +43,49 @@ export const source = internalQuery({
       const body = blocksToMarkdown(blocks).slice(0, NOTE_CHARS);
       note = { title: doc.title || "Untitled", text: body.trim() ? body : "" };
     }
-    const people: (AssignablePerson & { isYou: boolean })[] = [{ profileId: profile._id, displayName: profile.displayName, isYou: true }];
-    const workspaceId = doc.workspaceId;
-    const member = workspaceId
-      ? await ctx.db
-          .query("workspaceMembers")
-          .withIndex("by_workspace_profile", (q) => q.eq("workspaceId", workspaceId).eq("profileId", profile._id))
-          .unique()
-      : null;
-    if (workspaceId && member) {
-      const members = await ctx.db
+    return { note, people: await assignablePeople(ctx, profile, doc) };
+  },
+});
+
+/**
+ * Who a note's to-dos can be assigned to: in a workspace the person belongs to, its members; anywhere else
+ * (Personal, or a workspace they're a guest in) only them. The person comes first, then by name.
+ */
+async function assignablePeople(ctx: QueryCtx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<(AssignablePerson & { isYou: boolean })[]> {
+  const people: (AssignablePerson & { isYou: boolean })[] = [{ profileId: profile._id, displayName: profile.displayName, isYou: true }];
+  const workspaceId = doc.workspaceId;
+  const member = workspaceId
+    ? await ctx.db
         .query("workspaceMembers")
-        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
-        .take(300);
-      for (const m of members) {
-        if (m.profileId === profile._id) continue;
-        const p = await ctx.db.get(m.profileId);
-        if (p && p.status !== "deleted") people.push({ profileId: p._id, displayName: p.displayName, isYou: false });
-      }
+        .withIndex("by_workspace_profile", (q) => q.eq("workspaceId", workspaceId).eq("profileId", profile._id))
+        .unique()
+    : null;
+  if (workspaceId && member) {
+    const members = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+      .take(300);
+    for (const m of members) {
+      if (m.profileId === profile._id) continue;
+      const p = await ctx.db.get(m.profileId);
+      if (p && p.status !== "deleted") people.push({ profileId: p._id, displayName: p.displayName, isYou: false });
     }
-    people.sort((a, b) => (a.isYou !== b.isYou ? (a.isYou ? -1 : 1) : a.displayName.localeCompare(b.displayName)));
-    return { note, people };
+  }
+  people.sort((a, b) => (a.isYou !== b.isYou ? (a.isYou ? -1 : 1) : a.displayName.localeCompare(b.displayName)));
+  return people;
+}
+
+/**
+ * The people a note's to-dos can go to, for "Add dates and people" on a meeting summary: its action items
+ * already name an owner and a date, so no model call is needed, only who's here. Editors only.
+ */
+export const people = query({
+  args: { documentId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+    if (doc.inTrash) fail("not_found", "Document not found.");
+    return (await assignablePeople(ctx, profile, doc)).map((p) => ({ profileId: p.profileId as string, displayName: p.displayName, isYou: p.isYou }));
   },
 });
 

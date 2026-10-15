@@ -103,3 +103,41 @@ export function todoBlocksFor(proposals: readonly ProposedTodo[], opts: { headin
   });
   return blocks;
 }
+
+/** An action item handed to Find to-dos as it is (no model call): owner and date as the result wrote them. */
+export type PresetTodo = Pick<ActionItemIn, "text" | "owner" | "when" | "quote">;
+
+const TODO_LINE = /^\s*[-*+] \[ \] (.+)$/;
+
+/** Whether a result (Markdown) has open to-dos in it ("- [ ] …"), so "Add dates and people" has something to work on. */
+export function hasTodoLines(markdown: string): boolean {
+  return markdown.split("\n").some((l) => TODO_LINE.test(l));
+}
+
+/**
+ * A meeting summary's action items (convex/lib/ai/studyTools.ts meetingMarkdown writes each one as
+ * "- [ ] @Owner: task (due YYYY-MM-DD)", owner and date only when the meeting said them), in order.
+ */
+export function meetingActionItems(markdown: string): PresetTodo[] {
+  const out: PresetTodo[] = [];
+  for (const line of markdown.split("\n")) {
+    const m = TODO_LINE.exec(line);
+    if (!m) continue;
+    let text = m[1]!.trim();
+    const quote = text;
+    let owner: string | null = null;
+    let when: string | null = null;
+    const o = /^@([^:\n]{1,60}):\s*/.exec(text);
+    if (o) {
+      owner = o[1]!.trim();
+      text = text.slice(o[0].length);
+    }
+    const d = /\s*\(due (\d{4}-\d{2}-\d{2})\)\s*$/.exec(text);
+    if (d) {
+      when = d[1]!;
+      text = text.slice(0, d.index);
+    }
+    out.push({ text: text.trim(), owner, when, quote });
+  }
+  return out;
+}

@@ -16,6 +16,13 @@ vi.mock("convex/react", () => ({
   },
   useMutation: () => async () => undefined,
   useQuery: () => undefined,
+  // aiTodos.people, for action items handed over as they are.
+  useConvex: () => ({
+    query: async (_ref: unknown, args: unknown) => {
+      reply.calls.push({ people: args });
+      return reply.people;
+    },
+  }),
 }));
 vi.mock("@/lib/app/state", () => ({
   useAppState: () => ({ scope: { kind: "personal" }, today: "2026-10-14", timeZone: "Pacific/Auckland", engine: null }),
@@ -33,7 +40,7 @@ vi.mock("@/components/editor/richRender", () => ({
 
 const { ALL_MARKS, ALL_NODES, BlockFormat } = await import("@/components/editor/extensions");
 const { BlockIdentity } = await import("@/components/editor/plugins");
-const { FindTodosHost, openFindTodos } = await import("@/components/ai/FindTodos");
+const { FindTodosHost, openFindTodos, scheduleResultTodos } = await import("@/components/ai/FindTodos");
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 class NoResize {
@@ -137,5 +144,63 @@ describe("Find to-dos", () => {
     const added: string[] = [];
     editor.state.doc.forEach((n) => added.push(`${n.type.name}:${n.textContent}:${n.attrs.assigneeId ?? ""}:${n.attrs.dueDate ?? ""}`));
     expect(added).toEqual(["paragraph:Weekly sync::", "paragraph:Sam to send the deck by Friday.::", "todo:Send the deck:p-me:"]);
+  });
+
+  test("a meeting summary's action items: inserted, then dated and assigned in place, with no model call", async () => {
+    reply.people = [
+      { profileId: "p-me", displayName: "Faisal Islam", isYou: true },
+      { profileId: "p-sam", displayName: "Sam Rivera", isYou: false },
+    ];
+    const { editor } = await mount();
+    const md = ["We agreed the launch plan.", "", "## Action items", "", "- [ ] @Sam: Send the deck (due 2026-10-16)", "- [ ] @Priya: Book the hall", "- [ ] Order chairs"].join("\n");
+    act(() => void scheduleResultTodos(editor as never, md, { kind: "end" }, { structured: true }));
+    await settle();
+    // Only who's here was asked for: the items came from the summary.
+    expect(reply.calls).toEqual([{ people: { documentId: "DOC" } }]);
+    const dialog = document.querySelector("dialog")!;
+    expect(dialog.textContent).toContain("Add dates and people");
+    expect(dialog.textContent).toContain("From the meeting summary");
+    const rows = [...dialog.querySelectorAll("[data-testid='proposed-todo']")];
+    expect(rows).toHaveLength(3);
+    expect(rows[0]!.textContent).toContain("Due Friday.");
+    expect(rows[0]!.textContent).toContain("Sam Rivera");
+    expect(rows[1]!.textContent).toContain("Priya?");
+    // Leave the last one as it is.
+    act(() => (rows[2]!.querySelector("[role='checkbox']") as HTMLButtonElement).click());
+    act(() => button("Update 2 to-dos")!.click());
+
+    const blocks: { name: string; text: string; attrs: Record<string, unknown> }[] = [];
+    editor.state.doc.forEach((n) => blocks.push({ name: n.type.name, text: n.textContent, attrs: n.attrs }));
+    expect(blocks.map((b) => `${b.name}:${b.text}`)).toEqual([
+      "paragraph:Weekly sync",
+      "paragraph:Sam to send the deck by Friday.",
+      "paragraph:We agreed the launch plan.",
+      "heading:Action items",
+      "todo:Send the deck",
+      "todo:Priya: Book the hall",
+      "todo:Order chairs",
+    ]);
+    expect(blocks[4]!.attrs).toMatchObject({ dueDate: "2026-10-16", assigneeId: "p-sam" });
+    expect(blocks[6]!.attrs).toMatchObject({ dueDate: null, assigneeId: null });
+    expect(toast.show).toHaveBeenCalledWith("Updated 2 to-dos");
+    // One undo puts the plain to-dos back (the summary's due date was already read into the first); the summary stays.
+    editor.commands.undo();
+    const after: string[] = [];
+    editor.state.doc.forEach((n) => after.push(`${n.textContent}:${n.attrs.assigneeId ?? ""}`));
+    expect(after.slice(4)).toEqual(["@Sam: Send the deck:", "@Priya: Book the hall:", "Order chairs:"]);
+  });
+
+  test("a plain list of action items: Find to-dos reads what was inserted, and its to-dos take their place", async () => {
+    reply.items = [{ text: "Send the deck", owner: "me", when: "by Friday", quote: "Send the deck by Friday", assigneeId: "p-me", match: "matched" }];
+    reply.people = [{ profileId: "p-me", displayName: "Faisal Islam", isYou: true }];
+    const { editor } = await mount();
+    act(() => void scheduleResultTodos(editor as never, "- [ ] Send the deck by Friday\n- [ ] Send the deck again", { kind: "end" }, { structured: false }));
+    await settle();
+    expect(reply.calls).toEqual([{ scope: { kind: "personal" }, documentId: "DOC", text: "Send the deck by Friday\nSend the deck again" }]);
+    expect(document.querySelector("dialog")!.textContent).toContain("take the place of the plain to-dos");
+    act(() => button("Update 1 to-do")!.click());
+    const blocks: string[] = [];
+    editor.state.doc.forEach((n) => blocks.push(`${n.type.name}:${n.textContent}:${n.attrs.dueDate ?? ""}`));
+    expect(blocks).toEqual(["paragraph:Weekly sync:", "paragraph:Sam to send the deck by Friday.:", "todo:Send the deck:2026-10-16"]);
   });
 });

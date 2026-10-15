@@ -1,4 +1,5 @@
 import { cloneElement, Fragment, isValidElement, type ReactElement } from "react";
+import { FileText } from "lucide-react";
 import { flattenTree, sanitizeHref, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import { formatCalendarDate } from "@/i18n";
 import {
@@ -439,9 +440,12 @@ export function ReadOnlyBlocks({
             }
             case "page":
               return (
-                <p key={block.id} className="fb text-muted">
-                  📄 {String(p.titleCache ?? "Nested page")}{" "}
-                  <span className="text-xs">(not included in this shared page)</span>
+                <p key={block.id} className="fb flex items-start gap-1.5 text-muted">
+                  {/* A plain document glyph, as everywhere a page needs a marker (no emoji). */}
+                  <FileText size={15} aria-hidden className="mt-[calc((1lh-15px)/2)] flex-none" />
+                  <span>
+                    {String(p.titleCache ?? "Nested page")} <span className="text-xs">(not included in this shared page)</span>
+                  </span>
                 </p>
               );
             case "collection":
@@ -450,7 +454,8 @@ export function ReadOnlyBlocks({
               );
             case "embed":
               return (
-                <div key={block.id} className="fb">
+                // Edge to edge with the other media blocks (images, diagrams, collections), not inset like text.
+                <div key={block.id}>
                   <EmbedFrame url={String(p.url ?? "")} />
                 </div>
               );

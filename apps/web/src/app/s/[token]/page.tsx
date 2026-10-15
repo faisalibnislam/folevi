@@ -122,14 +122,19 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
   const result = await load(token);
   const locale = localeFromAcceptLanguage((await headers()).get("accept-language"));
 
-  // ui-neutral-chrome: the app's neutral colours around the page, as in the app.
-  const shell = (children: React.ReactNode) => (
+  // ui-neutral-chrome: the app's neutral colours around the page, as in the app. The header row lines up
+  // with the page below it (`frame`: the column's width, and the backdrop's inset when there is one).
+  const shell = (children: React.ReactNode, frame: { width: string; inset?: boolean } = { width: "max-w-5xl" }) => (
     <div className="ui-neutral-chrome min-h-dvh bg-canvas">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4 print:hidden">
-        <a href={process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"} className="inline-flex items-center gap-2 text-ink">
-          <FoleviLogo height={22} />
-        </a>
-        <span className="text-xs text-muted">Read-only shared page</span>
+      <header className="px-3 sm:px-6 print:hidden">
+        <div className={frame.inset ? "px-3 sm:px-8" : undefined}>
+          <div className={`mx-auto flex items-center justify-between py-4 ${frame.width}`}>
+            <a href={process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"} className="inline-flex items-center gap-2 text-ink">
+              <FoleviLogo height={22} />
+            </a>
+            <span className="text-xs text-muted">Read-only shared page</span>
+          </div>
+        </div>
       </header>
       <main id="main" className="px-3 pb-16 sm:px-6">
         {children}
@@ -186,7 +191,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
   const toc = look.toc ? tableOfContents(blocks) : [];
   const page = (
     <article
-      className="fb-page fb-sheet relative mx-auto max-w-[calc(var(--editor-width)+8rem)] min-w-0 rounded-control border border-line"
+      className="fb-page fb-sheet relative mx-auto w-full max-w-[calc(var(--editor-width)+8rem)] min-w-0 rounded-control border border-line"
       data-font={look.font}
       data-width={look.width}
       data-background={look.colors ? document.style.background : "plain"}
@@ -198,8 +203,8 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
       {backdrop ? <SheetPageBreaks /> : null}
       {bg ? <div className="h-36 rounded-t-chip" style={{ background: bg }} aria-hidden /> : <div className="h-8" />}
       <div className="px-5 pb-6 pt-4 sm:px-16">
-        <h1 className={`mt-2 text-[40px] leading-tight ${look.font === "serif" ? "ui-display [font-family:var(--note-serif,var(--font-serif))]" : look.font === "rounded" ? "font-semibold [font-family:var(--note-soft,var(--font-rounded))]" : look.font === "mono" ? "font-semibold [font-family:var(--note-mono,var(--font-mono))]" : "font-semibold tracking-tight [font-family:var(--note-modern,var(--font-modern))]"}`}>{document.title || "Untitled"}</h1>
-        <p className="mb-6 mt-1 text-xs text-muted">{tFor(locale, "share.lastUpdated", { date: formatDate(updated, { dateStyle: "medium", timeZone: "UTC" }, locale) })}</p>
+        <h1 className={`mt-2 px-0.5 text-[40px] leading-tight ${look.font === "serif" ? "ui-display [font-family:var(--note-serif,var(--font-serif))]" : look.font === "rounded" ? "font-semibold [font-family:var(--note-soft,var(--font-rounded))]" : look.font === "mono" ? "font-semibold [font-family:var(--note-mono,var(--font-mono))]" : "font-semibold tracking-tight [font-family:var(--note-modern,var(--font-modern))]"}`}>{document.title || "Untitled"}</h1>
+        <p className="mb-6 mt-1 px-0.5 text-xs text-muted">{tFor(locale, "share.lastUpdated", { date: formatDate(updated, { dateStyle: "medium", timeZone: "UTC" }, locale) })}</p>
         {toc.length > 1 ? (
           // Docs on narrower screens: the same contents, folded away above the note (the side list needs room).
           <details className="fb-publish-toc-compact group mb-6 rounded-control border border-line xl:hidden">
@@ -235,8 +240,19 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
       page
     )}
     </div>,
+    {
+      width: toc.length > 1 ? "max-w-[calc(var(--layout-editor-width-wide)+8rem)] xl:max-w-[calc(var(--layout-editor-width-wide)+8rem+15rem)]" : (PAGE_WIDTH[look.width] ?? PAGE_WIDTH.default!),
+      inset: Boolean(backdrop),
+    },
   );
 }
+
+/** The page's own width (the article's max-width), for the header row above it. */
+const PAGE_WIDTH: Record<string, string> = {
+  narrow: "max-w-[calc(var(--layout-editor-width-narrow)+8rem)]",
+  default: "max-w-[calc(var(--layout-editor-width-default)+8rem)]",
+  wide: "max-w-[calc(var(--layout-editor-width-wide)+8rem)]",
+};
 
 /** The Docs contents: each heading as a link to it, indented by level. */
 function TocList({ toc }: { toc: ReturnType<typeof tableOfContents> }) {

@@ -261,6 +261,16 @@
 .fb-disclosure::before { content: ""; border-left: 0.42em solid currentColor; border-top: 0.3em solid transparent; border-bottom: 0.3em solid transparent; transition: transform 160ms var(--motion-easing); transform: rotate(90deg); }
 .fb-toggle[data-collapsed="true"] .fb-disclosure::before { transform: rotate(0deg); }
 .fb-disclosure:hover { background: var(--color-surface-sunken); color: var(--color-ink); }
+/* Read-only toggles (ReadOnlyBlocks: shared pages, version history) draw the same muted triangle in the same
+   place as .fb-disclosure (centred 8px in, text 18px + gap in), not the browser's marker. */
+.fb-editor details.fb > summary { display: flex; align-items: flex-start; gap: 0.35em; list-style: none; cursor: pointer; }
+.fb-editor details.fb > summary::-webkit-details-marker { display: none; }
+.fb-editor details.fb > summary::before {
+  content: ""; flex: none; margin: 0.5em calc(10px - 0.21em) 0 calc(8px - 0.21em);
+  border-left: 0.42em solid var(--color-ink-muted); border-top: 0.3em solid transparent; border-bottom: 0.3em solid transparent;
+  transition: transform 160ms var(--motion-easing);
+}
+.fb-editor details.fb[open] > summary::before { transform: rotate(90deg); }
 
 /* Quote & callout */
 .fb-editor .fb-quote { padding-left: calc(var(--depth, 0) * 1.6em + 1.05em + var(--pad-extra, 0px)); margin: 0.35em 0; color: color-mix(in oklab, var(--color-heading) 80%, var(--color-ink)); font-style: italic; }

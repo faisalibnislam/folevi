@@ -134,7 +134,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
         <button
           type="button"
           onClick={() => go("/settings/billing")}
-          className="mb-1.5 flex h-8 w-full items-center gap-2 rounded-chip bg-[linear-gradient(100deg,color-mix(in_oklab,#8b7cf6_14%,transparent),color-mix(in_oklab,#f58ab8_12%,transparent))] px-2.5 text-left text-[12.5px] font-medium text-heading shadow-[inset_0_0_0_1px_var(--glass-border)] transition-[filter] hover:brightness-[1.03]"
+          className="mb-1.5 flex h-8 w-full items-center gap-1.5 rounded-chip bg-[linear-gradient(100deg,color-mix(in_oklab,#8b7cf6_14%,transparent),color-mix(in_oklab,#f58ab8_12%,transparent))] px-2 text-left text-xs font-medium text-heading shadow-[inset_0_0_0_1px_var(--glass-border)] transition-[filter] hover:brightness-[1.03]"
         >
           <AiIcon size={13} aria-hidden className="text-[#7c6cf0]" />
           <span className="flex-1 truncate">{pill}</span>

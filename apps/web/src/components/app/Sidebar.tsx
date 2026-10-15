@@ -197,7 +197,8 @@ function Section({ title, href, children, action, defaultOpen = true, onNavigate
   const setOpen = (next: boolean) => setToggled(next);
   return (
     <section className="mt-5">
-      <div className="flex h-7 items-center gap-1 px-2.5">
+      {/* The chevron sits centred on the nav icons' column and the title starts where their labels do. */}
+      <div className={`flex h-7 items-center gap-1 pr-2.5 ${href ? "pl-1.5" : "pl-2.5"}`}>
         {href ? (
           <span className="flex min-w-0 flex-1 items-center gap-0.5">
             <button
@@ -213,7 +214,7 @@ function Section({ title, href, children, action, defaultOpen = true, onNavigate
               href={href}
               onClick={onNavigate}
               aria-current={isActive(route, href) ? "page" : undefined}
-              className={`ui-caps flex h-7 min-w-0 flex-1 items-center rounded-chip px-2 transition-colors hover:bg-[var(--glass-hover)] hover:text-heading ${isActive(route, href) ? "bg-[var(--glass-hover)] text-heading" : ""}`}
+              className={`ui-caps flex h-7 min-w-0 flex-1 items-center rounded-chip pl-1 pr-2 transition-colors hover:bg-[var(--glass-hover)] hover:text-heading ${isActive(route, href) ? "bg-[var(--glass-hover)] text-heading" : ""}`}
               title={`All ${title.toLowerCase()}`}
             >
               {title}
@@ -641,7 +642,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           }
         }}
       />
-      <div className="flex-none px-2 pb-2">
+      <div className="flex-none px-2.5 pb-2">
         <WorkspaceMenu onNavigate={onNavigate} />
       </div>
     </nav>

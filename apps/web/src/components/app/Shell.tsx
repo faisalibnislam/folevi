@@ -386,7 +386,7 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   const bar = !visible ? (
     title ? <div className="sr-only">{title}</div> : null
   ) : (
-      <header className={`mx-2 ${drawerMode ? "mt-2" : ""} flex min-h-11 flex-none items-center gap-2 px-3 sm:mx-3 sm:px-4`}>
+      <header className={`mx-2 ${drawerMode ? "mt-2" : ""} flex min-h-11 flex-none items-center gap-2 px-2 sm:mx-3 sm:px-5`}>
         {drawerToggle ? (
           <IconButton label="Show sidebar" shortcut="⌘\" onClick={toggleSidebar} aria-expanded={sidebarOpen} aria-haspopup={drawerMode ? "dialog" : undefined} data-drawer-toggle="">
             <PanelLeft size={16} aria-hidden />

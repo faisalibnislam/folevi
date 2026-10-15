@@ -93,11 +93,11 @@ export function DocumentSidebar({
       )}
 
       {/* Search everywhere (⌘K), as in the app's sidebar. */}
-      <div className="flex-none px-3 pb-2 pt-1">
+      <div className="flex-none px-2.5 pb-2 pt-1">
         <SidebarSearch />
       </div>
 
-      <div className="flex-none px-3 pb-3">
+      <div className="flex-none px-2.5 pb-3">
         {/* The note's name and where it lives, in a translucent card. */}
         <div className="rounded-control bg-[var(--glass-hover)] px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--glass-border)]">
           <div className="min-w-0">
@@ -122,7 +122,7 @@ export function DocumentSidebar({
 
       <PageTree documentId={documentId} onNavigate={onNavigate} />
 
-      <div className="flex-none px-3">
+      <div className="flex-none px-2.5">
         <div role="tablist" aria-label="Page tools" className="ui-seg ui-well">
           {TABS.map((t, i) => (
             <button
@@ -158,7 +158,7 @@ export function DocumentSidebar({
         </div>
       </div>
 
-      <div id={`${baseId}-panel`} role="tabpanel" aria-labelledby={`${baseId}-tab-${active}`} className="relative min-h-0 flex-1 overflow-y-auto px-3 pb-6 pt-4">
+      <div id={`${baseId}-panel`} role="tabpanel" aria-labelledby={`${baseId}-tab-${active}`} className="relative min-h-0 flex-1 overflow-y-auto px-2.5 pb-6 pt-4">
         {active === "contents" ? <ContentsPanel documentId={documentId} title={title} onJump={onJump} /> : null}
         {active === "comments" ? (
           <>
@@ -170,7 +170,7 @@ export function DocumentSidebar({
         {active === "attachments" ? <AttachmentsPanel documentId={documentId} onJump={onJump} onNavigate={onNavigate} /> : null}
         {active === "find" ? <FindPanel editor={editor} /> : null}
       </div>
-      <div className="flex-none px-2 pb-2">
+      <div className="flex-none px-2.5 pb-2">
         <WorkspaceMenu onNavigate={onNavigate} />
       </div>
     </div>
@@ -545,7 +545,7 @@ function PageTree({ documentId, onNavigate }: { documentId: string; onNavigate?:
   const tree = useQuery(api.documents.pageTree, { documentId });
   if (!tree || tree.pages.length < 2) return null;
   return (
-    <nav aria-label="Pages in this note" className="flex-none px-3 pb-3">
+    <nav aria-label="Pages in this note" className="flex-none px-2.5 pb-3">
       <h2 className="ui-caps px-1 pb-1">Pages</h2>
       <ul className="max-h-[32vh] space-y-px overflow-y-auto">
         {tree.pages.map((p) => {

@@ -68,11 +68,12 @@ export function FaqSection({
 }) {
   return (
     <section aria-labelledby={`${id}-title`} className={cx(!bare && container, className)}>
-      <div className="mk-box px-5 pt-8 sm:px-10 sm:pt-10 lg:px-14 lg:pt-12">
-        <JsonLd data={faqLd(path, faqs)} />
-        <h2 id={`${id}-title`} className="mk-h2">
+      {/* In a column of cards its title is the size of theirs (a prose h2); across the page, a section title. */}
+      <div className={cx("mk-box px-5 pt-8 sm:px-10 sm:pt-10 lg:px-14 lg:pt-12", bare && "mk-prose")}>
+        <h2 id={`${id}-title`} className={bare ? undefined : "mk-h2"}>
           {title}
         </h2>
+        <JsonLd data={faqLd(path, faqs)} />
         {collapsed ? (
           <div className="mt-4 pb-4 sm:pb-6">
             {faqs.map((item, index) => (

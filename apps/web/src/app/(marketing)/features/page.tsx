@@ -117,7 +117,7 @@ export default function FeaturesPage() {
           ]}
         >
           <Eyebrow>Features</Eyebrow>
-          <h1 className="mk-display mt-5 max-w-[14ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[80px]">
+          <h1 className="mk-display mt-5 max-w-[14ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
             Everything Folevi does, <Mark>one page</Mark> each.
           </h1>
           <p className="mk-lede mt-6 max-w-[60ch]">Notes, tasks and linked pages that work offline.</p>

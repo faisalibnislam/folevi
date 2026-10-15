@@ -36,7 +36,7 @@ export default function MacPage() {
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-end lg:gap-16">
             <div>
               <Eyebrow>Folevi for Mac</Eyebrow>
-              <h1 className="mk-display mt-5 max-w-[13ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[80px]">
+              <h1 className="mk-display mt-5 max-w-[13ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
                 Folevi, in a window of <Mark>its own</Mark>.
               </h1>
               <p className="mk-lede mt-6 max-w-[50ch]">Quick Add, a menu bar icon and Mac notifications.</p>

@@ -34,7 +34,7 @@ export default function ChangelogPage() {
               <time dateTime={release.date}>{release.label}</time>
             </p>
           </div>
-          <div className="mk-box min-w-0 px-5 py-8 sm:p-10 lg:px-14 [&>*]:max-w-[760px]">
+          <div className="mk-box min-w-0 px-5 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12 [&>*]:max-w-[760px]">
             <h2 id={`v${release.version}`} className="mk-h2 text-[32px] sm:text-[40px]">
               {release.version} · {release.name}
             </h2>

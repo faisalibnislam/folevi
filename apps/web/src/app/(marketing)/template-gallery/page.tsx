@@ -52,7 +52,7 @@ export default async function TemplateGalleryPage() {
           ]}
         >
           <Eyebrow>Template gallery</Eyebrow>
-          <h1 className="mk-display mt-5 max-w-[13ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[80px]">
+          <h1 className="mk-display mt-5 max-w-[13ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
             Free note <Mark>templates</Mark> for Folevi.
           </h1>
           <p className="mk-lede mt-5 max-w-[60ch]">{count} templates, free on every plan.</p>

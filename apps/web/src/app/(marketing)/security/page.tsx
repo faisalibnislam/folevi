@@ -4,7 +4,7 @@ import { Icon } from "@/components/marketing/icons";
 import { Play } from "@/components/marketing/Play";
 import { pageMetadata } from "@/components/marketing/seo";
 import { SECURITY_EMAIL } from "@/components/marketing/site";
-import { Eyebrow, container, cx } from "@/components/marketing/ui";
+import { Eyebrow, KeepHyphens, container, cx } from "@/components/marketing/ui";
 import { HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
 import { SyncPiece } from "@/components/marketing/pieces";
@@ -195,7 +195,7 @@ export default function SecurityPage() {
           />
           <Section
             id="e2ee"
-            title="Not end-to-end encrypted"
+            title={<KeepHyphens text="Not end-to-end encrypted" />}
             lead="Our servers process your notes, so search, sharing and sync work."
             items={[<>For notes no provider may ever read, use an end-to-end encrypted tool</>]}
             className="relative"

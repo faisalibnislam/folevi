@@ -86,7 +86,7 @@ export function PricingSection() {
                     {plan.name}
                   </h3>
                   {badge ? (
-                    <Sticker shine tone="violet" rotate={tier === "pro_ai" ? 6 : -6} className="ml-auto text-[12px]">
+                    <Sticker shine tone="violet" rotate={tier === "pro_ai" ? 6 : -6} className="-my-1 ml-auto text-[12px]">
                       {badge}
                     </Sticker>
                   ) : null}

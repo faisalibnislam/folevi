@@ -68,6 +68,23 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
   return <p className={cx("mk-eyebrow", className)}>{children}</p>;
 }
 
+/** A title whose hyphenated words never break at the hyphen ("to-do", not "to-" then "do"). */
+export function KeepHyphens({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(\S+-\S+)/).map((part, i) =>
+        i % 2 ? (
+          <span key={i} className="whitespace-nowrap">
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
+
 export function Kbd({ children }: { children: ReactNode }) {
   return <kbd className="mk-kbd">{children}</kbd>;
 }
@@ -99,7 +116,10 @@ export function SectionHeading({
   );
 }
 
-/** A page's header card (the first card of the page): eyebrow, title, lede and any actions. */
+/**
+ * A page's header card (the first card of the page): eyebrow, title, lede and any actions. In the site theme's
+ * paper with the same insets as HeaderCard (cards.tsx), so every page opens on the same card.
+ */
 export function PageHeader({
   eyebrow,
   title,
@@ -113,7 +133,7 @@ export function PageHeader({
 }) {
   return (
     <header className={container}>
-      <div className="mk-box px-5 pb-8 pt-8 sm:px-10 sm:pb-12 sm:pt-12 lg:px-14">
+      <div className="mk-box mk-tint px-5 pb-10 pt-8 sm:px-10 sm:pb-14 sm:pt-12 lg:px-14">
         <Eyebrow>{eyebrow}</Eyebrow>
         <h1 className="mk-display mt-4 max-w-[20ch] text-[40px] sm:text-[56px] lg:text-[64px]">{title}</h1>
         {lede ? <div className="mk-lede mt-5 max-w-[60ch]">{lede}</div> : null}

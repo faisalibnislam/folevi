@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
+import { forgetThisDevice } from "@/lib/nativeDevice";
 import { clearAllLocalData, localDb } from "@/lib/sync/db";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -22,8 +23,9 @@ export async function unsyncedChangeCount(accountKey: string | null): Promise<nu
   }
 }
 
-/** Ends the session on the server, then clears this device's copy. */
+/** Ends the session on the server, then clears this device's copy (in the iOS app, its token too). */
 export async function signOutNow(destination = "/signin?notice=signed_out") {
+  await forgetThisDevice();
   try {
     await authClient.signOut();
   } catch {

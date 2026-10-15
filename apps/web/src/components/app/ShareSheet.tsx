@@ -1,17 +1,16 @@
 "use client";
 // Save to Folevi: what another app shared (the system share sheet, through the PWA's share target and the
 // service worker) or what the bookmarklet sent (/share?title=…&url=…&text=…), saved as a note under the
-// Inbox page of the place chosen. The note is made through the sync engine like any other page, so it is
-// kept on this device first and works offline; shared images and PDFs go through the usual upload queue.
+// Inbox page of the place chosen (lib/share/save.ts): made through the sync engine like any other page, so
+// it is kept on this device first and works offline; shared images and PDFs go through the usual upload queue.
 import { useMutation } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
 import { FileText, ImageIcon, Link2 } from "lucide-react";
-import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, inboxDocumentId, rankBetween, SCHEMA_VERSION, scopeIdKey, ulid, type WireBlock, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
-import { enqueueUpload } from "@/lib/sync/uploads";
-import { normaliseShare, shareBlocks, shareFileKind, type SharePayload } from "@/lib/share/payload";
+import { normaliseShare, shareFileKind, type SharePayload } from "@/lib/share/payload";
+import { saveShare } from "@/lib/share/save";
 import { forgetReceivedShare, readReceivedShare } from "@/lib/share/received";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { Button } from "@/components/ui/Button";
@@ -33,9 +32,6 @@ function useUploadsLeft(noteId: string | null): number {
   }, [engine, noteId]);
   return left;
 }
-
-/** How long to wait for the server before saving on this device alone (a connection that only looks online). */
-const ONLINE_WAIT_MS = 8000;
 
 export function ShareSheet() {
   const { engine, profile, workspaces, scope: current, online, deviceId } = useAppState();
@@ -91,73 +87,10 @@ export function ShareSheet() {
     if (!engine || !loaded || busy) return;
     setBusy(true);
     setError(null);
-    const scope: WireScope = place === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: place };
     const placeName = places.find((p) => p.id === place)?.name ?? "Personal";
     try {
-      // The Inbox page: from the server when it answers (it brings one back from Trash, finds an older one),
-      // else its deterministic id, created here if it doesn't exist yet (the same page every device makes).
-      let inbox: { documentId: string; lastRank: string | null } | null = null;
-      if (online) {
-        try {
-          inbox = await Promise.race([prepareInbox({ scope, deviceId: deviceId ?? undefined }), new Promise<null>((r) => setTimeout(() => r(null), ONLINE_WAIT_MS))]);
-        } catch (e) {
-          const code = (e as { data?: { code?: string } }).data?.code;
-          if (code) throw e;
-        }
-      }
-      if (!inbox) {
-        const documentId = inboxDocumentId(profile.id, scopeIdKey(scope));
-        engine.createDocument({ id: documentId, parentDocumentId: null, folderId: null, kind: "document", title: "Inbox", icon: "📥", scope });
-        const known = engine.documentBlocks(documentId).filter((b) => b.parentId === null);
-        inbox = { documentId, lastRank: known.reduce<string | null>((m, b) => (m === null || b.rank > m ? b.rank : m), null) ?? "z" };
-      }
-
-      const noteId = ulid();
-      const name = title.trim().slice(0, 200) || loaded.payload.title;
-      engine.createDocument({ id: noteId, parentDocumentId: inbox.documentId, folderId: null, kind: "document", title: name, icon: null, style: DEFAULT_DOCUMENT_STYLE, cover: DEFAULT_COVER, templateId: null });
-      // Files first: each block waits in the queue until its upload is done (and the note is on the server).
-      const fileBlocks: WireBlock[] = [];
-      for (const file of loaded.files) {
-        const kind = shareFileKind(file);
-        if (!kind) continue;
-        const id = ulid();
-        await enqueueUpload(profile.id, engine, { documentId: noteId, blockId: id, file, kind });
-        fileBlocks.push(
-          kind === "image"
-            ? { id, type: "image", parentId: null, rank: "", schemaVersion: SCHEMA_VERSION, text: [], props: { alt: file.name.replace(/\.[^.]+$/, "").slice(0, 200), caption: "" } }
-            : { id, type: "file", parentId: null, rank: "", schemaVersion: SCHEMA_VERSION, text: [], props: { name: file.name.slice(0, 200), size: file.size, mimeType: file.type } },
-        );
-      }
-      const blocks = shareBlocks({ ...loaded.payload, title: name }, fileBlocks);
-      const card: WireBlock = {
-        id: ulid(),
-        type: "page",
-        parentId: null,
-        rank: rankBetween(inbox.lastRank, null),
-        schemaVersion: SCHEMA_VERSION,
-        text: [],
-        props: { documentId: noteId, display: "card", titleCache: name || "Untitled" },
-      };
-      engine.batch(() => {
-        for (const b of blocks) engine.upsertBlock(noteId, b, ["content", "position"], null);
-        engine.upsertBlock(inbox.documentId, card, ["content", "position"], null);
-      });
-      await engine.persisted();
+      const { noteId, synced } = await saveShare({ engine, profileId: profile.id, deviceId, online, prepareInbox }, { payload: loaded.payload, files: loaded.files, title, place });
       if (loaded.receivedId) await forgetReceivedShare(loaded.receivedId);
-      // Sent now, not after the usual pause: a bookmarklet window may be closed the moment it says saved.
-      let synced = false;
-      if (online) {
-        const firstText = blocks.find((b) => b.type !== "image" && b.type !== "file");
-        synced = await Promise.all([
-          engine.whenDocumentOnServer(noteId, 15_000),
-          engine.whenBlockOnServer(inbox.documentId, card.id, 15_000),
-          ...(firstText ? [engine.whenBlockOnServer(noteId, firstText.id, 15_000)] : []),
-        ]).then(
-          () => true,
-          () => false,
-        );
-      }
-      if (loaded.files.length) window.dispatchEvent(new CustomEvent("folevi:uploads-changed"));
       setSaved({ noteId, place: placeName, synced });
     } catch (e) {
       setError(errorMessage(e));

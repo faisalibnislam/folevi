@@ -13,6 +13,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useNativeDevice } from "@/lib/nativeDevice";
 
 const MAX_TOKENS = 20;
 
@@ -40,7 +41,10 @@ function describeScopes(scopes: string[]): string {
 
 /** Settings → Connected apps: personal access tokens for the REST API (convex/apiTokens.ts). */
 export function ApiTokensCard() {
-  const tokens = useQuery(api.apiTokens.list, {});
+  const all = useQuery(api.apiTokens.list, {});
+  const here = useNativeDevice();
+  // The 20-token limit counts the tokens you made; the iPhone and iPad app's own (one per device) are extra.
+  const tokens = all?.filter((t) => !t.deviceId);
   const revoke = useMutation(api.apiTokens.revoke);
   const toast = useToast();
   const [creating, setCreating] = useState(false);
@@ -60,22 +64,24 @@ export function ApiTokensCard() {
         </>
       }
     >
-      {tokens === undefined ? (
+      {all === undefined ? (
         <p className="text-sm text-muted">Loading…</p>
-      ) : tokens.length === 0 ? (
+      ) : all.length === 0 ? (
         <EmptyState size="inline" icon={KeyRound} title="No tokens yet" />
       ) : (
         <ul className="divide-y divide-line/70">
-          {tokens.map((t) => {
+          {all.map((t) => {
             const expired = t.expiresAt !== null && t.expiresAt <= now;
             return (
               <li key={t.id} aria-label={t.name} className="flex flex-wrap items-start gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0">
                 <div className="min-w-0 flex-1 basis-64">
                   <p className="text-[14px] font-semibold text-heading">
                     {t.name} <span className="ml-1 font-mono text-[12px] font-normal text-muted">{t.hint}…</span>
+                    {t.deviceId && t.deviceId === here?.id ? <span className="ml-2 rounded-chip bg-sunken px-1.5 py-0.5 text-[11.5px] font-medium text-muted">This device</span> : null}
                   </p>
                   <p className="mt-0.5 text-[13px] text-ink">
-                    {describeScopes(t.scopes)} in {t.places.join(", ") || "no places"}
+                    {t.deviceId ? "The app’s widgets, share sheet, Shortcuts and Spotlight: " : ""}
+                    {t.deviceId ? describeScopes(t.scopes).toLowerCase() : describeScopes(t.scopes)} in {t.places.join(", ") || "no places"}
                   </p>
                   <p className="mt-0.5 text-[12.5px] text-muted">
                     Made {formatRelative(t.createdAt)} · {t.lastUsedAt ? `last used ${formatRelative(t.lastUsedAt)}` : "not used yet"} ·{" "}

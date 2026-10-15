@@ -22,6 +22,47 @@ export type NativeCommand = { type: "link"; url: string };
 
 export type Haptic = "light" | "medium" | "heavy" | "success" | "warning" | "error";
 
+/**
+ * This iPhone or iPad, and the REST API token its widgets, share extension, Shortcuts and Spotlight use
+ * (lib/nativeDevice.ts). The token itself never comes back to the page; only which one the app holds.
+ */
+export interface NativeDevice {
+  /** The app's install id on this device. */
+  id: string;
+  family: "iPhone" | "iPad";
+  /** "iPhone 18 Pro", or "" when the app doesn't know the model's name. */
+  model: string;
+  /** The account the app's token is for, and the token's id; null when it holds none. */
+  accountId: string | null;
+  tokenId: string | null;
+  /** Whether the camera's document scanner works here (not in the Simulator). */
+  scanner: boolean;
+}
+
+/** A file handed over by the app: base64 bytes with a name and type. */
+export interface NativeFile {
+  name: string;
+  type: string;
+  data: string;
+}
+
+/** Something shared to Folevi (the share extension) while it couldn't reach Folevi, kept for the app. */
+export interface NativeShare {
+  id: string;
+  title: string;
+  text: string;
+  url: string;
+  /** "personal" or a workspace's id, as GET /api/v1/places names it; null for Personal. */
+  place: string | null;
+  files: NativeFile[];
+}
+
+/** A scanned document: each page as a JPEG, and the text read from them. */
+export interface NativeScan {
+  pages: NativeFile[];
+  text: string;
+}
+
 export interface NativeBridge {
   platform: "ios";
   version: string;
@@ -34,6 +75,18 @@ export interface NativeBridge {
   /** Turning the lock on asks to unlock once first; resolves with the settings as they now are. */
   setSettings(patch: Partial<Pick<NativeSettings, "lock" | "lockAfter">>): Promise<NativeSettings>;
   onCommand(listener: (command: NativeCommand) => void): () => void;
+  // Since 1.1 (stage 2: widgets, the share extension, Shortcuts, Spotlight, the scanner). Optional: an
+  // older app doesn't have them.
+  device?(): Promise<NativeDevice | null>;
+  /** Keeps the device's token in the Keychain for the app's extensions. */
+  setCredential?(credential: { token: string; tokenId: string; accountId: string }): Promise<boolean>;
+  /** Signing out: the token, the widgets' copy of tasks and notes, and Spotlight's entries go. */
+  clearCredential?(): Promise<void>;
+  /** Shares the extension kept (offline, or with files); finishShare removes one once it's saved. */
+  takeShares?(): Promise<NativeShare[]>;
+  finishShare?(id: string): Promise<void>;
+  /** Scans a document with the camera, or reads pages from photos; null when the person cancels. */
+  scanDocument?(source: "camera" | "photos"): Promise<NativeScan | null>;
 }
 
 declare global {

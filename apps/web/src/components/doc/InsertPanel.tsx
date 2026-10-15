@@ -12,6 +12,8 @@ import { requestSpecialInsert, type SpecialInsert } from "@/components/editor/Ed
 import { beginPointerDrag } from "@/components/editor/blockDrag";
 import { newFormulaAttrs } from "@/components/editor/FormulaView";
 import { DIVIDER_STYLES, MERMAID_SAMPLE } from "@/components/editor/insertCatalog";
+import { nativeApp } from "@/lib/nativeApp";
+import { useNativeDevice } from "@/lib/nativeDevice";
 import { InsertPreview, type PreviewKind } from "./insertPreviews";
 
 /** What an insert does: a plain block (optionally with text), or a special flow run by the editor. */
@@ -41,6 +43,12 @@ const MAIN: InsertItem[] = [
   { label: "Mermaid diagram", type: "code", attrs: () => ({ language: "mermaid" }), text: MERMAID_SAMPLE, preview: "mermaid", keywords: "mermaid diagram flowchart chart graph" },
   { label: "Flowchart", type: "flowchart", attrs: () => ({ data: "", height: FLOWCHART_DEFAULT_HEIGHT }), preview: "flowchart", keywords: "flowchart diagram process flow chart shapes boxes arrows whimsical miro" },
   { label: "Whiteboard", type: "whiteboard", attrs: () => ({ data: "", height: WHITEBOARD_DEFAULT_HEIGHT }), preview: "whiteboard", keywords: "drawing sketch draw pen canvas" },
+];
+
+// Only in the iOS app (lib/nativeDevice.ts): the camera's scanner where the device has one, and pages from photos.
+const SCAN: InsertItem[] = [
+  { label: "Scan document", special: "scan", preview: "scan", keywords: "scanner camera paper receipt ocr text" },
+  { label: "Scan from photos", special: "scanPhotos", preview: "scan", keywords: "scanner photos paper receipt ocr text" },
 ];
 
 const COLLECTIONS: InsertItem[] = [
@@ -76,7 +84,7 @@ interface Tile {
   keywords: string;
 }
 
-const ITEMS = new Map([...MAIN, ...MORE, ...COLLECTIONS].map((i) => [i.label, i]));
+const ITEMS = new Map([...MAIN, ...MORE, ...COLLECTIONS, ...SCAN].map((i) => [i.label, i]));
 
 const tiles = (section: string, labels: string[]): Tile[] =>
   labels.map((label) => {
@@ -286,7 +294,9 @@ export function InsertPanel({ editor, disabled }: { editor: Editor | null; disab
   const d = disabled || !editor;
   const [q, setQ] = useState("");
   const query = q.trim().toLowerCase();
-  const sections = SECTIONS.map((s) => ({ ...s, tiles: s.tiles.filter((t) => matches(query, t.keywords)) })).filter((s) => s.tiles.length);
+  const device = useNativeDevice();
+  const scans = device && nativeApp()?.scanDocument ? tiles("media", device.scanner ? ["Scan document", "Scan from photos"] : ["Scan from photos"]) : [];
+  const sections = SECTIONS.map((s) => ({ ...s, tiles: [...s.tiles, ...(s.title === "Media" ? scans : [])].filter((t) => matches(query, t.keywords)) })).filter((s) => s.tiles.length);
   const showTable = matches(query, "table grid rows columns size");
   return (
     <div>

@@ -353,6 +353,35 @@ export function insertBlockAfterCurrent(editor: Editor, type: string, attrs: Rec
   return at;
 }
 
+/** Paragraphs a scan's text may become (the rest joins the last one), and how much text is kept. */
+const SCAN_PARAGRAPHS = 300;
+const SCAN_TEXT = 40_000;
+
+/**
+ * The text read from a scanned document (the iOS app's scanner), under the pages just inserted: a closed
+ * toggle "Text from the scan" holding it as paragraphs, so it's searchable without taking up the page.
+ * Goes after the selected block (the last page image) and its nested blocks.
+ */
+export function insertScanText(editor: Editor, text: string): void {
+  const paragraphs = text
+    .slice(0, SCAN_TEXT)
+    .replace(/\r\n?/g, "\n")
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/\s*\n\s*/g, " ").trim())
+    .filter(Boolean);
+  if (!paragraphs.length) return;
+  const kept = paragraphs.length > SCAN_PARAGRAPHS ? [...paragraphs.slice(0, SCAN_PARAGRAPHS - 1), paragraphs.slice(SCAN_PARAGRAPHS - 1).join(" ")] : paragraphs;
+  const { state } = editor;
+  const [current] = blocksInSelection(state);
+  const depth = current ? Number(current.node.attrs.depth ?? 0) : 0;
+  const { schema } = state;
+  const toggle = schema.nodes.toggle!.create({ id: ulid(), depth, collapsed: true }, schema.text("Text from the scan"));
+  const lines = kept.map((p) => schema.nodes.paragraph!.create({ id: ulid(), depth: depth + 1 }, schema.text(p.slice(0, LIMITS.maxTextLength))));
+  const at = current ? subtreeRange(state, current.index).end : state.doc.content.size;
+  const tr = state.tr.insert(at, [toggle, ...lines]);
+  editor.view.dispatch(tr.scrollIntoView());
+}
+
 /** Duplicates the selected blocks (and their nested blocks) right after them, with fresh ids. */
 /**
  * Marks the toggle at `index` (a top-level block) as a flashcard, or clears the mark: its `study` prop, which

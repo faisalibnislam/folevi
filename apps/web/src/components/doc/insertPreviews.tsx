@@ -12,6 +12,7 @@ export type PreviewKind =
   | "unsplash"
   | "file"
   | "audio"
+  | "scan"
   | "h1"
   | "h2"
   | "h3"
@@ -117,6 +118,17 @@ function Picture({ kind }: { kind: PreviewKind }) {
           <path d="M5 27 14 16l7 7 4-4 12.5 8z" fill={C} fillOpacity={0.28} />
           <circle cx={35} cy={25} r={5.5} fill={PAPER} stroke={C} strokeOpacity={0.7} strokeWidth={1.6} />
           <path d="M39 29l3.5 3.5" stroke={C} strokeOpacity={0.7} strokeWidth={2} strokeLinecap="round" />
+        </>
+      );
+    case "scan":
+      return (
+        <>
+          <Sheet x={15} y={6} w={18} h={24} r={2} />
+          <Bar x={18} y={11} w={10} h={2.5} o={0.5} />
+          <Bar x={18} y={16} w={12} h={2} />
+          <Bar x={18} y={20.5} w={12} h={2} />
+          <Bar x={18} y={25} w={8} h={2} />
+          <path d="M10 9V5a1 1 0 0 1 1-1h4M33 4h4a1 1 0 0 1 1 1v4M38 27v4a1 1 0 0 1-1 1h-4M15 32h-4a1 1 0 0 1-1-1v-4" stroke={ACCENT} strokeOpacity={0.7} strokeWidth={1.6} strokeLinecap="round" fill="none" />
         </>
       );
     case "file":

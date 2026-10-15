@@ -5,6 +5,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/convex/api";
 import { useAuthPhase } from "@/lib/convex/provider";
 import { authClient } from "@/lib/auth/client";
+import { forgetThisDevice } from "@/lib/nativeDevice";
 import { AppStateProvider, FullPageMessage, useMeQuery } from "@/lib/app/state";
 import { loadAccountSnapshot, type AccountSnapshot } from "@/lib/app/offlineSnapshot";
 import { useAppRouter } from "@/lib/app/router";
@@ -71,7 +72,11 @@ export function AccountGate() {
       }
       const status = (check?.error as { status?: number } | null | undefined)?.status;
       const definite = check !== null && (!check.error || status === 401 || status === 403);
-      if (definite) await withTimeout(authClient.signOut().catch(() => undefined));
+      if (definite) {
+        // The iOS app's widgets and extensions stop using this account too.
+        await forgetThisDevice();
+        await withTimeout(authClient.signOut().catch(() => undefined));
+      }
       go();
     })();
   }, [phase]);

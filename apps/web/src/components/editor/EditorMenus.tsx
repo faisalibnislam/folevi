@@ -57,6 +57,7 @@ import {
   LayoutGrid,
   Columns3,
   MonitorPlay,
+  ScanText,
 } from "lucide-react";
 import { FLOWCHART_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT, addDays, embedFor, embedProblem, repeatProps, repeatRule, sanitizeHref, ulid } from "@folevi/editor-schema";
 import { RepeatField } from "./RepeatField";
@@ -82,6 +83,7 @@ import {
   emptyTableRows,
   focusInsideBlock,
   insertBlockAfterCurrent,
+  insertScanText,
   moveBlock,
   removeLink,
   subtreeRange,
@@ -109,6 +111,8 @@ import { webAddressIn } from "./autolink";
 import { setRangeHighlight } from "./blockHighlight";
 import { coarsePointer, useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { visibleBottom } from "@/lib/hooks/useVisualViewport";
+import { nativeApp, type NativeScan } from "@/lib/nativeApp";
+import { fileFromNative, useNativeDevice } from "@/lib/nativeDevice";
 
 // Used now and then, so it loads when first opened rather than with every note.
 const AudioRecorder = lazy(() => import("./AudioRecorder").then((m) => ({ default: m.AudioRecorder })));
@@ -123,7 +127,7 @@ interface MenuItem {
 }
 
 /** Everything the Insert panel (and the slash menu) can add that needs more than a plain block. */
-export type SpecialInsert = "image" | "unsplash" | "file" | "record" | "page" | "card" | "bookmark" | "embed" | "collection" | "gallery" | "board" | "calendarView" | "date" | "pickDate";
+export type SpecialInsert = "image" | "unsplash" | "file" | "record" | "scan" | "scanPhotos" | "page" | "card" | "bookmark" | "embed" | "collection" | "gallery" | "board" | "calendarView" | "date" | "pickDate";
 
 /** Asks the editor's menus to run a special insert (the Insert panel lives outside the editor). */
 /** `placeholder`: the id of an empty line made for this insert (a drop), removed if the insert is cancelled. */
@@ -431,6 +435,9 @@ export function EditorMenus({
     };
   }, [trigger]);
   const aiOn = useAiEnabled();
+  // In the iOS app (with its scanner, since 1.1): this device, for the Scan entries.
+  const device = useNativeDevice();
+  const scanner = device && nativeApp()?.scanDocument ? device : null;
 
   // The inline AI composer: opened by ⌘J, the "/" AI commands, the toolbar's Ask AI and the block menu.
   const [inlineAi, setInlineAi] = useState<InlineAiRequest | null>(null);
@@ -570,6 +577,25 @@ export function EditorMenus({
     [engine, documentId, createCollection, editor, toast, dropLeftover],
   );
 
+  // The iOS app's document scanner: the pages go in as images (the usual upload queue, so it works offline),
+  // and the text read from them in a closed toggle under them, so the note finds it in search.
+  const scanDocument = useCallback(
+    async (source: "camera" | "photos") => {
+      const bridge = nativeApp();
+      let scan: NativeScan | null = null;
+      try {
+        scan = (await bridge?.scanDocument?.(source)) ?? null;
+      } catch {
+        toast.show("The scan didn’t work. Please try again.", { tone: "error" });
+      }
+      if (!scan?.pages.length) return dropLeftover();
+      dropPlaceholder.current = null;
+      await onInsertFiles(scan.pages.map(fileFromNative));
+      if (scan.text.trim()) insertScanText(editor, scan.text);
+    },
+    [editor, onInsertFiles, toast, dropLeftover],
+  );
+
   const special = useMemo<Record<SpecialInsert, () => void | Promise<void>>>(() => {
     // Without an account (the site's demo note), inserts that need the server ask to sign up instead.
     const account = (feature: string, run: () => void | Promise<void>) =>
@@ -584,6 +610,8 @@ export function EditorMenus({
       unsplash: account("Images", () => setUnsplashOpen(true)),
       file: account("Files", () => fileInput.current?.click()),
       record: account("Audio recordings", () => setRecorderAnchor(caretAnchor())),
+      scan: account("Scans", () => scanDocument("camera")),
+      scanPhotos: account("Scans", () => scanDocument("photos")),
       page: account("Sub-pages", async () => navigate(`/d/${await createNestedPage("", false, "link")}?new=1`)),
       card: account("Sub-pages", async () => navigate(`/d/${await createNestedPage("", false, "card")}?new=1`)),
       bookmark: account("Bookmarks", () => setBookmarkPrompt(true)),
@@ -602,7 +630,7 @@ export function EditorMenus({
         setDatePicker({ mode: "insert" });
       },
     };
-  }, [env, navigate, createNestedPage, insertCollection, editor, today, caretAnchor, ensureTextCaret, dropLeftover]);
+  }, [env, navigate, createNestedPage, insertCollection, editor, today, caretAnchor, ensureTextCaret, dropLeftover, scanDocument]);
 
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
@@ -785,6 +813,9 @@ export function EditorMenus({
       { id: "unsplash", label: "Image from Unsplash", keywords: "image picture photo unsplash stock search", icon: <ImagePlus size={15} />, run: special.unsplash },
       { id: "file", label: "File", keywords: "file attachment upload pdf", icon: <Paperclip size={15} />, run: special.file },
       { id: "record", label: "Audio recording", keywords: "audio record recording voice memo microphone mic sound dictate", icon: <Mic size={15} />, run: special.record },
+      // Only in the iOS app: the camera's scanner where the device has one, and pages from photos.
+      ...(scanner?.scanner ? [{ id: "scan", label: "Scan document", keywords: "scan scanner document camera paper receipt ocr text", icon: <ScanText size={15} />, run: special.scan }] : []),
+      ...(scanner ? [{ id: "scanPhotos", label: "Scan from photos", keywords: "scan scanner document photos paper receipt ocr text", icon: <ScanText size={15} />, run: special.scanPhotos }] : []),
       { id: "bookmark", label: "Bookmark", keywords: "bookmark web link url", icon: <LinkIcon size={15} />, run: special.bookmark },
       { id: "embed", label: "Embed", keywords: "embed video youtube vimeo loom figma map google maps iframe", icon: <MonitorPlay size={15} />, run: special.embed },
       { id: "collection", label: "Collection", keywords: "collection database table", icon: <LayoutList size={15} />, run: special.collection },
@@ -794,7 +825,7 @@ export function EditorMenus({
       { id: "date", label: "Today’s date", keywords: "date today mention calendar", icon: <CalendarDays size={15} />, run: special.date },
       { id: "pickdate", label: "Date…", keywords: "date pick choose calendar day", icon: <CalendarDays size={15} />, run: special.pickDate },
     ],
-    [editor, special, aiOn],
+    [editor, special, aiOn, scanner],
   );
 
   const q = open?.query.toLowerCase().trim() ?? "";

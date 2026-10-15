@@ -385,6 +385,9 @@ export const DOC_ARTICLES: DocArticle[] = [
             <strong>Markdown and text:</strong> <code>.md</code>, <code>.markdown</code>, <code>.txt</code>, or a <code>.zip</code> of them. Images the Markdown points to by a relative path come in as image blocks.
           </li>
         </ul>
+        <p>
+          A folder or a ZIP keeps its subfolders: each page goes in a folder named like the one it was in, up to five levels deep (anything deeper goes in the fifth). If a folder with the same name is already in the same place, the pages go into it instead of a new copy. Notion pages keep their nesting as pages.
+        </p>
         <p>Up to 400 pages go in one import, and Folevi lists anything it couldn’t bring across.</p>
         <p>
           You can also send or forward email to your private Folevi address and each one becomes a note in your Inbox. See <Link href="/docs/email-to-folevi">Email to Folevi</Link>.

@@ -99,7 +99,7 @@ describe("Evernote export", () => {
 </note></en-export>`;
     const file = new File([enex], "Home notebook.enex");
     const [doc] = await evernoteDocs(file);
-    expect(doc).toMatchObject({ folder: "Home notebook", filename: "Garden.md" });
+    expect(doc).toMatchObject({ folderPath: ["Home notebook"], filename: "Garden.md" });
     expect(doc!.content).toBe(`# Garden\n\nPlant **tomatoes**\n\n![](evernote:${hash})`);
     expect(doc!.images.get(`evernote:${hash}`)).toMatchObject({ filename: "plot.png", mime: "image/png" });
     expect(doc!.warnings).toEqual([{ message: "Tags weren’t imported: home" }]);

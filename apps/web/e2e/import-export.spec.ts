@@ -1,5 +1,7 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { newPerson } from "./helpers";
+import { newPerson, showFolders } from "./helpers";
 
 test("import Markdown with a warning report, then export a page as Markdown", async ({ browser }) => {
   const { page } = await newPerson(browser, "Importer");
@@ -25,4 +27,41 @@ test("import Markdown with a warning report, then export a page as Markdown", as
   expect(content).toContain("# Garden log");
   expect(content).toContain("- [x] Compost");
   expect(content).toContain("```python");
+});
+
+test("import a folder: its subfolders come along, three levels deep, and a second import reuses them", async ({ browser }, testInfo) => {
+  const { page } = await newPerson(browser, "Folder Importer");
+  // A folder on disk, as the folder picker hands it over (each file with its path inside the folder).
+  const root = testInfo.outputPath("Vault");
+  const write = (rel: string, text: string) => {
+    mkdirSync(dirname(join(root, rel)), { recursive: true });
+    writeFileSync(join(root, rel), text);
+  };
+  write("readme.md", "# Readme\n\nStart here.");
+  write("Projects/notes.md", "# Project notes\n\nOne.");
+  write("Projects/2026/plan.md", "# Plan for 2026\n\nTwo.");
+  await page.goto("/settings/data");
+  await page.locator('input[type="file"][webkitdirectory]').setInputFiles(root);
+  await expect(page.getByRole("link", { name: "Vault/Projects/2026/plan.md" })).toBeVisible({ timeout: 30_000 });
+
+  await showFolders(page);
+  const nav = page.getByRole("navigation", { name: "Folio" });
+  await expect(nav.getByRole("link", { name: "Vault", exact: true })).toBeVisible();
+  const inVault = nav.getByRole("group", { name: "In Vault" });
+  await expect(inVault.getByRole("link", { name: "Projects", exact: true })).toBeVisible();
+  const inProjects = nav.getByRole("group", { name: "In Projects" });
+  await inProjects.getByRole("link", { name: "2026", exact: true }).click();
+  await expect(page.getByRole("main").getByText("Plan for 2026")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Project notes")).toHaveCount(0);
+
+  // The same folder again with one more file: no second Vault, the new page goes in the Projects already there.
+  write("Projects/more.md", "# More notes\n\nThree.");
+  await page.goto("/settings/data");
+  await page.locator('input[type="file"][webkitdirectory]').setInputFiles(root);
+  await expect(page.getByRole("link", { name: "Vault/Projects/more.md" })).toBeVisible({ timeout: 30_000 });
+  await showFolders(page);
+  await expect(nav.getByRole("link", { name: "Vault", exact: true })).toHaveCount(1);
+  await expect(inVault.getByRole("link", { name: "Projects", exact: true })).toHaveCount(1);
+  await inVault.getByRole("link", { name: "Projects", exact: true }).click();
+  await expect(page.getByRole("main").getByText("More notes")).toBeVisible();
 });

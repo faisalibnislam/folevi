@@ -5,6 +5,7 @@
 import { ulid } from "@folevi/editor-schema";
 import { TEXT_EXT, dirname, imageMime, imageSources, normalizePath, resolveImage, type BundleEntry } from "@/components/doc/importBundle";
 import { htmlToMarkdown } from "./htmlToMarkdown";
+import { folderPathOf } from "./folders";
 import { md5Hex } from "./md5";
 
 export interface ImportImage {
@@ -30,8 +31,8 @@ export interface ImportDoc {
   parentPath?: string;
   /** Link targets in the Markdown that are pages of the batch: href → page id. */
   links?: Record<string, string>;
-  /** A folder to put it in (by name; made if needed). */
-  folder?: string;
+  /** The folder to put it in, as names from the top level down (made if needed, reused when one is there; folders.ts). */
+  folderPath?: string[];
   warnings: { message: string }[];
 }
 
@@ -56,20 +57,43 @@ function dataUriImage(src: string, n: number): ImportImage | null {
 
 // ---------------------------------------------------------------- Markdown files, folders, Obsidian
 
-/** Markdown and text files of a bundle (files, a folder, a ZIP) with the images they use. */
+/**
+ * Markdown and text files of a bundle (files, a folder, a ZIP) with the images they use, and its CSV files as
+ * tables. Each goes in the folder its path names (a picked folder or a ZIP keeps its tree).
+ */
 export function markdownDocs(entries: BundleEntry[], map: Map<string, BundleEntry>): ImportDoc[] {
   const out: ImportDoc[] = [];
-  for (const e of entries.filter((x) => TEXT_EXT.test(x.path))) {
-    out.push({ name: e.path, path: e.path, filename: e.path.split("/").pop() ?? e.path, format: /\.(txt|text)$/i.test(e.path) ? "text" : "markdown", content: "", images: new Map(), publicId: ulid(), warnings: [], entry: e, map } as ImportDoc & { entry: BundleEntry; map: Map<string, BundleEntry> });
+  for (const e of entries.filter((x) => TEXT_EXT.test(x.path) || /\.csv$/i.test(x.path))) {
+    const folderPath = folderPathOf(e.path);
+    const csv = /\.csv$/i.test(e.path);
+    out.push({
+      name: e.path,
+      path: e.path,
+      filename: (e.path.split("/").pop() ?? e.path).replace(/\.csv$/i, ".md"),
+      format: /\.(txt|text)$/i.test(e.path) ? "text" : "markdown",
+      content: "",
+      images: new Map(),
+      publicId: ulid(),
+      warnings: [],
+      ...(folderPath.length ? { folderPath } : {}),
+      entry: e,
+      map,
+      csv,
+    } as ImportDoc & { entry: BundleEntry; map: Map<string, BundleEntry>; csv: boolean });
   }
   return out;
 }
 
 /** Reads a Markdown doc's text and its local images (deferred so a big folder doesn't all sit in memory). */
 export async function loadMarkdown(doc: ImportDoc): Promise<void> {
-  const { entry, map } = doc as ImportDoc & { entry?: BundleEntry; map?: Map<string, BundleEntry> };
+  const { entry, map, csv } = doc as ImportDoc & { entry?: BundleEntry; map?: Map<string, BundleEntry>; csv?: boolean };
   if (!entry || !map) return;
   doc.content = await entry.blob.text();
+  if (csv) {
+    const title = (entry.path.split("/").pop() ?? "").replace(/\.csv$/i, "");
+    doc.content = `# ${title}\n\n${csvToMarkdown(doc.content, doc.warnings)}`;
+    return;
+  }
   if (doc.format !== "markdown") return;
   for (const src of imageSources(doc.content)) {
     const found = resolveImage(map, entry.path, src);
@@ -231,7 +255,7 @@ export async function evernoteDocs(file: File): Promise<ImportDoc[]> {
     }
     const tags = [...note.getElementsByTagName("tag")].map((t) => t.textContent?.trim()).filter(Boolean);
     if (tags.length) warnings.push({ message: `Tags weren’t imported: ${tags.join(", ")}` });
-    docs.push({ name: `${folder} / ${title}`, path: `${folder}/${title}`, filename: `${title}.md`, format: "markdown", content: `# ${title}\n\n${markdown}`, images: map, publicId: ulid(), folder, warnings });
+    docs.push({ name: `${folder} / ${title}`, path: `${folder}/${title}`, filename: `${title}.md`, format: "markdown", content: `# ${title}\n\n${markdown}`, images: map, publicId: ulid(), folderPath: [folder], warnings });
   }
   if (!docs.length) throw new ImportSourceError("There are no notes in this Evernote export.");
   return docs;

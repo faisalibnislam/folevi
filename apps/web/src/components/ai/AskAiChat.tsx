@@ -32,6 +32,7 @@ export function AskAiChat({
   onClose,
   initial,
   folder,
+  hideLauncher,
 }: {
   open: boolean;
   onOpen: () => void;
@@ -39,6 +40,8 @@ export function AskAiChat({
   initial?: string;
   /** Only this folder's notes. */
   folder?: { id: string; name: string };
+  /** No floating button (the phone's navigation drawer is open over the page). */
+  hideLauncher?: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
   const { route, navigate } = useAppRouter();
@@ -153,7 +156,7 @@ export function AskAiChat({
       {/* Outside the chat, so Escape in it doesn't close the chat too. */}
       {actions.dialog}
       {/* On a note the floating bar's AI button opens it; elsewhere this floating button does. */}
-      {onNote ? null : (
+      {onNote || hideLauncher ? null : (
         <button
           ref={launcherRef}
           type="button"

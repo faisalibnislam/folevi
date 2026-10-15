@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ArrowUp, Loader2 } from "lucide-react";
 import { ulid } from "@folevi/editor-schema";
@@ -172,7 +172,7 @@ export function ChatThread({
   }, [messages.length, showPending, answering]);
 
   // The box grows with what's typed, from two lines up to about six (then it scrolls).
-  useLayoutEffect(() => {
+  const fitInput = useCallback(() => {
     const el = inputRef.current;
     if (!el || !el.getClientRects().length) return;
     const cs = getComputedStyle(el);
@@ -182,7 +182,22 @@ export function ChatThread({
     const max = line * 6 + pad;
     el.style.height = `${Math.max(line * 2 + pad, Math.min(el.scrollHeight, max))}px`;
     el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
-  }, [draft]);
+  }, []);
+  useLayoutEffect(fitInput, [draft, fitInput]);
+  // And again when its width changes: measured while the page was still laying out (phones), an empty box
+  // came out six lines tall.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let width = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth === width) return;
+      width = el.clientWidth;
+      fitInput();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fitInput]);
 
   const run = async (work: () => Promise<unknown>) => {
     setBusy(true);

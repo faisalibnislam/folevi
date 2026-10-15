@@ -363,7 +363,7 @@ export function Shell() {
       <OutboxRefusals />
       <QuickAddTask open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
       {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
-      {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} /> : null}
+      {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} hideLauncher={isNarrow && drawerOpen} /> : null}
     </ShellContext.Provider>
     </TabsProvider>
   );

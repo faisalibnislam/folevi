@@ -30,7 +30,7 @@ const pages = (n: number) => (n === 1 ? "1 page" : `${n.toLocaleString()} pages`
 function SearchField({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   const id = useId();
   return (
-    <div className="relative min-w-0 flex-1 sm:max-w-sm">
+    <div className="relative min-w-0 flex-1 max-sm:basis-full sm:max-w-sm">
       <label htmlFor={id} className="sr-only">
         {label}
       </label>

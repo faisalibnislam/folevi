@@ -54,6 +54,16 @@ let pendingLink: string | null = linkFromArgv(process.argv);
 /** The unread count, kept for main windows opened later (Windows shows it on each one's taskbar button). */
 let unread = 0;
 
+// Folevi puts its window back itself (windowState.ts). macOS's own window restoration adds nothing but a
+// "reopen its windows?" alert after a forced quit (an update replacing the app, a hang), and that alert
+// blocks startup until it's answered, so the app looks frozen. It's switched off, and any saved state
+// (with its crash history) is cleared, so the alert can't come back.
+if (process.platform === "darwin") {
+  systemPreferences.setUserDefault("ApplePersistenceIgnoreState", "boolean", true);
+  systemPreferences.setUserDefault("NSQuitAlwaysKeepsWindows", "boolean", false);
+  rmSync(join(app.getPath("home"), "Library", "Saved Application State", "com.folevi.mac.savedState"), { recursive: true, force: true });
+}
+
 // Test runs keep their own sign-in and settings, apart from the installed app's.
 if (process.env.FOLEVI_USER_DATA) app.setPath("userData", process.env.FOLEVI_USER_DATA);
 // Windows matches toasts and the taskbar button to the Start menu shortcut the installer made by this id.

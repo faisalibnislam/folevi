@@ -28,7 +28,8 @@ try {
 } catch {
   /* Not running. */
 }
-for (let i = 0; i < 20; i++) {
+// Up to 15 seconds to quit on its own: a forced quit makes macOS offer to "reopen its windows" next time.
+for (let i = 0; i < 60; i++) {
   try {
     execFileSync("pgrep", ["-f", `${installed}/Contents/MacOS/Folevi`], { stdio: "ignore" });
     execFileSync("sleep", ["0.25"]);

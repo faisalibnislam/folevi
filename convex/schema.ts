@@ -1611,6 +1611,12 @@ export default defineSchema({
     /** Unset: it doesn't expire. */
     expiresAt: v.optional(v.number()),
     lastUsedAt: v.optional(v.number()),
+    /**
+     * Set on the token the iPhone and iPad app makes for itself when someone signs in there (widgets, the
+     * share extension, Shortcuts, Spotlight): one per device (its install id), never expiring, and its places
+     * are always Personal and every workspace the person is in (`personal` and `workspaceIds` are ignored).
+     */
+    device: v.optional(v.object({ id: v.string(), platform: v.literal("ios") })),
   })
     .index("by_hash", ["tokenHash"])
     .index("by_profile", ["profileId"]),

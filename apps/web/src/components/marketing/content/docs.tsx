@@ -630,7 +630,7 @@ curl -X PATCH https://app.folevi.com/api/v1/tasks/TASK_ID \\
           head={["Endpoint", "What it does"]}
           rows={[
             ["GET /places", "Your Personal and the workspaces the token may use, with their ids."],
-            ["GET /notes", "Search with q, or list recent notes. Filter with place; page with limit and cursor."],
+            ["GET /notes", "Search with q, list recent notes, or your starred ones with starred=true. Filter with place; page with limit and cursor."],
             ["GET /notes/{id}", "One note: title, place, folder and its path, tags, link, dates and Markdown."],
             ["POST /notes", "Create a note: title, markdown, and optionally place, folderId or inInbox."],
             ["POST /notes/{id}/append", "Add markdown to the end of a note."],

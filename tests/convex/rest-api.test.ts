@@ -337,3 +337,98 @@ describe("/api/v1", () => {
     expect(pre.headers.get("access-control-allow-methods")).toContain("PATCH");
   });
 });
+
+describe("the iPhone and iPad app's device token", () => {
+  const DEVICE = "6F1C2B9A-0D7E-4A55-9C3B-1E2F3A4B5C6D";
+
+  test("made for the signed-in person, labelled for the device, with every place and never expiring", async () => {
+    const t = setup();
+    const a = await person(t, "device-a@example.com");
+    const { workspaceId } = await teamWorkspace(a, "Studio");
+    const made = await a.as.mutation(api.apiTokens.ensureDevice, { deviceId: DEVICE, family: "iPhone", model: "iPhone 18 Pro" });
+    expect(made.token).toMatch(/^fvpat_[A-Za-z0-9_-]{43}$/);
+    const [listed] = await a.as.query(api.apiTokens.list, {});
+    expect(listed).toMatchObject({ id: made.tokenId, name: "Folevi for iPhone (iPhone 18 Pro)", deviceId: DEVICE, places: ["Personal", "Studio"], expiresAt: null });
+    expect(listed!.scopes).toEqual(["notes:read", "notes:write", "tasks:read", "tasks:write"]);
+    expect((await call(t, made.token!, "GET", "/places")).json.data).toEqual([
+      { id: "personal", name: "Personal" },
+      { id: workspaceId, name: "Studio" },
+    ]);
+    // Places follow the person: a workspace made later is in reach at once, with no new token.
+    const later = await teamWorkspace(a, "Later");
+    expect((await call(t, made.token!, "GET", "/places")).json.data.map((p: { id: string }) => p.id)).toEqual(["personal", workspaceId, later.workspaceId]);
+    const created = await call(t, made.token!, "POST", "/notes", { title: "From the share sheet", markdown: "A link", inInbox: true, place: later.workspaceId });
+    expect(created.status).toBe(201);
+    expect(created.json).toMatchObject({ inInbox: true, place: { id: later.workspaceId, name: "Later" } });
+    // Device tokens don't count towards the 20 personal access tokens.
+    for (let i = 0; i < 20; i++) await token(a, { name: `T${i}` });
+    await expect(a.as.mutation(api.apiTokens.ensureDevice, { deviceId: "ANOTHER-DEVICE-1", family: "iPad", model: "iPad Pro 13-inch (M5)" })).resolves.toMatchObject({ token: expect.any(String) });
+    // Without a session nothing is made.
+    await expect(t.mutation(api.apiTokens.ensureDevice, { deviceId: DEVICE, family: "iPhone", model: "x" })).rejects.toThrow();
+    await expect(a.as.mutation(api.apiTokens.ensureDevice, { deviceId: "../nope", family: "iPhone", model: "x" })).rejects.toThrow(/device id/);
+  });
+
+  test("kept while the app holds it, replaced when it doesn't, revoked on sign-out or in Settings", async () => {
+    const t = setup();
+    const a = await person(t, "device-keep@example.com");
+    const first = await a.as.mutation(api.apiTokens.ensureDevice, { deviceId: DEVICE, family: "iPad", model: "iPad Pro 13-inch (M5)" });
+    expect((await a.as.query(api.apiTokens.list, {}))[0]!.name).toBe("Folevi for iPad (iPad Pro 13-inch (M5))");
+    // The next launch: the app says which token it holds, and nothing new is made.
+    const again = await a.as.mutation(api.apiTokens.ensureDevice, { deviceId: DEVICE, family: "iPad", model: "iPad Pro 13-inch (M5)", tokenId: first.tokenId });
+    expect(again).toEqual({ tokenId: first.tokenId, token: null });
+    // The app lost its copy (or holds someone else's): a new token replaces the old one.
+    const fresh = await a.as.mutation(api.apiTokens.ensureDevice, { deviceId: DEVICE, family: "iPad", model: "iPad Pro 13-inch (M5)" });
+    expect(fresh.tokenId).not.toBe(first.tokenId);
+    expect((await call(t, first.token!, "GET", "/places")).status).toBe(401);
+    expect(await a.as.query(api.apiTokens.list, {})).toHaveLength(1);
+    // Someone else's token id doesn't count as held.
+    const b = await person(t, "device-other@example.com");
+    const theirs = await b.as.mutation(api.apiTokens.ensureDevice, { deviceId: DEVICE, family: "iPhone", model: "iPhone 18 Pro", tokenId: fresh.tokenId });
+    expect(theirs.token).toEqual(expect.any(String));
+    expect((await call(t, fresh.token!, "GET", "/places")).status).toBe(200);
+    // Signing out of the app revokes the device's token, only the person's own.
+    await b.as.mutation(api.apiTokens.revokeDevice, { deviceId: DEVICE });
+    expect((await call(t, theirs.token!, "GET", "/places")).status).toBe(401);
+    expect((await call(t, fresh.token!, "GET", "/places")).status).toBe(200);
+    // Revoked in Settings > Connected apps like any token; the next launch makes a new one.
+    await a.as.mutation(api.apiTokens.revoke, { tokenId: fresh.tokenId });
+    expect((await call(t, fresh.token!, "GET", "/places")).status).toBe(401);
+    const back = await a.as.mutation(api.apiTokens.ensureDevice, { deviceId: DEVICE, family: "iPad", model: "iPad Pro 13-inch (M5)", tokenId: fresh.tokenId });
+    expect(back.token).toEqual(expect.any(String));
+  });
+
+  test("a person who leaves a workspace loses it from the device token; ten devices at most", async () => {
+    const t = setup();
+    const owner = await person(t, "device-owner@example.com");
+    const member = await person(t, "device-member@example.com");
+    const { workspaceId } = await teamWorkspace(owner, "Board");
+    await join(t, owner, member, "device-member@example.com", workspaceId, "editor");
+    const made = await member.as.mutation(api.apiTokens.ensureDevice, { deviceId: DEVICE, family: "iPhone", model: "" });
+    expect((await member.as.query(api.apiTokens.list, {}))[0]!.name).toBe("Folevi for iPhone");
+    expect((await call(t, made.token!, "GET", "/places")).json.data.map((p: { id: string }) => p.id)).toEqual(["personal", workspaceId]);
+    await owner.as.mutation(api.workspaces.removeMember, { workspaceId, profileId: member.profileId });
+    expect((await call(t, made.token!, "GET", "/places")).json.data.map((p: { id: string }) => p.id)).toEqual(["personal"]);
+    expect((await call(t, made.token!, "GET", `/notes?place=${workspaceId}`)).status).toBe(403);
+
+    for (let i = 0; i < 10; i++) await member.as.mutation(api.apiTokens.ensureDevice, { deviceId: `DEVICE-NUMBER-${i}`, family: "iPhone", model: "iPhone 17" });
+    const devices = (await member.as.query(api.apiTokens.list, {})).filter((x) => x.deviceId);
+    expect(devices).toHaveLength(10);
+    // The one used longest ago (the first) made room.
+    expect(devices.map((d) => d.deviceId)).not.toContain(DEVICE);
+  });
+
+  test("starred notes, most recently starred first", async () => {
+    const t = setup();
+    const a = await person(t, "device-stars@example.com");
+    const one = await note(a, "One", ["1"]);
+    const two = await note(a, "Two", ["2"]);
+    await note(a, "Three", ["3"]);
+    await a.as.mutation(api.documents.setStarred, { documentId: two, starred: true });
+    await new Promise((r) => setTimeout(r, 3));
+    await a.as.mutation(api.documents.setStarred, { documentId: one, starred: true });
+    const { token: raw } = await a.as.mutation(api.apiTokens.ensureDevice, { deviceId: DEVICE, family: "iPhone", model: "iPhone 18 Pro" });
+    const starred = await call(t, raw!, "GET", "/notes?starred=true");
+    expect(starred.status).toBe(200);
+    expect(starred.json).toEqual({ data: [expect.objectContaining({ id: one, title: "One" }), expect.objectContaining({ id: two, title: "Two" })], nextCursor: null });
+  });
+});

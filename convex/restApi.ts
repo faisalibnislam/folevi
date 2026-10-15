@@ -96,7 +96,7 @@ export const read = internalQuery({
   args: { tokenId: v.id("apiTokens"), route: v.string(), id: v.optional(v.string()), query: v.any() },
   handler: async (ctx, args): Promise<Record<string, unknown>> => {
     const { token, profile } = await tokenContext(ctx, args.tokenId);
-    const reach = reachOf(token);
+    const reach = await reachOf(ctx, token);
     const places = await grantPlaces(ctx, reach, profile);
     const q = (args.query ?? {}) as Args;
     switch (args.route as RouteName) {
@@ -115,6 +115,25 @@ export const read = internalQuery({
             }
           }
           return { data: out.slice(0, limit), nextCursor: null };
+        }
+        if (q.starred === "true") {
+          // Starred by the person, most recently starred first (one page: stars are few).
+          const limit = Math.min(Number(q.limit ?? 20) || 20, 50);
+          const stars = await ctx.db
+            .query("stars")
+            .withIndex("by_profile", (x) => x.eq("profileId", profile._id))
+            .order("desc")
+            .take(200);
+          const out: Record<string, unknown>[] = [];
+          for (const star of stars) {
+            if (out.length >= limit) break;
+            const doc = await ctx.db.get(star.documentId);
+            if (!doc || doc.inTrash || doc.archivedAt || doc.deletedAt !== undefined || (doc.kind !== "document" && doc.kind !== "daily")) continue;
+            const place = within.find((p) => inScope(doc, p.scope));
+            if (!place || !(await (await PageReader.forScope(ctx, profile, place.scope)).filter([doc])).length) continue;
+            out.push({ id: doc.publicId, title: doc.title || "Untitled", place: placeRef(place), updatedAt: new Date(doc.updatedAt).toISOString(), url: link(doc.publicId) });
+          }
+          return { data: out, nextCursor: null };
         }
         const limit = Math.min(Number(q.limit ?? 20) || 20, 50);
         const before = typeof q.cursor === "string" && q.cursor ? decodeCursor(q.cursor) : Number.MAX_SAFE_INTEGER;
@@ -205,7 +224,7 @@ export const write = internalMutation({
     }
     await consume(ctx, "apiWrite", token._id);
     await consume(ctx, "apiWriteDaily", token._id);
-    const reach = reachOf(token);
+    const reach = await reachOf(ctx, token);
     const places = await grantPlaces(ctx, reach, profile);
     const b = (args.body ?? {}) as Args;
     // A place the token can't use is a 403 here (the shared code would say it isn't found).

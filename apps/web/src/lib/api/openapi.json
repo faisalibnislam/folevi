@@ -35,12 +35,13 @@
         "tags": ["Notes"],
         "operationId": "listNotes",
         "summary": "Search notes, or list the most recently edited",
-        "description": "With `q`, the best matches for the words (at most 20, no further pages). Without it, notes newest first, a page at a time: pass `nextCursor` back as `cursor` for the next page. Needs `notes:read`.",
+        "description": "With `q`, the best matches for the words (at most 20, no further pages). With `starred=true`, your starred notes. Without either, notes newest first, a page at a time: pass `nextCursor` back as `cursor` for the next page. Needs `notes:read`.",
         "parameters": [
           { "$ref": "#/components/parameters/Place" },
           { "name": "q", "in": "query", "description": "Words to search for.", "schema": { "type": "string", "maxLength": 200 } },
           { "name": "limit", "in": "query", "description": "At most this many (search: 1 to 20, default 10; recent: 1 to 50, default 20).", "schema": { "type": "integer", "minimum": 1, "maximum": 50 } },
-          { "name": "cursor", "in": "query", "description": "`nextCursor` from the previous page.", "schema": { "type": "string" } }
+          { "name": "cursor", "in": "query", "description": "`nextCursor` from the previous page.", "schema": { "type": "string" } },
+          { "name": "starred", "in": "query", "description": "`true`: only the notes you starred, most recently starred first (one page, no `q`).", "schema": { "type": "string", "enum": ["true"] } }
         ],
         "responses": {
           "200": {

@@ -83,7 +83,7 @@ export const restApiHttp = httpAction(async (ctx, request) => {
 
   if (!isWrite(route.name)) {
     const query: Record<string, string> = {};
-    for (const key of ["place", "q", "limit", "cursor", "status", "due_before"]) {
+    for (const key of ["place", "q", "limit", "cursor", "status", "due_before", "starred"]) {
       const value = url.searchParams.get(key);
       if (value !== null) query[key] = value.slice(0, 500);
     }

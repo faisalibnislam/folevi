@@ -12,6 +12,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Card } from "./Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type Memory = FunctionReturnType<typeof api.aiMemory.list>;
 export type MemoryItem = Memory["items"][number];
@@ -167,7 +168,11 @@ export function MemoryList({
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-muted">Nothing yet. Add something here, like &ldquo;Use British spelling&rdquo; or &ldquo;Keep answers short&rdquo;, or save one when a chat or the agent offers it.</p>
+        <EmptyState
+          size="inline"
+          title="Nothing yet"
+          body={<>Add something here, like &ldquo;Use British spelling&rdquo; or &ldquo;Keep answers short&rdquo;, or save one when a chat or the agent offers it.</>}
+        />
       )}
       {items.length ? (
         <Button variant="quiet" size="sm" onClick={() => setConfirming(true)}>

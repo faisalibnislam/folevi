@@ -89,7 +89,7 @@ describe("the memory list", () => {
 
   test("empty, and full", () => {
     const { host } = render(<MemoryList on max={1} items={[]} workspaces={[]} {...handlers()} />);
-    expect(host.textContent).toContain("Nothing yet.");
+    expect(host.textContent).toContain("Nothing yet");
     expect(button(host, "Clear all")).toBeUndefined();
     const full = render(<MemoryList on max={1} items={[memory("m1", "tone", "Warm")]} workspaces={[]} {...handlers()} />);
     typeInto(full.host.querySelector<HTMLInputElement>('input[aria-label="What to remember"]')!, "Another");

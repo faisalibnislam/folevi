@@ -12,6 +12,7 @@ import { MenuButton } from "@/components/ui/Menu";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatRelative } from "@/lib/format";
 import { t } from "@/i18n";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type Item = FunctionReturnType<typeof api.notifications.list>[number];
 
@@ -200,7 +201,7 @@ function NotificationPanel({ unread, onClose }: { unread: number; onClose: (refo
             ))}
           </div>
         ) : groups.length === 0 ? (
-          <EmptyState unreadOnly={filter === "unread" && Boolean(items.length)} />
+          <NothingHere unreadOnly={filter === "unread" && Boolean(items.length)} />
         ) : (
           groups.map((g) => (
             <div key={g.label} role="group" aria-labelledby={`notifications-${g.label}`}>
@@ -220,16 +221,8 @@ function NotificationPanel({ unread, onClose }: { unread: number; onClose: (refo
   );
 }
 
-function EmptyState({ unreadOnly }: { unreadOnly: boolean }) {
-  return (
-    <div className="flex flex-col items-center px-8 py-10 text-center">
-      <span className="mb-3 grid h-10 w-10 place-items-center rounded-control bg-sunken text-muted" aria-hidden>
-        <BellOff size={17} />
-      </span>
-      <p className="text-[13.5px] font-medium text-heading">{unreadOnly ? "No unread notifications" : "You're all caught up."}</p>
-      <p className="mt-1 text-[12.5px] leading-snug text-muted">Comments, replies, @mentions and pages shared with you show up here.</p>
-    </div>
-  );
+function NothingHere({ unreadOnly }: { unreadOnly: boolean }) {
+  return <EmptyState size="inline" icon={BellOff} title={unreadOnly ? "No unread notifications" : "You’re all caught up"} body="Comments, replies, @mentions and pages shared with you show up here." className="py-10" />;
 }
 
 /** The sentence for a notification: who did what, where. The note's name is emphasised. */

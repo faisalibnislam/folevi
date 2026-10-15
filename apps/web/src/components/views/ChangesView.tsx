@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useMemo, useState } from "react";
-import { Check, ExternalLink, RotateCcw, X } from "lucide-react";
+import { Check, ExternalLink, RotateCcw, X, FileDiff } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { ViewChrome } from "@/components/app/Shell";
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ReadOnlyBlocks, type ChangePerson } from "@/components/doc/ReadOnlyBlocks";
 import "@/components/editor/editor.css";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type ChangeList = FunctionReturnType<typeof api.changes.list>;
 type NoteChanges = ChangeList["notes"][number];
@@ -77,10 +78,7 @@ export function ChangesView() {
         ) : notes.length === 0 && waiting.length ? (
           <p className="mt-4 text-sm text-muted">Nothing else changed since you last looked.</p>
         ) : notes.length === 0 ? (
-          <div className="mt-16 text-center">
-            <p className="ui-display text-2xl text-muted">You’re all caught up.</p>
-            <p className="mt-2 text-sm text-muted">When someone else changes a note you’ve opened, it shows up here until you look.</p>
-          </div>
+          <EmptyState icon={FileDiff} title="You’re all caught up" body="When someone else changes a note you’ve opened, it shows up here until you look." />
         ) : (
           <ul className="mt-6 space-y-4" aria-label="Changed notes">
             {notes.map((n) => (

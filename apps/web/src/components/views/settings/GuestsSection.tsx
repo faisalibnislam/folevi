@@ -1,5 +1,6 @@
 "use client";
 
+import { UserPlus } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "@/lib/convex/api";
@@ -11,6 +12,7 @@ import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type ShareRole = "viewer" | "commenter" | "editor";
 type Confirm = { kind: "remove" | "member"; profileId: string; name: string } | null;
@@ -41,7 +43,7 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
         {data === undefined ? (
           <p className="text-sm text-muted">Loading…</p>
         ) : data.guests.length === 0 ? (
-          <p className="text-sm text-muted">No guests. Share a page with someone from its Share button to add one.</p>
+          <EmptyState size="inline" icon={UserPlus} title="No guests" body="Share a page with someone from its Share button to add one." />
         ) : (
           <ul className="divide-y divide-line rounded-control border border-line">
             {data.guests.map((g) => (

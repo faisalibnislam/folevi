@@ -13,7 +13,7 @@ test("a passkey added in Settings signs the person in without a password", async
 
   await page.goto(`${APP}/settings/security`);
   const card = page.getByRole("region", { name: "Passkeys" });
-  await expect(card.getByText("No passkeys yet.")).toBeVisible();
+  await expect(card.getByText("No passkeys yet", { exact: true })).toBeVisible();
   await card.getByRole("button", { name: "Add a passkey" }).click();
   const naming = page.getByRole("dialog", { name: "Add a passkey" });
   await expect(naming.getByLabel("Name")).toHaveValue(/on /);
@@ -43,5 +43,5 @@ test("a passkey added in Settings signs the person in without a password", async
   await expect(list).toContainText("Last used just now");
   await card.getByRole("button", { name: "Remove Work laptop" }).click();
   await page.getByRole("dialog", { name: "Remove this passkey?" }).getByRole("button", { name: "Remove" }).click();
-  await expect(card.getByText("No passkeys yet.")).toBeVisible();
+  await expect(card.getByText("No passkeys yet", { exact: true })).toBeVisible();
 });

@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { useId, useMemo, useState } from "react";
-import { FolderPlus, Hash, LayoutGrid, MoreHorizontal, Rows3, Search, X } from "lucide-react";
+import { FolderPlus, Hash, LayoutGrid, MoreHorizontal, Rows3, Search, X, FolderOpen } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { FOLDER_CARD_BOX, FOLDER_CARD_FRAME, FOLDER_CARD_MENU, FolderCardArt, type FolderPreview } from "./FolderCardArt";
@@ -20,6 +20,7 @@ import { PromptDialog } from "@/components/ui/PromptDialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome } from "@/components/app/Shell";
 import { Select } from "@/components/ui/Select";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type FolderSort = "name" | "updated" | "count" | "created";
 type TagSort = "name" | "count" | "created";
@@ -185,7 +186,7 @@ export function FoldersIndex() {
         </div>
 
         {data && !list.length ? (
-          <p className="mt-16 text-center text-sm text-muted">{q.trim() ? `No folders match “${q.trim()}”.` : "No folders yet. Create one to group related pages."}</p>
+          <EmptyState icon={FolderOpen} title={q.trim() ? `No folders match “${q.trim()}”` : "No folders yet"} body={q.trim() ? undefined : "Create one to group related pages."} />
         ) : layout === "grid" ? (
           <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-x-8 gap-y-10" aria-label="Folders">
             {list.map((f) => (
@@ -268,7 +269,7 @@ export function TagsIndex() {
           />
         </div>
         {data && !list.length ? (
-          <p className="mt-16 text-center text-sm text-muted">{q.trim() ? `No tags match “${q.trim()}”.` : "No tags yet. Add tags to a page from its Info panel."}</p>
+          <EmptyState icon={Hash} title={q.trim() ? `No tags match “${q.trim()}”` : "No tags yet"} body={q.trim() ? undefined : "Add tags to a page from its Info panel."} />
         ) : (
           <ul className="mt-6 flex flex-wrap gap-2" aria-label="Tags">
             {list.map((t) => (

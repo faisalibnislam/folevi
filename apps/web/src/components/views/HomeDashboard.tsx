@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { CatchUp } from "@/components/ai/CatchUp";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { ArrowRight, ChevronLeft, ChevronRight, Clock3, Folder, Layers, Star } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
@@ -226,11 +227,11 @@ export function HomeDashboard() {
       <div className="mx-auto max-w-[1400px] px-4 pb-[max(2rem,var(--fab-clearance))] pt-2 sm:px-8">
         {aiOn ? <CatchUp /> : null}
         <TodaysReviews />
-        <Section shelf title="Recent notes" icon={<Clock3 size={17} strokeWidth={1.9} />} href="/notes" empty={recent && !recent.length ? <p className="text-sm text-muted">No notes yet. Press New to write your first one.</p> : undefined}>
+        <Section shelf title="Recent notes" icon={<Clock3 size={17} strokeWidth={1.9} />} href="/notes" empty={recent && !recent.length ? <EmptyState size="inline" title="No notes yet" body="Press New to write your first one." /> : undefined}>
           <NoteCarousel docs={recent} label="Recent notes" recent />
         </Section>
 
-        <Section shelf title="Starred" icon={<Star size={17} strokeWidth={1.9} />} href="/starred" empty={starred && !starred.page.length ? <p className="text-sm text-muted">Star notes you come back to often and they’ll appear here.</p> : undefined}>
+        <Section shelf title="Starred" icon={<Star size={17} strokeWidth={1.9} />} href="/starred" empty={starred && !starred.page.length ? <EmptyState size="inline" title="Nothing starred yet" body="Star notes you come back to often and they’ll appear here." /> : undefined}>
           <NoteCarousel docs={starred?.page} label="Starred notes" />
         </Section>
 
@@ -239,7 +240,7 @@ export function HomeDashboard() {
           href="/folders"
           icon={<Folder size={17} strokeWidth={1.9} />}
           count={org ? `${org.total}` : undefined}
-          empty={org && !org.total ? <p className="text-sm text-muted">No folders yet. Create one from the sidebar to group related notes.</p> : undefined}
+          empty={org && !org.total ? <EmptyState size="inline" title="No folders yet" body="Create one from the sidebar to group related notes." /> : undefined}
         >
           <div ref={folders.ref}>
             <ul className="grid gap-x-8 gap-y-10" style={{ gridTemplateColumns: `repeat(${folders.cols}, minmax(0, 1fr))` }}>

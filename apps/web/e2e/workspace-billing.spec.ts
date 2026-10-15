@@ -66,7 +66,7 @@ test("the owner puts a workspace on Pro (test purchase), sees seats, storage and
   await page.goto(`${APP}/settings/billing`);
   await expect(page.getByRole("heading", { name: "Choose a personal plan" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("region", { name: "Workspace plan", exact: true })).toHaveCount(0);
-  await expect(page.getByText("No payments yet.")).toBeVisible();
+  await expect(page.getByText("No payments yet", { exact: true })).toBeVisible();
   const seat = page.getByRole("listitem", { name: "AI credits: Seat Studio" });
   await expect(seat).toContainText("Seat Studio · Workspace Pro");
   await expect(seat.getByRole("button", { name: "Buy credits" })).toBeVisible();

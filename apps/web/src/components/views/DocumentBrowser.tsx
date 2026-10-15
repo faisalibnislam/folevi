@@ -3,7 +3,7 @@
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, type LucideIcon } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { api } from "@/lib/convex/api";
@@ -15,6 +15,7 @@ import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useEngineSelector, useLocalStorage } from "@/lib/hooks/useEngine";
 import { startNoteDrag, NOTE_MIME } from "@/lib/app/noteDrag";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ContextMenu, MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -63,15 +64,16 @@ const TITLES: Record<View, string> = {
   tag: "Tag",
 };
 
-const EMPTY: Record<View, string> = {
-  all: "Nothing here yet. Starting a document takes one keystroke.",
-  starred: "Star a document to keep it one click away.",
-  archive: "Archived documents rest here, out of your lists but never lost.",
-  trash: "Trash is empty. Deleted documents stay here for 30 days.",
-  templates: "Save any document as a template, or start from a built-in one below.",
-  unsorted: "Everything has a folder. Nicely done.",
-  folder: "This folder is empty. Drag documents here from the list.",
-  tag: "No documents carry this tag yet.",
+// What an empty list says: a short heading and one line of help.
+const EMPTY: Record<View, { icon: LucideIcon; title: string; body?: string }> = {
+  all: { icon: Files, title: "Nothing here yet", body: "Starting a document takes one keystroke." },
+  starred: { icon: Star, title: "Nothing starred yet", body: "Star a document to keep it one click away." },
+  archive: { icon: Archive, title: "Archive is empty", body: "Archived documents rest here, out of your lists but never lost." },
+  trash: { icon: Trash2, title: "Trash is empty", body: "Deleted documents stay here for 30 days." },
+  templates: { icon: LayoutTemplate, title: "No templates of your own yet", body: "Save any document as a template from its menu." },
+  unsorted: { icon: Inbox, title: "No drafts", body: "Everything has a folder. Nicely done." },
+  folder: { icon: FolderOpen, title: "This folder is empty", body: "Start a document here, or move one in with Move to folder." },
+  tag: { icon: Hash, title: "No documents carry this tag yet", body: "Add tags to a document from its Info panel." },
 };
 
 const PAGE_SIZE = 48;
@@ -450,15 +452,19 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
             ))}
           </div>
         ) : docs.length === 0 ? (
-          <div className="rounded-chip border border-dashed border-line-strong px-6 py-16 text-center">
-            <p className="ui-display text-2xl">{view === "folder" && subfolders.length ? "No notes directly in this folder yet." : EMPTY[view]}</p>
-            {view === "all" || view === "folder" ? (
-              // On a folder page the new note starts in that folder.
-              <Button className="mt-6" variant="primary" onClick={() => void createDocument({})}>
-                <Plus size={14} aria-hidden /> New document
-              </Button>
-            ) : null}
-          </div>
+          <EmptyState
+            icon={EMPTY[view].icon}
+            title={view === "folder" && subfolders.length ? "No notes directly in this folder yet" : EMPTY[view].title}
+            body={view === "folder" && subfolders.length ? "The folders above hold the rest." : view === "templates" && builtIns?.length ? "Save any document as a template from its menu, or start from a built-in one above." : EMPTY[view].body}
+            action={
+              view === "all" || view === "folder" ? (
+                // On a folder page the new note starts in that folder.
+                <Button variant="primary" onClick={() => void createDocument({})}>
+                  <Plus size={14} aria-hidden /> New document
+                </Button>
+              ) : null
+            }
+          />
         ) : layout === "list" ? (
           <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
             {docs.map((d) => {

@@ -17,6 +17,7 @@ import { Alert, PasswordField } from "@/components/auth/fields";
 import { BackupCodes, TotpEnrollment } from "@/components/auth/TwoFactor";
 import { Card } from "./Card";
 import { DeleteAccountCard } from "./DeleteAccountCard";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 /** Asks for the current password before showing secrets (backup codes, authenticator key). */
 function PasswordGate({
@@ -208,7 +209,11 @@ function PasskeysCard() {
     >
       <ul className="ui-card divide-y divide-line overflow-hidden rounded-control" aria-label="Your passkeys" aria-busy={isPending || undefined}>
         {isPending ? <li className="px-4 py-3 text-sm text-muted">Loading…</li> : null}
-        {!isPending && passkeys.length === 0 ? <li className="px-4 py-3 text-sm text-muted">No passkeys yet.</li> : null}
+        {!isPending && passkeys.length === 0 ? (
+          <li>
+            <EmptyState size="inline" icon={KeyRound} title="No passkeys yet" />
+          </li>
+        ) : null}
         {passkeys.map((p) => (
           <li key={p.id} className="flex items-center gap-3 px-4 py-3">
             <span aria-hidden className="grid h-9 w-9 flex-none place-items-center rounded-control bg-[var(--glass-hover)] text-heading">

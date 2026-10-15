@@ -12,6 +12,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { MenuButton } from "@/components/ui/Menu";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { useConversationActions } from "./ConversationActions";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Row {
   id: string;
@@ -242,10 +243,7 @@ export function ConversationList({ activeId, onNavigate }: { activeId: string | 
           </section>
         ) : null}
         {nothing ? (
-          <div className="flex flex-col items-center px-4 py-10 text-center text-[13px] text-muted">
-            <MessageSquare size={18} aria-hidden className="mb-2 text-faint" />
-            {term ? "No conversations match that." : "Your conversations will show up here."}
-          </div>
+          <EmptyState size="inline" icon={MessageSquare} title={term ? "No conversations match that" : "No conversations yet"} body={term ? undefined : "Your conversations will show up here."} />
         ) : null}
         {status === "CanLoadMore" ? (
           <button type="button" onClick={() => loadMore(30)} className="mt-2 h-8 w-full rounded-chip text-[12.5px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">

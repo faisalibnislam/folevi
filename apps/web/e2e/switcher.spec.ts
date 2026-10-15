@@ -47,7 +47,7 @@ test("a new account starts in Personal with no workspaces, and each context show
   // A new workspace opens empty: none of Personal's notes leak into it.
   await createWorkspace(page, "Switch Studio");
   await page.waitForURL(/\/documents$/);
-  await expect(page.getByText("No notes yet. Press New to write your first one.")).toBeVisible();
+  await expect(page.getByText("No notes yet", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: /Welcome to Folevi/ })).toHaveCount(0);
 
   // A note written in the workspace lives there.

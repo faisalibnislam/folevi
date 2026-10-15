@@ -12,6 +12,7 @@ import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const MAX_TOKENS = 20;
 
@@ -62,9 +63,7 @@ export function ApiTokensCard() {
       {tokens === undefined ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : tokens.length === 0 ? (
-        <p className="flex items-center gap-2 text-sm text-muted">
-          <KeyRound size={15} aria-hidden /> No tokens yet.
-        </p>
+        <EmptyState size="inline" icon={KeyRound} title="No tokens yet" />
       ) : (
         <ul className="divide-y divide-line/70">
           {tokens.map((t) => {

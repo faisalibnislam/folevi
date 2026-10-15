@@ -6,7 +6,7 @@ test("a token made in Settings reads and writes through the REST API until it's 
   const { page, context } = await newPerson(browser, "Api Person");
   await page.goto(`${APP}/settings/connected-apps`);
   const card = page.getByRole("region", { name: "Personal access tokens" });
-  await expect(card.getByText("No tokens yet.")).toBeVisible();
+  await expect(card.getByText("No tokens yet", { exact: true })).toBeVisible();
   await card.getByRole("button", { name: "New token" }).click();
 
   const dialog = page.getByRole("dialog", { name: "New personal access token" });
@@ -51,7 +51,7 @@ test("a token made in Settings reads and writes through the REST API until it's 
 
   await row.getByRole("button", { name: "Revoke…" }).click();
   await row.getByRole("button", { name: "Revoke", exact: true }).click();
-  await expect(card.getByText("No tokens yet.")).toBeVisible();
+  await expect(card.getByText("No tokens yet", { exact: true })).toBeVisible();
   expect((await api.get(`${APP}/api/v1/places`, { headers: auth })).status()).toBe(401);
   const spec = await api.get(`${APP}/api/v1/openapi.json`);
   expect((await spec.json()).openapi).toBe("3.1.0");

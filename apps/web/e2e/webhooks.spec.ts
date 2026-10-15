@@ -6,7 +6,7 @@ test("a webhook is added with its secret shown once, switched off and on, and de
   const { page, context } = await newPerson(browser, "Hook Person");
   await page.goto(`${APP}/settings/connected-apps`);
   const card = page.getByRole("region", { name: "Webhooks" });
-  await expect(card.getByText("No webhooks yet.")).toBeVisible();
+  await expect(card.getByText("No webhooks yet", { exact: true })).toBeVisible();
   await card.getByRole("button", { name: "Add webhook" }).click();
 
   const dialog = page.getByRole("dialog", { name: "Add a webhook" });
@@ -39,6 +39,6 @@ test("a webhook is added with its secret shown once, switched off and on, and de
 
   await row.getByRole("button", { name: "Delete…" }).click();
   await row.getByRole("button", { name: "Delete", exact: true }).click();
-  await expect(card.getByText("No webhooks yet.")).toBeVisible();
+  await expect(card.getByText("No webhooks yet", { exact: true })).toBeVisible();
   await context.close();
 });

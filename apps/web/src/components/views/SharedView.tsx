@@ -5,7 +5,8 @@ import { api } from "@/lib/convex/api";
 import { AppLink } from "@/lib/app/router";
 import { ViewChrome } from "@/components/app/Shell";
 import { formatRelative } from "@/lib/format";
-import { FileText } from "lucide-react";
+import { FileText, Share2 } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export function SharedView() {
   const docs = useQuery(api.sharing.sharedWithMe, {});
@@ -19,10 +20,7 @@ export function SharedView() {
         {docs === undefined ? (
           <div className="mt-6 h-24 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" aria-busy />
         ) : docs.length === 0 ? (
-          <div className="mt-16 text-center">
-            <p className="ui-display text-2xl text-muted">Nothing has been shared with you yet.</p>
-            <p className="mt-2 text-sm text-muted">Pages people share with you directly, from their Personal or from any workspace, show up here.</p>
-          </div>
+          <EmptyState icon={Share2} title="Nothing has been shared with you yet" body="Pages people share with you directly, from their Personal or from any workspace, show up here." />
         ) : (
           <ul className="mt-6 divide-y divide-line overflow-hidden ui-card rounded-control">
             {docs.map((d) => (

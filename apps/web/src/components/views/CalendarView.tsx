@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarPlus, ChevronLeft, ChevronRight, Rss } from "lucide-react";
+import { CalendarPlus, ChevronLeft, ChevronRight, Rss, CalendarCheck } from "lucide-react";
 import { addDays } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -17,6 +17,7 @@ import { CalendarWeek } from "./CalendarWeek";
 import { CalendarsButton, EventPopover, calendarColor, eventWhen, useExternalEvents, type ExternalEvent, type PlacedEvent } from "./CalendarSubscriptions";
 import { minutesToTime, monthGrid, shiftMonth, visibleDays } from "./calendarLayout";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type Layout = "month" | "week" | "agenda";
 const LAYOUT_KEY = "folevi:calendar-layout";
@@ -291,7 +292,11 @@ export function CalendarView({ month }: { month: string | null }) {
             <aside aria-label="Selected day">
               <h3 className="font-semibold">{formatCalendarDate(selected, { weekday: "long", month: "long", day: "numeric" })}</h3>
               <ul className="mt-3 divide-y divide-line overflow-hidden ui-card rounded-control">
-                {(byDate.get(selected) ?? []).length === 0 ? <li className="px-4 py-3 text-sm text-muted">No tasks due. Drag a task here to schedule it.</li> : null}
+                {(byDate.get(selected) ?? []).length === 0 ? (
+                  <li>
+                    <EmptyState size="inline" icon={CalendarCheck} title="No tasks due" body="Drag a task onto this day to schedule it." />
+                  </li>
+                ) : null}
                 {(byDate.get(selected) ?? []).map((t) => (
                   <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} onEdit={setEditing} />
                 ))}
@@ -411,7 +416,9 @@ function Unscheduled({
     <section aria-label="Unscheduled tasks" className="mt-6">
       <h3 className="mb-2 text-sm font-semibold">Unscheduled</h3>
       {tasks.length === 0 ? (
-        <p className="text-sm text-muted">Every open task has a date.</p>
+        <div className="ui-card rounded-control">
+          <EmptyState size="inline" title="Nothing unscheduled" body="Every open task has a date." />
+        </div>
       ) : (
         <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
           {tasks.slice(0, 8).map((t) => (

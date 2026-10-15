@@ -12,6 +12,7 @@ import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
 import { ApiTokensCard } from "./ApiTokens";
 import { WebhooksCard } from "./Webhooks";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 /** How each tool reads in the activity list. */
 const TOOL_LABELS: Record<string, string> = {
@@ -76,9 +77,7 @@ export function ConnectedAppsSection() {
         {grants === undefined ? (
           <p className="text-sm text-muted">Loading…</p>
         ) : grants.length === 0 ? (
-          <p className="flex items-center gap-2 text-sm text-muted">
-            <Plug size={15} aria-hidden /> No apps are connected.
-          </p>
+          <EmptyState size="inline" icon={Plug} title="No apps are connected" />
         ) : (
           <ul className="divide-y divide-line/70">
             {grants.map((g) => (

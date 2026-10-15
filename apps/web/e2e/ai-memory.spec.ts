@@ -19,7 +19,7 @@ test("memory in Settings > AI: add, edit and delete", async ({ browser }) => {
   const { context, page } = await newPerson(browser, "Memory Person");
   await page.goto(`${APP}/settings/ai`);
   const card = page.getByRole("region", { name: "Memory", exact: true });
-  await expect(card.getByText("Nothing yet.")).toBeVisible();
+  await expect(card.getByText("Nothing yet", { exact: true })).toBeVisible();
 
   await pick(card.getByRole("combobox", { name: "Kind" }), "Language");
   await card.getByRole("textbox", { name: "What to remember" }).fill("Use British spelling");
@@ -37,7 +37,7 @@ test("memory in Settings > AI: add, edit and delete", async ({ browser }) => {
   await page.reload();
   await expect(list.getByRole("listitem")).toHaveText(["LanguageUse Canadian spelling"], { timeout: 30_000 });
   await list.getByRole("button", { name: 'Delete "Use Canadian spelling"' }).click();
-  await expect(card.getByText("Nothing yet.")).toBeVisible();
+  await expect(card.getByText("Nothing yet", { exact: true })).toBeVisible();
 
   // Memory off: the card says so.
   await page.getByRole("switch", { name: "Memory" }).click();

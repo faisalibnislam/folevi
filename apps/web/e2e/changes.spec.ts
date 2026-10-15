@@ -43,7 +43,7 @@ test("someone edits your shared note: it shows in Changes with what changed, unt
   // The owner moves on: nothing new yet.
   const nav = owner.page.getByRole("navigation", { name: "Folio" });
   await nav.getByRole("link", { name: "Changes" }).click();
-  await expect(owner.page.getByText("You’re all caught up.")).toBeVisible();
+  await expect(owner.page.getByRole("heading", { name: "You’re all caught up" })).toBeVisible();
 
   // The guest adds a line.
   await guest.page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Shared with Me" }).click();
@@ -66,7 +66,7 @@ test("someone edits your shared note: it shows in Changes with what changed, unt
   // Marked as seen, it's gone.
   await card.getByRole("button", { name: "Mark as seen" }).click();
   await expect(card).toHaveCount(0);
-  await expect(owner.page.getByText("You’re all caught up.")).toBeVisible();
+  await expect(owner.page.getByRole("heading", { name: "You’re all caught up" })).toBeVisible();
   await expect(nav.getByRole("link", { name: /Changes/ })).not.toContainText("1");
 });
 
@@ -85,7 +85,7 @@ test("undo a change from Changes, then put it back", async ({ browser }) => {
   await waitForSaved(owner.page);
   await shareWith(owner.page, guest.email, "Casey Editor");
   await owner.page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Changes" }).click();
-  await expect(owner.page.getByText("You’re all caught up.")).toBeVisible();
+  await expect(owner.page.getByRole("heading", { name: "You’re all caught up" })).toBeVisible();
 
   await guest.page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Shared with Me" }).click();
   await guest.page.getByRole("listitem").filter({ hasText: /Undo plan/ }).getByRole("link").click();

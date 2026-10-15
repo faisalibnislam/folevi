@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { RATINGS, cardCount, intervalLabel, intervalWords, reviewKey, useReviewWindow, type Rating } from "@/components/study/review";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type Target = { scope?: WireScope; documentId?: string };
 /** The new-cards-a-day choices (convex/lib/study.ts NEW_PER_DAY_OPTIONS). */
@@ -222,14 +223,5 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
 }
 
 function Empty({ title, body, hint }: { title: string; body: string; hint?: string }) {
-  return (
-    <div className="mx-auto max-w-md py-16 text-center">
-      <span aria-hidden className="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-chip bg-[var(--glass-hover)] text-heading">
-        <Layers size={19} strokeWidth={1.9} />
-      </span>
-      <h2 className="ui-display text-2xl">{title}</h2>
-      <p className="mt-2 text-[14px] leading-relaxed text-muted">{body}</p>
-      {hint ? <p className="mt-3 text-[13px] leading-relaxed text-faint">{hint}</p> : null}
-    </div>
-  );
+  return <EmptyState icon={Layers} title={title} body={body} hint={hint} />;
 }

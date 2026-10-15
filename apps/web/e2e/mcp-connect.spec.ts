@@ -100,7 +100,7 @@ test("an app connects through OAuth and the consent screen, then reads notes ove
   await expect(row).toContainText("Reads only in Personal");
   await row.getByRole("button", { name: "Disconnect…" }).click();
   await row.getByRole("button", { name: "Disconnect", exact: true }).click();
-  await expect(page.getByText("No apps are connected.")).toBeVisible();
+  await expect(page.getByText("No apps are connected", { exact: true })).toBeVisible();
   const after = await api.post(`${APP}/mcp`, { headers: { authorization: `Bearer ${token.access_token}` }, data: { jsonrpc: "2.0", id: 3, method: "tools/list" }, failOnStatusCode: false });
   expect(after.status()).toBe(401);
   // Disconnecting ends the refreshed tokens too.

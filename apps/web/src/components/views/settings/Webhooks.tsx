@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/Switch";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const MAX_WEBHOOKS = 5;
 
@@ -51,9 +52,7 @@ export function WebhooksCard() {
       {hooks === undefined ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : hooks.length === 0 ? (
-        <p className="flex items-center gap-2 text-sm text-muted">
-          <Webhook size={15} aria-hidden /> No webhooks yet.
-        </p>
+        <EmptyState size="inline" icon={Webhook} title="No webhooks yet" />
       ) : (
         <ul className="divide-y divide-line/70">
           {hooks.map((h) => {

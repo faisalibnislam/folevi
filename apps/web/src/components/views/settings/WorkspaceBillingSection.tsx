@@ -4,7 +4,7 @@ import { replaceEntry } from "@/lib/app/historyNav";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { CreditCard, HardDrive, Users } from "lucide-react";
+import { CreditCard, HardDrive, Users, Receipt } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import type { Workspace } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
@@ -15,6 +15,7 @@ import { Card } from "./Card";
 import { CreditLines, Tile, UsageMeter, formatBytes, plural } from "./BillingSection";
 import { BuyCreditsDialog } from "./BuyCreditsDialog";
 import { PlanRow, PlanRows } from "./PlanRow";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // Billing dates are UTC, like the server and Polar, so a renewal and a credit reset never read a day apart.
 const dateOnly = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
@@ -297,7 +298,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
             </tbody>
           </table>
         ) : (
-          <p className="text-sm text-muted">No payments yet.</p>
+          <EmptyState size="inline" icon={Receipt} title="No payments yet" />
         )}
       </Card>
     </>

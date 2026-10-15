@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useQuery } from "convex/react";
-import { FileText, Maximize, Search, X, ZoomIn, ZoomOut } from "lucide-react";
+import { FileText, Maximize, Search, X, ZoomIn, ZoomOut, Waypoints } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -31,6 +31,7 @@ import {
   type Point,
   type ViewTransform,
 } from "@/lib/graph/layout";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const ENTITY_KINDS = ["person", "project", "organization", "topic", "decision"] as const;
 type EntityKind = (typeof ENTITY_KINDS)[number];
@@ -129,7 +130,7 @@ export function GraphView() {
         {!data ? (
           <p className="m-auto text-sm text-muted">Loading the graph…</p>
         ) : !nodes.length ? (
-          <p className="m-auto px-6 text-center text-sm text-muted">No notes here yet. Notes and the links between them show up here.</p>
+          <EmptyState icon={Waypoints} title="No notes here yet" body="Notes and the links between them show up here." className="m-auto" />
         ) : view === "list" ? (
           <GraphList nodes={nodes} edges={edges} query={query} />
         ) : (
@@ -145,7 +146,7 @@ export function GraphList({ nodes, edges, query }: { nodes: GraphNodeData[]; edg
   const entries = useMemo(() => graphList(nodes, edges, query), [nodes, edges, query]);
   const noteEntries = entries.filter((e) => e.kind === "note");
   const entityEntries = entries.filter((e) => e.kind !== "note");
-  if (!entries.length) return <p className="m-auto text-sm text-muted">Nothing matches.</p>;
+  if (!entries.length) return <EmptyState size="inline" title="Nothing matches" className="m-auto" />;
   const connections = (e: (typeof entries)[number]) =>
     e.connections.length ? (
       <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[12.5px] text-muted" aria-label={`Connected to ${e.label || "Untitled"}`}>

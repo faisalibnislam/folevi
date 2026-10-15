@@ -14,6 +14,8 @@ import { errorMessage, useToast } from "@/components/ui/Toast";
 import { RATINGS, cardCount, intervalLabel, intervalWords, reviewKey, useReviewWindow, type Rating } from "@/components/study/review";
 
 type Target = { scope?: WireScope; documentId?: string };
+/** The new-cards-a-day choices (convex/lib/study.ts NEW_PER_DAY_OPTIONS). */
+const NEW_PER_DAY_OPTIONS = [0, 10, 20, 30, 50, 100] as const;
 
 /**
  * Reviews: the flashcards and quiz questions due today from every note you can read (or one place, or one
@@ -48,6 +50,7 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
   const w = useReviewWindow();
   const data = useQuery(api.study.queue, { ...target, ...w, limit: 20 });
   const review = useMutation(api.study.review);
+  const setNewPerDay = useMutation(api.study.setNewPerDay);
   const toast = useToast();
   // Cards answered this session, by card and the review they were answered at: one rated "Again" comes back
   // (with a newer review) when it's due.
@@ -107,7 +110,26 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
       title={<h1 className="text-sm font-semibold">Reviews</h1>}
       subtitle={data ? (left ? `${cardCount(left)} to review` : "All caught up") : undefined}
       tabTitle={title}
-      actions={picker}
+      actions={
+        <>
+          {picker}
+          {/* How many new cards start each day, everywhere (a note's own review isn't held to it). */}
+          {data && !target.documentId ? (
+            <Select
+              aria-label="New cards a day"
+              value={String(data.newPerDay)}
+              onChange={(e) => void setNewPerDay({ value: Number(e.target.value) }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}
+              className="h-8 text-[13px]"
+            >
+              {NEW_PER_DAY_OPTIONS.map((n) => (
+                <option key={n} value={String(n)}>
+                  {n === 0 ? "No new cards" : `${n} new cards a day`}
+                </option>
+              ))}
+            </Select>
+          ) : null}
+        </>
+      }
     >
       <div ref={region} tabIndex={-1} aria-label="Review cards" role="region" className="mx-auto max-w-2xl px-4 pb-16 pt-6 outline-none sm:px-8">
         {target.documentId && data ? (

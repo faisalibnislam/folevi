@@ -3,8 +3,9 @@
 //
 // Cards are toggles marked as study cards (`studyCards` lists them). Schedules are per person
 // (`studyReviews`), made by a card's first review; a card never reviewed is new, and a person starts at most
-// NEW_PER_DAY new cards a day. Only cards the person can still read count: a card in Trash, in a deleted
-// note or in a note they lost access to drops out (its schedule stays, in case it comes back).
+// NEW_PER_DAY new cards a day (or the number they picked, `studyNewPerDay`). Only cards the person can still
+// read count: a card in Trash, in a deleted note or in a note they lost access to drops out (its schedule
+// stays, in case it comes back).
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
@@ -13,7 +14,7 @@ import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, P
 import { fail } from "./lib/errors";
 import { liveBlocks } from "./lib/documents";
 import { inScope, personalScope, scopeKey, scopeOfRow, vScopeArg, workspaceScope, type Scope } from "./lib/scope";
-import { cardTexts, intervals, nextSchedule, NEW_PER_DAY, type StudyKind } from "./lib/study";
+import { cardTexts, intervals, newPerDay, nextSchedule, NEW_PER_DAY_OPTIONS, type StudyKind } from "./lib/study";
 
 /** Schedules looked at per range (due now, later today): enough for any day's reviews. */
 const SCAN = 500;
@@ -130,9 +131,10 @@ async function gather(ctx: QueryCtx, profile: Doc<"profiles">, target: Target, w
     if (card && (await deck.noteOf(card))) later++;
   }
 
-  // New cards: never reviewed by this person. Everywhere or in one place, at most NEW_PER_DAY started a day.
-  const startedToday = (await reviews.withIndex("by_profile_first", (q) => q.eq("profileId", profile._id).gte("firstReview", w.dayStart)).take(NEW_PER_DAY)).length;
-  const allowance = target.kind === "note" ? NOTE_MAX : Math.max(0, NEW_PER_DAY - startedToday);
+  // New cards: never reviewed by this person. Everywhere or in one place, at most their new cards a day started.
+  const cap = newPerDay(profile);
+  const startedToday = cap ? (await reviews.withIndex("by_profile_first", (q) => q.eq("profileId", profile._id).gte("firstReview", w.dayStart)).take(cap)).length : 0;
+  const allowance = target.kind === "note" ? NOTE_MAX : Math.max(0, cap - startedToday);
   const fresh: Entry[] = [];
   let total = 0;
   let scanned = 0;
@@ -218,7 +220,18 @@ export const queue = query({
         intervals: intervals(e.review, w.now),
       });
     }
-    return { cards, counts: { due: due.length, new: fresh.length, later }, total, hasCards, documentTitle: target.kind === "note" ? target.doc.title : null };
+    return { cards, counts: { due: due.length, new: fresh.length, later }, total, hasCards, documentTitle: target.kind === "note" ? target.doc.title : null, newPerDay: newPerDay(profile) };
+  },
+});
+
+/** Sets how many new cards a day this person starts (one of NEW_PER_DAY_OPTIONS). A note's own review isn't held to it. */
+export const setNewPerDay = mutation({
+  args: { value: v.number() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    if (!(NEW_PER_DAY_OPTIONS as readonly number[]).includes(args.value)) fail("invalid_argument", "Pick one of the numbers offered.");
+    await ctx.db.patch(profile._id, { studyNewPerDay: args.value });
+    return null;
   },
 });
 

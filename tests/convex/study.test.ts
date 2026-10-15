@@ -140,6 +140,31 @@ describe("the review queue", () => {
     expect(summary).toMatchObject({ total: cards.length, new: cards.length - 3, hasCards: true });
   });
 
+  test("new cards a day is the person's own pick: fewer, none, or more; only the numbers offered", async () => {
+    const t = setup();
+    const a = await person(t, "study-pick@example.com");
+    const b = await person(t, "study-pick-other@example.com");
+    const cards = Array.from({ length: 35 }, (_, i): [string, string] => [`Question ${i}`, `Answer ${i}`]);
+    const { docId, ids } = await noteWithCards(a, PERSONAL, "Deck", cards);
+    expect((await queue(a))!).toMatchObject({ newPerDay: NEW_PER_DAY, counts: { new: NEW_PER_DAY } });
+
+    await a.as.mutation(api.study.setNewPerDay, { value: 10 });
+    expect((await queue(a))!).toMatchObject({ newPerDay: 10, counts: { new: 10 } });
+    for (const id of ids.slice(0, 4)) await a.as.mutation(api.study.review, { blockId: id, rating: "good", lastReview: null });
+    expect((await queue(a))!.counts.new).toBe(6);
+    // More than the default: started cards today still count.
+    await a.as.mutation(api.study.setNewPerDay, { value: 30 });
+    expect((await queue(a))!.counts.new).toBe(26);
+    // None: only cards already due; a note's own review still offers its new cards.
+    await a.as.mutation(api.study.setNewPerDay, { value: 0 });
+    expect((await queue(a))!.counts.new).toBe(0);
+    expect((await queue(a, { documentId: docId }))!.counts.new).toBe(cards.length - 4);
+
+    await expect(a.as.mutation(api.study.setNewPerDay, { value: 25 })).rejects.toThrow(/numbers offered/);
+    // Someone else keeps the default.
+    expect((await queue(b))!.newPerDay).toBe(NEW_PER_DAY);
+  });
+
   test("cards drop out when their note goes to Trash, the toggle is unmarked or deleted, or access is lost", async () => {
     const t = setup();
     const owner = await person(t, "study-owner@example.com");

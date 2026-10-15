@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { newPerson, showFolders, waitForSaved } from "./helpers";
+import { APP, newPerson, pick, showFolders, waitForSaved } from "./helpers";
 
 // Reviews (spaced repetition, convex/study.ts): a toggle turned into a flashcard from its block menu shows up
 // in Reviews (the sidebar and Home say so); Space shows the answer, a key rates it, and it's scheduled away.
@@ -68,5 +68,20 @@ test("a toggle made a flashcard is reviewed: Space shows the answer, 3 rates it 
   await page.waitForURL(/\/review\?note=/);
   await expect(region.getByRole("heading", { name: "Nothing to review" })).toBeVisible();
   await expect(region.getByRole("link", { name: "Cells" })).toBeVisible();
+  await context.close();
+});
+
+test("new cards a day: picked in the Reviews header, kept for the person", async ({ browser }) => {
+  const { page, context } = await newPerson(browser, "Card Pacer");
+  await page.goto(`${APP}/review`);
+  const perDay = page.getByRole("combobox", { name: "New cards a day" });
+  await expect(perDay).toHaveText(/20 new cards a day/);
+  await pick(perDay, "50 new cards a day");
+  await expect(perDay).toHaveText(/50 new cards a day/);
+  // Saved on the account, not the page: still there after a reload.
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: "New cards a day" })).toHaveText(/50 new cards a day/);
+  await pick(page.getByRole("combobox", { name: "New cards a day" }), "No new cards");
+  await expect(page.getByRole("combobox", { name: "New cards a day" })).toHaveText(/No new cards/);
   await context.close();
 });

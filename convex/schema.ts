@@ -104,6 +104,8 @@ export default defineSchema({
     /** Documents in this person's Personal (unset = 0), for admin views. */
     personalDocumentCount: v.optional(v.number()),
     notificationPrefs: vNotificationPrefs,
+    /** New review cards started a day (convex/lib/study.ts NEW_PER_DAY_OPTIONS; unset = NEW_PER_DAY, 20). */
+    studyNewPerDay: v.optional(v.number()),
     createdAt: v.number(),
     lastActiveAt: v.number(),
     deletionScheduledFor: v.optional(v.number()),

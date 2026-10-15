@@ -444,7 +444,7 @@ export const DOC_ARTICLES: DocArticle[] = [
           <li>
             <strong>Reviews</strong> brings your cards back when they’re due, from every note you can open, using spaced repetition (FSRS). Press Space to see the answer, then Again, Hard, Good or Easy (or <code>1</code> to <code>4</code>). Each button shows when the card will come back.
           </li>
-          <li>Up to 20 new cards a day join your reviews. Each person who can open a note has their own schedule for its cards.</li>
+          <li>Up to 20 new cards a day join your reviews. To change that, pick another number (none, 10, 30, 50 or 100) from <strong>New cards a day</strong> at the top of Reviews; it’s saved to your account. A note’s own review always offers all its new cards. Each person who can open a note has their own schedule for its cards.</li>
           <li>Reviews appears in the sidebar once you have cards, Home shows Today’s reviews, and a note’s … menu can review just that note’s cards.</li>
           <li>Cards in Trash, or in notes you can no longer open, drop out of your reviews. Reviewing doesn’t use AI credits.</li>
         </ul>

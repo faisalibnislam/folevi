@@ -17,8 +17,16 @@ export type StudyRating = "again" | "hard" | "good" | "easy";
 export const RATINGS: readonly StudyRating[] = ["again", "hard", "good", "easy"];
 const GRADE: Record<StudyRating, Grade> = { again: Rating.Again, hard: Rating.Hard, good: Rating.Good, easy: Rating.Easy };
 
-/** New cards a person starts a day (across everything they study). Per-person settings can come later. */
+/** New cards a person starts a day (across everything they study), unless they picked another number. */
 export const NEW_PER_DAY = 20;
+/** The numbers a person can pick for new cards a day (Reviews, "New cards a day"). */
+export const NEW_PER_DAY_OPTIONS = [0, 10, 20, 30, 50, 100] as const;
+
+/** This person's new cards a day: their pick, or NEW_PER_DAY. */
+export function newPerDay(profile: Pick<Doc<"profiles">, "studyNewPerDay">): number {
+  const n = profile.studyNewPerDay;
+  return n !== undefined && (NEW_PER_DAY_OPTIONS as readonly number[]).includes(n) ? n : NEW_PER_DAY;
+}
 
 /**
  * The scheduler. No fuzz: the interval shown on a button is the one you get (and tests stay exact).

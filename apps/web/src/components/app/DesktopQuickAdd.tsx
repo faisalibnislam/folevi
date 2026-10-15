@@ -36,9 +36,9 @@ export function DesktopQuickAdd() {
   });
 
   return (
-    <main ref={panel} aria-labelledby="quick-add-heading" className={`ui-canvas text-ink ${bridge ? "ui-desktop-quick-add" : "mx-auto mt-16 max-w-lg rounded-panel shadow-[var(--glass-edge)]"} p-5`}>
-      <div className="ui-drag mb-4 flex items-baseline justify-between gap-3">
-        <h1 id="quick-add-heading" className="ui-display text-[19px] text-heading">
+    <main ref={panel} aria-labelledby="quick-add-heading" className={`ui-canvas text-ink ${bridge ? "ui-desktop-quick-add" : "mx-4 mt-16 max-w-lg rounded-panel shadow-[var(--glass-edge)] sm:mx-auto"} p-5`}>
+      <div className="ui-drag mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h1 id="quick-add-heading" className="ui-display whitespace-nowrap text-[19px] text-heading">
           Quick add task
         </h1>
         <p className="text-xs text-muted">Tasks without a page go to your Inbox.</p>

@@ -11,6 +11,7 @@ import { FormulaRender, MermaidDiagram, WhiteboardStatic } from "@/components/ed
 import { AudioPlayer } from "@/components/editor/AudioPlayer";
 import { EmbedFrame } from "@/components/editor/EmbedFrame";
 import { FlowchartStatic } from "@/components/editor/flowchart/render";
+import { ReadOnlyBookmark, ReadOnlyFile } from "./ReadOnlyCards";
 
 function Inline({ nodes }: { nodes: InlineNode[] }) {
   return (
@@ -380,20 +381,16 @@ export function ReadOnlyBlocks({
                 </figure>
               ) : null;
             }
-            case "file": {
-              const href = fileUrls[String(p.fileId)];
+            case "file":
               return (
-                <p key={block.id} className="fb">
-                  {href ? (
-                    <a className="fb-link" href={href} download>
-                      {String(p.name ?? "Attachment")}
-                    </a>
-                  ) : (
-                    String(p.name ?? "Attachment")
-                  )}
-                </p>
+                <ReadOnlyFile
+                  key={block.id}
+                  href={fileUrls[String(p.fileId)] ?? null}
+                  name={p.name ? String(p.name) : null}
+                  size={Number(p.size) || null}
+                  mimeType={p.mimeType ? String(p.mimeType) : null}
+                />
               );
-            }
             case "audio": {
               const href = fileUrls[String(p.fileId)] ?? null;
               return (
@@ -460,13 +457,17 @@ export function ReadOnlyBlocks({
                 </div>
               );
             case "bookmark": {
-              const href = sanitizeHref(String(p.url ?? ""));
+              const text = (v: unknown) => (typeof v === "string" && v ? v : null);
               return (
-                <p key={block.id} className="fb">
-                  <a className="fb-link" href={href ?? "#"} rel="noopener noreferrer nofollow">
-                    {String(p.title ?? p.url)}
-                  </a>
-                </p>
+                <ReadOnlyBookmark
+                  key={block.id}
+                  href={sanitizeHref(String(p.url ?? "")) ?? null}
+                  title={text(p.title)}
+                  description={text(p.description)}
+                  siteName={text(p.siteName)}
+                  image={text(p.image)}
+                  icon={text(p.icon)}
+                />
               );
             }
             default:

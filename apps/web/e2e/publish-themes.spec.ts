@@ -18,6 +18,21 @@ test("publish a note with the Article look, then switch it to Docs and Minimal",
   await page.keyboard.type("## What to bring");
   await page.keyboard.press("Enter");
   await page.keyboard.type("Boots and a flask.");
+  await page.keyboard.press("Enter");
+  // An attachment and a bookmark, which the public page shows as cards.
+  await page.keyboard.type("/file");
+  const chooser = page.waitForEvent("filechooser");
+  await page.keyboard.press("Enter");
+  await (await chooser).setFiles({ name: "packing-list.txt", mimeType: "text/plain", buffer: Buffer.from("Boots\nFlask\nMap\n") });
+  await expect(page.locator(".fb-editor").getByRole("link", { name: "Download" })).toBeVisible({ timeout: 20_000 });
+  await page.locator(".fb-editor p.fb").last().click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("/bookmark");
+  await page.keyboard.press("Enter");
+  await page.getByLabel("Web address").fill("https://example.com/field-notes");
+  await page.getByLabel("Web address").press("Enter");
+  await expect(page.locator(".fb-editor [data-bookmark]")).toBeVisible();
   await waitForSaved(page);
 
   await openShare(page);
@@ -38,6 +53,15 @@ test("publish a note with the Article look, then switch it to Docs and Minimal",
   await expect(sheet).toHaveAttribute("data-font", "serif");
   await expect(sheet).toHaveAttribute("data-width", "narrow");
   await expect(reader.getByRole("navigation", { name: "Contents" })).toHaveCount(0);
+  // The bookmark and the attachment are cards, each one link.
+  const bookmark = sheet.locator("a[data-bookmark]");
+  await expect(bookmark).toHaveAttribute("href", "https://example.com/field-notes");
+  await expect(bookmark).toHaveAttribute("target", "_blank");
+  await expect(bookmark).toContainText("example.com");
+  const file = sheet.getByRole("link", { name: /^Download packing-list\.txt/ });
+  await expect(file).toHaveAttribute("href", /\/files\//);
+  await expect(file).toHaveAttribute("download", "packing-list.txt");
+  await expect(file).toContainText("packing-list.txt");
 
   // Docs: wide, with the headings as contents beside the page; a contents link jumps to its heading.
   const look = share.getByRole("combobox", { name: /^Look of the link/ });
@@ -81,6 +105,8 @@ test("publish a note with the Article look, then switch it to Docs and Minimal",
     return await sheet.getAttribute("data-publish");
   }).toBe("minimal");
   await expect(sheet).toHaveAttribute("data-background", "plain");
+  await expect(sheet.locator("a[data-bookmark]")).toBeVisible();
+  await expect(sheet.locator("a[data-file]")).toBeVisible();
   await anon.close();
   await context.close();
 });

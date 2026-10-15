@@ -1,7 +1,7 @@
 // Importing from other apps, in the browser: each source becomes ImportDocs (Markdown, the images it
 // shows, where it nests and what it links to), which Settings → Import & export sends to imports.importText
 // one by one. Sources: Markdown/text files and folders (and Obsidian vaults), a Notion export (ZIP), an
-// Evernote export (.enex), Word documents (.docx), HTML files and CSV tables.
+// Evernote export (.enex), Word documents (.docx), HTML files and CSV tables (alone, in a folder or in a ZIP).
 import { ulid } from "@folevi/editor-schema";
 import { TEXT_EXT, dirname, imageMime, imageSources, normalizePath, resolveImage, type BundleEntry } from "@/components/doc/importBundle";
 import { htmlToMarkdown } from "./htmlToMarkdown";
@@ -57,19 +57,26 @@ function dataUriImage(src: string, n: number): ImportImage | null {
 
 // ---------------------------------------------------------------- Markdown files, folders, Obsidian
 
+/** What a file of a bundle becomes (Markdown and text as they are, the others converted when read). */
+type BundleKind = "markdown" | "csv" | "docx" | "html";
+const bundleKind = (path: string): BundleKind | null =>
+  TEXT_EXT.test(path) ? "markdown" : /\.csv$/i.test(path) ? "csv" : /\.docx$/i.test(path) ? "docx" : /\.html?$/i.test(path) ? "html" : null;
+
 /**
- * Markdown and text files of a bundle (files, a folder, a ZIP) with the images they use, and its CSV files as
- * tables. Each goes in the folder its path names (a picked folder or a ZIP keeps its tree).
+ * Markdown and text files of a bundle (files, a folder, a ZIP) with the images they use, its CSV files as
+ * tables, and the Word and HTML files inside a ZIP. Each goes in the folder its path names (a picked folder
+ * or a ZIP keeps its tree).
  */
 export function markdownDocs(entries: BundleEntry[], map: Map<string, BundleEntry>): ImportDoc[] {
   const out: ImportDoc[] = [];
-  for (const e of entries.filter((x) => TEXT_EXT.test(x.path) || /\.csv$/i.test(x.path))) {
+  for (const e of entries) {
+    const kind = bundleKind(e.path);
+    if (!kind) continue;
     const folderPath = folderPathOf(e.path);
-    const csv = /\.csv$/i.test(e.path);
     out.push({
       name: e.path,
       path: e.path,
-      filename: (e.path.split("/").pop() ?? e.path).replace(/\.csv$/i, ".md"),
+      filename: (e.path.split("/").pop() ?? e.path).replace(/\.(csv|docx|html?)$/i, ".md"),
       format: /\.(txt|text)$/i.test(e.path) ? "text" : "markdown",
       content: "",
       images: new Map(),
@@ -78,18 +85,36 @@ export function markdownDocs(entries: BundleEntry[], map: Map<string, BundleEntr
       ...(folderPath.length ? { folderPath } : {}),
       entry: e,
       map,
-      csv,
-    } as ImportDoc & { entry: BundleEntry; map: Map<string, BundleEntry>; csv: boolean });
+      kind,
+    } as ImportDoc & { entry: BundleEntry; map: Map<string, BundleEntry>; kind: BundleKind });
   }
   return out;
 }
 
-/** Reads a Markdown doc's text and its local images (deferred so a big folder doesn't all sit in memory). */
+/** Reads a bundle doc's text and its local images (deferred so a big folder doesn't all sit in memory). */
 export async function loadMarkdown(doc: ImportDoc): Promise<void> {
-  const { entry, map, csv } = doc as ImportDoc & { entry?: BundleEntry; map?: Map<string, BundleEntry>; csv?: boolean };
+  const { entry, map, kind } = doc as ImportDoc & { entry?: BundleEntry; map?: Map<string, BundleEntry>; kind?: BundleKind };
   if (!entry || !map) return;
+  if (kind === "docx") {
+    const word = await docxContent(await entry.blob.arrayBuffer(), doc.warnings);
+    doc.content = word.markdown;
+    doc.images = word.images;
+    return;
+  }
+  if (kind === "html") {
+    // Its images: embedded ones, and ones elsewhere in the bundle by relative path.
+    const html = htmlContent(await entry.blob.text(), doc.warnings, (src) => {
+      const found = resolveImage(map, entry.path, src);
+      const mime = found ? imageMime(found.path) : null;
+      return found && mime ? { blob: found.blob, filename: found.path.split("/").pop() ?? "image", mime } : null;
+    });
+    doc.content = html.content;
+    doc.images = html.images;
+    if (html.title) doc.filename = `${html.title}.md`;
+    return;
+  }
   doc.content = await entry.blob.text();
-  if (csv) {
+  if (kind === "csv") {
     const title = (entry.path.split("/").pop() ?? "").replace(/\.csv$/i, "");
     doc.content = `# ${title}\n\n${csvToMarkdown(doc.content, doc.warnings)}`;
     return;
@@ -263,13 +288,13 @@ export async function evernoteDocs(file: File): Promise<ImportDoc[]> {
 
 // ---------------------------------------------------------------- Word, HTML, CSV
 
-/** A Word document (.docx): its text, headings, lists, tables and images. */
-export async function docxDoc(file: File): Promise<ImportDoc> {
+/** A Word document's Markdown and images (its PNG, JPEG, GIF and WebP ones; the rest are left out with a warning). */
+async function docxContent(arrayBuffer: ArrayBuffer, warnings: { message: string }[]): Promise<{ markdown: string; images: Map<string, ImportImage> }> {
   const mammoth = await import("mammoth");
   const images = new Map<string, ImportImage>();
   let n = 0;
   const result = await mammoth.convertToHtml(
-    { arrayBuffer: await file.arrayBuffer() },
+    { arrayBuffer },
     {
       convertImage: mammoth.images.imgElement(async (image) => {
         const src = `docx-image-${++n}`;
@@ -280,17 +305,26 @@ export async function docxDoc(file: File): Promise<ImportDoc> {
     },
   );
   const { markdown } = htmlToMarkdown(result.value);
-  const warnings = result.messages.filter((m) => m.type === "warning").slice(0, 10).map((m) => ({ message: m.message }));
+  warnings.push(...result.messages.filter((m) => m.type === "warning").slice(0, 10).map((m) => ({ message: m.message })));
   if (n > images.size) warnings.push({ message: `${n - images.size} image${n - images.size === 1 ? "" : "s"} in a format other than PNG, JPEG, GIF or WebP ${n - images.size === 1 ? "was" : "were"} left out` });
+  return { markdown, images };
+}
+
+/** A Word document (.docx): its text, headings, lists, tables and images. */
+export async function docxDoc(file: File): Promise<ImportDoc> {
+  const warnings: { message: string }[] = [];
+  const { markdown, images } = await docxContent(await file.arrayBuffer(), warnings);
   const title = file.name.replace(/\.docx$/i, "");
   return { name: file.name, path: file.name, filename: `${title}.md`, format: "markdown", content: markdown, images, publicId: ulid(), warnings };
 }
 
-/** An HTML file: its readable content, with embedded (data:) images. */
-export async function htmlDoc(file: File): Promise<ImportDoc> {
-  const { markdown, images: refs, title } = htmlToMarkdown(await file.text());
+/**
+ * An HTML page's Markdown (titled by its <title>) with its embedded (data:) images, and the ones `local`
+ * finds (a ZIP's other files); any other image that isn't on the web is kept as a link, with a warning.
+ */
+function htmlContent(html: string, warnings: { message: string }[], local?: (src: string) => ImportImage | null): { content: string; images: Map<string, ImportImage>; title: string | null } {
+  const { markdown, images: refs, title } = htmlToMarkdown(html);
   const images = new Map<string, ImportImage>();
-  const warnings: { message: string }[] = [];
   let n = 0;
   let content = markdown;
   for (const ref of refs) {
@@ -299,10 +333,21 @@ export async function htmlDoc(file: File): Promise<ImportDoc> {
       const key = `html-image-${n}`;
       content = content.replace(ref.src, key);
       if (img) images.set(key, img);
-    } else if (!/^https?:/i.test(ref.src)) warnings.push({ message: `Image “${ref.src}” isn’t in the file and was kept as a link` });
+    } else if (!/^https?:/i.test(ref.src)) {
+      const img = local?.(ref.src);
+      if (img) images.set(ref.src, img);
+      else warnings.push({ message: `Image “${ref.src}” isn’t in the file and was kept as a link` });
+    }
   }
+  return { content: title ? `# ${title}\n\n${content}` : content, images, title };
+}
+
+/** An HTML file: its readable content, with embedded (data:) images. */
+export async function htmlDoc(file: File): Promise<ImportDoc> {
+  const warnings: { message: string }[] = [];
+  const { content, images, title } = htmlContent(await file.text(), warnings);
   const name = file.name.replace(/\.html?$/i, "");
-  return { name: file.name, path: file.name, filename: `${title || name}.md`, format: "markdown", content: title ? `# ${title}\n\n${content}` : content, images, publicId: ulid(), warnings };
+  return { name: file.name, path: file.name, filename: `${title || name}.md`, format: "markdown", content, images, publicId: ulid(), warnings };
 }
 
 /** A CSV file: a note with it as a table. */

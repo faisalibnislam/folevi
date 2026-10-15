@@ -53,7 +53,8 @@ export function DataSection({ target }: { target: DataTarget }) {
     try {
       setProgress("Reading files…");
       // Each kind of file becomes pages: Evernote, Word, HTML and CSV by themselves; everything else
-      // (Markdown, text, folders, ZIPs) as a bundle, which may be a Notion export.
+      // (Markdown, text, folders, ZIPs, and the Word and HTML files inside a ZIP) as a bundle, which may be a
+      // Notion export.
       const docs: ImportDoc[] = [];
       const rest: File[] = [];
       for (const f of files) {

@@ -300,7 +300,7 @@ export const DOC_ARTICLES: DocArticle[] = [
             <strong>Create a public link</strong> for anyone with the URL. You can set an expiry date, require a password of at least 5 characters, and revoke the link at any time. It stops working immediately.
           </li>
           <li>
-            <strong>Choose how the public page looks</strong>: Note keeps the note’s own style, Article sets it in a narrow serif column for reading, Docs makes it wide with the headings listed beside it on wide screens, and Minimal shows plain paper without the cover. Change it later from the link’s Look menu in Share. Every look follows the reader’s light or dark setting.
+            <strong>Choose how the public page looks</strong>: Note keeps the note’s own style, Article sets it in a narrow serif column for reading, Docs makes it wide with the headings listed beside it on wide screens (on narrower ones, a Contents list you can open sits above the note), and Minimal shows plain paper without the cover. Change it later from the link’s Look menu in Share. Every look follows the reader’s light or dark setting.
           </li>
         </ul>
         <p>

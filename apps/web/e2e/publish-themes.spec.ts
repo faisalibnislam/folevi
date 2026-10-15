@@ -52,6 +52,26 @@ test("publish a note with the Article look, then switch it to Docs and Minimal",
   await contents.getByRole("link", { name: "What to bring" }).click();
   await expect(reader).toHaveURL(/#block-[0-9A-Z]{26}$/);
   await expect(reader.getByRole("heading", { name: "What to bring" })).toBeInViewport();
+  // Wide enough for the side list: no folded copy above the note.
+  await expect(reader.locator("details.fb-publish-toc-compact")).toBeHidden();
+
+  // Narrower: the side list goes, and the same contents fold up above the note.
+  await reader.setViewportSize({ width: 820, height: 900 });
+  await reader.goto(link);
+  const folded = reader.locator("details.fb-publish-toc-compact");
+  await expect(reader.locator("nav.fb-publish-toc")).toBeHidden();
+  await expect(folded.getByText("Contents", { exact: true })).toBeVisible();
+  await expect(folded.getByRole("link", { name: "What to bring" })).toBeHidden();
+  await folded.getByText("Contents", { exact: true }).click();
+  await expect(reader.getByRole("navigation", { name: "Contents" }).getByRole("link")).toHaveText(["Getting there", "What to bring"]);
+  await folded.getByRole("link", { name: "What to bring" }).click();
+  await expect(reader).toHaveURL(/#block-[0-9A-Z]{26}$/);
+  await expect(reader.getByRole("heading", { name: "What to bring" })).toBeInViewport();
+  // Not printed.
+  await reader.emulateMedia({ media: "print" });
+  await expect(folded).toBeHidden();
+  await reader.emulateMedia({ media: "screen" });
+  await reader.setViewportSize({ width: 1440, height: 900 });
 
   // Minimal: plain paper, no cover band.
   await pick(look, "Minimal");

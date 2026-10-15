@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createHash } from "node:crypto";
 import { ConvexHttpClient } from "convex/browser";
+import { ChevronDown } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { BlurredBackdrop } from "@/components/doc/BlurredBackdrop";
 import { ReadOnlyBlocks } from "@/components/doc/ReadOnlyBlocks";
@@ -199,6 +200,18 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
       <div className="px-5 pb-6 pt-4 sm:px-16">
         <h1 className={`mt-2 text-[40px] leading-tight ${look.font === "serif" ? "ui-display [font-family:var(--note-serif,var(--font-serif))]" : look.font === "rounded" ? "font-semibold [font-family:var(--note-soft,var(--font-rounded))]" : look.font === "mono" ? "font-semibold [font-family:var(--note-mono,var(--font-mono))]" : "font-semibold tracking-tight [font-family:var(--note-modern,var(--font-modern))]"}`}>{document.title || "Untitled"}</h1>
         <p className="mb-6 mt-1 text-xs text-muted">{tFor(locale, "share.lastUpdated", { date: formatDate(updated, { dateStyle: "medium", timeZone: "UTC" }, locale) })}</p>
+        {toc.length > 1 ? (
+          // Docs on narrower screens: the same contents, folded away above the note (the side list needs room).
+          <details className="fb-publish-toc-compact group mb-6 rounded-control border border-line xl:hidden">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[13px] font-medium text-heading [&::-webkit-details-marker]:hidden">
+              Contents
+              <ChevronDown size={15} aria-hidden className="text-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+            </summary>
+            <nav aria-label="Contents" className="border-t border-line px-1 py-2">
+              <TocList toc={toc} />
+            </nav>
+          </details>
+        ) : null}
         <ReadOnlyBlocks blocks={blocks} fileUrls={fileUrls} collections={collections} anchors={toc.length > 0} />
       </div>
     </article>
@@ -213,15 +226,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
         <nav aria-label="Contents" className="fb-publish-toc hidden xl:block">
           <div className="sticky top-6 max-h-[calc(100dvh-3rem)] overflow-y-auto pt-10">
             <p className="ui-caps mb-2 px-2">Contents</p>
-            <ol className="space-y-0.5 text-[13px]">
-              {toc.map((h) => (
-                <li key={h.id} style={{ paddingLeft: `${(h.level - 1) * 0.75}rem` }}>
-                  <a href={`#block-${h.id}`} className="block truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
-                    {h.text}
-                  </a>
-                </li>
-              ))}
-            </ol>
+            <TocList toc={toc} />
           </div>
         </nav>
         {page}
@@ -230,5 +235,20 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
       page
     )}
     </div>,
+  );
+}
+
+/** The Docs contents: each heading as a link to it, indented by level. */
+function TocList({ toc }: { toc: ReturnType<typeof tableOfContents> }) {
+  return (
+    <ol className="space-y-0.5 text-[13px]">
+      {toc.map((h) => (
+        <li key={h.id} style={{ paddingLeft: `${(h.level - 1) * 0.75}rem` }}>
+          <a href={`#block-${h.id}`} className="block truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+            {h.text}
+          </a>
+        </li>
+      ))}
+    </ol>
   );
 }

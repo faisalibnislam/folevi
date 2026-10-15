@@ -24,7 +24,7 @@
 }
 
 @media print {
-  .fb-publish-toc { display: none !important; }
+  .fb-publish-toc, .fb-publish-toc-compact { display: none !important; }
   .fb-publish-backdrop { background: none !important; padding: 0 !important; }
   .fb-page[data-publish] { border-color: transparent; box-shadow: none; }
 }

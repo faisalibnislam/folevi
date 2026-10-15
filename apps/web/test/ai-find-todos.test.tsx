@@ -41,6 +41,7 @@ vi.mock("@/components/editor/richRender", () => ({
 const { ALL_MARKS, ALL_NODES, BlockFormat } = await import("@/components/editor/extensions");
 const { BlockIdentity } = await import("@/components/editor/plugins");
 const { FindTodosHost, openFindTodos, scheduleResultTodos } = await import("@/components/ai/FindTodos");
+const { TranscriptPreview } = await import("@/components/ai/TranscriptPreview");
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 class NoResize {
@@ -67,13 +68,13 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-async function mount() {
+async function mount(content: JSONContent[] = [p("Weekly sync"), p("Sam to send the deck by Friday.")]) {
   // 10:00 on Wednesday 14 October 2026 in Auckland.
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(Date.UTC(2026, 9, 13, 21, 0)));
   const element = document.createElement("div");
   document.body.append(element);
-  const editor = new Editor({ element, extensions: [...ALL_NODES, ...ALL_MARKS, BlockFormat, UndoRedo, BlockIdentity], content: { type: "doc", content: [p("Weekly sync"), p("Sam to send the deck by Friday.")] } });
+  const editor = new Editor({ element, extensions: [...ALL_NODES, ...ALL_MARKS, BlockFormat, UndoRedo, BlockIdentity], content: { type: "doc", content } });
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
@@ -202,5 +203,45 @@ describe("Find to-dos", () => {
     const blocks: string[] = [];
     editor.state.doc.forEach((n) => blocks.push(`${n.type.name}:${n.textContent}:${n.attrs.dueDate ?? ""}`));
     expect(blocks).toEqual(["paragraph:Weekly sync:", "paragraph:Sam to send the deck by Friday.:", "todo:Send the deck:2026-10-16"]);
+  });
+
+  test("a recording's meeting summary: Add dates and people puts it after the audio block, then dates and assigns its to-dos", async () => {
+    reply.people = [
+      { profileId: "p-me", displayName: "Faisal Islam", isYou: true },
+      { profileId: "p-sam", displayName: "Sam Rivera", isYou: false },
+    ];
+    const { editor } = await mount([p("Intro"), { type: "audio", attrs: { depth: 0, fileId: "F1", name: "memo.webm" } }, p("After")]);
+    const meeting = ["We agreed the launch plan.", "", "## Action items", "", "- [ ] @Sam: Send the deck (due 2026-10-16)", "- [ ] Order chairs"].join("\n");
+    // As the audio block's transcription does it (AudioTranscribe.tsx): right after the block, at its depth.
+    const onSchedule = () => {
+      const audio = editor.state.doc.child(1);
+      scheduleResultTodos(editor as never, meeting, { kind: "after", pos: editor.state.doc.child(0).nodeSize + audio.nodeSize, depth: 0 }, { structured: true });
+    };
+    const props = { working: false, transcript: "Speaker 1: Sam sends the deck Friday.", summary: null, summarizing: false, view: "meeting" as const, onView: vi.fn(), problem: null, canInsert: true, onInsert: vi.fn(), onSummarize: vi.fn(), onDiscard: vi.fn() };
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    // Only on a meeting summary with open to-dos, in a note that can be changed.
+    await act(async () => root.render(createElement(TranscriptPreview, { ...props, meeting: "No action items.", onSchedule })));
+    expect(button("Add dates and people")).toBeUndefined();
+    await act(async () => root.render(createElement(TranscriptPreview, { ...props, meeting, canInsert: false, onSchedule })));
+    expect(button("Add dates and people")).toBeUndefined();
+    await act(async () => root.render(createElement(TranscriptPreview, { ...props, meeting, view: "transcript", onSchedule })));
+    expect(button("Add dates and people")).toBeUndefined();
+    await act(async () => root.render(createElement(TranscriptPreview, { ...props, meeting, onSchedule })));
+    act(() => button("Add dates and people")!.click());
+    await settle();
+    // The items came from the summary: only who's here was asked for.
+    expect(reply.calls).toEqual([{ people: { documentId: "DOC" } }]);
+    const dialog = document.querySelector("dialog")!;
+    expect(dialog.textContent).toContain("From the meeting summary");
+    const rows = [...dialog.querySelectorAll("[data-testid='proposed-todo']")];
+    expect(rows).toHaveLength(2);
+    expect(rows[0]!.textContent).toContain("Sam Rivera");
+    act(() => button("Update 2 to-dos")!.click());
+    const blocks: string[] = [];
+    editor.state.doc.forEach((n) => blocks.push(`${n.type.name}:${n.textContent}:${n.attrs.assigneeId ?? ""}:${n.attrs.dueDate ?? ""}`));
+    expect(blocks).toEqual(["paragraph:Intro::", "audio:::", "paragraph:We agreed the launch plan.::", "heading:Action items::", "todo:Send the deck:p-sam:2026-10-16", "todo:Order chairs::", "paragraph:After::"]);
+    act(() => root.unmount());
   });
 });

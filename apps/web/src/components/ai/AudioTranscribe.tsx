@@ -11,6 +11,7 @@ import { useEditorEnvironment } from "@/components/editor/environment";
 import { aiProblem, type AiProblem } from "./AiCredits";
 import { insertAiMarkdown } from "./insert";
 import { TranscriptPreview, type TranscriptView } from "./TranscriptPreview";
+import { scheduleResultTodos } from "./FindTodos";
 import { useAiAccess, useNoteAi } from "./useAi";
 
 // Transcribe on an audio block (docs/AI_ASSISTANT.md, "Attachments"): never automatic. The recording goes
@@ -150,6 +151,16 @@ export function useTranscription({ fileId, editor, getPos, node, editable, enabl
     setState({ phase: "idle" });
   };
 
+  // Add dates and people: the meeting summary goes in after the block, then Find to-dos opens on its to-dos
+  // (read from its "@Owner: task (due ...)" lines, no second model call).
+  const schedule = () => {
+    if (state.phase !== "ready" || !state.meeting || !editor.isEditable) return;
+    const at = getPos();
+    if (typeof at !== "number") return;
+    scheduleResultTodos(editor, state.meeting, { kind: "after", pos: at + node.nodeSize, depth: Number(node.attrs.depth ?? 0) }, { people, structured: true });
+    setState({ phase: "idle" });
+  };
+
   const preview =
     state.phase === "idle" ? null : state.phase === "confirm" ? (
       estimate ? (
@@ -171,6 +182,7 @@ export function useTranscription({ fileId, editor, getPos, node, editable, enabl
         onInsert={insert}
         onSummarize={() => void summarize()}
         onMeeting={() => void meetingSummary()}
+        onSchedule={schedule}
         onDiscard={() => {
           setState({ phase: "idle" });
           setProblem(null);

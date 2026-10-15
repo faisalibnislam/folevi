@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, CornerDownLeft, ListTree, Users, X } from "lucide-react";
+import { CalendarCheck, Check, Copy, CornerDownLeft, ListTree, Users, X } from "lucide-react";
 import { AiIcon } from "./AiIcon";
 import { AiMarkdown } from "./AiMarkdown";
 import { AiProblemNotice, type AiProblem } from "./AiCredits";
 import { markdownToPlain } from "./plainText";
 import { AiAnnouncer, useDoneAnnouncement } from "./announce";
+import { hasTodoLines } from "@/lib/ai/actionItems";
 
 /** What a transcription shows: the transcript, its summary, or a meeting summary of it. */
 export type TranscriptView = "transcript" | "summary" | "meeting";
@@ -14,7 +15,8 @@ export type TranscriptView = "transcript" | "summary" | "meeting";
 /**
  * A recording's transcript under its audio block, before anything goes into the note (the writing
  * assistant's preview style): the transcript (and its summary or meeting summary, once asked for), then
- * Insert below, Summarize, Meeting summary, Copy and Discard. Nothing in the note changes until Insert below.
+ * Insert below, Summarize, Meeting summary, Copy and Discard. Nothing in the note changes until Insert below
+ * (or Add dates and people, on a meeting summary with to-dos, which inserts it and then opens Find to-dos).
  */
 export function TranscriptPreview({
   working,
@@ -31,6 +33,7 @@ export function TranscriptPreview({
   onInsert,
   onSummarize,
   onMeeting,
+  onSchedule,
   onDiscard,
 }: {
   /** Transcribing (nothing to show yet). */
@@ -52,6 +55,8 @@ export function TranscriptPreview({
   onSummarize: () => void;
   /** Asks for a meeting summary (the button shows when given). */
   onMeeting?: () => void;
+  /** Inserts the meeting summary, then gives its to-dos dates and people (the button shows when given). */
+  onSchedule?: () => void;
   onDiscard: () => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -111,6 +116,11 @@ export function TranscriptPreview({
           {transcript && canInsert ? (
             <button type="button" onClick={onInsert} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
               <CornerDownLeft size={14} aria-hidden /> Insert below
+            </button>
+          ) : null}
+          {view === "meeting" && meeting && canInsert && onSchedule && hasTodoLines(meeting) ? (
+            <button type="button" onClick={onSchedule} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+              <CalendarCheck size={14} aria-hidden /> Add dates and people
             </button>
           ) : null}
           {transcript && !summary ? (

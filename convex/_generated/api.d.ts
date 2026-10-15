@@ -149,6 +149,7 @@ import type * as mcpServer from "../mcpServer.js";
 import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as organization from "../organization.js";
+import type * as passkeyUsage from "../passkeyUsage.js";
 import type * as presence from "../presence.js";
 import type * as push from "../push.js";
 import type * as pushSend from "../pushSend.js";
@@ -319,6 +320,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   notifications: typeof notifications;
   organization: typeof organization;
+  passkeyUsage: typeof passkeyUsage;
   presence: typeof presence;
   push: typeof push;
   pushSend: typeof pushSend;

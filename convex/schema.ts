@@ -1469,6 +1469,18 @@ export default defineSchema({
     .index("by_token", ["tokenHash"]),
 
   /**
+   * When each passkey last signed its owner in (convex/passkeyUsage.ts), for "Last used" in Settings >
+   * Security. Better Auth's passkey table has no such field. `passkeyId` is that table's row id.
+   */
+  passkeyUsage: defineTable({
+    passkeyId: v.string(),
+    profileId: v.id("profiles"),
+    lastUsedAt: v.number(),
+  })
+    .index("by_passkey", ["passkeyId"])
+    .index("by_profile", ["profileId"]),
+
+  /**
    * Calendars a person subscribes to by an iCalendar link, shown read-only in Calendar
    * (convex/externalCalendars.ts). Each fetch writes a new generation of `externalEvents`; `generation` is
    * the one shown, and older ones are deleted once a newer one is complete.

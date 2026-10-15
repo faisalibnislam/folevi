@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "convex/react";
 import { KeyRound, ShieldCheck, ShieldOff } from "lucide-react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { defaultPasskeyName, passkeysAvailable } from "@/lib/auth/passkeys";
 import { desktop } from "@/lib/desktop";
-import { formatDateTime } from "@/lib/format";
+import { ageText, formatDateTime } from "@/lib/format";
+import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { PromptDialog } from "@/components/ui/PromptDialog";
@@ -186,6 +188,9 @@ function PasskeysCard() {
   const toast = useToast();
   const { data, isPending } = authClient.useListPasskeys();
   const passkeys = (data ?? []) as PasskeyRow[];
+  // When each last signed you in (recorded by Folevi: Better Auth doesn't keep it).
+  const usage = useQuery(api.passkeyUsage.lastUsed, {});
+  const lastUsed = useMemo(() => new Map((usage ?? []).map((u) => [u.passkeyId, u.lastUsedAt])), [usage]);
   const [supported, setSupported] = useState<boolean | null>(null);
   const [adding, setAdding] = useState(false);
   const [renaming, setRenaming] = useState<PasskeyRow | null>(null);
@@ -214,6 +219,7 @@ function PasskeysCard() {
               <span className="block text-xs text-muted">
                 {p.createdAt ? `Added ${formatDateTime(new Date(p.createdAt).getTime())}` : "Added earlier"}
                 {p.backedUp ? " · syncs across your devices" : " · on one device"}
+                {usage === undefined ? "" : lastUsed.has(p.id) ? ` · Last used ${ageText(lastUsed.get(p.id)!).toLowerCase()}` : " · Not used yet"}
               </span>
             </span>
             <Button size="sm" aria-label={`Rename ${label(p)}`} onClick={() => setRenaming(p)}>

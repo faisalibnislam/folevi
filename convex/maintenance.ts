@@ -399,6 +399,8 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     // Their connected apps (the OAuth tokens go with the auth user): what each did, then the grants.
     () => ctx.db.query("mcpEvents").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("mcpGrants").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    // When their passkeys were last used (the passkeys go with the auth user).
+    () => ctx.db.query("passkeyUsage").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     // Their webhooks: where they listen, what's waiting, the log, then the endpoints.
     () => ctx.db.query("webhookPlaces").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("webhookDeliveries").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),

@@ -3,8 +3,8 @@
 // session except for platform admins (who keep the authenticator code) and, for people with two-step
 // verification on, a passkey that didn't verify the person.
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
-import { describe, expect, test } from "vitest";
-import { components } from "../../convex/_generated/api";
+import { describe, expect, test, vi } from "vitest";
+import { api, components, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { deleteAuthUser } from "../../convex/lib/authStore";
 import { authUser, person, setup, type T } from "./helpers";
@@ -201,5 +201,62 @@ describe("signing in with a passkey", () => {
     expect(res.status).toBe(403);
     expect(res.body.code).toBe("PASSKEY_ADMIN_NEEDS_CODE");
     expect(await sessionsOf(t, admin.userId)).toBe(before);
+  });
+});
+
+describe("last used", () => {
+  test("a sign-in records when the passkey was last used; a refused one doesn't; removing it removes that", async () => {
+    const t = setup();
+    const a = await person(t, "passkey-used@example.com");
+    const b = await person(t, "passkey-used-other@example.com");
+    const used = authenticator();
+    const unused = authenticator();
+    const usedId = await storePasskey(t, a.userId, used, "Phone");
+    const unusedId = await storePasskey(t, a.userId, unused, "Key");
+    expect(await a.as.query(api.passkeyUsage.lastUsed, {})).toEqual([]);
+
+    // Two-step verification on and the passkey didn't verify the person: refused, nothing recorded.
+    await setTwoFactor(t, a.userId, true);
+    expect((await signInWith(t, used, false)).status).toBe(403);
+    expect(await a.as.query(api.passkeyUsage.lastUsed, {})).toEqual([]);
+
+    const before = Date.now();
+    expect((await signInWith(t, used, true)).status).toBe(200);
+    const rows = await a.as.query(api.passkeyUsage.lastUsed, {});
+    expect(rows.map((r) => r.passkeyId)).toEqual([usedId]);
+    expect(rows[0]!.lastUsedAt).toBeGreaterThanOrEqual(before);
+    expect(unusedId).not.toBe(usedId);
+    // Only the owner sees it.
+    expect(await b.as.query(api.passkeyUsage.lastUsed, {})).toEqual([]);
+
+    // Removing someone else's passkey fails and keeps the record; the owner removing it drops it.
+    const otherToken = await sessionToken(t, b.userId);
+    expect((await call(t, "/passkey/delete-passkey", { token: otherToken, body: { id: usedId } })).status).toBe(401);
+    expect(await a.as.query(api.passkeyUsage.lastUsed, {})).toHaveLength(1);
+    expect((await call(t, "/passkey/delete-passkey", { token: await sessionToken(t, a.userId), body: { id: usedId } })).status).toBe(200);
+    expect(await a.as.query(api.passkeyUsage.lastUsed, {})).toEqual([]);
+  });
+
+  test("a passkey's record goes with the account", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = setup();
+      const a = await person(t, "passkey-used-leaving@example.com");
+      const key = authenticator();
+      await setTwoFactor(t, a.userId, false);
+      const passkeyId = await storePasskey(t, a.userId, key);
+      await t.mutation(internal.passkeyUsage.record, { passkeyId, authSubject: a.userId });
+      const profileId = a.profileId as Id<"profiles">;
+      const now = Date.now();
+      await t.run(async (ctx) => {
+        await ctx.db.patch(profileId, { status: "pending_deletion" });
+        await ctx.db.insert("deletionJobs", { kind: "account", targetId: a.profileId, requestedBy: profileId, requestedByAdmin: false, reason: "test", scheduledFor: now - 1, status: "scheduled", progress: 0, createdAt: now });
+      });
+      expect(await t.run(async (ctx) => (await ctx.db.query("passkeyUsage").collect()).length)).toBe(1);
+      for (let i = 0; i < 20; i++) await t.mutation(internal.maintenance.runDeletionJobs, {});
+      expect(await t.run(async (ctx) => await ctx.db.query("passkeyUsage").collect())).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -61,7 +61,7 @@ export function passkeyOrigins(): string[] {
 type PasskeyEndpointCtx = Parameters<NonNullable<NonNullable<PasskeyOptions["authentication"]>["afterVerification"]>>[0]["ctx"];
 
 async function checkPasskeySignIn(ctx: GenericCtx<DataModel>, authCtx: PasskeyEndpointCtx, credentialId: string, userVerified: boolean) {
-  const stored = (await authCtx.context.adapter.findOne({ model: "passkey", where: [{ field: "credentialID", value: credentialId }] })) as { userId: string } | null;
+  const stored = (await authCtx.context.adapter.findOne({ model: "passkey", where: [{ field: "credentialID", value: credentialId }] })) as { id: string; userId: string } | null;
   if (!stored) return;
   const runQuery = (ctx as { runQuery?: (fn: never, args: never) => Promise<unknown> }).runQuery;
   const admin = runQuery ? await runQuery(internal.authEmails.hasPlatformRole as never, { authSubject: stored.userId } as never) : false;
@@ -72,6 +72,9 @@ async function checkPasskeySignIn(ctx: GenericCtx<DataModel>, authCtx: PasskeyEn
   if (user?.twoFactorEnabled === true && !userVerified) {
     throw new APIError("FORBIDDEN", { message: "This passkey didn't check it's you, so it can't replace your authenticator code.", code: "PASSKEY_NOT_VERIFIED" });
   }
+  // Allowed: remembered as the passkey's last use (Settings > Security; Better Auth doesn't keep one).
+  const runMutation = (ctx as { runMutation?: (fn: never, args: never) => Promise<unknown> }).runMutation;
+  if (runMutation) await runMutation(internal.passkeyUsage.record as never, { passkeyId: stored.id, authSubject: stored.userId } as never);
 }
 
 /**
@@ -184,6 +187,14 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
           if (open === false) {
             throw new APIError("FORBIDDEN", { message: "New sign-ups are paused right now. Please try again later.", code: "SIGNUPS_PAUSED" });
           }
+        }
+      }),
+      after: createAuthMiddleware(async (hookCtx) => {
+        // A removed passkey's "last used" goes with it (convex/passkeyUsage.ts; kept if it's still there).
+        if (hookCtx.path === "/passkey/delete-passkey") {
+          const id = (hookCtx.body as { id?: unknown } | undefined)?.id;
+          const runMutation = (ctx as { runMutation?: (fn: never, args: never) => Promise<unknown> }).runMutation;
+          if (typeof id === "string" && runMutation) await runMutation(internal.passkeyUsage.forget as never, { passkeyId: id } as never);
         }
       }),
     },

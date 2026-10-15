@@ -22,6 +22,7 @@ test("a passkey added in Settings signs the person in without a password", async
   await expect(page.getByRole("status").filter({ hasText: "Passkey added" })).toBeVisible({ timeout: 20_000 });
   const list = card.getByRole("list", { name: "Your passkeys" });
   await expect(list.getByText("Test laptop")).toBeVisible();
+  await expect(list).toContainText("Not used yet");
 
   await card.getByRole("button", { name: "Rename Test laptop" }).click();
   const renaming = page.getByRole("dialog", { name: "Rename passkey" });
@@ -37,8 +38,9 @@ test("a passkey added in Settings signs the person in without a password", async
   await page.getByRole("button", { name: "Sign in with a passkey" }).click();
   await page.waitForURL((url) => !/\/(signin|two-factor)/.test(url.pathname), { timeout: 20_000 });
 
-  // Removing it: it's gone from the list, and from sign-in.
+  // Removing it: it's gone from the list, and from sign-in. Until then it shows when it was last used.
   await page.goto(`${APP}/settings/security`);
+  await expect(list).toContainText("Last used just now");
   await card.getByRole("button", { name: "Remove Work laptop" }).click();
   await page.getByRole("dialog", { name: "Remove this passkey?" }).getByRole("button", { name: "Remove" }).click();
   await expect(card.getByText("No passkeys yet.")).toBeVisible();

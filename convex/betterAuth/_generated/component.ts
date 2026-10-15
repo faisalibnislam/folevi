@@ -2409,4 +2409,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Name
       >;
     };
+    refreshTokens: {
+      markRevoked: FunctionReference<
+        "mutation",
+        "internal",
+        { id: string; revoked: number },
+        any,
+        Name
+      >;
+    };
   };

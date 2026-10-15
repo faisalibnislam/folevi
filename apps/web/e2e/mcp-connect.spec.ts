@@ -67,6 +67,33 @@ test("an app connects through OAuth and the consent screen, then reads notes ove
   expect(tools.status()).toBe(200);
   expect((await tools.json()).result.structuredContent.places).toEqual([{ id: "personal", name: "Personal" }]);
 
+  // An hour later the access token runs out and the app refreshes: refresh token, its client id (a public
+  // client, no secret) and the same resource. The new access token works, and so does the rotated refresh token.
+  const refresh = (refreshToken: string) =>
+    api.post(`${APP}/api/auth/oauth2/token`, {
+      form: { grant_type: "refresh_token", refresh_token: refreshToken, client_id, resource: authorize.searchParams.get("resource")! },
+      failOnStatusCode: false,
+    });
+  const mcp = (bearer: string, id: number, method: string, params: Record<string, unknown> = {}) =>
+    api.post(`${APP}/mcp`, { headers: { authorization: `Bearer ${bearer}`, "mcp-protocol-version": "2025-06-18" }, data: { jsonrpc: "2.0", id, method, params }, failOnStatusCode: false });
+  const refreshed = await refresh(token.refresh_token);
+  expect(refreshed.status(), await refreshed.text()).toBe(200);
+  const next = await refreshed.json();
+  expect(next.access_token).toMatch(/^fvat_/);
+  expect(next.refresh_token).toMatch(/^fvrt_/);
+  expect(next.refresh_token).not.toBe(token.refresh_token);
+  const init = await api.post(`${APP}/mcp`, { headers: { authorization: `Bearer ${next.access_token}` }, data: { jsonrpc: "2.0", id: 10, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {} } } });
+  expect(init.status()).toBe(200);
+  const places = await mcp(next.access_token, 11, "tools/call", { name: "list_places", arguments: {} });
+  expect(places.status()).toBe(200);
+  expect((await places.json()).result.structuredContent.places).toEqual([{ id: "personal", name: "Personal" }]);
+  // The first access token keeps working until it expires.
+  expect((await mcp(token.access_token, 12, "tools/list")).status()).toBe(200);
+  const again = await refresh(next.refresh_token);
+  expect(again.status(), await again.text()).toBe(200);
+  const third = await again.json();
+  expect((await mcp(third.access_token, 13, "tools/list")).status()).toBe(200);
+
   // It shows in Settings → Connected apps, where it can be disconnected.
   await page.goto(`${APP}/settings/connected-apps`);
   const row = page.getByRole("listitem", { name: "E2E Assistant" });
@@ -76,5 +103,8 @@ test("an app connects through OAuth and the consent screen, then reads notes ove
   await expect(page.getByText("No apps are connected.")).toBeVisible();
   const after = await api.post(`${APP}/mcp`, { headers: { authorization: `Bearer ${token.access_token}` }, data: { jsonrpc: "2.0", id: 3, method: "tools/list" }, failOnStatusCode: false });
   expect(after.status()).toBe(401);
+  // Disconnecting ends the refreshed tokens too.
+  expect((await mcp(third.access_token, 14, "tools/list")).status()).toBe(401);
+  expect((await refresh(third.refresh_token)).status()).toBe(400);
   await api.dispose();
 });

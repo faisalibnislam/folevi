@@ -6,9 +6,13 @@ import { api, components, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { decodeHeaderValue, parseMessage } from "../../convex/lib/mcp/protocol";
 import { checkArgs, TOOL_BY_NAME, withoutTitleHeading } from "../../convex/lib/mcp/tools";
+import { mcpResourceUrl } from "../../convex/lib/mcp/config";
+import { refreshTokenRevokeTarget } from "../../convex/lib/authAdapter";
 import { join, para, person, PERSONAL, setup, teamWorkspace, ulid, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
+
+process.env.BETTER_AUTH_SECRET ??= "test-secret-".repeat(4);
 
 const headersOf = (h: Record<string, string>) => (name: string) => h[name.toLowerCase()] ?? null;
 
@@ -274,6 +278,126 @@ describe("POST /mcp", () => {
     const done = await call(t, bearer, "complete_task", { taskId: added.data!.taskId as string });
     expect(done.isError).toBe(true);
     expect(done.text).toMatch(/only add new notes and tasks/);
+  });
+});
+
+// ---------------------------------------------------------------- staying connected (refresh tokens)
+
+/**
+ * An app registered the way Claude does it (public client, refresh_token grant), with `who`'s grant and the
+ * refresh token the provider issued with the first access token, stored the way the provider stores it:
+ * hashed, and with no `revoked` field at all (it leaves unset fields out).
+ */
+async function connectWithRefresh(t: T, who: Person) {
+  const reg = await t.fetch("/api/auth/oauth2/register", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ client_name: "Claude", redirect_uris: ["https://claude.ai/api/mcp/auth_callback"], token_endpoint_auth_method: "none", grant_types: ["authorization_code", "refresh_token"], response_types: ["code"], scope: "notes:read tasks:read offline_access" }),
+  });
+  expect(reg.status).toBe(200);
+  const { client_id: clientId } = (await reg.json()) as { client_id: string };
+  await who.as.mutation(api.mcp.saveGrant, { clientId, scopes: ["notes:read", "tasks:read"], personal: true, workspaceIds: [], includeShared: false, createOnly: false });
+  const raw = `rt${ulid()}`;
+  await t.run(async (ctx) => {
+    await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: { model: "oauthRefreshToken", data: { token: await hashed(raw), clientId, userId: who.userId, sessionId: who.sessionId, scopes: ["notes:read", "tasks:read", "offline_access"], expiresAt: Date.now() + 30 * 86_400_000, createdAt: Date.now() } },
+    });
+  });
+  return { clientId, refreshToken: `fvrt_${raw}` };
+}
+
+/** What Claude sends when its access token runs out: the refresh token, its client id (no secret) and the resource. */
+async function refresh(t: T, clientId: string, refreshToken: string) {
+  const res = await t.fetch("/api/auth/oauth2/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken, client_id: clientId, resource: mcpResourceUrl() }).toString(),
+  });
+  return { status: res.status, body: (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string; error?: string } };
+}
+
+describe("staying connected", () => {
+  test("an app trades its refresh token for new tokens that work on /mcp, and again with the rotated one", async () => {
+    const t = setup();
+    const a = await person(t, "mcp-refresh@example.com");
+    const { clientId, refreshToken } = await connectWithRefresh(t, a);
+
+    const first = await refresh(t, clientId, refreshToken);
+    expect(first.status, JSON.stringify(first.body)).toBe(200);
+    expect(first.body).toMatchObject({ access_token: expect.stringMatching(/^fvat_/), refresh_token: expect.stringMatching(/^fvrt_/), expires_in: 3600, scope: "notes:read tasks:read offline_access" });
+    expect(first.body.refresh_token).not.toBe(refreshToken);
+
+    const fresh = first.body.access_token!;
+    const init = await rpc(t, fresh, "initialize", { protocolVersion: "2025-06-18", capabilities: {} });
+    expect(init.status).toBe(200);
+    const places = await call(t, fresh, "list_places");
+    expect(places.data).toMatchObject({ places: [{ id: "personal", name: "Personal" }] });
+
+    // The rotated refresh token works the next hour too.
+    const second = await refresh(t, clientId, first.body.refresh_token!);
+    expect(second.status, JSON.stringify(second.body)).toBe(200);
+    expect((await call(t, second.body.access_token!, "list_places")).status).toBe(200);
+    // An access token from an earlier refresh still works until it expires.
+    expect((await call(t, fresh, "list_places")).status).toBe(200);
+
+    // A used refresh token presented again looks stolen: refused, and the whole family ends (RFC 9700).
+    const reused = await refresh(t, clientId, refreshToken);
+    expect(reused).toMatchObject({ status: 400, body: { error: "invalid_grant" } });
+    expect((await refresh(t, clientId, second.body.refresh_token!)).status).toBe(400);
+    expect((await rpc(t, second.body.access_token!, "tools/list")).status).toBe(401);
+  });
+
+  test("two refreshes racing with the same token: only one wins", async () => {
+    const t = setup();
+    const a = await person(t, "mcp-refresh-race@example.com");
+    const { clientId, refreshToken } = await connectWithRefresh(t, a);
+    const row = await t.run(async (ctx) => (await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "oauthRefreshToken", where: [{ field: "token", value: await hashed(refreshToken.slice(5)) }] })) as { _id: string });
+    const mark = () => t.mutation(components.betterAuth.refreshTokens.markRevoked, { id: row._id, revoked: Date.now() });
+    expect(await mark()).toMatchObject({ _id: row._id, revoked: expect.any(Number) });
+    expect(await mark()).toBeNull();
+    expect(await t.mutation(components.betterAuth.refreshTokens.markRevoked, { id: "not-an-id", revoked: 1 })).toBeNull();
+  });
+
+  test("only the provider's guarded refresh-token update is rerouted", () => {
+    const at = new Date(1_700_000_000_000);
+    const guarded = { model: "oauthRefreshToken", where: [{ field: "id", value: "r1" }, { field: "revoked", operator: "eq", value: null }], increment: {}, set: { revoked: at } };
+    expect(refreshTokenRevokeTarget(guarded)).toEqual({ id: "r1", revoked: at.getTime() });
+    expect(refreshTokenRevokeTarget({ ...guarded, model: "rateLimit" })).toBeNull();
+    expect(refreshTokenRevokeTarget({ ...guarded, increment: { count: 1 } })).toBeNull();
+    expect(refreshTokenRevokeTarget({ ...guarded, where: [guarded.where[0]!] })).toBeNull();
+    expect(refreshTokenRevokeTarget({ ...guarded, set: { revoked: at, scopes: [] } })).toBeNull();
+  });
+
+  test("an app revoking its refresh token (RFC 7009) ends it", async () => {
+    const t = setup();
+    const a = await person(t, "mcp-refresh-revoke@example.com");
+    const { clientId, refreshToken } = await connectWithRefresh(t, a);
+    const res = await t.fetch("/api/auth/oauth2/revoke", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token: refreshToken, token_type_hint: "refresh_token", client_id: clientId }).toString(),
+    });
+    expect(res.status, await res.text()).toBe(200);
+    expect((await refresh(t, clientId, refreshToken)).status).toBe(400);
+  });
+
+  test("an expired access token gets 401 invalid_token pointing at the resource metadata, so the app refreshes", async () => {
+    const t = setup();
+    const a = await person(t, "mcp-expired@example.com");
+    const bearer = await connect(t, a);
+    expect((await rpc(t, bearer, "tools/list")).status).toBe(200);
+    await t.run(async (ctx) => {
+      const row = (await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "oauthAccessToken", where: [{ field: "token", value: await hashed(bearer.slice(5)) }] })) as { _id: string };
+      await ctx.runMutation(components.betterAuth.adapter.updateOne, { input: { model: "oauthAccessToken", where: [{ field: "_id", value: row._id }], update: { expiresAt: Date.now() - 1000 } } });
+    });
+    for (const method of ["initialize", "tools/list"]) {
+      const res = await rpc(t, bearer, method, method === "initialize" ? { protocolVersion: "2025-06-18", capabilities: {} } : {});
+      expect(res.status).toBe(401);
+      const challenge = res.headers.get("www-authenticate")!;
+      expect(challenge).toMatch(/^Bearer resource_metadata="[^"]+\/\.well-known\/oauth-protected-resource\/mcp"/);
+      expect(challenge).toContain('error="invalid_token"');
+      expect(res.body).toMatchObject({ jsonrpc: "2.0", error: { message: expect.stringMatching(/expired/) } });
+    }
   });
 });
 

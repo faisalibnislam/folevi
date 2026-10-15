@@ -22,6 +22,7 @@ import { CLAIM_EMAIL_VERIFIED, CLAIM_MFA } from "./lib/claims";
 import { CLIENT_IP_HEADER } from "./lib/clientIp";
 import { nativeAuth } from "./lib/nativeAuth";
 import { breachedPasswords } from "./lib/breachedPasswords";
+import { guardRefreshTokenRevoke } from "./lib/authAdapter";
 import { ACCESS_TOKEN_PREFIX, mcpResourceUrl, OAUTH_SCOPES, REFRESH_TOKEN_PREFIX } from "./lib/mcp/config";
 
 export const authComponent = createClient<DataModel, typeof authSchema>(components.betterAuth, {
@@ -125,7 +126,8 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
     baseURL: siteUrl(),
     secret: process.env.BETTER_AUTH_SECRET,
     trustedOrigins: [siteUrl()],
-    database: authComponent.adapter(ctx),
+    // Refresh token rotation needs one fix on Convex (lib/authAdapter.ts).
+    database: guardRefreshTokenRevoke(ctx, authComponent.adapter(ctx)),
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,

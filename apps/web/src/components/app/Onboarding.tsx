@@ -479,9 +479,10 @@ function Appearances({ headingId, value, styleId, onPick }: { headingId: string;
                 <MiniWindow mode={o.value} styleId={styleId} />
               )}
             </span>
-            <span className="flex items-center gap-2 px-1 pb-0.5 text-[13.5px] font-semibold text-heading">
-              <o.icon size={15} aria-hidden className="flex-none text-muted" />
-              <span className="truncate">{o.label}</span>
+            {/* Phones: three cards are too narrow for the icon and "Match system" on one line; the label wraps instead. */}
+            <span className="flex items-center gap-2 px-1 pb-0.5 text-[13.5px] font-semibold text-heading max-sm:leading-tight">
+              <o.icon size={15} aria-hidden className="hidden flex-none text-muted sm:block" />
+              <span className="min-w-0 sm:truncate">{o.label}</span>
             </span>
           </label>
         ))}

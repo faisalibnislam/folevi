@@ -7,6 +7,7 @@ import { errorMessage, useToast } from "@/components/ui/Toast";
 import { requestMeta } from "./request";
 import { inputCls, selectCls } from "./ui";
 import { Select } from "@/components/ui/Select";
+import { Checkbox } from "@/components/ui/Checkbox";
 
 export const REASON_MIN = 8;
 export const REASON_MAX = 500;
@@ -251,18 +252,9 @@ export function ActionDialog({
         ) : null}
         {acknowledge ? (
           <div className="text-sm">
-            <label className="flex items-start gap-2.5">
-              <input
-                id={`${uid}-ack`}
-                type="checkbox"
-                checked={ack}
-                onChange={(e) => setAck(e.target.checked)}
-                aria-invalid={errors.ack ? true : undefined}
-                aria-describedby={describedBy("ack", false)}
-                className="mt-0.5 h-4 w-4 flex-none accent-[var(--color-heading)]"
-              />
-              <span>{acknowledge}</span>
-            </label>
+            <Checkbox id={`${uid}-ack`} checked={ack} onChange={setAck} describedBy={describedBy("ack", false)} className="gap-2.5">
+              {acknowledge}
+            </Checkbox>
             {errors.ack ? (
               <p id={`${uid}-ack-error`} className="mt-1 text-xs font-medium text-danger">
                 {errors.ack}

@@ -23,6 +23,7 @@ import { formatCalendarDate, t } from "@/i18n";
 import { NO_VALUE_OPS, OPS, TITLE_ID, applyView, filterTargets, isEmptyValue, opLabel, resolveOption, rowsByDate, type FilterTarget } from "@/components/views/collectionView";
 import { monthGrid, shiftMonth } from "@/components/views/calendarLayout";
 import { Select } from "@/components/ui/Select";
+import { Checkbox } from "@/components/ui/Checkbox";
 
 type CollectionData = NonNullable<ReturnType<typeof useCollection>>;
 type Property = CollectionData["properties"][number];
@@ -353,7 +354,11 @@ function PropertyEditor({
   if (!canEdit) return <CellDisplay prop={prop} value={value} people={collection.people} />;
   switch (prop.type) {
     case "checkbox":
-      return <input type="checkbox" aria-label={label} checked={value === true} onChange={(e) => void save(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />;
+      return (
+        <Checkbox checked={value === true} onChange={(next) => void save(next)}>
+          <span className="sr-only">{label}</span>
+        </Checkbox>
+      );
     case "number":
       return (
         <input
@@ -1158,15 +1163,15 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
           <ul className="space-y-1.5">
             {data.properties.map((p) => (
               <li key={p.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  aria-label={`Show ${p.name}`}
+                <Checkbox
                   checked={config.visibleProperties.includes(p.id)}
-                  onChange={(e) => {
+                  onChange={(next) => {
                     const vis = current().visibleProperties;
-                    void save({ visibleProperties: e.target.checked ? [...vis.filter((x) => x !== p.id), p.id] : vis.filter((x) => x !== p.id) });
+                    void save({ visibleProperties: next ? [...vis.filter((x) => x !== p.id), p.id] : vis.filter((x) => x !== p.id) });
                   }}
-                />
+                >
+                  <span className="sr-only">{`Show ${p.name}`}</span>
+                </Checkbox>
                 <InlineText
                   value={p.name}
                   label={`Name of property ${p.name}`}

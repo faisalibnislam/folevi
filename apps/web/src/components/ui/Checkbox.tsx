@@ -7,9 +7,10 @@ import type { ReactNode } from "react";
  * A checkbox in the app's neutral chrome (dark when checked), never the system's. A button with the
  * checkbox role: Space and Enter toggle it, and its label is part of the control (clicking the text works).
  */
-export function Checkbox({ checked, onChange, children, disabled, describedBy, className }: { checked: boolean; onChange: (next: boolean) => void; children: ReactNode; disabled?: boolean; describedBy?: string; className?: string }) {
+export function Checkbox({ id, checked, onChange, children, disabled, describedBy, className }: { id?: string; checked: boolean; onChange: (next: boolean) => void; children: ReactNode; disabled?: boolean; describedBy?: string; className?: string }) {
   return (
     <button
+      id={id}
       type="button"
       role="checkbox"
       aria-checked={checked}

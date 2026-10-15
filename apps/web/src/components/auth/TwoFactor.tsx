@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, Download, KeyRound, ShieldCheck } from "lucide-react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { Alert, AuthHeading, Field, PasswordField, SubmitButton, TextLink, safeReturnTo } from "./fields";
+import { Checkbox } from "@/components/ui/Checkbox";
 
 /** Six-digit code input tuned for authenticator apps and password managers. */
 function CodeField({ value, onChange, label = "6-digit code", autoFocus = true }: { value: string; onChange: (v: string) => void; label?: string; autoFocus?: boolean }) {
@@ -26,13 +27,10 @@ function CodeField({ value, onChange, label = "6-digit code", autoFocus = true }
 
 function TrustDevice({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex items-start gap-3 rounded-chip bg-sunken px-4 py-3 text-sm">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-accent)]" />
-      <span>
-        <span className="font-medium text-ink">Trust this device for 30 days</span>
-        <span className="block text-xs text-muted">You won&apos;t be asked for a code here again until then. Don&apos;t use this on shared computers.</span>
-      </span>
-    </label>
+    <Checkbox checked={checked} onChange={onChange} className="w-full gap-3 bg-sunken px-4 py-3 text-sm">
+      <span className="font-medium text-ink">Trust this device for 30 days</span>
+      <span className="block text-xs text-muted">You won&apos;t be asked for a code here again until then. Don&apos;t use this on shared computers.</span>
+    </Checkbox>
   );
 }
 
@@ -156,10 +154,9 @@ export function BackupCodes({ codes, onDone, doneLabel = "Continue" }: { codes: 
           <Download size={15} aria-hidden /> Download
         </button>
       </div>
-      <label className="flex items-start gap-3 text-sm">
-        <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-accent)]" />
-        <span>I saved these codes somewhere safe. Each one works once, and they&apos;re the only way in if I lose my authenticator app.</span>
-      </label>
+      <Checkbox checked={saved} onChange={setSaved} className="gap-3 text-sm">
+        I saved these codes somewhere safe. Each one works once, and they&apos;re the only way in if I lose my authenticator app.
+      </Checkbox>
       <button type="button" disabled={!saved} onClick={onDone} className="ui-btn ui-btn-primary h-11 w-full text-[15px]">
         {doneLabel}
       </button>

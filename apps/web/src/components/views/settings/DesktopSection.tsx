@@ -27,7 +27,7 @@ export function DesktopSection() {
   const { settings } = state;
   const copy = COPY[bridge.platform] ?? COPY.mac;
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <Card title="Quick Add" description="Add a task from any app without switching to Folevi. Tasks without a page go to your Inbox.">
         <ShortcutField platform={bridge.platform} value={settings.quickAddShortcut} error={state.error} onChange={(quickAddShortcut) => save({ quickAddShortcut })} />
       </Card>

@@ -12,15 +12,16 @@ export function AuthHeading({ title, lede }: { title: string; lede?: ReactNode }
   );
 }
 
-type FieldProps = InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: ReactNode; error?: string | null };
+/** `compact`: the app's own form size (Settings: 36px inputs, 14px text), not the sign-in pages' larger one. */
+type FieldProps = InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: ReactNode; error?: string | null; compact?: boolean };
 
-export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ label, hint, error, id, className, ...rest }, ref) {
+export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ label, hint, error, id, className, compact, ...rest }, ref) {
   const autoId = useId();
   const inputId = id ?? autoId;
   const hintId = `${inputId}-hint`;
   const errorId = `${inputId}-error`;
   return (
-    <div className="space-y-1.5">
+    <div className={compact ? "space-y-1" : "space-y-1.5"}>
       <label htmlFor={inputId} className="block text-sm font-medium text-ink">
         {label}
       </label>
@@ -29,16 +30,16 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ l
         id={inputId}
         aria-invalid={error ? true : undefined}
         aria-describedby={[hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined}
-        className={`ui-input h-11 w-full rounded-chip px-4 text-[15px] text-ink placeholder:text-[var(--color-ink-faint)] ${error ? "shadow-[0_0_0_1.5px_var(--color-destructive)]" : ""} ${className ?? ""}`}
+        className={`ui-input w-full rounded-chip text-ink ${compact ? "h-9 px-3 text-sm" : "h-11 px-4 text-[15px]"} placeholder:text-[var(--color-ink-faint)] ${error ? "shadow-[0_0_0_1.5px_var(--color-destructive)]" : ""} ${className ?? ""}`}
         {...rest}
       />
       {hint ? (
-        <p id={hintId} className="px-1 text-xs text-muted">
+        <p id={hintId} className={`text-xs text-muted ${compact ? "" : "px-1"}`}>
           {hint}
         </p>
       ) : null}
       {error ? (
-        <p id={errorId} className="px-1 text-xs font-medium text-danger">
+        <p id={errorId} className={`text-xs font-medium text-danger ${compact ? "" : "px-1"}`}>
           {error}
         </p>
       ) : null}
@@ -50,13 +51,13 @@ export function PasswordField(props: Omit<FieldProps, "type">) {
   const [shown, setShown] = useState(false);
   return (
     <div className="relative">
-      <Field {...props} type={shown ? "text" : "password"} className="pr-12" />
+      <Field {...props} type={shown ? "text" : "password"} className={props.compact ? "pr-10" : "pr-12"} />
       <button
         type="button"
         onClick={() => setShown((s) => !s)}
         aria-label={shown ? "Hide password" : "Show password"}
         aria-pressed={shown}
-        className="absolute right-1.5 top-[calc(1.5rem+6px)] grid h-8 w-8 place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading"
+        className={`absolute grid place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading ${props.compact ? "right-1 top-[calc(1.25rem+8px)] h-7 w-7" : "right-1.5 top-[calc(1.5rem+6px)] h-8 w-8"}`}
       >
         {shown ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
       </button>

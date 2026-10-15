@@ -166,7 +166,7 @@ function NewTokenDialog({ onClose }: { onClose: () => void }) {
       >
         <div className="flex gap-2">
           <input readOnly value={token} aria-label="Your new token" onFocus={(e) => e.target.select()} className="h-9 min-w-0 flex-1 ui-well rounded-chip px-3 font-mono text-[13px]" />
-          <Button size="sm" onClick={() => void navigator.clipboard.writeText(token).then(() => toast.show("Token copied"))}>
+          <Button onClick={() => void navigator.clipboard.writeText(token).then(() => toast.show("Token copied"))}>
             <Copy size={13} aria-hidden /> Copy
           </Button>
         </div>

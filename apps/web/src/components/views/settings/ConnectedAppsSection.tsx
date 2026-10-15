@@ -51,14 +51,14 @@ export function ConnectedAppsSection() {
   useEffect(() => setAddress(`${window.location.origin}/mcp`), []);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <Card
         title="Use Folevi from other apps"
         description="AI apps like Claude, ChatGPT and Cursor can search and read your notes, add new ones and manage tasks through Folevi’s MCP server. You choose what each one may do and where when you connect it. It uses the app’s own AI, so no Folevi AI credits are spent."
       >
         <div className="flex max-w-xl items-center gap-2">
           <input readOnly value={address} aria-label="MCP server address" onFocus={(e) => e.target.select()} className="h-9 min-w-0 flex-1 ui-well rounded-chip px-3 font-mono text-[13px]" />
-          <Button size="sm" onClick={() => void navigator.clipboard.writeText(address).then(() => toast.show("Address copied"))}>
+          <Button onClick={() => void navigator.clipboard.writeText(address).then(() => toast.show("Address copied"))}>
             <Copy size={13} aria-hidden /> Copy
           </Button>
         </div>

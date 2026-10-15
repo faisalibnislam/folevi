@@ -57,7 +57,7 @@ export function NotificationsSection() {
       (e) => toast.show(errorMessage(e), { tone: "error" }),
     );
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <Card
         title="Notifications"
         description="Choose what reaches you in the app (the bell) and by email. Emails say who did what and where, with a link. They never include your notes or comment text; a reminder shows only its own to-do line. Security emails (new sign-ins, account deletion) can't be turned off."

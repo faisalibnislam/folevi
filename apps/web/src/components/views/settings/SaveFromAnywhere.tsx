@@ -40,7 +40,7 @@ export function SaveFromAnywhereCard() {
         >
           <BookmarkPlus size={14} aria-hidden /> Save to Folevi
         </a>
-        <Button size="sm" disabled={!code} onClick={() => void navigator.clipboard.writeText(code).then(() => toast.show("Bookmarklet copied. Paste it as the address of a new bookmark."))}>
+        <Button disabled={!code} onClick={() => void navigator.clipboard.writeText(code).then(() => toast.show("Bookmarklet copied. Paste it as the address of a new bookmark."))}>
           <Copy size={13} aria-hidden /> Copy as text
         </Button>
       </div>

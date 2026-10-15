@@ -62,7 +62,7 @@ function PasswordGate({
         }}
       >
         {error ? <Alert>{error}</Alert> : null}
-        <PasswordField label="Current password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
+        <PasswordField compact label="Current password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
         <div className="flex justify-end">
           <Button type="submit" variant="primary" disabled={busy || !password}>
             {action}
@@ -342,9 +342,9 @@ function PasswordCard() {
         }}
       >
         {error ? <Alert>{error}</Alert> : null}
-        <PasswordField label="Current password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
-        <PasswordField label="New password" autoComplete="new-password" required value={next} onChange={(e) => setNext(e.target.value)} hint="At least 10 characters." />
-        <PasswordField label="Repeat new password" autoComplete="new-password" required value={repeat} onChange={(e) => setRepeat(e.target.value)} />
+        <PasswordField compact label="Current password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
+        <PasswordField compact label="New password" autoComplete="new-password" required value={next} onChange={(e) => setNext(e.target.value)} hint="At least 10 characters." />
+        <PasswordField compact label="Repeat new password" autoComplete="new-password" required value={repeat} onChange={(e) => setRepeat(e.target.value)} />
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" variant="primary" disabled={busy}>
             Change password

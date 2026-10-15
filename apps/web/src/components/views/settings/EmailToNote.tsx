@@ -74,8 +74,8 @@ export function EmailToNoteView({ status, places, ...on }: { status: EmailNoteSt
               Your address
             </span>
             <div className="mt-1 flex max-w-xl gap-2">
-              <input readOnly value={status.address} aria-labelledby="email-note-address" className="h-9 min-w-0 flex-1 ui-well rounded-chip px-2 font-mono text-xs" onFocus={(e) => e.target.select()} />
-              <Button size="sm" onClick={() => on.onCopy(status.address)}>
+              <input readOnly value={status.address} aria-labelledby="email-note-address" className="h-9 min-w-0 flex-1 ui-well rounded-chip px-3 font-mono text-[13px]" onFocus={(e) => e.target.select()} />
+              <Button onClick={() => on.onCopy(status.address)}>
                 <Copy size={13} aria-hidden /> Copy
               </Button>
             </div>

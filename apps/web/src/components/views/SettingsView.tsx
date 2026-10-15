@@ -75,7 +75,7 @@ export function SettingsView({ section }: { section: Section }) {
   return (
     <ViewChrome title={<h1 className="text-sm font-semibold">Settings</h1>} tabTitle="Settings">
       <div className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pb-24 pt-6 sm:px-8 md:grid-cols-[216px_minmax(0,1fr)] md:gap-10">
-        <nav aria-label="Settings sections" className="md:sticky md:top-[76px] md:self-start">
+        <nav aria-label="Settings sections" className="md:sticky md:top-6 md:self-start">
           <div className="flex gap-6 overflow-x-auto pb-1 md:flex-col md:gap-5 md:overflow-visible md:pb-0">
             {groups.map((g) => (
               <div key={g.label} className="flex-none">
@@ -140,7 +140,7 @@ function CreateWorkspaceNudge() {
   const [open, setOpen] = useState(false);
   const { navigate } = useAppRouter();
   return (
-    <div className="flex-none rounded-control border border-line p-3 md:mt-1">
+    <div className="hidden flex-none rounded-control border border-line p-3 md:mt-1 md:block">
       <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-faint">Workspace</p>
       <p className="mt-1 max-w-52 text-[12.5px] text-muted">Work with a team: shared notes, folders and tasks, with its own plan and members.</p>
       <Button size="sm" className="mt-2" onClick={() => setOpen(true)}>

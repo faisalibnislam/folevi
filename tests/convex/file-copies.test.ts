@@ -11,7 +11,24 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const drain = async (t: T) => await t.finishAllScheduledFunctions(vi.runAllTimers);
+/**
+ * Runs what's scheduled, one function at a time. finishAllScheduledFunctions (and even
+ * vi.advanceTimersToNextTimer) starts every function due at that moment together, and convex-test's fake
+ * storage can't take two actions storing blobs at once (Duplicate's copyBlob for an image and for a
+ * cover). A blob write opens its own transaction only when no other is open (one global flag), so when it
+ * starts while the other action's transaction is open, it hashes the blob first and lands after that
+ * transaction has committed: "Write outside of transaction", and that copy keeps the original's bytes.
+ * The real backend runs them side by side without trouble. The fake clock's next() fires a single timer.
+ */
+async function drain(t: T) {
+  const clock = (globalThis.setTimeout as unknown as { clock?: { next(): number; countTimers(): number } }).clock;
+  if (!clock) throw new Error("drain needs vi.useFakeTimers()");
+  for (let i = 0; i < 100 && clock.countTimers() > 0; i++) {
+    clock.next();
+    await t.finishInProgressScheduledFunctions();
+  }
+  expect(clock.countTimers()).toBe(0);
+}
 
 async function push(p: Person, ops: unknown[]) {
   const results = await p.as.mutation(api.sync.push, { scope: p.scope, deviceId: "device-file-copies", ops: ops as never });

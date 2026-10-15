@@ -16,7 +16,9 @@ import { t } from "@/i18n";
 type Item = FunctionReturnType<typeof api.notifications.list>[number];
 
 /** Where a notification leads: the note, scrolled to the comment thread or block when there is one. */
-export function notificationHref(n: Pick<Item, "documentId" | "threadId" | "blockId">): string | null {
+export function notificationHref(n: Pick<Item, "documentId" | "threadId" | "blockId"> & { toChanges?: boolean }): string | null {
+  // A change proposed for review waits in Changes, not in the note.
+  if (n.toChanges) return "/changes";
   if (!n.documentId) return null;
   const hash = n.threadId ? `#comment-${n.threadId}` : n.blockId ? `#block-${n.blockId}` : "";
   return `/d/${n.documentId}${hash}`;
@@ -267,7 +269,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
   const { navigate } = useAppRouter();
   const toast = useToast();
   const fail = (e: unknown) => toast.show(errorMessage(e), { tone: "error" });
-  const actionable = Boolean(n.documentId);
+  const actionable = Boolean(n.documentId) || n.toChanges;
   return (
     <li className="group relative">
       <button

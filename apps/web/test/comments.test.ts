@@ -47,5 +47,7 @@ describe("notification links", () => {
     expect(notificationHref({ documentId: "D1", threadId: null, blockId: null })).toBe("/d/D1");
     // Nothing to open when the note isn't readable any more.
     expect(notificationHref({ documentId: null, threadId: null, blockId: null })).toBeNull();
+    // A change an app proposed waits in Changes.
+    expect(notificationHref({ documentId: "D1", threadId: null, blockId: null, toChanges: true })).toBe("/changes");
   });
 });

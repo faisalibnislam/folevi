@@ -74,6 +74,11 @@ export default defineSchema({
     aiAttachments: v.optional(v.boolean()),
     aiWebResearch: v.optional(v.boolean()),
     aiDigests: v.optional(v.boolean()),
+    /**
+     * Settings > Connected apps, "Ask me before changes are made to existing notes" (unset = off: apps write
+     * as they always have). On, an app's change to an existing note waits in Changes as a proposal (`proposals`).
+     */
+    reviewAppEdits: v.optional(v.boolean()),
     /** When the person dismissed the AI's first-time introduction (unset = not yet; components/ai/AiIntro.tsx). */
     /** No longer written (the Meet Foli AI card was dismissable once); kept for rows that have it. */
     aiIntroDismissedAt: v.optional(v.number()),
@@ -1727,6 +1732,43 @@ export default defineSchema({
     .index("by_profile", ["profileId", "at"])
     .index("by_request", ["requestKey"]),
 
+  /**
+   * A change to an existing note that a connected app (or, one day, Foli AI acting on its own) proposed instead of
+   * making, because its person asked to review such changes first (profiles.reviewAppEdits; convex/proposals.ts).
+   * It waits in Changes until the person accepts it (it's made then, as the app, with a version saved first),
+   * rejects it, or it expires.
+   */
+  proposals: defineTable({
+    publicId: v.string(),
+    /** Whose app proposed it: the only person who may accept or reject it. */
+    profileId: v.id("profiles"),
+    documentId: v.id("documents"),
+    source: v.union(v.literal("app"), v.literal("ai")),
+    /** The app's name as it was then (the client's or the token's), or "Foli AI". */
+    sourceName: v.string(),
+    grantId: v.optional(v.id("mcpGrants")),
+    tokenId: v.optional(v.id("apiTokens")),
+    /** The sync device its change is made as, and the version reason, on accept (mcp:<client>, api:<token>). */
+    device: v.string(),
+    reason: v.union(v.literal("mcp"), v.literal("api"), v.literal("ai_run")),
+    /** What it does: append (blocks added at the end of the note). */
+    kind: v.literal("append"),
+    /** The blocks it adds (WireBlock[]), ids chosen when proposed; placed at the note's end when accepted. */
+    blocks: v.any(),
+    summary: v.string(),
+    /** The request that made it, so a retried request finds it instead of proposing twice. */
+    requestKey: v.string(),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("rejected"), v.literal("expired")),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    decidedAt: v.optional(v.number()),
+  })
+    .index("by_public_id", ["publicId"])
+    .index("by_profile_status", ["profileId", "status", "createdAt"])
+    .index("by_status_expires", ["status", "expiresAt"])
+    .index("by_request", ["requestKey"])
+    .index("by_document", ["documentId"]),
+
   notifications: defineTable({
     profileId: v.id("profiles"),
     /** The team workspace it happened in (unset for Personal and account notices). */
@@ -1758,6 +1800,8 @@ export default defineSchema({
     count: v.optional(v.number()),
     /** Kept only for email (the digest); the person turned this kind off in the bell. Never listed. */
     silent: v.optional(v.boolean()),
+    /** A change proposed for review (opens Changes, where it waits). */
+    proposalId: v.optional(v.id("proposals")),
     createdAt: v.number(),
     readAt: v.optional(v.number()),
     emailedAt: v.optional(v.number()),

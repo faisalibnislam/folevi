@@ -1,10 +1,12 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Copy, Plug } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
+import { Switch } from "@/components/ui/Switch";
+import { useAppState } from "@/lib/app/state";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
@@ -137,8 +139,47 @@ export function ConnectedAppsSection() {
         )}
       </Card>
 
+      <ReviewChangesCard />
       <ApiTokensCard />
       <WebhooksCard />
     </div>
+  );
+}
+
+/**
+ * "Ask me before changes are made to existing notes": an app's addition to a note you already have waits in
+ * Changes until you accept or reject it (convex/proposals.ts). New notes and tasks, and a task's own changes,
+ * are still made at once.
+ */
+function ReviewChangesCard() {
+  const { profile } = useAppState();
+  const update = useMutation(api.users.updateProfile);
+  const toast = useToast();
+  const descId = useId();
+  const on = profile.reviewAppEdits === true;
+  return (
+    <Card title="Review changes">
+      <div className="flex items-start justify-between gap-6">
+        <div className="min-w-0 max-w-prose">
+          <p className="text-sm font-medium text-heading">Ask me before changes are made to existing notes</p>
+          <p id={descId} className="mt-0.5 text-sm text-muted">
+            When an app or a token adds to a note you already have, it waits in Changes for you to accept or reject, and the app is told so. New notes and tasks, and checking off or rescheduling a task, still happen at once. A change you don’t answer expires after 14 days.
+          </p>
+        </div>
+        <span className="mt-0.5 flex-none">
+          <Switch
+            checked={on}
+            label="Ask me before changes are made to existing notes"
+            describedBy={descId}
+            onChange={(next) =>
+              void update({ reviewAppEdits: next }).then(
+                () => toast.show(next ? "Apps will ask before changing your notes" : "Apps will change your notes directly"),
+                (e) => toast.show(errorMessage(e), { tone: "error" }),
+              )
+            }
+          />
+        </span>
+      </div>
+    </Card>
   );
 }

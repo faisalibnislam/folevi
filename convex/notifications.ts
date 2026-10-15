@@ -64,6 +64,8 @@ export const list = query({
         actorName: actor?.name ?? null,
         actorAvatarUrl: actor?.avatarUrl ?? null,
         documentId: doc ? doc.publicId : null,
+        /** A change proposed for review: it opens Changes, where it waits. */
+        toChanges: n.proposalId !== undefined,
         /** The note's current title (the stored `title` sentence keeps the one it had then). */
         documentTitle: doc ? doc.title || "Untitled" : null,
         threadId: thread ? thread.publicId : null,

@@ -122,7 +122,8 @@ export const TOOLS: ToolDef[] = [
   {
     name: "append_to_note",
     title: "Add to a note",
-    description: "Adds Markdown to the end of an existing note. What's already in the note stays as it is; a version is saved first.",
+    description:
+      "Adds Markdown to the end of an existing note. What's already in the note stays as it is; a version is saved first. If the person asked to review changes to existing notes, nothing changes yet: the answer has proposed: true, and the addition waits in Folevi's Changes page for them to accept or reject. Tell them so.",
     scope: "notes:write",
     kind: "write",
     inputSchema: object({ noteId: NOTE_ID, markdown: { type: "string", description: "What to add, in Markdown.", minLength: 1, maxLength: MAX_MARKDOWN } }, ["noteId", "markdown"]),

@@ -1,5 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-import { newPerson, openShare, pick, showFolders, waitForSaved } from "./helpers";
+import { expect, request, test, type Page } from "@playwright/test";
+import { APP, newPerson, openShare, pick, showFolders, waitForSaved } from "./helpers";
 
 // Changes: what someone else changed in a note you've opened shows up in one place until you've seen it.
 
@@ -103,4 +103,59 @@ test("undo a change from Changes, then put it back", async ({ browser }) => {
   const ownerBody = owner.page.getByRole("textbox", { name: "Document body" });
   await expect(ownerBody).toContainText("Keep this line");
   await expect(ownerBody).not.toContainText("An unwanted line");
+});
+
+test("with review turned on, a token's addition to a note waits in Changes until it's accepted", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const { page, context } = await newPerson(browser, "Careful Person");
+  await page.goto(`${APP}/settings/connected-apps`);
+  const review = page.getByRole("switch", { name: "Ask me before changes are made to existing notes" });
+  await expect(review).toHaveAttribute("aria-checked", "false");
+  await review.click();
+  await expect(review).toHaveAttribute("aria-checked", "true");
+
+  const card = page.getByRole("region", { name: "Personal access tokens" });
+  await card.getByRole("button", { name: "New token" }).click();
+  const dialog = page.getByRole("dialog", { name: "New personal access token" });
+  await dialog.getByLabel("Name").fill("Journal script");
+  await dialog.getByRole("checkbox", { name: "Create notes and add to them" }).click();
+  await dialog.getByRole("button", { name: "Create token" }).click();
+  const shown = page.getByRole("dialog", { name: "Copy your new token" });
+  const token = await shown.getByLabel("Your new token").inputValue();
+  await shown.getByRole("button", { name: "Done" }).click();
+
+  const api = await request.newContext();
+  const auth = { authorization: `Bearer ${token}` };
+  // A new note is made at once; adding to it is proposed.
+  const made = await api.post(`${APP}/api/v1/notes`, { headers: auth, data: { title: "Field journal", markdown: "Day one." } });
+  expect(made.status(), await made.text()).toBe(201);
+  const note = await made.json();
+  const appended = await api.post(`${APP}/api/v1/notes/${note.id}/append`, { headers: auth, data: { markdown: "Day two: saw the heron." } });
+  expect(appended.status(), await appended.text()).toBe(202);
+  const answer = await appended.json();
+  expect(answer).toMatchObject({ id: note.id, proposed: true, status: "pending" });
+  expect(answer.message).toContain("Changes page");
+  await api.dispose();
+
+  // Not in the note yet.
+  await page.goto(`${APP}/d/${note.id}`);
+  const body = page.getByRole("textbox", { name: "Document body" });
+  await expect(body).toContainText("Day one.");
+  await expect(body).not.toContainText("Day two");
+
+  await page.goto(`${APP}/changes`);
+  // Counted in the sidebar until it's answered.
+  await expect(page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: /Changes/ })).toContainText("1");
+  const proposed = page.getByRole("list", { name: "Proposed changes" });
+  const item = proposed.getByRole("article", { name: "Field journal" });
+  await expect(item).toContainText("Journal script");
+  await expect(item.getByRole("group", { name: "What Journal script would add to Field journal" })).toContainText("Day two: saw the heron.");
+  await item.getByRole("button", { name: "Accept" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Added to “Field journal”" })).toBeVisible();
+  await expect(proposed).toHaveCount(0);
+
+  await page.goto(`${APP}/d/${note.id}`);
+  await expect(body).toContainText("Day two: saw the heron.");
+  await waitForSaved(page);
+  await context.close();
 });

@@ -3,11 +3,12 @@
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useMemo, useState } from "react";
-import { Check, ExternalLink, RotateCcw } from "lucide-react";
+import { Check, ExternalLink, RotateCcw, X } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { ViewChrome } from "@/components/app/Shell";
 import { formatRelative } from "@/lib/format";
+import { useMinute } from "@/lib/hooks/useMinute";
 import { diffVersions, type BlockChange } from "@/lib/history/diff";
 import { changeCounts, whoChanged } from "@/lib/history/changeWords";
 import { Avatar } from "@/components/ui/Avatar";
@@ -18,24 +19,51 @@ import "@/components/editor/editor.css";
 
 type ChangeList = FunctionReturnType<typeof api.changes.list>;
 type NoteChanges = ChangeList["notes"][number];
+type Proposal = FunctionReturnType<typeof api.proposals.list>[number];
 type People = Record<string, ChangePerson & { key?: string }>;
+const NO_FILES: Record<string, string> = {};
 
 /**
- * Changes: what other people, connected apps and Foli AI changed in notes you've opened since you last looked,
- * one card per note with what changed in it (from version history's diff). Open it, mark it seen, or undo it.
+ * Changes: changes connected apps proposed to your notes, waiting for you to accept or reject them (Proposed),
+ * and what other people, connected apps and Foli AI changed in notes you've opened since you last looked
+ * (Changed), one card per note with what changed in it (from version history's diff). Open it, mark it seen,
+ * or undo it.
  */
 export function ChangesView() {
   const data = useQuery(api.changes.list, {});
+  const now = useMinute();
+  const proposals = useQuery(api.proposals.list, { now });
   const markSeen = useMutation(api.changes.markSeen);
   const toast = useToast();
   const notes = data?.notes ?? [];
+  const waiting = proposals ?? [];
+  const subtitle =
+    data === undefined
+      ? undefined
+      : [waiting.length ? `${waiting.length} proposed` : null, notes.length ? `${notes.length} ${notes.length === 1 ? "note" : "notes"} changed since you last looked` : null].filter(Boolean).join(" · ") || "Nothing new";
   return (
-    <ViewChrome
-      title={<h1 className="text-sm font-semibold">Changes</h1>}
-      subtitle={data === undefined ? undefined : notes.length ? `${notes.length} ${notes.length === 1 ? "note" : "notes"} changed since you last looked` : "Nothing new"}
-      tabTitle="Changes"
-    >
+    <ViewChrome title={<h1 className="text-sm font-semibold">Changes</h1>} subtitle={subtitle} tabTitle="Changes">
       <div className="mx-auto max-w-3xl px-4 pb-24 pt-6 sm:px-8">
+        {waiting.length ? (
+          <section aria-labelledby="changes-proposed" className="mb-10">
+            <h2 id="changes-proposed" className="text-[15px] font-semibold text-heading">
+              Proposed
+            </h2>
+            <p className="mt-1 max-w-xl text-sm text-muted">Changes connected apps want to make to your notes. Nothing changes until you accept.</p>
+            <ul className="mt-4 space-y-4" aria-label="Proposed changes">
+              {waiting.map((p) => (
+                <li key={p.id}>
+                  <ProposalCard proposal={p} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {waiting.length ? (
+          <h2 className="mb-1 text-[15px] font-semibold text-heading" id="changes-changed">
+            Changed
+          </h2>
+        ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="max-w-xl text-sm text-muted">Edits other people, connected apps and Foli AI made to notes you’ve opened, since you last looked at each one.</p>
           {notes.length > 1 ? (
@@ -46,6 +74,8 @@ export function ChangesView() {
         </div>
         {data === undefined ? (
           <div className="mt-6 h-32 animate-pulse rounded-control bg-surface motion-reduce:animate-none" aria-busy aria-label="Loading changes" />
+        ) : notes.length === 0 && waiting.length ? (
+          <p className="mt-4 text-sm text-muted">Nothing else changed since you last looked.</p>
         ) : notes.length === 0 ? (
           <div className="mt-16 text-center">
             <p className="ui-display text-2xl text-muted">You’re all caught up.</p>
@@ -62,6 +92,88 @@ export function ChangesView() {
         )}
       </div>
     </ViewChrome>
+  );
+}
+
+/**
+ * A change an app proposed: the note, who proposed what and when, and the lines it would add, marked as added
+ * (like version history). Accept makes it (as the app, with a version saved first); Reject leaves the note
+ * alone. When the note can't take it any more, it says why and only Reject is offered.
+ */
+function ProposalCard({ proposal }: { proposal: Proposal }) {
+  const accept = useMutation(api.proposals.accept);
+  const reject = useMutation(api.proposals.reject);
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const shown = problem ?? proposal.problem;
+  const title = proposal.title;
+  const headingId = `proposal-${proposal.id}`;
+  const people: People = useMemo(() => ({ app: { name: proposal.sourceName, color: "accent", avatarUrl: null } }), [proposal.sourceName]);
+  const changes = useMemo(() => new Map<string, BlockChange>(proposal.blocks.map((b) => [b.id, { kind: "added", author: "app", at: proposal.createdAt }])), [proposal]);
+
+  const run = async (action: "accept" | "reject") => {
+    setBusy(true);
+    try {
+      if (action === "accept") {
+        await accept({ proposalId: proposal.id });
+        toast.show(`Added to “${title}”`, { tone: "success" });
+      } else {
+        await reject({ proposalId: proposal.id });
+        toast.show("Proposal rejected");
+      }
+    } catch (e) {
+      if (action === "accept") setProblem(errorMessage(e));
+      else toast.show(errorMessage(e), { tone: "error" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <article aria-labelledby={headingId} className="ui-card overflow-hidden rounded-control">
+      <header className="flex flex-wrap items-start gap-x-4 gap-y-2 px-4 pb-2 pt-3">
+        <div className="min-w-0 flex-1">
+          <h3 id={headingId} className="truncate text-[15px] font-semibold text-heading">
+            {proposal.documentId ? (
+              <AppLink href={`/d/${proposal.documentId}`} className="rounded-tiny outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus">
+                {title}
+              </AppLink>
+            ) : (
+              title
+            )}
+          </h3>
+          <p className="mt-1 text-xs text-muted">
+            <span className="text-ink">{proposal.sourceName}</span> proposed this {formatRelative(proposal.createdAt)}
+          </p>
+          <p className="mt-0.5 text-xs text-muted">{proposal.summary}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {!shown ? (
+            <Button size="sm" variant="primary" disabled={busy} onClick={() => void run("accept")}>
+              <Check size={14} aria-hidden /> Accept
+            </Button>
+          ) : null}
+          <Button size="sm" variant="ghost" disabled={busy} onClick={() => void run("reject")}>
+            <X size={14} aria-hidden /> Reject
+          </Button>
+        </div>
+      </header>
+      {shown ? (
+        <p role="alert" className="border-t border-line px-4 py-2 text-sm text-danger">
+          {shown}
+        </p>
+      ) : null}
+      <div className="border-t border-line bg-[var(--color-surface-sunken)] px-4 py-3">
+        {proposal.blocks.length ? (
+          <div className="fb-page max-h-80 overflow-y-auto text-[14px] [&>.fb-editor]:!pb-0" aria-label={`What ${proposal.sourceName} would add to ${title}`} role="group">
+            <ReadOnlyBlocks blocks={proposal.blocks} fileUrls={NO_FILES} changes={changes} people={people} />
+          </div>
+        ) : (
+          <p className="text-sm text-muted">You can’t open this note, so its proposal isn’t shown.</p>
+        )}
+      </div>
+    </article>
   );
 }
 

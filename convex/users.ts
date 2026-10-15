@@ -60,6 +60,8 @@ export function publicProfile(p: Doc<"profiles">) {
     appearance: p.appearance,
     aiEnabled: p.aiEnabled !== false,
     aiPrefs: aiPrefsOf(p),
+    /** Settings > Connected apps: changes apps make to existing notes wait in Changes for review. */
+    reviewAppEdits: p.reviewAppEdits === true,
     /** The AI's first-time introduction was dismissed (it isn't shown again anywhere). */
     locale: p.locale,
     timeZone: p.timeZone,
@@ -313,11 +315,13 @@ export const updateProfile = mutation({
     aiPrefs: v.optional(vAiPrefsPatch),
     timeZone: v.optional(v.string()),
     notificationPrefs: v.optional(vNotificationPrefs),
+    reviewAppEdits: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const patch: Partial<Doc<"profiles">> = {};
+    if (args.reviewAppEdits !== undefined) patch.reviewAppEdits = args.reviewAppEdits;
     if (args.displayName !== undefined) {
       const name = sanitizeName(args.displayName);
       if (!name) fail("invalid_argument", "Name can't be empty.");

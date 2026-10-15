@@ -315,6 +315,9 @@ export const DOC_ARTICLES: DocArticle[] = [
           <strong>Changes</strong> in the sidebar lists the notes you’ve opened that were changed since you last looked, by someone else, by a connected app working in your name, or by Foli AI. Each note shows who changed it, when, and the lines that were added, edited or removed, marked the way version history marks them. From there you can open the note, mark it as seen, or undo the change: the lines that were changed go back to how they were when you last looked, and the rest of the note stays as it is. Undo can be undone from the message that follows.
         </p>
         <p>Opening a note, or leaving it, counts as looking at it. People who can only view or comment on a note see what changed in it, but not removed text, and can’t undo.</p>
+        <p>
+          If you asked connected apps to check with you first (Settings → Connected apps → <strong>Ask me before changes are made to existing notes</strong>), what they want to add to your notes waits at the top of Changes under <strong>Proposed</strong>, with the lines it would add. <strong>Accept</strong> adds them to the end of the note, as the app, after saving a version you can go back to. <strong>Reject</strong> leaves the note as it is. A proposal you don’t answer expires after 14 days. The Changes count in the sidebar includes them, and the bell tells you when one arrives.
+        </p>
         <h2 id="since-you-were-away">Since you were last here</h2>
         <p>
           When you come back to a note that someone else changed since your last visit, a slim line at the top says who changed it and when you were last there. <strong>Show changes</strong> marks the lines they added or edited, each in the colour of the person who changed it, and says how many lines were removed. <strong>Dismiss</strong> puts the line away until the next time the note changes while you’re away. It doesn’t show on your first visit, or for your own edits.
@@ -527,6 +530,10 @@ export const DOC_ARTICLES: DocArticle[] = [
         <p>
           A connected app only reaches the places you allowed, and only what you can open yourself. Changes it makes show in the page’s history like anyone else’s, so you can see them and undo them. There’s also a Weekly review prompt: the app looks back at the week’s notes and open tasks and helps you plan the next one.
         </p>
+        <h2 id="review">Review changes before they happen</h2>
+        <p>
+          Turn on <strong>Ask me before changes are made to existing notes</strong> in Settings → Connected apps, and an app that adds to a note you already have doesn’t change it: the addition waits in <Link href="/docs/sharing-and-permissions#changes">Changes</Link> until you accept or reject it, and the app is told it was proposed for review, so it can tell you. It’s off at first. It covers every connected app and API token. New notes and tasks are still made at once, and so are checking off a task or changing its date, priority or repeat, since those never touch what you wrote (a version is saved first, and Changes can undo them). Foli AI already asks before it changes anything: its changes wait in the chat until you approve them.
+        </p>
         <h2 id="manage">See and remove connected apps</h2>
         <p>
           Settings → Connected apps lists every app you’ve allowed, what it may do, which places it uses and when it was last used. Remove one and it loses access at once.
@@ -638,6 +645,9 @@ curl -X PATCH https://app.folevi.com/api/v1/tasks/TASK_ID \\
         </p>
         <p>
           Before the API changes a note that already exists, Folevi saves a version of it, so anything can be undone from the note’s history. Changes made through the API show in Changes as a connected app’s.
+        </p>
+        <p>
+          If the token’s owner asked to review changes to existing notes (Settings → Connected apps), <code>POST /notes/{"{id}"}/append</code> answers <code>202</code> instead of <code>200</code>: nothing changed yet, the addition waits in their Changes page, and the answer has <code>proposed: true</code>, <code>status: &quot;pending&quot;</code>, a <code>proposalId</code>, when it expires, and a <code>message</code> to pass on. Creating notes and tasks, and changing a task, are never held back.
         </p>
         <h2 id="errors">Errors and limits</h2>
         <p>

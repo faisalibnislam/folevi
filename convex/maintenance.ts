@@ -396,8 +396,9 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     // Their API tokens (they stop working) and the answers kept for retries.
     () => ctx.db.query("apiRequests").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("apiTokens").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
-    // Their connected apps (the OAuth tokens go with the auth user): what each did, then the grants.
+    // Their connected apps (the OAuth tokens go with the auth user): what each did and proposed, then the grants.
     () => ctx.db.query("mcpEvents").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("proposals").withIndex("by_profile_status", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("mcpGrants").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     // When their passkeys were last used (the passkeys go with the auth user).
     () => ctx.db.query("passkeyUsage").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),

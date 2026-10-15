@@ -120,7 +120,7 @@
         "tags": ["Notes"],
         "operationId": "appendToNote",
         "summary": "Add Markdown to the end of a note",
-        "description": "What's already in the note stays as it is; a version is saved first, so the change can be undone from version history. Needs `notes:write`.",
+        "description": "What's already in the note stays as it is; a version is saved first, so the change can be undone from version history. If the token's person asked to review changes to existing notes (Settings > Connected apps), nothing changes yet: the answer is 202, and the addition waits in Folevi's Changes page until they accept or reject it (it expires after 14 days). Needs `notes:write`.",
         "parameters": [{ "$ref": "#/components/parameters/NoteId" }, { "$ref": "#/components/parameters/IdempotencyKey" }],
         "requestBody": {
           "required": true,
@@ -130,6 +130,26 @@
           "200": {
             "description": "Added.",
             "content": { "application/json": { "schema": { "type": "object", "properties": { "id": { "type": "string" }, "title": { "type": "string" }, "added": { "type": "integer", "description": "Blocks added." }, "url": { "type": "string", "format": "uri" } } } } }
+          },
+          "202": {
+            "description": "Proposed for review: nothing in the note changed yet. The person sees it in Changes and accepts or rejects it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "title": { "type": "string" },
+                    "proposed": { "type": "boolean", "const": true },
+                    "status": { "type": "string", "enum": ["pending"] },
+                    "proposalId": { "type": "string" },
+                    "expiresAt": { "type": "string", "format": "date-time" },
+                    "message": { "type": "string", "description": "A sentence to pass on to the person." },
+                    "url": { "type": "string", "format": "uri" }
+                  }
+                }
+              }
+            }
           },
           "400": { "$ref": "#/components/responses/BadRequest" },
           "401": { "$ref": "#/components/responses/Unauthorized" },

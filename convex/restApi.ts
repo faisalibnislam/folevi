@@ -210,7 +210,7 @@ export const write = internalMutation({
     const b = (args.body ?? {}) as Args;
     // A place the token can't use is a 403 here (the shared code would say it isn't found).
     if (b.place !== undefined) placesFor(places, b.place);
-    const writer = { device: `api:${token._id}`, reason: "api" as const };
+    const writer = { device: `api:${token._id}`, reason: "api" as const, app: { name: token.name, tokenId: token._id } };
     const run = async (tool: string, input: Args) => (await runWrite(ctx, reach, profile, tool, input, requestKey, writer)).result;
     let answer: Answer;
     switch (args.route as RouteName) {
@@ -223,7 +223,10 @@ export const write = internalMutation({
       }
       case "notes.append": {
         const r = await run("append_to_note", { noteId: args.id, markdown: b.markdown });
-        answer = { status: 200, body: { id: r.noteId, title: r.title, added: r.added, url: r.url } };
+        // Waiting for the person's review (they asked to see changes to existing notes first): 202, not made yet.
+        answer = r.proposed
+          ? { status: 202, body: { id: r.noteId, title: r.title, proposed: true, status: "pending", proposalId: r.proposalId, expiresAt: r.expiresAt, message: r.message, url: r.url } }
+          : { status: 200, body: { id: r.noteId, title: r.title, added: r.added, url: r.url } };
         break;
       }
       case "tasks.create": {

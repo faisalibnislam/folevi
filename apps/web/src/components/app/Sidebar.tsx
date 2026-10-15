@@ -42,6 +42,7 @@ import { WorkspaceMenu } from "./WorkspaceMenu";
 import { openNextInNewTab } from "@/lib/app/tabs";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { useNoteActions } from "@/components/views/noteActions";
+import { useMinute } from "@/lib/hooks/useMinute";
 import { draggedNoteIds, isNoteDrag } from "@/lib/app/noteDrag";
 import { draggedFolderId, draggingFolderId, endFolderDrag, folderMoveMessage, isFolderDrag, startFolderDrag, useFolderActions, useMoveFolder, useOpenFolders, useFolderTree } from "@/lib/app/folders";
 import { flattenFolders, folderAncestors, folderMoveProblem } from "@folevi/editor-schema";
@@ -446,6 +447,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { route } = useAppRouter();
   // Changes others made in notes you've opened (everywhere), leaving out the note in front of you.
   const changes = useQuery(api.changes.list, route.name === "doc" ? { exclude: route.id } : {});
+  // Changes apps proposed count too: they wait there for an answer.
+  const minute = useMinute();
+  const proposed = useQuery(api.proposals.count, { now: minute });
   const toast = useToast();
   const [folderOpen, setFolderOpen] = useOpenFolders();
   const moveFolder = useMoveFolder();
@@ -584,7 +588,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <NavItem href="/tasks/today" icon={<CheckSquare size={16} />} label="Tasks" count={counts ? counts.today : undefined} onNavigate={onNavigate} />
           {reviews?.hasCards || route.name === "review" ? <NavItem href="/review" icon={<Layers size={16} />} label="Reviews" count={reviews ? reviews.due + reviews.new : undefined} onNavigate={onNavigate} /> : null}
           <NavItem href="/shared" icon={<Share2 size={16} />} label="Shared with Me" onNavigate={onNavigate} />
-          <NavItem href="/changes" icon={<FileDiff size={16} />} label="Changes" count={changes?.notes.length || undefined} onNavigate={onNavigate} />
+          <NavItem href="/changes" icon={<FileDiff size={16} />} label="Changes" count={(changes?.notes.length ?? 0) + (proposed ?? 0) || undefined} onNavigate={onNavigate} />
           <NavItem href="/templates" icon={<LayoutTemplate size={16} />} label="Templates" onNavigate={onNavigate} />
         </div>
 

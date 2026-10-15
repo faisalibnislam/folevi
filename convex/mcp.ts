@@ -31,6 +31,7 @@ import { MCP_SCOPES, type McpScope } from "./lib/mcp/config";
 import { searchDocuments } from "./search";
 import { ensureInbox, listTasks, taskBlock, type TaskView } from "./tasks";
 import { snapshot } from "./documents";
+import { PROPOSED_MESSAGE, proposeAppend } from "./proposals";
 import { saveToInbox } from "./aiDigest";
 
 /** What a token is worth, once checked. */
@@ -76,10 +77,14 @@ async function profileForAuthUser(ctx: QueryCtx, userId: string): Promise<Doc<"p
  */
 export type Reach = Pick<Doc<"mcpGrants">, "personal" | "workspaceIds" | "includeShared" | "createOnly">;
 
-/** Who a write is made by and how it shows: the sync device (`mcp:<client>`, `api:<token>`) and the version reason. */
+/**
+ * Who a write is made by and how it shows: the sync device (`mcp:<client>`, `api:<token>`), the version reason,
+ * and the app by name (a change the person asked to review first waits in Changes under it: convex/proposals.ts).
+ */
 export interface Writer {
   device: string;
   reason: "mcp" | "api";
+  app: { name: string; grantId?: Id<"mcpGrants">; tokenId?: Id<"apiTokens"> };
 }
 
 /** A grant with the person, still usable: the account is active and the grant hasn't been revoked. */
@@ -348,7 +353,7 @@ export const write = internalMutation({
     if (earlier?.outcome === "ok" && earlier.result) return { ...(JSON.parse(earlier.result) as Record<string, unknown>), repeated: true };
     await consume(ctx, "mcpWrite", grant._id);
     await consume(ctx, "mcpWriteDaily", grant._id);
-    const { result, targets } = await runWrite(ctx, grant, profile, tool, args, requestKey, { device: `mcp:${grant.clientId}`, reason: "mcp" });
+    const { result, targets } = await runWrite(ctx, grant, profile, tool, args, requestKey, { device: `mcp:${grant.clientId}`, reason: "mcp", app: { name: grant.clientName, grantId: grant._id } });
     await ctx.db.insert("mcpEvents", { grantId: grant._id, profileId: profile._id, tool, targets, outcome: "ok", requestKey, result: JSON.stringify(result), at: Date.now() });
     return result;
   },
@@ -411,9 +416,15 @@ export async function runWrite(
       const rows = await liveBlocks(ctx, doc._id);
       const blocks = blocksFrom(str(a.markdown), lastRootRank(rows));
       if (rows.length + blocks.length > LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "The note would have too many blocks.");
+      targets = [doc.publicId];
+      // The person reviews changes to existing notes first: it waits in Changes, and the app is told so.
+      if (profile.reviewAppEdits === true) {
+        const { proposalId, expiresAt } = await proposeAppend(ctx, profile, doc, blocks, { source: "app", ...writer.app, device, reason: writer.reason }, requestKey);
+        result = { noteId: doc.publicId, title: doc.title || "Untitled", proposed: true, status: "pending", proposalId, expiresAt: new Date(expiresAt).toISOString(), message: PROPOSED_MESSAGE, url: link(doc.publicId) };
+        break;
+      }
       await snapshot(ctx, doc, profile._id, writer.reason);
       await sync(ctx, profile, device, blocks.map((b, i) => ({ opId: opId(requestKey, i), kind: "block.upsert", documentId: doc.publicId, block: b, baseRevision: null, fields: ["content", "position"] })));
-      targets = [doc.publicId];
       result = { noteId: doc.publicId, title: doc.title || "Untitled", added: blocks.length, url: link(doc.publicId) };
       break;
     }

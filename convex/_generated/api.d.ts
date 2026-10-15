@@ -151,6 +151,7 @@ import type * as notifications from "../notifications.js";
 import type * as organization from "../organization.js";
 import type * as passkeyUsage from "../passkeyUsage.js";
 import type * as presence from "../presence.js";
+import type * as proposals from "../proposals.js";
 import type * as push from "../push.js";
 import type * as pushSend from "../pushSend.js";
 import type * as restApi from "../restApi.js";
@@ -322,6 +323,7 @@ declare const fullApi: ApiFromModules<{
   organization: typeof organization;
   passkeyUsage: typeof passkeyUsage;
   presence: typeof presence;
+  proposals: typeof proposals;
   push: typeof push;
   pushSend: typeof pushSend;
   restApi: typeof restApi;

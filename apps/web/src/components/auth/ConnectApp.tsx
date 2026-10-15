@@ -93,7 +93,7 @@ export function ConnectApp({ clientId, redirectUri, codeChallenge, codeChallenge
         <p className="mt-6 text-sm text-muted">
           <button
             type="button"
-            className="font-medium text-accent underline underline-offset-2"
+            className="font-medium text-accent underline decoration-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] underline-offset-2 hover:decoration-current"
             onClick={async () => {
               // A stale session cookie would send /signin straight back here; clear it first.
               await authClient.signOut().catch(() => undefined);

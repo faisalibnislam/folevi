@@ -294,7 +294,7 @@ export function TwoFactorSetup({ returnTo }: { returnTo?: string }) {
       ) : null}
       {step !== "codes" ? (
         <p className="mt-6 text-sm text-muted">
-          <a href={destination} className="font-medium text-accent underline underline-offset-2">
+          <a href={destination} className="font-medium text-accent underline decoration-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] underline-offset-2 hover:decoration-current">
             {step === "password" ? "Not now" : "Cancel"}
           </a>
         </p>
@@ -303,7 +303,7 @@ export function TwoFactorSetup({ returnTo }: { returnTo?: string }) {
         Signed in as {user?.email}.{" "}
         <button
           type="button"
-          className="font-medium text-accent underline underline-offset-2"
+          className="font-medium text-accent underline decoration-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] underline-offset-2 hover:decoration-current"
           onClick={() => void authClient.signOut().then(() => window.location.assign("/signin"))}
         >
           Sign out

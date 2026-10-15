@@ -99,7 +99,7 @@ export function SignInForm({ returnTo, notice }: { returnTo?: string; notice?: s
         ) : null}
         <Field label="Email" type="email" name="email" autoComplete="username webauthn" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
         <PasswordField label="Password" name="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-        <div className="flex justify-end">
+        <div className="flex justify-end text-sm">
           <TextLink href="/forgot-password">Forgot your password?</TextLink>
         </div>
         <SubmitButton busy={busy}>Sign in</SubmitButton>

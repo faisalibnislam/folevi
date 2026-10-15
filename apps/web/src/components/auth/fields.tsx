@@ -34,12 +34,12 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ l
         {...rest}
       />
       {hint ? (
-        <p id={hintId} className={`text-xs text-muted ${compact ? "" : "px-1"}`}>
+        <p id={hintId} className="text-xs text-muted">
           {hint}
         </p>
       ) : null}
       {error ? (
-        <p id={errorId} className={`text-xs font-medium text-danger ${compact ? "" : "px-1"}`}>
+        <p id={errorId} className="text-xs font-medium text-danger">
           {error}
         </p>
       ) : null}

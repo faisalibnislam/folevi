@@ -89,7 +89,7 @@ function PlanCard({ card, audience, interval, headingLevel }: { card: PersonalPl
   }
   // Core is the plan with no AI at all, Pro AI the one with as much AI as you need (as on Home).
   const sticker = card.tier === "core" ? "No AI" : card.tier === "pro_ai" ? "Unlimited AI" : null;
-  const cta = free ? "Start free" : featured && !team ? `Try ${card.name} free for ${TRIAL_DAYS} days` : `Start with ${card.name}`;
+  const cta = free ? "Start free" : featured && !team ? `Try ${TRIAL_DAYS} days free` : `Start with ${card.name}`;
   return (
     <div
       role="group"

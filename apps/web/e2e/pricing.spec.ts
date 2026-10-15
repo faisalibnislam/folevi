@@ -28,7 +28,7 @@ test("the pricing page switches between Personal and Team, monthly and yearly", 
   await expect(card("Core").getByText("No AI. Your notes stay yours: nothing is sent to an AI model")).toBeVisible();
   await expect(card("Core").getByText("No AI", { exact: true })).toBeVisible();
   await expect(card("Pro AI").getByText("Unlimited AI, fair use (550 credits a month)")).toBeVisible();
-  await expect(card("Pro AI").getByRole("link", { name: /Try Pro AI free for 7 days/ })).toBeVisible();
+  await expect(card("Pro AI").getByRole("link", { name: /^Try 7 days free/ })).toBeVisible();
 
   // Yearly.
   await billing.getByRole("radio", { name: "Yearly" }).click();

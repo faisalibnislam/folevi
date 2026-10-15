@@ -105,16 +105,16 @@ export const TOOLS: ToolDef[] = [
   {
     name: "create_note",
     title: "Create a note",
-    description: "Creates a new note from Markdown, optionally in a folder or under your Inbox page. Returns its id and link.",
+    description: "Creates a new note from Markdown. Without folderId or inInbox it's an ordinary note in Drafts, which is what people usually want. Returns its id and link.",
     scope: "notes:write",
     kind: "write",
     inputSchema: object(
       {
         title: { type: "string", description: "The note's title.", minLength: 1, maxLength: 200 },
-        markdown: { type: "string", description: "The note's content in Markdown (headings, lists, to-dos with - [ ], tables, code).", maxLength: MAX_CREATE_MARKDOWN },
+        markdown: { type: "string", description: "The note's content in Markdown (headings, lists, to-dos with - [ ], tables, code). Don't start with the title as a heading: the title is shown above the content already.", maxLength: MAX_CREATE_MARKDOWN },
         place: PLACE,
         folderId: { type: "string", description: "A folder id from list_folders (same place).", maxLength: 64 },
-        inInbox: { type: "boolean", description: "Put the note under your Inbox page in that place, to sort later (not with folderId)." },
+        inInbox: { type: "boolean", description: "Only when the person asks for their Inbox: files the note as a page inside the Inbox page instead of Drafts (not with folderId)." },
       },
       ["title", "markdown"],
     ),
@@ -270,4 +270,11 @@ export function weeklyReviewMessages(): { role: "user"; content: { type: "text";
       },
     },
   ];
+}
+
+/** Markdown without a first heading that only repeats the note's title (the title is shown above it). */
+export function withoutTitleHeading(markdown: string, title: string): string {
+  const key = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+  const m = /^\s*#{1,2}[ \t]+(.+?)[ \t]*#*[ \t]*(?:\r?\n|$)/.exec(markdown);
+  return m && key(m[1]!) === key(title) && key(title) ? markdown.slice(m[0].length) : markdown;
 }

@@ -5,12 +5,27 @@ import { describe, expect, test, vi } from "vitest";
 import { api, components, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { decodeHeaderValue, parseMessage } from "../../convex/lib/mcp/protocol";
-import { checkArgs, TOOL_BY_NAME } from "../../convex/lib/mcp/tools";
+import { checkArgs, TOOL_BY_NAME, withoutTitleHeading } from "../../convex/lib/mcp/tools";
 import { join, para, person, PERSONAL, setup, teamWorkspace, ulid, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 
 const headersOf = (h: Record<string, string>) => (name: string) => h[name.toLowerCase()] ?? null;
+
+describe("create_note content", () => {
+  test("a first heading that only repeats the title is dropped; anything else is kept", () => {
+    expect(withoutTitleHeading("# Trip plan\n\nPack light.", "Trip plan")).toBe("\nPack light.");
+    expect(withoutTitleHeading("## trip-plan ##\nPack light.", "Trip Plan")).toBe("Pack light.");
+    expect(withoutTitleHeading("# MCP (Model Context Protocol)\n\nText", "MCP")).toBe("# MCP (Model Context Protocol)\n\nText");
+    expect(withoutTitleHeading("Intro\n# Trip plan", "Trip plan")).toBe("Intro\n# Trip plan");
+    expect(withoutTitleHeading("### Trip plan\nx", "Trip plan")).toBe("### Trip plan\nx");
+  });
+  test("the tool tells apps a plain note goes to Drafts and the Inbox is only on request", () => {
+    const tool = TOOL_BY_NAME.get("create_note")!;
+    expect(tool.description).toMatch(/Drafts/);
+    expect(JSON.stringify(tool.inputSchema)).toMatch(/Only when the person asks for their Inbox/);
+  });
+});
 
 describe("protocol", () => {
   const modern = (method: string, params: Record<string, unknown> = {}) =>

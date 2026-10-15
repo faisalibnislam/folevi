@@ -26,7 +26,7 @@ import { findOAuthAccessToken, findOAuthClient, revokeOAuthClient } from "./lib/
 import { recentNotes, scopeFolders, scopeTags } from "./lib/ai/tools/read";
 import { requireCreate } from "./lib/ai/tools/propose";
 import { untrusted } from "./lib/ai/tools/untrusted";
-import { MAX_NOTE_CHARS, TOOL_BY_NAME } from "./lib/mcp/tools";
+import { MAX_NOTE_CHARS, TOOL_BY_NAME, withoutTitleHeading } from "./lib/mcp/tools";
 import { MCP_SCOPES, type McpScope } from "./lib/mcp/config";
 import { searchDocuments } from "./search";
 import { ensureInbox, listTasks, taskBlock, type TaskView } from "./tasks";
@@ -398,9 +398,9 @@ export async function runWrite(
         folderId = folder._id;
       }
       if (a.inInbox === true && folderId) fail("invalid_argument", "Use folderId or inInbox, not both.");
-      const blocks = blocksFrom(str(a.markdown), null);
-      if (blocks.length > LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "That note would be too long.");
       const title = str(a.title).trim().slice(0, 200);
+      const blocks = blocksFrom(withoutTitleHeading(str(a.markdown), title), null);
+      if (blocks.length > LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "That note would be too long.");
       // Under the Inbox page (Folevi Web Clipper's clips): a page there, with a card for it at the end of the Inbox.
       const doc =
         a.inInbox === true

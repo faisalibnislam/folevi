@@ -16,7 +16,7 @@ tab can't do, in a few hundred lines of Swift and one script.
 apps/ios/
   capacitor.config.ts          server.url (app.folevi.com/documents, or FOLEVI_URL), App-Bound Domains, plugins
   www/offline.html             the only page in the app: shown when nothing can load (first launch offline)
-  scripts/simulator.mjs        build, run and (Debug) eval in the Simulator
+  scripts/simulator.mjs        build, run, test, and (Debug) eval and native hooks in the Simulator
   scripts/app-icon.mjs         the 1024 px icon for iOS 17 to 25
   ios/App/App/
     AppDelegate.swift          one scene; links and activities to Capacitor
@@ -28,7 +28,22 @@ apps/ios/
     SimulatorEval.swift        Debug Simulator builds only: run JavaScript from a script
     AppIcon.icon               the Mac app's Icon Composer file (iOS 26 and later)
     Assets.xcassets            AppIcon (1024 px PNG, iOS 17 to 25), Mark (the lock screen's F)
+    App.entitlements           the App Group and the Keychain group (below)
+  ios/App/Shared/              in the app and both extensions: the REST API client, the device token in the
+                               Keychain, the App Group, the share queue and saver, folevi:// links, the look
+  ios/App/AppAndWidgets/       in the app and the widgets: the widgets' copy of tasks and notes and their
+                               timeline, what the widgets draw (and the F they show), the App Intents
+  ios/App/Native/              the app only: FoleviNativePlugin's stage 2 calls, AppServices, DeepLinkRouter,
+                               SpotlightIndex, DocumentScanner, the Siri phrases, DebugHooks and WidgetSnapshots
+                               (Debug Simulator)
+  ios/App/ShareExtension/      "Save to Folevi" in the share sheet
+  ios/App/Widgets/             the widgets and the Control Center control
+  ios/App/Tests/               unit tests (XCTest, run in the app)
+  ios/App/UITests/             the share sheet from Safari and the widget gallery, driven like a person would
 ```
+
+The folders under `ios/App` other than `App` are Xcode synchronized folders: a new file in one is part of
+its targets with no project edit.
 
 Plugins: `@capacitor/app` (folevi:// links), `@capacitor/haptics`, `@capacitor/keyboard` (the web view
 shrinks above the keyboard), `@capacitor/status-bar`. Links out use `SFSafariViewController` directly from
@@ -98,7 +113,7 @@ FoleviNativePlugin decides where every navigation goes:
   never load.
 - `folevi://` links from other apps reach the page through the App plugin; the page reads them with
   `apps/web/src/lib/deepLink.ts`, which accepts exactly what the Mac app's `parseDeepLink` accepts (a test
-  checks the two agree). folevi://new and folevi://quick-add make a new note.
+  checks the two agree). folevi://new makes a new note; folevi://quick-add opens Quick add task.
 
 ### Face ID lock
 
@@ -139,6 +154,158 @@ Mac app are unchanged.
   and Add a passkey are hidden in the app until then.
 - **No buying** (App Store Review Guideline 3.1.1): see below.
 
+## Widgets, the share sheet, Siri and Spotlight (stage 2)
+
+Four targets: the app (`com.folevi.ios`), the share extension (`com.folevi.ios.share`), the widgets
+(`com.folevi.ios.widgets`: WidgetKit and the iOS 18 control) and the unit tests. Everything outside the web view
+talks to Folevi through the REST API (`/api/v1`) with a token made for the device; the web view stays the only
+place that syncs, so anything with files goes through it.
+
+### The device's token
+
+- When someone is signed in inside the app (and online), the page asks the app which token it holds
+  (`foleviNative.device()`: the install id, the model, the account and token ids it holds, never the token)
+  and calls `apiTokens.ensureDevice` (convex/apiTokens.ts). The server keeps the token the app holds, or makes
+  a new one (first launch, another account, revoked in Settings) and the page hands it to the app
+  (`setCredential`), once (`lib/nativeDevice.ts`, from `components/app/NativeBridge.tsx`).
+- The token is an ordinary personal access token named for the device ("Folevi for iPhone (iPhone 18 Pro)"),
+  with notes:read, notes:write, tasks:read and tasks:write, never expiring. Its places follow the person:
+  Personal and every workspace they're in at the time of each request, so joining or leaving a workspace
+  needs no new token. One per device (its install id), up to ten devices (signing in on an eleventh replaces
+  the one used longest ago); they don't count towards the 20 tokens a person makes. Settings > Connected apps
+  lists it with the others, marked "This device" in the app, and Revoke works the same; the next launch then
+  makes a new one. The REST API's rate limits apply to it like any token.
+- The app keeps it in the Keychain (`DeviceCredential`): access group `<team prefix>com.folevi.shared`
+  (`keychain-access-groups` in each target's entitlements; Info.plist's `FoleviKeychainGroup` carries the
+  same expanded name to the code), readable after first unlock (`AfterFirstUnlockThisDeviceOnly`, so widgets
+  refresh on a locked phone), never in iCloud, never logged. Keychain sharing works in the Simulator (the widgets
+  and the share extension read the token there), so nothing falls back to the App Group for it. The account and token ids, the API's address
+  (the site the app loads + `/api/v1`) and the install id live in the App Group's settings.
+- Signing out (any way: the menu, the session ending) revokes it on the server while the session still can
+  (`apiTokens.revokeDevice`), and the app deletes it with the widgets' copy, the share sheet's places and the
+  Spotlight entries (`clearCredential`). A 401 anywhere native also forgets it.
+
+### App Group
+
+`group.com.folevi` (`com.apple.security.application-groups` in all three targets): the settings above, the
+places for the share sheet, `widgets.json` (the widgets' copy of tasks and notes), `Shares/` (the share queue),
+and a link an App Intent left for the app (`PendingLink`). Files are written with
+`completeUntilFirstUserAuthentication`.
+
+### Share extension: Save to Folevi
+
+Takes links, text, images and PDFs from any app (an activation rule, so it isn't offered for other files).
+A compact card in the app's neutral look: Cancel, "Save to Folevi" (Spectral), Save; the title (Safari's page
+title, else the first line, else the link's host); a preview (the link, the text, the files with thumbnails);
+"Save to" with "Inbox in Personal" and each workspace (from `GET /places`, cached, refreshed while the sheet is
+open; the last choice is remembered). Images are kept as PNG, GIF, WebP or JPEG (HEIC from Photos becomes
+JPEG), up to ten files of 20 MB, like the web's share page.
+
+Saving (`ShareSaver`): text and links go straight to the Inbox through `POST /api/v1/notes` (`inInbox`, with
+an Idempotency-Key) when there's a token and a connection; the sheet says "Saved to your Inbox". Anything
+else (offline, signed out, a place that's gone, any refusal, and every share with images or PDFs, since the
+REST API doesn't take files) is written to the App Group queue first and the sheet says "Saved, it will sync
+when Folevi opens". When the app opens (and whenever it comes back), the page takes the queue
+(`takeShares`), saves each one with the web app's own share flow (`lib/share/save.ts`, the same code as
+`/share`: through the sync engine, files through the upload queue, offline too) into the Inbox chosen, says
+"Saved what you shared to your Inbox", and only then lets the app delete it (`finishShare`). A share kept
+for one account is never saved into another.
+
+### Widgets
+
+From the App Group's copy (`WidgetStore`), so they draw at once and offline. One timeline provider for all of
+them: refreshed from the REST API when the copy is older than ten minutes (open tasks due today or before,
+and the ten recent notes), next look in 20 minutes (or just after midnight). The app also refreshes the copy
+and reloads every widget when it comes to the front (at most every five minutes) and when it goes to the
+background.
+
+- **Today** (small, medium, large, extra large on iPad): today's and overdue tasks, overdue first, then by time
+  and priority; "Overdue · Yesterday" in red; a circle checks a task off right there (iOS 17 interactive
+  widgets, `ToggleTaskIntent` → `PATCH /tasks/{id}`): it disappears at once, and a check made offline is sent
+  with the next refresh. Tapping a task opens its note; the rest opens Tasks > Today. Empty: "Nothing due
+  today".
+- **Recent notes** (small to extra large): the last edited notes with their place and when; each opens its
+  note (`folevi://d/<id>`, an Inbox page's `inbox-` id too).
+- **Quick add** (small): opens Quick add task (`folevi://quick-add`).
+- **Lock Screen**: circular (how many tasks today), rectangular (the next task and when), inline ("3 tasks
+  today").
+- **Control Center / Lock Screen / Action button** (iOS 18 and later): "Quick add task", which opens the app on
+  Quick add task.
+- Rows are one line each, so no title can push a widget out of shape: just the text in small widgets, the due
+  day (or the note's time) at the end of the row in medium ones, under it in large ones, and two columns
+  in the iPad's extra large ones once there are more than five.
+- Signed out: "Open Folevi to sign in". The look: white or near-black from the chrome tokens, Spectral
+  SemiBold for titles (bundled in the extensions; the SIL Open Font License is in the font file's metadata),
+  dark mode, the system's tinting on a tinted Home Screen.
+
+### App Intents, Siri and Shortcuts
+
+`AppAndWidgets/Intents.swift`, phrases in `Native/FoleviShortcuts.swift`:
+
+- **Add a task** ("Add a task in Folevi"): text, an optional due date and an optional note (a `NoteEntity`);
+  runs in the background through `POST /tasks` and refreshes the widgets.
+- **New note** ("New note in Folevi"): opens a new note; with text, makes the note from it (Drafts: the first
+  line is the title, each other line a paragraph) and opens it; offline, the text is kept like a share and
+  reaches the Inbox when the page opens (the app opens on Home meanwhile).
+- **Open note** ("Open a note in Folevi"): a `NoteEntity` found by searching Folevi (`GET /notes?q=`), the
+  recent notes as suggestions.
+- **Show today's tasks** ("Open my Folevi tasks"), **Quick add task**.
+
+Intents that open the app hand it a folevi:// link (`PendingLink`): straight to the page when the app is
+running, else kept in the App Group and opened when the app becomes active.
+
+### Spotlight
+
+`SpotlightIndex`: the 30 most recently edited and 30 starred notes (`GET /notes?starred=true`), each with its
+title, the start of its text (Markdown taken out) and where it is (folder path, else the place), indexed when
+the app comes and goes; a note's details are fetched only when it changed since it was indexed, and notes
+that are neither recent nor starred any more are removed. Tapping a result opens the note (the activity's id
+becomes `folevi://d/<id>`). Signing out removes them all.
+
+### Links into the app
+
+Widgets, intents, Spotlight, Handoff of a Folevi page and links from other apps all become folevi:// links and
+go through the same path: Capacitor's App plugin (`appUrlOpen`) to the page's `lib/deepLink.ts`
+(`DeepLinkRouter`). On a cold launch a link waits until the web view and its plugins exist, then the App plugin
+keeps it until the page listens. `folevi://quick-add` now opens Quick add task (it used to make a new note);
+`folevi://new` makes a new note. An Inbox page (its id is `inbox-` and a hash, not a note id) opens with
+`folevi://d/inbox-<hash>`, which `lib/deepLink.ts`, the Mac app's `parseDeepLink` and `DeepLink.parse` all
+accept (and nothing else under `d/`).
+
+### Document scanner
+
+The editor's Insert panel (Media) and slash menu have "Scan document" (the camera's scanner, VisionKit, where
+`VNDocumentCameraViewController.isSupported`) and "Scan from photos" (the system photo picker, up to ten
+pages), only in the app. Each page comes back as a JPEG of at most 2200 px on its long side, with the text
+read from all pages (Vision, accurate, with language correction). The page inserts the pages as image blocks
+through the usual upload queue (works offline) and the text in a closed toggle "Text from the scan" under
+them, so search finds it. The Simulator has no document camera, so only "Scan from photos" shows there.
+
+### Testing it in the Simulator
+
+- Unit tests: `pnpm test` (or `node scripts/simulator.mjs test "Folevi iPad Pro 13"`): the API client, folevi://
+  links (the web's cases), the share content and queue, the saver's fallbacks, the Keychain group, the App
+  Group, the widgets' copy and timeline, Spotlight's items.
+- The share sheet and the widget gallery, driven through Safari and the Home Screen (needs a signed-in Debug
+  build on the device): `TEST_RUNNER_FOLEVI_SHOTS=<dir> xcodebuild test -project ios/App/App.xcodeproj -scheme
+  FoleviUITests -destination 'platform=iOS Simulator,name=Folevi iPhone 18 Pro'` (screenshots of each step go
+  to the folder). The share sheet, the widgets (added from the gallery, a task checked off on the Home Screen)
+  and Scan from photos pass; the Spotlight one often can't open Spotlight in the iOS 27 Simulator (its
+  Search pill doesn't answer to a tap there), so Spotlight is checked with `native '{"command":"spotlight"}'`
+  (what the index holds) and `"activity"` (a result tapped) instead.
+- `node scripts/simulator.mjs widgets <folder>` draws every widget (each family, the empty and signed-out
+  states, the Lock Screen's) from this device's copy, in light and dark, plus a sheet filled with long titles
+  (`widgets-light.png`, `widgets-dark.png`, `widgets-full.png`): the same views as the widget extension at the
+  iPhone 18 Pro's sizes (extra large: the 13-inch iPad's), with WidgetKit's margins and the Lock Screen's
+  vibrancy approximated.
+- `node scripts/simulator.mjs native '<json>'` runs the native parts in a Debug build: `{"command":"status"}`,
+  `"refresh"` (the widgets' copy), `"timeline"`, `"spotlight"` (index, then search the index), `"share"` (the
+  extension's save path with sample items, `"image": true` to queue one), `"intent"` (`"name": "addTask" |
+  "newNote" | "openNote" | "showToday" | "quickAdd"`), `"complete"` (a widget's check-off), `"activity"` (a
+  Spotlight result tapped), `"widgets"` (what the `widgets` command uses).
+- The Lock Screen widgets and the Control Center control: long-press the Lock Screen > Customize, or Control
+  Center > edit, and search for Folevi.
+
 ## No purchases in the app
 
 Plans are sold on folevi.com. Inside the app nothing shows a price or offers to buy, upgrade or change plans:
@@ -168,15 +335,18 @@ by those links).
 
 - **More than a website (4.2)**: Face ID lock with a covered app switcher snapshot, offline use of everything
   on the device (service worker and the app's own storage), haptics, folevi:// links from Shortcuts and other
-  apps, in-app Safari for links, native keyboard handling, iPad layout with keyboard shortcuts. Stage 2 ideas
-  that add more: share extension, widgets, push notifications, Spotlight.
+  apps, in-app Safari for links, native keyboard handling, iPad layout with keyboard shortcuts, and (stage 2)
+  a share extension, interactive Home Screen and Lock Screen widgets, a Control Center control, Siri and
+  Shortcuts actions, Spotlight search of notes and a document scanner with text recognition. Still to come:
+  push notifications.
 - **Payments (3.1.1, 3.1.3)**: no purchases, prices or links to buying in the app (above). Accounts made on
   the web keep their plan. Account creation is in the app (sign up), and account deletion is in Settings >
   Security (Delete account), as 5.1.1(v) requires.
 - **Privacy strings**: `NSMicrophoneUsageDescription` (recording audio in a note),
-  `NSCameraUsageDescription` (the file picker's Take Photo or Video, adding to a note),
-  `NSFaceIDUsageDescription` (the optional lock). No tracking; choosing photos uses the system picker, which
-  needs no photo library string. `ITSAppUsesNonExemptEncryption` is false (HTTPS only).
+  `NSCameraUsageDescription` (the file picker's Take Photo or Video, and scanning a document into a note),
+  `NSPhotoLibraryUsageDescription` (scanning pages from photos; the system picker doesn't need it, but it says
+  what the photos are for), `NSFaceIDUsageDescription` (the optional lock). No tracking.
+  `ITSAppUsesNonExemptEncryption` is false (HTTPS only).
 - **Privacy labels**: the same data the web app handles (account, notes, usage for AI credits).
 - **Demo account** for the reviewer: a Pro account without two-step verification, or with a code shared in
   the review notes.
@@ -194,8 +364,13 @@ What's needed to go from the Simulator to devices, TestFlight and the App Store:
    `apple-app-site-association` file served by the web app at `/.well-known/`. That turns on passkeys in the
    app (then drop the `foleviNative` check in `lib/auth/passkeys.ts`) and universal links
    (https://app.folevi.com/d/... opening in the app; handle them like folevi:// links).
-3. **App Group** (`group.com.folevi`) once there's a share extension or widgets, so they can reach the app's
-   data.
+3. **App Group and Keychain sharing**: register the App Group `group.com.folevi` and turn on App Groups and
+   Keychain Sharing (`com.folevi.shared`) for all three App IDs (`com.folevi.ios`, `com.folevi.ios.share`,
+   `com.folevi.ios.widgets`), then set the team on the ShareExtension and FoleviWidgets targets too. The
+   entitlements files are already in place; in the Simulator they work unsigned (Xcode embeds them, and used
+   the free personal team's prefix for the Keychain group here). On a device without them the extensions
+   can't see the token or the queue. Also App Intents' Siri phrases and the Control Center control need a
+   device (and a signed build) to try with Siri and the Action button.
 4. **Push notifications**: an APNs key (.p8) in the developer account, the Push Notifications capability,
    `@capacitor/push-notifications`, a device token table and a sender on the backend.
 5. **TestFlight**: internal testers first; the review notes above and a demo account for external testing.
@@ -203,12 +378,16 @@ What's needed to go from the Simulator to devices, TestFlight and the App Store:
    (folevi.com/support) and the privacy policy URL (folevi.com/privacy).
 
 Also worth doing then: check the iOS 17 behaviour on a device (the Simulator here only had iOS 27), real
-airplane mode, Face ID on a device, and the background recording behaviour.
+airplane mode, Face ID on a device, the background recording behaviour, the camera's document scanner (the
+Simulator has none), widgets refreshing on a locked phone (data protection doesn't exist in the Simulator),
+and Siri speaking the phrases.
 
 ## iOS versions
 
 The app targets iOS 17. Nothing in the Swift code needs a newer iOS: `UIButton.Configuration` and the async
-`LAContext.evaluatePolicy` are iOS 15, `LABiometryType.opticID` is iOS 17. Capacitor 8 itself supports iOS 15
+`LAContext.evaluatePolicy` are iOS 15, `LABiometryType.opticID` is iOS 17. Interactive widgets and
+`containerBackground` are iOS 17; the Control Center control (`ControlWidget`) is iOS 18 and only offered there
+(`#available` in the widget bundle). Capacitor 8 itself supports iOS 15
 and up. The app icon: `AppIcon.icon` (Icon Composer, drawn by iOS 26 and later) and `AppIcon.appiconset` with
 one 1024 px PNG for iOS 17 to 25. Only iOS 27 Simulators were installed when this was built, so it was
 compiled against 17.0 and run on 27.

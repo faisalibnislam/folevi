@@ -43,6 +43,15 @@ enum DebugHooks {
 
     private static func handle(_ input: [String: Any]) async throws -> [String: Any] {
         switch input["command"] as? String {
+        case "key":
+            // A hardware keyboard shortcut, as the overlay's commands send it (KeyCommands.swift).
+            let title = input["title"] as? String ?? ""
+            guard let shortcut = FoleviShortcut.all.first(where: { $0.title == title }) else { return ["error": "No shortcut called \(title)", "titles": FoleviShortcut.all.map(\.title)] }
+            await MainActor.run {
+                let root = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow?.rootViewController }.first
+                (root as? FoleviViewController)?.press(shortcut)
+            }
+            return ["pressed": title]
         case "status":
             return [
                 "signedIn": SharedAccount.signedIn,

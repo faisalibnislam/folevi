@@ -26,6 +26,7 @@ import { captureTemplateFromUrl, clearPendingTemplate, pendingTemplate } from "@
 import { DesktopBridge } from "./DesktopBridge";
 import { NativeBridge } from "./NativeBridge";
 import { useIphoneApp } from "@/lib/iphone";
+import { nativeApp } from "@/lib/nativeApp";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
 import { IphoneScreen, type IphoneScreenOptions } from "@/components/iphone/Screen";
 
@@ -241,6 +242,10 @@ export function Shell() {
         e.preventDefault();
         toggleSidebar();
       } else if (mod && e.altKey && e.code === "KeyN") {
+        e.preventDefault();
+        void createDocument({});
+      } else if (mod && !e.altKey && !e.shiftKey && e.code === "KeyN" && nativeApp()) {
+        // In the iPhone and iPad app ⌘N is free (a browser keeps it for a new window), as in the Mac app.
         e.preventDefault();
         void createDocument({});
       } else if (mod && e.altKey && e.code === "KeyI") {

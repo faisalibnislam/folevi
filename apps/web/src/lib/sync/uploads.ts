@@ -88,7 +88,14 @@ export async function enqueueUpload(
 /**
  * Background uploader: two-phase upload (authorized short-lived URL → direct upload → server-side
  * verification). Interrupted uploads stay queued with exponential backoff and never block other edits.
+ * A file for a page made on this device waits until the page's create reached the server (the server
+ * can't hand out an upload address for a page it doesn't have yet), and that wait isn't a failed try.
+ * Only a refusal that can't change (the file type, the size, the storage quota) or a page that's gone
+ * lets a file go; anything else is tried again, however long it takes.
  */
+/** How often an upload for a page still on its way looks again (a local check, nothing sent). */
+const PAGE_WAIT_MS = 1000;
+
 export class Uploader {
   private running = false;
   /** A kick that arrived while a pass was running: run again right after it (new uploads aren't missed). */
@@ -138,6 +145,11 @@ export class Uploader {
           soonest = Math.min(soonest, u.nextAttemptAt);
           continue;
         }
+        // The page is new and still on its way (made offline, or a moment ago): looked at again shortly.
+        if (this.engine.waitsToSync(u.documentId, null)) {
+          soonest = Math.min(soonest, Date.now() + PAGE_WAIT_MS);
+          continue;
+        }
         try {
           // The page's scope decides where the file is stored (the server checks access to the page).
           const { uploadUrl, intentId } = await this.client.mutation(api.files.generateUploadUrl, {
@@ -157,7 +169,11 @@ export class Uploader {
           const code = (e as { data?: { code?: string; message?: string } }).data;
           const attempts = u.attempts + 1;
           this.engine.uploadFailed(u.uploadId);
-          if (code?.code === "unsupported_file" || code?.code === "invalid_argument" || code?.code === "quota_exceeded" || attempts >= 8) {
+          const permanent = code?.code === "unsupported_file" || code?.code === "invalid_argument" || code?.code === "quota_exceeded";
+          // Not found or not allowed again and again, with the page on the server as far as this device
+          // knows: it was deleted, or access went. A network failure or the server having a moment never counts.
+          const gone = (code?.code === "not_found" || code?.code === "forbidden") && attempts >= 8;
+          if (permanent || gone) {
             this.onError(code?.message ?? `“${u.filename}” couldn't be uploaded.`);
             this.engine.abandonUpload(u.uploadId);
             await db.delete("uploads", u.uploadId);

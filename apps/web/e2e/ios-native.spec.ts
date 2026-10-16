@@ -50,7 +50,12 @@ function fakeApp(seed: { shares: Kept[]; pixel: string }) {
     },
   };
   Object.defineProperty(window, "foleviNative", { value: bridge });
-  Object.assign(window, { __native: { calls } });
+  // A share the extension keeps while the page is open (the app then comes back to the front).
+  const addShare = (share: Kept) => {
+    shares.push(share);
+    window.dispatchEvent(new Event("folevi:app-active"));
+  };
+  Object.assign(window, { __native: { calls, addShare } });
   const mark = () => document.documentElement?.setAttribute("data-native", "ios");
   mark();
   if (!document.documentElement) new MutationObserver((_, watch) => document.documentElement && (mark(), watch.disconnect())).observe(document, { childList: true });
@@ -61,6 +66,30 @@ const calls = (page: Page) => page.evaluate(() => (window as unknown as { __nati
 async function api(page: Page, path: string, token: string) {
   const res = await page.request.get(`${APP}/api/v1${path}`, { headers: { authorization: `Bearer ${token}` } });
   return { status: res.status(), json: res.status() === 200 ? await res.json() : null };
+}
+
+/**
+ * The note titled `title` as the server has it, in Markdown: an image block is there only once its file is
+ * uploaded (the block waits for it), so "![" in it means the photo landed.
+ */
+async function serverMarkdown(page: Page, token: string, title: string): Promise<string> {
+  const found = (await api(page, `/notes?q=${encodeURIComponent(title)}`, token)).json?.data.find((n: { title: string }) => n.title === title);
+  if (!found) return "";
+  return (await api(page, `/notes/${found.id}`, token)).json?.markdown ?? "";
+}
+
+/** Upload addresses the server refused (asked for before the page was there): there should be none. */
+function refusedUploads(page: Page): string[] {
+  const refused: string[] = [];
+  page.on("console", (m) => {
+    if (/generateUploadUrl/.test(m.text())) refused.push(m.text());
+  });
+  return refused;
+}
+
+async function linkedToken(page: Page): Promise<string> {
+  await expect.poll(async () => (await calls(page)).filter((c) => c.method === "setCredential").length, { timeout: 20_000 }).toBe(1);
+  return page.evaluate(() => localStorage.getItem("__token")!);
 }
 
 test("the iOS app gets a token for this device, keeps it, saves what the share extension kept, and loses it on sign-out", async ({ browser }) => {
@@ -81,6 +110,8 @@ test("the iOS app gets a token for this device, keeps it, saves what the share e
   await expect(page.getByText("Saved what you shared to your Inbox")).toBeVisible({ timeout: 20_000 });
   expect((await calls(page)).filter((c) => c.method === "finishShare").map((c) => c.arg)).toEqual(["share-1"]);
   await expect.poll(async () => (await api(page, "/notes?q=Shelf", token)).json?.data.map((n: { title: string }) => n.title), { timeout: 20_000 }).toContain("Shelf ideas");
+  // With its photo: uploaded once the note was on the server, not refused as a page it didn't have yet.
+  await expect.poll(() => serverMarkdown(page, token, "Shelf ideas"), { timeout: 30_000 }).toContain("![");
 
   // Settings > Connected apps lists it as this device's.
   await page.goto(`${APP}/settings/connected-apps`);
@@ -132,6 +163,57 @@ test("Scan from photos in the iOS app puts the pages and their text in the note"
     await expect(body.getByText(line, { exact: true })).toBeHidden();
   }
   await expect(body.getByText("Paid by card")).toHaveCount(1);
+  await waitForSaved(page);
+  await context.close();
+});
+
+test("a photo shared while offline lands in its note once back online", async ({ browser }) => {
+  test.setTimeout(150_000);
+  const { context, page } = await newPerson(browser, "Offline Share Person");
+  const refused = refusedUploads(page);
+  await context.addInitScript(fakeApp, { shares: [], pixel: PIXEL });
+  await page.goto(`${APP}/documents`);
+  const token = await linkedToken(page);
+  await waitForSaved(page);
+
+  await context.setOffline(true);
+  const share: Kept = { id: "share-offline", title: "Porch photo", text: "Before the paint", url: "", place: null, files: [{ name: "Porch.png", type: "image/png", data: PIXEL }] };
+  await page.evaluate((s) => (window as unknown as { __native: { addShare(s: unknown): void } }).__native.addShare(s), share);
+  await expect(page.getByText("Saved what you shared to your Inbox")).toBeVisible({ timeout: 20_000 });
+  expect((await calls(page)).filter((c) => c.method === "finishShare").map((c) => c.arg)).toEqual(["share-offline"]);
+
+  await context.setOffline(false);
+  await expect.poll(() => serverMarkdown(page, token, "Porch photo"), { timeout: 45_000 }).toContain("![");
+  await waitForSaved(page);
+  await expect(page.getByText(/couldn.t be uploaded/)).toHaveCount(0);
+  expect(refused).toEqual([]);
+  await context.close();
+});
+
+test("pages scanned into a note made offline land with the note once back online", async ({ browser }) => {
+  test.setTimeout(150_000);
+  const { context, page } = await newPerson(browser, "Offline Scan Person");
+  const refused = refusedUploads(page);
+  await context.addInitScript(fakeApp, { shares: [], pixel: PIXEL });
+  await page.goto(`${APP}/documents`);
+  const token = await linkedToken(page);
+  await waitForSaved(page);
+
+  await context.setOffline(true);
+  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
+  await page.getByRole("textbox", { name: "Title" }).fill("Offline invoice");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("/scan");
+  await page.getByRole("option", { name: "Scan from photos" }).click();
+  const body = page.getByRole("textbox", { name: "Document body" });
+  await expect(body.locator("figure").first()).toBeVisible({ timeout: 20_000 });
+  await expect(body.getByText("Text from the scan", { exact: true })).toBeVisible();
+
+  await context.setOffline(false);
+  await expect.poll(() => serverMarkdown(page, token, "Offline invoice"), { timeout: 45_000 }).toContain("![");
+  expect(await serverMarkdown(page, token, "Offline invoice")).toContain("Text from the scan");
+  expect(refused).toEqual([]);
   await waitForSaved(page);
   await context.close();
 });

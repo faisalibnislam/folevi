@@ -173,8 +173,13 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
   const currentStyle = (): Pick<WhiteboardStroke, "color" | "width" | "opacity"> =>
     tool === "highlighter" ? { color: markColor, width: 18, opacity: 0.4 } : { color: penColor, width: penWidth };
 
+  // Apple Pencil (or any pen): once one has drawn here, a finger or a resting palm doesn't draw, and a
+  // finger scrolls the note instead, as in iPad drawing apps.
+  const [penOnly, setPenOnly] = useState(false);
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (!editable || (e.pointerType === "mouse" && e.button !== 0)) return;
+    if (e.pointerType === "pen" && !penOnly) setPenOnly(true);
+    if (penOnly && e.pointerType === "touch") return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     const p = toPoint(e);
@@ -326,6 +331,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
           ref={svgRef}
           className="fb-whiteboard-canvas"
           data-tool={editable ? tool : undefined}
+          data-pen-only={penOnly ? "" : undefined}
           viewBox={`0 0 ${WHITEBOARD_WIDTH} ${height}`}
           style={{ aspectRatio: `${WHITEBOARD_WIDTH} / ${height}` }}
           role="img"

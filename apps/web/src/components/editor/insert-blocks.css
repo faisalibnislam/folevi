@@ -251,6 +251,8 @@
   background-size: 22px 22px;
 }
 .fb-whiteboard-canvas[data-tool] { touch-action: none; cursor: crosshair; }
+/* A pen has drawn here: fingers scroll the note (WhiteboardView.tsx), only the pen draws. */
+.fb-whiteboard-canvas[data-tool][data-pen-only] { touch-action: pan-x pan-y; }
 .fb-whiteboard-canvas[data-tool="eraser"] { cursor: cell; }
 .fb-wb-resize {
   display: grid; place-items: center; height: 14px;

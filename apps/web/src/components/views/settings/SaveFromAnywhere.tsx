@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { bookmarkletHref } from "@/lib/share/payload";
 import { Card } from "./Card";
+import { useIphoneApp } from "@/lib/iphone";
+import { ActionRow, IosSection } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
 
 /**
  * Settings > Import & export: the Save to Folevi bookmarklet (lib/share/payload.ts), and where sharing from
@@ -15,6 +18,7 @@ export function SaveFromAnywhereCard() {
   const toast = useToast();
   const link = useRef<HTMLAnchorElement>(null);
   const [code, setCode] = useState("");
+  const iphone = useIphoneApp();
   // React refuses javascript: addresses in href, so the bookmarklet is put on the link directly.
   useEffect(() => {
     const href = bookmarkletHref(window.location.origin);
@@ -22,6 +26,16 @@ export function SaveFromAnywhereCard() {
     link.current?.setAttribute("href", href);
   }, []);
 
+  const copy = () => void navigator.clipboard.writeText(code).then(() => toast.show("Bookmarklet copied. Paste it as the address of a new bookmark."));
+  if (iphone)
+    return (
+      <IosSection
+        header="Save from anywhere"
+        footer="In any app, tap Share and choose Folevi: links, text, images and PDFs go to your Inbox. On a computer, the Save to Folevi bookmarklet saves a page's title, its address and any text you selected; it reads nothing else on the page."
+      >
+        <ActionRow label="Copy the bookmarklet" icon={<RowIcon><BookmarkPlus /></RowIcon>} disabled={!code} onClick={copy} />
+      </IosSection>
+    );
   return (
     <Card
       title="Save from anywhere"
@@ -40,7 +54,7 @@ export function SaveFromAnywhereCard() {
         >
           <BookmarkPlus size={14} aria-hidden /> Save to Folevi
         </a>
-        <Button disabled={!code} onClick={() => void navigator.clipboard.writeText(code).then(() => toast.show("Bookmarklet copied. Paste it as the address of a new bookmark."))}>
+        <Button disabled={!code} onClick={copy}>
           <Copy size={13} aria-hidden /> Copy as text
         </Button>
       </div>

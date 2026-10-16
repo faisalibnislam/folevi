@@ -8,6 +8,8 @@ import { Switch } from "@/components/ui/Switch";
 import { Select } from "@/components/ui/Select";
 import { Card } from "./Card";
 import { PushCard } from "./PushCard";
+import { useIphoneApp } from "@/lib/iphone";
+import { ChoiceRow, IosRow, IosSection, IosText, Subscreen, SwitchRow } from "@/components/iphone/SettingsKit";
 
 type Prefs = ReturnType<typeof useAppState>["profile"]["notificationPrefs"];
 type Topic = "comments" | "replies" | "mentions" | "shares" | "access" | "reminders";
@@ -50,11 +52,51 @@ export function NotificationsSection() {
   const update = useMutation(api.users.updateProfile);
   const toast = useToast();
   const prefs = profile.notificationPrefs;
+  const iphone = useIphoneApp();
   const inApp = { ...ALL_IN_APP, ...prefs.inApp };
   const set = (patch: Partial<Prefs>) =>
     update({ notificationPrefs: { ...prefs, ...patch } }).then(
       () => toast.show("Saved"),
       (e) => toast.show(errorMessage(e), { tone: "error" }),
+    );
+  if (iphone)
+    return (
+      <>
+        <PushCard />
+        <IosSection
+          header="Notify me about"
+          footer="Emails say who did what and where, with a link. They never include your notes or comment text; a reminder shows only its own to-do line. Security emails (new sign-ins, account deletion) can't be turned off."
+        >
+          {ROWS.map((r) => {
+            const app = inApp[r.topic] ?? true;
+            const mail = emailOn(prefs, r.topic);
+            return <IosRow key={r.topic} label={r.label} value={app && mail ? "In app, email" : app ? "In app" : mail ? "Email" : "Off"} screen={`topic-${r.topic}`} />;
+          })}
+        </IosSection>
+        {ROWS.map((r) => (
+          <Subscreen key={r.topic} id={`topic-${r.topic}`} title={r.label}>
+            <IosSection footer={r.hint}>
+              <SwitchRow label="In the app" checked={inApp[r.topic] ?? true} onChange={(on) => void set({ inApp: { ...inApp, [r.topic]: on } })} />
+              <SwitchRow label="By email" checked={emailOn(prefs, r.topic)} onChange={(on) => void set(emailPatch(r.topic, on))} />
+            </IosSection>
+          </Subscreen>
+        ))}
+        <IosSection header="Email delivery" footer="The daily digest lists what you haven't read yet, by page title only, once a day. Shares, invitations and access changes are always sent as they happen.">
+          <ChoiceRow
+            screen="digest"
+            label="Comment emails"
+            value={prefs.digest}
+            choices={[
+              { value: "off", label: "As they happen" },
+              { value: "daily", label: "In a daily digest" },
+            ]}
+            onChange={(v) => void set({ digest: v as Prefs["digest"] })}
+          />
+        </IosSection>
+        <IosSection header="Muted notes" footer="Nobody is ever notified about their own actions, or about pages they can't open.">
+          <IosText muted>To stop hearing about comments on one note, open its … menu and choose Mute comment notifications. You&apos;ll still hear when someone @mentions you there. Follow a note the same way to hear about every comment on it.</IosText>
+        </IosSection>
+      </>
     );
   return (
     <div className="space-y-5">

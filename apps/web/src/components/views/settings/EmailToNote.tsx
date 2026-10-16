@@ -10,6 +10,9 @@ import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
+import { useIphoneApp } from "@/lib/iphone";
+import { ActionRow, ChoiceRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen, TextRow, ActionSheet } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
 
 /** What `emailNotes.status` returns for someone with an address. */
 export type EmailNoteStatus = {
@@ -44,6 +47,8 @@ export function EmailToNoteView({ status, places, ...on }: { status: EmailNoteSt
   const [confirming, setConfirming] = useState<"rotate" | "remove" | null>(null);
   const [sender, setSender] = useState("");
   const [busy, setBusy] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
+  const iphone = useIphoneApp();
   const run = async (p: () => Promise<unknown>) => {
     setBusy(true);
     try {
@@ -56,6 +61,75 @@ export function EmailToNoteView({ status, places, ...on }: { status: EmailNoteSt
     }
   };
 
+  if (iphone) {
+    if (status === undefined) return null;
+    if (status === null)
+      return (
+        <IosSection header="Email to Folevi" footer="Send or forward email to your address and it becomes a note in your Inbox. Only email from your own address is saved. Mail from anyone else is ignored.">
+          <ActionRow label="Create my address" icon={<RowIcon><Mail /></RowIcon>} disabled={busy} onClick={() => void run(on.onCreate)} />
+        </IosSection>
+      );
+    const stats = `${status.lastReceivedAt ? `${status.count === 1 ? "1 note" : `${status.count} notes`} so far, the last ${formatRelative(status.lastReceivedAt)}.` : "No email has arrived yet."}${status.rejectedCount ? ` ${status.rejectedCount === 1 ? "1 email" : `${status.rejectedCount} emails`} from other senders ignored.` : ""}`;
+    return (
+      <>
+        <IosSection header="Email to Folevi" footer={`Send or forward email to this address and it becomes a note in your Inbox. ${stats}`}>
+          <IosRow icon={<RowIcon><Mail /></RowIcon>} label="Your address" description={<span className="select-all font-mono">{status.address}</span>} />
+          <ActionRow label="Copy address" onClick={() => on.onCopy(status.address)} />
+          <ChoiceRow
+            screen="email-place"
+            label="Notes go to"
+            value={status.place.kind === "workspace" ? status.place.workspaceId : "personal"}
+            choices={[{ value: "personal", label: "Personal" }, ...places.map((w) => ({ value: w.id, label: w.name }))]}
+            onChange={(v) => void run(() => on.onSetPlace(v))}
+          />
+          <IosRow label="Who can send" value={String(1 + status.extraSenders.length)} screen="email-senders" />
+        </IosSection>
+        <Subscreen id="email-senders" title="Who can send">
+          <IosSection footer="Email must come from one of these addresses, and your email provider must sign it (Gmail, Outlook and iCloud do).">
+            <IosRow label={status.ownAddress} description="Your account's address" />
+            {status.extraSenders.map((addr) => (
+              <IosRow
+                key={addr}
+                label={addr}
+                trailing={
+                  <button type="button" aria-label={`Remove ${addr}`} disabled={busy} onClick={() => setRemoving(addr)} className="-mr-2 flex h-11 items-center px-2 text-[17px] text-danger outline-none disabled:opacity-40">
+                    Remove
+                  </button>
+                }
+              />
+            ))}
+          </IosSection>
+          {status.extraSenders.length < MAX_EXTRA_SENDERS ? (
+            <IosSection header="Add another address of yours">
+              <TextRow label="Email" type="email" autoComplete="email" value={sender} onChange={setSender} placeholder="name@example.com" maxLength={254} />
+              <ActionRow
+                label="Add"
+                disabled={busy || !sender.trim()}
+                onClick={() => {
+                  const email = sender.trim();
+                  if (email) void run(() => on.onAddSender(email)).then((ok) => ok && setSender(""));
+                }}
+              />
+            </IosSection>
+          ) : (
+            <IosSection>
+              <IosText muted>You can add up to {MAX_EXTRA_SENDERS} other addresses.</IosText>
+            </IosSection>
+          )}
+          <ActionSheet
+            open={removing !== null}
+            onClose={() => setRemoving(null)}
+            message={removing ? `Email from ${removing} won't become notes any more.` : undefined}
+            actions={[{ label: "Remove address", danger: true, onSelect: () => removing && void run(() => on.onRemoveSender(removing)) }]}
+          />
+        </Subscreen>
+        <IosSection>
+          <DestructiveRow label="Get a new address" confirm="Get a new address" message="Your current address stops working at once. Anything sent to it later is ignored." disabled={busy} onConfirm={() => void run(on.onRotate)} />
+          <DestructiveRow label="Turn off Email to Folevi" confirm="Turn off" message="Your address stops working at once. Notes you already saved stay." disabled={busy} onConfirm={() => void run(on.onRemove)} />
+        </IosSection>
+      </>
+    );
+  }
   return (
     <Card title="Email to Folevi" description="Send or forward email to this address and it becomes a note in your Inbox.">
       {status === undefined ? (

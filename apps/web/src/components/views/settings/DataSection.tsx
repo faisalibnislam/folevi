@@ -5,7 +5,10 @@ import { useEffect, useRef, useState } from "react";
 import { FolderUp, Upload } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import type { WireScope } from "@folevi/editor-schema";
-import { AppLink } from "@/lib/app/router";
+import { AppLink, useAppRouter } from "@/lib/app/router";
+import { useIphoneApp } from "@/lib/iphone";
+import { ActionRow, IosRow, IosSection, IosText, Subscreen } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { uploadFileNow } from "@/lib/sync/uploads";
@@ -38,6 +41,8 @@ export function DataSection({ target }: { target: DataTarget }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const [exportNote, setExportNote] = useState<string | null>(null);
+  const iphone = useIphoneApp();
+  const { navigate } = useAppRouter();
 
   // Folder picking isn't in React's typed attributes.
   useEffect(() => {
@@ -142,35 +147,113 @@ export function DataSection({ target }: { target: DataTarget }) {
     toast.show(`Imported ${ok} of ${out.length} ${out.length === 1 ? "page" : "pages"}`, { tone: ok === out.length ? "success" : "error" });
   };
 
+  const runExport = async () => {
+    setBusy(true);
+    setExportNote(null);
+    try {
+      const r = await exportScope({ scope });
+      const a = document.createElement("a");
+      a.href = r.url;
+      a.download = r.filename;
+      a.click();
+      const skipped = r.skippedAssets ?? [];
+      if (skipped.length) {
+        setExportNote(
+          `${skipped.length === 1 ? "1 attachment was" : `${skipped.length} attachments were`} left out because ${r.skippedReason === "size" ? "the export reached its 400 MB size limit" : "they couldn’t be read"}: ${skipped.slice(0, 5).join(", ")}${skipped.length > 5 ? "…" : ""}. They’re listed in manifest.json.`,
+        );
+        toast.show(`Exported ${r.documents} documents; ${skipped.length} attachments were left out`, { tone: "error" });
+      } else {
+        toast.show(`Exported ${r.documents} documents and ${r.assets} attachments`, { tone: "success" });
+      }
+    } catch (e) {
+      toast.show(errorMessage(e), { tone: "error" });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const IMPORT_HELP =
+    "Markdown and text files, a folder or a ZIP (an Obsidian vault works), a Notion export (Export, Markdown & CSV, as a ZIP), an Evernote export (.enex), Word documents (.docx), HTML and CSV files. Pages keep their headings, lists, to-dos, links, code, quotes, tables and images; Notion pages stay nested and linked, a folder or ZIP keeps its subfolders, and Evernote notes go into a folder named after the notebook. Anything we can't convert is kept as text and listed in the results.";
+  const inputs = (
+    <>
+      <input
+        ref={input}
+        type="file"
+        accept=".md,.markdown,.txt,.zip,.enex,.docx,.html,.htm,.csv,text/markdown,text/plain,text/html,text/csv,application/zip,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/gif,image/webp"
+        multiple
+        hidden
+        onChange={(e) => {
+          const files = [...(e.target.files ?? [])];
+          e.target.value = "";
+          void runImport(files);
+        }}
+      />
+      <input
+        ref={folderInput}
+        type="file"
+        multiple
+        hidden
+        onChange={(e) => {
+          const files = [...(e.target.files ?? [])];
+          e.target.value = "";
+          void runImport(files);
+        }}
+      />
+    </>
+  );
+  if (iphone) {
+    const failed = results.filter((r) => r.error).length;
+    return (
+      <>
+        <IosSection header={`Import into ${where}`} footer={IMPORT_HELP}>
+          {inputs}
+          <ActionRow label="Choose files" icon={<RowIcon><Upload /></RowIcon>} busy={busy ? "Importing…" : null} onClick={() => input.current?.click()} />
+          <ActionRow label="Import a folder" icon={<RowIcon><FolderUp /></RowIcon>} disabled={busy} onClick={() => folderInput.current?.click()} />
+          {progress ? (
+            <IosText muted>
+              <span role="status" aria-live="polite">
+                {progress}
+              </span>
+            </IosText>
+          ) : null}
+          {results.length ? <IosRow label="Results" value={failed ? `${results.length - failed} imported, ${failed} failed` : `${results.length} imported`} screen="import-results" /> : null}
+        </IosSection>
+        <Subscreen id="import-results" title="Import results">
+          <IosSection label="Import results">
+            {results.map((r, i) => (
+              <IosRow
+                key={`${r.name}-${i}`}
+                label={r.name}
+                description={
+                  r.error ? (
+                    <span className="text-danger">{r.error}</span>
+                  ) : (
+                    [r.images ? (r.images === 1 ? "1 image uploaded" : `${r.images} images uploaded`) : null, ...r.warnings.map((w) => `${w.line ? `Line ${w.line}: ` : ""}${w.message}`)].filter(Boolean).join(" · ") || "Imported without changes."
+                  )
+                }
+                onClick={r.id ? () => navigate(`/d/${r.id}`) : undefined}
+                chevron={Boolean(r.id)}
+              />
+            ))}
+          </IosSection>
+        </Subscreen>
+        {target.kind === "personal" ? <EmailToNoteCard /> : null}
+        {target.kind === "personal" ? <SaveFromAnywhereCard /> : null}
+        <IosSection
+          header={`Export ${where}`}
+          footer={exportNote ?? `A ZIP with every note in ${where} as Markdown (in folders matching your sidebar), all attachments in an assets folder, and a manifest.json describing folders, notes and files. One note can be exported from its … menu as Markdown, HTML or PDF.`}
+        >
+          <ActionRow label={`Export ${where} (.zip)`} busy={busy ? "Preparing…" : null} onClick={() => void runExport()} />
+        </IosSection>
+      </>
+    );
+  }
   return (
     <>
       <Card
         title={`Import into ${where}`}
         description="Markdown and text files, a folder or a ZIP (an Obsidian vault works), a Notion export (Export → Markdown & CSV, as a ZIP), an Evernote export (.enex), Word documents (.docx), HTML and CSV files. Pages keep their headings, lists, to-dos, links, code, quotes, tables and images; Notion pages stay nested and linked, a folder or ZIP keeps its subfolders, and Evernote notes go into a folder named after the notebook. Anything we can’t convert is kept as text and listed below."
       >
-        <input
-          ref={input}
-          type="file"
-          accept=".md,.markdown,.txt,.zip,.enex,.docx,.html,.htm,.csv,text/markdown,text/plain,text/html,text/csv,application/zip,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/gif,image/webp"
-          multiple
-          hidden
-          onChange={(e) => {
-            const files = [...(e.target.files ?? [])];
-            e.target.value = "";
-            void runImport(files);
-          }}
-        />
-        <input
-          ref={folderInput}
-          type="file"
-          multiple
-          hidden
-          onChange={(e) => {
-            const files = [...(e.target.files ?? [])];
-            e.target.value = "";
-            void runImport(files);
-          }}
-        />
+        {inputs}
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => input.current?.click()} disabled={busy}>
             <Upload size={14} aria-hidden /> {busy ? "Importing…" : "Choose files…"}
@@ -220,30 +303,7 @@ export function DataSection({ target }: { target: DataTarget }) {
         <Button
           variant="primary"
           disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            setExportNote(null);
-            try {
-              const r = await exportScope({ scope });
-              const a = document.createElement("a");
-              a.href = r.url;
-              a.download = r.filename;
-              a.click();
-              const skipped = r.skippedAssets ?? [];
-              if (skipped.length) {
-                setExportNote(
-                  `${skipped.length === 1 ? "1 attachment was" : `${skipped.length} attachments were`} left out because ${r.skippedReason === "size" ? "the export reached its 400 MB size limit" : "they couldn’t be read"}: ${skipped.slice(0, 5).join(", ")}${skipped.length > 5 ? "…" : ""}. They’re listed in manifest.json.`,
-                );
-                toast.show(`Exported ${r.documents} documents; ${skipped.length} attachments were left out`, { tone: "error" });
-              } else {
-                toast.show(`Exported ${r.documents} documents and ${r.assets} attachments`, { tone: "success" });
-              }
-            } catch (e) {
-              toast.show(errorMessage(e), { tone: "error" });
-            } finally {
-              setBusy(false);
-            }
-          }}
+          onClick={() => void runExport()}
         >
           {busy ? "Preparing…" : `Export ${where} (.zip)`}
         </Button>

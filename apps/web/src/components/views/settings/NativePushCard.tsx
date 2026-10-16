@@ -13,6 +13,10 @@ import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Card } from "./Card";
+import { useIphoneApp } from "@/lib/iphone";
+import { ActionRow, IosRow, IosSection, SwitchRow } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
+import { Bell } from "lucide-react";
 
 export function NativePushCard() {
   const bridge = nativeApp();
@@ -23,6 +27,7 @@ export function NativePushCard() {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const hintId = useId();
+  const iphone = useIphoneApp();
 
   const read = useCallback(() => void bridge?.pushStatus?.().then(setStatus), [bridge]);
   useEffect(() => {
@@ -57,6 +62,19 @@ export function NativePushCard() {
     }
   };
 
+  if (iphone) {
+    const explain = `Reminders and mentions show up on this ${device} even when Folevi isn't open, following the In app choices below. A reminder shows its to-do line and note, with Done and Snooze 1 hour; a mention says only who and where.`;
+    return denied ? (
+      <IosSection footer={`Notifications are turned off for Folevi in iOS Settings. Allow them there, then come back. ${explain}`}>
+        <IosRow icon={<RowIcon><Bell /></RowIcon>} label={`Notifications on this ${device}`} value="Off" />
+        <ActionRow label="Open iOS Settings" onClick={() => void bridge.openNotificationSettings?.()} />
+      </IosSection>
+    ) : (
+      <IosSection footer={`${on ? "On." : status.asked ? "Off." : "Off. Turning them on asks iOS once."}${others ? ` ${others} other device${others === 1 ? "" : "s"} too.` : ""} ${explain}`}>
+        <SwitchRow icon={<RowIcon><Bell /></RowIcon>} label={`Notifications on this ${device}`} checked={on} disabled={busy} onChange={(next) => void change(next)} />
+      </IosSection>
+    );
+  }
   return (
     <Card
       title={`Notifications on this ${device}`}

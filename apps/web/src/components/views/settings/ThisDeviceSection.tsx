@@ -7,6 +7,10 @@ import { nativeApp, type LockAfter, type NativeSettings } from "@/lib/nativeApp"
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { Card } from "./Card";
+import { useIphoneApp } from "@/lib/iphone";
+import { ChoiceRow, IosSection, SwitchRow } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
+import { LockKeyhole } from "lucide-react";
 
 /** The unlock method as the device names it. */
 const METHOD: Record<NativeSettings["method"], string> = { faceID: "Face ID", touchID: "Touch ID", opticID: "Optic ID", passcode: "your passcode", none: "Face ID" };
@@ -25,6 +29,7 @@ export function ThisDeviceSection() {
   const [busy, setBusy] = useState(false);
   const hintId = useId();
   const afterId = useId();
+  const iphone = useIphoneApp();
   useEffect(() => {
     void bridge?.getSettings().then(setSettings);
   }, [bridge]);
@@ -36,7 +41,7 @@ export function ThisDeviceSection() {
       </Card>
     );
   }
-  if (!settings) return <p className="text-sm text-muted">Loading…</p>;
+  if (!settings) return iphone ? null : <p className="text-sm text-muted">Loading…</p>;
 
   const method = METHOD[settings.method];
   const save = async (patch: Partial<Pick<NativeSettings, "lock" | "lockAfter">>) => {
@@ -51,6 +56,25 @@ export function ThisDeviceSection() {
     }
   };
   const label = settings.method === "passcode" ? "Lock with passcode" : `Lock with ${method}`;
+  if (iphone)
+    return (
+      <>
+        {error ? (
+          <div className="px-4">
+            <p role="alert" className="rounded-control bg-danger-soft px-4 py-3 text-[15px] text-ink">
+              {error}
+            </p>
+          </div>
+        ) : null}
+        <IosSection
+          header="Lock"
+          footer={`Folevi asks for ${method} when it opens, and hides your notes in the app switcher. This is kept on this device only. ${settings.method === "none" ? "Set a passcode for this device in the Settings app first." : `Turning it on asks for ${method} once.`}`}
+        >
+          <SwitchRow icon={<RowIcon><LockKeyhole /></RowIcon>} label={label} checked={settings.lock} disabled={busy || (settings.method === "none" && !settings.lock)} onChange={(lock) => void save({ lock })} />
+          {settings.lock ? <ChoiceRow screen="lock-after" label="Ask again" value={String(settings.lockAfter)} choices={AFTER.map((a) => ({ value: String(a.value), label: a.label }))} footer="When you come back after Folevi has been in the background this long." disabled={busy} onChange={(v) => void save({ lockAfter: Number(v) as LockAfter })} /> : null}
+        </IosSection>
+      </>
+    );
   return (
     <Card title="Lock" description={`Folevi asks for ${method} when it opens, and hides your notes in the app switcher. This is kept on this device only.`}>
       <div className="max-w-xl divide-y divide-line/70">

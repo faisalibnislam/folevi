@@ -15,12 +15,12 @@ import { useIphoneChrome } from "./chrome";
  * A note's floating bars in the iPhone app: on the left Comments, Style and Format, on the right Foli AI and
  * Insert. Each opens its tool as a sheet. While the keyboard is up they give way to a bar over the keyboard
  * with the blocks people reach for most (to-do, bullets, a heading, indent and outdent, a picture), undo and
- * redo, and a key that puts the keyboard away.
+ * redo, and a key that puts the keyboard away (typing / still opens every block).
  */
 export function NoteBars({ editor, ai, open, tab, onPick, readOnly }: { editor: Editor | null; ai: boolean; open: boolean; tab: InspectorTab; onPick: (t: InspectorTab) => void; readOnly: boolean }) {
   const { keyboard } = useIphoneChrome();
   const editing = keyboard && Boolean(editor?.isFocused || editor?.view.hasFocus());
-  if (editing && editor && !readOnly) return <KeyboardBar editor={editor} onInsert={() => onPick("insert")} />;
+  if (editing && editor && !readOnly) return <KeyboardBar editor={editor} />;
   const on = (t: InspectorTab) => open && tab === t;
   const btn = (t: InspectorTab, label: string, icon: ReactNode) => (
     <PillButton
@@ -71,7 +71,7 @@ export function NoteBars({ editor, ai, open, tab, onPick, readOnly }: { editor: 
 }
 
 /** The bar over the keyboard while writing. Its buttons never take focus, so the keyboard stays up. */
-function KeyboardBar({ editor, onInsert }: { editor: Editor; onInsert: () => void }) {
+function KeyboardBar({ editor }: { editor: Editor }) {
   // Re-render as the caret moves, so the buttons show what the line is.
   const [, refresh] = useReducer((n: number) => n + 1, 0);
   // Where a finger went down: lifting it far from there was a scroll along the bar, not a tap.
@@ -113,7 +113,7 @@ function KeyboardBar({ editor, onInsert }: { editor: Editor; onInsert: () => voi
         run();
       }}
       onClick={run}
-      className={`grid h-10 w-10 flex-none place-items-center rounded-control text-heading outline-none transition-colors active:bg-[var(--liquid-press)] disabled:opacity-35 ${pressed ? "bg-[var(--liquid-active)]" : ""}`}
+      className={`grid h-10 w-[38px] flex-none place-items-center rounded-control text-heading outline-none transition-colors active:bg-[var(--liquid-press)] disabled:opacity-35 ${pressed ? "bg-[var(--liquid-active)]" : ""}`}
     >
       {icon}
     </button>
@@ -121,8 +121,7 @@ function KeyboardBar({ editor, onInsert }: { editor: Editor; onInsert: () => voi
   return (
     <div data-iphone-keyboard-bar="" className="fixed inset-x-0 bottom-0 z-40 px-2 pb-1.5 pl-[calc(8px+env(safe-area-inset-left))] pr-[calc(8px+env(safe-area-inset-right))]">
       <div role="toolbar" aria-label="Writing tools" className="ui-liquid-strong flex h-12 items-center gap-0.5 rounded-capsule pl-1 pr-1">
-        <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {key("Insert", <Plus size={21} strokeWidth={2.2} aria-hidden />, onInsert)}
+        <div className="flex min-w-0 flex-1 items-center justify-between overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {key("To-do", <SquareCheck size={20} strokeWidth={2} aria-hidden />, () => toggle("todo"), type === "todo")}
           {key("Bulleted list", <List size={21} strokeWidth={2} aria-hidden />, () => toggle("bulleted"), type === "bulleted")}
           {key("Heading", <Heading2 size={21} strokeWidth={2} aria-hidden />, () => toggle("heading", { level: 2 }), type === "heading")}

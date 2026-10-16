@@ -173,6 +173,8 @@ export function ChatThread({
   useEffect(() => clearAttachments(), [conversationId, clearAttachments]);
 
   useEffect(() => {
+    // (Nothing said yet: the suggestions stay in view from their top.)
+    if (!messages.length && !showPending) return;
     endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [messages.length, showPending, answering]);
 

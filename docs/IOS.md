@@ -218,7 +218,7 @@ folder and Quick task; on Tasks it opens Quick task straight away.
 - **A note**: the page fills the screen under Back, the note's place (a glass chip: its parent page, folder
   or Drafts) and a pill with Share and the note's "…" menu; a note without artwork is a full-width sheet of
   paper. At the bottom, glass bars with Comments, Style and Format on the left and Foli AI and Insert on
-  the right, each opening its tool as a sheet. While writing, a bar over the keyboard has Insert, to-do,
+  the right, each opening its tool as a sheet. While writing, a bar over the keyboard has to-do,
   bullets, a heading, outdent, indent, an image, undo, redo and a key that puts the keyboard away (its
   buttons never take focus, so the keyboard stays up).
 - **Tasks** (`Tasks.tsx`): the views as chips (the chosen one names itself), tasks grouped by note under

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { flattenFolders } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
@@ -33,6 +33,13 @@ export function NewFolderSheet({ open, onClose }: { open: boolean; onClose: () =
     setColor(FOLDER_COLORS[Math.floor(Math.random() * FOLDER_COLORS.length)]!.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+  // The chosen colour (random for a new folder) is in view in its row.
+  const swatches = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = swatches.current;
+    const on = row?.querySelector<HTMLElement>('[aria-checked="true"]');
+    if (row && on) row.scrollLeft = on.offsetLeft - row.clientWidth / 2 + on.offsetWidth / 2;
+  }, [open, color]);
   const create = () => {
     const title = name.trim();
     if (!title) return;
@@ -75,7 +82,7 @@ export function NewFolderSheet({ open, onClose }: { open: boolean; onClose: () =
         <p id={`${nameId}-color`} className="px-1 pb-2 pt-4 text-[13px] font-medium text-muted">
           Color
         </p>
-        <div role="radiogroup" aria-labelledby={`${nameId}-color`} className="-mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div ref={swatches} role="radiogroup" aria-labelledby={`${nameId}-color`} className="-mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {FOLDER_COLORS.map((c) => {
             const on = c.id === color;
             return (

@@ -14,6 +14,8 @@ export interface SwipeAction {
 }
 
 const ACTION_W = 76;
+/** One row open at a time: opening one closes the others. */
+const OPEN_EVENT = "folevi:swipe-open";
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 
 /**
@@ -85,6 +87,7 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
       const open = x > 40 && l.length ? l.length * ACTION_W : x < -40 && r.length ? -r.length * ACTION_W : 0;
       openRef.current = open;
       setOffset(open);
+      if (open) window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: el }));
     };
     const run = (a: SwipeAction) => {
       openRef.current = 0;
@@ -92,11 +95,18 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
       if (a.danger) haptic("warning");
       a.onAction();
     };
+    const onOtherOpen = (e: Event) => {
+      if ((e as CustomEvent).detail === el || !openRef.current) return;
+      openRef.current = 0;
+      setOffset(0);
+    };
+    window.addEventListener(OPEN_EVENT, onOtherOpen);
     el.addEventListener("touchstart", onStart, { passive: true });
     el.addEventListener("touchmove", onMove, { passive: false });
     el.addEventListener("touchend", onEnd);
     el.addEventListener("touchcancel", onEnd);
     return () => {
+      window.removeEventListener(OPEN_EVENT, onOtherOpen);
       el.removeEventListener("touchstart", onStart);
       el.removeEventListener("touchmove", onMove);
       el.removeEventListener("touchend", onEnd);

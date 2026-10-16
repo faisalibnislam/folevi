@@ -37,12 +37,16 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>FoleviKeychainGroup</key>
+	<string>$(AppIdentifierPrefix)com.folevi.shared</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Folevi uses the camera when you take a photo or video to add to a note.</string>
+	<string>Folevi uses the camera when you take a photo or video to add to a note, or scan a document into one.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Folevi asks for Face ID to unlock the app when you turn on the lock in Settings.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Folevi uses the microphone when you record audio in a note, for voice notes and transcripts.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Folevi reads the photos you choose when you scan pages from them into a note.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

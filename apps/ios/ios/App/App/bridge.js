@@ -53,6 +53,39 @@
       return call("FoleviNative", "setSettings", patch);
     },
     /**
+     * This device and the REST API token the app holds for its widgets, share extension, Shortcuts and
+     * Spotlight: { id, family, model, accountId, tokenId, scanner }. The token itself never comes back.
+     */
+    device: function () {
+      return quietly(call("FoleviNative", "device"));
+    },
+    /** Keeps this device's token ({ token, tokenId, accountId }) in the Keychain for the app's extensions. */
+    setCredential: function (credential) {
+      return quietly(call("FoleviNative", "setCredential", credential)).then(function (r) {
+        return r !== null;
+      });
+    },
+    /** Signing out: the token, the widgets' copy of tasks and notes, and Spotlight's notes go. */
+    clearCredential: function () {
+      return quietly(call("FoleviNative", "clearCredential")).then(function () {});
+    },
+    /** What the share extension kept for the app: [{ id, title, text, url, place, files: [{ name, type, data }] }]. */
+    takeShares: function () {
+      return quietly(call("FoleviNative", "takeShares")).then(function (r) {
+        return (r && r.value) || [];
+      });
+    },
+    /** A kept share was saved: the app lets it go. */
+    finishShare: function (id) {
+      return quietly(call("FoleviNative", "finishShare", { id: String(id) })).then(function () {});
+    },
+    /** Scans a document ("camera") or reads pages from photos ("photos"): { pages, text }, or null if cancelled. */
+    scanDocument: function (source) {
+      return call("FoleviNative", "scanDocument", { source: source === "camera" ? "camera" : "photos" }).then(function (r) {
+        return (r && r.value) || null;
+      });
+    },
+    /**
      * folevi:// links opened from other apps (and one that opened the app), for the page to route; returns
      * the function that stops listening.
      */
@@ -67,6 +100,12 @@
   });
 
   Object.defineProperty(window, "foleviNative", { value: bridge, enumerable: false, configurable: false, writable: false });
+
+  // The app coming back to the front, said reliably (a web view's visibilitychange doesn't always fire when
+  // iOS suspends and resumes the app): the page picks up what the share extension kept, for one.
+  cap.addListener("App", "appStateChange", function (state) {
+    if (state && state.isActive) window.dispatchEvent(new Event("folevi:app-active"));
+  });
 
   // The page knows from its first paint that it's in the iPhone and iPad app (safe areas, no purchases).
   var mark = function () {

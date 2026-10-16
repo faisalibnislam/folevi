@@ -22,6 +22,9 @@ final class FoleviViewController: CAPBridgeViewController {
 
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(FoleviNativePlugin())
+        // The extensions' REST API is the site this app loads; links that came early can go to the page now.
+        AppServices.launched(serverURL: bridge?.config.serverURL)
+        DeepLinkRouter.bridgeReady()
         if let webView, let capacitor = webView.navigationDelegate {
             let guardian = NavigationGuard(forwardingTo: capacitor)
             navigationGuard = guardian
@@ -32,6 +35,7 @@ final class FoleviViewController: CAPBridgeViewController {
         webView.configuration.userContentController.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         #if DEBUG && targetEnvironment(simulator)
         SimulatorEval.install(on: webView)
+        DebugHooks.install()
         #endif
     }
 

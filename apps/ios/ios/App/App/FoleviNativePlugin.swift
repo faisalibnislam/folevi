@@ -1,5 +1,6 @@
 // The app's own Capacitor plugin ("FoleviNative"), called through `window.foleviNative` (bridge.js): the
-// Face ID lock's settings, and where links go. Every call checks the web view is showing Folevi's own site
+// Face ID lock's settings, and where links go (and, in Native/NativeServices.swift, the device's token for
+// the widgets and extensions, kept shares and the scanner). Every call checks the web view is showing Folevi's own site
 // (capacitor.config.ts server.url): App-Bound Domains already keep other sites out of the web view, this
 // makes sure of it.
 //
@@ -20,12 +21,19 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setSettings", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openExternal", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "retry", returnType: CAPPluginReturnPromise),
+        // Native/NativeServices.swift: the device's token, kept shares, the scanner.
+        CAPPluginMethod(name: "device", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setCredential", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "clearCredential", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "takeShares", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "finishShare", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "scanDocument", returnType: CAPPluginReturnPromise),
     ]
 
     private var appOrigin: String { AppOrigin.of(bridge?.config.serverURL) }
 
     /// Whether the page asking is Folevi's own (not the offline page, never another site).
-    @MainActor private var fromFolevi: Bool {
+    @MainActor var fromFolevi: Bool {
         guard let page = bridge?.webView?.url else { return false }
         return !appOrigin.isEmpty && AppOrigin.of(page) == appOrigin
     }
@@ -138,7 +146,7 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @MainActor private func topController() -> UIViewController? {
+    @MainActor func topController() -> UIViewController? {
         var top = bridge?.viewController
         while let presented = top?.presentedViewController { top = presented }
         return top

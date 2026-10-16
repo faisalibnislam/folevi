@@ -1,6 +1,7 @@
 // The app's window: Folevi's web view (FoleviViewController), with the Face ID lock (AppLock) following the
-// scene as it comes and goes. Capacitor hears about links and activities through its proxy (the App plugin
-// hands folevi:// links to the page).
+// scene as it comes and goes, and the widgets, share sheet and Spotlight kept fresh (AppServices). Capacitor
+// hears about links and activities through its proxy (the App plugin hands folevi:// links to the page);
+// Spotlight results become folevi:// links first (DeepLinkRouter).
 import Capacitor
 import UIKit
 
@@ -17,10 +18,15 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         AppLock.shared.attach(to: window)
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
+        // Opened from Spotlight (or a Folevi page handed off): the note, once the page is up.
+        for activity in connectionOptions.userActivities {
+            if let url = DeepLinkRouter.link(for: activity) { DeepLinkRouter.open(url) }
+        }
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
         AppLock.shared.didBecomeActive()
+        AppServices.becameActive()
     }
 
     func sceneWillResignActive(_ scene: UIScene) {
@@ -29,6 +35,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidEnterBackground(_ scene: UIScene) {
         AppLock.shared.didEnterBackground()
+        AppServices.enteredBackground()
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
@@ -36,6 +43,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        if let url = DeepLinkRouter.link(for: userActivity) { return DeepLinkRouter.open(url) }
         SceneDelegateProxy.shared.scene(scene, continue: userActivity)
     }
 }

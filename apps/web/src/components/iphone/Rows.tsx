@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ChevronDown, ChevronRight, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal, Search } from "lucide-react";
 import { AppLink } from "@/lib/app/router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
-import type { MenuEntry } from "@/components/ui/Menu";
-import { MenuButton } from "@/components/ui/Menu";
-import { MoreHorizontal } from "lucide-react";
+import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
 
 /**
  * A plain list row, as on Home (All notes, a folder): an icon, the label, a count and a chevron, with a

@@ -2,10 +2,9 @@
 
 import type { ReactNode } from "react";
 import { addDays } from "@folevi/editor-schema";
-import { CalendarDays, CalendarRange, ListPlus, Rows3, Rss } from "lucide-react";
+import { CalendarDays, CalendarRange, ListPlus, MoreHorizontal, Rows3, Rss } from "lucide-react";
 import { formatCalendarDate } from "@/i18n";
 import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
-import { MoreHorizontal } from "lucide-react";
 import { ViewChrome, useShell } from "@/components/app/Shell";
 import type { TaskRow } from "@/components/views/TasksView";
 import { calendarColor, eventWhen, type ExternalEvent } from "@/components/views/CalendarSubscriptions";

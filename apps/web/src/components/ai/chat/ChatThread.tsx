@@ -453,10 +453,12 @@ export function ChatThread({
       <div className={`flex-none ${iphone && !page ? (variant === "panel" ? "pb-1 pt-2" : "px-3 pb-3 pt-2") : page ? "px-4 pb-4 pt-2 sm:px-8" : variant === "panel" ? "border-t border-line/70 pt-2.5" : "border-t border-line/70 px-3 pb-3 pt-2.5"}`}>
         <div className={page ? "mx-auto max-w-3xl" : ""}>
           <AiCreditsNote className="mb-2" />
-          <div className="mb-2 flex flex-wrap items-center gap-2 px-0.5">
-            <ContextChips context={context} names={names} onChange={changeContext} disabled={working} />
-            {webAvailable && mode === "ask" ? <WebToggle on={web} onChange={setWeb} disabled={working} /> : null}
-          </div>
+          {iphone ? null : (
+            <div className="mb-2 flex flex-wrap items-center gap-2 px-0.5">
+              <ContextChips context={context} names={names} onChange={changeContext} disabled={working} />
+              {webAvailable && mode === "ask" ? <WebToggle on={web} onChange={setWeb} disabled={working} /> : null}
+            </div>
+          )}
           {attachAvailable && attachments.problems.length ? (
             <div className="mb-2">
               <AttachmentProblems problems={attachments.problems} onDismiss={attachments.dismiss} />
@@ -469,6 +471,13 @@ export function ChatThread({
                 : "relative w-full rounded-panel bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]"
             }
           >
+            {/* The iPhone app: what it's about sits inside the composer, as a chip at its top. */}
+            {iphone ? (
+              <div className="flex flex-wrap items-center gap-2 px-3 pt-3">
+                <ContextChips context={context} names={names} onChange={changeContext} disabled={working} />
+                {webAvailable && mode === "ask" ? <WebToggle on={web} onChange={setWeb} disabled={working} /> : null}
+              </div>
+            ) : null}
             {attachAvailable ? <AttachmentChips files={attachments.files} onRemove={attachments.remove} disabled={working} className="px-3 pt-2.5" /> : null}
             <label htmlFor={`${uid}-q`} className="sr-only">
               {mode === "research" ? "What should Foli AI research?" : "Ask about your notes, or ask Foli AI to change them"}

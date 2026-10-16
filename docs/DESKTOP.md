@@ -1,4 +1,4 @@
-# Folevi for Mac (and Windows)
+# Folevi for Mac
 
 Folevi for Mac is the web app in a window of its own: a small Electron shell (`apps/desktop`) that loads
 https://app.folevi.com. Every feature, behaviour and pixel comes from the site, so the Mac app matches the
@@ -15,8 +15,11 @@ The native Swift app it replaces is archived on the git tag `native-mac-archive`
   away, and a task added says where it went with a Mac notification.
 - **Menu bar icon** (can be turned off): Quick Add Task, New Note, recent notes, the save state ("All
   changes saved", "Offline: changes are kept on this Mac"...), Open Folevi, Settings and Quit.
-- **Open at login** (on by default, quietly: no window, ready for Quick Add). Closing the main window hides
-  it; ⌘Q quits.
+- **Open at login** (on by default). The main window opens as on any launch: macOS can only say a launch was
+  at login through the login item service, which can hang the app on recent macOS, so the shell never asks
+  it at startup and only applies the setting when it changes. A folevi:// link that opens Folevi shows just
+  what it names. Closing the main window hides it; ⌘Q quits. Opening Folevi again brings the running one
+  forward.
 - **Mac notifications** for comments, mentions and reminders while Folevi isn't the app in front, and the
   **Dock badge** with the unread count. Clicking a notification opens the page it's about.
 - **Seamless title bar**: no title bar of its own. The page keeps an empty `.ui-traffic-space` in the
@@ -95,90 +98,5 @@ the bump with the build.
 settings (used by tests). The end-to-end test drives the real shell with Playwright:
 `apps/web/e2e/desktop-app.spec.ts` (build the shell first with `pnpm build`).
 
-Icons: `packages/design-tokens/scripts/brand-icons.mjs` writes `apps/desktop/build/icon.icns` and the menu
-bar template images (`apps/desktop/assets/trayTemplate.png`, `@2x`). `apps/desktop/scripts/windows-icons.mjs`
-writes the Windows ones (below).
-
-## Folevi for Windows
-
-The same shell, built for Windows 10 and 11 on x64 and arm64 PCs. Not distributed yet (nothing on the site
-mentions it): build it, install it on a PC, try it.
-
-### What differs
-
-Everything that differs is in `apps/desktop/src/platform.ts` (plain functions, tested in `shell.test.ts`);
-`main.ts` and `preload.ts` branch on `process.platform === "win32"`.
-
-- **Window**: still no title bar of its own, but Windows draws its minimize, maximize and close buttons
-  (`titleBarOverlay`) at the top right, over the page, 56 px tall (down to the bottom of the tab strip),
-  with no fill of their own and symbols that follow light and dark. There are no traffic lights to place,
-  so `placeWindowButtons` isn't used. The preload marks `data-desktop="windows"`; the page then shows no
-  `.ui-traffic-space` (the sidebar keeps the logo, as in a browser), keeps the same draggable top bars, and
-  ends the tab strip before the buttons
-  (`.ui-clear-window-controls`, `right: var(--ui-window-controls) - 4px`). `DesktopBridge` sets
-  `--ui-window-controls` from `navigator.windowControlsOverlay.getTitlebarAreaRect()` and updates it on
-  `geometrychange` (wider buttons with larger text or scaling); 138 px until then.
-- **Menus**: no menu bar (Windows apps like this one have none), but a hidden application menu keeps the
-  shortcuts: Ctrl+N new note, Ctrl+Shift+N new window, Ctrl+, Settings, Ctrl+R reload, Ctrl+Shift+I
-  developer tools, zoom, F11 full screen, Alt+Left and Alt+Right back and forward. Help > About Folevi shows
-  Windows' About box. The taskbar button's jump list has New Note and Quick Add Task.
-- **Quick Add**: Ctrl+Alt+Space by default (Alt+Space opens every window's system menu on Windows). Only a
-  first launch gets it: a saved shortcut is kept. Settings > Desktop app records and shows shortcuts the
-  Windows way ("Ctrl+Alt+Space", the Windows key as "Win").
-- **System tray** instead of the menu bar: the round mark in colour (`assets/tray.ico`). A click opens Folevi,
-  a right click shows the same menu as on the Mac. With the tray icon on, closing the main window keeps Folevi
-  running there; with it off, closing the main window quits (nothing would show it's still running).
-- **Notifications**: Windows toasts. The app sets its AppUserModelID to `com.folevi.app` (the installer's
-  Start menu shortcut carries the same id), which toasts need. Unpackaged development runs may not show them.
-- **Unread count**: Windows has no number badge, so the taskbar button gets a small red dot while anything
-  is unread (`setOverlayIcon`, drawn in code: `badgeDot`), with the count as its description for screen
-  readers.
-- **folevi:// links**: Windows passes them as an argument: to a running Folevi through `second-instance`, and
-  to one starting up in `process.argv` (`linkFromArgv`). The installer registers the scheme, and the
-  installed app registers itself again at launch (`setAsDefaultProtocolClient`).
-- **Open at sign-in**: Windows can't tell a launch at sign-in from any other, so the login entry passes
-  `--opened-at-login` and Folevi starts quietly when it sees it.
-- **Recording a call** works the same way: Electron's `audio: "loopback"` captures everything the PC plays.
-  Windows asks for no permission, so `screenAccess` says "granted", there's no System Settings button, and a
-  failure says so plainly. The recorder says "this PC" instead of "this Mac".
-- **Updates**: none yet. `src/updates.ts` only runs on macOS (Squirrel.Mac and a Developer ID check). A new
-  version is installed over the old one; sign-in and settings (`%APPDATA%\Folevi`) are kept.
-- Single instance, the offline page, window position, drag a note out (to File Explorer) and the security
-  rules are the same code on both.
-
-### Build
-
-```bash
-cd apps/desktop && pnpm install --ignore-workspace
-pnpm package:win   # pnpm build, then electron-builder --win --x64 --arm64 --config electron-builder.win.yml
-```
-
-It builds on Windows, on a Mac (no Wine needed) and in CI. Out come two NSIS installers in
-`apps/desktop/release-win/` (gitignored): `Folevi-<version>-x64-setup.exe` and
-`Folevi-<version>-arm64-setup.exe`, about 106 to 112 MB each. The CI job `desktop-windows` (on
-`windows-latest`) typechecks, runs the shell's tests and builds both, kept as the run's artifact for a week.
-
-Config: `apps/desktop/electron-builder.win.yml` (app id `com.folevi.app`). The installer is a short wizard
-(`oneClick: false`), installs for the current user by default with no administrator prompt
-(`%LOCALAPPDATA%\Programs\Folevi`; installing for everyone is offered), and makes Start menu and desktop
-shortcuts. Uninstalling keeps sign-in and settings.
-
-Icons: `node scripts/windows-icons.mjs` (from `apps/desktop`) renders the round mark into `build/icon.ico`
-(16 to 256 px: the app, installer and shortcuts), `assets/tray.ico` (16 to 48 px) and
-`assets/icon-48.png` (the About box). The Mac builds leave those out.
-
-### Signing
-
-Not signed yet. Until it is, Windows SmartScreen stops the installer ("Windows protected your PC": More
-info > Run anyway) and some antivirus tools are wary of it. To sign: buy a code signing certificate (an OV or
-EV certificate from a certificate authority, or Azure Trusted Signing), then build with `CSC_LINK` and
-`CSC_KEY_PASSWORD` set (or add `win.azureSignOptions`) and put the certificate's name in
-`win.signtoolOptions.publisherName`. SmartScreen's warning fades as a signed installer builds reputation
-(immediately with EV and Trusted Signing).
-
-### Trying it
-
-Only on a real Windows PC (or a Windows VM; on an Apple silicon Mac, Windows 11 on ARM runs the arm64
-installer). Worth checking there: the window buttons sit at the top right and the tab strip ends before
-them, in light and dark; Ctrl+Alt+Space; the tray icon's click and menu; a toast and the taskbar's red dot;
-a folevi:// link with Folevi closed and open; open at sign-in; recording a call.
+Icons: `packages/design-tokens/scripts/brand-icons.mjs` writes `apps/desktop/build/Folevi.icon` (the Icon
+Composer document the app is packaged with) and the menu bar template images (`apps/desktop/assets/trayTemplate.png`, `@2x`).

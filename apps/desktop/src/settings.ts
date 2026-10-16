@@ -1,8 +1,7 @@
 // The Mac app's own settings (the web app's live in the account): kept in a small JSON file in the app's
-// support folder (on Windows, %APPDATA%\Folevi).
+// support folder.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { defaultShortcut, platformOf, type Platform } from "./platform";
 
 export interface DesktopSettings {
   /** Opens Quick Add from any app (an Electron accelerator, e.g. "Alt+Space"); empty for none. */
@@ -13,16 +12,12 @@ export interface DesktopSettings {
   notifications: boolean;
 }
 
-/** A first launch's settings. Only the Quick Add shortcut differs (Alt+Space is Windows' system menu). */
-export const defaultSettings = (platform: Platform): DesktopSettings => ({
-  quickAddShortcut: defaultShortcut(platform),
+export const DEFAULT_SETTINGS: DesktopSettings = {
+  quickAddShortcut: "Alt+Space",
   openAtLogin: true,
   menuBarIcon: true,
   notifications: true,
-});
-
-/** This system's defaults. A settings file keeps whatever shortcut it already has. */
-export const DEFAULT_SETTINGS: DesktopSettings = defaultSettings(platformOf());
+};
 
 const MODIFIERS = new Set(["Command", "Cmd", "Control", "Ctrl", "CommandOrControl", "CmdOrCtrl", "Alt", "Option", "Shift", "Super", "Meta"]);
 const KEY = /^([A-Z0-9]|F([1-9]|1[0-9]|2[0-4])|Space|Tab|Enter|Return|Backspace|Delete|Up|Down|Left|Right|Home|End|PageUp|PageDown|Escape|Plus|[`\-=[\]\\;',./])$/;

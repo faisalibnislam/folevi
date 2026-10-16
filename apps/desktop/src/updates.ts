@@ -15,12 +15,9 @@ const SIX_HOURS = 6 * 60 * 60 * 1000;
 
 export type UpdateState = { state: "idle" } | { state: "checking" } | { state: "downloading" } | { state: "ready"; version: string } | { state: "none" } | { state: "error" };
 
-/**
- * Whether this copy of the app can install updates: packaged, and signed with a Developer ID. Folevi for
- * Windows has no updates yet (no signed builds, no feed): a new version is installed over the old one.
- */
+/** Whether this copy of the app can install updates: packaged, and signed with a Developer ID. */
 function canUpdate(): boolean {
-  if (process.platform !== "darwin" || !app.isPackaged || process.env.FOLEVI_UPDATES === "off") return false;
+  if (!app.isPackaged || process.env.FOLEVI_UPDATES === "off") return false;
   const bundle = app.getPath("exe").replace(/\/Contents\/MacOS\/[^/]+$/, "");
   // codesign writes the signature's details to stderr.
   const { stderr } = spawnSync("codesign", ["-dv", "--verbose=2", bundle], { encoding: "utf8" });

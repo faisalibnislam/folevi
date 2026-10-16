@@ -13,9 +13,6 @@ files:
   - dist/**
   - "!dist/**/*.test.js"
   - assets/**
-  # (The Windows app's tray and About icons.)
-  - "!assets/tray.ico"
-  - "!assets/icon-48.png"
   - package.json
   - "!**/node_modules/**"
 npmRebuild: false

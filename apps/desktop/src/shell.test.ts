@@ -2,8 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
-import { badgeDescription, badgeDot, defaultShortcut, linkFromArgv, LOGIN_ARG, menuAccelerator, platformOf, titleBarOverlay, TITLE_BAR_HEIGHT } from "./platform";
-import { cleanSettings, DEFAULT_SETTINGS, defaultSettings, isValidShortcut, loadSettings, saveSettings } from "./settings";
+import { cleanSettings, DEFAULT_SETTINGS, isValidShortcut, loadSettings, saveSettings } from "./settings";
 import { appUrl, dragFileName, isAppUrl, isExternalSafe, parseDeepLink, SCREEN_RECORDING_SETTINGS, systemSettingsUrl } from "./urls";
 import { restoreWindow, saveWindow } from "./windowState";
 
@@ -97,64 +96,5 @@ describe("folevi:// links", () => {
     expect(dragFileName("Trip: day 1/2", "md")).toBe("Trip- day 1-2.md");
     expect(dragFileName("..hidden", "md")).toBe("hidden.md");
     expect(dragFileName("", "md")).toBe("Untitled.md");
-  });
-});
-
-describe("Mac and Windows", () => {
-  test("Windows is win32; everything else runs as the Mac app", () => {
-    expect(platformOf("win32")).toBe("windows");
-    expect(platformOf("darwin")).toBe("mac");
-    expect(platformOf("linux")).toBe("mac");
-  });
-
-  test("Quick Add starts on ⌥Space on a Mac and Ctrl+Alt+Space on Windows (Alt+Space is its system menu)", () => {
-    expect(defaultShortcut("mac")).toBe("Alt+Space");
-    expect(defaultShortcut("windows")).toBe("Control+Alt+Space");
-    expect(defaultSettings("windows")).toEqual({ ...defaultSettings("mac"), quickAddShortcut: "Control+Alt+Space" });
-    for (const p of ["mac", "windows"] as const) expect(isValidShortcut(defaultShortcut(p))).toBe(true);
-    expect(DEFAULT_SETTINGS).toEqual(defaultSettings(platformOf()));
-  });
-
-  test("a saved shortcut is kept on either system; only a missing one gets the system's default", () => {
-    const base = defaultSettings("windows");
-    expect(cleanSettings({ quickAddShortcut: "Alt+Space" }, base).quickAddShortcut).toBe("Alt+Space");
-    expect(cleanSettings({}, base).quickAddShortcut).toBe("Control+Alt+Space");
-  });
-
-  test("menu keys: Command stays on a Mac and becomes Control on Windows", () => {
-    expect(menuAccelerator("Command+Shift+N", "mac")).toBe("Command+Shift+N");
-    expect(menuAccelerator("Command+Shift+N", "windows")).toBe("Control+Shift+N");
-    expect(menuAccelerator("Command+,", "windows")).toBe("Control+,");
-    expect(menuAccelerator("CmdOrCtrl+N", "windows")).toBe("Control+N");
-    expect(menuAccelerator("Alt+Left", "windows")).toBe("Alt+Left");
-  });
-
-  test("a folevi:// link among a launch's arguments (how Windows hands links over)", () => {
-    expect(linkFromArgv(["C:\\Program Files\\Folevi\\Folevi.exe", "--allow-file-access-from-files", "folevi://d/01JAZ3XQ5V8K2M4N6P7R9S0T1U"])).toBe("folevi://d/01JAZ3XQ5V8K2M4N6P7R9S0T1U");
-    expect(linkFromArgv(["Folevi.exe", "FOLEVI://new"])).toBe("FOLEVI://new");
-    expect(linkFromArgv(["Folevi.exe", LOGIN_ARG])).toBeNull();
-    expect(linkFromArgv(["Folevi.exe", "https://app.folevi.com/d/x", "--url=folevi://new"])).toBeNull();
-    expect(linkFromArgv([])).toBeNull();
-    // Whatever it finds still goes through parseDeepLink.
-    expect(parseDeepLink(linkFromArgv(["Folevi.exe", "folevi://admin"])!)).toBeNull();
-  });
-
-  test("Windows' window buttons: no fill of their own, symbols for the theme, as tall as the top bar", () => {
-    expect(titleBarOverlay(false)).toEqual({ color: "#FFFFFF00", symbolColor: "#1C1C1F", height: TITLE_BAR_HEIGHT });
-    expect(titleBarOverlay(true)).toEqual({ color: "#0E0E0F00", symbolColor: "#F2F2F3", height: TITLE_BAR_HEIGHT });
-    expect(TITLE_BAR_HEIGHT).toBe(56);
-  });
-
-  test("the taskbar's unread dot is a round red dot, transparent at the corners", () => {
-    const px = badgeDot(16);
-    expect(px.length).toBe(16 * 16 * 4);
-    const at = (x: number, y: number) => [...px.subarray((y * 16 + x) * 4, (y * 16 + x) * 4 + 4)];
-    expect(at(8, 8)).toEqual([0x4d, 0x48, 0xe5, 255]);
-    expect(at(0, 0)[3]).toBe(0);
-    expect(at(15, 15)[3]).toBe(0);
-    expect(badgeDot(32).length).toBe(32 * 32 * 4);
-    expect(badgeDescription(1)).toBe("1 unread notification");
-    expect(badgeDescription(3)).toBe("3 unread notifications");
-    expect(badgeDescription(240)).toBe("99+ unread notifications");
   });
 });

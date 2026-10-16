@@ -17,7 +17,7 @@ import { canPurchaseHere } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
 import { useAppRouter } from "@/lib/app/router";
 import { ActionRow, DestructiveRow, IosRow, IosSection, Subscreen, TextRow } from "@/components/iphone/SettingsKit";
-import { IdentityImageRows } from "./IdentityImageField";
+import { IdentityImageRows } from "@/components/iphone/IdentityImageRows";
 import { UsageMeter } from "./BillingSection";
 
 /** The current team workspace's general settings. Only shown when a workspace is open (Personal has none). */

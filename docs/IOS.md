@@ -280,7 +280,19 @@ folder and Quick task; on Tasks it opens Quick task straight away.
   panel) opens in the tool sheet.
 - **Search**: the command palette as a full-screen sheet, the field at the top with Cancel and results as
   rows.
-- **Settings**: a grouped list (inset sections, icons, chevrons) where each section is its own screen.
+- **Settings**: a grouped list (inset sections, icons, chevrons) where each section is its own screen, and
+  every section is built the way iOS Settings is (`SettingsKit.tsx`; the desktop forms are unchanged):
+  inset grouped sections with a short sentence-case heading and the explanation under them; rows with a label,
+  a value, a switch (iOS's shape, dark when on, light in dark mode) or a chevron, split by hairlines that start
+  past the row's icon; every choice (theme, time zone, editor text size, a digest's time, a member's role, a
+  guest's access, when the lock asks again) a pushed screen with a check by the chosen one and a light tap
+  when another is picked (time zones have a search field); short text as fields inside their rows (Name),
+  longer or one-off text on a screen of its own with Done (a passkey's name, a memory, Change password, a new
+  token or webhook, an invitation); destructive actions as red rows confirmed by an action sheet (a warning
+  tap). A section's pushed screens are `?screen=<id>` on its address, on the Settings tab's stack, so Back,
+  the edge swipe and the collapsing large title work; the section stays mounted under them, so a draft
+  survives picking a choice. Every section keeps what it can do on the web; Plan & billing shows the plan and
+  usage only. e2e: `iphone-settings.spec.ts` walks the tree.
 
 **Sheets** (`Sheet.tsx`): in the iPhone app every `Dialog` and `Popover` is a sheet from the bottom with a
 grabber (dragged down to dismiss from the grabber or the header, or from the content once it's at its top;
@@ -308,8 +320,8 @@ and a phone browser keeping the web layout). In the Simulator: `pnpm sync:dev`, 
 dev server; `node scripts/simulator.mjs eval '...'` drives it.
 
 Not done yet: an interactive Back swipe drawn by the app itself (WebKit's own swipe shows its snapshot of the
-page behind, which after a tab switch can be the screen shown just before it), Settings sections as native
-grouped lists throughout (they're the web forms on grouped cards), and per-point pressure on the whiteboard.
+page behind, which after a tab switch can be the screen shown just before it), and per-point pressure on the
+whiteboard. Settings > Desktop app (only in the Mac app) keeps its web cards if opened by its address.
 
 ### iPad
 

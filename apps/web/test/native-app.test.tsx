@@ -122,6 +122,8 @@ describe("folevi:// links", () => {
     "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V",
     "folevi://d/01j9zq4k8w2m3n4p5q6r7s8t9v#blockA1",
     "folevi:///d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V",
+    "folevi://d/inbox-2d0a97ae3b345608",
+    "folevi://d/INBOX-2D0A97AE3B345608",
     "folevi://tasks/today",
     "folevi://settings/this-device",
     "folevi://foli-ai",
@@ -147,6 +149,8 @@ describe("folevi:// links", () => {
     expect(parseDeepLink("folevi://d/01j9zq4k8w2m3n4p5q6r7s8t9v#blockA1")).toEqual({ type: "open", path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#blockA1" });
     expect(parseDeepLink("folevi://settings/this-device")).toEqual({ type: "open", path: "/settings/this-device" });
     expect(parseDeepLink("folevi://new")).toEqual({ type: "new-note" });
+    expect(parseDeepLink("folevi://d/inbox-2d0a97ae3b345608")).toEqual({ type: "open", path: "/d/inbox-2d0a97ae3b345608" });
+    expect(parseDeepLink("folevi://d/inbox-../x")).toBeNull();
     expect(parseDeepLink("folevi://admin")).toBeNull();
   });
 

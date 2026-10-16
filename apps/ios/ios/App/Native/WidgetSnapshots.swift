@@ -35,7 +35,7 @@ enum WidgetSnapshots {
         for (name, snapshot, scheme) in [("light", live, ColorScheme.light), ("dark", live, .dark), ("full", busy, .light)] {
             let sheet = Sheet(live: snapshot, empty: empty).environment(\.colorScheme, scheme)
             let renderer = ImageRenderer(content: sheet)
-            renderer.scale = 3
+            renderer.scale = 2
             guard let png = renderer.uiImage?.pngData() else { continue }
             try png.write(to: folder.appendingPathComponent("widgets-\(name).png"))
             written.append("widgets-\(name).png")
@@ -58,6 +58,28 @@ enum WidgetSnapshots {
             NoteSummary(id: "01JB\(String(repeating: "B", count: 21))\(i)", title: title, place: .init(id: "personal", name: i % 3 == 2 ? "Studio Workspace" : "Personal"), updatedAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(Double(-i) * 5400)), url: nil)
         }
         return WidgetSnapshot(state: .ready, tasks: WidgetSnapshot.ordered(tasks, today: today), notes: notes, day: today, fetchedAt: Date())
+    }
+
+    /// A light day: one overdue task, two today, three tomorrow (the large widgets' Tomorrow and Add task);
+    /// with `today: false`, nothing today and only tomorrow's.
+    private static func few(today: Bool = true) -> WidgetSnapshot {
+        let day = DayFormat.string(Date())
+        let tomorrow = DayFormat.next(day)
+        let yesterday = DayFormat.string(Date().addingTimeInterval(-86400))
+        let note = TaskItem.NoteRef(id: "01JAAAAAAAAAAAAAAAAAAAAAAA", title: "Inbox")
+        var tasks = [
+            TaskItem(id: "f3", text: "Book the train to Leeds", status: "open", dueDate: tomorrow, dueTime: "08:00", priority: nil, note: note, place: nil),
+            TaskItem(id: "f4", text: "Pick up the prints", status: "open", dueDate: tomorrow, dueTime: nil, priority: nil, note: note, place: nil),
+            TaskItem(id: "f5", text: "Draft the newsletter", status: "open", dueDate: tomorrow, dueTime: nil, priority: nil, note: note, place: nil),
+        ]
+        if today {
+            tasks += [
+                TaskItem(id: "f0", text: "Reply to the landlord", status: "open", dueDate: yesterday, dueTime: nil, priority: nil, note: note, place: nil),
+                TaskItem(id: "f1", text: "Send the proposal to Mira", status: "open", dueDate: day, dueTime: "09:30", priority: "high", note: note, place: nil),
+                TaskItem(id: "f2", text: "Water the plants", status: "open", dueDate: day, dueTime: nil, priority: nil, note: note, place: nil),
+            ]
+        }
+        return WidgetSnapshot(state: .ready, tasks: WidgetSnapshot.ordered(tasks, today: day), notes: [], day: day, fetchedAt: Date())
     }
 
     private static func entry(_ snapshot: WidgetSnapshot) -> FoleviEntry { FoleviEntry(date: Date(), snapshot: snapshot) }
@@ -98,6 +120,16 @@ enum WidgetSnapshots {
                     HStack(alignment: .top, spacing: 22) {
                         home(TodayView(entry: entry(live), family: .systemLarge), large)
                         home(TodayView(entry: entry(live), family: .systemExtraLarge), extraLarge)
+                    }
+                }
+                section("Today, a light day: overdue, today, tomorrow and Add task; nothing today") {
+                    HStack(alignment: .top, spacing: 22) {
+                        home(TodayView(entry: entry(few()), family: .systemLarge), large)
+                        home(TodayView(entry: entry(few()), family: .systemExtraLarge), extraLarge)
+                    }
+                    HStack(alignment: .top, spacing: 22) {
+                        home(TodayView(entry: entry(few(today: false)), family: .systemLarge), large)
+                        home(TodayView(entry: entry(empty), family: .systemExtraLarge), extraLarge)
                     }
                 }
                 section("Recent notes") {

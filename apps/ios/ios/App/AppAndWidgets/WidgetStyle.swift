@@ -10,16 +10,27 @@ extension View {
     }
 }
 
+/// Folevi's F, at the size of a widget's title line (the drawing fills its frame).
+struct WidgetMark: View {
+    var height: CGFloat = 26
+
+    var body: some View {
+        Image("WidgetMark")
+            .resizable()
+            .scaledToFit()
+            .frame(height: height)
+            .foregroundStyle(Palette.heading)
+            .accessibilityLabel("Folevi")
+    }
+}
+
 /// "Open Folevi to sign in": what every widget shows without a token.
 struct SignedOutView: View {
     var compact = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Image("WidgetMark")
-                .resizable()
-                .frame(width: 22, height: 22)
-                .foregroundStyle(Palette.heading)
+            WidgetMark()
             Spacer(minLength: 0)
             Text("Open Folevi to sign in")
                 .font(Typeface.title(compact ? 15 : 17))

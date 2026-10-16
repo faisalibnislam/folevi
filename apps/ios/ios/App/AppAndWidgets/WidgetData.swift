@@ -15,7 +15,8 @@ struct WidgetSnapshot: Codable, Equatable {
     }
 
     var state: State
-    /// Open tasks due today or earlier, in the order widgets show them.
+    /// Open tasks due tomorrow or earlier, in the order widgets show them (tomorrow's are only for the large
+    /// widgets' Tomorrow; everything else shows today's and overdue ones, `openTasks`).
     var tasks: [TaskItem]
     var notes: [NoteSummary]
     /// The day `tasks` was fetched for (YYYY-MM-DD, this device's time zone).
@@ -26,9 +27,22 @@ struct WidgetSnapshot: Codable, Equatable {
 
     static let signedOut = WidgetSnapshot(state: .signedOut, tasks: [], notes: [], day: "", fetchedAt: .distantPast)
 
-    /// Today's open tasks: one checked off in a widget drops out at once, before Folevi hears of it.
+    /// Today's open tasks and overdue ones: one checked off in a widget drops out at once, before Folevi
+    /// hears of it.
     var openTasks: [TaskItem] {
-        tasks.filter { pending[$0.id] != true && !$0.done }
+        tasks.filter { pending[$0.id] != true && !$0.done && ($0.dueDate ?? day) <= day }
+    }
+
+    /// The overdue ones of those, oldest first.
+    var overdueTasks: [TaskItem] { openTasks.filter { ($0.dueDate ?? day) < day } }
+
+    /// Those due today.
+    var todayTasks: [TaskItem] { openTasks.filter { ($0.dueDate ?? day) >= day } }
+
+    /// Open tasks due tomorrow (the large widgets show them when there's room).
+    var tomorrowTasks: [TaskItem] {
+        let tomorrow = DayFormat.next(day)
+        return tasks.filter { pending[$0.id] != true && !$0.done && $0.dueDate == tomorrow }
     }
 
     func isOverdue(_ task: TaskItem, now: Date = Date()) -> Bool {
@@ -42,7 +56,8 @@ struct WidgetSnapshot: Codable, Equatable {
         return tasks.sorted { a, b in
             let aOver = (a.dueDate ?? today) < today, bOver = (b.dueDate ?? today) < today
             if aOver != bOver { return aOver }
-            if aOver, a.dueDate != b.dueDate { return (a.dueDate ?? "") < (b.dueDate ?? "") }
+            // Overdue oldest first; otherwise today before tomorrow.
+            if a.dueDate != b.dueDate { return (a.dueDate ?? today) < (b.dueDate ?? today) }
             switch (a.dueTime, b.dueTime) {
             case let (x?, y?) where x != y: return x < y
             case (.some, nil): return true
@@ -116,7 +131,8 @@ final class WidgetStore {
         }
         let today = DayFormat.string(now)
         do {
-            async let tasks = api.openTasks(dueBefore: today)
+            // Through tomorrow: the large widgets show tomorrow's when today leaves room.
+            async let tasks = api.openTasks(dueBefore: DayFormat.next(today))
             async let notes = api.recentNotes(limit: 10)
             let fresh = WidgetSnapshot(state: .ready, tasks: WidgetSnapshot.ordered(try await tasks, today: today), notes: try await notes, day: today, fetchedAt: now, pending: current.pending)
             save(fresh)
@@ -215,5 +231,15 @@ extension WidgetSnapshot {
             day: today,
             fetchedAt: Date()
         )
+    }
+}
+
+extension DayFormat {
+    /// The day after a YYYY-MM-DD day, the same way ("2026-10-16" for "2026-10-15").
+    static func next(_ day: String, calendar: Calendar = .current) -> String {
+        let parts = day.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3, let date = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12)),
+              let after = calendar.date(byAdding: .day, value: 1, to: date) else { return day }
+        return string(after, calendar: calendar)
     }
 }

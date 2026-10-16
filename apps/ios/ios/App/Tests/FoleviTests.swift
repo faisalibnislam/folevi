@@ -325,6 +325,20 @@ final class WidgetTests: XCTestCase {
         XCTAssertEqual(store.load(), snapshot)
     }
 
+    func testTomorrowsTasksAreKeptApartForTheLargeWidgets() async throws {
+        let withTomorrow = tasksJSON.replacingOccurrences(of: #"],"nextCursor""#, with: #",{"id":"t5","text":"Tomorrow's","status":"open","dueDate":"2026-10-16","dueTime":null,"priority":"none","assigneeId":null,"note":{"id":"01J9ZQ4K8W2M3N4P5Q6R7S8T9V","title":"Inbox","url":"x"},"place":{"id":"personal","name":"Personal"},"url":"x"}],"nextCursor""#)
+        StubAPI.answers["GET /api/v1/tasks"] = (200, withTomorrow)
+        StubAPI.answers["GET /api/v1/notes"] = (200, notesJSON)
+        let snapshot = await store.refresh(api: api(), now: Self.day)
+        // Asked through tomorrow; today's and overdue ones stay what every widget counts.
+        XCTAssertTrue(StubAPI.requests.contains { $0.url?.query?.contains("due_before=2026-10-16") == true })
+        XCTAssertEqual(snapshot.openTasks.map(\.text), ["Overdue", "Morning", "Later today", "Anytime"])
+        XCTAssertEqual(snapshot.overdueTasks.map(\.text), ["Overdue"])
+        XCTAssertEqual(snapshot.todayTasks.map(\.text), ["Morning", "Later today", "Anytime"])
+        XCTAssertEqual(snapshot.tomorrowTasks.map(\.text), ["Tomorrow's"])
+        XCTAssertEqual(DayFormat.next("2026-12-31"), "2027-01-01")
+    }
+
     func testACheckShowsAtOnceAndWaitsWhileOffline() async throws {
         StubAPI.answers["GET /api/v1/tasks"] = (200, tasksJSON)
         StubAPI.answers["GET /api/v1/notes"] = (200, notesJSON)

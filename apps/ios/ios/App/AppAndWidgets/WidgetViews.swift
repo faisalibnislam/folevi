@@ -14,6 +14,7 @@ struct TodayView: View {
 
     private var tasks: [TaskItem] { entry.snapshot.openTasks }
     private var today: String { DayFormat.string(entry.date) }
+    private var roomy: Bool { size == .systemLarge || size == .systemExtraLarge }
 
     private var rows: Int {
         switch size {
@@ -28,6 +29,8 @@ struct TodayView: View {
         Group {
             if entry.snapshot.state == .signedOut {
                 SignedOutView(compact: size == .systemSmall)
+            } else if roomy {
+                TodayLargeView(entry: entry, extraLarge: size == .systemExtraLarge)
             } else {
                 VStack(alignment: .leading, spacing: size == .systemSmall ? 6 : 8) {
                     header
@@ -36,7 +39,7 @@ struct TodayView: View {
                         empty
                         Spacer(minLength: 0)
                     } else {
-                        RowColumns(items: Array(tasks.prefix(rows)), columns: size == .systemExtraLarge && tasks.count > 5 ? 2 : 1, spacing: size == .systemSmall ? 5 : 8) { task in
+                        RowColumns(items: Array(tasks.prefix(rows)), spacing: size == .systemSmall ? 5 : 8) { task in
                             TaskRow(task: task, today: today, style: RowStyle(size))
                         }
                         Spacer(minLength: 0)
@@ -80,10 +83,166 @@ struct TodayView: View {
     }
 }
 
+/// Today in the large widgets: the date under the title, what's overdue in a group of its own, today's
+/// tasks, and, when that leaves room, tomorrow's and a row that opens Quick add. On the iPad's extra large
+/// widget, tomorrow and Add task take the second column.
+struct TodayLargeView: View {
+    let entry: FoleviEntry
+    var extraLarge = false
+
+    private var snapshot: WidgetSnapshot { entry.snapshot }
+    private var today: String { DayFormat.string(entry.date) }
+
+    /// Rows a column holds (a group's label counts as half of one, Add task as one).
+    private var capacity: Double { extraLarge ? 6.5 : 7 }
+
+    private struct Group: Identifiable {
+        let id: String
+        let title: String?
+        var tasks: [TaskItem]
+        var danger = false
+        var cost: Double { Double(tasks.count) + (title == nil ? 0 : 0.6) }
+    }
+
+    /// The groups in each column, and whether Add task fits under them.
+    private var layout: (columns: [[Group]], more: Int, add: Bool) {
+        let overdue = snapshot.overdueTasks
+        let due = snapshot.todayTasks
+        let tomorrow = snapshot.tomorrowTasks
+        var first: [Group] = []
+        var room = capacity
+        var hidden = 0
+        func take(_ group: Group, into column: inout [Group], room: inout Double) {
+            guard !group.tasks.isEmpty else { return }
+            let label = group.title == nil ? 0 : 0.6
+            let fit = max(0, Int((room - label).rounded(.down)))
+            guard fit > 0 else {
+                hidden += group.tasks.count
+                return
+            }
+            var g = group
+            g.tasks = Array(group.tasks.prefix(fit))
+            hidden += group.tasks.count - g.tasks.count
+            column.append(g)
+            room -= g.cost
+        }
+        take(Group(id: "overdue", title: "Overdue", tasks: overdue, danger: true), into: &first, room: &room)
+        // Today's own label only when something else is labelled above or beside it.
+        take(Group(id: "today", title: overdue.isEmpty ? nil : "Today", tasks: due), into: &first, room: &room)
+        let todayHidden = hidden
+        if extraLarge {
+            var second: [Group] = []
+            var room2 = capacity
+            take(Group(id: "tomorrow", title: "Tomorrow", tasks: tomorrow), into: &second, room: &room2)
+            return ([first, second], todayHidden, room2 >= 1)
+        }
+        // Tomorrow only fills room that today left, and never pushes today's out.
+        if todayHidden == 0 && room >= 2.6 {
+            take(Group(id: "tomorrow", title: "Tomorrow", tasks: tomorrow), into: &first, room: &room)
+        }
+        return ([first], todayHidden, todayHidden == 0 && room >= 1)
+    }
+
+    var body: some View {
+        let layout = layout
+        VStack(alignment: .leading, spacing: 10) {
+            header
+            if snapshot.openTasks.isEmpty {
+                Label("Nothing due today", systemImage: "checkmark.circle")
+                    .font(Typeface.row)
+                    .foregroundStyle(Palette.muted)
+                    .labelStyle(QuietLabel())
+            }
+            HStack(alignment: .top, spacing: 20) {
+                ForEach(Array(layout.columns.enumerated()), id: \.offset) { index, groups in
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(groups) { group in
+                            VStack(alignment: .leading, spacing: 7) {
+                                if let title = group.title {
+                                    Text(title)
+                                        .font(Typeface.meta.weight(.semibold))
+                                        .foregroundStyle(group.danger ? Palette.danger : Palette.muted)
+                                        .textCase(nil)
+                                }
+                                ForEach(group.tasks) { task in
+                                    TaskRow(task: task, today: today, style: .stacked, inGroup: group.title != nil)
+                                }
+                            }
+                        }
+                        if index == layout.columns.count - 1 {
+                            if layout.more > 0 && index == 0 {
+                                Text("\(layout.more) more")
+                                    .font(Typeface.meta)
+                                    .foregroundStyle(Palette.faint)
+                            }
+                            if layout.add { AddTaskRow() }
+                        } else if layout.more > 0 {
+                            Text("\(layout.more) more")
+                                .font(Typeface.meta)
+                                .foregroundStyle(Palette.faint)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Today")
+                    .font(Typeface.title(19))
+                    .foregroundStyle(Palette.heading)
+                Text(entry.date.formatted(.dateTime.weekday(.wide).month(.wide).day()))
+                    .font(Typeface.meta)
+                    .foregroundStyle(Palette.muted)
+            }
+            Spacer(minLength: 4)
+            if !snapshot.openTasks.isEmpty {
+                Text("\(snapshot.openTasks.count)")
+                    .font(Typeface.meta.monospacedDigit())
+                    .foregroundStyle(Palette.muted)
+            }
+        }
+    }
+}
+
+/// "+ Add task": opens Quick add task.
+struct AddTaskRow: View {
+    var body: some View {
+        Link(destination: DeepLink.quickAddURL) {
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 15)
+                Text("Add task")
+                    .font(Typeface.row)
+            }
+            .foregroundStyle(Palette.muted)
+        }
+        .accessibilityLabel("Add a task")
+    }
+}
+
+/// An icon and text a little apart, both quiet.
+struct QuietLabel: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 8) {
+            configuration.icon.foregroundStyle(Palette.faint)
+            configuration.title
+        }
+    }
+}
+
 struct TaskRow: View {
     let task: TaskItem
     let today: String
     var style = RowStyle.stacked
+    /// Under a group's label (Overdue, Tomorrow): the day alone, without saying "Overdue" again.
+    var inGroup = false
 
     private var overdue: Bool { (task.dueDate ?? today) < today }
     private var compact: Bool { style == .compact }
@@ -104,8 +263,9 @@ struct TaskRow: View {
                         .foregroundStyle(Palette.ink)
                         .lineLimit(1)
                 } meta: {
-                    if let due = DueLabel.text(for: task.dueDate, time: task.dueTime, today: today) {
-                        Text(overdue ? "Overdue · \(due)" : due)
+                    // Under Tomorrow the day goes without saying: only a time.
+                    if let due = inGroup && (task.dueDate ?? today) > today ? task.dueTime : DueLabel.text(for: task.dueDate, time: task.dueTime, today: today) {
+                        Text(overdue && !inGroup ? "Overdue · \(due)" : due)
                             .font(Typeface.meta)
                             .foregroundStyle(overdue ? Palette.danger : Palette.muted)
                             .lineLimit(1)
@@ -262,10 +422,7 @@ struct QuickAddView: View {
 
     var body: some View {
         VStack(alignment: .leading) {
-            Image("WidgetMark")
-                .resizable()
-                .frame(width: 22, height: 22)
-                .foregroundStyle(Palette.heading)
+            WidgetMark()
             Spacer(minLength: 0)
             ZStack {
                 Circle().fill(Palette.accent)

@@ -1,32 +1,20 @@
 "use client";
 
 import { FolderOpen, FolderPlus, Hash, LayoutGrid, List } from "lucide-react";
-import { AppLink } from "@/lib/app/router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import type { MenuEntry } from "@/components/ui/Menu";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ViewChrome } from "@/components/app/Shell";
-import { FolderMenu } from "@/components/app/FolderMenu";
+import { FolderCard, type FolderSummary } from "@/components/views/FolderCard";
 import { GlassPill } from "./Glass";
 import { MoreMenu } from "./RootBar";
 import { ListRow, SearchField } from "./Rows";
 import { useIphoneActions } from "./IphoneShell";
 
-const notes = (n: number) => (n === 1 ? "1 note" : `${n.toLocaleString()} notes`);
-
-interface FolderItem {
-  id: string;
-  name: string;
-  color: string | null;
-  parentFolderId: string | null;
-  updatedAt: number;
-  documentCount: number;
-}
-
 /**
- * Every folder in the iPhone app: a large title, search, and the folders as tiles (their colour, name and
- * how many notes) or as rows; a folder's long press opens its menu.
+ * Every folder in the iPhone app: a large title, search, and the folders as the app's own folder cards (the
+ * notes inside showing through the cover, two to a row) or as rows; a card's "…" opens its menu.
  */
 export function IphoneFolders<S extends string>({
   folders,
@@ -39,7 +27,7 @@ export function IphoneFolders<S extends string>({
   onSort,
   canEdit,
 }: {
-  folders: FolderItem[] | undefined;
+  folders: FolderSummary[] | undefined;
   total: number;
   query: string;
   onQuery: (q: string) => void;
@@ -81,19 +69,10 @@ export function IphoneFolders<S extends string>({
       {folders && !folders.length ? (
         <EmptyState icon={FolderOpen} title={query.trim() ? `No folders match “${query.trim()}”` : "No folders yet"} body={query.trim() ? undefined : "Folders keep related notes together."} />
       ) : layout === "tiles" ? (
-        <ul className="grid grid-cols-2 gap-3 px-4 pt-3 [@media(orientation:landscape)]:grid-cols-4" aria-label="Folders">
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-6 px-4 pt-4 [@media(orientation:landscape)]:grid-cols-4" aria-label="Folders">
           {(folders ?? []).map((f) => (
-            <li key={f.id} className="relative">
-              <AppLink
-                href={`/folders/${f.id}`}
-                aria-label={`${f.name}${where.get(f.id) ? `, in ${where.get(f.id)}` : ""}, ${notes(f.documentCount)}`}
-                className="flex min-h-[124px] flex-col items-center justify-center gap-1 rounded-container bg-[color-mix(in_oklab,var(--color-ink)_4.5%,transparent)] px-3 py-4 text-center outline-none transition-transform active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                <FolderGlyph color={f.color} size={34} />
-                <span className="mt-2 line-clamp-2 text-[16px] font-semibold leading-tight text-heading">{f.name}</span>
-                <span className="text-[13px] text-muted">{notes(f.documentCount)}</span>
-              </AppLink>
-              {canEdit ? <FolderMenu folder={f} className="absolute right-1 top-1 opacity-70" /> : null}
+            <li key={f.id}>
+              <FolderCard folder={f} parentName={where.get(f.id) || undefined} />
             </li>
           ))}
         </ul>

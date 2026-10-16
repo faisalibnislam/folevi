@@ -40,7 +40,7 @@ export function FoleviLoader({ title, className }: { title: string; className?: 
   const nib = `${id}-nib`;
   const words = title.replace(/[….]+$/, "");
   return (
-    <div className={`grid justify-items-center gap-6 ${className ?? ""}`}>
+    <div className={`grid select-none justify-items-center gap-6 ${className ?? ""}`}>
       <svg className="folevi-loader" viewBox="150 90 260 340" width="104" height="136" aria-hidden>
         <defs>
           {/* Foli AI's gradient (components/ai/AiIcon.tsx), across the nib. */}

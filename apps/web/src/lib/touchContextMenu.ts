@@ -140,6 +140,14 @@ export function installTouchContextMenu(): () => void {
     release();
   };
 
+  // While a held finger has a menu open, WebKit can still send a mouse press for it (a held link does, about
+  // 200 ms in): that isn't a tap outside the menu, so it never reaches the menu's close-on-outside-press.
+  const onMouse = (e: MouseEvent) => {
+    if (!held) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  };
+
   // iOS's own sheet for a held link or picture would cover the menu: the menu has those actions instead.
   root.style.setProperty("-webkit-touch-callout", "none");
   // A browser that does send its own for a long press (a future Safari): that one opens the menu, not a second.
@@ -156,7 +164,9 @@ export function installTouchContextMenu(): () => void {
   window.addEventListener("scroll", cancel, opts);
   window.addEventListener("pointerup", onPointerEnd, opts);
   window.addEventListener("pointercancel", onPointerEnd, opts);
+  for (const type of ["mousedown", "mouseup"] as const) window.addEventListener(type, onMouse, true);
   return () => {
+    for (const type of ["mousedown", "mouseup"] as const) window.removeEventListener(type, onMouse, true);
     window.removeEventListener("pointerup", onPointerEnd, opts);
     window.removeEventListener("pointercancel", onPointerEnd, opts);
     cancel();

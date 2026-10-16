@@ -12,7 +12,7 @@ import { AppLink, useAppRouter } from "@/lib/app/router";
 import { ageText } from "@/lib/format";
 import { useMinute } from "@/lib/hooks/useMinute";
 import { ViewChrome, useShell } from "@/components/app/Shell";
-import { FolderGlyph } from "@/components/ui/FolderGlyph";
+import { FolderCard } from "@/components/views/FolderCard";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { CatchUp } from "@/components/ai/CatchUp";
 import { useReviewWindow } from "@/components/study/review";
@@ -87,7 +87,7 @@ export function IphoneHome() {
   const served = useOfflineQuery(api.organization.index, { scope, only: "folders" });
   const waiting = useOutboxEntries(outbox);
   const index = useMemo(() => (served ? overlayFolderIndex(served, waiting, scope) : served), [served, waiting, scope]);
-  const counts = useMemo(() => new Map((index?.folders ?? []).map((f) => [f.id, f.documentCount])), [index]);
+  const summaries = useMemo(() => new Map((index?.folders ?? []).map((f) => [f.id, f])), [index]);
   const place = workspace ? workspace.name : "Personal";
   const topFolders = (org?.folders ?? []).filter((f) => !f.parentFolderId);
   const tags = org?.tags ?? [];
@@ -159,9 +159,17 @@ export function IphoneHome() {
         ]}
         empty={org && !topFolders.length ? <EmptyBox>Folders keep related notes together</EmptyBox> : undefined}
       >
-        {topFolders.map((f) => (
-          <ListRow key={f.id} href={`/folders/${f.id}`} icon={<FolderGlyph color={f.color} size={22} />} label={f.name} detail={counts.get(f.id)} />
-        ))}
+        {/* The app's own folder cards, side by side, as on Home in the browser and the Mac app. */}
+        <ul aria-label="Folders" className="flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 pb-8 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {topFolders.map((f) => {
+            const summary = summaries.get(f.id);
+            return (
+              <li key={f.id} className="w-[142px] flex-none snap-start">
+                <FolderCard folder={summary ?? { id: f.id, name: f.name, color: f.color, parentFolderId: null, updatedAt: 0, documentCount: 0 }} />
+              </li>
+            );
+          })}
+        </ul>
       </HomeSection>
 
       {tags.length ? (

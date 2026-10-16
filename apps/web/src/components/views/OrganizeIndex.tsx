@@ -2,10 +2,10 @@
 
 import { useQuery } from "convex/react";
 import { useId, useMemo, useState } from "react";
-import { FolderPlus, Hash, LayoutGrid, MoreHorizontal, Rows3, Search, X, FolderOpen } from "lucide-react";
+import { FolderPlus, Hash, LayoutGrid, Rows3, Search, X, FolderOpen } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
-import { FOLDER_CARD_BOX, FOLDER_CARD_FRAME, FOLDER_CARD_MENU, FolderCardArt, type FolderPreview } from "./FolderCardArt";
+import { FolderCard } from "./FolderCard";
 import { FolderMenu } from "@/components/app/FolderMenu";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -14,7 +14,7 @@ import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
 import { overlayFolderIndex } from "@/lib/sync/overlays";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
-import { ageText, formatRelative } from "@/lib/format";
+import { ageText } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { PromptDialog } from "@/components/ui/PromptDialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -60,43 +60,6 @@ function SortSelect<T extends string>({ value, onChange, options }: { value: T; 
         ))}
       </Select>
     </label>
-  );
-}
-
-export interface FolderSummary {
-  id: string;
-  name: string;
-  color: string | null;
-  parentFolderId: string | null;
-  updatedAt: number;
-  documentCount: number;
-  /** Up to three of the notes inside (most recently edited first), drawn faintly through the cover. */
-  previews?: FolderPreview[];
-}
-
-/**
- * A folder card drawn as a real folder (portrait): the drawing (FolderCardArt, shared with the site's
- * replica) inside a link to the folder, with the folder's menu over the cover on hover. The page count sits
- * top-left of the front cover, the last update top-right, and the name bottom-left in large serif.
- */
-export function FolderCard({ folder: f, parentName }: { folder: FolderSummary; parentName?: string }) {
-  const label = `${f.name}${parentName ? `, in ${parentName}` : ""}, ${pages(f.documentCount)}, updated ${formatRelative(f.updatedAt)}`;
-  return (
-    <div data-ctx-host="" className={FOLDER_CARD_BOX}>
-      <AppLink
-        href={`/folders/${f.id}`}
-        aria-label={label}
-        title={parentName ? `${f.name} (in ${parentName})` : f.name}
-        className={`${FOLDER_CARD_FRAME} focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-4 focus-visible:ring-offset-canvas`}
-      >
-        <FolderCardArt name={f.name} color={f.color} count={f.documentCount} age={ageText(f.updatedAt)} previews={f.previews} />
-      </AppLink>
-      <FolderMenu
-        folder={f}
-        trigger={<MoreHorizontal size={16} aria-hidden />}
-        className={`${FOLDER_CARD_MENU} pointer-events-none focus-within:pointer-events-auto focus-within:opacity-100 group-hover:pointer-events-auto pointer-coarse:pointer-events-auto [&>div>button]:text-[#17171a]/75 [&>div>button:hover]:text-[#17171a]`}
-      />
-    </div>
   );
 }
 

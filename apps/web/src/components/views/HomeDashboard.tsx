@@ -12,7 +12,7 @@ import { AppLink } from "@/lib/app/router";
 import { ageText } from "@/lib/format";
 import { ViewChrome } from "@/components/app/Shell";
 import { NOTE_CARD_ASPECT, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
-import { FolderCard } from "./OrganizeIndex";
+import { FolderCard } from "./FolderCard";
 import { DocMenu, NoteContextMenu, contextPoint, type Summary as DocSummary } from "./DocumentBrowser";
 import { startNoteDrag } from "@/lib/app/noteDrag";
 import { cardCount, useReviewWindow } from "@/components/study/review";

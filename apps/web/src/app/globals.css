@@ -606,6 +606,10 @@
 /* The app never zooms its text on rotation by itself. */
 :root[data-iphone] { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
 :root[data-iphone] body { background: var(--color-canvas); overscroll-behavior: none; }
+/* A card's or row's "…" (shown on touch elsewhere) stays out of sight: a long press opens the same menu
+   (AppContextMenu, through [data-ctx-host]). It stays in place for that and for VoiceOver, and shows while
+   it has focus. */
+:root[data-iphone] [data-ctx-host] .pointer-coarse\:opacity-100:not(:focus-within) { opacity: 0; }
 /* Menus (a "…" button, a long press): iOS sized rows on liquid glass, growing out of what opened them. */
 :root[data-iphone] [role="menu"].ui-pop {
   min-width: 15rem;

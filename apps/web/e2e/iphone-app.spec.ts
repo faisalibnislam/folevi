@@ -131,6 +131,11 @@ test("the iPhone app: tab bar, large titles, Back, the + menu and sheets", async
   await page.getByRole("button", { name: "Back" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
+  // Home's folders are the app's own folder cards, and their "…" stays hidden (a long press opens it).
+  const card = page.getByRole("list", { name: "Folders" }).getByRole("link", { name: /^Garden plans, / });
+  await expect(card).toBeVisible();
+  const dots = page.getByRole("list", { name: "Folders" }).getByRole("button", { name: "Folder options for Garden plans" });
+  expect(await dots.evaluate((b) => getComputedStyle(b.closest(".pointer-coarse\\:opacity-100") ?? b).opacity)).toBe("0");
   // Back again has nowhere to go in this tab: the history is only Home's stack.
   expect(await page.evaluate(() => (history.state as { foleviAt?: number } | null)?.foleviAt)).toBe(0);
   await page.getByRole("link", { name: "All notes" }).click();

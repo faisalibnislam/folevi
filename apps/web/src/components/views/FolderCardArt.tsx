@@ -15,8 +15,8 @@ import { coverArtOf, coverArtThumbUrl, styleColorsOf } from "@/lib/cover";
 
 export type FolderPreview = { cover: DocumentCover; title?: string; excerpt?: string };
 
-/** The card's box: portrait, and the container its cqw sizes are measured against. `group` drives the hover. */
-export const FOLDER_CARD_BOX = "group relative aspect-[820/912] [container-type:inline-size]";
+/** The card's box: portrait, and the container its cqw sizes are measured against. `group` drives the hover; it isn't text to select (a held finger opens its menu). */
+export const FOLDER_CARD_BOX = "group relative aspect-[820/912] select-none [container-type:inline-size]";
 /** What lifts on hover: the whole drawing, with its soft drop shadow. */
 export const FOLDER_CARD_FRAME =
   "absolute inset-0 block rounded-panel outline-none transition-transform duration-200 ease-[var(--ease-folio)] [filter:drop-shadow(0_8px_14px_rgb(20_20_30/0.1))_drop-shadow(0_1px_2px_rgb(20_20_30/0.06))] hover:-translate-y-1";

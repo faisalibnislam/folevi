@@ -156,3 +156,30 @@ test("the iPhone app: tab bar, large titles, Back, the + menu and sheets", async
 
   await context.close();
 });
+
+const IPAD_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) FoleviiOS/1.0";
+
+test("the iPad app in a narrow window (Slide Over, a third of Split View) takes the compact interface, and the sidebar back when wider", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const { context: signedIn } = await newPerson(browser, "iPad Person");
+  const state = await signedIn.storageState();
+  await signedIn.close();
+  const context = await browser.newContext({ storageState: state, viewport: { width: 375, height: 900 }, userAgent: IPAD_UA, hasTouch: true });
+  await context.addInitScript(fakeBridge);
+  // An iPad's web view reports a Mac with a touch screen.
+  await context.addInitScript(() => Object.defineProperty(Navigator.prototype, "maxTouchPoints", { get: () => 5 }));
+  const page = await context.newPage();
+  await page.goto(`${APP}/documents`);
+  await expect(page.locator("html")).toHaveAttribute("data-iphone", "", { timeout: 30_000 });
+  await expect(page.getByRole("navigation", { name: "Tabs" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+  // Wider (a half or two thirds of Split View, full screen): the sidebar layout again, in place.
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await expect(page.getByRole("navigation", { name: "Tabs" })).toHaveCount(0);
+  await expect(page.locator("html")).not.toHaveAttribute("data-iphone", "");
+  await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible();
+  // And narrow again.
+  await page.setViewportSize({ width: 360, height: 900 });
+  await expect(page.getByRole("navigation", { name: "Tabs" })).toBeVisible();
+  await context.close();
+});

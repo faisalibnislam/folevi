@@ -15,6 +15,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Select } from "@/components/ui/Select";
+import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 
 type Priority = "none" | "low" | "medium" | "high";
 export type Target = { id: string; title: string; icon: string | null } | null;
@@ -26,8 +27,10 @@ export type Target = { id: string; title: string; icon: string | null } | null;
 export function QuickAddTask({ open, onClose, documentId, due }: { open: boolean; onClose: () => void; documentId?: string; /** Starts on this day (the calendar's "Add a task"). */ due?: string }) {
   const { route } = useAppRouter();
   const currentDoc = documentId ?? (route.name === "doc" ? route.id : undefined);
+  const touch = useMediaQuery("(pointer: coarse)");
   return (
-    <Dialog open={open} onClose={onClose} title="Quick add task" description="Press Enter to add. Tasks without a page go to your Inbox page." size="sm">
+    // (A finger has no Enter key to be told about: the keyboard's Return, or Add task, adds it.)
+    <Dialog open={open} onClose={onClose} title="Quick add task" description={`${touch ? "" : "Press Enter to add. "}Tasks without a page go to your Inbox page.`} size="sm">
       {open ? <QuickAddForm onClose={onClose} currentDoc={currentDoc} initialDue={due} /> : null}
     </Dialog>
   );

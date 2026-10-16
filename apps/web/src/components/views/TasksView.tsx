@@ -220,7 +220,7 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
   const [error, setError] = useState<string | null>(null);
   return (
     <>
-      <p className="-mt-2 mb-4 text-sm text-muted">{task.title || "Untitled task"}</p>
+      <p className="ui-task-title -mt-2 mb-4 text-sm text-muted">{task.title || "Untitled task"}</p>
       <form
         onSubmit={async (e) => {
           e.preventDefault();

@@ -591,6 +591,8 @@
 :root[data-iphone][data-iphone-keyboard] .ui-toasts { bottom: 64px; }
 /* A note without artwork fills the screen like a sheet of paper (no card on a grey backdrop). */
 :root[data-iphone] [data-iphone-plain] > .fb-sheet { max-width: none !important; min-height: 100%; border-radius: 0; box-shadow: none; padding-top: calc(env(safe-area-inset-top) + 40px); }
+/* A task's own words head its Edit task card. */
+:root[data-iphone] .ui-task-title { font-size: 17px; line-height: 1.35; font-weight: 500; color: var(--color-ink); }
 /* Keyboard shortcut hints mean nothing on a phone. */
 :root[data-iphone] .ui-shortcut-hint { display: none; }
 /* The picture of a screen sliding away (components/iphone/transitions.ts) doesn't replay its own animations. */

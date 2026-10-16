@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import {
   Archive,
+  Calendar,
   CheckSquare,
   ChevronDown,
   ChevronRight,
@@ -57,6 +58,7 @@ function isActive(route: Route, href: string): boolean {
     "/ai": (r) => r.name === "ai",
     "/graph": (r) => r.name === "graph",
     "/tasks/today": (r) => r.name === "tasks",
+    "/calendar": (r) => r.name === "calendar",
     "/review": (r) => r.name === "review",
     "/changes": (r) => r.name === "changes",
     "/shared": (r) => r.name === "shared",
@@ -587,6 +589,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <NavItem href="/drafts" icon={<Inbox size={16} />} label="Drafts" count={drafts ?? undefined} onNavigate={onNavigate} draggableFolderId="" />
           <NavItem href="/notes" icon={<Files size={16} />} label="All notes" onNavigate={onNavigate} />
           <NavItem href="/tasks/today" icon={<CheckSquare size={16} />} label="Tasks" count={counts ? counts.today : undefined} onNavigate={onNavigate} />
+          <NavItem href="/calendar" icon={<Calendar size={16} />} label="Calendar" onNavigate={onNavigate} />
           {reviews?.hasCards || route.name === "review" ? <NavItem href="/review" icon={<Layers size={16} />} label="Reviews" count={reviews ? reviews.due + reviews.new : undefined} onNavigate={onNavigate} /> : null}
           <NavItem href="/shared" icon={<Share2 size={16} />} label="Shared with Me" onNavigate={onNavigate} />
           <NavItem href="/changes" icon={<FileDiff size={16} />} label="Changes" count={(changes?.notes.length ?? 0) + (proposed ?? 0) || undefined} onNavigate={onNavigate} />

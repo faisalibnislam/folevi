@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Copy, KeyRound, Plus } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -14,6 +14,10 @@ import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useNativeDevice } from "@/lib/nativeDevice";
+import { useIphoneApp } from "@/lib/iphone";
+import { ActionRow, ChoiceRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen, TextRow, useSettingsScreens } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
+import { GlassTextButton } from "@/components/iphone/Glass";
 
 const MAX_TOKENS = 20;
 
@@ -50,6 +54,63 @@ export function ApiTokensCard() {
   const [creating, setCreating] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const now = Date.now();
+  const iphone = useIphoneApp();
+  const revokeToken = (t: { id: (typeof all & object)[number]["id"]; name: string }) =>
+    void revoke({ tokenId: t.id }).then(
+      () => {
+        setConfirming(null);
+        toast.show(`“${t.name}” was revoked`);
+      },
+      (e) => toast.show(errorMessage(e), { tone: "error" }),
+    );
+  if (iphone) {
+    const full = tokens !== undefined && tokens.length >= MAX_TOKENS;
+    return (
+      <>
+        <IosSection
+          header="Personal access tokens"
+          footer="For your own scripts and automation tools (Zapier, n8n, Make) through Folevi's REST API at /api/v1. A token works as you, only in the places and for the things you choose. Treat it like a password."
+        >
+          <IosRow icon={<RowIcon><KeyRound /></RowIcon>} label="Tokens" value={all === undefined ? "" : String(all.length)} screen="tokens" />
+          <IosRow label="How to use the API" chevron onClick={() => window.open("https://folevi.com/docs/rest-api", "_blank", "noopener")} />
+        </IosSection>
+        <Subscreen id="tokens" title="Tokens">
+          <IosSection label="Your tokens">
+            {all === undefined ? <IosText muted>Loading…</IosText> : null}
+            {all?.length === 0 ? <IosText muted>No tokens yet</IosText> : null}
+            {all?.map((t) => {
+              const expired = t.expiresAt !== null && t.expiresAt <= now;
+              return <IosRow key={t.id} label={t.name} description={`${t.hint}…${t.deviceId && t.deviceId === here?.id ? " · This device" : ""}${expired ? " · expired" : ""}`} screen={`tokens.${t.id}`} />;
+            })}
+          </IosSection>
+          <IosSection footer={full ? `You can have up to ${MAX_TOKENS} tokens.` : undefined}>
+            <IosRow label="New token" disabled={tokens === undefined || full} screen="tokens.new" />
+          </IosSection>
+        </Subscreen>
+        {all?.map((t) => {
+          const expired = t.expiresAt !== null && t.expiresAt <= now;
+          return (
+            <Subscreen key={t.id} id={`tokens.${t.id}`} title={t.name}>
+              <IosSection footer={t.deviceId ? "The app's widgets, share sheet, Shortcuts and Spotlight use this one." : undefined}>
+                <IosRow label="Starts with" value={<span className="font-mono">{t.hint}…</span>} />
+                <IosRow label="Can" description={`${describeScopes(t.scopes)} in ${t.places.join(", ") || "no places"}`} />
+                <IosRow label="Made" value={formatRelative(t.createdAt)} />
+                <IosRow label="Last used" value={t.lastUsedAt ? formatRelative(t.lastUsedAt) : "Not yet"} />
+                <IosRow label="Expires" value={expired ? "Expired" : t.expiresAt ? new Date(t.expiresAt).toLocaleDateString() : "Never"} />
+              </IosSection>
+              <IosSection>
+                <DestructiveRow label="Revoke token" confirm="Revoke" message="Anything using it stops working at once." onConfirm={() => {
+                  revokeToken(t);
+                  history.back();
+                }} />
+              </IosSection>
+            </Subscreen>
+          );
+        })}
+        <IphoneNewToken />
+      </>
+    );
+  }
 
   return (
     <Card
@@ -97,15 +158,7 @@ export function ApiTokensCard() {
                       size="sm"
                       variant="primary"
                       className="bg-danger"
-                      onClick={() =>
-                        void revoke({ tokenId: t.id }).then(
-                          () => {
-                            setConfirming(null);
-                            toast.show(`“${t.name}” was revoked`);
-                          },
-                          (e) => toast.show(errorMessage(e), { tone: "error" }),
-                        )
-                      }
+                      onClick={() => revokeToken(t)}
                     >
                       Revoke
                     </Button>
@@ -247,5 +300,107 @@ function NewTokenDialog({ onClose }: { onClose: () => void }) {
         </p>
       ) : null}
     </Dialog>
+  );
+}
+
+/**
+ * A new token in the iPhone app: a screen of its own (Name, what it can do, where, when it expires) with
+ * Create in its bar; then the token itself, shown once, with Copy.
+ */
+function IphoneNewToken() {
+  const { workspaces } = useAppState();
+  const create = useMutation(api.apiTokens.create);
+  const toast = useToast();
+  const screens = useSettingsScreens();
+  const [name, setName] = useState("");
+  const [scopes, setScopes] = useState<Set<string>>(new Set(["notes:read"]));
+  const [personal, setPersonal] = useState(true);
+  const [workspaceIds, setWorkspaceIds] = useState<string[]>([]);
+  const [expiry, setExpiry] = useState("90");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  // Leaving the screen (Back, or Done) starts the next token afresh.
+  const open = Boolean(screens?.screen?.startsWith("tokens.new"));
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open) {
+      setName("");
+      setScopes(new Set(["notes:read"]));
+      setPersonal(true);
+      setWorkspaceIds([]);
+      setExpiry("90");
+      setError(null);
+      setToken(null);
+    }
+    wasOpen.current = open;
+  }, [open]);
+  const ready = !busy && name.trim() && scopes.size && (personal || workspaceIds.length);
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await create({ name, scopes: [...scopes], personal, workspaceIds, expiresInDays: expiry === "never" ? null : Number(expiry) });
+      setToken(r.token);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Subscreen
+      id="tokens.new"
+      title={token ? "Your new token" : "New token"}
+      trailing={
+        token ? (
+          <GlassTextButton strong onClick={() => screens?.back()}>
+            Done
+          </GlassTextButton>
+        ) : (
+          <GlassTextButton strong disabled={!ready} onClick={() => void submit()}>
+            {busy ? "Creating…" : "Create"}
+          </GlassTextButton>
+        )
+      }
+    >
+      {token ? (
+        <IosSection footer="This is the only time it's shown. Folevi keeps only a fingerprint of it, so if you lose it, revoke it and make another.">
+          <IosRow label="Token" description={<span className="select-all font-mono">{token}</span>} />
+          <ActionRow label="Copy token" onClick={() => void navigator.clipboard.writeText(token).then(() => toast.show("Token copied"))} />
+        </IosSection>
+      ) : (
+        <>
+          {error ? <IosSection><IosText><span role="alert" className="text-danger">{error}</span></IosText></IosSection> : null}
+          <IosSection>
+            <TextRow label="Name" value={name} onChange={setName} maxLength={60} placeholder="Zapier, my backup script" />
+          </IosSection>
+          <IosSection header="What it can do" role="group" label="What it can do">
+            {SCOPE_LABELS.map((sc) => (
+              <IosRow
+                key={sc.scope}
+                label={sc.label}
+                checked={scopes.has(sc.scope)}
+                onClick={() => {
+                  const next = new Set(scopes);
+                  if (next.has(sc.scope)) next.delete(sc.scope);
+                  else next.add(sc.scope);
+                  setScopes(next);
+                }}
+              />
+            ))}
+          </IosSection>
+          <IosSection header="Where" role="group" label="Where">
+            <IosRow label="Personal" checked={personal} onClick={() => setPersonal(!personal)} />
+            {workspaces.map((w) => (
+              <IosRow key={w.id} label={w.name} checked={workspaceIds.includes(w.id)} onClick={() => setWorkspaceIds(workspaceIds.includes(w.id) ? workspaceIds.filter((x) => x !== w.id) : [...workspaceIds, w.id])} />
+            ))}
+          </IosSection>
+          <IosSection>
+            <ChoiceRow screen="tokens.new.expiry" label="Expires" value={expiry} choices={EXPIRY} onChange={setExpiry} />
+          </IosSection>
+        </>
+      )}
+    </Subscreen>
   );
 }

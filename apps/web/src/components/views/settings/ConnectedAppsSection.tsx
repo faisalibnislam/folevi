@@ -13,6 +13,9 @@ import { Card } from "./Card";
 import { ApiTokensCard } from "./ApiTokens";
 import { WebhooksCard } from "./Webhooks";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useIphoneApp } from "@/lib/iphone";
+import { ActionRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen, SwitchRow } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
 
 /** How each tool reads in the activity list. */
 const TOOL_LABELS: Record<string, string> = {
@@ -50,6 +53,76 @@ export function ConnectedAppsSection() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [address, setAddress] = useState("https://app.folevi.com/mcp");
   useEffect(() => setAddress(`${window.location.origin}/mcp`), []);
+  const iphone = useIphoneApp();
+  const copy = () => void navigator.clipboard.writeText(address).then(() => toast.show("Address copied"));
+  const disconnect = (g: { id: (typeof grants & object)[number]["id"]; name: string }) =>
+    void revoke({ grantId: g.id }).then(
+      () => {
+        setConfirming(null);
+        toast.show(`${g.name} was disconnected`);
+      },
+      (e) => toast.show(errorMessage(e), { tone: "error" }),
+    );
+  if (iphone) {
+    const does = (g: NonNullable<typeof grants>[number]) =>
+      `${!g.canRead ? "Only adds new things" : g.canWrite ? (g.createOnly ? "Reads and adds new things" : "Reads and makes changes") : "Reads only"} in ${g.places.join(", ") || "no places"}${g.includeShared ? ", plus pages shared with you" : ""}`;
+    return (
+      <>
+        <IosSection
+          header="Use Folevi from other apps"
+          footer="AI apps like Claude, ChatGPT and Cursor can search and read your notes, add new ones and manage tasks through Folevi's MCP server. You choose what each one may do and where when you connect it. It uses the app's own AI, so no Folevi AI credits are spent."
+        >
+          <IosRow label="Server address" description={<span className="font-mono">{address}</span>} />
+          <ActionRow label="Copy address" onClick={copy} />
+          <IosRow label="How to connect" screen="how" />
+        </IosSection>
+        <Subscreen id="how" title="How to connect">
+          <IosSection footer="Each one opens Folevi to sign in and choose what it may do.">
+            {HOW.map((h) => (
+              <IosRow key={h.app} label={h.app} description={h.steps.replace(/ → /g, ", ")} />
+            ))}
+          </IosSection>
+        </Subscreen>
+        <IosSection header="Connected apps" footer="Disconnecting stops an app at once; it has to ask again to come back. Everything an app changes is in the note's version history.">
+          {grants === undefined ? <IosText muted>Loading…</IosText> : null}
+          {grants?.length === 0 ? <IosText muted>No apps are connected</IosText> : null}
+          {grants?.map((g) => (
+            <IosRow key={g.id} icon={<RowIcon><Plug /></RowIcon>} label={g.name} description={g.lastUsedAt ? `Last used ${formatRelative(g.lastUsedAt)}` : "Not used yet"} screen={`app-${g.id}`} />
+          ))}
+        </IosSection>
+        {grants?.map((g) => (
+          <Subscreen key={g.id} id={`app-${g.id}`} title={g.name}>
+            <IosSection footer={g.redirectHost ? `Returns to ${g.redirectHost}.` : undefined}>
+              <IosRow label="Connected" value={formatRelative(g.connectedAt)} />
+              <IosRow label="Last used" value={g.lastUsedAt ? formatRelative(g.lastUsedAt) : "Not yet"} />
+              <IosRow label="Can" description={does(g)} />
+            </IosSection>
+            {g.recent.length ? (
+              <IosSection header="Recently">
+                {g.recent.slice(0, 5).map((e, i) => (
+                  <IosRow key={i} label={`${TOOL_LABELS[e.tool] ?? e.tool}${e.outcome === "ok" ? "" : e.outcome === "denied" ? " (not allowed)" : " (failed)"}`} value={formatRelative(e.at)} />
+                ))}
+              </IosSection>
+            ) : null}
+            <IosSection>
+              <DestructiveRow
+                label={`Disconnect ${g.name}`}
+                confirm="Disconnect"
+                message="It stops at once and has to ask again to come back."
+                onConfirm={() => {
+                  disconnect(g);
+                  history.back();
+                }}
+              />
+            </IosSection>
+          </Subscreen>
+        ))}
+        <ReviewChangesCard />
+        <ApiTokensCard />
+        <WebhooksCard />
+      </>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -113,15 +186,7 @@ export function ConnectedAppsSection() {
                         size="sm"
                         variant="primary"
                         className="bg-danger"
-                        onClick={() =>
-                          void revoke({ grantId: g.id }).then(
-                            () => {
-                              setConfirming(null);
-                              toast.show(`${g.name} was disconnected`);
-                            },
-                            (e) => toast.show(errorMessage(e), { tone: "error" }),
-                          )
-                        }
+                        onClick={() => disconnect(g)}
                       >
                         Disconnect
                       </Button>
@@ -156,6 +221,21 @@ function ReviewChangesCard() {
   const toast = useToast();
   const descId = useId();
   const on = profile.reviewAppEdits === true;
+  const iphone = useIphoneApp();
+  const turn = (next: boolean) =>
+    void update({ reviewAppEdits: next }).then(
+      () => toast.show(next ? "Apps will ask before changing your notes" : "Apps will change your notes directly"),
+      (e) => toast.show(errorMessage(e), { tone: "error" }),
+    );
+  if (iphone)
+    return (
+      <IosSection
+        header="Review changes"
+        footer="When an app or a token adds to a note you already have, it waits in Changes for you to accept or reject, and the app is told so. New notes and tasks, and checking off or rescheduling a task, still happen at once. A change you don't answer expires after 14 days."
+      >
+        <SwitchRow label="Ask before changing notes" checked={on} onChange={turn} />
+      </IosSection>
+    );
   return (
     <Card title="Review changes">
       <div className="flex items-start justify-between gap-6">
@@ -170,12 +250,7 @@ function ReviewChangesCard() {
             checked={on}
             label="Ask me before changes are made to existing notes"
             describedBy={descId}
-            onChange={(next) =>
-              void update({ reviewAppEdits: next }).then(
-                () => toast.show(next ? "Apps will ask before changing your notes" : "Apps will change your notes directly"),
-                (e) => toast.show(errorMessage(e), { tone: "error" }),
-              )
-            }
+            onChange={turn}
           />
         </span>
       </div>

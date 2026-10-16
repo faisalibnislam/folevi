@@ -27,7 +27,7 @@ const ActionsContext = createContext<IphoneActions>({ openAccount: () => undefin
 export const useIphoneActions = () => useContext(ActionsContext);
 
 /** Which screen a route is: moving between screens slides; within one (another task view, month) it doesn't. */
-function screenKey(route: Route, pathname: string, search: URLSearchParams): string {
+function screenKey(route: Route, pathname: string): string {
   switch (route.name) {
     case "doc":
     case "folder":
@@ -39,8 +39,7 @@ function screenKey(route: Route, pathname: string, search: URLSearchParams): str
     case "ai":
       return "ai";
     case "settings":
-      // A section's own pushed screens (a choice, an edit: `?screen=`, SettingsKit.tsx) are screens too.
-      return pathname.replace(/\/+$/, "") === "/settings" ? "settings" : `settings:${route.section}${search.get("screen") ? `:${search.get("screen")}` : ""}`;
+      return pathname.replace(/\/+$/, "") === "/settings" ? "settings" : `settings:${route.section}`;
     default:
       return route.name;
   }
@@ -55,7 +54,10 @@ function screenKey(route: Route, pathname: string, search: URLSearchParams): str
 export function IphoneShell({ banner }: { banner?: ReactNode }) {
   const { route, pathname, search } = useAppRouter();
   const { context } = useAppState();
-  const key = screenKey(route, pathname, search);
+  const key = screenKey(route, pathname);
+  // A Settings section's own pushed screens (a choice, an edit: `?screen=`, SettingsKit.tsx) slide like any
+  // screen, but the section stays mounted under them (its state carries on), so they're not a new key.
+  const moveKey = `${key}|${route.name === "settings" ? (search.get("screen") ?? "") : ""}`;
   // Each tab keeps its own stack of screens (tabStacks.ts): every move is written down in the current tab's.
   const href = `${pathname}${search.size ? `?${search.toString()}` : ""}`;
   const recorded = useRef(false);
@@ -81,15 +83,15 @@ export function IphoneShell({ banner }: { banner?: ReactNode }) {
 
   useLayoutEffect(() => (stage.current && layer.current ? attachStage(stage.current, layer.current) : undefined), []);
   // A new screen slides in (or the old one out) on the frame it first draws; the same screen stays put.
-  const shownKey = useRef(key);
+  const shownKey = useRef(moveKey);
   useLayoutEffect(() => {
-    if (shownKey.current === key) {
+    if (shownKey.current === moveKey) {
       dropTransition();
       return;
     }
-    shownKey.current = key;
+    shownKey.current = moveKey;
     playTransition(stage.current?.firstElementChild as HTMLElement | null);
-  }, [key, pathname]);
+  }, [moveKey, pathname]);
 
   return (
     <IphoneChromeProvider>

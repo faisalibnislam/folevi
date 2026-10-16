@@ -28,7 +28,7 @@ import { desktop } from "@/lib/desktop";
 import { nativeApp } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
 import { GroupedRow, GroupedSection, RowIcon } from "@/components/iphone/Grouped";
-import { SettingsScreensHost, useSettingsScreens } from "@/components/iphone/SettingsKit";
+import { SettingsScreensHost } from "@/components/iphone/SettingsKit";
 
 type Section = "account" | "ai" | "billing" | "security" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop" | "this-device";
 type Item = { id: Section; label: string; icon: LucideIcon };
@@ -191,12 +191,11 @@ export function SettingsView({ section }: { section: Section }) {
 
 /**
  * A Settings section as a screen of the iPhone app (its own large title, a grouped list). While one of its
- * pushed screens is on show it stays mounted without its screen (hidden under it), so the rows that open
- * those screens keep their state and handlers.
+ * pushed screens is on show it stays mounted, hidden under it, so the rows that open those screens keep their
+ * state and handlers.
  */
 function IphoneSection({ section, title, noWorkspace, sectionHidden }: { section: Section; title: string; noWorkspace: boolean; sectionHidden: boolean }) {
   const { workspace } = useAppState();
-  const screens = useSettingsScreens();
   const content = (
     <div className="space-y-7 pb-4 pt-3 [&_.ui-btn]:min-h-11 [&_.ui-btn]:text-[15px]">
       {section === "account" ? <AccountSection /> : null}
@@ -224,7 +223,7 @@ function IphoneSection({ section, title, noWorkspace, sectionHidden }: { section
       {section === "this-device" ? <ThisDeviceSection /> : null}
         </div>
   );
-  if (screens?.screen) return content;
+  // (The same tree whether one of its screens is pushed or not, so the section keeps its state under it.)
   return (
     <ViewChrome title={title} tabTitle={`Settings · ${title}`} iphone={{ title, grouped: true, back: "/settings" }}>
       {content}

@@ -11,7 +11,10 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime } from "@/lib/format";
 import { DAY_MS, PACK_VALID_MONTHS, PLANS, PLAN_ORDER, TIER_NAMES, formatPrice, isPaidPlan, monthlyEquivalent, yearlySavingPercent, type BillingInterval, type PersonalTier } from "@/lib/plans";
 import { creditCount, creditDate } from "@/components/ai/AiCredits";
-import { AppLink } from "@/lib/app/router";
+import { AppLink, useAppRouter } from "@/lib/app/router";
+import { useIphoneApp } from "@/lib/iphone";
+import { IosRow, IosSection, IosText } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
 import { Card } from "./Card";
 import { BuyCreditsDialog, type CreditTarget } from "./BuyCreditsDialog";
 import { PlanRow, PlanRows } from "./PlanRow";
@@ -98,6 +101,8 @@ export function BillingSection() {
   const [interval, setInterval] = useState<BillingInterval>("year");
   const [busy, setBusy] = useState<string | null>(null);
   const [buyFor, setBuyFor] = useState<{ target: CreditTarget; name: string } | null>(null);
+  const iphone = useIphoneApp();
+  const { navigate } = useAppRouter();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -109,7 +114,7 @@ export function BillingSection() {
     if (q || credits) replaceEntry(window.location.pathname);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!data) return <p className="text-sm text-muted">Loading your plan…</p>;
+  if (!data) return iphone ? <IosSection><IosText muted>Loading your plan…</IosText></IosSection> : <p className="text-sm text-muted">Loading your plan…</p>;
   const { entitlements: e, subscription: sub, credits } = data;
   const current = PLANS[e.paidPlan];
   const planLabel = e.trialing ? "Pro AI trial" : current.name;
@@ -160,6 +165,75 @@ export function BillingSection() {
           ? `Your own ${formatBytes(data.storageLimitBytes)} during your trial.`
           : `Your own ${formatBytes(data.storageLimitBytes)} on ${current.name}.`;
 
+  if (iphone) {
+    const planSentence = e.trialing
+      ? `${trialDaysLeft} ${trialDaysLeft === 1 ? "day" : "days"} of Pro AI left (until ${dateOnly(e.trialEndsAt!)}). Then you'll move to Free.`
+      : e.paid && sub?.status === "past_due"
+        ? "Your last payment failed."
+        : e.paid && sub?.currentPeriodEnd
+          ? sub.cancelAtPeriodEnd
+            ? `Ends ${dateOnly(sub.currentPeriodEnd)}. Your ${current.name} features remain available until then.`
+            : `${sub.provider === "manual" ? "Set by the Folevi team until" : "Renews"} ${dateOnly(sub.currentPeriodEnd)}.`
+          : e.paid && sub?.provider === "manual"
+            ? "Set by the Folevi team."
+            : current.blurb;
+    const c = credits;
+    return (
+      <>
+        <IosSection footer={`${planSentence} ${MANAGED_ELSEWHERE}`}>
+          <IosRow icon={<RowIcon><CreditCard /></RowIcon>} label="Plan" value={planLabel} />
+          {e.paid && sub?.interval ? <IosRow label="Billed" value={sub.interval === "year" ? "Annually" : "Monthly"} /> : null}
+          {status ? <IosRow label="Status" value={status} /> : null}
+        </IosSection>
+        <IosSection header="Storage" footer={storageNote}>
+          <div className="relative px-4 py-3">
+            <p className="flex items-baseline justify-between gap-3 text-[17px]">
+              <span className="text-ink">Used</span>
+              <span className="text-muted">
+                {formatBytes(data.storageUsedBytes)} of {formatBytes(data.storageLimitBytes)}
+              </span>
+            </p>
+            <UsageMeter label="Storage used" pct={usedPct} />
+          </div>
+        </IosSection>
+        <IosSection
+          header="AI credits"
+          footer={
+            !c.aiIncluded
+              ? "Core doesn't include AI, so nothing in your notes is sent to an AI model. Pro and Pro AI come with AI credits every month."
+              : noFreeAi(c)
+                ? "Foli AI comes with Pro and Pro AI."
+                : `${c.trialing ? `Your trial ends on ${creditDate(c.resetsAt)}.` : `Monthly credits reset on ${creditDate(c.resetsAt)}.`}${c.packCredits > 0 && c.nextPackExpiry ? ` The first extra credits expire on ${creditDate(c.nextPackExpiry)}.` : ""}`
+          }
+        >
+          {c.aiIncluded && !noFreeAi(c) ? (
+            <>
+              <div className="relative px-4 py-3">
+                <p className="flex items-baseline justify-between gap-3 text-[17px]">
+                  <span className="text-ink">Left</span>
+                  <span className="text-muted">{creditCount(c.available)}</span>
+                </p>
+                {c.allowance > 0 ? <UsageMeter label="Monthly AI credits left" pct={(c.monthlyLeft / c.allowance) * 100} invert /> : null}
+              </div>
+              <IosRow label={c.trialing ? "Trial credits left" : "Monthly credits left"} value={`${c.monthlyLeft.toLocaleString()} of ${c.allowance.toLocaleString()}`} />
+              {c.packCredits > 0 ? <IosRow label="Extra credits" value={c.packCredits.toLocaleString()} /> : null}
+            </>
+          ) : (
+            <IosRow label="AI credits" value="None" />
+          )}
+        </IosSection>
+        <IosSection header="Devices">
+          <IosRow
+            icon={<RowIcon><MonitorSmartphone /></RowIcon>}
+            label="Devices"
+            value={e.devices === null ? `Unlimited, ${plural(data.devicesActive, "device")}` : `${Math.min(data.devicesActive, e.devices)} of ${e.devices} in use`}
+            onClick={() => navigate("/settings/devices")}
+            chevron
+          />
+        </IosSection>
+      </>
+    );
+  }
   return (
     <>
       <Card title="Your plan">

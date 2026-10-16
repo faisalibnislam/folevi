@@ -7,7 +7,8 @@
 // as inline fields or a screen of its own with Done; destructive actions as red rows confirmed by an action
 // sheet. A section's deeper screens (a choice, an edit, Change password) are pushed onto the Settings tab's
 // own stack as `?screen=<id>` on the section's address, so Back, the edge swipe and the collapsing title
-// work as for any screen; the section stays mounted (hidden) under them, so its state and handlers carry on.
+// work as for any screen; the section stays mounted (hidden) under them, so its state (a draft, a choice
+// half made) and handlers carry on from one of its screens to the next.
 
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -20,6 +21,8 @@ export const SCREEN_PARAM = "screen";
 
 interface ScreenChrome {
   title: string;
+  /** The screen that set it (so one going away doesn't clear the next one's). */
+  owner: string;
 }
 
 interface SettingsScreens {
@@ -60,7 +63,7 @@ export function SettingsScreensHost({ children, render }: { children: ReactNode;
     <ScreensContext.Provider value={value}>
       {render({ active: screen !== null, chrome, slot: setSlot, actions: setActions })}
       {/* The section itself: on show, or mounted under its pushed screen (its rows and handlers carry on). */}
-      {screen !== null ? <div hidden>{children}</div> : <div className="flex min-h-0 flex-1 flex-col">{children}</div>}
+      <div className={screen !== null ? "hidden" : "flex min-h-0 flex-1 flex-col"}>{children}</div>
     </ScreensContext.Provider>
   );
 }
@@ -74,12 +77,12 @@ export function Subscreen({ id, title, trailing, children }: { id: string; title
   const setChrome = screens?.setChrome;
   useLayoutEffect(() => {
     if (!active || !setChrome) return;
-    setChrome((prev: ScreenChrome | null) => (prev?.title === title ? prev : { title }));
-  }, [active, setChrome, title]);
+    setChrome((prev: ScreenChrome | null) => (prev?.title === title && prev.owner === id ? prev : { title, owner: id }));
+  }, [active, setChrome, title, id]);
   useEffect(() => {
     if (!active || !setChrome) return;
-    return () => setChrome(null);
-  }, [active, setChrome]);
+    return () => setChrome((prev) => (prev?.owner === id ? null : prev));
+  }, [active, setChrome, id]);
   if (!screens) return null;
   if (active && screens.slot)
     return (
@@ -156,12 +159,12 @@ export function IosRow({
     <>
       {icon}
       <span className={`min-w-0 flex-1 py-[11px] ${center ? "text-center" : ""}`}>
-        <span className={`block text-[17px] leading-[22px] [overflow-wrap:anywhere] ${danger ? "text-danger" : opens && !screen && !chevron && !checked && !trailing && value === undefined ? "font-medium text-heading" : "text-ink"}`}>{label}</span>
+        <span className={`block text-[17px] leading-[22px] [overflow-wrap:anywhere] ${danger ? "text-danger" : opens && !screen && !chevron && checked === undefined && !trailing && value === undefined ? "font-medium text-heading" : "text-ink"}`}>{label}</span>
         {description ? <span className="mt-0.5 block text-[13px] leading-[17px] text-muted [overflow-wrap:anywhere]">{description}</span> : null}
       </span>
       {value !== undefined && value !== null ? <span className="max-w-[55%] flex-none truncate text-right text-[17px] text-muted">{value}</span> : null}
       {trailing}
-      {checked ? <Check size={20} strokeWidth={2.4} aria-hidden className="flex-none text-heading" /> : null}
+      {checked ? <Check size={20} strokeWidth={2.4} aria-hidden className="flex-none text-heading" /> : checked === false ? <span aria-hidden className="w-5 flex-none" /> : null}
       {(chevron ?? Boolean(screen)) ? <ChevronRight size={18} strokeWidth={2.2} aria-hidden className="-mr-1 flex-none text-faint" /> : null}
     </>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Copy, Plus, Webhook } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -13,6 +13,10 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ageText, formatRelative } from "@/lib/format";
 import { Card } from "./Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useIphoneApp } from "@/lib/iphone";
+import { ActionRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen, SwitchRow, TextRow, useSettingsScreens } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
+import { GlassTextButton } from "@/components/iphone/Glass";
 
 const MAX_WEBHOOKS = 5;
 
@@ -36,6 +40,69 @@ export function WebhooksCard() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [logOpen, setLogOpen] = useState<string | null>(null);
   const fail = (e: unknown) => toast.show(errorMessage(e), { tone: "error" });
+  const iphone = useIphoneApp();
+  if (iphone) {
+    const full = hooks !== undefined && hooks.length >= MAX_WEBHOOKS;
+    const what = (h: NonNullable<typeof hooks>[number]) => `${h.events.length === EVENT_LABELS.length ? "Every event" : h.events.join(", ")} in ${h.places.join(", ") || "no places"}`;
+    return (
+      <>
+        <IosSection header="Webhooks" footer="Folevi tells your server when notes, tasks and comments change, with a signed request to an https address. Events carry a note's title and link, never its content.">
+          <IosRow icon={<RowIcon><Webhook /></RowIcon>} label="Webhooks" value={hooks === undefined ? "" : String(hooks.length)} screen="webhooks" />
+          <IosRow label="How webhooks work" chevron onClick={() => window.open("https://folevi.com/docs/webhooks", "_blank", "noopener")} />
+        </IosSection>
+        <Subscreen id="webhooks" title="Webhooks">
+          <IosSection label="Your webhooks">
+            {hooks === undefined ? <IosText muted>Loading…</IosText> : null}
+            {hooks?.length === 0 ? <IosText muted>No webhooks yet</IosText> : null}
+            {hooks?.map((h) => (
+              <IosRow key={h.id} label={<span className="font-mono text-[15px]">{h.url}</span>} description={what(h)} value={h.enabled ? "On" : "Off"} screen={`webhooks.${h.id}`} />
+            ))}
+          </IosSection>
+          <IosSection footer={full ? `You can have up to ${MAX_WEBHOOKS} webhooks.` : undefined}>
+            <IosRow label="Add webhook" disabled={hooks === undefined || full} screen="webhooks.new" />
+          </IosSection>
+        </Subscreen>
+        {hooks?.map((h) => {
+          const last = h.attempts[0];
+          return (
+            <Subscreen key={h.id} id={`webhooks.${h.id}`} title="Webhook">
+              <IosSection
+                footer={`${h.disabledAt ? `Turned off ${formatRelative(h.disabledAt)} because deliveries kept failing. ` : ""}${last ? `Last attempt ${formatRelative(last.at)}: ${last.ok ? `delivered (${last.statusCode})` : `failed (${last.statusCode ?? last.error})`}.` : "Nothing sent yet."}`}
+              >
+                <IosRow label="Address" description={<span className="font-mono">{h.url}</span>} />
+                <IosRow label="Sends" description={what(h)} />
+                <SwitchRow label="Send events" checked={h.enabled} onChange={(on) => void setEnabled({ webhookId: h.id, enabled: on }).catch(fail)} />
+              </IosSection>
+              <IosSection>
+                <ActionRow label="Send test event" onClick={() => void sendTest({ webhookId: h.id }).then(() => toast.show("Test event sent"), fail)} />
+                <IosRow label="Recent deliveries" value={String(h.attempts.length)} screen={`webhooks.${h.id}.log`} />
+              </IosSection>
+              <IosSection>
+                <DestructiveRow label="Delete webhook" confirm="Delete" message="Folevi stops sending events to this address." onConfirm={() => void remove({ webhookId: h.id }).then(() => history.back(), fail)} />
+              </IosSection>
+              <Subscreen id={`webhooks.${h.id}.log`} title="Recent deliveries">
+                <IosSection label={`Recent deliveries to ${h.url}`}>
+                  {h.attempts.length ? (
+                    h.attempts.map((a, i) => (
+                      <IosRow
+                        key={i}
+                        label={<span className="font-mono text-[15px]">{a.type}</span>}
+                        description={<span className={a.ok ? undefined : "text-danger"}>{`${a.ok ? `${a.statusCode} delivered` : a.statusCode ? `${a.statusCode}${a.error ? `, ${a.error}` : ""}` : (a.error ?? "failed")} · ${a.durationMs} ms`}</span>}
+                        value={ageText(a.at)}
+                      />
+                    ))
+                  ) : (
+                    <IosText muted>No deliveries yet. Send a test event to try it.</IosText>
+                  )}
+                </IosSection>
+              </Subscreen>
+            </Subscreen>
+          );
+        })}
+        <IphoneNewWebhook />
+      </>
+    );
+  }
 
   return (
     <Card
@@ -246,5 +313,99 @@ function NewWebhookDialog({ onClose }: { onClose: () => void }) {
         </p>
       ) : null}
     </Dialog>
+  );
+}
+
+/** Adding a webhook in the iPhone app: a screen with Add in its bar, then the signing secret once, with Copy. */
+function IphoneNewWebhook() {
+  const { workspaces } = useAppState();
+  const create = useMutation(api.webhooks.create);
+  const toast = useToast();
+  const screens = useSettingsScreens();
+  const [url, setUrl] = useState("https://");
+  const [events, setEvents] = useState<Set<string>>(new Set(["note.created", "task.completed"]));
+  const [personal, setPersonal] = useState(true);
+  const [workspaceIds, setWorkspaceIds] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [secret, setSecret] = useState<string | null>(null);
+  // Leaving the screen starts the next one afresh.
+  const open = screens?.screen === "webhooks.new";
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open) {
+      setUrl("https://");
+      setEvents(new Set(["note.created", "task.completed"]));
+      setPersonal(true);
+      setWorkspaceIds([]);
+      setError(null);
+      setSecret(null);
+    }
+    wasOpen.current = open;
+  }, [open]);
+  const ready = !busy && /^https:\/\/./.test(url.trim()) && events.size > 0 && (personal || workspaceIds.length > 0);
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await create({ url, events: [...events], personal, workspaceIds });
+      setSecret(r.secret);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Subscreen
+      id="webhooks.new"
+      title={secret ? "Signing secret" : "Add webhook"}
+      trailing={
+        secret ? (
+          <GlassTextButton strong onClick={() => screens?.back()}>
+            Done
+          </GlassTextButton>
+        ) : (
+          <GlassTextButton strong disabled={!ready} onClick={() => void submit()}>
+            {busy ? "Adding…" : "Add"}
+          </GlassTextButton>
+        )
+      }
+    >
+      {secret ? (
+        <IosSection footer="Your server uses it to check that a request really came from Folevi (the Folevi-Signature header). It's shown only now.">
+          <IosRow label="Secret" description={<span className="select-all font-mono">{secret}</span>} />
+          <ActionRow label="Copy secret" onClick={() => void navigator.clipboard.writeText(secret).then(() => toast.show("Secret copied"))} />
+        </IosSection>
+      ) : (
+        <>
+          {error ? <IosSection><IosText><span role="alert" className="text-danger">{error}</span></IosText></IosSection> : null}
+          <IosSection>
+            <TextRow stacked label="Endpoint address" type="url" inputMode="url" value={url} onChange={setUrl} maxLength={2000} />
+          </IosSection>
+          <IosSection header="Events" role="group" label="Events">
+            {EVENT_LABELS.map((e) => (
+              <IosRow
+                key={e.event}
+                label={e.label}
+                checked={events.has(e.event)}
+                onClick={() => {
+                  const next = new Set(events);
+                  if (next.has(e.event)) next.delete(e.event);
+                  else next.add(e.event);
+                  setEvents(next);
+                }}
+              />
+            ))}
+          </IosSection>
+          <IosSection header="Where" role="group" label="Where">
+            <IosRow label="Personal" checked={personal} onClick={() => setPersonal(!personal)} />
+            {workspaces.map((w) => (
+              <IosRow key={w.id} label={w.name} checked={workspaceIds.includes(w.id)} onClick={() => setWorkspaceIds(workspaceIds.includes(w.id) ? workspaceIds.filter((x) => x !== w.id) : [...workspaceIds, w.id])} />
+            ))}
+          </IosSection>
+        </>
+      )}
+    </Subscreen>
   );
 }

@@ -13,6 +13,9 @@ import { formatDateTime, formatRelative } from "@/lib/format";
 import { TIER_NAMES, TRIAL_TIER } from "@/lib/plans";
 import { Card } from "./Card";
 import { canPurchaseHere } from "@/lib/nativeApp";
+import { useIphoneApp } from "@/lib/iphone";
+import { DestructiveRow, IosRow, IosSection, IosText, Subscreen } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
 
 function DeviceIcon({ client, label }: { client: string; label: string }) {
   const Icon = client === "mac" ? Laptop : /iPad/.test(label) ? Tablet : /iPhone|iOS|Android/.test(label) ? Smartphone : Monitor;
@@ -41,6 +44,76 @@ export function DevicesSection() {
   const others = sessions?.filter((s) => !s.current).length ?? 0;
   const pct = limit && count !== undefined ? Math.min(100, (count / limit) * 100) : 0;
   const plural = (n: number) => (n === 1 ? "device" : "devices");
+  const iphone = useIphoneApp();
+  const signOut = (id: (typeof sessions & object)[number]["id"]) => void revoke({ sessionId: id }).then(() => toast.show("Device signed out"), (e) => toast.show(errorMessage(e), { tone: "error" }));
+  if (iphone) {
+    const icon = (client: string, label: string) => {
+      const Icon = client === "mac" ? Laptop : /iPad/.test(label) ? Tablet : /iPhone|iOS|Android/.test(label) ? Smartphone : Monitor;
+      return (
+        <RowIcon>
+          <Icon />
+        </RowIcon>
+      );
+    };
+    return (
+      <>
+        <IosSection
+          footer={
+            limit === null
+              ? entitlements?.trialing
+                ? `Unlimited devices during your ${TIER_NAMES[TRIAL_TIER]} trial.`
+                : "Your personal plan includes unlimited devices."
+              : `Your personal plan works on ${limit} ${plural(limit)} at a time, in Personal and every workspace. A new device beyond that asks you to sign one out first.`
+          }
+        >
+          <IosRow icon={<RowIcon><MonitorSmartphone /></RowIcon>} label="Connected" value={count === undefined ? "" : limit === null ? `${count} ${plural(count)}` : `${count} of ${limit}`} />
+        </IosSection>
+        <IosSection header="Signed in" footer="Signing a device out ends its session right away; it asks for your password and code to sign in again.">
+          {sessions === undefined ? <IosText muted>Loading…</IosText> : null}
+          {sessions?.map((s) => (
+            <IosRow
+              key={s.id}
+              icon={icon(s.client, s.label)}
+              label={s.label}
+              description={`Signed in ${formatDateTime(s.createdAt)} · active ${formatRelative(s.lastSeenAt)}`}
+              value={s.current ? "This device" : undefined}
+              screen={s.current ? undefined : `device-${s.id}`}
+            />
+          ))}
+        </IosSection>
+        {sessions
+          ?.filter((s) => !s.current)
+          .map((s) => (
+            <Subscreen key={s.id} id={`device-${s.id}`} title={s.label}>
+              <IosSection>
+                <IosRow label="Signed in" value={formatDateTime(s.createdAt)} />
+                <IosRow label="Last active" value={formatRelative(s.lastSeenAt)} />
+              </IosSection>
+              <IosSection footer="It asks for your password and code to sign in again.">
+                <DestructiveRow label="Sign out this device" confirm={`Sign out ${s.label}`} onConfirm={() => {
+                  signOut(s.id);
+                  history.back();
+                }} />
+              </IosSection>
+            </Subscreen>
+          ))}
+        <IosSection>
+          <DestructiveRow
+            label="Sign out of all other devices"
+            confirm="Sign out others"
+            disabled={others === 0}
+            message={`${others} other ${plural(others)} will be signed out right away. This device stays signed in.`}
+            onConfirm={() =>
+              void revokeOthers({}).then(
+                (r) => toast.show(r.ended === 1 ? "Signed out 1 other device" : `Signed out ${r.ended} other devices`),
+                (e) => toast.show(errorMessage(e), { tone: "error" }),
+              )
+            }
+          />
+        </IosSection>
+      </>
+    );
+  }
 
   return (
     <>
@@ -89,7 +162,7 @@ export function DevicesSection() {
               {s.current ? (
                 <span className="ui-chip h-6 flex-none self-center bg-moss-soft text-[11.5px] text-moss-ink">This device</span>
               ) : (
-                <Button size="sm" aria-label={`Sign out ${s.label}`} onClick={() => void revoke({ sessionId: s.id }).then(() => toast.show("Device signed out"), (e) => toast.show(errorMessage(e), { tone: "error" }))}>
+                <Button size="sm" aria-label={`Sign out ${s.label}`} onClick={() => signOut(s.id)}>
                   Sign out
                 </Button>
               )}

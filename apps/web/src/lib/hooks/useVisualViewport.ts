@@ -26,5 +26,8 @@ export function useKeyboardInset() {
 /** The bottom edge of what's visible (above the on-screen keyboard), for clamping popovers. */
 export function visibleBottom(): number {
   const vv = window.visualViewport;
-  return vv ? vv.offsetTop + vv.height : window.innerHeight;
+  const bottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+  // In the iPhone app, the bar of writing tools that sits on the keyboard covers what's under it too.
+  const bar = document.querySelector<HTMLElement>("[data-iphone-keyboard-bar]")?.getBoundingClientRect();
+  return bar && bar.height && bar.top < bottom ? Math.min(bottom, bar.top) : bottom;
 }

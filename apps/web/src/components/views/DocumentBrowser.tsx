@@ -69,9 +69,9 @@ const TITLES: Record<View, string> = {
 // What an empty list says: a short heading and one line of help.
 const EMPTY: Record<View, { icon: LucideIcon; title: string; body?: string }> = {
   all: { icon: Files, title: "Nothing here yet", body: "Starting a document takes one keystroke." },
-  starred: { icon: Star, title: "Nothing starred yet", body: "Star a document to keep it one click away." },
-  archive: { icon: Archive, title: "Archive is empty", body: "Archived documents rest here, out of your lists but never lost." },
-  trash: { icon: Trash2, title: "Trash is empty", body: "Deleted documents stay here for 30 days." },
+  starred: { icon: Star, title: "Nothing starred yet", body: "Star a note to keep it close at hand." },
+  archive: { icon: Archive, title: "Archive is empty", body: "Archived notes rest here, out of your lists but never lost." },
+  trash: { icon: Trash2, title: "Trash is empty", body: "Deleted notes stay here for 30 days." },
   templates: { icon: LayoutTemplate, title: "No templates of your own yet", body: "Save any document as a template from its menu." },
   unsorted: { icon: Inbox, title: "No drafts", body: "Everything has a folder. Nicely done." },
   folder: { icon: FolderOpen, title: "This folder is empty", body: "Start a document here, or move one in with Move to folder." },

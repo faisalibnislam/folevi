@@ -15,6 +15,7 @@ export function SharedView() {
       title={<h1 className="text-sm font-semibold">Shared with Me</h1>}
       subtitle={docs === undefined ? undefined : `${docs.length} ${docs.length === 1 ? "page" : "pages"} · from anyone`}
       tabTitle="Shared with Me"
+      iphone={{ title: "Shared with Me", subtitle: docs && docs.length ? `${docs.length} ${docs.length === 1 ? "page" : "pages"}` : undefined }}
     >
       <div className="mx-auto max-w-3xl px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8">
         {docs === undefined ? (

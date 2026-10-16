@@ -66,7 +66,7 @@ export function NoteRow({ doc }: { doc: Summary }) {
 
 /**
  * Home in the iPhone app: the avatar (account and places) and notifications at the top, a large title, the
- * search field, recent notes as cards in a row, then All notes, Drafts, Shared with me and Changes as rows,
+ * search field, recent notes as cards in a row, then All notes, Drafts, Shared with Me and Changes as rows,
  * Starred, Folders and Tags sections, and Templates, Archive and Trash at the end.
  */
 export function IphoneHome() {
@@ -137,7 +137,7 @@ export function IphoneHome() {
         {aiOn ? <CatchUp row /> : null}
         <ListRow href="/notes" icon={<Files />} label="All notes" />
         <ListRow href="/drafts" icon={<Inbox />} label="Drafts" detail={drafts || undefined} />
-        <ListRow href="/shared" icon={<Share2 />} label="Shared with me" />
+        <ListRow href="/shared" icon={<Share2 />} label="Shared with Me" />
         <ListRow href="/changes" icon={<FileDiff />} label="Changes" detail={changeCount || undefined} />
         {reviews?.hasCards ? <ListRow href="/review" icon={<Layers />} label="Reviews" detail={waitingReviews || undefined} /> : null}
       </nav>

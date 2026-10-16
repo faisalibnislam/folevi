@@ -185,7 +185,7 @@ function Popover({
     };
   }, [anchor, ref]);
   const at = moved ?? anchor;
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const [pos, setPos] = useState<{ left: number; top: number; maxHeight?: number } | null>(null);
   // In the top layer, so no panel or stacking order can clip or cover it (it stays in the editor's DOM).
   useShowInTopLayer(Boolean(anchor), ref);
   // A field marked data-autofocus takes focus once the popover is showing (React's autoFocus fires earlier,
@@ -202,13 +202,18 @@ function Popover({
   useLayoutEffect(() => {
     if (!at) side.current = null;
     if (!at || !ref.current) return;
-    const h = ref.current.offsetHeight;
+    // Its whole height, even while it's held shorter to fit (so it doesn't flip between the two).
+    const h = Math.max(ref.current.offsetHeight, ref.current.scrollHeight);
     const below = at.bottom + 6;
     // Above the on-screen keyboard, where there is one.
     const bottom = visibleBottom();
     if (side.current === null) side.current = below + h > bottom - 8 && at.top - h - 6 >= 8 ? "above" : "below";
-    const top = side.current === "above" ? Math.max(8, at.top - h - 6) : Math.min(below, Math.max(8, bottom - h - 8));
-    setPos({ left: Math.max(8, Math.min(at.left, window.innerWidth - width - 8)), top });
+    // A list that scrolls fits the room under the line instead of sliding up over it (a phone with its
+    // keyboard up has little room below).
+    const roomBelow = bottom - below - 8;
+    const shrink = side.current === "below" && h > roomBelow && roomBelow >= 150;
+    const top = side.current === "above" ? Math.max(8, at.top - h - 6) : shrink ? below : Math.min(below, Math.max(8, bottom - h - 8));
+    setPos({ left: Math.max(8, Math.min(at.left, window.innerWidth - width - 8)), top, maxHeight: shrink ? roomBelow : undefined });
   }, [at, width, children, ref]);
   if (!anchor) return null;
   return (
@@ -217,7 +222,7 @@ function Popover({
       role={role}
       aria-label={role === "dialog" ? label : undefined}
       popover="manual"
-      style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: pos?.left ?? anchor.left, top: pos?.top ?? anchor.bottom + 6, width, visibility: pos ? "visible" : "hidden" }}
+      style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: pos?.left ?? anchor.left, top: pos?.top ?? anchor.bottom + 6, width, maxHeight: scroll ? pos?.maxHeight : undefined, ["--pop-max" as string]: !scroll && pos?.maxHeight ? `${pos.maxHeight - 12}px` : undefined, visibility: pos ? "visible" : "hidden" }}
       className={`z-[100] border-0 text-ink ${scroll ? `${tall ? "max-h-[min(600px,85vh)]" : "max-h-[min(420px,70vh)]"} overflow-y-auto` : ""} ui-pop p-1.5 animate-[folio-rise_120ms_var(--ease-folio)]`}
       onMouseDown={(e) => {
         // Keep focus in the editor, except for form controls inside the popover (fields, and Folevi's own
@@ -258,7 +263,7 @@ function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }
   return (
     // The list is the scroll container. It is focusable (axe: scrollable-region-focusable) but focus
     // normally stays in the editor, which points at the active option with aria-activedescendant.
-    <ul role="listbox" id={listId} aria-label={label} tabIndex={0} className="max-h-[min(400px,65vh)] overflow-y-auto rounded-chip outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)]">
+    <ul role="listbox" id={listId} aria-label={label} tabIndex={0} style={{ maxHeight: "min(400px, 65vh, var(--pop-max, 400px))" }} className="overflow-y-auto rounded-chip outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)]">
       {items.map((item, i) => (
         <li
           key={item.id}

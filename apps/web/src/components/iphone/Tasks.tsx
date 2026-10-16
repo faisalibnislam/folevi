@@ -191,7 +191,7 @@ export function IphoneTasks({
                             : []
                         }
                       >
-                        <TaskLine task={t} today={today} onToggle={onToggle} onOpen={() => onEdit(t)} showNote={view === "upcoming"} onDay={view === "today"} />
+                        <TaskLine task={t} today={today} onToggle={onToggle} onOpen={() => onEdit(t)} showNote={view === "upcoming"} onDay={view === "today" || view === "upcoming"} />
                       </SwipeRow>
                     </li>
                   ))}

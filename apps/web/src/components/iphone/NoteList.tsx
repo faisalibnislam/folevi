@@ -139,7 +139,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
         };
 
   return (
-    <ViewChrome title={title} tabTitle={title} tint={tint} iphone={{ title, trailing, header: <SearchField placeholder="Search" value={query} onChange={setQuery} /> }}>
+    <ViewChrome title={title} tabTitle={title} tint={tint} iphone={{ title, trailing, header: docs.length || query ? <SearchField placeholder="Search" value={query} onChange={setQuery} /> : null }}>
       {subfolders.length ? (
         <nav aria-label="Folders inside" className="mt-2">
           {subfolders.map((f) => (

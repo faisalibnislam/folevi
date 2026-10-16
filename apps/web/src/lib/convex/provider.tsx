@@ -23,6 +23,26 @@ export function getConvexClient(): ConvexReactClient {
  *   from this device's copy instead of claiming the session ended.
  */
 export type AuthPhase = "loading" | "signed_in" | "signed_out" | "offline";
+
+/** How long the first session check may take before the app opens from this device's copy instead. */
+export const SESSION_CHECK_PATIENCE_MS = 6000;
+
+/**
+ * Where the session stands, from Better Auth's session check. Only a definite answer from the server signs
+ * anyone out: no session in a successful reply, or 401/403. Everything else that failed (no answer, a
+ * gateway or server error, a rate limit, a check that hangs, the device offline) is `offline`, so the app
+ * opens with what this device has and shows its sync status, the same as with no network at all.
+ */
+export function authPhaseOf(s: { hasSession: boolean; isPending: boolean; error: unknown; online: boolean; slow: boolean }): AuthPhase {
+  if (s.hasSession) return "signed_in";
+  if (!s.online) return "offline";
+  if (s.isPending) return s.slow ? "offline" : "loading";
+  if (s.error) {
+    const status = (s.error as { status?: number }).status;
+    return status === 401 || status === 403 ? "signed_out" : "offline";
+  }
+  return "signed_out";
+}
 const AuthPhaseContext = createContext<AuthPhase>("loading");
 export function useAuthPhase(): AuthPhase {
   return useContext(AuthPhaseContext);
@@ -81,7 +101,13 @@ function useFoleviAuth() {
   const online = useOnline();
   const cache = useRef<{ token: string; exp: number; sessionId: string | undefined } | null>(null);
   const sessionId = session?.session?.id;
-  const networkFailure = Boolean(error) && (!online || !(error as { status?: number }).status);
+  // A session check that takes this long (a network that swallows requests) counts as no answer.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!isPending || slow) return;
+    const timer = setTimeout(() => setSlow(true), SESSION_CHECK_PATIENCE_MS);
+    return () => clearTimeout(timer);
+  }, [isPending, slow]);
 
   const fetchAccessToken = useCallback(
     async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
@@ -110,7 +136,7 @@ function useFoleviAuth() {
     [sessionId],
   );
 
-  const phase: AuthPhase = session?.session ? "signed_in" : isPending ? "loading" : networkFailure || !online ? "offline" : "signed_out";
+  const phase = authPhaseOf({ hasSession: Boolean(session?.session), isPending, error, online, slow });
   const auth = useMemo(
     () => ({
       isLoading: phase === "loading",

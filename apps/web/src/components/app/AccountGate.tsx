@@ -27,7 +27,10 @@ function currentPath(): string {
 
 /** Routes the signed-in person through the account states the backend reports before showing the app. */
 export function AccountGate() {
-  const phase = useAuthPhase();
+  const reported = useAuthPhase();
+  // The second check below couldn't confirm "no session" (no answer, a server error): carry on offline.
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const phase = reported === "signed_out" && unconfirmed ? "offline" : reported;
   const { isLoading } = useConvexAuth();
   const me = useMeQuery();
   const bootstrap = useMutation(api.users.bootstrap);
@@ -43,7 +46,9 @@ export function AccountGate() {
   }, []);
   // Offline cold start: the server can't be reached, so open the last-known folio from this device.
   const [snapshot, setSnapshot] = useState<AccountSnapshot | null | undefined>(undefined);
-  const offlineStart = phase === "offline" && me === undefined;
+  // (Signed out as far as the backend can tell, because it got no token while the session check had no
+  // definite answer: the same, since only the auth server can say the session ended.)
+  const offlineStart = phase === "offline" && (me === undefined || me?.state === "signed_out");
   useEffect(() => {
     if (offlineStart && snapshot === undefined) void loadAccountSnapshot().then(setSnapshot);
   }, [offlineStart, snapshot]);
@@ -58,7 +63,11 @@ export function AccountGate() {
   // The server says there is no session (signed out elsewhere, revoked, expired): go sign in. Work
   // written offline stays on this device and syncs after signing back in to the same account.
   useEffect(() => {
-    if (phase !== "signed_out") return;
+    if (reported !== "signed_out") {
+      setUnconfirmed(false);
+      return;
+    }
+    let cancelled = false;
     const go = () => window.location.replace(`/signin?notice=session_ended&returnTo=${encodeURIComponent(currentPath())}`);
     const withTimeout = <T,>(p: Promise<T>) => Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), 3000))]);
     void (async () => {
@@ -66,20 +75,28 @@ export function AccountGate() {
       // sign anyone out. Only a definite "no session" drops the dead cookie (keeping this device's notes),
       // so the sign-in and sign-up pages don't take it for a live session and bounce back here.
       const check = await withTimeout(authClient.getSession({ query: { disableCookieCache: true } }).catch(() => null));
+      if (cancelled) return;
       if (check?.data?.session) {
         window.location.reload();
         return;
       }
       const status = (check?.error as { status?: number } | null | undefined)?.status;
       const definite = check !== null && (!check.error || status === 401 || status === 403);
-      if (definite) {
-        // The iOS app's widgets and extensions stop using this account too.
-        await forgetThisDevice();
-        await withTimeout(authClient.signOut().catch(() => undefined));
+      // No definite answer (the server is unreachable, or failing): never sign out because the network
+      // failed. The app opens from this device's copy and its sync status says it's offline.
+      if (!definite) {
+        setUnconfirmed(true);
+        return;
       }
+      // The iOS app's widgets and extensions stop using this account too.
+      await forgetThisDevice();
+      await withTimeout(authClient.signOut().catch(() => undefined));
       go();
     })();
-  }, [phase]);
+    return () => {
+      cancelled = true;
+    };
+  }, [reported]);
 
   // The token's session is gone. Changing the password (or finishing a re-authentication) replaces the
   // session with a new one for this browser; the auth bridge then fetches a token for the new session and

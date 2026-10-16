@@ -8,6 +8,7 @@ import { SyncEngine } from "@/lib/sync/engine";
 import { Outbox } from "@/lib/sync/outbox";
 import { deviceId as loadDeviceId } from "@/lib/sync/db";
 import { Uploader } from "@/lib/sync/uploads";
+import { useAuthPhase } from "@/lib/convex/provider";
 import { saveAccountSnapshot } from "./offlineSnapshot";
 
 export type Profile = NonNullable<Extract<NonNullable<ReturnType<typeof useMeQuery>>, { state: "ready" }>["profile"]>;
@@ -192,7 +193,10 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
   const [device, setDevice] = useState<string | null>(null);
   const online = useOnline();
   const connection = useConvexConnectionState();
-  const effectivelyOnline = online && (connection.isWebSocketConnected || !connection.hasEverConnected);
+  const authPhase = useAuthPhase();
+  // Offline too when the server can't be reached while the device has a network: the session check got no
+  // answer, or the backend never connected and keeps retrying (a cold start against an unreachable server).
+  const effectivelyOnline = online && authPhase !== "offline" && (connection.isWebSocketConnected || (!connection.hasEverConnected && connection.connectionRetries === 0));
   const timeZone = profile.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const today = useToday(timeZone);
   const [appearance, setAppearanceState] = useState(profile.appearance);

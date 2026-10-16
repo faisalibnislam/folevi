@@ -72,3 +72,26 @@ test("opening Folevi while the server is unreachable shows the last-known folio,
   await expect(page.getByRole("button", { name: /: Personal, workspaces and account$/ })).toHaveAccessibleName("Personal: Personal, workspaces and account");
   await expect(page.getByText("You're offline", { exact: true })).toHaveCount(0);
 });
+
+// The device says it's online but the server can't answer: a gateway error, or a check that never returns.
+// Neither may sign anyone out or send them to sign in; the app opens from this device with its sync status.
+for (const kind of ["a gateway error", "no answer at all"] as const) {
+  test(`relaunched while the server gives ${kind}, the app opens from this device instead of signing out`, async ({ browser }) => {
+    const { page } = await newPerson(browser, "Unreachable Tester");
+    await page.goto("/documents");
+    await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible();
+    await page.waitForFunction(() => Boolean(localStorage.getItem("folevi:last-account")));
+
+    await page.route("**/api/auth/**", (route) => (kind === "a gateway error" ? route.fulfill({ status: 502, contentType: "text/html", body: "<h1>Bad gateway</h1>" }) : new Promise(() => undefined)));
+    const backendHost = new URL(convexUrl()).host;
+    await page.routeWebSocket((url) => url.host === backendHost || url.hostname.endsWith(".convex.cloud"), (ws) => ws.close());
+    await page.reload();
+    await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible({ timeout: 25_000 });
+    await expect(page).toHaveURL(/\/documents/);
+    await expect(page.getByTestId("sync-status")).toHaveAttribute("data-status", "offline", { timeout: 15_000 });
+    // Still the same account, and nothing pending was dropped: the cookie is kept for when it's back.
+    expect(page.url()).not.toContain("/signin");
+    const cookies = await page.context().cookies();
+    expect(cookies.some((c) => /session_token/.test(c.name))).toBe(true);
+  });
+}

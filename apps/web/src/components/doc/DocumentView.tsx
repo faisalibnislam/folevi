@@ -942,7 +942,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               />
             ) : null}
             {showEditors && blockAuthors && !changeMarks ? <EditorsBar authors={blockAuthors} onHide={() => setShowEditors(false)} /> : null}
-            <div className="px-5 sm:px-16">
+            <div className={iphone ? "px-[28px] [@media(orientation:landscape)]:px-16" : "px-5 sm:px-16"}>
               {summary?.kind === "collectionRow" || waitingRow ? (
                 <Suspense fallback={null}>
                   <CollectionRowProperties documentId={documentId} editable={!readOnly} />
@@ -1344,6 +1344,7 @@ function DocumentHeader({
   readOnly: boolean;
   onEnter: () => void;
 }) {
+  const iphone = useIphoneApp();
   const { engine } = useAppState();
   const { search } = useAppRouter();
   const [value, setValue] = useState(title);
@@ -1605,10 +1606,10 @@ function DocumentHeader({
       ) : (
         <>
           <div className="h-10" aria-hidden />
-          <div className="px-5 sm:px-16">{titleField}</div>
+          <div className={iphone ? "px-[28px] [@media(orientation:landscape)]:px-16" : "px-5 sm:px-16"}>{titleField}</div>
         </>
       )}
-      <div className="px-5 sm:px-16">
+      <div className={iphone ? "px-[28px] [@media(orientation:landscape)]:px-16" : "px-5 sm:px-16"}>
         <div className={onCover ? "mb-2 mt-4" : "mb-4 mt-1"} />
       </div>
     </header>

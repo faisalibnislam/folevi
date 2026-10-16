@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { ArrowUp, Loader2 } from "lucide-react";
+import { ArrowUp, Loader2, Sparkles } from "lucide-react";
+import { useIphoneApp } from "@/lib/iphone";
 import { ulid } from "@folevi/editor-schema";
 import { api, type Id } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -118,6 +119,9 @@ export function ChatThread({
   const [problem, setProblem] = useState<AiProblem | null>(null);
   const [applying, setApplying] = useState<Record<string, ActionsOutcome>>({});
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // The iPhone app: suggestions as a list, the composer as a card, iOS-sized text.
+  const iphone = useIphoneApp();
+  const iphoneRef = useRef(iphone);
   const endRef = useRef<HTMLDivElement>(null);
   const uid = useId();
 
@@ -136,7 +140,8 @@ export function ChatThread({
     setPending(null);
   }, [conversationId]);
   useEffect(() => {
-    if (autoFocus) requestAnimationFrame(() => inputRef.current?.focus());
+    // (Not in the iPhone app: a sheet that opens with the keyboard up hides what it offers.)
+    if (autoFocus && !iphoneRef.current) requestAnimationFrame(() => inputRef.current?.focus());
   }, [autoFocus, conversationId]);
   useEffect(() => {
     const focus = () => inputRef.current?.focus();
@@ -342,6 +347,21 @@ export function ChatThread({
           ))}
         </div>
       </div>
+    ) : iphone ? (
+      <div>
+        <h3 className="text-[17px] font-semibold text-heading">Suggestions</h3>
+        <ul className="mt-1">
+          {suggestions.map((s) => (
+            <li key={s}>
+              <button type="button" onClick={() => send(s)} className="flex min-h-11 w-full items-center gap-3 py-2 text-left text-[16px] text-ink outline-none active:opacity-60 focus-visible:underline">
+                <Sparkles size={18} strokeWidth={1.8} aria-hidden className="flex-none text-muted" />
+                {s}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-5 text-[13px] leading-snug text-muted">Answers link to the notes they come from. Foli AI shows you any change before it makes it, and each request uses AI credits.</p>
+      </div>
     ) : (
       <div>
         {variant === "floating" ? (
@@ -428,7 +448,7 @@ export function ChatThread({
         </div>
       </div>
 
-      <div className={`flex-none ${page ? "px-4 pb-4 pt-2 sm:px-8" : variant === "panel" ? "border-t border-line/70 pt-2.5" : "border-t border-line/70 px-3 pb-3 pt-2.5"}`}>
+      <div className={`flex-none ${iphone && !page ? (variant === "panel" ? "pb-1 pt-2" : "px-3 pb-3 pt-2") : page ? "px-4 pb-4 pt-2 sm:px-8" : variant === "panel" ? "border-t border-line/70 pt-2.5" : "border-t border-line/70 px-3 pb-3 pt-2.5"}`}>
         <div className={page ? "mx-auto max-w-3xl" : ""}>
           <AiCreditsNote className="mb-2" />
           <div className="mb-2 flex flex-wrap items-center gap-2 px-0.5">
@@ -440,7 +460,13 @@ export function ChatThread({
               <AttachmentProblems problems={attachments.problems} onDismiss={attachments.dismiss} />
             </div>
           ) : null}
-          <div className="relative w-full rounded-panel bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
+          <div
+            className={
+              iphone
+                ? "relative w-full rounded-container bg-surface shadow-[0_0_0_0.5px_rgb(0_0_0/0.1),0_8px_24px_-10px_rgb(0_0_0/0.25)]"
+                : "relative w-full rounded-panel bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]"
+            }
+          >
             {attachAvailable ? <AttachmentChips files={attachments.files} onRemove={attachments.remove} disabled={working} className="px-3 pt-2.5" /> : null}
             <label htmlFor={`${uid}-q`} className="sr-only">
               {mode === "research" ? "What should Foli AI research?" : "Ask about your notes, or ask Foli AI to change them"}
@@ -459,7 +485,7 @@ export function ChatThread({
               }}
               maxLength={4000}
               placeholder={mode === "research" ? "What should I research?" : webOn ? "Ask anything. Answers use your notes and the web…" : messages.length ? "Ask a follow-up…" : "Ask anything, or ask Foli AI to tidy or organize…"}
-              className="block min-h-[3rem] w-full resize-none bg-transparent px-3.5 pb-1.5 pt-3 text-[14px] leading-[1.5] text-ink outline-none placeholder:text-faint"
+              className={`block min-h-[3rem] w-full resize-none bg-transparent px-3.5 pb-1.5 pt-3 leading-[1.5] text-ink outline-none placeholder:text-faint ${iphone ? "text-[16px]" : "text-[14px]"}`}
             />
             {/* How Foli AI helps on the left, attach and send on the right, all inside the box. */}
             {/* 4px from the box's edge: the switch and Send are 10px-cornered inside its 14px corners. */}

@@ -32,6 +32,8 @@ export interface IphoneScreenOptions {
   header?: ReactNode;
   /** The screen scrolls inside its content (a note's page) instead of as a whole. */
   innerScroll?: boolean;
+  /** The grey of grouped lists behind the content (Settings). */
+  grouped?: boolean;
 }
 
 /** Where Back leads without history: a note's folder is unknown here, so Home (lists) or the tab's root. */
@@ -55,7 +57,7 @@ function parentOf(route: Route): string {
  * which scrolls under the bar and the floating tab bar. Taps on the current tab scroll it back to the top.
  */
 export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }: { options: IphoneScreenOptions; fallbackTitle?: string; children: ReactNode; overlay?: ReactNode; tint?: string }) {
-  const { title = fallbackTitle ?? "", large = true, subtitle, leading, trailing, center, root, back, collapseAt, edge = "canvas", header, innerScroll } = options;
+  const { title = fallbackTitle ?? "", large = true, subtitle, leading, trailing, center, root, back, collapseAt, edge = "canvas", header, innerScroll, grouped } = options;
   const { route, canBack, back: goBackInHistory, navigate } = useAppRouter();
   const rootRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -109,7 +111,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
   return (
     <div
       ref={rootRef}
-      className={`relative flex min-h-0 flex-1 flex-col pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ${tint ? "ui-view-tint" : ""}`}
+      className={`relative flex min-h-0 flex-1 flex-col pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ${tint ? "ui-view-tint" : ""} ${grouped ? "bg-[var(--iphone-grouped)]" : ""}`}
       style={tint ? ({ ["--view-tint" as string]: tint } as React.CSSProperties) : undefined}
     >
       {/* The fade behind the bar, once content scrolls under it: a soft blur that clears towards the content. */}
@@ -117,7 +119,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
         aria-hidden
         className={`pointer-events-none absolute inset-x-0 top-0 z-20 h-[calc(env(safe-area-inset-top)+68px)] transition-opacity duration-200 ${scrolled ? "opacity-100" : "opacity-0"}`}
         style={{
-          background: edge === "canvas" ? "linear-gradient(to bottom, var(--color-canvas) 0%, color-mix(in oklab, var(--color-canvas) 82%, transparent) 55%, transparent 100%)" : undefined,
+          background: edge === "canvas" ? `linear-gradient(to bottom, ${grouped ? "var(--iphone-grouped)" : "var(--color-canvas)"} 0%, color-mix(in oklab, ${grouped ? "var(--iphone-grouped)" : "var(--color-canvas)"} 82%, transparent) 55%, transparent 100%)` : undefined,
           WebkitBackdropFilter: "blur(8px)",
           backdropFilter: "blur(8px)",
           WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%)",

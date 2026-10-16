@@ -42,6 +42,8 @@ function picture(of: HTMLElement): HTMLElement {
   copy.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
   copy.removeAttribute("id");
   copy.setAttribute("aria-hidden", "true");
+  // Its own entrance animations mustn't play again in the copy.
+  copy.setAttribute("data-iphone-picture", "");
   copy.inert = true;
   return copy;
 }

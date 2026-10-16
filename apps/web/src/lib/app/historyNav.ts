@@ -42,9 +42,11 @@ export function startHistoryNav() {
   const at = window.history.state?.[KEY];
   if (typeof at === "number") emit({ at, top: at });
   else window.history.replaceState(stateWith(0), "");
+  // Before anything else hears it: React draws the page a popstate leads to straight away, inside the
+  // first listener (Next's), and the old page must still be on screen for the iPhone app's picture of it.
+  window.addEventListener("popstate", () => moving("pop"), { capture: true });
   window.addEventListener("popstate", (e) => {
     popped = true;
-    moving("pop");
     const at = (e.state as Record<string, unknown> | null)?.[KEY];
     if (typeof at === "number") emit({ at, top: Math.max(state.top, at) });
   });

@@ -18,6 +18,7 @@ import { Highlight } from "./Highlight";
 import { formatRelative } from "@/lib/format";
 import { t } from "@/i18n";
 import { Select } from "@/components/ui/Select";
+import { useIphoneApp } from "@/lib/iphone";
 
 type Item =
   | { kind: "action"; id: string; label: string; hint?: string; icon: React.ReactNode; run: () => void }
@@ -160,6 +161,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   }, [pendingEnter, settled, items]);
 
   const docCount = items.filter((i) => i.kind === "doc").length;
+  // The iPhone app: a full-screen search, the field at the top with Cancel, results as list rows.
+  const iphone = useIphoneApp();
 
   return (
     <dialog
@@ -173,12 +176,17 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose();
       }}
-      className="m-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden ui-pop rounded-panel p-0 text-ink backdrop:bg-transparent shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-rise_160ms_var(--ease-folio)]"
+      className={
+        iphone
+          ? "fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-hidden bg-canvas p-0 pt-[env(safe-area-inset-top)] text-ink backdrop:bg-transparent open:animate-[iphone-fade-in_180ms_ease-out]"
+          : "m-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden ui-pop rounded-panel p-0 text-ink backdrop:bg-transparent shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-rise_160ms_var(--ease-folio)]"
+      }
     >
       {open ? (
-        <div>
-          <div className="flex items-center gap-3 px-5 shadow-[inset_0_-1px_0_var(--color-line)]">
-            <Search size={18} className="text-heading" aria-hidden />
+        <div className={iphone ? "flex h-full flex-col" : undefined}>
+          <div className={iphone ? "flex items-center gap-2 px-4 pb-2 pt-2" : "flex items-center gap-3 px-5 shadow-[inset_0_-1px_0_var(--color-line)]"}>
+            <span className={iphone ? "flex h-11 min-w-0 flex-1 items-center gap-2 rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_6.5%,transparent)] px-3" : "contents"}>
+            <Search size={iphone ? 19 : 18} className={iphone ? "flex-none text-faint" : "text-heading"} aria-hidden />
             <input
               autoFocus
               role="combobox"
@@ -187,7 +195,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               aria-activedescendant={items[active] ? `${listId}-${active}` : undefined}
               aria-autocomplete="list"
               aria-label="Search documents or type a command"
-              placeholder="Search documents or type a command…"
+              placeholder={iphone ? "Search notes and commands" : "Search documents or type a command…"}
+              enterKeyHint="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -203,11 +212,18 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                   else if (items[active]) run(items[active]!);
                 }
               }}
-              className="h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-[var(--color-ink-faint)]"
+              className={iphone ? "h-full min-w-0 flex-1 bg-transparent text-[17px] outline-none placeholder:text-[var(--color-ink-faint)]" : "h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-[var(--color-ink-faint)]"}
             />
-            <Kbd>Esc</Kbd>
+            </span>
+            {iphone ? (
+              <button type="button" onClick={onClose} className="h-11 flex-none px-1 text-[17px] text-heading">
+                Cancel
+              </button>
+            ) : (
+              <Kbd>Esc</Kbd>
+            )}
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 px-5 py-2.5 text-xs shadow-[inset_0_-1px_0_var(--color-line)]" role="group" aria-label="Search filters">
+          <div className={iphone ? "flex flex-none items-center gap-1.5 overflow-x-auto px-4 pb-2 text-[13px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:flex-none" : "flex flex-wrap items-center gap-1.5 px-5 py-2.5 text-xs shadow-[inset_0_-1px_0_var(--color-line)]"} role="group" aria-label="Search filters">
             <Select aria-label="Folder" disabled={allPlaces} value={filters.folderId ?? ""} onChange={(e) => setFilters({ ...filters, folderId: e.target.value || undefined })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
               <option value="">Any folder</option>
               {flattenFolders(org?.folders ?? []).map(({ folder: f, depth }) => (
@@ -250,14 +266,16 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               <span className="ml-auto text-faint">{workspace ? workspace.name : "Personal"}</span>
             )}
           </div>
-          <div className="max-h-[55vh] overflow-y-auto p-2">
+          <div className={iphone ? "min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-[calc(env(safe-area-inset-bottom)+16px)]" : "max-h-[55vh] overflow-y-auto p-2"}>
             {debounced && results === undefined ? <p className="px-3 py-2 text-sm text-muted">Searching…</p> : null}
             {debounced && results?.length === 0 ? <p className="px-3 py-2 text-sm text-muted">No documents match “{debounced}”.</p> : null}
             <p className="ui-caps px-3 pb-1.5 pt-2">{debounced ? "Documents" : "Recent"}</p>
             <ul id={listId} role="listbox" aria-label="Results">
               {items.map((item, i) => {
                 const selected = i === active;
-                const cls = `flex cursor-pointer items-start gap-3 rounded-chip px-3 py-2.5 transition-colors ${selected ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_18%,transparent)]" : ""}`;
+                const cls = iphone
+                  ? `flex cursor-pointer items-start gap-3 rounded-panel px-3 py-3 transition-colors active:bg-[var(--liquid-press)] [&_.text-sm]:text-[17px] [&_.text-xs]:text-[13px] ${selected && query.trim() ? "bg-[var(--liquid-active)]" : ""}`
+                  : `flex cursor-pointer items-start gap-3 rounded-chip px-3 py-2.5 transition-colors ${selected ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_18%,transparent)]" : ""}`;
                 const prev = items[i - 1];
                 const header =
                   i === docCount && item.kind === "action" ? (
@@ -292,7 +310,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                               </span>
                             ) : null}
                           </span>
-                          {selected ? <ArrowRight size={14} className="mt-1" aria-hidden /> : null}
+                          {selected && !iphone ? <ArrowRight size={14} className="mt-1" aria-hidden /> : null}
                         </>
                       ) : (
                         <>
@@ -300,7 +318,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                             {item.icon}
                           </span>
                           <span className="flex-1 text-sm">{item.label}</span>
-                          {item.hint ? <span className="text-xs text-faint">{item.hint}</span> : null}
+                          {item.hint && !iphone ? <span className="text-xs text-faint">{item.hint}</span> : null}
                         </>
                       )}
                     </li>

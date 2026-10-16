@@ -3,7 +3,9 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "convex/react";
-import { Maximize2, MoreHorizontal, Plus, X } from "lucide-react";
+import { History, Maximize2, MoreHorizontal, Plus, X } from "lucide-react";
+import { useIphoneApp } from "@/lib/iphone";
+import { Sheet } from "@/components/iphone/Sheet";
 import { api } from "@/lib/convex/api";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAppRouter } from "@/lib/app/router";
@@ -67,6 +69,7 @@ export function AskAiChat({
   const current = convo?.conversation;
   const actions = useConversationActions(current ? { id: current.id, title: current.title, shared: current.shared, workspace: current.scope.kind === "workspace", ephemeral: current.ephemeral } : null);
   useEffect(() => setMounted(true), []);
+  const iphone = useIphoneApp();
   useEffect(() => {
     if (!open) return;
     const active = document.activeElement;
@@ -99,6 +102,49 @@ export function AskAiChat({
     const back = launcherRef.current ?? (returnTo.current?.isConnected ? returnTo.current : null);
     requestAnimationFrame(() => back?.focus());
   };
+
+  // The iPhone app: a sheet from the bottom (half the screen, pulled up to all of it). The conversations
+  // button opens the Foli AI page with every conversation.
+  if (iphone) {
+    const sheetButton = "grid h-[30px] w-[30px] place-items-center rounded-capsule bg-[color-mix(in_oklab,var(--color-ink)_9%,transparent)] text-muted outline-none active:scale-90";
+    return (
+      <>
+        <Sheet
+          open={open}
+          onClose={close}
+          size="medium"
+          title={current?.title || "New chat"}
+          bodyClassName="ai-chat flex flex-col"
+          leading={
+            <button
+              type="button"
+              aria-label="Conversations"
+              onClick={() => {
+                onClose();
+                navigate(conversationId && convo ? `/ai/${conversationId}` : "/ai");
+              }}
+              className={sheetButton}
+            >
+              <History size={15} strokeWidth={2.4} aria-hidden />
+            </button>
+          }
+          trailing={
+            <>
+              {actions.items.length ? <MenuButton label="Conversation options" triggerClassName={sheetButton} trigger={<MoreHorizontal size={15} strokeWidth={2.4} aria-hidden />} items={actions.items} /> : null}
+              {conversationId ? (
+                <button type="button" aria-label="New chat" onClick={startOver} className={sheetButton}>
+                  <Plus size={16} strokeWidth={2.4} aria-hidden />
+                </button>
+              ) : null}
+            </>
+          }
+        >
+          <ChatThread key={thread} variant="floating" conversationId={conversationId} onConversation={setConversationId} initialContext={folderContext} initialNames={folderNames} initialDraft={initial} autoFocus={open} onNavigate={close} />
+        </Sheet>
+        {actions.dialog}
+      </>
+    );
+  }
 
   return createPortal(
     <div className="ai-chat">

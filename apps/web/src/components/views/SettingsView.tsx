@@ -26,6 +26,8 @@ import { ConnectedAppsSection } from "./settings/ConnectedAppsSection";
 import { Card } from "./settings/Card";
 import { desktop } from "@/lib/desktop";
 import { nativeApp } from "@/lib/nativeApp";
+import { useIphoneApp } from "@/lib/iphone";
+import { GroupedRow, GroupedSection, RowIcon } from "@/components/iphone/Grouped";
 
 type Section = "account" | "ai" | "billing" | "security" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop" | "this-device";
 type Item = { id: Section; label: string; icon: LucideIcon };
@@ -63,6 +65,8 @@ const HEADINGS: Partial<Record<Section, string>> = { workspace: "Workspace" };
 
 export function SettingsView({ section }: { section: Section }) {
   const { workspace } = useAppState();
+  const { pathname } = useAppRouter();
+  const iphone = useIphoneApp();
   const allowed = (who: (typeof WORKSPACE)[number]["who"]) => who === "everyone" || (who === "managers" ? workspace?.canManage === true : workspace?.canManageBilling === true);
   const workspaceItems = WORKSPACE.filter((i) => allowed(i.who));
   // Desktop app: only in the Mac app; This device: only in the iPhone and iPad app (or opened by its address).
@@ -75,6 +79,66 @@ export function SettingsView({ section }: { section: Section }) {
   // A workspace section this role can't use (opened by URL): the page doesn't exist for them.
   const workspaceItem = WORKSPACE.find((i) => i.id === section);
   const sectionHidden = workspace !== null && workspaceItem !== undefined && !allowed(workspaceItem.who);
+  // The iPhone app: Settings is a grouped list, and each section its own screen pushed from it.
+  if (iphone && pathname.replace(/\/+$/, "") === "/settings") {
+    return (
+      <ViewChrome title="Settings" tabTitle="Settings" iphone={{ title: "Settings", grouped: true, back: "/documents" }}>
+        <div className="space-y-7 pb-4 pt-3">
+          {groups.map((g) => (
+            <GroupedSection key={g.label} title={g.label}>
+              {g.items.map((s) => {
+                const Icon = s.icon;
+                return (
+                  <GroupedRow
+                    key={s.id}
+                    href={`/settings/${s.id}`}
+                    icon={
+                      <RowIcon>
+                        <Icon />
+                      </RowIcon>
+                    }
+                    label={s.label}
+                  />
+                );
+              })}
+            </GroupedSection>
+          ))}
+        </div>
+      </ViewChrome>
+    );
+  }
+  if (iphone) {
+    const title = noWorkspace ? "Workspace" : sectionHidden ? "Not found" : (heading ?? "Settings");
+    return (
+      <ViewChrome title={title} tabTitle={`Settings · ${title}`} iphone={{ title, grouped: true, back: "/settings" }}>
+        <div className="space-y-7 pb-4 pt-3 [&_.ui-btn]:min-h-11 [&_.ui-btn]:text-[15px]">
+          {section === "account" ? <AccountSection /> : null}
+          {section === "ai" ? <AiSection /> : null}
+          {section === "billing" ? <BillingSection /> : null}
+          {section === "security" ? <SecuritySection /> : null}
+          {section === "devices" ? <DevicesSection /> : null}
+          {section === "connected-apps" ? <ConnectedAppsSection /> : null}
+          {section === "appearance" ? <AppearanceSection /> : null}
+          {section === "notifications" ? <NotificationsSection /> : null}
+          {noWorkspace ? <NoWorkspaceCard /> : null}
+          {section === "workspace" && workspace ? <WorkspaceSection /> : null}
+          {section === "members" && workspace ? <MembersSection key={workspace.id} workspace={workspace} /> : null}
+          {section === "workspace-guests" && workspace && !sectionHidden ? <GuestsSection key={workspace.id} workspace={workspace} /> : null}
+          {section === "workspace-billing" && workspace && !sectionHidden ? <WorkspaceBillingSection key={workspace.id} workspace={workspace} /> : null}
+          {sectionHidden ? (
+            <Card title="This page isn't available">
+              {section === "workspace-billing" ? "There's nothing here for you. Switch to Personal to see your own plan and billing." : "Only this workspace's owner and admins can open this page."}
+            </Card>
+          ) : null}
+          {section === "workspace-data" && workspace && !sectionHidden ? <DataSection key={workspace.id} target={{ kind: "workspace", workspaceId: workspace.id, name: workspace.name }} /> : null}
+          {section === "sync" ? <SyncSection /> : null}
+          {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
+          {section === "desktop" ? <DesktopSection /> : null}
+          {section === "this-device" ? <ThisDeviceSection /> : null}
+        </div>
+      </ViewChrome>
+    );
+  }
   return (
     <ViewChrome title={<h1 className="text-sm font-semibold">Settings</h1>} tabTitle="Settings">
       <div className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8 md:grid-cols-[216px_minmax(0,1fr)] md:gap-10">

@@ -72,6 +72,8 @@ export function Sheet({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const opener = useRef<HTMLElement | null>(null);
+  // The content mounts once the dialog is open, so a field marked autoFocus can take the focus.
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -88,12 +90,16 @@ export function Sheet({
       const active = document.activeElement;
       opener.current = active instanceof HTMLElement && active !== document.body ? active : null;
       el.showModal();
+      // The sheet itself takes the focus (not its Close button, ringed); a field that asks for it takes it next.
+      panel.current?.focus({ preventScroll: true });
+      setReady(true);
     }
     if (!open && el.open) {
       const p = panel.current;
       const done = () => {
         if (ref.current?.open) ref.current.close();
         setShown(false);
+        setReady(false);
         const back = opener.current;
         if (back?.isConnected) back.focus({ preventScroll: true });
       };
@@ -241,11 +247,12 @@ export function Sheet({
       <div
         ref={panel}
         data-iphone-sheet={card ? "card" : "sheet"}
+        tabIndex={-1}
         style={{ height, transition: "height 320ms cubic-bezier(0.32, 0.72, 0, 1)" }}
         className={
           card
-            ? "ui-liquid-strong flex max-h-[calc(100dvh-env(safe-area-inset-top)-24px)] flex-col overflow-hidden rounded-sheet animate-[iphone-card-in_260ms_cubic-bezier(0.2,0.9,0.25,1.05)] motion-reduce:animate-none"
-            : "ui-liquid-strong flex max-h-[calc(100dvh-env(safe-area-inset-top)-10px)] flex-col overflow-hidden rounded-t-sheet pb-[env(safe-area-inset-bottom)] animate-[iphone-sheet-in_380ms_cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none [@media(orientation:landscape)]:mx-auto [@media(orientation:landscape)]:max-w-[560px]"
+            ? "ui-liquid-strong flex max-h-[calc(100dvh-env(safe-area-inset-top)-24px)] flex-col outline-none overflow-hidden rounded-sheet animate-[iphone-card-in_260ms_cubic-bezier(0.2,0.9,0.25,1.05)] motion-reduce:animate-none"
+            : "ui-liquid-strong flex max-h-[calc(100dvh-env(safe-area-inset-top)-10px)] flex-col outline-none overflow-hidden rounded-t-sheet pb-[env(safe-area-inset-bottom)] animate-[iphone-sheet-in_380ms_cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none [@media(orientation:landscape)]:mx-auto [@media(orientation:landscape)]:max-w-[560px]"
         }
       >
         {card ? null : (
@@ -283,8 +290,8 @@ export function Sheet({
             {description}
           </div>
         ) : null}
-        <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${bodyClassName}`}>{children}</div>
-        {footer ? <footer className="flex flex-none gap-2 px-4 pb-4 pt-2 [&>*]:h-12 [&>*]:flex-1 [&>*]:text-[16px]">{footer}</footer> : null}
+        <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${bodyClassName}`}>{ready ? children : null}</div>
+        {footer && ready ? <footer className="flex flex-none gap-2 px-4 pb-4 pt-2 [&>*]:h-12 [&>*]:flex-1 [&>*]:text-[16px]">{footer}</footer> : null}
       </div>
     </dialog>
   );

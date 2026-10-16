@@ -200,7 +200,7 @@ export function IosSwitch({ checked, onChange, label, describedBy, disabled }: {
     >
       <span
         aria-hidden
-        className={`inline-block h-[27px] w-[27px] rounded-capsule bg-white shadow-[0_3px_8px_rgb(0_0_0/0.15),0_1px_1px_rgb(0_0_0/0.16)] transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${checked ? "translate-x-[22px]" : "translate-x-[2px]"}`}
+        className={`inline-block h-[27px] w-[27px] rounded-capsule shadow-[0_3px_8px_rgb(0_0_0/0.15),0_1px_1px_rgb(0_0_0/0.16)] transition-[transform,background-color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${checked ? "translate-x-[22px] bg-canvas" : "translate-x-[2px] bg-white"}`}
       />
     </button>
   );

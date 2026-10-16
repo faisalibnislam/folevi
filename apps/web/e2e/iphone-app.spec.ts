@@ -24,6 +24,14 @@ function fakeBridge() {
   Object.assign(window, { __native: { calls } });
   const mark = () => document.documentElement?.setAttribute("data-native", "ios");
   mark();
+  // The dev server's badge (bottom right) sits over the tab bar's + on a phone-sized window: out of the way.
+  const hideBadge = () => {
+    const style = document.createElement("style");
+    style.textContent = "nextjs-portal { display: none !important; }";
+    document.head.appendChild(style);
+  };
+  if (document.head) hideBadge();
+  else document.addEventListener("DOMContentLoaded", hideBadge, { once: true });
   if (!document.documentElement) new MutationObserver((_, watch) => document.documentElement && (mark(), watch.disconnect())).observe(document, { childList: true });
 }
 

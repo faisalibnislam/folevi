@@ -212,9 +212,9 @@ function IphoneMemoryList({ on, items, max, workspaces, onAdd, onUpdate, onRemov
   return (
     <>
       <IosSection footer={intro}>
-        <IosRow icon={<RowIcon><Brain /></RowIcon>} label="Memory" value={items.length ? String(items.length) : on ? "Nothing yet" : "Off"} screen="memory" />
+        <IosRow icon={<RowIcon><Brain /></RowIcon>} label="Memories" value={items.length ? String(items.length) : on ? "Nothing yet" : "Off"} screen="memory" />
       </IosSection>
-      <Subscreen id="memory" title="Memory">
+      <Subscreen id="memory" title="Memories">
         {on ? null : <IosSection><IosText muted>Memory is off. Nothing here is used, and Foli AI won&apos;t offer to remember anything. What&apos;s saved stays until you delete it.</IosText></IosSection>}
         {on ? (
           <IosSection header="Add" footer={items.length >= max ? `That's the most Foli AI keeps (${max}). Delete one to add another.` : undefined}>

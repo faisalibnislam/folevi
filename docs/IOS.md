@@ -61,10 +61,13 @@ message handlers to Folevi's own pages.
 - First launch needs the network. After that the service worker serves the app shell and its scripts, and
   the app opens offline with what this device has (the same as the installed web app).
 - Checked in the Simulator: the service worker registers and controls the page, caches the shell and the
-  static files, and serves `/documents` with the server stopped. With the server unreachable but the device
-  online (`navigator.onLine` true), the web app then takes "no answer" for "signed out" and heads to sign in;
-  in real airplane mode `navigator.onLine` is false and the web app opens its offline snapshot instead. Worth
-  a look on a device (and in the web app: `useFoleviAuth` in `lib/convex/provider.tsx`).
+  static files, and serves `/documents` with the server stopped. The session check
+  (`authPhaseOf` in `lib/convex/provider.tsx`) only signs anyone out on a definite answer from the auth server
+  (no session in a successful reply, or 401/403). No answer, a gateway or server error, a rate limit, a check
+  that hangs for six seconds, or the device offline are all "offline": the app opens from this device's copy
+  and the sync status says Offline, whether or not `navigator.onLine` knows. `AccountGate` checks once more
+  before it goes to sign in and stays offline when that check has no definite answer either (e2e
+  `offline.spec.ts`, unit `test/auth-phase.test.ts`).
 - When neither the network nor the cache has the page, Capacitor shows `www/offline.html` ("Folevi can't
   connect", Try again).
 
@@ -100,6 +103,11 @@ window.foleviNative = {
   openNotificationSettings(): Promise<void>,            // Folevi's page in iOS Settings > Notifications
 };
 ```
+
+bridge.js also asks the app (`FoleviNative.accessibility`, `Native/SystemSettings.swift`) for what iOS knows and
+a web view can't read, and asks again whenever it changes (the `folevi:accessibility` window event): it marks
+`<html data-reduce-transparency>`, `data-increase-contrast` and `data-bold-text`, and sets `--ios-text-scale`
+(Dynamic Type, below). A tap on the status bar reaches the page as `folevi:status-bar-tap` (below).
 
 The page's typed view is `apps/web/src/lib/nativeApp.ts` (`nativeApp()`, `inIosApp()`, `canPurchaseHere()`,
 `withoutPurchaseHints()`, `haptic()`), next to `lib/desktop.ts` for the Mac app. Every FoleviNative call checks
@@ -146,11 +154,25 @@ Mac app are unchanged.
   drawer, toasts, and the Ask Foli AI button and chat move in by the same insets. Long presses open Folevi's
   own menus, not iOS link previews.
 - **Layout**: iPhone gets its own interface (below, "iPhone interface"); iPad gets the tablet and desktop
-  layout, with tabs, and hardware keyboard shortcuts reach the page as in Safari. There's one tab strip on
-  iPad (the web app's own); iOS adds no chrome.
+  layout, with tabs, except in a compact window (below, "iPad"). There's one tab strip on iPad (the web app's
+  own); iOS adds no chrome.
 - **Keyboard**: the web view shrinks above the keyboard (Keyboard plugin, `resize: native`), so the editor
   and what floats at the bottom of the page (on iPhone the bar of writing tools) sit above it.
-- **Status bar** follows the app's theme (light or dark), not only the system's.
+- **Status bar** follows the app's theme (light or dark), not only the system's. Tapping it scrolls the
+  screen back to its top, as in any iOS app: the page scrolls inside its views, so the web view's own scroll
+  view has nothing to scroll. A scroll view of the app's own behind the web view (`StatusBarTapProxy`) is the
+  one iOS asks; the page is told (`folevi:status-bar-tap`) and bridge.js scrolls whatever scrolls under the
+  middle of the screen (a list, a note, a sheet) to its top. A page can take it first (`folevi:scroll-to-top`,
+  cancelable).
+- **Dynamic Type**: the text follows iOS's text size, from the smallest size up to 150% (past that the screens
+  don't have the room, and iOS's Zoom is there for more): `--ios-text-scale` is applied as
+  `-webkit-text-size-adjust` on `body`, not the root, so only text grows and rem-based spacing and the layout
+  keep their size (rows grow with their text). Checked at the largest standard size (135%) on iPhone and iPad.
+- **Reduce Transparency** (a web view can't read it: the app marks `data-reduce-transparency`): glass becomes a
+  solid surface with its rim (`.ui-liquid`, menus, the desktop layout's glass, the fade behind a screen's bar).
+  **Increase Contrast** makes the glass nearly opaque with a visible edge and the app's lines and muted text
+  stronger (WebKit's `prefers-contrast: more` too). **Reduce Motion**: WebKit reports it as
+  `prefers-reduced-motion`, which turns off pushes and pops, sheet springs and the editor's motion.
 - **Haptics**: a light tap when a task is checked off (editor and Tasks), a medium one for a new note, light
   and medium when something is dragged and dropped, medium when a long press opens a menu.
 - **Swipe back**: the edge swipe steps back through the router's history (it uses `pushState`). Pull to
@@ -169,9 +191,10 @@ in the web layer (`apps/web/src/components/iphone`), so it works from iOS 17 and
 everything else.
 
 **When it's on.** `isIphoneApp()` / `useIphoneApp()` (`lib/iphone.ts`): the page is in the iOS app
-(`inIosApp()`) and the web view's user agent says iPhone (portrait and landscape). The iPad app asks for the
-desktop site, so its web view reports a Mac and keeps the sidebar layout; a phone's browser keeps the mobile
-web layout; the Mac app and desktop browsers never see it. Shell marks `<html data-iphone>` while it's on;
+(`inIosApp()`) and the web view's user agent says iPhone (portrait and landscape), or it's the iPad app in a
+window narrower than 700 px (below, "iPad"). The iPad app asks for the desktop site, so its web view reports a
+Mac with a touch screen and keeps the sidebar layout when there's room; a phone's browser keeps the mobile web
+layout; the Mac app and desktop browsers never see it. Shell marks `<html data-iphone>` while it's on;
 the iPhone CSS in `globals.css` hangs on that mark, and the components check the hook. Nothing else changes
 for any other surface (e2e `iphone-app.spec.ts` checks a phone browser too).
 
@@ -182,10 +205,21 @@ time fills the display; each view's `ViewChrome` becomes an `IphoneScreen` (`Scr
   the bar once it scrolls under it, with a soft blur fading in behind the bar. Views pass their iPhone look
   as `ViewChrome`'s `iphone` option (title, subtitle, actions, a header under the title); a view that
   doesn't gets a large title and its usual facts and actions in a row under it.
-- A round glass Back button whenever the screen isn't a tab's first one: it steps back through the router's
-  history, or (opened from a link, with nothing behind it) goes to the screen's parent. The edge swipe goes
+- A round glass Back button whenever the screen isn't a tab's first one: it steps back through the tab's
+  stack, or (opened from a link, with nothing behind it) goes to the screen's parent. The edge swipe goes
   back too (WebKit's own interactive swipe, `allowsBackForwardNavigationGestures`).
-- The screen's actions in a glass pill on the right; tapping the tab you're on scrolls back to the top.
+- The screen's actions in a glass pill on the right.
+- **Each tab keeps its own stack** (`tabStacks.ts`), as iOS tab bars do: Home > a folder > a note, then Tasks,
+  then Home again shows that note, scrolled where it was. The browser's history is always the current tab's
+  stack (`rewriteHistory` in `lib/app/historyNav.ts` steps back to the first entry, heard by nobody, then
+  replaces and pushes), so Back, the edge swipe and `canBack` stay inside the tab. Tapping the tab you're on
+  pops to its first screen (sliding), or, already there, scrolls to the top. A link to another tab's first
+  screen (Calendar from Tasks' More) switches to that tab; Home or Calendar opened from deeper in their own
+  tab pops to its root; another place (Personal, a workspace) starts the other tabs again. Each screen's
+  scroll position is kept as it scrolls and restored after Back and a tab switch (also when the screen is
+  drawn again while it loads). The stacks live in sessionStorage, so a reload keeps them. The popstate
+  listener is added when `historyNav.ts` loads, before Next's router, so the position is known before the
+  page a Back leads to is drawn (Chromium calls window listeners in the order they were added).
 - Push and pop: a new screen slides in from the right over the old one (which eases left and dims); Back
   slides the top screen away (`transitions.ts`: the leaving screen is a copy of its elements, taken the
   moment the router moves, `onHistoryMove` in `lib/app/historyNav.ts`). Switching tabs, the edge swipe and
@@ -220,7 +254,21 @@ folder and Quick task; on Tasks it opens Quick task straight away.
   paper. At the bottom, glass bars with Comments, Style and Format on the left and Foli AI and Insert on
   the right, each opening its tool as a sheet. While writing, a bar over the keyboard has to-do,
   bullets, a heading, outdent, indent, an image, undo, redo and a key that puts the keyboard away (its
-  buttons never take focus, so the keyboard stays up).
+  buttons never take focus, so the keyboard stays up). The line being written stays above that bar (the note
+  scrolls inside its page, so `useCaretInView` in `chrome.tsx` scrolls it when the keyboard comes up, the web
+  view settles at its new height, and the caret moves). Selecting text puts the formatting bar on the writing
+  bar, in its place, so it never meets iOS's own edit menu over the selection; the slash, @ and [[ menus fit
+  between the line and the writing bar (`visibleBottom()` counts the bar).
+- **Wide blocks** (a table, a long formula) scroll sideways inside the note, with momentum, never the page
+  (`.fb-hscroll`, `scrollEdges.ts`): a soft fade on an edge says there's more that way, and on the iPhone they
+  run to the screen's edges, starting in line with the text. Code blocks wrap; images and embeds fit the width.
+- **Moving blocks**: press and hold a line until its menu opens, then move the finger: the menu gives way and
+  the block lifts and follows it (a medium tap when it lifts, a light one when it lands), as on iOS
+  (`HOLD_MOVE_EVENT` in `lib/touchContextMenu.ts`; the view under the finger stays still while a held menu is
+  up). Holding the grip lifts it too (280 ms), and moving it right away drags as before. On a touch screen the
+  grip is slimmer and keeps a gap before the text.
+- A note that starts with an image (or any media) opens with nothing selected (ProseMirror would select that
+  block and its alt text tools would show), on every platform.
 - **Tasks** (`Tasks.tsx`): the views as chips (the chosen one names itself), tasks grouped by note under
   headers that fold away (Upcoming by day), a tap opens a task's details, the box checks it off, a swipe
   right completes it and left moves it to tomorrow or opens its date.
@@ -245,17 +293,51 @@ what opened them, with iOS-sized rows on glass, and stay below the status bar.
 when confirming something destructive (a danger button, a menu's Delete, a swipe's Delete).
 
 **Accessibility**: 44pt targets, every icon button named, the large title is the screen's heading, sheets
-are labelled dialogs, swipe actions are also in the long-press menu. A web view can't follow Dynamic Type,
-so the text keeps iOS's default sizes (17pt in lists) and never auto-zooms (`text-size-adjust`).
+are labelled dialogs, swipe actions are also in the long-press menu; VoiceOver reads the bar (Back, the small
+title, the actions), then the screen, then the tab bar. The text follows Dynamic Type, glass follows Reduce
+Transparency and Increase Contrast, and motion follows Reduce Motion (above, "What the web app does").
+`e2e/a11y.spec.ts` runs axe on the iPhone interface (Home, a list, Tasks, Calendar, Settings, a sheet) in light
+and dark.
+
+**Reviews** on touch: a tap on the card shows the answer; then a swipe right is Good and a swipe left Again
+(the card follows the finger, a success or warning tap when it goes), or a rating button.
 
 **Testing**: `e2e/iphone-app.spec.ts` (an iPhone-sized window with an iPhone user agent and a stand-in
 bridge: tab bar, large titles, Back, the + menu, New folder, Quick task, a note's bars and sheets, Settings,
 and a phone browser keeping the web layout). In the Simulator: `pnpm sync:dev`, then Debug builds show the
 dev server; `node scripts/simulator.mjs eval '...'` drives it.
 
-Not done yet: per-tab navigation stacks (all tabs share the router's one history), an interactive Back swipe
-drawn by the app itself, scroll-to-top from the status bar (the web view's page doesn't scroll), and moving
-blocks by long press and drag on a phone (the block grip sits beside the line being edited, as before).
+Not done yet: an interactive Back swipe drawn by the app itself (WebKit's own swipe shows its snapshot of the
+page behind, which after a tab switch can be the screen shown just before it), Settings sections as native
+grouped lists throughout (they're the web forms on grouped cards), and per-point pressure on the whiteboard.
+
+### iPad
+
+The iPad app keeps the web app's sidebar layout, with tabs, in portrait and landscape and in any window wide
+enough for it. A window narrower than 700 px (Slide Over, a third of Split View, a small Stage Manager window)
+has no room for the sidebar and a note, so it takes the iPhone's compact interface (tab bar, large titles,
+sheets) as iPad apps do in a compact-width window, and goes back to the sidebar layout, in place, when the
+window widens (`isIpadApp()`, `useIphoneApp()` follows the width; e2e `iphone-app.spec.ts`).
+
+- **Multitasking**: all four orientations and no `UIRequiresFullScreen`, so Split View, Slide Over and Stage
+  Manager's resizable windows work. One window: Capacitor has one scene
+  (`UIApplicationSupportsMultipleScenes` false), so two Folevi windows side by side aren't possible.
+- **Hardware keyboard** (`Native/KeyCommands.swift`): New Note (⌘N), Search (⌘K), Quick Add Task (⇧⌘A), Ask
+  Foli AI (⌘J), Today's Tasks (⌥⌘T), Show or Hide Sidebar (⌘\), Back (⌘[) and Forward (⌘]) are UIKeyCommands,
+  listed in the overlay iPadOS shows while ⌘ is held, and handed to the page as the same key press on what has
+  focus, so the web app does what it does for them anywhere (plain ⌘N makes a note in the app; a browser keeps
+  it for a new window). Editing keys (⌘B, ⌘I, ⌘Z, ⌘C) stay with the web view. `native '{"command":"key",
+  "title":"Search"}'` presses one in a Debug build.
+- **Pointer**: WebKit turns the trackpad and mouse into hover and mouse events, so the web app's hover states,
+  cursors and right-click menus work as on a Mac.
+- **Apple Pencil**: the whiteboard draws with a pen, a finger or a mouse; once a pen has drawn on a whiteboard,
+  only the pen draws there (a resting palm doesn't) and a finger scrolls the note, as in iPad drawing apps.
+  Strokes have a fixed width (the whiteboard's format has no pressure). Scribble works in the app's text fields
+  as in any web view.
+- **Drag and drop** from other apps: images and files dropped on a note are inserted where they land (the
+  editor's drop handler, as in a browser); text and web pages too, cleaned up like a paste.
+- Status bar taps, Dynamic Type, Reduce Transparency and the menus' and sheets' glass work as on the iPhone; the
+  floating keyboard is a narrow window's keyboard to WebKit, so the page shrinks above it the same way.
 
 ## Widgets, the share sheet, Siri and Spotlight (stage 2)
 
@@ -325,13 +407,18 @@ and reloads every widget when it comes to the front (at most every five minutes)
 background.
 
 - **Today** (small, medium, large, extra large on iPad): today's and overdue tasks, overdue first, then by time
-  and priority; "Overdue · Yesterday" in red; a circle checks a task off right there (iOS 17 interactive
+  and priority; "Overdue · Yesterday" in red. The large and extra large ones put the date under the title, the
+  overdue tasks in an Overdue group of their own, and, when today leaves room, tomorrow's tasks under
+  Tomorrow and a "+ Add task" row that opens Quick add task (on the extra large one, Tomorrow and Add task take
+  the second column). The copy is fetched through tomorrow (`due_before` the day after); everything else counts
+  today's and overdue ones only (`openTasks`, `overdueTasks`, `todayTasks`, `tomorrowTasks`); a circle checks a task off right there (iOS 17 interactive
   widgets, `ToggleTaskIntent` → `PATCH /tasks/{id}`): it disappears at once, and a check made offline is sent
   with the next refresh. Tapping a task opens its note; the rest opens Tasks > Today. Empty: "Nothing due
   today".
 - **Recent notes** (small to extra large): the last edited notes with their place and when; each opens its
   note (`folevi://d/<id>`, an Inbox page's `inbox-` id too).
-- **Quick add** (small): opens Quick add task (`folevi://quick-add`).
+- **Quick add** (small): opens Quick add task (`folevi://quick-add`). The F (`WidgetMark`) fills its frame at
+  the title's height, there and on the signed-out widgets.
 - **Lock Screen**: circular (how many tasks today), rectangular (the next task and when), inline ("3 tasks
   today").
 - **Control Center / Lock Screen / Action button** (iOS 18 and later): "Quick add task", which opens the app on
@@ -445,6 +532,8 @@ them through web push (`convex/pushSend.ts`). Web push doesn't work inside WKWeb
 - **In front**: still a banner (`willPresent`).
 - **Badge**: the bell's unread count, set by the page whenever it changes (the same count as the Mac app's
   Dock badge), and sent with each notification.
+- Tapping a notification opens its note with the app running (warm) and from not running (cold), on both
+  Simulators (checked again on 2026-10-16: no crash, the note opens).
 - `PushNotifications` is the notification center's delegate from `didFinishLaunching`, so a notification
   that launches the app, or a button pressed while it isn't running, is heard. Capacitor's own router is
   off (`ios.handleApplicationNotifications: false` in capacitor.config.ts). The delegate uses the

@@ -50,6 +50,7 @@ node scripts/simulator.mjs eval 'return document.documentElement.dataset.native'
 # ... or the native parts: status, refresh (the widgets' copy), timeline, spotlight, share, intent, complete, activity
 node scripts/simulator.mjs native '{"command":"status"}'
 node scripts/simulator.mjs native '{"command":"intent","name":"addTask","text":"Call Sam","due":"today"}'
+node scripts/simulator.mjs native '{"command":"key","title":"Search"}'   # a hardware keyboard shortcut (KeyCommands.swift)
 
 # ... or every widget drawn to PNGs (light, dark, and one filled with long titles), from this device's copy
 node scripts/simulator.mjs widgets /tmp/widgets
@@ -81,7 +82,10 @@ PNG for iOS 17 to 25 (`pnpm icon` renders it from the same glyph).
   `xcrun simctl spawn booted notifyutil -s com.apple.BiometricKit.enrollmentChanged 1 && xcrun simctl spawn booted notifyutil -p com.apple.BiometricKit.enrollmentChanged`.
   A matching face: `xcrun simctl spawn booted notifyutil -p com.apple.BiometricKit_Sim.pearl.match`
   (`pearl.nomatch` for one that doesn't).
-- Dark mode: `xcrun simctl ui booted appearance dark`.
+- Dark mode: `xcrun simctl ui booted appearance dark`. Text size: `xcrun simctl ui booted content_size
+  extra-extra-extra-large` (the page follows it). Increase Contrast: `xcrun simctl ui booted increase_contrast
+  enabled`. Reduce Transparency: `xcrun simctl spawn booted defaults write com.apple.Accessibility
+  EnhancedBackgroundContrastEnabled -bool YES`, then open Folevi again.
 - Screenshots: `xcrun simctl io booted screenshot shot.png`.
 - A folevi:// link: `xcrun simctl openurl booted folevi://tasks/today`.
 - Offline: open the app once while the server is up, then stop the dev server (or turn off the Mac's network)

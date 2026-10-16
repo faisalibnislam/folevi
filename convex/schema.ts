@@ -1459,6 +1459,30 @@ export default defineSchema({
     .index("by_endpoint", ["endpoint"]),
 
   /**
+   * iPhones and iPads that turned on notifications in the iOS app (Settings → Notifications), one row per
+   * APNs device token. Reminders and mentions are sent to them through Apple's push service
+   * (convex/apnsSend.ts); a token Apple says is gone (410, BadDeviceToken, Unregistered) is removed.
+   */
+  apnsTokens: defineTable({
+    profileId: v.id("profiles"),
+    /** The device token as hex. Never logged. */
+    token: v.string(),
+    /** Which APNs host the token belongs to: Debug builds get sandbox tokens, TestFlight and the App Store production. */
+    environment: v.union(v.literal("sandbox"), v.literal("production")),
+    bundleId: v.string(),
+    /** The app's install id on the device (the same one its API token is made for). */
+    deviceId: v.string(),
+    /** "iPhone 18 Pro", for telling devices apart. */
+    deviceName: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastSentAt: v.optional(v.number()),
+  })
+    .index("by_profile", ["profileId"])
+    .index("by_token", ["token"])
+    .index("by_device", ["deviceId"]),
+
+  /**
    * A person's private calendar feed of dated tasks (convex/calendarFeeds.ts), subscribed to from a calendar
    * app. Only a hash of the link's token is kept; a new link replaces the old one.
    */

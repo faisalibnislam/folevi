@@ -11,6 +11,7 @@ import { SyncEngine } from "./lib/syncEngine";
 import { inScope, sameScopeRows, scopeOfRow, vScopeArg, type Scope, type ScopeArg } from "./lib/scope";
 import { setTrashState } from "./documents";
 import { appUrl } from "./lib/notify";
+import { schedulePush } from "./lib/push";
 
 /** A scope's tasks of one status (Personal: by owner; a workspace: by workspace), by due date. */
 function tasksByDue(ctx: QueryCtx, scope: Scope, status: Doc<"tasks">["status"], range?: { from: string; to: string }) {
@@ -492,14 +493,17 @@ export const processReminders = internalMutation({
           title: `Reminder: ${title.slice(0, 120)}`,
           createdAt: now,
         });
-        // And to the browsers that asked for push.
+        // And to the browsers and iPhones and iPads that asked for push: the to-do line and its note.
         if (doc) {
-          await ctx.scheduler.runAfter(0, internal.pushSend.sendToProfile, {
+          await schedulePush(ctx, {
             profileId: recipient,
+            kind: "reminder",
             title: `Reminder: ${title.slice(0, 110)}`,
             body: doc.title ? `In ${doc.title}` : undefined,
-            url: `${appUrl()}/d/${doc.publicId}#block-${t.blockId}`,
+            path: `/d/${doc.publicId}#block-${t.blockId}`,
             tag: `reminder:${t._id}`,
+            noteId: doc.publicId,
+            taskId: t.blockId,
           });
         }
       }

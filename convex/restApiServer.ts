@@ -112,7 +112,7 @@ export const restApiHttp = httpAction(async (ctx, request) => {
   if (body === null || typeof body !== "object" || Array.isArray(body)) return apiError(400, "bad_request", "The body must be a JSON object.");
   const problem = checkArgs(BODIES[route.name]!, body);
   if (problem) return apiError(422, "validation_failed", problem);
-  if (route.name === "tasks.update" && !Object.keys(body).length) return apiError(422, "validation_failed", "Say what to change: completed, dueDate, dueTime, priority or repeat.");
+  if (route.name === "tasks.update" && !Object.keys(body).length) return apiError(422, "validation_failed", "Say what to change: completed, dueDate, dueTime, priority, repeat or remindAt.");
   const idempotencyKey = request.headers.get("idempotency-key") ?? undefined;
   if (idempotencyKey !== undefined) {
     const bad = idempotencyKeyProblem(idempotencyKey);

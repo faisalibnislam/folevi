@@ -41,6 +41,13 @@ if (env === "production") {
       }
       if (has("VAPID_PUBLIC_KEY") !== has("VAPID_PRIVATE_KEY")) problems.push("Convex VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be set together (web push).");
       else if (!has("VAPID_PUBLIC_KEY")) warn.push("Convex VAPID_PUBLIC_KEY is not set: no push notifications for reminders and mentions (the Settings card is hidden).");
+      // Push to the iOS app (APNs, docs/IOS.md): all four or none. Without them the app hides the option.
+      const apns = ["APNS_KEY_ID", "APNS_TEAM_ID", "APNS_KEY", "APNS_BUNDLE_ID"];
+      const apnsSet = apns.filter(has);
+      if (apnsSet.length && apnsSet.length < apns.length) warn.push(`Convex APNs is only partly set up (missing ${apns.filter((k) => !has(k)).join(", ")}): nothing is sent to the iOS app until all of ${apns.join(", ")} are set.`);
+      if (apnsSet.length && get("APNS_BUNDLE_ID") && get("APNS_BUNDLE_ID") !== "com.folevi.ios") warn.push("Convex APNS_BUNDLE_ID is not com.folevi.ios (the iOS app's bundle id): Apple refuses notifications for another app.");
+      if (get("APNS_ENV") && !["sandbox", "production"].includes(get("APNS_ENV"))) warn.push("Convex APNS_ENV must be 'sandbox' or 'production'.");
+      if (apnsSet.length === apns.length && get("APNS_ENV") === "sandbox") warn.push("Convex APNS_ENV is 'sandbox' in production: tokens registered without an environment go to Apple's sandbox.");
       if (["support@folevi.com", "security@folevi.com"].includes((get("SUPPORT_NOTIFY_EMAIL") ?? "").trim().toLowerCase())) {
         warn.push("Convex SUPPORT_NOTIFY_EMAIL must not be the support or security mailbox (it is ignored); use a staff address.");
       }

@@ -259,7 +259,7 @@ export const write = internalMutation({
         const r = fields.length
           ? await run("update_task", { taskId: args.id, ...Object.fromEntries(fields.map((k) => [k, b[k]])), ...(typeof b.completed === "boolean" ? { done: b.completed } : {}) })
           : await run("complete_task", { taskId: args.id, done: b.completed !== false });
-        answer = { status: 200, body: { id: r.taskId, completed: r.done, dueDate: r.dueDate, dueTime: r.dueTime, priority: r.priority } };
+        answer = { status: 200, body: { id: r.taskId, completed: r.done, dueDate: r.dueDate, dueTime: r.dueTime, priority: r.priority, remindAt: r.remindAt } };
         break;
       }
       default:

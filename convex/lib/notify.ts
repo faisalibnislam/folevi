@@ -2,6 +2,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { accessAtLeast, documentAccess } from "./auth";
+import { schedulePush } from "./push";
 
 /** The web app's address for links in emails and redirects (no trailing slash). */
 export const appUrl = () => (process.env.FOLEVI_APP_URL ?? "https://app.folevi.com").replace(/\/$/, "");
@@ -176,13 +177,16 @@ export async function notify(
     createdAt: now,
     ...(inApp ? {} : { silent: true, readAt: now }),
   });
-  // Mentions also reach the person's browsers that asked for push (only who and where, never note text).
+  // Mentions also reach the person's browsers and iPhones and iPads that asked for push (only who and
+  // where, never note text).
   if (inApp && input.kind === "mention" && input.doc) {
-    await ctx.scheduler.runAfter(0, internal.pushSend.sendToProfile, {
+    await schedulePush(ctx, {
       profileId: input.recipientId,
+      kind: "mention",
       title: input.title.slice(0, 120),
-      url: `${appUrl()}/d/${input.doc.publicId}${input.blockId ? `#block-${input.blockId}` : ""}`,
+      path: `/d/${input.doc.publicId}${input.blockId ? `#block-${input.blockId}` : ""}`,
       tag: `mention:${notificationId}`,
+      noteId: input.doc.publicId,
     });
   }
   if (!input.email || !input.doc || !emailNow) return;

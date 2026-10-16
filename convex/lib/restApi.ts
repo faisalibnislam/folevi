@@ -72,6 +72,8 @@ export const BODIES: Partial<Record<RouteName, ToolDef>> = {
       dueTime: props("update_task").dueTime!,
       priority: PRIORITY,
       repeat: props("update_task").repeat!,
+      // REST only (the iOS app's Snooze): when the reminder rings, as an ISO 8601 time, or null for none.
+      remindAt: { anyOf: [{ type: "string", maxLength: 40 }, { type: "null" }], description: "When to remind, as an ISO 8601 time, or null to clear it." },
     },
     [],
     "tasks:write",

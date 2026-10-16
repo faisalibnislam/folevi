@@ -483,12 +483,26 @@ export async function runWrite(
             else props[k] = val;
           }
         }
+        // The REST API's remindAt (the iOS notification's Snooze); a reminder at a new time rings again.
+        if (a.remindAt === null) delete props.reminderAt;
+        else if (typeof a.remindAt === "string") {
+          const at = Date.parse(a.remindAt);
+          if (!/^\d{4}-\d{2}-\d{2}T/.test(a.remindAt) || !Number.isFinite(at) || at > Date.now() + 5 * 365 * 86_400_000) fail("invalid_argument", "remindAt must be a time as ISO 8601, like 2026-10-16T15:00:00Z.");
+          props.reminderAt = at;
+        }
       }
       await snapshot(ctx, doc, profile._id, writer.reason);
       const { revision: _revision, ...block } = { ...wire, props };
       await sync(ctx, profile, device, [{ opId: opId(requestKey, 0), kind: "block.upsert", documentId: doc.publicId, block, baseRevision: row.revision, fields: ["content"] }]);
       targets = [row.blockId];
-      result = { taskId: row.blockId, done: props.checked === true, dueDate: (props.dueDate as string) ?? null, dueTime: (props.dueTime as string) ?? null, priority: (props.priority as string) ?? "none" };
+      result = {
+        taskId: row.blockId,
+        done: props.checked === true,
+        dueDate: (props.dueDate as string) ?? null,
+        dueTime: (props.dueTime as string) ?? null,
+        priority: (props.priority as string) ?? "none",
+        remindAt: typeof props.reminderAt === "number" ? new Date(props.reminderAt).toISOString() : null,
+      };
       break;
     }
 

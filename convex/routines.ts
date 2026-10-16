@@ -69,7 +69,7 @@ import { holdFor, metered } from "./ai";
 import { isInboxOrDigest, placeOf, saveToInbox } from "./aiDigest";
 import { storedError } from "./aiChat";
 import { contradictionItems, scopeContradictionRows } from "./aiGraph";
-import { appUrl } from "./lib/notify";
+import { schedulePush } from "./lib/push";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -583,8 +583,8 @@ export const deliver = internalMutation({
       title,
       createdAt: Date.now(),
     });
-    // And to the browsers that asked for push (only that it's ready, never what it says).
-    await ctx.scheduler.runAfter(0, internal.pushSend.sendToProfile, { profileId: profile._id, title, url: `${appUrl()}/d/${doc.publicId}`, tag: `routine:${row._id}` });
+    // And to the browsers and iPhones and iPads that asked for push (only that it's ready, never what it says).
+    await schedulePush(ctx, { profileId: profile._id, kind: "routine", title, path: `/d/${doc.publicId}`, tag: `routine:${row._id}`, noteId: doc.publicId });
     await ctx.db.patch(row._id, { lastAt: args.until, lastDocumentId: doc._id, lastSkip: undefined, updatedAt: Date.now() });
     return { status: "delivered", documentId: doc.publicId };
   },

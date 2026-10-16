@@ -160,11 +160,11 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
           background:
             edge === "canvas"
               ? `linear-gradient(to bottom, ${grouped ? "var(--iphone-grouped)" : "var(--color-canvas)"} 0%, color-mix(in oklab, ${grouped ? "var(--iphone-grouped)" : "var(--color-canvas)"} 82%, transparent) 55%, transparent 100%)`
-              : "linear-gradient(to bottom, color-mix(in oklab, var(--color-canvas) 78%, transparent) 0%, color-mix(in oklab, var(--color-canvas) 45%, transparent) 60%, transparent 100%)",
-          WebkitBackdropFilter: "blur(10px)",
-          backdropFilter: "blur(10px)",
-          WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%)",
-          maskImage: "linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%)",
+              : "linear-gradient(to bottom, color-mix(in oklab, var(--color-canvas) 92%, transparent) 0%, color-mix(in oklab, var(--color-canvas) 80%, transparent) 70%, transparent 100%)",
+          WebkitBackdropFilter: "blur(12px)",
+          backdropFilter: "blur(12px)",
+          WebkitMaskImage: `linear-gradient(to bottom, #000 0%, #000 ${edge === "canvas" ? 50 : 72}%, transparent 100%)`,
+          maskImage: `linear-gradient(to bottom, #000 0%, #000 ${edge === "canvas" ? 50 : 72}%, transparent 100%)`,
         }}
       />
       <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 px-4 pt-[calc(env(safe-area-inset-top)+4px)] pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))]">

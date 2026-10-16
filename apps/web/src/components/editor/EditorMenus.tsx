@@ -1384,6 +1384,13 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
     const w = el.offsetWidth;
     const h = el.offsetHeight;
     const left = Math.min(Math.max(8, state.left - w / 2), window.innerWidth - w - 8);
+    // In the iPhone app while writing: on the bar of writing tools above the keyboard, in its place, so it
+    // never meets iOS's own edit menu over the selection (or covers the text).
+    const bar = document.querySelector<HTMLElement>("[data-iphone-keyboard-bar]")?.getBoundingClientRect();
+    if (bar && bar.height) {
+      setPlaced({ left: Math.max(8, (window.innerWidth - w) / 2), top: bar.top + Math.max(0, (bar.height - h) / 2) });
+      return;
+    }
     // Above the on-screen keyboard, where there is one.
     const bottom = visibleBottom();
     const fitsAbove = state.top - h - 8 >= 8;

@@ -1,0 +1,140 @@
+// The iPhone app's own interface (components/iphone): inside the iOS app on an iPhone, the web app becomes a
+// navigation stack with large titles, a floating glass tab bar and sheets. Here the page gets what the app
+// gives it before its first script (a stand-in bridge, <html data-native="ios">, as ios-app.spec.ts does) in
+// an iPhone-sized window with an iPhone's user agent. The same account in an ordinary phone browser keeps the
+// mobile web layout.
+import { expect, test, type Page } from "@playwright/test";
+import { APP, newPerson } from "./helpers";
+
+const IPHONE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 FoleviiOS/1.0";
+
+function fakeBridge() {
+  const calls: { method: string; arg?: unknown }[] = [];
+  const bridge = {
+    platform: "ios",
+    version: "1.0",
+    haptic: (kind: string) => calls.push({ method: "haptic", arg: kind }),
+    setStatusBar: () => undefined,
+    openExternal: async () => true,
+    getSettings: async () => ({ lock: false, lockAfter: 0, method: "faceID" }),
+    setSettings: async () => ({ lock: false, lockAfter: 0, method: "faceID" }),
+    onCommand: () => () => undefined,
+  };
+  Object.defineProperty(window, "foleviNative", { value: bridge });
+  Object.assign(window, { __native: { calls } });
+  const mark = () => document.documentElement?.setAttribute("data-native", "ios");
+  mark();
+  if (!document.documentElement) new MutationObserver((_, watch) => document.documentElement && (mark(), watch.disconnect())).observe(document, { childList: true });
+}
+
+const haptics = (page: Page) => page.evaluate(() => (window as unknown as { __native: { calls: { method: string; arg?: unknown }[] } }).__native.calls.filter((c) => c.method === "haptic").map((c) => c.arg));
+
+test("the iPhone app: tab bar, large titles, Back, the + menu and sheets", async ({ browser }) => {
+  test.setTimeout(180_000);
+  const { context: signedIn } = await newPerson(browser, "iPhone Person");
+  const state = await signedIn.storageState();
+  await signedIn.close();
+
+  // In a phone's browser: the mobile web layout, no tab bar.
+  const web = await browser.newContext({ storageState: state, viewport: { width: 390, height: 844 }, userAgent: IPHONE_UA, hasTouch: true });
+  const browserPage = await web.newPage();
+  await browserPage.goto(`${APP}/documents`);
+  await expect(browserPage.getByRole("button", { name: "Show sidebar" })).toBeVisible({ timeout: 30_000 });
+  await expect(browserPage.getByRole("navigation", { name: "Tabs" })).toHaveCount(0);
+  await expect(browserPage.locator("html")).not.toHaveAttribute("data-iphone", "");
+  await web.close();
+
+  // In the iPhone app.
+  const context = await browser.newContext({ storageState: state, viewport: { width: 402, height: 874 }, userAgent: IPHONE_UA, hasTouch: true });
+  await context.addInitScript(fakeBridge);
+  const page = await context.newPage();
+  await page.goto(`${APP}/documents`);
+  await expect(page.locator("html")).toHaveAttribute("data-iphone", "", { timeout: 30_000 });
+
+  // Home: a large title, the account button, search, and the floating tab bar (Home is the current tab).
+  const tabs = page.getByRole("navigation", { name: "Tabs" });
+  await expect(tabs).toBeVisible();
+  await expect(tabs.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Personal: account and places" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Search in Personal" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Show sidebar" })).toHaveCount(0);
+  // Tab roots have no Back button.
+  await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
+
+  // All notes is pushed: its own large title and a Back button that returns Home.
+  await page.getByRole("link", { name: "All notes" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "All notes" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Select" })).toBeVisible();
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+
+  // The account sheet: places, Settings, Sign out.
+  await page.getByRole("button", { name: "Personal: account and places" }).click();
+  const account = page.getByRole("dialog", { name: "Account" });
+  await expect(account).toBeVisible();
+  await expect(account.getByRole("button", { name: /^Personal/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(account.getByRole("button", { name: "Sign out" })).toBeVisible();
+  await account.getByRole("button", { name: "Close" }).click();
+  await expect(account).toHaveCount(0);
+
+  // The + menu: New note, From template, New folder, Quick task.
+  await page.getByRole("button", { name: "Create" }).click();
+  const menu = page.getByRole("menu", { name: "Create" });
+  for (const item of ["New note", "From template", "New folder", "Quick task"]) await expect(menu.getByRole("menuitem", { name: item })).toBeVisible();
+  await menu.getByRole("menuitem", { name: "New folder" }).click();
+  // New folder is a glass card: a name, a colour, Create.
+  const sheet = page.getByRole("dialog", { name: "New folder" });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Create" })).toBeDisabled();
+  await sheet.getByPlaceholder("Folder name").fill("Garden plans");
+  await sheet.getByRole("radiogroup", { name: "Color" }).getByRole("radio").nth(3).click();
+  await sheet.getByRole("button", { name: "Create" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Garden plans" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back" })).toBeVisible();
+
+  // Tasks: its own tab, a large title, the views as chips, + goes straight to Quick task (a sheet).
+  await tabs.getByRole("link", { name: "Tasks" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Tasks" })).toBeVisible();
+  await expect(tabs.getByRole("link", { name: "Tasks" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "Task views" }).getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("button", { name: "Quick task" }).click();
+  const quick = page.getByRole("dialog", { name: "Quick add task" });
+  await expect(quick).toBeVisible();
+  await expect(quick.locator("[data-iphone-sheet]")).toHaveCount(1);
+  await quick.getByRole("button", { name: "Close" }).click();
+  await expect(quick).toHaveCount(0);
+  // Picking another tab is felt.
+  expect(await haptics(page)).toContain("light");
+
+  // Calendar: the agenda, today as the large title.
+  await tabs.getByRole("link", { name: "Calendar" }).click();
+  await expect(page.getByRole("list", { name: "Today" })).toBeVisible();
+
+  // A note: full screen, Back and its actions at the top, its tools in floating bars (no tab bar).
+  await tabs.getByRole("link", { name: "Home" }).click();
+  await page.getByRole("button", { name: "Create" }).click();
+  await page.getByRole("menuitem", { name: "New note" }).click();
+  await expect(page).toHaveURL(/\/d\//);
+  // A new note starts in its title, with the keyboard up: the bars wait until it goes down.
+  await expect(page.getByRole("toolbar", { name: "Note tools" })).toBeHidden();
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await expect(page.getByRole("toolbar", { name: "Note tools" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Tabs" })).toBeHidden();
+  await expect(page.getByRole("group", { name: "Note actions" }).getByRole("button", { name: "Document actions" })).toBeVisible();
+  // Format opens as a sheet.
+  await page.getByRole("toolbar", { name: "Note tools" }).getByRole("button", { name: "Format" }).click();
+  await expect(page.getByRole("dialog", { name: "Format" })).toBeVisible();
+  await page.getByRole("dialog", { name: "Format" }).getByRole("button", { name: "Close" }).click();
+  // Back goes to where the note was opened from.
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+
+  // Settings is a grouped list; a section is its own screen.
+  await page.goto(`${APP}/settings`);
+  await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("link", { name: "Appearance" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Appearance" })).toBeVisible();
+
+  await context.close();
+});

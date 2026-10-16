@@ -70,6 +70,7 @@ import { colorName, useNotePalette } from "./notePalette";
 import { EDIT_BOOKMARK_EVENT } from "./NodeViews";
 import { keyLabel } from "@/lib/shortcuts";
 import { isLongPress } from "@/lib/touchContextMenu";
+import { safeInsets } from "@/lib/iphone";
 
 /** Asks the selection toolbar to open its link field (the "Edit link…" item). */
 export const EDIT_LINK_EVENT = "folevi:edit-link";
@@ -749,7 +750,8 @@ function Panel({
       top = anchor.top - 6;
     }
     left = Math.min(Math.max(margin, left), window.innerWidth - w - margin);
-    top = Math.min(Math.max(margin, top), bottom - h - margin);
+    // (In the iPhone app, below the status bar.)
+    top = Math.min(Math.max(margin + safeInsets().top, top), bottom - h - margin);
     setPos({ left, top });
   }, [anchor, root]);
 
@@ -879,7 +881,7 @@ function Panel({
         tabIndex={-1}
         popover="manual"
         {...{ [PANEL_ATTR]: "" }}
-        style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: pos?.left ?? 0, top: pos?.top ?? 0, visibility: pos ? "visible" : "hidden", maxHeight: "calc(100vh - 16px)" }}
+        style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: pos?.left ?? 0, top: pos?.top ?? 0, visibility: pos ? "visible" : "hidden", maxHeight: "calc(100vh - 16px - env(safe-area-inset-top))" }}
         className="ui-pop z-[100] min-w-56 max-w-72 overflow-y-auto border-0 p-1.5 text-ink outline-none animate-[folio-rise_120ms_var(--ease-folio)] motion-reduce:animate-none"
         onKeyDown={onKeyDown}
         onMouseEnter={onEnter}

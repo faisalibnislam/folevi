@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "convex/react";
 import { History, Maximize2, MoreHorizontal, Plus, X } from "lucide-react";
 import { useIphoneApp } from "@/lib/iphone";
-import { Sheet } from "@/components/iphone/Sheet";
+import { SHEET_BUTTON, Sheet } from "@/components/iphone/Sheet";
 import { api } from "@/lib/convex/api";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAppRouter } from "@/lib/app/router";
@@ -106,7 +106,7 @@ export function AskAiChat({
   // The iPhone app: a sheet from the bottom (half the screen, pulled up to all of it). The conversations
   // button opens the Foli AI page with every conversation.
   if (iphone) {
-    const sheetButton = "grid h-[30px] w-[30px] place-items-center rounded-capsule bg-[color-mix(in_oklab,var(--color-ink)_9%,transparent)] text-muted outline-none active:scale-90";
+    const sheetButton = SHEET_BUTTON;
     return (
       <>
         <Sheet

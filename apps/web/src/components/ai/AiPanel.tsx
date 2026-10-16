@@ -1,5 +1,6 @@
 "use client";
 
+import { isIphoneApp } from "@/lib/iphone";
 import type { Editor } from "@tiptap/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -131,9 +132,10 @@ export function AiPanel({
     }
   };
 
-  // Ready to type as soon as the panel opens (unless it opened to run a rewrite).
+  // Ready to type as soon as the panel opens (unless it opened to run a rewrite). Not in the iPhone app,
+  // where the keyboard would cover what the sheet offers.
   useEffect(() => {
-    if (!run) requestAnimationFrame(() => inputRef.current?.focus());
+    if (!run && !isIphoneApp()) requestAnimationFrame(() => inputRef.current?.focus());
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A rewrite requested from the editor's selection toolbar.

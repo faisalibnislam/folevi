@@ -5,6 +5,10 @@ import { X } from "lucide-react";
 
 export type SheetSize = "fit" | "medium" | "large";
 
+/** A small round button in a sheet's header (Close, a menu, New chat). */
+export const SHEET_BUTTON =
+  "grid h-[30px] w-[30px] place-items-center rounded-capsule bg-[color-mix(in_oklab,var(--color-ink)_9%,transparent)] text-muted outline-none transition-transform active:scale-90 focus-visible:ring-2 focus-visible:ring-focus";
+
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const reduceMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -277,7 +281,7 @@ export function Sheet({
                   type="button"
                   aria-label="Close"
                   onClick={() => onCloseRef.current()}
-                  className="grid h-[30px] w-[30px] place-items-center rounded-capsule bg-[color-mix(in_oklab,var(--color-ink)_9%,transparent)] text-muted outline-none transition-transform active:scale-90 focus-visible:ring-2 focus-visible:ring-focus"
+                  className={SHEET_BUTTON}
                 >
                   <X size={15} strokeWidth={2.6} aria-hidden />
                 </button>

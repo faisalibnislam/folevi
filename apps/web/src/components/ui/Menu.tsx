@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { Check } from "lucide-react";
 import { keyLabel } from "@/lib/shortcuts";
 import { visibleBottom } from "@/lib/hooks/useVisualViewport";
+import { haptic } from "@/lib/nativeApp";
+import { safeInsets } from "@/lib/iphone";
 
 export interface MenuItem {
   label: string;
@@ -199,8 +201,10 @@ function MenuPanel({
       let left = align === "end" ? a.right - w : a.left;
       left = Math.min(Math.max(margin, left), window.innerWidth - w - margin);
       let top = up ? a.top - gap - h : a.bottom + gap;
-      top = Math.min(Math.max(margin, top), bottom - h - margin);
-      setPos({ position: "fixed", left, top, width: fullWidth ? w : undefined, maxHeight: bottom - margin * 2, margin: 0, right: "auto", bottom: "auto", transformOrigin: `${align === "end" ? "right" : "left"} ${up ? "bottom" : "top"}` });
+      // (In the iPhone app, below the status bar.)
+      const safeTop = safeInsets().top;
+      top = Math.min(Math.max(margin + safeTop, top), bottom - h - margin);
+      setPos({ position: "fixed", left, top, width: fullWidth ? w : undefined, maxHeight: bottom - margin * 2 - safeTop, margin: 0, right: "auto", bottom: "auto", transformOrigin: `${align === "end" ? "right" : "left"} ${up ? "bottom" : "top"}` });
     };
     try {
       if (menuRef.current && !menuRef.current.matches(":popover-open")) menuRef.current.showPopover();
@@ -277,6 +281,7 @@ function MenuPanel({
             onClick={() => {
               // Focus goes back to the menu button first, so a dialog the item opens returns it there when it closes.
               onClose(true);
+              if (item.danger) haptic("warning");
               item.onSelect();
             }}
             // A row with a second line (a workspace and its plan) gets room to breathe.

@@ -1,4 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
+import { haptic } from "@/lib/nativeApp";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "quiet";
 type Size = "sm" | "md" | "icon";
@@ -23,10 +24,19 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "secondary", size = "md", className, type = "button", ...rest },
+  { variant = "secondary", size = "md", className, type = "button", onClick, ...rest },
   ref,
 ) {
-  return <button ref={ref} type={type} className={`${base} ${variants[variant]} ${sizes[size]} ${className ?? ""}`} {...rest} />;
+  return (
+    <button
+      ref={ref}
+      type={type}
+      className={`${base} ${variants[variant]} ${sizes[size]} ${className ?? ""}`}
+      // Confirming something destructive is felt in the iOS app (a warning tap; nothing elsewhere).
+      onClick={variant === "danger" ? (e) => (haptic("warning"), onClick?.(e)) : onClick}
+      {...rest}
+    />
+  );
 });
 
 /** Icon-only button: requires a label for assistive tech (also shown as a tooltip). */

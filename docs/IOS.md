@@ -145,11 +145,11 @@ Mac app are unchanged.
   canvases (sign in) get a clear border instead, pages without one (onboarding) pad the body; the sidebar
   drawer, toasts, and the Ask Foli AI button and chat move in by the same insets. Long presses open Folevi's
   own menus, not iOS link previews.
-- **Layout**: iPhone gets the phone layout (sidebar drawer, page dock above the keyboard); iPad gets the
-  tablet and desktop layout, with tabs, and hardware keyboard shortcuts reach the page as in Safari. There's
-  one tab strip (the web app's own); iOS adds no chrome.
+- **Layout**: iPhone gets its own interface (below, "iPhone interface"); iPad gets the tablet and desktop
+  layout, with tabs, and hardware keyboard shortcuts reach the page as in Safari. There's one tab strip on
+  iPad (the web app's own); iOS adds no chrome.
 - **Keyboard**: the web view shrinks above the keyboard (Keyboard plugin, `resize: native`), so the editor
-  and its page dock (Foli AI, Insert, Format, Style: the existing phone toolbar) sit above it.
+  and what floats at the bottom of the page (on iPhone the bar of writing tools) sit above it.
 - **Status bar** follows the app's theme (light or dark), not only the system's.
 - **Haptics**: a light tap when a task is checked off (editor and Tasks), a medium one for a new note, light
   and medium when something is dragged and dropped, medium when a long press opens a menu.
@@ -161,6 +161,101 @@ Mac app are unchanged.
 - **No passkeys yet**: WebAuthn in the app's web view needs Associated Domains (below). Sign in with a passkey
   and Add a passkey are hidden in the app until then.
 - **No buying** (App Store Review Guideline 3.1.1): see below.
+
+### iPhone interface
+
+On an iPhone the app doesn't look like the web app in a phone browser: it has the shape of an iOS app, built
+in the web layer (`apps/web/src/components/iphone`), so it works from iOS 17 and ships with the site like
+everything else.
+
+**When it's on.** `isIphoneApp()` / `useIphoneApp()` (`lib/iphone.ts`): the page is in the iOS app
+(`inIosApp()`) and the web view's user agent says iPhone (portrait and landscape). The iPad app asks for the
+desktop site, so its web view reports a Mac and keeps the sidebar layout; a phone's browser keeps the mobile
+web layout; the Mac app and desktop browsers never see it. Shell marks `<html data-iphone>` while it's on;
+the iPhone CSS in `globals.css` hangs on that mark, and the components check the hook. Nothing else changes
+for any other surface (e2e `iphone-app.spec.ts` checks a phone browser too).
+
+**The shell.** `Shell` renders `IphoneShell` instead of the sidebar, tab strip and drawer. One screen at a
+time fills the display; each view's `ViewChrome` becomes an `IphoneScreen` (`Screen.tsx`):
+
+- A large title (Spectral, 34pt) at the top of the content, which hands over to a small centred title in
+  the bar once it scrolls under it, with a soft blur fading in behind the bar. Views pass their iPhone look
+  as `ViewChrome`'s `iphone` option (title, subtitle, actions, a header under the title); a view that
+  doesn't gets a large title and its usual facts and actions in a row under it.
+- A round glass Back button whenever the screen isn't a tab's first one: it steps back through the router's
+  history, or (opened from a link, with nothing behind it) goes to the screen's parent. The edge swipe goes
+  back too (WebKit's own interactive swipe, `allowsBackForwardNavigationGestures`).
+- The screen's actions in a glass pill on the right; tapping the tab you're on scrolls back to the top.
+- Push and pop: a new screen slides in from the right over the old one (which eases left and dims); Back
+  slides the top screen away (`transitions.ts`: the leaving screen is a copy of its elements, taken the
+  moment the router moves, `onHistoryMove` in `lib/app/historyNav.ts`). Switching tabs, the edge swipe and
+  reduced motion don't animate.
+
+**Liquid glass.** Floating chrome uses `.ui-liquid` / `.ui-liquid-strong` (a frosted fill, a fine bright rim
+and a soft shadow, light and dark, `--liquid-*` in `globals.css`); only small floating things are blurred
+(bars, pills, menus, sheets), never a scrolling page. `prefers-reduced-transparency` makes them solid. Two
+corner tokens exist for this interface only: `sheet` (28) and `capsule` (fully round), and
+`test/radius.test.ts` keeps them inside `components/iphone` and `globals.css`.
+
+**The tab bar** (`TabBar.tsx`): a glass capsule with Home, Tasks and Calendar on the left (the current one on
+a soft glass highlight), and one with Foli AI and + on the right, floating above the home indicator. It
+steps away while the keyboard is up (Capacitor's `keyboardWillShow`/`Hide`, and focus in a text field), on a
+note (which has its own bars), on the Foli AI page and in Select mode. + opens New note, From template, New
+folder and Quick task; on Tasks it opens Quick task straight away.
+
+**Screens.**
+
+- **Home** (`IphoneHome.tsx`): the avatar (account and places sheet: Personal and workspaces with a check,
+  the workspace's people and settings, Settings, Help, appearance, Sign out) and a pill with notifications
+  (a sheet) and More; "Home" with the place under it; a search field that opens search; recent notes as a
+  row of their cards; Catch me up (with Foli AI), All notes, Drafts, Shared with me, Changes and Reviews as
+  rows with counts; Starred, Folders (rows with note counts; a folder's screen lists its subfolders) and
+  Tags (folded) sections, empty ones as a quiet grey box; Templates, Archive and Trash.
+- **Lists** (All notes, Drafts, a folder or tag, Starred, Archive, Trash, Templates; `NoteList.tsx`): a large
+  title, a search field filtering what's loaded, Select (a bar of Move, Copy to, Star, Archive and Delete takes
+  the tab bar's place), and a More menu with Cards or List and the sort. Rows swipe: right to star, left to
+  archive or delete (a long swipe runs Delete). Every card and row has its long-press menu.
+- **A note**: the page fills the screen under Back, the note's place (a glass chip: its parent page, folder
+  or Drafts) and a pill with Share and the note's "…" menu; a note without artwork is a full-width sheet of
+  paper. At the bottom, glass bars with Comments, Style and Format on the left and Foli AI and Insert on
+  the right, each opening its tool as a sheet. While writing, a bar over the keyboard has Insert, to-do,
+  bullets, a heading, outdent, indent, an image, undo, redo and a key that puts the keyboard away (its
+  buttons never take focus, so the keyboard stays up).
+- **Tasks** (`Tasks.tsx`): the views as chips (the chosen one names itself), tasks grouped by note under
+  headers that fold away (Upcoming by day), a tap opens a task's details, the box checks it off, a swipe
+  right completes it and left moves it to tomorrow or opens its date.
+- **Calendar** (`Agenda.tsx`): an agenda by default: today as the large title ("Oct 16", "Today · Friday"),
+  overdue tasks first, then each day of the next month under its own header (Tomorrow named), with tasks and
+  subscribed calendars' events; each day's "…" adds a task on that day. Week and Month are in More.
+- **Foli AI**: a sheet (half the screen, pulled up for all of it) titled New chat, with suggestions and the
+  composer as a card; the history button opens the Foli AI page. On a note, its Foli AI tool (the note's own
+  panel) opens in the tool sheet.
+- **Search**: the command palette as a full-screen sheet, the field at the top with Cancel and results as
+  rows.
+- **Settings**: a grouped list (inset sections, icons, chevrons) where each section is its own screen.
+
+**Sheets** (`Sheet.tsx`): in the iPhone app every `Dialog` and `Popover` is a sheet from the bottom with a
+grabber (dragged down to dismiss from the grabber or the header, or from the content once it's at its top;
+medium sheets drag up to full height), or for short forms (`size="sm"`: confirmations, New folder, editing a
+task) a glass card in the middle, which sits above the keyboard because the page shrinks for it. Both are
+modal `<dialog>`s: the page behind is inert, Escape closes, focus returns. Menus keep their place next to
+what opened them, with iOS-sized rows on glass, and stay below the status bar.
+
+**Haptics**: light for a tab change and a task checked off, medium for a new note and a long press, warning
+when confirming something destructive (a danger button, a menu's Delete, a swipe's Delete).
+
+**Accessibility**: 44pt targets, every icon button named, the large title is the screen's heading, sheets
+are labelled dialogs, swipe actions are also in the long-press menu. A web view can't follow Dynamic Type,
+so the text keeps iOS's default sizes (17pt in lists) and never auto-zooms (`text-size-adjust`).
+
+**Testing**: `e2e/iphone-app.spec.ts` (an iPhone-sized window with an iPhone user agent and a stand-in
+bridge: tab bar, large titles, Back, the + menu, New folder, Quick task, a note's bars and sheets, Settings,
+and a phone browser keeping the web layout). In the Simulator: `pnpm sync:dev`, then Debug builds show the
+dev server; `node scripts/simulator.mjs eval '...'` drives it.
+
+Not done yet: per-tab navigation stacks (all tabs share the router's one history), an interactive Back swipe
+drawn by the app itself, scroll-to-top from the status bar (the web view's page doesn't scroll), and moving
+blocks by long press and drag on a phone (the block grip sits beside the line being edited, as before).
 
 ## Widgets, the share sheet, Siri and Spotlight (stage 2)
 

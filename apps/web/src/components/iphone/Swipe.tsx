@@ -9,6 +9,8 @@ export interface SwipeAction {
   /** The button's colour (a CSS colour); text and icon are white on it. */
   tone: string;
   onAction: () => void;
+  /** Deleting: a warning tap when it runs. */
+  danger?: boolean;
 }
 
 const ACTION_W = 76;
@@ -87,6 +89,7 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
     const run = (a: SwipeAction) => {
       openRef.current = 0;
       setOffset(0);
+      if (a.danger) haptic("warning");
       a.onAction();
     };
     el.addEventListener("touchstart", onStart, { passive: true });
@@ -130,6 +133,7 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
               onClick={() => {
                 openRef.current = 0;
                 setOffset(0);
+                if (a.danger) haptic("warning");
                 a.onAction();
               }}
               style={{ background: a.tone, flexGrow: 1 }}

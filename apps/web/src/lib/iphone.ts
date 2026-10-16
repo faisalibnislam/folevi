@@ -22,3 +22,17 @@ const noop = () => () => undefined;
 export function useIphoneApp(): boolean {
   return useSyncExternalStore(noop, isIphoneApp, () => false);
 }
+
+/**
+ * How far the status bar and the home indicator reach into the page, in the iPhone app (0 elsewhere): menus
+ * placed by script stay clear of them.
+ */
+export function safeInsets(): { top: number; bottom: number } {
+  if (typeof document === "undefined" || !isIphoneApp()) return { top: 0, bottom: 0 };
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:fixed;left:0;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);width:0;visibility:hidden;pointer-events:none";
+  document.body.appendChild(probe);
+  const r = probe.getBoundingClientRect();
+  probe.remove();
+  return { top: r.top, bottom: Math.max(0, window.innerHeight - r.bottom) };
+}

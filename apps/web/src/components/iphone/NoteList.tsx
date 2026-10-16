@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Archive, ArchiveRestore, ArrowDownUp, Check, CheckCircle2, FileText, LayoutGrid, List, Star, StarOff, Trash2, Undo2, type LucideIcon } from "lucide-react";
+import { Archive, ArchiveRestore, Check, CheckCircle2, FileText, LayoutGrid, List, Star, StarOff, Trash2, Undo2, type LucideIcon } from "lucide-react";
 import { AppLink } from "@/lib/app/router";
 import { ageText, formatRelative } from "@/lib/format";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
@@ -108,7 +108,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
     { label: "List", icon: <List size={18} />, checked: layout === "list", onSelect: () => setLayout("list") },
     "separator",
     { heading: "Sort by" },
-    ...SORTS.filter(([s]) => s !== "manual" || view !== "trash").map(([s, label]) => ({ label, icon: <ArrowDownUp size={18} />, checked: sort === s, onSelect: () => onSort(s) })),
+    ...SORTS.filter(([s]) => s !== "manual" || view !== "trash").map(([s, label]) => ({ label, checked: sort === s, onSelect: () => onSort(s) })),
     ...(menu.length ? (["separator", ...menu] as MenuEntry[]) : []),
   ];
 
@@ -131,7 +131,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
       : {
           leading: [d.starred ? { label: "Unstar", icon: <StarOff />, tone: "#b07a12", onAction: () => void notes.star([d.id], false) } : { label: "Star", icon: <Star />, tone: "#c58a12", onAction: () => void notes.star([d.id], true) }],
           trailing: [
-            { label: "Delete", icon: <Trash2 />, tone: "#d6453d", onAction: () => void notes.trash([d.id]) },
+            { label: "Delete", icon: <Trash2 />, tone: "#d6453d", danger: true, onAction: () => void notes.trash([d.id]) },
             d.archivedAt
               ? { label: "Unarchive", icon: <ArchiveRestore />, tone: "#6b6b73", onAction: () => void notes.archive([d.id], false) }
               : { label: "Archive", icon: <Archive />, tone: "#6b6b73", onAction: () => void notes.archive([d.id], true) },

@@ -33,9 +33,9 @@ apps/ios/
                                Keychain, the App Group, the share queue and saver, folevi:// links, the look
   ios/App/AppAndWidgets/       in the app and the widgets: the widgets' copy of tasks and notes and their
                                timeline, what the widgets draw (and the F they show), the App Intents
-  ios/App/Native/              the app only: FoleviNativePlugin's stage 2 calls, AppServices, DeepLinkRouter,
-                               SpotlightIndex, DocumentScanner, the Siri phrases, DebugHooks and WidgetSnapshots
-                               (Debug Simulator)
+  ios/App/Native/              the app only: FoleviNativePlugin's stage 2 and 3 calls, AppServices, DeepLinkRouter,
+                               SpotlightIndex, DocumentScanner, the Siri phrases, PushNotifications (stage 3),
+                               DebugHooks and WidgetSnapshots (Debug Simulator)
   ios/App/ShareExtension/      "Save to Folevi" in the share sheet
   ios/App/Widgets/             the widgets and the Control Center control
   ios/App/Tests/               unit tests (XCTest, run in the app)
@@ -90,6 +90,14 @@ window.foleviNative = {
   getSettings(): Promise<{ lock: boolean; lockAfter: 0 | 60 | 300 | 900; method: "faceID" | "touchID" | "opticID" | "passcode" | "none" } | null>,
   setSettings(patch: { lock?: boolean; lockAfter?: 0 | 60 | 300 | 900 }): Promise<Settings>,
   onCommand(listener: (c: { type: "link"; url: string }) => void): () => void,   // folevi:// links
+  // stage 2: device, setCredential, clearCredential, takeShares, finishShare, scanDocument (below)
+  // stage 3, notifications:
+  pushStatus(): Promise<{ permission: "notDetermined" | "denied" | "granted"; enabled: boolean; asked: boolean;
+                          token: string | null; environment: "sandbox" | "production"; bundleId: string }>,
+  enablePush(): Promise<PushStatus>,                    // asks iOS the first time, then Apple's device token
+  disablePush(): Promise<void>,
+  setBadge(count: number): void,                        // the bell's unread count on the app icon
+  openNotificationSettings(): Promise<void>,            // Folevi's page in iOS Settings > Notifications
 };
 ```
 
@@ -288,7 +296,8 @@ them, so search finds it. The Simulator has no document camera, so only "Scan fr
 
 - Unit tests: `pnpm test` (or `node scripts/simulator.mjs test "Folevi iPad Pro 13"`): the API client, folevi://
   links (the web's cases), the share content and queue, the saver's fallbacks, the Keychain group, the App
-  Group, the widgets' copy and timeline, Spotlight's items.
+  Group, the widgets' copy and timeline, Spotlight's items, and notifications (the categories and buttons,
+  where a tap or a button leads, Snooze's request).
 - The share sheet and the widget gallery, driven through Safari and the Home Screen (needs a signed-in Debug
   build on the device): `TEST_RUNNER_FOLEVI_SHOTS=<dir> xcodebuild test -project ios/App/App.xcodeproj -scheme
   FoleviUITests -destination 'platform=iOS Simulator,name=Folevi iPhone 18 Pro'` (screenshots of each step go
@@ -308,6 +317,90 @@ them, so search finds it. The Simulator has no document camera, so only "Scan fr
   Spotlight result tapped), `"widgets"` (what the `widgets` command uses).
 - The Lock Screen widgets and the Control Center control: long-press the Lock Screen > Customize, or Control
   Center > edit, and search for Folevi.
+
+## Notifications (stage 3)
+
+Reminders and @mentions reach the iPhone or iPad through Apple's push service (APNs), the way browsers get
+them through web push (`convex/pushSend.ts`). Web push doesn't work inside WKWebView, so the app has its own.
+
+### On the device
+
+- **Asking**: never at launch. iOS asks when the person turns on "Notifications on this iPhone" (Settings >
+  Notifications) or, the first time they set a reminder on a to-do in the app (`offerPushAfterReminder` in
+  `lib/nativePush.ts`, from the task's Reminder field). Either way only once: after that the switch decides.
+- **Settings > Notifications**: in the app the browser's web push card is replaced by "Notifications on this
+  iPhone" (or iPad, `NativePushCard.tsx`): a switch, how many other devices get them, and "Open iOS Settings"
+  when notifications are off for Folevi in iOS. The card only shows once the server can send them
+  (`push.apnsAvailable`, false until the APNs key is set). What arrives follows the In app column above it.
+- **Registering**: `enablePush` asks iOS, registers with Apple and hands the device token (hex) to the page,
+  which sends it with the app's install id and the model to `push.registerApns`. On each launch (and each
+  return to the front) a device with notifications on registers again, in case iOS changed the token; one
+  whose notifications were turned off in iOS Settings is removed on the server (`syncPushRegistration`).
+  Turning the switch off removes it (`push.unregisterApns`), and so does signing out (`forgetThisDevice`,
+  which also turns notifications off in the app, clears what's in Notification Center and the badge).
+- **The notifications**: a reminder shows "Reminder: <the to-do>" and "In <the note>", with **Done** (checks
+  the task off through the REST API with the device's token, without opening the app; offline it waits like
+  a widget's check and goes with the next refresh) and **Snooze 1 hour** (moves the reminder through
+  `PATCH /tasks/{id}` with `remindAt`, so it rings again from the server; offline the app shows the same
+  notification again in an hour itself). A mention shows who mentioned you and where, with **Open**. A
+  note's notifications are grouped (`thread-id`).
+- **Tapping one** opens what it's about through the same path as every folevi:// link (`DeepLinkRouter`):
+  `/d/<note>#block-<to-do>` focuses the to-do. On a cold launch the link waits for the page. folevi:// links
+  now keep `#block-<id>` and `#comment-<id>` (the web, the Mac app and `DeepLink.parse` agree).
+- **In front**: still a banner (`willPresent`).
+- **Badge**: the bell's unread count, set by the page whenever it changes (the same count as the Mac app's
+  Dock badge), and sent with each notification.
+- `PushNotifications` is the notification center's delegate from `didFinishLaunching`, so a notification
+  that launches the app, or a button pressed while it isn't running, is heard. Capacitor's own router is
+  off (`ios.handleApplicationNotifications: false` in capacitor.config.ts). The delegate uses the
+  completion-handler methods and calls them on the main thread: the async ones finish elsewhere, which
+  UIKit stops the app for when a tap launches it.
+- `aps-environment` is in App.entitlements (development; Xcode signs distribution builds with production).
+  Debug builds register `sandbox` tokens, Release builds (TestFlight, App Store) `production` ones.
+
+### On the server
+
+- `apnsTokens` (one row per token, and per install id): `push.registerApns` (re-registering updates the row;
+  a token or device that was someone else's moves to you; a device's new token replaces its old one; at most
+  20 per person), `push.unregisterApns` (by token or install id, your own only), `push.apnsStatus`,
+  `push.apnsAvailable`. Deleting an account removes them (and its web push subscriptions).
+- `lib/push.ts` `schedulePush` is the one place reminders (`tasks.processReminders`), mentions
+  (`lib/notify.ts`) and routines send push: web push as before, and `apnsSend.sendToProfile` when APNs is set
+  up and the person has a device. The bell's choices decide as before (a reminder or mention turned off
+  In app isn't pushed; a burst folded into one notification isn't pushed twice).
+- `apnsSend.ts` ("use node"): HTTP/2 to `api.push.apple.com` or `api.sandbox.push.apple.com` (each token's
+  own environment) with Node's `http2` (`lib/apnsHttp2.ts`), a provider JWT (ES256 with `node:crypto`, `kid`
+  the key id, `iss` the team, kept 50 minutes: `lib/apnsJwt.ts`). Headers: `apns-push-type: alert`,
+  `apns-topic` the bundle id, priority 10, an hour's expiration, `apns-collapse-id` (the same reminder
+  replaces itself). Payload (`lib/apns.ts`): `aps.alert` title and body, `sound`, `badge`, `thread-id`,
+  `category` (`REMINDER`, `MENTION`), `mutable-content`, and `kind`, `path`, `taskId` for the app.
+- Apple's answers: 410, `Unregistered`, `BadDeviceToken` and `DeviceTokenNotForTopic` remove the token;
+  429, 5xx and no answer are tried again after 1 and 4 seconds (three tries); `ExpiredProviderToken` gets a
+  fresh JWT once; anything else is given up. The log line says how many were sent, gone or failed and
+  Apple's reasons, never a token or what a notification says.
+- Without `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_KEY` and `APNS_BUNDLE_ID` nothing is scheduled or sent, and
+  the app hides the option. A key that isn't a P-256 private key logs `apns.key_invalid` and sends nothing.
+- No Notification Service Extension: nothing is fetched or decrypted on the device (no images), so it isn't
+  needed. `mutable-content` is set so one can be added later.
+
+### Testing it in the Simulator
+
+The iOS 27 Simulator registers for remote notifications and gets a real (sandbox) device token, so the whole
+path runs there except Apple delivering a server's push, which needs the Developer Program's key. In a Debug
+Simulator build that can't reach Apple, the app uses a stand-in token made from its install id.
+
+- A notification by hand: `xcrun simctl push "Folevi iPhone 18 Pro" com.folevi.ios payload.apns`, where the
+  file is the server's payload (`lib/apns.ts`), for example
+  `{"aps":{"alert":{"title":"Reminder: Take the bins out","body":"In Inbox"},"category":"REMINDER","thread-id":"<note>","badge":1},"kind":"reminder","path":"/d/<note>#block-<task>","taskId":"<task>"}`.
+  Long-press the banner for Done and Snooze 1 hour.
+- `node scripts/simulator.mjs native '{"command":"push"}'`: the permission, the switch, the start of the
+  token, and what's in Notification Center from Folevi. `{"command":"respond","action":"folevi.done",
+  "userInfo":{...}}` runs a button (or a tap, with no action) without the UI.
+- The Debug log (`com.folevi.ios`, category `push`) says when Done was sent or kept, and when a Snooze moved
+  the reminder on Folevi or stayed on the device.
+- Against Apple from the dev deployment: with a made-up key in the dev Convex env, `npx convex run
+  apnsSend:sendToProfile` reaches the sandbox host and Apple answers `InvalidProviderToken` (the request and
+  JWT are well formed; the key just isn't registered). Never set APNS_* on production until the real key.
 
 ## No purchases in the app
 
@@ -340,8 +433,8 @@ by those links).
   on the device (service worker and the app's own storage), haptics, folevi:// links from Shortcuts and other
   apps, in-app Safari for links, native keyboard handling, iPad layout with keyboard shortcuts, and (stage 2)
   a share extension, interactive Home Screen and Lock Screen widgets, a Control Center control, Siri and
-  Shortcuts actions, Spotlight search of notes and a document scanner with text recognition. Still to come:
-  push notifications.
+  Shortcuts actions, Spotlight search of notes and a document scanner with text recognition, and (stage 3)
+  push notifications for reminders and mentions with Done and Snooze actions.
 - **Payments (3.1.1, 3.1.3)**: no purchases, prices or links to buying in the app (above). Accounts made on
   the web keep their plan. Account creation is in the app (sign up), and account deletion is in Settings >
   Security (Delete account), as 5.1.1(v) requires.
@@ -374,13 +467,31 @@ What's needed to go from the Simulator to devices, TestFlight and the App Store:
    the free personal team's prefix for the Keychain group here). On a device without them the extensions
    can't see the token or the queue. Also App Intents' Siri phrases and the Control Center control need a
    device (and a signed build) to try with Siri and the Action button.
-4. **Push notifications**: an APNs key (.p8) in the developer account, the Push Notifications capability,
-   `@capacitor/push-notifications`, a device token table and a sender on the backend.
+4. **Push notifications** (everything else is built; see Notifications above):
+   1. Certificates, Identifiers & Profiles > Keys > +: name it "Folevi APNs", tick Apple Push Notifications
+      service (APNs), choose Sandbox & Production, Continue, Register, then Download the `.p8` (it can be
+      downloaded only once; keep it in the password manager). Note the Key ID, and the Team ID (top right of
+      the developer account, or Membership).
+   2. Identifiers > `com.folevi.ios`: tick Push Notifications (automatic signing does this when the team is
+      set, since App.entitlements already has `aps-environment`).
+   3. Convex, dev first (`npx convex env set ...`), then production when it's time:
+      `APNS_KEY_ID` (the Key ID), `APNS_TEAM_ID`, `APNS_KEY` (the whole .p8 file, PEM; written out with `\n`
+      for newlines also works), `APNS_BUNDLE_ID=com.folevi.ios`, `APNS_ENV=production` (on production; on a
+      deployment only Debug builds use, `sandbox`). Settings > Notifications in the app then shows the switch.
+      `scripts/check-prod-env.mjs` warns when only some of them are set.
+   4. Sandbox and production: each device token is sent to the host of the environment it was registered
+      from (Debug builds from Xcode: sandbox; TestFlight and the App Store: production), with the same key.
+      A token sent to the wrong host comes back `BadDeviceToken` and is removed; the app registers it again
+      on its next launch. `APNS_ENV` is only the default for a token registered without one.
+   5. Try it on a device: a Debug build from Xcode (sandbox), turn notifications on, set a reminder a minute
+      ahead, lock the phone; Done and Snooze from the Lock Screen; then the same from a TestFlight build
+      (production).
 5. **TestFlight**: internal testers first; the review notes above and a demo account for external testing.
 6. App Store Connect: screenshots (6.9" iPhone and 13" iPad), privacy labels, age rating, the support URL
    (folevi.com/support) and the privacy policy URL (folevi.com/privacy).
 
-Also worth doing then: check the iOS 17 behaviour on a device (the Simulator here only had iOS 27), real
+Also worth doing then: notifications on a device (above; the Simulator gets a token but Apple never delivers
+a server's push to it), check the iOS 17 behaviour on a device (the Simulator here only had iOS 27), real
 airplane mode, Face ID on a device, the background recording behaviour, the camera's document scanner (the
 Simulator has none), widgets refreshing on a locked phone (data protection doesn't exist in the Simulator),
 and Siri speaking the phrases.

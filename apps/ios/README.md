@@ -4,7 +4,8 @@ The web app (https://app.folevi.com) in a Capacitor shell, the way the Mac app (
 an Electron window. The native parts are in Swift: a Face ID lock, links that open in an in-app Safari view,
 `folevi://` links, haptics, the bridge the page talks to (`window.foleviNative`), and (stage 2) a share
 extension, widgets and a Control Center control, App Intents for Siri and Shortcuts, Spotlight and a document
-scanner, which reach Folevi through the REST API with a token made for the device. Architecture, App Review
+scanner, which reach Folevi through the REST API with a token made for the device, and (stage 3) push
+notifications for reminders and mentions through APNs, with Done and Snooze 1 hour. Architecture, App Review
 notes and what's left for the Developer Program: [docs/IOS.md](../../docs/IOS.md).
 
 ## Targets
@@ -98,3 +99,7 @@ PNG for iOS 17 to 25 (`pnpm icon` renders it from the same glyph).
   `xcrun simctl addmedia booted page.jpg`).
 - Debug builds allow plain http to `app.localhost` in the app and both extensions (a build phase), so the
   extensions reach the dev server too.
+- Notifications: turn them on in Settings > Notifications (the switch shows once the dev Convex has the
+  APNS_* variables), then `xcrun simctl push "Folevi iPhone 18 Pro" com.folevi.ios payload.apns` with a
+  payload like the server's (docs/IOS.md, Notifications). Long-press the banner for Done and Snooze 1 hour;
+  `node scripts/simulator.mjs native '{"command":"push"}'` shows what the app knows.

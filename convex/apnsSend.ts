@@ -36,6 +36,8 @@ export const sendToProfile = internalAction({
     const gone: Id<"apnsTokens">[] = [];
     const sent: Id<"apnsTokens">[] = [];
     let failed = 0;
+    // Apple's reasons for what didn't go ("InvalidProviderToken", "TooManyRequests"), counted: never the token.
+    const reasons: Record<string, number> = {};
     try {
       for (const t of targets) {
         const host = apnsHost(t.environment);
@@ -46,12 +48,16 @@ export const sendToProfile = internalAction({
         if (result.outcome === "sent") sent.push(t.id);
         else if (result.outcome === "gone") gone.push(t.id);
         else failed++;
+        if (result.outcome !== "sent") {
+          const why = (result.last.reason ?? `status ${result.last.status}`).replace(/[^\w ]/g, "").slice(0, 40);
+          reasons[why] = (reasons[why] ?? 0) + 1;
+        }
       }
     } finally {
       client.close();
     }
     await ctx.runMutation(internal.push.afterApnsSend, { gone, sent });
-    console.log(JSON.stringify({ event: "apns.send", kind: message.kind, devices: targets.length, sent: sent.length, gone: gone.length, failed }));
+    console.log(JSON.stringify({ event: "apns.send", kind: message.kind, devices: targets.length, sent: sent.length, gone: gone.length, failed, reasons }));
     return { sent: sent.length };
   },
 });

@@ -133,6 +133,18 @@ struct FoleviAPI {
         _ = try await send("PATCH", "tasks/\(id)", body: ["completed": completed], key: "complete-\(id)-\(completed)-\(Int(Date().timeIntervalSince1970 / 60))", as: Ignored.self)
     }
 
+    /// Moves a task's reminder (a notification's Snooze): it rings again at `until`.
+    func snoozeTask(_ id: String, until: Date) async throws {
+        let at = Self.isoTime.string(from: until)
+        _ = try await send("PATCH", "tasks/\(id)", body: ["remindAt": at], key: "snooze-\(id)-\(Int(until.timeIntervalSince1970 / 60))", as: Ignored.self)
+    }
+
+    private static let isoTime: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
     // MARK: Transport
 
     private struct Page<T: Decodable>: Decodable {

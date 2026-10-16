@@ -5,6 +5,7 @@
 //
 //   xcodebuild test -project ios/App/App.xcodeproj -scheme App -destination 'platform=iOS Simulator,name=Folevi iPhone 18 Pro'
 import CoreSpotlight
+import UserNotifications
 import WidgetKit
 import XCTest
 @testable import App
@@ -152,7 +153,9 @@ final class DeepLinkTests: XCTestCase {
             ("folevi://quick-add", .quickAdd),
             ("folevi://", .open(path: "/documents")),
             ("folevi://inbox", .open(path: "/inbox")),
-            ("folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#block-01J9", .open(path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V")),
+            ("folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#block-01J9ZQ4K8W2M3N4P5Q6R7S8T9W", .open(path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#block-01J9ZQ4K8W2M3N4P5Q6R7S8T9W")),
+            ("folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#comment-k57abc", .open(path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#comment-k57abc")),
+            ("folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#other-01J9", .open(path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V")),
             ("folevi://d/not-an-id", nil),
             ("folevi://admin", nil),
             ("folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V/extra", nil),
@@ -387,5 +390,71 @@ final class SpotlightTests: XCTestCase {
         XCTAssertEqual(item.attributeSet.contentDescription, "Kick-off on Monday.")
         XCTAssertEqual(item.attributeSet.containerDisplayName, "Work / Clients")
         XCTAssertEqual(item.attributeSet.keywords, ["Personal", "Clients", "starred"])
+    }
+}
+
+/// Notifications from Folevi (Native/PushNotifications.swift): the payload as convex/lib/apns.ts sends it.
+final class NotificationTests: XCTestCase {
+    private let reminder: [AnyHashable: Any] = [
+        "aps": ["alert": ["title": "Reminder: Take the bins out", "body": "In House jobs"], "category": "REMINDER", "thread-id": "01J9ZQ4K8W2M3N4P5Q6R7S8T9V"],
+        "kind": "reminder",
+        "path": "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#block-01J9ZQ4K8W2M3N4P5Q6R7S8T9W",
+        "taskId": "01J9ZQ4K8W2M3N4P5Q6R7S8T9W",
+    ]
+
+    func testTheCategoriesAndTheirButtons() {
+        let categories = Dictionary(uniqueKeysWithValues: PushPayload.categories.map { ($0.identifier, $0) })
+        XCTAssertEqual(Set(categories.keys), ["REMINDER", "MENTION"])
+        XCTAssertEqual(categories["REMINDER"]?.actions.map(\.identifier), [PushPayload.doneAction, PushPayload.snoozeAction])
+        XCTAssertEqual(categories["REMINDER"]?.actions.map(\.title), ["Done", "Snooze 1 hour"])
+        // Done and Snooze work without opening the app; Open brings it up.
+        XCTAssertFalse(categories["REMINDER"]!.actions.contains { $0.options.contains(.foreground) })
+        XCTAssertEqual(categories["MENTION"]?.actions.map(\.title), ["Open"])
+        XCTAssertTrue(categories["MENTION"]!.actions[0].options.contains(.foreground))
+    }
+
+    func testTappingOpensTheNoteAtTheBlock_aColdLaunchToo() {
+        let route = NotificationRoute.from(userInfo: reminder, action: UNNotificationDefaultActionIdentifier)
+        XCTAssertEqual(route, .open(URL(string: "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#block-01J9ZQ4K8W2M3N4P5Q6R7S8T9W")!))
+        // The link is one the page opens (the same parser as every folevi:// link).
+        if case .open(let url) = route {
+            XCTAssertEqual(DeepLink.parse(url.absoluteString), .open(path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#block-01J9ZQ4K8W2M3N4P5Q6R7S8T9W"))
+        }
+        let mention: [AnyHashable: Any] = ["kind": "mention", "path": "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V"]
+        XCTAssertEqual(NotificationRoute.from(userInfo: mention, action: PushPayload.openAction), .open(URL(string: "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V")!))
+        XCTAssertEqual(NotificationRoute.from(userInfo: ["path": "/tasks/today"], action: UNNotificationDefaultActionIdentifier), .open(URL(string: "folevi://tasks/today")!))
+    }
+
+    func testDoneAndSnoozeChangeTheTask() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        XCTAssertEqual(NotificationRoute.from(userInfo: reminder, action: PushPayload.doneAction), .complete(taskId: "01J9ZQ4K8W2M3N4P5Q6R7S8T9W"))
+        XCTAssertEqual(NotificationRoute.from(userInfo: reminder, action: PushPayload.snoozeAction, now: now), .snooze(taskId: "01J9ZQ4K8W2M3N4P5Q6R7S8T9W", until: now.addingTimeInterval(3600)))
+        XCTAssertEqual(NotificationRoute.from(userInfo: reminder, action: UNNotificationDismissActionIdentifier), .nothing)
+        // Without a task (or with one that isn't an id), Done just opens what it's about.
+        var odd = reminder
+        odd["taskId"] = "../../admin"
+        XCTAssertEqual(NotificationRoute.from(userInfo: odd, action: PushPayload.doneAction), .open(URL(string: "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#block-01J9ZQ4K8W2M3N4P5Q6R7S8T9W")!))
+    }
+
+    func testPathsThatArentFolevisOpenTheNotesList() {
+        for path in [nil, "", "https://evil.example.com", "//evil.example.com", "/admin", "/d/not-an-id", "javascript:alert(1)"] as [String?] {
+            XCTAssertEqual(NotificationRoute.link(forPath: path).absoluteString, "folevi://documents", path ?? "nil")
+        }
+        XCTAssertEqual(DeepLink.fromPath("/d/inbox-2d0a97ae3b345608")?.absoluteString, "folevi://d/inbox-2d0a97ae3b345608")
+    }
+
+    func testSnoozeSendsTheNewReminderTime() async throws {
+        StubAPI.reset()
+        StubAPI.answers["PATCH /api/v1/tasks/t1"] = (200, #"{"id":"t1","completed":false,"remindAt":"2027-01-15T08:00:00Z"}"#)
+        try await api().snoozeTask("t1", until: Date(timeIntervalSince1970: 1_800_000_000))
+        let body = try JSONSerialization.jsonObject(with: StubAPI.requests.last!.httpBody!) as! [String: Any]
+        XCTAssertEqual(body["remindAt"] as? String, "2027-01-15T08:00:00Z")
+        XCTAssertNotNil(StubAPI.requests.last?.value(forHTTPHeaderField: "Idempotency-Key"))
+    }
+
+    func testTheSimulatorsStandInTokenLooksLikeOne() {
+        let token = PushNotifications.simulatorToken("5D3A1C2E-0000-4F00-9ABC-1234567890AB")
+        XCTAssertEqual(token.count, 64)
+        XCTAssertNotNil(token.range(of: "^[0-9a-f]{64}$", options: .regularExpression))
     }
 }

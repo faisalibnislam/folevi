@@ -86,6 +86,29 @@
       });
     },
     /**
+     * Notifications on this device: { permission: "notDetermined" | "denied" | "granted", enabled, asked,
+     * token (Apple's device token, hex, while enabled), environment: "sandbox" | "production", bundleId }.
+     */
+    pushStatus: function () {
+      return quietly(call("FoleviNative", "pushStatus"));
+    },
+    /** Turns them on: iOS asks the first time, then Apple gives the device token. Answers with the status. */
+    enablePush: function () {
+      return quietly(call("FoleviNative", "enablePush"));
+    },
+    /** Turns them off on this device (the page tells Folevi first). */
+    disablePush: function () {
+      return quietly(call("FoleviNative", "disablePush")).then(function () {});
+    },
+    /** The number on the app icon: what's unread in the bell. */
+    setBadge: function (count) {
+      void quietly(call("FoleviNative", "setBadge", { count: Math.max(0, Math.floor(Number(count) || 0)) }));
+    },
+    /** Folevi's notification settings in the iOS Settings app. */
+    openNotificationSettings: function () {
+      return quietly(call("FoleviNative", "openNotificationSettings")).then(function () {});
+    },
+    /**
      * folevi:// links opened from other apps (and one that opened the app), for the page to route; returns
      * the function that stops listening.
      */

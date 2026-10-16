@@ -39,7 +39,8 @@ export function parseDeepLink(raw: string): DeepLink | null {
   if (first === "d") {
     const id = rest[0] && INBOX_ID.test(rest[0]) ? rest[0] : rest[0]?.toUpperCase();
     if (!id || !(NOTE_ID.test(id) || INBOX_ID.test(id)) || rest.length > 1) return null;
-    const block = /^#[0-9A-Za-z]{1,40}$/.test(url.hash) ? url.hash : "";
+    // A block ("#block-<id>", where notifications point), a comment thread ("#comment-<id>"), or a bare id.
+    const block = /^#((block|comment)-)?[0-9A-Za-z]{1,40}$/.test(url.hash) ? url.hash : "";
     return { type: "open", path: `/d/${id}${block}` };
   }
   if (PAGES.has(first) && rest.length <= 2) return { type: "open", path: `/${[first, ...rest].join("/")}` };

@@ -1,8 +1,8 @@
 // What the app does for its extensions as it comes and goes: on launch it writes where the REST API is (the
 // site it loads, capacitor.config.ts server.url) to the App Group; when it comes to the front it refreshes
 // the share sheet's places, the widgets' copy and Spotlight (at most every few minutes); when it goes to the
-// background it refreshes them once more and reloads the widgets. Signing out clears all of it
-// (FoleviNativePlugin.clearCredential).
+// background it refreshes them once more and reloads the widgets. Signing out clears all of it, and turns
+// notifications off on this device (FoleviNativePlugin.clearCredential).
 import CoreSpotlight
 import UIKit
 import WidgetKit
@@ -60,6 +60,8 @@ enum AppServices {
     /// Signing out: nothing of the account stays for the widgets, the share sheet or Spotlight.
     static func signedOut() {
         SharedAccount.forget()
+        // Notifications were for that account: off, none left on the Lock Screen, no badge.
+        PushNotifications.shared.disable()
         WidgetStore.shared.clear()
         PlacesCache.save([])
         WidgetCenter.shared.reloadAllTimelines()

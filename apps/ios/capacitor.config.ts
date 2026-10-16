@@ -30,6 +30,9 @@ const config: CapacitorConfig = {
     preferredContentMode: "recommended",
     allowsLinkPreview: false,
     appendUserAgent: "FoleviiOS/1.0",
+    // Notifications are the app's own (Native/PushNotifications.swift is the notification center's
+    // delegate from launch), not Capacitor's router, which would take them and show nothing in front.
+    handleApplicationNotifications: false,
   },
   plugins: {
     Keyboard: { resize: "native", resizeOnFullScreen: true },

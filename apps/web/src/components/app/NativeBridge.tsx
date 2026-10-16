@@ -2,9 +2,11 @@
 // What the iPhone and iPad app does with the page (lib/nativeApp.ts): the status bar's text follows the app's
 // theme (light text on a dark page), drags are felt (haptics), and folevi:// links opened from other apps
 // (widgets, Shortcuts, Spotlight) land where they point (a note, a page, a new note, Quick add task). It also
-// gives the app this device's token for its extensions (lib/nativeDevice.ts) and saves what the share
-// extension kept while it couldn't reach Folevi. In a browser and in the Mac app: nothing.
-import { useMutation } from "convex/react";
+// gives the app this device's token for its extensions (lib/nativeDevice.ts), saves what the share
+// extension kept while it couldn't reach Folevi, keeps this device's notifications registered
+// (lib/nativePush.ts) and puts the bell's unread count on the app icon, like the Mac app's Dock badge. In a
+// browser and in the Mac app: nothing.
+import { useMutation, useQuery } from "convex/react";
 import { useEffect, useRef } from "react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -12,6 +14,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { parseDeepLink } from "@/lib/deepLink";
 import { nativeApp } from "@/lib/nativeApp";
 import { fileFromNative, linkThisDevice } from "@/lib/nativeDevice";
+import { syncPushRegistration } from "@/lib/nativePush";
 import { normaliseShare, shareFileKind } from "@/lib/share/payload";
 import { saveShare } from "@/lib/share/save";
 import { useToast } from "@/components/ui/Toast";
@@ -30,6 +33,7 @@ function Bridge() {
   const { profile, online } = useAppState();
   useDeviceToken(profile.id, online);
   useKeptShares();
+  usePush(online);
 
   // The theme is on <html data-theme> (the boot script, then Appearance): the status bar follows it.
   useEffect(() => {
@@ -84,6 +88,25 @@ function useDeviceToken(accountId: string, online: boolean) {
     // Not worth bothering anyone about: the widgets say "Open Folevi to sign in" and it's tried again next launch.
     linkThisDevice(accountId).catch(() => (done.current = null));
   }, [accountId, online]);
+}
+
+/**
+ * Notifications: the app icon's badge follows what's unread in the bell (as the Mac app's Dock does), and
+ * a device with notifications on is registered again on each launch (and when the app comes back).
+ */
+function usePush(online: boolean) {
+  const bridge = nativeApp()!;
+  const unread = useQuery(api.notifications.unreadCount, {});
+  useEffect(() => {
+    if (unread !== undefined) bridge.setBadge?.(unread);
+  }, [bridge, unread]);
+  useEffect(() => {
+    if (!online || !bridge.pushStatus) return;
+    const sync = () => void syncPushRegistration().catch(() => undefined);
+    sync();
+    window.addEventListener("folevi:app-active", sync);
+    return () => window.removeEventListener("folevi:app-active", sync);
+  }, [bridge, online]);
 }
 
 /**

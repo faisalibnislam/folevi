@@ -10,9 +10,12 @@
 //   complete      a widget's check-off (ToggleTaskIntent): { id }
 //   activity      a Spotlight result tapped: { id }
 //   widgets       every widget drawn to PNGs in tmp/widgets (WidgetSnapshots): { font? (Spectral's path) }
+//   push          notifications here: the status, and what's in Notification Center from Folevi
+//   respond       a notification's button pressed (or the notification tapped): { action?, userInfo }
 #if DEBUG && targetEnvironment(simulator)
 import CoreSpotlight
 import UIKit
+import UserNotifications
 import WidgetKit
 
 @MainActor
@@ -101,6 +104,24 @@ enum DebugHooks {
             guard let url = DeepLinkRouter.link(for: activity) else { return ["opened": NSNull()] }
             DeepLinkRouter.open(url)
             return ["opened": url.absoluteString]
+        case "push":
+            let delivered = await UNUserNotificationCenter.current().deliveredNotifications()
+            var status = await PushNotifications.shared.status()
+            if let token = status["token"] as? String { status["token"] = "\(token.prefix(6))... (\(token.count))" }
+            return ["status": status, "delivered": delivered.map { ["title": $0.request.content.title, "body": $0.request.content.body, "category": $0.request.content.categoryIdentifier, "thread": $0.request.content.threadIdentifier] }]
+        case "respond":
+            let userInfo = input["userInfo"] as? [String: Any] ?? [:]
+            let route = NotificationRoute.from(userInfo: userInfo, action: input["action"] as? String ?? UNNotificationDefaultActionIdentifier)
+            let content = UNMutableNotificationContent()
+            content.title = input["title"] as? String ?? "Reminder"
+            content.userInfo = userInfo
+            await PushNotifications.shared.handle(route, content: content)
+            switch route {
+            case .open(let url): return ["route": "open", "url": url.absoluteString]
+            case .complete(let id): return ["route": "complete", "taskId": id, "pending": WidgetStore.shared.load().pending[id] ?? NSNull()]
+            case .snooze(let id, let until): return ["route": "snooze", "taskId": id, "until": ISO8601DateFormatter().string(from: until)]
+            case .nothing: return ["route": "nothing"]
+            }
         case "widgets":
             let folder = FileManager.default.temporaryDirectory.appendingPathComponent("widgets", isDirectory: true)
             let font = (input["font"] as? String).map { URL(fileURLWithPath: $0) }

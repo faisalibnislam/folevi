@@ -63,6 +63,20 @@ export interface NativeScan {
   text: string;
 }
 
+/** Notifications on this iPhone or iPad (Apple's push service), as the app reports them. */
+export interface NativePushStatus {
+  /** iOS's answer: not asked yet, turned off in iOS Settings, or allowed. */
+  permission: "notDetermined" | "denied" | "granted";
+  /** Turned on in Folevi on this device. */
+  enabled: boolean;
+  /** Whether Folevi has asked iOS before (so a first reminder doesn't ask again). */
+  asked: boolean;
+  /** Apple's device token (hex) while enabled, for push.registerApns. */
+  token: string | null;
+  environment: "sandbox" | "production";
+  bundleId: string;
+}
+
 export interface NativeBridge {
   platform: "ios";
   version: string;
@@ -87,6 +101,15 @@ export interface NativeBridge {
   finishShare?(id: string): Promise<void>;
   /** Scans a document with the camera, or reads pages from photos; null when the person cancels. */
   scanDocument?(source: "camera" | "photos"): Promise<NativeScan | null>;
+  // Stage 3 (notifications through Apple's push service, the app icon's badge).
+  pushStatus?(): Promise<NativePushStatus | null>;
+  /** Asks iOS the first time, then gets the device token; resolves with the status (null if the app can't). */
+  enablePush?(): Promise<NativePushStatus | null>;
+  disablePush?(): Promise<void>;
+  /** The number on the app icon: what's unread in the bell. */
+  setBadge?(count: number): void;
+  /** Folevi's page in the iOS Settings app (where notifications turned off in iOS come back on). */
+  openNotificationSettings?(): Promise<void>;
 }
 
 declare global {

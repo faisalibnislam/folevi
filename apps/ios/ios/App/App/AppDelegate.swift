@@ -1,5 +1,6 @@
 // Folevi for iPhone and iPad. Everything happens in the one scene (SceneDelegate): the web app in Capacitor's
-// web view, plus the native parts (FoleviViewController, FoleviNativePlugin, AppLock).
+// web view, plus the native parts (FoleviViewController, FoleviNativePlugin, AppLock). Notifications
+// (PushNotifications) start here, so one that launches the app is heard.
 import Capacitor
 import UIKit
 
@@ -8,7 +9,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Links from App Intents go to the page from here on (an intent can run before the window exists).
         PendingLink.handler = { url in Task { @MainActor in DeepLinkRouter.open(url) } }
+        // Before launching finishes: a notification that opened the app (or a button pressed on one) arrives.
+        PushNotifications.shared.attach()
         return true
+    }
+
+    // The device token for Apple's push service (PushNotifications asked for it).
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        PushNotifications.shared.registered(deviceToken)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        PushNotifications.shared.failedToRegister(error)
     }
 
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {

@@ -121,6 +121,9 @@ describe("folevi:// links", () => {
   const LINKS = [
     "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V",
     "folevi://d/01j9zq4k8w2m3n4p5q6r7s8t9v#blockA1",
+    "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#block-01J9ZQ4K8W2M3N4P5Q6R7S8T9W",
+    "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#comment-k57abc",
+    "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#other-01J9",
     "folevi:///d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V",
     "folevi://d/inbox-2d0a97ae3b345608",
     "folevi://inbox",
@@ -148,6 +151,10 @@ describe("folevi:// links", () => {
 
   test("what they open", () => {
     expect(parseDeepLink("folevi://d/01j9zq4k8w2m3n4p5q6r7s8t9v#blockA1")).toEqual({ type: "open", path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#blockA1" });
+    // Where notifications point: a block, or a comment thread.
+    expect(parseDeepLink("folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#block-01J9ZQ4K8W2M3N4P5Q6R7S8T9W")).toEqual({ type: "open", path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#block-01J9ZQ4K8W2M3N4P5Q6R7S8T9W" });
+    expect(parseDeepLink("folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#comment-k57abc")).toEqual({ type: "open", path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#comment-k57abc" });
+    expect(parseDeepLink("folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#other-01J9")).toEqual({ type: "open", path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V" });
     expect(parseDeepLink("folevi://settings/this-device")).toEqual({ type: "open", path: "/settings/this-device" });
     expect(parseDeepLink("folevi://new")).toEqual({ type: "new-note" });
     expect(parseDeepLink("folevi://d/inbox-2d0a97ae3b345608")).toEqual({ type: "open", path: "/d/inbox-2d0a97ae3b345608" });

@@ -28,6 +28,12 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "takeShares", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "finishShare", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "scanDocument", returnType: CAPPluginReturnPromise),
+        // Native/PushBridge.swift: notifications on this device, and the app icon's badge.
+        CAPPluginMethod(name: "pushStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "enablePush", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "disablePush", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setBadge", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "openNotificationSettings", returnType: CAPPluginReturnPromise),
     ]
 
     private var appOrigin: String { AppOrigin.of(bridge?.config.serverURL) }

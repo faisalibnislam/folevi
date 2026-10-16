@@ -636,7 +636,7 @@ curl -X PATCH https://app.folevi.com/api/v1/tasks/TASK_ID \\
             ["POST /notes/{id}/append", "Add markdown to the end of a note."],
             ["GET /tasks", "Tasks, filtered by place, status (open, done, all) and due_before."],
             ["POST /tasks", "Add a task: text, and optionally noteId, place, dueDate, dueTime, priority, assigneeId and repeat."],
-            ["PATCH /tasks/{id}", "Complete a task or change its dueDate, dueTime, priority or repeat."],
+            ["PATCH /tasks/{id}", "Complete a task or change its dueDate, dueTime, priority, repeat or remindAt (an ISO 8601 time)."],
           ]}
         />
         <h2 id="safety">Retries and history</h2>

@@ -6,7 +6,9 @@ import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { desktop } from "@/lib/desktop";
+import { nativeApp } from "@/lib/nativeApp";
 import { Card } from "./Card";
+import { NativePushCard } from "./NativePushCard";
 
 /** The VAPID public key as the bytes PushManager wants. */
 function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
@@ -27,9 +29,14 @@ function deviceLabel(): string {
 
 /**
  * Push notifications on this device: reminders and mentions reach it even when Folevi isn't open
- * (convex/push.ts). Each browser opts in on its own; the Mac app has its own notifications.
+ * (convex/push.ts). Each browser opts in on its own; the Mac app has its own notifications, and the
+ * iPhone and iPad app its own through Apple's push service (NativePushCard).
  */
 export function PushCard() {
+  return nativeApp() ? <NativePushCard /> : <WebPushCard />;
+}
+
+function WebPushCard() {
   const publicKey = useQuery(api.push.publicKey, {});
   const [endpoint, setEndpoint] = useState<string | null>(null);
   const [supported, setSupported] = useState<boolean | null>(null);

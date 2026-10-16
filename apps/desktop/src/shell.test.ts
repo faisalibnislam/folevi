@@ -82,6 +82,7 @@ describe("folevi:// links", () => {
   test("open a note (with its block), an app page, a new note or Quick Add; nothing else", () => {
     expect(parseDeepLink("folevi://d/01JAZ3XQ5V8K2M4N6P7R9S0T1U")).toEqual({ type: "open", path: "/d/01JAZ3XQ5V8K2M4N6P7R9S0T1U" });
     expect(parseDeepLink("folevi://d/01jaz3xq5v8k2m4n6p7r9s0t1u#b123")).toEqual({ type: "open", path: "/d/01JAZ3XQ5V8K2M4N6P7R9S0T1U#b123" });
+    expect(parseDeepLink("folevi://d/01JAZ3XQ5V8K2M4N6P7R9S0T1U#block-01JAZ3XQ5V8K2M4N6P7R9S0T1V")).toEqual({ type: "open", path: "/d/01JAZ3XQ5V8K2M4N6P7R9S0T1U#block-01JAZ3XQ5V8K2M4N6P7R9S0T1V" });
     expect(parseDeepLink("folevi:///d/01JAZ3XQ5V8K2M4N6P7R9S0T1U")).toEqual({ type: "open", path: "/d/01JAZ3XQ5V8K2M4N6P7R9S0T1U" });
     expect(parseDeepLink("folevi://tasks/today")).toEqual({ type: "open", path: "/tasks/today" });
     expect(parseDeepLink("folevi://")).toEqual({ type: "open", path: "/documents" });

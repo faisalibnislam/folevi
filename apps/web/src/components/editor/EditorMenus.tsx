@@ -113,6 +113,7 @@ import { coarsePointer, useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { visibleBottom } from "@/lib/hooks/useVisualViewport";
 import { nativeApp, type NativeScan } from "@/lib/nativeApp";
 import { fileFromNative, useNativeDevice } from "@/lib/nativeDevice";
+import { offerPushAfterReminder } from "@/lib/nativePush";
 
 // Used now and then, so it loads when first opened rather than with every note.
 const AudioRecorder = lazy(() => import("./AudioRecorder").then((m) => ({ default: m.AudioRecorder })));
@@ -2340,7 +2341,15 @@ function TaskDetails({ editor }: { editor: Editor }) {
           ) : null}
           <div className="grid gap-1">
             <span className="text-xs text-muted">Reminder</span>
-            <DateTimeField value={(node.attrs.reminderAt as number | null) ?? null} onChange={(ts) => set({ reminderAt: ts })} aria-label="Reminder" />
+            <DateTimeField
+              value={(node.attrs.reminderAt as number | null) ?? null}
+              onChange={(ts) => {
+                set({ reminderAt: ts });
+                // In the iOS app, a first reminder is the moment to offer notifications (asked once).
+                if (ts) void offerPushAfterReminder().catch(() => undefined);
+              }}
+              aria-label="Reminder"
+            />
           </div>
           <RepeatField
             rule={repeatRule({ repeat: node.attrs.repeat, repeatEvery: node.attrs.repeatEvery, repeatDays: node.attrs.repeatDays })}

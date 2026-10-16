@@ -95,3 +95,69 @@ test("inside the iOS app: no plans or purchases, Settings > This device, folevi:
 
   await context.close();
 });
+
+/** The stand-in bridge with notifications (stage 3): permission, the device token, the badge. */
+function pushBridge() {
+  const calls: { method: string; arg?: unknown }[] = [];
+  let status = { permission: "notDetermined", enabled: false, asked: false, token: null as string | null, environment: "sandbox", bundleId: "com.folevi.ios" };
+  const bridge = {
+    platform: "ios",
+    version: "1.0",
+    haptic: () => undefined,
+    setStatusBar: () => undefined,
+    openExternal: async () => true,
+    getSettings: async () => ({ lock: false, lockAfter: 0, method: "faceID" }),
+    setSettings: async () => ({ lock: false, lockAfter: 0, method: "faceID" }),
+    onCommand: () => () => undefined,
+    device: async () => ({ id: "e2e-install-0001", family: "iPhone", model: "iPhone 18 Pro", accountId: null, tokenId: null, scanner: false }),
+    pushStatus: async () => ({ ...status }),
+    enablePush: async () => {
+      calls.push({ method: "enablePush" });
+      status = { ...status, permission: "granted", enabled: true, asked: true, token: "e2".repeat(32) };
+      return { ...status };
+    },
+    disablePush: async () => {
+      calls.push({ method: "disablePush" });
+      status = { ...status, enabled: false, token: null };
+    },
+    setBadge: (count: number) => calls.push({ method: "setBadge", arg: count }),
+    openNotificationSettings: async () => void calls.push({ method: "openNotificationSettings" }),
+  };
+  Object.defineProperty(window, "foleviNative", { value: bridge });
+  Object.assign(window, { __native: { calls } });
+  const mark = () => document.documentElement?.setAttribute("data-native", "ios");
+  mark();
+  if (!document.documentElement) new MutationObserver((_, watch) => document.documentElement && (mark(), watch.disconnect())).observe(document, { childList: true });
+}
+
+test("inside the iOS app: Settings > Notifications turns this iPhone's notifications on and off", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const { context, page } = await newPerson(browser, "Push Person");
+  await context.addInitScript(pushBridge);
+  await page.goto(`${APP}/settings/notifications`);
+  await expect(page.getByRole("table", { name: "Notification preferences" })).toBeVisible({ timeout: 20_000 });
+  // Never the browser's web push card in the app (web push doesn't work in its web view).
+  await expect(page.getByText("This browser can’t show notifications")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Notifications on this device" })).toHaveCount(0);
+  const calls = () => page.evaluate(() => (window as unknown as { __native: { calls: { method: string; arg?: unknown }[] } }).__native.calls);
+  // The bell's unread count goes on the app icon.
+  await expect.poll(async () => (await calls()).some((c) => c.method === "setBadge")).toBe(true);
+
+  // Shown only where the server can send to the app (its APNs key is set): the dev deployment may not have one.
+  const card = page.getByRole("heading", { name: "Notifications on this iPhone" });
+  if (!(await card.isVisible({ timeout: 5_000 }).catch(() => false))) {
+    test.info().annotations.push({ type: "note", description: "APNs isn't set up on this deployment: the card is hidden, as it should be." });
+    await context.close();
+    return;
+  }
+  const toggle = page.getByRole("switch", { name: "Notifications on this iPhone" });
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByText("Off. Turning them on asks iOS once.")).toBeVisible();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByText("Notifications are on for this iPhone")).toBeVisible();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  expect((await calls()).filter((c) => c.method === "enablePush" || c.method === "disablePush").map((c) => c.method)).toEqual(["enablePush", "disablePush"]);
+  await context.close();
+});

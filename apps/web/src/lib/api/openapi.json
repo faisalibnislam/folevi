@@ -245,7 +245,7 @@
         "tags": ["Tasks"],
         "operationId": "updateTask",
         "summary": "Complete or change a task",
-        "description": "Checks a task off (or on again) and changes its date, time, priority or repeat. The task's text isn't changed. Needs `tasks:write`.",
+        "description": "Checks a task off (or on again) and changes its date, time, priority, repeat or reminder. The task's text isn't changed. Needs `tasks:write`.",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }, { "$ref": "#/components/parameters/IdempotencyKey" }],
         "requestBody": {
           "required": true,
@@ -260,7 +260,8 @@
                   "dueDate": { "type": ["string", "null"], "format": "date", "description": "null clears it." },
                   "dueTime": { "type": ["string", "null"], "description": "HH:MM, or null." },
                   "priority": { "$ref": "#/components/schemas/Priority" },
-                  "repeat": { "$ref": "#/components/schemas/Repeat" }
+                  "repeat": { "$ref": "#/components/schemas/Repeat" },
+                  "remindAt": { "type": ["string", "null"], "format": "date-time", "description": "When the reminder rings (ISO 8601), or null for none. A new time rings again even if the reminder already went off." }
                 }
               },
               "example": { "completed": true }
@@ -274,7 +275,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": { "id": { "type": "string" }, "completed": { "type": "boolean" }, "dueDate": { "type": ["string", "null"] }, "dueTime": { "type": ["string", "null"] }, "priority": { "$ref": "#/components/schemas/Priority" } }
+                  "properties": { "id": { "type": "string" }, "completed": { "type": "boolean" }, "dueDate": { "type": ["string", "null"] }, "dueTime": { "type": ["string", "null"] }, "priority": { "$ref": "#/components/schemas/Priority" }, "remindAt": { "type": ["string", "null"], "format": "date-time" } }
                 }
               }
             }

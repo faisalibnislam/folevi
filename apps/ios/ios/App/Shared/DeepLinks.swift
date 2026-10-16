@@ -25,6 +25,10 @@ enum DeepLink: Equatable {
     static let todayURL = URL(string: "folevi://tasks/today")!
     static let tasksURL = URL(string: "folevi://tasks")!
 
+    /// A place in the note: a block ("#block-<id>", what notifications point at), a comment thread
+    /// ("#comment-<id>"), or a bare id.
+    private static let fragmentPattern = #"^#((block|comment)-)?[0-9A-Za-z]{1,40}$"#
+
     private static let pages: Set<String> = ["documents", "tasks", "calendar", "inbox", "settings", "foli-ai", "trash", "templates", "help"]
 
     /// What a folevi:// link opens, or nil when it isn't one Folevi knows.
@@ -45,11 +49,19 @@ enum DeepLink: Equatable {
             let id = raw.range(of: inboxId, options: .regularExpression) != nil ? raw : raw.uppercased()
             guard rest.count == 1, id.range(of: #"^[0-9A-Z]{26}$"#, options: .regularExpression) != nil || id.range(of: inboxId, options: .regularExpression) != nil else { return nil }
             let fragment = url.fragment.map { "#\($0)" } ?? ""
-            let block = fragment.range(of: #"^#[0-9A-Za-z]{1,40}$"#, options: .regularExpression) != nil ? fragment : ""
+            let block = fragment.range(of: fragmentPattern, options: .regularExpression) != nil ? fragment : ""
             return .open(path: "/d/\(id)\(block)")
         }
         if pages.contains(first), rest.count <= 2 { return .open(path: "/" + parts.joined(separator: "/")) }
         return nil
+    }
+
+    /// A path inside the app as the server writes it ("/d/ID#block-X", "/tasks/today") as the folevi:// link
+    /// that opens it. Nil when it isn't one the page would open.
+    static func fromPath(_ path: String) -> URL? {
+        // "/d/ID" becomes "folevi://d/ID" (the page's parser reads the first segment from the host).
+        guard path.hasPrefix("/"), !path.hasPrefix("//"), let url = URL(string: "folevi:/" + path), parse(url.absoluteString) != nil else { return nil }
+        return url
     }
 
     /// A Folevi page's address (https://app.folevi.com/d/ID) as the folevi:// link that opens it in the app.

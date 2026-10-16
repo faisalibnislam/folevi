@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/convex/api";
 import { getConvexClient } from "@/lib/convex/provider";
 import { nativeApp, type NativeDevice, type NativeFile } from "./nativeApp";
+import { forgetPush } from "./nativePush";
 
 let device: Promise<NativeDevice | null> | null = null;
 
@@ -49,7 +50,7 @@ export async function linkThisDevice(accountId: string): Promise<void> {
 
 /**
  * Signing out (or the session ending): the device's token is revoked while the session can still do it,
- * and the app forgets it, with the widgets' copy of tasks and notes and Spotlight's entries. Never holds up
+ * Folevi stops sending notifications here, and the app forgets the token, with the widgets' copy of tasks and notes and Spotlight's entries. Never holds up
  * signing out for long.
  */
 export async function forgetThisDevice(): Promise<void> {
@@ -58,6 +59,8 @@ export async function forgetThisDevice(): Promise<void> {
   if (!bridge || !d) return;
   const within = <T,>(p: Promise<T>) => Promise.race([p.catch(() => undefined), new Promise<undefined>((r) => setTimeout(() => r(undefined), 3000))]);
   if (d.tokenId) await within(getConvexClient().mutation(api.apiTokens.revokeDevice, { deviceId: d.id }));
+  // No more notifications for this account here (the app turns them off as it forgets the token).
+  await within(forgetPush(d.id));
   await within(bridge.clearCredential?.() ?? Promise.resolve());
   device = Promise.resolve({ ...d, accountId: null, tokenId: null });
 }

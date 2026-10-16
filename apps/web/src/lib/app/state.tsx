@@ -3,6 +3,7 @@
 import { useConvex, useConvexConnectionState, useQuery } from "convex/react";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { localDate, scopeIdKey, type WireScope } from "@folevi/editor-schema";
+import { FoleviLoader } from "@/components/brand/FoleviLoader";
 import { api } from "@/lib/convex/api";
 import { SyncEngine } from "@/lib/sync/engine";
 import { Outbox } from "@/lib/sync/outbox";
@@ -355,6 +356,17 @@ function browserLabel(): string {
 export function FullPageMessage({ title, body, busy, children }: { title: string; body?: ReactNode; busy?: boolean; children?: ReactNode }) {
   // Shown before the app (and its neutral chrome) is up, starting with the server's first paint: it carries
   // the neutral chrome itself (globals.css), so loading looks like the app, not the warmer marketing palette.
+  // While something loads it's the F writing itself (FoleviLoader); a message that needs reading is a card.
+  if (busy && !children)
+    return (
+      <main id="main" tabIndex={-1} className="ui-neutral-chrome grid min-h-dvh place-items-center bg-canvas px-6" aria-busy>
+        <h1 className="sr-only">{title}</h1>
+        <div aria-hidden className="grid justify-items-center gap-3">
+          <FoleviLoader title={title} />
+          {body ? <div className="max-w-sm text-center text-[14px] text-muted">{body}</div> : null}
+        </div>
+      </main>
+    );
   return (
     <main id="main" tabIndex={-1} className="ui-neutral-chrome grid min-h-dvh place-items-center bg-canvas px-6">
       <div className="w-full max-w-md rounded-chip border border-line bg-surface p-8 shadow-[0_1px_0_var(--color-line),0_12px_40px_-24px_rgba(24,32,28,0.35)]" aria-busy={busy || undefined}>

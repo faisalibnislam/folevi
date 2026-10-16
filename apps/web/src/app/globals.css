@@ -454,6 +454,37 @@
     transform: translateX(300%);
   }
 }
+/* ------------------------------------------------------------------------------------------------
+ * Loading screen (components/brand/FoleviLoader.tsx): the F written stroke by stroke. The drawing runs
+ * on SVG animation; these are its colours, the caption's dots, and the still F for reduced motion.
+ * --------------------------------------------------------------------------------------------- */
+.folevi-loader {
+  overflow: visible;
+}
+.folevi-loader-ghost {
+  fill: color-mix(in srgb, var(--color-ink) 7%, transparent);
+}
+.folevi-loader-ink {
+  fill: var(--color-ink);
+}
+.folevi-loader-still {
+  display: none;
+}
+.folevi-loader-dots span {
+  opacity: 0.2;
+  animation: folevi-loader-dot 1.4s ease-in-out infinite;
+}
+.folevi-loader-dots span:nth-child(2) { animation-delay: 0.2s; }
+.folevi-loader-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes folevi-loader-dot {
+  0%, 100% { opacity: 0.2; }
+  40% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .folevi-loader { display: none; }
+  .folevi-loader-still { display: block; }
+  .folevi-loader-dots span { animation: none !important; opacity: 1; }
+}
 @keyframes folio-settle {
   from {
     opacity: 0;

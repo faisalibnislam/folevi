@@ -13,6 +13,8 @@ import { Select } from "@/components/ui/Select";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { RATINGS, cardCount, intervalLabel, intervalWords, reviewKey, useReviewWindow, type Rating } from "@/components/study/review";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
+import { haptic } from "@/lib/nativeApp";
 
 type Target = { scope?: WireScope; documentId?: string };
 /** The new-cards-a-day choices (convex/lib/study.ts NEW_PER_DAY_OPTIONS). */
@@ -78,6 +80,45 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
     if (!card) return;
     setRevealed(true);
     setSaid("Answer shown.");
+  };
+
+  // On a touch screen: a tap on the card shows the answer; then a swipe right is Good and a swipe left
+  // Again (the card follows the finger and is felt when it goes), or a rating button as before.
+  const touch = useMediaQuery("(pointer: coarse)");
+  const drag = useRef<{ id: number; x: number; y: number; dx: number; moved: boolean } | null>(null);
+  const [dx, setDx] = useState(0);
+  const SWIPE = 96;
+  const onCardDown = (e: React.PointerEvent<HTMLElement>) => {
+    if (!touch || e.pointerType === "mouse" || (e.target as HTMLElement).closest("a, button")) return;
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, moved: false };
+  };
+  const onCardMove = (e: React.PointerEvent<HTMLElement>) => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    const mx = e.clientX - d.x;
+    const my = e.clientY - d.y;
+    if (!d.moved && Math.abs(mx) > 10 && Math.abs(mx) > Math.abs(my) * 1.3 && revealed) {
+      d.moved = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    if (!d.moved) return;
+    d.dx = mx;
+    setDx(mx);
+  };
+  const onCardUp = (e: React.PointerEvent<HTMLElement>) => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || d.id !== e.pointerId) return;
+    setDx(0);
+    if (!d.moved) {
+      // A tap: the answer.
+      if (!revealed && e.type === "pointerup" && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10) reveal();
+      return;
+    }
+    if (Math.abs(d.dx) >= SWIPE) {
+      haptic(d.dx > 0 ? "success" : "warning");
+      rate(d.dx > 0 ? "good" : "again");
+    }
   };
 
   // Space shows the answer, 1 to 4 rate it: anywhere on the page except in a field or another control.
@@ -168,7 +209,21 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
             >
               <div className="h-full rounded-chip bg-heading transition-[width] motion-reduce:transition-none" style={{ width: `${reviewed + left ? (reviewed / (reviewed + left)) * 100 : 0}%` }} />
             </div>
-            <article aria-roledescription="flashcard" aria-label={`Card: ${card.front}`} className="rounded-container bg-[var(--glass-active)] p-6 shadow-[var(--glass-edge),var(--glass-shadow)] sm:p-8">
+            <article
+              aria-roledescription="flashcard"
+              aria-label={`Card: ${card.front}`}
+              onPointerDown={onCardDown}
+              onPointerMove={onCardMove}
+              onPointerUp={onCardUp}
+              onPointerCancel={onCardUp}
+              style={dx ? { transform: `translateX(${dx}px) rotate(${dx / 40}deg)`, transition: "none" } : undefined}
+              className={`relative rounded-container bg-[var(--glass-active)] p-6 shadow-[var(--glass-edge),var(--glass-shadow)] transition-transform duration-200 motion-reduce:transition-none sm:p-8 ${touch ? "touch-pan-y select-none" : ""}`}
+            >
+              {dx ? (
+                <span aria-hidden className={`absolute top-4 rounded-chip px-2 py-0.5 text-[12px] font-semibold ${dx > 0 ? "right-4 bg-[var(--color-moss-soft,var(--glass-hover))] text-heading" : "left-4 bg-[var(--glass-hover)] text-danger"}`} style={{ opacity: Math.min(1, Math.abs(dx) / SWIPE) }}>
+                  {dx > 0 ? "Good" : "Again"}
+                </span>
+              ) : null}
               <p className="ui-display whitespace-pre-wrap text-[22px] leading-snug text-heading">{card.front || "Untitled card"}</p>
               {revealed ? (
                 <div className="mt-5 border-t border-line/70 pt-5">
@@ -202,7 +257,9 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
                   Show answer
                 </Button>
               )}
-              <p className="mt-3 text-center text-[11.5px] text-faint">{revealed ? "Keys: 1 Again, 2 Hard, 3 Good, 4 Easy." : "Key: Space shows the answer."}</p>
+              <p className="mt-3 text-center text-[11.5px] text-faint">
+                {touch ? (revealed ? "Swipe the card right for Good, left for Again." : "Tap the card to see the answer.") : revealed ? "Keys: 1 Again, 2 Hard, 3 Good, 4 Easy." : "Key: Space shows the answer."}
+              </p>
             </div>
           </>
         ) : reviewed ? (

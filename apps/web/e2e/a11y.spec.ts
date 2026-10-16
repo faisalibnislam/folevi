@@ -73,7 +73,7 @@ for (const scheme of ["light", "dark"] as const) {
       const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
       expect(serious.map((v) => `${where}: ${v.id}: ${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(" | ")}`)).toEqual([]);
     };
-    for (const path of ["/documents", "/notes", "/tasks/today", "/calendar", "/settings"]) {
+    for (const path of ["/documents", "/notes", "/tasks/today", "/calendar", "/settings", "/settings/account", "/settings/security?screen=password", "/settings/notifications", "/settings/appearance?screen=theme"]) {
       await page.goto(path);
       await expect(page.locator("html")).toHaveAttribute("data-iphone", "", { timeout: 30_000 });
       await scan(path);

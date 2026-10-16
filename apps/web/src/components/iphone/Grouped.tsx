@@ -8,7 +8,7 @@ import { AppLink } from "@/lib/app/router";
 export function GroupedSection({ title, footer, children, className = "" }: { title?: ReactNode; footer?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <section className={`px-4 ${className}`}>
-      {title ? <h2 className="px-4 pb-1.5 text-[13px] font-medium uppercase tracking-[0.02em] text-muted">{title}</h2> : null}
+      {title ? <h2 className="px-4 pb-1.5 text-[13px] leading-[18px] text-muted">{title}</h2> : null}
       <div className="ui-grouped">{children}</div>
       {footer ? <p className="px-4 pt-1.5 text-[13px] leading-snug text-muted">{footer}</p> : null}
     </section>
@@ -73,17 +73,23 @@ export function GroupedRow({
     </>
   );
   const cls = `flex min-h-11 w-full items-center gap-3 px-4 text-left outline-none transition-colors active:bg-[var(--liquid-press)] focus-visible:bg-[var(--liquid-active)] disabled:opacity-40`;
+  // The hairline above the row starts past its icon.
+  const style = { ["--sep-inset" as string]: icon ? "58px" : "16px" } as React.CSSProperties;
   if (href)
     return (
-      <AppLink href={href} onClick={onClick} aria-label={ariaLabel} className={cls}>
+      <AppLink href={href} onClick={onClick} aria-label={ariaLabel} className={cls} style={style}>
         {body}
       </AppLink>
     );
   if (onClick)
     return (
-      <button type="button" onClick={onClick} disabled={disabled} aria-label={ariaLabel} aria-pressed={checked} className={cls}>
+      <button type="button" onClick={onClick} disabled={disabled} aria-label={ariaLabel} aria-pressed={checked} className={cls} style={style}>
         {body}
       </button>
     );
-  return <div className={cls}>{body}</div>;
+  return (
+    <div className={cls} style={style}>
+      {body}
+    </div>
+  );
 }

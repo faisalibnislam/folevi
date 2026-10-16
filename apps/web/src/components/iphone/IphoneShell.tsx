@@ -27,7 +27,7 @@ const ActionsContext = createContext<IphoneActions>({ openAccount: () => undefin
 export const useIphoneActions = () => useContext(ActionsContext);
 
 /** Which screen a route is: moving between screens slides; within one (another task view, month) it doesn't. */
-function screenKey(route: Route, pathname: string): string {
+function screenKey(route: Route, pathname: string, search: URLSearchParams): string {
   switch (route.name) {
     case "doc":
     case "folder":
@@ -39,7 +39,8 @@ function screenKey(route: Route, pathname: string): string {
     case "ai":
       return "ai";
     case "settings":
-      return pathname.replace(/\/+$/, "") === "/settings" ? "settings" : `settings:${route.section}`;
+      // A section's own pushed screens (a choice, an edit: `?screen=`, SettingsKit.tsx) are screens too.
+      return pathname.replace(/\/+$/, "") === "/settings" ? "settings" : `settings:${route.section}${search.get("screen") ? `:${search.get("screen")}` : ""}`;
     default:
       return route.name;
   }
@@ -54,7 +55,7 @@ function screenKey(route: Route, pathname: string): string {
 export function IphoneShell({ banner }: { banner?: ReactNode }) {
   const { route, pathname, search } = useAppRouter();
   const { context } = useAppState();
-  const key = screenKey(route, pathname);
+  const key = screenKey(route, pathname, search);
   // Each tab keeps its own stack of screens (tabStacks.ts): every move is written down in the current tab's.
   const href = `${pathname}${search.size ? `?${search.toString()}` : ""}`;
   const recorded = useRef(false);

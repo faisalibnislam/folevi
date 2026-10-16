@@ -9,7 +9,11 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Card } from "./Card";
 import { Select } from "@/components/ui/Select";
 import { uploadIdentityImage } from "@/lib/app/identityImages";
-import { IdentityImageField } from "./IdentityImageField";
+import { IdentityImageField, IdentityImageRows } from "./IdentityImageField";
+import { useIphoneApp } from "@/lib/iphone";
+import { ChoiceRow, IosRow, IosSection, SwitchRow, TextRow } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
+import { Sparkles } from "lucide-react";
 import { Switch } from "@/components/ui/Switch";
 import { useAiAccess } from "@/components/ai/useAi";
 import { AppLink } from "@/lib/app/router";
@@ -23,6 +27,7 @@ export function AccountSection() {
   const removeAvatar = useMutation(api.users.removeAvatar);
   const toast = useToast();
   const [name, setName] = useState(profile.displayName);
+  const iphone = useIphoneApp();
   // About 400 zones: built once per change of zone, not on every keystroke in the name field.
   const zoneField = useMemo(() => {
     const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [timeZone];
@@ -36,6 +41,47 @@ export function AccountSection() {
       </Select>
     );
   }, [timeZone, update]);
+  if (iphone) {
+    const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [timeZone];
+    return (
+      <>
+        <IdentityImageRows
+          label="Profile picture"
+          shape="circle"
+          src={profile.avatarUrl ?? null}
+          initial={profile.displayName}
+          name={profile.displayName || "Your name"}
+          detail={profile.email}
+          onUpload={async (file) => {
+            const fileId = await uploadIdentityImage(convex, { kind: "avatar", file });
+            await setAvatar({ fileId });
+          }}
+          onRemove={async () => {
+            await removeAvatar({});
+          }}
+        />
+        <IosSection header="Profile" footer="Your email is your sign-in address. Contact support to change it.">
+          <TextRow
+            label="Name"
+            value={name}
+            maxLength={80}
+            autoComplete="name"
+            onChange={setName}
+            onCommit={(v) => {
+              const next = v.trim();
+              if (!next || next === profile.displayName) return;
+              update({ displayName: next }).then(() => toast.show("Saved", { tone: "success" }), (err) => toast.show(errorMessage(err), { tone: "error" }));
+            }}
+          />
+          <IosRow label="Email" value={profile.email} />
+        </IosSection>
+        <IosSection footer="Used for Today, the calendar and reminders.">
+          <ChoiceRow screen="time-zone" label="Time zone" value={timeZone} filter choices={zones.map((z) => ({ value: z, label: z.replace(/_/g, " ") }))} onChange={(z) => void update({ timeZone: z })} />
+        </IosSection>
+        <AiSettingCard />
+      </>
+    );
+  }
   return (
     <>
       <Card title="Profile">
@@ -98,6 +144,25 @@ export function AiSettingCard() {
   const update = useMutation(api.users.updateProfile);
   const toast = useToast();
   const descId = useId();
+  const iphone = useIphoneApp();
+  const turn = (next: boolean) => {
+    void update({ aiEnabled: next }).then(
+      () => toast.show(next ? "Foli AI turned on" : "Foli AI turned off"),
+      (e) => toast.show(errorMessage(e), { tone: "error" }),
+    );
+  };
+  if (iphone)
+    return (
+      <IosSection
+        footer={
+          core
+            ? "Not included in Core. Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include Foli AI."
+            : "Foli AI answers from your notes, helps you write and sums notes up, powered by Google Gemini. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden."
+        }
+      >
+        <SwitchRow label="Foli AI" icon={<RowIcon><Sparkles /></RowIcon>} checked={on && !core} disabled={core} onChange={turn} />
+      </IosSection>
+    );
   return (
     <Card title="Foli AI">
       <div className="flex items-start justify-between gap-6">
@@ -120,12 +185,7 @@ export function AiSettingCard() {
           disabled={core}
           label="Foli AI"
           describedBy={descId}
-          onChange={(next) => {
-            void update({ aiEnabled: next }).then(
-              () => toast.show(next ? "Foli AI turned on" : "Foli AI turned off"),
-              (e) => toast.show(errorMessage(e), { tone: "error" }),
-            );
-          }}
+          onChange={turn}
         />
       </div>
     </Card>

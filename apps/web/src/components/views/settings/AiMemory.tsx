@@ -13,6 +13,10 @@ import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Card } from "./Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useIphoneApp } from "@/lib/iphone";
+import { ActionRow, ChoiceRow, DestructiveRow, EditRow, IosRow, IosSection, IosText, Subscreen, TextRow, useSettingsScreens } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
+import { Brain } from "lucide-react";
 
 type Memory = FunctionReturnType<typeof api.aiMemory.list>;
 export type MemoryItem = Memory["items"][number];
@@ -198,6 +202,58 @@ export function MemoryList({
   );
 }
 
+/** The same list as the iPhone app's rows: a Memory screen with Add, each memory its own screen. */
+function IphoneMemoryList({ on, items, max, workspaces, onAdd, onUpdate, onRemove, onClear }: Parameters<typeof MemoryList>[0]) {
+  const [kind, setKind] = useState<MemoryKind>("instruction");
+  const [text, setText] = useState("");
+  const [where, setWhere] = useState("");
+  const screens = useSettingsScreens();
+  const intro = "What Foli AI remembers about how you like it to write. It only keeps what you add here or save from a chat.";
+  return (
+    <>
+      <IosSection footer={intro}>
+        <IosRow icon={<RowIcon><Brain /></RowIcon>} label="Memory" value={items.length ? String(items.length) : on ? "Nothing yet" : "Off"} screen="memory" />
+      </IosSection>
+      <Subscreen id="memory" title="Memory">
+        {on ? null : <IosSection><IosText muted>Memory is off. Nothing here is used, and Foli AI won&apos;t offer to remember anything. What&apos;s saved stays until you delete it.</IosText></IosSection>}
+        {on ? (
+          <IosSection header="Add" footer={items.length >= max ? `That's the most Foli AI keeps (${max}). Delete one to add another.` : undefined}>
+            <ChoiceRow screen="memory.kind" label="Kind" value={kind} choices={MEMORY_KINDS} onChange={setKind} />
+            <TextRow label="Remember" value={text} onChange={setText} placeholder={PLACEHOLDER[kind]} maxLength={MAX_TEXT} />
+            {workspaces.length ? (
+              <ChoiceRow screen="memory.where" label="Applies" value={where} choices={[{ value: "", label: "Everywhere" }, ...workspaces.map((w) => ({ value: w.id, label: `Only in ${w.name}` }))]} onChange={setWhere} />
+            ) : null}
+            <ActionRow label="Add" disabled={!text.trim() || items.length >= max} onClick={() => void onAdd(kind, text.trim(), where || null).then(() => setText(""), () => undefined)} />
+          </IosSection>
+        ) : null}
+        <IosSection header={items.length ? "What Foli AI remembers" : undefined} label="What Foli AI remembers">
+          {items.length ? (
+            items.map((item) => <IosRow key={item.id} label={item.text} description={`${kindLabel(item.kind)}${item.workspace ? ` · Only in ${item.workspace.name}` : ""}`} screen={`memory.item-${item.id}`} />)
+          ) : (
+            <IosText muted>Nothing yet. Add something here, like &ldquo;Use British spelling&rdquo; or &ldquo;Keep answers short&rdquo;, or save one when a chat or the agent offers it.</IosText>
+          )}
+        </IosSection>
+        {items.length ? (
+          <IosSection footer="Everything Foli AI remembers about you is deleted, everywhere. This can't be undone.">
+            <DestructiveRow label="Clear all" confirm="Clear memory" onConfirm={() => void onClear()} />
+          </IosSection>
+        ) : null}
+        {items.map((item) => (
+          <Subscreen key={item.id} id={`memory.item-${item.id}`} title={kindLabel(item.kind)}>
+            <IosSection footer={item.workspace ? `Only in ${item.workspace.name}.` : undefined}>
+              <ChoiceRow screen={`memory.item-${item.id}.kind`} label="Kind" value={item.kind} choices={MEMORY_KINDS} onChange={(k) => void onUpdate(item.id, k, item.text)} />
+              <EditRow screen={`memory.item-${item.id}.text`} label="Remember" value={item.text} maxLength={MAX_TEXT} onSave={(t) => (t.trim() ? onUpdate(item.id, item.kind, t.trim()) : undefined)} />
+            </IosSection>
+            <IosSection>
+              <DestructiveRow label="Delete" confirm="Delete memory" onConfirm={() => void onRemove(item.id).then(() => screens?.back())} />
+            </IosSection>
+          </Subscreen>
+        ))}
+      </Subscreen>
+    </>
+  );
+}
+
 /** Settings > AI: the Memory card, on the server's list. */
 export function AiMemoryCard() {
   const { workspaces } = useAppState();
@@ -218,6 +274,20 @@ export function AiMemoryCard() {
         throw e;
       },
     );
+  const iphone = useIphoneApp();
+  if (iphone)
+    return memory ? (
+      <IphoneMemoryList
+        on={memory.on}
+        items={memory.items}
+        max={memory.max}
+        workspaces={workspaces.filter((w) => w.canEdit !== false).map((w) => ({ id: w.id, name: w.name }))}
+        onAdd={(kind, text, workspaceId) => report(add({ kind, text, ...(workspaceId ? { workspaceId } : {}) }), "Remembered")}
+        onUpdate={(id, kind, text) => report(update({ id, kind, text }), "Memory updated")}
+        onRemove={(id) => report(remove({ id }), "Memory deleted")}
+        onClear={() => report(clear({}), "Memory cleared")}
+      />
+    ) : null;
   return (
     <Card title="Memory" description="What Foli AI remembers about how you like it to write. It only keeps what you add here or save from a chat.">
       {memory ? (

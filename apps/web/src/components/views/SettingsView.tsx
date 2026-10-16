@@ -28,6 +28,7 @@ import { desktop } from "@/lib/desktop";
 import { nativeApp } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
 import { GroupedRow, GroupedSection, RowIcon } from "@/components/iphone/Grouped";
+import { SettingsScreensHost, useSettingsScreens } from "@/components/iphone/SettingsKit";
 
 type Section = "account" | "ai" | "billing" | "security" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop" | "this-device";
 type Item = { id: Section; label: string; icon: LucideIcon };
@@ -109,34 +110,19 @@ export function SettingsView({ section }: { section: Section }) {
   }
   if (iphone) {
     const title = noWorkspace ? "Workspace" : sectionHidden ? "Not found" : (heading ?? "Settings");
+    // A section and its pushed screens (a choice, an edit, a group of settings): SettingsKit.tsx.
     return (
-      <ViewChrome title={title} tabTitle={`Settings · ${title}`} iphone={{ title, grouped: true, back: "/settings" }}>
-        <div className="space-y-7 pb-4 pt-3 [&_.ui-btn]:min-h-11 [&_.ui-btn]:text-[15px]">
-          {section === "account" ? <AccountSection /> : null}
-          {section === "ai" ? <AiSection /> : null}
-          {section === "billing" ? <BillingSection /> : null}
-          {section === "security" ? <SecuritySection /> : null}
-          {section === "devices" ? <DevicesSection /> : null}
-          {section === "connected-apps" ? <ConnectedAppsSection /> : null}
-          {section === "appearance" ? <AppearanceSection /> : null}
-          {section === "notifications" ? <NotificationsSection /> : null}
-          {noWorkspace ? <NoWorkspaceCard /> : null}
-          {section === "workspace" && workspace ? <WorkspaceSection /> : null}
-          {section === "members" && workspace ? <MembersSection key={workspace.id} workspace={workspace} /> : null}
-          {section === "workspace-guests" && workspace && !sectionHidden ? <GuestsSection key={workspace.id} workspace={workspace} /> : null}
-          {section === "workspace-billing" && workspace && !sectionHidden ? <WorkspaceBillingSection key={workspace.id} workspace={workspace} /> : null}
-          {sectionHidden ? (
-            <Card title="This page isn't available">
-              {section === "workspace-billing" ? "There's nothing here for you. Switch to Personal to see your own plan and billing." : "Only this workspace's owner and admins can open this page."}
-            </Card>
-          ) : null}
-          {section === "workspace-data" && workspace && !sectionHidden ? <DataSection key={workspace.id} target={{ kind: "workspace", workspaceId: workspace.id, name: workspace.name }} /> : null}
-          {section === "sync" ? <SyncSection /> : null}
-          {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
-          {section === "desktop" ? <DesktopSection /> : null}
-          {section === "this-device" ? <ThisDeviceSection /> : null}
-        </div>
-      </ViewChrome>
+      <SettingsScreensHost
+        render={({ active, chrome, slot, actions }) =>
+          active ? (
+            <ViewChrome title={chrome?.title ?? title} tabTitle={`Settings · ${chrome?.title ?? title}`} iphone={{ title: chrome?.title ?? "", grouped: true, back: pathname, trailing: <span ref={actions} className="contents" /> }}>
+              <div ref={slot} />
+            </ViewChrome>
+          ) : null
+        }
+      >
+        <IphoneSection section={section} title={title} noWorkspace={noWorkspace} sectionHidden={sectionHidden} />
+      </SettingsScreensHost>
     );
   }
   return (
@@ -199,6 +185,49 @@ export function SettingsView({ section }: { section: Section }) {
           {section === "this-device" ? <ThisDeviceSection /> : null}
         </div>
       </div>
+    </ViewChrome>
+  );
+}
+
+/**
+ * A Settings section as a screen of the iPhone app (its own large title, a grouped list). While one of its
+ * pushed screens is on show it stays mounted without its screen (hidden under it), so the rows that open
+ * those screens keep their state and handlers.
+ */
+function IphoneSection({ section, title, noWorkspace, sectionHidden }: { section: Section; title: string; noWorkspace: boolean; sectionHidden: boolean }) {
+  const { workspace } = useAppState();
+  const screens = useSettingsScreens();
+  const content = (
+    <div className="space-y-7 pb-4 pt-3 [&_.ui-btn]:min-h-11 [&_.ui-btn]:text-[15px]">
+      {section === "account" ? <AccountSection /> : null}
+      {section === "ai" ? <AiSection /> : null}
+      {section === "billing" ? <BillingSection /> : null}
+      {section === "security" ? <SecuritySection /> : null}
+      {section === "devices" ? <DevicesSection /> : null}
+      {section === "connected-apps" ? <ConnectedAppsSection /> : null}
+      {section === "appearance" ? <AppearanceSection /> : null}
+      {section === "notifications" ? <NotificationsSection /> : null}
+      {noWorkspace ? <NoWorkspaceCard /> : null}
+      {section === "workspace" && workspace ? <WorkspaceSection /> : null}
+      {section === "members" && workspace ? <MembersSection key={workspace.id} workspace={workspace} /> : null}
+      {section === "workspace-guests" && workspace && !sectionHidden ? <GuestsSection key={workspace.id} workspace={workspace} /> : null}
+      {section === "workspace-billing" && workspace && !sectionHidden ? <WorkspaceBillingSection key={workspace.id} workspace={workspace} /> : null}
+      {sectionHidden ? (
+        <Card title="This page isn't available">
+          {section === "workspace-billing" ? "There's nothing here for you. Switch to Personal to see your own plan and billing." : "Only this workspace's owner and admins can open this page."}
+        </Card>
+      ) : null}
+      {section === "workspace-data" && workspace && !sectionHidden ? <DataSection key={workspace.id} target={{ kind: "workspace", workspaceId: workspace.id, name: workspace.name }} /> : null}
+      {section === "sync" ? <SyncSection /> : null}
+      {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
+      {section === "desktop" ? <DesktopSection /> : null}
+      {section === "this-device" ? <ThisDeviceSection /> : null}
+        </div>
+  );
+  if (screens?.screen) return content;
+  return (
+    <ViewChrome title={title} tabTitle={`Settings · ${title}`} iphone={{ title, grouped: true, back: "/settings" }}>
+      {content}
     </ViewChrome>
   );
 }

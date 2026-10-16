@@ -7,6 +7,9 @@ import { AppLink } from "@/lib/app/router";
 import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Card } from "./Card";
+import { useIphoneApp } from "@/lib/iphone";
+import { useAppRouter } from "@/lib/app/router";
+import { ChoiceRow, IosRow, IosSection } from "@/components/iphone/SettingsKit";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 /** Monday first, as most calendars here show it. */
@@ -39,6 +42,8 @@ export function AiDigestCard() {
   const digest = useQuery(api.aiDigest.settings, {});
   const save = useMutation(api.aiDigest.save);
   const toast = useToast();
+  const iphone = useIphoneApp();
+  const { navigate } = useAppRouter();
   if (!digest || !digest.enabled) return null;
   const locale = (profile as { locale?: string }).locale;
   const places = workspaces.filter((w) => w.canEdit !== false);
@@ -48,6 +53,26 @@ export function AiDigestCard() {
       () => toast.show("Digest saved"),
       (e) => toast.show(errorMessage(e), { tone: "error" }),
     );
+  if (iphone) {
+    const next = digest.nextAt ? `Next one: ${nextLabel(digest.nextAt, digest.timeZone, locale)} (${digest.timeZone}).` : "Not scheduled yet.";
+    return (
+      <IosSection header="Digest" footer={`A short summary of what changed, saved as a note in your Inbox. Each one uses a few AI credits. It's skipped when nothing changed. ${next}`}>
+        <ChoiceRow screen="digest-frequency" label="How often" value={digest.frequency} choices={[{ value: "daily", label: "Every day" }, { value: "weekly", label: "Every week" }]} onChange={(v) => change({ frequency: v })} />
+        {digest.frequency === "weekly" ? (
+          <ChoiceRow screen="digest-day" label="Day" value={String(digest.weekday)} choices={DAY_ORDER.map((d) => ({ value: String(d), label: DAYS[d]! }))} onChange={(v) => change({ weekday: Number(v) })} />
+        ) : null}
+        <ChoiceRow screen="digest-time" label="Time" value={String(digest.hour)} choices={Array.from({ length: 24 }, (_, h) => ({ value: String(h), label: hourLabel(h, locale) }))} onChange={(v) => change({ hour: Number(v) })} />
+        <ChoiceRow
+          screen="digest-about"
+          label="About"
+          value={where}
+          choices={[{ value: "personal", label: "Personal" }, ...places.map((w) => ({ value: w.id, label: w.name }))]}
+          onChange={(v) => change({ scope: v === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: v } })}
+        />
+        {digest.lastNoteId ? <IosRow label="Open the last one" onClick={() => navigate(`/d/${digest.lastNoteId}`)} chevron /> : null}
+      </IosSection>
+    );
+  }
   return (
     <Card title="Digest" description="A short summary of what changed, saved as a note in your Inbox. Each one uses a few AI credits. It's skipped when nothing changed.">
       <div className="grid max-w-xl gap-3 sm:grid-cols-2">

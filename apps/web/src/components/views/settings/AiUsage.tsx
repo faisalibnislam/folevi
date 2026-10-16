@@ -9,6 +9,8 @@ import { Select } from "@/components/ui/Select";
 import { creditDate } from "@/components/ai/AiCredits";
 import { Card } from "./Card";
 import { canPurchaseHere, withoutPurchaseHints } from "@/lib/nativeApp";
+import { useIphoneApp } from "@/lib/iphone";
+import { ChoiceRow, IosRow, IosSection, IosText, Subscreen } from "@/components/iphone/SettingsKit";
 
 // The usage card in Settings > AI (billing.aiUsage): your Personal credits, or your seat in a paid workspace
 // (picked here), what's used and left this period, when they reset,
@@ -172,6 +174,59 @@ export function AiUsageCard() {
   const seats = accounts?.accounts.filter((a) => a.kind === "seat" && a.workspaceId) ?? [];
   const pick = seats.find((a) => a.workspaceId === which) ? which : "personal";
   const usage = useQuery(api.billing.aiUsage, { scope: pick === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: pick } });
+  const iphone = useIphoneApp();
+  if (iphone) {
+    const about = usage ? (usage.account === "seat" ? `AI credits for your seat in ${usage.place} (${usage.plan}). Seats have their own credits.` : `Your Personal AI credits (${usage.plan}), the same as in Plan & billing. They're also used in free workspaces and on pages shared with you.`) : undefined;
+    return (
+      <>
+        <IosSection
+          header="Usage"
+          footer={
+            usage?.aiIncluded
+              ? `${about} ${usage.trialing ? `Your trial ends on ${creditDate(usage.resetsAt)}.` : `Monthly credits reset on ${creditDate(usage.resetsAt)}.`} Extra credits are used after the monthly ones.`
+              : about
+          }
+        >
+          {seats.length ? (
+            <ChoiceRow
+              screen="credits-for"
+              label="Credits for"
+              value={pick}
+              choices={[{ value: "personal", label: "Personal" }, ...seats.map((a) => ({ value: a.workspaceId!, label: `${a.name} (your seat)` }))]}
+              onChange={setWhich}
+            />
+          ) : null}
+          {!usage ? <IosText muted>Loading your usage…</IosText> : null}
+          {usage && !usage.aiIncluded ? <IosText muted>{withoutPurchaseHints(usage.blockedReason ?? "Foli AI isn't included here.")}</IosText> : null}
+          {usage?.aiIncluded ? (
+            <>
+              <IosRow label={usage.trialing ? "Trial credits" : "Monthly credits"} value={usage.allowance.toLocaleString()} />
+              <IosRow label="Used this period" value={usage.used.toLocaleString()} />
+              <IosRow label="Extra credits" value={usage.packCredits.toLocaleString()} />
+              <IosRow label="Left" value={usage.available.toLocaleString()} />
+              <IosRow label="By feature and by day" screen="usage-details" />
+            </>
+          ) : null}
+        </IosSection>
+        <Subscreen id="usage-details" title="Usage">
+        {usage?.aiIncluded && usage.features.length ? (
+          <IosSection header="By feature">
+            {usage.features.map((f) => (
+              <IosRow key={f.feature} label={f.label} value={f.credits.toLocaleString()} />
+            ))}
+          </IosSection>
+        ) : null}
+        {usage?.aiIncluded ? (
+          <IosSection header="By day" footer={usage.untrackedDays > 0 ? `${credits(usage.untrackedDays)} used before daily tracking started aren't in the chart.` : undefined}>
+            <div className="px-4 pb-3 pt-9">
+              {usage.days.some((d) => d.credits > 0) ? <UsageChart days={usage.days} /> : <p className="-mt-6 text-[15px] text-muted">{usage.used ? "Nothing to show by day yet." : "No credits used yet this period."}</p>}
+            </div>
+          </IosSection>
+        ) : null}
+        </Subscreen>
+      </>
+    );
+  }
   return (
     <Card
       title="Usage"

@@ -13,6 +13,9 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Card } from "./Card";
 import { hourLabel, nextLabel } from "./AiDigest";
 import { canPurchaseHere } from "@/lib/nativeApp";
+import { useIphoneApp } from "@/lib/iphone";
+import { useAppRouter } from "@/lib/app/router";
+import { ActionRow, ChoiceRow, IosRow, IosSection, Subscreen, SwitchRow } from "@/components/iphone/SettingsKit";
 
 type Routine = FunctionReturnType<typeof api.routines.list>["routines"][number];
 type SaveArgs = FunctionArgs<typeof api.routines.save>;
@@ -59,6 +62,44 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
       .finally(() => setRunning(false));
   };
   const locked = !r.available;
+  const iphone = useIphoneApp();
+  const { navigate } = useAppRouter();
+  if (iphone) {
+    const screen = `routine-${r.kind}`;
+    const status = `Used ${r.spent} of ${credits(r.monthlyCap)} this month. ${r.nextAt ? `Next one: ${nextLabel(r.nextAt, timeZone, locale)} (${timeZone}).` : "Not scheduled yet."}`;
+    return (
+      <>
+        <IosRow label={r.name} value={r.enabled ? "On" : "Off"} screen={screen} />
+        <Subscreen id={screen} title={r.name}>
+          <IosSection footer={`${DESCRIPTIONS[r.kind]} ${estimateSentence(r)}`}>
+            <SwitchRow label={r.name} checked={r.enabled} disabled={locked && !r.enabled} onChange={(next) => change({ enabled: next }, next ? `${r.name} turned on` : `${r.name} turned off`)} />
+          </IosSection>
+          {r.enabled ? (
+            <>
+              <IosSection header="When and what" footer={status}>
+                {r.kind === "openLoops" ? (
+                  <ChoiceRow screen={`${screen}.day`} label="Day" value={String(r.weekday)} choices={DAY_ORDER.map((d) => ({ value: String(d), label: DAYS[d]! }))} onChange={(v) => change({ weekday: Number(v) })} />
+                ) : null}
+                <ChoiceRow screen={`${screen}.time`} label="Time" value={String(r.hour)} choices={Array.from({ length: 24 }, (_, h) => ({ value: String(h), label: hourLabel(h, locale) }))} onChange={(v) => change({ hour: Number(v) })} />
+                <ChoiceRow
+                  screen={`${screen}.about`}
+                  label="About"
+                  value={where}
+                  choices={[{ value: "personal", label: "Personal" }, ...places.map((w) => ({ value: w.id, label: w.name }))]}
+                  onChange={(v) => change({ scope: v === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: v } })}
+                />
+                <ChoiceRow screen={`${screen}.cap`} label="Monthly limit" value={String(r.monthlyCap)} choices={capChoices.map((c) => ({ value: String(c), label: credits(c) }))} onChange={(v) => change({ monthlyCap: Number(v) })} />
+              </IosSection>
+              <IosSection>
+                <ActionRow label="Run now" busy={running ? "Starting…" : null} disabled={locked} onClick={run} />
+                {r.lastNoteId ? <IosRow label="Open the last one" chevron onClick={() => navigate(`/d/${r.lastNoteId}`)} /> : null}
+              </IosSection>
+            </>
+          ) : null}
+        </Subscreen>
+      </>
+    );
+  }
   return (
     <div className="py-3.5 first:pt-0 last:pb-0">
       <div className="flex items-start justify-between gap-6">
@@ -150,8 +191,17 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
 export function AiRoutinesCard() {
   const { profile } = useAppState();
   const data = useQuery(api.routines.list, {});
+  const iphone = useIphoneApp();
   if ((profile as { aiEnabled?: boolean }).aiEnabled === false || !data) return null;
   const locked = data.routines.every((r) => !r.available);
+  if (iphone)
+    return (
+      <IosSection header="Routines" footer={`Foli AI writes a new note in your Inbox on a schedule and lets you know. Each run uses AI credits, up to the monthly limit you pick.${locked ? " Routines are part of Pro and Pro AI." : ""}`}>
+        {data.routines.map((r) => (
+          <RoutineRow key={r.kind} routine={r} capChoices={data.capChoices} timeZone={data.timeZone} />
+        ))}
+      </IosSection>
+    );
   return (
     <Card title="Routines" description="Foli AI writes a new note in your Inbox on a schedule and lets you know. Each run uses AI credits, up to the monthly limit you pick.">
       {locked ? (

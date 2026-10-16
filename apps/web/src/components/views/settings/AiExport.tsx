@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { download } from "@/components/ai/chat/ConversationActions";
 import { Card } from "./Card";
+import { useIphoneApp } from "@/lib/iphone";
+import { ActionRow, IosSection } from "@/components/iphone/SettingsKit";
 
 // Settings > AI "Export all conversations": every conversation you keep, as Markdown files in a .zip, one
 // folder per place (Personal, each workspace). The server hands them over a page at a time
@@ -43,6 +45,7 @@ export function AiExportCard() {
   const convex = useConvex();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const iphone = useIphoneApp();
   const run = async () => {
     setBusy(true);
     try {
@@ -68,6 +71,12 @@ export function AiExportCard() {
       setBusy(false);
     }
   };
+  if (iphone)
+    return (
+      <IosSection footer="Every conversation you keep, as Markdown files in a .zip, in a folder for Personal and each workspace. Conversations aren't kept while history is off, so those aren't included.">
+        <ActionRow label="Export all conversations" busy={busy ? "Exporting…" : null} onClick={() => void run()} />
+      </IosSection>
+    );
   return (
     <Card title="Export" description="Download every conversation you keep as Markdown files in a .zip, in a folder for Personal and each workspace. Conversations aren't kept while history is off, so those aren't included.">
       <Button onClick={() => void run()} disabled={busy}>

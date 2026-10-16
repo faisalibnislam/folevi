@@ -19,6 +19,11 @@ import { Card } from "./Card";
 import { DeleteAccountCard } from "./DeleteAccountCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { nativeApp } from "@/lib/nativeApp";
+import { useIphoneApp } from "@/lib/iphone";
+import { ActionRow, DestructiveRow, EditRow, IosRow, IosSection, IosText, Subscreen, TextRow, useSettingsScreens } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
+import { GlassTextButton } from "@/components/iphone/Glass";
+import { LockKeyhole } from "lucide-react";
 
 /** Asks for the current password before showing secrets (backup codes, authenticator key). */
 function PasswordGate({
@@ -76,12 +81,41 @@ function PasswordGate({
 }
 
 function TwoStepCard() {
-  const toast = useToast();
   const { data: session, isPending } = authClient.useSession();
   const enabled = (session?.user as { twoFactorEnabled?: boolean | null } | undefined)?.twoFactorEnabled === true;
   const [gate, setGate] = useState<"codes" | "key" | "off" | null>(null);
   const [codes, setCodes] = useState<string[] | null>(null);
   const [totpUri, setTotpUri] = useState<string | null>(null);
+  const iphone = useIphoneApp();
+  if (iphone) {
+    const description = enabled
+      ? "Folevi asks for a code from your authenticator app every time you sign in on a new device. When you tick “Trust this device for 30 days” while signing in, that browser skips the code for 30 days. Signing out, revoking the session in Devices, or changing your password ends it."
+      : "Optional. When it's on, signing in on a new device needs a code from your authenticator app as well as your password, so a stolen password isn't enough.";
+    return (
+      <>
+        <IosRow icon={<RowIcon>{enabled ? <ShieldCheck /> : <ShieldOff />}</RowIcon>} label="Two-step verification" value={isPending ? "" : enabled ? "On" : "Off"} screen="two-step" />
+        <Subscreen id="two-step" title="Two-step verification">
+          <IosSection footer={description}>
+            <IosRow label="Status" value={enabled ? "On, authenticator app" : "Off"} />
+            {enabled ? (
+              <>
+                <ActionRow label="Move to a new authenticator app" onClick={() => setGate("key")} />
+                <ActionRow label="Get new backup codes" onClick={() => setGate("codes")} />
+              </>
+            ) : (
+              <ActionRow label="Turn on two-step verification" onClick={() => window.location.assign(`/two-factor/setup?returnTo=${encodeURIComponent("/settings/security")}`)} />
+            )}
+          </IosSection>
+          {enabled ? (
+            <IosSection>
+              <IosRow label="Turn off two-step verification" danger onClick={() => setGate("off")} />
+            </IosSection>
+          ) : null}
+        </Subscreen>
+        {enabled ? <TwoStepDialogs gate={gate} setGate={setGate} codes={codes} setCodes={setCodes} totpUri={totpUri} setTotpUri={setTotpUri} /> : null}
+      </>
+    );
+  }
   if (isPending) return <Card title="Two-step verification">{null}</Card>;
   if (!enabled) {
     return (
@@ -117,6 +151,30 @@ function TwoStepCard() {
         <Button onClick={() => setGate("codes")}>Get new backup codes</Button>
         <Button onClick={() => setGate("off")}>Turn off</Button>
       </div>
+      <TwoStepDialogs gate={gate} setGate={setGate} codes={codes} setCodes={setCodes} totpUri={totpUri} setTotpUri={setTotpUri} />
+    </Card>
+  );
+}
+
+/** Two-step verification's password checks and what they show (backup codes, the authenticator key). */
+function TwoStepDialogs({
+  gate,
+  setGate,
+  codes,
+  setCodes,
+  totpUri,
+  setTotpUri,
+}: {
+  gate: "codes" | "key" | "off" | null;
+  setGate: (g: "codes" | "key" | "off" | null) => void;
+  codes: string[] | null;
+  setCodes: (c: string[] | null) => void;
+  totpUri: string | null;
+  setTotpUri: (u: string | null) => void;
+}) {
+  const toast = useToast();
+  return (
+    <>
       <PasswordGate
         open={gate === "off"}
         title="Turn off two-step verification?"
@@ -179,7 +237,7 @@ function TwoStepCard() {
           </Button>
         </div>
       </Dialog>
-    </Card>
+    </>
   );
 }
 
@@ -202,6 +260,66 @@ function PasskeysCard() {
     void passkeysAvailable().then(setSupported);
   }, []);
   const label = (p: PasskeyRow) => p.name?.trim() || "Passkey";
+  const iphone = useIphoneApp();
+  const facts = (p: PasskeyRow) =>
+    `${p.createdAt ? `Added ${formatDateTime(new Date(p.createdAt).getTime())}` : "Added earlier"}${p.backedUp ? " · syncs across your devices" : " · on one device"}${usage === undefined ? "" : lastUsed.has(p.id) ? ` · Last used ${formatRelative(lastUsed.get(p.id)!)}` : " · Not used yet"}`;
+  const unsupported = nativeApp()
+    ? "The iPhone and iPad app can't use passkeys yet. Add one in your browser and sign in there with it."
+    : desktop()
+      ? "The Mac app can't use passkeys yet. Add one in your browser and sign in there with it."
+      : "This browser can't create passkeys. Add one from a browser like Safari, Chrome, Edge or Firefox.";
+  const dialogs = (
+    <PasskeyDialogs adding={adding} setAdding={setAdding} renaming={renaming} setRenaming={setRenaming} removing={removing} setRemoving={setRemoving} signInAgain={signInAgain} setSignInAgain={setSignInAgain} label={label} />
+  );
+  if (iphone)
+    return (
+      <>
+        <IosRow icon={<RowIcon><KeyRound /></RowIcon>} label="Passkeys" value={isPending ? "" : passkeys.length ? String(passkeys.length) : "None"} screen="passkeys" />
+        <Subscreen id="passkeys" title="Passkeys">
+          <IosSection
+            header={passkeys.length ? "Your passkeys" : undefined}
+            footer="Sign in with your fingerprint, face or screen lock instead of typing your password. A passkey only works on Folevi, so it can't be phished or reused."
+            label="Your passkeys"
+          >
+            {isPending ? <IosText muted>Loading…</IosText> : null}
+            {!isPending && passkeys.length === 0 ? <IosText muted>No passkeys yet</IosText> : null}
+            {passkeys.map((p) => (
+              <IosRow key={p.id} icon={<RowIcon><KeyRound /></RowIcon>} label={label(p)} description={facts(p)} screen={`passkeys.${p.id}`} />
+            ))}
+          </IosSection>
+          <IosSection footer={supported === false ? unsupported : undefined}>
+            <ActionRow label="Add a passkey" disabled={supported !== true} onClick={() => setAdding(true)} />
+          </IosSection>
+        </Subscreen>
+        {passkeys.map((p) => (
+          <Subscreen key={p.id} id={`passkeys.${p.id}`} title={label(p)}>
+            <IosSection footer={facts(p)}>
+              <EditRow
+                screen={`passkeys.${p.id}.name`}
+                label="Name"
+                value={label(p)}
+                onSave={async (name) => {
+                  const { error } = await authClient.passkey.updatePasskey({ id: p.id, name });
+                  if (error) toast.show(authErrorMessage(error), { tone: "error" });
+                }}
+              />
+            </IosSection>
+            <IosSection>
+              <DestructiveRow
+                label="Remove passkey"
+                message={`“${label(p)}” stops working for Folevi right away. You can also delete it from your device or password manager.`}
+                onConfirm={async () => {
+                  const { error } = await authClient.passkey.deletePasskey({ id: p.id });
+                  toast.show(error ? authErrorMessage(error) : "Passkey removed", { tone: error ? "error" : "success" });
+                  history.back();
+                }}
+              />
+            </IosSection>
+          </Subscreen>
+        ))}
+        {dialogs}
+      </>
+    );
 
   return (
     <Card
@@ -250,6 +368,36 @@ function PasskeysCard() {
           Add a passkey
         </Button>
       )}
+      {dialogs}
+    </Card>
+  );
+}
+
+/** Adding, renaming and removing a passkey, and signing in again first when the session is too old. */
+function PasskeyDialogs({
+  adding,
+  setAdding,
+  renaming,
+  setRenaming,
+  removing,
+  setRemoving,
+  signInAgain,
+  setSignInAgain,
+  label,
+}: {
+  adding: boolean;
+  setAdding: (on: boolean) => void;
+  renaming: PasskeyRow | null;
+  setRenaming: (p: PasskeyRow | null) => void;
+  removing: PasskeyRow | null;
+  setRemoving: (p: PasskeyRow | null) => void;
+  signInAgain: boolean;
+  setSignInAgain: (on: boolean) => void;
+  label: (p: PasskeyRow) => string;
+}) {
+  const toast = useToast();
+  return (
+    <>
       <PromptDialog
         open={adding}
         title="Add a passkey"
@@ -318,7 +466,7 @@ function PasskeysCard() {
           </>
         }
       />
-    </Card>
+    </>
   );
 }
 
@@ -329,24 +477,68 @@ function PasswordCard() {
   const [repeat, setRepeat] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const iphone = useIphoneApp();
+  const screens = useSettingsScreens();
+  const submit = async (): Promise<boolean> => {
+    if (busy) return false;
+    if (next.length < 10) {
+      setError("Use at least 10 characters for the new password.");
+      return false;
+    }
+    if (next !== repeat) {
+      setError("The two new passwords don't match.");
+      return false;
+    }
+    setBusy(true);
+    setError(null);
+    const { error: err } = await authClient.changePassword({ currentPassword: current, newPassword: next, revokeOtherSessions: true });
+    setBusy(false);
+    if (err) {
+      setError(authErrorMessage(err, undefined, "up to an hour"));
+      return false;
+    }
+    setCurrent("");
+    setNext("");
+    setRepeat("");
+    toast.show("Password changed. Other devices were signed out.", { tone: "success" });
+    return true;
+  };
+  if (iphone)
+    return (
+      <>
+        <IosRow icon={<RowIcon><LockKeyhole /></RowIcon>} label="Change password" screen="password" />
+        <Subscreen
+          id="password"
+          title="Change password"
+          trailing={
+            <GlassTextButton strong onClick={() => void submit().then((ok) => ok && screens?.back())}>
+              {busy ? "Saving…" : "Done"}
+            </GlassTextButton>
+          }
+        >
+          {error ? (
+            <div className="px-4">
+              <Alert>{error}</Alert>
+            </div>
+          ) : null}
+          <IosSection footer="At least 10 characters. Changing your password signs you out on every other device.">
+            <TextRow stacked label="Current password" type="password" autoComplete="current-password" value={current} onChange={setCurrent} />
+            <TextRow stacked label="New password" type="password" autoComplete="new-password" value={next} onChange={setNext} />
+            <TextRow stacked label="Repeat new password" type="password" autoComplete="new-password" value={repeat} onChange={setRepeat} />
+          </IosSection>
+          <IosSection>
+            <IosRow label="Forgot your current password?" onClick={() => window.location.assign("/forgot-password")} chevron />
+          </IosSection>
+        </Subscreen>
+      </>
+    );
   return (
     <Card title="Password" description="Changing your password signs you out on every other device.">
       <form
         className="max-w-md space-y-3"
-        onSubmit={async (e) => {
+        onSubmit={(e) => {
           e.preventDefault();
-          if (busy) return;
-          if (next.length < 10) return setError("Use at least 10 characters for the new password.");
-          if (next !== repeat) return setError("The two new passwords don't match.");
-          setBusy(true);
-          setError(null);
-          const { error: err } = await authClient.changePassword({ currentPassword: current, newPassword: next, revokeOtherSessions: true });
-          setBusy(false);
-          if (err) return setError(authErrorMessage(err, undefined, "up to an hour"));
-          setCurrent("");
-          setNext("");
-          setRepeat("");
-          toast.show("Password changed. Other devices were signed out.", { tone: "success" });
+          void submit();
         }}
       >
         {error ? <Alert>{error}</Alert> : null}
@@ -367,6 +559,18 @@ function PasswordCard() {
 }
 
 export function SecuritySection() {
+  const iphone = useIphoneApp();
+  if (iphone)
+    return (
+      <>
+        <IosSection header="Signing in">
+          <TwoStepCard />
+          <PasskeysCard />
+          <PasswordCard />
+        </IosSection>
+        <DeleteAccountCard />
+      </>
+    );
   return (
     <>
       <TwoStepCard />

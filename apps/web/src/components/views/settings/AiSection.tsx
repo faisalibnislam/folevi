@@ -14,6 +14,8 @@ import { AiDigestCard } from "./AiDigest";
 import { AiRoutinesCard } from "./AiRoutines";
 import { AiUsageCard } from "./AiUsage";
 import { AiExportCard } from "./AiExport";
+import { useIphoneApp } from "@/lib/iphone";
+import { IosRow, IosSection, Subscreen, SwitchRow } from "@/components/iphone/SettingsKit";
 
 type PrefKey = "history" | "memory" | "suggestions" | "attachments" | "webResearch" | "digests";
 type Prefs = Record<PrefKey, boolean>;
@@ -93,6 +95,7 @@ export function AiSection() {
   const update = useMutation(api.users.updateProfile);
   const saveDigest = useMutation(api.aiDigest.save);
   const toast = useToast();
+  const iphone = useIphoneApp();
   const prefs: Prefs = { ...DEFAULTS, ...((profile as { aiPrefs?: Partial<Prefs> }).aiPrefs ?? {}) };
   const set = (item: (typeof SETTINGS)[number], next: boolean) => {
     // Digests also schedule (or stop) the next one on the server.
@@ -102,6 +105,32 @@ export function AiSection() {
       (e) => toast.show(errorMessage(e), { tone: "error" }),
     );
   };
+  if (iphone)
+    return (
+      <>
+        <AiSettingCard />
+        <AiUsageCard />
+        <IosSection footer={SETTINGS[0]!.body}>
+          <SwitchRow label={SETTINGS[0]!.label} checked={prefs.history} disabled={core} onChange={(next) => set(SETTINGS[0]!, next)} />
+        </IosSection>
+        <IosSection header="How Foli AI works for you" footer="The server checks each of these wherever the feature runs.">
+          {SETTINGS.slice(1).map((item) => (
+            <IosRow key={item.key} label={item.label} value={prefs[item.key] ? "On" : "Off"} screen={`pref-${item.key}`} />
+          ))}
+        </IosSection>
+        {SETTINGS.slice(1).map((item) => (
+          <Subscreen key={item.key} id={`pref-${item.key}`} title={item.label}>
+            <IosSection footer={item.body}>
+              <SwitchRow label={item.label} checked={prefs[item.key]} disabled={core} onChange={(next) => set(item, next)} />
+            </IosSection>
+          </Subscreen>
+        ))}
+        <AiMemoryCard />
+        <AiDigestCard />
+        <AiRoutinesCard />
+        <AiExportCard />
+      </>
+    );
   return (
     <>
       <AiSettingCard />

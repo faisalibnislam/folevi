@@ -562,7 +562,9 @@
   .ui-large-title { font-family: var(--font-display); font-weight: 600; font-size: 34px; line-height: 1.12; letter-spacing: -0.02em; color: var(--color-heading); }
   /* Grouped lists (Settings, sheets): inset rounded sections of rows split by hairlines. */
   .ui-grouped { background: var(--iphone-row); border-radius: var(--radius-container); overflow: hidden; }
-  .ui-grouped > * + * { box-shadow: inset 0 0.5px 0 var(--iphone-separator); }
+  /* The hairline between rows starts at the text, past a row's icon (--sep-inset, set by the row). */
+  .ui-grouped > * { position: relative; }
+  .ui-grouped > * + *::before { content: ""; position: absolute; top: 0; right: 0; left: var(--sep-inset, 16px); height: 0.5px; background: var(--iphone-separator); pointer-events: none; }
   .ui-row-sep { box-shadow: inset 0 -0.5px 0 var(--iphone-separator); }
 }
 @keyframes iphone-sheet-in { from { transform: translateY(100%); } to { transform: none; } }

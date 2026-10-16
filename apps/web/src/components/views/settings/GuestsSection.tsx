@@ -13,6 +13,9 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useIphoneApp } from "@/lib/iphone";
+import { useAppRouter } from "@/lib/app/router";
+import { ActionSheet, ChoiceRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen } from "@/components/iphone/SettingsKit";
 
 type ShareRole = "viewer" | "commenter" | "editor";
 type Confirm = { kind: "remove" | "member"; profileId: string; name: string } | null;
@@ -33,6 +36,93 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [busy, setBusy] = useState(false);
   const act = (p: Promise<unknown>, ok: string) => p.then(() => toast.show(ok, { tone: "success" }), (e) => toast.show(errorMessage(e), { tone: "error" }));
+  const iphone = useIphoneApp();
+  const { navigate } = useAppRouter();
+  const [revoking, setRevoking] = useState<NonNullable<typeof data>["pendingInvites"][number]["id"] | null>(null);
+  const doConfirm = async (c: NonNullable<Confirm>) => {
+    setBusy(true);
+    try {
+      if (c.kind === "member") {
+        await toMember({ workspaceId: workspace.id, profileId: c.profileId });
+        toast.show(`Invitation sent to ${c.name}`, { tone: "success" });
+      } else {
+        await removeGuest({ workspaceId: workspace.id, profileId: c.profileId });
+        toast.show(`Removed ${c.name}`, { tone: "success" });
+      }
+      setConfirm(null);
+      return true;
+    } catch (e) {
+      toast.show(errorMessage(e), { tone: "error" });
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (iphone) {
+    const roles = (["viewer", "commenter", "editor"] as const).map((r) => ({ value: r, label: ROLE_WORDS[r] }));
+    return (
+      <>
+        <IosSection header="Guests" footer={`People outside ${workspace.name} who were given access to single pages (and the pages inside them). Guests don't see anything else here, and they're never billed. Share a page from its Share button to add one.`}>
+          {data === undefined ? <IosText muted>Loading…</IosText> : null}
+          {data?.guests.length === 0 ? <IosText muted>No guests</IosText> : null}
+          {data?.guests.map((g) => (
+            <IosRow key={g.profileId} label={g.displayName} description={g.email} value={`${g.pages.length} ${g.pages.length === 1 ? "page" : "pages"}`} screen={`guest-${g.profileId}`} />
+          ))}
+        </IosSection>
+        {data?.guests.map((g) => (
+          <Subscreen key={g.profileId} id={`guest-${g.profileId}`} title={g.displayName}>
+            <IosSection header="Pages they can open" label={`Pages ${g.displayName} can open`}>
+              {g.pages.map((p) => (
+                <ChoiceRow
+                  key={p.documentId}
+                  screen={`guest-${g.profileId}.${p.documentId}`}
+                  label={`${p.title}${p.inTrash ? " (in Trash)" : ""}`}
+                  value={p.role}
+                  choices={roles}
+                  footer={<button type="button" className="underline underline-offset-2" onClick={() => navigate(`/d/${p.documentId}`)}>Open the page</button>}
+                  onChange={(r) => void act(setAccess({ workspaceId: workspace.id, profileId: g.profileId, documentId: p.documentId, role: r }), `${g.displayName}: ${ROLE_WORDS[r]} on ${p.title}`)}
+                />
+              ))}
+            </IosSection>
+            <IosSection footer={`They get an invitation. Once they accept, they're a member of ${workspace.name} (one billable seat on a paid plan) and keep the pages they already have.`}>
+              <IosRow label="Invite to become a member" onClick={() => setConfirm({ kind: "member", profileId: g.profileId, name: g.displayName })} />
+            </IosSection>
+            <IosSection footer={`${g.displayName} will lose access to every page of ${workspace.name} that was shared with them.`}>
+              <DestructiveRow label={`Remove ${g.displayName}`} confirm="Remove" onConfirm={() => void doConfirm({ kind: "remove", profileId: g.profileId, name: g.displayName }).then((ok) => ok && history.back())} />
+            </IosSection>
+          </Subscreen>
+        ))}
+        {data?.pendingInvites.length ? (
+          <IosSection header="Waiting to accept" footer="Pages shared with addresses that don't have a Folevi account yet. Nothing is shared until they sign up and accept.">
+            {data.pendingInvites.map((i) => (
+              <IosRow
+                key={i.id}
+                label={i.email}
+                description={`${i.title} · ${ROLE_WORDS[i.role]} · ${i.expired ? "expired" : `expires ${formatRelative(i.expiresAt)}`}`}
+                trailing={
+                  <button type="button" aria-label={`Revoke the invitation to ${i.email}`} onClick={() => setRevoking(i.id)} className="-mr-2 flex h-11 items-center px-2 text-[17px] text-danger outline-none">
+                    Revoke
+                  </button>
+                }
+              />
+            ))}
+          </IosSection>
+        ) : null}
+        <ActionSheet
+          open={confirm?.kind === "member"}
+          onClose={() => setConfirm(null)}
+          title={confirm ? `Invite ${confirm.name} to become a member?` : undefined}
+          actions={[{ label: "Send invitation", onSelect: () => confirm && void doConfirm(confirm) }]}
+        />
+        <ActionSheet
+          open={revoking !== null}
+          onClose={() => setRevoking(null)}
+          message="The link in the email stops working."
+          actions={[{ label: "Revoke invitation", danger: true, onSelect: () => revoking && void act(revokeInvite({ inviteId: revoking }), "Invitation revoked") }]}
+        />
+      </>
+    );
+  }
 
   return (
     <>
@@ -122,24 +212,7 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
             <Button
               variant={confirm?.kind === "member" ? "primary" : "danger"}
               disabled={busy}
-              onClick={async () => {
-                if (!confirm) return;
-                setBusy(true);
-                try {
-                  if (confirm.kind === "member") {
-                    await toMember({ workspaceId: workspace.id, profileId: confirm.profileId });
-                    toast.show(`Invitation sent to ${confirm.name}`, { tone: "success" });
-                  } else {
-                    await removeGuest({ workspaceId: workspace.id, profileId: confirm.profileId });
-                    toast.show(`Removed ${confirm.name}`, { tone: "success" });
-                  }
-                  setConfirm(null);
-                } catch (e) {
-                  toast.show(errorMessage(e), { tone: "error" });
-                } finally {
-                  setBusy(false);
-                }
-              }}
+              onClick={() => confirm && void doConfirm(confirm)}
             >
               {confirm?.kind === "member" ? "Send invitation" : "Remove"}
             </Button>

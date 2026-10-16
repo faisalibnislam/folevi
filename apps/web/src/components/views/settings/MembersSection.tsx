@@ -15,6 +15,12 @@ import { InviteForm } from "@/components/app/InviteDialog";
 import { Switch } from "@/components/ui/Switch";
 import { formatPrice } from "@/lib/plans";
 import { canPurchaseHere } from "@/lib/nativeApp";
+import { useIphoneApp } from "@/lib/iphone";
+import { useAppRouter } from "@/lib/app/router";
+import { ActionSheet, ChoiceRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen, SwitchRow, TextRow, useSettingsScreens, type Choice as RowChoice } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
+import { GlassTextButton } from "@/components/iphone/Glass";
+import { UserRoundPlus } from "lucide-react";
 
 type MemberAccess = "edit" | "comment" | "view";
 /** A role choice in the member list: Member with an access, or Admin. */
@@ -46,6 +52,9 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
   const toast = useToast();
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [busy, setBusy] = useState(false);
+  const [revoking, setRevoking] = useState<NonNullable<typeof data>["invites"][number]["id"] | null>(null);
+  const iphone = useIphoneApp();
+  const { navigate } = useAppRouter();
   const canAdmin = data?.canManage === true;
   const isOwner = data?.yourRole === "owner";
   const act = (p: Promise<unknown>, ok: string) => p.then(() => toast.show(ok, { tone: "success" }), (e) => toast.show(errorMessage(e), { tone: "error" }));
@@ -64,6 +73,123 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
         : `Billable seats: ${data.seats.billable} (the ${data.seats.planName} plan is free). Guests and pending invitations never take a seat.`
     : undefined;
 
+  const doConfirm = async (c: NonNullable<Confirm>) => {
+    setBusy(true);
+    try {
+      if (c.kind === "owner") {
+        await transfer({ workspaceId: workspace.id, profileId: c.profileId });
+        toast.show(`${c.name} now owns ${workspace.name}`, { tone: "success" });
+      } else if (c.kind === "guest") {
+        await toGuest({ workspaceId: workspace.id, profileId: c.profileId });
+        toast.show(`${c.name} is now a guest`, { tone: "success" });
+      } else {
+        await remove({ workspaceId: workspace.id, profileId: c.profileId });
+        toast.show(`Removed ${c.name}`, { tone: "success" });
+      }
+      setConfirm(null);
+      return true;
+    } catch (e) {
+      toast.show(errorMessage(e), { tone: "error" });
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (iphone) {
+    const roleChoices: RowChoice<Choice>[] = [
+      { value: "member:edit", label: "Member" },
+      { value: "member:comment", label: "Member, can comment" },
+      { value: "member:view", label: "Member, view only" },
+      ...(isOwner ? [{ value: "admin" as Choice, label: "Admin" }] : []),
+    ];
+    const roleLabel = (role: string, access: MemberAccess) => (role === "member" && ACCESS_CHIP[access] ? `Member, ${ACCESS_CHIP[access]!.toLowerCase()}` : (ROLE_LABEL[role] ?? "Member"));
+    return (
+      <>
+        {canAdmin ? (
+          <IosSection footer="Members can open everything in this workspace that isn't restricted. Invitations are tied to the email address you enter and expire after 7 days.">
+            <IosRow icon={<RowIcon><UserRoundPlus /></RowIcon>} label="Invite people" screen="invite" />
+          </IosSection>
+        ) : null}
+        {canAdmin ? <IphoneInvite workspace={workspace} isOwner={isOwner} /> : null}
+        <IosSection header="Members" footer={`${seatLine ?? ""}${data && !canAdmin ? " Only owners and admins can invite people or change roles." : ""}`.trim() || undefined}>
+          {data === undefined ? <IosText muted>Loading…</IosText> : null}
+          {data?.members.map((m) => (
+            <IosRow key={m.profileId} label={`${m.displayName}${m.isYou ? " (you)" : ""}`} description={m.email} value={roleLabel(m.role, m.memberAccess)} screen={`member-${m.profileId}`} />
+          ))}
+          {data?.guests !== null && data?.guests !== undefined ? <IosRow label="Guests" value={`${data.guests}, not billed`} onClick={() => navigate("/settings/workspace-guests")} chevron /> : null}
+        </IosSection>
+        {data?.members.map((m) => (
+          <Subscreen key={m.profileId} id={`member-${m.profileId}`} title={m.displayName}>
+            <IosSection>
+              <IosRow label="Email" value={m.email} />
+              {m.canManage ? (
+                <ChoiceRow screen={`member-${m.profileId}.role`} label="Role" value={choiceOf(m.role, m.memberAccess)} choices={roleChoices} onChange={(c) => setChoice(m.profileId, m.displayName, c)} />
+              ) : (
+                <IosRow label="Role" value={roleLabel(m.role, m.memberAccess)} />
+              )}
+            </IosSection>
+            {isOwner && m.role === "admin" ? (
+              <IosSection footer="The owner decides which admins may manage the plan and billing.">
+                <SwitchRow
+                  label="Can manage billing"
+                  checked={m.canManageBilling}
+                  onChange={(next) => void act(setBillingManager({ workspaceId: workspace.id, profileId: m.profileId, allowed: next }), next ? `${m.displayName} can manage billing` : `${m.displayName} can no longer manage billing`)}
+                />
+              </IosSection>
+            ) : m.role === "admin" && m.canManageBilling ? (
+              <IosSection>
+                <IosRow label="Can manage billing" value="Yes" />
+              </IosSection>
+            ) : null}
+            {m.canManage ? (
+              <>
+                {isOwner ? (
+                  <IosSection footer={`${m.displayName} will own ${workspace.name}, and be the only one who can manage admins, billing, or hand it on again. You'll stay on as an admin. The workspace's plan stays with the workspace.`}>
+                    <IosRow label="Make owner" onClick={() => setConfirm({ kind: "owner", profileId: m.profileId, name: m.displayName })} />
+                  </IosSection>
+                ) : null}
+                <IosSection footer={`${m.displayName} leaves the workspace's members (one seat less) and keeps access only to pages they created or were given, except restricted ones.`}>
+                  <DestructiveRow label="Convert to guest" onConfirm={() => void doConfirm({ kind: "guest", profileId: m.profileId, name: m.displayName }).then((ok) => ok && history.back())} />
+                </IosSection>
+                <IosSection footer={`${m.displayName} will lose access to ${workspace.name} and any pages shared with them here. Their pages stay in the workspace, and their Personal isn't affected.`}>
+                  <DestructiveRow label={`Remove ${m.displayName}`} confirm="Remove" onConfirm={() => void doConfirm({ kind: "remove", profileId: m.profileId, name: m.displayName }).then((ok) => ok && history.back())} />
+                </IosSection>
+              </>
+            ) : null}
+          </Subscreen>
+        ))}
+        {data?.invites.length ? (
+          <IosSection header="Pending invitations">
+            {data.invites.map((i) => (
+              <IosRow
+                key={i.id}
+                label={i.email}
+                description={`${ROLE_LABEL[i.role] ?? "Member"}${i.role === "member" && ACCESS_CHIP[i.memberAccess] ? `, ${ACCESS_CHIP[i.memberAccess]!.toLowerCase()}` : ""} · ${i.expired ? "expired" : `expires ${formatRelative(i.expiresAt)}`}`}
+                trailing={
+                  <button type="button" aria-label={`Revoke the invitation to ${i.email}`} onClick={() => setRevoking(i.id)} className="-mr-2 flex h-11 items-center px-2 text-[17px] text-danger outline-none">
+                    Revoke
+                  </button>
+                }
+              />
+            ))}
+          </IosSection>
+        ) : null}
+        <ActionSheet
+          open={revoking !== null}
+          onClose={() => setRevoking(null)}
+          message="The link in the email stops working."
+          actions={[{ label: "Revoke invitation", danger: true, onSelect: () => revoking && void act(revokeInvite({ inviteId: revoking }), "Invitation revoked") }]}
+        />
+        <ActionSheet
+          open={confirm?.kind === "owner"}
+          onClose={() => setConfirm(null)}
+          title={confirm ? `Make ${confirm.name} the owner?` : undefined}
+          message="You'll stay on as an admin."
+          actions={[{ label: "Transfer ownership", onSelect: () => confirm && void doConfirm(confirm) }]}
+        />
+      </>
+    );
+  }
   return (
     <>
       {canAdmin ? (
@@ -186,27 +312,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
             <Button
               variant={confirm?.kind === "owner" ? "primary" : "danger"}
               disabled={busy}
-              onClick={async () => {
-                if (!confirm) return;
-                setBusy(true);
-                try {
-                  if (confirm.kind === "owner") {
-                    await transfer({ workspaceId: workspace.id, profileId: confirm.profileId });
-                    toast.show(`${confirm.name} now owns ${workspace.name}`, { tone: "success" });
-                  } else if (confirm.kind === "guest") {
-                    await toGuest({ workspaceId: workspace.id, profileId: confirm.profileId });
-                    toast.show(`${confirm.name} is now a guest`, { tone: "success" });
-                  } else {
-                    await remove({ workspaceId: workspace.id, profileId: confirm.profileId });
-                    toast.show(`Removed ${confirm.name}`, { tone: "success" });
-                  }
-                  setConfirm(null);
-                } catch (e) {
-                  toast.show(errorMessage(e), { tone: "error" });
-                } finally {
-                  setBusy(false);
-                }
-              }}
+              onClick={() => confirm && void doConfirm(confirm)}
             >
               {confirm?.kind === "owner" ? "Transfer ownership" : confirm?.kind === "guest" ? "Convert to guest" : "Remove"}
             </Button>
@@ -214,5 +320,62 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
         }
       />
     </>
+  );
+}
+
+/** Inviting someone in the iPhone app: their email and role on a screen of its own, with Invite in its bar. */
+function IphoneInvite({ workspace, isOwner }: { workspace: Workspace; isOwner: boolean }) {
+  const invite = useMutation(api.workspaces.invite);
+  const toast = useToast();
+  const screens = useSettingsScreens();
+  const [email, setEmail] = useState("");
+  const [offer, setOffer] = useState<Choice>("member:edit");
+  const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const send = async () => {
+    if (sending || !email.trim()) return;
+    setError(null);
+    setSending(true);
+    try {
+      await invite(offer === "admin" ? { workspaceId: workspace.id, email, role: "admin" } : { workspaceId: workspace.id, email, role: "member", memberAccess: offer.slice("member:".length) as MemberAccess });
+      toast.show(`Invitation sent to ${email.trim()}`, { tone: "success" });
+      setEmail("");
+      screens?.back();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSending(false);
+    }
+  };
+  return (
+    <Subscreen
+      id="invite"
+      title="Invite people"
+      trailing={
+        <GlassTextButton strong disabled={sending || !email.trim()} onClick={() => void send()}>
+          {sending ? "Sending…" : "Invite"}
+        </GlassTextButton>
+      }
+    >
+      {error ? <IosSection><IosText><span role="alert" className="text-danger">{error}</span></IosText></IosSection> : null}
+      <IosSection footer="Invitations are tied to the email address you enter and expire after 7 days. To share just one page, use Share on that page instead: guests are never billed.">
+        <TextRow label="Email" type="email" inputMode="email" autoComplete="email" placeholder="name@example.com" value={email} onChange={(v) => {
+          setEmail(v);
+          setError(null);
+        }} />
+        <ChoiceRow
+          screen="invite.role"
+          label="Role"
+          value={offer}
+          choices={[
+            { value: "member:edit", label: "Member" },
+            { value: "member:comment", label: "Member, can comment" },
+            { value: "member:view", label: "Member, view only" },
+            ...(isOwner ? [{ value: "admin" as Choice, label: "Admin" }] : []),
+          ]}
+          onChange={setOffer}
+        />
+      </IosSection>
+    </Subscreen>
   );
 }

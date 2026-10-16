@@ -28,7 +28,7 @@ import { desktop } from "@/lib/desktop";
 import { nativeApp } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
 import { GroupedRow, GroupedSection, RowIcon } from "@/components/iphone/Grouped";
-import { SettingsScreensHost } from "@/components/iphone/SettingsKit";
+import { IosRow, IosSection, IosText, SettingsScreensHost } from "@/components/iphone/SettingsKit";
 
 type Section = "account" | "ai" | "billing" | "security" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop" | "this-device";
 type Item = { id: Section; label: string; icon: LucideIcon };
@@ -104,6 +104,7 @@ export function SettingsView({ section }: { section: Section }) {
               })}
             </GroupedSection>
           ))}
+          {!workspace ? <IphoneCreateWorkspace /> : null}
         </div>
       </ViewChrome>
     );
@@ -212,22 +213,42 @@ function IphoneSection({ section, title, noWorkspace, sectionHidden }: { section
       {section === "workspace-guests" && workspace && !sectionHidden ? <GuestsSection key={workspace.id} workspace={workspace} /> : null}
       {section === "workspace-billing" && workspace && !sectionHidden ? <WorkspaceBillingSection key={workspace.id} workspace={workspace} /> : null}
       {sectionHidden ? (
-        <Card title="This page isn't available">
-          {section === "workspace-billing" ? "There's nothing here for you. Switch to Personal to see your own plan and billing." : "Only this workspace's owner and admins can open this page."}
-        </Card>
+        <IosSection header="This page isn't available">
+          <IosText muted>{section === "workspace-billing" ? "There's nothing here for you. Switch to Personal to see your own plan and billing." : "Only this workspace's owner and admins can open this page."}</IosText>
+        </IosSection>
       ) : null}
       {section === "workspace-data" && workspace && !sectionHidden ? <DataSection key={workspace.id} target={{ kind: "workspace", workspaceId: workspace.id, name: workspace.name }} /> : null}
       {section === "sync" ? <SyncSection /> : null}
       {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
       {section === "desktop" ? <DesktopSection /> : null}
       {section === "this-device" ? <ThisDeviceSection /> : null}
-        </div>
+    </div>
   );
   // (The same tree whether one of its screens is pushed or not, so the section keeps its state under it.)
   return (
     <ViewChrome title={title} tabTitle={`Settings · ${title}`} iphone={{ title, grouped: true, back: "/settings" }}>
       {content}
     </ViewChrome>
+  );
+}
+
+/** In the iPhone app's Settings, where a workspace's group would be: a way to start one. */
+function IphoneCreateWorkspace() {
+  const [open, setOpen] = useState(false);
+  const { navigate } = useAppRouter();
+  return (
+    <GroupedSection title="Workspace" footer="Work with a team: shared notes, folders and tasks, with its own plan and members.">
+      <GroupedRow
+        icon={
+          <RowIcon>
+            <Plus />
+          </RowIcon>
+        }
+        label="Create a workspace"
+        onClick={() => setOpen(true)}
+      />
+      <NewWorkspaceDialog open={open} onClose={() => setOpen(false)} onCreated={() => navigate("/settings/workspace")} />
+    </GroupedSection>
   );
 }
 
@@ -250,6 +271,14 @@ function CreateWorkspaceNudge() {
 function NoWorkspaceCard() {
   const [open, setOpen] = useState(false);
   const { navigate } = useAppRouter();
+  const iphone = useIphoneApp();
+  if (iphone)
+    return (
+      <IosSection header="You're in Personal" footer="Personal is just yours: it has no members or workspace settings. Switch to a workspace from your account (the avatar on Home), or create one for your team.">
+        <IosRow label="Create a workspace" onClick={() => setOpen(true)} />
+        <NewWorkspaceDialog open={open} onClose={() => setOpen(false)} onCreated={() => navigate("/settings/workspace")} />
+      </IosSection>
+    );
   return (
     <Card title="You're in Personal" description="Personal is just yours: it has no members or workspace settings. Switch to a workspace from the menu at the bottom of the sidebar, or create one for your team.">
       <Button variant="primary" onClick={() => setOpen(true)}>

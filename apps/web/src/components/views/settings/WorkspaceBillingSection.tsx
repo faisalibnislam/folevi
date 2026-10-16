@@ -17,6 +17,9 @@ import { BuyCreditsDialog } from "./BuyCreditsDialog";
 import { PlanRow, PlanRows } from "./PlanRow";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MANAGED_ELSEWHERE, canPurchaseHere } from "@/lib/nativeApp";
+import { useIphoneApp } from "@/lib/iphone";
+import { IosRow, IosSection } from "@/components/iphone/SettingsKit";
+import { RowIcon } from "@/components/iphone/Grouped";
 
 // Billing dates are UTC, like the server and Polar, so a renewal and a credit reset never read a day apart.
 const dateOnly = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
@@ -45,6 +48,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
   const [interval, setInterval] = useState<BillingInterval>("month");
   const [busy, setBusy] = useState<string | null>(null);
   const [buying, setBuying] = useState(false);
+  const iphone = useIphoneApp();
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("checkout");
@@ -53,7 +57,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
     if (q) replaceEntry(window.location.pathname);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!data) return <p className="text-sm text-muted">Loading the workspace plan…</p>;
+  if (!data) return iphone ? null : <p className="text-sm text-muted">Loading the workspace plan…</p>;
   const { entitlements: e, plan, subscription: sub } = data;
   const current = WORKSPACE_PLANS[plan.tier];
   const now = Date.now();
@@ -63,6 +67,13 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
   const trialing = e.paid && Boolean(sub?.trialEndsAt && sub.trialEndsAt > now);
   const status = !e.paid ? null : sub?.status === "past_due" ? "Past due" : cancelScheduled ? "Cancel scheduled" : trialing ? "Trial" : "Active";
   if (!canPurchaseHere()) {
+    if (iphone)
+      return (
+        <IosSection footer={MANAGED_ELSEWHERE}>
+          <IosRow icon={<RowIcon><CreditCard /></RowIcon>} label="Plan" value={current.name} />
+          {status ? <IosRow label="Status" value={status} /> : null}
+        </IosSection>
+      );
     return (
       <Card title="Workspace plan">
         <p className="flex flex-wrap items-center gap-2">

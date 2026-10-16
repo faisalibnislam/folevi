@@ -14,6 +14,11 @@ import { workspaceRoleLabel } from "@/components/app/NewWorkspaceDialog";
 import { Card } from "./Card";
 import { IdentityImageField } from "./IdentityImageField";
 import { canPurchaseHere } from "@/lib/nativeApp";
+import { useIphoneApp } from "@/lib/iphone";
+import { useAppRouter } from "@/lib/app/router";
+import { ActionRow, DestructiveRow, IosRow, IosSection, Subscreen, TextRow } from "@/components/iphone/SettingsKit";
+import { IdentityImageRows } from "./IdentityImageField";
+import { UsageMeter } from "./BillingSection";
 
 /** The current team workspace's general settings. Only shown when a workspace is open (Personal has none). */
 export function WorkspaceSection() {
@@ -41,6 +46,84 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
   const canLeave = workspace.role !== "owner";
   const pct = workspace.storageQuotaBytes ? (workspace.storageUsedBytes / workspace.storageQuotaBytes) * 100 : 0;
   const access = workspace.role === "member" && workspace.memberAccess !== "edit" ? (workspace.memberAccess === "comment" ? " who can comment" : " with view-only access") : "";
+  const iphone = useIphoneApp();
+  const { navigate } = useAppRouter();
+  const doLeave = async () => {
+    setLeaving(true);
+    try {
+      await leave({ workspaceId: workspace.id, profileId: profile.id });
+      // Back to Personal: it's always there.
+      setContext({ kind: "personal" });
+      setConfirmLeave(false);
+      toast.show(`You left ${workspace.name}`, { tone: "success" });
+    } catch (e) {
+      toast.show(errorMessage(e), { tone: "error" });
+    } finally {
+      setLeaving(false);
+    }
+  };
+  const doRename = (next: string) => {
+    const v = next.trim();
+    if (!v || v === workspace.name) return;
+    rename({ workspaceId: workspace.id, name: v }).then(() => toast.show("Renamed", { tone: "success" }), (err) => toast.show(errorMessage(err), { tone: "error" }));
+  };
+  if (iphone) {
+    const storageLabel = workspace.storageRule === "shared_free" ? (workspace.role === "owner" ? "Your free storage, shared with the free workspaces you own" : "The owner's free storage") : workspace.storageRule === "per_person" ? "Your storage here" : "Workspace storage";
+    const role = `${workspaceRoleLabel(workspace.role)}${workspace.role === "member" && workspace.memberAccess !== "edit" ? `, ${workspace.memberAccess === "comment" ? "can comment" : "view only"}` : ""}`;
+    return (
+      <>
+        {scheduled !== null ? <ScheduledDeletionCard workspace={workspace} at={scheduled} /> : null}
+        {canAdmin ? (
+          <IdentityImageRows
+            label="Workspace logo"
+            shape="square"
+            src={workspace.logoUrl ?? null}
+            initial={workspace.name}
+            name={workspace.name}
+            detail={workspace.plan.name}
+            onUpload={async (file) => {
+              const fileId = await uploadIdentityImage(convex, { kind: "logo", workspaceId: workspace.id, file });
+              await setLogo({ workspaceId: workspace.id, fileId });
+            }}
+            onRemove={async () => {
+              await removeLogo({ workspaceId: workspace.id });
+            }}
+          />
+        ) : null}
+        <IosSection header="Workspace" footer={`You're ${workspace.role === "owner" ? "the owner" : workspace.role === "admin" ? "an admin" : `a member${access}`} of this workspace.${canAdmin ? "" : " Owners and admins can rename it and change its logo."}`}>
+          {canAdmin ? <TextRow label="Name" value={name} onChange={setName} onCommit={doRename} maxLength={80} /> : <IosRow label="Name" value={workspace.name} />}
+          <IosRow label="Your role" value={role} />
+          <IosRow label="Plan" value={workspace.plan.name} onClick={workspace.canManageBilling ? () => navigate("/settings/workspace-billing") : undefined} chevron={workspace.canManageBilling} />
+        </IosSection>
+        <IosSection
+          header="Storage"
+          footer={workspace.storageUsedBytes > workspace.storageQuotaBytes ? "Over the storage limit. Everything already stored stays available; new uploads are paused until space is freed." : storageLabel}
+        >
+          <div className="relative px-4 py-3">
+            <p className="flex items-baseline justify-between gap-3 text-[17px]">
+              <span className="text-ink">Used</span>
+              <span className="text-muted">
+                {formatBytes(workspace.storageUsedBytes)} of {formatBytes(workspace.storageQuotaBytes)}
+              </span>
+            </p>
+            <UsageMeter label="Storage used" pct={pct} />
+          </div>
+        </IosSection>
+        {canLeave ? (
+          <IosSection footer="You'll lose access to its pages, folders and tasks. Pages you wrote stay in the workspace. Your Personal isn't affected. To come back, an owner or admin has to invite you again.">
+            <DestructiveRow label={`Leave ${workspace.name}`} confirm="Leave workspace" disabled={leaving} onConfirm={() => void doLeave()} />
+          </IosSection>
+        ) : scheduled === null ? (
+          <>
+            <IosSection footer="You own this workspace, so you can't leave it. Make another member the owner first (Members, Make owner), or delete the workspace below.">
+              <IosRow label="Go to Members" chevron onClick={() => navigate("/settings/members")} />
+            </IosSection>
+            <DeleteWorkspaceCard workspace={workspace} />
+          </>
+        ) : null}
+      </>
+    );
+  }
   return (
     <>
       {scheduled !== null ? <ScheduledDeletionCard workspace={workspace} at={scheduled} /> : null}
@@ -144,20 +227,7 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
             <Button
               variant="danger"
               disabled={leaving}
-              onClick={async () => {
-                setLeaving(true);
-                try {
-                  await leave({ workspaceId: workspace.id, profileId: profile.id });
-                  // Back to Personal: it's always there.
-                  setContext({ kind: "personal" });
-                  setConfirmLeave(false);
-                  toast.show(`You left ${workspace.name}`, { tone: "success" });
-                } catch (e) {
-                  toast.show(errorMessage(e), { tone: "error" });
-                } finally {
-                  setLeaving(false);
-                }
-              }}
+              onClick={() => void doLeave()}
             >
               Leave workspace
             </Button>
@@ -178,6 +248,35 @@ function DeleteWorkspaceCard({ workspace }: { workspace: Workspace }) {
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
+  const iphone = useIphoneApp();
+  const doSchedule = async () => {
+    setBusy(true);
+    try {
+      await schedule({ workspaceId: workspace.id, confirmName: typed });
+      setOpen(false);
+      toast.show(`${workspace.name} is scheduled for deletion`);
+      return true;
+    } catch (e) {
+      toast.show(errorMessage(e), { tone: "error" });
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (iphone)
+    return (
+      <IosSection>
+        <IosRow label="Delete workspace" danger screen="delete-workspace" chevron />
+        <Subscreen id="delete-workspace" title="Delete workspace">
+          <IosSection footer="Deletes this workspace and everything in it (pages, folders, tasks, files and comments) for everyone, after a 7-day grace period. Export it first if you want to keep a copy. Nobody's Personal is affected.">
+            <TextRow stacked label={`Type ${workspace.name} to confirm`} autoComplete="off" value={typed} onChange={setTyped} />
+          </IosSection>
+          <IosSection footer="Members and guests lose access right away and are told. You can cancel within 7 days; after that it's gone for good. A paid plan ends with its current period.">
+            <DestructiveRow label="Schedule deletion" confirm={`Delete ${workspace.name}`} disabled={busy || typed.trim() !== workspace.name.trim()} onConfirm={() => void doSchedule().then((ok) => ok && history.back())} />
+          </IosSection>
+        </Subscreen>
+      </IosSection>
+    );
   return (
     <>
       <Card title="Delete workspace" description="Deletes this workspace and everything in it (pages, folders, tasks, files and comments) for everyone, after a 7-day grace period. Export it first if you want to keep a copy. Nobody’s Personal is affected.">
@@ -197,18 +296,7 @@ function DeleteWorkspaceCard({ workspace }: { workspace: Workspace }) {
             <Button
               variant="danger"
               disabled={busy || typed.trim() !== workspace.name.trim()}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  await schedule({ workspaceId: workspace.id, confirmName: typed });
-                  setOpen(false);
-                  toast.show(`${workspace.name} is scheduled for deletion`);
-                } catch (e) {
-                  toast.show(errorMessage(e), { tone: "error" });
-                } finally {
-                  setBusy(false);
-                }
-              }}
+              onClick={() => void doSchedule()}
             >
               Schedule deletion
             </Button>
@@ -228,16 +316,21 @@ function DeleteWorkspaceCard({ workspace }: { workspace: Workspace }) {
 function ScheduledDeletionCard({ workspace, at }: { workspace: Workspace; at: number }) {
   const cancel = useMutation(api.workspaces.cancelDeletion);
   const toast = useToast();
+  const iphone = useIphoneApp();
+  const undo = () =>
+    void cancel({ workspaceId: workspace.id }).then(
+      () => toast.show(`${workspace.name} won’t be deleted. If it had a paid plan, resume it in Plan & billing.`, { tone: "success" }),
+      (e) => toast.show(errorMessage(e), { tone: "error" }),
+    );
+  if (iphone)
+    return (
+      <IosSection header="Scheduled for deletion" footer={`${workspace.name} will be deleted on ${formatDateTime(at)}. Until then it's read-only for you and hidden from members and guests.`}>
+        <ActionRow label="Cancel deletion" onClick={undo} />
+      </IosSection>
+    );
   return (
     <Card title="Scheduled for deletion" description={`${workspace.name} will be deleted on ${formatDateTime(at)}. Until then it’s read-only for you and hidden from members and guests.`}>
-      <Button
-        onClick={() =>
-          void cancel({ workspaceId: workspace.id }).then(
-            () => toast.show(`${workspace.name} won’t be deleted. If it had a paid plan, resume it in Plan & billing.`, { tone: "success" }),
-            (e) => toast.show(errorMessage(e), { tone: "error" }),
-          )
-        }
-      >
+      <Button onClick={undo}>
         Cancel deletion
       </Button>
     </Card>

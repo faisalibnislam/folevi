@@ -34,6 +34,8 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "disablePush", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setBadge", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openNotificationSettings", returnType: CAPPluginReturnPromise),
+        // Native/SystemSettings.swift: Reduce Transparency, Increase Contrast, the text size.
+        CAPPluginMethod(name: "accessibility", returnType: CAPPluginReturnPromise),
     ]
 
     private var appOrigin: String { AppOrigin.of(bridge?.config.serverURL) }

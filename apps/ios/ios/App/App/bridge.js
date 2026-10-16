@@ -130,12 +130,72 @@
     if (state && state.isActive) window.dispatchEvent(new Event("folevi:app-active"));
   });
 
+  // What iOS knows and a web view can't read (Native/SystemSettings.swift), as marks on <html>: Reduce
+  // Transparency (glass becomes solid), Increase Contrast, Bold Text, and the text size (Dynamic Type) as
+  // --ios-text-scale, which globals.css applies to the page's text (not its layout). Asked again whenever one
+  // changes in iOS Settings. Text follows Dynamic Type from the smallest size up to 150%: past that the
+  // app's screens don't have the room, and iOS's own zoom is there for more.
+  var accessibility = null;
+  var applyAccessibility = function () {
+    var root = document.documentElement;
+    if (!root || !accessibility) return;
+    var a = accessibility;
+    var flag = function (name, on) {
+      if (on) root.setAttribute(name, "");
+      else root.removeAttribute(name);
+    };
+    flag("data-reduce-transparency", a.reduceTransparency === true);
+    flag("data-increase-contrast", a.increaseContrast === true);
+    flag("data-bold-text", a.boldText === true);
+    var scale = Math.max(80, Math.min(150, Math.round(Number(a.textScale) || 100)));
+    root.style.setProperty("--ios-text-scale", scale + "%");
+    root.setAttribute("data-text-scale", String(scale));
+  };
+  var readAccessibility = function () {
+    void quietly(call("FoleviNative", "accessibility")).then(function (a) {
+      if (!a) return;
+      accessibility = a;
+      applyAccessibility();
+    });
+  };
+  readAccessibility();
+  window.addEventListener("folevi:accessibility", readAccessibility);
+
   // The page knows from its first paint that it's in the iPhone and iPad app (safe areas, no purchases).
   var mark = function () {
     if (document.documentElement) document.documentElement.setAttribute("data-native", "ios");
+    applyAccessibility();
   };
   mark();
   if (!document.documentElement) document.addEventListener("DOMContentLoaded", mark, { once: true });
+
+  // A tap on the status bar (FoleviViewController): what scrolls under the middle of the screen goes back to
+  // its top, as in any iOS app. The page can take it first (a cancelable "folevi:scroll-to-top" event).
+  var scrollable = function (el) {
+    if (!(el instanceof Element)) return false;
+    var style = getComputedStyle(el);
+    return /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 1;
+  };
+  window.addEventListener("folevi:status-bar-tap", function () {
+    var ask = new Event("folevi:scroll-to-top", { cancelable: true });
+    if (!window.dispatchEvent(ask)) return;
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    // The middle of the screen first, then a little above and below it (a sheet, a short list).
+    var points = [[w / 2, h / 2], [w / 2, h * 0.3], [w / 2, h * 0.7]];
+    for (var i = 0; i < points.length; i++) {
+      var el = document.elementFromPoint(points[i][0], points[i][1]);
+      while (el && el !== document.documentElement) {
+        if (scrollable(el) && el.scrollTop > 0) {
+          el.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+          return;
+        }
+        el = el.parentElement;
+      }
+    }
+    if (document.scrollingElement && document.scrollingElement.scrollTop > 0) document.scrollingElement.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+  });
 
   // The page fills the screen, under the status bar and home indicator (viewport-fit=cover), and keeps its
   // content clear of them with env(safe-area-inset-*) (apps/web globals.css, data-native="ios"). The site's

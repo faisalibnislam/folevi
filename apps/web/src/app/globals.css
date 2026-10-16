@@ -123,6 +123,11 @@
     --color-ink-muted: var(--color-ink);
   }
 }
+/* The iOS app says Increase Contrast itself too (bridge.js), in case the web view doesn't. */
+:root[data-increase-contrast] {
+  --color-line: var(--color-line-strong);
+  --color-ink-muted: var(--color-ink);
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -240,6 +245,9 @@
 :root[data-native="ios"] .ui-site-link { pointer-events: none; }
 /* A long press opens Folevi's own menus (lib/touchContextMenu.ts), not iOS's link preview and callout. */
 :root[data-native="ios"] :is(a, img) { -webkit-touch-callout: none; }
+/* Dynamic Type: the text follows iOS's text size (--ios-text-scale, from bridge.js), and only the text: set on
+   body, not the root, so rem-based spacing and the layout keep their size. Rows grow with their text. */
+:root[data-native="ios"] body { -webkit-text-size-adjust: var(--ios-text-scale, 100%); text-size-adjust: var(--ios-text-scale, 100%); }
 
 /* Room under scrolling views for the floating Ask Foli AI button (AskAiChat: 48px tall, 36px from the bottom,
    12px on phones) plus a 16px gap, only while the button is showing. Views pad their end by at least this. */
@@ -372,6 +380,9 @@
     .ui-glass, .ui-pop, .ui-content { background: var(--color-surface-raised); backdrop-filter: none; -webkit-backdrop-filter: none; }
     .ui-ambient { display: none; }
   }
+  /* iOS's Reduce Transparency, which a web view can't read: the app marks it (bridge.js). */
+  :root[data-reduce-transparency] :is(.ui-glass, .ui-pop, .ui-content) { background: var(--color-surface-raised); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  :root[data-reduce-transparency] .ui-ambient { display: none; }
 
   /* A view washed with a colour (a folder's page in its folder's colour): faint over the light panel, a
      deeper tint over the dark one. */
@@ -508,6 +519,8 @@
   --iphone-row: #ffffff;
   --iphone-separator: rgb(60 60 67 / 0.16);
   --iphone-scrim: rgb(0 0 0 / 0.22);
+  /* Glass made solid (Reduce Transparency, Increase Contrast). */
+  --iphone-solid: #f7f7f8;
 }
 :root[data-theme="dark"] {
   --liquid-fill: rgb(44 44 48 / 0.58);
@@ -520,6 +533,7 @@
   --iphone-row: #1c1c1e;
   --iphone-separator: rgb(84 84 88 / 0.5);
   --iphone-scrim: rgb(0 0 0 / 0.45);
+  --iphone-solid: #2c2c2e;
 }
 @layer components {
   .ui-liquid {
@@ -537,6 +551,11 @@
   @media (prefers-reduced-transparency: reduce) {
     .ui-liquid, .ui-liquid-strong { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
   }
+  /* Reduce Transparency in iOS Settings (bridge.js marks it): the glass is a solid surface with its rim. */
+  :root[data-reduce-transparency] :is(.ui-liquid, .ui-liquid-strong),
+  :root[data-reduce-transparency][data-iphone] :is([role="menu"].ui-pop, [role="listbox"].ui-pop) { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  /* Increase Contrast: the glass is nearly opaque and its edge a visible line. */
+  :root[data-increase-contrast] :is(.ui-liquid, .ui-liquid-strong) { background: var(--iphone-solid); box-shadow: 0 0 0 1px var(--color-line-strong), var(--liquid-shadow); }
   /* A large title (Spectral, like the app's other titles) and the small one it becomes in the bar. */
   .ui-large-title { font-family: var(--font-display); font-weight: 600; font-size: 34px; line-height: 1.12; letter-spacing: -0.02em; color: var(--color-heading); }
   /* Grouped lists (Settings, sheets): inset rounded sections of rows split by hairlines. */
@@ -549,8 +568,7 @@
 @keyframes iphone-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes iphone-menu-in { from { opacity: 0; transform: scale(0.86); } to { opacity: 1; transform: none; } }
 
-/* The app never zooms its text on rotation; Dynamic Type isn't something a web view can follow, so sizes
-   stay at the iOS defaults (17pt body in lists). */
+/* The app never zooms its text on rotation by itself. */
 :root[data-iphone] { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
 :root[data-iphone] body { background: var(--color-canvas); overscroll-behavior: none; }
 /* Menus (a "…" button, a long press): iOS sized rows on liquid glass, growing out of what opened them. */

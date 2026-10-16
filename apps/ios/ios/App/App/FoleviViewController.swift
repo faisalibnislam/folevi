@@ -9,6 +9,32 @@ import WebKit
 
 final class FoleviViewController: CAPBridgeViewController {
     private var navigationGuard: NavigationGuard?
+    private let statusBarTaps = StatusBarTapProxy()
+    private var observers: [NSObjectProtocol] = []
+
+    deinit {
+        observers.forEach(NotificationCenter.default.removeObserver)
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // A tap on the status bar scrolls the screen on show back to its top (Native/SystemSettings.swift).
+        webView?.scrollView.scrollsToTop = false
+        statusBarTaps.onTap = { [weak self] in self?.bridge?.triggerWindowJSEvent(eventName: "folevi:status-bar-tap") }
+        view.insertSubview(statusBarTaps, at: 0)
+        // Reduce Transparency, Increase Contrast, the text size: the page asks again when one changes.
+        observers = SystemAccessibility.changes.map { name in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.bridge?.triggerWindowJSEvent(eventName: "folevi:accessibility")
+            }
+        }
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        statusBarTaps.fit(view.bounds)
+        view.sendSubviewToBack(statusBarTaps)
+    }
 
     override func webView(with frame: CGRect, configuration: WKWebViewConfiguration) -> WKWebView {
         let webView = super.webView(with: frame, configuration: configuration)

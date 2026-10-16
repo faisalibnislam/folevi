@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
   useEffect(() => {
+    // (Where there's no matchMedia at all, as in a test's DOM: it doesn't match.)
+    if (typeof window.matchMedia !== "function") return;
     const mq = window.matchMedia(query);
     setMatches(mq.matches);
     const on = () => setMatches(mq.matches);

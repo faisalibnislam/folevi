@@ -26,11 +26,12 @@ export function isIpadApp(): boolean {
 export function isIphoneApp(): boolean {
   if (typeof navigator === "undefined" || !inIosApp()) return false;
   if (/\b(iPhone|iPod)\b/.test(navigator.userAgent)) return true;
-  return isIpadApp() && window.matchMedia(IPAD_COMPACT).matches;
+  return isIpadApp() && typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches;
 }
 
 const followWidth = (changed: () => void) => {
-  if (typeof window === "undefined") return () => undefined;
+  // (Only the iPad app's width can change which interface shows.)
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function" || !isIpadApp()) return () => undefined;
   const mq = window.matchMedia(IPAD_COMPACT);
   mq.addEventListener("change", changed);
   return () => mq.removeEventListener("change", changed);

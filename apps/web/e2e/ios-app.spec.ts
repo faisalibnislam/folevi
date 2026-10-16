@@ -57,8 +57,8 @@ test("inside the iOS app: no plans or purchases, Settings > This device, folevi:
   const app = page;
   await app.goto(`${APP}/settings/billing`);
   await expect(app.locator("html")).toHaveAttribute("data-native", "ios");
-  await expect(app.getByText("Plans and billing are managed on folevi.com, not in this app.")).toBeVisible({ timeout: 20_000 });
-  await expect(app.getByText("Pro AI trial", { exact: true })).toBeVisible();
+  await expect(app.getByText("Pro AI trial", { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(app.locator("main")).not.toContainText(/folevi\.com|not in this app/);
   await expect(app.getByRole("heading", { name: "Choose a personal plan" })).toHaveCount(0);
   await expect(app.getByRole("heading", { name: "Billing history" })).toHaveCount(0);
   await expect(app.locator("main")).not.toContainText(/\$\d/);

@@ -19,7 +19,7 @@ import { Card } from "./Card";
 import { BuyCreditsDialog, type CreditTarget } from "./BuyCreditsDialog";
 import { PlanRow, PlanRows } from "./PlanRow";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { MANAGED_ELSEWHERE, canPurchaseHere, withoutPurchaseHints } from "@/lib/nativeApp";
+import { canPurchaseHere, withoutPurchaseHints } from "@/lib/nativeApp";
 
 export function formatBytes(bytes: number): string {
   // "1 GB", "1.5 GB", "20 GB": no trailing ".0".
@@ -86,8 +86,8 @@ const FREE_NO_AI = "Foli AI comes with Pro and Pro AI. Upgrade to use it.";
 /**
  * Settings → Plan & billing: the person's Personal plan (Free, Core, Pro or Pro AI), storage, AI credits and
  * devices; choosing a plan; AI credits everywhere they have them (buying more); and personal payment
- * history. Team workspaces have their own plans and billing. In the iOS app only the plan as it is: plans
- * are managed on folevi.com (App Store rule 3.1.1, lib/nativeApp.ts).
+ * history. Team workspaces have their own plans and billing. In the iOS app only the plan as it is, and
+ * nothing about where plans are bought (App Store rule 3.1.1, lib/nativeApp.ts).
  */
 export function BillingSection() {
   const data = useQuery(api.billing.mine, {});
@@ -180,7 +180,7 @@ export function BillingSection() {
     const c = credits;
     return (
       <>
-        <IosSection footer={`${planSentence} ${MANAGED_ELSEWHERE}`}>
+        <IosSection footer={planSentence}>
           <IosRow icon={<RowIcon><CreditCard /></RowIcon>} label="Plan" value={planLabel} />
           {e.paid && sub?.interval ? <IosRow label="Billed" value={sub.interval === "year" ? "Annually" : "Monthly"} /> : null}
           {status ? <IosRow label="Status" value={status} /> : null}
@@ -259,7 +259,6 @@ export function BillingSection() {
                       ? "Set by the Folevi team."
                       : current.blurb}
             </p>
-            {store ? null : <p className="mt-2 text-[12.5px] text-faint">{MANAGED_ELSEWHERE}</p>}
           </div>
           {store ? (
             <div className="flex flex-wrap gap-2">

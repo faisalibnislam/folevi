@@ -16,7 +16,7 @@ import { CreditLines, Tile, UsageMeter, formatBytes, plural } from "./BillingSec
 import { BuyCreditsDialog } from "./BuyCreditsDialog";
 import { PlanRow, PlanRows } from "./PlanRow";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { MANAGED_ELSEWHERE, canPurchaseHere } from "@/lib/nativeApp";
+import { canPurchaseHere } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
 import { IosRow, IosSection } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
@@ -33,8 +33,8 @@ const rank = (t: WorkspaceTier) => WORKSPACE_PLAN_ORDER.indexOf(t);
 /**
  * Settings → (workspace) Plan & billing: the workspace's own plan (Free, Core, Pro or Pro AI), billed per
  * member seat. Only its owner and admins the owner allowed can open it; the server refuses everyone else.
- * Nothing here touches anyone's Personal plan. In the iOS app only the plan's name and state: plans are
- * managed on folevi.com (App Store rule 3.1.1, lib/nativeApp.ts).
+ * Nothing here touches anyone's Personal plan. In the iOS app only the plan's name and state, and nothing about
+ * where plans are bought (App Store rule 3.1.1, lib/nativeApp.ts).
  */
 export function WorkspaceBillingSection({ workspace }: { workspace: Workspace }) {
   const data = useQuery(api.workspaceBilling.summary, { workspaceId: workspace.id });
@@ -69,7 +69,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
   if (!canPurchaseHere()) {
     if (iphone)
       return (
-        <IosSection footer={MANAGED_ELSEWHERE}>
+        <IosSection>
           <IosRow icon={<RowIcon><CreditCard /></RowIcon>} label="Plan" value={current.name} />
           {status ? <IosRow label="Status" value={status} /> : null}
         </IosSection>
@@ -80,7 +80,6 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
           <span className="ui-display text-[24px]">{current.name}</span>
           {status ? <span className={`rounded-chip px-2 py-0.5 text-[12px] ${status === "Past due" ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-muted"}`}>{status}</span> : null}
         </p>
-        <p className="mt-2 text-sm text-muted">{MANAGED_ELSEWHERE}</p>
       </Card>
     );
   }

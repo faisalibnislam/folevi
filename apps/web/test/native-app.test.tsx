@@ -28,7 +28,7 @@ vi.mock("@/components/ui/Toast", async () => {
   return { useToast: () => ({ show: vi.fn() }), errorMessage: (e: { data?: { message?: string } }) => withoutPurchaseHints(e?.data?.message ?? "Something went wrong.") };
 });
 
-const { MANAGED_ELSEWHERE, canPurchaseHere, inIosApp, nativeApp, withoutPurchaseHints } = await import("@/lib/nativeApp");
+const { canPurchaseHere, inIosApp, nativeApp, withoutPurchaseHints } = await import("@/lib/nativeApp");
 const { parseDeepLink } = await import("@/lib/deepLink");
 const { BillingSection } = await import("@/components/views/settings/BillingSection");
 const { AiProblemNotice, aiProblem } = await import("@/components/ai/AiCredits");
@@ -203,12 +203,12 @@ describe("Settings > Plan & billing", () => {
     expect(actions(el)).toContain("Buy credits");
   });
 
-  test("in the iOS app: the plan as it is, managed on folevi.com, and nothing to buy", () => {
+  test("in the iOS app: the plan as it is, nothing to buy and no word of where", () => {
     trialBilling();
     inTheApp();
     const el = render(createElement(BillingSection));
     expect(el.textContent).toContain("Pro AI trial");
-    expect(el.textContent).toContain(MANAGED_ELSEWHERE);
+    expect(el.textContent).not.toMatch(/folevi\.com|not in this app/);
     expect(el.textContent).not.toMatch(PURCHASE);
     expect(el.textContent).not.toContain("Choose a personal plan");
     expect(el.textContent).not.toContain("Billing history");

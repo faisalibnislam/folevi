@@ -603,7 +603,7 @@ Simulator build that can't reach Apple, the app uses a stand-in token made from 
 Plans are sold on folevi.com. Inside the app nothing shows a price or offers to buy, upgrade or change plans:
 
 - Settings > Plan & billing shows the plan as it is (trial days left, renewal date, storage, AI credits,
-  devices) and says "Plans and billing are managed on folevi.com, not in this app." No plan cards, credit
+  devices) and doesn't say where plans are bought (App Review reads that as steering). No plan cards, credit
   packs, billing portal, cancel or billing history. The workspace Plan & billing shows the plan's name and
   state only.
 - The sidebar's trial pill shows the days left and isn't a button; the Free "Upgrade to Pro" pill isn't shown.

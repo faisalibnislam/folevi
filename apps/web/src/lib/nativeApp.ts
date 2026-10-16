@@ -133,12 +133,9 @@ export function inIosApp(): boolean {
 
 /**
  * Whether this page may offer plans, prices and purchases. Not inside the iOS app (App Store rule 3.1.1):
- * there plans are managed on folevi.com, and nothing in the app links to buying.
+ * there Plan & billing shows the plan as it is, and nothing in the app links to buying or says where to.
  */
 export const canPurchaseHere = (): boolean => !inIosApp();
-
-/** What Settings > Plan & billing says in the iOS app, in place of plans and checkout. */
-export const MANAGED_ELSEWHERE = "Plans and billing are managed on folevi.com, not in this app.";
 
 /**
  * Server messages end with where to buy ("Buy more in Settings → Plan & billing.", "Upgrade to use it.").

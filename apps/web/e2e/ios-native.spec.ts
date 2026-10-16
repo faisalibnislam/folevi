@@ -127,8 +127,10 @@ test("Scan from photos in the iOS app puts the pages and their text in the note"
   // The text is in a closed toggle under the page: kept, searchable, out of the way.
   const toggle = body.getByText("Text from the scan", { exact: true });
   await expect(toggle).toBeVisible();
-  await expect(body.getByText("Invoice 2026-114 Total due 42.00")).toHaveCount(1);
-  await expect(body.getByText("Invoice 2026-114 Total due 42.00")).toBeHidden();
+  for (const line of ["Invoice 2026-114", "Total due 42.00"]) {
+    await expect(body.getByText(line, { exact: true })).toHaveCount(1);
+    await expect(body.getByText(line, { exact: true })).toBeHidden();
+  }
   await expect(body.getByText("Paid by card")).toHaveCount(1);
   await waitForSaved(page);
   await context.close();

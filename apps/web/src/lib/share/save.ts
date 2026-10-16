@@ -20,8 +20,15 @@ export interface ShareSaver {
   prepareInbox: (args: { scope: WireScope; deviceId?: string }) => Promise<{ documentId: string; lastRank: string | null }>;
 }
 
-/** Saves the share as a new note in the Inbox of `place` ("personal" or a workspace's id). */
-export async function saveShare(saver: ShareSaver, share: { payload: SharePayload; files: File[]; title: string; place: string }): Promise<{ noteId: string; synced: boolean }> {
+/**
+ * Saves the share as a new note in the Inbox of `place` ("personal" or a workspace's id). With
+ * `waitForServer` (the share page), it also waits a little for the server to have it, to say so.
+ */
+export async function saveShare(
+  saver: ShareSaver,
+  share: { payload: SharePayload; files: File[]; title: string; place: string },
+  { waitForServer = true }: { waitForServer?: boolean } = {},
+): Promise<{ noteId: string; synced: boolean }> {
   const { engine, profileId, deviceId, online } = saver;
   const scope: WireScope = share.place === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: share.place };
   // The Inbox page: from the server when it answers (it brings one back from Trash, finds an older one),
@@ -76,7 +83,7 @@ export async function saveShare(saver: ShareSaver, share: { payload: SharePayloa
   await engine.persisted();
   // Sent now, not after the usual pause: a bookmarklet window may be closed the moment it says saved.
   let synced = false;
-  if (online) {
+  if (online && waitForServer) {
     const firstText = blocks.find((b) => b.type !== "image" && b.type !== "file");
     synced = await Promise.all([
       engine.whenDocumentOnServer(noteId, 15_000),

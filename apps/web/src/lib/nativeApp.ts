@@ -75,7 +75,7 @@ export interface NativeBridge {
   /** Turning the lock on asks to unlock once first; resolves with the settings as they now are. */
   setSettings(patch: Partial<Pick<NativeSettings, "lock" | "lockAfter">>): Promise<NativeSettings>;
   onCommand(listener: (command: NativeCommand) => void): () => void;
-  // Since 1.1 (stage 2: widgets, the share extension, Shortcuts, Spotlight, the scanner). Optional: an
+  // Stage 2 (widgets, the share extension, Shortcuts, Spotlight, the scanner). Optional: an
   // older app doesn't have them.
   device?(): Promise<NativeDevice | null>;
   /** Keeps the device's token in the Keychain for the app's extensions. */

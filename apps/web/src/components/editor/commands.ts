@@ -353,21 +353,22 @@ export function insertBlockAfterCurrent(editor: Editor, type: string, attrs: Rec
   return at;
 }
 
-/** Paragraphs a scan's text may become (the rest joins the last one), and how much text is kept. */
+/** Lines a scan's text may become (the rest join the last one), and how much text is kept. */
 const SCAN_PARAGRAPHS = 300;
 const SCAN_TEXT = 40_000;
 
 /**
  * The text read from a scanned document (the iOS app's scanner), under the pages just inserted: a closed
- * toggle "Text from the scan" holding it as paragraphs, so it's searchable without taking up the page.
+ * toggle "Text from the scan" holding it a line to a paragraph (as read: a receipt's lines stay lines), so
+ * it's searchable without taking up the page.
  * Goes after the selected block (the last page image) and its nested blocks.
  */
 export function insertScanText(editor: Editor, text: string): void {
   const paragraphs = text
     .slice(0, SCAN_TEXT)
     .replace(/\r\n?/g, "\n")
-    .split(/\n\s*\n/)
-    .map((p) => p.replace(/\s*\n\s*/g, " ").trim())
+    .split("\n")
+    .map((line) => line.trim())
     .filter(Boolean);
   if (!paragraphs.length) return;
   const kept = paragraphs.length > SCAN_PARAGRAPHS ? [...paragraphs.slice(0, SCAN_PARAGRAPHS - 1), paragraphs.slice(SCAN_PARAGRAPHS - 1).join(" ")] : paragraphs;

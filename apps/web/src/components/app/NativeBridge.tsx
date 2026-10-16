@@ -101,9 +101,9 @@ function useKeptShares() {
 
   useEffect(() => {
     if (!bridge.takeShares) return;
-    const run = async () => {
+    const run = async (active = document.visibilityState === "visible") => {
       const { engine, profile, workspaces, deviceId, online, prepareInbox, toast } = latest.current;
-      if (running.current || !engine || document.visibilityState !== "visible") return;
+      if (running.current || !engine || !active) return;
       running.current = true;
       try {
         const kept = (await bridge.takeShares?.()) ?? [];
@@ -113,7 +113,9 @@ function useKeptShares() {
           const payload = normaliseShare({ title: item.title, text: item.text, url: item.url });
           // A workspace left since sharing: Personal's Inbox instead.
           const place = item.place && workspaces.some((w) => w.id === item.place && w.canEdit !== false) ? item.place : "personal";
-          await saveShare({ engine, profileId: profile.id, deviceId, online, prepareInbox }, { payload, files, title: payload.title, place });
+          // Kept on this device by now (the sync engine sends it on): the app can let it go at once, so
+          // leaving the app meanwhile never saves it twice.
+          await saveShare({ engine, profileId: profile.id, deviceId, online, prepareInbox }, { payload, files, title: payload.title, place }, { waitForServer: false });
           await bridge.finishShare?.(item.id);
           saved++;
         }
@@ -125,8 +127,14 @@ function useKeptShares() {
       }
     };
     void run();
+    // The app back in front: bridge.js says so (folevi:app-active), and browsers' visibilitychange too.
     const onVisible = () => void run();
+    const onActive = () => void run(true);
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    window.addEventListener("folevi:app-active", onActive);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("folevi:app-active", onActive);
+    };
   }, [bridge, engine]);
 }

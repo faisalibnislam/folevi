@@ -435,7 +435,7 @@ export function EditorMenus({
     };
   }, [trigger]);
   const aiOn = useAiEnabled();
-  // In the iOS app (with its scanner, since 1.1): this device, for the Scan entries.
+  // In the iOS app (a build with the scanner): this device, for the Scan entries.
   const device = useNativeDevice();
   const scanner = device && nativeApp()?.scanDocument ? device : null;
 

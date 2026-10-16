@@ -18,6 +18,7 @@
     "typecheck": "node scripts/build.mjs --check",
     "lint": "node scripts/contrast.mjs",
     "covers": "node scripts/covers.mjs",
-    "brand-icons": "node scripts/brand-icons.mjs"
+    "brand-icons": "node scripts/brand-icons.mjs",
+    "app-icon": "node scripts/app-icon.mjs"
   }
 }

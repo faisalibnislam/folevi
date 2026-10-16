@@ -61,7 +61,7 @@ export function organizationLd(): Record<string, unknown> {
     "@type": "Organization",
     name: "Folevi",
     url: absoluteUrl("/"),
-    logo: absoluteUrl("/icon.svg"),
+    logo: absoluteUrl("/icons/icon-512.png"),
     email: SUPPORT_EMAIL,
     contactPoint: [
       { "@type": "ContactPoint", contactType: "customer support", email: SUPPORT_EMAIL, url: absoluteUrl("/support"), availableLanguage: "English" },
@@ -72,7 +72,7 @@ export function organizationLd(): Record<string, unknown> {
 
 /** The publisher block that articles point to. */
 function publisher(): Record<string, unknown> {
-  return { "@type": "Organization", name: "Folevi", url: absoluteUrl("/"), logo: { "@type": "ImageObject", url: absoluteUrl("/icon.svg") } };
+  return { "@type": "Organization", name: "Folevi", url: absoluteUrl("/"), logo: { "@type": "ImageObject", url: absoluteUrl("/icons/icon-512.png") } };
 }
 
 export type Crumb = { name: string; path: string };

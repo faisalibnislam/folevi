@@ -10,7 +10,7 @@
     "build": "node scripts/simulator.mjs build",
     "start": "node scripts/simulator.mjs run",
     "test": "node scripts/simulator.mjs test",
-    "icon": "node scripts/app-icon.mjs",
+    "icon": "node ../../packages/design-tokens/scripts/app-icon.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

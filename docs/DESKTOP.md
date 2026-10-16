@@ -98,5 +98,5 @@ the bump with the build.
 settings (used by tests). The end-to-end test drives the real shell with Playwright:
 `apps/web/e2e/desktop-app.spec.ts` (build the shell first with `pnpm build`).
 
-Icons: `packages/design-tokens/scripts/brand-icons.mjs` writes `apps/desktop/build/Folevi.icon` (the Icon
-Composer document the app is packaged with) and the menu bar template images (`apps/desktop/assets/trayTemplate.png`, `@2x`).
+Icons: `packages/design-tokens/scripts/app-icon.mjs` writes `apps/desktop/build/Folevi.icon` (the Icon
+Composer document the app is packaged with); `brand-icons.mjs` writes the menu bar template images (`apps/desktop/assets/trayTemplate.png`, `@2x`).

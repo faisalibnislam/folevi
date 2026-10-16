@@ -14,7 +14,15 @@ export const metadata: Metadata = {
     "Folevi is a calm writing and notes workspace for the web, with a Mac app coming soon: block documents, nested pages, tasks, calendar, offline editing and real-time sync.",
   applicationName: "Folevi",
   manifest: "/manifest.webmanifest",
-  icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }], apple: "/apple-icon.png" },
+  // The app icon (packages/design-tokens/scripts/app-icon.mjs).
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
+  },
   formatDetection: { telephone: false, email: false, address: false },
 };
 

@@ -8,7 +8,7 @@
  *   in SHARE (its title, text, link and files, on this device only) and the app opens /share?received=<id>,
  *   which reads it, saves the note and deletes it. Shares left unread are dropped after a day.
  */
-const STATIC = "folevi-static-v2"; // v2: new brand icons (2026-09-29)
+const STATIC = "folevi-static-v3"; // v3: the Graphite app icon (2026-10-16)
 const SHELL = "folevi-shell-v1";
 const SHARE = "folevi-share-v1";
 const APP = /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|review(?:\/|$)|changes(?:\/|$)|daily|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|share(?:\/|$))/;

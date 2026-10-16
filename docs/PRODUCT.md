@@ -20,7 +20,7 @@ This page describes what exists in this repository today, what has been verified
 | Payments (Polar) | **Not configured.** Personal and Team plans, the trial, AI credits, seats and limits work; paid plans and credit packs can't be bought until the Polar variables are set and the plan migration has run (`docs/BILLING.md`). |
 | Folevi for Mac (`apps/desktop`) | **Local use only.** An Electron shell that loads `app.folevi.com`, so it matches the web exactly; it adds Quick Add (⌥Space), a menu bar icon, open at login, Mac notifications and the Dock badge. Signed with a personal Apple Development certificate, not notarized, not distributed (`docs/DESKTOP.md`). The earlier native Swift app is archived on the tag `native-mac-archive`. |
 
-iOS, iPadOS, Android and Windows apps are out of scope (`docs/FUTURE_IOS.md`).
+Folevi for iPhone and iPad is the web app in a Capacitor shell (`apps/ios`, `docs/IOS.md`). There will be no Android or Windows app: on Android, the web app installs from the browser and takes shares from other apps.
 
 ## Features
 

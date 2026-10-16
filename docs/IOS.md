@@ -17,7 +17,6 @@ apps/ios/
   capacitor.config.ts          server.url (app.folevi.com/documents, or FOLEVI_URL), App-Bound Domains, plugins
   www/offline.html             the only page in the app: shown when nothing can load (first launch offline)
   scripts/simulator.mjs        build, run, test, and (Debug) eval and native hooks in the Simulator
-  scripts/app-icon.mjs         the 1024 px icon for iOS 17 to 25
   ios/App/App/
     AppDelegate.swift          one scene; links and activities to Capacitor
     SceneDelegate.swift        the window, and the Face ID lock following the scene
@@ -26,7 +25,8 @@ apps/ios/
     AppLock.swift              the Face ID lock and its cover
     bridge.js                  window.foleviNative, data-native="ios", viewport-fit=cover
     SimulatorEval.swift        Debug Simulator builds only: run JavaScript from a script
-    AppIcon.icon               the Mac app's Icon Composer file (iOS 26 and later)
+    AppIcon.icon               the Mac app's Icon Composer file (iOS 26 and later); both icons come from
+                               packages/design-tokens/scripts/app-icon.mjs
     Assets.xcassets            AppIcon (1024 px PNG, iOS 17 to 25), Mark (the lock screen's F)
     App.entitlements           the App Group and the Keychain group (below)
   ios/App/Shared/              in the app and both extensions: the REST API client, the device token in the

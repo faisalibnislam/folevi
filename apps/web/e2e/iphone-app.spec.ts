@@ -111,8 +111,26 @@ test("the iPhone app: tab bar, large titles, Back, the + menu and sheets", async
   await tabs.getByRole("link", { name: "Calendar" }).click();
   await expect(page.getByRole("list", { name: "Today" })).toBeVisible();
 
-  // A note: full screen, Back and its actions at the top, its tools in floating bars (no tab bar).
+  // Each tab keeps its own stack: Home comes back on the folder it was showing, with Back to Home; Tasks
+  // still on Today. Tapping the tab you're on goes back to its first screen.
   await tabs.getByRole("link", { name: "Home" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Garden plans" })).toBeVisible();
+  await expect(tabs.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
+  await tabs.getByRole("link", { name: "Tasks" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Tasks" })).toBeVisible();
+  await tabs.getByRole("link", { name: "Home" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Garden plans" })).toBeVisible();
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
+  // Back again has nowhere to go in this tab: the history is only Home's stack.
+  expect(await page.evaluate(() => (history.state as { foleviAt?: number } | null)?.foleviAt)).toBe(0);
+  await page.getByRole("link", { name: "All notes" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "All notes" })).toBeVisible();
+  await tabs.getByRole("link", { name: "Home" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+
+  // A note: full screen, Back and its actions at the top, its tools in floating bars (no tab bar).
   await page.getByRole("button", { name: "Create" }).click();
   await page.getByRole("menuitem", { name: "New note" }).click();
   await expect(page).toHaveURL(/\/d\//);

@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter, type Route } from "@/lib/app/router";
+import { useAppState } from "@/lib/app/state";
 import { RouteView } from "@/components/app/RouteView";
 import { NotificationPanel } from "@/components/app/NotificationsButton";
 import { IphoneChromeProvider } from "./chrome";
@@ -12,6 +13,7 @@ import { Sheet } from "./Sheet";
 import { AccountSheet } from "./AccountSheet";
 import { NewFolderSheet } from "./NewFolderSheet";
 import { attachStage, dropTransition, playTransition } from "./transitions";
+import { recordRoute, resetAllTabs } from "./tabStacks";
 
 interface IphoneActions {
   openAccount: () => void;
@@ -50,8 +52,25 @@ function screenKey(route: Route, pathname: string): string {
  * tab strip and drawer.
  */
 export function IphoneShell({ banner }: { banner?: ReactNode }) {
-  const { route, pathname } = useAppRouter();
+  const { route, pathname, search } = useAppRouter();
+  const { context } = useAppState();
   const key = screenKey(route, pathname);
+  // Each tab keeps its own stack of screens (tabStacks.ts): every move is written down in the current tab's.
+  const href = `${pathname}${search.size ? `?${search.toString()}` : ""}`;
+  const recorded = useRef(false);
+  useEffect(() => {
+    recordRoute(route, href, !recorded.current);
+    recorded.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [href]);
+  // Another place: the other tabs start again from their first screens (theirs showed the old place).
+  const place = context.kind === "workspace" ? context.workspaceId : "personal";
+  const shownPlace = useRef(place);
+  useEffect(() => {
+    if (shownPlace.current === place) return;
+    shownPlace.current = place;
+    resetAllTabs();
+  }, [place]);
   const stage = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
   const [account, setAccount] = useState(false);

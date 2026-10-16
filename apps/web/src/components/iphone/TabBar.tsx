@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarDays, FilePlus2, FolderPlus, House, LayoutTemplate, ListPlus, Plus, SquareCheckBig } from "lucide-react";
-import { useAppRouter, type Route } from "@/lib/app/router";
+import { useAppRouter } from "@/lib/app/router";
 import { useShell } from "@/components/app/Shell";
 import { useCreateDocument } from "@/components/app/useCreateDocument";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -9,19 +9,8 @@ import { useAiEnabled } from "@/components/ai/useAi";
 import { MenuButton } from "@/components/ui/Menu";
 import { haptic } from "@/lib/nativeApp";
 import { SCROLL_TOP_EVENT, useIphoneChrome } from "./chrome";
-import { markTabSwitch } from "./transitions";
-
-type Tab = "home" | "tasks" | "calendar";
-
-/** Which tab a screen belongs to: Tasks and Calendar have their own; everything else is under Home. */
-export function tabOf(route: Route): Tab {
-  return route.name === "tasks" ? "tasks" : route.name === "calendar" ? "calendar" : "home";
-}
-
-/** A tab's first screen. */
-export function isTabRoot(route: Route): boolean {
-  return route.name === "documents" || route.name === "tasks" || route.name === "calendar";
-}
+import { markBackButton } from "./transitions";
+import { resetToRoot, selectTab, stackDepth, useCurrentTab, type Tab } from "./tabStacks";
 
 const TABS: { id: Tab; label: string; href: string; icon: (on: boolean) => React.ReactNode }[] = [
   { id: "home", label: "Home", href: "/documents", icon: (on) => <House size={24} strokeWidth={on ? 2.3 : 1.9} aria-hidden /> },
@@ -41,22 +30,25 @@ export function TabBar({ onNewFolder }: { onNewFolder: () => void }) {
   const aiOn = useAiEnabled();
   const { keyboard, tabBarHidden } = useIphoneChrome();
   const createDocument = useCreateDocument();
-  const current = tabOf(route);
+  const current = useCurrentTab();
   const hidden = keyboard || tabBarHidden || route.name === "doc" || route.name === "ai";
 
   const pick = (tab: (typeof TABS)[number]) => {
     if (tab.id === current) {
-      // The tab you're on: back to its first screen, or (already there) to the top.
-      if (isTabRoot(route)) window.dispatchEvent(new Event(SCROLL_TOP_EVENT));
+      // The tab you're on: back to its first screen (sliding, as iOS pops to the root), or, already
+      // there, to the top.
+      const { depth, rootIsTab } = stackDepth();
+      if (depth === 0 && rootIsTab) window.dispatchEvent(new Event(SCROLL_TOP_EVENT));
+      else if (!rootIsTab) resetToRoot();
       else {
-        markTabSwitch();
-        navigate(tab.href);
+        markBackButton();
+        window.history.go(-depth);
       }
       return;
     }
     haptic("light");
-    markTabSwitch();
-    navigate(tab.href);
+    // Where you left it: its own stack of screens (tabStacks.ts).
+    selectTab(tab.id);
   };
 
   const plus = "grid h-[38px] w-[38px] place-items-center rounded-capsule bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.18)]";

@@ -42,18 +42,93 @@ export function startHistoryNav() {
   const at = window.history.state?.[KEY];
   if (typeof at === "number") emit({ at, top: at });
   else window.history.replaceState(stateWith(0), "");
-  // Before anything else hears it: React draws the page a popstate leads to straight away, inside the
-  // first listener (Next's), and the old page must still be on screen for the iPhone app's picture of it.
-  window.addEventListener("popstate", () => moving("pop"), { capture: true });
-  window.addEventListener("popstate", (e) => {
-    popped = true;
-    const at = (e.state as Record<string, unknown> | null)?.[KEY];
-    if (typeof at === "number") emit({ at, top: Math.max(state.top, at) });
+}
+
+// Before anything else hears it, so it's listened for as soon as this module loads (before Next's router
+// listens, in an effect; listeners on window run in the order they were added): React draws the page a
+// popstate leads to straight away, inside Next's listener, and the old page must still be on screen for
+// the iPhone app's picture of it.
+function onPopState(e: PopStateEvent) {
+  // The step back that starts rewriting the history (rewriteHistory), or one into entries it left
+  // behind: nobody else hears it, so the page on screen doesn't change.
+  if (swallow(e)) return;
+  moving("pop");
+  // The position too, before the page is drawn: what it draws (the iPhone app's tab stacks, a screen
+  // coming back to where it was scrolled) reads it.
+  popped = true;
+  const at = (e.state as Record<string, unknown> | null)?.[KEY];
+  if (typeof at === "number") emit({ at, top: Math.max(state.top, at) });
+}
+if (typeof window !== "undefined") {
+  // (Once: a module loaded again while developing replaces its listener.)
+  const w = window as unknown as { __foleviPopState?: (e: PopStateEvent) => void };
+  if (w.__foleviPopState) window.removeEventListener("popstate", w.__foleviPopState, { capture: true });
+  w.__foleviPopState = onPopState;
+  window.addEventListener("popstate", onPopState, { capture: true });
+}
+
+// rewriteHistory: waiting for its step back to entry 0; and the entries past `staleAbove` (left over from
+// before it, still Forward in the browser's history) that mustn't be shown again.
+let rewinding: (() => void) | null = null;
+let staleAbove: number | null = null;
+let bouncing = false;
+
+function swallow(e: PopStateEvent): boolean {
+  const at = (e.state as Record<string, unknown> | null)?.[KEY];
+  if (rewinding) {
+    e.stopImmediatePropagation();
+    rewinding();
+    return true;
+  }
+  if (bouncing) {
+    // Back from an entry that was left behind, to the one on screen: nothing changed.
+    bouncing = false;
+    e.stopImmediatePropagation();
+    return true;
+  }
+  if (staleAbove !== null && typeof at === "number" && at > staleAbove) {
+    e.stopImmediatePropagation();
+    bouncing = true;
+    window.history.go(staleAbove - at);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Makes the browser's history exactly `entries` (oldest first), with the last on screen: the iPhone app's
+ * tabs each keep their own stack of screens, and the history is always the current tab's, so Back and the
+ * edge swipe step through that tab only. Steps back to the first entry (heard by nobody), then replaces
+ * and pushes. No push or pop is announced (nothing slides); the page shows the last entry.
+ */
+export function rewriteHistory(entries: string[]): Promise<void> {
+  startHistoryNav();
+  if (!entries.length) return Promise.resolve();
+  return new Promise((resolve) => {
+    const finish = () => {
+      rewinding = null;
+      window.clearTimeout(timer);
+      window.history.replaceState(stateWith(0), "", entries[0]);
+      for (let i = 1; i < entries.length; i++) window.history.pushState(stateWith(i), "", entries[i]);
+      const top = entries.length - 1;
+      // With one entry nothing was pushed, so what was ahead of it is still there: never go forward into it.
+      staleAbove = top;
+      popped = false;
+      emit({ at: top, top });
+      resolve();
+    };
+    let timer = 0;
+    if (state.at <= 0) return finish();
+    rewinding = finish;
+    // (If the step back never arrives, carry on from where the page is.)
+    timer = window.setTimeout(() => rewinding?.(), 1000);
+    window.history.go(-state.at);
   });
 }
 
 /** A new page: one step forward, and anything that was ahead is gone (as in a browser). */
 export function pushEntry(href: string) {
+  staleAbove = null;
   popped = false;
   moving("push");
   const at = state.at + 1;

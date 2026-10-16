@@ -6,6 +6,8 @@ import { useAppRouter, type Route } from "@/lib/app/router";
 import { GlassCircle } from "./Glass";
 import { SCROLL_TOP_EVENT } from "./chrome";
 import { markBackButton } from "./transitions";
+import { currentTab, saveScroll, scrollToRestore } from "./tabStacks";
+import { historyNavSnapshot } from "@/lib/app/historyNav";
 
 export interface IphoneScreenOptions {
   /** The large title (and the small one in the bar once it scrolls away). Defaults to the view's title. */
@@ -64,6 +66,36 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { pathname, search } = useAppRouter();
+  const href = `${pathname}${search.size ? `?${search.toString()}` : ""}`;
+  const hrefRef = useRef(href);
+  useEffect(() => {
+    hrefRef.current = href;
+  }, [href]);
+
+  // Coming back to this screen (Back, or its tab picked again) scrolls it to where it was; leaving it keeps
+  // how far it was scrolled (tabStacks.ts). Its content may still be loading, so keep trying for a moment.
+  const place = useRef<{ tab: ReturnType<typeof currentTab>; at: number } | null>(null);
+  useEffect(() => {
+    place.current = { tab: currentTab(), at: historyNavSnapshot().at };
+    const target = scrollToRestore(href);
+    let frame = 0;
+    if (target !== null) {
+      const started = performance.now();
+      const step = () => {
+        const scroller = innerScroll ? rootRef.current?.querySelector<HTMLElement>("[data-iphone-scroll]") : mainRef.current;
+        if (scroller) {
+          scroller.scrollTop = target;
+          if (Math.abs(scroller.scrollTop - target) < 2) return;
+        }
+        if (performance.now() - started < 1200) frame = requestAnimationFrame(step);
+      };
+      step();
+    }
+    return () => cancelAnimationFrame(frame);
+    // Once per screen: its address can change in place (another task view), which isn't coming back.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // The small title shows once the large one has scrolled under the bar; the bar's fade once anything has.
   useEffect(() => {
@@ -76,6 +108,8 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
       // Only the screen's own scrolling counts (not a carousel scrolling sideways, not a list inside a card).
       if (scroller !== mainRef.current && !scroller.hasAttribute("data-iphone-scroll")) return;
       const top = scroller.scrollTop;
+      // (Kept as it scrolls, not when the screen goes: a screen drawn again while loading has scrolled nowhere.)
+      if (place.current) saveScroll(place.current.tab, place.current.at, hrefRef.current, top);
       const t = titleRef.current;
       const at = collapseAt ?? (t && mainRef.current ? t.offsetTop + t.offsetHeight - (parseFloat(getComputedStyle(mainRef.current).paddingTop) || 0) : 60);
       setCollapsed(top > Math.max(8, at));
@@ -106,7 +140,9 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
     } else navigate(back ?? parentOf(route), { replace: true });
   }, [canBack, goBackInHistory, navigate, back, route]);
 
-  const showBack = !root && !leading;
+  // A tab's first screen opened on top of others in its tab (Completed tasks from Tasks) has Back.
+  const stacked = Boolean(root && canBack);
+  const showBack = (!root && !leading) || stacked;
   const smallTitle = large ? collapsed : collapsed && Boolean(title);
   return (
     <div
@@ -128,7 +164,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
       />
       <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 px-4 pt-[calc(env(safe-area-inset-top)+4px)] pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))]">
         <div className="pointer-events-auto flex min-w-11 flex-1 basis-0 items-center">
-          {leading ??
+          {(stacked ? null : leading) ??
             (showBack ? (
               <GlassCircle label="Back" onClick={goBack}>
                 <ChevronLeft size={24} strokeWidth={2.2} aria-hidden className="-ml-0.5" />

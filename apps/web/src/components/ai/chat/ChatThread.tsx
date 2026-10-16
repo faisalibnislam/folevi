@@ -392,7 +392,8 @@ export function ChatThread({
 
   return (
     <>
-      <div className={`min-h-0 flex-1 overflow-y-auto ${page ? "px-4 py-6 sm:px-8" : variant === "panel" ? "px-0.5 py-2" : "px-4 py-4"}`}>
+      {/* On iPhone what scrolls fades out just above the composer rather than being cut off by it. */}
+      <div className={`min-h-0 flex-1 overflow-y-auto ${page ? "px-4 py-6 sm:px-8" : variant === "panel" ? "px-0.5 py-2" : "px-4 py-4"} ${iphone && !page ? "pb-6 [mask-image:linear-gradient(to_bottom,#000_calc(100%-24px),transparent)]" : ""}`}>
         <div className={`space-y-5 ${page ? "mx-auto max-w-3xl" : ""}`}>
           {loading ? (
             <p className="flex items-center gap-2 px-1 text-[13px] text-muted">
@@ -450,7 +451,7 @@ export function ChatThread({
         </div>
       </div>
 
-      <div className={`flex-none ${iphone && !page ? (variant === "panel" ? "pb-1 pt-2" : "px-3 pb-3 pt-2") : page ? "px-4 pb-4 pt-2 sm:px-8" : variant === "panel" ? "border-t border-line/70 pt-2.5" : "border-t border-line/70 px-3 pb-3 pt-2.5"}`}>
+      <div className={`flex-none ${iphone && !page ? (variant === "panel" ? "pb-1 pt-2" : "px-4 pb-3 pt-1") : page ? "px-4 pb-4 pt-2 sm:px-8" : variant === "panel" ? "border-t border-line/70 pt-2.5" : "border-t border-line/70 px-3 pb-3 pt-2.5"}`}>
         <div className={page ? "mx-auto max-w-3xl" : ""}>
           <AiCreditsNote className="mb-2" />
           {iphone ? null : (
@@ -467,18 +468,19 @@ export function ChatThread({
           <div
             className={
               iphone
-                ? "relative w-full rounded-container bg-surface shadow-[0_0_0_0.5px_rgb(0_0_0/0.1),0_8px_24px_-10px_rgb(0_0_0/0.25)]"
+                ? // Sheet corners with every control 10 px in and a capsule (globals.css), so the corners nest.
+                  "iphone-composer relative w-full rounded-sheet bg-surface shadow-[0_0_0_0.5px_rgb(0_0_0/0.1),0_8px_24px_-10px_rgb(0_0_0/0.25)] dark:bg-raised dark:shadow-[0_0_0_1px_rgb(255_255_255/0.09),0_8px_24px_-10px_rgb(0_0_0/0.6)]"
                 : "relative w-full rounded-panel bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]"
             }
           >
             {/* The iPhone app: what it's about sits inside the composer, as a chip at its top. */}
             {iphone ? (
-              <div className="flex flex-wrap items-center gap-2 px-3 pt-3">
+              <div className="flex flex-wrap items-center gap-2 px-2.5 pt-2.5">
                 <ContextChips context={context} names={names} onChange={changeContext} disabled={working} />
                 {webAvailable && mode === "ask" ? <WebToggle on={web} onChange={setWeb} disabled={working} /> : null}
               </div>
             ) : null}
-            {attachAvailable ? <AttachmentChips files={attachments.files} onRemove={attachments.remove} disabled={working} className="px-3 pt-2.5" /> : null}
+            {attachAvailable ? <AttachmentChips files={attachments.files} onRemove={attachments.remove} disabled={working} className={iphone ? "px-2.5 pt-2" : "px-3 pt-2.5"} /> : null}
             <label htmlFor={`${uid}-q`} className="sr-only">
               {mode === "research" ? "What should Foli AI research?" : "Ask about your notes, or ask Foli AI to change them"}
             </label>
@@ -496,11 +498,11 @@ export function ChatThread({
               }}
               maxLength={4000}
               placeholder={mode === "research" ? "What should I research?" : webOn ? "Ask anything. Answers use your notes and the web…" : messages.length ? "Ask a follow-up…" : "Ask anything, or ask Foli AI to tidy or organize…"}
-              className={`block min-h-[3rem] w-full resize-none bg-transparent px-3.5 pb-1.5 pt-3 leading-[1.5] text-ink outline-none placeholder:text-faint ${iphone ? "text-[16px]" : "text-[14px]"}`}
+              className={`block min-h-[3rem] w-full resize-none bg-transparent leading-[1.5] text-ink outline-none placeholder:text-faint ${iphone ? "px-4 pb-1 pt-2.5 text-[16px]" : "px-3.5 pb-1.5 pt-3 text-[14px]"}`}
             />
             {/* How Foli AI helps on the left, attach and send on the right, all inside the box. */}
             {/* 4px from the box's edge: the switch and Send are 10px-cornered inside its 14px corners. */}
-            <div className="flex items-center gap-2 px-1 pb-1">
+            <div className={`flex items-center gap-2 ${iphone ? "px-2.5 pb-2.5" : "px-1 pb-1"}`}>
                 {/* Chat answers and makes changes; Research (when the web is on) writes a report. */}
                 {webAvailable ? (
                   <div className={`ui-seg ui-well min-w-0 shrink ${variant === "panel" ? "[&>*]:px-1.5" : ""}`} role="group" aria-label="How Foli AI helps">
@@ -514,13 +516,13 @@ export function ChatThread({
                 ) : null}
               <div className="ml-auto flex flex-none items-center gap-1.5">
                 {attachAvailable ? <AttachControl noteFiles={noteFiles ?? []} onFiles={attachments.add} onPick={attachments.pick} disabled={working} /> : null}
-                <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="grid h-9 w-9 flex-none place-items-center rounded-control bg-heading text-canvas transition-opacity disabled:opacity-30">
+                <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className={`grid flex-none place-items-center bg-heading text-canvas transition-opacity disabled:opacity-30 ${iphone ? "h-10 w-10 rounded-capsule" : "h-9 w-9 rounded-control"}`}>
                   <ArrowUp size={16} aria-hidden />
                 </button>
               </div>
             </div>
           </div>
-          <p className="mt-2 px-1 text-[11px] text-faint">
+          <p className={iphone ? "mt-2.5 px-4 text-center text-[12px] text-faint" : "mt-2 px-1 text-[11px] text-faint"}>
             Foli AI can make mistakes.
             {footNotes.length ? ` ${footNotes.join(" ")}` : ""}
           </p>

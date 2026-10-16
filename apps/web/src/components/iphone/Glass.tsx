@@ -4,7 +4,8 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
 /**
  * The iPhone app's floating controls: a round glass button (Back, close) and a glass pill holding a few
- * icon buttons (Share and More on a note, notifications and More on Home). 44pt targets throughout.
+ * icon buttons (Share and More on a note, notifications and More on Home). 44pt targets throughout; all
+ * Liquid Glass (globals.css), swelling a little when pressed.
  */
 export const GlassCircle = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { label: string; children: ReactNode; size?: number }>(function GlassCircle(
   { label, children, size = 44, className = "", ...rest },
@@ -17,7 +18,7 @@ export const GlassCircle = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HT
       aria-label={label}
       {...rest}
       style={{ width: size, height: size, ...rest.style }}
-      className={`ui-liquid grid flex-none place-items-center rounded-capsule text-heading outline-none transition-transform duration-150 active:scale-[0.92] focus-visible:ring-2 focus-visible:ring-focus ${className}`}
+      className={`ui-liquid ui-glass-press grid flex-none place-items-center rounded-capsule text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus ${className}`}
     >
       {children}
     </button>
@@ -45,7 +46,7 @@ export const PillButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTM
       aria-label={label}
       aria-pressed={pressed}
       {...rest}
-      className={`relative grid h-11 min-w-11 flex-none place-items-center rounded-capsule px-2.5 text-heading outline-none transition-[background-color,transform] duration-150 active:scale-[0.92] active:bg-[var(--liquid-press)] focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-40 ${pressed ? "bg-[var(--liquid-active)]" : ""} ${className}`}
+      className={`relative grid h-11 min-w-11 flex-none place-items-center rounded-capsule px-2.5 text-heading outline-none ui-glass-press active:bg-[var(--liquid-press)] focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-40 ${pressed ? "bg-[var(--liquid-active)]" : ""} ${className}`}
     >
       {children}
     </button>
@@ -62,7 +63,7 @@ export const GlassTextButton = forwardRef<HTMLButtonElement, ButtonHTMLAttribute
       ref={ref}
       type="button"
       {...rest}
-      className={`grid h-11 flex-none place-items-center rounded-capsule px-4 text-[16px] outline-none transition-transform duration-150 active:scale-[0.95] focus-visible:ring-2 focus-visible:ring-focus ${strong ? "bg-heading font-semibold text-canvas shadow-[var(--liquid-shadow)]" : "ui-liquid font-medium text-heading"} ${className}`}
+      className={`grid h-11 flex-none place-items-center rounded-capsule px-4 text-[16px] outline-none ui-glass-press focus-visible:ring-2 focus-visible:ring-focus ${strong ? "bg-heading font-semibold text-canvas shadow-[var(--liquid-shadow)]" : "ui-liquid font-medium text-heading"} ${className}`}
     >
       {children}
     </button>

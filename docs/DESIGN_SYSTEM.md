@@ -100,7 +100,7 @@ own color. A cover's own color (`cover.value`) wins over the page accent.
 
 ### Corners
 
-One scale, 18 at most, nothing fully round (avatars, dots, swatches and switches included). The tokens live in
+One scale, 18 at most, nothing fully round (avatars, dots, swatches and switches included), except the iPhone app's floating glass (the last three rows). The tokens live in
 `packages/design-tokens/src/tokens.json` (`radius`), become `--radius-*` variables and the Tailwind classes below,
 and `tokens.radius` for images drawn without CSS (Open Graph cards).
 
@@ -113,6 +113,9 @@ and `tokens.radius` for images drawn without CSS (Open Graph cards).
 | chip | 6 | `rounded-chip` | Badges, tags, chips, segmented items, list rows, avatars |
 | tiny | 4 | `rounded-tiny` | Tiny elements: kbd hints, checkboxes, swatch dots, inline marks |
 | none | 0 | `rounded-none` | Square edges |
+| float | 40 | `rounded-float` | iPhone app only: a sheet floating inset from the screen's edges (concentric with its corners) |
+| sheet | 28 | `rounded-sheet` | iPhone app only: bottom sheets, cards on glass, Foli AI's composer |
+| capsule | full | `rounded-capsule` | iPhone app only: floating glass buttons, pills and the tab bar |
 
 **Nesting.** A rounded element inside another follows inner = outer - inset, so the curves run parallel.
 When that result isn't on the scale, the inset changes, not the token. Recipes in use:

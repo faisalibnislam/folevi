@@ -203,6 +203,7 @@ export const tokens = {
     "panel": 14,
     "container": 18,
     "sheet": 28,
+    "float": 40,
     "capsule": 999
   },
   "font": {

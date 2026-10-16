@@ -32,6 +32,7 @@ export function TabBar({ onNewFolder }: { onNewFolder: () => void }) {
   const createDocument = useCreateDocument();
   const current = useCurrentTab();
   const hidden = keyboard || tabBarHidden || route.name === "doc" || route.name === "ai";
+  const lens = TABS.findIndex((t) => t.id === current);
 
   const pick = (tab: (typeof TABS)[number]) => {
     if (tab.id === current) {
@@ -59,6 +60,14 @@ export function TabBar({ onNewFolder }: { onNewFolder: () => void }) {
       className={`pointer-events-none fixed inset-x-0 bottom-0 z-40 flex items-end justify-between gap-3 px-4 pb-[max(10px,calc(env(safe-area-inset-bottom)-10px))] pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))] transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${hidden ? "translate-y-[140%] opacity-0" : ""}`}
     >
       <nav aria-label="Tabs" className="ui-liquid pointer-events-auto flex h-[60px] items-center gap-0.5 rounded-capsule p-1">
+        {/* The current tab sits in a glass lens that slides to the tab you pick (each tab is 60 px, 2 px apart). */}
+        {lens >= 0 ? (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-1 top-1 h-[52px] w-[60px] rounded-capsule bg-[var(--liquid-lens)] shadow-[inset_0_1px_0_rgb(255_255_255/0.55),inset_0_0_0_0.5px_rgb(255_255_255/0.35)] transition-transform duration-500 ease-[cubic-bezier(0.34,1.3,0.64,1)] motion-reduce:transition-none dark:shadow-[inset_0_1px_0_rgb(255_255_255/0.14),inset_0_0_0_0.5px_rgb(255_255_255/0.08)]"
+            style={{ transform: `translateX(${lens * 62}px)` }}
+          />
+        ) : null}
         {TABS.map((tab) => {
           const on = tab.id === current;
           return (
@@ -71,7 +80,7 @@ export function TabBar({ onNewFolder }: { onNewFolder: () => void }) {
                 e.preventDefault();
                 pick(tab);
               }}
-              className={`grid h-[52px] w-[60px] place-items-center rounded-capsule outline-none transition-[background-color,color,transform] duration-200 active:scale-[0.94] focus-visible:ring-2 focus-visible:ring-focus ${on ? "bg-[var(--liquid-active)] text-heading" : "text-muted"}`}
+              className={`ui-glass-press relative grid h-[52px] w-[60px] place-items-center rounded-capsule outline-none focus-visible:ring-2 focus-visible:ring-focus ${on ? "text-heading" : "text-muted"}`}
             >
               {tab.icon(on)}
             </a>
@@ -87,13 +96,13 @@ export function TabBar({ onNewFolder }: { onNewFolder: () => void }) {
               haptic("light");
               openAsk();
             }}
-            className="grid h-[52px] w-[52px] place-items-center rounded-capsule outline-none transition-transform active:scale-[0.92] focus-visible:ring-2 focus-visible:ring-focus"
+            className="ui-glass-press grid h-[52px] w-[52px] place-items-center rounded-capsule outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             <AiIcon size={26} />
           </button>
         ) : null}
         {current === "tasks" ? (
-          <button type="button" aria-label="Quick task" onClick={() => openQuickAdd()} className="grid h-[52px] w-[52px] place-items-center rounded-capsule outline-none transition-transform active:scale-[0.92] focus-visible:ring-2 focus-visible:ring-focus">
+          <button type="button" aria-label="Quick task" onClick={() => openQuickAdd()} className="ui-glass-press grid h-[52px] w-[52px] place-items-center rounded-capsule outline-none focus-visible:ring-2 focus-visible:ring-focus">
             <span className={plus}>
               <Plus size={22} strokeWidth={2.6} aria-hidden />
             </span>
@@ -103,7 +112,7 @@ export function TabBar({ onNewFolder }: { onNewFolder: () => void }) {
             label="Create"
             side="top"
             align="end"
-            triggerClassName="grid h-[52px] w-[52px] place-items-center rounded-capsule outline-none transition-transform active:scale-[0.92] focus-visible:ring-2 focus-visible:ring-focus"
+            triggerClassName="ui-glass-press grid h-[52px] w-[52px] place-items-center rounded-capsule outline-none focus-visible:ring-2 focus-visible:ring-focus"
             menuClassName="!min-w-[15.5rem]"
             trigger={
               <span className={plus}>

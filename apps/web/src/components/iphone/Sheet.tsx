@@ -256,7 +256,11 @@ export function Sheet({
         className={
           card
             ? "ui-liquid-strong flex max-h-[calc(100dvh-env(safe-area-inset-top)-24px)] flex-col outline-none overflow-hidden rounded-sheet animate-[iphone-card-in_260ms_cubic-bezier(0.2,0.9,0.25,1.05)] motion-reduce:animate-none"
-            : "ui-liquid-strong flex max-h-[calc(100dvh-env(safe-area-inset-top)-10px)] flex-col outline-none overflow-hidden rounded-t-sheet pb-[env(safe-area-inset-bottom)] animate-[iphone-sheet-in_380ms_cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none [@media(orientation:landscape)]:mx-auto [@media(orientation:landscape)]:max-w-[560px]"
+            : // As on iOS 26: a sheet that isn't full height floats as glass, inset from the screen's edges with
+              // round corners all round; pulled up to full height it meets the edges.
+              `ui-liquid-strong flex max-h-[calc(100dvh-env(safe-area-inset-top)-10px)] flex-col outline-none overflow-hidden animate-[iphone-sheet-in_380ms_cubic-bezier(0.32,0.72,0,1)] transition-[margin,border-radius] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none [@media(orientation:landscape)]:mx-auto [@media(orientation:landscape)]:max-w-[560px] ${
+                expanded ? "rounded-t-sheet pb-[env(safe-area-inset-bottom)]" : "mx-2 mb-2 rounded-float pb-[max(8px,calc(env(safe-area-inset-bottom)-14px))]"
+              }`
         }
       >
         {card ? null : (

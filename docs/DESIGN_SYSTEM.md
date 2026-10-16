@@ -269,7 +269,7 @@ the bottom left, ~35% opacity in light, ~50% in dark), fixed behind content. No 
   at the spine and rounded ones on the open edge, a grey page block peeking out past the right edge and the
   bottom, and a soft shadow falling down and slightly left. A plain spine down the left (6% of the width)
   carries the note's style (artwork, uploaded image, or a light grey for Plain). The cover uses the note's
-  own sheet and text colours: serif title (up to 2 lines), created age ("12 Days Ago"), the opening text from
+  own sheet and text colours: serif title (up to 2 lines), created age in sentence case ("10 hours ago", "Sep 10" from a week out; `ageText` in `lib/format.ts`, the one relative-time wording), the opening text from
   `documents.preview` as plain grey text clamped to fit with "…", and a footer with the last edit
   ("1 hour ago") and a chip with the coloured folder icon + folder name (or "Draft"). Starred notes get a square
   corner tab with a filled star. All sizes are container-query units, so the card scales as one drawing.

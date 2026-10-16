@@ -6,7 +6,7 @@ import { KeyRound, ShieldCheck, ShieldOff } from "lucide-react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { defaultPasskeyName, passkeysAvailable } from "@/lib/auth/passkeys";
 import { desktop } from "@/lib/desktop";
-import { ageText, formatDateTime } from "@/lib/format";
+import { formatDateTime, formatRelative } from "@/lib/format";
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -225,7 +225,7 @@ function PasskeysCard() {
               <span className="block text-xs text-muted">
                 {p.createdAt ? `Added ${formatDateTime(new Date(p.createdAt).getTime())}` : "Added earlier"}
                 {p.backedUp ? " · syncs across your devices" : " · on one device"}
-                {usage === undefined ? "" : lastUsed.has(p.id) ? ` · Last used ${ageText(lastUsed.get(p.id)!).toLowerCase()}` : " · Not used yet"}
+                {usage === undefined ? "" : lastUsed.has(p.id) ? ` · Last used ${formatRelative(lastUsed.get(p.id)!)}` : " · Not used yet"}
               </span>
             </span>
             <Button size="sm" aria-label={`Rename ${label(p)}`} onClick={() => setRenaming(p)}>
@@ -242,7 +242,7 @@ function PasskeysCard() {
           {nativeApp()
             ? "The iPhone and iPad app can't use passkeys yet. Add one in your browser and sign in there with it."
             : desktop()
-              ? `The ${desktop()?.platform === "windows" ? "Windows" : "Mac"} app can't use passkeys yet. Add one in your browser and sign in there with it.`
+              ? "The Mac app can't use passkeys yet. Add one in your browser and sign in there with it."
               : "This browser can't create passkeys. Add one from a browser like Safari, Chrome, Edge or Firefox."}
         </p>
       ) : (

@@ -141,7 +141,7 @@ export function NoteCardFace({
         <h3 className="line-clamp-2 break-words pr-[7cqw] font-serif text-[6.6cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
         <p className="mt-[1cqw] truncate text-[4.5cqw] leading-[1.3] text-faint">
           <span className="sr-only">Created </span>
-          {ageText(createdAt, { title: true })}
+          {ageText(createdAt)}
         </p>
         <div ref={body.ref} className="mt-[4.6cqw] min-h-0 flex-1 overflow-hidden text-[3.6cqw] leading-[5cqw]">
           <p className="whitespace-pre-line break-words text-faint [-webkit-box-orient:vertical] [display:-webkit-box] overflow-hidden" style={{ WebkitLineClamp: body.lines }}>

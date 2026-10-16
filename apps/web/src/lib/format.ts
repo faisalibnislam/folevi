@@ -1,32 +1,37 @@
-// Localized, non-concatenated date formatting helpers (English only for now; Intl handles grammar).
-const rtf = typeof Intl !== "undefined" ? new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }) : null;
+// Date formatting helpers (English only for now).
 
+/**
+ * The one wording for relative times, used everywhere in the app: "just now", "1 min ago", "5 mins ago",
+ * "1 hour ago", "3 days ago", then from a week out a short date ("Sep 10", or "Sep 10, 2025" in another
+ * year). Times ahead read "in 5 mins", "in 1 hour", "in 3 days". Lower case, for use inside a sentence or
+ * after a separator ("Edited 5 mins ago", "Sam · 1 hour ago"); a label on its own uses ageText.
+ */
 export function formatRelative(ts: number, now = Date.now()): string {
-  const diff = ts - now;
-  const abs = Math.abs(diff);
-  if (!rtf) return new Date(ts).toLocaleString();
-  if (abs < 45_000) return rtf.format(0, "second");
-  if (abs < 45 * 60_000) return rtf.format(Math.round(diff / 60_000), "minute");
-  if (abs < 22 * 3_600_000) return rtf.format(Math.round(diff / 3_600_000), "hour");
-  if (abs < 6 * 86_400_000) return rtf.format(Math.round(diff / 86_400_000), "day");
-  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: new Date(ts).getFullYear() === new Date(now).getFullYear() ? undefined : "numeric" });
+  const ahead = ts > now;
+  const unit = (n: number, u: string) => {
+    const words = `${n} ${u}${n === 1 ? "" : "s"}`;
+    return ahead ? `in ${words}` : `${words} ago`;
+  };
+  const exact = Math.abs(now - ts) / 60_000;
+  const mins = ahead ? Math.max(1, Math.round(exact)) : Math.round(exact);
+  if (mins < 1) return "just now";
+  if (mins < 60) return unit(mins, "min");
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return unit(hours, "hour");
+  const days = Math.round(hours / 24);
+  if (days < 7) return unit(days, "day");
+  const sameYear = new Date(ts).getFullYear() === new Date(now).getFullYear();
+  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: sameYear ? undefined : "numeric" });
 }
 
 /**
- * A short, plain age: "Just now", "23 mins ago", "1 hour ago", "12 days ago", "3 months ago", "2 years ago".
- * With { title: true } each word is capitalised ("12 Days Ago").
+ * The same words as formatRelative, in sentence case for a label that stands on its own (note cards,
+ * folder covers, list columns): "Just now", "5 mins ago", "1 hour ago", "Sep 10". Only the first letter is
+ * ever capitalised.
  */
-export function ageText(ts: number, { title = false }: { title?: boolean } = {}, now = Date.now()): string {
-  const mins = Math.max(0, Math.round((now - ts) / 60_000));
-  const unit = (n: number, u: string) => `${n} ${u}${n === 1 ? "" : "s"} ago`;
-  const out =
-    mins < 1 ? "just now" :
-    mins < 60 ? unit(mins, "min") :
-    mins < 60 * 24 ? unit(Math.round(mins / 60), "hour") :
-    mins < 60 * 24 * 30 ? unit(Math.round(mins / 1440), "day") :
-    mins < 60 * 24 * 365 ? unit(Math.max(1, Math.round(mins / 43_200)), "month") :
-    unit(Math.max(1, Math.round(mins / 525_600)), "year");
-  return title ? out.replace(/\b\w/g, (c) => c.toUpperCase()) : out.charAt(0).toUpperCase() + out.slice(1);
+export function ageText(ts: number, now = Date.now()): string {
+  const out = formatRelative(ts, now);
+  return out.charAt(0).toUpperCase() + out.slice(1);
 }
 
 export function formatDate(date: string, opts: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric" }): string {

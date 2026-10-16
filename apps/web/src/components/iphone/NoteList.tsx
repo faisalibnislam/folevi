@@ -174,7 +174,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
                     cover={d.cover}
                     style={d.style}
                     createdAt={d.createdAt}
-                    time={view === "trash" && d.deletedAt ? `Deleted ${ageText(d.deletedAt).toLowerCase()}` : ageText(d.updatedAt)}
+                    time={view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}
                     starred={d.starred}
                     folder={d.homeFolder}
                     showFolder={d.kind !== "template"}
@@ -208,7 +208,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
                     {d.starred ? <Star size={13} aria-label="Starred" className="ml-1.5 inline -translate-y-px fill-current text-faint" /> : null}
                   </span>
                   <span className="mt-0.5 truncate text-[13px] text-muted">
-                    {view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : formatRelative(d.updatedAt)}
+                    {view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}
                     {d.homeFolder && d.kind !== "template" ? ` · ${d.homeFolder.name}` : d.kind !== "template" ? " · Draft" : ""}
                     {unsynced.has(d.id) ? " · Not synced" : ""}
                   </span>

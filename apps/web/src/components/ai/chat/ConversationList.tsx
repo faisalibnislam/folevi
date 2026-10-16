@@ -6,7 +6,7 @@ import { MessageSquare, MoreHorizontal, Pencil, Pin, PinOff, Plus, Search, Trash
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
-import { formatRelative } from "@/lib/format";
+import { ageText } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { MenuButton } from "@/components/ui/Menu";
@@ -122,7 +122,7 @@ function ConversationRow({ row, active, onNavigate }: { row: Row; active: boolea
               <span className="sr-only">Shared</span>
             </span>
           ) : null}
-          <span className="flex-none text-[11.5px] font-normal text-faint group-hover/conv:hidden">{formatRelative(row.lastMessageAt)}</span>
+          <span className="flex-none text-[11.5px] font-normal text-faint group-hover/conv:hidden">{ageText(row.lastMessageAt)}</span>
         </AppLink>
       )}
       {editing ? null : (

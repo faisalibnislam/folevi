@@ -14,7 +14,7 @@ import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
 import { overlayFolderIndex } from "@/lib/sync/overlays";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
-import { formatRelative } from "@/lib/format";
+import { ageText, formatRelative } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { PromptDialog } from "@/components/ui/PromptDialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -74,18 +74,6 @@ export interface FolderSummary {
   previews?: FolderPreview[];
 }
 
-/** "23 mins ago" / "1 hour ago" / "Sep 10": the short age shown on folder covers. */
-function shortAge(t: number): string {
-  const mins = Math.max(0, Math.round((Date.now() - t) / 60_000));
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min${mins === 1 ? "" : "s"} ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  const days = Math.round(hours / 24);
-  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
-  return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
 /**
  * A folder card drawn as a real folder (portrait): the drawing (FolderCardArt, shared with the site's
  * replica) inside a link to the folder, with the folder's menu over the cover on hover. The page count sits
@@ -101,7 +89,7 @@ export function FolderCard({ folder: f, parentName }: { folder: FolderSummary; p
         title={parentName ? `${f.name} (in ${parentName})` : f.name}
         className={`${FOLDER_CARD_FRAME} focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-4 focus-visible:ring-offset-canvas`}
       >
-        <FolderCardArt name={f.name} color={f.color} count={f.documentCount} age={shortAge(f.updatedAt)} previews={f.previews} />
+        <FolderCardArt name={f.name} color={f.color} count={f.documentCount} age={ageText(f.updatedAt)} previews={f.previews} />
       </AppLink>
       <FolderMenu
         folder={f}
@@ -228,7 +216,7 @@ export function FoldersIndex() {
                     {f.parentFolderId ? <span className="ml-2 text-xs font-normal text-muted">in {names.get(f.id) || "a folder"}</span> : null}
                   </span>
                   <span className="w-20 text-right text-xs tabular-nums text-muted">{pages(f.documentCount)}</span>
-                  <span className="hidden w-32 text-right text-xs text-faint sm:block">{formatRelative(f.updatedAt)}</span>
+                  <span className="hidden w-32 text-right text-xs text-faint sm:block">{ageText(f.updatedAt)}</span>
                 </AppLink>
                 <FolderMenu folder={f} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100" />
               </li>

@@ -6,7 +6,7 @@ import { AlertTriangle, ChevronLeft, ChevronRight, RotateCw } from "lucide-react
 import { Button } from "@/components/ui/Button";
 import { Switch as AppSwitch } from "@/components/ui/Switch";
 import { errorMessage } from "@/components/ui/Toast";
-import { formatDateTime, formatRelative } from "@/lib/format";
+import { ageText, formatDateTime } from "@/lib/format";
 
 // ---------------------------------------------------------------- badges
 
@@ -217,7 +217,7 @@ export function Time({ ts }: { ts: number | null | undefined }) {
   if (!ts) return <span className="text-muted">-</span>;
   return (
     <time dateTime={new Date(ts).toISOString()} title={formatDateTime(ts)} className="whitespace-nowrap">
-      {formatRelative(ts)}
+      {ageText(ts)}
     </time>
   );
 }

@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { Dialog } from "@/components/ui/Dialog";
 import { Switch } from "@/components/ui/Switch";
 import { useToast, errorMessage } from "@/components/ui/Toast";
-import { formatRelative } from "@/lib/format";
+import { ageText, formatRelative } from "@/lib/format";
 import { Card } from "./Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -112,7 +112,7 @@ export function WebhooksCard() {
                       <tbody>
                         {h.attempts.map((a, i) => (
                           <tr key={i} className="border-t border-line/60">
-                            <td className="py-1 pr-3 text-muted">{formatRelative(a.at)}</td>
+                            <td className="py-1 pr-3 text-muted">{ageText(a.at)}</td>
                             <td className="py-1 pr-3 font-mono text-[12px]">{a.type}</td>
                             <td className={`py-1 ${a.ok ? "text-ink" : "text-danger"}`}>
                               {a.ok ? `${a.statusCode} delivered` : a.statusCode ? `${a.statusCode}${a.error ? `, ${a.error}` : ""}` : (a.error ?? "failed")} · {a.durationMs} ms

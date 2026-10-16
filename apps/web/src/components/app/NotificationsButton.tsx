@@ -10,7 +10,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { MenuButton } from "@/components/ui/Menu";
 import { Avatar } from "@/components/ui/Avatar";
-import { formatRelative } from "@/lib/format";
+import { ageText } from "@/lib/format";
 import { t } from "@/i18n";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -295,7 +295,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
             <span className="mt-1 line-clamp-2 block border-l-2 border-line-strong pl-2 text-[12.5px] leading-snug text-muted">{n.body}</span>
           ) : null}
           <span id={`${n.id}-meta`} className="mt-1 block text-[11.5px] text-faint">
-            {formatRelative(n.createdAt)}
+            {ageText(n.createdAt)}
             {n.read ? null : <span className="sr-only">, unread</span>}
           </span>
         </span>

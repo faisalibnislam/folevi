@@ -623,7 +623,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   {unsynced.has(d.id) ? <UnsyncedMarker /> : null}
                   {d.kind !== "template" ? <FolderBadge folder={d.homeFolder} /> : null}
                   <span className="hidden text-xs text-muted sm:block">{d.tags.map((t) => `#${t.name}`).join(" ")}</span>
-                  <span className="w-28 text-right text-xs text-faint">{view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : formatRelative(d.updatedAt)}</span>
+                  <span className="w-28 text-right text-xs text-faint">{view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}</span>
                   {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} /> : null}
                   <DocMenu {...menuProps(d)} />
                 </li>
@@ -663,7 +663,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                         cover={d.cover}
                         style={d.style}
                         createdAt={d.createdAt}
-                        time={view === "trash" && d.deletedAt ? `Deleted ${ageText(d.deletedAt).toLowerCase()}` : ageText(d.updatedAt)}
+                        time={view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}
                         starred={d.starred}
                         folder={d.homeFolder}
                         showFolder={d.kind !== "template"}

@@ -3,7 +3,7 @@
 import type { FunctionReturnType } from "convex/server";
 import { X } from "lucide-react";
 import type { api } from "@/lib/convex/api";
-import { ageText, formatRelative } from "@/lib/format";
+import { formatRelative } from "@/lib/format";
 import { changeCounts, whoChanged } from "@/lib/history/changeWords";
 import { Avatar } from "@/components/ui/Avatar";
 
@@ -20,11 +20,6 @@ export function awayMarks(away: Away): Map<string, { color: string; label: strin
   return marks;
 }
 
-/** "2 days ago", "just now": when they were last here, mid-sentence. */
-const lastHere = (at: number) => {
-  const age = ageText(at);
-  return age.charAt(0).toLowerCase() + age.slice(1);
-};
 
 /**
  * "Since you were away": a slim line at the top of a note others changed since this person was last in it.
@@ -41,7 +36,7 @@ export function AwayBanner({ away, showing, onToggle, onDismiss }: { away: Away;
         ))}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="text-ink">{whoChanged(names)}</span> changed this note since you were last here, {lastHere(away.since)}.
+        <span className="text-ink">{whoChanged(names)}</span> changed this note since you were last here, {formatRelative(away.since)}.
         {showing ? <span> {changeCounts({ added, edited: away.lines.length - added, removed: away.removed, more: away.more })}.</span> : null}
       </span>
       <button type="button" aria-pressed={showing} onClick={onToggle} className={`rounded-chip px-2 py-0.5 font-medium text-heading outline-none hover:bg-accent-soft focus-visible:ring-2 focus-visible:ring-focus ${showing ? "bg-accent-soft" : ""}`}>

@@ -25,6 +25,9 @@ import { useCreateDocument } from "./useCreateDocument";
 import { captureTemplateFromUrl, clearPendingTemplate, pendingTemplate } from "@/lib/pendingTemplate";
 import { DesktopBridge } from "./DesktopBridge";
 import { NativeBridge } from "./NativeBridge";
+import { useIphoneApp } from "@/lib/iphone";
+import { IphoneShell } from "@/components/iphone/IphoneShell";
+import { IphoneScreen, type IphoneScreenOptions } from "@/components/iphone/Screen";
 
 interface ShellValue {
   sidebarOpen: boolean;
@@ -32,7 +35,8 @@ interface ShellValue {
   inspectorOpen: boolean;
   setInspectorOpen: (open: boolean) => void;
   openPalette: () => void;
-  openQuickAdd: () => void;
+  /** Quick add task; `due` starts it on a day (YYYY-MM-DD). Safe to pass as a click handler. */
+  openQuickAdd: (opts?: { due?: string }) => void;
   isNarrow: boolean;
   /** The sidebar is a modal drawer (phone widths) rather than a column. */
   drawerMode: boolean;
@@ -155,11 +159,22 @@ export function Shell() {
   const [collapsed, setCollapsed] = useLocalStorage("folevi:sidebar-collapsed", false);
   const [width, setWidth] = useLocalStorage("folevi:sidebar-width", 248);
   const [inspectorPref, setInspectorPref] = useLocalStorage("folevi:inspector-open", false);
-  const isNarrow = useMediaQuery("(max-width: 767px)");
+  // The iPhone app has its own interface (components/iphone): a navigation stack and a floating tab bar.
+  const iphone = useIphoneApp();
+  const isNarrow = useMediaQuery("(max-width: 767px)") || iphone;
   const isMedium = useMediaQuery("(max-width: 1199px)");
+  useLayoutEffect(() => {
+    if (!iphone) return;
+    const root = document.documentElement;
+    root.dataset.iphone = "";
+    return () => {
+      delete root.dataset.iphone;
+    };
+  }, [iphone]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddDue, setQuickAddDue] = useState<string | undefined>(undefined);
   const [ambient, setAmbientCss] = useState<string | null>(null);
   const [ambientTone, setAmbientTone] = useState<"deep" | "light" | null>(null);
   const setAmbient = useCallback((css: string | null, tone: "deep" | "light" | null = null) => {
@@ -190,7 +205,7 @@ export function Shell() {
   const { profile, context } = useAppState();
   const [sidebarSlot, setSidebarSlot] = useState<HTMLElement | null>(null);
   const [docSidebarMode, setDocSidebarModePref] = useLocalStorage<"document" | "folders">("folevi:doc-sidebar-mode", "document");
-  const pageSidebar = route.name === "doc" && docSidebarMode === "document";
+  const pageSidebar = route.name === "doc" && docSidebarMode === "document" && !iphone;
 
   // "Use this template" on folevi.com: open the picked template as a new page, once, as soon as the app can
   // create pages (after onboarding; straight away for someone already signed in, via ?template=).
@@ -256,7 +271,11 @@ export function Shell() {
       inspectorOpen: inspectorPref,
       setInspectorOpen: setInspectorPref,
       openPalette: () => setPaletteOpen(true),
-      openQuickAdd: () => setQuickAddOpen(true),
+      openQuickAdd: (opts) => {
+        // (As a click handler it's handed the click: only a real date counts.)
+        setQuickAddDue(typeof opts?.due === "string" ? opts.due : undefined);
+        setQuickAddOpen(true);
+      },
       isNarrow: isNarrow || isMedium,
       drawerMode: isNarrow,
       sidebarSlot: pageSidebar ? sidebarSlot : null,
@@ -308,6 +327,40 @@ export function Shell() {
     window.addEventListener("pointercancel", up);
   };
 
+  const globals = (
+    <>
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <AppContextMenu />
+      <DesktopBridge />
+      <NativeBridge />
+      <WarmNotes />
+      <OutboxRefusals />
+      <QuickAddTask open={quickAddOpen} due={quickAddDue} onClose={() => setQuickAddOpen(false)} />
+      {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
+      {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} hideLauncher={(isNarrow && drawerOpen) || iphone} /> : null}
+    </>
+  );
+
+  if (iphone) {
+    return (
+      <TabsProvider accountKey={profile.id} workspaceId={context.kind === "workspace" ? context.workspaceId : null}>
+        <ShellContext.Provider value={value}>
+          <IphoneShell
+            banner={
+              settings?.bannerMessage ? (
+                <div role="status" className="rounded-panel bg-warning-soft px-4 py-2 text-center text-sm text-ink shadow-[var(--glass-shadow)]">
+                  {settings.bannerMessage}
+                  {settings.readOnly ? " Folevi is read-only right now; your edits are kept on this device." : ""}
+                </div>
+              ) : null
+            }
+          />
+          {globals}
+        </ShellContext.Provider>
+      </TabsProvider>
+    );
+  }
+
   return (
     <TabsProvider accountKey={profile.id} workspaceId={context.kind === "workspace" ? context.workspaceId : null}>
     <ShellContext.Provider value={value}>
@@ -357,26 +410,41 @@ export function Shell() {
           <RouteView />
         </div>
       </div>
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <AppContextMenu />
-      <DesktopBridge />
-      <NativeBridge />
-      <WarmNotes />
-      <OutboxRefusals />
-      <QuickAddTask open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
-      {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
-      {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} hideLauncher={isNarrow && drawerOpen} /> : null}
+      {globals}
     </ShellContext.Provider>
     </TabsProvider>
   );
 }
 
 /** Top bar shared by all views: sidebar toggle, title/breadcrumbs, and actions. */
-export function ViewChrome({ title, subtitle, leading, actions, children, tabTitle, overlay, tint }: { title: ReactNode; /** A short fact next to the title (e.g. "48 notes"), announced politely when it changes. */ subtitle?: ReactNode; leading?: ReactNode; actions?: ReactNode; children: ReactNode; tabTitle?: string; /** Floats over the view without scrolling with it (e.g. the bar for selected notes). */ overlay?: ReactNode; /** A colour the view's background takes a faint wash of (a folder's colour). */ tint?: string }) {
+export function ViewChrome({ title, subtitle, leading, actions, children, tabTitle, overlay, tint, iphone }: { title: ReactNode; /** A short fact next to the title (e.g. "48 notes"), announced politely when it changes. */ subtitle?: ReactNode; leading?: ReactNode; actions?: ReactNode; children: ReactNode; tabTitle?: string; /** Floats over the view without scrolling with it (e.g. the bar for selected notes). */ overlay?: ReactNode; /** A colour the view's background takes a faint wash of (a folder's colour). */ tint?: string; /** How the view looks as a screen of the iPhone app (large title, bar actions); only read there. */ iphone?: IphoneScreenOptions }) {
   const { sidebarOpen, toggleSidebar, drawerMode } = useShell();
   const { route } = useAppRouter();
   useDocumentTitle(tabTitle ?? (typeof title === "string" ? title : undefined));
   useViewTab(tabTitle ?? (typeof title === "string" ? title : undefined));
+  const inIphone = useIphoneApp();
+  if (inIphone) {
+    // A view that says nothing about the iPhone app gets a large title, and its facts and actions in a row under it.
+    const extra = !iphone && (subtitle || leading || actions) ? (
+      <div className="flex flex-wrap items-center gap-2 px-5 pb-2 pt-1">
+        {leading}
+        {subtitle ? (
+          <span role="status" className="mr-auto min-w-0 truncate text-[15px] text-muted">
+            {subtitle}
+          </span>
+        ) : (
+          <span className="mr-auto" />
+        )}
+        {actions}
+      </div>
+    ) : null;
+    const fallback = (tabTitle ?? (typeof title === "string" ? title : "")).replace(/^Tasks · /, "Tasks ");
+    return (
+      <IphoneScreen options={{ ...iphone, header: iphone?.header ?? extra }} fallbackTitle={fallback} overlay={overlay} tint={tint}>
+        {children}
+      </IphoneScreen>
+    );
+  }
   // Save state lives in the sidebar; on phones (sidebar is a drawer) it shows here instead.
   const sync = drawerMode ? <SyncStatus documentId={route.name === "doc" ? route.id : undefined} /> : null;
   // No title bar: the page's name is in its tab and read to screen readers (a visually hidden h1). Only

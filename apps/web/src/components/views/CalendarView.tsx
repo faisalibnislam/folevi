@@ -18,17 +18,23 @@ import { CalendarsButton, EventPopover, calendarColor, eventWhen, useExternalEve
 import { minutesToTime, monthGrid, shiftMonth, visibleDays } from "./calendarLayout";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
+import { IphoneAgenda, calendarMenu } from "@/components/iphone/Agenda";
+import { RootAvatar, RootPill } from "@/components/iphone/RootBar";
 
 type Layout = "month" | "week" | "agenda";
 const LAYOUT_KEY = "folevi:calendar-layout";
+// The iPhone app keeps its own choice, and starts on the agenda.
+const IPHONE_LAYOUT_KEY = "folevi:calendar-layout-iphone";
 
-/** The layout last picked on this device (month when nothing is stored or storage is off). */
+/** The layout last picked on this device (month when nothing is stored or storage is off; the agenda on iPhone). */
 function storedLayout(): Layout {
+  const iphone = isIphoneApp();
   try {
-    const v = localStorage.getItem(LAYOUT_KEY);
-    return v === "week" || v === "agenda" ? v : "month";
+    const v = localStorage.getItem(iphone ? IPHONE_LAYOUT_KEY : LAYOUT_KEY);
+    return v === "week" || v === "agenda" || v === "month" ? v : iphone ? "agenda" : "month";
   } catch {
-    return "month";
+    return iphone ? "agenda" : "month";
   }
 }
 
@@ -45,7 +51,7 @@ export function CalendarView({ month }: { month: string | null }) {
   const setMode = (next: Layout) => {
     setModeState(next);
     try {
-      localStorage.setItem(LAYOUT_KEY, next);
+      localStorage.setItem(isIphoneApp() ? IPHONE_LAYOUT_KEY : LAYOUT_KEY, next);
     } catch {
       /* storage unavailable: the choice lasts for this visit */
     }
@@ -174,22 +180,41 @@ export function CalendarView({ month }: { month: string | null }) {
       </div>
     ) : null;
 
+  const iphone = useIphoneApp();
+  const dialogs = (
+    <>
+      <TaskEditDialog task={editing} onClose={() => setEditing(null)} />
+      <CalendarFeedDialog open={feedOpen} onClose={() => setFeedOpen(false)} />
+      <EventPopover event={openEvent} anchor={eventAnchor} timeZone={timeZone} onClose={() => setOpenEvent(null)} />
+    </>
+  );
+  const iphoneMenu = calendarMenu(mode, pickLayout, () => setFeedOpen(true));
+  if (iphone && mode === "agenda") {
+    return (
+      <IphoneAgenda today={today} days={agendaDays} byDate={byDate} eventsByDate={eventsByDate} overdue={overdue} timeZone={timeZone} onToggle={toggle} onEdit={setEditing} onOpenEvent={showEvent} menu={iphoneMenu}>
+        {dialogs}
+      </IphoneAgenda>
+    );
+  }
+
   return (
-    <ViewChrome title={<h1 className="text-sm font-semibold">Calendar</h1>} tabTitle="Calendar">
+    <ViewChrome title={<h1 className="text-sm font-semibold">Calendar</h1>} tabTitle="Calendar" iphone={{ title: heading, root: true, leading: <RootAvatar />, trailing: <RootPill more={iphoneMenu} /> }}>
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         {/* One row: the period (a section title, as on Home) with its paging, then the calendar's tools. On
             phones the tools wrap onto a second line. */}
         <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h2 aria-live="polite" className="ui-display text-[22px] leading-8">
+          <h2 aria-live="polite" className={iphone ? "sr-only" : "ui-display text-[22px] leading-8"}>
             {heading}
           </h2>
           {pager}
           <div className="ml-auto flex items-center gap-1.5">
             <CalendarsButton />
-            <Button size="sm" onClick={() => setFeedOpen(true)}>
-              <Rss size={14} aria-hidden /> <span className="max-md:sr-only">Subscribe</span>
-            </Button>
-            {layoutSwitch}
+            {iphone ? null : (
+              <Button size="sm" onClick={() => setFeedOpen(true)}>
+                <Rss size={14} aria-hidden /> <span className="max-md:sr-only">Subscribe</span>
+              </Button>
+            )}
+            {iphone ? null : layoutSwitch}
           </div>
         </div>
 
@@ -351,9 +376,7 @@ export function CalendarView({ month }: { month: string | null }) {
           </div>
         )}
       </div>
-      <TaskEditDialog task={editing} onClose={() => setEditing(null)} />
-      <CalendarFeedDialog open={feedOpen} onClose={() => setFeedOpen(false)} />
-      <EventPopover event={openEvent} anchor={eventAnchor} timeZone={timeZone} onClose={() => setOpenEvent(null)} />
+      {dialogs}
     </ViewChrome>
   );
 }

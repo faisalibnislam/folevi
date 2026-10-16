@@ -38,6 +38,8 @@ import { useNoteActions } from "./noteActions";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { AiGenerateDialog } from "@/components/ai/AiGenerateDialog";
 import { AiIcon } from "@/components/ai/AiIcon";
+import { useIphoneApp } from "@/lib/iphone";
+import { IphoneNoteList } from "@/components/iphone/NoteList";
 
 /** Marks a page with edits on this device the server hasn't confirmed yet. */
 function UnsyncedMarker({ className = "" }: { className?: string }) {
@@ -159,6 +161,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const canCopy = useCanCopyElsewhere();
   const reorder = useMutation(api.documents.reorder);
+  const iphone = useIphoneApp();
 
   // Keep a last-known copy for offline reloads. Results change with every edit anywhere in the list (and
   // grow with each page loaded): only notes that changed since they were last written go, once the list
@@ -320,6 +323,136 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const crumbs = view === "folder" && folderId ? folderAncestors(allFolders, folderId) : [];
   const subfolders = view === "folder" && folderId ? allFolders.filter((f) => f.parentFolderId === folderId) : [];
   const heading = <h1 className="truncate text-sm font-semibold">{title}</h1>;
+
+  const dialogs = (
+    <>
+      <MoveToFolderDialog
+        open={bulkMoveOpen}
+        onClose={() => setBulkMoveOpen(false)}
+        count={selectedDocs.length}
+        noteTitle={selectedDocs[0]?.title}
+        currentFolderId={sharedFolder}
+        onPick={(folder) => bulk((ids) => notes.moveTo(ids, folder))}
+      />
+      <CopyToDialog open={bulkCopy !== null} onClose={() => setBulkCopy(null)} documentIds={bulkCopy?.ids ?? []} noteTitle={bulkCopy?.title} />
+      <Dialog
+        open={bulkDeleteOpen}
+        onClose={() => setBulkDeleteOpen(false)}
+        title={`Delete ${selectedDocs.length === 1 ? "1 note" : `${selectedDocs.length} notes`} permanently?`}
+        description="They’ll be deleted for everyone, with their nested pages, attachments and version history. This can’t be undone. Notes you don’t have permission to delete stay in Trash."
+        size="sm"
+        footer={
+          <>
+            <Button onClick={() => setBulkDeleteOpen(false)}>Cancel</Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                setBulkDeleteOpen(false);
+                bulk((ids) => notes.deleteForever(ids));
+              }}
+            >
+              Delete permanently
+            </Button>
+          </>
+        }
+      />
+      <Dialog
+        open={confirmEmpty}
+        onClose={() => setConfirmEmpty(false)}
+        title="Empty Trash?"
+        description={summaryText}
+        size="sm"
+        footer={
+          <>
+            <Button onClick={() => setConfirmEmpty(false)}>Cancel</Button>
+            <Button
+              variant="danger"
+              disabled={!trashSummary || trashSummary.deletable === 0}
+              onClick={async () => {
+                const count = trashSummary?.deletable ?? 0;
+                setConfirmEmpty(false);
+                selection.clear();
+                try {
+                  const r = await emptyTrash({ scope });
+                  toast.show(t("documents.trash.scheduled", { count: Math.max(count, r.scheduled) }));
+                } catch (e) {
+                  toast.show(errorMessage(e), { tone: "error" });
+                }
+              }}
+            >
+              Delete permanently
+            </Button>
+          </>
+        }
+      />
+    </>
+  );
+
+  if (iphone) {
+    return (
+      <IphoneNoteList
+        view={view}
+        title={title}
+        docs={docs}
+        loading={loading}
+        canLoadMore={canLoadMore}
+        onLoadMore={() => (moreCached ? setCachedShown((n) => n + PAGE_SIZE) : loadMore(PAGE_SIZE))}
+        subfolders={subfolders}
+        empty={{
+          ...EMPTY[view],
+          body: view === "folder" && subfolders.length ? "The folders above hold the rest." : view === "templates" && builtIns?.length ? "Save any note as a template from its menu, or start from a built-in one above." : EMPTY[view].body,
+          action:
+            view === "all" || view === "folder" ? (
+              <Button variant="primary" onClick={() => void createDocument({})}>
+                <Plus size={14} aria-hidden /> New note
+              </Button>
+            ) : null,
+        }}
+        selection={selection}
+        bulkActions={bulkActions}
+        sort={sort}
+        onSort={setSort}
+        unsynced={unsynced}
+        canArrange={canArrange}
+        onNudge={nudge}
+        tint={view === "folder" ? folderHex(org?.folders.find((f) => f.id === folderId)?.color) : undefined}
+        menu={[
+          ...(view === "trash" && results.length ? [{ label: "Empty Trash", icon: <Trash2 size={18} />, danger: true, onSelect: () => setConfirmEmpty(true) }] : []),
+          ...(view === "templates" ? [{ label: "New template", icon: <Plus size={18} />, onSelect: () => void createDocument({ folderId: null, kind: "template" }) }] : []),
+          ...(view === "templates" && aiOn && online ? [{ label: "Generate with AI", icon: <AiIcon size={18} />, onSelect: () => setGenerating(true) }] : []),
+          ...(view === "folder" && folderId ? [{ label: "New note here", icon: <FilePlus2 size={18} />, onSelect: () => void createDocument({ folderId }) }] : []),
+        ]}
+        before={
+          view === "templates" && builtIns?.length ? (
+            <section aria-labelledby="builtin-title" className="pt-3">
+              <h2 id="builtin-title" className="px-5 pb-1 text-[13px] font-medium uppercase tracking-[0.02em] text-muted">
+                Built-in templates
+              </h2>
+              {builtIns.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  aria-label={`New note from ${t.name}`}
+                  onClick={() => void createDocument({ title: t.name, templateId: t.key })}
+                  className="flex w-full items-center gap-3 pl-5 pr-4 text-left outline-none active:bg-[var(--liquid-press)]"
+                >
+                  <TemplateTile name={t.icon} />
+                  <span className="ui-row-sep min-w-0 flex-1 py-2.5">
+                    <span className="block truncate text-[17px] text-ink">{t.name}</span>
+                    <span className="block truncate text-[13px] text-muted">{t.description}</span>
+                  </span>
+                </button>
+              ))}
+              <h2 className="px-5 pb-1 pt-6 text-[13px] font-medium uppercase tracking-[0.02em] text-muted">Your templates</h2>
+            </section>
+          ) : null
+        }
+      >
+        {dialogs}
+        {view === "templates" && aiOn ? <AiGenerateDialog open={generating} onClose={() => setGenerating(false)} kind="template" /> : null}
+      </IphoneNoteList>
+    );
+  }
 
   return (
     <ViewChrome
@@ -570,65 +703,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           )
         : null}
       {ctx ? <NoteContextMenu key={ctx.doc.id + ctx.at.x + ctx.at.y} at={ctx.at} onDone={() => setCtx(null)} {...menuProps(ctx.doc)} /> : null}
-      <MoveToFolderDialog
-        open={bulkMoveOpen}
-        onClose={() => setBulkMoveOpen(false)}
-        count={selectedDocs.length}
-        noteTitle={selectedDocs[0]?.title}
-        currentFolderId={sharedFolder}
-        onPick={(folder) => bulk((ids) => notes.moveTo(ids, folder))}
-      />
-      <CopyToDialog open={bulkCopy !== null} onClose={() => setBulkCopy(null)} documentIds={bulkCopy?.ids ?? []} noteTitle={bulkCopy?.title} />
-      <Dialog
-        open={bulkDeleteOpen}
-        onClose={() => setBulkDeleteOpen(false)}
-        title={`Delete ${selectedDocs.length === 1 ? "1 note" : `${selectedDocs.length} notes`} permanently?`}
-        description="They’ll be deleted for everyone, with their nested pages, attachments and version history. This can’t be undone. Notes you don’t have permission to delete stay in Trash."
-        size="sm"
-        footer={
-          <>
-            <Button onClick={() => setBulkDeleteOpen(false)}>Cancel</Button>
-            <Button
-              variant="danger"
-              onClick={() => {
-                setBulkDeleteOpen(false);
-                bulk((ids) => notes.deleteForever(ids));
-              }}
-            >
-              Delete permanently
-            </Button>
-          </>
-        }
-      />
-      <Dialog
-        open={confirmEmpty}
-        onClose={() => setConfirmEmpty(false)}
-        title="Empty Trash?"
-        description={summaryText}
-        size="sm"
-        footer={
-          <>
-            <Button onClick={() => setConfirmEmpty(false)}>Cancel</Button>
-            <Button
-              variant="danger"
-              disabled={!trashSummary || trashSummary.deletable === 0}
-              onClick={async () => {
-                const count = trashSummary?.deletable ?? 0;
-                setConfirmEmpty(false);
-                selection.clear();
-                try {
-                  const r = await emptyTrash({ scope });
-                  toast.show(t("documents.trash.scheduled", { count: Math.max(count, r.scheduled) }));
-                } catch (e) {
-                  toast.show(errorMessage(e), { tone: "error" });
-                }
-              }}
-            >
-              Delete permanently
-            </Button>
-          </>
-        }
-      />
+      {dialogs}
     </ViewChrome>
   );
 }

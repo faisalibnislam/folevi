@@ -201,7 +201,9 @@ export const tokens = {
     "small": 8,
     "control": 10,
     "panel": 14,
-    "container": 18
+    "container": 18,
+    "sheet": 28,
+    "capsule": 999
   },
   "font": {
     "size": {

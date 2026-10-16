@@ -103,7 +103,8 @@ function startOfToday(): number {
   return d.getTime();
 }
 
-function NotificationPanel({ unread, onClose }: { unread: number; onClose: (refocus: boolean) => void }) {
+/** The list of notifications (the bell's panel; a sheet in the iPhone app, which shows its own title). */
+export function NotificationPanel({ unread, onClose, hideTitle = false }: { unread: number; onClose: (refocus: boolean) => void; hideTitle?: boolean }) {
   const items = useQuery(api.notifications.list, { limit: 50 });
   const markRead = useMutation(api.notifications.markRead);
   const { navigate } = useAppRouter();
@@ -156,9 +157,10 @@ function NotificationPanel({ unread, onClose }: { unread: number; onClose: (refo
   return (
     <section role="dialog" aria-labelledby="notifications-heading" className="flex min-h-0 flex-1 flex-col">
       <header className="flex flex-none items-center gap-1 px-4 pb-2 pt-3">
-        <h2 id="notifications-heading" ref={headingRef} tabIndex={-1} className="flex-1 text-[14px] font-semibold text-heading outline-none">
+        <h2 id="notifications-heading" ref={headingRef} tabIndex={-1} className={`flex-1 text-[14px] font-semibold text-heading outline-none ${hideTitle ? "sr-only" : ""}`}>
           Notifications
         </h2>
+        {hideTitle ? <span className="flex-1" /> : null}
         <button
           type="button"
           disabled={!unread}

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 import { useTopLayer } from "./topLayer";
+import { useIphoneApp } from "@/lib/iphone";
+import { Sheet } from "@/components/iphone/Sheet";
 
 /**
  * A non-modal panel floating next to its anchor in the top layer (nothing can clip or cover it). It's a
@@ -25,12 +27,13 @@ export function Popover({
   align?: "start" | "end";
   className?: string;
 }) {
+  const iphone = useIphoneApp();
   const panel = useRef<HTMLDivElement>(null);
-  const style = useTopLayer(open, panel, anchor, { align, gap: 6 });
+  const style = useTopLayer(open && !iphone, panel, anchor, { align, gap: 6 });
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
-    if (!open) return;
+    if (!open || iphone) return;
     const first = panel.current?.querySelector<HTMLElement>("[data-autofocus], input, button, [href], textarea, [tabindex]:not([tabindex='-1'])");
     (first ?? panel.current)?.focus({ preventScroll: true });
     const onDown = (e: MouseEvent) => {
@@ -52,7 +55,14 @@ export function Popover({
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, anchor]);
+  }, [open, anchor, iphone]);
+  // In the iPhone app, a sheet from the bottom of the screen.
+  if (iphone)
+    return (
+      <Sheet open={open} onClose={onClose} label={label}>
+        <div className="px-1 pb-3">{children}</div>
+      </Sheet>
+    );
   if (!open) return null;
   return (
     <div

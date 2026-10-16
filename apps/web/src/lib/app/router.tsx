@@ -172,8 +172,9 @@ export function AppLink({
   href,
   children,
   onClick,
+  replace,
   ...rest
-}: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode }) {
+}: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode; /** Takes the current page's place in history (a view switcher). */ replace?: boolean }) {
   const { navigate } = useAppRouter();
   const handle = (e: MouseEvent<HTMLAnchorElement>) => {
     onClick?.(e);
@@ -185,7 +186,7 @@ export function AppLink({
     }
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0 || rest.target === "_blank") return;
     e.preventDefault();
-    navigate(href);
+    navigate(href, replace ? { replace: true } : undefined);
   };
   return (
     <a href={href} onClick={handle} {...rest}>

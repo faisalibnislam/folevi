@@ -77,6 +77,7 @@ export function Inspector({
   bare = false,
   aiRun = null,
   onAiTitle,
+  sheet = false,
 }: {
   documentId: string;
   editor: Editor | null;
@@ -101,6 +102,8 @@ export function Inspector({
   aiRun?: (AiRunDetail & { id: number }) | null;
   /** The AI's suggested title was accepted. */
   onAiTitle?: (title: string) => void;
+  /** Inside the iPhone app's sheet, which shows the tool's name and Close itself. */
+  sheet?: boolean;
 }) {
   const baseId = useId();
   const aiAccess = useAiAccess(meta?.document);
@@ -112,8 +115,10 @@ export function Inspector({
   }, [tab]);
   return (
     <div className="flex h-full flex-col">
-      <div className={`flex-none px-3 ${bare ? "pt-0" : "pt-2.5"}`}>
-        {hideTabs && tab !== "comments" ? (
+      <div className={`flex-none px-3 ${bare || sheet ? "pt-0" : "pt-2.5"} ${sheet ? "sr-only" : ""}`}>
+        {sheet ? (
+          <h2 id={`${baseId}-tab-${tab}`}>{TITLES[tab] ?? "Comments"}</h2>
+        ) : hideTabs && tab !== "comments" ? (
           <div className="flex h-9 items-center gap-1 px-1">
             <h2 id={`${baseId}-tab-${tab}`} className="ui-display flex flex-1 items-center gap-2 text-[18px]">
               {tab === "ai" ? <AiIcon size={18} aria-hidden /> : null}
@@ -174,7 +179,7 @@ export function Inspector({
       </div>
       {/* In the right sidebar, content blurs progressively into the bottom edge (clear at the top), like iOS. */}
       <div className="relative min-h-0 flex-1">
-      <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className={`relative h-full overflow-y-auto px-3 pt-3 ${bare ? "pb-16" : "pb-4"}`}>
+      <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className={`relative h-full overflow-y-auto ${sheet ? "px-4 pt-1" : "px-3 pt-3"} ${bare ? "pb-16" : "pb-4"}`}>
         {/* AI in a note is about this note (the chat with all notes is the floating one, elsewhere). */}
         {tab === "ai" && aiOn ? <AiPanel documentId={documentId} editor={editor} readOnly={readOnly} run={aiRun} onTitle={(t) => onAiTitle?.(t)} /> : null}
         {/* AI off, or not on the plan where this note lives: how to turn it on, or what a plan with AI includes. */}

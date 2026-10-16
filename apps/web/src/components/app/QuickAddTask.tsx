@@ -23,25 +23,25 @@ export type Target = { id: string; title: string; icon: string | null } | null;
  * Quick Add Task (⇧⌘A). The task becomes a checklist block in the chosen document: the open page by
  * default, or the person's Inbox page when none is chosen. Every task always lives in a document.
  */
-export function QuickAddTask({ open, onClose, documentId }: { open: boolean; onClose: () => void; documentId?: string }) {
+export function QuickAddTask({ open, onClose, documentId, due }: { open: boolean; onClose: () => void; documentId?: string; /** Starts on this day (the calendar's "Add a task"). */ due?: string }) {
   const { route } = useAppRouter();
   const currentDoc = documentId ?? (route.name === "doc" ? route.id : undefined);
   return (
     <Dialog open={open} onClose={onClose} title="Quick add task" description="Press Enter to add. Tasks without a page go to your Inbox page." size="sm">
-      {open ? <QuickAddForm onClose={onClose} currentDoc={currentDoc} /> : null}
+      {open ? <QuickAddForm onClose={onClose} currentDoc={currentDoc} initialDue={due} /> : null}
     </Dialog>
   );
 }
 
 /** The form itself: in the dialog above, and alone in the Mac app's Quick Add window (`onAdded` says where it went). */
-export function QuickAddForm({ onClose, currentDoc, onAdded }: { onClose: () => void; currentDoc?: string; onAdded?: (added: { documentId: string; where: string }) => void }) {
+export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onClose: () => void; currentDoc?: string; onAdded?: (added: { documentId: string; where: string }) => void; initialDue?: string }) {
   const { scope, today, deviceId } = useAppState();
   const quickAdd = useMutation(api.tasks.quickAdd);
   const { navigate } = useAppRouter();
   const toast = useToast();
   const current = useQuery(api.documents.titles, currentDoc ? { documentIds: [currentDoc] } : "skip");
   const [title, setTitle] = useState("");
-  const [due, setDue] = useState("");
+  const [due, setDue] = useState(initialDue ?? "");
   const [time, setTime] = useState("");
   const [priority, setPriority] = useState<Priority>("none");
   const [target, setTarget] = useState<Target | undefined>(undefined); // undefined = not chosen yet

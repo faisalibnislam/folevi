@@ -23,7 +23,7 @@ const key = (scopeKey: string) => `folevi:catchup:${scopeKey}`;
  * Home's "Catch me up": a short AI brief of this week's notes and what's due, citing the notes. Generated
  * on request (never automatically), kept for this browser session.
  */
-export function CatchUp() {
+export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home) until there's a brief to show. */ row?: boolean } = {}) {
   const { scope, scopeKey, today } = useAppState();
   const brief = useAction(api.ai.brief);
   const stream = useAiStream();
@@ -71,6 +71,23 @@ export function CatchUp() {
     }
   };
 
+  if (!data && !busy && row) {
+    return (
+      <div>
+        <button type="button" onClick={() => void run()} className="flex w-full items-center gap-3 pl-5 pr-4 text-left outline-none transition-colors active:bg-[var(--liquid-press)] focus-visible:bg-[var(--liquid-active)]">
+          <span aria-hidden className="grid w-7 flex-none place-items-center">
+            <AiIcon size={22} />
+          </span>
+          <span className="ui-row-sep flex min-h-[58px] min-w-0 flex-1 flex-col justify-center py-2">
+            <span className="text-[17px] text-ink">Catch me up</span>
+            <span className="truncate text-[13px] text-muted">A quick AI brief of this week’s notes and what’s due</span>
+          </span>
+        </button>
+        {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mx-5 mt-2 text-[13px] text-danger" : "mx-5 mt-2"} /> : null}
+      </div>
+    );
+  }
+
   if (!data && !busy) {
     return (
       <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -88,7 +105,7 @@ export function CatchUp() {
   }
 
   return (
-    <section aria-label="Catch-up brief" className="mt-6 rounded-container bg-[var(--glass-active)] p-5 shadow-[var(--glass-edge),var(--glass-shadow)]">
+    <section aria-label="Catch-up brief" className={`${row ? "mx-4 mb-2" : ""} mt-6 rounded-container bg-[var(--glass-active)] p-5 shadow-[var(--glass-edge),var(--glass-shadow)]`}>
       <div className="mb-2 flex items-center gap-2">
         <AiIcon size={15} aria-hidden className="text-[#7c6cf0]" />
         <h2 className="ui-display flex-1 text-[18px]">Your week</h2>

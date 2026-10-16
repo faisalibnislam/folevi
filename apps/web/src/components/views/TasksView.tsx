@@ -18,6 +18,8 @@ import { formatCalendarDate } from "@/i18n";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { haptic } from "@/lib/nativeApp";
+import { useIphoneApp } from "@/lib/iphone";
+import { IphoneTasks } from "@/components/iphone/Tasks";
 
 type View = "inbox" | "today" | "upcoming" | "all" | "completed" | "mine";
 const VIEWS: { id: View; label: string; empty: { title: string; body?: string } }[] = [
@@ -356,6 +358,14 @@ export function TasksView({ view }: { view: View }) {
     [groups, meta, today, onToggle],
   );
   const empty = view === "mine" && context.kind === "personal" ? { title: "No open tasks", body: "In Personal every unassigned task is yours." } : meta.empty;
+  const iphone = useIphoneApp();
+  if (iphone) {
+    return (
+      <IphoneTasks view={view} tasks={tasks === undefined ? undefined : shown} counts={counts} filter={filter} onFilter={setFilter} onToggle={onToggle} onEdit={setEditing} empty={empty}>
+        <TaskEditDialog task={editing} onClose={() => setEditing(null)} />
+      </IphoneTasks>
+    );
+  }
 
   return (
     <ViewChrome
@@ -367,7 +377,7 @@ export function TasksView({ view }: { view: View }) {
           <AppLink href="/calendar" className="ui-btn ui-btn-secondary h-8 gap-1.5 px-3 text-sm pointer-coarse:h-11">
             <CalendarDays size={14} aria-hidden /> <span className="max-md:sr-only">Calendar</span>
           </AppLink>
-          <Button size="sm" variant="primary" onClick={openQuickAdd}>
+          <Button size="sm" variant="primary" onClick={() => openQuickAdd()}>
             <Plus size={14} aria-hidden /> Add task
           </Button>
         </>

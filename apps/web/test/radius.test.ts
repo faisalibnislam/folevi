@@ -1,5 +1,6 @@
 // The corner scale is the only source of rounded corners (packages/design-tokens radius: tiny 4, chip 6,
-// small 8, control 10, panel 14, container 18; docs/DESIGN_SYSTEM.md "Corners"). This test fails on any
+// small 8, control 10, panel 14, container 18, and for the iPhone app's floating glass only, sheet 28 and
+// capsule; docs/DESIGN_SYSTEM.md "Corners"). This test fails on any
 // corner that bypasses it: arbitrary Tailwind values, Tailwind's own sizes, full rounding, raw CSS values
 // and inline numbers. Nested corners follow inner = outer - inset; they're checked in the browser.
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -17,7 +18,7 @@ function files(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const TOKENS = "none|tiny|chip|small|control|panel|container";
+const TOKENS = "none|tiny|chip|small|control|panel|container|sheet|capsule";
 const SIDES = "(?:-(?:t|b|l|r|tl|tr|bl|br|s|e|ss|se|es|ee))?";
 
 /** Every way a corner could be set outside the scale, with what it found. */
@@ -52,7 +53,7 @@ function violations(path: string, text: string): string[] {
   // Inline styles: tokens only (CSS variables, or tokens.radius in images rendered without CSS).
   for (const m of text.matchAll(/borderRadius:\s*([^,}\n]+)/g)) {
     const value = m[1]!.trim();
-    if (/^"var\(--radius-(?:[a-z]+)\)"$/.test(value) || /\bR\.(?:none|tiny|chip|small|control|panel|container)\b/.test(value) || value === "inherit" || value === '"inherit"') continue;
+    if (/^"var\(--radius-(?:[a-z]+)\)"$/.test(value) || /\bR\.(?:none|tiny|chip|small|control|panel|container|sheet|capsule)\b/.test(value) || value === "inherit" || value === '"inherit"') continue;
     found.push(`${at(m.index!)} borderRadius: ${value}`);
   }
   return found;
@@ -64,8 +65,15 @@ describe("corners", () => {
     expect(all).toEqual([]);
   });
 
-  test("the scale is 18 at most, and every step is on it", async () => {
+  test("the scale is 18 at most, and every step is on it (plus the iPhone app's sheets and capsules)", async () => {
     const { tokens } = await import("@folevi/design-tokens");
-    expect(tokens.radius).toEqual({ none: 0, tiny: 4, chip: 6, small: 8, control: 10, panel: 14, container: 18 });
+    expect(tokens.radius).toEqual({ none: 0, tiny: 4, chip: 6, small: 8, control: 10, panel: 14, container: 18, sheet: 28, capsule: 999 });
+  });
+
+  test("sheet and capsule corners are only used by the iPhone app's interface", () => {
+    const outside = files(SRC)
+      .filter((path) => !relative(SRC, path).startsWith("components/iphone/") && !path.endsWith("globals.css"))
+      .flatMap((path) => [...readFileSync(path, "utf8").matchAll(/rounded(?:-[a-z]+)?-(?:sheet|capsule)\b|--radius-(?:sheet|capsule)/g)].map((m) => `${relative(SRC, path)}: ${m[0]}`));
+    expect(outside).toEqual([]);
   });
 });

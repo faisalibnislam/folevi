@@ -80,6 +80,9 @@ import { ExportDialog } from "./ExportDialog";
 import { FindBar } from "./FindBar";
 import { useNoteActions } from "@/components/views/noteActions";
 import { PageDock } from "./PageDock";
+import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
+import { NoteBars } from "@/components/iphone/NoteBars";
+import { NotePlaceChip, NoteTrailing, ToolSheet } from "@/components/iphone/NoteChrome";
 import { useKeyboardInset } from "@/lib/hooks/useVisualViewport";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
@@ -142,6 +145,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [reconciled, setReconciled] = useState(false);
   const { inspectorOpen, setInspectorOpen, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode, docSidebarMode, setDocSidebarMode, setNoteAi } = useShell();
+  // The iPhone app: the note fills the screen under a glass bar, its tools in floating bars and sheets.
+  const iphone = useIphoneApp();
   const sidebarOpenRef = useRef(sidebarOpen);
   sidebarOpenRef.current = sidebarOpen;
   const toggleSidebarRef = useRef(toggleSidebar);
@@ -163,12 +168,18 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const showCommentsTab = useCallback(
     (threadId: string | null) => {
       setFocusThreadId(threadId);
+      // The iPhone app has no page sidebar: the comments open in the tools sheet.
+      if (isIphoneApp()) {
+        setInspectorTab("comments");
+        setInspectorOpen(true);
+        return;
+      }
       // The left sidebar may be showing folders: switch it back to the page's own (which opens it too).
       if (sidebarModeRef.current.mode === "folders") sidebarModeRef.current.set("document");
       else if (!sidebarOpenRef.current) toggleSidebarRef.current();
       setSidebarRequest({ tab: "comments", at: Date.now() });
     },
-    [],
+    [setInspectorTab, setInspectorOpen],
   );
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const [focusedBlock, setFocusedBlock] = useState<string | null>(null);
@@ -768,6 +779,20 @@ export function DocumentView({ documentId }: { documentId: string }) {
     <NotePaletteProvider colors={styleColorsOf(summary?.cover ?? DEFAULT_COVER, coverPalette)} active={sheetAttrs["data-palette"] !== undefined}>
     <ViewChrome
       tabTitle={pageTitle}
+      iphone={{
+        title: pageTitle,
+        large: false,
+        innerScroll: true,
+        edge: pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "clear" : "canvas",
+        collapseAt: 96,
+        center: meta ? (
+          <NotePlaceChip
+            parent={meta.breadcrumbs.length ? meta.breadcrumbs[meta.breadcrumbs.length - 1]! : null}
+            folder={folder ? { ...folder, color: org?.folders.find((f) => f.id === folder.id)?.color ?? null } : null}
+          />
+        ) : undefined,
+        trailing: summary ? <NoteTrailing onShare={meta ? () => setShareOpen(true) : undefined} shared={Boolean(shareState)} actions={actions} /> : undefined,
+      }}
       title={
         sidebarOpen ? (
           readOnly ? <span className="ui-chip h-6 bg-sunken text-[11px] text-muted">{meta?.inTrash ? "In Trash" : "View only"}</span> : null
@@ -848,8 +873,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
         : null}
       {/* The note floats on its backdrop in a rounded panel; the chrome (sidebars, inspector) sits flat behind.
           Inset like the tab strip above it (inset-x-1), so the page lines up with it. */}
-      <div className="relative flex h-full min-h-0 sm:px-1 sm:pb-1">
-        <div ref={noteRef} className="relative min-w-0 flex-1 px-1.5 pb-2 sm:px-0 sm:pb-0">
+      <div className={`relative flex h-full min-h-0 ${iphone ? "" : "sm:px-1 sm:pb-1"}`}>
+        <div ref={noteRef} className={`relative min-w-0 flex-1 ${iphone ? "" : "px-1.5 pb-2 sm:px-0 sm:pb-0"}`}>
         {findBar && editor ? <FindBar editor={editor} withReplace={findBar.replace} focusKey={findBar.key} readOnly={readOnly} onClose={() => setFindBar(null)} /> : null}
 
         {/* Blur background: the backdrop sits blurred behind the scrolling page, which is then see-through. */}
@@ -857,7 +882,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
         <div
           id="doc-scroll"
           ref={setScrollEl}
-          className={`fb-page relative h-full overflow-y-auto rounded-panel px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`}
+          data-iphone-scroll={iphone ? "" : undefined}
+          data-iphone-plain={iphone && !pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "" : undefined}
+          className={
+            iphone
+              ? `fb-page relative h-full overflow-y-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+112px)] ${pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "px-2.5 pt-[calc(env(safe-area-inset-top)+58px)]" : ""}`
+              : `fb-page relative h-full overflow-y-auto rounded-panel px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`
+          }
           data-backdrop={pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? (blurredBackdrop ? "blur" : "on") : undefined}
           data-font={style.font}
           data-width={style.width}
@@ -866,10 +897,10 @@ export function DocumentView({ documentId }: { documentId: string }) {
             ["--doc-accent" as string]: style.accent === "accent" ? "var(--color-ember)" : `var(--color-${style.accent})`,
             ["--doc-accent-ink" as string]: style.accent === "accent" ? "var(--color-ember-ink)" : `var(--color-${style.accent}-ink)`,
             ["--doc-accent-soft" as string]: style.accent === "accent" ? "var(--color-ember-soft)" : `var(--color-${style.accent}-soft)`,
-            background: blurredBackdrop ? "transparent" : (pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ?? "var(--color-surface-sunken)"),
+            background: blurredBackdrop ? "transparent" : (pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ?? (iphone ? "transparent" : "var(--color-surface-sunken)")),
           }}
         >
-          {meta?.breadcrumbs.length ? <NestedPath crumbs={meta.breadcrumbs} title={pageTitle} /> : null}
+          {meta?.breadcrumbs.length && !iphone ? <NestedPath crumbs={meta.breadcrumbs} title={pageTitle} /> : null}
           <article
             ref={setSheetEl}
             className="fb-sheet ui-sheet relative mx-auto animate-[folio-settle_240ms_var(--ease-folio)]"
@@ -974,6 +1005,23 @@ export function DocumentView({ documentId }: { documentId: string }) {
         </div>
         {/* The floating bar: AI, Insert, Format and Style, then the note's people, Share and its "…" menu. A tool opens
             in the right sidebar (on a phone, a sheet above the bar); AI opens the assistant on this note. */}
+        {iphone ? (
+          <NoteBars
+            editor={editor}
+            ai={aiOn}
+            open={inspectorOpen}
+            tab={inspectorTab}
+            readOnly={readOnly}
+            onPick={(t) => {
+              if (inspectorOpen && inspectorTab === t) closeInspector();
+              else {
+                if (t === "comments") setFocusThreadId(null);
+                setInspectorTab(t);
+                setInspectorOpen(true);
+              }
+            }}
+          />
+        ) : (
         <PageDock
           ai={aiOn}
           tab={inspectorTab}
@@ -990,8 +1038,35 @@ export function DocumentView({ documentId }: { documentId: string }) {
           }}
           extra={pageGroup}
         />
+        )}
+        {iphone ? (
+          <ToolSheet open={inspectorOpen} tab={inspectorTab} onClose={() => setInspectorOpen(false)}>
+            <Inspector
+              sheet
+              hideTabs
+              documentId={documentId}
+              editor={editor}
+              meta={meta ?? null}
+              tab={inspectorTab}
+              onTab={setInspectorTab}
+              focusThreadId={focusThreadId}
+              onOpenThread={(t) => {
+                if (!t.blockId) return;
+                setInspectorOpen(false);
+                editorRef.current?.focusBlock(t.blockId);
+                setOpenThread({ blockId: t.blockId, threadId: t.id });
+              }}
+              onClose={() => setInspectorOpen(false)}
+              aiRun={aiRun}
+              onAiTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)}
+              onHistory={canEditPage ? () => setHistoryOpen(true) : undefined}
+              actions={actions}
+              readOnly={readOnly}
+            />
+          </ToolSheet>
+        ) : null}
         {/* On a phone the tools are a sheet above the dock; elsewhere they're the right sidebar (below). */}
-        {inspectorOpen && drawerMode ? (
+        {inspectorOpen && drawerMode && !iphone ? (
           <div
             ref={inspectorRef}
             id="document-inspector"
@@ -1030,7 +1105,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         </div>
         {/* The tools (AI, Insert, Format, Style) as a right sidebar: the note makes room for it on wide windows,
             and it slides over the note's edge on narrower ones. It stays open across notes until closed. */}
-        {inspectorOpen && !drawerMode ? (
+        {inspectorOpen && !drawerMode && !iphone ? (
           <RightPanel width={panelWidth} onWidth={setPanelWidth} overlay={panelOverlays}>
             <div
               ref={inspectorRef}

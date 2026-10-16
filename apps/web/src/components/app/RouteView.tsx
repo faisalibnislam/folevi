@@ -21,6 +21,8 @@ import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
 import { useAppState } from "@/lib/app/state";
 import { api } from "@/lib/convex/api";
 import { inboxPage } from "@/lib/share/save";
+import { useIphoneApp } from "@/lib/iphone";
+import { IphoneHome } from "@/components/iphone/IphoneHome";
 
 // A note's page brings the editor, which is most of the app's code: it loads on its own, so the first
 // screen paints without it. It starts downloading straight away when the app opens on a note (alongside
@@ -62,9 +64,10 @@ export function RouteView() {
 
 function Routes() {
   const { route } = useAppRouter();
+  const iphone = useIphoneApp();
   switch (route.name) {
     case "documents":
-      return <HomeDashboard />;
+      return iphone ? <IphoneHome /> : <HomeDashboard />;
     case "notes":
       return <DocumentBrowser view="all" title="All notes" />;
     case "starred":

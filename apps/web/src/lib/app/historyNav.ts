@@ -14,6 +14,17 @@ let popped = false;
 
 const KEY = "foleviAt";
 
+// Told just before the page on screen changes (a new page, or Back/Forward), while the old one is still
+// drawn: the iPhone app's push and pop animations keep a picture of it (components/iphone/transitions.ts).
+const moveListeners = new Set<(kind: "push" | "pop") => void>();
+export function onHistoryMove(listener: (kind: "push" | "pop") => void): () => void {
+  moveListeners.add(listener);
+  return () => moveListeners.delete(listener);
+}
+const moving = (kind: "push" | "pop") => {
+  for (const l of moveListeners) l(kind);
+};
+
 function emit(next: State) {
   if (next.at === state.at && next.top === state.top) return;
   state = next;
@@ -33,6 +44,7 @@ export function startHistoryNav() {
   else window.history.replaceState(stateWith(0), "");
   window.addEventListener("popstate", (e) => {
     popped = true;
+    moving("pop");
     const at = (e.state as Record<string, unknown> | null)?.[KEY];
     if (typeof at === "number") emit({ at, top: Math.max(state.top, at) });
   });
@@ -41,6 +53,7 @@ export function startHistoryNav() {
 /** A new page: one step forward, and anything that was ahead is gone (as in a browser). */
 export function pushEntry(href: string) {
   popped = false;
+  moving("push");
   const at = state.at + 1;
   window.history.pushState(stateWith(at), "", href);
   emit({ at, top: at });

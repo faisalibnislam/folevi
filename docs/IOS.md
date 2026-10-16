@@ -208,7 +208,9 @@ REST API doesn't take files) is written to the App Group queue first and the she
 when Folevi opens". When the app opens (and whenever it comes back), the page takes the queue
 (`takeShares`), saves each one with the web app's own share flow (`lib/share/save.ts`, the same code as
 `/share`: through the sync engine, files through the upload queue, offline too) into the Inbox chosen, says
-"Saved what you shared to your Inbox", and only then lets the app delete it (`finishShare`). A share kept
+"Saved what you shared to your Inbox", and only then lets the app delete it (`finishShare`). A file waits in
+the upload queue until its new note has reached the server (`lib/sync/uploads.ts`), so a share saved offline
+uploads its photos once the connection is back, and a failure that can pass never drops one. A share kept
 for one account is never saved into another.
 
 ### Widgets
@@ -270,7 +272,8 @@ go through the same path: Capacitor's App plugin (`appUrlOpen`) to the page's `l
 keeps it until the page listens. `folevi://quick-add` now opens Quick add task (it used to make a new note);
 `folevi://new` makes a new note. An Inbox page (its id is `inbox-` and a hash, not a note id) opens with
 `folevi://d/inbox-<hash>`, which `lib/deepLink.ts`, the Mac app's `parseDeepLink` and `DeepLink.parse` all
-accept (and nothing else under `d/`).
+accept (and nothing else under `d/`); `folevi://inbox` (the web's `/inbox`) opens the Inbox page of the place
+the app is in, found by the server or, offline, by that same id.
 
 ### Document scanner
 

@@ -30,6 +30,14 @@ test("a page sent to /share is saved as a note under the Inbox", async ({ browse
   await breadcrumb.getByRole("link", { name: /Inbox/ }).click();
   await page.waitForURL(/\/d\/inbox-/);
   await expect(page.getByRole("textbox", { name: "Document body" })).toContainText("Field notes, saved");
+  const inbox = new URL(page.url()).pathname;
+
+  // /inbox (folevi://inbox) opens the same page; /tasks/inbox stays the Tasks view.
+  await page.goto(`${APP}/inbox`);
+  await page.waitForURL((u) => u.pathname === inbox);
+  await expect(page.getByRole("textbox", { name: "Document body" })).toContainText("Field notes, saved");
+  await page.goto(`${APP}/tasks/inbox`);
+  await expect(page).toHaveURL(/\/tasks\/inbox$/);
   await context.close();
 });
 

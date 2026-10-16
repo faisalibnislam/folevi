@@ -1,6 +1,7 @@
 "use client";
 
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
+import { useMutation } from "convex/react";
 import { useAppRouter } from "@/lib/app/router";
 import { DocumentBrowser } from "@/components/views/DocumentBrowser";
 import { TasksView } from "@/components/views/TasksView";
@@ -17,6 +18,9 @@ import { AiView } from "@/components/views/AiView";
 import { GraphView } from "@/components/views/GraphView";
 import { ViewChrome } from "./Shell";
 import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
+import { useAppState } from "@/lib/app/state";
+import { api } from "@/lib/convex/api";
+import { inboxPage } from "@/lib/share/save";
 
 // A note's page brings the editor, which is most of the app's code: it loads on its own, so the first
 // screen paints without it. It starts downloading straight away when the app opens on a note (alongside
@@ -87,6 +91,8 @@ function Routes() {
       return <AiView id={route.id} />;
     case "graph":
       return <GraphView />;
+    case "inbox":
+      return <OpenInbox />;
     case "tasks":
       return <TasksView view={route.view} />;
     case "calendar":
@@ -125,6 +131,27 @@ function Routes() {
         </ViewChrome>
       );
   }
+}
+
+/**
+ * /inbox (folevi://inbox from the iOS app's widgets and Shortcuts, any link to the Inbox): the person's Inbox
+ * page in the current place, the one shares and quick-added tasks go to, opened in its place. Online the
+ * server finds it (and brings it back from Trash); offline it's the page's deterministic id, made here if
+ * this device never had it. /tasks/inbox stays the Tasks view of undated tasks.
+ */
+function OpenInbox() {
+  const { navigate } = useAppRouter();
+  const { engine, profile, deviceId, online, scope } = useAppState();
+  const prepareInbox = useMutation(api.tasks.inbox);
+  const started = useRef(false);
+  useEffect(() => {
+    if (!engine || started.current) return;
+    started.current = true;
+    inboxPage({ engine, profileId: profile.id, deviceId, online, prepareInbox }, scope)
+      .then((inbox) => navigate(`/d/${inbox.documentId}`, { replace: true }))
+      .catch(() => navigate("/documents", { replace: true }));
+  }, [engine, profile.id, deviceId, online, prepareInbox, scope, navigate]);
+  return <NoteLoading />;
 }
 
 function RedirectHome() {

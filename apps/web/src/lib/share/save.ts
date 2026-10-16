@@ -21,6 +21,28 @@ export interface ShareSaver {
 }
 
 /**
+ * A place's Inbox page: from the server when it answers (it brings one back from Trash, finds an older
+ * one), else its deterministic id, created here if it doesn't exist yet (the same page every device
+ * makes). Also what /inbox opens (components/app/RouteView.tsx).
+ */
+export async function inboxPage(saver: ShareSaver, scope: WireScope): Promise<{ documentId: string; lastRank: string | null }> {
+  const { engine, profileId, deviceId, online } = saver;
+  if (online) {
+    try {
+      const found = await Promise.race([saver.prepareInbox({ scope, deviceId: deviceId ?? undefined }), new Promise<null>((r) => setTimeout(() => r(null), ONLINE_WAIT_MS))]);
+      if (found) return found;
+    } catch (e) {
+      const code = (e as { data?: { code?: string } }).data?.code;
+      if (code) throw e;
+    }
+  }
+  const documentId = inboxDocumentId(profileId, scopeIdKey(scope));
+  engine.createDocument({ id: documentId, parentDocumentId: null, folderId: null, kind: "document", title: "Inbox", icon: "📥", scope });
+  const known = engine.documentBlocks(documentId).filter((b) => b.parentId === null);
+  return { documentId, lastRank: known.reduce<string | null>((m, b) => (m === null || b.rank > m ? b.rank : m), null) ?? "z" };
+}
+
+/**
  * Saves the share as a new note in the Inbox of `place` ("personal" or a workspace's id). With
  * `waitForServer` (the share page), it also waits a little for the server to have it, to say so.
  */
@@ -29,25 +51,9 @@ export async function saveShare(
   share: { payload: SharePayload; files: File[]; title: string; place: string },
   { waitForServer = true }: { waitForServer?: boolean } = {},
 ): Promise<{ noteId: string; synced: boolean }> {
-  const { engine, profileId, deviceId, online } = saver;
+  const { engine, profileId, online } = saver;
   const scope: WireScope = share.place === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: share.place };
-  // The Inbox page: from the server when it answers (it brings one back from Trash, finds an older one),
-  // else its deterministic id, created here if it doesn't exist yet (the same page every device makes).
-  let inbox: { documentId: string; lastRank: string | null } | null = null;
-  if (online) {
-    try {
-      inbox = await Promise.race([saver.prepareInbox({ scope, deviceId: deviceId ?? undefined }), new Promise<null>((r) => setTimeout(() => r(null), ONLINE_WAIT_MS))]);
-    } catch (e) {
-      const code = (e as { data?: { code?: string } }).data?.code;
-      if (code) throw e;
-    }
-  }
-  if (!inbox) {
-    const documentId = inboxDocumentId(profileId, scopeIdKey(scope));
-    engine.createDocument({ id: documentId, parentDocumentId: null, folderId: null, kind: "document", title: "Inbox", icon: "📥", scope });
-    const known = engine.documentBlocks(documentId).filter((b) => b.parentId === null);
-    inbox = { documentId, lastRank: known.reduce<string | null>((m, b) => (m === null || b.rank > m ? b.rank : m), null) ?? "z" };
-  }
+  const inbox = await inboxPage(saver, scope);
 
   const noteId = ulid();
   const name = share.title.trim().slice(0, 200) || share.payload.title;

@@ -16,6 +16,8 @@ export type Route =
   | { name: "ai"; id: string | null }
   /** The graph view: notes, links and (on Pro) the people, projects and topics they mention. */
   | { name: "graph" }
+  /** The person's Inbox page in the current place (folevi://inbox): resolved, then opened as /d/<id>. */
+  | { name: "inbox" }
   | { name: "tasks"; view: "inbox" | "today" | "upcoming" | "all" | "completed" | "mine" }
   | { name: "calendar"; month: string | null }
   /** Reviews: flashcards due today (spaced repetition). `?note=` reviews one note's cards. */
@@ -64,6 +66,8 @@ export function parseRoute(pathname: string): Route {
       return { name: "ai", id: a && /^[0-9A-Za-z]{1,64}$/.test(a) ? a : null };
     case "graph":
       return { name: "graph" };
+    case "inbox":
+      return { name: "inbox" };
     case "tasks":
       return { name: "tasks", view: (TASK_VIEWS as readonly string[]).includes(a ?? "") ? (a as (typeof TASK_VIEWS)[number]) : "today" };
     case "calendar":

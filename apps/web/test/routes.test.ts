@@ -24,3 +24,11 @@ describe("changes", () => {
     expect(APP_ROUTE_HEADS.has("changes")).toBe(true);
   });
 });
+
+describe("the Inbox", () => {
+  test("/inbox opens the Inbox page (folevi://inbox), and /tasks/inbox stays the Tasks view", () => {
+    expect(parseRoute("/inbox")).toEqual({ name: "inbox" });
+    expect(APP_ROUTE_HEADS.has("inbox")).toBe(true);
+    expect(parseRoute("/tasks/inbox")).toEqual({ name: "tasks", view: "inbox" });
+  });
+});

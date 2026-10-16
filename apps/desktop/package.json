@@ -1,7 +1,7 @@
 {
   "name": "@folevi/desktop",
   "productName": "Folevi",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "private": true,
   "description": "Folevi for Mac: the web app in a window of its own, with Quick Add, a menu bar icon and notifications.",
   "main": "dist/main.js",

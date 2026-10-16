@@ -3,6 +3,7 @@
 import type { Editor } from "@tiptap/react";
 import { NodeSelection, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { beginPointerDrag, isDragging } from "./blockDrag";
+import { HOLD_MOVE_EVENT, type HoldMoveDetail } from "@/lib/touchContextMenu";
 import { useMutation, useQuery } from "convex/react";
 import { lazy, Suspense, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -1759,6 +1760,38 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
   const coarse = useMediaQuery("(pointer: coarse)");
   const pressingHandle = useRef(false);
 
+  /** Moves blocks `index`..`last` with the pointer (or finger) that's down; held still on a grip, it lifts. */
+  const liftBlock = (index: number, last: number, event: PointerEvent, liftAt?: { x: number; y: number }) => {
+    // Found again by id when dropped (the note may have changed during the drag).
+    const ids = [editor.state.doc.maybeChild(index)?.attrs.id as string | undefined, editor.state.doc.maybeChild(last)?.attrs.id as string | undefined];
+    beginPointerDrag({
+      editor,
+      payload: { kind: "block", index, last },
+      event,
+      holdToLift: true,
+      liftAt,
+      onStart: () => {
+        justDragged.current = true;
+        clearBlockSelection(editor.view);
+        setDragging(true);
+        setHover(null);
+      },
+      onDrop: (t) => {
+        let from = ids[0] ? -1 : index;
+        let to = ids[1] ? -1 : last;
+        editor.state.doc.forEach((n, _offset, i) => {
+          if (ids[0] && n.attrs.id === ids[0]) from = i;
+          if (ids[1] && n.attrs.id === ids[1]) to = i;
+        });
+        return from < 0 || to < from ? null : onDropBlock(from, t.index, t.depth, to);
+      },
+      onEnd: () => {
+        setDragging(false);
+        window.setTimeout(() => (justDragged.current = false), 0);
+      },
+    });
+  };
+
   useEffect(() => {
     if (coarse) return;
     const dom = editor.view.dom as HTMLElement;
@@ -1822,6 +1855,24 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
       editor.off("update", onUpdate);
     };
   }, [editor, coarse]);
+
+  // Press and hold a block, then move: its menu gives way and the block lifts, following the finger
+  // (touchContextMenu.ts sends the move). Only while it can be edited.
+  useEffect(() => {
+    const dom = editor.view.dom as HTMLElement;
+    const onHoldMove = (e: Event) => {
+      if (!editor.isEditable || isDragging()) return;
+      const { startX, startY, x, y } = (e as CustomEvent<HoldMoveDetail>).detail;
+      const children = blockElements(dom);
+      const index = blockIndexAt(children, startY);
+      if (index < 0 || index >= editor.state.doc.childCount) return;
+      e.preventDefault();
+      setMenu(null);
+      liftBlock(index, index, { button: 0, clientX: startX, clientY: startY, pointerType: "touch" } as PointerEvent, { x, y });
+    };
+    dom.addEventListener(HOLD_MOVE_EVENT, onHoldMove);
+    return () => dom.removeEventListener(HOLD_MOVE_EVENT, onHoldMove);
+  });
 
   // Announce block selections to screen readers.
   useEffect(() => {
@@ -1980,7 +2031,8 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
           // Where there's no room beside the line (narrow windows, phones) only the grip shows, so the handle
           // never covers the start of the text (the grip's menu has Insert below).
           // On touch screens only the grip shows too (Return adds a line there).
-          style={{ top: hover.top + Math.max(0, (hover.height - 28) / 2), left: hover.left - 58 >= 4 && !coarse ? hover.left - 58 : Math.max(2, hover.left - 28) }}
+          // A finger's grip is slimmer and keeps a gap before the text, so it never touches the line written.
+          style={{ top: hover.top + Math.max(0, (hover.height - 28) / 2), left: hover.left - 58 >= 4 && !coarse ? hover.left - 58 : coarse ? Math.max(0, hover.left - 27) : Math.max(2, hover.left - 28) }}
           onMouseDown={(e) => e.preventDefault()}
           onPointerDownCapture={() => {
             // A tap here mustn't hide the grip (the editor can lose focus before the click lands).
@@ -2008,41 +2060,15 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
             type="button"
             aria-label="Drag to move, click for block options, Shift-click to select several blocks"
             // A 44px target for a finger, reaching left of the grip so it never covers the text.
-            className="relative grid h-6 w-6 cursor-grab touch-none place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading active:cursor-grabbing pointer-coarse:after:absolute pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:-left-4 pointer-coarse:after:-right-1 pointer-coarse:after:content-['']"
+            className="relative grid h-6 w-6 cursor-grab touch-none place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading active:cursor-grabbing pointer-coarse:after:absolute pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:-left-4 pointer-coarse:after:right-0 pointer-coarse:after:content-['']"
+            style={coarse ? { width: 18 } : undefined}
             onPointerDown={(e) => {
               if (e.button !== 0 || e.shiftKey) return;
               e.preventDefault();
               // Dragging one of several selected blocks moves them all.
               const selected = blockSelectionRange(editor.state);
               const inSelection = selected && hover.index >= selected.from && hover.index <= selected.to;
-              const index = inSelection ? selected.from : hover.index;
-              const last = inSelection ? selected.to : hover.index;
-              // Found again by id when dropped (the note may have changed during the drag).
-              const ids = [editor.state.doc.maybeChild(index)?.attrs.id as string | undefined, editor.state.doc.maybeChild(last)?.attrs.id as string | undefined];
-              beginPointerDrag({
-                editor,
-                payload: { kind: "block", index, last },
-                event: e,
-                onStart: () => {
-                  justDragged.current = true;
-                  clearBlockSelection(editor.view);
-                  setDragging(true);
-                  setHover(null);
-                },
-                onDrop: (t) => {
-                  let from = ids[0] ? -1 : index;
-                  let to = ids[1] ? -1 : last;
-                  editor.state.doc.forEach((n, _offset, i) => {
-                    if (ids[0] && n.attrs.id === ids[0]) from = i;
-                    if (ids[1] && n.attrs.id === ids[1]) to = i;
-                  });
-                  return from < 0 || to < from ? null : onDropBlock(from, t.index, t.depth, to);
-                },
-                onEnd: () => {
-                  setDragging(false);
-                  window.setTimeout(() => (justDragged.current = false), 0);
-                },
-              });
+              liftBlock(inSelection ? selected.from : hover.index, inSelection ? selected.to : hover.index, e.nativeEvent);
             }}
             onContextMenu={(e) => {
               e.preventDefault();

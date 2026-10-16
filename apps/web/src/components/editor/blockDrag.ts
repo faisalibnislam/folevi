@@ -7,6 +7,7 @@
 import type { Editor } from "@tiptap/core";
 import { dropTarget, subtreeRange } from "./commands";
 import { blockElements } from "./plugins";
+import { haptic } from "@/lib/nativeApp";
 
 export type DragPayload =
   | { kind: "block"; index: number; /** The last of several selected blocks (their subtrees move too). */ last?: number }
@@ -25,12 +26,18 @@ interface Options {
   onDrop: (target: DropResult) => { index: number; count: number } | null;
   onStart?: () => void;
   onEnd?: (dropped: boolean) => void;
+  /** A finger resting this long without moving lifts the block (the grip on a touch screen). */
+  holdToLift?: boolean;
+  /** Lifts at once, the finger already at this point (a held block whose menu gave way to moving it). */
+  liftAt?: { x: number; y: number };
 }
 
 const THRESHOLD = 4;
 /** A finger wobbles more than a mouse: below this a touch on the grip is a tap (it opens the block menu). */
 const TOUCH_THRESHOLD = 10;
 const EDGE = 64;
+/** How long a finger rests on the grip before the block lifts. */
+const HOLD_MS = 280;
 
 let active = false;
 /** True while a drag is running (hover affordances hide themselves). */
@@ -98,8 +105,11 @@ export function glowBlocks(editor: Editor, index: number, count: number) {
   window.setTimeout(remove, 760);
 }
 
-export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEnd }: Options): void {
+export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEnd, holdToLift, liftAt }: Options): void {
   if (event.button !== 0 || active) return;
+  // A finger: felt when the block lifts and when it lands, and followed by its touches too (iOS can stop
+  // sending pointer events for a touch that has been still for a while).
+  const touch = event.pointerType === "touch";
   const view = editor.view;
   const dom = view.dom as HTMLElement;
   const startX = event.clientX;
@@ -231,8 +241,11 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
   };
 
   const start = () => {
+    if (started) return;
     started = true;
     active = true;
+    if (holdTimer) window.clearTimeout(holdTimer);
+    if (touch) haptic("medium");
     onStart?.();
     ghost = buildGhost();
     line = document.createElement("div");
@@ -246,11 +259,16 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
 
   const cleanup = () => {
     active = false;
+    finished = true;
     if (raf) cancelAnimationFrame(raf);
+    if (holdTimer) window.clearTimeout(holdTimer);
     window.removeEventListener("pointermove", onMove, true);
     window.removeEventListener("pointerup", onUp, true);
     window.removeEventListener("pointercancel", onCancel, true);
     window.removeEventListener("keydown", onKey, true);
+    window.removeEventListener("touchmove", onTouchMove, true);
+    window.removeEventListener("touchend", onTouchEnd, true);
+    window.removeEventListener("touchcancel", onTouchEnd, true);
     document.documentElement.classList.remove("fb-dragging");
     line?.remove();
     unfade?.();
@@ -269,6 +287,34 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
     }
   };
 
+  let finished = false;
+  let holdTimer = 0;
+
+  function follow(x: number, y: number) {
+    px = x;
+    py = y;
+    if (!started) {
+      if (Math.hypot(px - startX, py - startY) < threshold) return;
+      start();
+    }
+    if (!raf) raf = requestAnimationFrame(frame);
+  }
+
+  function onTouchMove(e: TouchEvent) {
+    const t = e.touches[0];
+    if (t && started) follow(t.clientX, t.clientY);
+  }
+
+  function onTouchEnd(e: TouchEvent) {
+    if (finished || !started) return;
+    const t = e.changedTouches[0];
+    if (t) {
+      px = t.clientX;
+      py = t.clientY;
+    }
+    onUp(e);
+  }
+
   function onMove(e: PointerEvent) {
     px = e.clientX;
     py = e.clientY;
@@ -280,7 +326,8 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
     if (!raf) raf = requestAnimationFrame(frame);
   }
 
-  function onUp(e: PointerEvent) {
+  function onUp(e: PointerEvent | TouchEvent) {
+    if (finished) return;
     if (!started) {
       cleanup();
       onEnd?.(false);
@@ -294,6 +341,7 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
       const landed = onDrop(t);
       finishGhost(!landed);
       if (landed) glowBlocks(editor, landed.index, landed.count);
+      if (landed && touch) haptic("light");
       onEnd?.(Boolean(landed));
     } else {
       finishGhost(true);
@@ -302,6 +350,9 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
   }
 
   function onCancel() {
+    // A touch carries on through its touch events (the pointer can be called off once it has rested).
+    if (touch && started) return;
+    if (finished) return;
     const was = started;
     cleanup();
     if (was) finishGhost(true);
@@ -320,4 +371,14 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
   window.addEventListener("pointerup", onUp, true);
   window.addEventListener("pointercancel", onCancel, true);
   window.addEventListener("keydown", onKey, true);
+  if (touch) {
+    window.addEventListener("touchmove", onTouchMove, { capture: true, passive: true });
+    window.addEventListener("touchend", onTouchEnd, true);
+    window.addEventListener("touchcancel", onTouchEnd, true);
+  }
+  if (liftAt) {
+    px = liftAt.x;
+    py = liftAt.y;
+    start();
+  } else if (touch && holdToLift) holdTimer = window.setTimeout(start, HOLD_MS);
 }

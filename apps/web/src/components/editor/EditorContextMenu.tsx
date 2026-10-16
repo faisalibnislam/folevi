@@ -69,7 +69,7 @@ import { blockElements } from "./plugins";
 import { colorName, useNotePalette } from "./notePalette";
 import { EDIT_BOOKMARK_EVENT } from "./NodeViews";
 import { keyLabel } from "@/lib/shortcuts";
-import { isLongPress } from "@/lib/touchContextMenu";
+import { HOLD_MOVE_EVENT, isLongPress } from "@/lib/touchContextMenu";
 import { safeInsets } from "@/lib/iphone";
 
 /** Asks the selection toolbar to open its link field (the "Edit link…" item). */
@@ -239,11 +239,15 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       const el = domAt instanceof HTMLElement ? domAt : domAt.parentElement;
       setMenu({ x: c.left, y: c.bottom, top: c.top, target: targetAt(from, el), keyboard: true });
     };
+    // Held, then moved on: the menu gives way to moving the block (BlockHandle lifts it).
+    const onHoldMove = () => setMenu(null);
     dom.addEventListener("contextmenu", onContext);
     dom.addEventListener("keydown", onKey);
+    dom.addEventListener(HOLD_MOVE_EVENT, onHoldMove);
     return () => {
       dom.removeEventListener("contextmenu", onContext);
       dom.removeEventListener("keydown", onKey);
+      dom.removeEventListener(HOLD_MOVE_EVENT, onHoldMove);
     };
   }, [editor, targetAt]);
 

@@ -62,3 +62,54 @@ test("on an iPhone, pressing and holding a line opens the note's own menu (Safar
   await expect(menu).toHaveCount(0);
   await phone.close();
 });
+
+test("on an iPhone, holding a line and moving on lifts the block and moves it", async ({ browser, browserName }) => {
+  test.skip(browserName !== "chromium", "Touch input is driven through Chromium's DevTools protocol.");
+  test.setTimeout(120_000);
+  const { context: desktop, page: setup } = await newPerson(browser, "Mover Person");
+  await setup.getByRole("button", { name: "New note", exact: true }).click();
+  await setup.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
+  await setup.getByRole("textbox", { name: "Title" }).fill("Reorder me");
+  await setup.keyboard.press("Enter");
+  await setup.keyboard.type("Apples first");
+  await setup.keyboard.press("Enter");
+  await setup.keyboard.type("Bread second");
+  await setup.keyboard.press("Enter");
+  await setup.keyboard.type("Cheese third");
+  await waitForSaved(setup);
+  const url = setup.url().replace(/\?.*$/, "");
+  const state = await desktop.storageState();
+  await desktop.close();
+
+  const phone = await browser.newContext({ storageState: state, userAgent: IPHONE, hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+  const page = await phone.newPage();
+  await page.addInitScript(() => {
+    window.addEventListener("contextmenu", (e) => (e.isTrusted ? (e.stopImmediatePropagation(), e.preventDefault()) : undefined), true);
+  });
+  await page.goto(url);
+  const body = page.getByRole("textbox", { name: "Document body" });
+  await expect(body.getByText("Cheese third")).toBeVisible({ timeout: 30_000 });
+  const from = (await body.getByText("Apples first").boundingBox())!;
+  const to = (await body.getByText("Cheese third").boundingBox())!;
+
+  // Hold "Apples first" until its menu opens, then move the finger below "Cheese third" and lift.
+  const cdp = await page.context().newCDPSession(page);
+  const x = from.x + 20;
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y: from.y + from.height / 2 }] });
+  await page.waitForTimeout(700);
+  await expect(page.getByRole("menu", { name: "Note actions" })).toBeVisible();
+  const endY = to.y + to.height + 6;
+  for (let i = 1; i <= 12; i++) {
+    const y = from.y + from.height / 2 + ((endY - (from.y + from.height / 2)) * i) / 12;
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y }] });
+    await page.waitForTimeout(30);
+  }
+  // The menu gave way: the block is lifted.
+  await expect(page.getByRole("menu", { name: "Note actions" })).toHaveCount(0);
+  await expect(page.locator(".fb-drag-ghost")).toHaveCount(1);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+  await expect(page.locator(".fb-drag-ghost")).toHaveCount(0);
+  await expect(body.locator("p")).toHaveText(["Bread second", "Cheese third", "Apples first"]);
+  await phone.close();
+});

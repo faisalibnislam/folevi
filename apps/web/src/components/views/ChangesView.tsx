@@ -65,14 +65,13 @@ export function ChangesView() {
             Changed
           </h2>
         ) : null}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="max-w-xl text-sm text-muted">Edits other people, connected apps and Foli AI made to notes you’ve opened, since you last looked at each one.</p>
-          {notes.length > 1 ? (
+        {notes.length > 1 ? (
+          <div className="flex justify-end">
             <Button size="sm" onClick={() => void markSeen({ documentIds: notes.map((n) => n.id) }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}>
               <Check size={14} aria-hidden /> Mark all as seen
             </Button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
         {data === undefined ? (
           <div className="mt-6 h-32 animate-pulse rounded-control bg-surface motion-reduce:animate-none" aria-busy aria-label="Loading changes" />
         ) : notes.length === 0 && waiting.length ? (

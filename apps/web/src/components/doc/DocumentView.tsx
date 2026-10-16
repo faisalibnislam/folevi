@@ -1408,12 +1408,25 @@ function DocumentHeader({
     if (!freshTitle.current || !el || document.activeElement !== el || !value) return;
     el.setSelectionRange(0, el.value.length);
   }, [value]);
+  // The title grows with its lines: as it changes, and as its width does (a theme moves it onto the cover,
+  // a phone turns), which re-wraps it.
   useEffect(() => {
     const el = titleRef.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
-  }, [value]);
+    const fit = () => {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    };
+    fit();
+    let width = el.clientWidth;
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => {
+      if (el.clientWidth === width) return;
+      width = el.clientWidth;
+      fit();
+    }) : null;
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleSince = useRef(0);
   const flushTitle = useRef<(() => void) | null>(null);

@@ -21,6 +21,8 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome } from "@/components/app/Shell";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useIphoneApp } from "@/lib/iphone";
+import { IphoneFolders, IphoneTags } from "@/components/iphone/Organize";
 
 type FolderSort = "name" | "updated" | "count" | "created";
 type TagSort = "name" | "count" | "created";
@@ -146,6 +148,26 @@ export function FoldersIndex() {
     });
   }, [data, q, sort]);
 
+  const iphone = useIphoneApp();
+  if (iphone)
+    return (
+      <IphoneFolders
+        folders={data ? list : undefined}
+        total={data?.folders.length ?? 0}
+        query={q}
+        onQuery={setQ}
+        where={names}
+        sort={sort}
+        onSort={setSort}
+        canEdit={canEdit}
+        sorts={[
+          ["name", "Name"],
+          ["updated", "Last updated"],
+          ["count", "Most notes"],
+          ["created", "Newest"],
+        ]}
+      />
+    );
   return (
     <ViewChrome
       title={<h1 className="text-sm font-semibold">Folders</h1>}
@@ -246,6 +268,22 @@ export function TagsIndex() {
     return rows.sort((a, b) => (sort === "count" ? b.documentCount - a.documentCount || a.name.localeCompare(b.name) : sort === "created" ? b.createdAt - a.createdAt : a.name.localeCompare(b.name, undefined, { sensitivity: "base" })));
   }, [data, q, sort]);
 
+  const iphone = useIphoneApp();
+  if (iphone)
+    return (
+      <IphoneTags
+        tags={data ? list : undefined}
+        query={q}
+        onQuery={setQ}
+        sort={sort}
+        onSort={setSort}
+        sorts={[
+          ["name", "Name"],
+          ["count", "Most used"],
+          ["created", "Newest"],
+        ]}
+      />
+    );
   return (
     <ViewChrome
       title={<h1 className="text-sm font-semibold">Tags</h1>}

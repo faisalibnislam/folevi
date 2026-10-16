@@ -295,7 +295,7 @@ export function Sheet({
           </div>
         ) : null}
         <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${bodyClassName}`}>{ready ? children : null}</div>
-        {footer && ready ? <footer className="flex flex-none gap-2 px-4 pb-4 pt-2 [&>*]:h-12 [&>*]:flex-1 [&>*]:text-[16px]">{footer}</footer> : null}
+        {footer && ready ? <footer className="flex flex-none flex-wrap items-center gap-2 px-4 pb-4 pt-2 [&>a]:min-h-12 [&>a]:flex-1 [&>button]:min-h-12 [&>button]:flex-1 [&>button]:text-[16px]">{footer}</footer> : null}
       </div>
     </dialog>
   );

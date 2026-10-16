@@ -135,15 +135,16 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
               </GlassCircle>
             ) : null)}
         </div>
-        <div className="pointer-events-auto relative flex h-11 min-w-0 max-w-[60%] flex-none items-center justify-center">
-          {center ? <div className={`transition-[opacity,transform] duration-200 ${smallTitle ? "pointer-events-none -translate-y-1 opacity-0" : "opacity-100"}`}>{center}</div> : null}
-          <p
-            aria-hidden={!smallTitle}
-            className={`absolute inset-x-0 truncate text-center text-[17px] font-semibold text-heading transition-[opacity,transform] duration-200 ${smallTitle ? "opacity-100" : "translate-y-1 opacity-0"}`}
-          >
-            {title}
-          </p>
+        <div className="pointer-events-auto flex h-11 min-w-0 max-w-[56%] flex-none items-center justify-center">
+          {center ? <div className={`min-w-0 transition-[opacity,transform] duration-200 ${smallTitle ? "pointer-events-none -translate-y-1 opacity-0" : "opacity-100"}`}>{center}</div> : null}
         </div>
+        {/* The small title, centred on the screen (not between the bar's two sides, which differ in width). */}
+        <p
+          aria-hidden={!smallTitle}
+          className={`pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+4px)] flex h-11 max-w-[50%] -translate-x-1/2 items-center text-[17px] font-semibold text-heading transition-[opacity,transform] duration-200 ${smallTitle ? "opacity-100" : "translate-y-1 opacity-0"}`}
+        >
+          <span className="truncate">{title}</span>
+        </p>
         <div className="pointer-events-auto flex min-w-11 flex-1 basis-0 items-center justify-end gap-2">{trailing}</div>
       </header>
       <main

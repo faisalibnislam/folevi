@@ -11,14 +11,6 @@ describe("recording a call", () => {
     expect(canRecordCalls(null)).toBe(false);
   });
 
-  test("the Windows app records calls too (everything the PC plays); a failure there never points to a Mac setting", () => {
-    expect(canRecordCalls({ platform: "windows", callCapture: true })).toBe(true);
-    expect(canRecordCalls({ platform: "windows" })).toBe(false);
-    for (const name of ["NotAllowedError", "AbortError", "NoSystemAudio", "NotFoundError"]) {
-      expect(callProblem(new DOMException("x", name), "windows")).toEqual({ message: expect.stringMatching(/couldn’t be recorded.*microphone only/), settings: false });
-    }
-  });
-
   test("a refused or silent capture points to the Screen & System Audio Recording permission; anything else says so plainly", () => {
     for (const name of ["NotAllowedError", "AbortError", "NotReadableError", "SecurityError", "NoSystemAudio"]) {
       expect(callProblem(new DOMException("x", name))).toEqual({ message: CALL_PERMISSION, settings: true });

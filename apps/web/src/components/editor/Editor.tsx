@@ -1,7 +1,7 @@
 "use client";
 
 import { EditorContent, useEditor, type Editor as TiptapEditor } from "@tiptap/react";
-import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { NodeSelection, TextSelection, type EditorState, type Selection } from "@tiptap/pm/state";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { LIMITS, ulid, type WireBlock } from "@folevi/editor-schema";
@@ -204,6 +204,10 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     },
     onCreate: ({ editor: ed }) => {
       if (!hydrated.current) hydrate(ed.state.doc);
+      // A note that starts with an image (or any media) opens with nothing selected: ProseMirror would
+      // select that block, and its tools (alt text, size) would show before anyone touched it.
+      const plain = unselectedMedia(ed.state);
+      if (plain) ed.view.dispatch(ed.state.tr.setSelection(plain).setMeta("addToHistory", false));
     },
     onUpdate: ({ editor: ed, transaction }) => {
       // Only genuine local document changes count (setEditable and meta-only transactions emit updates too).
@@ -255,7 +259,14 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     }
     flushLocal(ed);
     const tr = remoteTransaction(ed.state, engine.documentBlocks(documentId), shown.current);
-    if (tr) ed.view.dispatch(tr.setMeta("remote", true).setMeta("addToHistory", false));
+    if (tr) {
+      // The note's content arriving (or changing elsewhere) never selects a media block by itself.
+      if (!ed.view.hasFocus() && tr.selection instanceof NodeSelection && !(ed.state.selection instanceof NodeSelection)) {
+        const plain = TextSelection.findFrom(tr.doc.resolve(0), 1, true);
+        if (plain) tr.setSelection(plain);
+      }
+      ed.view.dispatch(tr.setMeta("remote", true).setMeta("addToHistory", false));
+    }
     showEngine();
   }, [engine, documentId, flushLocal, showEngine]);
   const applyFromEngineRef = useRef(applyFromEngine);
@@ -424,3 +435,9 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     </div>
   );
 });
+
+/** The selection a note opens with when ProseMirror's own would select a media block: the first place to type. */
+function unselectedMedia(state: EditorState): Selection | null {
+  if (!(state.selection instanceof NodeSelection)) return null;
+  return TextSelection.findFrom(state.doc.resolve(0), 1, true);
+}

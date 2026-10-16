@@ -71,4 +71,35 @@ test.describe("editor", () => {
     await expect(body.locator('[data-block="bulleted"]').first()).toHaveText("parent");
     await waitForSaved(page);
   });
+
+  test("a note that starts with an image opens with nothing selected", async ({ browser }) => {
+    const { page } = await newPerson(browser, "Image First Tester");
+    await page.getByRole("button", { name: "New note", exact: true }).click();
+    await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
+    await page.getByRole("textbox", { name: "Title" }).fill("Photo first");
+    await page.keyboard.press("Enter");
+    const body = page.getByRole("textbox", { name: "Document body" });
+    await expect(body).toBeFocused();
+    await page.keyboard.type("Under the photo.");
+    await page.keyboard.press("Home");
+    // An image pasted in, then moved up to be the note's first block.
+    await body.evaluate((el) => {
+      const bytes = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="), (c) => c.charCodeAt(0));
+      const data = new DataTransfer();
+      data.items.add(new File([bytes], "photo.png", { type: "image/png" }));
+      el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+    });
+    const image = body.locator(".fb-atom").first();
+    await expect(image).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByPlaceholder("Describe the image")).toBeVisible();
+    await page.keyboard.press("Alt+Shift+ArrowUp");
+    await expect(body.locator("p").first()).toHaveText("Under the photo.");
+    expect(await body.evaluate((el) => (el.firstElementChild?.querySelector(".fb-atom") ? "image" : el.firstElementChild?.tagName))).toBe("image");
+    await waitForSaved(page);
+    await page.reload();
+    await expect(body.locator(".fb-atom").first()).toBeVisible({ timeout: 20_000 });
+    await page.waitForTimeout(800);
+    await expect(page.getByPlaceholder("Describe the image")).toHaveCount(0);
+    await expect(body.locator(".fb-atom-selected")).toHaveCount(0);
+  });
 });

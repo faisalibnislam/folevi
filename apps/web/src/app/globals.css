@@ -554,6 +554,8 @@
   /* Reduce Transparency in iOS Settings (bridge.js marks it): the glass is a solid surface with its rim. */
   :root[data-reduce-transparency] :is(.ui-liquid, .ui-liquid-strong),
   :root[data-reduce-transparency][data-iphone] :is([role="menu"].ui-pop, [role="listbox"].ui-pop) { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  /* The fade behind a screen's bar (components/iphone/Screen.tsx): the canvas itself, no blur. */
+  :root[data-reduce-transparency] [data-iphone-bar-fade] { background: var(--color-canvas) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
   /* Increase Contrast: the glass is nearly opaque and its edge a visible line. */
   :root[data-increase-contrast] :is(.ui-liquid, .ui-liquid-strong) { background: var(--iphone-solid); box-shadow: 0 0 0 1px var(--color-line-strong), var(--liquid-shadow); }
   /* A large title (Spectral, like the app's other titles) and the small one it becomes in the bar. */

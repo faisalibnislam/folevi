@@ -153,11 +153,16 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
       {/* The fade behind the bar, once content scrolls under it: a soft blur that clears towards the content. */}
       <div
         aria-hidden
+        data-iphone-bar-fade=""
         className={`pointer-events-none absolute inset-x-0 top-0 z-20 h-[calc(env(safe-area-inset-top)+68px)] transition-opacity duration-200 ${scrolled ? "opacity-100" : "opacity-0"}`}
         style={{
-          background: edge === "canvas" ? `linear-gradient(to bottom, ${grouped ? "var(--iphone-grouped)" : "var(--color-canvas)"} 0%, color-mix(in oklab, ${grouped ? "var(--iphone-grouped)" : "var(--color-canvas)"} 82%, transparent) 55%, transparent 100%)` : undefined,
-          WebkitBackdropFilter: "blur(8px)",
-          backdropFilter: "blur(8px)",
+          // Over a note ("clear") a lighter veil of the canvas, so the small title still reads over its text.
+          background:
+            edge === "canvas"
+              ? `linear-gradient(to bottom, ${grouped ? "var(--iphone-grouped)" : "var(--color-canvas)"} 0%, color-mix(in oklab, ${grouped ? "var(--iphone-grouped)" : "var(--color-canvas)"} 82%, transparent) 55%, transparent 100%)`
+              : "linear-gradient(to bottom, color-mix(in oklab, var(--color-canvas) 78%, transparent) 0%, color-mix(in oklab, var(--color-canvas) 45%, transparent) 60%, transparent 100%)",
+          WebkitBackdropFilter: "blur(10px)",
+          backdropFilter: "blur(10px)",
           WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%)",
           maskImage: "linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%)",
         }}

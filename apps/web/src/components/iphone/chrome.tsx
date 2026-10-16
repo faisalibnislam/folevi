@@ -57,8 +57,85 @@ function useKeyboardOpen(): boolean {
   return focused && shown !== false;
 }
 
+/** The scrolling view around a node (a note's page, a list), if any. */
+function scrollerAround(node: Node | null): HTMLElement | null {
+  for (let el = node instanceof HTMLElement ? node : (node?.parentElement ?? null); el; el = el.parentElement) {
+    const oy = getComputedStyle(el).overflowY;
+    if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight) return el;
+  }
+  return null;
+}
+
+/** Where the caret is on screen in the text being written (the editor), or null. */
+function caretRect(): DOMRect | null {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement) || !active.isContentEditable) return null;
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount || !active.contains(sel.focusNode)) return null;
+  const range = sel.getRangeAt(0).cloneRange();
+  range.collapse(false);
+  const rect = range.getClientRects()[0] ?? range.getBoundingClientRect();
+  if (rect && (rect.height || rect.top)) return rect;
+  // An empty line has no box of its own: its block's.
+  const block = (sel.focusNode instanceof HTMLElement ? sel.focusNode : sel.focusNode?.parentElement)?.closest("p, li, h1, h2, h3, h4, div");
+  return block?.getBoundingClientRect() ?? null;
+}
+
+/**
+ * Keeps the line being written in sight while the keyboard is up, as iOS does for its own text views: the
+ * page scrolls inside a view (not as a page), so the web view's own avoidance doesn't reach it. The caret
+ * stays above the bar of writing tools and below the top bar.
+ */
+function useCaretInView(keyboard: boolean) {
+  useEffect(() => {
+    if (!keyboard) return;
+    let frame = 0;
+    const keep = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const rect = caretRect();
+        if (!rect) return;
+        const scroller = scrollerAround(window.getSelection()?.focusNode ?? null);
+        if (!scroller) return;
+        const box = scroller.getBoundingClientRect();
+        // The bar of writing tools over the keyboard (in a note it may be a moment from showing: its room).
+        const bar = document.querySelector<HTMLElement>("[data-iphone-keyboard-bar]")?.getBoundingClientRect();
+        const screen = window.visualViewport?.height ?? window.innerHeight;
+        const inNote = Boolean((document.activeElement as HTMLElement | null)?.closest(".fb-editor"));
+        const barTop = bar && bar.height ? bar.top : inNote ? screen - 56 : Infinity;
+        const bottom = Math.min(box.bottom, screen, barTop) - 16;
+        const top = Math.max(box.top, 0) + 96;
+        // At once, not smoothly: WebKit reveals the caret itself as the web view shrinks, and a smooth
+        // scroll would be cut short by it.
+        if (rect.bottom > bottom) scroller.scrollTop += rect.bottom - bottom;
+        else if (rect.top < top && scroller.scrollTop > 0) scroller.scrollTop += rect.top - top;
+      });
+    };
+    // Now (the keyboard came up), when the web view settles at its new height (and WebKit has done its
+    // own scrolling), and as the caret moves.
+    let settle = 0;
+    const resized = () => {
+      keep();
+      window.clearTimeout(settle);
+      settle = window.setTimeout(keep, 250);
+    };
+    resized();
+    window.addEventListener("resize", resized);
+    window.visualViewport?.addEventListener("resize", resized);
+    document.addEventListener("selectionchange", keep);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(settle);
+      window.removeEventListener("resize", resized);
+      window.visualViewport?.removeEventListener("resize", resized);
+      document.removeEventListener("selectionchange", keep);
+    };
+  }, [keyboard]);
+}
+
 export function IphoneChromeProvider({ children }: { children: ReactNode }) {
   const keyboard = useKeyboardOpen();
+  useCaretInView(keyboard);
   const [hiders, setHiders] = useState<ReadonlySet<string>>(() => new Set());
   const hideTabBar = useCallback((key: string, hidden: boolean) => {
     setHiders((prev) => {

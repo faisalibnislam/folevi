@@ -4,6 +4,7 @@
 // views and by public share pages.
 import { useEffect, useRef, useState } from "react";
 import { WHITEBOARD_WIDTH, LIMITS, parseWhiteboard, strokeD, type WhiteboardStroke } from "@folevi/editor-schema";
+import { useScrollEdges } from "./scrollEdges";
 import { onThemeChange, renderLatex, renderMermaid, svgDataUrl, type MermaidResult } from "./richRender";
 
 /** KaTeX rendering of a LaTeX formula (display style). */
@@ -25,8 +26,15 @@ export function FormulaRender({ latex, className = "" }: { latex: string; classN
       </code>
     );
   }
-  // KaTeX's own output (escaped, `trust: false`), never raw user HTML.
-  return <div className={`fb-formula-render ${className}`} dangerouslySetInnerHTML={{ __html: html.html }} />;
+  // KaTeX's own output (escaped, `trust: false`), never raw user HTML. A formula wider than the note
+  // scrolls sideways inside itself.
+  return <FormulaHtml html={html.html} className={className} />;
+}
+
+function FormulaHtml({ html, className }: { html: string; className: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useScrollEdges(ref);
+  return <div ref={ref} className={`fb-formula-render fb-hscroll overflow-x-auto ${className}`} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 /**

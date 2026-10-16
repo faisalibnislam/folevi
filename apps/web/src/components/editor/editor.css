@@ -640,3 +640,17 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
   box-shadow: inset 0 0 0 1px var(--glass-border);
 }
 .fb-ai-answer a.fb-link[href^="#cite-"]:hover { color: var(--color-heading); background: var(--glass-active); }
+
+/* A block wider than the note (a table, a long formula) scrolls sideways inside itself, never the page;
+   a soft fade on an edge says there's more that way (scrollEdges.ts marks it). */
+.fb-hscroll { overscroll-behavior-x: contain; --fade-start: 0px; --fade-end: 0px; }
+.fb-hscroll[data-more-start] { --fade-start: 28px; }
+.fb-hscroll[data-more-end] { --fade-end: 28px; }
+.fb-hscroll:is([data-more-start], [data-more-end]) {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent 100%);
+}
+/* On the iPhone it runs to the screen's edges (the note's gutter), starting in line with the text. */
+:root[data-iphone] .fb-editor .fb-hscroll { margin-inline: -28px; padding-inline: 28px; scroll-padding-inline: 28px; }
+@media (orientation: landscape) { :root[data-iphone] .fb-editor .fb-hscroll { margin-inline: -4rem; padding-inline: 4rem; scroll-padding-inline: 4rem; } }
+:root[data-iphone] .fb-editor .fb-hscroll::-webkit-scrollbar { display: none; }

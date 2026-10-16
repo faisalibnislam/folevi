@@ -2,6 +2,7 @@
 
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
+import { useScrollEdges } from "./scrollEdges";
 import { closeHistory } from "@tiptap/pm/history";
 import { endHistoryGroup } from "./commands";
 import { announce } from "@/lib/a11y/announce";
@@ -434,6 +435,9 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
   const moveRow = (i: number, dir: -1 | 1) => tool((rs) => move(rs, i, i + dir));
   const moveCol = (i: number, dir: -1 | 1) => tool((rs) => rs.map((r) => move(r, i, i + dir)));
   const tableRef = useRef<HTMLTableElement>(null);
+  // A table wider than the note scrolls sideways inside itself, with a fade where there's more.
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  useScrollEdges(scrollerRef);
   const focusCell = (r: number, c: number) =>
     requestAnimationFrame(() => tableRef.current?.querySelector<HTMLInputElement>(`[data-cell="${r}:${c}"]`)?.focus());
   // Tab / Shift+Tab move between cells, Enter / ↓ go down a row (Enter adds one at the end), ↑ goes up,
@@ -515,7 +519,8 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
   return (
     <Frame selected={selected} label="Table">
       <div
-        className="my-2 overflow-x-auto"
+        ref={scrollerRef}
+        className="fb-hscroll my-2 overflow-x-auto"
         contentEditable={false}
         // The tools never take focus: it stays in the cell (or the note), so ⌘Z next undoes what the tool did
         // rather than the browser's own undo of a cell's typing.

@@ -108,6 +108,8 @@ export interface NativeBridge {
   disablePush?(): Promise<void>;
   /** The number on the app icon: what's unread in the bell. */
   setBadge?(count: number): void;
+  /** The colour behind the web view, which shows round the keyboard's corners (0 to 255 each). */
+  setBackdrop?(r: number, g: number, b: number): void;
   /** Folevi's page in the iOS Settings app (where notifications turned off in iOS come back on). */
   openNotificationSettings?(): Promise<void>;
 }

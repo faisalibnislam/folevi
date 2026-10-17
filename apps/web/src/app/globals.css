@@ -663,6 +663,16 @@
   border-bottom-left-radius: var(--iphone-sheet-bottom, var(--radius-float));
   border-bottom-right-radius: var(--iphone-sheet-bottom, var(--radius-float));
 }
+/* With the keyboard up, a sheet runs down behind it rather than stopping above it with round corners: it
+   meets the screen's edges, solid, and the colour behind the keyboard (chrome.tsx) carries it on. */
+:root[data-iphone-keyboard] [data-iphone-sheet="sheet"] {
+  margin: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background: var(--iphone-solid);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
 /* Foli AI's composer (components/ai/chat/ChatThread.tsx): every control in it is a capsule, 10 px in from its
    sheet-rounded box, so the curves nest. */
 .iphone-composer :is(.rounded-chip, .ui-seg, .ui-seg > *) { border-radius: var(--radius-capsule); }

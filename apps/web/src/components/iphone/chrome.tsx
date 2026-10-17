@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { nativeApp } from "@/lib/nativeApp";
 
 /**
  * What the iPhone app's floating chrome needs to know: whether the on-screen keyboard is up, and which
@@ -133,9 +134,59 @@ function useCaretInView(keyboard: boolean) {
   }, [keyboard]);
 }
 
+/** The first opaque colour on screen at a point, as [r, g, b], or null. */
+function colourAt(x: number, y: number): [number, number, number] | null {
+  for (const el of document.elementsFromPoint(x, y)) {
+    const m = getComputedStyle(el).backgroundColor.match(/rgba?\(([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)(?:[,/ ]+([\d.]+))?/);
+    if (m && (m[4] === undefined || Number(m[4]) >= 0.9)) return [Number(m[1]), Number(m[2]), Number(m[3])];
+  }
+  return null;
+}
+
+/**
+ * Behind the keyboard: while it's up the web view ends at its top, and the keyboard's rounded corners show
+ * what's behind the web view (iOS 26), black unless told otherwise. It's painted the colour on screen just
+ * above the keyboard (the note's paper, an open sheet, the page), so what's there seems to carry on behind.
+ */
+function useKeyboardBackdrop(keyboard: boolean) {
+  useEffect(() => {
+    const app = nativeApp();
+    if (!keyboard || !app?.setBackdrop) return;
+    let last = "";
+    let frame = 0;
+    const paint = () => {
+      frame = 0;
+      const y = window.innerHeight - 2;
+      // The middle first: what fills most of the strip above the keyboard (a note's paper, a sheet).
+      const colour = colourAt(window.innerWidth / 2, y) ?? colourAt(2, y) ?? colourAt(1, 1);
+      // (Only a change goes to iOS: typing changes the page all the time, its colours seldom.)
+      if (!colour || colour.join() === last) return;
+      last = colour.join();
+      app.setBackdrop?.(...colour);
+    };
+    const soon = () => {
+      if (!frame) frame = requestAnimationFrame(paint);
+    };
+    // When the web view has settled at its new height, again when what's on screen changes (a sheet opening
+    // or closing), and as the page resizes.
+    const settle = window.setTimeout(paint, 320);
+    const changes = new MutationObserver(soon);
+    changes.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["open", "class", "style"] });
+    window.addEventListener("resize", soon);
+    paint();
+    return () => {
+      window.clearTimeout(settle);
+      cancelAnimationFrame(frame);
+      changes.disconnect();
+      window.removeEventListener("resize", soon);
+    };
+  }, [keyboard]);
+}
+
 export function IphoneChromeProvider({ children }: { children: ReactNode }) {
   const keyboard = useKeyboardOpen();
   useCaretInView(keyboard);
+  useKeyboardBackdrop(keyboard);
   const [hiders, setHiders] = useState<ReadonlySet<string>>(() => new Set());
   const hideTabBar = useCallback((key: string, hidden: boolean) => {
     setHiders((prev) => {

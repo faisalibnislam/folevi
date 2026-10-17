@@ -9,6 +9,7 @@ import { COVER_IMAGE_ACCEPT } from "@/lib/app/coverImage";
 import { COVER_IMAGE_HINT, coverArtThumbUrl } from "@/lib/cover";
 import { familyFor, FONT_TYPES, planAllows, SHEETS, STANDARD_FONTS, TEXTS, THEME_PLANS, type FontType, type NoteTheme, type ThemeDefaults, type ThemeFonts, type ThemePlan } from "@/lib/themes";
 import { withoutPurchaseHints } from "@/lib/nativeApp";
+import { useIphoneApp } from "@/lib/iphone";
 
 /** The sample every card writes in its theme's fonts. */
 const SAMPLE = "Slow mornings make fast afternoons. A list, a thought, a plan for later.";
@@ -109,6 +110,8 @@ export function ThemeGallery({
   const [notice, setNotice] = useState<string | null>(null);
   const group = useRadioGroup();
   const fileInput = useRef<HTMLInputElement>(null);
+  // The iPhone app keeps the footer to its two buttons: the image size hint is for picking a file on a computer.
+  const iphone = useIphoneApp();
   const dark = isDark();
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -150,7 +153,7 @@ export function ThemeGallery({
             {uploading ? <Loader2 size={15} aria-hidden className="mr-1.5 animate-spin" /> : <ImagePlus size={15} aria-hidden className="mr-1.5" />}
             {uploading ? "Uploading…" : ownImage ? "Replace your image…" : "Use your own image…"}
           </Button>
-          <p className="min-w-0 flex-1 text-[12px] text-muted">{COVER_IMAGE_HINT}</p>
+          {iphone ? <span className="flex-1" /> : <p className="min-w-0 flex-1 text-[12px] text-muted">{COVER_IMAGE_HINT}</p>}
             </>
           ) : (
             <span className="flex-1" />

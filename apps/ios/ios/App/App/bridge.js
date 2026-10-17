@@ -100,6 +100,10 @@
     disablePush: function () {
       return quietly(call("FoleviNative", "disablePush")).then(function () {});
     },
+    /** The colour behind the web view, which shows round the keyboard's corners (0 to 255 each). */
+    setBackdrop: function (r, g, b) {
+      void quietly(call("FoleviNative", "setBackdrop", { r: Number(r) || 0, g: Number(g) || 0, b: Number(b) || 0 }));
+    },
     /** The number on the app icon: what's unread in the bell. */
     setBadge: function (count) {
       void quietly(call("FoleviNative", "setBadge", { count: Math.max(0, Math.floor(Number(count) || 0)) }));

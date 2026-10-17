@@ -71,6 +71,20 @@ final class StatusBarTapProxy: UIScrollView, UIScrollViewDelegate {
 }
 
 extension FoleviNativePlugin {
+    /// { r, g, b }: the colour behind the web view. While the keyboard is up the web view ends at its top, and
+    /// the keyboard's rounded corners show what's behind (black by default); the page sets this to what's on
+    /// screen just above the keyboard (the note, an open sheet), so it reads as carrying on behind it.
+    @objc func setBackdrop(_ call: CAPPluginCall) {
+        let channel = { (key: String) in CGFloat(min(max(call.getDouble(key) ?? 255, 0), 255) / 255) }
+        let color = UIColor(red: channel("r"), green: channel("g"), blue: channel("b"), alpha: 1)
+        Task { @MainActor in
+            guard self.fromFolevi else { return call.reject("Not allowed here") }
+            self.bridge?.viewController?.view.backgroundColor = color
+            self.bridge?.viewController?.view.window?.backgroundColor = color
+            call.resolve()
+        }
+    }
+
     /// { reduceTransparency, increaseContrast, boldText, reduceMotion, textScale } (SystemAccessibility).
     @objc func accessibility(_ call: CAPPluginCall) {
         Task { @MainActor in

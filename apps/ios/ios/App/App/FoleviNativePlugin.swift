@@ -36,6 +36,8 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "openNotificationSettings", returnType: CAPPluginReturnPromise),
         // Native/SystemSettings.swift: Reduce Transparency, Increase Contrast, the text size.
         CAPPluginMethod(name: "accessibility", returnType: CAPPluginReturnPromise),
+        // Native/SystemSettings.swift: the colour behind the web view, which the keyboard's corners show.
+        CAPPluginMethod(name: "setBackdrop", returnType: CAPPluginReturnPromise),
     ]
 
     private var appOrigin: String { AppOrigin.of(bridge?.config.serverURL) }

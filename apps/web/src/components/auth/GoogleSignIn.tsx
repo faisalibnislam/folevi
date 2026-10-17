@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
-import { inIosApp } from "@/lib/nativeApp";
+import { googleError } from "@/lib/auth/googleErrors";
+import { inIosApp, nativeApp } from "@/lib/nativeApp";
 import { desktop } from "@/lib/desktop";
 import { Alert } from "./fields";
 
@@ -19,31 +20,98 @@ function GoogleMark() {
   );
 }
 
+/** The client and return address the browser half (/app-google) hands its code to (convex/lib/nativeClients.ts). */
+const APP_CLIENT = "folevi-app";
+const APP_RETURN = "folevi://auth/google";
+
+const base64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const randomString = (bytes: number) => base64url(crypto.getRandomValues(new Uint8Array(bytes)));
+const challengeOf = async (verifier: string) => base64url(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))));
+
+/**
+ * How this page signs in with Google: in a browser, straight to Google; in the Mac or iOS app, through the
+ * browser (Google doesn't sign in inside an app's web view), which hands back a code; null in an app too old
+ * to do that, where the button stays hidden.
+ */
+type Route = { kind: "browser" } | { kind: "app"; open: (url: string) => Promise<string | null> } | null;
+
+function routeHere(): Route {
+  if (inIosApp()) {
+    const app = nativeApp();
+    return app?.authenticate ? { kind: "app", open: (url) => app.authenticate!(url) } : null;
+  }
+  const mac = desktop();
+  if (mac) return mac.signInInBrowser ? { kind: "app", open: (url) => mac.signInInBrowser!(url) } : null;
+  return { kind: "browser" };
+}
+
 /**
  * "Continue with Google", above the email form, with an "or" below it. Google sends the person back to
  * `returnTo` (a first sign-in goes to `newUserTo`); a refusal comes back to /signin with an error the page
- * explains (lib/auth/signInOptions.ts). Not in Folevi's Mac and iOS apps yet: Google doesn't sign in inside
- * an app's own web view, so there the email form and passkeys stay.
+ * explains (lib/auth/googleErrors.ts).
+ *
+ * In the Mac and iOS apps: the app opens /app-google in the browser (iOS's sign-in sheet, or the Mac's default
+ * browser) with a PKCE challenge from a verifier only this page holds; the browser signs in with Google and
+ * hands the app a one-time code through folevi://auth/google; this page redeems it with the verifier for its
+ * own session (convex/lib/nativeAuth.ts /native/redeem) and goes on to `returnTo`.
  */
 export function GoogleSignIn({ returnTo, newUserTo, error: initialError }: { returnTo: string; newUserTo?: string; error?: string }) {
-  const [inApp, setInApp] = useState(true);
+  const [route, setRoute] = useState<Route>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(initialError);
-  useEffect(() => setInApp(inIosApp() || desktop() !== null), []);
-  if (inApp) return error ? <div className="mb-4"><Alert>{error}</Alert></div> : null;
+  useEffect(() => setRoute(routeHere()), []);
 
-  async function go() {
-    if (busy) return;
-    setError(undefined);
-    setBusy(true);
+  async function inBrowser() {
     const { error: err } = await authClient.signIn.social({ provider: "google", callbackURL: returnTo, newUserCallbackURL: newUserTo ?? returnTo, errorCallbackURL: "/signin" });
     // On success the browser is already on its way to Google.
-    if (err) {
-      setBusy(false);
-      setError(authErrorMessage(err));
-    }
+    if (err) setError(authErrorMessage(err));
+    return Boolean(err);
   }
 
+  async function throughBrowser(open: (url: string) => Promise<string | null>) {
+    const verifier = randomString(48);
+    const state = randomString(16);
+    const start = new URL("/app-google", window.location.origin);
+    start.searchParams.set("client_id", APP_CLIENT);
+    start.searchParams.set("redirect_uri", APP_RETURN);
+    start.searchParams.set("code_challenge", await challengeOf(verifier));
+    start.searchParams.set("code_challenge_method", "S256");
+    start.searchParams.set("state", state);
+    const back = await open(start.toString());
+    if (!back) return; // closed before it finished
+    const answer = new URL(back);
+    if (answer.searchParams.get("state") !== state) {
+      setError(googleError("state_mismatch"));
+      return;
+    }
+    const code = answer.searchParams.get("code");
+    if (!code) {
+      setError(googleError(answer.searchParams.get("error") ?? "google_failed"));
+      return;
+    }
+    const { error: err } = await authClient.$fetch("/native/redeem", { method: "POST", body: { code, code_verifier: verifier, client_id: APP_CLIENT, redirect_uri: APP_RETURN } });
+    if (err) {
+      setError(authErrorMessage(err));
+      return;
+    }
+    window.location.assign(newUserTo ?? returnTo);
+  }
+
+  async function go() {
+    if (busy || !route) return;
+    setError(undefined);
+    setBusy(true);
+    try {
+      if (route.kind === "browser") {
+        if (!(await inBrowser())) return; // leaving for Google: stay busy
+      } else await throughBrowser(route.open);
+    } catch {
+      setError(googleError("google_failed"));
+    }
+    setBusy(false);
+  }
+
+  if (!route) return error ? <div className="mb-4"><Alert>{error}</Alert></div> : null;
   return (
     <div className="mb-4">
       {error ? (

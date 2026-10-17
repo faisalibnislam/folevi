@@ -2,10 +2,60 @@
 // device and the token its widgets and extensions use, the shares the share extension kept, and the
 // document scanner. Like every FoleviNative call, each one checks the page is Folevi's own first. The token
 // goes one way only: the page hands it over, native code never gives it back.
+import AuthenticationServices
 import Capacitor
 import UIKit
 
+/// The sign-in sheet on show (kept alive while it's up) and the window it's shown over.
+@MainActor final class SignInSheet: NSObject, ASWebAuthenticationPresentationContextProviding {
+    static var current: SignInSheet?
+    let session: ASWebAuthenticationSession
+    weak var window: UIWindow?
+
+    init(session: ASWebAuthenticationSession, window: UIWindow?) {
+        self.session = session
+        self.window = window
+    }
+
+    nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        MainActor.assumeIsolated { window ?? ASPresentationAnchor() }
+    }
+}
+
 extension FoleviNativePlugin {
+    /// { url } -> { url }: signs in with Google in iOS's sign-in sheet, which Google allows (it doesn't sign in
+    /// inside the app's web view). The sheet opens Folevi's /app-google page (only Folevi's own address), and
+    /// closes on the folevi://auth/google link that page ends on; the page in the app gets that link (with a
+    /// one-time code) and redeems it itself. Answers { url: null } if the sheet was closed.
+    @objc func authenticate(_ call: CAPPluginCall) {
+        Task { @MainActor in
+            guard self.fromFolevi else { return call.reject("Not allowed here") }
+            guard let raw = call.getString("url"), let url = URL(string: raw), AppOrigin.of(url) == self.appOrigin, url.path == "/app-google" else {
+                return call.reject("Not a Folevi sign-in address")
+            }
+            SignInSheet.current?.session.cancel()
+            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "folevi") { callback, _ in
+                Task { @MainActor in
+                    SignInSheet.current = nil
+                    if let callback, callback.host == "auth", callback.path == "/google" {
+                        call.resolve(["url": callback.absoluteString])
+                    } else {
+                        call.resolve(["url": NSNull()])
+                    }
+                }
+            }
+            // Safari's own Google sign-in carries over, so there's often nothing to type.
+            session.prefersEphemeralWebBrowserSession = false
+            let sheet = SignInSheet(session: session, window: self.bridge?.viewController?.view.window)
+            session.presentationContextProvider = sheet
+            SignInSheet.current = sheet
+            if !session.start() {
+                SignInSheet.current = nil
+                call.resolve(["url": NSNull()])
+            }
+        }
+    }
+
     /// { id, family, model, accountId, tokenId, scanner }: this device and which token the app holds.
     @objc func device(_ call: CAPPluginCall) {
         Task { @MainActor in

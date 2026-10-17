@@ -13,9 +13,15 @@
 //   5. The app keeps that session token in the Keychain and sends it as `Authorization: Bearer …` (the
 //      bearer plugin) to /convex/token for short-lived Convex JWTs, and to /sign-out.
 //
-// Better Auth owns the session and the verification store; this file only adds the two endpoints.
+// The Mac and iOS apps' own web views sign in with Google the same way (client "folevi-app"): the browser
+// signs in with Google on /auth/app-google, issues the code (steps 2 and 3) and hands it to the app through
+// folevi://auth/google; the web view, which made the PKCE pair, redeems it (POST /native/redeem) for a session
+// cookie of its own.
+//
+// Better Auth owns the session and the verification store; this file only adds the endpoints.
 import type { BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthEndpoint, sessionMiddleware } from "better-auth/api";
+import { setSessionCookie } from "better-auth/cookies";
 import { generateRandomString } from "better-auth/crypto";
 import { enforcementFlags } from "./auth";
 import { sha256Hex } from "./crypto";
@@ -77,6 +83,33 @@ export function nativeAuth() {
           expiresAt: new Date(Date.now() + CODE_TTL_MS),
         });
         return ctx.json({ code }, { headers: { "Cache-Control": "no-store" } });
+      }),
+
+      /**
+       * The app's web view exchanges a code + its PKCE verifier for a session cookie (after a Google sign-in in
+       * the browser). Only the web view that started the sign-in knows the verifier, so a code passed to anyone
+       * else (or forced on another web view) signs nobody in.
+       */
+      nativeRedeem: createAuthEndpoint("/native/redeem", { method: "POST" }, async (ctx) => {
+        const code = field(ctx.body, "code");
+        const verifier = field(ctx.body, "code_verifier");
+        const clientId = field(ctx.body, "client_id");
+        const redirectUri = field(ctx.body, "redirect_uri");
+        if (clientId !== "folevi-app") throw oauthError("invalid_client", "Unknown app.");
+        registeredClient(clientId, redirectUri);
+        if (!code || code.length > 128 || !VERIFIER_RE.test(verifier)) throw oauthError("invalid_grant", "This sign-in has expired. Try again.");
+        const stored = await ctx.context.internalAdapter.consumeVerificationValue(await identifierFor(code));
+        if (!stored || new Date(stored.expiresAt).getTime() < Date.now()) throw oauthError("invalid_grant", "This sign-in has expired. Try again.");
+        const record = JSON.parse(stored.value) as CodeRecord;
+        if (record.clientId !== clientId || record.redirectUri !== redirectUri || record.challenge !== (await pkceChallenge(verifier))) {
+          throw oauthError("invalid_grant", "This sign-in has expired. Try again.");
+        }
+        const user = await ctx.context.internalAdapter.findUserById(record.userId);
+        if (!user) throw oauthError("invalid_grant", "This account no longer exists.");
+        const session = await ctx.context.internalAdapter.createSession(user.id, false);
+        if (!session) throw new APIError("INTERNAL_SERVER_ERROR", { message: "Couldn't sign in. Try again." });
+        await setSessionCookie(ctx, { session, user });
+        return ctx.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
       }),
 
       /** Exchanges a code + PKCE verifier for a new session belonging to the app. */

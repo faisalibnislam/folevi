@@ -23,7 +23,7 @@ import {
 } from "electron";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { appUrl, APP_URL, dragFileName, isAppUrl, isExternalSafe, parseDeepLink, SCHEME, systemSettingsUrl } from "./urls";
+import { appUrl, APP_URL, dragFileName, isAppUrl, isExternalSafe, isSignInReturn, isSignInStart, parseDeepLink, SCHEME, systemSettingsUrl } from "./urls";
 import { installUpdate, startUpdates, type UpdateState } from "./updates";
 import { cleanSettings, loadSettings, saveSettings, type DesktopSettings } from "./settings";
 import { restoreWindow, saveWindow } from "./windowState";
@@ -45,6 +45,8 @@ let update: UpdateState = { state: "idle" };
 let checkForUpdates: (() => void) | null = null;
 /** A folevi:// link that arrived before the app was ready. */
 let pendingLink: string | null = null;
+/** A Google sign-in in the browser on its way (desktop:sign-in): answered by the folevi://auth/google link it ends on. */
+let pendingSignIn: ((url: string | null) => void) | null = null;
 
 // Folevi puts its window back itself (windowState.ts). macOS's own window restoration adds nothing but a
 // "reopen its windows?" alert after a forced quit (an update replacing the app, a hang), and that alert
@@ -77,6 +79,13 @@ app.on("will-finish-launching", () => {
 });
 
 function openLink(url: string) {
+  // The end of a Google sign-in in the browser: back to the page that started it (it redeems the code).
+  if (isSignInReturn(url)) {
+    pendingSignIn?.(url);
+    pendingSignIn = null;
+    showMain();
+    return;
+  }
   const link = parseDeepLink(url);
   if (!link) return;
   if (link.type === "new-note") commandMain({ type: "new-note" });
@@ -501,6 +510,24 @@ function listen() {
   // Whether this Mac lets Folevi record the screen and its sound (granted only once macOS has been told so
   // and Folevi has restarted): a call recording checks it before it starts.
   ipcMain.handle("desktop:screen-access", (e) => (fromFolevi(e) ? systemPreferences.getMediaAccessStatus("screen") : null));
+  // Signing in with Google, which doesn't sign in inside the app's window: Folevi's /app-google page opens in
+  // the default browser, and the folevi://auth/google link it ends on (with a one-time code) goes back to the
+  // page that asked. Ten minutes, then it gives up.
+  ipcMain.handle("desktop:sign-in", async (e, url: unknown) => {
+    if (!fromFolevi(e) || typeof url !== "string" || !isSignInStart(url)) return null;
+    pendingSignIn?.(null);
+    const answer = new Promise<string | null>((resolve) => {
+      pendingSignIn = resolve;
+      setTimeout(() => {
+        if (pendingSignIn === resolve) {
+          pendingSignIn = null;
+          resolve(null);
+        }
+      }, 10 * 60_000);
+    });
+    await shell.openExternal(url);
+    return answer;
+  });
   // Recording a call without the permission: the page offers to open the right System Settings pane.
   ipcMain.on("desktop:system-settings", (e, pane: unknown) => {
     const url = systemSettingsUrl(pane);

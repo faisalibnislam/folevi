@@ -104,3 +104,45 @@ test("unregistered apps and return addresses are refused", async ({ browser }) =
   expect(res.status()).toBe(400);
   await person.context.close();
 });
+
+// The Mac and iOS apps' own web views sign in with Google through the browser: the browser (signed in with
+// Google on /app-google) issues a code for client "folevi-app", and the app's web view, which holds the PKCE
+// verifier, redeems it for a session cookie of its own (POST /native/redeem). Google itself can't run here, so
+// the browser half is a signed-in page asking for the code directly.
+test("an app's web view redeems the browser's one-time code for its own session, with its verifier only", async ({ browser }) => {
+  const person = await newPerson(browser, "App Google Person");
+  const codeFor = async (challenge: string) => {
+    const res = await person.page.request.post(`${APP}/api/auth/native/authorize`, {
+      headers: { origin: APP },
+      data: { client_id: "folevi-app", redirect_uri: "folevi://auth/google", code_challenge: challenge, code_challenge_method: "S256" },
+    });
+    expect(res.status()).toBe(200);
+    return ((await res.json()) as { code: string }).code;
+  };
+  // The app's web view: a context with no session of its own.
+  const app = await browser.newContext();
+  const appPage = await app.newPage();
+  const redeem = (code: string, verifier: string) =>
+    appPage.request.post(`${APP}/api/auth/native/redeem`, { headers: { origin: APP }, data: { code, code_verifier: verifier, client_id: "folevi-app", redirect_uri: "folevi://auth/google" } });
+
+  // A code taken by someone without the verifier signs nobody in (and is used up).
+  const stolen = pkce();
+  const stolenCode = await codeFor(stolen.challenge);
+  expect((await redeem(stolenCode, pkce().verifier)).status()).toBe(400);
+  expect((await redeem(stolenCode, stolen.verifier)).status()).toBe(400);
+
+  // With its verifier, once: the web view is signed in as the person.
+  const own = pkce();
+  const code = await codeFor(own.challenge);
+  expect((await redeem(code, own.verifier)).status()).toBe(200);
+  expect((await redeem(code, own.verifier)).status()).toBe(400);
+  await appPage.goto(`${APP}/documents`);
+  await expect(appPage).toHaveURL(/\/documents/, { timeout: 30_000 });
+  const session = await appPage.request.get(`${APP}/api/auth/get-session`);
+  expect(((await session.json()) as { user?: { email?: string } } | null)?.user?.email).toBe(person.email);
+
+  // Only the apps' own client and return address.
+  expect((await appPage.request.post(`${APP}/api/auth/native/redeem`, { headers: { origin: APP }, data: { code, code_verifier: own.verifier, client_id: "folevi-mac", redirect_uri: "com.folevi.mac://auth/callback" } })).status()).toBe(400);
+  await app.close();
+  await person.context.close();
+});

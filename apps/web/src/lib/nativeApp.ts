@@ -110,6 +110,11 @@ export interface NativeBridge {
   setBadge?(count: number): void;
   /** The colour behind the web view, which shows round the keyboard's corners (0 to 255 each). */
   setBackdrop?(r: number, g: number, b: number): void;
+  /**
+   * Opens `url` in iOS's sign-in sheet (ASWebAuthenticationSession) and answers with the folevi:// link that
+   * ends the sign-in there, or null if it was closed (Google sign-in, components/auth/GoogleSignIn.tsx).
+   */
+  authenticate?(url: string): Promise<string | null>;
   /** Folevi's page in the iOS Settings app (where notifications turned off in iOS come back on). */
   openNotificationSettings?(): Promise<void>;
 }

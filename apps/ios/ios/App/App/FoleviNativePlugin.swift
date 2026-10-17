@@ -38,9 +38,11 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "accessibility", returnType: CAPPluginReturnPromise),
         // Native/SystemSettings.swift: the colour behind the web view, which the keyboard's corners show.
         CAPPluginMethod(name: "setBackdrop", returnType: CAPPluginReturnPromise),
+        // Native/NativeServices.swift: signing in with Google in iOS's sign-in sheet.
+        CAPPluginMethod(name: "authenticate", returnType: CAPPluginReturnPromise),
     ]
 
-    private var appOrigin: String { AppOrigin.of(bridge?.config.serverURL) }
+    var appOrigin: String { AppOrigin.of(bridge?.config.serverURL) }
 
     /// Whether the page asking is Folevi's own (not the offline page, never another site).
     @MainActor var fromFolevi: Bool {

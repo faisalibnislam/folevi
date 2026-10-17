@@ -27,6 +27,11 @@ export interface DesktopBridge {
   closeQuickAdd(): void;
   sizeQuickAdd(height: number): void;
   openInMain(path: string): void;
+  /**
+   * Opens `url` in the default browser and answers with the folevi://auth/google link that ends the sign-in
+   * there, or null if none came (Google sign-in, components/auth/GoogleSignIn.tsx). Newer Mac apps only.
+   */
+  signInInBrowser?(url: string): Promise<string | null>;
   /** Drags a note out as a Markdown file (from a dragstart). Missing in Mac app builds before 1.2. */
   dragFile?(file: { name: string; text: string }): void;
   /**

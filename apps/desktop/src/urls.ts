@@ -13,6 +13,26 @@ export function isAppUrl(raw: string): boolean {
   }
 }
 
+/** Whether a link is the end of a Google sign-in in the browser (folevi://auth/google?code=…&state=…). */
+export function isSignInReturn(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    return url.protocol === `${SCHEME}:` && url.hostname === "auth" && url.pathname === "/google" && raw.length <= 1000;
+  } catch {
+    return false;
+  }
+}
+
+/** Where a Google sign-in for the app starts in the browser: Folevi's own /app-google page. */
+export function isSignInStart(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    return url.origin === APP_URL.origin && url.pathname === "/app-google";
+  } catch {
+    return false;
+  }
+}
+
 /** A path inside the app ("/d/01…") as a full URL; anything that isn't a plain path falls back to the start page. */
 export function appUrl(path = "/"): string {
   const safe = typeof path === "string" && path.startsWith("/") && !path.startsWith("//") ? path : "/";

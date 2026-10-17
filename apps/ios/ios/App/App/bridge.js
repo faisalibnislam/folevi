@@ -100,6 +100,12 @@
     disablePush: function () {
       return quietly(call("FoleviNative", "disablePush")).then(function () {});
     },
+    /** Google sign-in in iOS's sign-in sheet: answers with the folevi://auth/google link it ends on, or null. */
+    authenticate: function (url) {
+      return quietly(call("FoleviNative", "authenticate", { url: String(url) })).then(function (r) {
+        return r && typeof r.url === "string" ? r.url : null;
+      });
+    },
     /** The colour behind the web view, which shows round the keyboard's corners (0 to 255 each). */
     setBackdrop: function (r, g, b) {
       void quietly(call("FoleviNative", "setBackdrop", { r: Number(r) || 0, g: Number(g) || 0, b: Number(b) || 0 }));

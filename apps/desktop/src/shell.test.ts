@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import { cleanSettings, DEFAULT_SETTINGS, isValidShortcut, loadSettings, saveSettings } from "./settings";
-import { appUrl, dragFileName, isAppUrl, isExternalSafe, parseDeepLink, SCREEN_RECORDING_SETTINGS, systemSettingsUrl } from "./urls";
+import { appUrl, dragFileName, isAppUrl, isExternalSafe, isSignInReturn, isSignInStart, parseDeepLink, SCREEN_RECORDING_SETTINGS, systemSettingsUrl } from "./urls";
 import { restoreWindow, saveWindow } from "./windowState";
 
 const dirs: string[] = [];
@@ -91,6 +91,13 @@ describe("folevi:// links", () => {
     for (const bad of ["folevi://d/nope", "folevi://d/01JAZ3XQ5V8K2M4N6P7R9S0T1U/x", "folevi://admin", "folevi://d/%2F%2Fevil.com", "folevi://tasks/..%2F..%2Fx", "https://app.folevi.com/d/01JAZ3XQ5V8K2M4N6P7R9S0T1U", "folevi://new/x"]) {
       expect(parseDeepLink(bad)).toBeNull();
     }
+  });
+
+  test("a Google sign-in starts only on Folevi's /app-google page and ends only on folevi://auth/google", () => {
+    expect(isSignInStart("https://app.folevi.com/app-google?client_id=folevi-app&state=x")).toBe(true);
+    for (const bad of ["https://evil.com/app-google", "https://app.folevi.com/signin", "http://app.folevi.com/app-google", "folevi://auth/google"]) expect(isSignInStart(bad)).toBe(false);
+    expect(isSignInReturn("folevi://auth/google?code=abc&state=x")).toBe(true);
+    for (const bad of ["folevi://auth/other?code=abc", "folevi://d/01JAZ3XQ5V8K2M4N6P7R9S0T1U", "https://app.folevi.com/auth/google", `folevi://auth/google?code=${"a".repeat(1200)}`]) expect(isSignInReturn(bad)).toBe(false);
   });
 
   test("a dragged note's file name is safe for Finder", () => {

@@ -98,6 +98,7 @@ function rateLimitRules() {
     "/change-password": rule(60 * 60, 5),
     "/native/authorize": rule(60, 10),
     "/native/token": rule(60, 10),
+    "/native/redeem": rule(60, 10),
     // Connected apps (MCP): registering, and trading codes and refresh tokens.
     "/oauth2/register": rule(60 * 60, 20),
     "/oauth2/token": rule(60, 30),

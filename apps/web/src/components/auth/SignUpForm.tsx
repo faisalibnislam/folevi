@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { Alert, AuthHeading, Field, PasswordField, SubmitButton, TextLink } from "./fields";
 import { CheckInbox } from "./CheckInbox";
+import { GoogleSignIn } from "./GoogleSignIn";
 import { pendingTemplate, rememberTemplate, signUpCallback } from "@/lib/pendingTemplate";
 
 /** Password guidance: length matters most; we only block what's too short or obviously weak. */
@@ -16,7 +17,7 @@ function passwordProblem(password: string, email: string): string | null {
   return null;
 }
 
-export function SignUpForm({ template }: { template?: string }) {
+export function SignUpForm({ template, google }: { template?: string; google?: boolean }) {
   // A template picked on folevi.com opens as the first page after sign-up (Shell), in this browser.
   useEffect(() => rememberTemplate(template), [template]);
   const [name, setName] = useState("");
@@ -31,7 +32,8 @@ export function SignUpForm({ template }: { template?: string }) {
 
   return (
     <>
-      <AuthHeading title="Start writing" lede="Create your Folevi account. We'll email you a link to confirm your address." />
+      <AuthHeading title="Start writing" lede={google ? "Create your Folevi account with Google, or with your email (we'll email you a link to confirm it)." : "Create your Folevi account. We'll email you a link to confirm your address."} />
+      {google ? <GoogleSignIn returnTo={signUpCallback(template ?? pendingTemplate()?.key)} /> : null}
       <form
         className="space-y-4"
         noValidate

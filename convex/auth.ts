@@ -107,6 +107,27 @@ function rateLimitRules() {
   };
 }
 
+/**
+ * Sign in with Google, when both its keys are set (Google Cloud project "folevi", OAuth client "Folevi web";
+ * its redirect URI is ${SITE_URL}/api/auth/callback/google). Without them there's no Google button.
+ */
+export function googleSignIn(): { clientId: string; clientSecret: string } | null {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  return clientId && clientSecret ? { clientId, clientSecret } : null;
+}
+
+/** What a sign-in with Google can't do, as the error code the sign-in page shows a message for. */
+export const GOOGLE_REFUSED = {
+  /** The account has two-step verification on: its code is needed, which only the password sign-in asks for. */
+  twoFactor: "two_factor_required",
+  /** New sign-ups are paused (Admin → Feature flags → new_signups). */
+  signupsPaused: "signups_paused",
+} as const;
+
+/** Whether a Better Auth call is the return from Google (or any other social provider). */
+const fromSocialSignIn = (hookCtx: unknown) => ((hookCtx as { path?: string } | null | undefined)?.path ?? "").startsWith("/callback/");
+
 type Scheduler = { runAfter: (delay: number, fn: never, args: never) => Promise<unknown> };
 
 /** Identity email goes through Folevi's own email pipeline (internal.email.sendTemplate → Resend), never Better Auth's sender. */
@@ -175,6 +196,36 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
       customRules: rateLimitRules(),
     },
     user: { deleteUser: { enabled: false } },
+    // Google: a Google account with the same (Google-verified) email signs in to the existing Folevi account.
+    socialProviders: googleSignIn() ? { google: { ...googleSignIn()!, prompt: "select_account" } } : {},
+    account: { accountLinking: { enabled: true, trustedProviders: ["google"] } },
+    databaseHooks: {
+      user: {
+        create: {
+          // A first sign-in with Google is a sign-up, so it follows the same switch as email sign-ups.
+          before: async (user: Record<string, unknown>, hookCtx: unknown) => {
+            if (!fromSocialSignIn(hookCtx)) return { data: user };
+            const runQuery = (ctx as { runQuery?: (fn: never, args: never) => Promise<unknown> }).runQuery;
+            const open = runQuery ? await runQuery(internal.authEmails.signupsOpen as never, {} as never) : true;
+            if (open === false) throw new APIError("FORBIDDEN", { message: GOOGLE_REFUSED.signupsPaused });
+            return { data: user };
+          },
+        },
+      },
+      session: {
+        create: {
+          // Google never asks for Folevi's authenticator code, so an account with two-step verification on
+          // signs in with its password and code instead (the sign-in page says so).
+          before: async (session: { userId: string } & Record<string, unknown>, hookCtx: unknown) => {
+            if (!fromSocialSignIn(hookCtx)) return { data: session };
+            const adapter = (hookCtx as { context: { internalAdapter: { findUserById: (id: string) => Promise<unknown> } } }).context.internalAdapter;
+            const user = (await adapter.findUserById(session.userId)) as { twoFactorEnabled?: boolean | null } | null;
+            if (user?.twoFactorEnabled === true) throw new APIError("FORBIDDEN", { message: "This account uses two-step verification.", code: GOOGLE_REFUSED.twoFactor });
+            return { data: session };
+          },
+        },
+      },
+    },
     advanced: {
       cookiePrefix: "folevi",
       // Only the IP signed by the web server counts (see lib/clientIp.ts and the /api/auth route in http.ts).

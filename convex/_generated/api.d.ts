@@ -167,6 +167,7 @@ import type * as search from "../search.js";
 import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
 import type * as sharing from "../sharing.js";
+import type * as signInOptions from "../signInOptions.js";
 import type * as study from "../study.js";
 import type * as support from "../support.js";
 import type * as sync from "../sync.js";
@@ -345,6 +346,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   settings: typeof settings;
   sharing: typeof sharing;
+  signInOptions: typeof signInOptions;
   study: typeof study;
   support: typeof support;
   sync: typeof sync;

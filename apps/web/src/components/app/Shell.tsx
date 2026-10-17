@@ -25,7 +25,7 @@ import { useCreateDocument } from "./useCreateDocument";
 import { captureTemplateFromUrl, clearPendingTemplate, pendingTemplate } from "@/lib/pendingTemplate";
 import { DesktopBridge } from "./DesktopBridge";
 import { NativeBridge } from "./NativeBridge";
-import { useIphoneApp } from "@/lib/iphone";
+import { displayCornerRadius, useIphoneApp } from "@/lib/iphone";
 import { nativeApp } from "@/lib/nativeApp";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
 import { IphoneScreen, type IphoneScreenOptions } from "@/components/iphone/Screen";
@@ -168,8 +168,12 @@ export function Shell() {
     if (!iphone) return;
     const root = document.documentElement;
     root.dataset.iphone = "";
+    // A floating sheet's bottom corners: the screen's own corner less the sheet's 8 px inset (globals.css).
+    const corner = displayCornerRadius();
+    if (corner) root.style.setProperty("--iphone-sheet-bottom", `${Math.max(28, corner - 8)}px`);
     return () => {
       delete root.dataset.iphone;
+      root.style.removeProperty("--iphone-sheet-bottom");
     };
   }, [iphone]);
   const [drawerOpen, setDrawerOpen] = useState(false);

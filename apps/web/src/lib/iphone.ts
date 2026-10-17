@@ -22,6 +22,29 @@ export function isIpadApp(): boolean {
   return /\biPad\b/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 }
 
+/**
+ * How round this iPhone's screen corners are, in points (Apple doesn't expose it to web pages, but every
+ * iPhone screen size has one radius), or null where it isn't known (an iPad, or a size not listed yet).
+ * What floats near the screen's edge (a sheet's bottom corners) follows it, so the curves run parallel.
+ */
+export function displayCornerRadius(): number | null {
+  if (typeof screen === "undefined" || isIpadApp()) return null;
+  const w = Math.min(screen.width, screen.height);
+  const h = Math.max(screen.width, screen.height);
+  const sizes: Record<string, number> = {
+    "375x812": 39, // X, XS, 11 Pro (12 and 13 mini: 44)
+    "414x896": 40, // XR, XS Max, 11, 11 Pro Max
+    "390x844": 47.33, // 12, 13, 14, 16e
+    "428x926": 53.33, // 12 Pro Max, 13 Pro Max, 14 Plus
+    "393x852": 55, // 14 Pro, 15, 15 Pro, 16
+    "430x932": 55, // 14 Pro Max, 15 Plus, 15 Pro Max, 16 Plus
+    "420x912": 62, // Air
+    "402x874": 62, // 16 Pro, 17, 17 Pro and later
+    "440x956": 62, // 16 Pro Max, 17 Pro Max and later
+  };
+  return sizes[`${w}x${h}`] ?? null;
+}
+
 /** Whether this page shows the iPhone app's interface (the iPhone app, or the iPad app in a compact window). */
 export function isIphoneApp(): boolean {
   if (typeof navigator === "undefined" || !inIosApp()) return false;

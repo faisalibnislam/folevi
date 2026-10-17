@@ -657,6 +657,12 @@
 /* The app never zooms its text on rotation by itself. */
 :root[data-iphone] { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
 :root[data-iphone] body { background: var(--color-canvas); overscroll-behavior: none; }
+/* A sheet floating inset from the screen's edges (components/iphone/Sheet.tsx): its bottom corners run
+   parallel to the screen's (Shell sets --iphone-sheet-bottom from the iPhone's screen size). */
+.iphone-sheet-float {
+  border-bottom-left-radius: var(--iphone-sheet-bottom, var(--radius-float));
+  border-bottom-right-radius: var(--iphone-sheet-bottom, var(--radius-float));
+}
 /* Foli AI's composer (components/ai/chat/ChatThread.tsx): every control in it is a capsule, 10 px in from its
    sheet-rounded box, so the curves nest. */
 .iphone-composer :is(.rounded-chip, .ui-seg, .ui-seg > *) { border-radius: var(--radius-capsule); }

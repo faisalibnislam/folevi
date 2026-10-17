@@ -696,6 +696,10 @@
 /* Toasts float above the tab bar. */
 :root[data-iphone] .ui-toasts { bottom: calc(env(safe-area-inset-bottom) + 80px); }
 :root[data-iphone][data-iphone-keyboard] .ui-toasts { bottom: 64px; }
+/* The end of a note (or a screen) clears the bars and no more: the tab bar or the note's bars sit 60 px tall
+   above the home indicator (DocumentView, Screen leave room for them, plus 12 px); with the keyboard up only
+   the writing bar is there (48 px, 6 px above the keyboard). */
+:root[data-iphone][data-iphone-keyboard] :is([data-iphone-scroll], main#main.overflow-y-auto) { padding-bottom: 66px; }
 /* A note without artwork fills the screen like a sheet of paper (no card on a grey backdrop). */
 :root[data-iphone] [data-iphone-plain] > .fb-sheet { max-width: none !important; min-height: 100%; border-radius: 0; box-shadow: none; padding-top: calc(env(safe-area-inset-top) + 40px); }
 /* A task's own words head its Edit task card. */

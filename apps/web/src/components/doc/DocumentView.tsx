@@ -886,7 +886,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
           data-iphone-plain={iphone && !pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "" : undefined}
           className={
             iphone
-              ? `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(env(safe-area-inset-bottom)+112px)] ${pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "px-2.5 pt-[calc(env(safe-area-inset-top)+58px)]" : ""}`
+              ? `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "px-2.5 pt-[calc(env(safe-area-inset-top)+58px)]" : ""}`
               : `fb-page relative h-full overflow-y-auto rounded-panel px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`
           }
           data-backdrop={pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? (blurredBackdrop ? "blur" : "on") : undefined}

@@ -192,7 +192,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
         id="main"
         ref={mainRef}
         tabIndex={-1}
-        className={`min-h-0 flex-1 outline-none ${innerScroll ? "flex flex-col overflow-hidden" : "overflow-y-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+104px)] pt-[calc(env(safe-area-inset-top)+52px)]"}`}
+        className={`min-h-0 flex-1 outline-none ${innerScroll ? "flex flex-col overflow-hidden" : "overflow-y-auto overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] pt-[calc(env(safe-area-inset-top)+52px)]"}`}
       >
         {innerScroll ? (
           <h1 className="sr-only">{title}</h1>

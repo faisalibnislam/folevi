@@ -375,6 +375,9 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 @media print {
   .fb-editor { padding-bottom: 0; }
 }
+/* The iPhone app: no room left below a note's last line. The page leaves just enough to clear its bars
+   (DocumentView), and a tap below the end still lands at the end. */
+:root[data-iphone] .fb-editor { padding-bottom: 24px; }
 
 /* Drag and drop (blockDrag.ts) */
 .fb-drag-ghost {

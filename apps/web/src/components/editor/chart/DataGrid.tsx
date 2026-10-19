@@ -156,7 +156,7 @@ export function DataGrid({ data, kind, readOnly, note, onChange }: { data: GridD
     <div className="fb-chart-grid" onPointerDown={(e) => e.stopPropagation()}>
       {note ? <div className="fb-chart-grid-note">{note}</div> : null}
       <div className="fb-chart-grid-scroll fb-hscroll">
-        <table aria-label="Chart data" aria-readonly={readOnly || undefined}>
+        <table aria-label="Chart data">
           <thead>
             <tr>
               <th className="fb-chart-grid-corner" aria-hidden />

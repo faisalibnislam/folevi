@@ -171,23 +171,23 @@ function InlineField({
 
 /**
  * Keys inside a panel stay in it (the card would take Escape and the arrows); Escape closes the panel and
- * puts focus back on its button.
+ * puts focus back on its button. Nothing is prevented, so an iPhone sheet (a modal dialog) still closes
+ * itself on Escape too.
  */
 function PanelKeys({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
   return (
     <div
       onKeyDown={(e) => {
-        e.stopPropagation();
-        if (e.key === "Escape" && !e.defaultPrevented) {
-          e.preventDefault();
-          onClose();
-        }
+        if (e.key === "Escape" && !e.defaultPrevented) onClose();
       }}
     >
       {children}
     </div>
   );
 }
+
+/** The panels' keys never reach the card (whose Escape would leave for the note and cancel a sheet's close). */
+const keepKeys = (e: React.KeyboardEvent) => e.stopPropagation();
 
 export function ChartView(props: ReactNodeViewProps) {
   const { node, editor, getPos } = props;
@@ -210,7 +210,11 @@ export function ChartView(props: ReactNodeViewProps) {
       const pos = typeof getPos === "function" ? getPos() : null;
       const cur = typeof pos === "number" ? editor.state.doc.nodeAt(pos) : null;
       if (!cur || cur.type.name !== "chart" || !editor.isEditable) return;
-      editor.view.dispatch(editor.state.tr.setNodeMarkup(pos!, undefined, { ...cur.attrs, height: h }).setMeta("addToHistory", false));
+      editor.view.dispatch(
+        editor.state.tr
+          .setNodeMarkup(pos!, undefined, { ...cur.attrs, height: h })
+          .setMeta("addToHistory", false),
+      );
     },
     [editor, getPos],
   );
@@ -315,7 +319,11 @@ export function ChartView(props: ReactNodeViewProps) {
         );
       })
       // Out of credits or not on the plan: the chart just keeps the heading's title (nothing was asked for).
-      .catch((e) => aiProblem(e).kind === "other" && toast.show("Foli AI couldn't write a title for the chart this time."));
+      .catch(
+        (e) =>
+          aiProblem(e).kind === "other" &&
+          toast.show("Foli AI couldn't write a title for the chart this time."),
+      );
   }, [node.attrs.id, aiOn, editable, chartAi, documentId, write, toast]);
 
   const [plotRef, room, remeasure] = useRoom<HTMLDivElement>();
@@ -404,7 +412,8 @@ export function ChartView(props: ReactNodeViewProps) {
         className="fb-vc-btn"
         aria-pressed={gridOpen}
         disabled={empty}
-        aria-label="Data" title="Show the chart's data"
+        aria-label="Data"
+        title="Show the chart's data"
         onClick={() => setGridOpen((o) => !o)}
       >
         <Table2 size={14} aria-hidden />
@@ -418,7 +427,8 @@ export function ChartView(props: ReactNodeViewProps) {
             className="fb-vc-btn"
             aria-expanded={panel === "source"}
             aria-haspopup="dialog"
-            aria-label="Data from" title="Where the numbers come from"
+            aria-label="Data from"
+            title="Where the numbers come from"
             onClick={() => setPanel((p) => (p === "source" ? null : "source"))}
           >
             <Database size={14} aria-hidden />
@@ -431,7 +441,8 @@ export function ChartView(props: ReactNodeViewProps) {
             aria-expanded={panel === "style"}
             aria-haspopup="dialog"
             disabled={empty}
-            aria-label="Style" title="Colors, legend, labels and axes"
+            aria-label="Style"
+            title="Colors, legend, labels and axes"
             onClick={() => setPanel((p) => (p === "style" ? null : "style"))}
           >
             <Palette size={14} aria-hidden />
@@ -444,7 +455,8 @@ export function ChartView(props: ReactNodeViewProps) {
               className="fb-vc-btn"
               aria-expanded={panel === "ai"}
               aria-haspopup="dialog"
-              aria-label="Foli AI" title="Foli AI for this chart"
+              aria-label="Foli AI"
+              title="Foli AI for this chart"
               onClick={() => setPanel((p) => (p === "ai" ? null : "ai"))}
             >
               <AiIcon size={14} />
@@ -583,64 +595,71 @@ export function ChartView(props: ReactNodeViewProps) {
         onRows={onLiveRows}
         onMissing={() => setCollectionMissing(true)}
       />
-      <Popover
-        open={panel === "source"}
-        onClose={() => setPanel(null)}
-        anchor={sourceBtn}
-        label="Where the chart's numbers come from"
-        className="w-80"
-      >
-        <PanelKeys onClose={() => closePanel(sourceBtn)}>
-          <SourcePanel
-            chart={chart}
-            editor={editor}
-            demo={env.demo}
-            onUnavailable={env.unavailable}
-            onUseOwn={() => setSource(null)}
-            onSource={(source, rows) => setSource(source, rows)}
-            onRows={(rows) => {
-              write({ ...chartRef.current, source: null, columns: rows.columns, rows: rows.rows });
-              setLive(null);
-              setPanel(null);
-              setGridOpen(true);
-            }}
-          />
-        </PanelKeys>
-      </Popover>
-      <Popover
-        open={panel === "style"}
-        onClose={() => setPanel(null)}
-        anchor={styleBtn}
-        label="Chart style"
-        className="w-80"
-      >
-        <PanelKeys onClose={() => closePanel(styleBtn)}>
-          <StylePanel chart={chart} onChange={update} />
-        </PanelKeys>
-      </Popover>
-      {aiOn ? (
+      <div className="contents" onKeyDown={keepKeys}>
         <Popover
-          open={panel === "ai"}
+          open={panel === "source"}
           onClose={() => setPanel(null)}
-          anchor={aiBtn}
-          label="Foli AI for this chart"
+          anchor={sourceBtn}
+          label="Where the chart's numbers come from"
           className="w-80"
         >
-          <PanelKeys onClose={() => closePanel(aiBtn)}>
-            <ChartAiPanel
+          <PanelKeys onClose={() => closePanel(sourceBtn)}>
+            <SourcePanel
               chart={chart}
-              data={serializeChart(chart)}
-              documentId={documentId}
-              onClose={() => setPanel(null)}
-              onApply={(next) => {
-                haptic("light");
+              editor={editor}
+              demo={env.demo}
+              onUnavailable={env.unavailable}
+              onUseOwn={() => setSource(null)}
+              onSource={(source, rows) => setSource(source, rows)}
+              onRows={(rows) => {
+                write({
+                  ...chartRef.current,
+                  source: null,
+                  columns: rows.columns,
+                  rows: rows.rows,
+                });
                 setLive(null);
-                write(next);
+                setPanel(null);
+                setGridOpen(true);
               }}
             />
           </PanelKeys>
         </Popover>
-      ) : null}
+        <Popover
+          open={panel === "style"}
+          onClose={() => setPanel(null)}
+          anchor={styleBtn}
+          label="Chart style"
+          className="w-80"
+        >
+          <PanelKeys onClose={() => closePanel(styleBtn)}>
+            <StylePanel chart={chart} onChange={update} />
+          </PanelKeys>
+        </Popover>
+        {aiOn ? (
+          <Popover
+            open={panel === "ai"}
+            onClose={() => setPanel(null)}
+            anchor={aiBtn}
+            label="Foli AI for this chart"
+            className="w-80"
+          >
+            <PanelKeys onClose={() => closePanel(aiBtn)}>
+              <ChartAiPanel
+                chart={chart}
+                data={serializeChart(chart)}
+                documentId={documentId}
+                onClose={() => setPanel(null)}
+                onApply={(next) => {
+                  haptic("light");
+                  setLive(null);
+                  write(next);
+                }}
+              />
+            </PanelKeys>
+          </Popover>
+        ) : null}
+      </div>
     </CanvasCard>
   );
 }

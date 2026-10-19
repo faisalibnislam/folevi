@@ -6,7 +6,7 @@
 // baseline, 2 px gaps in the surface colour between touching marks, 2 px lines, 8 px dots with a surface
 // ring, area washes at about 12%, hairline gridlines, text in the chart's inks (never a series colour),
 // a legend for two series or more, and value labels only when asked or where they fit.
-import { CHART_KIND_LABEL, type ChartData, type ChartKind } from "@folevi/editor-schema";
+import { CHART_KIND_LABEL, chartNumber, type ChartData, type ChartKind } from "@folevi/editor-schema";
 import { fitText, formatCompact, formatValue, niceTicks, PLAIN, textWidth, wrapText, type Unit } from "./format";
 import { categoryModel, orgModel, pointModel, sliceModel, vennModel, type CategoryModel } from "./model";
 import type { Paint } from "./palette";
@@ -89,7 +89,7 @@ export function drawChart(chart: ChartData, opts: DrawOptions): Scene {
     case "org": {
       const model = orgModel(chart);
       const managers = chart.rows.map((r) => r[1]).filter((v) => v !== null && v !== undefined && v !== "");
-      if (!model.people.length || (managers.length && managers.every((v) => typeof v === "number"))) return out("An org chart reads each row as a person: their name, who they report to and their role.", true);
+      if (!model.people.length || (managers.length && managers.every((v) => chartNumber(v ?? null) !== null))) return out("An org chart reads each row as a person: their name, who they report to and their role.", true);
       const r = drawOrg(model, box, marks, hits, width, height);
       return out(r.summary, false, r.size);
     }

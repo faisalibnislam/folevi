@@ -304,7 +304,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
       const inside = screen.x >= 0 && screen.y >= TOOLBAR && screen.x + screen.w <= size.w && screen.y + screen.h <= size.h;
       if (!inside) fitView(res.board);
     }
-    focusBoard();
+    if (!opts.edit) focusBoard();
     return res.ids;
   };
 
@@ -689,7 +689,9 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
     lastTap.current = { at: now, x: e.clientX, y: e.clientY, id };
   };
 
-  const doubleAt = (clientX: number, clientY: number, target: Element) => {
+  const doubleAt = (clientX: number, clientY: number, given: Element) => {
+    // The board captures the pointer while it's down, so the event names the board, not what's under it.
+    const target = document.elementFromPoint(clientX, clientY) ?? given;
     const noteEl = target.closest("[data-st-note]");
     if (noteEl) return startEdit("note", noteEl.getAttribute("data-st-note")!);
     const labelEl = target.closest("[data-st-group-label]");
@@ -712,7 +714,9 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
 
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>): boolean => {
     const t = e.target as HTMLElement;
-    if (t instanceof HTMLTextAreaElement || t instanceof HTMLInputElement || t.closest(".st-panel, .st-bar")) return false;
+    // Fields and panels keep their keys; the bars' buttons pass the board's shortcuts on (⌘Z after a colour).
+    if (t instanceof HTMLTextAreaElement || t instanceof HTMLInputElement || t.closest(".st-panel")) return false;
+    if (t.closest(".st-bar") && (e.key === "Enter" || e.key === " ")) return false;
     const mod = e.metaKey || e.ctrlKey;
     const key = e.key.toLowerCase();
     const s = selRef.current;
@@ -816,6 +820,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
   if (editNote) {
     textEditor = (
       <textarea
+        key={editNote.id}
         className="st-text-input"
         data-color={editNote.color}
         autoFocus
@@ -829,8 +834,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
         }}
         onFocus={(e) => {
           const el = e.currentTarget;
-          if (editing?.typed || !el.value) el.setSelectionRange(el.value.length, el.value.length);
-          else el.select();
+          el.setSelectionRange(el.value.length, el.value.length);
         }}
         onBlur={() => finishEdit(false)}
         onKeyDown={(e) => {
@@ -852,6 +856,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
   } else if (editGroup) {
     textEditor = (
       <input
+        key={editGroup.id}
         className="st-label-input"
         autoFocus
         value={editGroup.label}

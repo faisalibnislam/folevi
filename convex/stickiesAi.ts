@@ -69,9 +69,9 @@ interface Call<T> {
  * the call, the reply checked, and the credits settled however it ends.
  */
 async function run<T>(ctx: ActionCtx, where: { scope: ScopeArg; documentId?: string }, call: Call<T>): Promise<T> {
-  await requireIdentity(ctx);
   const plan: PlannedCall[] = [{ fast: false, inputChars: call.system.length + call.prompt.length + (call.extraChars ?? 0), maxOutputTokens: call.maxOutputTokens }];
-  const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: where.scope, ...(where.documentId ? { documentId: where.documentId, noteOnly: true } : {}), plan, feature: call.feature });
+  const note = where.documentId ? { documentId: where.documentId, noteOnly: true } : null;
+  const { holdId } = await ctx.runMutation(internal.ai.begin, { feature: call.feature, scope: where.scope, plan, ...note });
   return await metered(ctx, holdId, async (meter) => {
     const raw = await gemini({ system: call.system, prompt: call.prompt, json: true, temperature: call.temperature ?? 0.4, maxOutputTokens: call.maxOutputTokens, ...(call.attachments ? { attachments: call.attachments, noMemory: true } : {}) }, meter);
     const out = call.parse(raw);
@@ -93,6 +93,7 @@ const boardBlock = (b: PromptBoard) => `<board notes="${b.count}">\n${b.text}\n<
 export const cluster = action({
   args: vWhere,
   handler: async (ctx, args): Promise<{ groups: { label: string; ids: string[] }[] }> => {
+    await requireIdentity(ctx);
     const b = promptBoard(args.board, 2);
     const groups = await run(ctx, args, {
       system: CLUSTER_SYSTEM,
@@ -111,6 +112,7 @@ export const cluster = action({
 export const summarize = action({
   args: vWhere,
   handler: async (ctx, args): Promise<{ summary: string }> => {
+    await requireIdentity(ctx);
     const b = promptBoard(args.board, 1);
     const summary = await run(ctx, args, {
       system: SUMMARY_SYSTEM,
@@ -128,6 +130,7 @@ export const summarize = action({
 export const ideas = action({
   args: { ...vWhere, instruction: v.optional(v.string()) },
   handler: async (ctx, args): Promise<{ ideas: { text: string; color: string }[] }> => {
+    await requireIdentity(ctx);
     const instruction = (args.instruction ?? "").trim().slice(0, MAX_QUESTION);
     const b = boardForPrompt(args.board);
     if (!b && !instruction) fail("invalid_argument", "Say what the ideas should be about.");
@@ -180,6 +183,7 @@ export const photo = action({
 export const tasks = action({
   args: { ...vWhere, noteIds: v.array(v.string()) },
   handler: async (ctx, args): Promise<{ tasks: { noteId: string; text: string; owner: string | null }[] }> => {
+    await requireIdentity(ctx);
     if (!args.noteIds.length) fail("invalid_argument", "Choose the notes to turn into tasks.");
     const b = promptBoard(args.board, 1, args.noteIds.slice(0, MAX_TASKS));
     const tasks = await run(ctx, args, {
@@ -199,6 +203,7 @@ export const tasks = action({
 export const writeUp = action({
   args: vWhere,
   handler: async (ctx, args): Promise<{ title: string; summary: string; nextSteps: string[] }> => {
+    await requireIdentity(ctx);
     const b = promptBoard(args.board, 1);
     const groups = stickiesByGroup(parseStickies(args.board.slice(0, 250_000))).filter((g) => g.group?.label).length;
     return await run(ctx, args, {

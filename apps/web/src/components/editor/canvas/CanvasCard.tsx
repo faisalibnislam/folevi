@@ -28,6 +28,8 @@ export interface CanvasCardProps {
   defaultHeight: number;
   /** Nothing in the block yet: the hint shows over the canvas. */
   empty: boolean;
+  /** Nothing to export, when that differs from `empty` (a block that draws its own empty state). */
+  blank?: boolean;
   hint: ReactNode;
   /** The block's own tools, before Export and Full canvas. */
   tools?: ReactNode;
@@ -45,7 +47,7 @@ export const clampHeight = (h: unknown, min: number, max: number, fallback: numb
   return Math.round(Math.max(min, Math.min(max, Number.isFinite(n) && n > 0 ? n : fallback)));
 };
 
-export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defaultHeight, empty, hint, tools, children, onRefit, onKey }: CanvasCardProps) {
+export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defaultHeight, empty, blank = empty, hint, tools, children, onRefit, onKey }: CanvasCardProps) {
   const { node, selected, editor, getPos, updateAttributes } = view;
   const cardRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -120,7 +122,7 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
               </>
             ) : null}
             <span className="fb-vc-spacer" aria-hidden />
-            <BlockExportMenu type={type} attrs={() => node.attrs} empty={empty || undefined} triggerClassName="fb-vc-btn" />
+            <BlockExportMenu type={type} attrs={() => node.attrs} empty={blank || undefined} triggerClassName="fb-vc-btn" />
             <button type="button" className="fb-vc-btn" aria-pressed={full} aria-label={full ? "Exit full canvas" : "Full canvas"} title={full ? "Exit full canvas (Esc)" : "Full canvas (⇧⌘F)"} onClick={() => toggleFull()}>
               {full ? <Shrink size={14} aria-hidden /> : <Expand size={14} aria-hidden />}
             </button>

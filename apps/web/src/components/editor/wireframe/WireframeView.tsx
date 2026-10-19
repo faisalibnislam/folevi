@@ -1106,6 +1106,7 @@ function WireframeEditor(props: ReactNodeViewProps) {
       maxHeight={LIMITS.maxWireframeHeight}
       defaultHeight={WIREFRAME_DEFAULT_HEIGHT}
       empty={false}
+      blank={!nScreens}
       hint={null}
       onKey={onKey}
       onRefit={() => {

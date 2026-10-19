@@ -178,7 +178,8 @@ test.describe("Insert panel", () => {
       await expect(card).toBeVisible({ timeout: 20_000 });
       const tools = card.getByRole("toolbar", { name: `${label} tools` });
       await expect(tools).toContainText(label);
-      await expect(card.locator(".fb-vc-empty")).toBeVisible();
+      // The wireframe draws its own empty state, with buttons to add a first screen.
+      await expect(card.locator(type === "wireframe" ? ".wf-empty" : ".fb-vc-empty")).toBeVisible();
       // Full canvas: the toolbar's button, then Esc back; ⇧⌘F from the keyboard.
       await tools.getByRole("button", { name: "Full canvas" }).click();
       await expect(card).toHaveAttribute("data-full", "true");

@@ -73,7 +73,7 @@ test("blocks can be dragged from the Insert panel into the page", async ({ brows
   const { page } = await newPerson(browser, "Insert Tester");
   await newPage(page, ["First", "Second"]);
   await openTool(page, "Insert");
-  const tile = page.getByRole("button", { name: /^To-do/ });
+  const tile = page.getByRole("group", { name: "Lists and tasks" }).getByRole("button", { name: "To-do", exact: true });
   await tile.scrollIntoViewIfNeeded();
   const t = (await tile.boundingBox())!;
   const second = (await blocks(page).filter({ hasText: "Second" }).boundingBox())!;

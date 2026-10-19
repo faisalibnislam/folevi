@@ -5,6 +5,7 @@
 // formula's result); the one being edited opens a small editor of its own (CellEditor.tsx explains why).
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { closeHistory } from "@tiptap/pm/history";
+import { NodeSelection } from "@tiptap/pm/state";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, ChevronDown, Minus, Plus, Sigma, X } from "lucide-react";
@@ -49,7 +50,17 @@ type Active = { r: number; c: number; caret: CaretStart };
 export function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
   const editable = useEditable(editor);
   const aiOn = useAiEnabled();
-  const t = useMemo(() => model.tableData(node.attrs), [node.attrs]);
+  // The table as the note has it now: a tool's change shows in the same event (opening a cell in a row just
+  // added needs it drawn), not a moment later when the view's own props catch up.
+  let attrs = node.attrs;
+  try {
+    const pos = typeof getPos === "function" ? getPos() : undefined;
+    const now = typeof pos === "number" ? editor.state.doc.nodeAt(pos) : null;
+    if (now?.type.name === "table") attrs = now.attrs;
+  } catch {
+    /* the view is being taken down */
+  }
+  const t = useMemo(() => model.tableData(attrs), [attrs]);
   const width = model.width(t);
   const today = localToday();
   const [preview, setPreview] = useState<TableAiResult | null>(null);
@@ -110,6 +121,13 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
     [editor, live],
   );
 
+  /** The note's selection is the table while a cell is edited (no other block's tools stay up). */
+  const selectTable = useCallback(() => {
+    const now = live();
+    if (!now || (editor.state.selection instanceof NodeSelection && editor.state.selection.from === now.pos)) return;
+    editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, now.pos)).setMeta("addToHistory", false));
+  }, [editor, live]);
+
   // A cell that's gone (its row or column deleted, undone) closes; the note takes focus back so ⌘Z keeps working.
   useEffect(() => {
     if (!active) return;
@@ -156,9 +174,12 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
   };
   // The open cell keeps up with changes made elsewhere (the note's undo, another device).
   useEffect(() => {
-    if (active) cellEd.current?.sync(t.rows[active.r]?.[active.c] ?? []);
-    else cellEd.current?.close();
-  }, [active, t.rows]);
+    if (active) {
+      cellEd.current?.sync(t.rows[active.r]?.[active.c] ?? []);
+      // An undo puts back the selection it had: the table stays selected while its cell is open.
+      selectTable();
+    } else cellEd.current?.close();
+  }, [active, t.rows, selectTable]);
   useEffect(
     () => () => {
       cellEd.current?.destroy();
@@ -200,7 +221,9 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
       if (attempt < 3) requestAnimationFrame(() => open(r, c, caret, attempt + 1));
       return;
     }
-    const cell = live()?.data.rows[r]?.[c] ?? [];
+    const now = live();
+    const cell = now?.data.rows[r]?.[c] ?? [];
+    selectTable();
     cellEd.current ??= new CellEditor(editor, handlers);
     cellEd.current.open(slot, cell, `Row ${r + 1}, column ${c + 1}`, caret);
   };
@@ -572,7 +595,11 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
         {menuColumn !== null && menuColumn < width ? (
           <TableColumnMenu
             open
-            onClose={() => setMenuColumn(null)}
+            onClose={() => {
+              setMenuColumn(null);
+              // Back to the cell being edited, if one is open.
+              requestAnimationFrame(() => activeRef.current && cellEd.current?.editor.view.focus());
+            }}
             anchor={menuAnchor}
             column={menuColumn}
             name={evaluated.names[menuColumn] ?? ""}

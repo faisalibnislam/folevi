@@ -23,6 +23,7 @@ import { canonicalJson, normalizeInline, type InlineNode } from "@folevi/editor-
 import { ALL_MARKS, DateMention, Mention, PageLink, Text } from "../extensions";
 import { inlineToPM, pmInline } from "../convert";
 import { clearActiveCell, setActiveCell } from "./cellEditorStore";
+import { syncDomSelection } from "../blockSelectionState";
 
 const CellDoc = TiptapNode.create({ name: "doc", topNode: true, content: "paragraph" });
 const CellParagraph = TiptapNode.create({
@@ -132,6 +133,9 @@ export class CellEditor {
   private keyDown(view: EditorView, event: KeyboardEvent): boolean {
     if (event.isComposing || event.keyCode === 229) return false;
     const mod = event.metaKey || event.ctrlKey;
+    // A selection just made with Shift+arrows reaches ProseMirror a moment later: a shortcut right after it
+    // (⌘B) acts on it, not on the one before (as in the note, blockSelectionState.ts).
+    if (mod || event.shiftKey) syncDomSelection(view);
     const key = event.key.toLowerCase();
     // Undo and redo are the note's (each change here is one of its steps).
     if (mod && !event.altKey && (key === "z" || (key === "y" && !event.shiftKey))) {

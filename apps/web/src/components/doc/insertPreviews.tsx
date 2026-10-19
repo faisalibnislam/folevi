@@ -26,6 +26,10 @@ export type PreviewKind =
   | "mermaid"
   | "flowchart"
   | "whiteboard"
+  | "mindmap"
+  | "chart"
+  | "stickies"
+  | "wireframe"
   | "bookmark"
   | "embed"
   | "date"
@@ -272,6 +276,57 @@ function Picture({ kind }: { kind: PreviewKind }) {
             [6, 14, 22, 30].map((y) => <circle key={`${x}-${y}`} cx={x} cy={y} r={0.7} fill={C} fillOpacity={0.28} />),
           )}
           <path d="M6 26c4-12 9-14 12-7s9 8 12-3 8-8 12-4" fill="none" stroke={ACCENT} strokeOpacity={0.8} strokeWidth={2} strokeLinecap="round" />
+        </>
+      );
+    case "mindmap":
+      return (
+        <>
+          <path d="M18 18c-4 0-4-8-8-8M18 18c-4 0-4 8-8 8M30 18c4 0 4-8 8-8M30 18c4 0 4 8 8 8" {...line} />
+          <rect x={17.5} y={14.5} width={13} height={7} rx={3.5} fill={ACCENT} fillOpacity={0.22} stroke={ACCENT} strokeOpacity={0.65} />
+          <Bar x={2} y={8.5} w={8} o={0.32} />
+          <Bar x={2} y={24.5} w={8} o={0.32} />
+          <Bar x={38} y={8.5} w={8} o={0.32} />
+          <Bar x={38} y={24.5} w={8} o={0.32} />
+        </>
+      );
+    case "chart":
+      return (
+        <>
+          <path d="M6 4.5v26h37" {...line} strokeOpacity={0.3} />
+          <rect x={10} y={19} width={5.5} height={11.5} rx={1} fill={C} fillOpacity={0.22} />
+          <rect x={18.5} y={11} width={5.5} height={19.5} rx={1} fill={ACCENT} fillOpacity={0.6} />
+          <rect x={27} y={22} width={5.5} height={8.5} rx={1} fill={C} fillOpacity={0.22} />
+          <rect x={35.5} y={7} width={5.5} height={23.5} rx={1} fill={C} fillOpacity={0.3} />
+        </>
+      );
+    case "stickies":
+      return (
+        <>
+          <g transform="rotate(-6 12.5 13.5)">
+            <rect x={5} y={6} width={15} height={15} rx={1.5} fill={C} fillOpacity={0.12} />
+            <Bar x={8} y={10} w={9} h={2} o={0.3} />
+            <Bar x={8} y={14} w={6} h={2} o={0.3} />
+          </g>
+          <g transform="rotate(5 33.5 12.5)">
+            <rect x={26} y={5} width={15} height={15} rx={1.5} fill={ACCENT} fillOpacity={0.32} />
+            <Bar x={29} y={9} w={9} h={2} o={0.3} />
+          </g>
+          <g transform="rotate(-2 23 26.5)">
+            <rect x={15.5} y={19.5} width={15} height={14} rx={1.5} fill={C} fillOpacity={0.18} />
+            <Bar x={18.5} y={23.5} w={8} h={2} o={0.3} />
+          </g>
+        </>
+      );
+    case "wireframe":
+      return (
+        <>
+          <Sheet x={14} y={2} w={20} h={32} r={3.5} />
+          <Bar x={17.5} y={6} w={8} h={2} o={0.45} />
+          <rect x={17.5} y={10.5} width={13} height={9} rx={1} fill="none" stroke={C} strokeOpacity={0.3} />
+          <path d="M17.5 10.5l13 9M30.5 10.5l-13 9" {...line} strokeOpacity={0.2} strokeWidth={0.8} />
+          <Bar x={17.5} y={22} w={13} h={2} />
+          <Bar x={17.5} y={25.5} w={9} h={2} />
+          <rect x={17.5} y={28.5} width={13} height={3} rx={1.5} fill={ACCENT} fillOpacity={0.6} />
         </>
       );
     case "bookmark":

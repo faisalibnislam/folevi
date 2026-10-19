@@ -59,8 +59,12 @@ import {
   Columns3,
   MonitorPlay,
   ScanText,
+  Waypoints,
+  ChartColumn,
+  StickyNotes,
+  PanelsTopLeft,
 } from "lucide-react";
-import { FLOWCHART_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT, addDays, embedFor, embedProblem, repeatProps, repeatRule, sanitizeHref, ulid } from "@folevi/editor-schema";
+import { CHART_DEFAULT_HEIGHT, FLOWCHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, addDays, embedFor, embedProblem, repeatProps, repeatRule, sanitizeHref, ulid } from "@folevi/editor-schema";
 import { RepeatField } from "./RepeatField";
 import { api } from "@/lib/convex/api";
 import { parseNaturalDate } from "@/lib/nlDate";
@@ -104,6 +108,7 @@ import { InlineAi, type InlineAiRequest } from "@/components/ai/InlineAi";
 import { FindTodosHost, openFindTodos } from "@/components/ai/FindTodos";
 import { newFormulaAttrs } from "./FormulaView";
 import { DIVIDER_STYLES, MERMAID_SAMPLE } from "./insertCatalog";
+import { exportItems, useBlockExport } from "./canvas/BlockExport";
 import { Select } from "@/components/ui/Select";
 import { Calendar, DateField, DateTimeField, TimeField } from "@/components/ui/DateField";
 import { EDIT_LINK_EVENT, EditorContextMenu } from "./EditorContextMenu";
@@ -121,12 +126,17 @@ const AudioRecorder = lazy(() => import("./AudioRecorder").then((m) => ({ defaul
 
 interface MenuItem {
   id: string;
+  /** The slash menu's group (Text, Lists and tasks, Visuals, Media, Data and more, Foli AI). */
+  group?: string;
   label: string;
   hint?: string;
   keywords: string;
   icon: React.ReactNode;
   run: () => void | Promise<void>;
 }
+
+/** The slash menu's Suggested group, as in the Insert panel (Text, Page, Card, To-do, Table, Image). */
+const SLASH_SUGGESTED = ["p", "page", "card", "todo", "table", "image"];
 
 /** Everything the Insert panel (and the slash menu) can add that needs more than a plain block. */
 export type SpecialInsert = "image" | "unsplash" | "file" | "record" | "scan" | "scanPhotos" | "page" | "card" | "bookmark" | "embed" | "collection" | "gallery" | "board" | "calendarView" | "date" | "pickDate";
@@ -264,7 +274,13 @@ function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }
     // The list is the scroll container. It is focusable (axe: scrollable-region-focusable) but focus
     // normally stays in the editor, which points at the active option with aria-activedescendant.
     <ul role="listbox" id={listId} aria-label={label} tabIndex={0} style={{ maxHeight: "min(400px, 65vh, var(--pop-max, 400px))" }} className="overflow-y-auto rounded-chip outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)]">
-      {items.map((item, i) => (
+      {items.map((item, i) => [
+        // A group's name over its first item (not an option: arrow keys and the active item skip it).
+        item.group && item.group !== items[i - 1]?.group ? (
+          <li key={`group:${item.group}`} role="presentation" aria-hidden className="ui-caps px-2 pb-1 pt-2.5 first:pt-1">
+            {item.group}
+          </li>
+        ) : null,
         <li
           key={item.id}
           id={`${listId}-${i}`}
@@ -284,8 +300,8 @@ function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }
           </span>
           <span className="min-w-0 flex-1 truncate">{item.label}</span>
           {item.hint ? <span className="text-xs text-faint">{keyLabel(item.hint)}</span> : null}
-        </li>
-      ))}
+        </li>,
+      ])}
     </ul>
   );
 }
@@ -737,27 +753,65 @@ export function EditorMenus({
   }, [editor, navigate, editable]);
 
   // ---------------------------------------------------------------- slash menu
+  // Grouped like the Insert panel (doc/InsertPanel.tsx): Text, Lists and tasks, Visuals, Media, Data and more,
+  // then Foli AI. With nothing typed, Suggested comes first (copies of a few items, `suggested:<id>`).
   const slashItems: MenuItem[] = useMemo(
     () => [
-      { id: "p", label: "Text", keywords: "text paragraph plain", icon: <Text size={15} />, run: () => void turnInto(editor, "paragraph") },
-      { id: "h1", label: "Heading 1", hint: "#", keywords: "heading title h1 large", icon: <Heading1 size={15} />, run: () => void turnInto(editor, "heading", { level: 1 }) },
-      { id: "h2", label: "Heading 2", hint: "##", keywords: "heading subtitle h2", icon: <Heading2 size={15} />, run: () => void turnInto(editor, "heading", { level: 2 }) },
-      { id: "h3", label: "Heading 3", hint: "###", keywords: "heading h3 small", icon: <Heading3 size={15} />, run: () => void turnInto(editor, "heading", { level: 3 }) },
-      { id: "todo", label: "To-do", hint: "[]", keywords: "todo task checklist checkbox", icon: <CheckSquare size={15} />, run: () => void turnInto(editor, "todo", { checked: false }) },
-      { id: "ul", label: "Bulleted list", hint: "-", keywords: "bullet list unordered", icon: <List size={15} />, run: () => void turnInto(editor, "bulleted") },
-      { id: "ol", label: "Numbered list", hint: "1.", keywords: "numbered ordered list", icon: <ListOrdered size={15} />, run: () => void turnInto(editor, "numbered") },
-      { id: "toggle", label: "Toggle", keywords: "toggle disclosure collapse details", icon: <ChevronRight size={15} />, run: () => void turnInto(editor, "toggle", { collapsed: false }) },
-      { id: "quote", label: "Quote", hint: ">", keywords: "quote blockquote citation", icon: <Quote size={15} />, run: () => void turnInto(editor, "quote") },
-      { id: "callout", label: "Callout", keywords: "callout note info warning tip", icon: <StickyNote size={15} />, run: () => void turnInto(editor, "callout", { tone: "note" }) },
-      { id: "code", label: "Code", hint: "```", keywords: "code snippet programming", icon: <Code2 size={15} />, run: () => void turnInto(editor, "code", { language: "plaintext" }) },
-      { id: "divider", label: "Divider", hint: "---", keywords: "divider rule separator line", icon: <Minus size={15} />, run: () => void insertBlockAfterCurrent(editor, "divider") },
+      { group: "Text", id: "p", label: "Text", keywords: "text paragraph plain", icon: <Text size={15} />, run: () => void turnInto(editor, "paragraph") },
+      { group: "Text", id: "h1", label: "Heading 1", hint: "#", keywords: "heading title h1 large", icon: <Heading1 size={15} />, run: () => void turnInto(editor, "heading", { level: 1 }) },
+      { group: "Text", id: "h2", label: "Heading 2", hint: "##", keywords: "heading subtitle h2", icon: <Heading2 size={15} />, run: () => void turnInto(editor, "heading", { level: 2 }) },
+      { group: "Text", id: "h3", label: "Heading 3", hint: "###", keywords: "heading h3 small", icon: <Heading3 size={15} />, run: () => void turnInto(editor, "heading", { level: 3 }) },
+      { group: "Text", id: "quote", label: "Quote", hint: ">", keywords: "quote blockquote citation", icon: <Quote size={15} />, run: () => void turnInto(editor, "quote") },
+      { group: "Text", id: "callout", label: "Callout", keywords: "callout note info warning tip", icon: <StickyNote size={15} />, run: () => void turnInto(editor, "callout", { tone: "note" }) },
+      { group: "Lists and tasks", id: "ul", label: "Bulleted list", hint: "-", keywords: "bullet list unordered", icon: <List size={15} />, run: () => void turnInto(editor, "bulleted") },
+      { group: "Lists and tasks", id: "ol", label: "Numbered list", hint: "1.", keywords: "numbered ordered list", icon: <ListOrdered size={15} />, run: () => void turnInto(editor, "numbered") },
+      { group: "Lists and tasks", id: "todo", label: "To-do", hint: "[]", keywords: "todo task checklist checkbox", icon: <CheckSquare size={15} />, run: () => void turnInto(editor, "todo", { checked: false }) },
+      { group: "Lists and tasks", id: "toggle", label: "Toggle", keywords: "toggle disclosure collapse details", icon: <ChevronRight size={15} />, run: () => void turnInto(editor, "toggle", { collapsed: false }) },
+      { group: "Visuals", id: "flowchart", label: "Flowchart", keywords: "flowchart diagram process flow chart shapes boxes arrows", icon: <Network size={15} />, run: () => void insertBlockAfterCurrent(editor, "flowchart", { data: "", height: FLOWCHART_DEFAULT_HEIGHT }) },
+      { group: "Visuals", id: "mindmap", label: "Mind map", keywords: "mind map mindmap ideas brainstorm branches tree outline whimsical miro", icon: <Waypoints size={15} />, run: () => void insertBlockAfterCurrent(editor, "mindmap", { data: "", height: MINDMAP_DEFAULT_HEIGHT }) },
+      { group: "Visuals", id: "chart", label: "Chart", keywords: "chart graph bar line pie donut area scatter bubble org venn data numbers", icon: <ChartColumn size={15} />, run: () => void insertBlockAfterCurrent(editor, "chart", { data: "", height: CHART_DEFAULT_HEIGHT }) },
+      { group: "Visuals", id: "stickies", label: "Sticky notes", keywords: "sticky notes stickies post-it board brainstorm workshop retro votes", icon: <StickyNotes size={15} />, run: () => void insertBlockAfterCurrent(editor, "stickies", { data: "", height: STICKIES_DEFAULT_HEIGHT }) },
+      { group: "Visuals", id: "wireframe", label: "Wireframe", keywords: "wireframe mockup screen ui ux layout prototype app website sketch", icon: <PanelsTopLeft size={15} />, run: () => void insertBlockAfterCurrent(editor, "wireframe", { data: "", height: WIREFRAME_DEFAULT_HEIGHT }) },
+      { group: "Visuals", id: "whiteboard", label: "Whiteboard", keywords: "whiteboard drawing sketch draw pen canvas", icon: <PenTool size={15} />, run: () => void insertBlockAfterCurrent(editor, "whiteboard", { data: "", height: WHITEBOARD_DEFAULT_HEIGHT }) },
+      { group: "Visuals", id: "mermaid", label: "Mermaid diagram", keywords: "mermaid diagram flowchart chart graph sequence", icon: <Workflow size={15} />, run: () => void insertBlockAfterCurrent(editor, "code", { language: "mermaid" }, MERMAID_SAMPLE) },
+      { group: "Media", id: "image", label: "Image", keywords: "image picture photo upload", icon: <ImageIcon size={15} />, run: special.image },
+      { group: "Media", id: "unsplash", label: "Image from Unsplash", keywords: "image picture photo unsplash stock search", icon: <ImagePlus size={15} />, run: special.unsplash },
+      { group: "Media", id: "file", label: "File", keywords: "file attachment upload pdf", icon: <Paperclip size={15} />, run: special.file },
+      { group: "Media", id: "record", label: "Audio recording", keywords: "audio record recording voice memo microphone mic sound dictate", icon: <Mic size={15} />, run: special.record },
+      // Only in the iOS app: the camera's scanner where the device has one, and pages from photos.
+      ...(scanner?.scanner ? [{ group: "Media", id: "scan", label: "Scan document", keywords: "scan scanner document camera paper receipt ocr text", icon: <ScanText size={15} />, run: special.scan }] : []),
+      ...(scanner ? [{ group: "Media", id: "scanPhotos", label: "Scan from photos", keywords: "scan scanner document photos paper receipt ocr text", icon: <ScanText size={15} />, run: special.scanPhotos }] : []),
+      { group: "Media", id: "bookmark", label: "Bookmark", keywords: "bookmark web link url", icon: <LinkIcon size={15} />, run: special.bookmark },
+      { group: "Media", id: "embed", label: "Embed", keywords: "embed video youtube vimeo loom figma map google maps iframe", icon: <MonitorPlay size={15} />, run: special.embed },
+      {
+        group: "Data and more",
+        id: "table",
+        label: "Table",
+        keywords: "table grid spreadsheet",
+        icon: <Table2 size={15} />,
+        run: () => focusInsideBlock(editor, insertBlockAfterCurrent(editor, "table", { headerRow: true, rows: emptyTableRows(3, 3) })),
+      },
+      { group: "Data and more", id: "collection", label: "Collection", keywords: "collection database table", icon: <LayoutList size={15} />, run: special.collection },
+      { group: "Data and more", id: "gallery", label: "Gallery", keywords: "gallery collection database cards grid", icon: <LayoutGrid size={15} />, run: special.gallery },
+      { group: "Data and more", id: "board", label: "Kanban", keywords: "kanban board collection database columns", icon: <Columns3 size={15} />, run: special.board },
+      { group: "Data and more", id: "calendarView", label: "Calendar", keywords: "calendar collection database month dates", icon: <CalendarRange size={15} />, run: special.calendarView },
+      { group: "Data and more", id: "page", label: "Page", keywords: "page nested subpage child link", icon: <FileText size={15} />, run: special.page },
+      { group: "Data and more", id: "card", label: "Card", keywords: "card page nested subpage child", icon: <SquareStack size={15} />, run: special.card },
+      { group: "Data and more", id: "link", label: "Link to page", hint: "[[", keywords: "link page reference backlink", icon: <Link2 size={15} />, run: () => void editor.chain().focus().insertContent("[[").run() },
+      { group: "Data and more", id: "date", label: "Today’s date", keywords: "date today mention calendar", icon: <CalendarDays size={15} />, run: special.date },
+      { group: "Data and more", id: "pickdate", label: "Date…", keywords: "date pick choose calendar day", icon: <CalendarDays size={15} />, run: special.pickDate },
+      { group: "Data and more", id: "code", label: "Code", hint: "```", keywords: "code snippet programming", icon: <Code2 size={15} />, run: () => void turnInto(editor, "code", { language: "plaintext" }) },
+      { group: "Data and more", id: "formula", label: "TeX formula", keywords: "formula math latex tex equation katex", icon: <Sigma size={15} />, run: () => void insertBlockAfterCurrent(editor, "formula", newFormulaAttrs()) },
+      { group: "Data and more", id: "divider", label: "Divider", hint: "---", keywords: "divider rule separator line", icon: <Minus size={15} />, run: () => void insertBlockAfterCurrent(editor, "divider") },
       ...DIVIDER_STYLES.map((d) => ({
+        group: "Data and more",
         id: `divider-${d.style}`,
         label: `Divider: ${d.label}`,
         keywords: `divider rule separator line ${d.label.toLowerCase()} ${d.style}`,
         icon: <Minus size={15} />,
         run: () => void insertBlockAfterCurrent(editor, "divider", { style: d.style }),
       })),
+      { group: "Data and more", id: "pagebreak", label: "Page break", keywords: "page break print pdf new sheet", icon: <SeparatorHorizontal size={15} />, run: () => void insertBlockAfterCurrent(editor, "pageBreak") },
       // AI: opens the inline composer at the cursor (the "/" is already gone), some running a task at once,
       // some ready for a prompt. Only where AI is on and included for this note's plan.
       ...(aiOn
@@ -773,6 +827,7 @@ export function EditorMenus({
               ["ai-page", "Foli AI: Generate page", "ai generate page note whole template create", { mode: "page" }],
             ] as const
           ).map(([id, label, keywords, open]) => ({
+            group: "Foli AI",
             id,
             label,
             keywords,
@@ -785,6 +840,7 @@ export function EditorMenus({
       ...(aiOn
         ? [
             {
+              group: "Foli AI",
               id: "ai-find-todos",
               label: "Foli AI: Find to-dos",
               keywords: "ai tasks todo action items meeting follow ups dates due assign schedule calendar",
@@ -797,40 +853,11 @@ export function EditorMenus({
       ...(aiOn
         ? AI_TOOL_SLASH_ITEMS.map(({ task, ...item }) => ({
             ...item,
+            group: "Foli AI",
             icon: <AiIcon size={15} className="text-[#7c6cf0]" />,
             run: () => openInlineAi(editor.view.dom, { target: null, task }),
           }))
         : []),
-      { id: "pagebreak", label: "Page break", keywords: "page break print pdf new sheet", icon: <SeparatorHorizontal size={15} />, run: () => void insertBlockAfterCurrent(editor, "pageBreak") },
-      {
-        id: "table",
-        label: "Table",
-        keywords: "table grid spreadsheet",
-        icon: <Table2 size={15} />,
-        run: () => focusInsideBlock(editor, insertBlockAfterCurrent(editor, "table", { headerRow: true, rows: emptyTableRows(3, 3) })),
-      },
-      { id: "formula", label: "TeX formula", keywords: "formula math latex tex equation katex", icon: <Sigma size={15} />, run: () => void insertBlockAfterCurrent(editor, "formula", newFormulaAttrs()) },
-      { id: "mermaid", label: "Mermaid diagram", keywords: "mermaid diagram flowchart chart graph sequence", icon: <Workflow size={15} />, run: () => void insertBlockAfterCurrent(editor, "code", { language: "mermaid" }, MERMAID_SAMPLE) },
-      { id: "flowchart", label: "Flowchart", keywords: "flowchart diagram process flow chart shapes boxes arrows", icon: <Network size={15} />, run: () => void insertBlockAfterCurrent(editor, "flowchart", { data: "", height: FLOWCHART_DEFAULT_HEIGHT }) },
-      { id: "whiteboard", label: "Whiteboard", keywords: "whiteboard drawing sketch draw pen canvas", icon: <PenTool size={15} />, run: () => void insertBlockAfterCurrent(editor, "whiteboard", { data: "", height: WHITEBOARD_DEFAULT_HEIGHT }) },
-      { id: "page", label: "Page", keywords: "page nested subpage child link", icon: <FileText size={15} />, run: special.page },
-      { id: "card", label: "Card", keywords: "card page nested subpage child", icon: <SquareStack size={15} />, run: special.card },
-      { id: "link", label: "Link to page", hint: "[[", keywords: "link page reference backlink", icon: <Link2 size={15} />, run: () => void editor.chain().focus().insertContent("[[").run() },
-      { id: "image", label: "Image", keywords: "image picture photo upload", icon: <ImageIcon size={15} />, run: special.image },
-      { id: "unsplash", label: "Image from Unsplash", keywords: "image picture photo unsplash stock search", icon: <ImagePlus size={15} />, run: special.unsplash },
-      { id: "file", label: "File", keywords: "file attachment upload pdf", icon: <Paperclip size={15} />, run: special.file },
-      { id: "record", label: "Audio recording", keywords: "audio record recording voice memo microphone mic sound dictate", icon: <Mic size={15} />, run: special.record },
-      // Only in the iOS app: the camera's scanner where the device has one, and pages from photos.
-      ...(scanner?.scanner ? [{ id: "scan", label: "Scan document", keywords: "scan scanner document camera paper receipt ocr text", icon: <ScanText size={15} />, run: special.scan }] : []),
-      ...(scanner ? [{ id: "scanPhotos", label: "Scan from photos", keywords: "scan scanner document photos paper receipt ocr text", icon: <ScanText size={15} />, run: special.scanPhotos }] : []),
-      { id: "bookmark", label: "Bookmark", keywords: "bookmark web link url", icon: <LinkIcon size={15} />, run: special.bookmark },
-      { id: "embed", label: "Embed", keywords: "embed video youtube vimeo loom figma map google maps iframe", icon: <MonitorPlay size={15} />, run: special.embed },
-      { id: "collection", label: "Collection", keywords: "collection database table", icon: <LayoutList size={15} />, run: special.collection },
-      { id: "gallery", label: "Gallery", keywords: "gallery collection database cards grid", icon: <LayoutGrid size={15} />, run: special.gallery },
-      { id: "board", label: "Kanban", keywords: "kanban board collection database columns", icon: <Columns3 size={15} />, run: special.board },
-      { id: "calendarView", label: "Calendar", keywords: "calendar collection database month dates", icon: <CalendarRange size={15} />, run: special.calendarView },
-      { id: "date", label: "Today’s date", keywords: "date today mention calendar", icon: <CalendarDays size={15} />, run: special.date },
-      { id: "pickdate", label: "Date…", keywords: "date pick choose calendar day", icon: <CalendarDays size={15} />, run: special.pickDate },
     ],
     [editor, special, aiOn, scanner],
   );
@@ -846,9 +873,22 @@ export function EditorMenus({
     if (label.split(/\s+/)[0] === q) return 1;
     return label.startsWith(q) ? 2 : label.includes(q) ? 3 : 4;
   };
+  // With nothing typed: Suggested, then every group under its name. While searching, one flat list across
+  // the groups, best matches first (each item once, no group names).
   const filteredSlash =
     open?.kind === "slash"
-      ? slashItems.filter((i) => !q || i.label.toLowerCase().includes(q) || i.keywords.includes(q)).sort((a, b) => (q ? slashRank(a) - slashRank(b) : 0))
+      ? q
+        ? slashItems
+            .filter((i) => i.label.toLowerCase().includes(q) || i.keywords.includes(q))
+            .sort((a, b) => slashRank(a) - slashRank(b))
+            .map((i) => ({ ...i, group: undefined }))
+        : [
+            ...SLASH_SUGGESTED.flatMap((id) => {
+              const item = slashItems.find((i) => i.id === id);
+              return item ? [{ ...item, id: `suggested:${id}`, group: "Suggested" }] : [];
+            }),
+            ...slashItems,
+          ]
       : [];
 
   // ---------------------------------------------------------------- page links
@@ -1768,6 +1808,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
   const justDragged = useRef(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
+  const runExport = useBlockExport();
   // Touch screens have no hover: the grip stays beside the line with the caret instead.
   const coarse = useMediaQuery("(pointer: coarse)");
   const pressingHandle = useRef(false);
@@ -2182,6 +2223,14 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                         },
                       },
                     ]
+                  : []),
+                // A flowchart, mind map, sticky notes, chart or wireframe: its picture as a file, or copied.
+                ...(single
+                  ? exportItems(single.type.name, single.attrs, (action) => {
+                      // Started before the menu closes, so a copy still counts as the click (Safari).
+                      void runExport(action, single.type.name, single.attrs);
+                      closeMenu(false);
+                    }).map(({ label, icon, disabled, run }) => ({ label, hint: "", icon, disabled, run }))
                   : []),
                 { label: "Duplicate", hint: "⌘D", icon: <CopyPlus size={14} />, run: () => act(() => duplicateBlocks(editor)) },
                 { label: "Move up", hint: "⌥⇧↑", icon: <MoveUp size={14} />, disabled: menu.from === 0, run: () => act(() => moveBlock(editor, -1)) },

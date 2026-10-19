@@ -1,12 +1,13 @@
 "use client";
 
 // Inspector → Insert: a searchable grid of picture tiles for everything that can go into a page (after
-// Craft's Insert tool), grouped into sections. Every tile inserts below the current block on click (or
-// Enter / Space), or where it's dropped when dragged into the page. Last: a table-size picker.
+// Craft's Insert tool), grouped into sections: Suggested, Text, Lists and tasks, Visuals, Media, Data and
+// more (the slash menu has the same groups). Every tile inserts below the current block on click (or Enter /
+// Space), or where it's dropped when dragged into the page. Data and more ends with a table-size picker.
 import type { Editor } from "@tiptap/react";
 import { useId, useRef, useState } from "react";
 import { Search } from "lucide-react";
-import { FLOWCHART_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT } from "@folevi/editor-schema";
+import { CHART_DEFAULT_HEIGHT, FLOWCHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT } from "@folevi/editor-schema";
 import { emptyTableRows, focusInsideBlock, insertBlockAfterCurrent, insertBlockAt } from "@/components/editor/commands";
 import { requestSpecialInsert, type SpecialInsert } from "@/components/editor/EditorMenus";
 import { beginPointerDrag } from "@/components/editor/blockDrag";
@@ -43,6 +44,10 @@ const MAIN: InsertItem[] = [
   { label: "Mermaid diagram", type: "code", attrs: () => ({ language: "mermaid" }), text: MERMAID_SAMPLE, preview: "mermaid", keywords: "mermaid diagram flowchart chart graph" },
   { label: "Flowchart", type: "flowchart", attrs: () => ({ data: "", height: FLOWCHART_DEFAULT_HEIGHT }), preview: "flowchart", keywords: "flowchart diagram process flow chart shapes boxes arrows whimsical miro" },
   { label: "Whiteboard", type: "whiteboard", attrs: () => ({ data: "", height: WHITEBOARD_DEFAULT_HEIGHT }), preview: "whiteboard", keywords: "drawing sketch draw pen canvas" },
+  { label: "Mind map", type: "mindmap", attrs: () => ({ data: "", height: MINDMAP_DEFAULT_HEIGHT }), preview: "mindmap", keywords: "mindmap ideas brainstorm branches tree outline whimsical miro" },
+  { label: "Chart", type: "chart", attrs: () => ({ data: "", height: CHART_DEFAULT_HEIGHT }), preview: "chart", keywords: "graph bar line pie donut area scatter bubble org venn data numbers" },
+  { label: "Sticky notes", type: "stickies", attrs: () => ({ data: "", height: STICKIES_DEFAULT_HEIGHT }), preview: "stickies", keywords: "stickies post-it board brainstorm workshop retro votes" },
+  { label: "Wireframe", type: "wireframe", attrs: () => ({ data: "", height: WIREFRAME_DEFAULT_HEIGHT }), preview: "wireframe", keywords: "mockup screen ui ux layout prototype app website sketch" },
 ];
 
 // Only in the iOS app (lib/nativeDevice.ts): the camera's scanner where the device has one, and pages from photos.
@@ -112,16 +117,16 @@ const SEPARATORS: Tile[] = [
   { key: "separators:pageBreak", label: "Page break", action: { label: "Page break", type: "pageBreak" }, picture: <InsertPreview kind="pageBreak" />, keywords: "page break print pdf separator" },
 ];
 
+// The same groups as the slash menu (EditorMenus). Data and more ends with the table-size picker. Its Table is
+// a collection (as in Suggested), with the collection's other views after it; the picker adds a plain table.
+const DATA = "Data and more";
 const SECTIONS: { title: string; tiles: Tile[] }[] = [
   { title: "Suggested", tiles: tiles("suggested", ["Text", "Page", "Card", "To-do", "Table", "Image"]) },
-  {
-    title: "Blocks",
-    tiles: tiles("blocks", ["Heading 1", "Heading 2", "Heading 3", "Bulleted list", "Numbered list", "Toggle", "Quote", "Callout", "Code block", "TeX formula", "Mermaid diagram", "Flowchart", "Whiteboard", "Bookmark", "Date"]),
-  },
-  { title: "Media", tiles: tiles("media", ["Image", "Image from Unsplash", "File attachment", "Audio recording"]) },
-  { title: "Collections", tiles: tiles("collections", ["Table", "Gallery", "Kanban", "Calendar"]) },
-  { title: "Nested content", tiles: tiles("nested", ["Page", "Card"]) },
-  { title: "Separators", tiles: SEPARATORS },
+  { title: "Text", tiles: tiles("text", ["Heading 1", "Heading 2", "Heading 3", "Quote", "Callout"]) },
+  { title: "Lists and tasks", tiles: tiles("lists", ["Bulleted list", "Numbered list", "To-do", "Toggle"]) },
+  { title: "Visuals", tiles: tiles("visuals", ["Flowchart", "Mind map", "Chart", "Sticky notes", "Wireframe", "Whiteboard", "Mermaid diagram"]) },
+  { title: "Media", tiles: tiles("media", ["Image", "Image from Unsplash", "File attachment", "Audio recording", "Bookmark", "Embed"]) },
+  { title: DATA, tiles: [...tiles("data", ["Table", "Gallery", "Kanban", "Calendar", "Page", "Card", "Date", "Code block", "TeX formula"]), ...SEPARATORS] },
 ];
 
 // Words starting with what's typed ("tab" finds Table, not "database"); a query with spaces matches as a phrase.
@@ -296,8 +301,9 @@ export function InsertPanel({ editor, disabled }: { editor: Editor | null; disab
   const query = q.trim().toLowerCase();
   const device = useNativeDevice();
   const scans = device && nativeApp()?.scanDocument ? tiles("media", device.scanner ? ["Scan document", "Scan from photos"] : ["Scan from photos"]) : [];
-  const sections = SECTIONS.map((s) => ({ ...s, tiles: [...s.tiles, ...(s.title === "Media" ? scans : [])].filter((t) => matches(query, t.keywords)) })).filter((s) => s.tiles.length);
   const showTable = matches(query, "table grid rows columns size");
+  // Search runs across every group; a group with nothing that matches goes.
+  const sections = SECTIONS.map((s) => ({ ...s, tiles: [...s.tiles, ...(s.title === "Media" ? scans : [])].filter((t) => matches(query, t.keywords)) })).filter((s) => s.tiles.length || (s.title === DATA && showTable));
   return (
     <div>
       <p className="mb-2 px-1 text-[12.5px] text-muted">Drag and drop any item to the document</p>
@@ -307,18 +313,21 @@ export function InsertPanel({ editor, disabled }: { editor: Editor | null; disab
       </label>
       {sections.map((s) => (
         <Section key={s.title} title={s.title}>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-x-2 gap-y-3">
-            {s.tiles.map((t) => (
-              <TileButton key={t.key} tile={t} editor={editor} disabled={d} />
-            ))}
-          </div>
+          {s.tiles.length ? (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-x-2 gap-y-3">
+              {s.tiles.map((t) => (
+                <TileButton key={t.key} tile={t} editor={editor} disabled={d} />
+              ))}
+            </div>
+          ) : null}
+          {s.title === DATA && showTable ? (
+            <div role="group" aria-label="Quick table" className={s.tiles.length ? "mt-4" : ""}>
+              <h4 className="mb-1.5 px-1 text-[12px] font-medium text-ink">Quick table</h4>
+              <TableSizePicker editor={editor} disabled={d} />
+            </div>
+          ) : null}
         </Section>
       ))}
-      {showTable ? (
-        <Section title="Quick table">
-          <TableSizePicker editor={editor} disabled={d} />
-        </Section>
-      ) : null}
       {!sections.length && !showTable ? (
         <div className="mt-8 px-2 text-center">
           <p className="text-[13px] font-medium text-ink">No matches</p>

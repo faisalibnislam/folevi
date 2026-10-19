@@ -31,26 +31,33 @@ test.describe("Insert panel", () => {
     await newPage(page, "Insert blocks");
     const panel = await openInsert(page);
 
-    // Craft-style tiles: a picture and a label, grouped into sections (an item can sit in two sections).
+    // Craft-style tiles: a picture and a label, grouped into sections (an item can sit in two sections), the
+    // same groups as the slash menu.
     const tilesIn: Record<string, string[]> = {
       Suggested: ["Text", "Page", "Card", "To-do", "Table", "Image"],
-      Blocks: ["Heading 1", "Bulleted list", "Code block", "TeX formula", "Mermaid diagram", "Flowchart", "Whiteboard", "Date"],
-      Media: ["Image", "Image from Unsplash", "File attachment", "Audio recording"],
-      Collections: ["Table", "Gallery", "Kanban", "Calendar"],
-      "Nested content": ["Page", "Card"],
-      Separators: ["Divider, extra light", "Divider, strong", "Page break"],
+      Text: ["Heading 1", "Heading 2", "Heading 3", "Quote", "Callout"],
+      "Lists and tasks": ["Bulleted list", "Numbered list", "To-do", "Toggle"],
+      Visuals: ["Flowchart", "Mind map", "Chart", "Sticky notes", "Wireframe", "Whiteboard", "Mermaid diagram"],
+      Media: ["Image", "Image from Unsplash", "File attachment", "Audio recording", "Bookmark", "Embed"],
+      "Data and more": ["Table", "Gallery", "Kanban", "Calendar", "Page", "Card", "Date", "Code block", "TeX formula", "Extra light", "Light", "Regular", "Strong", "Page break"],
     };
+    const headings = panel.locator("h3");
+    await expect(headings).toHaveText(Object.keys(tilesIn));
     for (const [section, labels] of Object.entries(tilesIn)) {
       const group = panel.getByRole("group", { name: section, exact: true });
       await expect(group.getByRole("heading", { name: section, exact: true })).toBeVisible();
-      for (const label of labels) await expect(group.getByRole("button", { name: label, exact: true })).toBeVisible();
+      expect(await group.locator("button[title]").evaluateAll((els) => els.map((el) => el.getAttribute("title")))).toEqual(labels);
     }
-    await expect(panel.getByRole("heading", { name: "Quick table", exact: true })).toBeVisible();
+    await expect(panel.getByRole("group", { name: "Data and more", exact: true }).getByRole("heading", { name: "Quick table", exact: true })).toBeVisible();
     // Search narrows the list.
     await panel.getByRole("textbox", { name: "Search blocks" }).fill("mermaid");
     await expect(panel.getByRole("button", { name: "Mermaid diagram" })).toBeVisible();
     await expect(panel.getByRole("button", { name: "Whiteboard" })).toHaveCount(0);
     await expect(panel.getByRole("group", { name: "Suggested", exact: true })).toHaveCount(0);
+    // Across groups: "map" finds the mind map in Visuals and the map embed in Media.
+    await panel.getByRole("textbox", { name: "Search blocks" }).fill("map");
+    await expect(panel.getByRole("group", { name: "Visuals", exact: true }).getByRole("button", { name: "Mind map" })).toBeVisible();
+    await expect(panel.getByRole("group", { name: "Media", exact: true }).getByRole("button", { name: "Embed" })).toBeVisible();
     await panel.getByRole("textbox", { name: "Search blocks" }).fill("zzzz");
     await expect(panel.getByText("No matches", { exact: true })).toBeVisible();
     await panel.getByRole("textbox", { name: "Search blocks" }).fill("");
@@ -154,6 +161,61 @@ test.describe("Insert panel", () => {
     await context.close();
   });
 
+  test("mind maps, charts, sticky notes and wireframes insert from the panel and the slash menu, open full canvas and persist", async ({ browser }) => {
+    const { context, page } = await newPerson(browser, "Visual Blocks Tester");
+    await newPage(page, "Visual blocks");
+    const panel = await openInsert(page);
+    const blocks = [
+      ["Mind map", "mindmap"],
+      ["Chart", "chart"],
+      ["Sticky notes", "stickies"],
+      ["Wireframe", "wireframe"],
+    ] as const;
+    for (const [label, type] of blocks) {
+      await caretToEnd(page);
+      await panel.getByRole("group", { name: "Visuals", exact: true }).getByRole("button", { name: label, exact: true }).click();
+      const card = page.locator(`.fb-editor .fb-${type} .fb-vcard`);
+      await expect(card).toBeVisible({ timeout: 20_000 });
+      const tools = card.getByRole("toolbar", { name: `${label} tools` });
+      await expect(tools).toContainText(label);
+      await expect(card.locator(".fb-vc-empty")).toBeVisible();
+      // Full canvas: the toolbar's button, then Esc back; ⇧⌘F from the keyboard.
+      await tools.getByRole("button", { name: "Full canvas" }).click();
+      await expect(card).toHaveAttribute("data-full", "true");
+      expect(await card.evaluate((el) => el.matches(":popover-open"))).toBe(true);
+      await card.locator(".fb-canvas-body").press("Escape");
+      await expect(card).not.toHaveAttribute("data-full", "true");
+      await card.locator(".fb-canvas-body").focus();
+      await page.keyboard.press("ControlOrMeta+Shift+F");
+      await expect(card).toHaveAttribute("data-full", "true");
+      await page.keyboard.press("Escape");
+      await expect(card).not.toHaveAttribute("data-full", "true");
+      // Export waits for something to draw.
+      await tools.getByRole("button", { name: "Export" }).click();
+      await expect(page.getByRole("menuitem", { name: "Export as PNG" })).toBeDisabled();
+      await page.keyboard.press("Escape");
+    }
+    // The slash menu has the same groups, and finds a new block by name.
+    await caretToEnd(page);
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("/");
+    const slash = page.getByRole("listbox");
+    await expect(slash).toBeVisible();
+    const groups = await slash.locator('li[role="presentation"]').allTextContents();
+    expect(groups.slice(0, 6)).toEqual(["Suggested", "Text", "Lists and tasks", "Visuals", "Media", "Data and more"]);
+    await page.keyboard.type("wirefr");
+    await expect(slash.getByRole("option").first()).toHaveText(/Wireframe/);
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".fb-editor .fb-wireframe .fb-vcard")).toHaveCount(2, { timeout: 20_000 });
+
+    await waitForSaved(page);
+    await page.waitForTimeout(600);
+    await waitForSaved(page);
+    await page.reload();
+    for (const [, type] of blocks) await expect(page.locator(`.fb-editor .fb-${type} .fb-vcard`).first()).toBeVisible({ timeout: 20_000 });
+    await context.close();
+  });
+
   test("tiles drag into the page; gallery, kanban and card pages insert", async ({ browser }) => {
     const { context, page } = await newPerson(browser, "Insert Rows Tester");
     await newPage(page, "Insert rows");
@@ -203,7 +265,7 @@ test.describe("Insert panel", () => {
     // Card: a nested page shown as a card (the new page opens to be titled).
     const url = page.url().replace(/\?.*$/, "");
     await caretToEnd(page);
-    await panel.getByRole("group", { name: "Nested content", exact: true }).getByRole("button", { name: "Card", exact: true }).click();
+    await panel.getByRole("group", { name: "Data and more", exact: true }).getByRole("button", { name: "Card", exact: true }).click();
     await page.waitForURL((u) => u.toString().replace(/\?.*$/, "") !== url);
     await page.getByRole("textbox", { name: "Title" }).fill("Card child");
     await waitForSaved(page);

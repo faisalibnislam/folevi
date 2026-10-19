@@ -150,6 +150,13 @@ test.describe("Sticky notes", () => {
     await board.getByRole("button", { name: /^Second idea/ }).click();
     await page.keyboard.press("Delete");
     await expect(page.getByRole("application", { name: "Sticky notes, 1 note" })).toBeVisible();
+    // Pasting spreadsheet rows (or a list) on the board makes a note for each row.
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.evaluate(() => navigator.clipboard.writeText("Hire a designer\tTeam\nPlan the offsite\tTeam\tblue\n"));
+    await board.click({ position: { x: 30, y: 300 } });
+    await page.keyboard.press("ControlOrMeta+v");
+    await expect(page.getByRole("application", { name: "Sticky notes, 3 notes" })).toBeVisible();
+    await expect(board.getByRole("button", { name: /^Plan the offsite · Team, blue note/ })).toBeVisible();
     await context.close();
   });
 

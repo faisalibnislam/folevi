@@ -1,6 +1,264 @@
-/* Wireframe block (wireframe/WireframeView.tsx, render.tsx). Loaded with the editor styles by the document view
- * and share pages; the card and its chrome are canvas/canvas.css. Wireframes are greyscale by design. */
-.fb-wireframe-list { display: grid; gap: 12px; }
-.fb-wireframe-list h4 { margin: 0 0 4px; font-size: 13.5px; font-weight: 600; color: var(--color-heading); }
-.fb-wireframe-list h4 span { margin-left: 4px; font-weight: 500; color: var(--color-ink-muted); }
-.fb-wireframe-list ul { margin: 0; padding-left: 1.2em; color: var(--color-ink); }
+/* Wireframe block (wireframe/WireframeView.tsx, render.tsx, draw.ts). Loaded with the editor styles by the
+ * document view and share pages; the card and its chrome are canvas/canvas.css. Wireframes are greyscale by
+ * design: the drawing's classes (f-* fills, s-* strokes, t-* text) take these colours, light and dark. An
+ * exported file carries the light ones itself (draw.ts EXPORT_COLORS). */
+.wf-scope {
+  --wf-screen: #ffffff;
+  --wf-fill: #ffffff;
+  --wf-soft: #ececef;
+  --wf-shade: #d9d9de;
+  --wf-line: #b4b4bb;
+  --wf-ink: #2b2b30;
+  --wf-muted: #7c7c85;
+  --wf-strong: #3f3f45;
+  --wf-onstrong: #ffffff;
+  --wf-bezel: #f6f6f8;
+  --wf-frame: #45454c;
+  --wf-island: #2b2b30;
+  --wf-tip: #2b2b30;
+  --wf-ontip: #ffffff;
+  --wf-shadow: rgb(0 0 0 / 0.08);
+  --wf-link: #6e6e76;
+  --wf-name: #56565e;
+  --wf-select: #3d6ee8;
+  --wf-dot-color: color-mix(in oklab, var(--color-ink) 16%, transparent);
+}
+:root[data-theme="dark"] .wf-scope,
+.fb-sheet[data-sheet="night"] .wf-scope {
+  --wf-screen: #1f1f22;
+  --wf-fill: #1f1f22;
+  --wf-soft: #2e2e33;
+  --wf-shade: #3d3d43;
+  --wf-line: #5c5c64;
+  --wf-ink: #e8e8ec;
+  --wf-muted: #9c9ca5;
+  --wf-strong: #d4d4d9;
+  --wf-onstrong: #1c1c1e;
+  --wf-bezel: #161618;
+  --wf-frame: #9a9aa2;
+  --wf-island: #0b0b0c;
+  --wf-tip: #e8e8ec;
+  --wf-ontip: #1c1c1e;
+  --wf-shadow: rgb(0 0 0 / 0.35);
+  --wf-link: #a0a0a8;
+  --wf-name: #a6a6ae;
+  --wf-select: #7aa2ff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .wf-scope {
+    --wf-screen: #1f1f22;
+    --wf-fill: #1f1f22;
+    --wf-soft: #2e2e33;
+    --wf-shade: #3d3d43;
+    --wf-line: #5c5c64;
+    --wf-ink: #e8e8ec;
+    --wf-muted: #9c9ca5;
+    --wf-strong: #d4d4d9;
+    --wf-onstrong: #1c1c1e;
+    --wf-bezel: #161618;
+    --wf-frame: #9a9aa2;
+    --wf-island: #0b0b0c;
+    --wf-tip: #e8e8ec;
+    --wf-ontip: #1c1c1e;
+    --wf-shadow: rgb(0 0 0 / 0.35);
+    --wf-link: #a0a0a8;
+    --wf-name: #a6a6ae;
+    --wf-select: #7aa2ff;
+  }
+}
+
+/* ---------------------------------------------------------------- the drawing (draw.ts classes) */
+.wfd { overflow: visible; user-select: none; -webkit-user-select: none; }
+.wfd text { font-family: var(--font-sans); letter-spacing: -0.005em; }
+.wfd[data-style="sketch"] text { font-family: var(--font-mali), var(--font-sans); letter-spacing: 0; }
+.wfd .f-none { fill: none; }
+.wfd .f-screen { fill: var(--wf-screen); } .wfd .s-screen { stroke: var(--wf-screen); }
+.wfd .f-fill { fill: var(--wf-fill); } .wfd .s-fill { stroke: var(--wf-fill); }
+.wfd .f-soft { fill: var(--wf-soft); } .wfd .s-soft { stroke: var(--wf-soft); }
+.wfd .f-shade { fill: var(--wf-shade); } .wfd .s-shade { stroke: var(--wf-shade); }
+.wfd .f-line { fill: var(--wf-line); } .wfd .s-line { stroke: var(--wf-line); }
+.wfd .f-ink { fill: var(--wf-ink); } .wfd .s-ink { stroke: var(--wf-ink); }
+.wfd .f-muted { fill: var(--wf-muted); } .wfd .s-muted { stroke: var(--wf-muted); }
+.wfd .f-strong { fill: var(--wf-strong); } .wfd .s-strong { stroke: var(--wf-strong); }
+.wfd .f-onstrong { fill: var(--wf-onstrong); } .wfd .s-onstrong { stroke: var(--wf-onstrong); }
+.wfd .f-bezel { fill: var(--wf-bezel); } .wfd .s-bezel { stroke: var(--wf-bezel); }
+.wfd .f-frame { fill: var(--wf-frame); } .wfd .s-frame { stroke: var(--wf-frame); }
+.wfd .f-island { fill: var(--wf-island); }
+.wfd .f-tip { fill: var(--wf-tip); }
+.wfd .f-shadow { fill: var(--wf-shadow); }
+.wfd .f-link { fill: var(--wf-link); } .wfd .s-link { stroke: var(--wf-link); }
+.wfd .t-ink { fill: var(--wf-ink); }
+.wfd .t-muted { fill: var(--wf-muted); }
+.wfd .t-onstrong { fill: var(--wf-onstrong); }
+.wfd .t-ontip { fill: var(--wf-ontip); }
+.wfd .t-name { fill: var(--wf-name); }
+
+/* ---------------------------------------------------------------- the editor's canvas */
+.wf-stage { position: absolute; inset: 0; overflow: hidden; touch-action: pan-y; }
+.fb-wireframe .fb-vcard[data-active] .wf-stage, .fb-wireframe .fb-vcard[data-full] .wf-stage { touch-action: none; }
+.wf-svg { display: block; cursor: default; }
+.wf-stage[data-space] .wf-svg { cursor: grab; }
+.wf-stage[data-panning] .wf-svg { cursor: grabbing; }
+.wf-dot { fill: var(--wf-dot-color); }
+.wf-hit { fill: transparent; }
+.wf-item { cursor: move; outline: none; }
+.wf-item:focus-visible > .wf-hit { stroke: var(--color-focus); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-dasharray: 4 3; }
+.wf-name { cursor: move; outline: none; }
+.wf-name:focus-visible > .wf-hit { fill: color-mix(in oklab, var(--color-focus) 14%, transparent); }
+.wf-name:hover .t-name { fill: var(--wf-ink); }
+.wf-link { cursor: pointer; }
+.wf-link-hit { fill: none; stroke: transparent; stroke-width: 14px; pointer-events: stroke; vector-effect: non-scaling-stroke; }
+.wf-link[data-selected] .s-link { stroke: var(--wf-select); }
+.wf-link[data-selected] .f-link { fill: var(--wf-select); }
+.wf-link:hover .s-link { stroke: var(--wf-ink); }
+
+/* Selection, handles and guides keep a constant size on screen at any zoom. */
+.wf-overlay * { vector-effect: non-scaling-stroke; }
+.wf-sel { fill: none; stroke: var(--wf-select); stroke-width: 1.5px; pointer-events: none; }
+.wf-handle-hit { fill: transparent; }
+.wf-handle-dot { fill: var(--color-surface-raised); stroke: var(--wf-select); stroke-width: 1.5px; }
+.wf-handle[data-dir="n"], .wf-handle[data-dir="s"] { cursor: ns-resize; }
+.wf-handle[data-dir="e"], .wf-handle[data-dir="w"] { cursor: ew-resize; }
+.wf-handle[data-dir="nw"], .wf-handle[data-dir="se"] { cursor: nwse-resize; }
+.wf-handle[data-dir="ne"], .wf-handle[data-dir="sw"] { cursor: nesw-resize; }
+.wf-linkhandle { cursor: crosshair; }
+.wf-linkhandle-dot { fill: var(--wf-select); }
+.wf-linkhandle-arrow { fill: none; stroke: #ffffff; stroke-width: 1.6px; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.wf-guide { stroke: #e5484d; stroke-width: 1px; stroke-dasharray: 3 3; pointer-events: none; }
+.wf-marquee { fill: color-mix(in oklab, var(--wf-select) 8%, transparent); stroke: color-mix(in oklab, var(--wf-select) 70%, transparent); stroke-width: 1px; pointer-events: none; }
+.wf-link-preview { fill: none; stroke: var(--wf-select); stroke-width: 1.75px; stroke-dasharray: 5 4; stroke-linecap: round; pointer-events: none; }
+.wf-drop { fill: color-mix(in oklab, var(--wf-select) 6%, transparent); stroke: var(--wf-select); stroke-width: 1.5px; pointer-events: none; }
+
+/* Writing in a part: a small card over it. Renaming a screen: a field over its name. */
+.wf-text-edit { position: absolute; z-index: 5; padding: 6px; border-radius: var(--radius-panel); }
+.wf-text-edit textarea {
+  display: block; width: 100%; resize: none; border: 0; outline: none; padding: 6px 8px; border-radius: var(--radius-small);
+  background: var(--color-surface-sunken); color: var(--color-ink); font: 14px/1.45 var(--font-sans);
+}
+.wf-text-edit textarea:focus-visible { box-shadow: 0 0 0 2px var(--color-focus); }
+.wf-text-hint { margin: 5px 4px 1px; font: 11.5px/1.35 var(--font-sans); color: var(--color-ink-faint); }
+.wf-name-edit {
+  position: absolute; z-index: 5; height: 26px; padding: 0 8px; border: 0; outline: none; border-radius: var(--radius-chip);
+  background: var(--color-surface-raised); color: var(--color-ink); font: 600 14px/1 var(--font-sans);
+  box-shadow: 0 0 0 1.5px var(--wf-select);
+}
+
+/* ---------------------------------------------------------------- floating chrome */
+.wf-bar {
+  position: absolute; z-index: 3; display: flex; align-items: center; gap: 2px; padding: 4px;
+  border-radius: var(--radius-panel); background: var(--glass-pop);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: var(--glass-edge), 0 6px 20px -8px rgb(0 0 0 / 0.18);
+  font: 500 12.5px/1 var(--font-sans); color: var(--color-ink);
+}
+.wf-bar-zoom { right: 10px; bottom: 10px; }
+.wf-bar-float { transform: translateX(-50%); white-space: nowrap; max-width: calc(100% - 20px); overflow-x: auto; scrollbar-width: none; }
+.wf-bar-kind { flex: none; padding: 0 8px 0 6px; font-weight: 600; color: var(--color-heading); }
+.wf-zoom { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; color: var(--color-ink-muted); }
+.wf-btn-text { padding: 0 9px; font-weight: 550; color: var(--color-ink); }
+.wf-ai-mark { color: #7c6cf0; }
+/* Two or three choices side by side (Clean and Sketch, Primary and Secondary). */
+.wf-seg { flex: none; display: inline-flex; gap: 2px; padding: 3px; margin: 0 2px; border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-surface-sunken) 70%, transparent); }
+.wf-seg button { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: var(--radius-small); font: 550 12px/1 var(--font-sans); color: var(--color-ink-muted); }
+.wf-seg button[aria-pressed="true"] { background: var(--color-surface-raised); color: var(--color-heading); box-shadow: var(--shadow-control); }
+.wf-seg button:disabled { opacity: 0.4; }
+.wf-seg button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
+.wf-stepper { flex: none; display: inline-flex; align-items: center; }
+.wf-stepper-value { min-width: 34px; text-align: center; font-variant-numeric: tabular-nums; color: var(--color-heading); }
+.wf-stepper .fb-vc-btn { min-width: 26px; }
+
+.wf-empty {
+  position: absolute; inset: 52px 16px 16px; display: grid; place-content: center; justify-items: center; gap: 12px;
+  pointer-events: none; text-align: center; font: 13.5px/1.5 var(--font-sans); color: var(--color-ink-muted);
+}
+.wf-empty p { margin: 0; max-width: 36ch; }
+.wf-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; pointer-events: auto; }
+.wf-chip {
+  height: 32px; padding: 0 12px; border-radius: var(--radius-control); font: 550 13px/1 var(--font-sans); color: var(--color-ink);
+  background: var(--glass-pop); box-shadow: var(--glass-edge);
+}
+.wf-chip:hover { background: var(--glass-hover); color: var(--color-heading); }
+.wf-chip:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.wf-warning {
+  position: absolute; left: 10px; bottom: 10px; z-index: 3; margin: 0; padding: 6px 10px; border-radius: var(--radius-control);
+  font: 500 12.5px/1.4 var(--font-sans); color: var(--color-danger, #b42318); background: var(--color-surface-raised); box-shadow: var(--glass-edge);
+}
+.wf-ghost {
+  position: absolute; z-index: 6; transform: translate(-50%, -120%); padding: 6px 10px; border-radius: var(--radius-control);
+  font: 600 12.5px/1 var(--font-sans); color: var(--color-heading); pointer-events: none; white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- the parts library */
+.wf-panel { position: absolute; z-index: 4; display: flex; flex-direction: column; border-radius: var(--radius-panel); overflow: hidden; color: var(--color-ink); font-family: var(--font-sans); }
+.wf-library { top: 56px; left: 10px; bottom: 10px; width: 252px; }
+.wf-library[data-compact] { top: auto; left: 10px; right: 10px; width: auto; height: min(60%, 360px); }
+.wf-panel-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 2px 14px; }
+.wf-panel-title { font: 600 13.5px/1 var(--font-sans); color: var(--color-heading); }
+.wf-search {
+  display: flex; align-items: center; gap: 6px; margin: 4px 10px 6px; padding: 0 10px; height: 32px; border-radius: var(--radius-control);
+  background: var(--color-surface-sunken); color: var(--color-ink-muted);
+}
+.wf-search:focus-within { box-shadow: 0 0 0 2px var(--color-focus); }
+.wf-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: 13.5px/1 var(--font-sans); color: var(--color-ink); }
+.wf-search input::placeholder { color: var(--color-ink-faint); }
+.wf-search input::-webkit-search-cancel-button { display: none; }
+.wf-library-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 10px 10px; overscroll-behavior: contain; }
+.wf-library h4 { margin: 10px 2px 6px; font: 600 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); }
+.wf-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.wf-tile {
+  display: grid; justify-items: center; gap: 4px; width: 100%; padding: 6px 4px; border-radius: var(--radius-control);
+  touch-action: none; cursor: grab; color: var(--color-ink-muted); transition: background-color 100ms;
+}
+.wf-tile:hover { background: var(--glass-hover); color: var(--color-heading); }
+.wf-tile:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
+.wf-tile-art { display: grid; place-items: center; width: 100%; height: 40px; border-radius: var(--radius-small); background: color-mix(in oklab, var(--color-surface-sunken) 60%, transparent); }
+.wf-tile-art svg { width: 56px; height: 34px; }
+.wf-tile-frame { color: var(--color-ink-muted); }
+.wf-tile-label { font: 500 11.5px/1.2 var(--font-sans); text-align: center; }
+.wf-library-none { margin: 12px 4px; font-size: 13px; color: var(--color-ink-muted); }
+
+/* ---------------------------------------------------------------- Foli AI */
+.wf-ai { position: absolute; z-index: 4; top: 56px; right: 10px; width: min(380px, calc(100% - 20px)); border-radius: var(--radius-panel); overflow: hidden; font-family: var(--font-sans); color: var(--color-ink); }
+.wf-ai-modes { display: flex; align-items: center; gap: 4px; padding: 6px 6px 0 10px; }
+.wf-ai-modes > button:not(.fb-vc-btn) { padding: 4px 9px; border-radius: var(--radius-chip); font: 550 12px/1.2 var(--font-sans); color: var(--color-ink-muted); }
+.wf-ai-modes > button[aria-pressed="true"] { background: var(--glass-hover); color: var(--color-heading); box-shadow: inset 0 0 0 1px var(--glass-border); }
+.wf-ai-modes > button:disabled { opacity: 0.4; }
+.wf-ai-about { margin: 6px 14px 0; font-size: 12px; color: var(--color-ink-muted); }
+.wf-ai-options { padding: 8px 8px 0; }
+.wf-ai-form { display: flex; align-items: flex-start; gap: 8px; padding: 10px; }
+.wf-ai-form .wf-ai-mark { margin-top: 5px; }
+.wf-ai-form textarea { flex: 1; min-width: 0; resize: none; border: 0; outline: none; background: transparent; font: 14px/1.45 var(--font-sans); color: var(--color-ink); }
+.wf-ai-form textarea::placeholder { color: var(--color-ink-faint); }
+.wf-ai-send { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-chip); background: var(--color-heading); color: var(--color-canvas); }
+.wf-ai-send:disabled { opacity: 0.3; }
+.wf-ai-ideas { margin: 0; padding: 4px 6px 6px; list-style: none; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); }
+.wf-ai-ideas button { width: 100%; padding: 6px 8px; border-radius: var(--radius-control); text-align: left; font-size: 13px; color: var(--color-ink-muted); }
+.wf-ai-ideas button:hover { background: var(--glass-hover); color: var(--color-heading); }
+.wf-ai-status, .wf-ai-error { margin: 0; padding: 4px 14px 10px; font-size: 13px; color: var(--color-ink-muted); }
+.wf-ai-error { color: var(--color-danger, #b42318); }
+.wf-ai-foot { margin: 0; padding: 7px 14px; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); font-size: 11px; color: var(--color-ink-faint); }
+.wf-ai button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- read-only (share pages, history) */
+.wf-viewer { position: relative; overflow: hidden; touch-action: none; cursor: grab; border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-surface-sunken) 30%, var(--color-surface)); }
+.wf-viewer:active { cursor: grabbing; }
+.wf-viewer[data-fill] { position: absolute; inset: 0; border-radius: 0; background: transparent; }
+.wf-viewer svg { display: block; }
+.wf-viewer .wf-bar-zoom { right: 8px; bottom: 8px; }
+
+/* Fingers: 44 point targets (docs/IOS.md). */
+@media (pointer: coarse) {
+  .wf-seg button { height: 38px; }
+  .wf-tile { padding: 8px 4px; }
+  .wf-chip { height: 44px; }
+  .wf-search { height: 44px; }
+  .wf-stepper .fb-vc-btn { min-width: 44px; }
+}
+@media print {
+  .wf-bar, .wf-panel, .wf-ai, .wf-empty { display: none; }
+}
+@media (forced-colors: active) {
+  .wfd [class*="s-"] { stroke: CanvasText; }
+  .wf-sel { stroke: Highlight; }
+  .wf-seg button[aria-pressed="true"] { outline: 2px solid Highlight; }
+}

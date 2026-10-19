@@ -45,9 +45,15 @@ export function svgSize(svg: string): { w: number; h: number } {
 async function withAppFont(svg: string): Promise<string> {
   const family = appFontFamily();
   const face = family ? await embeddedFontFace(family) : null;
-  if (!face) return svg;
-  const rule = face.replace(/font-family:"[^"]*"/, 'font-family:"Instrument Sans"');
-  return svg.replace(/<svg\b[^>]*>/i, (open) => `${open}<defs><style>${rule}</style></defs>`);
+  const rules = face ? [face.replace(/font-family:"[^"]*"/, 'font-family:"Instrument Sans"')] : [];
+  // A drawing in a handwriting look (the wireframe's Sketch) names "Mali", another of the app's fonts.
+  if (/font-family:"Mali"/.test(svg)) {
+    const mali = appFontFamily("--font-mali");
+    const maliFace = mali ? await embeddedFontFace(mali) : null;
+    if (maliFace) rules.push(maliFace.replace(/font-family:"[^"]*"/, 'font-family:"Mali"'));
+  }
+  if (!rules.length) return svg;
+  return svg.replace(/<svg\b[^>]*>/i, (open) => `${open}<defs><style>${rules.join("")}</style></defs>`);
 }
 
 /** Draws the SVG on a canvas with a white page behind it (PDF and JPEG have no transparency). */

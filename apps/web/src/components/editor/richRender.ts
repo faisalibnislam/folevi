@@ -50,20 +50,23 @@ let seq = 0;
 const SYSTEM_FONTS = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
 
 /** The app's sans family name as loaded by next/font (e.g. "Instrument Sans"), or null. */
-export function appFontFamily(): string | null {
-  const v = getComputedStyle(document.documentElement).getPropertyValue("--font-instrument-sans");
+export function appFontFamily(variable = "--font-instrument-sans"): string | null {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(variable);
   const first = v.split(",")[0]?.trim().replace(/^["']|["']$/g, "");
   return first && /^[\w -]{1,64}$/.test(first) ? first : null;
 }
 
-let fontFacePromise: Promise<string | null> | null = null;
+/** Each family's embedded face, fetched once. */
+const fontFaces = new Map<string, Promise<string | null>>();
 /**
  * An @font-face rule carrying the app font's Latin file as a data URL. Diagrams are shown as images, and
  * an SVG image can't load fonts from the page, so the font travels inside the SVG (fetched once, from our
  * own origin). Null when it can't be found; the diagram then uses the system font.
  */
 export function embeddedFontFace(family: string): Promise<string | null> {
-  fontFacePromise ??= (async () => {
+  const known = fontFaces.get(family);
+  if (known) return known;
+  const fontFacePromise = (async () => {
     const candidates: { url: URL; weight: string; latin: boolean }[] = [];
     for (const sheet of Array.from(document.styleSheets)) {
       let rules: CSSRuleList;
@@ -95,6 +98,7 @@ export function embeddedFontFace(family: string): Promise<string | null> {
     const format = pick.url.pathname.endsWith(".woff") ? "woff" : "woff2";
     return `@font-face{font-family:"${family}";src:url(data:font/${format};base64,${btoa(bin)}) format("${format}");font-weight:${pick.weight};font-style:normal;}`;
   })().catch(() => null);
+  fontFaces.set(family, fontFacePromise);
   return fontFacePromise;
 }
 

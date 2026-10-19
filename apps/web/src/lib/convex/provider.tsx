@@ -26,6 +26,12 @@ export type AuthPhase = "loading" | "signed_in" | "signed_out" | "offline";
 
 /** How long the first session check may take before the app opens from this device's copy instead. */
 export const SESSION_CHECK_PATIENCE_MS = 6000;
+/**
+ * A token request that hasn't answered by now is given up and asked again: a connection that died quietly
+ * (after the Mac slept, a network change) otherwise leaves it waiting forever, and the app on its loading
+ * screen until it's reloaded.
+ */
+export const TOKEN_FETCH_TIMEOUT_MS = 10_000;
 
 /**
  * Where the session stands, from Better Auth's session check. Only a definite answer from the server signs
@@ -80,7 +86,7 @@ let earlyStarted = false;
 function startTokenFetch() {
   if (earlyStarted) return;
   earlyStarted = true;
-  early = { at: Date.now(), result: authClient.convex.token({ fetchOptions: { throw: false } }) };
+  early = { at: Date.now(), result: authClient.convex.token({ fetchOptions: { throw: false, timeout: TOKEN_FETCH_TIMEOUT_MS } }) };
 }
 /** The early answer, if it's a token and still fresh (a "no session" from before signing in never counts). */
 async function takeEarlyToken(): Promise<TokenResult | null> {
@@ -116,7 +122,7 @@ function useFoleviAuth() {
       const cached = cache.current?.sessionId === sessionId || !sessionId ? cache.current : null;
       if (!forceRefreshToken && cached && cached.exp - Date.now() > 60_000) return cached.token;
       try {
-        const res = (forceRefreshToken ? null : await takeEarlyToken()) ?? (await authClient.convex.token({ fetchOptions: { throw: false } }));
+        const res = (forceRefreshToken ? null : await takeEarlyToken()) ?? (await authClient.convex.token({ fetchOptions: { throw: false, timeout: TOKEN_FETCH_TIMEOUT_MS } }));
         const token = res.data?.token ?? null;
         if (token) {
           cache.current = { token, exp: tokenExpiry(token), sessionId };

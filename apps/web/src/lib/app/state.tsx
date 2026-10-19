@@ -353,20 +353,62 @@ function browserLabel(): string {
   return os ? `${browser} on ${os}` : browser;
 }
 
-export function FullPageMessage({ title, body, busy, children }: { title: string; body?: ReactNode; busy?: boolean; children?: ReactNode }) {
-  // Shown before the app (and its neutral chrome) is up, starting with the server's first paint: it carries
-  // the neutral chrome itself (globals.css), so loading looks like the app, not the warmer marketing palette.
-  // While something loads it's the F writing itself (FoleviLoader); a message that needs reading is a card.
-  if (busy && !children)
-    return (
-      <main id="main" tabIndex={-1} className="ui-neutral-chrome grid min-h-dvh place-items-center bg-canvas px-6" aria-busy>
-        <h1 className="sr-only">{title}</h1>
+/** After this long on the loading screen, it offers a reload; after LOADING_RELOAD_MS it reloads by itself (once). */
+export const LOADING_SLOW_MS = 12_000;
+export const LOADING_RELOAD_MS = 30_000;
+const AUTO_RELOAD_KEY = "folevi:loading-reload-at";
+
+/**
+ * The loading screen: the F writing itself. Loading normally takes a second or two; one that's still going
+ * after 12 seconds (a request that will never answer, after sleep or a network change) offers Reload, and
+ * at 30 seconds the page reloads by itself, at most once every five minutes, so it can't loop.
+ */
+function LoadingScreen({ title, body }: { title: string; body?: ReactNode }) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const offer = setTimeout(() => setSlow(true), LOADING_SLOW_MS);
+    const reload = setTimeout(() => {
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+      try {
+        const last = Number(sessionStorage.getItem(AUTO_RELOAD_KEY) ?? 0);
+        if (Date.now() - last < 5 * 60_000) return;
+        sessionStorage.setItem(AUTO_RELOAD_KEY, String(Date.now()));
+      } catch {
+        return;
+      }
+      window.location.reload();
+    }, LOADING_RELOAD_MS);
+    return () => {
+      clearTimeout(offer);
+      clearTimeout(reload);
+    };
+  }, []);
+  return (
+    <main id="main" tabIndex={-1} className="ui-neutral-chrome grid min-h-dvh place-items-center bg-canvas px-6" aria-busy>
+      <h1 className="sr-only">{title}</h1>
+      <div className="grid justify-items-center gap-3">
         <div aria-hidden className="grid justify-items-center gap-3">
           <FoleviLoader title={title} />
           {body ? <div className="max-w-sm text-center text-[14px] text-muted">{body}</div> : null}
         </div>
-      </main>
-    );
+        {slow ? (
+          <div role="status" className="mt-2 grid justify-items-center gap-3 text-center text-[14px] text-muted">
+            This is taking longer than usual.
+            <button type="button" className="ui-btn ui-btn-secondary h-9 px-4 text-[13.5px]" onClick={() => window.location.reload()}>
+              Reload
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </main>
+  );
+}
+
+export function FullPageMessage({ title, body, busy, children }: { title: string; body?: ReactNode; busy?: boolean; children?: ReactNode }) {
+  // Shown before the app (and its neutral chrome) is up, starting with the server's first paint: it carries
+  // the neutral chrome itself (globals.css), so loading looks like the app, not the warmer marketing palette.
+  // While something loads it's the F writing itself (FoleviLoader); a message that needs reading is a card.
+  if (busy && !children) return <LoadingScreen title={title} body={body} />;
   return (
     <main id="main" tabIndex={-1} className="ui-neutral-chrome grid min-h-dvh place-items-center bg-canvas px-6">
       <div className="w-full max-w-md rounded-chip border border-line bg-surface p-8 shadow-[0_1px_0_var(--color-line),0_12px_40px_-24px_rgba(24,32,28,0.35)]" aria-busy={busy || undefined}>

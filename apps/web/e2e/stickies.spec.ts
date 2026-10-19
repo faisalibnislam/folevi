@@ -1,6 +1,18 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { newPerson, openShare, settle, waitForSaved } from "./helpers";
+import { APP, newPerson, openShare, settle, waitForSaved } from "./helpers";
+
+const IPHONE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 FoleviiOS/1.0";
+
+/** What the iOS app gives the page before its first script (as iphone-app.spec.ts does): a stand-in bridge. */
+function fakeBridge() {
+  const calls: string[] = [];
+  Object.defineProperty(window, "foleviNative", { value: { platform: "ios", version: "1.0", haptic: (kind: string) => calls.push(kind), setStatusBar: () => undefined, openExternal: async () => true, getSettings: async () => null, setSettings: async () => null, onCommand: () => () => undefined } });
+  Object.assign(window, { __haptics: calls });
+  const mark = () => document.documentElement?.setAttribute("data-native", "ios");
+  mark();
+  if (!document.documentElement) new MutationObserver((_, watch) => document.documentElement && (mark(), watch.disconnect())).observe(document, { childList: true });
+}
 
 async function newPage(page: Page, title: string) {
   await page.getByRole("button", { name: "New note", exact: true }).click();
@@ -138,6 +150,46 @@ test.describe("Sticky notes", () => {
     await board.getByRole("button", { name: /^Second idea/ }).click();
     await page.keyboard.press("Delete");
     await expect(page.getByRole("application", { name: "Sticky notes, 1 note" })).toBeVisible();
+    await context.close();
+  });
+
+  test("iPhone app: tap to choose, drag a note with a finger, panels are sheets, 44 point controls", async ({ browser }) => {
+    const { context: desk, page: deskPage } = await newPerson(browser, "Sticky Phone");
+    await newPage(deskPage, "Phone board");
+    await insertBoard(deskPage);
+    await deskPage.getByRole("toolbar", { name: "Sticky notes tools" }).getByRole("button", { name: "Add several notes" }).click();
+    await deskPage.getByRole("dialog", { name: "Add several notes" }).getByRole("textbox").fill("Call the bank\nBook flights");
+    await deskPage.getByRole("button", { name: "Add 2 notes" }).click();
+    await waitForSaved(deskPage);
+    const url = deskPage.url().replace(/\?.*$/, "");
+    const state = await desk.storageState();
+    await desk.close();
+
+    const context = await browser.newContext({ storageState: state, viewport: { width: 402, height: 874 }, userAgent: IPHONE_UA, hasTouch: true });
+    await context.addInitScript(fakeBridge);
+    const page = await context.newPage();
+    await page.goto(url.replace(/^https?:\/\/[^/]+/, APP));
+    await expect(page.locator("html")).toHaveAttribute("data-iphone", "", { timeout: 30_000 });
+    const board = page.getByRole("application", { name: "Sticky notes, 2 notes" });
+    await expect(board).toBeVisible({ timeout: 30_000 });
+    const note = board.getByRole("button", { name: /^Call the bank/ });
+    await note.tap();
+    await expect(note).toHaveAttribute("aria-pressed", "true");
+    const bar = page.getByRole("toolbar", { name: "Selected note" });
+    const size = await bar.getByRole("button", { name: "Duplicate" }).boundingBox();
+    expect(size!.height).toBeGreaterThanOrEqual(44);
+    // A finger drags the note (touch events, as the iPhone sends them).
+    const before = await note.boundingBox();
+    const cdp = await context.newCDPSession(page);
+    const at = (dx: number) => [{ x: before!.x + before!.width / 2 + dx, y: before!.y + before!.height / 2 }];
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: at(0) });
+    for (const dx of [10, 30, 60, 90]) await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: at(dx) });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect.poll(async () => (await note.boundingBox())!.x - before!.x).toBeGreaterThan(40);
+    expect(await page.evaluate(() => (window as unknown as { __haptics: string[] }).__haptics)).toContain("light");
+    // Panels open as the app's sheets.
+    await page.getByRole("toolbar", { name: "Sticky notes tools" }).getByRole("button", { name: "Add several notes" }).click();
+    await expect(page.getByRole("dialog", { name: "Add several notes" })).toBeVisible();
     await context.close();
   });
 });

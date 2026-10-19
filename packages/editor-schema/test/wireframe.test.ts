@@ -129,7 +129,7 @@ describe("wireframe drafts", () => {
     const table = out.items.find((i) => i.kind === "table")!;
     expect(table).toMatchObject({ x: 24, y: 120, text: "Name | Status\nAda | Done" });
     expect(out.links.map((l) => [l.from, l.to])).toEqual([
-      [button.id, "home"],
+      [button!.id, "home"],
       [out.screens[0]!.id, "home"],
     ]);
   });

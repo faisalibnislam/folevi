@@ -10,7 +10,7 @@ import { parseFlowchart } from "./flowchart";
 import { flowchartToMermaid } from "./flowchartMermaid";
 import { MINDMAP_DEFAULT_HEIGHT, mindmapToMarkdown, parseMindmap, serializeMindmap } from "./mindmap";
 import { MINDMAP_FENCE, mindmapFromMarkdown } from "./mindmapTree";
-import { parseStickies, stickiesToMarkdown } from "./stickies";
+import { STICKIES_DEFAULT_HEIGHT, parseStickies, serializeStickies, stickiesFromFence, stickiesToMarkdown } from "./stickies";
 import { CHART_DEFAULT_HEIGHT, chartFromFence, chartToMarkdown, parseChart } from "./chart";
 import { WIREFRAME_DEFAULT_HEIGHT, parseWireframe, serializeWireframe, wireframeToMarkdown } from "./wireframe";
 import { wireframeFromFence } from "./wireframeLayout";
@@ -587,6 +587,12 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
       const wireframe = lang.toLowerCase() === "wireframe" ? wireframeFromFence(body.join("\n")) : null;
       if (wireframe) {
         drafts.push({ id: newId(), type: "wireframe", depth, text: [], props: { data: serializeWireframe(wireframe), height: WIREFRAME_DEFAULT_HEIGHT } });
+        continue;
+      }
+      // A ```stickies fence holding a list of ideas (Foli AI, MCP) becomes a sticky notes board (stickies.ts stickiesFromFence).
+      const stickies = lang.toLowerCase() === "stickies" ? serializeStickies(stickiesFromFence(body.join("\n"))) : "";
+      if (stickies) {
+        drafts.push({ id: newId(), type: "stickies", depth, text: [], props: { data: stickies, height: STICKIES_DEFAULT_HEIGHT } });
         continue;
       }
       drafts.push({

@@ -321,6 +321,12 @@
 /* Atoms */
 .fb-atom { margin-left: calc(var(--depth, 0) * 1.6em); border-radius: var(--radius-chip); outline-offset: 3px; }
 .fb-atom-selected, .ProseMirror-selectednode > .fb-atom { outline: 2px solid var(--doc-accent); }
+/* Tables have no ring: clicking into a cell selects the table, and a ring round the cells and their tools
+   only gets in the way. Selected from the keyboard or the block handle (no cell being edited), a table gets
+   the same quiet background as selected text blocks. */
+.fb-atom.fb-table-block { outline: none; }
+.fb-atom.fb-table-block.fb-atom-selected:not(:focus-within),
+.ProseMirror-selectednode > .fb-atom.fb-table-block:not(:focus-within) { background: var(--color-selection); }
 /* Flowcharts, whiteboards and the other visual blocks have rounder boxes (14px): the outline follows them. */
 .fb-atom:is(.fb-flowchart, .fb-whiteboard, .fb-mindmap, .fb-stickies, .fb-chart, .fb-wireframe) { border-radius: var(--radius-container); }
 

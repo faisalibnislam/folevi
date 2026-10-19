@@ -181,14 +181,16 @@ function Frame({
   selected,
   children,
   label,
+  className = "",
 }: {
   selected: boolean;
   children: React.ReactNode;
   label: string;
+  className?: string;
 }) {
   return (
     <NodeViewWrapper
-      className={`fb-atom ${selected ? "fb-atom-selected" : ""}`}
+      className={`fb-atom ${className} ${selected ? "fb-atom-selected" : ""}`}
       data-drag-handle=""
       // A label is only read with a role (an image's own <figure> is inside).
       role="group"
@@ -541,7 +543,7 @@ function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNo
   const toolBtn =
     "grid h-6 w-6 place-items-center rounded-chip text-faint transition-colors hover:bg-accent-soft hover:text-heading disabled:opacity-30 disabled:hover:bg-transparent";
   return (
-    <Frame selected={selected} label="Table">
+    <Frame selected={selected} label="Table" className="fb-table-block">
       <div
         ref={scrollerRef}
         className="fb-hscroll my-2 overflow-x-auto"

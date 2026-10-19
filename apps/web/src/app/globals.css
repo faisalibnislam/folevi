@@ -216,6 +216,11 @@
 :root[data-desktop="mac"] .ui-traffic-space { display: block; flex: none; align-self: stretch; width: 60px; }
 :root[data-desktop] .ui-drag { -webkit-app-region: drag; }
 :root[data-desktop] .ui-drag :is(a, button, input, textarea, select, [role="button"], [role="tab"], [role="combobox"], [tabindex]) { -webkit-app-region: no-drag; }
+/* What floats over the page never moves the window, wherever it sits in the page (app-region is inherited:
+   a pop-up opened from a top bar, like the save status or the notifications, would otherwise be part of that
+   bar's drag area, so clicks on it drag the window, and the drag area can end up where the pop-up first
+   appeared, swallowing clicks until the page reloads). */
+:root[data-desktop] :is([popover], dialog, .ui-pop, [role="menu"], [role="listbox"], [role="dialog"], [role="tooltip"]) { -webkit-app-region: no-drag; }
 /* The margin above the panels moves the window too; outside the app's frame (sign in, onboarding) a taller strip. */
 :root[data-desktop] body::before { content: ""; position: fixed; inset: 0 0 auto; height: 8px; z-index: 2147483647; -webkit-app-region: drag; }
 :root[data-desktop]:not(:has(.ui-canvas)) body::before { height: 36px; }

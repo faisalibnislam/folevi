@@ -3,10 +3,10 @@ import type { MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { ulid, type WireBlock } from "@folevi/editor-schema";
 import { accessAtLeast, documentAccess } from "./auth";
-import { adjustStorageUsed, assertStorageFor, storageChargeFor } from "./entitlements";
+import { adjustStorageUsed, assertStorageFor, releaseFileStorage, storageChargeFor } from "./entitlements";
 import { fail } from "./errors";
 import { bump } from "./metrics";
-import { insertScoped, scopeOfRow } from "./scope";
+import { insertScoped, sameScope, scopeOfRow } from "./scope";
 
 /** File kinds a note shows (block images, files and recordings, and its theme image). */
 const NOTE_FILE_KINDS = new Set<Doc<"files">["kind"]>(["image", "file", "audio", "cover"]);
@@ -124,4 +124,26 @@ export async function deleteFileBlob(ctx: MutationCtx, file: Doc<"files">): Prom
     .take(2);
   if (users.some((f) => f._id !== file._id)) return;
   await ctx.storage.delete(file.storageId);
+}
+
+/**
+ * Gives back the storage a note's file counted (it's being deleted for good). A row that only shares another
+ * row's bytes (a pasted block's, `sharesBlob`) counted nothing. A row that counted them, while a sharing row in
+ * the same place still shows them, hands the count over to it instead: the bytes stay, counted once.
+ */
+export async function releaseNoteFile(ctx: MutationCtx, file: Doc<"files">): Promise<void> {
+  if (file.sharesBlob) return;
+  const scope = scopeOfRow(file);
+  const sharing = (
+    await ctx.db
+      .query("files")
+      .withIndex("by_storage", (q) => q.eq("storageId", file.storageId))
+      .take(50)
+  ).find((f) => f._id !== file._id && f.sharesBlob && f.status === "ready" && sameScope(scopeOfRow(f), scope));
+  if (sharing) {
+    await ctx.db.patch(sharing._id, { sharesBlob: undefined, chargedTo: file.chargedTo ?? (scope.kind === "workspace" ? file.uploadedBy : undefined) });
+    return;
+  }
+  await releaseFileStorage(ctx, file, scope);
+  await bump(ctx, "storage_bytes", -file.size);
 }

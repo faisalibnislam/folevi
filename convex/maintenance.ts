@@ -7,7 +7,6 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { normalizeEmail } from "./lib/support";
 import { bump } from "./lib/metrics";
-import { releaseFileStorage } from "./lib/entitlements";
 import { deleteConversationFiles } from "./lib/ai/attachmentFiles";
 import { adjustDocumentCount } from "./lib/create";
 import { seatsChanged } from "./lib/seats";
@@ -17,7 +16,7 @@ import { subscriptionOf } from "./lib/billing";
 import { hasValidScope, personalScope, SCOPED_TABLES, scopedRows, scopeOfRow, workspaceScope } from "./lib/scope";
 import { bumpSeq, deleteSeq } from "./lib/seq";
 import { dropNoteGraph } from "./lib/ai/graphStore";
-import { deleteFileBlob } from "./lib/fileCopies";
+import { deleteFileBlob, releaseNoteFile } from "./lib/fileCopies";
 import { purgeOldReceipts } from "./lib/emailNotes";
 
 const BUDGET = 400;
@@ -135,8 +134,9 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     .take(50);
   for (const f of files) {
     await deleteFileBlob(ctx, f);
-    if (hasValidScope(f)) await releaseFileStorage(ctx, f, scopeOfRow(f));
-    await bump(ctx, "storage_bytes", -f.size);
+    // A pasted copy's file elsewhere may take the count over (it keeps the bytes).
+    if (hasValidScope(f)) await releaseNoteFile(ctx, f);
+    else await bump(ctx, "storage_bytes", -f.size);
     await ctx.db.delete(f._id);
     budget.spend();
   }

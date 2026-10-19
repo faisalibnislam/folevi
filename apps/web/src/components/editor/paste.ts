@@ -8,6 +8,8 @@ import { blockToNode } from "./convert";
 import { normalizeDepths } from "./commands";
 import { afterSubtree, deleteVisibleRange } from "./plugins";
 import { hiddenIndices } from "./blockSelectionState";
+import { gridFromText, gridFromHtmlTable } from "./table/sheetPaste";
+import { readBlockClip } from "./blockClipboard";
 
 /**
  * Before any paste: a range through a collapsed toggle loses only its visible part (the hidden blocks stay),
@@ -110,6 +112,9 @@ function inlineOfNodes(nodes: Iterable<ChildNode>, marks: Mark[] = [], flatten =
 }
 
 const inlineOf = (el: Node, marks: Mark[] = [], flatten = false) => inlineOfNodes(el.childNodes, marks, flatten);
+
+/** A pasted table cell's content with its formatting (block elements inside read as text). */
+export const cellInline = (el: Element): InlineNode[] => clean(inlineOf(el, [], true));
 
 function clean(nodes: InlineNode[]): InlineNode[] {
   const normalized = normalizeInline(nodes);
@@ -342,12 +347,10 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
       imagesIn([e], depth, out);
       return;
     case "TABLE": {
-      // This table's own rows and cells (a table nested in a cell is read as that cell's text).
-      const table = e as HTMLTableElement;
-      const rows = [...table.rows].slice(0, 200).map((tr) => [...tr.cells].slice(0, 20).map((c) => clean(inlineOf(c, marks, true))));
-      const width = Math.max(1, ...rows.map((r) => r.length));
-      const header = [...table.rows][0]?.cells[0]?.tagName === "TH";
-      if (rows.length) out.push({ type: "table", depth, text: [], props: { headerRow: header, rows: rows.map((r) => [...r, ...Array.from({ length: width - r.length }, () => [])]) } });
+      // This table's own rows and cells (a table nested in a cell is read as that cell's text), with the
+      // formulas Google Sheets and Excel put on their cells (table/sheetPaste.ts).
+      const grid = gridFromHtmlTable(e as HTMLTableElement, (c) => clean(inlineOf(c, marks, true)));
+      if (grid.rows.length) out.push({ type: "table", depth, text: [], props: { headerRow: grid.headerRow, rows: grid.rows } });
       return;
     }
     default:
@@ -424,6 +427,9 @@ export function looksLikeMarkdown(text: string): boolean {
  */
 export function clipboardBlocks(view: EditorView, data: DataTransfer | null): WireBlock[] | null {
   if (!data || view.state.selection.$from.parent.type.name === "codeBlock") return null;
+  // Blocks copied from a Folevi note: exactly as they were (blockClipboard.ts).
+  const clip = readBlockClip(data);
+  if (clip) return clip.blocks;
   const html = data.getData("text/html");
   const text = data.getData("text/plain");
   let blocks: WireBlock[] | null = null;
@@ -431,11 +437,20 @@ export function clipboardBlocks(view: EditorView, data: DataTransfer | null): Wi
   // other ProseMirror editors', is normalised.
   const ours = html.includes("data-pm-slice") && /data-block="/.test(html);
   if (html && !ours) blocks = htmlToBlocks(html);
-  else if (!html && text && (/\n/.test(text) || /^(#{1,3} |[-*+] |\d+[.)] |> |```|\[[ x]\] )/m.test(text))) {
+  else if (!html && text && /\t/.test(text) && /\n./.test(text.trim()) ? (blocks = tsvTable(text)) : false) {
+    // Rows of tab-separated cells (a spreadsheet's plain copy): a table.
+  } else if (!html && text && (/\n/.test(text) || /^(#{1,3} |[-*+] |\d+[.)] |> |```|\[[ x]\] )/m.test(text))) {
     // Pasted text keeps its lines: a line break inside a paragraph stays one (a letter's "Dear John," and the next line stay two lines).
     blocks = looksLikeMarkdown(text) ? markdownToBlocks(text, { titleFromHeading: false, lineBreaks: true }).blocks : linesToBlocks(text);
   }
   return blocks?.length ? blocks : null;
+}
+
+/** Tab-separated rows as a table block, or null. */
+function tsvTable(text: string): WireBlock[] | null {
+  const grid = gridFromText(text);
+  if (!grid || grid.rows.length < 2) return null;
+  return [{ id: ulid(), type: "table", parentId: null, rank: rankSequence(1)[0]!, schemaVersion: SCHEMA_VERSION, text: [], props: { headerRow: grid.headerRow, rows: grid.rows } }];
 }
 
 /** Block styling that follows the text onto a new line, as with Enter (splitAttrs in plugins.ts). */
@@ -462,7 +477,8 @@ export function insertPastedBlocks(view: EditorView, blocks: WireBlock[]): void 
   const { schema } = view.state;
   // Over a range through a collapsed toggle, only what's visible is replaced.
   const visible = deleteVisibleRange(view.state);
-  const tr = visible ?? view.state.tr;
+  // Marked as a paste, so files in pasted blocks are shared with this note (Editor.tsx).
+  const tr = (visible ?? view.state.tr).setMeta("uiEvent", "paste").setMeta("paste", true);
   if (!tr.selection.empty) tr.deleteSelection();
   const $from = tr.selection.$from;
   const flat = flattenTree(blocks);

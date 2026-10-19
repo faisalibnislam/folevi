@@ -22,6 +22,7 @@ import { adjustStorageUsed, assertStorageFor, storageChargeFor } from "./lib/ent
 import {
   insertScoped,
   personalScope,
+  sameScope,
   scopeOfRow,
   vScopeArg,
   workspaceScope,
@@ -43,6 +44,7 @@ import { toHex } from "./lib/crypto";
 import { signFileUrl as sign } from "./lib/fileUrls";
 import { bump } from "./lib/metrics";
 import { MAX_IDENTITY_IMAGE_BYTES } from "./lib/identityImages";
+import { FileCopies } from "./lib/fileCopies";
 import { MAX_ATTACHMENT_UPLOAD } from "./lib/ai/attachments";
 import { ATTACHMENTS_OFF } from "./lib/ai/attachmentFiles";
 import { aiPrefsOf } from "./lib/ai/prefs";
@@ -478,6 +480,95 @@ export const byPublicId = internalQuery({
       .query("files")
       .withIndex("by_public_id", (q) => q.eq("publicId", args.fileId))
       .unique(),
+});
+
+// ---------------------------------------------------------------- pasted blocks
+
+/** Kinds of file a pasted block can show. */
+const PASTED_KINDS = new Set<Doc<"files">["kind"]>(["image", "file", "audio"]);
+
+/**
+ * Images, files and recordings in blocks pasted into another note: the new note gets file rows of its own,
+ * so its readers can open them and deleting the original note for good doesn't take them away. Returns each
+ * pasted file id's id in this note (left out: files this person can't open, which the blocks keep as they are).
+ *
+ * In the same Personal or workspace the row shares the original's stored bytes and adds nothing to storage
+ * (`sharesBlob`; deleting either copy keeps the bytes the other uses, and whichever is left counts them). Into
+ * another place (a workspace from Personal, another workspace, someone else's page) the file is copied and
+ * counts toward that place's storage, like Duplicate's copies (FileCopies): one place's storage never holds
+ * another's files.
+ */
+export const shareForPaste = mutation({
+  args: { documentId: v.string(), fileIds: v.array(v.string()) },
+  handler: async (ctx, args): Promise<Record<string, string>> => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+    if (doc.inTrash) fail("not_found", "Document not found.");
+    const here = scopeOfRow(doc);
+    const out: Record<string, string> = {};
+    const elsewhere: string[] = [];
+    const now = Date.now();
+    for (const id of [...new Set(args.fileIds)].slice(0, 50)) {
+      const f = await ctx.db
+        .query("files")
+        .withIndex("by_public_id", (q) => q.eq("publicId", id))
+        .unique();
+      if (!f || f.status !== "ready" || !f.documentId || !PASTED_KINDS.has(f.kind)) continue;
+      if (f.documentId === doc._id) {
+        out[id] = id;
+        continue;
+      }
+      const source = await ctx.db.get(f.documentId);
+      if (!source || !accessAtLeast(await documentAccess(ctx, profile, source), "read")) continue;
+      if (!sameScope(scopeOfRow(f), here)) {
+        elsewhere.push(id);
+        continue;
+      }
+      // Pasted here before: the same row again.
+      const before = (
+        await ctx.db
+          .query("files")
+          .withIndex("by_storage", (q) => q.eq("storageId", f.storageId))
+          .take(50)
+      ).find((r) => r.documentId === doc._id && r.status === "ready");
+      if (before) {
+        out[id] = before.publicId;
+        continue;
+      }
+      const publicId = ulid();
+      await insertScoped(ctx, "files", here, {
+        publicId,
+        storageId: f.storageId,
+        documentId: doc._id,
+        uploadedBy: f.uploadedBy,
+        chargedTo: f.chargedTo,
+        sharesBlob: true,
+        filename: f.filename,
+        mimeType: f.mimeType,
+        size: f.size,
+        sha256: f.sha256,
+        kind: f.kind,
+        width: f.width,
+        height: f.height,
+        palette: f.palette,
+        status: "ready",
+        createdAt: now,
+      });
+      out[id] = publicId;
+    }
+    if (elsewhere.length) {
+      const copies = new FileCopies(ctx, profile);
+      const blocks = await copies.blocks(elsewhere.map((fileId) => ({ id: fileId, type: "image", parentId: null, rank: "a", schemaVersion: 1, text: [], props: { fileId } })));
+      blocks.forEach((b, i) => {
+        const next = (b.props as { fileId?: string }).fileId;
+        if (next && next !== elsewhere[i]) out[elsewhere[i]!] = next;
+      });
+      // Refused (the storage there is full): nothing is shared or copied, and the blocks keep their files.
+      await copies.commit(doc);
+    }
+    return out;
+  },
 });
 
 // ---------------------------------------------------------------- copies (lib/fileCopies.ts)

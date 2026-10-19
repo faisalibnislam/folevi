@@ -15,6 +15,7 @@ import { MindmapStatic } from "@/components/editor/mindmap/render";
 import { StickiesStatic } from "@/components/editor/stickies/render";
 import { ChartStatic } from "@/components/editor/chart/render";
 import { WireframeStatic } from "@/components/editor/wireframe/render";
+import { TableStatic } from "@/components/editor/table/TableStatic";
 
 /** The visual blocks drawn read-only: each block's own static picture under its name. */
 const VISUALS: Record<string, { name: string; Static: (p: { data: string; height?: number }) => React.ReactNode }> = {
@@ -429,36 +430,9 @@ export function ReadOnlyBlocks({
                 />
               );
             }
-            case "table": {
-              const rows = (p.rows as InlineNode[][][]) ?? [];
-              return (
-                <div key={block.id} className="my-3 overflow-x-auto">
-                  <table className="fb-table w-full border-collapse text-sm">
-                    <tbody>
-                      {rows.map((row, r) => (
-                        <tr key={r}>
-                          {row.map((cell, c) =>
-                            r === 0 && p.headerRow ? (
-                              <th
-                                key={c}
-                                scope="col"
-                                className="border border-line px-2.5 py-1.5 text-left"
-                              >
-                                <Inline nodes={cell} />
-                              </th>
-                            ) : (
-                              <td key={c} className="border border-line px-2.5 py-1.5">
-                                <Inline nodes={cell} />
-                              </td>
-                            ),
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            }
+            case "table":
+              // Formulas' results, column formats, the totals row and the saved sort and filter.
+              return <TableStatic key={block.id} props={p} />;
             case "page":
               return (
                 <p key={block.id} className="fb flex items-start gap-1.5 text-muted">

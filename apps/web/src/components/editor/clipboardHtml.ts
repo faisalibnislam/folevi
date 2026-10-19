@@ -3,7 +3,7 @@
 // was an empty <div>, an image had no <img>, and bullets were plain lines. Here lists become real lists and
 // the whole blocks get readable insides, without changing what the editor shows or how it parses a paste.
 import { DOMSerializer, type DOMOutputSpec, type Fragment, type Node as PMNode, type Schema } from "@tiptap/pm/model";
-import { plainText, sanitizeHref, type InlineNode } from "@folevi/editor-schema";
+import { plainText, sanitizeHref, tableDisplayRows, tableOptionsFromProps, type InlineNode } from "@folevi/editor-schema";
 
 const LIST_TAG: Record<string, "ul" | "ol"> = { bulleted: "ul", numbered: "ol", todo: "ul" };
 
@@ -18,7 +18,8 @@ function inside(node: PMNode): DOMOutputSpec[] {
       return src ? [["img", { src, alt: String(a.alt ?? "") }]] : [];
     }
     case "table": {
-      const rows = Array.isArray(a.rows) ? (a.rows as InlineNode[][][]) : [];
+      // Formulas as their results and numbers in their columns' formats, as the note shows them.
+      const rows = Array.isArray(a.rows) ? tableDisplayRows(a.rows as InlineNode[][][], tableOptionsFromProps(a)) : [];
       return [
         [
           "table",

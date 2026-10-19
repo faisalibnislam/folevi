@@ -2,31 +2,19 @@
 
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
-import { useScrollEdges } from "./scrollEdges";
-import { closeHistory } from "@tiptap/pm/history";
-import { endHistoryGroup } from "./commands";
-import { announce } from "@/lib/a11y/announce";
-import { keyLabel } from "@/lib/shortcuts";
 import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  Check,
   Download,
   ExternalLink,
   FileText,
   ImageOff,
   Link2,
-  Minus,
   Pencil,
-  Plus,
   Trash2,
 } from "lucide-react";
-import { CHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, plainText, sanitizeHref, type InlineNode, type SyncState } from "@folevi/editor-schema";
+import { CHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, sanitizeHref, type SyncState } from "@folevi/editor-schema";
 import { webAddressIn } from "./autolink";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -53,6 +41,7 @@ import {
   WireframeBlock,
 } from "./extensions";
 import { FormulaView } from "./FormulaView";
+import { TableView, tableHandlesEvent } from "./table/TableView";
 import { useEditorEnvironment } from "./environment";
 import { useDraft } from "./useDraft";
 import { useEditable } from "./useEditable";
@@ -386,339 +375,6 @@ function AudioView({ node, selected, editor, getPos }: ReactNodeViewProps) {
         className="my-1.5"
       />
       {transcription.preview}
-    </Frame>
-  );
-}
-
-function cellText(cell: InlineNode[] | undefined): string {
-  return cell ? plainText(cell) : "";
-}
-
-function move<T>(list: T[], from: number, to: number): T[] {
-  if (to < 0 || to >= list.length || from === to) return list;
-  const next = [...list];
-  const [item] = next.splice(from, 1);
-  next.splice(to, 0, item!);
-  return next;
-}
-
-function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
-  const rows = (node.attrs.rows as InlineNode[][][]) ?? [[[]]];
-  const headerRow = Boolean(node.attrs.headerRow);
-  const editable = useEditable(editor);
-  const width = rows[0]?.length ?? 1;
-  const [focusWithin, setFocusWithin] = useState(false);
-  // Row/column tools show while the table is selected or being edited.
-  const tools = editable && (selected || focusWithin);
-  // An undo that removed the focused cell (a row added with Enter, then ⌘Z) leaves focus nowhere, where the
-  // next ⌘Z would be the browser's undo of some cell's typing: focus goes back to the note.
-  useEffect(() => {
-    if (!focusWithin || !editable) return;
-    const active = document.activeElement;
-    if (!active || active === document.body) {
-      setFocusWithin(false);
-      editor.view.focus();
-    }
-  }, [node.attrs.rows, focusWithin, editable, editor]);
-  // The table as it is now (the view re-renders a moment after each change, so `rows` can be a step behind).
-  const currentRows = (): InlineNode[][][] => {
-    const pos = typeof getPos === "function" ? getPos() : undefined;
-    const live = typeof pos === "number" ? editor.state.doc.nodeAt(pos) : null;
-    return live?.type.name === "table" ? (live.attrs.rows as InlineNode[][][]) : rows;
-  };
-  const setCell = (r: number, c: number, value: string) => {
-    // A cell's draft can commit after the note turned read-only: it isn't written then.
-    if (!editor.isEditable) return;
-    const now = currentRows();
-    // Cells edit as plain text; formatting the whole cell shares (all bold, one link) is kept.
-    const old = (now[r]?.[c] ?? []) as InlineNode[];
-    const markSets = old.filter((n) => n.type === "text").map((n) => JSON.stringify((n as { marks?: unknown[] }).marks ?? []));
-    const shared = markSets.length && markSets.every((m) => m === markSets[0]) ? ((old.find((n) => n.type === "text") as { marks?: unknown[] }).marks ?? []) : [];
-    const text = (value ? [shared.length ? { type: "text" as const, text: value, marks: shared } : { type: "text" as const, text: value }] : []) as InlineNode[];
-    const next = now.map((row, ri) => row.map((cell, ci) => (ri === r && ci === c ? text : cell)));
-    updateAttributes({ rows: next });
-  };
-  // Row and column tools are each their own undo step (typing in cells groups as usual).
-  const tool = (change: (rows: InlineNode[][][]) => InlineNode[][][] | null) => {
-    const pos = typeof getPos === "function" ? getPos() : undefined;
-    const live = typeof pos === "number" ? editor.state.doc.nodeAt(pos) : null;
-    if (!editor.isEditable || typeof pos !== "number" || live?.type.name !== "table") return;
-    const next = change(live.attrs.rows as InlineNode[][][]);
-    if (!next) return;
-    editor.view.dispatch(closeHistory(editor.state.tr.setNodeMarkup(pos, undefined, { ...live.attrs, rows: next })));
-    endHistoryGroup(editor);
-  };
-  const addRow = () => tool((rs) => [...rs, Array.from({ length: rs[0]?.length ?? 1 }, () => [])]);
-  const addCol = () => tool((rs) => ((rs[0]?.length ?? 1) < 20 ? rs.map((r) => [...r, []]) : null));
-  const removeRow = (i: number) => {
-    tool((rs) => (rs.length > 1 ? rs.filter((_, ri) => ri !== i) : null));
-    focusCell(Math.max(0, Math.min(i, rows.length - 2)), 0);
-  };
-  const removeCol = (i: number) => {
-    tool((rs) => ((rs[0]?.length ?? 1) > 1 ? rs.map((r) => r.filter((_, ci) => ci !== i)) : null));
-    focusCell(0, Math.max(0, Math.min(i, width - 2)));
-  };
-  const moveRow = (i: number, dir: -1 | 1) => tool((rs) => move(rs, i, i + dir));
-  const moveCol = (i: number, dir: -1 | 1) => tool((rs) => rs.map((r) => move(r, i, i + dir)));
-  const tableRef = useRef<HTMLTableElement>(null);
-  // A table wider than the note scrolls sideways inside itself, with a fade where there's more.
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  useScrollEdges(scrollerRef);
-  const focusCell = (r: number, c: number) =>
-    requestAnimationFrame(() => tableRef.current?.querySelector<HTMLInputElement>(`[data-cell="${r}:${c}"]`)?.focus());
-  // Tab / Shift+Tab move between cells, Enter / ↓ go down a row (Enter adds one at the end), ↑ goes up,
-  // Escape returns to the note with the table selected. ⌥⇧ and an arrow move the row or column, ⌘⇧⌫
-  // deletes the row (the note never sees keys from a cell, so these don't move or delete the whole table).
-  const onCellKey = (e: React.KeyboardEvent<HTMLTableElement>) => {
-    const at = (e.target as HTMLElement).dataset.cell;
-    if (!at || e.nativeEvent.isComposing || e.keyCode === 229) return;
-    const [r, c] = at.split(":").map(Number) as [number, number];
-    const mod = e.metaKey || e.ctrlKey;
-    if (e.altKey && e.shiftKey && !mod && e.key.startsWith("Arrow")) {
-      e.preventDefault();
-      const dir = e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 1;
-      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-        if (r + dir < 0 || r + dir >= rows.length) return;
-        moveRow(r, dir);
-        focusCell(r + dir, c);
-        announce(dir < 0 ? "Row moved up" : "Row moved down");
-      } else {
-        if (c + dir < 0 || c + dir >= width) return;
-        moveCol(c, dir);
-        focusCell(r, c + dir);
-        announce(dir < 0 ? "Column moved left" : "Column moved right");
-      }
-      return;
-    }
-    if (mod && e.shiftKey && !e.altKey && e.key === "Backspace") {
-      e.preventDefault();
-      if (rows.length <= 1) return;
-      removeRow(r);
-      announce(`Row ${r + 1} deleted`);
-      return;
-    }
-    if (mod || e.altKey) return;
-    if (e.key === "Tab") {
-      // Cell to cell, row by row; Tab in the last cell adds a row.
-      e.preventDefault();
-      const i = r * width + c + (e.shiftKey ? -1 : 1);
-      if (i < 0) return;
-      if (i >= rows.length * width) {
-        addRow();
-        focusCell(rows.length, 0);
-      } else focusCell(Math.floor(i / width), i % width);
-      return;
-    }
-    // In a cell whose text wraps, ↑/↓ move between its lines first; only when the caret can't go further
-    // (it didn't move) does it change rows.
-    const field = e.target as HTMLTextAreaElement;
-    const wraps = field instanceof HTMLTextAreaElement && textLines(field) > 1;
-    if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !e.shiftKey && wraps) {
-      const before = field.selectionStart;
-      const down = e.key === "ArrowDown";
-      setTimeout(() => {
-        if (document.activeElement !== field || field.selectionStart !== before) return;
-        if (down && r + 1 < rows.length) focusCell(r + 1, c);
-        else if (!down && r > 0) focusCell(r - 1, c);
-      }, 0);
-      return;
-    }
-    if ((e.key === "Enter" && !e.shiftKey) || e.key === "ArrowDown") {
-      e.preventDefault();
-      if (r + 1 < rows.length) focusCell(r + 1, c);
-      else if (e.key === "Enter") {
-        addRow();
-        focusCell(r + 1, c);
-      }
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      if (r > 0) focusCell(r - 1, c);
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      const pos = typeof getPos === "function" ? getPos() : undefined;
-      if (typeof pos === "number") editor.chain().setNodeSelection(pos).run();
-      editor.view.focus();
-    }
-  };
-  const toolBtn =
-    "grid h-6 w-6 place-items-center rounded-chip text-faint transition-colors hover:bg-accent-soft hover:text-heading disabled:opacity-30 disabled:hover:bg-transparent";
-  return (
-    <Frame selected={selected} label="Table" className="fb-table-block">
-      <div
-        ref={scrollerRef}
-        className="fb-hscroll my-2 overflow-x-auto"
-        contentEditable={false}
-        // The tools never take focus: it stays in the cell (or the note), so ⌘Z next undoes what the tool did
-        // rather than the browser's own undo of a cell's typing.
-        onMouseDown={(e) => {
-          if ((e.target as Element).closest("button")) e.preventDefault();
-        }}
-        onFocus={() => setFocusWithin(true)}
-        onBlur={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusWithin(false);
-        }}
-      >
-        <table ref={tableRef} className="fb-table w-full border-collapse text-sm" onKeyDown={onCellKey}>
-          {/* The row and column tools are always laid out (only shown while editing), so the table
-              doesn't jump when they appear. */}
-          {editable ? (
-            <thead className={tools ? undefined : "invisible"} aria-hidden={tools ? undefined : true}>
-              <tr>
-                {rows[0]!.map((_, c) => (
-                  <td key={c} className="border-0 px-1 pb-1">
-                    <span
-                      className="flex items-center justify-center gap-0.5"
-                      role="group"
-                      aria-label={`Column ${c + 1}`}
-                    >
-                      <button
-                        type="button"
-                        className={toolBtn} tabIndex={-1}
-                        disabled={c === 0}
-                        onClick={() => moveCol(c, -1)}
-                        aria-label={`Move column ${c + 1} left`}
-                        title={`Move column left (${keyLabel("⌥⇧←")})`}
-                      >
-                        <ArrowLeft size={12} aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className={toolBtn} tabIndex={-1}
-                        disabled={c === width - 1}
-                        onClick={() => moveCol(c, 1)}
-                        aria-label={`Move column ${c + 1} right`}
-                        title={`Move column right (${keyLabel("⌥⇧→")})`}
-                      >
-                        <ArrowRight size={12} aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className={`${toolBtn} hover:!text-danger`} tabIndex={-1}
-                        disabled={width <= 1}
-                        onClick={() => removeCol(c)}
-                        aria-label={`Delete column ${c + 1}`}
-                        title="Delete column"
-                      >
-                        <Trash2 size={12} aria-hidden />
-                      </button>
-                    </span>
-                  </td>
-                ))}
-                <td className="border-0" />
-              </tr>
-            </thead>
-          ) : null}
-          <tbody>
-            {rows.map((row, r) => (
-              <tr key={r} className="group/row">
-                {row.map((cell, c) => {
-                  const Tag = headerRow && r === 0 ? "th" : "td";
-                  return (
-                    <Tag
-                      key={c}
-                      scope={headerRow && r === 0 ? "col" : undefined}
-                      className="border border-line p-0 align-top focus-within:bg-accent-soft/40"
-                      // A short cell in a tall row: its empty lower part focuses it too.
-                      onMouseDown={(e) => {
-                        if (e.target !== e.currentTarget) return;
-                        const field = e.currentTarget.querySelector<HTMLTextAreaElement>("textarea");
-                        if (!field) return;
-                        e.preventDefault();
-                        field.focus();
-                        field.setSelectionRange(field.value.length, field.value.length);
-                      }}
-                    >
-                      {editable ? (
-                        <DraftCell
-                          data-cell={`${r}:${c}`}
-                          data-enter-focus={r === 0 && c === 0 ? "" : undefined}
-                          value={cellText(cell)}
-                          onCommit={(v) => setCell(r, c, v)}
-                          aria-label={`Row ${r + 1}, column ${c + 1}`}
-                          className={`block w-full min-w-[6rem] resize-none overflow-hidden bg-transparent px-2.5 py-1.5 outline-none ${headerRow && r === 0 ? "font-semibold" : ""}`}
-                        />
-                      ) : (
-                        <span
-                          className={`block px-2.5 py-1.5 ${headerRow && r === 0 ? "font-semibold" : ""}`}
-                        >
-                          {cellText(cell)}
-                        </span>
-                      )}
-                    </Tag>
-                  );
-                })}
-                {editable ? (
-                  <td className={`w-[5.5rem] border-0 pl-1 ${tools ? "" : "invisible"}`} aria-hidden={tools ? undefined : true}>
-                    <span
-                      className="flex items-center gap-0.5"
-                      role="group"
-                      aria-label={`Row ${r + 1}`}
-                    >
-                      <button
-                        type="button"
-                        className={toolBtn} tabIndex={-1}
-                        disabled={r === 0}
-                        onClick={() => moveRow(r, -1)}
-                        aria-label={`Move row ${r + 1} up`}
-                        title={`Move row up (${keyLabel("⌥⇧↑")})`}
-                      >
-                        <ArrowUp size={12} aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className={toolBtn} tabIndex={-1}
-                        disabled={r === rows.length - 1}
-                        onClick={() => moveRow(r, 1)}
-                        aria-label={`Move row ${r + 1} down`}
-                        title={`Move row down (${keyLabel("⌥⇧↓")})`}
-                      >
-                        <ArrowDown size={12} aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className={`${toolBtn} hover:!text-danger`} tabIndex={-1}
-                        disabled={rows.length <= 1}
-                        onClick={() => removeRow(r)}
-                        aria-label={`Delete row ${r + 1}`}
-                        title={`Delete row (${keyLabel("⌘⇧⌫")})`}
-                      >
-                        <Minus size={12} aria-hidden />
-                      </button>
-                    </span>
-                  </td>
-                ) : null}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {editable ? (
-          <div className="mt-1.5 flex flex-wrap gap-2 text-xs text-muted">
-            <button
-              type="button"
-              onClick={addRow}
-              className="inline-flex items-center gap-1 rounded-chip px-2 py-1 hover:bg-accent-soft hover:text-heading"
-            >
-              <Plus size={12} aria-hidden /> Row
-            </button>
-            <button
-              type="button"
-              onClick={addCol}
-              disabled={width >= 20}
-              className="inline-flex items-center gap-1 rounded-chip px-2 py-1 hover:bg-accent-soft hover:text-heading disabled:opacity-40"
-            >
-              <Plus size={12} aria-hidden /> Column
-            </button>
-            <button
-              type="button"
-              aria-pressed={headerRow}
-              onClick={() => editor.isEditable && updateAttributes({ headerRow: !headerRow })}
-              className={`inline-flex items-center gap-1 rounded-chip px-2 py-1 hover:bg-accent-soft hover:text-heading ${tools ? "" : "invisible"} ${headerRow ? "text-heading" : ""}`}
-            >
-              {headerRow ? <Check size={12} aria-hidden /> : <Plus size={12} aria-hidden />} Header row
-            </button>
-          </div>
-        ) : null}
-      </div>
     </Frame>
   );
 }
@@ -1101,52 +757,6 @@ function DraftInput({ value, onCommit, onExit, ...rest }: Omit<React.InputHTMLAt
   );
 }
 
-/** How many lines a text field's text takes up. */
-function textLines(el: HTMLTextAreaElement): number {
-  const cs = getComputedStyle(el);
-  const line = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.4 || 20;
-  const inner = el.scrollHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
-  return Math.round(inner / line);
-}
-
-/**
- * A table cell's text: wraps, and the cell grows to fit it (one line of text, so Enter and line breaks
- * don't go in; Enter moves down a row).
- */
-function DraftCell({ value, onCommit, ...rest }: Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange"> & { value: string; onCommit: (v: string) => void }) {
-  const [draft, change] = useDraft(value, onCommit);
-  const ref = useRef<HTMLTextAreaElement>(null);
-  const fit = useCallback(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
-  }, []);
-  useLayoutEffect(fit, [draft, fit]);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    // A narrower column wraps the text onto more lines.
-    const observer = new ResizeObserver(fit);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [fit]);
-  return (
-    <textarea
-      {...rest}
-      ref={ref}
-      rows={1}
-      data-draft=""
-      value={draft}
-      onChange={(e) => change(e.target.value.replace(/\r?\n/g, " "))}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") e.preventDefault();
-        rest.onKeyDown?.(e);
-      }}
-    />
-  );
-}
-
 /** Selects the block at `getPos()` and returns focus to the note. */
 function selectBlock(editor: ReactNodeViewProps["editor"], getPos: ReactNodeViewProps["getPos"]) {
   const pos = typeof getPos === "function" ? getPos() : undefined;
@@ -1183,10 +793,8 @@ export const NODE_VIEW_EXTENSIONS = [
   AudioBlock.extend({
     addNodeView: () => blockView(AudioView, ({ event }) => event.target instanceof Element && Boolean(event.target.closest("button, a, [role=slider]"))),
   }),
-  TableBlock.extend({
-    addNodeView: () =>
-      blockView(TableView, ({ event }) => event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || (event.target instanceof Element && Boolean(event.target.closest("button, .fb-table tbody td, .fb-table tbody th")))),
-  }),
+  // Cells, their editor and the tools handle their own input (table/TableView.tsx).
+  TableBlock.extend({ addNodeView: () => blockView(TableView, ({ event }) => tableHandlesEvent(event)) }),
   PageBlock.extend({ addNodeView: () => blockView(PageView) }),
   BookmarkBlock.extend({
     // The link, the pen and the editing fields handle their own clicks and keys.

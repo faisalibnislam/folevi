@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Code2,
+  Copy,
   CopyPlus,
   Eraser,
   FileText,
@@ -40,6 +41,7 @@ import {
   Paperclip,
   Plus,
   Quote,
+  Scissors,
   Strikethrough,
   Table2,
   Text,
@@ -111,6 +113,9 @@ import { DIVIDER_STYLES, MERMAID_SAMPLE } from "./insertCatalog";
 import { exportItems, useBlockExport } from "./canvas/BlockExport";
 import { chartMenuItems } from "./chart/tableMenu";
 import { mindmapMenuItems } from "./mindmap/noteConvert";
+import { useActiveCellEditor } from "./table/cellEditorStore";
+import { TABLE_AI_EVENT } from "./table/events";
+import { announce } from "@/lib/a11y/announce";
 import { Select } from "@/components/ui/Select";
 import { Calendar, DateField, DateTimeField, TimeField } from "@/components/ui/DateField";
 import { EDIT_LINK_EVENT, EditorContextMenu } from "./EditorContextMenu";
@@ -414,6 +419,8 @@ export function EditorMenus({
   const { navigate } = useAppRouter();
   const env = useEditorEnvironment();
   const toast = useToast();
+  // A table cell being edited: its own formatting toolbar (table/CellEditor.tsx).
+  const cellEditor = useActiveCellEditor(editor);
   const createCollection = useMutation(api.collections.create);
   const [active, setActive] = useState(0);
   const [dismissed, setDismissed] = useState<string | null>(null);
@@ -1171,6 +1178,7 @@ export function EditorMenus({
       <FindTodosHost editor={editor} documentId={documentId} enabled={editable && aiOn} />
       <EditorContextMenu editor={editor} editable={editable} onCommentBlock={onCommentBlock} />
       {editable ? <SelectionBubble editor={editor} onComment={onCommentBlock} /> : null}
+      {editable && cellEditor ? <SelectionBubble key="cell" editor={cellEditor} inCell /> : null}
       {editable ? <BlockHandle editor={editor} onDropBlock={onDropBlock} onCommentBlock={onCommentBlock} /> : null}
       {editable ? <TaskDetails editor={editor} /> : null}
     </>
@@ -1353,10 +1361,14 @@ function DatePopover({ editor, anchor, mode, today, onClose }: { editor: Editor;
  * into it (←/→ between buttons, Escape back to the text); ⌘⇧K (Ctrl+Shift+K) edits the link directly,
  * also with no selection (the address is inserted as a link).
  */
-function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (blockId: string) => void }) {
+/**
+ * The formatting toolbar over selected text. In a table cell (`inCell`) it formats the cell's own editor
+ * (table/CellEditor.tsx): the same marks, without Foli AI and comments, which are about the note's lines.
+ */
+function SelectionBubble({ editor, onComment, inCell = false }: { editor: Editor; onComment?: (blockId: string) => void; inCell?: boolean }) {
   // The note theme's text colours and highlights (its own names), when it has them.
   const palette = useNotePalette();
-  const aiOn = useAiEnabled();
+  const aiOn = useAiEnabled() && !inCell;
   // The selection's box: centre x, top and bottom. The toolbar sits above it (below near the top of the window).
   const [state, setState] = useState<{ left: number; top: number; bottom: number } | null>(null);
   const [placed, setPlaced] = useState<{ left: number; top: number } | null>(null);
@@ -1493,7 +1505,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
     const onKey = (e: KeyboardEvent) => {
-      if (inBlockField(e)) return;
+      if (!inCell && inBlockField(e)) return;
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.shiftKey && !e.altKey && e.code === "KeyK") {
         // Not the command palette (⌘K): stop it reaching the window-level shortcut handler.
@@ -1529,7 +1541,7 @@ function SelectionBubble({ editor, onComment }: { editor: Editor; onComment?: (b
       dom.removeEventListener("keydown", onKey);
       dom.removeEventListener(EDIT_LINK_EVENT, onEditLink);
     };
-  }, [editor, position, openLink]);
+  }, [editor, position, openLink, inCell]);
 
   useEffect(() => {
     if (focusFirst.current && state && placed && ref.current) {
@@ -1863,6 +1875,53 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
     return () => parent.removeEventListener("mousemove", onMove);
   }, [editor, menu, coarse]);
 
+  // Several blocks at once: press in the margin left of the text (or Shift and press a grip) and drag up or
+  // down across the lines; the blocks under the pointer are selected (then Copy, Cut, Delete or the menu).
+  useEffect(() => {
+    if (coarse) return;
+    const dom = editor.view.dom as HTMLElement;
+    const host = dom.parentElement?.parentElement ?? dom;
+    const onDown = (e: MouseEvent) => {
+      if (e.button !== 0 || menu || isDragging()) return;
+      const target = e.target as Element;
+      const grip = target.closest?.('[aria-label^="Drag to move"]');
+      const children = blockElements(dom);
+      const anchor = blockIndexAt(children, e.clientY);
+      if (anchor < 0) return;
+      // Left of the line's own start: the note's margin (or its padding), not the text or a block's controls.
+      const lineLeft = children[anchor]!.getBoundingClientRect().left;
+      const inMargin = (target === dom || !dom.contains(target)) && !target.closest?.("button, a, input, textarea, [role=dialog], [role=menu]") && e.clientX < lineLeft;
+      if (!(grip && e.shiftKey) && !inMargin) return;
+      let moved = false;
+      const onMove = (m: MouseEvent) => {
+        const at = blockIndexAt(blockElements(dom), m.clientY);
+        if (at < 0) return;
+        if (!moved && Math.abs(m.clientY - e.clientY) < 4) return;
+        moved = true;
+        m.preventDefault();
+        setBlockSelection(editor.view, anchor, at);
+      };
+      const onUp = () => {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+        if (moved) {
+          editor.view.focus();
+          if (grip) justDragged.current = true;
+          window.setTimeout(() => (justDragged.current = false), 0);
+        }
+      };
+      if (inMargin) {
+        // The note's own text selection would start here too and end the block selection on every move.
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    };
+    host.addEventListener("mousedown", onDown, true);
+    return () => host.removeEventListener("mousedown", onDown, true);
+  }, [editor, menu, coarse]);
+
   // Touch: follows the caret's block as it moves, as the note changes (typing) and as the page scrolls.
   useEffect(() => {
     if (!coarse) return;
@@ -2034,6 +2093,36 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
       editor.view.dispatch(tr.setMeta("addToHistory", false));
     }
     closeMenu();
+  };
+
+  // Copy and Cut: the blocks (with everything nested under them) go on the clipboard as blocks
+  // (blockClipboard.ts), through the copy and cut events the block selection handles.
+  const clipboard = (command: "copy" | "cut") => {
+    const at = menu && liveRange(editor, menu);
+    if (!at) return closeMenu();
+    editor.view.focus();
+    setBlockSelection(editor.view, at.from, at.to);
+    let ok: boolean;
+    try {
+      ok = document.execCommand(command);
+    } catch {
+      ok = false;
+    }
+    const n = at.to - at.from + 1;
+    if (!ok) toast.show(`Your browser blocked ${command === "cut" ? "cutting" : "copying"} from the menu. Press ${command === "cut" ? "⌘X" : "⌘C"} instead.`, { tone: "error" });
+    else announce(`${n === 1 ? "Block" : `${n} blocks`} ${command === "cut" ? "cut" : "copied"}`);
+    if (command === "copy") clearBlockSelection(editor.view);
+    closeMenu();
+  };
+
+  // A table's Foli AI panel (table/TableAi.tsx), opened from here.
+  const tableAi = (mode: "edit" | "clean" | "formula" | "explain") => {
+    const at = menu && liveRange(editor, menu);
+    closeMenu(false);
+    if (!at) return;
+    let pos = 0;
+    for (let i = 0; i < at.from; i++) pos += editor.state.doc.child(i).nodeSize;
+    (editor.view.nodeDOM(pos) as HTMLElement | null)?.dispatchEvent(new CustomEvent(TABLE_AI_EVENT, { detail: { mode } }));
   };
 
   const count = menu ? menu.to - menu.from + 1 : 0;
@@ -2234,10 +2323,21 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                       closeMenu(false);
                     }).map(({ label, icon, disabled, run }) => ({ label, hint: "", icon, disabled, run }))
                   : []),
+                // Foli AI for a table: edit it with a prompt, fill and clean, a formula from words, explain it.
+                ...(aiOn && single?.type.name === "table"
+                  ? [
+                      { label: "Edit with Foli AI…", hint: "", icon: <AiIcon size={14} className="text-[#7c6cf0]" />, run: () => tableAi("edit") },
+                      { label: "Fill and clean", hint: "", icon: <AiIcon size={14} className="text-[#7c6cf0]" />, run: () => tableAi("clean") },
+                      { label: "Write a formula…", hint: "", icon: <AiIcon size={14} className="text-[#7c6cf0]" />, run: () => tableAi("formula") },
+                      { label: "Explain this table", hint: "", icon: <AiIcon size={14} className="text-[#7c6cf0]" />, run: () => tableAi("explain") },
+                    ]
+                  : []),
                 // A list into a mind map and back, or a mind map Foli AI makes from the text (mindmap/noteConvert.ts).
                 ...mindmapMenuItems(editor, menu.from, menu.to, { aiOn, close: closeMenu }),
                 // A table turned into a chart under it (chart/tableMenu.tsx chartMenuItems).
                 ...chartMenuItems(editor, menu.from, menu.to, { aiOn, close: closeMenu }),
+                { label: count > 1 ? `Copy ${count} blocks` : "Copy", hint: "⌘C", icon: <Copy size={14} />, run: () => clipboard("copy") },
+                { label: count > 1 ? `Cut ${count} blocks` : "Cut", hint: "⌘X", icon: <Scissors size={14} />, run: () => clipboard("cut") },
                 { label: "Duplicate", hint: "⌘D", icon: <CopyPlus size={14} />, run: () => act(() => duplicateBlocks(editor)) },
                 { label: "Move up", hint: "⌥⇧↑", icon: <MoveUp size={14} />, disabled: menu.from === 0, run: () => act(() => moveBlock(editor, -1)) },
                 { label: "Move down", hint: "⌥⇧↓", icon: <MoveDown size={14} />, disabled: menu.from + count >= editor.state.doc.childCount, run: () => act(() => moveBlock(editor, 1)) },

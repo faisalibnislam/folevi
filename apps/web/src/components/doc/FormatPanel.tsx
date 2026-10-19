@@ -42,6 +42,7 @@ import {
   turnInto,
 } from "@/components/editor/commands";
 import { colorName, useNotePalette } from "@/components/editor/notePalette";
+import { useActiveCellEditor } from "@/components/editor/table/cellEditorStore";
 
 /*
  * The page tools' Format panel: turn the current block into another kind, format the selected text, its
@@ -85,32 +86,41 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
   const [href, setHref] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
   const linkId = useId();
+  // A table cell being edited takes the text formatting (its own editor, table/CellEditor.tsx); the block
+  // tools are for the note's lines and wait until the cell is closed.
+  const cell = useActiveCellEditor(editor);
+  const marks = (cell as Editor | null) ?? editor;
   useEffect(() => {
     if (!editor) return;
     const on = () => force((n) => n + 1);
+    const target = marks ?? editor;
     // The link field follows the selection: it shows the address of the link under the cursor.
     const onSelection = () => {
-      setHref(String(editor.getAttributes("link").href ?? ""));
+      setHref(String(target.getAttributes("link").href ?? ""));
       setLinkError(null);
     };
     onSelection();
-    editor.on("selectionUpdate", on);
-    editor.on("selectionUpdate", onSelection);
-    editor.on("transaction", on);
+    for (const ed of new Set([editor, target])) {
+      ed.on("selectionUpdate", on);
+      ed.on("transaction", on);
+    }
+    target.on("selectionUpdate", onSelection);
     return () => {
-      editor.off("selectionUpdate", on);
-      editor.off("selectionUpdate", onSelection);
-      editor.off("transaction", on);
+      for (const ed of new Set([editor, target])) {
+        ed.off("selectionUpdate", on);
+        ed.off("transaction", on);
+      }
+      target.off("selectionUpdate", onSelection);
     };
-  }, [editor]);
-  if (!editor) return <p className="text-sm text-muted">Place the cursor in the document to format.</p>;
-  const d = disabled;
+  }, [editor, marks]);
+  if (!editor || !marks) return <p className="text-sm text-muted">Place the cursor in the document to format.</p>;
+  const d = disabled || Boolean(cell);
   const node = editor.state.selection.$from.depth >= 1 ? editor.state.selection.$from.node(1) : null;
   const type = node?.type.name;
   const level = node?.attrs.level;
-  const inCode = type === "codeBlock";
-  const marksOff = d || inCode;
-  const linkActive = editor.isActive("link");
+  const inCode = type === "codeBlock" && !cell;
+  const marksOff = disabled || inCode;
+  const linkActive = marks.isActive("link");
   const fmt = selectedBlockFormat(editor);
   const formattable = ["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote"].includes(type ?? "");
   const blockOff = d || !formattable;
@@ -124,6 +134,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
     // the caret was, and a Space can't press a button.
     <div
       className="space-y-5"
+      data-cell-tools=""
       onMouseDown={(e) => {
         const t = e.target as Element;
         if (t.closest("button") && !t.closest("[aria-haspopup], [role=combobox], input, textarea, select")) e.preventDefault();
@@ -171,7 +182,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               ["Inline code", "code", <Code2 key="c" size={15} />],
             ] as const
           ).map(([label, mark, icon]) => (
-            <button key={mark} type="button" aria-label={label} title={label} disabled={marksOff} aria-pressed={editor.isActive(mark)} onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleMark(mark).run()} className={segBtn(editor.isActive(mark))}>
+            <button key={mark} type="button" aria-label={label} title={label} disabled={marksOff} aria-pressed={marks.isActive(mark)} onMouseDown={(e) => e.preventDefault()} onClick={() => marks.chain().focus().toggleMark(mark).run()} className={segBtn(marks.isActive(mark))}>
               {icon}
             </button>
           ))}
@@ -244,9 +255,9 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
           <Tile label="Quote" icon={<Quote size={16} />} tone="plum" disabled={d} pressed={type === "quote"} onClick={() => turnInto(editor, "quote")} />
           <Tile label="Callout" icon={<StickyNote size={16} />} tone="plum" disabled={d} pressed={type === "callout"} onClick={() => turnInto(editor, "callout", { tone: "note" })} />
           <Tile label="Code block" icon={<Code2 size={16} />} tone="marigold" disabled={d} pressed={inCode} onClick={() => turnInto(editor, "code", { language: "plaintext" })} />
-          <Tile label="Underline" icon={<Underline size={16} />} disabled={marksOff} pressed={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleMark("underline").run()} />
-          <Tile label="Highlight" icon={<Highlighter size={16} />} tone="marigold" disabled={marksOff} pressed={editor.isActive("highlight")} onClick={() => editor.chain().focus().toggleMark("highlight", { value: "yellow" }).run()} />
-          <Tile label="Clear" icon={<Eraser size={16} />} disabled={marksOff} onClick={() => clearFormatting(editor)} />
+          <Tile label="Underline" icon={<Underline size={16} />} disabled={marksOff} pressed={marks.isActive("underline")} onClick={() => marks.chain().focus().toggleMark("underline").run()} />
+          <Tile label="Highlight" icon={<Highlighter size={16} />} tone="marigold" disabled={marksOff} pressed={marks.isActive("highlight")} onClick={() => marks.chain().focus().toggleMark("highlight", { value: "yellow" }).run()} />
+          <Tile label="Clear" icon={<Eraser size={16} />} disabled={marksOff} onClick={() => clearFormatting(marks)} />
         </div>
       </section>
       <section>
@@ -258,10 +269,10 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
           onSubmit={(e) => {
             e.preventDefault();
             if (!href.trim()) {
-              if (linkActive) removeLink(editor);
+              if (linkActive) removeLink(marks);
               return;
             }
-            if (!applyLink(editor, href)) setLinkError("That doesn’t look like a web address.");
+            if (!applyLink(marks, href)) setLinkError("That doesn’t look like a web address.");
           }}
         >
           <input
@@ -272,7 +283,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               setHref(e.target.value);
               setLinkError(null);
             }}
-            placeholder={editor.state.selection.empty && !linkActive ? "Address to insert as a link" : "Paste or type a link"}
+            placeholder={marks.state.selection.empty && !linkActive ? "Address to insert as a link" : "Paste or type a link"}
             aria-invalid={Boolean(linkError)}
             aria-describedby={`${linkId}-hint`}
             className="ui-input h-8 min-w-0 flex-1 rounded-chip px-3 text-sm disabled:opacity-50"
@@ -281,7 +292,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
             {linkActive ? "Update" : "Link"}
           </Button>
           {linkActive ? (
-            <Button size="sm" variant="quiet" disabled={marksOff} onClick={() => removeLink(editor)}>
+            <Button size="sm" variant="quiet" disabled={marksOff} onClick={() => removeLink(marks)}>
               Remove
             </Button>
           ) : null}
@@ -295,7 +306,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
       <section {...palette?.attrs}>
         <h3 className="ui-caps mb-2 px-1">Text color</h3>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Text color">
-          <button type="button" disabled={marksOff} onMouseDown={(e) => e.preventDefault()} onClick={() => setTextColor(editor, null)} aria-pressed={!editor.isActive("textColor")} className={`ui-chip ui-raised text-ink disabled:opacity-40 ${!editor.isActive("textColor") ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}>
+          <button type="button" disabled={marksOff} onMouseDown={(e) => e.preventDefault()} onClick={() => setTextColor(marks, null)} aria-pressed={!marks.isActive("textColor")} className={`ui-chip ui-raised text-ink disabled:opacity-40 ${!marks.isActive("textColor") ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}>
             Default
           </button>
           {TEXT_COLORS.map((c) => (
@@ -304,11 +315,11 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               type="button"
               disabled={marksOff}
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setTextColor(editor, c)}
+              onClick={() => setTextColor(marks, c)}
               aria-label={`Text color: ${colorName(palette, c)}`}
-              aria-pressed={editor.isActive("textColor", { value: c })}
+              aria-pressed={marks.isActive("textColor", { value: c })}
               title={colorName(palette, c)}
-              className={`grid h-8 w-8 place-items-center rounded-chip ui-raised disabled:opacity-40 ${editor.isActive("textColor", { value: c }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
+              className={`grid h-8 w-8 place-items-center rounded-chip ui-raised disabled:opacity-40 ${marks.isActive("textColor", { value: c }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
             >
               <span className={`fb-color-${c} text-sm font-semibold`} aria-hidden>
                 A
@@ -320,7 +331,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
       <section {...palette?.attrs}>
         <h3 className="ui-caps mb-2 px-1">Highlight</h3>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Highlight">
-          <button type="button" disabled={marksOff} onMouseDown={(e) => e.preventDefault()} onClick={() => setHighlight(editor, null)} aria-pressed={!editor.isActive("highlight")} className={`ui-chip ui-raised text-ink disabled:opacity-40 ${!editor.isActive("highlight") ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}>
+          <button type="button" disabled={marksOff} onMouseDown={(e) => e.preventDefault()} onClick={() => setHighlight(marks, null)} aria-pressed={!marks.isActive("highlight")} className={`ui-chip ui-raised text-ink disabled:opacity-40 ${!marks.isActive("highlight") ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}>
             Default
           </button>
           {HIGHLIGHT_COLORS.map((h) => (
@@ -329,11 +340,11 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               type="button"
               disabled={marksOff}
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setHighlight(editor, h)}
+              onClick={() => setHighlight(marks, h)}
               aria-label={`Highlight: ${colorName(palette, h)}`}
-              aria-pressed={editor.isActive("highlight", { value: h })}
+              aria-pressed={marks.isActive("highlight", { value: h })}
               title={colorName(palette, h)}
-              className={`grid h-8 w-8 place-items-center rounded-chip ui-raised disabled:opacity-40 ${editor.isActive("highlight", { value: h }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
+              className={`grid h-8 w-8 place-items-center rounded-chip ui-raised disabled:opacity-40 ${marks.isActive("highlight", { value: h }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
             >
               <span className={`fb-hl-${h} fb-swatch h-4 w-4 rounded-tiny`} aria-hidden />
             </button>

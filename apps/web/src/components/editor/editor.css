@@ -663,3 +663,30 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 :root[data-iphone] .fb-editor .fb-hscroll { margin-inline: -28px; padding-inline: 28px; scroll-padding-inline: 28px; }
 @media (orientation: landscape) { :root[data-iphone] .fb-editor .fb-hscroll { margin-inline: -4rem; padding-inline: 4rem; scroll-padding-inline: 4rem; } }
 :root[data-iphone] .fb-editor .fb-hscroll::-webkit-scrollbar { display: none; }
+
+/* Tables (table/TableView.tsx): cells with formatted text and formulas, formats, totals, a saved view. */
+.fb-table td, .fb-table th { position: relative; }
+.fb-table .fb-cell { min-height: calc(1.5em + 0.75rem); overflow-wrap: anywhere; white-space: pre-wrap; cursor: text; }
+.fb-table .fb-cell:focus { outline: none; }
+.fb-cell-host .fb-cell-editor { white-space: pre-wrap; overflow-wrap: anywhere; outline: none; caret-color: var(--color-ink); }
+.fb-cell-host .fb-cell-line { margin: 0; min-height: 1.5em; }
+.fb-table .fb-cell-active { background: color-mix(in oklab, var(--color-accent-soft) 45%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-accent) 55%, transparent); }
+.fb-table .fb-cell-number:not(.fb-cell-active) .fb-cell { text-align: right; font-variant-numeric: tabular-nums; }
+td.fb-cell-number, th.fb-cell-number { text-align: right; font-variant-numeric: tabular-nums; }
+.fb-cell-error { color: var(--color-danger); font-weight: 550; cursor: help; }
+.fb-table .fb-cell-has-error::after { content: ""; position: absolute; top: 0; right: 0; border-style: solid; border-width: 0 7px 7px 0; border-color: transparent var(--color-danger) transparent transparent; pointer-events: none; }
+.fb-table .fb-table-totals > td { border-top: 2px solid var(--color-line-strong); font-weight: 600; }
+.fb-table .fb-table-totals.with-tools .fb-cell, .fb-table .fb-table-totals.with-tools .fb-cell-editor { padding-left: 1.75rem; }
+.fb-table .fb-total-pick { position: absolute; left: 4px; top: 6px; }
+.fb-table .fb-cell-changed { background: color-mix(in oklab, var(--color-ember-soft) 80%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-ember) 45%, transparent); }
+.fb-table-label { min-width: 0.9rem; font: 600 10.5px/1 var(--font-sans); letter-spacing: 0.02em; color: var(--color-ink-faint); text-align: center; transition: color 140ms; }
+.fb-table-label.is-on { color: var(--color-heading); }
+.fb-table.fb-table-formula tbody .fb-cell { cursor: cell; }
+.fb-table-hint { margin: 0.1rem 0 0.4rem; font-size: 12px; color: var(--color-ink-muted); }
+.fb-table-viewbar { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.4rem; font-size: 12px; color: var(--color-ink-muted); }
+.fb-table-viewbar button { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.15rem 0.45rem; border-radius: var(--radius-chip); color: var(--color-ink-muted); }
+.fb-table-viewbar button:hover { background: var(--color-accent-soft); color: var(--color-heading); }
+.fb-table-ai { margin: 0.25rem 0 0.75rem; border-radius: var(--radius-panel); padding: 0.4rem; }
+.fb-table-ai-head { display: flex; align-items: center; gap: 0.5rem; padding: 0.15rem 0.15rem 0.35rem 0.4rem; }
+.fb-table-ai-body { padding: 0.15rem 0.4rem 0.35rem; }
+@media (pointer: coarse) { .fb-table .fb-cell, .fb-cell-host .fb-cell-editor { min-height: 44px; } }

@@ -2,6 +2,7 @@
 // Markdown-style markers so lists, to-dos, headings, quotes and code still read as such, and paste back
 // into Folevi as the same blocks.
 import type { Node as PMNode, Slice } from "@tiptap/pm/model";
+import { blocksToMarkdown, tableDisplayRows, tableOptionsFromProps, type InlineNode } from "@folevi/editor-schema";
 
 /** A line's text, with mentions, dates and page links written out and line breaks kept. */
 function lineText(node: PMNode): string {
@@ -84,7 +85,8 @@ export function sliceToText(slice: Slice): string {
         lines.push(String(node.attrs.url ?? ""));
         break;
       case "table": {
-        const rows = (node.attrs.rows as unknown[][] | null) ?? [];
+        // Formulas as their results and numbers in their columns' formats.
+        const rows = Array.isArray(node.attrs.rows) ? tableDisplayRows(node.attrs.rows as InlineNode[][][], tableOptionsFromProps(node.attrs)) : [];
         // The "| --- |" row after the first makes it a Markdown table, so it pastes back as a table.
         rows.forEach((row, i) => {
           lines.push(`| ${row.map(cellText).join(" | ")} |`);
@@ -95,6 +97,16 @@ export function sliceToText(slice: Slice): string {
       case "formula":
         lines.push(String(node.attrs.latex ?? ""));
         break;
+      case "flowchart":
+      case "mindmap":
+      case "stickies":
+      case "chart":
+      case "wireframe": {
+        // A picture block as text: a mind map as a list, a chart as a table… (the Markdown export's).
+        const md = blocksToMarkdown([{ id: "x", type, parentId: null, rank: "a", schemaVersion: 1, text: [], props: { data: node.attrs.data ?? "", height: node.attrs.height ?? 0 } }]).trim();
+        if (md) lines.push(...md.split("\n").map((l) => (l ? indent + l : l)));
+        break;
+      }
       default:
         if (node.isTextblock) lines.push(depth ? `${indent}${lineText(node)}` : lineText(node));
     }

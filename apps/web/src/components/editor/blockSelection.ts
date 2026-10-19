@@ -7,7 +7,10 @@
 import { Extension, type Editor } from "@tiptap/core";
 import { NodeSelection, Plugin, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
-import { blockAt, changeDepth, deleteBlocks, duplicateBlocks, moveBlock, normalizeDepths } from "./commands";
+import type { Node as PMNode } from "@tiptap/pm/model";
+import { sliceHasBlocks, writeBlocksToEvent } from "./blockClipboard";
+import { deleteVisibleRange } from "./plugins";
+import { blockAt, changeDepth, deleteBlocks, duplicateBlocks, moveBlock, normalizeDepths, subtreeRange } from "./commands";
 import { blockSelectionKey, blockSelectionRange, hiddenIndices, indexOfBlock, neighbourIndex, syncDomSelection, type BlockSelection, type BlockSelectionMeta } from "./blockSelectionState";
 
 export { blockSelectionKey, blockSelectionRange };
@@ -49,28 +52,37 @@ function placeCaret(state: EditorState, index: number, atEnd: boolean, tr: Trans
   tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(pos, tr.doc.content.size)), atEnd ? -1 : 1));
 }
 
-/** The selected blocks plus anything hidden inside a collapsed toggle at the end of the selection. */
+/** The selected blocks with everything nested under them (shown or folded inside a toggle). */
 function copiedRange(state: EditorState): { from: number; to: number } | null {
   const range = blockSelectionRange(state);
   if (!range) return null;
-  const hidden = hiddenIndices(state);
   let to = range.to;
-  while (hidden.has(to + 1)) to++;
+  for (let i = range.from; i <= range.to; i++) to = Math.max(to, i + subtreeRange(state, i).count - 1);
   return { from: range.from, to };
 }
 
 function copySelection(view: EditorView, event: ClipboardEvent): boolean {
   const range = copiedRange(view.state);
   if (!range || !event.clipboardData) return false;
-  const start = blockAt(view.state, range.from)!.pos;
-  const last = blockAt(view.state, range.to)!;
-  const slice = view.state.doc.slice(start, last.pos + last.node.nodeSize);
-  const { dom, text } = view.serializeForClipboard(slice);
-  event.preventDefault();
-  event.clipboardData.clearData();
-  event.clipboardData.setData("text/html", dom.innerHTML);
-  event.clipboardData.setData("text/plain", text);
-  return true;
+  const nodes: PMNode[] = [];
+  for (let i = range.from; i <= range.to; i++) nodes.push(view.state.doc.child(i));
+  // The blocks themselves (blockClipboard.ts), so a paste in any note recreates them exactly.
+  return writeBlocksToEvent(view, event, nodes);
+}
+
+/**
+ * Copying a selection without selected blocks: a selected block (a table, an image, a chart) or text that
+ * runs over a whole block goes on the clipboard as blocks too. Text within lines is ProseMirror's own copy.
+ */
+function copyBlocksInSelection(view: EditorView, event: ClipboardEvent): boolean {
+  const { selection } = view.state;
+  if (selection.empty) return false;
+  if (selection instanceof NodeSelection && selection.$from.depth === 0 && selection.node.isBlock) return writeBlocksToEvent(view, event, [selection.node]);
+  const slice = selection.content();
+  if (!sliceHasBlocks(slice)) return false;
+  const nodes: PMNode[] = [];
+  slice.content.forEach((n) => nodes.push(n));
+  return writeBlocksToEvent(view, event, nodes);
 }
 
 const MODIFIER_KEYS = new Set(["Shift", "Meta", "Control", "Alt", "CapsLock", "Fn"]);
@@ -290,6 +302,20 @@ export const BlockSelectionExtension = Extension.create({
             const tr = state.tr.setMeta(blockSelectionKey, { clear: true } satisfies BlockSelectionMeta).setMeta("addToHistory", false);
             view.dispatch(tr);
             return false;
+          },
+        },
+      }),
+      // Whole blocks in an ordinary selection (a selected table, image or chart) copy as blocks too.
+      new Plugin({
+        props: {
+          handleDOMEvents: {
+            copy: (view, event) => !blockSelectionKey.getState(view.state) && copyBlocksInSelection(view, event),
+            cut: (view, event) => {
+              if (blockSelectionKey.getState(view.state) || !editor.isEditable || !copyBlocksInSelection(view, event)) return false;
+              // As Backspace would: a collapsed toggle's hidden lines stay (plugins.ts).
+              view.dispatch((deleteVisibleRange(view.state) ?? view.state.tr.deleteSelection()).scrollIntoView().setMeta("uiEvent", "cut"));
+              return true;
+            },
           },
         },
       }),

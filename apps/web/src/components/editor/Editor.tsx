@@ -13,6 +13,8 @@ import { decorationsKey, type DecorationInputs, type TriggerState } from "./plug
 import { editorExtensions } from "./editorExtensions";
 import { blocksToDoc, docToBlocks, localChanges } from "./convert";
 import { clipboardBlocks, insertPastedBlocks, pasteIntoCode, prepareForPaste } from "./paste";
+import { readBlockClip } from "./blockClipboard";
+import { usePastedFiles } from "./pastedFiles";
 import { remoteTransaction } from "./remoteApply";
 import { PageLinkStatusWatcher } from "./PageLinkStatusWatcher";
 import { pasteAddress } from "./autolink";
@@ -155,6 +157,13 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
           event.preventDefault();
           return true;
         }
+        // Blocks copied in a Folevi note (they may come with a picture of themselves for other apps).
+        const clip = readBlockClip(event.clipboardData);
+        if (clip) {
+          event.preventDefault();
+          if (editable) insertPastedBlocks(view, clip.blocks);
+          return true;
+        }
         const files = [...(event.clipboardData?.files ?? [])];
         if (files.length && editable) {
           event.preventDefault();
@@ -238,6 +247,9 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   useEffect(() => {
     if (editor) onEditorReady?.(editor);
   }, [editor, onEditorReady]);
+
+  // Images, files and recordings pasted from another note get their own file rows here (pastedFiles.ts).
+  usePastedFiles(editor, documentId);
 
   useEffect(() => {
     editor?.setEditable(editable);

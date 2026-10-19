@@ -1868,6 +1868,12 @@ export default defineSchema({
      * page's owner). Unset on older files (the uploader). lib/entitlements.ts.
      */
     chargedTo: v.optional(v.id("profiles")),
+    /**
+     * A pasted block's file in another note of the same Personal or workspace (files.shareForPaste): this row
+     * shares another row's stored bytes and doesn't count toward storage. When the row that counts goes, one
+     * of these takes the count over (lib/fileCopies.ts releaseNoteFile), so the bytes are always counted once.
+     */
+    sharesBlob: v.optional(v.boolean()),
     filename: v.string(),
     mimeType: v.string(),
     size: v.number(),

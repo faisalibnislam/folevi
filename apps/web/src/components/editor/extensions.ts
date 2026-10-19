@@ -498,7 +498,7 @@ const tableRows = {
     }
   },
 };
-export const TableBlock = atom("table", { rows: tableRows, headerRow: r("headerRow", "boolean", true) });
+export const TableBlock = atom("table", { rows: tableRows, headerRow: r("headerRow", "boolean", true), totalsRow: r("totalsRow", "boolean"), columns: r("columns", "json"), view: r("view", "json") });
 export const PageBlock = atom("page", { documentId: r("documentId"), display: r("display", "string", "card"), titleCache: r("titleCache"), iconCache: r("iconCache") });
 export const BookmarkBlock = atom("bookmark", { url: r("url"), title: r("title"), description: r("description"), siteName: r("siteName"), image: r("image"), icon: r("icon") });
 export const EmbedBlock = atom("embed", { url: r("url"), provider: r("provider") });

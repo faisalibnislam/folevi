@@ -42,7 +42,7 @@ export const NODE_PROPS: Record<string, string[]> = {
   image: ["fileId", "url", "alt", "caption", "width", "naturalWidth", "naturalHeight"],
   file: ["fileId", "name", "size", "mimeType"],
   audio: ["fileId", "name", "size", "mimeType", "duration"],
-  table: ["rows", "headerRow"],
+  table: ["rows", "headerRow", "totalsRow", "columns", "view"],
   page: ["documentId", "display", "titleCache", "iconCache"],
   bookmark: ["url", "title", "description", "siteName", "image", "icon"],
   embed: ["url", "provider"],

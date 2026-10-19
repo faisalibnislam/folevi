@@ -207,7 +207,7 @@ export interface ChartNumber {
  * "12 €". Null when it isn't one. Thousands separators and decimal commas are told apart by their place.
  */
 export function parseChartNumber(raw: string): ChartNumber | null {
-  let s = raw.trim().replace(/[   ]/g, " ");
+  let s = raw.trim().replace(/[\u00A0\u2009\u202F]/g, " ");
   if (!s || s.length > 60) return null;
   let negative = false;
   const paren = /^\((.*)\)$/.exec(s);
@@ -374,7 +374,7 @@ export const chartText = (chart: ChartData): string =>
  * lines are skipped; every row is as long as the longest.
  */
 export function parseDelimited(text: string, maxRows = CHART_LIMITS.maxRows + 1, maxColumns = CHART_LIMITS.maxColumns): string[][] {
-  const src = text.replace(/^﻿/, "").replace(/\r\n?/g, "\n");
+  const src = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
   const first = src.split("\n", 1)[0] ?? "";
   const count = (ch: string) => first.split(ch).length - 1;
   const delim = count("\t") ? "\t" : count(";") > count(",") ? ";" : ",";

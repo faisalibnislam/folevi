@@ -4,6 +4,10 @@ import { flattenTree } from "./tree";
 import { sanitizeHref } from "./richtext";
 import { whiteboardToSvg } from "./whiteboard";
 import { flowchartToSvg } from "./flowchartSvg";
+import { mindmapToHtml, parseMindmap } from "./mindmap";
+import { parseStickies, stickiesToHtml } from "./stickies";
+import { chartToHtml, parseChart } from "./chart";
+import { parseWireframe, wireframeToHtml } from "./wireframe";
 import { EMBED_PROVIDER_LABEL } from "./embeds";
 import type { EmbedProvider } from "./generated/schema";
 
@@ -103,6 +107,7 @@ mark{background:#F7E7A6;color:inherit}
 .formula{margin:16px 0;text-align:center;overflow-x:auto}.formula pre{text-align:left}
 .whiteboard svg{width:100%;height:auto;border:1px solid var(--line);border-radius:10px}
 .flowchart{margin:16px 0}.flowchart svg{display:block;max-width:100%;height:auto;margin:0 auto}
+.mindmap,.chart,.stickies,.wireframe{margin:16px 0}.chart figcaption{font-weight:600;margin-bottom:8px}
 hr.divider-extralight{border:0;border-top:2px dotted var(--line);opacity:.7}hr.divider-light{border:0;border-top:1px dotted var(--muted)}
 hr.divider-regular{border:0;border-top:1px solid var(--line)}hr.divider-strong{border:0;border-top:3px solid var(--ink)}
 @media print{body{background:#fff;color:#000}main{margin:0 auto}.page-break{border:0;margin:0}}
@@ -206,6 +211,18 @@ export function blocksToHtml(
       case "flowchart":
         if (String(p.data ?? ""))
           parts.push(`<figure class="flowchart">${flowchartToSvg(String(p.data))}</figure>`);
+        break;
+      case "mindmap":
+        parts.push(mindmapToHtml(parseMindmap(String(p.data ?? "")), escapeHtml));
+        break;
+      case "chart":
+        parts.push(chartToHtml(parseChart(String(p.data ?? "")), escapeHtml));
+        break;
+      case "stickies":
+        parts.push(stickiesToHtml(parseStickies(String(p.data ?? "")), escapeHtml));
+        break;
+      case "wireframe":
+        parts.push(wireframeToHtml(parseWireframe(String(p.data ?? "")), escapeHtml));
         break;
       case "code":
         parts.push(

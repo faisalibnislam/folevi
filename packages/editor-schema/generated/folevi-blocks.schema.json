@@ -391,6 +391,70 @@
       "if": {
         "properties": {
           "type": {
+            "const": "mindmap"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/MindmapProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "stickies"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/StickiesProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "chart"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/ChartProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "wireframe"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/WireframeProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
             "const": "audio"
           }
         }
@@ -1313,6 +1377,70 @@
       "additionalProperties": false
     },
     "FlowchartProps": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "data",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "MindmapProps": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "data",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "StickiesProps": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "data",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "ChartProps": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "data",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "WireframeProps": {
       "type": "object",
       "properties": {
         "data": {

@@ -5,6 +5,10 @@ import { isValidRank } from "./rank";
 import { plainText } from "./richtext";
 import { whiteboardDataIssue } from "./whiteboard";
 import { flowchartDataIssue } from "./flowchart";
+import { mindmapDataIssue, parseMindmap, serializeMindmap } from "./mindmap";
+import { parseStickies, serializeStickies, stickiesDataIssue } from "./stickies";
+import { chartDataIssue, parseChart, serializeChart } from "./chart";
+import { parseWireframe, serializeWireframe, wireframeDataIssue } from "./wireframe";
 import { embedFor } from "./embeds";
 
 export interface ValidationIssue {
@@ -199,13 +203,9 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
   if (issues.length === 0 && plainText(b.text as never).length > LIMITS.maxTextLength) {
     issues.push({ path: "text", code: "too_long", message: "text too long" });
   }
-  // Whiteboard drawings and flowcharts may be larger than other strings (see LIMITS.max*DataLength).
-  const stringLimits: Record<string, number> =
-    b.type === "whiteboard"
-      ? { data: LIMITS.maxWhiteboardDataLength }
-      : b.type === "flowchart"
-        ? { data: LIMITS.maxFlowchartDataLength }
-        : {};
+  // Drawings, flowcharts and the other visual blocks may be larger than other strings (LIMITS.max*DataLength).
+  const visual = DATA_BLOCKS[b.type as string];
+  const stringLimits: Record<string, number> = visual ? { data: visual.maxData } : {};
   checkFields(b.props as Record<string, unknown>, def.props, "props", issues, [], stringLimits);
   if (issues.length) return issues;
 
@@ -284,38 +284,26 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
       if ((p.latex as string).length > LIMITS.maxFormulaLength)
         issues.push({ path: "props.latex", code: "too_long", message: "formula too long" });
       break;
-    case "whiteboard": {
-      const issue = whiteboardDataIssue(p.data as string);
+    case "whiteboard":
+    case "flowchart":
+    case "mindmap":
+    case "stickies":
+    case "chart":
+    case "wireframe": {
+      const v = DATA_BLOCKS[b.type]!;
+      const issue = v.issue(p.data as string);
       if (issue)
         issues.push({
           path: "props.data",
-          code: issue === "drawing too large" ? "too_long" : "shape",
+          code: issue === v.tooLarge ? "too_long" : "shape",
           message: issue,
         });
       const h = p.height as number;
-      if (h < LIMITS.minWhiteboardHeight || h > LIMITS.maxWhiteboardHeight) {
+      if (h < v.minHeight || h > v.maxHeight) {
         issues.push({
           path: "props.height",
           code: "range",
-          message: `height must be between ${LIMITS.minWhiteboardHeight} and ${LIMITS.maxWhiteboardHeight}`,
-        });
-      }
-      break;
-    }
-    case "flowchart": {
-      const issue = flowchartDataIssue(p.data as string);
-      if (issue)
-        issues.push({
-          path: "props.data",
-          code: issue === "flowchart too large" ? "too_long" : "shape",
-          message: issue,
-        });
-      const h = p.height as number;
-      if (h < LIMITS.minFlowchartHeight || h > LIMITS.maxFlowchartHeight) {
-        issues.push({
-          path: "props.height",
-          code: "range",
-          message: `height must be between ${LIMITS.minFlowchartHeight} and ${LIMITS.maxFlowchartHeight}`,
+          message: `height must be between ${v.minHeight} and ${v.maxHeight}`,
         });
       }
       break;
@@ -336,6 +324,20 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
   }
   return issues;
 }
+
+/**
+ * Blocks whose content is a JSON string in `props.data` with a `height`: each type's size limit, its strict
+ * data check (and the message it gives for data over the limit), its height range and, for repairWireBlock,
+ * a forgiving rewrite that keeps whatever of the content is usable.
+ */
+const DATA_BLOCKS: Record<string, { maxData: number; issue: (data: string) => string | null; tooLarge: string; minHeight: number; maxHeight: number; rewrite?: (data: string) => string }> = {
+  whiteboard: { maxData: LIMITS.maxWhiteboardDataLength, issue: whiteboardDataIssue, tooLarge: "drawing too large", minHeight: LIMITS.minWhiteboardHeight, maxHeight: LIMITS.maxWhiteboardHeight },
+  flowchart: { maxData: LIMITS.maxFlowchartDataLength, issue: flowchartDataIssue, tooLarge: "flowchart too large", minHeight: LIMITS.minFlowchartHeight, maxHeight: LIMITS.maxFlowchartHeight },
+  mindmap: { maxData: LIMITS.maxMindmapDataLength, issue: mindmapDataIssue, tooLarge: "mind map too large", minHeight: LIMITS.minMindmapHeight, maxHeight: LIMITS.maxMindmapHeight, rewrite: (d) => serializeMindmap(parseMindmap(d)) },
+  stickies: { maxData: LIMITS.maxStickiesDataLength, issue: stickiesDataIssue, tooLarge: "sticky notes too large", minHeight: LIMITS.minStickiesHeight, maxHeight: LIMITS.maxStickiesHeight, rewrite: (d) => serializeStickies(parseStickies(d)) },
+  chart: { maxData: LIMITS.maxChartDataLength, issue: chartDataIssue, tooLarge: "chart too large", minHeight: LIMITS.minChartHeight, maxHeight: LIMITS.maxChartHeight, rewrite: (d) => serializeChart(parseChart(d)) },
+  wireframe: { maxData: LIMITS.maxWireframeDataLength, issue: wireframeDataIssue, tooLarge: "wireframe too large", minHeight: LIMITS.minWireframeHeight, maxHeight: LIMITS.maxWireframeHeight, rewrite: (d) => serializeWireframe(parseWireframe(d)) },
+};
 
 /** Values for required props when the editor's are missing or wrong (repairWireBlock). */
 const REQUIRED_DEFAULTS: Record<string, Record<string, unknown>> = {
@@ -426,6 +428,16 @@ export function repairWireBlock(block: WireBlock): { block: WireBlock; repaired:
     if (props.dueTime !== undefined && (props.dueDate === undefined || !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(props.dueTime)))) delete props.dueTime;
   }
   if (block.type === "code" && !(CODE_LANGUAGES as readonly string[]).includes(props.language as string)) props.language = "plaintext";
+  // A mind map, board, chart or wireframe the server would refuse keeps what's usable of it (an idea whose
+  // parent is gone hangs from the centre, a link to nowhere goes), and its height comes into range. One over
+  // the size limit is left as it is: rewriting it would lose all of it.
+  const visual = DATA_BLOCKS[block.type];
+  if (visual?.rewrite) {
+    const issue = typeof props.data === "string" ? visual.issue(props.data) : "missing";
+    if (issue && issue !== visual.tooLarge) props.data = visual.rewrite(typeof props.data === "string" ? props.data : "");
+    const h = Number(props.height);
+    props.height = Math.round(Math.min(visual.maxHeight, Math.max(visual.minHeight, Number.isFinite(h) ? h : visual.minHeight)));
+  }
   let next: WireBlock = { ...block, props, text: text as never };
   // Whatever props are still wrong: an optional one goes, a required one takes its default.
   for (let pass = 0; pass < 2; pass++) {

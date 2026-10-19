@@ -6,6 +6,9 @@ import {
   DEFAULT_DOCUMENT_STYLE,
   documentSearchText,
   flattenTree,
+  mindmapRoot,
+  parseChart,
+  parseMindmap,
   plainText,
   projectTask,
   rankBetween,
@@ -248,6 +251,9 @@ export function buildPreview(entries: { block: WireBlock; depth: number }[]): Pr
     if (b.type === "embed") line.x = String(p.url ?? "").slice(0, 80);
     if (b.type === "page") line.x = String(p.titleCache ?? "Page").slice(0, 80);
     if (b.type === "formula") line.x = String((p as { latex?: string }).latex ?? "").slice(0, 160);
+    // A mind map shows its central idea, a chart its title.
+    if (b.type === "mindmap") line.x = (mindmapRoot(parseMindmap(String((p as { data?: string }).data ?? "")))?.text ?? "").slice(0, 80);
+    if (b.type === "chart") line.x = parseChart(String((p as { data?: string }).data ?? "")).title.slice(0, 80);
     out.push(line);
   }
   return out;

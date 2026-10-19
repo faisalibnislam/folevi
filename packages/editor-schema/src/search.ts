@@ -2,6 +2,10 @@ import type { WireBlock } from "./types";
 import { plainText } from "./richtext";
 import type { InlineNode } from "./generated/schema";
 import { flowchartText, parseFlowchart } from "./flowchart";
+import { mindmapText, parseMindmap } from "./mindmap";
+import { parseStickies, stickiesText } from "./stickies";
+import { chartText, parseChart } from "./chart";
+import { parseWireframe, wireframeText } from "./wireframe";
 
 /** Lowercase, strip diacritics, collapse whitespace. Used on both indexing and query sides. */
 export function normalizeForSearch(value: string): string {
@@ -47,6 +51,18 @@ export function blockSearchText(block: Pick<WireBlock, "type" | "text" | "props"
       break;
     case "flowchart":
       parts.push(flowchartText(parseFlowchart(String(p.data ?? ""))));
+      break;
+    case "mindmap":
+      parts.push(mindmapText(parseMindmap(String(p.data ?? ""))));
+      break;
+    case "stickies":
+      parts.push(stickiesText(parseStickies(String(p.data ?? ""))));
+      break;
+    case "chart":
+      parts.push(chartText(parseChart(String(p.data ?? ""))));
+      break;
+    case "wireframe":
+      parts.push(wireframeText(parseWireframe(String(p.data ?? ""))));
       break;
   }
   return parts.filter(Boolean).join(" ");

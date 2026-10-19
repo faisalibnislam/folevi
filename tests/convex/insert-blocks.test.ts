@@ -70,6 +70,45 @@ describe("Insert panel blocks on the server", () => {
     expect((await upsert(a, doc, block("flowchart", { data, height: 50 }, "E"))).status).toBe("rejected");
   });
 
+  test("mind maps, sticky notes, charts and wireframes sync, are searchable and read back as text through the API", async () => {
+    const t = setup();
+    const a = await person(t, "visuals@example.com");
+    const doc = await newDoc(a, "Visuals");
+    const mindmap = JSON.stringify({ v: 1, nodes: [{ id: "r", parent: null, text: "Launch plan" }, { id: "a", parent: "r", text: "Marketing" }] });
+    const stickies = JSON.stringify({ v: 1, notes: [{ id: "s1", x: 0, y: 0, text: "Faster sign up", tags: ["ux"] }] });
+    const chart = JSON.stringify({ v: 1, kind: "bar", title: "Sign ups", columns: ["Month", "Web"], rows: [["Jan", 120]] });
+    const wireframe = JSON.stringify({ v: 1, screens: [{ id: "s1", name: "Sign in", frame: "phone", x: 0, y: 0, w: 390, h: 844 }], items: [{ id: "i1", screen: "s1", kind: "button", x: 24, y: 700, w: 342, h: 48, text: "Continue" }] });
+    for (const [i, b] of [
+      block("mindmap", { data: mindmap, height: 440 }, "A"),
+      block("stickies", { data: stickies, height: 440 }, "B"),
+      block("chart", { data: chart, height: 360 }, "C"),
+      block("wireframe", { data: wireframe, height: 520 }, "D"),
+      block("mindmap", { data: "", height: 440 }, "E"),
+    ].entries()) {
+      expect((await upsert(a, doc, b)).status, `block ${i}`).toBe("applied");
+    }
+    // Two central ideas, a note with a script field, a ragged chart, a link to nowhere, a height out of range.
+    const twoRoots = JSON.stringify({ v: 1, nodes: [{ id: "a", parent: null, text: "A" }, { id: "b", parent: null, text: "B" }] });
+    expect((await upsert(a, doc, block("mindmap", { data: twoRoots, height: 440 }, "F"))).status).toBe("rejected");
+    const script = JSON.stringify({ v: 1, notes: [{ id: "s1", x: 0, y: 0, text: "x", onclick: "x" }] });
+    expect((await upsert(a, doc, block("stickies", { data: script, height: 440 }, "G"))).status).toBe("rejected");
+    const ragged = JSON.stringify({ v: 1, kind: "bar", columns: ["a", "b"], rows: [["x"]] });
+    expect((await upsert(a, doc, block("chart", { data: ragged, height: 360 }, "H"))).status).toBe("rejected");
+    const nowhere = JSON.stringify({ ...JSON.parse(wireframe), links: [{ id: "l1", from: "i1", to: "gone" }] });
+    expect((await upsert(a, doc, block("wireframe", { data: nowhere, height: 520 }, "J"))).status).toBe("rejected");
+    expect((await upsert(a, doc, block("chart", { data: chart, height: 20 }, "K"))).status).toBe("rejected");
+
+    const found = await a.as.query(api.search.documents, { scope: a.scope, query: "Marketing", limit: 5 });
+    expect(found.map((d: { id: string }) => d.id)).toContain(doc);
+    const { token } = await a.as.mutation(api.apiTokens.create, { name: "Script", scopes: ["notes:read"], personal: true, workspaceIds: [], expiresInDays: 90 });
+    const res = await t.fetch(`/api/v1/notes/${doc}`, { headers: { authorization: `Bearer ${token}` } });
+    const markdown = ((await res.json()) as { markdown: string }).markdown;
+    expect(markdown).toContain("- Launch plan\n  - Marketing\n");
+    expect(markdown).toContain("- Faster sign up (ux)");
+    expect(markdown).toContain("| Month | Web |\n| --- | --- |\n| Jan | 120 |");
+    expect(markdown).toContain("- Button: Continue");
+  });
+
   test("collections can start as a gallery or a kanban board", async () => {
     const t = setup();
     const a = await person(t, "views@example.com");

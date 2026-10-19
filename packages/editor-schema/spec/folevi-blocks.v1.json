@@ -247,6 +247,26 @@
       "webOnly": true,
       "props": { "data": "string", "height": "number" }
     },
+    "mindmap": {
+      "text": false,
+      "webOnly": true,
+      "props": { "data": "string", "height": "number" }
+    },
+    "stickies": {
+      "text": false,
+      "webOnly": true,
+      "props": { "data": "string", "height": "number" }
+    },
+    "chart": {
+      "text": false,
+      "webOnly": true,
+      "props": { "data": "string", "height": "number" }
+    },
+    "wireframe": {
+      "text": false,
+      "webOnly": true,
+      "props": { "data": "string", "height": "number" }
+    },
     "audio": {
       "text": false,
       "webOnly": true,
@@ -273,7 +293,19 @@
     "maxWhiteboardHeight": 2400,
     "maxFlowchartDataLength": 200000,
     "minFlowchartHeight": 200,
-    "maxFlowchartHeight": 1600
+    "maxFlowchartHeight": 1600,
+    "maxMindmapDataLength": 200000,
+    "minMindmapHeight": 200,
+    "maxMindmapHeight": 1600,
+    "maxStickiesDataLength": 200000,
+    "minStickiesHeight": 200,
+    "maxStickiesHeight": 1600,
+    "maxChartDataLength": 200000,
+    "minChartHeight": 160,
+    "maxChartHeight": 1200,
+    "maxWireframeDataLength": 300000,
+    "minWireframeHeight": 240,
+    "maxWireframeHeight": 1600
   },
   "codeLanguages": [
     "plaintext",

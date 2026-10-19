@@ -8,6 +8,10 @@ import { normalizeInline, plainText, sanitizeHref, splitInline, textLength } fro
 import { whiteboardToSvg } from "./whiteboard";
 import { parseFlowchart } from "./flowchart";
 import { flowchartToMermaid } from "./flowchartMermaid";
+import { mindmapToMarkdown, parseMindmap } from "./mindmap";
+import { parseStickies, stickiesToMarkdown } from "./stickies";
+import { chartToMarkdown, parseChart } from "./chart";
+import { parseWireframe, wireframeToMarkdown } from "./wireframe";
 import { EMBED_PROVIDER_LABEL } from "./embeds";
 import type { EmbedProvider } from "./generated/schema";
 
@@ -199,6 +203,20 @@ export function blocksToMarkdown(
         if (fc.nodes.length) lines.push("```mermaid", flowchartToMermaid(fc), "```", "");
         break;
       }
+      // Readable text, so the content survives anywhere: a mind map as a nested list, a chart as a table,
+      // sticky notes and wireframe screens as labelled lists.
+      case "mindmap":
+        lines.push(...mindmapToMarkdown(parseMindmap(String(p.data ?? "")), escapeMd, indent), "");
+        break;
+      case "chart":
+        lines.push(...chartToMarkdown(parseChart(String(p.data ?? "")), escapeMd, indent));
+        break;
+      case "stickies":
+        lines.push(...stickiesToMarkdown(parseStickies(String(p.data ?? "")), escapeMd, indent));
+        break;
+      case "wireframe":
+        lines.push(...wireframeToMarkdown(parseWireframe(String(p.data ?? "")), escapeMd, indent));
+        break;
       case "code": {
         const code = String(p.code ?? "");
         const fence = code.includes("```") ? "~~~~" : "```";

@@ -321,8 +321,8 @@
 /* Atoms */
 .fb-atom { margin-left: calc(var(--depth, 0) * 1.6em); border-radius: var(--radius-chip); outline-offset: 3px; }
 .fb-atom-selected, .ProseMirror-selectednode > .fb-atom { outline: 2px solid var(--doc-accent); }
-/* Flowcharts and whiteboards have rounder boxes (14px): the outline follows them. */
-.fb-atom.fb-flowchart, .fb-atom.fb-whiteboard { border-radius: var(--radius-container); }
+/* Flowcharts, whiteboards and the other visual blocks have rounder boxes (14px): the outline follows them. */
+.fb-atom:is(.fb-flowchart, .fb-whiteboard, .fb-mindmap, .fb-stickies, .fb-chart, .fb-wireframe) { border-radius: var(--radius-container); }
 
 /* Inline */
 .fb-link { color: var(--color-accent); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--color-accent) 35%, transparent); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }

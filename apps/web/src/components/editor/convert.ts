@@ -4,7 +4,11 @@
 import type { JSONContent } from "@tiptap/core";
 import type { Node as PMNode, Schema } from "@tiptap/pm/model";
 import {
+  CHART_DEFAULT_HEIGHT,
+  MINDMAP_DEFAULT_HEIGHT,
   SCHEMA_VERSION,
+  STICKIES_DEFAULT_HEIGHT,
+  WIREFRAME_DEFAULT_HEIGHT,
   assignTreePositions,
   canonicalJson,
   flattenTree,
@@ -46,6 +50,18 @@ export const NODE_PROPS: Record<string, string[]> = {
   formula: ["latex"],
   whiteboard: ["data", "height"],
   flowchart: ["data", "height"],
+  mindmap: ["data", "height"],
+  stickies: ["data", "height"],
+  chart: ["data", "height"],
+  wireframe: ["data", "height"],
+};
+
+/** Default heights of the visual blocks whose content is JSON in `data` (a node missing one gets this). */
+const DATA_BLOCK_HEIGHT: Record<string, number> = {
+  mindmap: MINDMAP_DEFAULT_HEIGHT,
+  stickies: STICKIES_DEFAULT_HEIGHT,
+  chart: CHART_DEFAULT_HEIGHT,
+  wireframe: WIREFRAME_DEFAULT_HEIGHT,
 };
 
 function markToPM(m: Mark): { type: string; attrs?: Record<string, unknown> } {
@@ -199,6 +215,11 @@ export function nodeToFlat(node: PMNode): FlatBlock | null {
   if (type === "flowchart") {
     props.data = String(props.data ?? "");
     props.height = Math.round(Number(props.height ?? 440)) || 440;
+  }
+  const dataHeight = DATA_BLOCK_HEIGHT[type];
+  if (dataHeight) {
+    props.data = String(props.data ?? "");
+    props.height = Math.round(Number(props.height ?? dataHeight)) || dataHeight;
   }
   return { id, depth, type, schemaVersion: SCHEMA_VERSION, text: TEXT_NODES.has(type) ? pmInline(node) : [], props };
 }

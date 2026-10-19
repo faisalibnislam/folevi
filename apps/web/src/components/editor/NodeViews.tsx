@@ -26,7 +26,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { plainText, sanitizeHref, type InlineNode, type SyncState } from "@folevi/editor-schema";
+import { CHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, plainText, sanitizeHref, type InlineNode, type SyncState } from "@folevi/editor-schema";
 import { webAddressIn } from "./autolink";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -40,13 +40,17 @@ import {
   CollectionBlock,
   EmbedBlock,
   FileBlock,
+  ChartBlock,
   FlowchartBlock,
   FormulaBlock,
   ImageBlock,
+  MindmapBlock,
   PageBlock,
+  StickiesBlock,
   TableBlock,
   UnknownBlock,
   WhiteboardBlock,
+  WireframeBlock,
 } from "./extensions";
 import { FormulaView } from "./FormulaView";
 import { useEditorEnvironment } from "./environment";
@@ -56,10 +60,15 @@ import { AudioPlayer } from "./AudioPlayer";
 import { EmbedFrame } from "./EmbedFrame";
 import { TranscribeButton, useCanTranscribe, useTranscription } from "@/components/ai/AudioTranscribe";
 
-// The whiteboard, flowchart and collection blocks are large and most notes have none: each loads the first
-// time a note shows one, in a placeholder of the block's own height so nothing moves when it arrives.
+// The whiteboard, flowchart, the other visual blocks and collections are large and most notes have none: each
+// loads the first time a note shows one, in a placeholder of the block's own height so nothing moves when it
+// arrives.
 const WhiteboardView = lazy(() => import("./WhiteboardView").then((m) => ({ default: m.WhiteboardView })));
 const FlowchartView = lazy(() => import("./flowchart/FlowchartView").then((m) => ({ default: m.FlowchartView })));
+const MindmapView = lazy(() => import("./mindmap/MindmapView").then((m) => ({ default: m.MindmapView })));
+const StickiesView = lazy(() => import("./stickies/StickiesView").then((m) => ({ default: m.StickiesView })));
+const ChartView = lazy(() => import("./chart/ChartView").then((m) => ({ default: m.ChartView })));
+const WireframeView = lazy(() => import("./wireframe/WireframeView").then((m) => ({ default: m.WireframeView })));
 const CollectionEmbed = lazy(() => import("./CollectionEmbed").then((m) => ({ default: m.CollectionEmbed })));
 
 function LoadingBlock({ height }: { height: number }) {
@@ -85,6 +94,21 @@ function LazyFlowchart(props: ReactNodeViewProps) {
     </Suspense>
   );
 }
+
+/** A lazily loaded visual block, with a placeholder of its own height (and the card's height handle) meanwhile. */
+function lazyVisual(View: React.ComponentType<ReactNodeViewProps>, fallbackHeight: number) {
+  return function LazyVisual(props: ReactNodeViewProps) {
+    return (
+      <Suspense fallback={<LoadingBlock height={(Number(props.node.attrs.height) || fallbackHeight) + 14} />}>
+        <View {...props} />
+      </Suspense>
+    );
+  };
+}
+const LazyMindmap = lazyVisual(MindmapView, MINDMAP_DEFAULT_HEIGHT);
+const LazyStickies = lazyVisual(StickiesView, STICKIES_DEFAULT_HEIGHT);
+const LazyChart = lazyVisual(ChartView, CHART_DEFAULT_HEIGHT);
+const LazyWireframe = lazyVisual(WireframeView, WIREFRAME_DEFAULT_HEIGHT);
 
 function useNow(bucketMs: number): number {
   const [now, setNow] = useState(() => Math.floor(Date.now() / bucketMs) * bucketMs);
@@ -1186,4 +1210,9 @@ export const NODE_VIEW_EXTENSIONS = [
   FlowchartBlock.extend({
     addNodeView: () => blockView(LazyFlowchart, () => true),
   }),
+  // Mind maps, sticky notes, charts and wireframes handle their own input too (canvas/CanvasCard.tsx).
+  MindmapBlock.extend({ addNodeView: () => blockView(LazyMindmap, () => true) }),
+  StickiesBlock.extend({ addNodeView: () => blockView(LazyStickies, () => true) }),
+  ChartBlock.extend({ addNodeView: () => blockView(LazyChart, () => true) }),
+  WireframeBlock.extend({ addNodeView: () => blockView(LazyWireframe, () => true) }),
 ];

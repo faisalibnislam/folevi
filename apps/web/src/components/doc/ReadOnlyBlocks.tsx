@@ -11,6 +11,18 @@ import { FormulaRender, MermaidDiagram, WhiteboardStatic } from "@/components/ed
 import { AudioPlayer } from "@/components/editor/AudioPlayer";
 import { EmbedFrame } from "@/components/editor/EmbedFrame";
 import { FlowchartStatic } from "@/components/editor/flowchart/render";
+import { MindmapStatic } from "@/components/editor/mindmap/render";
+import { StickiesStatic } from "@/components/editor/stickies/render";
+import { ChartStatic } from "@/components/editor/chart/render";
+import { WireframeStatic } from "@/components/editor/wireframe/render";
+
+/** The visual blocks drawn read-only: each block's own static picture under its name. */
+const VISUALS: Record<string, { name: string; Static: (p: { data: string; height?: number }) => React.ReactNode }> = {
+  mindmap: { name: "Mind map", Static: MindmapStatic },
+  stickies: { name: "Sticky notes", Static: StickiesStatic },
+  chart: { name: "Chart", Static: ChartStatic },
+  wireframe: { name: "Wireframe", Static: WireframeStatic },
+};
 import { ReadOnlyBookmark, ReadOnlyFile } from "./ReadOnlyCards";
 
 function Inline({ nodes }: { nodes: InlineNode[] }) {
@@ -349,6 +361,18 @@ export function ReadOnlyBlocks({
                   <WhiteboardStatic data={String(p.data ?? "")} height={Number(p.height)} />
                 </div>
               );
+            case "mindmap":
+            case "stickies":
+            case "chart":
+            case "wireframe": {
+              const { name, Static } = VISUALS[block.type]!;
+              return (
+                <figure key={block.id} className="fb-readonly-visual" aria-label={name} style={{ marginLeft: `${depth * 1.6}em` }}>
+                  <figcaption className="fb-readonly-visual-name">{name}</figcaption>
+                  <Static data={String(p.data ?? "")} height={Number(p.height)} />
+                </figure>
+              );
+            }
             case "flowchart":
               return (
                 <div

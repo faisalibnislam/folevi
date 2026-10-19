@@ -2,7 +2,7 @@
 // flat, with `id` (stable block id) and `depth` (nesting) attributes. See convert.ts for the mapping.
 import { Extension, Mark, Node, mergeAttributes, type Attributes, type Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
-import { normalizeLanguage, sanitizeHref, describeRepeat, repeatRule } from "@folevi/editor-schema";
+import { CHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, normalizeLanguage, sanitizeHref, describeRepeat, repeatRule } from "@folevi/editor-schema";
 import { codeBlockNodeView, mermaidFocusPlugin } from "./codeView";
 import { haptic } from "@/lib/nativeApp";
 
@@ -503,7 +503,8 @@ export const PageBlock = atom("page", { documentId: r("documentId"), display: r(
 export const BookmarkBlock = atom("bookmark", { url: r("url"), title: r("title"), description: r("description"), siteName: r("siteName"), image: r("image"), icon: r("icon") });
 export const EmbedBlock = atom("embed", { url: r("url"), provider: r("provider") });
 export const CollectionBlock = atom("collection", { collectionId: r("collectionId"), viewId: r("viewId") });
-// Formula, whiteboard and flowchart content is written to data-* attributes so copy & paste inside Folevi keeps it.
+// Formula, whiteboard, flowchart and the other visual blocks' content is written to data-* attributes so copy &
+// paste inside Folevi keeps it.
 const kept = (name: string, fallback: string | number) => ({
   default: fallback,
   parseHTML: (el: HTMLElement) => {
@@ -515,6 +516,10 @@ const kept = (name: string, fallback: string | number) => ({
 export const FormulaBlock = atom("formula", { latex: kept("latex", "") });
 export const WhiteboardBlock = atom("whiteboard", { data: kept("data", ""), height: kept("height", 420) });
 export const FlowchartBlock = atom("flowchart", { data: kept("data", ""), height: kept("height", 440) });
+export const MindmapBlock = atom("mindmap", { data: kept("data", ""), height: kept("height", MINDMAP_DEFAULT_HEIGHT) });
+export const StickiesBlock = atom("stickies", { data: kept("data", ""), height: kept("height", STICKIES_DEFAULT_HEIGHT) });
+export const ChartBlock = atom("chart", { data: kept("data", ""), height: kept("height", CHART_DEFAULT_HEIGHT) });
+export const WireframeBlock = atom("wireframe", { data: kept("data", ""), height: kept("height", WIREFRAME_DEFAULT_HEIGHT) });
 export const UnknownBlock = atom("unknownBlock", { wire: { default: null, rendered: false } });
 
 // ------------------------------------------------------------------ inline atoms
@@ -649,6 +654,10 @@ export const ALL_NODES = [
   FormulaBlock,
   WhiteboardBlock,
   FlowchartBlock,
+  MindmapBlock,
+  StickiesBlock,
+  ChartBlock,
+  WireframeBlock,
   UnknownBlock,
   Mention,
   DateMention,

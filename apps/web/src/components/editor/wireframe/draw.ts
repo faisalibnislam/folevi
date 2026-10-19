@@ -208,7 +208,8 @@ export class Pen {
     return this.raw(`<path class="${this.cls({ ...p, f: "f-none" })}"${this.strokeAttrs(p)} stroke-linecap="round" d="${d}"/>`);
   }
 
-  rect(x: number, y: number, w: number, h: number, r: number, p: Paint) {
+  rect(x: number, y: number, w: number, h: number, r: number, paint: Paint) {
+    let p = paint;
     r = Math.max(0, Math.min(r, w / 2, h / 2));
     if (!this.sketch) return this.raw(`<rect class="${this.cls(p)}"${this.strokeAttrs(p)} x="${n1(x)}" y="${n1(y)}" width="${n1(w)}" height="${n1(h)}"${r ? ` rx="${n1(r)}"` : ""}/>`);
     // Sketch: the fill a little off the outline, then the outline drawn with the pen.
@@ -217,6 +218,8 @@ export class Pen {
       const oy = this.j(1.2);
       this.raw(`<rect class="${p.f}" x="${n1(x + ox)}" y="${n1(y + oy)}" width="${n1(w)}" height="${n1(h)}"${r ? ` rx="${n1(r)}"` : ""}/>`);
     }
+    // Dark fills get a pen edge of their own colour, so they look drawn too.
+    if (!p.s && (p.f === "f-strong" || p.f === "f-tip" || p.f === "f-ink") && w > 12 && h > 6) p = { ...p, s: p.f.replace("f-", "s-"), sw: 1.2 };
     if (!p.s) return this;
     let d: string;
     if (r >= 6 || (w < 14 && h < 14)) {

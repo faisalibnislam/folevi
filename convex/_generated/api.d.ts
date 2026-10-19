@@ -154,6 +154,7 @@ import type * as lib_templates from "../lib/templates.js";
 import type * as lib_themes from "../lib/themes.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as lib_webhooks from "../lib/webhooks.js";
+import type * as lib_wireframeAi from "../lib/wireframeAi.js";
 import type * as maintenance from "../maintenance.js";
 import type * as mcp from "../mcp.js";
 import type * as mcpServer from "../mcpServer.js";
@@ -184,6 +185,7 @@ import type * as themes from "../themes.js";
 import type * as unsplash from "../unsplash.js";
 import type * as users from "../users.js";
 import type * as webhooks from "../webhooks.js";
+import type * as wireframeAi from "../wireframeAi.js";
 import type * as workspaceBilling from "../workspaceBilling.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -340,6 +342,7 @@ declare const fullApi: ApiFromModules<{
   "lib/themes": typeof lib_themes;
   "lib/validators": typeof lib_validators;
   "lib/webhooks": typeof lib_webhooks;
+  "lib/wireframeAi": typeof lib_wireframeAi;
   maintenance: typeof maintenance;
   mcp: typeof mcp;
   mcpServer: typeof mcpServer;
@@ -370,6 +373,7 @@ declare const fullApi: ApiFromModules<{
   unsplash: typeof unsplash;
   users: typeof users;
   webhooks: typeof webhooks;
+  wireframeAi: typeof wireframeAi;
   workspaceBilling: typeof workspaceBilling;
   workspaces: typeof workspaces;
 }>;

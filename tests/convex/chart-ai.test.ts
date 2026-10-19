@@ -2,9 +2,10 @@
 // checked before it leaves the server and the usual gates, and the collections a chart can read
 // (convex/charts.ts). Gemini is a stubbed `fetch`.
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { normalizeChart, parseChart } from "@folevi/editor-schema";
+import { CHART_MARKDOWN_HINT, SCHEMA_VERSION, markdownToBlocks, normalizeChart, parseChart, type WireBlock } from "@folevi/editor-schema";
 import { api } from "../../convex/_generated/api";
 import { chartFacts, chartForPrompt, parseChartDraft, parseChartPatch } from "../../convex/lib/chartAi";
+import { TOOL_BY_NAME } from "../../convex/lib/mcp/tools";
 import { person, setup, teamWorkspace, ulid } from "./helpers";
 
 type P = Awaited<ReturnType<typeof person>>;
@@ -133,5 +134,31 @@ describe("collections a chart can read", () => {
     const { scope } = await teamWorkspace(a, "Studio");
     expect(await a.as.query(api.charts.collections, { scope })).toEqual([]);
     await expect(b.as.query(api.charts.collections, { scope })).rejects.toThrow();
+  });
+});
+
+describe("charts in notes", () => {
+  const block = (data: string, height = 360): WireBlock => ({ id: ulid(), type: "chart", parentId: null, rank: "V", schemaVersion: SCHEMA_VERSION, text: [], props: { data, height } });
+  const upsert = async (p: P, documentId: string, b: WireBlock) =>
+    (await p.as.mutation(api.sync.push, { scope: p.scope, deviceId: "device-chart", ops: [{ opId: ulid(), kind: "block.upsert", documentId, block: b, baseRevision: null, fields: ["content", "position"] }] }))[0]!;
+
+  test("a chart with its options and a live source syncs; one the server can't trust is refused", async () => {
+    const t = setup();
+    const a = await person(t, "chart-sync@example.com");
+    const doc = await newDoc(a, "Charts");
+    const full = JSON.stringify({ v: 1, kind: "line", title: "Sign ups", columns: ["Month", "Web"], rows: [["Jan", 120], ["Feb", "$150"]], source: { type: "table", blockId: ulid() }, colors: { Web: "teal" }, xLabel: "Month", yMin: 0, legend: "bottom", values: true, sort: "label" });
+    expect((await upsert(a, doc, block(full))).status).toBe("applied");
+    expect((await upsert(a, doc, block(JSON.stringify({ v: 1, kind: "bar", columns: ["a"], rows: [], colors: { a: "url(javascript:x)" } })))).status).toBe("rejected");
+    expect((await upsert(a, doc, block(JSON.stringify({ v: 1, kind: "bar", columns: ["a"], rows: [], source: { type: "web", url: "https://x.example" } })))).status).toBe("rejected");
+  });
+
+  test("Foli AI's agent and the MCP tools are told how to put a chart in a note, and the Markdown becomes one", () => {
+    const create = TOOL_BY_NAME.get("create_note")!.inputSchema as { properties: { markdown: { description: string } } };
+    const append = TOOL_BY_NAME.get("append_to_note")!.inputSchema as { properties: { markdown: { description: string } } };
+    expect(create.properties.markdown.description).toContain(CHART_MARKDOWN_HINT);
+    expect(append.properties.markdown.description).toContain(CHART_MARKDOWN_HINT);
+    const md = ["```chart", JSON.stringify({ kind: "bar", title: "Costs", columns: ["Item", "Cost"], rows: [["Rent", 1200], ["Food", 400]] }), "```"].join("\n");
+    const { blocks } = markdownToBlocks(md, { titleFromHeading: false });
+    expect(blocks.map((b) => b.type)).toEqual(["chart"]);
   });
 });

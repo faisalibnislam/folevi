@@ -449,6 +449,10 @@ export function chartToHtml(chart: ChartData, esc: (s: string) => string): strin
   return `<figure class="chart">${chart.title ? `<figcaption>${esc(chart.title)}</figcaption>` : ""}<table>${head}${body}</table>${chart.takeaway ? `<p>${esc(chart.takeaway)}</p>` : ""}</figure>`;
 }
 
+/** How Markdown makes a chart (Foli AI's agent and the MCP tools tell models with this). */
+export const CHART_MARKDOWN_HINT =
+  'A ```chart fenced block holding JSON makes a chart: {"kind":"bar|stackedBar|line|area|pie|donut|scatter|bubble|org|venn","title":"…","takeaway":"one short sentence","columns":["Month","Sales"],"rows":[["Jan",120],["Feb",150]]}. The first column names each row and every other column is a series of plain numbers (units go in the column name); org charts use columns Name, Reports to, Role; Venn diagrams use Set, Size with overlap rows named "A & B". Only numbers you were given or found.';
+
 /**
  * A chart block's data from a ```chart fence in Markdown (Foli AI, MCP and pasted Markdown): JSON with at
  * least the columns, read forgivingly. Null when it isn't a usable chart (the fence stays code).

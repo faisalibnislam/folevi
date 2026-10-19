@@ -8,7 +8,10 @@
 //             ⌘/ctrl-scroll or pinch to zoom · drag a side handle to connect (drop on empty space for a
 //             new connected shape) · double-click to write in a shape or on a connector, or to add one
 //   Keyboard  Tab through shapes · Enter edit · arrows nudge (⇧ more) · ⌫ delete · ⌘D duplicate
-//             ⌘A select all · ⌘Z / ⇧⌘Z undo and redo · +/− zoom · ⇧1 fit · Esc back to the note
+//             ⌘A select all · ⌘Z / ⇧⌘Z undo and redo · +/− zoom · ⇧1 fit · ⇧⌘F full canvas · Esc back to the note
+//
+// Full canvas: the card lifts into the top layer (a popover, so nothing in the page clips it) and fills the
+// window; the chart is fitted again to its new size. Esc or the zoom bar's button goes back.
 //
 // While the canvas has focus it owns ⌘Z (its own history, useFlowDoc); outside it the editor's undo
 // reverts whole flowchart edits, and the canvas follows.
@@ -150,10 +153,13 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
 
   const wrapRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [width, setWidth] = useState(0);
   const [liveHeight, setLiveHeight] = useState<number | null>(null);
-  const height = liveHeight ?? savedHeight;
+  const [full, setFull] = useState(false);
+  const [fullHeight, setFullHeight] = useState(0);
+  const height = full && fullHeight ? fullHeight : (liveHeight ?? savedHeight);
   const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -184,10 +190,40 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
     const el = wrapRef.current;
     if (!el) return;
     setWidth(el.clientWidth);
-    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    const ro = new ResizeObserver(() => {
+      setWidth(el.clientWidth);
+      setFullHeight(el.clientHeight);
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // Full canvas: shown in the top layer while on, and fitted again once it has its new size (and on the way back).
+  const refit = useRef(false);
+  const toggleFull = useCallback((on?: boolean) => {
+    setFull((was) => {
+      const next = on ?? !was;
+      if (next !== was) refit.current = true;
+      return next;
+    });
+  }, []);
+  useLayoutEffect(() => {
+    const card = cardRef.current;
+    if (!card || !full) return;
+    try {
+      if (!card.matches(":popover-open")) card.showPopover();
+    } catch {
+      /* Without the Popover API it's still fixed over the page. */
+    }
+    wrapRef.current?.focus({ preventScroll: true });
+    return () => {
+      try {
+        if (card.matches(":popover-open")) card.hidePopover();
+      } catch {
+        /* Already gone. */
+      }
+    };
+  }, [full]);
 
   const fitView = useCallback(
     (fc: FlowchartData = docRef.current, w = wrapRef.current?.clientWidth ?? 0, h = height) => {
@@ -212,6 +248,16 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
     fitted.current = true;
     fitView(docRef.current, width);
   }, [width, fitView, docRef]);
+  useEffect(() => {
+    if (!refit.current) return;
+    // A frame later, once the card has its new size: measured directly (the observer's numbers may lag).
+    const id = requestAnimationFrame(() => {
+      refit.current = false;
+      const el = wrapRef.current;
+      if (el) fitView(docRef.current, el.clientWidth, full ? el.clientHeight : liveHeight ?? savedHeight);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [full, fitView, docRef, liveHeight, savedHeight]);
 
   const toWorld = useCallback((clientX: number, clientY: number): Pt => {
     const r = svgRef.current!.getBoundingClientRect();
@@ -647,6 +693,10 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
       setSel({ nodes: docRef.current.nodes.map((n) => n.id), edges: docRef.current.edges.map((x) => x.id) });
       return done();
     }
+    if (mod && e.shiftKey && key === "f") {
+      toggleFull();
+      return done();
+    }
     if (mod) return;
     if (e.key === "Delete" || e.key === "Backspace") {
       removeSelection();
@@ -655,6 +705,7 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
     if (e.key === "Escape") {
       if (aiOpen) setAiOpen(false);
       else if (s.nodes.length || s.edges.length) setSel(NO_SELECTION);
+      else if (full) toggleFull(false);
       else exitToNote();
       return done();
     }
@@ -829,11 +880,11 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
   const nodeCount = doc.nodes.length;
   return (
     <NodeViewWrapper className={`fb-atom fb-flowchart ${selected ? "fb-atom-selected" : ""}`} aria-label="Flowchart">
-      <div contentEditable={false} className="fc-card" data-active={active || undefined}>
+      <div ref={cardRef} contentEditable={false} className="fc-card" data-active={active || undefined} data-full={full || undefined} popover={full ? "manual" : undefined} aria-label={full ? "Flowchart, full canvas" : undefined}>
         <div
           ref={wrapRef}
           className="fc-canvas"
-          style={{ height }}
+          style={{ height: full ? undefined : height }}
           tabIndex={0}
           role="application"
           aria-roledescription="flowchart editor"
@@ -958,7 +1009,7 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
             onAi={aiOn ? () => setAiOpen((o) => !o) : null}
             aiOpen={aiOpen}
           />
-          <ZoomBar zoom={k} onZoomIn={() => zoomBy(1.2)} onZoomOut={() => zoomBy(1 / 1.2)} onFit={() => fitView()} />
+          <ZoomBar zoom={k} onZoomIn={() => zoomBy(1.2)} onZoomOut={() => zoomBy(1 / 1.2)} onFit={() => fitView()} full={full} onFull={() => toggleFull()} />
           {showBar && barStyle && selNodes.length && !selEdges.length ? (
             <NodeBar
               style={barStyle}

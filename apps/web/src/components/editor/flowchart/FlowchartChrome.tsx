@@ -2,7 +2,7 @@
 
 // The flowchart canvas's floating controls: the shape toolbar, zoom, and the bar that edits the current
 // selection (colour, shape, line style, arrows). Neutral glass chrome; only the swatches carry colour.
-import { Copy, Maximize, Minus, Plus, Redo2, Trash2, Undo2, Type, WandSparkles } from "lucide-react";
+import { Copy, Expand, Maximize, Minus, Plus, Redo2, Shrink, Trash2, Undo2, Type, WandSparkles } from "lucide-react";
 import {
   FLOWCHART_COLORS,
   FLOWCHART_COLOR_LABEL,
@@ -82,7 +82,7 @@ export function MainToolbar({
   );
 }
 
-export function ZoomBar({ zoom, onZoomIn, onZoomOut, onFit }: { zoom: number; onZoomIn: () => void; onZoomOut: () => void; onFit: () => void }) {
+export function ZoomBar({ zoom, onZoomIn, onZoomOut, onFit, full, onFull }: { zoom: number; onZoomIn: () => void; onZoomOut: () => void; onFit: () => void; full: boolean; onFull: () => void }) {
   return (
     <div className="fc-bar fc-bar-zoom" role="toolbar" aria-label="Zoom" onPointerDown={(e) => e.stopPropagation()}>
       <button type="button" className="fc-btn" aria-label="Zoom out" title="Zoom out (−)" onClick={onZoomOut}>
@@ -96,6 +96,9 @@ export function ZoomBar({ zoom, onZoomIn, onZoomOut, onFit }: { zoom: number; on
       </button>
       <button type="button" className="fc-btn" aria-label="Fit to content" title="Fit to content (⇧1)" onClick={onFit}>
         <Maximize size={14} aria-hidden />
+      </button>
+      <button type="button" className="fc-btn" aria-pressed={full} aria-label={full ? "Exit full canvas" : "Full canvas"} title={full ? "Exit full canvas (Esc)" : "Full canvas (⇧⌘F)"} onClick={onFull}>
+        {full ? <Shrink size={14} aria-hidden /> : <Expand size={14} aria-hidden />}
       </button>
     </div>
   );

@@ -336,3 +336,112 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
   }
   return issues;
 }
+
+/** Values for required props when the editor's are missing or wrong (repairWireBlock). */
+const REQUIRED_DEFAULTS: Record<string, Record<string, unknown>> = {
+  heading: { level: 2 },
+  todo: { checked: false },
+  toggle: { collapsed: false },
+  callout: { tone: "note" },
+  code: { language: "plaintext", code: "" },
+  table: { headerRow: true },
+  image: { alt: "", caption: "" },
+  formula: { latex: "" },
+};
+
+const SAFE_HREF = /^(https?:|mailto:|folevi:|\/|#)/i;
+
+/** A link the server would refuse, made safe: a bare web address gets https://; anything else, null (unlinked). */
+export function safeHref(href: unknown): string | null {
+  if (typeof href !== "string") return null;
+  const h = href.trim();
+  if (SAFE_HREF.test(h)) return h;
+  if (/^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+([/?#:][^\s]*)?$/i.test(h)) return `https://${h}`;
+  return null;
+}
+
+/** Inline content made valid: unknown or broken marks dropped (the text stays), links made safe. */
+function repairInline(nodes: unknown): InlineLike[] {
+  if (!Array.isArray(nodes)) return [];
+  const enums = SPEC.enums as Record<string, { values: readonly (string | number)[] }>;
+  const out: InlineLike[] = [];
+  for (const raw of nodes) {
+    if (!isPlainObject(raw)) continue;
+    const n = raw as Record<string, unknown>;
+    if (n.type === "mention" && typeof n.userId === "string" && typeof n.label === "string") out.push({ type: "mention", userId: n.userId, label: n.label });
+    else if (n.type === "date" && typeof n.date === "string") out.push({ type: "date", date: n.date });
+    else if (n.type === "pageLink" && typeof n.documentId === "string" && typeof n.label === "string") out.push({ type: "pageLink", documentId: n.documentId, label: n.label });
+    else if (n.type === "text" || typeof n.text === "string" || typeof n.label === "string") {
+      const text = typeof n.text === "string" ? n.text : typeof n.label === "string" ? n.label : "";
+      const marks: Record<string, unknown>[] = [];
+      for (const m of Array.isArray(n.marks) ? n.marks : []) {
+        if (!isPlainObject(m)) continue;
+        const mk = m as Record<string, unknown>;
+        if (["bold", "italic", "underline", "strike", "code"].includes(mk.type as string)) marks.push({ type: mk.type });
+        else if (mk.type === "link") {
+          const href = safeHref(mk.href);
+          if (href) marks.push({ type: "link", href });
+        } else if (mk.type === "color" && enums.TextColor!.values.includes(mk.value as string)) marks.push({ type: "color", value: mk.value });
+        else if (mk.type === "highlight" && enums.HighlightColor!.values.includes(mk.value as string)) marks.push({ type: "highlight", value: mk.value });
+      }
+      out.push(marks.length ? { type: "text", text, marks } : { type: "text", text });
+    }
+  }
+  return out;
+}
+
+type InlineLike = Record<string, unknown> & { type: string };
+
+/**
+ * A block the server would refuse, repaired where that keeps what the person wrote: uneven table rows padded
+ * with empty cells, broken marks and unsafe links in text and table cells fixed or dropped (the words stay),
+ * required props given their defaults and wrong optional or unknown props removed, a heading level or an
+ * image width brought into range. Returns the block as is when it was already valid, and the issues still
+ * left (for example text over the length limit, which can't be repaired without losing words).
+ */
+export function repairWireBlock(block: WireBlock): { block: WireBlock; repaired: boolean; issues: ValidationIssue[] } {
+  let issues = validateWireBlock(block);
+  if (!issues.length) return { block, repaired: false, issues };
+  const def = (SPEC.blocks as Record<string, { text: boolean; props: Record<string, string> }>)[block.type];
+  // An unknown type (from a newer app) is stored as it is: nothing here may change it.
+  if (!def) return { block, repaired: false, issues };
+  const props: Record<string, unknown> = { ...(isPlainObject(block.props) ? block.props : {}) };
+  let text = def.text ? repairInline(block.text) : [];
+  if (def.text && plainText(text as never).length > LIMITS.maxTextLength) text = block.text as never;
+  for (const key of Object.keys(props)) if (!(key in def.props)) delete props[key];
+  if (block.type === "heading") props.level = Math.min(3, Math.max(1, Math.round(Number(props.level) || 2)));
+  if (block.type === "todo" || block.type === "toggle") {
+    const key = block.type === "todo" ? "checked" : "collapsed";
+    props[key] = props[key] === true;
+  }
+  if (block.type === "table" && Array.isArray(props.rows)) {
+    const rows = (props.rows as unknown[]).filter(Array.isArray).map((r) => (r as unknown[]).map((cell) => repairInline(cell)));
+    const width = Math.max(1, ...rows.map((r) => r.length));
+    props.rows = (rows.length ? rows : [[[]]]).map((r) => [...r, ...Array.from({ length: width - r.length }, () => [])]);
+    props.headerRow = props.headerRow !== false;
+  }
+  if (block.type === "image" && typeof props.width === "number") props.width = Math.min(1, Math.max(0.2, props.width));
+  if (block.type === "todo") {
+    if (props.dueDate !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(String(props.dueDate))) delete props.dueDate;
+    if (props.dueTime !== undefined && (props.dueDate === undefined || !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(props.dueTime)))) delete props.dueTime;
+  }
+  if (block.type === "code" && !(CODE_LANGUAGES as readonly string[]).includes(props.language as string)) props.language = "plaintext";
+  let next: WireBlock = { ...block, props, text: text as never };
+  // Whatever props are still wrong: an optional one goes, a required one takes its default.
+  for (let pass = 0; pass < 2; pass++) {
+    const left = validateWireBlock(next);
+    const fixes = left.filter((i) => i.path.startsWith("props."));
+    if (!fixes.length) break;
+    const p = { ...(next.props as Record<string, unknown>) };
+    for (const issue of fixes) {
+      const key = issue.path.slice("props.".length).split(/[.[]/)[0]!;
+      const spec = def.props[key];
+      if (!spec) delete p[key];
+      else if (spec.endsWith("?")) delete p[key];
+      else if (REQUIRED_DEFAULTS[block.type]?.[key] !== undefined) p[key] = REQUIRED_DEFAULTS[block.type]![key];
+    }
+    next = { ...next, props: p };
+  }
+  issues = validateWireBlock(next);
+  return { block: next, repaired: JSON.stringify(next) !== JSON.stringify(block), issues };
+}

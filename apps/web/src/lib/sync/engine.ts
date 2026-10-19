@@ -2,7 +2,7 @@
 
 import type { ConvexReactClient } from "convex/react";
 import { ConvexError } from "convex/values";
-import { canonicalJson, flattenTree, randomNoteEmoji, sync, type ChangedField, type ConflictRecord, type OpResult, type SyncOp, type SyncState, type WireBlock, type WireDocumentCreate, type WireDocumentPatch, type WireScope, ulid } from "@folevi/editor-schema";
+import { canonicalJson, flattenTree, randomNoteEmoji, repairWireBlock, sync, type ChangedField, type ConflictRecord, type OpResult, type SyncOp, type SyncState, type WireBlock, type WireDocumentCreate, type WireDocumentPatch, type WireScope, ulid } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { ACCOUNT_SYNC_KEY, SYNC_BLOCK_PREFIX, localDb, syncBlockKeys } from "./db";
 
@@ -298,7 +298,11 @@ export class SyncEngine {
    * `baseRevision`: the version the edit was made on, when the caller knows it's older than the one held (see
    * `unshownRevision`).
    */
-  upsertBlock(documentId: string, block: WireBlock, fields: ChangedField[], baseRevision?: number | null) {
+  upsertBlock(documentId: string, edited: WireBlock, fields: ChangedField[], baseRevision?: number | null) {
+    // What the server would refuse (and the edit be lost) is repaired first, keeping the words: a link like
+    // www.example.com, an uneven table row, a wrong colour (editor-schema repairWireBlock).
+    const { block, repaired, issues } = repairWireBlock(edited);
+    if (repaired || issues.length) console.warn("[folevi] block repaired before saving", { blockId: block.id, type: block.type, issues: issues.map((i) => `${i.path}: ${i.message}`) });
     // A block with an open conflict keeps the person's own version in the conflict (that's what the editor
     // shows, and what "Keep mine" saves) until they choose: queuing it would overwrite the other version unseen.
     const at = this.openConflictIndex(block.id);

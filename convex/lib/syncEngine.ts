@@ -358,6 +358,8 @@ export class SyncEngine {
     delete incoming.revision;
     const issues = validateWireBlock(incoming);
     if (issues.length) {
+      // Logged without the block's content: which rule, on which type, so a refusal can be traced.
+      console.warn("block refused", { type: incoming.type, issues: issues.slice(0, 3).map((i) => `${i.path}: ${i.message}`) });
       const existingRow = await this.findBlock(incoming.id);
       return {
         opId: op.opId,

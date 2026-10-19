@@ -76,7 +76,8 @@ export interface SyncState {
   pending: SyncOp[];
   inflight: SyncOp[];
   conflicts: ConflictRecord[];
-  errors: { opId: string; code: string }[];
+  /** Changes the server refused: its code, and its reason and the block's type (for the person, and for us). */
+  errors: { opId: string; code: string; message?: string; blockType?: string }[];
   uploads: UploadRecord[];
   connection: "online" | "offline";
   authRequired: boolean;
@@ -406,7 +407,12 @@ export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
         break;
       }
       case "rejected": {
-        state.errors.push({ opId: op.opId, code: result.error?.code ?? "rejected" });
+        state.errors.push({
+          opId: op.opId,
+          code: result.error?.code ?? "rejected",
+          ...(result.error?.message ? { message: result.error.message.slice(0, 200) } : {}),
+          ...(op.kind === "block.upsert" ? { blockType: op.block.type } : {}),
+        });
         if (!entity) break;
         if (result.block) {
           const b = clone(result.block);

@@ -726,7 +726,7 @@
           ]
         }
       ],
-      "expectedFinal": "{\"authRequired\":false,\"blocks\":{},\"conflicts\":[],\"connection\":\"online\",\"errors\":[{\"code\":\"invalid_block\",\"opId\":\"op1\"}],\"inflight\":[],\"pending\":[],\"status\":\"error\",\"uploads\":[]}"
+      "expectedFinal": "{\"authRequired\":false,\"blocks\":{},\"conflicts\":[],\"connection\":\"online\",\"errors\":[{\"blockType\":\"paragraph\",\"code\":\"invalid_block\",\"message\":\"text too long\",\"opId\":\"op1\"}],\"inflight\":[],\"pending\":[],\"status\":\"error\",\"uploads\":[]}"
     },
     {
       "name": "same_block_conflict",

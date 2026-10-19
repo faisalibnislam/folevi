@@ -155,7 +155,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
           {errors.length ? (
             <ul className="mt-2 list-disc pl-5 text-xs text-muted">
               {errors.slice(-3).map((e) => (
-                <li key={e.opId}>{describeError(e.code)}</li>
+                <li key={e.opId}>{describeError(e)}</li>
               ))}
             </ul>
           ) : null}
@@ -353,14 +353,24 @@ function useDocumentTitles(pending: PendingDocument[]): Map<string, string> {
 }
 
 /** Surfaced errors compare by what they say: the sync state copies them as it changes. */
-function sameErrors(a: readonly { opId: string; code: string }[], b: readonly { opId: string; code: string }[]): boolean {
+type SyncError = { opId: string; code: string; message?: string; blockType?: string };
+
+function sameErrors(a: readonly SyncError[], b: readonly SyncError[]): boolean {
   return a.length === b.length && a.every((e, i) => e.opId === b[i]!.opId && e.code === b[i]!.code);
 }
 
-function describeError(code: string): string {
+/** A block type as people call it ("a table", "a heading"). */
+const BLOCK_NAMES: Record<string, string> = { paragraph: "A paragraph", heading: "A heading", bulleted: "A bulleted item", numbered: "A numbered item", todo: "A task", toggle: "A toggle", quote: "A quote", callout: "A callout", code: "A code block", image: "An image", file: "A file", table: "A table", page: "A page link", bookmark: "A bookmark", embed: "An embed", formula: "A formula", whiteboard: "A whiteboard", flowchart: "A flowchart", audio: "A recording" };
+
+function describeError({ code, message, blockType }: SyncError): string {
   switch (code) {
-    case "invalid_block":
-      return "A block had content Folevi couldn't store.";
+    case "invalid_block": {
+      const what = (blockType && BLOCK_NAMES[blockType]) || "A block";
+      if (message?.includes("unsafe link")) return `${what} has a link Folevi can't store.`;
+      if (message?.includes("too long")) return `${what} is longer than Folevi can store. Split it into smaller parts.`;
+      if (message?.includes("nested too deeply")) return `${what} is nested too deeply. Move it out a level.`;
+      return `${what} had content Folevi couldn't store${message ? ` (${message})` : ""}.`;
+    }
     case "forbidden":
       return "You no longer have permission to edit this document.";
     case "not_found":

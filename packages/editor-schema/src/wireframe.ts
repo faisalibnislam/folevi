@@ -23,6 +23,7 @@ export type WireframeFrame = (typeof WIREFRAME_FRAMES)[number];
 export const WIREFRAME_COMPONENTS = [
   "text",
   "heading",
+  "paragraph",
   "button",
   "input",
   "search",
@@ -59,6 +60,7 @@ export type WireframeComponent = (typeof WIREFRAME_COMPONENTS)[number];
 export const WIREFRAME_COMPONENT_LABEL: Record<WireframeComponent, string> = {
   text: "Text",
   heading: "Heading",
+  paragraph: "Paragraph",
   button: "Button",
   input: "Input",
   search: "Search box",
@@ -120,8 +122,55 @@ export interface WireItem {
   y: number;
   w: number;
   h: number;
+  /** Its words; parts with several labels (tabs, menus, lists, tables) take one per line. */
   text: string;
+  /** A button's look (primary when left out). */
+  variant?: WireframeVariant;
+  /** A checkbox, radio button or toggle that's on. */
+  checked?: boolean;
+  /** How far a slider or progress bar is, 0 to 100. */
+  value?: number;
+  /** How many tabs, rows or items (tabs, table rows, list, menu, breadcrumbs, pagination, nav bar, sidebar). */
+  count?: number;
+  /** A table's columns. */
+  cols?: number;
 }
+
+export const WIREFRAME_VARIANTS = ["primary", "secondary"] as const;
+export type WireframeVariant = (typeof WIREFRAME_VARIANTS)[number];
+
+/** The options each part takes (anything else is refused on the server and dropped by the reader). */
+export type WireframeOption = "variant" | "checked" | "value" | "count" | "cols";
+export const WIREFRAME_OPTIONS: Partial<Record<WireframeComponent, readonly WireframeOption[]>> = {
+  button: ["variant"],
+  checkbox: ["checked"],
+  radio: ["checked"],
+  toggle: ["checked"],
+  slider: ["value"],
+  progress: ["value"],
+  tabs: ["count"],
+  table: ["count", "cols"],
+  list: ["count"],
+  menu: ["count"],
+  breadcrumbs: ["count"],
+  pagination: ["count"],
+  navBar: ["count"],
+  sidebar: ["count"],
+};
+
+/** What a part shows while an option is left out. */
+export const WIREFRAME_OPTION_DEFAULTS: Partial<Record<WireframeComponent, { count?: number; cols?: number; value?: number }>> = {
+  slider: { value: 50 },
+  progress: { value: 60 },
+  tabs: { count: 3 },
+  table: { count: 4, cols: 3 },
+  list: { count: 4 },
+  menu: { count: 4 },
+  breadcrumbs: { count: 3 },
+  pagination: { count: 5 },
+  navBar: { count: 3 },
+  sidebar: { count: 5 },
+};
 
 export interface WireLink {
   id: string;
@@ -149,12 +198,48 @@ export const WIREFRAME_LIMITS = {
   minScreen: 120,
   maxScreen: 4000,
   minItem: 4,
+  maxCount: 50,
+  maxCols: 12,
 } as const;
 
 export const WIREFRAME_DEFAULT_HEIGHT = 520;
 
 const SCREEN_KEYS = new Set(["id", "name", "frame", "x", "y", "w", "h"]);
-const ITEM_KEYS = new Set(["id", "screen", "kind", "x", "y", "w", "h", "text"]);
+const ITEM_KEYS = new Set(["id", "screen", "kind", "x", "y", "w", "h", "text", "variant", "checked", "value", "count", "cols"]);
+const OPTION_KEYS: readonly WireframeOption[] = ["variant", "checked", "value", "count", "cols"];
+
+/** Why an item's options aren't valid (an option its part doesn't take, or a value out of range), or null. */
+function optionIssue(it: Record<string, unknown>, kind: WireframeComponent): string | null {
+  const allowed = WIREFRAME_OPTIONS[kind] ?? [];
+  const L = WIREFRAME_LIMITS;
+  for (const k of OPTION_KEYS) {
+    const v = it[k];
+    if (v === undefined) continue;
+    if (!allowed.includes(k)) return `unexpected field ${k}`;
+    if (k === "variant" && !oneOf(WIREFRAME_VARIANTS, v)) return "invalid variant";
+    if (k === "checked" && typeof v !== "boolean") return "invalid checked";
+    if (k === "value" && (!isNum(v) || v < 0 || v > 100)) return "invalid value";
+    if (k === "count" && (!Number.isInteger(v) || (v as number) < 1 || (v as number) > L.maxCount)) return "invalid count";
+    if (k === "cols" && (!Number.isInteger(v) || (v as number) < 1 || (v as number) > L.maxCols)) return "invalid cols";
+  }
+  return null;
+}
+
+/** An item's usable options for its part (the forgiving reader's half of optionIssue). */
+function cleanOptions(raw: Record<string, unknown>, kind: WireframeComponent): Pick<WireItem, WireframeOption> {
+  const out: Pick<WireItem, WireframeOption> = {};
+  const allowed = WIREFRAME_OPTIONS[kind] ?? [];
+  const int = (v: unknown, max: number) => (isNum(v) ? Math.round(clamp(v, 1, max)) : undefined);
+  for (const k of allowed) {
+    const v = raw[k];
+    if (k === "variant" && oneOf(WIREFRAME_VARIANTS, v)) out.variant = v;
+    else if (k === "checked" && typeof v === "boolean") out.checked = v;
+    else if (k === "value" && isNum(v)) out.value = Math.round(clamp(v, 0, 100));
+    else if (k === "count" && int(v, WIREFRAME_LIMITS.maxCount) !== undefined) out.count = int(v, WIREFRAME_LIMITS.maxCount);
+    else if (k === "cols" && int(v, WIREFRAME_LIMITS.maxCols) !== undefined) out.cols = int(v, WIREFRAME_LIMITS.maxCols);
+  }
+  return out;
+}
 const LINK_KEYS = new Set(["id", "from", "to"]);
 
 export const emptyWireframe = (): WireframeData => ({ v: 1, style: "clean", screens: [], items: [], links: [] });
@@ -202,6 +287,8 @@ export function wireframeDataIssue(data: string): string | null {
     if (!isNum(it.w) || it.w < L.minItem || it.w > size.w) return `item ${i}: invalid w`;
     if (!isNum(it.h) || it.h < L.minItem || it.h > size.h) return `item ${i}: invalid h`;
     if (it.text !== undefined && (typeof it.text !== "string" || it.text.length > L.maxText)) return `item ${i}: invalid text`;
+    const opt = optionIssue(it, it.kind as WireframeComponent);
+    if (opt) return `item ${i}: ${opt}`;
   }
   const linkIds = new Set<string>();
   for (const [i, l] of (links ?? []).entries()) {
@@ -261,15 +348,17 @@ export function normalizeWireframe(input: unknown): WireframeData {
     if (!screen) continue;
     const w = Math.round(clamp(isNum(raw.w) ? raw.w : 120, L.minItem, screen.w));
     const h = Math.round(clamp(isNum(raw.h) ? raw.h : 40, L.minItem, screen.h));
+    const kind: WireframeComponent = oneOf(WIREFRAME_COMPONENTS, raw.kind) ? raw.kind : "text";
     out.items.push({
       id: keep(raw.id, "i"),
       screen: screen.id,
-      kind: oneOf(WIREFRAME_COMPONENTS, raw.kind) ? raw.kind : "text",
+      kind,
       x: Math.round(clamp(isNum(raw.x) ? raw.x : 0, 0, screen.w - w)),
       y: Math.round(clamp(isNum(raw.y) ? raw.y : 0, 0, screen.h - h)),
       w,
       h,
       text: cleanText(raw.text, L.maxText),
+      ...cleanOptions(raw, kind),
     });
   }
   const linkIds = new Set<string>();
@@ -303,6 +392,10 @@ export function serializeWireframe(wf: WireframeData): string {
   o.items = wf.items.map((i) => {
     const x: Record<string, unknown> = { id: i.id, screen: i.screen, kind: i.kind, x: Math.round(i.x), y: Math.round(i.y), w: Math.round(i.w), h: Math.round(i.h) };
     if (i.text) x.text = i.text;
+    const allowed = WIREFRAME_OPTIONS[i.kind] ?? [];
+    if (allowed.includes("variant") && i.variant === "secondary") x.variant = i.variant;
+    if (allowed.includes("checked") && i.checked) x.checked = true;
+    for (const k of ["value", "count", "cols"] as const) if (allowed.includes(k) && isNum(i[k])) x[k] = Math.round(i[k]);
     return x;
   });
   if (wf.links.length) o.links = wf.links.map((l) => ({ id: l.id, from: l.from, to: l.to }));
@@ -338,9 +431,10 @@ function wireframeOutline(wf: WireframeData): { title: string; lines: string[] }
       .join(" and ");
   return wf.screens.map((s) => {
     const lines = (items.get(s.id) ?? []).map((it) => {
-      const text = oneLine(it.text);
+      const text = it.text.split("\n").map((l) => l.trim()).filter(Boolean).join(", ");
       const to = goes(it.id);
-      return `${WIREFRAME_COMPONENT_LABEL[it.kind]}${text ? `: ${text}` : ""}${to ? `, goes to ${to}` : ""}`;
+      const state = it.checked ? " (on)" : it.variant === "secondary" ? " (secondary)" : "";
+      return `${WIREFRAME_COMPONENT_LABEL[it.kind]}${text ? `: ${text}` : ""}${state}${to ? `, goes to ${to}` : ""}`;
     });
     const to = goes(s.id);
     if (to) lines.push(`Goes to ${to}`);

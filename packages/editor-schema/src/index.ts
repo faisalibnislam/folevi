@@ -22,6 +22,7 @@ export * from "./mindmap";
 export * from "./stickies";
 export * from "./chart";
 export * from "./wireframe";
+export * from "./wireframeLayout";
 export * from "./emoji";
 export * as sync from "./sync";
 export type { SyncOp, OpResult, SyncState, SyncStatus, ConflictRecord, ChangedField } from "./sync";

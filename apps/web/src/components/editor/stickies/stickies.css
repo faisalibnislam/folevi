@@ -1,19 +1,253 @@
-/* Sticky notes block (stickies/StickiesView.tsx, render.tsx). Loaded with the editor styles by the document
- * view and share pages; the card and its chrome are canvas/canvas.css. Notes mix their colour into the page
- * colour, so they sit well on any note theme, light or dark. */
-.fb-stickies-list { display: grid; gap: 12px; }
-.fb-stickies-list h4 { margin: 0 0 6px; font-size: 12.5px; font-weight: 600; color: var(--color-ink-muted); }
-.fb-stickies-list ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.fb-stickies-list li {
-  --st-tint: #e0a800;
-  width: 132px; min-height: 72px; padding: 8px 10px; border-radius: var(--radius-tiny);
-  background: color-mix(in oklab, var(--st-tint) 22%, var(--color-surface));
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
-  font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; white-space: pre-wrap;
+/* Sticky notes block (stickies/StickiesView.tsx, Board.tsx, render.tsx). Loaded with the editor styles by the
+ * document view and share pages; the card and its chrome are canvas/canvas.css. The chrome is neutral glass;
+ * only the notes carry colour: paper tones from the design tokens (the highlight and soft accent colours),
+ * which have their own dark values, so notes read in light and dark and on any note theme. svg.ts draws the
+ * same light colours for export. */
+
+.st-note, .st-swatch, .st-text-input { --st-paper: var(--color-highlight-yellow); }
+:is(.st-note, .st-swatch, .st-text-input)[data-color="orange"] { --st-paper: color-mix(in oklab, var(--color-marigold) 14%, var(--color-marigold-soft)); }
+:is(.st-note, .st-swatch, .st-text-input)[data-color="pink"] { --st-paper: var(--color-highlight-pink); }
+:is(.st-note, .st-swatch, .st-text-input)[data-color="purple"] { --st-paper: color-mix(in oklab, var(--color-plum) 14%, var(--color-plum-soft)); }
+:is(.st-note, .st-swatch, .st-text-input)[data-color="blue"] { --st-paper: var(--color-highlight-blue); }
+:is(.st-note, .st-swatch, .st-text-input)[data-color="green"] { --st-paper: var(--color-highlight-green); }
+:is(.st-note, .st-swatch, .st-text-input)[data-color="gray"] { --st-paper: color-mix(in oklab, var(--color-ink) 8%, var(--color-surface)); }
+
+.fb-stickies { --st-select: color-mix(in oklab, var(--color-ink) 72%, transparent); --st-line: color-mix(in oklab, var(--color-ink) 14%, transparent); }
+
+/* ---------------------------------------------------------------- the board */
+.st-canvas { position: absolute; inset: 0; overflow: hidden; outline: none; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: default; }
+.fb-vcard[data-active] .st-canvas, .fb-vcard[data-full] .st-canvas { touch-action: none; }
+.st-canvas[data-space] { cursor: grab; }
+.st-canvas[data-panning] { cursor: grabbing; }
+.st-canvas[data-tool="group"] { cursor: crosshair; }
+.st-dots {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(circle at center, color-mix(in oklab, var(--color-ink) 16%, transparent) 1px, transparent 1.5px);
 }
-.fb-stickies-list li[data-color="orange"] { --st-tint: #ea7a1f; }
-.fb-stickies-list li[data-color="pink"] { --st-tint: #e05a8a; }
-.fb-stickies-list li[data-color="purple"] { --st-tint: #8b5cf6; }
-.fb-stickies-list li[data-color="blue"] { --st-tint: #3b82f6; }
-.fb-stickies-list li[data-color="green"] { --st-tint: #22a05a; }
-.fb-stickies-list li[data-color="gray"] { --st-tint: #8a8a93; }
+.st-world { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+.st-groups, .st-notes { position: absolute; left: 0; top: 0; }
+
+.st-group {
+  position: absolute; border-radius: var(--radius-panel);
+  background: color-mix(in oklab, var(--color-ink) 3.5%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--st-line);
+}
+.st-group[data-selected] { box-shadow: inset 0 0 0 2px var(--st-select); }
+.st-group-label {
+  position: absolute; left: 12px; top: 10px; max-width: calc(100% - 24px);
+  padding: 3px 8px; border-radius: var(--radius-small);
+  font: 600 16px/1.3 var(--font-display); letter-spacing: -0.012em; color: var(--color-heading);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: move; outline: none;
+}
+.st-group-label[data-untitled] { color: var(--color-ink-faint); font-weight: 500; }
+.st-group-label:hover { background: color-mix(in oklab, var(--color-ink) 6%, transparent); }
+.st-group-label:focus-visible { box-shadow: 0 0 0 2px var(--color-focus); }
+
+.st-note {
+  position: absolute; display: flex; flex-direction: column; padding: 12px 12px 8px;
+  border-radius: var(--radius-tiny); background: var(--st-paper); color: var(--color-ink);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.05), 0 8px 16px -10px rgb(0 0 0 / 0.32);
+  cursor: move; outline: none; overflow: hidden;
+  transition: box-shadow 140ms;
+}
+.st-note[data-selected] { box-shadow: 0 0 0 2px var(--st-select), 0 10px 22px -10px rgb(0 0 0 / 0.38); }
+.st-note:focus-visible { box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-focus); }
+.st-note-text {
+  flex: 1; min-height: 0; overflow: hidden; font-weight: 500; line-height: 1.3; letter-spacing: -0.006em;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 14px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 14px), transparent);
+}
+.st-note-empty { color: color-mix(in oklab, var(--color-ink) 45%, transparent); font-weight: 400; font-style: italic; }
+.st-note-foot { flex: none; display: flex; align-items: center; gap: 6px; min-height: 22px; margin-top: 6px; }
+.st-author {
+  flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: var(--radius-chip);
+  background: color-mix(in oklab, var(--color-ink) 12%, transparent); color: var(--color-ink);
+  font: 650 9.5px/1 var(--font-sans); letter-spacing: 0.02em;
+}
+.st-tags { flex: 1; min-width: 0; display: flex; gap: 4px; overflow: hidden; }
+.st-tag { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 11.5px/1.4 var(--font-sans); color: color-mix(in oklab, var(--color-ink) 70%, transparent); }
+.st-vote {
+  flex: none; display: inline-flex; align-items: center; gap: 4px; height: 22px; min-width: 22px; padding: 0 7px 0 6px;
+  border-radius: var(--radius-chip); background: color-mix(in oklab, var(--color-ink) 9%, transparent);
+  font: 650 12px/1 var(--font-sans); color: var(--color-ink); cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.st-vote[data-empty] { opacity: 0; transition: opacity 120ms; padding: 0 6px; }
+.st-note:hover .st-vote[data-empty], .st-note[data-selected] .st-vote[data-empty] { opacity: 0.75; }
+.st-vote[data-mine] { background: var(--color-ink); color: var(--color-surface); }
+.st-vote-dot { width: 7px; height: 7px; border-radius: var(--radius-tiny); background: currentColor; }
+.st-vote:hover { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-ink) 35%, transparent); }
+@media (pointer: coarse) {
+  .st-vote { height: 28px; min-width: 32px; }
+  .st-vote[data-empty] { opacity: 0.6; }
+}
+
+.st-resize {
+  position: absolute; width: 14px; height: 14px; border-radius: var(--radius-tiny);
+  background: var(--color-surface-raised); box-shadow: 0 0 0 1.5px var(--st-select); cursor: nwse-resize;
+}
+@media (pointer: coarse) { .st-resize { width: 26px; height: 26px; } }
+.st-marquee, .st-draw { position: absolute; pointer-events: none; background: color-mix(in oklab, var(--color-ink) 6%, transparent); box-shadow: inset 0 0 0 1px var(--st-select); }
+.st-draw { border-radius: var(--radius-panel); box-shadow: inset 0 0 0 1.5px var(--st-select); }
+
+/* Writing on a note: the field sits exactly over the note. */
+.st-text-input {
+  position: absolute; z-index: 2; margin: 0; padding: 12px 12px 36px; border: 0; outline: none; resize: none;
+  border-radius: var(--radius-tiny); background: var(--st-paper); color: var(--color-ink);
+  font-family: var(--font-sans); font-weight: 500; line-height: 1.3; letter-spacing: -0.006em; white-space: pre-wrap;
+  box-shadow: 0 0 0 2px var(--color-focus), 0 10px 22px -10px rgb(0 0 0 / 0.38);
+  caret-color: var(--color-ink); user-select: text; -webkit-user-select: text;
+}
+.st-label-input {
+  position: absolute; z-index: 2; height: 32px; margin: 8px 0 0 10px; padding: 0 9px; border: 0; outline: none;
+  border-radius: var(--radius-small); background: var(--color-surface-raised); color: var(--color-heading);
+  font: 600 16px/1 var(--font-display); box-shadow: 0 0 0 2px var(--color-focus); user-select: text; -webkit-user-select: text;
+}
+
+/* ---------------------------------------------------------------- floating chrome */
+.st-bar {
+  position: absolute; z-index: 3; display: flex; align-items: center; gap: 2px; padding: 4px;
+  border-radius: var(--radius-panel); background: var(--glass-pop);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: var(--glass-edge), 0 6px 20px -8px rgb(0 0 0 / 0.18);
+  font: 500 12.5px/1 var(--font-sans); color: var(--color-ink);
+}
+.st-bar-zoom { right: 10px; bottom: 10px; }
+.st-bar-float { transform: translateX(-50%); white-space: nowrap; max-width: calc(100% - 20px); overflow-x: auto; scrollbar-width: none; }
+.st-group-btns { display: inline-flex; align-items: center; gap: 2px; padding: 0 2px; }
+.st-sep { flex: none; width: 1px; height: 18px; margin: 0 4px; background: var(--color-line-strong); }
+.st-btn {
+  flex: none; display: inline-grid; grid-auto-flow: column; align-items: center; justify-content: center; gap: 5px;
+  min-width: 30px; height: 30px; padding: 0 6px; border-radius: var(--radius-control);
+  color: var(--color-ink-muted); font: 550 12.5px/1 var(--font-sans); transition: background-color 100ms, color 100ms;
+}
+.st-btn:hover:not(:disabled), .st-btn[aria-pressed="true"] { background: var(--glass-hover); color: var(--color-heading); }
+.st-btn:disabled { opacity: 0.35; }
+.st-btn-text { padding: 0 10px; color: var(--color-ink); }
+.st-btn-primary { padding: 0 12px; background: var(--color-accent); color: var(--color-accent-ink, var(--color-surface)); }
+.st-btn-primary:hover:not(:disabled) { background: color-mix(in oklab, var(--color-accent) 92%, var(--color-ink)); color: var(--color-accent-ink, var(--color-surface)); }
+.st-zoom { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; color: var(--color-ink-muted); }
+.st-swatch {
+  flex: none; width: 22px; height: 22px; margin: 0 1px; border-radius: var(--radius-chip);
+  background: var(--st-paper); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 18%, transparent);
+}
+.st-swatch[aria-pressed="true"] { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+.st-btn:focus-visible, .st-swatch:focus-visible, .st-ai-action:focus-visible, .st-chip button:focus-visible, .st-chip-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.st-ai-mark { color: #7c6cf0; }
+:root[data-theme="dark"] .st-ai-mark { color: #a99bff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .st-ai-mark { color: #a99bff; } }
+
+/* The toolbar's votes and timer (in the card's own bar, canvas.css). */
+.st-votes-trigger { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.st-timer { flex: none; display: inline-flex; align-items: center; gap: 0; }
+.st-timer-pill {
+  --st-progress: 0;
+  position: relative; overflow: hidden; padding: 0 9px 0 8px; color: var(--color-heading); font-variant-numeric: tabular-nums;
+  background: linear-gradient(to right, color-mix(in oklab, var(--color-ink) 10%, transparent) calc(var(--st-progress) * 100%), transparent 0);
+}
+.st-timer-time { font-weight: 650; }
+.st-timer[data-paused] .st-timer-time { color: var(--color-ink-muted); }
+.st-timer[data-done] .st-timer-pill { background: var(--color-highlight-yellow); color: var(--color-ink); animation: st-breathe 2.4s ease-in-out 3; }
+.st-timer-more { min-width: 26px; }
+.st-more-dots { letter-spacing: 1px; font-weight: 700; }
+@keyframes st-breathe { 50% { box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-marigold) 30%, transparent); } }
+
+.st-timeup {
+  position: absolute; z-index: 3; left: 50%; top: 60px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 14px; border-radius: var(--radius-panel);
+  font: 600 14px/1 var(--font-sans); color: var(--color-heading); white-space: nowrap;
+  animation: st-rise 320ms var(--ease-folio, ease-out);
+}
+.st-timeup-icon { color: var(--color-marigold); }
+@keyframes st-rise { from { opacity: 0; transform: translate(-50%, -6px); } }
+
+.st-empty-actions {
+  position: absolute; z-index: 2; left: 50%; top: calc(50% + 46px); transform: translateX(-50%);
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; width: max-content; max-width: calc(100% - 24px);
+}
+.st-empty-btn { height: 32px; background: var(--glass-pop); box-shadow: var(--glass-edge); }
+.st-warning {
+  position: absolute; left: 10px; bottom: 10px; z-index: 3; margin: 0; padding: 6px 10px; border-radius: var(--radius-control);
+  font: 500 12.5px/1.4 var(--font-sans); color: var(--color-destructive); background: var(--color-surface-raised); box-shadow: var(--glass-edge);
+}
+
+/* Panels: add several, tags, Foli AI (sheets in the iPhone app). */
+.st-panel {
+  position: absolute; z-index: 4; top: 54px; right: 10px; width: min(360px, calc(100% - 20px)); max-height: calc(100% - 64px);
+  display: flex; flex-direction: column; border-radius: var(--radius-panel); overflow: hidden;
+  font-family: var(--font-sans); color: var(--color-ink);
+}
+.st-panel-wide { width: min(440px, calc(100% - 20px)); }
+.st-panel-head { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 8px 6px 2px 14px; }
+.st-panel-head h3 { margin: 0; font: 600 13.5px/1.3 var(--font-sans); color: var(--color-heading); }
+.st-panel-body { display: grid; gap: 10px; padding: 6px 12px 12px; overflow-y: auto; }
+.st-sheet .st-panel-body { padding: 0; }
+.st-panel-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.st-input {
+  width: 100%; min-width: 0; padding: 7px 10px; border: 0; outline: none; border-radius: var(--radius-control);
+  background: var(--color-surface-sunken); color: var(--color-ink); font: 14px/1.45 var(--font-sans);
+  box-shadow: inset 0 0 0 1px var(--color-line); user-select: text; -webkit-user-select: text;
+}
+.st-input:focus-visible { box-shadow: inset 0 0 0 1px var(--color-line), 0 0 0 2px var(--color-focus); }
+.st-input::placeholder { color: var(--color-ink-faint); }
+.st-bulk { resize: vertical; min-height: 120px; }
+.st-hint { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--color-ink-muted); }
+.st-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.st-chip {
+  display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 6px 0 9px; border-radius: var(--radius-chip);
+  background: var(--color-surface-sunken); font: 500 12.5px/1 var(--font-sans); color: var(--color-ink);
+}
+.st-chip button { display: grid; place-items: center; width: 18px; height: 18px; border-radius: var(--radius-tiny); color: var(--color-ink-muted); }
+.st-chip button:hover { background: var(--glass-hover); color: var(--color-heading); }
+.st-chip-btn { padding: 0 9px; color: var(--color-ink-muted); }
+.st-chip-btn:hover { color: var(--color-heading); background: var(--glass-hover); }
+
+.st-ai-ideas { display: flex; align-items: center; gap: 8px; }
+.st-ai-ideas .st-input { height: 34px; padding: 0 10px; }
+.st-ai-actions { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.st-ai-action {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px 10px; border-radius: var(--radius-control);
+  text-align: left; color: var(--color-ink-muted);
+}
+.st-ai-action > svg { flex: none; margin-top: 2px; }
+button.st-ai-action:hover:not(:disabled) { background: var(--glass-hover); color: var(--color-heading); }
+button.st-ai-action:disabled { opacity: 0.4; }
+.st-ai-action-label { display: block; font: 550 13.5px/1.35 var(--font-sans); color: var(--color-ink); }
+.st-ai-action-detail { display: block; font-size: 12.5px; line-height: 1.4; color: var(--color-ink-muted); }
+.st-ai-photo-btns { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 0 -10px; }
+.st-ai-summary { margin: 0; white-space: pre-wrap; font: 14px/1.55 var(--font-sans); color: var(--color-ink); max-height: 320px; overflow-y: auto; user-select: text; -webkit-user-select: text; }
+.st-ai-status { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; color: var(--color-ink-muted); }
+.st-ai-error { margin: 0; font-size: 13px; color: var(--color-destructive); }
+.st-ai-foot { margin: 0; padding-top: 8px; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); font-size: 11px; color: var(--color-ink-faint); }
+
+/* Fingers: 44 point targets (docs/IOS.md). */
+@media (pointer: coarse) {
+  .st-btn { min-width: 44px; height: 44px; }
+  .st-swatch { width: 32px; height: 32px; margin: 0 3px; }
+  .st-chip { height: 36px; }
+  .st-chip button { width: 28px; height: 28px; }
+  .st-empty-btn { height: 44px; }
+  .st-ai-action { padding: 12px; }
+  .st-input { min-height: 44px; font-size: 16px; }
+}
+
+/* ---------------------------------------------------------------- read-only */
+.st-viewer { position: relative; overflow: hidden; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; }
+.st-viewer:active { cursor: grabbing; }
+.st-viewer-fill { position: absolute; inset: 0; }
+.st-viewport { position: absolute; inset: 0; }
+.st-viewer .st-note, .st-viewer .st-group-label { cursor: inherit; }
+.st-viewer .st-group-label:hover { background: none; }
+.fb-readonly-visual .st-viewer { margin: 4px -16px -14px; border-top: 1px solid var(--color-line); background: color-mix(in oklab, var(--color-surface-sunken) 30%, var(--color-surface)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .st-note, .st-vote[data-empty] { transition: none; }
+  .st-timer[data-done] .st-timer-pill, .st-timeup { animation: none; }
+}
+@media (forced-colors: active) {
+  .st-note { border: 1px solid CanvasText; }
+  .st-note[data-selected], .st-group[data-selected] { outline: 2px solid Highlight; }
+  .st-swatch[aria-pressed="true"] { outline: 2px solid Highlight; }
+}
+@media print {
+  .st-bar, .st-empty-actions, .st-panel, .st-timeup, .st-resize { display: none; }
+}

@@ -1,5 +1,208 @@
 /* Mind map block (mindmap/MindmapView.tsx, render.tsx). Loaded with the editor styles by the document view and
- * share pages; the card and its chrome are canvas/canvas.css. */
-.fb-mindmap-outline { margin: 0; padding: 0; list-style: none; }
-.fb-mindmap-outline li { padding-top: 2px; padding-bottom: 2px; }
-.fb-mindmap-outline li[data-depth="0"] { font-weight: 600; color: var(--color-heading); }
+ * share pages; the card and its chrome are canvas/canvas.css. Branch colours come from the design tokens (moss,
+ * marigold, coral, plum; ember for the accent, which follows the note's own accent) plus the flowchart's blue,
+ * each with its soft fill and ink pair, so every colour reads in light and dark. Exports use the light values
+ * (svg.ts MINDMAP_EXPORT_COLORS). */
+
+.mm-root, .mm-canvas, .mm-static, .mm-swatch, .mm-outline {
+  --mm-select: #3d6ee8;
+  --mm-blue: #3b82f6;
+  --mm-blue-soft: var(--color-highlight-blue);
+  --mm-blue-ink: #1e4aa8;
+}
+:root[data-theme="dark"] :is(.mm-root, .mm-canvas, .mm-static, .mm-swatch, .mm-outline),
+.fb-sheet[data-sheet="night"] :is(.mm-root, .mm-canvas, .mm-static, .mm-swatch, .mm-outline) {
+  --mm-select: #7aa2ff;
+  --mm-blue: #6ea8fe;
+  --mm-blue-ink: #bcd3ff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :is(.mm-root, .mm-canvas, .mm-static, .mm-swatch, .mm-outline) {
+    --mm-select: #7aa2ff;
+    --mm-blue: #6ea8fe;
+    --mm-blue-ink: #bcd3ff;
+  }
+}
+
+/* One colour: --mm-c (lines, outlines), --mm-soft (fills), --mm-ink (text on the fill). */
+:is(.mm-node, .mm-link, .mm-badge, .mm-text-input, .mm-outline-row, .mm-swatch, .mm-ctl)[data-color] { --mm-c: color-mix(in oklab, var(--color-ink) 42%, var(--color-surface)); --mm-soft: var(--color-surface-sunken); --mm-ink: var(--color-ink); }
+:is(.mm-node, .mm-link, .mm-badge, .mm-text-input, .mm-outline-row, .mm-swatch, .mm-ctl)[data-color="blue"] { --mm-c: var(--mm-blue); --mm-soft: var(--mm-blue-soft); --mm-ink: var(--mm-blue-ink); }
+:is(.mm-node, .mm-link, .mm-badge, .mm-text-input, .mm-outline-row, .mm-swatch, .mm-ctl)[data-color="green"] { --mm-c: var(--color-moss); --mm-soft: var(--color-moss-soft); --mm-ink: var(--color-moss-ink); }
+:is(.mm-node, .mm-link, .mm-badge, .mm-text-input, .mm-outline-row, .mm-swatch, .mm-ctl)[data-color="yellow"] { --mm-c: var(--color-marigold); --mm-soft: var(--color-marigold-soft); --mm-ink: var(--color-marigold-ink); }
+:is(.mm-node, .mm-link, .mm-badge, .mm-text-input, .mm-outline-row, .mm-swatch, .mm-ctl)[data-color="pink"] { --mm-c: var(--color-coral); --mm-soft: var(--color-coral-soft); --mm-ink: var(--color-coral-ink); }
+:is(.mm-node, .mm-link, .mm-badge, .mm-text-input, .mm-outline-row, .mm-swatch, .mm-ctl)[data-color="purple"] { --mm-c: var(--color-plum); --mm-soft: var(--color-plum-soft); --mm-ink: var(--color-plum-ink); }
+:is(.mm-node, .mm-link, .mm-badge, .mm-text-input, .mm-outline-row, .mm-swatch, .mm-ctl)[data-color="accent"] {
+  --mm-c: var(--doc-accent, var(--color-ember));
+  --mm-soft: color-mix(in oklab, var(--doc-accent, var(--color-ember)) 14%, var(--color-surface));
+  --mm-ink: color-mix(in oklab, var(--doc-accent, var(--color-ember-ink)) 60%, var(--color-ink));
+}
+
+/* ---------------------------------------------------------------- the drawing */
+.mm-root { font-family: var(--font-sans); overflow: visible; user-select: none; -webkit-user-select: none; }
+.mm-link { fill: none; stroke: color-mix(in oklab, var(--mm-c) 78%, transparent); stroke-linecap: round; }
+.mm-shape { fill: var(--color-surface-raised); stroke: color-mix(in oklab, var(--mm-c) 55%, var(--color-surface)); stroke-width: 1px; }
+.mm-label { fill: var(--color-ink); letter-spacing: -0.005em; pointer-events: none; }
+.mm-node[data-depth="1"] .mm-shape { fill: var(--mm-soft); stroke: var(--mm-c); stroke-width: 1.5px; }
+.mm-node[data-depth="1"] .mm-label { fill: var(--mm-ink); }
+.mm-node[data-depth="0"] .mm-shape { fill: var(--mm-soft); stroke: var(--mm-c); stroke-width: 1.5px; filter: drop-shadow(0 2px 6px rgb(0 0 0 / 0.08)); }
+.mm-node[data-depth="0"] .mm-label { fill: var(--mm-ink); }
+/* A neutral centre is ink on paper turned round: the darkest thing on the map. */
+.mm-node[data-depth="0"][data-color="neutral"] .mm-shape { fill: var(--color-ink); stroke: var(--color-ink); }
+.mm-node[data-depth="0"][data-color="neutral"] .mm-label { fill: var(--color-surface); }
+.mm-node[data-empty] .mm-label { opacity: 0.55; }
+
+.mm-badge rect { fill: var(--mm-soft); stroke: var(--mm-c); stroke-width: 1px; }
+.mm-badge text { fill: var(--mm-ink); font-weight: 600; pointer-events: none; }
+.mm-hit { fill: transparent; }
+.mm-badge[data-mm-toggle] { cursor: pointer; }
+.mm-badge[data-mm-toggle]:hover rect { fill: color-mix(in oklab, var(--mm-c) 22%, var(--color-surface)); }
+
+/* ---------------------------------------------------------------- the editor */
+.mm-canvas { position: absolute; inset: 0; outline: none; touch-action: pan-y; }
+.mm-canvas[data-active] { touch-action: none; }
+.mm-svg { display: block; cursor: default; }
+.mm-canvas[data-panning] .mm-svg { cursor: grabbing; }
+.mm-node[data-mm-node] { cursor: pointer; }
+.mm-node[data-mm-node]:hover .mm-shape { stroke-width: 2px; }
+.mm-node[data-dragging] { opacity: 0.35; }
+.mm-node[data-busy] .mm-shape { animation: mm-busy 1.1s ease-in-out infinite; }
+@keyframes mm-busy { 50% { opacity: 0.55; } }
+.mm-ghost { opacity: 0.85; pointer-events: none; filter: drop-shadow(0 8px 18px rgb(0 0 0 / 0.18)); }
+
+.mm-overlay * { vector-effect: non-scaling-stroke; }
+.mm-sel-box { fill: none; stroke: var(--mm-select); stroke-width: 2px; pointer-events: none; }
+.mm-ctl { cursor: pointer; }
+.mm-ctl-dot { fill: var(--color-surface-raised); stroke: color-mix(in oklab, var(--color-ink) 30%, var(--color-surface)); stroke-width: 1.25px; }
+.mm-ctl-glyph { fill: none; stroke: var(--color-ink-muted); stroke-width: 1.6px; stroke-linecap: round; pointer-events: none; }
+.mm-add .mm-ctl-dot { fill: var(--mm-select); stroke: var(--mm-select); }
+.mm-add .mm-ctl-glyph { stroke: #fff; stroke-width: 2px; }
+.mm-ctl:hover .mm-ctl-dot { stroke: var(--mm-select); }
+.mm-fold .mm-ctl-dot { stroke: var(--mm-c); }
+.mm-drop { fill: color-mix(in oklab, var(--mm-select) 10%, transparent); stroke: var(--mm-select); stroke-width: 2px; pointer-events: none; }
+.mm-drop-line { fill: none; stroke: var(--mm-select); stroke-width: 3px; stroke-linecap: round; pointer-events: none; }
+
+.mm-text-input {
+  position: absolute; z-index: 2; margin: 0; border: 0; outline: none; resize: none; overflow: hidden;
+  background: transparent; text-align: center; font-family: var(--font-sans); letter-spacing: -0.005em;
+  color: var(--color-ink); caret-color: var(--mm-select);
+}
+.mm-text-input[data-depth="0"], .mm-text-input[data-depth="1"] { color: var(--mm-ink); }
+.mm-text-input[data-depth="0"][data-color="neutral"] { color: var(--color-surface); caret-color: var(--color-surface); }
+.mm-text-input::placeholder { color: inherit; opacity: 0.5; }
+
+/* Floating glass bars: zoom, the selected idea, focus. */
+.mm-bar {
+  position: absolute; z-index: 3; display: flex; align-items: center; gap: 2px; padding: 4px;
+  border-radius: var(--radius-panel); background: var(--glass-pop);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: var(--glass-edge), 0 6px 20px -8px rgb(0 0 0 / 0.18);
+  font: 500 12.5px/1 var(--font-sans); color: var(--color-ink);
+}
+.mm-zoom { right: 10px; bottom: 10px; }
+.mm-zoom-value { min-width: 40px; text-align: center; font-variant-numeric: tabular-nums; color: var(--color-ink-muted); }
+.mm-idea-bar { transform: translateX(-50%); }
+.mm-focus-chip { left: 10px; top: 56px; padding-left: 10px; color: var(--color-ink-muted); }
+.mm-text-btn { padding: 0 8px; }
+.mm-btn-label { white-space: nowrap; }
+@media (max-width: 560px) {
+  .fb-mindmap .mm-btn-label { display: none; }
+  .mm-zoom-value { display: none; }
+}
+
+.mm-swatch {
+  display: inline-block; width: 14px; height: 14px; border-radius: var(--radius-tiny);
+  background: var(--mm-soft); box-shadow: inset 0 0 0 1.5px var(--mm-c);
+}
+.mm-swatch[data-auto] { background: conic-gradient(var(--color-moss), var(--color-marigold), var(--color-coral), var(--color-plum), var(--mm-blue), var(--color-moss)); box-shadow: none; }
+
+/* The empty block: the hint plus two ways to start. */
+.fb-mindmap .fb-vc-empty p { display: grid; justify-items: center; gap: 12px; }
+.mm-start { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; pointer-events: auto; }
+.mm-start-btn {
+  height: 32px; padding: 0 12px; border-radius: var(--radius-control);
+  background: var(--color-surface-raised); box-shadow: var(--shadow-control);
+  font: 550 13px/1 var(--font-sans); color: var(--color-heading);
+}
+.mm-start-btn:hover { background: var(--glass-hover); }
+.mm-start-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.mm-warning { position: absolute; left: 12px; bottom: 12px; z-index: 3; margin: 0; padding: 6px 10px; border-radius: var(--radius-control); background: var(--color-destructive-soft); color: var(--color-destructive); font-size: 12.5px; }
+
+/* ---------------------------------------------------------------- outline view */
+.mm-outline-wrap { position: absolute; inset: 56px 0 0; overflow: auto; padding: 6px 18px 18px; }
+.mm-outline { margin: 0; padding: 0; list-style: none; font: 14px/1.5 var(--font-sans); }
+.mm-outline-row { display: flex; align-items: center; gap: 8px; min-height: 30px; }
+.mm-outline-dot { flex: none; width: 7px; height: 7px; border-radius: var(--radius-tiny); background: var(--mm-c); }
+.mm-outline-row[data-depth="0"] .mm-outline-dot { width: 9px; height: 9px; background: var(--color-ink); }
+.mm-outline-input {
+  flex: 1; min-width: 0; height: 28px; padding: 0 6px; margin-left: -6px; border: 0; outline: none;
+  border-radius: var(--radius-chip); background: transparent; font: inherit; color: var(--color-ink);
+}
+.mm-outline-row[data-depth="0"] .mm-outline-input { font-weight: 650; color: var(--color-heading); font-size: 15px; }
+.mm-outline-row[data-depth="1"] .mm-outline-input { font-weight: 600; }
+.mm-outline-input:focus { background: color-mix(in oklab, var(--mm-select) 8%, transparent); }
+.mm-outline-input::placeholder { color: var(--color-ink-faint); }
+.mm-outline-folded { flex: none; font-size: 11.5px; color: var(--color-ink-faint); }
+@media (pointer: coarse) {
+  .mm-outline-row { min-height: 44px; }
+  .mm-outline-input { height: 40px; font-size: 16px; }
+}
+
+/* ---------------------------------------------------------------- Foli AI */
+.mm-ai {
+  position: absolute; z-index: 4; top: 54px; right: 10px; width: min(380px, calc(100% - 20px)); max-height: calc(100% - 64px);
+  overflow-y: auto; border-radius: var(--radius-panel); font-family: var(--font-sans); color: var(--color-ink);
+}
+.mm-ai-sheet { position: static; width: auto; max-height: none; overflow: visible; }
+.mm-ai-head { display: flex; align-items: center; gap: 8px; padding: 8px 8px 4px 12px; }
+.mm-ai-title { flex: 1; font: 600 13px/1.3 var(--font-sans); color: var(--color-heading); }
+.mm-ai-close { margin-left: auto; }
+.mm-seg { flex: 1; display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-control); background: var(--color-surface-sunken); }
+.mm-seg button { flex: 1; height: 26px; border-radius: var(--radius-chip); font: 550 12px/1 var(--font-sans); color: var(--color-ink-muted); }
+.mm-seg button[aria-pressed="true"] { background: var(--color-surface-raised); color: var(--color-heading); box-shadow: var(--shadow-control); }
+.mm-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 10px 0; }
+.mm-chips button {
+  display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 9px; border-radius: var(--radius-chip);
+  font: 550 12px/1 var(--font-sans); color: var(--color-ink-muted); box-shadow: inset 0 0 0 1px var(--color-line);
+}
+.mm-chips button[aria-pressed="true"] { background: var(--glass-hover); color: var(--color-heading); box-shadow: inset 0 0 0 1px var(--glass-border); }
+.mm-ai-note { margin: 0; padding: 6px 14px 0; font-size: 12px; color: var(--color-ink-faint); }
+.mm-ai-form { display: flex; align-items: flex-start; gap: 8px; padding: 10px; }
+.mm-ai-form textarea { flex: 1; min-width: 0; resize: none; border: 0; outline: none; background: transparent; font: 14px/1.45 var(--font-sans); color: var(--color-ink); }
+.mm-ai-form textarea::placeholder { color: var(--color-ink-faint); }
+.mm-ai-send { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-chip); background: var(--color-heading); color: var(--color-canvas); }
+.mm-ai-send:disabled { opacity: 0.3; }
+.mm-ai-ideas { margin: 0; padding: 4px 6px 6px; list-style: none; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); }
+.mm-ai-ideas button { width: 100%; padding: 6px 8px; border-radius: var(--radius-control); text-align: left; font-size: 13px; color: var(--color-ink-muted); }
+.mm-ai-ideas button:hover { background: var(--glass-hover); color: var(--color-heading); }
+.mm-ai-actions { display: grid; gap: 2px; padding: 6px; }
+.mm-ai-action { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px; border-radius: var(--radius-control); text-align: left; }
+.mm-ai-action:hover:not(:disabled) { background: var(--glass-hover); }
+.mm-ai-action:disabled { opacity: 0.45; }
+.mm-ai-action-icon { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-small); background: var(--color-surface-sunken); color: var(--color-ink-muted); }
+.mm-ai-action-text { display: grid; gap: 2px; font: 550 13px/1.3 var(--font-sans); color: var(--color-heading); }
+.mm-ai-action-detail { font-weight: 400; font-size: 12px; color: var(--color-ink-muted); }
+.mm-ai-status, .mm-ai-error { margin: 0; padding: 4px 14px 10px; font-size: 13px; color: var(--color-ink-muted); }
+.mm-ai-error { color: var(--color-destructive); }
+.mm-ai-foot { margin: 0; padding: 7px 14px; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); font-size: 11px; color: var(--color-ink-faint); }
+.mm-ai button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+@media (pointer: coarse) {
+  .mm-chips button, .mm-seg button { min-height: 44px; }
+  .mm-ai-action { min-height: 52px; }
+  .mm-ai-send { width: 44px; height: 44px; }
+}
+
+/* ---------------------------------------------------------------- read-only */
+.mm-readonly { padding: 0; overflow: hidden; }
+.mm-static { position: relative; display: grid; place-items: center; overflow: hidden; }
+.mm-static-svg { display: block; width: 100%; max-width: 100%; touch-action: pan-y; cursor: default; }
+.mm-static-svg[data-zoomed] { touch-action: none; cursor: grab; }
+.mm-static-zoom { position: absolute; right: 6px; bottom: 6px; display: flex; gap: 2px; padding: 3px; border-radius: var(--radius-panel); background: var(--glass-pop); box-shadow: var(--glass-edge); opacity: 0; transition: opacity 140ms; }
+.mm-static:hover .mm-static-zoom, .mm-static:focus-within .mm-static-zoom { opacity: 1; }
+@media (pointer: coarse) { .mm-static-zoom { opacity: 1; } }
+
+@media print {
+  .mm-bar, .mm-ai, .mm-static-zoom { display: none; }
+}
+@media (forced-colors: active) {
+  .mm-sel-box, .mm-drop { stroke: Highlight; }
+}

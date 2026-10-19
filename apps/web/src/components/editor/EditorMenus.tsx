@@ -109,6 +109,7 @@ import { FindTodosHost, openFindTodos } from "@/components/ai/FindTodos";
 import { newFormulaAttrs } from "./FormulaView";
 import { DIVIDER_STYLES, MERMAID_SAMPLE } from "./insertCatalog";
 import { exportItems, useBlockExport } from "./canvas/BlockExport";
+import { mindmapMenuItems } from "./mindmap/noteConvert";
 import { Select } from "@/components/ui/Select";
 import { Calendar, DateField, DateTimeField, TimeField } from "@/components/ui/DateField";
 import { EDIT_LINK_EVENT, EditorContextMenu } from "./EditorContextMenu";
@@ -2232,6 +2233,8 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                       closeMenu(false);
                     }).map(({ label, icon, disabled, run }) => ({ label, hint: "", icon, disabled, run }))
                   : []),
+                // A list into a mind map and back, or a mind map Foli AI makes from the text (mindmap/noteConvert.ts).
+                ...mindmapMenuItems(editor, menu.from, menu.to, { aiOn, close: closeMenu }),
                 { label: "Duplicate", hint: "⌘D", icon: <CopyPlus size={14} />, run: () => act(() => duplicateBlocks(editor)) },
                 { label: "Move up", hint: "⌥⇧↑", icon: <MoveUp size={14} />, disabled: menu.from === 0, run: () => act(() => moveBlock(editor, -1)) },
                 { label: "Move down", hint: "⌥⇧↓", icon: <MoveDown size={14} />, disabled: menu.from + count >= editor.state.doc.childCount, run: () => act(() => moveBlock(editor, 1)) },

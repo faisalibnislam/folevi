@@ -44,6 +44,33 @@ block, TeX formula). The slash menu uses the same groups.
 - Foli AI: generate from a prompt; generate from the note (or selected text, or a PDF attachment); expand a
   branch (3 to 6 sub-ideas); summarise into the note; turn chosen branches into Folevi tasks; AI tidy.
 
+As built (2026-10-19):
+
+- Code: `packages/editor-schema` `mindmapLayout.ts` (the one tidy layout for the editor, read-only pages and
+  exports: sizes, sides, colours, collapse counts, focus) and `mindmapTree.ts` (outlines, nested Markdown
+  lists and Foli AI's JSON trees in and out); `apps/web/src/components/editor/mindmap/` (the editor, its
+  history, outline view, chrome, Foli AI panel, read-only map, export SVG, the note conversions);
+  `convex/mindmapAi.ts` with its contract in `convex/lib/mindmapAi.ts`.
+- Keys: Tab adds an idea inside, Shift+Enter one after, Shift+Tab moves up a level, arrows move, Option+arrows
+  reorder, typing replaces the text, Enter or F2 edits (the caret at the end; a double-click selects the text).
+  While writing, Enter adds the next idea and Enter on an empty one stops, Tab adds one inside. Space folds,
+  Delete removes the branch, Cmd+Z and Shift+Cmd+Z inside the block, Shift+1 fits, Cmd+C and Cmd+V copy and
+  paste branches as nested lists.
+- Pointer and touch: drag an idea onto another to move it there (near its top or bottom edge: next to it), or a
+  main branch across the centre to change sides; the + beside the selected idea; the bar over the selected
+  idea (add, colour, fold, Foli AI, more); right-click or a long press for the idea's menu, and keep holding
+  and move to carry the idea, as on iOS. A finger that moves at once pans.
+- Main branches take blue, green, yellow, pink, purple and accent in turn (tokens moss, marigold, coral, plum,
+  ember), inherited below; any idea can pick its own. New main branches go to the lighter side and keep it;
+  Tidy up balances them again.
+- Outline view edits the same data as a nested list. The block menu turns a selected list into a mind map
+  ("Turn into mind map"), any text into one with Foli AI ("Mind map with Foli AI"), and a mind map back into
+  a bulleted list (also in the block's More menu).
+- Markdown: a ```mindmap fence around a nested list becomes a mind map block wherever Markdown is imported,
+  which is how Foli AI chat's agent and the MCP tools (`create_note`, `append_to_note`) make one.
+- Foli AI's results are applied as one undo step; maps leave the server only as block data that passed the
+  strict check. Summaries and tasks go in the note below the block; tasks as to-dos, so they're Folevi tasks.
+
 ## Sticky notes block
 
 - Bulk add (each typed line becomes a note); paste from a spreadsheet or list makes one note per row.

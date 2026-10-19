@@ -1011,7 +1011,7 @@ function WireframeEditor(props: ReactNodeViewProps) {
         return { left: cx, top: above ? r.y - 52 : below ? r.y + r.h + 12 : TOP + 4 };
       })()
     : undefined;
-  const handle = (coarse ? 14 : 8) / k;
+  const handle = (coarse ? 11 : 8) / k;
   const hit = (coarse ? 36 : 16) / k;
   const handlePos = (b: Box, h: ResizeHandle): Pt => ({
     x: h.includes("w") ? b.x : h.includes("e") ? b.x + b.w : b.x + b.w / 2,
@@ -1205,7 +1205,8 @@ function WireframeEditor(props: ReactNodeViewProps) {
                 </>
               ) : null}
               {single
-                ? RESIZE_HANDLES.map((h) => {
+                ? // A small part on screen keeps only its corner handles, so they don't cover it.
+                  RESIZE_HANDLES.filter((h) => h.length === 2 || ((h === "e" || h === "w" ? single.box.h : single.box.w) * k >= 40)).map((h) => {
                     const p = handlePos(single.box, h);
                     return (
                       <g key={h} className="wf-handle" data-wf-handle={h} data-target={single.kind} data-id={single.id} data-dir={h}>

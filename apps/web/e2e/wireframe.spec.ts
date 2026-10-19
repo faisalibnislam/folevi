@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { newPerson, openShare, settle, waitForSaved } from "./helpers";
+import { APP, newPerson, openShare, settle, waitForSaved } from "./helpers";
+
+const IPHONE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 FoleviiOS/1.0";
 
 async function newPage(page: Page, title: string) {
   await page.getByRole("button", { name: "New note", exact: true }).click();
@@ -110,7 +112,7 @@ test.describe("Wireframe", () => {
     await context.close();
   });
 
-  test("a browser screen: a part from the library, selected from the keyboard and deleted from its bar", async ({ browser }) => {
+  test("a browser screen: a part from the library, deleted from its bar; then the same by touch in the iPhone app", async ({ browser }) => {
     const { context, page } = await newPerson(browser, "Wireframe Touch");
     await newPage(page, "Touch wireframe");
     await page.keyboard.press("Enter");
@@ -125,6 +127,42 @@ test.describe("Wireframe", () => {
     await nav.focus();
     await card.getByRole("toolbar", { name: "Selected navigation bar" }).getByRole("button", { name: "Delete" }).click();
     await expect(page.getByRole("application", { name: /1 screen, 0 parts/ })).toBeVisible();
+    await waitForSaved(page);
+    await page.waitForTimeout(800);
+    await waitForSaved(page);
+
+    // In the iPhone app, by touch: a tap adds a part from the library, a tap selects it, its bar's buttons
+    // are 44 points, and a tap on Delete removes it.
+    const state = await context.storageState();
+    const url = page.url();
+    const phone = await browser.newContext({ storageState: state, viewport: { width: 402, height: 874 }, userAgent: IPHONE_UA, hasTouch: true });
+    await phone.addInitScript(() => {
+      Object.defineProperty(window, "foleviNative", { value: { platform: "ios", version: "1.0", haptic: () => undefined, setStatusBar: () => undefined, openExternal: async () => true, getSettings: async () => ({ lock: false, lockAfter: 0, method: "faceID" }), setSettings: async () => ({ lock: false, lockAfter: 0, method: "faceID" }), onCommand: () => () => undefined } });
+      const mark = () => document.documentElement?.setAttribute("data-native", "ios");
+      mark();
+      if (!document.documentElement) new MutationObserver((_, watch) => document.documentElement && (mark(), watch.disconnect())).observe(document, { childList: true });
+    });
+    const iphone = await phone.newPage();
+    await iphone.goto(url.startsWith("http") ? url : `${APP}${url}`);
+    await expect(iphone.locator("html")).toHaveAttribute("data-iphone", "", { timeout: 30_000 });
+    const phoneCard = iphone.locator(".fb-editor .fb-wireframe").first();
+    await expect(phoneCard.getByRole("application", { name: /1 screen, 0 parts/ })).toBeVisible({ timeout: 20_000 });
+    const parts = phoneCard.getByRole("button", { name: "Parts", exact: true });
+    expect((await parts.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await parts.tap();
+    await phoneCard.getByRole("dialog", { name: "Interface parts" }).getByRole("button", { name: /^Button/ }).tap();
+    const part = phoneCard.getByRole("button", { name: /^Button, part 1 of 1/ });
+    await expect(part).toBeAttached();
+    const box = (await part.boundingBox())!;
+    await iphone.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    const phoneBar = phoneCard.getByRole("toolbar", { name: "Selected button" });
+    await expect(phoneBar).toBeVisible();
+    const del = phoneBar.getByRole("button", { name: "Delete" });
+    expect((await del.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await expect(phoneCard.getByRole("button", { name: "Select several" })).toBeVisible();
+    await del.tap();
+    await expect(phoneCard.getByRole("application", { name: /1 screen, 0 parts/ })).toBeVisible();
+    await phone.close();
     await context.close();
   });
 });

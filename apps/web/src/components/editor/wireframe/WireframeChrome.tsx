@@ -102,13 +102,13 @@ export function Tools({
         triggerClassName="fb-vc-btn wf-btn-text"
         trigger={
           <>
-            <Plus size={14} aria-hidden /> Screen
+            <Plus size={14} aria-hidden /> <span className="wf-btn-label">Screen</span>
           </>
         }
         items={WIREFRAME_FRAMES.map((f) => ({ label: `${WIREFRAME_FRAME_LABEL[f]} screen`, icon: FRAME_ICON[f], onSelect: () => onAddScreen(f) }))}
       />
-      <button type="button" className="fb-vc-btn wf-btn-text" aria-pressed={libraryOpen} onClick={onLibrary} title="Interface parts to drag onto a screen">
-        <LayoutGrid size={14} aria-hidden /> Parts
+      <button type="button" className="fb-vc-btn wf-btn-text" aria-pressed={libraryOpen} aria-label="Parts" onClick={onLibrary} title="Interface parts to drag onto a screen">
+        <LayoutGrid size={14} aria-hidden /> <span className="wf-btn-label">Parts</span>
       </button>
       <span className="wf-seg" role="group" aria-label="Look">
         {(["clean", "sketch"] as const).map((s) => (
@@ -118,8 +118,8 @@ export function Tools({
         ))}
       </span>
       {onAi ? (
-        <button type="button" className="fb-vc-btn wf-btn-text" aria-pressed={aiOpen} aria-expanded={aiOpen} onClick={onAi} title="Draw, vary or refine screens with Foli AI">
-          <AiIcon size={14} className="wf-ai-mark" /> Foli AI
+        <button type="button" className="fb-vc-btn wf-btn-text" aria-pressed={aiOpen} aria-expanded={aiOpen} aria-label="Foli AI" onClick={onAi} title="Draw, vary or refine screens with Foli AI">
+          <AiIcon size={14} className="wf-ai-mark" /> <span className="wf-btn-label">Foli AI</span>
         </button>
       ) : null}
       {multi !== null ? (

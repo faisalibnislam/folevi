@@ -254,6 +254,11 @@
   .wf-search { height: 44px; }
   .wf-stepper .fb-vc-btn { min-width: 44px; }
 }
+/* A narrow card (a phone) keeps the toolbar's icons and drops their words. */
+@media (max-width: 600px) {
+  .fb-wireframe .wf-btn-label { display: none; }
+  .fb-wireframe .fb-vc-bar .fb-vc-title { padding-right: 2px; }
+}
 @media print {
   .wf-bar, .wf-panel, .wf-ai, .wf-empty { display: none; }
 }

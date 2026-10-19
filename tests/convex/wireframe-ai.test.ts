@@ -2,7 +2,8 @@
 // usual gates apply (AI off, credits).
 import { describe, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
-import { serializeWireframe, wireframeDataIssue } from "@folevi/editor-schema";
+import { parseWireframe, serializeWireframe, wireframeDataIssue } from "@folevi/editor-schema";
+import { TOOL_BY_NAME } from "../../convex/lib/mcp/tools";
 import { person, setup } from "./helpers";
 
 const SCREEN = JSON.stringify({
@@ -66,5 +67,25 @@ describe("Foli AI wireframes", () => {
       vi.unstubAllGlobals();
       delete process.env.GEMINI_API_KEY;
     }
+  });
+
+  test("Markdown with a wireframe fence (Foli AI chat, MCP) becomes a wireframe block; the tools say how", async () => {
+    const t = setup();
+    const a = await person(t, "wf-fence@example.com");
+    const draft = { screens: [{ name: "Sign up", frame: "phone", parts: [{ kind: "heading", text: "Create your account" }, { kind: "button", text: "Continue with Google", variant: "secondary", goesTo: "Home" }] }, { name: "Home", parts: [{ kind: "navBar", text: "Home" }] }] };
+    const markdown = `The flow:\n\n\`\`\`wireframe\n${JSON.stringify(draft)}\n\`\`\`\n`;
+    const { id } = await a.as.mutation(api.aiWriting.saveDraft, { scope: a.scope, kind: "note", title: "Sign up flow", markdown });
+    const blocks = await t.run(async (ctx) => {
+      const doc = (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", id)).unique())!;
+      return ctx.db.query("blocks").withIndex("by_document", (q) => q.eq("documentId", doc._id)).collect();
+    });
+    const block = blocks.find((b) => b.type === "wireframe")!;
+    expect(block).toBeTruthy();
+    const data = String((block.props as { data: string }).data);
+    expect(wireframeDataIssue(data)).toBeNull();
+    const wf = parseWireframe(data);
+    expect(wf.screens.map((s) => s.name)).toEqual(["Sign up", "Home"]);
+    expect(wf.links).toHaveLength(1);
+    for (const name of ["create_note", "append_to_note"]) expect(JSON.stringify(TOOL_BY_NAME.get(name)!.inputSchema)).toContain('language \\"wireframe\\"');
   });
 });

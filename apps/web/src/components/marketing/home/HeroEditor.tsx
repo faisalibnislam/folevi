@@ -1,6 +1,13 @@
 "use client";
 
 import "@/components/editor/insert-blocks.css";
+// The visual blocks the demo's Insert panel and slash menu can add.
+import "@/components/editor/flowchart/flowchart.css";
+import "@/components/editor/canvas/canvas.css";
+import "@/components/editor/mindmap/mindmap.css";
+import "@/components/editor/stickies/stickies.css";
+import "@/components/editor/chart/chart.css";
+import "@/components/editor/wireframe/wireframe.css";
 import { ConvexProvider, type ConvexReactClient } from "convex/react";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import { closeHistory } from "@tiptap/pm/history";

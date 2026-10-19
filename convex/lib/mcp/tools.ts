@@ -3,6 +3,7 @@
 // side lives in convex/mcp.ts. Writes only add (new notes, appended blocks, new tasks) or change a task's
 // own fields; nothing deletes, moves, shares or publishes.
 import type { McpScope } from "./config";
+import { MINDMAP_MARKDOWN_HINT } from "@folevi/editor-schema";
 
 export const MAX_MARKDOWN = 20_000;
 /** A new note can be longer than an addition (a clipped article, a long write-up). */
@@ -35,6 +36,7 @@ const REPEAT = { type: "string", enum: ["none", "daily", "weekdays", "weekly", "
 const object = (properties: Schema, required: string[] = []): Schema => ({ type: "object", properties, required, additionalProperties: false });
 /** How Markdown makes a sticky notes board (packages/editor-schema stickiesFromFence). */
 const STICKIES_FENCE = ' A ```stickies fenced block makes a sticky notes board: one idea per line, "## Label" lines start labelled groups, an optional [pink] (yellow, orange, pink, purple, blue, green, gray) colour first and #tags last.';
+const MINDMAP_FENCE = ` ${MINDMAP_MARKDOWN_HINT}`;
 
 export const TOOLS: ToolDef[] = [
   {
@@ -113,7 +115,7 @@ export const TOOLS: ToolDef[] = [
     inputSchema: object(
       {
         title: { type: "string", description: "The note's title.", minLength: 1, maxLength: 200 },
-        markdown: { type: "string", description: "The note's content in Markdown (headings, lists, to-dos with - [ ], tables, code). Don't start with the title as a heading: the title is shown above the content already." + STICKIES_FENCE, maxLength: MAX_CREATE_MARKDOWN },
+        markdown: { type: "string", description: "The note's content in Markdown (headings, lists, to-dos with - [ ], tables, code). Don't start with the title as a heading: the title is shown above the content already." + STICKIES_FENCE + MINDMAP_FENCE, maxLength: MAX_CREATE_MARKDOWN },
         place: PLACE,
         folderId: { type: "string", description: "A folder id from list_folders (same place).", maxLength: 64 },
         inInbox: { type: "boolean", description: "Only when the person asks for their Inbox: files the note as a page inside the Inbox page instead of Drafts (not with folderId)." },
@@ -128,7 +130,7 @@ export const TOOLS: ToolDef[] = [
       "Adds Markdown to the end of an existing note. What's already in the note stays as it is; a version is saved first. If the person asked to review changes to existing notes, nothing changes yet: the answer has proposed: true, and the addition waits in Folevi's Changes page for them to accept or reject. Tell them so.",
     scope: "notes:write",
     kind: "write",
-    inputSchema: object({ noteId: NOTE_ID, markdown: { type: "string", description: "What to add, in Markdown." + STICKIES_FENCE, minLength: 1, maxLength: MAX_MARKDOWN } }, ["noteId", "markdown"]),
+    inputSchema: object({ noteId: NOTE_ID, markdown: { type: "string", description: "What to add, in Markdown." + STICKIES_FENCE + MINDMAP_FENCE, minLength: 1, maxLength: MAX_MARKDOWN } }, ["noteId", "markdown"]),
   },
   {
     name: "add_task",

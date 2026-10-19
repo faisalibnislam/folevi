@@ -57,7 +57,12 @@
     "BlockFont": { "type": "string", "values": ["system", "serif", "mono", "rounded"] },
     "BlockGroup": { "type": "string", "values": ["page", "card"] },
     "DividerStyle": { "type": "string", "values": ["extralight", "light", "regular", "strong"] },
-    "StudyKind": { "type": "string", "values": ["card", "quiz"] }
+    "StudyKind": { "type": "string", "values": ["card", "quiz"] },
+    "TableColumnFormat": { "type": "string", "values": ["number", "currency", "percent", "date"] },
+    "TableFilterOp": {
+      "type": "string",
+      "values": ["contains", "notContains", "equals", "notEquals", "empty", "notEmpty", "gt", "gte", "lt", "lte"]
+    }
   },
   "unions": {
     "Mark": {
@@ -99,7 +104,11 @@
     "DocumentCover": {
       "kind": "CoverKind",
       "value": "string?"
-    }
+    },
+    "TableColumn": { "format": "TableColumnFormat?", "currency": "string?", "decimals": "int?" },
+    "TableSort": { "column": "int", "desc": "bool?" },
+    "TableFilter": { "column": "int", "op": "TableFilterOp", "value": "string?" },
+    "TableViewSettings": { "sort": "TableSort?", "filters": "TableFilter[]?" }
   },
   "blocks": {
     "paragraph": {
@@ -209,7 +218,13 @@
     },
     "table": {
       "text": false,
-      "props": { "rows": "InlineNode[][][]", "headerRow": "bool" }
+      "props": {
+        "rows": "InlineNode[][][]",
+        "headerRow": "bool",
+        "totalsRow": "bool?",
+        "columns": "TableColumn[]?",
+        "view": "TableViewSettings?"
+      }
     },
     "page": {
       "text": false,

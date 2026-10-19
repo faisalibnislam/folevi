@@ -9,6 +9,7 @@ import { parseStickies, stickiesToHtml } from "./stickies";
 import { chartToHtml, parseChart } from "./chart";
 import { parseWireframe, wireframeToHtml } from "./wireframe";
 import { EMBED_PROVIDER_LABEL } from "./embeds";
+import { evaluateTable, tableOptionsFromProps } from "./tableFormulas";
 import type { EmbedProvider } from "./generated/schema";
 
 export function escapeHtml(value: string): string {
@@ -98,7 +99,7 @@ blockquote{border-left:3px solid var(--line);margin:0;padding-left:16px;color:va
 .callout{border:1px solid var(--line);border-radius:12px;padding:12px 16px}
 pre{background:var(--code);padding:16px;border-radius:10px;overflow:auto}
 code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
-table{border-collapse:collapse;width:100%}td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}tr.total td{font-weight:600;border-top:2px solid var(--line)}
 img{max-width:100%;border-radius:10px}
 ul.todo{list-style:none;padding-left:0}ul.todo li::before{content:"☐ ";}ul.todo li.done::before{content:"☑ ";}
 ul.todo li.done{color:var(--muted);text-decoration:line-through}
@@ -258,10 +259,20 @@ export function blocksToHtml(
       }
       case "table": {
         const rows = (p.rows as InlineNode[][][]) ?? [];
+        // Formulas as their results and numbers in their columns' formats, right-aligned like in the note.
+        const options = tableOptionsFromProps(p);
+        const shown = evaluateTable(rows, options).cells;
         const body = rows
           .map((r, i) => {
             const tag = i === 0 && p.headerRow ? "th" : "td";
-            return `<tr>${r.map((c) => `<${tag}>${inlineToHtml(c, opts)}</${tag}>`).join("")}</tr>`;
+            const total = options.totalsRow && i === rows.length - 1 && i > 0;
+            return `<tr${total ? ' class="total"' : ""}>${r
+              .map((c, j) => {
+                const e = shown[i]?.[j];
+                const inner = e?.changed ? escapeHtml(e.display) : inlineToHtml(c, opts);
+                return `<${tag}${e?.numeric && tag === "td" ? ' style="text-align:right"' : ""}>${inner}</${tag}>`;
+              })
+              .join("")}</tr>`;
           })
           .join("");
         parts.push(`<table>${body}</table>`);

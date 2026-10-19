@@ -14,12 +14,11 @@
 // Google Sheets. A whole column or a column name used as a range means the column's data rows: without the
 // header row and without the totals row, so a total never counts itself. A column name used as a single
 // value (=Price * Quantity) means that column's cell in the formula's own row.
-import type { InlineNode, Mark } from "./generated/schema";
+import { TableColumnFormatValues, TableFilterOpValues, type InlineNode, type Mark, type TableColumnFormat, type TableFilterOp } from "./generated/schema";
 
 // ------------------------------------------------------------------------------------------------ types
 
-export type TableColumnFormat = "number" | "currency" | "percent" | "date";
-export const TABLE_COLUMN_FORMATS: readonly TableColumnFormat[] = ["number", "currency", "percent", "date"];
+export const TABLE_COLUMN_FORMATS: readonly TableColumnFormat[] = TableColumnFormatValues;
 /** Currencies a column can show (ISO 4217 codes). */
 export const TABLE_CURRENCIES = ["USD", "EUR", "GBP", "JPY", "INR", "BDT", "CAD", "AUD", "CHF", "CNY", "HKD", "SGD", "NZD", "SEK", "NOK", "DKK", "PLN", "BRL", "MXN", "ZAR", "KRW", "AED", "SAR", "PKR", "TRY"] as const;
 
@@ -30,11 +29,10 @@ export interface TableColumnSettings {
   decimals?: number | null;
 }
 
-export type TableFilterOp = "contains" | "notContains" | "equals" | "notEquals" | "empty" | "notEmpty" | "gt" | "gte" | "lt" | "lte";
-export const TABLE_FILTER_OPS: readonly TableFilterOp[] = ["contains", "notContains", "equals", "notEquals", "empty", "notEmpty", "gt", "gte", "lt", "lte"];
+export const TABLE_FILTER_OPS: readonly TableFilterOp[] = TableFilterOpValues;
 
 /** The table's saved view (its `view` prop): the rows stay where they are, this is how they're shown. */
-export interface TableViewSettings {
+export interface TableViewInput {
   sort?: { column: number; desc?: boolean | null } | null;
   filters?: readonly { column: number; op: TableFilterOp | string; value?: string | null }[] | null;
 }
@@ -1306,7 +1304,7 @@ function filterMatches(cell: EvaluatedCell | undefined, op: string, value: strin
  * that pass every filter, sorted (numbers by value, text alphabetically, empty cells last; ties keep their
  * order), then the totals row. Rows are indices into the stored rows, which never move.
  */
-export function tableRowOrder(evaluated: EvaluatedTable, options: TableOptions, view: TableViewSettings | null | undefined): number[] {
+export function tableRowOrder(evaluated: EvaluatedTable, options: TableOptions, view: TableViewInput | null | undefined): number[] {
   const height = evaluated.cells.length;
   const head = options.headerRow && height > 0 ? [0] : [];
   const tail = options.totalsRow && height > head.length ? [height - 1] : [];

@@ -236,6 +236,7 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
         issues.push({ path: "props.rows", code: "too_long", message: "too many columns" });
       if (rows.some((r) => r.length !== width))
         issues.push({ path: "props.rows", code: "shape", message: "rows must have equal length" });
+      issues.push(...tableSettingsIssues(p, rows.length, width));
       break;
     }
     case "image":
@@ -325,6 +326,37 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
   return issues;
 }
 
+/** Most filters a table's view may have. */
+const MAX_TABLE_FILTERS = 20;
+
+/**
+ * A table's optional settings (src/tableFormulas.ts) against its shape: a format per column at most, a
+ * three-letter currency, 0 to 6 decimals, a sort and filters on columns it has, and a totals row only under
+ * at least one other row.
+ */
+function tableSettingsIssues(p: Record<string, unknown>, height: number, width: number): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const columns = p.columns as { currency?: string; decimals?: number }[] | undefined;
+  if (columns) {
+    if (columns.length > width) issues.push({ path: "props.columns", code: "shape", message: "more column settings than columns" });
+    columns.forEach((c, i) => {
+      if (c.currency !== undefined && !/^[A-Z]{3}$/.test(c.currency)) issues.push({ path: `props.columns[${i}].currency`, code: "format", message: "expected a currency code" });
+      if (c.decimals !== undefined && (c.decimals < 0 || c.decimals > 6)) issues.push({ path: `props.columns[${i}].decimals`, code: "range", message: "decimals must be 0 to 6" });
+    });
+  }
+  const view = p.view as { sort?: { column: number }; filters?: { column: number; value?: string }[] } | undefined;
+  if (view?.sort && (view.sort.column < 0 || view.sort.column >= width)) issues.push({ path: "props.view.sort.column", code: "range", message: "sort column out of range" });
+  if (view?.filters) {
+    if (view.filters.length > MAX_TABLE_FILTERS) issues.push({ path: "props.view.filters", code: "too_long", message: "too many filters" });
+    view.filters.forEach((f, i) => {
+      if (f.column < 0 || f.column >= width) issues.push({ path: `props.view.filters[${i}].column`, code: "range", message: "filter column out of range" });
+      if (f.value !== undefined && f.value.length > 500) issues.push({ path: `props.view.filters[${i}].value`, code: "too_long", message: "filter value too long" });
+    });
+  }
+  if (p.totalsRow === true && height < 2) issues.push({ path: "props.totalsRow", code: "shape", message: "a totals row needs a row above it" });
+  return issues;
+}
+
 /**
  * Blocks whose content is a JSON string in `props.data` with a `height`: each type's size limit, its strict
  * data check (and the message it gives for data over the limit), its height range and, for repairWireBlock,
@@ -394,6 +426,45 @@ function repairInline(nodes: unknown): InlineLike[] {
 
 type InlineLike = Record<string, unknown> & { type: string };
 
+/** A table's optional settings made to fit it: what can't be kept (a column it no longer has) goes. */
+function repairTableSettings(props: Record<string, unknown>, height: number, width: number): void {
+  const enums = SPEC.enums as Record<string, { values: readonly (string | number)[] }>;
+  const int = (v: unknown, lo: number, hi: number) => (typeof v === "number" && Number.isInteger(v) && v >= lo && v <= hi ? v : undefined);
+  if (props.columns !== undefined) {
+    const columns = (Array.isArray(props.columns) ? props.columns : []).slice(0, width).map((raw) => {
+      const c = isPlainObject(raw) ? raw : {};
+      const out: Record<string, unknown> = {};
+      if (enums.TableColumnFormat!.values.includes(c.format as string)) out.format = c.format;
+      if (typeof c.currency === "string" && /^[A-Z]{3}$/.test(c.currency.toUpperCase())) out.currency = c.currency.toUpperCase();
+      const decimals = int(c.decimals, 0, 6);
+      if (decimals !== undefined) out.decimals = decimals;
+      return out;
+    });
+    if (columns.some((c) => Object.keys(c).length)) props.columns = columns;
+    else delete props.columns;
+  }
+  if (props.view !== undefined) {
+    const raw = isPlainObject(props.view) ? props.view : {};
+    const view: Record<string, unknown> = {};
+    const sort = isPlainObject(raw.sort) ? raw.sort : null;
+    const sortColumn = sort ? int(sort.column, 0, width - 1) : undefined;
+    if (sort && sortColumn !== undefined) view.sort = sort.desc === true ? { column: sortColumn, desc: true } : { column: sortColumn };
+    const filters = (Array.isArray(raw.filters) ? raw.filters : [])
+      .filter(isPlainObject)
+      .map((f) => ({ column: int(f.column, 0, width - 1), op: f.op, value: typeof f.value === "string" ? f.value.slice(0, 500) : undefined }))
+      .filter((f) => f.column !== undefined && enums.TableFilterOp!.values.includes(f.op as string))
+      .slice(0, MAX_TABLE_FILTERS)
+      .map((f) => (f.value === undefined ? { column: f.column, op: f.op } : f));
+    if (filters.length) view.filters = filters;
+    if (Object.keys(view).length) props.view = view;
+    else delete props.view;
+  }
+  if (props.totalsRow !== undefined) {
+    if (props.totalsRow === true && height >= 2) props.totalsRow = true;
+    else delete props.totalsRow;
+  }
+}
+
 /**
  * A block the server would refuse, repaired where that keeps what the person wrote: uneven table rows padded
  * with empty cells, broken marks and unsafe links in text and table cells fixed or dropped (the words stay),
@@ -421,6 +492,7 @@ export function repairWireBlock(block: WireBlock): { block: WireBlock; repaired:
     const width = Math.max(1, ...rows.map((r) => r.length));
     props.rows = (rows.length ? rows : [[[]]]).map((r) => [...r, ...Array.from({ length: width - r.length }, () => [])]);
     props.headerRow = props.headerRow !== false;
+    repairTableSettings(props, (props.rows as unknown[][]).length, width);
   }
   if (block.type === "image" && typeof props.width === "number") props.width = Math.min(1, Math.max(0.2, props.width));
   if (block.type === "todo") {

@@ -684,6 +684,28 @@
         "quiz"
       ]
     },
+    "TableColumnFormat": {
+      "enum": [
+        "number",
+        "currency",
+        "percent",
+        "date"
+      ]
+    },
+    "TableFilterOp": {
+      "enum": [
+        "contains",
+        "notContains",
+        "equals",
+        "notEquals",
+        "empty",
+        "notEmpty",
+        "gt",
+        "gte",
+        "lt",
+        "lte"
+      ]
+    },
     "Mark": {
       "oneOf": [
         {
@@ -934,6 +956,72 @@
       "required": [
         "kind"
       ],
+      "additionalProperties": false
+    },
+    "TableColumn": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/TableColumnFormat"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "decimals": {
+          "type": "integer"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "TableSort": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "integer"
+        },
+        "desc": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "column"
+      ],
+      "additionalProperties": false
+    },
+    "TableFilter": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "integer"
+        },
+        "op": {
+          "$ref": "#/$defs/TableFilterOp"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "column",
+        "op"
+      ],
+      "additionalProperties": false
+    },
+    "TableViewSettings": {
+      "type": "object",
+      "properties": {
+        "sort": {
+          "$ref": "#/$defs/TableSort"
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TableFilter"
+          }
+        }
+      },
+      "required": [],
       "additionalProperties": false
     },
     "ParagraphProps": {
@@ -1260,6 +1348,18 @@
         },
         "headerRow": {
           "type": "boolean"
+        },
+        "totalsRow": {
+          "type": "boolean"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TableColumn"
+          }
+        },
+        "view": {
+          "$ref": "#/$defs/TableViewSettings"
         }
       },
       "required": [

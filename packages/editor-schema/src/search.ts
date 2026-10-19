@@ -6,6 +6,7 @@ import { mindmapText, parseMindmap } from "./mindmap";
 import { parseStickies, stickiesText } from "./stickies";
 import { chartText, parseChart } from "./chart";
 import { parseWireframe, wireframeText } from "./wireframe";
+import { evaluateTable, tableOptionsFromProps } from "./tableFormulas";
 
 /** Lowercase, strip diacritics, collapse whitespace. Used on both indexing and query sides. */
 export function normalizeForSearch(value: string): string {
@@ -34,9 +35,19 @@ export function blockSearchText(block: Pick<WireBlock, "type" | "text" | "props"
     case "audio":
       parts.push(String(p.name ?? ""));
       break;
-    case "table":
-      for (const row of (p.rows as InlineNode[][][]) ?? []) for (const cell of row) parts.push(plainText(cell));
+    case "table": {
+      // What cells say and what they show (a formula's result, a formatted number), so both are found.
+      const rows = (p.rows as InlineNode[][][]) ?? [];
+      const shown = rows.some((r) => r.some((c) => c.some((n) => n.type === "text" && n.text.trimStart().startsWith("=")))) || Array.isArray(p.columns) ? evaluateTable(rows, tableOptionsFromProps(p)).cells : null;
+      rows.forEach((row, r) =>
+        row.forEach((cell, c) => {
+          parts.push(plainText(cell));
+          const e = shown?.[r]?.[c];
+          if (e?.changed && e.kind !== "error") parts.push(e.display);
+        }),
+      );
       break;
+    }
     case "embed":
       parts.push(String(p.url ?? ""));
       break;

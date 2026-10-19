@@ -41,7 +41,7 @@ code, link, color, highlight), `mention`, `date`, `pageLink`.
 | code | no | `language`, `code` |
 | image | no | `fileId?` or `url?`, `alt`, `caption`, `width?`, `naturalWidth?`, `naturalHeight?` |
 | file | no | `fileId`, `name`, `size`, `mimeType` |
-| table | no | `rows: InlineNode[][][]`, `headerRow` |
+| table | no | `rows: InlineNode[][][]`, `headerRow`, `totalsRow?` (the last row is totals), `columns?: [{ format?, currency?, decimals? }]` (number/currency/percent/date, an ISO currency code, 0 to 6 decimals; at most one per column), `view?: { sort?: { column, desc? }, filters?: [{ column, op, value? }] }` (a saved view: rows are never reordered). A cell whose text starts with `=` is a formula, stored as typed; `src/tableFormulas.ts` (`evaluateTable`) works out what every cell shows, for the editor, exports, search and charts |
 | page | no | `documentId`, `display` (link/card), `titleCache?`, `iconCache?` |
 | bookmark | no | `url`, `title?`, `description?`, `siteName?` |
 | collection | no | `collectionId`, `viewId?` |

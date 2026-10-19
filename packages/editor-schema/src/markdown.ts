@@ -15,6 +15,7 @@ import { CHART_DEFAULT_HEIGHT, chartFromFence, chartToMarkdown, parseChart } fro
 import { WIREFRAME_DEFAULT_HEIGHT, parseWireframe, serializeWireframe, wireframeToMarkdown } from "./wireframe";
 import { wireframeFromFence } from "./wireframeLayout";
 import { EMBED_PROVIDER_LABEL } from "./embeds";
+import { tableDisplayRows, tableOptionsFromProps } from "./tableFormulas";
 import type { EmbedProvider } from "./generated/schema";
 
 // ---------------------------------------------------------------- export
@@ -239,7 +240,8 @@ export function blocksToMarkdown(
         break;
       }
       case "table": {
-        const rows = (p.rows as InlineNode[][][]) ?? [];
+        // Formulas as their results, numbers in their columns' formats.
+        const rows = tableDisplayRows((p.rows as InlineNode[][][]) ?? [], tableOptionsFromProps(p));
         if (rows.length) {
           const cell = (c: InlineNode[]) => inlineToMarkdown(c, opts).replace(/\n/g, " ") || " ";
           const header = p.headerRow ? rows[0]! : rows[0]!.map(() => [] as InlineNode[]);

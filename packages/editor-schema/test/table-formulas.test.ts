@@ -16,7 +16,13 @@ import {
   tableRowOrder,
   totalsFormula,
   totalsFunctionOf,
+  blockSearchText,
+  blocksToHtml,
+  blocksToMarkdown,
+  repairWireBlock,
+  validateWireBlock,
   type InlineNode,
+  type WireBlock,
 } from "../src";
 
 const show = (rows: string[][], opts = {}) => evaluateTable(rows, { headerRow: true, today: "2026-10-19", ...opts }).display;
@@ -256,5 +262,50 @@ describe("moving references", () => {
     expect(remapFormulaReferences('="B2"&LOG10(B2)', { cols: deleteIndexMap(1) })).toBe('="B2"&LOG10(#REF!)');
     expect(remapFormulaReferences("B2 is text", { cols: deleteIndexMap(1) })).toBe("B2 is text");
     expect(remapFormulaReferences("=Price*2", { cols: deleteIndexMap(0) })).toBe("=Price*2");
+  });
+});
+
+describe("the table block's settings", () => {
+  const txt = (t: string): InlineNode[] => (t ? [{ type: "text", text: t }] : []);
+  const table = (props: Record<string, unknown>): WireBlock => ({
+    id: "01HZX7Y6J8K9M0N1P2Q3R4S5T6",
+    type: "table",
+    parentId: null,
+    rank: "a",
+    schemaVersion: 1,
+    text: [],
+    props: { rows: [[txt("Item"), txt("Price")], [txt("a"), txt("1200")], [txt("b"), txt("=B2/2")], [txt("Total"), txt("=SUM(B:B)")]], headerRow: true, ...props },
+  });
+  it("keeps old tables valid and accepts formats, a view and a totals row", () => {
+    expect(validateWireBlock(table({}))).toEqual([]);
+    expect(validateWireBlock(table({ totalsRow: true, columns: [{}, { format: "currency", currency: "EUR", decimals: 2 }], view: { sort: { column: 1, desc: true }, filters: [{ column: 0, op: "contains", value: "a" }, { column: 1, op: "notEmpty" }] } }))).toEqual([]);
+  });
+  it("refuses settings that don't fit the table", () => {
+    const codes = (props: Record<string, unknown>) => validateWireBlock(table(props)).map((i) => i.path);
+    expect(codes({ columns: [{}, {}, {}] })).toContain("props.columns");
+    expect(codes({ columns: [{ format: "money" }] })).toContain("props.columns[0].format");
+    expect(codes({ columns: [{ currency: "dollars" }] })).toContain("props.columns[0].currency");
+    expect(codes({ columns: [{ decimals: 9 }] })).toContain("props.columns[0].decimals");
+    expect(codes({ view: { sort: { column: 5 } } })).toContain("props.view.sort.column");
+    expect(codes({ view: { filters: [{ column: 0, op: "like" }] } })).toContain("props.view.filters[0].op");
+    expect(codes({ totalsRow: true, rows: [[txt("x")]] })).toContain("props.totalsRow");
+  });
+  it("repairs what it can and drops the rest", () => {
+    const { block, issues } = repairWireBlock(table({ columns: [{ format: "money", decimals: 2 }, { format: "percent", currency: "usd" }, { format: "date" }], view: { sort: { column: 7 }, filters: [{ column: 1, op: "gt", value: "5" }, { column: 4, op: "empty" }, "x"] }, totalsRow: "yes" }));
+    expect(issues).toEqual([]);
+    expect(block.props.columns).toEqual([{ decimals: 2 }, { format: "percent", currency: "USD" }]);
+    expect(block.props.view).toEqual({ filters: [{ column: 1, op: "gt", value: "5" }] });
+    expect(block.props.totalsRow).toBeUndefined();
+  });
+  it("exports and searches what the cells show", () => {
+    const b = table({ totalsRow: true, columns: [{}, { format: "currency", currency: "USD" }] });
+    const md = blocksToMarkdown([b]);
+    expect(md).toContain("| b | $600.00 |");
+    expect(md).toContain("| Total | $1,800.00 |");
+    const html = blocksToHtml([b], { title: "T" });
+    expect(html).toContain('<td style="text-align:right">$1,200.00</td>');
+    expect(html).toContain('<tr class="total">');
+    expect(blockSearchText(b)).toContain("$600.00");
+    expect(blockSearchText(b)).toContain("=B2/2");
   });
 });

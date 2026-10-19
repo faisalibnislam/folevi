@@ -235,7 +235,8 @@ export function normalizeStickies(input: unknown): StickiesData {
     const top = placed.length ? Math.max(...placed.map((n) => n.y + n.h)) + 40 : 0;
     unplaced.forEach((n, i) => {
       n.x = (i % 6) * (STICKY_SIZE + 24);
-      n.y = top + Math.floor(i / 6) * (STICKY_SIZE + 24);
+      // A board already reaching the edge of the space puts them at the edge rather than past it.
+      n.y = pos(top + Math.floor(i / 6) * (STICKY_SIZE + 24));
     });
   }
   for (const raw of Array.isArray(input.groups) ? input.groups : []) {

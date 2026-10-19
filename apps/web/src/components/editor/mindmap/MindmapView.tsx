@@ -56,6 +56,8 @@ const MAX_K = 2.5;
 const TOP = 56; // room for the card's toolbar
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 const LONG_PRESS_MS = 450;
+/** The smallest zoom a map opens at (smaller maps fit whole). */
+const READABLE_K = 0.6;
 
 interface View {
   x: number;
@@ -156,7 +158,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
   }, [outline]);
 
   const fitView = useCallback(
-    (l = layout, w = wrapRef.current?.clientWidth ?? size.w, h = wrapRef.current?.clientHeight ?? size.h) => {
+    (l = layout, w = wrapRef.current?.clientWidth ?? size.w, h = wrapRef.current?.clientHeight ?? size.h, readable = false) => {
       if (!w || !h) return;
       const b = l.bounds;
       if (!b) {
@@ -165,6 +167,12 @@ function MindmapEditor(props: ReactNodeViewProps) {
       }
       const pad = 36;
       const k = clamp(Math.min((w - pad * 2) / Math.max(1, b.w), (h - TOP - pad * 1.6) / Math.max(1, b.h), 1), MIN_K, MAX_K);
+      // On first sight a big map (or a narrow screen) opens readable, on its centre, rather than tiny.
+      const centre = l.rootId ? l.byId.get(l.rootId) : null;
+      if (readable && k < READABLE_K && centre) {
+        setView({ k: READABLE_K, x: w / 2 - (centre.x + centre.w / 2) * READABLE_K, y: TOP + (h - TOP) / 2 - (centre.y + centre.h / 2) * READABLE_K });
+        return;
+      }
       setView({ k, x: w / 2 - (b.x + b.w / 2) * k, y: TOP + (h - TOP) / 2 - (b.y + b.h / 2) * k });
     },
     [layout, size],
@@ -175,8 +183,8 @@ function MindmapEditor(props: ReactNodeViewProps) {
   useEffect(() => {
     if (fitted.current || !size.w || !size.h) return;
     fitted.current = true;
-    fitView();
-  }, [size, fitView]);
+    fitView(layout, size.w, size.h, true);
+  }, [size, fitView, layout]);
 
   /** Keeps an idea on screen (after the keyboard moved to it, or it grew). */
   const keepInView = useCallback(

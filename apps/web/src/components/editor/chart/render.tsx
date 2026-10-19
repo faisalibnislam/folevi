@@ -1,9 +1,10 @@
 // The chart drawn without editing: read-only notes, share pages, version history. Its title, the chart
-// itself (the same drawing as the editor's, fitted to the page's width), the takeaway, and its data as a
-// table (behind "Show data"; screen readers get the table either way). No hooks, so it renders on the server.
+// itself (the same drawing as the editor's, fitted to the page's width, with zoom and pan: ZoomPlot.tsx),
+// the takeaway, and its data as a table (behind "Show data"; screen readers get the table either way).
+// No hooks here, so it renders on the server.
 import { chartCellText, parseChart, type ChartData } from "@folevi/editor-schema";
 import { drawChart } from "./draw";
-import { ChartSvg } from "./ChartSvg";
+import { ZoomPlot } from "./ZoomPlot";
 
 /** How wide the read-only drawing is laid out (it scales down to narrower pages). */
 const STATIC_WIDTH = 720;
@@ -70,9 +71,7 @@ export function ChartStatic({ data, height }: { data: string; height?: number })
       {scene.empty ? (
         <p className="fb-vc-static-empty">{scene.summary}</p>
       ) : (
-        <div className="fb-chart-static-plot">
-          <ChartSvg scene={scene} fit />
-        </div>
+        <ZoomPlot scene={scene} />
       )}
       {chart.takeaway ? <Takeaway text={chart.takeaway} className="fb-chart-takeaway" /> : null}
       <details className="fb-chart-data">

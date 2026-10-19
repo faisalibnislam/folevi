@@ -7,7 +7,7 @@
 // is saved as you go. When the rows come from a table or a collection the grid is read-only and says where.
 import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal, Plus } from "lucide-react";
-import { CHART_LIMITS, chartCell, chartCellText, parseDelimited, type ChartCell, type ChartKind } from "@folevi/editor-schema";
+import { CHART_LIMITS, chartCell, chartCellText, chartNumber, parseDelimited, type ChartCell, type ChartKind } from "@folevi/editor-schema";
 import { MenuButton } from "@/components/ui/Menu";
 
 export interface GridData {
@@ -207,7 +207,7 @@ export function DataGrid({ data, kind, readOnly, note, onChange }: { data: GridD
                   )}
                 </th>
                 {row.map((cell, c) => (
-                  <td key={c} data-number={typeof cell === "number" || undefined}>
+                  <td key={c} data-number={(c > 0 && chartNumber(cell) !== null) || undefined}>
                     <Cell
                       value={chartCellText(cell)}
                       label={`${data.columns[c] || `Column ${c + 1}`}, row ${r + 1}`}

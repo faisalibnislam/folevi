@@ -186,7 +186,13 @@ ul.fb-chart-takeaway li + li { margin-top: 2px; }
 /* ---------------------------------------------------------------- read-only (share pages, version history) */
 .fb-chart-static { margin: 0; }
 .fb-chart-static-title { margin: 0 0 6px; font: 600 15px/1.35 var(--font-sans); color: var(--color-heading); }
-.fb-chart-static-plot { overflow-x: auto; }
+.fb-chart-zoom { position: relative; }
+.fb-chart-static-plot { overflow: auto; overscroll-behavior: contain; max-height: 80vh; }
+.fb-chart-static-plot[data-zoomed] { cursor: grab; touch-action: pan-x pan-y; }
+.fb-chart-static-plot[data-zoomed]:active { cursor: grabbing; }
+.fb-chart-zoom-bar { position: absolute; right: 6px; bottom: 6px; display: flex; gap: 2px; padding: 3px; border-radius: var(--radius-panel); background: var(--glass-pop); box-shadow: var(--glass-edge); opacity: 0; transition: opacity 140ms; }
+.fb-chart-zoom:hover .fb-chart-zoom-bar, .fb-chart-zoom:focus-within .fb-chart-zoom-bar { opacity: 1; }
+@media (pointer: coarse) { .fb-chart-zoom-bar { opacity: 1; } }
 .fb-chart-static .fb-chart-svg { margin: 0 auto; }
 .fb-chart-data { margin-top: 8px; }
 .fb-chart-data summary { width: fit-content; cursor: pointer; font-size: 12.5px; color: var(--color-ink-muted); }
@@ -198,7 +204,7 @@ ul.fb-chart-takeaway li + li { margin-top: 2px; }
 .fb-chart-data td[data-number] { text-align: right; font-variant-numeric: tabular-nums; }
 
 @media print {
-  .fb-chart-tip, .fb-chart-grid-actions, .fb-chart-data summary { display: none; }
+  .fb-chart-tip, .fb-chart-grid-actions, .fb-chart-data summary, .fb-chart-zoom-bar { display: none; }
   .fb-chart-data:not([open]) > :not(summary) { display: block; }
 }
 @media (forced-colors: active) {

@@ -39,6 +39,7 @@ import {
 } from "@folevi/editor-schema";
 import { useAiEnabled, useNoteAi } from "@/components/ai/useAi";
 import { AiIcon } from "@/components/ai/AiIcon";
+import { aiProblem } from "@/components/ai/AiCredits";
 import { MenuButton } from "@/components/ui/Menu";
 import { Popover } from "@/components/ui/Popover";
 import { useToast } from "@/components/ui/Toast";
@@ -313,7 +314,8 @@ export function ChartView(props: ReactNodeViewProps) {
           }),
         );
       })
-      .catch(() => toast.show("Foli AI couldn't write a title for the chart this time."));
+      // Out of credits or not on the plan: the chart just keeps the heading's title (nothing was asked for).
+      .catch((e) => aiProblem(e).kind === "other" && toast.show("Foli AI couldn't write a title for the chart this time."));
   }, [node.attrs.id, aiOn, editable, chartAi, documentId, write, toast]);
 
   const [plotRef, room, remeasure] = useRoom<HTMLDivElement>();

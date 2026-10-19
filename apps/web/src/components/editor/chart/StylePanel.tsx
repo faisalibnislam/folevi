@@ -72,12 +72,12 @@ export function StylePanel({ chart, onChange }: { chart: ChartData; onChange: (p
       {targets.length ? (
         <section aria-labelledby={`${uid}-colors`}>
           <h3 id={`${uid}-colors`} className="ui-caps">
-            Colours
+            Colors
           </h3>
           {targets.map((t) => (
             <div key={t.name} className="fb-chart-color-row">
               <span className="fb-chart-color-name">{t.name}</span>
-              <div className="fb-chart-swatches" role="radiogroup" aria-label={`Colour for ${t.name}`}>
+              <div className="fb-chart-swatches" role="radiogroup" aria-label={`Color for ${t.name}`}>
                 {CHART_COLORS.map((c) => {
                   const on = t.color === c;
                   return (
@@ -101,7 +101,7 @@ export function StylePanel({ chart, onChange }: { chart: ChartData; onChange: (p
           ))}
           {Object.keys(chart.colors).length ? (
             <button type="button" className="fb-chart-link" onClick={() => onChange({ colors: {} })}>
-              Use automatic colours
+              Use automatic colors
             </button>
           ) : null}
         </section>

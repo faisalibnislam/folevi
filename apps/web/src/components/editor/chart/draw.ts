@@ -38,6 +38,8 @@ const LABEL = 11.5;
 const BAR_MAX = 24;
 const GAP = 2;
 const c = (color: ChartColor): Paint => `c:${color}`;
+/** About one tick per `per` pixels of axis, between 2 and 8. */
+const tickCount = (length: number, per: number) => Math.max(2, Math.min(8, Math.floor(length / per)));
 
 /** Draws `chart` at the given size. */
 export function drawChart(chart: ChartData, opts: DrawOptions): Scene {
@@ -86,13 +88,14 @@ export function drawChart(chart: ChartData, opts: DrawOptions): Scene {
     }
     case "org": {
       const model = orgModel(chart);
-      if (!model.people.length) return out("No people yet: add names, who they report to and their roles.", true);
+      const managers = chart.rows.map((r) => r[1]).filter((v) => v !== null && v !== undefined && v !== "");
+      if (!model.people.length || (managers.length && managers.every((v) => typeof v === "number"))) return out("An org chart reads each row as a person: their name, who they report to and their role.", true);
       const r = drawOrg(model, box, marks, hits, width, height);
       return out(r.summary, false, r.size);
     }
     case "venn": {
       const model = vennModel(chart);
-      if (model.sets.length < 2) return out("Add two or three sets, and overlaps like “A & B”.", true);
+      if (model.sets.length < 2 || (!model.overlaps.size && chart.rows.length > 3)) return out("A Venn diagram reads two or three sets with their sizes, and overlaps named like “A & B”.", true);
       return out(drawVenn(model, box, marks, hits));
     }
   }
@@ -218,7 +221,7 @@ function drawCategories(chart: ChartData, model: CategoryModel, box: Box, marks:
   const xTitle = horizontal ? chart.yLabel : chart.xLabel;
 
   // Room for the axes: tick labels on the value axis, category labels on the other.
-  const domain0 = valueDomain(chart, all, bars || kind === "area", horizontal ? Math.max(2, Math.floor(box.w / 90)) : Math.max(2, Math.floor(box.h / 46)));
+  const domain0 = valueDomain(chart, all, bars || kind === "area", horizontal ? tickCount(box.w, 100) : tickCount(box.h, 56));
   const { lo, hi, ticks } = domain0;
   const tickText = ticks.map((t) => formatCompact(t, unit));
   const titleRoom = (s: string) => (s ? 20 : 0);
@@ -449,7 +452,7 @@ function drawPoints(chart: ChartData, model: ReturnType<typeof pointModel>, box:
   const ys = points.map((p) => p.y);
   const xTitle = chart.xLabel || model.xName;
   const yTitle = chart.yLabel || model.yName;
-  const yd = valueDomain(chart, ys, false, Math.max(2, Math.floor(box.h / 50)));
+  const yd = valueDomain(chart, ys, false, tickCount(box.h, 56));
   const yText = yd.ticks.map((t) => formatCompact(t, model.yUnit));
   const tickW = Math.max(...yText.map((t) => textWidth(t, TICK))) + 10;
   const plot: Box = { x: box.x + (yTitle ? 20 : 0) + tickW, y: box.y + 10, w: 0, h: 0 };
@@ -463,7 +466,7 @@ function drawPoints(chart: ChartData, model: ReturnType<typeof pointModel>, box:
   const inX = bubble ? rMax + 4 : 10;
   const inTop = bubble ? rMax + 4 : 10;
   const inBottom = bubble ? rMax + 4 : 0;
-  const xn = niceTicks(Math.min(...xs), Math.max(...xs), Math.max(2, Math.floor(plot.w / 90)));
+  const xn = niceTicks(Math.min(...xs), Math.max(...xs), tickCount(plot.w, 100));
   const sx = (v: number) => plot.x + inX + ((v - xn.lo) / (xn.hi - xn.lo || 1)) * (plot.w - inX * 2);
   const sy = (v: number) => plot.y + plot.h - inBottom - ((Math.max(yd.lo, Math.min(yd.hi, v)) - yd.lo) / (yd.hi - yd.lo || 1)) * (plot.h - inTop - inBottom);
   yd.ticks.forEach((t, i) => {

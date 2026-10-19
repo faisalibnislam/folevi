@@ -60,9 +60,10 @@ function MarkEl({ m, dim }: { m: Mark; dim: boolean }) {
 
 /**
  * The scene's marks. While a group is hovered (`active`), the marks of the other groups step back.
- * `children` draws on top (the canvas's crosshair and hit regions).
+ * `children` draws on top (the canvas's crosshair and hit regions). `fit`: as wide as its container (at most
+ * its own width unless `zoomed`).
  */
-export const ChartSvg = memo(function ChartSvg({ scene, active = null, label, describedBy, children, fit = false }: { scene: Scene; active?: number | null; label?: string; describedBy?: string; children?: ReactNode; fit?: boolean }) {
+export const ChartSvg = memo(function ChartSvg({ scene, active = null, label, describedBy, children, fit = false, zoomed = false }: { scene: Scene; active?: number | null; label?: string; describedBy?: string; children?: ReactNode; fit?: boolean; zoomed?: boolean }) {
   const [x, y, w, h] = scene.viewBox;
   return (
     <svg
@@ -70,7 +71,7 @@ export const ChartSvg = memo(function ChartSvg({ scene, active = null, label, de
       viewBox={`${x} ${y} ${w} ${h}`}
       width={fit ? "100%" : scene.width}
       height={fit ? undefined : scene.height}
-      style={fit ? { maxWidth: scene.width, height: "auto" } : undefined}
+      style={fit ? { maxWidth: zoomed ? "none" : scene.width, height: "auto" } : undefined}
       role="img"
       aria-label={label ?? scene.summary}
       aria-describedby={describedBy}

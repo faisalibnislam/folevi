@@ -32,7 +32,7 @@ export const COLOR_NAME: Record<ChartColor, string> = {
   green: "Green",
   violet: "Violet",
   red: "Red",
-  gray: "Grey",
+  gray: "Gray",
 };
 
 /** A series' colour: the one chosen for its name, else the next in order (grey after the eighth). */

@@ -19,6 +19,8 @@ export * from "./flowchartLayout";
 export * from "./flowchartMermaid";
 export * from "./flowchartSvg";
 export * from "./mindmap";
+export * from "./mindmapLayout";
+export * from "./mindmapTree";
 export * from "./stickies";
 export * from "./chart";
 export * from "./wireframe";

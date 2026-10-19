@@ -8,7 +8,8 @@ import { normalizeInline, plainText, sanitizeHref, splitInline, textLength } fro
 import { whiteboardToSvg } from "./whiteboard";
 import { parseFlowchart } from "./flowchart";
 import { flowchartToMermaid } from "./flowchartMermaid";
-import { mindmapToMarkdown, parseMindmap } from "./mindmap";
+import { MINDMAP_DEFAULT_HEIGHT, mindmapToMarkdown, parseMindmap, serializeMindmap } from "./mindmap";
+import { MINDMAP_FENCE, mindmapFromMarkdown } from "./mindmapTree";
 import { parseStickies, stickiesToMarkdown } from "./stickies";
 import { CHART_DEFAULT_HEIGHT, chartFromFence, chartToMarkdown, parseChart } from "./chart";
 import { WIREFRAME_DEFAULT_HEIGHT, parseWireframe, serializeWireframe, wireframeToMarkdown } from "./wireframe";
@@ -570,6 +571,12 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
         i++;
       }
       const lang = fence[2] ?? "";
+      // A ```mindmap fence holding a nested list (Foli AI, MCP) becomes a mind map block (mindmapTree.ts).
+      const mindmap = lang.toLowerCase() === MINDMAP_FENCE ? serializeMindmap(mindmapFromMarkdown(body.join("\n"))) : "";
+      if (mindmap) {
+        drafts.push({ id: newId(), type: "mindmap", depth, text: [], props: { data: mindmap, height: MINDMAP_DEFAULT_HEIGHT } });
+        continue;
+      }
       // A ```chart fence holding chart JSON (Foli AI, MCP) becomes a chart block (chart.ts chartFromFence).
       const chart = lang.toLowerCase() === "chart" ? chartFromFence(body.join("\n")) : null;
       if (chart) {

@@ -1,0 +1,6 @@
+/* Wireframe block (wireframe/WireframeView.tsx, render.tsx). Loaded with the editor styles by the document view
+ * and share pages; the card and its chrome are canvas/canvas.css. Wireframes are greyscale by design. */
+.fb-wireframe-list { display: grid; gap: 12px; }
+.fb-wireframe-list h4 { margin: 0 0 4px; font-size: 13.5px; font-weight: 600; color: var(--color-heading); }
+.fb-wireframe-list h4 span { margin-left: 4px; font-weight: 500; color: var(--color-ink-muted); }
+.fb-wireframe-list ul { margin: 0; padding-left: 1.2em; color: var(--color-ink); }

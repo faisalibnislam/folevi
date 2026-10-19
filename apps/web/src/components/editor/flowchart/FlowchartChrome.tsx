@@ -42,6 +42,7 @@ export function MainToolbar({
   canTidy,
   onAi,
   aiOpen,
+  exportMenu,
 }: {
   onAdd: (shape: FlowShape) => void;
   onTidy: () => void;
@@ -52,6 +53,8 @@ export function MainToolbar({
   canTidy: boolean;
   onAi: (() => void) | null;
   aiOpen: boolean;
+  /** The Export menu (PNG, SVG, PDF, Copy as image), at the end of the bar. */
+  exportMenu?: React.ReactNode;
 }) {
   return (
     <div className="fc-bar fc-bar-main" role="toolbar" aria-label="Flowchart tools" onPointerDown={(e) => e.stopPropagation()}>
@@ -78,6 +81,12 @@ export function MainToolbar({
       <button type="button" className="fc-btn" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={onRedo}>
         <Redo2 size={15} aria-hidden />
       </button>
+      {exportMenu ? (
+        <>
+          <span className="fc-sep" aria-hidden />
+          {exportMenu}
+        </>
+      ) : null}
     </div>
   );
 }

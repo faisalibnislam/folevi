@@ -50,7 +50,7 @@ let seq = 0;
 const SYSTEM_FONTS = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
 
 /** The app's sans family name as loaded by next/font (e.g. "Instrument Sans"), or null. */
-function appFontFamily(): string | null {
+export function appFontFamily(): string | null {
   const v = getComputedStyle(document.documentElement).getPropertyValue("--font-instrument-sans");
   const first = v.split(",")[0]?.trim().replace(/^["']|["']$/g, "");
   return first && /^[\w -]{1,64}$/.test(first) ? first : null;
@@ -62,7 +62,7 @@ let fontFacePromise: Promise<string | null> | null = null;
  * an SVG image can't load fonts from the page, so the font travels inside the SVG (fetched once, from our
  * own origin). Null when it can't be found; the diagram then uses the system font.
  */
-function embeddedFontFace(family: string): Promise<string | null> {
+export function embeddedFontFace(family: string): Promise<string | null> {
   fontFacePromise ??= (async () => {
     const candidates: { url: URL; weight: string; latin: boolean }[] = [];
     for (const sheet of Array.from(document.styleSheets)) {

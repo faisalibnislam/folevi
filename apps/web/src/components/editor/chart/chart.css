@@ -1,0 +1,9 @@
+/* Chart block (chart/ChartView.tsx, render.tsx). Loaded with the editor styles by the document view and share
+ * pages; the card and its chrome are canvas/canvas.css. */
+.fb-chart-table { margin: 0; }
+.fb-chart-table figcaption { margin-bottom: 8px; font-weight: 600; color: var(--color-heading); }
+.fb-chart-table table { border-collapse: collapse; font-size: 13px; }
+.fb-chart-table th, .fb-chart-table td { padding: 4px 10px; border-bottom: 1px solid var(--color-line); text-align: left; white-space: nowrap; }
+.fb-chart-table th { font-weight: 600; color: var(--color-ink-muted); }
+.fb-chart-table td[data-number] { text-align: right; font-variant-numeric: tabular-nums; }
+.fb-chart-table p { margin: 8px 0 0; color: var(--color-ink-muted); }

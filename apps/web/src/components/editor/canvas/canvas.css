@@ -1,0 +1,84 @@
+/* Full canvas, shared by the visual blocks (canvas/useFullCanvas.ts): the card fills the window from the top
+ * layer and its height handle goes. Room is kept for the Mac's window buttons and the phone's status bar and
+ * home indicator. Loaded with the editor styles by the document view and share pages. A block gives its card
+ * `fb-canvas-card` and the part that should fill the window `fb-canvas-body`; `--fb-canvas-bg` is the card's
+ * own tint, drawn on a solid surface so the note never shows through. */
+.fb-canvas-card { --fb-canvas-bg: color-mix(in oklab, var(--color-surface-sunken) 30%, var(--color-surface)); }
+.fb-canvas-card[data-full] {
+  position: fixed; inset: 0; width: auto; height: auto; max-width: none; max-height: none; margin: 0;
+  border: 0; border-radius: 0; padding: 0; overflow: hidden; color: inherit;
+  display: flex; flex-direction: column; box-shadow: none;
+  padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+  background: linear-gradient(var(--fb-canvas-bg), var(--fb-canvas-bg)), var(--color-surface);
+}
+.fb-canvas-card[data-full]::backdrop { background: transparent; }
+:root[data-desktop="mac"] .fb-canvas-card[data-full] { padding-top: 32px; }
+.fb-canvas-card[data-full] .fb-canvas-body { flex: 1; min-height: 0; }
+.fb-canvas-card[data-full] .fb-wb-resize { display: none; }
+
+/* ---------------------------------------------------------------- the visual block card (CanvasCard.tsx)
+ * Neutral glass chrome over the block's own canvas; only the block's content carries colour. Shared by the
+ * mind map, sticky notes, chart and wireframe blocks, so they read as one family with the flowchart. */
+.fb-vcard {
+  margin: 0.5em 0; border-radius: var(--radius-panel); overflow: hidden;
+  background: var(--fb-canvas-bg);
+  box-shadow: 0 0 0 1px var(--color-line);
+  font-family: var(--font-sans);
+  transition: box-shadow 140ms;
+}
+.fb-vcard[data-active]:not([data-full]) { box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-ink) 28%, var(--color-line)); }
+.fb-vcard-body { position: relative; overflow: hidden; outline: none; }
+.fb-vcard-body:focus-visible { box-shadow: inset 0 0 0 2px var(--color-focus); }
+
+.fb-vc-bar {
+  position: absolute; z-index: 3; top: 10px; left: 10px; right: 10px;
+  display: flex; align-items: center; gap: 2px; padding: 4px;
+  border-radius: var(--radius-panel);
+  background: var(--glass-pop);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: var(--glass-edge), 0 6px 20px -8px rgb(0 0 0 / 0.18);
+  font: 500 12.5px/1 var(--font-sans); color: var(--color-ink);
+  overflow-x: auto; scrollbar-width: none;
+}
+.fb-vc-title { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 6px; font-weight: 600; color: var(--color-heading); }
+.fb-vc-icon { display: inline-grid; place-items: center; color: var(--color-ink-muted); }
+.fb-vc-sep { flex: none; width: 1px; height: 18px; margin: 0 4px; background: var(--color-line-strong); }
+.fb-vc-spacer { flex: 1; min-width: 4px; }
+.fb-vc-btn {
+  flex: none; display: inline-grid; grid-auto-flow: column; align-items: center; justify-content: center; gap: 5px;
+  min-width: 30px; height: 30px; padding: 0 6px; border-radius: var(--radius-control);
+  color: var(--color-ink-muted); transition: background-color 100ms, color 100ms;
+}
+.fb-vc-btn:hover:not(:disabled), .fb-vc-btn[aria-pressed="true"], .fb-vc-btn[aria-expanded="true"] { background: var(--glass-hover); color: var(--color-heading); }
+.fb-vc-btn[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--glass-border); }
+.fb-vc-btn:disabled { opacity: 0.35; }
+.fb-vc-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+/* Fingers: 44 point targets (docs/IOS.md). */
+@media (pointer: coarse) {
+  .fb-vc-btn { min-width: 44px; height: 44px; }
+}
+
+.fb-vc-empty {
+  position: absolute; inset: 52px 16px 16px; display: grid; place-content: center; justify-items: center; gap: 10px;
+  pointer-events: none; text-align: center; font: 13.5px/1.5 var(--font-sans); color: var(--color-ink-muted);
+}
+.fb-vc-empty p { margin: 0; max-width: 36ch; }
+
+/* What's in the block, under the toolbar, scrolling inside the card (until a block draws its own canvas). */
+.fb-vc-content { position: absolute; inset: 56px 0 0; overflow: auto; padding: 4px 18px 16px; font: 14px/1.5 var(--font-sans); color: var(--color-ink); }
+.fb-vc-static-empty { margin: 0; color: var(--color-ink-muted); }
+
+/* Read-only (share pages, version history): a quiet card with the block's name and a summary. */
+.fb-readonly-visual {
+  margin: 0.6em 0; padding: 14px 16px; border-radius: var(--radius-panel);
+  box-shadow: 0 0 0 1px var(--color-line); background: var(--color-surface);
+  font: 13.5px/1.5 var(--font-sans); color: var(--color-ink-muted);
+}
+.fb-readonly-visual-name { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; font-weight: 600; color: var(--color-heading); }
+
+@media print {
+  .fb-vc-bar, .fb-vc-empty, .fb-vcard .fb-wb-resize { display: none; }
+}
+@media (forced-colors: active) {
+  .fb-vc-btn[aria-pressed="true"] { outline: 2px solid Highlight; }
+}

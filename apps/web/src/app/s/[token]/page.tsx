@@ -19,6 +19,11 @@ import { GRANT_COOKIE, GRANT_TTL_MS, openGrant, sealGrant } from "./grant";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
 import "@/components/editor/flowchart/flowchart.css";
+import "@/components/editor/canvas/canvas.css";
+import "@/components/editor/mindmap/mindmap.css";
+import "@/components/editor/stickies/stickies.css";
+import "@/components/editor/chart/chart.css";
+import "@/components/editor/wireframe/wireframe.css";
 import "./publish.css";
 
 export const dynamic = "force-dynamic";

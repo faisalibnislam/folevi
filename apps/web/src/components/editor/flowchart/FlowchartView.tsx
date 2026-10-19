@@ -74,6 +74,8 @@ import {
   type Selection,
 } from "./ops";
 import { useFlowDoc } from "./useFlowDoc";
+import { useFullCanvas } from "../canvas/useFullCanvas";
+import { BlockExportMenu } from "../canvas/BlockExport";
 
 const MIN_K = 0.2;
 const MAX_K = 2.5;
@@ -157,8 +159,16 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
   const svgRef = useRef<SVGSVGElement>(null);
   const [width, setWidth] = useState(0);
   const [liveHeight, setLiveHeight] = useState<number | null>(null);
-  const [full, setFull] = useState(false);
   const [fullHeight, setFullHeight] = useState(0);
+  // Full canvas (canvas/useFullCanvas.ts): fitted again once it has its new size, and on the way back.
+  const { full, toggleFull, cardProps, handleKey: fullKey } = useFullCanvas({
+    cardRef,
+    focusRef: wrapRef,
+    onRefit: (on) => {
+      const el = wrapRef.current;
+      if (el) fitView(docRef.current, el.clientWidth, on ? el.clientHeight : liveHeight ?? savedHeight);
+    },
+  });
   const height = full && fullHeight ? fullHeight : (liveHeight ?? savedHeight);
   const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
   const viewRef = useRef(view);
@@ -198,33 +208,6 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
     return () => ro.disconnect();
   }, []);
 
-  // Full canvas: shown in the top layer while on, and fitted again once it has its new size (and on the way back).
-  const refit = useRef(false);
-  const toggleFull = useCallback((on?: boolean) => {
-    setFull((was) => {
-      const next = on ?? !was;
-      if (next !== was) refit.current = true;
-      return next;
-    });
-  }, []);
-  useLayoutEffect(() => {
-    const card = cardRef.current;
-    if (!card || !full) return;
-    try {
-      if (!card.matches(":popover-open")) card.showPopover();
-    } catch {
-      /* Without the Popover API it's still fixed over the page. */
-    }
-    wrapRef.current?.focus({ preventScroll: true });
-    return () => {
-      try {
-        if (card.matches(":popover-open")) card.hidePopover();
-      } catch {
-        /* Already gone. */
-      }
-    };
-  }, [full]);
-
   const fitView = useCallback(
     (fc: FlowchartData = docRef.current, w = wrapRef.current?.clientWidth ?? 0, h = height) => {
       if (!w) return;
@@ -248,16 +231,6 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
     fitted.current = true;
     fitView(docRef.current, width);
   }, [width, fitView, docRef]);
-  useEffect(() => {
-    if (!refit.current) return;
-    // A frame later, once the card has its new size: measured directly (the observer's numbers may lag).
-    const id = requestAnimationFrame(() => {
-      refit.current = false;
-      const el = wrapRef.current;
-      if (el) fitView(docRef.current, el.clientWidth, full ? el.clientHeight : liveHeight ?? savedHeight);
-    });
-    return () => cancelAnimationFrame(id);
-  }, [full, fitView, docRef, liveHeight, savedHeight]);
 
   const toWorld = useCallback((clientX: number, clientY: number): Pt => {
     const r = svgRef.current!.getBoundingClientRect();
@@ -693,10 +666,7 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
       setSel({ nodes: docRef.current.nodes.map((n) => n.id), edges: docRef.current.edges.map((x) => x.id) });
       return done();
     }
-    if (mod && e.shiftKey && key === "f") {
-      toggleFull();
-      return done();
-    }
+    if (mod && e.shiftKey && key === "f") return void fullKey(e);
     if (mod) return;
     if (e.key === "Delete" || e.key === "Backspace") {
       removeSelection();
@@ -880,10 +850,10 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
   const nodeCount = doc.nodes.length;
   return (
     <NodeViewWrapper className={`fb-atom fb-flowchart ${selected ? "fb-atom-selected" : ""}`} aria-label="Flowchart">
-      <div ref={cardRef} contentEditable={false} className="fc-card" data-active={active || undefined} data-full={full || undefined} popover={full ? "manual" : undefined} aria-label={full ? "Flowchart, full canvas" : undefined}>
+      <div ref={cardRef} contentEditable={false} className="fc-card fb-canvas-card" data-active={active || undefined} {...cardProps} aria-label={full ? "Flowchart, full canvas" : undefined}>
         <div
           ref={wrapRef}
-          className="fc-canvas"
+          className="fc-canvas fb-canvas-body"
           style={{ height: full ? undefined : height }}
           tabIndex={0}
           role="application"
@@ -1008,6 +978,7 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
             canTidy={nodeCount > 1}
             onAi={aiOn ? () => setAiOpen((o) => !o) : null}
             aiOpen={aiOpen}
+            exportMenu={<BlockExportMenu type="flowchart" attrs={() => ({ data: serializeFlowchart(docRef.current) })} empty={!nodeCount} triggerClassName="fc-btn" align="start" />}
           />
           <ZoomBar zoom={k} onZoomIn={() => zoomBy(1.2)} onZoomOut={() => zoomBy(1 / 1.2)} onFit={() => fitView()} full={full} onFull={() => toggleFull()} />
           {showBar && barStyle && selNodes.length && !selEdges.length ? (

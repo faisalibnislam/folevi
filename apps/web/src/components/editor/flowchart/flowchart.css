@@ -87,24 +87,10 @@
   font-family: var(--font-sans);
   transition: box-shadow 140ms;
 }
-.fc-card[data-active] { box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-ink) 28%, var(--color-line)); }
+.fc-card[data-active]:not([data-full]) { box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-ink) 28%, var(--color-line)); }
 .fc-card-static { padding: 8px 0; background: var(--color-surface); }
-/* Full canvas: the card fills the window from the top layer (FlowchartView); its height handle goes. Room is
-   kept for the Mac's window buttons and the phone's status bar and home indicator. */
-.fc-card[data-full] {
-  position: fixed; inset: 0; width: auto; height: auto; max-width: none; max-height: none; margin: 0;
-  border: 0; border-radius: 0; padding: 0; overflow: hidden; color: inherit;
-  display: flex; flex-direction: column; box-shadow: none;
-  padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
-  /* The card's own tint, on a solid surface: on its own over the page, it mustn't show the note through. */
-  background:
-    linear-gradient(color-mix(in oklab, var(--color-surface-sunken) 30%, var(--color-surface)), color-mix(in oklab, var(--color-surface-sunken) 30%, var(--color-surface))),
-    var(--color-surface);
-}
-.fc-card[data-full]::backdrop { background: transparent; }
-:root[data-desktop="mac"] .fc-card[data-full] { padding-top: 32px; }
-.fc-card[data-full] .fc-canvas { flex: 1; min-height: 0; }
-.fc-card[data-full] .fb-wb-resize { display: none; }
+/* Full canvas: the shared card rules (canvas/canvas.css, `.fb-canvas-card[data-full]`); the canvas is the
+   card's body (`.fb-canvas-body`), which fills the window. */
 .fc-canvas { position: relative; overflow: hidden; outline: none; touch-action: pan-y; }
 .fc-card[data-active] .fc-canvas { touch-action: none; }
 .fc-canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--color-focus); }

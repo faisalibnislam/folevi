@@ -1,0 +1,5 @@
+/* Mind map block (mindmap/MindmapView.tsx, render.tsx). Loaded with the editor styles by the document view and
+ * share pages; the card and its chrome are canvas/canvas.css. */
+.fb-mindmap-outline { margin: 0; padding: 0; list-style: none; }
+.fb-mindmap-outline li { padding-top: 2px; padding-bottom: 2px; }
+.fb-mindmap-outline li[data-depth="0"] { font-weight: 600; color: var(--color-heading); }

@@ -1,0 +1,19 @@
+/* Sticky notes block (stickies/StickiesView.tsx, render.tsx). Loaded with the editor styles by the document
+ * view and share pages; the card and its chrome are canvas/canvas.css. Notes mix their colour into the page
+ * colour, so they sit well on any note theme, light or dark. */
+.fb-stickies-list { display: grid; gap: 12px; }
+.fb-stickies-list h4 { margin: 0 0 6px; font-size: 12.5px; font-weight: 600; color: var(--color-ink-muted); }
+.fb-stickies-list ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.fb-stickies-list li {
+  --st-tint: #e0a800;
+  width: 132px; min-height: 72px; padding: 8px 10px; border-radius: var(--radius-tiny);
+  background: color-mix(in oklab, var(--st-tint) 22%, var(--color-surface));
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+  font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; white-space: pre-wrap;
+}
+.fb-stickies-list li[data-color="orange"] { --st-tint: #ea7a1f; }
+.fb-stickies-list li[data-color="pink"] { --st-tint: #e05a8a; }
+.fb-stickies-list li[data-color="purple"] { --st-tint: #8b5cf6; }
+.fb-stickies-list li[data-color="blue"] { --st-tint: #3b82f6; }
+.fb-stickies-list li[data-color="green"] { --st-tint: #22a05a; }
+.fb-stickies-list li[data-color="gray"] { --st-tint: #8a8a93; }

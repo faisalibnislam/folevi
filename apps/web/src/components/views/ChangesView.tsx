@@ -16,6 +16,13 @@ import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ReadOnlyBlocks, type ChangePerson } from "@/components/doc/ReadOnlyBlocks";
 import "@/components/editor/editor.css";
+import "@/components/editor/insert-blocks.css";
+import "@/components/editor/flowchart/flowchart.css";
+import "@/components/editor/canvas/canvas.css";
+import "@/components/editor/mindmap/mindmap.css";
+import "@/components/editor/stickies/stickies.css";
+import "@/components/editor/chart/chart.css";
+import "@/components/editor/wireframe/wireframe.css";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 type ChangeList = FunctionReturnType<typeof api.changes.list>;

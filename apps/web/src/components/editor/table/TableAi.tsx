@@ -53,14 +53,32 @@ const textCell = (text: string, like?: InlineNode[]): InlineNode[] => {
 export function mergeAiRows(table: TableData, rows: string[][]): TableAiResult {
   const texts = table.rows.map((r) => r.map((c) => tableCellText(c)));
   const keyOf = (r: string[]) => canonicalJson(r);
-  const pool = new Map<string, number[]>();
-  texts.forEach((r, i) => pool.set(keyOf(r), [...(pool.get(keyOf(r)) ?? []), i]));
+  const used = new Set<number>();
+  // Rows kept as they were, found by their text (so a removed row doesn't mark everything after it).
+  const exact = rows.map((row) => {
+    const i = texts.findIndex((t, k) => !used.has(k) && keyOf(t) === keyOf(row) && table.rows[k]!.length === row.length);
+    if (i >= 0) used.add(i);
+    return i;
+  });
   const changed = new Set<string>();
   const out: InlineNode[][][] = rows.map((row, r) => {
-    const same = pool.get(keyOf(row))?.shift();
-    if (same !== undefined && table.rows[same]?.length === row.length) return table.rows[same]!;
+    if (exact[r]! >= 0) return table.rows[exact[r]!]!;
+    // A changed row: the unused row it shares most cells with (else the one in its place) gives the rest.
+    let best = -1;
+    let score = 0;
+    texts.forEach((t, k) => {
+      if (used.has(k)) return;
+      const same = row.filter((x, c) => x && t[c] === x).length;
+      if (same > score) {
+        score = same;
+        best = k;
+      }
+    });
+    if (best < 0 && !used.has(r) && r < texts.length) best = r;
+    if (best >= 0) used.add(best);
+    const like = best >= 0 ? table.rows[best] : undefined;
     return row.map((text, c) => {
-      const old = table.rows[r]?.[c];
+      const old = like?.[c];
       if (old && tableCellText(old) === text) return old;
       changed.add(`${r}:${c}`);
       return textCell(text, old);

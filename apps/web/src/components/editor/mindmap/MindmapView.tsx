@@ -72,7 +72,7 @@ type Drag =
   | { kind: "idea"; pointer: number; id: string; sx: number; sy: number; moved: boolean; touch: boolean; held: boolean }
   | { kind: "pinch"; dist: number; view: View; mid: Pt };
 /** Text being written in an idea. `before` is the map to undo to; `fresh` when the idea was just added. */
-type Editing = { id: string; before: MindmapData; typed?: boolean; fresh?: boolean };
+type Editing = { id: string; before: MindmapData; typed?: boolean; fresh?: boolean; from?: string; selectAll?: boolean };
 
 export function MindmapView(props: ReactNodeViewProps) {
   return props.editor.isEditable ? <MindmapEditor {...props} /> : <MindmapReadOnly {...props} />;
@@ -258,10 +258,10 @@ function MindmapEditor(props: ReactNodeViewProps) {
 
   /** Starts writing in an idea (`replaceWith`: the key typed on it, which replaces its text). */
   const startEdit = useCallback(
-    (id: string, replaceWith?: string) => {
+    (id: string, replaceWith?: string, selectAll = false) => {
       const before = docRef.current;
       if (replaceWith !== undefined) setLive(setText(before, id, replaceWith));
-      setEditing({ id, before, typed: replaceWith !== undefined });
+      setEditing({ id, before, typed: replaceWith !== undefined, selectAll });
       select(id);
     },
     [docRef, setLive, select],
@@ -276,7 +276,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
         return;
       }
       setLive(r.map);
-      setEditing({ id: r.id, before: base, fresh: true });
+      setEditing({ id: r.id, before: base, fresh: true, from });
       select(r.id);
       if (coarse) haptic("light");
     },
@@ -297,12 +297,14 @@ function MindmapEditor(props: ReactNodeViewProps) {
       const n = byId(cur, ed.id);
       if (ed.fresh && n && !n.text.trim()) {
         setLive(ed.before);
-        select(n.parent);
+        // Back on the idea it was added from.
+        select(ed.from ?? n.parent);
         if (opts.refocus !== false) wrapRef.current?.focus({ preventScroll: true });
         return;
       }
       if (cur !== ed.before) commit(cur, { before: ed.before });
-      if (opts.refocus !== false) wrapRef.current?.focus({ preventScroll: true });
+      // Carrying on writing keeps the keyboard in the next idea's text box (it mounts with the focus).
+      if (opts.refocus !== false && !opts.then) wrapRef.current?.focus({ preventScroll: true });
       if (!n) return;
       if (opts.then === "next") {
         if (n.parent === null) addAndEdit("child", n.id);
@@ -636,7 +638,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
 
   const onDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
     const idea = (e.target as Element).closest("[data-mm-node]");
-    if (idea) startEdit(idea.getAttribute("data-mm-node")!);
+    if (idea) startEdit(idea.getAttribute("data-mm-node")!, undefined, true);
     else if (!docRef.current.nodes.length) start();
   };
 
@@ -771,7 +773,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
     }
     if (e.key === "+" || e.key === "=") return (zoomBy(1.2), done());
     if (e.key === "-" || e.key === "_") return (zoomBy(1 / 1.2), done());
-    if (e.key === "!" && e.shiftKey) return (fitView(), done());
+    if (e.shiftKey && (e.key === "!" || e.code === "Digit1")) return (fitView(), done());
     // Typing on a selected idea replaces its text.
     if (e.key.length === 1 && !e.altKey) return (startEdit(id, e.key), done());
     return false;
@@ -798,6 +800,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
     const n = byId(map, editing.id);
     textEditor = (
       <textarea
+        key={editing.id}
         className="mm-text-input"
         data-depth={Math.min(editBox.depth, 2)}
         data-color={editBox.color}
@@ -821,8 +824,9 @@ function MindmapEditor(props: ReactNodeViewProps) {
         onChange={(e) => onEditText(e.target.value)}
         onFocus={(e) => {
           const el = e.currentTarget;
-          if (editing.typed || editing.fresh) el.setSelectionRange(el.value.length, el.value.length);
-          else el.select();
+          // Double-click selects the text to replace it; Enter, F2 and typing put the caret at the end.
+          if (editing.selectAll) el.select();
+          else el.setSelectionRange(el.value.length, el.value.length);
         }}
         onBlur={() => finishEdit({ refocus: false })}
         onKeyDown={(e) => {
@@ -861,13 +865,21 @@ function MindmapEditor(props: ReactNodeViewProps) {
   const showControls = selBox && !editing && !ghost && !outline;
   const hitR = (coarse ? 22 : 13) / k;
   const dotR = 10 / k;
-  /** Where an idea's fold toggle and add button sit beside it. */
+  /**
+   * Where an idea's fold toggle and add button sit: the toggle just outside it where its branch grows; the
+   * add button there too for a leaf (or past the count of a folded idea), and under it (beside it, top
+   * down) when its children already fill that side.
+   */
   const outerControls = (b: MindBox) => {
     const toggleOn = b.hasChildren && b.depth > 0;
-    const badgeW = b.hidden ? badgeOf(b.hidden).w : 0;
-    const togglePt = toggleOn && !b.hidden ? mindOuterPoint(b, 6 + dotR, side) : null;
-    const addOff = b.hidden ? 6 + badgeW + 8 + (coarse ? 22 : 12) / k : toggleOn ? 6 + dotR * 2 + 10 / k + dotR : 10 / k + dotR;
-    return { togglePt, addPt: mindOuterPoint(b, addOff, side) };
+    const togglePt = toggleOn && !b.hidden ? mindOuterPoint(b, 6 / k + dotR * 0.8, side) : null;
+    if (b.children.length) {
+      const gapPx = 8 / k + dotR;
+      const addPt = b.side === "down" ? { x: b.x + b.w + gapPx, y: b.y + b.h / 2 } : { x: b.x + b.w / 2, y: b.y + b.h + gapPx };
+      return { togglePt, addPt };
+    }
+    const off = b.hidden ? 6 + badgeOf(b.hidden).w + 8 / k + dotR : 8 / k + dotR;
+    return { togglePt, addPt: mindOuterPoint(b, off, side) };
   };
 
   const ideaActions = (id: string): IdeaActions | null => {
@@ -996,6 +1008,8 @@ function MindmapEditor(props: ReactNodeViewProps) {
         data-active={active || undefined}
         data-panning={panning || undefined}
         data-outline={outline || undefined}
+        // The block has its own menus (an idea's on right-click or a long press), not the note's.
+        data-native-menu=""
         onFocus={() => setActive(true)}
         onBlur={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {

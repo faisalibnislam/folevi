@@ -10,8 +10,9 @@ import { parseFlowchart } from "./flowchart";
 import { flowchartToMermaid } from "./flowchartMermaid";
 import { mindmapToMarkdown, parseMindmap } from "./mindmap";
 import { parseStickies, stickiesToMarkdown } from "./stickies";
-import { chartToMarkdown, parseChart } from "./chart";
-import { parseWireframe, wireframeToMarkdown } from "./wireframe";
+import { CHART_DEFAULT_HEIGHT, chartFromFence, chartToMarkdown, parseChart } from "./chart";
+import { WIREFRAME_DEFAULT_HEIGHT, parseWireframe, serializeWireframe, wireframeToMarkdown } from "./wireframe";
+import { wireframeFromFence } from "./wireframeLayout";
 import { EMBED_PROVIDER_LABEL } from "./embeds";
 import type { EmbedProvider } from "./generated/schema";
 
@@ -569,6 +570,18 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
         i++;
       }
       const lang = fence[2] ?? "";
+      // A ```chart fence holding chart JSON (Foli AI, MCP) becomes a chart block (chart.ts chartFromFence).
+      const chart = lang.toLowerCase() === "chart" ? chartFromFence(body.join("\n")) : null;
+      if (chart) {
+        drafts.push({ id: newId(), type: "chart", depth, text: [], props: { data: chart, height: CHART_DEFAULT_HEIGHT } });
+        continue;
+      }
+      // A ```wireframe fence holding a wireframe draft (Foli AI, MCP) becomes a wireframe block (wireframeLayout.ts).
+      const wireframe = lang.toLowerCase() === "wireframe" ? wireframeFromFence(body.join("\n")) : null;
+      if (wireframe) {
+        drafts.push({ id: newId(), type: "wireframe", depth, text: [], props: { data: serializeWireframe(wireframe), height: WIREFRAME_DEFAULT_HEIGHT } });
+        continue;
+      }
       drafts.push({
         id: newId(),
         type: "code",

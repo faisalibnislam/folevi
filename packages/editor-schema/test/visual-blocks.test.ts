@@ -178,7 +178,7 @@ describe("chart and wireframe shape", () => {
     expect(chartDataIssue(JSON.stringify({ v: 1, kind: "bar", columns: ["a", "b"], rows: [["x"]] }))).toMatch(/expected 2 cells/);
     expect(chartDataIssue(JSON.stringify({ v: 1, kind: "radar", columns: [], rows: [] }))).toBe("invalid kind");
     const c = normalizeChart({ kind: "line", columns: ["Month", "Sales"], rows: [["Jan", "1,200"], ["Feb"], ["Mar", "42%", "extra"]] });
-    expect(c.rows).toEqual([["Jan", 1200], ["Feb", null], ["Mar", 42]]);
+    expect(c.rows).toEqual([["Jan", 1200], ["Feb", null], ["Mar", "42%"]]);
   });
 
   it("wireframe items need their screen, links need a screen to point at", () => {

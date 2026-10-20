@@ -4,7 +4,7 @@ import nextPlugin from "@next/eslint-plugin-next";
 
 export default [
   ...shared,
-  { ignores: [".next/**", ".next-*/**", "next-env.d.ts", "public/sw.js", "playwright-report/**", "test-results/**"] },
+  { ignores: [".next/**", ".next-*/**", "next-env.d.ts", "public/sw.js", "playwright-report/**", "test-results/**", "out-shell/**"] },
   {
     plugins: { "react-hooks": reactHooks, "@next/next": nextPlugin },
     rules: {
@@ -18,5 +18,10 @@ export default [
     // Node scripts; page.evaluate/addInitScript callbacks run in the browser.
     files: ["e2e/**/*.mjs", "scripts/**/*.mjs"],
     languageOptions: { globals: { process: "readonly", console: "readonly", localStorage: "readonly" } },
+  },
+  {
+    // Phase 0 spikes for local mode (docs/LOCAL_MODE.md): Node scripts that drive a browser.
+    files: ["spikes/**/*.mjs"],
+    languageOptions: { globals: { process: "readonly", console: "readonly", URL: "readonly", window: "readonly", history: "readonly", setTimeout: "readonly" } },
   },
 ];

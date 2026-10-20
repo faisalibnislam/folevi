@@ -28,7 +28,7 @@ The owner paused the iPhone and iPad apps. Build the Mac side of every work pack
 
 ## 0. Facts from the code that shape the design
 
-- **The client already has one network seam.** In 146 files, every server call goes through `convex/react` (`useQuery` 98, `useMutation` 81, `useAction` 21, `useConvex()` 15, `usePaginatedQuery` 2, `useQueries` 1, `useConvexConnectionState` 1). In convex 1.46 those hooks only call these methods on the client object from `ConvexProvider`: `watchQuery(ref, args, opts)` (which returns `{onUpdate, localQueryResult, journal}`), `mutation`, `action`, `query`, `connectionState` and `subscribeToConnectionState` (see `node_modules/convex/dist/esm/react/client.js`, `use_queries.js`, `queries_observer.js`). Pagination is plain `watchQuery` with `paginationOpts` in the args. A duck-typed client can therefore stand in for Convex without touching those 146 files.
+- **The client already has one network seam.** In 146 files, every server call goes through `convex/react` (`useQuery` 98, `useMutation` 81, `useAction` 21, `useConvex()` 15, `usePaginatedQuery` 2, `useQueries` 1, `useConvexConnectionState` 1). In convex 1.46 those hooks only call these methods on the client object from `ConvexProvider`: `watchQuery(ref, args, opts)` (which returns `{onUpdate, localQueryResult, journal}`), `mutation`, `action`, `query`, `connectionState` and `subscribeToConnectionState` (see `node_modules/convex/dist/esm/react/client.js`, `use_queries.js`, `queries_observer.js`), and `usePaginatedQuery` also reads `client.logger` (S5). Pagination is plain `watchQuery` with `paginationOpts` in the args; `watchPaginatedQuery` is only called by `usePaginatedQuery_experimental`, which the app doesn't use. A duck-typed client can therefore stand in for Convex without touching those 146 files.
 - **The sync engine and outbox talk to the server through one call each.** The engine uses `this.client.mutation(api.sync.push, …)` (engine.ts:748). The outbox uses `client.mutation(OUTBOX_MUTATIONS[name].ref, args)` (outbox.ts:145). Uploads use `files.generateUploadUrl`, then `fetch`, then `files.finalize` (uploads.ts).
 - **The product is already a client SPA.** `(app)/[...path]/page.tsx` only checks the session cookie and renders `<ProductApp/>`. Routing is `lib/app/router.tsx` (`usePathname` plus `pushState`). Product components never import `next/link` or `next/image`; only admin and marketing do. `next/font/google` is self-hosted at build time.
 - **Much of the domain logic is already pure and shared** in `packages/editor-schema`: the sync reducer, `tree`, `rank`, `markdown`/`html`, `search` (`documentSearchText`, `highlightRanges`, `searchSnippet`), `tasks` (`projectTask`, `taskViews`), `recurrence`, `tableFormulas`, `collectionFormulas`, `synced`, `fileText`, and every data-block parser. Server helpers that are pure but sit in `convex/lib` are `buildPreview`, `sanitizeTitle`, `newDocumentRank` (lib/documents.ts), `specsToWireBlocks` and `cloneBlocks` (lib/create.ts), `BUILT_IN_TEMPLATES` (lib/templates.ts), `seedContent.ts`, and all the AI prompt builders (`lib/mindmapAi.ts`, `stickiesAi.ts`, `tableAi.ts`, `chartAi.ts`, `wireframeAi.ts`, `flowchartAi.ts`, `lib/ai/writing.ts`). Those import only `@folevi/editor-schema`.
@@ -57,7 +57,7 @@ Rejected options:
 - `src/app/page.shell.tsx`: renders `<ShellRoot/>` (new, `components/app/ShellRoot.tsx`). It reads the mode synchronously from the bridge global and renders one of three things: the first-launch chooser, `<ProductApp backend="local"/>`, or `<ProductApp backend="account"/>`.
 - `apps/web/scripts/build-shell.mjs`: runs `next build` with the shell env, then copies `out-shell/` to `apps/desktop/web/` and `apps/ios/www/`.
 
-**SPA fallback:** both hosts serve `index.html` for any path that isn't a file. `create-initial-router-state.js` seeds `canonicalUrl` from `location`, so `usePathname()` should report `/d/<id>`. This must be proven in spike S1. **Fallback if the `pageExtensions` trick or deep-link hydration fails:** a sibling `apps/shell` Next project with `turbopack.root` at the monorepo root and `@/*` pointed at `../web/src/*`. Nothing else in this design changes.
+**SPA fallback:** both hosts serve `index.html` for any path that isn't a file. `create-initial-router-state.js` seeds `canonicalUrl` from `location`, so `usePathname()` reports `/d/<id>`. **Proven in spike S1** (docs/LOCAL_MODE.md): deep links hydrate at the right route in Chromium and in Electron on `app://folevi`, so the sibling `apps/shell` project fallback isn't needed.
 
 **Electron (`apps/desktop`):**
 - New `src/protocol.ts`:
@@ -81,7 +81,8 @@ Rejected options:
 | `(app)/[...path]` server session check (`hasSessionCookie`) | Excluded from the shell. `ShellRoot` with `LocalGate` / `AccountGate` gates on the client. |
 | `/api/auth/[...all]` proxy (first-party cookie) | Signed-in shell uses **bearer** auth through native fetch (below). The proxy stays on the website. |
 | `src/proxy.ts` host routing, `headers()`, `redirects()` | Not part of the shell build. CSP goes in a meta tag (iOS) or a protocol header (Electron). |
-| Service worker (`ServiceWorkerRegistration`, `public/sw.js`) | Skipped when `isShell()`; the assets are already local. |
+| Service worker (`ServiceWorkerRegistration`, `public/sw.js`) | Skipped when `isShell()`; the assets are already local. Required, not optional: the shell is a production build and `navigator.serviceWorker` exists on `app://folevi` (S2). `build-shell.mjs` also leaves `sw.js`, `marketing/` and `google*.html` out of the export. |
+| Better Auth's client derives its URL from `location` and throws at load off http(s) (`Invalid base URL: app://folevi`), which takes the whole bundle down (S2) | Every shell build passes `baseURL: SERVICE_URL + "/api/auth"` to `createAuthClient` (done for the spike behind `NEXT_PUBLIC_FOLEVI_SHELL`). |
 | `next/image` default loader | Not used by product code; `images.unoptimized` as a guard. |
 | `process.env.NEXT_PUBLIC_*` | Baked in per build: production and dev shell builds. |
 | Built-in templates and admin themes (`settings.builtInTemplates`, `themes.list`) | Bundled snapshots: move `BUILT_IN_TEMPLATES` to editor-schema, and have `scripts/snapshot-themes.mjs` write themes at build time. |
@@ -95,9 +96,9 @@ Use bearer tokens, with HTTP done by the native layer. That means no cookies, no
 
 1. "Sign in to Folevi" calls `shell.auth.signIn()`, which opens `https://app.folevi.com/connect?client_id=folevi-shell&redirect_uri=folevi://auth/callback&code_challenge=…&state=…` in ASWebAuthenticationSession (iOS) or the default browser (Mac; the `folevi://` return already works for Google in `main.ts` `openLink`/`isSignInReturn`). Password, two-step, Google and passkeys all work there because it is the real website.
 2. Native exchanges the code at `/api/auth/native/token`, which creates a new session labelled as the device. It stores the bearer token in the Keychain (iOS: the existing `DeviceCredential` pattern; Mac: Electron `safeStorage` in `userData`). **The token never enters page JavaScript.**
-3. `lib/auth/client.ts` is created with `baseURL: SERVICE_URL + "/api/auth"` and `fetchOptions: { customFetchImpl: shellAuthFetch }`. `shellAuthFetch` forwards to `shell.auth.fetch(path, init)`. Native allows only `/api/auth/*` on `SERVICE_URL`, adds `Authorization: Bearer`, sends no cookies, and stores a rotated `set-auth-token` header if one comes back. Requests still pass through the Next proxy, so the signed client-IP rate limits keep working.
+3. `lib/auth/client.ts` is created with `baseURL: SERVICE_URL + "/api/auth"` and `fetchOptions: { customFetchImpl: shellAuthFetch }`. `shellAuthFetch` forwards to `shell.auth.fetch(path, init)`. Native allows only `/api/auth/*` on `SERVICE_URL`, adds `Authorization: Bearer`, sends no cookies, and stores a rotated `set-auth-token` header if one comes back. On POSTs it also sends `Origin: SERVICE_URL`: Better Auth's origin check runs on bearer POSTs without cookies too (S4: no `Origin` is 403 `MISSING_OR_NULL_ORIGIN`, a shell origin is 403 `INVALID_ORIGIN`). GETs such as `/convex/token` and `/get-session` work with any or no `Origin`. Requests still pass through the Next proxy, so the signed client-IP rate limits keep working.
 4. `lib/convex/provider.tsx` `fetchAccessToken`: in the shell it becomes `shell.auth.convexToken()`, which is native `GET /api/auth/convex/token` with the bearer and returns a 15-minute JWT. `ConvexReactClient` connects to `wss://…convex.cloud` straight from the web view; WebSockets aren't subject to CORS, but check in spike S4 that Convex accepts these origins. `authPhaseOf` is unchanged.
-5. **Server changes:** `convex/lib/nativeClients.ts` adds `"folevi-shell": { label: "Folevi app", redirectUris: ["folevi://auth/callback"] }`; `ConnectApp` accepts it; sign-out calls `/sign-out` with the bearer, then native deletes the token. If S4 shows Better Auth's origin check firing on bearer requests without cookies, add the two shell origins to `trustedOrigins`.
+5. **Server changes:** `convex/lib/nativeClients.ts` adds `"folevi-shell": { label: "Folevi app", redirectUris: ["folevi://auth/callback"] }`; `ConnectApp` accepts it; sign-out calls `/sign-out` with the bearer (and the `Origin` above), then native deletes the token. `trustedOrigins` stays as it is. Tests call `convex.site` directly: the dev proxy rewrites any `Origin` to the trusted one (`FOLEVI_DEV_AUTH_ORIGIN`), which hides the check. S4 also showed that the Convex WebSocket and the storage upload endpoint accept both shell origins as they are.
 6. **Version skew is new** (risk R1). Add `minShellVersion` to `settings.status`, and an API-compatibility snapshot test (§5.3).
 
 ---
@@ -121,6 +122,7 @@ export class LocalClient /* satisfies FoleviClient */ {
 }
 ```
 
+- **What S5 added to the surface:** a `logger` (`{ log, warn, error, logVerbose }`, read by `usePaginatedQuery`), and `watchPaginatedQuery` throwing (only the experimental hook calls it). `QueriesObserver.getLocalResults` makes a fresh watch on every render without subscribing, so a watch is a cheap view that only starts its cache entry.
 - **Dispatch:** `getFunctionName(ref)` (for example `"documents:list"`) is looked up in `LOCAL_FUNCTIONS`. An unknown name throws `ConvexError({ code: "local_unsupported" })`. In development it also logs loudly, and the e2e network guard (§5.4) fails the test.
 - **Provider switch:** `lib/convex/provider.tsx` gains `BackendProvider({ backend })`. For `"local"` it renders `<ConvexProvider client={localClient as unknown as ConvexReactClient}>`, which is the only cast, guarded by a conformance test. For `"account"` it renders today's `ConvexProviderWithAuth`. `getConvexClient()` throws in local mode (it is used by `lib/nativePush.ts`).
 - **Typing seam:** a new `lib/convex/client.ts` exports `type FoleviClient = Pick<ConvexReactClient, "mutation" | "query" | "action">`. Use it in `SyncEngine.open`, `Outbox.open`, `Uploader` and `uploadFileNow`, replacing `ConvexReactClient`. These are signature-only edits.
@@ -133,6 +135,7 @@ export class LocalClient /* satisfies FoleviClient */ {
 - Handlers run against a `LocalCtx` whose reads go through a tracking store. Each read records keys such as `doc:<id>`, `blocks:<id>`, `catalog`, `folders`, `tags`, `tasks`, `collection:<id>`, `search`, `history:<id>`, `notices:<id>`, `stream:<id>`.
 - Every store commit (a local mutation, or an ingest from disk) emits the keys it changed. Dirty entries re-run in one microtask batch. A result is replaced only if `canonicalJson` differs, which keeps references stable for `useMemo` and `documentBlocks`.
 - `localQueryResult()` returns `undefined` until the first run, exactly as Convex does while loading.
+- **Pages keep their end.** Convex pins a loaded page's end cursor through its query journal, so an insert above it grows that page instead of pushing a row into the next one. The cache does the same: it records a page's first `continueCursor` and re-runs it with that `endCursor`. Paginated handlers use sort-key cursors (for example `<sort key>|<id>`), never offsets. Proven in S5.
 - **Streaming AI** uses the same mechanism: `ai.stream` reads `stream:<id>`, and native AI chunks write to it.
 
 ### 2.3 Wiring
@@ -195,7 +198,8 @@ export class LocalClient /* satisfies FoleviClient */ {
 ### 2.5 Keeping the two modes in parity as features are added
 
 1. **The compiler checks return shapes.** Handlers are declared as
-   `defineLocal(api.documents.get, async (ctx, args: FunctionArgs<typeof api.documents.get>) => … as FunctionReturnType<typeof api.documents.get>)`.
+   `defineLocal("query", api.documents.get, async (ctx, args: FunctionArgs<typeof api.documents.get>) => … as FunctionReturnType<typeof api.documents.get>)`.
+   The kind is explicit because `api.x.y` carries only its name at runtime (`_type` exists in the types only); the type parameter still checks that it matches.
    If the server changes a return type, local mode fails to typecheck.
 2. **A coverage test forces every new function to be classified.** `tests/parity/coverage.test.ts` scans `apps/web/src/components` and `src/lib` (excluding admin and marketing) with the regex `api\.\w+\.\w+`. Every hit must be in `LOCAL_FUNCTIONS` or in `LOCAL_HIDDEN`, and a hidden entry must name the capability that gates its UI.
 3. **The same scenarios run against both backends.** `tests/parity/scenarios/*.ts` are written against a `Backend { query, mutation, action }` driver. `ConvexDriver` wraps `convex-test` with `signedIn()` from `tests/convex/helpers.ts`. `LocalDriver` wraps `LocalBackend` over `MemoryFs`. `normalize.ts` replaces ids, timestamps, revisions and profile or device ids with placeholders before comparing.
@@ -485,7 +489,7 @@ All paths are relative to the library, use forward slashes, and are rejected if 
 
 Each package lists the files it owns, to minimize overlap between builders.
 
-**Phase 0, spikes (one builder, about a week). Gate: a decision record, `docs/LOCAL_MODE.md`.**
+**Phase 0, spikes (one builder, about a week). Gate: a decision record, `docs/LOCAL_MODE.md`.** Done 2026-10-20: S1, S2, S4 (Mac side) and S5 worked, with the changes recorded above; S3 and the iOS halves of S4 and S6 are deferred while the iPhone and iPad apps are paused; S6 on the Mac is blocked by the Developer Program, as R7 expected.
 
 | Spike | Question |
 |---|---|

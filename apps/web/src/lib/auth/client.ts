@@ -12,6 +12,10 @@ import { passkeyClient } from "@better-auth/passkey/client";
  * HTTP-only first-party cookie and never in script-readable storage.
  */
 export const authClient = createAuthClient({
+  // The bundled app shell (FOLEVI_BUILD=shell) runs on app://folevi or capacitor://localhost, where Better Auth
+  // can't derive its address from the page and throws on load: it's given the service's address instead.
+  // (docs/LOCAL_MODE.md S2; WP4 replaces this with native bearer fetch.) Website builds never set the flag.
+  ...(process.env.NEXT_PUBLIC_FOLEVI_SHELL === "1" ? { baseURL: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.folevi.com"}/api/auth` } : {}),
   // oauthProviderClient: on the connected-app consent page (/oauth/consent), sends its signed query along.
   plugins: [convexClient(), twoFactorClient(), oauthProviderClient(), passkeyClient()],
 });

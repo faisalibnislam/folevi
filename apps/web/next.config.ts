@@ -60,10 +60,24 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
+// FOLEVI_BUILD=shell: the app shell the Mac, iPhone and iPad apps carry built in (docs/LOCAL_MODE_PLAN.md §1):
+// a static export of src/app/*.shell.tsx only, so every page.tsx, layout.tsx, route.ts and proxy.ts (admin,
+// marketing, /api, share pages, auth pages) is left out. Static export has no headers or redirects.
+const isShell = process.env.FOLEVI_BUILD === "shell";
+const shellConfig: NextConfig = {
+  output: "export",
+  distDir: process.env.NEXT_DIST_DIR ?? "out-shell",
+  pageExtensions: ["shell.tsx", "shell.ts"],
+  images: { unoptimized: true },
+  // tsc --noEmit checks the same files; the shell build doesn't need to again.
+  typescript: { ignoreBuildErrors: true },
+};
+
 const nextConfig: NextConfig = {
   // A second local dev server (another port) needs its own build folder.
   ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
-  env: { NEXT_PUBLIC_CONVEX_SITE_URL: convexSite },
+  ...(isShell ? shellConfig : {}),
+  env: { NEXT_PUBLIC_CONVEX_SITE_URL: convexSite, ...(isShell ? { NEXT_PUBLIC_FOLEVI_SHELL: "1" } : {}) },
   reactStrictMode: true,
   poweredByHeader: false,
   // Dev only: keep Next's badge out of the tab strip (top right) and the sidebar's account button (bottom left).
@@ -74,34 +88,37 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
   },
-  async redirects() {
-    return [
-      // Note styles were renamed note themes; old links keep working.
-      { source: "/features/note-styles", destination: "/features/note-themes", permanent: true },
-      // The Foli page became the Foli AI page.
-      { source: "/foli", destination: "/foli-ai", permanent: true },
-    ];
-  },
-  async headers() {
-    return [
-      { source: "/:path*", headers: securityHeaders },
-      {
-        // Authenticated surfaces and share pages are never cached by shared caches.
-        source: "/:path(d|ai|graph|documents|notes|tasks|calendar|review|changes|daily|settings|admin|s|api|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|onboarding|invite|share-invite|share|share-target)/:rest*",
-        headers: [{ key: "Cache-Control", value: "private, no-store" }],
-      },
-      // Share pages set robots per link (noindex unless the owner allowed indexing) in their metadata.
-      { source: "/s/:token*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
-      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }, { key: "Service-Worker-Allowed", value: "/" }] },
-      // Artwork, brand marks and icons: cached for a week (they were revalidated on every visit). Not
-      // immutable, as the files keep their names when they're replaced.
-      {
-        source: "/:dir(covers|marketing|brand|icons)/:file*",
-        headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }],
-      },
-      { source: "/:file(icon.svg|apple-icon.png)", headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }] },
-    ];
-  },
+  ...(isShell ? {} : { redirects, headers }),
 };
+
+async function redirects() {
+  return [
+    // Note styles were renamed note themes; old links keep working.
+    { source: "/features/note-styles", destination: "/features/note-themes", permanent: true },
+    // The Foli page became the Foli AI page.
+    { source: "/foli", destination: "/foli-ai", permanent: true },
+  ];
+}
+
+async function headers() {
+  return [
+    { source: "/:path*", headers: securityHeaders },
+    {
+      // Authenticated surfaces and share pages are never cached by shared caches.
+      source: "/:path(d|ai|graph|documents|notes|tasks|calendar|review|changes|daily|settings|admin|s|api|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|onboarding|invite|share-invite|share|share-target)/:rest*",
+      headers: [{ key: "Cache-Control", value: "private, no-store" }],
+    },
+    // Share pages set robots per link (noindex unless the owner allowed indexing) in their metadata.
+    { source: "/s/:token*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
+    { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }, { key: "Service-Worker-Allowed", value: "/" }] },
+    // Artwork, brand marks and icons: cached for a week (they were revalidated on every visit). Not
+    // immutable, as the files keep their names when they're replaced.
+    {
+      source: "/:dir(covers|marketing|brand|icons)/:file*",
+      headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }],
+    },
+    { source: "/:file(icon.svg|apple-icon.png)", headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }] },
+  ];
+}
 
 export default nextConfig;

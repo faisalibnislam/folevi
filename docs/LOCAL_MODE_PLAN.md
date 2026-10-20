@@ -543,6 +543,14 @@ All paths are relative to the library, use forward slashes, and are rejected if 
 5. Scope: Personal always. Workspaces the person can manage are offered as top-level folders named after the workspace.
 6. Then sign out: revoke the session, `forgetThisDevice`, clear the account's IndexedDB. Say clearly that the account itself still exists.
 
+### 6.3 Settled while building WP12 (2026-10-20)
+
+- One copy serves both directions (`lib/migrate/copy.ts`), reading and writing through the same public functions on either backend; docs/LOCAL_MODE.md "WP12" has the details.
+- `documents.importSnapshot` uses the schema's existing reason `"import"`. Enumerating a place reads a new `migration.documents` (every note with what lists don't carry) and found text a new `migration.fileTexts`; `collections.create` takes the client's id, so collections keep theirs too.
+- Up, notes and blocks go through the SyncEngine and are then checked against `blocks.list`; a Daily Note and a note without an icon go through `sync.push` straight.
+- Progress is meta `device:migration:*` in the library's copy on this device. The move under way is also kept in this origin's storage, so the signed-in app picks it up after the switch and after a restart.
+- Coming down signs out with `clearAllLocalData` keeping `folevi-local-*`.
+
 ---
 
 ## 7. Phased plan as independent work packages

@@ -25,6 +25,12 @@ export function MigrationGate({ children }: { children: ReactNode }) {
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
+/** "a, b and c", leaving out what's empty. */
+function listOf(parts: (string | null)[]): string {
+  const p = parts.filter((x): x is string => Boolean(x));
+  return p.length <= 1 ? (p[0] ?? "") : `${p.slice(0, -1).join(", ")} and ${p[p.length - 1]}`;
+}
+
 function Progress({ p, verb }: { p: MigrationProgress | null; verb: string }) {
   const total = p?.notesTotal ?? 0;
   const done = p?.notesDone ?? 0;
@@ -205,11 +211,11 @@ function UploadToAccount({ move }: { move: Extract<PendingMove, { direction: "up
         title="Move your notes to Folevi"
         body={
           <div className="space-y-3" data-testid="migration-summary">
+            <p>{listOf([plural(counts.notes, "note"), counts.folders ? plural(counts.folders, "folder") : null, counts.tags ? plural(counts.tags, "tag") : null, counts.files ? `${plural(counts.files, "file")} (${fileSize(counts.fileBytes)})` : null])} go into your account, with the same links between them.</p>
             <p>
-              {plural(counts.notes, "note")}, {plural(counts.folders, "folder")}, {plural(counts.tags, "tag")} and {plural(counts.files, "file")} ({fileSize(counts.fileBytes)}) go into your account, with the same links between them.
-            </p>
-            <p>
-              {pre.fits
+              {!counts.files
+                ? `Your account has ${fileSize(pre.availableBytes)} free.`
+                : pre.fits
                 ? `Your account has ${fileSize(pre.availableBytes)} free, enough for the files.`
                 : `Some files won’t fit: they need ${fileSize(pre.shortByBytes)} more than the ${fileSize(pre.availableBytes)} your account has free. Those stay in your library folder, and their notes say so.`}
             </p>

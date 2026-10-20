@@ -44,7 +44,14 @@ function remapNode(node: InlineNode, maps: IdMaps): InlineNode {
 const remapNodes = (nodes: InlineNode[], maps: IdMaps) => nodes.map((n) => remapNode(n, maps));
 
 function words(n: number): string {
-  return n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${Math.round((n / 1024 / 1024) * 10) / 10} MB`;
+  const KB = 1024;
+  const MB = KB * 1024;
+  const GB = MB * 1024;
+  const round = (x: number) => (x < 10 ? Math.round(x * 10) / 10 : Math.round(x)).toLocaleString();
+  if (n <= 0) return "0 KB";
+  if (n < MB) return `${Math.max(1, Math.round(n / KB))} KB`;
+  if (n < GB) return `${round(n / MB)} MB`;
+  return `${round(n / GB)} GB`;
 }
 
 /** What a block whose file didn't come along says instead (the file is still where it was). */

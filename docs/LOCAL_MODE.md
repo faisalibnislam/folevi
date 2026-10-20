@@ -655,3 +655,120 @@ marks) don't run, and the surface isn't rendered. Account mode is unchanged (eve
 - **Not verified:** the Touch ID prompt and the cover in the real Mac app (only the logic and the cover's page are
   tested); the real Dropbox and Google sign-in (the FakeShell stands in). Devices are listed as "Mac" or "Another
   Mac": the store names a device "This device" until the host passes a name (`LibraryStoreOptions.device.name`).
+
+## WP11 (Mac): Foli AI in local mode (2026-10-20)
+
+Foli AI runs on Apple's on-device model on the Mac, or on the person's own OpenAI, Anthropic or Google key,
+called straight from the Mac. Nothing goes through Folevi and there are no AI credits in local mode.
+
+- **Shared prompts:** every request the server builds is a builder in `packages/ai-prompts` (`ask.ts`,
+  `actions.ts`, `untrusted.ts`, and request builders in `mindmap.ts`, `table.ts`, `stickies.ts`, `wireframe.ts`,
+  `flowchart.ts`, `chart.ts`), with the refusal and failure messages. The convex actions call them, so both
+  backends send byte-identical prompts and read replies with the same checks.
+- **Mac host** (`apps/desktop`): `native/folevi-ai.swift` (FoundationModels, weak-linked so it builds universal
+  for macOS 13 and answers "notSupported" without the framework; availability, streaming, cancel, token counts;
+  JSON lines) and `src/ai.ts` (request checks; the three providers' streaming APIs from the main process with
+  `net.fetch` in a cookie-less `folevi-ai` session; one host allowlist, `api.openai.com`, `api.anthropic.com`,
+  `generativelanguage.googleapis.com`, https only, redirects refused; the key read from safeStorage just before a
+  request, only in the provider's header, scrubbed from errors). Bridge: `secrets.has/set/delete` (only the
+  three `ai.*` names; `auth.session` is refused), `ai.capabilities`, `ai.generate(req, onChunk)`, `ai.testKey`.
+  On this Mac (macOS 27.0.1) the helper reports the model available with an 8,192-token context and real
+  generations work.
+- **Web** (`apps/web/src/lib/local/ai/`): `state.ts` (what the host can do, the person's pick of provider and
+  model kept in this origin's storage, the resolved active model; `ai:state` re-runs queries), `features.ts`
+  (per-feature flags: the on-device model has no wireframes, flowcharts, plans of changes or whole long notes;
+  server-only features are off everywhere), `provider.ts` (LocalAiProvider: the fast model for plumbing calls,
+  preferences in the system prompt, requests fitted to the on-device context or refused, errors as the app shows
+  them), `streams.ts` (answers being written, in memory, `stream:<id>` keys through `lib/local/volatile.ts` and
+  `ctx.watch`), `answer.ts` (convex/ai.ts answerFromNotes with the library's search), `chatStore.ts`
+  (conversations in `local:` meta keys, so they stay on this device), and the handlers in `functions/`.
+- **Interface:** `useCapabilities().foliAi` is true in local mode once a model is there (useAiAccess reads it);
+  `useAiFeatures()` / `useAiFeature()` gate what the active model can't do (ChatThread, ResearchList,
+  NoteSuggestions, the mind map's PDF source, the sticky notes photo, wireframe and flowchart AI). Settings > AI
+  shows `LocalAiSection` in local mode: Foli AI on or off, Apple Intelligence's state, the keys (added
+  write-only, tested, removed), the model, conversations and memory. New libraries have Foli AI on.
+- **Tests:** `apps/web/test/local-ai.test.ts` (every local AI function against a fake host: the prompts are the
+  builders', replies go through the shared checks, gating, fitting, errors, keys never read back),
+  `tests/parity/scenarios/ai.ts` (Gemini behind a stubbed fetch against the fake host: the same prompts and the
+  same normalized results on both backends), `apps/desktop/src/ai.test.ts`, and `apps/web/e2e/local-ai.spec.ts`
+  (the `local` project with the FakeShell's scripted model).
+- **Not done:** the agent (later, only with a key), reading files, photos and recordings, the web; chats aren't
+  synced between devices; the full page-to-model path in the bundled Mac app wasn't run by hand (the helper, the
+  main-process providers and the page side were each tested); no streaming call with a real provider key.
+
+## WP12: moving between modes, both ways (2026-10-20)
+
+**Built:** plan §6 in both directions, as one copy (`apps/web/src/lib/migrate/copy.ts`) from a source into a target
+that talk to either backend through the same public functions, so the library and the account are read and written
+the same way and the parity harness can drive both.
+
+- **Server** (`convex/migration.ts`): `migration.preflight` (counts and storage against the plan: used, limit, free,
+  short by, the one-file limit, notes already there, writable; never a price), `migration.documents` (every note of
+  Personal, or of a workspace the person owns or manages: Archive, Trash, nested pages, templates, collection rows and
+  synced content, with stars, tags and whether it has comments or is shared), `migration.fileTexts` (found text with
+  the text itself, for editors). `documents.importSnapshot`: owner only (a note of the caller's own Personal), at
+  most 2 MB of content and 5000 blocks, 200 imported versions per note, the `snapshotImport` rate rule (3000 an
+  hour), the client's id (a resend returns the version it made), the original time (never in the future),
+  `contentSeq` -1 so it never stands for "nothing changed since". Its reason is the schema's existing `"import"`
+  literal (the plan said "imported"). `collections.create` takes an optional client id, on both backends, so a
+  collection keeps its id. Local mode ports `migration.documents`, `migration.fileTexts` and
+  `documents.importSnapshot` (`lib/local/functions/migration.ts`); `migration.preflight` is hidden (`account`).
+- **The copy:** folders (parents first, same ids, colours), tags (matched by name), then notes: synced content
+  first, then every note before the notes under it (a collection's host before its rows), oldest change first
+  among siblings so the most recently changed note is still the most recent on the other side. Per note: the
+  note (`document.create` with its id; a row through `collections.addRow` with its row and note ids), its
+  collections (properties, views and their configs with their ids; the defaults a new collection gets are removed),
+  attachments stored there before the blocks that show them, blocks parents first, the theme image, star, Archive,
+  tags, found text, and, if asked, history oldest first. Trash goes last (nothing can be added under a note in
+  Trash). Ids that change: attachments (the other side's file ids), the Inbox (the other side's Inbox; its lines are
+  appended after what's there, ranked once and kept), the person (mentions, assignees, person values, table cells).
+- **Resumable:** what's done is recorded as it's done in the library's copy on this device (meta
+  `device:migration:upload`, or `device:migration:export:<place>`; `device:` keys never reach the folder). Every step
+  is idempotent on both backends. Only errors a backend answered with a code are reported and skipped (a file that
+  didn't fit, found text Settings > AI refuses, a version over the limits); anything else stops the move, which goes
+  on from the record next time. A rate limit is waited out (`retryAfterMs`). A move started with one account refuses
+  to go on into another.
+- **Up** (`uploadLibrary.ts`): notes and blocks go through the account's SyncEngine (`engineWriter`: queued, kept and
+  sent like any edit, then checked against `blocks.list`, so refused blocks are reported); a note without an icon and
+  a Daily Note go through `sync.push` straight (the engine would give the first a random icon, and can't tell a
+  taken date apart). Uploads are the app's (`generateUploadUrl`, the bytes, `finalize`). A file that doesn't fit
+  becomes a line in its note saying so, and is listed under "Some files didn't come along". When it's done,
+  `folevi-library.json` gets `migratedTo` (the account's profile id) and nothing else in the folder changes.
+- **Down** (`exportToLocal.ts`): Personal always; each workspace chosen comes into a folder named after it
+  (`ws_<workspace id>`, the same on every run). Attachments are fetched from their `files.urls` links and stored by
+  the library's putFile (content addressed by their SHA-256). Comments, sharing and workspace membership go to
+  `exported/server-only.json`. Then this device signs out: `forgetThisDevice`, the host's `auth.signOut` (revokes the
+  session), `clearAllLocalData({ keep })` keeping `folevi-local-*` (the library's copy), and local mode.
+- **Interface:** in local mode, Settings > Library's "Sign in to Folevi" (`lib/local/signIn.ts`) signs in in the
+  browser, saves the move under way in this origin's storage and switches to account mode. Signed in,
+  `components/migrate/MigrationGate.tsx` (around the Shell in AccountGate) shows the move: the preflight's facts and
+  "Bring version history", progress with Stop, "The move stopped" with Go on, the result with anything that didn't
+  come along. It comes back after a reload or restart and goes on by itself. Settings > Import & export, signed in on
+  the Mac: "Keep my notes on this Mac…" (where, history, workspaces you manage) and, after a library went up,
+  "Remove the local copy…" (only Folevi's own paths in the folder, and this device's copy).
+- **Tests:** `tests/convex/migration.test.ts` (13: preflight facts and shortfalls, documents for owners and managers
+  only, fileTexts for editors, importSnapshot's owner rule, idempotence, time, size, per-note and rate limits,
+  collections.create with an id). `tests/parity/migration.test.ts` (10): a seeded library with every kind of thing
+  (nested pages, synced content and a note showing it, a collection with its own property, view and rows, an image,
+  a PDF with found text, handwriting, a mention, an assignee, a table cell naming the person, a page link to the
+  Inbox, a Quick Add task in the Inbox, a star, the Archive, Trash with a child, a tag, nested folders with a colour,
+  a named version) goes up into a convex-test account and down into a second library, and every note compares equal
+  on all three (ids, blocks, ranks, text, attachments by SHA-256), with the Inbox lines in the other side's Inbox,
+  the collection, folders, tags, found text, history and synced content as they were; the move killed at six points
+  (before a call, or after the account did it but before the answer), restarted from exactly what the library had
+  kept (`lib/migrate/testing.ts reopenAfterKill`), ends the same with nothing twice; another account is refused;
+  files that don't fit; the upload rate limit waited out. `apps/web/e2e/mode-move.spec.ts` (2, on the shell dev
+  server with the FakeShell and the Mac's auth bridge in Node, against the dev deployment): a library goes up from
+  Settings > Library (the welcome notes and the Reading Shelf's rows open on the website under the library's ids,
+  `migratedTo` is set, "Remove the local copy" shows), and an account comes down (the record of server-only things
+  is written, signing out revokes the session, the app opens in local mode on the account's welcome note by its id,
+  and the account still opens on the website).
+- **Not done or not checked:** notes' creation and edit times aren't carried (both backends stamp their own; the
+  order is kept by copying the oldest change first). A note's template key isn't carried. Old versions point at
+  attachments only the note still shows (a file only an old version showed stays a link to the source's id). An
+  upload into an account whose welcome notes made folders of the same name shows both (ids are kept, nothing is
+  merged by name). The account's upload limit (120 an hour per person) makes a library with many attachments wait
+  out the hour, more than once; a migration allowance on the server would help. A kill right after an upload but
+  before its record was saved leaves an extra, unreferenced file row in the account (storage it counts until a
+  sweep). `signOutNow` (WP4) still clears every `folevi-*` database, the library's copy too, on a normal sign-out in
+  the Mac app. Not run in the real Electron app or against iCloud, Dropbox or Drive folders; iOS paused.

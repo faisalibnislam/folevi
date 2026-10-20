@@ -1,6 +1,9 @@
 // Small schematic pictures for the Insert tool's tiles. Everything is drawn in the current text colour
 // at low opacity (so it reads in light and dark), with the surface colour for paper and the app's
-// accent for the one detail worth noticing.
+// accent for the one detail worth noticing. The accent is near-black in the neutral chrome, so no mark goes
+// above about half strength: small solid shapes at full ink read as black blots next to the rest.
+
+import { useId } from "react";
 
 export type PreviewKind =
   | "text"
@@ -52,6 +55,28 @@ const Sheet = ({ x, y, w, h, r = 3 }: { x: number; y: number; w: number; h: numb
   <rect x={x + 0.5} y={y + 0.5} width={w - 1} height={h - 1} rx={r} fill={PAPER} stroke={C} strokeOpacity={0.3} />
 );
 
+/** A framed photo: a soft sun, a far hill and a near one, kept inside the frame's rounded corners. */
+function Photo({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
+  const clip = useId();
+  const b = y + h;
+  return (
+    <>
+      <defs>
+        <clipPath id={clip}>
+          <rect x={x} y={y} width={w} height={h} rx={3} />
+        </clipPath>
+      </defs>
+      <rect x={x} y={y} width={w} height={h} rx={3} fill={C} fillOpacity={0.05} />
+      <g clipPath={`url(#${clip})`}>
+        <circle cx={x + w * 0.74} cy={y + h * 0.3} r={h * 0.12} fill={C} fillOpacity={0.22} />
+        <path d={`M${x + w * 0.36} ${b} L${x + w * 0.66} ${y + h * 0.5} Q${x + w * 0.7} ${y + h * 0.45} ${x + w * 0.74} ${y + h * 0.5} L${x + w} ${y + h * 0.8} V${b}z`} fill={C} fillOpacity={0.14} />
+        <path d={`M${x} ${b} V${y + h * 0.82} L${x + w * 0.26} ${y + h * 0.45} Q${x + w * 0.3} ${y + h * 0.4} ${x + w * 0.34} ${y + h * 0.45} L${x + w * 0.66} ${b}z`} fill={C} fillOpacity={0.26} />
+      </g>
+      <rect x={x} y={y} width={w} height={h} rx={3} fill="none" stroke={C} strokeOpacity={0.3} />
+    </>
+  );
+}
+
 const line = { stroke: C, strokeOpacity: 0.35, strokeWidth: 1.2, strokeLinecap: "round" as const, fill: "none" };
 
 function Picture({ kind }: { kind: PreviewKind }) {
@@ -70,7 +95,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
         <>
           <path d="M14.5 3.5h14l7.5 7.5v20a2 2 0 0 1-2 2H14.5a2 2 0 0 1-2-2v-25.5a2 2 0 0 1 2-2z" fill={PAPER} stroke={C} strokeOpacity={0.3} />
           <path d="M28.5 3.5v5.5a2 2 0 0 0 2 2H36" fill="none" stroke={C} strokeOpacity={0.3} />
-          <Bar x={16.5} y={12} w={9} o={0.55} />
+          <Bar x={16.5} y={12} w={9} o={0.4} />
           <Bar x={16.5} y={18} w={15} h={2.5} />
           <Bar x={16.5} y={23} w={15} h={2.5} />
           <Bar x={16.5} y={28} w={10} h={2.5} />
@@ -81,7 +106,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
         <>
           <Sheet x={4} y={6} w={40} h={24} r={4} />
           <rect x={9} y={11} width={9} height={9} rx={2.5} fill={ACCENT} fillOpacity={0.35} />
-          <Bar x={22} y={12} w={16} o={0.55} />
+          <Bar x={22} y={12} w={16} o={0.4} />
           <Bar x={22} y={18} w={11} h={2.5} />
           <Bar x={9} y={24} w={26} h={2.5} o={0.14} />
         </>
@@ -89,7 +114,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
     case "todo":
       return (
         <>
-          <rect x={5} y={7} width={9} height={9} rx={2.5} fill={ACCENT} />
+          <rect x={5} y={7} width={9} height={9} rx={2.5} fill={ACCENT} fillOpacity={0.42} />
           <path d="M7.5 11.6l2 2 3.2-4" fill="none" stroke={PAPER} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
           <Bar x={18} y={10} w={24} o={0.16} />
           <rect x={5.6} y={20.6} width={7.8} height={7.8} rx={2.2} fill="none" stroke={C} strokeOpacity={0.45} strokeWidth={1.2} />
@@ -107,32 +132,24 @@ function Picture({ kind }: { kind: PreviewKind }) {
         </>
       );
     case "image":
-      return (
-        <>
-          <rect x={4.5} y={4.5} width={39} height={27} rx={3} fill={C} fillOpacity={0.06} stroke={C} strokeOpacity={0.3} />
-          <circle cx={34} cy={12} r={3.5} fill={ACCENT} fillOpacity={0.5} />
-          <path d="M5 30.5 16 17l8 9 5-5 14.5 9.5z" fill={C} fillOpacity={0.28} />
-        </>
-      );
+      return <Photo x={4.5} y={4.5} w={39} h={27} />;
     case "unsplash":
       return (
         <>
-          <rect x={4.5} y={4.5} width={33} height={23} rx={3} fill={C} fillOpacity={0.06} stroke={C} strokeOpacity={0.3} />
-          <circle cx={29} cy={11} r={3} fill={ACCENT} fillOpacity={0.5} />
-          <path d="M5 27 14 16l7 7 4-4 12.5 8z" fill={C} fillOpacity={0.28} />
-          <circle cx={35} cy={25} r={5.5} fill={PAPER} stroke={C} strokeOpacity={0.7} strokeWidth={1.6} />
-          <path d="M39 29l3.5 3.5" stroke={C} strokeOpacity={0.7} strokeWidth={2} strokeLinecap="round" />
+          <Photo x={4.5} y={4.5} w={33} h={23} />
+          <circle cx={35} cy={25} r={5.5} fill={PAPER} stroke={C} strokeOpacity={0.45} strokeWidth={1.6} />
+          <path d="M39 29l3.5 3.5" stroke={C} strokeOpacity={0.45} strokeWidth={2} strokeLinecap="round" />
         </>
       );
     case "scan":
       return (
         <>
           <Sheet x={15} y={6} w={18} h={24} r={2} />
-          <Bar x={18} y={11} w={10} h={2.5} o={0.5} />
+          <Bar x={18} y={11} w={10} h={2.5} o={0.4} />
           <Bar x={18} y={16} w={12} h={2} />
           <Bar x={18} y={20.5} w={12} h={2} />
           <Bar x={18} y={25} w={8} h={2} />
-          <path d="M10 9V5a1 1 0 0 1 1-1h4M33 4h4a1 1 0 0 1 1 1v4M38 27v4a1 1 0 0 1-1 1h-4M15 32h-4a1 1 0 0 1-1-1v-4" stroke={ACCENT} strokeOpacity={0.7} strokeWidth={1.6} strokeLinecap="round" fill="none" />
+          <path d="M10 9V5a1 1 0 0 1 1-1h4M33 4h4a1 1 0 0 1 1 1v4M38 27v4a1 1 0 0 1-1 1h-4M15 32h-4a1 1 0 0 1-1-1v-4" stroke={ACCENT} strokeOpacity={0.45} strokeWidth={1.6} strokeLinecap="round" fill="none" />
         </>
       );
     case "file":
@@ -140,7 +157,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
         <>
           <Sheet x={4} y={8} w={40} h={20} r={4} />
           <path d="M10.5 12.5h5l3 3v7.5a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-9.5a1 1 0 0 1 1-1z" fill={ACCENT} fillOpacity={0.3} />
-          <Bar x={23} y={13} w={15} o={0.5} />
+          <Bar x={23} y={13} w={15} o={0.4} />
           <Bar x={23} y={19} w={10} h={2.5} />
         </>
       );
@@ -148,7 +165,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
       const heights = [6, 12, 18, 10, 14, 22, 12, 8, 16, 6];
       return (
         <>
-          <circle cx={11} cy={18} r={6.5} fill={ACCENT} />
+          <circle cx={11} cy={18} r={6.5} fill={ACCENT} fillOpacity={0.42} />
           <path d="M9.4 14.8v6.4l5-3.2z" fill={PAPER} />
           {heights.map((h, i) => (
             <rect key={i} x={21 + i * 2.4} y={18 - h / 2} width={1.4} height={h} rx={0.7} fill={C} fillOpacity={0.35} />
@@ -162,10 +179,10 @@ function Picture({ kind }: { kind: PreviewKind }) {
       const n = Number(kind[1]);
       return (
         <>
-          <text x={4} y={16} fontSize={11} fontWeight={700} fill={C} fillOpacity={0.75} fontFamily="var(--font-sans)">
+          <text x={4} y={16} fontSize={11} fontWeight={700} fill={C} fillOpacity={0.55} fontFamily="var(--font-sans)">
             H{n}
           </text>
-          <Bar x={21} y={13 - (6 - n)} w={23 - n * 2} h={7 - n} o={0.55} />
+          <Bar x={21} y={13 - (6 - n)} w={23 - n * 2} h={7 - n} o={0.4} />
           <Bar x={4} y={23} w={40} h={2.5} />
           <Bar x={4} y={29} w={28} h={2.5} />
         </>
@@ -176,7 +193,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
         <>
           {[9, 18, 27].map((y, i) => (
             <g key={y}>
-              <circle cx={7} cy={y} r={1.9} fill={C} fillOpacity={0.6} />
+              <circle cx={7} cy={y} r={1.9} fill={C} fillOpacity={0.45} />
               <Bar x={12} y={y - 1.5} w={[30, 24, 28][i]!} />
             </g>
           ))}
@@ -187,7 +204,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
         <>
           {[9, 18, 27].map((y, i) => (
             <g key={y}>
-              <text x={4} y={y + 2.6} fontSize={7.5} fontWeight={650} fill={C} fillOpacity={0.6} fontFamily="var(--font-sans)">
+              <text x={4} y={y + 2.6} fontSize={7.5} fontWeight={650} fill={C} fillOpacity={0.55} fontFamily="var(--font-sans)">
                 {i + 1}
               </text>
               <Bar x={12} y={y - 1.5} w={[30, 24, 28][i]!} />
@@ -198,8 +215,8 @@ function Picture({ kind }: { kind: PreviewKind }) {
     case "toggle":
       return (
         <>
-          <path d="M5 8h7l-3.5 4.5z" fill={C} fillOpacity={0.6} />
-          <Bar x={15} y={8.5} w={27} o={0.5} />
+          <path d="M5 8h7l-3.5 4.5z" fill={C} fillOpacity={0.45} />
+          <Bar x={15} y={8.5} w={27} o={0.4} />
           <path d="M8.5 16v13" {...line} strokeOpacity={0.2} />
           <Bar x={15} y={17} w={24} h={2.5} />
           <Bar x={15} y={23} w={20} h={2.5} />
@@ -209,7 +226,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
     case "quote":
       return (
         <>
-          <rect x={6} y={7} width={2.5} height={22} rx={1.25} fill={ACCENT} fillOpacity={0.7} />
+          <rect x={6} y={7} width={2.5} height={22} rx={1.25} fill={ACCENT} fillOpacity={0.45} />
           <Bar x={13} y={9} w={30} />
           <Bar x={13} y={16} w={26} />
           <Bar x={13} y={23} w={28} />
@@ -219,7 +236,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
       return (
         <>
           <rect x={4} y={6} width={40} height={24} rx={4} fill={C} fillOpacity={0.07} />
-          <circle cx={11} cy={13} r={3.2} fill={ACCENT} fillOpacity={0.6} />
+          <circle cx={11} cy={13} r={3.2} fill={ACCENT} fillOpacity={0.45} />
           <Bar x={17} y={11.5} w={22} o={0.35} />
           <Bar x={17} y={18} w={20} h={2.5} />
           <Bar x={17} y={23.5} w={13} h={2.5} />
@@ -229,18 +246,18 @@ function Picture({ kind }: { kind: PreviewKind }) {
       return (
         <>
           <rect x={4} y={5} width={40} height={26} rx={4} fill={C} fillOpacity={0.08} />
-          <Bar x={9} y={10} w={7} h={2.5} o={0.5} />
+          <Bar x={9} y={10} w={7} h={2.5} o={0.4} />
           <Bar x={18} y={10} w={14} h={2.5} />
           <Bar x={13} y={16} w={10} h={2.5} />
           <rect x={25} y={16} width={9} height={2.5} rx={1.25} fill={ACCENT} fillOpacity={0.45} />
           <Bar x={13} y={22} w={16} h={2.5} />
-          <Bar x={9} y={26.5} w={4} h={2.5} o={0.5} />
+          <Bar x={9} y={26.5} w={4} h={2.5} o={0.4} />
         </>
       );
     case "formula":
       return (
         <>
-          <text x={24} y={20} textAnchor="middle" fontSize={13} fontStyle="italic" fill={C} fillOpacity={0.75} fontFamily="var(--font-serif)">
+          <text x={24} y={20} textAnchor="middle" fontSize={13} fontStyle="italic" fill={C} fillOpacity={0.55} fontFamily="var(--font-serif)">
             a²+b²
           </text>
           <path d="M10 26.5h28" {...line} strokeOpacity={0.25} />
@@ -254,7 +271,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
           <Bar x={7} y={19} w={10} h={2.5} />
           <Bar x={7} y={25} w={12} h={2.5} />
           <rect x={28.5} y={3.5} width={13} height={6} rx={1.5} fill={PAPER} stroke={C} strokeOpacity={0.4} />
-          <rect x={28.5} y={15} width={13} height={6} rx={1.5} fill={ACCENT} fillOpacity={0.2} stroke={ACCENT} strokeOpacity={0.6} />
+          <rect x={28.5} y={15} width={13} height={6} rx={1.5} fill={ACCENT} fillOpacity={0.2} stroke={ACCENT} strokeOpacity={0.45} />
           <rect x={28.5} y={26.5} width={13} height={6} rx={1.5} fill={PAPER} stroke={C} strokeOpacity={0.4} />
           <path d="M35 9.5V15M35 21v5.5" {...line} />
         </>
@@ -263,7 +280,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
       return (
         <>
           <rect x={2.5} y={8.5} width={12} height={7} rx={3.5} fill={PAPER} stroke={C} strokeOpacity={0.45} />
-          <path d="M24 6.5l5.5 5.5-5.5 5.5-5.5-5.5z" fill={ACCENT} fillOpacity={0.18} stroke={ACCENT} strokeOpacity={0.6} />
+          <path d="M24 6.5l5.5 5.5-5.5 5.5-5.5-5.5z" fill={ACCENT} fillOpacity={0.18} stroke={ACCENT} strokeOpacity={0.45} />
           <rect x={33.5} y={8.5} width={12} height={7} rx={1.5} fill={PAPER} stroke={C} strokeOpacity={0.45} />
           <rect x={18} y={25.5} width={12} height={7} rx={1.5} fill={PAPER} stroke={C} strokeOpacity={0.45} />
           <path d="M14.5 12h3.5M29.5 12h3.5M24 17.5v7.5" {...line} />
@@ -275,14 +292,14 @@ function Picture({ kind }: { kind: PreviewKind }) {
           {[8, 16, 24, 32, 40].flatMap((x) =>
             [6, 14, 22, 30].map((y) => <circle key={`${x}-${y}`} cx={x} cy={y} r={0.7} fill={C} fillOpacity={0.28} />),
           )}
-          <path d="M6 26c4-12 9-14 12-7s9 8 12-3 8-8 12-4" fill="none" stroke={ACCENT} strokeOpacity={0.8} strokeWidth={2} strokeLinecap="round" />
+          <path d="M6 26c4-12 9-14 12-7s9 8 12-3 8-8 12-4" fill="none" stroke={ACCENT} strokeOpacity={0.45} strokeWidth={2} strokeLinecap="round" />
         </>
       );
     case "mindmap":
       return (
         <>
           <path d="M18 18c-4 0-4-8-8-8M18 18c-4 0-4 8-8 8M30 18c4 0 4-8 8-8M30 18c4 0 4 8 8 8" {...line} />
-          <rect x={17.5} y={14.5} width={13} height={7} rx={3.5} fill={ACCENT} fillOpacity={0.22} stroke={ACCENT} strokeOpacity={0.65} />
+          <rect x={17.5} y={14.5} width={13} height={7} rx={3.5} fill={ACCENT} fillOpacity={0.22} stroke={ACCENT} strokeOpacity={0.45} />
           <Bar x={2} y={8.5} w={8} o={0.32} />
           <Bar x={2} y={24.5} w={8} o={0.32} />
           <Bar x={38} y={8.5} w={8} o={0.32} />
@@ -294,7 +311,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
         <>
           <path d="M6 4.5v26h37" {...line} strokeOpacity={0.3} />
           <rect x={10} y={19} width={5.5} height={11.5} rx={1} fill={C} fillOpacity={0.22} />
-          <rect x={18.5} y={11} width={5.5} height={19.5} rx={1} fill={ACCENT} fillOpacity={0.6} />
+          <rect x={18.5} y={11} width={5.5} height={19.5} rx={1} fill={ACCENT} fillOpacity={0.45} />
           <rect x={27} y={22} width={5.5} height={8.5} rx={1} fill={C} fillOpacity={0.22} />
           <rect x={35.5} y={7} width={5.5} height={23.5} rx={1} fill={C} fillOpacity={0.3} />
         </>
@@ -326,7 +343,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
           <path d="M17.5 10.5l13 9M30.5 10.5l-13 9" {...line} strokeOpacity={0.2} strokeWidth={0.8} />
           <Bar x={17.5} y={22} w={13} h={2} />
           <Bar x={17.5} y={25.5} w={9} h={2} />
-          <rect x={17.5} y={28.5} width={13} height={3} rx={1.5} fill={ACCENT} fillOpacity={0.6} />
+          <rect x={17.5} y={28.5} width={13} height={3} rx={1.5} fill={ACCENT} fillOpacity={0.45} />
         </>
       );
     case "bookmark":
@@ -334,9 +351,9 @@ function Picture({ kind }: { kind: PreviewKind }) {
         <>
           <Sheet x={3} y={7} w={42} h={22} />
           <rect x={31} y={10} width={11} height={16} rx={2} fill={C} fillOpacity={0.12} />
-          <Bar x={7} y={11} w={20} o={0.5} />
+          <Bar x={7} y={11} w={20} o={0.4} />
           <Bar x={7} y={17} w={17} h={2.5} />
-          <circle cx={8.5} cy={23.5} r={1.5} fill={ACCENT} fillOpacity={0.5} />
+          <circle cx={8.5} cy={23.5} r={1.5} fill={ACCENT} fillOpacity={0.45} />
           <Bar x={12} y={22.5} w={10} h={2} o={0.18} />
         </>
       );
@@ -344,17 +361,17 @@ function Picture({ kind }: { kind: PreviewKind }) {
       return (
         <>
           <Sheet x={3} y={5} w={42} h={26} />
-          <path d="M21 13.5v9l7.5-4.5z" fill={ACCENT} fillOpacity={0.75} />
+          <path d="M21 13.5v9l7.5-4.5z" fill={ACCENT} fillOpacity={0.45} />
         </>
       );
     case "date":
       return (
         <>
           <Sheet x={10} y={5} w={28} h={28} />
-          <rect x={10} y={5} width={28} height={8} rx={3} fill={ACCENT} fillOpacity={0.55} />
-          <rect x={10} y={10} width={28} height={3} fill={ACCENT} fillOpacity={0.55} />
-          <path d="M16.5 3v4.5M31.5 3v4.5" {...line} strokeOpacity={0.55} strokeWidth={1.6} />
-          <text x={24} y={28} textAnchor="middle" fontSize={11} fontWeight={700} fill={C} fillOpacity={0.7} fontFamily="var(--font-sans)">
+          <rect x={10} y={5} width={28} height={8} rx={3} fill={ACCENT} fillOpacity={0.28} />
+          <rect x={10} y={10} width={28} height={3} fill={ACCENT} fillOpacity={0.28} />
+          <path d="M16.5 3v4.5M31.5 3v4.5" {...line} strokeOpacity={0.45} strokeWidth={1.6} />
+          <text x={24} y={28} textAnchor="middle" fontSize={11} fontWeight={700} fill={C} fillOpacity={0.55} fontFamily="var(--font-sans)">
             12
           </text>
         </>
@@ -383,8 +400,8 @@ function Picture({ kind }: { kind: PreviewKind }) {
           {Array.from({ length: 4 }, (_, row) =>
             Array.from({ length: 5 }, (_, col) => <rect key={`${row}-${col}`} x={8 + col * 6.8} y={8.5 + row * 6} width={5.6} height={4.8} rx={0.8} fill={C} fillOpacity={0.08} />),
           )}
-          <rect x={14.8} y={14.5} width={12.4} height={2.4} rx={1} fill={ACCENT} fillOpacity={0.6} />
-          <rect x={28.4} y={26.5} width={5.6} height={2.4} rx={1} fill={ACCENT} fillOpacity={0.6} />
+          <rect x={14.8} y={14.5} width={12.4} height={2.4} rx={1} fill={ACCENT} fillOpacity={0.45} />
+          <rect x={28.4} y={26.5} width={5.6} height={2.4} rx={1} fill={ACCENT} fillOpacity={0.45} />
         </>
       );
     case "kanban":

@@ -23,6 +23,9 @@ export type PreviewKind =
   | "numbered"
   | "toggle"
   | "tabs"
+  | "columns2"
+  | "columns3"
+  | "columns4"
   | "quote"
   | "callout"
   | "code"
@@ -238,6 +241,30 @@ function Picture({ kind }: { kind: PreviewKind }) {
           <Bar x={6} y={27} w={22} h={2.5} o={0.14} />
         </>
       );
+    case "columns2":
+    case "columns3":
+    case "columns4": {
+      // Two to four columns side by side, each with a few lines of its own.
+      const n = Number(kind.slice(-1));
+      const w = (40 - (n - 1) * 3) / n;
+      return (
+        <>
+          {Array.from({ length: n }, (_, k) => {
+            const x = 4 + k * (w + 3);
+            return (
+              <g key={k}>
+                <Bar x={x} y={9} w={w} h={2.5} o={k === 0 ? 0.4 : 0.3} />
+                <Bar x={x} y={15} w={w * 0.85} h={2.5} />
+                <Bar x={x} y={21} w={w * 0.7} h={2.5} o={0.14} />
+              </g>
+            );
+          })}
+          {Array.from({ length: n - 1 }, (_, k) => (
+            <path key={k} d={`M${4 + (k + 1) * (w + 3) - 1.5} 7v18`} {...line} strokeOpacity={0.14} />
+          ))}
+        </>
+      );
+    }
     case "quote":
       return (
         <>

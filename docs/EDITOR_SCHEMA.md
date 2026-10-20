@@ -55,6 +55,7 @@ code, link, color, highlight), `mention`, `date`, `pageLink`.
 | stickies | no | `data` (JSON `{ v: 1, notes: [{ id, x, y, w?, h?, text, color?, tags?, author? }], groups?: [{ id, label, x, y, w, h }] }`, ≤ `LIMITS.maxStickiesDataLength`; colours yellow/orange/pink/purple/blue/green/gray; a note belongs to the group its centre is in; `author` is a profile id; see `src/stickies.ts`), `height` (`minStickiesHeight`–`maxStickiesHeight`). `webOnly`. |
 | chart | no | `data` (JSON `{ v: 1, kind, title?, takeaway?, columns: string[], rows: (string \| number \| null)[][] }`, ≤ `LIMITS.maxChartDataLength`; kinds bar/stackedBar/line/area/pie/donut/scatter/bubble/org/venn; the first column names each row, the others are series; every row as long as `columns`; see `src/chart.ts`), `height` (`minChartHeight`–`maxChartHeight`). `webOnly`. |
 | wireframe | no | `data` (JSON `{ v: 1, style?, screens: [{ id, name, frame, x, y, w, h }], items: [{ id, screen, kind, x, y, w, h, text? }], links?: [{ id, from, to }] }`, ≤ `LIMITS.maxWireframeDataLength`; style clean/sketch, frames phone/tablet/browser/plain, `kind` one of `WIREFRAME_COMPONENTS`; an item's x/y is inside its screen; a link goes from a screen or item to a screen; see `src/wireframe.ts`), `height` (`minWireframeHeight`–`maxWireframeHeight`). `webOnly`. |
+| columns, column | no | `columns`: none (a row of columns side by side). `column`: `width?` (its share of the row, `LIMITS.minColumnWidth` to 1; without one, an equal share). A row's children are its columns (2 to `LIMITS.maxColumns`), a column's children are its blocks (any type). See *Columns* below and `src/columns.ts`. `webOnly`. |
 
 The data blocks share one pattern: a strict `*DataIssue` the server runs on every write, a forgiving
 `parse*`/`normalize*` reader that never throws (clients, AI output, paste), and `serialize*` that writes the
@@ -66,6 +67,45 @@ Mermaid diagrams are `code` blocks with `language: "mermaid"`; editors render a 
 
 Documents carry `DocumentStyle` (`font`, `width`, `background`, `accent`, `card`) and `DocumentCover`.
 Tasks are `todo` blocks; the `tasks` table is only a projection.
+
+## Columns
+
+Blocks side by side (like Notion or Craft) are three levels of ordinary blocks: a `columns` block (the row), its
+`column` children in rank order, and each column's own blocks under it (nested as deep as anywhere else, up
+to `LIMITS.maxDepth`). We chose this over a single container whose props list child ids, or a "column index"
+prop on following blocks, because it keeps every rule that already holds:
+
+- **Sync stays per block.** Writing in one column, or two people adding blocks to two columns at once, never
+  touches the same block, so nothing conflicts. A column's `width` lives on the column (one small upsert when
+  resizing; all columns are written so the shares always add up).
+- **The tree is the layout.** `parentId` + rank say which column a block is in and where; moving a block
+  between columns is a position change like any other. History, copy and paste (`blockClipboard.ts`),
+  search, backlinks, tasks and the server need nothing new.
+- **Older clients lose nothing.** An app that doesn't know the types shows the row and its columns as
+  "newer version" placeholders and the column contents under them, and round-trips everything untouched.
+
+In the editor the note stays a flat list of lines (`docs/SYNC_PROTOCOL.md`, `convert.ts`): the row's line at
+depth d, each column's line at d + 1 (never shown), its blocks at d + 2 and deeper. ProseMirror can't wrap a
+column's lines in a box of their own, so `apps/web/src/components/editor/columns/columnsLayout.ts` places them:
+the row's line reserves the row's height and a stylesheet keyed by block id gives each column's lines their
+column's left edge, width and top (measured from the lines' heights at that width), without touching
+ProseMirror's DOM. Below 520 px (phones, the iPhone app, a narrow window) nothing is placed and the columns
+simply stack. The gaps hold the resize handles (drag, ← / →, double-click for equal widths).
+
+Rows are kept in shape after every **local** edit by `repairColumnLines` (pure, unit-tested): a block left
+directly in a row (outdented, dropped or pasted there) moves into the column before it, an emptied column
+goes, columns past `LIMITS.maxColumns` join the last one, a row with one column left becomes its blocks again,
+a row inside a column becomes its blocks, and a column outside a row goes (its blocks stay). Nothing written is
+dropped. Remote changes are never repaired (a row someone else is still filling in arrives block by block);
+readers (`columnGroupAt`, `columnsToHtml`, `ReadOnlyBlocks`) tolerate any shape, and `columnsIssues` reports
+what's out of shape. The server validates each block alone (`width` in range, no text): structure across
+blocks can't be refused when blocks are written one at a time by several people.
+
+Exports: HTML and PDF draw the columns side by side (`.columns`, each column `flex` by its share, stacked
+under 640 px), share pages and version previews too (version history lists them in order so every change
+reads top to bottom); Markdown writes the blocks in order (`liftColumns`). Markdown import (Foli AI, MCP)
+turns a ` ```columns ` fence into a row: its parts, split by lines holding only `+++`, become 2 to 4 columns
+(```` ````columns ```` when a column holds a code fence); see `COLUMNS_MARKDOWN_HINT`.
 
 ## Tabs
 

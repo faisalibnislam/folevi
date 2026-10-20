@@ -56,6 +56,8 @@ import {
   ImagePlus,
   LayoutGrid,
   Columns3,
+  Columns2,
+  Columns4,
   MonitorPlay,
   ScanText,
   Waypoints,
@@ -99,6 +101,8 @@ import { blockSelectionRange, clearBlockSelection, extendBlockSelectionTo, setBl
 import { syncDomSelection } from "./blockSelectionState";
 import { insertTabs } from "./tabs/tabsExtension";
 import { blockElements, type TriggerState } from "./plugins";
+import { insertColumns } from "./columns/columnsCommands";
+import { columnsBlockAt, columnsGripOnly, type SideDrop } from "./columns/columnsLayout";
 import { UnsplashDialog, unsplashCredit } from "./UnsplashDialog";
 import { colorName, useNotePalette } from "./notePalette";
 import { useShowInTopLayer } from "@/components/ui/topLayer";
@@ -145,7 +149,7 @@ interface MenuItem {
 const SLASH_SUGGESTED = ["p", "page", "card", "todo", "table", "image"];
 
 /** Everything the Insert panel (and the slash menu) can add that needs more than a plain block. */
-export type SpecialInsert = "image" | "unsplash" | "file" | "record" | "scan" | "scanPhotos" | "page" | "card" | "bookmark" | "embed" | "collection" | "gallery" | "board" | "calendarView" | "date" | "pickDate" | "tabs";
+export type SpecialInsert = "image" | "unsplash" | "file" | "record" | "scan" | "scanPhotos" | "page" | "card" | "bookmark" | "embed" | "collection" | "gallery" | "board" | "calendarView" | "date" | "pickDate" | "columns2" | "columns3" | "columns4" | "tabs";
 
 /** Asks the editor's menus to run a special insert (the Insert panel lives outside the editor). */
 /** `placeholder`: the id of an empty line made for this insert (a drop), removed if the insert is cancelled. */
@@ -327,7 +331,9 @@ function useDebounced<T>(value: T, ms: number): T {
  */
 function blockIndentLeft(el: HTMLElement): number {
   const cs = getComputedStyle(el);
-  const depth = Number(el.dataset.depth ?? 0);
+  // The indent as drawn (a column's lines are indented from the column's edge, columns/columnsLayout.ts).
+  const shown = cs.getPropertyValue("--depth").trim();
+  const depth = shown !== "" && Number.isFinite(Number(shown)) ? Number(shown) : Number(el.dataset.depth ?? 0);
   // A tab's lines are drawn at their tabs block's indent (--lift levels out, tabs/tabsState.ts).
   const lift = Number(cs.getPropertyValue("--lift").trim()) || 0;
   return el.getBoundingClientRect().left - (parseFloat(cs.marginLeft) || 0) + (depth - lift) * 1.6 * (parseFloat(cs.fontSize) || 16);
@@ -372,7 +378,13 @@ function blockDom(editor: Editor, index: number): HTMLElement | null {
  * The first visible block whose box (give or take 2px) holds `y`, or -1. Blocks run down the page in order,
  * so a binary search measures a handful of them instead of every line of a long note on each mouse move.
  */
-function blockIndexAt(children: HTMLElement[], y: number): number {
+function blockIndexAt(children: HTMLElement[], y: number, x?: number): number {
+  // Columns side by side: the line under the pointer in the column there (their lines don't run down the page in order).
+  const editorDom = children[0]?.parentElement;
+  if (x !== undefined && editorDom) {
+    const inColumns = columnsBlockAt(editorDom, children, x, y);
+    if (inColumns >= 0) return inColumns;
+  }
   let lo = 0;
   let hi = children.length - 1;
   let hit = -1;
@@ -414,7 +426,7 @@ export function EditorMenus({
   editable: boolean;
   onInsertFiles: (files: File[]) => Promise<void>;
   onInsertAudio: (file: File, durationSeconds: number) => Promise<void>;
-  onDropBlock: (from: number, to: number, depth: number, last?: number) => { index: number; count: number } | null;
+  onDropBlock: (from: number, to: number, depth: number, last?: number, side?: SideDrop) => { index: number; count: number } | null;
   onCommentBlock?: (blockId: string) => void;
 }) {
   const { scope, today } = useAppState();
@@ -665,6 +677,9 @@ export function EditorMenus({
         setDatePickerAnchor(caretAnchor());
         setDatePicker({ mode: "insert" });
       },
+      columns2: () => void insertColumns(editor, 2),
+      columns3: () => void insertColumns(editor, 3),
+      columns4: () => void insertColumns(editor, 4),
       tabs: () => void insertTabs(editor),
     };
   }, [env, navigate, createNestedPage, insertCollection, editor, today, caretAnchor, ensureTextCaret, dropLeftover, scanDocument]);
@@ -782,6 +797,9 @@ export function EditorMenus({
       { group: "Lists and tasks", id: "todo", label: "To-do", hint: "[]", keywords: "todo task checklist checkbox", icon: <CheckSquare size={15} />, run: () => void turnInto(editor, "todo", { checked: false }) },
       { group: "Lists and tasks", id: "toggle", label: "Toggle", keywords: "toggle disclosure collapse details", icon: <ChevronRight size={15} />, run: () => void turnInto(editor, "toggle", { collapsed: false }) },
       { group: "Lists and tasks", id: "tabs", label: "Tabs", keywords: "tabs tabbed sections panes switch", icon: <PanelTop size={15} />, run: () => void insertTabs(editor) },
+      { group: "Layout", id: "columns2", label: "2 columns", keywords: "columns side by side layout two split", icon: <Columns2 size={15} />, run: () => void insertColumns(editor, 2) },
+      { group: "Layout", id: "columns3", label: "3 columns", keywords: "columns side by side layout three split", icon: <Columns3 size={15} />, run: () => void insertColumns(editor, 3) },
+      { group: "Layout", id: "columns4", label: "4 columns", keywords: "columns side by side layout four split", icon: <Columns4 size={15} />, run: () => void insertColumns(editor, 4) },
       { group: "Visuals", id: "flowchart", label: "Flowchart", keywords: "flowchart diagram process flow chart shapes boxes arrows", icon: <Network size={15} />, run: () => void insertBlockAfterCurrent(editor, "flowchart", { data: "", height: FLOWCHART_DEFAULT_HEIGHT }) },
       { group: "Visuals", id: "mindmap", label: "Mind map", keywords: "mind map mindmap ideas brainstorm branches tree outline whimsical miro", icon: <Waypoints size={15} />, run: () => void insertBlockAfterCurrent(editor, "mindmap", { data: "", height: MINDMAP_DEFAULT_HEIGHT }) },
       { group: "Visuals", id: "chart", label: "Chart", keywords: "chart graph bar line pie donut area scatter bubble org venn data numbers", icon: <ChartColumn size={15} />, run: () => void insertBlockAfterCurrent(editor, "chart", { data: "", height: CHART_DEFAULT_HEIGHT }) },
@@ -1827,12 +1845,13 @@ function BlockHandle({
   synced,
 }: {
   editor: Editor;
-  onDropBlock: (from: number, to: number, depth: number, last?: number) => { index: number; count: number } | null;
+  onDropBlock: (from: number, to: number, depth: number, last?: number, side?: SideDrop) => { index: number; count: number } | null;
   onCommentBlock?: (blockId: string) => void;
   synced: SyncedEnv;
 }) {
   const aiOn = useAiEnabled();
-  const [hover, setHover] = useState<{ index: number; top: number; left: number; height: number } | null>(null);
+  // `gripOnly`: a line in a column after the first, whose handle sits in the gap before it (only the grip fits).
+  const [hover, setHover] = useState<{ index: number; top: number; left: number; height: number; gripOnly?: boolean } | null>(null);
   // The blocks the menu is for, by index and by id: indices for drawing, ids to find them again when the
   // note changes while the menu is open (a collaborator's edit above shifts every index).
   const [menu, setMenu] = useState<{ from: number; to: number; fromId: string | null; toId: string | null; left: number; top: number; bottom: number } | null>(null);
@@ -1869,7 +1888,7 @@ function BlockHandle({
           if (ids[0] && n.attrs.id === ids[0]) from = i;
           if (ids[1] && n.attrs.id === ids[1]) to = i;
         });
-        return from < 0 || to < from ? null : onDropBlock(from, t.index, t.depth, to);
+        return from < 0 || to < from ? null : onDropBlock(from, t.index, t.depth, to, t.side);
       },
       onEnd: () => {
         setDragging(false);
@@ -1886,10 +1905,10 @@ function BlockHandle({
       // Over a synced block's own editor, its handle is the one that shows.
       if (inNestedNote(e.target, dom)) return setHover(null);
       const children = blockElements(dom);
-      const idx = blockIndexAt(children, e.clientY);
+      const idx = blockIndexAt(children, e.clientY, e.clientX);
       if (idx < 0) return;
       const line = handleLine(children[idx]!);
-      setHover({ index: idx, top: line.top, left: blockIndentLeft(children[idx]!), height: line.height });
+      setHover({ index: idx, top: line.top, left: blockIndentLeft(children[idx]!), height: line.height, gripOnly: columnsGripOnly(dom, idx) });
     };
     const parent = dom.parentElement?.parentElement ?? dom;
     parent.addEventListener("mousemove", onMove);
@@ -1907,7 +1926,7 @@ function BlockHandle({
       const target = e.target as Element;
       const grip = target.closest?.('[aria-label^="Drag to move"]');
       const children = blockElements(dom);
-      const anchor = blockIndexAt(children, e.clientY);
+      const anchor = blockIndexAt(children, e.clientY, e.clientX);
       if (anchor < 0) return;
       // Left of the line's own start: the note's margin (or its padding), not the text or a block's controls.
       const lineLeft = children[anchor]!.getBoundingClientRect().left;
@@ -1915,7 +1934,7 @@ function BlockHandle({
       if (!(grip && e.shiftKey) && !inMargin) return;
       let moved = false;
       const onMove = (m: MouseEvent) => {
-        const at = blockIndexAt(blockElements(dom), m.clientY);
+        const at = blockIndexAt(blockElements(dom), m.clientY, m.clientX);
         if (at < 0) return;
         if (!moved && Math.abs(m.clientY - e.clientY) < 4) return;
         moved = true;
@@ -1999,7 +2018,7 @@ function BlockHandle({
       if (!editor.isEditable || isDragging()) return;
       const { startX, startY, x, y } = (e as CustomEvent<HoldMoveDetail>).detail;
       const children = blockElements(dom);
-      const index = blockIndexAt(children, startY);
+      const index = blockIndexAt(children, startY, startX);
       if (index < 0 || index >= editor.state.doc.childCount) return;
       e.preventDefault();
       setMenu(null);
@@ -2197,7 +2216,7 @@ function BlockHandle({
           // never covers the start of the text (the grip's menu has Insert below).
           // On touch screens only the grip shows too (Return adds a line there).
           // A finger's grip is slimmer and keeps a gap before the text, so it never touches the line written.
-          style={{ top: hover.top + Math.max(0, (hover.height - 28) / 2), left: hover.left - 58 >= 4 && !coarse ? hover.left - 58 : coarse ? Math.max(0, hover.left - 27) : Math.max(2, hover.left - 28) }}
+          style={{ top: hover.top + Math.max(0, (hover.height - 28) / 2), left: hover.left - 58 >= 4 && !coarse && !hover.gripOnly ? hover.left - 58 : coarse ? Math.max(0, hover.left - 27) : Math.max(2, hover.left - 28) }}
           onMouseDown={(e) => e.preventDefault()}
           onPointerDownCapture={() => {
             // A tap here mustn't hide the grip (the editor can lose focus before the click lands).
@@ -2207,7 +2226,7 @@ function BlockHandle({
         >
           <button
             type="button"
-            hidden={hover.left - 58 < 4 || coarse}
+            hidden={hover.left - 58 < 4 || coarse || hover.gripOnly}
             aria-label="Insert block below"
             className="grid h-6 w-6 place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading"
             onClick={() => {

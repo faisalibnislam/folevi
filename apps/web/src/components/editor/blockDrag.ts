@@ -7,6 +7,7 @@
 import type { Editor } from "@tiptap/core";
 import { dropTarget, subtreeRange } from "./commands";
 import { blockElements } from "./plugins";
+import { clampDropToColumns, columnsDropAt, type SideDrop } from "./columns/columnsLayout";
 import { layoutOf, tabsDrop } from "./tabs/tabsState";
 import { haptic } from "@/lib/nativeApp";
 
@@ -17,6 +18,8 @@ export type DragPayload =
 export interface DropResult {
   index: number;
   depth: number;
+  /** Dropped beside a block, or in a row's gap: a new row of columns, or a new column (columns/columnsCommands.ts). */
+  side?: SideDrop;
 }
 
 interface Options {
@@ -214,6 +217,23 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
       return;
     }
     source = findSource() ?? source;
+    // Over columns side by side, or beside a block (a new row): their own places and a line to match.
+    const col = columnsDropAt(view, px, py, source ? { from: source.index, count: source.count } : null, children);
+    if (col) {
+      target = { index: col.index, depth: col.depth, side: col.side };
+      if (line) {
+        line.style.opacity = "1";
+        line.classList.toggle("fb-drop-line-vertical", col.line.vertical);
+        line.style.transform = `translate3d(${col.line.vertical ? col.line.x - 1.5 : col.line.x}px, ${col.line.vertical ? col.line.y : col.line.y - 1.5}px, 0)`;
+        line.style.width = col.line.vertical ? "3px" : `${col.line.length}px`;
+        line.style.height = col.line.vertical ? `${col.line.length}px` : "";
+      }
+      return;
+    }
+    if (line) {
+      line.classList.remove("fb-drop-line-vertical");
+      line.style.height = "";
+    }
     const desired =
       payload.kind === "block" && source ? source.depth - (tabs.lift.get(source.index) ?? 0) + Math.round((px - startX) / indent) : Math.floor(Math.max(0, px - edRect.left) / indent);
     const t = dropTarget(boxes, py, desired, source ? { from: source.index, count: source.count } : null);
@@ -225,7 +245,8 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
       break;
     }
     const landed = tabsDrop(tabs, t.index, t.depth, above);
-    target = { index: landed.index, depth: landed.depth };
+    // Next to a row (stacked, or just above or below it): a column's lines stay in their column.
+    target = clampDropToColumns(view, landed.index, landed.depth);
     if (line) {
       const left = edRect.left + t.depth * indent;
       line.style.opacity = "1";

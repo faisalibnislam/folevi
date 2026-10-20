@@ -60,6 +60,13 @@ const SCAN: InsertItem[] = [
   { label: "Scan from photos", special: "scanPhotos", preview: "scan", keywords: "scanner photos paper receipt ocr text" },
 ];
 
+// Rows of columns: 2, 3 or 4 side by side (editor/columns/), each starting with an empty line.
+const COLUMNS: InsertItem[] = [
+  { label: "2 columns", special: "columns2", preview: "columns2", keywords: "columns side by side layout two split" },
+  { label: "3 columns", special: "columns3", preview: "columns3", keywords: "columns side by side layout three split" },
+  { label: "4 columns", special: "columns4", preview: "columns4", keywords: "columns side by side layout four split" },
+];
+
 const COLLECTIONS: InsertItem[] = [
   { label: "Table", special: "collection", preview: "table", keywords: "collection database table rows" },
   { label: "Gallery", special: "gallery", preview: "gallery", keywords: "collection database cards grid" },
@@ -94,7 +101,7 @@ interface Tile {
   keywords: string;
 }
 
-const ITEMS = new Map([...MAIN, ...MORE, ...COLLECTIONS, ...SCAN].map((i) => [i.label, i]));
+const ITEMS = new Map([...MAIN, ...MORE, ...COLLECTIONS, ...SCAN, ...COLUMNS].map((i) => [i.label, i]));
 
 const tiles = (section: string, labels: string[]): Tile[] =>
   labels.map((label) => {
@@ -129,6 +136,7 @@ const SECTIONS: { title: string; tiles: Tile[] }[] = [
   { title: "Suggested", tiles: tiles("suggested", ["Text", "Page", "Card", "To-do", "Table", "Image"]) },
   { title: "Text", tiles: tiles("text", ["Heading 1", "Heading 2", "Heading 3", "Quote", "Callout"]) },
   { title: "Lists and tasks", tiles: tiles("lists", ["Bulleted list", "Numbered list", "To-do", "Toggle", "Tabs"]) },
+  { title: "Layout", tiles: tiles("layout", ["2 columns", "3 columns", "4 columns"]) },
   { title: "Visuals", tiles: tiles("visuals", ["Flowchart", "Mind map", "Chart", "Sticky notes", "Wireframe", "Whiteboard", "Mermaid diagram"]) },
   { title: "Media", tiles: tiles("media", ["Image", "Image from Unsplash", "File attachment", "Audio recording", "Bookmark", "Embed"]) },
   { title: DATA, tiles: [...tiles("data", ["Table", "Gallery", "Kanban", "Calendar", "Page", "Card", "Synced block", "Date", "Code block", "TeX formula"]), ...SEPARATORS] },

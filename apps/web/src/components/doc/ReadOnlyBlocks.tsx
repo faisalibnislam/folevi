@@ -1,7 +1,9 @@
 import { cloneElement, Fragment, isValidElement, type ReactElement } from "react";
 import { FileText, RefreshCw } from "lucide-react";
 import { flattenTree, liftTabs, tabGroupAt, tabName, sanitizeHref, type FlatEntry, type InlineNode, type WireBlock } from "@folevi/editor-schema";
+import { columnGroupAt, columnShares, liftColumns } from "@folevi/editor-schema";
 import { formatCalendarDate } from "@/i18n";
+import "@/components/editor/columns/columns.css";
 import {
   ReadOnlyCollection,
   type ReadOnlyCollectionData,
@@ -172,7 +174,8 @@ export function ReadOnlyBlocks({
   anchors?: boolean;
 }) {
   // In version history every tab shows, under its name (as in exports), so no change is out of sight.
-  const flat = changes ? liftTabs(entries ?? flattenTree(blocks)) : (entries ?? flattenTree(blocks));
+  // Columns in version history: their blocks in order (as in exports), so every change reads top to bottom.
+  const flat = changes ? liftColumns(liftTabs(entries ?? flattenTree(blocks))) : (entries ?? flattenTree(blocks));
   const counters: number[] = [];
   let hideBelow: number | null = null;
   // Past the end of a tabs block already drawn (its tabs are drawn inside it).
@@ -232,6 +235,31 @@ export function ReadOnlyBlocks({
                 />
               );
             }
+            case "columns": {
+              if (changes) return null;
+              const group = columnGroupAt(flat, index);
+              if (!group) return null;
+              skipTo = group.end;
+              // Each column's blocks in a box of its own, as wide as its share (stacked on narrow screens).
+              const shares = columnShares(group.columns.map((c) => (c.block?.props as { width?: unknown } | undefined)?.width));
+              return (
+                <div key={block.id} className="fb-columns-static" style={style}>
+                  {group.columns.map((c, k) => (
+                    <div key={c.block?.id ?? `loose-${k}`} className="fb-column-static" style={{ flex: `${shares[k]} 1 0` }}>
+                      <ReadOnlyBlocks
+                        blocks={[]}
+                        entries={flat.slice(c.start, c.end).map((e) => ({ block: e.block, depth: Math.max(0, e.depth - depth - 2) }))}
+                        fileUrls={fileUrls}
+                        collections={collections}
+                        anchors={anchors}
+                      />
+                    </div>
+                  ))}
+                </div>
+              );
+            }
+            case "column":
+              return null;
             case "tab":
               // A tab outside a tabs block, or any tab in version history: its name, like a small heading.
               return (

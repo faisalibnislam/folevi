@@ -9,6 +9,7 @@ import { Autolink } from "./autolink";
 import { BlockHighlight } from "./blockHighlight";
 import { PageLinkStatus } from "./pageLinkStatus";
 import { RemoteCarets } from "./remoteCarets";
+import { ColumnBlock, ColumnsBlock, ColumnsExtension } from "./columns/columnsExtension";
 import { TabsExtension } from "./tabs/tabsExtension";
 
 /**
@@ -30,6 +31,8 @@ export function editorExtensions({
   return [
     ...ALL_NODES.filter((n) => !NODE_VIEW_EXTENSIONS.some((v) => v.name === n.name)),
     ...NODE_VIEW_EXTENSIONS,
+    ColumnsBlock,
+    ColumnBlock,
     ...ALL_MARKS,
     BlockFormat,
     UndoRedo.configure({ depth: 200, newGroupDelay: 600 }),
@@ -54,6 +57,7 @@ export function editorExtensions({
     BlockIdentity,
     BlockDecorations,
     BlockKeymap,
+    ColumnsExtension,
     TabsExtension,
     BlockSelectionExtension,
     MarkdownShortcuts,

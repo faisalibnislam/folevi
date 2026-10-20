@@ -6,6 +6,7 @@ import {
   DEFAULT_DOCUMENT_STYLE,
   documentSearchText,
   flattenTree,
+  liftColumns,
   mindmapRoot,
   parseChart,
   parseMindmap,
@@ -239,8 +240,10 @@ const PREVIEW_LINES = 14;
 /** The first blocks of a page, trimmed, so document cards can show a miniature of the page itself. */
 export function buildPreview(entries: { block: WireBlock; depth: number }[]): PreviewLine[] {
   const out: PreviewLine[] = [];
-  for (const { block: b, depth } of entries) {
+  // A column's blocks are drawn at their row's level, one column after another (rows themselves draw nothing).
+  for (const { block: b, depth } of liftColumns(entries)) {
     if (out.length >= PREVIEW_LINES) break;
+    if (b.type === "columns" || b.type === "column") continue;
     const p = b.props as { level?: number; checked?: boolean; rows?: InlineNode[][][]; name?: string; title?: string; url?: string; titleCache?: string };
     const line: PreviewLine = { t: b.type, x: plainText(b.text).slice(0, 160) };
     if (depth) line.d = Math.min(depth, 4);

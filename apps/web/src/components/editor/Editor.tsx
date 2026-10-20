@@ -20,6 +20,8 @@ import { PageLinkStatusWatcher } from "./PageLinkStatusWatcher";
 import { pasteAddress } from "./autolink";
 import { EditorMenus } from "./EditorMenus";
 import { insertBlockAfterCurrent, subtreeRange, moveSubtreeTo } from "./commands";
+import { applySideDrop } from "./columns/columnsCommands";
+import type { SideDrop } from "./columns/columnsLayout";
 import { closeHistory } from "@tiptap/pm/history";
 import { useAiEnabled } from "@/components/ai/useAi";
 
@@ -419,9 +421,16 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   );
 
   // Block drag & drop (the grip in EditorMenus runs the pointer drag; this applies the move).
-  const onDropBlock = useCallback((fromIndex: number, toIndex: number, depth: number, lastIndex = fromIndex) => {
+  const onDropBlock = useCallback((fromIndex: number, toIndex: number, depth: number, lastIndex = fromIndex, side?: SideDrop) => {
     const ed = editorRef.current;
     if (!ed) return null;
+    // Beside another block, or in a row's gap: a new row of columns, or a new column.
+    if (side) {
+      const made = applySideDrop(ed.state, fromIndex, lastIndex, side);
+      if (!made) return null;
+      ed.view.dispatch(closeHistory(made.tr).scrollIntoView());
+      return { index: made.index, count: made.count };
+    }
     const count = lastIndex - fromIndex + subtreeRange(ed.state, lastIndex).count;
     const moved = moveSubtreeTo(ed.state, fromIndex, toIndex, depth, lastIndex);
     if (!moved) return null;

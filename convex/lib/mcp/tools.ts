@@ -3,7 +3,7 @@
 // side lives in convex/mcp.ts. Writes only add (new notes, appended blocks, new tasks) or change a task's
 // own fields; nothing deletes, moves, shares or publishes.
 import type { McpScope } from "./config";
-import { CHART_MARKDOWN_HINT, MINDMAP_MARKDOWN_HINT, WIREFRAME_MARKDOWN_HINT } from "@folevi/editor-schema";
+import { CHART_MARKDOWN_HINT, COLUMNS_MARKDOWN_HINT, MINDMAP_MARKDOWN_HINT, WIREFRAME_MARKDOWN_HINT } from "@folevi/editor-schema";
 
 export const MAX_MARKDOWN = 20_000;
 /** A new note can be longer than an addition (a clipped article, a long write-up). */
@@ -41,6 +41,8 @@ const MINDMAP_FENCE = ` ${MINDMAP_MARKDOWN_HINT}`;
 const WIREFRAME_FENCE = ` ${WIREFRAME_MARKDOWN_HINT}`;
 /** How Markdown makes a chart from data (packages/editor-schema chartFromFence). */
 const CHART_FENCE = ` ${CHART_MARKDOWN_HINT}`;
+/** How Markdown puts blocks side by side (packages/editor-schema columnsFromFence). */
+const COLUMNS_FENCE = ` ${COLUMNS_MARKDOWN_HINT}`;
 
 export const TOOLS: ToolDef[] = [
   {
@@ -119,7 +121,7 @@ export const TOOLS: ToolDef[] = [
     inputSchema: object(
       {
         title: { type: "string", description: "The note's title.", minLength: 1, maxLength: 200 },
-        markdown: { type: "string", description: "The note's content in Markdown (headings, lists, to-dos with - [ ], tables, code). Don't start with the title as a heading: the title is shown above the content already." + STICKIES_FENCE + MINDMAP_FENCE + WIREFRAME_FENCE + CHART_FENCE, maxLength: MAX_CREATE_MARKDOWN },
+        markdown: { type: "string", description: "The note's content in Markdown (headings, lists, to-dos with - [ ], tables, code). Don't start with the title as a heading: the title is shown above the content already." + STICKIES_FENCE + MINDMAP_FENCE + WIREFRAME_FENCE + CHART_FENCE + COLUMNS_FENCE, maxLength: MAX_CREATE_MARKDOWN },
         place: PLACE,
         folderId: { type: "string", description: "A folder id from list_folders (same place).", maxLength: 64 },
         inInbox: { type: "boolean", description: "Only when the person asks for their Inbox: files the note as a page inside the Inbox page instead of Drafts (not with folderId)." },
@@ -134,7 +136,7 @@ export const TOOLS: ToolDef[] = [
       "Adds Markdown to the end of an existing note. What's already in the note stays as it is; a version is saved first. If the person asked to review changes to existing notes, nothing changes yet: the answer has proposed: true, and the addition waits in Folevi's Changes page for them to accept or reject. Tell them so.",
     scope: "notes:write",
     kind: "write",
-    inputSchema: object({ noteId: NOTE_ID, markdown: { type: "string", description: "What to add, in Markdown." + STICKIES_FENCE + MINDMAP_FENCE + WIREFRAME_FENCE + CHART_FENCE, minLength: 1, maxLength: MAX_MARKDOWN } }, ["noteId", "markdown"]),
+    inputSchema: object({ noteId: NOTE_ID, markdown: { type: "string", description: "What to add, in Markdown." + STICKIES_FENCE + MINDMAP_FENCE + WIREFRAME_FENCE + CHART_FENCE + COLUMNS_FENCE, minLength: 1, maxLength: MAX_MARKDOWN } }, ["noteId", "markdown"]),
   },
   {
     name: "add_task",

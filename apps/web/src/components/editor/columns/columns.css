@@ -1,0 +1,47 @@
+/* Columns (columns/columnsLayout.ts). In the editor the row's line reserves the row's height and each column's
+   lines are placed over it (a stylesheet keyed by block id); the column lines themselves never show. Stacked
+   (a phone), the lines simply follow each other. Read-only pages and version history draw real boxes
+   (.fb-columns-static, doc/ReadOnlyBlocks.tsx). Chrome stays neutral: only the gap's handle shows, on hover. */
+.fb-editor > .fb.fb-columns {
+  position: relative;
+  margin: 0 0 0 calc((var(--depth, 0) - var(--lift, 0)) * 1.6em);
+  padding: 0;
+  min-height: 0;
+  border-radius: 0;
+  background: none;
+}
+.fb-editor > .fb.fb-columns[data-stacked] { height: 0; }
+.fb-editor > .fb.fb-column { margin: 0; padding: 0; min-height: 0; height: 0; overflow: hidden; pointer-events: none; }
+
+/* The handle in a gap: a hairline on hover, dragged sideways to share the row differently. */
+.fb-columns-gutter {
+  position: absolute; top: 0; z-index: 2;
+  cursor: col-resize; touch-action: none; outline: none;
+  display: flex; justify-content: center;
+}
+.fb-columns-gutter::after {
+  content: ""; width: 2px; height: 100%;
+  border-radius: var(--radius-tiny);
+  background: var(--color-line-strong);
+  opacity: 0; transition: opacity 120ms var(--motion-easing, ease);
+}
+.fb-columns-gutter:hover::after, .fb-columns-gutter[data-active]::after { opacity: 1; }
+.fb-columns-gutter:focus-visible::after { opacity: 1; background: var(--color-focus); }
+.fb-columns-resizing, .fb-columns-resizing * { cursor: col-resize !important; user-select: none !important; -webkit-user-select: none !important; }
+@media (prefers-reduced-motion: reduce) { .fb-columns-gutter::after { transition: none; } }
+
+/* Read-only (share pages, version history, Foli AI answers): real boxes side by side, stacked when narrow. */
+.fb-columns-static {
+  display: flex; gap: 4em; align-items: flex-start;
+  margin: 0.25em 0 0.25em calc(var(--depth, 0) * 1.6em);
+}
+.fb-columns-static > .fb-column-static { min-width: 0; flex: 1 1 0; }
+.fb-columns-static > .fb-column-static > .fb-editor { padding-bottom: 0; }
+@media (max-width: 640px) {
+  .fb-columns-static { display: block; }
+  .fb-columns-static > .fb-column-static + .fb-column-static { margin-top: 0.75em; }
+}
+@media print { .fb-columns-static { display: flex; } .fb-columns-static > .fb-column-static + .fb-column-static { margin-top: 0; } }
+
+/* The drop line standing up: beside a block (a new row) or in a row's gap (a new column). */
+.fb-drop-line.fb-drop-line-vertical::before { left: 50%; top: -5px; margin: 0 0 0 -5px; }

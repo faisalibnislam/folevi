@@ -3,12 +3,10 @@ import { api } from "../../../convex/_generated/api";
 import { heading, para, todo } from "../kit";
 import { scenario } from "../types";
 
-const PENDING = "WP7a: sync.push, blocks.list";
 
 export const scenarios = [
   scenario({
     name: "type blocks through sync.push",
-    localPending: PENDING,
     async run(b, k) {
       const note = await k.newNote("note", { title: "Shopping" });
       const h = k.id("heading");
@@ -32,7 +30,6 @@ export const scenarios = [
   }),
   scenario({
     name: "nested blocks keep their parent and order",
-    localPending: PENDING,
     async run(b, k) {
       const note = await k.newNote("note", { title: "Outline" });
       const top = k.id("top");

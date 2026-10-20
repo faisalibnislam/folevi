@@ -384,7 +384,6 @@ export const scenarios = [
   }),
   scenario({
     name: "collections: a note made from a template gets its own copies, without rows",
-    localPending: "WP7a: sync.push document.create from a template calls copyCollectionsInto (lib/local/functions/collections.ts)",
     async run(b, k) {
       const template = k.id("template");
       await k.apply([{ opId: ulid(), kind: "document.create", document: { id: template, parentDocumentId: null, folderId: null, kind: "template", title: "Project", icon: "📁" } }]);

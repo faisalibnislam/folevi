@@ -20,7 +20,8 @@ import { api } from "@/lib/convex/api";
 import { errorCode, fail } from "../errors";
 import { defineLocal, type LocalMutationCtx } from "../registry";
 import type { LocalBlock, LocalDocument } from "../store";
-import { insertDocument, liveBlocks, refreshDerived, requireProfile, toSummary, toWireBlock, type LocalProfile } from "./shared";
+import { copyCollectionsInto } from "./collections";
+import { insertDocument, linksAfter, liveBlocks, refreshDerived, refreshSyncedSource, requireProfile, toSummary, toWireBlock, type LocalProfile } from "./shared";
 
 type PushResult = FunctionReturnType<typeof api.sync.push>[number];
 
@@ -50,14 +51,22 @@ function checkedStyle<T extends { backdrop?: string }>(style: T): T {
 }
 
 class LocalSync {
-  /** Notes whose blocks this batch changed: their derived text, counts and seqs are refreshed at the end. */
-  private touched = new Set<string>();
+  /** Notes whose blocks this batch changed (and which blocks): derived text, links and seqs are refreshed at the end. */
+  private touched = new Map<string, Set<string>>();
   private seq: number | null = null;
   constructor(
     private ctx: LocalMutationCtx,
     private profile: LocalProfile,
     private routing: WireScope,
+    /** This device in the library (what version history names), whatever id the sync engine sends. */
+    private device: string,
   ) {}
+
+  private touch(documentId: string, ...blockIds: string[]) {
+    const set = this.touched.get(documentId) ?? new Set<string>();
+    for (const id of blockIds) set.add(id);
+    this.touched.set(documentId, set);
+  }
 
   private async nextSeq(): Promise<number> {
     return (this.seq ??= await this.ctx.nextSeq());
@@ -167,9 +176,9 @@ class LocalSync {
 
     if (!existing) {
       if ((await liveBlocks(this.ctx.db, doc.id)).length >= LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "This document has too many blocks.");
-      const row: LocalBlock = { ...incoming, documentId: doc.id, parentId, revision: 1, contentRev: 1, positionRev: 1, seq, deletedAt: null, createdAt: now, updatedAt: now };
+      const row: LocalBlock = { ...incoming, documentId: doc.id, parentId, revision: 1, contentRev: 1, positionRev: 1, seq, deletedAt: null, createdAt: now, updatedAt: now, updatedByDevice: this.device };
       this.ctx.db.put("blocks", row.id, row, doc.id);
-      this.touched.add(doc.id);
+      this.touch(doc.id, row.id);
       return { opId: op.opId, status: "applied", revision: 1, block: toWireBlock(row), deleted: false, normalized: normalized || undefined };
     }
 
@@ -189,7 +198,7 @@ class LocalSync {
       return { opId: op.opId, status: "applied", revision: existing.revision, block: toWireBlock(existing), deleted: false };
     }
     const revision = existing.revision + 1;
-    const row: LocalBlock = { ...existing, revision, seq, updatedAt: now, deletedAt: null };
+    const row: LocalBlock = { ...existing, revision, seq, updatedAt: now, deletedAt: null, updatedByDevice: this.device };
     if (wantsContent) {
       row.type = incoming.type;
       row.schemaVersion = incoming.schemaVersion;
@@ -204,7 +213,7 @@ class LocalSync {
     }
     if (wantsCollapse) row.props = { ...row.props, collapsed };
     this.ctx.db.put("blocks", row.id, row, doc.id);
-    this.touched.add(doc.id);
+    this.touch(doc.id, row.id);
     return { opId: op.opId, status: "applied", revision, block: toWireBlock(row), deleted: false, normalized: normalized || undefined };
   }
 
@@ -233,13 +242,14 @@ class LocalSync {
     const seq = await this.nextSeq();
     const now = this.ctx.now();
     const revision = row.revision + 1;
-    const gone: LocalBlock = { ...row, deletedAt: now, revision, positionRev: revision, seq, updatedAt: now };
+    const gone: LocalBlock = { ...row, deletedAt: now, revision, positionRev: revision, seq, updatedAt: now, updatedByDevice: this.device };
     this.ctx.db.put("blocks", gone.id, gone, doc.id);
+    this.touch(doc.id, gone.id);
     for (const child of await this.subtree(doc.id, row.id)) {
       if (child.deletedAt !== null) continue;
-      this.ctx.db.put("blocks", child.id, { ...child, deletedAt: now, revision: child.revision + 1, seq, updatedAt: now }, doc.id);
+      this.ctx.db.put("blocks", child.id, { ...child, deletedAt: now, revision: child.revision + 1, seq, updatedAt: now, updatedByDevice: this.device }, doc.id);
+      this.touch(doc.id, child.id);
     }
-    this.touched.add(doc.id);
     return { opId: op.opId, status: "applied", revision, block: toWireBlock(gone), deleted: true };
   }
 
@@ -257,13 +267,14 @@ class LocalSync {
       if (!parent || parent.deletedAt !== null) parentId = null;
     }
     const revision = row.revision + 1;
-    const back: LocalBlock = { ...row, deletedAt: null, parentId, revision, positionRev: revision, seq, updatedAt: now };
+    const back: LocalBlock = { ...row, deletedAt: null, parentId, revision, positionRev: revision, seq, updatedAt: now, updatedByDevice: this.device };
     this.ctx.db.put("blocks", back.id, back, doc.id);
+    this.touch(doc.id, back.id);
     for (const child of await this.subtree(doc.id, row.id)) {
       if (child.deletedAt !== deletedAt) continue;
-      this.ctx.db.put("blocks", child.id, { ...child, deletedAt: null, revision: child.revision + 1, seq, updatedAt: now }, doc.id);
+      this.ctx.db.put("blocks", child.id, { ...child, deletedAt: null, revision: child.revision + 1, seq, updatedAt: now, updatedByDevice: this.device }, doc.id);
+      this.touch(doc.id, child.id);
     }
-    this.touched.add(doc.id);
     return { opId: op.opId, status: "applied", revision, block: toWireBlock(back), deleted: false, normalized: parentId !== row.parentId || undefined };
   }
 
@@ -321,6 +332,8 @@ class LocalSync {
       templateKey,
       blocks,
     });
+    // A note made from one of your templates gets collections of its own (the same properties and views, no rows).
+    if (templateKey && !templateKey.startsWith("builtin:")) await copyCollectionsInto(this.ctx, doc.id);
     return { opId: op.opId, status: "applied", revision: doc.revision, document: toSummary(doc, this.profile.id) };
   }
 
@@ -359,20 +372,26 @@ class LocalSync {
     let fresh = doc;
     if (Object.keys(update).length) {
       const revision = doc.revision + 1;
-      fresh = { ...doc, ...update, revision, titleRev: update.title !== undefined ? revision : doc.titleRev, seq: await this.nextSeq(), updatedAt: this.ctx.now() };
+      fresh = { ...doc, ...update, revision, titleRev: update.title !== undefined ? revision : doc.titleRev, seq: await this.nextSeq(), updatedAt: this.ctx.now(), editedByDevice: this.device };
       if (update.title !== undefined) fresh = await refreshDerived(this.ctx.db, fresh);
       this.ctx.db.put("documents", fresh.id, fresh);
     }
     return { opId: op.opId, status: "applied", revision: fresh.revision, document: toSummary(fresh, this.profile.id) };
   }
 
-  /** Each note whose blocks changed: derived text and counts, its edit time and change counters. */
+  /** Each note whose blocks changed: its links, derived text and counts, its edit time and change counters. */
   private async finish(): Promise<void> {
-    for (const id of this.touched) {
+    for (const [id, blockIds] of this.touched) {
       const doc = await this.ctx.db.get("documents", id);
       if (!doc) continue;
-      const derived = await refreshDerived(this.ctx.db, doc);
-      this.ctx.db.put("documents", id, { ...derived, updatedAt: this.ctx.now(), contentSeq: doc.contentSeq + 1, seq: await this.nextSeq() });
+      const rows = (await Promise.all([...blockIds].map((b) => this.ctx.db.get("blocks", b, id)))).filter((r): r is LocalBlock => Boolean(r));
+      const before = new Set((doc.links ?? []).filter((l) => blockIds.has(l.blockId)).map((l) => l.target));
+      const links = await linksAfter(this.ctx, doc, rows);
+      const derived = await refreshDerived(this.ctx.db, { ...doc, links });
+      this.ctx.db.put("documents", id, { ...derived, updatedAt: this.ctx.now(), contentSeq: doc.contentSeq + 1, seq: await this.nextSeq(), editedByDevice: this.device });
+      // Synced content no note shows any more goes to Trash, and comes back when one shows it again.
+      const after = new Set(links.filter((l) => blockIds.has(l.blockId)).map((l) => l.target));
+      for (const t of new Set([...before, ...after])) if (before.has(t) !== after.has(t)) await refreshSyncedSource(this.ctx, t);
     }
   }
 }
@@ -380,5 +399,13 @@ class LocalSync {
 defineLocal(api.sync.push, "mutation", async (ctx, args) => {
   if (!/^[A-Za-z0-9_-]{8,64}$/.test(args.deviceId)) fail("invalid_argument", "Invalid device id.");
   const profile = await requireProfile(ctx);
-  return await new LocalSync({ ...ctx, deviceId: args.deviceId }, profile, args.scope).applyAll(args.ops as SyncOp[]);
+  return await new LocalSync({ ...ctx, deviceId: args.deviceId }, profile, args.scope, ctx.deviceId).applyAll(args.ops as SyncOp[]);
 });
+
+/**
+ * Ops applied for another function, as the server's own SyncEngine("server") does for documents.move and
+ * bulkUpdate: the same document.update path offline clients take.
+ */
+export async function applyOps(ctx: LocalMutationCtx, profile: LocalProfile, ops: SyncOp[]): Promise<PushResult[]> {
+  return await new LocalSync(ctx, profile, { kind: "personal" }, ctx.deviceId).applyAll(ops);
+}

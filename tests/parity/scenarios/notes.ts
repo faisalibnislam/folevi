@@ -3,12 +3,10 @@ import { NOTE_EMOJI } from "@folevi/editor-schema";
 import { api } from "../../../convex/_generated/api";
 import { scenario } from "../types";
 
-const PENDING = "WP7a: sync.push, documents.get, titles, list";
 
 export const scenarios = [
   scenario({
     name: "create and rename a note",
-    localPending: PENDING,
     async run(b, k) {
       const note = await k.newNote("note", { title: "First draft" });
       const created = await b.query(api.documents.get, { documentId: note });
@@ -22,7 +20,6 @@ export const scenarios = [
   }),
   scenario({
     name: "a note made without an icon gets one of the note icons",
-    localPending: PENDING,
     async run(b, k) {
       const note = await k.newNote("note", { title: "No icon", icon: null });
       const got = await b.query(api.documents.get, { documentId: note });
@@ -32,7 +29,6 @@ export const scenarios = [
   }),
   scenario({
     name: "a title is cleaned up the same way",
-    localPending: PENDING,
     async run(b, k) {
       const note = await k.newNote("note", { title: "  Spaces   and\ttabs  " });
       const a = await b.query(api.documents.get, { documentId: note });

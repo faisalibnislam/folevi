@@ -137,8 +137,6 @@ export const LOCAL_HIDDEN: Readonly<Record<string, Capability>> = {
  * while the list shrinks; anything in none of the three lists is unclassified.
  */
 export const LOCAL_PLANNED: Readonly<Record<string, "L1" | "L2" | "L3" | "L4">> = {
-  "blocks:rebalance": "L1",
-  "documents:*": "L1",
   "files:*": "L1",
   "fileText:*": "L1",
   "synced:*": "L1",

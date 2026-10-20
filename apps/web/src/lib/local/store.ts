@@ -43,6 +43,20 @@ export interface LocalDocument {
   tagIds: string[];
   /** On a collection row's note (kind "collectionRow"): its row (the note file's `row`). */
   row?: LocalCollectionRow | null;
+  /** The device that last edited it (version history's "which device"). */
+  editedByDevice?: string;
+  /** Its links to other notes, one per block and target (the server's documentLinks): backlinks, synced content. */
+  links?: LocalLink[];
+  /** When it was starred, as the library's count of stars (orders the Starred view like the server's stars). */
+  starOrder?: number | null;
+}
+
+/** A link from one of a note's blocks to another note (a page card, a page link, a synced block's content). */
+export interface LocalLink {
+  target: string;
+  blockId: string;
+  /** The library's count of links made when this one was (backlinks list in the order links were made). */
+  ordinal: number;
 }
 
 /** A collection row: the row's own id, its place and its values, kept on the row's note. */
@@ -108,6 +122,8 @@ export interface LocalBlock extends Omit<WireBlock, "revision"> {
   deletedAt: number | null;
   createdAt: number;
   updatedAt: number;
+  /** The device that last changed it ("which device" in version history; the server keeps the person). */
+  updatedByDevice?: string;
 }
 
 export interface LocalFolder {
@@ -146,6 +162,51 @@ export interface LocalFile {
   createdAt: number;
 }
 
+/**
+ * A saved version of a note (history/<noteId>/… in the library, §3.8). Stored under its note (`partition` =
+ * note id); its id starts with the note's id (`versionDocumentId`), so a version is found from its id alone.
+ */
+export interface LocalVersion {
+  id: string;
+  documentId: string;
+  reason: Doc<"documentSnapshots">["reason"];
+  name: string | null;
+  title: string;
+  icon: string | null;
+  style?: Doc<"documents">["style"];
+  blocks: WireBlock[];
+  blockCount: number;
+  contentSeq: number;
+  createdAt: number;
+  /** The library's count of versions made when this one was (orders versions saved in the same millisecond). */
+  ordinal: number;
+  /** The device that saved it. */
+  deviceId: string;
+  /** The devices that edited in it, most changes first. */
+  editors: string[];
+  /** Per block: the device that last changed it, and when. */
+  authors: Record<string, [string, number]>;
+  /** Per block deleted since the version before: the device that deleted it, and when. */
+  removed: Record<string, [string, number]>;
+}
+
+/** The note a version belongs to, from the version's id. */
+export function versionDocumentId(versionId: string): string {
+  const i = versionId.indexOf("~");
+  return i > 0 ? versionId.slice(0, i) : "";
+}
+
+/** A note's place in Home's Recent (opened) and Recent notes (removed from it until edited or opened). By note id. */
+export interface LocalRecent {
+  documentId: string;
+  /** When it was last opened (null: never, only removed from Recent notes). */
+  viewedAt: number | null;
+  /** The library's count of visits recorded when this row was made (orders visits in the same millisecond). */
+  ordinal: number;
+  /** When it was removed from Recent notes, or null. */
+  hiddenAt: number | null;
+}
+
 export interface LocalTables {
   documents: LocalDocument;
   blocks: LocalBlock;
@@ -156,6 +217,10 @@ export interface LocalTables {
   collections: LocalCollection;
   /** Small values by key: "profile", "seq", "op:<opId>" (sync replays). */
   meta: unknown;
+  /** Version history, under each note (`partition` = note id). */
+  versions: LocalVersion;
+  /** Recently opened and hidden-from-recent notes, by note id. */
+  recents: LocalRecent;
 }
 export type LocalTable = keyof LocalTables;
 
@@ -185,6 +250,8 @@ export interface LocalStore {
 //   files      get → file:<id>       list → files
 //   collections get → collection:<id> list → collections
 //   meta       get → meta:<key>      list → meta
+//   versions   get or list of a note → history:<noteId>
+//   recents    get → recent:<id>     list → recents
 
 export function readKey(table: LocalTable, id?: string, partition?: string): string {
   switch (table) {
@@ -201,6 +268,10 @@ export function readKey(table: LocalTable, id?: string, partition?: string): str
       return id === undefined ? "collections" : `collection:${id}`;
     case "meta":
       return id === undefined ? "meta" : `meta:${id}`;
+    case "versions":
+      return `history:${partition ?? ""}`;
+    case "recents":
+      return id === undefined ? "recents" : `recent:${id}`;
   }
 }
 
@@ -219,6 +290,10 @@ export function writeKeys(w: Pick<StoreWrite, "table" | "id" | "partition">): st
       return [`collection:${w.id}`, "collections"];
     case "meta":
       return [`meta:${w.id}`, "meta"];
+    case "versions":
+      return [`history:${w.partition ?? ""}`];
+    case "recents":
+      return [`recent:${w.id}`, "recents"];
   }
 }
 

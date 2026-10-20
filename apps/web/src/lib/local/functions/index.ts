@@ -3,6 +3,7 @@
 import "./sync";
 import "./blocks";
 import "./documents";
+import "./documents.history";
 import "./organization";
 import "./users";
 import "./settings";

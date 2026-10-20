@@ -5,7 +5,6 @@ import { scenario } from "../types";
 export const scenarios = [
   scenario({
     name: "nest and move notes",
-    localPending: "WP7a: sync.push, documents.get, pageTree, move",
     async run(b, k) {
       const parent = await k.newNote("parent", { title: "Trip" });
       const child = await k.newNote("child", { title: "Packing list", parent });
@@ -23,7 +22,6 @@ export const scenarios = [
   }),
   scenario({
     name: "a page can't be moved inside itself",
-    localPending: "WP7a: sync.push, documents.move",
     async run(b, k) {
       const parent = await k.newNote("parent", { title: "Outer" });
       const child = await k.newNote("child", { title: "Inner", parent });

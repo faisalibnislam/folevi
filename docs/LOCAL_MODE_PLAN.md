@@ -364,6 +364,14 @@ These fill gaps in §3.1 to §3.9; nothing above changes meaning. `packages/loca
 - **Shared checks:** cell values, number formats, formula text, select options and view configs go through `packages/editor-schema/src/collectionValues.ts` on both backends; formula length and loops through `collectionFormulas.ts`.
 - **Copies:** `copyCollectionsInto(ctx, documentId)` in `lib/local/functions/collections.ts` gives a copied note its own collections (properties and views, no rows), as the server's does for Duplicate, a note made from one of your templates, and Copy version.
 
+### 3.12 Tasks, reviews, calendars and reminders (WP7c and WP14, 2026-10-20)
+
+- **Tasks are read, not stored.** A task is projected from its to-do block when it's read (`projectTask`, the server's own projection), from every note that isn't a template; `tasks.update`, `quickAdd` and `moveToDocument` are block edits through the local `sync.push`. A done block without `completedAt` uses the block's `updatedAt`. A task with lines nested under it isn't moved (the server's engine refuses that delete too).
+- **Triggers and jobs** (`lib/local/registry.ts`): `defineTrigger(name, fn)` runs inside every mutation just before it commits, with the writes and a `before` reader; `ctx.runAfter(job)` starts a job once the mutation commits (the server's `scheduler.runAfter(0, ...)`), and the job writes through `ctx.mutate`. A trigger gets `origin` ("disk" for changes read from the library), so a repeating to-do another device checked off isn't brought back twice. `LocalBackend.idle()` waits for jobs (the parity harness's `settle()`).
+- **Study schedules:** the `studyReviews` table, one row per card under the card's note (`partition` = note id), keyed by block id; dependency keys `study:<noteId>` and `study`. The persistent store keeps them in the note's file. A note's row removed for good removes its schedules (trigger `study:purge`). "New cards a day" is meta `studyNewPerDay`.
+- **Calendars:** the `calendars` table (`LocalCalendar`, key `calendars`); what was read from each is meta `calendarEvents:<id>`, a cache the next fetch replaces. Fetched by the host (`shell().http.calendar`): on the Mac, `apps/desktop/src/calendarFetch.ts`, https only, never Folevi's hosts or private addresses, every redirect checked. The link rules are shared (`packages/editor-schema/src/publicUrl.ts`).
+- **Reminders:** `lib/local/reminders.ts` keeps the host's notifications (`shell().notify`) in step with the open to-dos that have a reminder, from the window hosting the library, after every change (another device's included); what it scheduled is remembered in this origin's storage, so one removed while the app was closed is cancelled on the next launch. On the Mac, `apps/desktop/src/reminders.ts` keeps them in `reminders.json` across restarts, shows each id and time once, and at most a day late.
+
 ---
 
 ## 4. Native pieces and the bridge

@@ -3,6 +3,7 @@
 // The floating bar for the current selection: NodeBar for shapes, EdgeBar for connectors (FlowchartChrome.tsx),
 // placed above the selection (or below it near the top), hidden while dragging or writing.
 import { setColor, setShape, updateEdges, boxOf } from "../ops";
+import { edgeArrow, withArrow } from "../schema";
 import { EdgeBar, NodeBar } from "../FlowchartChrome";
 import { clamp } from "../controller/useViewport";
 import type { FlowController } from "../controller/types";
@@ -47,9 +48,9 @@ export function SelectionBar({ ctrl, actions, startEdit }: { ctrl: FlowControlle
       <EdgeBar
         style={style}
         lineStyle={same(selEdges.map((x) => x.style))}
-        arrow={same(selEdges.map((x) => x.arrow))}
+        arrow={same(selEdges.map((x) => edgeArrow(x)))}
         onStyle={(s) => commit(updateEdges(docRef.current, sel.edges, (x) => ({ ...x, style: s })))}
-        onArrow={(a) => commit(updateEdges(docRef.current, sel.edges, (x) => ({ ...x, arrow: a })))}
+        onArrow={(a) => commit(updateEdges(docRef.current, sel.edges, (x) => withArrow(x, a)))}
         onLabel={selEdges.length === 1 ? () => startEdit("edge", selEdges[0]!.id) : null}
         onDelete={actions.removeSelection}
       />

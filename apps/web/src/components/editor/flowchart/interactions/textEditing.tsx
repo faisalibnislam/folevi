@@ -3,7 +3,7 @@
 // Writing in a shape or on a connector: a text box placed over the item (the item hides its own text
 // meanwhile), the whole edit recorded as one undo step when it ends. Any press on the canvas ends it.
 import { useCallback, useEffect } from "react";
-import { FLOWCHART_FONT_SIZE, FLOWCHART_LABEL_FONT_SIZE, FLOWCHART_LIMITS, FLOWCHART_LINE_HEIGHT, fitNodeToText, nodeLines, textWidthFor } from "../schema";
+import { FLOWCHART_FONT_SIZE, FLOWCHART_LABEL_FONT_SIZE, FLOWCHART_LIMITS, FLOWCHART_LINE_HEIGHT, edgeLabel, fitNodeToText, nodeLines, textWidthFor, withLabel } from "../schema";
 import { updateEdges, updateNodes } from "../ops";
 import type { FlowController, Interaction } from "../controller/types";
 
@@ -48,7 +48,7 @@ export function useTextEditing(ctrl: FlowController) {
     if (!ed) return;
     const fc = docRef.current;
     if (ed.kind === "node") setLive(updateNodes(fc, [ed.id], (n) => fitNodeToText({ ...n, text: value.slice(0, FLOWCHART_LIMITS.maxText) })));
-    else setLive(updateEdges(fc, [ed.id], (x) => ({ ...x, label: value.replace(/\n+/g, " ").slice(0, FLOWCHART_LIMITS.maxLabel) })));
+    else setLive(updateEdges(fc, [ed.id], (x) => withLabel(x, value)));
   };
 
   // ⌘Z / ⇧⌘Z while typing: the text boxes are controlled, so the browser's own undo would reach the
@@ -107,7 +107,7 @@ export function useTextEditing(ctrl: FlowController) {
       <input
         className="fc-label-input"
         autoFocus
-        value={editEdge.edge.label}
+        value={edgeLabel(editEdge.edge)}
         maxLength={FLOWCHART_LIMITS.maxLabel}
         placeholder="Label"
         aria-label="Connector label"

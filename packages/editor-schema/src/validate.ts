@@ -4,7 +4,7 @@ import { isValidId } from "./ids";
 import { isValidRank } from "./rank";
 import { plainText } from "./richtext";
 import { whiteboardDataIssue } from "./whiteboard";
-import { flowchartDataIssue } from "./flowchart";
+import { flowchartDataIssue, parseFlowchart, serializeFlowchart } from "./flowchart";
 import { mindmapDataIssue, parseMindmap, serializeMindmap } from "./mindmap";
 import { parseStickies, serializeStickies, stickiesDataIssue } from "./stickies";
 import { chartDataIssue, parseChart, serializeChart } from "./chart";
@@ -374,7 +374,7 @@ function tableSettingsIssues(p: Record<string, unknown>, height: number, width: 
  */
 const DATA_BLOCKS: Record<string, { maxData: number; issue: (data: string) => string | null; tooLarge: string; minHeight: number; maxHeight: number; rewrite?: (data: string) => string }> = {
   whiteboard: { maxData: LIMITS.maxWhiteboardDataLength, issue: whiteboardDataIssue, tooLarge: "drawing too large", minHeight: LIMITS.minWhiteboardHeight, maxHeight: LIMITS.maxWhiteboardHeight },
-  flowchart: { maxData: LIMITS.maxFlowchartDataLength, issue: flowchartDataIssue, tooLarge: "flowchart too large", minHeight: LIMITS.minFlowchartHeight, maxHeight: LIMITS.maxFlowchartHeight },
+  flowchart: { maxData: LIMITS.maxFlowchartDataLength, issue: flowchartDataIssue, tooLarge: "flowchart too large", minHeight: LIMITS.minFlowchartHeight, maxHeight: LIMITS.maxFlowchartHeight, rewrite: (d) => serializeFlowchart(parseFlowchart(d)) },
   mindmap: { maxData: LIMITS.maxMindmapDataLength, issue: mindmapDataIssue, tooLarge: "mind map too large", minHeight: LIMITS.minMindmapHeight, maxHeight: LIMITS.maxMindmapHeight, rewrite: (d) => serializeMindmap(parseMindmap(d)) },
   stickies: { maxData: LIMITS.maxStickiesDataLength, issue: stickiesDataIssue, tooLarge: "sticky notes too large", minHeight: LIMITS.minStickiesHeight, maxHeight: LIMITS.maxStickiesHeight, rewrite: (d) => serializeStickies(parseStickies(d)) },
   chart: { maxData: LIMITS.maxChartDataLength, issue: chartDataIssue, tooLarge: "chart too large", minHeight: LIMITS.minChartHeight, maxHeight: LIMITS.maxChartHeight, rewrite: (d) => serializeChart(parseChart(d)) },

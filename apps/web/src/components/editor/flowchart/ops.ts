@@ -6,8 +6,10 @@ import {
   FLOWCHART_LIMITS,
   FLOWCHART_SHAPE_SIZE,
   fitNodeToText,
+  flowchart,
   flowId,
   layoutFlowchart,
+  newEdge,
   normalizeFlowchart,
   type FlowchartData,
   type FlowColor,
@@ -63,7 +65,7 @@ export function connect(fc: FlowchartData, from: string, to: string, fromSide?: 
   if (from === to || fc.edges.length >= FLOWCHART_LIMITS.maxEdges) return null;
   const dup = fc.edges.find((e) => e.from === from && e.to === to);
   if (dup) return { doc: fc, id: dup.id };
-  const edge: FlowEdge = { id: flowId("e"), from, to, label: "", style: "solid", arrow: "end" };
+  const edge: FlowEdge = newEdge(from, to);
   if (fromSide) edge.fromSide = fromSide;
   if (toSide) edge.toSide = toSide;
   return { doc: { ...fc, edges: [...fc.edges, edge] }, id: edge.id };
@@ -269,5 +271,5 @@ export function chartFromDraft(draft: FlowDraft, current: FlowchartData, mode: "
   });
   const origin = boxOf(current.nodes) ?? { x: 0, y: 0 };
   const direction: FlowDirection = draft.direction === "LR" ? "LR" : "TD";
-  return layoutFlowchart({ v: 1, nodes, edges: safe.edges }, { direction, origin: { x: snap(origin.x), y: snap(origin.y) } });
+  return layoutFlowchart(flowchart({ nodes, edges: safe.edges }), { direction, origin: { x: snap(origin.x), y: snap(origin.y) } });
 }

@@ -3,7 +3,7 @@ import { Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { FLOWCHART_LIMITS, parseFlowchart, serializeFlowchart, validateWireBlock, type FlowchartData, type FlowNode, type WireBlock } from "@folevi/editor-schema";
+import { FLOWCHART_LIMITS, edgeLabel, flowchart, newEdge, parseFlowchart, serializeFlowchart, validateWireBlock, type FlowchartData, type FlowNode, type WireBlock } from "@folevi/editor-schema";
 
 vi.mock("@/components/editor/richRender", () => ({
   renderMermaid: vi.fn(async (code: string) => (code.includes("oops") ? { error: "Parse error on line 2" } : { svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80"></svg>', width: 120, height: 80 })),
@@ -27,7 +27,7 @@ function makeEditor(extra: WireBlock[] = []) {
 }
 const canonical = (editor: Editor) => docToBlocks(editor.state.doc, new Map());
 const node = (id: string, x = 0, y = 0, extra: Partial<FlowNode> = {}): FlowNode => ({ id, shape: "process", x, y, w: 160, h: 64, text: id, color: "neutral", ...extra });
-const chart = (nodes: FlowNode[], edges: [string, string][] = []): FlowchartData => ({ v: 1, nodes, edges: edges.map(([from, to], i) => ({ id: `e${i}`, from, to, label: "", style: "solid", arrow: "end" })) });
+const chart = (nodes: FlowNode[], edges: [string, string][] = []): FlowchartData => flowchart({ nodes, edges: edges.map(([from, to], i) => newEdge(from, to, { id: `e${i}` })) });
 
 describe("flowchart blocks in the editor", () => {
   test("insert, keep and round-trip as a valid canonical block", () => {
@@ -103,7 +103,7 @@ describe("Mermaid diagram card", () => {
       ["decision", "Approved?"],
       ["terminator", "Publish"],
     ]);
-    expect(data.edges.map((e) => e.label)).toEqual(["send", "Yes"]);
+    expect(data.edges.map((e) => edgeLabel(e))).toEqual(["send", "Yes"]);
     editor.destroy();
   });
 
@@ -175,7 +175,7 @@ describe("flowchart edits", () => {
       nodes: [
         { id: "keep", shape: "process", text: "Keep me" },
         { id: "new", shape: "decision", text: "A rather long question that needs wrapping?" },
-        { id: "bad", shape: "<svg>", text: "x".repeat(900) },
+        { id: "bad", shape: "<svg>", text: "x".repeat(1900) },
       ],
       edges: [{ from: "keep", to: "new", label: "then" }, { from: "new", to: "ghost" }],
     };

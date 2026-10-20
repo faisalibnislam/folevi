@@ -56,9 +56,10 @@ export const FlowNodeShape = memo(function FlowNodeShape({ node, hideText = fals
 export const FlowEdgeLine = memo(function FlowEdgeLine({ routed }: { routed: RoutedEdge }) {
   return (
     <>
-      <path className="fc-edge-line" d={routed.d} strokeDasharray={routed.edge.style === "dashed" ? "6 5" : undefined} />
-      {routed.heads.map((h, i) => (
-        <path key={i} className="fc-edge-head" d={h} />
+      <path className="fc-edge-line" d={routed.d} strokeDasharray={routed.edge.style === "dashed" ? "6 5" : routed.edge.style === "dotted" ? "0.1 4.9" : undefined} />
+      {routed.markers.map((m, i) => (
+        // Open arrows and bars are lines, not filled shapes.
+        <path key={i} className="fc-edge-head" d={m.d} style={m.filled ? undefined : { fill: "none", strokeWidth: 1.5, strokeLinecap: "round" }} />
       ))}
     </>
   );
@@ -71,7 +72,7 @@ export const FlowEdgeLabel = memo(function FlowEdgeLabel({ routed, hidden = fals
     <>
       <rect className="fc-edge-label-bg" x={l.x} y={l.y} width={l.w} height={l.h} rx={6} />
       <text className="fc-edge-label" x={l.cx} y={l.cy + FLOWCHART_LABEL_FONT_SIZE * 0.35} textAnchor="middle" fontSize={FLOWCHART_LABEL_FONT_SIZE}>
-        {routed.edge.label}
+        {l.text}
       </text>
     </>
   );

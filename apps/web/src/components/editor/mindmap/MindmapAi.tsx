@@ -13,6 +13,7 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useIphoneApp } from "@/lib/iphone";
 import { useNoteAi } from "@/components/ai/useAi";
+import { useAiFeature } from "@/lib/mode";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "@/components/ai/AiCredits";
 import { Sheet } from "@/components/iphone/Sheet";
@@ -91,7 +92,9 @@ export function MindmapAi({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<AiProblem | null>(null);
   const [done, setDone] = useState<string | null>(null);
-  const files = useQuery(api.aiAttachments.noteFiles, ai.documentId && tab === "new" ? { documentIds: [ai.documentId] } : "skip");
+  // Reading a PDF is Gemini's on the server: local mode doesn't offer it (WP11).
+  const pdfOn = useAiFeature("mindmapFile");
+  const files = useQuery(api.aiAttachments.noteFiles, pdfOn && ai.documentId && tab === "new" ? { documentIds: [ai.documentId] } : "skip");
   const pdfs = (files ?? []).filter((f) => f.kind === "pdf" && f.supported);
   const sources = SOURCES.filter((s) => (s.id === "note" ? Boolean(ai.documentId) : s.id === "text" ? Boolean(start.text) : s.id === "file" ? pdfs.length > 0 : true));
   const pickedFile = fileId && pdfs.some((p) => p.id === fileId) ? fileId : (pdfs[0]?.id ?? null);

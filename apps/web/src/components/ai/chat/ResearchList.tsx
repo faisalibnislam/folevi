@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
+import { useAiFeature } from "@/lib/mode";
 import { Loader2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -17,7 +18,9 @@ const STATUS: Record<string, string> = { running: "Running", done: "Ready", fail
  */
 export function ResearchList({ activeId, onNavigate }: { activeId: string | null; onNavigate?: () => void }) {
   const { scope } = useAppState();
-  const jobs = useQuery(api.aiResearch.list, { scope });
+  // Research runs on Folevi's servers: never in local mode (WP11).
+  const research = useAiFeature("research");
+  const jobs = useQuery(api.aiResearch.list, research ? { scope } : "skip");
   const caps = useQuery(api.aiChat.capabilities, {});
   const ai = useAiAccess();
   if (!jobs) return null;

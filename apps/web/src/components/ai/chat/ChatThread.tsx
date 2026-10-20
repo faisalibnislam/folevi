@@ -13,6 +13,7 @@ import { AiIcon } from "../AiIcon";
 import { AiIntroBody, type AiIntroPlace } from "../AiIntro";
 import { AiCreditsNote, AiProblemNotice, aiProblem, useAiCredits, type AiProblem } from "../AiCredits";
 import { useAiAccess } from "../useAi";
+import { useAiFeatures } from "@/lib/mode";
 import { AssistantMessage, UserMessage, type Citation } from "./ChatMessage";
 import { ContextChips } from "./ContextChips";
 import { citationHref, WHOLE_SCOPE, type ChatContext } from "./chatText";
@@ -100,11 +101,13 @@ export function ChatThread({
   const researchRegenerate = useAction(api.aiResearch.regenerate);
   const cancelResearch = useMutation(api.aiResearch.cancel);
   const saveResearch = useMutation(api.aiResearch.saveAsNote);
-  const jobs = useQuery(api.aiResearch.forConversation, conversationId ? { conversationId } : "skip");
+  // Local mode offers only what the model on the device can do: no research, agent, web or files (WP11).
+  const features = useAiFeatures();
+  const jobs = useQuery(api.aiResearch.forConversation, conversationId && features.research ? { conversationId } : "skip");
   const caps = useQuery(api.aiChat.capabilities, {});
   const ai = useAiAccess();
   // The web (the Web switch, Research) only when Settings > AI allows it, the plan has AI and the model can search.
-  const webAvailable = Boolean(ai.on && caps?.prefs.webResearch && caps.searchGrounding);
+  const webAvailable = Boolean(ai.on && caps?.prefs.webResearch && caps.searchGrounding && features.web);
   // The last mode this person picked (the floating chat and the AI page), unless the surface sets one.
   const [mode, setMode] = useChatMode(initialMode);
   const [web, setWeb] = useState(false);
@@ -164,7 +167,7 @@ export function ChatThread({
   // The answer has started (its text streams separately, aiChat.streamText, so `live` says so first).
   const answering = Boolean(messages[messages.length - 1]?.text || messages[messages.length - 1]?.live);
   // Files for the next message (the Attach control): only when Settings > AI allows reading them, not for Research.
-  const attachAvailable = Boolean(ai.on && caps && caps.prefs.attachments !== false) && mode !== "research";
+  const attachAvailable = Boolean(ai.on && caps && caps.prefs.attachments !== false && features.attachments) && mode !== "research";
   const attachments = useChatAttachments({ scope: conversation?.scope ?? scope, caps: caps ? { vision: caps.vision, audioIn: caps.audioIn } : undefined });
   const contextNotes = context.kind === "note" || context.kind === "notes" ? context.ids : [];
   const noteFiles = useQuery(api.aiAttachments.noteFiles, attachAvailable && contextNotes.length ? { documentIds: contextNotes } : "skip");
@@ -238,7 +241,7 @@ export function ChatThread({
     const args = { scope: conversation?.scope ?? scope, conversationId: target, text: q, context: isNew ? newContext : undefined, ...(fileIds.length ? { attachments: fileIds } : {}) };
     // A request to change notes goes to the agent; a question gets the quick answer.
     if (as === "research") void run(() => researchStart(args));
-    else if (as === "agent" || wantsAgent(q)) void run(() => agentSend(args));
+    else if (features.agent && (as === "agent" || wantsAgent(q))) void run(() => agentSend(args));
     else void run(() => sendAction({ ...args, ...(webOn ? { web: true } : {}) }));
   };
 
@@ -404,7 +407,7 @@ export function ChatThread({
           {intro}
           {messages.map((m, i) =>
             m.role === "user" ? (
-              <UserMessage key={m.id} text={m.text} attachments={m.attachments} disabled={working} onEdit={i === lastUser && conversationId ? (text) => void run(() => (wantsAgent(text) ? agentEdit({ conversationId, messageId: m.id, text }) : editAction({ conversationId, messageId: m.id, text, ...(webOn ? { web: true } : {}) }))) : undefined} />
+              <UserMessage key={m.id} text={m.text} attachments={m.attachments} disabled={working} onEdit={i === lastUser && conversationId ? (text) => void run(() => (features.agent && wantsAgent(text) ? agentEdit({ conversationId, messageId: m.id, text }) : editAction({ conversationId, messageId: m.id, text, ...(webOn ? { web: true } : {}) }))) : undefined} />
             ) : m.role === "assistant" ? (
               <AssistantMessage
                 key={m.id}
@@ -423,7 +426,7 @@ export function ChatThread({
                 onSuggestion={(text) => send(text)}
                 onInsert={onInsert}
                 onFix={
-                  i === messages.length - 1 && !m.agent && !jobFor(m.id) && m.status === "done" && contextNotes.length && asksToChange(messages[i - 1]?.role === "user" ? messages[i - 1]!.text : "") ? fixInNote : undefined
+                  features.agent && i === messages.length - 1 && !m.agent && !jobFor(m.id) && m.status === "done" && contextNotes.length && asksToChange(messages[i - 1]?.role === "user" ? messages[i - 1]!.text : "") ? fixInNote : undefined
                 }
                 onApply={() => void apply(m.id, (m.actions ?? []) as AiAction[])}
                 onDismiss={() => void setOutcome({ messageId: m.id, outcome: { kind: "dismissed" } })}

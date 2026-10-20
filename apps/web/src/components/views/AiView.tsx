@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { useCapability } from "@/lib/mode";
 import { MessagesSquare, MoreHorizontal, X } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
@@ -64,7 +65,8 @@ export function AiView({ id }: { id: string | null }) {
   const [listOpen, setListOpen] = useState(false);
   const data = useQuery(api.aiChat.get, id && ai.on ? { conversationId: id } : "skip");
   // Not yours: maybe one a member shared with the workspace (read-only, aiSharing.get).
-  const shared = useQuery(api.aiSharing.get, id && ai.on && data === null ? { conversationId: id } : "skip");
+  const sharing = useCapability("sharing");
+  const shared = useQuery(api.aiSharing.get, id && ai.on && sharing && data === null ? { conversationId: id } : "skip");
   const discard = useMutation(api.aiChat.discard);
   const mine = data?.conversation;
   const actions = useConversationActions(mine ? { id: mine.id, title: mine.title, shared: mine.shared, workspace: mine.scope.kind === "workspace", ephemeral: mine.ephemeral } : null);

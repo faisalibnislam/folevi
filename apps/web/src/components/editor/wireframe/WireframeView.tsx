@@ -39,6 +39,7 @@ import {
   type WireframeStyle,
 } from "@folevi/editor-schema";
 import { useAiEnabled } from "@/components/ai/useAi";
+import { useAiFeature } from "@/lib/mode";
 import { useToast } from "@/components/ui/Toast";
 import { haptic } from "@/lib/nativeApp";
 import { CanvasCard } from "../canvas/CanvasCard";
@@ -194,7 +195,9 @@ function WireframeEditor(props: ReactNodeViewProps) {
   const write = useCallback((s: string) => updateAttributes({ data: s }), [updateAttributes]);
   const { doc, docRef, setLive, commit, undo, redo, canUndo, canRedo, tooLarge } = useWireDoc(data, write);
   const demo = useEditorEnvironment().demo;
-  const aiOn = useAiEnabled() && !demo;
+  // The small on-device model can't draw screens (WP11, lib/local/ai/features.ts).
+  const wireframeAi = useAiFeature("wireframe");
+  const aiOn = useAiEnabled() && !demo && wireframeAi;
   const toast = useToast();
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
 

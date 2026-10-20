@@ -10,6 +10,7 @@ import { Camera, FileText, ImageUp, LayoutGrid, Lightbulb, ListTodo, ScrollText 
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { inIosApp } from "@/lib/nativeApp";
+import { useAiFeature } from "@/lib/mode";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "@/components/ai/AiCredits";
 import type { StickyColor } from "@folevi/editor-schema";
@@ -59,6 +60,8 @@ export function StickiesAi({
   const summarize = useAction(api.stickiesAi.summarize);
   const ideas = useAction(api.stickiesAi.ideas);
   const photo = useAction(api.stickiesAi.photo);
+  // Reading a photo needs a model that sees images: not in local mode (WP11).
+  const photoOn = useAiFeature("stickiesPhoto");
   const tasks = useAction(api.stickiesAi.tasks);
   const writeUp = useAction(api.stickiesAi.writeUp);
   const [busy, setBusy] = useState<Busy>(null);
@@ -200,6 +203,7 @@ export function StickiesAi({
                   </button>
                 </li>
               ))}
+              {photoOn ? (
               <li>
                 <div className="st-ai-action st-ai-photo">
                   <ImageUp size={15} aria-hidden />
@@ -240,6 +244,7 @@ export function StickiesAi({
                   }}
                 />
               </li>
+              ) : null}
             </ul>
           </>
         )}

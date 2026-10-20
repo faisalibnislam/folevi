@@ -9,6 +9,7 @@ import { NewWorkspaceDialog } from "@/components/app/NewWorkspaceDialog";
 import { Button } from "@/components/ui/Button";
 import { AccountSection } from "./settings/AccountSection";
 import { AiSection } from "./settings/AiSection";
+import { LocalAiSection } from "./settings/LocalAiSection";
 import { SecuritySection } from "./settings/SecuritySection";
 import { DevicesSection } from "./settings/DevicesSection";
 import { AppearanceSection } from "./settings/AppearanceSection";
@@ -68,11 +69,11 @@ const WORKSPACE: (Item & { who: "everyone" | "managers" | "billing" })[] = [
 const WORKSPACE_SECTIONS = new Set<Section>(WORKSPACE.map((i) => i.id));
 /**
  * Sections only an account has (docs/LOCAL_MODE_PLAN.md §5.2): in local mode they're not listed, and opened by
- * address they show the "Sign in to Folevi" note. Foli AI's settings wait for on-device AI (WP11).
+ * address they show the "Sign in to Folevi" note. Settings > AI stays: in local mode it sets up Foli AI on the
+ * device (Apple's model, the person's own keys; LocalAiSection, WP11).
  */
 const NEEDS: Partial<Record<Section, Capability>> = {
   account: "account",
-  ai: "aiServer",
   billing: "billing",
   security: "account",
   devices: "account",
@@ -195,7 +196,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
         <div className="min-w-0 space-y-5">
           <h2 className="ui-display text-[34px] leading-tight">{noWorkspace ? "Workspace" : sectionHidden ? "Not found" : heading}</h2>
           {section === "account" ? <AccountSection /> : null}
-          {section === "ai" ? <AiSection /> : null}
+          {section === "ai" ? caps.account ? <AiSection /> : <LocalAiSection /> : null}
           {section === "billing" ? <BillingSection /> : null}
           {section === "security" ? <SecuritySection /> : null}
           {section === "devices" ? <DevicesSection /> : null}
@@ -231,10 +232,11 @@ export function SettingsView({ section: asked }: { section: Section }) {
  */
 function IphoneSection({ section, title, noWorkspace, sectionHidden }: { section: Section; title: string; noWorkspace: boolean; sectionHidden: boolean }) {
   const { workspace } = useAppState();
+  const caps = useCapabilities();
   const content = (
     <div className="space-y-7 pb-4 pt-3 [&_.ui-btn]:min-h-11 [&_.ui-btn]:text-[15px]">
       {section === "account" ? <AccountSection /> : null}
-      {section === "ai" ? <AiSection /> : null}
+      {section === "ai" ? caps.account ? <AiSection /> : <LocalAiSection /> : null}
       {section === "billing" ? <BillingSection /> : null}
       {section === "security" ? <SecuritySection /> : null}
       {section === "devices" ? <DevicesSection /> : null}

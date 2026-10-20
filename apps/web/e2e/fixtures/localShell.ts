@@ -46,6 +46,11 @@ export interface FakeShellConfig {
   places?: FakePlaces;
   /** What `lock.getSettings` says unlocks this device (default "none": no Touch ID). */
   lockMethod?: "touchID" | "none";
+  /**
+   * Foli AI on this pretend Mac (WP11): whether Apple's model is on. Requests get scripted answers (search
+   * terms, a cited answer, a title, a rewrite) streamed in pieces, so the flows can be driven without a model.
+   */
+  ai?: { onDevice?: boolean };
 }
 
 /** How the FakeShell answers each library kind (WP10's setup screens; the Mac's service.ts, cloud/). */
@@ -505,11 +510,45 @@ export function installFakeShell(cfg: FakeShellConfig) {
     ai: {
       async capabilities() {
         const keys = readMeta().secrets ?? [];
-        return { onDevice: false, keys: { "ai.openai": keys.includes("ai.openai"), "ai.anthropic": keys.includes("ai.anthropic"), "ai.google": keys.includes("ai.google") } };
+        const onDevice = cfg.ai?.onDevice === true;
+        return { onDevice, onDeviceStatus: onDevice ? "available" : "notEnabled", onDeviceContext: 4096, keys: { "ai.openai": keys.includes("ai.openai"), "ai.anthropic": keys.includes("ai.anthropic"), "ai.google": keys.includes("ai.google") } };
       },
-      generate(req) {
-        record("ai.generate", { provider: req.provider });
-        return { done: Promise.resolve({ text: "", stopReason: "error" as const, error: "FakeShell has no AI model" }), cancel() {} };
+      async testKey(provider) {
+        record("ai.testKey", { provider });
+        return (readMeta().secrets ?? []).includes(`ai.${provider}`) ? { ok: true as const } : { ok: false as const, error: "There's no key to test." };
+      },
+      generate(req, onChunk) {
+        record("ai.generate", { provider: req.provider, model: req.model, system: req.system, prompt: req.messages[req.messages.length - 1]?.content });
+        const system = req.system ?? "";
+        const prompt = req.messages[req.messages.length - 1]?.content ?? "";
+        const words = (prompt.match(/Question: (.*)/)?.[1] ?? "").toLowerCase().match(/[a-z]{4,}/g) ?? [];
+        const text = system.includes("full-text search queries")
+          ? JSON.stringify({ queries: words.slice(0, 3).length ? words.slice(0, 3) : ["note"], act: false })
+          : system.includes("name conversations")
+            ? "A local chat"
+            : system.includes("Answer questions using the person's notes")
+              ? `Here is what your notes say, from this Mac [1].${system.includes("[[follow-ups]]") ? '\n[[follow-ups]] ["What else is there?"]' : ""}`
+              : system.includes("writing assistant")
+                ? "Rewritten on this Mac."
+                : "{}";
+        let cancelled = false;
+        const done = (async () => {
+          const pieces = text.match(/.{1,12}/gs) ?? [text];
+          let sent = "";
+          for (const p of pieces) {
+            if (cancelled) return { text: sent, stopReason: "cancelled" as const };
+            await new Promise((r) => setTimeout(r, 15));
+            sent += p;
+            onChunk(p);
+          }
+          return { text, stopReason: "end" as const };
+        })();
+        return {
+          done,
+          cancel() {
+            cancelled = true;
+          },
+        };
       },
     },
     lock: {

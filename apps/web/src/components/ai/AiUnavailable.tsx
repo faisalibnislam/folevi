@@ -28,8 +28,11 @@ export function aiUnavailableCopy(ai: Pick<AiAccess, "setting" | "context">): { 
 
 /** The copy, without the way to plans in the iOS app (no buying there). */
 function shownCopy(ai: Pick<AiAccess, "setting" | "context">) {
-  // Local mode: no plans to talk about; Foli AI there waits for on-device models and own keys (WP11).
-  if (currentBackendMode() === "local") return { title: "Foli AI isn't available here yet", body: "Your notes are kept on your devices, and nothing is sent to Folevi's servers.", link: null };
+  // Local mode: no plans to talk about. Turned off, or no model on this device yet (WP11): Settings > AI sets it up.
+  if (currentBackendMode() === "local") {
+    if (!ai.setting) return aiUnavailableCopy(ai);
+    return { title: "Set up Foli AI on this Mac", body: "Turn on Apple Intelligence, or add your own OpenAI, Anthropic or Google key. Your notes go straight from this Mac to the model, never through Folevi.", link: { href: "/settings/ai", label: "Open AI settings" } };
+  }
   const copy = aiUnavailableCopy(ai);
   return copy.link?.href === "/settings/billing" && !canPurchaseHere() ? { ...copy, link: null } : copy;
 }

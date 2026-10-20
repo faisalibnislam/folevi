@@ -48,6 +48,7 @@ import {
   type RoutedEdge,
 } from "@folevi/editor-schema";
 import { useAiEnabled } from "@/components/ai/useAi";
+import { useAiFeature } from "@/lib/mode";
 import { FlowEdgeLabel, FlowEdgeLine, FlowNodeShape, FlowchartStatic, clampFlowHeight, nodeAriaLabel } from "./render";
 import { EdgeBar, MainToolbar, NodeBar, ZoomBar } from "./FlowchartChrome";
 import { FlowchartAi } from "./FlowchartAi";
@@ -154,7 +155,9 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
   const { doc, docRef, setLive, commit, undo, redo, canUndo, canRedo, tooLarge } = useFlowDoc(data, write);
   const routed = useMemo(() => routeEdges(doc), [doc]);
   const byId = useMemo(() => new Map(doc.nodes.map((n) => [n.id, n])), [doc]);
-  const aiOn = useAiEnabled();
+  // The small on-device model can't draw flowcharts (WP11, lib/local/ai/features.ts).
+  const flowchartAi = useAiFeature("flowchart");
+  const aiOn = useAiEnabled() && flowchartAi;
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
 
   const wrapRef = useRef<HTMLDivElement>(null);

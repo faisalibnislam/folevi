@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { useAiFeature } from "@/lib/mode";
 import type { FunctionReturnType } from "convex/server";
 import type { Editor } from "@tiptap/core";
 import type { Node as PMNode } from "@tiptap/pm/model";
@@ -181,7 +182,9 @@ export function NoteSuggestions({
 }) {
   // The graph's suggestions come from the server; questions and action items are found here, in the note as
   // this device holds it, so the server query doesn't re-read the note on every save.
-  const data = useQuery(api.aiSuggestions.forNote, { documentId, lines: false });
+  // Suggestions come from Folevi's servers: not in local mode (WP11), where `data` stays undefined.
+  const suggestions = useAiFeature("suggestions");
+  const data = useQuery(api.aiSuggestions.forNote, suggestions ? { documentId, lines: false } : "skip");
   const { engine } = useAppState();
   const hits = useEngineSelector(
     engine,

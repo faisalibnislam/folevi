@@ -13,6 +13,7 @@ import { useMutation } from "convex/react";
 import { useEffect } from "react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
+import { useBackendMode } from "@/lib/mode";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 
 /**
@@ -41,6 +42,8 @@ export function usePastedFiles(editor: Editor | null, documentId: string) {
   const share = useMutation(api.files.shareForPaste);
   const toast = useToast();
   const { engine } = useAppState();
+  // In local mode notes are in the library at once: nothing to wait for.
+  const local = useBackendMode() === "local";
   useEffect(() => {
     if (!editor) return;
     let stopped = false;
@@ -51,7 +54,7 @@ export function usePastedFiles(editor: Editor | null, documentId: string) {
       let map: Record<string, string>;
       try {
         // A note made a moment ago has to reach the server before its files can.
-        await engine?.whenDocumentOnServer(documentId, 60_000);
+        if (!local) await engine?.whenDocumentOnServer(documentId, 60_000);
         map = await share({ documentId, fileIds: [...new Set([...found.values()].flat())] });
       } catch (e) {
         // Offline: once the connection is back. Refused (storage full): the blocks keep the original files.
@@ -83,5 +86,5 @@ export function usePastedFiles(editor: Editor | null, documentId: string) {
       stopped = true;
       editor.off("transaction", onTransaction);
     };
-  }, [editor, documentId, share, toast, engine]);
+  }, [editor, documentId, share, toast, engine, local]);
 }

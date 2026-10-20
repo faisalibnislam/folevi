@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useNoteAi } from "@/components/ai/useAi";
 import { useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
+import { useBackendMode } from "@/lib/mode";
 import { uploadFileNow } from "@/lib/sync/uploads";
 import { useEditorEnvironment } from "../../environment";
 import { FLOWCHART_SHAPE_SIZE, type FlowIconName, type FlowIconPlace, type FlowNode, type FlowShape, type Pt, type TextColor } from "../schema";
@@ -65,6 +66,8 @@ export function useShapeContent(ctrl: FlowController, { actions }: { actions: Fl
   const toast = useToast();
   const { navigate } = useAppRouter();
   const { engine } = useAppState();
+  // In local mode notes are in the library at once: nothing to wait for.
+  const local = useBackendMode() === "local";
   const fileInput = useRef<HTMLInputElement>(null);
   const pickFor = useRef<string[] | null>(null);
   const [iconPlace, setIconPlace] = useState<FlowIconPlace>("left");
@@ -114,7 +117,7 @@ export function useShapeContent(ctrl: FlowController, { actions }: { actions: Fl
     setUploading((u) => u + 1);
     try {
       // A note made a moment ago has to reach the server before a file can be stored in it.
-      await engine?.whenDocumentOnServer(documentId, 60_000);
+      if (!local) await engine?.whenDocumentOnServer(documentId, 60_000);
       const fileId = await uploadFileNow(client, { documentId, blob: file, filename: file.name || "image.png", mimeType: file.type, kind: "image" });
       // Shown from this device's copy until the file's own address arrives.
       const url = URL.createObjectURL(file);

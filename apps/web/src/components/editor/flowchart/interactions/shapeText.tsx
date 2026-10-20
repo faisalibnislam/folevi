@@ -8,12 +8,12 @@
 //   Enter finishes · ⇧Enter new line (continues a list) · Esc finishes · ⌘B ⌘I ⌘U bold, italic, underline
 //   ⇧⌘X strike · ⌘E code · ⌘K link · ⇧⌘8 bullets · ⇧⌘7 numbers · ⇧⌘L ⇧⌘E ⇧⌘R align left, centre, right
 //   "- " or "1. " at the start of a line starts a list; ⌫ at the start of a list item ends it
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Extension } from "@tiptap/core";
 import { AllSelection, Plugin, TextSelection } from "@tiptap/pm/state";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
-import { AlignCenter, AlignLeft, AlignRight, Bold, Check, Italic, Link2, List, ListOrdered, Strikethrough, Underline, Unlink, X } from "lucide-react";
-import { FLOWCHART_FONT_SIZE, FLOWCHART_LIMITS, FLOWCHART_LINE_HEIGHT, customFillInk, nodeContentBoxes, nodeTextLayout, type FlowNode, type FlowParagraph, type FlowTextAlign } from "../schema";
+import { AlignCenter, AlignLeft, AlignRight, Baseline, Bold, Check, Italic, Link2, List, ListOrdered, Strikethrough, Underline, Unlink, X } from "lucide-react";
+import { FLOWCHART_FONT_SIZE, FLOWCHART_LIMITS, FLOWCHART_LINE_HEIGHT, TextColorValues, customFillInk, nodeContentBoxes, nodeTextLayout, type FlowNode, type FlowParagraph, type FlowTextAlign } from "../schema";
 import { LABEL_EXTENSIONS, labelDoc, labelParagraphs, pastedLines, type LabelList } from "../richLabel";
 import { safeHref } from "../contentOps";
 import type { View } from "../controller/types";
@@ -29,6 +29,15 @@ const LabelLimit = Extension.create({
 });
 
 const IMAGE_TYPES = /^image\/(png|jpe?g|gif|webp)$/i;
+const TEXT_COLOR_LABEL: Record<(typeof TextColorValues)[number], string> = { muted: "Grey", accent: "Accent", moss: "Green", marigold: "Orange", plum: "Purple", coral: "Red" };
+
+/**
+ * Makes the editor take in a selection the browser has just changed (Shift+arrows, a drag) before a
+ * command reads it: ProseMirror otherwise hears of it a moment later.
+ */
+function readSelection(editor: Editor) {
+  (editor.view as unknown as { domObserver?: { flush?: () => void } }).domObserver?.flush?.();
+}
 
 /** The paragraph the selection starts in. */
 function currentList(editor: Editor): LabelList | null {
@@ -76,6 +85,7 @@ export function ShapeTextEditor({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [, setTick] = useState(0);
   const [link, setLink] = useState<{ value: string } | null>(null);
+  const [colors, setColors] = useState(false);
   const cb = useRef({ onChange, onAlign, onFinish, onHistoryKey, onImage });
   cb.current = { onChange, onAlign, onFinish, onHistoryKey, onImage };
   const linkRef = useRef<() => void>(() => {});
@@ -139,6 +149,15 @@ export function ShapeTextEditor({
             return true;
           }
         }
+        if (mod) readSelection(ed);
+        // To the start or end of the label: kept inside it (the browser would carry the caret on into the note).
+        if (mod && (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "Home" || e.key === "End")) {
+          const end = e.key === "ArrowDown" || e.key === "End";
+          const at = end ? TextSelection.atEnd(v.state.doc) : TextSelection.atStart(v.state.doc);
+          const sel = e.shiftKey ? TextSelection.create(v.state.doc, v.state.selection.anchor, at.head) : at;
+          v.dispatch(v.state.tr.setSelection(sel).scrollIntoView());
+          return true;
+        }
         if (mod && key === "k") {
           linkRef.current();
           return true;
@@ -176,6 +195,7 @@ export function ShapeTextEditor({
         e.preventDefault();
         if (!text) return true;
         const ed = editorRef.current;
+        if (ed) readSelection(ed);
         const room = FLOWCHART_LIMITS.maxText - v.state.doc.textBetween(0, v.state.doc.content.size, "\n").length + (v.state.selection.to - v.state.selection.from);
         const lines = pastedLines(text.slice(0, Math.max(0, room)));
         if (!ed || !lines.join("")) return true;
@@ -218,6 +238,7 @@ export function ShapeTextEditor({
 
   linkRef.current = () => {
     if (!editor) return;
+    readSelection(editor);
     const href = editor.getAttributes("link").href as string | undefined;
     setLink({ value: href ?? "" });
   };
@@ -234,7 +255,9 @@ export function ShapeTextEditor({
     if (!editor) return;
     const href = safeHref(raw);
     setLink(null);
-    const chain = editor.chain().focus();
+    // Back to the label at once (keys typed straight after land there).
+    editor.view.focus();
+    const chain = editor.chain();
     if (!href) {
       chain.extendMarkRange("link").unsetMark("link").run();
       return;
@@ -277,10 +300,12 @@ export function ShapeTextEditor({
   const list = editor ? currentList(editor) : null;
   const keep = (e: React.SyntheticEvent) => e.preventDefault();
   const run = (fn: (ed: Editor) => void) => () => {
-    if (editor) fn(editor);
+    if (!editor) return;
+    readSelection(editor);
+    fn(editor);
   };
   const btn = (label: string, shortcut: string, pressed: boolean, onClick: () => void, icon: React.ReactNode) => (
-    <button type="button" className="fc-btn" aria-label={label} aria-pressed={pressed} title={`${label} (${shortcut})`} onMouseDown={keep} onPointerDown={keep} onClick={onClick}>
+    <button type="button" className="fc-btn" aria-label={label} aria-pressed={pressed} title={shortcut ? `${label} (${shortcut})` : label} onMouseDown={keep} onPointerDown={keep} onClick={onClick}>
       {icon}
     </button>
   );
@@ -301,12 +326,22 @@ export function ShapeTextEditor({
           e.stopPropagation();
           if (e.key === "Escape" && !link) {
             e.preventDefault();
+            setColors(false);
             editor?.commands.focus();
           }
         }}
         onBlur={() => blurred()}
       >
-        {link ? (
+        {colors ? (
+          <span role="group" aria-label="Text colour" className="fc-group">
+            {btn("Default colour", "", !editor?.isActive("textColor"), run((ed) => ed.chain().focus().unsetMark("textColor").run()), <span className="fc-rt-swatch">A</span>)}
+            {TextColorValues.map((c) => (
+              <Fragment key={c}>{btn(`${TEXT_COLOR_LABEL[c]} text`, "", !!editor?.isActive("textColor", { value: c }), run((ed) => ed.chain().focus().setMark("textColor", { value: c }).run()), <span className={`fc-rt-swatch fb-color-${c}`}>A</span>)}</Fragment>
+            ))}
+            <span className="fc-sep" aria-hidden />
+            {btn("Done with colours", "Esc", false, () => setColors(false), <Check size={14} aria-hidden />)}
+          </span>
+        ) : link ? (
           <form
             className="fc-rt-link"
             onSubmit={(e) => {
@@ -328,7 +363,7 @@ export function ShapeTextEditor({
                 if (e.key === "Escape") {
                   e.preventDefault();
                   setLink(null);
-                  editor?.commands.focus();
+                  editor?.view.focus();
                 }
               }}
             />
@@ -347,7 +382,7 @@ export function ShapeTextEditor({
                 title="Cancel (Esc)"
                 onClick={() => {
                   setLink(null);
-                  editor?.commands.focus();
+                  editor?.view.focus();
                 }}
               >
                 <X size={14} aria-hidden />
@@ -369,6 +404,7 @@ export function ShapeTextEditor({
             </span>
             <span className="fc-sep" aria-hidden />
             {btn("Link", "⌘K", active("link"), () => linkRef.current(), <Link2 size={15} aria-hidden />)}
+            {btn("Text colour", "", active("textColor"), () => setColors(true), <Baseline size={15} aria-hidden />)}
             <span className="fc-sep" aria-hidden />
             <span role="group" aria-label="Alignment" className="fc-group">
               {btn("Align left", "⇧⌘L", align === "left", () => onAlign("left"), <AlignLeft size={15} aria-hidden />)}

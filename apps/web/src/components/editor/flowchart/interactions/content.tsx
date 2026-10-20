@@ -17,7 +17,7 @@ import { uploadFileNow } from "@/lib/sync/uploads";
 import { useEditorEnvironment } from "../../environment";
 import { FLOWCHART_SHAPE_SIZE, type FlowIconName, type FlowIconPlace, type FlowNode, type FlowShape, type Pt, type TextColor } from "../schema";
 import { addNode, nodeAt } from "../ops";
-import { changeShape, fitToText, imageNodeSize, labelColor, patchNodes, setAutoHeight, setIcon, setImage, setLabelColor, setLink, setNote, setPaint, type Paint } from "../contentOps";
+import { changeShape, fitToText, freeSpot, imageNodeSize, labelColor, patchNodes, setAutoHeight, setIcon, setImage, setLabelColor, setLink, setNote, setPaint, type Paint } from "../contentOps";
 import { useFlowImageUrls } from "../useImageUrls";
 import { ShapeLibrary, ShapeThumb } from "../chrome/ShapeLibrary";
 import { IconPicker } from "../chrome/IconPicker";
@@ -136,7 +136,8 @@ export function useShapeContent(ctrl: FlowController, { actions }: { actions: Fl
     }
     const dims = await imageSize(file);
     const size = imageNodeSize(dims.w, dims.h);
-    const p = at ?? viewCenter();
+    // Dropped where it was let go; pasted or picked, the nearest free spot to the middle of the view.
+    const p = at ?? freeSpot(docRef.current, viewCenter(), size.w, size.h);
     const def = FLOWCHART_SHAPE_SIZE.rectangle;
     // addNode centres a default-sized shape: shift so the picture's own size is centred on the point.
     const res = addNode(docRef.current, "rectangle", { x: p.x - size.w / 2 + def.w / 2, y: p.y - size.h / 2 + def.h / 2 }, { ...size, image: { fileId } });

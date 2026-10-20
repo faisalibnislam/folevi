@@ -253,3 +253,25 @@ export function parseHex(raw: string): string | null {
   if (/^[0-9a-f]{6}$/.test(t)) return `#${t}`;
   return null;
 }
+
+/**
+ * The centre nearest to `at` where a `w` × `h` shape overlaps no other shape (a little gap kept), searched
+ * in widening rings; `at` itself when the canvas is that full.
+ */
+export function freeSpot(fc: FlowchartData, at: { x: number; y: number }, w: number, h: number, gap = 24): { x: number; y: number } {
+  const clear = (c: { x: number; y: number }) => {
+    const r = { x: c.x - w / 2 - gap, y: c.y - h / 2 - gap, w: w + gap * 2, h: h + gap * 2 };
+    return !fc.nodes.some((n) => n.x < r.x + r.w && n.x + n.w > r.x && n.y < r.y + r.h && n.y + n.h > r.y);
+  };
+  if (clear(at)) return at;
+  const step = FLOWCHART_GRID * 5;
+  for (let ring = 1; ring <= 30; ring++) {
+    const d = ring * step;
+    const tries: { x: number; y: number }[] = [];
+    for (let i = -ring; i <= ring; i++) tries.push({ x: at.x + i * step, y: at.y - d }, { x: at.x + i * step, y: at.y + d }, { x: at.x - d, y: at.y + i * step }, { x: at.x + d, y: at.y + i * step });
+    tries.sort((a, b) => Math.hypot(a.x - at.x, a.y - at.y) - Math.hypot(b.x - at.x, b.y - at.y));
+    const hit = tries.find(clear);
+    if (hit) return hit;
+  }
+  return at;
+}

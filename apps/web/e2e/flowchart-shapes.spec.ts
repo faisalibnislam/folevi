@@ -45,6 +45,9 @@ async function addProcess(page: Page, canvas: Locator, text: string) {
   return node;
 }
 
+/** The caret to the end of the text being written (⌘↓ on a Mac, Ctrl+End elsewhere). */
+const toEnd = (page: Page) => page.keyboard.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
+
 const bar = (page: Page) => page.getByRole("toolbar", { name: "Selected shapes" });
 
 /** Saved, then the page reloaded. */
@@ -178,6 +181,191 @@ test.describe("Flowchart shapes and content", () => {
     await expect(hex2).toHaveAttribute("data-color", "green");
     await expect(hex2.locator(".fc-icon")).toHaveCount(1);
     await expect(after.locator('[data-fc-node][data-shape="documents"]')).toHaveCount(1);
+    await context.close();
+  });
+
+  test("rich text in shapes: formatting, lists, links, alignment and plain pasting; kept, undone as one step, exported", async ({ browser }) => {
+    const { context, page } = await newPerson(browser, "Rich Label Tester");
+    const canvas = await newFlowchart(page, "Rich labels");
+    const tools = page.getByRole("toolbar", { name: "Flowchart tools" });
+
+    // Writing starts at once in a new shape; ⌘B, "- " lists and ⇧Enter new lines.
+    await tools.getByRole("button", { name: "Add process" }).click();
+    const label = canvas.getByRole("textbox", { name: "Text for this shape" });
+    await expect(label).toBeFocused();
+    await page.keyboard.type("Plan ");
+    await page.keyboard.press("ControlOrMeta+b");
+    await page.keyboard.type("bold");
+    await page.keyboard.press("ControlOrMeta+b");
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("- first");
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("second");
+    const fmt = canvas.getByRole("toolbar", { name: "Text formatting" });
+    await expect(fmt.getByRole("button", { name: "Bulleted list" })).toHaveAttribute("aria-pressed", "true");
+    await expect(label.locator("strong")).toHaveText("bold");
+    await shot(page, "rich-text-editing", canvas);
+    await page.keyboard.press("Enter");
+    const shape = canvas.locator("[data-fc-node]").first();
+    await expect(shape.locator("tspan tspan", { hasText: /^\s*bold$/ })).toHaveCSS("font-weight", "650");
+    await expect(shape.locator(".fc-marker")).toHaveCount(2);
+
+    // The bar's buttons: italic over everything, then left alignment.
+    await shape.dblclick();
+    await expect(label).toBeFocused();
+    await fmt.getByRole("button", { name: "Italic" }).click();
+    await fmt.getByRole("button", { name: "Align left" }).click();
+    await page.keyboard.press("Enter");
+    await expect(shape.locator("tspan tspan", { hasText: /^Plan$/ })).toHaveCSS("font-style", "italic");
+    await expect(shape.locator("text.fc-label")).toHaveAttribute("text-anchor", "start");
+
+    // A link on the selected word (⌘K), and pasted formatting arriving as plain text.
+    await shape.dblclick();
+    await toEnd(page);
+    await page.keyboard.type(" docs");
+    for (let i = 0; i < 4; i++) await page.keyboard.press("Shift+ArrowLeft");
+    await page.keyboard.press("ControlOrMeta+k");
+    await fmt.getByRole("textbox", { name: "Link address" }).fill("folevi.com/help");
+    await page.keyboard.press("Enter");
+    await expect(label.locator("a")).toHaveText("docs");
+    await toEnd(page);
+    await label.evaluate((el) => {
+      const dt = new DataTransfer();
+      dt.setData("text/html", "<b>Pasted</b>");
+      dt.setData("text/plain", " Pasted");
+      el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+    });
+    await expect(label).toContainText("docs Pasted");
+    await expect(label.locator("strong", { hasText: "Pasted" })).toHaveCount(0);
+    await page.keyboard.press("Enter");
+    await expect(shape.locator(".fc-link")).toHaveText("docs");
+    await expect(shape.locator("tspan tspan", { hasText: /Pasted/ }).last()).not.toHaveCSS("font-weight", "650");
+
+    // The whole edit is one undo step.
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(shape.locator(".fc-link")).toHaveCount(0);
+    await expect(shape.locator("tspan tspan", { hasText: /^Plan$/ })).toHaveCSS("font-style", "italic");
+    await page.keyboard.press("ControlOrMeta+Shift+z");
+    await expect(shape.locator(".fc-link")).toHaveText("docs");
+
+    // Kept across a reload.
+    const after = await reload(page);
+    const kept = after.locator("[data-fc-node]").first();
+    await expect(kept.locator("tspan tspan", { hasText: /^\s*bold$/ })).toHaveCSS("font-weight", "650");
+    await expect(kept.locator(".fc-marker")).toHaveCount(2);
+    await expect(kept.locator(".fc-link")).toHaveText("docs");
+
+    // Grow with text: the shape follows its text.
+    await kept.click({ button: "right" });
+    await page.getByRole("menuitemradio", { name: /Grow with text/ }).click();
+    const h1 = (await kept.boundingBox())!.height;
+    await kept.dblclick();
+    await toEnd(page);
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("one more line");
+    await page.keyboard.press("Enter");
+    await expect.poll(async () => (await kept.boundingBox())!.height).toBeGreaterThan(h1);
+
+    // Exported: the SVG carries the formatting.
+    await page.getByRole("toolbar", { name: "Flowchart tools" }).getByRole("button", { name: "Export" }).click();
+    const download = page.waitForEvent("download");
+    await page.getByRole("menuitem", { name: "Export as SVG" }).click();
+    const svg = readFileSync((await (await download).path())!, "utf8");
+    expect(svg).toMatch(/font-weight="600"[^>]*>\s*bold</);
+    expect(svg).toContain("•");
+    expect(svg).toMatch(/<a href="https:\/\/folevi\.com\/help">/);
+    await context.close();
+  });
+
+  test("images, notes and page links: pick, paste and drop images (kept after a reload); badges open notes and pages", async ({ browser }) => {
+    const { context, page } = await newPerson(browser, "Image Tester");
+    // A page to link to (opened, so it's among the recent pages).
+    await newPage(page, "Launch checklist");
+    const target = new URL(page.url()).pathname;
+    // Opened again once it's saved, so it's among the recent pages.
+    await page.waitForTimeout(800);
+    await waitForSaved(page);
+    await page.goto(target);
+    await expect(page.getByRole("textbox", { name: "Title" })).toHaveText("Launch checklist");
+    const canvas = await newFlowchart(page, "Images and notes");
+    const png = { name: "photo.png", type: "image/png", base64: PNG.toString("base64") };
+
+    // An image picked for a shape: uploaded into the note, shown inside the shape.
+    const photo = await addProcess(page, canvas, "Photo");
+    await photo.click();
+    const chooser = page.waitForEvent("filechooser");
+    await bar(page).getByRole("button", { name: "Add image" }).click();
+    await (await chooser).setFiles({ name: "photo.png", mimeType: "image/png", buffer: PNG });
+    await expect(photo.locator("image.fc-image")).toHaveCount(1, { timeout: 20_000 });
+
+    // Pasted on the canvas with nothing selected: a new shape showing it.
+    await page.mouse.click((await canvas.boundingBox())!.x + 30, (await canvas.boundingBox())!.y + 200);
+    await canvas.focus();
+    await pasteFiles(canvas, [png]);
+    await expect(canvas.locator("[data-fc-node] image.fc-image")).toHaveCount(2, { timeout: 20_000 });
+
+    // Dropped onto a shape: it goes into that shape.
+    const area = (await canvas.boundingBox())!;
+    await page.mouse.dblclick(area.x + area.width - 140, area.y + area.height - 90);
+    await page.keyboard.type("Drop here");
+    await page.keyboard.press("Enter");
+    const drop = canvas.getByRole("button", { name: /^Process: Drop here/ });
+    const box = (await drop.boundingBox())!;
+    await canvas.locator("svg.fc-svg").evaluate(
+      (el, { x, y, base64 }) => {
+        const dt = new DataTransfer();
+        dt.items.add(new File([Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))], "drop.png", { type: "image/png" }));
+        el.dispatchEvent(new DragEvent("dragover", { dataTransfer: dt, clientX: x, clientY: y, bubbles: true, cancelable: true }));
+        el.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, clientX: x, clientY: y, bubbles: true, cancelable: true }));
+      },
+      { x: box.x + box.width / 2, y: box.y + box.height / 2, base64: png.base64 },
+    );
+    await expect(drop.locator("image.fc-image")).toHaveCount(1, { timeout: 20_000 });
+    await shot(page, "images", canvas);
+
+    // A note: written from the bar, shown as a badge that opens it.
+    await page.mouse.click(area.x + 30, area.y + area.height / 2);
+    await photo.click();
+    await bar(page).getByRole("button", { name: "Add note" }).click();
+    const notePanel = canvas.getByRole("dialog", { name: "Note" });
+    await notePanel.getByRole("textbox", { name: "Note" }).fill("Ask the design team for the final photo.");
+    await notePanel.getByRole("button", { name: "Done" }).click();
+    const noteBadge = photo.locator('[data-fc-badge="note"]');
+    await expect(noteBadge).toHaveCount(1);
+    await expect(photo).toHaveAccessibleName(/with a note/);
+
+    // A link to a Folevi page, picked from the recent pages.
+    await photo.click();
+    await bar(page).getByRole("button", { name: "Link to a page" }).click();
+    const links = canvas.getByRole("dialog", { name: "Link to a page" });
+    // Recent pages first (search finds the rest once the page is indexed).
+    await expect(links.getByRole("heading", { name: "Recent" })).toBeVisible();
+    await links.getByRole("button", { name: "Launch checklist" }).click();
+    await expect(photo.locator('[data-fc-badge="link"]')).toHaveCount(1);
+    await expect(photo).toHaveAccessibleName(/links to Launch checklist/);
+    await shot(page, "badges", canvas);
+
+    // Everything is kept; the badges open the note and the page.
+    const after = await reload(page);
+    const kept = after.getByRole("button", { name: /^Process: Photo/ });
+    await expect(kept.locator("image.fc-image")).toHaveAttribute("href", /\/files\//, { timeout: 20_000 });
+    await expect(after.locator("[data-fc-node] image.fc-image")).toHaveCount(3);
+    await kept.locator('[data-fc-badge="note"]').click();
+    await expect(after.getByRole("dialog", { name: "Note" })).toContainText("Ask the design team for the final photo.");
+    await shot(page, "note-open", after);
+    await after.getByRole("dialog", { name: "Note" }).getByRole("button", { name: "Close note" }).click();
+
+    // Removing the image from the bar; ⌘Z brings it back.
+    await kept.click();
+    await bar(page).getByRole("button", { name: "Image" }).click();
+    await page.getByRole("menuitem", { name: "Remove image" }).click();
+    await expect(kept.locator("image.fc-image")).toHaveCount(0);
+    await after.focus();
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(kept.locator("image.fc-image")).toHaveCount(1);
+
+    await kept.locator('[data-fc-badge="link"]').click();
+    await page.waitForURL((u) => u.pathname === target);
     await context.close();
   });
 });

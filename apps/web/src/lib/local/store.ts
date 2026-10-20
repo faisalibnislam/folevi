@@ -1,10 +1,12 @@
 // The local backend's storage seam (docs/LOCAL_MODE_PLAN.md §2.2, WP5). Handlers read and write rows through
 // a `LocalStore`; every read is recorded as a dependency key and every write emits the keys it changed, which
-// is what makes local queries reactive (queryCache.ts). Phase 2 puts a store over packages/local-store (note
-// files, the library index, history) behind this same interface; `MemoryStore` is the in-memory one used by
-// tests and by development builds until then.
+// is what makes local queries reactive (queryCache.ts). `LibraryStore` (store/libraryStore.ts) keeps the rows
+// in IndexedDB and the library folder (note files, the library index, history; packages/local-store) behind
+// this same interface; `MemoryStore` is the in-memory one used by tests and by development builds without a shell.
 import type { StudySchedule, WireBlock } from "@folevi/editor-schema";
 import type { Doc } from "@/lib/convex/api";
+import type { LocalMutationCtx } from "./registry";
+import type { LibraryControl } from "./store/types";
 
 /** A note (a page, a template, synced content, a collection row) as the local backend keeps it. */
 export interface LocalDocument {
@@ -51,6 +53,11 @@ export interface LocalDocument {
   starOrder?: number | null;
   /** Counts changes to `searchText` (refreshDerived), so the search index sees a note's text change. */
   textRev?: number;
+  /**
+   * Set while only the library's catalog knows this note (a cold start on a new device): its file hasn't
+   * downloaded yet ("downloading") or hasn't arrived at all ("waiting"). It has no blocks until it does.
+   */
+  pending?: "downloading" | "waiting";
 }
 
 /** A link from one of a note's blocks to another note (a page card, a page link, a synced block's content). */
@@ -222,6 +229,36 @@ export interface LocalVersion {
   authors: Record<string, [string, number]>;
   /** Per block deleted since the version before: the device that deleted it, and when. */
   removed: Record<string, [string, number]>;
+  /**
+   * A version kept because a concurrent edit lost (docs/LOCAL_MODE_PLAN.md §3.4): what lost (a block id, or
+   * "doc.title") and the device it came from. Its `blocks` hold just that block (none for a title).
+   */
+  conflict?: { target: string; device: string };
+}
+
+/**
+ * "Changed on another device" and its kin, on a note (docs/LOCAL_MODE_PLAN.md §2.3, §3.4): a concurrent change
+ * lost and went to version history, and this points at it. Stored under its note (`partition` = note id).
+ * A library store writes them (from the note file); a handler only sets `dismissed`.
+ */
+export interface LocalNotice {
+  id: string;
+  documentId: string;
+  /** The block it's about; null for a document field (`field`) or the whole note (kind "restored"). */
+  blockId: string | null;
+  /** "title" for a title edited on two devices at once. */
+  field: string | null;
+  /** changed: edited on two devices; deleted: deleted on one, edited on the other; restored: a note deleted
+   *  for good came back because another device edited it (it waits in Trash). */
+  kind: "changed" | "deleted" | "restored";
+  /** The device whose version shows now, and when it was made. */
+  from: string;
+  at: number;
+  /** The `versions` row holding the other version, or null. */
+  versionId: string | null;
+  /** The device whose version went to history. */
+  other: string | null;
+  dismissed: boolean;
 }
 
 /** The note a version belongs to, from the version's id. */
@@ -287,12 +324,6 @@ export interface LocalTables {
   folders: LocalFolder;
   tags: LocalTag;
   files: LocalFile;
-  /** Study cards' schedules, under each card's note (`partition` = note id), by block id. */
-  studyReviews: LocalStudyReview;
-  /** Subscribed calendars, by id. */
-  calendars: LocalCalendar;
-  /** Text found in notes' files and handwriting, under each note (`partition` = note id). */
-  fileTexts: LocalFileText;
   /** Collection definitions, by collection id (each lives in its host note). */
   collections: LocalCollection;
   /** Small values by key: "profile", "seq", "op:<opId>" (sync replays). */
@@ -301,6 +332,14 @@ export interface LocalTables {
   versions: LocalVersion;
   /** Recently opened and hidden-from-recent notes, by note id. */
   recents: LocalRecent;
+  /** Study cards' schedules, under each card's note (`partition` = note id), by block id. */
+  studyReviews: LocalStudyReview;
+  /** Subscribed calendars, by id. */
+  calendars: LocalCalendar;
+  /** Text found in notes' files and handwriting, under each note (`partition` = note id). */
+  fileTexts: LocalFileText;
+  /** "Changed on another device" notices, under each note (`partition` = note id). */
+  notices: LocalNotice;
 }
 export type LocalTable = keyof LocalTables;
 
@@ -312,7 +351,7 @@ export interface LocalStore {
   /** Every row of a table, or of one partition (a note's blocks). Order is unspecified. */
   list<T extends LocalTable>(table: T, partition?: string): Promise<LocalTables[T][]>;
   /** Applies the writes together: all of them or none. */
-  commit(writes: readonly StoreWrite[]): Promise<void>;
+  commit(writes: readonly StoreWrite[], hints?: CommitHints): Promise<void>;
   /**
    * Changes that didn't come from this backend's own commits (another device's edits read from disk, a sync
    * folder catching up): the listener gets their dependency keys (see `writeKeys`).
@@ -324,6 +363,33 @@ export interface LocalStore {
    * index is built again from the notes each launch.
    */
   searchIndexStorage?: LocalIndexStorage;
+  /** Called once by the backend that runs on this store (a library store applies changes from disk through it). */
+  bind?(host: StoreHost): void;
+  /** The library's state, health and controls (Library settings), for a store kept in a library. */
+  readonly library?: LibraryControl;
+  /** The live blocks of these types in every note (see LocalReader.blocksOfTypes); stores without it are scanned. */
+  blocksOfTypes?(types: readonly string[]): Promise<LocalBlock[]>;
+}
+
+/**
+ * What a commit was based on and where it came from. `bases`: when the backend knows (sync.push), per block
+ * (`<noteId>/<blockId>`) and per note (`<noteId>`), the revision the editor's change was made on; a library
+ * store tells from it an edit that didn't see another device's change, applies it, and keeps the one it
+ * overwrote in version history with a notice (docs/LOCAL_MODE_PLAN.md §2.3). `origin: "disk"`: the store's own
+ * changes read from the library (see StoreHost), which it doesn't write back.
+ */
+export interface CommitHints {
+  bases?: ReadonlyMap<string, number | null>;
+  origin?: "local" | "disk";
+}
+
+/** What a store gets from the backend that runs on it. */
+export interface StoreHost {
+  /**
+   * Runs `fn` as a mutation of the backend's own (in order with every other mutation, triggers included); its
+   * writes reach the store's `commit` with `origin: "disk"` and the keys it changed reach every query.
+   */
+  ingest(fn: (ctx: LocalMutationCtx) => Promise<void>): Promise<void>;
 }
 
 // ---- dependency keys ------------------------------------------------------------------------------------
@@ -335,11 +401,28 @@ export interface LocalStore {
 //   files      get → file:<id>       list → files
 //   collections get → collection:<id> list → collections
 //   meta       get → meta:<key>      list → meta
+//   versions   get or list of a note → history:<noteId>
+//   recents    get → recent:<id>     list → recents
 //   studyReviews  get or list of a note → study:<noteId>   list of every note's → study
 //   calendars  calendars
 //   fileTexts  get or list of a note → fileText:<noteId>   list of every note's → fileTexts
-//   versions   get or list of a note → history:<noteId>
-//   recents    get → recent:<id>     list → recents
+//   notices    get or list of a note → notices:<noteId>    list of every note's → notices
+
+/** What a read of blocks across every note (blocksOfTypes) depends on: any block write. */
+export const BLOCKS_ANY = "blocks:any";
+
+/** blocksOfTypes for a store that doesn't index blocks by type: every note's blocks, filtered. */
+export async function scanBlocksOfTypes(store: Pick<LocalStore, "list">, types: readonly string[]): Promise<LocalBlock[]> {
+  const want = new Set(types);
+  const out: LocalBlock[] = [];
+  for (const doc of await store.list("documents")) for (const b of await store.list("blocks", doc.id)) if (b.deletedAt === null && want.has(b.type)) out.push(b);
+  return out;
+}
+
+/** The live blocks of these types in every note: indexed when the reader has it, else scanned. */
+export async function blocksOfTypes(db: Pick<LocalStore, "list" | "blocksOfTypes">, types: readonly string[]): Promise<LocalBlock[]> {
+  return db.blocksOfTypes ? await db.blocksOfTypes(types) : await scanBlocksOfTypes(db, types);
+}
 
 export function readKey(table: LocalTable, id?: string, partition?: string): string {
   switch (table) {
@@ -356,16 +439,18 @@ export function readKey(table: LocalTable, id?: string, partition?: string): str
       return id === undefined ? "collections" : `collection:${id}`;
     case "meta":
       return id === undefined ? "meta" : `meta:${id}`;
+    case "versions":
+      return `history:${partition ?? ""}`;
+    case "recents":
+      return id === undefined ? "recents" : `recent:${id}`;
     case "studyReviews":
       return partition === undefined ? "study" : `study:${partition}`;
     case "calendars":
       return "calendars";
     case "fileTexts":
       return partition === undefined ? "fileTexts" : `fileText:${partition}`;
-    case "versions":
-      return `history:${partition ?? ""}`;
-    case "recents":
-      return id === undefined ? "recents" : `recent:${id}`;
+    case "notices":
+      return partition === undefined ? "notices" : `notices:${partition}`;
   }
 }
 
@@ -374,7 +459,7 @@ export function writeKeys(w: Pick<StoreWrite, "table" | "id" | "partition">): st
     case "documents":
       return [`doc:${w.id}`, "catalog"];
     case "blocks":
-      return [`blocks:${w.partition ?? ""}`];
+      return [`blocks:${w.partition ?? ""}`, BLOCKS_ANY];
     case "folders":
     case "tags":
       return [w.table];
@@ -384,16 +469,18 @@ export function writeKeys(w: Pick<StoreWrite, "table" | "id" | "partition">): st
       return [`collection:${w.id}`, "collections"];
     case "meta":
       return [`meta:${w.id}`, "meta"];
+    case "versions":
+      return [`history:${w.partition ?? ""}`];
+    case "recents":
+      return [`recent:${w.id}`, "recents"];
     case "studyReviews":
       return [`study:${w.partition ?? ""}`, "study"];
     case "calendars":
       return ["calendars"];
     case "fileTexts":
       return [`fileText:${w.partition ?? ""}`, "fileTexts"];
-    case "versions":
-      return [`history:${w.partition ?? ""}`];
-    case "recents":
-      return [`recent:${w.id}`, "recents"];
+    case "notices":
+      return [`notices:${w.partition ?? ""}`, "notices"];
   }
 }
 
@@ -445,7 +532,7 @@ export class MemoryStore implements LocalStore {
     return out;
   }
 
-  async commit(writes: readonly StoreWrite[]): Promise<void> {
+  async commit(writes: readonly StoreWrite[], _hints?: CommitHints): Promise<void> {
     this.apply(writes);
   }
 

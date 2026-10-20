@@ -1,7 +1,7 @@
 // This page's local library: one LocalHost per page (host.ts), started the first time local mode renders.
-// Where the library is stored is configured by the shell (Phase 2: a store over packages/local-store and the
-// native file layer). Until then the default is an in-memory store, so local mode can be opened in
-// development, and nothing written there survives a reload.
+// Where the library is stored: by default, in the app shell, the persistent store (store/libraryStore.ts) over
+// the shell's library folder; without a shell (development in a plain browser) an in-memory store, so local
+// mode can still be opened, and nothing written there survives a reload.
 import { ulid } from "@folevi/editor-schema";
 import { LocalBackend } from "./backend";
 import { startLocalHost, type LocalHost, type LocalHostOptions } from "./host";
@@ -17,6 +17,10 @@ export interface LocalLibraryConfig {
 let warned = false;
 let config: LocalLibraryConfig = {
   openStore: async () => {
+    // In the app shell the library is the folder the shell keeps (store/, over shell().library), with this
+    // device's copy in IndexedDB. The store module loads only then.
+    const store = await import("./store/index");
+    if (store.shellLibraryHost()) return await store.openShellLibraryStore(localDeviceId());
     if (!warned && process.env.NODE_ENV !== "production") {
       warned = true;
       console.warn("[local mode] No library store is configured: notes are kept in memory and go when the page reloads.");

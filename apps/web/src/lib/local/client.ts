@@ -10,6 +10,7 @@
 import { getFunctionName, type FunctionReference } from "convex/server";
 import type { FoleviClient } from "@/lib/convex/client";
 import { QueryCache } from "./queryCache";
+import type { LibraryControl } from "./store/types";
 
 /** What a new local library needs to know about the person (users.me reads it back). */
 export interface LocalSetup {
@@ -28,6 +29,11 @@ export interface LocalHostApi {
   putFile(blob: Blob, meta: { name: string; mimeType: string; kind: string; documentId?: string | null }): Promise<{ fileId: string; mimeType: string }>;
   /** Creates the library's profile on first launch, with the welcome notes (LocalGate). Idempotent. */
   setup(input: LocalSetup): Promise<{ created: boolean }>;
+  /**
+   * The library's state, health and controls (Library settings, the passphrase screen), in the window that
+   * hosts a library kept on disk. Absent in other windows and on an in-memory store.
+   */
+  library?: LibraryControl;
 }
 
 export interface LocalExecutor {

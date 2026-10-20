@@ -21,6 +21,7 @@
     "@convex-dev/better-auth": "0.12.5",
     "@folevi/design-tokens": "workspace:*",
     "@folevi/editor-schema": "workspace:*",
+    "@folevi/local-store": "workspace:*",
     "@tiptap/core": "3.31.3",
     "@tiptap/extensions": "3.31.3",
     "@tiptap/pm": "3.31.3",

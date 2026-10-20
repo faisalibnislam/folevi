@@ -4,7 +4,8 @@
 // all when they throw), then announce the keys they changed. See docs/LOCAL_MODE_PLAN.md §2.2.
 import { getFunctionName, type FunctionReference } from "convex/server";
 import { LOCAL_TRIGGERS, resolveLocal, type LocalActionCtx, type LocalJobCtx, type LocalMutationCtx, type LocalQueryCtx, type LocalReader, type LocalWriter } from "./registry";
-import { readKey, writeKeys, type LocalStore, type LocalTable, type LocalTables, type StoreWrite } from "./store";
+import { BLOCKS_ANY, readKey, scanBlocksOfTypes, writeKeys, type CommitHints, type LocalBlock, type LocalStore, type LocalTable, type LocalTables, type StoreWrite } from "./store";
+import { commitHints } from "./store/hints";
 import type { LocalExecutor, LocalHostApi, LocalSetup } from "./client";
 import { setupLibrary } from "./setup";
 import "./functions";
@@ -51,6 +52,21 @@ class Transaction implements LocalWriter {
     return kept;
   }
 
+  async blocksOfTypes(types: readonly string[]): Promise<LocalBlock[]> {
+    const base = this.store.blocksOfTypes ? await this.store.blocksOfTypes(types) : await scanBlocksOfTypes(this.store, types);
+    const own = [...this.writes.values()].filter((w) => w.table === "blocks");
+    if (!own.length) return base;
+    const key = (partition: string | undefined, id: string) => `${partition ?? ""}\u0000${id}`;
+    const changed = new Set(own.map((w) => key(w.partition, w.id)));
+    const want = new Set(types);
+    const kept = base.filter((b) => !changed.has(key(b.documentId, b.id)));
+    for (const w of own) {
+      const b = w.value as LocalBlock | null;
+      if (b && b.deletedAt === null && want.has(b.type)) kept.push(b);
+    }
+    return kept;
+  }
+
   put<T extends LocalTable>(table: T, id: string, value: LocalTables[T], partition?: string): void {
     this.writes.set(slot(table, id, partition), { table, id, partition, value } as StoreWrite);
   }
@@ -89,9 +105,13 @@ export class LocalBackend implements LocalExecutor {
     this.now = opts.now ?? Date.now;
     // Changes from outside (another device, through the library) reach the same listeners as our own.
     this.unsubscribeStore = store.subscribe((keys) => this.emit(keys));
+    // A library store applies what it reads from disk as mutations of its own: in order with the others, with
+    // the triggers, and announced like any change.
+    store.bind?.({ ingest: async (fn) => void (await this.serial(() => this.transact(fn, { origin: "disk" }))) });
     this.local = {
       putFile: (blob, meta) => this.putFile(blob, meta),
       setup: (input) => this.setup(input),
+      ...(store.library ? { library: store.library } : {}),
     };
   }
 
@@ -133,6 +153,10 @@ export class LocalBackend implements LocalExecutor {
         deps.add(readKey(table, undefined, partition));
         return this.store.list(table, partition);
       },
+      blocksOfTypes: (types) => {
+        deps.add(BLOCKS_ANY);
+        return this.store.blocksOfTypes ? this.store.blocksOfTypes(types) : scanBlocksOfTypes(this.store, types);
+      },
     };
     const value = await (fn.handler as (ctx: LocalQueryCtx, args: unknown) => unknown)(this.queryCtx(db), detached(args));
     return { value: detached(value), deps: [...deps] };
@@ -141,7 +165,7 @@ export class LocalBackend implements LocalExecutor {
   mutation(name: string, args: Record<string, unknown>): Promise<unknown> {
     return this.serial(async () => {
       const fn = resolveLocal(name, "mutation");
-      return detached(await this.transact((ctx) => (fn.handler as (ctx: LocalMutationCtx, args: unknown) => unknown)(ctx, detached(args))));
+      return detached(await this.transact((ctx) => (fn.handler as (ctx: LocalMutationCtx, args: unknown) => unknown)(ctx, detached(args)), commitHints(name, args)));
     });
   }
 
@@ -171,7 +195,7 @@ export class LocalBackend implements LocalExecutor {
    * triggers (registry.ts defineTrigger) see the writes just before the commit; jobs started with
    * `runAfter` start once it's done.
    */
-  private async transact<T>(fn: (ctx: LocalMutationCtx) => T | Promise<T>): Promise<T> {
+  private async transact<T>(fn: (ctx: LocalMutationCtx) => T | Promise<T>, hints?: CommitHints): Promise<T> {
     const tx = new Transaction(this.store);
     const jobs: ((ctx: LocalJobCtx) => Promise<void>)[] = [];
     const ctx: LocalMutationCtx = { db: tx, deviceId: this.deviceId, now: this.now, nextSeq: () => tx.nextSeq(), runAfter: (job) => void jobs.push(job) };
@@ -179,11 +203,11 @@ export class LocalBackend implements LocalExecutor {
     let writes = tx.pending();
     if (writes.length && LOCAL_TRIGGERS.size) {
       const before: LocalReader["get"] = (table, id, partition) => this.store.get(table, id, partition);
-      for (const trigger of LOCAL_TRIGGERS.values()) await trigger(ctx, writes, before, "local");
+      for (const trigger of LOCAL_TRIGGERS.values()) await trigger(ctx, writes, before, hints?.origin ?? "local");
       writes = tx.pending();
     }
     if (writes.length) {
-      await this.store.commit(writes);
+      await this.store.commit(writes, hints);
       const keys = new Set<string>();
       for (const w of writes) for (const k of writeKeys(w)) keys.add(k);
       this.emit([...keys]);

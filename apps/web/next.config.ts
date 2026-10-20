@@ -92,7 +92,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Dev only: keep Next's badge out of the tab strip (top right) and the sidebar's account button (bottom left).
   devIndicators: { position: "bottom-right" },
-  transpilePackages: ["@folevi/editor-schema", "@folevi/design-tokens"],
+  transpilePackages: ["@folevi/editor-schema", "@folevi/design-tokens", "@folevi/local-store"],
   typedRoutes: false,
   allowedDevOrigins: ["app.localhost", "localhost", "127.0.0.1"],
   experimental: {

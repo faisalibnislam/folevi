@@ -35,6 +35,7 @@ export const DOC_REGISTER_FIELDS = [
   "archivedAt",
   "trashedAt",
   "templateKey",
+  "dailyDate",
 ] as const;
 export type DocRegisterField = (typeof DOC_REGISTER_FIELDS)[number];
 
@@ -55,6 +56,8 @@ export interface NoteDoc {
   archivedAt?: Register<number | null>;
   trashedAt?: Register<number | null>;
   templateKey?: Register<string | null>;
+  /** A daily note's day (yyyy-mm-dd). */
+  dailyDate?: Register<string | null>;
   createdAt?: number;
   tags: Record<string, TagEntry>;
 }

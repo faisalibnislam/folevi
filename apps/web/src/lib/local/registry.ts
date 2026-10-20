@@ -23,6 +23,12 @@ export type LocalKind = "query" | "mutation" | "action";
 export interface LocalReader {
   get<T extends LocalTable>(table: T, id: string, partition?: string): Promise<LocalTables[T] | undefined>;
   list<T extends LocalTable>(table: T, partition?: string): Promise<LocalTables[T][]>;
+  /**
+   * The live blocks of the given types in every note (tasks read to-dos, study reads cards), without reading
+   * each note's blocks. Dependency key: `blocks:any`. Order is unspecified. Call it through store.ts
+   * `blocksOfTypes(db, types)`, which scans when a reader doesn't have it.
+   */
+  blocksOfTypes?(types: readonly string[]): Promise<LocalTables["blocks"][]>;
 }
 
 export interface LocalWriter extends LocalReader {

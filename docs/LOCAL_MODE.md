@@ -247,3 +247,47 @@ container later with `library.move`.
 5. Before "Sync with iCloud" is promised on the Mac, decide whether the interim iCloud Drive folder is acceptable or
    whether the option waits for the Developer Program.
 6. Delete the spike folders once WP1, WP2 and WP5 have absorbed them.
+
+## Phase 1, WP1: the shell build (2026-10-20)
+
+S1 is absorbed: `apps/web/spikes/s1-shell/` (the probe, the SPA-fallback server and the check script) is gone, and its
+checks are now tests. `s4-bearer/` and `s5-local-client/` stay until WP4 and WP5 cover them.
+
+- **Build:** `pnpm --filter @folevi/web build:shell` (`apps/web/scripts/build-shell.mjs`): `next build` with
+  `FOLEVI_BUILD=shell`, then it prunes what only the website uses from the export (`marketing/`, `sw.js`,
+  `google*.html`, the PWA and tab icons, `brand/email/`, the Open Graph mark), moves the CSP meta tag to the top
+  of `<head>` (Next writes its script tags first), snapshots admin-managed data, checks the export and copies it to
+  `apps/desktop/web/` (git-ignored). `--no-copy` skips the copy; `--required` fails when the deployment can't be
+  reached instead of shipping an empty snapshot (for releases).
+- **Snapshot** (`scripts/snapshot-themes.mjs`): `themes.list` and `settings.disabledBuiltInTemplates` from the build's
+  `NEXT_PUBLIC_CONVEX_URL`, written to `/shell/snapshot.json`, with admin-uploaded theme images copied to
+  `/shell/themes/` so nothing is fetched from Convex storage at run time. `lib/shell/snapshot.ts` loads it. The
+  templates' content ships as code (`BUILT_IN_TEMPLATES` in `@folevi/editor-schema`); the local `settings` handler
+  filters it by `templates.disabled`.
+- **Size** (dev deployment, 2026-10-20): 83 MB. JavaScript and CSS 11.8 MB, fonts 7.0 MB, note covers 64.1 MB.
+  The covers are already WebP at effort 6 (`packages/design-tokens/scripts/covers.mjs`) and the app asks for all
+  three sizes by fixed paths, so they ship as they are. Fewer sizes (a Mac only needs the 2x and thumbnails on a
+  Retina screen) would save about 25 MB (the 1x files; the 2x are 36 MB, thumbnails 3.7 MB); not done, since an external 1x display uses the 1x files.
+- **Root:** `page.shell.tsx` renders `components/app/ShellRoot.tsx`. It reads `initialMode` from the bridge
+  (`lib/shell`, types in `lib/shell/types.ts` from plan §4.1) on the first client render (`useSyncExternalStore`,
+  so the prerendered loader hydrates cleanly) and opens `ModeChoice` (a placeholder until WP10), or
+  `<ProductApp backend="local" | "account"/>`. Without a bridge it's account mode. `shell()` is null on the website;
+  development builds also honour the e2e FakeShell (`window.__foleviTestShell`).
+- **Guards:** `isShell()` is a build-time constant, so website builds drop every shell branch. The service worker
+  is never registered in the shell, the web push card hides there (`serviceWorker.ready` would never settle), and
+  Admin console opens the website in the browser.
+- **Dev server:** `pnpm --filter @folevi/web dev:shell` (port 3003, its own `.next-shell` folder, an SPA fallback
+  rewrite) serves the shell under `next dev`, for local-mode e2e at `E2E_LOCAL_BASE_URL=http://localhost:3003`.
+  Point its `NEXT_PUBLIC_APP_URL` at the running dev server, as the `web-shell-3003` launch configuration does.
+- **Tests:** `test/shell.test.tsx` (the config switch, the accessor, the CSP, ShellRoot); `pnpm test:shell`
+  builds and runs `playwright.shell.config.ts`: `e2e/shell/export.spec.ts` (one page, no route-handler, admin or
+  marketing output, no admin or marketing strings in any file, the CSP first in `<head>`, the snapshot) and
+  `e2e/shell/routes.spec.ts` (deep links hydrate at their address, pushState, no service worker, IndexedDB, Web
+  Locks, `crypto.subtle`, BroadcastChannel and OPFS, the first-launch choice; and, with
+  `E2E_BASE_URL=http://app.localhost:3002`, the real product signed in at `/d/<id>`, `/tasks/today` and
+  `/settings/appearance`, navigating from the sidebar).
+- **Left for WP4:** in account mode the bundled shell can't sign in yet: its CSP doesn't allow the service's
+  `/api/auth` (by design; native bearer fetch replaces it), and signing out or `/signin` redirects go to pages
+  the shell doesn't have. The signed-in test answers `/api/*` from the dev server to stand in for that.
+- **Electron spike:** `apps/desktop/spikes/app-scheme/main.js` waited for the S1 probe, which no longer ships; its
+  hydration checks need rewriting against the real page when WP2 lifts the handler.

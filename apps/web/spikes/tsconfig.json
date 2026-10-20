@@ -2,5 +2,5 @@
   "extends": "../tsconfig.json",
   "compilerOptions": { "incremental": false },
   "include": ["../next-env.d.ts", "**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", "s1-*/out-*"]
+  "exclude": ["node_modules"]
 }

@@ -65,12 +65,22 @@ const securityHeaders = [
 // marketing, /api, share pages, auth pages) is left out. Static export has no headers or redirects.
 const isShell = process.env.FOLEVI_BUILD === "shell";
 const shellConfig: NextConfig = {
-  output: "export",
-  distDir: process.env.NEXT_DIST_DIR ?? "out-shell",
   pageExtensions: ["shell.tsx", "shell.ts"],
   images: { unoptimized: true },
-  // tsc --noEmit checks the same files; the shell build doesn't need to again.
-  typescript: { ignoreBuildErrors: true },
+  ...(isDev
+    ? {
+        // `pnpm dev:shell` (local-mode e2e, trying the shell in a browser): the same pages under `next dev`, in
+        // their own build folder, with the hosts' SPA fallback as a rewrite (every path but /api/* gets the one
+        // page; Next's own files are matched before fallback rewrites).
+        distDir: process.env.NEXT_DIST_DIR ?? ".next-shell",
+        rewrites: async () => ({ beforeFiles: [], afterFiles: [], fallback: [{ source: "/:path((?!api/).*)", destination: "/" }] }),
+      }
+    : {
+        output: "export",
+        distDir: process.env.NEXT_DIST_DIR ?? "out-shell",
+        // tsc --noEmit checks the same files; the shell build doesn't need to again.
+        typescript: { ignoreBuildErrors: true },
+      }),
 };
 
 const nextConfig: NextConfig = {

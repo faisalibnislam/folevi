@@ -8,6 +8,8 @@ const desktop = { ...devices["Desktop Chrome"], viewport: { width: 1440, height:
 
 export default defineConfig<BackendModeOptions>({
   testDir: "./e2e",
+  // The bundled shell's tests run against its static export with their own config (playwright.shell.config.ts).
+  testIgnore: ["shell/**"],
   // CI machines are slower and every page compiles on first visit in `next dev`; tests that sign in twice
   // sat right at a one-minute limit there.
   timeout: process.env.CI ? 120_000 : 60_000,

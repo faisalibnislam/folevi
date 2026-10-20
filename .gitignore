@@ -8,6 +8,8 @@ node_modules/
 out/
 # The bundled app shell (FOLEVI_BUILD=shell next build, docs/LOCAL_MODE_PLAN.md §1).
 out-shell/
+# Its copy inside the Mac app (pnpm --filter @folevi/web build:shell).
+apps/desktop/web/
 dist/
 build/
 # Folevi for Mac keeps its signing entitlements and icon in build/ (electron-builder's resources folder).

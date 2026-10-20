@@ -13,6 +13,11 @@ import { SupportDialog } from "@/components/support/SupportDialog";
 import { InviteDialog } from "./InviteDialog";
 import { NewWorkspaceDialog, workspaceRoleLabel } from "./NewWorkspaceDialog";
 import { canPurchaseHere } from "@/lib/nativeApp";
+import { isShell } from "@/lib/shell";
+import { APP_URL } from "@/lib/env";
+
+// The console is part of the website; the bundled app shell has no /admin, so it opens there in the browser.
+const openAdminConsole = () => (isShell() ? void window.open(`${APP_URL}/admin`, "_blank", "noopener") : void (window.location.href = "/admin"));
 
 /** A team workspace's mark: its square logo, or its initial on a neutral tile. */
 export function WorkspaceLogo({ workspace, size = 24, className = "" }: { workspace: Pick<Workspace, "name" | "logoUrl">; size?: number; className?: string }) {
@@ -112,7 +117,7 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
     { label: "Devices", icon: <MonitorSmartphone size={14} />, onSelect: () => go("/settings/devices") },
     { label: "Help", icon: <HelpCircle size={14} />, onSelect: () => go("/help") },
     { label: "Contact support…", icon: <LifeBuoy size={14} />, onSelect: () => setContacting(true) },
-    ...(profile.platformRole ? [{ label: "Admin console", icon: <Shield size={14} />, onSelect: () => (window.location.href = "/admin") }] : []),
+    ...(profile.platformRole ? [{ label: "Admin console", icon: <Shield size={14} />, onSelect: openAdminConsole }] : []),
     "separator",
     { label: "Light", icon: <Sun size={14} />, checked: appearance === "light", onSelect: () => setAppearance("light") },
     { label: "Dark", icon: <Moon size={14} />, checked: appearance === "dark", onSelect: () => setAppearance("dark") },

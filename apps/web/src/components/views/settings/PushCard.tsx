@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { desktop } from "@/lib/desktop";
 import { nativeApp } from "@/lib/nativeApp";
+import { isShell } from "@/lib/shell";
 import { Card } from "./Card";
 import { NativePushCard } from "./NativePushCard";
 
@@ -48,7 +49,8 @@ function WebPushCard() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const ok = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+    // The bundled app shell registers no service worker, so `ready` would never settle there.
+    const ok = !isShell() && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
     setSupported(ok);
     if (!ok) return;
     setPermission(Notification.permission);

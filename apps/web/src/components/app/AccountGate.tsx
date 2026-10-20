@@ -127,7 +127,7 @@ export function AccountGate() {
   if (offlineStart && snapshot) {
     return (
       <AppStateProvider profile={snapshot.profile} offlineWorkspaces={snapshot.workspaces}>
-        {route.name === "share" ? <ShareSheet /> : <Shell />}
+        {route.name === "share" ? <ShareSheet /> : route.name === "quick-add" && snapshot.profile.onboardingStep === "done" ? <DesktopQuickAdd /> : <Shell />}
       </AppStateProvider>
     );
   }

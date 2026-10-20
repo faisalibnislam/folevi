@@ -1,5 +1,8 @@
 // Folevi for Mac: app.folevi.com in a window of its own, plus what a browser tab can't do: Quick Add from any
 // app (⌥Space), a menu bar icon, opening at login, Mac notifications and the Dock badge.
+// With the bundled interface switched on (FOLEVI_SHELL=1, or "bundledShell": true in settings.json), the
+// windows show the interface built into the app from app://folevi instead (protocol.ts, docs/LOCAL_MODE_PLAN.md
+// WP2). Off by default until the rest of local mode is ready.
 import {
   app,
   BrowserWindow,
@@ -9,7 +12,9 @@ import {
   Menu,
   nativeImage,
   nativeTheme,
+  net,
   Notification,
+  protocol,
   screen,
   session,
   shell,
@@ -21,11 +26,28 @@ import {
   type Session,
   type WebContents,
 } from "electron";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { appUrl, APP_URL, dragFileName, isAppUrl, isExternalSafe, isSignInReturn, isSignInStart, parseDeepLink, SCHEME, systemSettingsUrl } from "./urls";
+import {
+  appUrl,
+  APP_URL,
+  BUNDLED_URL,
+  dragFileName,
+  isAppUrl,
+  isSignInReturn,
+  isSignInStart,
+  linkTarget,
+  originOf,
+  parseDeepLink,
+  SCHEME,
+  SERVICE_URL,
+  systemSettingsUrl,
+  useBundledApp,
+} from "./urls";
 import { installUpdate, startUpdates, type UpdateState } from "./updates";
-import { cleanSettings, loadSettings, saveSettings, type DesktopSettings } from "./settings";
+import { cleanSettings, loadSettings, pageSettings, saveSettings, type DesktopSettings } from "./settings";
+import { APP_SCHEME, APP_SCHEME_PRIVILEGES, createAppHandler, HANDOFF_CSP, HANDOFF_PAGE, HANDOFF_PATH, isBlockedInLocalMode, localModeBlockPatterns, NO_LIBRARY_FILES, shellRoot } from "./protocol";
+import { handOver, handoffDue, indexedDbFolder, kitScript, parseHandoffState, type HandoffState, type KitCall } from "./handoff";
 import { restoreWindow, saveWindow } from "./windowState";
 import { imageBytes, oneAtATime, runHelper } from "./textRecognition";
 
@@ -35,6 +57,7 @@ const windowFile = () => join(app.getPath("userData"), "window.json");
 const asset = (name: string) => join(__dirname, "..", "assets", name);
 
 let settings: DesktopSettings;
+let folevi: Session | null = null;
 let mainWindow: BrowserWindow | null = null;
 let quickAdd: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -61,6 +84,18 @@ if (process.platform === "darwin") {
 
 // Test runs keep their own sign-in and settings, apart from the installed app's.
 if (process.env.FOLEVI_USER_DATA) app.setPath("userData", process.env.FOLEVI_USER_DATA);
+
+// ---------------------------------------------------------------- the bundled interface (off by default)
+
+settings = loadSettings(settingsFile());
+/** Whether the windows show the interface built into the app (app://folevi) rather than the website. */
+const bundled = process.env.FOLEVI_SHELL === "1" || (process.env.FOLEVI_SHELL !== "0" && settings.bundledShell);
+if (bundled) {
+  // Before `ready`: standard + secure give app://folevi a real origin (IndexedDB, Web Locks, crypto.subtle).
+  protocol.registerSchemesAsPrivileged([{ scheme: APP_SCHEME, privileges: APP_SCHEME_PRIVILEGES }]);
+  // FOLEVI_SHELL_DEV_URL: `next dev` with FOLEVI_BUILD=shell (development only).
+  useBundledApp(app.isPackaged ? null : process.env.FOLEVI_SHELL_DEV_URL);
+}
 
 // ---------------------------------------------------------------- one Folevi at a time
 
@@ -130,16 +165,23 @@ function setUpSession(): Session {
   return ses;
 }
 
-/** Links to anywhere but Folevi open in the browser; Folevi's own "open in a new tab" opens a new window. */
+/**
+ * Links to anywhere but Folevi open in the browser; Folevi's own "open in a new tab" opens a new window. With
+ * the bundled interface, a link to one of the app's pages on the website opens in the app too, and the
+ * website's other pages (sign-in, share links) open in the browser (urls.ts linkTarget).
+ */
 function guardNavigation(contents: WebContents) {
   contents.on("will-navigate", (event, url) => {
     if (isAppUrl(url) || url.startsWith("file:")) return;
     event.preventDefault();
-    if (isExternalSafe(url)) void shell.openExternal(url);
+    const target = linkTarget(url);
+    if (target.kind === "app") void contents.loadURL(appUrl(target.path)).catch(() => undefined);
+    else if (target.kind === "browser") void shell.openExternal(url);
   });
   contents.setWindowOpenHandler(({ url }) => {
-    if (isAppUrl(url)) createMainWindow(new URL(url).pathname + new URL(url).search);
-    else if (isExternalSafe(url)) void shell.openExternal(url);
+    const target = linkTarget(url);
+    if (target.kind === "app") createMainWindow(target.path);
+    else if (target.kind === "browser") void shell.openExternal(url);
     return { action: "deny" };
   });
 }
@@ -164,6 +206,110 @@ function load(win: BrowserWindow, url: string) {
     void win.loadFile(asset("offline.html"), { query: { url: failedUrl || url } });
   });
   void win.loadURL(url).catch(() => undefined);
+}
+
+// ---------------------------------------------------------------- the bundled interface
+
+/** Serves app://folevi on the session: the export built into the app, by mode (protocol.ts). */
+function installBundledInterface(ses: Session) {
+  const root = shellRoot({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appDir: join(__dirname, ".."), env: process.env });
+  if (!existsSync(join(root, "index.html"))) console.error(`Folevi: no bundled interface at ${root} (run \`pnpm shell\`).`);
+  const extraConnect = (process.env.FOLEVI_SHELL_CONNECT ?? "").split(/[\s,]+/).filter((o) => /^(https?|wss?):\/\/[^\s;']+$/.test(o));
+  ses.protocol.handle(
+    APP_SCHEME,
+    createAppHandler({
+      root,
+      mode: () => settings.mode,
+      csp: { serviceOrigin: SERVICE_URL.origin, extraConnect },
+      // The library layer (WP9) plugs in here.
+      files: NO_LIBRARY_FILES,
+    }),
+  );
+}
+
+let guarded = false;
+/**
+ * Local mode never contacts Folevi: besides the page's policy, the session cancels every request to Folevi's
+ * and Convex's hosts (and the website the app points at), from any window.
+ */
+function applyNetworkGuard() {
+  const ses = folevi;
+  if (!ses || !bundled) return;
+  const host = SERVICE_URL.hostname;
+  if (settings.mode === "local") {
+    ses.webRequest.onBeforeRequest({ urls: localModeBlockPatterns(host) }, (details, callback) => callback({ cancel: isBlockedInLocalMode(details.url, host) }));
+    guarded = true;
+  } else if (guarded) {
+    ses.webRequest.onBeforeRequest(null);
+    guarded = false;
+  }
+}
+
+const handoffFile = () => join(app.getPath("userData"), "handoff.json");
+
+/**
+ * The one-time handoff (handoff.ts): edits that wait in the website origin's IndexedDB move to app://folevi.
+ * The old origin is served locally for its one blank page while this runs (its other addresses go to the
+ * network as usual), so nothing of the website runs and nothing is fetched from it.
+ */
+async function runHandoff(ses: Session) {
+  if (APP_URL !== BUNDLED_URL) return; // the shell dev server: its origin isn't the app's
+  let previous: HandoffState | null = null;
+  try {
+    previous = parseHandoffState(readFileSync(handoffFile(), "utf8"));
+  } catch {
+    previous = null;
+  }
+  if (!handoffDue(previous)) return;
+  const record = (s: HandoffState) => {
+    try {
+      writeFileSync(handoffFile(), JSON.stringify(s, null, 2));
+    } catch {
+      /* Tried again next launch. */
+    }
+  };
+  const old = new URL(SERVICE_URL.origin);
+  const attempts = (previous?.attempts ?? 0) + 1;
+  // The website never stored anything in this session: nothing to hand over.
+  if (!existsSync(join(app.getPath("userData"), "Partitions", "folevi", "IndexedDB", indexedDbFolder(old)))) {
+    record({ state: "done", attempts, at: Date.now(), from: old.origin, report: { copied: [], skipped: [], storage: 0, idle: [] } });
+    return;
+  }
+  const scheme = old.protocol.replace(/:$/, "");
+  ses.protocol.handle(scheme, (request) => {
+    const url = new URL(request.url);
+    if (originOf(url) === originOf(old) && url.pathname === HANDOFF_PATH) {
+      return new Response(HANDOFF_PAGE, { headers: { "content-type": "text/html; charset=utf-8", "content-security-policy": HANDOFF_CSP, "cache-control": "no-store" } });
+    }
+    return net.fetch(request, { bypassCustomProtocolHandlers: true });
+  });
+  const windows: BrowserWindow[] = [];
+  const page = async (url: string): Promise<KitCall> => {
+    const win = new BrowserWindow({ show: false, width: 200, height: 200, webPreferences: { partition: PARTITION, contextIsolation: true, sandbox: true, nodeIntegration: false } });
+    windows.push(win);
+    await win.loadURL(url);
+    return (fn, ...args) => win.webContents.executeJavaScript(kitScript(fn, args));
+  };
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    const work = (async () => handOver(await page(`${old.origin}${HANDOFF_PATH}`), await page(appUrl(HANDOFF_PATH))))();
+    const report = await Promise.race([work, new Promise<never>((_r, reject) => (timer = setTimeout(() => reject(new Error("timed out")), 120_000)))]);
+    record({ state: "done", attempts, at: Date.now(), from: old.origin, report });
+    if (report.copied.length) console.log(`Folevi handoff: ${report.copied.map((c) => `${c.name} (${c.records} records)`).join(", ")}`);
+    // Someone who used Folevi for Mac with an account carries on in it: the first-launch choice ("Keep
+    // notes on my devices" or "Sign in") is for new installs.
+    if (settings.mode === "unset" && report.copied.length + report.skipped.length + report.idle.length > 0) {
+      settings = { ...settings, mode: "account" };
+      saveSettings(settingsFile(), settings);
+    }
+  } catch (e) {
+    record({ state: "retry", attempts, at: Date.now(), from: old.origin, error: String(e instanceof Error ? e.message : e).slice(0, 500) });
+    throw e;
+  } finally {
+    clearTimeout(timer);
+    for (const w of windows) if (!w.isDestroyed()) w.destroy();
+    ses.protocol.unhandle(scheme);
+  }
 }
 
 // ---------------------------------------------------------------- main windows
@@ -464,11 +610,29 @@ function listen() {
     status = next;
     updateTray();
   });
-  ipcMain.handle("desktop:get-settings", (e) => (fromFolevi(e) ? { settings, error: shortcutError } : null));
+  ipcMain.handle("desktop:get-settings", (e) => (fromFolevi(e) ? { settings: pageSettings(settings), error: shortcutError } : null));
   ipcMain.handle("desktop:set-settings", (e, patch: unknown) => {
     if (!fromFolevi(e)) return null;
     applySettings(cleanSettings(patch, settings));
-    return { settings, error: shortcutError };
+    return { settings: pageSettings(settings), error: shortcutError };
+  });
+  // foleviShell (preload.ts): read synchronously before the page's scripts, answered only for the bundled
+  // interface's own pages.
+  ipcMain.on("shell:bootstrap", (e, href: unknown) => {
+    const url = e.senderFrame?.url || (typeof href === "string" ? href : "");
+    e.returnValue = bundled && isAppUrl(url) ? { shell: true, mode: settings.mode, version: app.getVersion() } : { shell: false };
+  });
+  ipcMain.handle("shell:set-mode", (e, mode: unknown) => {
+    if (!bundled || !fromFolevi(e) || (mode !== "local" && mode !== "account")) return false;
+    if (settings.mode === mode) return true;
+    applySettings({ ...settings, mode });
+    applyNetworkGuard();
+    // The page's policy and the network rules follow the mode: every window opens again in it, once the page
+    // has its answer.
+    setTimeout(() => {
+      for (const win of BrowserWindow.getAllWindows()) if (isAppUrl(win.webContents.getURL())) win.webContents.reload();
+    }, 50);
+    return true;
   });
   ipcMain.on("desktop:window-buttons", (e, spot: unknown) => {
     const win = BrowserWindow.fromWebContents(e.sender);
@@ -555,13 +719,18 @@ function listen() {
 
 app.setAboutPanelOptions({ applicationName: "Folevi", applicationVersion: app.getVersion(), copyright: "© 2026 Folevi", website: "https://folevi.com" });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Earlier drags' files: nothing needs them once the app has restarted.
   rmSync(join(app.getPath("temp"), "Folevi drag"), { recursive: true, force: true });
   // The installed app answers folevi:// links (a development run would register the Electron binary).
   if (app.isPackaged) app.setAsDefaultProtocolClient(SCHEME);
-  settings = loadSettings(settingsFile());
-  setUpSession();
+  folevi = setUpSession();
+  if (bundled) {
+    installBundledInterface(folevi);
+    // Before any window shows the new origin: hand over edits waiting on the website's origin (once).
+    await runHandoff(folevi).catch((e) => console.error("Folevi handoff:", e));
+    applyNetworkGuard();
+  }
   listen();
   buildMenu();
   shortcutError = registerShortcut();
@@ -583,7 +752,7 @@ app.whenReady().then(() => {
   nativeTheme.on("updated", () => {
     for (const win of BrowserWindow.getAllWindows()) win.setBackgroundColor(background());
   });
-  console.log(`Folevi is showing ${APP_URL.origin}`);
+  console.log(`Folevi is showing ${originOf(APP_URL) ?? APP_URL.href}${bundled ? ` (bundled interface, ${settings.mode})` : ""}`);
 });
 
 // The Dock icon reopens the main window.

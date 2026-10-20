@@ -382,6 +382,23 @@ These fill gaps in §3.1 to §3.9; nothing above changes meaning. `packages/loca
 - **Actions** get `ctx.mutate(fn)` (a mutation of their own, as the server's actions use internal functions): `files.finalize` and `exports.exportScope` read and write through it.
 - **Export:** the server's ZIP layout, built with fflate and saved through `shell().files.save` (on the Mac a save dialog, `apps/desktop/src/saveFile.ts`, file name only suggested, at most 600 MB). The answer's `url` is then empty; cancelling is an error with code `cancelled`, which Settings ignores. Without a shell the url is an object URL of the ZIP.
 
+### 3.14 The persistent store (`lib/local/store`, 2026-10-20)
+
+`LibraryStore` implements `LocalStore` over the library. `configureLocalLibrary` opens it whenever a shell bridge is there (`shell().library`); without one, local mode stays in memory. `createTestLocalClient` (the parity harness) runs it over an in-memory folder.
+
+- **Where rows live** (`store/policy.ts`): documents, blocks, notices, files, fileTexts and collections (and a row note's `row`) in the note's file; folders, tags, meta and the whole rows of `studyReviews` and `calendars` in `index/library.findex` (one register per row, last writer wins; §3.12's "in the note's file" for schedules is the index instead, since a note file has no slot for them); versions in `history/<noteId>/`; `recents`, meta counters and orderings (`seq`, `*Ordinal`, `starOrder`, `lastDocumentRank`), `op:*`, `upload:*`, `calendarEvents:*` and `device:*` on this device only. A table not listed stays on the device and development builds say so once.
+- **This device's copy:** IndexedDB `folevi-local-<libraryId>` with three stores: `rows` (every row the handlers read, so a launch shows everything before the folder is read), `notes` (the parsed note files) and `state` (the index, the clock, what was last read from each file, what still has to be written, the search index's storage under `device:searchIndex`).
+- **A commit** (`store/project.ts`) compares each row with the row it replaces and stamps only what changed, as note and index edits; the journal record of each (a delta) is appended and IndexedDB written before the commit returns. Notes are written after 1 s of quiet, at most 5 s after their first unsaved change, on hide and on close; attachments at once (so `fileUrl` works right after an upload).
+- **From disk** (`store/materialize.ts`): changed note files, conflict copies and provider versions are merged into this device's notes; the rows follow in a mutation of the backend's own (`StoreHost.ingest`, so triggers run with `origin: "disk"` and every query that read the rows runs again). Revisions go up wherever content changed, so the editor's base revisions stay meaningful. A merge's losses go to `history/` before any note without them is written, with a notice and a `versions` row (`conflict: { target, device }`, `contentSeq` -1).
+- **An edit made without seeing another device's change (§2.3):** the backend passes sync.push's base revisions (`CommitHints.bases`); when a block's (or the title's) content arrived from another device at a later revision than the edit was based on, the edit is applied as the newer one, the overwritten content is written as a conflict version, and the note gets a "changed" notice.
+- **Anti-entropy:** a note is written again whenever the file lacks something this device has (a provider dropped an update, or the file vanished). A file that can't be read, parsed, checked or decrypted is listed in Library health as unreadable and never written over.
+- **Cold start:** other devices' catalogs give a row (`LocalDocument.pending: "downloading" | "waiting"`, no blocks) for every note whose file hasn't arrived; placeholders are asked for with `startDownload`.
+- **Locked:** an encrypted library that isn't unlocked shows what this device kept, writes nothing to the folder, and refuses to set up a new profile in it (`library_locked`) until `library.unlock(passphrase)`.
+- **Library settings** (`store.library`, `client.local.library` in the hosting window): `status()` (state, last sync, unsaved count, health: unreadable, downloading, waiting; devices with their last sync) with `subscribe`, `unlock`, `syncNow`, `flush`.
+- **Maintenance:** once a day, tombstones every device has seen past (90 days) are compacted and stubs past 180 days removed. Version thinning and attachment garbage collection are not done yet.
+- **Reads across notes:** `blocksOfTypes(db, types)` (store.ts) gives the live blocks of some types in every note from an index (key `blocks:any`), for tasks and study.
+- **Format:** note files gained a `dailyDate` register.
+
 ---
 
 ## 4. Native pieces and the bridge

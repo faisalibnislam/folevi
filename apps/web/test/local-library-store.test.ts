@@ -388,4 +388,24 @@ describe("the persistent local store", () => {
     await quit(a);
     await quit(b);
   });
+
+  test("an uploaded file's bytes land at files/<aa>/<sha256> at once, and come back on another device", async () => {
+    const fs = new MemoryFs();
+    const a = await launch("macbookA", fs);
+    await setUp(a);
+    const id = await newNote(a, "With a file", []);
+    const bytes = new TextEncoder().encode("a small attachment");
+    const { fileId } = await a.client.local.putFile(new Blob([bytes], { type: "text/plain" }), { name: "a.txt", mimeType: "text/plain", kind: "file", documentId: id });
+    await a.store.idle();
+    const sha = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((x) => x.toString(16).padStart(2, "0")).join("");
+    expect([...(fs.peek(`files/${sha.slice(0, 2)}/${sha}`) ?? [])]).toEqual([...bytes]);
+    await a.store.library.flush();
+    const b = await launch("macbookB", fs);
+    await b.store.library.syncNow();
+    const file = await b.store.get("files", fileId);
+    expect(file).toMatchObject({ documentId: id, sha256: sha, name: "a.txt", mimeType: "text/plain" });
+    expect([...new Uint8Array(await file!.blob.arrayBuffer())]).toEqual([...bytes]);
+    await quit(a);
+    await quit(b);
+  });
 });

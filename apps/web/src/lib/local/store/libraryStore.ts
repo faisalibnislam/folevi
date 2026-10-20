@@ -511,6 +511,9 @@ export class LibraryStore implements LocalStore {
     batch.state = this.workState();
     await Promise.all([journal, this.persist(batch)]);
     this.scheduleFlush();
+    // An attachment is shown by its library URL (shell.library.fileUrl) as soon as it's uploaded: its bytes go
+    // to files/<aa>/<sha256> now, not with the next note flush.
+    if (p.attachments.size) void this.request({});
     // Notices and kept versions from edits that overwrote another device's: their rows follow at once.
     if (p.conflicts.length) {
       for (const k of p.conflicts) this.toMaterialize.add(k.docId);

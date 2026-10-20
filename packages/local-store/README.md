@@ -19,7 +19,7 @@ devices/<deviceId>.json        one writer: name, platform, lastSeen, heads
 
 Each field carries the stamp of its last write. Stamps are hybrid logical clocks, `<ms base36, 9>-<counter base36, 4>-<deviceId>`, so string order is time order with the device id breaking ties. The local clock never runs more than 5 minutes past wall time, whatever a remote stamp says.
 
-- `doc`: registers `{v, c, cv}` for the title, icon, folder, parent, rank, style, cover, starred, archive and trash; `tags` as `{add, rm}`.
+- `doc`: registers `{v, c, cv}` for the title, icon, folder, parent, rank, style, cover, starred, archive, trash and a daily note's day; `tags` as `{add, rm}`.
 - `blocks`: per block, the content group (`type`, `schemaVersion`, `text`, `props`, `deleted`, `by`) with its version vector `cv`, then `parentId`/`rank` and `collapsed`, each with its own stamp in `c`.
 - `files`, `fileText`, `versionNames`, `collections`, `row`: last writer wins per key.
 - `notices`: "Changed on another device" records; `seen`: per device, the newest stamp the file holds; `compacted`: vectors of tombstones removed by compaction.

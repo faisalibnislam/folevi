@@ -8,3 +8,5 @@ import "./users";
 import "./settings";
 import "./themes";
 import "./workspaces";
+import "./collections";
+import "./charts";

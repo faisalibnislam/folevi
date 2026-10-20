@@ -146,8 +146,6 @@ export const LOCAL_PLANNED: Readonly<Record<string, "L1" | "L2" | "L3" | "L4">> 
   "exports:exportScope": "L1",
   "search:*": "L1",
   "tasks:*": "L2",
-  "collections:*": "L2",
-  "charts:collections": "L2",
   "study:*": "L2",
   "externalCalendars:*": "L3",
   "bookmarks:preview": "L3",

@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { collectionFormulaLoop, isValidId, rankBetween, renameInCollectionFormula, ulid } from "@folevi/editor-schema";
+import { COLLECTION_LIMITS, COLLECTION_VIEW_NAMES, clampCollectionViewConfig, collectionFormulaLoop, isValidId, normalizeCollectionOptions, rankBetween, renameInCollectionFormula, ulid } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, PageReader, requireDocument, requireProfile, type Access } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { addView, checkedFormula, createCollection, formulaInputs, normalizeNumberFormat, normalizeValue } from "./lib/collections";
@@ -13,8 +13,7 @@ import { vCollectionNumberFormat, vCollectionPropertyType, vCollectionSummary, v
 import { SyncEngine } from "./lib/syncEngine";
 import { queueIndex } from "./lib/ai/indexing";
 
-const OPTION_COLORS = ["accent", "moss", "marigold", "plum", "coral", "muted"];
-const VIEW_NAMES: Record<Doc<"collectionViews">["type"], string> = { table: "Table", board: "Board", gallery: "Gallery", calendar: "Calendar" };
+const VIEW_NAMES: Record<Doc<"collectionViews">["type"], string> = COLLECTION_VIEW_NAMES;
 
 /** A property as the client gets it: a formula's text (null for other types) and its number format. */
 function propertyOut(p: Doc<"collectionProperties">) {
@@ -259,7 +258,7 @@ export const addProperty = mutation({
       .query("collectionProperties")
       .withIndex("by_collection", (q) => q.eq("collectionId", collection._id))
       .collect();
-    if (existing.filter((p) => !p.deletedAt).length >= 40) fail("limit_exceeded", "A collection can have up to 40 properties.");
+    if (existing.filter((p) => !p.deletedAt).length >= COLLECTION_LIMITS.properties) fail("limit_exceeded", "A collection can have up to 40 properties.");
     const last = existing.map((p) => p.rank).sort().pop() ?? null;
     const publicId = args.id ?? ulid();
     const propId = await ctx.db.insert("collectionProperties", {
@@ -331,11 +330,7 @@ export const updateProperty = mutation({
     }
     if (args.options) {
       if (prop.type !== "select" && prop.type !== "multiSelect") fail("invalid_argument", "Only select properties have options.");
-      patch.options = args.options.slice(0, 100).map((o, i) => ({
-        id: o.id ?? ulid(),
-        name: o.name.trim().slice(0, 60) || "Option",
-        color: o.color && OPTION_COLORS.includes(o.color) ? o.color : OPTION_COLORS[i % OPTION_COLORS.length]!,
-      }));
+      patch.options = normalizeCollectionOptions(args.options);
     }
     await ctx.db.patch(prop._id, patch);
     return null;
@@ -415,7 +410,7 @@ export const addRow = mutation({
     )
       .filter((r) => !r.deletedAt)
       .sort((a, b) => (a.rank < b.rank ? -1 : 1));
-    if (rows.length >= 2000) fail("limit_exceeded", "A collection can have up to 2,000 rows.");
+    if (rows.length >= COLLECTION_LIMITS.rows) fail("limit_exceeded", "A collection can have up to 2,000 rows.");
     let rank: string;
     if (args.afterRowId) {
       const idx = rows.findIndex((r) => r.publicId === args.afterRowId);
@@ -646,7 +641,7 @@ export const addViewToCollection = mutation({
       .query("collectionViews")
       .withIndex("by_collection", (q) => q.eq("collectionId", collection._id))
       .collect();
-    if (views.length >= 20) fail("limit_exceeded", "Up to 20 views per collection.");
+    if (views.length >= COLLECTION_LIMITS.views) fail("limit_exceeded", "Up to 20 views per collection.");
     const groupBy = args.type === "board" ? props.find((p) => p.type === "select")?.publicId : undefined;
     if (args.type === "board" && !groupBy) fail("invalid_argument", "Add a single-select property to group a board by.");
     const dateBy = args.type === "calendar" ? props.find((p) => p.type === "date")?.publicId : undefined;
@@ -685,9 +680,7 @@ export const updateView = mutation({
         const prop = await propertyFor(ctx, collection, args.config.dateBy);
         if (prop.type !== "date") fail("invalid_argument", "Calendars place rows by a date property.");
       }
-      const summaries = args.config.summaries ? [...new Map(args.config.summaries.map((x) => [x.propertyId, x])).values()].slice(0, 41) : undefined;
-      patch.config = { ...args.config, filters: args.config.filters.slice(0, 20), sorts: args.config.sorts.slice(0, 5), summaries };
-      if (!summaries) delete patch.config.summaries;
+      patch.config = clampCollectionViewConfig(args.config);
     }
     await ctx.db.patch(view._id, patch);
     return null;

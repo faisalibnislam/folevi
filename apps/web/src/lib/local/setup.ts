@@ -19,6 +19,7 @@ import type { LocalSetup } from "./client";
 import type { LocalMutationCtx } from "./registry";
 import type { LocalFolder, LocalTag } from "./store";
 import { PROFILE_KEY, getProfile, insertDocument, type LocalProfile } from "./functions/shared";
+import { seedReadingShelf } from "./functions/collections";
 import { nextFolderOrdinal, nextTagOrdinal } from "./functions/organization";
 
 function isValidTimeZone(tz: string): boolean {
@@ -87,8 +88,7 @@ export async function setupLibrary(ctx: LocalMutationCtx, input: LocalSetup): Pr
 
 /**
  * The notes a new library starts with: convex/seed.ts seedPersonal, note for note, so both modes start the
- * same (and the parity harness compares them). The Reading Shelf's collection (its properties, views and
- * values) comes with the collections port (L2); its book notes are made already.
+ * same (and the parity harness compares them).
  */
 async function seedLibrary(ctx: LocalMutationCtx, today: string): Promise<void> {
   const now = ctx.now();
@@ -161,15 +161,8 @@ async function seedLibrary(ctx: LocalMutationCtx, today: string): Promise<void> 
     blocks: specsToWireBlocks([{ type: "paragraph", md: READING_SHELF.intro }]),
     tagIds: [reading.id],
   });
-  for (const row of READING_SHELF.rows) {
-    await insertDocument(ctx, {
-      title: row.title,
-      icon: "📖",
-      kind: "collectionRow",
-      parentDocumentId: shelf.id,
-      blocks: specsToWireBlocks([{ type: "paragraph", md: `Notes on _${row.title}_ by ${row.author}.` }]),
-    });
-  }
+  // Its collection: properties, views, the books as rows, and the block that shows it.
+  await seedReadingShelf(ctx, shelf, today);
   await insertDocument(ctx, {
     title: "Weekly Reset",
     icon: "🔁",

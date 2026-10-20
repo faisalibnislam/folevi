@@ -28,6 +28,7 @@ export * from "./chart";
 export * from "./wireframe";
 export * from "./tableFormulas";
 export * from "./collectionFormulas";
+export * from "./collectionValues";
 export * from "./wireframeLayout";
 export * from "./emoji";
 export * as sync from "./sync";

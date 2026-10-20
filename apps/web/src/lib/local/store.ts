@@ -41,6 +41,61 @@ export interface LocalDocument {
   /** One person per library, so a star and the tags live on the note itself. */
   starred: boolean;
   tagIds: string[];
+  /** On a collection row's note (kind "collectionRow"): its row (the note file's `row`). */
+  row?: LocalCollectionRow | null;
+}
+
+/** A collection row: the row's own id, its place and its values, kept on the row's note. */
+export interface LocalCollectionRow {
+  id: string;
+  collectionId: string;
+  rank: string;
+  /** Values by property id (a cleared value has no key; a formula's values are never stored). */
+  values: Record<string, unknown>;
+  createdAt: number;
+  updatedAt: number;
+  deletedAt: number | null;
+}
+
+export interface LocalCollectionProperty {
+  id: string;
+  name: string;
+  type: Doc<"collectionProperties">["type"];
+  options: Doc<"collectionProperties">["options"];
+  formula: string | null;
+  numberFormat: NonNullable<Doc<"collectionProperties">["numberFormat"]> | null;
+  rank: string;
+  createdAt: number;
+  deletedAt: number | null;
+}
+
+export interface LocalCollectionView {
+  id: string;
+  name: string;
+  type: Doc<"collectionViews">["type"];
+  config: Doc<"collectionViews">["config"];
+  rank: string;
+  createdAt: number;
+  deletedAt: number | null;
+}
+
+/**
+ * A collection's definition (docs/LOCAL_MODE_PLAN.md §3.3): kept in its host note (`documentId`, the note
+ * file's `collections[id]`), with its properties and views by id. Deleted ones stay, marked, so a delete
+ * merges like any other change. Its rows are notes (`LocalDocument.row`).
+ */
+export interface LocalCollection {
+  id: string;
+  documentId: string;
+  name: string;
+  createdAt: number;
+  /** The library's count of collections made when this one was (orders ties in charts.collections). */
+  ordinal: number;
+  updatedAt: number;
+  deletedAt: number | null;
+  seq: number;
+  properties: Record<string, LocalCollectionProperty>;
+  views: Record<string, LocalCollectionView>;
 }
 
 /** A block of a note, tombstones included (`deletedAt`). Stored under its note (`partition` = note id). */
@@ -97,6 +152,8 @@ export interface LocalTables {
   folders: LocalFolder;
   tags: LocalTag;
   files: LocalFile;
+  /** Collection definitions, by collection id (each lives in its host note). */
+  collections: LocalCollection;
   /** Small values by key: "profile", "seq", "op:<opId>" (sync replays). */
   meta: unknown;
 }
@@ -126,6 +183,7 @@ export interface LocalStore {
 //   blocks     get or list of a note → blocks:<noteId>
 //   folders    folders               tags   tags
 //   files      get → file:<id>       list → files
+//   collections get → collection:<id> list → collections
 //   meta       get → meta:<key>      list → meta
 
 export function readKey(table: LocalTable, id?: string, partition?: string): string {
@@ -139,6 +197,8 @@ export function readKey(table: LocalTable, id?: string, partition?: string): str
       return table;
     case "files":
       return id === undefined ? "files" : `file:${id}`;
+    case "collections":
+      return id === undefined ? "collections" : `collection:${id}`;
     case "meta":
       return id === undefined ? "meta" : `meta:${id}`;
   }
@@ -155,6 +215,8 @@ export function writeKeys(w: Pick<StoreWrite, "table" | "id" | "partition">): st
       return [w.table];
     case "files":
       return [`file:${w.id}`, "files"];
+    case "collections":
+      return [`collection:${w.id}`, "collections"];
     case "meta":
       return [`meta:${w.id}`, "meta"];
   }

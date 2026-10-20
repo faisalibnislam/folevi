@@ -1,64 +1,33 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { TABLE_CURRENCIES, collectionFormulaProblem, rankSequence, ulid, type FormulaPropertyInput } from "@folevi/editor-schema";
+import {
+  cleanCollectionFormula,
+  collectionFormulaProblem,
+  normalizeCollectionNumberFormat,
+  normalizeCollectionValue,
+  rankSequence,
+  ulid,
+  type FormulaPropertyInput,
+} from "@folevi/editor-schema";
 import { fail } from "./errors";
 import { insertScoped, scopeOfRow, type Scope } from "./scope";
 import { nextSeq } from "./seq";
 
 export type PropertyType = Doc<"collectionProperties">["type"];
 
-/** Validates and normalizes a collection cell value for its property type. */
+/** Validates and normalizes a collection cell value for its property type (editor-schema normalizeCollectionValue). */
 export function normalizeValue(
   property: Pick<Doc<"collectionProperties">, "type" | "options">,
   value: unknown,
 ): unknown {
-  if (value === null || value === undefined || value === "") return null;
-  switch (property.type) {
-    case "text":
-      if (typeof value !== "string") fail("invalid_argument", "Expected text.");
-      return value.slice(0, 2000);
-    case "number": {
-      const n = typeof value === "number" ? value : Number(value);
-      if (!Number.isFinite(n)) fail("invalid_argument", "Expected a number.");
-      return n;
-    }
-    case "checkbox":
-      if (typeof value !== "boolean") fail("invalid_argument", "Expected true or false.");
-      return value;
-    case "date":
-      if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) fail("invalid_argument", "Expected a date (YYYY-MM-DD).");
-      return value;
-    case "select":
-      if (typeof value !== "string" || !property.options.some((o) => o.id === value)) fail("invalid_argument", "Unknown option.");
-      return value;
-    case "multiSelect": {
-      if (!Array.isArray(value)) fail("invalid_argument", "Expected a list of options.");
-      const ids = [...new Set(value.filter((x): x is string => typeof x === "string"))];
-      if (ids.some((id) => !property.options.some((o) => o.id === id))) fail("invalid_argument", "Unknown option.");
-      return ids;
-    }
-    case "url":
-      if (typeof value !== "string" || !/^https?:\/\/\S+$/i.test(value) || value.length > 2048) fail("invalid_argument", "Expected a web address.");
-      return value;
-    case "person":
-      if (typeof value !== "string") fail("invalid_argument", "Expected a person.");
-      return value;
-    case "relation": {
-      if (!Array.isArray(value)) fail("invalid_argument", "Expected a list of documents.");
-      return [...new Set(value.filter((x): x is string => typeof x === "string"))].slice(0, 50);
-    }
-    case "formula":
-      // Worked out from the row wherever it's shown; never stored.
-      fail("invalid_argument", "A formula's values come from its formula and can't be set.");
-  }
+  const out = normalizeCollectionValue(property, value);
+  if ("problem" in out) fail("invalid_argument", out.problem);
+  return out.value;
 }
 
 /** A number format as stored: a known style, a known currency, 0 to 6 decimals. */
 export function normalizeNumberFormat(f: { format: "number" | "currency" | "percent"; currency?: string; decimals?: number }): NonNullable<Doc<"collectionProperties">["numberFormat"]> {
-  const out: NonNullable<Doc<"collectionProperties">["numberFormat"]> = { format: f.format };
-  if (f.format === "currency") out.currency = f.currency && (TABLE_CURRENCIES as readonly string[]).includes(f.currency) ? f.currency : "USD";
-  if (typeof f.decimals === "number" && Number.isFinite(f.decimals)) out.decimals = Math.min(6, Math.max(0, Math.round(f.decimals)));
-  return out;
+  return normalizeCollectionNumberFormat(f);
 }
 
 /** A collection's live properties, in order, as the formula checks read them. */
@@ -71,7 +40,7 @@ export function formulaInputs(props: Doc<"collectionProperties">[]): FormulaProp
 
 /** A formula as stored (trimmed), refused with the reason when it's too long or would depend on itself. */
 export function checkedFormula(props: Doc<"collectionProperties">[], propertyPublicId: string, formula: string): string {
-  const text = formula.replace(/[\u0000-\u0008\u000B-\u001F\u007F]+/g, " ").trim();
+  const text = cleanCollectionFormula(formula);
   const problem = collectionFormulaProblem(formulaInputs(props), propertyPublicId, text);
   if (problem) fail("invalid_argument", problem);
   return text;

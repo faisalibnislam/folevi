@@ -356,6 +356,14 @@ These fill gaps in §3.1 to §3.9; nothing above changes meaning. `packages/loca
 - **HMAC names** are HMAC-SHA256(HKDF info `"names"`, `"note:" + id` or `"file:" + sha256`), first 130 bits as 26 lowercase Crockford characters: the same shape as a ULID, so conflict-copy parsing is unchanged. History folders use the note's HMAC name; version file names inside stay plain.
 - **`LocalFs`:** reading a missing file rejects with code `not_found`; a file that can't be decrypted rejects with `unreadable`; `ifMatch: null` means create only. Version files a provider duplicated (`<name> 2.fver`) don't parse as version names and are ignored.
 
+### 3.11 Collections in the local store (WP7d, 2026-10-20)
+
+- **Definition:** the store's `collections` table, one row per collection (`LocalCollection`: name, `documentId` of the host note, `properties` and `views` by id). The persistent store writes it into the host note's file as `collections[<id>]`. Deleted properties and views stay, with `deletedAt`, so a delete merges like any other register; the server deletes views outright, and local mode hides deleted ones the same way.
+- **Rows:** each row is a note of kind `collectionRow` under the host, with `collectionId` and `row` (`LocalCollectionRow`: the row's own id, which is not the note's, `rank`, `values` by property id, `deletedAt`). A cleared value has no key; formula results are never stored.
+- **Dependency keys:** `collection:<id>` and `collections`. `collections.get` also reads the catalog, since its rows are notes.
+- **Shared checks:** cell values, number formats, formula text, select options and view configs go through `packages/editor-schema/src/collectionValues.ts` on both backends; formula length and loops through `collectionFormulas.ts`.
+- **Copies:** `copyCollectionsInto(ctx, documentId)` in `lib/local/functions/collections.ts` gives a copied note its own collections (properties and views, no rows), as the server's does for Duplicate, a note made from one of your templates, and Copy version.
+
 ---
 
 ## 4. Native pieces and the bridge

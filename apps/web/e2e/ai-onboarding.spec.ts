@@ -64,7 +64,7 @@ test("with AI off there's no card, and the AI page and the note's panel say how 
   test.setTimeout(150_000);
   const { page, context } = await newPerson(browser, "Off Intro");
   await page.goto(`${APP}/settings/ai`);
-  await page.getByRole("switch", { name: "Foli AI" }).click();
+  await page.getByRole("switch", { name: "Foli AI", exact: true }).click();
   await expect(page.getByText("Foli AI turned off")).toBeVisible();
 
   await page.goto(`${APP}/ai`);
@@ -74,7 +74,7 @@ test("with AI off there's no card, and the AI page and the note's panel say how 
 
   // On again: Foli AI introduces itself.
   await page.goto(`${APP}/settings/ai`);
-  await page.getByRole("switch", { name: "Foli AI" }).click();
+  await page.getByRole("switch", { name: "Foli AI", exact: true }).click();
   await expect(page.getByText("Foli AI turned on")).toBeVisible();
   await page.goto(`${APP}/ai`);
   await expect(page.getByRole("heading", { name: "Meet Foli AI", level: 2 })).toBeVisible({ timeout: 30_000 });

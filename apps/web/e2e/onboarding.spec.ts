@@ -63,7 +63,7 @@ test("onboarding: choices are saved, a reload resumes, and the Welcome page open
 
   // 5. AI Assistant: on by default, switched off here.
   await expect(heading(page, "Meet Foli AI")).toBeFocused();
-  const ai = page.getByRole("switch", { name: "Foli AI" });
+  const ai = page.getByRole("switch", { name: "Foli AI", exact: true });
   await expect(ai).toHaveAttribute("aria-checked", "true");
   await expect(page.getByText(/Included in your 7-day Pro AI trial, with 100 AI credits/)).toBeVisible();
   await ai.click();

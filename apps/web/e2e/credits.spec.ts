@@ -73,7 +73,7 @@ test("Core hides every AI entry point in Personal, and the AI setting says it is
 
   // Settings → Account: the switch is off and can't be turned on, with the reason.
   await page.goto(`${APP}/settings/account`);
-  const toggle = page.getByRole("switch", { name: "Foli AI" });
+  const toggle = page.getByRole("switch", { name: "Foli AI", exact: true });
   await expect(toggle).toBeDisabled({ timeout: 30_000 });
   await expect(toggle).toHaveAttribute("aria-checked", "false");
   await expect(page.getByText("Not included in Core.")).toBeVisible();

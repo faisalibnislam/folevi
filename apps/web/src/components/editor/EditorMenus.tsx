@@ -277,7 +277,15 @@ function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }
   // The pointer only takes over when it actually moves (not when the list scrolls under a resting mouse).
   const lastPointer = useRef<{ x: number; y: number } | null>(null);
   useEffect(() => {
-    document.getElementById(`${listId}-${active}`)?.scrollIntoView({ block: "nearest" });
+    // Scroll the list only: scrollIntoView would also scroll the note under it (the menu is in the editor's
+    // DOM), and a tall list placed below the line before it's measured would push the page up.
+    const item = document.getElementById(`${listId}-${active}`);
+    const list = item?.closest<HTMLElement>('[role="listbox"]');
+    if (item && list) {
+      const top = item.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
+      if (top < list.scrollTop) list.scrollTop = top;
+      else if (top + item.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = top + item.offsetHeight - list.clientHeight;
+    }
   }, [active, listId]);
   if (!items.length) return <p className="px-3 py-2 text-sm text-muted">{emptyLabel}</p>;
   return (

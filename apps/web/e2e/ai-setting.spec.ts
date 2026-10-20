@@ -21,7 +21,7 @@ test("turning the AI Assistant off hides every AI entry point; turning it on bri
   await expect(launcher).toBeFocused();
 
   await page.goto("/settings/account");
-  const toggle = page.getByRole("switch", { name: "Foli AI" });
+  const toggle = page.getByRole("switch", { name: "Foli AI", exact: true });
   await expect(toggle).toHaveAttribute("aria-checked", "true");
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-checked", "false");
@@ -51,7 +51,7 @@ test("turning the AI Assistant off hides every AI entry point; turning it on bri
 
   // Back on.
   await page.goto("/settings/account");
-  await page.getByRole("switch", { name: "Foli AI" }).click();
+  await page.getByRole("switch", { name: "Foli AI", exact: true }).click();
   await expect(launcher).toBeVisible();
   await page.goto("/documents");
   await expect(page.getByRole("button", { name: "Catch me up" })).toBeVisible();

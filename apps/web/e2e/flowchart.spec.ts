@@ -115,6 +115,10 @@ test.describe("Flowchart", () => {
     await page.keyboard.press("Enter");
     await expect(canvas.getByRole("button", { name: "Process: Draft" })).toBeVisible();
     await canvas.getByRole("button", { name: "Process: Draft" }).dblclick();
+    // Double-clicking a shape edits that shape; it never adds a new one on top of it.
+    await expect(canvas.locator(".fc-text-input")).toHaveValue("Draft");
+    await expect(canvas.locator("[data-fc-node]")).toHaveCount(1);
+    await page.keyboard.press("End");
     await page.keyboard.type(" two");
     await page.keyboard.press("ControlOrMeta+z");
     await expect(canvas).toBeVisible();

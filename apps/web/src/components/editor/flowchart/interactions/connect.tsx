@@ -14,6 +14,7 @@ import { useState } from "react";
 import { OPPOSITE, flowId, newEdge, portPoint, type FlowEdge, type FlowNode, type FlowShape, type FlowSide } from "../schema";
 import { addNode, connect } from "../ops";
 import { SIDES, connectionPoint, endNode, newConnector, patchEdges, setEnd, snapEnd, type End, type EndTarget } from "../connectors";
+import { haptic } from "@/lib/nativeApp";
 import type { FlowController, Interaction } from "../controller/types";
 
 /** Fingers get bigger targets (44 pt). */
@@ -21,6 +22,16 @@ export const isCoarse = () => typeof window !== "undefined" && !!window.matchMed
 
 /** A press must travel this far (screen pixels) before it counts as a drag rather than a click. */
 const DRAG = 4;
+
+/** A light tap on the iPhone and iPad as a dragged end snaps onto a shape, side or spot. */
+function snapFeel(coarse: boolean) {
+  let last = "";
+  return (t: EndTarget) => {
+    const key = t.kind === "node" ? `${t.node}:${t.side ?? ""}:${t.at ?? ""}` : "";
+    if (coarse && key && key !== last) haptic("light");
+    last = key;
+  };
+}
 
 export function useConnect(ctrl: FlowController, { hover }: { hover: string | null }) {
   const { docRef, setLive, commit, setSel, setEditing, toWorld, byId, editing, view, viewRef, isDragging } = ctrl;
@@ -56,6 +67,7 @@ export function useConnect(ctrl: FlowController, { hover }: { hover: string | nu
     const sx = e.clientX;
     const sy = e.clientY;
     const id = flowId("e");
+    const feel = snapFeel(coarse);
     let moved = false;
     const aim = (m: { clientX: number; clientY: number; altKey: boolean }) => {
       const p = toWorld(m.clientX, m.clientY);
@@ -71,6 +83,7 @@ export function useConnect(ctrl: FlowController, { hover }: { hover: string | nu
         if (!edge) return;
         setLive({ ...before, edges: [...before.edges, edge] });
         setTarget(t);
+        feel(t);
       },
       end: (up: React.PointerEvent) => {
         setTarget(null);
@@ -106,11 +119,13 @@ export function useConnect(ctrl: FlowController, { hover }: { hover: string | nu
     const sx = e.clientX;
     const sy = e.clientY;
     const fixed = endNode(orig, end === "from" ? "to" : "from") || undefined;
+    const feel = snapFeel(coarse);
     let moved = false;
     const place = (m: { clientX: number; clientY: number; altKey: boolean }): FlowEdge | null => {
       const p = toWorld(m.clientX, m.clientY);
       const t: EndTarget = m.altKey ? { kind: "free", point: { x: Math.round(p.x), y: Math.round(p.y) } } : snapEnd(before, p, viewRef.current.k, { exclude: fixed, coarse });
       setTarget(t);
+      feel(t);
       return setEnd(orig, end, t);
     };
     return {

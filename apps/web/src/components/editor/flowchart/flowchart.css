@@ -209,6 +209,8 @@
   :root:not([data-theme="light"]) .fc-color-dot[data-color="pink"] { --dot: #f07aa5; }
   :root:not([data-theme="light"]) .fc-color-dot[data-color="purple"] { --dot: #a78bfa; }
 }
+/* The connector bar never runs past the canvas (it scrolls sideways if it must). */
+.fc-bar-edge { max-width: calc(100% - 16px); overflow-x: auto; scrollbar-width: none; }
 /* Fingers: the connector bar's buttons are 44 pt. */
 @media (pointer: coarse) {
   .fc-bar-edge .fc-btn { min-width: 44px; height: 44px; }

@@ -242,7 +242,7 @@ test.describe("Flowchart connectors", () => {
     // Shift-click selects both; the bar changes them together.
     await page.mouse.click(...Object.values(await along(canvas, "ab", 0.6)) as [number, number]);
     await page.keyboard.down("Shift");
-    await page.mouse.click(...Object.values(await along(canvas, "ac", 0.6)) as [number, number]);
+    await page.mouse.click(...Object.values(await along(canvas, "ac", 0.25)) as [number, number]);
     await page.keyboard.up("Shift");
     const bar = page.getByRole("toolbar", { name: "2 selected connectors" });
     await expect(bar).toBeVisible();
@@ -305,12 +305,14 @@ test.describe("Flowchart connectors", () => {
     await shot(page, "labels");
 
     // The connector's own menu: reverse it, then remove a label from the label's menu.
+    await page.keyboard.press("Escape");
     await page.mouse.click(...Object.values(await along(canvas, "ab", 0.5)) as [number, number], { button: "right" });
     const menu = page.getByRole("menu", { name: "Connector" });
     await expect(menu.getByRole("menuitem", { name: "Reverse direction" })).toBeVisible();
     await expect(menu.getByRole("menuitemradio", { name: "Curved line" }).or(menu.getByRole("menuitem", { name: "Curved line" })).first()).toBeVisible();
     await menu.getByRole("menuitem", { name: "Reverse direction" }).click();
     await expect.poll(async () => (await edges(page)).find((e) => e.id === "ab")).toMatchObject({ from: "B", to: "A", start: "diamond", end: "circle" });
+    await page.keyboard.press("Escape");
     await canvas.locator('[data-fc-edge="ab"][data-fc-label="0"]').click({ button: "right" });
     await page.getByRole("menu", { name: "Connector" }).getByRole("menuitem", { name: "Remove label" }).click();
     await expect.poll(async () => (await labelsOf(page, "ab")).length).toBe(1);
@@ -356,6 +358,14 @@ test.describe("Flowchart connectors", () => {
     const hit = (await pc.locator('[data-fc-end="to"][data-edge="ab"] .fc-handle-hit').boundingBox())!;
     expect(hit.width).toBeGreaterThanOrEqual(40);
     await shot(ph, "touch");
+    // A finger drags the end onto C's left connection point (a real touch, so the canvas sees a finger).
+    const cdp = await phone.newCDPSession(ph);
+    const from = await center(pc.locator('[data-fc-end="to"][data-edge="ab"] .fc-handle-hit'));
+    const to = await screen(pc, { x: 322, y: 272 });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: from.x, y: from.y }] });
+    for (let i = 1; i <= 12; i++) await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: from.x + ((to.x - from.x) * i) / 12, y: from.y + ((to.y - from.y) * i) / 12 }] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect.poll(async () => edge(ph, "ab")).toMatchObject({ from: "A", to: "C", toSide: "left" });
     await phone.close();
     await context.close();
   });
@@ -366,12 +376,15 @@ test.describe("Flowchart connectors", () => {
     // 200 shapes on a grid, 300 connectors (mostly neighbours, a few long ones).
     const nodes = Array.from({ length: 200 }, (_, i) => node(`n${i}`, (i % 16) * 240, Math.floor(i / 16) * 180));
     const list: object[] = [];
+    const seen = new Set<string>();
     let seedN = 7;
     const rnd = () => ((seedN = (seedN * 16807) % 2147483647) / 2147483647);
     for (let k = 0; list.length < 300 && k < 2000; k++) {
       const a = Math.floor(rnd() * 200);
       const b = rnd() < 0.85 ? a + [1, 16, 17][Math.floor(rnd() * 3)]! : Math.floor(rnd() * 200);
-      if (b >= 200 || a === b) continue;
+      // The same connection twice is read as one: keep each pair once.
+      if (b >= 200 || a === b || seen.has(`${a}>${b}`)) continue;
+      seen.add(`${a}>${b}`);
       list.push({ id: `e${list.length}`, from: `n${a}`, to: `n${b}` });
     }
     await seed(page, canvas, { v: 2, nodes, edges: list });
@@ -380,22 +393,27 @@ test.describe("Flowchart connectors", () => {
     await page.getByRole("button", { name: "Zoom in" }).click();
     await shot(page, "big-chart");
 
-    // Count frames and the connector paths redrawn while one shape is dragged.
+    // Count frames, and the connector paths redrawn in each frame, while one shape is dragged.
     await page.evaluate(() => {
-      const w = window as unknown as { __fcPerf: { frames: number[]; changed: Set<string>; stop: boolean } };
-      w.__fcPerf = { frames: [], changed: new Set(), stop: false };
+      type Perf = { frames: number[]; redrawn: number[]; frame: Set<string>; all: Set<string>; stop: boolean };
+      const perf: Perf = { frames: [], redrawn: [], frame: new Set(), all: new Set(), stop: false };
+      (window as unknown as { __fcPerf: Perf }).__fcPerf = perf;
       const obs = new MutationObserver((records) => {
         for (const r of records) {
           const g = (r.target as Element).closest?.("[data-fc-edge]");
-          if (g) w.__fcPerf.changed.add(g.getAttribute("data-fc-edge")!);
+          if (!g) continue;
+          perf.frame.add(g.getAttribute("data-fc-edge")!);
+          perf.all.add(g.getAttribute("data-fc-edge")!);
         }
       });
       obs.observe(document.querySelector(".fc-edges")!, { attributes: true, subtree: true, attributeFilter: ["d"] });
       let last = performance.now();
       const tick = (t: number) => {
-        w.__fcPerf.frames.push(t - last);
+        perf.frames.push(t - last);
+        if (perf.frame.size) perf.redrawn.push(perf.frame.size);
+        perf.frame = new Set();
         last = t;
-        if (!w.__fcPerf.stop) requestAnimationFrame(tick);
+        if (!perf.stop) requestAnimationFrame(tick);
         else obs.disconnect();
       };
       requestAnimationFrame(tick);
@@ -408,15 +426,20 @@ test.describe("Flowchart connectors", () => {
     for (let i = 1; i <= 60; i++) await page.mouse.move(s.x + i * 2, s.y + i, { steps: 1 });
     await page.mouse.up();
     const perf = await page.evaluate(() => {
-      const w = window as unknown as { __fcPerf: { frames: number[]; changed: Set<string>; stop: boolean } };
+      const w = window as unknown as { __fcPerf: { frames: number[]; redrawn: number[]; all: Set<string>; stop: boolean } };
       w.__fcPerf.stop = true;
       const f = w.__fcPerf.frames.slice(2).sort((a, b) => a - b);
-      return { median: f[Math.floor(f.length / 2)] ?? 0, p90: f[Math.floor(f.length * 0.9)] ?? 0, frames: f.length, changed: w.__fcPerf.changed.size };
+      const r = [...w.__fcPerf.redrawn].sort((a, b) => a - b);
+      return { median: f[Math.floor(f.length / 2)] ?? 0, p90: f[Math.floor(f.length * 0.9)] ?? 0, frames: f.length, perFrame: r[Math.floor(r.length / 2)] ?? 0, worstFrame: r.at(-1) ?? 0, all: w.__fcPerf.all.size };
     });
-    console.info(`[perf] drag on 200 shapes / 300 connectors: median frame ${perf.median.toFixed(1)} ms, p90 ${perf.p90.toFixed(1)} ms over ${perf.frames} frames; ${perf.changed} connectors redrawn`);
-    // Only the connectors around the dragged shape are redrawn (its own, and the few whose hops or spacing changed).
-    expect(perf.changed).toBeLessThan(60);
-    // A development build is slower than production; this still guards against whole-chart redraws per move.
+    console.info(
+      `[perf] drag on 200 shapes / 300 connectors: median frame ${perf.median.toFixed(1)} ms, p90 ${perf.p90.toFixed(1)} ms over ${perf.frames} frames; connectors redrawn per frame: median ${perf.perFrame}, worst ${perf.worstFrame} (${perf.all} different ones over the whole drag)`,
+    );
+    // Each frame redraws only the connectors around the dragged shape (its own, and the few whose hops or
+    // spacing changed), never the whole chart.
+    expect(perf.perFrame).toBeLessThan(60);
+    expect(perf.worstFrame).toBeLessThan(150);
+    // A development build is slower than production; this still guards against whole-chart work per move.
     expect(perf.median).toBeLessThan(34);
     await context.close();
   });

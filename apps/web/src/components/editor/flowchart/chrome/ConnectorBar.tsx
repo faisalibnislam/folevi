@@ -9,6 +9,7 @@ import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
 import { FLOWCHART_COLORS, FLOWCHART_COLOR_LABEL, FLOWCHART_HEADS, FLOWCHART_HEAD_LABEL, FLOWCHART_LINE_STYLES, headShape, pointAlong, type FlowHead, type FlowLineStyle, type FlowRoute } from "../schema";
 import { EDGE_WIDTHS, edgeDash, shared, styleEdges, type EdgeStylePatch } from "../connectors";
 import { ROUTE_LABEL } from "../interactions/connectorMenu";
+import { isCoarse } from "../interactions/connect";
 import { startNewLabel } from "../interactions/edgeLabels";
 import type { FlowController } from "../controller/types";
 import type { FlowActions } from "../controller/useFlowActions";
@@ -56,13 +57,17 @@ export function LineIcon({ style, width = 1.6 }: { style: FlowLineStyle; width?:
 export function connectorBarSpot(ctrl: FlowController, box: { x: number; y: number; w: number; h: number }, fallback: React.CSSProperties): React.CSSProperties {
   const { view, width, height, selEdges, routed, doc } = ctrl;
   const k = view.k;
-  const W = 300;
+  const W = barWidth(width);
   const H = 40;
   const sx = (x: number) => x * k + view.x;
   const sy = (y: number) => y * k + view.y;
   const cx = (box.x + box.w / 2) * k + view.x;
   const ids = new Set(selEdges.map((e) => e.id));
-  const lines = routed.filter((r) => ids.has(r.edge.id)).flatMap((r) => [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9].map((t) => pointAlong(r.points, t)));
+  const samples = (list: typeof routed) => list.flatMap((r) => [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9].map((t) => pointAlong(r.points, t)));
+  const selected = samples(routed.filter((r) => ids.has(r.edge.id)));
+  // Other connectors stay clickable too, where there is room (only those near the selection are looked at).
+  const near = { x0: box.x - 400, y0: box.y - 400, x1: box.x + box.w + 400, y1: box.y + box.h + 400 };
+  const others = routed.length > 400 ? [] : samples(routed.filter((r) => !ids.has(r.edge.id) && r.points.some((p) => p.x > near.x0 && p.x < near.x1 && p.y > near.y0 && p.y < near.y1)));
   const first = routed.find((x) => x.edge.id === selEdges[0]?.id);
   const mid = first ? pointAlong(first.points, 0.5) : null;
   const spots: { left: number; top: number }[] = [
@@ -76,16 +81,29 @@ export function connectorBarSpot(ctrl: FlowController, box: { x: number; y: numb
         ]
       : []),
   ];
-  for (const spot of spots) {
-    const left = Math.max(W / 2 + 8, Math.min(width - W / 2 - 8, spot.left));
-    const top = spot.top;
-    if (top < 56 || top + H > height - 8) continue;
-    const bar = { x0: (left - W / 2 - view.x) / k, x1: (left + W / 2 - view.x) / k, y0: (top - view.y) / k, y1: (top + H - view.y) / k };
-    if (doc.nodes.some((n) => n.x < bar.x1 && n.x + n.w > bar.x0 && n.y < bar.y1 && n.y + n.h > bar.y0)) continue;
-    if (lines.some((p) => p.x > bar.x0 && p.x < bar.x1 && p.y > bar.y0 && p.y < bar.y1)) continue;
-    return { left, top };
+  for (const lines of [[...selected, ...others], selected]) {
+    for (const spot of spots) {
+      const left = Math.max(W / 2 + 8, Math.min(width - W / 2 - 8, spot.left));
+      const top = spot.top;
+      if (top < 56 || top + H > height - 8) continue;
+      const bar = { x0: (left - W / 2 - view.x) / k, x1: (left + W / 2 - view.x) / k, y0: (top - view.y) / k, y1: (top + H - view.y) / k };
+      if (doc.nodes.some((n) => n.x < bar.x1 && n.x + n.w > bar.x0 && n.y < bar.y1 && n.y + n.h > bar.y0)) continue;
+      if (lines.some((p) => p.x > bar.x0 && p.x < bar.x1 && p.y > bar.y0 && p.y < bar.y1)) continue;
+      return { left, top };
+    }
   }
-  return fallback;
+  const left = typeof fallback.left === "number" ? Math.max(W / 2 + 8, Math.min(width - W / 2 - 8, fallback.left)) : fallback.left;
+  return { ...fallback, left };
+}
+
+/** Below this canvas width the bar puts both line ends in one menu. */
+const COMPACT = 520;
+
+/** The bar's width (for placing it), from its buttons: 30 px, or 44 pt for fingers. */
+function barWidth(canvasWidth: number): number {
+  const btn = isCoarse() ? 44 : 32;
+  const buttons = canvasWidth < COMPACT ? 6 : 7;
+  return Math.min(canvasWidth - 16, buttons * btn + 4 * 9 + 10);
 }
 
 const ColorDot = ({ color }: { color: string }) => <span aria-hidden className="fc-color-dot" data-color={color} />;
@@ -102,6 +120,7 @@ export function ConnectorBar({ ctrl, actions, style }: { ctrl: FlowController; a
   const first = selEdges[0];
   if (!first) return null;
   const many = selEdges.length > 1;
+  const compact = ctrl.width < COMPACT;
   const heads = (which: "start" | "end", current: FlowHead | null): MenuEntry[] =>
     FLOWCHART_HEADS.map((h) => ({ label: FLOWCHART_HEAD_LABEL[h], icon: <HeadIcon kind={h} at={which} />, checked: current === h, onSelect: () => apply(which === "start" ? { start: h } : { end: h }) }));
 
@@ -115,8 +134,21 @@ export function ConnectorBar({ ctrl, actions, style }: { ctrl: FlowController; a
         items={(["elbow", "curved", "straight"] as const).map((r) => ({ label: ROUTE_LABEL[r], icon: <RouteIcon route={r} />, checked: route === r, onSelect: () => apply({ route: r }) }))}
       />
       <span className="fc-sep" aria-hidden />
-      <MenuButton label={`Start: ${FLOWCHART_HEAD_LABEL[start ?? first.start]}`} align="start" triggerClassName="fc-btn fc-btn-menu" trigger={<HeadIcon kind={start ?? first.start} at="start" />} items={[{ heading: "Start of the line" }, ...heads("start", start)]} />
-      <MenuButton label={`End: ${FLOWCHART_HEAD_LABEL[end ?? first.end]}`} align="start" triggerClassName="fc-btn fc-btn-menu" trigger={<HeadIcon kind={end ?? first.end} at="end" />} items={[{ heading: "End of the line" }, ...heads("end", end)]} />
+      {compact ? (
+        // A narrow canvas: both ends in one menu.
+        <MenuButton
+          label={`Ends: ${FLOWCHART_HEAD_LABEL[start ?? first.start]} to ${FLOWCHART_HEAD_LABEL[end ?? first.end]}`}
+          align="start"
+          triggerClassName="fc-btn fc-btn-menu"
+          trigger={<HeadIcon kind={end ?? first.end} at="end" />}
+          items={[{ heading: "Start of the line" }, ...heads("start", start), "separator", { heading: "End of the line" }, ...heads("end", end)]}
+        />
+      ) : (
+        <>
+          <MenuButton label={`Start: ${FLOWCHART_HEAD_LABEL[start ?? first.start]}`} align="start" triggerClassName="fc-btn fc-btn-menu" trigger={<HeadIcon kind={start ?? first.start} at="start" />} items={[{ heading: "Start of the line" }, ...heads("start", start)]} />
+          <MenuButton label={`End: ${FLOWCHART_HEAD_LABEL[end ?? first.end]}`} align="start" triggerClassName="fc-btn fc-btn-menu" trigger={<HeadIcon kind={end ?? first.end} at="end" />} items={[{ heading: "End of the line" }, ...heads("end", end)]} />
+        </>
+      )}
       <span className="fc-sep" aria-hidden />
       <MenuButton
         label={`Line: ${LINE_LABEL[line ?? first.style]}, ${(EDGE_WIDTHS.find((w) => w.value === (width ?? first.width))?.label ?? `${width ?? first.width} pt`).toLowerCase()}`}

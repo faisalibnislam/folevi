@@ -1,7 +1,7 @@
 // Small schematic pictures for the Insert tool's tiles. Everything is drawn in the current text colour
 // at low opacity (so it reads in light and dark), with the surface colour for paper and the app's
 // accent for the one detail worth noticing. The accent is near-black in the neutral chrome, so no mark goes
-// above about half strength: small solid shapes at full ink read as black blots next to the rest.
+// above about half strength (lines lighter still): small solid shapes at full ink read as black blots.
 
 import { useId } from "react";
 
@@ -52,7 +52,7 @@ const Bar = ({ x, y, w, h = 3, o = 0.22 }: { x: number; y: number; w: number; h?
 
 /** A sheet with a hairline edge. */
 const Sheet = ({ x, y, w, h, r = 3 }: { x: number; y: number; w: number; h: number; r?: number }) => (
-  <rect x={x + 0.5} y={y + 0.5} width={w - 1} height={h - 1} rx={r} fill={PAPER} stroke={C} strokeOpacity={0.3} />
+  <rect x={x + 0.5} y={y + 0.5} width={w - 1} height={h - 1} rx={r} fill={PAPER} stroke={C} strokeOpacity={0.18} />
 );
 
 /** A framed photo: a soft sun, a far hill and a near one, kept inside the frame's rounded corners. */
@@ -72,12 +72,12 @@ function Photo({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
         <path d={`M${x + w * 0.36} ${b} L${x + w * 0.66} ${y + h * 0.5} Q${x + w * 0.7} ${y + h * 0.45} ${x + w * 0.74} ${y + h * 0.5} L${x + w} ${y + h * 0.8} V${b}z`} fill={C} fillOpacity={0.14} />
         <path d={`M${x} ${b} V${y + h * 0.82} L${x + w * 0.26} ${y + h * 0.45} Q${x + w * 0.3} ${y + h * 0.4} ${x + w * 0.34} ${y + h * 0.45} L${x + w * 0.66} ${b}z`} fill={C} fillOpacity={0.26} />
       </g>
-      <rect x={x} y={y} width={w} height={h} rx={3} fill="none" stroke={C} strokeOpacity={0.3} />
+      <rect x={x} y={y} width={w} height={h} rx={3} fill="none" stroke={C} strokeOpacity={0.18} />
     </>
   );
 }
 
-const line = { stroke: C, strokeOpacity: 0.35, strokeWidth: 1.2, strokeLinecap: "round" as const, fill: "none" };
+const line = { stroke: C, strokeOpacity: 0.21, strokeWidth: 1.2, strokeLinecap: "round" as const, fill: "none" };
 
 function Picture({ kind }: { kind: PreviewKind }) {
   switch (kind) {
@@ -93,8 +93,8 @@ function Picture({ kind }: { kind: PreviewKind }) {
     case "page":
       return (
         <>
-          <path d="M14.5 3.5h14l7.5 7.5v20a2 2 0 0 1-2 2H14.5a2 2 0 0 1-2-2v-25.5a2 2 0 0 1 2-2z" fill={PAPER} stroke={C} strokeOpacity={0.3} />
-          <path d="M28.5 3.5v5.5a2 2 0 0 0 2 2H36" fill="none" stroke={C} strokeOpacity={0.3} />
+          <path d="M14.5 3.5h14l7.5 7.5v20a2 2 0 0 1-2 2H14.5a2 2 0 0 1-2-2v-25.5a2 2 0 0 1 2-2z" fill={PAPER} stroke={C} strokeOpacity={0.18} />
+          <path d="M28.5 3.5v5.5a2 2 0 0 0 2 2H36" fill="none" stroke={C} strokeOpacity={0.18} />
           <Bar x={16.5} y={12} w={9} o={0.4} />
           <Bar x={16.5} y={18} w={15} h={2.5} />
           <Bar x={16.5} y={23} w={15} h={2.5} />
@@ -117,7 +117,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
           <rect x={5} y={7} width={9} height={9} rx={2.5} fill={ACCENT} fillOpacity={0.42} />
           <path d="M7.5 11.6l2 2 3.2-4" fill="none" stroke={PAPER} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
           <Bar x={18} y={10} w={24} o={0.16} />
-          <rect x={5.6} y={20.6} width={7.8} height={7.8} rx={2.2} fill="none" stroke={C} strokeOpacity={0.45} strokeWidth={1.2} />
+          <rect x={5.6} y={20.6} width={7.8} height={7.8} rx={2.2} fill="none" stroke={C} strokeOpacity={0.27} strokeWidth={1.2} />
           <Bar x={18} y={23} w={18} />
         </>
       );
@@ -127,8 +127,8 @@ function Picture({ kind }: { kind: PreviewKind }) {
           <rect x={4} y={5} width={40} height={26} rx={3} fill={PAPER} />
           <rect x={4} y={5} width={40} height={7} rx={3} fill={C} fillOpacity={0.1} />
           <rect x={4} y={9} width={40} height={3} fill={C} fillOpacity={0.1} />
-          <path d="M4.5 12h39M4.5 18.5h39M4.5 25h39M17 5.5v25M30.5 5.5v25" stroke={C} strokeOpacity={0.2} fill="none" />
-          <rect x={4.5} y={5.5} width={39} height={25} rx={3} fill="none" stroke={C} strokeOpacity={0.3} />
+          <path d="M4.5 12h39M4.5 18.5h39M4.5 25h39M17 5.5v25M30.5 5.5v25" stroke={C} strokeOpacity={0.12} fill="none" />
+          <rect x={4.5} y={5.5} width={39} height={25} rx={3} fill="none" stroke={C} strokeOpacity={0.18} />
         </>
       );
     case "image":
@@ -137,8 +137,8 @@ function Picture({ kind }: { kind: PreviewKind }) {
       return (
         <>
           <Photo x={4.5} y={4.5} w={33} h={23} />
-          <circle cx={35} cy={25} r={5.5} fill={PAPER} stroke={C} strokeOpacity={0.45} strokeWidth={1.6} />
-          <path d="M39 29l3.5 3.5" stroke={C} strokeOpacity={0.45} strokeWidth={2} strokeLinecap="round" />
+          <circle cx={35} cy={25} r={5.5} fill={PAPER} stroke={C} strokeOpacity={0.27} strokeWidth={1.6} />
+          <path d="M39 29l3.5 3.5" stroke={C} strokeOpacity={0.27} strokeWidth={2} strokeLinecap="round" />
         </>
       );
     case "scan":
@@ -149,7 +149,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
           <Bar x={18} y={16} w={12} h={2} />
           <Bar x={18} y={20.5} w={12} h={2} />
           <Bar x={18} y={25} w={8} h={2} />
-          <path d="M10 9V5a1 1 0 0 1 1-1h4M33 4h4a1 1 0 0 1 1 1v4M38 27v4a1 1 0 0 1-1 1h-4M15 32h-4a1 1 0 0 1-1-1v-4" stroke={ACCENT} strokeOpacity={0.45} strokeWidth={1.6} strokeLinecap="round" fill="none" />
+          <path d="M10 9V5a1 1 0 0 1 1-1h4M33 4h4a1 1 0 0 1 1 1v4M38 27v4a1 1 0 0 1-1 1h-4M15 32h-4a1 1 0 0 1-1-1v-4" stroke={ACCENT} strokeOpacity={0.27} strokeWidth={1.6} strokeLinecap="round" fill="none" />
         </>
       );
     case "file":
@@ -217,7 +217,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
         <>
           <path d="M5 8h7l-3.5 4.5z" fill={C} fillOpacity={0.45} />
           <Bar x={15} y={8.5} w={27} o={0.4} />
-          <path d="M8.5 16v13" {...line} strokeOpacity={0.2} />
+          <path d="M8.5 16v13" {...line} strokeOpacity={0.12} />
           <Bar x={15} y={17} w={24} h={2.5} />
           <Bar x={15} y={23} w={20} h={2.5} />
           <Bar x={15} y={29} w={14} h={2.5} o={0.14} />
@@ -260,7 +260,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
           <text x={24} y={20} textAnchor="middle" fontSize={13} fontStyle="italic" fill={C} fillOpacity={0.55} fontFamily="var(--font-serif)">
             a²+b²
           </text>
-          <path d="M10 26.5h28" {...line} strokeOpacity={0.25} />
+          <path d="M10 26.5h28" {...line} strokeOpacity={0.15} />
         </>
       );
     case "mermaid":
@@ -270,19 +270,19 @@ function Picture({ kind }: { kind: PreviewKind }) {
           <Bar x={7} y={13} w={12} h={2.5} />
           <Bar x={7} y={19} w={10} h={2.5} />
           <Bar x={7} y={25} w={12} h={2.5} />
-          <rect x={28.5} y={3.5} width={13} height={6} rx={1.5} fill={PAPER} stroke={C} strokeOpacity={0.4} />
-          <rect x={28.5} y={15} width={13} height={6} rx={1.5} fill={ACCENT} fillOpacity={0.2} stroke={ACCENT} strokeOpacity={0.45} />
-          <rect x={28.5} y={26.5} width={13} height={6} rx={1.5} fill={PAPER} stroke={C} strokeOpacity={0.4} />
+          <rect x={28.5} y={3.5} width={13} height={6} rx={1.5} fill={PAPER} stroke={C} strokeOpacity={0.24} />
+          <rect x={28.5} y={15} width={13} height={6} rx={1.5} fill={ACCENT} fillOpacity={0.2} stroke={ACCENT} strokeOpacity={0.27} />
+          <rect x={28.5} y={26.5} width={13} height={6} rx={1.5} fill={PAPER} stroke={C} strokeOpacity={0.24} />
           <path d="M35 9.5V15M35 21v5.5" {...line} />
         </>
       );
     case "flowchart":
       return (
         <>
-          <rect x={2.5} y={8.5} width={12} height={7} rx={3.5} fill={PAPER} stroke={C} strokeOpacity={0.45} />
-          <path d="M24 6.5l5.5 5.5-5.5 5.5-5.5-5.5z" fill={ACCENT} fillOpacity={0.18} stroke={ACCENT} strokeOpacity={0.45} />
-          <rect x={33.5} y={8.5} width={12} height={7} rx={1.5} fill={PAPER} stroke={C} strokeOpacity={0.45} />
-          <rect x={18} y={25.5} width={12} height={7} rx={1.5} fill={PAPER} stroke={C} strokeOpacity={0.45} />
+          <rect x={2.5} y={8.5} width={12} height={7} rx={3.5} fill={PAPER} stroke={C} strokeOpacity={0.27} />
+          <path d="M24 6.5l5.5 5.5-5.5 5.5-5.5-5.5z" fill={ACCENT} fillOpacity={0.18} stroke={ACCENT} strokeOpacity={0.27} />
+          <rect x={33.5} y={8.5} width={12} height={7} rx={1.5} fill={PAPER} stroke={C} strokeOpacity={0.27} />
+          <rect x={18} y={25.5} width={12} height={7} rx={1.5} fill={PAPER} stroke={C} strokeOpacity={0.27} />
           <path d="M14.5 12h3.5M29.5 12h3.5M24 17.5v7.5" {...line} />
         </>
       );
@@ -292,14 +292,14 @@ function Picture({ kind }: { kind: PreviewKind }) {
           {[8, 16, 24, 32, 40].flatMap((x) =>
             [6, 14, 22, 30].map((y) => <circle key={`${x}-${y}`} cx={x} cy={y} r={0.7} fill={C} fillOpacity={0.28} />),
           )}
-          <path d="M6 26c4-12 9-14 12-7s9 8 12-3 8-8 12-4" fill="none" stroke={ACCENT} strokeOpacity={0.45} strokeWidth={2} strokeLinecap="round" />
+          <path d="M6 26c4-12 9-14 12-7s9 8 12-3 8-8 12-4" fill="none" stroke={ACCENT} strokeOpacity={0.27} strokeWidth={2} strokeLinecap="round" />
         </>
       );
     case "mindmap":
       return (
         <>
           <path d="M18 18c-4 0-4-8-8-8M18 18c-4 0-4 8-8 8M30 18c4 0 4-8 8-8M30 18c4 0 4 8 8 8" {...line} />
-          <rect x={17.5} y={14.5} width={13} height={7} rx={3.5} fill={ACCENT} fillOpacity={0.22} stroke={ACCENT} strokeOpacity={0.45} />
+          <rect x={17.5} y={14.5} width={13} height={7} rx={3.5} fill={ACCENT} fillOpacity={0.22} stroke={ACCENT} strokeOpacity={0.27} />
           <Bar x={2} y={8.5} w={8} o={0.32} />
           <Bar x={2} y={24.5} w={8} o={0.32} />
           <Bar x={38} y={8.5} w={8} o={0.32} />
@@ -309,7 +309,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
     case "chart":
       return (
         <>
-          <path d="M6 4.5v26h37" {...line} strokeOpacity={0.3} />
+          <path d="M6 4.5v26h37" {...line} strokeOpacity={0.18} />
           <rect x={10} y={19} width={5.5} height={11.5} rx={1} fill={C} fillOpacity={0.22} />
           <rect x={18.5} y={11} width={5.5} height={19.5} rx={1} fill={ACCENT} fillOpacity={0.45} />
           <rect x={27} y={22} width={5.5} height={8.5} rx={1} fill={C} fillOpacity={0.22} />
@@ -339,8 +339,8 @@ function Picture({ kind }: { kind: PreviewKind }) {
         <>
           <Sheet x={14} y={2} w={20} h={32} r={3.5} />
           <Bar x={17.5} y={6} w={8} h={2} o={0.45} />
-          <rect x={17.5} y={10.5} width={13} height={9} rx={1} fill="none" stroke={C} strokeOpacity={0.3} />
-          <path d="M17.5 10.5l13 9M30.5 10.5l-13 9" {...line} strokeOpacity={0.2} strokeWidth={0.8} />
+          <rect x={17.5} y={10.5} width={13} height={9} rx={1} fill="none" stroke={C} strokeOpacity={0.18} />
+          <path d="M17.5 10.5l13 9M30.5 10.5l-13 9" {...line} strokeOpacity={0.12} strokeWidth={0.8} />
           <Bar x={17.5} y={22} w={13} h={2} />
           <Bar x={17.5} y={25.5} w={9} h={2} />
           <rect x={17.5} y={28.5} width={13} height={3} rx={1.5} fill={ACCENT} fillOpacity={0.45} />
@@ -370,7 +370,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
           <Sheet x={10} y={5} w={28} h={28} />
           <rect x={10} y={5} width={28} height={8} rx={3} fill={ACCENT} fillOpacity={0.28} />
           <rect x={10} y={10} width={28} height={3} fill={ACCENT} fillOpacity={0.28} />
-          <path d="M16.5 3v4.5M31.5 3v4.5" {...line} strokeOpacity={0.45} strokeWidth={1.6} />
+          <path d="M16.5 3v4.5M31.5 3v4.5" {...line} strokeOpacity={0.27} strokeWidth={1.6} />
           <text x={24} y={28} textAnchor="middle" fontSize={11} fontWeight={700} fill={C} fillOpacity={0.55} fontFamily="var(--font-sans)">
             12
           </text>
@@ -415,7 +415,7 @@ function Picture({ kind }: { kind: PreviewKind }) {
             <g key={x}>
               <rect x={x!} y={4} width={14} height={28} rx={2.5} fill={C} fillOpacity={0.07} />
               {Array.from({ length: cards! }, (_, i) => (
-                <rect key={i} x={x! + 2} y={7 + i * 7.5} width={10} height={5.5} rx={1.2} fill={PAPER} stroke={C} strokeOpacity={0.25} strokeWidth={0.8} />
+                <rect key={i} x={x! + 2} y={7 + i * 7.5} width={10} height={5.5} rx={1.2} fill={PAPER} stroke={C} strokeOpacity={0.15} strokeWidth={0.8} />
               ))}
             </g>
           ))}
@@ -424,9 +424,9 @@ function Picture({ kind }: { kind: PreviewKind }) {
     case "pageBreak":
       return (
         <>
-          <path d="M8.5 3.5h31v8a3 3 0 0 1-3 3h-25a3 3 0 0 1-3-3z" fill={PAPER} stroke={C} strokeOpacity={0.35} />
-          <path d="M11.5 21.5h25a3 3 0 0 1 3 3v8h-31v-8a3 3 0 0 1 3-3z" fill={PAPER} stroke={C} strokeOpacity={0.35} />
-          <path d="M3 18h42" {...line} strokeOpacity={0.3} strokeDasharray="2 2.5" />
+          <path d="M8.5 3.5h31v8a3 3 0 0 1-3 3h-25a3 3 0 0 1-3-3z" fill={PAPER} stroke={C} strokeOpacity={0.21} />
+          <path d="M11.5 21.5h25a3 3 0 0 1 3 3v8h-31v-8a3 3 0 0 1 3-3z" fill={PAPER} stroke={C} strokeOpacity={0.21} />
+          <path d="M3 18h42" {...line} strokeOpacity={0.18} strokeDasharray="2 2.5" />
         </>
       );
   }

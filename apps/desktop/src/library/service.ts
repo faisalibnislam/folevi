@@ -60,11 +60,27 @@ export interface LibraryServiceOptions {
   sealer: StringSealer | null;
   now?: () => number;
   watch?: { scanIntervalMs?: number; debounceMs?: number; useFsEvents?: boolean };
+  /** "Sync with Dropbox" and "Sync with Google Drive" (cloud/library.ts's CloudLibrary); absent without them. */
+  cloud?: CloudSource | null;
   /** PBKDF2 iterations for a new passphrase (600,000; tests use fewer). */
   iterations?: number;
 }
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+/** The part of cloud/library.ts's CloudLibrary the service uses (a fake in tests). */
+export interface CloudSource {
+  /** The connected provider's LocalFs, or null when nothing is connected. */
+  fs(): LibraryFs | null;
+  /** The library file there: the one another device made, or a new one. */
+  prepare(): Promise<{ libraryId: string }>;
+  info(): Promise<{ kind: "dropbox" | "googleDrive"; displayPath: string; available: boolean } | null>;
+  /** Change batches from the provider's change feed (on-disk paths). */
+  watch(cb: (changes: { path: string; kind: "changed" | "removed" }[]) => void): () => void;
+}
+
+const CLOUD_KINDS = { dropbox: "dropbox", gdrive: "googleDrive" } as const;
+const isCloudKind = (k: LibraryKind): k is "dropbox" | "gdrive" => k === "dropbox" || k === "gdrive";
 
 /** A ULID (time + randomness, Crockford base32) for a new library. */
 export function newLibraryId(now: number): string {
@@ -133,7 +149,11 @@ const ATTACHMENT_PLAIN = /^files\/[0-9a-f]{2}\/[0-9a-f]{64}$/;
 
 export class LibraryService {
   private state: StoredState | null = null;
+  /** A folder library's files (null for Dropbox and Google Drive). */
   private plain: NodeFs | null = null;
+  /** The library's own files, as stored: the folder, or the provider's LocalFs. */
+  private base: LibraryFs | null = null;
+  private unwatchCloud: (() => void) | null = null;
   private enc: EncryptedNodeFs | null = null;
   private manifest: LibraryManifest | null = null;
   private manifestEtag: string | null = null;
@@ -152,6 +172,12 @@ export class LibraryService {
     this.keys = new KeyCache(join(o.userData, "library-keys"), o.sealer);
     this.files = new LibraryAttachments({
       root: () => (this.plain && this.manifest ? this.plain.root : null),
+      // Dropbox and Google Drive: through the provider's LocalFs (it answers from this Mac's copy).
+      readWhole: async (rel) => {
+        if (this.plain || !this.base || !this.manifest) return null;
+        const r = await this.base.read(rel).catch(() => null);
+        return r && "bytes" in r ? r.bytes : null;
+      },
       key: () => (this.manifest?.encryption ? (this.key() ?? "locked") : null),
       startDownload: async (paths) => {
         if (this.plain?.coordinator) await this.plain.coordinator.startDownload(paths);
@@ -173,7 +199,7 @@ export class LibraryService {
   private loadState(): StoredState | null {
     try {
       const raw = JSON.parse(readFileSync(this.stateFile, "utf8")) as Partial<StoredState>;
-      if (raw.v !== 1 || !["icloud", "folder", "device"].includes(raw.kind as string) || typeof raw.path !== "string" || typeof raw.libraryId !== "string") return null;
+      if (raw.v !== 1 || !["icloud", "folder", "device", "dropbox", "gdrive"].includes(raw.kind as string) || typeof raw.path !== "string" || typeof raw.libraryId !== "string") return null;
       return raw as StoredState;
     } catch {
       return null;
@@ -209,7 +235,7 @@ export class LibraryService {
     if (!this.state) return;
     if (this.state.move) {
       await this.finishMove().catch(() => undefined);
-      if (this.plain) return;
+      if (this.base) return;
     }
     await this.attach().catch(() => undefined);
     void this.resumeEncryption().catch(() => undefined);
@@ -225,15 +251,15 @@ export class LibraryService {
   /** The files the page works with: the encrypted view, the plain folder, or nothing while locked. */
   private current(): LibraryFs {
     if (!this.state) throw new LibraryError("not_set_up", "No library has been set up on this Mac.");
-    if (!this.plain || !this.manifest) throw new LibraryError("unavailable", "The library folder can't be reached right now.");
+    if (!this.base || !this.manifest) throw new LibraryError("unavailable", "The library folder can't be reached right now.");
     if (this.manifest.encryption) {
       if (!this.enc) throw new LibraryError("locked", "The library is encrypted: enter its passphrase.");
       return this.enc;
     }
-    return this.plain;
+    return this.base;
   }
 
-  private async readManifest(fs: NodeFs): Promise<{ manifest: LibraryManifest; etag: string } | null> {
+  private async readManifest(fs: LibraryFs): Promise<{ manifest: LibraryManifest; etag: string } | null> {
     try {
       const r = await fs.read(LIBRARY_FILE);
       if ("notDownloaded" in r) {
@@ -249,9 +275,11 @@ export class LibraryService {
   private async attach(): Promise<void> {
     this.detach();
     const s = this.state!;
-    const plain = new NodeFs({ root: s.path, coordinator: await this.coordinatorFor(s.path) });
-    this.plain = plain;
-    const m = await this.readManifest(plain);
+    const base = await this.baseFor(s.kind, s.path);
+    if (!base) return;
+    this.base = base;
+    if (base instanceof NodeFs) this.plain = base;
+    const m = await this.readManifest(base);
     if (!m) {
       this.manifest = null;
       return;
@@ -261,15 +289,24 @@ export class LibraryService {
       this.saveState({ ...s, libraryId: m.manifest.libraryId });
     }
     this.useManifest(m.manifest, m.etag);
-    await plain.cleanTemp(this.now()).catch(() => 0);
+    await this.plain?.cleanTemp(this.now()).catch(() => 0);
     await this.startWatching();
+  }
+
+  /** The files of a library kind and place: a folder, or the connected provider (null if it isn't connected). */
+  private async baseFor(kind: LibraryKind, path: string): Promise<LibraryFs | null> {
+    if (!isCloudKind(kind)) return new NodeFs({ root: path, coordinator: await this.coordinatorFor(path) });
+    const cloud = this.o.cloud;
+    const info = cloud ? await cloud.info().catch(() => null) : null;
+    if (!cloud || info?.kind !== CLOUD_KINDS[kind]) return null;
+    return cloud.fs();
   }
 
   private useManifest(m: LibraryManifest, etag: string) {
     this.manifest = m;
     this.manifestEtag = etag;
     const key = this.key();
-    this.enc = m.encryption && key && this.plain ? new EncryptedNodeFs(this.plain, key) : null;
+    this.enc = m.encryption && key && this.base ? new EncryptedNodeFs(this.base, key) : null;
   }
 
   private detach() {
@@ -277,13 +314,17 @@ export class LibraryService {
     this.watcher = null;
     this.unwatchHelper?.();
     this.unwatchHelper = null;
+    this.unwatchCloud?.();
+    this.unwatchCloud = null;
     this.plain = null;
+    this.base = null;
     this.enc = null;
     this.manifest = null;
     this.manifestEtag = null;
   }
 
   private async startWatching() {
+    if (!this.plain && this.base && this.o.cloud) return this.watchCloud(this.o.cloud);
     const plain = this.plain;
     if (!plain) return;
     const source: WatchSource = {
@@ -342,6 +383,22 @@ export class LibraryService {
     }
   }
 
+  /** Dropbox and Google Drive: the provider's change feed, with on-disk names turned into the page's. */
+  private watchCloud(cloud: CloudSource) {
+    this.unwatchCloud?.();
+    this.unwatchCloud = cloud.watch((raw) => {
+      void (async () => {
+        const changes: LibraryChange[] = [];
+        for (const c of raw) {
+          let path: string | null = c.path;
+          if (this.manifest?.encryption) path = this.enc ? (this.enc.knownLogical(c.path) ?? (c.kind === "changed" ? await this.enc.logical(c.path) : null)) : c.path === LIBRARY_FILE ? c.path : null;
+          if (path) changes.push({ path, kind: c.kind });
+        }
+        if (changes.length) await this.onChanges(changes);
+      })();
+    });
+  }
+
   /** Feeds folevi-files' upload state to the watcher; true while some file is still uploading. */
   private async pollUploads(plain: NodeFs, root: string, watcher: LibraryWatcher): Promise<boolean> {
     const coordinator = plain.coordinator;
@@ -368,12 +425,14 @@ export class LibraryService {
     this.watcher = null;
     this.unwatchHelper?.();
     this.unwatchHelper = null;
+    this.unwatchCloud?.();
+    this.unwatchCloud = null;
   }
 
   private async onChanges(changes: LibraryChange[]) {
-    if (changes.some((c) => c.path === LIBRARY_FILE) && this.plain) {
+    if (changes.some((c) => c.path === LIBRARY_FILE) && this.base) {
       // Another device changed the passphrase, or switched encryption on or off.
-      const m = await this.readManifest(this.plain);
+      const m = await this.readManifest(this.base);
       if (m) {
         const wasEncrypted = !!this.manifest?.encryption;
         this.useManifest(m.manifest, m.etag);
@@ -393,6 +452,19 @@ export class LibraryService {
     const s = this.state;
     if (!s) return { kind: "device", displayPath: "", available: false, encrypted: false, locked: false, configured: false };
     if (!this.manifest && !this.gate.busy) await this.attach().catch(() => undefined);
+    if (isCloudKind(s.kind)) {
+      const c = await this.o.cloud?.info().catch(() => null);
+      const here = c?.kind === CLOUD_KINDS[s.kind];
+      const encrypted = !!this.manifest?.encryption;
+      return {
+        kind: s.kind,
+        displayPath: here ? c!.displayPath : s.kind === "dropbox" ? "Dropbox" : "Google Drive",
+        available: !!here && c!.available && !!this.manifest,
+        encrypted,
+        locked: encrypted && !this.enc,
+        configured: true,
+      };
+    }
     const folder = await isFolder(s.path);
     const drive = s.kind !== "icloud" || (await isFolder(iCloudDriveRoot(this.o.home)));
     const encrypted = !!this.manifest?.encryption;
@@ -429,7 +501,20 @@ export class LibraryService {
     return join(chosen, DEVICE_FOLDER);
   }
 
+  /** The connected provider for a cloud kind, or an "unavailable" error saying what to do. */
+  private async cloudFor(kind: "dropbox" | "gdrive"): Promise<CloudSource> {
+    const cloud = this.o.cloud;
+    const name = kind === "dropbox" ? "Dropbox" : "Google Drive";
+    const info = cloud ? await cloud.info().catch(() => null) : null;
+    if (!cloud || info?.kind !== CLOUD_KINDS[kind] || !cloud.fs()) throw new LibraryError("unavailable", `Connect ${name} first.`, "not_connected");
+    return cloud;
+  }
+
   private async target(kind: LibraryKind): Promise<{ path: string; chosenFolder?: string } | null> {
+    if (isCloudKind(kind)) {
+      await this.cloudFor(kind);
+      return { path: "" };
+    }
     if (kind === "device") return { path: defaultLocation("device", this.o.home) };
     if (kind === "icloud") return { path: await this.icloudTarget() };
     if (kind === "folder") {
@@ -463,7 +548,7 @@ export class LibraryService {
     return this.gate.only(async () => {
       const t = await this.target(o.kind);
       if (!t) return null;
-      const libraryId = await this.prepare(t.path);
+      const libraryId = isCloudKind(o.kind) ? (await (await this.cloudFor(o.kind)).prepare()).libraryId : await this.prepare(t.path);
       this.saveState({ v: 1, kind: o.kind, path: t.path, libraryId, ...(t.chosenFolder ? { chosenFolder: t.chosenFolder } : {}) });
       this.journalStore = null;
       await this.attach();
@@ -493,8 +578,8 @@ export class LibraryService {
       const r = await fs.write(path, bytes, o);
       if (!("mismatch" in r)) {
         this.remember(path, { path, size: bytes.length, mtimeMs: this.now(), etag: r.etag, downloaded: true, hasConflicts: false });
-        if (path === LIBRARY_FILE && this.plain) {
-          const m = await this.readManifest(this.plain);
+        if (path === LIBRARY_FILE && this.base) {
+          const m = await this.readManifest(this.base);
           if (m) this.useManifest(m.manifest, m.etag);
         }
       }
@@ -545,7 +630,7 @@ export class LibraryService {
   // ---------------------------------------------------------------- passphrase
 
   private async writeManifest(change: (m: LibraryManifest) => LibraryManifest): Promise<void> {
-    const plain = this.plain;
+    const plain = this.base;
     if (!plain) throw new LibraryError("unavailable", "The library folder can't be reached right now.");
     for (let attempt = 0; attempt < 5; attempt++) {
       const cur = await this.readManifest(plain);
@@ -600,7 +685,7 @@ export class LibraryService {
       await this.switchEncryption(passphrase);
     } finally {
       // Names on disk changed: a fresh baseline (also after a failure part way).
-      if (!this.watcher && this.plain) await this.startWatching();
+      if (!this.watcher && !this.unwatchCloud && this.base) await this.startWatching();
     }
   }
 
@@ -645,7 +730,7 @@ export class LibraryService {
   }
 
   private async resumeEncryption() {
-    if (!this.state?.encryptionJob || !this.plain || !this.manifest) return;
+    if (!this.state?.encryptionJob || !this.base || !this.manifest) return;
     if (this.state.encryptionJob.direction === "encrypt" && !this.manifest.encryption) {
       // It stopped before the manifest was written: nothing was converted; start again when asked.
       const s = { ...this.state };
@@ -659,7 +744,7 @@ export class LibraryService {
 
   /** Rewrites every file for the job in library.json; safe to run again (each file says what it is). */
   private async runEncryptionJob(): Promise<void> {
-    const plain = this.plain!;
+    const plain = this.base!;
     const job = this.state!.encryptionJob!;
     const key = this.key();
     if (!key) throw new LibraryError("locked", "The library is encrypted: enter its passphrase.");
@@ -736,17 +821,21 @@ export class LibraryService {
    */
   async move(to: { kind: LibraryKind }): Promise<LibraryInfo> {
     if (!this.state) throw new LibraryError("not_set_up", "No library has been set up on this Mac.");
-    if (!this.plain || !this.manifest) throw new LibraryError("unavailable", "The library folder can't be reached right now.");
+    if (!this.base || !this.manifest) throw new LibraryError("unavailable", "The library folder can't be reached right now.");
     const t = await this.target(to.kind);
     if (!t) return this.info();
-    const from = await realpath(this.state.path).catch(() => this.state!.path);
-    await mkdir(t.path, { recursive: true });
-    const dest = await realpath(t.path);
-    if (dest === from) {
-      this.saveState({ ...this.state, kind: to.kind, ...(t.chosenFolder ? { chosenFolder: t.chosenFolder } : {}) });
-      return this.info();
+    if (isCloudKind(to.kind) || isCloudKind(this.state.kind)) {
+      if (to.kind === this.state.kind) return this.info();
+    } else {
+      const from = await realpath(this.state.path).catch(() => this.state!.path);
+      await mkdir(t.path, { recursive: true });
+      const dest = await realpath(t.path);
+      if (dest === from) {
+        this.saveState({ ...this.state, kind: to.kind, ...(t.chosenFolder ? { chosenFolder: t.chosenFolder } : {}) });
+        return this.info();
+      }
+      if (inside(dest, from) || inside(from, dest)) throw new LibraryError("invalid_argument", "A library can't move into itself or into a folder that holds it.");
     }
-    if (inside(dest, from) || inside(from, dest)) throw new LibraryError("invalid_argument", "A library can't move into itself or into a folder that holds it.");
     this.saveState({ ...this.state, move: { kind: to.kind, path: t.path, ...(t.chosenFolder ? { chosenFolder: t.chosenFolder } : {}) } });
     await this.gate.only(() => this.finishMove());
     return this.info();
@@ -755,16 +844,22 @@ export class LibraryService {
   private async finishMove(): Promise<void> {
     const s = this.state!;
     const mv = s.move!;
-    if (!this.plain) {
-      const plain = new NodeFs({ root: s.path, coordinator: await this.coordinatorFor(s.path) });
-      this.plain = plain;
+    if (!this.base) {
+      const base = await this.baseFor(s.kind, s.path);
+      if (!base) throw new LibraryError("unavailable", "The library can't be reached right now.");
+      this.base = base;
+      if (base instanceof NodeFs) this.plain = base;
     }
-    const src = this.plain;
-    await mkdir(mv.path, { recursive: true });
-    if (!(await probeWritable(mv.path))) throw new LibraryError("unavailable", "Folevi can't write to that folder.", "not_writable");
-    const dst = new NodeFs({ root: mv.path, coordinator: await this.coordinatorFor(mv.path) });
+    const src = this.base;
+    let dst: LibraryFs;
+    if (isCloudKind(mv.kind)) dst = (await this.cloudFor(mv.kind)).fs()!;
+    else {
+      await mkdir(mv.path, { recursive: true });
+      if (!(await probeWritable(mv.path))) throw new LibraryError("unavailable", "Folevi can't write to that folder.", "not_writable");
+      dst = new NodeFs({ root: mv.path, coordinator: await this.coordinatorFor(mv.path) });
+    }
     const theirs = await this.readManifest(dst);
-    if (theirs && theirs.manifest.libraryId !== s.libraryId) throw new LibraryError("target_has_library", "That folder already holds another Folevi library.");
+    if (theirs && theirs.manifest.libraryId !== s.libraryId) throw new LibraryError("target_has_library", "That place already holds another Folevi library.");
     let entries = await src.list("");
     const waiting = entries.filter((e) => !e.downloaded).map((e) => e.path);
     if (waiting.length) {
@@ -772,7 +867,7 @@ export class LibraryService {
       for (let i = 0; i < 120 && (entries = await src.list("")).some((e) => !e.downloaded); i++) await new Promise((r) => setTimeout(r, 500));
       if (entries.some((e) => !e.downloaded)) throw new LibraryError("not_downloaded", "Some files are still downloading; Folevi will finish moving the library later.");
     }
-    // The library file goes last: a folder with it is a whole library.
+    // The library file goes last: a place with it holds a whole library.
     const ordered = [...entries.filter((e) => e.path !== LIBRARY_FILE), ...entries.filter((e) => e.path === LIBRARY_FILE)];
     for (const e of ordered) {
       const r = await src.read(e.path);
@@ -781,7 +876,7 @@ export class LibraryService {
       if (there && !("notDownloaded" in there) && Buffer.compare(Buffer.from(there.bytes), Buffer.from(r.bytes)) === 0) continue;
       await dst.write(e.path, r.bytes, {});
     }
-    // Every file arrived, byte for byte.
+    // Every file arrived whole.
     const copied = new Map((await dst.list("")).map((e) => [e.path, e]));
     for (const e of entries) {
       const d = copied.get(e.path);

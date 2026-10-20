@@ -31,6 +31,8 @@ export interface AttachmentSource {
   downloaded?(absPath: string): Promise<boolean>;
   /** How long to wait for a download (ms). */
   downloadWaitMs?: number;
+  /** A library with no folder (Dropbox, Google Drive): a file's stored bytes by its on-disk path, or null. */
+  readWhole?(relPath: string): Promise<Uint8Array | null>;
 }
 
 const SHA = /^[0-9a-f]{64}$/;
@@ -77,7 +79,28 @@ export class LibraryAttachments implements LibraryFiles {
     }
   }
 
+  /** A library without a folder (Dropbox, Google Drive): the stored bytes through the provider, decrypted by range. */
+  private async whole(sha: string): Promise<{ size: number; range(start: number, end: number): Promise<Uint8Array> } | null> {
+    if (this.src.root() || !this.src.readWhole || !SHA.test(sha)) return null;
+    const key = this.src.key();
+    if (key === "locked") return null;
+    const name = key ? hmacName(key, "file", sha) : sha;
+    const rel = `${FILES_DIR}/${name.slice(0, 2)}/${name}`;
+    const bytes = await this.src.readWhole(rel).catch(() => null);
+    if (!bytes) return null;
+    if (!key) return { size: bytes.length, range: async (a, b) => bytes.subarray(a, b) };
+    try {
+      const r = await StreamReader.open(key, rel, bytes.length, async (p, n) => bytes.subarray(p, p + n));
+      await r.checkFinal();
+      return { size: r.layout.plainLength, range: (a, b) => r.range(a, b) };
+    } catch {
+      return null;
+    }
+  }
+
   async stat(sha: string): Promise<LibraryFileInfo | null> {
+    const w = await this.whole(sha);
+    if (w) return { size: w.size, mime: null };
     const loc = this.location(sha);
     if (!loc) return null;
     const here = await this.present(loc.abs);
@@ -116,6 +139,16 @@ export class LibraryAttachments implements LibraryFiles {
   }
 
   async read(sha: string, start: number, end: number): Promise<ReadableStream<Uint8Array>> {
+    const w = await this.whole(sha);
+    if (w) {
+      const part = await w.range(start, end + 1);
+      return new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array(part));
+          controller.close();
+        },
+      });
+    }
     const loc = this.location(sha);
     if (!loc) throw new Error("No such file.");
     const here = await this.present(loc.abs);

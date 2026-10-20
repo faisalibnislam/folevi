@@ -56,7 +56,7 @@ import { Reminders, type Reminder } from "./reminders";
 import { downloadCalendar } from "./calendarFetch";
 import { imageBytes, oneAtATime, runHelper } from "./textRecognition";
 import { registerLibraryIpc, type IpcMainLike } from "./library/ipc";
-import { LibraryService } from "./library/service";
+import { LibraryService, type CloudSource } from "./library/service";
 import { startCloud } from "./library/cloud/electron";
 
 const PARTITION = "persist:folevi";
@@ -243,8 +243,10 @@ let library: LibraryService | null = null;
  * shell.library (docs/LOCAL_MODE_PLAN.md §4.2): the local library's files, journal, passphrase and moves, in
  * this process (src/library/). The key never reaches the page; safeStorage keeps it on this Mac.
  */
-function createLibrary(): LibraryService {
+function createLibrary(cloud: CloudSource | null): LibraryService {
   const service = new LibraryService({
+    // "Sync with Dropbox" / "Sync with Google Drive" libraries go through the connection (library/cloud/).
+    cloud,
     userData: app.getPath("userData"),
     home: app.getPath("home"),
     helperPath: filesHelper(),
@@ -791,16 +793,16 @@ app.whenReady().then(async () => {
   if (app.isPackaged) app.setAsDefaultProtocolClient(SCHEME);
   folevi = setUpSession();
   if (bundled) {
-    library = createLibrary();
+    // Sync with Dropbox / Google Drive (library/cloud/): the connection restored from the last run, and the
+    // page's cloud:* calls (status, sign-in, sign-out). The provider tokens stay in this process.
+    const cloud = startCloud((e) => fromFolevi(e as unknown as IpcMainInvokeEvent));
+    library = createLibrary(cloud.library);
     installBundledInterface(folevi);
     const libraryIpc: IpcMainLike = { handle: (c, l) => ipcMain.handle(c, l as never), removeHandler: (c) => ipcMain.removeHandler(c) };
     registerLibraryIpc(libraryIpc, library, (e) => fromFolevi(e as unknown as IpcMainInvokeEvent));
     // A full look at the library folder on waking and when Folevi comes to the front (watch.ts also scans every 30 s).
     powerMonitor.on("resume", () => void library?.rescan());
     app.on("browser-window-focus", () => void library?.rescan());
-    // Sync with Dropbox / Google Drive (library/cloud/): the connection restored from the last run, and the
-    // page's cloud:* calls (status, sign-in, sign-out). The provider tokens stay in this process.
-    startCloud((e) => fromFolevi(e as unknown as IpcMainInvokeEvent));
     // Before any window shows the new origin: hand over edits waiting on the website's origin (once).
     await runHandoff(folevi).catch((e) => console.error("Folevi handoff:", e));
     applyNetworkGuard();

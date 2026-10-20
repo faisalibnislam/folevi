@@ -49,7 +49,7 @@ export interface IpcMainLike {
   removeHandler(channel: string): void;
 }
 
-const KINDS: readonly LibraryKind[] = ["icloud", "folder", "device"];
+const KINDS: readonly LibraryKind[] = ["icloud", "folder", "device", "dropbox", "gdrive"];
 const MAX_BYTES = 512 * 1024 * 1024;
 
 const bad = (message: string) => new LibraryError("invalid_argument", message);
@@ -66,7 +66,7 @@ function bytes(v: unknown, max = MAX_BYTES): Uint8Array {
 
 function kindOf(v: unknown): LibraryKind {
   const kind = (v as { kind?: unknown } | null)?.kind;
-  if (!KINDS.includes(kind as LibraryKind)) throw bad("kind is icloud, folder or device.");
+  if (!KINDS.includes(kind as LibraryKind)) throw bad("kind is icloud, folder, device, dropbox or gdrive.");
   return kind as LibraryKind;
 }
 

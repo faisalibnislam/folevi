@@ -3,7 +3,8 @@
 // compiles on its own (plain tsc, no workspace packages at run time), so they're restated here, and the
 // tests check the Node implementation against local-store's own contract and helpers.
 
-export type LibraryKind = "icloud" | "folder" | "device";
+/** "dropbox" and "gdrive" are the built-in connections (cloud/, WP9b); the rest are folders on this Mac. */
+export type LibraryKind = "icloud" | "folder" | "device" | "dropbox" | "gdrive";
 
 export interface LibraryInfo {
   kind: LibraryKind;

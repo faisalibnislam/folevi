@@ -19,6 +19,7 @@ import { folderPathOf, planFolders } from "@/lib/import/folders";
 import { Card } from "./Card";
 import { EmailToNoteCard } from "./EmailToNote";
 import { SaveFromAnywhereCard } from "./SaveFromAnywhere";
+import { MoveBetweenModes } from "@/components/migrate/MoveBetweenModes";
 
 type Result = { name: string; id?: string; warnings: { line?: number; message: string }[]; error?: string; images?: number };
 
@@ -306,6 +307,7 @@ export function DataSection({ target }: { target: DataTarget }) {
       </Card>
       {target.kind === "personal" && caps.emailToNote ? <EmailToNoteCard /> : null}
       {target.kind === "personal" && caps.account ? <SaveFromAnywhereCard /> : null}
+      {target.kind === "personal" ? <MoveBetweenModes /> : null}
       <Card title={`Export ${where}`} description={`A ZIP with every document in ${where} as Markdown (in folders matching your sidebar), all attachments in an assets folder, and a manifest.json describing folders, documents and files. Single pages can be exported from their ••• menu as Markdown, HTML or PDF.`}>
         <Button
           variant="primary"

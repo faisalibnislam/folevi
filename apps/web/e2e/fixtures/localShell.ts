@@ -91,7 +91,7 @@ declare global {
  * Runs in the page before any of its scripts (context.addInitScript), so it must not refer to anything
  * outside itself.
  */
-function installFakeShell(cfg: FakeShellConfig) {
+export function installFakeShell(cfg: FakeShellConfig) {
   if (window.__foleviTestShell) return;
   const META_KEY = `folevi-fake-shell:${cfg.libraryName}`;
   type Meta = {

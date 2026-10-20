@@ -18,6 +18,7 @@ import { DeviceLimitScreen } from "./DeviceLimit";
 import { DesktopQuickAdd } from "./DesktopQuickAdd";
 import { OauthConsent } from "./OauthConsent";
 import { ShareSheet } from "./ShareSheet";
+import { MigrationGate } from "@/components/migrate/MigrationGate";
 import { ShellSignIn } from "./ShellSignIn";
 import { ShellUpdateGate } from "./ShellUpdateGate";
 
@@ -200,7 +201,9 @@ export function AccountGate() {
                 <Onboarding />
               </Suspense>
             ) : (
-              <Shell />
+              <MigrationGate>
+                <Shell />
+              </MigrationGate>
             )}
           </AppStateProvider>
         </ShellUpdateGate>

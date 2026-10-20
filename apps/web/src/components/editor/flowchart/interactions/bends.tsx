@@ -5,7 +5,7 @@
 // points (drag to move, double-click to remove) and a hollow point in the middle of each stretch between
 // them (drag to add one). A dragged bend lines up with its neighbours when close, otherwise it sits on the
 // grid (⌥ turns snapping off). The route passes through the bends in order and re-routes live.
-import { FLOWCHART_LIMITS, nearestAlong, type FlowchartData, type FlowEdge, type Pt, type RoutedEdge } from "../schema";
+import { FLOWCHART_LIMITS, nearestAlong, pointAlong, type FlowchartData, type FlowEdge, type Pt, type RoutedEdge } from "../schema";
 import { bendAddHandles, bendInsertIndex, bendNeighbours, insertBend, moveBend, patchEdges, removeBend, snapBend } from "../connectors";
 import { isCoarse } from "./connect";
 import type { FlowController, Gesture, Interaction } from "../controller/types";
@@ -112,12 +112,16 @@ export function useBends(ctrl: FlowController, { hidden = false }: { hidden?: bo
             <circle className="fc-bend-add" cx={h.at.x} cy={h.at.y} r={3.5 / k} />
           </g>
         ))}
-        {e.bends.map((b, i) => (
-          <g key={`bend${i}`} data-fc-bend={i} data-edge={e.id}>
-            <circle className="fc-handle-hit" cx={b.x} cy={b.y} r={hitR} />
-            <circle className="fc-bend" cx={b.x} cy={b.y} r={5 / k} />
-          </g>
-        ))}
+        {e.bends.map((b, i) => {
+          // A curve passes near its bend points rather than through them: the handle sits on the line.
+          const p = e.route === "curved" ? pointAlong(r.points, nearestAlong(r.points, b).t) : b;
+          return (
+            <g key={`bend${i}`} data-fc-bend={i} data-edge={e.id}>
+              <circle className="fc-handle-hit" cx={p.x} cy={p.y} r={hitR} />
+              <circle className="fc-bend" cx={p.x} cy={p.y} r={5 / k} />
+            </g>
+          );
+        })}
       </>
     );
   }

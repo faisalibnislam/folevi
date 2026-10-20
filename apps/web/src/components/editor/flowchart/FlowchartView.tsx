@@ -9,6 +9,10 @@
 //             new connected shape) · double-click to write in a shape or on a connector, or to add one
 //   Frames    drag a frame's title or border, a pool's title or a lane's header to move it with its shapes;
 //             shapes dropped in a frame or lane join it (interactions/containers.tsx); ⌥⌘G frames the selection
+//   Connectors  drag an end to another side, spot or shape, or off into space (⌥ never snaps) · drag the
+//             line to add a bend point, drag points to move them, double-click one to remove it · drag a
+//             label along the line, double-click the line for another label · the bar and right-click
+//             menu restyle every selected connector (interactions/connect, bends, edgeLabels, connectorMenu)
 //   Keyboard  Tab to a shape, then Tab adds the next step (⇧Tab a branch) · arrows move between shapes
 //             (⌥ nudges, ⇧ nudges more) · Enter or typing edits · ⌫ delete · ⌘D duplicate
 //             ⌘A select all · ⌘Z / ⇧⌘Z undo and redo · +/− zoom · ⇧1 fit · ⇧⌘F full canvas · Esc back to the note

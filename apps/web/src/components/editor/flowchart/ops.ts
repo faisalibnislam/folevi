@@ -257,26 +257,42 @@ export class FlowHistory {
 // ------------------------------------------------------------------------------------------ AI drafts
 
 export interface FlowDraft {
-  nodes: { id: string; shape: string; text: string; color?: string }[];
+  nodes: { id: string; shape: string; text: string; color?: string; parent?: string }[];
   edges: { from: string; to: string; label?: string; style?: string; arrow?: string }[];
   direction?: string;
+  /** Frames and swimlanes Foli AI drew (only when asked); a node's `parent` names its frame or lane. */
+  frames?: { id: string; title: string; color?: string }[];
+  lanes?: { id: string; title: string }[];
+  laneOrient?: string;
 }
 
 /**
  * Turns an AI draft into a chart: validated again here (never trust the network), sized to its labels,
  * laid out, and placed where the current chart starts. In "update" mode nodes the AI kept (same id) keep
- * their size and colour.
+ * their size and colour, and when the draft names no frames or lanes the chart keeps its own (frames,
+ * swimlane pools and which shapes are in them). Frames and lanes the draft names replace them.
  */
 export function chartFromDraft(draft: FlowDraft, current: FlowchartData, mode: "create" | "update"): FlowchartData {
-  const safe = normalizeFlowchart(draft);
   const prev = new Map(current.nodes.map((n) => [n.id, n]));
+  const corner = boxOf([...current.nodes, ...current.frames]) ?? { x: 0, y: 0 };
+  const at = { x: snap(corner.x), y: snap(corner.y) };
+  const keepGroups = mode === "update" && !draft.frames?.length && !draft.lanes?.length;
+  const safe = normalizeFlowchart({
+    frames: keepGroups ? current.frames : (draft.frames ?? []).map((f) => ({ id: f.id, x: at.x, y: at.y, w: 480, h: 320, title: f.title, color: f.color ?? current.frames.find((x) => x.id === f.id)?.color })),
+    pools: keepGroups
+      ? current.pools
+      : draft.lanes?.length
+        ? [{ id: "pool", x: at.x, y: at.y, orient: draft.laneOrient === "columns" ? "columns" : "rows", title: "", length: 960, lanes: draft.lanes.map((l) => ({ id: l.id, title: l.title, size: 200 })) }]
+        : [],
+    nodes: draft.nodes.map((n) => ({ id: n.id, shape: n.shape, text: n.text, color: n.color, parent: n.parent ?? (keepGroups ? prev.get(n.id)?.parent : undefined) })),
+    edges: draft.edges,
+  });
   const nodes = safe.nodes.map((n) => {
     const old = mode === "update" ? prev.get(n.id) : undefined;
     const size = old && old.shape === n.shape ? { w: old.w, h: old.h } : FLOWCHART_SHAPE_SIZE[n.shape];
     const color = old && n.color === "neutral" ? old.color : n.color;
     return fitNodeToText({ ...n, ...size, color }, { maxWidth: 240 });
   });
-  const origin = boxOf(current.nodes) ?? { x: 0, y: 0 };
   const direction: FlowDirection = draft.direction === "LR" ? "LR" : "TD";
-  return layoutFlowchart(flowchart({ nodes, edges: safe.edges }), { direction, origin: { x: snap(origin.x), y: snap(origin.y) } });
+  return layoutFlowchart(flowchart({ nodes, edges: safe.edges, frames: safe.frames, pools: safe.pools }), { direction, origin: at });
 }

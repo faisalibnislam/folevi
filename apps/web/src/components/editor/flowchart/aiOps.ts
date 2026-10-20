@@ -23,7 +23,6 @@ import {
   flowchartDirection,
   layoutFlowchart,
   newEdge,
-  normalizeFlowchart,
   withArrow,
   withLabel,
   type FlowArrow,
@@ -31,13 +30,11 @@ import {
   type FlowColor,
   type FlowDirection,
   type FlowEdge,
-  type FlowFrame,
   type FlowNode,
-  type FlowPool,
   type FlowShape,
   type Rect,
 } from "./schema";
-import { boxOf, snap } from "./ops";
+import { boxOf, chartFromDraft, snap } from "./ops";
 
 // ------------------------------------------------------------------------------------------ replies
 
@@ -86,34 +83,12 @@ function cornerOf(fc: FlowchartData): { x: number; y: number } {
 
 /**
  * A drawn chart, checked again here (never trust the network), sized to its labels and laid out where the
- * current chart starts. "update" keeps the size and colour of shapes the model kept (same id), and the
- * chart's frames and lanes when the reply names none.
+ * current chart starts (ops.ts chartFromDraft, which the toolbar's older path shares). "update" keeps the
+ * size and colour of shapes the model kept (same id), and the chart's frames and lanes when the reply names
+ * none.
  */
 export function draftChart(draft: AiDraft, current: FlowchartData, mode: "create" | "update"): FlowchartData {
-  const prev = new Map(current.nodes.map((n) => [n.id, n]));
-  const corner = cornerOf(current);
-  const keepGroups = mode === "update" && !draft.frames?.length && !draft.lanes?.length;
-  const frames: FlowFrame[] = keepGroups
-    ? current.frames
-    : (draft.frames ?? []).map((f) => ({ id: f.id, x: corner.x, y: corner.y, w: 480, h: 320, title: f.title, color: colorOf(f.color ?? current.frames.find((x) => x.id === f.id)?.color) }));
-  const pools: FlowPool[] = keepGroups
-    ? current.pools
-    : draft.lanes?.length
-      ? [{ id: "pool", x: corner.x, y: corner.y, orient: draft.laneOrient === "columns" ? "columns" : "rows", title: "", length: 960, lanes: draft.lanes.map((l) => ({ id: l.id, title: l.title, size: 200, color: "neutral" as FlowColor })) }]
-      : [];
-  const safe = normalizeFlowchart({
-    frames,
-    pools,
-    nodes: draft.nodes.map((n) => ({ id: n.id, shape: n.shape, text: n.text, color: n.color, parent: n.parent ?? (keepGroups ? prev.get(n.id)?.parent : undefined) })),
-    edges: draft.edges,
-  });
-  const nodes = safe.nodes.map((n) => {
-    const old = mode === "update" ? prev.get(n.id) : undefined;
-    const size = old && old.shape === n.shape ? { w: old.w, h: old.h } : FLOWCHART_SHAPE_SIZE[n.shape];
-    const color = old && n.color === "neutral" ? old.color : n.color;
-    return fitNodeToText({ ...n, ...size, color }, { maxWidth: 240 });
-  });
-  return layoutFlowchart(flowchart({ nodes, edges: safe.edges, frames: safe.frames, pools: safe.pools }), { direction: dirOf(draft.direction), origin: corner });
+  return chartFromDraft(draft, current, mode);
 }
 
 // ------------------------------------------------------------------------------------------ extending

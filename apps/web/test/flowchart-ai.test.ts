@@ -63,6 +63,32 @@ describe("drawn charts", () => {
   });
 });
 
+describe("applying a Foli AI update keeps frames and swimlanes", () => {
+  test("ops.chartFromDraft (the toolbar's path) keeps the chart's frames, pools and membership", async () => {
+    const { chartFromDraft } = await import("@/components/editor/flowchart/ops");
+    const current = flowchart({
+      nodes: [node("a", "One", "process", { x: 40, y: 80, parent: "f" }), node("b", "Two", "process", { x: 40, y: 700, parent: "l1" }), node("c", "Three", "process", { x: 300, y: 700, parent: "l2" })],
+      edges: [newEdge("a", "b"), newEdge("b", "c")],
+      frames: [{ id: "f", x: 0, y: 0, w: 400, h: 300, title: "Stage", color: "green" }],
+      pools: [{ id: "p", x: 0, y: 600, orient: "rows", title: "Teams", length: 1200, lanes: [{ id: "l1", title: "Sales", size: 200, color: "neutral" }, { id: "l2", title: "Ops", size: 200, color: "neutral" }] }],
+    });
+    const draft = { nodes: [{ id: "a", shape: "process", text: "One" }, { id: "b", shape: "process", text: "Two" }, { id: "c", shape: "process", text: "Three, now later" }, { id: "d", shape: "terminator", text: "Done" }], edges: [{ from: "a", to: "b" }, { from: "b", to: "c" }, { from: "c", to: "d" }] };
+    const out = chartFromDraft(draft, current, "update");
+    expect(out.frames.map((f) => [f.id, f.title, f.color])).toEqual([["f", "Stage", "green"]]);
+    expect(out.pools.map((p) => [p.id, p.title, p.lanes.map((l) => l.title)])).toEqual([["p", "Teams", ["Sales", "Ops"]]]);
+    expect(out.nodes.map((n) => [n.id, n.parent ?? null])).toEqual([["a", "f"], ["b", "l1"], ["c", "l2"], ["d", null]]);
+    // Each kept shape sits inside its frame after the layout.
+    const f = out.frames[0]!;
+    const a = out.nodes[0]!;
+    expect(a.x >= f.x && a.y >= f.y && a.x + a.w <= f.x + f.w && a.y + a.h <= f.y + f.h).toBe(true);
+    const viaPanel = draftChart(draft, current, "update");
+    expect([viaPanel.nodes, viaPanel.frames, viaPanel.pools]).toEqual([out.nodes, out.frames, out.pools]);
+    // Starting over (create) draws only what the draft names.
+    const fresh = chartFromDraft(draft, current, "create");
+    expect([fresh.frames.length, fresh.pools.length]).toEqual([0, 0]);
+  });
+});
+
 describe("extending from the selection", () => {
   test("new shapes join beside the selection, the selected shape stays put, and nothing overlaps", () => {
     const fc = chart();

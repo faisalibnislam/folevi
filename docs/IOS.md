@@ -101,6 +101,8 @@ window.foleviNative = {
   disablePush(): Promise<void>,
   setBadge(count: number): void,                        // the bell's unread count on the app icon
   openNotificationSettings(): Promise<void>,            // Folevi's page in iOS Settings > Notifications
+  // search in files (Native/TextRecognition.swift): the words in an image, read with Vision on the device
+  recognizeText(image: { data: string /* base64 */; type: string; handwriting?: boolean }): Promise<{ text: string } | null>,
 };
 ```
 

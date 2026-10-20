@@ -139,6 +139,36 @@ export ZIPs after a day; any new table that stores `Id<"_storage">` must be adde
 `/files/:id` on the Convex HTTP router with short-lived HMAC-signed URLs, `nosniff`, a sandboxing CSP and
 `Content-Disposition: attachment` for anything but images/PDF.
 
+## Search in files
+
+Search finds the words in a note's PDFs, images and whiteboard handwriting, like Evernote and Apple Notes.
+Nothing heavy runs on Folevi's servers: the words are read on the person's device and saved beside the file.
+
+- **Where it's kept:** `fileTexts` (scoped like the note; `convex/fileText.ts`): the file (or, for handwriting,
+  the whiteboard's block), the source (`pdf`, `image`, `handwriting`), who read it (`pdf`, `device`, `foli`),
+  the text (at most 100,000 characters), a PDF's page starts and what was read (the file's SHA-256, a drawing's
+  fingerprint). It has its own search index; it's never part of the note's body or `searchText`.
+- **Who writes it:** `fileText.save`, for someone who can edit the note (a file must be the note's own, of the
+  kind the source says). `fileText.forDocument` tells an editor's device what the note already has.
+- **Reading, on the device** (`apps/web/src/lib/fileText`, `components/doc/useFileText.ts`): a PDF with pdf.js
+  (lazy-loaded, its own worker, the legacy build so iOS 17 works; 40 MB and 300 pages at most); an image with
+  the device's recogniser, which is Vision in the iPhone and iPad app (`FoleviNative.recognizeText`,
+  `apps/ios/ios/App/Native/TextRecognition.swift`) and in the Mac app (`folevi-text`, a small Swift helper
+  that ships with it, `apps/desktop/native`); handwriting by drawing the whiteboard to a PNG and reading it
+  the same way, a few seconds after it's left alone. A file just uploaded is read from the bytes the device
+  has (`onFileUploaded` in `lib/sync/uploads.ts`); files already in a note are read the first time an editor
+  opens it. Development builds accept `window.__foleviTestRecognizer` in place of a device recogniser (e2e).
+- **A browser** has no recogniser: Foli AI reads images (`fileText.readImage`, Gemini vision, metered in AI
+  credits) only from "Make text in images searchable" in the note's menu, or for images added in a browser
+  when Settings > AI > Read images with Foli AI is on (off by default; the server checks it). On-device
+  reading is on by default (Settings > AI > Read text on your devices).
+- **Search** (`search.ts`) reads the index in the same scope, keeps hits whose block is still in the note and
+  still shows that file, and checks access to the note like every other result. A result found only in a file
+  carries `match` (source, page, block); ⌘K shows "In PDF, page 3", "In image" or "In handwriting" and opens
+  `/d/<id>#block-<block>`.
+- **Lifecycle:** deleted with the file and the note (`maintenance.ts` purges), with a whiteboard's tombstone,
+  follows files moved by a merge, and is in the export (`found-text.json`).
+
 ## Email
 
 `packages/email` defines every template (manifest, variable schema, and the HTML + plain text compiled in

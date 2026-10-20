@@ -36,6 +36,12 @@ The native Swift app it replaces is archived on the git tag `native-mac-archive`
   the call. macOS asks for Screen & System Audio Recording the first time (and may ask to reopen Folevi); without it,
   the recorder says so and offers to open that System Settings pane.
 
+- **Search in images** (1.15): `folevi-text` (`native/recognize-text.swift`, built universal by
+  `scripts/build-helper.mjs` into `native-build/`, copied into Resources and signed with the app) reads the
+  words in an image with Vision. The page sends an image's bytes (`recognizeText`, `desktop:recognize-text`);
+  the main process checks the origin and size, runs the helper for one image at a time with the bytes on
+  stdin and a 30 second limit (`src/textRecognition.ts`), and answers with the text. Nothing is sent anywhere.
+
 ## The bridge
 
 The page gets one object, `window.foleviDesktop` (`apps/desktop/src/preload.ts`): the Dock badge,

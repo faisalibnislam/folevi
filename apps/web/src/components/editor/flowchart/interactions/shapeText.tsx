@@ -62,6 +62,7 @@ function toggleList(editor: Editor, list: LabelList) {
 export function ShapeTextEditor({
   node,
   view,
+  canvasWidth,
   typed,
   onChange,
   onAlign,
@@ -71,6 +72,8 @@ export function ShapeTextEditor({
 }: {
   node: FlowNode;
   view: View;
+  /** The canvas's width (the formatting bar stays inside it). */
+  canvasWidth: number;
   /** Writing started with a keystroke: the caret goes to the end instead of selecting everything. */
   typed?: boolean;
   onChange: (paragraphs: FlowParagraph[]) => void;
@@ -295,7 +298,13 @@ export function ShapeTextEditor({
   // The formatting bar: above the shape, or below it near the top of the canvas.
   const top = node.y * k + view.y;
   const above = top - 52 > 8;
-  const barStyle: React.CSSProperties = { left: Math.max(8, (node.x + node.w / 2) * k + view.x), top: above ? top - 48 : (node.y + node.h) * k + view.y + 10 };
+  // Centred over the shape and kept inside the canvas; on a narrow canvas (a phone) it spans the canvas and scrolls.
+  const barTop = above ? top - 48 : (node.y + node.h) * k + view.y + 10;
+  const half = 240;
+  const barStyle: React.CSSProperties =
+    canvasWidth < half * 2 + 16
+      ? { left: 8, right: 8, top: barTop, transform: "none", overflowX: "auto", justifyContent: "flex-start" }
+      : { left: Math.min(Math.max(half + 8, (node.x + node.w / 2) * k + view.x), canvasWidth - half - 8), top: barTop };
   const active = (name: string) => !!editor?.isActive(name);
   const list = editor ? currentList(editor) : null;
   const keep = (e: React.SyntheticEvent) => e.preventDefault();

@@ -37,6 +37,8 @@ export function SelectionBar({ ctrl, actions, clearance = 0, content }: { ctrl: 
   const above = top - 52 > 56;
   const style: React.CSSProperties = { left: cx, top: above ? top - 52 : Math.min(height - 48, bottom + 12 + clearance) };
 
+  // While one of the shape panels is open it does the bar's job (and the bar would sit under it).
+  if (selNodes.length && !selEdges.length && content?.panelOpen) return null;
   if (selNodes.length && !selEdges.length) {
     return (
       <NodeBar

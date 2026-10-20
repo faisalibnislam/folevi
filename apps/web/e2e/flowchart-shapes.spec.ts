@@ -3,6 +3,7 @@
 // across a reload), notes and page links (badges open them), and fill, outline and text colours (custom
 // fills stay readable in light and dark).
 import { readFileSync, mkdirSync } from "node:fs";
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { newPerson, waitForSaved } from "./helpers";
 
@@ -50,6 +51,13 @@ const toEnd = (page: Page) => page.keyboard.press(process.platform === "darwin" 
 
 const bar = (page: Page) => page.getByRole("toolbar", { name: "Selected shapes" });
 
+/** No serious accessibility problems in the flowchart (its panels and bars included). */
+async function expectAccessible(page: Page) {
+  const results = await new AxeBuilder({ page }).include(".fb-flowchart").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
+  const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
+  expect(serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+}
+
 /** Saved, then the page reloaded. */
 async function reload(page: Page) {
   await waitForSaved(page);
@@ -91,6 +99,7 @@ test.describe("Flowchart shapes and content", () => {
     await expect(lib.getByRole("heading", { name: "Arrows and callouts" })).toBeVisible();
     await expect(lib.locator("[data-tile]")).toHaveCount(53);
     await shot(page, "library-open", canvas);
+    await expectAccessible(page);
 
     // Search narrows it; a click adds the shape in the middle of the view.
     await lib.getByRole("searchbox", { name: "Search shapes" }).fill("database");
@@ -119,6 +128,7 @@ test.describe("Flowchart shapes and content", () => {
 
     // A selected shape's bar opens the library to change its kind.
     const db = canvas.locator('[data-fc-node][data-shape="database"]');
+    await page.mouse.click(c.x + 30, c.y + c.height / 2);
     await db.click();
     await bar(page).getByRole("button", { name: "Change shape" }).click();
     const change = canvas.getByRole("dialog", { name: "Change shape" });
@@ -163,6 +173,7 @@ test.describe("Flowchart shapes and content", () => {
     await expect(outline).toHaveCSS("fill", "rgb(30, 58, 138)");
     await expect(hex.locator(".fc-icon")).toHaveCSS("stroke", "rgb(244, 244, 246)");
     await shot(page, "colours-dark", canvas);
+    await expectAccessible(page);
     await page.emulateMedia({ colorScheme: "light" });
     await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
     // A theme tint clears the custom fill; the outline can go; the text takes a text colour.

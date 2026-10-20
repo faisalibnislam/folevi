@@ -87,6 +87,7 @@ export function useTextEditing(ctrl: FlowController, { onImage }: { /** An image
         key={editNode.id}
         node={editNode}
         view={view}
+        canvasWidth={ctrl.width}
         typed={editing?.typed}
         onChange={onEditLabel}
         onAlign={onEditAlign}

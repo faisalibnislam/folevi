@@ -1,7 +1,8 @@
 "use client";
 
 // A mind map and the note around it: a bulleted list (or numbered, or to-dos) turned into a mind map block
-// and back, Markdown from Foli AI put in the note below the block, and the block menu's entries for them
+// and back, Markdown from Foli AI put in the note below the block, Foli AI's "Mind map" writing tool put in
+// the note as a block, and the block menu's entries for them
 // (EditorMenus). Every change is one undo step in the note. The note is a flat list of blocks with a
 // `depth`, so an outline's depths map straight onto it.
 import type { Editor } from "@tiptap/react";
@@ -12,7 +13,8 @@ import { createElement } from "react";
 import { Waypoints } from "lucide-react";
 import { LIMITS, MINDMAP_DEFAULT_HEIGHT, mindmapFromOutline, mindmapToOutline, parseMindmap, serializeMindmap, ulid } from "@folevi/editor-schema";
 import { endHistoryGroup, normalizeDepths } from "../commands";
-import { insertAiMarkdown } from "@/components/ai/insert";
+import { insertAiBlocks, insertAiMarkdown, type AiPlacement } from "@/components/ai/insert";
+import { aiMindmapBlock } from "./aiBlock";
 import { AiIcon } from "@/components/ai/AiIcon";
 
 /** Blocks a list made of (a list in a note can mix them). */
@@ -82,6 +84,16 @@ export function insertAfterMindmap(editor: Editor, pos: number, markdown: string
   const node = editor.state.doc.nodeAt(pos);
   if (!node) return false;
   return insertAiMarkdown(editor, markdown, { kind: "after", pos: pos + node.nodeSize, depth: Number(node.attrs.depth ?? 0) });
+}
+
+/**
+ * Puts Foli AI's mind map into the note as a real mind map block, where the result goes (never over a
+ * selection: below it), as one undo step. False when the data isn't a valid map (nothing changes then).
+ */
+export function insertAiMindmap(editor: Editor, data: string | undefined, placement: AiPlacement): boolean {
+  const block = aiMindmapBlock(data);
+  if (!block) return false;
+  return insertAiBlocks(editor, [block], placement.kind === "replace" ? { kind: "below", at: placement.to } : placement);
 }
 
 /** To-dos as Markdown, one per line, escaped so a task's text stays text. */

@@ -185,7 +185,7 @@ export function useAi() {
     [askAction, scope],
   );
   const write = useCallback(
-    (task: AiTask, opts: { documentId?: string; text?: string; instruction?: string; language?: string; streamId?: Id<"aiStreams"> } = {}): Promise<{ text: string; title?: string }> =>
+    (task: AiTask, opts: { documentId?: string; text?: string; instruction?: string; language?: string; streamId?: Id<"aiStreams"> } = {}): Promise<{ text: string; title?: string; mindmap?: string }> =>
       writeAction({ scope, task, ...opts }),
     [writeAction, scope],
   );

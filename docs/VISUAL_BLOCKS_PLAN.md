@@ -70,6 +70,13 @@ As built (2026-10-19):
   which is how Foli AI chat's agent and the MCP tools (`create_note`, `append_to_note`) make one.
 - Foli AI's results are applied as one undo step; maps leave the server only as block data that passed the
   strict check. Summaries and tasks go in the note below the block; tasks as to-dos, so they're Folevi tasks.
+- The "Mind map" writing tool (the inline composer, the "/" menu, the AI panel) writes a real mind map block:
+  the server reads the model's nested list with the fence's reader, caps it and runs the strict check
+  (`parseListReply` in `convex/lib/mindmapAi.ts`), and returns the block's data with its ```mindmap fence; the
+  preview is the map, Insert puts that data in as one undo step (`insertAiMindmap` in `noteConvert.ts`), and
+  Create note and Copy use the fence. Credits as for every writing tool.
+- The bar over the selected idea is placed by `barPlace.ts` from its measured size: above, below, beside on the
+  roomier side, then the nearest clear spot, never over another idea, the + or the zoom bar.
 
 ## Sticky notes block
 

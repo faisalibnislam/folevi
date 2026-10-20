@@ -723,7 +723,8 @@ export const ask = action({
  * ideas), write as asked, or generate a whole page or template (its title comes back separately). The
  * milestone 8 tools (a meeting summary, flashcards, a quiz, the decision and brainstorming frameworks) work
  * on the selection, or the whole note when nothing is selected; the ones that answer in JSON aren't
- * streamed raw, the stream gets their finished Markdown.
+ * streamed raw, the stream gets their finished Markdown. "Mind map" also returns the block's own data
+ * (`mindmap`, strictly checked) for the client to insert as a real mind map block.
  * Returns Markdown to preview, then insert or replace the selection with; nothing here changes the note.
  */
 export const write = action({
@@ -737,7 +738,7 @@ export const write = action({
     /** Write the text into this stream as it's generated (startStream). */
     streamId: v.optional(v.id("aiStreams")),
   },
-  handler: async (ctx, args): Promise<{ text: string; title?: string }> => {
+  handler: async (ctx, args): Promise<{ text: string; title?: string; mindmap?: string }> => {
     await requireIdentity(ctx);
     const task = writingTask(args.task);
     if (!task) fail("invalid_argument", "Unknown AI action.");

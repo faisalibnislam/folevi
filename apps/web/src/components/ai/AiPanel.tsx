@@ -9,10 +9,11 @@ import { useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
 import { Select } from "@/components/ui/Select";
-import { AiMarkdown, StreamingText } from "./AiMarkdown";
+import { AiMarkdown, AiMindmapPreview, StreamingText } from "./AiMarkdown";
+import { insertAiMindmap } from "@/components/editor/mindmap/noteConvert";
 import { useAiStream } from "./useAiStream";
 import { insertAiMarkdown, type AiPlacement } from "./insert";
-import { markdownToPlain } from "./plainText";
+import { markdownToPlain, mindmapCopyText } from "./plainText";
 import { AI_TOOLS, REWRITE_TASKS, SELECTION_ACTIONS, TOOL_TASKS, useAi, type AiRunDetail, type AiTask } from "./useAi";
 import { StudyMode } from "./StudyMode";
 import { TranslateNote } from "./TranslateNote";
@@ -59,7 +60,7 @@ const THINK_HINTS: Partial<Record<AiTask, string>> = {
 
 const labelFor = (task: AiTask) => (task === "refine" ? "Revised" : null) ?? AI_TOOLS.find((a) => a.task === task)?.label ?? SELECTION_ACTIONS.find((a) => a.task === task)?.label.replace("…", "") ?? NOTE_ACTIONS.find((a) => a.task === task)?.label ?? (task === "draft" ? "Written for you" : "Answer");
 
-type Result = { kind: "write"; task: AiTask; text: string; placement: AiPlacement; request: Request };
+type Result = { kind: "write"; task: AiTask; text: string; placement: AiPlacement; request: Request; mindmap?: string };
 interface Request {
   task: AiTask;
   text?: string;
@@ -121,9 +122,9 @@ export function AiPanel({
     setNotice(null);
     try {
       const streamId = await stream.begin().catch(() => undefined);
-      const { text } = await write(req.task, { documentId, text: req.text, instruction: req.instruction, language: req.language, streamId });
+      const { text, mindmap } = await write(req.task, { documentId, text: req.text, instruction: req.instruction, language: req.language, streamId });
       await stream.finish(text);
-      if (text.trim()) setResult({ kind: "write", task: req.task, text, placement: req.placement, request: req });
+      if (text.trim()) setResult({ kind: "write", task: req.task, text, placement: req.placement, request: req, mindmap });
     } catch (e) {
       setError(aiProblem(e));
     } finally {
@@ -172,6 +173,8 @@ export function AiPanel({
     if (!editor || !result) return;
     // A meeting summary's "@Owner" becomes a mention (and the to-do's assignee) when they can be mentioned here.
     const opts = { people: result.kind === "write" && result.task === "meetingSummary" ? people : undefined };
+    // A mind map goes in as a real mind map block (its checked data); its Markdown only if that isn't valid.
+    if (result.mindmap && insertAiMindmap(editor, result.mindmap, placement)) return setResult(null);
     if (!insertAiMarkdown(editor, result.text, placement, opts)) {
       // The selection changed since it was sent: don't overwrite anything, put the result below instead.
       insertAiMarkdown(editor, result.text, { kind: "cursor" }, opts);
@@ -199,7 +202,7 @@ export function AiPanel({
 
   const copy = () => {
     if (!result) return;
-    void navigator.clipboard.writeText(markdownToPlain(result.text)).then(() => setNotice("Copied"));
+    void navigator.clipboard.writeText(result.mindmap ? mindmapCopyText(result.text) : markdownToPlain(result.text)).then(() => setNotice("Copied"));
   };
 
   /** Runs a tool on the selected text (the result goes below it), or on the whole note. */
@@ -413,7 +416,7 @@ export function AiPanel({
             </div>
           ) : (
             <div className="max-h-[320px] overflow-y-auto pr-1">
-              <AiMarkdown markdown={result.text} />
+              {result.mindmap ? <AiMindmapPreview data={result.mindmap} markdown={result.text} /> : <AiMarkdown markdown={result.text} />}
             </div>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">

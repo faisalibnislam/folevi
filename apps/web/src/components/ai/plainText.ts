@@ -9,3 +9,8 @@ export function markdownToPlain(markdown: string): string {
     .replace(/`([^`]+)`/g, "$1")
     .trim();
 }
+
+/** A ```mindmap fence (Foli AI's mind map) → its nested list for copying, the ideas as written. */
+export function mindmapCopyText(markdown: string): string {
+  return markdown.replace(/^\s*```mindmap\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
+}

@@ -6,6 +6,8 @@
 // that looks like one of our own tags is defused first, so a note can't close its tag and talk to the model.
 import type { GenerateRequest } from "./provider";
 import { finishTool } from "./studyTools";
+import { fail } from "../errors";
+import { mindmapFence, parseListReply } from "../mindmapAi";
 
 /**
  * What a task works on:
@@ -258,8 +260,12 @@ export function asChecklist(markdown: string): string {
   return lines.map((l) => (BULLET.test(l) ? l.replace(BULLET, "$1- [ ] ") : l)).join("\n");
 }
 
-/** What the person gets back: tidied per task (a title is one line; a page has its title split off). */
-export function finishWriting(task: WritingTask, raw: string): { text: string; title?: string } {
+/**
+ * What the person gets back: tidied per task (a title is one line; a page has its title split off). A mind
+ * map comes back as the block's own data (`mindmap`, through the strict check), with `text` its ```mindmap
+ * fence for wherever Markdown goes (a new note, a copy).
+ */
+export function finishWriting(task: WritingTask, raw: string): { text: string; title?: string; mindmap?: string } {
   if (task === "title") return { text: cleanTitleLine(raw) };
   if (taskSpec(task).kind === "generate") {
     const { title, markdown } = parseGenerated(raw);
@@ -267,6 +273,11 @@ export function finishWriting(task: WritingTask, raw: string): { text: string; t
   }
   const text = unfence(raw).trim();
   if (task === "toChecklist") return { text: asChecklist(text) };
+  if (task === "mindMap") {
+    const mindmap = parseListReply(finishTool(task, raw, text));
+    if (!mindmap) fail("invalid_argument", "Foli AI couldn't make a mind map from that. Try again, or pick more text.");
+    return { text: mindmapFence(mindmap), mindmap };
+  }
   if (textOrNote(task)) return { text: finishTool(task, raw, text) };
   return { text };
 }

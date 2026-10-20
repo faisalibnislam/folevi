@@ -9,11 +9,11 @@ import { Editor, type JSONContent } from "@tiptap/core";
 import { UndoRedo } from "@tiptap/extensions";
 import { flattenTree, markdownToBlocks, plainText } from "@folevi/editor-schema";
 
-const reply = vi.hoisted(() => ({ text: "", calls: [] as unknown[] }));
+const reply = vi.hoisted(() => ({ text: "", mindmap: undefined as string | undefined, calls: [] as unknown[] }));
 vi.mock("convex/react", () => ({
   useAction: () => async (args: unknown) => {
     reply.calls.push(args);
-    return { text: reply.text };
+    return reply.mindmap ? { text: reply.text, mindmap: reply.mindmap } : { text: reply.text };
   },
   useMutation: () => async () => {
     throw new Error("no streams in tests");
@@ -134,6 +134,45 @@ describe("the new actions", () => {
     expect(reply.calls[1]).toMatchObject({ task: "swot", documentId: "N1" });
     expect((reply.calls[1] as { text?: string }).text).toBeUndefined();
     act(() => root2.unmount());
+    e.destroy();
+  });
+
+  test("Mind map puts a real mind map block in the note (the checked data), previewed first, one undo step", async () => {
+    const { mindmapDataIssue, mindmapToOutline, parseMindmap } = await import("@folevi/editor-schema");
+    const e = make([p("Trip: food and a hotel.")]);
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const out = finishWriting("mindMap", "- Trip\n  - Food\n  - Hotel");
+    expect(mindmapDataIssue(out.mindmap!)).toBeNull();
+    reply.text = out.text;
+    reply.mindmap = out.mindmap;
+    await act(async () => root.render(createElement(InlineAi, { editor: e as never, documentId: "N1", request: { id: 3, target: null, task: "mindMap" }, onClose: vi.fn() })));
+    expect(reply.calls.at(-1)).toMatchObject({ task: "mindMap", documentId: "N1" });
+    // The preview is the map itself, not a list; nothing in the note changes yet.
+    expect(host.querySelector('figure[aria-label="Mind map"]')).toBeTruthy();
+    expect([...host.querySelectorAll("ul, li")].every((el) => el.closest('figure[aria-label="Mind map"]'))).toBe(true);
+    expect(texts(e)).toEqual(["paragraph:Trip: food and a hotel."]);
+    await act(async () => button(host, "Insert")!.click());
+    expect(texts(e).map((t) => t.split(":")[0])).toEqual(["paragraph", "mindmap"]);
+    const block = e.state.doc.lastChild!;
+    expect(block.attrs.data).toBe(out.mindmap);
+    expect(mindmapToOutline(parseMindmap(String(block.attrs.data))).map((i) => i.text)).toEqual(["Trip", "Food", "Hotel"]);
+    e.commands.undo();
+    expect(texts(e)).toEqual(["paragraph:Trip: food and a hotel."]);
+    act(() => root.unmount());
+
+    // Data that fails the strict check never goes in as is: the fence's Markdown does (still a mind map).
+    const root2 = createRoot(host);
+    reply.mindmap = '{"v":1,"nodes":[{"id":"a","parent":"missing","text":"x"}]}';
+    await act(async () => root2.render(createElement(InlineAi, { editor: e as never, documentId: "N1", request: { id: 4, target: null, task: "mindMap" }, onClose: vi.fn() })));
+    await act(async () => button(host, "Insert")!.click());
+    const again = e.state.doc.lastChild!;
+    expect(again.type.name).toBe("mindmap");
+    expect(mindmapDataIssue(String(again.attrs.data))).toBeNull();
+    expect(mindmapToOutline(parseMindmap(String(again.attrs.data))).map((i) => i.text)).toEqual(["Trip", "Food", "Hotel"]);
+    act(() => root2.unmount());
+    reply.mindmap = undefined;
     e.destroy();
   });
 

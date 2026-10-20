@@ -34,12 +34,13 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import { AiMarkdown, StreamingText } from "./AiMarkdown";
+import { AiMarkdown, AiMindmapPreview, StreamingText } from "./AiMarkdown";
+import { insertAiMindmap } from "@/components/editor/mindmap/noteConvert";
 import { AiDiffLegend, AiDiffView } from "./AiDiffView";
 import { aiDiff } from "./aiDiff";
 import { useAiStream } from "./useAiStream";
 import { insertAiMarkdown, noteIsEmpty, type AiPlacement } from "./insert";
-import { markdownToPlain } from "./plainText";
+import { markdownToPlain, mindmapCopyText } from "./plainText";
 import { AI_RUN_EVENT, AI_TOOLS, REWRITE_TASKS, SELECTION_ACTIONS, TOOL_TASKS, useAi, useNoteAi, type AiRunDetail, type AiTask } from "./useAi";
 import { asksToChange } from "./editIntent";
 import { TOOL_ICONS } from "./toolIcons";
@@ -137,7 +138,7 @@ type Phase =
   | { kind: "compose" }
   | { kind: "menu"; menu: Submenu }
   | { kind: "busy"; label: string }
-  | { kind: "result"; text: string; title?: string; label: string; last: Run };
+  | { kind: "result"; text: string; title?: string; label: string; last: Run; mindmap?: string };
 interface Run {
   task: AiTask;
   text?: string;
@@ -199,7 +200,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
       try {
         // Stream the reply so it appears word by word (falls back to waiting for the whole reply).
         const streamId = await stream.begin().catch(() => undefined);
-        const { text, title } = await write(r.task, { documentId, text: r.text, instruction: r.instruction, language: r.language, streamId });
+        const { text, title, mindmap } = await write(r.task, { documentId, text: r.text, instruction: r.instruction, language: r.language, streamId });
         if (seq !== runSeq.current) return;
         await stream.finish(text);
         if (seq !== runSeq.current) return;
@@ -209,7 +210,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
         }
         const replaces = Boolean(target) && REWRITE_TASKS.has(r.task);
         setView(replaces && showChangesFirst(r.task, aiDiff(target!.text, text).kept) ? "changes" : "result");
-        setPhase({ kind: "result", text, title, label, last: r });
+        setPhase({ kind: "result", text, title, label, last: r, mindmap });
         setInput("");
       } catch (e) {
         if (seq !== runSeq.current) return;
@@ -327,6 +328,8 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
     // A page written into an empty note names it, when it has no title yet.
     const nameIt = isPage && result.title && noteIsEmpty(editor) && !noteAi?.title?.trim();
     const opts = { people: result.last.task === "meetingSummary" ? people : undefined };
+    // A mind map goes in as a real mind map block (its checked data); its Markdown only if that isn't valid.
+    if (result.mindmap && insertAiMindmap(editor, result.mindmap, placement)) return onClose();
     if (!insertAiMarkdown(editor, result.text, placement, opts)) {
       // The selected text changed since it was sent: overwrite nothing, put the result below it instead.
       insertAiMarkdown(editor, result.text, { kind: "below", at: Math.min(target?.to ?? 0, editor.state.doc.content.size) }, opts);
@@ -366,7 +369,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
 
   const copy = () => {
     if (!result) return;
-    const text = isPage && result.title ? `${result.title}\n\n${markdownToPlain(result.text)}` : markdownToPlain(result.text);
+    const text = result.mindmap ? mindmapCopyText(result.text) : isPage && result.title ? `${result.title}\n\n${markdownToPlain(result.text)}` : markdownToPlain(result.text);
     void navigator.clipboard.writeText(text).then(
       () => setNotice("Copied"),
       () => setNotice("Couldn't copy. Select the text and copy it instead."),
@@ -488,6 +491,8 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
                 <AiDiffView parts={diff.parts} />
                 <AiDiffLegend />
               </>
+            ) : result.mindmap ? (
+              <AiMindmapPreview data={result.mindmap} markdown={result.text} />
             ) : (
               <AiMarkdown markdown={result.text} />
             )}

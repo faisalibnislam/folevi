@@ -7,7 +7,9 @@ import {
   MINDMAP_LIMITS,
   depthFirst,
   mindmapDataIssue,
+  mindmapFromMarkdown,
   mindmapFromTree,
+  mindmapToMarkdown,
   mindmapToTree,
   parseMindmap,
   serializeMindmap,
@@ -81,6 +83,27 @@ export function parseMapReply(raw: string, opts: { keep?: MindmapData; layout?: 
   }
   const data = serializeMindmap(depthFirst(map));
   return mindmapDataIssue(data) === null ? data : null;
+}
+
+/**
+ * A nested Markdown list (the "Mind map" writing tool's reply) as the block's wire data: read with the
+ * ```mindmap fence's own reader (mindmapTree.ts), capped at AI_MAX_IDEAS in reading order, and checked with
+ * the same strict check as parseMapReply. Null when there's nothing usable (no list, or no branch).
+ */
+export function parseListReply(markdown: string, opts: { layout?: MindmapLayout } = {}): string | null {
+  const read = depthFirst(mindmapFromMarkdown(markdown, { layout: opts.layout }));
+  // Depth first, every idea comes after its parent, so the first ideas are always a whole map.
+  const map = read.nodes.length > AI_MAX_IDEAS ? { ...read, nodes: read.nodes.slice(0, AI_MAX_IDEAS) } : read;
+  // A map is a centre and at least one branch; a reply with no list (a refusal, a paragraph) isn't one.
+  if (map.nodes.length < 2 || !map.nodes[0]!.text.trim() || !/^\s*(?:[-*+]|\d{1,3}[.)])\s+\S/m.test(markdown)) return null;
+  const data = serializeMindmap(map);
+  return mindmapDataIssue(data) === null ? data : null;
+}
+
+/** The block's data as a ```mindmap fence (its nested list), for wherever Markdown goes: a new note, a copy. */
+export function mindmapFence(data: string): string {
+  const list = mindmapToMarkdown(parseMindmap(data), (s) => s.replace(/`{3,}/g, "``"));
+  return ["```mindmap", ...list, "```"].join("\n");
 }
 
 /** A reply listing ideas: `{ "ideas": [{ "text", "children"? }] }`, deduplicated against `existing`, at most `max`. */

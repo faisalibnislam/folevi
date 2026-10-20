@@ -7,6 +7,8 @@ import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { mindmapDataIssue, mindmapToOutline, parseMindmap, SCHEMA_VERSION } from "@folevi/editor-schema";
 import { TOOL_BY_NAME } from "../../convex/lib/mcp/tools";
+import { AI_MAX_IDEAS, mindmapFence, parseListReply } from "../../convex/lib/mindmapAi";
+import { finishWriting } from "../../convex/lib/ai/writing";
 import { person, setup, ulid, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
@@ -147,5 +149,44 @@ describe("Foli AI mind maps", () => {
     expect(mindmapDataIssue(data)).toBeNull();
     expect(mindmapToOutline(parseMindmap(data)).map((i) => i.text)).toEqual(["Launch", "Marketing", "Blog post", "Product"]);
     for (const name of ["create_note", "append_to_note"]) expect(JSON.stringify(TOOL_BY_NAME.get(name)!.inputSchema)).toContain("```mindmap");
+  });
+
+  test("the \"Mind map\" writing tool gives a real map: the block's data, strictly checked, and its fence; credits as before", async () => {
+    const t = setup();
+    const a = await person(t, "mm-writing@example.com");
+    const { id } = await a.as.mutation(api.aiWriting.saveDraft, { scope: a.scope, kind: "note", title: "Trip", markdown: "We take the ferry at nine, then hike." });
+    const before = await a.as.query(api.billing.credits, { scope: a.scope });
+    gemini("Here's the map:\n- Weekend trip\n    - Travel\n        1. Ferry at nine\n    - Hike\n    - Food");
+    const out = await a.as.action(api.ai.write, { scope: a.scope, task: "mindMap", documentId: id });
+    expect(out.mindmap).toBeTruthy();
+    expect(mindmapDataIssue(out.mindmap!)).toBeNull();
+    expect(mindmapToOutline(parseMindmap(out.mindmap!)).map((i) => [i.depth, i.text])).toEqual([[0, "Weekend trip"], [1, "Travel"], [2, "Ferry at nine"], [1, "Hike"], [1, "Food"]]);
+    // Its Markdown is a ```mindmap fence of the same map (a new note from it gets the block too).
+    expect(out.text).toBe("```mindmap\n- Weekend trip\n  - Travel\n    - Ferry at nine\n  - Hike\n  - Food\n```");
+    const after = await a.as.query(api.billing.credits, { scope: a.scope });
+    expect(after.available).toBeLessThan(before.available);
+    expect(await credits(t)).toBe(0);
+    // Nothing usable: refused (the hold is settled, nothing is returned).
+    vi.unstubAllGlobals();
+    gemini("Sorry, I can't help with that.\n\n```\n```");
+    await expect(a.as.action(api.ai.write, { scope: a.scope, task: "mindMap", documentId: id })).rejects.toThrow(/couldn't make a mind map/);
+    expect(await credits(t)).toBe(0);
+  });
+
+  test("a list reply as block data: capped in reading order, every idea under its parent; fences can't be broken out of", () => {
+    const long = ["- Centre", ...Array.from({ length: 200 }, (_, i) => `  - Idea ${i}`)].join("\n");
+    const data = parseListReply(long)!;
+    expect(mindmapDataIssue(data)).toBeNull();
+    const map = parseMindmap(data);
+    expect(map.nodes).toHaveLength(AI_MAX_IDEAS);
+    expect(map.nodes[0]!.text).toBe("Centre");
+    expect(parseListReply("")).toBeNull();
+    expect(parseListReply("- ")).toBeNull();
+    expect(parseListReply("- Only a centre")).toBeNull();
+    expect(parseListReply("A paragraph, then another line.\nNo list here.")).toBeNull();
+    const fenced = mindmapFence(parseListReply("- Code\n  - ```js trick")!);
+    expect(fenced.split("\n").filter((l) => l.includes("```"))).toEqual(["```mindmap", "```"]);
+    expect(finishWriting("mindMap", "- A\n  - B").mindmap).toBeTruthy();
+    expect(() => finishWriting("mindMap", "No list at all")).toThrow(/couldn't make a mind map/);
   });
 });

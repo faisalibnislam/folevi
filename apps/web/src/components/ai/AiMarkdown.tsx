@@ -4,6 +4,7 @@ import { useMemo, useState, type MouseEvent } from "react";
 import { Check, Copy } from "lucide-react";
 import { markdownToBlocks, type WireBlock } from "@folevi/editor-schema";
 import { ReadOnlyBlocks } from "@/components/doc/ReadOnlyBlocks";
+import { aiMindmapBlock } from "@/components/editor/mindmap/aiBlock";
 
 /** Inline citations ([2]) become links to "#cite-2", which the answer's click handler opens. */
 export function linkCitations(markdown: string, cited: ReadonlySet<number>): string {
@@ -104,6 +105,17 @@ export function AiMarkdown({
       style={{ ["--doc-accent" as string]: "var(--color-heading)", ["--doc-accent-soft" as string]: "var(--glass-hover)" }}
     >
       {segments.map((s, i) => (s.kind === "code" ? <CodeBlock key={s.block.id} block={s.block} /> : <ReadOnlyBlocks key={i} blocks={s.blocks} fileUrls={{}} />))}
+    </div>
+  );
+}
+
+/** Foli AI's mind map (the block's data) as it will go into the note; its Markdown when the data isn't valid. */
+export function AiMindmapPreview({ data, markdown }: { data: string; markdown: string }) {
+  const block = useMemo(() => aiMindmapBlock(data), [data]);
+  if (!block) return <AiMarkdown markdown={markdown} />;
+  return (
+    <div className="fb-ai-answer text-[14px] leading-[1.6] [&>.fb-editor]:!pb-0">
+      <ReadOnlyBlocks blocks={[block]} fileUrls={{}} />
     </div>
   );
 }

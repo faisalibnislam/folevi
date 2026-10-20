@@ -69,15 +69,18 @@
 .fc-node:focus-visible .fc-focus { stroke: var(--fc-select); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-dasharray: 4 3; }
 
 /* ---------------------------------------------------------------- connectors */
-.fc-edge-line { fill: none; stroke: var(--fc-edge); stroke-width: 1.5px; stroke-linecap: round; stroke-linejoin: round; }
-.fc-edge-head { fill: var(--fc-edge); stroke: var(--fc-edge); stroke-width: 1px; stroke-linejoin: round; }
-.fc-edge-hit { fill: none; stroke: transparent; stroke-width: 14px; pointer-events: stroke; cursor: pointer; }
+/* A connector's own colour and width arrive as --fc-ec and --fc-ew (layers/Connectors.tsx). */
+.fc-edge-line { fill: none; stroke: var(--fc-ec, var(--fc-edge)); stroke-width: var(--fc-ew, 1.5px); stroke-linecap: round; stroke-linejoin: round; }
+.fc-edge-head { fill: var(--fc-ec, var(--fc-edge)); stroke: var(--fc-ec, var(--fc-edge)); stroke-width: 1px; stroke-linejoin: round; }
+.fc-edge-head-open { fill: none; stroke-width: var(--fc-ew, 1.5px); stroke-linecap: round; }
+.fc-edge-hit { fill: none; stroke: transparent; stroke-width: 14px; stroke-linecap: round; stroke-linejoin: round; pointer-events: stroke; cursor: pointer; }
+.fc-edge-halo { fill: none; stroke: color-mix(in oklab, var(--fc-select) 32%, transparent); stroke-width: calc(var(--fc-ew, 1.5px) + 6px); stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .fc-edge-label-bg { fill: var(--color-surface); stroke: color-mix(in oklab, var(--color-ink) 10%, transparent); stroke-width: 1px; }
 .fc-edge-label { fill: color-mix(in oklab, var(--color-ink) 78%, var(--color-surface)); font-weight: 500; user-select: none; }
-.fc-edge:hover .fc-edge-line { stroke: color-mix(in oklab, var(--color-ink) 70%, var(--color-surface)); }
-.fc-edge[data-selected] .fc-edge-line { stroke: var(--fc-select); stroke-width: 2px; }
-.fc-edge[data-selected] .fc-edge-head { fill: var(--fc-select); stroke: var(--fc-select); }
+.fc-edges .fc-edge:hover:not([data-selected]) .fc-edge-hit { stroke: color-mix(in oklab, var(--fc-select) 12%, transparent); }
 .fc-edge[data-selected] .fc-edge-label-bg { stroke: var(--fc-select); }
+.fc-edge-label-item { cursor: grab; }
+@media (pointer: coarse) { .fc-edge-hit { stroke-width: 26px; } }
 
 /* ---------------------------------------------------------------- the block */
 .fc-card {
@@ -116,6 +119,16 @@
 .fc-port-dot { fill: var(--color-surface-raised); stroke: var(--fc-select); stroke-width: 1.5px; transition: r 100ms; }
 .fc-port:hover .fc-port-dot { fill: var(--fc-select); }
 .fc-end { fill: var(--color-surface-raised); stroke: var(--fc-select); stroke-width: 2px; cursor: grab; }
+.fc-end[data-free] { fill: var(--fc-select); }
+.fc-handle-hit { fill: transparent; }
+/* Bend points of the selected connector: drag to move, double-click to remove; the hollow ones add one. */
+.fc-bend { fill: var(--fc-select); stroke: var(--color-surface-raised); stroke-width: 1.5px; cursor: move; }
+.fc-bend-add { fill: var(--color-surface-raised); stroke: var(--fc-select); stroke-width: 1.25px; opacity: 0.85; cursor: copy; }
+:is([data-fc-bend], [data-fc-bend-add]):hover :is(.fc-bend, .fc-bend-add) { opacity: 1; stroke-width: 2px; }
+/* Connection points on the shape a connector end is over, and where it would attach. */
+.fc-port-target { fill: var(--color-surface-raised); stroke: var(--fc-select); stroke-width: 1.5px; pointer-events: none; }
+.fc-port-target[data-on] { fill: var(--fc-select); }
+.fc-snap-point { fill: var(--fc-select); stroke: var(--color-surface-raised); stroke-width: 1.5px; pointer-events: none; }
 .fc-guide { stroke: #e5484d; stroke-width: 1px; stroke-dasharray: 3 3; pointer-events: none; }
 .fc-link-preview { fill: none; stroke: var(--fc-select); stroke-width: 1.75px; stroke-dasharray: 5 4; stroke-linecap: round; pointer-events: none; }
 .fc-drop-target { fill: color-mix(in oklab, var(--fc-select) 8%, transparent); stroke: var(--fc-select); stroke-width: 1.5px; pointer-events: none; }
@@ -172,6 +185,34 @@
 .fc-swatch[data-color="pink"] { --fc-tint: var(--fc-pink); }
 .fc-swatch[data-color="purple"] { --fc-tint: var(--fc-purple); }
 .fc-swatch[aria-pressed="true"] { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+/* Connector colours in the connector bar and its menus (the menus open outside the card, so the tints are
+   spelled out here rather than read from the card's variables). */
+.fc-color-dot {
+  --dot: #8a8a93; display: inline-block; flex: none; width: 16px; height: 16px; border-radius: var(--radius-tiny);
+  background: var(--dot); box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--dot) 70%, black 10%);
+}
+.fc-color-dot[data-color="accent"] { --dot: var(--doc-accent, var(--color-accent)); }
+.fc-color-dot[data-color="blue"] { --dot: #3b82f6; }
+.fc-color-dot[data-color="green"] { --dot: #22a05a; }
+.fc-color-dot[data-color="yellow"] { --dot: #e0a800; }
+.fc-color-dot[data-color="pink"] { --dot: #e05a8a; }
+.fc-color-dot[data-color="purple"] { --dot: #8b5cf6; }
+:root[data-theme="dark"] .fc-color-dot[data-color="blue"] { --dot: #6ea8fe; }
+:root[data-theme="dark"] .fc-color-dot[data-color="green"] { --dot: #4cc38a; }
+:root[data-theme="dark"] .fc-color-dot[data-color="yellow"] { --dot: #f0c24b; }
+:root[data-theme="dark"] .fc-color-dot[data-color="pink"] { --dot: #f07aa5; }
+:root[data-theme="dark"] .fc-color-dot[data-color="purple"] { --dot: #a78bfa; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .fc-color-dot[data-color="blue"] { --dot: #6ea8fe; }
+  :root:not([data-theme="light"]) .fc-color-dot[data-color="green"] { --dot: #4cc38a; }
+  :root:not([data-theme="light"]) .fc-color-dot[data-color="yellow"] { --dot: #f0c24b; }
+  :root:not([data-theme="light"]) .fc-color-dot[data-color="pink"] { --dot: #f07aa5; }
+  :root:not([data-theme="light"]) .fc-color-dot[data-color="purple"] { --dot: #a78bfa; }
+}
+/* Fingers: the connector bar's buttons are 44 pt. */
+@media (pointer: coarse) {
+  .fc-bar-edge .fc-btn { min-width: 44px; height: 44px; }
+}
 .fc-btn:focus-visible, .fc-swatch:focus-visible, .fc-ai button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 
 .fc-empty {

@@ -12,8 +12,11 @@ export interface View {
   k: number;
 }
 
-/** Text being written in a shape or on a connector; `typed` when it started with a keystroke. */
-export type Editing = { kind: "node" | "edge"; id: string; before: FlowchartData; typed?: boolean };
+/**
+ * Text being written in a shape or on a connector; `typed` when it started with a keystroke. On a
+ * connector, `label` is which of its labels (default the first; one past the last adds a label).
+ */
+export type Editing = { kind: "node" | "edge"; id: string; before: FlowchartData; typed?: boolean; label?: number };
 
 type SetState<T> = (next: T | ((prev: T) => T)) => void;
 

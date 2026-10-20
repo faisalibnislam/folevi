@@ -20,6 +20,7 @@ import {
   type FlowSide,
   type Rect,
 } from "./schema";
+import { carryEdges } from "./connectors";
 
 export interface Selection {
   nodes: string[];
@@ -81,7 +82,10 @@ export function updateEdges(fc: FlowchartData, ids: readonly string[], patch: (e
   return { ...fc, edges: fc.edges.map((e) => (set.has(e.id) ? patch(e) : e)) };
 }
 
-/** Moves nodes by (dx, dy) from their original positions. */
+/**
+ * Moves nodes by (dx, dy) from their original positions. Connectors moving with them (every attached end
+ * moves) carry their bend points and free ends along (connectors.ts, carryEdges).
+ */
 export function moveNodes(fc: FlowchartData, origin: ReadonlyMap<string, { x: number; y: number }>, dx: number, dy: number): FlowchartData {
   const L = FLOWCHART_LIMITS.maxCoord;
   return {
@@ -92,6 +96,7 @@ export function moveNodes(fc: FlowchartData, origin: ReadonlyMap<string, { x: nu
     }),
   };
 }
+    edges: carryEdges(fc, new Set(origin.keys()), Math.round(dx), Math.round(dy)),
 
 export function setColor(fc: FlowchartData, ids: readonly string[], color: FlowColor): FlowchartData {
   return updateNodes(fc, ids, (n) => ({ ...n, color }));
@@ -127,7 +132,7 @@ export function duplicate(fc: FlowchartData, ids: readonly string[], offset = 24
   const edges = fc.edges
     .filter((e) => map.has(e.from) && map.has(e.to))
     .slice(0, Math.max(0, FLOWCHART_LIMITS.maxEdges - fc.edges.length))
-    .map((e) => ({ ...e, id: flowId("e"), from: map.get(e.from)!, to: map.get(e.to)! }));
+    .map((e) => ({ ...e, id: flowId("e"), from: map.get(e.from)!, to: map.get(e.to)!, bends: e.bends.map((p) => ({ x: p.x + offset, y: p.y + offset })) }));
   return { doc: { ...fc, nodes: [...fc.nodes, ...nodes], edges: [...fc.edges, ...edges] }, ids: nodes.map((n) => n.id) };
 }
 

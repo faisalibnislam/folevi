@@ -5,11 +5,12 @@
 // receive this controller; none of them keeps a second copy of the chart or the selection.
 import { useCallback, useId, useMemo, useRef, useState } from "react";
 import type { ReactNodeViewProps } from "@tiptap/react";
-import { routeEdges, type FlowNode } from "../schema";
+import type { FlowNode } from "../schema";
 import { NO_SELECTION, type Selection } from "../ops";
 import { clampFlowHeight } from "../render";
 import { useFlowDoc } from "../useFlowDoc";
 import { useViewport } from "./useViewport";
+import { useRouted } from "./useRouted";
 import type { ActiveDrag, DropInEmpty, Editing, FlowController } from "./types";
 
 export function useFlowController(props: ReactNodeViewProps): FlowController {
@@ -18,7 +19,7 @@ export function useFlowController(props: ReactNodeViewProps): FlowController {
   const savedHeight = clampFlowHeight(node.attrs.height);
   const write = useCallback((s: string) => updateAttributes({ data: s }), [updateAttributes]);
   const { doc, docRef, setLive, commit, undo, redo, canUndo, canRedo, tooLarge } = useFlowDoc(data, write);
-  const routed = useMemo(() => routeEdges(doc), [doc]);
+  const routed = useRouted(doc);
   const byId = useMemo(() => new Map(doc.nodes.map((n) => [n.id, n])), [doc]);
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
 

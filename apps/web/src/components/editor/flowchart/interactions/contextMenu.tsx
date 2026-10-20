@@ -7,21 +7,24 @@ import { ContextMenu } from "@/components/ui/Menu";
 import type { FlowController, Interaction } from "../controller/types";
 import type { FlowActions } from "../controller/useFlowActions";
 import type { TextEditing } from "./textEditing";
+import type { ShapeContent } from "./content";
+import { connectorMenuItems, connectorSpot, type ConnectorSpot } from "./connectorMenu";
 
 export function useContextMenu(ctrl: FlowController, { actions, startEdit }: { actions: FlowActions; startEdit: TextEditing["startEdit"] }) {
   const { selRef, setSel, full, cardRef } = ctrl;
-  const [menu, setMenu] = useState<{ at: { x: number; y: number }; kind: "node" | "edge"; id: string } | null>(null);
+  const [menu, setMenu] = useState<{ at: { x: number; y: number }; kind: "node" | "edge"; id: string; spot?: ConnectorSpot } | null>(null);
 
   const interaction: Interaction = {
-    contextMenu: ({ e, target }) => {
+    contextMenu: ({ e, target, at }) => {
       const nodeEl = target.closest("[data-fc-node]");
-      const edgeEl = nodeEl ? null : target.closest("[data-fc-edge]");
-      const id = nodeEl?.getAttribute("data-fc-node") ?? edgeEl?.getAttribute("data-fc-edge");
+      // A connector's line, label or bend point (interactions/connectorMenu.tsx).
+      const spot = nodeEl ? null : connectorSpot(target, at);
+      const id = nodeEl?.getAttribute("data-fc-node") ?? spot?.id;
       if (!id) return false;
       const kind = nodeEl ? "node" : "edge";
       const s = selRef.current;
       if (!(kind === "node" ? s.nodes : s.edges).includes(id)) setSel(kind === "node" ? { nodes: [id], edges: [] } : { nodes: [], edges: [id] });
-      setMenu({ at: { x: e.clientX, y: e.clientY }, kind, id });
+      setMenu({ at: { x: e.clientX, y: e.clientY }, kind, id, spot: spot ?? undefined });
       return true;
     },
   };
@@ -41,11 +44,7 @@ export function useContextMenu(ctrl: FlowController, { actions, startEdit }: { a
               "separator",
               { label: "Delete", shortcut: "⌫", icon: <Trash2 size={14} />, danger: true, onSelect: actions.removeSelection },
             ]
-          : [
-              { label: "Edit label", shortcut: "Enter", icon: <Pencil size={14} />, onSelect: () => startEdit("edge", menu.id) },
-              "separator",
-              { label: "Delete", shortcut: "⌫", icon: <Trash2 size={14} />, danger: true, onSelect: actions.removeSelection },
-            ]
+          : connectorMenuItems(ctrl, menu.spot ?? { id: menu.id }, { actions })
       }
     />
   ) : null;

@@ -3,8 +3,10 @@
 // Writing in a shape or on a connector: a text box placed over the item (the item hides its own text
 // meanwhile), the whole edit recorded as one undo step when it ends. Any press on the canvas ends it.
 import { useCallback, useEffect } from "react";
-import { FLOWCHART_FONT_SIZE, FLOWCHART_LABEL_FONT_SIZE, FLOWCHART_LIMITS, FLOWCHART_LINE_HEIGHT, edgeLabel, fitNodeToText, nodeLines, textWidthFor, withLabel } from "../schema";
+import { FLOWCHART_FONT_SIZE, FLOWCHART_LIMITS, FLOWCHART_LINE_HEIGHT, fitNodeToText, nodeLines, textWidthFor } from "../schema";
 import { updateEdges, updateNodes } from "../ops";
+import { finishLabelEdit, setLabelText } from "../connectors";
+import { EdgeLabelInput } from "./edgeLabels";
 import type { FlowController, Interaction } from "../controller/types";
 
 export type TextEditing = ReturnType<typeof useTextEditing>;
@@ -30,10 +32,13 @@ export function useTextEditing(ctrl: FlowController) {
       if (!ed) return;
       editingRef.current = null;
       setEditing(null);
-      if (docRef.current !== ed.before) commit(docRef.current, { before: ed.before });
+      // A connector's labels left empty go (interactions/edgeLabels.tsx); nothing written, no undo step.
+      const next = ed.kind === "edge" ? finishLabelEdit(docRef.current, ed.before, ed.id) : docRef.current;
+      if (next !== docRef.current) setLive(next);
+      if (next !== ed.before) commit(next, { before: ed.before });
       if (refocus) wrapRef.current?.focus({ preventScroll: true });
     },
-    [commit, docRef, editingRef, setEditing, wrapRef],
+    [commit, docRef, editingRef, setEditing, setLive, wrapRef],
   );
 
   const editNode = editing?.kind === "node" ? byId.get(editing.id) : undefined;
@@ -48,7 +53,7 @@ export function useTextEditing(ctrl: FlowController) {
     if (!ed) return;
     const fc = docRef.current;
     if (ed.kind === "node") setLive(updateNodes(fc, [ed.id], (n) => fitNodeToText({ ...n, text: value.slice(0, FLOWCHART_LIMITS.maxText) })));
-    else setLive(updateEdges(fc, [ed.id], (x) => withLabel(x, value)));
+    else setLive(updateEdges(fc, [ed.id], (x) => setLabelText(x, ed.label ?? 0, value)));
   };
 
   // ⌘Z / ⇧⌘Z while typing: the text boxes are controlled, so the browser's own undo would reach the
@@ -99,32 +104,7 @@ export function useTextEditing(ctrl: FlowController) {
       />
     );
   } else if (editEdge) {
-    const k = view.k;
-    const pts = editEdge.points;
-    const mid = editEdge.label ? { x: editEdge.label.cx, y: editEdge.label.cy } : (pts[Math.floor(pts.length / 2)] ?? { x: 0, y: 0 });
-    const w = Math.max(80, (editEdge.label?.w ?? 60) + 24) * k;
-    input = (
-      <input
-        className="fc-label-input"
-        autoFocus
-        value={edgeLabel(editEdge.edge)}
-        maxLength={FLOWCHART_LIMITS.maxLabel}
-        placeholder="Label"
-        aria-label="Connector label"
-        style={{ left: mid.x * k + view.x - w / 2, top: mid.y * k + view.y - 12 * k, width: w, height: 24 * k, fontSize: FLOWCHART_LABEL_FONT_SIZE * k }}
-        onChange={(e) => onEditText(e.target.value)}
-        onFocus={(e) => e.currentTarget.select()}
-        onBlur={() => finishEdit(false)}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (historyKey(e)) return;
-          if (e.key === "Enter" || e.key === "Escape") {
-            e.preventDefault();
-            finishEdit();
-          }
-        }}
-      />
-    );
+    input = <EdgeLabelInput routed={editEdge} index={editing?.label ?? 0} typed={editing?.typed} view={view} onChange={onEditText} onFinish={finishEdit} onHistoryKey={historyKey} />;
   }
 
   const interaction: Interaction = {

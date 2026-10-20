@@ -81,6 +81,18 @@ export {
 } from "@folevi/editor-schema";
 
 export type {
+  // Connectors (ends, bends, labels, styling, routing).
+  FLOWCHART_EDGE_WIDTH,
+  FLOWCHART_HEADS,
+  FLOWCHART_HEAD_LABEL,
+  FLOWCHART_LINE_STYLES,
+  FLOWCHART_ROUTES,
+  headShape,
+  nearestAlong,
+  outlinePoint,
+  pathLength,
+  pointAlong,
+  sidePosition,
   FlowIconName,
   FlowIconPlace,
   FlowImageFit,
@@ -108,3 +120,8 @@ export type {
 
 // Present and follow a path.
 export type { FlowGraph, FlowPath, FlowStep } from "@folevi/editor-schema";
+  FlowEdgeLabel,
+  FlowHead,
+  FlowLineStyle,
+  FlowRoute,
+  LabelBox,

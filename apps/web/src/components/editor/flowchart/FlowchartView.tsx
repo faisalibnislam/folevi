@@ -64,6 +64,8 @@ import { useConnect } from "./interactions/connect";
 import { useResize } from "./interactions/resize";
 import { useMove } from "./interactions/move";
 import { useSelect } from "./interactions/select";
+import { useBends } from "./interactions/bends";
+import { useEdgeLabels } from "./interactions/edgeLabels";
 import { useTextEditing } from "./interactions/textEditing";
 import { doubleClickInteraction } from "./interactions/doubleClick";
 import { useContextMenu } from "./interactions/contextMenu";
@@ -143,6 +145,8 @@ function FlowchartEditor(props: ReactNodeViewProps) {
           data-native-menu=""
           data-panning={pan.panning || undefined}
           data-space={pan.spaceDown || undefined}
+  const bends = useBends(ctrl, { hidden: connect.drawing });
+  const labels = useEdgeLabels(ctrl);
           {...events.canvas}
         >
           <p id={`${uid}-help`} className="sr-only">
@@ -158,6 +162,8 @@ function FlowchartEditor(props: ReactNodeViewProps) {
                 {connect.previewOverlay}
                 {resize.overlay}
                 {connect.handlesOverlay}
+    labels.interaction, // connector labels: drag along the line, double-click to write, typing
+    bends.interaction, // connector lines and bend points: drag to bend, double-click a point to remove it
                 {quick.overlay}
                 {select.overlay}
               </g>
@@ -205,3 +211,4 @@ function FlowchartEditor(props: ReactNodeViewProps) {
     </NodeViewWrapper>
   );
 }
+                {bends.overlay}

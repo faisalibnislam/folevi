@@ -5,12 +5,13 @@
 // connectors are drawn by render.tsx, shared with the read-only view and exports. Presentational only: no
 // state, and the data-fc-* attributes are what the interactions look for under the pointer.
 import { memo } from "react";
-import { roundedPolyline, type FlowNode, type RoutedEdge } from "../schema";
-import { FlowEdgeLabel, FlowEdgeLine, FlowNodeShape, nodeAriaLabel } from "../render";
+import type { FlowNode, RoutedEdge } from "../schema";
+import { FlowNodeShape, nodeAriaLabel } from "../render";
+import { ConnectorLabelLayer, ConnectorLines } from "./Connectors";
 import type { Editing, View } from "../controller/types";
 
 // Tab reaches each shape and focusing one selects it; its name says where it is ("Start: Begin, shape 2 of 7").
-const NodeItem = memo(function NodeItem({ node, selected, hideText, onFocusNode, position }: { node: FlowNode; selected: boolean; hideText: boolean; onFocusNode: (id: string) => void; position: string }) {
+const NodeItem = memo(function NodeItem({ node, selected, hideText, onFocusNode, position, imageHref, uid }: { node: FlowNode; selected: boolean; hideText: boolean; onFocusNode: (id: string) => void; position: string; imageHref?: string; uid?: string }) {
   return (
     <g
       className="fc-node"
@@ -24,17 +25,8 @@ const NodeItem = memo(function NodeItem({ node, selected, hideText, onFocusNode,
       aria-label={`${nodeAriaLabel(node)}, ${position}`}
       onFocus={() => onFocusNode(node.id)}
     >
-      <FlowNodeShape node={node} hideText={hideText} />
+      <FlowNodeShape node={node} hideText={hideText} imageHref={imageHref} uid={uid} />
       <rect className="fc-focus" x={node.x - 4} y={node.y - 4} width={node.w + 8} height={node.h + 8} rx={12} />
-    </g>
-  );
-});
-
-const EdgeItem = memo(function EdgeItem({ routed, selected }: { routed: RoutedEdge; selected: boolean }) {
-  return (
-    <g className="fc-edge" data-fc-edge={routed.edge.id} data-selected={selected || undefined}>
-      <path className="fc-edge-hit" d={roundedPolyline(routed.points)} />
-      <FlowEdgeLine routed={routed} />
     </g>
   );
 });
@@ -63,6 +55,8 @@ export function SceneLayers({
   selEdges,
   editing,
   onFocusNode,
+  imageUrls,
+  uid,
 }: {
   nodes: FlowNode[];
   routed: RoutedEdge[];
@@ -70,29 +64,21 @@ export function SceneLayers({
   selEdges: readonly string[];
   editing: Editing | null;
   onFocusNode: (id: string) => void;
+  /** Addresses of the shapes' images by file id (interactions/content.tsx). */
+  imageUrls?: Readonly<Record<string, string>>;
+  /** Keeps this canvas's clip ids apart from other charts on the page. */
+  uid?: string;
 }) {
   const count = nodes.length;
   return (
     <>
-      <g aria-hidden>
-        {routed.map((r) => (
-          <EdgeItem key={r.edge.id} routed={r} selected={selEdges.includes(r.edge.id)} />
-        ))}
-      </g>
+      <ConnectorLines routed={routed} selEdges={selEdges} />
       <g>
         {nodes.map((n, i) => (
-          <NodeItem key={n.id} node={n} selected={selNodes.includes(n.id)} hideText={editing?.kind === "node" && editing.id === n.id} onFocusNode={onFocusNode} position={`shape ${i + 1} of ${count}`} />
+          <NodeItem key={n.id} node={n} selected={selNodes.includes(n.id)} hideText={editing?.kind === "node" && editing.id === n.id} onFocusNode={onFocusNode} position={`shape ${i + 1} of ${count}`} imageHref={n.image ? imageUrls?.[n.image.fileId] : undefined} uid={uid} />
         ))}
       </g>
-      <g aria-hidden>
-        {routed.map((r) =>
-          r.label ? (
-            <g key={r.edge.id} className="fc-edge" data-fc-edge={r.edge.id} data-selected={selEdges.includes(r.edge.id) || undefined}>
-              <FlowEdgeLabel routed={r} hidden={editing?.kind === "edge" && editing.id === r.edge.id} />
-            </g>
-          ) : null,
-        )}
-      </g>
+      <ConnectorLabelLayer routed={routed} selEdges={selEdges} editing={editing} />
     </>
   );
 }

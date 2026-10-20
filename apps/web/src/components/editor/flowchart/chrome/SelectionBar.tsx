@@ -1,10 +1,10 @@
 "use client";
 
-// The floating bar for the current selection: NodeBar for shapes, EdgeBar for connectors (FlowchartChrome.tsx),
+// The floating bar for the current selection: NodeBar for shapes (FlowchartChrome.tsx), ConnectorBar for connectors,
 // placed above the selection (or below it near the top), hidden while dragging or writing.
-import { setColor, setShape, updateEdges, boxOf } from "../ops";
-import { edgeArrow, withArrow } from "../schema";
-import { EdgeBar, NodeBar } from "../FlowchartChrome";
+import { setColor, setShape, boxOf } from "../ops";
+import { NodeBar } from "../FlowchartChrome";
+import { ConnectorBar, connectorBarSpot } from "./ConnectorBar";
 import { AlignMenu } from "./AlignMenu";
 import { clamp } from "../controller/useViewport";
 import type { FlowController } from "../controller/types";
@@ -14,7 +14,7 @@ import type { TextEditing } from "../interactions/textEditing";
 const same = <T,>(list: T[]): T | null => (list.length && list.every((x) => x === list[0]) ? list[0]! : null);
 
 /** `clearance`: extra room between a single selected shape and the bar, for its quick add arrows. */
-export function SelectionBar({ ctrl, actions, startEdit, clearance = 0 }: { ctrl: FlowController; actions: FlowActions; startEdit: TextEditing["startEdit"]; clearance?: number }) {
+export function SelectionBar({ ctrl, actions, clearance = 0 }: { ctrl: FlowController; actions: FlowActions; startEdit?: TextEditing["startEdit"]; clearance?: number }) {
   const { selNodes, selEdges, routed, view, width, height, editing, sel, docRef, commit } = ctrl;
   const k = view.k;
   const sBox = boxOf([
@@ -46,18 +46,6 @@ export function SelectionBar({ ctrl, actions, startEdit, clearance = 0 }: { ctrl
       />
     );
   }
-  if (selEdges.length && !selNodes.length) {
-    return (
-      <EdgeBar
-        style={style}
-        lineStyle={same(selEdges.map((x) => x.style))}
-        arrow={same(selEdges.map((x) => edgeArrow(x)))}
-        onStyle={(s) => commit(updateEdges(docRef.current, sel.edges, (x) => ({ ...x, style: s })))}
-        onArrow={(a) => commit(updateEdges(docRef.current, sel.edges, (x) => withArrow(x, a)))}
-        onLabel={selEdges.length === 1 ? () => startEdit("edge", selEdges[0]!.id) : null}
-        onDelete={actions.removeSelection}
-      />
-    );
-  }
+  if (selEdges.length && !selNodes.length) return <ConnectorBar ctrl={ctrl} actions={actions} style={connectorBarSpot(ctrl, sBox, style)} />;
   return null;
 }

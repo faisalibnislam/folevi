@@ -1,16 +1,15 @@
 "use client";
 
-// The flowchart canvas's floating controls: the shape toolbar, zoom, and the bar that edits the current
-// selection (colour, shape, line style, arrows). Neutral glass chrome; only the swatches carry colour.
+// The flowchart canvas's floating controls: the shape toolbar, zoom, and the bar that edits the selected
+// shapes (colour, shape; chrome/ConnectorBar.tsx edits connectors). Neutral glass chrome; only the swatches
+// carry colour.
 import { Copy, Expand, Maximize, Minus, Plus, Redo2, Shrink, Trash2, Undo2, Type, WandSparkles } from "lucide-react";
 import {
   FLOWCHART_COLORS,
   FLOWCHART_COLOR_LABEL,
   FLOWCHART_QUICK_SHAPES,
   FLOWCHART_SHAPE_LABEL,
-  type FlowArrow,
   type FlowColor,
-  type FlowEdgeStyle,
   type FlowShape,
 } from "./schema";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -166,69 +165,6 @@ export function NodeBar({
         <Copy size={14} aria-hidden />
       </button>
       <button type="button" className="fc-btn" aria-label="Delete" title="Delete (⌫)" onClick={onDelete}>
-        <Trash2 size={14} aria-hidden />
-      </button>
-    </div>
-  );
-}
-
-const ARROWS: { value: FlowArrow; label: string; d: string }[] = [
-  { value: "end", label: "Arrow at the end", d: "M3 10h13M12 6l4 4-4 4" },
-  { value: "both", label: "Arrows at both ends", d: "M4 10h12M8 6l-4 4 4 4M12 6l4 4-4 4" },
-  { value: "none", label: "No arrows", d: "M3 10h14" },
-];
-
-/** Edits the selected connectors. */
-export function EdgeBar({
-  lineStyle,
-  arrow,
-  onStyle,
-  onArrow,
-  onLabel,
-  onDelete,
-  style,
-}: {
-  lineStyle: FlowEdgeStyle | null;
-  arrow: FlowArrow | null;
-  onStyle: (s: FlowEdgeStyle) => void;
-  onArrow: (a: FlowArrow) => void;
-  onLabel: (() => void) | null;
-  onDelete: () => void;
-  style: React.CSSProperties;
-}) {
-  const icon = (d: string, dashed = false) => (
-    <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d={d} strokeDasharray={dashed ? "3 3" : undefined} />
-    </svg>
-  );
-  return (
-    <div className="fc-bar fc-bar-float" role="toolbar" aria-label="Selected connectors" style={style} onPointerDown={(e) => e.stopPropagation()}>
-      <span role="group" aria-label="Line" className="fc-group">
-        <button type="button" className="fc-btn" aria-pressed={lineStyle === "solid"} aria-label="Solid line" title="Solid" onClick={() => onStyle("solid")}>
-          {icon("M3 10h14")}
-        </button>
-        <button type="button" className="fc-btn" aria-pressed={lineStyle === "dashed"} aria-label="Dashed line" title="Dashed" onClick={() => onStyle("dashed")}>
-          {icon("M3 10h14", true)}
-        </button>
-      </span>
-      <span className="fc-sep" aria-hidden />
-      <span role="group" aria-label="Arrows" className="fc-group">
-        {ARROWS.map((a) => (
-          <button key={a.value} type="button" className="fc-btn" aria-pressed={arrow === a.value} aria-label={a.label} title={a.label} onClick={() => onArrow(a.value)}>
-            {icon(a.d)}
-          </button>
-        ))}
-      </span>
-      {onLabel ? (
-        <>
-          <span className="fc-sep" aria-hidden />
-          <button type="button" className="fc-btn fc-btn-text" onClick={onLabel} title="Label (Enter)">
-            Label
-          </button>
-        </>
-      ) : null}
-      <span className="fc-sep" aria-hidden />
-      <button type="button" className="fc-btn" aria-label="Delete connector" title="Delete (⌫)" onClick={onDelete}>
         <Trash2 size={14} aria-hidden />
       </button>
     </div>

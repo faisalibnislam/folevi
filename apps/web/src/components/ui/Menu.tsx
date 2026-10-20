@@ -17,6 +17,9 @@ export interface MenuItem {
   disabled?: boolean;
   /** A choice among several (e.g. Personal or a workspace): shows a check and is announced as checked. */
   checked?: boolean;
+  /** With `checked`: one of several choices that can be on together (a part linking to several screens), so it
+   * is announced as a checkbox (menuitemcheckbox) rather than a radio item. */
+  multi?: boolean;
   /** A second, quieter line under the label (e.g. your name and plan). */
   description?: string;
   /** Quiet text at the end of the row (e.g. your role in a workspace). */
@@ -270,7 +273,7 @@ function MenuPanel({
           <button
             key={`${item.label}-${i}`}
             type="button"
-            role={item.checked === undefined ? "menuitem" : "menuitemradio"}
+            role={item.checked === undefined ? "menuitem" : item.multi ? "menuitemcheckbox" : "menuitemradio"}
             aria-checked={item.checked}
             // The label names the item; the quieter lines are read as its description.
             aria-label={item.description || item.detail ? item.label : undefined}

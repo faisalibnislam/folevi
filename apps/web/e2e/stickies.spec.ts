@@ -160,6 +160,129 @@ test.describe("Sticky notes", () => {
     await context.close();
   });
 
+  test("phone width: the toolbar folds into More instead of scrolling; Escape closes a panel from a toolbar button", async ({ browser }) => {
+    const { context, page } = await newPerson(browser, "Sticky Narrow");
+    await newPage(page, "Narrow board");
+    const board = await insertBoard(page);
+    const tools = page.getByRole("toolbar", { name: "Sticky notes tools" });
+
+    // Wide: every tool fits, nothing folds. Escape with the keyboard on a toolbar button closes the open
+    // panel, and the keyboard stays on that button.
+    await expect(tools.getByRole("button", { name: "More sticky notes tools" })).toHaveCount(0);
+    const bulkButton = tools.getByRole("button", { name: "Add several notes" });
+    await bulkButton.click();
+    const bulk = page.getByRole("dialog", { name: "Add several notes" });
+    await expect(bulk).toBeVisible();
+    await bulkButton.focus();
+    await page.keyboard.press("Escape");
+    await expect(bulk).toHaveCount(0);
+    await expect(bulkButton).toBeFocused();
+    // From inside the panel, Escape closes it and the keyboard goes back to the board.
+    await bulkButton.click();
+    await expect(bulk.getByRole("textbox")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(bulk).toHaveCount(0);
+    await expect(page.locator(".fb-stickies .fb-canvas-body")).toBeFocused();
+
+    // A phone's width: the toolbar fits the card (no sideways scrolling), and what doesn't fit is in More.
+    await page.setViewportSize({ width: 375, height: 812 });
+    const fits = () => tools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && [...el.querySelectorAll("button")].filter((b) => b.offsetParent).every((b) => b.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1));
+    await expect.poll(fits).toBe(true);
+    const more = tools.getByRole("button", { name: "More sticky notes tools" });
+    await expect(more).toBeVisible();
+    await expect(tools.getByRole("button", { name: "Add a note" })).toBeVisible();
+    // The block's name goes first; the toolbar still says it.
+    await expect(page.locator(".fb-stickies .fb-vc-name")).toHaveAttribute("data-squeezed", "");
+
+    // Group area is a checkbox in More (on or off), and stays checked.
+    await more.click();
+    await page.getByRole("menuitemcheckbox", { name: "Group area" }).click();
+    await more.click();
+    await expect(page.getByRole("menuitemcheckbox", { name: "Group area" })).toHaveAttribute("aria-checked", "true");
+    await page.keyboard.press("Escape");
+    await expect(more).toBeFocused();
+    // Escape on the board ends the group tool.
+    await board.click({ position: { x: 60, y: 200 } });
+    await page.keyboard.press("Escape");
+
+    // A timer started from More shows its countdown in the bar (a running timer always stays in sight).
+    await more.click();
+    await page.getByRole("menuitem", { name: "5 minutes", exact: true }).click();
+    await expect(tools.getByRole("button", { name: /^Timer, 4 minutes \d+ seconds left. Pause/ })).toBeVisible();
+    await expect.poll(fits).toBe(true);
+
+    // A panel opened from More closes with Escape from a toolbar button too.
+    const openBulk = async () => {
+      if (await tools.getByRole("button", { name: "Add several notes" }).isVisible()) await tools.getByRole("button", { name: "Add several notes" }).click();
+      else {
+        await more.click();
+        await page.getByRole("menuitem", { name: "Add several notes" }).click();
+      }
+    };
+    await openBulk();
+    await expect(bulk).toBeVisible();
+    await tools.getByRole("button", { name: "Add a note" }).focus();
+    await page.keyboard.press("Escape");
+    await expect(bulk).toHaveCount(0);
+    await expect(tools.getByRole("button", { name: "Add a note" })).toBeFocused();
+
+    // The selection bar fits too.
+    await openBulk();
+    await bulk.getByRole("textbox").fill("One\nTwo");
+    await bulk.getByRole("button", { name: "Add 2 notes" }).click();
+    await board.getByRole("button", { name: /^One, yellow note/ }).click();
+    const selBar = page.getByRole("toolbar", { name: "Selected note" });
+    await expect(selBar).toBeVisible();
+    await expect.poll(() => selBar.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().left >= el.parentElement!.getBoundingClientRect().left - 1 && el.getBoundingClientRect().right <= el.parentElement!.getBoundingClientRect().right + 1)).toBe(true);
+    await expect(selBar.getByRole("button", { name: "Delete" })).toBeVisible();
+
+    // Full canvas at a phone's width: the toolbar fits the window.
+    await board.click({ position: { x: 20, y: 300 } });
+    await page.keyboard.press("ControlOrMeta+Shift+f");
+    await expect(page.locator(".fb-stickies .fb-canvas-card[data-full]")).toBeVisible();
+    await expect.poll(fits).toBe(true);
+    await page.keyboard.press("Escape");
+    await context.close();
+  });
+
+  test("the workshop timer counts down from server time, so a device whose clock is off agrees", async ({ browser }) => {
+    const { context, page } = await newPerson(browser, "Sticky Clock");
+    await newPage(page, "Timed board");
+    await insertBoard(page);
+    await waitForSaved(page);
+    const url = page.url().replace(/\?.*$/, "");
+    const tools = page.getByRole("toolbar", { name: "Sticky notes tools" });
+
+    // A second device of the same person whose clock runs two and a half minutes fast.
+    const skewed = await browser.newContext({ storageState: await context.storageState() });
+    await skewed.addInitScript(() => {
+      const real = Date.now.bind(Date);
+      Date.now = () => real() + 150_000;
+    });
+    const other = await skewed.newPage();
+    await other.goto(url);
+    const otherTools = other.getByRole("toolbar", { name: "Sticky notes tools" });
+    await expect(otherTools).toBeVisible({ timeout: 30_000 });
+    // It works out how far its clock is from the server's, once (kept for the session).
+    await expect.poll(() => other.evaluate(() => sessionStorage.getItem("folevi:server-clock")), { timeout: 15_000 }).not.toBeNull();
+    const offset = Number(await other.evaluate(() => sessionStorage.getItem("folevi:server-clock")));
+    expect(Math.abs(offset + 150_000)).toBeLessThan(5_000);
+
+    // Started on the first device, the skewed one shows the same time left (not two and a half minutes less).
+    await tools.getByRole("button", { name: "Timer" }).click();
+    await page.getByRole("menuitem", { name: "5 minutes", exact: true }).click();
+    await expect(tools.getByRole("button", { name: /^Timer, 4 minutes \d+ seconds left/ })).toBeVisible();
+    await expect(otherTools.getByRole("button", { name: /^Timer, 4 minutes \d+ seconds left/ })).toBeVisible({ timeout: 15_000 });
+
+    // Restarted on the skewed device, the first agrees.
+    await otherTools.getByRole("button", { name: "Timer options" }).click();
+    await other.getByRole("menuitem", { name: "Restart at 10 minutes" }).click();
+    await expect(otherTools.getByRole("button", { name: /^Timer, 9 minutes \d+ seconds left/ })).toBeVisible();
+    await expect(tools.getByRole("button", { name: /^Timer, 9 minutes \d+ seconds left/ })).toBeVisible({ timeout: 15_000 });
+    await skewed.close();
+    await context.close();
+  });
+
   test("iPhone app: tap to choose, drag a note with a finger, panels are sheets, 44 point controls", async ({ browser }) => {
     const { context: desk, page: deskPage } = await newPerson(browser, "Sticky Phone");
     await newPage(deskPage, "Phone board");
@@ -183,7 +306,7 @@ test.describe("Sticky notes", () => {
     await note.tap();
     await expect(note).toHaveAttribute("aria-pressed", "true");
     const bar = page.getByRole("toolbar", { name: "Selected note" });
-    const size = await bar.getByRole("button", { name: "Duplicate" }).boundingBox();
+    const size = await bar.getByRole("button", { name: "Delete" }).boundingBox();
     expect(size!.height).toBeGreaterThanOrEqual(44);
     // A finger drags the note (touch events, as the iPhone sends them).
     const before = await note.boundingBox();
@@ -194,8 +317,23 @@ test.describe("Sticky notes", () => {
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await expect.poll(async () => (await note.boundingBox())!.x - before!.x).toBeGreaterThan(40);
     expect(await page.evaluate(() => (window as unknown as { __haptics: string[] }).__haptics)).toContain("light");
+    // The toolbar fits the phone: what doesn't fit is in More, with 44 point rows.
+    const tools = page.getByRole("toolbar", { name: "Sticky notes tools" });
+    await expect.poll(() => tools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    const more = tools.getByRole("button", { name: "More sticky notes tools" });
+    expect((await more.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await more.tap();
+    const row = page.getByRole("menu", { name: "More sticky notes tools" }).getByRole("menuitemcheckbox", { name: "Group area" });
+    await expect(row).toBeVisible();
+    await settle(page);
+    expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await page.keyboard.press("Escape");
     // Panels open as the app's sheets.
-    await page.getByRole("toolbar", { name: "Sticky notes tools" }).getByRole("button", { name: "Add several notes" }).click();
+    if (await tools.getByRole("button", { name: "Add several notes" }).isVisible()) await tools.getByRole("button", { name: "Add several notes" }).tap();
+    else {
+      await more.tap();
+      await page.getByRole("menuitem", { name: "Add several notes" }).tap();
+    }
     await expect(page.getByRole("dialog", { name: "Add several notes" })).toBeVisible();
     await context.close();
   });

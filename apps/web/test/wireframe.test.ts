@@ -1,7 +1,7 @@
 // The wireframe block's drawing (components/editor/wireframe/draw.ts), export (svg.ts) and edits (ops.ts).
 import { describe, expect, test } from "vitest";
 import { WIREFRAME_COMPONENTS, serializeWireframe, wireframeDataIssue, wireframeFromDraft, type WireframeData } from "@folevi/editor-schema";
-import { drawItem, fitText, linkPaths, wireframeBounds, wireframeToSvg, wrapText } from "@/components/editor/wireframe/draw";
+import { countOf, drawItem, fitText, isTabBar, linkPaths, wireframeBounds, wireframeToSvg, wrapText } from "@/components/editor/wireframe/draw";
 import { wireframeScreenSvg, wireframeSvg } from "@/components/editor/wireframe/svg";
 import {
   WireHistory,
@@ -48,6 +48,27 @@ describe("drawing", () => {
     expect(clean).toContain("<rect");
     expect(sketch).toContain("<path");
     expect(sketch).not.toBe(clean);
+  });
+
+  test("a navigation bar low on a phone is a tab bar: its count is every line, as drawn (the stepper shows it)", () => {
+    const screen = { w: 390, h: 844, frame: "phone" as const };
+    const bar = { id: "n", screen: "a", kind: "navBar" as const, x: 0, y: 780, w: 390, h: 64, text: "Home\nSearch\nProfile" };
+    const icons = (it: typeof bar & { count?: number }) => (drawItem(it, "clean", screen).match(/scale\(/g) ?? []).length;
+    expect(isTabBar(bar, screen)).toBe(true);
+    expect(countOf(bar, screen)).toBe(3);
+    expect(icons(bar)).toBe(3);
+    // An empty one shows four tabs, and says four.
+    expect(countOf({ ...bar, text: "" }, screen)).toBe(4);
+    expect(icons({ ...bar, text: "" })).toBe(4);
+    // A set count wins, drawn and counted alike.
+    expect(countOf({ ...bar, count: 5 }, screen)).toBe(5);
+    expect(icons({ ...bar, count: 5 })).toBe(5);
+    // At the top it's an app bar: the first line is its title.
+    const top = { ...bar, y: 44 };
+    expect(isTabBar(top, screen)).toBe(false);
+    expect(countOf(top, screen)).toBe(2);
+    // In a browser it's always a header.
+    expect(isTabBar(bar, { ...screen, frame: "browser" })).toBe(false);
   });
 
   test("text fits: shortened with an ellipsis, wrapped into lines", () => {

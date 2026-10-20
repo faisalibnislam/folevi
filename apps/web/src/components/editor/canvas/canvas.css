@@ -23,8 +23,12 @@
   content: ""; position: absolute; inset: 0 0 auto; height: 52px; z-index: 2; -webkit-app-region: drag;
 }
 .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) {
-  left: 50%; right: auto; transform: translateX(-50%); width: max-content; max-width: calc(100% - 168px);
+  left: 50%; right: auto; transform: translateX(-50%); width: max-content; max-width: calc(100% - var(--fold-inset, 168px));
 }
+/* The room the toolbar leaves at the sides (ToolFold.tsx folds what doesn't fit): 10px a side, and in the Mac
+   app's full canvas enough to clear the window's buttons on the left, kept on the right too so it stays centred. */
+.fb-vc-bar { --fold-inset: 20px; }
+:root[data-desktop="mac"] .fb-canvas-card[data-full] .fb-vc-bar { --fold-inset: 168px; }
 /* The toolbar's own empty stretches drag too, like a Mac title bar with tools in it; its controls stay clickable. */
 :root[data-desktop="mac"] .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) { -webkit-app-region: drag; }
 :root[data-desktop="mac"] .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) :is(a, button, input, textarea, select, [role="button"], [role="group"] > *, [tabindex]) { -webkit-app-region: no-drag; }
@@ -57,6 +61,11 @@
   overflow-x: auto; scrollbar-width: none;
 }
 .fb-vc-title { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 6px; font-weight: 600; color: var(--color-heading); }
+/* A narrow bar drops the block's name before any tool (still read out with the toolbar). */
+.fb-vc-name[data-squeezed] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* A tool of a bar that folds (ToolFold.tsx): in the row as it is, or gone into the More menu. */
+.fb-fold-tool, .fb-fold-more { flex: none; display: inline-flex; align-items: center; gap: inherit; }
+.fb-fold-tool[hidden], .fb-fold-more[hidden] { display: none; }
 .fb-vc-icon { display: inline-grid; place-items: center; color: var(--color-ink-muted); }
 .fb-vc-sep { flex: none; width: 1px; height: 18px; margin: 0 4px; background: var(--color-line-strong); }
 .fb-vc-spacer { flex: 1; min-width: 4px; }

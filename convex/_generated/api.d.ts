@@ -39,6 +39,7 @@ import type * as calendarFeeds from "../calendarFeeds.js";
 import type * as changes from "../changes.js";
 import type * as chartAi from "../chartAi.js";
 import type * as charts from "../charts.js";
+import type * as clock from "../clock.js";
 import type * as collections from "../collections.js";
 import type * as comments from "../comments.js";
 import type * as copies from "../copies.js";
@@ -233,6 +234,7 @@ declare const fullApi: ApiFromModules<{
   changes: typeof changes;
   chartAi: typeof chartAi;
   charts: typeof charts;
+  clock: typeof clock;
   collections: typeof collections;
   comments: typeof comments;
   copies: typeof copies;

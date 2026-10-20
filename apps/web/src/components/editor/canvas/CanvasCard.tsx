@@ -4,12 +4,15 @@
 // with the block's own glass toolbar (its name, its tools, Export and Full canvas), the canvas area, an
 // empty-state hint, and a height handle. Full canvas (canvas/useFullCanvas.ts) lifts it over the window:
 // ⇧⌘F or the toolbar's button, Esc back. Esc in the note's card hands the keyboard back to the note, with
-// the block selected. Each block puts its editor in `children` and its tools in `tools`. Styles: canvas.css.
+// the block selected. Each block puts its editor in `children` and its tools in `tools`: given as a list
+// (canvas/ToolFold.tsx), the tools that don't fit a narrow card or a phone fold into a More menu instead of
+// the toolbar scrolling sideways (the block's name goes first, for screen readers only). Styles: canvas.css.
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
 import { Expand, Shrink } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 import { BlockExportMenu } from "./BlockExport";
+import { ToolFold, type FoldTool } from "./ToolFold";
 import { useFullCanvas, type FullCanvas } from "./useFullCanvas";
 
 const HEIGHT_STEP = 40;
@@ -31,14 +34,17 @@ export interface CanvasCardProps {
   /** Nothing to export, when that differs from `empty` (a block that draws its own empty state). */
   blank?: boolean;
   hint: ReactNode;
-  /** The block's own tools, before Export and Full canvas. */
-  tools?: ReactNode;
+  /** The block's own tools, before Export and Full canvas: a list folds what doesn't fit into More. */
+  tools?: ReactNode | FoldTool[];
   /** The block's editor or drawing; given the full canvas state (to fit content on a change, say). */
   children?: ReactNode | ((full: FullCanvas, height: number) => ReactNode);
   /** Runs a frame after full canvas turns on or off (fit the content to the new size). */
   onRefit?: (full: boolean) => void;
   /** The block's own keys first; return true when one was used. */
   onKey?: (e: React.KeyboardEvent<HTMLDivElement>) => boolean;
+  /** Escape from anywhere in the block, its toolbar too, before anything else (close an open panel, say);
+   *  return true when it was used. */
+  onEscape?: () => boolean;
 }
 
 /** Clamps a stored height into the block's range (bad or missing values read as the default). */
@@ -47,10 +53,11 @@ export const clampHeight = (h: unknown, min: number, max: number, fallback: numb
   return Math.round(Math.max(min, Math.min(max, Number.isFinite(n) && n > 0 ? n : fallback)));
 };
 
-export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defaultHeight, empty, blank = empty, hint, tools, children, onRefit, onKey }: CanvasCardProps) {
+export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defaultHeight, empty, blank = empty, hint, tools, children, onRefit, onKey, onEscape }: CanvasCardProps) {
   const { node, selected, editor, getPos, updateAttributes } = view;
   const cardRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLSpanElement>(null);
   const [active, setActive] = useState(false);
   const fullCanvas = useFullCanvas({ cardRef, focusRef: bodyRef, onRefit });
   const { full, toggleFull, cardProps, handleKey } = fullCanvas;
@@ -68,6 +75,13 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const t = e.target as HTMLElement;
+    // Keys in a menu opened from the block (it renders elsewhere in the page) stay in the menu.
+    if (!e.currentTarget.contains(t)) return;
+    if (e.key === "Escape" && onEscape?.()) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     if (t instanceof HTMLTextAreaElement || t instanceof HTMLInputElement || t.closest(".fb-vc-bar")) return;
     if (onKey?.(e)) return;
     if (handleKey(e)) return;
@@ -110,20 +124,29 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
               <p>{hint}</p>
             </div>
           ) : null}
-          <div className="fb-vc-bar" role="toolbar" aria-label={`${name} tools`} onPointerDown={(e) => e.stopPropagation()}>
+          <div className="fb-vc-bar" data-fold={Array.isArray(tools) || undefined} role="toolbar" aria-label={`${name} tools`} onPointerDown={(e) => e.stopPropagation()}>
             <span className="fb-vc-title">
               <span className="fb-vc-icon" aria-hidden>
                 {icon}
               </span>
-              {name}
+              <span ref={nameRef} className="fb-vc-name">
+                {name}
+              </span>
             </span>
-            {tools ? (
+            {Array.isArray(tools) ? (
+              tools.length ? (
+                <>
+                  <span className="fb-vc-sep" aria-hidden />
+                  <ToolFold tools={tools} squeeze={nameRef} label={`More ${name.toLowerCase()} tools`} />
+                </>
+              ) : null
+            ) : tools ? (
               <>
                 <span className="fb-vc-sep" aria-hidden />
                 {tools}
               </>
             ) : null}
-            <span className="fb-vc-spacer" aria-hidden />
+            <span className="fb-vc-spacer" data-fold-grow="" aria-hidden />
             <BlockExportMenu type={type} attrs={() => node.attrs} empty={blank || undefined} triggerClassName="fb-vc-btn" />
             <button type="button" className="fb-vc-btn" aria-pressed={full} aria-label={full ? "Exit full canvas" : "Full canvas"} title={full ? "Exit full canvas (Esc)" : "Full canvas (⇧⌘F)"} onClick={() => toggleFull()}>
               {full ? <Shrink size={14} aria-hidden /> : <Expand size={14} aria-hidden />}

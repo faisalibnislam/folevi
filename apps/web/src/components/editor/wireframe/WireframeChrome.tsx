@@ -3,7 +3,8 @@
 // The wireframe canvas's controls: the tools in the block's toolbar (add a screen, the parts library,
 // Clean or Sketch, Foli AI, undo and redo), zoom, the parts library itself (searchable; tap or drag a part
 // onto a screen), and the bar that edits the selection (text, options, links, align, export, delete).
-// Neutral glass chrome; the drawing is greyscale by design.
+// Neutral glass chrome; the drawing is greyscale by design. The bars fold what doesn't fit into a More menu
+// (canvas/ToolFold.tsx), so each tool also says how it reads as menu rows.
 import {
   AlignCenterHorizontal,
   AlignCenterVertical,
@@ -35,7 +36,7 @@ import {
   FileImage,
   FileText,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
   WIREFRAME_COMPONENT_LABEL,
   WIREFRAME_FRAMES,
@@ -51,6 +52,7 @@ import {
 } from "@folevi/editor-schema";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
+import { ToolFold, type FoldTool } from "../canvas/ToolFold";
 import { colsOf, countOf, drawItem } from "./draw";
 import type { Align } from "./ops";
 import type { ExportAction } from "../canvas/BlockExport";
@@ -64,21 +66,7 @@ export const FRAME_ICON: Record<WireframeFrame, ReactNode> = {
 
 // ------------------------------------------------------------------------------------------ toolbar
 
-export function Tools({
-  style,
-  onStyle,
-  onAddScreen,
-  libraryOpen,
-  onLibrary,
-  onAi,
-  aiOpen,
-  onUndo,
-  onRedo,
-  canUndo,
-  canRedo,
-  multi,
-  onMulti,
-}: {
+export interface ToolsProps {
   style: WireframeStyle;
   onStyle: (s: WireframeStyle) => void;
   onAddScreen: (f: WireframeFrame) => void;
@@ -93,49 +81,105 @@ export function Tools({
   /** Touch: taps add to the selection (null where there's a keyboard's Shift). */
   multi: boolean | null;
   onMulti: () => void;
-}) {
-  return (
-    <>
-      <MenuButton
-        label="Add screen"
-        align="start"
-        triggerClassName="fb-vc-btn wf-btn-text"
-        trigger={
-          <>
-            <Plus size={14} aria-hidden /> <span className="wf-btn-label">Screen</span>
-          </>
-        }
-        items={WIREFRAME_FRAMES.map((f) => ({ label: `${WIREFRAME_FRAME_LABEL[f]} screen`, icon: FRAME_ICON[f], onSelect: () => onAddScreen(f) }))}
-      />
-      <button type="button" className="fb-vc-btn wf-btn-text" aria-pressed={libraryOpen} aria-label="Parts" onClick={onLibrary} title="Interface parts to drag onto a screen">
-        <LayoutGrid size={14} aria-hidden /> <span className="wf-btn-label">Parts</span>
-      </button>
-      <span className="wf-seg" role="group" aria-label="Look">
-        {(["clean", "sketch"] as const).map((s) => (
-          <button key={s} type="button" aria-pressed={style === s} onClick={() => onStyle(s)} title={s === "clean" ? "Clean greyscale lines" : "Hand-drawn lines and handwriting"}>
-            {s === "clean" ? "Clean" : "Sketch"}
-          </button>
-        ))}
-      </span>
-      {onAi ? (
+}
+
+const STYLE_TITLE: Record<WireframeStyle, string> = { clean: "Clean greyscale lines", sketch: "Hand-drawn lines and handwriting" };
+
+/** The block's toolbar tools (CanvasCard folds the ones that don't fit into More, least used first). */
+export function wireTools({ style, onStyle, onAddScreen, libraryOpen, onLibrary, onAi, aiOpen, onUndo, onRedo, canUndo, canRedo, multi, onMulti }: ToolsProps): FoldTool[] {
+  const frames = WIREFRAME_FRAMES.map((f) => ({ label: `${WIREFRAME_FRAME_LABEL[f]} screen`, icon: FRAME_ICON[f], onSelect: () => onAddScreen(f) }));
+  const tools: FoldTool[] = [
+    {
+      key: "screen",
+      priority: 6,
+      node: (
+        <MenuButton
+          label="Add screen"
+          align="start"
+          triggerClassName="fb-vc-btn wf-btn-text"
+          trigger={
+            <>
+              <Plus size={14} aria-hidden /> <span className="wf-btn-label">Screen</span>
+            </>
+          }
+          items={frames}
+        />
+      ),
+      menu: [{ heading: "Add screen" }, ...frames],
+    },
+    {
+      key: "parts",
+      priority: 5,
+      node: (
+        <button type="button" className="fb-vc-btn wf-btn-text" aria-pressed={libraryOpen} aria-label="Parts" onClick={onLibrary} title="Interface parts to drag onto a screen">
+          <LayoutGrid size={14} aria-hidden /> <span className="wf-btn-label">Parts</span>
+        </button>
+      ),
+      menu: [{ label: "Parts", icon: <LayoutGrid size={14} aria-hidden />, checked: libraryOpen, multi: true, onSelect: onLibrary }],
+    },
+    {
+      key: "look",
+      priority: 1,
+      node: (
+        <span className="wf-seg" role="group" aria-label="Look">
+          {(["clean", "sketch"] as const).map((s) => (
+            <button key={s} type="button" aria-pressed={style === s} onClick={() => onStyle(s)} title={STYLE_TITLE[s]}>
+              {s === "clean" ? "Clean" : "Sketch"}
+            </button>
+          ))}
+        </span>
+      ),
+      menu: [{ heading: "Look" }, ...(["clean", "sketch"] as const).map((s) => ({ label: s === "clean" ? "Clean" : "Sketch", description: STYLE_TITLE[s], checked: style === s, onSelect: () => onStyle(s) }))],
+    },
+  ];
+  if (onAi) {
+    tools.push({
+      key: "ai",
+      priority: 3,
+      node: (
         <button type="button" className="fb-vc-btn wf-btn-text" aria-pressed={aiOpen} aria-expanded={aiOpen} aria-label="Foli AI" onClick={onAi} title="Draw, vary or refine screens with Foli AI">
           <AiIcon size={14} className="wf-ai-mark" /> <span className="wf-btn-label">Foli AI</span>
         </button>
-      ) : null}
-      {multi !== null ? (
+      ),
+      menu: [{ label: "Foli AI", icon: <AiIcon size={14} className="wf-ai-mark" />, onSelect: onAi }],
+    });
+  }
+  if (multi !== null) {
+    tools.push({
+      key: "multi",
+      priority: 2,
+      node: (
         <button type="button" className="fb-vc-btn" aria-pressed={multi} aria-label="Select several" title="Select several: each tap adds to the selection" onClick={onMulti}>
           <MousePointer2 size={15} aria-hidden />
         </button>
-      ) : null}
-      <span className="fb-vc-sep" aria-hidden />
-      <button type="button" className="fb-vc-btn" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onClick={onUndo}>
-        <Undo2 size={15} aria-hidden />
-      </button>
-      <button type="button" className="fb-vc-btn" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={onRedo}>
-        <Redo2 size={15} aria-hidden />
-      </button>
-    </>
+      ),
+      menu: [{ label: "Select several", icon: <MousePointer2 size={14} aria-hidden />, checked: multi, multi: true, onSelect: onMulti }],
+    });
+  }
+  tools.push(
+    {
+      key: "undo",
+      sep: true,
+      priority: 4,
+      node: (
+        <button type="button" className="fb-vc-btn" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onClick={onUndo}>
+          <Undo2 size={15} aria-hidden />
+        </button>
+      ),
+      menu: [{ label: "Undo", icon: <Undo2 size={14} aria-hidden />, shortcut: "⌘Z", disabled: !canUndo, onSelect: onUndo }],
+    },
+    {
+      key: "redo",
+      priority: 3,
+      node: (
+        <button type="button" className="fb-vc-btn" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={onRedo}>
+          <Redo2 size={15} aria-hidden />
+        </button>
+      ),
+      menu: [{ label: "Redo", icon: <Redo2 size={14} aria-hidden />, shortcut: "⇧⌘Z", disabled: !canRedo, onSelect: onRedo }],
+    },
   );
+  return tools;
 }
 
 export function ZoomBar({ zoom, onZoomIn, onZoomOut, onFit }: { zoom: number; onZoomIn: () => void; onZoomOut: () => void; onFit: () => void }) {
@@ -325,6 +369,13 @@ function Stepper({ label, value, min, max, step = 1, suffix = "", onChange }: { 
   );
 }
 
+/** A stepper as rows of the More menu: its value, then fewer and more. */
+const stepperMenu = (label: string, value: number, min: number, max: number, onChange: (n: number) => void, step = 1, suffix = ""): MenuEntry[] => [
+  { heading: `${label}: ${value}${suffix}` },
+  { label: `Fewer: ${label.toLowerCase()}`, icon: <Minus size={14} aria-hidden />, disabled: value <= min, onSelect: () => onChange(Math.max(min, value - step)) },
+  { label: `More: ${label.toLowerCase()}`, icon: <Plus size={14} aria-hidden />, disabled: value >= max, onSelect: () => onChange(Math.min(max, value + step)) },
+];
+
 const COUNT_LABEL: Partial<Record<WireframeComponent, string>> = {
   tabs: "Tabs",
   table: "Rows",
@@ -372,7 +423,6 @@ export function SelectionBar(p: SelectionBarProps) {
   const options = sameKind && !p.screens.length ? (WIREFRAME_OPTIONS[sameKind] ?? []) : [];
   const first = p.items[0];
   const screen = p.screens.length === 1 && !p.items.length ? p.screens[0]! : null;
-  const sep = <span className="fb-vc-sep" aria-hidden />;
   const alignItems: MenuEntry[] = [
     { label: one ? "Align left in screen" : "Align left edges", icon: <AlignStartVertical size={14} aria-hidden />, onSelect: () => p.onAlign("left") },
     { label: one ? "Centre in screen" : "Align centres", icon: <AlignCenterVertical size={14} aria-hidden />, onSelect: () => p.onAlign("center") },
@@ -386,67 +436,140 @@ export function SelectionBar(p: SelectionBarProps) {
       : []),
   ];
   const linkTargets = p.allScreens.filter((s) => s.id !== (one?.screen ?? screen?.id));
-  return (
-    <div className="wf-bar wf-bar-float" role="toolbar" aria-label={one ? `Selected ${WIREFRAME_COMPONENT_LABEL[one.kind].toLowerCase()}` : screen ? "Selected screen" : "Selection"} style={p.style} onPointerDown={(e) => e.stopPropagation()}>
-      {one ? <span className="wf-bar-kind">{WIREFRAME_COMPONENT_LABEL[one.kind]}</span> : screen ? <span className="wf-bar-kind">{WIREFRAME_FRAME_LABEL[screen.frame]} screen</span> : null}
-      {p.onEditText ? (
-        <button type="button" className="fb-vc-btn wf-btn-text" onClick={p.onEditText} title="Edit text (Enter)">
+  // The screen the part is on: a navigation bar low on a phone is a tab bar, which counts every line.
+  const firstScreen = first ? p.allScreens.find((s) => s.id === first.screen) : undefined;
+  const kindRef = useRef<HTMLSpanElement>(null);
+  const tools: FoldTool[] = [];
+  const kind = one ? WIREFRAME_COMPONENT_LABEL[one.kind] : screen ? `${WIREFRAME_FRAME_LABEL[screen.frame]} screen` : null;
+  if (p.onEditText) {
+    const onEditText = p.onEditText;
+    tools.push({
+      key: "text",
+      priority: 6,
+      node: (
+        <button type="button" className="fb-vc-btn wf-btn-text" onClick={onEditText} title="Edit text (Enter)">
           <Pencil size={13} aria-hidden /> Text
         </button>
-      ) : null}
-      {p.onRename ? (
-        <button type="button" className="fb-vc-btn wf-btn-text" onClick={p.onRename} title="Rename (Enter)">
+      ),
+      menu: [{ label: "Edit text", icon: <Pencil size={14} aria-hidden />, onSelect: onEditText }],
+    });
+  }
+  if (p.onRename) {
+    const onRename = p.onRename;
+    tools.push({
+      key: "rename",
+      priority: 6,
+      node: (
+        <button type="button" className="fb-vc-btn wf-btn-text" onClick={onRename} title="Rename (Enter)">
           <Pencil size={13} aria-hidden /> Name
         </button>
-      ) : null}
-      {screen ? <MenuButton label="Frame" align="start" triggerClassName="fb-vc-btn" trigger={FRAME_ICON[screen.frame]} items={WIREFRAME_FRAMES.map((f) => ({ label: WIREFRAME_FRAME_LABEL[f], icon: FRAME_ICON[f], checked: screen.frame === f, onSelect: () => p.onFrame(f) }))} /> : null}
-      {first && options.includes("variant") ? (
+      ),
+      menu: [{ label: "Rename", icon: <Pencil size={14} aria-hidden />, onSelect: onRename }],
+    });
+  }
+  if (screen) {
+    const frames = WIREFRAME_FRAMES.map((f) => ({ label: WIREFRAME_FRAME_LABEL[f], icon: FRAME_ICON[f], checked: screen.frame === f, onSelect: () => p.onFrame(f) }));
+    tools.push({ key: "frame", priority: 4, node: <MenuButton label="Frame" align="start" triggerClassName="fb-vc-btn" trigger={FRAME_ICON[screen.frame]} items={frames} />, menu: [{ heading: "Frame" }, ...frames] });
+  }
+  if (first && options.includes("variant")) {
+    const looks = (["primary", "secondary"] as const).map((v) => ({ v, label: v === "primary" ? "Primary" : "Secondary", on: (first.variant ?? "primary") === v }));
+    tools.push({
+      key: "variant",
+      priority: 5,
+      node: (
         <span className="wf-seg" role="group" aria-label="Button look">
-          {(["primary", "secondary"] as const).map((v) => (
-            <button key={v} type="button" aria-pressed={(first.variant ?? "primary") === v} onClick={() => p.onPatch({ variant: v })}>
-              {v === "primary" ? "Primary" : "Secondary"}
+          {looks.map((l) => (
+            <button key={l.v} type="button" aria-pressed={l.on} onClick={() => p.onPatch({ variant: l.v })}>
+              {l.label}
             </button>
           ))}
         </span>
-      ) : null}
-      {first && options.includes("checked") ? (
-        <button type="button" className="fb-vc-btn wf-btn-text" aria-pressed={Boolean(first.checked)} onClick={() => p.onPatch({ checked: !first.checked })} title={first.kind === "toggle" ? "On or off" : "Checked or not"}>
+      ),
+      menu: [{ heading: "Button look" }, ...looks.map((l) => ({ label: l.label, checked: l.on, onSelect: () => p.onPatch({ variant: l.v }) }))],
+    });
+  }
+  if (first && options.includes("checked")) {
+    const title = first.kind === "toggle" ? "On or off" : "Checked or not";
+    tools.push({
+      key: "checked",
+      priority: 5,
+      node: (
+        <button type="button" className="fb-vc-btn wf-btn-text" aria-pressed={Boolean(first.checked)} onClick={() => p.onPatch({ checked: !first.checked })} title={title}>
           {first.checked ? "On" : "Off"}
         </button>
+      ),
+      menu: [{ label: first.kind === "toggle" ? "On" : "Checked", checked: Boolean(first.checked), multi: true, onSelect: () => p.onPatch({ checked: !first.checked }) }],
+    });
+  }
+  if (first && options.includes("value")) {
+    const value = first.value ?? WIREFRAME_OPTION_DEFAULTS[first.kind]?.value ?? 50;
+    const set = (n: number) => p.onPatch({ value: n });
+    tools.push({ key: "value", priority: 5, node: <Stepper label="Value" value={value} min={0} max={100} step={10} suffix="%" onChange={set} />, menu: stepperMenu("Value", value, 0, 100, set, 10, "%") });
+  }
+  if (first && options.includes("count")) {
+    const label = COUNT_LABEL[first.kind] ?? "Count";
+    const value = countOf(first, firstScreen);
+    const max = first.kind === "table" || first.kind === "list" ? 50 : 12;
+    const set = (n: number) => p.onPatch({ count: n });
+    tools.push({ key: "count", priority: 5, node: <Stepper label={label} value={value} min={1} max={max} onChange={set} />, menu: stepperMenu(label, value, 1, max, set) });
+  }
+  if (first && options.includes("cols")) {
+    const value = colsOf(first);
+    const set = (n: number) => p.onPatch({ cols: n });
+    tools.push({ key: "cols", priority: 5, node: <Stepper label="Columns" value={value} min={1} max={12} onChange={set} />, menu: stepperMenu("Columns", value, 1, 12, set) });
+  }
+  if (p.onToggleLink && linkTargets.length) {
+    const toggle = p.onToggleLink;
+    // A part can go to several screens: each is a checkbox, not one choice of many.
+    const links: MenuEntry[] = linkTargets.map((s) => ({ label: s.name.trim() || "Untitled screen", icon: FRAME_ICON[s.frame], checked: p.linkedTo.has(s.id), multi: true, onSelect: () => toggle(s.id) }));
+    tools.push({
+      key: "link",
+      sep: true,
+      priority: 3,
+      node: <MenuButton label="Link to screen" align="start" triggerClassName="fb-vc-btn" trigger={<ArrowRight size={15} aria-hidden />} items={[{ heading: "Goes to" }, ...links]} />,
+      menu: [{ heading: "Link to screen" }, ...links],
+    });
+  }
+  if (p.items.length) tools.push({ key: "align", priority: 2, node: <MenuButton label="Align" align="start" triggerClassName="fb-vc-btn" trigger={<AlignStartVertical size={15} aria-hidden />} items={alignItems} />, menu: [{ heading: "Align" }, ...alignItems] });
+  if (p.onExport) {
+    const run = p.onExport;
+    const exports = EXPORT_ITEMS.map((x) => ({ label: x.label, icon: x.icon, onSelect: () => run(x.action) }));
+    tools.push({ key: "export", priority: 1, node: <MenuButton label="Export screen" align="start" triggerClassName="fb-vc-btn" trigger={<Download size={14} aria-hidden />} items={exports} />, menu: exports });
+  }
+  if (p.onAiVary || p.onAiRefine) {
+    const ai: MenuEntry[] = [...(p.onAiRefine ? [{ label: "Refine this screen…", onSelect: p.onAiRefine }] : []), ...(p.onAiVary ? [{ label: "Make variations…", onSelect: p.onAiVary }] : [])];
+    tools.push({ key: "ai", priority: 2, node: <MenuButton label="Foli AI" align="start" triggerClassName="fb-vc-btn" trigger={<AiIcon size={14} className="wf-ai-mark" />} items={ai} />, menu: [{ heading: "Foli AI" }, ...ai] });
+  }
+  tools.push(
+    {
+      key: "duplicate",
+      sep: true,
+      priority: 3,
+      node: (
+        <button type="button" className="fb-vc-btn" aria-label="Duplicate" title="Duplicate (⌘D)" onClick={p.onDuplicate} disabled={!p.items.length && !p.screens.length}>
+          <Copy size={14} aria-hidden />
+        </button>
+      ),
+      menu: [{ label: "Duplicate", icon: <Copy size={14} aria-hidden />, shortcut: "⌘D", disabled: !p.items.length && !p.screens.length, onSelect: p.onDuplicate }],
+    },
+    // Delete always stays in the bar.
+    {
+      key: "delete",
+      node: (
+        <button type="button" className="fb-vc-btn" aria-label="Delete" title="Delete (⌫)" onClick={p.onDelete}>
+          <Trash2 size={14} aria-hidden />
+        </button>
+      ),
+    },
+  );
+  return (
+    <div className="wf-bar wf-bar-float" role="toolbar" aria-label={one ? `Selected ${WIREFRAME_COMPONENT_LABEL[one.kind].toLowerCase()}` : screen ? "Selected screen" : "Selection"} style={p.style} onPointerDown={(e) => e.stopPropagation()}>
+      {kind ? (
+        <span ref={kindRef} className="wf-bar-kind">
+          {kind}
+        </span>
       ) : null}
-      {first && options.includes("value") ? <Stepper label="Value" value={first.value ?? WIREFRAME_OPTION_DEFAULTS[first.kind]?.value ?? 50} min={0} max={100} step={10} suffix="%" onChange={(n) => p.onPatch({ value: n })} /> : null}
-      {first && options.includes("count") ? <Stepper label={COUNT_LABEL[first.kind] ?? "Count"} value={countOf(first)} min={1} max={first.kind === "table" || first.kind === "list" ? 50 : 12} onChange={(n) => p.onPatch({ count: n })} /> : null}
-      {first && options.includes("cols") ? <Stepper label="Columns" value={colsOf(first)} min={1} max={12} onChange={(n) => p.onPatch({ cols: n })} /> : null}
-      {p.onToggleLink && linkTargets.length ? (
-        <>
-          {sep}
-          <MenuButton
-            label="Link to screen"
-            align="start"
-            triggerClassName="fb-vc-btn"
-            trigger={<ArrowRight size={15} aria-hidden />}
-            items={[{ heading: "Goes to" }, ...linkTargets.map((s) => ({ label: s.name.trim() || "Untitled screen", icon: FRAME_ICON[s.frame], checked: p.linkedTo.has(s.id), onSelect: () => p.onToggleLink!(s.id) }))]}
-          />
-        </>
-      ) : null}
-      {p.items.length ? <MenuButton label="Align" align="start" triggerClassName="fb-vc-btn" trigger={<AlignStartVertical size={15} aria-hidden />} items={alignItems} /> : null}
-      {p.onExport ? <MenuButton label="Export screen" align="start" triggerClassName="fb-vc-btn" trigger={<Download size={14} aria-hidden />} items={EXPORT_ITEMS.map((x) => ({ label: x.label, icon: x.icon, onSelect: () => p.onExport!(x.action) }))} /> : null}
-      {p.onAiVary || p.onAiRefine ? (
-        <MenuButton
-          label="Foli AI"
-          align="start"
-          triggerClassName="fb-vc-btn"
-          trigger={<AiIcon size={14} className="wf-ai-mark" />}
-          items={[...(p.onAiRefine ? [{ label: "Refine this screen…", onSelect: p.onAiRefine }] : []), ...(p.onAiVary ? [{ label: "Make variations…", onSelect: p.onAiVary }] : [])]}
-        />
-      ) : null}
-      {sep}
-      <button type="button" className="fb-vc-btn" aria-label="Duplicate" title="Duplicate (⌘D)" onClick={p.onDuplicate} disabled={!p.items.length && !p.screens.length}>
-        <Copy size={14} aria-hidden />
-      </button>
-      <button type="button" className="fb-vc-btn" aria-label="Delete" title="Delete (⌫)" onClick={p.onDelete}>
-        <Trash2 size={14} aria-hidden />
-      </button>
+      <ToolFold tools={tools} squeeze={kind ? kindRef : undefined} centred at={`${p.style.left},${p.style.top}`} label="More for the selection" />
     </div>
   );
 }

@@ -15,7 +15,9 @@
 .fb-stickies { --st-select: color-mix(in oklab, var(--color-ink) 72%, transparent); --st-line: color-mix(in oklab, var(--color-ink) 14%, transparent); }
 
 /* ---------------------------------------------------------------- the board */
-.st-canvas { position: absolute; inset: 0; overflow: hidden; outline: none; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: default; }
+/* `clip`, not just hidden: focusing a note out of view (Tab, a test's click) must not scroll the board's box,
+   which would shift the bars and the pointer's sums. */
+.st-canvas { position: absolute; inset: 0; overflow: hidden; overflow: clip; outline: none; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: default; }
 .fb-vcard[data-active] .st-canvas, .fb-vcard[data-full] .st-canvas { touch-action: none; }
 .st-canvas[data-space] { cursor: grab; }
 .st-canvas[data-panning] { cursor: grabbing; }

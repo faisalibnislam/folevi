@@ -49,10 +49,12 @@ import { insertAiBlocks, insertAiMarkdown } from "@/components/ai/insert";
 import { useToast } from "@/components/ui/Toast";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { CanvasCard } from "../canvas/CanvasCard";
+import type { FoldTool } from "../canvas/ToolFold";
 import { useEditorEnvironment } from "../environment";
 import { BoardLayer, type People, type View } from "./Board";
 import { StickiesViewer, fitBoard } from "./render";
-import { ArrangeMenu, BulkAddPanel, SelectionBar, TagPanel, TimeUp, TimerControl, VotesMenu, ZoomBar } from "./StickiesChrome";
+import { ArrangeMenu, BulkAddPanel, SelectionBar, TagPanel, TimeUp, TimerControl, VotesMenu, ZoomBar, arrangeItems, timerItems, votesItems, type TimerProps, type VotesProps } from "./StickiesChrome";
+import { serverNow, useServerClock } from "./serverClock";
 import { StickiesAi, type StickiesAiResult } from "./StickiesAi";
 import {
   NO_SELECTION,
@@ -140,6 +142,8 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
   const write = useCallback((s: string) => updateAttributes({ data: s }), [updateAttributes]);
   const { doc, docRef, setLive, commit, undo, redo, canUndo, canRedo, tooLarge } = useStickiesDoc({ data, write, me, blockId, engine: demo ? null : engine });
   const aiOn = useAiEnabled() && !demo;
+  // The workshop timer counts in server time: learn this device's offset from it once per session.
+  useServerClock(!demo);
   const toast = useToast();
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
 
@@ -415,20 +419,22 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
     else delete t.timer;
     setLive(t, true);
   };
-  const startTimer = (minutes: number) => setTimer({ total: minutes * 60_000, left: minutes * 60_000, startedAt: Date.now() });
+  // Start times are server times (serverClock.ts), so every viewer counts down to the same moment.
+  const startTimer = (minutes: number) => setTimer({ total: minutes * 60_000, left: minutes * 60_000, startedAt: serverNow() });
   const pauseTimer = () => {
     const t = docRef.current.timer;
-    if (t) setTimer({ total: t.total, left: stickyTimerLeft(t, Date.now()) });
+    if (t) setTimer({ total: t.total, left: stickyTimerLeft(t, serverNow()) });
   };
   const resumeTimer = () => {
     const t = docRef.current.timer;
-    if (t) setTimer({ ...t, startedAt: Date.now() });
+    if (t) setTimer({ ...t, startedAt: serverNow() });
   };
   const addMinute = () => {
     const t = docRef.current.timer;
     if (!t) return;
-    const left = stickyTimerLeft(t, Date.now());
-    setTimer({ total: Math.min(STICKIES_LIMITS.maxTimer, (left > 0 ? t.total : 0) + 60_000), left: Math.min(STICKIES_LIMITS.maxTimer, left + 60_000), startedAt: Date.now() });
+    const now = serverNow();
+    const left = stickyTimerLeft(t, now);
+    setTimer({ total: Math.min(STICKIES_LIMITS.maxTimer, (left > 0 ? t.total : 0) + 60_000), left: Math.min(STICKIES_LIMITS.maxTimer, left + 60_000), startedAt: now });
   };
 
   // ------------------------------------------------------------------------------ paste and copy
@@ -912,35 +918,98 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
   const empty = !count && !doc.groups.length;
   const chosenTags = [...new Set(selNotes.flatMap((n) => n.tags))];
 
-  const tools = (
-    <>
-      <button type="button" className="fb-vc-btn" aria-label="Add a note" title="Add a note (Enter, or double-click the board)" onClick={() => addOne()}>
-        <StickyNote size={14} aria-hidden />
-      </button>
-      <button type="button" className="fb-vc-btn" aria-label="Add several notes" title="Add several notes: one per line" aria-pressed={panel === "bulk"} onClick={() => setPanel((p) => (p === "bulk" ? null : "bulk"))}>
-        <ListPlus size={15} aria-hidden />
-      </button>
-      <button type="button" className="fb-vc-btn" aria-label="Group area" title="Group area: drag out a labelled area" aria-pressed={tool === "group"} onClick={() => setTool((t) => (t === "group" ? "select" : "group"))}>
-        <SquareDashed size={14} aria-hidden />
-      </button>
-      <span className="fb-vc-sep" aria-hidden />
-      <ArrangeMenu onArrange={arrange} disabled={!count} />
-      {canVote ? <VotesMenu limit={doc.voteLimit} used={myUsed} total={totalVotes} onLimit={(n) => commit({ ...docRef.current, voteLimit: n })} onClearMine={() => commit({ ...docRef.current, notes: docRef.current.notes.map((n) => (n.votes[me] ? { ...n, votes: Object.fromEntries(Object.entries(n.votes).filter(([w]) => w !== me)) } : n)) })} onClearAll={() => commit({ ...docRef.current, notes: docRef.current.notes.map((n) => (Object.keys(n.votes).length ? { ...n, votes: {} } : n)) })} /> : null}
-      <TimerControl timer={doc.timer} onStart={startTimer} onPause={pauseTimer} onResume={resumeTimer} onAdd={addMinute} onStop={() => setTimer(undefined)} />
-      {aiOn ? (
-        <button type="button" className="fb-vc-btn st-ai-btn" aria-label="Foli AI" title="Foli AI: group, summarise, ideas, photos, to-dos" aria-pressed={panel === "ai"} onClick={() => setPanel((p) => (p === "ai" ? null : "ai"))}>
-          <AiIcon size={14} className="st-ai-mark" />
+  const togglePanel = (p: Exclude<PanelKind, null>) => setPanel((cur) => (cur === p ? null : p));
+  const votes: VotesProps = {
+    limit: doc.voteLimit,
+    used: myUsed,
+    total: totalVotes,
+    onLimit: (n) => commit({ ...docRef.current, voteLimit: n }),
+    onClearMine: () => commit({ ...docRef.current, notes: docRef.current.notes.map((n) => (n.votes[me] ? { ...n, votes: Object.fromEntries(Object.entries(n.votes).filter(([w]) => w !== me)) } : n)) }),
+    onClearAll: () => commit({ ...docRef.current, notes: docRef.current.notes.map((n) => (Object.keys(n.votes).length ? { ...n, votes: {} } : n)) }),
+  };
+  const timer: TimerProps = { timer: doc.timer, onStart: startTimer, onPause: pauseTimer, onResume: resumeTimer, onAdd: addMinute, onStop: () => setTimer(undefined) };
+  // The toolbar; on a phone or a narrow card what doesn't fit folds into More, least used first (a running
+  // timer stays, so its countdown is always in sight).
+  const tools: FoldTool[] = [
+    {
+      key: "add",
+      priority: 6,
+      node: (
+        <button type="button" className="fb-vc-btn" aria-label="Add a note" title="Add a note (Enter, or double-click the board)" onClick={() => addOne()}>
+          <StickyNote size={14} aria-hidden />
         </button>
-      ) : null}
-      <span className="fb-vc-sep" aria-hidden />
-      <button type="button" className="fb-vc-btn" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo}>
-        <Undo2 size={15} aria-hidden />
-      </button>
-      <button type="button" className="fb-vc-btn" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={redo}>
-        <Redo2 size={15} aria-hidden />
-      </button>
-    </>
-  );
+      ),
+      menu: [{ label: "Add a note", icon: <StickyNote size={14} aria-hidden />, onSelect: () => addOne() }],
+    },
+    {
+      key: "bulk",
+      priority: 2,
+      node: (
+        <button type="button" className="fb-vc-btn" aria-label="Add several notes" title="Add several notes: one per line" aria-pressed={panel === "bulk"} onClick={() => togglePanel("bulk")}>
+          <ListPlus size={15} aria-hidden />
+        </button>
+      ),
+      menu: [{ label: "Add several notes", icon: <ListPlus size={14} aria-hidden />, onSelect: () => togglePanel("bulk") }],
+    },
+    {
+      key: "group",
+      priority: 1,
+      node: (
+        <button type="button" className="fb-vc-btn" aria-label="Group area" title="Group area: drag out a labelled area" aria-pressed={tool === "group"} onClick={() => setTool((t) => (t === "group" ? "select" : "group"))}>
+          <SquareDashed size={14} aria-hidden />
+        </button>
+      ),
+      menu: [{ label: "Group area", icon: <SquareDashed size={14} aria-hidden />, checked: tool === "group", multi: true, onSelect: () => setTool((t) => (t === "group" ? "select" : "group")) }],
+    },
+    { key: "arrange", sep: true, priority: 1, node: <ArrangeMenu onArrange={arrange} disabled={!count} />, menu: arrangeItems(arrange, !count, true) },
+    ...(canVote ? [{ key: "votes", priority: 2, node: <VotesMenu {...votes} />, menu: votesItems(votes) }] : []),
+    { key: "timer", priority: doc.timer ? 7 : 0, node: <TimerControl {...timer} />, menu: timerItems(timer) },
+    ...(aiOn
+      ? [
+          {
+            key: "ai",
+            priority: 3,
+            node: (
+              <button type="button" className="fb-vc-btn st-ai-btn" aria-label="Foli AI" title="Foli AI: group, summarise, ideas, photos, to-dos" aria-pressed={panel === "ai"} onClick={() => togglePanel("ai")}>
+                <AiIcon size={14} className="st-ai-mark" />
+              </button>
+            ),
+            menu: [{ label: "Foli AI", icon: <AiIcon size={14} className="st-ai-mark" />, onSelect: () => togglePanel("ai") }],
+          },
+        ]
+      : []),
+    {
+      key: "undo",
+      sep: true,
+      priority: 5,
+      node: (
+        <button type="button" className="fb-vc-btn" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo}>
+          <Undo2 size={15} aria-hidden />
+        </button>
+      ),
+      menu: [{ label: "Undo", icon: <Undo2 size={14} aria-hidden />, shortcut: "⌘Z", disabled: !canUndo, onSelect: undo }],
+    },
+    {
+      key: "redo",
+      priority: 4,
+      node: (
+        <button type="button" className="fb-vc-btn" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={redo}>
+          <Redo2 size={15} aria-hidden />
+        </button>
+      ),
+      menu: [{ label: "Redo", icon: <Redo2 size={14} aria-hidden />, shortcut: "⇧⌘Z", disabled: !canRedo, onSelect: redo }],
+    },
+  ];
+
+  // Escape closes an open panel from anywhere in the block (a toolbar button too); when the keyboard was in
+  // the panel it goes back to the board, otherwise it stays where it is.
+  const closePanel = () => {
+    if (!panel) return false;
+    const inPanel = document.activeElement instanceof Element && document.activeElement.closest(".st-panel");
+    setPanel(null);
+    if (inPanel) focusBoard();
+    return true;
+  };
 
   return (
     <CanvasCard
@@ -956,6 +1025,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
       tools={tools}
       onRefit={() => fitView()}
       onKey={onKey}
+      onEscape={closePanel}
     >
       <div
         ref={wrapRef}

@@ -46,7 +46,7 @@ import { copyImage, exportImage } from "../canvas/exportImage";
 import type { ExportAction } from "../canvas/BlockExport";
 import { useEditorEnvironment } from "../environment";
 import { FRAME_INSET, NAME_ROOM, arrowBetween, drawFrameBack, drawFrameFront, drawItem, drawLink, frameBox, linkPaths, screenRadius, wireframeBounds, type Box, type Pt } from "./draw";
-import { Library, SelectionBar, Tools, ZoomBar, type LibraryPick } from "./WireframeChrome";
+import { Library, SelectionBar, ZoomBar, wireTools, type LibraryPick } from "./WireframeChrome";
 import { WireframeAi, type AiMode } from "./WireframeAi";
 import { WireframeViewer } from "./render";
 import { wireframeScreenSvg } from "./svg";
@@ -1147,33 +1147,31 @@ function WireframeEditor(props: ReactNodeViewProps) {
         const el = stageRef.current;
         if (el) fitTo(wireframeBounds(docRef.current), el.clientWidth, el.clientHeight);
       }}
-      tools={
-        <Tools
-          style={doc.style}
-          onStyle={setStyle}
-          onAddScreen={(f) => newScreen(f)}
-          libraryOpen={library}
-          onLibrary={() => {
-            const opening = !library;
-            setLibrary(opening);
-            // A wide canvas keeps its screens clear of the library on the left.
-            const b = wireframeBounds(docRef.current);
-            if (opening && b && size.w >= 560) {
-              const left = b.x * view.k + view.x;
-              const room = 272;
-              if (left < room) setView((v) => ({ ...v, x: v.x + room - left }));
-            }
-          }}
-          onAi={aiOn ? () => setAi((m) => (m ? null : selScreen ? "refine" : "draw")) : null}
-          aiOpen={Boolean(ai)}
-          onUndo={undo}
-          onRedo={redo}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          multi={coarse ? multi : null}
-          onMulti={() => setMulti((m) => !m)}
-        />
-      }
+      tools={wireTools({
+        style: doc.style,
+        onStyle: setStyle,
+        onAddScreen: (f) => newScreen(f),
+        libraryOpen: library,
+        onLibrary: () => {
+          const opening = !library;
+          setLibrary(opening);
+          // A wide canvas keeps its screens clear of the library on the left.
+          const b = wireframeBounds(docRef.current);
+          if (opening && b && size.w >= 560) {
+            const left = b.x * view.k + view.x;
+            const room = 272;
+            if (left < room) setView((v) => ({ ...v, x: v.x + room - left }));
+          }
+        },
+        onAi: aiOn ? () => setAi((m) => (m ? null : selScreen ? "refine" : "draw")) : null,
+        aiOpen: Boolean(ai),
+        onUndo: undo,
+        onRedo: redo,
+        canUndo,
+        canRedo,
+        multi: coarse ? multi : null,
+        onMulti: () => setMulti((m) => !m),
+      })}
     >
       <div
         ref={stageRef}

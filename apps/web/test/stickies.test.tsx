@@ -9,6 +9,7 @@ import { addIdeas, arrangeBuckets, arrangeBy, dragOrigin, duplicateNotes, freeSp
 import { stickiesSvg, wrapText } from "@/components/editor/stickies/svg";
 import { noteLabel } from "@/components/editor/stickies/Board";
 import { useStickiesDoc } from "@/components/editor/stickies/useStickiesDoc";
+import { offsetFrom, resetServerClock, serverNow, serverOffset } from "@/components/editor/stickies/serverClock";
 
 const board = (): StickiesData => ({
   ...emptyStickies(),
@@ -158,5 +159,25 @@ describe("the board's copy of its data", () => {
     expect(now.notes.find((n) => n.id === "s1")!.votes).toEqual({ bob: 1 });
     expect(now.notes.some((n) => n.id === "s9")).toBe(true);
     h.unmount();
+  });
+});
+
+describe("the timer's server clock", () => {
+  afterEach(() => resetServerClock());
+
+  test("the offset is the server's time less the middle of the round trip; a slow trip tells too little", () => {
+    expect(offsetFrom(1_000_000, 1_150_100, 1_000_200)).toBe(150_000);
+    expect(offsetFrom(1_000_000, 999_900 - 60_000, 1_000_000)).toBe(-60_100);
+    expect(offsetFrom(1_000_000, 1_100_000, 1_010_000)).toBeNull();
+    expect(offsetFrom(1_000_000, Number.NaN, 1_000_100)).toBeNull();
+    expect(offsetFrom(1_000_100, 1_000_000, 1_000_000)).toBeNull();
+  });
+
+  test("server time is the device's clock plus the offset kept for the session (none until it's known)", () => {
+    expect(serverOffset()).toBe(0);
+    resetServerClock();
+    sessionStorage.setItem("folevi:server-clock", "-90000");
+    expect(serverOffset()).toBe(-90_000);
+    expect(Math.abs(serverNow() - (Date.now() - 90_000))).toBeLessThan(50);
   });
 });

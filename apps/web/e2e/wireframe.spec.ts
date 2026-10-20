@@ -64,8 +64,15 @@ test.describe("Wireframe", () => {
     await expect(page.getByRole("application", { name: /2 screens/ })).toBeVisible();
     await card.getByRole("button", { name: /^Button: Sign in/ }).focus();
     await card.getByRole("toolbar", { name: "Selected button" }).getByRole("button", { name: "Link to screen" }).click();
-    await page.getByRole("menuitemradio", { name: "Screen 2" }).click();
+    // A part can link to several screens: each is a checkbox, not one choice among radio items.
+    const linkMenu = page.getByRole("menu", { name: "Link to screen" });
+    await expect(linkMenu.getByRole("menuitemradio")).toHaveCount(0);
+    await expect(linkMenu.getByRole("menuitemcheckbox", { name: "Screen 2" })).toHaveAttribute("aria-checked", "false");
+    await linkMenu.getByRole("menuitemcheckbox", { name: "Screen 2" }).click();
     await expect(card.locator(".wf-link")).toHaveCount(1);
+    await card.getByRole("toolbar", { name: "Selected button" }).getByRole("button", { name: "Link to screen" }).click();
+    await expect(linkMenu.getByRole("menuitemcheckbox", { name: "Screen 2" })).toHaveAttribute("aria-checked", "true");
+    await page.keyboard.press("Escape");
 
     // Arrow keys nudge the selected part.
     const before = await card.getByRole("button", { name: /^Button: Sign in/ }).getAttribute("transform");
@@ -109,6 +116,61 @@ test.describe("Wireframe", () => {
     await expect(anonPage.getByText("Button: Sign in")).toBeAttached();
     await anonPage.getByRole("button", { name: "Zoom in" }).click();
     await anon.close();
+    await context.close();
+  });
+
+  test("a navigation bar low on a phone is a tab bar and its stepper counts its tabs; at a phone's width the bars fold into More", async ({ browser }) => {
+    const { context, page } = await newPerson(browser, "Wireframe Tabs");
+    await newPage(page, "Tab bar");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("/wireframe");
+    await page.getByRole("option", { name: /Wireframe/ }).first().click();
+    const card = page.locator(".fb-wireframe");
+    const tools = card.getByRole("toolbar", { name: "Wireframe tools" });
+    await card.getByRole("button", { name: "Phone screen" }).click();
+    await tools.getByRole("button", { name: "Parts" }).click();
+    const library = card.getByRole("dialog", { name: "Interface parts" });
+    await library.getByRole("searchbox", { name: "Search parts" }).fill("navigation");
+    await library.getByRole("button", { name: /^Navigation bar/ }).click();
+    await library.getByRole("button", { name: "Close parts" }).click();
+    const nav = card.getByRole("button", { name: /^Navigation bar, part 1 of 1/ });
+    await nav.focus();
+    const bar = card.getByRole("toolbar", { name: "Selected navigation bar" });
+
+    // Down to the bottom of the screen: it's drawn as a tab bar (an icon a tab), and the stepper counts them.
+    await bar.getByRole("button", { name: "Align" }).click();
+    await page.getByRole("menuitem", { name: "Align bottom in screen" }).click();
+    const icons = () => nav.evaluate((el) => el.querySelectorAll('g[transform*="scale("] > path').length);
+    const value = async () => Number((await bar.getByRole("group", { name: "Items" }).locator(".wf-stepper-value").textContent())?.trim());
+    await expect.poll(icons).toBeGreaterThan(1);
+    expect(await value()).toBe(await icons());
+    const tabs = await icons();
+    await bar.getByRole("button", { name: "More: items" }).click();
+    await expect.poll(icons).toBe(tabs + 1);
+    expect(await value()).toBe(tabs + 1);
+    await bar.getByRole("button", { name: "Fewer: items" }).click();
+    await bar.getByRole("button", { name: "Fewer: items" }).click();
+    await expect.poll(icons).toBe(tabs - 1);
+    expect(await value()).toBe(tabs - 1);
+
+    // A phone's width: the toolbar and the selection bar fit (no sideways scrolling); the rest is in More.
+    await page.setViewportSize({ width: 375, height: 812 });
+    const fits = (el: HTMLElement | SVGElement) => {
+      const box = el.parentElement!.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      return el.scrollWidth <= el.clientWidth + 1 && r.left >= box.left - 1 && r.right <= box.right + 1;
+    };
+    await expect.poll(() => tools.evaluate(fits)).toBe(true);
+    const more = tools.getByRole("button", { name: "More wireframe tools" });
+    await expect(more).toBeVisible();
+    await more.click();
+    // Clean or Sketch, one of two: radio items.
+    await page.getByRole("menu", { name: "More wireframe tools" }).getByRole("menuitemradio", { name: /^Sketch/ }).click();
+    await expect(card.locator("svg.wf-svg")).toHaveAttribute("data-style", "sketch");
+    await nav.focus();
+    await expect(bar).toBeVisible();
+    await expect.poll(() => bar.evaluate(fits)).toBe(true);
+    await expect(bar.getByRole("button", { name: "Delete" })).toBeVisible();
     await context.close();
   });
 
@@ -159,9 +221,16 @@ test.describe("Wireframe", () => {
     await expect(phoneBar).toBeVisible();
     const del = phoneBar.getByRole("button", { name: "Delete" });
     expect((await del.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    await expect(phoneCard.getByRole("button", { name: "Select several" })).toBeVisible();
     await del.tap();
     await expect(phoneCard.getByRole("application", { name: /1 screen, 0 parts/ })).toBeVisible();
+    // Select several is there for fingers: in the toolbar, or in More (a checkbox) when the phone is narrow.
+    const toolbar = phoneCard.getByRole("toolbar", { name: "Wireframe tools" });
+    await expect.poll(() => toolbar.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    if (!(await toolbar.getByRole("button", { name: "Select several" }).isVisible())) {
+      await toolbar.getByRole("button", { name: "More wireframe tools" }).tap();
+      await expect(iphone.getByRole("menuitemcheckbox", { name: "Select several" })).toHaveAttribute("aria-checked", "false");
+      await iphone.keyboard.press("Escape");
+    }
     await phone.close();
     await context.close();
   });

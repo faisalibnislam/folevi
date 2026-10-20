@@ -13,8 +13,10 @@
 // `voteLimit` (votes each person has on this board, default STICKY_VOTES) and `timer` are optional.
 //
 // The workshop timer is only data: while it runs, `startedAt` is when it (re)started and `left` the time
-// that was left then, so every viewer counts down on their own clock (stickyTimerLeft) and nothing runs on a
-// server. Paused, `startedAt` is gone and `left` is what's left.
+// that was left then, so every viewer counts down (stickyTimerLeft) and nothing runs on a server. The editor
+// writes and reads `startedAt` in server time (each device learns its clock's offset from the server once per
+// session), so viewers agree even when a device's clock is off. Paused, `startedAt` is gone and `left` is
+// what's left.
 //
 // `stickiesDataIssue` is the strict check the server runs on every write; `parseStickies` is the forgiving
 // reader clients use. `mergeStickies` folds two people's edits of one board together (votes are per person,

@@ -392,12 +392,22 @@ export const ICON_NAMES = Object.keys(ICONS).filter((k) => k !== "generic");
 const opt = (it: WireItem, k: "count" | "cols" | "value") => it[k] ?? WIREFRAME_OPTION_DEFAULTS[it.kind]?.[k] ?? 1;
 
 /**
- * How many tabs, rows or items a part shows: its count, else one per line of its text (a nav bar's and a
- * sidebar's first line is their title, a table's its header), else the part's default.
+ * A navigation bar low on a phone or tablet screen is drawn as a tab bar: icons over labels, every line a
+ * tab (no title line).
  */
-export function countOf(it: WireItem): number {
+export function isTabBar(it: Pick<WireItem, "kind" | "y" | "w" | "h">, screen?: Pick<WireScreen, "h" | "frame">): boolean {
+  return it.kind === "navBar" && Boolean(screen) && screen!.frame !== "browser" && it.w < 900 && it.y + it.h / 2 > screen!.h * 0.6;
+}
+
+/**
+ * How many tabs, rows or items a part shows: its count, else one per line of its text (a nav bar's and a
+ * sidebar's first line is their title, a table's its header), else the part's default. Pass the part's
+ * screen so a navigation bar drawn as a tab bar counts as drawn (every line, else 4 tabs).
+ */
+export function countOf(it: WireItem, screen?: Pick<WireScreen, "h" | "frame">): number {
   if (it.count !== undefined) return it.count;
   const L = labelLines(it);
+  if (isTabBar(it, screen)) return L.length || 4;
   const fallback = WIREFRAME_OPTION_DEFAULTS[it.kind]?.count ?? 3;
   if (it.kind === "table" || it.kind === "navBar" || it.kind === "sidebar") return L.length > 1 ? L.length - 1 : fallback;
   if (it.kind === "pagination") return fallback;
@@ -789,8 +799,8 @@ function drawCalendar(p: Pen, it: WireItem, w: number, h: number) {
 function drawNavBar(p: Pen, it: WireItem, L: string[], screen?: Pick<WireScreen, "w" | "h" | "frame">) {
   const { w, h } = it;
   // Low on a phone or tablet: a tab bar, icons over labels (every line a tab).
-  const tabBar = screen && screen.frame !== "browser" && w < 900 && it.y + h / 2 > screen.h * 0.6;
-  const n = clampN(Math.round(tabBar ? (it.count ?? (L.length || 4)) : countOf(it)), 1, 50);
+  const tabBar = isTabBar(it, screen);
+  const n = clampN(Math.round(countOf(it, screen)), 1, 50);
   p.rect(0, 0, w, h, 0, { f: "f-fill" });
   if (tabBar) {
     p.line(0, 0.5, w, 0.5, { s: "s-line" });

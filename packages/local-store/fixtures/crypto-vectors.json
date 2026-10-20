@@ -1,0 +1,266 @@
+{
+  "$description": "Reference vectors for the FLV1 envelope (docs/LOCAL_MODE_PLAN.md §3.9, packages/local-store/src/crypto/envelope.ts). Natives must reproduce kdf, wrap.header (given the nonce), fileKeys, names, single and stream exactly, and must reject every entry of rejects. Stream plaintext byte i is i % 251.",
+  "kdf": [
+    {
+      "passphrase": "correct horse battery staple",
+      "saltHex": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecf",
+      "iterations": 1000,
+      "wrappingKeyHex": "670ca48080501e35e3ea9d973725bda8e6fbc77564083c0643e407af9b0b4b45"
+    },
+    {
+      "passphrase": "pässwörd with ünïcode",
+      "saltHex": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecf",
+      "iterations": 1000,
+      "wrappingKeyHex": "810198101fbc184ccca6316d97c1c60a2325bf71a61891ae3215f2ce8f1b34c3"
+    },
+    {
+      "passphrase": "correct horse battery staple",
+      "saltHex": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecf",
+      "iterations": 600000,
+      "wrappingKeyHex": "107197cf8eb57f6699925a8c91b3ca4de1cd25627a4fc668e7b8428a574a45f2"
+    }
+  ],
+  "wrap": [
+    {
+      "passphrase": "correct horse battery staple",
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "saltHex": "d0d1d2d3d4d5d6d7d8d9dadbdcdddedf",
+      "nonceHex": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "iterations": 1000,
+      "header": {
+        "alg": "A256GCM",
+        "kdf": {
+          "name": "PBKDF2-SHA256",
+          "iterations": 1000,
+          "salt": "0NHS09TV1tfY2drb3N3e3w=="
+        },
+        "wrappedKey": "oKGio6Slpqeoqaqrc+f9S4IvDUTpe4JagXMjwPwmRDqLSMKz44nk0064Q2ipq5s/TgDno96SrqWX5ZQu",
+        "keyCheck": "Q+ErBmAZCuSmWNn7VjtQnA=="
+      }
+    }
+  ],
+  "fileKeys": [
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "notes/01J9ZDOC000000000000000001.fnote",
+      "keyHex": "8e84b5d71d33e1a8b497442b92a2b5cf542b17b119abdba5ac7fad3b2f9f9291"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "index/library.findex",
+      "keyHex": "8e36608f2db713e7c93d431d836fef3059e30a3386887a30204d123c6d13558e"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "history/7k2m9q4r1t8v3w6x0y5z2a7b4c/00000lid5-0000-D0-D0-auto.fver",
+      "keyHex": "19e38a020c93e24b6b8eee2a490614295f9a07483aeb460a913faece14bd2c64"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "keyHex": "9aab9e69fbc90ad0f433355d475747aababacaf5cdfbf211577b3cd388f870f4"
+    }
+  ],
+  "names": [
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "kind": "note",
+      "id": "01J9ZDOC000000000000000001",
+      "name": "sbbdz7q4pk374pz8897hb5rp3j"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "kind": "note",
+      "id": "inbox-0123456789abcdef",
+      "name": "vsz7pfn5btwywtt5sxqqbsjbpa"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "kind": "file",
+      "id": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "name": "pk9v6xtaq27scnaw02vg4v151r"
+    }
+  ],
+  "single": [
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "notes/01J9ZDOC000000000000000001.fnote",
+      "nonceHex": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "plaintextUtf8": "{\"format\":\"folevi-note\",\"id\":\"01J9ZDOC000000000000000001\"}",
+      "envelopeHex": "464c563101a0a1a2a3a4a5a6a7a8a9aaabe49f16cb56f01045f2714a5cc00429c6cb10195c7ea7b27820be22a68a5b455c3275e8eb2f1438999bfd3de551c572e39d701a5c129bbf5a1453f366904ca5a03e9004763c57b00a4801"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "index/library.findex",
+      "nonceHex": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "plaintextUtf8": "",
+      "envelopeHex": "464c563101a0a1a2a3a4a5a6a7a8a9aaab4e039115796069969712f13503bae7bc"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "history/7k2m9q4r1t8v3w6x0y5z2a7b4c/00000lid5-0000-D0-D0-auto.fver",
+      "nonceHex": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "plaintextUtf8": "Changed on another device",
+      "envelopeHex": "464c563101a0a1a2a3a4a5a6a7a8a9aaab2da95fad4a861f4f59f962c2b68f006a75f213f2ed70f3d87ff14a09aa5f4a4d073a4088dd4c161e20"
+    }
+  ],
+  "stream": [
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "noncePrefixHex": "b0b1b2b3b4b5b6b7",
+      "chunkSize": 65536,
+      "plaintextLength": 0,
+      "plaintext": "i % 251",
+      "envelopeLength": 33,
+      "envelopeSha256": "84bc6ef8fa3991b2694914452ea38813af16eac2a6b46d388c54e4aa519fdb32",
+      "envelopeHex": "464c56310200010000b0b1b2b3b4b5b6b71ffcc82676eaf4d52c2c2c48716268d1"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "noncePrefixHex": "b0b1b2b3b4b5b6b7",
+      "chunkSize": 65536,
+      "plaintextLength": 1,
+      "plaintext": "i % 251",
+      "envelopeLength": 34,
+      "envelopeSha256": "fe2dd9e445c528ad1584dad5afac5e4bf140267d20ce736c56f64da0369932f7",
+      "envelopeHex": "464c56310200010000b0b1b2b3b4b5b6b784e674946018af6f6d21d51a6182c7706e"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "noncePrefixHex": "b0b1b2b3b4b5b6b7",
+      "chunkSize": 65536,
+      "plaintextLength": 65535,
+      "plaintext": "i % 251",
+      "envelopeLength": 65568,
+      "envelopeSha256": "99924b3ceeb5c6e27d567dcd6ab43293ae2b2849b7d2a119d147b6d947b2a993"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "noncePrefixHex": "b0b1b2b3b4b5b6b7",
+      "chunkSize": 65536,
+      "plaintextLength": 65536,
+      "plaintext": "i % 251",
+      "envelopeLength": 65569,
+      "envelopeSha256": "ad5c3ffe6580fd3041c2f9ac63bc89f41ce61d13fdec11227e00fa6765226e64"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "noncePrefixHex": "b0b1b2b3b4b5b6b7",
+      "chunkSize": 65536,
+      "plaintextLength": 65537,
+      "plaintext": "i % 251",
+      "envelopeLength": 65586,
+      "envelopeSha256": "127443ebce921bd94d372d04ba13e816951e645d2ba2be00b027a28871edf443"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "noncePrefixHex": "b0b1b2b3b4b5b6b7",
+      "chunkSize": 65536,
+      "plaintextLength": 131072,
+      "plaintext": "i % 251",
+      "envelopeLength": 131121,
+      "envelopeSha256": "8cb50784d4311af00bf7eee2902aadfc81018c256fab9f802a16012a1de7a61a"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "noncePrefixHex": "b0b1b2b3b4b5b6b7",
+      "chunkSize": 65536,
+      "plaintextLength": 200000,
+      "plaintext": "i % 251",
+      "envelopeLength": 200081,
+      "envelopeSha256": "cedeecf4dda8fb649779fbdd60d20176a7e2c95e84ecabbfa201bc55d1b18edc"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "noncePrefixHex": "b0b1b2b3b4b5b6b7",
+      "chunkSize": 16,
+      "plaintextLength": 0,
+      "plaintext": "i % 251",
+      "envelopeLength": 33,
+      "envelopeSha256": "847f60ab98ad9156f5eabfd79e6d40541feca964a74f4e776e74b61879d08f9b",
+      "envelopeHex": "464c56310200000010b0b1b2b3b4b5b6b7e9b13336776460685104fc35af0f7446"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "noncePrefixHex": "b0b1b2b3b4b5b6b7",
+      "chunkSize": 16,
+      "plaintextLength": 16,
+      "plaintext": "i % 251",
+      "envelopeLength": 49,
+      "envelopeSha256": "99b85c88617ff4d6daadfbafac8c2e753e66fb7adfbdebb451d351e645ce1d71",
+      "envelopeHex": "464c56310200000010b0b1b2b3b4b5b6b78450232d6286d6b2e6cd507fd43dbff06255e960f35054959a28694829e105cc"
+    },
+    {
+      "masterKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "noncePrefixHex": "b0b1b2b3b4b5b6b7",
+      "chunkSize": 16,
+      "plaintextLength": 40,
+      "plaintext": "i % 251",
+      "envelopeLength": 105,
+      "envelopeSha256": "146f588b11229846ce72a564ff7fb65cf24bd10e65e8986442d6a220441385f7",
+      "envelopeHex": "464c56310200000010b0b1b2b3b4b5b6b78450232d6286d6b2e6cd507fd43dbff0ccf63e20af85e410ff62aa7b355604a04038b9e2dbf92db45744a042374195c52035bae1ebdd9fc403d8d1285ced7ada350ab9a2a01a17a08eaf44e9638739fa7c785d33706aa85d"
+    }
+  ],
+  "rejects": [
+    {
+      "name": "stream: one bit flipped",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "envelopeHex": "464c56310200000010b0b1b2b3b4b5b6b78450232d6286d6b2e6cd507fd43cbff0ccf63e20af85e410ff62aa7b355604a04038b9e2dbf92db45744a042374195c52035bae1ebdd9fc403d8d1285ced7ada350ab9a2a01a17a08eaf44e9638739fa7c785d33706aa85d"
+    },
+    {
+      "name": "stream: cut at a chunk boundary (last flag missing)",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "envelopeHex": "464c56310200000010b0b1b2b3b4b5b6b78450232d6286d6b2e6cd507fd43dbff0ccf63e20af85e410ff62aa7b355604a04038b9e2dbf92db45744a042374195c52035bae1ebdd9fc403d8d1285ced7ada"
+    },
+    {
+      "name": "stream: cut inside a chunk",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "envelopeHex": "464c56310200000010b0b1b2b3b4b5b6b78450232d6286d6b2e6cd507fd43dbff0ccf63e20af85e410ff62aa7b355604a04038b9e2dbf92db45744a042374195c52035bae1ebdd9fc403d8d1285ced7ada350ab9a2a01a17a08eaf44e9638739fa7c785d"
+    },
+    {
+      "name": "stream: two chunks swapped",
+      "pathId": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "envelopeHex": "464c56310200000010b0b1b2b3b4b5b6b74038b9e2dbf92db45744a042374195c52035bae1ebdd9fc403d8d1285ced7ada8450232d6286d6b2e6cd507fd43dbff0ccf63e20af85e410ff62aa7b355604a0350ab9a2a01a17a08eaf44e9638739fa7c785d33706aa85d"
+    },
+    {
+      "name": "stream: sealed for another path",
+      "pathId": "notes/01J9ZDOC000000000000000001.fnote",
+      "envelopeHex": "464c56310200000010b0b1b2b3b4b5b6b78450232d6286d6b2e6cd507fd43dbff0ccf63e20af85e410ff62aa7b355604a04038b9e2dbf92db45744a042374195c52035bae1ebdd9fc403d8d1285ced7ada350ab9a2a01a17a08eaf44e9638739fa7c785d33706aa85d"
+    },
+    {
+      "name": "single: tag changed",
+      "pathId": "notes/01J9ZDOC000000000000000001.fnote",
+      "envelopeHex": "464c563101a0a1a2a3a4a5a6a7a8a9aaabe49f16cb56f01045f2714a5cc00429c6cb10195c7ea7b27820be22a68a5b455c3275e8eb2f1438999bfd3de551c572e39d701a5c129bbf5a1453f366904ca5a03e9004763c57b00a4881"
+    },
+    {
+      "name": "single: header nonce changed",
+      "pathId": "notes/01J9ZDOC000000000000000001.fnote",
+      "envelopeHex": "464c563101a0a0a2a3a4a5a6a7a8a9aaabe49f16cb56f01045f2714a5cc00429c6cb10195c7ea7b27820be22a68a5b455c3275e8eb2f1438999bfd3de551c572e39d701a5c129bbf5a1453f366904ca5a03e9004763c57b00a4801"
+    },
+    {
+      "name": "single: truncated",
+      "pathId": "notes/01J9ZDOC000000000000000001.fnote",
+      "envelopeHex": "464c563101a0a1a2a3a4a5a6a7a8a9aaabe49f16cb56f01045f2714a5cc00429c6cb10195c7ea7b27820be22a68a5b455c3275e8eb2f1438999bfd3de551c572e39d701a5c129bbf5a1453f366904ca5a03e9004763c57b00a48"
+    },
+    {
+      "name": "single: sealed for another path",
+      "pathId": "index/library.findex",
+      "envelopeHex": "464c563101a0a1a2a3a4a5a6a7a8a9aaabe49f16cb56f01045f2714a5cc00429c6cb10195c7ea7b27820be22a68a5b455c3275e8eb2f1438999bfd3de551c572e39d701a5c129bbf5a1453f366904ca5a03e9004763c57b00a4801"
+    },
+    {
+      "name": "not an envelope",
+      "pathId": "notes/01J9ZDOC000000000000000001.fnote",
+      "envelopeHex": "7b22666f726d6174223a22666f6c6576692d6e6f7465227d"
+    }
+  ]
+}

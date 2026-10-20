@@ -1,0 +1,2483 @@
+{
+  "$description": "Golden merge scenarios for packages/local-store (docs/LOCAL_MODE_PLAN.md §3.4). Steps: {on, at, op, ...} edits a device's note; {send, to} merges one device's state into another; {exchange: [a, b]} merges both ways; {snapshot, of} / {deliver, to} replays an old copy; {compact, at} drops tombstones every device has seen; {expect, on} checks the state (sum is the golden checksum of the canonical file). Every merge is also checked for commutativity, idempotence and absorption. Edit this through scripts/merge-scenarios.py.",
+  "rules": [
+    "doc fields: last write wins by c",
+    "doc fields: causality first (a later edit wins even with an older clock)",
+    "concurrent title change: history version and notice",
+    "tags: add-wins OR-set",
+    "content: cv(A) >= cv(B) takes A",
+    "content: concurrent, newer c wins, loser to history, cv = max",
+    "content: concurrent identical edits lose nothing",
+    "delete counts as a content write (delete vs edit)",
+    "position: last write wins on (parentId, rank), no notice",
+    "collapsed: last write wins, no notice",
+    "files, fileText, versionNames, collections, row values: last write wins per key",
+    "notices: union, dismissal last write wins",
+    "seen: pointwise max",
+    "permanent delete: the stub drops only edits it has seen",
+    "permanent delete: an unseen edit brings the note back in Trash with a restored notice",
+    "after merge: a missing or deleted parent moves the block to the top level",
+    "after merge: a cycle from concurrent moves is re-rooted at the block moved last",
+    "after merge: ranks tie-break by (rank, id)",
+    "compacted tombstones stay gone (a stale copy can't bring them back)",
+    "stale copies and duplicates change nothing",
+    "three-way concurrency converges",
+    "clock skew only changes which concurrent edit wins, never whether one is kept"
+  ],
+  "scenarios": [
+    {
+      "name": "doc_field_concurrent_newer_wins_silently",
+      "rule": "doc fields: last write wins by c",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "field",
+          "at": 2000,
+          "name": "folderId",
+          "value": "F1"
+        },
+        {
+          "on": "B",
+          "op": "field",
+          "at": 3000,
+          "name": "folderId",
+          "value": "F2"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "fields": {
+              "folderId": "F2"
+            },
+            "losses": [],
+            "notices": [],
+            "converged": [
+              "B"
+            ],
+            "sum": "5e5fdf08cf3fff8f67d887ada8522ebe6e207bf9cfc4888fdd051f6c0b6e24cb"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "doc_field_causal_edit_beats_skewed_clock",
+      "rule": "doc fields: causality first (a later edit wins even with an older clock)",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "B",
+          "op": "field",
+          "at": 1000000000000,
+          "name": "folderId",
+          "value": "F2"
+        },
+        {
+          "send": "B",
+          "to": "A"
+        },
+        {
+          "on": "A",
+          "op": "field",
+          "at": 2000,
+          "name": "folderId",
+          "value": "F3"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "fields": {
+              "folderId": "F3"
+            },
+            "losses": [],
+            "notices": [],
+            "converged": [
+              "B"
+            ],
+            "sum": "cf788f47f6299e366158d1e1feef4239fd13546a54771b75fc49aaca1b4b3488"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "concurrent_title_change_keeps_both",
+      "rule": "concurrent title change: history version and notice",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "field",
+          "at": 2000,
+          "name": "title",
+          "value": "Trip to Rome"
+        },
+        {
+          "on": "B",
+          "op": "field",
+          "at": 3000,
+          "name": "title",
+          "value": "Trip to Paris"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "title": "Trip to Paris",
+            "losses": [
+              {
+                "target": "doc.title",
+                "from": "A"
+              }
+            ],
+            "notices": [
+              {
+                "kind": "changed",
+                "target": "doc.title",
+                "from": "B",
+                "other": "A",
+                "dismissed": false
+              }
+            ],
+            "converged": [
+              "B"
+            ],
+            "sum": "7834836a4c5b40ef5b74eac64b3c8bb1ed1266c3f8f9051edd677b45202b98c9"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "sequential_title_changes_make_no_notice",
+      "rule": "concurrent title change: history version and notice",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "field",
+          "at": 2000,
+          "name": "title",
+          "value": "Trip to Rome"
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "B",
+          "op": "field",
+          "at": 3000,
+          "name": "title",
+          "value": "Rome"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "title": "Rome",
+            "losses": [],
+            "notices": [],
+            "sum": "5c9f79f67339def883f9b45531429b369d8a5dd94681443cf80df3f0f157a33c"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "tags_add_wins_over_concurrent_remove",
+      "rule": "tags: add-wins OR-set",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "send": "A",
+          "to": "C"
+        },
+        {
+          "on": "A",
+          "op": "tag",
+          "at": 1100,
+          "id": "T1"
+        },
+        {
+          "on": "A",
+          "op": "tag",
+          "at": 1101,
+          "id": "T2"
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "B",
+          "op": "untag",
+          "at": 2000,
+          "id": "T1"
+        },
+        {
+          "on": "B",
+          "op": "untag",
+          "at": 2001,
+          "id": "T2"
+        },
+        {
+          "on": "C",
+          "op": "tag",
+          "at": 2500,
+          "id": "T1"
+        },
+        {
+          "exchange": [
+            "B",
+            "C"
+          ]
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "exchange": [
+            "A",
+            "C"
+          ]
+        },
+        {
+          "expect": {
+            "tags": [
+              "T1"
+            ],
+            "converged": [
+              "B",
+              "C"
+            ],
+            "sum": "fc7d7b3f74123f3776a156abfb090d2b7f1fa67a099be0ced3352d62b4782675"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "tag_re_added_after_remove",
+      "rule": "tags: add-wins OR-set",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "tag",
+          "at": 1100,
+          "id": "T1"
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "B",
+          "op": "untag",
+          "at": 2000,
+          "id": "T1"
+        },
+        {
+          "on": "A",
+          "op": "untag",
+          "at": 2100,
+          "id": "T1"
+        },
+        {
+          "on": "A",
+          "op": "tag",
+          "at": 2200,
+          "id": "T1"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "tags": [
+              "T1"
+            ],
+            "converged": [
+              "B"
+            ],
+            "sum": "72ebbf2cb7e5b891cb0979f50ae2c178c51ce2412bc906e321c5a3c7b59e69be"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "edit_after_seeing_wins_without_conflict",
+      "rule": "content: cv(A) >= cv(B) takes A",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "B",
+          "op": "text",
+          "at": 2000,
+          "block": "B1",
+          "text": "two"
+        },
+        {
+          "send": "B",
+          "to": "A"
+        },
+        {
+          "on": "A",
+          "op": "text",
+          "at": 3000,
+          "block": "B1",
+          "text": "three"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": "three"
+            },
+            "losses": [],
+            "notices": [],
+            "converged": [
+              "B"
+            ],
+            "sum": "397145e1dcdacd8e300b2b4f70e8298258622004e50fd5b7d60f77058111b58c"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "edit_after_seeing_wins_over_skewed_newer_clock",
+      "rule": "clock skew only changes which concurrent edit wins, never whether one is kept",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "B",
+          "op": "text",
+          "at": 1000000000000,
+          "block": "B1",
+          "text": "from the future"
+        },
+        {
+          "send": "B",
+          "to": "A"
+        },
+        {
+          "on": "A",
+          "op": "text",
+          "at": 3000,
+          "block": "B1",
+          "text": "later, causally"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": "later, causally"
+            },
+            "losses": [],
+            "notices": [],
+            "converged": [
+              "B"
+            ],
+            "sum": "77a3b6e525087693335f58a3171cb2deff41d471c833cb6b4cb948db959e272b"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "skewed_device_wins_only_a_concurrent_tie_and_the_other_is_kept",
+      "rule": "clock skew only changes which concurrent edit wins, never whether one is kept",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "B",
+          "op": "text",
+          "at": 1000000000000,
+          "block": "B1",
+          "text": "skewed"
+        },
+        {
+          "on": "A",
+          "op": "text",
+          "at": 5000,
+          "block": "B1",
+          "text": "honest"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": "skewed"
+            },
+            "losses": [
+              {
+                "target": "B1",
+                "from": "A"
+              }
+            ],
+            "notices": [
+              {
+                "kind": "changed",
+                "target": "B1",
+                "from": "B",
+                "other": "A",
+                "dismissed": false
+              }
+            ],
+            "converged": [
+              "B"
+            ],
+            "sum": "a2cba1558c01b588227dcc87163e33fa6f5266792cf2143143d4637c081ae91c"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "concurrent_edits_newer_wins_older_to_history",
+      "rule": "content: concurrent, newer c wins, loser to history, cv = max",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "text",
+          "at": 2000,
+          "block": "B1",
+          "text": "from A"
+        },
+        {
+          "on": "B",
+          "op": "text",
+          "at": 3000,
+          "block": "B1",
+          "text": "from B"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": "from B"
+            },
+            "losses": [
+              {
+                "target": "B1",
+                "from": "A"
+              }
+            ],
+            "notices": [
+              {
+                "kind": "changed",
+                "target": "B1",
+                "from": "B",
+                "other": "A",
+                "dismissed": false
+              }
+            ],
+            "converged": [
+              "B"
+            ],
+            "sum": "2824c3f0502211809754ba2bfbc92a583dc47ea936b637f08a6eeb407e4083b6"
+          },
+          "on": "A"
+        },
+        {
+          "on": "A",
+          "op": "text",
+          "at": 4000,
+          "block": "B1",
+          "text": "after the merge"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": "after the merge"
+            },
+            "losses": [
+              {
+                "target": "B1",
+                "from": "A"
+              }
+            ],
+            "converged": [
+              "B"
+            ],
+            "sum": "1ecf13a2903fcc6d3d3e54095329bbb63adfc6982714458aa53b68800888de59"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "concurrent_identical_edits_lose_nothing",
+      "rule": "content: concurrent identical edits lose nothing",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "text",
+          "at": 2000,
+          "block": "B1",
+          "text": "same"
+        },
+        {
+          "on": "B",
+          "op": "text",
+          "at": 3000,
+          "block": "B1",
+          "text": "same"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": "same"
+            },
+            "losses": [],
+            "notices": [],
+            "converged": [
+              "B"
+            ],
+            "sum": "744e9729ddad242426cc241e102e9a1d35b40307443c537aff64b66dc7b03c85"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "delete_vs_newer_edit_edit_wins_deletion_to_history",
+      "rule": "delete counts as a content write (delete vs edit)",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "delete",
+          "at": 2000,
+          "block": "B1"
+        },
+        {
+          "on": "B",
+          "op": "text",
+          "at": 3000,
+          "block": "B1",
+          "text": "edited"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": "edited"
+            },
+            "losses": [
+              {
+                "target": "B1",
+                "from": "A"
+              }
+            ],
+            "notices": [
+              {
+                "kind": "changed",
+                "target": "B1",
+                "from": "B",
+                "other": "A",
+                "dismissed": false
+              }
+            ],
+            "converged": [
+              "B"
+            ],
+            "sum": "a431857316aa20c470732558a76fa1d8f081a94b8d5735fcba34ab3831db202b"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "edit_vs_newer_delete_deleted_edit_to_history",
+      "rule": "delete counts as a content write (delete vs edit)",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "text",
+          "at": 2000,
+          "block": "B1",
+          "text": "edited"
+        },
+        {
+          "on": "B",
+          "op": "delete",
+          "at": 3000,
+          "block": "B1"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": null
+            },
+            "losses": [
+              {
+                "target": "B1",
+                "from": "A"
+              }
+            ],
+            "notices": [
+              {
+                "kind": "deleted",
+                "target": "B1",
+                "from": "B",
+                "other": "A",
+                "dismissed": false
+              }
+            ],
+            "converged": [
+              "B"
+            ],
+            "sum": "e0d0044709b2a249073e2ffdf41603dd1f984d7d742fb554f984c06220f9a66e"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "concurrent_deletes_lose_nothing",
+      "rule": "delete counts as a content write (delete vs edit)",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "delete",
+          "at": 2000,
+          "block": "B1"
+        },
+        {
+          "on": "B",
+          "op": "delete",
+          "at": 3000,
+          "block": "B1"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": null
+            },
+            "losses": [],
+            "notices": [],
+            "converged": [
+              "B"
+            ],
+            "sum": "eab3f57f76c483fa891e7c4aed9d50a1bd7e03367042be7dd8f006ea2c25b9a6"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "restore_after_delete_is_a_content_write",
+      "rule": "delete counts as a content write (delete vs edit)",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "delete",
+          "at": 2000,
+          "block": "B1"
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "B",
+          "op": "restore",
+          "at": 3000,
+          "block": "B1"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": "base"
+            },
+            "losses": [],
+            "notices": [],
+            "converged": [
+              "B"
+            ],
+            "sum": "b5a25dea894bf6e35bf9df812d214c1837eb5df45c0ce83d609433f21d836458"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "concurrent_moves_last_writer_wins_no_notice",
+      "rule": "position: last write wins on (parentId, rank), no notice",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "P1",
+            "text": "one",
+            "rank": "M"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1002,
+          "block": {
+            "id": "P2",
+            "text": "two",
+            "rank": "T"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1003,
+          "block": {
+            "id": "C1",
+            "text": "child",
+            "parentId": "P1",
+            "rank": "V"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "move",
+          "at": 2000,
+          "block": "C1",
+          "parentId": "P2",
+          "rank": "V"
+        },
+        {
+          "on": "B",
+          "op": "move",
+          "at": 3000,
+          "block": "C1",
+          "parentId": null,
+          "rank": "Z"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "parent": {
+              "C1": null
+            },
+            "losses": [],
+            "notices": [],
+            "tree": [
+              [
+                "P1",
+                null
+              ],
+              [
+                "P2",
+                null
+              ],
+              [
+                "C1",
+                null
+              ]
+            ],
+            "converged": [
+              "B"
+            ],
+            "sum": "984ebc632f7f1c55f2af88b321bc3c19a4a0e892316edf7b5e55b76f94b6ff7c"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "move_and_concurrent_edit_both_kept",
+      "rule": "position: last write wins on (parentId, rank), no notice",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "move",
+          "at": 2000,
+          "block": "B1",
+          "parentId": null,
+          "rank": "Z"
+        },
+        {
+          "on": "B",
+          "op": "text",
+          "at": 3000,
+          "block": "B1",
+          "text": "edited"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": "edited"
+            },
+            "losses": [],
+            "notices": [],
+            "converged": [
+              "B"
+            ],
+            "sum": "fe40fc9f9a6bbb2d87e5dfcbb52dd93210013768c4fffdab1bf375dd06c673ab"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "collapsed_is_independent_of_text_and_last_writer_wins",
+      "rule": "collapsed: last write wins, no notice",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "T1",
+            "type": "toggle",
+            "text": "Details"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "collapse",
+          "at": 2000,
+          "block": "T1",
+          "value": true
+        },
+        {
+          "on": "B",
+          "op": "text",
+          "at": 2500,
+          "block": "T1",
+          "text": "More details"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "text": {
+              "T1": "More details"
+            },
+            "collapsed": {
+              "T1": true
+            },
+            "losses": [],
+            "notices": [],
+            "converged": [
+              "B"
+            ],
+            "sum": "acc3139c87759c166866acc500fb123c8a55791e0f369b067209da918a0a549e"
+          },
+          "on": "A"
+        },
+        {
+          "on": "A",
+          "op": "collapse",
+          "at": 3000,
+          "block": "T1",
+          "value": false
+        },
+        {
+          "on": "B",
+          "op": "collapse",
+          "at": 4000,
+          "block": "T1",
+          "value": true
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "collapsed": {
+              "T1": true
+            },
+            "losses": [],
+            "notices": [],
+            "converged": [
+              "B"
+            ],
+            "sum": "9af882f2b8ae2f3b5c60693cb716e0fec8d1c42fd70d10df2d8dfb0662f43e3d"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "side_maps_last_writer_wins_per_key",
+      "rule": "files, fileText, versionNames, collections, row values: last write wins per key",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "file",
+          "at": 1001,
+          "id": "F1",
+          "palette": [
+            "#000000"
+          ]
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "file",
+          "at": 2000,
+          "id": "F1",
+          "palette": [
+            "#111111"
+          ]
+        },
+        {
+          "on": "B",
+          "op": "file",
+          "at": 3000,
+          "id": "F1",
+          "palette": [
+            "#222222"
+          ]
+        },
+        {
+          "on": "A",
+          "op": "fileText",
+          "at": 3500,
+          "id": "F1",
+          "text": "alpha"
+        },
+        {
+          "on": "B",
+          "op": "fileText",
+          "at": 2500,
+          "id": "F1",
+          "text": "beta"
+        },
+        {
+          "on": "A",
+          "op": "versionName",
+          "at": 3600,
+          "file": "v1.fver",
+          "name": "Before trip"
+        },
+        {
+          "on": "B",
+          "op": "versionName",
+          "at": 3700,
+          "file": "v2.fver",
+          "name": "After trip"
+        },
+        {
+          "on": "A",
+          "op": "rowValue",
+          "at": 3800,
+          "property": "P1",
+          "value": "Rome"
+        },
+        {
+          "on": "B",
+          "op": "rowValue",
+          "at": 3900,
+          "property": "P1",
+          "value": "Paris"
+        },
+        {
+          "on": "B",
+          "op": "rowValue",
+          "at": 3950,
+          "property": "P2",
+          "value": 3
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "palette": {
+              "F1": [
+                "#222222"
+              ]
+            },
+            "fileText": {
+              "F1": "alpha"
+            },
+            "versionNames": {
+              "v1.fver": "Before trip",
+              "v2.fver": "After trip"
+            },
+            "row": {
+              "P1": "Paris",
+              "P2": 3
+            },
+            "losses": [],
+            "notices": [],
+            "converged": [
+              "B"
+            ],
+            "sum": "ab74f56d3d704a2fa6819e94e4b7f1455cb4115f48432d67f8505a57e2b4a41c"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "notices_union_and_dismissal_spreads",
+      "rule": "notices: union, dismissal last write wins",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "one",
+            "rank": "M"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1002,
+          "block": {
+            "id": "B2",
+            "text": "two",
+            "rank": "T"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "send": "A",
+          "to": "C"
+        },
+        {
+          "on": "A",
+          "op": "text",
+          "at": 2000,
+          "block": "B1",
+          "text": "A1"
+        },
+        {
+          "on": "B",
+          "op": "text",
+          "at": 3000,
+          "block": "B1",
+          "text": "B1"
+        },
+        {
+          "on": "A",
+          "op": "text",
+          "at": 2100,
+          "block": "B2",
+          "text": "A2"
+        },
+        {
+          "on": "C",
+          "op": "text",
+          "at": 3100,
+          "block": "B2",
+          "text": "C2"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "exchange": [
+            "A",
+            "C"
+          ]
+        },
+        {
+          "exchange": [
+            "B",
+            "C"
+          ]
+        },
+        {
+          "expect": {
+            "notices": [
+              {
+                "kind": "changed",
+                "target": "B1",
+                "from": "B",
+                "other": "A",
+                "dismissed": false
+              },
+              {
+                "kind": "changed",
+                "target": "B2",
+                "from": "C",
+                "other": "A",
+                "dismissed": false
+              }
+            ],
+            "converged": [
+              "B",
+              "C"
+            ],
+            "sum": "b6769a01cd1af39deaf50d099e679935fe04d82dc4687f5b06d90e323a8bc963"
+          },
+          "on": "A"
+        },
+        {
+          "on": "A",
+          "op": "dismiss",
+          "at": 4000,
+          "target": "B1"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "exchange": [
+            "B",
+            "C"
+          ]
+        },
+        {
+          "expect": {
+            "notices": [
+              {
+                "kind": "changed",
+                "target": "B1",
+                "from": "B",
+                "other": "A",
+                "dismissed": true
+              },
+              {
+                "kind": "changed",
+                "target": "B2",
+                "from": "C",
+                "other": "A",
+                "dismissed": false
+              }
+            ],
+            "converged": [
+              "A",
+              "B"
+            ],
+            "sum": "d1655886dc2c3f15ab710ed787dbd3b60e092168ec3abf44294db09cc567187c"
+          },
+          "on": "C"
+        }
+      ]
+    },
+    {
+      "name": "three_way_concurrent_edits_converge",
+      "rule": "three-way concurrency converges",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "send": "A",
+          "to": "C"
+        },
+        {
+          "on": "A",
+          "op": "text",
+          "at": 2000,
+          "block": "B1",
+          "text": "A"
+        },
+        {
+          "on": "B",
+          "op": "text",
+          "at": 3000,
+          "block": "B1",
+          "text": "B"
+        },
+        {
+          "on": "C",
+          "op": "text",
+          "at": 4000,
+          "block": "B1",
+          "text": "C"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "exchange": [
+            "B",
+            "C"
+          ]
+        },
+        {
+          "exchange": [
+            "A",
+            "C"
+          ]
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": "C"
+            },
+            "losses": [
+              {
+                "target": "B1",
+                "from": "A"
+              },
+              {
+                "target": "B1",
+                "from": "B"
+              }
+            ],
+            "seen": [
+              "A",
+              "B",
+              "C"
+            ],
+            "converged": [
+              "B",
+              "C"
+            ],
+            "sum": "509ad0eb52b98b1fe2b27567ef2d080c096925244631d45410af89030dd101b6"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "seen_is_pointwise_max",
+      "rule": "seen: pointwise max",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "send": "A",
+          "to": "C"
+        },
+        {
+          "on": "B",
+          "op": "field",
+          "at": 2000,
+          "name": "starred",
+          "value": true
+        },
+        {
+          "on": "C",
+          "op": "field",
+          "at": 3000,
+          "name": "archivedAt",
+          "value": 3000
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "seen": [
+              "A",
+              "B"
+            ],
+            "sum": "e5275820f9e2fc0b4c04fd3564ca8e17614cf7c4e222ebea5f2e3f7e09017abe"
+          },
+          "on": "A"
+        },
+        {
+          "exchange": [
+            "A",
+            "C"
+          ]
+        },
+        {
+          "expect": {
+            "seen": [
+              "A",
+              "B",
+              "C"
+            ],
+            "fields": {
+              "starred": true,
+              "archivedAt": 3000
+            },
+            "sum": "f82a25db3759ee63cbb7daf86ca49255e2b0877d9f0ea61c53f3467bec913c55"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "permanent_delete_drops_seen_edits",
+      "rule": "permanent delete: the stub drops only edits it has seen",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "text",
+          "at": 2000,
+          "block": "B1",
+          "text": "seen by B"
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "B",
+          "op": "permanentDelete",
+          "at": 3000
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "stub": true,
+            "converged": [
+              "B"
+            ],
+            "sum": "4f8d7dfd630bc806c730e66c867b4b7790e00354ca5fdf0826950250cbc1c9c3"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "two_permanent_deletes_merge_into_one_stub",
+      "rule": "permanent delete: the stub drops only edits it has seen",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "permanentDelete",
+          "at": 2000
+        },
+        {
+          "on": "B",
+          "op": "permanentDelete",
+          "at": 3000
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "stub": true,
+            "seen": [
+              "A",
+              "B"
+            ],
+            "converged": [
+              "B"
+            ],
+            "sum": "4f8d7dfd630bc806c730e66c867b4b7790e00354ca5fdf0826950250cbc1c9c3"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "unseen_edit_brings_the_note_back_in_trash",
+      "rule": "permanent delete: an unseen edit brings the note back in Trash with a restored notice",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "text",
+          "at": 2000,
+          "block": "B1",
+          "text": "written offline"
+        },
+        {
+          "on": "B",
+          "op": "permanentDelete",
+          "at": 3000
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "stub": false,
+            "trashed": true,
+            "text": {
+              "B1": "written offline"
+            },
+            "notices": [
+              {
+                "kind": "restored",
+                "target": "doc.",
+                "from": "B",
+                "dismissed": false
+              }
+            ],
+            "converged": [
+              "B"
+            ],
+            "sum": "af35ed225c42554cb6a8155dcf9e0570f98637ade4d5a76e28f14db39d528472"
+          },
+          "on": "A"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "stub": false,
+            "trashed": true,
+            "converged": [
+              "B"
+            ],
+            "sum": "af35ed225c42554cb6a8155dcf9e0570f98637ade4d5a76e28f14db39d528472"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "deleted_parent_moves_children_to_the_top",
+      "rule": "after merge: a missing or deleted parent moves the block to the top level",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "P1",
+            "text": "parent",
+            "rank": "M"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1002,
+          "block": {
+            "id": "C1",
+            "text": "child",
+            "parentId": "P1",
+            "rank": "M"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "delete",
+          "at": 2000,
+          "block": "P1"
+        },
+        {
+          "on": "B",
+          "op": "upsert",
+          "at": 2500,
+          "block": {
+            "id": "C2",
+            "text": "new child",
+            "parentId": "P1",
+            "rank": "T"
+          }
+        },
+        {
+          "on": "B",
+          "op": "upsert",
+          "at": 2600,
+          "block": {
+            "id": "C3",
+            "text": "lost parent",
+            "parentId": "GONE",
+            "rank": "Z"
+          }
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "tree": [
+              [
+                "C1",
+                null
+              ],
+              [
+                "C2",
+                null
+              ],
+              [
+                "C3",
+                null
+              ]
+            ],
+            "repairs": [
+              {
+                "blockId": "C1",
+                "reason": "deleted_parent"
+              },
+              {
+                "blockId": "C2",
+                "reason": "deleted_parent"
+              },
+              {
+                "blockId": "C3",
+                "reason": "missing_parent"
+              }
+            ],
+            "converged": [
+              "B"
+            ],
+            "sum": "19e699062a5739756216237b4000cc4a3e081c6998cd8611658b950a593bf3f7"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "concurrent_moves_cycle_rerooted_at_last_moved",
+      "rule": "after merge: a cycle from concurrent moves is re-rooted at the block moved last",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "X",
+            "text": "x",
+            "rank": "M"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1002,
+          "block": {
+            "id": "Y",
+            "text": "y",
+            "rank": "T"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "move",
+          "at": 2000,
+          "block": "X",
+          "parentId": "Y",
+          "rank": "V"
+        },
+        {
+          "on": "B",
+          "op": "move",
+          "at": 3000,
+          "block": "Y",
+          "parentId": "X",
+          "rank": "V"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "parent": {
+              "X": "Y",
+              "Y": "X"
+            },
+            "tree": [
+              [
+                "Y",
+                null
+              ],
+              [
+                "X",
+                "Y"
+              ]
+            ],
+            "repairs": [
+              {
+                "blockId": "Y",
+                "reason": "cycle"
+              }
+            ],
+            "converged": [
+              "B"
+            ],
+            "sum": "d8aa5a7b0a88c5f9a0b99d85a0643f33c6ae20e3a801c69f131de2b0bb85655d"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "equal_ranks_order_by_id",
+      "rule": "after merge: ranks tie-break by (rank, id)",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 2000,
+          "block": {
+            "id": "K2",
+            "text": "second",
+            "rank": "V"
+          }
+        },
+        {
+          "on": "B",
+          "op": "upsert",
+          "at": 3000,
+          "block": {
+            "id": "K1",
+            "text": "first",
+            "rank": "V"
+          }
+        },
+        {
+          "on": "B",
+          "op": "upsert",
+          "at": 3001,
+          "block": {
+            "id": "K0",
+            "text": "before",
+            "rank": "M"
+          }
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "tree": [
+              [
+                "K0",
+                null
+              ],
+              [
+                "K1",
+                null
+              ],
+              [
+                "K2",
+                null
+              ]
+            ],
+            "repairs": [],
+            "converged": [
+              "B"
+            ],
+            "sum": "4d8abc37fdc70e1363287a4f31ba2a8b273a914c5dbffdafd1ab2f6022fa76f4"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "compacted_tombstone_stays_gone",
+      "rule": "compacted tombstones stay gone (a stale copy can't bring them back)",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "old",
+            "rank": "M"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1002,
+          "block": {
+            "id": "B2",
+            "text": "kept",
+            "rank": "T"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "snapshot": "stale",
+          "of": "B"
+        },
+        {
+          "on": "A",
+          "op": "delete",
+          "at": 2000,
+          "block": "B1"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "compact": "A",
+          "at": 7862402000
+        },
+        {
+          "expect": {
+            "absent": [
+              "B1"
+            ],
+            "text": {
+              "B2": "kept"
+            },
+            "sum": "52c3b251a23fdb96709f892641840b3cd943f97b903c43a6f6671a764479ac70"
+          },
+          "on": "A"
+        },
+        {
+          "deliver": "stale",
+          "to": "A"
+        },
+        {
+          "expect": {
+            "absent": [
+              "B1"
+            ],
+            "text": {
+              "B2": "kept"
+            },
+            "sum": "52c3b251a23fdb96709f892641840b3cd943f97b903c43a6f6671a764479ac70"
+          },
+          "on": "A"
+        },
+        {
+          "exchange": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "expect": {
+            "absent": [
+              "B1"
+            ],
+            "converged": [
+              "A"
+            ],
+            "sum": "52c3b251a23fdb96709f892641840b3cd943f97b903c43a6f6671a764479ac70"
+          },
+          "on": "B"
+        }
+      ]
+    },
+    {
+      "name": "young_tombstone_is_not_compacted",
+      "rule": "compacted tombstones stay gone (a stale copy can't bring them back)",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "base"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "on": "A",
+          "op": "delete",
+          "at": 2000,
+          "block": "B1"
+        },
+        {
+          "compact": "A",
+          "at": 864002000
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": null
+            },
+            "sum": "a18ac143f59646fd07072f596ab1d8cd2769af33eeeaf9a1b629aff352d9e9d2"
+          },
+          "on": "A"
+        }
+      ]
+    },
+    {
+      "name": "stale_and_duplicate_copies_change_nothing",
+      "rule": "stale copies and duplicates change nothing",
+      "steps": [
+        {
+          "on": "A",
+          "op": "create",
+          "at": 1000,
+          "doc": {
+            "title": "Trip"
+          }
+        },
+        {
+          "on": "A",
+          "op": "upsert",
+          "at": 1001,
+          "block": {
+            "id": "B1",
+            "text": "v1"
+          }
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "snapshot": "v1",
+          "of": "A"
+        },
+        {
+          "on": "A",
+          "op": "text",
+          "at": 2000,
+          "block": "B1",
+          "text": "v2"
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "deliver": "v1",
+          "to": "B"
+        },
+        {
+          "deliver": "v1",
+          "to": "B"
+        },
+        {
+          "send": "A",
+          "to": "B"
+        },
+        {
+          "expect": {
+            "text": {
+              "B1": "v2"
+            },
+            "losses": [],
+            "notices": [],
+            "converged": [
+              "A"
+            ],
+            "sum": "72c972842b3d287951a84f5e5002a325f0090b212bd184344661dd43464caa65"
+          },
+          "on": "B"
+        }
+      ]
+    }
+  ]
+}

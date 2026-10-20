@@ -339,6 +339,23 @@ mergeNote(A, B):
 - **Lost passphrase:** the cloud copy is unrecoverable, as decided. But a device that still has its replica can export, or "re-encrypt with a new passphrase from this device's copy".
 - **Documented limit:** widget, Spotlight and app-container data are plaintext on the device. The threat model is data at rest in the cloud.
 
+### 3.10 What WP6 settled while building `packages/local-store` (2026-10-20)
+
+These fill gaps in §3.1 to §3.9; nothing above changes meaning. `packages/local-store/README.md` has the full format.
+
+- **Device ids** are word characters only (`[A-Za-z0-9_]{1,64}`, no dashes), so `<hlc>-<dev>-<reason>` splits cleanly.
+- **Note file additions:** a block's open or closed state is `collapsed` beside `props` (never inside it); file entries carry `c` (the palette is last writer wins); collection properties and views are registers `{v, c}`; notices gain `field` (for a title conflict, with `blockId: null`) and `other` (the device whose version went to history), and `from`/`at` name the version now shown. Every document register carries `cv`, so causality decides before `c` for all document fields, not only the title.
+- **Tags:** one `{add, rm}` pair per tag. A remove sets `rm` to the add it saw; the tag is present while `add > rm`. A concurrent add elsewhere wins as long as its stamp is newer than the add the remover saw.
+- **Conflict versions** are named `<loser c>-<dev>-conflict-<first 12 hex of sha256(target + "\n" + loser c)>.fver`, where target is the block id or `doc.title`. The file holds only the loser's content group (or register value), never the winner, so every device writes identical bytes under that name.
+- **What a merge reports** (losses and their notices) depends on which states meet: with three concurrent edits, merging in different orders can report an already superseded edit once more. The note content is order independent; notices are a grow-only set with a deterministic join, so replicas still converge. The property tests check exactly this.
+- **Identical concurrent content** (same text, props and deleted state) is not a loss and makes no notice.
+- **A restored note** (§3.4 permanent delete) comes back in Trash unless a newer edit, which the stub didn't see, took it out of Trash.
+- **Compaction guard:** compacting tombstones records their version vectors in the note's `compacted`. A block present on one side only, whose `cv` the other side's `compacted` covers, is dropped, so a stale copy can't resurrect it. `devices/<id>.json` carries `heads` (per writing device, the newest stamp incorporated); "every device has seen past t" means `heads[writer(t)] >= t` on every device record. This is the test for tombstones and attachment GC.
+- **`deletedNotes`** in the index is `id → {c, seen}`: the stub's `seen` is needed to apply the delete rule after the stub itself expires.
+- **Envelope bytes:** single shot is `"FLV1" ‖ 0x01 ‖ nonce(12) ‖ AES-256-GCM` with the 17 header bytes as AAD. STREAM is `"FLV1" ‖ 0x02 ‖ chunkSize(uint32 BE) ‖ noncePrefix(8)`, then chunks with nonce `prefix ‖ uint32 BE(index)` and AAD `header ‖ lastFlag`. HKDF-SHA256 uses salt `"folevi/v1"` and info `"file:" + path`, where path is the file's canonical on-disk path (a provider's copy uses the original's). The passphrase key wraps the master key with AES-256-GCM (AAD `"folevi-library-key/v1"`); `keyCheck` is 16 bytes of HKDF info `"key-check"`.
+- **HMAC names** are HMAC-SHA256(HKDF info `"names"`, `"note:" + id` or `"file:" + sha256`), first 130 bits as 26 lowercase Crockford characters: the same shape as a ULID, so conflict-copy parsing is unchanged. History folders use the note's HMAC name; version file names inside stay plain.
+- **`LocalFs`:** reading a missing file rejects with code `not_found`; a file that can't be decrypted rejects with `unreadable`; `ifMatch: null` means create only. Version files a provider duplicated (`<name> 2.fver`) don't parse as version names and are ignored.
+
 ---
 
 ## 4. Native pieces and the bridge

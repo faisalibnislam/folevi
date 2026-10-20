@@ -47,7 +47,17 @@ export interface TableOptions {
   today?: Date | string;
   /** For number and date formats (default "en-US"). */
   locale?: string;
+  /**
+   * Cells whose value is already known, with its type (a collection's properties): such a cell is that value,
+   * never a formula and never read from its text. Undefined for a cell read from its text as usual.
+   */
+  literals?: (row: number, column: number) => TableLiteral | undefined;
+  /** A column name always means the cell in the formula's own row, even inside SUM or CONCAT (a collection's formulas). */
+  rowNames?: boolean;
 }
+
+/** A value given with its type (see TableOptions.literals); null is an empty cell. */
+export type TableLiteral = null | { number: number } | { text: string } | { boolean: boolean } | { date: string };
 
 export type FormulaErrorCode = "#DIV/0!" | "#REF!" | "#NAME?" | "#VALUE!" | "#N/A" | "#NUM!" | "#CYCLE!" | "#ERROR!";
 
@@ -228,6 +238,17 @@ function literal(cell: TableCellInput | null | undefined): V {
   if (d !== null) return num(d, true);
   if (/^\s*(true|false)\s*$/i.test(text)) return bool(/true/i.test(text));
   return str(text);
+}
+
+function fromLiteral(l: TableLiteral): V {
+  if (l === null) return EMPTY;
+  if ("number" in l) return Number.isFinite(l.number) ? num(l.number) : EMPTY;
+  if ("boolean" in l) return bool(l.boolean);
+  if ("date" in l) {
+    const d = parseTableDate(l.date);
+    return d === null ? (l.date ? str(l.date) : EMPTY) : num(d, true);
+  }
+  return l.text ? str(l.text) : EMPTY;
 }
 
 /** A number shown without a column format: at most 12 significant digits, so 0.1 + 0.2 shows 0.3. */
@@ -603,6 +624,14 @@ function parseFormula(src: string, names: readonly string[]): Ast {
   return ast;
 }
 
+/**
+ * Where a formula (its text, with or without the "=") names a column: each name (Price, [Unit price]) with the
+ * column it means and where it is in the text. A1 references and functions aren't names.
+ */
+export function formulaNameReferences(src: string, names: readonly string[]): { column: number; at: number; end: number }[] {
+  return tokenize(src, names).flatMap((t) => (t.t === "col" ? [{ column: t.c, at: t.at, end: t.end }] : []));
+}
+
 // ------------------------------------------------------------------------------------------- evaluation
 
 interface Ctx {
@@ -615,6 +644,8 @@ interface Ctx {
   values: Map<number, V>;
   visiting: Set<number>;
   depth: number;
+  literals?: TableOptions["literals"];
+  rowNames?: boolean;
 }
 
 const MAX_DEPTH = 400;
@@ -625,6 +656,12 @@ function evalCell(ctx: Ctx, r: number, c: number): V {
   const known = ctx.values.get(key);
   if (known) return known;
   if (ctx.visiting.has(key)) return err("#CYCLE!");
+  const given = ctx.literals?.(r, c);
+  if (given !== undefined) {
+    const v = fromLiteral(given);
+    ctx.values.set(key, v);
+    return v;
+  }
   const raw = ctx.rows[r]?.[c];
   const text = tableCellText(raw);
   if (!isFormula(text)) {
@@ -677,7 +714,7 @@ function range(ctx: Ctx, ast: Ast, row: number): Grid | V {
     case "cols":
       return bodyColumns(ctx, ast.c1, ast.c2);
     case "name":
-      return bodyColumns(ctx, ast.c, ast.c);
+      return ctx.rowNames ? grid(ctx, row, ast.c, row, ast.c) : bodyColumns(ctx, ast.c, ast.c);
     default:
       return [[scalar(ctx, ast, row)]];
   }
@@ -780,7 +817,7 @@ function binary(_ctx: Ctx, op: string, a: V, b: V): V {
 function values(ctx: Ctx, args: Ast[], row: number): { v: V; fromRange: boolean }[] | V {
   const out: { v: V; fromRange: boolean }[] = [];
   for (const a of args) {
-    if (a.t === "cell" || a.t === "range" || a.t === "cols" || a.t === "name") {
+    if (a.t === "cell" || a.t === "range" || a.t === "cols" || (a.t === "name" && !ctx.rowNames)) {
       const g = range(ctx, a, row);
       if (!isGrid(g)) return g;
       for (const r of g) for (const v of r) out.push({ v, fromRange: true });
@@ -1197,13 +1234,13 @@ export function evaluateTable(rows: readonly (readonly (TableCellInput | null | 
   const names = tableColumnNames(rows, options.headerRow);
   const body = bodyRange(height, options.headerRow, options.totalsRow);
   const locale = options.locale ?? "en-US";
-  const ctx: Ctx = { rows, height, width, names, body, today: todayNumber(options.today), values: new Map(), visiting: new Set(), depth: 0 };
+  const ctx: Ctx = { rows, height, width, names, body, today: todayNumber(options.today), values: new Map(), visiting: new Set(), depth: 0, literals: options.literals, rowNames: options.rowNames };
   const cells: EvaluatedCell[][] = [];
   for (let r = 0; r < height; r++) {
     const out: EvaluatedCell[] = [];
     for (let c = 0; c < width; c++) {
       const raw = tableCellText(rows[r]?.[c]);
-      const formula = isFormula(raw);
+      const formula = options.literals?.(r, c) === undefined && isFormula(raw);
       const v = evalCell(ctx, r, c);
       const column = options.columns?.[c] ?? null;
       // The header row is names, never formatted.

@@ -316,18 +316,16 @@
 /* Divider */
 .fb-editor .fb-divider { padding: 0.7em 0 0.7em calc(var(--depth, 0) * 1.6em); }
 .fb-editor .fb-divider hr { border: 0; border-top: 1px solid var(--color-line); }
-.fb-editor .fb-divider.ProseMirror-selectednode hr { border-top-color: var(--doc-accent); }
+.fb-editor .fb-divider.ProseMirror-selectednode { background: var(--color-selection); border-radius: var(--radius-chip); }
 
-/* Atoms */
-.fb-atom { margin-left: calc(var(--depth, 0) * 1.6em); border-radius: var(--radius-chip); outline-offset: 3px; }
-.fb-atom-selected, .ProseMirror-selectednode > .fb-atom { outline: 2px solid var(--doc-accent); }
-/* Tables have no ring: clicking into a cell selects the table, and a ring round the cells and their tools
-   only gets in the way. Selected from the keyboard or the block handle (no cell being edited), a table gets
-   the same quiet background as selected text blocks. */
-.fb-atom.fb-table-block { outline: none; }
-.fb-atom.fb-table-block.fb-atom-selected:not(:focus-within),
-.ProseMirror-selectednode > .fb-atom.fb-table-block:not(:focus-within) { background: var(--color-selection); }
-/* Flowcharts, whiteboards and the other visual blocks have rounder boxes (14px): the outline follows them. */
+/* Atoms. A selected block never gets a coloured ring: it gets the same quiet highlight selected text blocks
+   have, as a soft halo round the block (opaque cards like charts and flowcharts show it at their edge).
+   Tables while a cell is being edited show nothing at all. */
+.fb-atom { margin-left: calc(var(--depth, 0) * 1.6em); border-radius: var(--radius-chip); }
+.fb-atom-selected, .ProseMirror-selectednode > .fb-atom { background: var(--color-selection); box-shadow: 0 0 0 4px var(--color-selection); }
+.fb-atom.fb-table-block.fb-atom-selected:focus-within,
+.ProseMirror-selectednode > .fb-atom.fb-table-block:focus-within { background: none; box-shadow: none; }
+/* Flowcharts, whiteboards and the other visual blocks have rounder boxes (14px): the highlight follows them. */
 .fb-atom:is(.fb-flowchart, .fb-whiteboard, .fb-mindmap, .fb-stickies, .fb-chart, .fb-wireframe) { border-radius: var(--radius-container); }
 
 /* Inline */
@@ -345,7 +343,7 @@
   background: var(--color-ember-soft); color: var(--color-ember-ink); font-weight: 550;
 }
 .fb-date { background: var(--color-marigold-soft); color: var(--color-marigold-ink); }
-.ProseMirror-selectednode.fb-mention, .ProseMirror-selectednode.fb-date, .ProseMirror-selectednode.fb-page-link { outline: 2px solid var(--doc-accent); }
+.ProseMirror-selectednode.fb-mention, .ProseMirror-selectednode.fb-date, .ProseMirror-selectednode.fb-page-link { box-shadow: 0 0 0 2px var(--color-selection); }
 
 .fb-color-muted { color: var(--color-ink-muted); }
 .fb-color-accent { color: var(--color-ember-ink); }

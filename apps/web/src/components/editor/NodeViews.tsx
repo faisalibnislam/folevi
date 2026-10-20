@@ -215,13 +215,13 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
       <figure className="my-2" style={{ width: `${Math.round(width * 100)}%` }}>
         {src ? (
           // Never wider than the image itself (a small image isn't stretched); while it's selected its tools
-          // float over it, so nothing below moves.
+          // float over it, centred, so nothing below moves and a small image's tools stay inside the page.
           <div className="relative mx-auto w-fit max-w-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={src} alt={a.alt || ""} className="block h-auto max-w-full rounded-chip border border-line bg-sunken" draggable={false} />
             {selected && editable ? (
               <div
-                className="ui-pop absolute bottom-2 left-2 z-20 flex w-max max-w-[min(32rem,calc(100vw-2rem))] flex-wrap items-center gap-2 px-2 py-1.5 text-xs text-muted"
+                className="ui-pop absolute bottom-2 left-1/2 z-20 flex w-max -translate-x-1/2 max-w-[min(32rem,calc(100vw-2rem))] flex-wrap items-center gap-2 px-2 py-1.5 text-xs text-muted"
                 contentEditable={false}
               >
                 <label className="flex items-center gap-1">

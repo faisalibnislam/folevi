@@ -86,7 +86,8 @@ function titleBox(fc: FlowchartData, id: string): Rect | null {
 export function useContainers(ctrl: FlowController) {
   const { doc, docRef, setLive, commit, selRef, setSel, toWorld, view, viewRef, svgRef, wrapRef, full, cardRef } = ctrl;
   const coarse = useMediaQuery("(pointer: coarse)");
-  const [renaming, setRenaming] = useState<{ id: string; value: string; before: FlowchartData; typed: boolean } | null>(null);
+  /** `base`: the chart being renamed in; `before`: where its undo step starts (before an add, when naming a new one). */
+  const [renaming, setRenaming] = useState<{ id: string; value: string; base: FlowchartData; before: FlowchartData; typed: boolean } | null>(null);
   const renamingRef = useRef(renaming);
   renamingRef.current = renaming;
   /** The right-click menu, or (`ask`) the question of whether to keep what's inside. */
@@ -136,7 +137,11 @@ export function useContainers(ctrl: FlowController) {
 
   // ---------------------------------------------------------------------------------------- renaming
 
-  const startRename = (id: string, typed?: string) => {
+  /**
+   * Starts renaming. `created`: the chart before the container was just added (shown, not yet committed), so
+   * adding and naming it are one undo step.
+   */
+  const startRename = (id: string, typed?: string, created?: FlowchartData) => {
     const fc = docRef.current;
     const title = titleOf(fc, id);
     if (title === null) return;
@@ -144,7 +149,7 @@ export function useContainers(ctrl: FlowController) {
     selectBox(id);
     const value = typed ?? title;
     if (typed !== undefined) setLive(renameBox(fc, id, value));
-    setRenaming({ id, value, before: fc, typed: typed !== undefined });
+    setRenaming({ id, value, base: fc, before: created ?? fc, typed: typed !== undefined });
   };
 
   const finishRename = (keep = true, refocus = true) => {
@@ -152,8 +157,9 @@ export function useContainers(ctrl: FlowController) {
     if (!r) return;
     renamingRef.current = null;
     setRenaming(null);
-    const next = renameBox(r.before, r.id, r.value);
-    if (keep && titleOf(next, r.id) !== titleOf(r.before, r.id)) commit(next, { before: r.before });
+    // Escape keeps a container that was just added, with its first title.
+    const next = keep ? renameBox(r.base, r.id, r.value) : r.base;
+    if (next !== r.before && (r.base !== r.before || titleOf(next, r.id) !== titleOf(r.before, r.id))) commit(next, { before: r.before });
     else setLive(r.before);
     if (refocus) wrapRef.current?.focus({ preventScroll: true });
   };
@@ -164,7 +170,7 @@ export function useContainers(ctrl: FlowController) {
     const next = { ...r, value };
     renamingRef.current = next;
     setRenaming(next);
-    setLive(renameBox(r.before, r.id, value));
+    setLive(renameBox(r.base, r.id, value));
   };
 
   // ---------------------------------------------------------------------------------------- edits
@@ -196,25 +202,27 @@ export function useContainers(ctrl: FlowController) {
     const ids = [...s.nodes, ...(s.boxes ?? []).filter((id) => boxKind(fc, id) === "frame")];
     const res = ids.length ? frameSelection(fc, ids) : addFrame(fc, ctrl.viewCenter());
     if (!res) return;
-    commit(res.doc);
+    setLive(res.doc);
     reveal(res.id);
-    startRename(res.id);
+    startRename(res.id, undefined, fc);
   };
 
   const addSwimlanes = (orient: FlowPoolOrient) => {
-    const res = addPool(docRef.current, ctrl.viewCenter(), orient, 3);
+    const fc = docRef.current;
+    const res = addPool(fc, ctrl.viewCenter(), orient, 3);
     if (!res) return;
-    commit(res.doc);
+    setLive(res.doc);
     reveal(res.id);
-    startRename(res.id);
+    startRename(res.id, undefined, fc);
     ctrl.focusCanvas();
   };
 
   const addLaneAt = (poolId: string, index?: number) => {
-    const res = addLane(docRef.current, poolId, index);
+    const fc = docRef.current;
+    const res = addLane(fc, poolId, index);
     if (!res) return;
-    commit(res.doc);
-    startRename(res.id);
+    setLive(res.doc);
+    startRename(res.id, undefined, fc);
   };
 
   const shiftLane = (laneId: string, dir: -1 | 1) => {

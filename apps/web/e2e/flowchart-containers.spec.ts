@@ -95,6 +95,11 @@ test.describe("Flowchart frames and swimlanes", () => {
     const checkout = canvas.getByRole("button", { name: "Frame: Checkout, 2 shapes" });
     await expect(checkout).toBeVisible();
     await shot(page, "frame-selection");
+    // Adding and naming the frame was one step: undo takes it away, redo brings it back named.
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(canvas.locator('[data-kind="frame"]')).toHaveCount(0);
+    await page.keyboard.press("ControlOrMeta+Shift+z");
+    await expect(checkout).toBeVisible();
 
     // Drag the frame by its title: both shapes move with it, the third stays.
     const band = checkout.locator(".fc-frame-band");

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ConvexReactClient } from "convex/react";
+import { localApiOf, type FoleviClient } from "@/lib/convex/client";
 import { ulid, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { localDb, type PendingUpload } from "./db";
@@ -17,9 +17,12 @@ export async function sha256Hex(blob: Blob): Promise<string> {
  * where it's stored; without one it goes to `scope`. Errors carry the server's message.
  */
 export async function uploadFileNow(
-  client: ConvexReactClient,
+  client: FoleviClient,
   input: { scope?: WireScope; blob: Blob; filename: string; mimeType: string; kind: "image" | "file" | "cover" | "attachment"; documentId?: string },
 ): Promise<string> {
+  // Local mode: the bytes go straight into the library (no upload address, no server).
+  const local = localApiOf(client);
+  if (local) return (await local.putFile(input.blob, { name: input.filename, mimeType: input.mimeType, kind: input.kind, documentId: input.documentId ?? null })).fileId;
   const { uploadUrl, intentId } = await client.mutation(api.files.generateUploadUrl, {
     scope: input.scope,
     documentId: input.documentId,
@@ -121,7 +124,7 @@ export class Uploader {
   private rerun = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
   constructor(
-    private client: ConvexReactClient,
+    private client: FoleviClient,
     private accountKey: string,
     private engine: SyncEngine,
     private onError: (message: string) => void,
@@ -142,8 +145,26 @@ export class Uploader {
     this.timer = null;
   }
 
+  /** Two-phase upload: an authorized short-lived address, the bytes, then the server's check of them. */
+  private async uploadToServer(u: PendingUpload): Promise<{ fileId: string; mimeType: string }> {
+    // The page's scope decides where the file is stored (the server checks access to the page).
+    const { uploadUrl, intentId } = await this.client.mutation(api.files.generateUploadUrl, {
+      documentId: u.documentId,
+      filename: u.filename,
+      size: u.size,
+      mimeType: u.mimeType,
+      kind: u.kind,
+    });
+    const res = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": u.mimeType }, body: u.blob });
+    if (!res.ok) throw new Error(`upload failed (${res.status})`);
+    const { storageId } = (await res.json()) as { storageId: string };
+    return await this.client.action(api.files.finalize, { intentId, storageId: storageId as never, sha256: await sha256Hex(u.blob) });
+  }
+
   private async run() {
-    if (!navigator.onLine) return;
+    const local = localApiOf(this.client);
+    // A local library needs no network: its files are stored on this device.
+    if (!local && !navigator.onLine) return;
     if (this.running) {
       this.rerun = true;
       return;
@@ -170,18 +191,9 @@ export class Uploader {
           continue;
         }
         try {
-          // The page's scope decides where the file is stored (the server checks access to the page).
-          const { uploadUrl, intentId } = await this.client.mutation(api.files.generateUploadUrl, {
-            documentId: u.documentId,
-            filename: u.filename,
-            size: u.size,
-            mimeType: u.mimeType,
-            kind: u.kind,
-          });
-          const res = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": u.mimeType }, body: u.blob });
-          if (!res.ok) throw new Error(`upload failed (${res.status})`);
-          const { storageId } = (await res.json()) as { storageId: string };
-          const result = await this.client.action(api.files.finalize, { intentId, storageId: storageId as never, sha256: await sha256Hex(u.blob) });
+          const result = local
+            ? await local.putFile(u.blob, { name: u.filename, mimeType: u.mimeType, kind: u.kind, documentId: u.documentId })
+            : await this.uploadToServer(u);
           this.engine.uploadCompleted(u.uploadId, result.fileId);
           for (const listener of uploadedListeners) listener({ documentId: u.documentId, blockId: u.blockId, fileId: result.fileId, kind: u.kind, mimeType: result.mimeType, blob: u.blob });
           await db.delete("uploads", u.uploadId);

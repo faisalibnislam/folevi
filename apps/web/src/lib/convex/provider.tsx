@@ -1,13 +1,21 @@
 "use client";
 
-import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
+import { ConvexProvider, ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { authClient } from "@/lib/auth/client";
+import { currentBackendMode, setCurrentBackendMode, type BackendMode } from "@/lib/backendMode";
+import { BackendModeContext } from "@/lib/mode";
+import type { LocalClient } from "@/lib/local/client";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 let client: ConvexReactClient | null = null;
+/**
+ * The account's Convex client, for code outside React (lib/nativePush.ts, lib/nativeDevice.ts). There is
+ * none in local mode: nothing may reach Folevi's servers there, so asking for it is a mistake and throws.
+ */
 export function getConvexClient(): ConvexReactClient {
+  if (currentBackendMode() === "local") throw new Error("There's no Convex client in local mode (getConvexClient).");
   if (!convexUrl) throw new Error("NEXT_PUBLIC_CONVEX_URL is not configured");
   // initialAuthTokenReuse: the first token is always freshly minted (see fetchAccessToken), so once the
   // server accepts it there's no need for Convex's usual second fetch, which also re-ran every query.
@@ -175,5 +183,56 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
         {children}
       </ConvexProviderWithAuth>
     </AuthPhaseContext.Provider>
+  );
+}
+
+const LocalClientContext = createContext<LocalClient | null>(null);
+
+/** The LocalClient in local mode (its `local` extras: putFile, setup), else null. */
+export function useLocalClient(): LocalClient | null {
+  return useContext(LocalClientContext);
+}
+
+/**
+ * The page's backend (docs/LOCAL_MODE_PLAN.md §2.1). `account`: today's Convex client with Better Auth.
+ * `local`: ConvexProvider gets this page's LocalClient (lib/local), so every useQuery, useMutation and
+ * useAction runs against the library on this device and no ConvexReactClient is ever made. A page keeps
+ * the backend it started with.
+ */
+export function BackendProvider({ backend = "account", children }: { backend?: BackendMode; children: ReactNode }) {
+  // Set before anything below renders, for code that reads it outside React (canPurchaseHere, getConvexClient).
+  setCurrentBackendMode(backend);
+  if (backend === "account") {
+    return (
+      <BackendModeContext.Provider value="account">
+        <ConvexClientProvider>{children}</ConvexClientProvider>
+      </BackendModeContext.Provider>
+    );
+  }
+  return <LocalBackendProvider>{children}</LocalBackendProvider>;
+}
+
+function LocalBackendProvider({ children }: { children: ReactNode }) {
+  // Loaded on demand: the website (account mode only) never downloads the local backend.
+  const [local, setLocal] = useState<LocalClient | null>(null);
+  useEffect(() => {
+    let live = true;
+    void import("@/lib/local").then((m) => {
+      if (live) setLocal(m.localLibrary().client);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (!local) return null;
+  return (
+    <BackendModeContext.Provider value="local">
+      <AuthPhaseContext.Provider value="signed_in">
+        <LocalClientContext.Provider value={local}>
+          {/* The one place a LocalClient stands in for a ConvexReactClient (test/local-client.test.tsx keeps it honest). */}
+          <ConvexProvider client={local as unknown as ConvexReactClient}>{children}</ConvexProvider>
+        </LocalClientContext.Provider>
+      </AuthPhaseContext.Provider>
+    </BackendModeContext.Provider>
   );
 }

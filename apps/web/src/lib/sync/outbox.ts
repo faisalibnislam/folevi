@@ -1,6 +1,6 @@
 "use client";
 
-import type { ConvexReactClient } from "convex/react";
+import type { FoleviClient } from "@/lib/convex/client";
 import type { FunctionArgs } from "convex/server";
 import { ConvexError } from "convex/values";
 import { ulid, type SyncOp } from "@folevi/editor-schema";
@@ -141,7 +141,7 @@ export class Outbox {
   ) {}
 
   /** Opens the account's outbox with what's waiting on this device. */
-  static async open(client: Pick<ConvexReactClient, "mutation">, accountKey: string): Promise<Outbox> {
+  static async open(client: Pick<FoleviClient, "mutation">, accountKey: string): Promise<Outbox> {
     const outbox = new Outbox((name, args) => client.mutation(OUTBOX_MUTATIONS[name].ref as never, args as never), accountKey);
     await outbox.reload();
     outbox.listen();

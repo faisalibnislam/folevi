@@ -10,6 +10,7 @@ import { Outbox } from "@/lib/sync/outbox";
 import { deviceId as loadDeviceId } from "@/lib/sync/db";
 import { Uploader } from "@/lib/sync/uploads";
 import { useAuthPhase } from "@/lib/convex/provider";
+import { useBackendMode } from "@/lib/mode";
 import { saveAccountSnapshot } from "./offlineSnapshot";
 
 export type Profile = NonNullable<Extract<NonNullable<ReturnType<typeof useMeQuery>>, { state: "ready" }>["profile"]>;
@@ -166,13 +167,15 @@ function useToday(timeZone: string): string {
  */
 export function AppStateProvider({ profile, offlineWorkspaces, children }: { profile: Profile; offlineWorkspaces?: Workspace[]; children: ReactNode }) {
   const convex = useConvex();
+  // Local mode: the backend is on this device (lib/local), so it's always reachable and there's no session.
+  const local = useBackendMode() === "local";
   const liveWorkspaces = useWorkspacesQuery(true);
   const workspaces = liveWorkspaces ?? offlineWorkspaces;
 
   // Keep the snapshot fresh while online so the next offline start opens the same folio.
   useEffect(() => {
-    if (liveWorkspaces && !offlineWorkspaces) void saveAccountSnapshot(profile, liveWorkspaces);
-  }, [profile, liveWorkspaces, offlineWorkspaces]);
+    if (liveWorkspaces && !offlineWorkspaces && !local) void saveAccountSnapshot(profile, liveWorkspaces);
+  }, [profile, liveWorkspaces, offlineWorkspaces, local]);
   const [initial] = useState(readStoredContext);
   const [selected, setSelected] = useState<StoredContext | null>(initial.stored);
   const context = useMemo(() => (workspaces ? resolveContext(selected, workspaces) : null), [workspaces, selected]);
@@ -197,7 +200,8 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
   const authPhase = useAuthPhase();
   // Offline too when the server can't be reached while the device has a network: the session check got no
   // answer, or the backend never connected and keeps retrying (a cold start against an unreachable server).
-  const effectivelyOnline = online && authPhase !== "offline" && (connection.isWebSocketConnected || (!connection.hasEverConnected && connection.connectionRetries === 0));
+  // In local mode the engine and outbox drain to the library on this device, network or not.
+  const effectivelyOnline = local || (online && authPhase !== "offline" && (connection.isWebSocketConnected || (!connection.hasEverConnected && connection.connectionRetries === 0)));
   const timeZone = profile.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const today = useToday(timeZone);
   const [appearance, setAppearanceState] = useState(profile.appearance);
@@ -289,10 +293,11 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
   const registered = useRef(false);
   const registerSession = useMutationSafe();
   useEffect(() => {
-    if (registered.current || !device) return;
+    // A local library has no sessions or devices list to register with.
+    if (registered.current || !device || local) return;
     registered.current = true;
     void registerSession(device);
-  }, [device, registerSession]);
+  }, [device, registerSession, local]);
 
   const value = useMemo<AppState | null>(() => {
     if (!context || !workspaces) return null;

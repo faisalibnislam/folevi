@@ -1,6 +1,6 @@
 "use client";
 
-import type { ConvexReactClient } from "convex/react";
+import type { FoleviClient } from "@/lib/convex/client";
 import { ConvexError } from "convex/values";
 import { canonicalJson, flattenTree, randomNoteEmoji, repairWireBlock, sync, type ChangedField, type ConflictRecord, type OpResult, type SyncOp, type SyncState, type WireBlock, type WireDocumentCreate, type WireDocumentPatch, type WireScope, ulid } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -38,7 +38,7 @@ export class SyncEngine {
   private _scope: WireScope;
 
   private constructor(
-    private client: ConvexReactClient,
+    private client: FoleviClient,
     private accountKey: string,
     scope: WireScope,
     readonly deviceId: string,
@@ -60,7 +60,7 @@ export class SyncEngine {
    * creates queued by older builds, which named a workspace id (possibly the old personal workspace,
    * which no longer exists), to be re-stamped with a scope before anything is sent (`adoptLegacyCreates`).
    */
-  static async open(client: ConvexReactClient, accountKey: string, scope: WireScope, deviceId: string, teamWorkspaceIds?: readonly string[]): Promise<SyncEngine> {
+  static async open(client: FoleviClient, accountKey: string, scope: WireScope, deviceId: string, teamWorkspaceIds?: readonly string[]): Promise<SyncEngine> {
     const engine = new SyncEngine(client, accountKey, scope, deviceId);
     const loaded = await loadAccountState(accountKey);
     if (loaded) {

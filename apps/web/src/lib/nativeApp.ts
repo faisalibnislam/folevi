@@ -7,6 +7,8 @@
 // credit packs). Every purchase surface asks canPurchaseHere() first; text written by the server that says
 // where to buy goes through withoutPurchaseHints().
 
+import { currentBackendMode } from "./backendMode";
+
 /** The Face ID lock, kept on the device (never on Folevi's servers). */
 export interface NativeSettings {
   lock: boolean;
@@ -146,8 +148,9 @@ export function inIosApp(): boolean {
 /**
  * Whether this page may offer plans, prices and purchases. Not inside the iOS app (App Store rule 3.1.1):
  * there Plan & billing shows the plan as it is, and nothing in the app links to buying or says where to.
+ * Never in local mode either, on any platform: a library on the person's devices has no plan to buy.
  */
-export const canPurchaseHere = (): boolean => !inIosApp();
+export const canPurchaseHere = (): boolean => !inIosApp() && currentBackendMode() !== "local";
 
 /**
  * Server messages end with where to buy ("Buy more in Settings → Plan & billing.", "Upgrade to use it.").

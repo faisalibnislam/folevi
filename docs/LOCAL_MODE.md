@@ -199,6 +199,10 @@ changes, five-second eviction like Convex), serial mutations, actions and connec
    `LocalClient` can throw there. QueriesObserver makes a fresh watch on every render without subscribing, so a
    watch must be a cheap view that only starts its cache entry.
 
+**Absorbed (WP5, 2026-10-20):** the spike grew into `apps/web/src/lib/local/` (`client.ts`, `queryCache.ts`,
+`registry.ts`, `backend.ts`, `host.ts`, `functions/`), and its tests into `apps/web/test/local-client.test.tsx`, the
+hook conformance suite. `spikes/s5-local-client/` is removed.
+
 ## S6 (Mac side): the iCloud container
 
 **Checked without the Developer Program:**

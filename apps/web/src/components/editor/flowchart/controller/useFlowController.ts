@@ -5,7 +5,7 @@
 // receive this controller; none of them keeps a second copy of the chart or the selection.
 import { useCallback, useId, useMemo, useRef, useState } from "react";
 import type { ReactNodeViewProps } from "@tiptap/react";
-import type { FlowNode } from "../schema";
+import { settleContainers, type FlowNode } from "../schema";
 import { NO_SELECTION, type Selection } from "../ops";
 import { clampFlowHeight } from "../render";
 import { useFlowDoc } from "../useFlowDoc";
@@ -18,7 +18,10 @@ export function useFlowController(props: ReactNodeViewProps): FlowController {
   const data = String(node.attrs.data ?? "");
   const savedHeight = clampFlowHeight(node.attrs.height);
   const write = useCallback((s: string) => updateAttributes({ data: s }), [updateAttributes]);
-  const { doc, docRef, setLive, commit, undo, redo, canUndo, canRedo, tooLarge } = useFlowDoc(data, write);
+  const { doc, docRef, setLive, commit: commitDoc, undo, redo, canUndo, canRedo, tooLarge } = useFlowDoc(data, write);
+  // Frames and swimlanes follow every finished edit: what it added or moved joins the frame or lane it was
+  // dropped in (or leaves the one it was dragged out of), frames grow to hold it, lanes keep it inside.
+  const commit = useCallback<FlowController["commit"]>((next, opts) => commitDoc(settleContainers(opts?.before ?? docRef.current, next), opts), [commitDoc, docRef]);
   const routed = useRouted(doc);
   const byId = useMemo(() => new Map(doc.nodes.map((n) => [n.id, n])), [doc]);
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");

@@ -125,3 +125,41 @@ export type { FlowGraph, FlowPath, FlowStep } from "@folevi/editor-schema";
   FlowLineStyle,
   FlowRoute,
   LabelBox,
+
+// Frames and swimlanes: their boxes, and the edits that keep shapes in the right one (flowchartContainers.ts).
+export {
+  FLOWCHART_FRAME_TITLE,
+  FLOWCHART_LANE_HEADER_COLUMN,
+  FLOWCHART_LANE_HEADER_ROW,
+  FLOWCHART_POOL_TITLE,
+  FLOWCHART_MIN_FRAME,
+  addFrame,
+  addLane,
+  addPool,
+  boxAt,
+  boxContents,
+  boxKind,
+  boxRect,
+  findLane,
+  flowContainers,
+  frameSelection,
+  laneBoxes,
+  measureFlowText,
+  minLaneSize,
+  minPoolLength,
+  moveBoxes,
+  moveLane,
+  poolRect,
+  removeBoxes,
+  renameBox,
+  resizeFrame,
+  resizeLane,
+  resizePool,
+  setBoxColor,
+  settleContainers,
+} from "@folevi/editor-schema";
+export type { FlowBoxKind, FlowFrame, FlowLane, FlowPool, FlowPoolOrient, LaneBox } from "@folevi/editor-schema";
+
+// Foli AI: the deterministic check, layout numbers for "Tidy up with Foli AI", where new shapes belong.
+export { checkFlowchart, containerAt, layoutNeedsHelp, layoutStats } from "@folevi/editor-schema";
+export type { FlowIssue, FlowIssueKind, FlowLayoutStats } from "@folevi/editor-schema";

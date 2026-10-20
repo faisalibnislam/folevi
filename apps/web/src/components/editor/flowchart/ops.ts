@@ -25,6 +25,8 @@ import { carryEdges } from "./connectors";
 export interface Selection {
   nodes: string[];
   edges: string[];
+  /** Selected frames, swimlane pools and lanes (interactions/containers.tsx); none when left out. */
+  boxes?: string[];
 }
 export const NO_SELECTION: Selection = { nodes: [], edges: [] };
 

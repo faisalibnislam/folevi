@@ -42,6 +42,7 @@ export function MainToolbar({
   onAi,
   aiOpen,
   exportMenu,
+  containers,
 }: {
   onAdd: (shape: FlowShape) => void;
   onTidy: () => void;
@@ -54,6 +55,8 @@ export function MainToolbar({
   aiOpen: boolean;
   /** The Export menu (PNG, SVG, PDF, Copy as image), at the end of the bar. */
   exportMenu?: React.ReactNode;
+  /** Frame and swimlane buttons (chrome/ContainerBar.tsx), after the shapes. */
+  containers?: React.ReactNode;
 }) {
   return (
     <div className="fc-bar fc-bar-main" role="toolbar" aria-label="Flowchart tools" onPointerDown={(e) => e.stopPropagation()}>
@@ -64,6 +67,12 @@ export function MainToolbar({
           </button>
         ))}
       </span>
+      {containers ? (
+        <>
+          <span className="fc-sep" aria-hidden />
+          {containers}
+        </>
+      ) : null}
       <span className="fc-sep" aria-hidden />
       <button type="button" className="fc-btn fc-btn-text" onClick={onTidy} disabled={!canTidy} title="Tidy up: lay the chart out neatly">
         <WandSparkles size={15} aria-hidden /> Tidy up

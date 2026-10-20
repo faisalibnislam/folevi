@@ -70,6 +70,8 @@ import { useTextEditing } from "./interactions/textEditing";
 import { doubleClickInteraction } from "./interactions/doubleClick";
 import { useContextMenu } from "./interactions/contextMenu";
 import { keyboardInteraction } from "./interactions/keyboard";
+import { useContainers } from "./interactions/containers";
+import { ContainerLayer } from "./layers/Containers";
 import { useQuickAdd } from "./interactions/quickAdd";
 import { useKeyboardFlow } from "./interactions/keyboardFlow";
 import { DotGrid, SceneLayers, SelectionBoxes } from "./layers/Scene";
@@ -106,7 +108,8 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   const resize = useResize(ctrl);
   const move = useMove(ctrl);
   const select = useSelect(ctrl);
-  const menu = useContextMenu(ctrl, { actions, startEdit: text.startEdit });
+  const boxes = useContainers(ctrl);
+  const menu = useContextMenu(ctrl, { actions, startEdit: text.startEdit, nodeItems: boxes.nodeMenuItems });
   const quick = useQuickAdd(ctrl, { hover: hover.hover });
   const flow = useKeyboardFlow(ctrl, { actions, finishEdit: text.finishEdit });
   const events = useInteractions(ctrl, [
@@ -115,6 +118,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
     quick.interaction, // the + arrows around a shape, and the shape picker
     connect.interaction, // side handles and connector ends
     resize.interaction,
+    boxes.interaction, // frames and swimlanes: titles, borders, their handles and keys
     move.interaction, // shapes
     select.edges, // connectors
     hover.interaction,
@@ -155,9 +159,11 @@ function FlowchartEditor(props: ReactNodeViewProps) {
           <svg ref={ctrl.svgRef} className="fc-root fc-svg" width={ctrl.width} height={ctrl.height} {...events.svg}>
             <DotGrid id={`${uid}-dots`} view={view} />
             <g transform={`translate(${view.x} ${view.y}) scale(${k})`}>
+              <ContainerLayer fc={doc} selected={boxes.selected} renaming={boxes.renaming} onFocusBox={boxes.onFocusBox} />
               <SceneLayers nodes={doc.nodes} routed={ctrl.routed} selNodes={ctrl.sel.nodes} selEdges={ctrl.sel.edges} editing={editing} onFocusNode={ctrl.onFocusNode} />
               <g aria-hidden className="fc-overlay">
                 <SelectionBoxes nodes={ctrl.selNodes} k={k} />
+                {boxes.overlay}
                 {move.overlay}
                 {connect.previewOverlay}
                 {resize.overlay}
@@ -170,6 +176,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
             </g>
           </svg>
           {text.input}
+          {boxes.element}
           {quick.element}
           <p className="sr-only fc-announce" aria-live="polite" aria-atomic="true">
             {ctrl.announcement}
@@ -194,6 +201,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
             canTidy={nodeCount > 1}
             onAi={aiOn ? () => ctrl.setAiOpen((o) => !o) : null}
             aiOpen={ctrl.aiOpen}
+            containers={boxes.tools}
             exportMenu={<BlockExportMenu type="flowchart" attrs={() => ({ data: serializeFlowchart(docRef.current) })} empty={!nodeCount} triggerClassName="fc-btn" align="start" />}
           />
           <ZoomBar zoom={k} onZoomIn={() => ctrl.zoomBy(1.2)} onZoomOut={() => ctrl.zoomBy(1 / 1.2)} onFit={() => ctrl.fitView()} full={full} onFull={() => ctrl.toggleFull()} />

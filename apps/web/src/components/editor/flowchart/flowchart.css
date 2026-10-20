@@ -291,6 +291,51 @@
   .fc-picker-option { min-height: 44px; }
 }
 
+/* ---------------------------------------------------------------- frames and swimlanes (layers/Containers.tsx)
+   Neutral chrome: pools, title bands and lane headers are greys mixed into the page colour; a frame's or a
+   lane's colour only tints it. Under the connectors and shapes. */
+.fc-containers { --fc-box-line: color-mix(in oklab, var(--color-ink) 16%, var(--color-surface)); --fc-box-ink: color-mix(in oklab, var(--color-ink) 78%, var(--color-surface)); }
+.fc-frame, .fc-lane { --fc-tint: transparent; outline: none; }
+:is(.fc-frame, .fc-lane)[data-color="accent"] { --fc-tint: var(--fc-accent); }
+:is(.fc-frame, .fc-lane)[data-color="blue"] { --fc-tint: var(--fc-blue); }
+:is(.fc-frame, .fc-lane)[data-color="green"] { --fc-tint: var(--fc-green); }
+:is(.fc-frame, .fc-lane)[data-color="yellow"] { --fc-tint: var(--fc-yellow); }
+:is(.fc-frame, .fc-lane)[data-color="pink"] { --fc-tint: var(--fc-pink); }
+:is(.fc-frame, .fc-lane)[data-color="purple"] { --fc-tint: var(--fc-purple); }
+.fc-frame-body { fill: color-mix(in oklab, var(--color-ink) 2.5%, var(--color-surface)); stroke: var(--fc-box-line); stroke-width: 1.25px; }
+.fc-frame:not([data-color="neutral"]) .fc-frame-body { fill: color-mix(in oklab, var(--fc-tint) 7%, var(--color-surface)); stroke: color-mix(in oklab, var(--fc-tint) 38%, var(--color-surface)); }
+.fc-frame-band { fill: transparent; cursor: grab; }
+.fc-frame-edge { fill: none; stroke: transparent; stroke-width: 10px; vector-effect: non-scaling-stroke; pointer-events: stroke; cursor: grab; }
+.fc-box-title, .fc-lane-title { fill: var(--fc-box-ink); font-weight: 600; letter-spacing: -0.005em; pointer-events: none; user-select: none; }
+.fc-frame:not([data-color="neutral"]) .fc-box-title { fill: color-mix(in oklab, var(--fc-tint) 30%, var(--color-ink)); }
+.fc-pool { outline: none; }
+.fc-pool-body { fill: var(--color-surface); stroke: var(--fc-box-line); stroke-width: 1.25px; }
+.fc-pool-band { fill: color-mix(in oklab, var(--color-ink) 4.5%, var(--color-surface)); cursor: grab; }
+.fc-lane-body { fill: transparent; }
+.fc-lane:not([data-color="neutral"]) .fc-lane-body { fill: color-mix(in oklab, var(--fc-tint) 7%, var(--color-surface)); }
+.fc-lane-header { fill: color-mix(in oklab, var(--color-ink) 3%, var(--color-surface)); cursor: grab; }
+.fc-lane:not([data-color="neutral"]) .fc-lane-header { fill: color-mix(in oklab, var(--fc-tint) 12%, var(--color-surface)); }
+.fc-lane-line { fill: none; stroke: var(--fc-box-line); stroke-width: 1px; vector-effect: non-scaling-stroke; pointer-events: none; }
+:is(.fc-frame, .fc-pool, .fc-lane):focus-visible .fc-focus { stroke: var(--fc-select); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-dasharray: 4 3; }
+.fc-canvas[data-panning] :is(.fc-frame-band, .fc-pool-band, .fc-lane-header) { cursor: grabbing; }
+/* Selection, drop targets and handles (in the overlay: constant size at any zoom). */
+.fc-box-sel { fill: none; stroke: var(--fc-select); stroke-width: 1.5px; pointer-events: none; }
+.fc-box-drop { fill: color-mix(in oklab, var(--fc-select) 6%, transparent); stroke: var(--fc-select); stroke-width: 2px; stroke-dasharray: 6 4; pointer-events: none; }
+.fc-hit { fill: transparent; }
+.fc-box-handle[data-dir="n"], .fc-box-handle[data-dir="s"], .fc-lane-handle[data-dir="s"] { cursor: ns-resize; }
+.fc-box-handle[data-dir="e"], .fc-box-handle[data-dir="w"], .fc-lane-handle[data-dir="e"] { cursor: ew-resize; }
+.fc-box-handle[data-dir="nw"], .fc-box-handle[data-dir="se"] { cursor: nwse-resize; }
+.fc-box-handle[data-dir="ne"], .fc-box-handle[data-dir="sw"] { cursor: nesw-resize; }
+.fc-edge-grip { stroke: transparent; stroke-width: 12px; pointer-events: stroke; }
+.fc-grip { fill: var(--color-surface-raised); stroke: var(--fc-select); stroke-width: 1.5px; }
+.fc-lane-handle:hover .fc-grip { fill: var(--fc-select); }
+@media (pointer: coarse) {
+  .fc-edge-grip { stroke-width: 44px; }
+  .fc-frame-edge { stroke-width: 28px; }
+}
+/* Renaming a frame, pool or lane: the box sits over its title. */
+.fc-box-input { text-align: left; font-weight: 600; padding: 0 6px; }
+
 /* ---------------------------------------------------------------- read-only */
 /* FlowchartStatic.tsx: the exports' picture in its light and dark palettes; the page's theme shows one. */
 .fc-static { position: relative; display: flex; justify-content: center; padding: 8px 12px; overflow: hidden; }
@@ -310,6 +355,8 @@
 .fb-readonly-flowchart { margin: 0.6em 0; border-radius: var(--radius-panel); box-shadow: 0 0 0 1px var(--color-line); background: var(--color-surface); }
 
 @media (forced-colors: active) {
+  .fc-frame-body, .fc-pool-body, .fc-lane-line { stroke: CanvasText; }
+  .fc-box-sel, .fc-box-drop { stroke: Highlight; }
   .fc-shape, .fc-edge-line { stroke: CanvasText; }
   .fc-edge-head { fill: CanvasText; }
   .fc-sel-box, .fc-edge[data-selected] .fc-edge-line { stroke: Highlight; }

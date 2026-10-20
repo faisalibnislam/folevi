@@ -261,6 +261,19 @@ test.describe("Mind map", () => {
     const box = (await card.boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(390);
+    // The toolbar never scrolls sideways: what doesn't fit folds into one More (the map's own menu first).
+    const tools = card.getByRole("toolbar", { name: "Mind map tools" });
+    const fits = () => tools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && [...el.querySelectorAll("button")].filter((b) => b.offsetParent).every((b) => b.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1));
+    await expect.poll(fits).toBe(true);
+    await expect(tools.getByRole("button", { name: "More mind map actions" })).toBeHidden();
+    const moreTools = tools.getByRole("button", { name: "More mind map tools" });
+    await expect(moreTools).toBeVisible();
+    await expect(tools.getByRole("button", { name: "Undo" })).toBeVisible();
+    await moreTools.click();
+    const moreMenu = page.getByRole("menu", { name: "More mind map tools" });
+    await expect(moreMenu.getByRole("menuitem", { name: "Expand all" })).toBeVisible();
+    await moreMenu.getByRole("menuitem", { name: "Fit to view" }).click();
+    await expect(moreMenu).toHaveCount(0);
     await idea(card, "Ideas").click();
     await card.locator("[data-mm-add]").click();
     await page.keyboard.type("First");

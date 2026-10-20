@@ -196,6 +196,29 @@ test.describe("Chart", () => {
     await page.emulateMedia({ colorScheme: "light" });
     await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
 
+    // At phone width the toolbar never scrolls sideways: what doesn't fit folds into More, and a panel opened
+    // from More floats by it, inside the window.
+    await expect(tools.getByRole("button", { name: "More chart tools" })).toHaveCount(0);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await card.scrollIntoViewIfNeeded();
+    const fits = () => tools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && [...el.querySelectorAll("button")].filter((b) => b.offsetParent).every((b) => b.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1));
+    await expect.poll(fits).toBe(true);
+    const moreTools = tools.getByRole("button", { name: "More chart tools" });
+    await expect(moreTools).toBeVisible();
+    await expect(tools.getByRole("button", { name: "Chart type" })).toBeVisible();
+    await moreTools.click();
+    await page.getByRole("menu", { name: "More chart tools" }).getByRole("menuitem", { name: "Data from" }).click();
+    const fromPanel = page.getByRole("dialog", { name: "Where the chart's numbers come from" });
+    await expect(fromPanel).toBeVisible();
+    const pb = (await fromPanel.boundingBox())!;
+    expect(pb.x).toBeGreaterThanOrEqual(0);
+    expect(pb.x + pb.width).toBeLessThanOrEqual(375);
+    await fromPanel.getByRole("button").first().focus();
+    await page.keyboard.press("Escape");
+    await expect(fromPanel).toHaveCount(0);
+    await expect(moreTools).toBeFocused();
+    await page.setViewportSize({ width: 1280, height: 720 });
+
     // Saved: after a reload everything is still there.
     await waitForSaved(page);
     await page.waitForTimeout(800);
@@ -237,7 +260,13 @@ test.describe("Chart", () => {
     await expect(iphone.locator("html")).toHaveAttribute("data-iphone", "", { timeout: 30_000 });
     const phoneCard = iphone.locator(".fb-editor .fb-chart").first();
     await expect(phoneCard.getByRole("img", { name: /^Bar: Sales by region/ })).toBeVisible({ timeout: 20_000 });
-    await phoneCard.getByRole("button", { name: "Style" }).tap();
+    // The iPhone's 44 point toolbar folds what doesn't fit into More; Style opens from there as a sheet.
+    const phoneTools = phoneCard.getByRole("toolbar", { name: "Chart tools" });
+    await expect.poll(() => phoneTools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    const phoneMore = phoneTools.getByRole("button", { name: "More chart tools" });
+    await expect(phoneMore).toBeVisible();
+    await phoneMore.tap();
+    await iphone.getByRole("menu", { name: "More chart tools" }).getByRole("menuitem", { name: "Style" }).tap();
     const sheet = iphone.getByRole("dialog", { name: "Chart style" });
     await expect(sheet).toBeVisible();
     await expect(sheet.getByRole("switch", { name: "Value labels" })).toBeVisible();
@@ -245,7 +274,8 @@ test.describe("Chart", () => {
     await phoneCard.getByRole("button", { name: "Data", exact: true }).tap();
     const cell = phoneCard.getByRole("textbox", { name: "Sales, row 1" });
     expect((await cell.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    expect((await phoneCard.getByRole("button", { name: "Style" }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    expect((await phoneMore.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    expect((await phoneTools.getByRole("button", { name: "Data", exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await phone.close();
     await context.close();
   });

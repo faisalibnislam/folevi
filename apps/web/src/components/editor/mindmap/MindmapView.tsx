@@ -45,7 +45,7 @@ import { CanvasCard } from "../canvas/CanvasCard";
 import { MindBadge, MindIdea, MindLinkPath, MindmapStatic, ideaLabel } from "./render";
 import { badgeOf, rootSide } from "./geometry";
 import { placeIdeaBar, type Rect } from "./barPlace";
-import { IdeaBar, MindmapTools, ZoomBar, ideaMenu, moreItems, type IdeaActions } from "./MindmapChrome";
+import { IdeaBar, ZoomBar, mindmapTools, ideaMenu, moreItems, type IdeaActions } from "./MindmapChrome";
 import { MindmapOutline } from "./MindmapOutline";
 import { MindmapAi, useMindmapAi, type AiStart } from "./MindmapAi";
 import { insertAfterMindmap, mindmapToList, takePendingAi, tasksMarkdown } from "./noteConvert";
@@ -977,36 +977,34 @@ function MindmapEditor(props: ReactNodeViewProps) {
 
   const count = map.nodes.length;
   const selLabel = selBox ? ideaLabel(selBox) : "";
-  const tools = (
-    <MindmapTools
-      layout={map.layout}
-      onLayout={(l) => {
-        const next = setLayout(docRef.current, l);
-        commit(next);
-        fitView(layoutMindmap(next, { focus: focusId }));
-      }}
-      onTidy={doTidy}
-      canTidy={count > 1}
-      outline={outline}
-      onOutline={() => {
-        if (editingRef.current) finishEdit({ refocus: false });
-        setOutline((o) => !o);
-      }}
-      onAi={aiOn ? () => setAiStart((s) => (s ? null : { tab: count ? "map" : "new" })) : null}
-      aiOpen={Boolean(aiStart)}
-      onUndo={undo}
-      onRedo={redo}
-      canUndo={canUndo}
-      canRedo={canRedo}
-      more={moreItems({
-        hasMap: count > 0,
-        onExpandAll: () => commit(setAllCollapsed(docRef.current, false)),
-        onCollapseAll: () => commit(setAllCollapsed(docRef.current, true, 1)),
-        onFit: () => fitView(),
-        onToList: exitToList,
-      })}
-    />
-  );
+  const tools = mindmapTools({
+    layout: map.layout,
+    onLayout: (l) => {
+      const next = setLayout(docRef.current, l);
+      commit(next);
+      fitView(layoutMindmap(next, { focus: focusId }));
+    },
+    onTidy: doTidy,
+    canTidy: count > 1,
+    outline,
+    onOutline: () => {
+      if (editingRef.current) finishEdit({ refocus: false });
+      setOutline((o) => !o);
+    },
+    onAi: aiOn ? () => setAiStart((s) => (s ? null : { tab: count ? "map" : "new" })) : null,
+    aiOpen: Boolean(aiStart),
+    onUndo: undo,
+    onRedo: redo,
+    canUndo,
+    canRedo,
+    more: moreItems({
+      hasMap: count > 0,
+      onExpandAll: () => commit(setAllCollapsed(docRef.current, false)),
+      onCollapseAll: () => commit(setAllCollapsed(docRef.current, true, 1)),
+      onFit: () => fitView(),
+      onToList: exitToList,
+    }),
+  });
 
   const hint = (
     <>

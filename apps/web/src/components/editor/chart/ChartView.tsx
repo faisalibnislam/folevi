@@ -45,6 +45,7 @@ import { Popover } from "@/components/ui/Popover";
 import { useToast } from "@/components/ui/Toast";
 import { haptic } from "@/lib/nativeApp";
 import { CanvasCard } from "../canvas/CanvasCard";
+import type { FoldTool } from "../canvas/ToolFold";
 import { useEditorEnvironment } from "../environment";
 import { useEditable } from "../useEditable";
 import { ChartCanvas, type ChartCanvasHandle } from "./ChartCanvas";
@@ -189,6 +190,19 @@ function PanelKeys({ onClose, children }: { onClose: () => void; children: React
 /** The panels' keys never reach the card (whose Escape would leave for the note and cancel a sheet's close). */
 const keepKeys = (e: React.KeyboardEvent) => e.stopPropagation();
 
+/** A panel's anchor: its toolbar button, or the toolbar's More once the button folded into it (a phone). */
+function panelAnchor(button: React.RefObject<HTMLButtonElement | null>): React.RefObject<HTMLElement | null> {
+  return {
+    get current(): HTMLElement | null {
+      const b = button.current;
+      if (!b || b.closest("[data-fold-key]:not([hidden])") || !b.closest("[data-fold-key]")) return b;
+      const bar = b.closest<HTMLElement>(".fb-vc-bar");
+      return bar?.querySelector<HTMLElement>("[data-fold-more] button") ?? bar ?? b;
+    },
+    set current(_: HTMLElement | null) {},
+  };
+}
+
 export function ChartView(props: ReactNodeViewProps) {
   const { node, editor, getPos } = props;
   const data = String(node.attrs.data ?? "");
@@ -237,6 +251,10 @@ export function ChartView(props: ReactNodeViewProps) {
   const sourceBtn = useRef<HTMLButtonElement>(null);
   const styleBtn = useRef<HTMLButtonElement>(null);
   const aiBtn = useRef<HTMLButtonElement>(null);
+  // Where each panel floats and gives the keyboard back: its button, or More once that button folded into it.
+  const sourceAnchor = useMemo(() => panelAnchor(sourceBtn), []);
+  const styleAnchor = useMemo(() => panelAnchor(styleBtn), []);
+  const aiAnchor = useMemo(() => panelAnchor(aiBtn), []);
   // Rows from a live source as they are now (shown at once; saved with the chart when you can edit it).
   const [live, setLive] = useState<{ source: string; rows: ChartRows } | null>(null);
   const [collectionMissing, setCollectionMissing] = useState(false);
@@ -334,7 +352,7 @@ export function ChartView(props: ReactNodeViewProps) {
   const hasData = chart.columns.length > 0;
   const empty = !hasData && !chart.source;
 
-  const closePanel = (anchor: React.RefObject<HTMLButtonElement | null>) => {
+  const closePanel = (anchor: React.RefObject<HTMLElement | null>) => {
     setPanel(null);
     anchor.current?.focus();
   };
@@ -386,9 +404,16 @@ export function ChartView(props: ReactNodeViewProps) {
       </>
     ) : null;
 
-  const tools = (
-    <>
-      {editable ? (
+  // The toolbar as a list: on a phone or a narrow card what doesn't fit folds into More (canvas/ToolFold.tsx),
+  // least used first. A panel opened from More floats by More (panelAnchor).
+  const kinds = CHART_KINDS.map((k) => ({ label: CHART_KIND_LABEL[k], icon: KIND_ICON[k], checked: k === chart.kind, onSelect: () => pickKind(k) }));
+  const toggle = (p: "source" | "style" | "ai") => setPanel((cur) => (cur === p ? null : p));
+  const tools: FoldTool[] = [];
+  if (editable)
+    tools.push({
+      key: "kind",
+      priority: 5,
+      node: (
         <MenuButton
           label="Chart type"
           triggerClassName="fb-vc-btn fb-chart-kind-btn"
@@ -399,74 +424,61 @@ export function ChartView(props: ReactNodeViewProps) {
               <ChevronDown size={12} aria-hidden />
             </>
           }
-          items={CHART_KINDS.map((k) => ({
-            label: CHART_KIND_LABEL[k],
-            icon: KIND_ICON[k],
-            checked: k === chart.kind,
-            onSelect: () => pickKind(k),
-          }))}
+          items={kinds}
         />
-      ) : null}
-      <button
-        type="button"
-        className="fb-vc-btn"
-        aria-pressed={gridOpen}
-        disabled={empty}
-        aria-label="Data"
-        title="Show the chart's data"
-        onClick={() => setGridOpen((o) => !o)}
-      >
+      ),
+      menu: [{ heading: "Chart type" }, ...kinds],
+    });
+  tools.push({
+    key: "data",
+    priority: 4,
+    node: (
+      <button type="button" className="fb-vc-btn" aria-pressed={gridOpen} disabled={empty} aria-label="Data" title="Show the chart's data" onClick={() => setGridOpen((o) => !o)}>
         <Table2 size={14} aria-hidden />
         <span className="fb-chart-tool-label">Data</span>
       </button>
-      {editable ? (
-        <>
-          <button
-            ref={sourceBtn}
-            type="button"
-            className="fb-vc-btn"
-            aria-expanded={panel === "source"}
-            aria-haspopup="dialog"
-            aria-label="Data from"
-            title="Where the numbers come from"
-            onClick={() => setPanel((p) => (p === "source" ? null : "source"))}
-          >
+    ),
+    menu: [{ label: "Data", icon: <Table2 size={14} aria-hidden />, checked: gridOpen, multi: true, disabled: empty, onSelect: () => setGridOpen((o) => !o) }],
+  });
+  if (editable) {
+    tools.push(
+      {
+        key: "source",
+        priority: 2,
+        node: (
+          <button ref={sourceBtn} type="button" className="fb-vc-btn" aria-expanded={panel === "source"} aria-haspopup="dialog" aria-label="Data from" title="Where the numbers come from" onClick={() => toggle("source")}>
             <Database size={14} aria-hidden />
             <span className="fb-chart-tool-label">Data from</span>
           </button>
-          <button
-            ref={styleBtn}
-            type="button"
-            className="fb-vc-btn"
-            aria-expanded={panel === "style"}
-            aria-haspopup="dialog"
-            disabled={empty}
-            aria-label="Style"
-            title="Colors, legend, labels and axes"
-            onClick={() => setPanel((p) => (p === "style" ? null : "style"))}
-          >
+        ),
+        menu: [{ label: "Data from", icon: <Database size={14} aria-hidden />, onSelect: () => toggle("source") }],
+      },
+      {
+        key: "style",
+        priority: 3,
+        node: (
+          <button ref={styleBtn} type="button" className="fb-vc-btn" aria-expanded={panel === "style"} aria-haspopup="dialog" disabled={empty} aria-label="Style" title="Colors, legend, labels and axes" onClick={() => toggle("style")}>
             <Palette size={14} aria-hidden />
             <span className="fb-chart-tool-label">Style</span>
           </button>
-          {aiOn ? (
-            <button
-              ref={aiBtn}
-              type="button"
-              className="fb-vc-btn"
-              aria-expanded={panel === "ai"}
-              aria-haspopup="dialog"
-              aria-label="Foli AI"
-              title="Foli AI for this chart"
-              onClick={() => setPanel((p) => (p === "ai" ? null : "ai"))}
-            >
-              <AiIcon size={14} />
-              <span className="fb-chart-tool-label">Foli AI</span>
-            </button>
-          ) : null}
-        </>
-      ) : null}
-    </>
-  );
+        ),
+        menu: [{ label: "Style", icon: <Palette size={14} aria-hidden />, disabled: empty, onSelect: () => toggle("style") }],
+      },
+    );
+    if (aiOn)
+      tools.push({
+        key: "ai",
+        priority: 3,
+        node: (
+          <button ref={aiBtn} type="button" className="fb-vc-btn" aria-expanded={panel === "ai"} aria-haspopup="dialog" aria-label="Foli AI" title="Foli AI for this chart" onClick={() => toggle("ai")}>
+            <AiIcon size={14} />
+            <span className="fb-chart-tool-label">Foli AI</span>
+          </button>
+        ),
+        menu: [{ label: "Foli AI", icon: <AiIcon size={14} />, onSelect: () => toggle("ai") }],
+      });
+  }
+
 
   const hint = editable ? (
     <>
@@ -599,11 +611,11 @@ export function ChartView(props: ReactNodeViewProps) {
         <Popover
           open={panel === "source"}
           onClose={() => setPanel(null)}
-          anchor={sourceBtn}
+          anchor={sourceAnchor}
           label="Where the chart's numbers come from"
           className="w-80"
         >
-          <PanelKeys onClose={() => closePanel(sourceBtn)}>
+          <PanelKeys onClose={() => closePanel(sourceAnchor)}>
             <SourcePanel
               chart={chart}
               editor={editor}
@@ -628,11 +640,11 @@ export function ChartView(props: ReactNodeViewProps) {
         <Popover
           open={panel === "style"}
           onClose={() => setPanel(null)}
-          anchor={styleBtn}
+          anchor={styleAnchor}
           label="Chart style"
           className="w-80"
         >
-          <PanelKeys onClose={() => closePanel(styleBtn)}>
+          <PanelKeys onClose={() => closePanel(styleAnchor)}>
             <StylePanel chart={chart} onChange={update} />
           </PanelKeys>
         </Popover>
@@ -640,11 +652,11 @@ export function ChartView(props: ReactNodeViewProps) {
           <Popover
             open={panel === "ai"}
             onClose={() => setPanel(null)}
-            anchor={aiBtn}
+            anchor={aiAnchor}
             label="Foli AI for this chart"
             className="w-80"
           >
-            <PanelKeys onClose={() => closePanel(aiBtn)}>
+            <PanelKeys onClose={() => closePanel(aiAnchor)}>
               <ChartAiPanel
                 chart={chart}
                 data={serializeChart(chart)}

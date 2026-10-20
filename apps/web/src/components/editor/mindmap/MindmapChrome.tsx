@@ -7,6 +7,7 @@ import { ArrowLeftFromLine, ChevronsDownUp, ChevronsUpDown, CornerDownRight, Foc
 import { MINDMAP_AUTO_COLORS, MINDMAP_COLOR_LABEL, MINDMAP_COLORS, type MindmapColor, type MindmapLayout } from "@folevi/editor-schema";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { MenuButton, type MenuEntry, type MenuItem } from "@/components/ui/Menu";
+import type { FoldTool } from "../canvas/ToolFold";
 
 export const LAYOUT_LABEL: Record<MindmapLayout, string> = { both: "Both sides", right: "Right only", down: "Top down" };
 
@@ -37,22 +38,7 @@ export function LayoutIcon({ layout, size = 16 }: { layout: MindmapLayout; size?
   );
 }
 
-/** The tools in the card's toolbar. */
-export function MindmapTools({
-  layout,
-  onLayout,
-  onTidy,
-  canTidy,
-  outline,
-  onOutline,
-  onAi,
-  aiOpen,
-  onUndo,
-  onRedo,
-  canUndo,
-  canRedo,
-  more,
-}: {
+interface ToolsProps {
   layout: MindmapLayout;
   onLayout: (l: MindmapLayout) => void;
   onTidy: () => void;
@@ -66,40 +52,88 @@ export function MindmapTools({
   canUndo: boolean;
   canRedo: boolean;
   more: MenuEntry[];
-}) {
-  return (
-    <>
-      <MenuButton
-        label={`Layout: ${LAYOUT_LABEL[layout]}`}
-        align="start"
-        triggerClassName="fb-vc-btn"
-        trigger={<LayoutIcon layout={layout} />}
-        items={(["both", "right", "down"] as const).map((l) => ({ label: LAYOUT_LABEL[l], icon: <LayoutIcon layout={l} />, checked: layout === l, onSelect: () => onLayout(l) }))}
-      />
-      <button type="button" className="fb-vc-btn mm-text-btn" onClick={onTidy} disabled={!canTidy} title="Tidy up: balance the branches and fit the map">
-        <WandSparkles size={14} aria-hidden />
-        <span className="mm-btn-label">Tidy up</span>
-      </button>
-      <button type="button" className="fb-vc-btn mm-text-btn" aria-pressed={outline} onClick={onOutline} title={outline ? "Show the map" : "Show as an outline"}>
-        {outline ? <Waypoints size={14} aria-hidden /> : <ListTree size={14} aria-hidden />}
-        <span className="mm-btn-label">Outline</span>
-      </button>
-      {onAi ? (
+}
+
+/**
+ * The tools in the card's toolbar, as a list: on a phone or a narrow card CanvasCard folds what doesn't fit
+ * into More (canvas/ToolFold.tsx), least used first. The map's own More menu folds first, so there's only ever
+ * one More at the end.
+ */
+export function mindmapTools({ layout, onLayout, onTidy, canTidy, outline, onOutline, onAi, aiOpen, onUndo, onRedo, canUndo, canRedo, more }: ToolsProps): FoldTool[] {
+  const layouts = (["both", "right", "down"] as const).map((l) => ({ label: LAYOUT_LABEL[l], icon: <LayoutIcon layout={l} />, checked: layout === l, onSelect: () => onLayout(l) }));
+  const tools: FoldTool[] = [
+    {
+      key: "layout",
+      priority: 3,
+      node: <MenuButton label={`Layout: ${LAYOUT_LABEL[layout]}`} align="start" triggerClassName="fb-vc-btn" trigger={<LayoutIcon layout={layout} />} items={layouts} />,
+      menu: [{ heading: "Layout" }, ...layouts],
+    },
+    {
+      key: "tidy",
+      priority: 2,
+      node: (
+        <button type="button" className="fb-vc-btn mm-text-btn" onClick={onTidy} disabled={!canTidy} title="Tidy up: balance the branches and fit the map">
+          <WandSparkles size={14} aria-hidden />
+          <span className="mm-btn-label">Tidy up</span>
+        </button>
+      ),
+      menu: [{ label: "Tidy up", icon: <WandSparkles size={14} aria-hidden />, disabled: !canTidy, onSelect: onTidy }],
+    },
+    {
+      key: "outline",
+      priority: 4,
+      node: (
+        <button type="button" className="fb-vc-btn mm-text-btn" aria-pressed={outline} onClick={onOutline} title={outline ? "Show the map" : "Show as an outline"}>
+          {outline ? <Waypoints size={14} aria-hidden /> : <ListTree size={14} aria-hidden />}
+          <span className="mm-btn-label">Outline</span>
+        </button>
+      ),
+      menu: [{ label: "Outline", icon: <ListTree size={14} aria-hidden />, checked: outline, multi: true, onSelect: onOutline }],
+    },
+  ];
+  if (onAi) {
+    tools.push({
+      key: "ai",
+      priority: 3,
+      node: (
         <button type="button" className="fb-vc-btn mm-text-btn" aria-pressed={aiOpen} aria-expanded={aiOpen} onClick={onAi} title="Foli AI: make, grow or sum up the map">
           <AiIcon size={14} />
           <span className="mm-btn-label">Foli AI</span>
         </button>
-      ) : null}
-      <span className="fb-vc-sep" aria-hidden />
-      <button type="button" className="fb-vc-btn" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onClick={onUndo}>
-        <Undo2 size={14} aria-hidden />
-      </button>
-      <button type="button" className="fb-vc-btn" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={onRedo}>
-        <Redo2 size={14} aria-hidden />
-      </button>
-      <MenuButton label="More mind map actions" align="start" triggerClassName="fb-vc-btn" trigger={<MoreHorizontal size={15} aria-hidden />} items={more} />
-    </>
+      ),
+      menu: [{ label: "Foli AI", icon: <AiIcon size={14} />, onSelect: onAi }],
+    });
+  }
+  tools.push(
+    {
+      key: "undo",
+      sep: true,
+      priority: 5,
+      node: (
+        <button type="button" className="fb-vc-btn" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onClick={onUndo}>
+          <Undo2 size={14} aria-hidden />
+        </button>
+      ),
+      menu: [{ label: "Undo", icon: <Undo2 size={14} aria-hidden />, shortcut: "⌘Z", disabled: !canUndo, onSelect: onUndo }],
+    },
+    {
+      key: "redo",
+      priority: 4,
+      node: (
+        <button type="button" className="fb-vc-btn" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={onRedo}>
+          <Redo2 size={14} aria-hidden />
+        </button>
+      ),
+      menu: [{ label: "Redo", icon: <Redo2 size={14} aria-hidden />, shortcut: "⇧⌘Z", disabled: !canRedo, onSelect: onRedo }],
+    },
+    {
+      key: "more",
+      priority: -1,
+      node: <MenuButton label="More mind map actions" align="start" triggerClassName="fb-vc-btn" trigger={<MoreHorizontal size={15} aria-hidden />} items={more} />,
+      menu: [{ heading: "Map" }, ...more.filter((e) => e !== "separator")],
+    },
   );
+  return tools;
 }
 
 /** The map's "More" menu. */

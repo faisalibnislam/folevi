@@ -110,7 +110,8 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const HEX = /^#[0-9a-f]{6}$/i;
 
-const dashFor = (style: FlowLineStyle | undefined, width: number) => (style === "dashed" ? ` stroke-dasharray="${r1(4 * width)} ${r1(3.4 * width)}"` : style === "dotted" ? ` stroke-dasharray="0.1 ${r1(2.6 * width + 1)}" stroke-linecap="round"` : "");
+/** Dash pattern for a line style (dotted lines rely on round caps, which every stroked path here has). */
+const dashFor = (style: FlowLineStyle | undefined, width: number) => (style === "dashed" ? ` stroke-dasharray="${r1(4 * width)} ${r1(3.4 * width)}"` : style === "dotted" ? ` stroke-dasharray="0.1 ${r1(2.6 * width + 1)}"` : "");
 
 
 export interface FlowchartSvgOptions {
@@ -149,7 +150,7 @@ function nodeSvg(n: FlowNode, theme: FlowTheme, uid: string, imageUrl?: (fileId:
   const fill = n.fill && (n.fill === "none" || HEX.test(n.fill)) ? n.fill : fill0;
   const stroke = n.stroke && (n.stroke === "none" || HEX.test(n.stroke)) ? n.stroke : n.shape === "note" ? (theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)") : stroke0;
   const sw = n.strokeWidth ?? (n.shape === "note" ? 1 : 1.5);
-  const dash = dashFor(n.strokeStyle, Math.max(1, sw));
+  const dash = `${dashFor(n.strokeStyle, Math.max(1, sw))} stroke-linecap="round"`;
   const outline = shapePath(n);
   for (const back of shapeBackPaths(n)) parts.push(`<path d="${back}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`);
   if (!isBareShape(n.shape)) parts.push(`<path d="${outline}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"${dash}/>`);

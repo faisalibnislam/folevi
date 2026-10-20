@@ -1,0 +1,40 @@
+{
+  "description": "Flowchart block data as v1 clients stored it (serializeFlowchart before v2). Every one must read into v2 with nothing lost.",
+  "charts": [
+    {
+      "name": "order process",
+      "data": {
+        "v": 1,
+        "nodes": [
+          { "id": "start", "shape": "terminator", "x": 0, "y": 0, "w": 160, "h": 56, "text": "Order placed", "color": "green" },
+          { "id": "check", "shape": "process", "x": 0, "y": 120, "w": 160, "h": 64, "text": "Check stock" },
+          { "id": "stock", "shape": "decision", "x": -8, "y": 248, "w": 176, "h": 96, "text": "In stock?", "color": "blue" },
+          { "id": "ship", "shape": "process", "x": 0, "y": 408, "w": 160, "h": 64, "text": "Ship" },
+          { "id": "wait", "shape": "io", "x": 240, "y": 408, "w": 176, "h": 64, "text": "Supplier order", "color": "yellow" },
+          { "id": "done", "shape": "circle", "x": 28, "y": 536, "w": 104, "h": 104, "text": "Done", "color": "purple" },
+          { "id": "memo", "shape": "note", "x": 320, "y": 0, "w": 176, "h": 112, "text": "Check twice\non Fridays", "color": "neutral" },
+          { "id": "hint", "shape": "text", "x": 320, "y": 160, "w": 160, "h": 40, "text": "Owner: ops", "color": "accent" }
+        ],
+        "edges": [
+          { "id": "e1", "from": "start", "to": "check" },
+          { "id": "e2", "from": "check", "to": "stock", "fromSide": "bottom", "toSide": "top" },
+          { "id": "e3", "from": "stock", "to": "ship", "label": "Yes" },
+          { "id": "e4", "from": "stock", "to": "wait", "label": "No", "fromSide": "right" },
+          { "id": "e5", "from": "wait", "to": "check", "style": "dashed", "label": "restocked" },
+          { "id": "e6", "from": "ship", "to": "done", "arrow": "both" },
+          { "id": "e7", "from": "memo", "to": "check", "arrow": "none", "style": "dashed" }
+        ]
+      }
+    },
+    {
+      "name": "unversioned, sparse",
+      "data": {
+        "nodes": [
+          { "id": "a", "shape": "process", "x": 0, "y": 0, "w": 160, "h": 64 },
+          { "id": "b", "shape": "process", "x": 400, "y": 0, "w": 160, "h": 64, "text": "B" }
+        ],
+        "edges": [{ "id": "x", "from": "a", "to": "b", "toSide": "left", "fromSide": "right", "label": "go" }]
+      }
+    }
+  ]
+}

@@ -338,9 +338,9 @@ function cleanMark(raw: unknown): Mark | null {
 
 /**
  * Rich text made safe: unknown marks dropped, links made safe, runs merged, the text kept to `max`
- * characters. Returns undefined when nothing in it needs more than plain text.
+ * characters. `formatted` says whether anything in it needs more than plain text.
  */
-function cleanRich(raw: unknown, max: number): FlowParagraph[] | undefined {
+function cleanRich(raw: unknown, max: number): { paragraphs: FlowParagraph[]; formatted: boolean } | undefined {
   if (!Array.isArray(raw)) return undefined;
   const out: FlowParagraph[] = [];
   let left = max;
@@ -363,8 +363,7 @@ function cleanRich(raw: unknown, max: number): FlowParagraph[] | undefined {
     left -= 1; // the new line between paragraphs
   }
   if (!out.length) return undefined;
-  const formatted = out.some((p) => p.list || p.text.some((r) => r.marks?.length));
-  return formatted ? out : undefined;
+  return { paragraphs: out, formatted: out.some((p) => p.list || p.text.some((r) => r.marks?.length)) };
 }
 
 /** Why rich text isn't valid, or null. */
@@ -747,10 +746,11 @@ export function normalizeFlowchart(input: unknown): FlowchartData & { unplaced: 
     };
     if (rich) {
       // A reader that only knows plain text changed the label: its text wins over the stale formatting.
-      const plain = richPlainText(rich);
+      // Formatting-free rich text is kept as plain text.
+      const plain = richPlainText(rich.paragraphs);
       if (typeof raw.text !== "string" || text === plain) {
         node.text = plain;
-        node.rich = rich;
+        if (rich.formatted) node.rich = rich.paragraphs;
       }
     }
     if (oneOf(FLOWCHART_TEXT_ALIGNS, raw.align) && raw.align !== "center") node.align = raw.align;

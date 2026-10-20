@@ -164,7 +164,10 @@ export function edgeSides(fc: FlowchartData, byId: ReadonlyMap<string, FlowNode>
     };
     const label = (e: FlowEdge) => e.labels[0]?.text.trim() ?? "";
     const rank = (e: FlowEdge) => (YES.test(label(e)) ? 0 : NO.test(label(e)) ? 2 : 1);
-    const sorted = [...list].sort((x, y) => rank(x) - rank(y) || Math.abs(off(x)) - Math.abs(off(y)) || (x.id < y.id ? -1 : 1));
+    // The branch most in line keeps the tip (Yes first when they are about as straight), the others go out
+    // sideways toward their targets.
+    const inLine = (e: FlowEdge) => Math.round(Math.abs(off(e)) / 32);
+    const sorted = [...list].sort((x, y) => inLine(x) - inLine(y) || rank(x) - rank(y) || Math.abs(off(x)) - Math.abs(off(y)) || (x.id < y.id ? -1 : 1));
     const taken = new Set<FlowSide>();
     for (const e of sorted.slice(1)) {
       const o = off(e);
@@ -183,6 +186,61 @@ export function edgeSides(fc: FlowchartData, byId: ReadonlyMap<string, FlowNode>
       }
       sides.set(e.id, [side, toSide]);
     }
+  }
+  // Pointed shapes (diamonds, circles) take one automatic connector per tip where they can: extra ones
+  // move to a free neighbouring tip facing their other end (outgoing connectors keep theirs first).
+  const occupied = new Map<string, number>();
+  const ends: { e: FlowEdge; end: 0 | 1; node: FlowNode; side: FlowSide; auto: boolean }[] = [];
+  for (const e of fc.edges) {
+    const s = sides.get(e.id);
+    if (!s) continue;
+    for (const end of [0, 1] as const) {
+      const id = end === 0 ? e.from : e.to;
+      const side = s[end];
+      const node = id ? byId.get(id) : undefined;
+      if (!node || !side) continue;
+      occupied.set(`${id}:${side}`, (occupied.get(`${id}:${side}`) ?? 0) + 1);
+      ends.push({ e, end, node, side, auto: !(end === 0 ? e.fromSide : e.toSide) && !e.bends.length });
+    }
+  }
+  // Who keeps a crowded tip: the connector that flows naturally through it (arriving at the top or left,
+  // leaving at the bottom or right) and lines up with its other end; the others are offered a free tip.
+  const keepScore = (x: (typeof ends)[number]) => {
+    const natural = (x.side === "top" || x.side === "left") === (x.end === 1);
+    const other = endBox(fc, byId, x.e, x.end === 0 ? "to" : "from");
+    const c = center(x.node);
+    const oc = other ? center(other) : c;
+    const inLine = x.side === "top" || x.side === "bottom" ? Math.abs(oc.x - c.x) < x.node.w / 4 : Math.abs(oc.y - c.y) < x.node.h / 4;
+    return (natural ? 2 : 0) + (inLine ? 1 : 0);
+  };
+  const crowdedGroups = new Map<string, (typeof ends)[number][]>();
+  for (const x of ends) {
+    const key = `${x.node.id}:${x.side}`;
+    if (!x.auto || shapeSpread(x.node.shape, x.side) > 0.4 || occupied.get(key)! <= 1) continue;
+    crowdedGroups.set(key, [...(crowdedGroups.get(key) ?? []), x]);
+  }
+  const crowded: (typeof ends)[number][] = [];
+  for (const list of crowdedGroups.values()) {
+    list.sort((a, b) => keepScore(b) - keepScore(a) || a.end - b.end || (a.e.id < b.e.id ? -1 : 1));
+    // Every automatic end but the keeper may move (explicit ends never do).
+    const fixed = occupied.get(`${list[0]!.node.id}:${list[0]!.side}`)! - list.length;
+    crowded.push(...(fixed > 0 ? list : list.slice(1)));
+  }
+  for (const x of crowded) {
+    const key = `${x.node.id}:${x.side}`;
+    if (occupied.get(key)! <= 1) continue;
+    const other = endBox(fc, byId, x.e, x.end === 0 ? "to" : "from");
+    if (!other) continue;
+    const c = center(x.node);
+    const oc = center(other);
+    const vertical = x.side === "top" || x.side === "bottom";
+    const toward: FlowSide = vertical ? (oc.x >= c.x ? "right" : "left") : oc.y >= c.y ? "bottom" : "top";
+    const choice = [toward, OPPOSITE[toward]].find((sd) => !occupied.get(`${x.node.id}:${sd}`) && sd === toward);
+    if (!choice) continue;
+    occupied.set(key, occupied.get(key)! - 1);
+    occupied.set(`${x.node.id}:${choice}`, 1);
+    const cur = sides.get(x.e.id)!;
+    sides.set(x.e.id, x.end === 0 ? [choice, cur[1]] : [cur[0], choice]);
   }
   return sides;
 }
@@ -229,11 +287,35 @@ function boundaryToward(n: FlowNode, toward: Pt): Pt {
   return best ?? c;
 }
 
+/**
+ * Positions for items kept in order and at least `step` apart, each as close as possible to where it wants
+ * to be (least squares, by pooling adjacent violators), all within lo…hi.
+ */
+function placeInOrder(want: readonly number[], step: number, lo: number, hi: number): number[] {
+  const n = want.length;
+  // Shifted so the spacing constraint becomes "non-decreasing".
+  const y = want.map((w, i) => w - i * step);
+  const blocks: { sum: number; count: number }[] = [];
+  for (const v of y) {
+    blocks.push({ sum: v, count: 1 });
+    while (blocks.length > 1 && blocks[blocks.length - 2]!.sum / blocks[blocks.length - 2]!.count > blocks[blocks.length - 1]!.sum / blocks[blocks.length - 1]!.count) {
+      const b = blocks.pop()!;
+      blocks[blocks.length - 1]!.sum += b.sum;
+      blocks[blocks.length - 1]!.count += b.count;
+    }
+  }
+  const out: number[] = [];
+  for (const b of blocks) for (let k = 0; k < b.count; k++) out.push(b.sum / b.count + out.length * step);
+  // Keep the run inside the side.
+  const shift = out[0]! < lo ? lo - out[0]! : out[n - 1]! > hi ? hi - out[n - 1]! : 0;
+  return out.map((t) => Math.max(lo, Math.min(hi, t + shift)));
+}
+
 /** Resolves both ends of every connector: sides, spread positions along sides, and points. */
 export function resolveEnds(fc: FlowchartData, byId: ReadonlyMap<string, FlowNode> = new Map(fc.nodes.map((n) => [n.id, n]))): Map<string, [ResolvedEnd, ResolvedEnd]> {
   const sides = edgeSides(fc, byId);
   // Several connectors on one side of a node spread out along it, ordered by where their other end is.
-  const groups = new Map<string, { edge: FlowEdge; end: "from" | "to"; key: number; tie: number }[]>();
+  const groups = new Map<string, { edge: FlowEdge; end: "from" | "to"; key: number; tie: number; facing: boolean }[]>();
   for (const e of fc.edges) {
     const s = sides.get(e.id);
     if (!s) continue;
@@ -242,12 +324,18 @@ export function resolveEnds(fc: FlowchartData, byId: ReadonlyMap<string, FlowNod
       const side = end === "from" ? s[0] : s[1];
       const explicitAt = end === "from" ? e.fromAt : e.toAt;
       if (!id || !side || explicitAt !== undefined) continue;
-      const other = endBox(fc, byId, e, end === "from" ? "to" : "from")!;
-      const ref = farRef(e, end, other);
+      // Where the other end attaches (the middle of its side), or its nearest bend, centre or point.
+      const otherEnd = end === "from" ? "to" : "from";
+      const other = endBox(fc, byId, e, otherEnd)!;
+      const otherNode = byId.get(end === "from" ? e.to : e.from);
+      const otherSide = end === "from" ? s[1] : s[0];
+      const ref = !e.bends.length && otherNode && otherSide ? outlinePoint(otherNode, otherSide, (end === "from" ? e.toAt : e.fromAt) ?? 0.5) : farRef(e, end, other);
       const horizontal = side === "top" || side === "bottom";
+      const node = byId.get(id)!;
+      const facing = side === "bottom" ? ref.y >= node.y + node.h : side === "top" ? ref.y <= node.y : side === "right" ? ref.x >= node.x + node.w : ref.x <= node.x;
       const k = `${id}:${side}`;
       const list = groups.get(k) ?? [];
-      list.push({ edge: e, end, key: horizontal ? ref.x : ref.y, tie: horizontal ? ref.y : ref.x });
+      list.push({ edge: e, end, key: horizontal ? ref.x : ref.y, tie: horizontal ? ref.y : ref.x, facing });
       groups.set(k, list);
     }
   }
@@ -259,9 +347,75 @@ export function resolveEnds(fc: FlowchartData, byId: ReadonlyMap<string, FlowNod
     const flip = side === "top" || side === "left" ? -1 : 1;
     list.sort((a, b) => a.key - b.key || (a.tie - b.tie) * flip || (a.edge.id < b.edge.id ? -1 : a.edge.id > b.edge.id ? 1 : a.end < b.end ? -1 : 1));
     const n = list.length;
+    if (n === 1) {
+      spread.set(`${list[0]!.edge.id}:${list[0]!.end}`, 0.5);
+      continue;
+    }
     const range = shapeSpread(node.shape, side);
-    const step = n > 1 ? Math.min(range / n, 0.25) : 0;
-    list.forEach((item, i) => spread.set(`${item.edge.id}:${item.end}`, 0.5 + (i - (n - 1) / 2) * step));
+    if (range <= 0.4) {
+      // A pointed side: the tip goes to one connector (a "Yes", or one leaving), the others sit along the
+      // slopes on the side their other end is.
+      const label = (e: FlowEdge) => e.labels[0]?.text.trim() ?? "";
+      const owner = list.find((x) => x.end === "from" && YES.test(label(x.edge))) ?? list.find((x) => x.end === "from") ?? list[Math.floor((n - 1) / 2)]!;
+      spread.set(`${owner.edge.id}:${owner.end}`, 0.5);
+      const rest = list.filter((x) => x !== owner);
+      const before = rest.filter((x) => x.key < owner.key).sort((a, b) => b.key - a.key);
+      const after = rest.filter((x) => x.key >= owner.key).sort((a, b) => a.key - b.key);
+      before.forEach((x, i) => spread.set(`${x.edge.id}:${x.end}`, Math.max(0.08, 0.5 - (i + 1) * 0.2)));
+      after.forEach((x, i) => spread.set(`${x.edge.id}:${x.end}`, Math.min(0.92, 0.5 + (i + 1) * 0.2)));
+      continue;
+    }
+    // Evenly spaced, in order, each as close as it can be to where its other end is (so a connector to a
+    // shape straight across stays straight while the others make room).
+    const step = Math.min(range / n, 0.25);
+    const lo = 0.5 - range / 2 + step / 2;
+    const hi = 0.5 + range / 2 - step / 2;
+    const horizontal = side === "top" || side === "bottom";
+    const start = horizontal ? node.x : node.y;
+    const len = (horizontal ? node.w : node.h) || 1;
+    const raw = list.map((item) => (item.key - start) / len);
+    const want = raw.map((t) => Math.max(lo, Math.min(hi, t)));
+    // One connector whose other end is straight across keeps that exact line; the rest space evenly from it.
+    let anchor = -1;
+    list.forEach((item, i) => {
+      if (item.facing && raw[i]! >= lo && raw[i]! <= hi && (anchor < 0 || Math.abs(raw[i]! - 0.5) < Math.abs(raw[anchor]! - 0.5))) anchor = i;
+    });
+    let placed: number[] | null = null;
+    if (anchor >= 0) {
+      let st = step;
+      if (anchor > 0) st = Math.min(st, (want[anchor]! - lo + step / 2) / anchor);
+      if (anchor < n - 1) st = Math.min(st, (hi + step / 2 - want[anchor]!) / (n - 1 - anchor));
+      if (st * len >= 12) placed = list.map((_, i) => want[anchor]! + (i - anchor) * st);
+    }
+    for (const [i, t] of (placed ?? placeInOrder(want, step, lo, hi)).entries()) spread.set(`${list[i]!.edge.id}:${list[i]!.end}`, t);
+  }
+  // Two shapes facing each other, nearly in line, each with only this connector on that side: line the
+  // ends up so the connector runs straight instead of making a tiny jog.
+  for (const e of fc.edges) {
+    const s = sides.get(e.id);
+    const a = byId.get(e.from);
+    const b = byId.get(e.to);
+    if (!s || !a || !b || !s[0] || !s[1] || s[1] !== OPPOSITE[s[0]] || e.fromAt !== undefined || e.toAt !== undefined || e.bends.length) continue;
+    if (groups.get(`${a.id}:${s[0]}`)?.length !== 1 || groups.get(`${b.id}:${s[1]}`)?.length !== 1) continue;
+    const horizontal = s[0] === "left" || s[0] === "right";
+    const facing = s[0] === "right" ? b.x >= a.x + a.w : s[0] === "left" ? b.x + b.w <= a.x : s[0] === "bottom" ? b.y >= a.y + a.h : b.y + b.h <= a.y;
+    if (!facing) continue;
+    const range = (n: FlowNode, side: FlowSide): [number, number] => {
+      const sp = shapeSpread(n.shape, side);
+      const start = horizontal ? n.y : n.x;
+      const len = horizontal ? n.h : n.w;
+      return [start + len * (0.5 - sp / 2), start + len * (0.5 + sp / 2)];
+    };
+    const [a0, a1] = range(a, s[0]);
+    const [b0, b1] = range(b, s[1]);
+    const lo = Math.max(a0, b0);
+    const hi = Math.min(a1, b1);
+    const ca = horizontal ? a.y + a.h / 2 : a.x + a.w / 2;
+    const cb = horizontal ? b.y + b.h / 2 : b.x + b.w / 2;
+    if (lo > hi || Math.abs(ca - cb) > 16) continue;
+    const v = Math.max(lo, Math.min(hi, (ca + cb) / 2));
+    spread.set(`${e.id}:from`, horizontal ? (v - a.y) / a.h : (v - a.x) / a.w);
+    spread.set(`${e.id}:to`, horizontal ? (v - b.y) / b.h : (v - b.x) / b.w);
   }
   const out = new Map<string, [ResolvedEnd, ResolvedEnd]>();
   for (const e of fc.edges) {
@@ -370,6 +524,34 @@ function legClear(pts: Pt[], obstacles: readonly Rect[]): boolean {
   return true;
 }
 
+/** The middles of the gaps between obstacles along one axis (and just outside them), nearest `mid` first. */
+function channels(intervals: [number, number][], mid: number, max = 16): number[] {
+  if (!intervals.length) return [];
+  intervals.sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [[...intervals[0]!]];
+  for (const [a, b] of intervals.slice(1)) {
+    const last = merged[merged.length - 1]!;
+    if (a <= last[1]) last[1] = Math.max(last[1], b);
+    else merged.push([a, b]);
+  }
+  const out = [merged[0]![0] - 8, merged[merged.length - 1]![1] + 8];
+  for (let i = 1; i < merged.length; i++) out.push((merged[i - 1]![1] + merged[i]![0]) / 2);
+  return out.sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid)).slice(0, max);
+}
+
+/** Z routes whose middle runs down a gap between the obstacles near a leg. */
+function channelCandidates(s: Pt, e: Pt, obstacles: readonly Rect[]): Pt[][] {
+  const y0 = Math.min(s.y, e.y);
+  const y1 = Math.max(s.y, e.y);
+  const x0 = Math.min(s.x, e.x);
+  const x1 = Math.max(s.x, e.x);
+  const out: Pt[][] = [];
+  // Vertical middles: obstacles spanning the rows between the ends.
+  for (const x of channels(obstacles.filter((r) => r.y < y1 && r.y + r.h > y0).map((r) => [r.x, r.x + r.w]), (x0 + x1) / 2)) out.push(simplify([s, { x, y: s.y }, { x, y: e.y }, e]));
+  for (const y of channels(obstacles.filter((r) => r.x < x1 && r.x + r.w > x0).map((r) => [r.y, r.y + r.h]), (y0 + y1) / 2)) out.push(simplify([s, { x: s.x, y }, { x: e.x, y }, e]));
+  return out;
+}
+
 /** The few routes a person would draw between two points: straight, L, Z and U shapes. */
 function candidates(s: Pt, e: Pt, around: Rect | null, stub: number): Pt[][] {
   const mx = (s.x + e.x) / 2;
@@ -451,7 +633,7 @@ class Heap {
 function uniqSorted(values: number[]): number[] {
   values.sort((a, b) => a - b);
   const out: number[] = [];
-  for (const v of values) if (!out.length || v - out[out.length - 1]! > 0.5) out.push(v);
+  for (const v of values) if (!out.length || v - out[out.length - 1]! > 1e-6) out.push(v);
   return out;
 }
 
@@ -480,7 +662,7 @@ function gridSearch(s: Pt, ds: Dir | null, e: Pt, de: Dir | null, obstacles: rea
   let xs = uniqSorted(xsRaw.filter((x) => x >= win.x - EPS && x <= win.x + win.w + EPS));
   let ys = uniqSorted(ysRaw.filter((y) => y >= win.y - EPS && y <= win.y + win.h + EPS));
   // Channel centres between neighbouring lines, so routes run down the middle of gaps.
-  if (obstacles.length <= 60) {
+  if (obstacles.length <= 40) {
     const mid = (arr: number[]) => {
       const extra: number[] = [];
       for (let i = 1; i < arr.length; i++) if (arr[i]! - arr[i - 1]! > 36) extra.push((arr[i]! + arr[i - 1]!) / 2);
@@ -510,10 +692,10 @@ function gridSearch(s: Pt, ds: Dir | null, e: Pt, de: Dir | null, obstacles: rea
     const jb = lowerIndex(ys, r.y + r.h - EPS);
     for (let i = i0; i < i1; i++) for (let j = ja; j < jb && j < ny - 1; j++) blockedV[i * ny + j] = 1;
   }
-  const si = lowerIndex(xs, s.x - 0.25);
-  const sj = lowerIndex(ys, s.y - 0.25);
-  const ei = lowerIndex(xs, e.x - 0.25);
-  const ej = lowerIndex(ys, e.y - 0.25);
+  const si = lowerIndex(xs, s.x - 1e-7);
+  const sj = lowerIndex(ys, s.y - 1e-7);
+  const ei = lowerIndex(xs, e.x - 1e-7);
+  const ej = lowerIndex(ys, e.y - 1e-7);
   if (si >= nx || sj >= ny || ei >= nx || ej >= ny) return null;
   const goal = ei * ny + ej;
   const g = new Float64Array(N * 4).fill(Infinity);
@@ -521,12 +703,23 @@ function gridSearch(s: Pt, ds: Dir | null, e: Pt, de: Dir | null, obstacles: rea
   const heap = new Heap();
   const ex = xs[ei]!;
   const ey = ys[ej]!;
-  const hOf = (i: number, j: number) => Math.abs(xs[i]! - ex) + Math.abs(ys[j]! - ey);
+  // Distance plus the turns still needed from this direction (never more than the real cost).
+  const hOf = (i: number, j: number, d: number) => {
+    const dx = ex - xs[i]!;
+    const dy = ey - ys[j]!;
+    const adx = Math.abs(dx);
+    const ady = Math.abs(dy);
+    let turns = 0;
+    if (adx > EPS && ady > EPS) turns = (d === 0 && dx > 0) || (d === 2 && dx < 0) || (d === 1 && dy > 0) || (d === 3 && dy < 0) ? 1 : 2;
+    else if (adx > EPS) turns = (d === 0 && dx > 0) || (d === 2 && dx < 0) ? 0 : d === 1 || d === 3 ? 1 : 2;
+    else if (ady > EPS) turns = (d === 1 && dy > 0) || (d === 3 && dy < 0) ? 0 : d === 0 || d === 2 ? 1 : 2;
+    return adx + ady + turns * bendCost;
+  };
   const start = si * ny + sj;
   for (let d = 0 as Dir; d < 4; d = (d + 1) as Dir) {
     if (ds !== null && d !== ds) continue;
     g[start * 4 + d] = 0;
-    heap.push(start * 4 + d, hOf(si, sj));
+    heap.push(start * 4 + d, hOf(si, sj, d));
   }
   let best = Infinity;
   let bestState = -1;
@@ -573,7 +766,7 @@ function gridSearch(s: Pt, ds: Dir | null, e: Pt, de: Dir | null, obstacles: rea
       if (cost < g[ns]!) {
         g[ns] = cost;
         parent[ns] = st;
-        heap.push(ns, cost + hOf(ni, nj));
+        heap.push(ns, cost + hOf(ni, nj, d2));
       }
     }
   }
@@ -619,6 +812,17 @@ function routeLeg(s: Pt, ds: Dir | null, e: Pt, de: Dir | null, obstacles: reado
   }
   // Two bends or fewer and clear: as good as a search would find in practice.
   if (best && best.length <= 4) return { pts: best, searched: false, clear: true, wide: false };
+  // Z routes through the gaps between nearby shapes (cheap, and usually what a search would find).
+  if (!best) {
+    for (const c of channelCandidates(s, e, obstacles)) {
+      const cost = legCost(c, ds, de, o.bendCost);
+      if (Number.isFinite(cost) && cost < bestCost && legClear(c, obstacles)) {
+        bestCost = cost;
+        best = c;
+      }
+    }
+    if (best && best.length <= 4) return { pts: best, searched: false, clear: true, wide: false };
+  }
   const box = (pad: number): Rect => {
     let x0 = Math.min(s.x, e.x);
     let y0 = Math.min(s.y, e.y);
@@ -632,9 +836,9 @@ function routeLeg(s: Pt, ds: Dir | null, e: Pt, de: Dir | null, obstacles: reado
     }
     return { x: x0 - pad, y: y0 - pad, w: x1 - x0 + 2 * pad, h: y1 - y0 + 2 * pad };
   };
-  for (const pad of [120, 480]) {
+  for (const pad of [64, 480]) {
     const win = box(pad);
-    const wide = pad > 120;
+    const wide = pad > 64;
     const near = (wide ? all : obstacles).filter((r) => r.x < win.x + win.w && r.x + r.w > win.x && r.y < win.y + win.h && r.y + r.h > win.y);
     const found = gridSearch(s, ds, e, de, near, win, o.bendCost);
     if (found) {
@@ -712,7 +916,7 @@ interface Raw {
   wideSig?: string;
 }
 
-const NEAR = 140;
+const NEAR = 72;
 const FAR = 520;
 
 function windowAround(pts: readonly Pt[], nodes: readonly (FlowNode | null)[], m: number): Rect {
@@ -756,7 +960,7 @@ function stubEnd(end: ResolvedEnd, len: number): Pt {
   }
 }
 
-function routeOne(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, nodes: readonly FlowNode[], o: Required<RouteOptions>): { raw: Raw; cached: boolean } {
+function routeOne(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, nodes: readonly FlowNode[], padded: readonly Rect[], o: Required<RouteOptions>): { raw: Raw; cached: boolean } {
   const kind: FlowRoute = e.route;
   if (kind === "straight") {
     return { raw: { points: [a.point, ...e.bends, b.point], curve: null, searched: false }, cached: false };
@@ -769,8 +973,9 @@ function routeOne(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, nodes: readonly F
   // Every shape is in the way (with its margin), except where an end or a bend sits in another shape's
   // margin: that shape keeps no margin for this connector, and is ignored if the end is inside it.
   const all: Rect[] = [];
-  for (const n of nodes) {
-    let r = inflate(n, o.padding);
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i]!;
+    let r = padded[i]!;
     if (n !== a.node && n !== b.node && keyPts.some((p) => inside(p, r))) {
       r = n;
       if (keyPts.some((p) => inside(p, r))) continue;
@@ -898,14 +1103,29 @@ function separate(routes: { points: Pt[]; orthogonal: boolean; id: string }[], o
         k = m;
         const distinct = new Set(cluster.map((c) => c.route));
         if (distinct.size < 2) continue;
-        // Order by where the neighbouring segments go, so the moved lines don't cross each other.
-        const lean = (c: Seg) => {
+        // Order the lines so that, once apart, none crosses another's turns: try both orders of each pair
+        // and keep the one with fewer crossings.
+        const along = (p: Pt) => (horizontal ? p.x : p.y);
+        const across = (p: Pt) => (horizontal ? p.y : p.x);
+        const shape = (c: Seg, at: number) => {
           const p = routes[c.route]!.points;
-          const before = p[c.index - 1]!;
-          const after = p[c.index + 2]!;
-          return horizontal ? before.y + after.y : before.x + after.x;
+          const a = p[c.index]!;
+          const b = p[c.index + 1]!;
+          const turns = [
+            { at: along(a), lo: Math.min(across(p[c.index - 1]!), at), hi: Math.max(across(p[c.index - 1]!), at) },
+            { at: along(b), lo: Math.min(across(p[c.index + 2]!), at), hi: Math.max(across(p[c.index + 2]!), at) },
+          ];
+          return { at, lo: Math.min(along(a), along(b)), hi: Math.max(along(a), along(b)), turns };
         };
-        cluster.sort((s1, s2) => lean(s1) - lean(s2) || (routes[s1.route]!.id < routes[s2.route]!.id ? -1 : 1));
+        const crossingsIf = (first: Seg, second: Seg) => {
+          const A = shape(first, first.at - 1);
+          const B = shape(second, second.at + 1);
+          let n = 0;
+          for (const t of B.turns) if (t.at > A.lo + EPS && t.at < A.hi - EPS && A.at > t.lo && A.at < t.hi) n++;
+          for (const t of A.turns) if (t.at > B.lo + EPS && t.at < B.hi - EPS && B.at > t.lo && B.at < t.hi) n++;
+          return n;
+        };
+        cluster.sort((s1, s2) => crossingsIf(s1, s2) - crossingsIf(s2, s1) || (routes[s1.route]!.id < routes[s2.route]!.id ? -1 : 1));
         cluster.forEach((c, idx) => {
           const off = (idx - (cluster.length - 1) / 2) * sep;
           if (Math.abs(off) < EPS) return;
@@ -930,6 +1150,150 @@ function separate(routes: { points: Pt[]; orthogonal: boolean; id: string }[], o
       }
       i = j;
     }
+  }
+}
+
+/** Every connector's straight segments, by line, for counting crossings quickly; owners can be re-routed. */
+class SegmentIndex {
+  /** Horizontal segments sorted by y, vertical ones sorted by x: [fixed, lo, hi, owner, generation]. */
+  private hs: [number, number, number, number, number][] = [];
+  private vs: [number, number, number, number, number][] = [];
+  private extra: [boolean, number, number, number, number, number][] = [];
+  private gen: number[];
+  constructor(owners: readonly (readonly Pt[])[]) {
+    this.gen = owners.map(() => 0);
+    owners.forEach((pts, k) => {
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1]!;
+        const b = pts[i]!;
+        if (Math.abs(a.y - b.y) < EPS) this.hs.push([a.y, Math.min(a.x, b.x), Math.max(a.x, b.x), k, 0]);
+        else if (Math.abs(a.x - b.x) < EPS) this.vs.push([a.x, Math.min(a.y, b.y), Math.max(a.y, b.y), k, 0]);
+      }
+    });
+    this.hs.sort((p, q) => p[0] - q[0]);
+    this.vs.sort((p, q) => p[0] - q[0]);
+  }
+  /** Replaces an owner's segments. */
+  replace(owner: number, pts: readonly Pt[]): void {
+    const g = ++this.gen[owner]!;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1]!;
+      const b = pts[i]!;
+      const h = Math.abs(a.y - b.y) < EPS;
+      this.extra.push(h ? [true, a.y, Math.min(a.x, b.x), Math.max(a.x, b.x), owner, g] : [false, a.x, Math.min(a.y, b.y), Math.max(a.y, b.y), owner, g]);
+    }
+  }
+  /** How many times `pts` crosses the other owners' segments. */
+  count(pts: readonly Pt[], self: number): number {
+    let n = 0;
+    const lowerBound = (arr: readonly [number, ...number[]][], v: number) => {
+      let lo = 0;
+      let hi = arr.length;
+      while (lo < hi) {
+        const m = (lo + hi) >> 1;
+        if (arr[m]![0] < v) lo = m + 1;
+        else hi = m;
+      }
+      return lo;
+    };
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1]!;
+      const b = pts[i]!;
+      const h = Math.abs(a.y - b.y) < EPS;
+      const fixed = h ? a.y : a.x;
+      const lo = h ? Math.min(a.x, b.x) : Math.min(a.y, b.y);
+      const hi = h ? Math.max(a.x, b.x) : Math.max(a.y, b.y);
+      const cross = h ? this.vs : this.hs;
+      for (let k = lowerBound(cross, lo + 1); k < cross.length && cross[k]![0] < hi - 1; k++) {
+        const s = cross[k]!;
+        if (s[3] === self || s[4] !== this.gen[s[3]]) continue;
+        if (fixed > s[1] + 1 && fixed < s[2] - 1) n++;
+      }
+      for (const s of this.extra) {
+        if (s[0] === h || s[4] === self || s[5] !== this.gen[s[4]]) continue;
+        if (s[1] > lo + 1 && s[1] < hi - 1 && fixed > s[2] + 1 && fixed < s[3] - 1) n++;
+      }
+    }
+    return n;
+  }
+}
+
+/**
+ * Connectors that cut across many others (loops back to an earlier step, long jumps) are offered a detour
+ * around the outside of the shapes they pass: out of one side of each shape, along the outside, and in.
+ * The detour is taken when it crosses fewer connectors and isn't much longer.
+ */
+function detourCrossers(work: { edge: FlowEdge; points: Pt[]; orthogonal: boolean; a: ResolvedEnd; b: ResolvedEnd }[], nodes: readonly FlowNode[], padded: readonly Rect[], o: Required<RouteOptions>): void {
+  const index = new SegmentIndex(work.map((w) => (w.orthogonal ? w.points : [])));
+  const order = work
+    .map((w, k) => ({ k, w }))
+    .filter(({ w }) => w.orthogonal && w.a.node && w.b.node && !w.edge.bends.length && !w.edge.fromSide && !w.edge.toSide)
+    .map(({ k, w }) => ({ k, w, c: index.count(w.points, k) }))
+    .filter((x) => x.c >= 1)
+    .sort((x, y) => y.c - x.c || (x.w.edge.id < y.w.edge.id ? -1 : 1));
+  const len = (pts: readonly Pt[]) => pts.slice(1).reduce((s, q, i) => s + Math.abs(q.x - pts[i]!.x) + Math.abs(q.y - pts[i]!.y), 0);
+  for (const { k, w } of order.slice(0, 24)) {
+    const A = w.a.node!;
+    const B = w.b.node!;
+    const current = index.count(w.points, k);
+    if (current < 1) continue;
+    const y0 = Math.min(A.y, B.y);
+    const y1 = Math.max(A.y + A.h, B.y + B.h);
+    const x0 = Math.min(A.x, B.x);
+    const x1 = Math.max(A.x + A.w, B.x + B.w);
+    const rowSpan = nodes.filter((n) => n.y < y1 && n.y + n.h > y0);
+    const colSpan = nodes.filter((n) => n.x < x1 && n.x + n.w > x0);
+    const gap = 2 * o.padding + o.separation;
+    const cands: { pts: Pt[]; sa: FlowSide; sb: FlowSide }[] = [];
+    const via = (side: FlowSide): Pt[] => {
+      const pa = outlinePoint(A, side, 0.5);
+      const pb = outlinePoint(B, side, 0.5);
+      switch (side) {
+        case "left": {
+          const x = Math.min(...rowSpan.map((n) => n.x)) - gap;
+          return [pa, { x, y: pa.y }, { x, y: pb.y }, pb];
+        }
+        case "right": {
+          const x = Math.max(...rowSpan.map((n) => n.x + n.w)) + gap;
+          return [pa, { x, y: pa.y }, { x, y: pb.y }, pb];
+        }
+        case "top": {
+          const y = Math.min(...colSpan.map((n) => n.y)) - gap;
+          return [pa, { x: pa.x, y }, { x: pb.x, y }, pb];
+        }
+        case "bottom": {
+          const y = Math.max(...colSpan.map((n) => n.y + n.h)) + gap;
+          return [pa, { x: pa.x, y }, { x: pb.x, y }, pb];
+        }
+      }
+    };
+    for (const side of ["left", "right", "top", "bottom"] as const) cands.push({ pts: via(side), sa: side, sb: side });
+    const base = len(w.points);
+    let best: { pts: Pt[]; sa: FlowSide; sb: FlowSide; c: number; l: number } | null = null;
+    for (const c of cands) {
+      const pts = simplify(c.pts);
+      // Clear of every shape (the first and last runs leave and enter the connector's own shapes).
+      let clear = true;
+      for (let i = 1; i < pts.length && clear; i++) {
+        for (let j = 0; j < nodes.length; j++) {
+          const own = nodes[j] === A || nodes[j] === B;
+          if (own && (i === 1 || i === pts.length - 1)) continue;
+          if (segHits(pts[i - 1]!.x, pts[i - 1]!.y, pts[i]!.x, pts[i]!.y, own ? nodes[j]! : padded[j]!)) {
+            clear = false;
+            break;
+          }
+        }
+      }
+      if (!clear) continue;
+      const cc = index.count(pts, k);
+      const l = len(pts);
+      if (cc < current && l <= base * 2.5 + 300 && (!best || cc < best.c || (cc === best.c && l < best.l))) best = { pts, sa: c.sa, sb: c.sb, c: cc, l };
+    }
+    if (!best) continue;
+    w.points = best.pts;
+    w.a = { ...w.a, side: best.sa, point: best.pts[0]!, at: 0.5 };
+    w.b = { ...w.b, side: best.sb, point: best.pts[best.pts.length - 1]!, at: 0.5 };
+    index.replace(k, best.pts);
   }
 }
 
@@ -1009,6 +1373,7 @@ export function routeFlowchart(fc: FlowchartData, opts: RouteOptions = {}): Rout
   const o = { ...DEFAULTS, ...opts };
   const byId = new Map(fc.nodes.map((n) => [n.id, n]));
   const ends = resolveEnds(fc, byId);
+  const padded = fc.nodes.map((n) => inflate(n, o.padding));
   const work: { edge: FlowEdge; points: Pt[]; curve: CurveSeg[] | null; orthogonal: boolean; curved: boolean; id: string; hops: Hop[]; a: ResolvedEnd; b: ResolvedEnd }[] = [];
   let cached = 0;
   let searched = 0;
@@ -1016,12 +1381,13 @@ export function routeFlowchart(fc: FlowchartData, opts: RouteOptions = {}): Rout
     const pair = ends.get(e.id);
     if (!pair) continue;
     const [a, b] = pair;
-    const { raw, cached: hit } = routeOne(e, a, b, fc.nodes, o);
+    const { raw, cached: hit } = routeOne(e, a, b, fc.nodes, padded, o);
     if (hit) cached++;
     if (raw.searched && !hit) searched++;
     work.push({ edge: e, points: raw.points.map((p) => ({ ...p })), curve: raw.curve, orthogonal: e.route === "elbow", curved: raw.curve !== null, id: e.id, hops: [], a, b });
   }
   const obstacles = fc.nodes.map((n) => n as Rect);
+  detourCrossers(work, fc.nodes, padded, o);
   separate(work, obstacles, o.separation);
   const crossings = o.hops ? findCrossings(work, o.hopRadius) : 0;
   const routes: EdgeRoute[] = work.map((w) => ({ edge: w.edge, route: w.edge.route, points: w.points, curve: w.curve, fromSide: w.a.side, toSide: w.b.side, hops: w.hops }));

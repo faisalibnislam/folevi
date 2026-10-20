@@ -33,6 +33,7 @@ import {
   type FlowNode,
   type FlowPool,
 } from "./flowchart";
+import { autoSides } from "./flowchartRouting";
 import type { FlowSide, Pt, Rect } from "./flowchartShapes";
 
 export type FlowDirection = "TD" | "LR";
@@ -96,6 +97,182 @@ function layerCrossings(pairs: [number, number][]): number {
     for (let j = v; j <= max; j += j & -j) tree[j]!++;
   }
   return count;
+}
+
+// ------------------------------------------------------------------------------------------ coordinates
+
+/**
+ * Brandes-Köpf coordinate assignment: four alignments (aligning each node with a median neighbour above or
+ * below, scanning from the left or the right), each compacted, then balanced (the average of the two middle
+ * candidates). Long connectors (placeholder chains) stay straight because segments between placeholders win
+ * conflicts. `preferUp`/`preferDown` name a neighbour to align with first (a decision and its "Yes").
+ * Returns each node's centre across the flow.
+ */
+function bkPlace(
+  layers: string[][],
+  up: ReadonlyMap<string, string[]>,
+  down: ReadonlyMap<string, string[]>,
+  size: (id: string) => number,
+  gap: number,
+  dummy: (id: string) => boolean,
+  preferUp: ReadonlyMap<string, string>,
+  preferDown: ReadonlyMap<string, string>,
+): Map<string, number> {
+  const pos = new Map<string, number>();
+  const layerOf = new Map<string, number>();
+  layers.forEach((l, li) =>
+    l.forEach((id, i) => {
+      pos.set(id, i);
+      layerOf.set(id, li);
+    }),
+  );
+  const near = (id: string, dir: -1 | 1) =>
+    ((dir < 0 ? up : down).get(id) ?? []).filter((n) => pos.has(n) && layerOf.get(n) === layerOf.get(id)! + dir).sort((a, b) => pos.get(a)! - pos.get(b)!);
+  const upsOf = new Map<string, string[]>();
+  const downsOf = new Map<string, string[]>();
+  for (const id of pos.keys()) {
+    upsOf.set(id, near(id, -1));
+    downsOf.set(id, near(id, 1));
+  }
+  // Type 1 conflicts: an ordinary segment crossing a segment between two placeholders gives way.
+  const marked = new Set<string>();
+  for (let i = 0; i < layers.length - 1; i++) {
+    const upper = layers[i]!;
+    const lower = layers[i + 1]!;
+    let k0 = 0;
+    let l = 0;
+    for (let l1 = 0; l1 < lower.length; l1++) {
+      const v = lower[l1]!;
+      const inner = dummy(v) ? upsOf.get(v)!.find(dummy) : undefined;
+      if (l1 === lower.length - 1 || inner) {
+        const k1 = inner ? pos.get(inner)! : upper.length - 1;
+        for (; l <= l1; l++) {
+          const u = lower[l]!;
+          for (const w of upsOf.get(u)!) {
+            const k = pos.get(w)!;
+            if ((k < k0 || k > k1) && !(dummy(w) && dummy(u))) marked.add(`${w}>${u}`);
+          }
+        }
+        k0 = k1;
+      }
+    }
+  }
+  const delta = (a: string, b: string) => (size(a) + size(b)) / 2 + gap;
+  const run = (vert: "up" | "down", horiz: "left" | "right"): Map<string, number> => {
+    const root = new Map<string, string>();
+    const align = new Map<string, string>();
+    for (const id of pos.keys()) {
+      root.set(id, id);
+      align.set(id, id);
+    }
+    const order = vert === "up" ? layers : [...layers].reverse();
+    for (const layer of order) {
+      const scan = horiz === "left" ? layer : [...layer].reverse();
+      let r = horiz === "left" ? -1 : Infinity;
+      for (const v of scan) {
+        const all = (vert === "up" ? upsOf : downsOf).get(v)!;
+        if (!all.length) continue;
+        // A shape lines up with shapes before placeholders of long (or looping) connectors.
+        const real = all.filter((n) => !dummy(n));
+        const ns = !dummy(v) && real.length ? real : all;
+        const prefer = (vert === "up" ? preferUp : preferDown).get(v);
+        let cands: string[];
+        if (prefer && ns.includes(prefer)) cands = [prefer];
+        else {
+          const m1 = ns[Math.floor((ns.length - 1) / 2)]!;
+          const m2 = ns[Math.ceil((ns.length - 1) / 2)]!;
+          cands = m1 === m2 ? [m1] : horiz === "left" ? [m1, m2] : [m2, m1];
+        }
+        for (const u of cands) {
+          if (align.get(v) !== v) break;
+          // A neighbour promised to someone else (a decision's "Yes", the main line) isn't available.
+          const promised = (vert === "up" ? preferDown : preferUp).get(u);
+          if (promised && promised !== v) continue;
+          // A placeholder doesn't take a shape that has another shape to line up with.
+          if (dummy(v) && !dummy(u) && (vert === "up" ? downsOf : upsOf).get(u)!.some((x) => !dummy(x))) continue;
+          const isMarked = vert === "up" ? marked.has(`${u}>${v}`) : marked.has(`${v}>${u}`);
+          const pu = pos.get(u)!;
+          if (!isMarked && (horiz === "left" ? r < pu : r > pu)) {
+            align.set(u, v);
+            root.set(v, root.get(u)!);
+            align.set(v, root.get(v)!);
+            r = pu;
+          }
+        }
+      }
+    }
+    // Compaction over blocks: as far toward the scan side as the order allows, then pulled back toward
+    // whatever follows when there's slack.
+    const preds = new Map<string, { b: string; d: number }[]>();
+    const succs = new Map<string, { b: string; d: number }[]>();
+    const blocks = new Set(root.values());
+    for (const b of blocks) {
+      preds.set(b, []);
+      succs.set(b, []);
+    }
+    for (const layer of layers) {
+      const scan = horiz === "left" ? layer : [...layer].reverse();
+      for (let i = 1; i < scan.length; i++) {
+        const a = root.get(scan[i - 1]!)!;
+        const b = root.get(scan[i]!)!;
+        if (a === b) continue;
+        const d = delta(scan[i - 1]!, scan[i]!);
+        preds.get(b)!.push({ b: a, d });
+        succs.get(a)!.push({ b, d });
+      }
+    }
+    const indeg = new Map([...blocks].map((b) => [b, preds.get(b)!.length]));
+    const topo: string[] = [...blocks].filter((b) => indeg.get(b) === 0);
+    for (let i = 0; i < topo.length; i++) {
+      for (const s of succs.get(topo[i]!)!) {
+        indeg.set(s.b, indeg.get(s.b)! - 1);
+        if (indeg.get(s.b) === 0) topo.push(s.b);
+      }
+    }
+    for (const b of blocks) if (!topo.includes(b)) topo.push(b); // never happens with a consistent order
+    const xs = new Map<string, number>();
+    for (const b of topo) xs.set(b, Math.max(0, ...preds.get(b)!.map((p) => (xs.get(p.b) ?? 0) + p.d)));
+    for (let i = topo.length - 1; i >= 0; i--) {
+      const b = topo[i]!;
+      const s = succs.get(b)!;
+      if (!s.length) continue;
+      const limit = Math.min(...s.map((q) => xs.get(q.b)! - q.d));
+      if (limit > xs.get(b)!) xs.set(b, limit);
+    }
+    const out = new Map<string, number>();
+    for (const id of pos.keys()) out.set(id, (horiz === "left" ? 1 : -1) * xs.get(root.get(id)!)!);
+    return out;
+  };
+  const runs = [run("up", "left"), run("up", "right"), run("down", "left"), run("down", "right")];
+  const ids = [...pos.keys()];
+  if (!ids.length) return new Map();
+  const extent = (m: Map<string, number>) => [Math.min(...ids.map((id) => m.get(id)! - size(id) / 2)), Math.max(...ids.map((id) => m.get(id)! + size(id) / 2))] as const;
+  const widths = runs.map((m) => {
+    const [lo, hi] = extent(m);
+    return hi - lo;
+  });
+  const smallest = runs[widths.indexOf(Math.min(...widths))]!;
+  const [sLo, sHi] = extent(smallest);
+  runs.forEach((m, k) => {
+    const [lo, hi] = extent(m);
+    const shift = k % 2 === 0 ? sLo - lo : sHi - hi;
+    for (const id of ids) m.set(id, m.get(id)! + shift);
+  });
+  const result = new Map<string, number>();
+  for (const id of ids) {
+    const v = runs.map((m) => m.get(id)!).sort((a, b) => a - b);
+    result.set(id, (v[1]! + v[2]!) / 2);
+  }
+  // The balanced result can bring neighbours too close: sweep each layer once to restore the gaps.
+  for (const layer of layers) {
+    for (let i = 1; i < layer.length; i++) {
+      const a = layer[i - 1]!;
+      const b = layer[i]!;
+      const min = result.get(a)! + delta(a, b);
+      if (result.get(b)! < min) result.set(b, min);
+    }
+  }
+  return result;
 }
 
 // ------------------------------------------------------------------------------------------ the core
@@ -295,7 +472,17 @@ function layered(items: Item[], edges: LEdge[], o: CoreOpts): CoreResult {
     }
     return c;
   };
-  decisionFix();
+  // "No" goes to the side of "Yes" only where that doesn't add crossings.
+  const tryDecisionFix = () => {
+    const before = layers.map((l) => [...l]);
+    const was = crossings();
+    decisionFix();
+    if (crossings() > was) {
+      before.forEach((l, i) => (layers[i] = l));
+      index();
+    }
+  };
+  tryDecisionFix();
   let best = layers.map((l) => [...l]);
   let bestCount = crossings();
   let stale = 0;
@@ -332,7 +519,7 @@ function layered(items: Item[], edges: LEdge[], o: CoreOpts): CoreResult {
       }
       if (!swapped) break;
     }
-    decisionFix();
+    tryDecisionFix();
     const count = crossings();
     if (count < bestCount) {
       bestCount = count;
@@ -343,74 +530,53 @@ function layered(items: Item[], edges: LEdge[], o: CoreOpts): CoreResult {
   best.forEach((l, i) => (layers[i] = l));
   index();
 
-  // Positions across the flow: the priority method, per lane when lanes run along the flow.
+  // Positions across the flow (Brandes-Köpf), per lane when lanes run along the flow. A decision lines up
+  // with its "Yes" branch.
   const cross = new Map<string, number>();
-  const placeLayers = (ls: string[][]) => {
-    for (const l of ls) {
-      let c = 0;
-      for (const id of l) {
-        cross.set(id, c);
-        c += all.get(id)!.cross + o.nodeGap;
-      }
+  const preferUp = new Map<string, string>();
+  const preferDown = new Map<string, string>();
+  // The main line goes straight: where a node splits into a branch that carries on and others that soon
+  // end (or two lines merge, one much longer), it lines up with the long one. Short side branches go beside.
+  const reach = (dir: "down" | "up") => {
+    const w = new Map<string, number>();
+    const order = dir === "down" ? [...layers].reverse() : layers;
+    for (const layer of order) for (const id of layer) w.set(id, (all.get(id)!.dummy ? 0 : 1) + (dir === "down" ? down : up).get(id)!.reduce((s, c) => s + (w.get(c) ?? 0), 0));
+    return w;
+  };
+  const wDown = reach("down");
+  const wUp = reach("up");
+  for (const [id, kids] of down) {
+    const direct = kids.filter((c) => layerOf.get(c) === layerOf.get(id)! + 1);
+    if (direct.length < 2) continue;
+    const sorted = [...direct].sort((a, b) => wDown.get(b)! - wDown.get(a)!);
+    if (wDown.get(sorted[0]!)! >= 2 * wDown.get(sorted[1]!)! + 1 && !preferUp.has(sorted[0]!)) {
+      preferDown.set(id, sorted[0]!);
+      preferUp.set(sorted[0]!, id);
     }
-    const centre = (id: string) => cross.get(id)! + all.get(id)!.cross / 2;
-    const sweep = (downward: boolean, final: boolean) => {
-      const range = downward ? ls.map((_, i) => i).slice(1) : ls.map((_, i) => i).slice(0, -1).reverse();
-      for (const li of range) {
-        const layer = ls[li]!;
-        if (!layer.length) continue;
-        const ref = downward ? up : down;
-        const inLayer = (n: string) => ls[downward ? li - 1 : li + 1]?.includes(n);
-        const desired = new Map<string, number>();
-        const priority = new Map<string, number>();
-        for (const id of layer) {
-          const it = all.get(id)!;
-          let ns = ref.get(id)!.filter(inLayer);
-          if (final) ns = [...up.get(id)!, ...down.get(id)!];
-          // A decision's "Yes" child sits under it (and the decision over its "Yes" child).
-          const aligned = downward ? [...yesOf].find(([, y]) => y === id)?.[0] : yesOf.get(id);
-          let want = ns.length ? ns.reduce((s, n) => s + centre(n), 0) / ns.length : o.keep ? it.hint.c : centre(id);
-          if (aligned && cross.has(aligned) && !final) want = centre(aligned);
-          if (o.keep && ns.length) want = want * 0.85 + it.hint.c * 0.15;
-          desired.set(id, want);
-          priority.set(id, (it.dummy ? 1000 : 0) + (aligned ? 500 : 0) + ns.length);
-        }
-        const placed = new Array<boolean>(layer.length).fill(false);
-        const w = layer.map((id) => all.get(id)!.cross);
-        const at = layer.map((id) => cross.get(id)!);
-        const orderIdx = layer.map((_, i) => i).sort((a, b) => priority.get(layer[b]!)! - priority.get(layer[a]!)! || a - b);
-        for (const k of orderIdx) {
-          let lo = -Infinity;
-          let hi = Infinity;
-          let acc = 0;
-          for (let p = k - 1; p >= 0; p--) {
-            if (placed[p]) {
-              lo = at[p]! + w[p]! + o.nodeGap + acc;
-              break;
-            }
-            acc += w[p]! + o.nodeGap;
-          }
-          acc = 0;
-          for (let q = k + 1; q < layer.length; q++) {
-            if (placed[q]) {
-              hi = at[q]! - o.nodeGap - w[k]! - acc;
-              break;
-            }
-            acc += w[q]! + o.nodeGap;
-          }
-          at[k] = Math.max(lo, Math.min(hi, desired.get(layer[k]!)! - w[k]! / 2));
-          placed[k] = true;
-          for (let j = k - 1; j >= 0 && !placed[j]; j--) at[j] = Math.min(at[j]!, at[j + 1]! - o.nodeGap - w[j]!);
-          for (let j = k + 1; j < layer.length && !placed[j]; j++) at[j] = Math.max(at[j]!, at[j - 1]! + w[j - 1]! + o.nodeGap);
-        }
-        layer.forEach((id, i) => cross.set(id, at[i]!));
-      }
-    };
-    for (let it = 0; it < 4; it++) sweep(it % 2 === 0, false);
-    sweep(true, true);
-    sweep(false, false);
+  }
+  for (const [id, parents] of up) {
+    const direct = parents.filter((p) => layerOf.get(p) === layerOf.get(id)! - 1);
+    if (direct.length < 2 || preferUp.has(id)) continue;
+    const sorted = [...direct].sort((a, b) => wUp.get(b)! - wUp.get(a)!);
+    if (wUp.get(sorted[0]!)! >= 2 * wUp.get(sorted[1]!)! + 1 && !preferDown.has(sorted[0]!)) {
+      preferUp.set(id, sorted[0]!);
+      preferDown.set(sorted[0]!, id);
+    }
+  }
+  // A decision lines up with its "Yes" branch, whatever the branches' lengths.
+  for (const [d, y] of yesOf) {
+    const oldDown = preferDown.get(d);
+    if (oldDown) preferUp.delete(oldDown);
+    const oldUp = preferUp.get(y);
+    if (oldUp) preferDown.delete(oldUp);
+    preferUp.set(y, d);
+    preferDown.set(d, y);
+  }
+  const placeLayers = (ls: string[][]) => {
+    const centres = bkPlace(ls, up, down, (id) => all.get(id)!.cross, o.nodeGap, (id) => !!all.get(id)!.dummy, preferUp, preferDown);
     const ids2 = ls.flat();
     if (!ids2.length) return { min: 0, max: 0 };
+    for (const id of ids2) cross.set(id, centres.get(id)! - all.get(id)!.cross / 2);
     const min = Math.min(...ids2.map((id) => cross.get(id)!));
     for (const id of ids2) cross.set(id, cross.get(id)! - min);
     return { min: 0, max: Math.max(...ids2.map((id) => cross.get(id)! + all.get(id)!.cross)) };
@@ -892,13 +1058,8 @@ export function quickAddPosition(fc: FlowchartData, sourceId: string, side: Flow
   const n = NORMAL[side];
   const byId = new Map(fc.nodes.map((x) => [x.id, x]));
   // Children already out on this side.
-  const kids = fc.edges
-    .filter((e) => e.from === sourceId && e.to && byId.has(e.to))
-    .map((e) => byId.get(e.to)!)
-    .filter((k) => {
-      const kc = { x: k.x + k.w / 2, y: k.y + k.h / 2 };
-      return side === "bottom" ? kc.y > src.y + src.h : side === "top" ? kc.y < src.y : side === "right" ? kc.x > src.x + src.w : kc.x < src.x;
-    });
+  // Children whose connector leaves from this side.
+  const kids = fc.edges.filter((e) => e.from === sourceId && e.to && byId.has(e.to) && (e.fromSide ?? autoSides(src, byId.get(e.to)!)[0]) === side).map((e) => byId.get(e.to)!);
   let x: number;
   let y: number;
   let step: Pt;

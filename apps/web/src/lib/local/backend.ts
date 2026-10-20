@@ -255,6 +255,14 @@ export class LocalBackend implements LocalExecutor {
     return await this.serial(() => this.transact((ctx) => commitUpload(ctx, prepared)));
   }
 
+  /**
+   * Runs `fn` as one of this backend's own mutations, in order with the others (bookkeeping that has no
+   * server function, like a move's progress between a library and an account, lib/migrate/progress.ts).
+   */
+  run<T>(fn: (ctx: LocalMutationCtx) => T | Promise<T>): Promise<T> {
+    return this.serial(() => this.transact(fn));
+  }
+
   private setup(input: LocalSetup): Promise<{ created: boolean }> {
     return this.serial(() => this.transact((ctx) => setupLibrary(ctx, input)));
   }

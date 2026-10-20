@@ -148,12 +148,12 @@ export interface NewProperty {
  */
 export async function createCollection(
   ctx: LocalMutationCtx,
-  input: { documentId: string; name: string; seq: number; properties: NewProperty[] },
+  input: { id?: string; documentId: string; name: string; seq: number; properties: NewProperty[] },
 ): Promise<{ collection: LocalCollection; propertyIds: Map<string, string> }> {
   const now = ctx.now();
   const ordinal = (((await ctx.db.get("meta", ORDINAL_KEY)) as number | undefined) ?? 0) + 1;
   ctx.db.put("meta", ORDINAL_KEY, ordinal);
-  const collection: LocalCollection = { id: ulid(), documentId: input.documentId, name: input.name, createdAt: now, ordinal, updatedAt: now, deletedAt: null, seq: input.seq, properties: {}, views: {} };
+  const collection: LocalCollection = { id: input.id ?? ulid(), documentId: input.documentId, name: input.name, createdAt: now, ordinal, updatedAt: now, deletedAt: null, seq: input.seq, properties: {}, views: {} };
   const ranks = rankSequence(input.properties.length);
   const propertyIds = new Map<string, string>();
   for (const [i, p] of input.properties.entries()) {
@@ -357,8 +357,22 @@ defineLocal(api.collections.create, "mutation", async (ctx, args) => {
   await requireProfile(ctx);
   const doc = await ctx.db.get("documents", args.documentId);
   if (!doc) fail("not_found", "Document not found.");
+  // A client's own id (a library coming from an account keeps its collections' ids): sent again, the
+  // collection it made and its first view.
+  if (args.id !== undefined) {
+    if (!isValidId(args.id)) fail("invalid_argument", "Invalid collection id.");
+    const made = await ctx.db.get("collections", args.id);
+    if (made) {
+      if (made.documentId !== doc.id) fail("invalid_argument", "That collection id is taken.");
+      const first = Object.values(made.views)
+        .filter((vw) => !vw.deletedAt)
+        .sort((a, b) => (a.rank < b.rank ? -1 : 1))[0];
+      return { collectionId: made.id, viewId: first?.id ?? "" };
+    }
+  }
   const seq = await ctx.nextSeq();
   const { collection, propertyIds } = await createCollection(ctx, {
+    id: args.id,
     documentId: doc.id,
     name: (args.name ?? "Collection").slice(0, 80),
     seq,

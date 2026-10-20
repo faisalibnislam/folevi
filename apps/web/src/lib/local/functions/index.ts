@@ -20,3 +20,4 @@ import "./fileText";
 import "./synced";
 import "./imports";
 import "./exports";
+import "./migration";

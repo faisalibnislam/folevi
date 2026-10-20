@@ -179,6 +179,8 @@ export const LOCAL_HIDDEN: Readonly<Record<string, Capability>> = {
   "passkeyUsage:*": "account",
   "authEmails:*": "account",
   "notifications:*": "notifications",
+  // Whether a library fits in the account it moves to (lib/migrate): asked of the account, never of a library.
+  "migration:preflight": "account",
 };
 
 /**

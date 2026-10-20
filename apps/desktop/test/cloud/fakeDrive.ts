@@ -182,6 +182,23 @@ export class FakeDrive {
     this.log.push(`update ${item.id} ${item.name} ${item.revisions.at(-1)!.id}`);
   }
 
+  /** Another client of Folevi's writes a library file (creating its folders under the oldest root). */
+  putPath(path: string, bytes: Uint8Array): void {
+    const twins = this.libraryFiles().get(path);
+    if (twins?.length) {
+      twins.sort((a, b) => a.createdTime.localeCompare(b.createdTime) || a.id.localeCompare(b.id));
+      this.update(twins[0]!, bytes);
+      return;
+    }
+    let parent = this.roots().sort((a, b) => a.createdTime.localeCompare(b.createdTime))[0] ?? this.create({ name: "Folevi", mimeType: FOLDER, parents: ["root"], appProperties: { folevi: "library" } }, null);
+    const parts = path.split("/");
+    for (const name of parts.slice(0, -1)) {
+      const found = [...this.items.values()].find((i) => i.mimeType === FOLDER && !i.trashed && i.name === name && i.parents[0] === parent.id);
+      parent = found ?? this.create({ name, mimeType: FOLDER, parents: [parent.id] }, null);
+    }
+    this.create({ name: parts.at(-1)!, parents: [parent.id] }, bytes);
+  }
+
   /** Another client replaces a file's content (for race tests). */
   overwrite(id: string, bytes: Uint8Array) {
     this.update(this.items.get(id)!, bytes);

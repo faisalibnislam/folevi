@@ -18,7 +18,6 @@ async function attempt<T>(p: Promise<T>): Promise<{ ok: T } | { error: unknown }
 export const scenarios = [
   scenario({
     name: "folders: create, nest, rename, file a note",
-    localPending: "WP7a: documents.move",
     async run(b, k) {
       const work = k.name((await b.mutation(api.organization.createFolder, { scope: b.scope, name: "Work" })).id, "work");
       const clients = k.name((await b.mutation(api.organization.createFolder, { scope: b.scope, name: "Clients", parentFolderId: work })).id, "clients");

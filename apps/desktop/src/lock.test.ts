@@ -145,6 +145,6 @@ describe("the cover", () => {
     const html = coverHtml();
     expect(html).toContain("default-src 'none'");
     expect(html).not.toMatch(/<script/i);
-    expect(html).not.toContain("—");
+    expect(html).not.toContain("\u2014");
   });
 });

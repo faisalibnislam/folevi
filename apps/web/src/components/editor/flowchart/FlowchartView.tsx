@@ -7,6 +7,8 @@
 //             drag empty space to select an area · space-drag, middle-drag or scroll to pan
 //             ⌘/ctrl-scroll or pinch to zoom · drag a side handle to connect (drop on empty space for a
 //             new connected shape) · double-click to write in a shape or on a connector, or to add one
+//   Frames    drag a frame's title or border, a pool's title or a lane's header to move it with its shapes;
+//             shapes dropped in a frame or lane join it (interactions/containers.tsx); ⌥⌘G frames the selection
 //   Keyboard  Tab to a shape, then Tab adds the next step (⇧Tab a branch) · arrows move between shapes
 //             (⌥ nudges, ⇧ nudges more) · Enter or typing edits · ⌫ delete · ⌘D duplicate
 //             ⌘A select all · ⌘Z / ⇧⌘Z undo and redo · +/− zoom · ⇧1 fit · ⇧⌘F full canvas · Esc back to the note
@@ -34,6 +36,8 @@
 //   interactions/             one behaviour each: pan, hover, connect, resize, move, select, textEditing,
 //                             doubleClick, contextMenu, keyboard
 //   layers/Scene.tsx          the SVG layers (dot grid, connectors, shapes, labels, selection boxes)
+//   layers/Containers.tsx     frames and swimlanes, under everything (interactions/containers.tsx edits them;
+//                             every commit settles which frame or lane each shape is in, useFlowController.ts)
 //   chrome/                   SelectionBar (shape and connector bars), HeightHandle
 //   FlowchartChrome.tsx       toolbars and bars (presentational); FlowchartAi.tsx the Foli AI panel
 //

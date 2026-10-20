@@ -205,6 +205,10 @@ front matter; HTML blocks, footnotes, reference links and unresolved images are 
 text and reported as warnings. Markdown/HTML export (`blocksToMarkdown`, `blocksToHtml`) is used for page
 exports, workspace ZIPs and version previews. Formulas export as `$$…$$` (HTML: MathML from KaTeX when
 the caller passes `renderMath`, otherwise the LaTeX source), whiteboards as an inline SVG (Markdown: an SVG
-data-URL image), flowcharts as an inline SVG (Markdown: a ` ```mermaid ` flowchart, so they stay portable), mind maps as a nested
+data-URL image), flowcharts as an inline SVG (a light and a dark one, the page's colour scheme picking; shapes' images through `resolveFile`; Markdown: a ` ```mermaid ` flowchart, so they stay portable), mind maps as a nested
 bulleted list, charts as a table (title in bold, takeaway in italics), sticky notes as a list under each group's
 label and wireframes as each screen's parts in reading order, and page breaks as a `page-break-after` div.
+`blockFileIds` lists the files a block shows (its own `fileId`, and the images in a flowchart's shapes) for share
+pages, presenting, version history and exports. `src/flowchartPaths.ts` walks a flowchart (which way a connector
+leads, where a walkthrough starts, each shape's ways on in reading order, the paths between two shapes or from one
+to every end) for the editor's Present and Follow a path.

@@ -569,3 +569,54 @@ marks) don't run, and the surface isn't rendered. Account mode is unchanged (eve
   (typing, every Insert panel tile, Share, Comments, the @ menu), Tasks, Calendar, ⌘K, Settings, Trash, Templates,
   Help and a collection, fails on any `[local mode]` console error or uncaught error, checks every hidden surface is
   absent, runs axe in light and dark, and checks phone width for horizontal scroll.
+
+## WP10b: the local mode screens (2026-10-20)
+
+- **First launch** (`components/app/ShellRoot.tsx`, `ModeChoice.tsx`): "Keep notes on my devices" (subline "Free
+  forever. No account.") or "Sign in to Folevi". Keeping notes goes on to `LibrarySetup` before the mode is saved,
+  so the Mac app reloads into local mode with a place already chosen. A launch in local mode whose host says
+  `library.info().configured === false` opens `LibrarySetup` too. People handed over from the old app never see
+  the choice (WP2 starts them in account mode).
+- **Where the library lives** (`components/app/LibrarySetup.tsx`): Sync with iCloud (on the Mac, the iCloud Drive
+  "Folevi" folder until the Developer Program; `drive_off` and `signed_out` are explained), Sync with Dropbox and
+  Sync with Google Drive (only the providers in `cloud.status().available`; the browser sign-in shows "Finish
+  signing in to Dropbox in your browser" with Cancel), Choose a folder (a cancelled picker goes back), This device
+  only. Right after `library.setup` the place is checked (`lib/local/libraryPlace.ts holdsLibrary`: notes, other
+  devices, or an encrypted library): one that holds a library is joined at once, and LocalGate shows "Joining your
+  library…" and waits for the profile to arrive with the index (no welcome notes; set up without them if a whole
+  sync finishes and none came). A new library may be encrypted first ("Encrypt with a passphrase", at least 8
+  characters, typed twice, and a box saying a lost passphrase can't be recovered). What was found travels to
+  LocalGate as `folevi:local-setup-intent` in this origin's storage (the Mac reloads in between).
+- **Locked library** (`components/app/LockedLibrary.tsx`): when the store's state is `locked`, the passphrase
+  screen replaces the app until `library.unlock` succeeds.
+- **Settings > Library** (`components/views/settings/LibrarySection.tsx`, route `/settings/library`, where local
+  mode's Settings opens): kind and location; for Dropbox and Google Drive "Connected as", Connect or Reconnect,
+  and Sign out (with what stays where); Sync now; Move library (the same place list, `library.move`); devices with
+  their last sync; Library health (can't be read, still downloading, waiting for another device, each explained);
+  the passphrase (encrypt, change, remove; removing asks for it first); the Touch ID lock and "Ask again"; a Foli AI
+  card pointing to Settings > AI; "Sign in to Folevi" calls the flow WP12 registers with
+  `lib/local/signIn.ts setSignInToFolevi` (until then it says it's coming).
+- **Changed on another device** (`components/editor/notices/ChangedElsewhere.tsx`, wrapped round the editor by
+  `NoteFrame` in DocumentView): the notice sits under its block (room is made with a style rule, so the editor's
+  DOM is never touched), one per block, with "See the other version" (version history opens at it) and Dismiss
+  (written to the note's file, so it goes on every device). Notices about the title, a restored note or a block no
+  longer on the page sit above the editor. Version history labels conflict versions "Changed on another device".
+  The editor reads them through local-only functions in the `local` module (`lib/local/localApi.ts`:
+  `local:noteStatus`, `local:dismissNotice`; never call them on a Convex client).
+- **Notes not here yet** (`components/editor/notices/NotePlaceholder.tsx`): a catalog row with `pending` shows
+  "Downloading from iCloud…" (or Dropbox, Google Drive) or "Waiting for this from your other device" in place of
+  the editor, and opens once the file is read.
+- **Touch ID on the Mac** (`apps/desktop/src/lock.ts`, `foleviShell.lock` over `shell:lock-get`/`shell:lock-set`):
+  `lock.json` in Application Support; turning the lock on or off asks for Touch ID; with it on, every window is
+  covered (a `WebContentsView` with a scriptless local page) at launch, when the Mac locks or sleeps, and when
+  Folevi comes back after the "Ask again" time; Touch ID uncovers. A Mac without Touch ID can't turn it on, and a
+  saved lock it can't honour doesn't shut anyone out.
+- **Tests:** `apps/web/e2e/local-screens.spec.ts` (Playwright `local` project): first launch to a note for each
+  kind, places that can't be used and cancels, a build without the cloud ids, joining without duplicate welcome
+  notes, the notice with two devices sharing a folder through a relay (`__foleviTestShellMirror`), the passphrase
+  lock, Settings > Library, Dropbox and Google Drive sign-out and reconnect, phone width, notes that haven't
+  arrived, no prices on the Mac or in the iOS app, axe in light and dark. `LOCAL_SCREENS_DIR` saves each screen.
+  Unit: `test/shell.test.tsx`, `test/native-app.test.tsx` (no prices in local mode), `apps/desktop/src/lock.test.ts`.
+- **Not verified:** the Touch ID prompt and the cover in the real Mac app (only the logic and the cover's page are
+  tested); the real Dropbox and Google sign-in (the FakeShell stands in). Devices are listed as "Mac" or "Another
+  Mac": the store names a device "This device" until the host passes a name (`LibraryStoreOptions.device.name`).

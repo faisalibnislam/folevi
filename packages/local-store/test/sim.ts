@@ -27,6 +27,7 @@ import {
   setDocField,
   upsertBlock,
   type CopyStyle,
+  type FaultRates,
   type LocalFs,
   type NoteFile,
   type VersionVector,
@@ -43,8 +44,26 @@ interface EditRecord {
   visible: string;
 }
 
-interface Sim {
-  cloud: FaultyCloud;
+/**
+ * What the simulator needs from a cloud: FaultyCloud (a synced folder), or a fake provider API whose devices
+ * mount it as their LocalFs (apps/desktop's Dropbox and Google Drive tests).
+ */
+export interface SimCloud {
+  mount(name: string): LocalFs;
+  /** Faults off; everything pending delivered. */
+  settle(): void;
+  /** Runs one pending provider event; false when nothing is pending. */
+  step(): boolean;
+  readonly pending: number;
+  faults: FaultRates;
+  /** The cloud's copy of a file at its on-disk path. */
+  cloudFile(path: string): Uint8Array | undefined;
+  cloudPaths(): string[];
+  readonly log: string[];
+}
+
+export interface Sim<C extends SimCloud = FaultyCloud> {
+  cloud: C;
   replicas: NoteReplica[];
   edits: EditRecord[];
   clocks: { now: number }[];
@@ -63,7 +82,15 @@ export async function makeSim(
   style: CopyStyle[],
   encrypted: boolean,
 ): Promise<Sim> {
-  const cloud = new FaultyCloud({ seed, copyStyle: style });
+  return makeSimOn(new FaultyCloud({ seed, copyStyle: style }), devices, encrypted);
+}
+
+/** A simulation whose devices mount `cloud`. */
+export async function makeSimOn<C extends SimCloud>(
+  cloud: C,
+  devices: number,
+  encrypted: boolean,
+): Promise<Sim<C>> {
   const clocks: { now: number }[] = [];
   const replicas: NoteReplica[] = [];
   const fss: LocalFs[] = [];
@@ -80,13 +107,13 @@ export async function makeSim(
   return { cloud, replicas, edits: [], clocks, fss, stubs: 0, stubSeen: [] };
 }
 
-function recordBlock(sim: Sim, docId: string, note: NoteFile, blockId: string) {
+function recordBlock(sim: Sim<SimCloud>, docId: string, note: NoteFile, blockId: string) {
   const b = note.blocks[blockId]!;
   sim.edits.push({ docId, target: blockId, c: b.c.content, cv: b.cv, visible: visibleOf(b) });
 }
 
 /** One random local edit on a random note of device `i`. */
-function randomEdit(sim: Sim, i: number, rnd: () => number) {
+export function randomEdit(sim: Sim<SimCloud>, i: number, rnd: () => number) {
   const r = sim.replicas[i]!;
   const clock = r.clock;
   sim.clocks[i]!.now += 1 + Math.floor(rnd() * 5000);
@@ -176,7 +203,8 @@ function next0(t: { add: string; rm: string | null } | undefined): boolean {
   return !!t && (t.rm === null || t.add > t.rm);
 }
 
-async function settle(sim: Sim) {
+/** Syncs every device until nothing changes, delivering everything in between. Returns the rounds. */
+export async function settle(sim: Sim<SimCloud>) {
   for (let round = 0; round < 60; round++) {
     let writes = 0;
     for (const r of sim.replicas) {
@@ -190,7 +218,7 @@ async function settle(sim: Sim) {
   throw new Error(`no convergence; log tail:\n${sim.cloud.log.slice(-30).join("\n")}`);
 }
 
-async function historyStates(sim: Sim): Promise<Set<string>> {
+async function historyStates(sim: Sim<SimCloud>): Promise<Set<string>> {
   const out = new Set<string>();
   const entries = await sim.fss[0]!.list("history");
   for (const e of entries) {
@@ -204,7 +232,7 @@ async function historyStates(sim: Sim): Promise<Set<string>> {
   return out;
 }
 
-export async function checkProperties(sim: Sim) {
+export async function checkProperties(sim: Sim<SimCloud>) {
   // Convergence: every replica holds the same notes, and the folder holds exactly them.
   const sums = sim.replicas.map((r) =>
     [...r.notes.entries()]
@@ -280,7 +308,16 @@ export async function scenario(
   style: CopyStyle[],
   encrypted = false,
 ) {
-  const sim = await makeSim(seed, devices, style, encrypted);
+  return scenarioOn(await makeSim(seed, devices, style, encrypted), seed, steps);
+}
+
+/** The same scenario on any cloud: the devices are the ones `sim` mounted. */
+export async function scenarioOn<C extends SimCloud>(
+  sim: Sim<C>,
+  seed: number,
+  steps: number,
+): Promise<Sim<C>> {
+  const devices = sim.replicas.length;
   const rnd = seededRandom(seed ^ 0x9e3779b9);
   // Everyone starts from the same two notes.
   for (const id of DOCS) {

@@ -19,6 +19,7 @@ import type { LocalSetup } from "./client";
 import type { LocalMutationCtx } from "./registry";
 import type { LocalFolder, LocalTag } from "./store";
 import { PROFILE_KEY, getProfile, insertDocument, type LocalProfile } from "./functions/shared";
+import { nextFolderOrdinal, nextTagOrdinal } from "./functions/organization";
 
 function isValidTimeZone(tz: string): boolean {
   try {
@@ -94,13 +95,13 @@ async function seedLibrary(ctx: LocalMutationCtx, today: string): Promise<void> 
   const [projectsRank, personalRank] = rankSequence(2);
   // Folders show a colour, never an emoji.
   const color = () => FOLDER_COLORS[Math.floor(Math.random() * FOLDER_COLORS.length)]!.id;
-  const folder = (name: string, rank: string): LocalFolder => ({ id: ulid(), name, color: color(), parentFolderId: null, rank, createdAt: now, updatedAt: now, deletedAt: null });
-  const projects = folder("Projects", projectsRank!);
-  const personal = folder("Personal", personalRank!);
+  const folder = async (name: string, rank: string): Promise<LocalFolder> => ({ id: ulid(), name, color: color(), parentFolderId: null, rank, createdAt: now, ordinal: await nextFolderOrdinal(ctx), updatedAt: now, deletedAt: null });
+  const projects = await folder("Projects", projectsRank!);
+  const personal = await folder("Personal", personalRank!);
   for (const f of [projects, personal]) ctx.db.put("folders", f.id, f);
-  const tag = (name: string, tagColor: string): LocalTag => ({ id: ulid(), name, normalizedName: name, color: tagColor, createdAt: now });
-  const travel = tag("travel", "coral");
-  const reading = tag("reading", "plum");
+  const tag = async (name: string, tagColor: string): Promise<LocalTag> => ({ id: ulid(), name, normalizedName: name, color: tagColor, createdAt: now, ordinal: await nextTagOrdinal(ctx) });
+  const travel = await tag("travel", "coral");
+  const reading = await tag("reading", "plum");
   for (const t of [travel, reading]) ctx.db.put("tags", t.id, t);
 
   await insertDocument(ctx, {

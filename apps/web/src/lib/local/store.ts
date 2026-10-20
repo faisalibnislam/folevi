@@ -62,6 +62,8 @@ export interface LocalFolder {
   parentFolderId: string | null;
   rank: string;
   createdAt: number;
+  /** The library's count of folders made when this one was: orders folders made in the same millisecond. */
+  ordinal?: number;
   updatedAt: number;
   deletedAt: number | null;
 }
@@ -72,6 +74,8 @@ export interface LocalTag {
   normalizedName: string;
   color: string;
   createdAt: number;
+  /** The library's count of tags made when this one was (as `LocalFolder.ordinal`). */
+  ordinal?: number;
 }
 
 /** An attachment's bytes and what's known about them (Phase 2: `files/<sha>` in the library). */

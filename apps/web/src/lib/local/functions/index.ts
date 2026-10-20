@@ -6,4 +6,5 @@ import "./documents";
 import "./organization";
 import "./users";
 import "./settings";
+import "./themes";
 import "./workspaces";

@@ -171,10 +171,8 @@ export const vCollectionPropertyType = v.union(
   v.literal("url"),
   v.literal("person"),
   v.literal("relation"),
-);
-export const vCollectionViewType = v.union(v.literal("table"), v.literal("board"), v.literal("gallery"), v.literal("calendar"));
   v.literal("formula"),
-
+);
 /** How a number property (or a formula's numbers) shows, like a table column's format. */
 export const vCollectionNumberFormat = v.object({
   format: v.union(v.literal("number"), v.literal("currency"), v.literal("percent")),
@@ -197,6 +195,8 @@ export const vCollectionSummary = v.object({
     v.literal("percentChecked"),
   ),
 });
+export const vCollectionViewType = v.union(v.literal("table"), v.literal("board"), v.literal("gallery"), v.literal("calendar"));
+
 export const vWireBlock = v.object({
   id: v.string(),
   type: v.string(),

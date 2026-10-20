@@ -1233,6 +1233,10 @@ export default defineSchema({
     name: v.string(),
     type: vCollectionPropertyType,
     options: v.array(v.object({ id: v.string(), name: v.string(), color: v.string() })),
+    /** A formula property's formula (its text only: results are worked out where it's shown). */
+    formula: v.optional(v.string()),
+    /** How numbers show (number and formula properties). */
+    numberFormat: v.optional(vCollectionNumberFormat),
     rank: v.string(),
     createdAt: v.number(),
     deletedAt: v.optional(v.number()),
@@ -1240,10 +1244,6 @@ export default defineSchema({
     .index("by_collection", ["collectionId"])
     .index("by_public_id", ["publicId"]),
 
-    /** A formula property's formula (its text only: results are worked out where it's shown). */
-    formula: v.optional(v.string()),
-    /** How numbers show (number and formula properties). */
-    numberFormat: v.optional(vCollectionNumberFormat),
   collectionRows: defineTable({
     publicId: v.string(),
     collectionId: v.id("collections"),
@@ -1298,6 +1298,8 @@ export default defineSchema({
       visibleProperties: v.array(v.string()),
       cardPreview: v.union(v.literal("none"), v.literal("cover"), v.literal("content")),
       cardSize: v.union(v.literal("small"), v.literal("medium"), v.literal("large")),
+      /** Table views: the summary under each column (sum, average, count...). */
+      summaries: v.optional(v.array(vCollectionSummary)),
     }),
     rank: v.string(),
     createdAt: v.number(),
@@ -1305,8 +1307,6 @@ export default defineSchema({
     .index("by_collection", ["collectionId"])
     .index("by_public_id", ["publicId"]),
 
-      /** Table views: the summary under each column (sum, average, count...). */
-      summaries: v.optional(v.array(vCollectionSummary)),
   commentThreads: defineTable({
     publicId: v.string(),
     ...scoped,

@@ -9,7 +9,7 @@
 // --dry-run does all of it without touching anything installed or versioned: no bump, and the export, the
 // build and the installed copy all go to a temporary folder (or --out <dir>), which it prints. Nothing is
 // opened and /Applications/Folevi.app is left alone.
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -60,4 +60,10 @@ console.log(`Folevi ${version}: Resources/web is the production build (${info.co
 
 step(5, "install");
 run("node", ["scripts/install-app.mjs", "--from", built, ...(out ? ["--to", join(out, "Applications"), "--no-open"] : [])]);
+if (out) {
+  // Launch Services notices app bundles as they're written: the copies of a dry run mustn't be the ones macOS
+  // picks to open folevi:// links (the installed app is).
+  const lsregister = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+  for (const app of [built, join(out, "Applications", "Folevi.app")]) spawnSync(lsregister, ["-u", app], { stdio: "ignore" });
+}
 if (out) console.log(`\nDry run done: ${out}\n  export   ${web}\n  build    ${built}\n  install  ${join(out, "Applications", "Folevi.app")}`);

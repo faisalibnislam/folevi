@@ -11,6 +11,7 @@
 // apps/desktop/web or apps/web/out-shell). With E2E_DESKTOP_APP=/path/to/Folevi.app it runs that packaged app
 // instead (what `pnpm release:dry-run` builds), which must carry the production build of the interface.
 // The account-mode test also needs the dev server (its first phase is today's app on the website).
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -85,6 +86,10 @@ function filesContaining(dir: string, needle: string): string[] {
 }
 
 test.describe("Folevi for Mac, every window", () => {
+  // A packaged copy that was launched is known to Launch Services: it mustn't stay a candidate for folevi:// links.
+  test.afterAll(() => {
+    if (packaged) spawnSync("/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister", ["-u", packaged], { stdio: "ignore" });
+  });
   test.skip(({ browserName }) => !runnable || browserName !== "chromium" || process.platform !== "darwin", "Needs the built Mac app and an export (or E2E_DESKTOP_APP) on a Mac.");
 
   test("local mode: Quick Add, ⇧⌘N and the menus share one library, with the main window away or gone", async () => {
@@ -204,12 +209,17 @@ test.describe("Folevi for Mac, every window", () => {
     writeFileSync(join(userData, "settings.json"), JSON.stringify({ mode: "account", bundledShell: true }));
     const app = await launch(userData);
     try {
-      await app.evaluate(({ app: a, safeStorage }) => {
-        const fs = (process as unknown as { mainModule: NodeJS.Module }).mainModule.require("node:fs") as typeof import("node:fs");
-        const dir = `${a.getPath("userData")}/secrets`;
-        fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-        fs.writeFileSync(`${dir}/auth.session.bin`, safeStorage.encryptString("e2e-seeded-session-token"), { mode: 0o600 });
-      });
+      // (Not in a packaged copy: its safeStorage key is the installed app's "Folevi Safe Storage" Keychain item,
+      // which macOS asks the person about for a copy elsewhere. Without the file nothing is decrypted, and with
+      // no network the app opens from this device's copy all the same.)
+      if (!packaged) {
+        await app.evaluate(({ app: a, safeStorage }) => {
+          const fs = (process as unknown as { mainModule: NodeJS.Module }).mainModule.require("node:fs") as typeof import("node:fs");
+          const dir = `${a.getPath("userData")}/secrets`;
+          fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+          fs.writeFileSync(`${dir}/auth.session.bin`, safeStorage.encryptString("e2e-seeded-session-token"), { mode: 0o600 });
+        });
+      }
       // No network at all, from every session (the page's, and the one the sign-in bridge uses).
       expect(
         await app.evaluate(async ({ session }) => {

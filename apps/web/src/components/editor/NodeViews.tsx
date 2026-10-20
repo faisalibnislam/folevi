@@ -17,6 +17,7 @@ import {
 import { CHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, sanitizeHref, type SyncState } from "@folevi/editor-schema";
 import { webAddressIn } from "./autolink";
 import { api } from "@/lib/convex/api";
+import { canCallHere } from "@/lib/mode";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
 import { useEngineSelector } from "@/lib/hooks/useEngine";
@@ -498,7 +499,8 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
   // person wrote themselves are kept; a title that is just the address is replaced.
   const loadPreview = useCallback(
     async (url: string, replaceAll: boolean) => {
-      if (env.demo || !/^https?:\/\//i.test(url)) return;
+      // (Local mode reads previews once bookmarks.preview is ported there: lib/local/registry.ts.)
+      if (env.demo || !/^https?:\/\//i.test(url) || !canCallHere(api.bookmarks.preview)) return;
       previewed.add(url);
       try {
         const p = await fetchPreview({ url });

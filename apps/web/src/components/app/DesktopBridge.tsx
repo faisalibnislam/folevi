@@ -10,6 +10,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { useEngineStatus } from "@/lib/hooks/useEngine";
 import { desktop } from "@/lib/desktop";
 import { useCreateDocument } from "./useCreateDocument";
+import { useCapabilities } from "@/lib/mode";
 
 const STATUS: Record<string, string> = {
   saved: "All changes saved",
@@ -29,8 +30,10 @@ function Bridge() {
   const { scope, engine } = useAppState();
   const { navigate } = useAppRouter();
   const createDocument = useCreateDocument();
-  const unread = useQuery(api.notifications.unreadCount, {});
-  const latest = useQuery(api.notifications.list, { limit: 10 });
+  // Local mode has no notifications from Folevi (reminders are scheduled with the system there).
+  const { notifications } = useCapabilities();
+  const unread = useQuery(api.notifications.unreadCount, notifications ? {} : "skip");
+  const latest = useQuery(api.notifications.list, notifications ? { limit: 10 } : "skip");
   const recent = useQuery(api.documents.recentNotes, { scope, limit: 8 });
   const status = useEngineStatus(engine);
 

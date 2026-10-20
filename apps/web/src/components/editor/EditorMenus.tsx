@@ -5,6 +5,7 @@ import { NodeSelection, TextSelection, type Transaction } from "@tiptap/pm/state
 import { beginPointerDrag, isDragging } from "./blockDrag";
 import { HOLD_MOVE_EVENT, type HoldMoveDetail } from "@/lib/touchContextMenu";
 import { useMutation, useQuery } from "convex/react";
+import { useCapabilities } from "@/lib/mode";
 import { lazy, Suspense, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import {
@@ -792,6 +793,7 @@ export function EditorMenus({
   // ---------------------------------------------------------------- slash menu
   // Grouped like the Insert panel (doc/InsertPanel.tsx): Text, Lists and tasks, Visuals, Media, Data and more,
   // then Foli AI. With nothing typed, Suggested comes first (copies of a few items, `suggested:<id>`).
+  const stockPhotos = useCapabilities().stockPhotos;
   const slashItems: MenuItem[] = useMemo(
     () => [
       { group: "Text", id: "p", label: "Text", keywords: "text paragraph plain", icon: <Text size={15} />, run: () => void turnInto(editor, "paragraph") },
@@ -816,7 +818,8 @@ export function EditorMenus({
       { group: "Visuals", id: "whiteboard", label: "Whiteboard", keywords: "whiteboard drawing sketch draw pen canvas", icon: <PenTool size={15} />, run: () => void insertBlockAfterCurrent(editor, "whiteboard", { data: "", height: WHITEBOARD_DEFAULT_HEIGHT }) },
       { group: "Visuals", id: "mermaid", label: "Mermaid diagram", keywords: "mermaid diagram flowchart chart graph sequence", icon: <Workflow size={15} />, run: () => void insertBlockAfterCurrent(editor, "code", { language: "mermaid" }, MERMAID_SAMPLE) },
       { group: "Media", id: "image", label: "Image", keywords: "image picture photo upload", icon: <ImageIcon size={15} />, run: special.image },
-      { group: "Media", id: "unsplash", label: "Image from Unsplash", keywords: "image picture photo unsplash stock search", icon: <ImagePlus size={15} />, run: special.unsplash },
+      // Unsplash is searched through Folevi's servers: not in local mode.
+      ...(stockPhotos ? [{ group: "Media", id: "unsplash", label: "Image from Unsplash", keywords: "image picture photo unsplash stock search", icon: <ImagePlus size={15} />, run: special.unsplash }] : []),
       { group: "Media", id: "file", label: "File", keywords: "file attachment upload pdf", icon: <Paperclip size={15} />, run: special.file },
       { group: "Media", id: "record", label: "Audio recording", keywords: "audio record recording voice memo microphone mic sound dictate", icon: <Mic size={15} />, run: special.record },
       // Only in the iOS app: the camera's scanner where the device has one, and pages from photos.
@@ -903,7 +906,7 @@ export function EditorMenus({
           }))
         : []),
     ],
-    [editor, special, aiOn, scanner, synced],
+    [editor, special, aiOn, scanner, synced, stockPhotos],
   );
 
   const q = open?.query.toLowerCase().trim() ?? "";
@@ -968,7 +971,9 @@ export function EditorMenus({
     open?.kind === "page" && !env.demo && (open.query.trim() !== debounced || (debounced ? searchResults === undefined : recent === undefined));
 
   // ---------------------------------------------------------------- mentions & dates
-  const people = useQuery(api.comments.mentionable, open?.kind === "mention" ? { documentId } : "skip");
+  // Local mode: dates and pages only, no people (docs/LOCAL_MODE_PLAN.md §5.2).
+  const mentionPeople = useCapabilities().comments;
+  const people = useQuery(api.comments.mentionable, open?.kind === "mention" && mentionPeople ? { documentId } : "skip");
   const mentionItems: MenuItem[] = useMemo(() => {
     if (open?.kind !== "mention") return [];
     const mq = open.query.toLowerCase();
@@ -2455,7 +2460,8 @@ function TaskDetails({ editor }: { editor: Editor }) {
   // Tracked by block id (not position) so edits elsewhere in the page can't retarget the popover.
   const [target, setTarget] = useState<{ blockId: string; left: number; top: number; bottom: number } | null>(null);
   const [, rerender] = useState(0);
-  const members = useQuery(api.workspaces.members, target && workspace ? { workspaceId: workspace.id } : "skip");
+  const hasWorkspaces = useCapabilities().workspaces;
+  const members = useQuery(api.workspaces.members, target && workspace && hasWorkspaces ? { workspaceId: workspace.id } : "skip");
   useEffect(() => {
     const dom = editor.view.dom as HTMLElement;
     const on = (e: Event) => {

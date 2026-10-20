@@ -1,5 +1,6 @@
 "use client";
 
+import { useCapabilities } from "@/lib/mode";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarPlus, ChevronLeft, ChevronRight, Rss, CalendarCheck } from "lucide-react";
@@ -76,6 +77,8 @@ export function CalendarView({ month }: { month: string | null }) {
   const toggle = useToggleTask();
   const [selected, setSelected] = useState<string>(today);
   const [feedOpen, setFeedOpen] = useState(false);
+  // The tasks feed is served by Folevi: not in local mode.
+  const feeds = useCapabilities().calendarFeeds;
   const gridRef = useRef<HTMLDivElement>(null);
   // Events from subscribed calendars (read-only), and the one whose details are open.
   const eventsByDate = useExternalEvents(mode === "week" ? weekDays : mode === "agenda" ? agendaDays : days, timeZone);
@@ -184,11 +187,11 @@ export function CalendarView({ month }: { month: string | null }) {
   const dialogs = (
     <>
       <TaskEditDialog task={editing} onClose={() => setEditing(null)} />
-      <CalendarFeedDialog open={feedOpen} onClose={() => setFeedOpen(false)} />
+      {feeds ? <CalendarFeedDialog open={feedOpen} onClose={() => setFeedOpen(false)} /> : null}
       <EventPopover event={openEvent} anchor={eventAnchor} timeZone={timeZone} onClose={() => setOpenEvent(null)} />
     </>
   );
-  const iphoneMenu = calendarMenu(mode, pickLayout, () => setFeedOpen(true));
+  const iphoneMenu = calendarMenu(mode, pickLayout, feeds ? () => setFeedOpen(true) : null);
   if (iphone && mode === "agenda") {
     return (
       <IphoneAgenda today={today} days={agendaDays} byDate={byDate} eventsByDate={eventsByDate} overdue={overdue} timeZone={timeZone} onToggle={toggle} onEdit={setEditing} onOpenEvent={showEvent} menu={iphoneMenu}>
@@ -209,7 +212,7 @@ export function CalendarView({ month }: { month: string | null }) {
           {pager}
           <div className="ml-auto flex items-center gap-1.5">
             <CalendarsButton />
-            {iphone ? null : (
+            {iphone || !feeds ? null : (
               <Button size="sm" onClick={() => setFeedOpen(true)}>
                 <Rss size={14} aria-hidden /> <span className="max-md:sr-only">Subscribe</span>
               </Button>

@@ -6,6 +6,7 @@ import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
 import { errorMessage } from "@/components/ui/Toast";
 import { canPurchaseHere } from "@/lib/nativeApp";
+import { useCapabilities } from "@/lib/mode";
 
 // AI credits in the AI panels: a quiet note when credits run low, and the out-of-credits state when a
 // request is refused. The server decides (billing.credits, and every AI request); this only shows it.
@@ -75,7 +76,9 @@ export function AiProblemNotice({ problem, className }: { problem: AiProblem; cl
  */
 export function useAiCredits(opts: { documentId?: string; skip?: boolean } = {}) {
   const { scope } = useAppState();
-  return useQuery(api.billing.credits, opts.skip ? "skip" : opts.documentId ? { scope, documentId: opts.documentId } : { scope });
+  // Local mode has no AI credits (they're an account's).
+  const billing = useCapabilities().billing;
+  return useQuery(api.billing.credits, opts.skip || !billing ? "skip" : opts.documentId ? { scope, documentId: opts.documentId } : { scope });
 }
 
 /**

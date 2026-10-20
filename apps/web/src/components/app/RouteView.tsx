@@ -23,6 +23,10 @@ import { api } from "@/lib/convex/api";
 import { inboxPage } from "@/lib/share/save";
 import { useIphoneApp } from "@/lib/iphone";
 import { IphoneHome } from "@/components/iphone/IphoneHome";
+import { useCanCall, useCapabilities } from "@/lib/mode";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Waypoints } from "lucide-react";
+import { SignInToCollaborate } from "./SignInToCollaborate";
 
 // A note's page brings the editor, which is most of the app's code: it loads on its own, so the first
 // screen paints without it. It starts downloading straight away when the app opens on a note (alongside
@@ -63,9 +67,23 @@ export function RouteView() {
   return <Routes />;
 }
 
+/** An account's page (Changes, Shared with Me, an invitation) opened in local mode: the one note instead. */
+function AccountOnly({ title }: { title: string }) {
+  return (
+    <ViewChrome title={title}>
+      <SignInToCollaborate variant="page" />
+    </ViewChrome>
+  );
+}
+
 function Routes() {
   const { route } = useAppRouter();
   const iphone = useIphoneApp();
+  const caps = useCapabilities();
+  if (!caps.changes && route.name === "changes") return <AccountOnly title="Changes" />;
+  if (!caps.sharing && route.name === "shared") return <AccountOnly title="Shared with Me" />;
+  if (!caps.workspaces && route.name === "invite") return <AccountOnly title="Invitation" />;
+  if (!caps.sharing && route.name === "share-invite") return <AccountOnly title="Invitation" />;
   switch (route.name) {
     case "documents":
       return iphone ? <IphoneHome /> : <HomeDashboard />;
@@ -94,7 +112,7 @@ function Routes() {
     case "ai":
       return <AiView id={route.id} />;
     case "graph":
-      return <GraphView />;
+      return <Graph />;
     case "inbox":
       return <OpenInbox />;
     case "tasks":
@@ -156,6 +174,16 @@ function OpenInbox() {
       .catch(() => navigate("/documents", { replace: true }));
   }, [engine, profile.id, deviceId, online, prepareInbox, scope, navigate]);
   return <NoteLoading />;
+}
+
+/** The graph, where this backend has it (local mode gets it later, lib/local/registry.ts LOCAL_PLANNED). */
+function Graph() {
+  if (useCanCall(api.aiGraph.graph)) return <GraphView />;
+  return (
+    <ViewChrome title="Graph">
+      <EmptyState icon={Waypoints} title="The graph isn’t available here yet" body="It isn’t part of a library on your devices yet. Links between notes still work everywhere." />
+    </ViewChrome>
+  );
 }
 
 function RedirectHome() {

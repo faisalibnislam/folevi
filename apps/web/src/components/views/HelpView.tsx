@@ -5,6 +5,7 @@ import { ViewChrome } from "@/components/app/Shell";
 import { Button, Kbd } from "@/components/ui/Button";
 import { SupportDialog, SupportRequests } from "@/components/support/SupportDialog";
 import { isMac } from "@/lib/hooks/useEngine";
+import { useCapabilities } from "@/lib/mode";
 
 const SHORTCUTS: [string, string][] = [
   ["Search or jump anywhere", "⌘ K"],
@@ -41,6 +42,8 @@ export function HelpView() {
   const mac = isMac();
   const fmt = (s: string) => (mac ? s : s.replace(/⌘/g, "Ctrl").replace(/⌥/g, "Alt").replace(/⇧/g, "Shift"));
   const [contacting, setContacting] = useState(false);
+  // Local mode: support requests belong to an account, so support is an email (docs/LOCAL_MODE_PLAN.md §2.4).
+  const account = useCapabilities().account;
   return (
     <ViewChrome title={<h1 className="text-sm font-semibold">Help</h1>} tabTitle="Help">
       <div className="mx-auto max-w-3xl space-y-10 px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8">
@@ -54,6 +57,7 @@ export function HelpView() {
             . Questions or problems? Contact support below, or write to support@folevi.com. Security reports: security@folevi.com.
           </p>
         </header>
+        {account ? (
         <section id="support" aria-labelledby="h-support" className="scroll-mt-20">
           <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -69,6 +73,17 @@ export function HelpView() {
           <SupportRequests onContact={() => setContacting(true)} />
           <SupportDialog open={contacting} onClose={() => setContacting(false)} />
         </section>
+        ) : (
+          <section id="support" aria-labelledby="h-support" className="scroll-mt-20">
+            <h3 id="h-support" className="ui-display text-[20px]">
+              Support
+            </h3>
+            <p className="mt-1 text-sm text-muted">A person on the Folevi team reads every email and replies.</p>
+            <a href="mailto:support@folevi.com" className="ui-btn ui-btn-primary mt-3 inline-flex h-9 items-center px-4 text-sm">
+              Email support
+            </a>
+          </section>
+        )}
         <section aria-labelledby="h-shortcuts">
           <h3 id="h-shortcuts" className="ui-display mb-3 text-[20px]">
             Keyboard shortcuts

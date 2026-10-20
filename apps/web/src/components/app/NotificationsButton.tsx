@@ -13,6 +13,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ageText } from "@/lib/format";
 import { t } from "@/i18n";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useCapabilities } from "@/lib/mode";
 
 type Item = FunctionReturnType<typeof api.notifications.list>[number];
 
@@ -25,7 +26,12 @@ export function notificationHref(n: Pick<Item, "documentId" | "threadId" | "bloc
   return `/d/${n.documentId}${hash}`;
 }
 
+/** The bell. Local mode has none (reminders are the system's notifications there, WP14). */
 export function NotificationsButton() {
+  return useCapabilities().notifications ? <NotificationsBell /> : null;
+}
+
+function NotificationsBell() {
   const unread = useQuery(api.notifications.unreadCount, {});
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);

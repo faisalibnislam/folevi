@@ -537,3 +537,35 @@ The bundled interface signs in to an account without cookies; the page never hol
   the page registers its session with the browser label (`lib/app/state.tsx`); passkeys can't be added from
   `app://folevi` (the relying party is the website); in development the `folevi://` callback only reaches a
   packaged app (`setAsDefaultProtocolClient` is skipped unpackaged).
+
+## WP10a: account-only surfaces gated in local mode (2026-10-20)
+
+Every component that calls a function in `LOCAL_HIDDEN` asks `useCapabilities()` (lib/mode.ts) first, so local
+mode never calls it: queries pass `"skip"`, effects that call mutations (presence heartbeats, Changes' "seen"
+marks) don't run, and the surface isn't rendered. Account mode is unchanged (every capability is on there).
+
+- **The one note:** `components/app/SignInToCollaborate.tsx` ("Sign in to Folevi to share and collaborate"), in
+  three sizes: a line above the sidebar's foot (where the workspace switcher was), a panel (the Share button's
+  popover, the page sidebar's Comments tab) and a page (Changes, Shared with Me and invitations opened by address).
+- **Sidebar and foot:** no Shared with Me, Changes or notifications bell; `WorkspaceMenu` becomes a small library
+  menu (Settings, Help, "Contact support…" as `mailto:`, appearance) with no workspaces, plan, account or sign out.
+  `personalPlanLabel` is null in local mode (the local profile's entitlements are only a shape).
+- **A note:** no sharing, presence (carets, avatars, heartbeats), comments (margin, threads, the block menu's
+  Comment, ⌘⌥M opens the Comments tab's note), "Since you were away", note notifications, Copy to, Unsplash (slash
+  menu and Insert panel), or people in the @ menu (dates and pages stay).
+- **Settings:** Account, AI, Plan & billing, Security, Devices, Connected apps, Notifications, Offline & sync and
+  every workspace section are left out; `/settings` (and an account section's address) opens Appearance. Import &
+  export has no email-to-note address or bookmarklet. No "Create a workspace".
+- **Elsewhere:** Calendar has no Subscribe (the tasks feed); Help offers "Email support"; the Mac and iOS bridges
+  skip the badge, push registration and the device token.
+- **Foli AI:** `useAiAccess` turns every entry point off when `aiServer` is false, and the AI page says "Foli AI
+  isn't available here yet" with no plan copy. WP11 replaces that one check with what the local model can do.
+- **Not ported yet:** `useCanCall(ref)` / `canCallHere(ref)` (lib/mode.ts) say whether this backend has a function
+  (always in account mode; in local mode, `LOCAL_FUNCTIONS`). The graph, Related notes and bookmark previews use
+  it, so they appear by themselves once L3 ports them.
+- **Guards:** `test/local-mode-views.test.tsx` renders the Shell on a `createTestLocalClient` library at every main
+  route (and a note) and fails on any function that isn't ported, naming why (hidden, planned, unclassified).
+  `e2e/local-mode.spec.ts` (Playwright `local` project, FakeShell, Folevi and Convex blocked) opens Home, a note
+  (typing, every Insert panel tile, Share, Comments, the @ menu), Tasks, Calendar, ⌘K, Settings, Trash, Templates,
+  Help and a collection, fails on any `[local mode]` console error or uncaught error, checks every hidden surface is
+  absent, runs axe in light and dark, and checks phone width for horizontal scroll.

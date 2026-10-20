@@ -73,6 +73,9 @@ import { AI_OPEN_EVENT, AI_RUN_EVENT, NoteAiContext, useAi, useAiEnabled, type A
 import { DocumentSidebar, type Crumb, type DocSidebarTab } from "./DocumentSidebar";
 import { useDocTab } from "@/lib/app/tabs";
 import { ShareDialog } from "./ShareDialog";
+import { useCanCall, useCapabilities } from "@/lib/mode";
+import { Popover } from "@/components/ui/Popover";
+import { SignInToCollaborate } from "@/components/app/SignInToCollaborate";
 import { TitleAi, TitleAiPill, type TitleRange } from "./TitleAi";
 import { VersionHistory } from "./VersionHistory";
 import { LiveCarets } from "./LiveCarets";
@@ -149,8 +152,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const meta = useQuery(api.documents.get, { documentId });
   const server = useNoteBlocks(documentId);
   const settings = useQuery(api.settings.status, {});
+  // Local mode has no sharing, presence, comments or Changes (docs/LOCAL_MODE_PLAN.md §5.2).
+  const caps = useCapabilities();
+  // Related notes come to local mode later (lib/local/registry.ts LOCAL_PLANNED).
+  const canRelate = useCanCall(api.aiGraph.related);
   // Who else can open it (the bar's Share button says "Shared"); once the server knows the note.
-  const sharing = useQuery(api.sharing.get, meta ? { documentId } : "skip");
+  const sharing = useQuery(api.sharing.get, meta && caps.sharing ? { documentId } : "skip");
   const editorRef = useRef<EditorHandle>(null);
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
   const [cacheLoaded, setCacheLoaded] = useState(false);
@@ -195,6 +202,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const [focusedBlock, setFocusedBlock] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const shareButton = useRef<HTMLButtonElement>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -299,20 +307,20 @@ export function DocumentView({ documentId }: { documentId: string }) {
     void heartbeat({ documentId, sessionId, focusedBlockId: focusedRef.current }).catch(() => undefined);
   };
   useEffect(() => {
-    if (!meta || !online) return;
+    if (!meta || !online || !caps.presence) return;
     beat();
     const id = setInterval(beat, 20_000);
     return () => clearInterval(id);
   }, [meta?.document.id, online]); // eslint-disable-line react-hooks/exhaustive-deps
   // Moving through the note tells others where the caret is once it rests, not at every block it passes.
   useEffect(() => {
-    if (!meta || !online || focusedBlock === sentFocus.current) return;
+    if (!meta || !online || !caps.presence || focusedBlock === sentFocus.current) return;
     const t = setTimeout(beat, 1500);
     return () => clearTimeout(t);
   }, [meta?.document.id, online, focusedBlock]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => void leave({ documentId, sessionId }).catch(() => undefined), []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => void (caps.presence ? leave({ documentId, sessionId }).catch(() => undefined) : undefined), []); // eslint-disable-line react-hooks/exhaustive-deps
   const presenceNow = Math.floor(Date.now() / 15_000) * 15_000;
-  const livePresence = useQuery(api.presence.list, meta ? { documentId, now: presenceNow } : "skip");
+  const livePresence = useQuery(api.presence.list, meta && caps.presence ? { documentId, now: presenceNow } : "skip");
   // Every 15 seconds `now` moves on and the query starts again from nothing: keep showing the last answer
   // meanwhile, so presence doesn't blink off and on.
   const lastPresence = useRef(livePresence);
@@ -357,12 +365,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const markSeen = useMutation(api.changes.markSeen);
   const seenOnServer = useRef(false);
   if (meta) seenOnServer.current = true;
+  const hasChanges = caps.changes;
   useEffect(() => {
     return () => {
       const edited = Boolean(lastEditAt.current && canSnapshotRef.current);
       lastEditAt.current = null;
       if (!edited && !seenOnServer.current) return;
-      const seen = () => void markSeen({ documentIds: [documentId], leaving: true }).catch(() => undefined);
+      const seen = () => void (hasChanges ? markSeen({ documentIds: [documentId], leaving: true }).catch(() => undefined) : undefined);
       const snap = () => {
         if (!edited) return seen();
         void createSnapshot({ documentId, reason: "close" }).then(seen, seen);
@@ -384,7 +393,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         const timer = setTimeout(finish, 30_000);
       }, 0);
     };
-  }, [documentId, engine, createSnapshot, markSeen]);
+  }, [documentId, engine, createSnapshot, markSeen, hasChanges]);
 
   const threads = useCommentThreads(documentId, meta === null);
   const openBlockThread = useCallback((blockId: string, threadId: string | null = null) => setOpenThread({ blockId, threadId }), []);
@@ -407,7 +416,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   }, [blockAuthors]);
   // "Since you were away": who else changed the note between the last visit and this one; "Show changes" marks
   // those lines the way "Show editors" does, washed in each one's colour.
-  const away = useQuery(api.changes.away, meta && viewRecorded ? { documentId } : "skip");
+  const away = useQuery(api.changes.away, meta && viewRecorded && caps.changes ? { documentId } : "skip");
   const dismissAway = useMutation(api.changes.dismissAway);
   const [awayShown, setAwayShown] = useState(false);
   const [awayDismissed, setAwayDismissed] = useState(false);
@@ -649,7 +658,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
 
   // ⌘⌥M: comment on the block with the caret (or open the Comments panel). On a page still on its way to the
   // server (just created here) the comments aren't loaded yet: the line's thread opens as they arrive.
-  const mayComment = threads ? threads.canComment : !readOnly;
+  const mayComment = caps.comments && (threads ? threads.canComment : !readOnly);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || !e.altKey || e.shiftKey || e.code !== "KeyM") return;
@@ -678,7 +687,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [present]);
 
-  const noteNotify = useNoteNotifyItems(documentId, Boolean(meta));
+  const noteNotify = useNoteNotifyItems(documentId, Boolean(meta) && caps.notifications);
   // Move…: top-level notes of the current context (Personal or a workspace) can be filed in a folder (nested
   // pages follow their parent page); managers can nest a page under another one.
   const canFile = Boolean(meta && !readOnly && inCurrentScope(meta.document, meta.isMember, scopeKey) && !meta.document.parentDocumentId && meta.document.kind !== "template" && (meta.access === "write" || meta.access === "manage"));
@@ -703,14 +712,14 @@ export function DocumentView({ documentId }: { documentId: string }) {
       setInspectorTab("info");
       setInspectorOpen(true);
     },
-    onRelated: () => {
+    onRelated: !canRelate ? undefined : () => {
       setInspectorTab("related");
       setInspectorOpen(true);
     },
     onDelete: () => setDeleteOpen(true),
     onMove: () => setMoveOpen(true),
     // A copy in Personal or a workspace (your own places; a page shared with you can be copied into them too).
-    onCopyTo: meta && !meta.inTrash && (canCopy || !meta.isMember) ? () => setCopyOpen(true) : undefined,
+    onCopyTo: caps.copyTo && meta && !meta.inTrash && (canCopy || !meta.isMember) ? () => setCopyOpen(true) : undefined,
     onFind: editor ? () => openFind(!readOnly) : undefined,
     onExport: () => setExportOpen(true),
     onPresent: present,
@@ -781,6 +790,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
       ) : null}
       {meta ? (
         <button
+          ref={shareButton}
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setShareOpen(true)}
@@ -989,7 +999,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                     editable={!readOnly}
                     decorations={decorations}
                     onFocusBlock={setFocusedBlock}
-                    onCommentBlock={(id) => openComments(id)}
+                    onCommentBlock={caps.comments ? (id) => openComments(id) : undefined}
                     onEditorReady={setEditor}
                     onExitTop={() => {
                       // ↑ from the first line goes to the end of the title.
@@ -1011,13 +1021,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
             </div>
           </article>
           {/* Where the others' carets are, and ours for them, while someone else is in the note. */}
-          {meta && online ? <LiveCarets editor={editor} documentId={documentId} sessionId={sessionId} present={others.map((p) => p.profileId)} /> : null}
+          {meta && online && caps.presence ? <LiveCarets editor={editor} documentId={documentId} sessionId={sessionId} present={others.map((p) => p.profileId)} /> : null}
           {/* Quiet suggestions (open questions, action items, related notes), found without a model call. */}
           {aiOn && meta ? <NoteSuggestions documentId={documentId} editor={editor} readOnly={readOnly} onJump={(id) => editorRef.current?.focusBlock(id)} /> : null}
           <Backlinks documentId={documentId} />
           {/* Synced content opened as a page: the note showing it opens instead (synced/SyncedRedirect.tsx). */}
           {meta?.document.kind === "synced" ? <SyncedRedirect sourceId={documentId} /> : null}
-          {openThread && threads ? (
+          {openThread && threads && caps.comments ? (
             <BlockThread
               key={openThread.blockId}
               documentId={documentId}
@@ -1178,7 +1188,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
           </RightPanel>
         ) : null}
       </div>
-      {meta ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} personal={meta.document.workspaceId === null} /> : null}
+      {meta && !caps.sharing ? (
+        <Popover open={shareOpen} onClose={() => setShareOpen(false)} anchor={shareButton} label="Share" align="end">
+          <SignInToCollaborate variant="panel" />
+        </Popover>
+      ) : null}
+      {meta && caps.sharing ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} personal={meta.document.workspaceId === null} /> : null}
       {canEditPage ? <VersionHistory open={historyOpen} onClose={() => setHistoryOpen(false)} documentId={documentId} title={summary?.title ?? ""} style={style} cover={summary?.cover ?? DEFAULT_COVER} /> : null}
       <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={documentId} title={summary?.title ?? ""} />
       {meta ? (

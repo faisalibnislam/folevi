@@ -19,6 +19,7 @@
 // and several people can work on the board at once (useStickiesDoc.ts merges their changes).
 import type { ReactNodeViewProps } from "@tiptap/react";
 import { useQuery } from "convex/react";
+import { useCapabilities } from "@/lib/mode";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ListPlus, Redo2, SquareDashed, StickyNote, StickyNotes, Undo2 } from "lucide-react";
 import {
@@ -92,7 +93,8 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
 
 /** The people who can be in this note (for author marks and to-do owners), by profile id. */
 function usePeople(documentId: string | undefined, skip: boolean) {
-  const list = useQuery(api.comments.mentionable, documentId && !skip ? { documentId } : "skip");
+  const hasPeople = useCapabilities().comments;
+  const list = useQuery(api.comments.mentionable, documentId && !skip && hasPeople ? { documentId } : "skip");
   return useMemo(() => {
     const people: Map<string, { name: string; isYou: boolean }> = new Map();
     for (const p of list ?? []) people.set(p.profileId, { name: p.displayName || "Someone", isYou: p.isYou });

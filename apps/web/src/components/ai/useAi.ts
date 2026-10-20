@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext } from "react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import type { Id } from "@/lib/convex/api";
+import { useCapabilities } from "@/lib/mode";
 
 export type AiTask =
   | "improve" | "fix" | "shorter" | "longer" | "simplify"
@@ -157,9 +158,14 @@ export function useAiAccess(asked?: NoteHome | null): AiAccess {
   }
   // A note from elsewhere: guests use their own personal plan unless the page's scope is on Core, so only
   // the server knows. Asked only when it matters (AI on, and not ruled out by a Core personal plan).
-  const ask = context === "shared" && setting && personalEntitled && Boolean(note?.id);
+  // Local mode: no AI credits to ask about, and Foli AI only once this device has a model for it (Apple's, or
+  // the person's own key: the foliAi capability, lib/mode.ts); until then every entry point stays hidden.
+  // (Read loosely while WP11's foliAi capability lands: without it, Foli AI is the server's.)
+  const caps: { aiServer: boolean; foliAi?: boolean } = useCapabilities();
+  const ask = caps.aiServer && context === "shared" && setting && personalEntitled && Boolean(note?.id);
   const shared = useQuery(api.billing.credits, ask ? { scope, documentId: note!.id } : "skip");
   if (context === "shared") entitled = Boolean(ask && shared?.aiIncluded);
+  if (!(caps.foliAi ?? caps.aiServer)) entitled = false;
   return { on: setting && entitled, entitled, personalEntitled, personalCore, context, setting };
 }
 

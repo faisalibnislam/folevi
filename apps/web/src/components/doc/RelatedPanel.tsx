@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
+import { useCanCall, useCapabilities } from "@/lib/mode";
 import type { FunctionReturnType } from "convex/server";
 import { useState } from "react";
 import { Copy, FileText, Link2, Split } from "lucide-react";
@@ -26,10 +27,12 @@ export function RelatedPanel({ documentId, canEdit = true }: { documentId: strin
   const { navigate } = useAppRouter();
   const { deviceId } = useAppState();
   const toast = useToast();
-  const related = useQuery(api.aiGraph.related, { documentId });
-  const duplicates = useQuery(api.aiGraph.duplicates, { documentId });
-  const contradictions = useQuery(api.aiGraph.contradictions, { documentId });
-  const missing = useQuery(api.aiGraph.missingConnections, { documentId });
+  // In local mode, only what reads links (the rest reads the server's embeddings, LOCAL_MODE_PLAN.md §2.4).
+  const server = useCapabilities().aiServer;
+  const related = useQuery(api.aiGraph.related, useCanCall(api.aiGraph.related) ? { documentId } : "skip");
+  const duplicates = useQuery(api.aiGraph.duplicates, server ? { documentId } : "skip");
+  const contradictions = useQuery(api.aiGraph.contradictions, server ? { documentId } : "skip");
+  const missing = useQuery(api.aiGraph.missingConnections, server ? { documentId } : "skip");
   const linkNote = useMutation(api.aiGraph.linkNote);
   return (
     <RelatedList

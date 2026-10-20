@@ -1,6 +1,7 @@
 "use client";
 
 import { useAction, useConvex, useMutation } from "convex/react";
+import { useCapabilities } from "@/lib/mode";
 import { useEffect, useRef, useState } from "react";
 import { FolderUp, Upload } from "lucide-react";
 import { api } from "@/lib/convex/api";
@@ -31,6 +32,8 @@ export function DataSection({ target }: { target: DataTarget }) {
   const scope: WireScope = target.kind === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: target.workspaceId };
   const where = target.kind === "personal" ? "Personal" : target.name;
   const client = useConvex();
+  // Local mode: no email-to-note address or bookmarklet (they save through Folevi's servers).
+  const caps = useCapabilities();
   const importText = useMutation(api.imports.importText);
   const createFolder = useMutation(api.organization.createFolder);
   const exportScope = useAction(api.exports.exportScope);
@@ -240,8 +243,8 @@ export function DataSection({ target }: { target: DataTarget }) {
             ))}
           </IosSection>
         </Subscreen>
-        {target.kind === "personal" ? <EmailToNoteCard /> : null}
-        {target.kind === "personal" ? <SaveFromAnywhereCard /> : null}
+        {target.kind === "personal" && caps.emailToNote ? <EmailToNoteCard /> : null}
+        {target.kind === "personal" && caps.account ? <SaveFromAnywhereCard /> : null}
         <IosSection
           header={`Export ${where}`}
           footer={exportNote ?? `A ZIP with every note in ${where} as Markdown (in folders matching your sidebar), all attachments in an assets folder, and a manifest.json describing folders, notes and files. One note can be exported from its … menu as Markdown, HTML or PDF.`}
@@ -301,8 +304,8 @@ export function DataSection({ target }: { target: DataTarget }) {
           </ul>
         ) : null}
       </Card>
-      {target.kind === "personal" ? <EmailToNoteCard /> : null}
-      {target.kind === "personal" ? <SaveFromAnywhereCard /> : null}
+      {target.kind === "personal" && caps.emailToNote ? <EmailToNoteCard /> : null}
+      {target.kind === "personal" && caps.account ? <SaveFromAnywhereCard /> : null}
       <Card title={`Export ${where}`} description={`A ZIP with every document in ${where} as Markdown (in folders matching your sidebar), all attachments in an assets folder, and a manifest.json describing folders, documents and files. Single pages can be exported from their ••• menu as Markdown, HTML or PDF.`}>
         <Button
           variant="primary"

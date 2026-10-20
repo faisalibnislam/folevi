@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, ShieldCheck, Smartphone, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
@@ -24,6 +24,7 @@ import { DesktopSection } from "./settings/DesktopSection";
 import { ThisDeviceSection } from "./settings/ThisDeviceSection";
 import { ConnectedAppsSection } from "./settings/ConnectedAppsSection";
 import { Card } from "./settings/Card";
+import { useCapabilities, type Capability } from "@/lib/mode";
 import { desktop } from "@/lib/desktop";
 import { nativeApp } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
@@ -62,16 +63,43 @@ const WORKSPACE: (Item & { who: "everyone" | "managers" | "billing" })[] = [
   { id: "workspace-data", label: "Import & export", icon: ArrowDownUp, who: "managers" },
 ];
 const WORKSPACE_SECTIONS = new Set<Section>(WORKSPACE.map((i) => i.id));
+/**
+ * Sections only an account has (docs/LOCAL_MODE_PLAN.md §5.2): in local mode they're not listed, and opened by
+ * address they show the "Sign in to Folevi" note. Foli AI's settings wait for on-device AI (WP11).
+ */
+const NEEDS: Partial<Record<Section, Capability>> = {
+  account: "account",
+  ai: "aiServer",
+  billing: "billing",
+  security: "account",
+  devices: "account",
+  "connected-apps": "connectedApps",
+  notifications: "notifications",
+  // The account's offline copy; a library's own section takes its place (WP10).
+  sync: "account",
+  ...Object.fromEntries([...WORKSPACE_SECTIONS].map((id) => [id, "workspaces"])),
+};
+/** Where Settings opens when the account's first section, Account, isn't there (local mode). */
+const LOCAL_FIRST: Section = "appearance";
 const HEADINGS: Partial<Record<Section, string>> = { workspace: "Workspace" };
 
-export function SettingsView({ section }: { section: Section }) {
+export function SettingsView({ section: asked }: { section: Section }) {
   const { workspace } = useAppState();
-  const { pathname } = useAppRouter();
+  const { pathname, navigate } = useAppRouter();
+  const caps = useCapabilities();
+  const here = (id: Section) => !NEEDS[id] || caps[NEEDS[id]!];
+  // A section this backend doesn't have (plain /settings opens on Account; an old link) shows the first one
+  // it has, and the address follows.
+  const section = here(asked) ? asked : LOCAL_FIRST;
+  const bare = pathname.replace(/\/+$/, "") === "/settings";
+  useEffect(() => {
+    if (!here(asked) && !bare) navigate(`/settings/${LOCAL_FIRST}`, { replace: true });
+  }, [asked, bare]); // eslint-disable-line react-hooks/exhaustive-deps
   const iphone = useIphoneApp();
   const allowed = (who: (typeof WORKSPACE)[number]["who"]) => who === "everyone" || (who === "managers" ? workspace?.canManage === true : workspace?.canManageBilling === true);
   const workspaceItems = WORKSPACE.filter((i) => allowed(i.who));
   // Desktop app: only in the Mac app; This device: only in the iPhone and iPad app (or opened by its address).
-  const you = YOU.filter((i) => (i.id !== "desktop" || desktop() !== null || section === "desktop") && (i.id !== "this-device" || nativeApp() !== null || section === "this-device"));
+  const you = YOU.filter((i) => here(i.id) && (i.id !== "desktop" || desktop() !== null || section === "desktop") && (i.id !== "this-device" || nativeApp() !== null || section === "this-device"));
   const groups = [{ label: "You", items: you }, ...(workspace ? [{ label: workspace.name, items: workspaceItems }] : [])];
   const item = [...YOU, ...WORKSPACE].find((s) => s.id === section);
   const heading = (WORKSPACE_SECTIONS.has(section) && HEADINGS[section]) || item?.label;
@@ -104,7 +132,7 @@ export function SettingsView({ section }: { section: Section }) {
               })}
             </GroupedSection>
           ))}
-          {!workspace ? <IphoneCreateWorkspace /> : null}
+          {!workspace && caps.workspaces ? <IphoneCreateWorkspace /> : null}
         </div>
       </ViewChrome>
     );
@@ -156,7 +184,7 @@ export function SettingsView({ section }: { section: Section }) {
                 </ul>
               </div>
             ))}
-            {!workspace ? <CreateWorkspaceNudge /> : null}
+            {!workspace && caps.workspaces ? <CreateWorkspaceNudge /> : null}
           </div>
         </nav>
         <div className="min-w-0 space-y-5">

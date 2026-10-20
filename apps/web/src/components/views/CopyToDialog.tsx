@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation } from "convex/react";
+import { useCapabilities } from "@/lib/mode";
 import { useEffect, useId, useState } from "react";
 import { flattenFolders, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -18,6 +19,8 @@ const PERSONAL = "personal";
 /** Whether there's another place to copy notes to (Personal, or a workspace where you can add pages). */
 export function useCanCopyElsewhere(): boolean {
   const { scope, workspaces } = useAppState();
+  // A local library is the only place there is (docs/LOCAL_MODE_PLAN.md §2.4).
+  if (!useCapabilities().copyTo) return false;
   return scope.kind === "workspace" || workspaces.some((w) => w.canEdit !== false);
 }
 

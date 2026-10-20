@@ -15,6 +15,8 @@ import { NewWorkspaceDialog, workspaceRoleLabel } from "./NewWorkspaceDialog";
 import { canPurchaseHere } from "@/lib/nativeApp";
 import { isShell } from "@/lib/shell";
 import { APP_URL } from "@/lib/env";
+import { currentBackendMode, useCapabilities } from "@/lib/mode";
+import { SignInToCollaborate } from "./SignInToCollaborate";
 
 // The console is part of the website; the bundled app shell has no /admin, so it opens there in the browser.
 const openAdminConsole = () => (isShell() ? void window.open(`${APP_URL}/admin`, "_blank", "noopener") : void (window.location.href = "/admin"));
@@ -48,6 +50,8 @@ function Mark({ src, initial, shape, size, className }: { src: string | null; in
 
 /** Your Personal plan as the switcher shows it: "Pro", "Pro AI trial · 5 days", "Free". */
 export function personalPlanLabel(profile: Profile, now = Date.now()): string | null {
+  // A local library has no plan (lib/local/functions/users.ts LOCAL_ENTITLEMENTS is only a shape).
+  if (currentBackendMode() === "local") return null;
   const ent = (profile as { entitlements?: { trialing: boolean; trialEndsAt: number | null; plan: keyof typeof PLANS } }).entitlements;
   if (!ent) return null;
   if (ent.trialing) {
@@ -63,6 +67,55 @@ export function personalPlanLabel(profile: Profile, now = Date.now()): string | 
  * current workspace's people and settings, your account, help, appearance and sign out.
  */
 export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
+  // Local mode has no workspaces, account or plan: the library's own menu instead (docs/LOCAL_MODE_PLAN.md §5.2).
+  if (!useCapabilities().workspaces) return <LibraryMenu onNavigate={onNavigate} />;
+  return <AccountMenu onNavigate={onNavigate} />;
+}
+
+/** Local mode's foot of the sidebar: you, Settings, help and appearance, under the one "Sign in" note. */
+function LibraryMenu({ onNavigate }: { onNavigate?: () => void }) {
+  const { profile, appearance, setAppearance } = useAppState();
+  const { navigate } = useAppRouter();
+  const go = (href: string) => {
+    onNavigate?.();
+    navigate(href);
+  };
+  const items: MenuEntry[] = [
+    { label: "Settings", icon: <Settings size={14} />, onSelect: () => go("/settings") },
+    { label: "Help", icon: <HelpCircle size={14} />, onSelect: () => go("/help") },
+    { label: "Contact support…", icon: <LifeBuoy size={14} />, onSelect: () => void window.open("mailto:support@folevi.com", "_blank", "noopener") },
+    "separator",
+    { label: "Light", icon: <Sun size={14} />, checked: appearance === "light", onSelect: () => setAppearance("light") },
+    { label: "Dark", icon: <Moon size={14} />, checked: appearance === "dark", onSelect: () => setAppearance("dark") },
+    { label: "Match system", icon: <Monitor size={14} />, checked: appearance === "system", onSelect: () => setAppearance("system") },
+  ];
+  return (
+    <>
+      <SignInToCollaborate className="mb-1.5" />
+      <MenuButton
+        label={`${profile.displayName}: settings and help`}
+        side="top"
+        align="start"
+        className="w-full"
+        menuClassName="w-full min-w-64"
+        triggerClassName="flex h-12 w-full items-center gap-2.5 rounded-chip px-2 text-left transition-colors hover:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-expanded:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)]"
+        items={items}
+        trigger={
+          <>
+            <PersonalMark size={28} />
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="block truncate text-[13.5px] font-semibold text-heading">{profile.displayName}</span>
+              <span className="block truncate text-[11.5px] text-muted">On your devices</span>
+            </span>
+            <ChevronsUpDown size={14} aria-hidden className="flex-none text-faint" />
+          </>
+        }
+      />
+    </>
+  );
+}
+
+function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
   const { context, workspace, workspaces, setContext, profile, appearance, setAppearance } = useAppState();
   const { navigate, route } = useAppRouter();
   const safeSignOut = useSafeSignOut(profile.id);

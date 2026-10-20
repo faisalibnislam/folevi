@@ -49,6 +49,7 @@ import { draggedFolderId, draggingFolderId, endFolderDrag, folderMoveMessage, is
 import { flattenFolders, folderAncestors, folderMoveProblem } from "@folevi/editor-schema";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiEnabled } from "@/components/ai/useAi";
+import { useCanCall, useCapabilities } from "@/lib/mode";
 import { useReviewWindow } from "@/components/study/review";
 
 function isActive(route: Route, href: string): boolean {
@@ -449,10 +450,14 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const folderActions = useFolderActions();
   const { route } = useAppRouter();
   // Changes others made in notes you've opened (everywhere), leaving out the note in front of you.
-  const changes = useQuery(api.changes.list, route.name === "doc" ? { exclude: route.id } : {});
+  // (Local mode has no Changes: nobody else edits a library, docs/LOCAL_MODE_PLAN.md §5.2.)
+  const caps = useCapabilities();
+  // The graph comes to local mode later (lib/local/registry.ts LOCAL_PLANNED).
+  const graph = useCanCall(api.aiGraph.graph);
+  const changes = useQuery(api.changes.list, !caps.changes ? "skip" : route.name === "doc" ? { exclude: route.id } : {});
   // Changes apps proposed count too: they wait there for an answer.
   const minute = useMinute();
-  const proposed = useQuery(api.proposals.count, { now: minute });
+  const proposed = useQuery(api.proposals.count, caps.changes ? { now: minute } : "skip");
   const toast = useToast();
   const [folderOpen, setFolderOpen] = useOpenFolders();
   const moveFolder = useMoveFolder();
@@ -563,7 +568,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div className="mt-3 space-y-0.5">
           <NavItem href="/documents" icon={<Home size={16} />} label="Home" onNavigate={onNavigate} />
           {aiOn ? <NavItem href="/ai" icon={<AiIcon size={16} />} label="Work with Foli AI" onNavigate={onNavigate} /> : null}
-          <NavItem href="/graph" icon={<Waypoints size={16} />} label="Graph" onNavigate={onNavigate} />
+          {graph ? <NavItem href="/graph" icon={<Waypoints size={16} />} label="Graph" onNavigate={onNavigate} /> : null}
           <div className="group/starred relative">
             <NavItem href="/starred" icon={<Star size={16} />} label="Starred" onNavigate={onNavigate} />
             {starred?.page.length ? (
@@ -591,8 +596,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <NavItem href="/tasks/today" icon={<CheckSquare size={16} />} label="Tasks" count={counts ? counts.today : undefined} onNavigate={onNavigate} />
           <NavItem href="/calendar" icon={<Calendar size={16} />} label="Calendar" onNavigate={onNavigate} />
           {reviews?.hasCards || route.name === "review" ? <NavItem href="/review" icon={<Layers size={16} />} label="Reviews" count={reviews ? reviews.due + reviews.new : undefined} onNavigate={onNavigate} /> : null}
-          <NavItem href="/shared" icon={<Share2 size={16} />} label="Shared with Me" onNavigate={onNavigate} />
-          <NavItem href="/changes" icon={<FileDiff size={16} />} label="Changes" count={(changes?.notes.length ?? 0) + (proposed ?? 0) || undefined} onNavigate={onNavigate} />
+          {caps.sharing ? <NavItem href="/shared" icon={<Share2 size={16} />} label="Shared with Me" onNavigate={onNavigate} /> : null}
+          {caps.changes ? <NavItem href="/changes" icon={<FileDiff size={16} />} label="Changes" count={(changes?.notes.length ?? 0) + (proposed ?? 0) || undefined} onNavigate={onNavigate} /> : null}
           <NavItem href="/templates" icon={<LayoutTemplate size={16} />} label="Templates" onNavigate={onNavigate} />
         </div>
 

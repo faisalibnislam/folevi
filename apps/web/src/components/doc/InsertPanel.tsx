@@ -17,6 +17,7 @@ import { requestSyncedInsert } from "@/components/editor/synced/actions";
 import { nativeApp } from "@/lib/nativeApp";
 import { useNativeDevice } from "@/lib/nativeDevice";
 import { InsertPreview, type PreviewKind } from "./insertPreviews";
+import { useCapabilities } from "@/lib/mode";
 
 /** What an insert does: a plain block (optionally with text), or a special flow run by the editor. */
 export interface InsertAction {
@@ -326,8 +327,10 @@ export function InsertPanel({ editor, disabled }: { editor: Editor | null; disab
   const device = useNativeDevice();
   const scans = device && nativeApp()?.scanDocument ? tiles("media", device.scanner ? ["Scan document", "Scan from photos"] : ["Scan from photos"]) : [];
   const showTable = matches(query, "table grid rows columns size");
+  // Unsplash is searched through Folevi's servers: not in local mode.
+  const stockPhotos = useCapabilities().stockPhotos;
   // Search runs across every group; a group with nothing that matches goes.
-  const sections = SECTIONS.map((s) => ({ ...s, tiles: [...s.tiles, ...(s.title === "Media" ? scans : [])].filter((t) => matches(query, t.keywords)) })).filter((s) => s.tiles.length || (s.title === DATA && showTable));
+  const sections = SECTIONS.map((s) => ({ ...s, tiles: [...s.tiles, ...(s.title === "Media" ? scans : [])].filter((t) => matches(query, t.keywords) && (stockPhotos || t.action.special !== "unsplash")) })).filter((s) => s.tiles.length || (s.title === DATA && showTable));
   return (
     <div>
       <p className="mb-2 px-1 text-[12.5px] text-muted">Drag and drop any item to the document</p>

@@ -4,6 +4,8 @@
 // block menu, the selection toolbar or ⌘⌥M), and the overview of every thread in the note (Comments panel).
 import type { Editor } from "@tiptap/react";
 import { useMutation, useQuery } from "convex/react";
+import { useCapabilities } from "@/lib/mode";
+import { SignInToCollaborate } from "@/components/app/SignInToCollaborate";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ulid } from "@folevi/editor-schema";
 import { ArrowUp, Bell, BellMinus, BellOff, BellPlus, Check, ChevronLeft, ChevronRight, CornerDownRight, Link2, MoreHorizontal, RotateCcw, SmilePlus, Trash2, Unlink, X, Eye, EyeOff } from "lucide-react";
@@ -99,7 +101,10 @@ function excerpt(body: unknown[]): string {
  */
 export function useCommentThreads(documentId: string, skip = false): CommentsData | undefined {
   const { profile, outbox } = useAppState();
-  const data = useOfflineQuery(api.comments.threads, skip ? "skip" : { documentId });
+  // Local mode has no comments (docs/LOCAL_MODE_PLAN.md §5.2).
+  const comments = useCapabilities().comments;
+  const off = skip || !comments;
+  const data = useOfflineQuery(api.comments.threads, off ? "skip" : { documentId });
   const entries = useOutboxEntries(outbox);
   const me = useMemo(() => ({ id: profile.id, name: profile.displayName, avatarUrl: profile.avatarUrl ?? null }), [profile.id, profile.displayName, profile.avatarUrl]);
   return useMemo(() => (data ? overlayThreads(data, entries, documentId, me) : undefined), [data, entries, documentId, me]);
@@ -716,7 +721,13 @@ function anchorLabel(t: CommentThread): ReactNode {
  * Choosing a thread on a block jumps there and opens it; threads on the whole note or a deleted block
  * open right here.
  */
-export function CommentsOverview({ documentId, onOpenThread, focusThreadId = null }: { documentId: string; onOpenThread: (thread: CommentThread) => void; focusThreadId?: string | null }) {
+export function CommentsOverview(props: { documentId: string; onOpenThread: (thread: CommentThread) => void; focusThreadId?: string | null }) {
+  // Local mode: the Comments tab says what comments need instead.
+  if (!useCapabilities().comments) return <SignInToCollaborate variant="panel" />;
+  return <CommentsList {...props} />;
+}
+
+function CommentsList({ documentId, onOpenThread, focusThreadId = null }: { documentId: string; onOpenThread: (thread: CommentThread) => void; focusThreadId?: string | null }) {
   const data = useCommentThreads(documentId);
   const people = useQuery(api.comments.mentionable, { documentId });
   // Remembered, so the tab opens on the list last looked at.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useCanCall, useCapabilities } from "@/lib/mode";
 import { useQuery } from "convex/react";
 import { Archive, FileDiff, FileText, Files, FolderPlus, Hash, Inbox, Layers, LayoutTemplate, Share2, Trash2, Waypoints } from "lucide-react";
 import { api } from "@/lib/convex/api";
@@ -78,9 +79,12 @@ export function IphoneHome() {
   const recent = useQuery(api.documents.recentNotes, { scope, limit: CAROUSEL });
   const starred = useQuery(api.documents.list, { scope, view: "starred", sort: "updated", paginationOpts: { numItems: SHOWN + 1, cursor: null } });
   const drafts = useQuery(api.organization.draftCount, { scope });
-  const changes = useQuery(api.changes.list, {});
+  // Local mode has no Shared with Me or Changes (docs/LOCAL_MODE_PLAN.md §5.2).
+  const caps = useCapabilities();
+  const graph = useCanCall(api.aiGraph.graph);
+  const changes = useQuery(api.changes.list, caps.changes ? {} : "skip");
   const minute = useMinute();
-  const proposed = useQuery(api.proposals.count, { now: minute });
+  const proposed = useQuery(api.proposals.count, caps.changes ? { now: minute } : "skip");
   const reviews = useQuery(api.study.summary, useReviewWindow(5 * 60_000));
   const org = useFolderTree(scope);
   // Folders with how many notes each holds (the folder index, with what's waiting to sync laid over it).
@@ -108,7 +112,7 @@ export function IphoneHome() {
             more={[
               { label: "New folder", icon: <FolderPlus size={18} />, onSelect: openNewFolder },
               { label: "All folders", icon: <Files size={18} />, onSelect: () => navigate("/folders") },
-              { label: "Graph", icon: <Waypoints size={18} />, onSelect: () => navigate("/graph") },
+              ...(graph ? [{ label: "Graph", icon: <Waypoints size={18} />, onSelect: () => navigate("/graph") }] : []),
             ]}
           />
         ),
@@ -137,8 +141,8 @@ export function IphoneHome() {
         {aiOn ? <CatchUp row /> : null}
         <ListRow href="/notes" icon={<Files />} label="All notes" />
         <ListRow href="/drafts" icon={<Inbox />} label="Drafts" detail={drafts || undefined} />
-        <ListRow href="/shared" icon={<Share2 />} label="Shared with Me" />
-        <ListRow href="/changes" icon={<FileDiff />} label="Changes" detail={changeCount || undefined} />
+        {caps.sharing ? <ListRow href="/shared" icon={<Share2 />} label="Shared with Me" /> : null}
+        {caps.changes ? <ListRow href="/changes" icon={<FileDiff />} label="Changes" detail={changeCount || undefined} /> : null}
         {reviews?.hasCards ? <ListRow href="/review" icon={<Layers />} label="Reviews" detail={waitingReviews || undefined} /> : null}
       </nav>
 

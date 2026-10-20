@@ -5,7 +5,9 @@
 // and collaborate" note (WP10). Prices and upgrades ask canPurchaseHere(), which is false in local mode on
 // every platform, and inside the iOS app.
 import { createContext, useContext } from "react";
-import { capabilitiesOf, type BackendMode, type Capabilities, type Capability } from "./backendMode";
+import { getFunctionName, type FunctionReference } from "convex/server";
+import { capabilitiesOf, currentBackendMode as modeNow, type BackendMode, type Capabilities, type Capability } from "./backendMode";
+import { LOCAL_FUNCTIONS } from "./local/registry";
 
 export { canPurchaseHere } from "./nativeApp";
 export { CAPABILITIES, currentBackendMode, type BackendMode, type Capabilities, type Capability } from "./backendMode";
@@ -28,4 +30,18 @@ export function useCapabilities(): Capabilities {
 /** One capability. */
 export function useCapability(capability: Capability): boolean {
   return useCapabilities()[capability];
+}
+
+/**
+ * Whether a server function can be called on this page's backend: anything in account mode; in local mode
+ * only what lib/local has ported (registry.ts LOCAL_FUNCTIONS). A feature whose port is still planned (the
+ * graph, bookmark previews) stays out of sight with this instead of failing, and shows once it's ported.
+ */
+export function canCallHere(ref: FunctionReference<"query" | "mutation" | "action">): boolean {
+  return modeNow() !== "local" || LOCAL_FUNCTIONS.has(getFunctionName(ref));
+}
+
+/** canCallHere for a component (the mode is the provider's, which never changes for a page). */
+export function useCanCall(ref: FunctionReference<"query" | "mutation" | "action">): boolean {
+  return useBackendMode() !== "local" || LOCAL_FUNCTIONS.has(getFunctionName(ref));
 }

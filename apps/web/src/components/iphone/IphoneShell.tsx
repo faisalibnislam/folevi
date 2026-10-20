@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
+import { useCapabilities } from "@/lib/mode";
 import { api } from "@/lib/convex/api";
 import { useAppRouter, type Route } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
@@ -116,7 +117,8 @@ export function IphoneShell({ banner }: { banner?: ReactNode }) {
 }
 
 function NotificationsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const unread = useQuery(api.notifications.unreadCount, open ? {} : "skip");
+  const { notifications } = useCapabilities();
+  const unread = useQuery(api.notifications.unreadCount, open && notifications ? {} : "skip");
   return (
     <Sheet open={open} onClose={onClose} title="Notifications" size="medium" bodyClassName="flex flex-col">
       <NotificationPanel unread={unread ?? 0} onClose={onClose} hideTitle />

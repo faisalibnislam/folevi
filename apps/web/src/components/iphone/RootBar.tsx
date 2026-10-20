@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
+import { useCapabilities } from "@/lib/mode";
 import { Bell, MoreHorizontal } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -29,13 +30,18 @@ export function RootAvatar() {
 /** Top right of Home, Tasks and Calendar: notifications (with the unread count) and the screen's More menu. */
 export function RootPill({ more, moreLabel = "More" }: { more?: MenuEntry[]; moreLabel?: string }) {
   const { openNotifications } = useIphoneActions();
-  const unread = useQuery(api.notifications.unreadCount, {}) ?? 0;
+  // Local mode has no notifications bell.
+  const { notifications } = useCapabilities();
+  const unread = useQuery(api.notifications.unreadCount, notifications ? {} : "skip") ?? 0;
+  if (!notifications && !more?.length) return null;
   return (
     <GlassPill label="Screen actions">
-      <PillButton label={t("notifications.button.label", { count: unread })} onClick={openNotifications}>
-        <Bell size={21} strokeWidth={1.9} aria-hidden />
-        {unread ? <span aria-hidden className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-capsule bg-coral ring-2 ring-[var(--color-canvas)]" /> : null}
-      </PillButton>
+      {notifications ? (
+        <PillButton label={t("notifications.button.label", { count: unread })} onClick={openNotifications}>
+          <Bell size={21} strokeWidth={1.9} aria-hidden />
+          {unread ? <span aria-hidden className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-capsule bg-coral ring-2 ring-[var(--color-canvas)]" /> : null}
+        </PillButton>
+      ) : null}
       {more?.length ? <MoreMenu items={more} label={moreLabel} /> : null}
     </GlassPill>
   );

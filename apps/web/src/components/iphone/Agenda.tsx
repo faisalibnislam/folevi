@@ -14,14 +14,13 @@ import { TaskLine } from "./Tasks";
 type Layout = "month" | "week" | "agenda";
 
 /** The Calendar screen's "…" menu: the layouts, and subscribing to a calendar. */
-export function calendarMenu(mode: Layout, pick: (l: Layout) => void, subscribe: () => void): MenuEntry[] {
+export function calendarMenu(mode: Layout, pick: (l: Layout) => void, subscribe: (() => void) | null): MenuEntry[] {
   return [
     { heading: "Show" },
     { label: "Agenda", icon: <Rows3 size={18} />, checked: mode === "agenda", onSelect: () => pick("agenda") },
     { label: "Week", icon: <CalendarRange size={18} />, checked: mode === "week", onSelect: () => pick("week") },
     { label: "Month", icon: <CalendarDays size={18} />, checked: mode === "month", onSelect: () => pick("month") },
-    "separator",
-    { label: "Subscribe to a calendar", icon: <Rss size={18} />, onSelect: subscribe },
+    ...(subscribe ? (["separator", { label: "Subscribe to a calendar", icon: <Rss size={18} />, onSelect: subscribe }] satisfies MenuEntry[]) : []),
   ];
 }
 

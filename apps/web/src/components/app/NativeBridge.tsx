@@ -7,6 +7,7 @@
 // (lib/nativePush.ts) and puts the bell's unread count on the app icon, like the Mac app's Dock badge. In a
 // browser and in the Mac app: nothing.
 import { useMutation, useQuery } from "convex/react";
+import { useCapabilities } from "@/lib/mode";
 import { useEffect, useRef } from "react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -82,12 +83,14 @@ function Bridge() {
 /** On each launch, signed in and online: the app holds a working token for this account. */
 function useDeviceToken(accountId: string, online: boolean) {
   const done = useRef<string | null>(null);
+  // Local mode: no account, so no token (the widgets and intents use the local-actions queue there, WP13).
+  const account = useCapabilities().account;
   useEffect(() => {
-    if (!online || done.current === accountId) return;
+    if (!online || !account || done.current === accountId) return;
     done.current = accountId;
     // Not worth bothering anyone about: the widgets say "Open Folevi to sign in" and it's tried again next launch.
     linkThisDevice(accountId).catch(() => (done.current = null));
-  }, [accountId, online]);
+  }, [accountId, online, account]);
 }
 
 /**
@@ -96,17 +99,20 @@ function useDeviceToken(accountId: string, online: boolean) {
  */
 function usePush(online: boolean) {
   const bridge = nativeApp()!;
-  const unread = useQuery(api.notifications.unreadCount, {});
+  // Local mode: no bell and no push from Folevi.
+  const caps = useCapabilities();
+  const unread = useQuery(api.notifications.unreadCount, caps.notifications ? {} : "skip");
   useEffect(() => {
     if (unread !== undefined) bridge.setBadge?.(unread);
   }, [bridge, unread]);
+  const push = caps.pushNotifications;
   useEffect(() => {
-    if (!online || !bridge.pushStatus) return;
+    if (!online || !bridge.pushStatus || !push) return;
     const sync = () => void syncPushRegistration().catch(() => undefined);
     sync();
     window.addEventListener("folevi:app-active", sync);
     return () => window.removeEventListener("folevi:app-active", sync);
-  }, [bridge, online]);
+  }, [bridge, online, push]);
 }
 
 /**

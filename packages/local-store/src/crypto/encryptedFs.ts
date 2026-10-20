@@ -16,6 +16,7 @@ import {
   LIBRARY_FILE,
   NOTES_DIR,
   TMP_DIR,
+  isValidLibraryPath,
   parseNoteFileName,
 } from "../layout";
 import { hmacName, openFile, sealFile, sealStream } from "./envelope";
@@ -46,8 +47,10 @@ export class EncryptedFs implements LocalFs {
     return path === LIBRARY_FILE || path.startsWith(`${TMP_DIR}/`);
   }
 
-  /** Logical path → on-disk path. */
+  /** Logical path → on-disk path. The logical path is checked first, so a mapped name can't hide a `..`. */
   async physical(path: string): Promise<string> {
+    if (!isValidLibraryPath(path))
+      throw new LocalFsError("invalid_path", `Invalid library path: ${JSON.stringify(path)}`, path);
     const parts = path.split("/");
     if (parts[0] === NOTES_DIR && parts.length === 2) {
       const parsed = parseNoteFileName(parts[1]!);

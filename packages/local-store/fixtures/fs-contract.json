@@ -1,0 +1,161 @@
+{
+  "$description": "The LocalFs contract (docs/LOCAL_MODE_PLAN.md §4.1, WP9; src/io.ts): every file layer (MemoryFs, the Mac's NodeFs and its encrypted and coordinated variants, and later the iOS one in XCTest) must pass these. Each case starts from an empty library. Steps: write (text or hex bytes; ifMatch absent = unconditional, null = create only, \"$name\" = a saved etag, other strings literal; expect written or mismatch; save stores the etag; etagIs / etagNot compare against a saved etag, \"\" means missing), read (expect bytes, not_found or notDownloaded), remove (expect ok or mismatch), list (dir; exactly these paths, in any order; optional downloaded, hasConflicts and etags maps), conflictVersions (texts in any order; saveIds), resolveConflicts (ids \"$name\"). hook.* steps are things only a provider does; a case lists the hooks it needs in requires, and runners without them skip it. invalidPaths must be refused with code invalid_path by read, write, remove and list.",
+  "invalidPaths": [
+    "",
+    "/notes/a.fnote",
+    "../a",
+    "notes/../a",
+    "notes/..",
+    "..",
+    ".",
+    "notes/./a.fnote",
+    "notes//a.fnote",
+    "notes/a.fnote/",
+    "notes\\a.fnote",
+    "notes/a\u0000.fnote",
+    "notes/a\u001f.fnote",
+    "notes/a\u007f.fnote",
+    "notes/a\n.fnote",
+    "history/../notes/01J9ZDOC000000000000000001.fnote",
+    "files/../../a"
+  ],
+  "cases": [
+    {
+      "name": "a missing file",
+      "steps": [
+        { "op": "read", "path": "notes/01J9ZDOC000000000000000001.fnote", "expect": "not_found" },
+        { "op": "remove", "path": "notes/01J9ZDOC000000000000000001.fnote", "expect": "ok" },
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000001.fnote", "text": "1", "ifMatch": "nope", "expect": "mismatch", "etagIs": "" },
+        { "op": "read", "path": "notes/01J9ZDOC000000000000000001.fnote", "expect": "not_found" },
+        { "op": "list", "dir": "", "paths": [] },
+        { "op": "list", "dir": "notes", "paths": [] }
+      ]
+    },
+    {
+      "name": "create only",
+      "steps": [
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000001.fnote", "text": "first", "ifMatch": null, "expect": "written", "save": "a" },
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000001.fnote", "text": "second", "ifMatch": null, "expect": "mismatch", "etagIs": "$a" },
+        { "op": "read", "path": "notes/01J9ZDOC000000000000000001.fnote", "expect": "bytes", "text": "first", "etagIs": "$a" }
+      ]
+    },
+    {
+      "name": "compare and swap",
+      "steps": [
+        { "op": "write", "path": "index/library.findex", "text": "one", "expect": "written", "save": "a" },
+        { "op": "write", "path": "index/library.findex", "text": "two", "ifMatch": "nope", "expect": "mismatch", "etagIs": "$a" },
+        { "op": "write", "path": "index/library.findex", "text": "two", "ifMatch": "$a", "expect": "written", "save": "b", "etagNot": "$a" },
+        { "op": "write", "path": "index/library.findex", "text": "three", "ifMatch": "$a", "expect": "mismatch", "etagIs": "$b" },
+        { "op": "read", "path": "index/library.findex", "expect": "bytes", "text": "two", "etagIs": "$b" }
+      ]
+    },
+    {
+      "name": "the etag changes even when the size doesn't",
+      "steps": [
+        { "op": "write", "path": "devices/A.json", "text": "aaaa", "expect": "written", "save": "a" },
+        { "op": "write", "path": "devices/A.json", "text": "bbbb", "ifMatch": "$a", "expect": "written", "save": "b", "etagNot": "$a" },
+        { "op": "write", "path": "devices/A.json", "text": "bbbb", "expect": "written", "save": "c", "etagNot": "$b" },
+        { "op": "read", "path": "devices/A.json", "expect": "bytes", "text": "bbbb", "etagIs": "$c" }
+      ]
+    },
+    {
+      "name": "conditional remove",
+      "steps": [
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000002.fnote", "text": "x", "expect": "written", "save": "a" },
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000002.fnote", "text": "y", "ifMatch": "$a", "expect": "written", "save": "b" },
+        { "op": "remove", "path": "notes/01J9ZDOC000000000000000002.fnote", "ifMatch": "$a", "expect": "mismatch" },
+        { "op": "read", "path": "notes/01J9ZDOC000000000000000002.fnote", "expect": "bytes", "text": "y" },
+        { "op": "remove", "path": "notes/01J9ZDOC000000000000000002.fnote", "ifMatch": "$b", "expect": "ok" },
+        { "op": "read", "path": "notes/01J9ZDOC000000000000000002.fnote", "expect": "not_found" },
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000002.fnote", "text": "z", "ifMatch": null, "expect": "written" }
+      ]
+    },
+    {
+      "name": "nested folders, empty and binary files",
+      "steps": [
+        { "op": "write", "path": "history/01J9ZDOC000000000000000001/00000lid5-0000-D0-D0-auto.fver", "hex": "1f8b0800000000000003", "ifMatch": null, "expect": "written" },
+        { "op": "write", "path": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", "hex": "00ff00ff7f80", "ifMatch": null, "expect": "written" },
+        { "op": "write", "path": "index/catalog/A.fcat", "hex": "", "expect": "written" },
+        { "op": "read", "path": "history/01J9ZDOC000000000000000001/00000lid5-0000-D0-D0-auto.fver", "expect": "bytes", "hex": "1f8b0800000000000003" },
+        { "op": "read", "path": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", "expect": "bytes", "hex": "00ff00ff7f80" },
+        { "op": "read", "path": "index/catalog/A.fcat", "expect": "bytes", "hex": "" }
+      ]
+    },
+    {
+      "name": "listing",
+      "steps": [
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000002.fnote", "text": "b", "expect": "written", "save": "b" },
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000001.fnote", "text": "a", "expect": "written", "save": "a" },
+        { "op": "write", "path": "index/library.findex", "text": "i", "expect": "written" },
+        { "op": "write", "path": "history/01J9ZDOC000000000000000001/00000lid5-0000-D0-D0-auto.fver", "text": "h", "expect": "written" },
+        { "op": "write", "path": "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", "text": "f", "expect": "written" },
+        {
+          "op": "list",
+          "dir": "",
+          "paths": [
+            "files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+            "history/01J9ZDOC000000000000000001/00000lid5-0000-D0-D0-auto.fver",
+            "index/library.findex",
+            "notes/01J9ZDOC000000000000000001.fnote",
+            "notes/01J9ZDOC000000000000000002.fnote"
+          ]
+        },
+        {
+          "op": "list",
+          "dir": "notes",
+          "paths": ["notes/01J9ZDOC000000000000000001.fnote", "notes/01J9ZDOC000000000000000002.fnote"],
+          "etags": { "notes/01J9ZDOC000000000000000001.fnote": "$a", "notes/01J9ZDOC000000000000000002.fnote": "$b" },
+          "downloaded": { "notes/01J9ZDOC000000000000000001.fnote": true },
+          "hasConflicts": { "notes/01J9ZDOC000000000000000001.fnote": false }
+        },
+        { "op": "list", "dir": "history", "paths": ["history/01J9ZDOC000000000000000001/00000lid5-0000-D0-D0-auto.fver"] },
+        { "op": "list", "dir": "devices", "paths": [] },
+        { "op": "remove", "path": "notes/01J9ZDOC000000000000000002.fnote", "expect": "ok" },
+        { "op": "list", "dir": "notes", "paths": ["notes/01J9ZDOC000000000000000001.fnote"] }
+      ]
+    },
+    {
+      "name": "no conflict versions outside a provider",
+      "steps": [
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000001.fnote", "text": "a", "expect": "written" },
+        { "op": "conflictVersions", "path": "notes/01J9ZDOC000000000000000001.fnote", "texts": [] },
+        { "op": "resolveConflicts", "path": "notes/01J9ZDOC000000000000000001.fnote", "ids": [] }
+      ]
+    },
+    {
+      "name": "a placeholder isn't downloaded",
+      "requires": ["evict"],
+      "steps": [
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000001.fnote", "text": "a", "expect": "written" },
+        { "op": "hook.evict", "path": "notes/01J9ZDOC000000000000000001.fnote" },
+        { "op": "read", "path": "notes/01J9ZDOC000000000000000001.fnote", "expect": "notDownloaded" },
+        { "op": "list", "dir": "notes", "paths": ["notes/01J9ZDOC000000000000000001.fnote"], "downloaded": { "notes/01J9ZDOC000000000000000001.fnote": false } }
+      ]
+    },
+    {
+      "name": "a provider's write is noticed",
+      "requires": ["put"],
+      "steps": [
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000001.fnote", "text": "ours", "expect": "written", "save": "a" },
+        { "op": "hook.put", "path": "notes/01J9ZDOC000000000000000001.fnote", "text": "theirs" },
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000001.fnote", "text": "ours again", "ifMatch": "$a", "expect": "mismatch", "etagNot": "$a" },
+        { "op": "read", "path": "notes/01J9ZDOC000000000000000001.fnote", "expect": "bytes", "text": "theirs", "save": "t" },
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000001.fnote", "text": "merged", "ifMatch": "$t", "expect": "written" }
+      ]
+    },
+    {
+      "name": "conflict versions are listed, read and resolved",
+      "requires": ["addConflictVersion"],
+      "steps": [
+        { "op": "write", "path": "notes/01J9ZDOC000000000000000001.fnote", "text": "current", "expect": "written" },
+        { "op": "hook.addConflictVersion", "path": "notes/01J9ZDOC000000000000000001.fnote", "text": "other device" },
+        { "op": "list", "dir": "notes", "paths": ["notes/01J9ZDOC000000000000000001.fnote"], "hasConflicts": { "notes/01J9ZDOC000000000000000001.fnote": true } },
+        { "op": "conflictVersions", "path": "notes/01J9ZDOC000000000000000001.fnote", "texts": ["other device"], "saveIds": "v" },
+        { "op": "resolveConflicts", "path": "notes/01J9ZDOC000000000000000001.fnote", "ids": "$v" },
+        { "op": "conflictVersions", "path": "notes/01J9ZDOC000000000000000001.fnote", "texts": [] },
+        { "op": "list", "dir": "notes", "paths": ["notes/01J9ZDOC000000000000000001.fnote"], "hasConflicts": { "notes/01J9ZDOC000000000000000001.fnote": false } },
+        { "op": "read", "path": "notes/01J9ZDOC000000000000000001.fnote", "expect": "bytes", "text": "current" }
+      ]
+    }
+  ]
+}

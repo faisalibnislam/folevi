@@ -83,7 +83,7 @@ const NEEDS: Partial<Record<Section, Capability>> = {
   ...Object.fromEntries([...WORKSPACE_SECTIONS].map((id) => [id, "workspaces"])),
 };
 /** Where Settings opens when the account's first section, Account, isn't there (local mode). */
-const LOCAL_FIRST: Section = "appearance";
+const LOCAL_FIRST: Section = "library";
 const HEADINGS: Partial<Record<Section, string>> = { workspace: "Workspace" };
 
 export function SettingsView({ section: asked }: { section: Section }) {
@@ -102,7 +102,9 @@ export function SettingsView({ section: asked }: { section: Section }) {
   const allowed = (who: (typeof WORKSPACE)[number]["who"]) => who === "everyone" || (who === "managers" ? workspace?.canManage === true : workspace?.canManageBilling === true);
   const workspaceItems = WORKSPACE.filter((i) => allowed(i.who));
   // Desktop app: only in the Mac app; This device: only in the iPhone and iPad app (or opened by its address).
-  const you = YOU.filter((i) => here(i.id) && (i.id !== "library" || !caps.account) && (i.id !== "desktop" || desktop() !== null || section === "desktop") && (i.id !== "this-device" || nativeApp() !== null || section === "this-device"));
+  const you = YOU.filter((i) => here(i.id) && (i.id !== "library" || !caps.account) && (i.id !== "desktop" || desktop() !== null || section === "desktop") && (i.id !== "this-device" || nativeApp() !== null || section === "this-device"))
+    // In local mode the library comes first: it's where Settings opens (LOCAL_FIRST).
+    .sort((a, b) => Number(b.id === "library") - Number(a.id === "library"));
   const groups = [{ label: "You", items: you }, ...(workspace ? [{ label: workspace.name, items: workspaceItems }] : [])];
   const item = [...YOU, ...WORKSPACE].find((s) => s.id === section);
   const heading = (WORKSPACE_SECTIONS.has(section) && HEADINGS[section]) || item?.label;

@@ -6,7 +6,9 @@
 // controls (client.local.library); none of it reaches Folevi's servers.
 import { useCallback, useEffect, useId, useState } from "react";
 import { AlertTriangle, CloudDownload, Hourglass, Laptop, Loader2, Smartphone } from "lucide-react";
-import { useBackendMode } from "@/lib/mode";
+import { useBackendMode, useLocalAi } from "@/lib/mode";
+import { AppLink } from "@/lib/app/router";
+import { PROVIDERS, modelLabel } from "@/lib/local/ai/catalog";
 import { shell } from "@/lib/shell";
 import type { CloudProvider, LibraryInfo, ShellLockSettings } from "@/lib/shell/types";
 import { formatRelative } from "@/lib/format";
@@ -618,13 +620,17 @@ function LockCard() {
   );
 }
 
-// ---- Foli AI and the account (later packages) -------------------------------------------------------------------
+// ---- Foli AI (WP11: set up in Settings > AI) and the account -------------------------------------------------------------------
 
 function AiKeysCard() {
   return (
-    <Card title="Foli AI" description="In a library on your devices, Foli AI will run on Apple's models on this Mac, or on your own OpenAI, Anthropic or Google key, called straight from this Mac.">
+    <Card title="Foli AI" description="In a library on your devices, Foli AI runs on Apple's model on this Mac, or on your own OpenAI, Anthropic or Google key, called straight from this Mac.">
       <p className="text-sm text-muted" data-testid="library-ai-keys">
-        That comes in a later update. Your keys will be kept in the Keychain, and Folevi will never see them.
+        Choose the model and add your keys in{" "}
+        <AppLink href="/settings/ai" className="text-ink underline underline-offset-2">
+          Settings, under AI
+        </AppLink>
+        . Keys stay in the Keychain on this Mac; Folevi never sees them.
       </p>
     </Card>
   );

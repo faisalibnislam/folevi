@@ -38,6 +38,15 @@ const STATUSES: [string, string][] = [
   ["Not saved", "The server rejected a change, or you need to sign in again. Open the status for details."],
 ];
 
+/** The same words for a library on this person's devices (local mode): there's no server to confirm anything. */
+const LOCAL_STATUSES: [string, string][] = [
+  ["Saved", "Every change is saved on this device. Your library's folder gets it a few seconds later."],
+  ["Saving…", "Your latest changes are being saved on this device."],
+  ["Syncing…", "Folevi is reading your library's folder and writing what it lacks."],
+  ["Changed on another device", "The same block changed on two devices at once. The newer change shows, and the other is kept in version history, with a note on the block."],
+  ["Not saved", "This device couldn't save a change. Open the status for details."],
+];
+
 export function HelpView() {
   const mac = isMac();
   const fmt = (s: string) => (mac ? s : s.replace(/⌘/g, "Ctrl").replace(/⌥/g, "Alt").replace(/⇧/g, "Shift"));
@@ -109,7 +118,7 @@ export function HelpView() {
             What the save status means
           </h3>
           <dl className="grid gap-3 sm:grid-cols-2">
-            {STATUSES.map(([k, v]) => (
+            {(account ? STATUSES : LOCAL_STATUSES).map(([k, v]) => (
               <div key={k} className="ui-card rounded-control p-3">
                 <dt className="font-medium">{k}</dt>
                 <dd className="text-sm text-muted">{v}</dd>

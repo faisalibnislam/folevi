@@ -175,6 +175,6 @@ async function seedLibrary(ctx: LocalMutationCtx, today: string): Promise<void> 
     title: WELCOME_TITLE,
     icon: "🌿",
     style: { font: "serif", width: "wide", background: "paper", accent: "accent", card: "folio" },
-    blocks: specsToWireBlocks(welcomeBlocks(today)),
+    blocks: specsToWireBlocks(welcomeBlocks(today, { local: true })),
   });
 }

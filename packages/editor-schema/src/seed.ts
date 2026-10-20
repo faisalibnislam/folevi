@@ -5,13 +5,19 @@ import type { BlockSpec } from "./content";
 
 export const WELCOME_TITLE = "Welcome to Folevi";
 
-export function welcomeBlocks(today: string): BlockSpec[] {
+/**
+ * The welcome note. `local`: the copy for a library kept on the person's devices (local mode, no server),
+ * which says where a change is saved there; the account's copy is unchanged.
+ */
+export function welcomeBlocks(today: string, opts: { local?: boolean } = {}): BlockSpec[] {
   return [
     {
       type: "paragraph",
       md: "Folevi is a quiet place for ideas that keep growing. Start with a loose thought, give it shape when you are ready, and find it again when you need it.",
     },
-    { type: "callout", props: { tone: "info", icon: "✳︎" }, md: "Everything you type here is saved as you go. The status in the top bar says **Saved** only after the server has confirmed it." },
+    opts.local
+      ? { type: "callout", props: { tone: "info", icon: "✳︎" }, md: "Everything you type here is saved as you go, on this device first. The status in the top bar says **Saved** once it is. Your library's folder gets it a few seconds later, and your other devices from there." }
+      : { type: "callout", props: { tone: "info", icon: "✳︎" }, md: "Everything you type here is saved as you go. The status in the top bar says **Saved** only after the server has confirmed it." },
     { type: "heading", props: { level: 2 }, md: "Capture in three seconds" },
     {
       type: "bulleted",

@@ -1,16 +1,106 @@
 // Which addresses are Folevi's own (they open in the app's windows and may use the bridge) and which open in
 // the browser instead.
+//
+// Two ways to show the app (docs/LOCAL_MODE_PLAN.md §1, WP2):
+// - today's default: the website (SERVICE_URL) loaded in the windows;
+// - the bundled interface (FOLEVI_SHELL=1 or "bundledShell" in settings.json, see main.ts): the static export
+//   built into the app, served from app://folevi (protocol.ts), or from `next dev` with FOLEVI_BUILD=shell at
+//   FOLEVI_SHELL_DEV_URL during development. The website stays SERVICE_URL, for sign-in and links.
 
-/** The web app the windows show: production, unless FOLEVI_URL points somewhere else (the local dev server). */
-export const APP_URL = new URL(process.env.FOLEVI_URL ?? "https://app.folevi.com");
+/** Folevi's website: sign-in in the browser, share links, and the app the windows show by default. */
+export const SERVICE_URL = new URL(process.env.FOLEVI_URL ?? "https://app.folevi.com");
+
+/** The bundled interface's own origin (a privileged scheme registered in protocol.ts). */
+export const BUNDLED_URL = new URL("app://folevi");
+
+/**
+ * The app the windows show: SERVICE_URL until useBundledApp() switches to the bundled interface. A live
+ * binding: read it where it's used, never copy it at startup.
+ */
+export let APP_URL: URL = SERVICE_URL;
+
+/** Whether the windows show the bundled interface (app://folevi or the shell dev server). */
+export let bundledApp = false;
+
+/**
+ * Switches the windows to the bundled interface: app://folevi, or `devUrl` (next dev with FOLEVI_BUILD=shell)
+ * when given. Called once at startup, before any window opens.
+ */
+export function useBundledApp(devUrl?: string | null): void {
+  let dev: URL | null = null;
+  try {
+    dev = devUrl ? new URL(devUrl) : null;
+  } catch {
+    dev = null;
+  }
+  APP_URL = dev && (dev.protocol === "http:" || dev.protocol === "https:") ? new URL(dev.origin) : BUNDLED_URL;
+  bundledApp = true;
+}
+
+/** Back to the website (tests). */
+export function useRemoteApp(): void {
+  APP_URL = SERVICE_URL;
+  bundledApp = false;
+}
+
+/**
+ * "scheme://host[:port]" of a URL, or null. Node's URL gives `origin` "null" for schemes it doesn't know
+ * (app:), so two different custom-scheme URLs would compare equal by `origin`: this is used instead.
+ */
+export function originOf(raw: string | URL): string | null {
+  try {
+    const url = typeof raw === "string" ? new URL(raw) : raw;
+    if (!url.host) return null;
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return null;
+  }
+}
 
 /** Whether a URL belongs to the app the windows show (same origin as APP_URL). */
-export function isAppUrl(raw: string): boolean {
+export function isAppUrl(raw: string | URL): boolean {
+  const origin = originOf(raw);
+  return origin !== null && origin === originOf(APP_URL);
+}
+
+/** Whether a URL is on Folevi's website (SERVICE_URL). */
+export function isServiceUrl(raw: string | URL): boolean {
+  const origin = originOf(raw);
+  return origin !== null && origin === originOf(SERVICE_URL);
+}
+
+/**
+ * The product's pages (the first part of the path), as in apps/web/src/lib/app/routes.ts APP_ROUTE_HEADS.
+ * A link to one of these on the website opens inside the bundled app; any other website page (sign-in,
+ * share links /s/…, pricing, admin) opens in the browser.
+ */
+const APP_ROUTE_HEADS = new Set([
+  "documents", "notes", "d", "ai", "graph", "tasks", "inbox", "calendar", "review", "changes", "daily", "shared", "templates",
+  "starred", "archive", "trash", "drafts", "unsorted", "folders", "tags", "settings", "help", "onboarding", "quick-add",
+]);
+
+/**
+ * Where a link the page follows (or opens in a new window) goes:
+ * - "app": one of the app's own pages, shown in the window (`path` is its path, search and hash);
+ * - "browser": handed to the default browser (or mail app);
+ * - "ignore": nowhere (file:, javascript:, custom schemes).
+ * With the bundled interface, a link to a product page on the website (a note link someone pasted) opens in
+ * the app; the website's other pages, sign-in among them, open in the browser.
+ */
+export function linkTarget(raw: string): { kind: "app"; path: string } | { kind: "browser" } | { kind: "ignore" } {
+  let url: URL;
   try {
-    return new URL(raw).origin === APP_URL.origin;
+    url = new URL(raw);
   } catch {
-    return false;
+    return { kind: "ignore" };
   }
+  const path = `${url.pathname}${url.search}${url.hash}`;
+  if (isAppUrl(raw)) return { kind: "app", path };
+  if (bundledApp && isServiceUrl(raw)) {
+    const head = url.pathname.split("/").filter(Boolean)[0] ?? "";
+    if (APP_ROUTE_HEADS.has(head)) return { kind: "app", path };
+  }
+  return isExternalSafe(raw) ? { kind: "browser" } : { kind: "ignore" };
 }
 
 /** Whether a link is the end of a Google sign-in in the browser (folevi://auth/google?code=…&state=…). */
@@ -27,7 +117,8 @@ export function isSignInReturn(raw: string): boolean {
 export function isSignInStart(raw: string): boolean {
   try {
     const url = new URL(raw);
-    return url.origin === APP_URL.origin && url.pathname === "/app-google";
+    // Always on the website, whichever app the windows show: the bundled interface signs in there too.
+    return isServiceUrl(url) && url.pathname === "/app-google";
   } catch {
     return false;
   }

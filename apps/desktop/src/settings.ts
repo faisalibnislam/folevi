@@ -10,6 +10,26 @@ export interface DesktopSettings {
   menuBarIcon: boolean;
   /** Comments, mentions and reminders as Mac notifications while Folevi isn't the app in front. */
   notifications: boolean;
+  /**
+   * The bundled interface (docs/LOCAL_MODE_PLAN.md WP2): where the notes live, chosen on its first launch
+   * ("unset" until then). Read by preload.ts before the page loads (foleviShell.initialMode).
+   */
+  mode: ShellMode;
+  /**
+   * Shows the interface built into the app (app://folevi) instead of the website. Off until the owner
+   * switches it on; only the settings file (or FOLEVI_SHELL=1) sets it, never the page.
+   */
+  bundledShell: boolean;
+}
+
+export type ShellMode = "unset" | "local" | "account";
+const MODES: readonly ShellMode[] = ["unset", "local", "account"];
+
+/** The settings the page sees and may change (Settings > Desktop app): not the mode or the bundled switch. */
+export type PageSettings = Pick<DesktopSettings, "quickAddShortcut" | "openAtLogin" | "menuBarIcon" | "notifications">;
+
+export function pageSettings(s: DesktopSettings): PageSettings {
+  return { quickAddShortcut: s.quickAddShortcut, openAtLogin: s.openAtLogin, menuBarIcon: s.menuBarIcon, notifications: s.notifications };
 }
 
 export const DEFAULT_SETTINGS: DesktopSettings = {
@@ -17,6 +37,8 @@ export const DEFAULT_SETTINGS: DesktopSettings = {
   openAtLogin: true,
   menuBarIcon: true,
   notifications: true,
+  mode: "unset",
+  bundledShell: false,
 };
 
 const MODIFIERS = new Set(["Command", "Cmd", "Control", "Ctrl", "CommandOrControl", "CmdOrCtrl", "Alt", "Option", "Shift", "Super", "Meta"]);
@@ -35,17 +57,28 @@ export function isValidShortcut(accelerator: string): boolean {
   return parts.some((m) => m !== "Shift");
 }
 
-/** Keeps only known settings of the right type: the file (or a page asking for a change) may hold anything. */
-export function cleanSettings(input: unknown, base: DesktopSettings = DEFAULT_SETTINGS): DesktopSettings {
+/**
+ * Keeps only known settings of the right type: the file (or a page asking for a change) may hold anything.
+ * A page's change (`fromFile` false) never touches the mode or the bundled switch: those keep `base`'s.
+ */
+export function cleanSettings(input: unknown, base: DesktopSettings = DEFAULT_SETTINGS, fromFile = false): DesktopSettings {
   const raw = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
-  const bool = (k: keyof DesktopSettings) => (typeof raw[k] === "boolean" ? (raw[k] as boolean) : (base[k] as boolean));
+  const bool = (k: keyof PageSettings | "bundledShell") => (typeof raw[k] === "boolean" ? (raw[k] as boolean) : (base[k] as boolean));
   const shortcut = typeof raw.quickAddShortcut === "string" && isValidShortcut(raw.quickAddShortcut) ? raw.quickAddShortcut : base.quickAddShortcut;
-  return { quickAddShortcut: shortcut, openAtLogin: bool("openAtLogin"), menuBarIcon: bool("menuBarIcon"), notifications: bool("notifications") };
+  const mode = fromFile && MODES.includes(raw.mode as ShellMode) ? (raw.mode as ShellMode) : base.mode;
+  return {
+    quickAddShortcut: shortcut,
+    openAtLogin: bool("openAtLogin"),
+    menuBarIcon: bool("menuBarIcon"),
+    notifications: bool("notifications"),
+    mode,
+    bundledShell: fromFile ? bool("bundledShell") : base.bundledShell,
+  };
 }
 
 export function loadSettings(file: string): DesktopSettings {
   try {
-    return cleanSettings(JSON.parse(readFileSync(file, "utf8")));
+    return cleanSettings(JSON.parse(readFileSync(file, "utf8")), DEFAULT_SETTINGS, true);
   } catch {
     return { ...DEFAULT_SETTINGS };
   }

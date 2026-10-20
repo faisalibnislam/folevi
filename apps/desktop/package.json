@@ -13,16 +13,18 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "helper": "node scripts/build-helper.mjs",
+    "shell": "node ../web/scripts/build-shell.mjs --required",
     "package": "pnpm build && pnpm helper && electron-builder --mac dir --arm64",
     "install-app": "node scripts/install-app.mjs",
     "bump": "node scripts/bump-version.mjs",
-    "release": "pnpm bump && pnpm package && pnpm install-app",
+    "release": "pnpm bump && pnpm shell && pnpm package && pnpm install-app",
     "publish-mac": "node scripts/publish.mjs"
   },
   "devDependencies": {
     "@types/node": "24.13.6",
     "electron": "44.4.5",
     "electron-builder": "26.16.1",
+    "fake-indexeddb": "6.2.5",
     "typescript": "6.0.3",
     "vitest": "5.0.1"
   },

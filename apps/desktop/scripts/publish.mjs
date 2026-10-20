@@ -32,7 +32,8 @@ const apiKey = process.env.APPLE_API_KEY && process.env.APPLE_API_KEY_ID && proc
 const appleId = process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD && process.env.APPLE_TEAM_ID;
 if (!apiKey && !appleId) fail("Notarizing needs APPLE_API_KEY, APPLE_API_KEY_ID and APPLE_API_ISSUER (or APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID).");
 
-// 2. Build.
+// 2. Build (the interface built into the app first: apps/web build:shell into web/, shipped in Resources).
+execFileSync("pnpm", ["shell"], { cwd: root, stdio: "inherit" });
 execFileSync("pnpm", ["build"], { cwd: root, stdio: "inherit" });
 execFileSync("pnpm", ["helper"], { cwd: root, stdio: "inherit" });
 execFileSync("npx", ["electron-builder", "--config", "electron-builder.dist.yml", "--mac", "--universal", "--publish", "never"], { cwd: root, stdio: "inherit" });

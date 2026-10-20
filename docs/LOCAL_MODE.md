@@ -295,3 +295,52 @@ checks are now tests. `s4-bearer/` and `s5-local-client/` stay until WP4 and WP5
   the shell doesn't have. The signed-in test answers `/api/*` from the dev server to stand in for that.
 - **Electron spike:** `apps/desktop/spikes/app-scheme/main.js` waited for the S1 probe, which no longer ships; its
   hydration checks need rewriting against the real page when WP2 lifts the handler.
+
+## WP2: the Mac app hosting the bundled interface (2026-10-20)
+
+**Off by default.** The installed Mac app still shows the website. The bundled interface is on only with
+`FOLEVI_SHELL=1` or `"bundledShell": true` in the app's `settings.json` (`~/Library/Application Support/Folevi`);
+the page can never set either. `FOLEVI_SHELL=0` forces it off.
+
+- **`apps/desktop/src/protocol.ts`:** `app://folevi` (privileged before `ready`, only when switched on) on
+  `persist:folevi`, serving `Contents/Resources/web` (development: `FOLEVI_SHELL_DIR`, else `apps/desktop/web`), with
+  the SPA fallback (missing `/_next/*`, `/api/*` and anything with a file extension stay 404s), traversal, encoding
+  and symlink checks, and a header CSP by mode: `local` and the first-launch `unset` allow `connect-src 'self'`
+  only; `account` adds the website, `*.convex.cloud` (https and wss) and `*.convex.site` (plus
+  `FOLEVI_SHELL_CONNECT`). `/_files/<sha256>` goes through a `LibraryFiles` reader (stubbed: every file is a 404
+  until WP9), with Range, `nosniff`, a type allowlist (HTML and SVG go out as bytes) and a sandboxing CSP.
+- **Development against `next dev`:** `FOLEVI_SHELL_DEV_URL=http://localhost:3003` (the `dev:shell` server) makes
+  the windows load it instead of `app://folevi`.
+- **`urls.ts`:** `SERVICE_URL` is the website (sign-in, links); `APP_URL` becomes `app://folevi` when switched on.
+  Origins are compared by scheme and host, since Node gives every custom-scheme URL the origin `"null"`.
+  `linkTarget()`: a link to one of the product's pages on the website opens in the app; every other website page
+  (sign-in, `/s/` share links, `/connect`) opens in the browser.
+- **`preload.ts`:** `foleviShell` only on the bundled interface's pages, with `initialMode` read synchronously
+  (`shell:bootstrap`, from `settings.json`), `setMode` (saves, switches the local-mode network block, then reloads
+  the app's windows so the CSP header matches), `library.fileUrl`, and "isn't in this build of Folevi for Mac
+  yet" rejections for the rest. `foleviDesktop` is unchanged and works on the new origin.
+- **Local mode:** `ses.webRequest.onBeforeRequest` cancels `folevi.com`, `*.folevi.com`, `*.convex.cloud`,
+  `*.convex.site` and the website's host, over http, https, ws and wss.
+- **The handoff (R2):** `handoff.ts` and `handoffKit.ts`. Before any window opens on the first bundled launch, if
+  the website origin's IndexedDB folder exists, two hidden blank pages (`/_folevi-handoff` on each origin; the old
+  one is answered locally through `ses.protocol.handle("https")` for that path only, everything else on that host
+  goes to the network as usual) copy every `folevi-<account>` database with unsent work (sync ops, outbox, uploads,
+  or a localStorage journal with ops), whole and with its schema, plus that account's journals and the other
+  `folevi…` localStorage entries the new origin lacks. Values travel as tagged JSON (Blobs, Dates, typed arrays,
+  Maps). Counts are checked; nothing on the old origin is changed and nothing on the new one is overwritten. The
+  web app then finds the queue where it always looks, and sends it after sign-in. `handoff.json` in `userData`
+  records it (`done`, or `retry` up to three launches). An existing account (any database on the old origin)
+  starts in account mode instead of the first-launch choice.
+- **Builds:** both electron-builder configs ship `web/**` as `extraResources`; `pnpm shell` runs
+  `apps/web/scripts/build-shell.mjs --required` (which copies the export to `apps/desktop/web`, git-ignored), and
+  `pnpm release` and `scripts/publish.mjs` run it first.
+- **Tests:** `src/shell.test.ts` (paths, traversal, SPA fallback, CSP by mode, `/_files`, ranges, the local-mode
+  block, the addresses), `src/handoff.test.ts` (a fixture of the website's database on one fake-indexeddb factory
+  copied to another, through the kit's source text), and `apps/web/e2e/desktop-shell.spec.ts` (today's app writes
+  offline on the website's origin and quits; the bundled build then starts with every network request cancelled
+  (`e2e/fixtures/electronOffline.cjs`), hands the queue over, opens the note offline in account mode, and checks
+  `foleviShell`, the window buttons, the Quick Add window, link routing and the local-mode block).
+- **Not covered yet:** the old origin's database version must not be newer than the bundle's `DB_VERSION`, or the
+  bundled app can't open it (a website ahead of an older app build). Adding a task from Quick Add while offline
+  waits for the network, as on the website (`tasks.quickAdd` is a server call). `/_files` from the dev-server
+  origin would need CORS.

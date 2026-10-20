@@ -58,6 +58,8 @@ export function useAiPreview(ctrl: FlowController) {
     if (!p) return;
     setPreview(null);
     commit(p.next, { before: p.before });
+    // Saved at once: a result is one finished change, and the note may redraw the block right after.
+    ctrl.flush();
     if (p.highlight?.length) setSel({ nodes: p.highlight.filter((id) => p.next.nodes.some((n) => n.id === id)), edges: [] });
     ctrl.focusCanvas();
     p.onApply?.(p.next);
@@ -115,7 +117,18 @@ export function useAiPreview(ctrl: FlowController) {
   ) : null;
 
   const element = preview ? (
-    <div className="fc-bar fc-ai-preview" role="region" aria-label="Foli AI preview" onPointerDown={(e) => e.stopPropagation()}>
+    <div
+      className="fc-bar fc-ai-preview"
+      role="region"
+      aria-label="Foli AI preview"
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key !== "Escape") return;
+        e.preventDefault();
+        e.stopPropagation();
+        discard();
+      }}
+    >
       <AiIcon size={14} className="fc-ai-mark flex-none" />
       <span className="fc-ai-preview-text" role="status">
         <strong>{preview.title}</strong>

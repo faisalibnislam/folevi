@@ -271,6 +271,22 @@ test.describe("Flowchart Foli AI", () => {
     await expect(page.getByRole("application", { name: "Flowchart, 4 shapes" })).toBeVisible();
     // The list stays in the note above the chart.
     await expect(page.locator(".fb-editor > .fb-bulleted")).toHaveText(["Write the draft", "Get it approved", "Ship it"]);
+
+    // The note's Foli AI panel: "Flowchart" draws the whole note (read on the server) in a new block below the caret.
+    await page.locator(".fb-editor > .fb-bulleted").last().click();
+    await page.keyboard.press("End");
+    await expect(page.getByRole("application", { name: "Flowchart, 4 shapes" })).toBeVisible();
+    await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli AI" }).click();
+    await expect(page.getByRole("application", { name: "Flowchart, 4 shapes" })).toBeVisible();
+    await page.getByRole("button", { name: "Flowchart", exact: true }).click();
+    await expect(page.getByRole("application", { name: /Flowchart/ })).toHaveCount(2);
+    const fromNote = page.getByRole("region", { name: "Foli AI preview" });
+    await expect(fromNote).toContainText("Foli AI's flowchart from the note", { timeout: 20_000 });
+    const last = (await calls(page)).at(-1)!;
+    expect(last.task).toBe("fromText");
+    expect(last.args.documentId).toMatch(/^[0-9A-Z]{26}$/);
+    await fromNote.getByRole("button", { name: "Discard" }).click();
+    await expect(page.getByRole("application", { name: "Flowchart, 0 shapes" })).toBeVisible();
     await context.close();
   });
 });

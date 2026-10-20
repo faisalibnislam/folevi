@@ -92,6 +92,7 @@ export function CheckPanel({
     const connectors = labels.s.connectors.filter((x) => keep(`e:${x.id}`));
     if (!shapes.length && !connectors.length) return;
     commit(applyLabels(docRef.current, shapes, connectors));
+    ctrl.flush();
     setLabels(null);
     setNotice(`Changed ${shapes.length + connectors.length} label${shapes.length + connectors.length === 1 ? "" : "s"}. Undo with ⌘Z.`);
   };

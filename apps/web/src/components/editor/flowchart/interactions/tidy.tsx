@@ -69,6 +69,7 @@ export function useTidy(ctrl: FlowController, deps: { preview: AiPreview; ai: Fl
       animating.current = false;
       finishNow.current = null;
       commit(next, { before });
+      ctrl.flush();
       fitView(next);
       done?.(next);
     };

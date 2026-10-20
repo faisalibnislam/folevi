@@ -53,6 +53,8 @@
 .fb-editor .fb-divider.fb-divider[data-style="regular"] hr { height: 0; border-top: 1px solid var(--color-line-strong); }
 .fb-line-preview[data-style="strong"],
 .fb-editor .fb-divider.fb-divider[data-style="strong"] hr { height: 0; border-top: 3px solid color-mix(in oklab, var(--color-ink) 82%, transparent); border-radius: var(--radius-tiny); }
+/* In the Insert tile the strong line is drawn at the tiles' strength (about half ink), not the note's. */
+.fb-line-preview[data-style="strong"] { border-top-color: color-mix(in oklab, var(--color-ink) 40%, transparent); }
 .fb-editor .fb-divider.fb-divider.ProseMirror-selectednode[data-style] { background: var(--color-selection); border-radius: var(--radius-chip); }
 
 /* Two stacked page edges. */

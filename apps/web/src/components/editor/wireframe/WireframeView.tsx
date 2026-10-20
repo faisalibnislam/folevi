@@ -21,7 +21,8 @@
 // editor's undo reverts whole wireframe edits, and the canvas follows.
 import type { ReactNodeViewProps } from "@tiptap/react";
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { PanelsTopLeft } from "lucide-react";
+import { Copy, PanelsTopLeft, Pencil, Trash2 } from "lucide-react";
+import { ContextMenu, type MenuItem } from "@/components/ui/Menu";
 import {
   LIMITS,
   WIREFRAME_COMPONENT_LABEL,
@@ -204,6 +205,8 @@ function WireframeEditor(props: ReactNodeViewProps) {
   const viewRef = useRef(view);
   viewRef.current = view;
   const [sel, setSelState] = useState<Selection>(NO_SELECTION);
+  /** The right-click menu for a part, a screen or a link (the note's own menu doesn't open in the canvas). */
+  const [menu, setMenu] = useState<{ at: { x: number; y: number }; kind: "item" | "screen" | "link"; id: string; host?: HTMLElement } | null>(null);
   const selRef = useRef(sel);
   const setSel = useCallback((s: Selection) => {
     selRef.current = s;
@@ -842,6 +845,36 @@ function WireframeEditor(props: ReactNodeViewProps) {
     setSel({ screens: [], items: [res.id], links: [] });
   };
 
+  const onContextMenu = (e: React.MouseEvent<SVGSVGElement>) => {
+    // Never the note's block menu here (indent, move, insert below mean nothing inside a canvas).
+    e.preventDefault();
+    const target = targetUnder(e);
+    const itemEl = target.closest("[data-wf-item]");
+    const linkEl = itemEl ? null : target.closest("[data-wf-link]");
+    const screenEl = itemEl || linkEl ? null : target.closest("[data-wf-screen]");
+    const s = selRef.current;
+    // On the selection's own handles (they cover a small part): the selection.
+    const onHandles = !itemEl && !linkEl && Boolean(target.closest("[data-wf-handle],.wf-handle-hit"));
+    const kind = itemEl || (onHandles && s.items.length) ? "item" : linkEl ? "link" : screenEl || (onHandles && s.screens.length) ? "screen" : null;
+    const id = itemEl?.getAttribute("data-wf-item") ?? linkEl?.getAttribute("data-wf-link") ?? (onHandles ? (s.items[0] ?? s.screens[0]) : screenEl?.getAttribute("data-wf-screen"));
+    if (!kind || !id) return;
+    const picked = kind === "item" ? s.items : kind === "screen" ? s.screens : s.links;
+    if (!picked.includes(id)) setSel({ screens: kind === "screen" ? [id] : [], items: kind === "item" ? [id] : [], links: kind === "link" ? [id] : [] });
+    // In full canvas the card is on the top layer: the menu goes inside it to show above it.
+    const host = e.currentTarget.closest<HTMLElement>(".fb-canvas-card[data-full]") ?? undefined;
+    setMenu({ at: { x: e.clientX, y: e.clientY }, kind, id, host });
+  };
+
+  const menuItems = (m: NonNullable<typeof menu>): (MenuItem | "separator")[] => {
+    const remove: MenuItem = { label: "Delete", shortcut: "⌫", icon: <Trash2 size={14} />, danger: true, onSelect: removeSelection };
+    if (m.kind === "link") return [remove];
+    const many = m.kind === "item" ? selRef.current.items.length > 1 : selRef.current.screens.length > 1;
+    const edit: (MenuItem | "separator")[] = many
+      ? []
+      : [m.kind === "item" ? { label: "Edit text", shortcut: "Enter", icon: <Pencil size={14} />, onSelect: () => startEdit("item", m.id) } : { label: "Rename", shortcut: "Enter", icon: <Pencil size={14} />, onSelect: () => startEdit("screen", m.id) }];
+    return [...edit, { label: "Duplicate", shortcut: "⌘D", icon: <Copy size={14} />, onSelect: duplicateSelection }, "separator", remove];
+  };
+
   // ---------------------------------------------------------------------------------- the library
 
   /** A part (or screen) dragged out of the library: it follows the pointer and lands where it's let go. */
@@ -1145,6 +1178,8 @@ function WireframeEditor(props: ReactNodeViewProps) {
       <div
         ref={stageRef}
         className="wf-stage wf-scope"
+        // The canvas has its own right-click menu, not the note's.
+        data-native-menu=""
         data-panning={panning || undefined}
         data-space={spaceDown || undefined}
         onKeyUp={onKeyUp}
@@ -1170,6 +1205,7 @@ function WireframeEditor(props: ReactNodeViewProps) {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
           onDoubleClick={onDoubleClick}
+          onContextMenu={onContextMenu}
           onMouseDown={(e) => e.preventDefault()}
         >
           <defs>
@@ -1291,6 +1327,7 @@ function WireframeEditor(props: ReactNodeViewProps) {
             {"frame" in ghost.pick ? `${WIREFRAME_FRAME_LABEL[ghost.pick.frame]} screen` : WIREFRAME_COMPONENT_LABEL[ghost.pick.kind]}
           </div>
         ) : null}
+        {menu ? <ContextMenu at={menu.at} label={menu.kind === "item" ? "Part" : menu.kind === "screen" ? "Screen" : "Link"} host={menu.host} items={menuItems(menu)} onClose={() => setMenu(null)} /> : null}
         {tooLarge ? (
           <p className="wf-warning" role="alert">
             This wireframe is too large to save. Remove some screens or parts.

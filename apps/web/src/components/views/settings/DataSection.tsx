@@ -152,10 +152,13 @@ export function DataSection({ target }: { target: DataTarget }) {
     setExportNote(null);
     try {
       const r = await exportScope({ scope });
-      const a = document.createElement("a");
-      a.href = r.url;
-      a.download = r.filename;
-      a.click();
+      // In the Mac app's local mode the ZIP is already saved where the person chose (no url to download).
+      if (r.url) {
+        const a = document.createElement("a");
+        a.href = r.url;
+        a.download = r.filename;
+        a.click();
+      }
       const skipped = r.skippedAssets ?? [];
       if (skipped.length) {
         setExportNote(
@@ -166,7 +169,8 @@ export function DataSection({ target }: { target: DataTarget }) {
         toast.show(`Exported ${r.documents} documents and ${r.assets} attachments`, { tone: "success" });
       }
     } catch (e) {
-      toast.show(errorMessage(e), { tone: "error" });
+      // Cancelled in the save dialog: nothing to say.
+      if ((e as { data?: { code?: string } }).data?.code !== "cancelled") toast.show(errorMessage(e), { tone: "error" });
     } finally {
       setBusy(false);
     }

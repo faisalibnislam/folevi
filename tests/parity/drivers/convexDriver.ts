@@ -3,7 +3,8 @@
 // their Personal holds the seed content, as local onboarding seeds it too.
 import { getFunctionName, type FunctionReference } from "convex/server";
 import { person, setup, type T } from "../../convex/helpers";
-import type { ParityBackend } from "../types";
+import { api } from "../../../convex/_generated/api";
+import type { ParityBackend, UploadInput } from "../types";
 
 export const PARITY_EMAIL = "parity@example.com";
 export const PARITY_DEVICE = "parity-device-1";
@@ -56,6 +57,25 @@ export class ConvexDriver implements ParityBackend {
   /** Runs what's scheduled (repeatTask after a check-off) to the end, on the real clock. */
   async settle() {
     await this.t.finishAllScheduledFunctions(() => undefined);
+  }
+
+  async upload(input: UploadInput): Promise<string> {
+    const { intentId } = await this.mutation(api.files.generateUploadUrl, { scope: this.scope, documentId: input.documentId, filename: input.filename, size: input.bytes.length, mimeType: input.mimeType, kind: input.kind });
+    // The POST to the upload address: convex-test has no HTTP storage endpoint, so the bytes go in directly.
+    const storageId = await this.t.run(async (ctx) => await ctx.storage.store(new Blob([input.bytes as Uint8Array<ArrayBuffer>], { type: input.mimeType })));
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", input.bytes as Uint8Array<ArrayBuffer>));
+    const sha256 = [...digest].map((b) => b.toString(16).padStart(2, "0")).join("");
+    const result = await this.action(api.files.finalize, { intentId, storageId, sha256 });
+    return result.fileId;
+  }
+
+  /** A link the server signed (`<site>/files/<id>?exp&sig`), fetched from its HTTP routes. */
+  async download(url: string): Promise<Uint8Array> {
+    const at = url.indexOf("/files/");
+    if (at < 0) throw new Error(`not a file link: ${url}`);
+    const res = await this.t.fetch(url.slice(at));
+    if (!res.ok) throw new Error(`the file link answered ${res.status}`);
+    return new Uint8Array(await res.arrayBuffer());
   }
 
   async close() {}

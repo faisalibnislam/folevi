@@ -3,12 +3,13 @@
 // mutations run one at a time, see their own writes, and commit them together when they return (or not at
 // all when they throw), then announce the keys they changed. See docs/LOCAL_MODE_PLAN.md §2.2.
 import { getFunctionName, type FunctionReference } from "convex/server";
-import { ulid } from "@folevi/editor-schema";
 import { LOCAL_TRIGGERS, resolveLocal, type LocalActionCtx, type LocalJobCtx, type LocalMutationCtx, type LocalQueryCtx, type LocalReader, type LocalWriter } from "./registry";
-import { readKey, writeKeys, type LocalFile, type LocalStore, type LocalTable, type LocalTables, type StoreWrite } from "./store";
+import { readKey, writeKeys, type LocalStore, type LocalTable, type LocalTables, type StoreWrite } from "./store";
 import type { LocalExecutor, LocalHostApi, LocalSetup } from "./client";
 import { setupLibrary } from "./setup";
 import "./functions";
+import { commitUpload, prepareUpload } from "./functions/files";
+import { LocalSearchIndex } from "./search";
 
 export interface LocalBackendOptions {
   /** This device's id in the library (the sync engine sends its own with each push). */
@@ -106,8 +107,17 @@ export class LocalBackend implements LocalExecutor {
     for (const l of [...this.listeners]) l(keys);
   }
 
+  private search: LocalSearchIndex | null = null;
+
+  /** The library's search index (lib/local/search), loaded from the store's storage on first use. */
+  private searchIndex = async (): Promise<LocalSearchIndex> => {
+    this.search ??= new LocalSearchIndex({ storage: this.store.searchIndexStorage });
+    await this.search.ready();
+    return this.search;
+  };
+
   private queryCtx(db: LocalReader): LocalQueryCtx {
-    return { db, deviceId: this.deviceId, now: this.now };
+    return { db, deviceId: this.deviceId, now: this.now, searchIndex: this.searchIndex };
   }
 
   async query(name: string, args: Record<string, unknown>): Promise<{ value: unknown; deps: readonly string[] }> {
@@ -143,6 +153,7 @@ export class LocalBackend implements LocalExecutor {
       now: this.now,
       runQuery: async (ref, a) => (await this.query(getFunctionName(ref as FunctionReference<"query">), a as Record<string, unknown>)).value as never,
       runMutation: async (ref, a) => (await this.mutation(getFunctionName(ref as FunctionReference<"mutation">), a as Record<string, unknown>)) as never,
+      mutate: (fn) => this.serial(() => this.transact(fn)),
     };
     return detached(await (fn.handler as (ctx: LocalActionCtx, args: unknown) => unknown)(ctx, detached(args)));
   }
@@ -213,16 +224,11 @@ export class LocalBackend implements LocalExecutor {
     }
   }
 
-  private putFile(blob: Blob, meta: { name: string; mimeType: string; kind: string; documentId?: string | null }): Promise<{ fileId: string; mimeType: string }> {
-    return this.serial(async () => {
-      const bytes = new Uint8Array(await blob.arrayBuffer());
-      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
-      const sha256 = [...digest].map((b) => b.toString(16).padStart(2, "0")).join("");
-      const mimeType = meta.mimeType || blob.type || "application/octet-stream";
-      const file: LocalFile = { id: ulid(), documentId: meta.documentId ?? null, name: meta.name, mimeType, size: blob.size, sha256, kind: meta.kind, blob, createdAt: this.now() };
-      await this.transact((ctx) => ctx.db.put("files", file.id, file));
-      return { fileId: file.id, mimeType };
-    });
+  /** An attachment's bytes into the library, checked as the server's upload checks them (functions/files.ts). */
+  private async putFile(blob: Blob, meta: { name: string; mimeType: string; kind: string; documentId?: string | null }): Promise<{ fileId: string; mimeType: string }> {
+    this.assertOpen();
+    const prepared = await prepareUpload(blob, meta);
+    return await this.serial(() => this.transact((ctx) => commitUpload(ctx, prepared)));
   }
 
   private setup(input: LocalSetup): Promise<{ created: boolean }> {
@@ -241,6 +247,7 @@ export class LocalBackend implements LocalExecutor {
     this.closed = true;
     this.unsubscribeStore();
     this.listeners.clear();
+    await this.search?.close();
     await this.store.close?.();
   }
 }

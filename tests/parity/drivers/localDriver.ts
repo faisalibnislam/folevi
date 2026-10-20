@@ -20,7 +20,7 @@
 // built.
 import { getFunctionName, type FunctionReference } from "convex/server";
 import { api } from "../../../convex/_generated/api";
-import type { ParityBackend } from "../types";
+import type { ParityBackend, UploadInput } from "../types";
 
 interface TestLocalClient {
   query(ref: unknown, args: unknown): Promise<unknown>;
@@ -31,6 +31,8 @@ interface TestLocalClient {
   deviceId?: string;
   /** The LocalBackend (lib/local/testing.ts): `idle()` waits for its runAfter jobs. */
   backend?: { idle?(): Promise<void> };
+  /** Local-only operations (LocalClient.local): attachments go in with putFile. */
+  local?: { putFile(blob: Blob, meta: { name: string; mimeType: string; kind: string; documentId?: string | null }): Promise<{ fileId: string }> };
 }
 
 type Factory = (opts: { seed: boolean }) => Promise<TestLocalClient>;
@@ -127,6 +129,22 @@ export class LocalDriver implements ParityBackend {
 
   async settle() {
     await this.client.backend?.idle?.();
+  }
+
+  async upload(input: UploadInput): Promise<string> {
+    if (!this.client.local) throw new Error("this local client has no putFile");
+    const blob = new Blob([input.bytes as Uint8Array<ArrayBuffer>], { type: input.mimeType });
+    return (await this.client.local.putFile(blob, { name: input.filename, mimeType: input.mimeType, kind: input.kind, documentId: input.documentId ?? null })).fileId;
+  }
+
+  /** An object URL of bytes this page holds, or a data: URL (what local mode hands out without the app). */
+  async download(url: string): Promise<Uint8Array> {
+    if (url.startsWith("data:")) {
+      const base64 = url.slice(url.indexOf(",") + 1);
+      return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    }
+    const res = await fetch(url);
+    return new Uint8Array(await res.arrayBuffer());
   }
 
   async close() {

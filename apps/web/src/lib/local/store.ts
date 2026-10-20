@@ -49,6 +49,8 @@ export interface LocalDocument {
   links?: LocalLink[];
   /** When it was starred, as the library's count of stars (orders the Starred view like the server's stars). */
   starOrder?: number | null;
+  /** Counts changes to `searchText` (refreshDerived), so the search index sees a note's text change. */
+  textRev?: number;
 }
 
 /** A link from one of a note's blocks to another note (a page card, a page link, a synced block's content). */
@@ -160,6 +162,38 @@ export interface LocalFile {
   kind: string;
   blob: Blob;
   createdAt: number;
+  /** An image's size, read from its bytes when it was stored (files.urls gives it). */
+  width?: number | null;
+  height?: number | null;
+  /** A note theme image's colours (files.setPalette). */
+  palette?: Doc<"files">["palette"] | null;
+}
+
+/**
+ * Text found in one of a note's files or in a whiteboard's handwriting (convex fileTexts; docs/ARCHITECTURE.md,
+ * "Search in files"), kept with the note (the note file's `fileText`). Stored under the note (`partition` = note
+ * id), by the file's id, or `hw:<block id>` for handwriting.
+ */
+export interface LocalFileText {
+  id: string;
+  documentId: string;
+  blockId: string;
+  fileId: string | null;
+  source: "pdf" | "image" | "handwriting";
+  by: "pdf" | "device" | "foli";
+  text: string;
+  pageStarts: number[] | null;
+  /** What was read: the file's SHA-256, or the drawing's fingerprint. */
+  hash: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** Device-private storage for an index the backend keeps (the search index, lib/local/search). */
+export interface LocalIndexStorage {
+  /** What `save` stored last, or null. */
+  load(): Promise<unknown>;
+  save(snapshot: unknown): Promise<void>;
 }
 
 /**
@@ -257,6 +291,8 @@ export interface LocalTables {
   studyReviews: LocalStudyReview;
   /** Subscribed calendars, by id. */
   calendars: LocalCalendar;
+  /** Text found in notes' files and handwriting, under each note (`partition` = note id). */
+  fileTexts: LocalFileText;
   /** Collection definitions, by collection id (each lives in its host note). */
   collections: LocalCollection;
   /** Small values by key: "profile", "seq", "op:<opId>" (sync replays). */
@@ -283,6 +319,11 @@ export interface LocalStore {
    */
   subscribe(listener: (keys: readonly string[]) => void): () => void;
   close?(): Promise<void>;
+  /**
+   * Where the search index is kept between launches (device-private, outside the library). Without it the
+   * index is built again from the notes each launch.
+   */
+  searchIndexStorage?: LocalIndexStorage;
 }
 
 // ---- dependency keys ------------------------------------------------------------------------------------
@@ -296,6 +337,7 @@ export interface LocalStore {
 //   meta       get → meta:<key>      list → meta
 //   studyReviews  get or list of a note → study:<noteId>   list of every note's → study
 //   calendars  calendars
+//   fileTexts  get or list of a note → fileText:<noteId>   list of every note's → fileTexts
 //   versions   get or list of a note → history:<noteId>
 //   recents    get → recent:<id>     list → recents
 
@@ -318,6 +360,8 @@ export function readKey(table: LocalTable, id?: string, partition?: string): str
       return partition === undefined ? "study" : `study:${partition}`;
     case "calendars":
       return "calendars";
+    case "fileTexts":
+      return partition === undefined ? "fileTexts" : `fileText:${partition}`;
     case "versions":
       return `history:${partition ?? ""}`;
     case "recents":
@@ -344,6 +388,8 @@ export function writeKeys(w: Pick<StoreWrite, "table" | "id" | "partition">): st
       return [`study:${w.partition ?? ""}`, "study"];
     case "calendars":
       return ["calendars"];
+    case "fileTexts":
+      return [`fileText:${w.partition ?? ""}`, "fileTexts"];
     case "versions":
       return [`history:${w.partition ?? ""}`];
     case "recents":
@@ -367,6 +413,8 @@ export class MemoryStore implements LocalStore {
   private listeners = new Set<(keys: readonly string[]) => void>();
   /** Test hook: how many commits there were. */
   commits = 0;
+  /** Where the search index is kept (none: it's built again each time, like the rows). */
+  searchIndexStorage?: LocalIndexStorage;
 
   private partitionOf(table: LocalTable, partition: string | undefined, create: true): Map<string, unknown>;
   private partitionOf(table: LocalTable, partition: string | undefined, create: false): Map<string, unknown> | undefined;

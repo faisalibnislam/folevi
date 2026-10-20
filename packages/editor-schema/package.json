@@ -9,6 +9,7 @@
     "./ics": "./src/ics.ts",
     "./icsParse": "./src/icsParse.ts",
     "./publicUrl": "./src/publicUrl.ts",
+    "./fileBytes": "./src/fileBytes.ts",
     "./fixtures/*": "./fixtures/*",
     "./spec": "./spec/folevi-blocks.v1.json"
   },

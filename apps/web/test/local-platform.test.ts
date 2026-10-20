@@ -2,7 +2,7 @@
 // templates) and the profile picture, which the parity scenarios can't set up on both backends (the server
 // side needs an admin's rows and an upload through storage). tests/parity covers the rest of these modules.
 import { afterEach, describe, expect, test } from "vitest";
-import { BUILT_IN_TEMPLATES } from "@folevi/editor-schema";
+import { BUILT_IN_TEMPLATES, ulid } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { setBundledSnapshotForTests } from "@/lib/local/functions/themes";
 import { LOCAL_ENTITLEMENTS } from "@/lib/local/functions/users";
@@ -73,17 +73,21 @@ describe("local mode: the profile", () => {
 
   test("a picture added to the library becomes the profile picture; the previous one is deleted", async () => {
     const client = await createTestLocalClient();
-    const first = await client.local.putFile(new Blob(["one"], { type: "image/png" }), { name: "a.png", mimeType: "image/png", kind: "avatar" });
+    // putFile checks the bytes as the server's upload does (lib/local/functions/files.ts): a real 1x1 PNG.
+    const png = () => new Blob([Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="), (c) => c.charCodeAt(0))], { type: "image/png" });
+    const first = await client.local.putFile(png(), { name: "a.png", mimeType: "image/png", kind: "avatar" });
     await client.mutation(api.users.setAvatar, { fileId: first.fileId });
     const url = ((await client.query(api.users.me, {})) as { profile: { avatarUrl: string | null } }).profile.avatarUrl;
     // jsdom has no object URLs, and there's no shell here: the picture is set, it just has nowhere to show from.
     expect(url === null || typeof url === "string").toBe(true);
-    const second = await client.local.putFile(new Blob(["two"], { type: "image/png" }), { name: "b.png", mimeType: "image/png", kind: "avatar" });
+    const second = await client.local.putFile(png(), { name: "b.png", mimeType: "image/png", kind: "avatar" });
     await client.mutation(api.users.setAvatar, { fileId: second.fileId });
     expect(await client.store.get("files", first.fileId)).toBeUndefined();
     expect(await client.store.get("files", second.fileId)).toBeDefined();
     // An attachment of a note isn't a profile picture.
-    const attachment = await client.local.putFile(new Blob(["x"], { type: "image/png" }), { name: "c.png", mimeType: "image/png", kind: "image", documentId: "note" });
+    const note = ulid();
+    await client.mutation(api.sync.push, { scope: { kind: "personal" }, deviceId: "test-device-1", ops: [{ opId: ulid(), kind: "document.create", document: { id: note, parentDocumentId: null, folderId: null, kind: "document", title: "Note", icon: null } }] });
+    const attachment = await client.local.putFile(png(), { name: "c.png", mimeType: "image/png", kind: "image", documentId: note });
     await expect(client.mutation(api.users.setAvatar, { fileId: attachment.fileId })).rejects.toMatchObject({ data: { code: "not_found" } });
     await client.mutation(api.users.removeAvatar, {});
     expect(await client.store.get("files", second.fileId)).toBeUndefined();

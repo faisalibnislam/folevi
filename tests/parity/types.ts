@@ -41,7 +41,24 @@ export interface ParityBackend extends Backend {
    * jobs): a repeating to-do coming back after it's checked off, a calendar fetch.
    */
   settle(): Promise<void>;
+  /**
+   * Adds a file the way the app's uploader does, returning its file id: account mode through
+   * files.generateUploadUrl, the bytes into storage (standing in for the POST to the upload address) and
+   * files.finalize; local mode through client.local.putFile.
+   */
+  upload(input: UploadInput): Promise<string>;
+  /** The bytes behind a url a function returned (a files.urls link, an export's download). */
+  download(url: string): Promise<Uint8Array>;
   close(): Promise<void>;
+}
+
+export interface UploadInput {
+  bytes: Uint8Array;
+  filename: string;
+  mimeType: string;
+  kind: "image" | "file" | "audio" | "cover";
+  /** The note it's added to (a note's attachment), or none (a file of the place, like an import's images). */
+  documentId?: string;
 }
 
 export interface Scenario {

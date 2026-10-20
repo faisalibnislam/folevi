@@ -15,6 +15,7 @@ import type { FunctionArgs, FunctionReference, FunctionReturnType } from "convex
 import { getFunctionName } from "convex/server";
 import type { Capability } from "@/lib/backendMode";
 import { localUnsupported } from "./errors";
+import type { LocalSearchIndex } from "./search";
 import type { LocalTable, LocalTables, StoreWrite } from "./store";
 
 export type LocalKind = "query" | "mutation" | "action";
@@ -38,6 +39,11 @@ interface LocalBaseCtx {
 
 export interface LocalQueryCtx extends LocalBaseCtx {
   db: LocalReader;
+  /**
+   * The library's search index (lib/local/search), loaded on first use. It isn't a table: a search reads the
+   * rows it indexes through `db` (so it re-runs when they change) and brings the index up to date with them.
+   */
+  searchIndex(): Promise<LocalSearchIndex>;
 }
 
 export interface LocalMutationCtx extends LocalBaseCtx {
@@ -81,6 +87,11 @@ export function defineTrigger(name: string, trigger: LocalTrigger): void {
 export interface LocalActionCtx extends LocalBaseCtx {
   runQuery<Ref extends FunctionReference<"query">>(ref: Ref, args: FunctionArgs<Ref>): Promise<FunctionReturnType<Ref>>;
   runMutation<Ref extends FunctionReference<"mutation">>(ref: Ref, args: FunctionArgs<Ref>): Promise<FunctionReturnType<Ref>>;
+  /**
+   * Runs `fn` as a mutation of its own (in order with every other mutation): what the server's actions do
+   * through internal queries and mutations (files.finalize, exports.exportScope read and write this way).
+   */
+  mutate<T>(fn: (ctx: LocalMutationCtx) => T | Promise<T>): Promise<T>;
 }
 
 export type LocalCtxOf<K extends LocalKind> = K extends "query" ? LocalQueryCtx : K extends "mutation" ? LocalMutationCtx : LocalActionCtx;
@@ -169,12 +180,6 @@ export const LOCAL_HIDDEN: Readonly<Record<string, Capability>> = {
  * while the list shrinks; anything in none of the three lists is unclassified.
  */
 export const LOCAL_PLANNED: Readonly<Record<string, "L1" | "L2" | "L3" | "L4">> = {
-  "files:*": "L1",
-  "fileText:*": "L1",
-  "synced:*": "L1",
-  "imports:importText": "L1",
-  "exports:exportScope": "L1",
-  "search:*": "L1",
   "bookmarks:preview": "L3",
   "aiGraph:graph": "L3",
   "aiGraph:related": "L3",

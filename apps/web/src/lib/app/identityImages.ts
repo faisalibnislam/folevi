@@ -2,6 +2,7 @@
 
 import type { ConvexReactClient } from "convex/react";
 import { api } from "@/lib/convex/api";
+import { localApiOf } from "@/lib/convex/client";
 import { sha256Hex } from "@/lib/sync/uploads";
 
 /** Image types the server accepts for profile pictures and workspace logos (it re-checks the bytes). */
@@ -22,6 +23,9 @@ export function identityImageProblem(file: File): string | null {
  * `users.setAvatar` / `workspaces.setLogo`. The server decides where the file lives and who may upload it.
  */
 export async function uploadIdentityImage(client: ConvexReactClient, input: { kind: "avatar"; file: File } | { kind: "logo"; workspaceId: string; file: File }): Promise<string> {
+  // Local mode: the picture goes straight into the library (no upload address, no server).
+  const local = localApiOf(client);
+  if (local) return (await local.putFile(input.file, { name: input.file.name || "image", mimeType: input.file.type, kind: input.kind })).fileId;
   const { uploadUrl, intentId } = await client.mutation(api.files.generateUploadUrl, {
     // A profile picture always goes to your Personal; a logo to its team workspace.
     scope: input.kind === "logo" ? { kind: "workspace", workspaceId: input.workspaceId } : undefined,

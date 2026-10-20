@@ -5,9 +5,11 @@ import {
   DEFAULT_COVER,
   DEFAULT_DOCUMENT_STYLE,
   deriveDocumentText,
+  expandSyncedBlocks,
   newDocumentRank,
   randomNoteEmoji,
   sanitizeTitle,
+  syncedSourceIds,
   ulid,
   validateWireBlock,
   type WireBlock,
@@ -137,13 +139,34 @@ export async function withExtras(db: LocalReader, profileId: string, docs: Local
   return out;
 }
 
+/** Sources read at most per note (lib/synced.ts MAX_SOURCES_PER_NOTE). */
+const MAX_SOURCES_PER_NOTE = 40;
+
+/**
+ * A note's blocks with the synced content they show in place (lib/synced.ts withSyncedShared): the library is
+ * one place, so every source that isn't in Trash is shown. For the note's search text and preview.
+ */
+export async function withSyncedContent(db: LocalReader, doc: LocalDocument, blocks: WireBlock[]): Promise<WireBlock[]> {
+  const ids = syncedSourceIds(blocks).slice(0, MAX_SOURCES_PER_NOTE);
+  if (!ids.length || doc.kind === "synced") return blocks;
+  const content = new Map<string, WireBlock[] | null>();
+  for (const id of ids) {
+    const source = await db.get("documents", id);
+    content.set(id, source && source.kind === "synced" && !source.inTrash ? (await liveBlocks(db, source.id)).map(toWireBlock) : null);
+  }
+  return expandSyncedBlocks(blocks, (id) => content.get(id) ?? null);
+}
+
 /** Recomputes a note's search text, counts, excerpt and preview from its live blocks (lib/documents.ts refreshDerived). */
 export async function refreshDerived(db: LocalWriter, doc: LocalDocument): Promise<LocalDocument> {
   const own = (await liveBlocks(db, doc.id)).map(toWireBlock);
+  // A note reads with the synced content it shows in place (searching finds the note); counts stay its own.
   // Everyone reading the note sees these, so links in them carry the linked notes' current titles (sharedLabels).
-  const derived = deriveDocumentText(doc.title, await new ReaderLabels(db).blocks(own), { synced: doc.kind === "synced" });
+  const derived = deriveDocumentText(doc.title, await new ReaderLabels(db).blocks(await withSyncedContent(db, doc, own)), { synced: doc.kind === "synced" });
   return {
     ...doc,
+    // The search index (lib/local/search) sees the text change by this.
+    textRev: derived.searchText === doc.searchText ? doc.textRev : (doc.textRev ?? 0) + 1,
     searchText: derived.searchText,
     wordCount: derived.wordCount,
     charCount: derived.charCount,

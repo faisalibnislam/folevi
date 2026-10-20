@@ -6,6 +6,7 @@ import { ulid } from "@folevi/editor-schema";
 import { LocalBackend } from "./backend";
 import { startLocalHost, type LocalHost, type LocalHostOptions } from "./host";
 import { MemoryStore, type LocalStore } from "./store";
+import { startLocalReminders } from "./reminders";
 
 export interface LocalLibraryConfig {
   openStore: () => Promise<LocalStore>;
@@ -50,7 +51,12 @@ export function localDeviceId(): string {
 export function localLibrary(): LocalHost {
   host ??= startLocalHost({
     ...config.host,
-    openBackend: async () => new LocalBackend(await config.openStore(), { deviceId: localDeviceId() }),
+    openBackend: async () => {
+      const backend = new LocalBackend(await config.openStore(), { deviceId: localDeviceId() });
+      // Reminders become this device's notifications (WP14); the window hosting the library schedules them.
+      startLocalReminders(backend);
+      return backend;
+    },
   });
   return host;
 }

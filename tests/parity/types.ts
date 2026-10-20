@@ -36,6 +36,11 @@ export interface ParityBackend extends Backend {
   readonly known: Map<string, string>;
   /** Every function name ("documents:get") the scenario called, for coverage hints. */
   readonly calls: Set<string>;
+  /**
+   * Waits for the work a call leaves for afterwards (the server's scheduled functions, local mode's runAfter
+   * jobs): a repeating to-do coming back after it's checked off, a calendar fetch.
+   */
+  settle(): Promise<void>;
   close(): Promise<void>;
 }
 

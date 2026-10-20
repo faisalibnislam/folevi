@@ -53,5 +53,10 @@ export class ConvexDriver implements ParityBackend {
     return await (this.as.action as (r: R, a: unknown) => Promise<R["_returnType"]>)(ref, args);
   }
 
+  /** Runs what's scheduled (repeatTask after a check-off) to the end, on the real clock. */
+  async settle() {
+    await this.t.finishAllScheduledFunctions(() => undefined);
+  }
+
   async close() {}
 }

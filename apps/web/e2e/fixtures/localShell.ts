@@ -35,6 +35,8 @@ export interface FakeShellConfig {
   platform: "mac" | "ios";
   /** Bookmark previews `http.preview` answers with, by URL. */
   previews?: Record<string, string>;
+  /** Calendar text `http.calendar` answers with, by URL (any other link: an error, as an unreachable site). */
+  calendars?: Record<string, string>;
 }
 
 /** One entry in `window.__foleviTestShellLog`: a bridge call a test can assert on. */
@@ -424,6 +426,12 @@ function installFakeShell(cfg: FakeShellConfig) {
         record("http.preview", { url });
         if (/(^|\.)folevi\.com$/.test(new URL(url).hostname)) return null;
         return cfg.previews?.[url] ?? null;
+      },
+      async calendar(url, previous) {
+        record("http.calendar", { url, conditional: Boolean(previous?.etag || previous?.lastModified) });
+        const text = cfg.calendars?.[url];
+        if (text === undefined) return { kind: "error" as const, message: "Couldn't load this calendar: the address couldn't be reached." };
+        return { kind: "ok" as const, text, etag: null, lastModified: null };
       },
     },
   };

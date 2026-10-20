@@ -3,7 +3,7 @@
 // is what makes local queries reactive (queryCache.ts). Phase 2 puts a store over packages/local-store (note
 // files, the library index, history) behind this same interface; `MemoryStore` is the in-memory one used by
 // tests and by development builds until then.
-import type { WireBlock } from "@folevi/editor-schema";
+import type { StudySchedule, WireBlock } from "@folevi/editor-schema";
 import type { Doc } from "@/lib/convex/api";
 
 /** A note (a page, a template, synced content, a collection row) as the local backend keeps it. */
@@ -207,12 +207,56 @@ export interface LocalRecent {
   hiddenAt: number | null;
 }
 
+/**
+ * One study card's FSRS schedule (convex studyReviews; packages/editor-schema study.ts), kept with the card's
+ * note: stored under the note (`partition` = note id), by the card's block id. One person per library, so
+ * there's no profile on it. Made by the card's first review.
+ */
+export interface LocalStudyReview extends StudySchedule {
+  blockId: string;
+  documentId: string;
+  /** When it was first reviewed (new cards a day are capped by these). */
+  firstReview: number;
+}
+
+/**
+ * A subscribed calendar (an ICS link, convex externalCalendars), by id. Its events, as last read, are in meta
+ * under `calendarEvents:<id>` (a cache: fetched again from the link whenever it's stale).
+ */
+export interface LocalCalendar {
+  id: string;
+  name: string;
+  /** Named after the link's host until someone names it; the calendar's own name replaces that. */
+  autoName: boolean;
+  url: string;
+  color: "accent" | "moss" | "marigold" | "plum" | "coral" | "muted";
+  hidden: boolean;
+  createdAt: number;
+  lastViewedAt: number;
+  /** The events shown are this fetch's; `lastGeneration` is the newest fetch started. */
+  generation: number;
+  lastGeneration: number;
+  fetchStartedAt: number | null;
+  lastFetchedAt: number | null;
+  lastError: string | null;
+  etag: string | null;
+  lastModified: string | null;
+  contentHash: string | null;
+  parsedAt: number | null;
+  eventCount: number | null;
+  truncated: boolean;
+}
+
 export interface LocalTables {
   documents: LocalDocument;
   blocks: LocalBlock;
   folders: LocalFolder;
   tags: LocalTag;
   files: LocalFile;
+  /** Study cards' schedules, under each card's note (`partition` = note id), by block id. */
+  studyReviews: LocalStudyReview;
+  /** Subscribed calendars, by id. */
+  calendars: LocalCalendar;
   /** Collection definitions, by collection id (each lives in its host note). */
   collections: LocalCollection;
   /** Small values by key: "profile", "seq", "op:<opId>" (sync replays). */
@@ -250,6 +294,8 @@ export interface LocalStore {
 //   files      get → file:<id>       list → files
 //   collections get → collection:<id> list → collections
 //   meta       get → meta:<key>      list → meta
+//   studyReviews  get or list of a note → study:<noteId>   list of every note's → study
+//   calendars  calendars
 //   versions   get or list of a note → history:<noteId>
 //   recents    get → recent:<id>     list → recents
 
@@ -268,6 +314,10 @@ export function readKey(table: LocalTable, id?: string, partition?: string): str
       return id === undefined ? "collections" : `collection:${id}`;
     case "meta":
       return id === undefined ? "meta" : `meta:${id}`;
+    case "studyReviews":
+      return partition === undefined ? "study" : `study:${partition}`;
+    case "calendars":
+      return "calendars";
     case "versions":
       return `history:${partition ?? ""}`;
     case "recents":
@@ -290,6 +340,10 @@ export function writeKeys(w: Pick<StoreWrite, "table" | "id" | "partition">): st
       return [`collection:${w.id}`, "collections"];
     case "meta":
       return [`meta:${w.id}`, "meta"];
+    case "studyReviews":
+      return [`study:${w.partition ?? ""}`, "study"];
+    case "calendars":
+      return ["calendars"];
     case "versions":
       return [`history:${w.partition ?? ""}`];
     case "recents":

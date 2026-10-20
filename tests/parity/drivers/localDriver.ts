@@ -29,6 +29,8 @@ interface TestLocalClient {
   close?(): Promise<void>;
   profileId?: string;
   deviceId?: string;
+  /** The LocalBackend (lib/local/testing.ts): `idle()` waits for its runAfter jobs. */
+  backend?: { idle?(): Promise<void> };
 }
 
 type Factory = (opts: { seed: boolean }) => Promise<TestLocalClient>;
@@ -121,6 +123,10 @@ export class LocalDriver implements ParityBackend {
   async action<R extends FunctionReference<"action", "public">>(ref: R, args: R["_args"]): Promise<R["_returnType"]> {
     this.note(ref);
     return (await this.client.action(ref, args)) as R["_returnType"];
+  }
+
+  async settle() {
+    await this.client.backend?.idle?.();
   }
 
   async close() {

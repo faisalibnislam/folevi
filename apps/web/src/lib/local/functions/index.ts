@@ -11,3 +11,6 @@ import "./themes";
 import "./workspaces";
 import "./collections";
 import "./charts";
+import "./tasks";
+import "./study";
+import "./calendars";

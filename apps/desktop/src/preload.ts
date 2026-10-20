@@ -135,12 +135,22 @@ if (boot.shell) {
       getSettings: notYet("lock.getSettings", "the Touch ID lock, WP10"),
       setSettings: notYet("lock.setSettings", "the Touch ID lock, WP10"),
     },
+    /** Reminders as Mac notifications, kept by the app across restarts (reminders.ts). */
     notify: {
-      schedule: notYet("notify.schedule", "local reminders, WP14"),
-      cancel: notYet("notify.cancel", "local reminders, WP14"),
+      schedule: async (n: { id: string; at: number; title: string; body: string; path: string }) => {
+        const ok = (await ipcRenderer.invoke("shell:notify-schedule", n)) as boolean;
+        if (!ok) throw new Error("Folevi couldn't schedule that reminder.");
+      },
+      cancel: async (id: string) => {
+        await ipcRenderer.invoke("shell:notify-cancel", id);
+      },
     },
     files: { save: notYet("files.save", "saving files, a later package") },
-    http: { preview: notYet("http.preview", "bookmark previews, a later package") },
+    http: {
+      preview: notYet("http.preview", "bookmark previews, a later package"),
+      /** A subscribed calendar, fetched by the app from the calendar's own site (calendarFetch.ts). */
+      calendar: (url: string, previous?: { etag?: string | null; lastModified?: string | null }) => ipcRenderer.invoke("shell:http-calendar", url, previous ?? {}),
+    },
   };
   contextBridge.exposeInMainWorld("foleviShell", shellBridge);
 }

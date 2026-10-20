@@ -131,9 +131,31 @@ export interface ShellLock {
   setSettings(patch: Partial<Pick<ShellLockSettings, "lock" | "lockAfter">>): Promise<ShellLockSettings>;
 }
 
+/**
+ * OS notifications at a time (local reminders, WP14): the host keeps them across restarts. `schedule` with an
+ * id already scheduled replaces it; one whose time has passed shows at once, and each id and time shows once.
+ * Clicking one brings Folevi forward at `path`.
+ */
 export interface ShellNotify {
   schedule(n: { id: string; at: number; title: string; body: string; path: string }): Promise<void>;
   cancel(id: string): Promise<void>;
+}
+
+/** A subscribed calendar's text as the host fetched it (convex/lib/icsFetch.ts Download, same words). */
+export type CalendarDownload =
+  | { kind: "ok"; text: string; etag: string | null; lastModified: string | null }
+  | { kind: "notModified" }
+  | { kind: "error"; message: string };
+
+export interface ShellHttp {
+  /** Bookmark previews: the HTML of a page on a host that isn't Folevi's, or null. */
+  preview(url: string): Promise<string | null>;
+  /**
+   * A subscribed calendar (local mode): fetched by the host, straight from the calendar's own site and never
+   * through Folevi. Only public addresses that aren't Folevi's (https only on the Mac), every redirect checked again,
+   * 10 seconds and 5 MB at most, no cookies. Conditional when an ETag or Last-Modified from last time is given.
+   */
+  calendar(url: string, previous?: { etag?: string | null; lastModified?: string | null }): Promise<CalendarDownload>;
 }
 
 export interface FoleviShell {
@@ -149,8 +171,8 @@ export interface FoleviShell {
   lock: ShellLock;
   notify: ShellNotify;
   files: { save(name: string, bytes: Uint8Array): Promise<boolean> };
-  /** Bookmark previews: the HTML of a page on a host that isn't Folevi's, or null. */
-  http: { preview(url: string): Promise<string | null> };
+  /** Fetches from hosts that aren't Folevi's: bookmark previews, subscribed calendars. */
+  http: ShellHttp;
 }
 
 declare global {

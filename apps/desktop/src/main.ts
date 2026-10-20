@@ -49,6 +49,8 @@ import { cleanSettings, loadSettings, pageSettings, saveSettings, type DesktopSe
 import { APP_SCHEME, APP_SCHEME_PRIVILEGES, createAppHandler, HANDOFF_CSP, HANDOFF_PAGE, HANDOFF_PATH, isBlockedInLocalMode, localModeBlockPatterns, NO_LIBRARY_FILES, shellRoot } from "./protocol";
 import { handOver, handoffDue, indexedDbFolder, kitScript, parseHandoffState, type HandoffState, type KitCall } from "./handoff";
 import { restoreWindow, saveWindow } from "./windowState";
+import { Reminders, type Reminder } from "./reminders";
+import { downloadCalendar } from "./calendarFetch";
 import { imageBytes, oneAtATime, runHelper } from "./textRecognition";
 
 const PARTITION = "persist:folevi";
@@ -573,6 +575,24 @@ function applySettings(next: DesktopSettings) {
 
 const fromFolevi = (e: IpcMainEvent | IpcMainInvokeEvent) => isAppUrl(e.senderFrame?.url ?? "");
 
+/** Local mode's scheduled reminders (reminders.ts), kept across restarts. */
+let reminders: Reminders | null = null;
+/** Shown notifications, held until they're clicked or closed (a collected one forgets its click). */
+const showing = new Set<Notification>();
+
+/** A reminder going off: a Mac notification (if Settings allows them) that opens its to-do when clicked. */
+function showReminder(r: Reminder) {
+  if (!settings.notifications || !Notification.isSupported()) return;
+  const note = new Notification({ title: r.title, body: r.body });
+  showing.add(note);
+  note.on("click", () => {
+    showing.delete(note);
+    showMain(r.path);
+  });
+  note.on("close", () => showing.delete(note));
+  note.show();
+}
+
 /** folevi-text, the Vision helper (textRecognition.ts): in the app's Resources, or native-build/ when run from source. */
 const textHelper = () => (app.isPackaged ? join(process.resourcesPath, "folevi-text") : join(__dirname, "..", "native-build", "folevi-text"));
 const recognize = oneAtATime((bytes: Uint8Array, handwriting: boolean) => runHelper(textHelper(), bytes, { handwriting }));
@@ -626,6 +646,9 @@ function listen() {
     if (!bundled || !fromFolevi(e) || (mode !== "local" && mode !== "account")) return false;
     if (settings.mode === mode) return true;
     applySettings({ ...settings, mode });
+    // Reminders are this Mac's only in local mode; in account mode the server sends them.
+    if (mode === "local") reminders?.load();
+    else reminders?.clear();
     applyNetworkGuard();
     // The page's policy and the network rules follow the mode: every window opens again in it, once the page
     // has its answer.
@@ -634,6 +657,17 @@ function listen() {
     }, 50);
     return true;
   });
+  // Local mode's reminders and subscribed calendars (WP14, reminders.ts and calendarFetch.ts): only for the
+  // bundled interface in local mode (in account mode the server sends reminders and reads calendars).
+  const localShell = (e: IpcMainInvokeEvent) => bundled && settings.mode === "local" && fromFolevi(e);
+  ipcMain.handle("shell:notify-schedule", (e, n: unknown) => (localShell(e) ? (reminders?.schedule(n) ?? false) : false));
+  ipcMain.handle("shell:notify-cancel", (e, id: unknown) => {
+    if (localShell(e)) reminders?.cancel(id);
+    return null;
+  });
+  ipcMain.handle("shell:http-calendar", async (e, url: unknown, previous: unknown) =>
+    localShell(e) ? await downloadCalendar(url, previous, { serviceHost: SERVICE_URL.hostname }) : { kind: "error", message: "Couldn't load this calendar: the address couldn't be reached." },
+  );
   ipcMain.on("desktop:window-buttons", (e, spot: unknown) => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!fromFolevi(e) || !win || win === quickAdd || !spot || typeof spot !== "object") return;
@@ -732,6 +766,8 @@ app.whenReady().then(async () => {
     applyNetworkGuard();
   }
   listen();
+  reminders = new Reminders(join(app.getPath("userData"), "reminders.json"), { show: showReminder });
+  if (bundled && settings.mode === "local") reminders.load();
   buildMenu();
   shortcutError = registerShortcut();
   updateTray();

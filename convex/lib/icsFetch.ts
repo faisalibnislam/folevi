@@ -4,7 +4,8 @@
 // through DNS (looked up first, via lib/ai/web.ts), at most MAX_REDIRECTS redirects with every hop checked
 // again, 10 seconds in all and 5 MB at most. No cookies or credentials are sent. The address itself can
 // carry a secret (private calendar links do), so it's never logged.
-import { checkUrl, isPrivateAddress, lookup, readCapped } from "./ai/web";
+import { calendarUrlProblem, normalizeCalendarUrl } from "@folevi/editor-schema/publicUrl";
+import { isPrivateAddress, lookup, readCapped } from "./ai/web";
 
 export const MAX_CALENDAR_BYTES = 5 * 1024 * 1024;
 const TIMEOUT_MS = 10_000;
@@ -17,27 +18,8 @@ export type Download =
 
 const failed = (why: string): Download => ({ kind: "error", message: `Couldn't load this calendar: ${why}` });
 
-/** A pasted calendar link as the address to fetch: trimmed, webcal(s):// read as https://. */
-export function normalizeCalendarUrl(raw: string): string {
-  return raw.trim().replace(/^webcals?:\/\//i, "https://");
-}
-
-/** Why a link can't be subscribed to (checked before anything is fetched), or null when it can. */
-export function calendarUrlProblem(url: string): string | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return "Paste a calendar link that starts with https://, http:// or webcal://.";
-  }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "Paste a calendar link that starts with https://, http:// or webcal://.";
-  const checked = checkUrl(url);
-  if (checked.ok) return null;
-  if (/private or local/.test(checked.error)) return "Calendars on private or local networks can't be added.";
-  if (/user name or password/.test(checked.error)) return "Links with a user name or password in them can't be added.";
-  if (/ports/.test(checked.error)) return "Calendars on unusual ports can't be added.";
-  return "Paste a calendar link that starts with https://, http:// or webcal://.";
-}
+// Which links can be subscribed to is shared with the local backend (packages/editor-schema publicUrl.ts).
+export { calendarUrlProblem, normalizeCalendarUrl } from "@folevi/editor-schema/publicUrl";
 
 /** The host's addresses checked: none may be private. Null when fine, else why not. */
 async function hostProblem(url: URL): Promise<string | null> {

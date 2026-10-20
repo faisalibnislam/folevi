@@ -15,7 +15,7 @@ import type { FunctionArgs, FunctionReference, FunctionReturnType } from "convex
 import { getFunctionName } from "convex/server";
 import type { Capability } from "@/lib/backendMode";
 import { localUnsupported } from "./errors";
-import type { LocalTable, LocalTables } from "./store";
+import type { LocalTable, LocalTables, StoreWrite } from "./store";
 
 export type LocalKind = "query" | "mutation" | "action";
 
@@ -44,6 +44,38 @@ export interface LocalMutationCtx extends LocalBaseCtx {
   db: LocalWriter;
   /** The change counter for this mutation's writes: one number per mutation, like the server's per batch. */
   nextSeq(): Promise<number>;
+  /**
+   * Runs `job` once this mutation has committed (the server's `scheduler.runAfter(0, ...)`): a repeating
+   * to-do coming back, a calendar fetch. Nothing runs if the mutation throws. The job runs outside any
+   * mutation, so it may wait on the network, and writes through `ctx.mutate`.
+   */
+  runAfter(job: (ctx: LocalJobCtx) => Promise<void>): void;
+}
+
+/** What a job started by `runAfter` gets. */
+export interface LocalJobCtx extends LocalBaseCtx {
+  /** Runs `fn` as a mutation of its own (in order with every other mutation) and commits what it wrote. */
+  mutate<T>(fn: (ctx: LocalMutationCtx) => T | Promise<T>): Promise<T>;
+}
+
+/**
+ * Runs inside every mutation just before it commits, with the writes it's about to make (the server keeps
+ * derived rows in step this way, lib/documents.ts syncTaskProjection). `before` reads a row as it was before
+ * this mutation. A trigger may write more (they're committed with the rest) and start jobs (`runAfter`);
+ * what a trigger writes doesn't run the triggers again. `origin` is "disk" for changes read from the library
+ * (another device's edits): what that device already did in reply to them isn't done again here.
+ */
+export type LocalTrigger = (ctx: LocalMutationCtx, writes: readonly StoreWrite[], before: LocalReader["get"], origin: "local" | "disk") => Promise<void>;
+
+const triggers = new Map<string, LocalTrigger>();
+
+/** The triggers, by name (backend.ts runs them). */
+export const LOCAL_TRIGGERS: ReadonlyMap<string, LocalTrigger> = triggers;
+
+/** Registers a trigger (see LocalTrigger). Registering a name twice is a mistake and throws. */
+export function defineTrigger(name: string, trigger: LocalTrigger): void {
+  if (triggers.has(name)) throw new Error(`The trigger ${name} is already registered.`);
+  triggers.set(name, trigger);
 }
 
 export interface LocalActionCtx extends LocalBaseCtx {
@@ -143,9 +175,6 @@ export const LOCAL_PLANNED: Readonly<Record<string, "L1" | "L2" | "L3" | "L4">> 
   "imports:importText": "L1",
   "exports:exportScope": "L1",
   "search:*": "L1",
-  "tasks:*": "L2",
-  "study:*": "L2",
-  "externalCalendars:*": "L3",
   "bookmarks:preview": "L3",
   "aiGraph:graph": "L3",
   "aiGraph:related": "L3",

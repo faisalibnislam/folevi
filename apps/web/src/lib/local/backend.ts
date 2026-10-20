@@ -4,7 +4,7 @@
 // all when they throw), then announce the keys they changed. See docs/LOCAL_MODE_PLAN.md §2.2.
 import { getFunctionName, type FunctionReference } from "convex/server";
 import { ulid } from "@folevi/editor-schema";
-import { resolveLocal, type LocalActionCtx, type LocalMutationCtx, type LocalQueryCtx, type LocalReader, type LocalWriter } from "./registry";
+import { LOCAL_TRIGGERS, resolveLocal, type LocalActionCtx, type LocalJobCtx, type LocalMutationCtx, type LocalQueryCtx, type LocalReader, type LocalWriter } from "./registry";
 import { readKey, writeKeys, type LocalFile, type LocalStore, type LocalTable, type LocalTables, type StoreWrite } from "./store";
 import type { LocalExecutor, LocalHostApi, LocalSetup } from "./client";
 import { setupLibrary } from "./setup";
@@ -155,19 +155,62 @@ export class LocalBackend implements LocalExecutor {
     return p;
   }
 
-  /** Runs `fn` against a transaction and commits what it wrote; nothing is written if it throws. */
+  /**
+   * Runs `fn` against a transaction and commits what it wrote; nothing is written if it throws. The
+   * triggers (registry.ts defineTrigger) see the writes just before the commit; jobs started with
+   * `runAfter` start once it's done.
+   */
   private async transact<T>(fn: (ctx: LocalMutationCtx) => T | Promise<T>): Promise<T> {
     const tx = new Transaction(this.store);
-    const ctx: LocalMutationCtx = { db: tx, deviceId: this.deviceId, now: this.now, nextSeq: () => tx.nextSeq() };
+    const jobs: ((ctx: LocalJobCtx) => Promise<void>)[] = [];
+    const ctx: LocalMutationCtx = { db: tx, deviceId: this.deviceId, now: this.now, nextSeq: () => tx.nextSeq(), runAfter: (job) => void jobs.push(job) };
     const result = await fn(ctx);
-    const writes = tx.pending();
+    let writes = tx.pending();
+    if (writes.length && LOCAL_TRIGGERS.size) {
+      const before: LocalReader["get"] = (table, id, partition) => this.store.get(table, id, partition);
+      for (const trigger of LOCAL_TRIGGERS.values()) await trigger(ctx, writes, before, "local");
+      writes = tx.pending();
+    }
     if (writes.length) {
       await this.store.commit(writes);
       const keys = new Set<string>();
       for (const w of writes) for (const k of writeKeys(w)) keys.add(k);
       this.emit([...keys]);
     }
+    for (const job of jobs) this.startJob(job);
     return result;
+  }
+
+  private jobs = new Set<Promise<void>>();
+
+  /** A job from `runAfter`: after the current call returns, in its own time, its writes as mutations of their own. */
+  private startJob(job: (ctx: LocalJobCtx) => Promise<void>) {
+    const ctx: LocalJobCtx = {
+      deviceId: this.deviceId,
+      now: this.now,
+      mutate: (fn) => this.serial(() => this.transact(fn)),
+    };
+    const run = Promise.resolve()
+      .then(() => (this.closed ? undefined : job(ctx)))
+      .catch((e: unknown) => {
+        if (!this.closed) console.error("[local mode] A background job failed:", e);
+      })
+      .finally(() => this.jobs.delete(run));
+    this.jobs.add(run);
+  }
+
+  /** Whether close() has run (what keeps working beside the backend, like reminders, stops then). */
+  get isClosed(): boolean {
+    return this.closed;
+  }
+
+  /** Resolves once no job started by `runAfter` is running and no mutation is waiting (tests). */
+  async idle(): Promise<void> {
+    for (;;) {
+      await this.queue;
+      if (!this.jobs.size) return;
+      await Promise.all([...this.jobs]);
+    }
   }
 
   private putFile(blob: Blob, meta: { name: string; mimeType: string; kind: string; documentId?: string | null }): Promise<{ fileId: string; mimeType: string }> {
@@ -194,6 +237,7 @@ export class LocalBackend implements LocalExecutor {
     if (this.closed) return;
     // Let what's running finish first.
     await this.queue;
+    await Promise.all([...this.jobs]);
     this.closed = true;
     this.unsubscribeStore();
     this.listeners.clear();

@@ -39,7 +39,7 @@ test.describe("Insert panel", () => {
       "Lists and tasks": ["Bulleted list", "Numbered list", "To-do", "Toggle"],
       Visuals: ["Flowchart", "Mind map", "Chart", "Sticky notes", "Wireframe", "Whiteboard", "Mermaid diagram"],
       Media: ["Image", "Image from Unsplash", "File attachment", "Audio recording", "Bookmark", "Embed"],
-      "Data and more": ["Table", "Gallery", "Kanban", "Calendar", "Page", "Card", "Date", "Code block", "TeX formula", "Extra light", "Light", "Regular", "Strong", "Page break"],
+      "Data and more": ["Table", "Gallery", "Kanban", "Calendar", "Page", "Card", "Synced block", "Date", "Code block", "TeX formula", "Extra light", "Light", "Regular", "Strong", "Page break"],
     };
     const headings = panel.locator("h3");
     await expect(headings).toHaveText(Object.keys(tilesIn));

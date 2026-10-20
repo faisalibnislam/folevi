@@ -11,7 +11,7 @@ import type { ShapeContent } from "./content";
 import { connectorMenuItems, connectorSpot, type ConnectorSpot } from "./connectorMenu";
 
 /** `nodeItems`: more entries for a shape's menu from other modules (frames: "Frame selection"), above Delete. */
-export function useContextMenu(ctrl: FlowController, { actions, startEdit, nodeItems }: { actions: FlowActions; startEdit: TextEditing["startEdit"]; nodeItems?: () => MenuItem[] }) {
+export function useContextMenu(ctrl: FlowController, { actions, startEdit, contentItems, nodeItems }: { actions: FlowActions; startEdit: TextEditing["startEdit"]; contentItems?: ShapeContent["menuItems"]; nodeItems?: () => MenuItem[] }) {
   const { selRef, setSel, full, cardRef } = ctrl;
   const [menu, setMenu] = useState<{ at: { x: number; y: number }; kind: "node" | "edge"; id: string; spot?: ConnectorSpot } | null>(null);
 
@@ -42,6 +42,8 @@ export function useContextMenu(ctrl: FlowController, { actions, startEdit, nodeI
           ? [
               { label: "Edit text", shortcut: "Enter", icon: <Pencil size={14} />, onSelect: () => startEdit("node", menu.id) },
               { label: "Duplicate", shortcut: "⌘D", icon: <Copy size={14} />, onSelect: actions.duplicateSelection },
+              // What the shape holds: kind, icon, colours, image, note, page link, size (interactions/content.tsx).
+              ...(contentItems ? (["separator", ...contentItems(menu.id)] as const) : []),
               ...(nodeItems?.() ?? []),
               "separator",
               { label: "Delete", shortcut: "⌫", icon: <Trash2 size={14} />, danger: true, onSelect: actions.removeSelection },

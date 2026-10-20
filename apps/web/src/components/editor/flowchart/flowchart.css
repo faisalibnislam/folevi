@@ -390,3 +390,140 @@
 .fc-badge-dot { fill: var(--color-heading); }
 .fc-badge-glyph { fill: none; stroke: var(--color-canvas); stroke-width: 2.4px; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .fc-badge:hover .fc-badge-dot { fill: var(--fc-select); }
+
+/* Writing in a shape: the rich label editor and its formatting bar (interactions/shapeText.tsx). */
+.fc-rt-wrap { position: absolute; z-index: 2; }
+.fc-rt-wrap .fc-rt.fc-text-input {
+  position: relative; display: block; width: 100%; min-height: inherit; overflow: visible;
+  overflow-wrap: anywhere; text-align: inherit; font-size: inherit; line-height: inherit; cursor: text;
+}
+.fc-rt-wrap[data-ink] .fc-rt.fc-text-input { color: var(--fc-rt-ink); }
+.fc-rt p { margin: 0; }
+.fc-rt strong { font-weight: 650; }
+.fc-rt code { font-family: var(--font-mono); font-size: 0.92em; }
+.fc-rt a { color: var(--color-accent); text-decoration: underline; }
+.fc-rt p:not([data-list="ordered"]) { counter-reset: fc-ol; }
+.fc-rt p[data-list="ordered"] { counter-increment: fc-ol; }
+.fc-rt p[data-list="bullet"]::before { content: "•\00a0\00a0"; opacity: 0.7; }
+.fc-rt p[data-list="ordered"]::before { content: counter(fc-ol) ".\00a0"; opacity: 0.7; }
+.fc-rt-wrap[data-align="left"] .fc-rt p[data-list] { padding-left: 1.3em; text-indent: -1.3em; }
+.fc-rt-bar { z-index: 5; }
+.fc-rt-link { display: flex; align-items: center; gap: 2px; margin: 0; padding-left: 6px; }
+.fc-rt-link-icon { flex: none; color: var(--color-ink-muted); }
+.fc-input {
+  height: 30px; min-width: 0; padding: 0 8px; border: 0; outline: none; border-radius: var(--radius-control);
+  background: transparent; font: 13px/1.2 var(--font-sans); color: var(--color-ink);
+}
+.fc-input::placeholder { color: var(--color-ink-faint); }
+.fc-input:focus-visible { box-shadow: inset 0 0 0 1.5px var(--fc-select); }
+.fc-rt-link .fc-input { width: min(240px, 50vw); }
+
+/* ---------------------------------------------------------------- shape panels (chrome/FlowPanel.tsx and friends)
+   The shape library, icons, colours, page links and notes: glass panels inside the canvas, docked under
+   the main toolbar (the note popover sits beside its shape). Neutral chrome; only swatches carry colour. */
+.fc-panel {
+  position: absolute; z-index: 4; top: 54px; left: 10px; width: min(332px, calc(100% - 20px)); max-height: calc(100% - 64px);
+  display: flex; flex-direction: column; border-radius: var(--radius-panel); overflow: hidden; outline: none;
+  background: var(--glass-pop);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: var(--glass-edge), 0 12px 32px -12px rgb(0 0 0 / 0.28);
+  font: 13px/1.4 var(--font-sans); color: var(--color-ink);
+}
+.fc-panel-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 2px 14px; }
+.fc-panel-title { margin: 0; font: 600 13px/1.2 var(--font-sans); color: var(--color-heading); }
+.fc-panel-search {
+  flex: none; display: flex; align-items: center; gap: 4px; margin: 4px 10px 6px; padding-left: 10px;
+  border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-ink) 6%, transparent); color: var(--color-ink-muted);
+}
+.fc-panel-search .fc-input { flex: 1; padding-left: 4px; }
+.fc-panel-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 8px 8px; }
+.fc-panel-heading { margin: 10px 6px 4px; font: 600 11.5px/1.2 var(--font-sans); color: var(--color-ink-muted); }
+.fc-panel-empty, .fc-panel-note, .fc-panel-foot { margin: 6px; font-size: 12.5px; color: var(--color-ink-muted); }
+.fc-panel-foot { flex: none; margin: 0; padding: 7px 14px; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); font-size: 11.5px; color: var(--color-ink-faint); }
+.fc-panel-actions { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 4px; padding: 6px 8px 8px; }
+.fc-panel-count { margin-right: auto; padding-left: 6px; font-size: 11.5px; color: var(--color-ink-faint); }
+.fc-link-btn { padding: 0; color: var(--color-accent); text-decoration: underline; text-underline-offset: 2px; }
+.fc-btn-primary { background: var(--color-heading); color: var(--color-canvas); }
+.fc-btn-primary:hover:not(:disabled) { background: color-mix(in oklab, var(--color-heading) 85%, var(--color-canvas)); color: var(--color-canvas); }
+
+/* The library's tiles. */
+.fc-lib-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; }
+.fc-lib-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; min-height: 66px; padding: 7px 2px 6px;
+  border-radius: var(--radius-control); color: var(--color-ink-muted); cursor: pointer; touch-action: manipulation;
+}
+.fc-lib-tile:hover, .fc-lib-tile:focus-visible { background: var(--glass-hover); color: var(--color-heading); }
+.fc-lib-tile:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+.fc-lib-tile[aria-pressed="true"] { background: var(--glass-hover); color: var(--color-heading); box-shadow: inset 0 0 0 1.5px var(--fc-select); }
+.fc-lib-name { max-width: 100%; font-size: 10.5px; line-height: 1.2; text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.fc-thumb, .fc-shape-icon { flex: none; overflow: visible; }
+.fc-thumb-shape { fill: var(--color-surface-raised); stroke: currentColor; stroke-width: 1.2px; stroke-linejoin: round; }
+.fc-thumb-bare { fill: none; stroke: currentColor; stroke-width: 1.2px; stroke-dasharray: 2 2; }
+.fc-thumb-detail { fill: none; stroke: currentColor; stroke-width: 1px; stroke-linecap: round; }
+.fc-thumb-text { font: 600 11px var(--font-sans); fill: currentColor; }
+.fc-shape-icon .fc-thumb-shape { fill: none; stroke-width: 1.5px; }
+.fc-drag-ghost { position: absolute; z-index: 6; pointer-events: none; transform: translate(-50%, -50%); color: var(--fc-select); opacity: 0.55; }
+.fc-drag-ghost[data-over] { opacity: 0.95; }
+.fc-drag-ghost .fc-thumb-shape { fill: color-mix(in oklab, var(--fc-select) 10%, var(--color-surface)); stroke-width: 1.5px; }
+
+/* Segmented choices (where an icon goes, what to colour, outline width and style). */
+.fc-seg { flex: none; display: flex; gap: 2px; margin: 2px 10px 6px; padding: 2px; border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-ink) 6%, transparent); }
+.fc-panel-scroll .fc-seg { margin: 2px 0 4px; }
+.fc-seg-btn { flex: 1; display: grid; place-items: center; min-height: 28px; padding: 0 6px; border-radius: var(--radius-chip); font: 550 12px/1.2 var(--font-sans); color: var(--color-ink-muted); }
+.fc-seg-btn:hover { color: var(--color-heading); }
+.fc-seg-btn[aria-checked="true"] { background: var(--color-surface-raised); color: var(--color-heading); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), inset 0 0 0 1px var(--glass-border); }
+.fc-seg-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
+
+/* Icons. */
+.fc-icon-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; }
+.fc-icon-tile { display: grid; place-items: center; aspect-ratio: 1; min-height: 40px; border-radius: var(--radius-control); color: var(--color-ink-muted); }
+.fc-icon-tile:hover, .fc-icon-tile:focus-visible { background: var(--glass-hover); color: var(--color-heading); }
+.fc-icon-tile:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+.fc-icon-tile[aria-pressed="true"] { color: var(--color-heading); box-shadow: inset 0 0 0 1.5px var(--fc-select); }
+
+/* Colours. */
+.fc-color-body { padding-top: 2px; }
+.fc-swatch-grid { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 4px 4px; }
+.fc-swatch-grid .fc-swatch { width: 26px; height: 26px; margin: 0; }
+.fc-swatch-custom { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 18%, transparent); }
+.fc-swatch-none, .fc-text-swatch { display: grid; place-items: center; background: var(--color-surface-raised); color: var(--color-ink-muted); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 18%, transparent); }
+.fc-text-swatch span { font: 650 14px/1 var(--font-sans); }
+.fc-text-swatch span:not([class]) { color: var(--color-ink); }
+.fc-hex { display: flex; align-items: center; gap: 6px; margin: 6px 4px 2px; padding-left: 8px; border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-ink) 6%, transparent); }
+.fc-hex-chip { flex: none; width: 16px; height: 16px; border-radius: var(--radius-tiny); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 22%, transparent); }
+.fc-hex .fc-input { flex: 1; font-family: var(--font-mono); font-size: 12.5px; }
+.fc-hex .fc-input[aria-invalid] { color: var(--color-danger, #b42318); }
+
+/* Page links. */
+.fc-link-current { flex: none; display: flex; align-items: center; gap: 6px; margin: 2px 10px 4px; padding: 4px 4px 4px 10px; border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-ink) 5%, transparent); color: var(--color-ink-muted); }
+.fc-link-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 550; color: var(--color-heading); }
+.fc-page-list { margin: 0; padding: 0; list-style: none; }
+.fc-page-item { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 0 8px; border-radius: var(--radius-control); text-align: left; color: var(--color-ink); }
+.fc-page-item span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-page-item svg { flex: none; color: var(--color-ink-muted); }
+.fc-page-item:hover, .fc-page-item:focus-visible, .fc-page-item[aria-pressed="true"] { background: var(--glass-hover); color: var(--color-heading); }
+.fc-page-item:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+
+/* A shape's note: beside its shape. */
+.fc-panel.fc-panel-note-pop { max-height: min(340px, calc(100% - 64px)); }
+.fc-note-input {
+  display: block; width: calc(100% - 20px); margin: 4px 10px 0; padding: 8px 10px; resize: vertical; min-height: 96px; max-height: 220px;
+  border: 0; outline: none; border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-ink) 5%, transparent);
+  font: 13.5px/1.5 var(--font-sans); color: var(--color-ink);
+}
+.fc-note-input:focus-visible { box-shadow: inset 0 0 0 1.5px var(--fc-select); }
+.fc-note-input::placeholder { color: var(--color-ink-faint); }
+.fc-note-text { margin: 2px 0 0; padding: 4px 14px 8px; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.5; }
+
+.fc-status {
+  position: absolute; left: 50%; bottom: 12px; z-index: 4; margin: 0; padding: 6px 12px; transform: translateX(-50%);
+  border-radius: var(--radius-control); background: var(--glass-pop); box-shadow: var(--glass-edge); font: 500 12.5px/1.3 var(--font-sans); color: var(--color-ink-muted);
+}
+
+/* Fingers: 44 pt targets in the panels and the shape bar; 16 px fields so the iPhone doesn't zoom. */
+@media (pointer: coarse) {
+  .fc-panel .fc-btn, .fc-rt-bar .fc-btn { min-width: 44px; height: 44px; }
+  .fc-lib-tile, .fc-icon-tile, .fc-page-item, .fc-seg-btn { min-height: 44px; }
+  .fc-swatch-grid .fc-swatch { width: 36px; height: 36px; }
+  .fc-panel .fc-input, .fc-note-input, .fc-rt-link .fc-input { font-size: 16px; height: 40px; }
+}

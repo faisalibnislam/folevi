@@ -11,7 +11,7 @@ import { MAX_K, MIN_K, clamp } from "./useViewport";
 import type { CanvasHit, FlowController, Interaction } from "./types";
 
 /** Keys pressed in these (the toolbars and panels) belong to them, not to the canvas. */
-const CHROME = ".fc-bar, .fc-ai";
+const CHROME = ".fc-bar, .fc-ai, .fc-panel";
 
 export function useInteractions(ctrl: FlowController, interactions: Interaction[]) {
   const { dragRef, toWorld, svgRef, viewRef, setView } = ctrl;

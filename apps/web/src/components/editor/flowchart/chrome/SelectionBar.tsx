@@ -6,6 +6,8 @@ import { setColor, setShape, boxOf } from "../ops";
 import { NodeBar } from "../FlowchartChrome";
 import { ConnectorBar, connectorBarSpot } from "./ConnectorBar";
 import { AlignMenu } from "./AlignMenu";
+import { ContentTools } from "./ContentTools";
+import type { ShapeContent } from "../interactions/content";
 import { clamp } from "../controller/useViewport";
 import type { FlowController } from "../controller/types";
 import type { FlowActions } from "../controller/useFlowActions";
@@ -14,7 +16,7 @@ import type { TextEditing } from "../interactions/textEditing";
 const same = <T,>(list: T[]): T | null => (list.length && list.every((x) => x === list[0]) ? list[0]! : null);
 
 /** `clearance`: extra room between a single selected shape and the bar, for its quick add arrows. */
-export function SelectionBar({ ctrl, actions, clearance = 0 }: { ctrl: FlowController; actions: FlowActions; startEdit?: TextEditing["startEdit"]; clearance?: number }) {
+export function SelectionBar({ ctrl, actions, clearance = 0, content }: { ctrl: FlowController; actions: FlowActions; startEdit?: TextEditing["startEdit"]; clearance?: number; content?: ShapeContent }) {
   const { selNodes, selEdges, routed, view, width, height, editing, sel, docRef, commit } = ctrl;
   const k = view.k;
   const sBox = boxOf([
@@ -28,7 +30,10 @@ export function SelectionBar({ ctrl, actions, clearance = 0 }: { ctrl: FlowContr
   if (!showBar || !sBox) return null;
   const top = sBox.y * k + view.y;
   const bottom = (sBox.y + sBox.h) * k + view.y;
-  const cx = clamp((sBox.x + sBox.w / 2) * k + view.x, 150, Math.max(150, width - 150));
+  // A narrow canvas gets the compact shape bar; the bar stays clear of the edges either way.
+  const compact = width < 760;
+  const margin = content && !compact ? 260 : 150;
+  const cx = clamp((sBox.x + sBox.w / 2) * k + view.x, margin, Math.max(margin, width - margin));
   const above = top - 52 - clearance > 56;
   const style: React.CSSProperties = { left: cx, top: above ? top - 52 - clearance : Math.min(height - 48, bottom + 12 + clearance) };
 
@@ -40,6 +45,10 @@ export function SelectionBar({ ctrl, actions, clearance = 0 }: { ctrl: FlowContr
         shape={same(selNodes.map((n) => n.shape))}
         onColor={(c) => commit(setColor(docRef.current, sel.nodes, c))}
         onShape={(s) => commit(setShape(docRef.current, sel.nodes, s))}
+        onShapeLibrary={content?.bar.onShapeLibrary}
+        libraryOpen={content?.bar.libraryOpen}
+        compact={content ? compact : undefined}
+        content={content ? <ContentTools bar={content.bar} compact={compact} /> : undefined}
         onDuplicate={actions.duplicateSelection}
         onDelete={actions.removeSelection}
         align={selNodes.length > 1 ? <AlignMenu ctrl={ctrl} /> : undefined}

@@ -3,22 +3,24 @@
 // Writing in a shape or on a connector: a text box placed over the item (the item hides its own text
 // meanwhile), the whole edit recorded as one undo step when it ends. Any press on the canvas ends it.
 import { useCallback, useEffect } from "react";
-import { FLOWCHART_FONT_SIZE, FLOWCHART_LIMITS, FLOWCHART_LINE_HEIGHT, fitNodeToText, nodeLines, textWidthFor } from "../schema";
+import { FLOWCHART_LIMITS, fitNodeToText, type FlowParagraph, type FlowTextAlign } from "../schema";
 import { updateEdges, updateNodes } from "../ops";
 import { finishLabelEdit, setLabelText } from "../connectors";
 import { EdgeLabelInput } from "./edgeLabels";
 import type { FlowController, Interaction } from "../controller/types";
+import { setAlign, withParagraphs } from "../contentOps";
+import { ShapeTextEditor } from "./shapeText";
 
 export type TextEditing = ReturnType<typeof useTextEditing>;
 
-export function useTextEditing(ctrl: FlowController) {
+export function useTextEditing(ctrl: FlowController, { onImage }: { /** An image pasted or dropped while writing in a shape. */ onImage?: (nodeId: string, file: File) => void } = {}) {
   const { docRef, setLive, commit, undo, redo, editing, editingRef, setEditing, setSel, wrapRef, view, byId, routed } = ctrl;
 
   /** Starts writing in a shape or on a connector; `replaceWith` replaces a shape's text (typing on it). */
   const startEdit = useCallback(
     (kind: "node" | "edge", id: string, replaceWith?: string) => {
       const before = docRef.current;
-      if (replaceWith !== undefined && kind === "node") setLive(updateNodes(before, [id], (n) => fitNodeToText({ ...n, text: replaceWith })));
+      if (replaceWith !== undefined && kind === "node") setLive(updateNodes(before, [id], (n) => fitNodeToText({ ...n, text: replaceWith, rich: undefined })));
       setEditing({ kind, id, before, typed: replaceWith !== undefined });
       setSel(kind === "node" ? { nodes: [id], edges: [] } : { nodes: [], edges: [id] });
     },
@@ -59,7 +61,16 @@ export function useTextEditing(ctrl: FlowController) {
   // ⌘Z / ⇧⌘Z while typing: the text boxes are controlled, so the browser's own undo would reach the
   // note's contenteditable instead (and could undo the whole block). Finish the edit as one step and
   // use the chart's history instead.
-  const historyKey = (e: React.KeyboardEvent) => {
+  const onEditLabel = (paragraphs: FlowParagraph[]) => {
+    const ed = editingRef.current;
+    if (ed?.kind === "node") setLive(updateNodes(docRef.current, [ed.id], (n) => fitNodeToText(withParagraphs(n, paragraphs))));
+  };
+  const onEditAlign = (align: FlowTextAlign) => {
+    const ed = editingRef.current;
+    if (ed?.kind === "node") setLive(updateNodes(docRef.current, [ed.id], (n) => setAlign(n, align)));
+  };
+
+  const historyKey = (e: React.KeyboardEvent | KeyboardEvent) => {
     const key = e.key.toLowerCase();
     if (!(e.metaKey || e.ctrlKey) || (key !== "z" && key !== "y")) return false;
     e.preventDefault();
@@ -71,36 +82,17 @@ export function useTextEditing(ctrl: FlowController) {
 
   let input: React.ReactNode = null;
   if (editNode) {
-    const k = view.k;
-    const lines = Math.max(1, nodeLines(editNode).length);
-    const tw = textWidthFor(editNode) * k;
-    const th = lines * FLOWCHART_LINE_HEIGHT * k;
-    const cx = (editNode.x + editNode.w / 2) * k + view.x;
-    const cy = (editNode.y + editNode.h / 2) * k + view.y;
     input = (
-      <textarea
-        className="fc-text-input"
-        data-color={editNode.color}
-        data-shape={editNode.shape}
-        autoFocus
-        value={editNode.text}
-        aria-label={`Text for this ${editNode.shape === "text" ? "text" : "shape"}`}
-        style={{ left: cx - tw / 2, top: cy - th / 2, width: tw, height: th + 2, fontSize: FLOWCHART_FONT_SIZE * k, lineHeight: `${FLOWCHART_LINE_HEIGHT * k}px` }}
-        onChange={(e) => onEditText(e.target.value)}
-        onFocus={(e) => {
-          const el = e.currentTarget;
-          if (editing?.typed) el.setSelectionRange(el.value.length, el.value.length);
-          else el.select();
-        }}
-        onBlur={() => finishEdit(false)}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (historyKey(e)) return;
-          if ((e.key === "Enter" && !e.shiftKey) || e.key === "Escape") {
-            e.preventDefault();
-            finishEdit();
-          }
-        }}
+      <ShapeTextEditor
+        key={editNode.id}
+        node={editNode}
+        view={view}
+        typed={editing?.typed}
+        onChange={onEditLabel}
+        onAlign={onEditAlign}
+        onFinish={finishEdit}
+        onHistoryKey={historyKey}
+        onImage={onImage ? (file) => onImage(editNode.id, file) : undefined}
       />
     );
   } else if (editEdge) {

@@ -69,6 +69,8 @@ import { useEdgeLabels } from "./interactions/edgeLabels";
 import { useTextEditing } from "./interactions/textEditing";
 import { doubleClickInteraction } from "./interactions/doubleClick";
 import { useContextMenu } from "./interactions/contextMenu";
+import { useShapeContent } from "./interactions/content";
+import { LibraryButton } from "./chrome/ContentTools";
 import { keyboardInteraction } from "./interactions/keyboard";
 import { useContainers } from "./interactions/containers";
 import { ContainerLayer } from "./layers/Containers";
@@ -100,8 +102,10 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   const flowchartAi = useAiFeature("flowchart");
   const aiOn = useAiEnabled() && flowchartAi;
 
-  const text = useTextEditing(ctrl);
   const actions = useFlowActions(ctrl);
+  // What shapes hold: the shape library, icons, colours, images, notes, page links (interactions/content.tsx).
+  const content = useShapeContent(ctrl, { actions });
+  const text = useTextEditing(ctrl, { onImage: content.onImageWhileWriting });
   const pan = usePan(ctrl);
   const hover = useHover(ctrl);
   const connect = useConnect(ctrl, { hover: hover.hover });
@@ -109,7 +113,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   const move = useMove(ctrl);
   const select = useSelect(ctrl);
   const boxes = useContainers(ctrl);
-  const menu = useContextMenu(ctrl, { actions, startEdit: text.startEdit, nodeItems: boxes.nodeMenuItems });
+  const menu = useContextMenu(ctrl, { actions, startEdit: text.startEdit, contentItems: content.menuItems, nodeItems: boxes.nodeMenuItems });
   const quick = useQuickAdd(ctrl, { hover: hover.hover });
   const flow = useKeyboardFlow(ctrl, { actions, finishEdit: text.finishEdit });
   const events = useInteractions(ctrl, [
@@ -119,6 +123,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
     connect.interaction, // side handles and connector ends
     resize.interaction,
     boxes.interaction, // frames and swimlanes: titles, borders, their handles and keys
+    content.interaction, // the note and page-link badges on shapes
     move.interaction, // shapes
     select.edges, // connectors
     hover.interaction,
@@ -152,6 +157,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   const bends = useBends(ctrl, { hidden: connect.drawing });
   const labels = useEdgeLabels(ctrl);
           {...events.canvas}
+          {...content.canvasProps}
         >
           <p id={`${uid}-help`} className="sr-only">
             Tab moves to the shapes; on a selected shape, Tab adds the next step and Shift Tab a branch beside it. Arrow keys move between shapes, Option with arrow keys moves the shape. Enter or typing edits the selected shape, Delete removes it, Command D duplicates. Command Z undoes. Escape steps back to the note.
@@ -160,7 +166,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
             <DotGrid id={`${uid}-dots`} view={view} />
             <g transform={`translate(${view.x} ${view.y}) scale(${k})`}>
               <ContainerLayer fc={doc} selected={boxes.selected} renaming={boxes.renaming} onFocusBox={boxes.onFocusBox} />
-              <SceneLayers nodes={doc.nodes} routed={ctrl.routed} selNodes={ctrl.sel.nodes} selEdges={ctrl.sel.edges} editing={editing} onFocusNode={ctrl.onFocusNode} />
+              <SceneLayers nodes={doc.nodes} routed={ctrl.routed} selNodes={ctrl.sel.nodes} selEdges={ctrl.sel.edges} editing={editing} onFocusNode={ctrl.onFocusNode} imageUrls={content.imageUrls} uid={uid} />
               <g aria-hidden className="fc-overlay">
                 <SelectionBoxes nodes={ctrl.selNodes} k={k} />
                 {boxes.overlay}
@@ -172,10 +178,13 @@ function FlowchartEditor(props: ReactNodeViewProps) {
     bends.interaction, // connector lines and bend points: drag to bend, double-click a point to remove it
                 {quick.overlay}
                 {select.overlay}
+                {content.overlay}
               </g>
             </g>
           </svg>
           {text.input}
+          {content.panel}
+          {content.status}
           {boxes.element}
           {quick.element}
           <p className="sr-only fc-announce" aria-live="polite" aria-atomic="true">
@@ -193,6 +202,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
           ) : null}
           <MainToolbar
             onAdd={(s) => actions.add(s)}
+            library={<LibraryButton open={content.libraryOpen} onOpen={content.openLibrary} />}
             onTidy={actions.tidy}
             onUndo={ctrl.undo}
             onRedo={ctrl.redo}
@@ -205,7 +215,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
             exportMenu={<BlockExportMenu type="flowchart" attrs={() => ({ data: serializeFlowchart(docRef.current) })} empty={!nodeCount} triggerClassName="fc-btn" align="start" />}
           />
           <ZoomBar zoom={k} onZoomIn={() => ctrl.zoomBy(1.2)} onZoomOut={() => ctrl.zoomBy(1 / 1.2)} onFit={() => ctrl.fitView()} full={full} onFull={() => ctrl.toggleFull()} />
-          <SelectionBar ctrl={ctrl} actions={actions} startEdit={text.startEdit} clearance={quick.clearance} />
+          <SelectionBar ctrl={ctrl} actions={actions} startEdit={text.startEdit} clearance={quick.clearance} content={content} />
           {ctrl.aiOpen ? <FlowchartAi hasChart={nodeCount > 0} current={() => serializeFlowchart(docRef.current)} onApply={actions.applyDraft} onClose={() => ctrl.setAiOpen(false)} /> : null}
           {ctrl.tooLarge ? (
             <p className="fc-warning" role="alert">

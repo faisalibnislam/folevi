@@ -14,9 +14,12 @@ import {
 } from "./schema";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { MenuButton } from "@/components/ui/Menu";
+import { ShapeThumb } from "./chrome/ShapeLibrary";
 
 /** A small outline of each shape for buttons and menus. */
 export function ShapeIcon({ shape, size = 18 }: { shape: FlowShape; size?: number }) {
+  // The library's other shapes are drawn from their own geometry.
+  if (!(FLOWCHART_QUICK_SHAPES as readonly string[]).includes(shape)) return <ShapeThumb shape={shape} width={size} height={size} className="fc-shape-icon" />;
   const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinejoin: "round" as const };
   return (
     <svg width={size} height={size} viewBox="0 0 20 20" aria-hidden>
@@ -33,6 +36,7 @@ export function ShapeIcon({ shape, size = 18 }: { shape: FlowShape; size?: numbe
 
 export function MainToolbar({
   onAdd,
+  library,
   onTidy,
   onUndo,
   onRedo,
@@ -45,6 +49,8 @@ export function MainToolbar({
   containers,
 }: {
   onAdd: (shape: FlowShape) => void;
+  /** The shape library button (interactions/content.tsx), after the quick shapes. */
+  library?: React.ReactNode;
   onTidy: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -66,6 +72,7 @@ export function MainToolbar({
             <ShapeIcon shape={s} />
           </button>
         ))}
+        {library}
       </span>
       {containers ? (
         <>
@@ -137,6 +144,10 @@ export function NodeBar({
   shape,
   onColor,
   onShape,
+  onShapeLibrary,
+  libraryOpen,
+  content,
+  compact,
   onDuplicate,
   onDelete,
   style,
@@ -146,6 +157,13 @@ export function NodeBar({
   shape: FlowShape | null;
   onColor: (c: FlowColor) => void;
   onShape: (s: FlowShape) => void;
+  /** Opens the shape library to change the kind (instead of the quick shape menu). */
+  onShapeLibrary?: () => void;
+  libraryOpen?: boolean;
+  /** Colours, icon, image, note, page link, text size (chrome/ContentTools.tsx). */
+  content?: React.ReactNode;
+  /** A narrow canvas: the colour swatches give way (Colours has them all). */
+  compact?: boolean;
   onDuplicate: () => void;
   onDelete: () => void;
   style: React.CSSProperties;
@@ -154,15 +172,31 @@ export function NodeBar({
 }) {
   return (
     <div className="fc-bar fc-bar-float" role="toolbar" aria-label="Selected shapes" style={style} onPointerDown={(e) => e.stopPropagation()}>
-      <MenuButton
-        label="Change shape"
-        align="start"
-        triggerClassName="fc-btn fc-btn-menu"
-        trigger={<ShapeIcon shape={shape ?? "process"} />}
-        items={FLOWCHART_QUICK_SHAPES.map((s) => ({ label: FLOWCHART_SHAPE_LABEL[s], icon: <ShapeIcon shape={s} size={16} />, checked: shape === s, onSelect: () => onShape(s) }))}
-      />
-      <span className="fc-sep" aria-hidden />
-      <Swatches value={color} onPick={onColor} />
+      {onShapeLibrary ? (
+        <button type="button" className="fc-btn fc-btn-menu" aria-label="Change shape" aria-expanded={libraryOpen ?? false} title={shape ? `${FLOWCHART_SHAPE_LABEL[shape]}: change shape` : "Change shape"} onClick={onShapeLibrary}>
+          <ShapeIcon shape={shape ?? "process"} />
+        </button>
+      ) : (
+        <MenuButton
+          label="Change shape"
+          align="start"
+          triggerClassName="fc-btn fc-btn-menu"
+          trigger={<ShapeIcon shape={shape ?? "process"} />}
+          items={FLOWCHART_QUICK_SHAPES.map((s) => ({ label: FLOWCHART_SHAPE_LABEL[s], icon: <ShapeIcon shape={s} size={16} />, checked: shape === s, onSelect: () => onShape(s) }))}
+        />
+      )}
+      {compact ? null : (
+        <>
+          <span className="fc-sep" aria-hidden />
+          <Swatches value={color} onPick={onColor} />
+        </>
+      )}
+      {content ? (
+        <>
+          <span className="fc-sep" aria-hidden />
+          {content}
+        </>
+      ) : null}
       {align ? (
         <>
           <span className="fc-sep" aria-hidden />

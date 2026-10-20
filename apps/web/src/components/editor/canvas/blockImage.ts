@@ -6,6 +6,7 @@ import { mindmapSvg } from "../mindmap/svg";
 import { stickiesSvg } from "../stickies/svg";
 import { chartSvg } from "../chart/svg";
 import { wireframeSvg } from "../wireframe/svg";
+import { whiteboardSvg } from "../whiteboard/svg";
 
 interface ImageBlock {
   /** The block's name, for menus and file names. */
@@ -20,6 +21,7 @@ export const IMAGE_BLOCKS: Record<string, ImageBlock> = {
   stickies: { name: "Sticky notes", svg: stickiesSvg },
   chart: { name: "Chart", svg: chartSvg },
   wireframe: { name: "Wireframe", svg: wireframeSvg },
+  whiteboard: { name: "Whiteboard", svg: whiteboardSvg },
 };
 
 /** The SVG of a block from its node attributes, or null when it has nothing to export (or isn't a picture). */

@@ -103,6 +103,24 @@ As built (2026-10-19):
 - Foli AI: draw a screen from a prompt, variations, refine.
 - Export screens as PNG, SVG, PDF.
 
+## Whiteboard block (brought up to the others, 2026-10-20)
+
+- Code: `apps/web/src/components/editor/WhiteboardView.tsx` (its own card, not CanvasCard, as the sheet keeps
+  its proportions as the page narrows), `editor/whiteboard/ops.ts` (moving, measuring and finding strokes) and
+  `editor/whiteboard/svg.ts` (the export picture, drawn by the schema's `whiteboardToSvg`, as note exports are);
+  styles in `insert-blocks.css`.
+- Full canvas: the toolbar's button or Shift+Cmd+F, Esc back; the sheet fills the window at its own proportions
+  and the tools float centred along the top (the Mac's window buttons keep the corner, the strip drags the window).
+- Export in the toolbar and the block menu: PNG, SVG, PDF, Copy as image; copying the block into another app
+  gives the picture too.
+- Select tool: tap or click a stroke (Shift adds), drag the empty sheet for a marquee, drag to move, arrows
+  nudge, Cmd+D duplicates, Delete removes, Cmd+A picks everything, Cmd+Z undoes. With Select, the toolbar's
+  colours recolour the picked strokes and it shows Duplicate and Delete. A double-click picks just the stroke
+  under the pointer.
+- A stroke's own menu (right-click with any tool, or a long press with Select on iPhone and iPad): Duplicate,
+  its colour, Delete. The note's block menu never opens on the drawing.
+- Apple Pencil and fingers draw as before (once a pen has drawn, fingers scroll the note); 44 point tools.
+
 ## Tables
 
 - Formatting inside cells like normal text: select words, ⌘B/⌘I/⌘U, strikethrough, code, links, colour,

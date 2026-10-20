@@ -83,11 +83,14 @@ describe("visual blocks in the editor", () => {
 
 describe("export", () => {
   test("every visual block is listed; a flowchart draws, an empty one doesn't", () => {
-    expect(Object.keys(IMAGE_BLOCKS)).toEqual(["flowchart", "mindmap", "stickies", "chart", "wireframe"]);
+    expect(Object.keys(IMAGE_BLOCKS)).toEqual(["flowchart", "mindmap", "stickies", "chart", "wireframe", "whiteboard"]);
     const fc = JSON.stringify({ v: 1, nodes: [{ id: "a", shape: "process", x: 0, y: 0, w: 160, h: 64, text: "Start" }], edges: [] });
     expect(blockImageSvg("flowchart", { data: fc, height: 440 })).toMatch(/^<svg/);
     expect(blockImageSvg("flowchart", { data: "", height: 440 })).toBeNull();
     expect(blockImageSvg("paragraph", {})).toBeNull();
+    const wb = JSON.stringify({ v: 1, strokes: [{ points: [[10, 10], [90, 40]], color: "blue", width: 5 }] });
+    expect(blockImageSvg("whiteboard", { data: wb, height: 300 })).toMatch(/^<svg[^>]*viewBox="0 0 1000 300"[\s\S]*stroke="#2563eb"/);
+    expect(blockImageSvg("whiteboard", { data: "", height: 300 })).toBeNull();
   });
 
   test("file names and sizes", () => {

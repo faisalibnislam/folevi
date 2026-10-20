@@ -10,6 +10,7 @@
   --wb-orange: #ea580c;
   --wb-purple: #7c3aed;
   --wb-yellow: #facc15;
+  --wb-select: #3d6ee8;
 }
 :root[data-theme="dark"] {
   --wb-blue: #60a5fa;
@@ -18,6 +19,7 @@
   --wb-orange: #fb923c;
   --wb-purple: #a78bfa;
   --wb-yellow: #fde047;
+  --wb-select: #7aa2ff;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -27,6 +29,7 @@
     --wb-orange: #fb923c;
     --wb-purple: #a78bfa;
     --wb-yellow: #fde047;
+    --wb-select: #7aa2ff;
   }
 }
 
@@ -263,6 +266,50 @@
 }
 .fb-wb-resize > span { width: 36px; height: 4px; border-radius: var(--radius-tiny); background: var(--color-line-strong); }
 .fb-wb-resize:hover > span { background: var(--color-ink-faint); }
+/* Select: picked strokes get a soft halo and a box; a drag on the empty sheet draws a marquee. */
+.fb-whiteboard-canvas[data-tool="select"],
+.fb-whiteboard-canvas[data-tool="select"][data-pen-only] { touch-action: none; cursor: default; }
+.fb-whiteboard-canvas[data-tool="select"] [data-wb-stroke] { cursor: move; }
+.fb-whiteboard-canvas[data-tool] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.fb-wb-halo { fill: none; stroke: var(--wb-select); stroke-opacity: 0.22; stroke-linecap: round; stroke-linejoin: round; }
+.fb-wb-pick-box { fill: none; stroke: var(--wb-select); stroke-width: 1.25px; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.fb-wb-marquee { fill: color-mix(in oklab, var(--wb-select) 8%, transparent); stroke: color-mix(in oklab, var(--wb-select) 70%, transparent); stroke-width: 1px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.fb-wb-menu-swatch { display: block; width: 14px; height: 14px; border-radius: var(--radius-chip); background: var(--swatch); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18); }
+.fb-wb-body { outline: none; }
+.fb-wb-body:focus-visible { outline: none; }
+
+/* Full canvas (canvas/useFullCanvas.ts, canvas.css): the sheet fills the window at its own proportions, on the
+   card's tint, and the tools float centred along the top as a glass bar, as on the other visual blocks. */
+.fb-whiteboard-box[data-full] .fb-wb-body { display: grid; place-items: center; padding: 10px 16px 16px; container-type: size; overflow: hidden; }
+.fb-whiteboard-box[data-full] .fb-whiteboard-canvas {
+  width: min(100cqw, calc(100cqh * var(--wb-ratio))); height: auto;
+  border-radius: var(--radius-panel); background-color: var(--color-surface); box-shadow: 0 0 0 1px var(--color-line);
+}
+.fb-whiteboard-box[data-full] .fb-wb-toolbar {
+  position: relative; z-index: 3; align-self: center; justify-content: center;
+  width: max-content; max-width: calc(100% - 24px); margin-top: 10px; padding: 4px;
+  border: 0; border-radius: var(--radius-panel);
+  background: var(--glass-pop);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: var(--glass-edge), 0 6px 20px -8px rgb(0 0 0 / 0.18);
+}
+.fb-whiteboard-box[data-full] .fb-wb-spacer { flex: none; width: 4px; }
+/* The Mac app: clear of the window's buttons, and the bar's own empty stretches drag the window. */
+:root[data-desktop="mac"] .fb-whiteboard-box[data-full] .fb-wb-toolbar { max-width: calc(100% - 168px); -webkit-app-region: drag; }
+:root[data-desktop="mac"] .fb-whiteboard-box[data-full] .fb-wb-toolbar :is(button, [role="button"], [tabindex]) { -webkit-app-region: no-drag; }
+
+/* Fingers: 44 point targets (docs/IOS.md); a swatch keeps its small chip inside the larger target. */
+@media (pointer: coarse) {
+  .fb-wb-btn { width: 44px; height: 44px; }
+  .fb-wb-swatch { display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--radius-control); background: none; box-shadow: none; }
+  .fb-wb-swatch::before { content: ""; width: 28px; height: 28px; border-radius: var(--radius-chip); background: var(--swatch); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18); }
+  .fb-wb-swatch[aria-pressed="true"] { outline: none; }
+  .fb-wb-swatch[aria-pressed="true"]::before { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+  .fb-wb-toolbar { gap: 2px; padding: 4px 6px; }
+  /* The bar wraps on a phone: a divider would only dangle at a row's end. */
+  .fb-wb-sep { display: none; }
+  .fb-wb-resize { height: 22px; }
+}
 .fb-readonly-whiteboard { margin: 0.6em 0; border-radius: var(--radius-panel); overflow: hidden; box-shadow: 0 0 0 1px var(--color-line); background: var(--color-surface); }
 
 @media (forced-colors: active) {

@@ -16,7 +16,6 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardPaste,
-  ClipboardType,
   Code2,
   Copy,
   CopyPlus,
@@ -27,8 +26,6 @@ import {
   Heading2,
   Heading3,
   Highlighter,
-  IndentDecrease,
-  IndentIncrease,
   Italic,
   Layers,
   Link2,
@@ -38,8 +35,6 @@ import {
   ListOrdered,
   MessageSquare,
   Minus,
-  MoveDown,
-  MoveUp,
   Palette,
   Pencil,
   Plus,
@@ -62,7 +57,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { openInlineAi, useAiEnabled } from "@/components/ai/useAi";
 import { useToast } from "@/components/ui/Toast";
 import { useAppRouter } from "@/lib/app/router";
-import { emptyTableRows, focusInsideBlock, HIGHLIGHT_COLORS, TEXT_COLORS, blocksInSelection, changeDepth, clearFormatting, deleteBlocks, duplicateBlocks, insertBlockAt, moveBlock, removeLink, selectedSpan, setFlashcard, setHighlight, setTextColor, turnInto } from "./commands";
+import { emptyTableRows, focusInsideBlock, HIGHLIGHT_COLORS, TEXT_COLORS, blocksInSelection, clearFormatting, deleteBlocks, duplicateBlocks, insertBlockAt, removeLink, selectedSpan, setFlashcard, setHighlight, setTextColor, turnInto } from "./commands";
 import { blockSelectionRange, clearBlockSelection } from "./blockSelection";
 import { syncDomSelection } from "./blockSelectionState";
 import { blockElements } from "./plugins";
@@ -464,14 +459,10 @@ function buildEntries({
 
   // Clipboard.
   const clipboard: Entry[] = [];
-  if (editable) clipboard.push({ label: "Cut", icon: <Scissors size={14} />, shortcut: "⌘X", disabled: !hasSelection, run: () => clipboardCommand(editor, "cut", toast) });
-  clipboard.push({ label: "Copy", icon: <Copy size={14} />, shortcut: "⌘C", disabled: !hasSelection, run: () => clipboardCommand(editor, "copy", toast) });
-  if (editable) {
-    clipboard.push(
-      { label: "Paste", icon: <ClipboardPaste size={14} />, shortcut: "⌘V", run: () => void pasteFromClipboard(editor, false, toast) },
-      { label: "Paste as plain text", icon: <ClipboardType size={14} />, shortcut: "⌘⇧V", run: () => void pasteFromClipboard(editor, true, toast) },
-    );
-  }
+  // Only what can be done here: Cut and Copy when something is selected; Paste as plain text stays on ⌘⇧V.
+  if (editable && hasSelection) clipboard.push({ label: "Cut", icon: <Scissors size={14} />, shortcut: "⌘X", run: () => clipboardCommand(editor, "cut", toast) });
+  if (hasSelection) clipboard.push({ label: "Copy", icon: <Copy size={14} />, shortcut: "⌘C", run: () => clipboardCommand(editor, "copy", toast) });
+  if (editable) clipboard.push({ label: "Paste", icon: <ClipboardPaste size={14} />, shortcut: "⌘V", run: () => void pasteFromClipboard(editor, false, toast) });
   sections.push(clipboard);
 
   if (editable && textSelected) {
@@ -578,10 +569,7 @@ function buildEntries({
     blockEntries.push(
       "separator",
       { label: "Duplicate", icon: <CopyPlus size={14} />, shortcut: "⌘D", run: () => duplicateBlocks(editor) },
-      { label: "Move up", icon: <MoveUp size={14} />, shortcut: "⌥⇧↑", disabled: selectedSpan(state).first === 0, run: () => moveBlock(editor, -1) },
-      { label: "Move down", icon: <MoveDown size={14} />, shortcut: "⌥⇧↓", disabled: selectedSpan(state).last >= state.doc.childCount - 1, run: () => moveBlock(editor, 1) },
-      { label: "Indent", icon: <IndentIncrease size={14} />, shortcut: "Tab", run: () => changeDepth(editor, 1) },
-      { label: "Outdent", icon: <IndentDecrease size={14} />, shortcut: "⇧Tab", disabled: refs.every((r) => !Number(r.node.attrs.depth ?? 0)), run: () => changeDepth(editor, -1) },
+      // Moving and nesting stay on the keyboard (⌥⇧↑↓, Tab) and the drag handle, not in the menu.
     );
   }
   if (count === 1 && block?.attrs.id) {

@@ -81,6 +81,7 @@ import {
   type Selection,
 } from "./ops";
 import { useStickiesDoc } from "./useStickiesDoc";
+import { targetUnder } from "../canvas/targetUnder";
 
 const MIN_K = 0.15;
 const MAX_K = 2.5;
@@ -978,7 +979,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
         onDoubleClick={(e) => {
           // Fingers double-tap through `tap` (WebKit may also send a dblclick for them).
           if (lastPointer.current !== "mouse" || (e.target as Element).closest(".st-panel, .st-bar, .st-text-input, .st-label-input")) return;
-          doubleAt(e.clientX, e.clientY, e.target as Element);
+          doubleAt(e.clientX, e.clientY, targetUnder(e));
         }}
         onContextMenu={(e) => {
           if ((e.target as Element).closest("[data-st-vote]")) {

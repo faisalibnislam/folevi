@@ -76,6 +76,9 @@ import {
 import { useFlowDoc } from "./useFlowDoc";
 import { useFullCanvas } from "../canvas/useFullCanvas";
 import { BlockExportMenu } from "../canvas/BlockExport";
+import { targetUnder } from "../canvas/targetUnder";
+import { ContextMenu } from "@/components/ui/Menu";
+import { Copy, Pencil, Trash2 } from "lucide-react";
 
 const MIN_K = 0.2;
 const MAX_K = 2.5;
@@ -174,6 +177,8 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
   const viewRef = useRef(view);
   viewRef.current = view;
   const [sel, setSel] = useState<Selection>(NO_SELECTION);
+  /** The right-click menu for a shape or connector (the note's own menu doesn't open in the canvas). */
+  const [menu, setMenu] = useState<{ at: { x: number; y: number }; kind: "node" | "edge"; id: string } | null>(null);
   const selRef = useRef(sel);
   selRef.current = sel;
   const [editing, setEditing] = useState<Editing | null>(null);
@@ -613,13 +618,27 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
   };
 
   const onDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    const target = e.target as Element;
+    const target = targetUnder(e);
     const nodeEl = target.closest("[data-fc-node]");
     if (nodeEl) return startEdit("node", nodeEl.getAttribute("data-fc-node")!);
     const edgeEl = target.closest("[data-fc-edge]");
     if (edgeEl) return startEdit("edge", edgeEl.getAttribute("data-fc-edge")!);
     if (target.closest("[data-fc-handle],[data-fc-resize],[data-fc-end]")) return;
     add("process", toWorld(e.clientX, e.clientY));
+  };
+
+  const onContextMenu = (e: React.MouseEvent<SVGSVGElement>) => {
+    // Never the note's block menu here (indent, move, insert below mean nothing inside a canvas).
+    e.preventDefault();
+    const target = targetUnder(e);
+    const nodeEl = target.closest("[data-fc-node]");
+    const edgeEl = nodeEl ? null : target.closest("[data-fc-edge]");
+    const id = nodeEl?.getAttribute("data-fc-node") ?? edgeEl?.getAttribute("data-fc-edge");
+    if (!id) return;
+    const kind = nodeEl ? "node" : "edge";
+    const s = selRef.current;
+    if (!(kind === "node" ? s.nodes : s.edges).includes(id)) setSel(kind === "node" ? { nodes: [id], edges: [] } : { nodes: [], edges: [id] });
+    setMenu({ at: { x: e.clientX, y: e.clientY }, kind, id });
   };
 
   // ------------------------------------------------------------------------------ keyboard
@@ -862,6 +881,8 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
           aria-roledescription="flowchart editor"
           aria-label={`Flowchart, ${nodeCount} shape${nodeCount === 1 ? "" : "s"}`}
           aria-describedby={`${uid}-help`}
+          // The canvas has its own right-click menu, not the note's.
+          data-native-menu=""
           data-panning={panning || undefined}
           data-space={spaceDown || undefined}
           onKeyDown={onKeyDown}
@@ -888,6 +909,7 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
             onDoubleClick={onDoubleClick}
+            onContextMenu={onContextMenu}
             onMouseDown={(e) => e.preventDefault()}
             onPointerLeave={() => !drag.current && setHover(null)}
           >
@@ -1051,6 +1073,29 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
         >
           <span aria-hidden />
         </div>
+        {menu ? (
+          <ContextMenu
+            at={menu.at}
+            label={menu.kind === "node" ? "Shape" : "Connector"}
+            // In full canvas the card is on the top layer: the menu goes inside it to show above it.
+            host={full ? (cardRef.current ?? undefined) : undefined}
+            onClose={() => setMenu(null)}
+            items={
+              menu.kind === "node"
+                ? [
+                    { label: "Edit text", shortcut: "Enter", icon: <Pencil size={14} />, onSelect: () => startEdit("node", menu.id) },
+                    { label: "Duplicate", shortcut: "⌘D", icon: <Copy size={14} />, onSelect: duplicateSelection },
+                    "separator",
+                    { label: "Delete", shortcut: "⌫", icon: <Trash2 size={14} />, danger: true, onSelect: removeSelection },
+                  ]
+                : [
+                    { label: "Edit label", shortcut: "Enter", icon: <Pencil size={14} />, onSelect: () => startEdit("edge", menu.id) },
+                    "separator",
+                    { label: "Delete", shortcut: "⌫", icon: <Trash2 size={14} />, danger: true, onSelect: removeSelection },
+                  ]
+            }
+          />
+        ) : null}
       </div>
     </NodeViewWrapper>
   );

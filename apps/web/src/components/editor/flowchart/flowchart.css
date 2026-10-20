@@ -93,7 +93,8 @@
    card's body (`.fb-canvas-body`), which fills the window. */
 .fc-canvas { position: relative; overflow: hidden; outline: none; touch-action: pan-y; }
 .fc-card[data-active] .fc-canvas { touch-action: none; }
-.fc-canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--color-focus); }
+/* No dark ring when the canvas has the keyboard: the card's own light ring (data-active) already marks it. */
+.fc-canvas:focus-visible { outline: none; }
 .fc-svg { display: block; cursor: default; user-select: none; -webkit-user-select: none; }
 .fc-canvas[data-space] .fc-svg { cursor: grab; }
 .fc-canvas[data-panning] .fc-svg { cursor: grabbing; }

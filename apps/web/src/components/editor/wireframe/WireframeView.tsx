@@ -86,6 +86,7 @@ import {
   type Selection,
 } from "./ops";
 import { useWireDoc } from "./useWireDoc";
+import { targetUnder } from "../canvas/targetUnder";
 
 const MIN_K = 0.05;
 const MAX_K = 4;
@@ -824,7 +825,7 @@ function WireframeEditor(props: ReactNodeViewProps) {
   };
 
   const onDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    const target = e.target as Element;
+    const target = targetUnder(e);
     const itemEl = target.closest("[data-wf-item]");
     if (itemEl) return startEdit("item", itemEl.getAttribute("data-wf-item")!);
     const nameEl = target.closest("[data-wf-name]");

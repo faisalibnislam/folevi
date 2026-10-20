@@ -50,6 +50,7 @@ import { MindmapAi, useMindmapAi, type AiStart } from "./MindmapAi";
 import { insertAfterMindmap, mindmapToList, takePendingAi, tasksMarkdown } from "./noteConvert";
 import { addChild, addIdeas, addSibling, branchIds, byId, depthOf, moveIdea, outdent, removeIdeas, reorder, setAllCollapsed, setCollapsed, setColor, setLayout, setText, startMap, tidy } from "./ops";
 import { useMindDoc } from "./useMindDoc";
+import { targetUnder } from "../canvas/targetUnder";
 
 const MIN_K = 0.2;
 const MAX_K = 2.5;
@@ -645,7 +646,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
   };
 
   const onDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    const idea = (e.target as Element).closest("[data-mm-node]");
+    const idea = targetUnder(e).closest("[data-mm-node]");
     if (idea) startEdit(idea.getAttribute("data-mm-node")!, undefined, true);
     else if (!docRef.current.nodes.length) start();
   };

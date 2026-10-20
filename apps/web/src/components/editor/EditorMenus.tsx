@@ -25,8 +25,6 @@ import {
   Heading3,
   Highlighter,
   Image as ImageIcon,
-  IndentDecrease,
-  IndentIncrease,
   Italic,
   Layers,
   Link as LinkIcon,
@@ -35,8 +33,6 @@ import {
   ListOrdered,
   MessageSquare,
   Minus,
-  MoveDown,
-  MoveUp,
   Mic,
   Paperclip,
   Plus,
@@ -83,7 +79,6 @@ import {
   TEXT_COLORS,
   applyLink,
   blocksInSelection,
-  changeDepth,
   clearFormatting,
   deleteBlocks,
   duplicateBlocks,
@@ -91,7 +86,6 @@ import {
   focusInsideBlock,
   insertBlockAfterCurrent,
   insertScanText,
-  moveBlock,
   removeLink,
   subtreeRange,
   setFlashcard,
@@ -2339,16 +2333,7 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                 { label: count > 1 ? `Copy ${count} blocks` : "Copy", hint: "⌘C", icon: <Copy size={14} />, run: () => clipboard("copy") },
                 { label: count > 1 ? `Cut ${count} blocks` : "Cut", hint: "⌘X", icon: <Scissors size={14} />, run: () => clipboard("cut") },
                 { label: "Duplicate", hint: "⌘D", icon: <CopyPlus size={14} />, run: () => act(() => duplicateBlocks(editor)) },
-                { label: "Move up", hint: "⌥⇧↑", icon: <MoveUp size={14} />, disabled: menu.from === 0, run: () => act(() => moveBlock(editor, -1)) },
-                { label: "Move down", hint: "⌥⇧↓", icon: <MoveDown size={14} />, disabled: menu.from + count >= editor.state.doc.childCount, run: () => act(() => moveBlock(editor, 1)) },
-                { label: "Indent", hint: "Tab", icon: <IndentIncrease size={14} />, run: () => act(() => changeDepth(editor, 1)) },
-                {
-                  label: "Outdent",
-                  hint: "⇧Tab",
-                  icon: <IndentDecrease size={14} />,
-                  disabled: Array.from({ length: count }, (_, i) => editor.state.doc.maybeChild(menu.from + i)).every((n) => !Number(n?.attrs.depth ?? 0)),
-                  run: () => act(() => changeDepth(editor, -1)),
-                },
+                // Moving and nesting stay on the keyboard (⌥⇧↑↓, Tab) and the drag handle, not in the menu.
                 ...(single
                   ? [
                       {

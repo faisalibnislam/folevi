@@ -18,7 +18,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Play, Route } from "lucide-react";
 import type { MenuItem } from "@/components/ui/Menu";
-import { flowGraph, flowStart, pathsBetween, pathsFrom, pathsUnion, type FlowGraph, type FlowNode, type FlowPath, type FlowStep, type Pt } from "../schema";
+import {
+  flowGraph,
+  flowStart,
+  pathsBetween,
+  pathsFrom,
+  pathsUnion,
+  type FlowGraph,
+  type FlowNode,
+  type FlowPath,
+  type FlowStep,
+  type Pt,
+} from "../schema";
 import { NO_SELECTION, boxOf } from "../ops";
 import { MAX_K, MIN_K, clamp } from "../controller/useViewport";
 import type { FlowController, Interaction, View } from "../controller/types";
@@ -30,7 +41,15 @@ type Trail = { node: string; via: string | null }[];
 export type Walk =
   | { kind: "present"; trail: Trail; path: FlowPath | null; ownFull: boolean }
   | { kind: "pick"; from: string | null; ownFull: boolean }
-  | { kind: "paths"; from: string; to: string | null; paths: FlowPath[]; index: number; all: boolean; ownFull: boolean };
+  | {
+      kind: "paths";
+      from: string;
+      to: string | null;
+      paths: FlowPath[];
+      index: number;
+      all: boolean;
+      ownFull: boolean;
+    };
 
 /** Shapes and connectors to light: fully (`on`) or half (`near`); everything else is dimmed. */
 export interface WalkLight {
@@ -40,7 +59,7 @@ export interface WalkLight {
   ring: string[];
 }
 
-/** Room the walk's bar takes at the bottom of the canvas, and a comfortable margin around what's shown. */
+/** Room the walk's bar takes at the bottom of the canvas (until it's drawn), and a margin around what's shown. */
 const BAR = 104;
 const MARGIN = 40;
 
@@ -52,14 +71,18 @@ function along(pts: readonly Pt[], t: number): Pt | null {
   for (let i = 0; i < lens.length; i++) {
     if (left <= lens[i]! || i === lens.length - 1) {
       const f = lens[i]! ? Math.min(1, left / lens[i]!) : 0;
-      return { x: pts[i]!.x + (pts[i + 1]!.x - pts[i]!.x) * f, y: pts[i]!.y + (pts[i + 1]!.y - pts[i]!.y) * f };
+      return {
+        x: pts[i]!.x + (pts[i + 1]!.x - pts[i]!.x) * f,
+        y: pts[i]!.y + (pts[i + 1]!.y - pts[i]!.y) * f,
+      };
     }
     left -= lens[i]!;
   }
   return pts[0]!;
 }
 
-const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+const reducedMotion = () =>
+  typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
 /** The ways on from the walk's current shape (only the path's next step when walking a path). */
@@ -78,30 +101,50 @@ export function walkLight(graph: FlowGraph, walk: Walk): WalkLight {
     const ways = waysOn(graph, walk);
     return {
       on: { nodes: [cur.node], edges: cur.via ? [cur.via] : [] },
-      near: { nodes: [...walk.trail.map((t) => t.node), ...ways.map((s) => s.to)], edges: [...walk.trail.flatMap((t) => (t.via ? [t.via] : [])), ...ways.map((s) => s.edge.id)] },
+      near: {
+        nodes: [...walk.trail.map((t) => t.node), ...ways.map((s) => s.to)],
+        edges: [
+          ...walk.trail.flatMap((t) => (t.via ? [t.via] : [])),
+          ...ways.map((s) => s.edge.id),
+        ],
+      },
       ring: [cur.node],
     };
   }
   if (walk.kind === "paths") {
     const shown = walk.all ? walk.paths : walk.paths.slice(walk.index, walk.index + 1);
     const u = pathsUnion(shown);
-    return { on: { nodes: [...new Set([walk.from, ...u.nodes])], edges: [...u.edges] }, near: { nodes: [], edges: [] }, ring: [walk.from, ...(walk.to ? [walk.to] : [])] };
+    return {
+      on: { nodes: [...new Set([walk.from, ...u.nodes])], edges: [...u.edges] },
+      near: { nodes: [], edges: [] },
+      ring: [walk.from, ...(walk.to ? [walk.to] : [])],
+    };
   }
-  return { on: { nodes: [], edges: [] }, near: { nodes: [], edges: [] }, ring: walk.from ? [walk.from] : [] };
+  return {
+    on: { nodes: [], edges: [] },
+    near: { nodes: [], edges: [] },
+    ring: walk.from ? [walk.from] : [],
+  };
 }
 
 /** The scoped style rules that dim everything but what the walk lights (ids are [A-Za-z0-9_-] only). */
 export function walkCss(scope: string, light: WalkLight): string {
-  const safe = (ids: readonly string[]) => [...new Set(ids)].filter((id) => /^[A-Za-z0-9_-]{1,64}$/.test(id));
+  const safe = (ids: readonly string[]) =>
+    [...new Set(ids)].filter((id) => /^[A-Za-z0-9_-]{1,64}$/.test(id));
   // Doubled class: outranks the dimming rule in walk.css.
-  const sel = (attr: string, ids: readonly string[]) => safe(ids).map((id) => `.fc-canvas.fc-canvas[data-fc-walk="${scope}"] [${attr}="${id}"]`);
+  const sel = (attr: string, ids: readonly string[]) =>
+    safe(ids).map((id) => `.fc-canvas.fc-canvas[data-fc-walk="${scope}"] [${attr}="${id}"]`);
   const rules: string[] = [];
   const near = [...sel("data-fc-node", light.near.nodes), ...sel("data-fc-edge", light.near.edges)];
   if (near.length) rules.push(`${near.join(",")}{opacity:var(--fc-walk-near)}`);
   const on = [...sel("data-fc-node", light.on.nodes), ...sel("data-fc-edge", light.on.edges)];
   if (on.length) rules.push(`${on.join(",")}{opacity:1}`);
   const lines = sel("data-fc-edge", light.on.edges);
-  if (lines.length) rules.push(`${lines.join(",")}{--fc-ec:var(--fc-select)!important}`, `${lines.map((s) => `${s} .fc-edge-line`).join(",")}{stroke-width:max(2.5px,var(--fc-ew,1.5px))}`);
+  if (lines.length)
+    rules.push(
+      `${lines.join(",")}{--fc-ec:var(--fc-select)!important}`,
+      `${lines.map((s) => `${s} .fc-edge-line`).join(",")}{stroke-width:max(2.5px,var(--fc-ew,1.5px))}`,
+    );
   return rules.join("\n");
 }
 
@@ -126,7 +169,12 @@ export function useWalkthrough(ctrl: FlowController) {
   const glide = (to: View) => {
     stopGlide();
     const from = viewRef.current;
-    if (reducedMotion() || (Math.abs(from.x - to.x) < 1 && Math.abs(from.y - to.y) < 1 && Math.abs(from.k - to.k) < 0.005)) {
+    if (
+      reducedMotion() ||
+      (Math.abs(from.x - to.x) < 1 &&
+        Math.abs(from.y - to.y) < 1 &&
+        Math.abs(from.k - to.k) < 0.005)
+    ) {
       setView(to);
       return;
     }
@@ -134,7 +182,11 @@ export function useWalkthrough(ctrl: FlowController) {
     const step = (now: number) => {
       const t = Math.min(1, (now - t0) / 420);
       const e = ease(t);
-      setView({ x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e, k: from.k + (to.k - from.k) * e });
+      setView({
+        x: from.x + (to.x - from.x) * e,
+        y: from.y + (to.y - from.y) * e,
+        k: from.k + (to.k - from.k) * e,
+      });
       anim.current = t < 1 ? requestAnimationFrame(step) : null;
     };
     anim.current = requestAnimationFrame(step);
@@ -142,35 +194,66 @@ export function useWalkthrough(ctrl: FlowController) {
   useEffect(() => stopGlide, []);
 
   /** Brings the shapes into view (centred on them), unless they're comfortably in view already. */
-  const follow = useCallback(
-    (ids: readonly string[], opts: { always?: boolean } = {}) => {
-      const el = wrapRef.current;
-      const byId = new Map(docRef.current.nodes.map((n) => [n.id, n]));
-      const box = boxOf(ids.map((id) => byId.get(id)).filter((n): n is FlowNode => Boolean(n)));
-      if (!el || !box) return;
-      const w = el.clientWidth;
-      const h = el.clientHeight;
-      const room = { x: MARGIN, y: MARGIN, w: Math.max(80, w - MARGIN * 2), h: Math.max(80, h - BAR - MARGIN * 2) };
-      const v = viewRef.current;
-      const sx = box.x * v.k + v.x;
-      const sy = box.y * v.k + v.y;
-      const inView = sx >= room.x && sy >= room.y && sx + box.w * v.k <= room.x + room.w && sy + box.h * v.k <= room.y + room.h;
-      if (inView && !opts.always && v.k >= 0.45) return;
-      const fitK = Math.min(room.w / Math.max(1, box.w), room.h / Math.max(1, box.h));
-      const k = clamp(opts.always || box.w * v.k > room.w || box.h * v.k > room.h || v.k < 0.45 ? Math.min(fitK, 1.15) : v.k, MIN_K, MAX_K);
-      const cx = box.x + box.w / 2;
-      const cy = box.y + box.h / 2;
-      glide({ k, x: room.x + room.w / 2 - cx * k, y: room.y + room.h / 2 - cy * k });
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [docRef, viewRef, wrapRef],
-  );
+  const follow = (ids: readonly string[], opts: { always?: boolean } = {}) => {
+    const el = wrapRef.current;
+    const byId = new Map(docRef.current.nodes.map((n) => [n.id, n]));
+    const box = boxOf(ids.map((id) => byId.get(id)).filter((n): n is FlowNode => Boolean(n)));
+    if (!el || !box) return;
+    const w = el.clientWidth;
+    const h = el.clientHeight;
+    // Room above the walk's bar (its height as drawn: it wraps onto more rows on a phone).
+    const bar = el.querySelector(".fc-walk-bar")?.getBoundingClientRect().height;
+    const below = bar ? bar + 24 : BAR;
+    // In the Mac app's full canvas the strip along the top drags the window (canvas/canvas.css): keep clear of it.
+    const top = ctrl.full && document.documentElement.dataset.desktop === "mac" ? 64 : MARGIN;
+    const room = {
+      x: MARGIN,
+      y: top,
+      w: Math.max(80, w - MARGIN * 2),
+      h: Math.max(80, h - below - top - MARGIN),
+    };
+    const v = viewRef.current;
+    const sx = box.x * v.k + v.x;
+    const sy = box.y * v.k + v.y;
+    const inView =
+      sx >= room.x &&
+      sy >= room.y &&
+      sx + box.w * v.k <= room.x + room.w &&
+      sy + box.h * v.k <= room.y + room.h;
+    if (inView && !opts.always && v.k >= 0.45) return;
+    const fitK = Math.min(room.w / Math.max(1, box.w), room.h / Math.max(1, box.h));
+    const k = clamp(
+      opts.always || box.w * v.k > room.w || box.h * v.k > room.h || v.k < 0.45
+        ? Math.min(fitK, 1.15)
+        : v.k,
+      MIN_K,
+      MAX_K,
+    );
+    const cx = box.x + box.w / 2;
+    const cy = box.y + box.h / 2;
+    glide({ k, x: room.x + room.w / 2 - cx * k, y: room.y + room.h / 2 - cy * k });
+  };
 
   // Follow the current shape (and the ways on) a frame or two after it changes, once full canvas has its size.
   const current = walk?.kind === "present" ? walk.trail[walk.trail.length - 1]!.node : null;
-  const ways = useMemo(() => (walk?.kind === "present" && graph ? waysOn(graph, walk) : []), [walk, graph]);
-  const shownPath = walk?.kind === "paths" ? (walk.all ? walk.paths : walk.paths.slice(walk.index, walk.index + 1)) : null;
-  const followKey = walk?.kind === "present" ? `p:${current}` : walk?.kind === "paths" ? `r:${walk.from}:${walk.to}:${walk.all ? "all" : walk.index}` : "";
+  const ways = useMemo(
+    () => (walk?.kind === "present" && graph ? waysOn(graph, walk) : []),
+    [walk, graph],
+  );
+  const shownPath =
+    walk?.kind === "paths"
+      ? walk.all
+        ? walk.paths
+        : walk.paths.slice(walk.index, walk.index + 1)
+      : null;
+  const followKey =
+    walk?.kind === "present"
+      ? `p:${current}`
+      : walk?.kind === "paths"
+        ? `r:${walk.from}:${walk.to}:${walk.all ? "all" : walk.index}`
+        : walk?.kind === "pick"
+          ? "k"
+          : "";
   const first = useRef(true);
   useEffect(() => {
     if (!followKey) {
@@ -180,8 +263,14 @@ export function useWalkthrough(ctrl: FlowController) {
     const w = walkRef.current;
     const g = graph;
     if (!w || !g) return;
-    const ids = w.kind === "present" ? [current!, ...waysOn(g, w).map((s) => s.to)] : w.kind === "paths" ? [...pathsUnion(w.all ? w.paths : w.paths.slice(w.index, w.index + 1)).nodes, w.from] : [];
-    const always = first.current;
+    // Picking a path's ends: the whole chart in sight, clear of the bar.
+    const ids =
+      w.kind === "present"
+        ? [current!, ...waysOn(g, w).map((s) => s.to)]
+        : w.kind === "paths"
+          ? [...pathsUnion(w.all ? w.paths : w.paths.slice(w.index, w.index + 1)).nodes, w.from]
+          : docRef.current.nodes.map((n) => n.id);
+    const always = first.current && w.kind !== "pick";
     first.current = false;
     let raf = requestAnimationFrame(() => {
       raf = requestAnimationFrame(() => follow(ids, { always }));
@@ -195,7 +284,12 @@ export function useWalkthrough(ctrl: FlowController) {
     const w = walkRef.current;
     if (!w) return;
     const ids = new Set(doc.nodes.map((n) => n.id));
-    const gone = w.kind === "present" ? w.trail.some((t) => !ids.has(t.node)) : w.kind === "paths" ? !ids.has(w.from) || (w.to !== null && !ids.has(w.to)) : w.from !== null && !ids.has(w.from);
+    const gone =
+      w.kind === "present"
+        ? w.trail.some((t) => !ids.has(t.node))
+        : w.kind === "paths"
+          ? !ids.has(w.from) || (w.to !== null && !ids.has(w.to))
+          : w.from !== null && !ids.has(w.from);
     if (gone) end();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc]);
@@ -220,7 +314,12 @@ export function useWalkthrough(ctrl: FlowController) {
     ctrl.setEditing(null);
     setSel(NO_SELECTION);
     first.current = true;
-    setWalk({ kind: "present", trail: [{ node: start, via: null }], path, ownFull: prev ? prev.ownFull : own() });
+    setWalk({
+      kind: "present",
+      trail: [{ node: start, via: null }],
+      path,
+      ownFull: prev ? prev.ownFull : own(),
+    });
     refocus();
   };
 
@@ -242,7 +341,15 @@ export function useWalkthrough(ctrl: FlowController) {
     setSel(NO_SELECTION);
     first.current = true;
     const prev = walkRef.current;
-    setWalk({ kind: "paths", from, to, paths, index: 0, all: !to && paths.length > 1, ownFull: prev ? prev.ownFull : false });
+    setWalk({
+      kind: "paths",
+      from,
+      to,
+      paths,
+      index: 0,
+      all: !to && paths.length > 1,
+      ownFull: prev ? prev.ownFull : false,
+    });
     refocus();
   };
 
@@ -284,7 +391,11 @@ export function useWalkthrough(ctrl: FlowController) {
   const showPath = (index: number | "all") => {
     const w = walkRef.current;
     if (w?.kind !== "paths" || !w.paths.length) return;
-    setWalk(index === "all" ? { ...w, all: true } : { ...w, all: false, index: (index + w.paths.length) % w.paths.length });
+    setWalk(
+      index === "all"
+        ? { ...w, all: true }
+        : { ...w, all: false, index: (index + w.paths.length) % w.paths.length },
+    );
   };
 
   // ------------------------------------------------------------------ pointer and keys
@@ -292,7 +403,10 @@ export function useWalkthrough(ctrl: FlowController) {
     const w = walkRef.current;
     if (!w || !graph) return;
     const nodeId = target.closest("[data-fc-node]")?.getAttribute("data-fc-node") ?? null;
-    const edgeId = target.closest("[data-fc-walk-step]")?.getAttribute("data-fc-walk-step") ?? target.closest("[data-fc-edge]")?.getAttribute("data-fc-edge") ?? null;
+    const edgeId =
+      target.closest("[data-fc-walk-step]")?.getAttribute("data-fc-walk-step") ??
+      target.closest("[data-fc-edge]")?.getAttribute("data-fc-edge") ??
+      null;
     if (w.kind === "present") {
       const list = waysOn(graph, w);
       const step = list.find((s) => s.edge.id === edgeId) ?? list.find((s) => s.to === nodeId);
@@ -344,7 +458,8 @@ export function useWalkthrough(ctrl: FlowController) {
       if (!w) return false;
       const mod = e.metaKey || e.ctrlKey;
       if (e.key === "Tab") return false;
-      if (mod && e.shiftKey && e.key.toLowerCase() === "f") return ctrl.fullKey(e, { escape: false });
+      if (mod && e.shiftKey && e.key.toLowerCase() === "f")
+        return ctrl.fullKey(e, { escape: false });
       if (e.key === "Escape") {
         if (w.kind === "pick" && w.from) setWalk({ ...w, from: null });
         else end();
@@ -359,7 +474,8 @@ export function useWalkthrough(ctrl: FlowController) {
         else if (/^[1-9]$/.test(e.key)) choose(Number(e.key) - 1);
       } else if (w.kind === "paths") {
         if (e.key === "ArrowRight" || e.key === "ArrowDown") showPath(w.all ? 0 : w.index + 1);
-        else if (e.key === "ArrowLeft" || e.key === "ArrowUp") showPath(w.all ? w.paths.length - 1 : w.index - 1);
+        else if (e.key === "ArrowLeft" || e.key === "ArrowUp")
+          showPath(w.all ? w.paths.length - 1 : w.index - 1);
         else if (e.key.toLowerCase() === "a" && !mod) showPath("all");
         else if (e.key === "Enter" && w.paths.length) present(null, w.paths[w.all ? 0 : w.index]!);
       }
@@ -390,7 +506,18 @@ export function useWalkthrough(ctrl: FlowController) {
         const n = byId.get(id);
         if (!n) return null;
         const pad = 6 / k;
-        return <rect key={`${id}-${i}`} className="fc-walk-ring" data-kind={walk.kind === "present" ? "current" : i === 0 ? "start" : "end"} x={n.x - pad} y={n.y - pad} width={n.w + pad * 2} height={n.h + pad * 2} rx={12 / Math.max(k, 0.5)} />;
+        return (
+          <rect
+            key={`${id}-${i}`}
+            className="fc-walk-ring"
+            data-kind={walk.kind === "present" ? "current" : i === 0 ? "start" : "end"}
+            x={n.x - pad}
+            y={n.y - pad}
+            width={n.w + pad * 2}
+            height={n.h + pad * 2}
+            rx={12 / Math.max(k, 0.5)}
+          />
+        );
       })}
       {walk.kind === "present" && ways.length > 1
         ? ways.map((s, i) => {
@@ -398,10 +525,20 @@ export function useWalkthrough(ctrl: FlowController) {
             if (!p) return null;
             const r = 11 / k;
             return (
-              <g key={s.edge.id} className="fc-walk-chip" data-fc-walk-step={s.edge.id} transform={`translate(${p.x} ${p.y})`}>
+              <g
+                key={s.edge.id}
+                className="fc-walk-chip"
+                data-fc-walk-step={s.edge.id}
+                transform={`translate(${p.x} ${p.y})`}
+              >
                 <circle className="fc-walk-chip-hit" r={22 / k} />
                 <circle className="fc-walk-chip-dot" r={r} />
-                <text className="fc-walk-chip-num" y={4.2 / k} textAnchor="middle" fontSize={12 / k}>
+                <text
+                  className="fc-walk-chip-num"
+                  y={4.2 / k}
+                  textAnchor="middle"
+                  fontSize={12 / k}
+                >
                   {i + 1}
                 </text>
               </g>
@@ -435,7 +572,14 @@ export function useWalkthrough(ctrl: FlowController) {
       />
     );
   } else if (walk?.kind === "pick") {
-    element = <PickBar from={walk.from ? nodeName(walk.from) : null} onEvery={walk.from ? () => showPaths(walk.from!, null) : null} onEnd={end} refocus={refocus} />;
+    element = (
+      <PickBar
+        from={walk.from ? nodeName(walk.from) : null}
+        onEvery={walk.from ? () => showPaths(walk.from!, null) : null}
+        onEnd={end}
+        refocus={refocus}
+      />
+    );
   } else if (walk?.kind === "paths") {
     const path = shownPath && shownPath.length === 1 ? shownPath[0]! : null;
     element = (
@@ -445,7 +589,20 @@ export function useWalkthrough(ctrl: FlowController) {
         count={walk.paths.length}
         index={walk.index}
         all={walk.all}
-        steps={path ? path.nodes.map((id, i) => ({ id, name: nodeName(id), label: i > 0 ? (graph?.out.get(path.nodes[i - 1]!)?.find((s) => s.edge.id === path.edges[i - 1])?.label ?? "") : "" })) : []}
+        steps={
+          path
+            ? path.nodes.map((id, i) => ({
+                id,
+                name: nodeName(id),
+                label:
+                  i > 0
+                    ? (graph?.out
+                        .get(path.nodes[i - 1]!)
+                        ?.find((s) => s.edge.id === path.edges[i - 1])?.label ?? "")
+                    : "",
+              }))
+            : []
+        }
         onPath={showPath}
         onStep={(id) => follow([id], { always: false })}
         onPresent={path ? () => present(null, path) : null}
@@ -470,7 +627,11 @@ export function useWalkthrough(ctrl: FlowController) {
   };
   const itemsFor = (id: string): MenuItem[] => [
     { label: "Present from here", icon: <Play size={14} />, onSelect: () => present(id) },
-    { label: "Highlight paths from here", icon: <Route size={14} />, onSelect: () => showPaths(id, null) },
+    {
+      label: "Highlight paths from here",
+      icon: <Route size={14} />,
+      onSelect: () => showPaths(id, null),
+    },
     { label: "Highlight paths to…", icon: <Route size={14} />, onSelect: () => pick(id) },
   ];
 

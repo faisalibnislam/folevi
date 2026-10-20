@@ -62,6 +62,10 @@
 @media (pointer: coarse), (max-width: 640px) {
   .fc-walk-hint { display: none; }
 }
+/* Narrow: the bar wraps onto rows, where separators would start a row. */
+@media (max-width: 640px) {
+  .fc-walk-bar .fc-sep { display: none; }
+}
 @media (pointer: coarse) {
   .fc-walk-bar .fc-btn { min-width: 44px; height: 44px; }
   .fc-walk-step { height: 44px; line-height: 44px; }

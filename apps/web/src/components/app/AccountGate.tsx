@@ -5,6 +5,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/convex/api";
 import { useAuthPhase } from "@/lib/convex/provider";
 import { authClient } from "@/lib/auth/client";
+import { hostAuth, websitePage } from "@/lib/auth/shellFetch";
 import { forgetThisDevice } from "@/lib/nativeDevice";
 import { AppStateProvider, FullPageMessage, useMeQuery } from "@/lib/app/state";
 import { loadAccountSnapshot, type AccountSnapshot } from "@/lib/app/offlineSnapshot";
@@ -17,6 +18,8 @@ import { DeviceLimitScreen } from "./DeviceLimit";
 import { DesktopQuickAdd } from "./DesktopQuickAdd";
 import { OauthConsent } from "./OauthConsent";
 import { ShareSheet } from "./ShareSheet";
+import { ShellSignIn } from "./ShellSignIn";
+import { ShellUpdateGate } from "./ShellUpdateGate";
 
 // Seen once per account, so it loads only for people who haven't finished it.
 const Onboarding = lazy(() => import("./Onboarding").then((m) => ({ default: m.Onboarding })));
@@ -90,6 +93,10 @@ export function AccountGate() {
       }
       // The iOS app's widgets and extensions stop using this account too.
       await forgetThisDevice();
+      // The apps' built-in interface has no cookie to drop: its sign-in screen stays up, and signing in
+      // replaces whatever session the host still held (and ends it). Calling the host's signOut here would
+      // also cancel a sign-in the person may already have started from that screen.
+      if (hostAuth()) return;
       await withTimeout(authClient.signOut().catch(() => undefined));
       go();
     })();
@@ -122,7 +129,7 @@ export function AccountGate() {
     };
   }, [me?.state]);
 
-  if (phase === "signed_out") return <FullPageMessage title="Taking you to sign in…" busy />;
+  if (phase === "signed_out") return hostAuth() ? <ShellSignIn /> : <FullPageMessage title="Taking you to sign in…" busy />;
   if (offlineStart && snapshot === undefined) return <FullPageMessage title="Opening your folio…" busy />;
   if (offlineStart && snapshot) {
     return (
@@ -146,14 +153,14 @@ export function AccountGate() {
   if (me === undefined || isLoading) return <FullPageMessage title="Opening your folio…" busy />;
   switch (me.state) {
     case "signed_out":
-      return <FullPageMessage title="Taking you to sign in…" busy />;
+      return hostAuth() ? <ShellSignIn /> : <FullPageMessage title="Taking you to sign in…" busy />;
     case "session_revoked":
       return <FullPageMessage title="Checking your session…" busy />;
     case "email_unverified":
       return (
         <FullPageMessage title="Confirm your email to continue" body="Open the confirmation link we emailed you. It expires in 24 hours and works once.">
           <div className="flex gap-2">
-            <a className="ui-btn ui-btn-primary h-9 px-4 text-sm" href="/verify-email">
+            <a className="ui-btn ui-btn-primary h-9 px-4 text-sm" href={websitePage("/verify-email")}>
               Send a new link
             </a>
             <SignOutButton accountKey={null} />
@@ -180,21 +187,23 @@ export function AccountGate() {
       );
     case "ready":
       return (
-        <AppStateProvider profile={me.profile}>
-          {route.name === "oauth-consent" ? (
-            <OauthConsent />
-          ) : route.name === "quick-add" && me.profile.onboardingStep === "done" ? (
-            <DesktopQuickAdd />
-          ) : route.name === "share" && me.profile.onboardingStep === "done" ? (
-            <ShareSheet />
-          ) : me.profile.onboardingStep !== "done" || route.name === "onboarding" ? (
-            <Suspense fallback={<FullPageMessage title="Opening your folio…" busy />}>
-              <Onboarding />
-            </Suspense>
-          ) : (
-            <Shell />
-          )}
-        </AppStateProvider>
+        <ShellUpdateGate>
+          <AppStateProvider profile={me.profile}>
+            {route.name === "oauth-consent" ? (
+              <OauthConsent />
+            ) : route.name === "quick-add" && me.profile.onboardingStep === "done" ? (
+              <DesktopQuickAdd />
+            ) : route.name === "share" && me.profile.onboardingStep === "done" ? (
+              <ShareSheet />
+            ) : me.profile.onboardingStep !== "done" || route.name === "onboarding" ? (
+              <Suspense fallback={<FullPageMessage title="Opening your folio…" busy />}>
+                <Onboarding />
+              </Suspense>
+            ) : (
+              <Shell />
+            )}
+          </AppStateProvider>
+        </ShellUpdateGate>
       );
   }
 }

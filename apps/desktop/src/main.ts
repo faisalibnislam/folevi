@@ -30,6 +30,7 @@ import {
   type WebContents,
 } from "electron";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import {
   appUrl,
@@ -55,8 +56,10 @@ import { restoreWindow, saveWindow } from "./windowState";
 import { Reminders, type Reminder } from "./reminders";
 import { downloadCalendar } from "./calendarFetch";
 import { imageBytes, oneAtATime, runHelper } from "./textRecognition";
+import { createAuthBridge, isAuthCallback, registerAuthIpc, type AuthBridge } from "./authBridge";
 import { registerLibraryIpc, type IpcMainLike } from "./library/ipc";
 import { LibraryService, type CloudSource } from "./library/service";
+import { createSecretStore } from "./secrets";
 import { startCloud } from "./library/cloud/electron";
 
 const PARTITION = "persist:folevi";
@@ -79,6 +82,8 @@ let checkForUpdates: (() => void) | null = null;
 let pendingLink: string | null = null;
 /** A Google sign-in in the browser on its way (desktop:sign-in): answered by the folevi://auth/google link it ends on. */
 let pendingSignIn: ((url: string | null) => void) | null = null;
+/** The built-in interface's account sign-in (authBridge.ts): only with the bundled interface. */
+let authBridge: AuthBridge | null = null;
 
 // Folevi puts its window back itself (windowState.ts). macOS's own window restoration adds nothing but a
 // "reopen its windows?" alert after a forced quit (an update replacing the app, a hang), and that alert
@@ -123,6 +128,12 @@ app.on("will-finish-launching", () => {
 });
 
 function openLink(url: string) {
+  // The end of signing in the built-in interface in the browser (authBridge.ts): the app trades the code.
+  if (isAuthCallback(url)) {
+    authBridge?.handleCallback(url);
+    showMain();
+    return;
+  }
   // The end of a Google sign-in in the browser: back to the page that started it (it redeems the code).
   if (isSignInReturn(url)) {
     pendingSignIn?.(url);
@@ -260,6 +271,31 @@ function createLibrary(cloud: CloudSource | null): LibraryService {
   });
   void service.open().catch((e) => console.error("Folevi library:", e));
   return service;
+}
+
+/**
+ * foleviShell.auth (authBridge.ts): the account session for the built-in interface, kept with safeStorage in
+ * the app's support folder and never given to the page. Its requests go through a session of their own that
+ * keeps no cookies, and that session adds `Origin: SERVICE_URL` (Chromium refuses an Origin set on the request
+ * itself; Better Auth checks the origin of requests with cookies, and may grow stricter, docs/LOCAL_MODE.md S4).
+ */
+function createShellAuth(): AuthBridge {
+  const ses = session.fromPartition("folevi-auth");
+  ses.webRequest.onBeforeSendHeaders({ urls: [`${SERVICE_URL.origin}/api/auth/*`] }, (details, callback) => {
+    callback({ requestHeaders: { ...details.requestHeaders, Origin: SERVICE_URL.origin } });
+  });
+  return createAuthBridge({
+    serviceUrl: SERVICE_URL,
+    fetch: (url, init) => {
+      // The session's hook sets Origin (above); one on the request would make Chromium refuse it.
+      const headers = { ...((init.headers ?? {}) as Record<string, string>) };
+      delete headers.origin;
+      return ses.fetch(url, { ...init, headers, credentials: "omit", bypassCustomProtocolHandlers: true });
+    },
+    openExternal: (url) => shell.openExternal(url),
+    store: createSecretStore(join(app.getPath("userData"), "secrets"), safeStorage),
+    deviceName: () => hostname().replace(/\.local$/, ""),
+  });
 }
 
 let guarded = false;
@@ -675,6 +711,12 @@ function listen() {
     const url = e.senderFrame?.url || (typeof href === "string" ? href : "");
     e.returnValue = bundled && isAppUrl(url) ? { shell: true, mode: settings.mode, version: app.getVersion() } : { shell: false };
   });
+  // foleviShell.auth: signing in, the page's /api/auth requests and Convex tokens (authBridge.ts).
+  registerAuthIpc(
+    (channel, listener) => ipcMain.handle(channel, listener),
+    () => authBridge,
+    (e) => bundled && fromFolevi(e as IpcMainInvokeEvent),
+  );
   ipcMain.handle("shell:set-mode", (e, mode: unknown) => {
     if (!bundled || !fromFolevi(e) || (mode !== "local" && mode !== "account")) return false;
     if (settings.mode === mode) return true;
@@ -803,6 +845,7 @@ app.whenReady().then(async () => {
     // A full look at the library folder on waking and when Folevi comes to the front (watch.ts also scans every 30 s).
     powerMonitor.on("resume", () => void library?.rescan());
     app.on("browser-window-focus", () => void library?.rescan());
+    authBridge = createShellAuth();
     // Before any window shows the new origin: hand over edits waiting on the website's origin (once).
     await runHandoff(folevi).catch((e) => console.error("Folevi handoff:", e));
     applyNetworkGuard();

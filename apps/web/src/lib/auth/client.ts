@@ -5,6 +5,7 @@ import { twoFactorClient } from "better-auth/client/plugins";
 import { convexClient } from "@convex-dev/better-auth/client/plugins";
 import { oauthProviderClient } from "@better-auth/oauth-provider/client";
 import { passkeyClient } from "@better-auth/passkey/client";
+import { authFetch, serviceUrl } from "./shellFetch";
 
 /**
  * Browser client for Folevi's built-in accounts (email + password, verified email, authenticator-app
@@ -13,9 +14,11 @@ import { passkeyClient } from "@better-auth/passkey/client";
  */
 export const authClient = createAuthClient({
   // The bundled app shell (FOLEVI_BUILD=shell) runs on app://folevi or capacitor://localhost, where Better Auth
-  // can't derive its address from the page and throws on load: it's given the service's address instead.
-  // (docs/LOCAL_MODE.md S2; WP4 replaces this with native bearer fetch.) Website builds never set the flag.
-  ...(process.env.NEXT_PUBLIC_FOLEVI_SHELL === "1" ? { baseURL: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.folevi.com"}/api/auth` } : {}),
+  // can't derive its address from the page and throws on load (docs/LOCAL_MODE.md S2), and where a session
+  // cookie can't work: it's given the service's address, and every request goes through the host's native
+  // fetch, which holds the bearer session (lib/auth/shellFetch.ts, docs/LOCAL_MODE_PLAN.md §1). Website
+  // builds never set the flag, so this branch and shellFetch.ts are dropped from them.
+  ...(process.env.NEXT_PUBLIC_FOLEVI_SHELL === "1" ? { baseURL: `${serviceUrl()}/api/auth`, fetchOptions: { customFetchImpl: authFetch } } : {}),
   // oauthProviderClient: on the connected-app consent page (/oauth/consent), sends its signed query along.
   plugins: [convexClient(), twoFactorClient(), oauthProviderClient(), passkeyClient()],
 });

@@ -14,6 +14,8 @@
     "typecheck": "turbo run typecheck && tsc -p convex/tsconfig.json --noEmit",
     "test": "turbo run test && vitest run --project convex",
     "test:convex": "vitest run --project convex",
+    "test:contract": "vitest run --project contract",
+    "contract:update": "UPDATE_API_SNAPSHOT=1 vitest run --project contract",
     "tokens": "pnpm --filter @folevi/design-tokens build",
     "schema:gen": "pnpm --filter @folevi/editor-schema generate",
     "format": "prettier --write .",

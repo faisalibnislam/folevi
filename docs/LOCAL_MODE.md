@@ -489,3 +489,51 @@ same-name twins, lagging listings (eventual consistency; a read by path or id is
 **Building:** `FOLEVI_DROPBOX_APP_KEY=… FOLEVI_GOOGLE_DESKTOP_CLIENT_ID=… pnpm release` (or `pnpm publish-mac`)
 in `apps/desktop`. The build prints `cloud-config.json: Dropbox yes, Google Drive yes`. A build without them hides
 both options and logs `"Sync with Dropbox" is hidden: this build has no Dropbox app key …`.
+
+## Phase 2, WP4: signed-in mode in the built-in interface (2026-10-20)
+
+The bundled interface signs in to an account without cookies; the page never holds the session.
+
+- **Server:** `convex/lib/nativeClients.ts` registers `folevi-shell` (`folevi://auth/callback` only; `/connect`
+  accepts it as "Folevi app"). `convex/lib/cors.ts` (moved out of `http.ts`) allows `app://folevi` and
+  `capacitor://localhost` for `/files/:id` in every environment; the development rule covers only http(s) local
+  hosts and never production. `settings.status` returns `minShellVersion: { mac, ios }`: the newer of
+  `MIN_SHELL_VERSIONS` in `convex/lib/shellVersions.ts` and the operators' value
+  (`npx convex run settings:setMinShellVersion '{"mac":"1.16.0"}'`).
+- **Web:** `lib/auth/shellFetch.ts`. In shell builds Better Auth's client has `baseURL: SERVICE_URL/api/auth` and
+  a `customFetchImpl` that forwards to `shell().auth.fetch(path, init)` (plain values; a page without a bridge
+  that has `auth` keeps the page's own fetch). `lib/convex/provider.tsx` gets Convex tokens from
+  `shell().auth.convexToken()`. Where the website sends people to `/signin`, the shell shows
+  `components/app/ShellSignIn.tsx` ("Sign in to Folevi", which calls `shell().auth.signIn()` and reloads), and
+  `signOutNow` calls `shell().auth.signOut()`. Links to the website's own pages (`/verify-email`,
+  `/forgot-password`) use `websitePage()`, which the Mac app opens in the browser. `ShellUpdateGate` shows
+  "Update Folevi to keep syncing" (no prices) when the app is older than the floor for its platform.
+- **Mac:** `apps/desktop/src/authBridge.ts` (no Electron imports, so the unit tests and the e2e run the same code)
+  and `src/secrets.ts` (safeStorage, one encrypted file per secret in `userData/secrets/`, never written in the
+  clear). PKCE sign-in opens `/connect` in the default browser; `main.ts` `openLink` hands
+  `folevi://auth/callback` to the bridge, which checks the state and exchanges the code at
+  `/api/auth/native/token`. `auth.fetch` accepts only `SERVICE_URL/api/auth/*` (dot segments resolved, encoded
+  slashes and control characters refused), GET and POST, a few harmless page headers; it adds the bearer, sends
+  no cookies, keeps a rotated `set-auth-token`, drops `set-cookie` and `set-auth-token` from the answer and
+  scrubs the token from the body (`get-session` returns `session.token`). `auth.convexToken` forgets the token on
+  a 401. Sign-out posts `/sign-out`, then deletes the token, online or not. The requests go through their own
+  Electron session (`folevi-auth`), which adds `Origin: SERVICE_URL` in `webRequest.onBeforeSendHeaders`:
+  Chromium refuses an `Origin` set on the request itself (`net::ERR_FAILED`, checked in Electron 44).
+- **Correction to S4:** on the dev deployment (Better Auth 1.6.33), Better Auth's origin check applies only to
+  requests that carry a `Cookie` header. A cookie-less bearer POST to `convex.site` with `Origin: app://folevi`
+  or none at all is accepted (200); the same POST with a cookie gets `INVALID_ORIGIN` or
+  `MISSING_OR_NULL_ORIGIN`. S4's 403s most likely came from a request context that sent cookies. Native still
+  sends `Origin: SERVICE_URL`, so a stricter check later can't break shipped apps. (convex-test can't show
+  either case: Better Auth skips its origin check under test.)
+- **Contract:** `tests/contract/api-snapshot.test.ts` (vitest project `contract`, part of `pnpm exec vitest run`)
+  records kind, argument validator and result type of every function in `tests/parity/callers.ts`'s list (330
+  today) in `api-snapshot.json`, and fails on a change that would break an app built against the record. After
+  an intentional change: `pnpm contract:update`, and for a breaking one also raise `MIN_SHELL_VERSIONS`.
+- **Tests:** `tests/convex/native-shell-auth.test.ts`, `apps/desktop/src/authBridge.test.ts`,
+  `apps/web/test/shell-auth.test.tsx`, and `apps/web/e2e/shell-auth.spec.ts` (the shell on 3003 against the 3002
+  dev server, with the Node bridge doing the real flow: sign-in, a signed-in note, the token absent from the
+  page, sign-out revoking the session, and the update gate).
+- **Not done:** Devices lists the shell as "Chrome on macOS" (as the website-loading Mac app is today), because
+  the page registers its session with the browser label (`lib/app/state.tsx`); passkeys can't be added from
+  `app://folevi` (the relying party is the website); in development the `folevi://` callback only reaches a
+  packaged app (`setAsDefaultProtocolClient` is skipped unpackaged).

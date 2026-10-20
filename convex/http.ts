@@ -21,6 +21,7 @@ import type { Id } from "./_generated/dataModel";
 import { AUDIO_MIMES } from "./lib/images";
 import { createAuth } from "./auth";
 import { withTrustedClientIp } from "./lib/clientIp";
+import { corsFor } from "./lib/cors";
 
 const http = httpRouter();
 
@@ -127,23 +128,6 @@ http.route({
     return new Response(blob, { status: 200, headers });
   }),
 });
-
-/** CORS for the app origin (FOLEVI_APP_URL), plus local dev hosts outside production. */
-function corsFor(origin: string | null): Record<string, string> {
-  if (!origin) return {};
-  let allowed: boolean;
-  try {
-    const app = process.env.FOLEVI_APP_URL ? new URL(process.env.FOLEVI_APP_URL).origin : null;
-    const host = new URL(origin).hostname;
-    allowed =
-      origin === app ||
-      (process.env.FOLEVI_ENV !== "production" &&
-        (host === "localhost" || host === "127.0.0.1" || host.endsWith(".localhost")));
-  } catch {
-    allowed = false;
-  }
-  return allowed ? { "access-control-allow-origin": origin, vary: "origin" } : {};
-}
 
 /**
  * Polar events (subscriptions, orders, refunds): Standard Webhooks signature checked in

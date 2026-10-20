@@ -179,11 +179,25 @@ if (boot.shell) {
       set: notYet("secrets.set", "the Keychain store, a later package"),
       delete: notYet("secrets.delete", "the Keychain store, a later package"),
     },
+    // The account session lives in the main process (authBridge.ts) and never comes here. (A sandboxed
+    // preload can't load authBridge.ts: the channel names are its AUTH_CHANNELS, checked by its test.)
     auth: {
-      signIn: notYet("auth.signIn", "signing in from the built-in interface, WP4"),
-      signOut: notYet("auth.signOut", "signing in from the built-in interface, WP4"),
-      fetch: notYet("auth.fetch", "signing in from the built-in interface, WP4"),
-      convexToken: notYet("auth.convexToken", "signing in from the built-in interface, WP4"),
+      /** Signs in in the default browser; true once the app holds a session. */
+      signIn: () => ipcRenderer.invoke("shell:auth-sign-in") as Promise<boolean>,
+      signOut: async () => {
+        await ipcRenderer.invoke("shell:auth-sign-out");
+      },
+      /** Only the website's /api/auth/*; the main process adds the session and scrubs it from the answer. */
+      fetch: async (path: string, init: { method?: string; headers?: Record<string, string>; body?: string }) => {
+        const res = (await ipcRenderer.invoke("shell:auth-fetch", String(path), {
+          method: init?.method,
+          headers: init?.headers && typeof init.headers === "object" ? { ...init.headers } : {},
+          body: typeof init?.body === "string" ? init.body : undefined,
+        })) as { status: number; headers: Record<string, string>; body: string } | null;
+        if (!res) throw new Error("Folevi couldn't send that request.");
+        return res;
+      },
+      convexToken: () => ipcRenderer.invoke("shell:auth-convex-token") as Promise<string | null>,
     },
     ai: {
       capabilities: notYet("ai.capabilities", "Foli AI on this Mac, WP11"),

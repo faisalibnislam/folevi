@@ -21,6 +21,14 @@ export default defineConfig({
         },
       },
       {
+        // The API the apps' built-in interface was built against (tests/contract/api-snapshot.test.ts).
+        test: {
+          name: "contract",
+          environment: "node",
+          include: ["tests/contract/**/*.test.ts"],
+        },
+      },
+      {
         // Local mode and account mode doing the same thing (docs/LOCAL_MODE_PLAN.md §2.5, tests/parity/types.ts).
         // The web app's aliases resolve, so local-mode code from apps/web/src/lib/local loads here.
         resolve: {

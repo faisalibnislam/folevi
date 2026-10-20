@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
+import { hostAuth } from "@/lib/auth/shellFetch";
+import { shell } from "@/lib/shell";
 import { forgetThisDevice } from "@/lib/nativeDevice";
 import { clearAllLocalData, localDb } from "@/lib/sync/db";
 import { Button } from "@/components/ui/Button";
@@ -23,9 +25,21 @@ export async function unsyncedChangeCount(accountKey: string | null): Promise<nu
   }
 }
 
-/** Ends the session on the server, then clears this device's copy (in the iOS app, its token too). */
+/**
+ * Ends the session on the server, then clears this device's copy (in the iOS app, its token too). In the
+ * apps' built-in interface the host ends its own session and forgets the token, and the app opens on its
+ * sign-in screen (there are no /signin pages there, so `destination` doesn't apply).
+ */
 export async function signOutNow(destination = "/signin?notice=signed_out") {
   await forgetThisDevice();
+  if (hostAuth()) {
+    await shell()
+      ?.auth.signOut()
+      .catch(() => undefined);
+    await clearAllLocalData();
+    window.location.assign("/");
+    return;
+  }
   try {
     await authClient.signOut();
   } catch {

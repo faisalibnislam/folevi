@@ -3,6 +3,7 @@
 import { ConvexProvider, ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { authClient } from "@/lib/auth/client";
+import { hostAuth, hostConvexToken } from "@/lib/auth/shellFetch";
 import { currentBackendMode, setCurrentBackendMode, type BackendMode } from "@/lib/backendMode";
 import { BackendModeContext } from "@/lib/mode";
 import type { LocalClient } from "@/lib/local/client";
@@ -87,6 +88,11 @@ function tokenExpiry(jwt: string): number {
 }
 
 type TokenResult = Awaited<ReturnType<typeof authClient.convex.token>>;
+/** A Convex token: from Better Auth, or in the apps' built-in interface from the host, which keeps the session. */
+function requestToken(): Promise<TokenResult> {
+  if (hostAuth()) return hostConvexToken(TOKEN_FETCH_TIMEOUT_MS) as Promise<TokenResult>;
+  return authClient.convex.token({ fetchOptions: { throw: false, timeout: TOKEN_FETCH_TIMEOUT_MS } });
+}
 // Opening the app asks for the session and then a token for it. Both need a round trip to the auth server,
 // so the token request starts at once, alongside the session check, and the first fetch uses its answer.
 let early: { at: number; result: Promise<TokenResult> } | null = null;
@@ -94,7 +100,7 @@ let earlyStarted = false;
 function startTokenFetch() {
   if (earlyStarted) return;
   earlyStarted = true;
-  early = { at: Date.now(), result: authClient.convex.token({ fetchOptions: { throw: false, timeout: TOKEN_FETCH_TIMEOUT_MS } }) };
+  early = { at: Date.now(), result: requestToken() };
 }
 /** The early answer, if it's a token and still fresh (a "no session" from before signing in never counts). */
 async function takeEarlyToken(): Promise<TokenResult | null> {
@@ -130,7 +136,7 @@ function useFoleviAuth() {
       const cached = cache.current?.sessionId === sessionId || !sessionId ? cache.current : null;
       if (!forceRefreshToken && cached && cached.exp - Date.now() > 60_000) return cached.token;
       try {
-        const res = (forceRefreshToken ? null : await takeEarlyToken()) ?? (await authClient.convex.token({ fetchOptions: { throw: false, timeout: TOKEN_FETCH_TIMEOUT_MS } }));
+        const res = (forceRefreshToken ? null : await takeEarlyToken()) ?? (await requestToken());
         const token = res.data?.token ?? null;
         if (token) {
           cache.current = { token, exp: tokenExpiry(token), sessionId };

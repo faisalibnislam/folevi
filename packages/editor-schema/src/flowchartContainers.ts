@@ -318,8 +318,11 @@ const sameRect = (a: Rect, b: Rect) => a.x === b.x && a.y === b.y && a.w === b.w
  * join the innermost frame or lane they were dropped over (or leave the one they were dragged out of), frames
  * grow to hold what's in them, and lanes keep their shapes inside (growing when needed). Shapes that moved
  * together with their own container keep their place in it. Returns `next` itself when nothing changes.
+ *
+ * `stepAcross` (moving with the keyboard): a shape pushed against its lane's edge, which would otherwise stay
+ * put, steps into the next lane that way, so the keyboard can move shapes between lanes too.
  */
-export function settleContainers(before: FlowchartData, next: FlowchartData): FlowchartData {
+export function settleContainers(before: FlowchartData, next: FlowchartData, opts: { stepAcross?: boolean } = {}): FlowchartData {
   if (before === next) return next;
   let fc = dropBadParents(next);
   if (!(fc.frames ?? []).length && !(fc.pools ?? []).length) return fc;
@@ -372,12 +375,44 @@ export function settleContainers(before: FlowchartData, next: FlowchartData): Fl
   }
 
   // 3. Lanes keep their shapes inside.
-  for (const pool of fc.pools ?? []) {
-    for (const lane of pool.lanes) {
-      for (const id of directMembers(fc, lane.id)) if (touched.has(id)) fc = fitInLane(fc, lane.id, id);
+  const stepped = new Set<string>();
+  for (const poolId of (fc.pools ?? []).map((p) => p.id)) {
+    const laneIds = (fc.pools ?? []).find((p) => p.id === poolId)!.lanes.map((l) => l.id);
+    for (const laneId of laneIds) {
+      for (const id of directMembers(fc, laneId)) {
+        if (!touched.has(id) || stepped.has(id)) continue;
+        const asked = itemRect(fc, id)!;
+        const fitted = fitInLane(fc, laneId, id);
+        const old = bNodes.get(id) ?? bFrames.get(id);
+        if (opts.stepAcross && old && old.parent === laneId && sameRect(itemRect(fitted, id)!, old) && !sameRect(asked, old)) {
+          const moved = stepLane(fc, laneId, id, asked.x - old.x, asked.y - old.y, old);
+          if (moved) {
+            fc = moved;
+            stepped.add(id);
+            continue;
+          }
+        }
+        fc = fitted;
+      }
     }
   }
   return fc;
+}
+
+/** Moves a shape or frame from its lane into the neighbouring lane in the direction (dx, dy), just inside it. */
+function stepLane(fc: FlowchartData, laneId: string, id: string, dx: number, dy: number, from: Rect): FlowchartData | null {
+  const found = findLane(fc, laneId);
+  if (!found) return null;
+  const rows = found.pool.orient === "rows";
+  const d = Math.sign(rows ? dy : dx);
+  const to = found.pool.lanes[found.index + d];
+  if (!d || !to) return null;
+  const box = laneBoxes(found.pool)[found.index + d]!.content;
+  const pad = FLOWCHART_LANE_PAD;
+  const r = itemRect(fc, id)!;
+  const target = rows ? (d > 0 ? box.y + pad : box.y + box.h - pad - r.h) : d > 0 ? box.x + pad : box.x + box.w - pad - r.w;
+  const doc = translateItem(fc, id, rows ? from.x - r.x : Math.round(target - r.x), rows ? Math.round(target - r.y) : from.y - r.y);
+  return fitInLane(setParent(doc, id, to.id), to.id, id);
 }
 
 // ------------------------------------------------------------------------------------------ frames

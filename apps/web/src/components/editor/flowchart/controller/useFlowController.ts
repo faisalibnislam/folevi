@@ -20,8 +20,12 @@ export function useFlowController(props: ReactNodeViewProps): FlowController {
   const write = useCallback((s: string) => updateAttributes({ data: s }), [updateAttributes]);
   const { doc, docRef, setLive, commit: commitDoc, undo, redo, canUndo, canRedo, tooLarge, flush } = useFlowDoc(data, write);
   // Frames and swimlanes follow every finished edit: what it added or moved joins the frame or lane it was
-  // dropped in (or leaves the one it was dragged out of), frames grow to hold it, lanes keep it inside.
-  const commit = useCallback<FlowController["commit"]>((next, opts) => commitDoc(settleContainers(opts?.before ?? docRef.current, next), opts), [commitDoc, docRef]);
+  // dropped in (or leaves the one it was dragged out of), frames grow to hold it, lanes keep it inside. Moved
+  // with the keyboard ("nudge"), a shape pushed against its lane's edge steps into the next lane.
+  const commit = useCallback<FlowController["commit"]>(
+    (next, opts) => commitDoc(settleContainers(opts?.before ?? docRef.current, next, { stepAcross: opts?.key === "nudge" }), opts),
+    [commitDoc, docRef],
+  );
   const routed = useRouted(doc);
   const byId = useMemo(() => new Map(doc.nodes.map((n) => [n.id, n])), [doc]);
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");

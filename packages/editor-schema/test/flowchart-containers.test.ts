@@ -111,6 +111,25 @@ describe("membership", () => {
     expect(contains(lane(next, "p", 0).content, n(next, "a"))).toBe(true);
   });
 
+  it("moving with the keyboard steps a shape across a lane's edge into the next lane", () => {
+    const start = flowchart({ pools: [pool("p", 0, 0, "rows", 2, 160)] });
+    const c0 = lane(start, "p", 0).content;
+    const at = { ...start, nodes: [node("a", c0.x + 40, c0.y + c0.h - FLOWCHART_LANE_PAD - 64, { parent: "pl0" })] };
+    const pushed = move(at, "a", 0, 8);
+    // A drag that lands against the edge stays in its lane, snapped back inside.
+    expect(n(settleContainers(at, pushed), "a").parent).toBe("pl0");
+    expect(n(settleContainers(at, pushed), "a").y).toBe(n(at, "a").y);
+    // The same push from the keyboard steps into the lane below, just inside its top edge.
+    const stepped = settleContainers(at, pushed, { stepAcross: true });
+    expect(n(stepped, "a").parent).toBe("pl1");
+    expect(n(stepped, "a").y).toBe(lane(stepped, "p", 1).content.y + FLOWCHART_LANE_PAD);
+    // And back up again.
+    const back = settleContainers(stepped, move(stepped, "a", 0, -8), { stepAcross: true });
+    expect(n(back, "a").parent).toBe("pl0");
+    expect(contains(lane(back, "p", 0).content, n(back, "a"))).toBe(true);
+    valid(stepped);
+  });
+
   it("dropping a shape on a lane's header puts it in that lane", () => {
     const start = flowchart({ pools: [pool("p", 0, 0)], nodes: [node("a", -500, 0)] });
     const h = lane(start, "p", 1).header;

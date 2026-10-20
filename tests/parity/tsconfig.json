@@ -1,0 +1,29 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
+    "noEmit": true,
+    "types": [
+      "node",
+      "vite/client"
+    ],
+    "paths": {
+      "@/*": [
+        "../../apps/web/src/*"
+      ],
+      "@convex/*": [
+        "../../convex/*"
+      ]
+    },
+    "typeRoots": [
+      "./typeroots",
+      "../../node_modules/@types"
+    ]
+  },
+  "include": [
+    "./**/*.ts"
+  ]
+}

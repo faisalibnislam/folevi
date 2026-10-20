@@ -35,6 +35,7 @@ code, link, color, highlight), `mention`, `date`, `pageLink`.
 | heading | yes | `level` 1–3 |
 | todo | yes | `checked`, `canceled?`, `dueDate?`, `dueTime?`, `priority?`, `assigneeId?`, `reminderAt?`, `completedAt?` |
 | toggle | yes | `collapsed` |
+| tabs, tab | `tab` only | `tabs`: none (the tab strip). `tab`: none; its text is the tab's name (one line, at most `MAX_TAB_NAME` characters). A tabs block's children are its tabs in rank order, a tab's children are what the tab holds (any blocks). Which tab is open is not stored. See *Tabs* below and `src/tabs.ts`. `webOnly`. |
 | callout | yes | `tone` (note/info/success/warning/danger), `icon?` |
 | divider | no | `style?` (extralight/light/regular/strong; unset follows the page's separator style) |
 | pageBreak | no | none (a sheet break in the editor; `break-after: page` in print/PDF) |
@@ -64,6 +65,43 @@ Mermaid diagrams are `code` blocks with `language: "mermaid"`; editors render a 
 
 Documents carry `DocumentStyle` (`font`, `width`, `background`, `accent`, `card`) and `DocumentCover`.
 Tasks are `todo` blocks; the `tasks` table is only a projection.
+
+## Tabs
+
+Tabs inside a note (like Notion's tabs) are ordinary nested blocks: a `tabs` block, its `tab` children (each
+one's text is its name) and each tab's blocks under it. We chose this over one container block holding its
+tabs' content in props, or a "tab" prop on the blocks that follow a header, because nothing else has to know:
+
+- **Sync stays per block.** Writing in one tab while someone renames another, or two people adding lines to two
+  tabs, touches different blocks, so nothing conflicts. Renaming is a text edit of the tab; reordering tabs is a
+  rank change; deleting a tab deletes its subtree like any nested block.
+- **History, copy and paste, search, backlinks and tasks work unchanged**: tab names are text (searchable,
+  translatable), a tab's blocks are blocks (a to-do in a tab is a task).
+- **The open tab is each viewer's own** and isn't written anywhere shared: the editor and read-only pages
+  remember it on the device (`localStorage` key `folevi:tab:<tabs block id>`); the first tab opens otherwise.
+
+In the editor (`apps/web/src/components/editor/tabs/`) the note stays a flat list of lines: the tabs block's
+line at depth d draws the tab strip (a `tablist`: click or arrow keys open a tab, Home and End, Enter goes
+into the tab's text, F2 or a double-click renames, Option+Shift+arrows or a drag reorders, the tab's menu
+renames, moves and deletes), each tab's line at d + 1 is never shown, and only the open tab's lines (d + 2 and
+deeper) show, drawn at the tabs block's indent (`--lift` in `editor.css`). `tabsState.ts` works out what's
+hidden; block selection, the arrow keys, Backspace and Delete, find (which opens the tab with a match), drag
+and drop and indenting all respect it, so nothing reaches into a tab that isn't open. After every **local**
+edit `tabsFix` keeps the shape: a line left directly in a tabs block moves into the tab before it (or into the
+first tab), and a tab outside a tabs block becomes a plain line with its name; nothing is dropped. Remote
+changes are never repaired, and every reader tolerates any shape. The server validates each block alone.
+
+Exports write every tab under its name as a heading with its blocks below (Markdown `###`, HTML and PDF
+`<h4 class="tab-name">`), through `liftTabs`. Shared pages and slides show the tab strip and let readers
+switch tabs (`ReadOnlyTabs`, real `tabpanel`s); version history shows every tab under its name.
+
+## Presenting
+
+`src/slides.ts` (`splitSlides`, `slidesOf`) cuts a note into slides for presenting
+(`apps/web/src/components/present/`): each divider and page break at the top level starts a slide (and isn't
+shown); a note with neither is cut at its top-level Heading 1s, or, without those, its Heading 2s. A slide holds
+whole blocks with everything nested under them (a toggle, a list or a tabs block is never split), and slides
+of nothing but empty lines are left out.
 
 ## Validation
 

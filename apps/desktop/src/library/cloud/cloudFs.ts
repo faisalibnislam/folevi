@@ -214,6 +214,21 @@ export abstract class CloudFs<E extends RemoteEntry = RemoteEntry> implements Lo
     void this.save();
   }
 
+  /**
+   * `shell.library.startDownload`: copies these files to the device copy now (attachments before they're
+   * opened, everything before going offline). Missing files are skipped; the first other failure rejects.
+   */
+  async startDownload(paths: string[]): Promise<void> {
+    for (const p of paths) checkPath(p);
+    for (const p of paths) {
+      try {
+        await this.read(p);
+      } catch (error) {
+        if ((error as { code?: string })?.code !== "not_found") throw error;
+      }
+    }
+  }
+
   async conflictVersions(path: string): Promise<{ id: string; bytes: Uint8Array }[]> {
     checkPath(path);
     return [];

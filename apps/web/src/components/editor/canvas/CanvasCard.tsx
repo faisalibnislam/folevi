@@ -109,6 +109,8 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
             </div>
           ) : null}
           <div className="fb-vc-bar" role="toolbar" aria-label={`${name} tools`} onPointerDown={(e) => e.stopPropagation()}>
+            {/* Full canvas in the Mac app: the window's buttons sit here, at the start of the bar (canvas.css). */}
+            <span aria-hidden className="ui-traffic-space fb-full-traffic" />
             <span className="fb-vc-title">
               <span className="fb-vc-icon" aria-hidden>
                 {icon}

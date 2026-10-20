@@ -67,7 +67,9 @@ function Bridge() {
     let last = "";
     const place = () => {
       frame = 0;
-      const spot = [...document.querySelectorAll<HTMLElement>(".ui-traffic-space")].map((el) => el.getBoundingClientRect()).find((r) => r.width > 0);
+      // A block in full canvas covers the window: its toolbar's space comes first.
+      const spaces = [...document.querySelectorAll<HTMLElement>(".fb-canvas-card[data-full] .ui-traffic-space"), ...document.querySelectorAll<HTMLElement>(".ui-traffic-space")];
+      const spot = spaces.map((el) => el.getBoundingClientRect()).find((r) => r.width > 0);
       if (!spot) return;
       const next = { x: spot.left, y: spot.top, height: spot.height };
       const key = `${Math.round(next.x)},${Math.round(next.y)},${Math.round(next.height)}`;
@@ -79,7 +81,7 @@ function Bridge() {
       if (!frame) frame = requestAnimationFrame(place);
     };
     const watch = new MutationObserver(soon);
-    watch.observe(document.body, { childList: true, subtree: true });
+    watch.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-full"] });
     window.addEventListener("resize", soon);
     soon();
     return () => {

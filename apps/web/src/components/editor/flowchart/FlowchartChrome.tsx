@@ -58,6 +58,8 @@ export function MainToolbar({
 }) {
   return (
     <div className="fc-bar fc-bar-main" role="toolbar" aria-label="Flowchart tools" onPointerDown={(e) => e.stopPropagation()}>
+      {/* Full canvas in the Mac app: the window's buttons sit here, at the start of the bar (canvas.css). */}
+      <span aria-hidden className="ui-traffic-space fb-full-traffic" />
       <span role="group" aria-label="Add a shape" className="fc-group">
         {FLOWCHART_SHAPES.map((s) => (
           <button key={s} type="button" className="fc-btn" aria-label={`Add ${FLOWCHART_SHAPE_LABEL[s].toLowerCase()}`} title={FLOWCHART_SHAPE_LABEL[s]} onClick={() => onAdd(s)}>

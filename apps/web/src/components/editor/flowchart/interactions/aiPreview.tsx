@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
+import { haptic } from "@/lib/nativeApp";
 import { NO_SELECTION, boxOf } from "../ops";
 import type { FlowchartData } from "../schema";
 import type { FlowController, Interaction } from "../controller/types";
@@ -60,6 +61,7 @@ export function useAiPreview(ctrl: FlowController) {
     commit(p.next, { before: p.before });
     // Saved at once: a result is one finished change, and the note may redraw the block right after.
     ctrl.flush();
+    haptic("light");
     if (p.highlight?.length) setSel({ nodes: p.highlight.filter((id) => p.next.nodes.some((n) => n.id === id)), edges: [] });
     ctrl.focusCanvas();
     p.onApply?.(p.next);

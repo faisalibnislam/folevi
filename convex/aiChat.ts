@@ -41,6 +41,7 @@ import { refreshNoteRefs } from "./lib/ai/sharing";
 import { createDocument } from "./lib/create";
 import { consume } from "./lib/rateLimit";
 import { MAX_DRAFT_BLOCKS, MAX_DRAFT_CHARS } from "./lib/ai/writing";
+import { ASK_MESSAGES, chatTitleRequest } from "@folevi/ai-prompts/ask";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -597,7 +598,7 @@ export const post = internalMutation({
     if (profile.aiEnabled === false) fail("forbidden", "Foli AI is turned off in your settings.");
     const text = (args.text ?? "").trim();
     if (args.mode !== "regenerate") {
-      if (!text) fail("invalid_argument", "Ask a question first.");
+      if (!text) fail("invalid_argument", ASK_MESSAGES.noQuestion);
       if (text.length > MAX_MESSAGE) fail("invalid_argument", `That message is too long (at most ${MAX_MESSAGE.toLocaleString("en-US")} characters).`);
     }
     let c = await ownConversation(ctx, profile, args.conversationId);
@@ -664,7 +665,7 @@ export const turn = internalQuery({
       .take(MAX_MESSAGES + 1);
     const before = messages.slice(0, messages.findIndex((m) => m._id === message._id));
     const asked = before.map((m) => m.role).lastIndexOf("user");
-    if (asked < 0) fail("invalid_argument", "Ask a question first.");
+    if (asked < 0) fail("invalid_argument", ASK_MESSAGES.noQuestion);
     const history = before
       .slice(0, asked)
       .filter((m) => (m.role === "user" || m.role === "assistant") && m.status !== "error" && m.text.trim())
@@ -868,13 +869,7 @@ async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">, web = false)
           let title = "";
           try {
             title = cleanTitle(
-              await gemini({
-                fast: true,
-                temperature: 0.3,
-                maxOutputTokens: 40,
-                system: "You name conversations in a notes app.",
-                prompt: `Question: ${turn.question.slice(0, 1000)}\n\nAnswer: ${out.answer.slice(0, 1200)}\n\nWrite a short title for this conversation: 2 to 6 words, in the question's language, no quotes. Reply with the title only.`,
-              }, meter),
+              await gemini(chatTitleRequest({ question: turn.question, answer: out.answer }), meter),
             );
           } catch {
             /* the question's first words will do */

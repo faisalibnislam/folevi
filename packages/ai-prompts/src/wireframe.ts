@@ -15,6 +15,7 @@ import {
   type WireframeData,
   type WireframeFrame,
 } from "@folevi/editor-schema";
+import type { PromptRequest } from "./request";
 
 /** Most screens one request makes (a short flow), and parts per screen. */
 export const AI_MAX_SCREENS = 4;
@@ -88,3 +89,48 @@ export const WIREFRAME_SYSTEM = [
 /** Frames a request may ask for. */
 export const isFrame = (v: unknown): v is WireframeFrame => typeof v === "string" && (Object.keys(WIREFRAME_FRAME_SIZE) as string[]).includes(v);
 
+
+/** An instruction is cut to this many characters (after trimming). */
+export const MAX_INSTRUCTION = 2000;
+/** Output room per screen asked for (a screen of 60 parts is about 4,000 tokens of JSON). */
+export const OUTPUT_PER_SCREEN = 4096;
+
+/** Output room for a reply of `screens` screens. */
+export function wireframeOutputTokens(screens: number): number {
+  return Math.min(16_384, OUTPUT_PER_SCREEN * screens);
+}
+
+/** What the person sees when a wireframe request can't be made or its reply isn't usable. */
+export const WIREFRAME_MESSAGES = {
+  noDescription: "Describe the screen first.",
+  noVaryScreen: "Pick a screen to vary first.",
+  noChange: "Say what to change.",
+  noRefineScreen: "Pick a screen to refine first.",
+  failed: "Foli AI couldn't draw that. Try describing the screen and what's on it.",
+} as const;
+
+/** A screen (or a flow of up to AI_MAX_SCREENS) from a description. parseWireframeReply (frame, AI_MAX_SCREENS) reads the reply. */
+export function drawRequest(instruction: string, frame: WireframeFrame): PromptRequest {
+  const prompt = `Draw the screen the person describes as a ${frame} screen. If they describe a flow of several screens, draw each (at most ${AI_MAX_SCREENS}) and link them in order.\n\nRequest: ${instruction}`;
+  return { system: WIREFRAME_SYSTEM, prompt, json: true, temperature: 0.5, maxOutputTokens: wireframeOutputTokens(AI_MAX_SCREENS) };
+}
+
+/** The number of variations a request makes: 2 to AI_MAX_VARIATIONS (3 when not given). */
+export function variationCount(count: number | undefined): number {
+  return Math.max(2, Math.min(AI_MAX_VARIATIONS, Math.round(count ?? 3)));
+}
+
+/**
+ * `count` variations of one screen (`current` from screenForPrompt, `count` from variationCount), optionally
+ * steered. parseWireframeReply (current.frame, count) reads the reply.
+ */
+export function varyRequest(current: { prompt: string; frame: WireframeFrame; name: string }, count: number, instruction: string): PromptRequest {
+  const prompt = `<wireframe>\n${current.prompt}\n</wireframe>\n\nMake ${count} different variations of this ${current.frame} screen, each its own screen with the same purpose and content but a clearly different layout or approach. Name them "${(current.name || "Screen").slice(0, 60)} A", "B" and so on. Don't link them.${instruction ? `\n\nAlso: ${instruction}` : ""}`;
+  return { system: WIREFRAME_SYSTEM, prompt, json: true, temperature: 0.9, maxOutputTokens: wireframeOutputTokens(count) };
+}
+
+/** One screen (`current` from screenForPrompt) changed as asked. parseWireframeReply (current.frame, 1) reads the reply. */
+export function refineRequest(current: { prompt: string; frame: WireframeFrame; name: string }, instruction: string): PromptRequest {
+  const prompt = `<wireframe>\n${current.prompt}\n</wireframe>\n\nChange this screen as the person asks, and return the complete updated screen (one screen, the same frame). Keep the text, positions and options of everything they didn't ask to change; move parts only to make room.\n\nRequest: ${instruction}`;
+  return { system: WIREFRAME_SYSTEM, prompt, json: true, temperature: 0.3, maxOutputTokens: wireframeOutputTokens(1) };
+}

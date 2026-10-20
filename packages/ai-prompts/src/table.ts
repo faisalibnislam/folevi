@@ -3,7 +3,9 @@
 // before it leaves the server: tables are text cells within the block's limits, every row as long as the
 // others; a formula has to parse and work in the table (packages/editor-schema tableFormulas.ts); summaries
 // are trimmed and capped. The client shows changes as a preview and applies them only when accepted.
-import { LIMITS, evaluateTable, isFormula } from "@folevi/editor-schema";
+import { LIMITS, cellReference, evaluateTable, isFormula } from "@folevi/editor-schema";
+import type { PromptRequest } from "./request";
+import { untrusted } from "./untrusted";
 
 /** Most characters in one cell sent or returned. */
 export const CELL_CHARS = 1000;
@@ -149,4 +151,63 @@ export function parseExplainReply(raw: string): { summary: string; points: strin
     .filter(Boolean)
     .slice(0, 5);
   return summary || points.length ? { summary, points } : null;
+}
+
+/** An instruction is cut to this many characters (after trimming). */
+export const MAX_INSTRUCTION = 2000;
+/** Output room for a whole table. */
+export const TABLE_OUTPUT = 8192;
+
+/** What the person sees when a table request can't be made or its reply isn't usable. */
+export const TABLE_MESSAGES = {
+  empty: "The table is empty. Add a few rows first.",
+  noEdit: "Say how the table should change.",
+  editFailed: "Foli AI couldn't change the table that way. Try saying it another way.",
+  cleanFailed: "Foli AI couldn't clean up the table. Try again.",
+  noFormula: "Say what the formula should work out.",
+  pickCell: "Pick a cell of the table first.",
+  formulaFailed: "Foli AI couldn't write a working formula for that. Try saying it another way.",
+  explainFailed: "Foli AI couldn't explain the table. Try again.",
+} as const;
+
+/** The table from the client, made safe to send; null when it isn't one or every cell is empty (TABLE_MESSAGES.empty). */
+export function tableOf(table: { rows: unknown; headerRow?: unknown; totalsRow?: unknown }): AiTable | null {
+  const t = cleanTable(table);
+  if (!t || t.rows.every((r) => r.every((c) => !c.trim()))) return null;
+  return t;
+}
+
+/** The table as the prompt carries it: its JSON (tableForPrompt), wrapped as untrusted note text. */
+export function asTablePrompt(t: AiTable): string {
+  return untrusted("note", { part: "table" }, tableForPrompt(t));
+}
+
+/** The table changed as asked (`instruction` trimmed and cut). The reply goes to parseTableReply. */
+export function tableEditRequest(t: AiTable, instruction: string): PromptRequest {
+  return { system: EDIT_SYSTEM, prompt: `${asTablePrompt(t)}\n\nChange the table as the person asks.\n\nRequest: ${instruction}`, json: true, temperature: 0.3, maxOutputTokens: TABLE_OUTPUT };
+}
+
+/** Empty cells filled, typos and formats fixed, repeated rows removed. The reply goes to parseTableReply. */
+export function tableCleanRequest(t: AiTable): PromptRequest {
+  return { system: CLEAN_SYSTEM, prompt: `${asTablePrompt(t)}\n\nClean up this table.`, json: true, temperature: 0.2, maxOutputTokens: TABLE_OUTPUT };
+}
+
+/**
+ * A formula for the cell at (row, column), 0-based and inside the table (the caller refuses anything else
+ * with TABLE_MESSAGES.pickCell). The reply goes to parseFormulaReply.
+ */
+export function tableFormulaRequest(t: AiTable, row: number, column: number, instruction: string): PromptRequest {
+  const ref = cellReference(row, column);
+  return {
+    system: FORMULA_SYSTEM,
+    prompt: `${asTablePrompt(t)}\n\nWrite the formula for cell ${ref} (row ${row + 1}, column ${column + 1}).\n\nIt should work out: ${instruction}`,
+    json: true,
+    temperature: 0.2,
+    maxOutputTokens: 1024,
+  };
+}
+
+/** What the table says: a summary and a few takeaways. The reply goes to parseExplainReply. */
+export function tableExplainRequest(t: AiTable): PromptRequest {
+  return { system: EXPLAIN_SYSTEM, prompt: `${asTablePrompt(t)}\n\nExplain this table.`, json: true, temperature: 0.4, maxOutputTokens: 1024 };
 }

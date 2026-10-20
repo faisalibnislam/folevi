@@ -5,9 +5,26 @@
 // or a tidy-up never changes a value, an explanation only writes the takeaway.
 import { CHART_COLORS, CHART_KINDS, CHART_LIMITS, CHART_SORTS, CHART_LEGENDS, chartCellText, chartDataIssue, chartNumber, normalizeChart, serializeChart, type ChartColor, type ChartData, type ChartKind } from "@folevi/editor-schema";
 import { untrusted, UNTRUSTED_RULE } from "./writing";
+import type { PromptRequest } from "./request";
 
 export const CHART_AI_TASKS = ["suggest", "explain", "tidy", "title"] as const;
 export type ChartAiTask = (typeof CHART_AI_TASKS)[number];
+
+/** An instruction is cut to this many characters (after trimming). */
+export const MAX_INSTRUCTION = 2000;
+/** The most chart data a request may carry (the block's own limit). */
+export const MAX_CHART = 200_000;
+/** The note text a chart from words reads. */
+export const NOTE_CHARS = 30_000;
+
+/** What the person sees when a chart request can't be made or its reply isn't usable. */
+export const CHART_MESSAGES = {
+  noData: "Add some data to the chart first.",
+  taskFailed: "Foli AI couldn't do that with this chart. Try again.",
+  noInstruction: "Say what to chart first.",
+  noNumbersInNote: "Foli AI couldn't find numbers to chart for that in this note. Try naming them.",
+  noNumbers: "Foli AI couldn't find numbers to chart in that. Try including them.",
+} as const;
 
 /** Rows of the chart the prompt carries (enough to see its shape and its numbers). */
 const PROMPT_ROWS = 80;
@@ -74,7 +91,7 @@ const KINDS_HELP =
   "Kinds: bar (compare categories), stackedBar (parts of each category's total), line (change over time), area (volume over time), pie or donut (parts of one whole, at most 6 slices, values close together read badly), scatter (two numbers per row), bubble (three numbers per row), org (rows are people: name, reports to, role), venn (rows are 2 or 3 sets and overlaps named \"A & B\").";
 
 /** The system prompt and request for one of the chart tasks. */
-export function chartTaskRequest(task: ChartAiTask, chart: ChartData): { system: string; prompt: string; maxOutputTokens: number; fast: boolean } {
+export function chartTaskRequest(task: ChartAiTask, chart: ChartData): PromptRequest & { maxOutputTokens: number; fast: boolean } {
   const facts = chartFacts(chart);
   const factBlock = facts.length ? `\n\nFacts worked out exactly (use only these for any number you write, never your own arithmetic):\n${facts.map((f) => `- ${f}`).join("\n")}` : "";
   const data = `${chartForPrompt(chart)}${factBlock}`;
@@ -86,6 +103,8 @@ export function chartTaskRequest(task: ChartAiTask, chart: ChartData): { system:
         prompt: `Suggest the best chart type and layout for this data.\n\n${data}`,
         maxOutputTokens: 512,
         fast: false,
+        json: true,
+        temperature: 0.3,
       };
     case "explain":
       return {
@@ -93,6 +112,8 @@ export function chartTaskRequest(task: ChartAiTask, chart: ChartData): { system:
         prompt: `Explain what this chart shows.\n\n${data}`,
         maxOutputTokens: 700,
         fast: false,
+        json: true,
+        temperature: 0.3,
       };
     case "title":
       return {
@@ -100,6 +121,8 @@ export function chartTaskRequest(task: ChartAiTask, chart: ChartData): { system:
         prompt: `Write a title and a takeaway line for this chart.\n\n${data}`,
         maxOutputTokens: 300,
         fast: true,
+        json: true,
+        temperature: 0.3,
       };
     case "tidy":
       return {
@@ -116,6 +139,8 @@ export function chartTaskRequest(task: ChartAiTask, chart: ChartData): { system:
         prompt: `Tidy and style this chart.\n\n${data}`,
         maxOutputTokens: 1600,
         fast: false,
+        json: true,
+        temperature: 0.3,
       };
   }
 }
@@ -204,7 +229,7 @@ export function parseChartPatch(task: ChartAiTask, raw: string, chart: ChartData
 }
 
 /** Making a chart from words: the request, with the note (its text as data) when there is one. */
-export function fromWordsRequest(instruction: string, note: { title: string; text: string } | null): { system: string; prompt: string; maxOutputTokens: number } {
+export function fromWordsRequest(instruction: string, note: { title: string; text: string } | null): PromptRequest & { maxOutputTokens: number } {
   const system = [
     PERSONA,
     KINDS_HELP,
@@ -216,7 +241,7 @@ export function fromWordsRequest(instruction: string, note: { title: string; tex
     UNTRUSTED_RULE,
   ].join(" ");
   const prompt = `${note ? `${untrusted("note", note.text, ` title="${note.title.replace(/["<>]/g, "'")}"`)}\n\n` : ""}Make a chart: ${instruction}`;
-  return { system, prompt, maxOutputTokens: 6144 };
+  return { system, prompt, json: true, temperature: 0.2, maxOutputTokens: 6144 };
 }
 
 /** A chart made from words, checked like any stored chart: serialized data, or null when it isn't usable. */

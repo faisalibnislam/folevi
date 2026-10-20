@@ -20,12 +20,19 @@ import { requireIdentity } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { vScopeArg, type ScopeArg } from "./lib/scope";
 import type { PlannedCall } from "./lib/credits";
-import { AI_MAX_SCREENS, AI_MAX_VARIATIONS, WIREFRAME_SYSTEM, parseWireframeReply, screenForPrompt } from "./lib/wireframeAi";
+import type { PromptRequest } from "@folevi/ai-prompts";
+import {
+  AI_MAX_SCREENS,
+  MAX_INSTRUCTION,
+  WIREFRAME_MESSAGES,
+  drawRequest,
+  parseWireframeReply,
+  refineRequest,
+  screenForPrompt,
+  variationCount,
+  varyRequest,
+} from "./lib/wireframeAi";
 import { gemini, metered } from "./ai";
-
-const MAX_INSTRUCTION = 2000;
-/** Output room per screen asked for (a screen of 60 parts is about 4,000 tokens of JSON). */
-const OUTPUT_PER_SCREEN = 4096;
 
 const vFrame = v.union(v.literal("phone"), v.literal("tablet"), v.literal("browser"), v.literal("plain"));
 /** Where a request is made from: the scope, and the note the block is in (the request is made in its scope). */
@@ -39,17 +46,16 @@ async function hold(ctx: ActionCtx, args: { scope: ScopeArg; documentId?: string
 const cleanInstruction = (s: string | undefined) => (s ?? "").trim().slice(0, MAX_INSTRUCTION);
 
 /** Asks Gemini for screens and reads the reply (refused with a plain message when nothing usable came back). */
-async function ask(ctx: ActionCtx, holdId: Id<"aiCreditHolds">, prompt: string, screens: number, opts: { frame?: "phone" | "tablet" | "browser" | "plain"; temperature: number }): Promise<WireframeData> {
-  const maxOutputTokens = Math.min(16_384, OUTPUT_PER_SCREEN * screens);
+async function ask(ctx: ActionCtx, holdId: Id<"aiCreditHolds">, req: PromptRequest, screens: number, frame?: "phone" | "tablet" | "browser" | "plain"): Promise<WireframeData> {
   return await metered(ctx, holdId, async (meter) => {
-    const raw = await gemini({ system: WIREFRAME_SYSTEM, prompt, json: true, temperature: opts.temperature, maxOutputTokens }, meter);
-    const wf = parseWireframeReply(raw, { frame: opts.frame, maxScreens: screens });
-    if (!wf) fail("invalid_argument", "Foli AI couldn't draw that. Try describing the screen and what's on it.");
+    const raw = await gemini(req, meter);
+    const wf = parseWireframeReply(raw, { frame, maxScreens: screens });
+    if (!wf) fail("invalid_argument", WIREFRAME_MESSAGES.failed);
     return wf;
   });
 }
 
-const plan = (prompt: number, screens: number): PlannedCall[] => [{ fast: false, inputChars: WIREFRAME_SYSTEM.length + prompt + 300, maxOutputTokens: Math.min(16_384, OUTPUT_PER_SCREEN * screens) }];
+const plan = (req: PromptRequest): PlannedCall[] => [{ fast: false, inputChars: req.system.length + req.prompt.length + 300, maxOutputTokens: req.maxOutputTokens ?? 0 }];
 
 /** A new screen (or a short flow) from a description. */
 export const draw = action({
@@ -57,11 +63,11 @@ export const draw = action({
   handler: async (ctx, args): Promise<WireframeData> => {
     await requireIdentity(ctx);
     const instruction = cleanInstruction(args.instruction);
-    if (!instruction) fail("invalid_argument", "Describe the screen first.");
+    if (!instruction) fail("invalid_argument", WIREFRAME_MESSAGES.noDescription);
     const frame = args.frame ?? "phone";
-    const prompt = `Draw the screen the person describes as a ${frame} screen. If they describe a flow of several screens, draw each (at most ${AI_MAX_SCREENS}) and link them in order.\n\nRequest: ${instruction}`;
-    const holdId = await hold(ctx, args, plan(prompt.length, AI_MAX_SCREENS));
-    return await ask(ctx, holdId, prompt, AI_MAX_SCREENS, { frame, temperature: 0.5 });
+    const req = drawRequest(instruction, frame);
+    const holdId = await hold(ctx, args, plan(req));
+    return await ask(ctx, holdId, req, AI_MAX_SCREENS, frame);
   },
 });
 
@@ -71,12 +77,11 @@ export const vary = action({
   handler: async (ctx, args): Promise<WireframeData> => {
     await requireIdentity(ctx);
     const current = screenForPrompt(args.screen);
-    if (!current) fail("invalid_argument", "Pick a screen to vary first.");
-    const count = Math.max(2, Math.min(AI_MAX_VARIATIONS, Math.round(args.count ?? 3)));
-    const instruction = cleanInstruction(args.instruction);
-    const prompt = `<wireframe>\n${current.prompt}\n</wireframe>\n\nMake ${count} different variations of this ${current.frame} screen, each its own screen with the same purpose and content but a clearly different layout or approach. Name them "${(current.name || "Screen").slice(0, 60)} A", "B" and so on. Don't link them.${instruction ? `\n\nAlso: ${instruction}` : ""}`;
-    const holdId = await hold(ctx, args, plan(prompt.length, count));
-    return await ask(ctx, holdId, prompt, count, { frame: current.frame, temperature: 0.9 });
+    if (!current) fail("invalid_argument", WIREFRAME_MESSAGES.noVaryScreen);
+    const count = variationCount(args.count);
+    const req = varyRequest(current, count, cleanInstruction(args.instruction));
+    const holdId = await hold(ctx, args, plan(req));
+    return await ask(ctx, holdId, req, count, current.frame);
   },
 });
 
@@ -86,11 +91,11 @@ export const refine = action({
   handler: async (ctx, args): Promise<WireframeData> => {
     await requireIdentity(ctx);
     const instruction = cleanInstruction(args.instruction);
-    if (!instruction) fail("invalid_argument", "Say what to change.");
+    if (!instruction) fail("invalid_argument", WIREFRAME_MESSAGES.noChange);
     const current = screenForPrompt(args.screen);
-    if (!current) fail("invalid_argument", "Pick a screen to refine first.");
-    const prompt = `<wireframe>\n${current.prompt}\n</wireframe>\n\nChange this screen as the person asks, and return the complete updated screen (one screen, the same frame). Keep the text, positions and options of everything they didn't ask to change; move parts only to make room.\n\nRequest: ${instruction}`;
-    const holdId = await hold(ctx, args, plan(prompt.length, 1));
-    return await ask(ctx, holdId, prompt, 1, { frame: current.frame, temperature: 0.3 });
+    if (!current) fail("invalid_argument", WIREFRAME_MESSAGES.noRefineScreen);
+    const req = refineRequest(current, instruction);
+    const holdId = await hold(ctx, args, plan(req));
+    return await ask(ctx, holdId, req, 1, current.frame);
   },
 });

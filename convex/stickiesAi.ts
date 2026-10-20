@@ -18,7 +18,8 @@
 import { v } from "convex/values";
 import { action, internalQuery, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { parseStickies, stickiesByGroup } from "@folevi/editor-schema";
+import { parseStickies } from "@folevi/editor-schema";
+import type { PromptRequest } from "@folevi/ai-prompts";
 import { requireIdentity, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { vScopeArg, type ScopeArg } from "./lib/scope";
@@ -30,36 +31,37 @@ import { capabilities, type Part } from "./lib/ai/provider";
 import type { AiFeature } from "./lib/ai/usage";
 import { gemini, metered, MAX_QUESTION } from "./ai";
 import {
-  CLUSTER_SYSTEM,
-  IDEAS_SYSTEM,
   MAX_PHOTO_BASE64,
   MAX_TASKS,
-  PHOTO_SYSTEM,
   PHOTO_TYPES,
-  SUMMARY_SYSTEM,
-  TASKS_SYSTEM,
-  WRITE_UP_SYSTEM,
+  STICKIES_MESSAGES,
   boardForPrompt,
+  boardSummaryRequest,
+  boardTasksRequest,
+  clusterRequest,
+  ideasRequest,
+  labelledGroups,
   parseClusters,
   parseIdeas,
   parsePhotoNotes,
   parseSummary,
   parseTasks,
   parseWriteUp,
+  photoRequest,
+  promptBoardOf,
+  writeUpRequest,
   type PromptBoard,
 } from "./lib/stickiesAi";
 
 const vWhere = { scope: vScopeArg, documentId: v.optional(v.string()), board: v.string() };
 
 interface Call<T> {
-  system: string;
-  prompt: string;
-  maxOutputTokens: number;
+  /** The request (packages/ai-prompts stickies.ts). */
+  request: PromptRequest;
   feature: AiFeature;
   attachments?: Part[];
   /** Characters the attachments count as, for the hold (a photo's tokens, as characters). */
   extraChars?: number;
-  temperature?: number;
   parse: (raw: string) => T | null;
   failure: string;
 }
@@ -69,11 +71,12 @@ interface Call<T> {
  * the call, the reply checked, and the credits settled however it ends.
  */
 async function run<T>(ctx: ActionCtx, where: { scope: ScopeArg; documentId?: string }, call: Call<T>): Promise<T> {
-  const plan: PlannedCall[] = [{ fast: false, inputChars: call.system.length + call.prompt.length + (call.extraChars ?? 0), maxOutputTokens: call.maxOutputTokens }];
+  const req = call.request;
+  const plan: PlannedCall[] = [{ fast: false, inputChars: req.system.length + req.prompt.length + (call.extraChars ?? 0), maxOutputTokens: req.maxOutputTokens ?? 0 }];
   const note = where.documentId ? { documentId: where.documentId, noteOnly: true } : null;
   const { holdId } = await ctx.runMutation(internal.ai.begin, { feature: call.feature, scope: where.scope, plan, ...note });
   return await metered(ctx, holdId, async (meter) => {
-    const raw = await gemini({ system: call.system, prompt: call.prompt, json: true, temperature: call.temperature ?? 0.4, maxOutputTokens: call.maxOutputTokens, ...(call.attachments ? { attachments: call.attachments, noMemory: true } : {}) }, meter);
+    const raw = await gemini({ ...req, ...(call.attachments ? { attachments: call.attachments } : {}) }, meter);
     const out = call.parse(raw);
     if (out === null) fail("invalid_argument", call.failure);
     return out;
@@ -82,12 +85,10 @@ async function run<T>(ctx: ActionCtx, where: { scope: ScopeArg; documentId?: str
 
 /** The board for a prompt, or a refusal when it has nothing to work with. */
 function promptBoard(data: string, min: number, only?: readonly string[]): PromptBoard {
-  const b = boardForPrompt(data, only);
-  if (!b || b.ids.size < min) fail("invalid_argument", min > 1 ? `Add at least ${min} notes with text first.` : "Write something on a note first.");
-  return b;
+  const b = promptBoardOf(data, min, only);
+  if ("refusal" in b) fail("invalid_argument", b.refusal);
+  return b.board;
 }
-
-const boardBlock = (b: PromptBoard) => `<board notes="${b.count}">\n${b.text}\n</board>${b.ids.size < b.count ? `\nOnly ${b.ids.size} of the board's ${b.count} notes are shown.` : ""}`;
 
 /** Group the notes by theme. */
 export const cluster = action({
@@ -96,13 +97,10 @@ export const cluster = action({
     await requireIdentity(ctx);
     const b = promptBoard(args.board, 2);
     const groups = await run(ctx, args, {
-      system: CLUSTER_SYSTEM,
-      prompt: `${boardBlock(b)}\n\nGroup these notes by theme.`,
-      maxOutputTokens: 4096,
+      request: clusterRequest(b),
       feature: "writing",
-      temperature: 0.3,
       parse: (raw) => parseClusters(raw, b.ids),
-      failure: "Foli AI couldn't group these notes. Try again.",
+      failure: STICKIES_MESSAGES.clusterFailed,
     });
     return { groups };
   },
@@ -115,12 +113,10 @@ export const summarize = action({
     await requireIdentity(ctx);
     const b = promptBoard(args.board, 1);
     const summary = await run(ctx, args, {
-      system: SUMMARY_SYSTEM,
-      prompt: `${boardBlock(b)}\n\nSummarise this board.`,
-      maxOutputTokens: 2048,
+      request: boardSummaryRequest(b),
       feature: "writing",
       parse: parseSummary,
-      failure: "Foli AI couldn't summarise this board. Try again.",
+      failure: STICKIES_MESSAGES.summaryFailed,
     });
     return { summary };
   },
@@ -133,16 +129,13 @@ export const ideas = action({
     await requireIdentity(ctx);
     const instruction = (args.instruction ?? "").trim().slice(0, MAX_QUESTION);
     const b = boardForPrompt(args.board);
-    if (!b && !instruction) fail("invalid_argument", "Say what the ideas should be about.");
+    if (!b && !instruction) fail("invalid_argument", STICKIES_MESSAGES.noTopic);
     const existing = parseStickies(args.board.slice(0, 250_000)).notes.map((n) => n.text);
     const ideas = await run(ctx, args, {
-      system: IDEAS_SYSTEM,
-      prompt: `${b ? boardBlock(b) : "The board is empty."}\n\n${instruction ? `Suggest new ideas about: ${instruction}` : "Suggest new ideas for this board."}`,
-      maxOutputTokens: 2048,
+      request: ideasRequest(b, instruction),
       feature: "writing",
-      temperature: 0.8,
       parse: (raw) => parseIdeas(raw, existing),
-      failure: "Foli AI couldn't come up with new ideas. Try again.",
+      failure: STICKIES_MESSAGES.ideasFailed,
     });
     return { ideas };
   },
@@ -160,20 +153,17 @@ export const photo = action({
   handler: async (ctx, args): Promise<{ notes: { text: string; color: string }[] }> => {
     await requireIdentity(ctx);
     const { mimeType, data } = args.image;
-    if (!(PHOTO_TYPES as readonly string[]).includes(mimeType)) fail("unsupported_file", "Use a JPEG, PNG or WebP photo.");
-    if (!data || data.length > MAX_PHOTO_BASE64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data.slice(-64))) fail("invalid_argument", "That photo is too large. Try a smaller one.");
+    if (!(PHOTO_TYPES as readonly string[]).includes(mimeType)) fail("unsupported_file", STICKIES_MESSAGES.badPhotoType);
+    if (!data || data.length > MAX_PHOTO_BASE64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data.slice(-64))) fail("invalid_argument", STICKIES_MESSAGES.photoTooLarge);
     if (!(await ctx.runQuery(internal.stickiesAi.photoAllowed, {}))) fail("forbidden", ATTACHMENTS_OFF);
-    if (!capabilities().vision) fail("unsupported_file", "Foli AI can't read photos right now.");
+    if (!capabilities().vision) fail("unsupported_file", STICKIES_MESSAGES.noVision);
     const notes = await run(ctx, args, {
-      system: PHOTO_SYSTEM,
-      prompt: "Read the sticky notes in this photo.",
+      request: photoRequest(),
       attachments: [{ inlineData: { mimeType, data } }],
       extraChars: attachmentTokens("image", data.length) * 4,
-      maxOutputTokens: 6144,
       feature: "attachments",
-      temperature: 0,
       parse: parsePhotoNotes,
-      failure: "Foli AI couldn't read that photo. Try a sharper one, taken straight on.",
+      failure: STICKIES_MESSAGES.photoFailed,
     });
     return { notes };
   },
@@ -184,16 +174,13 @@ export const tasks = action({
   args: { ...vWhere, noteIds: v.array(v.string()) },
   handler: async (ctx, args): Promise<{ tasks: { noteId: string; text: string; owner: string | null }[] }> => {
     await requireIdentity(ctx);
-    if (!args.noteIds.length) fail("invalid_argument", "Choose the notes to turn into tasks.");
+    if (!args.noteIds.length) fail("invalid_argument", STICKIES_MESSAGES.chooseNotes);
     const b = promptBoard(args.board, 1, args.noteIds.slice(0, MAX_TASKS));
     const tasks = await run(ctx, args, {
-      system: TASKS_SYSTEM,
-      prompt: `${boardBlock(b)}\n\nTurn each of these notes into a to-do.`,
-      maxOutputTokens: 4096,
+      request: boardTasksRequest(b),
       feature: "writing",
-      temperature: 0.3,
       parse: (raw) => parseTasks(raw, b.ids),
-      failure: "Foli AI couldn't turn these notes into tasks. Try again.",
+      failure: STICKIES_MESSAGES.tasksFailed,
     });
     return { tasks };
   },
@@ -205,14 +192,11 @@ export const writeUp = action({
   handler: async (ctx, args): Promise<{ title: string; summary: string; nextSteps: string[] }> => {
     await requireIdentity(ctx);
     const b = promptBoard(args.board, 1);
-    const groups = stickiesByGroup(parseStickies(args.board.slice(0, 250_000))).filter((g) => g.group?.label).length;
     return await run(ctx, args, {
-      system: WRITE_UP_SYSTEM,
-      prompt: `${boardBlock(b)}\n\nWrite this board up${groups ? ` (it has ${groups} labelled groups)` : ""}.`,
-      maxOutputTokens: 3072,
+      request: writeUpRequest(b, labelledGroups(args.board)),
       feature: "writing",
       parse: parseWriteUp,
-      failure: "Foli AI couldn't write this board up. Try again.",
+      failure: STICKIES_MESSAGES.writeUpFailed,
     });
   },
 });

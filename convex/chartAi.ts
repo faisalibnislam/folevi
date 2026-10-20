@@ -15,13 +15,7 @@ import { fail } from "./lib/errors";
 import { vScopeArg } from "./lib/scope";
 import type { PlannedCall } from "./lib/credits";
 import { gemini, metered } from "./ai";
-import { chartTaskRequest, fromWordsRequest, parseChartDraft, parseChartPatch, type ChartPatch } from "./lib/chartAi";
-
-const MAX_INSTRUCTION = 2000;
-/** The most chart data a request may carry (the block's own limit). */
-const MAX_CHART = 200_000;
-/** The note text a chart from words reads. */
-const NOTE_CHARS = 30_000;
+import { CHART_MESSAGES, MAX_CHART, MAX_INSTRUCTION, NOTE_CHARS, chartTaskRequest, fromWordsRequest, parseChartDraft, parseChartPatch, type ChartPatch } from "./lib/chartAi";
 
 const vTask = v.union(v.literal("suggest"), v.literal("explain"), v.literal("tidy"), v.literal("title"));
 
@@ -35,14 +29,14 @@ export const assist = action({
   handler: async (ctx, args): Promise<ChartPatch> => {
     await requireIdentity(ctx);
     const chart = normalizeChart(safeJson(args.chart.slice(0, MAX_CHART)));
-    if (!chart.columns.length || !chart.rows.length) fail("invalid_argument", "Add some data to the chart first.");
+    if (!chart.columns.length || !chart.rows.length) fail("invalid_argument", CHART_MESSAGES.noData);
     const req = chartTaskRequest(args.task, chart);
     const plan: PlannedCall[] = [{ fast: req.fast, inputChars: req.system.length + req.prompt.length, maxOutputTokens: req.maxOutputTokens }];
     const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing" });
     return await metered(ctx, holdId, async (meter) => {
-      const raw = await gemini({ system: req.system, prompt: req.prompt, json: true, fast: req.fast, temperature: 0.3, maxOutputTokens: req.maxOutputTokens }, meter);
+      const raw = await gemini(req, meter);
       const patch = parseChartPatch(args.task, raw, chart);
-      if (!patch) fail("invalid_argument", "Foli AI couldn't do that with this chart. Try again.");
+      if (!patch) fail("invalid_argument", CHART_MESSAGES.taskFailed);
       return patch;
     });
   },
@@ -57,16 +51,16 @@ export const fromWords = action({
   handler: async (ctx, args): Promise<{ data: string }> => {
     await requireIdentity(ctx);
     const instruction = args.instruction.trim().slice(0, MAX_INSTRUCTION);
-    if (!instruction) fail("invalid_argument", "Say what to chart first.");
+    if (!instruction) fail("invalid_argument", CHART_MESSAGES.noInstruction);
     const estimate = fromWordsRequest(instruction, args.documentId ? { title: "", text: "x".repeat(NOTE_CHARS) } : null);
     const plan: PlannedCall[] = [{ fast: false, inputChars: estimate.system.length + estimate.prompt.length, maxOutputTokens: estimate.maxOutputTokens }];
     const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing" });
     return await metered(ctx, holdId, async (meter) => {
       const note = args.documentId ? await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId }) : null;
       const req = fromWordsRequest(instruction, note ? { title: note.title, text: note.text.slice(0, NOTE_CHARS) } : null);
-      const raw = await gemini({ system: req.system, prompt: req.prompt, json: true, temperature: 0.2, maxOutputTokens: req.maxOutputTokens }, meter);
+      const raw = await gemini(req, meter);
       const data = parseChartDraft(raw);
-      if (!data) fail("invalid_argument", note ? "Foli AI couldn't find numbers to chart for that in this note. Try naming them." : "Foli AI couldn't find numbers to chart in that. Try including them.");
+      if (!data) fail("invalid_argument", note ? CHART_MESSAGES.noNumbersInNote : CHART_MESSAGES.noNumbers);
       return { data };
     });
   },

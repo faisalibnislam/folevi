@@ -19,3 +19,6 @@ export * as tableAi from "./table";
 export * as chartAi from "./chart";
 export * as wireframeAi from "./wireframe";
 export * as flowchartAi from "./flowchart";
+export * as untrustedText from "./untrusted";
+export * as aiActions from "./actions";
+export * as ask from "./ask";

@@ -68,8 +68,14 @@ export function ShapePicker({ left, top, maxHeight, onPick, onClose }: { left: n
   useEffect(() => {
     inputRef.current?.focus({ preventScroll: true });
   }, []);
+  // Keeps the active row in view by scrolling the list only (scrollIntoView would also scroll the canvas).
   useEffect(() => {
-    listRef.current?.querySelector(`[data-index="${current}"]`)?.scrollIntoView?.({ block: "nearest" });
+    const list = listRef.current;
+    const row = list?.querySelector<HTMLElement>(`[data-index="${current}"]`);
+    if (!list || !row) return;
+    const top = row.offsetTop - list.offsetTop;
+    if (top < list.scrollTop) list.scrollTop = top;
+    else if (top + row.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = top + row.offsetHeight - list.clientHeight;
   }, [current]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

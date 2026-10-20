@@ -7,7 +7,7 @@ import { flowchart, newEdge, rectsOverlap, type FlowchartData, type FlowNode } f
 
 const building = await import("@/components/editor/flowchart/building");
 const picker = await import("@/components/editor/flowchart/chrome/ShapePicker");
-const { addConnectedAt, flowSide, neighbourInDirection, nextShapeKind, quickAdd, quickBranch } = building;
+const { addConnectedAt, circleHitsRect, containerGrabRects, flowSide, neighbourInDirection, nextShapeKind, quickAdd, quickBranch } = building;
 
 const node = (id: string, x = 0, y = 0, extra: Partial<FlowNode> = {}): FlowNode => ({ id, shape: "process", x, y, w: 160, h: 64, text: id, color: "neutral", ...extra });
 const chart = (nodes: FlowNode[], edges: [string, string][] = []): FlowchartData => flowchart({ nodes, edges: edges.map(([from, to], i) => newEdge(from, to, { id: `e${i}`, fromSide: "bottom", toSide: "top" })) });
@@ -141,6 +141,24 @@ describe("arrow keys", () => {
   test("prefer a connected shape over a slightly nearer loose one", () => {
     const g = chart([node("a", 0, 0), node("near", 40, 150), node("linked", 0, 190)], [["a", "linked"]]);
     expect(neighbourInDirection(g, "a", "bottom")).toBe("linked");
+  });
+});
+
+describe("frames and swimlanes", () => {
+  test("their title bands and lane headers are where the + arrows keep off", () => {
+    const fc = flowchart({
+      nodes: [node("a", 40, 60, { parent: "f" })],
+      frames: [{ id: "f", x: 0, y: 0, w: 400, h: 300, title: "Sign up", color: "neutral" }, { id: "g", x: 500, y: 0, w: 200, h: 200, title: "", color: "neutral" }],
+      pools: [{ id: "p", x: 0, y: 400, orient: "rows", title: "Team", length: 600, lanes: [{ id: "l1", title: "Sales", size: 160, color: "neutral" }, { id: "l2", title: "Ops", size: 160, color: "neutral" }] }],
+    });
+    const rects = containerGrabRects(fc);
+    expect(rects[0]).toEqual({ x: 0, y: 0, w: 400, h: 32 });
+    expect(rects[1]!.h).toBe(12);
+    // The pool's title band and both lane headers.
+    expect(rects).toHaveLength(5);
+    // The selected shape's top arrow, 40 above it, lands on the frame's title band.
+    expect(rects.some((r) => circleHitsRect({ x: 120, y: 20 }, 14, r))).toBe(true);
+    expect(rects.some((r) => circleHitsRect({ x: 120, y: 200 }, 14, r))).toBe(false);
   });
 });
 

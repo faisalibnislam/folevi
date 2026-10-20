@@ -294,4 +294,60 @@ test.describe("Flowchart: building faster", () => {
     await phone.close();
     await context.close();
   });
+
+  test("shortcuts after clicking a shape, and the + arrows keep off a frame's title", async ({ browser }) => {
+    const { context, page } = await newPerson(browser, "Shortcut Tester");
+    const canvas = await newFlowchart(page, "Shortcuts");
+    const tools = page.getByRole("toolbar", { name: "Flowchart tools" });
+    await tools.getByRole("button", { name: "Add process" }).click();
+    await page.keyboard.type("Solo");
+    await page.keyboard.press("Enter");
+    const solo = canvas.getByRole("button", { name: /^Process: Solo/ }).first();
+
+    // Clicking a shape gives it the keyboard; the canvas shortcuts still work from there.
+    await page.keyboard.press("Escape");
+    await solo.click();
+    await expect(solo).toBeFocused();
+    await page.keyboard.press("ControlOrMeta+d");
+    await expect(canvas.locator("[data-fc-node]")).toHaveCount(2);
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(canvas.locator("[data-fc-node]")).toHaveCount(1);
+    // Also when a toolbar button had the keyboard before the click.
+    await page.getByRole("toolbar", { name: "Zoom" }).getByRole("button", { name: "Zoom in" }).click();
+    await solo.click();
+    await expect(solo).toBeFocused();
+    await page.keyboard.press("ControlOrMeta+d");
+    await expect(canvas.locator("[data-fc-node]")).toHaveCount(2);
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(canvas.locator("[data-fc-node]")).toHaveCount(1);
+    await solo.click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await expect(canvas.locator(".fc-node[data-selected]")).toHaveCount(1);
+    await solo.click();
+    await page.keyboard.press("Enter");
+    await expect(canvas.locator(".fc-text-input")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(canvas.locator(".fc-text-input")).toHaveCount(0);
+    await page.keyboard.press("Alt+ArrowRight");
+    await page.keyboard.press("Backspace");
+    await expect(canvas.locator("[data-fc-node]")).toHaveCount(0);
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(canvas.locator("[data-fc-node]")).toHaveCount(1);
+
+    // Framed: the shape's arrows never sit on the frame's title band (pressing there moves the frame).
+    await solo.click();
+    await tools.getByRole("button", { name: "Frame selection" }).click();
+    await expect(canvas.locator(".fc-frame-band")).toHaveCount(1);
+    await solo.click();
+    await solo.hover();
+    const id = (await solo.getAttribute("data-fc-node"))!;
+    await expect(canvas.locator(`[data-fc-quick][data-node="${id}"]`).first()).toBeVisible();
+    // (Title bands and lane headers; a frame's border is pressed to move it too, but along its edge.)
+    const bands = await canvas.locator(".fc-frame-band, .fc-pool-band, .fc-lane-header").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as DOMRect));
+    const hits = await canvas.locator(`[data-fc-quick][data-node="${id}"] .fc-quick-hit`).evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as DOMRect));
+    const meets = (a: DOMRect, b: DOMRect) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+    expect(hits.filter((h) => bands.some((b) => meets(h, b)))).toEqual([]);
+    await shot(page, "framed-arrows");
+    await context.close();
+  });
 });

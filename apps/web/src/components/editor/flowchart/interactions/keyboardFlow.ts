@@ -97,6 +97,18 @@ export function useKeyboardFlow(ctrl: FlowController, { actions, finishEdit }: {
   }, [doc, wrapRef]);
 
   const interaction: Interaction = {
+    // A press on the canvas takes the keyboard from its toolbars and panels (a button there keeps it
+    // otherwise, and the canvas shortcuts would never see a key); text boxes keep theirs.
+    // Pressing a shape (no modifier) gives it the keyboard straight away.
+    beforePress: (e) => {
+      const a = document.activeElement;
+      const wrap = wrapRef.current;
+      if (!wrap) return;
+      if (a instanceof HTMLElement && a !== wrap && wrap.contains(a) && !a.closest('input, textarea, [contenteditable="true"]') && a.closest(".fc-bar, .fc-ai, .fc-picker, [role='toolbar'], [role='dialog']")) wrap.focus({ preventScroll: true });
+      if (e.shiftKey || e.metaKey || e.ctrlKey || e.button !== 0) return;
+      const g = (e.target as Element).closest?.("[data-fc-node]");
+      if (g instanceof SVGElement && wrap.contains(g) && document.activeElement !== g) g.focus({ preventScroll: true });
+    },
     keyDown: (e) => {
       if (e.metaKey || e.ctrlKey) return false;
       const s = selRef.current;

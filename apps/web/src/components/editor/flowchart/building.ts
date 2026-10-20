@@ -10,7 +10,12 @@ import {
   newEdge,
   quickAddPosition,
   quickAddSibling,
+  FLOWCHART_FRAME_TITLE,
+  FLOWCHART_POOL_TITLE,
+  laneBoxes,
+  poolRect,
   type FlowchartData,
+  type Rect,
   type FlowNode,
   type FlowShape,
   type FlowSide,
@@ -138,4 +143,25 @@ export function neighbourInDirection(fc: FlowchartData, id: string, dir: FlowSid
     if (!best || score < best.score) best = { id: n.id, score };
   }
   return best?.id ?? null;
+}
+
+/**
+ * The parts of frames and swimlanes that are pressed to move them: frame title bands, pool title bands and
+ * lane headers (layers/Containers.tsx draws them as data-fc-grab). The + arrows keep off these.
+ */
+export function containerGrabRects(fc: FlowchartData): Rect[] {
+  const out: Rect[] = fc.frames.map((f) => ({ x: f.x, y: f.y, w: f.w, h: f.title ? FLOWCHART_FRAME_TITLE : 12 }));
+  for (const p of fc.pools) {
+    const r = poolRect(p);
+    out.push({ x: r.x, y: r.y, w: r.w, h: FLOWCHART_POOL_TITLE });
+    for (const b of laneBoxes(p)) out.push(b.header);
+  }
+  return out;
+}
+
+/** A circle (an arrow's touch area) overlaps a rectangle. */
+export function circleHitsRect(c: Pt, r: number, rect: Rect): boolean {
+  const dx = c.x - Math.max(rect.x, Math.min(c.x, rect.x + rect.w));
+  const dy = c.y - Math.max(rect.y, Math.min(c.y, rect.y + rect.h));
+  return dx * dx + dy * dy < r * r;
 }

@@ -8,10 +8,10 @@
 //
 // A shape added here and the text then typed into it are one undo step: the chart is shown with the new
 // shape (setLive) and the text edit starts from the chart before it, so finishing the edit records both.
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FLOWCHART_SHAPE_LABEL, autoSides, nearestSide, orthogonalRoute, portPoint, roundedPolyline, type FlowchartData, type FlowNode, type FlowShape, type FlowSide, type Pt, type Rect } from "../schema";
 import { NO_SELECTION, connect, nodeAt, type Selection } from "../ops";
-import { addConnectedAt, quickAdd, type Added } from "../building";
+import { addConnectedAt, circleHitsRect, containerGrabRects, quickAdd, type Added } from "../building";
 import { ShapePicker, rememberShape } from "../chrome/ShapePicker";
 import type { FlowController, Interaction } from "../controller/types";
 
@@ -178,6 +178,7 @@ export function useQuickAdd(ctrl: FlowController) {
 
   const k = view.k;
   const dragging = isDragging();
+  const grabs = useMemo(() => containerGrabRects(ctrl.doc), [ctrl.doc]);
   // On touch the arrows belong to the selected shape; with a mouse, to the one under the pointer.
   const owner: FlowNode | undefined = touch ? (single ?? undefined) : ((near ? byId.get(near) : undefined) ?? single ?? undefined);
   const show = owner && !editing && !dragging && !picker;
@@ -198,9 +199,11 @@ export function useQuickAdd(ctrl: FlowController) {
           const cy = owner.y + owner.h / 2;
           const p = { top: { x: cx, y: owner.y - out }, right: { x: owner.x + owner.w + out, y: cy }, bottom: { x: cx, y: owner.y + owner.h + out }, left: { x: owner.x - out, y: cy } }[side];
           if (side === "top" && barAbove && single?.id === owner.id) return null;
-          // An arrow that would sit on another shape stays hidden (it would cover that shape).
+          // An arrow that would sit on another shape, or on a frame's or lane's title (pressed to move it),
+          // stays hidden.
           const under = nodeAt(ctrl.doc, p, r);
           if (under && under.id !== owner.id) return null;
+          if (grabs.some((g) => circleHitsRect(p, hitR, g))) return null;
           return (
             <g key={side} className="fc-quick" data-fc-quick="" data-node={owner.id} data-side={side} data-touch={touch || undefined}>
               <circle cx={p.x} cy={p.y} r={hitR} className="fc-quick-hit" />
@@ -251,7 +254,8 @@ export function useQuickAdd(ctrl: FlowController) {
     const h = ctrl.height;
     const x = picker.client.x - (rect?.left ?? 0);
     const y = picker.client.y - (rect?.top ?? 0);
-    const PW = 248;
+    // The picker's width (flowchart.css: wider for fingers), kept inside the canvas.
+    const PW = Math.min(w - 16, typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? 280 : 248);
     const maxHeight = Math.max(160, Math.min(320, h - 16));
     const left = Math.max(8, Math.min(x + 10, w - PW - 8));
     const top = Math.max(8, Math.min(y + 10, h - maxHeight - 8));

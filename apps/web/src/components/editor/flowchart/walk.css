@@ -1,0 +1,75 @@
+/* Present and Follow a path (interactions/walkthrough.tsx, chrome/WalkBar.tsx). While a walk runs the canvas
+ * carries data-fc-walk (and a scoped style rule lights what the walk shows); everything else dims, and the
+ * editing chrome steps aside. */
+
+.fc-canvas[data-fc-walk] { --fc-walk-dim: 0.16; --fc-walk-near: 0.55; }
+.fc-canvas[data-fc-walk] :is(.fc-node, .fc-edge[data-fc-edge], .fc-edge-label-item) { opacity: var(--fc-walk-dim); transition: opacity 220ms ease; }
+/* Picking a path's ends: every shape stays clear to click. */
+.fc-canvas[data-fc-walk-kind="pick"] :is(.fc-node, .fc-edge[data-fc-edge], .fc-edge-label-item) { opacity: 1; }
+.fc-canvas[data-fc-walk-kind="pick"] .fc-node { cursor: pointer; }
+.fc-canvas[data-fc-walk] .fc-node { cursor: pointer; }
+.fc-canvas[data-fc-walk] .fc-edge-hit { cursor: pointer; }
+.fc-canvas[data-fc-walk] :is(.fc-overlay, .fc-bar-main, .fc-bar-float, .fc-bar-zoom, .fc-empty, .fc-ai, .fc-picker) { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .fc-canvas[data-fc-walk] :is(.fc-node, .fc-edge[data-fc-edge], .fc-edge-label-item) { transition: none; }
+}
+
+/* On the canvas: a ring round the current shape (and a path's ends), numbered ways on at a decision. */
+.fc-walk-layer * { vector-effect: non-scaling-stroke; }
+.fc-walk-ring {
+  fill: none; stroke: var(--fc-select); stroke-width: 2.5px; pointer-events: none;
+  filter: drop-shadow(0 0 6px color-mix(in oklab, var(--fc-select) 45%, transparent));
+}
+.fc-walk-ring[data-kind="end"] { stroke-dasharray: 5 4; }
+@media (prefers-reduced-motion: no-preference) {
+  .fc-walk-ring[data-kind="current"] { animation: fc-walk-in 320ms ease-out; }
+}
+@keyframes fc-walk-in { from { opacity: 0; } to { opacity: 1; } }
+.fc-walk-chip { cursor: pointer; }
+.fc-walk-chip-hit { fill: transparent; }
+.fc-walk-chip-dot { fill: var(--fc-select); stroke: var(--color-surface); stroke-width: 2px; }
+.fc-walk-chip:hover .fc-walk-chip-dot { fill: color-mix(in oklab, var(--fc-select) 82%, var(--color-ink)); }
+.fc-walk-chip-num { fill: #fff; font-family: var(--font-sans); font-weight: 650; pointer-events: none; user-select: none; }
+
+/* The bar along the bottom. */
+.fc-walk-bar {
+  left: 50%; bottom: 12px; transform: translateX(-50%); width: max-content; max-width: calc(100% - 20px);
+  flex-wrap: wrap; justify-content: center; row-gap: 4px;
+}
+.fc-walk-now { display: grid; min-width: 0; padding: 0 6px; line-height: 1.25; }
+.fc-walk-count { font-size: 11px; font-weight: 550; color: var(--color-ink-muted); }
+.fc-walk-name { min-width: 0; max-width: 30ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--color-heading); }
+.fc-walk-prompt { max-width: 48ch; padding: 0 6px; font-weight: 550; }
+.fc-walk-icon { flex: none; margin: 0 2px 0 6px; color: var(--color-ink-muted); }
+.fc-walk-ways { flex-wrap: wrap; }
+.fc-walk-way-label { min-width: 0; max-width: 20ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-walk-key {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--radius-tiny);
+  background: var(--fc-select); color: #fff; font: 650 11px/1 var(--font-sans);
+}
+.fc-walk-done { padding: 0 6px; font-weight: 550; color: var(--color-ink-muted); }
+.fc-walk-hint { padding: 0 4px; font-size: 11.5px; color: var(--color-ink-faint); white-space: nowrap; }
+.fc-walk-steps { display: flex; align-items: center; gap: 2px; min-width: 0; max-width: min(560px, 100%); margin: 0; padding: 0 2px; list-style: none; overflow-x: auto; scrollbar-width: none; }
+.fc-walk-steps li { flex: none; display: inline-flex; align-items: center; gap: 2px; }
+.fc-walk-arrow { color: var(--color-ink-faint); }
+.fc-walk-step {
+  max-width: 22ch; height: 28px; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  border-radius: var(--radius-control); font: 500 12.5px/28px var(--font-sans); color: var(--color-ink);
+}
+.fc-walk-step:hover { background: var(--glass-hover); color: var(--color-heading); }
+.fc-walk-step:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.fc-walk-step-label { margin-right: 5px; font-size: 11px; color: var(--color-ink-muted); }
+@media (pointer: coarse), (max-width: 640px) {
+  .fc-walk-hint { display: none; }
+}
+@media (pointer: coarse) {
+  .fc-walk-bar .fc-btn { min-width: 44px; height: 44px; }
+  .fc-walk-step { height: 44px; line-height: 44px; }
+}
+@media (forced-colors: active) {
+  .fc-walk-ring { stroke: Highlight; }
+  .fc-walk-chip-dot, .fc-walk-key { fill: Highlight; background: Highlight; }
+}
+@media print {
+  .fc-walk-bar, .fc-walk-layer { display: none; }
+}

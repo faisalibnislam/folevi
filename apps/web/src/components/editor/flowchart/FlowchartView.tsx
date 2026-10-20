@@ -82,6 +82,8 @@ import { useKeyboardFlow } from "./interactions/keyboardFlow";
 import { DotGrid, SceneLayers, SelectionBoxes } from "./layers/Scene";
 import { SelectionBar } from "./chrome/SelectionBar";
 import { HeightHandle } from "./chrome/HeightHandle";
+import { useWalkthrough } from "./interactions/walkthrough";
+import { WalkTools } from "./chrome/WalkBar";
 import { checkFlowchart } from "./schema";
 import { useFlowAiClient } from "./aiClient";
 import { useAiPreview } from "./interactions/aiPreview";
@@ -140,6 +142,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   };
 
   const actions = useFlowActions(ctrl);
+  const walk = useWalkthrough(ctrl);
   // What shapes hold: the shape library, icons, colours, images, notes, page links (interactions/content.tsx).
   const content = useShapeContent(ctrl, { actions });
   const text = useTextEditing(ctrl, { onImage: content.onImageWhileWriting });
@@ -150,10 +153,11 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   const move = useMove(ctrl);
   const select = useSelect(ctrl);
   const boxes = useContainers(ctrl);
-  const menu = useContextMenu(ctrl, { actions, startEdit: text.startEdit, contentItems: content.menuItems, nodeItems: () => [...(boxes.nodeMenuItems?.() ?? []), ...(aiOn ? [{ label: "Add next steps", icon: <ListPlus size={14} />, onSelect: () => void flowAi.extend("next", ctrl.selRef.current.nodes) }, { label: "Fill in missing branches", icon: <GitBranchPlus size={14} />, onSelect: () => void flowAi.extend("branches", ctrl.selRef.current.nodes) }] : [])] });
+  const menu = useContextMenu(ctrl, { actions, startEdit: text.startEdit, contentItems: content.menuItems, nodeItems: () => [...(boxes.nodeMenuItems?.() ?? []), ...walk.menuItems(), ...(aiOn ? [{ label: "Add next steps", icon: <ListPlus size={14} />, onSelect: () => void flowAi.extend("next", ctrl.selRef.current.nodes) }, { label: "Fill in missing branches", icon: <GitBranchPlus size={14} />, onSelect: () => void flowAi.extend("branches", ctrl.selRef.current.nodes) }] : [])] });
   const quick = useQuickAdd(ctrl, { hover: hover.hover });
   const flow = useKeyboardFlow(ctrl, { actions, finishEdit: text.finishEdit });
   const events = useInteractions(ctrl, [
+    walk.interaction, // Present and Follow a path: while one runs, every press and key is its own
     text.interaction, // any press ends writing first
     pan.interaction, // middle button, space held, one finger on empty canvas; the space key
     preview.interaction, // a Foli AI preview: only panning and zooming until it is applied or discarded
@@ -196,6 +200,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   const bends = useBends(ctrl, { hidden: connect.drawing });
   const labels = useEdgeLabels(ctrl);
           {...events.canvas}
+          {...walk.canvasProps}
           {...content.canvasProps}
         >
           <p id={`${uid}-help`} className="sr-only">
@@ -220,9 +225,11 @@ function FlowchartEditor(props: ReactNodeViewProps) {
                 {content.overlay}
                 {preview.overlay}
               </g>
+              {walk.layer}
             </g>
           </svg>
           {text.input}
+          {walk.element}
           {content.panel}
           {content.status}
           {boxes.element}
@@ -279,6 +286,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
               </button>
             }
             aiOpen={ctrl.aiOpen}
+            walkTools={<WalkTools onPresent={() => walk.present()} onFollow={() => walk.pick()} disabled={!nodeCount} />}
             containers={boxes.tools}
             exportMenu={<BlockExportMenu type="flowchart" attrs={() => ({ data: serializeFlowchart(docRef.current) })} empty={!nodeCount} triggerClassName="fc-btn" align="start" />}
           />

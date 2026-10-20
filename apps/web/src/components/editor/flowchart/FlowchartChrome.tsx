@@ -45,6 +45,7 @@ export function MainToolbar({
   canTidy,
   onAi,
   aiOpen,
+  walkTools,
   exportMenu,
   containers,
   tidyControl,
@@ -61,6 +62,8 @@ export function MainToolbar({
   canTidy: boolean;
   onAi: (() => void) | null;
   aiOpen: boolean;
+  /** Present and Follow a path (chrome/WalkBar.tsx WalkTools), before Export. */
+  walkTools?: React.ReactNode;
   /** The Export menu (PNG, SVG, PDF, Copy as image), at the end of the bar. */
   exportMenu?: React.ReactNode;
   /** Frame and swimlane buttons (chrome/ContainerBar.tsx), after the shapes. */
@@ -105,6 +108,12 @@ export function MainToolbar({
       <button type="button" className="fc-btn" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={onRedo}>
         <Redo2 size={15} aria-hidden />
       </button>
+      {walkTools ? (
+        <>
+          <span className="fc-sep" aria-hidden />
+          {walkTools}
+        </>
+      ) : null}
       {exportMenu ? (
         <>
           <span className="fc-sep" aria-hidden />

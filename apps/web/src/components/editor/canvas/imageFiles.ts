@@ -48,7 +48,8 @@ export async function fileDataUrls(client: ConvexReactClient, fileIds: readonly 
   await Promise.all(
     Object.entries(urls).map(async ([id, f]) => {
       try {
-        const res = await fetch(f.url);
+        // Not from the HTTP cache: the page's own <img> may have cached the file without its CORS headers.
+        const res = await fetch(f.url, { cache: "no-store" });
         if (!res.ok) return;
         let blob = await res.blob();
         const type = blob.type || f.mimeType;

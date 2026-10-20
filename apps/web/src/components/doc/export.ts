@@ -79,7 +79,8 @@ async function fetchAssets(client: ConvexReactClient, blocks: WireBlock[], opts:
       continue;
     }
     try {
-      const res = await fetch(info.url);
+      // Not from the HTTP cache: an <img> on the page may have cached the file without its CORS headers.
+      const res = await fetch(info.url, { cache: "no-store" });
       if (!res.ok) throw new Error(String(res.status));
       assets.set(ref.id, { path: `assets/${ref.id}-${safeName(info.filename)}`, bytes: new Uint8Array(await res.arrayBuffer()) });
     } catch {

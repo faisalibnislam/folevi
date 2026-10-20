@@ -1,8 +1,8 @@
 "use client";
 // Moving between "Keep notes on my devices" and a Folevi account (docs/LOCAL_MODE_PLAN.md §6), from Settings >
-// Import & export in the Mac app: in local mode "Move to a Folevi account" (sign in, then the library goes up);
-// signed in, "Keep my notes on this Mac" (the account comes down into a library, then this Mac signs out) and,
-// once a library has gone up, "Remove the local copy…". Library settings (WP10) show MoveToAccountCard too.
+// Import & export in the signed-in Mac app: "Keep my notes on this Mac" (the account comes down into a library,
+// then this Mac signs out) and, once a library has gone up, "Remove the local copy…". Going up starts from
+// Settings > Library in local mode ("Sign in to Folevi", lib/local/signIn.ts).
 import { useConvex } from "convex/react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -18,55 +18,17 @@ import { shell } from "@/lib/shell";
 import type { LibraryKind } from "@/lib/shell/types";
 import { errorText } from "@/lib/migrate/copy";
 import { manageableWorkspaces, type ExportableWorkspace } from "@/lib/migrate/exportToLocal";
-import { removeLocalCopy, setPendingMove, startMoveToAccount } from "@/lib/migrate/session";
+import { removeLocalCopy, setPendingMove } from "@/lib/migrate/session";
 import { migratedTo } from "@/lib/migrate/uploadLibrary";
 
-/** The cards for this mode (Personal's Import & export); nothing outside the app shell. */
+/**
+ * The cards for a signed-in Mac (Personal's Import & export); nothing in local mode, where Settings > Library
+ * has "Sign in to Folevi" (lib/local/signIn.ts), or outside the app shell.
+ */
 export function MoveBetweenModes() {
   const mode = useBackendMode();
-  if (!shell()?.library) return null;
-  return mode === "local" ? <MoveToAccountCard /> : <AccountCards />;
-}
-
-/** Local mode: sign in, and the library goes into the account. */
-export function MoveToAccountCard() {
-  const [versions, setVersions] = useState(true);
-  const [state, setState] = useState<"idle" | "waiting" | "failed">("idle");
-  const start = async () => {
-    setState("waiting");
-    try {
-      const { closeLocalLibrary } = await import("@/lib/local/index");
-      const ok = await startMoveToAccount({ versions, beforeSwitch: closeLocalLibrary });
-      if (!ok) setState("failed");
-    } catch {
-      setState("failed");
-    }
-  };
-  return (
-    <Card
-      title="Move to a Folevi account"
-      description="Sign in, or make an account, and this library’s notes, folders, tags, files and history are copied into it, with the same links between them. The library folder stays as it is."
-    >
-      <div className="space-y-3" data-testid="move-to-account">
-        <label className="flex items-center justify-between gap-3 text-sm">
-          <span>Bring version history</span>
-          <Switch checked={versions} onChange={setVersions} label="Bring version history" />
-        </label>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="primary" disabled={state === "waiting"} onClick={() => void start()}>
-            {state === "waiting" ? "Waiting for your browser…" : "Sign in and move…"}
-          </Button>
-          {state === "waiting" ? <Button onClick={() => void start()}>Open the browser again</Button> : null}
-        </div>
-        {state === "waiting" ? <p className="text-sm text-muted">Finish signing in in your browser. Folevi comes back here by itself.</p> : null}
-        {state === "failed" ? (
-          <p role="alert" className="text-sm text-muted">
-            Signing in didn’t finish. Nothing changed.
-          </p>
-        ) : null}
-      </div>
-    </Card>
-  );
+  if (!shell()?.library || mode === "local") return null;
+  return <AccountCards />;
 }
 
 function AccountCards() {

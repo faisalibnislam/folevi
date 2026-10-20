@@ -116,9 +116,9 @@ test("a library moves into an account: the same notes under their own ids, and t
   const shelf = (await libraryNote(page, "Reading Shelf"))!;
   expect(shelf).not.toBeNull();
 
-  // Settings > Import & export: sign in (in "the browser"), and the app comes back signed in, ready to move.
-  await page.goto(`${SHELL}/settings/data`);
-  await page.getByTestId("move-to-account").getByRole("button", { name: "Sign in and move…" }).click({ timeout: 90_000 });
+  // Settings > Library: sign in (in "the browser"), and the app comes back signed in, ready to move.
+  await page.goto(`${SHELL}/settings/library`);
+  await page.getByTestId("library-sign-in").click({ timeout: 90_000 });
   const summary = page.getByTestId("migration-summary");
   await expect(summary).toBeVisible({ timeout: 180_000 });
   await expect(summary).toContainText(/notes?, \d+ folders?/);

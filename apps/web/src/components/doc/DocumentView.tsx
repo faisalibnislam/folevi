@@ -78,6 +78,7 @@ import { Popover } from "@/components/ui/Popover";
 import { SignInToCollaborate } from "@/components/app/SignInToCollaborate";
 import { TitleAi, TitleAiPill, type TitleRange } from "./TitleAi";
 import { VersionHistory } from "./VersionHistory";
+import { NoteFrame } from "@/components/editor/notices/ChangedElsewhere";
 import { LiveCarets } from "./LiveCarets";
 import { AwayBanner, awayMarks } from "./AwayBanner";
 import { MoveNoteDialog } from "./MoveNoteDialog";
@@ -204,6 +205,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [shareOpen, setShareOpen] = useState(false);
   const shareButton = useRef<HTMLButtonElement>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // Local mode: the version a "Changed on another device" notice opened history at.
+  const [historyVersion, setHistoryVersion] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
@@ -989,35 +992,43 @@ export function DocumentView({ documentId }: { documentId: string }) {
                   <CollectionRowProperties documentId={documentId} editable={!readOnly} />
                 </Suspense>
               ) : null}
-              {ready && engine ? (
-                <NoteAiContext.Provider value={noteAi}>
-                  <Editor
-                    ref={editorRef}
-                    documentId={documentId}
-                    engine={engine}
-                    accountKey={profile.id}
-                    editable={!readOnly}
-                    decorations={decorations}
-                    onFocusBlock={setFocusedBlock}
-                    onCommentBlock={caps.comments ? (id) => openComments(id) : undefined}
-                    onEditorReady={setEditor}
-                    onExitTop={() => {
-                      // ↑ from the first line goes to the end of the title.
-                      const title = document.getElementById(`title-${documentId}`) as HTMLTextAreaElement | null;
-                      if (!title || title.readOnly) return false;
-                      title.focus();
-                      title.setSelectionRange(title.value.length, title.value.length);
-                      return true;
-                    }}
-                  />
-                </NoteAiContext.Provider>
-              ) : (
-                <div className="space-y-3 py-6" aria-busy aria-label="Loading document">
-                  {[80, 95, 60, 88].map((w, i) => (
-                    <div key={i} className="h-4 animate-pulse rounded-tiny bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />
-                  ))}
-                </div>
-              )}
+              <NoteFrame
+                documentId={documentId}
+                onOpenVersion={(id) => {
+                  setHistoryVersion(id);
+                  setHistoryOpen(true);
+                }}
+              >
+                {ready && engine ? (
+                  <NoteAiContext.Provider value={noteAi}>
+                    <Editor
+                      ref={editorRef}
+                      documentId={documentId}
+                      engine={engine}
+                      accountKey={profile.id}
+                      editable={!readOnly}
+                      decorations={decorations}
+                      onFocusBlock={setFocusedBlock}
+                      onCommentBlock={caps.comments ? (id) => openComments(id) : undefined}
+                      onEditorReady={setEditor}
+                      onExitTop={() => {
+                        // ↑ from the first line goes to the end of the title.
+                        const title = document.getElementById(`title-${documentId}`) as HTMLTextAreaElement | null;
+                        if (!title || title.readOnly) return false;
+                        title.focus();
+                        title.setSelectionRange(title.value.length, title.value.length);
+                        return true;
+                      }}
+                    />
+                  </NoteAiContext.Provider>
+                ) : (
+                  <div className="space-y-3 py-6" aria-busy aria-label="Loading document">
+                    {[80, 95, 60, 88].map((w, i) => (
+                      <div key={i} className="h-4 animate-pulse rounded-tiny bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />
+                    ))}
+                  </div>
+                )}
+              </NoteFrame>
             </div>
           </article>
           {/* Where the others' carets are, and ours for them, while someone else is in the note. */}
@@ -1194,7 +1205,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         </Popover>
       ) : null}
       {meta && caps.sharing ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} personal={meta.document.workspaceId === null} /> : null}
-      {canEditPage ? <VersionHistory open={historyOpen} onClose={() => setHistoryOpen(false)} documentId={documentId} title={summary?.title ?? ""} style={style} cover={summary?.cover ?? DEFAULT_COVER} /> : null}
+      {canEditPage ? <VersionHistory open={historyOpen} onClose={() => (setHistoryOpen(false), setHistoryVersion(null))} initialVersion={historyVersion} documentId={documentId} title={summary?.title ?? ""} style={style} cover={summary?.cover ?? DEFAULT_COVER} /> : null}
       <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={documentId} title={summary?.title ?? ""} />
       {meta ? (
         <MoveNoteDialog

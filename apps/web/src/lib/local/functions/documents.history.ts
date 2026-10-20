@@ -141,6 +141,9 @@ defineLocal(api.documents.versions, "query", async (ctx, args) => {
       blockCount: r.blockCount,
       createdAt: r.createdAt,
       editors: await Promise.all(editors.map(async (e) => (await devices.get(e)).key)),
+      // Local only: a version kept because the same block (or the title) changed on two devices at once.
+      // Version history labels it "Changed on another device" (components/doc/VersionHistory.tsx).
+      ...(r.conflict ? { conflict: { target: r.conflict.target, device: (await devices.get(r.conflict.device)).name } } : {}),
     });
   }
   return { versions, people: await devices.all(), current: { contentSeq: doc.contentSeq, latestContentSeq: rows[0]?.contentSeq ?? null } };

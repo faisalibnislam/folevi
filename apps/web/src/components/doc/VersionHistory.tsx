@@ -27,6 +27,19 @@ type People = Record<string, ChangePerson>;
 /** The page as it is now, at the top of the list (like the live document in Google Docs' history). */
 const CURRENT = "current";
 
+/**
+ * Local mode keeps the losing side of a block (or title) changed on two devices at once as a version of its
+ * own (docs/LOCAL_MODE_PLAN.md §3.4); the local `documents.versions` marks it. The server never sends this.
+ */
+function conflictOf(v: Version | null | undefined): { target: string; device: string } | null {
+  const c = (v as (Version & { conflict?: { target?: unknown; device?: unknown } }) | null | undefined)?.conflict;
+  return c && typeof c.device === "string" ? { target: String(c.target ?? ""), device: c.device } : null;
+}
+const CONFLICT_TITLE = "Changed on another device";
+// (Until a device has a name of its own the library calls it "This device"; that name isn't worth repeating.)
+const conflictDetail = (c: { target: string; device: string }, when: string) =>
+  `${when} · ${c.target === "doc.title" ? "The other title" : "The other version"}${c.device && c.device !== "This device" && c.device !== "Another device" ? `, from ${c.device}` : ""}`;
+
 const REASONS: Partial<Record<string, string>> = { before_restore: "Before a restore", import: "Imported", ai_run: "Before AI changes", mcp: "Before a connected app’s changes", api: "Before an API change" };
 
 function dayLabel(ts: number, now = new Date()): string {
@@ -56,12 +69,12 @@ function parseVersion(content: string | null | undefined): { title: string; styl
  * what changed since the version before marked in the colour of whoever changed it) and the list of versions
  * beside it, newest first and grouped by day. Restore (undoable), name a version, or make a copy of it.
  */
-export function VersionHistory(props: { open: boolean; onClose: () => void; documentId: string; title: string; style: DocumentStyle; cover: DocumentCover }) {
+export function VersionHistory(props: { open: boolean; onClose: () => void; documentId: string; title: string; style: DocumentStyle; cover: DocumentCover; initialVersion?: string | null }) {
   if (!props.open) return null;
   return <HistoryView {...props} />;
 }
 
-function HistoryView({ onClose, documentId, title, style, cover }: { onClose: () => void; documentId: string; title: string; style: DocumentStyle; cover: DocumentCover }) {
+function HistoryView({ onClose, documentId, title, style, cover, initialVersion }: { onClose: () => void; documentId: string; title: string; style: DocumentStyle; cover: DocumentCover; initialVersion?: string | null }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const el = dialog.current;
@@ -71,7 +84,8 @@ function HistoryView({ onClose, documentId, title, style, cover }: { onClose: ()
   const toast = useToast();
   const { navigate } = useAppRouter();
   const [namedOnly, setNamedOnly] = useState(false);
-  const [selected, setSelected] = useState<string>(CURRENT);
+  // Opened at a version (a "Changed on another device" notice opens the other version).
+  const [selected, setSelected] = useState<string>(initialVersion ?? CURRENT);
   const [showChanges, setShowChanges] = useState(true);
   const [naming, setNaming] = useState<string | null>(null);
   const [confirmRestore, setConfirmRestore] = useState(false);
@@ -85,6 +99,11 @@ function HistoryView({ onClose, documentId, title, style, cover }: { onClose: ()
     () => (selected === CURRENT ? null : (all?.versions.find((v) => v.id === selected) ?? named?.versions.find((v) => v.id === selected) ?? null)),
     [selected, all, named],
   );
+  // A version it was opened at, brought into view once the list is there.
+  const listedOnce = all !== undefined;
+  useEffect(() => {
+    if (listedOnce && initialVersion) document.getElementById(`version-${initialVersion}`)?.scrollIntoView({ block: "nearest" });
+  }, [listedOnce, initialVersion]);
   // The version it's compared with: undefined until known, null for the first version.
   const previousId: string | null | undefined = selected === CURRENT ? (all ? (all.versions[0]?.id ?? null) : undefined) : version?.previousId;
 
@@ -153,8 +172,9 @@ function HistoryView({ onClose, documentId, title, style, cover }: { onClose: ()
     }
   };
 
-  const heading = selected === CURRENT ? "Current version" : version ? (version.name ?? whenOf(version.createdAt)) : "Version";
-  const subheading = version ? (version.name ? whenOf(version.createdAt) : REASONS[version.reason]) : null;
+  const conflict = conflictOf(version);
+  const heading = selected === CURRENT ? "Current version" : version ? (version.name ?? (conflict ? CONFLICT_TITLE : whenOf(version.createdAt))) : "Version";
+  const subheading = version ? (conflict ? conflictDetail(conflict, whenOf(version.createdAt)) : version.name ? whenOf(version.createdAt) : REASONS[version.reason]) : null;
   const sheet = sheetProps(shown?.style ?? style, cover);
 
   // ↑ / ↓ move through the list too (Tab works as well: each version is a button).
@@ -276,8 +296,8 @@ function HistoryView({ onClose, documentId, title, style, cover }: { onClose: ()
                       id={v.id}
                       selected={selected === v.id}
                       onSelect={() => setSelected(v.id)}
-                      title={v.name ?? timeOf(v.createdAt)}
-                      detail={v.name ? timeOf(v.createdAt) : REASONS[v.reason]}
+                      title={v.name ?? (conflictOf(v) ? CONFLICT_TITLE : timeOf(v.createdAt))}
+                      detail={conflictOf(v) ? conflictDetail(conflictOf(v)!, timeOf(v.createdAt)) : v.name ? timeOf(v.createdAt) : REASONS[v.reason]}
                       editors={v.editors}
                       people={{ ...listed?.people, ...people }}
                       naming={naming === v.id}

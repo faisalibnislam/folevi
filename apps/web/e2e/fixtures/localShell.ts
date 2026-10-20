@@ -37,6 +37,27 @@ export interface FakeShellConfig {
   previews?: Record<string, string>;
   /** Calendar text `http.calendar` answers with, by URL (any other link: an error, as an unreachable site). */
   calendars?: Record<string, string>;
+  /**
+   * False: the library isn't set up yet, so `library.info()` says `configured: false` until `library.setup`
+   * (the first-launch screens). Default true, as if it had been set up before the test.
+   */
+  configured?: boolean;
+  /** The places this pretend Mac offers (the Mac's library service and cloud connections). */
+  places?: FakePlaces;
+  /** What `lock.getSettings` says unlocks this device (default "none": no Touch ID). */
+  lockMethod?: "touchID" | "none";
+}
+
+/** How the FakeShell answers each library kind (WP10's setup screens; the Mac's service.ts, cloud/). */
+export interface FakePlaces {
+  /** "Sync with iCloud": iCloud Drive on (default), turned off, or the Mac signed out of iCloud. */
+  icloud?: "on" | "drive_off" | "signed_out";
+  /** The built-in connections this build offers (default both). */
+  cloud?: ("dropbox" | "googleDrive")[];
+  /** "Choose a folder": the picker returns a folder (default) or is cancelled. */
+  folder?: "choose" | "cancel";
+  /** How long the provider's sign-in "in the browser" takes (default 400 ms). */
+  connectDelayMs?: number;
 }
 
 /** One entry in `window.__foleviTestShellLog`: a bridge call a test can assert on. */
@@ -75,7 +96,8 @@ function installFakeShell(cfg: FakeShellConfig) {
   const META_KEY = `folevi-fake-shell:${cfg.libraryName}`;
   type Meta = {
     mode?: "local" | "account";
-    library?: { kind: "icloud" | "folder" | "device" };
+    library?: { kind: "icloud" | "folder" | "device" | "dropbox" | "gdrive" };
+    cloud?: { provider: "dropbox" | "googleDrive"; account: string } | null;
     passphrase?: string | null;
     lock?: { lock: boolean; lockAfter: number };
     secrets?: string[];
@@ -187,10 +209,53 @@ function installFakeShell(cfg: FakeShellConfig) {
   const scheduled = new Map<string, unknown>();
   let unlocked = false;
 
+  const places = cfg.places ?? {};
+  const PLACE_NAMES = { icloud: "iCloud Drive › Folevi", dropbox: "Dropbox › Apps › Folevi", gdrive: "Google Drive › Folevi", folder: "~/Documents/Notes", device: "~/Documents/Folevi Library" } as const;
   const info = () => {
     const meta = readMeta();
     const encrypted = typeof meta.passphrase === "string";
-    return { kind: meta.library?.kind ?? "device", displayPath: `Test library (${cfg.libraryName})`, available: true, encrypted, locked: encrypted && !unlocked };
+    const kind = meta.library?.kind ?? "device";
+    const configured = cfg.configured === false ? meta.library !== undefined : true;
+    const displayPath = cfg.configured === false || cfg.places ? PLACE_NAMES[kind] : `Test library (${cfg.libraryName})`;
+    return { kind, displayPath, available: true, encrypted, locked: encrypted && !unlocked, configured };
+  };
+
+  // ---- Sync with Dropbox / Google Drive (the Mac's cloud/: the sign-in happens "in the browser") ----
+  type CloudStatus = { available: ("dropbox" | "googleDrive")[]; provider: "dropbox" | "googleDrive" | null; state: "none" | "connecting" | "connected" | "offline" | "reconnect"; account: string | null };
+  const cloudListeners = new Set<(s: CloudStatus) => void>();
+  let connecting: { provider: "dropbox" | "googleDrive"; cancel: () => void } | null = null;
+  const cloudStatus = (): CloudStatus => {
+    const c = readMeta().cloud ?? null;
+    const available = places.cloud ?? ["dropbox", "googleDrive"];
+    if (connecting) return { available, provider: connecting.provider, state: "connecting", account: null };
+    return c ? { available, provider: c.provider, state: "connected", account: c.account } : { available, provider: null, state: "none", account: null };
+  };
+  const tellCloud = () => {
+    const s = cloudStatus();
+    for (const l of cloudListeners) l(s);
+  };
+  const cloudFor = (kind: string) => (kind === "dropbox" ? "dropbox" : kind === "gdrive" ? "googleDrive" : null);
+  /** Checks a kind can be used now, as the Mac's service does (the same error codes and reasons). */
+  const placeError = (kind: string) => {
+    if (kind === "icloud" && places.icloud && places.icloud !== "on") {
+      const why = places.icloud === "drive_off" ? "iCloud Drive is turned off on this Mac." : "This Mac isn't signed in to iCloud.";
+      return { name: "LocalFsError", code: "unavailable", message: why, path: places.icloud };
+    }
+    const provider = cloudFor(kind);
+    if (provider && readMeta().cloud?.provider !== provider) return { name: "LocalFsError", code: "unavailable", message: `Connect ${provider === "dropbox" ? "Dropbox" : "Google Drive"} first.`, path: "not_connected" };
+    return null;
+  };
+  /** A pretend sync folder shared with another page (the test relays it): every write and remove goes out. */
+  const mirror = (path: string, bytes: Uint8Array | null) => {
+    const out = (window as unknown as { __foleviTestShellMirror?: (path: string, data: string | null) => unknown }).__foleviTestShellMirror;
+    if (!out) return;
+    let data: string | null = null;
+    if (bytes) {
+      let bin = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      data = btoa(bin);
+    }
+    void Promise.resolve(out(path, data)).catch(() => undefined);
   };
 
   const listFiles = async (dirParts: string[]) => {
@@ -227,6 +292,9 @@ function installFakeShell(cfg: FakeShellConfig) {
   const library: FoleviShell["library"] = {
     async setup({ kind }) {
       record("library.setup", { kind });
+      const problem = placeError(kind);
+      if (problem) throw problem;
+      if (kind === "folder" && places.folder === "cancel") return null;
       writeMeta({ library: { kind } });
       return info();
     },
@@ -256,6 +324,7 @@ function installFakeShell(cfg: FakeShellConfig) {
         placeholders.delete(path);
         const etag = await etagOf(bytes);
         emit([{ path, kind: "changed" }]);
+        mirror(path, bytes);
         return { etag };
       });
     },
@@ -273,6 +342,7 @@ function installFakeShell(cfg: FakeShellConfig) {
           return;
         }
         emit([{ path, kind: "removed" }]);
+        mirror(path, null);
       });
     },
     async conflictVersions(path) {
@@ -338,8 +408,57 @@ function installFakeShell(cfg: FakeShellConfig) {
     },
     async move({ kind }) {
       record("library.move", { kind });
+      const problem = placeError(kind);
+      if (problem) throw problem;
+      if (kind === "folder" && places.folder === "cancel") return info();
       writeMeta({ library: { kind } });
       return info();
+    },
+    cloud: {
+      async status() {
+        return cloudStatus();
+      },
+      connect(provider) {
+        record("cloud.connect", { provider });
+        if (!(places.cloud ?? ["dropbox", "googleDrive"]).includes(provider)) return Promise.reject({ name: "CloudError", code: "invalid_argument", message: "Not in this build." });
+        const other = readMeta().cloud;
+        if (other && other.provider !== provider) return Promise.reject({ name: "CloudError", code: "one_connection", message: `Sign out of ${other.provider === "dropbox" ? "Dropbox" : "Google Drive"} first.` });
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => {
+            connecting = null;
+            writeMeta({ cloud: { provider, account: provider === "dropbox" ? "sam@example.com" : "sam.lee@example.com" } });
+            tellCloud();
+            resolve(cloudStatus());
+          }, places.connectDelayMs ?? 400);
+          connecting = {
+            provider,
+            cancel: () => {
+              clearTimeout(timer);
+              connecting = null;
+              tellCloud();
+              reject({ name: "CloudError", code: "cancelled", message: "Sign-in cancelled." });
+            },
+          };
+          tellCloud();
+        });
+      },
+      async cancel() {
+        record("cloud.cancel");
+        connecting?.cancel();
+      },
+      async signOut() {
+        record("cloud.signOut");
+        writeMeta({ cloud: null });
+        tellCloud();
+        return cloudStatus();
+      },
+      onStatus(cb) {
+        cloudListeners.add(cb);
+        cb(cloudStatus());
+        return () => {
+          cloudListeners.delete(cb);
+        };
+      },
     },
   };
 
@@ -396,13 +515,13 @@ function installFakeShell(cfg: FakeShellConfig) {
     lock: {
       async getSettings() {
         const l = readMeta().lock ?? { lock: false, lockAfter: 0 };
-        return { ...l, method: "none" as const };
+        return { ...l, method: cfg.lockMethod ?? "none" };
       },
       async setSettings(patch) {
         record("lock.setSettings", patch);
         const l = { ...(readMeta().lock ?? { lock: false, lockAfter: 0 }), ...patch };
         writeMeta({ lock: l });
-        return { ...l, method: "none" as const };
+        return { ...l, method: cfg.lockMethod ?? "none" };
       },
     },
     notify: {

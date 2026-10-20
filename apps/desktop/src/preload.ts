@@ -245,9 +245,19 @@ if (boot.shell) {
       },
       testKey: (provider: string) => ipcRenderer.invoke("shell:ai-test-key", String(provider)) as Promise<{ ok: true } | { ok: false; error: string }>,
     },
+    // The Touch ID lock (lock.ts in the main process): its settings; turning it on or off asks for Touch ID.
     lock: {
-      getSettings: notYet("lock.getSettings", "the Touch ID lock, WP10"),
-      setSettings: notYet("lock.setSettings", "the Touch ID lock, WP10"),
+      getSettings: async () => {
+        const s = await ipcRenderer.invoke("shell:lock-get");
+        if (!s) throw { name: "LockError", code: "unavailable", message: "The lock isn't in this build of Folevi for Mac." };
+        return s;
+      },
+      setSettings: async (patch: { lock?: boolean; lockAfter?: number }) => {
+        const r = (await ipcRenderer.invoke("shell:lock-set", { lock: patch?.lock, lockAfter: patch?.lockAfter })) as { ok: true; value: unknown } | { ok: false; error: { code: string; message: string } } | null;
+        if (r && r.ok) return r.value;
+        const error = r && !r.ok ? r.error : { code: "io", message: "Folevi couldn't change the lock." };
+        throw { name: "LockError", code: error.code, message: error.message };
+      },
     },
     /** Reminders as Mac notifications, kept by the app across restarts (reminders.ts). */
     notify: {

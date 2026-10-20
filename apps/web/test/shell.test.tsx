@@ -159,9 +159,66 @@ describe("ShellRoot", () => {
   test("a choice the host couldn't save stays on the question", async () => {
     w().__foleviTestShell = { initialMode: "unset", setMode: vi.fn(async () => Promise.reject(new Error("disk full"))) };
     const el = await render();
-    const signIn = [...el.querySelectorAll("button")].find((b) => b.textContent === "Sign in to Folevi")!;
+    const signIn = [...el.querySelectorAll("button")].find((b) => b.textContent?.startsWith("Sign in to Folevi"))!;
     await act(async () => signIn.click());
     expect(el.querySelector('[data-testid="product"]')).toBeNull();
     expect(el.querySelector('[role="alert"]')?.textContent).toContain("Try again");
+  });
+  test("keeping notes on this device asks where the library lives before saving the choice", async () => {
+    const setMode = vi.fn(async () => {});
+    const setup = vi.fn(async () => ({ kind: "device" as const, displayPath: "On this Mac", available: true, encrypted: false, locked: false, configured: true }));
+    const library = { setup, info: vi.fn(async () => ({ kind: "device" as const, displayPath: "", available: false, encrypted: false, locked: false, configured: false })), list: vi.fn(async () => []) };
+    w().__foleviTestShell = { initialMode: "unset", setMode, platform: "mac", library: library as unknown as FoleviShell["library"] };
+    const el = await render();
+    const keep = [...el.querySelectorAll("button")].find((b) => b.textContent?.includes("Keep notes on my devices"))!;
+    await act(async () => keep.click());
+    expect(setMode).not.toHaveBeenCalled();
+    expect(el.querySelector('[data-testid="library-setup"]')).toBeTruthy();
+    expect(el.textContent).toContain("This device only");
+    await act(async () => el.querySelector<HTMLButtonElement>('[data-testid="place-device"]')!.click());
+    expect(setup).toHaveBeenCalledWith({ kind: "device" });
+    // A new library: the welcome notes come, after an optional passphrase.
+    expect(el.textContent).toContain("Your library is ready");
+    const open = [...el.querySelectorAll("button")].find((b) => b.textContent === "Open Folevi")!;
+    await act(async () => open.click());
+    expect(setMode).toHaveBeenCalledWith("local");
+    expect(localStorage.getItem("folevi:local-setup-intent")).toBe("new");
+    expect(el.querySelector('[data-testid="product"]')?.textContent).toBe("local");
+  });
+
+  test("a place that already holds a library is joined at once", async () => {
+    const setMode = vi.fn(async () => {});
+    const info = { kind: "icloud" as const, displayPath: "iCloud Drive › Folevi", available: true, encrypted: false, locked: false, configured: true };
+    const library = { setup: vi.fn(async () => info), info: vi.fn(async () => info), list: vi.fn(async (dir: string) => (dir === "notes" ? [{ path: "notes/01J.fnote" }] : [])) };
+    w().__foleviTestShell = { initialMode: "unset", setMode, platform: "mac", library: library as unknown as FoleviShell["library"] };
+    const el = await render();
+    await act(async () => [...el.querySelectorAll("button")].find((b) => b.textContent?.includes("Keep notes on my devices"))!.click());
+    await act(async () => el.querySelector<HTMLButtonElement>('[data-testid="place-icloud"]')!.click());
+    expect(setMode).toHaveBeenCalledWith("local");
+    expect(localStorage.getItem("folevi:local-setup-intent")).toBe("join");
+    expect(el.querySelector('[data-testid="product"]')?.textContent).toBe("local");
+  });
+
+  test("local mode with nothing set up yet opens the setup, not the product", async () => {
+    const library = { info: vi.fn(async () => ({ kind: "device" as const, displayPath: "", available: false, encrypted: false, locked: false, configured: false })), list: vi.fn(async () => []) };
+    w().__foleviTestShell = { initialMode: "local", platform: "mac", library: library as unknown as FoleviShell["library"] };
+    const el = await render();
+    await act(async () => undefined);
+    expect(el.querySelector('[data-testid="product"]')).toBeNull();
+    expect(el.querySelector('[data-testid="library-setup"]')).toBeTruthy();
+  });
+
+  test("iCloud Drive turned off is explained", async () => {
+    const library = {
+      setup: vi.fn(async () => Promise.reject({ name: "LocalFsError", code: "unavailable", message: "iCloud Drive is turned off on this Mac.", path: "drive_off" })),
+      info: vi.fn(async () => ({ kind: "device" as const, displayPath: "", available: false, encrypted: false, locked: false, configured: false })),
+      list: vi.fn(async () => []),
+    };
+    w().__foleviTestShell = { initialMode: "local", platform: "mac", library: library as unknown as FoleviShell["library"] };
+    const el = await render();
+    await act(async () => undefined);
+    await act(async () => el.querySelector<HTMLButtonElement>('[data-testid="place-icloud"]')!.click());
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain("Turn it on in System Settings");
+    expect(el.querySelector('[data-testid="product"]')).toBeNull();
   });
 });

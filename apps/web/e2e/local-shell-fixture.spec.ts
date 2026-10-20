@@ -65,7 +65,7 @@ test.describe("local-mode test setup", { tag: "@both" }, () => {
       };
     });
     expect(result).toEqual({
-      info: { kind: "device", displayPath: "Test library (library)", available: true, encrypted: false, locked: false },
+      info: { kind: "device", displayPath: "Test library (library)", available: true, encrypted: false, locked: false, configured: true },
       created: true,
       again: true,
       stale: true,

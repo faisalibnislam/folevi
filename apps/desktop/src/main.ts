@@ -23,6 +23,7 @@ import {
   shell,
   systemPreferences,
   Tray,
+  WebContentsView,
   type IpcMainEvent,
   type IpcMainInvokeEvent,
   type MenuItemConstructorOptions,
@@ -60,6 +61,7 @@ import { createAuthBridge, isAuthCallback, registerAuthIpc, type AuthBridge } fr
 import { registerLibraryIpc, type IpcMainLike } from "./library/ipc";
 import { LibraryService, type CloudSource } from "./library/service";
 import { createSecretStore } from "./secrets";
+import { AppLock, electronCover } from "./lock";
 import { AiService, allowedAiUrl, HelperClient, registerAiIpc } from "./ai";
 import { startCloud } from "./library/cloud/electron";
 
@@ -85,6 +87,9 @@ let pendingLink: string | null = null;
 let pendingSignIn: ((url: string | null) => void) | null = null;
 /** The built-in interface's account sign-in (authBridge.ts): only with the bundled interface. */
 let authBridge: AuthBridge | null = null;
+/** The Touch ID lock (lock.ts): only with the bundled interface. */
+let appLock: AppLock | null = null;
+let lockCover: ReturnType<typeof electronCover> | null = null;
 /** Foli AI in local mode (ai.ts): Apple's model through folevi-ai, or the person's own keys. Bundled interface only. */
 let ai: AiService | null = null;
 let aiHelper: HelperClient | null = null;
@@ -322,6 +327,29 @@ function createAi(): AiService {
   });
 }
 
+/**
+ * The Touch ID lock (lock.ts): covers the windows at launch, when the Mac locks or sleeps, and when Folevi
+ * comes back after being away longer than its setting, until Touch ID unlocks it.
+ */
+function startLock() {
+  lockCover = electronCover({
+    windows: () => BrowserWindow.getAllWindows(),
+    makeView: () => new WebContentsView({ webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, javascript: false, partition: "folevi-lock" } }),
+    onUnlock: () => void appLock?.unlock(),
+  });
+  appLock = new AppLock({
+    file: join(app.getPath("userData"), "lock.json"),
+    canPrompt: () => systemPreferences.canPromptTouchID(),
+    prompt: (reason) => systemPreferences.promptTouchID(reason),
+    cover: lockCover,
+  });
+  app.on("browser-window-focus", () => appLock?.back());
+  // Away once no Folevi window has the focus (focus moving between its own windows isn't leaving).
+  app.on("browser-window-blur", () => setTimeout(() => !BrowserWindow.getFocusedWindow() && appLock?.away(), 0));
+  powerMonitor.on("lock-screen", () => appLock?.lockNow());
+  powerMonitor.on("suspend", () => appLock?.lockNow());
+}
+
 let guarded = false;
 /**
  * Local mode never contacts Folevi: besides the page's policy, the session cancels every request to Folevi's
@@ -431,6 +459,7 @@ function createMainWindow(path = "/documents"): BrowserWindow {
     if (saved.maximized) win.maximize();
   }
   guardNavigation(win.webContents);
+  lockCover?.attach(win);
   win.once("ready-to-show", () => win.show());
   const remember = () => {
     if (win !== mainWindow || win.isDestroyed()) return;
@@ -495,6 +524,7 @@ function createQuickAdd() {
   });
   quickAdd.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   guardNavigation(quickAdd.webContents);
+  lockCover?.attach(quickAdd);
   // Clicking elsewhere puts it away, like Spotlight.
   quickAdd.on("blur", () => quickAdd?.hide());
   quickAdd.on("closed", () => (quickAdd = null));
@@ -752,6 +782,17 @@ function listen() {
       return { key: String(contents.id), send: (channel, ...args) => !contents.isDestroyed() && contents.send(channel, ...args), onGone: (cb) => contents.once("destroyed", cb) };
     },
   });
+  // foleviShell.lock: the Touch ID lock's settings (lock.ts); turning it on or off asks for Touch ID.
+  ipcMain.handle("shell:lock-get", (e) => (bundled && fromFolevi(e) && appLock ? appLock.getSettings() : null));
+  ipcMain.handle("shell:lock-set", async (e, patch: unknown) => {
+    if (!bundled || !fromFolevi(e) || !appLock) return { ok: false, error: { code: "unavailable", message: "The lock isn't in this build of Folevi for Mac." } };
+    try {
+      return { ok: true, value: await appLock.setSettings(patch) };
+    } catch (err) {
+      const code = (err as { code?: unknown }).code;
+      return { ok: false, error: { code: typeof code === "string" ? code : "io", message: err instanceof Error ? err.message : String(err) } };
+    }
+  });
   ipcMain.handle("shell:set-mode", (e, mode: unknown) => {
     if (!bundled || !fromFolevi(e) || (mode !== "local" && mode !== "account")) return false;
     if (settings.mode === mode) return true;
@@ -869,6 +910,7 @@ app.whenReady().then(async () => {
   // The installed app answers folevi:// links (a development run would register the Electron binary).
   if (app.isPackaged) app.setAsDefaultProtocolClient(SCHEME);
   folevi = setUpSession();
+  if (bundled) startLock();
   if (bundled) {
     // Sync with Dropbox / Google Drive (library/cloud/): the connection restored from the last run, and the
     // page's cloud:* calls (status, sign-in, sign-out). The provider tokens stay in this process.

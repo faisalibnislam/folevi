@@ -243,3 +243,34 @@ describe("Foli AI out of credits", () => {
     expect(el.querySelector("a")).toBeNull();
   });
 });
+
+// Local mode (docs/LOCAL_MODE_PLAN.md owner decisions, §2.3): a library on the person's devices never shows
+// prices, plans or upgrades, on any platform: in the Mac app as much as in the iOS app.
+const { setCurrentBackendMode } = await import("@/lib/backendMode");
+describe("local mode: no prices on any platform", () => {
+  afterEach(() => setCurrentBackendMode("account"));
+
+  test("nothing is for sale in local mode, in the Mac app, a browser or the iOS app", () => {
+    setCurrentBackendMode("local");
+    expect(canPurchaseHere()).toBe(false);
+    inTheApp();
+    expect(canPurchaseHere()).toBe(false);
+    setCurrentBackendMode("account");
+    expect(canPurchaseHere()).toBe(false);
+  });
+
+  test("Plan & billing and Foli AI's notices offer nothing to buy in local mode", () => {
+    setCurrentBackendMode("local");
+    trialBilling();
+    const billing = render(createElement(BillingSection));
+    expect(billing.textContent).not.toMatch(PURCHASE);
+    expect(actions(billing).filter((t) => PURCHASE.test(t))).toEqual([]);
+    act(() => root?.unmount());
+    const refused = { data: { code: "out_of_credits", action: "buy", message: "You've used this month's AI credits. They reset on November 1. Buy more in Settings → Plan & billing." } };
+    const notice = render(createElement(AiProblemNotice, { problem: aiProblem(refused) }));
+    expect(actions(notice)).not.toContain("Buy more");
+    act(() => root?.unmount());
+    const unavailable = render(createElement(AiUnavailable, { ai: { setting: true, context: "personal" } as const }));
+    expect(actions(unavailable)).not.toContain("Upgrade");
+  });
+});

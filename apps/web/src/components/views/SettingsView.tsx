@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, ShieldCheck, Smartphone, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
+import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, ShieldCheck, Smartphone, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { ViewChrome } from "@/components/app/Shell";
@@ -19,6 +19,7 @@ import { MembersSection } from "./settings/MembersSection";
 import { GuestsSection } from "./settings/GuestsSection";
 import { WorkspaceBillingSection } from "./settings/WorkspaceBillingSection";
 import { SyncSection } from "./settings/SyncSection";
+import { LibrarySection } from "./settings/LibrarySection";
 import { DataSection } from "./settings/DataSection";
 import { DesktopSection } from "./settings/DesktopSection";
 import { ThisDeviceSection } from "./settings/ThisDeviceSection";
@@ -31,7 +32,7 @@ import { useIphoneApp } from "@/lib/iphone";
 import { GroupedRow, GroupedSection, RowIcon } from "@/components/iphone/Grouped";
 import { IosRow, IosSection, IosText, SettingsScreensHost } from "@/components/iphone/SettingsKit";
 
-type Section = "account" | "ai" | "billing" | "security" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "data" | "desktop" | "this-device";
+type Section = "account" | "ai" | "billing" | "security" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "library" | "data" | "desktop" | "this-device";
 type Item = { id: Section; label: string; icon: LucideIcon };
 /** Things about you (your account and your Personal), the same whichever context is open. */
 const YOU: Item[] = [
@@ -44,6 +45,8 @@ const YOU: Item[] = [
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "sync", label: "Offline & sync", icon: RefreshCw },
+  // Local mode's library: where it is, devices, health, passphrase, the lock (WP10). Only in local mode.
+  { id: "library", label: "Library", icon: LibraryBig },
   { id: "data", label: "Import & export", icon: ArrowDownUp },
   { id: "desktop", label: "Desktop app", icon: AppWindowMac },
   { id: "this-device", label: "This device", icon: Smartphone },
@@ -99,7 +102,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
   const allowed = (who: (typeof WORKSPACE)[number]["who"]) => who === "everyone" || (who === "managers" ? workspace?.canManage === true : workspace?.canManageBilling === true);
   const workspaceItems = WORKSPACE.filter((i) => allowed(i.who));
   // Desktop app: only in the Mac app; This device: only in the iPhone and iPad app (or opened by its address).
-  const you = YOU.filter((i) => here(i.id) && (i.id !== "desktop" || desktop() !== null || section === "desktop") && (i.id !== "this-device" || nativeApp() !== null || section === "this-device"));
+  const you = YOU.filter((i) => here(i.id) && (i.id !== "library" || !caps.account) && (i.id !== "desktop" || desktop() !== null || section === "desktop") && (i.id !== "this-device" || nativeApp() !== null || section === "this-device"));
   const groups = [{ label: "You", items: you }, ...(workspace ? [{ label: workspace.name, items: workspaceItems }] : [])];
   const item = [...YOU, ...WORKSPACE].find((s) => s.id === section);
   const heading = (WORKSPACE_SECTIONS.has(section) && HEADINGS[section]) || item?.label;
@@ -209,6 +212,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
           ) : null}
           {section === "workspace-data" && workspace && !sectionHidden ? <DataSection key={workspace.id} target={{ kind: "workspace", workspaceId: workspace.id, name: workspace.name }} /> : null}
           {section === "sync" ? <SyncSection /> : null}
+          {section === "library" ? <LibrarySection /> : null}
           {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
           {section === "desktop" ? <DesktopSection /> : null}
           {section === "this-device" ? <ThisDeviceSection /> : null}
@@ -247,6 +251,7 @@ function IphoneSection({ section, title, noWorkspace, sectionHidden }: { section
       ) : null}
       {section === "workspace-data" && workspace && !sectionHidden ? <DataSection key={workspace.id} target={{ kind: "workspace", workspaceId: workspace.id, name: workspace.name }} /> : null}
       {section === "sync" ? <SyncSection /> : null}
+      {section === "library" ? <LibrarySection /> : null}
       {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
       {section === "desktop" ? <DesktopSection /> : null}
       {section === "this-device" ? <ThisDeviceSection /> : null}

@@ -7,22 +7,52 @@ import { api } from "@/lib/convex/api";
 import { useLocalClient } from "@/lib/convex/provider";
 import { AppStateProvider, FullPageMessage } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
+import { shell } from "@/lib/shell";
+import { clearSetupIntent, setupIntent } from "@/lib/local/libraryPlace";
+import { useLibraryControl, useLibraryStatus } from "@/lib/local/useLibrary";
 import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/components/ui/Toast";
 import { Shell } from "./Shell";
 import { DesktopQuickAdd } from "./DesktopQuickAdd";
+import { LockedLibrary } from "./LockedLibrary";
+
+/**
+ * True when this device is joining a library other devices made: LibrarySetup said so, or (without its
+ * word, say the origin's storage was cleared) the library already holds notes.
+ */
+async function joiningExisting(): Promise<boolean> {
+  const intent = setupIntent();
+  if (intent) return intent === "join";
+  const library = shell()?.library;
+  if (!library) return false;
+  try {
+    return (await library.list("notes")).some((e) => e.path.endsWith(".fnote"));
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Local mode's AccountGate (docs/LOCAL_MODE_PLAN.md §2.3): the library's own profile, no sign-in, session,
- * bootstrap or device limit. The first time a library opens it's set up here, with the welcome notes every
- * account starts with (lib/local/setup.ts). Choosing where the library lives comes before this (WP10).
+ * bootstrap or device limit. Where the library lives is chosen before this (ShellRoot, LibrarySetup).
+ *
+ * - An encrypted library this device can't read yet asks for its passphrase first (LockedLibrary).
+ * - A brand-new library is set up here with the welcome notes every account starts with (lib/local/setup.ts).
+ * - A library made on another device is joined: its profile comes with its index, and the notes list fills
+ *   from the other devices' catalogs while the notes download. No welcome notes are added to it. If a whole
+ *   sync has finished and no profile came (an index that never made it), it's set up without them.
  */
 export function LocalGate() {
   const me = useQuery(api.users.me, {});
   const local = useLocalClient();
+  const control = useLibraryControl();
+  const status = useLibraryStatus(control);
   const { route } = useAppRouter();
   const started = useRef(false);
   const [setupError, setSetupError] = useState<string | null>(null);
+  const [joining, setJoining] = useState<boolean | null>(null);
+  const needsSetup = me?.state === "needs_bootstrap";
+  const locked = status?.state === "locked";
 
   // The product uses neutral chrome so the notes carry the colour (globals.css, data-chrome).
   useEffect(() => {
@@ -33,13 +63,42 @@ export function LocalGate() {
   }, []);
 
   useEffect(() => {
-    if (me?.state !== "needs_bootstrap" || started.current || !local) return;
+    if (!needsSetup || joining !== null || locked) return;
+    let live = true;
+    void joiningExisting().then((j) => live && setJoining(j));
+    return () => {
+      live = false;
+    };
+  }, [needsSetup, joining, locked]);
+
+  const runSetup = (seed: boolean) => {
+    if (started.current || !local) return;
     started.current = true;
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     local.local
-      .setup({ timeZone, locale: (navigator.language || "en").slice(0, 5), today: localDate(Date.now(), timeZone) })
+      .setup({ timeZone, locale: (navigator.language || "en").slice(0, 5), today: localDate(Date.now(), timeZone), seed })
+      .then(() => clearSetupIntent())
       .catch((e) => setSetupError(errorMessage(e)));
-  }, [me?.state, local]);
+  };
+
+  // A new library.
+  useEffect(() => {
+    if (needsSetup && joining === false && !locked) runSetup(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runSetup runs once (started)
+  }, [needsSetup, joining, locked, local]);
+
+  // Joining: wait for the profile to arrive with the library's index.
+  const settled = !!status && status.lastSyncAt !== null && !status.syncing && !status.health.downloading.some((h) => h.path.startsWith("index/"));
+  useEffect(() => {
+    if (!needsSetup || joining !== true || locked || !settled) return;
+    const timer = setTimeout(() => runSetup(false), 3000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runSetup runs once (started)
+  }, [needsSetup, joining, locked, settled, local]);
+
+  useEffect(() => {
+    if (me?.state === "ready") clearSetupIntent();
+  }, [me?.state]);
 
   if (setupError) {
     return (
@@ -50,6 +109,19 @@ export function LocalGate() {
       </FullPageMessage>
     );
   }
-  if (me?.state !== "ready") return <FullPageMessage title="Opening your folio…" busy />;
+  if (locked && control) return <LockedLibrary control={control} where={status?.info?.displayPath ?? null} />;
+  if (me?.state !== "ready") {
+    if (needsSetup && joining) {
+      const count = status?.notes.total ?? 0;
+      return (
+        <FullPageMessage
+          title="Joining your library…"
+          busy
+          body={count > 0 ? `${count} ${count === 1 ? "note" : "notes"} found so far. Folevi lists them while they download.` : "Folevi is reading what your other devices saved. A large library takes a little while the first time."}
+        />
+      );
+    }
+    return <FullPageMessage title="Opening your folio…" busy />;
+  }
   return <AppStateProvider profile={me.profile}>{route.name === "quick-add" ? <DesktopQuickAdd /> : <Shell />}</AppStateProvider>;
 }

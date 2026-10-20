@@ -15,8 +15,11 @@ export type Backend = "local" | "account";
 /** The mode the host read from its settings before the page loaded; "unset" on the very first launch. */
 export type ShellMode = "unset" | Backend;
 
-/** Where a local library is kept. */
-export type LibraryKind = "icloud" | "folder" | "device";
+/**
+ * Where a local library is kept: a folder on this device (iCloud Drive, one the person chose, or this device
+ * only), or a built-in connection ("dropbox", "gdrive": Dropbox and Google Drive through their APIs, WP9b).
+ */
+export type LibraryKind = "icloud" | "folder" | "device" | "dropbox" | "gdrive";
 
 export interface LibraryInfo {
   kind: LibraryKind;
@@ -27,6 +30,11 @@ export interface LibraryInfo {
   encrypted: boolean;
   /** Encrypted and waiting for the passphrase. */
   locked: boolean;
+  /**
+   * False until `setup` has chosen a place (the other fields then describe nothing yet). Hosts that predate it
+   * leave it out: absent means set up.
+   */
+  configured?: boolean;
 }
 
 export interface LibraryEntry {

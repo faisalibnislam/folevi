@@ -21,3 +21,4 @@ import "./synced";
 import "./imports";
 import "./exports";
 import "./migration";
+import "./notices";

@@ -5,6 +5,7 @@ import { ulid } from "./ids";
 import { rankSequence } from "./rank";
 import { flattenTree } from "./tree";
 import { liftTabs, tabName } from "./tabs";
+import { columnsFromFence, liftColumns } from "./columns";
 import { normalizeInline, plainText, sanitizeHref, splitInline, textLength } from "./richtext";
 import { whiteboardToSvg } from "./whiteboard";
 import { parseFlowchart } from "./flowchart";
@@ -132,7 +133,8 @@ export function blocksToMarkdown(
   }
   if (opts.title) lines.push(`# ${escapeMd(opts.title)}`, "");
   // Tabs: every tab under its name as a heading, its contents at the tabs block's level.
-  const flat = liftTabs(flattenTree(blocks));
+  // Columns: their blocks in order, at the row's level.
+  const flat = liftColumns(liftTabs(flattenTree(blocks)));
   const counters: number[] = [];
   let prevWasList = false;
   // Toggles still open (their depths): what's nested under one goes inside its <details>.
@@ -189,6 +191,9 @@ export function blocksToMarkdown(
         break;
       case "pageBreak":
         lines.push(PAGE_BREAK_HTML, "");
+        break;
+      case "columns":
+      case "column":
         break;
       case "tabs":
         break;
@@ -580,6 +585,21 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
         i++;
       }
       const lang = fence[2] ?? "";
+      // A ```columns fence (Foli AI, MCP): its parts, split by "+++" lines, side by side (columns.ts).
+      // One part only: its blocks, as they are.
+      if (lang.toLowerCase() === "columns") {
+        const parts = columnsFromFence(body.join("\n"));
+        if (parts) drafts.push({ id: newId(), type: "columns", depth, text: [], props: {} });
+        for (const part of parts ?? [body.join("\n")]) {
+          if (parts) drafts.push({ id: newId(), type: "column", depth: depth + 1, text: [], props: {} });
+          const inner = markdownToBlocks(part, { ...opts, newId, titleFromHeading: false });
+          warnings.push(...inner.warnings);
+          const base = depth + (parts ? 2 : 0);
+          for (const e of flattenTree(inner.blocks))
+            drafts.push({ id: e.block.id, type: e.block.type, depth: Math.min(LIMITS.maxDepth, base + e.depth), text: e.block.text, props: e.block.props as Record<string, unknown> });
+        }
+        continue;
+      }
       // A ```mindmap fence holding a nested list (Foli AI, MCP) becomes a mind map block (mindmapTree.ts).
       const mindmap = lang.toLowerCase() === MINDMAP_FENCE ? serializeMindmap(mindmapFromMarkdown(body.join("\n"))) : "";
       if (mindmap) {

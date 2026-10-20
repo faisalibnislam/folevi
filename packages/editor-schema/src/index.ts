@@ -35,4 +35,5 @@ export * from "./recurrence";
 export * from "./embeds";
 export * from "./folders";
 export * from "./tabs";
+export * from "./columns";
 export * from "./slides";

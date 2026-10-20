@@ -455,6 +455,38 @@
       "if": {
         "properties": {
           "type": {
+            "const": "columns"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/ColumnsProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "column"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/ColumnProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
             "const": "tabs"
           }
         }
@@ -1586,6 +1618,22 @@
         "data",
         "height"
       ],
+      "additionalProperties": false
+    },
+    "ColumnsProps": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "ColumnProps": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "number"
+        }
+      },
+      "required": [],
       "additionalProperties": false
     },
     "TabsProps": {

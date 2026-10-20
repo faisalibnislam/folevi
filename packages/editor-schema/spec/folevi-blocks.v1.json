@@ -282,6 +282,8 @@
       "webOnly": true,
       "props": { "data": "string", "height": "number" }
     },
+    "columns": { "text": false, "webOnly": true, "props": {} },
+    "column": { "text": false, "webOnly": true, "props": { "width": "number?" } },
     "tabs": { "text": false, "webOnly": true, "props": {} },
     "tab": { "text": true, "webOnly": true, "props": {} },
     "audio": {
@@ -322,7 +324,9 @@
     "maxChartHeight": 1200,
     "maxWireframeDataLength": 300000,
     "minWireframeHeight": 240,
-    "maxWireframeHeight": 1600
+    "maxWireframeHeight": 1600,
+    "maxColumns": 4,
+    "minColumnWidth": 0.05
   },
   "codeLanguages": [
     "plaintext",

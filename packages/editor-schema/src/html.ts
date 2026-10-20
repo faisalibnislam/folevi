@@ -2,6 +2,7 @@ import type { InlineNode } from "./generated/schema";
 import type { WireBlock } from "./types";
 import { flattenTree } from "./tree";
 import { liftTabs, tabName } from "./tabs";
+import { columnsToHtml } from "./columns";
 import { sanitizeHref } from "./richtext";
 import { whiteboardToSvg } from "./whiteboard";
 import { flowchartToSvg } from "./flowchartSvg";
@@ -110,15 +111,39 @@ mark{background:#F7E7A6;color:inherit}
 .whiteboard svg{width:100%;height:auto;border:1px solid var(--line);border-radius:10px}
 .flowchart{margin:16px 0}.flowchart svg{display:block;max-width:100%;height:auto;margin:0 auto}
 .mindmap,.chart,.stickies,.wireframe{margin:16px 0}.chart figcaption{font-weight:600;margin-bottom:8px}
+.columns{display:flex;gap:32px;margin:16px 0}.column{min-width:0}.column>:first-child{margin-top:0}
+@media (max-width:640px){.columns{display:block}.column+.column{margin-top:16px}}
 hr.divider-extralight{border:0;border-top:2px dotted var(--line);opacity:.7}hr.divider-light{border:0;border-top:1px dotted var(--muted)}
 hr.divider-regular{border:0;border-top:1px solid var(--line)}hr.divider-strong{border:0;border-top:3px solid var(--ink)}
 @media print{body{background:#fff;color:#000}main{margin:0 auto}.page-break{border:0;margin:0}}
+@media print{.columns{display:flex}.column+.column{margin-top:0}}
 `;
 
 export function blocksToHtml(
   blocks: readonly WireBlock[],
   opts: HtmlExportOptions & { title: string },
 ): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="Folevi">
+<title>${escapeHtml(opts.title)}</title>
+<style>${EXPORT_CSS}</style>
+</head>
+<body>
+<main>
+<h1>${escapeHtml(opts.title)}</h1>
+${htmlBody(blocks, opts)}
+</main>
+</body>
+</html>
+`;
+}
+
+/** The blocks as HTML (the page's body, or one column's blocks: columns draw theirs with this too). */
+function htmlBody(blocks: readonly WireBlock[], opts: HtmlExportOptions): string {
   // Tabs: every tab under its name as a heading, its contents at the tabs block's level.
   const flat = liftTabs(flattenTree(blocks));
   const parts: string[] = [];
@@ -140,7 +165,11 @@ export function blocksToHtml(
       parts.push("</details>");
     }
   };
+  // Inside a row of columns (its depth): those blocks were drawn with the row.
+  let inColumns: number | null = null;
   for (const { block, depth } of flat) {
+    if (inColumns !== null && depth > inColumns) continue;
+    inColumns = null;
     closeToggles(depth);
     const p = block.props as Record<string, unknown>;
     const t = inlineToHtml(block.text, opts);
@@ -197,6 +226,10 @@ export function blocksToHtml(
         break;
       case "pageBreak":
         parts.push('<div class="page-break" role="separator" aria-label="Page break"></div>');
+        break;
+      case "columns":
+        parts.push(columnsToHtml(block, blocks, (column) => htmlBody(column, opts)));
+        inColumns = depth;
         break;
       case "tabs":
         break;
@@ -312,21 +345,5 @@ export function blocksToHtml(
   }
   closeToggles(-1);
   closeLists(0);
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="Folevi">
-<title>${escapeHtml(opts.title)}</title>
-<style>${EXPORT_CSS}</style>
-</head>
-<body>
-<main>
-<h1>${escapeHtml(opts.title)}</h1>
-${parts.join("\n")}
-</main>
-</body>
-</html>
-`;
+  return parts.join("\n");
 }

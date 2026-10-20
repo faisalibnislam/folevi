@@ -10,6 +10,7 @@ import { parseStickies, serializeStickies, stickiesDataIssue } from "./stickies"
 import { chartDataIssue, parseChart, serializeChart } from "./chart";
 import { parseWireframe, serializeWireframe, wireframeDataIssue } from "./wireframe";
 import { embedFor } from "./embeds";
+import { isColumnWidth } from "./columns";
 
 export interface ValidationIssue {
   path: string;
@@ -313,6 +314,11 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
       if (!isValidId(p.documentId))
         issues.push({ path: "props.documentId", code: "id", message: "invalid document id" });
       break;
+    case "column":
+      // A column's share of its row (columns.ts); without one it takes an equal share.
+      if (p.width !== undefined && !isColumnWidth(p.width))
+        issues.push({ path: "props.width", code: "range", message: `width must be between ${LIMITS.minColumnWidth} and 1` });
+      break;
   }
   for (const [i, node] of (
     b.text as { type: string; marks?: { type: string; href?: string }[] }[]
@@ -495,6 +501,7 @@ export function repairWireBlock(block: WireBlock): { block: WireBlock; repaired:
     repairTableSettings(props, (props.rows as unknown[][]).length, width);
   }
   if (block.type === "image" && typeof props.width === "number") props.width = Math.min(1, Math.max(0.2, props.width));
+  if (block.type === "column" && typeof props.width === "number" && Number.isFinite(props.width)) props.width = Math.min(1, Math.max(LIMITS.minColumnWidth, props.width));
   if (block.type === "todo") {
     if (props.dueDate !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(String(props.dueDate))) delete props.dueDate;
     if (props.dueTime !== undefined && (props.dueDate === undefined || !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(props.dueTime)))) delete props.dueTime;

@@ -99,8 +99,9 @@
   font: 500 12.5px/1 var(--font-sans); color: var(--color-ink);
 }
 .mm-zoom { right: 10px; bottom: 10px; }
+/* Placed by barPlace.ts from its measured size, so it keeps its width wherever it sits. */
+.mm-idea-bar { width: max-content; }
 .mm-zoom-value { min-width: 40px; text-align: center; font-variant-numeric: tabular-nums; color: var(--color-ink-muted); }
-.mm-idea-bar { transform: translateX(-50%); }
 .mm-focus-chip { left: 10px; top: 56px; padding-left: 10px; color: var(--color-ink-muted); }
 .mm-text-btn { padding: 0 8px; }
 .mm-btn-label { white-space: nowrap; }

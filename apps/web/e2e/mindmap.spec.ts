@@ -199,6 +199,56 @@ test.describe("Mind map", () => {
     await context.close();
   });
 
+  test("in a dense map the selected idea's bar never covers another idea or the + button, at any zoom", async ({ browser }) => {
+    const { context, page } = await newPerson(browser, "Mind Map Bar Tester");
+    await newPage(page, "Dense map");
+    await page.keyboard.press("Enter");
+    const branches = ["Research", "Design", "Build", "Launch"].map((b) => [`- ${b}`, ...[1, 2, 3, 4, 5].map((i) => `  - ${b} step ${i}`)].join("\n"));
+    const fence = ["```mindmap", "- Product plan", ...branches.join("\n").split("\n").map((l) => `  ${l}`), "```", ""].join("\n");
+    await page.evaluate((t) => {
+      const dt = new DataTransfer();
+      dt.setData("text/plain", t);
+      document.querySelector(".fb-editor")!.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+    }, fence);
+    const card = page.locator(".fb-editor .fb-mindmap .fb-vcard").last();
+    await expect(card.getByRole("application", { name: "Mind map, 25 ideas" })).toBeAttached({ timeout: 20_000 });
+    await card.scrollIntoViewIfNeeded();
+    const bar = card.getByRole("toolbar", { name: "Selected idea" });
+
+    /** Selects each idea on screen in turn; the bar's box shares no area with any other idea or the + button. */
+    async function checkAll(label: string) {
+      const view = (await card.locator(".fb-canvas-body").boundingBox())!;
+      const boxes = await ideas(card).evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return { text: el.textContent ?? "", x: r.x, y: r.y, w: r.width, h: r.height }; }));
+      const inView = boxes.filter((b) => b.x >= view.x && b.y >= view.y + 56 && b.x + b.w <= view.x + view.width && b.y + b.h <= view.y + view.height);
+      expect(inView.length, `${label}: ideas in view`).toBeGreaterThan(8);
+      for (const target of inView) {
+        await idea(card, target.text).click();
+        await expect(bar).toBeVisible();
+        const b = (await bar.boundingBox())!;
+        const now = await ideas(card).evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return { text: el.textContent ?? "", x: r.x, y: r.y, w: r.width, h: r.height }; }));
+        const add = await card.locator("[data-mm-add] .mm-ctl-dot").boundingBox();
+        const hits = [...now, ...(add ? [{ text: "+", x: add.x, y: add.y, w: add.width, h: add.height }] : [])].filter(
+          (o) => b.x < o.x + o.w && b.x + b.width > o.x && b.y < o.y + o.h && b.y + b.height > o.y,
+        );
+        expect(hits.map((o) => o.text), `${label}: the bar over "${target.text}" covers`).toEqual([]);
+        // It stays inside the canvas, under the toolbar.
+        expect(b.x).toBeGreaterThanOrEqual(view.x);
+        expect(b.x + b.width).toBeLessThanOrEqual(view.x + view.width);
+        expect(b.y).toBeGreaterThanOrEqual(view.y + 56 - 1);
+        expect(b.y + b.height).toBeLessThanOrEqual(view.y + view.height);
+      }
+    }
+
+    await checkAll("fitted");
+    // Zoomed in: fewer ideas on screen, closer to the edges.
+    await card.locator(".fb-canvas-body").focus();
+    await page.keyboard.press("Escape");
+    await card.getByRole("toolbar", { name: "Zoom" }).getByRole("button", { name: "Zoom in" }).click();
+    await card.getByRole("toolbar", { name: "Zoom" }).getByRole("button", { name: "Zoom in" }).click();
+    await checkAll("zoomed in");
+    await context.close();
+  });
+
   test("at phone width the block fits, and a tap and the + add ideas", async ({ browser }) => {
     const { context, page } = await newPerson(browser, "Mind Map Phone Tester");
     await newPage(page, "Phone map");

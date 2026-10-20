@@ -44,6 +44,7 @@ import { aiProblem } from "@/components/ai/AiCredits";
 import { CanvasCard } from "../canvas/CanvasCard";
 import { MindBadge, MindIdea, MindLinkPath, MindmapStatic, ideaLabel } from "./render";
 import { badgeOf, rootSide } from "./geometry";
+import { placeIdeaBar, type Rect } from "./barPlace";
 import { IdeaBar, MindmapTools, ZoomBar, ideaMenu, moreItems, type IdeaActions } from "./MindmapChrome";
 import { MindmapOutline } from "./MindmapOutline";
 import { MindmapAi, useMindmapAi, type AiStart } from "./MindmapAi";
@@ -929,19 +930,45 @@ function MindmapEditor(props: ReactNodeViewProps) {
     };
   };
   const selActions = selected ? ideaActions(selected) : null;
-  const barStyle: React.CSSProperties | undefined = selBox
-    ? (() => {
-        const top = selBox.y * k + view.y;
-        const bottom = (selBox.y + selBox.h) * k + view.y;
-        const half = coarse ? 150 : 110;
-        const cx = clamp((selBox.x + selBox.w / 2) * k + view.x, half + 8, Math.max(half + 8, size.w - half - 8));
-        const barH = coarse ? 52 : 40;
-        const above = top - barH - 8 > TOP;
-        return { left: cx, top: above ? top - barH - 8 : Math.min(size.h - barH - 8, bottom + 10) };
-      })()
-    : undefined;
-
+  // The bar over the selected idea: measured once drawn (its buttons vary), then placed so it covers no idea,
+  // the add button, the fold toggle or the zoom bar (./barPlace.ts).
+  const [barEl, setBarEl] = useState<HTMLDivElement | null>(null);
+  const [barSize, setBarSize] = useState<{ w: number; h: number } | null>(null);
+  const [zoomBox, setZoomBox] = useState<Rect | null>(null);
+  useLayoutEffect(() => {
+    if (!barEl) return;
+    const measure = () => setBarSize((s) => (s && s.w === barEl.offsetWidth && s.h === barEl.offsetHeight ? s : { w: barEl.offsetWidth, h: barEl.offsetHeight }));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(barEl);
+    return () => ro.disconnect();
+  }, [barEl]);
   const empty = !map.nodes.length;
+  useLayoutEffect(() => {
+    const z = wrapRef.current?.querySelector<HTMLElement>(".mm-zoom");
+    setZoomBox(z ? { x: z.offsetLeft, y: z.offsetTop, w: z.offsetWidth, h: z.offsetHeight } : null);
+  }, [size.w, size.h, outline, empty]);
+  const barPlace = (() => {
+    if (!selBox || !showControls) return undefined;
+    const toScreen = (r: Rect): Rect => ({ x: r.x * k + view.x, y: r.y * k + view.y, w: r.w * k, h: r.h * k });
+    const onScreen = (r: Rect) => r.x < size.w && r.x + r.w > 0 && r.y < size.h && r.y + r.h > 0;
+    const ideas: Rect[] = [];
+    for (const b of layout.boxes) {
+      if (b.id !== selBox.id) ideas.push(toScreen(b));
+      if (b.hidden) {
+        const { w } = badgeOf(b.hidden);
+        const p = mindOuterPoint(b, 6 + (b.side === "down" ? 10 : w / 2), side);
+        ideas.push(toScreen({ x: p.x - w / 2, y: p.y - 10, w, h: 20 }));
+      }
+    }
+    const { togglePt, addPt } = outerControls(selBox);
+    const ring = (p: Pt) => toScreen({ x: p.x - hitR, y: p.y - hitR, w: hitR * 2, h: hitR * 2 });
+    const avoid = [ring(addPt), ...(togglePt ? [ring(togglePt)] : []), ...(zoomBox ? [zoomBox] : [])];
+    const bar = barSize ?? { w: coarse ? 300 : 220, h: coarse ? 52 : 40 };
+    return placeIdeaBar({ sel: toScreen(selBox), bar, ideas: ideas.filter(onScreen), avoid, view: size, top: TOP });
+  })();
+  const barStyle: React.CSSProperties | undefined = barPlace ? { left: barPlace.x, top: barPlace.y } : undefined;
+
   const count = map.nodes.length;
   const selLabel = selBox ? ideaLabel(selBox) : "";
   const tools = (
@@ -1160,7 +1187,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
           </div>
         ) : null}
         {!outline && !empty ? <ZoomBar zoom={k} onZoomIn={() => zoomBy(1.2)} onZoomOut={() => zoomBy(1 / 1.2)} onFit={() => fitView()} /> : null}
-        {showControls && selActions && barStyle ? <IdeaBar style={barStyle} a={selActions} onMore={(at) => setMenu({ at, id: selected! })} /> : null}
+        {showControls && selActions && barStyle ? <IdeaBar ref={setBarEl} style={barStyle} where={barPlace?.where} a={selActions} onMore={(at) => setMenu({ at, id: selected! })} /> : null}
         {aiStart ? (
           <MindmapAi
             hasMap={count > 0}

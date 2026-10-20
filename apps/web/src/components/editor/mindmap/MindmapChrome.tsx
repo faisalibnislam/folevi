@@ -189,9 +189,9 @@ export function ideaMenu(a: IdeaActions): (MenuItem | "separator")[] {
 }
 
 /** The bar over the selected idea: add inside, colour, fold, Foli AI, and the idea's menu. */
-export function IdeaBar({ style, a, onMore }: { style: React.CSSProperties; a: IdeaActions; onMore: (at: { x: number; y: number }) => void }) {
+export function IdeaBar({ ref, style, where, a, onMore }: { ref?: React.Ref<HTMLDivElement>; style: React.CSSProperties; where?: string; a: IdeaActions; onMore: (at: { x: number; y: number }) => void }) {
   return (
-    <div className="mm-bar mm-idea-bar" role="toolbar" aria-label="Selected idea" style={style} onPointerDown={(e) => e.stopPropagation()}>
+    <div ref={ref} className="mm-bar mm-idea-bar" role="toolbar" aria-label="Selected idea" data-where={where} style={style} onPointerDown={(e) => e.stopPropagation()}>
       <button type="button" className="fb-vc-btn" aria-label="Add idea inside" title="Add idea inside (Tab)" onClick={a.onAddChild}>
         <CornerDownRight size={14} aria-hidden />
       </button>

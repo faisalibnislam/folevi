@@ -194,3 +194,86 @@ describe("the note around it", () => {
     editor.destroy();
   });
 });
+
+describe("the bar over the selected idea (barPlace.ts)", () => {
+  const view = { w: 800, h: 500 };
+  const bar = { w: 200, h: 40 };
+  const box = (x: number, y: number, w = 120, h = 36) => ({ x, y, w, h });
+  const rectOf = (p: { x: number; y: number }) => ({ ...p, ...bar });
+
+  test("above the idea when that's clear, centred on it", async () => {
+    const { placeIdeaBar } = await import("@/components/editor/mindmap/barPlace");
+    const sel = box(340, 240);
+    const p = placeIdeaBar({ sel, bar, ideas: [], view, top: 56 });
+    expect(p.where).toBe("above");
+    expect(p.x + bar.w / 2).toBe(400);
+    expect(p.y + bar.h).toBeLessThanOrEqual(sel.y);
+  });
+
+  test("never covers a neighbour: slides, goes below, then beside on the roomier side", async () => {
+    const { placeIdeaBar, intersects } = await import("@/components/editor/mindmap/barPlace");
+    const sel = box(340, 240);
+    // A wide neighbour right above: below instead.
+    const above = box(200, 190, 400, 36);
+    let p = placeIdeaBar({ sel, bar, ideas: [above], view, top: 56 });
+    expect(p.where).toBe("below");
+    expect(intersects(rectOf(p), above)).toBe(false);
+    // Neighbours above and below: beside it, on the side with more room, clear of its add button.
+    const below = box(200, 290, 400, 36);
+    const add = { x: 466, y: 245, w: 26, h: 26 };
+    p = placeIdeaBar({ sel: box(200, 240), bar, ideas: [above, below], avoid: [add], view, top: 56 });
+    expect(p.where).toBe("right");
+    for (const r of [above, below, add, box(200, 240)]) expect(intersects(rectOf(p), r)).toBe(false);
+    // A neighbour only over the middle: it slides along the idea instead of leaving it.
+    p = placeIdeaBar({ sel: box(300, 240, 300), bar, ideas: [box(380, 195, 60, 30)], view, top: 56 });
+    expect(p.where).toBe("above");
+    expect(intersects(rectOf(p), box(380, 195, 60, 30))).toBe(false);
+    expect(p.x).toBeLessThan(600);
+    expect(p.x + bar.w).toBeGreaterThan(300);
+  });
+
+  test("stays inside the canvas and under the toolbar, at any zoom", async () => {
+    const { placeIdeaBar, intersects } = await import("@/components/editor/mindmap/barPlace");
+    // Near the top edge: no room above under the toolbar, so below.
+    let p = placeIdeaBar({ sel: box(10, 70), bar, ideas: [], view, top: 56 });
+    expect(p.where).toBe("below");
+    expect(p.x).toBeGreaterThanOrEqual(8);
+    // At the bottom right corner with the zoom bar there: above, still inside.
+    const zoom = { x: 640, y: 450, w: 150, h: 40 };
+    p = placeIdeaBar({ sel: box(670, 400), bar, ideas: [], avoid: [zoom], view, top: 56 });
+    expect(p.x + bar.w).toBeLessThanOrEqual(view.w - 8);
+    expect(intersects(rectOf(p), zoom)).toBe(false);
+    // Zoomed far in: an idea bigger than the canvas. Nothing is clear; it still sits inside.
+    p = placeIdeaBar({ sel: box(-100, -100, 1200, 900), bar, ideas: [], view, top: 56 });
+    expect(p.where).toBe("fallback");
+    expect(p.y).toBeGreaterThanOrEqual(56);
+    expect(p.y + bar.h).toBeLessThanOrEqual(view.h);
+  });
+
+  test("a dense map: siblings packed above and below, so it goes beside; with no gap at all it covers the least", async () => {
+    const { placeIdeaBar, intersects } = await import("@/components/editor/mindmap/barPlace");
+    const ideas: ReturnType<typeof box>[] = [];
+    for (let r = 0; r < 9; r++) for (const x of [40, 560]) ideas.push(box(x, 60 + r * 48, 150, 34));
+    const sel = ideas.splice(6, 1)[0]!;
+    let p = placeIdeaBar({ sel, bar, ideas, view, top: 56 });
+    expect(p.where).toBe("right");
+    for (const r of [sel, ...ideas]) expect(intersects(rectOf(p), r)).toBe(false);
+    // A leaf near the right edge between packed siblings, its parent close on the left and its add button
+    // on the right with no room past it: the nearest clear corner, still clear of the add button.
+    const leaf = box(600, 240, 100, 26);
+    const crowd = [box(600, 208, 100, 26), box(600, 272, 100, 26), box(500, 240, 70, 26), box(590, 176, 120, 26), box(590, 304, 120, 26)];
+    const plus = { x: 705, y: 240, w: 26, h: 26 };
+    p = placeIdeaBar({ sel: leaf, bar: { w: 166, h: 38 }, ideas: crowd, avoid: [plus], view, top: 56 });
+    expect(p.where).toBe("near");
+    for (const r of [leaf, plus, ...crowd]) expect(intersects({ ...p, w: 166, h: 38 }, r)).toBe(false);
+    // Wall to wall: no clear spot, so the one covering least, never the selected idea itself.
+    const wall: ReturnType<typeof box>[] = [];
+    for (let r = 0; r < 12; r++) for (let c = 0; c < 6; c++) wall.push(box(c * 134, 56 + r * 38, 130, 34));
+    const mid = wall.splice(26, 1)[0]!;
+    p = placeIdeaBar({ sel: mid, bar, ideas: wall, view, top: 56 });
+    expect(p.where).toBe("fallback");
+    const cover = (q: { x: number; y: number }) => wall.reduce((s, r) => s + Math.max(0, Math.min(q.x + bar.w, r.x + r.w) - Math.max(q.x, r.x)) * Math.max(0, Math.min(q.y + bar.h, r.y + r.h) - Math.max(q.y, r.y)), 0);
+    expect(intersects(rectOf(p), mid)).toBe(false);
+    expect(cover(p)).toBeLessThanOrEqual(cover({ x: mid.x + mid.w / 2 - bar.w / 2, y: mid.y - 8 - bar.h }));
+  });
+});

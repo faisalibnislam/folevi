@@ -27,7 +27,7 @@ const props: ViewProperty[] = [
   { id: "bad", name: "Bad", type: "formula", options: [], formula: "Price / Qty" },
   { id: "hi", name: "Hi", type: "formula", options: [], formula: 'CONCAT("Hi ", Owner)' },
 ];
-const raw = [
+const raw: { id: string; title: string; values: Record<string, unknown> }[] = [
   { id: "a", title: "Apples", values: { price: 2, qty: 3, due: "2026-10-05", done: true, who: "p1" } },
   { id: "b", title: "Pears", values: { price: 5, qty: 4, due: "2026-09-01" } },
   { id: "c", title: "Plums", values: { price: 1, qty: 0 } },

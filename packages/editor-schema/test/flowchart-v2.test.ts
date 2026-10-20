@@ -749,3 +749,18 @@ describe("Mermaid", () => {
     }
   });
 });
+
+describe("custom colours", () => {
+  it("picks a label colour that reads on a custom fill", async () => {
+    const { customFillInk, flowLuminance } = await import("../src/flowchart");
+    expect(customFillInk("#ffffff")).toBe("#18181b");
+    expect(customFillInk("#fde68a")).toBe("#18181b");
+    expect(customFillInk("#1e3a8a")).toBe("#f4f4f6");
+    expect(customFillInk("#000000")).toBe("#f4f4f6");
+    expect(customFillInk("none")).toBeNull();
+    expect(customFillInk(undefined)).toBeNull();
+    expect(customFillInk("red")).toBeNull();
+    expect(flowLuminance("#ffffff")).toBeCloseTo(1);
+    expect(flowLuminance("#000000")).toBeCloseTo(0);
+  });
+});

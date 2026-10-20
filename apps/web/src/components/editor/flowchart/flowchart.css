@@ -225,3 +225,25 @@
 @media print {
   .fc-bar, .fc-empty, .fb-flowchart .fb-wb-resize { display: none; }
 }
+
+/* ---------------------------------------------------------------- shapes and content (nodeShape.tsx) */
+.fc-shape-back { filter: none; }
+.fc-shape-detail { fill: none; stroke: var(--fc-line); stroke-width: 1.5px; stroke-linecap: round; pointer-events: none; }
+.fc-node[data-shape="note"] .fc-shape-detail { stroke: color-mix(in oklab, var(--fc-tint) 30%, transparent); stroke-width: 1px; }
+.fc-icon { fill: none; stroke: var(--fc-ink); stroke-width: 2px; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.fc-image { pointer-events: none; }
+.fc-image-ph { fill: color-mix(in oklab, var(--fc-ink) 7%, transparent); pointer-events: none; }
+.fc-image-glyph { fill: color-mix(in oklab, var(--fc-ink) 30%, transparent); pointer-events: none; }
+.fc-label .fc-marker { fill: color-mix(in oklab, var(--fc-ink) 70%, transparent); }
+.fc-label .fc-tc { fill: currentColor; }
+.fc-label .fc-link { fill: var(--color-accent); }
+.fc-hl { pointer-events: none; opacity: 0.85; }
+.fc-hl-yellow { fill: var(--color-highlight-yellow); }
+.fc-hl-green { fill: var(--color-highlight-green); }
+.fc-hl-blue { fill: var(--color-highlight-blue); }
+.fc-hl-pink { fill: var(--color-highlight-pink); }
+.fc-badge { cursor: pointer; }
+.fc-badge-hit { fill: transparent; }
+.fc-badge-dot { fill: var(--color-heading); }
+.fc-badge-glyph { fill: none; stroke: var(--color-canvas); stroke-width: 2.4px; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.fc-badge:hover .fc-badge-dot { fill: var(--fc-select); }

@@ -1406,3 +1406,24 @@ export function nodeTextLayout(n: ContentNode): { x: number; y: number; lines: s
   const x = align === "left" ? box.x : align === "right" ? box.x + box.w : box.x + box.w / 2;
   return { x, y, lines, anchor: align === "left" ? "start" : align === "right" ? "end" : "middle", rich };
 }
+
+// ------------------------------------------------------------------------------------------ custom colours
+
+/** Relative luminance (0 dark … 1 light) of a "#rrggbb" colour. */
+export function flowLuminance(hex: string): number {
+  const c = [1, 3, 5].map((i) => {
+    const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
+}
+
+/**
+ * The label colour that reads on a custom fill ("#rrggbb"): near-black on light fills, near-white on dark
+ * ones, in light and dark mode alike (a custom fill is the same colour in both). Null without a custom
+ * fill ("none" or a palette tint), where the theme's own text colour applies.
+ */
+export function customFillInk(fill: string | undefined): "#18181b" | "#f4f4f6" | null {
+  if (!fill || !HEX_RE.test(fill)) return null;
+  return flowLuminance(fill) > 0.18 ? "#18181b" : "#f4f4f6";
+}

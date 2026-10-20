@@ -5,6 +5,22 @@
 // to the call sites the type checker then points at. Kept free of React and browser APIs: share pages and
 // tests import it through render.tsx and ops.ts.
 export {
+  // Shapes and content (shape library, icons, rich labels, images, notes and page links, colours).
+  FLOWCHART_ICONS,
+  FLOWCHART_ICON_DEFS,
+  FLOWCHART_ICON_PLACES,
+  FLOWCHART_TEXT_ALIGNS,
+  customFillInk,
+  isBareShape,
+  neededHeight,
+  nodeContentBoxes,
+  nodeParagraphs,
+  nodeTextLines,
+  plainToRich,
+  richPlainText,
+  searchFlowIcons,
+  shapeBackPaths,
+  shapeTextBox,
   FLOWCHART_COLORS,
   FLOWCHART_COLOR_LABEL,
   FLOWCHART_DEFAULT_HEIGHT,
@@ -56,6 +72,15 @@ export {
 } from "@folevi/editor-schema";
 
 export type {
+  FlowIconName,
+  FlowIconPlace,
+  FlowImageFit,
+  FlowParagraph,
+  FlowRun,
+  FlowTextAlign,
+  FlowTextLine,
+  FlowShapeGroup,
+  NodeBadge,
   FlowArrow,
   FlowchartData,
   FlowColor,

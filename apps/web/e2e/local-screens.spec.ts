@@ -429,9 +429,10 @@ test.describe("local mode screens", { tag: "@local" }, () => {
     await expect(section.getByTestId("library-kind")).toHaveText("This Mac only");
     expect(await calls(page)).toContain("library.move");
 
-    // Signing in to Folevi is WP12's: until then it says so.
+    // Sign in to Folevi runs WP12's flow (lib/local/signIn.ts): the FakeShell's sign-in is refused, so nothing changes.
     await section.getByTestId("library-sign-in").click();
-    await expect(page.getByText(/Bringing a library into a Folevi account comes in a later update/)).toBeVisible();
+    await expect.poll(() => calls(page)).toContain("auth.signIn");
+    expect(await calls(page)).not.toContain("setMode");
     await context.close();
   });
 

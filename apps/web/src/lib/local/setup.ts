@@ -34,7 +34,8 @@ function isValidTimeZone(tz: string): boolean {
 /**
  * The library's profile. There's no plan in local mode: the plan fields say Free and every limit is open
  * (storage is the disk's, devices are the person's own). The interface hides plans and upgrades by mode
- * (lib/mode.ts canPurchaseHere), never by reading these. Foli AI stays off until local AI exists (L4).
+ * (lib/mode.ts canPurchaseHere), never by reading these. Foli AI is on, as for an account: it shows once this
+ * device has a model for it (Apple's, or the person's own key, lib/local/ai).
  */
 export function localProfile(input: LocalSetup, now: number): LocalProfile {
   return {
@@ -42,7 +43,7 @@ export function localProfile(input: LocalSetup, now: number): LocalProfile {
     email: "",
     displayName: (input.displayName ?? "").replace(/[\u0000-\u001F\u007F<>]/g, "").trim().slice(0, 80) || "You",
     appearance: "system",
-    aiEnabled: false,
+    aiEnabled: true,
     aiPrefs: { history: true, memory: true, suggestions: true, attachments: true, webResearch: true, digests: false, readImages: false, deviceText: true },
     reviewAppEdits: false,
     locale: /^[a-z]{2}(-[A-Z]{2})?$/.test(input.locale) ? input.locale : "en",

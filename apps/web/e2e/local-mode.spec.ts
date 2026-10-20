@@ -195,7 +195,8 @@ test.describe("local mode", { tag: "@local" }, () => {
     // Settings: the library's sections only.
     await page.goto("/settings");
     const sections = page.getByRole("navigation", { name: "Settings sections" });
-    await expect(sections.getByRole("link", { name: "Appearance" })).toHaveAttribute("aria-current", "page");
+    // Local mode's Settings opens on the library's own section (WP10b).
+    await expect(sections.getByRole("link", { name: "Library" })).toHaveAttribute("aria-current", "page");
     for (const gone of ["Account", "AI", "Plan & billing", "Security", "Devices", "Connected apps", "Notifications"]) await expect(sections.getByRole("link", { name: gone, exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Create a workspace" })).toHaveCount(0);
     await sections.getByRole("link", { name: "Import & export" }).click();
@@ -203,7 +204,7 @@ test.describe("local mode", { tag: "@local" }, () => {
     await expect(page.getByText("Save from anywhere")).toHaveCount(0);
     // An account's section by its address: back to the first one here.
     await page.goto("/settings/billing");
-    await expect(page).toHaveURL(/\/settings\/appearance/);
+    await expect(page).toHaveURL(/\/settings\/library/);
 
     // Account-only pages say what they need.
     for (const path of ["/changes", "/shared"]) {

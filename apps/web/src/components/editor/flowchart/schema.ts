@@ -1,0 +1,55 @@
+// The one place the flowchart editor imports the flowchart data model and geometry from
+// (packages/editor-schema: flowchart.ts and its geometry and layout helpers). Every module in this folder
+// imports these names from "./schema", never from "@folevi/editor-schema" directly, so moving the editor to
+// a new version of the model (v2: richer connectors, more shapes, containers) is a change to this file and
+// to the call sites the type checker then points at. Kept free of React and browser APIs: share pages and
+// tests import it through render.tsx and ops.ts.
+export {
+  FLOWCHART_COLORS,
+  FLOWCHART_COLOR_LABEL,
+  FLOWCHART_DEFAULT_HEIGHT,
+  FLOWCHART_FONT_SIZE,
+  FLOWCHART_GRID,
+  FLOWCHART_LABEL_FONT_SIZE,
+  FLOWCHART_LIMITS,
+  FLOWCHART_LINE_HEIGHT,
+  FLOWCHART_SHAPES,
+  FLOWCHART_SHAPE_LABEL,
+  FLOWCHART_SHAPE_SIZE,
+  LIMITS,
+  OPPOSITE,
+  autoSides,
+  fitNodeToText,
+  flowId,
+  flowchartBounds,
+  flowchartDirection,
+  layoutFlowchart,
+  nearestSide,
+  nodeLines,
+  nodeTextLayout,
+  normalizeFlowchart,
+  orthogonalRoute,
+  parseFlowchart,
+  portPoint,
+  rectsOverlap,
+  roundedPolyline,
+  routeEdges,
+  serializeFlowchart,
+  shapePath,
+  textWidthFor,
+} from "@folevi/editor-schema";
+
+export type {
+  FlowArrow,
+  FlowchartData,
+  FlowColor,
+  FlowDirection,
+  FlowEdge,
+  FlowEdgeStyle,
+  FlowNode,
+  FlowShape,
+  FlowSide,
+  Pt,
+  Rect,
+  RoutedEdge,
+} from "@folevi/editor-schema";

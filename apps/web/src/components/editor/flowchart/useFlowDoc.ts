@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LIMITS, parseFlowchart, serializeFlowchart, type FlowchartData } from "@folevi/editor-schema";
+import { LIMITS, parseFlowchart, serializeFlowchart, type FlowchartData } from "./schema";
 import { FlowHistory } from "./ops";
 
 const SAVE_DELAY = 400;

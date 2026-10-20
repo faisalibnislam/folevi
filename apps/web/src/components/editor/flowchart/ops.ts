@@ -17,7 +17,7 @@ import {
   type FlowShape,
   type FlowSide,
   type Rect,
-} from "@folevi/editor-schema";
+} from "./schema";
 
 export interface Selection {
   nodes: string[];

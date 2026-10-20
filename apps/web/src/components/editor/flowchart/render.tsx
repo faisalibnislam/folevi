@@ -16,7 +16,7 @@ import {
   shapePath,
   type FlowNode,
   type RoutedEdge,
-} from "@folevi/editor-schema";
+} from "./schema";
 
 export function clampFlowHeight(h: unknown): number {
   const n = Number(h);

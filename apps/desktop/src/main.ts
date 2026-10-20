@@ -60,6 +60,7 @@ import { createAuthBridge, isAuthCallback, registerAuthIpc, type AuthBridge } fr
 import { registerLibraryIpc, type IpcMainLike } from "./library/ipc";
 import { LibraryService, type CloudSource } from "./library/service";
 import { createSecretStore } from "./secrets";
+import { AiService, allowedAiUrl, HelperClient, registerAiIpc } from "./ai";
 import { startCloud } from "./library/cloud/electron";
 
 const PARTITION = "persist:folevi";
@@ -84,6 +85,9 @@ let pendingLink: string | null = null;
 let pendingSignIn: ((url: string | null) => void) | null = null;
 /** The built-in interface's account sign-in (authBridge.ts): only with the bundled interface. */
 let authBridge: AuthBridge | null = null;
+/** Foli AI in local mode (ai.ts): Apple's model through folevi-ai, or the person's own keys. Bundled interface only. */
+let ai: AiService | null = null;
+let aiHelper: HelperClient | null = null;
 
 // Folevi puts its window back itself (windowState.ts). macOS's own window restoration adds nothing but a
 // "reopen its windows?" alert after a forced quit (an update replacing the app, a hang), and that alert
@@ -295,6 +299,26 @@ function createShellAuth(): AuthBridge {
     openExternal: (url) => shell.openExternal(url),
     store: createSecretStore(join(app.getPath("userData"), "secrets"), safeStorage),
     deviceName: () => hostname().replace(/\.local$/, ""),
+  });
+}
+
+/** folevi-ai, the on-device model helper (ai.ts): in Resources, or native-build/ from source. */
+const aiHelperPath = () => (app.isPackaged ? join(process.resourcesPath, "folevi-ai") : join(__dirname, "..", "native-build", "folevi-ai"));
+
+/**
+ * foleviShell.ai (ai.ts): the person's own keys go over HTTPS from this process, through a session of its own
+ * that keeps no cookies and refuses every address but the three providers' (ai.ts allowedAiUrl, checked again
+ * before each request there); Apple's on-device model runs in folevi-ai, started when first needed.
+ */
+function createAi(): AiService {
+  const ses = session.fromPartition("folevi-ai");
+  ses.webRequest.onBeforeRequest((details, callback) => callback({ cancel: !allowedAiUrl(details.url) }));
+  ses.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
+  aiHelper = new HelperClient({ path: aiHelperPath() });
+  return new AiService({
+    fetch: (url, init) => ses.fetch(url, { ...init, credentials: "omit", bypassCustomProtocolHandlers: true }),
+    secrets: createSecretStore(join(app.getPath("userData"), "secrets"), safeStorage),
+    helper: () => aiHelper,
   });
 }
 
@@ -717,6 +741,17 @@ function listen() {
     () => authBridge,
     (e) => bundled && fromFolevi(e as IpcMainInvokeEvent),
   );
+  // foleviShell.secrets and foleviShell.ai (ai.ts): the page may store its three Foli AI keys but never read
+  // them back ("auth.session" is refused), and its AI requests stream back on shell:ai-chunk.
+  registerAiIpc((channel, listener) => ipcMain.handle(channel, listener), {
+    service: () => ai,
+    secrets: () => (bundled ? createSecretStore(join(app.getPath("userData"), "secrets"), safeStorage) : null),
+    allowed: (e) => bundled && fromFolevi(e as IpcMainInvokeEvent),
+    sender: (e) => {
+      const contents = (e as IpcMainInvokeEvent).sender;
+      return { key: String(contents.id), send: (channel, ...args) => !contents.isDestroyed() && contents.send(channel, ...args), onGone: (cb) => contents.once("destroyed", cb) };
+    },
+  });
   ipcMain.handle("shell:set-mode", (e, mode: unknown) => {
     if (!bundled || !fromFolevi(e) || (mode !== "local" && mode !== "account")) return false;
     if (settings.mode === mode) return true;
@@ -846,6 +881,7 @@ app.whenReady().then(async () => {
     powerMonitor.on("resume", () => void library?.rescan());
     app.on("browser-window-focus", () => void library?.rescan());
     authBridge = createShellAuth();
+    ai = createAi();
     // Before any window shows the new origin: hand over edits waiting on the website's origin (once).
     await runHandoff(folevi).catch((e) => console.error("Folevi handoff:", e));
     applyNetworkGuard();
@@ -884,6 +920,7 @@ app.on("before-quit", () => {
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   library?.dispose();
+  aiHelper?.dispose();
 });
 // Every window closed (the main one hides instead): stay running for Quick Add and the menu bar.
 app.on("window-all-closed", () => undefined);

@@ -23,6 +23,9 @@ extraResources:
   # folevi-files: coordinated I/O for a library in iCloud Drive or a File Provider folder (src/library/helper.ts).
   - from: native-build/folevi-files
     to: folevi-files
+  # folevi-ai: Foli AI with Apple's on-device model (FoundationModels) in local mode (src/ai.ts).
+  - from: native-build/folevi-ai
+    to: folevi-ai
   # The interface built into the app (apps/web `build:shell`, copied to web/ by `pnpm shell`): app://folevi
   # serves it from Contents/Resources/web when the bundled interface is switched on (src/protocol.ts).
   - from: web

@@ -70,6 +70,8 @@ async function lib<T = unknown>(name: string, ...args: unknown[]): Promise<T> {
   throw { name: "LocalFsError", code: error.code, message: error.message, ...(error.path ? { path: error.path } : {}) };
 }
 let libraryWatchers = 0;
+/** Foli AI requests started from this page (each gets its own id for its chunks). */
+let aiRequests = 0;
 
 // Read before any page script runs, so the page knows its mode on its first render. Synchronous, and only
 // answered for the bundled interface's own pages (main.ts checks the frame).
@@ -174,10 +176,19 @@ if (boot.shell) {
         };
       })(),
     },
+    // The person's Foli AI keys, kept encrypted by the main process (ai.ts): the page can store and remove
+    // them and ask whether one is set, never read one back. (A sandboxed preload can't
+    // load ai.ts: the channel names are its AI_CHANNELS, checked by its test.)
     secrets: {
-      has: notYet("secrets.has", "the Keychain store, a later package"),
-      set: notYet("secrets.set", "the Keychain store, a later package"),
-      delete: notYet("secrets.delete", "the Keychain store, a later package"),
+      has: async (name: string) => (await ipcRenderer.invoke("shell:secrets-has", String(name))) === true,
+      set: async (name: string, value: string) => {
+        const r = (await ipcRenderer.invoke("shell:secrets-set", String(name), typeof value === "string" ? value : "")) as { ok: boolean; error?: string } | null;
+        if (!r?.ok) throw new Error(r?.error ?? "Folevi couldn't keep that key.");
+      },
+      delete: async (name: string) => {
+        const r = (await ipcRenderer.invoke("shell:secrets-delete", String(name))) as { ok: boolean; error?: string } | null;
+        if (!r?.ok) throw new Error(r?.error ?? "Folevi couldn't remove that key.");
+      },
     },
     // The account session lives in the main process (authBridge.ts) and never comes here. (A sandboxed
     // preload can't load authBridge.ts: the channel names are its AUTH_CHANNELS, checked by its test.)
@@ -199,13 +210,40 @@ if (boot.shell) {
       },
       convexToken: () => ipcRenderer.invoke("shell:auth-convex-token") as Promise<string | null>,
     },
+    // Foli AI on this Mac (ai.ts in the main process): Apple's on-device model, or the person's own keys,
+    // which never come here. An answer streams back on shell:ai-chunk under the request's id.
     ai: {
-      capabilities: notYet("ai.capabilities", "Foli AI on this Mac, WP11"),
-      generate: () => {
-        const done = notYet("ai.generate", "Foli AI on this Mac, WP11")();
-        done.catch(() => undefined);
-        return { done, cancel: () => undefined };
+      capabilities: () => ipcRenderer.invoke("shell:ai-capabilities"),
+      generate: (req: unknown, onChunk: (text: string) => void) => {
+        aiRequests += 1;
+        const id = `g${aiRequests}${Math.random().toString(36).slice(2, 10)}`;
+        const listener = (_e: IpcRendererEvent, forId: unknown, text: unknown) => {
+          if (forId !== id || typeof text !== "string") return;
+          try {
+            onChunk(text);
+          } catch {
+            /* The page's own callback failing doesn't stop the answer. */
+          }
+        };
+        ipcRenderer.on("shell:ai-chunk", listener);
+        // Plain data only: contextBridge already copied the page's object; this drops anything else on it.
+        let plain: unknown;
+        try {
+          plain = JSON.parse(JSON.stringify(req ?? null));
+        } catch {
+          plain = null;
+        }
+        const done = (ipcRenderer.invoke("shell:ai-generate", id, plain) as Promise<{ text: string; stopReason: string; error?: string; errorCode?: string }>)
+          .catch(() => ({ text: "", stopReason: "error", error: "Folevi couldn't reach Foli AI.", errorCode: "unavailable" }))
+          .finally(() => ipcRenderer.removeListener("shell:ai-chunk", listener));
+        return {
+          done,
+          cancel: () => {
+            void ipcRenderer.invoke("shell:ai-cancel", id).catch(() => undefined);
+          },
+        };
       },
+      testKey: (provider: string) => ipcRenderer.invoke("shell:ai-test-key", String(provider)) as Promise<{ ok: true } | { ok: false; error: string }>,
     },
     lock: {
       getSettings: notYet("lock.getSettings", "the Touch ID lock, WP10"),

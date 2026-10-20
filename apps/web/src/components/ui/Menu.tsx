@@ -95,6 +95,11 @@ export function MenuButton({
           if (e.key === "ArrowDown") {
             e.preventDefault();
             show();
+          } else if (e.key === "Escape" && open) {
+            // Focus stays here when every item is unavailable: Escape still closes the menu (and only that).
+            e.preventDefault();
+            e.stopPropagation();
+            close();
           }
         }}
         className={triggerClassName ?? "inline-flex h-8 min-w-8 items-center justify-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading pointer-coarse:h-11 pointer-coarse:min-w-11"}

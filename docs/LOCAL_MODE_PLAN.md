@@ -10,6 +10,15 @@
 - The apps ship the interface built in for everyone, so both modes start offline; updates come with app updates.
 - Edits on two devices merge per block; the same block changed on both: the newer wins, the other is kept in version history with a "Changed on another device" notice.
 - Optional Face ID or Touch ID lock, and optional passphrase-encrypted sync folder (unrecoverable if the passphrase is lost).
+- Dropbox and Google Drive (added 2026-10-20): both built-in connections and "Choose a folder". First run offers "Sync with iCloud", "Sync with Dropbox", "Sync with Google Drive", "Choose a folder" and "This device only". Built-in connections sign in to Dropbox or Google inside Folevi (OAuth with PKCE from the device, tokens in the Keychain, no Folevi server involved) and sync the library through their APIs, limited to Folevi's own folder (the Dropbox app folder; Drive files Folevi created, `drive.file` scope). Local mode only: signed-in Folevi users don't get these connections.
+
+## Work package WP9b: Dropbox and Google Drive backends
+
+`LocalFs` implementations over the providers' HTTP APIs, used through the same read-merge-write and anti-entropy rules as folders (section 3):
+- Dropbox: app-folder access, OAuth 2 PKCE (no client secret), `files/list_folder` with a stored cursor and `list_folder/longpoll` for change detection, `rev` as the etag and `files/upload` in `update` mode with that rev for `ifMatch`, `files/download`, deletes; rate-limit backoff; large files via upload sessions.
+- Google Drive: `drive.file` scope, OAuth 2 PKCE for installed apps (a custom URI scheme redirect per app), one "Folevi" folder created by Folevi, `changes.list` with a stored page token for change detection, the file `version` or `headRevisionId` as the etag with a check before upload (Drive has no atomic compare-and-swap, so read-merge-write plus anti-entropy covers races), resumable uploads, trash for deletes.
+- Both: requests made by the native layer (Mac main process, iOS Swift) so tokens never reach the page; offline queueing through the journal; a "Reconnect Dropbox / Google Drive" state when a token is revoked; the library's encryption layer applies the same way.
+- The owner must create a Dropbox app (app folder permission) and add iOS and desktop OAuth clients in the existing Google Cloud project (Drive API enabled, `drive.file` on the consent screen); client ids are public and go in the app builds.
 
 # "Keep notes on my devices": architecture and build plan
 

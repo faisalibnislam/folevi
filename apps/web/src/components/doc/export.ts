@@ -1,7 +1,7 @@
 "use client";
 
 import { strToU8, zipSync, type Zippable } from "fflate";
-import { blocksToHtml, blocksToMarkdown, type InlineNode, type WireBlock } from "@folevi/editor-schema";
+import { blockFileIds, blocksToHtml, blocksToMarkdown, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import type { ConvexReactClient } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { loadKatex } from "@/components/editor/richRender";
@@ -30,10 +30,13 @@ function download(blob: Blob, filename: string) {
 
 const hourNow = () => Math.floor(Date.now() / 3_600_000) * 3_600_000;
 
-function fileRefs(blocks: WireBlock[]): { id: string; name: string }[] {
+/** The files the blocks show; with `shapes`, the images in flowchart shapes too (the HTML and PDF draw them). */
+function fileRefs(blocks: WireBlock[], { shapes = false }: { shapes?: boolean } = {}): { id: string; name: string }[] {
   return blocks.flatMap((b) => {
     const p = b.props as { fileId?: unknown; name?: unknown; alt?: unknown };
-    return typeof p.fileId === "string" ? [{ id: p.fileId, name: String(p.name || p.alt || (b.type === "image" ? "image" : "file")) }] : [];
+    const own = typeof p.fileId === "string" ? [{ id: p.fileId, name: String(p.name || p.alt || (b.type === "image" ? "image" : "file")) }] : [];
+    const inShapes = shapes && b.type === "flowchart" ? blockFileIds(b).map((id) => ({ id, name: "flowchart image" })) : [];
+    return [...own, ...inShapes];
   });
 }
 
@@ -62,8 +65,8 @@ async function pageLinks(client: ConvexReactClient, blocks: WireBlock[]) {
   };
 }
 
-async function fetchAssets(client: ConvexReactClient, blocks: WireBlock[]) {
-  const refs = fileRefs(blocks);
+async function fetchAssets(client: ConvexReactClient, blocks: WireBlock[], opts: { shapes?: boolean } = {}) {
+  const refs = fileRefs(blocks, opts);
   const assets = new Map<string, { path: string; bytes: Uint8Array }>();
   const missing: string[] = [];
   if (!refs.length) return { assets, missing };
@@ -129,7 +132,7 @@ async function mathRenderer(blocks: WireBlock[]): Promise<((latex: string) => st
 
 export async function exportHtml(client: ConvexReactClient, title: string, noteBlocks: WireBlock[]): Promise<ExportReport> {
   const blocks = await withSyncedContent(client, noteBlocks);
-  const [{ assets, missing }, links, renderMath] = await Promise.all([fetchAssets(client, blocks), pageLinks(client, blocks), mathRenderer(blocks)]);
+  const [{ assets, missing }, links, renderMath] = await Promise.all([fetchAssets(client, blocks, { shapes: true }), pageLinks(client, blocks), mathRenderer(blocks)]);
   const html = blocksToHtml(blocks, { title: title || "Untitled", resolveFile: (id) => assets.get(id)?.path ?? null, renderMath, ...links });
   const name = safeName(title);
   if (!assets.size) {
@@ -145,7 +148,7 @@ export async function exportHtml(client: ConvexReactClient, title: string, noteB
 /** PDF via the browser's print dialog ("Save as PDF"), using the same clean HTML as the HTML export. */
 export async function exportPdf(client: ConvexReactClient, title: string, noteBlocks: WireBlock[]): Promise<ExportReport> {
   const blocks = await withSyncedContent(client, noteBlocks);
-  const refs = fileRefs(blocks);
+  const refs = fileRefs(blocks, { shapes: true });
   const [urls, links, renderMath] = await Promise.all([
     refs.length ? client.query(api.files.urls, { fileIds: refs.map((r) => r.id), now: hourNow() }) : Promise.resolve({} as Record<string, { url: string }>),
     pageLinks(client, blocks),

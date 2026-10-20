@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useConvex } from "convex/react";
 import { FileCode, FileText, GripVertical, Loader2, Paperclip, Printer } from "lucide-react";
-import type { WireBlock } from "@folevi/editor-schema";
+import { blocksFileIds, type WireBlock } from "@folevi/editor-schema";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { errorMessage, useToast } from "@/components/ui/Toast";
@@ -46,7 +46,8 @@ export function ExportDialog({ open, onClose, title, blocks }: { open: boolean; 
   const group = useRadioGroup();
   const [format, setFormat] = useState<Format>(lastFormat);
   const [busy, setBusy] = useState(false);
-  const files = open ? blocks().filter((b) => typeof (b.props as { fileId?: unknown }).fileId === "string").length : 0;
+  // Attachments, and for the page the images in flowchart shapes too.
+  const files = open ? (format === "html" ? blocksFileIds(blocks()).length : blocks().filter((b) => typeof (b.props as { fileId?: unknown }).fileId === "string").length) : 0;
   const chosen = FORMATS.find((f) => f.id === format)!;
   // In the Mac app, the Markdown file can also be dragged straight to Finder or another app.
   const bridge = open ? desktop() : null;

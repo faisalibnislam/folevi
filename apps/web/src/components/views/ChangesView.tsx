@@ -3,6 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useMemo, useState } from "react";
+import { blocksFileIds } from "@folevi/editor-schema";
 import { Check, ExternalLink, RotateCcw, X, FileDiff } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -211,7 +212,7 @@ function ChangeCard({ note, people }: { note: NoteChanges; people: People }) {
     return { blocks: detail.blocks, changes };
   }, [detail]);
 
-  const fileIds = useMemo(() => [...new Set((diff?.blocks ?? []).map((b) => (b.props as { fileId?: unknown }).fileId).filter((x): x is string => typeof x === "string"))], [diff]);
+  const fileIds = useMemo(() => blocksFileIds(diff?.blocks ?? []), [diff]);
   const [now] = useState(() => Date.now());
   const files = useQuery(api.files.urls, fileIds.length ? { fileIds, now } : "skip");
   const fileUrls = useMemo(() => Object.fromEntries(Object.entries(files ?? {}).map(([id, f]) => [id, f.url])), [files]);

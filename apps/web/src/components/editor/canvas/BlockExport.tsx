@@ -2,12 +2,15 @@
 
 // Export from a visual block's menus: PNG, SVG, PDF and Copy as image (canvas/exportImage.ts), with a toast
 // when it's done or why it couldn't be. `exportItems` feeds the block menu (EditorMenus) and
-// `BlockExportMenu` is the button for a block's own toolbar, so it works in full canvas too.
+// `BlockExportMenu` is the button for a block's own toolbar, so it works in full canvas too. Pictures that
+// show files (images in a flowchart's shapes) fetch them first, so the file or copy has them (imageFiles.ts).
 import { Copy, Download, FileImage, FileText, Image as ImageIcon } from "lucide-react";
 import { useCallback } from "react";
+import { useConvex } from "convex/react";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { useToast } from "@/components/ui/Toast";
-import { blockImageSvg, IMAGE_BLOCKS } from "./blockImage";
+import { blockImageFiles, blockImageSvg, IMAGE_BLOCKS } from "./blockImage";
+import { fileDataUrls } from "./imageFiles";
 import { copyImage, exportImage, IMAGE_FORMAT_LABEL, type ImageFormat } from "./exportImage";
 
 export type ExportAction = ImageFormat | "copy";
@@ -25,23 +28,31 @@ const actionLabel = (a: ExportAction) => (a === "copy" ? "Copy as image" : `Expo
 /** Runs an export of a block (by type and node attributes), and says how it went. */
 export function useBlockExport() {
   const toast = useToast();
+  const client = useConvex();
   return useCallback(
     async (action: ExportAction, type: string, attrs: Record<string, unknown>) => {
-      const svg = blockImageSvg(type, attrs);
-      if (!svg) return toast.show("There's nothing to export yet.");
+      const plain = blockImageSvg(type, attrs);
+      if (!plain) return toast.show("There's nothing to export yet.");
       const name = IMAGE_BLOCKS[type]?.name ?? "Image";
+      // With its images, when it shows some (otherwise the picture as it is).
+      const files = blockImageFiles(type, attrs);
+      const picture = files.length
+        ? fileDataUrls(client, files)
+            .catch(() => ({}) as Record<string, string>)
+            .then((urls) => blockImageSvg(type, attrs, { imageUrl: (id) => urls[id] ?? null }) ?? plain)
+        : Promise.resolve(plain);
       try {
         if (action === "copy") {
-          await copyImage(svg);
+          await copyImage(picture);
           toast.show("Image copied");
         } else {
-          await exportImage(svg, name, action);
+          await exportImage(await picture, name, action);
         }
       } catch (e) {
         toast.show(action === "copy" ? `Couldn't copy the image. ${(e as Error).message || ""}`.trim() : "Couldn't export the image. Try again.", { tone: "error" });
       }
     },
-    [toast],
+    [toast, client],
   );
 }
 

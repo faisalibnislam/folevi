@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowLeft, Copy, MoreHorizontal, Pencil, RotateCcw } from "lucide-react";
-import type { DocumentCover, DocumentStyle, WireBlock } from "@folevi/editor-schema";
+import { blocksFileIds, type DocumentCover, type DocumentStyle, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
@@ -125,7 +125,7 @@ function HistoryView({ onClose, documentId, title, style, cover, initialVersion 
   }, [shown, showChanges, earlier, selected, liveAuthors, chosen]);
   const people: People = useMemo(() => ({ ...all?.people, ...before?.people, ...chosen?.people, ...liveAuthors?.people }), [all, before, chosen, liveAuthors]);
 
-  const fileIds = useMemo(() => [...new Set((diff?.blocks ?? shown?.blocks ?? []).map((b) => (b.props as { fileId?: unknown }).fileId).filter((x): x is string => typeof x === "string"))], [diff, shown]);
+  const fileIds = useMemo(() => blocksFileIds(diff?.blocks ?? shown?.blocks ?? []), [diff, shown]);
   const [now] = useState(() => Date.now());
   const files = useQuery(api.files.urls, fileIds.length ? { fileIds, now } : "skip");
   const fileUrls = useMemo(() => Object.fromEntries(Object.entries(files ?? {}).map(([id, f]) => [id, f.url])), [files]);

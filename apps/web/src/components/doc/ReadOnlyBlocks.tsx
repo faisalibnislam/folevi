@@ -450,7 +450,7 @@ export function ReadOnlyBlocks({
                   className="fb-readonly-flowchart"
                   style={{ marginLeft: `${depth * 1.6}em` }}
                 >
-                  <FlowchartStatic data={String(p.data ?? "")} height={Number(p.height)} />
+                  <FlowchartStatic data={String(p.data ?? "")} height={Number(p.height)} fileUrls={fileUrls} />
                 </div>
               );
             case "image": {

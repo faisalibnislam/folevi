@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { ulid } from "@folevi/editor-schema";
+import { blocksFileIds, ulid } from "@folevi/editor-schema";
 import {
   accessAtLeast,
   assertWritable,
@@ -676,9 +676,8 @@ export const openPublicLink = mutation({
     const site = process.env.CONVEX_SITE_URL ?? "";
     const exp = Date.now() + 60 * 60_000;
     const fileUrls: Record<string, string> = {};
-    for (const b of blocks) {
-      const fileId = (b.props as { fileId?: unknown }).fileId;
-      if (typeof fileId !== "string") continue;
+    // Each block's own file, and the images in flowchart shapes.
+    for (const fileId of blocksFileIds(blocks).slice(0, 2000)) {
       const file = await ctx.db
         .query("files")
         .withIndex("by_public_id", (q) => q.eq("publicId", fileId))

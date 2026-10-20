@@ -173,7 +173,8 @@ export async function exportImage(svg: string, name: string, format: ImageFormat
  * Copies a block's picture to the clipboard as a PNG. The image is handed over as a promise so the copy
  * still counts as the person's own click while it's being drawn (Safari needs that).
  */
-export async function copyImage(svg: string): Promise<void> {
+export async function copyImage(svg: string | Promise<string>): Promise<void> {
   if (typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) throw new Error("Copying images isn't supported here.");
-  await navigator.clipboard.write([new ClipboardItem({ "image/png": svgToPng(svg) })]);
+  // The picture may still be gathering its images: the clipboard waits for it, the click still counts.
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": Promise.resolve(svg).then(svgToPng) })]);
 }

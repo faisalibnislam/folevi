@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Select } from "@/components/ui/Select";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
+import { quickAddOnDevice } from "@/lib/quickAddOffline";
 
 type Priority = "none" | "low" | "medium" | "high";
 export type Target = { id: string; title: string; icon: string | null } | null;
@@ -38,7 +39,7 @@ export function QuickAddTask({ open, onClose, documentId, due }: { open: boolean
 
 /** The form itself: in the dialog above, and alone in the Mac app's Quick Add window (`onAdded` says where it went). */
 export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onClose: () => void; currentDoc?: string; onAdded?: (added: { documentId: string; where: string }) => void; initialDue?: string }) {
-  const { scope, today, deviceId } = useAppState();
+  const { scope, today, deviceId, engine, profile, online } = useAppState();
   const quickAdd = useMutation(api.tasks.quickAdd);
   const { navigate } = useAppRouter();
   const toast = useToast();
@@ -87,17 +88,20 @@ export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onC
         setBusy(true);
         setError(null);
         try {
-          const r = await quickAdd({
-            scope,
+          const task = {
             title: parsed ? parsed.rest : text,
-            today,
             dueDate: due || parsed?.date || (repeat ? firstDate(repeat.rule) : undefined),
             dueTime: due ? time || undefined : parsed?.time,
             ...(repeat ? { repeat: repeatProps(repeat.rule) } : {}),
             priority: priority === "none" ? undefined : priority,
             documentId: effective?.id,
-            deviceId: deviceId ?? undefined,
-          });
+          };
+          // Offline (account mode): kept on this device and sent with the rest of the queue, rather than
+          // waiting for the server. (Local mode is always "online": its server is the library on this device.)
+          const r =
+            !online && engine
+              ? await quickAddOnDevice({ engine, profileId: profile.id, deviceId }, scope, task)
+              : await quickAdd({ scope, today, ...task, deviceId: deviceId ?? undefined });
           onClose();
           const where = effective ? effective.title || "Untitled" : "Inbox";
           if (onAdded) onAdded({ documentId: r.documentId, where });

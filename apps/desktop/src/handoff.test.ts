@@ -3,7 +3,7 @@
 // the kit runs from its source text, as main injects it into the hidden pages.
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 import { describe, expect, test } from "vitest";
-import { handOver, handoffDue, indexedDbFolder, journalAccount, kitScript, MAX_ATTEMPTS, parseHandoffState, pendingAccounts, type KitCall } from "./handoff";
+import { handOver, handoffDue, indexedDbFolder, journalAccount, kitScript, MAX_ATTEMPTS, newerDatabases, parseHandoffState, pendingAccounts, type KitCall } from "./handoff";
 import { handoffKit } from "./handoffKit";
 
 class MemoryStorage implements Storage {
@@ -209,6 +209,28 @@ describe("the one-time handoff", () => {
     const report = await handOver(from.call, to.call);
     expect(report.copied.map((c) => c.name)).toEqual(["folevi-acct1"]);
     expect(to.localStorage.getItem("folevi:sync-journal:acct1:tab1")).not.toBeNull();
+  });
+
+  test("a website database newer than the bundled interface opens: nothing is copied, and it's tried again", async () => {
+    const from = origin();
+    const to = origin();
+    await seedOldOrigin(from);
+    // The bundled interface opens version 2 (an app built before the website's v3 change).
+    const report = await handOver(from.call, to.call, { dbVersion: 2 });
+    expect(report.newer).toEqual([{ name: "folevi-acct1", version: 3 }]);
+    expect(report.copied).toEqual([]);
+    expect(await to.indexedDB.databases()).toEqual([]);
+    expect(to.localStorage.length).toBe(0);
+    // The same or a newer interface goes ahead; an idle newer database doesn't matter (it isn't copied).
+    expect((await handOver(from.call, origin().call, { dbVersion: 3 })).copied.map((c) => c.name)).toEqual(["folevi-acct1"]);
+    const inv = { databases: [{ name: "folevi-idle", version: 9, stores: [], pending: { sync: 0, outbox: 0, uploads: 0 } }], storage: [] as [string, string][] };
+    expect(newerDatabases(inv, 3)).toEqual([]);
+    expect(newerDatabases({ ...inv, databases: [{ ...inv.databases[0]!, pending: { sync: 1, outbox: 0, uploads: 0 } }] }, 3)).toEqual([{ name: "folevi-idle", version: 9 }]);
+    expect(newerDatabases(inv, null)).toEqual([]);
+    // Waiting for an update: every launch tries again, however many there were.
+    expect(handoffDue({ state: "update", attempts: 0, at: 0 })).toBe(true);
+    expect(handoffDue({ state: "update", attempts: MAX_ATTEMPTS + 5, at: 0 })).toBe(true);
+    expect(parseHandoffState(JSON.stringify({ state: "update", attempts: 0, at: 2, appVersion: "1.16.0", dbVersion: 2 }))).toMatchObject({ state: "update", appVersion: "1.16.0", dbVersion: 2 });
   });
 
   test("the bookkeeping: journal owners, when to try, Chromium's folder name", () => {

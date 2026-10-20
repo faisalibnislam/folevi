@@ -9,6 +9,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildMac } from "./builder.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
@@ -32,11 +33,13 @@ const apiKey = process.env.APPLE_API_KEY && process.env.APPLE_API_KEY_ID && proc
 const appleId = process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD && process.env.APPLE_TEAM_ID;
 if (!apiKey && !appleId) fail("Notarizing needs APPLE_API_KEY, APPLE_API_KEY_ID and APPLE_API_ISSUER (or APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID).");
 
-// 2. Build (the interface built into the app first: apps/web build:shell into web/, shipped in Resources).
-execFileSync("pnpm", ["shell"], { cwd: root, stdio: "inherit" });
+// 2. Build (the interface built into the app first: the production build of apps/web build-shell into
+// web-release/, shipped in Resources/web; web/ keeps the development one).
+const web = join(root, "web-release");
+execFileSync("node", [resolve(root, "../web/scripts/build-shell.mjs"), "--production", "--required", "--dest", web], { cwd: root, stdio: "inherit" });
 execFileSync("pnpm", ["build"], { cwd: root, stdio: "inherit" });
 execFileSync("pnpm", ["helper"], { cwd: root, stdio: "inherit" });
-execFileSync("npx", ["electron-builder", "--config", "electron-builder.dist.yml", "--mac", "--universal", "--publish", "never"], { cwd: root, stdio: "inherit" });
+await buildMac({ config: "electron-builder.dist.yml", web, targets: null, universal: true });
 const out = join(root, "release-dist");
 const zip = `Folevi-${version}-universal-mac.zip`;
 const dmg = `Folevi-${version}-mac.dmg`;

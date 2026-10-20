@@ -11,6 +11,10 @@
 // looks (apps/web/src/lib/sync/db.ts `folevi-<account>`), and its sync engine and outbox send them through
 // the normal path once the person is signed in to that account. Nothing on the old origin is changed or
 // deleted, and nothing already on the new origin is overwritten.
+//
+// A website database newer than the bundled interface (the website shipped a schema change this app build
+// doesn't have yet) can't be opened by it, so it isn't copied either: the handoff stops, records "update", and
+// the app asks for an update instead of opening (risk R1, docs/LOCAL_MODE.md). The next launch tries again.
 import { handoffKit, type Chunk, type DatabaseInventory, type Inventory, type PrepareResult } from "./handoffKit";
 
 /** Runs one of the kit's functions on a page and answers its result (JSON text for most). */
@@ -33,6 +37,11 @@ export interface HandoffReport {
   storage: number;
   /** Databases the old origin had with nothing waiting (not copied). */
   idle: string[];
+  /**
+   * Databases with waiting work at a schema version newer than the bundled interface opens: when there are
+   * any, nothing is copied and the app asks for an update.
+   */
+  newer?: { name: string; version: number }[];
 }
 
 const ACCOUNT_DB = "folevi-";
@@ -67,8 +76,21 @@ export function pendingAccounts(inv: Inventory): Set<string> {
   return out;
 }
 
-/** Copies what the old origin (`from`) holds that hasn't been sent to the new one (`to`). */
-export async function handOver(from: KitCall, to: KitCall, o: { budget?: number } = {}): Promise<HandoffReport> {
+/**
+ * The account databases the handoff would copy whose schema is newer than `dbVersion` (the bundled
+ * interface's apps/web/src/lib/sync/db.ts DB_VERSION): the bundled app can't open those.
+ */
+export function newerDatabases(inv: Inventory, dbVersion: number | null | undefined): { name: string; version: number }[] {
+  if (typeof dbVersion !== "number" || !Number.isFinite(dbVersion)) return [];
+  const accounts = pendingAccounts(inv);
+  return inv.databases.filter((d) => d.name.startsWith(ACCOUNT_DB) && accounts.has(d.name.slice(ACCOUNT_DB.length)) && d.version > dbVersion).map((d) => ({ name: d.name, version: d.version }));
+}
+
+/**
+ * Copies what the old origin (`from`) holds that hasn't been sent to the new one (`to`). `dbVersion` is the
+ * schema version the bundled interface opens: a newer database stops the handoff before anything is written.
+ */
+export async function handOver(from: KitCall, to: KitCall, o: { budget?: number; dbVersion?: number | null } = {}): Promise<HandoffReport> {
   const inv = JSON.parse((await from("inventory", ACCOUNT_DB)) as string) as Inventory;
   const accounts = pendingAccounts(inv);
   const report: HandoffReport = { copied: [], skipped: [], storage: 0, idle: [] };
@@ -76,6 +98,8 @@ export async function handOver(from: KitCall, to: KitCall, o: { budget?: number 
     report.idle = inv.databases.map((d) => d.name);
     return report;
   }
+  const newer = newerDatabases(inv, o.dbVersion);
+  if (newer.length) return { ...report, newer };
   for (const db of inv.databases) {
     if (!accounts.has(db.name.slice(ACCOUNT_DB.length))) {
       report.idle.push(db.name);
@@ -117,9 +141,13 @@ export async function handOver(from: KitCall, to: KitCall, o: { budget?: number 
 // ---------------------------------------------------------------- the record of it (userData/handoff.json)
 
 export interface HandoffState {
-  state: "done" | "retry";
+  /** "update": the website's database is newer than this app's interface; tried again every launch. */
+  state: "done" | "retry" | "update";
   attempts: number;
   at: number;
+  /** The app version that ran it, and the IndexedDB schema version its interface opens (shell/build.json). */
+  appVersion?: string;
+  dbVersion?: number | null;
   /** The origin the edits were taken from. */
   from?: string;
   report?: HandoffReport;
@@ -133,15 +161,18 @@ export function parseHandoffState(raw: string | null): HandoffState | null {
   if (!raw) return null;
   try {
     const s = JSON.parse(raw) as HandoffState;
-    return s && (s.state === "done" || s.state === "retry") && typeof s.attempts === "number" ? s : null;
+    return s && (s.state === "done" || s.state === "retry" || s.state === "update") && typeof s.attempts === "number" ? s : null;
   } catch {
     return null;
   }
 }
 
-/** Whether this launch should try the handoff. */
+/**
+ * Whether this launch should try the handoff. One that waited for an update runs again every launch (nothing
+ * was copied, so there's nothing to repeat): an updated app goes ahead.
+ */
 export function handoffDue(state: HandoffState | null): boolean {
-  return !state || (state.state === "retry" && state.attempts < MAX_ATTEMPTS);
+  return !state || state.state === "update" || (state.state === "retry" && state.attempts < MAX_ATTEMPTS);
 }
 
 /**

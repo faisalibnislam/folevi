@@ -94,7 +94,17 @@ pnpm dev        # against the local web app (FOLEVI_URL=http://app.localhost:300
 pnpm typecheck
 pnpm test       # settings, URLs and window state (no Electron needed)
 pnpm release    # next version, build, sign, replace /Applications/Folevi.app and relaunch it
+pnpm release:dry-run   # the same build, to a temporary folder: no bump, nothing installed or opened
 ```
+
+`pnpm release` (`scripts/release.mjs`) builds the interface built into the app as the production build
+(`apps/web/scripts/build-shell.mjs --production`: Folevi's production deployment and website, never
+`.env.local`'s development values) into `web-release/`, packages the app with that as `Resources/web`
+(`scripts/builder.mjs`), and checks the packaged `Resources/web/shell/build.json` says production and this
+version before installing. `web/` keeps the development export (`pnpm shell`) for `pnpm start` and the e2e
+specs. The dry run prints where everything went; `E2E_DESKTOP_APP=<that>/Applications/Folevi.app` runs
+`apps/web/e2e/desktop-windows.spec.ts` against the packaged copy. `FOLEVI_OFFLINE=1` starts any build with no
+network at all (a packaged app can't load the `electron -r` fixture the development runs use).
 
 Every `pnpm release` bumps the version first (`scripts/bump-version.mjs`): 1.1.0, 1.2.0, 1.3.0 and so on,
 the number after "1." going up by one. The app's version (About Folevi) comes from `package.json`; commit

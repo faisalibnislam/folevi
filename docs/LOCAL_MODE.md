@@ -345,6 +345,41 @@ the page can never set either. `FOLEVI_SHELL=0` forces it off.
   waits for the network, as on the website (`tasks.quickAdd` is a server call). `/_files` from the dev-server
   origin would need CORS.
 
+## WP13 (Mac): every window in local mode, offline Quick Add, and the release build (2026-10-20)
+
+- **Windows on one library.** Quick Add (⌥Space), ⇧⌘N windows and the menu and menu bar commands already
+  went through `lib/local/host.ts`: one window holds the `folevi-local-library` Web Lock and runs the backend,
+  every other window's `LocalClient` calls it over the BroadcastChannel. The Mac side adds what that needs:
+  the main window only hides when closed, and the Quick Add window (made at launch, hidden) hosts the library
+  when no other window does (a launch from a `folevi://quick-add` link, or every other window gone). Windows
+  in local mode keep full timer speed while hidden (`setBackgroundThrottling(false)`), since the host may be a
+  hidden window and Chromium would otherwise slow its folder writes to once a minute.
+- **Quick Add offline in account mode** (`lib/quickAddOffline.ts`): with no connection, the to-do goes on the
+  chosen page or the place's Inbox (its deterministic id, made on the device) through the sync engine, like a
+  share, instead of waiting on `tasks.quickAdd`. In the Mac's Quick Add window it's that window's own engine
+  (each window has one, as each browser tab does), so the main window sees the task once it's on the server,
+  or after a restart (the closing window's journal is merged).
+- **The release build.** `build-shell.mjs --production` (used by `pnpm release`, `scripts/release.mjs`, and
+  `publish.mjs`) bakes in the production Convex deployment and website whatever `.env.local` says (Next reads
+  `.env.local` even in a production build, but never overrides a variable already set, so every public one is
+  set), builds into `.next-shell-release/`, and fails if any `.env` value, `localhost:` or a missing production
+  deployment shows up in the export. Every export carries `shell/build.json` (`target`, `convexUrl`, `siteUrl`,
+  `dbVersion`, `appVersion`); the Mac app reads it at launch (`src/shellBuild.ts`) and logs a packaged app
+  carrying a development build, another website, or another version.
+- **R1, IndexedDB newer than the app.** The handoff now records the app version and the bundle's `dbVersion`,
+  and refuses a website database with waiting work at a newer schema: nothing is copied, `handoff.json` says
+  `"update"` (tried again every launch), and every window shows "Update Folevi" (`assets/update.html`)
+  instead of the app. The server's `minShellVersion` (WP4) is checked by the page against
+  `foleviShell.shellVersion`, which is the app's version.
+- **Quitting after a drag.** A drag out of the app that macOS never saw end (started after the mouse was up,
+  or from a script, as `e2e/desktop-app.spec.ts` does) kept the process alive after every window closed, so
+  `app.close()` hung. After any drag, quitting writes the session's storage and ends the process itself.
+- **Tests:** `e2e/desktop-windows.spec.ts` (local mode with the main window hidden and then gone, ⇧⌘N, File
+  menu, the library folder on disk, no network; account mode offline with a seeded session, Quick Add queued
+  and still there after an offline restart; Resources/web, build info, window buttons, text in images), run
+  against the development app and against the packaged dry-run build (`E2E_DESKTOP_APP`); `src/shellBuild.test.ts`,
+  the newer-schema cases in `src/handoff.test.ts`, `test/quick-add-offline.test.ts`, `test/build-shell-env.test.ts`.
+
 ## WP9b: Sync with Dropbox and Sync with Google Drive on the Mac (2026-10-20)
 
 **Built:** `apps/desktop/src/library/cloud/`. The provider logic is platform neutral (fetch, WebCrypto and plain

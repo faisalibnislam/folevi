@@ -254,7 +254,7 @@ function htmlBody(blocks: readonly WireBlock[], opts: HtmlExportOptions): string
         if (String(p.data ?? "")) {
           // Light and dark pictures; the page's colour scheme picks one (print always takes the light one).
           const svg = (theme: "light" | "dark") =>
-            flowchartToSvg(String(p.data), { theme, background: false, imageUrl: (id) => opts.resolveFile?.(id) ?? null, idPrefix: `fc${parts.length}${theme[0]}` }).replace("<svg ", `<svg class="fc-${theme}" `);
+            flowchartToSvg(String(p.data), { theme, background: false, imageUrl: (id) => opts.resolveFile?.(id) ?? null, idPrefix: `fc${block.id}${theme[0]}` }).replace("<svg ", `<svg class="fc-${theme}" `);
           parts.push(`<figure class="flowchart">${svg("light")}${svg("dark")}</figure>`);
         }
         break;

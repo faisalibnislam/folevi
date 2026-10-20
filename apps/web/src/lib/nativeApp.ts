@@ -117,6 +117,11 @@ export interface NativeBridge {
   authenticate?(url: string): Promise<string | null>;
   /** Folevi's page in the iOS Settings app (where notifications turned off in iOS come back on). */
   openNotificationSettings?(): Promise<void>;
+  /**
+   * The text in an image (base64 bytes), read on the device with Vision, for search (lib/fileText). Null when
+   * it couldn't be read. Missing in apps built before it.
+   */
+  recognizeText?(image: { data: string; type: string; handwriting?: boolean }): Promise<{ text: string } | null>;
 }
 
 declare global {

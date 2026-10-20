@@ -34,6 +34,8 @@ const bridge = {
   dragFile: (file: { name: string; text: string }) => ipcRenderer.send("desktop:drag-file", file),
   /** Signs in with Google in the default browser: answers with the folevi://auth/google link it ends on, or null. */
   signInInBrowser: (url: string) => ipcRenderer.invoke("desktop:sign-in", url) as Promise<string | null>,
+  /** The words in an image, read on this Mac with Vision (search in files): { text }, or null. */
+  recognizeText: (image: Uint8Array, handwriting = false) => ipcRenderer.invoke("desktop:recognize-text", image, handwriting) as Promise<{ text: string } | null>,
   /** Opens a path in the main window and brings it forward (from Quick Add). */
   openInMain: (path: string) => ipcRenderer.send("desktop:open", path),
   /** Menu, menu bar and notification commands for the page; returns the function that stops listening. */

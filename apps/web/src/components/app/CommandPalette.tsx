@@ -4,7 +4,7 @@ import { useAction, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { ArrowRight, CalendarDays, CheckSquare, FileDiff, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2 } from "lucide-react";
-import { flattenFolders } from "@folevi/editor-schema";
+import { fileTextLabel, flattenFolders, type FileTextSource } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useFolderTree } from "@/lib/app/folders";
 import { openNextInNewTab } from "@/lib/app/tabs";
@@ -22,7 +22,7 @@ import { useIphoneApp } from "@/lib/iphone";
 
 type Item =
   | { kind: "action"; id: string; label: string; hint?: string; icon: React.ReactNode; run: () => void }
-  | { kind: "doc"; id: string; title: string; icon: string | null; snippet?: string; updatedAt?: number; place?: string; meaning?: boolean };
+  | { kind: "doc"; id: string; title: string; icon: string | null; snippet?: string; updatedAt?: number; place?: string; meaning?: boolean; match?: { source: FileTextSource; page: number | null; blockId: string } | null };
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -117,7 +117,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const items: Item[] = useMemo(() => {
     const matchingActions = q ? actions.filter((a) => a.kind === "action" && a.label.toLowerCase().includes(q)) : actions.slice(0, 4);
     const docs: Item[] = debounced
-      ? (results ?? []).map((r) => ({ kind: "doc" as const, id: r.id, title: r.title, icon: r.icon, snippet: r.snippet, updatedAt: r.updatedAt, place: "place" in r ? (r.place as { name: string }).name : undefined }))
+      ? (results ?? []).map((r) => ({ kind: "doc" as const, id: r.id, title: r.title, icon: r.icon, snippet: r.snippet, updatedAt: r.updatedAt, place: "place" in r ? (r.place as { name: string }).name : undefined, match: r.match }))
       : (recent ?? []).map((r) => ({ kind: "doc" as const, id: r.id, title: r.title, icon: r.icon, updatedAt: r.updatedAt }));
     // By meaning: only notes the keyword search didn't already find, for what's typed now.
     const seen = new Set(docs.map((d) => d.id));
@@ -145,7 +145,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     if (item.kind === "action") item.run();
     else {
       openNextInNewTab();
-      navigate(`/d/${item.id}`);
+      // Found in a PDF, an image or handwriting: the note opens at that block.
+      navigate(`/d/${item.id}${item.match ? `#block-${item.match.blockId}` : ""}`);
     }
   };
 
@@ -302,6 +303,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                             {item.snippet ? (
                               <span className="line-clamp-2 block text-xs text-muted">
                                 {item.place ? <span className="text-faint">{item.place} · </span> : null}
+                                {item.match ? <span className="text-faint">{fileTextLabel(item.match.source, item.match.page)} · </span> : null}
                                 <Highlight text={item.snippet} query={debounced} />
                               </span>
                             ) : item.updatedAt ? (

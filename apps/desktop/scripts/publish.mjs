@@ -34,6 +34,7 @@ if (!apiKey && !appleId) fail("Notarizing needs APPLE_API_KEY, APPLE_API_KEY_ID 
 
 // 2. Build.
 execFileSync("pnpm", ["build"], { cwd: root, stdio: "inherit" });
+execFileSync("pnpm", ["helper"], { cwd: root, stdio: "inherit" });
 execFileSync("npx", ["electron-builder", "--config", "electron-builder.dist.yml", "--mac", "--universal", "--publish", "never"], { cwd: root, stdio: "inherit" });
 const out = join(root, "release-dist");
 const zip = `Folevi-${version}-universal-mac.zip`;

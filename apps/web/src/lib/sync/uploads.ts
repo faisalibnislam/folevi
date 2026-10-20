@@ -35,6 +35,25 @@ export async function uploadFileNow(
   return result.fileId;
 }
 
+/** A note's file that just finished uploading from this device, with its bytes (lib/fileText reads PDFs and images from them). */
+export interface UploadedFile {
+  documentId: string;
+  blockId: string;
+  fileId: string;
+  kind: "image" | "file" | "audio";
+  mimeType: string;
+  blob: Blob;
+}
+const uploadedListeners = new Set<(file: UploadedFile) => void>();
+
+/** Hears every note file this device finishes uploading; returns the function that stops listening. */
+export function onFileUploaded(listener: (file: UploadedFile) => void): () => void {
+  uploadedListeners.add(listener);
+  return () => {
+    uploadedListeners.delete(listener);
+  };
+}
+
 const objectUrls = new Map<string, string>();
 
 /** A local preview URL for an upload that hasn't reached the server yet. */
@@ -164,6 +183,7 @@ export class Uploader {
           const { storageId } = (await res.json()) as { storageId: string };
           const result = await this.client.action(api.files.finalize, { intentId, storageId: storageId as never, sha256: await sha256Hex(u.blob) });
           this.engine.uploadCompleted(u.uploadId, result.fileId);
+          for (const listener of uploadedListeners) listener({ documentId: u.documentId, blockId: u.blockId, fileId: result.fileId, kind: u.kind, mimeType: result.mimeType, blob: u.blob });
           await db.delete("uploads", u.uploadId);
         } catch (e) {
           const code = (e as { data?: { code?: string; message?: string } }).data;

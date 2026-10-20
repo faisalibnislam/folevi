@@ -16,6 +16,10 @@ files:
   - package.json
   - "!**/node_modules/**"
 npmRebuild: false
+# folevi-text, the Vision helper that reads the words in images for search (native/, scripts/build-helper.mjs).
+extraResources:
+  - from: native-build/folevi-text
+    to: folevi-text
 # folevi://d/<id> links open notes in the app (src/urls.ts parseDeepLink).
 protocols:
   - name: Folevi

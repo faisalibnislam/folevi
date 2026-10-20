@@ -40,6 +40,8 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setBackdrop", returnType: CAPPluginReturnPromise),
         // Native/NativeServices.swift: signing in with Google in iOS's sign-in sheet.
         CAPPluginMethod(name: "authenticate", returnType: CAPPluginReturnPromise),
+        // Native/TextRecognition.swift: the words in an image, read on the device (search in files).
+        CAPPluginMethod(name: "recognizeText", returnType: CAPPluginReturnPromise),
     ]
 
     var appOrigin: String { AppOrigin.of(bridge?.config.serverURL) }

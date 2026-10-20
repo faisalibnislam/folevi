@@ -17,6 +17,10 @@ files:
   - package.json
   - "!**/node_modules/**"
 npmRebuild: false
+# folevi-text, the Vision helper that reads the words in images for search (native/, scripts/build-helper.mjs).
+extraResources:
+  - from: native-build/folevi-text
+    to: folevi-text
 electronLanguages:
   - en
 protocols:
@@ -37,6 +41,8 @@ mac:
   identity: null
   type: distribution
   hardenedRuntime: true
+  # folevi-text is built universal already: it goes into the universal app as it is.
+  x64ArchFiles: Contents/Resources/folevi-text
   gatekeeperAssess: false
   notarize: true
   entitlements: build/entitlements.mac.plist

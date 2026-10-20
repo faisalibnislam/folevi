@@ -17,7 +17,7 @@ import { AiExportCard } from "./AiExport";
 import { useIphoneApp } from "@/lib/iphone";
 import { IosRow, IosSection, Subscreen, SwitchRow } from "@/components/iphone/SettingsKit";
 
-type PrefKey = "history" | "memory" | "suggestions" | "attachments" | "webResearch" | "digests";
+type PrefKey = "history" | "memory" | "suggestions" | "attachments" | "webResearch" | "digests" | "readImages" | "deviceText";
 type Prefs = Record<PrefKey, boolean>;
 
 /** What each setting does, in a sentence. "soon" marks one whose feature hasn't arrived yet. */
@@ -66,7 +66,28 @@ const SETTINGS: { key: PrefKey; label: string; body: string; on: string; off: st
   },
 ];
 
-const DEFAULTS: Prefs = { history: true, memory: true, suggestions: true, attachments: true, webResearch: true, digests: false };
+/**
+ * Search in images (docs/ARCHITECTURE.md, "Search in files"): PDFs are always read on the device; images and
+ * handwriting by the device's own recogniser (the apps), or by Foli AI in a browser when turned on.
+ */
+const IMAGE_SETTINGS: (typeof SETTINGS)[number][] = [
+  {
+    key: "deviceText",
+    label: "Read text on your devices",
+    body: "In the iPhone, iPad and Mac apps, the words in your images and handwriting are read on the device, so search finds them. Nothing is sent anywhere. The words in PDFs are always searchable.",
+    on: "Images are read on your devices",
+    off: "Images aren't read on your devices",
+  },
+  {
+    key: "readImages",
+    label: "Read images with Foli AI",
+    body: "In a browser, Foli AI reads the words in images you add, so search finds them. Each image uses a few AI credits. When this is off, choose Make text in images searchable in a note's menu whenever you want it.",
+    on: "Foli AI reads images you add",
+    off: "Foli AI doesn't read images you add",
+  },
+];
+
+const DEFAULTS: Prefs = { history: true, memory: true, suggestions: true, attachments: true, webResearch: true, digests: false, readImages: false, deviceText: true };
 
 function PrefRow({ item, checked, disabled, onChange }: { item: (typeof SETTINGS)[number]; checked: boolean; disabled: boolean; onChange: (next: boolean) => void }) {
   const descId = useId();
@@ -125,6 +146,11 @@ export function AiSection() {
             </IosSection>
           </Subscreen>
         ))}
+        {IMAGE_SETTINGS.map((item, i) => (
+          <IosSection key={item.key} header={i === 0 ? "Search in images" : undefined} footer={item.body}>
+            <SwitchRow label={item.label} checked={prefs[item.key]} disabled={item.key === "readImages" && core} onChange={(next) => set(item, next)} />
+          </IosSection>
+        ))}
         <AiMemoryCard />
         <AiDigestCard />
         <AiRoutinesCard />
@@ -142,6 +168,13 @@ export function AiSection() {
         <div className="divide-y divide-line/70">
           {SETTINGS.slice(1).map((item) => (
             <PrefRow key={item.key} item={item} checked={prefs[item.key]} disabled={core} onChange={(next) => set(item, next)} />
+          ))}
+        </div>
+      </Card>
+      <Card title="Search in images" description="So search finds the words in your images and handwriting, like the words in your PDFs.">
+        <div className="divide-y divide-line/70">
+          {IMAGE_SETTINGS.map((item) => (
+            <PrefRow key={item.key} item={item} checked={prefs[item.key]} disabled={item.key === "readImages" && core} onChange={(next) => set(item, next)} />
           ))}
         </div>
       </Card>

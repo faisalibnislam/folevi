@@ -27,6 +27,7 @@ import { appUrl, APP_URL, dragFileName, isAppUrl, isExternalSafe, isSignInReturn
 import { installUpdate, startUpdates, type UpdateState } from "./updates";
 import { cleanSettings, loadSettings, saveSettings, type DesktopSettings } from "./settings";
 import { restoreWindow, saveWindow } from "./windowState";
+import { imageBytes, oneAtATime, runHelper } from "./textRecognition";
 
 const PARTITION = "persist:folevi";
 const settingsFile = () => join(app.getPath("userData"), "settings.json");
@@ -426,6 +427,10 @@ function applySettings(next: DesktopSettings) {
 
 const fromFolevi = (e: IpcMainEvent | IpcMainInvokeEvent) => isAppUrl(e.senderFrame?.url ?? "");
 
+/** folevi-text, the Vision helper (textRecognition.ts): in the app's Resources, or native-build/ when run from source. */
+const textHelper = () => (app.isPackaged ? join(process.resourcesPath, "folevi-text") : join(__dirname, "..", "native-build", "folevi-text"));
+const recognize = oneAtATime((bytes: Uint8Array, handwriting: boolean) => runHelper(textHelper(), bytes, { handwriting }));
+
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");
 
 function listen() {
@@ -509,6 +514,12 @@ function listen() {
   });
   // Whether this Mac lets Folevi record the screen and its sound (granted only once macOS has been told so
   // and Folevi has restarted): a call recording checks it before it starts.
+  // Search in files: the words in an image from a note, read on this Mac (nothing is sent anywhere).
+  ipcMain.handle("desktop:recognize-text", async (e, input: unknown, handwriting: unknown) => {
+    if (!fromFolevi(e)) return null;
+    const bytes = imageBytes(input);
+    return bytes ? await recognize(bytes, handwriting === true) : null;
+  });
   ipcMain.handle("desktop:screen-access", (e) => (fromFolevi(e) ? systemPreferences.getMediaAccessStatus("screen") : null));
   // Signing in with Google, which doesn't sign in inside the app's window: Folevi's /app-google page opens in
   // the default browser, and the folevi://auth/google link it ends on (with a one-time code) goes back to the

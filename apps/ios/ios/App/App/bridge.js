@@ -118,6 +118,13 @@
     openNotificationSettings: function () {
       return quietly(call("FoleviNative", "openNotificationSettings")).then(function () {});
     },
+    /** The words in an image ({ data: base64, type, handwriting }), read on the device with Vision: { text }, or null. */
+    recognizeText: function (image) {
+      var input = image || {};
+      return quietly(call("FoleviNative", "recognizeText", { data: String(input.data || ""), type: String(input.type || ""), handwriting: Boolean(input.handwriting) })).then(function (r) {
+        return r && typeof r.text === "string" ? { text: r.text } : null;
+      });
+    },
     /**
      * folevi:// links opened from other apps (and one that opened the app), for the page to route; returns
      * the function that stops listening.

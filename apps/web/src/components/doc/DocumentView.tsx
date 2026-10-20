@@ -25,6 +25,7 @@ import {
   Lock,
   MessageSquare,
   MoreHorizontal,
+  ScanText,
   Search,
   Star,
   StarOff,
@@ -93,6 +94,7 @@ import "@/components/editor/stickies/stickies.css";
 import "@/components/editor/chart/chart.css";
 import "@/components/editor/wireframe/wireframe.css";
 import { Select } from "@/components/ui/Select";
+import { useFileText } from "./useFileText";
 
 // Only a collection's row pages have properties; the collection code loads for those alone.
 const CollectionRowProperties = lazy(() => import("@/components/editor/CollectionEmbed").then((m) => ({ default: m.CollectionRowProperties })));
@@ -557,6 +559,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [aiRun, setAiRun] = useState<(AiRunDetail & { id: number }) | null>(null);
   // AI follows the note's own scope (your Personal: your Personal plan; a team: its workspace plan).
   const aiOn = useAiEnabled(meta?.document);
+  // Search in files: the text in this note's PDFs, images and handwriting, found on this device (or by Foli AI when asked).
+  const readImages = useFileText({ documentId, engine, canEdit: Boolean(meta && !meta.inTrash && canEditPage && !readOnly), aiOn });
   // The editor's AI (slash commands, ⌘J, the selection toolbar) follows this note too, and a page it writes
   // into an empty note can name it.
   const noteDoc = meta?.document;
@@ -690,6 +694,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
     onFind: editor ? () => openFind(!readOnly) : undefined,
     onExport: () => setExportOpen(true),
     canMove: canFile || canNest,
+    readImages,
   });
   // Plus following or muting this note's comment notifications.
   const actions: (MenuItem | "separator")[] = noteNotify.length ? [...docActions, "separator", ...noteNotify] : docActions;
@@ -1788,6 +1793,7 @@ function useDocumentActions({
   onExport,
   canMove,
   reviewCards,
+  readImages,
 }: {
   documentId: string;
   /** Cards to review now in this note, when it has any cards (opens Reviews for this note). */
@@ -1818,6 +1824,8 @@ function useDocumentActions({
   onExport: () => void;
   /** Whether Move… can do anything here (file it in a folder, or nest it under a page). */
   canMove: boolean;
+  /** "Make text in images searchable": Foli AI reads the note's images (useFileText), when there are any to read. */
+  readImages?: { count: number; run: () => void; busy: boolean } | null;
 }): (MenuItem | "separator")[] {
   const setStarred = useMutation(api.documents.setStarred);
   const setArchived = useMutation(api.documents.setArchived);
@@ -1846,6 +1854,9 @@ function useDocumentActions({
         ...(onFind ? [{ label: canManage ? "Find and replace…" : "Find in note…", icon: <Search size={14} />, shortcut: canManage ? "⌘⌥F" : "⌘F", onSelect: onFind }] : []),
         { label: "Move…", icon: <FolderInput size={14} />, disabled: !canMove, onSelect: onMove },
         { label: "Export…", icon: <Download size={14} />, onSelect: onExport },
+        ...(readImages
+          ? [{ label: "Make text in images searchable", icon: <ScanText size={14} />, description: `Foli AI reads ${readImages.count === 1 ? "1 image" : `${readImages.count} images`}. Uses AI credits.`, disabled: readImages.busy, onSelect: readImages.run }]
+          : []),
         "separator" as const,
         { label: "Duplicate", icon: <Copy size={14} />, onSelect: () => void duplicate({ documentId }).then((d) => navigate(`/d/${d.id}`), (e) => toast.show(errorMessage(e), { tone: "error" })) },
         ...(onCopyTo ? [{ label: "Copy to…", icon: <CopyPlus size={14} />, onSelect: onCopyTo }] : []),

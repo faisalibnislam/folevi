@@ -44,6 +44,11 @@ export interface DesktopBridge {
   /** Opens System Settings at Privacy & Security > Screen & System Audio Recording. Missing before 1.3. */
   openSystemSettings?(pane: "screen-recording"): void;
   onCommand(listener: (command: DesktopCommand) => void): () => void;
+  /**
+   * The text in an image, read on this Mac with Vision (a small helper in the app), for search (lib/fileText).
+   * Null when it couldn't be read. Missing in Mac app builds before 1.15.
+   */
+  recognizeText?(image: Uint8Array, handwriting?: boolean): Promise<{ text: string } | null>;
 }
 
 declare global {

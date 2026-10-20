@@ -2,15 +2,11 @@
 // APIs, so share pages can render it on the server. Colours come from CSS variables (flowchart.css), so a
 // chart follows light/dark and the note's theme palette; the geometry is shared with exports.
 import { memo } from "react";
-import { FlowNodeShape } from "./nodeShape";
 import {
   FLOWCHART_LABEL_FONT_SIZE,
   LIMITS,
   FLOWCHART_DEFAULT_HEIGHT,
   FLOWCHART_SHAPE_LABEL,
-  flowchartBounds,
-  parseFlowchart,
-  routeEdges,
   type FlowNode,
   type RoutedEdge,
 } from "./schema";

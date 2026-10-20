@@ -50,7 +50,7 @@ import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { useAiFeature } from "@/lib/mode";
 import { serializeFlowchart } from "./schema";
-import { FlowchartStatic } from "./render";
+import { FlowchartReadOnly } from "./FlowchartReadOnly";
 import { MainToolbar, ZoomBar } from "./FlowchartChrome";
 import { FlowchartAi } from "./FlowchartAi";
 import { BlockExportMenu } from "../canvas/BlockExport";
@@ -78,7 +78,7 @@ export function FlowchartView(props: ReactNodeViewProps) {
     return (
       <NodeViewWrapper className={`fb-atom fb-flowchart ${selected ? "fb-atom-selected" : ""}`} aria-label="Flowchart">
         <div contentEditable={false} className="fc-card fc-card-static">
-          <FlowchartStatic data={String(node.attrs.data ?? "")} height={Number(node.attrs.height)} />
+          <FlowchartReadOnly data={String(node.attrs.data ?? "")} height={Number(node.attrs.height)} />
         </div>
       </NodeViewWrapper>
     );

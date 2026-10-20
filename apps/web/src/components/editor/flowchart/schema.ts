@@ -5,6 +5,15 @@
 // to the call sites the type checker then points at. Kept free of React and browser APIs: share pages and
 // tests import it through render.tsx and ops.ts.
 export {
+  // Present, follow a path, read-only views and exports.
+  flowchartDataToSvg,
+  flowchartFileIds,
+  flowGraph,
+  flowStart,
+  nextSteps,
+  pathsBetween,
+  pathsFrom,
+  pathsUnion,
   // Shapes and content (shape library, icons, rich labels, images, notes and page links, colours).
   FLOWCHART_ICONS,
   FLOWCHART_ICON_DEFS,
@@ -96,3 +105,6 @@ export type {
   FlowAlign,
   SmartGuide,
 } from "@folevi/editor-schema";
+
+// Present and follow a path.
+export type { FlowGraph, FlowPath, FlowStep } from "@folevi/editor-schema";

@@ -211,8 +211,20 @@
 .fc-ai-foot { margin: 0; padding: 7px 14px; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); font-size: 11px; color: var(--color-ink-faint); }
 
 /* ---------------------------------------------------------------- read-only */
-.fc-static { display: flex; justify-content: center; padding: 8px 12px; }
-.fc-static svg { height: auto; }
+/* FlowchartStatic.tsx: the exports' picture in its light and dark palettes; the page's theme shows one. */
+.fc-static { position: relative; display: flex; justify-content: center; padding: 8px 12px; overflow: hidden; }
+.fc-static-svg { display: block; max-width: 100%; height: auto; font-family: var(--font-sans); touch-action: pan-y; cursor: default; user-select: none; -webkit-user-select: none; }
+.fc-static-svg[data-zoomed] { touch-action: none; cursor: grab; }
+.fc-static-dark { display: none; }
+:root[data-theme="dark"] .fc-static-light, .fb-sheet[data-sheet="night"] .fc-static-light { display: none; }
+:root[data-theme="dark"] .fc-static-dark, .fb-sheet[data-sheet="night"] .fc-static-dark { display: inline; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .fc-static-light { display: none; }
+  :root:not([data-theme="light"]) .fc-static-dark { display: inline; }
+}
+.fc-static-zoom { position: absolute; right: 6px; bottom: 6px; display: flex; gap: 2px; padding: 3px; border-radius: var(--radius-panel); background: var(--glass-pop); box-shadow: var(--glass-edge); opacity: 0; transition: opacity 140ms; }
+.fc-static:hover .fc-static-zoom, .fc-static:focus-within .fc-static-zoom { opacity: 1; }
+@media (pointer: coarse) { .fc-static-zoom { opacity: 1; } }
 .fc-static-empty { padding: 20px; font: 13px var(--font-sans); color: var(--color-ink-muted); }
 .fb-readonly-flowchart { margin: 0.6em 0; border-radius: var(--radius-panel); box-shadow: 0 0 0 1px var(--color-line); background: var(--color-surface); }
 
@@ -223,6 +235,9 @@
   .fc-btn[aria-pressed="true"], .fc-swatch[aria-pressed="true"] { outline: 2px solid Highlight; }
 }
 @media print {
+  .fc-static-zoom { display: none; }
+  .fc-static-light { display: inline !important; }
+  .fc-static-dark { display: none !important; }
   .fc-bar, .fc-empty, .fb-flowchart .fb-wb-resize { display: none; }
 }
 

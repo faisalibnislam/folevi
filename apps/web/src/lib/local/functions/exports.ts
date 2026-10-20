@@ -139,12 +139,11 @@ async function buildZip(collected: ExportDoc[], now: number): Promise<{ bytes: U
         manifest.skippedAssets.push({ id: f.id, filename: f.name, size: f.size, documentId: d.id, reason: "export_size_limit" });
         continue;
       }
-      let bytes: Uint8Array | null = null;
-      try {
-        bytes = new Uint8Array(await f.blob.arrayBuffer());
-      } catch {
-        bytes = null;
-      }
+      // A file whose bytes can't be read (not on this device yet) is listed as left out.
+      const bytes = await f.blob.arrayBuffer().then(
+        (b) => new Uint8Array(b),
+        () => null,
+      );
       if (!bytes) {
         skipped.push(f.name);
         skippedReason ??= "missing";

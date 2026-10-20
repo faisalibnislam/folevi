@@ -65,6 +65,12 @@ export const documentPage = internalQuery({
         .query("files")
         .withIndex("by_document", (q) => q.eq("documentId", d._id))
         .take(200);
+      // Text found in its PDFs, images and handwriting (fileText.ts), as search knows it.
+      const found = await ctx.db
+        .query("fileTexts")
+        .withIndex("by_document_block", (q) => q.eq("documentId", d._id))
+        .take(200);
+      const filePublicId = new Map(files.map((f) => [f._id as string, f.publicId]));
       docs.push({
         id: d.publicId,
         title: d.title,
@@ -79,6 +85,9 @@ export const documentPage = internalQuery({
         dailyDate: d.dailyDate ?? null,
         blocks,
         files: files.filter((f) => f.status === "ready").map((f) => ({ id: f.publicId, storageId: f.storageId, filename: f.filename, mimeType: f.mimeType, size: f.size })),
+        foundText: found
+          .filter((r) => r.text && (!r.fileId || filePublicId.has(r.fileId)))
+          .map((r) => ({ blockId: r.blockId, fileId: r.fileId ? filePublicId.get(r.fileId)! : null, source: r.source, by: r.by, pageStarts: r.pageStarts ?? null, text: r.text })),
       });
     }
     return { docs, isDone: page.isDone, continueCursor: page.continueCursor };
@@ -122,6 +131,7 @@ type ExportDoc = {
   dailyDate: string | null;
   blocks: WireBlock[];
   files: { id: string; storageId: Id<"_storage">; filename: string; mimeType: string; size: number }[];
+  foundText: { blockId: string; fileId: string | null; source: string; by: string; pageStarts: number[] | null; text: string }[];
 };
 
 /**
@@ -266,10 +276,13 @@ async function buildExport(ctx: ActionCtx, prep: Prep): Promise<Built> {
     // Canonical block data for lossless re-import by future versions.
     addFile("manifest.json", strToU8(JSON.stringify(manifest, null, 2)), true);
     addFile("blocks.json", strToU8(JSON.stringify(Object.fromEntries(collected.map((d) => [d.id, d.blocks])))), true);
+    // Text found in the notes' PDFs, images and handwriting, by note (what search finds in them).
+    const foundText = collected.filter((d) => d.foundText.length).map((d) => [d.id, d.foundText] as const);
+    if (foundText.length) addFile("found-text.json", strToU8(JSON.stringify(Object.fromEntries(foundText), null, 2)), true);
     addFile(
       "README.txt",
       strToU8(
-        `Folevi export of "${prep.scopeName}" (${manifest.exportedAt}).\n\nEach document is a Markdown file in a folder matching your sidebar; attachments are in assets/. manifest.json lists documents, folders and assets (and any attachments left out); blocks.json holds the canonical Folevi block data.\n`,
+        `Folevi export of "${prep.scopeName}" (${manifest.exportedAt}).\n\nEach document is a Markdown file in a folder matching your sidebar; attachments are in assets/. manifest.json lists documents, folders and assets (and any attachments left out); blocks.json holds the canonical Folevi block data; found-text.json (when there is any) holds the text found in PDFs, images and handwriting, which search uses.\n`,
       ),
       true,
     );

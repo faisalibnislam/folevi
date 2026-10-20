@@ -10,6 +10,7 @@ export * from "./tree";
 export * from "./markdown";
 export * from "./html";
 export * from "./search";
+export * from "./fileText";
 export * from "./tasks";
 export * from "./mentions";
 export * from "./whiteboard";

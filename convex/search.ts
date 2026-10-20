@@ -5,14 +5,16 @@ import { hybridSearch } from "./aiIndex";
 import { indexEligible } from "./lib/ai/indexing";
 import { consume } from "./lib/rateLimit";
 import type { Doc, Id } from "./_generated/dataModel";
-import { normalizeForSearch, searchSnippet } from "@folevi/editor-schema";
+import { highlightRanges, normalizeForSearch, searchSnippet, type FileTextSource } from "@folevi/editor-schema";
+import { fileTextHits } from "./fileText";
 import { accessAtLeast, documentAccess, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
 import { HomeFolders } from "./lib/documents";
 import { inScope, personalScope, vScopeArg, workspaceScope, type Scope } from "./lib/scope";
 
 /**
  * Full-text search of one scope (your Personal, or a workspace you're in) over titles, text blocks (incl.
- * code, captions, table cells), attachment names and tag names, with filters. Only notes the person can
+ * code, captions, table cells), attachment names, tag names and the words found in the notes' PDFs, images
+ * and handwriting (fileText.ts; such a result carries `match`: where, and the block to open), with filters. Only notes the person can
  * read are returned. Results carry a short snippet; the client highlights matches.
  */
 export const documents = query({
@@ -108,9 +110,17 @@ export async function searchDocuments(ctx: QueryCtx, profile: Doc<"profiles">, s
     }
   }
 
+  // Words in the notes' PDFs, images and handwriting (fileText.ts): kept beside the files, with their own index.
+  const inFiles = await fileTextHits(ctx, scope, q);
+  const fileMatches: Doc<"documents">[] = [];
+  for (const id of inFiles.keys()) {
+    const d = await ctx.db.get(id);
+    if (d && !d.inTrash && inScope(d, scope)) fileMatches.push(d);
+  }
+
   const seen = new Set<string>();
   const ordered: Doc<"documents">[] = [];
-  for (const d of [...byTitle, ...byText, ...tagMatches]) {
+  for (const d of [...byTitle, ...byText, ...tagMatches, ...fileMatches]) {
     if (seen.has(d._id)) continue;
     seen.add(d._id);
     ordered.push(d);
@@ -125,13 +135,18 @@ export async function searchDocuments(ctx: QueryCtx, profile: Doc<"profiles">, s
     if (!args.includeArchived && d.archivedAt) continue;
     if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
     const body = d.searchText.slice(d.title.length + 1);
+    // Found only in a file or drawing (not in the note's own text): the result says where, and opens there.
+    const file = inFiles.get(d._id);
+    const inFile = file && !highlightRanges(body, q).length ? file : null;
+    const match: { source: FileTextSource; page: number | null; blockId: string } | null = inFile ? { source: inFile.source, page: inFile.page, blockId: inFile.blockId } : null;
     out.push({
       id: d.publicId,
       title: d.title,
       icon: d.icon ?? null,
       kind: d.kind,
       updatedAt: d.updatedAt,
-      snippet: searchSnippet(body, q, 70),
+      snippet: inFile ? inFile.snippet : searchSnippet(body, q, 70),
+      match,
       archived: Boolean(d.archivedAt),
       homeFolder: await homes.of(d),
     });

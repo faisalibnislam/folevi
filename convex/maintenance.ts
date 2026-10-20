@@ -128,11 +128,19 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     budget.spend();
   }
   if (snaps.length === 50) return false;
+  // Text found in its files and drawings (fileText.ts) goes with them.
+  const found = await ctx.db
+    .query("fileTexts")
+    .withIndex("by_document_block", (q) => q.eq("documentId", docId))
+    .take(100);
+  for (const r of found) await ctx.db.delete(r._id);
+  if (found.length === 100) return false;
   const files = await ctx.db
     .query("files")
     .withIndex("by_document", (q) => q.eq("documentId", docId))
     .take(50);
   for (const f of files) {
+    await deleteFileText(ctx, f._id);
     await deleteFileBlob(ctx, f);
     // A pasted copy's file elsewhere may take the count over (it keeps the bytes).
     if (hasValidScope(f)) await releaseNoteFile(ctx, f);
@@ -193,6 +201,15 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
  * given on it, which hold its guests' access, and public links), then folders, tags, files and anything else left
  * in it. Bounded per call; returns true when nothing is left.
  */
+/** Deletes the text found in a file (fileText.ts), with the file. */
+async function deleteFileText(ctx: MutationCtx, fileId: Id<"files">): Promise<void> {
+  const rows = await ctx.db
+    .query("fileTexts")
+    .withIndex("by_file", (q) => q.eq("fileId", fileId))
+    .take(10);
+  for (const r of rows) await ctx.db.delete(r._id);
+}
+
 async function purgePersonal(ctx: MutationCtx, profileId: Id<"profiles">, budget: Budget): Promise<boolean> {
   const scope = personalScope(profileId);
   const [doc] = await scopedRows(ctx, "documents", scope, 1);
@@ -262,7 +279,7 @@ async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, b
   }
   // Folders, tags, everyone's AI conversations here (with their messages), semantic search's and the graph's
   // rows, memory kept for this workspace, dismissed suggestions and routines about it.
-  for (const table of ["folders", "tags", "aiRuns", "aiResearch", "aiMessages", "aiConversations", "aiChunks", "aiIndexState", "aiIndexScopes", "aiEntities", "aiMentions", "aiRelations", "aiGraphState", "aiMemories", "aiSuggestionDismissals", "routines"] as const) {
+  for (const table of ["folders", "tags", "fileTexts", "aiRuns", "aiResearch", "aiMessages", "aiConversations", "aiChunks", "aiIndexState", "aiIndexScopes", "aiEntities", "aiMentions", "aiRelations", "aiGraphState", "aiMemories", "aiSuggestionDismissals", "routines"] as const) {
     const rows = await ctx.db
       .query(table)
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
@@ -564,7 +581,17 @@ export const purgeTombstones = internalMutation({
       .query("blocks")
       .withIndex("by_deleted", (q) => q.gte("deletedAt", 0).lt("deletedAt", cutoff))
       .take(TOMBSTONE_BATCH);
-    for (const r of rows) await ctx.db.delete(r._id);
+    for (const r of rows) {
+      // A whiteboard's handwriting text goes with its block (a file's goes with the file).
+      if (r.type === "whiteboard") {
+        const found = await ctx.db
+          .query("fileTexts")
+          .withIndex("by_document_block", (q) => q.eq("documentId", r.documentId).eq("blockId", r.blockId))
+          .take(5);
+        for (const f of found) if (!f.fileId) await ctx.db.delete(f._id);
+      }
+      await ctx.db.delete(r._id);
+    }
     if (rows.length === TOMBSTONE_BATCH) await ctx.scheduler.runAfter(0, internal.maintenance.purgeTombstones, {});
     return rows.length;
   },

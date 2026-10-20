@@ -19,6 +19,8 @@ export const DEFAULT_RATE_RULES = {
   /** Bulk note actions (move, star, archive, trash, restore, delete, empty Trash); each call is up to 50 notes. */
   bulk: { limit: 60, windowMs: 60_000 },
   upload: { limit: 120, windowMs: 60 * 60_000 },
+  // Text found in files and drawings, saved for search (convex/fileText.ts): a note full of PDFs opened once.
+  fileText: { limit: 600, windowMs: 60 * 60_000 },
   comment: { limit: 120, windowMs: 60_000 },
   export: { limit: 20, windowMs: 60 * 60_000 },
   search: { limit: 600, windowMs: 60_000 },

@@ -77,6 +77,13 @@ export default defineSchema({
     aiWebResearch: v.optional(v.boolean()),
     aiDigests: v.optional(v.boolean()),
     /**
+     * Search in images (lib/ai/prefs.ts, docs/ARCHITECTURE.md, "Search in files"): Foli AI reads the text in images added
+     * on a device that can't read it itself (unset = off; it uses AI credits), and the iPhone, iPad and Mac
+     * apps read it on the device (unset = on; nothing is sent).
+     */
+    aiReadImages: v.optional(v.boolean()),
+    deviceImageText: v.optional(v.boolean()),
+    /**
      * Settings > Connected apps, "Ask me before changes are made to existing notes" (unset = off: apps write
      * as they always have). On, an app's change to an existing note waits in Changes as a proposal (`proposals`).
      */
@@ -1908,6 +1915,36 @@ export default defineSchema({
     .index("by_storage", ["storageId"])
     .index("by_kind_created", ["kind", "createdAt"])
     .index("by_kind_conversation", ["kind", "conversationId", "createdAt"]),
+
+  /**
+   * Text found in a note's files and drawings, so search finds it (convex/fileText.ts,
+   * docs/ARCHITECTURE.md, "Search in files"): a PDF's words (read on the device with pdf.js), an image's (the device's own
+   * recogniser, or Foli AI when asked) and handwriting on a whiteboard (drawn to an image and recognised on
+   * the device). Kept beside the file, never in the note's body; searched only for people who can read the
+   * note, and deleted with the file, the drawing's block or the note.
+   */
+  fileTexts: defineTable({
+    ...scoped,
+    documentId: v.id("documents"),
+    /** The file it was read from (unset for handwriting, which belongs to a whiteboard block). */
+    fileId: v.optional(v.id("files")),
+    /** The block showing it, where a search result jumps to. */
+    blockId: v.string(),
+    source: v.union(v.literal("pdf"), v.literal("image"), v.literal("handwriting")),
+    by: v.union(v.literal("pdf"), v.literal("device"), v.literal("foli")),
+    text: v.string(),
+    /** A PDF: where each page starts in `text` (for "page 3"). */
+    pageStarts: v.optional(v.array(v.number())),
+    /** What was read: the file's SHA-256, or a fingerprint of the drawing (to read it again when it changes). */
+    hash: v.string(),
+    createdBy: v.id("profiles"),
+    updatedAt: v.number(),
+  })
+    .index("by_file", ["fileId"])
+    .index("by_document_block", ["documentId", "blockId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"])
+    .searchIndex("search_text", { searchField: "text", filterFields: ["workspaceId", "ownerProfileId"] }),
 
   uploadIntents: defineTable({
     profileId: v.id("profiles"),

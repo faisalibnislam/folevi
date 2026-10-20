@@ -17,9 +17,16 @@ export interface AiPrefs {
   webResearch: boolean;
   /** Recurring summaries of your notes. */
   digests: boolean;
+  /**
+   * Foli AI reads the text in images added on a device that can't read it itself (a browser), so search
+   * finds it. Off unless turned on: it uses AI credits (docs/ARCHITECTURE.md, "Search in files").
+   */
+  readImages: boolean;
+  /** The iPhone, iPad and Mac apps read the text in images and handwriting on the device (nothing is sent). */
+  deviceText: boolean;
 }
 
-export const AI_PREF_DEFAULTS: AiPrefs = { history: true, memory: true, suggestions: true, attachments: true, webResearch: true, digests: false };
+export const AI_PREF_DEFAULTS: AiPrefs = { history: true, memory: true, suggestions: true, attachments: true, webResearch: true, digests: false, readImages: false, deviceText: true };
 
 /** The profile field each setting is stored in. */
 const FIELDS = {
@@ -29,6 +36,8 @@ const FIELDS = {
   attachments: "aiAttachments",
   webResearch: "aiWebResearch",
   digests: "aiDigests",
+  readImages: "aiReadImages",
+  deviceText: "deviceImageText",
 } as const satisfies Record<keyof AiPrefs, keyof Doc<"profiles">>;
 
 /** A person's AI settings, defaults filled in. */
@@ -49,6 +58,8 @@ export const vAiPrefsPatch = v.object({
   attachments: v.optional(v.boolean()),
   webResearch: v.optional(v.boolean()),
   digests: v.optional(v.boolean()),
+  readImages: v.optional(v.boolean()),
+  deviceText: v.optional(v.boolean()),
 });
 
 /** The profile fields to patch for a change. */

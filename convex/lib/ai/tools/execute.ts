@@ -181,6 +181,12 @@ async function moveFiles(ctx: MutationCtx, from: Doc<"documents">, to: Doc<"docu
   for (const f of rows) {
     if (!fileIds.has(f.publicId)) continue;
     await ctx.db.patch(f._id, { documentId: to._id });
+    // The text found in it (fileText.ts) follows the file.
+    for (const t of await ctx.db
+      .query("fileTexts")
+      .withIndex("by_file", (q) => q.eq("fileId", f._id))
+      .take(5))
+      await ctx.db.patch(t._id, { documentId: to._id });
     moved.push({ fileId: f.publicId, from: from.publicId });
   }
   return moved;
@@ -564,6 +570,11 @@ export async function undoPart(ctx: MutationCtx, env: ExecEnv, part: UndoPart, o
         const home = await getDocumentByPublicId(ctx, m.from);
         if (!file || !home || !doc || file.documentId !== doc._id) continue;
         await ctx.db.patch(file._id, { documentId: home._id });
+        for (const t of await ctx.db
+          .query("fileTexts")
+          .withIndex("by_file", (q) => q.eq("fileId", file._id))
+          .take(5))
+          await ctx.db.patch(t._id, { documentId: home._id });
       }
       return any ? "done" : "kept";
     }

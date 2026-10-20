@@ -49,6 +49,7 @@ import type * as email from "../email.js";
 import type * as emailNotes from "../emailNotes.js";
 import type * as exports from "../exports.js";
 import type * as externalCalendars from "../externalCalendars.js";
+import type * as fileText from "../fileText.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as identity from "../identity.js";
@@ -239,6 +240,7 @@ declare const fullApi: ApiFromModules<{
   emailNotes: typeof emailNotes;
   exports: typeof exports;
   externalCalendars: typeof externalCalendars;
+  fileText: typeof fileText;
   files: typeof files;
   http: typeof http;
   identity: typeof identity;

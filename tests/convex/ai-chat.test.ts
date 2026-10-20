@@ -278,7 +278,7 @@ describe("privacy and limits", () => {
   test("history off: the conversation isn't listed, goes when the chat closes, and is swept after a day", async () => {
     const t = setup();
     const a = await person(t, "chat-history@example.com");
-    expect((await a.as.query(api.aiChat.capabilities, {})).prefs).toEqual({ history: true, memory: true, suggestions: true, attachments: true, webResearch: true, digests: false });
+    expect((await a.as.query(api.aiChat.capabilities, {})).prefs).toEqual({ history: true, memory: true, suggestions: true, attachments: true, webResearch: true, digests: false, readImages: false, deviceText: true });
     await a.as.mutation(api.users.updateProfile, { aiPrefs: { history: false } });
     expect((await a.as.query(api.users.me, {}) as { profile: { aiPrefs: { history: boolean; digests: boolean } } }).profile.aiPrefs).toMatchObject({ history: false, digests: false });
     gemini({ answer: "Hello." });

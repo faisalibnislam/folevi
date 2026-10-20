@@ -42,6 +42,9 @@ export function useFlowController(props: ReactNodeViewProps): FlowController {
   const dragRef = useRef<ActiveDrag | null>(null);
   const isDragging = useCallback(() => dragRef.current !== null, []);
   const dropInEmptyRef = useRef<DropInEmpty | null>(null);
+  // A trailing space alternates so the same message twice is still announced twice.
+  const [announcement, setAnnouncement] = useState("");
+  const say = useCallback((message: string) => setAnnouncement((prev) => (prev === message ? `${message}\u00a0` : message)), []);
 
   const focusCanvas = () => {
     const a = document.activeElement;
@@ -97,5 +100,7 @@ export function useFlowController(props: ReactNodeViewProps): FlowController {
     focusCanvas,
     onFocusNode,
     dropInEmptyRef,
+    say,
+    announcement,
   };
 }

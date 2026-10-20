@@ -108,6 +108,9 @@ export interface FlowController {
    * there) the connect interaction does nothing more.
    */
   dropInEmptyRef: RefObject<DropInEmpty | null>;
+  /** Tells screen readers about a change ("Added process, below Start"); FlowchartView draws the live region. */
+  say: (message: string) => void;
+  announcement: string;
 }
 
 /** A connector from `side` of shape `from`, let go on empty canvas at `at` (world) / `client` (screen). */

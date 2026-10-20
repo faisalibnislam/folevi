@@ -7,7 +7,8 @@
 //             drag empty space to select an area · space-drag, middle-drag or scroll to pan
 //             ⌘/ctrl-scroll or pinch to zoom · drag a side handle to connect (drop on empty space for a
 //             new connected shape) · double-click to write in a shape or on a connector, or to add one
-//   Keyboard  Tab through shapes · Enter edit · arrows nudge (⇧ more) · ⌫ delete · ⌘D duplicate
+//   Keyboard  Tab to a shape, then Tab adds the next step (⇧Tab a branch) · arrows move between shapes
+//             (⌥ nudges, ⇧ nudges more) · Enter or typing edits · ⌫ delete · ⌘D duplicate
 //             ⌘A select all · ⌘Z / ⇧⌘Z undo and redo · +/− zoom · ⇧1 fit · ⇧⌘F full canvas · Esc back to the note
 //
 // Full canvas: the card lifts into the top layer (a popover, so nothing in the page clips it) and fills the
@@ -67,6 +68,8 @@ import { useTextEditing } from "./interactions/textEditing";
 import { doubleClickInteraction } from "./interactions/doubleClick";
 import { useContextMenu } from "./interactions/contextMenu";
 import { keyboardInteraction } from "./interactions/keyboard";
+import { useQuickAdd } from "./interactions/quickAdd";
+import { useKeyboardFlow } from "./interactions/keyboardFlow";
 import { DotGrid, SceneLayers, SelectionBoxes } from "./layers/Scene";
 import { SelectionBar } from "./chrome/SelectionBar";
 import { HeightHandle } from "./chrome/HeightHandle";
@@ -102,9 +105,12 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   const move = useMove(ctrl);
   const select = useSelect(ctrl);
   const menu = useContextMenu(ctrl, { actions, startEdit: text.startEdit });
+  const quick = useQuickAdd(ctrl, { hover: hover.hover });
+  const flow = useKeyboardFlow(ctrl, { actions, finishEdit: text.finishEdit });
   const events = useInteractions(ctrl, [
     text.interaction, // any press ends writing first
     pan.interaction, // middle button, space held, one finger on empty canvas; the space key
+    quick.interaction, // the + arrows around a shape, and the shape picker
     connect.interaction, // side handles and connector ends
     resize.interaction,
     move.interaction, // shapes
@@ -112,6 +118,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
     hover.interaction,
     doubleClickInteraction({ startEdit: text.startEdit, add: actions.add }),
     menu.interaction,
+    flow.interaction, // Tab and ⇧Tab grow the flow, arrows move between shapes
     keyboardInteraction(ctrl, { actions, startEdit: text.startEdit }),
     select.area, // empty canvas: takes every press that reaches it, so it stays last
   ]);
@@ -139,7 +146,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
           {...events.canvas}
         >
           <p id={`${uid}-help`} className="sr-only">
-            Tab moves between shapes. Enter edits the selected shape, arrow keys move it, Delete removes it, Command D duplicates. Command Z undoes. Escape returns to the note.
+            Tab moves to the shapes; on a selected shape, Tab adds the next step and Shift Tab a branch beside it. Arrow keys move between shapes, Option with arrow keys moves the shape. Enter or typing edits the selected shape, Delete removes it, Command D duplicates. Command Z undoes. Escape steps back to the note.
           </p>
           <svg ref={ctrl.svgRef} className="fc-root fc-svg" width={ctrl.width} height={ctrl.height} {...events.svg}>
             <DotGrid id={`${uid}-dots`} view={view} />
@@ -151,11 +158,16 @@ function FlowchartEditor(props: ReactNodeViewProps) {
                 {connect.previewOverlay}
                 {resize.overlay}
                 {connect.handlesOverlay}
+                {quick.overlay}
                 {select.overlay}
               </g>
             </g>
           </svg>
           {text.input}
+          {quick.element}
+          <p className="sr-only fc-announce" aria-live="polite" aria-atomic="true">
+            {ctrl.announcement}
+          </p>
           {!nodeCount && !editing ? (
             <div className="fc-empty">
               <p>Double-click anywhere to add a shape, or pick one above.</p>
@@ -179,7 +191,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
             exportMenu={<BlockExportMenu type="flowchart" attrs={() => ({ data: serializeFlowchart(docRef.current) })} empty={!nodeCount} triggerClassName="fc-btn" align="start" />}
           />
           <ZoomBar zoom={k} onZoomIn={() => ctrl.zoomBy(1.2)} onZoomOut={() => ctrl.zoomBy(1 / 1.2)} onFit={() => ctrl.fitView()} full={full} onFull={() => ctrl.toggleFull()} />
-          <SelectionBar ctrl={ctrl} actions={actions} startEdit={text.startEdit} />
+          <SelectionBar ctrl={ctrl} actions={actions} startEdit={text.startEdit} clearance={quick.clearance} />
           {ctrl.aiOpen ? <FlowchartAi hasChart={nodeCount > 0} current={() => serializeFlowchart(docRef.current)} onApply={actions.applyDraft} onClose={() => ctrl.setAiOpen(false)} /> : null}
           {ctrl.tooLarge ? (
             <p className="fc-warning" role="alert">

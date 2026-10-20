@@ -132,6 +132,7 @@ export function NodeBar({
   onDuplicate,
   onDelete,
   style,
+  align,
 }: {
   color: FlowColor | null;
   shape: FlowShape | null;
@@ -140,6 +141,8 @@ export function NodeBar({
   onDuplicate: () => void;
   onDelete: () => void;
   style: React.CSSProperties;
+  /** Align and distribute (chrome/AlignMenu.tsx), with several shapes selected. */
+  align?: React.ReactNode;
 }) {
   return (
     <div className="fc-bar fc-bar-float" role="toolbar" aria-label="Selected shapes" style={style} onPointerDown={(e) => e.stopPropagation()}>
@@ -152,6 +155,12 @@ export function NodeBar({
       />
       <span className="fc-sep" aria-hidden />
       <Swatches value={color} onPick={onColor} />
+      {align ? (
+        <>
+          <span className="fc-sep" aria-hidden />
+          {align}
+        </>
+      ) : null}
       <span className="fc-sep" aria-hidden />
       <button type="button" className="fc-btn" aria-label="Duplicate" title="Duplicate (⌘D)" onClick={onDuplicate}>
         <Copy size={14} aria-hidden />

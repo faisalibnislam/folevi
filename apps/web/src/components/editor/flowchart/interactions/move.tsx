@@ -3,13 +3,14 @@
 // Pressing a shape selects it (shift or ⌘ adds or removes it), and dragging moves the selected shapes,
 // snapping to the grid and to nearby shapes' edges and centres (with guides; ⌥ turns snapping off).
 import { useState } from "react";
-import { rectsOverlap } from "../schema";
-import { boxOf, moveNodes, snapGroup, type Guide } from "../ops";
+import { rectsOverlap, smartGuides, type SmartGuide } from "../schema";
+import { boxOf, moveNodes } from "../ops";
+import { GuideLines } from "../layers/Guides";
 import type { FlowController, Interaction } from "../controller/types";
 
 export function useMove(ctrl: FlowController) {
   const { docRef, setLive, commit, selRef, setSel, toWorld, viewRef } = ctrl;
-  const [guides, setGuides] = useState<Guide[]>([]);
+  const [guides, setGuides] = useState<SmartGuide[]>([]);
 
   const interaction: Interaction = {
     handles: "[data-fc-node]",
@@ -47,7 +48,8 @@ export function useMove(ctrl: FlowController) {
           // Only nearby shapes offer alignment (keeps big charts fast and guides relevant).
           const reach = { x: moving.x - 600, y: moving.y - 600, w: moving.w + 1200, h: moving.h + 1200 };
           const others = before.nodes.filter((n) => !origin.has(n.id) && rectsOverlap(n, reach));
-          const s = m.altKey ? { dx: 0, dy: 0, guides: [] } : snapGroup(moving, others, 6 / viewRef.current.k);
+          // Smart guides: edges, centres and equal gaps (layers/Guides.tsx draws them).
+          const s = m.altKey ? { dx: 0, dy: 0, guides: [] } : smartGuides(moving, others, 6 / viewRef.current.k);
           setLive(moveNodes(before, origin, dx + s.dx, dy + s.dy));
           setGuides(s.guides);
         },
@@ -65,10 +67,8 @@ export function useMove(ctrl: FlowController) {
     },
   };
 
-  /** Alignment guides while dragging (drawn in the overlay layer). */
-  const overlay = guides.map((g, i) =>
-    g.axis === "x" ? <line key={i} className="fc-guide" x1={g.at} x2={g.at} y1={g.from - 16} y2={g.to + 16} /> : <line key={i} className="fc-guide" y1={g.at} y2={g.at} x1={g.from - 16} x2={g.to + 16} />,
-  );
+  /** Smart guides while dragging (drawn in the overlay layer). */
+  const overlay = guides.length ? <GuideLines guides={guides} k={ctrl.view.k} /> : null;
 
   return { interaction, overlay };
 }

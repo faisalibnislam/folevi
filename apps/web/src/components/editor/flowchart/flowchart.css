@@ -210,6 +210,46 @@
 .fc-ai-error { color: var(--color-danger, #b42318); }
 .fc-ai-foot { margin: 0; padding: 7px 14px; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); font-size: 11px; color: var(--color-ink-faint); }
 
+/* ---------------------------------------------------------------- building faster (quick add, picker, guides) */
+/* The + arrows around a shape: neutral until hovered, then the selection blue. */
+.fc-quick { cursor: pointer; }
+.fc-quick-hit { fill: transparent; }
+.fc-quick-dot { fill: var(--color-surface-raised); stroke: color-mix(in oklab, var(--color-ink) 28%, var(--color-surface)); stroke-width: 1.25px; transition: fill 100ms, stroke 100ms; }
+.fc-quick-plus { fill: none; stroke: var(--color-ink-muted); stroke-width: 1.5px; stroke-linecap: round; pointer-events: none; }
+.fc-quick:hover .fc-quick-dot { fill: var(--fc-select); stroke: var(--fc-select); }
+.fc-quick:hover .fc-quick-plus { stroke: #fff; }
+.fc-quick-end { fill: var(--fc-select); pointer-events: none; }
+/* Equal gaps while dragging: short measures with end ticks. */
+.fc-guide-gap path { fill: none; stroke: #e5484d; stroke-width: 1px; pointer-events: none; }
+
+/* The shape picker where a connector was let go. */
+.fc-picker {
+  position: absolute; z-index: 5; display: flex; flex-direction: column; width: 248px; max-width: calc(100% - 16px);
+  padding: 6px; overflow: hidden; font-family: var(--font-sans); color: var(--color-ink);
+}
+.fc-picker-search {
+  flex: none; height: 32px; margin: 0 0 4px; padding: 0 10px; border: 0; outline: none; border-radius: var(--radius-small);
+  background: color-mix(in oklab, var(--color-ink) 6%, transparent); font: 13.5px/1 var(--font-sans); color: var(--color-ink);
+}
+.fc-picker-search::placeholder { color: var(--color-ink-faint); }
+.fc-picker-search:focus-visible { box-shadow: 0 0 0 2px var(--color-focus); }
+.fc-picker-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.fc-picker-head { padding: 8px 10px 4px; font: 600 11px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-faint); }
+.fc-picker-option {
+  display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 10px; border-radius: var(--radius-small);
+  font-size: 13.5px; color: var(--color-ink); cursor: pointer; user-select: none;
+}
+.fc-picker-option[aria-selected="true"] { background: color-mix(in oklab, var(--color-ink) 9%, transparent); color: var(--color-heading); }
+.fc-picker-none { margin: 0; padding: 10px; font-size: 13px; color: var(--color-ink-muted); }
+.fc-mini-shape { flex: none; overflow: visible; }
+.fc-mini-shape path { fill: none; stroke: currentColor; stroke-width: 1.3px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.fc-mini-shape .fc-mini-detail { stroke-width: 1px; }
+@media (pointer: coarse) {
+  .fc-picker { width: 280px; }
+  .fc-picker-search { height: 44px; font-size: 16px; }
+  .fc-picker-option { min-height: 44px; }
+}
+
 /* ---------------------------------------------------------------- read-only */
 /* FlowchartStatic.tsx: the exports' picture in its light and dark palettes; the page's theme shows one. */
 .fc-static { position: relative; display: flex; justify-content: center; padding: 8px 12px; overflow: hidden; }

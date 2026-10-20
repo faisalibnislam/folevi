@@ -5,6 +5,7 @@
 import { setColor, setShape, updateEdges, boxOf } from "../ops";
 import { edgeArrow, withArrow } from "../schema";
 import { EdgeBar, NodeBar } from "../FlowchartChrome";
+import { AlignMenu } from "./AlignMenu";
 import { clamp } from "../controller/useViewport";
 import type { FlowController } from "../controller/types";
 import type { FlowActions } from "../controller/useFlowActions";
@@ -12,7 +13,8 @@ import type { TextEditing } from "../interactions/textEditing";
 
 const same = <T,>(list: T[]): T | null => (list.length && list.every((x) => x === list[0]) ? list[0]! : null);
 
-export function SelectionBar({ ctrl, actions, startEdit }: { ctrl: FlowController; actions: FlowActions; startEdit: TextEditing["startEdit"] }) {
+/** `clearance`: extra room between a single selected shape and the bar, for its quick add arrows. */
+export function SelectionBar({ ctrl, actions, startEdit, clearance = 0 }: { ctrl: FlowController; actions: FlowActions; startEdit: TextEditing["startEdit"]; clearance?: number }) {
   const { selNodes, selEdges, routed, view, width, height, editing, sel, docRef, commit } = ctrl;
   const k = view.k;
   const sBox = boxOf([
@@ -27,8 +29,8 @@ export function SelectionBar({ ctrl, actions, startEdit }: { ctrl: FlowControlle
   const top = sBox.y * k + view.y;
   const bottom = (sBox.y + sBox.h) * k + view.y;
   const cx = clamp((sBox.x + sBox.w / 2) * k + view.x, 150, Math.max(150, width - 150));
-  const above = top - 52 > 56;
-  const style: React.CSSProperties = { left: cx, top: above ? top - 52 : Math.min(height - 48, bottom + 12) };
+  const above = top - 52 - clearance > 56;
+  const style: React.CSSProperties = { left: cx, top: above ? top - 52 - clearance : Math.min(height - 48, bottom + 12 + clearance) };
 
   if (selNodes.length && !selEdges.length) {
     return (
@@ -40,6 +42,7 @@ export function SelectionBar({ ctrl, actions, startEdit }: { ctrl: FlowControlle
         onShape={(s) => commit(setShape(docRef.current, sel.nodes, s))}
         onDuplicate={actions.duplicateSelection}
         onDelete={actions.removeSelection}
+        align={selNodes.length > 1 ? <AlignMenu ctrl={ctrl} /> : undefined}
       />
     );
   }

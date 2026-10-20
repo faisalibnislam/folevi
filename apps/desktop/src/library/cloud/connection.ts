@@ -153,7 +153,7 @@ export class CloudConnections {
    * or expired sign-in) is the same call. Rejects when cancelled, timed out or refused; the state goes back.
    */
   async connect(provider: CloudProvider): Promise<ConnectionStatus> {
-    if (!this.available.includes(provider)) throw new Error(`${PROVIDER_NAMES[provider]} isn't available in this build of Folevi.`);
+    if (!this.available.includes(provider)) throw Object.assign(new Error(`${PROVIDER_NAMES[provider]} isn't available in this build of Folevi.`), { code: "unavailable" });
     if (this.live && this.live.provider !== provider)
       throw new OneConnectionOnly(`This library syncs with ${PROVIDER_NAMES[this.live.provider]}. Sign out of ${PROVIDER_NAMES[this.live.provider]} first.`);
     this.connecting?.close();

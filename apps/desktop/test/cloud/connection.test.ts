@@ -264,7 +264,7 @@ describe("pieces", () => {
     expect(log.length).toBe(2);
     expect(log[0]).toContain("FOLEVI_DROPBOX_APP_KEY");
     expect(log[1]).toContain("FOLEVI_GOOGLE_DESKTOP_CLIENT_ID");
-    expect(log.join("")).not.toContain("—");
+    expect(log.join("")).not.toContain(String.fromCharCode(0x2014)); // the house rule: no em dashes
     expect(availableProviders({ googleClientId: "1-x.apps.googleusercontent.com" })).toEqual(["googleDrive"]);
   });
 

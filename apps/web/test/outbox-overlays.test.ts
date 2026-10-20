@@ -161,7 +161,7 @@ const collection = (): CollectionData => ({
   people: [],
   hostDocumentId: "H",
   canEdit: true,
-  properties: [{ id: "status", name: "Status", type: "select", options: [] }],
+  properties: [{ id: "status", name: "Status", type: "select", options: [], formula: null, numberFormat: null }],
   views: [{ id: "V", name: "Table", type: "table", config: { filters: [], sorts: [], visibleProperties: ["status"], cardPreview: "none", cardSize: "medium" } }],
   rows: [
     { id: "R1", documentId: "P1", title: "Dune", icon: null, cover: { kind: "none" }, excerpt: "", rank: "a", values: {}, updatedAt: 1 },
@@ -218,6 +218,24 @@ describe("properties and views waiting to be sent", () => {
     ]);
     expect(out.views[0]!.config.visibleProperties).toEqual(["status", "genre"]);
     expect(out.rows[0]!.values).toEqual({ genre: "o1" });
+  });
+
+  test("a formula property added offline keeps its formula and format; a rename follows into formulas", () => {
+    const out = overlayCollection(
+      collection(),
+      [
+        entry("collections.addProperty", { collectionId: "K", name: "Label", type: "formula", id: "f", formula: ' CONCAT(Status, "!") ', numberFormat: { format: "percent" } }),
+        entry("collections.updateProperty", { collectionId: "K", propertyId: "status", name: "Stage now" }),
+        entry("collections.addProperty", { collectionId: "K", name: "Total", type: "formula", id: "t", formula: "1" }),
+        entry("collections.updateProperty", { collectionId: "K", propertyId: "t", formula: "LEN(Label)", numberFormat: { format: "number", decimals: 1 } }),
+      ],
+      "K",
+    );
+    expect(out.properties.map((p) => [p.id, p.name, p.formula, p.numberFormat])).toEqual([
+      ["status", "Stage now", null, null],
+      ["f", "Label", 'CONCAT([Stage now], "!")', { format: "percent" }],
+      ["t", "Total", "LEN(Label)", { format: "number", decimals: 1 }],
+    ]);
   });
 
   test("once the server has the property it isn't added twice; a deleted one goes", () => {

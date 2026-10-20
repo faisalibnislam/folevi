@@ -4,7 +4,7 @@ import { DateField } from "@/components/ui/DateField";
 import { useQuery } from "convex/react";
 import type { AnchorHTMLAttributes } from "react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { ArrowDownUp, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Columns3, Filter, GalleryHorizontalEnd, Plus, Search, Settings2, Table2, Trash2, FileText } from "lucide-react";
+import { ArrowDownUp, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Columns3, Filter, GalleryHorizontalEnd, Plus, Search, Settings2, SquareFunction, Table2, Trash2, FileText } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { localDate, ulid, type WireScope } from "@folevi/editor-schema";
 import { AppLink } from "@/lib/app/router";
@@ -20,7 +20,10 @@ import { Button, IconButton } from "@/components/ui/Button";
 import { coverBackground } from "@/lib/cover";
 import { useCoverImageUrl } from "@/lib/app/coverImage";
 import { formatCalendarDate, t } from "@/i18n";
-import { NO_VALUE_OPS, OPS, TITLE_ID, applyView, filterTargets, isEmptyValue, opLabel, resolveOption, rowsByDate, type FilterTarget } from "@/components/views/collectionView";
+import { NO_VALUE_OPS, OPS, TITLE_ID, applyView, exportValue, filterTargets, formatPropertyNumber, formulaGroupKey, formulaGroups, isEmptyValue, isFormulaResult, opLabel, resolveOption, rowsByDate, withFormulaValues, type FilterTarget, type ViewSummary } from "@/components/views/collectionView";
+import { FormulaEditor, FormulaValue, NumberFormatFields } from "./collection/FormulaEditor";
+import { ExportMenu, SummaryRow } from "./collection/CollectionTools";
+import type { CollectionFormulaResult, CollectionNumberFormat } from "@folevi/editor-schema";
 import { monthGrid, shiftMonth } from "@/components/views/calendarLayout";
 import { Select } from "@/components/ui/Select";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -42,7 +45,12 @@ function useCollection(collectionId: string | null) {
   const { outbox } = useAppState();
   const data = useOfflineQuery(api.collections.get, collectionId ? { collectionId } : "skip");
   const entries = useOutboxEntries(outbox);
-  return useMemo<OverlayCollection | undefined>(() => (data && collectionId ? overlayCollection(data, entries, collectionId) : undefined), [data, entries, collectionId]);
+  return useMemo<OverlayCollection | undefined>(() => {
+    if (!data || !collectionId) return undefined;
+    const out = overlayCollection(data, entries, collectionId);
+    // Formula results, worked out on this device (the server keeps only the formulas).
+    return { ...out, rows: withFormulaValues(out.rows, out.properties, { people: out.people }) };
+  }, [data, entries, collectionId]);
 }
 
 /**
@@ -77,10 +85,14 @@ function useCollectionMutations() {
       },
       addProperty: (args: Omit<OutboxArgs<"collections.addProperty">, "id">) => {
         const id = ulid();
-        return queue("collections.addProperty", { ...args, id }, `New property “${args.name.trim()}”`).then(() => ({ id }));
+        return queue("collections.addProperty", { ...args, ...(args.type === "formula" ? { formula: args.formula ?? "" } : {}), id }, `New property “${args.name.trim()}”`).then(() => ({ id }));
       },
       updateProperty: (args: OutboxArgs<"collections.updateProperty">) =>
-        queue("collections.updateProperty", args, args.options ? "Change a property’s options" : `Rename property to “${args.name ?? ""}”`),
+        queue(
+          "collections.updateProperty",
+          args,
+          args.formula !== undefined ? "Change a formula" : args.numberFormat !== undefined ? "Change how numbers show" : args.options ? "Change a property’s options" : `Rename property to “${args.name ?? ""}”`,
+        ),
       deleteProperty: (args: OutboxArgs<"collections.deleteProperty">) => queue("collections.deleteProperty", args, "Delete a property"),
       addView: (args: Omit<OutboxArgs<"collections.addViewToCollection">, "id">) => {
         const id = ulid();
@@ -121,7 +133,13 @@ const TYPE_LABELS: Record<Property["type"], string> = {
   url: "URL",
   person: "Person",
   relation: "Relation",
+  formula: "Formula",
 };
+
+const typeLabel = (type: string) => TYPE_LABELS[type as Property["type"]] ?? type;
+
+/** A formula property's result in a row (worked out by useCollection). */
+const formulaResult = (value: unknown): CollectionFormulaResult | undefined => (isFormulaResult(value) ? value : undefined);
 
 function optionColor(color: string) {
   const c = color === "muted" ? "ink-muted" : color;
@@ -224,7 +242,8 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
   const data = useCollection(collectionId);
   const [viewId, setViewIdState] = useState<string | null>(() => storedView(collectionId) ?? initialViewId);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { rename, addRow, addView } = useCollectionMutations();
+  const [editingFormula, setEditingFormula] = useState<string | null>(null);
+  const { rename, addRow, addView, updateProperty } = useCollectionMutations();
   const toast = useToast();
 
   if (data === undefined) return <div className="h-40 animate-pulse ui-card rounded-control motion-reduce:animate-none" aria-busy />;
@@ -233,6 +252,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
   const canEdit = editable && data.canEdit;
   const rows = applyView(data.rows, view.config, data.properties);
   const visible = data.properties.filter((p) => view.config.visibleProperties.includes(p.id));
+  const editingProp = editingFormula ? data.properties.find((p) => p.id === editingFormula && p.type === "formula") : undefined;
   const setViewId = (id: string) => {
     setViewIdState(id);
     rememberView(collectionId, id);
@@ -280,6 +300,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
               <Filter size={12} aria-hidden /> {t("collection.filters", { count: view.config.filters.length })}
             </span>
           ) : null}
+          <ExportMenu name={data.name} rows={rows} visible={visible} people={data.people} />
           {canEdit ? (
             <>
               <button type="button" onClick={() => setSettingsOpen(true)} className="inline-flex h-7 items-center gap-1 rounded-chip px-2.5 text-xs text-muted hover:bg-surface" aria-label="View settings: filter, sort, group, properties">
@@ -317,20 +338,33 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
         {t("collection.rowsShown", { shown: rows.length, total: data.rows.length })}
       </p>
       {view.type === "table" ? (
-        <TableCollection data={data} rows={rows} visible={visible} canEdit={canEdit} />
+        <TableCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onEditFormula={setEditingFormula} />
       ) : view.type === "board" ? (
         <BoardCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onAdd={add} />
       ) : view.type === "calendar" ? (
-        <CalendarCollection data={data} view={view} rows={rows} canEdit={canEdit} onAdd={add} />
+        <CalendarCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onAdd={add} />
       ) : (
         <GalleryCollection data={data} view={view} rows={rows} visible={visible} />
       )}
-      {canEdit && view.type !== "board" ? (
+      {canEdit && (view.type !== "board" || data.properties.some((p) => p.id === view.config.groupBy && p.type === "formula")) ? (
         <button type="button" onClick={() => void add()} className="flex w-full items-center gap-1.5 border-t border-line px-3 py-2 text-left text-xs text-muted hover:bg-surface">
           <Plus size={13} aria-hidden /> New row
         </button>
       ) : null}
-      {canEdit ? <ViewSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} data={data} view={view} /> : null}
+      {canEdit ? <ViewSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} data={data} view={view} onEditFormula={setEditingFormula} /> : null}
+      {canEdit && editingProp ? (
+        <FormulaEditor
+          open
+          onClose={() => setEditingFormula(null)}
+          property={editingProp}
+          properties={data.properties}
+          rows={rows}
+          people={data.people}
+          hostDocumentId={data.hostDocumentId}
+          typeLabel={typeLabel}
+          onSave={(change) => updateProperty({ collectionId, propertyId: editingProp.id, ...change }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
+        />
+      ) : null}
     </section>
   );
 }
@@ -351,7 +385,7 @@ function PropertyEditor({
   const value = row.values[prop.id];
   const save = (v: unknown) => setValue({ collectionId: collection.id, rowId: row.id, propertyId: prop.id, value: v }).catch((e) => toast.show(errorMessage(e), { tone: "error" }));
   const label = `${prop.name} for ${row.title || "Untitled"}`;
-  if (!canEdit) return <CellDisplay prop={prop} value={value} people={collection.people} />;
+  if (!canEdit || prop.type === "formula") return <CellDisplay prop={prop} value={value} people={collection.people} />;
   switch (prop.type) {
     case "checkbox":
       return (
@@ -545,7 +579,9 @@ function PagePicker({ scope, exclude, onPick }: { scope: WireScope; exclude: str
 /** Read-only value. `inLink` renders URLs as text (never an <a> nested inside a card link). */
 function CellDisplay({ prop, value, people, inLink }: { prop: Property; value: unknown; people: Person[]; inLink?: boolean }) {
   const titles = useQuery(api.documents.titles, prop.type === "relation" && Array.isArray(value) && value.length ? { documentIds: value as string[] } : "skip");
+  if (prop.type === "formula") return <FormulaValue result={formulaResult(value)} />;
   if (isEmptyValue(value)) return <span className="text-faint">-</span>;
+  if (prop.type === "number" && typeof value === "number") return <span className="tabular-nums">{formatPropertyNumber(value, prop.numberFormat)}</span>;
   if (prop.type === "checkbox") return <span>{value ? "✓" : ""}</span>;
   if (prop.type === "select") {
     const o = prop.options.find((x) => x.id === value);
@@ -584,8 +620,8 @@ function CellDisplay({ prop, value, people, inLink }: { prop: Property; value: u
   return <span>{String(value)}</span>;
 }
 
-function TableCollection({ data, rows, visible, canEdit }: { data: CollectionData; rows: Row[]; visible: Property[]; canEdit: boolean }) {
-  const { renameRow, deleteRow } = useCollectionMutations();
+function TableCollection({ data, view, rows, visible, canEdit, onEditFormula }: { data: CollectionData; view: View; rows: Row[]; visible: Property[]; canEdit: boolean; onEditFormula: (propertyId: string) => void }) {
+  const { renameRow, deleteRow, updateView } = useCollectionMutations();
   const toast = useToast();
   const [confirm, setConfirm] = useState<Row | null>(null);
   return (
@@ -597,8 +633,18 @@ function TableCollection({ data, rows, visible, canEdit }: { data: CollectionDat
               Name
             </th>
             {visible.map((p) => (
-              <th key={p.id} scope="col" className="border-b border-l border-line px-3 py-2 font-medium" title={TYPE_LABELS[p.type]}>
-                {p.name}
+              <th key={p.id} scope="col" className="border-b border-l border-line px-3 py-2 font-medium" title={p.type === "formula" && p.formula ? `Formula: ${p.formula}` : TYPE_LABELS[p.type]}>
+                {p.type === "formula" && canEdit ? (
+                  <button type="button" onClick={() => onEditFormula(p.id)} aria-label={`Edit formula ${p.name}`} className="-mx-1 inline-flex items-center gap-1 rounded-chip px-1 hover:bg-surface hover:text-heading pointer-coarse:min-h-11">
+                    <SquareFunction size={12} aria-hidden className="flex-none text-faint" />
+                    {p.name}
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center gap-1">
+                    {p.type === "formula" ? <SquareFunction size={12} aria-hidden className="flex-none text-faint" /> : null}
+                    {p.name}
+                  </span>
+                )}
               </th>
             ))}
             {canEdit ? <th className="w-8 border-b border-line" aria-label="Row actions" /> : null}
@@ -653,6 +699,13 @@ function TableCollection({ data, rows, visible, canEdit }: { data: CollectionDat
             </tr>
           ) : null}
         </tbody>
+        <SummaryRow
+          rows={rows}
+          visible={visible}
+          summaries={view.config.summaries}
+          canEdit={canEdit}
+          onChange={(summaries: ViewSummary[]) => void updateView({ collectionId: data.id, viewId: view.id, config: { ...view.config, summaries } }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
+        />
       </table>
       <ConfirmDialog
         open={confirm !== null}
@@ -680,7 +733,9 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
   const toast = useToast();
   const group = data.properties.find((p) => p.id === view.config.groupBy && p.type === "select");
   const [dragging, setDragging] = useState<string | null>(null);
-  if (!group) return <p className="p-4 text-sm text-muted">Choose a single-select property to group this board by (View settings).</p>;
+  const formulaGroup = data.properties.find((p) => p.id === view.config.groupBy && p.type === "formula");
+  if (formulaGroup) return <FormulaBoard data={data} group={formulaGroup} rows={rows} visible={visible} />;
+  if (!group) return <p className="p-4 text-sm text-muted">Choose a single-select or formula property to group this board by (View settings).</p>;
   const columns = [...group.options.map((o) => ({ id: o.id as string | null, name: o.name, color: o.color })), { id: null, name: "No " + group.name.toLowerCase(), color: "muted" }];
   const move = (rowId: string, to: string | null, after: string | null) =>
     moveRow({ collectionId: data.id, rowId, afterRowId: after, groupPropertyId: group.id, groupValue: to }).catch((e) => toast.show(errorMessage(e), { tone: "error" }));
@@ -765,13 +820,56 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
   );
 }
 
+/**
+ * A board grouped by a formula: a column per result (numbers and dates in order, then text, then TRUE and
+ * FALSE, then empty and errors). Results come from each row's values, so cards don't move between columns.
+ */
+function FormulaBoard({ data, group, rows, visible }: { data: CollectionData; group: Property; rows: Row[]; visible: Property[] }) {
+  const columns = formulaGroups(data.rows, group.id);
+  return (
+    <div className="flex gap-3 overflow-x-auto p-3">
+      {columns.map((col) => {
+        const items = rows.filter((r) => formulaGroupKey(formulaResult(r.values[group.id])) === col.key);
+        const name = col.key === "empty" ? `No ${group.name.toLowerCase()}` : col.key === "error" ? "Errors" : col.result.kind === "date" ? formatCalendarDate(String(col.result.value)) : col.result.display;
+        return (
+          <section key={col.key} aria-label={t("collection.board.column", { name, count: items.length })} className="flex w-64 flex-none flex-col rounded-chip bg-sunken p-2">
+            <h4 className="mb-2 flex items-center gap-2 px-1 text-xs font-semibold">
+              <span className="truncate rounded-chip bg-raised px-2 py-0.5 shadow-[0_0_0_1px_var(--color-line)]">{name}</span>
+              <span className="text-faint">{items.length}</span>
+            </h4>
+            <ul className="space-y-2">
+              {items.map((row) => (
+                <li key={row.id} className="rounded-chip border border-line bg-raised p-2.5 text-sm shadow-[0_1px_0_var(--color-line)]">
+                  <RowLink row={row} className="font-medium hover:underline">
+                    {row.title || "Untitled"}
+                  </RowLink>
+                  <div className="mt-1 space-y-0.5 text-xs text-muted">
+                    {visible
+                      .filter((p) => p.id !== group.id)
+                      .map((p) => (
+                        <div key={p.id} className="flex gap-1">
+                          <span className="text-faint">{p.name}:</span> <CellDisplay prop={p} value={row.values[p.id]} people={data.people} />
+                        </div>
+                      ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+      {columns.length === 0 ? <p className="p-1 text-sm text-muted">No rows yet.</p> : null}
+    </div>
+  );
+}
+
 const ROW_TYPE = "application/x-folevi-row";
 
 /**
  * Rows on a month grid by a date property. A row's chip opens its page; drag it to another day to change
  * the date, or to the "No date" tray to clear it. "New" on a day adds a row with that date.
  */
-function CalendarCollection({ data, view, rows, canEdit, onAdd }: { data: CollectionData; view: View; rows: Row[]; canEdit: boolean; onAdd: (values?: Record<string, unknown>) => Promise<void> }) {
+function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { data: CollectionData; view: View; rows: Row[]; visible: Property[]; canEdit: boolean; onAdd: (values?: Record<string, unknown>) => Promise<void> }) {
   const { setValue } = useCollectionMutations();
   const toast = useToast();
   const today = useMemo(() => localDate(Date.now(), Intl.DateTimeFormat().resolvedOptions().timeZone), []);
@@ -802,6 +900,10 @@ function CalendarCollection({ data, view, rows, canEdit, onAdd }: { data: Collec
           },
         }
       : {};
+  // The chip's tooltip: the title, then the visible properties (formula results included).
+  const shownInChip = visible.filter((p) => p.id !== prop.id && p.type !== "relation");
+  const chipTitle = (row: Row) =>
+    [row.title || "Untitled", ...shownInChip.map((p) => [p.name, exportValue(p, row.values[p.id], { as: "markdown", people: data.people })] as const).filter(([, v]) => v).map(([n, v]) => `${n}: ${v}`)].join("\n");
   const chip = (row: Row) => (
     <RowLink
       row={row}
@@ -814,7 +916,7 @@ function CalendarCollection({ data, view, rows, canEdit, onAdd }: { data: Collec
         setDragging(row.id);
       }}
       onDragEnd={() => setDragging(null)}
-      title={row.title || "Untitled"}
+      title={chipTitle(row)}
       className={`block truncate rounded-tiny bg-accent-soft px-1 text-[11.5px] leading-5 text-accent-soft-ink hover:underline ${canEdit ? "cursor-grab" : ""}`}
     >
       {row.title || "Untitled"}
@@ -1002,7 +1104,7 @@ function FilterValueEditor({ target, filter, people, onChange }: { target: Filte
   }
 }
 
-function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: () => void; data: CollectionData; view: View }) {
+function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: boolean; onClose: () => void; data: CollectionData; view: View; onEditFormula: (propertyId: string) => void }) {
   const { updateView, addProperty, updateProperty, deleteProperty, deleteView } = useCollectionMutations();
   const toast = useToast();
   const [newProp, setNewProp] = useState<{ name: string; type: Property["type"] }>({ name: "", type: "text" });
@@ -1023,7 +1125,7 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
       });
   };
   const current = () => (latest.current?.viewId === view.id ? latest.current.config : config);
-  const selectProps = useMemo(() => data.properties.filter((p) => p.type === "select"), [data.properties]);
+  const selectProps = useMemo(() => data.properties.filter((p) => p.type === "select" || p.type === "formula"), [data.properties]);
   const dateProps = useMemo(() => data.properties.filter((p) => p.type === "date"), [data.properties]);
   const targets = useMemo(() => filterTargets(data.properties), [data.properties]);
   const setFilter = (i: number, patch: Partial<ViewFilter>) => void save({ filters: current().filters.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
@@ -1114,6 +1216,7 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
           {view.type === "board" ? (
             <label className="mt-6 block text-sm">
               <span className="font-semibold">Group by</span>
+              <span className="mt-0.5 block text-xs text-muted">A single-select, or a formula (a column per result).</span>
               <Select value={config.groupBy ?? ""} onChange={(e) => void save({ groupBy: e.target.value || undefined })} className="mt-1 flex h-8 ui-input rounded-chip px-3">
                 {selectProps.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -1179,7 +1282,13 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
                   className="h-7 flex-1"
                   onCommit={(name) => name && void updateProperty({ collectionId: data.id, propertyId: p.id, name }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
                 />
-                <span className="text-xs text-faint">{TYPE_LABELS[p.type]}</span>
+                {p.type === "formula" ? (
+                  <button type="button" onClick={() => onEditFormula(p.id)} aria-label={`Edit formula ${p.name}`} title={p.formula || "No formula yet"} className="inline-flex h-7 items-center gap-1 rounded-chip px-2 text-xs text-muted hover:bg-sunken hover:text-heading pointer-coarse:h-11">
+                    <SquareFunction size={13} aria-hidden /> Edit formula
+                  </button>
+                ) : (
+                  <span className="text-xs text-faint">{TYPE_LABELS[p.type]}</span>
+                )}
                 <button type="button" aria-label={`Delete property ${p.name}`} onClick={() => setConfirmProp(p)} className="grid h-7 w-7 place-items-center rounded-chip text-faint hover:bg-sunken hover:text-danger">
                   <Trash2 size={13} aria-hidden />
                 </button>
@@ -1208,14 +1317,31 @@ function ViewSettings({ open, onClose, data, view }: { open: boolean; onClose: (
                 />
               </label>
             ))}
+          {data.properties
+            .filter((p) => p.type === "number")
+            .map((p) => (
+              <div key={p.id} className="mt-3 text-xs">
+                <p className="mb-1">Numbers in {p.name}</p>
+                <NumberFormatFields
+                  compact
+                  value={p.numberFormat}
+                  onChange={(numberFormat: CollectionNumberFormat | null) => void updateProperty({ collectionId: data.id, propertyId: p.id, numberFormat }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}
+                />
+              </div>
+            ))}
           <form
             className="mt-4 flex items-end gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               if (!newProp.name.trim()) return;
               if (data.properties.length >= 40) return toast.show("A collection can have up to 40 properties.", { tone: "error" });
-              addProperty({ collectionId: data.id, name: newProp.name, type: newProp.type }).then(
-                () => setNewProp({ name: "", type: "text" }),
+              const type = newProp.type;
+              addProperty({ collectionId: data.id, name: newProp.name, type }).then(
+                ({ id }) => {
+                  setNewProp({ name: "", type: "text" });
+                  // A new formula opens its editor straight away.
+                  if (type === "formula") onEditFormula(id);
+                },
                 (err) => toast.show(errorMessage(err), { tone: "error" }),
               );
             }}

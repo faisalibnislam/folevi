@@ -3,7 +3,7 @@
 // Pure functions of (server answer, queued changes), so a change shows the same way online and offline,
 // survives a reload, and disappears into the server's answer once it lands (it's matched by id).
 import type { FunctionReturnType } from "convex/server";
-import { DEFAULT_COVER, folderMoveProblem, scopeIdKey, type WireScope } from "@folevi/editor-schema";
+import { DEFAULT_COVER, folderMoveProblem, renameInCollectionFormula, scopeIdKey, type WireScope } from "@folevi/editor-schema";
 import type { api } from "@/lib/convex/api";
 import type { OutboxArgs, OutboxEntry, OutboxName } from "./outbox";
 
@@ -296,21 +296,39 @@ export function overlayCollection(data: CollectionData, entries: readonly Outbox
     } else if (is(e, "collections.addProperty")) {
       const a = e.args;
       if (!a.id || out.properties.some((p) => p.id === a.id)) continue;
-      const prop: ServerProperty = { id: a.id, name: a.name.trim().slice(0, 60) || "Property", type: a.type, options: [] };
+      const prop: ServerProperty = {
+        id: a.id,
+        name: a.name.trim().slice(0, 60) || "Property",
+        type: a.type,
+        options: [],
+        formula: a.type === "formula" ? (a.formula ?? "").trim() : null,
+        numberFormat: a.numberFormat && (a.type === "number" || a.type === "formula") ? a.numberFormat : null,
+      };
       // Last, and shown in every view, as the server adds it.
       out = { ...out, properties: [...out.properties, prop], views: out.views.map((v) => ({ ...v, config: { ...v.config, visibleProperties: [...v.config.visibleProperties, prop.id] } })) };
     } else if (is(e, "collections.updateProperty")) {
       const a = e.args;
+      const before = out.properties;
+      const renamed = before.find((p) => p.id === a.propertyId);
+      const newName = renamed && a.name !== undefined ? a.name.trim().slice(0, 60) || renamed.name : undefined;
       out = {
         ...out,
-        properties: out.properties.map((p) => {
-          if (p.id !== a.propertyId) return p;
-          const name = a.name !== undefined ? a.name.trim().slice(0, 60) || p.name : p.name;
+        properties: before.map((p) => {
+          // A rename follows into every formula that names the property, as on the server.
+          const formula = renamed && newName !== undefined && newName !== renamed.name && p.type === "formula" && p.formula ? renameInCollectionFormula(p.formula, before, renamed.id, newName) : p.formula;
+          if (p.id !== a.propertyId) return formula === p.formula ? p : { ...p, formula };
+          const name = newName ?? p.name;
           const options =
             a.options && (p.type === "select" || p.type === "multiSelect")
               ? a.options.slice(0, 100).map((o, i) => ({ id: o.id ?? `${e.id}-${i}`, name: o.name.trim().slice(0, 60) || "Option", color: o.color && OPTION_COLORS.includes(o.color) ? o.color : OPTION_COLORS[i % OPTION_COLORS.length]! }))
               : p.options;
-          return { ...p, name, options };
+          return {
+            ...p,
+            name,
+            options,
+            formula: a.formula !== undefined && p.type === "formula" ? a.formula.trim() : formula,
+            numberFormat: a.numberFormat !== undefined && (p.type === "number" || p.type === "formula") ? a.numberFormat : p.numberFormat,
+          };
         }),
       };
     } else if (is(e, "collections.deleteProperty")) {

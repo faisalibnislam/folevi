@@ -319,6 +319,10 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
       if (p.width !== undefined && !isColumnWidth(p.width))
         issues.push({ path: "props.width", code: "range", message: `width must be between ${LIMITS.minColumnWidth} and 1` });
       break;
+    case "synced":
+      if (!isValidId(p.sourceId))
+        issues.push({ path: "props.sourceId", code: "id", message: "invalid synced source id" });
+      break;
   }
   for (const [i, node] of (
     b.text as { type: string; marks?: { type: string; href?: string }[] }[]

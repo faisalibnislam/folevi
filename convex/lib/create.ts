@@ -18,6 +18,7 @@ import { nextSeq } from "./seq";
 import { insertScoped, type Scope } from "./scope";
 import { queueIndex } from "./ai/indexing";
 import { emitWebhook } from "./webhooks";
+import { indexSyncedBlocks } from "./synced";
 
 /** Compact authoring format for seed content, templates and programmatic documents. */
 export interface BlockSpec {
@@ -139,10 +140,17 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
   const doc = (await ctx.db.get(docId))!;
   for (const row of rows) if (row.type === "todo") await syncTaskProjection(ctx, row, doc, input.actor._id);
   for (const row of rows) if (studyKindOf(row)) await syncStudyCard(ctx, row, doc);
+  // Synced blocks it starts with are recorded as showing their content (lib/synced.ts).
+  if (rows.some((r) => r.type === "synced")) {
+    if (doc.kind === "synced") fail("invalid_block", "A synced block can't go inside another synced block.");
+    await indexSyncedBlocks(ctx, doc, rows);
+  }
   await refreshDerived(ctx, doc, rows);
   if (rows.length) await queueIndex(ctx, doc);
-  await adjustDocumentCount(ctx, scope, 1);
-  await bump(ctx, "documents_total");
+  if (doc.kind !== "synced") {
+    await adjustDocumentCount(ctx, scope, 1);
+    await bump(ctx, "documents_total");
+  }
   const created = (await ctx.db.get(docId))!;
   await emitWebhook(ctx, "note.created", created);
   return created;

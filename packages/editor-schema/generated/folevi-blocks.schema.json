@@ -423,6 +423,22 @@
       "if": {
         "properties": {
           "type": {
+            "const": "synced"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/SyncedProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
             "const": "chart"
           }
         }
@@ -653,7 +669,8 @@
         "document",
         "daily",
         "template",
-        "collectionRow"
+        "collectionRow",
+        "synced"
       ]
     },
     "DocumentSheet": {
@@ -1585,6 +1602,18 @@
       "required": [
         "data",
         "height"
+      ],
+      "additionalProperties": false
+    },
+    "SyncedProps": {
+      "type": "object",
+      "properties": {
+        "sourceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceId"
       ],
       "additionalProperties": false
     },

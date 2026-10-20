@@ -12,6 +12,7 @@ import { ReaderLabels } from "../../linkLabels";
 import { inScope, type Scope } from "../../scope";
 import { duplicatePairs, noteSimilarity } from "./similarity";
 import { untrusted } from "./untrusted";
+import { withSyncedForReader } from "../../synced";
 
 export interface ReadEnv {
   profile: Doc<"profiles">;
@@ -72,7 +73,8 @@ function blockLine(b: WireBlock, depth: number): string {
 
 /** A note's live blocks in reading order, labelled for this reader. */
 export async function readerBlocks(ctx: QueryCtx, env: ReadEnv, doc: Doc<"documents">): Promise<WireBlock[]> {
-  return await new ReaderLabels(ctx, env.profile).blocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
+  // Synced blocks read as their content, as far as this person can see it (lib/synced.ts).
+  return await new ReaderLabels(ctx, env.profile).blocks(await withSyncedForReader(ctx, env.profile, (await liveBlocks(ctx, doc._id)).map(toWireBlock)));
 }
 
 /** A note as the model reads it: block lines with ids, cut at `max` characters. */

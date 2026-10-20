@@ -27,6 +27,7 @@ import { insertScoped, personalScope, sameScope, scopeKey, scopeOfRow, vScope, v
 import { indexable, indexEligible, indexScopeRow, indexStateOf, planIndexes, queueIndex, startBackfill } from "./lib/ai/indexing";
 import { chunkHash, chunkLines, embeddingText, lineOf, type ChunkLine } from "./lib/ai/retrieval";
 import { provider } from "./lib/ai/provider";
+import { withSyncedShared } from "./lib/synced";
 
 /** An index job waits for this much quiet after the last edit… */
 const QUIET_MS = 10_000;
@@ -57,7 +58,8 @@ async function dropChunks(ctx: MutationCtx, documentId: Id<"documents">, n = REM
 /** A note's chunks as they would be now: its live blocks in reading order, links labelled as everyone may see them. */
 async function chunksOf(ctx: MutationCtx, doc: Doc<"documents">) {
   // The same labels as the note's search text: anyone who can open the note may see them.
-  const blocks = await sharedLabels(ctx, doc, (await liveBlocks(ctx, doc._id)).map(toWireBlock));
+  // With the synced blocks from its own place in it, like its search text (lib/synced.ts).
+  const blocks = await sharedLabels(ctx, doc, (await withSyncedShared(ctx, doc, (await liveBlocks(ctx, doc._id)).map(toWireBlock))).blocks);
   const lines = flattenTree(blocks)
     .map((e) => lineOf(e.block, e.depth))
     .filter((l): l is ChunkLine => l !== null);

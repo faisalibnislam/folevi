@@ -33,6 +33,7 @@ import { ensureInbox, listTasks, taskBlock, type TaskView } from "./tasks";
 import { snapshot } from "./documents";
 import { PROPOSED_MESSAGE, proposeAppend } from "./proposals";
 import { saveToInbox } from "./aiDigest";
+import { withSyncedForReader } from "./lib/synced";
 
 /** What a token is worth, once checked. */
 export type Authorized =
@@ -143,7 +144,7 @@ export const link = (publicId: string) => `${appUrl()}/d/${publicId}`;
 export async function readableHere(ctx: QueryCtx, grant: Pick<Reach, "includeShared">, profile: Doc<"profiles">, places: Place[], noteId: string): Promise<Doc<"documents">> {
   const NOT_HERE = "There's no note with that id that this connection can open.";
   const doc = await getDocumentByPublicId(ctx, noteId);
-  if (!doc || doc.inTrash || doc.deletedAt !== undefined || doc.kind === "template") fail("not_found", NOT_HERE);
+  if (!doc || doc.inTrash || doc.deletedAt !== undefined || doc.kind === "template" || doc.kind === "synced") fail("not_found", NOT_HERE);
   if (!accessAtLeast(await documentAccess(ctx, profile, doc), "read")) fail("not_found", NOT_HERE);
   if (!places.some((p) => inScope(doc, p.scope)) && !grant.includeShared) fail("not_found", NOT_HERE);
   return doc;
@@ -152,7 +153,7 @@ export async function readableHere(ctx: QueryCtx, grant: Pick<Reach, "includeSha
 /** A note this connection may add to: in one of its places, where the person can edit. */
 export async function writableHere(ctx: QueryCtx, profile: Doc<"profiles">, places: Place[], noteId: string): Promise<Doc<"documents">> {
   const doc = await getDocumentByPublicId(ctx, noteId);
-  if (!doc || doc.inTrash || doc.deletedAt !== undefined || doc.kind === "template" || !places.some((p) => inScope(doc, p.scope))) {
+  if (!doc || doc.inTrash || doc.deletedAt !== undefined || doc.kind === "template" || doc.kind === "synced" || !places.some((p) => inScope(doc, p.scope))) {
     fail("not_found", "There's no note with that id that this connection can change.");
   }
   if (!accessAtLeast(await documentAccess(ctx, profile, doc), "write")) fail("forbidden", "You can only read that note, so nothing can be added to it.");
@@ -174,7 +175,8 @@ const int = (v: unknown, fallback: number) => (typeof v === "number" && Number.i
 
 /** A note's Markdown and where it lives: its place, folder (and the folder's path), tags and link. */
 export async function noteDetail(ctx: QueryCtx, profile: Doc<"profiles">, doc: Doc<"documents">, places: Place[]) {
-  const blocks = await new ReaderLabels(ctx, profile).blocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
+  // With the synced blocks this person can see in place (lib/synced.ts).
+  const blocks = await new ReaderLabels(ctx, profile).blocks(await withSyncedForReader(ctx, profile, (await liveBlocks(ctx, doc._id)).map(toWireBlock)));
   const folder = doc.folderId ? await ctx.db.get(doc.folderId) : null;
   let path: string | null = null;
   if (folder && !folder.deletedAt) {
@@ -307,7 +309,7 @@ export const readResource = internalQuery({
     const { grant, profile } = await grantContext(ctx, grantId);
     const places = await grantPlaces(ctx, grant, profile);
     const doc = await readableHere(ctx, grant, profile, places, noteId);
-    const blocks = await new ReaderLabels(ctx, profile).blocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
+    const blocks = await new ReaderLabels(ctx, profile).blocks(await withSyncedForReader(ctx, profile, (await liveBlocks(ctx, doc._id)).map(toWireBlock)));
     return { title: doc.title || "Untitled", markdown: blocksToMarkdown(blocks, { title: doc.title || "Untitled" }).slice(0, MAX_NOTE_CHARS) };
   },
 });

@@ -37,6 +37,7 @@ import { FileCopies } from "./fileCopies";
 import { internal } from "../_generated/api";
 import { noteEdited } from "./editSettle";
 import { emitWebhook } from "./webhooks";
+import { canReferenceSource, refreshSyncedSource } from "./synced";
 
 export const MAX_BATCH = 100;
 
@@ -352,6 +353,17 @@ export class SyncEngine {
     return { parentId: block.parentId, normalized: false };
   }
 
+  /**
+   * A synced block (lib/synced.ts) never goes inside a synced block's content, and shows only content the
+   * writer can read: putting it in a note shows that content to the note's readers.
+   */
+  private async checkSyncedBlock(doc: Doc<"documents">, incoming: WireBlock, existing: Doc<"blocks"> | null): Promise<void> {
+    if (doc.kind === "synced") fail("invalid_block", "A synced block can't go inside another synced block.");
+    const sourceId = (incoming.props as { sourceId?: unknown }).sourceId;
+    if (existing?.type === "synced" && (existing.props as { sourceId?: unknown }).sourceId === sourceId) return;
+    if (typeof sourceId !== "string" || !(await canReferenceSource(this.ctx, this.profile, sourceId))) fail("not_found", "That synced block isn't available.");
+  }
+
   private async upsertBlock(op: Extract<SyncOp, { kind: "block.upsert" }>): Promise<ServerOpResult> {
     const doc = await this.blockDoc(op.documentId);
     const incoming: WireBlock = { ...op.block };
@@ -372,6 +384,7 @@ export class SyncEngine {
     if (existing && existing.documentId !== doc._id) {
       return { opId: op.opId, status: "rejected", error: { code: "wrong_document", message: "Block belongs to another document." } };
     }
+    if (incoming.type === "synced") await this.checkSyncedBlock(doc, incoming, existing);
     const { parentId, normalized } = await this.checkParent(doc, incoming);
     const seq = await this.seq.for(scopeOfRow(doc));
     const now = Date.now();
@@ -668,6 +681,8 @@ export class SyncEngine {
       }
       return { opId: op.opId, status: "rejected", error: { code: "exists", message: "A document with this id already exists." } };
     }
+    // A synced block's content (lib/synced.ts) is a document of its own: no parent, folder or template.
+    if (input.kind === "synced" && (input.parentDocumentId || input.folderId || input.templateId)) fail("invalid_argument", "Synced content is never nested or filed.");
     const { scope, parent } = await this.createTarget(input);
     let parentDocumentId: Id<"documents"> | undefined;
     let accessMode: Doc<"documents">["accessMode"] = "workspace";
@@ -729,7 +744,7 @@ export class SyncEngine {
       publicId: input.id,
       title: input.title,
       icon: input.icon,
-      kind: input.kind === "template" || input.kind === "daily" ? input.kind : "document",
+      kind: input.kind === "template" || input.kind === "daily" || input.kind === "synced" ? input.kind : "document",
       parentDocumentId,
       folderId,
       style: input.style ? checkedStyle(input.style) : undefined,
@@ -910,7 +925,7 @@ function keepsCollapse(existing: Doc<"blocks">, incoming: WireBlock, op: Extract
 
 /** Whether a block links to a page (a page card, or page links in its text or table cells). */
 function hasLinkTargets(row: Doc<"blocks">): boolean {
-  if (row.type === "page") return true;
+  if (row.type === "page" || row.type === "synced") return true;
   const scan = (nodes: unknown): boolean => Array.isArray(nodes) && nodes.some((n) => n && typeof n === "object" && (n as { type?: string }).type === "pageLink");
   if (scan(row.text)) return true;
   return row.type === "table" && ((row.props as { rows?: unknown[][] }).rows ?? []).some((r) => r.some(scan));
@@ -926,6 +941,10 @@ export async function syncLinks(ctx: MutationCtx, doc: Doc<"documents">, row: Do
   if (row.deletedAt === undefined) {
     if (row.type === "page" && typeof (row.props as { documentId?: unknown }).documentId === "string") {
       targets.add((row.props as { documentId: string }).documentId);
+    }
+    // A synced block links to the content it shows (how the notes showing it are found, lib/syncedRefs.ts).
+    if (row.type === "synced" && typeof (row.props as { sourceId?: unknown }).sourceId === "string") {
+      targets.add((row.props as { sourceId: string }).sourceId);
     }
     const scan = (nodes: unknown) => {
       if (!Array.isArray(nodes)) return;
@@ -945,6 +964,10 @@ export async function syncLinks(ctx: MutationCtx, doc: Doc<"documents">, row: Do
   for (const t of targets) {
     if (!have.has(t)) await insertScoped(ctx, "documentLinks", scopeOfRow(doc), { sourceDocumentId: doc._id, targetPublicId: t, blockId: row.blockId });
   }
+  // Synced content no note shows any more goes to Trash, and comes back when one shows it again (lib/synced.ts).
+  // (Only links that came or went: a removed page link costs one read to tell it isn't synced content.)
+  const changed = new Set([...existing.map((l) => l.targetPublicId).filter((t) => !targets.has(t)), ...[...targets].filter((t) => !have.has(t))]);
+  for (const id of changed) await refreshSyncedSource(ctx, id, row.updatedBy);
 }
 
 /** Whether an admin has switched a built-in template off (rows exist only once toggled). */

@@ -41,6 +41,7 @@ import { PAGE_CHARS, WEB_RULE, webBlock, webForQuestion, type WebSource } from "
 import { REMEMBER_RULE, setMeterMemory, takeRemember, type MemoryKind } from "./lib/ai/memory";
 import { vAiFeature, type AiFeature } from "./lib/ai/usage";
 import { finishWriting, needsInstruction, needsSelection, readsNoteWith, taskSpec, textOrNote, usesFlashLite, writingInputChars, writingRequest, writingTask } from "./lib/ai/writing";
+import { withSyncedForReader } from "./lib/synced";
 
 export const MAX_QUESTION = 2000;
 const MAX_TEXT = 24_000;
@@ -334,7 +335,8 @@ export const noteText = internalQuery({
     const profile = await requireProfile(ctx);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
     // Link labels as this person may see them (lib/linkLabels.ts): the AI never learns a title they can't.
-    const blocks = await new ReaderLabels(ctx, profile).blocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
+    // With its synced blocks' content, as this person can see it (lib/synced.ts).
+    const blocks = await new ReaderLabels(ctx, profile).blocks(await withSyncedForReader(ctx, profile, (await liveBlocks(ctx, doc._id)).map(toWireBlock)));
     const text = blocksToMarkdown(blocks, { title: doc.title || "Untitled" }).slice(0, FOCUS_CHARS);
     return { id: doc.publicId, title: doc.title || "Untitled", text };
   },

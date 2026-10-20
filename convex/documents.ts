@@ -37,6 +37,7 @@ import { vDocumentKind } from "./lib/validators";
 import { People } from "./lib/authors";
 import { queueIndex } from "./lib/ai/indexing";
 import { emitWebhook } from "./lib/webhooks";
+import { refreshSourcesShownBy } from "./lib/synced";
 
 export const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -277,7 +278,8 @@ export const list = query({
               q.eq(q.field("parentDocumentId"), undefined),
             );
           case "trash":
-            return q.eq(q.field("kind"), q.field("kind"));
+            // Synced content no note shows waits in Trash too, but isn't a page to list (lib/synced.ts).
+            return q.neq(q.field("kind"), "synced");
           default:
             return q.and(
               q.or(q.eq(q.field("kind"), "document"), q.eq(q.field("kind"), "daily")),
@@ -846,6 +848,8 @@ export async function setTrashState(ctx: MutationCtx, doc: Doc<"documents">, act
     await queueIndex(ctx, { ...d, inTrash, deletedAt: stamp });
     if (inTrash) await emitWebhook(ctx, "note.deleted", (await ctx.db.get(d._id))!);
   }
+  // Synced content these notes show goes to Trash with the last of them, and comes back with them.
+  await refreshSourcesShownBy(ctx, all.map((d) => d._id), actor);
 }
 
 export const moveToTrash = mutation({
@@ -961,7 +965,7 @@ export const trashSummary = query({
     const profile = await requireProfile(ctx);
     const standing = await resolveScope(ctx, profile, args.scope);
     const { scope, level } = standing;
-    const fetched = await scopeDocuments(ctx, scope, true, "created").take(TRASH_COUNT_CAP + 1);
+    const fetched = (await scopeDocuments(ctx, scope, true, "created").take(TRASH_COUNT_CAP + 1)).filter((d) => d.kind !== "synced");
     const trashed = await new PageReader(ctx, profile, standing).filter(fetched);
     let deletable = 0;
     if (levelAtLeast(level, "edit")) {

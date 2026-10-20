@@ -186,12 +186,13 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
   for (const c of cursors) await ctx.db.delete(c._id);
   if (hasValidScope(doc)) {
     const scope = scopeOfRow(doc);
-    await adjustDocumentCount(ctx, scope, -1);
+    // Synced content was never counted as a note (lib/create.ts).
+    if (doc.kind !== "synced") await adjustDocumentCount(ctx, scope, -1);
     // Clients re-pull and notice the page is gone.
     await bumpSeq(ctx, scope);
   }
   await ctx.db.delete(docId);
-  await bump(ctx, "documents_total", -1);
+  if (doc.kind !== "synced") await bump(ctx, "documents_total", -1);
   budget.spend();
   return true;
 }

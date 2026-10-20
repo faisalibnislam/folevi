@@ -9,6 +9,7 @@ import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { ReaderLabels } from "./lib/linkLabels";
+import { withSyncedForReader } from "./lib/synced";
 import { safeFilename } from "./lib/images";
 import { signFileUrl } from "./lib/fileUrls";
 import { insertScoped, vScope, vScopeArg, type Scope } from "./lib/scope";
@@ -50,9 +51,10 @@ export const documentPage = internalQuery({
     // Links carry the current title of pages the exporter can open, a neutral label otherwise.
     const labels = new ReaderLabels(ctx, profile);
     for (const d of page.page) {
-      if (d.inTrash) continue;
+      // Synced content is written into each note that shows it (lib/synced.ts), not as a page of its own.
+      if (d.inTrash || d.kind === "synced") continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
-      const blocks = await labels.blocks((await liveBlocks(ctx, d._id)).map(toWireBlock));
+      const blocks = await labels.blocks(await withSyncedForReader(ctx, profile, (await liveBlocks(ctx, d._id)).map(toWireBlock)));
       const parent = d.parentDocumentId ? await ctx.db.get(d.parentDocumentId) : null;
       const folder = d.folderId ? await ctx.db.get(d.folderId) : null;
       // Folders nest (up to five levels); keep the whole path so the export mirrors the sidebar.

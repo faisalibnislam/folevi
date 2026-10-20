@@ -7,7 +7,8 @@ import { fail } from "./errors";
 import { CLAIM_EMAIL_VERIFIED, CLAIM_MFA } from "./claims";
 import { findActiveSession } from "./authStore";
 import { deviceStatus } from "./devices";
-import { hasValidScope, personalScope, sameScope, scopeOfRow, workspaceScope, type Scope, type ScopeArg, type ScopedRow } from "./scope";
+import { hasValidScope, personalScope, sameScope, sameScopeRows, scopeOfRow, workspaceScope, type Scope, type ScopeArg, type ScopedRow } from "./scope";
+import { syncedReferences } from "./syncedRefs";
 
 type Ctx = QueryCtx | MutationCtx;
 /** A membership role as stored (owner | admin | member). */
@@ -326,6 +327,26 @@ export interface DocumentAccessInfo {
 }
 
 export async function documentAccessInfo(ctx: Ctx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<DocumentAccessInfo> {
+  const info = await directAccessInfo(ctx, profile, doc);
+  if (doc.kind !== "synced" || accessAtLeast(info.access, "write")) return info;
+  // A synced block's content (lib/synced.ts) is part of every note that shows it: anyone who can read or edit
+  // a note in the same place showing it can read or edit it there. Never through a note in another place, and
+  // never more than editing (managing it is for whoever manages its place).
+  return { ...info, access: maxAccess(info.access, await syncedAccessThroughNotes(ctx, profile, doc)) };
+}
+
+async function syncedAccessThroughNotes(ctx: Ctx, profile: Doc<"profiles">, source: Doc<"documents">): Promise<Access> {
+  let best: Access = "none";
+  for (const { note } of await syncedReferences(ctx, source)) {
+    if (note.inTrash || note.kind === "synced" || !sameScopeRows(note, source)) continue;
+    const access = (await directAccessInfo(ctx, profile, note)).access;
+    best = maxAccess(best, access === "manage" ? "write" : access);
+    if (best === "write") break;
+  }
+  return best;
+}
+
+async function directAccessInfo(ctx: Ctx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<DocumentAccessInfo> {
   if (!hasValidScope(doc)) return noAccess();
   const scope = scopeOfRow(doc);
   if (scope.kind === "personal") {
@@ -339,7 +360,8 @@ export async function documentAccessInfo(ctx: Ctx, profile: Doc<"profiles">, doc
   const member = await membership(ctx, profile._id, workspace._id);
   if (isScheduledForDeletion(workspace)) return scheduledVerdict(member);
   const { grant, restricted } = await inheritedGrant(ctx, profile, doc);
-  return workspaceVerdict(profile._id, doc, workspace, member, grant, restricted);
+  // A synced block's content isn't open to every member: they see it through the notes showing it (above).
+  return workspaceVerdict(profile._id, doc, workspace, member, grant, restricted || doc.kind === "synced");
 }
 
 function noAccess(): DocumentAccessInfo {
@@ -534,7 +556,8 @@ export class PageReader {
         break;
       }
       chain.push(cursor._id);
-      if (cursor.accessMode === "restricted") {
+      // A synced block's content counts as restricted: documentAccess decides it (through its notes).
+      if (cursor.accessMode === "restricted" || cursor.kind === "synced") {
         found = true;
         break;
       }

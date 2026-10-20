@@ -20,6 +20,7 @@ import { insertScoped, scopeOfRow, type Scope } from "./scope";
 import { accessAtLeast, documentAccess, membership } from "./auth";
 import { sharedLabels } from "./linkLabels";
 import { emitWebhook } from "./webhooks";
+import { notesShowingInPlace, withSyncedShared } from "./synced";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -264,21 +265,27 @@ export function buildPreview(entries: { block: WireBlock; depth: number }[]): Pr
  * read the page sees these, so links in them carry only titles everyone there may see (sharedLabels).
  */
 export async function refreshDerived(ctx: MutationCtx, doc: Doc<"documents">, rows?: Doc<"blocks">[]): Promise<void> {
-  const blocks = await sharedLabels(ctx, doc, (rows ?? (await liveBlocks(ctx, doc._id))).map(toWireBlock));
+  const own = (rows ?? (await liveBlocks(ctx, doc._id))).map(toWireBlock);
+  // A note reads with the synced blocks from its own place in it (lib/synced.ts): searching finds the note.
+  const blocks = await sharedLabels(ctx, doc, (await withSyncedShared(ctx, doc, own)).blocks);
   const flat = flattenTree(blocks);
   const ordered = flat.map((e) => e.block);
   const text = ordered.map((b) => plainText(b.text)).filter(Boolean);
   const joined = text.join("\n");
   const excerpt = text.join(" ").replace(/\s+/g, " ").slice(0, 240);
   await ctx.db.patch(doc._id, {
-    searchText: documentSearchText(doc.title, ordered),
+    // A synced block's content is never found as a page of its own: the notes showing it are.
+    searchText: doc.kind === "synced" ? "" : documentSearchText(doc.title, ordered),
     // Body only, like charCount (the title isn't part of the page's word count).
     wordCount: wordCount(joined),
     charCount: joined.length,
-    blockCount: blocks.length,
+    // The note's own blocks (the limit on blocks per note counts these).
+    blockCount: own.length,
     excerpt,
     preview: buildPreview(flat),
   });
+  // The notes in its place that show it include its text.
+  if (doc.kind === "synced") for (const note of await notesShowingInPlace(ctx, doc)) await refreshDerived(ctx, note);
 }
 
 /** Keeps the task projection in step with a todo block (the block stays canonical). */

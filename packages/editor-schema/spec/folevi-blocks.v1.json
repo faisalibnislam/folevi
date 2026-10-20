@@ -24,7 +24,7 @@
     "CoverKind": { "type": "string", "values": ["none", "color", "gradient", "image", "art"] },
     "DocumentKind": {
       "type": "string",
-      "values": ["document", "daily", "template", "collectionRow"]
+      "values": ["document", "daily", "template", "collectionRow", "synced"]
     },
     "DocumentSheet": {
       "type": "string",
@@ -272,6 +272,7 @@
       "webOnly": true,
       "props": { "data": "string", "height": "number" }
     },
+    "synced": { "text": false, "webOnly": true, "props": { "sourceId": "string" } },
     "chart": {
       "text": false,
       "webOnly": true,

@@ -44,7 +44,8 @@ export async function indexEligible(ctx: Ctx, scope: Scope, now = Date.now()): P
 }
 
 /** Whether a note's text belongs in the index at all (its scope's plan aside). */
-export const indexable = (doc: Doc<"documents">) => !doc.inTrash && doc.deletedAt === undefined && doc.kind !== "template";
+// Synced content is indexed as part of the notes showing it (aiIndex.ts chunksOf), never on its own.
+export const indexable = (doc: Doc<"documents">) => !doc.inTrash && doc.deletedAt === undefined && doc.kind !== "template" && doc.kind !== "synced";
 
 export async function indexStateOf(ctx: Ctx, documentId: Id<"documents">): Promise<Doc<"aiIndexState"> | null> {
   return await ctx.db

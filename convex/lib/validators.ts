@@ -84,6 +84,8 @@ export const vDocumentKind = v.union(
   v.literal("daily"),
   v.literal("template"),
   v.literal("collectionRow"),
+  // A synced block's content (convex/lib/synced.ts): never listed as a page.
+  v.literal("synced"),
 );
 export const vDocumentStyle = v.object({
   font: v.union(v.literal("sans"), v.literal("serif"), v.literal("mono"), v.literal("rounded")),

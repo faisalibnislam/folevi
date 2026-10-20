@@ -22,6 +22,7 @@ import { hashSharePassword, keyedHash, randomToken, sha256Hex, timingSafeEqualHe
 import { consume } from "./lib/rateLimit";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { sharedLabels } from "./lib/linkLabels";
+import { withSyncedShared } from "./lib/synced";
 import { signFileUrl } from "./lib/fileUrls";
 import { appUrl, notify, notifyAccessChange, notifyAccessLostOnRestrict, shareRoleLabel } from "./lib/notify";
 import { sharePermissions } from "./lib/permissions";
@@ -666,7 +667,10 @@ export const openPublicLink = mutation({
     await ctx.db.patch(found._id, { viewCount: found.viewCount + 1 });
     // Links show only titles every reader of this page may see (never a restricted page's, nor one from
     // another Personal or workspace).
-    const blocks = await sharedLabels(ctx, doc, (await liveBlocks(ctx, doc._id)).map(toWireBlock));
+    // Synced blocks show their content when it's from this note's own place; content from another place
+    // (which the note's readers may not be allowed to see) is left out (lib/synced.ts).
+    const synced = await withSyncedShared(ctx, doc, (await liveBlocks(ctx, doc._id)).map(toWireBlock));
+    const blocks = await sharedLabels(ctx, doc, synced.blocks);
     const collections = await publicCollections(ctx, doc, blocks as { type: string; props: Record<string, unknown> }[]);
     // Attachments of this document only, via short-lived signed URLs.
     const site = process.env.CONVEX_SITE_URL ?? "";
@@ -679,7 +683,7 @@ export const openPublicLink = mutation({
         .query("files")
         .withIndex("by_public_id", (q) => q.eq("publicId", fileId))
         .unique();
-      if (!file || file.documentId !== doc._id || file.status !== "ready") continue;
+      if (!file || (file.documentId !== doc._id && !(file.documentId && synced.sources.includes(file.documentId))) || file.status !== "ready") continue;
       fileUrls[fileId] = `${site}/files/${fileId}?exp=${exp}&sig=${await signFileUrl(`${fileId}:${exp}`)}`;
     }
     // The note's own theme image, if it has one (only a file stored with this document).

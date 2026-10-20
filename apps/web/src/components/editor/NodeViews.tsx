@@ -50,6 +50,7 @@ import { useEditable } from "./useEditable";
 import { AudioPlayer } from "./AudioPlayer";
 import { EmbedFrame } from "./EmbedFrame";
 import { TranscribeButton, useCanTranscribe, useTranscription } from "@/components/ai/AudioTranscribe";
+import { SyncedBlock } from "./extensions";
 
 // The whiteboard, flowchart, the other visual blocks and collections are large and most notes have none: each
 // loads the first time a note shows one, in a placeholder of the block's own height so nothing moves when it
@@ -61,6 +62,21 @@ const StickiesView = lazy(() => import("./stickies/StickiesView").then((m) => ({
 const ChartView = lazy(() => import("./chart/ChartView").then((m) => ({ default: m.ChartView })));
 const WireframeView = lazy(() => import("./wireframe/WireframeView").then((m) => ({ default: m.WireframeView })));
 const CollectionEmbed = lazy(() => import("./CollectionEmbed").then((m) => ({ default: m.CollectionEmbed })));
+// A synced block runs an editor of its own for its content (synced/SyncedView.tsx).
+const SyncedView = lazy(() => import("./synced/SyncedView").then((m) => ({ default: m.SyncedView })));
+
+function LazySynced(props: ReactNodeViewProps) {
+  return (
+    <Suspense fallback={<LoadingBlock height={72} />}>
+      <SyncedView {...props} />
+    </Suspense>
+  );
+}
+
+/** Everything inside a synced block's own editor, and its frame's controls, is theirs (not the note's). */
+function syncedOwnsEvent(event: Event): boolean {
+  return event.target instanceof Element && Boolean(event.target.closest("[data-synced-body], button, a, [role=menu]"));
+}
 
 function LoadingBlock({ height }: { height: number }) {
   return (
@@ -810,6 +826,14 @@ export const NODE_VIEW_EXTENSIONS = [
     addNodeView: () => blockView(EmbedView, ({ event }) => event.target instanceof Element && Boolean(event.target.closest("a, iframe"))),
   }),
   UnknownBlock.extend({ addNodeView: () => blockView(UnknownView) }),
+  // Its own editor's keys (undo included) and pointer stay with it: no blockView history pass-through.
+  SyncedBlock.extend({
+    addNodeView: () =>
+      ReactNodeViewRenderer(LazySynced, {
+        attrs: ({ node }) => ({ "data-block-id": String(node.attrs.id ?? ""), "data-depth": String(node.attrs.depth ?? 0), style: `--depth:${Number(node.attrs.depth ?? 0)}` }),
+        stopEvent: ({ event }) => syncedOwnsEvent(event),
+      }),
+  }),
   FormulaBlock.extend({
     addNodeView: () =>
       blockView(FormulaView, ({ event }) => event.target instanceof HTMLTextAreaElement || (event.target instanceof Element && Boolean(event.target.closest("button")))),

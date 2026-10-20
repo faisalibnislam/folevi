@@ -56,6 +56,7 @@ export const NODE_PROPS: Record<string, string[]> = {
   stickies: ["data", "height"],
   chart: ["data", "height"],
   wireframe: ["data", "height"],
+  synced: ["sourceId"],
   // A tab's name is its text (tabName); in the editor it's the tab line's `name` (see blockToNode).
   tabs: [],
   tab: [],

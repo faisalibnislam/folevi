@@ -158,6 +158,14 @@ Errors that apply to the whole batch (unauthenticated, suspended account, mainte
 as `ConvexError({ code })` and the client keeps every op pending. Workspace-level problems (not a
 member, workspace suspended, template disabled by an admin) are per-op `rejected` results.
 
+### Synced blocks
+
+Synced content (`docs/SYNCED_BLOCKS.md`) is a document of kind `synced`, created with `document.create` (no
+parent, folder or template) and edited with block ops like any note. A `block.upsert` of a `synced` block that
+starts showing a piece of content needs read access to it (`not_found` otherwise), and one inside synced content
+is `invalid_block`. Access to synced content comes from the notes in its place that show it, so it can change
+when those notes change.
+
 ### Derived label caches
 
 Pages that link to a document cache its title: page blocks in `props.titleCache`/`props.iconCache`,

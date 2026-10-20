@@ -44,13 +44,15 @@ interface Props {
   placeholder?: string;
   /** ↑ on the first line: leave the body (to the title). Returns whether it did. */
   onExitTop?: () => boolean;
+  /** The editor's accessible name ("Document body"; a synced block's own editor says "Synced block"). */
+  label?: string;
 }
 
 const FLUSH_DELAY = 250;
 const FLUSH_MAX_WAIT = 1000;
 
 export const Editor = forwardRef<EditorHandle, Props>(function Editor(
-  { documentId, engine, accountKey, editable, decorations, onFocusBlock, onCommentBlock, onEditorReady, placeholder, onExitTop },
+  { documentId, engine, accountKey, editable, decorations, onFocusBlock, onCommentBlock, onEditorReady, placeholder, onExitTop, label },
   ref,
 ) {
   const [trigger, setTrigger] = useState<TriggerState | null>(null);
@@ -148,7 +150,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         class: "fb-editor",
         role: "textbox",
         "aria-multiline": "true",
-        "aria-label": "Document body",
+        "aria-label": label ?? "Document body",
         spellcheck: "true",
       },
       handlePaste: (view, event, slice) => {

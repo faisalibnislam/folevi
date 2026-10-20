@@ -40,7 +40,8 @@ export type PreviewKind =
   | "gallery"
   | "kanban"
   | "monthGrid"
-  | "pageBreak";
+  | "pageBreak"
+  | "synced";
 
 const PAPER = "var(--color-surface-raised)";
 const ACCENT = "var(--color-accent)";
@@ -441,6 +442,17 @@ function Picture({ kind }: { kind: PreviewKind }) {
           <path d="M8.5 3.5h31v8a3 3 0 0 1-3 3h-25a3 3 0 0 1-3-3z" fill={PAPER} stroke={C} strokeOpacity={0.21} />
           <path d="M11.5 21.5h25a3 3 0 0 1 3 3v8h-31v-8a3 3 0 0 1 3-3z" fill={PAPER} stroke={C} strokeOpacity={0.21} />
           <path d="M3 18h42" {...line} strokeOpacity={0.18} strokeDasharray="2 2.5" />
+        </>
+      );
+    case "synced":
+      // The same lines in two notes: a sheet behind, and the synced frame (dashed, with its small label) in front.
+      return (
+        <>
+          <Sheet x={11} y={3} w={33} h={22} r={3} />
+          <rect x={4.5} y={10.5} width={33} height={22} rx={3} fill={PAPER} stroke={C} strokeOpacity={0.3} strokeDasharray="2.2 1.8" />
+          <rect x={8} y={14} width={12} height={2.4} rx={1.2} fill={ACCENT} fillOpacity={0.45} />
+          <Bar x={8} y={20} w={25} h={2.5} />
+          <Bar x={8} y={25.5} w={18} h={2.5} o={0.14} />
         </>
       );
   }

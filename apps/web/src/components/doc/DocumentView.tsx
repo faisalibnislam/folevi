@@ -52,6 +52,7 @@ import { sameItems, useEngineSelector, useLocalStorage } from "@/lib/hooks/useEn
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { localDb } from "@/lib/sync/db";
 import { Button } from "@/components/ui/Button";
+import { SyncedRedirect } from "@/components/editor/synced/SyncedRedirect";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome, useShell } from "@/components/app/Shell";
@@ -1014,6 +1015,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
           {/* Quiet suggestions (open questions, action items, related notes), found without a model call. */}
           {aiOn && meta ? <NoteSuggestions documentId={documentId} editor={editor} readOnly={readOnly} onJump={(id) => editorRef.current?.focusBlock(id)} /> : null}
           <Backlinks documentId={documentId} />
+          {/* Synced content opened as a page: the note showing it opens instead (synced/SyncedRedirect.tsx). */}
+          {meta?.document.kind === "synced" ? <SyncedRedirect sourceId={documentId} /> : null}
           {openThread && threads ? (
             <BlockThread
               key={openThread.blockId}

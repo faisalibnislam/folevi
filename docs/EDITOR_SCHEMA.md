@@ -44,6 +44,7 @@ code, link, color, highlight), `mention`, `date`, `pageLink`.
 | file | no | `fileId`, `name`, `size`, `mimeType` |
 | table | no | `rows: InlineNode[][][]`, `headerRow`, `totalsRow?` (the last row is totals), `columns?: [{ format?, currency?, decimals? }]` (number/currency/percent/date, an ISO currency code, 0 to 6 decimals; at most one per column), `view?: { sort?: { column, desc? }, filters?: [{ column, op, value? }] }` (a saved view: rows are never reordered). A cell whose text starts with `=` is a formula, stored as typed; `src/tableFormulas.ts` (`evaluateTable`) works out what every cell shows, for the editor, exports, search and charts |
 | page | no | `documentId`, `display` (link/card), `titleCache?`, `iconCache?` |
+| synced | no | `sourceId` (the public id of the synced content it shows: a document of kind `synced`). No text. A synced block never goes inside synced content. See *Synced blocks* below and `docs/SYNCED_BLOCKS.md`. `webOnly`. |
 | bookmark | no | `url`, `title?`, `description?`, `siteName?` |
 | collection | no | `collectionId`, `viewId?` |
 | formula | no | `latex` (≤ `LIMITS.maxFormulaLength`; rendered with KaTeX, `trust: false`) |
@@ -116,6 +117,14 @@ A block whose `type` is unknown to a client, or whose `schemaVersion` is newer, 
 (“created by a newer version of Folevi”) and serialize it back byte-for-byte, so older clients never
 delete newer content. The server accepts unknown types only when they claim a schema version newer than
 its own.
+
+## Synced blocks
+
+One piece of content shown in several notes. The content is a document of kind `synced` (in a Personal or a
+workspace, never listed as a page) holding ordinary blocks; each note shows it through a `synced` block whose
+`props.sourceId` names it. Readers that take a note as one text (exports, share pages, search text, Foli AI, MCP)
+put the content in place with `expandSyncedBlocks` (`src/synced.ts`), as far as the reader may see it. Who sees and
+edits it, and what deleting does: `docs/SYNCED_BLOCKS.md`.
 
 ## Versioning and migrations
 

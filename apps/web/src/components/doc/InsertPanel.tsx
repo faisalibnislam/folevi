@@ -13,6 +13,7 @@ import { requestSpecialInsert, type SpecialInsert } from "@/components/editor/Ed
 import { beginPointerDrag } from "@/components/editor/blockDrag";
 import { newFormulaAttrs } from "@/components/editor/FormulaView";
 import { DIVIDER_STYLES, MERMAID_SAMPLE } from "@/components/editor/insertCatalog";
+import { requestSyncedInsert } from "@/components/editor/synced/actions";
 import { nativeApp } from "@/lib/nativeApp";
 import { useNativeDevice } from "@/lib/nativeDevice";
 import { InsertPreview, type PreviewKind } from "./insertPreviews";
@@ -24,6 +25,8 @@ export interface InsertAction {
   attrs?: () => Record<string, unknown>;
   text?: string;
   special?: SpecialInsert;
+  /** An insert the editor runs itself (a synced block: synced/actions.ts). */
+  run?: (editor: Editor) => void;
 }
 
 interface InsertItem extends InsertAction {
@@ -48,6 +51,7 @@ const MAIN: InsertItem[] = [
   { label: "Chart", type: "chart", attrs: () => ({ data: "", height: CHART_DEFAULT_HEIGHT }), preview: "chart", keywords: "graph bar line pie donut area scatter bubble org venn data numbers" },
   { label: "Sticky notes", type: "stickies", attrs: () => ({ data: "", height: STICKIES_DEFAULT_HEIGHT }), preview: "stickies", keywords: "stickies post-it board brainstorm workshop retro votes" },
   { label: "Wireframe", type: "wireframe", attrs: () => ({ data: "", height: WIREFRAME_DEFAULT_HEIGHT }), preview: "wireframe", keywords: "mockup screen ui ux layout prototype app website sketch" },
+  { label: "Synced block", run: requestSyncedInsert, preview: "synced", keywords: "synced sync shared reuse mirror same content several notes everywhere" },
 ];
 
 // Only in the iOS app (lib/nativeDevice.ts): the camera's scanner where the device has one, and pages from photos.
@@ -127,7 +131,7 @@ const SECTIONS: { title: string; tiles: Tile[] }[] = [
   { title: "Lists and tasks", tiles: tiles("lists", ["Bulleted list", "Numbered list", "To-do", "Toggle", "Tabs"]) },
   { title: "Visuals", tiles: tiles("visuals", ["Flowchart", "Mind map", "Chart", "Sticky notes", "Wireframe", "Whiteboard", "Mermaid diagram"]) },
   { title: "Media", tiles: tiles("media", ["Image", "Image from Unsplash", "File attachment", "Audio recording", "Bookmark", "Embed"]) },
-  { title: DATA, tiles: [...tiles("data", ["Table", "Gallery", "Kanban", "Calendar", "Page", "Card", "Date", "Code block", "TeX formula"]), ...SEPARATORS] },
+  { title: DATA, tiles: [...tiles("data", ["Table", "Gallery", "Kanban", "Calendar", "Page", "Card", "Synced block", "Date", "Code block", "TeX formula"]), ...SEPARATORS] },
 ];
 
 // Words starting with what's typed ("tab" finds Table, not "database"); a query with spaces matches as a phrase.
@@ -139,7 +143,8 @@ const matches = (q: string, text: string) => {
 
 /** Runs an insert below the current block. */
 function runInsert(editor: Editor, a: InsertAction) {
-  if (a.special) requestSpecialInsert(editor, a.special);
+  if (a.run) a.run(editor);
+  else if (a.special) requestSpecialInsert(editor, a.special);
   else if (a.type) insertBlockAfterCurrent(editor, a.type, a.attrs?.() ?? {}, a.text);
 }
 
@@ -159,6 +164,16 @@ function useInsertDrag(editor: Editor | null, disabled: boolean, action: InsertA
         event: e,
         onStart: () => (dragged.current = true),
         onDrop: (t) => {
+          if (action.run) {
+            // An empty line where it was dropped, with the caret in it: the insert takes its place.
+            const index = insertBlockAt(editor, t.index, t.depth, "paragraph");
+            if (index < 0) return null;
+            let pos = 1;
+            for (let i = 0; i < index; i++) pos += editor.state.doc.child(i).nodeSize;
+            editor.chain().focus().setTextSelection(pos).run();
+            action.run(editor);
+            return { index, count: 1 };
+          }
           if (action.special) {
             // Make room where it was dropped, then let the editor run the insert there.
             const index = insertBlockAt(editor, t.index, t.depth, "paragraph");

@@ -1,0 +1,74 @@
+/* A synced block (SyncedView.tsx): a quiet frame with a small label, around the content's own editor. Neutral
+ * chrome, light and dark: the content carries any colour. The frame follows the block's indent (--depth). */
+.fb-synced {
+  position: relative;
+  margin: 6px 0 6px calc(var(--depth, 0) * 1.6em);
+  padding: 2px 10px 6px;
+  border: 1px dashed color-mix(in oklab, var(--color-line-strong) 70%, transparent);
+  border-radius: var(--radius-control);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.fb-synced:hover,
+.fb-synced:focus-within { border-style: solid; border-color: var(--color-line-strong); }
+.fb-synced[data-selected] { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 35%, transparent); border-style: solid; }
+
+.fb-synced-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  margin: 0 -4px;
+  color: var(--color-ink-muted);
+  font: 500 11.5px/1.2 var(--font-sans);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.fb-synced-icon { flex: none; color: var(--color-ink-muted); }
+.fb-synced-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 6px;
+  border-radius: var(--radius-chip);
+  color: var(--color-ink-muted);
+  font: inherit;
+  background: transparent;
+}
+button.fb-synced-label:hover,
+button.fb-synced-label[aria-expanded="true"] { background: var(--color-surface-sunken); color: var(--color-ink); }
+.fb-synced-note { margin-left: auto; color: var(--color-ink-faint, var(--color-ink-muted)); }
+
+.fb-synced-body .fb-editor { padding-bottom: 0; min-height: 1.6em; }
+.fb-synced-body .fb-editor > .fb:first-child { margin-top: 0; }
+
+.fb-synced-loading {
+  height: 1.6em;
+  margin: 4px 0;
+  border-radius: var(--radius-tiny);
+  background: var(--color-surface-sunken);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fb-synced-loading { animation: fb-synced-pulse 1.4s ease-in-out infinite; }
+}
+@keyframes fb-synced-pulse { 50% { opacity: 0.55; } }
+
+.fb-synced-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 2px 2px;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.fb-synced-empty svg { flex: none; margin-top: 3px; }
+
+/* Touch: the label is a full 44pt target (iPhone and iPad). */
+@media (pointer: coarse) {
+  .fb-synced-bar { min-height: 44px; }
+  .fb-synced-label { min-height: 44px; padding: 0 10px; }
+}
+
+/* Read-only pages (version history) draw the frame without the editor. */
+.fb-synced-static { padding-bottom: 8px; }

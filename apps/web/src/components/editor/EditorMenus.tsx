@@ -17,6 +17,7 @@ import {
   Code2,
   Copy,
   CopyPlus,
+  RefreshCw,
   Eraser,
   FileText,
   GripVertical,
@@ -115,6 +116,8 @@ import { announce } from "@/lib/a11y/announce";
 import { Select } from "@/components/ui/Select";
 import { Calendar, DateField, DateTimeField, TimeField } from "@/components/ui/DateField";
 import { EDIT_LINK_EVENT, EditorContextMenu } from "./EditorContextMenu";
+import { inNestedNote } from "./synced/nested";
+import { syncedMenuItems, useSyncedMenus, type SyncedEnv } from "./synced/actions";
 import { keyLabel, withKeyLabels } from "@/lib/shortcuts";
 import { webAddressIn } from "./autolink";
 import { setRangeHighlight } from "./blockHighlight";
@@ -356,7 +359,8 @@ function handleLine(el: HTMLElement): { top: number; height: number } {
  */
 function inBlockField(e: Event): boolean {
   const t = e.target;
-  return t instanceof Element && Boolean(t.closest("input, textarea, select, [data-draft]"));
+  // A synced block's own editor inside this note (synced/nested.ts) handles its own keys too.
+  return t instanceof Element && (Boolean(t.closest("input, textarea, select, [data-draft]")) || inNestedNote(t, e.currentTarget instanceof Element ? e.currentTarget : null));
 }
 
 /** Top-level block index → its rendered element. */
@@ -417,6 +421,8 @@ export function EditorMenus({
   const { navigate } = useAppRouter();
   const env = useEditorEnvironment();
   const toast = useToast();
+  // Synced blocks: made here from the slash menu, the Insert panel and the block menu (synced/actions.ts).
+  const synced = useSyncedMenus(editor, documentId, editable);
   // A table cell being edited: its own formatting toolbar (table/CellEditor.tsx).
   const cellEditor = useActiveCellEditor(editor);
   const createCollection = useMutation(api.collections.create);
@@ -806,6 +812,9 @@ export function EditorMenus({
       { group: "Data and more", id: "calendarView", label: "Calendar", keywords: "calendar collection database month dates", icon: <CalendarRange size={15} />, run: special.calendarView },
       { group: "Data and more", id: "page", label: "Page", keywords: "page nested subpage child link", icon: <FileText size={15} />, run: special.page },
       { group: "Data and more", id: "card", label: "Card", keywords: "card page nested subpage child", icon: <SquareStack size={15} />, run: special.card },
+      ...(synced.scope || synced.demo
+        ? [{ group: "Data and more", id: "synced", label: "Synced block", keywords: "synced sync shared reuse mirror same content several notes everywhere", icon: <RefreshCw size={15} />, run: synced.insert }]
+        : []),
       { group: "Data and more", id: "link", label: "Link to page", hint: "[[", keywords: "link page reference backlink", icon: <Link2 size={15} />, run: () => void editor.chain().focus().insertContent("[[").run() },
       { group: "Data and more", id: "date", label: "Today’s date", keywords: "date today mention calendar", icon: <CalendarDays size={15} />, run: special.date },
       { group: "Data and more", id: "pickdate", label: "Date…", keywords: "date pick choose calendar day", icon: <CalendarDays size={15} />, run: special.pickDate },
@@ -868,7 +877,7 @@ export function EditorMenus({
           }))
         : []),
     ],
-    [editor, special, aiOn, scanner],
+    [editor, special, aiOn, scanner, synced],
   );
 
   const q = open?.query.toLowerCase().trim() ?? "";
@@ -1179,7 +1188,7 @@ export function EditorMenus({
       <EditorContextMenu editor={editor} editable={editable} onCommentBlock={onCommentBlock} />
       {editable ? <SelectionBubble editor={editor} onComment={onCommentBlock} /> : null}
       {editable && cellEditor ? <SelectionBubble key="cell" editor={cellEditor} inCell /> : null}
-      {editable ? <BlockHandle editor={editor} onDropBlock={onDropBlock} onCommentBlock={onCommentBlock} /> : null}
+      {editable ? <BlockHandle editor={editor} onDropBlock={onDropBlock} onCommentBlock={onCommentBlock} synced={synced} /> : null}
       {editable ? <TaskDetails editor={editor} /> : null}
     </>
   );
@@ -1811,7 +1820,17 @@ function liveRange(editor: Editor, menu: { from: number; to: number; fromId: str
  * ⌘. (Ctrl+.): focus moves into it, ↑/↓ move between items, Escape returns to the text. With several
  * blocks selected (Shift-click grips, Shift+↑/↓, Escape) its actions apply to all of them.
  */
-function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; onDropBlock: (from: number, to: number, depth: number, last?: number) => { index: number; count: number } | null; onCommentBlock?: (blockId: string) => void }) {
+function BlockHandle({
+  editor,
+  onDropBlock,
+  onCommentBlock,
+  synced,
+}: {
+  editor: Editor;
+  onDropBlock: (from: number, to: number, depth: number, last?: number) => { index: number; count: number } | null;
+  onCommentBlock?: (blockId: string) => void;
+  synced: SyncedEnv;
+}) {
   const aiOn = useAiEnabled();
   const [hover, setHover] = useState<{ index: number; top: number; left: number; height: number } | null>(null);
   // The blocks the menu is for, by index and by id: indices for drawing, ids to find them again when the
@@ -1864,6 +1883,8 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
     const dom = editor.view.dom as HTMLElement;
     const onMove = (e: MouseEvent) => {
       if (menu || isDragging()) return;
+      // Over a synced block's own editor, its handle is the one that shows.
+      if (inNestedNote(e.target, dom)) return setHover(null);
       const children = blockElements(dom);
       const idx = blockIndexAt(children, e.clientY);
       if (idx < 0) return;
@@ -2336,6 +2357,11 @@ function BlockHandle({ editor, onDropBlock, onCommentBlock }: { editor: Editor; 
                 ...mindmapMenuItems(editor, menu.from, menu.to, { aiOn, close: closeMenu }),
                 // A table turned into a chart under it (chart/tableMenu.tsx chartMenuItems).
                 ...chartMenuItems(editor, menu.from, menu.to, { aiOn, close: closeMenu }),
+                // Lines into a synced block; a synced block copied (to paste into other notes) or unsynced.
+                ...syncedMenuItems(editor, menu.from, menu.to, synced, {
+                  close: closeMenu,
+                  copied: (ok) => toast.show(ok ? "Synced block copied. Paste it into another note to show it there too." : "Your browser blocked copying from the menu. Press ⌘C instead.", ok ? undefined : { tone: "error" }),
+                }),
                 { label: count > 1 ? `Copy ${count} blocks` : "Copy", hint: "⌘C", icon: <Copy size={14} />, run: () => clipboard("copy") },
                 { label: count > 1 ? `Cut ${count} blocks` : "Cut", hint: "⌘X", icon: <Scissors size={14} />, run: () => clipboard("cut") },
                 { label: "Duplicate", hint: "⌘D", icon: <CopyPlus size={14} />, run: () => act(() => duplicateBlocks(editor)) },

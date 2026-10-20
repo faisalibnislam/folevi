@@ -535,6 +535,8 @@ export const TabBlock = Node.create({
   parseHTML: () => [{ tag: 'div[data-block="tab"]' }],
   renderHTML: ({ HTMLAttributes }) => ["div", mergeAttributes(HTMLAttributes, { "data-block": "tab", class: "fb fb-tab", "aria-hidden": "true" })],
 });
+/** A synced block (synced/SyncedView.tsx): shows the synced content `sourceId` names, editable where it may be. */
+export const SyncedBlock = atom("synced", { sourceId: r("sourceId") });
 export const UnknownBlock = atom("unknownBlock", { wire: { default: null, rendered: false } });
 
 // ------------------------------------------------------------------ inline atoms
@@ -673,6 +675,7 @@ export const ALL_NODES = [
   StickiesBlock,
   ChartBlock,
   WireframeBlock,
+  SyncedBlock,
   TabsBlock,
   TabBlock,
   UnknownBlock,

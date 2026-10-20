@@ -66,6 +66,7 @@ import { EDIT_BOOKMARK_EVENT } from "./NodeViews";
 import { keyLabel } from "@/lib/shortcuts";
 import { HOLD_MOVE_EVENT, isLongPress } from "@/lib/touchContextMenu";
 import { safeInsets } from "@/lib/iphone";
+import { inNestedNote } from "./synced/nested";
 
 /** Asks the selection toolbar to open its link field (the "Edit link…" item). */
 export const EDIT_LINK_EVENT = "folevi:edit-link";
@@ -173,6 +174,8 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       if (e.shiftKey) return;
       const el = e.target as HTMLElement | null;
       if (el?.closest("input, textarea, select, [data-native-menu]")) return;
+      // A synced block's own editor (synced/nested.ts) opens its own menu.
+      if (inNestedNote(el, dom)) return;
       syncDomSelection(editor.view);
       const { state, view } = editor;
       const hit = view.posAtCoords({ left: e.clientX, top: e.clientY });
@@ -218,8 +221,8 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
-      // A field inside a block (a caption, a cell) keeps the browser's menu.
-      if ((e.target as HTMLElement | null)?.closest?.("input, textarea, select")) return;
+      // A field inside a block (a caption, a cell) keeps the browser's menu; a synced block's editor has its own.
+      if ((e.target as HTMLElement | null)?.closest?.("input, textarea, select") || inNestedNote(e.target, dom)) return;
       e.preventDefault();
       syncDomSelection(editor.view);
       const { from } = editor.state.selection;

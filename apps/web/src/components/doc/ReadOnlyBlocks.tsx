@@ -1,5 +1,5 @@
 import { cloneElement, Fragment, isValidElement, type ReactElement } from "react";
-import { FileText } from "lucide-react";
+import { FileText, RefreshCw } from "lucide-react";
 import { flattenTree, liftTabs, tabGroupAt, tabName, sanitizeHref, type FlatEntry, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import { formatCalendarDate } from "@/i18n";
 import {
@@ -487,6 +487,15 @@ export function ReadOnlyBlocks({
             case "collection":
               return (
                 <ReadOnlyCollection key={block.id} data={collections?.[String(p.collectionId)]} />
+              );
+            case "synced":
+              // A synced block (version history): its content is whatever it shows now, in the note itself.
+              return (
+                <div key={block.id} className="fb fb-synced-static" style={style}>
+                  <p className="flex items-center gap-1.5 text-xs text-muted">
+                    <RefreshCw size={12} aria-hidden /> Synced block <span className="text-faint">(shows its current content in the note)</span>
+                  </p>
+                </div>
               );
             case "embed":
               return (

@@ -5,6 +5,7 @@ import { blocksToHtml, blocksToMarkdown, type InlineNode, type WireBlock } from 
 import type { ConvexReactClient } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { loadKatex } from "@/components/editor/richRender";
+import { withSyncedContent } from "@/components/editor/synced/expand";
 
 /** What an export left out (shown to the person, so nothing is dropped silently). */
 export interface ExportReport {
@@ -94,7 +95,9 @@ export function markdownNow(title: string, blocks: WireBlock[]): string {
 }
 
 /** Markdown (plus an assets folder, as a ZIP, when the page has attachments). */
-export async function exportMarkdown(client: ConvexReactClient, title: string, blocks: WireBlock[]): Promise<ExportReport> {
+export async function exportMarkdown(client: ConvexReactClient, title: string, noteBlocks: WireBlock[]): Promise<ExportReport> {
+  // Synced blocks are written as what they show (synced/expand.ts).
+  const blocks = await withSyncedContent(client, noteBlocks);
   const [{ assets, missing }, links] = await Promise.all([fetchAssets(client, blocks), pageLinks(client, blocks)]);
   const md = blocksToMarkdown(blocks, { title: title || "Untitled", resolveFile: (id) => assets.get(id)?.path ?? null, ...links });
   const name = safeName(title);
@@ -124,7 +127,8 @@ async function mathRenderer(blocks: WireBlock[]): Promise<((latex: string) => st
   };
 }
 
-export async function exportHtml(client: ConvexReactClient, title: string, blocks: WireBlock[]): Promise<ExportReport> {
+export async function exportHtml(client: ConvexReactClient, title: string, noteBlocks: WireBlock[]): Promise<ExportReport> {
+  const blocks = await withSyncedContent(client, noteBlocks);
   const [{ assets, missing }, links, renderMath] = await Promise.all([fetchAssets(client, blocks), pageLinks(client, blocks), mathRenderer(blocks)]);
   const html = blocksToHtml(blocks, { title: title || "Untitled", resolveFile: (id) => assets.get(id)?.path ?? null, renderMath, ...links });
   const name = safeName(title);
@@ -139,7 +143,8 @@ export async function exportHtml(client: ConvexReactClient, title: string, block
 }
 
 /** PDF via the browser's print dialog ("Save as PDF"), using the same clean HTML as the HTML export. */
-export async function exportPdf(client: ConvexReactClient, title: string, blocks: WireBlock[]): Promise<ExportReport> {
+export async function exportPdf(client: ConvexReactClient, title: string, noteBlocks: WireBlock[]): Promise<ExportReport> {
+  const blocks = await withSyncedContent(client, noteBlocks);
   const refs = fileRefs(blocks);
   const [urls, links, renderMath] = await Promise.all([
     refs.length ? client.query(api.files.urls, { fileIds: refs.map((r) => r.id), now: hourNow() }) : Promise.resolve({} as Record<string, { url: string }>),

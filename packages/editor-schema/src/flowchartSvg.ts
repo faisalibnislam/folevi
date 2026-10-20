@@ -122,7 +122,15 @@ export interface FlowchartSvgOptions {
   background?: boolean;
   /** Resolves an image's file id to an address the SVG may load (images show as placeholders without). */
   imageUrl?: (fileId: string) => string | null;
+  /** Prefix for the ids inside the SVG (clip paths), unique per picture when several share a page. */
+  idPrefix?: string;
 }
+
+/**
+ * Image addresses a picture may load: web and data images, the page's own object URLs, the Mac app's local
+ * library (app://folevi/), and paths without a scheme (the HTML export's assets folder, this site's files).
+ */
+const IMAGE_URL = /^(https?:|data:image\/|blob:|app:\/\/folevi\/|\/|(?![a-z][a-z0-9+.-]*:)[\w.-])/i;
 
 function spanAttrs(marks: readonly Mark[] | undefined, theme: FlowTheme): string {
   if (!marks?.length) return "";
@@ -171,7 +179,7 @@ function nodeSvg(n: FlowNode, theme: FlowTheme, uid: string, imageUrl?: (fileId:
   if (n.image && boxes.image) {
     const b = boxes.image;
     const url = imageUrl?.(n.image.fileId) ?? null;
-    if (url && /^(https?:|data:image\/|blob:|\/)/i.test(url)) {
+    if (url && IMAGE_URL.test(url)) {
       const clip = `${uid}-clip-${n.id}`;
       parts.push(`<clipPath id="${clip}"><rect x="${r1(b.x)}" y="${r1(b.y)}" width="${r1(b.w)}" height="${r1(b.h)}" rx="6"/></clipPath>`);
       parts.push(`<image href="${esc(url)}" x="${r1(b.x)}" y="${r1(b.y)}" width="${r1(b.w)}" height="${r1(b.h)}" preserveAspectRatio="xMidYMid ${n.image.fit === "contain" ? "meet" : "slice"}" clip-path="url(#${clip})"/>`);
@@ -305,7 +313,7 @@ export function flowchartDataToSvg(fc: FlowchartData, opts: FlowchartSvgOptions 
   const vy = Math.floor(b.y - pad);
   const vw = Math.ceil(b.w + pad * 2);
   const vh = Math.ceil(b.h + pad * 2);
-  const uid = "fc";
+  const uid = (opts.idPrefix ?? "fc").replace(/[^A-Za-z0-9_-]/g, "") || "fc";
   const parts: string[] = [];
   if (opts.background !== false) parts.push(`<rect x="${vx}" y="${vy}" width="100%" height="100%" fill="${p.background}"/>`);
   parts.push(containersSvg(fc, theme));

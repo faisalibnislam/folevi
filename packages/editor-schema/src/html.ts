@@ -110,6 +110,7 @@ mark{background:#F7E7A6;color:inherit}
 .formula{margin:16px 0;text-align:center;overflow-x:auto}.formula pre{text-align:left}
 .whiteboard svg{width:100%;height:auto;border:1px solid var(--line);border-radius:10px}
 .flowchart{margin:16px 0}.flowchart svg{display:block;max-width:100%;height:auto;margin:0 auto}
+.flowchart .fc-dark{display:none}@media (prefers-color-scheme:dark){.flowchart .fc-light{display:none}.flowchart .fc-dark{display:block}}@media print{.flowchart .fc-light{display:block}.flowchart .fc-dark{display:none}}
 .mindmap,.chart,.stickies,.wireframe{margin:16px 0}.chart figcaption{font-weight:600;margin-bottom:8px}
 .columns{display:flex;gap:32px;margin:16px 0}.column{min-width:0}.column>:first-child{margin-top:0}
 @media (max-width:640px){.columns{display:block}.column+.column{margin-top:16px}}
@@ -250,8 +251,12 @@ function htmlBody(blocks: readonly WireBlock[], opts: HtmlExportOptions): string
         );
         break;
       case "flowchart":
-        if (String(p.data ?? ""))
-          parts.push(`<figure class="flowchart">${flowchartToSvg(String(p.data))}</figure>`);
+        if (String(p.data ?? "")) {
+          // Light and dark pictures; the page's colour scheme picks one (print always takes the light one).
+          const svg = (theme: "light" | "dark") =>
+            flowchartToSvg(String(p.data), { theme, background: false, imageUrl: (id) => opts.resolveFile?.(id) ?? null, idPrefix: `fc${parts.length}${theme[0]}` }).replace("<svg ", `<svg class="fc-${theme}" `);
+          parts.push(`<figure class="flowchart">${svg("light")}${svg("dark")}</figure>`);
+        }
         break;
       case "mindmap":
         parts.push(mindmapToHtml(parseMindmap(String(p.data ?? "")), escapeHtml));

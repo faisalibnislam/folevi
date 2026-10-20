@@ -169,6 +169,29 @@ test.describe("Chart", () => {
       const results = await new AxeBuilder({ page }).include(".fb-chart").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
       const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
       expect(serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+      // Every series colour, as the page resolves it in this theme, reaches 3:1 against the card's tint
+      // and the raised surface (tooltips) it's drawn on.
+      const low = await page.evaluate(() => {
+        const card = document.querySelector<HTMLElement>(".fb-editor .fb-chart .fb-canvas-card")!;
+        const cs = getComputedStyle(card);
+        const ctx = document.createElement("canvas").getContext("2d", { willReadFrequently: true })!;
+        const paint = (...layers: string[]) => {
+          ctx.clearRect(0, 0, 1, 1);
+          for (const l of layers) { ctx.fillStyle = "#000"; ctx.fillStyle = l; ctx.fillRect(0, 0, 1, 1); }
+          return [...ctx.getImageData(0, 0, 1, 1).data.slice(0, 3)].map((v) => v / 255);
+        };
+        const lum = (c: number[]) => { const [r, g, b] = c.map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!; };
+        const ratio = (a: number[], b: number[]) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi! + 0.05) / (lo! + 0.05); };
+        const v = (n: string) => cs.getPropertyValue(n).trim();
+        const surfaces = { card: paint(v("--color-surface"), v("--fb-canvas-bg")), raised: paint(v("--color-surface"), v("--color-surface-raised")) };
+        const out: string[] = [];
+        for (const name of ["blue", "orange", "teal", "yellow", "pink", "green", "violet", "red", "gray"]) {
+          const c = paint(v(`--chart-${name}`));
+          for (const [where, s] of Object.entries(surfaces)) if (ratio(c, s) < 3) out.push(`${name} ${v(`--chart-${name}`)} on ${where}: ${ratio(c, s).toFixed(2)}`);
+        }
+        return out;
+      });
+      expect(low, `series under 3:1 in ${scheme}`).toEqual([]);
     }
     await page.emulateMedia({ colorScheme: "light" });
     await page.evaluate(() => (document.documentElement.dataset.theme = "light"));

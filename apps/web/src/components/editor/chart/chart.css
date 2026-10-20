@@ -2,12 +2,15 @@
  * pages; the card and its chrome are canvas/canvas.css.
  *
  * The series colours (palette.ts holds the same values for exports): chosen per theme for the chart's own
- * surface and checked as a set (lightness band, chroma floor, colour-blind separation, contrast). `--chart-on-*`
- * is text drawn on a filled mark. Text everywhere else uses the app's inks, never a series colour. */
-.fb-chart, .fb-chart-root {
-  --chart-blue: #2a78d6; --chart-orange: #eb6834; --chart-teal: #1baf7a; --chart-yellow: #eda100; --chart-pink: #e87ba4;
+ * surface and checked as a set (lightness band, chroma floor, colour-blind separation, at least 3:1 against
+ * the page, raised panels and the card's tint; test/chart-contrast.test.ts). `--chart-on-*`
+ * is text drawn on a filled mark. Text everywhere else uses the app's inks, never a series colour.
+ * A page colour is an explicit appearance (editor.css "Page style"): light sheets keep the light shades and the
+ * night sheet takes the dark ones, whatever the app theme. */
+.fb-chart, .fb-chart-root, .fb-sheet[data-sheet]:not([data-sheet="night"], [data-sheet="art"]) :is(.fb-chart, .fb-chart-root) {
+  --chart-blue: #2a78d6; --chart-orange: #c54500; --chart-teal: #1a9e84; --chart-yellow: #c18308; --chart-pink: #d07295;
   --chart-green: #008300; --chart-violet: #6250d6; --chart-red: #e34948; --chart-gray: #8b8b93;
-  --chart-on-blue: #ffffff; --chart-on-orange: #18181b; --chart-on-teal: #18181b; --chart-on-yellow: #18181b; --chart-on-pink: #18181b;
+  --chart-on-blue: #ffffff; --chart-on-orange: #ffffff; --chart-on-teal: #18181b; --chart-on-yellow: #18181b; --chart-on-pink: #18181b;
   --chart-on-green: #ffffff; --chart-on-violet: #ffffff; --chart-on-red: #18181b; --chart-on-gray: #18181b;
   --chart-grid: color-mix(in oklab, var(--color-ink) 8%, transparent);
   --chart-axis: color-mix(in oklab, var(--color-ink) 24%, transparent);
@@ -18,14 +21,14 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) :is(.fb-chart, .fb-chart-root) {
     --chart-blue: #3987e5; --chart-orange: #d95926; --chart-teal: #199e70; --chart-yellow: #c98500; --chart-pink: #d55181;
-    --chart-green: #008300; --chart-violet: #9085e9; --chart-red: #e66767; --chart-gray: #77777f;
+    --chart-green: #0a8a0a; --chart-violet: #9085e9; --chart-red: #e66767; --chart-gray: #77777f;
     --chart-on-blue: #18181b; --chart-on-orange: #18181b; --chart-on-teal: #18181b; --chart-on-yellow: #18181b; --chart-on-pink: #18181b;
     --chart-on-green: #ffffff; --chart-on-violet: #18181b; --chart-on-red: #18181b; --chart-on-gray: #ffffff;
   }
 }
-:root[data-theme="dark"] :is(.fb-chart, .fb-chart-root) {
+:root[data-theme="dark"] :is(.fb-chart, .fb-chart-root), .fb-sheet[data-sheet="night"] :is(.fb-chart, .fb-chart-root) {
   --chart-blue: #3987e5; --chart-orange: #d95926; --chart-teal: #199e70; --chart-yellow: #c98500; --chart-pink: #d55181;
-  --chart-green: #008300; --chart-violet: #9085e9; --chart-red: #e66767; --chart-gray: #77777f;
+  --chart-green: #0a8a0a; --chart-violet: #9085e9; --chart-red: #e66767; --chart-gray: #77777f;
   --chart-on-blue: #18181b; --chart-on-orange: #18181b; --chart-on-teal: #18181b; --chart-on-yellow: #18181b; --chart-on-pink: #18181b;
   --chart-on-green: #ffffff; --chart-on-violet: #18181b; --chart-on-red: #18181b; --chart-on-gray: #ffffff;
 }

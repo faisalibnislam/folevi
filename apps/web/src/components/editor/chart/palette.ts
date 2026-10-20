@@ -1,8 +1,10 @@
 // The chart's colours. Series take them in this order (never cycled: a ninth series is grey), each with a
 // light and a dark shade chosen for the chart's own surface in that theme and checked as a set (lightness
-// band, chroma floor, colour-blind separation of neighbours, contrast; the dataviz validator). Light yellow,
-// teal and pink sit under 3:1 on white, so every chart also has its data as a table. Text never wears a
-// series colour; labels inside a filled shape use `on`, ink or white by the fill.
+// band, chroma floor, colour-blind separation of neighbours, contrast; the dataviz validator). Every shade
+// reaches 3:1 against the surfaces it's drawn on in its theme (the page, raised panels and the card's own
+// tint; test/chart-contrast.test.ts), so the light yellow is a gold and the light orange a burnt orange that
+// stays apart from it. Every chart also has its data as a table. Text never wears a series colour; labels
+// inside a filled shape use `on`, ink or white by the fill.
 //
 // chart.css holds the same values as CSS variables (--chart-blue…, --chart-on-blue…) so the drawing follows
 // the app's theme; exports (svg.ts) use the light shades.
@@ -10,11 +12,11 @@ import { CHART_COLORS, type ChartColor } from "@folevi/editor-schema";
 
 export const PALETTE: Record<ChartColor, { light: string; dark: string; onLight: string; onDark: string }> = {
   blue: { light: "#2a78d6", dark: "#3987e5", onLight: "#ffffff", onDark: "#18181b" },
-  orange: { light: "#eb6834", dark: "#d95926", onLight: "#18181b", onDark: "#18181b" },
-  teal: { light: "#1baf7a", dark: "#199e70", onLight: "#18181b", onDark: "#18181b" },
-  yellow: { light: "#eda100", dark: "#c98500", onLight: "#18181b", onDark: "#18181b" },
-  pink: { light: "#e87ba4", dark: "#d55181", onLight: "#18181b", onDark: "#18181b" },
-  green: { light: "#008300", dark: "#008300", onLight: "#ffffff", onDark: "#ffffff" },
+  orange: { light: "#c54500", dark: "#d95926", onLight: "#ffffff", onDark: "#18181b" },
+  teal: { light: "#1a9e84", dark: "#199e70", onLight: "#18181b", onDark: "#18181b" },
+  yellow: { light: "#c18308", dark: "#c98500", onLight: "#18181b", onDark: "#18181b" },
+  pink: { light: "#d07295", dark: "#d55181", onLight: "#18181b", onDark: "#18181b" },
+  green: { light: "#008300", dark: "#0a8a0a", onLight: "#ffffff", onDark: "#ffffff" },
   violet: { light: "#6250d6", dark: "#9085e9", onLight: "#ffffff", onDark: "#18181b" },
   red: { light: "#e34948", dark: "#e66767", onLight: "#18181b", onDark: "#18181b" },
   gray: { light: "#8b8b93", dark: "#77777f", onLight: "#18181b", onDark: "#ffffff" },

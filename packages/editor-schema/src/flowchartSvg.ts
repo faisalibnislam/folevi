@@ -142,12 +142,23 @@ function spanAttrs(marks: readonly Mark[] | undefined, theme: FlowTheme): string
   return a;
 }
 
+/** Relative luminance (0 dark … 1 light) of a #rrggbb colour. */
+function luminance(hex: string): number {
+  const c = [1, 3, 5].map((i) => {
+    const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
+}
+
 function nodeSvg(n: FlowNode, theme: FlowTheme, uid: string, imageUrl?: (fileId: string) => string | null): string {
   const p = PALETTES[theme];
   const parts: string[] = [];
   // A neutral sticky note is yellow, like paper ones.
-  const [fill0, stroke0, ink] = p.nodes[n.shape === "note" && n.color === "neutral" ? "yellow" : n.color];
+  const [fill0, stroke0, ink0] = p.nodes[n.shape === "note" && n.color === "neutral" ? "yellow" : n.color];
   const fill = n.fill && (n.fill === "none" || HEX.test(n.fill)) ? n.fill : fill0;
+  // A custom fill picks the text colour that reads on it.
+  const ink = fill !== fill0 && HEX.test(fill) ? (luminance(fill) > 0.18 ? "#18181b" : "#f4f4f6") : ink0;
   const stroke = n.stroke && (n.stroke === "none" || HEX.test(n.stroke)) ? n.stroke : n.shape === "note" ? (theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)") : stroke0;
   const sw = n.strokeWidth ?? (n.shape === "note" ? 1 : 1.5);
   const dash = `${dashFor(n.strokeStyle, Math.max(1, sw))} stroke-linecap="round"`;

@@ -860,9 +860,15 @@ export function parseFlowchart(data: string | null | undefined): FlowchartData {
   return fc;
 }
 
-const pt = (p: Pt) => [Math.round(p.x), Math.round(p.y)];
+const MAXC = FLOWCHART_LIMITS.maxCoord;
+const pt = (p: Pt) => [Math.round(clamp(p.x, -MAXC, MAXC)), Math.round(clamp(p.y, -MAXC, MAXC))];
+const unitAt = (t: number) => Math.round(clamp(t, 0, 1) * 1000) / 1000;
 
-/** Compact v2 wire JSON (defaults omitted). Empty charts serialise to "". */
+/**
+ * Compact v2 wire JSON (defaults omitted). Empty charts serialise to "". Numbers are kept in their ranges
+ * and formatting that no longer matches its text is left out, so whatever an editor holds is written in a
+ * form the server accepts.
+ */
 export function serializeFlowchart(fc: FlowchartData): string {
   const frames = fc.frames ?? [];
   const pools = fc.pools ?? [];
@@ -873,13 +879,14 @@ export function serializeFlowchart(fc: FlowchartData): string {
       const o: Record<string, unknown> = { id: n.id, shape: n.shape, x: Math.round(n.x), y: Math.round(n.y), w: Math.round(n.w), h: Math.round(n.h) };
       if (n.text) o.text = n.text;
       if (n.color !== "neutral") o.color = n.color;
-      if (n.rich) o.rich = n.rich;
+      // Text edited without its formatting: the plain text wins.
+      if (n.rich && richPlainText(n.rich) === n.text) o.rich = n.rich;
       if (n.align && n.align !== "center") o.align = n.align;
       if (n.valign) o.valign = n.valign;
       if (n.autoHeight) o.autoHeight = true;
       if (n.fill) o.fill = n.fill;
       if (n.stroke) o.stroke = n.stroke;
-      if (n.strokeWidth !== undefined) o.strokeWidth = n.strokeWidth;
+      if (n.strokeWidth !== undefined) o.strokeWidth = clamp(n.strokeWidth, 0, FLOWCHART_LIMITS.maxStrokeWidth);
       if (n.strokeStyle && n.strokeStyle !== "solid") o.strokeStyle = n.strokeStyle;
       if (n.image) o.image = n.image.fit && n.image.fit !== "cover" ? { fileId: n.image.fileId, fit: n.image.fit } : { fileId: n.image.fileId };
       if (n.note) o.note = n.note;
@@ -897,17 +904,18 @@ export function serializeFlowchart(fc: FlowchartData): string {
       if (e.to) o.to = e.to;
       else if (e.toPoint) o.toPoint = pt(e.toPoint);
       if (e.from && e.fromSide) o.fromSide = e.fromSide;
-      if (e.from && e.fromSide && e.fromAt !== undefined) o.fromAt = e.fromAt;
+      if (e.from && e.fromSide && e.fromAt !== undefined) o.fromAt = unitAt(e.fromAt);
       if (e.to && e.toSide) o.toSide = e.toSide;
-      if (e.to && e.toSide && e.toAt !== undefined) o.toAt = e.toAt;
+      if (e.to && e.toSide && e.toAt !== undefined) o.toAt = unitAt(e.toAt);
       if (e.route !== "elbow") o.route = e.route;
-      if (e.bends.length) o.bends = e.bends.map(pt);
+      if (e.bends.length) o.bends = e.bends.slice(0, FLOWCHART_LIMITS.maxBends).map(pt);
       if (e.start !== "none") o.start = e.start;
       if (e.end !== "arrow") o.end = e.end;
       if (e.style !== "solid") o.style = e.style;
-      if (e.width !== FLOWCHART_EDGE_WIDTH) o.width = e.width;
+      if (e.width !== FLOWCHART_EDGE_WIDTH) o.width = clamp(e.width, FLOWCHART_LIMITS.minEdgeWidth, FLOWCHART_LIMITS.maxEdgeWidth);
       if (e.color) o.color = e.color;
-      if (e.labels.length) o.labels = e.labels.map((l) => (l.at === 0.5 ? { text: l.text } : { text: l.text, at: l.at }));
+      const labels = e.labels.filter((l) => l.text).slice(0, FLOWCHART_LIMITS.maxLabels);
+      if (labels.length) o.labels = labels.map((l) => (unitAt(l.at) === 0.5 ? { text: l.text } : { text: l.text, at: unitAt(l.at) }));
       return o;
     });
   if (frames.length)
@@ -1381,9 +1389,17 @@ export function nodeTextLayout(n: ContentNode): { x: number; y: number; lines: s
   const lines = rich.map((l) => `${l.marker ? `${l.marker} ` : ""}${l.spans.map((s) => s.text).join("")}`);
   const box = nodeContentBoxes(n).text;
   const block = rich.length * FLOWCHART_LINE_HEIGHT;
-  const valign = n.valign ?? (n.shape === "note" || n.shape === "annotation" ? "top" : "middle");
   const mid = box.y + box.h / 2;
-  const cy = valign === "top" ? Math.min(mid, box.y + 4 + block / 2) : valign === "bottom" ? Math.max(mid, box.y + box.h - 4 - block / 2) : mid;
+  // Sticky notes and annotations read from the top while they have room (as in v1); text set to the top
+  // or bottom keeps to that edge even when it overflows.
+  const cy =
+    n.valign === "top"
+      ? box.y + 4 + block / 2
+      : n.valign === "bottom"
+        ? box.y + box.h - 4 - block / 2
+        : !n.valign && (n.shape === "note" || n.shape === "annotation")
+          ? Math.min(mid, box.y + 4 + block / 2)
+          : mid;
   // First baseline: centre the block, then drop by ~0.72em (cap height) within the first line.
   const y = cy - block / 2 + FLOWCHART_LINE_HEIGHT / 2 + FLOWCHART_FONT_SIZE * 0.36;
   const align = n.align ?? "center";

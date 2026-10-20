@@ -88,7 +88,7 @@ describe("AI assistant", () => {
     const t = setup();
     const a = await person(t, "ai-flowchart@example.com");
     process.env.GEMINI_API_KEY = "test-key";
-    const reply = { direction: "TD", nodes: [{ id: "s", shape: "terminator", text: "Start" }, { id: "x", shape: "hexagon", text: "Do <b>it</b>", color: "#f00" }], edges: [{ from: "s", to: "x" }, { from: "x", to: "ghost" }] };
+    const reply = { direction: "TD", nodes: [{ id: "s", shape: "terminator", text: "Start" }, { id: "x", shape: "rocket", text: "Do <b>it</b>", color: "#f00" }], edges: [{ from: "s", to: "x" }, { from: "x", to: "ghost" }] };
     const prompts: string[] = [];
     const fetchMock = vi.fn(async (_url: string, init: { body: string }) => {
       prompts.push(init.body);

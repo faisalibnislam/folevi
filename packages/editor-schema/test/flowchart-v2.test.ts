@@ -473,6 +473,20 @@ describe("the forgiving reader", () => {
     expect(flowchartDataIssue(s)).toBeNull();
   });
 
+  it("always writes what the server accepts, whatever an editor holds", () => {
+    const fc = richChart();
+    const a = fc.nodes[0]!;
+    // The plain text was edited without the formatting (an older editor): the text wins.
+    fc.nodes[0] = { ...a, text: "Typed over" };
+    fc.edges[0] = { ...fc.edges[0]!, fromAt: 1.7, width: 99, labels: [{ text: "x", at: -3 }, { text: "", at: 0.5 }], bends: [{ x: 1e9, y: 0 }] };
+    const s = serializeFlowchart(fc);
+    expect(flowchartDataIssue(s)).toBeNull();
+    const back = parseFlowchart(s);
+    expect(back.nodes[0]!.text).toBe("Typed over");
+    expect(back.nodes[0]!.rich).toBeUndefined();
+    expect(back.edges[0]).toMatchObject({ fromAt: 1, width: FLOWCHART_LIMITS.maxEdgeWidth, labels: [{ text: "x", at: 0 }], bends: [{ x: FLOWCHART_LIMITS.maxCoord, y: 0 }] });
+  });
+
   it("helpers keep the v1 shorthands working", () => {
     const e = newEdge("a", "b");
     expect(edgeArrow(e)).toBe("end");

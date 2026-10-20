@@ -54,7 +54,7 @@ contextBridge.exposeInMainWorld("foleviDesktop", bridge);
 // ---------------------------------------------------------------- foleviShell (the bundled interface only)
 
 type ShellMode = "unset" | "local" | "account";
-type Bootstrap = { shell: false } | { shell: true; mode: ShellMode; version: string };
+type Bootstrap = { shell: false } | { shell: true; mode: ShellMode; version: string; deviceName?: string };
 
 /**
  * A part of the bridge that later work fills in (the library layer, the Keychain, sign-in, Foli AI on this
@@ -86,6 +86,8 @@ if (boot.shell) {
   const shellBridge = {
     platform: "mac" as const,
     shellVersion: boot.version,
+    /** This Mac's name, for the library's device list. */
+    deviceName: boot.deviceName ?? "Mac",
     initialMode: boot.mode,
     /** Saves the choice; the app then reloads its windows in that mode (its policy and network rules change). */
     setMode: async (mode: "local" | "account") => {

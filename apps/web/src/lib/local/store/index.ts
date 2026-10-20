@@ -32,7 +32,7 @@ export async function openShellLibraryStore(deviceId: string, opts: Partial<Omit
   const host = shellLibraryHost();
   if (!host) throw new Error("There's no app shell to keep a library in.");
   const platform = shell()?.platform ?? "mac";
-  return await LibraryStore.open({ host, deviceId, device: { platform, appVersion: shell()?.shellVersion ?? "", ...opts.device }, ...opts });
+  return await LibraryStore.open({ host, deviceId, device: { platform, appVersion: shell()?.shellVersion ?? "", ...(shell()?.deviceName ? { name: shell()!.deviceName } : {}), ...opts.device }, ...opts });
 }
 
 export { libraryDeviceId as deviceIdForLibrary };

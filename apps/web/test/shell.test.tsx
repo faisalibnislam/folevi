@@ -11,8 +11,9 @@ vi.mock("@/components/app/ProductApp", () => ({
   ProductApp: ({ backend }: { backend?: string }) => <div data-testid="product">{backend ?? "default"}</div>,
 }));
 
-type TestWindow = Window & { __foleviTestShell?: Partial<FoleviShell> };
-const w = () => window as TestWindow;
+// Partial fakes: the e2e fixture declares these globals as full shells, so this test types them loosely.
+type TestWindow = Omit<Window, "__foleviTestShell" | "foleviShell"> & { __foleviTestShell?: Partial<FoleviShell>; foleviShell?: Partial<FoleviShell> };
+const w = () => window as unknown as TestWindow;
 
 afterEach(() => {
   delete w().__foleviTestShell;

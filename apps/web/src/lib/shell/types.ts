@@ -225,6 +225,8 @@ export interface FoleviShell {
   platform: ShellPlatform;
   /** The app's version, for minShellVersion checks. */
   shellVersion: string;
+  /** The device's own name (the Mac's name in System Settings), for the library's device list. */
+  deviceName?: string;
   initialMode: ShellMode;
   setMode(m: Backend): Promise<void>;
   library: ShellLibrary;

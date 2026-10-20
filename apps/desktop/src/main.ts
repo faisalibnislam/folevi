@@ -32,6 +32,7 @@ import {
 } from "electron";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import {
   appUrl,
@@ -68,6 +69,21 @@ import { AppLock, electronCover } from "./lock";
 import { AiService, allowedAiUrl, HelperClient, registerAiIpc } from "./ai";
 
 const PARTITION = "persist:folevi";
+
+/** This Mac's name as the person set it in System Settings (for the library's device list), read once. */
+let computerNameCache: string | null = null;
+function computerName(): string {
+  if (computerNameCache !== null) return computerNameCache;
+  let name = "";
+  try {
+    name = execFileSync("/usr/sbin/scutil", ["--get", "ComputerName"], { encoding: "utf8", timeout: 2000 }).trim();
+  } catch {
+    /* fall back to the host name */
+  }
+  if (!name) name = hostname().replace(/\.local$/i, "");
+  computerNameCache = name.slice(0, 80) || "Mac";
+  return computerNameCache;
+}
 const settingsFile = () => join(app.getPath("userData"), "settings.json");
 const windowFile = () => join(app.getPath("userData"), "window.json");
 const asset = (name: string) => join(__dirname, "..", "assets", name);
@@ -828,7 +844,7 @@ function listen() {
   // interface's own pages.
   ipcMain.on("shell:bootstrap", (e, href: unknown) => {
     const url = e.senderFrame?.url || (typeof href === "string" ? href : "");
-    e.returnValue = bundled && isAppUrl(url) ? { shell: true, mode: settings.mode, version: app.getVersion() } : { shell: false };
+    e.returnValue = bundled && isAppUrl(url) ? { shell: true, mode: settings.mode, version: app.getVersion(), deviceName: computerName() } : { shell: false };
   });
   // foleviShell.auth: signing in, the page's /api/auth requests and Convex tokens (authBridge.ts).
   registerAuthIpc(

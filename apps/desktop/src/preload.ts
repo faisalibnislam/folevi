@@ -269,7 +269,10 @@ if (boot.shell) {
         await ipcRenderer.invoke("shell:notify-cancel", id);
       },
     },
-    files: { save: notYet("files.save", "saving files, a later package") },
+    files: {
+      /** Saves a file the page made where the person picks in a save dialog (saveFile.ts); false when cancelled. */
+      save: (name: string, bytes: Uint8Array) => ipcRenderer.invoke("shell:files-save", name, bytes) as Promise<boolean>,
+    },
     http: {
       preview: notYet("http.preview", "bookmark previews, a later package"),
       /** A subscribed calendar, fetched by the app from the calendar's own site (calendarFetch.ts). */

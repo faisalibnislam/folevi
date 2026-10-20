@@ -57,14 +57,15 @@ import { readShellBuild, shellBuildProblems, type ShellBuild } from "./shellBuil
 import { restoreWindow, saveWindow } from "./windowState";
 import { Reminders, type Reminder } from "./reminders";
 import { downloadCalendar } from "./calendarFetch";
+import { saveFromPage } from "./saveFile";
 import { imageBytes, oneAtATime, runHelper } from "./textRecognition";
+import { startCloud } from "./library/cloud/electron";
 import { createAuthBridge, isAuthCallback, registerAuthIpc, type AuthBridge } from "./authBridge";
 import { registerLibraryIpc, type IpcMainLike } from "./library/ipc";
 import { LibraryService, type CloudSource } from "./library/service";
 import { createSecretStore } from "./secrets";
 import { AppLock, electronCover } from "./lock";
 import { AiService, allowedAiUrl, HelperClient, registerAiIpc } from "./ai";
-import { startCloud } from "./library/cloud/electron";
 
 const PARTITION = "persist:folevi";
 const settingsFile = () => join(app.getPath("userData"), "settings.json");
@@ -88,12 +89,12 @@ let pendingLink: string | null = null;
 let pendingSignIn: ((url: string | null) => void) | null = null;
 /** The built-in interface's account sign-in (authBridge.ts): only with the bundled interface. */
 let authBridge: AuthBridge | null = null;
-/** The Touch ID lock (lock.ts): only with the bundled interface. */
-let appLock: AppLock | null = null;
-let lockCover: ReturnType<typeof electronCover> | null = null;
 /** Foli AI in local mode (ai.ts): Apple's model through folevi-ai, or the person's own keys. Bundled interface only. */
 let ai: AiService | null = null;
 let aiHelper: HelperClient | null = null;
+/** The Touch ID lock (lock.ts): only with the bundled interface. */
+let appLock: AppLock | null = null;
+let lockCover: ReturnType<typeof electronCover> | null = null;
 
 // Folevi puts its window back itself (windowState.ts). macOS's own window restoration adds nothing but a
 // "reopen its windows?" alert after a forced quit (an update replacing the app, a hang), and that alert
@@ -880,6 +881,18 @@ function listen() {
   ipcMain.handle("shell:notify-cancel", (e, id: unknown) => {
     if (localShell(e)) reminders?.cancel(id);
     return null;
+  });
+  // A file the page made (local mode's export ZIP), saved where the person picks (saveFile.ts).
+  ipcMain.handle("shell:files-save", async (e, name: unknown, bytes: unknown) => {
+    if (!bundled || !fromFolevi(e)) return false;
+    const parent = BrowserWindow.fromWebContents(e.sender);
+    return await saveFromPage(name, bytes, {
+      folder: app.getPath("downloads"),
+      choose: async (o) => {
+        const r = parent ? await dialog.showSaveDialog(parent, o) : await dialog.showSaveDialog(o);
+        return r.canceled || !r.filePath ? null : r.filePath;
+      },
+    });
   });
   ipcMain.handle("shell:http-calendar", async (e, url: unknown, previous: unknown) =>
     localShell(e) ? await downloadCalendar(url, previous, { serviceHost: SERVICE_URL.hostname }) : { kind: "error", message: "Couldn't load this calendar: the address couldn't be reached." },

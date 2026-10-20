@@ -364,7 +364,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
    ordinary text caret: an upright bar the height of a line, in the caret's colour, not a flat dash. */
 .fb-editor .ProseMirror-gapcursor::after {
   top: 0.35em; width: 0; height: 1.25em; border-top: 0;
-  border-left: 1.5px solid var(--color-ember); border-radius: 1px;
+  border-left: 1.5px solid var(--color-ember);
 }
 
 /* Page backgrounds */

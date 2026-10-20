@@ -20,8 +20,7 @@ export const MAX_PDF_BYTES = 40 * 1024 * 1024;
 export const MAX_PAGE_STARTS = MAX_PDF_PAGES;
 
 // Control characters (but not tab or line breaks) and the replacement character.
-// eslint-disable-next-line no-control-regex
-const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F�]/g;
+const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\uFFFD]/g;
 
 /**
  * Found text, tidied: control characters dropped, runs of spaces and blank lines collapsed, each line
@@ -32,7 +31,7 @@ export function cleanFileText(text: string, max = MAX_FILE_TEXT): string {
     .replace(/\r\n?/g, "\n")
     .replace(CONTROL, "")
     .split("\n")
-    .map((l) => l.replace(/[ \t ]+/g, " ").trim());
+    .map((l) => l.replace(/[ \t\u00a0]+/g, " ").trim());
   const out: string[] = [];
   for (const l of lines) {
     if (!l && (!out.length || !out[out.length - 1])) continue;

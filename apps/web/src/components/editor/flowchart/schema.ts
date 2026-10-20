@@ -81,9 +81,6 @@ export {
   searchFlowShapes,
   shapeDetailPath,
   smartGuides,
-} from "@folevi/editor-schema";
-
-export type {
   // Connectors (ends, bends, labels, styling, routing).
   FLOWCHART_EDGE_WIDTH,
   FLOWCHART_HEADS,
@@ -96,6 +93,9 @@ export type {
   pathLength,
   pointAlong,
   sidePosition,
+} from "@folevi/editor-schema";
+
+export type {
   FlowIconName,
   FlowIconPlace,
   FlowImageFit,
@@ -120,15 +120,15 @@ export type {
   RoutedEdge,
   FlowAlign,
   SmartGuide,
-} from "@folevi/editor-schema";
-
-// Present and follow a path.
-export type { FlowGraph, FlowPath, FlowStep } from "@folevi/editor-schema";
   FlowEdgeLabel,
   FlowHead,
   FlowLineStyle,
   FlowRoute,
   LabelBox,
+} from "@folevi/editor-schema";
+
+// Present and follow a path.
+export type { FlowGraph, FlowPath, FlowStep } from "@folevi/editor-schema";
 
 // Frames and swimlanes: their boxes, and the edits that keep shapes in the right one (flowchartContainers.ts).
 export {

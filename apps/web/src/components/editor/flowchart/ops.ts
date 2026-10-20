@@ -96,9 +96,9 @@ export function moveNodes(fc: FlowchartData, origin: ReadonlyMap<string, { x: nu
       const o = origin.get(n.id);
       return o ? { ...n, x: Math.max(-L, Math.min(L, Math.round(o.x + dx))), y: Math.max(-L, Math.min(L, Math.round(o.y + dy))) } : n;
     }),
+    edges: carryEdges(fc, new Set(origin.keys()), Math.round(dx), Math.round(dy)),
   };
 }
-    edges: carryEdges(fc, new Set(origin.keys()), Math.round(dx), Math.round(dy)),
 
 export function setColor(fc: FlowchartData, ids: readonly string[], color: FlowColor): FlowchartData {
   return updateNodes(fc, ids, (n) => ({ ...n, color }));

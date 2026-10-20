@@ -72,11 +72,11 @@ import { useInteractions } from "./controller/useInteractions";
 import { usePan } from "./interactions/pan";
 import { useHover } from "./interactions/hover";
 import { useConnect } from "./interactions/connect";
+import { useBends } from "./interactions/bends";
+import { useEdgeLabels } from "./interactions/edgeLabels";
 import { useResize } from "./interactions/resize";
 import { useMove } from "./interactions/move";
 import { useSelect } from "./interactions/select";
-import { useBends } from "./interactions/bends";
-import { useEdgeLabels } from "./interactions/edgeLabels";
 import { useTextEditing } from "./interactions/textEditing";
 import { doubleClickInteraction } from "./interactions/doubleClick";
 import { useContextMenu } from "./interactions/contextMenu";
@@ -150,13 +150,15 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   };
 
   const actions = useFlowActions(ctrl);
-  const walk = useWalkthrough(ctrl);
   // What shapes hold: the shape library, icons, colours, images, notes, page links (interactions/content.tsx).
   const content = useShapeContent(ctrl, { actions });
   const text = useTextEditing(ctrl, { onImage: content.onImageWhileWriting });
+  const walk = useWalkthrough(ctrl);
   const pan = usePan(ctrl);
   const hover = useHover(ctrl);
   const connect = useConnect(ctrl, { hover: hover.hover });
+  const bends = useBends(ctrl, { hidden: connect.drawing });
+  const labels = useEdgeLabels(ctrl);
   const resize = useResize(ctrl);
   const move = useMove(ctrl);
   const select = useSelect(ctrl);
@@ -172,6 +174,8 @@ function FlowchartEditor(props: ReactNodeViewProps) {
     tidy.interaction, // Tidy up's move: shapes can't be grabbed while they glide
     quick.interaction, // the + arrows around a shape, and the shape picker
     connect.interaction, // side handles and connector ends
+    labels.interaction, // connector labels: drag along the line, double-click to write, typing
+    bends.interaction, // connector lines and bend points: drag to bend, double-click a point to remove it
     resize.interaction,
     boxes.interaction, // frames and swimlanes: titles, borders, their handles and keys
     content.interaction, // the note and page-link badges on shapes
@@ -205,11 +209,9 @@ function FlowchartEditor(props: ReactNodeViewProps) {
           data-native-menu=""
           data-panning={pan.panning || undefined}
           data-space={pan.spaceDown || undefined}
-  const bends = useBends(ctrl, { hidden: connect.drawing });
-  const labels = useEdgeLabels(ctrl);
           {...events.canvas}
-          {...walk.canvasProps}
           {...content.canvasProps}
+          {...walk.canvasProps}
         >
           <p id={`${uid}-help`} className="sr-only">
             Tab moves to the shapes; on a selected shape, Tab adds the next step and Shift Tab a branch beside it. Arrow keys move between shapes, Option with arrow keys moves the shape. Enter or typing edits the selected shape, Delete removes it, Command D duplicates. Command Z undoes. Escape steps back to the note.
@@ -225,9 +227,8 @@ function FlowchartEditor(props: ReactNodeViewProps) {
                 {move.overlay}
                 {connect.previewOverlay}
                 {resize.overlay}
+                {bends.overlay}
                 {connect.handlesOverlay}
-    labels.interaction, // connector labels: drag along the line, double-click to write, typing
-    bends.interaction, // connector lines and bend points: drag to bend, double-click a point to remove it
                 {quick.overlay}
                 {select.overlay}
                 {content.overlay}
@@ -237,9 +238,9 @@ function FlowchartEditor(props: ReactNodeViewProps) {
             </g>
           </svg>
           {text.input}
-          {walk.element}
           {content.panel}
           {content.status}
+          {walk.element}
           {boxes.element}
           {quick.element}
           {preview.element}
@@ -314,4 +315,3 @@ function FlowchartEditor(props: ReactNodeViewProps) {
     </NodeViewWrapper>
   );
 }
-                {bends.overlay}

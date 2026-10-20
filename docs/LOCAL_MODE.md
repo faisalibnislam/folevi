@@ -344,3 +344,148 @@ the page can never set either. `FOLEVI_SHELL=0` forces it off.
   bundled app can't open it (a website ahead of an older app build). Adding a task from Quick Add while offline
   waits for the network, as on the website (`tasks.quickAdd` is a server call). `/_files` from the dev-server
   origin would need CORS.
+
+## WP9b: Sync with Dropbox and Sync with Google Drive on the Mac (2026-10-20)
+
+**Built:** `apps/desktop/src/library/cloud/`. The provider logic is platform neutral (fetch, WebCrypto and plain
+data), so the iPhone and iPad app can reuse it later; only `loopback.ts`, `nodeMirror.ts`, `tokenStore.ts` and
+`electron.ts` are Node or Electron. Everything runs in the Mac's main process: the page gets the connection's
+status and the library's files, never a token.
+
+- **`DropboxFs`** (`dropbox.ts`): the library is the root of Folevi's app folder (`Dropbox › Apps › Folevi`).
+  `files/list_folder` (recursive) once, then `list_folder/continue` with the stored cursor, and
+  `list_folder/longpoll` (sent without the access token, as Dropbox requires) to wait for changes. The etag is the
+  file's `rev`. `ifMatch: <rev>` uploads in `update` mode with `strict_conflict`, which Dropbox checks atomically,
+  so a concurrent change or a delete is a conflict and never an overwrite; `ifMatch: null` uploads in `add` mode;
+  no autorename. Files above 8 MiB go up in an upload session and resume at Dropbox's `correct_offset`. Removes
+  use `files/delete_v2` with `parent_rev`. A `reset` cursor lists everything again.
+- **`DriveFs`** (`drive.ts`): `drive.file` scope, a `Folevi` folder in My Drive marked with an app property, the
+  library tree as real folders, ids cached in the index. `changes.list` from a start page token taken before the
+  first full listing; the watch loop polls every 30 seconds (Drive has no long poll for installed apps). The etag is
+  `<fileId>.<headRevisionId>`. Multipart or media uploads below 5 MiB, resumable ones above (resuming from Drive's
+  `Range`). Deletes go to the Drive trash. A 403 `rateLimitExceeded` or `userRateLimitExceeded` is a rate limit.
+- **Both** (`cloudFs.ts`, `http.ts`): an index kept current from the change feed, so a sync only asks what
+  changed; 429 and 503 wait for `Retry-After`, other 5xx back off exponentially with jitter, a dropped connection
+  is retried, then reported as `CloudError` "offline". A copy of every file read or written is kept on the Mac
+  (`nodeMirror.ts`, under `Application Support/Folevi/Cloud libraries/<provider>`, the same layout as the cloud
+  folder), so unchanged files are never downloaded twice, attachments open offline, and signing out leaves a
+  library on the Mac. `CloudFs` is also a `LibraryFs` (`startDownload` copies files here), so the main process's
+  `EncryptedNodeFs` wraps it for an encrypted library exactly as it wraps a folder.
+- **Signing in** (`oauth.ts`, `loopback.ts`, `connection.ts`): OAuth 2 authorization code with PKCE (S256) in the
+  default browser, ending on a one-shot listener on `127.0.0.1` (RFC 8252 loopback redirect) that checks `state`.
+  Google allows any port for desktop clients and no longer supports custom URI schemes for them. Dropbox matches
+  redirect URIs exactly, port included, so the Mac uses one of three fixed ports (41753, 41754, 41755), all
+  registered. Access tokens are refreshed a minute before they expire, or once after a 401 (one refresh for many
+  requests). A refused refresh (`invalid_grant`: access revoked, or the grant expired) deletes the tokens and
+  shows "Reconnect Dropbox" or "Reconnect Google Drive"; connecting again keeps the library and its copy.
+- **Tokens** (`tokenStore.ts`): one file, `cloud-tokens.bin` in Application Support, encrypted with Electron's
+  `safeStorage` (a key in the login Keychain), written atomically with mode 0600. Without `safeStorage` Folevi
+  refuses to connect rather than store a token in plain text.
+- **Signing out:** the grant is revoked at the provider (best effort), the tokens are deleted, watching stops, and
+  the copy on the Mac stays where it is.
+- **One provider per library:** connecting Google Drive while the library syncs with Dropbox says "Sign out of
+  Dropbox first."
+- **Offline:** nothing is queued in the provider layer. The page journals every edit before acknowledging it
+  (`shell.library.journal`), a sync while offline fails with "offline" and writes nothing, listings and reads
+  answer from the copy on the Mac, and the first sync back online flushes the journalled edits by read-merge-write.
+- **The page's side:** `foleviShell.library.cloud` (preload.ts; types in `apps/web/src/lib/shell/types.ts`,
+  `ShellCloud`): `status()`, `connect(provider)`, `cancel()`, `signOut()`, `onStatus(cb)`. The main process
+  answers on `cloud:*` (`ipc.ts`) for the bundled interface's own pages only. `startCloud()` in `main.ts` restores
+  the last connection at launch.
+- **Client ids** come from the build, never the repository: `pnpm build` runs `scripts/cloud-config.mjs`, which
+  writes `dist/cloud-config.json` from `FOLEVI_DROPBOX_APP_KEY`, `FOLEVI_GOOGLE_DESKTOP_CLIENT_ID` and, optionally,
+  `FOLEVI_GOOGLE_DESKTOP_CLIENT_SECRET`. The same variables at run time override the file (development). A
+  provider without an id is left out of `status().available`, and the log says which variable is missing.
+
+### Google Drive's race window
+
+Drive has no compare-and-swap. A conditional write reads the file's head revision, compares it with `ifMatch`,
+and only then uploads. The window is the time from that check to the upload landing: one request plus the upload,
+well under a second for a note. If another device uploads inside it, the later upload replaces the earlier one.
+Three things cover that:
+
+1. After each conditional upload Folevi lists the file's revisions. A revision between the one it checked and its
+   own is another device's write that was replaced; it is offered back as a conflict version
+   (`conflictVersions`), which local-store merges and then resolves.
+2. Anti-entropy (LOCAL_MODE_PLAN.md §3.6): the device whose write was replaced still has the edit in its replica,
+   sees that the file's `seen` doesn't cover it, and writes it again on its next sync.
+3. Merges are idempotent and commutative, so an edit that arrives twice changes nothing.
+
+Creating the same new file on two devices at once is the same race. The later device notices the earlier file
+with a name query right after its create and trashes its own; if Drive's index hasn't caught up, the extra file is
+listed as a numbered copy (`<id>(1).fnote`), which local-store merges and removes like any provider's copy. Two
+`Folevi` folders made at the same moment both count as the library (every folder that resolves to the same path
+is that path), and new files go into the older one. Dropbox doesn't have this window: its `update` mode is atomic.
+
+### Tests
+
+All in `apps/desktop/test/cloud/`, against in-process fake Dropbox and Drive servers (`fakeDropbox.ts`,
+`fakeDrive.ts`) that model revs, cursors and page tokens (with paging and resets), strict write modes, revisions,
+same-name twins, lagging listings (eventual consistency; a read by path or id is current), 429 and 403 rate limits,
+5xx answers, dropped connections, cut-off chunks and downloads, short-lived access tokens and revocation.
+
+- `dropbox.test.ts`, `drive.test.ts`: a LocalFs contract (`contract.ts`) for both, plus each provider's own rules.
+- `shared-contract.test.ts`: local-store's `fixtures/fs-contract.json` (the one every file layer runs) on both,
+  plain and under `EncryptedFs`. One step is relaxed for Dropbox: rewriting identical bytes keeps the `rev`, as
+  Dropbox documents ("If the target path refers to a file with identical contents, nothing gets written").
+- `convergence.test.ts`: local-store's convergence and no-loss property runs (`packages/local-store/test/sim.ts`,
+  which now takes any cloud) with 2 to 4 devices on each fake provider, plain and encrypted, with faults and token
+  refreshes along the way; plus a Drive run where every device syncs at the same moment with requests interleaved
+  at random, which hits the race window above and recovers from it. Before committing, 300 seeds per provider (and
+  60 encrypted) were run without a failure.
+- `tokens.test.ts`: PKCE (RFC 7636's vector), refresh before expiry and after a 401, revocation and reconnecting,
+  offline during a refresh.
+- `offline.test.ts`: journalled edits while offline, a restart while offline, the flush when back online, the
+  journal truncated by what the file holds.
+- `connection.test.ts`: the whole sign-in through the real loopback listener, the encrypted token file, restoring
+  after a restart, "Reconnect", one provider per library, sign-out, the `cloud:*` IPC, the config, the copy on the Mac.
+
+### Not done yet
+
+- The library service (`src/library/service.ts`) knows the folder kinds only. Offering "Sync with Dropbox" and
+  "Sync with Google Drive" in `library.setup` means a library kind per provider whose files are
+  `CloudLibrary.fs()` (wrapped in `EncryptedNodeFs` when the manifest says so), `CloudLibrary.prepare()` for the
+  library file, and `CloudLibrary.watch()` for change batches. The first-run chooser and Settings also need the
+  two options, a "Connected as" line, "Reconnect" and "Sign out of Dropbox".
+- Nothing has run against the real Dropbox or Google APIs yet: that needs the owner's app and client below. The
+  fakes follow the documented behaviour, but the first real run should watch the log.
+- iPhone and iPad: paused. The platform-neutral files can run there unchanged; the token store, the redirect
+  (ASWebAuthenticationSession with a custom scheme for Dropbox, the iOS client's reversed client id for Google) and
+  the copy on the device need iOS versions.
+
+### Owner setup checklist
+
+**Dropbox** (dropbox.com/developers/apps):
+
+1. Create app: "Scoped access", then "App folder". Name it `Folevi` (the folder people see is `Apps/Folevi`).
+2. Permissions tab: tick `files.metadata.read`, `files.metadata.write`, `files.content.read`,
+   `files.content.write` (and keep `account_info.read`, for "Connected as"). Submit.
+3. Settings tab, OAuth 2:
+   - Redirect URIs: add exactly `http://127.0.0.1:41753/`, `http://127.0.0.1:41754/` and `http://127.0.0.1:41755/`.
+   - "Allow public clients (Implicit Grant & PKCE)": Allow.
+   - Leave the app secret unused; Folevi never needs it.
+4. Copy the App key into `FOLEVI_DROPBOX_APP_KEY` for builds.
+5. Branding tab: the icon and description people see when connecting.
+6. A new app is in development status. Once more than 50 people have connected, Dropbox gives two weeks to apply
+   for production status (Settings tab, "Apply for production").
+
+**Google Drive** (console.cloud.google.com, the existing Folevi project):
+
+1. APIs & Services, Library: enable the **Google Drive API**.
+2. Google Auth Platform, Branding: app name `Folevi`, support email, logo, home page `https://folevi.com`, the
+   privacy policy and terms links, and `folevi.com` as an authorized domain.
+3. Audience: External, and **publish the app (In production)**. While it is in Testing, only listed test users
+   can connect and their refresh tokens expire after 7 days, so everyone would see "Reconnect Google Drive" weekly.
+4. Data access: add the scope `https://www.googleapis.com/auth/drive.file` ("See, edit, create, and delete only the
+   specific Google Drive files you use with this app"). It is a non-sensitive scope, so no security assessment;
+   Google may still ask to verify the brand before it shows the name and logo.
+5. Clients: create an OAuth client of type **Desktop app**, named `Folevi for Mac`. Desktop clients take no
+   redirect URIs: any `http://127.0.0.1:<port>/` is accepted.
+6. Copy the client id into `FOLEVI_GOOGLE_DESKTOP_CLIENT_ID` for builds. Google also shows a client secret for
+   desktop clients; it isn't confidential in an installed app and PKCE protects the exchange. Set
+   `FOLEVI_GOOGLE_DESKTOP_CLIENT_SECRET` only if the first real sign-in fails with "client_secret is missing".
+7. Later, for iOS: a separate iOS client in the same project (its reversed client id is the redirect scheme).
+
+**Building:** `FOLEVI_DROPBOX_APP_KEY=… FOLEVI_GOOGLE_DESKTOP_CLIENT_ID=… pnpm release` (or `pnpm publish-mac`)
+in `apps/desktop`. The build prints `cloud-config.json: Dropbox yes, Google Drive yes`. A build without them hides
+both options and logs `"Sync with Dropbox" is hidden: this build has no Dropbox app key …`.

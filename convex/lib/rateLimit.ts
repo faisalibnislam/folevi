@@ -23,6 +23,8 @@ export const DEFAULT_RATE_RULES = {
   fileText: { limit: 600, windowMs: 60 * 60_000 },
   comment: { limit: 120, windowMs: 60_000 },
   export: { limit: 20, windowMs: 60 * 60_000 },
+  /** Versions brought along when a library moves into the account (documents.importSnapshot), per person. */
+  snapshotImport: { limit: 3000, windowMs: 60 * 60_000 },
   search: { limit: 600, windowMs: 60_000 },
   /** ⌘K search by meaning (each embeds the query), per person. */
   searchMeaning: { limit: 300, windowMs: 60 * 60_000 },

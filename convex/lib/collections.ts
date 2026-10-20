@@ -52,13 +52,15 @@ export async function createCollection(
     /** The hosting document's scope. */
     scope: Scope;
     documentId: Id<"documents">;
+    /** The client's id for it, when it chose one (collections.create). */
+    publicId?: string;
     name: string;
     seq: number;
     properties: { key?: string; name: string; type: PropertyType; options?: { id: string; name: string; color: string }[] }[];
   },
 ): Promise<{ collectionId: Id<"collections">; publicId: string; propertyIds: Map<string, Id<"collectionProperties">>; propertyPublicIds: Map<string, string> }> {
   const now = Date.now();
-  const publicId = ulid();
+  const publicId = input.publicId ?? ulid();
   const collectionId = await insertScoped(ctx, "collections", input.scope, {
     publicId,
     documentId: input.documentId,

@@ -165,6 +165,7 @@ import type * as lib_wireframeAi from "../lib/wireframeAi.js";
 import type * as maintenance from "../maintenance.js";
 import type * as mcp from "../mcp.js";
 import type * as mcpServer from "../mcpServer.js";
+import type * as migration from "../migration.js";
 import type * as migrations from "../migrations.js";
 import type * as mindmapAi from "../mindmapAi.js";
 import type * as notifications from "../notifications.js";
@@ -362,6 +363,7 @@ declare const fullApi: ApiFromModules<{
   maintenance: typeof maintenance;
   mcp: typeof mcp;
   mcpServer: typeof mcpServer;
+  migration: typeof migration;
   migrations: typeof migrations;
   mindmapAi: typeof mindmapAi;
   notifications: typeof notifications;

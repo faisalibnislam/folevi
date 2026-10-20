@@ -5,7 +5,7 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { rankBetween, ulid, type WireBlock } from "@folevi/editor-schema";
+import { isValidId, rankBetween, ulid, type WireBlock } from "@folevi/editor-schema";
 import {
   accessAtLeast,
   assertWritable,
@@ -33,7 +33,7 @@ import { SeqAllocator, nextSeq } from "./lib/seq";
 import { copyCollectionsInto } from "./lib/collections";
 import { FileCopies } from "./lib/fileCopies";
 import { inScope, insertScoped, scopeOfRow, vScope, vScopeArg, type Scope } from "./lib/scope";
-import { vDocumentKind } from "./lib/validators";
+import { vDocumentKind, vDocumentStyle, vWireBlock } from "./lib/validators";
 import { People } from "./lib/authors";
 import { queueIndex } from "./lib/ai/indexing";
 import { emitWebhook } from "./lib/webhooks";
@@ -1336,6 +1336,75 @@ export const createSnapshot = mutation({
   handler: async (ctx, args) => {
     const { profile, doc } = await writableDoc(ctx, args.documentId);
     return await snapshot(ctx, doc, profile._id, args.reason, versionName(args.name));
+  },
+});
+
+/** An imported version's content at most (its title, look and blocks as JSON), and how many a note keeps. */
+export const MAX_IMPORTED_SNAPSHOT_BYTES = 2_000_000;
+export const MAX_IMPORTED_SNAPSHOT_BLOCKS = 5000;
+export const MAX_IMPORTED_SNAPSHOTS_PER_NOTE = 200;
+
+/**
+ * A version brought along from somewhere else (a library moved from "Keep notes on my devices" into the
+ * account, docs/LOCAL_MODE_PLAN.md §6.1): kept as it was, with the time it was saved there, reason "import".
+ * Only the note's owner (a note of their own Personal), only so big, and rate limited. `id` is the client's
+ * (a ULID): sending the same version again returns the one it made, so a move that stopped can go on.
+ */
+export const importSnapshot = mutation({
+  args: {
+    documentId: v.string(),
+    id: v.string(),
+    title: v.string(),
+    icon: v.union(v.string(), v.null()),
+    style: v.optional(vDocumentStyle),
+    blocks: v.array(vWireBlock),
+    createdAt: v.number(),
+    name: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { profile, doc } = await writableDoc(ctx, args.documentId);
+    if (doc.ownerProfileId !== profile._id) fail("forbidden", "Only the note's owner can bring in its history.");
+    if (!isValidId(args.id)) fail("invalid_argument", "Invalid version id.");
+    const existing = await ctx.db
+      .query("documentSnapshots")
+      .withIndex("by_public_id", (q) => q.eq("publicId", args.id))
+      .unique();
+    if (existing) {
+      if (existing.documentId !== doc._id) fail("invalid_argument", "That version id is taken.");
+      return { id: existing.publicId, created: false };
+    }
+    if (args.blocks.length > MAX_IMPORTED_SNAPSHOT_BLOCKS) fail("limit_exceeded", "That version has too many blocks to bring in.");
+    const stored: VersionContent = { title: args.title.slice(0, 300), icon: args.icon, ...(args.style ? { style: args.style } : {}), blocks: args.blocks as WireBlock[] };
+    const content = JSON.stringify(stored);
+    if (content.length > MAX_IMPORTED_SNAPSHOT_BYTES) fail("limit_exceeded", "That version is too big to bring in.");
+    const imported = (
+      await ctx.db
+        .query("documentSnapshots")
+        .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+        .take(MAX_IMPORTED_SNAPSHOTS_PER_NOTE * 2)
+    ).filter((r) => r.reason === "import").length;
+    if (imported >= MAX_IMPORTED_SNAPSHOTS_PER_NOTE) fail("limit_exceeded", "This note already has as much imported history as it can keep.");
+    await consume(ctx, "snapshotImport", profile._id);
+    const chunks = content.match(new RegExp(`[\\s\\S]{1,${SNAPSHOT_CHUNK}}`, "gu")) ?? [""];
+    const now = Date.now();
+    const snapshotId = await insertScoped(ctx, "documentSnapshots", scopeOfRow(doc), {
+      documentId: doc._id,
+      publicId: args.id,
+      reason: "import",
+      title: stored.title,
+      chunkCount: chunks.length,
+      blockCount: args.blocks.length,
+      sizeBytes: content.length,
+      // Never the note's own: an imported version is never taken for "nothing changed since".
+      contentSeq: -1,
+      createdBy: profile._id,
+      // When it was saved where it came from (never in the future).
+      createdAt: Number.isFinite(args.createdAt) ? Math.max(0, Math.min(args.createdAt, now)) : now,
+      name: versionName(args.name),
+      editors: [profile._id],
+    });
+    for (const [index, data] of chunks.entries()) await ctx.db.insert("snapshotChunks", { snapshotId, index, data });
+    return { id: args.id, created: true };
   },
 });
 

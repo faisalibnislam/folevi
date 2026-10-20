@@ -175,15 +175,34 @@ export const get = query({
 /** Creates a collection hosted by a document. The client then inserts a `collection` block pointing at it. */
 export const create = mutation({
   // `view` picks the first view's layout (Insert → Table / Gallery / Kanban / Calendar); defaults to a table.
-  args: { documentId: v.string(), name: v.optional(v.string()), view: v.optional(vCollectionViewType) },
+  // `id` may be chosen by the client (a library moved into the account keeps its collections' ids); sending
+  // the same create again returns the collection it made and its first view.
+  args: { documentId: v.string(), name: v.optional(v.string()), view: v.optional(vCollectionViewType), id: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+    if (args.id !== undefined) {
+      if (!isValidId(args.id)) fail("invalid_argument", "Invalid collection id.");
+      const made = await ctx.db
+        .query("collections")
+        .withIndex("by_public_id", (q) => q.eq("publicId", args.id!))
+        .unique();
+      if (made) {
+        if (made.documentId !== doc._id) fail("invalid_argument", "That collection id is taken.");
+        const views = await ctx.db
+          .query("collectionViews")
+          .withIndex("by_collection", (q) => q.eq("collectionId", made._id))
+          .collect();
+        const first = views.sort((a, b) => (a.rank < b.rank ? -1 : 1))[0];
+        return { collectionId: made.publicId, viewId: first?.publicId ?? "" };
+      }
+    }
     const seq = await nextSeq(ctx, scopeOfRow(doc));
     const coll = await createCollection(ctx, {
       scope: scopeOfRow(doc),
       documentId: doc._id,
+      publicId: args.id,
       name: (args.name ?? "Collection").slice(0, 80),
       seq,
       properties: [

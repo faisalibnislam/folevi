@@ -32,7 +32,7 @@ test("a signed-in person without a platform role gets a plain 404 at /admin", as
   const { page, context } = await newPerson(browser, "Not An Admin");
   const response = await page.goto(`${APP}/admin`);
   expect(response?.status()).toBe(404);
-  await expect(page.getByText("This page could not be found.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /This page isn.t here/ })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Admin" })).toHaveCount(0);
   await expect(page.getByText(/audit log/i)).toHaveCount(0);
   // Deep links behave the same.

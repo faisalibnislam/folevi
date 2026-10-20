@@ -1,6 +1,7 @@
 import type { InlineNode } from "./generated/schema";
 import type { WireBlock } from "./types";
 import { flattenTree } from "./tree";
+import { liftTabs, tabName } from "./tabs";
 import { sanitizeHref } from "./richtext";
 import { whiteboardToSvg } from "./whiteboard";
 import { flowchartToSvg } from "./flowchartSvg";
@@ -118,7 +119,8 @@ export function blocksToHtml(
   blocks: readonly WireBlock[],
   opts: HtmlExportOptions & { title: string },
 ): string {
-  const flat = flattenTree(blocks);
+  // Tabs: every tab under its name as a heading, its contents at the tabs block's level.
+  const flat = liftTabs(flattenTree(blocks));
   const parts: string[] = [];
   // Open lists, innermost last; `li`: its last item is still open (a nested list goes inside it).
   let openList: { tag: string; depth: number; li: boolean }[] = [];
@@ -195,6 +197,11 @@ export function blocksToHtml(
         break;
       case "pageBreak":
         parts.push('<div class="page-break" role="separator" aria-label="Page break"></div>');
+        break;
+      case "tabs":
+        break;
+      case "tab":
+        parts.push(`<h4 class="tab-name">${escapeHtml(tabName(block))}</h4>`);
         break;
       case "formula": {
         const latex = String(p.latex ?? "");

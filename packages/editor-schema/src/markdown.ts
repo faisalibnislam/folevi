@@ -4,6 +4,7 @@ import type { WireBlock } from "./types";
 import { ulid } from "./ids";
 import { rankSequence } from "./rank";
 import { flattenTree } from "./tree";
+import { liftTabs, tabName } from "./tabs";
 import { normalizeInline, plainText, sanitizeHref, splitInline, textLength } from "./richtext";
 import { whiteboardToSvg } from "./whiteboard";
 import { parseFlowchart } from "./flowchart";
@@ -130,7 +131,8 @@ export function blocksToMarkdown(
     lines.push("---", "");
   }
   if (opts.title) lines.push(`# ${escapeMd(opts.title)}`, "");
-  const flat = flattenTree(blocks);
+  // Tabs: every tab under its name as a heading, its contents at the tabs block's level.
+  const flat = liftTabs(flattenTree(blocks));
   const counters: number[] = [];
   let prevWasList = false;
   // Toggles still open (their depths): what's nested under one goes inside its <details>.
@@ -187,6 +189,11 @@ export function blocksToMarkdown(
         break;
       case "pageBreak":
         lines.push(PAGE_BREAK_HTML, "");
+        break;
+      case "tabs":
+        break;
+      case "tab":
+        lines.push(`${"#".repeat(3 + (opts.title ? 1 : 0))} ${escapeMd(tabName(block))}`, "");
         break;
       case "formula": {
         const latex = String(p.latex ?? "").trim();

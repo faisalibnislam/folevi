@@ -282,6 +282,8 @@
       "webOnly": true,
       "props": { "data": "string", "height": "number" }
     },
+    "tabs": { "text": false, "webOnly": true, "props": {} },
+    "tab": { "text": true, "webOnly": true, "props": {} },
     "audio": {
       "text": false,
       "webOnly": true,

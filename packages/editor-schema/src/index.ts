@@ -33,3 +33,5 @@ export type { SyncOp, OpResult, SyncState, SyncStatus, ConflictRecord, ChangedFi
 export * from "./recurrence";
 export * from "./embeds";
 export * from "./folders";
+export * from "./tabs";
+export * from "./slides";

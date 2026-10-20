@@ -455,6 +455,38 @@
       "if": {
         "properties": {
           "type": {
+            "const": "tabs"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/TabsProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "tab"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "$ref": "#/$defs/TabProps"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
             "const": "audio"
           }
         }
@@ -1554,6 +1586,18 @@
         "data",
         "height"
       ],
+      "additionalProperties": false
+    },
+    "TabsProps": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "TabProps": {
+      "type": "object",
+      "properties": {},
+      "required": [],
       "additionalProperties": false
     },
     "AudioProps": {

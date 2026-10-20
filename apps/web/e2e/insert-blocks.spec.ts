@@ -37,6 +37,7 @@ test.describe("Insert panel", () => {
       Suggested: ["Text", "Page", "Card", "To-do", "Table", "Image"],
       Text: ["Heading 1", "Heading 2", "Heading 3", "Quote", "Callout"],
       "Lists and tasks": ["Bulleted list", "Numbered list", "To-do", "Toggle", "Tabs"],
+      Layout: ["2 columns", "3 columns", "4 columns"],
       Visuals: ["Flowchart", "Mind map", "Chart", "Sticky notes", "Wireframe", "Whiteboard", "Mermaid diagram"],
       Media: ["Image", "Image from Unsplash", "File attachment", "Audio recording", "Bookmark", "Embed"],
       "Data and more": ["Table", "Gallery", "Kanban", "Calendar", "Page", "Card", "Synced block", "Date", "Code block", "TeX formula", "Extra light", "Light", "Regular", "Strong", "Page break"],
@@ -203,7 +204,7 @@ test.describe("Insert panel", () => {
     const slash = page.getByRole("listbox");
     await expect(slash).toBeVisible();
     const groups = await slash.locator('li[role="presentation"]').allTextContents();
-    expect(groups.slice(0, 6)).toEqual(["Suggested", "Text", "Lists and tasks", "Visuals", "Media", "Data and more"]);
+    expect(groups.slice(0, 7)).toEqual(["Suggested", "Text", "Lists and tasks", "Layout", "Visuals", "Media", "Data and more"]);
     await page.keyboard.type("wirefr");
     await expect(slash.getByRole("option").first()).toHaveText(/Wireframe/);
     await page.keyboard.press("Enter");

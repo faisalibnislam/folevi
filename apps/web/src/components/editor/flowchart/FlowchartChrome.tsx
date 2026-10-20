@@ -12,7 +12,7 @@ import {
   type FlowColor,
   type FlowEdgeStyle,
   type FlowShape,
-} from "@folevi/editor-schema";
+} from "./schema";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { MenuButton } from "@/components/ui/Menu";
 

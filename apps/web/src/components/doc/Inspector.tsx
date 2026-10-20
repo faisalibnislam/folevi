@@ -113,6 +113,7 @@ export function Inspector({
   useEffect(() => {
     if (tab !== "comments" && tab !== "ai" && tab !== "related") setLastTab(tab);
   }, [tab]);
+  const toEdge = tab === "insert" || tab === "format" || tab === "style";
   return (
     <div className="flex h-full flex-col">
       <div className={`flex-none px-3 ${bare || sheet ? "pt-0" : "pt-2.5"} ${sheet ? "sr-only" : ""}`}>
@@ -177,9 +178,10 @@ export function Inspector({
         </div>
         )}
       </div>
-      {/* In the right sidebar, content blurs progressively into the bottom edge (clear at the top), like iOS. */}
+      {/* In the right sidebar, content blurs progressively into the bottom edge (clear at the top), like iOS.
+          Insert, Format and Style are grids of controls: they run clear to the edge instead. */}
       <div className="relative min-h-0 flex-1">
-      <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className={`relative h-full overflow-y-auto ${sheet ? "px-4 pt-1" : "px-3 pt-3"} ${bare ? "pb-16" : "pb-4"}`}>
+      <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className={`relative h-full overflow-y-auto ${sheet ? "px-4 pt-1" : "px-3 pt-3"} ${bare && !toEdge ? "pb-16" : "pb-4"}`}>
         {/* AI in a note is about this note (the chat with all notes is the floating one, elsewhere). */}
         {tab === "ai" && aiOn ? <AiPanel documentId={documentId} editor={editor} readOnly={readOnly} run={aiRun} onTitle={(t) => onAiTitle?.(t)} /> : null}
         {/* AI off, or not on the plan where this note lives: how to turn it on, or what a plan with AI includes. */}
@@ -192,7 +194,7 @@ export function Inspector({
         {/* Related notes, likely duplicates and contradictions (the knowledge graph; links only below Pro). */}
         {tab === "related" ? <RelatedPanel documentId={documentId} canEdit={!readOnly} /> : null}
       </div>
-      {bare ? <div aria-hidden className="ui-blur-bottom" /> : null}
+      {bare && !toEdge ? <div aria-hidden className="ui-blur-bottom" /> : null}
       </div>
     </div>
   );

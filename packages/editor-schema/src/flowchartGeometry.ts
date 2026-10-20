@@ -1,93 +1,12 @@
-// Flowchart geometry shared by the editor canvas, read-only pages and exports: shape outlines, connection
-// points, orthogonal connector routing (with rounded corners), arrowheads, label placement and bounds.
-// Pure functions of the chart data, so every surface draws exactly the same picture.
-import {
-  FLOWCHART_LABEL_FONT_SIZE,
-  ioSkew,
-  measureFlowText,
-  type FlowchartData,
-  type FlowEdge,
-  type FlowNode,
-  type FlowSide,
-} from "./flowchart";
-
-export interface Pt {
-  x: number;
-  y: number;
-}
-export interface Rect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
+// Flowchart drawing geometry shared by the editor canvas, read-only pages and exports: connector paths
+// (rounded corners, line hops, curves), line ends (arrow, open arrow, circle, diamond, bar), label boxes
+// along a connector, and the chart's bounds. Pure functions of the chart data (routing lives in
+// flowchartRouting.ts, shape outlines in flowchartShapes.ts), so every surface draws the same picture.
+import { FLOWCHART_EDGE_WIDTH, FLOWCHART_LABEL_FONT_SIZE, measureFlowText, poolRect, type FlowchartData, type FlowEdge, type FlowHead } from "./flowchart";
+import { routeFlowchart, type CurveSeg, type EdgeRoute, type Hop, type RouteOptions } from "./flowchartRouting";
+import type { FlowSide, Pt, Rect } from "./flowchartShapes";
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
-const NORMAL: Record<FlowSide, Pt> = { top: { x: 0, y: -1 }, right: { x: 1, y: 0 }, bottom: { x: 0, y: 1 }, left: { x: -1, y: 0 } };
-export const OPPOSITE: Record<FlowSide, FlowSide> = { top: "bottom", bottom: "top", left: "right", right: "left" };
-const CORNER = 10;
-const STUB = 18;
-const ARROW_LEN = 9;
-const ARROW_HALF = 4.6;
-
-/** SVG path for a node's outline. */
-export function shapePath(n: Pick<FlowNode, "shape" | "x" | "y" | "w" | "h">): string {
-  const { x, y, w, h } = n;
-  switch (n.shape) {
-    case "decision": {
-      // A diamond with softened corners.
-      const cx = x + w / 2;
-      const cy = y + h / 2;
-      const pts: Pt[] = [
-        { x: cx, y },
-        { x: x + w, y: cy },
-        { x: cx, y: y + h },
-        { x, y: cy },
-      ];
-      return roundedPolygon(pts, Math.min(8, w / 10, h / 10));
-    }
-    case "io": {
-      const s = ioSkew(n);
-      return roundedPolygon(
-        [
-          { x: x + s, y },
-          { x: x + w, y },
-          { x: x + w - s, y: y + h },
-          { x, y: y + h },
-        ],
-        6,
-      );
-    }
-    case "circle":
-      return `M${r1(x)} ${r1(y + h / 2)}A${r1(w / 2)} ${r1(h / 2)} 0 1 0 ${r1(x + w)} ${r1(y + h / 2)}A${r1(w / 2)} ${r1(h / 2)} 0 1 0 ${r1(x)} ${r1(y + h / 2)}Z`;
-    case "terminator":
-      return roundedRect(x, y, w, h, Math.min(h, w) / 2);
-    case "note":
-      return roundedRect(x, y, w, h, 4);
-    case "text":
-      return roundedRect(x, y, w, h, 6);
-    default:
-      return roundedRect(x, y, w, h, CORNER);
-  }
-}
-
-function roundedRect(x: number, y: number, w: number, h: number, r: number): string {
-  const rr = Math.min(r, w / 2, h / 2);
-  return `M${r1(x + rr)} ${r1(y)}H${r1(x + w - rr)}A${r1(rr)} ${r1(rr)} 0 0 1 ${r1(x + w)} ${r1(y + rr)}V${r1(y + h - rr)}A${r1(rr)} ${r1(rr)} 0 0 1 ${r1(x + w - rr)} ${r1(y + h)}H${r1(x + rr)}A${r1(rr)} ${r1(rr)} 0 0 1 ${r1(x)} ${r1(y + h - rr)}V${r1(y + rr)}A${r1(rr)} ${r1(rr)} 0 0 1 ${r1(x + rr)} ${r1(y)}Z`;
-}
-
-function roundedPolygon(pts: Pt[], r: number): string {
-  let d = "";
-  for (let i = 0; i < pts.length; i++) {
-    const p = pts[i]!;
-    const prev = pts[(i + pts.length - 1) % pts.length]!;
-    const next = pts[(i + 1) % pts.length]!;
-    const a = toward(p, prev, r);
-    const b = toward(p, next, r);
-    d += `${i === 0 ? "M" : "L"}${r1(a.x)} ${r1(a.y)}Q${r1(p.x)} ${r1(p.y)} ${r1(b.x)} ${r1(b.y)}`;
-  }
-  return `${d}Z`;
-}
 
 function toward(from: Pt, to: Pt, dist: number): Pt {
   const dx = to.x - from.x;
@@ -97,205 +16,6 @@ function toward(from: Pt, to: Pt, dist: number): Pt {
   return { x: from.x + (dx / len) * d, y: from.y + (dy / len) * d };
 }
 
-/** Where a connector meets a node side; `t` (0…1) spreads several connectors along one side. */
-export function portPoint(n: FlowNode, side: FlowSide, t = 0.5): Pt {
-  const { x, y, w, h } = n;
-  // Diamonds, circles and pill ends connect at the tips only.
-  const spread = n.shape === "decision" || n.shape === "circle" || (n.shape === "terminator" && (side === "left" || side === "right")) ? 0.5 : t;
-  if (n.shape === "io") {
-    const s = ioSkew(n);
-    switch (side) {
-      case "top":
-        return { x: x + s + (w - s) * spread, y };
-      case "bottom":
-        return { x: x + (w - s) * spread, y: y + h };
-      case "left":
-        return { x: x + s * (1 - spread), y: y + h * spread };
-      case "right":
-        return { x: x + w - s * spread, y: y + h * spread };
-    }
-  }
-  if (n.shape === "terminator" && (side === "top" || side === "bottom")) {
-    const r = Math.min(h, w) / 2;
-    const px = x + r + (w - 2 * r) * spread;
-    return { x: px, y: side === "top" ? y : y + h };
-  }
-  switch (side) {
-    case "top":
-      return { x: x + w * spread, y };
-    case "bottom":
-      return { x: x + w * spread, y: y + h };
-    case "left":
-      return { x, y: y + h * spread };
-    case "right":
-      return { x: x + w, y: y + h * spread };
-  }
-}
-
-const center = (n: Rect): Pt => ({ x: n.x + n.w / 2, y: n.y + n.h / 2 });
-
-/** Natural sides for a connector between two nodes (vertical flow preferred). */
-export function autoSides(a: Rect, b: Rect): [FlowSide, FlowSide] {
-  const ca = center(a);
-  const cb = center(b);
-  const dx = cb.x - ca.x;
-  const dy = cb.y - ca.y;
-  const gy = Math.abs(dy) - (a.h + b.h) / 2;
-  const gx = Math.abs(dx) - (a.w + b.w) / 2;
-  const vertical = gy >= 0 ? gx < 0 || gy >= gx * 0.6 : gx < 0;
-  if (vertical) return dy >= 0 ? ["bottom", "top"] : ["top", "bottom"];
-  return dx >= 0 ? ["right", "left"] : ["left", "right"];
-}
-
-/** The side of a node closest to a point (for dropping a connector on a node). */
-export function nearestSide(n: Rect, p: Pt): FlowSide {
-  const d: [FlowSide, number][] = [
-    ["top", Math.abs(p.y - n.y)],
-    ["bottom", Math.abs(p.y - (n.y + n.h))],
-    ["left", Math.abs(p.x - n.x)],
-    ["right", Math.abs(p.x - (n.x + n.w))],
-  ];
-  return d.sort((a, b) => a[1] - b[1])[0]![0];
-}
-
-// ------------------------------------------------------------------------------------------ routing
-
-function simplify(pts: Pt[]): Pt[] {
-  const out: Pt[] = [];
-  for (const p of pts) {
-    const last = out[out.length - 1];
-    if (last && Math.abs(last.x - p.x) < 0.01 && Math.abs(last.y - p.y) < 0.01) continue;
-    out.push(p);
-    // Drop the middle of three points on one line.
-    while (out.length >= 3) {
-      const [a, b, c] = out.slice(-3) as [Pt, Pt, Pt];
-      const colinear = (Math.abs(a.x - b.x) < 0.01 && Math.abs(b.x - c.x) < 0.01) || (Math.abs(a.y - b.y) < 0.01 && Math.abs(b.y - c.y) < 0.01);
-      if (!colinear) break;
-      out.splice(out.length - 2, 1);
-    }
-  }
-  return out;
-}
-
-/** Whether an axis-aligned segment passes through a rectangle's interior. */
-function segmentHitsRect(a: Pt, b: Pt, r: Rect, inset = 2): boolean {
-  const x0 = r.x + inset;
-  const x1 = r.x + r.w - inset;
-  const y0 = r.y + inset;
-  const y1 = r.y + r.h - inset;
-  if (Math.abs(a.y - b.y) < 0.01) {
-    if (a.y <= y0 || a.y >= y1) return false;
-    return Math.max(a.x, b.x) > x0 && Math.min(a.x, b.x) < x1;
-  }
-  if (a.x <= x0 || a.x >= x1) return false;
-  return Math.max(a.y, b.y) > y0 && Math.min(a.y, b.y) < y1;
-}
-
-function pathScore(pts: Pt[], ra: Rect, rb: Rect): number {
-  let len = 0;
-  let penalty = 0;
-  for (let i = 1; i < pts.length; i++) {
-    const a = pts[i - 1]!;
-    const b = pts[i]!;
-    len += Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-    // The first and last segments leave and enter their own node by construction.
-    if (i > 1 && segmentHitsRect(a, b, ra)) penalty += 1000;
-    if (i < pts.length - 1 && segmentHitsRect(a, b, rb)) penalty += 1000;
-    if (i >= 2) {
-      const p = pts[i - 2]!;
-      const d1 = { x: Math.sign(a.x - p.x), y: Math.sign(a.y - p.y) };
-      const d2 = { x: Math.sign(b.x - a.x), y: Math.sign(b.y - a.y) };
-      if (d1.x === -d2.x && d1.y === -d2.y) penalty += 2000; // doubling back
-    }
-  }
-  return len + (pts.length - 2) * 14 + penalty;
-}
-
-/**
- * An orthogonal route from `a` (leaving through side `sa`) to `b` (entering through `sb`): short stubs
- * straight out of each node, then the cheapest of a few elbow shapes that doesn't cut through either node.
- */
-export function orthogonalRoute(a: Pt, sa: FlowSide, b: Pt, sb: FlowSide, ra: Rect, rb: Rect): Pt[] {
-  const na = NORMAL[sa];
-  const nb = NORMAL[sb];
-  const p1 = { x: a.x + na.x * STUB, y: a.y + na.y * STUB };
-  const p2 = { x: b.x + nb.x * STUB, y: b.y + nb.y * STUB };
-  const mx = (p1.x + p2.x) / 2;
-  const my = (p1.y + p2.y) / 2;
-  const top = Math.min(ra.y, rb.y) - STUB;
-  const bottom = Math.max(ra.y + ra.h, rb.y + rb.h) + STUB;
-  const left = Math.min(ra.x, rb.x) - STUB;
-  const right = Math.max(ra.x + ra.w, rb.x + rb.w) + STUB;
-  const middles: Pt[][] = [
-    [{ x: p1.x, y: p2.y }],
-    [{ x: p2.x, y: p1.y }],
-    [
-      { x: p1.x, y: my },
-      { x: p2.x, y: my },
-    ],
-    [
-      { x: mx, y: p1.y },
-      { x: mx, y: p2.y },
-    ],
-    [
-      { x: p1.x, y: top },
-      { x: p2.x, y: top },
-    ],
-    [
-      { x: p1.x, y: bottom },
-      { x: p2.x, y: bottom },
-    ],
-    [
-      { x: left, y: p1.y },
-      { x: left, y: p2.y },
-    ],
-    [
-      { x: right, y: p1.y },
-      { x: right, y: p2.y },
-    ],
-  ];
-  let best: Pt[] | null = null;
-  let bestScore = Infinity;
-  for (const mid of middles) {
-    const pts = simplify([a, p1, ...mid, p2, b]);
-    const s = pathScore(pts, ra, rb);
-    if (s < bestScore) {
-      bestScore = s;
-      best = pts;
-    }
-  }
-  return best!;
-}
-
-/** SVG path through the points with rounded corners. */
-export function roundedPolyline(pts: readonly Pt[], radius = 10): string {
-  if (!pts.length) return "";
-  let d = `M${r1(pts[0]!.x)} ${r1(pts[0]!.y)}`;
-  for (let i = 1; i < pts.length - 1; i++) {
-    const p = pts[i]!;
-    const prev = pts[i - 1]!;
-    const next = pts[i + 1]!;
-    const lin = Math.hypot(p.x - prev.x, p.y - prev.y);
-    const lout = Math.hypot(next.x - p.x, next.y - p.y);
-    const r = Math.min(radius, lin / 2, lout / 2);
-    const a = toward(p, prev, r);
-    const b = toward(p, next, r);
-    d += `L${r1(a.x)} ${r1(a.y)}Q${r1(p.x)} ${r1(p.y)} ${r1(b.x)} ${r1(b.y)}`;
-  }
-  const last = pts[pts.length - 1]!;
-  return `${d}L${r1(last.x)} ${r1(last.y)}`;
-}
-
-/** A small swept arrowhead with its tip at `tip`, pointing along `dir` (a unit vector). */
-function arrowHead(tip: Pt, dir: Pt): string {
-  const base = { x: tip.x - dir.x * ARROW_LEN, y: tip.y - dir.y * ARROW_LEN };
-  const notch = { x: tip.x - dir.x * ARROW_LEN * 0.72, y: tip.y - dir.y * ARROW_LEN * 0.72 };
-  const perp = { x: -dir.y, y: dir.x };
-  const l = { x: base.x + perp.x * ARROW_HALF, y: base.y + perp.y * ARROW_HALF };
-  const r = { x: base.x - perp.x * ARROW_HALF, y: base.y - perp.y * ARROW_HALF };
-  return `M${r1(tip.x)} ${r1(tip.y)}L${r1(l.x)} ${r1(l.y)}Q${r1(notch.x)} ${r1(notch.y)} ${r1(r.x)} ${r1(r.y)}Z`;
-}
-
 function unit(from: Pt, to: Pt): Pt {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
@@ -303,11 +23,117 @@ function unit(from: Pt, to: Pt): Pt {
   return { x: dx / len, y: dy / len };
 }
 
-/** The point halfway along a polyline. */
-function midpoint(pts: readonly Pt[]): Pt {
+/** SVG path through the points with rounded corners. */
+export function roundedPolyline(pts: readonly Pt[], radius = 10): string {
+  return polylinePath(pts, radius, []);
+}
+
+/**
+ * SVG path through the points with rounded corners and a small semicircular hop at each crossing (hops on
+ * segment `i` sit between points[i] and points[i + 1]; crossings too close to a corner get none).
+ */
+export function polylinePath(pts: readonly Pt[], radius = 10, hops: readonly Hop[] = [], hopRadius = 4.5): string {
+  if (!pts.length) return "";
+  let d = `M${r1(pts[0]!.x)} ${r1(pts[0]!.y)}`;
+  const bySeg = new Map<number, Hop[]>();
+  for (const h of hops) bySeg.set(h.segment, [...(bySeg.get(h.segment) ?? []), h]);
+  // Where each segment's straight part starts and ends (after and before the rounded corners).
+  const cornerR: number[] = pts.map((p, i) => {
+    if (i === 0 || i === pts.length - 1) return 0;
+    const prev = pts[i - 1]!;
+    const next = pts[i + 1]!;
+    return Math.min(radius, Math.hypot(p.x - prev.x, p.y - prev.y) / 2, Math.hypot(next.x - p.x, next.y - p.y) / 2);
+  });
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i]!;
+    const b = pts[i + 1]!;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const dir = unit(a, b);
+    const start = cornerR[i]!;
+    const end = len - cornerR[i + 1]!;
+    const list = (bySeg.get(i) ?? [])
+      .map((h) => ({ h, t: (h.at.x - a.x) * dir.x + (h.at.y - a.y) * dir.y }))
+      .filter((x) => x.t > start + hopRadius + 1 && x.t < end - hopRadius - 1)
+      .sort((x, y) => x.t - y.t);
+    let last = -Infinity;
+    for (const { t } of list) {
+      if (t - last < hopRadius * 2 + 2) continue;
+      last = t;
+      const p0 = { x: a.x + dir.x * (t - hopRadius), y: a.y + dir.y * (t - hopRadius) };
+      const p1 = { x: a.x + dir.x * (t + hopRadius), y: a.y + dir.y * (t + hopRadius) };
+      // The bump rises above a horizontal line (and to the left of a vertical one) whichever way it runs.
+      const sweep = Math.abs(dir.y) < 0.5 ? (dir.x > 0 ? 1 : 0) : dir.y > 0 ? 1 : 0;
+      d += `L${r1(p0.x)} ${r1(p0.y)}A${hopRadius} ${hopRadius} 0 0 ${sweep} ${r1(p1.x)} ${r1(p1.y)}`;
+    }
+    if (i + 1 < pts.length - 1) {
+      const next = pts[i + 2]!;
+      const rr = cornerR[i + 1]!;
+      const q0 = toward(b, a, rr);
+      const q1 = toward(b, next, rr);
+      d += `L${r1(q0.x)} ${r1(q0.y)}Q${r1(b.x)} ${r1(b.y)} ${r1(q1.x)} ${r1(q1.y)}`;
+    } else d += `L${r1(b.x)} ${r1(b.y)}`;
+  }
+  return d;
+}
+
+// ------------------------------------------------------------------------------------------ line ends
+
+export interface HeadShape {
+  d: string;
+  /** Filled with the line's colour (otherwise only stroked). */
+  filled: boolean;
+  /** How far the line stops short of the tip so it doesn't show through the head. */
+  inset: number;
+}
+
+/** A line end of `kind` with its tip at `tip`, pointing along `dir` (a unit vector), for a line `width` wide. */
+export function headShape(kind: FlowHead, tip: Pt, dir: Pt, width = FLOWCHART_EDGE_WIDTH): HeadShape | null {
+  if (kind === "none") return null;
+  const s = Math.max(1, Math.pow(width / FLOWCHART_EDGE_WIDTH, 0.6));
+  const perp = { x: -dir.y, y: dir.x };
+  const at = (back: number, side: number) => ({ x: tip.x - dir.x * back + perp.x * side, y: tip.y - dir.y * back + perp.y * side });
+  const P = (p: Pt) => `${r1(p.x)} ${r1(p.y)}`;
+  switch (kind) {
+    case "arrow": {
+      const len = 9 * s;
+      const half = 4.6 * s;
+      const notch = at(len * 0.72, 0);
+      return { d: `M${P(tip)}L${P(at(len, half))}Q${P(notch)} ${P(at(len, -half))}Z`, filled: true, inset: len - 2 };
+    }
+    case "open": {
+      const len = 9 * s;
+      const half = 5 * s;
+      return { d: `M${P(at(len, half))}L${P(tip)}L${P(at(len, -half))}`, filled: false, inset: width / 2 };
+    }
+    case "circle": {
+      const r = 4 * s;
+      return { d: `M${P(at(2 * r, 0))}A${r1(r)} ${r1(r)} 0 1 0 ${P(tip)}A${r1(r)} ${r1(r)} 0 1 0 ${P(at(2 * r, 0))}Z`, filled: true, inset: 2 * r - 1 };
+    }
+    case "diamond": {
+      const len = 12 * s;
+      const half = 4.8 * s;
+      return { d: `M${P(tip)}L${P(at(len / 2, half))}L${P(at(len, 0))}L${P(at(len / 2, -half))}Z`, filled: true, inset: len - 1 };
+    }
+    case "bar": {
+      const half = 6 * s;
+      return { d: `M${P(at(0, half))}L${P(at(0, -half))}`, filled: false, inset: 0 };
+    }
+  }
+}
+
+// ------------------------------------------------------------------------------------------ along a path
+
+/** Total length of a polyline. */
+export function pathLength(pts: readonly Pt[]): number {
   let total = 0;
   for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i]!.x - pts[i - 1]!.x, pts[i]!.y - pts[i - 1]!.y);
-  let left = total / 2;
+  return total;
+}
+
+/** The point a fraction `t` (0…1) of the way along a polyline. */
+export function pointAlong(pts: readonly Pt[], t: number): Pt {
+  const total = pathLength(pts);
+  let left = Math.max(0, Math.min(1, t)) * total;
   for (let i = 1; i < pts.length; i++) {
     const a = pts[i - 1]!;
     const b = pts[i]!;
@@ -315,136 +141,126 @@ function midpoint(pts: readonly Pt[]): Pt {
     if (seg >= left && seg > 0) return { x: a.x + ((b.x - a.x) * left) / seg, y: a.y + ((b.y - a.y) * left) / seg };
     left -= seg;
   }
-  return pts[0] ?? { x: 0, y: 0 };
+  return pts[pts.length - 1] ?? { x: 0, y: 0 };
+}
+
+/** The fraction (0…1) along a polyline closest to `p`, and how far `p` is from the line (dragging labels). */
+export function nearestAlong(pts: readonly Pt[], p: Pt): { t: number; distance: number } {
+  const total = pathLength(pts) || 1;
+  let best = { t: 0, distance: Infinity };
+  let walked = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1]!;
+    const b = pts[i]!;
+    const seg = Math.hypot(b.x - a.x, b.y - a.y);
+    const u = seg ? Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (seg * seg))) : 0;
+    const q = { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u };
+    const dist = Math.hypot(p.x - q.x, p.y - q.y);
+    if (dist < best.distance) best = { t: (walked + u * seg) / total, distance: dist };
+    walked += seg;
+  }
+  return { t: Math.round(best.t * 1000) / 1000, distance: best.distance };
+}
+
+// ------------------------------------------------------------------------------------------ routed connectors
+
+export interface LabelBox extends Rect {
+  cx: number;
+  cy: number;
+  text: string;
+  /** Index in the connector's labels. */
+  index: number;
 }
 
 export interface RoutedEdge {
   edge: FlowEdge;
+  /** The path as a polyline (curves sampled); for hit tests, label placement and bounds. */
   points: Pt[];
-  /** The line (shortened under its arrowheads). */
+  /** The line to draw (shortened under its line ends, with hops). */
   d: string;
-  /** Arrowhead outlines (filled). */
+  /** Line end outlines (v1 name: all of them; `markers` says which are filled). */
   heads: string[];
-  fromSide: FlowSide;
-  toSide: FlowSide;
-  /** Label box, when the edge has a label. */
-  label: (Rect & { cx: number; cy: number }) | null;
+  markers: HeadShape[];
+  fromSide: FlowSide | null;
+  toSide: FlowSide | null;
+  /** The first label's box (v1), null without labels. */
+  label: LabelBox | null;
+  labels: LabelBox[];
+  hops: Hop[];
 }
 
-/** Resolved sides for every edge: explicit ones kept, the rest chosen from the nodes' positions. */
-export function edgeSides(fc: FlowchartData, byId: ReadonlyMap<string, FlowNode>): Map<string, [FlowSide, FlowSide]> {
-  const sides = new Map<string, [FlowSide, FlowSide]>();
-  for (const e of fc.edges) {
-    const a = byId.get(e.from);
-    const b = byId.get(e.to);
-    if (!a || !b) continue;
-    const [fa, fb] = autoSides(a, b);
-    sides.set(e.id, [e.fromSide ?? fa, e.toSide ?? fb]);
-  }
-  // A decision with several automatic branches leaving the same tip: send the extra ones out sideways,
-  // toward their targets (the classic Yes-down / No-right shape).
-  const bySource = new Map<string, FlowEdge[]>();
-  for (const e of fc.edges) {
-    const s = sides.get(e.id);
-    if (e.fromSide || !s || byId.get(e.from)?.shape !== "decision") continue;
-    const key = `${e.from}:${s[0]}`;
-    bySource.set(key, [...(bySource.get(key) ?? []), e]);
-  }
-  for (const list of bySource.values()) {
-    if (list.length < 2) continue;
-    const src = byId.get(list[0]!.from)!;
-    const c = center(src);
-    const vertical = sides.get(list[0]!.id)![0] === "top" || sides.get(list[0]!.id)![0] === "bottom";
-    const off = (e: FlowEdge) => {
-      const t = center(byId.get(e.to)!);
-      return vertical ? t.x - c.x : t.y - c.y;
-    };
-    const sorted = [...list].sort((x, y) => Math.abs(off(x)) - Math.abs(off(y)));
-    const taken = new Set<FlowSide>();
-    for (const e of sorted.slice(1)) {
-      const o = off(e);
-      let side: FlowSide = vertical ? (o >= 0 ? "right" : "left") : o >= 0 ? "bottom" : "top";
-      if (taken.has(side)) side = OPPOSITE[side];
-      if (taken.has(side)) continue;
-      taken.add(side);
-      const cur = sides.get(e.id)!;
-      sides.set(e.id, [side, e.toSide ?? cur[1]]);
-    }
-  }
-  return sides;
+function curvePath(start: Pt, segs: readonly CurveSeg[]): string {
+  let d = `M${r1(start.x)} ${r1(start.y)}`;
+  for (const s of segs) d += `C${r1(s.c1.x)} ${r1(s.c1.y)} ${r1(s.c2.x)} ${r1(s.c2.y)} ${r1(s.to.x)} ${r1(s.to.y)}`;
+  return d;
 }
 
-/** Routes every connector of the chart (edges whose nodes are missing are skipped). */
-export function routeEdges(fc: FlowchartData): RoutedEdge[] {
-  const byId = new Map(fc.nodes.map((n) => [n.id, n]));
-  const sides = edgeSides(fc, byId);
-  // Several connectors on one side of a node spread out along it, ordered by where their other end is.
-  const groups = new Map<string, { edge: FlowEdge; end: "from" | "to"; key: number }[]>();
-  for (const e of fc.edges) {
-    const s = sides.get(e.id);
-    if (!s) continue;
-    for (const end of ["from", "to"] as const) {
-      const self = byId.get(end === "from" ? e.from : e.to)!;
-      const other = byId.get(end === "from" ? e.to : e.from)!;
-      const side = end === "from" ? s[0] : s[1];
-      const oc = center(other);
-      const key = side === "top" || side === "bottom" ? oc.x : oc.y;
-      const k = `${self.id}:${side}`;
-      const list = groups.get(k) ?? [];
-      list.push({ edge: e, end, key });
-      groups.set(k, list);
-    }
-  }
-  const spread = new Map<string, number>();
-  for (const list of groups.values()) {
-    list.sort((a, b) => a.key - b.key);
-    const n = list.length;
-    const step = n > 1 ? Math.min(0.22, 0.64 / (n - 1)) : 0;
-    list.forEach((item, i) => spread.set(`${item.edge.id}:${item.end}`, 0.5 + (i - (n - 1) / 2) * step));
-  }
-  const out: RoutedEdge[] = [];
-  for (const e of fc.edges) {
-    const a = byId.get(e.from);
-    const b = byId.get(e.to);
-    const s = sides.get(e.id);
-    if (!a || !b || !s) continue;
-    const pa = portPoint(a, s[0], spread.get(`${e.id}:from`) ?? 0.5);
-    const pb = portPoint(b, s[1], spread.get(`${e.id}:to`) ?? 0.5);
-    const points = orthogonalRoute(pa, s[0], pb, s[1], a, b);
-    out.push(routedFromPoints(e, points, s[0], s[1]));
-  }
-  return out;
+const LABEL_H = 20;
+
+/** Boxes for a connector's labels, each at its place along the path. */
+export function edgeLabelBoxes(e: FlowEdge, points: readonly Pt[]): LabelBox[] {
+  return e.labels.map((l, index) => {
+    const m = pointAlong(points, l.at);
+    const w = Math.min(220, measureFlowText(l.text, FLOWCHART_LABEL_FONT_SIZE)) + 12;
+    return { x: m.x - w / 2, y: m.y - LABEL_H / 2, w, h: LABEL_H, cx: m.x, cy: m.y, text: l.text, index };
+  });
 }
 
-/** Line, arrowheads and label box for a connector drawn through `points`. */
-export function routedFromPoints(e: FlowEdge, points: Pt[], fromSide: FlowSide, toSide: FlowSide): RoutedEdge {
+/** Line, line ends and label boxes for a connector drawn through `points` (and `curve`, when curved). */
+export function routedFromPoints(e: FlowEdge, points: Pt[], fromSide: FlowSide | null, toSide: FlowSide | null, extra: { curve?: CurveSeg[] | null; hops?: Hop[] } = {}): RoutedEdge {
+  const markers: HeadShape[] = [];
+  const width = e.width ?? FLOWCHART_EDGE_WIDTH;
+  const curve = extra.curve ? extra.curve.map((s) => ({ ...s })) : null;
+  let start = points[0] ? { ...points[0] } : { x: 0, y: 0 };
   const line = points.map((p) => ({ ...p }));
-  const heads: string[] = [];
-  if (line.length >= 2 && (e.arrow === "end" || e.arrow === "both")) {
-    const tip = points[points.length - 1]!;
-    const dir = unit(points[points.length - 2]!, tip);
-    heads.push(arrowHead(tip, dir));
-    line[line.length - 1] = { x: tip.x - dir.x * (ARROW_LEN - 2), y: tip.y - dir.y * (ARROW_LEN - 2) };
+  if (points.length >= 2) {
+    for (const end of ["end", "start"] as const) {
+      const kind = end === "end" ? e.end : e.start;
+      const tip = end === "end" ? points[points.length - 1]! : points[0]!;
+      // Direction into the tip: from the last control point of a curve, or the previous point.
+      const from = curve ? (end === "end" ? curve[curve.length - 1]!.c2 : curve[0]!.c1) : end === "end" ? points[points.length - 2]! : points[1]!;
+      const dir = unit(Math.hypot(from.x - tip.x, from.y - tip.y) > 0.5 ? from : end === "end" ? points[points.length - 2]! : points[1]!, tip);
+      const head = headShape(kind, tip, dir, width);
+      if (!head) continue;
+      markers.push(head);
+      const moved = { x: tip.x - dir.x * head.inset, y: tip.y - dir.y * head.inset };
+      if (end === "end") {
+        line[line.length - 1] = moved;
+        if (curve) {
+          const last = curve[curve.length - 1]!;
+          last.c2 = { x: last.c2.x - dir.x * head.inset, y: last.c2.y - dir.y * head.inset };
+          last.to = moved;
+        }
+      } else {
+        line[0] = moved;
+        start = moved;
+        if (curve) curve[0]!.c1 = { x: curve[0]!.c1.x - dir.x * head.inset, y: curve[0]!.c1.y - dir.y * head.inset };
+      }
+    }
   }
-  if (line.length >= 2 && e.arrow === "both") {
-    const tip = points[0]!;
-    const dir = unit(points[1]!, tip);
-    heads.push(arrowHead(tip, dir));
-    line[0] = { x: tip.x - dir.x * (ARROW_LEN - 2), y: tip.y - dir.y * (ARROW_LEN - 2) };
-  }
-  let label: RoutedEdge["label"] = null;
-  if (e.label) {
-    const m = midpoint(points);
-    const w = Math.min(220, measureFlowText(e.label, FLOWCHART_LABEL_FONT_SIZE)) + 12;
-    const h = 20;
-    label = { x: m.x - w / 2, y: m.y - h / 2, w, h, cx: m.x, cy: m.y };
-  }
-  return { edge: e, points, d: roundedPolyline(line), heads, fromSide, toSide, label };
+  const hops = extra.hops ?? [];
+  const d = curve ? curvePath(start, curve) : e.route === "straight" ? polylinePath(line, 0, hops) : polylinePath(line, 10, hops);
+  const labels = edgeLabelBoxes(e, points);
+  return { edge: e, points, d, heads: markers.map((m) => m.d), markers, fromSide, toSide, label: labels[0] ?? null, labels, hops };
 }
 
-/** Bounding box of every node, connector and label (null for an empty chart). */
+/** The drawing of a routed connector. */
+export function routedEdge(r: EdgeRoute): RoutedEdge {
+  return routedFromPoints(r.edge, r.points, r.fromSide, r.toSide, { curve: r.curve, hops: r.hops });
+}
+
+/** Routes and draws every connector of the chart (connectors whose shapes are missing are skipped). */
+export function routeEdges(fc: FlowchartData, opts: RouteOptions = {}): RoutedEdge[] {
+  return routeFlowchart(fc, opts).routes.map(routedEdge);
+}
+
+// ------------------------------------------------------------------------------------------ bounds
+
+/** Bounding box of every shape, frame, pool, connector and label (null for an empty chart). */
 export function flowchartBounds(fc: FlowchartData, routed: readonly RoutedEdge[] = routeEdges(fc)): Rect | null {
-  if (!fc.nodes.length) return null;
+  const frames = fc.frames ?? [];
+  const pools = fc.pools ?? [];
+  if (!fc.nodes.length && !frames.length && !pools.length && !routed.length) return null;
   let x0 = Infinity;
   let y0 = Infinity;
   let x1 = -Infinity;
@@ -455,17 +271,18 @@ export function flowchartBounds(fc: FlowchartData, routed: readonly RoutedEdge[]
     x1 = Math.max(x1, x);
     y1 = Math.max(y1, y);
   };
-  for (const n of fc.nodes) {
-    add(n.x, n.y);
-    add(n.x + n.w, n.y + n.h);
-  }
+  const addRect = (r: Rect) => {
+    add(r.x, r.y);
+    add(r.x + r.w, r.y + r.h);
+  };
+  fc.nodes.forEach(addRect);
+  frames.forEach(addRect);
+  pools.forEach((p) => addRect(poolRect(p)));
   for (const r of routed) {
     for (const p of r.points) add(p.x, p.y);
-    if (r.label) {
-      add(r.label.x, r.label.y);
-      add(r.label.x + r.label.w, r.label.y + r.label.h);
-    }
+    for (const l of r.labels) addRect(l);
   }
+  if (!Number.isFinite(x0)) return null;
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 

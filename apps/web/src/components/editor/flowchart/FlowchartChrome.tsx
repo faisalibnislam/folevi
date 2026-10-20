@@ -6,7 +6,7 @@ import { Copy, Expand, Maximize, Minus, Plus, Redo2, Shrink, Trash2, Undo2, Type
 import {
   FLOWCHART_COLORS,
   FLOWCHART_COLOR_LABEL,
-  FLOWCHART_SHAPES,
+  FLOWCHART_QUICK_SHAPES,
   FLOWCHART_SHAPE_LABEL,
   type FlowArrow,
   type FlowColor,
@@ -59,7 +59,7 @@ export function MainToolbar({
   return (
     <div className="fc-bar fc-bar-main" role="toolbar" aria-label="Flowchart tools" onPointerDown={(e) => e.stopPropagation()}>
       <span role="group" aria-label="Add a shape" className="fc-group">
-        {FLOWCHART_SHAPES.map((s) => (
+        {FLOWCHART_QUICK_SHAPES.map((s) => (
           <button key={s} type="button" className="fc-btn" aria-label={`Add ${FLOWCHART_SHAPE_LABEL[s].toLowerCase()}`} title={FLOWCHART_SHAPE_LABEL[s]} onClick={() => onAdd(s)}>
             <ShapeIcon shape={s} />
           </button>
@@ -148,7 +148,7 @@ export function NodeBar({
         align="start"
         triggerClassName="fc-btn fc-btn-menu"
         trigger={<ShapeIcon shape={shape ?? "process"} />}
-        items={FLOWCHART_SHAPES.map((s) => ({ label: FLOWCHART_SHAPE_LABEL[s], icon: <ShapeIcon shape={s} size={16} />, checked: shape === s, onSelect: () => onShape(s) }))}
+        items={FLOWCHART_QUICK_SHAPES.map((s) => ({ label: FLOWCHART_SHAPE_LABEL[s], icon: <ShapeIcon shape={s} size={16} />, checked: shape === s, onSelect: () => onShape(s) }))}
       />
       <span className="fc-sep" aria-hidden />
       <Swatches value={color} onPick={onColor} />

@@ -349,7 +349,7 @@ export const LIMITS = {
   "maxWhiteboardDataLength": 200000,
   "minWhiteboardHeight": 120,
   "maxWhiteboardHeight": 2400,
-  "maxFlowchartDataLength": 200000,
+  "maxFlowchartDataLength": 400000,
   "minFlowchartHeight": 200,
   "maxFlowchartHeight": 1600,
   "maxMindmapDataLength": 200000,

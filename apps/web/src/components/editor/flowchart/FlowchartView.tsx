@@ -26,6 +26,8 @@ import {
   LIMITS,
   OPPOSITE,
   autoSides,
+  edgeArrow,
+  edgeLabel,
   fitNodeToText,
   flowchartBounds,
   flowchartDirection,
@@ -39,6 +41,8 @@ import {
   routeEdges,
   serializeFlowchart,
   textWidthFor,
+  withArrow,
+  withLabel,
   type FlowchartData,
   type FlowNode,
   type FlowShape,
@@ -747,7 +751,7 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
     if (!ed) return;
     const fc = docRef.current;
     if (ed.kind === "node") setLive(updateNodes(fc, [ed.id], (n) => fitNodeToText({ ...n, text: value.slice(0, FLOWCHART_LIMITS.maxText) })));
-    else setLive(updateEdges(fc, [ed.id], (x) => ({ ...x, label: value.replace(/\n+/g, " ").slice(0, FLOWCHART_LIMITS.maxLabel) })));
+    else setLive(updateEdges(fc, [ed.id], (x) => withLabel(x, value)));
   };
 
   // ⌘Z / ⇧⌘Z while typing: the text boxes are controlled, so the browser's own undo would reach the
@@ -806,7 +810,7 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
       <input
         className="fc-label-input"
         autoFocus
-        value={editEdge.edge.label}
+        value={edgeLabel(editEdge.edge)}
         maxLength={FLOWCHART_LIMITS.maxLabel}
         placeholder="Label"
         aria-label="Connector label"
@@ -1020,9 +1024,9 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
             <EdgeBar
               style={barStyle}
               lineStyle={same(selEdges.map((x) => x.style))}
-              arrow={same(selEdges.map((x) => x.arrow))}
+              arrow={same(selEdges.map((x) => edgeArrow(x)))}
               onStyle={(s) => commit(updateEdges(docRef.current, sel.edges, (x) => ({ ...x, style: s })))}
-              onArrow={(a) => commit(updateEdges(docRef.current, sel.edges, (x) => ({ ...x, arrow: a })))}
+              onArrow={(a) => commit(updateEdges(docRef.current, sel.edges, (x) => withArrow(x, a)))}
               onLabel={selEdges.length === 1 ? () => startEdit("edge", selEdges[0]!.id) : null}
               onDelete={removeSelection}
             />

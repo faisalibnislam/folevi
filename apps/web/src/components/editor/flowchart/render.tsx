@@ -71,7 +71,7 @@ export const FlowEdgeLabel = memo(function FlowEdgeLabel({ routed, hidden = fals
     <>
       <rect className="fc-edge-label-bg" x={l.x} y={l.y} width={l.w} height={l.h} rx={6} />
       <text className="fc-edge-label" x={l.cx} y={l.cy + FLOWCHART_LABEL_FONT_SIZE * 0.35} textAnchor="middle" fontSize={FLOWCHART_LABEL_FONT_SIZE}>
-        {routed.edge.label}
+        {l.text}
       </text>
     </>
   );

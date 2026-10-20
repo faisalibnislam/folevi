@@ -1,17 +1,37 @@
-// Flowchart ⇄ Mermaid. Exports write a `flowchart TD|LR` diagram (so a chart stays portable in Markdown);
-// "Convert to flowchart" reads the common subset of Mermaid's flowchart syntax, best effort:
+// Flowchart ⇄ Mermaid. Exports write a `flowchart TD|LR` diagram (so a chart stays portable in Markdown):
+// shapes with Mermaid's classic brackets where it has them and its `@{ shape: … }` names otherwise, frames
+// and swimlanes as subgraphs, connector styles and ends where Mermaid can say them. "Convert to flowchart"
+// reads the common subset of Mermaid's flowchart syntax, best effort:
 //
 //   flowchart TD            graph LR                   %% comments
 //   A[Box] --> B{Choice}    B -- Yes --> C([Pill])      C -.-> D[/In or out/]
 //   D ---|label| E((Circle))  E <--> F                   A & B --> C
+//   G@{ shape: doc, label: "Report" }                   H ==> I     J --o K
+//   subgraph S1 [Checkout] … end                         (subgraphs become frames)
 //
-// Subgraphs are flattened, styling statements (classDef, class, style, linkStyle, click) are skipped.
-import { FLOWCHART_LIMITS, FLOWCHART_SHAPE_SIZE, fitNodeToText, flowId, type FlowArrow, type FlowchartData, type FlowEdge, type FlowEdgeStyle, type FlowNode, type FlowShape } from "./flowchart";
+// Styling statements (classDef, class, style, linkStyle, click) are skipped.
+import {
+  FLOWCHART_EDGE_WIDTH,
+  FLOWCHART_LIMITS,
+  emptyFlowchart,
+  fitNodeToText,
+  flowId,
+  laneBoxes,
+  newEdge,
+  type FlowchartData,
+  type FlowEdge,
+  type FlowFrame,
+  type FlowHead,
+  type FlowLineStyle,
+  type FlowNode,
+} from "./flowchart";
 import { layoutFlowchart, type FlowDirection } from "./flowchartLayout";
+import { FLOWCHART_SHAPE_INFO, FLOWCHART_SHAPE_SIZE, type FlowShape } from "./flowchartShapes";
 
 // ------------------------------------------------------------------------------------------ export
 
-const OPEN_CLOSE: Record<FlowShape, [string, string]> = {
+/** Mermaid's classic bracket forms, for the shapes that have one. */
+const OPEN_CLOSE: Partial<Record<FlowShape, [string, string]>> = {
   process: ["[", "]"],
   decision: ["{", "}"],
   terminator: ["([", "])"],
@@ -19,6 +39,16 @@ const OPEN_CLOSE: Record<FlowShape, [string, string]> = {
   circle: ["((", "))"],
   note: [">", "]"],
   text: ["[", "]"],
+  rounded: ["(", ")"],
+  database: ["[(", ")]"],
+  cylinder: ["[(", ")]"],
+  predefined: ["[[", "]]"],
+  preparation: ["{{", "}}"],
+  hexagon: ["{{", "}}"],
+  trapezoid: ["[/", "\\]"],
+  manualOperation: ["[\\", "/]"],
+  rectangle: ["[", "]"],
+  diamond: ["{", "}"],
 };
 
 /** Light-theme fills for exported colours (Mermaid classDefs). */
@@ -59,27 +89,75 @@ export function flowchartDirection(fc: FlowchartData): FlowDirection {
   return horizontal > vertical ? "LR" : "TD";
 }
 
+/** Mermaid's link operator for a connector's style and ends (`start` already swapped to the end). */
+function linkOp(e: Pick<FlowEdge, "style" | "width">, start: FlowHead, end: FlowHead): string {
+  const s = start !== "none";
+  const t = end !== "none";
+  if (e.style !== "solid") return `${s ? "<" : ""}-.-${t ? ">" : ""}`;
+  if (e.width >= 3) return `${s ? "<" : ""}==${t ? ">" : "="}`;
+  const head = (h: FlowHead, left: boolean) => (h === "none" ? "" : h === "circle" ? "o" : left ? "<" : ">");
+  return `${head(start, true)}--${head(end, false) || "-"}`;
+}
+
 /** A Mermaid `flowchart` diagram for the chart (node order kept; ids renamed to n1, n2…). */
 export function flowchartToMermaid(fc: FlowchartData): string {
   const lines = [`flowchart ${flowchartDirection(fc)}`];
   const ids = new Map(fc.nodes.map((n, i) => [n.id, `n${i + 1}`]));
   for (const n of fc.nodes) {
-    const [open, close] = OPEN_CLOSE[n.shape];
-    lines.push(`  ${ids.get(n.id)}${open}"${mermaidText(n.text || " ")}"${close}`);
+    const label = mermaidText(n.text || " ");
+    const classic = OPEN_CLOSE[n.shape];
+    if (classic) lines.push(`  ${ids.get(n.id)}${classic[0]}"${label}"${classic[1]}`);
+    else lines.push(`  ${ids.get(n.id)}@{ shape: ${FLOWCHART_SHAPE_INFO[n.shape].mermaid}, label: "${label}" }`);
   }
   for (const e of fc.edges) {
-    const a = ids.get(e.from);
-    const b = ids.get(e.to);
+    let a = ids.get(e.from);
+    let b = ids.get(e.to);
     if (!a || !b) continue;
-    const dashed = e.style === "dashed";
-    const op = e.arrow === "none" ? (dashed ? "-.-" : "---") : e.arrow === "both" ? (dashed ? "<-.->" : "<-->") : dashed ? "-.->" : "-->";
-    lines.push(`  ${a} ${op}${e.label ? `|"${mermaidText(e.label)}"|` : ""} ${b}`);
+    let start = e.start;
+    let end = e.end;
+    // A head at the start only reads the same written the other way round.
+    if (start !== "none" && end === "none") [a, b, start, end] = [b, a, end, start];
+    const label = e.labels.map((l) => l.text).join(" / ");
+    lines.push(`  ${a} ${linkOp(e, start, end)}${label ? `|"${mermaidText(label)}"|` : ""} ${b}`);
+  }
+  // Frames and swimlanes as subgraphs, nested as they are.
+  const frames = fc.frames ?? [];
+  const sub = new Map<string, string>();
+  let k = 0;
+  for (const f of frames) sub.set(f.id, `s${++k}`);
+  for (const p of fc.pools ?? []) {
+    sub.set(p.id, `s${++k}`);
+    for (const l of p.lanes) sub.set(l.id, `s${++k}`);
+  }
+  const childrenOf = (id: string | undefined) => ({
+    frames: frames.filter((f) => (f.parent ?? undefined) === id),
+    nodes: fc.nodes.filter((n) => (n.parent ?? undefined) === id),
+  });
+  const block = (id: string, title: string, depth: number): string[] => {
+    const pad = "  ".repeat(depth);
+    const out = [`${pad}subgraph ${sub.get(id)} ["${mermaidText(title || " ")}"]`];
+    const c = childrenOf(id);
+    for (const f of c.frames) out.push(...block(f.id, f.title, depth + 1));
+    for (const n of c.nodes) out.push(`${pad}  ${ids.get(n.id)}`);
+    out.push(`${pad}end`);
+    return out;
+  };
+  for (const f of childrenOf(undefined).frames) lines.push(...block(f.id, f.title, 1));
+  for (const p of fc.pools ?? []) {
+    lines.push(`  subgraph ${sub.get(p.id)} ["${mermaidText(p.title || " ")}"]`);
+    if (p.orient === "columns") lines.push("    direction LR");
+    for (const lb of laneBoxes(p)) lines.push(...block(lb.lane.id, lb.lane.title, 2));
+    lines.push("  end");
   }
   const used = [...new Set(fc.nodes.map((n) => n.color))].filter((c) => MERMAID_FILL[c]);
   for (const c of used) {
     const [fill, stroke] = MERMAID_FILL[c]!;
     lines.push(`  classDef ${c} fill:${fill},stroke:${stroke}`);
     lines.push(`  class ${fc.nodes.filter((n) => n.color === c).map((n) => ids.get(n.id)).join(",")} ${c}`);
+  }
+  for (const n of fc.nodes) {
+    const style = [n.fill && n.fill !== "none" ? `fill:${n.fill}` : "", n.stroke && n.stroke !== "none" ? `stroke:${n.stroke}` : ""].filter(Boolean);
+    if (style.length) lines.push(`  style ${ids.get(n.id)} ${style.join(",")}`);
   }
   return lines.join("\n");
 }
@@ -93,21 +171,55 @@ const SHAPES: [string, string, FlowShape][] = [
   ["(((", ")))", "circle"],
   ["((", "))", "circle"],
   ["([", "])", "terminator"],
-  ["[[", "]]", "process"],
-  ["[(", ")]", "process"],
-  ["{{", "}}", "decision"],
+  ["[[", "]]", "predefined"],
+  ["[(", ")]", "database"],
+  ["{{", "}}", "preparation"],
   ["[/", "/]", "io"],
-  ["[/", "\\]", "io"],
+  ["[/", "\\]", "trapezoid"],
   ["[\\", "\\]", "io"],
-  ["[\\", "/]", "io"],
+  ["[\\", "/]", "manualOperation"],
   ["[", "]", "process"],
-  ["(", ")", "process"],
+  ["(", ")", "rounded"],
   ["{", "}", "decision"],
   [">", "]", "note"],
 ];
 
+/** Mermaid's `@{ shape: … }` names and aliases. */
+const MERMAID_SHAPES: Record<string, FlowShape> = {};
+const alias = (shape: FlowShape, ...names: string[]) => names.forEach((n) => (MERMAID_SHAPES[n] = shape));
+alias("process", "rect", "proc", "process", "rectangle", "lin-rect", "lined-rectangle", "lin-proc", "lined-process", "shaded-process", "div-rect", "div-proc", "divided-process", "divided-rectangle", "tag-rect", "tagged-rectangle", "tag-proc", "tagged-process", "odd", "bolt", "com-link", "lightning-bolt", "processes", "procs", "st-rect", "stacked-rectangle");
+alias("rounded", "rounded", "event");
+alias("terminator", "stadium", "pill", "terminal");
+alias("predefined", "subproc", "fr-rect", "framed-rectangle", "subprocess", "subroutine");
+alias("database", "cyl", "cylinder", "database", "db", "lin-cyl", "disk", "lined-cylinder");
+alias("circle", "circle", "circ", "dbl-circ", "double-circle");
+alias("connector", "sm-circ", "small-circle", "start", "fr-circ", "framed-circle", "stop", "f-circ", "filled-circle", "junction");
+alias("decision", "diam", "decision", "diamond", "question");
+alias("preparation", "hex", "hexagon", "prepare");
+alias("io", "lean-r", "lean-right", "in-out", "lean-l", "lean-left", "out-in");
+alias("trapezoid", "trap-b", "priority", "trapezoid", "trapezoid-bottom");
+alias("manualOperation", "trap-t", "manual", "inv-trapezoid", "trapezoid-top");
+alias("text", "text");
+alias("card", "notch-rect", "card", "notched-rectangle");
+alias("rectangle", "fork", "join");
+alias("collate", "hourglass", "collate");
+alias("annotation", "brace", "brace-l", "comment", "brace-r", "braces");
+alias("document", "doc", "document", "lin-doc", "lined-document", "tag-doc", "tagged-document");
+alias("documents", "docs", "documents", "st-doc", "stacked-document");
+alias("delay", "delay", "half-rounded-rectangle");
+alias("directData", "h-cyl", "das", "horizontal-cylinder");
+alias("display", "curv-trap", "curved-trapezoid", "display");
+alias("extract", "tri", "extract", "triangle");
+alias("internalStorage", "win-pane", "internal-storage", "window-pane");
+alias("loopLimit", "notch-pent", "loop-limit", "notched-pentagon");
+alias("merge", "flip-tri", "flipped-triangle", "manual-file");
+alias("manualInput", "sl-rect", "manual-input", "sloped-rectangle");
+alias("paperTape", "flag", "paper-tape");
+alias("storedData", "bow-rect", "stored-data", "bow-tie-rectangle");
+alias("summingJunction", "cross-circ", "summary", "crossed-circle");
+
 const ID_RE = /^[\p{L}\p{N}_](?:[\p{L}\p{N}_.]|-(?![-.>]))*/u;
-// -->  --->  ---  -.->  -.-  ==>  ===  <-->  <-.->  --x  --o
+// -->  --->  ---  -.->  -.-  ==>  ===  <-->  <-.->  --x  --o  o--o
 const LINK_RE = /^(<|x|o)?(-{2,}|={2,}|-?\.+-)(>|x|o)?/;
 // Inline label forms: -- text -->  -. text .->  == text ==>
 const TEXT_LINK_RE = /^(<)?(--|==|-\.)(?![->=.])\s*([^-=.>|][^>]*?)\s*(-{2,}>|={2,}>|\.+->|-{3,}|={3,}|\.+-)/;
@@ -134,12 +246,24 @@ interface ParsedRef {
   shape?: FlowShape;
 }
 
+/** Reads `@{ shape: doc, label: "Report" }` after a node id. */
+function readAttrs(rest: string): { shape?: FlowShape; text?: string; rest: string } | null {
+  const m = /^@\{([^}]*)\}/.exec(rest);
+  if (!m) return null;
+  const body = m[1]!;
+  const shape = /(?:^|,)\s*shape\s*:\s*([\w-]+)/.exec(body)?.[1];
+  const label = /(?:^|,)\s*label\s*:\s*("(?:[^"\\]|\\.)*"|[^,]+)/.exec(body)?.[1];
+  return { shape: shape ? (MERMAID_SHAPES[shape.toLowerCase()] ?? "process") : undefined, text: label !== undefined ? decodeLabel(label) : undefined, rest: rest.slice(m[0].length) };
+}
+
 /** Reads one node reference (id plus optional shape and label) at the start of `s`. */
 function readNode(s: string): { ref: ParsedRef; rest: string } | null {
   const m = ID_RE.exec(s);
   if (!m) return null;
   const id = m[0];
   let rest = s.slice(id.length);
+  const attrs = readAttrs(rest);
+  if (attrs) return { ref: { id, text: attrs.text, shape: attrs.shape }, rest: attrs.rest.replace(/^:::[\w-]+/, "") };
   for (const [open, close, shape] of SHAPES) {
     if (!rest.startsWith(open)) continue;
     const body = rest.slice(open.length);
@@ -173,28 +297,39 @@ function readGroup(s: string): { refs: ParsedRef[]; rest: string } | null {
   }
 }
 
-function readLink(s: string): { style: FlowEdgeStyle; arrow: FlowArrow; label: string; rest: string } | null {
+interface ParsedLink {
+  style: FlowLineStyle;
+  start: FlowHead;
+  end: FlowHead;
+  width: number;
+  label: string;
+  rest: string;
+}
+
+const headOf = (c: string | undefined): FlowHead => (c === ">" || c === "<" ? "arrow" : c === "o" ? "circle" : c === "x" ? "bar" : "none");
+
+function readLink(s: string): ParsedLink | null {
   const t = s.trimStart();
   const tl = TEXT_LINK_RE.exec(t);
   if (tl) {
     const head = tl[4]!;
     const dashed = tl[2] === "-." || head.includes(".");
+    const thick = tl[2] === "==";
     const arrowEnd = head.endsWith(">");
-    return { style: dashed ? "dashed" : "solid", arrow: arrowEnd ? (tl[1] ? "both" : "end") : "none", label: decodeLabel(tl[3]!), rest: t.slice(tl[0].length) };
+    return { style: dashed ? "dashed" : "solid", start: arrowEnd && tl[1] ? "arrow" : "none", end: arrowEnd ? "arrow" : "none", width: thick ? 3 : FLOWCHART_EDGE_WIDTH, label: decodeLabel(tl[3]!), rest: t.slice(tl[0].length) };
   }
   const m = LINK_RE.exec(t);
   if (!m) return null;
   let rest = t.slice(m[0].length);
   const dashed = m[2]!.includes(".");
-  const start = m[1] === "<";
-  const end = m[3] === ">";
+  const thick = m[2]!.startsWith("=");
   let label = "";
   const lab = /^\s*\|([^|]*)\|/.exec(rest);
   if (lab) {
     label = decodeLabel(lab[1]!);
     rest = rest.slice(lab[0].length);
   }
-  return { style: dashed ? "dashed" : "solid", arrow: start && end ? "both" : end || start ? "end" : "none", label, rest };
+  return { style: dashed ? "dashed" : "solid", start: headOf(m[1]), end: headOf(m[3]), width: thick ? 3 : FLOWCHART_EDGE_WIDTH, label, rest };
 }
 
 /** Parses Mermaid flowchart source into a laid-out flowchart. */
@@ -211,19 +346,42 @@ export function mermaidToFlowchart(source: string): MermaidImport {
   if (!hm) return { ok: false, error: "Only Mermaid flowcharts (starting with “flowchart” or “graph”) can be converted." };
   const direction: FlowDirection = hm[2] && /^(LR|RL)$/i.test(hm[2]) ? "LR" : "TD";
 
-  const nodes = new Map<string, { text?: string; shape?: FlowShape }>();
-  const edges: { from: string; to: string; style: FlowEdgeStyle; arrow: FlowArrow; label: string }[] = [];
+  const nodes = new Map<string, { text?: string; shape?: FlowShape; parent?: string }>();
+  const edges: { from: string; to: string; link: ParsedLink }[] = [];
+  const groups = new Map<string, { title: string; parent?: string }>();
+  const stack: string[] = [];
   const remember = (r: ParsedRef) => {
     const cur = nodes.get(r.id);
+    const parent = stack[stack.length - 1];
     if (!cur) {
       if (nodes.size >= FLOWCHART_LIMITS.maxNodes) return false;
-      nodes.set(r.id, { text: r.text, shape: r.shape });
-    } else if (r.shape && !cur.shape) nodes.set(r.id, { text: r.text, shape: r.shape });
+      nodes.set(r.id, { text: r.text, shape: r.shape, parent });
+    } else {
+      if (r.shape && !cur.shape) Object.assign(cur, { text: r.text, shape: r.shape });
+      if (parent && !cur.parent) cur.parent = parent;
+    }
     return true;
   };
   let skipped = 0;
   for (const st of statements) {
-    if (/^(subgraph\b|end$|direction\b)/i.test(st)) continue;
+    const sg = /^subgraph\s+(.+)$/i.exec(st);
+    if (sg) {
+      if (groups.size >= FLOWCHART_LIMITS.maxFrames || stack.length >= FLOWCHART_LIMITS.maxFrameDepth) {
+        stack.push("");
+        continue;
+      }
+      const body = sg[1]!.trim();
+      const titled = /^([\p{L}\p{N}_.-]+)\s*\[(.*)\]\s*$/u.exec(body);
+      const key = `\u0000g${groups.size}`;
+      groups.set(key, { title: decodeLabel(titled ? titled[2]! : body).replace(/\n+/g, " ").slice(0, FLOWCHART_LIMITS.maxTitle), parent: stack.filter(Boolean).pop() });
+      stack.push(key);
+      continue;
+    }
+    if (/^end$/i.test(st)) {
+      stack.pop();
+      continue;
+    }
+    if (/^direction\b/i.test(st)) continue;
     if (/^(classDef|class|style|linkStyle|click|accTitle|accDescr)\b/.test(st)) continue;
     let g = readGroup(st);
     if (!g) {
@@ -246,7 +404,7 @@ export function mermaidToFlowchart(source: string): MermaidImport {
       next.refs.forEach(remember);
       for (const a of g.refs) {
         for (const b of next.refs) {
-          if (a.id !== b.id && edges.length < FLOWCHART_LIMITS.maxEdges && nodes.has(a.id) && nodes.has(b.id)) edges.push({ from: a.id, to: b.id, style: link.style, arrow: link.arrow, label: link.label });
+          if (a.id !== b.id && edges.length < FLOWCHART_LIMITS.maxEdges && nodes.has(a.id) && nodes.has(b.id)) edges.push({ from: a.id, to: b.id, link });
         }
       }
       g = next;
@@ -255,22 +413,35 @@ export function mermaidToFlowchart(source: string): MermaidImport {
   }
   if (!nodes.size) return { ok: false, error: skipped ? "Couldn’t read any shapes from this diagram." : "The diagram is empty." };
 
+  const frameIds = new Map<string, string>();
+  for (const key of groups.keys()) frameIds.set(key, flowId("f"));
+  const frames: FlowFrame[] = [...groups.entries()].map(([key, g]) => {
+    const f: FlowFrame = { id: frameIds.get(key)!, x: 0, y: 0, w: 320, h: 200, title: g.title, color: "neutral" };
+    if (g.parent && frameIds.has(g.parent)) f.parent = frameIds.get(g.parent);
+    return f;
+  });
   const idMap = new Map<string, string>();
   const flowNodes: FlowNode[] = [...nodes.entries()].map(([raw, n]) => {
     const shape = n.shape ?? "process";
     const id = flowId("n");
     idMap.set(raw, id);
     const text = (n.text ?? raw).slice(0, FLOWCHART_LIMITS.maxText);
-    return fitNodeToText({ id, shape, x: 0, y: 0, ...FLOWCHART_SHAPE_SIZE[shape], text, color: "neutral" }, { maxWidth: 240 });
+    const node: FlowNode = fitNodeToText({ id, shape, x: 0, y: 0, ...FLOWCHART_SHAPE_SIZE[shape], text, color: "neutral" }, { maxWidth: 240 });
+    if (n.parent && frameIds.has(n.parent)) node.parent = frameIds.get(n.parent);
+    return node;
   });
-  const flowEdges: FlowEdge[] = edges.map((e) => ({
-    id: flowId("e"),
-    from: idMap.get(e.from)!,
-    to: idMap.get(e.to)!,
-    label: e.label.replace(/\n+/g, " ").slice(0, FLOWCHART_LIMITS.maxLabel),
-    style: e.style,
-    arrow: e.arrow,
-  }));
-  const data = layoutFlowchart({ v: 1, nodes: flowNodes, edges: flowEdges }, { direction, origin: { x: 0, y: 0 } });
+  const flowEdges: FlowEdge[] = edges.map((e) =>
+    newEdge(idMap.get(e.from)!, idMap.get(e.to)!, {
+      labels: e.link.label ? [{ text: e.link.label.replace(/\n+/g, " ").slice(0, FLOWCHART_LIMITS.maxLabel), at: 0.5 }] : [],
+      style: e.link.style,
+      start: e.link.start,
+      end: e.link.end,
+      width: e.link.width,
+    }),
+  );
+  // Frames left empty (subgraphs that only held other things) go.
+  const used = new Set([...flowNodes.map((n) => n.parent), ...frames.map((f) => f.parent)]);
+  const keptFrames = frames.filter((f) => used.has(f.id));
+  const data = layoutFlowchart({ ...emptyFlowchart(), nodes: flowNodes, edges: flowEdges, frames: keptFrames }, { direction, origin: { x: 0, y: 0 } });
   return { ok: true, data, direction };
 }

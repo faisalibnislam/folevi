@@ -5,13 +5,18 @@ import {
   blockSearchText,
   blocksToHtml,
   blocksToMarkdown,
+  edgeArrow,
+  edgeLabel,
+  emptyFlowchart,
   fitNodeToText,
+  flowchart,
   flowchartBounds,
   flowchartDataIssue,
   flowchartToMermaid,
   flowchartToSvg,
   layoutFlowchart,
   mermaidToFlowchart,
+  newEdge,
   normalizeFlowchart,
   parseFlowchart,
   rectsOverlap,
@@ -36,11 +41,11 @@ const block = (props: Record<string, unknown>): WireBlock => ({
 });
 const codes = (b: WireBlock) => validateWireBlock(b).map((i) => i.code);
 const node = (id: string, x = 0, y = 0, extra: Partial<FlowNode> = {}): FlowNode => ({ id, shape: "process", x, y, w: 160, h: 64, text: id, color: "neutral", ...extra });
-const chart = (nodes: FlowNode[], edges: [string, string, string?][] = []): FlowchartData => ({
-  v: 1,
-  nodes,
-  edges: edges.map(([from, to, label], i) => ({ id: `e${i}`, from, to, label: label ?? "", style: "solid", arrow: "end" })),
-});
+const chart = (nodes: FlowNode[], edges: [string, string, string?][] = []): FlowchartData =>
+  flowchart({
+    nodes,
+    edges: edges.map(([from, to, label], i) => newEdge(from, to, { id: `e${i}`, labels: label ? [{ text: label, at: 0.5 }] : [] })),
+  });
 
 describe("flowchart data", () => {
   const ok = serializeFlowchart(chart([node("a"), node("b", 0, 120)], [["a", "b", "Yes"]]));
@@ -56,7 +61,7 @@ describe("flowchart data", () => {
       patch(o);
       return flowchartDataIssue(JSON.stringify(o));
     };
-    expect(bad((o) => (o.nodes[0]!.shape = "star"))).toMatch(/shape/);
+    expect(bad((o) => (o.nodes[0]!.shape = "rocket"))).toMatch(/shape/);
     expect(bad((o) => (o.nodes[1]!.id = "a"))).toMatch(/id/);
     expect(bad((o) => (o.nodes[0]!.id = "<script>"))).toMatch(/id/);
     expect(bad((o) => (o.nodes[0]!.w = 5))).toMatch(/w/);
@@ -65,7 +70,8 @@ describe("flowchart data", () => {
     expect(bad((o) => (o.nodes[0]!.onclick = "x"))).toMatch(/unexpected/);
     expect(bad((o) => (o.nodes[0]!.text = "x".repeat(FLOWCHART_LIMITS.maxText + 1)))).toMatch(/text/);
     expect(bad((o) => (o.edges[0]!.to = "zzz"))).toMatch(/unknown node/);
-    expect(bad((o) => (o.edges[0]!.arrow = "left"))).toMatch(/arrow/);
+    expect(bad((o) => (o.edges[0]!.end = "left"))).toMatch(/end/);
+    expect(bad((o) => (o.edges[0]!.arrow = "end"))).toMatch(/unexpected/);
     expect(bad((o) => (o.edges[0]!.fromSide = "middle"))).toMatch(/fromSide/);
     expect(codes(block({ data: " ".repeat(LIMITS.maxFlowchartDataLength + 1), height: 440 }))).toEqual(["too_long"]);
   });
@@ -77,16 +83,16 @@ describe("flowchart data", () => {
     expect(s).not.toContain('"style"');
     expect(s).not.toContain('"neutral"');
     expect(parseFlowchart(s)).toEqual(fc);
-    expect(serializeFlowchart({ v: 1, nodes: [], edges: [] })).toBe("");
+    expect(serializeFlowchart(emptyFlowchart())).toBe("");
   });
 
   it("reads bad data forgivingly: drops, clamps, dedupes, never throws", () => {
-    expect(parseFlowchart("garbage")).toEqual({ v: 1, nodes: [], edges: [] });
+    expect(parseFlowchart("garbage")).toEqual(emptyFlowchart());
     expect(parseFlowchart(null).nodes).toEqual([]);
     const fc = normalizeFlowchart({
       nodes: [
-        { id: "a", shape: "hexagon", x: 1e9, y: "3", w: 99999, h: -4, text: 42, color: "chartreuse" },
-        { id: "a", shape: "note", x: 10, y: 10, text: `hi\u0000\r\nthere${"!".repeat(900)}` },
+        { id: "a", shape: "rocket", x: 1e9, y: "3", w: 99999, h: -4, text: 42, color: "chartreuse" },
+        { id: "a", shape: "note", x: 10, y: 10, text: `hi\u0000\r\nthere${"!".repeat(1900)}` },
         "junk",
         { id: "c" },
       ],
@@ -105,7 +111,7 @@ describe("flowchart data", () => {
     expect(second.text.startsWith("hi\nthere!")).toBe(true);
     expect(second.text.length).toBe(FLOWCHART_LIMITS.maxText);
     expect(fc.edges).toHaveLength(1);
-    expect(fc.edges[0]).toMatchObject({ from: "a", to: c.id, label: "go now", style: "solid", arrow: "both" });
+    expect(fc.edges[0]).toMatchObject({ from: "a", to: c.id, labels: [{ text: "go now", at: 0.5 }], style: "solid", start: "arrow", end: "arrow" });
     expect(fc.edges[0]!.fromSide).toBeUndefined();
     // Whatever comes out is valid on the server.
     expect(flowchartDataIssue(serializeFlowchart(fc))).toBeNull();
@@ -218,11 +224,11 @@ describe("Mermaid", () => {
     expect(byText('Say "hi"\ntwice').shape).toBe("process");
     expect(res.data.nodes).toHaveLength(9);
     const edge = (from: string, to: string) => res.data.edges.find((e) => e.from === byText(from).id && e.to === byText(to).id)!;
-    expect(edge("Is it ok?", "Done").label).toBe("Yes");
-    expect(edge("Is it ok?", "Fix input").label).toBe("No");
+    expect(edgeLabel(edge("Is it ok?", "Done"))).toBe("Yes");
+    expect(edgeLabel(edge("Is it ok?", "Fix input"))).toBe("No");
     expect(edge("Fix input", "Loop").style).toBe("dashed");
-    expect(edge("Loop", "Start here").arrow).toBe("none");
-    expect(edge("Loop", 'Say "hi"\ntwice').arrow).toBe("both");
+    expect(edgeArrow(edge("Loop", "Start here"))).toBe("none");
+    expect(edgeArrow(edge("Loop", 'Say "hi"\ntwice'))).toBe("both");
     expect(res.data.edges.filter((e) => e.to === byText("I").id)).toHaveLength(2);
     expect(flowchartDataIssue(serializeFlowchart(res.data))).toBeNull();
   });
@@ -249,7 +255,7 @@ describe("Mermaid", () => {
       ["decision", 'Ok "really"?'],
       ["process", "Ship | go"],
     ]);
-    expect(back.data.edges.map((e) => [e.label, e.style])).toEqual([
+    expect(back.data.edges.map((e) => [edgeLabel(e), e.style])).toEqual([
       ["", "dashed"],
       ["Yes", "solid"],
     ]);

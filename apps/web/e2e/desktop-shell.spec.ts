@@ -134,14 +134,15 @@ test("the bundled Mac app: the handoff from the website's origin, a cold offline
     const bridge = await page.evaluate(async () => {
       const w = window as unknown as { foleviShell: { platform: string; initialMode: string; shellVersion: string; library: { info(): Promise<unknown>; fileUrl(s: string, m: string): string } }; foleviDesktop?: { onCommand?: unknown } };
       const info = await w.foleviShell.library.info().then(
-        () => "answered",
+        (i) => ((i as { configured?: boolean }).configured === false ? "not set up" : "set up"),
         (e: Error) => e.message,
       );
       return { platform: w.foleviShell.platform, mode: w.foleviShell.initialMode, version: w.foleviShell.shellVersion, info, fileUrl: w.foleviShell.library.fileUrl("a".repeat(64), "image/png"), desktop: typeof w.foleviDesktop?.onCommand };
     });
     expect(bridge).toMatchObject({ platform: "mac", mode: "account", desktop: "function", fileUrl: `app://folevi/_files/${"a".repeat(64)}?type=image%2Fpng` });
     expect(bridge.version).toMatch(/^\d+\.\d+\.\d+$/);
-    expect(bridge.info).toMatch(/isn't in this build of Folevi for Mac yet/);
+    // The library layer answers; in account mode no library has been set up on this Mac.
+    expect(bridge.info).toBe("not set up");
 
     // The window buttons sit in the room the page keeps for them.
     const space = page.locator(".ui-traffic-space").filter({ visible: true }).first();

@@ -18,6 +18,7 @@ import { useCallback, useRef, useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BoxSelect, Frame, Pencil, Plus, Trash2 } from "lucide-react";
 import { ContextMenu, type MenuItem } from "@/components/ui/Menu";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
+import { haptic } from "@/lib/nativeApp";
 import {
   FLOWCHART_FRAME_TITLE,
   FLOWCHART_GRID,
@@ -91,7 +92,12 @@ export function useContainers(ctrl: FlowController) {
   /** The right-click menu, or (`ask`) the question of whether to keep what's inside. */
   const [menu, setMenu] = useState<{ at: Pt; id: string; ask?: boolean } | null>(null);
   /** The frame or lane a dragged frame would go into. */
-  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [dropTargetState, setDropTargetState] = useState<string | null>(null);
+  const dropTarget = useRef<string | null>(null);
+  const setDropTarget = (id: string | null) => {
+    dropTarget.current = id;
+    setDropTargetState(id);
+  };
   /** The chart when a shape was pressed, so the frame or lane it would land in shows once it moves. */
   const nodePress = useRef<FlowchartData | null>(null);
 
@@ -214,7 +220,10 @@ export function useContainers(ctrl: FlowController) {
   const shiftLane = (laneId: string, dir: -1 | 1) => {
     const fc = docRef.current;
     const next = moveLane(fc, laneId, dir);
-    if (next !== fc) commit(next);
+    if (next !== fc) {
+      commit(next);
+      haptic("light");
+    }
     selectBox(laneId);
   };
 
@@ -247,8 +256,12 @@ export function useContainers(ctrl: FlowController) {
         }
       },
       end: () => {
+        const into = dropTarget.current;
         setDropTarget(null);
-        if (moved) commit(docRef.current, { before });
+        if (!moved) return;
+        commit(docRef.current, { before });
+        // On iPhone and iPad, a tap when a frame lands in another frame or a lane.
+        if (into) haptic("light");
       },
       cancel: () => {
         setDropTarget(null);
@@ -402,7 +415,7 @@ export function useContainers(ctrl: FlowController) {
 
   // Where dragged shapes would land.
   const targets = new Set<string>();
-  if (dropTarget) targets.add(dropTarget);
+  if (dropTargetState) targets.add(dropTargetState);
   if (nodePress.current && dragging && doc !== nodePress.current) {
     for (const n of ctrl.selNodes) {
       const t = boxAt(doc, n);
@@ -509,10 +522,18 @@ export function useContainers(ctrl: FlowController) {
     const r = shown;
     const top = r.y * k + view.y;
     const bottom = (r.y + r.h) * k + view.y;
-    const cx = clamp((r.x + r.w / 2) * k + view.x, 170, Math.max(170, ctrl.width - 170));
-    const above = top - 52 > 56;
+    // On a narrow canvas (a phone) the bar wraps onto two rows and sits in the middle.
+    const compact = ctrl.width < 460;
+    const half = 200;
+    const cx = compact ? ctrl.width / 2 : clamp((r.x + r.w / 2) * k + view.x, half, Math.max(half, ctrl.width - half));
+    const tall = compact ? 92 : 52;
+    const above = top - tall > 56;
     // A big pool fills the view: the bar then sits at the top of the canvas, under the toolbar.
-    const style: React.CSSProperties = { left: cx, top: above ? top - 52 : bottom + 60 < ctrl.height ? Math.min(ctrl.height - 48, bottom + 12) : 58 };
+    const style: React.CSSProperties = {
+      left: cx,
+      top: above ? top - tall : bottom + tall + 8 < ctrl.height ? Math.min(ctrl.height - tall + 4, bottom + 12) : 58,
+      ...(compact ? { maxWidth: ctrl.width - 16 } : {}),
+    };
     const lane = oneKind === "lane" ? findLane(doc, one) : null;
     const frame = oneKind === "frame" ? doc.frames.find((f) => f.id === one) : null;
     bar = (
@@ -531,6 +552,7 @@ export function useContainers(ctrl: FlowController) {
           askRemove(one, rr ? toClient({ x: rr.x + rr.w / 2, y: rr.y }) : undefined);
         }}
         style={style}
+        compact={compact}
       />
     );
   }

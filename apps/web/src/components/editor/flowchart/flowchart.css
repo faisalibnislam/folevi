@@ -333,6 +333,9 @@
   .fc-edge-grip { stroke-width: 44px; }
   .fc-frame-edge { stroke-width: 28px; }
 }
+/* The container bar on a narrow canvas: two rows. */
+.fc-bar-wrap { flex-wrap: wrap; justify-content: center; white-space: normal; row-gap: 2px; }
+.fc-bar-wrap > .fc-sep { display: none; }
 /* Renaming a frame, pool or lane: the box sits over its title. */
 .fc-box-input { text-align: left; font-weight: 600; padding: 0 6px; }
 

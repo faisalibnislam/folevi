@@ -41,18 +41,26 @@ export interface ContainerBarProps {
   onMove: ((dir: -1 | 1) => void) | null;
   onDelete: () => void;
   style: React.CSSProperties;
+  /** Wraps onto two rows (a narrow canvas). */
+  compact?: boolean;
 }
 
 const NOUN: Record<FlowBoxKind, string> = { frame: "frame", pool: "swimlanes", lane: "lane" };
 
 /** Edits the selected frame, pool or lane. */
-export function ContainerBar({ kind, rows = true, canBack, canForward, color, onRename, onColor, onAddLane, onMove, onDelete, style }: ContainerBarProps) {
+export function ContainerBar({ kind, rows = true, canBack, canForward, color, onRename, onColor, onAddLane, onMove, onDelete, style, compact = false }: ContainerBarProps) {
   const noun = NOUN[kind];
   return (
-    <div className="fc-bar fc-bar-float" role="toolbar" aria-label={kind === "frame" ? "Selected frame" : kind === "lane" ? "Selected lane" : "Selected swimlanes"} style={style} onPointerDown={(e) => e.stopPropagation()}>
-      <button type="button" className="fc-btn fc-btn-text" onClick={onRename} title="Rename (Enter)">
-        <Pencil size={13} aria-hidden /> Rename
-      </button>
+    <div className={`fc-bar fc-bar-float${compact ? " fc-bar-wrap" : ""}`} role="toolbar" aria-label={kind === "frame" ? "Selected frame" : kind === "lane" ? "Selected lane" : "Selected swimlanes"} style={style} onPointerDown={(e) => e.stopPropagation()}>
+      {compact ? (
+        <button type="button" className="fc-btn" aria-label="Rename" onClick={onRename} title="Rename (Enter)">
+          <Pencil size={14} aria-hidden />
+        </button>
+      ) : (
+        <button type="button" className="fc-btn fc-btn-text" onClick={onRename} title="Rename (Enter)">
+          <Pencil size={13} aria-hidden /> Rename
+        </button>
+      )}
       {onColor ? (
         <>
           <span className="fc-sep" aria-hidden />

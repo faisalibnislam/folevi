@@ -151,6 +151,9 @@ test.describe("Flowchart frames and swimlanes", () => {
     await page.keyboard.type("Shipping");
     await page.keyboard.press("Enter");
     await expect(canvas.getByRole("button", { name: "Frame: Shipping, 1 shape" })).toBeVisible();
+    // Colour it from its bar.
+    await page.getByRole("toolbar", { name: "Selected frame" }).getByRole("button", { name: "Green" }).click();
+    await expect(canvas.locator('.fc-frame[data-color="green"]')).toHaveCount(1);
 
     await axe(page);
 
@@ -268,7 +271,16 @@ test.describe("Flowchart frames and swimlanes", () => {
     await page.keyboard.type("Stages");
     await page.keyboard.press("Enter");
     await expect(canvas.getByRole("button", { name: "Swimlanes: Stages, 3 columns, empty" })).toBeVisible();
+    // Colour a column; remove the empty lane added above (nothing inside, so no question).
+    const columns = canvas.locator('[data-kind="lane"][aria-label*="in Stages"]');
+    await columns.first().locator(".fc-lane-header").click();
+    await page.getByRole("toolbar", { name: "Selected lane" }).getByRole("button", { name: "Blue" }).click();
+    await expect(canvas.locator('.fc-lane[data-color="blue"]')).toHaveCount(1);
     await page.getByRole("button", { name: "Fit to content" }).click();
+    const added = canvas.locator('[data-kind="lane"][aria-label*="in Teams"]').filter({ hasNotText: /Sales|Lane 1|Lane 3/ });
+    await added.focus();
+    await page.keyboard.press("Delete");
+    await expect(canvas.locator('[data-kind="lane"][aria-label*="in Teams"]')).toHaveCount(3);
     await shot(page, "rows-and-columns");
 
     await axe(page);
@@ -276,6 +288,12 @@ test.describe("Flowchart frames and swimlanes", () => {
     // Phone width: the canvas and its bars still fit.
     await page.setViewportSize({ width: 390, height: 844 });
     await settle(page);
+    await page.getByRole("button", { name: "Fit to content" }).click();
+    await lane(laneIds[1]!).focus();
+    await expect(page.getByRole("toolbar", { name: "Selected lane" })).toBeVisible();
+    const bar = (await page.getByRole("toolbar", { name: "Selected lane" }).boundingBox())!;
+    expect(bar.x).toBeGreaterThanOrEqual(0);
+    expect(bar.x + bar.width).toBeLessThanOrEqual(390);
     await shot(page, "phone");
     await page.setViewportSize({ width: 1280, height: 800 });
 
@@ -286,6 +304,8 @@ test.describe("Flowchart frames and swimlanes", () => {
     const again = page.getByRole("application", { name: /Flowchart, 2 shapes/ });
     await expect(again.getByRole("button", { name: /^Lane: Sales, 1 shape/ })).toBeVisible();
     await expect(again.getByRole("button", { name: "Swimlanes: Stages, 3 columns, empty" })).toBeVisible();
+    await expect(again.locator('.fc-lane[data-color="blue"]')).toHaveCount(1);
+    await expect(again.locator('[data-kind="lane"][aria-label*="in Teams"]')).toHaveCount(3);
     await context.close();
   });
 });

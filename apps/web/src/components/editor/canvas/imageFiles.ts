@@ -5,7 +5,9 @@
 // saved file shouldn't depend on a signed address that expires. Addresses come from files.urls, which
 // answers in the account and in local mode (the library's own addresses). Very large photos are drawn
 // smaller first. A file that can't be fetched keeps its placeholder.
-import type { ConvexReactClient } from "convex/react";
+import { useEffect } from "react";
+import { useConvex, type ConvexReactClient } from "convex/react";
+import { setClipboardFiles } from "../blockClipboard";
 import { api } from "@/lib/convex/api";
 
 /** Longest side of an image inside an exported picture. */
@@ -62,4 +64,16 @@ export async function fileDataUrls(client: ConvexReactClient, fileIds: readonly 
     }),
   );
   return out;
+}
+
+/**
+ * While an editor is open, pictures copied from it (⌘C on a flowchart block) embed the images they show, as
+ * Copy as image does (blockClipboard.ts).
+ */
+export function useClipboardImageFiles(): void {
+  const client = useConvex();
+  useEffect(() => {
+    // Every open editor (a note's, each synced block's) talks to the same backend: the last one set stays.
+    setClipboardFiles((ids) => fileDataUrls(client, ids));
+  }, [client]);
 }

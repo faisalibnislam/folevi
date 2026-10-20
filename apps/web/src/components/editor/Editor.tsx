@@ -15,6 +15,7 @@ import { blocksToDoc, docToBlocks, localChanges } from "./convert";
 import { clipboardBlocks, insertPastedBlocks, pasteIntoCode, prepareForPaste } from "./paste";
 import { readBlockClip } from "./blockClipboard";
 import { usePastedFiles } from "./pastedFiles";
+import { useClipboardImageFiles } from "./canvas/imageFiles";
 import { remoteTransaction } from "./remoteApply";
 import { PageLinkStatusWatcher } from "./PageLinkStatusWatcher";
 import { pasteAddress } from "./autolink";
@@ -254,6 +255,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
 
   // Images, files and recordings pasted from another note get their own file rows here (pastedFiles.ts).
   usePastedFiles(editor, documentId);
+  // ⌘C on a flowchart block puts its picture on the clipboard with the images in its shapes.
+  useClipboardImageFiles();
 
   useEffect(() => {
     editor?.setEditable(editable);

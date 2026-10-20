@@ -20,7 +20,7 @@ import { LIMITS, SCHEMA_VERSION, flattenTree, rankSequence, repairWireBlock, uli
 import { NODE_PROPS, nodeToFlat } from "./convert";
 import { clipboardSerializer } from "./clipboardHtml";
 import { sliceToText } from "./clipboardText";
-import { blockImageSvg, IMAGE_BLOCKS } from "./canvas/blockImage";
+import { blockImageFiles, blockImageSvg, IMAGE_BLOCKS } from "./canvas/blockImage";
 import { svgToPng } from "./canvas/exportImage";
 
 export const FOLEVI_BLOCKS_MIME = "application/x-folevi-blocks";
@@ -109,6 +109,30 @@ export function readBlockClip(data: DataTransfer | null): BlockClip | null {
     return { v: 1, documentId: typeof parsed.documentId === "string" ? parsed.documentId : null, blocks: ordered };
   } catch {
     return null;
+  }
+}
+
+/** Data URLs for files a copied picture shows, by file id (set by the editor: canvas/imageFiles.ts). */
+let clipboardFiles: ((fileIds: string[]) => Promise<Record<string, string>>) | null = null;
+
+/** Lets copied pictures show the images inside them (a flowchart's shapes); null stops it. */
+export function setClipboardFiles(resolve: typeof clipboardFiles): void {
+  clipboardFiles = resolve;
+}
+
+/**
+ * A picture block's SVG with the images it shows embedded (a flowchart's shapes), so the PNG on the clipboard
+ * has them; without a way to fetch them (or when that fails) the picture keeps its placeholders.
+ */
+async function pictureWithFiles(node: PMNode, svg: string): Promise<string> {
+  const files = blockImageFiles(node.type.name, node.attrs);
+  if (!files.length || !clipboardFiles) return svg;
+  try {
+    const urls = await clipboardFiles(files);
+    if (!Object.keys(urls).length) return svg;
+    return blockImageSvg(node.type.name, node.attrs, { imageUrl: (id) => urls[id] ?? null }) ?? svg;
+  } catch {
+    return svg;
   }
 }
 
@@ -213,7 +237,7 @@ export function writeBlocksToEvent(view: EditorView, event: ClipboardEvent, node
 function copyPictures(view: EditorView, nodes: readonly PMNode[], clip: BlockClip, text: string) {
   const list = pictures(nodes);
   if (!list.length || typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) return;
-  const pngs = list.map((p) => svgToPng(p.svg));
+  const pngs = list.map((p) => pictureWithFiles(p.node, p.svg).then(svgToPng));
   const html = Promise.all(pngs.map((p) => p.then(blobDataUrl))).then((urls) => {
     const images = new Map(list.map((p, i) => [String(p.node.attrs.id), urls[i]!]));
     return new Blob([htmlFor(view, nodes, clip, images)], { type: "text/html" });

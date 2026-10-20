@@ -6,7 +6,7 @@
 // needs is recorded on the operation. Anything that doesn't fit fails that operation with a plain reason.
 import type { Doc } from "../../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../../_generated/server";
-import { flattenTree, LIMITS, markdownToBlocks, normalizeForSearch, rankBetween, rankSequence, SCHEMA_VERSION, ulid, type SyncOp, type WireBlock } from "@folevi/editor-schema";
+import { blocksFileIds, flattenTree, LIMITS, markdownToBlocks, normalizeForSearch, rankBetween, rankSequence, SCHEMA_VERSION, ulid, type SyncOp, type WireBlock } from "@folevi/editor-schema";
 import { accessAtLeast, documentAccess, documentAccessInfo, getDocumentByPublicId } from "../../auth";
 import { fail } from "../../errors";
 import { liveBlocks, toWireBlock } from "../../documents";
@@ -156,14 +156,9 @@ function cloneBlocksForMerge(blocks: WireBlock[]): WireBlock[] {
   return cloneBlocks(flattenTree(kept).map((e) => e.block));
 }
 
-/** The files blocks show (images, attachments, audio). */
+/** The files blocks show (images, attachments, audio, and the images in flowchart shapes). */
 function fileIdsOf(blocks: WireBlock[]): Set<string> {
-  const out = new Set<string>();
-  for (const b of blocks) {
-    const id = (b.props as { fileId?: unknown }).fileId;
-    if (typeof id === "string" && id) out.add(id);
-  }
-  return out;
+  return new Set(blocksFileIds(blocks));
 }
 
 /**

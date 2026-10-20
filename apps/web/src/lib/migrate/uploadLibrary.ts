@@ -9,7 +9,7 @@ import { LIBRARY_FILE, decodeManifest, encodeManifest, type LocalFs } from "@fol
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/lib/convex/api";
 import type { LocalBackend } from "@/lib/local/backend";
-import { blockFile, coverFile } from "./remap";
+import { blockFiles, coverFile } from "./remap";
 import { copyLibrary } from "./copy";
 import { libraryProgress, progressKey } from "./progress";
 import { clientSource, libraryFiles } from "./source";
@@ -41,8 +41,7 @@ export async function libraryCounts(backend: Pick<LocalBackend, "store">): Promi
   for (const d of live) {
     for (const b of await store.list("blocks", d.id)) {
       if (b.deletedAt !== null) continue;
-      const f = blockFile(b);
-      if (f) shown.add(f.fileId);
+      for (const f of blockFiles(b)) shown.add(f.fileId);
     }
     const cover = coverFile(d.cover);
     if (cover) shown.add(cover);

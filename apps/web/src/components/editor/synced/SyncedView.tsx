@@ -11,7 +11,7 @@ import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Copy, ExternalLink, Lock, RefreshCw, Trash2, Unlink } from "lucide-react";
-import type { WireBlock } from "@folevi/editor-schema";
+import { blocksFileIds, remapBlockFiles, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
@@ -153,7 +153,8 @@ export function SyncedView({ node, editor, getPos, selected, deleteNode }: React
     if (!engine || !pendingFileShares.has(sourceId)) return;
     pendingFileShares.delete(sourceId);
     void (async () => {
-      const fileIds = [...new Set(engine.documentBlocks(sourceId).flatMap((b) => (typeof (b.props as { fileId?: unknown }).fileId === "string" ? [String((b.props as { fileId: string }).fileId)] : [])))];
+      // A file block's own file, and the images in a flowchart's shapes.
+      const fileIds = blocksFileIds(engine.documentBlocks(sourceId));
       if (!fileIds.length) return;
       try {
         await engine.whenDocumentOnServer(sourceId, 120_000);
@@ -161,9 +162,8 @@ export function SyncedView({ node, editor, getPos, selected, deleteNode }: React
         innerRef.current?.flush();
         engine.batch(() => {
           for (const b of engine.documentBlocks(sourceId)) {
-            const fid = (b.props as { fileId?: unknown }).fileId;
-            const next = typeof fid === "string" ? map[fid] : undefined;
-            if (next && next !== fid) engine.upsertBlock(sourceId, { ...b, props: { ...b.props, fileId: next } }, ["content"]);
+            const next = remapBlockFiles(b, (id) => map[id]);
+            if (next !== b) engine.upsertBlock(sourceId, next, ["content"]);
           }
         });
         innerRef.current?.applyFromEngine();

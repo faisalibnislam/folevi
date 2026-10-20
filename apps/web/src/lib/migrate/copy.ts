@@ -9,7 +9,7 @@
 import { ConvexError } from "convex/values";
 import { inboxDocumentId, PERSONAL_SCOPE_KEY, rankSequence, type WireBlock, type WireDocumentCreate } from "@folevi/editor-schema";
 import { freshState } from "./progress";
-import { blockFile, coverFile, parentsFirst, remapBlock, remapRowValues, type IdMaps } from "./remap";
+import { blockFiles, coverFile, parentsFirst, remapBlock, remapRowValues, type IdMaps } from "./remap";
 import type { FileProblem, MigrationProblem, MigrationProgress, MigrationSource, MigrationState, MigrationTarget, ProgressStore, SourceCollection, SourceFolder, SourceNote } from "./types";
 
 export interface CopyOptions {
@@ -286,10 +286,7 @@ export async function copyLibrary(o: CopyOptions): Promise<MigrationState> {
 
     // Attachments, stored there first so the blocks can point at them.
     const wanted: { fileId: string; kind: "image" | "file" | "audio" | "cover"; name: string }[] = [];
-    for (const b of blocks) {
-      const f = blockFile(b);
-      if (f) wanted.push(f);
-    }
+    for (const b of blocks) wanted.push(...blockFiles(b));
     if (cover) wanted.push({ fileId: cover, kind: "cover", name: "Theme image" });
     for (const f of wanted) {
       if (s.files[f.fileId] !== undefined) continue;

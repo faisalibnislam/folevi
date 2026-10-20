@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { blockFileIds, flowchart, parseFlowchart, serializeFlowchart } from "@folevi/editor-schema";
 import { para, person, setup, ulid, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
@@ -225,5 +226,41 @@ describe("copied notes own their files", () => {
       await ctx.db.patch(a.profileId as Id<"profiles">, { personalStorageUsedBytes: 1024 ** 4 });
     });
     await expect(a.as.mutation(api.documents.duplicate, { documentId: original })).rejects.toThrow(/storage/);
+  });
+
+  test("Duplicate: images inside a flowchart's shapes get the copy's own file rows too", async () => {
+    vi.useFakeTimers();
+    const t = setup();
+    const a = await person(t, "dup-flowchart@example.com");
+    const original = await newDoc(a, "Process map");
+    const image = await uploadInto(t, original, "shape-png");
+    const data = serializeFlowchart(
+      flowchart({
+        nodes: [
+          { id: "a1", shape: "process", x: 0, y: 0, w: 160, h: 120, text: "Photo", color: "neutral", image: { fileId: image.publicId } },
+          { id: "b2", shape: "process", x: 0, y: 200, w: 160, h: 64, text: "Next", color: "neutral" },
+        ],
+      }),
+    );
+    const chart = { id: ulid(), type: "flowchart", parentId: null, rank: "a", schemaVersion: para("x", "").schemaVersion, text: [], props: { data, height: 440 } };
+    await push(a, [{ opId: ulid(), kind: "block.upsert", documentId: original, block: chart, baseRevision: null, fields: ["content", "position"] }]);
+
+    const copy = await a.as.mutation(api.documents.duplicate, { documentId: original });
+    const copied = (await a.as.query(api.blocks.list, { documentId: copy.id }))!.blocks.find((b) => b.type === "flowchart")!;
+    const [shapeFile] = blockFileIds(copied);
+    expect(shapeFile).toBeTruthy();
+    expect(shapeFile).not.toBe(image.publicId);
+    expect((await fileRow(t, shapeFile!))!.notePublicId).toBe(copy.id);
+    // The rest of the chart is as it was.
+    const fc = parseFlowchart((copied.props as { data: string }).data);
+    expect(fc.nodes.map((n) => n.text)).toEqual(["Photo", "Next"]);
+    // The original's chart still shows its own file.
+    const mine = (await a.as.query(api.blocks.list, { documentId: original }))!.blocks.find((b) => b.type === "flowchart")!;
+    expect(blockFileIds(mine)).toEqual([image.publicId]);
+    await drain(t);
+    expect((await fileRow(t, shapeFile!))!.bytes).toBe("shape-png");
+    await deleteForGood(t, a, original, "Process map");
+    await drain(t);
+    expect(await url(a, shapeFile!)).toBeTruthy();
   });
 });

@@ -2,7 +2,7 @@
 // attachments get the other side's file ids, the Inbox is the other side's Inbox, and the person is the other
 // side's profile. Every other id (notes, blocks, synced content, collections, folders) stays as it is, so links
 // between notes keep working. Pure.
-import { SCHEMA_VERSION, type InlineNode, type WireBlock } from "@folevi/editor-schema";
+import { SCHEMA_VERSION, parseFlowchart, flowchartFileIds, remapFlowchartFiles, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import type { FileProblem, SourceCollection, SourceFile } from "./types";
 
 export interface IdMaps {
@@ -26,6 +26,17 @@ export function blockFile(block: WireBlock): { fileId: string; kind: SourceFile[
   if (!kind || typeof fileId !== "string" || !fileId) return null;
   const name = (block.props as { name?: unknown; alt?: unknown }).name;
   return { fileId, kind, name: typeof name === "string" && name ? name : kind === "image" ? "Image" : "File" };
+}
+
+/** Every attachment a block shows: its own file, and the images inside a flowchart's shapes. */
+export function blockFiles(block: WireBlock): { fileId: string; kind: SourceFile["kind"]; name: string }[] {
+  const own = blockFile(block);
+  const out = own ? [own] : [];
+  const data = (block.props as { data?: unknown }).data;
+  if (block.type === "flowchart" && typeof data === "string" && data.includes("fileId")) {
+    for (const fileId of flowchartFileIds(parseFlowchart(data))) out.push({ fileId, kind: "image", name: "An image in a flowchart" });
+  }
+  return out;
 }
 
 /** The note theme image a note's cover shows, if any. */
@@ -85,6 +96,8 @@ export function remapBlock(block: WireBlock, maps: IdMaps): WireBlock {
     out.props.fileId = mapId(maps.files, file.fileId);
   }
   const p = out.props as Record<string, unknown>;
+  // A flowchart's shapes show the images that came along; one whose file didn't loses its image.
+  if (block.type === "flowchart" && typeof p.data === "string") p.data = remapFlowchartFiles(p.data, (id) => maps.files.get(id), (id) => maps.missingFiles.has(id));
   if (block.type === "page" && typeof p.documentId === "string") p.documentId = mapId(maps.documents, p.documentId);
   if (typeof p.assigneeId === "string" && maps.profiles.has(p.assigneeId)) p.assigneeId = maps.profiles.get(p.assigneeId);
   if (block.type === "table" && Array.isArray(p.rows)) {

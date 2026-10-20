@@ -1,7 +1,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { ulid, type WireBlock } from "@folevi/editor-schema";
+import { blockFileIds, remapBlockFiles, ulid, type WireBlock } from "@folevi/editor-schema";
 import { accessAtLeast, documentAccess } from "./auth";
 import { adjustStorageUsed, assertStorageFor, releaseFileStorage, storageChargeFor } from "./entitlements";
 import { fail } from "./errors";
@@ -33,13 +33,21 @@ export class FileCopies {
     private readonly actor: Doc<"profiles">,
   ) {}
 
-  /** The blocks, pointing at the copy's own files. */
+  /** The blocks, pointing at the copy's own files (a file block's, and the images in a flowchart's shapes). */
   async blocks(blocks: WireBlock[]): Promise<WireBlock[]> {
     const out: WireBlock[] = [];
     for (const b of blocks) {
-      const fileId = (b.props as { fileId?: unknown }).fileId;
-      const copied = typeof fileId === "string" && fileId ? await this.copyOf(fileId) : null;
-      out.push(copied ? { ...b, props: { ...b.props, fileId: copied } } : b);
+      const ids = blockFileIds(b);
+      if (!ids.length) {
+        out.push(b);
+        continue;
+      }
+      const copied = new Map<string, string>();
+      for (const id of ids) {
+        const c = await this.copyOf(id);
+        if (c) copied.set(id, c);
+      }
+      out.push(copied.size ? remapBlockFiles(b, (id) => copied.get(id)) : b);
     }
     return out;
   }

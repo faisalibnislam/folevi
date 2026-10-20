@@ -4,7 +4,7 @@
 // collections, synced blocks, folders, tags, history and Inbox (which becomes the other side's Inbox).
 // A move killed partway goes on from what the library kept and ends up the same as one that wasn't.
 import { describe, expect, test } from "vitest";
-import { inboxDocumentId, SCHEMA_VERSION, ulid, type InlineNode, type WireBlock } from "@folevi/editor-schema";
+import { blockFileIds, flowchart, inboxDocumentId, parseFlowchart, SCHEMA_VERSION, serializeFlowchart, ulid, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import { api } from "../../convex/_generated/api";
 import { exportToLocal, SERVER_ONLY_PATH } from "@/lib/migrate/exportToLocal";
 import { parentsFirst } from "@/lib/migrate/remap";
@@ -381,6 +381,78 @@ describe("copy rules", () => {
     const as = someone.as as unknown as { query: (r: unknown, a: unknown) => Promise<never>; mutation: (r: unknown, a: unknown) => Promise<never>; action: (r: unknown, a: unknown) => Promise<never> };
     const other = { query: (r: unknown, x: unknown) => as.query(r, x), mutation: (r: unknown, x: unknown) => as.mutation(r, x), action: (r: unknown, x: unknown) => as.action(r, x) } as unknown as MigrationClient;
     await expect(upload(a, first, other)).rejects.toThrow(/another account/);
+  });
+
+  test("images inside a flowchart's shapes go along both ways, by their bytes", async () => {
+    const a = await openTestLibrary({ seed: false, deviceId: "mac_one_device" });
+    const c = a.client;
+    const note = ulid();
+    await push(c, c.deviceId, [create(note, "Process map")]);
+    const png = (await c.local.putFile(new Blob([PNG as Uint8Array<ArrayBuffer>], { type: "image/png" }), { name: "shape.png", mimeType: "image/png", kind: "image", documentId: note })).fileId;
+    const chart = serializeFlowchart(
+      flowchart({
+        nodes: [
+          { id: "a1", shape: "process", x: 0, y: 0, w: 160, h: 120, text: "Photo", color: "neutral", image: { fileId: png } },
+          { id: "b2", shape: "process", x: 0, y: 200, w: 160, h: 64, text: "Next", color: "neutral" },
+        ],
+      }),
+    );
+    const chartId = ulid();
+    await push(c, c.deviceId, [upsert(note, block(chartId, "flowchart", { data: chart, height: 440 }, "a"))]);
+    expect((await libraryCounts(c.backend)).files).toBe(1);
+
+    const account = await ConvexDriver.open();
+    const up = await upload(a, account);
+    expect(up.problems).toEqual([]);
+    const accountView = await accountSide(account);
+    const shapeFiles = async (side: Side) => {
+      const list = await side.client.query(api.blocks.list, { documentId: note });
+      const b = (list?.blocks ?? []).find((x) => x.id === chartId)!;
+      const ids = blockFileIds(b);
+      return { ids, shas: await Promise.all(ids.map((id) => side.sha(id))), texts: parseFlowchart((b.props as { data: string }).data).nodes.map((n) => n.text) };
+    };
+    const there = await shapeFiles(accountView);
+    expect(there.ids).toHaveLength(1);
+    expect(there.ids[0]).not.toBe(png);
+    expect(there.shas).toEqual([await shaOf(PNG)]);
+    expect(there.texts).toEqual(["Photo", "Next"]);
+
+    const b = await openTestLibrary({ seed: false, deviceId: "mac_two_device" });
+    const down = await exportToLocal({
+      account: accountView.client,
+      library: { client: b.client, backend: b.client.backend },
+      fs: b.host,
+      deviceId: b.client.deviceId,
+      versions: false,
+      fetchBytes: async (url) => new Blob([(await account.download(url)) as Uint8Array<ArrayBuffer>]),
+      sleep: async () => {},
+    });
+    expect(down.personal.problems).toEqual([]);
+    await b.client.backend.idle();
+    const back = await shapeFiles(librarySide(b));
+    expect(back.shas).toEqual([await shaOf(PNG)]);
+  });
+
+  test("a flowchart shape whose image doesn't fit loses the image, and the move says so", async () => {
+    const a = await openTestLibrary({ seed: false, deviceId: "mac_one_device" });
+    const c = a.client;
+    const note = ulid();
+    await push(c, c.deviceId, [create(note, "Process map")]);
+    const png = (await c.local.putFile(new Blob([PNG as Uint8Array<ArrayBuffer>], { type: "image/png" }), { name: "shape.png", mimeType: "image/png", kind: "image", documentId: note })).fileId;
+    const chart = serializeFlowchart(flowchart({ nodes: [{ id: "a1", shape: "process", x: 0, y: 0, w: 160, h: 120, text: "Photo", color: "neutral", image: { fileId: png } }] }));
+    const chartId = ulid();
+    await push(c, c.deviceId, [upsert(note, block(chartId, "flowchart", { data: chart, height: 440 }, "a"))]);
+    const account = await ConvexDriver.open();
+    await account.t.run(async (ctx) => {
+      const p = (await ctx.db.query("profiles").collect())[0]!;
+      await ctx.db.patch(p._id, { personalStorageUsedBytes: 10 * 1024 * 1024 * 1024 * 1024 });
+    });
+    const done = await upload(a, account);
+    expect(done.problems.filter((p) => p.kind === "file").map((p) => p.problem)).toEqual(["space"]);
+    const list = await (await accountSide(account)).client.query(api.blocks.list, { documentId: note });
+    const b = (list?.blocks ?? []).find((x) => x.id === chartId)!;
+    expect(blockFileIds(b)).toEqual([]);
+    expect(parseFlowchart((b.props as { data: string }).data).nodes.map((n) => n.text)).toEqual(["Photo"]);
   });
 
   test("files that don't fit become a line saying so, and are reported", async () => {

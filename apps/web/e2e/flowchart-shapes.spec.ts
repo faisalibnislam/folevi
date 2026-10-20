@@ -368,4 +368,86 @@ test.describe("Flowchart shapes and content", () => {
     await page.waitForURL((u) => u.pathname === target);
     await context.close();
   });
+
+  test("a flowchart copied into another note: the images in its shapes get files of that note", async ({ browser }) => {
+    const { context, page } = await newPerson(browser, "Shape Image Copier");
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    const canvas = await newFlowchart(page, "Copy from");
+    const photo = await addProcess(page, canvas, "Photo");
+    await photo.click();
+    const chooser = page.waitForEvent("filechooser");
+    await bar(page).getByRole("button", { name: "Add image" }).click();
+    await (await chooser).setFiles({ name: "photo.png", mimeType: "image/png", buffer: PNG });
+    await expect(photo.locator("image.fc-image")).toHaveCount(1, { timeout: 20_000 });
+    await waitForSaved(page);
+
+    /** The file ids the note's flowchart shapes show, from its editor. */
+    const shapeFiles = () =>
+      page.evaluate(() => {
+        const ed = (document.querySelector(".fb-editor") as unknown as { editor: { state: { doc: { forEach: (f: (n: { type: { name: string }; attrs: Record<string, unknown> }) => void) => void } } } }).editor;
+        const out: string[] = [];
+        ed.state.doc.forEach((n) => {
+          if (n.type.name !== "flowchart") return;
+          const fc = JSON.parse(String(n.attrs.data || "{}")) as { nodes?: { image?: { fileId: string } }[] };
+          for (const x of fc.nodes ?? []) if (x.image) out.push(x.image.fileId);
+        });
+        return out;
+      });
+    const [original] = await shapeFiles();
+    expect(original).toBeTruthy();
+
+    // Esc steps out of the canvas to the note with the block selected; ⌘C copies the block.
+    await page.evaluate(() => {
+      const w = window as unknown as { __clip?: Record<string, string> | null };
+      w.__clip = null;
+      window.addEventListener("copy", (e) => { const d = e.clipboardData; if (d) w.__clip = Object.fromEntries([...d.types].map((t) => [t, d.getData(t)])); }, { once: true });
+    });
+    await canvas.focus();
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("ControlOrMeta+c");
+    await expect.poll(() => page.evaluate(() => Boolean((window as unknown as { __clip?: unknown }).__clip))).toBe(true);
+    const clip = (await page.evaluate(() => (window as unknown as { __clip: Record<string, string> }).__clip))!;
+    // The picture on the clipboard (for other apps) shows the shape's image, not a placeholder.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(async () => {
+            const items = await navigator.clipboard.read().catch(() => []);
+            const item = items.find((i) => i.types.includes("image/png"));
+            if (!item) return -1;
+            const bmp = await createImageBitmap(await item.getType("image/png"));
+            const c = document.createElement("canvas");
+            c.width = bmp.width;
+            c.height = bmp.height;
+            const g = c.getContext("2d")!;
+            g.drawImage(bmp, 0, 0);
+            const px = g.getImageData(0, 0, c.width, c.height).data;
+            let red = 0;
+            for (let i = 0; i < px.length; i += 4) if (px[i]! > 200 && px[i + 1]! < 170 && px[i + 2]! < 170) red++;
+            return red;
+          }),
+        { timeout: 20_000 },
+      )
+      .toBeGreaterThan(50);
+
+    // Pasted into another note: the shape shows a file of that note (a different id), and still draws.
+    const fromPath = new URL(page.url()).pathname;
+    await page.getByRole("button", { name: "New note", exact: true }).click();
+    await page.waitForURL((u) => /^\/d\/[0-9A-Z]{26}$/.test(u.pathname) && u.pathname !== fromPath);
+    await page.getByRole("textbox", { name: "Title" }).fill("Paste into");
+    await page.keyboard.press("Enter");
+    await page.evaluate((c) => {
+      const ed = (document.querySelector(".fb-editor") as unknown as { editor: { commands: { focus: (at: string) => void }; view: { dom: HTMLElement } } }).editor;
+      ed.commands.focus("end");
+      const data = new DataTransfer();
+      for (const [k, v] of Object.entries(c)) data.setData(k, v);
+      ed.view.dom.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+    }, clip);
+    await expect.poll(async () => (await shapeFiles()).length, { timeout: 20_000 }).toBe(1);
+    await expect.poll(async () => (await shapeFiles())[0], { timeout: 20_000 }).not.toBe(original);
+    const pasted = await reload(page);
+    await expect(pasted.locator("image.fc-image")).toHaveAttribute("href", /\/files\//, { timeout: 20_000 });
+    await context.close();
+  });
 });

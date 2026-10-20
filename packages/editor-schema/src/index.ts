@@ -23,6 +23,7 @@ export * from "./flowchartGeometry";
 export * from "./flowchartLayout";
 export * from "./flowchartMermaid";
 export * from "./flowchartSvg";
+export * from "./flowchartContainers";
 export * from "./flowchartPaths";
 export * from "./blockFiles";
 export * from "./mindmap";

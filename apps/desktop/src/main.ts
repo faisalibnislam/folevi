@@ -125,11 +125,17 @@ if (process.platform === "darwin") {
 // Test runs keep their own sign-in and settings, apart from the installed app's.
 if (process.env.FOLEVI_USER_DATA) app.setPath("userData", process.env.FOLEVI_USER_DATA);
 
-// ---------------------------------------------------------------- the bundled interface (off by default)
+// ---------------------------------------------------------------- the bundled interface (on in packaged apps)
 
 settings = loadSettings(settingsFile());
-/** Whether the windows show the interface built into the app (app://folevi) rather than the website. */
-const bundled = process.env.FOLEVI_SHELL === "1" || (process.env.FOLEVI_SHELL !== "0" && settings.bundledShell);
+/**
+ * Whether the windows show the interface built into the app (app://folevi) rather than the website: always
+ * with FOLEVI_SHELL=1; otherwise in a packaged app that carries the built-in copy, unless the settings file
+ * or FOLEVI_SHELL=0 turns it off. Development runs keep the website unless FOLEVI_SHELL=1.
+ */
+const bundled =
+  process.env.FOLEVI_SHELL === "1" ||
+  (process.env.FOLEVI_SHELL !== "0" && settings.bundledShell && app.isPackaged && existsSync(join(process.resourcesPath, "web", "index.html")));
 if (bundled) {
   // Before `ready`: standard + secure give app://folevi a real origin (IndexedDB, Web Locks, crypto.subtle).
   protocol.registerSchemesAsPrivileged([{ scheme: APP_SCHEME, privileges: APP_SCHEME_PRIVILEGES }]);

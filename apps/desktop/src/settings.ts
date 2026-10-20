@@ -16,8 +16,9 @@ export interface DesktopSettings {
    */
   mode: ShellMode;
   /**
-   * Shows the interface built into the app (app://folevi) instead of the website. Off until the owner
-   * switches it on; only the settings file (or FOLEVI_SHELL=1) sets it, never the page.
+   * Shows the interface built into the app (app://folevi) instead of the website. On by default in the
+   * packaged app since 2026-10-21 (main.ts also needs the built-in copy to be in the app); "bundledShell":
+   * false in the settings file or FOLEVI_SHELL=0 turns it off. Never set by the page.
    */
   bundledShell: boolean;
 }
@@ -38,7 +39,7 @@ export const DEFAULT_SETTINGS: DesktopSettings = {
   menuBarIcon: true,
   notifications: true,
   mode: "unset",
-  bundledShell: false,
+  bundledShell: true,
 };
 
 const MODIFIERS = new Set(["Command", "Cmd", "Control", "Ctrl", "CommandOrControl", "CmdOrCtrl", "Alt", "Option", "Shift", "Super", "Meta"]);

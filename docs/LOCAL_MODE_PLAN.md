@@ -12,6 +12,10 @@
 - Optional Face ID or Touch ID lock, and optional passphrase-encrypted sync folder (unrecoverable if the passphrase is lost).
 - Dropbox and Google Drive (added 2026-10-20): both built-in connections and "Choose a folder". First run offers "Sync with iCloud", "Sync with Dropbox", "Sync with Google Drive", "Choose a folder" and "This device only". Built-in connections sign in to Dropbox or Google inside Folevi (OAuth with PKCE from the device, tokens in the Keychain, no Folevi server involved) and sync the library through their APIs, limited to Folevi's own folder (the Dropbox app folder; Drive files Folevi created, `drive.file` scope). Local mode only: signed-in Folevi users don't get these connections.
 
+## Scope note (2026-10-20)
+
+The owner paused the iPhone and iPad apps. Build the Mac side of every work package now (shell, local mode, iCloud where possible, Dropbox, Google Drive, folders, encryption, AI); the iOS pieces (WP3, the iOS halves of WP9, WP9b, WP11 and WP13) wait until the owner resumes iOS. Keep the shared web code platform-neutral so iOS can be added later without rework.
+
 ## Work package WP9b: Dropbox and Google Drive backends
 
 `LocalFs` implementations over the providers' HTTP APIs, used through the same read-merge-write and anti-entropy rules as folders (section 3):

@@ -94,7 +94,10 @@ Content tables all carry `workspaceId` and a `seq` stamped from the workspace ch
 - `tasks`: a projection of `todo` blocks (the block is canonical)
 - `documentLinks`: backlink index
 - `collections`, `collectionProperties`, `collectionRows` (each row is a page), `collectionValues`,
-  `collectionViews`
+  `collectionViews`. A formula property stores only its formula's text (`formula`, checked on the server for
+  length and loops by `packages/editor-schema/src/collectionFormulas.ts`); its results are worked out where the
+  collection is shown, with the table formula evaluator, and never stored. Number and formula properties can
+  have a `numberFormat`; a view's `config.summaries` holds the summary under each column.
 - `commentThreads`, `comments`, `readStates`, `notifications`
 - `documentPermissions`, `publicLinks` (token hashes only)
 - `files`, `uploadIntents`

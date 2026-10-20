@@ -124,7 +124,10 @@ export async function deviceId(accountKey: string): Promise<string> {
  * Forgets this device's copy of the account (sign-out). `keep` spares databases by name: an account moved
  * into a library on this device keeps that library's copy (`folevi-local-*`, lib/migrate/exportToLocal.ts).
  */
-export async function clearAllLocalData(opts: { keep?: (name: string) => boolean } = {}): Promise<void> {
+export async function clearAllLocalData(opts: { keep?: (name: string) => boolean; library?: boolean } = {}): Promise<void> {
+  // A local library's copy on this device (`folevi-local-*`) isn't the account's: signing out of an account
+  // never touches it. Only an explicit `library: true` (removing the library itself) clears it.
+  const keep = (name: string) => (!opts.library && name.startsWith("folevi-local-")) || Boolean(opts.keep?.(name));
   try {
     localStorage.removeItem("folevi:last-account");
   } catch {
@@ -137,7 +140,7 @@ export async function clearAllLocalData(opts: { keep?: (name: string) => boolean
   const all = (await indexedDB.databases?.()) ?? [];
   await Promise.all(
     all
-      .filter((d) => d.name?.startsWith("folevi-") && !opts.keep?.(d.name))
+      .filter((d) => d.name?.startsWith("folevi-") && !keep(d.name))
       .map(
         (d) =>
           new Promise<void>((resolve) => {

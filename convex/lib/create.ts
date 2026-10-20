@@ -1,15 +1,6 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import {
-  SCHEMA_VERSION,
-  parseInlineMarkdown,
-  rankSequence,
-  ulid,
-  randomNoteEmoji,
-  validateWireBlock,
-  type InlineNode,
-  type WireBlock,
-} from "@folevi/editor-schema";
+import { cloneBlocks, specsToWireBlocks, ulid, randomNoteEmoji, validateWireBlock, type BlockSpec, type WireBlock } from "@folevi/editor-schema";
 import { DEFAULTS, lastRootRank, newDocumentRank, refreshDerived, sanitizeTitle, syncTaskProjection } from "./documents";
 import { studyKindOf, syncStudyCard } from "./study";
 import { fail } from "./errors";
@@ -20,34 +11,8 @@ import { queueIndex } from "./ai/indexing";
 import { emitWebhook } from "./webhooks";
 import { indexSyncedBlocks } from "./synced";
 
-/** Compact authoring format for seed content, templates and programmatic documents. */
-export interface BlockSpec {
-  type: string;
-  /** Inline Markdown (bold, italic, code, links). */
-  md?: string;
-  text?: InlineNode[];
-  props?: Record<string, unknown>;
-  children?: BlockSpec[];
-}
-
-export function specsToWireBlocks(specs: BlockSpec[], parentId: string | null = null): WireBlock[] {
-  const ranks = rankSequence(specs.length);
-  const out: WireBlock[] = [];
-  specs.forEach((spec, i) => {
-    const id = ulid();
-    out.push({
-      id,
-      type: spec.type,
-      parentId,
-      rank: ranks[i]!,
-      schemaVersion: SCHEMA_VERSION,
-      text: spec.text ?? (spec.md ? parseInlineMarkdown(spec.md) : []),
-      props: spec.props ?? {},
-    });
-    if (spec.children?.length) out.push(...specsToWireBlocks(spec.children, id));
-  });
-  return out;
-}
+// The authoring format and block copies are shared with the local backend (packages/editor-schema content.ts).
+export { cloneBlocks, specsToWireBlocks, type BlockSpec };
 
 export interface CreateDocumentInput {
   /** Where the document lives: a Personal or a team workspace (authorized by the caller). */
@@ -167,14 +132,3 @@ export async function adjustDocumentCount(ctx: MutationCtx, scope: Scope, delta:
   if (ws) await ctx.db.patch(ws._id, { documentCount: Math.max(0, ws.documentCount + delta) });
 }
 
-/** Deep-copies blocks with fresh ids, preserving the tree. */
-export function cloneBlocks(blocks: WireBlock[]): WireBlock[] {
-  const map = new Map<string, string>();
-  for (const b of blocks) map.set(b.id, ulid());
-  return blocks.map((b) => ({
-    ...b,
-    id: map.get(b.id)!,
-    parentId: b.parentId ? (map.get(b.parentId) ?? null) : null,
-    revision: undefined,
-  }));
-}

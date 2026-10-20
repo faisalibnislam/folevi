@@ -6,6 +6,8 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./ics": "./src/ics.ts",
+    "./icsParse": "./src/icsParse.ts",
     "./fixtures/*": "./fixtures/*",
     "./spec": "./spec/folevi-blocks.v1.json"
   },
@@ -14,6 +16,9 @@
     "typecheck": "node scripts/generate.mjs --check && tsc --noEmit",
     "lint": "eslint src test",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "ts-fsrs": "5.4.2"
   },
   "devDependencies": {
     "fast-check": "4.10.2",

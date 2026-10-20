@@ -4,6 +4,9 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import {
   LIMITS,
+  blockLinkTargets,
+  hasLinkTargets,
+  pageLinkLabelPatch,
   sameContent,
   validateWireBlock,
   type OpResult,
@@ -34,7 +37,6 @@ import { mentionedIds, notify } from "./notify";
 import { ReaderLabels, titleIsShared } from "./linkLabels";
 import { copyCollectionsInto } from "./collections";
 import { FileCopies } from "./fileCopies";
-import { internal } from "../_generated/api";
 import { noteEdited } from "./editSettle";
 import { emitWebhook } from "./webhooks";
 import { canReferenceSource, refreshSyncedSource } from "./synced";
@@ -923,41 +925,15 @@ function keepsCollapse(existing: Doc<"blocks">, incoming: WireBlock, op: Extract
   return was !== Boolean((incoming.props as { collapsed?: unknown }).collapsed) && op.baseRevision !== null && existing.revision > op.baseRevision;
 }
 
-/** Whether a block links to a page (a page card, or page links in its text or table cells). */
-function hasLinkTargets(row: Doc<"blocks">): boolean {
-  if (row.type === "page" || row.type === "synced") return true;
-  const scan = (nodes: unknown): boolean => Array.isArray(nodes) && nodes.some((n) => n && typeof n === "object" && (n as { type?: string }).type === "pageLink");
-  if (scan(row.text)) return true;
-  return row.type === "table" && ((row.props as { rows?: unknown[][] }).rows ?? []).some((r) => r.some(scan));
-}
-
 /** Maintains the backlink index for one block. */
 export async function syncLinks(ctx: MutationCtx, doc: Doc<"documents">, row: Doc<"blocks">): Promise<void> {
   const existing = await ctx.db
     .query("documentLinks")
     .withIndex("by_source_block", (q) => q.eq("sourceDocumentId", doc._id).eq("blockId", row.blockId))
     .collect();
-  const targets = new Set<string>();
-  if (row.deletedAt === undefined) {
-    if (row.type === "page" && typeof (row.props as { documentId?: unknown }).documentId === "string") {
-      targets.add((row.props as { documentId: string }).documentId);
-    }
-    // A synced block links to the content it shows (how the notes showing it are found, lib/syncedRefs.ts).
-    if (row.type === "synced" && typeof (row.props as { sourceId?: unknown }).sourceId === "string") {
-      targets.add((row.props as { sourceId: string }).sourceId);
-    }
-    const scan = (nodes: unknown) => {
-      if (!Array.isArray(nodes)) return;
-      for (const n of nodes) {
-        if (n && typeof n === "object" && (n as { type?: string }).type === "pageLink") {
-          const id = (n as { documentId?: unknown }).documentId;
-          if (typeof id === "string") targets.add(id);
-        }
-      }
-    };
-    scan(row.text);
-    if (row.type === "table") for (const r of ((row.props as { rows?: unknown[][] }).rows ?? [])) for (const c of r) scan(c);
-  }
+  // The pages it links to (a page card, page links in its text or cells), and the content a synced block
+  // shows (how the notes showing it are found, lib/syncedRefs.ts): packages/editor-schema derive.ts.
+  const targets = row.deletedAt === undefined ? blockLinkTargets(row) : new Set<string>();
   targets.delete(doc.publicId);
   const have = new Set(existing.map((l) => l.targetPublicId));
   for (const l of existing) if (!targets.has(l.targetPublicId)) await ctx.db.delete(l._id);
@@ -996,20 +972,6 @@ export async function refreshLinkLabels(ctx: MutationCtx, doc: Doc<"documents">,
   const icon = doc.icon ?? null;
   const touchedDocs = new Set<Id<"documents">>();
   const seqs = new SeqAllocator(ctx);
-  const relabel = (nodes: unknown): { nodes: unknown; changed: boolean } => {
-    if (!Array.isArray(nodes)) return { nodes, changed: false };
-    let changed = false;
-    const out = nodes.map((n) => {
-      if (n && typeof n === "object" && (n as { type?: string }).type === "pageLink" && (n as { documentId?: string }).documentId === doc.publicId) {
-        if ((n as { label?: string }).label !== title) {
-          changed = true;
-          return { ...(n as object), label: title };
-        }
-      }
-      return n;
-    });
-    return { nodes: out, changed };
-  };
   const seen = new Set<string>();
   // A link's label is only refreshed when whoever last wrote that block can open the page: anyone can put
   // a link to any page id in their own notes, and must not learn a page's new title that way.
@@ -1048,28 +1010,11 @@ export async function refreshLinkLabels(ctx: MutationCtx, doc: Doc<"documents">,
     if (!row || row.deletedAt !== undefined || row.documentId !== link.sourceDocumentId) continue;
     if (!(await sharedWith(row.documentId))) continue;
     if (!(await writerCanRead(row.updatedBy))) continue;
+    // The page card's cached title and icon, and every link label in its text and cells (derive.ts).
+    const labels = pageLinkLabelPatch(row, doc.publicId, title, icon);
     const patch: Partial<Doc<"blocks">> = {};
-    const props = row.props as Record<string, unknown>;
-    if (row.type === "page" && props.documentId === doc.publicId) {
-      const nextProps: Record<string, unknown> = { ...props, titleCache: title };
-      if (icon) nextProps.iconCache = icon;
-      else delete nextProps.iconCache;
-      if (props.titleCache !== title || (props.iconCache ?? null) !== icon) patch.props = nextProps;
-    }
-    const text = relabel(row.text);
-    if (text.changed) patch.text = text.nodes as Doc<"blocks">["text"];
-    if (row.type === "table") {
-      const rows = (props.rows as unknown[][] | undefined) ?? [];
-      let changed = false;
-      const nextRows = rows.map((r) =>
-        r.map((cell) => {
-          const c = relabel(cell);
-          if (c.changed) changed = true;
-          return c.nodes;
-        }),
-      );
-      if (changed) patch.props = { ...((patch.props as Record<string, unknown> | undefined) ?? props), rows: nextRows };
-    }
+    if (labels.props) patch.props = labels.props;
+    if (labels.text) patch.text = labels.text as Doc<"blocks">["text"];
     if (!Object.keys(patch).length) continue;
     const seq = await seqs.for(scopeOfRow(row));
     // Who wrote the line stays as it was: a new label isn't an edit by whoever renamed the page (version

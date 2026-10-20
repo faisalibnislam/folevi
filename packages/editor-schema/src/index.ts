@@ -38,3 +38,12 @@ export * from "./folders";
 export * from "./tabs";
 export * from "./columns";
 export * from "./slides";
+// Pure logic shared by the server and the local backend (docs/LOCAL_MODE_PLAN.md, WP7-pre).
+export * from "./derive";
+export * from "./content";
+export * from "./seed";
+export * from "./templates";
+export * from "./study";
+// iCalendar: the feed writer and the subscription reader (every helper: "@folevi/editor-schema/ics", "/icsParse").
+export { buildCalendar, zonedToUtc, type FeedTask } from "./ics";
+export { parseIcs, type IcsEvent } from "./icsParse";

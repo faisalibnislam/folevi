@@ -208,6 +208,10 @@ importers:
   packages/design-tokens: {}
 
   packages/editor-schema:
+    dependencies:
+      ts-fsrs:
+        specifier: 5.4.2
+        version: 5.4.2
     devDependencies:
       fast-check:
         specifier: 4.10.2

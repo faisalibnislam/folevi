@@ -4,17 +4,12 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import {
   DEFAULT_COVER,
   DEFAULT_DOCUMENT_STYLE,
-  documentSearchText,
-  flattenTree,
-  liftColumns,
-  mindmapRoot,
-  parseChart,
-  parseMindmap,
-  plainText,
+  buildPreview,
+  deriveDocumentText,
+  newDocumentRank,
   projectTask,
-  rankBetween,
-  wordCount,
-  type InlineNode,
+  sanitizeTitle,
+  type PreviewLine,
   type WireBlock,
 } from "@folevi/editor-schema";
 import { insertScoped, scopeOfRow, type Scope } from "./scope";
@@ -225,43 +220,8 @@ export async function liveBlocks(ctx: Ctx, documentId: Id<"documents">): Promise
     .collect();
 }
 
-/** One line of a page thumbnail: block type, trimmed text, and just enough shape to draw it. */
-export interface PreviewLine {
-  t: string;
-  x: string;
-  l?: number;
-  c?: boolean;
-  d?: number;
-  rows?: string[][];
-}
-
-const PREVIEW_LINES = 14;
-
-/** The first blocks of a page, trimmed, so document cards can show a miniature of the page itself. */
-export function buildPreview(entries: { block: WireBlock; depth: number }[]): PreviewLine[] {
-  const out: PreviewLine[] = [];
-  // A column's blocks are drawn at their row's level, one column after another (rows themselves draw nothing).
-  for (const { block: b, depth } of liftColumns(entries)) {
-    if (out.length >= PREVIEW_LINES) break;
-    if (b.type === "columns" || b.type === "column") continue;
-    const p = b.props as { level?: number; checked?: boolean; rows?: InlineNode[][][]; name?: string; title?: string; url?: string; titleCache?: string };
-    const line: PreviewLine = { t: b.type, x: plainText(b.text).slice(0, 160) };
-    if (depth) line.d = Math.min(depth, 4);
-    if (b.type === "heading") line.l = Number(p.level ?? 1);
-    if (b.type === "todo") line.c = Boolean(p.checked);
-    if (b.type === "table") line.rows = (p.rows ?? []).slice(0, 6).map((r) => r.slice(0, 5).map((c) => plainText(c).slice(0, 24)));
-    if (b.type === "file" || b.type === "audio") line.x = String(p.name ?? "File").slice(0, 80);
-    if (b.type === "bookmark") line.x = String(p.title ?? p.url ?? "").slice(0, 80);
-    if (b.type === "embed") line.x = String(p.url ?? "").slice(0, 80);
-    if (b.type === "page") line.x = String(p.titleCache ?? "Page").slice(0, 80);
-    if (b.type === "formula") line.x = String((p as { latex?: string }).latex ?? "").slice(0, 160);
-    // A mind map shows its central idea, a chart its title.
-    if (b.type === "mindmap") line.x = (mindmapRoot(parseMindmap(String((p as { data?: string }).data ?? "")))?.text ?? "").slice(0, 80);
-    if (b.type === "chart") line.x = parseChart(String((p as { data?: string }).data ?? "")).title.slice(0, 80);
-    out.push(line);
-  }
-  return out;
-}
+// The card preview, title and rank rules are shared with the local backend (packages/editor-schema derive.ts).
+export { buildPreview, newDocumentRank, sanitizeTitle, type PreviewLine };
 
 /**
  * Recomputes search text, counts, excerpt and card preview from the canonical blocks. Everyone who can
@@ -271,21 +231,17 @@ export async function refreshDerived(ctx: MutationCtx, doc: Doc<"documents">, ro
   const own = (rows ?? (await liveBlocks(ctx, doc._id))).map(toWireBlock);
   // A note reads with the synced blocks from its own place in it (lib/synced.ts): searching finds the note.
   const blocks = await sharedLabels(ctx, doc, (await withSyncedShared(ctx, doc, own)).blocks);
-  const flat = flattenTree(blocks);
-  const ordered = flat.map((e) => e.block);
-  const text = ordered.map((b) => plainText(b.text)).filter(Boolean);
-  const joined = text.join("\n");
-  const excerpt = text.join(" ").replace(/\s+/g, " ").slice(0, 240);
+  // A synced block's content is never found as a page of its own: the notes showing it are. Counts are of
+  // the body only (the title isn't part of the page's word count).
+  const derived = deriveDocumentText(doc.title, blocks, { synced: doc.kind === "synced" });
   await ctx.db.patch(doc._id, {
-    // A synced block's content is never found as a page of its own: the notes showing it are.
-    searchText: doc.kind === "synced" ? "" : documentSearchText(doc.title, ordered),
-    // Body only, like charCount (the title isn't part of the page's word count).
-    wordCount: wordCount(joined),
-    charCount: joined.length,
+    searchText: derived.searchText,
+    wordCount: derived.wordCount,
+    charCount: derived.charCount,
     // The note's own blocks (the limit on blocks per note counts these).
     blockCount: own.length,
-    excerpt,
-    preview: buildPreview(flat),
+    excerpt: derived.excerpt,
+    preview: derived.preview,
   });
   // The notes in its place that show it include its text.
   if (doc.kind === "synced") for (const note of await notesShowingInPlace(ctx, doc)) await refreshDerived(ctx, note);
@@ -364,16 +320,4 @@ export async function lastRootRank(ctx: Ctx, scope: Scope): Promise<string | nul
   return latest?.rank ?? null;
 }
 
-export function newDocumentRank(after: string | null): string {
-  try {
-    return rankBetween(after, null);
-  } catch {
-    return rankBetween(null, null);
-  }
-}
-
 export const DEFAULTS = { style: DEFAULT_DOCUMENT_STYLE, cover: DEFAULT_COVER };
-
-export function sanitizeTitle(title: string): string {
-  return title.replace(/[\u0000-\u001F\u007F]/g, " ").slice(0, 300);
-}

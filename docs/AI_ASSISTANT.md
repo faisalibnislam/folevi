@@ -326,6 +326,28 @@ As built (milestone 9, part B). The assistant is called Foli AI in the interface
 - The agent may offer to remember a preference like a chat answer (the same `[[remember]]` line, only while
   memory is on); the offer is stored on the message and saved only on Save.
 
+### Flowcharts (`convex/flowchartAi.ts`, `packages/ai-prompts/src/flowchart.ts`, `components/editor/flowchart/`)
+
+As built (flowchart v2, 2026-10-21; docs/FLOWCHART_V2_PLAN.md, Intelligence).
+
+- Builds and extends: `ai.flowchart` draws or changes a whole chart; its prompt teaches the v2 shape library,
+  labelled decision branches, and frames or swimlanes only when asked. Those come back as new reply fields
+  (`frames`, `lanes`, `laneOrient`, a node's `parent`), so older apps keep reading the fields they know.
+  `flowchartAi.fromText` draws a note (read as the person), a list or selected text; `flowchartAi.extend` adds
+  the next steps or the missing branches around the selected shapes and returns only what's new, which the
+  client places beside the selection with the layout engine.
+- Checks and explains: `checkFlowchart` (editor-schema, no model) finds dead ends, decisions with unlabelled or
+  missing branches, shapes nothing leads to or that aren't connected, loops with no way out and shapes with no
+  text; the Check panel lists them with jump-to. `flowchartAi.explain` summarises the chart (told what the check
+  found) for the panel or the note; `flowchartAi.labels` suggests clearer labels, taken one by one or all.
+- Tidy up: top to bottom or left to right, keep my placement, a short animated move, one undo step. When the
+  result still has many crossings or overlaps (`layoutStats`, `layoutNeedsHelp`), "Tidy up with Foli AI" asks
+  `flowchartAi.arrange` for an order of the shapes rank by rank, which seeds `layoutFlowchart`.
+- Every result is a preview on the canvas first (Apply or Discard, one undo step). Credits as other writing
+  help; hidden when Foli AI is off. Local mode runs the same requests and checks (lib/local/ai/functions/blocks.ts):
+  explain and labels on the on-device model too (feature `flowchartExplain`, the chart cut to fit), drawing,
+  extending and arranging with the person's own key (`flowchart`).
+
 ### Settings (AI section)
 
 AI on or off (existing), conversation history, memory, proactive suggestions, attachment reading, web research,

@@ -360,7 +360,12 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 .fb-swatch { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 18%, transparent); }
 
 .fb-table th, .fb-table td { min-width: 6rem; }
-.ProseMirror-gapcursor::after { border-top-color: var(--doc-accent); }
+/* The cursor in the gap beside a block (after an image or a chart at the end of the note, say) looks like the
+   ordinary text caret: an upright bar the height of a line, in the caret's colour, not a flat dash. */
+.fb-editor .ProseMirror-gapcursor::after {
+  top: 0.35em; width: 0; height: 1.25em; border-top: 0;
+  border-left: 1.5px solid var(--color-ember); border-radius: 1px;
+}
 
 /* Page backgrounds */
 .fb-sheet[data-background="paper"] { background: linear-gradient(180deg, var(--color-surface) 0%, color-mix(in oklab, var(--color-surface) 97%, var(--color-glow-peach)) 100%); }

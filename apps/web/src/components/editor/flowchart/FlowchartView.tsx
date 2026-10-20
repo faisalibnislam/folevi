@@ -162,7 +162,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   const select = useSelect(ctrl);
   const boxes = useContainers(ctrl);
   const menu = useContextMenu(ctrl, { actions, startEdit: text.startEdit, contentItems: content.menuItems, nodeItems: () => [...(boxes.nodeMenuItems?.() ?? []), ...walk.menuItems(), ...(aiOn ? [{ label: "Add next steps", icon: <ListPlus size={14} />, onSelect: () => void flowAi.extend("next", ctrl.selRef.current.nodes) }, { label: "Fill in missing branches", icon: <GitBranchPlus size={14} />, onSelect: () => void flowAi.extend("branches", ctrl.selRef.current.nodes) }] : [])] });
-  const quick = useQuickAdd(ctrl, { hover: hover.hover });
+  const quick = useQuickAdd(ctrl);
   const flow = useKeyboardFlow(ctrl, { actions, finishEdit: text.finishEdit });
   const events = useInteractions(ctrl, [
     walk.interaction, // Present and Follow a path: while one runs, every press and key is its own

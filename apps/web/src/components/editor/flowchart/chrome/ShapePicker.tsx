@@ -33,16 +33,14 @@ export function rememberShape(shape: FlowShape): void {
   }
 }
 
-/** Any shape's outline, fitted into a small square (the library's own geometry, so it matches the canvas). */
+/** Any shape's outline at its own size, scaled into a small square (the library's geometry, as on the canvas). */
 export function MiniShape({ shape, size = 20 }: { shape: FlowShape; size?: number }) {
-  const info = FLOWCHART_SHAPE_INFO[shape];
-  const s = 16 / Math.max(info.w, info.h);
-  const w = info.w * s;
-  const h = info.h * s;
-  const box = { shape, x: (20 - w) / 2, y: (20 - h) / 2, w, h };
+  const { w, h } = FLOWCHART_SHAPE_INFO[shape];
+  const side = Math.max(w, h) * 1.12;
+  const box = { shape, x: 0, y: 0, w, h };
   const details = shapeDetailPath(box);
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" aria-hidden className="fc-mini-shape">
+    <svg width={size} height={size} viewBox={`${(w - side) / 2} ${(h - side) / 2} ${side} ${side}`} aria-hidden className="fc-mini-shape">
       <path d={shapePath(box)} />
       {details ? <path d={details} className="fc-mini-detail" /> : null}
     </svg>

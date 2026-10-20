@@ -10,7 +10,7 @@
 // shape (setLive) and the text edit starts from the chart before it, so finishing the edit records both.
 import { useEffect, useState } from "react";
 import { FLOWCHART_SHAPE_LABEL, autoSides, nearestSide, orthogonalRoute, portPoint, roundedPolyline, type FlowchartData, type FlowNode, type FlowShape, type FlowSide, type Pt, type Rect } from "../schema";
-import { connect, nodeAt } from "../ops";
+import { NO_SELECTION, connect, nodeAt, type Selection } from "../ops";
 import { addConnectedAt, quickAdd, type Added } from "../building";
 import { ShapePicker, rememberShape } from "../chrome/ShapePicker";
 import type { FlowController, Interaction } from "../controller/types";
@@ -18,7 +18,7 @@ import type { FlowController, Interaction } from "../controller/types";
 const SIDES: FlowSide[] = ["top", "right", "bottom", "left"];
 const SIDE_WORD: Record<FlowSide, string> = { top: "above", right: "to the right of", bottom: "below", left: "to the left of" };
 /** How far the arrows sit outside the shape (screen pixels), past the connection handles. */
-const OUT = { mouse: 40, touch: 58 };
+const OUT = { mouse: 40, touch: 60 };
 /** The pointer keeps a shape's arrows while this close to it (screen pixels). */
 const KEEP = 64;
 
@@ -60,7 +60,7 @@ export function addedMessage(res: Added, from: FlowNode | undefined, where: stri
   return `Added ${n ? shapeName(n) : "shape"}${from ? ` ${where} ${named(from)}` : ""}${res.edge ? ", connected" : ""}. ${count} shape${count === 1 ? "" : "s"}. Type its text.`;
 }
 
-export function useQuickAdd(ctrl: FlowController, { hover }: { hover: string | null }) {
+export function useQuickAdd(ctrl: FlowController) {
   const { docRef, toWorld, byId, view, editing, single, isDragging, wrapRef, say } = ctrl;
   /** The shape whose arrows show under the mouse (kept while reaching for an arrow). */
   const [near, setNear] = useState<string | null>(null);
@@ -68,7 +68,8 @@ export function useQuickAdd(ctrl: FlowController, { hover }: { hover: string | n
   /** An arrow being dragged out: where it points now and the shape it would connect to. */
   const [drag, setDrag] = useState<{ from: string; side: FlowSide; to: Pt; target: string | null } | null>(null);
   /** The shape picker, open where a connector was let go. */
-  const [picker, setPicker] = useState<{ from: string; side: FlowSide; at: Pt; client: Pt } | null>(null);
+  // The selection steps aside while it's open (its bar would sit under the picker) and comes back on cancel.
+  const [picker, setPicker] = useState<{ from: string; side: FlowSide; at: Pt; client: Pt; sel: Selection } | null>(null);
 
   const addNext = (from: string, side: FlowSide) => {
     const before = docRef.current;
@@ -79,7 +80,8 @@ export function useQuickAdd(ctrl: FlowController, { hover }: { hover: string | n
   };
 
   const openPicker = (d: { from: string; side: FlowSide; at: Pt; client: Pt }) => {
-    setPicker(d);
+    setPicker({ ...d, sel: ctrl.selRef.current });
+    ctrl.setSel(NO_SELECTION);
     return true;
   };
   // A new connector let go on empty canvas (interactions/connect.tsx) opens the picker too.
@@ -91,6 +93,7 @@ export function useQuickAdd(ctrl: FlowController, { hover }: { hover: string | n
   });
 
   const closePicker = (refocus = true) => {
+    if (picker) ctrl.setSel(picker.sel);
     setPicker(null);
     if (refocus) wrapRef.current?.focus({ preventScroll: true });
   };
@@ -166,7 +169,7 @@ export function useQuickAdd(ctrl: FlowController, { hover }: { hover: string | n
         const over = nodeAt(docRef.current, p, 0);
         if (!over || over.id === cur.id) return;
       }
-      const next = hover ?? nodeAt(docRef.current, p, 26 / k)?.id ?? null;
+      const next = nodeAt(docRef.current, p, 26 / k)?.id ?? null;
       if (next !== near) setNear(next);
     },
     leave: () => setNear(null),
@@ -178,10 +181,13 @@ export function useQuickAdd(ctrl: FlowController, { hover }: { hover: string | n
   // On touch the arrows belong to the selected shape; with a mouse, to the one under the pointer.
   const owner: FlowNode | undefined = touch ? (single ?? undefined) : ((near ? byId.get(near) : undefined) ?? single ?? undefined);
   const show = owner && !editing && !dragging && !picker;
-  // The selection bar keeps clear of a selected shape's arrows (chrome/SelectionBar.tsx).
-  const clearance = show && owner && single?.id === owner.id ? (touch ? OUT.touch : OUT.mouse) + 4 : 0;
+  // The selection bar floats above a selected shape (chrome/SelectionBar.tsx), over its top arrow, which
+  // then stays hidden; when the bar sits below, it keeps clear of the bottom arrow (the flow's way on).
+  // Neither depends on the pointer, so the bar never jumps while it's being reached for.
+  const barAbove = single && single.y * k + view.y - 52 > 56;
+  const clearance = single && !editing && !picker && !barAbove ? (touch ? OUT.touch : OUT.mouse) + 4 : 0;
   const out = (touch ? OUT.touch : OUT.mouse) / k;
-  const hitR = (touch ? 22 : 14) / k;
+  const hitR = (touch ? 24 : 14) / k;
   const r = 10 / k;
   const arm = 4 / k;
 
@@ -191,6 +197,10 @@ export function useQuickAdd(ctrl: FlowController, { hover }: { hover: string | n
           const cx = owner.x + owner.w / 2;
           const cy = owner.y + owner.h / 2;
           const p = { top: { x: cx, y: owner.y - out }, right: { x: owner.x + owner.w + out, y: cy }, bottom: { x: cx, y: owner.y + owner.h + out }, left: { x: owner.x - out, y: cy } }[side];
+          if (side === "top" && barAbove && single?.id === owner.id) return null;
+          // An arrow that would sit on another shape stays hidden (it would cover that shape).
+          const under = nodeAt(ctrl.doc, p, r);
+          if (under && under.id !== owner.id) return null;
           return (
             <g key={side} className="fc-quick" data-fc-quick="" data-node={owner.id} data-side={side} data-touch={touch || undefined}>
               <circle cx={p.x} cy={p.y} r={hitR} className="fc-quick-hit" />

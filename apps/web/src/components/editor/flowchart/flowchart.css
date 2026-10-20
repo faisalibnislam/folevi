@@ -275,7 +275,6 @@
   background: color-mix(in oklab, var(--color-ink) 6%, transparent); font: 13.5px/1 var(--font-sans); color: var(--color-ink);
 }
 .fc-picker-search::placeholder { color: var(--color-ink-faint); }
-.fc-picker-search:focus-visible { box-shadow: 0 0 0 2px var(--color-focus); }
 .fc-picker-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .fc-picker-head { padding: 8px 10px 4px; font: 600 11px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-faint); }
 .fc-picker-option {

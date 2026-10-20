@@ -25,7 +25,7 @@ const ARROW_WORD: Record<FlowSide, string> = { top: "above", right: "to the righ
 const nodeEl = (wrap: HTMLElement | null, id: string) => wrap?.querySelector<SVGGElement>(`[data-fc-node="${CSS.escape(id)}"]`) ?? null;
 
 export function useKeyboardFlow(ctrl: FlowController, { actions, finishEdit }: { actions: FlowActions; finishEdit: TextEditing["finishEdit"] }) {
-  const { docRef, selRef, setSel, wrapRef, editingRef, say } = ctrl;
+  const { docRef, selRef, setSel, wrapRef, editingRef, say, isDragging } = ctrl;
 
   /** Tab: the next step, or (⇧) a sibling branch, from shape `id`; then writing in it. */
   const grow = (id: string, branch: boolean) => {
@@ -66,13 +66,35 @@ export function useKeyboardFlow(ctrl: FlowController, { actions, finishEdit }: {
   const singleId = ctrl.single?.id ?? null;
   const writing = ctrl.editing !== null;
   useEffect(() => {
-    if (!singleId || writing || ctrl.isDragging()) return;
+    if (!singleId || writing || isDragging()) return;
     const wrap = wrapRef.current;
     const a = document.activeElement;
     if (!wrap || !(a === wrap || (a instanceof SVGElement && a.closest("[data-fc-node]") && wrap.contains(a)))) return;
     const el = nodeEl(wrap, singleId);
     if (el && el !== a) el.focus({ preventScroll: true });
-  }, [singleId, writing, wrapRef, ctrl]);
+  }, [singleId, writing, wrapRef, isDragging]);
+
+  // The focused shape went away (undo, delete, a remote change): the keyboard stays on the canvas rather
+  // than dropping to the page (where ⌘Z would undo the note instead).
+  const lastFocused = useRef<Element | null>(null);
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const onFocusIn = (e: FocusEvent) => {
+      lastFocused.current = e.target as Element;
+    };
+    wrap.addEventListener("focusin", onFocusIn);
+    return () => wrap.removeEventListener("focusin", onFocusIn);
+  }, [wrapRef]);
+  const doc = ctrl.doc;
+  useEffect(() => {
+    const a = document.activeElement;
+    const gone = lastFocused.current;
+    if (gone && !gone.isConnected && (!a || a === document.body)) {
+      lastFocused.current = null;
+      wrapRef.current?.focus({ preventScroll: true });
+    }
+  }, [doc, wrapRef]);
 
   const interaction: Interaction = {
     keyDown: (e) => {

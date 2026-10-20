@@ -15,7 +15,7 @@ import type { TextEditing } from "../interactions/textEditing";
 
 const same = <T,>(list: T[]): T | null => (list.length && list.every((x) => x === list[0]) ? list[0]! : null);
 
-/** `clearance`: extra room between a single selected shape and the bar, for its quick add arrows. */
+/** `clearance`: extra room below a single selected shape when the bar sits under it, for its quick add arrows. */
 export function SelectionBar({ ctrl, actions, clearance = 0, content }: { ctrl: FlowController; actions: FlowActions; startEdit?: TextEditing["startEdit"]; clearance?: number; content?: ShapeContent }) {
   const { selNodes, selEdges, routed, view, width, height, editing, sel, docRef, commit } = ctrl;
   const k = view.k;
@@ -34,8 +34,8 @@ export function SelectionBar({ ctrl, actions, clearance = 0, content }: { ctrl: 
   const compact = width < 760;
   const margin = content && !compact ? 260 : 150;
   const cx = clamp((sBox.x + sBox.w / 2) * k + view.x, margin, Math.max(margin, width - margin));
-  const above = top - 52 - clearance > 56;
-  const style: React.CSSProperties = { left: cx, top: above ? top - 52 - clearance : Math.min(height - 48, bottom + 12 + clearance) };
+  const above = top - 52 > 56;
+  const style: React.CSSProperties = { left: cx, top: above ? top - 52 : Math.min(height - 48, bottom + 12 + clearance) };
 
   if (selNodes.length && !selEdges.length) {
     return (

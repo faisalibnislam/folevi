@@ -7,7 +7,7 @@
   "main": "dist/main.js",
   "type": "commonjs",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/cloud-config.mjs",
     "start": "pnpm build && electron .",
     "dev": "pnpm build && FOLEVI_URL=http://app.localhost:3000 electron .",
     "typecheck": "tsc -p tsconfig.json --noEmit",

@@ -111,6 +111,34 @@ if (boot.shell) {
         return `app://folevi/_files/${sha}${mime ? `?type=${encodeURIComponent(String(mime))}` : ""}`;
       },
       move: notYet("library.move", LIBRARY),
+      // Sync with Dropbox and Google Drive (src/library/cloud/ipc.ts): the connection's status, signing in and
+      // signing out. The provider tokens stay in the main process; failures reject with { name, code, message }.
+      cloud: (() => {
+        const call = async <T = unknown>(name: string, ...args: unknown[]): Promise<T> => {
+          const r = (await ipcRenderer.invoke(`cloud:${name}`, ...args)) as { ok: true; value: T } | { ok: false; error: { code: string; message: string } } | null;
+          if (r && r.ok) return r.value;
+          const error = r && !r.ok ? r.error : { code: "io", message: "Folevi couldn't reach its cloud connection." };
+          throw { name: "CloudError", code: error.code, message: error.message };
+        };
+        return {
+          status: () => call("status"),
+          /** Opens the provider's sign-in in the browser; resolves once connected (also to reconnect). */
+          connect: (provider: "dropbox" | "googleDrive") => call("connect", provider),
+          cancel: async () => {
+            await call("cancel");
+          },
+          signOut: () => call("sign-out"),
+          /** The status now and on every change; returns the function that stops listening. */
+          onStatus: (cb: (status: unknown) => void) => {
+            const listener = (_e: IpcRendererEvent, s: unknown) => cb(s);
+            ipcRenderer.on("cloud:status", listener);
+            void call("subscribe").then(cb, () => undefined);
+            return () => {
+              ipcRenderer.removeListener("cloud:status", listener);
+            };
+          },
+        };
+      })(),
     },
     secrets: {
       has: notYet("secrets.has", "the Keychain store, a later package"),

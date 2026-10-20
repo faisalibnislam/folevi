@@ -52,6 +52,7 @@ import { restoreWindow, saveWindow } from "./windowState";
 import { Reminders, type Reminder } from "./reminders";
 import { downloadCalendar } from "./calendarFetch";
 import { imageBytes, oneAtATime, runHelper } from "./textRecognition";
+import { startCloud } from "./library/cloud/electron";
 
 const PARTITION = "persist:folevi";
 const settingsFile = () => join(app.getPath("userData"), "settings.json");
@@ -761,6 +762,9 @@ app.whenReady().then(async () => {
   folevi = setUpSession();
   if (bundled) {
     installBundledInterface(folevi);
+    // Sync with Dropbox / Google Drive (library/cloud/): the connection restored from the last run, and the
+    // page's cloud:* calls (status, sign-in, sign-out). The provider tokens stay in this process.
+    startCloud((e) => fromFolevi(e as unknown as IpcMainInvokeEvent));
     // Before any window shows the new origin: hand over edits waiting on the website's origin (once).
     await runHandoff(folevi).catch((e) => console.error("Folevi handoff:", e));
     applyNetworkGuard();

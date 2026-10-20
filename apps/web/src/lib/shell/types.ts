@@ -43,6 +43,32 @@ export interface LibraryEntry {
 
 export type LibraryChange = { path: string; kind: "changed" | "removed" | "downloaded" | "uploaded" };
 
+/** Built-in sync through a provider's API (WP9b, the Mac first). Local mode only. */
+export type CloudProvider = "dropbox" | "googleDrive";
+
+export interface CloudStatus {
+  /** The connections this build offers (a build without a provider's client id hides it). */
+  available: CloudProvider[];
+  provider: CloudProvider | null;
+  /** "reconnect": the provider refused the sign-in (revoked or expired); show "Reconnect Dropbox". */
+  state: "none" | "connecting" | "connected" | "offline" | "reconnect";
+  /** The account's email, when the provider says. */
+  account: string | null;
+}
+
+/** "Sync with Dropbox" and "Sync with Google Drive": status and sign-in only; the tokens stay native. */
+export interface ShellCloud {
+  status(): Promise<CloudStatus>;
+  /** Opens the provider's sign-in in the browser; resolves once connected. Also reconnects. */
+  connect(provider: CloudProvider): Promise<CloudStatus>;
+  /** Stops a sign-in waiting for the browser. */
+  cancel(): Promise<void>;
+  /** Revokes and deletes the tokens and stops syncing; the library's copy on this device stays. */
+  signOut(): Promise<CloudStatus>;
+  /** The status now and on every change. Returns the unsubscribe function. */
+  onStatus(cb: (status: CloudStatus) => void): () => void;
+}
+
 /**
  * The library's files. Every path is relative to the library and uses forward slashes; the host refuses
  * `..`, a leading slash and control characters. Bytes cross as Uint8Array (base64 in chunks on iOS).
@@ -68,6 +94,8 @@ export interface ShellLibrary {
   /** app://folevi/_files/<sha> on the Mac, folevi-file://lib/<sha> on iOS. */
   fileUrl(sha256: string, mime: string): string;
   move(to: { kind: LibraryKind }): Promise<LibraryInfo>;
+  /** Built-in Dropbox and Google Drive connections (absent on hosts without them). */
+  cloud?: ShellCloud;
 }
 
 /** Secrets the page may store but never read back (the Keychain, or safeStorage on the Mac). */

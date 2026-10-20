@@ -10,6 +10,23 @@ import type { CloudChange, CloudProvider } from "./types";
 
 export const LIBRARY_FILE = "folevi-library.json";
 
+const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+/** A ULID for a new library (the same shape as ../service.ts newLibraryId). */
+export function newLibraryUlid(now = Date.now()): string {
+  let t = now;
+  let time = "";
+  for (let i = 0; i < 10; i++) {
+    time = CROCKFORD[t % 32] + time;
+    t = Math.floor(t / 32);
+  }
+  const r = new Uint8Array(16);
+  crypto.getRandomValues(r);
+  let rand = "";
+  for (const b of r) rand += CROCKFORD[b % 32];
+  return time + rand;
+}
+
 export interface CloudLibraryManifest {
   format: "folevi-library";
   v: number;
@@ -44,7 +61,7 @@ function decodeManifest(bytes: Uint8Array): CloudLibraryManifest {
 export class CloudLibrary {
   constructor(
     private readonly connections: CloudConnections,
-    private readonly newLibraryId: () => string,
+    private readonly newLibraryId: () => string = () => newLibraryUlid(),
     private readonly now: () => number = Date.now,
   ) {}
 

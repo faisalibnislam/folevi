@@ -3,11 +3,13 @@
 // Application Support, the sign-in in the default browser, requests through Electron's `net.fetch` (the
 // system's proxy settings and certificates). Everything runs in the main process; the page only gets the
 // connection's status and the library's files (ipc.ts). Electron only.
-import { app, net, safeStorage, shell } from "electron";
+import { app, ipcMain, net, safeStorage, shell } from "electron";
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { readCloudConfig, type CloudClientConfig } from "./config";
 import { CloudConnections, type SavedConnection } from "./connection";
+import { registerCloudIpc, type CloudIpcEvent } from "./ipc";
+import { CloudLibrary } from "./library";
 import { DROPBOX_PORTS, startLoopback } from "./loopback";
 import { NodeMirror } from "./nodeMirror";
 import { SafeStorageTokenStore } from "./tokenStore";
@@ -48,6 +50,25 @@ function savedConnectionFile() {
       }
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, `${JSON.stringify(s, null, 2)}\n`, { mode: 0o600 });
+    },
+  };
+}
+
+/**
+ * Everything main.ts needs, in one call (with the bundled interface): the connections restored from the last
+ * run, the library adapter, and the page's cloud:* calls registered for Folevi's own pages.
+ */
+export function startCloud(allowed: (e: CloudIpcEvent) => boolean): { connections: CloudConnections; library: CloudLibrary; dispose(): void } {
+  const connections = createCloudConnections();
+  void connections.restore().catch((e) => console.error("Folevi cloud:", e));
+  const library = new CloudLibrary(connections);
+  const off = registerCloudIpc({ handle: (c, l) => ipcMain.handle(c, l as never), removeHandler: (c) => ipcMain.removeHandler(c) }, connections, allowed);
+  return {
+    connections,
+    library,
+    dispose: () => {
+      off();
+      connections.cancelConnect();
     },
   };
 }

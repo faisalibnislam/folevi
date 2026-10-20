@@ -61,10 +61,15 @@ type Bootstrap = { shell: false } | { shell: true; mode: ShellMode; version: str
  * Mac): until then it says so clearly instead of doing nothing.
  */
 const notYet = (what: string, comes: string) => () => Promise.reject(new Error(`foleviShell.${what} isn't in this build of Folevi for Mac yet (${comes}).`));
-const notYetSync = (what: string, comes: string) => () => {
-  throw new Error(`foleviShell.${what} isn't in this build of Folevi for Mac yet (${comes}).`);
-};
-const LIBRARY = "the library layer, WP9";
+
+/** One library call (src/library/ipc.ts): its value, or a rejection carrying the library's error code. */
+async function lib<T = unknown>(name: string, ...args: unknown[]): Promise<T> {
+  const r = (await ipcRenderer.invoke(`library:${name}`, ...args)) as { ok: true; value: unknown } | { ok: false; error: { code: string; message: string; path?: string } } | null;
+  if (r && r.ok) return r.value as T;
+  const error = r && !r.ok ? r.error : { code: "io", message: "Folevi couldn't reach its library." };
+  throw { name: "LocalFsError", code: error.code, message: error.message, ...(error.path ? { path: error.path } : {}) };
+}
+let libraryWatchers = 0;
 
 // Read before any page script runs, so the page knows its mode on its first render. Synchronous, and only
 // answered for the bundled interface's own pages (main.ts checks the frame).
@@ -85,32 +90,61 @@ if (boot.shell) {
       const ok = (await ipcRenderer.invoke("shell:set-mode", mode)) as boolean;
       if (!ok) throw new Error(`Folevi couldn't switch to ${String(mode)}.`);
     },
+    // The library's files, journal and passphrase, in the main process (src/library/: service.ts behind
+    // ipc.ts, which checks every argument). A sandboxed preload can't load those modules: the channel names
+    // are ipc.ts's LIBRARY_CHANNELS. Failures reject with a plain { name, code, message } object, because
+    // contextBridge keeps a plain object's fields but drops an Error's `code`.
     library: {
-      setup: notYet("library.setup", LIBRARY),
-      info: notYet("library.info", LIBRARY),
-      list: notYet("library.list", LIBRARY),
-      read: notYet("library.read", LIBRARY),
-      write: notYet("library.write", LIBRARY),
-      remove: notYet("library.remove", LIBRARY),
-      conflictVersions: notYet("library.conflictVersions", LIBRARY),
-      resolveConflicts: notYet("library.resolveConflicts", LIBRARY),
-      startDownload: notYet("library.startDownload", LIBRARY),
-      watch: notYetSync("library.watch", LIBRARY),
-      journal: {
-        append: notYet("library.journal.append", LIBRARY),
-        readAll: notYet("library.journal.readAll", LIBRARY),
-        truncate: notYet("library.journal.truncate", LIBRARY),
+      setup: (o: { kind: string }) => lib("setup", { kind: o?.kind }),
+      info: () => lib("info"),
+      list: (dir: string) => lib("list", dir),
+      read: (path: string) => lib("read", path),
+      write: (path: string, bytes: Uint8Array, o: { ifMatch?: string | null }) => lib("write", path, bytes, o && "ifMatch" in o ? { ifMatch: o.ifMatch } : {}),
+      remove: async (path: string, o?: { ifMatch?: string }) => {
+        await lib("remove", path, o && "ifMatch" in o ? { ifMatch: o.ifMatch } : {});
       },
-      unlock: notYet("library.unlock", "library encryption, WP9"),
-      setPassphrase: notYet("library.setPassphrase", "library encryption, WP9"),
-      changePassphrase: notYet("library.changePassphrase", "library encryption, WP9"),
+      conflictVersions: (path: string) => lib("conflict-versions", path),
+      resolveConflicts: async (path: string, ids: string[]) => {
+        await lib("resolve-conflicts", path, Array.isArray(ids) ? [...ids] : ids);
+      },
+      startDownload: async (paths: string[]) => {
+        await lib("start-download", Array.isArray(paths) ? [...paths] : paths);
+      },
+      /** Change batches from the main process's watcher; returns the unsubscribe function. */
+      watch: (cb: (changes: { path: string; kind: string }[]) => void) => {
+        const listener = (_e: IpcRendererEvent, changes: { path: string; kind: string }[]) => cb(changes);
+        if (libraryWatchers === 0) void lib("watch").catch(() => undefined);
+        libraryWatchers++;
+        ipcRenderer.on("library:changes", listener);
+        let on = true;
+        return () => {
+          if (!on) return;
+          on = false;
+          ipcRenderer.removeListener("library:changes", listener);
+          if (--libraryWatchers === 0) void lib("unwatch").catch(() => undefined);
+        };
+      },
+      journal: {
+        append: async (record: Uint8Array) => {
+          await lib("journal-append", record);
+        },
+        readAll: () => lib("journal-read"),
+        truncate: async (n: number) => {
+          await lib("journal-truncate", n);
+        },
+      },
+      unlock: (passphrase: string) => lib("unlock", passphrase),
+      setPassphrase: async (passphrase: string | null) => {
+        await lib("set-passphrase", passphrase);
+      },
+      changePassphrase: (oldPassphrase: string, newPassphrase: string) => lib("change-passphrase", oldPassphrase, newPassphrase),
       /** Served by the app:// handler (protocol.ts) from the library. */
       fileUrl: (sha256: string, mime: string) => {
         const sha = String(sha256).toLowerCase();
         if (!/^[0-9a-f]{64}$/.test(sha)) throw new Error("Not a SHA-256 file name.");
         return `app://folevi/_files/${sha}${mime ? `?type=${encodeURIComponent(String(mime))}` : ""}`;
       },
-      move: notYet("library.move", LIBRARY),
+      move: (to: { kind: string }) => lib("move", { kind: to?.kind }),
       // Sync with Dropbox and Google Drive (src/library/cloud/ipc.ts): the connection's status, signing in and
       // signing out. The provider tokens stay in the main process; failures reject with { name, code, message }.
       cloud: (() => {

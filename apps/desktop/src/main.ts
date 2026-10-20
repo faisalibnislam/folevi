@@ -7,6 +7,7 @@ import {
   app,
   BrowserWindow,
   desktopCapturer,
+  dialog,
   globalShortcut,
   ipcMain,
   Menu,
@@ -14,7 +15,9 @@ import {
   nativeTheme,
   net,
   Notification,
+  powerMonitor,
   protocol,
+  safeStorage,
   screen,
   session,
   shell,
@@ -52,6 +55,8 @@ import { restoreWindow, saveWindow } from "./windowState";
 import { Reminders, type Reminder } from "./reminders";
 import { downloadCalendar } from "./calendarFetch";
 import { imageBytes, oneAtATime, runHelper } from "./textRecognition";
+import { registerLibraryIpc, type IpcMainLike } from "./library/ipc";
+import { LibraryService } from "./library/service";
 import { startCloud } from "./library/cloud/electron";
 
 const PARTITION = "persist:folevi";
@@ -224,10 +229,35 @@ function installBundledInterface(ses: Session) {
       root,
       mode: () => settings.mode,
       csp: { serviceOrigin: SERVICE_URL.origin, extraConnect },
-      // The library layer (WP9) plugs in here.
-      files: NO_LIBRARY_FILES,
+      // A local library's attachments (src/library/attachments.ts: STREAM chunks decrypted, by Range).
+      files: library?.files ?? NO_LIBRARY_FILES,
     }),
   );
+}
+
+/** folevi-files, the coordinated file helper (src/library/helper.ts): in Resources, or native-build/ from source. */
+const filesHelper = () => (app.isPackaged ? join(process.resourcesPath, "folevi-files") : join(__dirname, "..", "native-build", "folevi-files"));
+
+let library: LibraryService | null = null;
+/**
+ * shell.library (docs/LOCAL_MODE_PLAN.md §4.2): the local library's files, journal, passphrase and moves, in
+ * this process (src/library/). The key never reaches the page; safeStorage keeps it on this Mac.
+ */
+function createLibrary(): LibraryService {
+  const service = new LibraryService({
+    userData: app.getPath("userData"),
+    home: app.getPath("home"),
+    helperPath: filesHelper(),
+    sealer: safeStorage,
+    chooseFolder: async ({ title, defaultPath }) => {
+      const parent = BrowserWindow.getFocusedWindow() ?? mainWindow;
+      const o = { title, defaultPath, buttonLabel: "Use This Folder", properties: ["openDirectory", "createDirectory"] as ("openDirectory" | "createDirectory")[] };
+      const r = parent ? await dialog.showOpenDialog(parent, o) : await dialog.showOpenDialog(o);
+      return r.canceled ? null : (r.filePaths[0] ?? null);
+    },
+  });
+  void service.open().catch((e) => console.error("Folevi library:", e));
+  return service;
 }
 
 let guarded = false;
@@ -761,7 +791,13 @@ app.whenReady().then(async () => {
   if (app.isPackaged) app.setAsDefaultProtocolClient(SCHEME);
   folevi = setUpSession();
   if (bundled) {
+    library = createLibrary();
     installBundledInterface(folevi);
+    const libraryIpc: IpcMainLike = { handle: (c, l) => ipcMain.handle(c, l as never), removeHandler: (c) => ipcMain.removeHandler(c) };
+    registerLibraryIpc(libraryIpc, library, (e) => fromFolevi(e as unknown as IpcMainInvokeEvent));
+    // A full look at the library folder on waking and when Folevi comes to the front (watch.ts also scans every 30 s).
+    powerMonitor.on("resume", () => void library?.rescan());
+    app.on("browser-window-focus", () => void library?.rescan());
     // Sync with Dropbox / Google Drive (library/cloud/): the connection restored from the last run, and the
     // page's cloud:* calls (status, sign-in, sign-out). The provider tokens stay in this process.
     startCloud((e) => fromFolevi(e as unknown as IpcMainInvokeEvent));
@@ -800,6 +836,9 @@ app.on("activate", () => showMain());
 app.on("before-quit", () => {
   quitting = true;
 });
-app.on("will-quit", () => globalShortcut.unregisterAll());
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
+  library?.dispose();
+});
 // Every window closed (the main one hides instead): stay running for Quick Add and the menu bar.
 app.on("window-all-closed", () => undefined);

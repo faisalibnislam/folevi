@@ -89,6 +89,8 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
   return (
     <NodeViewWrapper className={`fb-atom fb-${type} ${selected ? "fb-atom-selected" : ""}`} aria-label={name}>
       <div ref={cardRef} contentEditable={false} className="fb-vcard fb-canvas-card" data-active={active || undefined} {...cardProps} aria-label={full ? `${name}, full canvas` : undefined}>
+        {/* Full canvas in the Mac app: the window's buttons sit in this corner (canvas.css). */}
+        <span aria-hidden className="ui-traffic-space fb-full-traffic" />
         <div
           ref={bodyRef}
           className="fb-vcard-body fb-canvas-body"
@@ -109,8 +111,6 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
             </div>
           ) : null}
           <div className="fb-vc-bar" role="toolbar" aria-label={`${name} tools`} onPointerDown={(e) => e.stopPropagation()}>
-            {/* Full canvas in the Mac app: the window's buttons sit here, at the start of the bar (canvas.css). */}
-            <span aria-hidden className="ui-traffic-space fb-full-traffic" />
             <span className="fb-vc-title">
               <span className="fb-vc-icon" aria-hidden>
                 {icon}

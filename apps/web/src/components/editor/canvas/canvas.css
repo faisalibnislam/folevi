@@ -12,13 +12,18 @@
   background: linear-gradient(var(--fb-canvas-bg), var(--fb-canvas-bg)), var(--color-surface);
 }
 .fb-canvas-card[data-full]::backdrop { background: transparent; }
-/* The Mac app: the window's red, yellow and green buttons move into the start of the block's toolbar (the
-   bar keeps a .fb-full-traffic space for them; DesktopBridge places them there), and the strip along the top
-   that the toolbar doesn't cover still drags the window, as in Freeform. Outside full canvas the space is gone. */
+/* In full canvas the block's toolbar is centred along the top (it would leave the left looking empty on the
+   web, and would run into the window's buttons in the Mac app). The Mac's red, yellow and green buttons sit in
+   the top-left corner, in a .fb-full-traffic space DesktopBridge places them in, and the strip along the top
+   that the toolbar doesn't cover drags the window, as in Freeform. Outside full canvas the space is gone. */
+.fb-full-traffic { display: none; }
 :root[data-desktop="mac"] .fb-canvas-card:not([data-full]) .fb-full-traffic { display: none; }
-:root[data-desktop="mac"] .fb-canvas-card[data-full] .fb-full-traffic { width: 56px; }
+:root[data-desktop="mac"] .fb-canvas-card[data-full] .fb-full-traffic { position: absolute; left: 14px; top: 10px; width: 56px; height: 38px; }
 :root[data-desktop="mac"] .fb-canvas-card[data-full]::before {
   content: ""; position: absolute; inset: 0 0 auto; height: 52px; z-index: 2; -webkit-app-region: drag;
+}
+.fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) {
+  left: 50%; right: auto; transform: translateX(-50%); width: max-content; max-width: calc(100% - 168px);
 }
 /* The toolbar's own empty stretches drag too, like a Mac title bar with tools in it; its controls stay clickable. */
 :root[data-desktop="mac"] .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) { -webkit-app-region: drag; }

@@ -851,6 +851,8 @@ function FlowchartEditor({ node, selected, updateAttributes, editor, getPos }: R
   return (
     <NodeViewWrapper className={`fb-atom fb-flowchart ${selected ? "fb-atom-selected" : ""}`} aria-label="Flowchart">
       <div ref={cardRef} contentEditable={false} className="fc-card fb-canvas-card" data-active={active || undefined} {...cardProps} aria-label={full ? "Flowchart, full canvas" : undefined}>
+        {/* Full canvas in the Mac app: the window's buttons sit in this corner (canvas.css). */}
+        <span aria-hidden className="ui-traffic-space fb-full-traffic" />
         <div
           ref={wrapRef}
           className="fc-canvas fb-canvas-body"

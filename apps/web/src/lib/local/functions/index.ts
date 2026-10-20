@@ -22,3 +22,5 @@ import "./imports";
 import "./exports";
 import "./migration";
 import "./notices";
+// Foli AI on the device or with the person's own key (WP11, lib/local/ai).
+import "../ai/functions";

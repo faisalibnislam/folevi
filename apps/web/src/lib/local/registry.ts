@@ -50,6 +50,11 @@ export interface LocalQueryCtx extends LocalBaseCtx {
    * rows it indexes through `db` (so it re-runs when they change) and brings the index up to date with them.
    */
   searchIndex(): Promise<LocalSearchIndex>;
+  /**
+   * Records a dependency on in-memory state outside the library (volatile.ts): a Foli AI answer being written
+   * (`stream:<id>`), what the active model can do (`ai:state`). The query re-runs when it's touched.
+   */
+  watch?(key: string): void;
 }
 
 export interface LocalMutationCtx extends LocalBaseCtx {
@@ -191,19 +196,7 @@ export const LOCAL_PLANNED: Readonly<Record<string, "L1" | "L2" | "L3" | "L4">> 
   "bookmarks:preview": "L3",
   "aiGraph:graph": "L3",
   "aiGraph:related": "L3",
-  "ai:*": "L4",
-  "aiChat:*": "L4",
-  "aiActions:apply": "L4",
-  "aiMemory:*": "L4",
-  "aiWriting:saveDraft": "L4",
-  "aiStudy:*": "L4",
-  "aiTodos:find": "L4",
-  "aiTodos:people": "L4",
-  "mindmapAi:*": "L4",
-  "stickiesAi:*": "L4",
-  "tableAi:*": "L4",
-  "chartAi:*": "L4",
-  "wireframeAi:*": "L4",
+  // Foli AI's agent comes later, and only with the person's own key (WP11 ported the rest of L4: lib/local/ai).
   "aiAgent:*": "L4",
 };
 

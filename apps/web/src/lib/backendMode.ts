@@ -19,6 +19,8 @@ export type Capability =
   | "connectedApps"
   | "emailToNote"
   | "aiServer"
+  /** Foli AI can run here at all: the server in account mode; Apple's model or the person's own key in local mode. */
+  | "foliAi"
   | "notifications"
   | "pushNotifications"
   | "changes"
@@ -37,6 +39,7 @@ export const CAPABILITIES: readonly Capability[] = [
   "connectedApps",
   "emailToNote",
   "aiServer",
+  "foliAi",
   "notifications",
   "pushNotifications",
   "changes",

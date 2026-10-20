@@ -11,6 +11,7 @@ import { setupLibrary } from "./setup";
 import "./functions";
 import { commitUpload, prepareUpload } from "./functions/files";
 import { LocalSearchIndex } from "./search";
+import { subscribeVolatile } from "./volatile";
 
 export interface LocalBackendOptions {
   /** This device's id in the library (the sync engine sends its own with each push). */
@@ -92,6 +93,7 @@ export class LocalBackend implements LocalExecutor {
   private listeners = new Set<(keys: readonly string[]) => void>();
   private queue: Promise<unknown> = Promise.resolve();
   private unsubscribeStore: () => void;
+  private unsubscribeVolatile: () => void;
   private closed = false;
   readonly deviceId: string;
   private readonly now: () => number;
@@ -105,6 +107,8 @@ export class LocalBackend implements LocalExecutor {
     this.now = opts.now ?? Date.now;
     // Changes from outside (another device, through the library) reach the same listeners as our own.
     this.unsubscribeStore = store.subscribe((keys) => this.emit(keys));
+    // In-memory state outside the library (volatile.ts: Foli AI answers being written) reaches them too.
+    this.unsubscribeVolatile = subscribeVolatile((keys) => this.emit(keys));
     // A library store applies what it reads from disk as mutations of its own: in order with the others, with
     // the triggers, and announced like any change.
     store.bind?.({ ingest: async (fn) => void (await this.serial(() => this.transact(fn, { origin: "disk" }))) });
@@ -136,8 +140,8 @@ export class LocalBackend implements LocalExecutor {
     return this.search;
   };
 
-  private queryCtx(db: LocalReader): LocalQueryCtx {
-    return { db, deviceId: this.deviceId, now: this.now, searchIndex: this.searchIndex };
+  private queryCtx(db: LocalReader, deps: Set<string>): LocalQueryCtx {
+    return { db, deviceId: this.deviceId, now: this.now, searchIndex: this.searchIndex, watch: (key) => void deps.add(key) };
   }
 
   async query(name: string, args: Record<string, unknown>): Promise<{ value: unknown; deps: readonly string[] }> {
@@ -158,7 +162,7 @@ export class LocalBackend implements LocalExecutor {
         return this.store.blocksOfTypes ? this.store.blocksOfTypes(types) : scanBlocksOfTypes(this.store, types);
       },
     };
-    const value = await (fn.handler as (ctx: LocalQueryCtx, args: unknown) => unknown)(this.queryCtx(db), detached(args));
+    const value = await (fn.handler as (ctx: LocalQueryCtx, args: unknown) => unknown)(this.queryCtx(db, deps), detached(args));
     return { value: detached(value), deps: [...deps] };
   }
 
@@ -278,6 +282,7 @@ export class LocalBackend implements LocalExecutor {
     await Promise.all([...this.jobs]);
     this.closed = true;
     this.unsubscribeStore();
+    this.unsubscribeVolatile();
     this.listeners.clear();
     await this.search?.close();
     await this.store.close?.();

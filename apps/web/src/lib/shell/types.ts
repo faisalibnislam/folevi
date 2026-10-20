@@ -125,20 +125,41 @@ export interface ShellAuth {
   convexToken(): Promise<string | null>;
 }
 
+/** Where a local Foli AI request goes: Apple's model on this device, or one of the person's own keys. */
+export type AiProviderId = "on-device" | "openai" | "anthropic" | "google";
+
+/** The providers reached with the person's own key (each key is a SecretName, `ai.<provider>`). */
+export type AiKeyProvider = Exclude<AiProviderId, "on-device">;
+
+/**
+ * Why Apple's on-device model can or can't run here (FoundationModels `SystemLanguageModel.default.availability`):
+ * "available"; "notSupported" (this Mac can't run Apple Intelligence, or macOS is older than 26); "notEnabled"
+ * (Apple Intelligence is off in System Settings); "notReady" (the model is still downloading); "unknown" (the
+ * helper couldn't be reached, or this build has no on-device support).
+ */
+export type OnDeviceStatus = "available" | "notSupported" | "notEnabled" | "notReady" | "unknown";
+
 /** What Foli AI can do on this device in local mode (Apple's models, or the person's own keys). */
 export interface AiCaps {
   onDevice: boolean;
-  /** Approximate context window of the on-device model, in tokens. */
+  /** Why `onDevice` is what it is (hosts that predate it leave it out). */
+  onDeviceStatus?: OnDeviceStatus;
+  /** Approximate context window of the on-device model, in tokens (input and output together). */
   onDeviceContext?: number;
+  /** Which of the person's keys are stored (never the keys themselves). */
   keys: Partial<Record<SecretName, boolean>>;
 }
 
 export interface AiRequest {
-  provider: "on-device" | "openai" | "anthropic" | "google";
+  provider: AiProviderId;
+  /** The provider's model id (ignored on the device). */
   model?: string;
   system?: string;
   messages: { role: "user" | "assistant"; content: string }[];
   maxTokens?: number;
+  temperature?: number;
+  /** The answer is JSON (the provider's JSON mode where it has one; on the device, asked for in the prompt). */
+  json?: boolean;
   /** A JSON schema the answer must follow, for structured features. */
   schema?: unknown;
 }
@@ -146,12 +167,18 @@ export interface AiRequest {
 export interface AiResult {
   text: string;
   stopReason: "end" | "length" | "cancelled" | "error";
+  /** For people to read: the provider's reason, never the key. */
   error?: string;
+  /** "auth": the key was refused; "rate": the provider asked to slow down; "context": the request was too long. */
+  errorCode?: "auth" | "rate" | "context" | "network" | "unavailable" | "invalid";
 }
 
 export interface ShellAi {
   capabilities(): Promise<AiCaps>;
+  /** Streams the answer: `onChunk` gets each new piece of text as it arrives; `done` has the whole text. */
   generate(req: AiRequest, onChunk: (text: string) => void): { done: Promise<AiResult>; cancel(): void };
+  /** Checks a stored key with one tiny request (Settings > AI, "Test"). Hosts without it leave it out. */
+  testKey?(provider: AiKeyProvider): Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 /** The Face ID or Touch ID lock. */

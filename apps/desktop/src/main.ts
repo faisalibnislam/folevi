@@ -53,6 +53,7 @@ import { installUpdate, startUpdates, type UpdateState } from "./updates";
 import { cleanSettings, loadSettings, pageSettings, saveSettings, type DesktopSettings } from "./settings";
 import { APP_SCHEME, APP_SCHEME_PRIVILEGES, createAppHandler, HANDOFF_CSP, HANDOFF_PAGE, HANDOFF_PATH, isBlockedInLocalMode, localModeBlockPatterns, NO_LIBRARY_FILES, shellRoot } from "./protocol";
 import { handOver, handoffDue, indexedDbFolder, kitScript, parseHandoffState, type HandoffState, type KitCall } from "./handoff";
+import { readShellBuild, shellBuildProblems, type ShellBuild } from "./shellBuild";
 import { restoreWindow, saveWindow } from "./windowState";
 import { Reminders, type Reminder } from "./reminders";
 import { downloadCalendar } from "./calendarFetch";
@@ -226,8 +227,28 @@ const webPreferences = () => ({
 
 const background = () => (nativeTheme.shouldUseDarkColors ? "#0E0E0F" : "#FFFFFF");
 
+/**
+ * In local mode one window hosts the library for all of them (apps/web/src/lib/local/host.ts), and it may be a
+ * hidden one: the main window put away, or the Quick Add window. Chromium slows a hidden page's timers to once a
+ * minute after a while, which would hold back the library's writes to its folder, so those windows keep full
+ * speed while the app is in local mode. (Elsewhere, and on the website, hidden windows stay slowed down.)
+ */
+function applyThrottling(win: BrowserWindow) {
+  if (!win.isDestroyed()) win.webContents.setBackgroundThrottling(!(bundled && settings.mode === "local"));
+}
+
+/**
+ * The website's database on this Mac is newer than the bundled interface can open (handoff.ts): the windows
+ * show "Update Folevi" instead of the app, and nothing is copied or opened until an updated app runs.
+ */
+let needsUpdate = false;
+
 /** Loads a page, or the offline page (with a way back) when neither the network nor the site's cache has it. */
 function load(win: BrowserWindow, url: string) {
+  if (needsUpdate && isAppUrl(url)) {
+    void win.loadFile(asset("update.html"));
+    return;
+  }
   win.webContents.once("did-fail-load", (_e, code, _desc, failedUrl, isMainFrame) => {
     // -3: a navigation replaced this one (not a failure).
     if (!isMainFrame || code === -3 || win.isDestroyed()) return;
@@ -238,10 +259,15 @@ function load(win: BrowserWindow, url: string) {
 
 // ---------------------------------------------------------------- the bundled interface
 
+/** What the bundled interface is (shell/build.json, shellBuild.ts): its deployment and IndexedDB version. */
+let shellBuild: ShellBuild | null = null;
+
 /** Serves app://folevi on the session: the export built into the app, by mode (protocol.ts). */
 function installBundledInterface(ses: Session) {
   const root = shellRoot({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appDir: join(__dirname, ".."), env: process.env });
   if (!existsSync(join(root, "index.html"))) console.error(`Folevi: no bundled interface at ${root} (run \`pnpm shell\`).`);
+  shellBuild = readShellBuild(root);
+  for (const problem of shellBuildProblems(shellBuild, { version: app.getVersion(), packaged: app.isPackaged, serviceUrl: SERVICE_URL.href })) console.error(`Folevi: ${problem}.`);
   const extraConnect = (process.env.FOLEVI_SHELL_CONNECT ?? "").split(/[\s,]+/).filter((o) => /^(https?|wss?):\/\/[^\s;']+$/.test(o));
   ses.protocol.handle(
     APP_SCHEME,
@@ -350,6 +376,27 @@ function startLock() {
   powerMonitor.on("suspend", () => appLock?.lockNow());
 }
 
+/**
+ * FOLEVI_OFFLINE=1 starts the app with no network at all: every session cancels http, https, ws and wss from
+ * its first request (only the handoff's blank page, which the app answers itself, goes through). For testing
+ * a cold offline start of a packaged build, which, unlike a development run, can't load a fixture with
+ * `electron -r` (e2e/desktop-windows.spec.ts).
+ */
+const noNetwork = process.env.FOLEVI_OFFLINE === "1";
+if (noNetwork) {
+  app.on("session-created", (ses) => {
+    ses.webRequest.onBeforeRequest((details, callback) => {
+      let url: URL | null = null;
+      try {
+        url = new URL(details.url);
+      } catch {
+        url = null;
+      }
+      callback({ cancel: !!url && ["http:", "https:", "ws:", "wss:"].includes(url.protocol) && url.pathname !== HANDOFF_PATH });
+    });
+  });
+}
+
 let guarded = false;
 /**
  * Local mode never contacts Folevi: besides the page's policy, the session cancels every request to Folevi's
@@ -357,7 +404,8 @@ let guarded = false;
  */
 function applyNetworkGuard() {
   const ses = folevi;
-  if (!ses || !bundled) return;
+  // (With no network at all, the session already cancels everything.)
+  if (!ses || !bundled || noNetwork) return;
   const host = SERVICE_URL.hostname;
   if (settings.mode === "local") {
     ses.webRequest.onBeforeRequest({ urls: localModeBlockPatterns(host) }, (details, callback) => callback({ cancel: isBlockedInLocalMode(details.url, host) }));
@@ -384,9 +432,10 @@ async function runHandoff(ses: Session) {
     previous = null;
   }
   if (!handoffDue(previous)) return;
+  // Which app and interface ran it, for the record (and for an update that comes after).
   const record = (s: HandoffState) => {
     try {
-      writeFileSync(handoffFile(), JSON.stringify(s, null, 2));
+      writeFileSync(handoffFile(), JSON.stringify({ ...s, appVersion: app.getVersion(), dbVersion: shellBuild?.dbVersion ?? null }, null, 2));
     } catch {
       /* Tried again next launch. */
     }
@@ -415,8 +464,16 @@ async function runHandoff(ses: Session) {
   };
   let timer: NodeJS.Timeout | undefined;
   try {
-    const work = (async () => handOver(await page(`${old.origin}${HANDOFF_PATH}`), await page(appUrl(HANDOFF_PATH))))();
+    const work = (async () => handOver(await page(`${old.origin}${HANDOFF_PATH}`), await page(appUrl(HANDOFF_PATH)), { dbVersion: shellBuild?.dbVersion }))();
     const report = await Promise.race([work, new Promise<never>((_r, reject) => (timer = setTimeout(() => reject(new Error("timed out")), 120_000)))]);
+    // The website's database is newer than this interface opens: nothing was copied, and the app asks for an
+    // update rather than opening without those edits (or failing to open the database at all).
+    if (report.newer?.length) {
+      record({ state: "update", attempts: previous?.attempts ?? 0, at: Date.now(), from: old.origin, report });
+      needsUpdate = true;
+      console.error(`Folevi handoff: ${report.newer.map((d) => `${d.name} is at version ${d.version}`).join(", ")}; this build opens version ${shellBuild?.dbVersion}. Update Folevi.`);
+      return;
+    }
     record({ state: "done", attempts, at: Date.now(), from: old.origin, report });
     if (report.copied.length) console.log(`Folevi handoff: ${report.copied.map((c) => `${c.name} (${c.records} records)`).join(", ")}`);
     // Someone who used Folevi for Mac with an account carries on in it: the first-launch choice ("Keep
@@ -458,6 +515,7 @@ function createMainWindow(path = "/documents"): BrowserWindow {
     mainWindow = win;
     if (saved.maximized) win.maximize();
   }
+  applyThrottling(win);
   guardNavigation(win.webContents);
   lockCover?.attach(win);
   win.once("ready-to-show", () => win.show());
@@ -523,6 +581,7 @@ function createQuickAdd() {
     webPreferences: webPreferences(),
   });
   quickAdd.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  applyThrottling(quickAdd);
   guardNavigation(quickAdd.webContents);
   lockCover?.attach(quickAdd);
   // Clicking elsewhere puts it away, like Spotlight.
@@ -532,6 +591,11 @@ function createQuickAdd() {
 }
 
 function toggleQuickAdd() {
+  // Waiting for an update (needsUpdate): the main window says so; Quick Add has nothing to add to.
+  if (needsUpdate) {
+    showMain();
+    return;
+  }
   if (!quickAdd || quickAdd.isDestroyed()) createQuickAdd();
   const win = quickAdd!;
   if (win.isVisible() && win.isFocused()) {
@@ -797,6 +861,7 @@ function listen() {
     if (!bundled || !fromFolevi(e) || (mode !== "local" && mode !== "account")) return false;
     if (settings.mode === mode) return true;
     applySettings({ ...settings, mode });
+    for (const win of BrowserWindow.getAllWindows()) applyThrottling(win);
     // Reminders are this Mac's only in local mode; in account mode the server sends them.
     if (mode === "local") reminders?.load();
     else reminders?.clear();
@@ -855,7 +920,10 @@ function listen() {
       void app
         .getFileIcon(file, { size: "normal" })
         .catch(() => nativeImage.createFromPath(asset("trayTemplate@2x.png")))
-        .then((icon) => e.sender.startDrag({ file, icon }))
+        .then((icon) => {
+          dragStarted = true;
+          e.sender.startDrag({ file, icon });
+        })
         .catch(() => undefined);
     } catch {
       /* The drag simply carries nothing. */
@@ -900,6 +968,15 @@ function listen() {
   });
 }
 
+/**
+ * A drag out of the app (desktop:drag-file) that macOS never saw end, because the mouse was already up when it
+ * started (the icon is fetched first) or it was started from a script: its drag session then keeps the app from
+ * finishing a quit (every window closes, and the process stays). Once a drag has started, quitting writes the
+ * session's storage to disk and ends the process itself.
+ */
+let dragStarted = false;
+let exiting = false;
+
 // ---------------------------------------------------------------- start
 
 app.setAboutPanelOptions({ applicationName: "Folevi", applicationVersion: app.getVersion(), copyright: "© 2026 Folevi", website: "https://folevi.com" });
@@ -907,8 +984,9 @@ app.setAboutPanelOptions({ applicationName: "Folevi", applicationVersion: app.ge
 app.whenReady().then(async () => {
   // Earlier drags' files: nothing needs them once the app has restarted.
   rmSync(join(app.getPath("temp"), "Folevi drag"), { recursive: true, force: true });
-  // The installed app answers folevi:// links (a development run would register the Electron binary).
-  if (app.isPackaged) app.setAsDefaultProtocolClient(SCHEME);
+  // The installed app answers folevi:// links (a development run would register the Electron binary, and a test
+  // run of a packaged copy, with its own FOLEVI_USER_DATA, mustn't take them from the installed app).
+  if (app.isPackaged && !process.env.FOLEVI_USER_DATA) app.setAsDefaultProtocolClient(SCHEME);
   folevi = setUpSession();
   if (bundled) startLock();
   if (bundled) {
@@ -959,10 +1037,19 @@ app.on("activate", () => showMain());
 app.on("before-quit", () => {
   quitting = true;
 });
-app.on("will-quit", () => {
+app.on("will-quit", (event) => {
   globalShortcut.unregisterAll();
   library?.dispose();
   aiHelper?.dispose();
+  if (!dragStarted || exiting) return;
+  // (See dragStarted.) Every window has closed by now; what the pages stored is written out first.
+  event.preventDefault();
+  exiting = true;
+  const ses = folevi;
+  const flush = ses ? Promise.all([Promise.resolve(ses.flushStorageData()), ses.cookies.flushStore()]) : Promise.resolve();
+  // app.exit (which process.exit calls in Electron) hangs the same way while the drag session is open, so the
+  // process ends directly; the storage is on disk by then.
+  void Promise.race([flush, new Promise((r) => setTimeout(r, 3000))]).finally(() => (process as unknown as { reallyExit(code: number): never }).reallyExit(0));
 });
 // Every window closed (the main one hides instead): stay running for Quick Add and the menu bar.
 app.on("window-all-closed", () => undefined);

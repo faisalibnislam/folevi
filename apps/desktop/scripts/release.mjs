@@ -10,7 +10,7 @@
 // build and the installed copy all go to a temporary folder (or --out <dir>), which it prints. Nothing is
 // opened and /Applications/Folevi.app is left alone.
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { buildMac } from "./builder.mjs";
@@ -38,6 +38,9 @@ step(3, "the app");
 run("pnpm", ["build"]);
 run("pnpm", ["helper"]);
 const output = out ? join(out, "release") : join(root, "release");
+// A fresh output folder: electron-builder copies over an earlier build in place, and a shorter file written
+// over a longer one kept the old file's tail (a broken shell/build.json after a failed release).
+rmSync(output, { recursive: true, force: true });
 await buildMac({ config: "electron-builder.yml", web, output, targets: ["dir"], arch: "arm64" });
 const built = join(output, "mac-arm64", "Folevi.app");
 if (!existsSync(built)) throw new Error(`The build didn't make ${built}`);

@@ -6,3 +6,4 @@ native-build/
 web/
 # The production export `pnpm release` ships (scripts/release.mjs).
 web-release/
+.release-config.json

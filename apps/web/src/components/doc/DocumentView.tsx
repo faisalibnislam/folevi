@@ -1218,7 +1218,9 @@ function RightPanel({ width, onWidth, overlay, children }: { width: number; onWi
       style={{ width: w }}
       // Like the left sidebar: straight on the canvas, no card. Over the note (narrower windows) it needs a ground.
       // As an overlay it stops above the floating bar (0.25rem inset + 1.25rem, 3.25rem tall, 0.75rem gap), 0.75rem in from the page's edge.
-      className={`flex min-h-0 flex-none flex-col ${overlay ? "ui-pop absolute bottom-[calc(5.5rem+var(--kb-inset,0px))] right-4 top-3 z-30 max-w-[calc(100%-44px)] overflow-hidden rounded-panel animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none" : "relative h-full"}`}
+      // Docked, it runs down to the window's bottom edge (past the page's 4px inset and the shell's 8px), so its
+      // list scrolls out of the window rather than stopping short of it.
+      className={`flex min-h-0 flex-none flex-col ${overlay ? "ui-pop absolute bottom-[calc(5.5rem+var(--kb-inset,0px))] right-4 top-3 z-30 max-w-[calc(100%-44px)] overflow-hidden rounded-panel animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none" : "relative h-[calc(100%+12px)]"}`}
     >
       <div
         role="separator"

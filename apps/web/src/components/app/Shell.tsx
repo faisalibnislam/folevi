@@ -493,7 +493,9 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   return (
     <div className={`relative flex min-h-0 flex-1 flex-col ${tint ? "ui-view-tint" : ""}`} style={tint ? ({ ["--view-tint" as string]: tint } as React.CSSProperties) : undefined}>
       {inFlow ? null : <div className={drawerMode ? "" : "pt-[56px]"}>{bar}</div>}
-      <main id="main" tabIndex={-1} className={`min-h-0 flex-1 overflow-y-auto outline-none ${inFlow ? clear : ""}`}>
+      {/* A note scrolls inside its own page, so <main> doesn't clip: the page's edge and shadow show whole, and the
+          tools panel can run to the window's bottom edge. */}
+      <main id="main" tabIndex={-1} className={`min-h-0 flex-1 outline-none ${route.name === "doc" && !drawerMode ? "overflow-visible" : "overflow-y-auto"} ${inFlow ? clear : ""}`}>
         {inFlow ? bar : null}
         {children}
       </main>

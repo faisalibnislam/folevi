@@ -171,7 +171,30 @@ export const vCollectionPropertyType = v.union(
   v.literal("relation"),
 );
 export const vCollectionViewType = v.union(v.literal("table"), v.literal("board"), v.literal("gallery"), v.literal("calendar"));
+  v.literal("formula"),
 
+/** How a number property (or a formula's numbers) shows, like a table column's format. */
+export const vCollectionNumberFormat = v.object({
+  format: v.union(v.literal("number"), v.literal("currency"), v.literal("percent")),
+  currency: v.optional(v.string()),
+  decimals: v.optional(v.number()),
+});
+/** A view's summary under a column (the calculate row). */
+export const vCollectionSummary = v.object({
+  propertyId: v.string(),
+  fn: v.union(
+    v.literal("count"),
+    v.literal("countEmpty"),
+    v.literal("countNotEmpty"),
+    v.literal("percentEmpty"),
+    v.literal("percentNotEmpty"),
+    v.literal("sum"),
+    v.literal("average"),
+    v.literal("min"),
+    v.literal("max"),
+    v.literal("percentChecked"),
+  ),
+});
 export const vWireBlock = v.object({
   id: v.string(),
   type: v.string(),

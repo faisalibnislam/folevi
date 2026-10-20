@@ -2,7 +2,9 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
   vAppearance,
+  vCollectionNumberFormat,
   vCollectionPropertyType,
+  vCollectionSummary,
   vCollectionViewType,
   vDocumentCover,
   vImagePalette,
@@ -1231,6 +1233,10 @@ export default defineSchema({
     .index("by_collection", ["collectionId"])
     .index("by_public_id", ["publicId"]),
 
+    /** A formula property's formula (its text only: results are worked out where it's shown). */
+    formula: v.optional(v.string()),
+    /** How numbers show (number and formula properties). */
+    numberFormat: v.optional(vCollectionNumberFormat),
   collectionRows: defineTable({
     publicId: v.string(),
     collectionId: v.id("collections"),
@@ -1292,6 +1298,8 @@ export default defineSchema({
     .index("by_collection", ["collectionId"])
     .index("by_public_id", ["publicId"]),
 
+      /** Table views: the summary under each column (sum, average, count...). */
+      summaries: v.optional(v.array(vCollectionSummary)),
   commentThreads: defineTable({
     publicId: v.string(),
     ...scoped,

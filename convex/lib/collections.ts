@@ -1,6 +1,6 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { rankSequence, ulid } from "@folevi/editor-schema";
+import { TABLE_CURRENCIES, collectionFormulaProblem, rankSequence, ulid, type FormulaPropertyInput } from "@folevi/editor-schema";
 import { fail } from "./errors";
 import { insertScoped, scopeOfRow, type Scope } from "./scope";
 import { nextSeq } from "./seq";
@@ -47,7 +47,34 @@ export function normalizeValue(
       if (!Array.isArray(value)) fail("invalid_argument", "Expected a list of documents.");
       return [...new Set(value.filter((x): x is string => typeof x === "string"))].slice(0, 50);
     }
+    case "formula":
+      // Worked out from the row wherever it's shown; never stored.
+      fail("invalid_argument", "A formula's values come from its formula and can't be set.");
   }
+}
+
+/** A number format as stored: a known style, a known currency, 0 to 6 decimals. */
+export function normalizeNumberFormat(f: { format: "number" | "currency" | "percent"; currency?: string; decimals?: number }): NonNullable<Doc<"collectionProperties">["numberFormat"]> {
+  const out: NonNullable<Doc<"collectionProperties">["numberFormat"]> = { format: f.format };
+  if (f.format === "currency") out.currency = f.currency && (TABLE_CURRENCIES as readonly string[]).includes(f.currency) ? f.currency : "USD";
+  if (typeof f.decimals === "number" && Number.isFinite(f.decimals)) out.decimals = Math.min(6, Math.max(0, Math.round(f.decimals)));
+  return out;
+}
+
+/** A collection's live properties, in order, as the formula checks read them. */
+export function formulaInputs(props: Doc<"collectionProperties">[]): FormulaPropertyInput[] {
+  return props
+    .filter((p) => !p.deletedAt)
+    .sort((a, b) => (a.rank < b.rank ? -1 : 1))
+    .map((p) => ({ id: p.publicId, name: p.name, type: p.type, options: p.options, formula: p.formula ?? null }));
+}
+
+/** A formula as stored (trimmed), refused with the reason when it's too long or would depend on itself. */
+export function checkedFormula(props: Doc<"collectionProperties">[], propertyPublicId: string, formula: string): string {
+  const text = formula.replace(/[\u0000-\u0008\u000B-\u001F\u007F]+/g, " ").trim();
+  const problem = collectionFormulaProblem(formulaInputs(props), propertyPublicId, text);
+  if (problem) fail("invalid_argument", problem);
+  return text;
 }
 
 export async function createCollection(
@@ -155,7 +182,17 @@ export async function copyCollectionsInto(ctx: MutationCtx, doc: Doc<"documents"
       if (p.deletedAt !== undefined) continue;
       const pid = ulid();
       propertyIds.set(p.publicId, pid);
-      await ctx.db.insert("collectionProperties", { publicId: pid, collectionId, name: p.name, type: p.type, options: p.options, rank: p.rank, createdAt: now });
+      await ctx.db.insert("collectionProperties", {
+        publicId: pid,
+        collectionId,
+        name: p.name,
+        type: p.type,
+        options: p.options,
+        ...(p.formula !== undefined ? { formula: p.formula } : {}),
+        ...(p.numberFormat ? { numberFormat: p.numberFormat } : {}),
+        rank: p.rank,
+        createdAt: now,
+      });
     }
     const mapId = (id: string) => propertyIds.get(id);
     let viewId: string | undefined;
@@ -183,6 +220,9 @@ export async function copyCollectionsInto(ctx: MutationCtx, doc: Doc<"documents"
           groupBy: c.groupBy ? mapId(c.groupBy) : undefined,
           dateBy: c.dateBy ? mapId(c.dateBy) : undefined,
           visibleProperties: c.visibleProperties.map(mapId).filter((x): x is string => Boolean(x)),
+          ...(c.summaries
+            ? { summaries: c.summaries.flatMap((x) => (x.propertyId === "title" ? [x] : mapId(x.propertyId) ? [{ ...x, propertyId: mapId(x.propertyId)! }] : [])) }
+            : {}),
         },
       });
     }

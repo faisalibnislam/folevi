@@ -36,7 +36,15 @@ export interface PublicCollection {
   name: string;
   viewType: Doc<"collectionViews">["type"];
   config: Doc<"collectionViews">["config"];
-  properties: { id: string; name: string; type: Doc<"collectionProperties">["type"]; options: Doc<"collectionProperties">["options"] }[];
+  properties: {
+    id: string;
+    name: string;
+    type: Doc<"collectionProperties">["type"];
+    options: Doc<"collectionProperties">["options"];
+    /** Formula properties: the formula (results are worked out where the page is shown). */
+    formula?: string | null;
+    numberFormat?: Doc<"collectionProperties">["numberFormat"] | null;
+  }[];
   rows: { id: string; title: string; icon: string | null; values: Record<string, unknown> }[];
 }
 
@@ -109,7 +117,7 @@ async function publicCollections(ctx: MutationCtx, doc: Doc<"documents">, blocks
       name: collection.name,
       viewType: view.type,
       config: view.config,
-      properties: props.map((p) => ({ id: p.publicId, name: p.name, type: p.type, options: p.options })),
+      properties: props.map((p) => ({ id: p.publicId, name: p.name, type: p.type, options: p.options, formula: p.formula ?? null, numberFormat: p.numberFormat ?? null })),
       rows,
     };
   }

@@ -15,7 +15,7 @@
 import { v } from "convex/values";
 import { mutation, type MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { LIMITS, SCHEMA_VERSION, ulid, type InlineNode, type WireBlock } from "@folevi/editor-schema";
+import { LIMITS, SCHEMA_VERSION, evaluateCollectionFormulas, ulid, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import { assertWritable, getDocumentByPublicId, PageReader, requireDocument, requireProfile, resolveScope } from "./lib/auth";
 import { DEFAULTS, liveBlocks, toWireBlock } from "./lib/documents";
 import { cloneBlocks, createDocument } from "./lib/create";
@@ -114,8 +114,9 @@ async function collectionTable(ctx: Ctx, reader: PageReader, block: WireBlock): 
       .filter((r) => !r.deletedAt)
       .sort((a, b) => (a.rank < b.rank ? -1 : 1));
     const names = new Map<string, string>();
+    const kept: { title: string; values: Map<Id<"collectionProperties">, unknown> }[] = [];
     for (const r of rowDocs) {
-      if (rows.length >= LIMITS.maxTableRows) break;
+      if (kept.length + 1 >= LIMITS.maxTableRows) break;
       const doc = await ctx.db.get(r.documentId);
       if (!doc || doc.inTrash || !(await reader.canOpen(doc))) continue;
       const values = new Map<Id<"collectionProperties">, unknown>();
@@ -125,8 +126,28 @@ async function collectionTable(ctx: Ctx, reader: PageReader, block: WireBlock): 
         .collect()) {
         values.set(val.propertyId, val.value);
       }
-      const line = [cell(doc.title)];
-      for (const p of properties) line.push(cell(await valueText(ctx, reader, p, values.get(p._id), names)));
+      kept.push({ title: doc.title, values });
+    }
+    // Formula columns hold what the formulas show (the copy is a plain table). People are named first, so
+    // a formula that uses a person sees their name.
+    const formulas = properties.some((p) => p.type === "formula")
+      ? evaluateCollectionFormulas(
+          properties.map((p) => ({ id: p.publicId, name: p.name, type: p.type, options: p.options, formula: p.formula ?? null, numberFormat: p.numberFormat ?? null })),
+          await Promise.all(
+            kept.map(async (k) => {
+              const values: Record<string, unknown> = {};
+              for (const p of properties) {
+                const value = k.values.get(p._id);
+                values[p.publicId] = p.type === "person" ? await valueText(ctx, reader, p, value, names) : value;
+              }
+              return { title: k.title, values };
+            }),
+          ),
+        )
+      : null;
+    for (const [i, k] of kept.entries()) {
+      const line = [cell(k.title)];
+      for (const p of properties) line.push(cell(p.type === "formula" ? (formulas?.[i]?.[p.publicId]?.display ?? "") : await valueText(ctx, reader, p, k.values.get(p._id), names)));
       rows.push(line);
     }
   }

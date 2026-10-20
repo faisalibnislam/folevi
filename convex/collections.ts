@@ -2,19 +2,33 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { isValidId, rankBetween, ulid } from "@folevi/editor-schema";
+import { collectionFormulaLoop, isValidId, rankBetween, renameInCollectionFormula, ulid } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, PageReader, requireDocument, requireProfile, type Access } from "./lib/auth";
 import { fail } from "./lib/errors";
-import { addView, createCollection, normalizeValue } from "./lib/collections";
+import { addView, checkedFormula, createCollection, formulaInputs, normalizeNumberFormat, normalizeValue } from "./lib/collections";
 import { createDocument, specsToWireBlocks } from "./lib/create";
 import { nextSeq } from "./lib/seq";
 import { scopeOfRow } from "./lib/scope";
-import { vCollectionPropertyType, vCollectionViewType } from "./lib/validators";
+import { vCollectionNumberFormat, vCollectionPropertyType, vCollectionSummary, vCollectionViewType } from "./lib/validators";
 import { SyncEngine } from "./lib/syncEngine";
 import { queueIndex } from "./lib/ai/indexing";
 
 const OPTION_COLORS = ["accent", "moss", "marigold", "plum", "coral", "muted"];
 const VIEW_NAMES: Record<Doc<"collectionViews">["type"], string> = { table: "Table", board: "Board", gallery: "Gallery", calendar: "Calendar" };
+
+/** A property as the client gets it: a formula's text (null for other types) and its number format. */
+function propertyOut(p: Doc<"collectionProperties">) {
+  return { id: p.publicId, name: p.name, type: p.type, options: p.options, formula: p.formula ?? null, numberFormat: p.numberFormat ?? null };
+}
+
+async function liveProperties(ctx: MutationCtx, collectionId: Id<"collections">) {
+  return (
+    await ctx.db
+      .query("collectionProperties")
+      .withIndex("by_collection", (q) => q.eq("collectionId", collectionId))
+      .collect()
+  ).filter((p) => !p.deletedAt);
+}
 
 async function collectionFor(ctx: QueryCtx | MutationCtx, collectionPublicId: string, need: Access) {
   const profile = await requireProfile(ctx);
@@ -152,7 +166,7 @@ export const get = query({
       people,
       hostDocumentId: host.publicId,
       canEdit: accessAtLeast(access, "write"),
-      properties: props.map((p) => ({ id: p.publicId, name: p.name, type: p.type, options: p.options })),
+      properties: props.map(propertyOut),
       views: views.map((vw) => ({ id: vw.publicId, name: vw.name, type: vw.type, config: vw.config })),
       rows: outRows,
     };
@@ -218,7 +232,15 @@ export const rename = mutation({
  * rows before it's sent); sending the same add again returns the property it made.
  */
 export const addProperty = mutation({
-  args: { collectionId: v.string(), name: v.string(), type: vCollectionPropertyType, id: v.optional(v.string()) },
+  args: {
+    collectionId: v.string(),
+    name: v.string(),
+    type: vCollectionPropertyType,
+    id: v.optional(v.string()),
+    /** A formula property's formula (checked: its length, and that it never depends on itself). */
+    formula: v.optional(v.string()),
+    numberFormat: v.optional(vCollectionNumberFormat),
+  },
   handler: async (ctx, args) => {
     const { profile, collection } = await collectionFor(ctx, args.collectionId, "write");
     await assertWritable(ctx, profile);
@@ -240,15 +262,20 @@ export const addProperty = mutation({
     if (existing.filter((p) => !p.deletedAt).length >= 40) fail("limit_exceeded", "A collection can have up to 40 properties.");
     const last = existing.map((p) => p.rank).sort().pop() ?? null;
     const publicId = args.id ?? ulid();
-    await ctx.db.insert("collectionProperties", {
+    const propId = await ctx.db.insert("collectionProperties", {
       publicId,
       collectionId: collection._id,
       name: args.name.trim().slice(0, 60) || "Property",
       type: args.type,
       options: [],
+      ...(args.numberFormat && (args.type === "number" || args.type === "formula") ? { numberFormat: normalizeNumberFormat(args.numberFormat) } : {}),
       rank: rankBetween(last, null),
       createdAt: Date.now(),
     });
+    if (args.type === "formula") {
+      const formula = checkedFormula(await liveProperties(ctx, collection._id), publicId, args.formula ?? "");
+      await ctx.db.patch(propId, { formula });
+    }
     const views = await ctx.db
       .query("collectionViews")
       .withIndex("by_collection", (q) => q.eq("collectionId", collection._id))
@@ -277,13 +304,31 @@ export const updateProperty = mutation({
     propertyId: v.string(),
     name: v.optional(v.string()),
     options: v.optional(v.array(v.object({ id: v.optional(v.string()), name: v.string(), color: v.optional(v.string()) }))),
+    /** A formula property's new formula. */
+    formula: v.optional(v.string()),
+    /** Number and formula properties: how numbers show (null: plain). */
+    numberFormat: v.optional(v.union(vCollectionNumberFormat, v.null())),
   },
   handler: async (ctx, args) => {
     const { profile, collection } = await collectionFor(ctx, args.collectionId, "write");
     await assertWritable(ctx, profile);
     const prop = await propertyFor(ctx, collection, args.propertyId);
     const patch: Partial<Doc<"collectionProperties">> = {};
-    if (args.name !== undefined) patch.name = args.name.trim().slice(0, 60) || prop.name;
+    if (args.formula !== undefined) {
+      if (prop.type !== "formula") fail("invalid_argument", "Only formula properties have a formula.");
+      patch.formula = checkedFormula(await liveProperties(ctx, collection._id), prop.publicId, args.formula);
+    }
+    if (args.numberFormat !== undefined) {
+      if (prop.type !== "number" && prop.type !== "formula") fail("invalid_argument", "Only number and formula properties have a number format.");
+      patch.numberFormat = args.numberFormat ? normalizeNumberFormat(args.numberFormat) : undefined;
+    }
+    if (args.name !== undefined) {
+      patch.name = args.name.trim().slice(0, 60) || prop.name;
+      if (patch.name !== prop.name) {
+        const own = await renameInFormulas(ctx, collection._id, prop, patch.name, patch.formula);
+        if (own !== undefined) patch.formula = own;
+      }
+    }
     if (args.options) {
       if (prop.type !== "select" && prop.type !== "multiSelect") fail("invalid_argument", "Only select properties have options.");
       patch.options = args.options.slice(0, 100).map((o, i) => ({
@@ -296,6 +341,31 @@ export const updateProperty = mutation({
     return null;
   },
 });
+
+/**
+ * A property renamed: every formula that names it names it the new way (the formulas follow it, as a table's
+ * column names do). Refused when the new name would make formulas depend on each other in a loop.
+ */
+async function renameInFormulas(ctx: MutationCtx, collectionId: Id<"collections">, prop: Doc<"collectionProperties">, name: string, ownFormula: string | undefined) {
+  const props = await liveProperties(ctx, collectionId);
+  const before = formulaInputs(props);
+  const updates = new Map<Id<"collectionProperties">, string>();
+  for (const p of props) {
+    const text = p._id === prop._id && ownFormula !== undefined ? ownFormula : p.formula;
+    if (p.type !== "formula" || !text) continue;
+    const next = renameInCollectionFormula(text, before, prop.publicId, name);
+    if (next !== p.formula) updates.set(p._id, next);
+  }
+  const after = before.map((p) => {
+    const doc = props.find((x) => x.publicId === p.id)!;
+    return { ...p, name: p.id === prop.publicId ? name : p.name, formula: updates.get(doc._id) ?? (p.id === prop.publicId && ownFormula !== undefined ? ownFormula : p.formula) };
+  });
+  const loop = collectionFormulaLoop(after);
+  if (loop) fail("invalid_argument", `With that name, formulas would depend on each other in a loop: ${loop.map((n) => `“${n}”`).join(" → ")}.`);
+  for (const [id, formula] of updates) if (id !== prop._id) await ctx.db.patch(id, { formula });
+  // Its own formula (when it names itself it's refused above) is part of the caller's patch.
+  return updates.get(prop._id);
+}
 
 export const deleteProperty = mutation({
   args: { collectionId: v.string(), propertyId: v.string() },
@@ -511,7 +581,7 @@ export const rowForDocument = query({
       collection: { id: collection.publicId, name: collection.name, hostDocumentId: hostReadable && host ? host.publicId : null, hostTitle: hostReadable && host ? host.title : null },
       canEdit: accessAtLeast(access, "write"),
       row: { id: row.publicId, documentId: doc.publicId, title: doc.title, values },
-      properties: props.map((p) => ({ id: p.publicId, name: p.name, type: p.type, options: p.options })),
+      properties: props.map(propertyOut),
     };
   },
 });
@@ -546,6 +616,7 @@ const vConfig = v.object({
   visibleProperties: v.array(v.string()),
   cardPreview: v.union(v.literal("none"), v.literal("cover"), v.literal("content")),
   cardSize: v.union(v.literal("small"), v.literal("medium"), v.literal("large")),
+  summaries: v.optional(v.array(vCollectionSummary)),
 });
 
 /** Adds a view. `id` may be chosen by the client (a view added offline); sending it again returns that view. */
@@ -608,13 +679,15 @@ export const updateView = mutation({
     if (args.config) {
       if (view.type === "board" && args.config.groupBy) {
         const prop = await propertyFor(ctx, collection, args.config.groupBy);
-        if (prop.type !== "select") fail("invalid_argument", "Boards group by a single-select property.");
+        if (prop.type !== "select" && prop.type !== "formula") fail("invalid_argument", "Boards group by a single-select or formula property.");
       }
       if (view.type === "calendar" && args.config.dateBy) {
         const prop = await propertyFor(ctx, collection, args.config.dateBy);
         if (prop.type !== "date") fail("invalid_argument", "Calendars place rows by a date property.");
       }
-      patch.config = { ...args.config, filters: args.config.filters.slice(0, 20), sorts: args.config.sorts.slice(0, 5) };
+      const summaries = args.config.summaries ? [...new Map(args.config.summaries.map((x) => [x.propertyId, x])).values()].slice(0, 41) : undefined;
+      patch.config = { ...args.config, filters: args.config.filters.slice(0, 20), sorts: args.config.sorts.slice(0, 5), summaries };
+      if (!summaries) delete patch.config.summaries;
     }
     await ctx.db.patch(view._id, patch);
     return null;

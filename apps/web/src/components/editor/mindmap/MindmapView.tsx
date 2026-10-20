@@ -347,7 +347,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
   const doTidy = () => {
     const next = tidy(docRef.current);
     if (next !== docRef.current) commit(next);
-    requestAnimationFrame(() => fitView(layoutMindmap(next, { focus: focusId })));
+    fitView(layoutMindmap(next, { focus: focusId }));
   };
 
   const start = (text = "") => {
@@ -356,7 +356,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
     setLive(r.map);
     setEditing({ id: r.id, before, typed: Boolean(text) });
     select(r.id);
-    requestAnimationFrame(() => fitView(layoutMindmap(r.map)));
+    fitView(layoutMindmap(r.map));
   };
 
   const exitToList = () => {
@@ -378,7 +378,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
     commit(why === "new" ? { ...next, layout: docRef.current.nodes.length ? docRef.current.layout : next.layout } : next);
     setFocus(null);
     select(mindmapRoot(next)?.id ?? null, false);
-    requestAnimationFrame(() => fitView(layoutMindmap(next)));
+    fitView(layoutMindmap(next));
   };
 
   const applyIdeas = (parent: string, ideas: { text: string; children?: { text: string }[] }[]) => {
@@ -443,7 +443,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
     if (!docRef.current.nodes.length) {
       const pasted = mindmapFromMarkdown(text);
       commit({ ...pasted, layout: docRef.current.layout });
-      requestAnimationFrame(() => fitView(layoutMindmap(pasted)));
+      fitView(layoutMindmap(pasted));
       return;
     }
     // Lines or a nested list go inside the selected idea (or the centre), nested as pasted.
@@ -724,7 +724,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
     }
     if (e.key === "Escape") {
       if (aiStart) return (setAiStart(null), done());
-      if (focusId) return (setFocus(null), requestAnimationFrame(() => fitView(layoutMindmap(docRef.current))), done());
+      if (focusId) return (setFocus(null), fitView(layoutMindmap(docRef.current)), done());
       return false;
     }
     if (mod || outline) return false;
@@ -912,7 +912,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
       onFocus: () => {
         const next = focusId === id ? null : id;
         setFocus(next);
-        requestAnimationFrame(() => fitView(layoutMindmap(docRef.current, { focus: next })));
+        fitView(layoutMindmap(docRef.current, { focus: next }));
       },
       onOutdent: () => {
         const next = outdent(docRef.current, id);
@@ -935,14 +935,20 @@ function MindmapEditor(props: ReactNodeViewProps) {
   const [barEl, setBarEl] = useState<HTMLDivElement | null>(null);
   const [barSize, setBarSize] = useState<{ w: number; h: number } | null>(null);
   const [zoomBox, setZoomBox] = useState<Rect | null>(null);
+  const measureBar = useCallback((el: HTMLElement) => setBarSize((s) => (s && s.w === el.offsetWidth && s.h === el.offsetHeight ? s : { w: el.offsetWidth, h: el.offsetHeight })), []);
   useLayoutEffect(() => {
     if (!barEl) return;
-    const measure = () => setBarSize((s) => (s && s.w === barEl.offsetWidth && s.h === barEl.offsetHeight ? s : { w: barEl.offsetWidth, h: barEl.offsetHeight }));
-    measure();
-    const ro = new ResizeObserver(measure);
+    const ro = new ResizeObserver(() => measureBar(barEl));
     ro.observe(barEl);
     return () => ro.disconnect();
-  }, [barEl]);
+  }, [barEl, measureBar]);
+  // The bar stays mounted from one idea to the next while its buttons change (fold, Foli AI, add after): it's
+  // measured again before it's painted, since the ResizeObserver reports a frame late and for that frame the
+  // bar would sit where its old size fitted, over a neighbour.
+  const barKey = selActions ? `${selActions.isRoot}:${selActions.hasChildren}:${selActions.aiOn}:${coarse}` : "";
+  useLayoutEffect(() => {
+    if (barEl) measureBar(barEl);
+  }, [barEl, barKey, measureBar]);
   const empty = !map.nodes.length;
   useLayoutEffect(() => {
     const z = wrapRef.current?.querySelector<HTMLElement>(".mm-zoom");
@@ -977,7 +983,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
       onLayout={(l) => {
         const next = setLayout(docRef.current, l);
         commit(next);
-        requestAnimationFrame(() => fitView(layoutMindmap(next, { focus: focusId })));
+        fitView(layoutMindmap(next, { focus: focusId }));
       }}
       onTidy={doTidy}
       canTidy={count > 1}
@@ -1179,7 +1185,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
               className="fb-vc-btn mm-text-btn"
               onClick={() => {
                 setFocus(null);
-                requestAnimationFrame(() => fitView(layoutMindmap(docRef.current)));
+                fitView(layoutMindmap(docRef.current));
               }}
             >
               <X size={13} aria-hidden /> Show whole map

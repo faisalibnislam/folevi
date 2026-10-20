@@ -1,9 +1,9 @@
 // Foli AI for the blocks, in local mode (convex/mindmapAi.ts, stickiesAi.ts, tableAi.ts, chartAi.ts,
-// wireframeAi.ts): the same requests from @folevi/ai-prompts, the same strict checks on what comes back, run
+// wireframeAi.ts, flowchartAi.ts): the same requests from @folevi/ai-prompts, the same strict checks on what comes back, run
 // on the model active on this device. What the model can't do here (reading a PDF or a photo; wireframes on
 // the small on-device model) is refused with a plain message, and the interface doesn't offer it
 // (features.ts). Nothing is changed here: the block applies the result as one undoable change.
-import { normalizeChart, parseMindmap, parseStickies, type WireframeData } from "@folevi/editor-schema";
+import { LIMITS, checkFlowchart, normalizeChart, parseFlowchart, parseMindmap, parseStickies, type WireframeData } from "@folevi/editor-schema";
 import type { PromptRequest } from "@folevi/ai-prompts";
 import { AI_MAX_TASKS, EXPAND_MAX, MAP_TEXT, MAX_INSTRUCTION as MAP_INSTRUCTION, MINDMAP_MESSAGES, cleanSummary, expandRequest, mapPromptRequest, mapTasksRequest, parseIdeasReply, parseMapReply, parseTasksReply, summarizeMapRequest, tidyRequest } from "@folevi/ai-prompts/mindmap";
 import { MAX_INSTRUCTION as TABLE_INSTRUCTION, TABLE_MESSAGES, parseExplainReply, parseFormulaReply, parseTableReply, tableCleanRequest, tableEditRequest, tableExplainRequest, tableFormulaRequest, tableOf } from "@folevi/ai-prompts/table";
@@ -11,6 +11,24 @@ import { STICKIES_MESSAGES, MAX_TASKS as STICKY_TASKS, boardForPrompt, boardSumm
 import { CHART_MESSAGES, MAX_CHART, MAX_INSTRUCTION as CHART_INSTRUCTION, NOTE_CHARS as CHART_NOTE_CHARS, chartTaskRequest, fromWordsRequest, parseChartDraft, parseChartPatch } from "@folevi/ai-prompts/chart";
 import { AI_MAX_SCREENS, MAX_INSTRUCTION as WIREFRAME_INSTRUCTION, WIREFRAME_MESSAGES, drawRequest, parseWireframeReply, refineRequest, screenForPrompt, variationCount, varyRequest } from "@folevi/ai-prompts/wireframe";
 import { MAX_QUESTION } from "@folevi/ai-prompts/ask";
+import {
+  EXPLAIN_SYSTEM,
+  FLOWCHART_MESSAGES,
+  FROM_TEXT_CHARS,
+  LABELS_SYSTEM,
+  MAX_INSTRUCTION as FLOW_INSTRUCTION,
+  arrangeRequest,
+  explainRequest,
+  extendRequest,
+  flowchartForPrompt,
+  fromTextRequest,
+  labelsRequest,
+  parseArrangeReply,
+  parseExplainReply as parseFlowExplainReply,
+  parseExtendReply,
+  parseFlowchartDraft,
+  parseLabelsReply,
+} from "@folevi/ai-prompts/flowchart";
 import { api } from "@/lib/convex/api";
 import { fail } from "../../errors";
 import { defineLocal, type LocalActionCtx } from "../../registry";
@@ -275,4 +293,85 @@ defineLocal(api.wireframeAi.refine, "action", async (ctx, args) => {
   const current = screenForPrompt(args.screen);
   if (!current) fail("invalid_argument", WIREFRAME_MESSAGES.noRefineScreen);
   return await screens(ctx, refineRequest(current, instruction), 1, current.frame);
+});
+
+// ---- flowcharts --------------------------------------------------------------------------------------------
+// Drawing from text, extending and arranging need a model with room for a whole chart ("flowchart": a
+// person's own key); explaining and clearer labels are small answers the on-device model gives too
+// ("flowchartExplain"), with the chart cut to what fits it.
+
+/** The chart a request works on (convex/flowchartAi.ts chartOf), cut to `maxChars` for a small model. */
+function flowChart(data: string, opts: { ids?: boolean; min?: number; maxChars?: number } = {}) {
+  const fc = parseFlowchart(data.slice(0, LIMITS.maxFlowchartDataLength));
+  const current = flowchartForPrompt(data, { ids: opts.ids, maxChars: opts.maxChars });
+  if (!current || fc.nodes.length < (opts.min ?? 1)) fail("invalid_argument", (opts.min ?? 1) > 1 ? FLOWCHART_MESSAGES.tooSmall : FLOWCHART_MESSAGES.noChart);
+  return { fc, current };
+}
+
+/** How much of a chart fits the active model beside `system` (undefined: all of it, as on the server). */
+async function chartRoom(ctx: LocalActionCtx, feature: AiFeature, system: string, answerTokens: number): Promise<number | undefined> {
+  const SERVER = 1_000_000;
+  const budget = textBudget(await gate(ctx, feature), { serverChars: SERVER, overheadChars: system.length + 600, answerTokens });
+  return budget < SERVER ? Math.max(400, budget) : undefined;
+}
+
+defineLocal(api.flowchartAi.fromText, "action", async (ctx, args) => {
+  checkScope(args.scope);
+  const text = (args.text ?? "").trim().slice(0, FROM_TEXT_CHARS);
+  const instruction = (args.instruction ?? "").trim().slice(0, FLOW_INSTRUCTION);
+  if (!text && !args.documentId) fail("invalid_argument", FLOWCHART_MESSAGES.noText);
+  await gate(ctx, "flowchart");
+  let source = { text, title: null as string | null };
+  if (!text) {
+    const note = await read(ctx, async (db) => {
+      const doc = await readableNote(db, args.documentId!);
+      return { title: doc.title || "Untitled", text: await noteMarkdown(db, doc) };
+    });
+    if (!note.text.replace(/^#[^\n]*\n?/, "").trim()) fail("invalid_argument", FLOWCHART_MESSAGES.emptyNote);
+    source = { text: note.text.slice(0, FROM_TEXT_CHARS), title: note.title };
+  }
+  const draft = parseFlowchartDraft(await run(ctx, "flowchart", fromTextRequest({ ...source, instruction })));
+  if (!draft) fail("invalid_argument", FLOWCHART_MESSAGES.fromTextFailed);
+  return draft;
+});
+
+defineLocal(api.flowchartAi.extend, "action", async (ctx, args) => {
+  checkScope(args.scope);
+  const { fc, current } = flowChart(args.data, { ids: true });
+  const byId = new Map(fc.nodes.map((n) => [n.id, n]));
+  if (!args.nodeIds.length) fail("invalid_argument", FLOWCHART_MESSAGES.pickShapes);
+  const selected = args.nodeIds.slice(0, 20).flatMap((id) => (byId.has(id) ? [{ id, text: byId.get(id)!.text }] : []));
+  if (!selected.length) fail("invalid_argument", FLOWCHART_MESSAGES.shapesGone);
+  const req = extendRequest({ current, selected, kind: args.kind, instruction: (args.instruction ?? "").slice(0, FLOW_INSTRUCTION) });
+  const ext = parseExtendReply(await run(ctx, "flowchart", req), fc, selected.map((s) => s.id));
+  if (!ext) fail("invalid_argument", FLOWCHART_MESSAGES.extendFailed);
+  return ext;
+});
+
+defineLocal(api.flowchartAi.explain, "action", async (ctx, args) => {
+  checkScope(args.scope);
+  flowChart(args.data);
+  const room = await chartRoom(ctx, "flowchartExplain", EXPLAIN_SYSTEM, 1024);
+  const { fc, current } = flowChart(args.data, { maxChars: room });
+  const out = parseFlowExplainReply(await run(ctx, "flowchartExplain", explainRequest({ current, issues: checkFlowchart(fc).map((i) => i.message) })));
+  if (!out) fail("invalid_argument", FLOWCHART_MESSAGES.explainFailed);
+  return out;
+});
+
+defineLocal(api.flowchartAi.labels, "action", async (ctx, args) => {
+  checkScope(args.scope);
+  flowChart(args.data, { ids: true });
+  const room = await chartRoom(ctx, "flowchartExplain", LABELS_SYSTEM, 2048);
+  const { fc, current } = flowChart(args.data, { ids: true, maxChars: room });
+  const out = parseLabelsReply(await run(ctx, "flowchartExplain", labelsRequest({ current })), fc);
+  if (!out) fail("invalid_argument", FLOWCHART_MESSAGES.labelsFailed);
+  return out;
+});
+
+defineLocal(api.flowchartAi.arrange, "action", async (ctx, args) => {
+  checkScope(args.scope);
+  const { fc, current } = flowChart(args.data, { min: 2 });
+  const out = parseArrangeReply(await run(ctx, "flowchart", arrangeRequest({ current })), fc);
+  if (!out) fail("invalid_argument", FLOWCHART_MESSAGES.arrangeFailed);
+  return out;
 });

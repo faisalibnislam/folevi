@@ -57,6 +57,7 @@ async function useModel(b: ParityBackend, respond: Responder): Promise<{ sent: S
 
 const TABLE = { rows: [["Item", "Price", "Qty", "Total"], ["Apples", "1.5", "4", "=Price * Qty"], ["Pears", "2", "3", ""]], headerRow: true };
 const BOARD = JSON.stringify({ v: 1, notes: [{ id: "s1", text: "Faster sign up", color: "yellow", x: 0, y: 0 }, { id: "s2", text: "Dark mode", color: "blue", x: 200, y: 0 }, { id: "s3", text: "Fewer fields", color: "yellow", x: 0, y: 200 }] });
+const FLOW = JSON.stringify({ v: 2, nodes: [{ id: "a", shape: "terminator", x: 0, y: 0, w: 160, h: 56, text: "Start" }, { id: "b", shape: "decision", x: 0, y: 120, w: 176, h: 96, text: "Ready?" }], edges: [{ id: "e1", from: "a", to: "b" }] });
 const CHART = JSON.stringify({ kind: "bar", columns: [{ id: "c1", name: "Month" }, { id: "c2", name: "Sales" }], rows: [["Jan", 10], ["Feb", 12]] });
 
 /** The reply for each kind of request, by its system prompt (the same replies on both backends). */
@@ -65,6 +66,10 @@ const reply: Responder = (system, prompt) => {
   if (system.includes("writing assistant") && prompt.includes("Suggest one short, specific title")) return '"Launch plan for May."';
   if (system.includes("writing assistant") && prompt.includes("flashcards")) return JSON.stringify({ cards: [{ q: "When is the launch?", a: "In May." }] });
   if (system.includes("writing assistant")) return "A clearer sentence.";
+  if (prompt.includes("Add the next 1 to 4 steps")) return JSON.stringify({ nodes: [{ id: "c", shape: "process", text: "Ship it" }, { id: "a", text: "Reused id" }], edges: [{ from: "b", to: "c", label: "Yes" }], labels: [{ edge: "e1", label: "Go" }] });
+  if (prompt.includes("Explain this flowchart.")) return JSON.stringify({ summary: "A start and a question.", steps: ["Start"], decisions: ["Ready? has no answers yet."], gaps: ["Ready? is a dead end."] });
+  if (prompt.includes("Suggest clearer labels.")) return JSON.stringify({ shapes: [{ id: "b", text: "Ready to ship?", why: "Says what" }, { id: "ghost", text: "x" }], connectors: [{ id: "e1", label: "Begin" }] });
+  if (prompt.includes("Arrange this flowchart.")) return JSON.stringify({ direction: "LR", rows: [["a"], ["b", "ghost"]] });
   if (prompt.includes("Draw a flowchart")) return JSON.stringify({ nodes: [{ id: "a", text: "Start" }, { id: "b", text: "Ship" }], edges: [{ from: "a", to: "b", label: "then" }], direction: "LR" });
   if (prompt.includes("Change the table")) return JSON.stringify({ rows: [["Item", "Price"], ["Apples", "1.5"]], summary: "Removed two columns." });
   if (prompt.includes("Write the formula")) return JSON.stringify({ formula: "=Price * Qty", explanation: "Price times quantity." });
@@ -82,7 +87,7 @@ const reply: Responder = (system, prompt) => {
 
 export const scenarios = [
   scenario({
-    name: "Foli AI: writing help, flowcharts, tables, sticky notes, charts, to-dos and translation send the same prompts and return the same checked results",
+    name: "Foli AI: writing help, flowcharts (drawn, from text, extended, explained, relabelled, arranged), tables, sticky notes, charts, to-dos and translation send the same prompts and return the same checked results",
     // The drivers sign in under different names ("parity", "Test"); who the to-dos can go to is still the one person.
     ignore: ["displayName"],
     async run(b, k) {
@@ -97,6 +102,12 @@ export const scenarios = [
           flashcards: await b.action(api.ai.write, { scope, task: "flashcards", text: "We launch in May." }),
           summarizeNote: await b.action(api.ai.write, { scope, task: "summarize", documentId: note }),
           flowchart: await b.action(api.ai.flowchart, { scope, mode: "create", instruction: "How we ship" }),
+          flowFromText: await b.action(api.flowchartAi.fromText, { scope, text: "- Pack\n- Travel" }),
+          flowFromNote: await b.action(api.flowchartAi.fromText, { scope, documentId: note, instruction: "Only the launch" }),
+          flowExtend: await b.action(api.flowchartAi.extend, { scope, data: FLOW, nodeIds: ["b"], kind: "next" }),
+          flowExplain: await b.action(api.flowchartAi.explain, { scope, data: FLOW }),
+          flowLabels: await b.action(api.flowchartAi.labels, { scope, data: FLOW }),
+          flowArrange: await b.action(api.flowchartAi.arrange, { scope, data: FLOW }),
           tableEdit: await b.action(api.tableAi.edit, { scope, table: TABLE, instruction: "Keep only item and price" }),
           tableFormula: await b.action(api.tableAi.formula, { scope, table: TABLE, instruction: "total", row: 2, column: 3 }),
           tableExplain: await b.action(api.tableAi.explain, { scope, table: TABLE }),
@@ -134,6 +145,11 @@ export const scenarios = [
           noText: await refusal(b.action(api.ai.write, { scope, task: "improve", text: "  " })),
           unknown: await refusal(b.action(api.ai.write, { scope, task: "nope" })),
           noFlow: await refusal(b.action(api.ai.flowchart, { scope, mode: "update", instruction: "Add a step" })),
+          noFlowText: await refusal(b.action(api.flowchartAi.fromText, { scope, text: "  " })),
+          noFlowShapes: await refusal(b.action(api.flowchartAi.extend, { scope, data: FLOW, nodeIds: [], kind: "next" })),
+          flowGone: await refusal(b.action(api.flowchartAi.extend, { scope, data: FLOW, nodeIds: ["ghost"], kind: "branches" })),
+          noFlowChart: await refusal(b.action(api.flowchartAi.explain, { scope, data: "" })),
+          tinyFlow: await refusal(b.action(api.flowchartAi.arrange, { scope, data: JSON.stringify({ v: 2, nodes: [{ id: "a", shape: "process", x: 0, y: 0, w: 160, h: 64, text: "One" }], edges: [] }) })),
           emptyTable: await refusal(b.action(api.tableAi.explain, { scope, table: { rows: [[""]], headerRow: false } })),
           tinyBoard: await refusal(b.action(api.stickiesAi.cluster, { scope, board: JSON.stringify({ v: 1, notes: [] }) })),
           noChart: await refusal(b.action(api.chartAi.assist, { scope, task: "suggest", chart: "{}" })),

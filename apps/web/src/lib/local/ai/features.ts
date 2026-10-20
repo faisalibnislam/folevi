@@ -34,6 +34,9 @@ export const AI_FEATURES = [
   "chart",
   "wireframe",
   "flowchart",
+  // A flowchart explained in words and clearer labels: small answers, so the on-device model does them too
+  // (drawing, extending and arranging a chart are "flowchart").
+  "flowchartExplain",
   // Server only.
   "agent",
   "research",

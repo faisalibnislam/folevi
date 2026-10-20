@@ -4,13 +4,15 @@ import { isIphoneApp } from "@/lib/iphone";
 import type { Editor } from "@tiptap/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ArrowDownToLine, ArrowUp, CalendarCheck, Check, Copy, CornerDownLeft, FilePlus2, FileText, Lightbulb, ListChecks, ListTree, Loader2, PenLine, RotateCcw, Type, Users, X } from "lucide-react";
+import { ArrowDownToLine, ArrowUp, CalendarCheck, Workflow, Check, Copy, CornerDownLeft, FilePlus2, FileText, Lightbulb, ListChecks, ListTree, Loader2, PenLine, RotateCcw, Type, Users, X } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
 import { Select } from "@/components/ui/Select";
 import { AiMarkdown, AiMindmapPreview, StreamingText } from "./AiMarkdown";
 import { insertAiMindmap } from "@/components/editor/mindmap/noteConvert";
+import { flowchartFromNoteWithAi } from "@/components/editor/flowchart/noteConvert";
+import { useAiFeature } from "@/lib/mode";
 import { useAiStream } from "./useAiStream";
 import { insertAiMarkdown, type AiPlacement } from "./insert";
 import { markdownToPlain, mindmapCopyText } from "./plainText";
@@ -88,6 +90,7 @@ export function AiPanel({
   onTitle: (title: string) => void;
 }) {
   const { write, saveDraft } = useAi();
+  const flowchartAi = useAiFeature("flowchart");
   const { navigate } = useAppRouter();
   const meta = useQuery(api.documents.get, { documentId });
   const stream = useAiStream();
@@ -354,6 +357,22 @@ export function AiPanel({
               </span>
               Find to-dos
             </button>
+            {/* A flowchart of the selection or the note, drawn by Foli AI in a new block (previewed there first). */}
+            {flowchartAi ? (
+              <button
+                type="button"
+                disabled={Boolean(busy) || readOnly || !editor}
+                onClick={() => {
+                  if (editor && !flowchartFromNoteWithAi(editor, documentId)) setNotice("Couldn't add a flowchart here.");
+                }}
+                className="flex h-10 items-center gap-2 rounded-control bg-[var(--glass-hover)] px-2.5 text-left text-[13px] text-ink transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
+              >
+                <span aria-hidden className="text-muted">
+                  <Workflow size={15} />
+                </span>
+                Flowchart
+              </button>
+            ) : null}
           </div>
         </section>
       ) : null}

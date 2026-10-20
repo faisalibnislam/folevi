@@ -47,6 +47,8 @@ export function MainToolbar({
   aiOpen,
   exportMenu,
   containers,
+  tidyControl,
+  checkControl,
 }: {
   onAdd: (shape: FlowShape) => void;
   /** The shape library button (interactions/content.tsx), after the quick shapes. */
@@ -63,6 +65,10 @@ export function MainToolbar({
   exportMenu?: React.ReactNode;
   /** Frame and swimlane buttons (chrome/ContainerBar.tsx), after the shapes. */
   containers?: React.ReactNode;
+  /** Tidy up with its layout options (chrome/TidyControl.tsx), in place of the plain Tidy up button. */
+  tidyControl?: React.ReactNode;
+  /** The Check button (chrome/CheckPanel.tsx), after Foli AI. */
+  checkControl?: React.ReactNode;
 }) {
   return (
     <div className="fc-bar fc-bar-main" role="toolbar" aria-label="Flowchart tools" onPointerDown={(e) => e.stopPropagation()}>
@@ -81,14 +87,17 @@ export function MainToolbar({
         </>
       ) : null}
       <span className="fc-sep" aria-hidden />
-      <button type="button" className="fc-btn fc-btn-text" onClick={onTidy} disabled={!canTidy} title="Tidy up: lay the chart out neatly">
-        <WandSparkles size={15} aria-hidden /> Tidy up
-      </button>
+      {tidyControl ?? (
+        <button type="button" className="fc-btn fc-btn-text" onClick={onTidy} disabled={!canTidy} title="Tidy up: lay the chart out neatly">
+          <WandSparkles size={15} aria-hidden /> Tidy up
+        </button>
+      )}
       {onAi ? (
         <button type="button" className="fc-btn fc-btn-text" aria-pressed={aiOpen} aria-expanded={aiOpen} onClick={onAi} title="Create or change the flowchart with AI">
           <AiIcon size={14} className="fc-ai-mark" /> AI
         </button>
       ) : null}
+      {checkControl}
       <span className="fc-sep" aria-hidden />
       <button type="button" className="fc-btn" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onClick={onUndo}>
         <Undo2 size={15} aria-hidden />

@@ -48,7 +48,10 @@
 //      (world coordinates, under the transform) or its HTML next to the other chrome.
 //   Panels: add their open state to the controller (like aiOpen) and their element to the chrome below.
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
-import { useAiEnabled } from "@/components/ai/useAi";
+import { useEffect, useMemo, useState } from "react";
+import { GitBranchPlus, ListChecks, ListPlus } from "lucide-react";
+import { useAiEnabled, useNoteAi } from "@/components/ai/useAi";
+import { insertAiMarkdown } from "@/components/ai/insert";
 import { useAiFeature } from "@/lib/mode";
 import { serializeFlowchart } from "./schema";
 import { FlowchartReadOnly } from "./FlowchartReadOnly";
@@ -79,6 +82,14 @@ import { useKeyboardFlow } from "./interactions/keyboardFlow";
 import { DotGrid, SceneLayers, SelectionBoxes } from "./layers/Scene";
 import { SelectionBar } from "./chrome/SelectionBar";
 import { HeightHandle } from "./chrome/HeightHandle";
+import { checkFlowchart } from "./schema";
+import { useFlowAiClient } from "./aiClient";
+import { useAiPreview } from "./interactions/aiPreview";
+import { useTidy } from "./interactions/tidy";
+import { useFlowAi } from "./controller/useFlowAi";
+import { TidyControl } from "./chrome/TidyControl";
+import { CheckPanel } from "./chrome/CheckPanel";
+import { takePendingFlowchart } from "./noteConvert";
 
 /** The flowchart block's node view: the editable canvas, or a static picture in read-only notes. */
 export function FlowchartView(props: ReactNodeViewProps) {
@@ -98,9 +109,35 @@ export function FlowchartView(props: ReactNodeViewProps) {
 function FlowchartEditor(props: ReactNodeViewProps) {
   const ctrl = useFlowController(props);
   const { doc, docRef, view, editing, full, uid } = ctrl;
-  // The small on-device model can't draw flowcharts (WP11, lib/local/ai/features.ts).
+  // The small on-device model can't draw flowcharts (WP11, lib/local/ai/features.ts), but it can explain
+  // one and suggest clearer labels ("flowchartExplain").
   const flowchartAi = useAiFeature("flowchart");
-  const aiOn = useAiEnabled() && flowchartAi;
+  const explainAi = useAiFeature("flowchartExplain");
+  const aiEnabled = useAiEnabled();
+  const aiOn = aiEnabled && flowchartAi;
+  const explainOn = aiEnabled && explainAi;
+  // Foli AI: previews, building and extending, Tidy up (and with Foli AI), Check.
+  const noteAi = useNoteAi();
+  const documentId = noteAi?.home?.id ?? undefined;
+  const aiClient = useFlowAiClient(documentId);
+  const preview = useAiPreview(ctrl);
+  const flowAi = useFlowAi(ctrl, { preview, client: aiOn ? aiClient : null });
+  const tidy = useTidy(ctrl, { preview, ai: aiOn ? aiClient : null });
+  const [checkOpen, setCheckOpen] = useState(false);
+  const issueCount = useMemo(() => checkFlowchart(doc).length, [doc]);
+  // Made from the note ("Flowchart with Foli AI" in the block menu, "Flowchart" in the Foli AI panel): draw it once.
+  useEffect(() => {
+    const p = takePendingFlowchart(String(props.node.attrs.id ?? ""));
+    if (p && aiOn) void flowAi.fromText(p, "menu");
+    // Only when the block first appears.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const insertBelow = (markdown: string) => {
+    const pos = typeof props.getPos === "function" ? props.getPos() : null;
+    const node = typeof pos === "number" ? props.editor.state.doc.nodeAt(pos) : null;
+    if (typeof pos !== "number" || !node) return false;
+    return insertAiMarkdown(props.editor, markdown, { kind: "after", pos: pos + node.nodeSize, depth: Number(node.attrs.depth ?? 0) });
+  };
 
   const actions = useFlowActions(ctrl);
   // What shapes hold: the shape library, icons, colours, images, notes, page links (interactions/content.tsx).
@@ -113,12 +150,14 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   const move = useMove(ctrl);
   const select = useSelect(ctrl);
   const boxes = useContainers(ctrl);
-  const menu = useContextMenu(ctrl, { actions, startEdit: text.startEdit, contentItems: content.menuItems, nodeItems: boxes.nodeMenuItems });
+  const menu = useContextMenu(ctrl, { actions, startEdit: text.startEdit, contentItems: content.menuItems, nodeItems: () => [...(boxes.nodeMenuItems?.() ?? []), ...(aiOn ? [{ label: "Add next steps", icon: <ListPlus size={14} />, onSelect: () => void flowAi.extend("next", ctrl.selRef.current.nodes) }, { label: "Fill in missing branches", icon: <GitBranchPlus size={14} />, onSelect: () => void flowAi.extend("branches", ctrl.selRef.current.nodes) }] : [])] });
   const quick = useQuickAdd(ctrl, { hover: hover.hover });
   const flow = useKeyboardFlow(ctrl, { actions, finishEdit: text.finishEdit });
   const events = useInteractions(ctrl, [
     text.interaction, // any press ends writing first
     pan.interaction, // middle button, space held, one finger on empty canvas; the space key
+    preview.interaction, // a Foli AI preview: only panning and zooming until it is applied or discarded
+    tidy.interaction, // Tidy up's move: shapes can't be grabbed while they glide
     quick.interaction, // the + arrows around a shape, and the shape picker
     connect.interaction, // side handles and connector ends
     resize.interaction,
@@ -179,6 +218,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
                 {quick.overlay}
                 {select.overlay}
                 {content.overlay}
+                {preview.overlay}
               </g>
             </g>
           </svg>
@@ -187,6 +227,9 @@ function FlowchartEditor(props: ReactNodeViewProps) {
           {content.status}
           {boxes.element}
           {quick.element}
+          {preview.element}
+          {tidy.element}
+          {flowAi.element}
           <p className="sr-only fc-announce" aria-live="polite" aria-atomic="true">
             {ctrl.announcement}
           </p>
@@ -209,14 +252,40 @@ function FlowchartEditor(props: ReactNodeViewProps) {
             canUndo={ctrl.canUndo}
             canRedo={ctrl.canRedo}
             canTidy={nodeCount > 1}
-            onAi={aiOn ? () => ctrl.setAiOpen((o) => !o) : null}
+            onAi={
+              aiOn
+                ? () => {
+                    setCheckOpen(false);
+                    ctrl.setAiOpen((o) => !o);
+                  }
+                : null
+            }
+            tidyControl={<TidyControl tidy={tidy} canTidy={nodeCount > 1} aiTidy={aiOn} />}
+            checkControl={
+              <button
+                type="button"
+                className="fc-btn fc-btn-text"
+                aria-pressed={checkOpen}
+                aria-expanded={checkOpen}
+                aria-label={issueCount ? `Check, ${issueCount} to look at` : "Check"}
+                title="Check the flowchart for dead ends and gaps"
+                onClick={() => {
+                  ctrl.setAiOpen(false);
+                  setCheckOpen((o) => !o);
+                }}
+              >
+                <ListChecks size={15} aria-hidden /> Check
+                {issueCount ? <span className="fc-check-badge" aria-hidden>{issueCount}</span> : null}
+              </button>
+            }
             aiOpen={ctrl.aiOpen}
             containers={boxes.tools}
             exportMenu={<BlockExportMenu type="flowchart" attrs={() => ({ data: serializeFlowchart(docRef.current) })} empty={!nodeCount} triggerClassName="fc-btn" align="start" />}
           />
           <ZoomBar zoom={k} onZoomIn={() => ctrl.zoomBy(1.2)} onZoomOut={() => ctrl.zoomBy(1 / 1.2)} onFit={() => ctrl.fitView()} full={full} onFull={() => ctrl.toggleFull()} />
           <SelectionBar ctrl={ctrl} actions={actions} startEdit={text.startEdit} clearance={quick.clearance} content={content} />
-          {ctrl.aiOpen ? <FlowchartAi hasChart={nodeCount > 0} current={() => serializeFlowchart(docRef.current)} onApply={actions.applyDraft} onClose={() => ctrl.setAiOpen(false)} /> : null}
+          {ctrl.aiOpen ? <FlowchartAi hasChart={nodeCount > 0} flowAi={flowAi} selected={ctrl.selNodes} documentId={documentId} onClose={() => ctrl.setAiOpen(false)} /> : null}
+          {checkOpen ? <CheckPanel ctrl={ctrl} ai={explainOn ? aiClient : null} documentId={documentId} onInsert={insertBelow} onClose={() => setCheckOpen(false)} /> : null}
           {ctrl.tooLarge ? (
             <p className="fc-warning" role="alert">
               This flowchart is too large to save. Remove some shapes or text.

@@ -36,6 +36,8 @@ export interface FlowController {
   setLive: (next: FlowchartData, save?: boolean) => void;
   /** A finished change: recorded for undo (from `before`, default the current chart) and saved. */
   commit: (next: FlowchartData, opts?: { before?: FlowchartData; key?: string }) => void;
+  /** Writes a change still waiting to be saved now (before showing a state that must not be saved). */
+  flush: () => void;
   undo: () => boolean;
   redo: () => boolean;
   canUndo: boolean;

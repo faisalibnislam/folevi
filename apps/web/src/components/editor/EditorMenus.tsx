@@ -5,7 +5,7 @@ import { NodeSelection, TextSelection, type Transaction } from "@tiptap/pm/state
 import { beginPointerDrag, isDragging } from "./blockDrag";
 import { HOLD_MOVE_EVENT, type HoldMoveDetail } from "@/lib/touchContextMenu";
 import { useMutation, useQuery } from "convex/react";
-import { useCapabilities } from "@/lib/mode";
+import { aiFeatureHere, useCapabilities } from "@/lib/mode";
 import { lazy, Suspense, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import {
@@ -115,6 +115,7 @@ import { DIVIDER_STYLES, MERMAID_SAMPLE } from "./insertCatalog";
 import { exportItems, useBlockExport } from "./canvas/BlockExport";
 import { chartMenuItems } from "./chart/tableMenu";
 import { mindmapMenuItems } from "./mindmap/noteConvert";
+import { flowchartMenuItems } from "./flowchart/noteConvert";
 import { useActiveCellEditor } from "./table/cellEditorStore";
 import { TABLE_AI_EVENT } from "./table/events";
 import { announce } from "@/lib/a11y/announce";
@@ -2387,6 +2388,8 @@ function BlockHandle({
                   : []),
                 // A list into a mind map and back, or a mind map Foli AI makes from the text (mindmap/noteConvert.ts).
                 ...mindmapMenuItems(editor, menu.from, menu.to, { aiOn, close: closeMenu }),
+                // Foli AI draws the text as a flowchart in a new block below (flowchart/noteConvert.ts).
+                ...flowchartMenuItems(editor, menu.from, menu.to, { aiOn: aiOn && aiFeatureHere("flowchart"), close: closeMenu }),
                 // A table turned into a chart under it (chart/tableMenu.tsx chartMenuItems).
                 ...chartMenuItems(editor, menu.from, menu.to, { aiOn, close: closeMenu }),
                 // Lines into a synced block; a synced block copied (to paste into other notes) or unsynced.

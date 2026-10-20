@@ -239,7 +239,8 @@ export function TabsView({ node, editor, selected }: ReactNodeViewProps) {
                 // Keep the note's caret where it is until a tab is chosen.
                 onMouseDown={(e) => e.preventDefault()}
                 onPointerDown={(e) => onPointerDown(e, t.id)}
-                onClick={(e) => (isOpen ? e.currentTarget.focus() : open(t.id))}
+                // A click opens the tab and leaves the caret where it was (arrow keys move focus along the strip).
+                onClick={() => open(t.id, false)}
                 onDoubleClick={() => editable && setRenaming(t.id)}
                 onKeyDown={(e) => onKeyDown(e, t.id)}
               >

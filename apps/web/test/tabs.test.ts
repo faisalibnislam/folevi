@@ -9,6 +9,9 @@ import { ALL_MARKS, ALL_NODES } from "@/components/editor/extensions";
 import { BlockIdentity, BlockKeymap } from "@/components/editor/plugins";
 import { changeDepth } from "@/components/editor/commands";
 import { blocksToDoc, docToBlocks } from "@/components/editor/convert";
+import { nodesToBlocks } from "@/components/editor/blockClipboard";
+import { sliceToText } from "@/components/editor/clipboardText";
+import { Fragment, Slice } from "@tiptap/pm/model";
 import { hiddenIndices } from "@/components/editor/blockSelectionState";
 import { layoutOf, tabFloor, tabsDrop } from "@/components/editor/tabs/tabsState";
 import { addTab, deleteTab, insertTabs, moveTab, openTab, renameTab, TabsExtension } from "@/components/editor/tabs/tabsExtension";
@@ -197,5 +200,26 @@ describe("tabs as wire blocks", () => {
     expect(blocks.find((b) => b.id === "a1")!.parentId).toBe("A");
     const again = makeEditor(blocksToDoc(blocks));
     expect(lines(again)).toEqual(lines(e));
+  });
+});
+
+describe("copying tabs", () => {
+  test("a copied tabs block keeps its tabs, names and lines (as blocks for Folevi, text for elsewhere)", () => {
+    const e = makeEditor(sample());
+    const nodes: import("@tiptap/pm/model").Node[] = [];
+    e.state.doc.forEach((n, _o, i) => {
+      if (i >= 1 && i <= 6) nodes.push(n);
+    });
+    const blocks = nodesToBlocks(nodes);
+    const byType = blocks.map((b) => b.type);
+    expect(byType).toEqual(["tabs", "tab", "paragraph", "paragraph", "tab", "paragraph"]);
+    const tabsId = blocks[0]!.id;
+    expect(blocks.filter((b) => b.type === "tab").every((b) => b.parentId === tabsId)).toBe(true);
+    expect(blocks[1]!.text).toEqual([{ type: "text", text: "Alpha" }]);
+    expect(blocks[2]!.parentId).toBe(blocks[1]!.id);
+    const text = sliceToText(new Slice(Fragment.fromArray(nodes), 0, 0));
+    expect(text).toContain("### Alpha");
+    expect(text).toContain("### Beta");
+    expect(text).toContain("Bee");
   });
 });

@@ -97,6 +97,10 @@ export function sliceToText(slice: Slice): string {
       case "formula":
         lines.push(String(node.attrs.latex ?? ""));
         break;
+      case "tab":
+        // A tab under its name, as the exports write it.
+        lines.push(`${indent}### ${String(node.attrs.name ?? "").trim() || "Untitled"}`);
+        break;
       case "flowchart":
       case "mindmap":
       case "stickies":

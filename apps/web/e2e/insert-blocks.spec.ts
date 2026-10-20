@@ -36,7 +36,7 @@ test.describe("Insert panel", () => {
     const tilesIn: Record<string, string[]> = {
       Suggested: ["Text", "Page", "Card", "To-do", "Table", "Image"],
       Text: ["Heading 1", "Heading 2", "Heading 3", "Quote", "Callout"],
-      "Lists and tasks": ["Bulleted list", "Numbered list", "To-do", "Toggle"],
+      "Lists and tasks": ["Bulleted list", "Numbered list", "To-do", "Toggle", "Tabs"],
       Visuals: ["Flowchart", "Mind map", "Chart", "Sticky notes", "Wireframe", "Whiteboard", "Mermaid diagram"],
       Media: ["Image", "Image from Unsplash", "File attachment", "Audio recording", "Bookmark", "Embed"],
       "Data and more": ["Table", "Gallery", "Kanban", "Calendar", "Page", "Card", "Synced block", "Date", "Code block", "TeX formula", "Extra light", "Light", "Regular", "Strong", "Page break"],

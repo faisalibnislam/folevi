@@ -211,14 +211,15 @@ describe("LocalClient drives the real convex/react hooks", () => {
       await settle();
       expect(host.textContent).toBe("caught:local_unsupported:sharing");
       // Not ported yet (planned), and never heard of: the same error, no capability.
-      await expect(client.query(api.tasks.counts, {} as never)).rejects.toMatchObject({ data: { code: "local_unsupported" } });
+      await expect(client.query(api.aiGraph.graph, {} as never)).rejects.toMatchObject({ data: { code: "local_unsupported" } });
       await expect(client.mutation(makeFunctionReference<"mutation">("nowhere:atAll"), {})).rejects.toBeInstanceOf(ConvexError);
     } finally {
       console.error = errors;
     }
     expect(localStatus("documents.get").kind).toBe("ported");
     expect(localStatus("sharing.get")).toEqual({ kind: "hidden", capability: "sharing" });
-    expect(localStatus("tasks.counts")).toEqual({ kind: "planned", phase: "L2" });
+    expect(localStatus("aiGraph.graph")).toEqual({ kind: "planned", phase: "L3" });
+    expect(localStatus("tasks.counts").kind).toBe("ported");
     expect(localStatus("nowhere.atAll")).toEqual({ kind: "unclassified" });
   });
 

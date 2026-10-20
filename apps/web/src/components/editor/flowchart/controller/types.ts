@@ -2,7 +2,7 @@
 // that pointer, keyboard, double-click and context-menu behaviour plugs into (see FlowchartView.tsx).
 import type { ReactNodeViewProps } from "@tiptap/react";
 import type { RefObject } from "react";
-import type { FlowchartData, FlowNode, FlowEdge, Pt, RoutedEdge } from "../schema";
+import type { FlowchartData, FlowNode, FlowEdge, FlowSide, Pt, RoutedEdge } from "../schema";
 import type { Selection } from "../ops";
 
 /** The view transform: screen = world * k + (x, y). */
@@ -102,7 +102,16 @@ export interface FlowController {
   focusCanvas: () => void;
   /** Focusing a shape (Tab) selects it. Stable, for memoised shapes. */
   onFocusNode: (id: string) => void;
+  /**
+   * Extension point: a new connector dragged out of a shape and let go on empty canvas. The connect
+   * interaction calls it first; when it returns true (interactions/quickAdd.tsx opens the shape picker
+   * there) the connect interaction does nothing more.
+   */
+  dropInEmptyRef: RefObject<DropInEmpty | null>;
 }
+
+/** A connector from `side` of shape `from`, let go on empty canvas at `at` (world) / `client` (screen). */
+export type DropInEmpty = (d: { from: string; side: FlowSide; at: Pt; client: Pt }) => boolean;
 
 // ------------------------------------------------------------------------------------------ interactions
 

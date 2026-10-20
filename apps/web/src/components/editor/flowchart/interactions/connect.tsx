@@ -59,6 +59,8 @@ export function useConnect(ctrl: FlowController, { hover }: { hover: string | nu
     }
     // Dropped on empty space: a new shape there, connected (unless it was just a click on the handle).
     if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 12) return;
+    // Extension point: the shape picker (interactions/quickAdd.tsx) chooses the new shape.
+    if (ctrl.dropInEmptyRef.current?.({ from: d.from, side: d.side, at: p, client: { x: e.clientX, y: e.clientY } })) return;
     const shape: FlowShape = src.shape === "decision" || src.shape === "terminator" || src.shape === "text" ? "process" : src.shape;
     const inSide = OPPOSITE[d.side];
     const size = { w: src.shape === shape ? src.w : 160, h: src.shape === shape ? src.h : 64 };

@@ -44,6 +44,15 @@ export {
   serializeFlowchart,
   shapePath,
   textWidthFor,
+  // Building faster (quick add, keyboard flow, smart guides, align and distribute).
+  FLOWCHART_SHAPE_INFO,
+  alignNodes,
+  distributeNodes,
+  quickAddPosition,
+  quickAddSibling,
+  searchFlowShapes,
+  shapeDetailPath,
+  smartGuides,
 } from "@folevi/editor-schema";
 
 export type {
@@ -59,4 +68,6 @@ export type {
   Pt,
   Rect,
   RoutedEdge,
+  FlowAlign,
+  SmartGuide,
 } from "@folevi/editor-schema";

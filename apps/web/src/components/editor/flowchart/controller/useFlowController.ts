@@ -10,7 +10,7 @@ import { NO_SELECTION, type Selection } from "../ops";
 import { clampFlowHeight } from "../render";
 import { useFlowDoc } from "../useFlowDoc";
 import { useViewport } from "./useViewport";
-import type { ActiveDrag, Editing, FlowController } from "./types";
+import type { ActiveDrag, DropInEmpty, Editing, FlowController } from "./types";
 
 export function useFlowController(props: ReactNodeViewProps): FlowController {
   const { node, updateAttributes } = props;
@@ -41,6 +41,7 @@ export function useFlowController(props: ReactNodeViewProps): FlowController {
   const [aiOpen, setAiOpen] = useState(false);
   const dragRef = useRef<ActiveDrag | null>(null);
   const isDragging = useCallback(() => dragRef.current !== null, []);
+  const dropInEmptyRef = useRef<DropInEmpty | null>(null);
 
   const focusCanvas = () => {
     const a = document.activeElement;
@@ -95,5 +96,6 @@ export function useFlowController(props: ReactNodeViewProps): FlowController {
     uid,
     focusCanvas,
     onFocusNode,
+    dropInEmptyRef,
   };
 }

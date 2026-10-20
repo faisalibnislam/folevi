@@ -1,4 +1,5 @@
-// Content sniffing and metadata stripping for uploads. Never trusts extensions or client MIME types.
+// Content sniffing and metadata stripping for uploads. Never trusts extensions or client MIME types. Shared by
+// the server's uploads (convex/files.ts, through convex/lib/images.ts) and local mode's (apps/web lib/local).
 
 export type Sniffed =
   | {

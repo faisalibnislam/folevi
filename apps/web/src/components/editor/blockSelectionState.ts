@@ -5,6 +5,7 @@
 // holds the key and pure helpers so commands.ts can read it without an import cycle.
 import { PluginKey, type EditorState } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import { layoutOf } from "./tabs/tabsState";
 
 /**
  * Makes ProseMirror read the DOM selection now. Keyboard selections (Shift+arrows) reach ProseMirror via
@@ -42,9 +43,10 @@ export function blockSelectionRange(state: EditorState): { from: number; to: num
   return { from: Math.min(a, h), to: Math.max(a, h) };
 }
 
-/** Indices of blocks hidden inside a collapsed toggle (they can't be selected on their own). */
+/** Indices of blocks hidden inside a collapsed toggle or a tab that isn't open (they can't be selected on their own). */
 export function hiddenIndices(state: EditorState): Set<number> {
-  const hidden = new Set<number>();
+  const tabs = layoutOf(state).hidden;
+  const hidden = new Set<number>(tabs);
   let hideBelow: number | null = null;
   state.doc.forEach((node, _offset, index) => {
     const depth = Number(node.attrs.depth ?? 0);

@@ -61,6 +61,7 @@ import {
   ChartColumn,
   StickyNotes,
   PanelsTopLeft,
+  PanelTop,
 } from "lucide-react";
 import { CHART_DEFAULT_HEIGHT, FLOWCHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, addDays, embedFor, embedProblem, repeatProps, repeatRule, sanitizeHref, ulid } from "@folevi/editor-schema";
 import { RepeatField } from "./RepeatField";
@@ -95,6 +96,7 @@ import {
 } from "./commands";
 import { blockSelectionRange, clearBlockSelection, extendBlockSelectionTo, setBlockSelection } from "./blockSelection";
 import { syncDomSelection } from "./blockSelectionState";
+import { insertTabs } from "./tabs/tabsExtension";
 import { blockElements, type TriggerState } from "./plugins";
 import { UnsplashDialog, unsplashCredit } from "./UnsplashDialog";
 import { colorName, useNotePalette } from "./notePalette";
@@ -140,7 +142,7 @@ interface MenuItem {
 const SLASH_SUGGESTED = ["p", "page", "card", "todo", "table", "image"];
 
 /** Everything the Insert panel (and the slash menu) can add that needs more than a plain block. */
-export type SpecialInsert = "image" | "unsplash" | "file" | "record" | "scan" | "scanPhotos" | "page" | "card" | "bookmark" | "embed" | "collection" | "gallery" | "board" | "calendarView" | "date" | "pickDate";
+export type SpecialInsert = "image" | "unsplash" | "file" | "record" | "scan" | "scanPhotos" | "page" | "card" | "bookmark" | "embed" | "collection" | "gallery" | "board" | "calendarView" | "date" | "pickDate" | "tabs";
 
 /** Asks the editor's menus to run a special insert (the Insert panel lives outside the editor). */
 /** `placeholder`: the id of an empty line made for this insert (a drop), removed if the insert is cancelled. */
@@ -323,7 +325,9 @@ function useDebounced<T>(value: T, ms: number): T {
 function blockIndentLeft(el: HTMLElement): number {
   const cs = getComputedStyle(el);
   const depth = Number(el.dataset.depth ?? 0);
-  return el.getBoundingClientRect().left - (parseFloat(cs.marginLeft) || 0) + depth * 1.6 * (parseFloat(cs.fontSize) || 16);
+  // A tab's lines are drawn at their tabs block's indent (--lift levels out, tabs/tabsState.ts).
+  const lift = Number(cs.getPropertyValue("--lift").trim()) || 0;
+  return el.getBoundingClientRect().left - (parseFloat(cs.marginLeft) || 0) + (depth - lift) * 1.6 * (parseFloat(cs.fontSize) || 16);
 }
 
 /**
@@ -655,6 +659,7 @@ export function EditorMenus({
         setDatePickerAnchor(caretAnchor());
         setDatePicker({ mode: "insert" });
       },
+      tabs: () => void insertTabs(editor),
     };
   }, [env, navigate, createNestedPage, insertCollection, editor, today, caretAnchor, ensureTextCaret, dropLeftover, scanDocument]);
 
@@ -770,6 +775,7 @@ export function EditorMenus({
       { group: "Lists and tasks", id: "ol", label: "Numbered list", hint: "1.", keywords: "numbered ordered list", icon: <ListOrdered size={15} />, run: () => void turnInto(editor, "numbered") },
       { group: "Lists and tasks", id: "todo", label: "To-do", hint: "[]", keywords: "todo task checklist checkbox", icon: <CheckSquare size={15} />, run: () => void turnInto(editor, "todo", { checked: false }) },
       { group: "Lists and tasks", id: "toggle", label: "Toggle", keywords: "toggle disclosure collapse details", icon: <ChevronRight size={15} />, run: () => void turnInto(editor, "toggle", { collapsed: false }) },
+      { group: "Lists and tasks", id: "tabs", label: "Tabs", keywords: "tabs tabbed sections panes switch", icon: <PanelTop size={15} />, run: () => void insertTabs(editor) },
       { group: "Visuals", id: "flowchart", label: "Flowchart", keywords: "flowchart diagram process flow chart shapes boxes arrows", icon: <Network size={15} />, run: () => void insertBlockAfterCurrent(editor, "flowchart", { data: "", height: FLOWCHART_DEFAULT_HEIGHT }) },
       { group: "Visuals", id: "mindmap", label: "Mind map", keywords: "mind map mindmap ideas brainstorm branches tree outline whimsical miro", icon: <Waypoints size={15} />, run: () => void insertBlockAfterCurrent(editor, "mindmap", { data: "", height: MINDMAP_DEFAULT_HEIGHT }) },
       { group: "Visuals", id: "chart", label: "Chart", keywords: "chart graph bar line pie donut area scatter bubble org venn data numbers", icon: <ChartColumn size={15} />, run: () => void insertBlockAfterCurrent(editor, "chart", { data: "", height: CHART_DEFAULT_HEIGHT }) },

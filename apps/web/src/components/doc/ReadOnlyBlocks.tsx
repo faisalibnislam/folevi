@@ -1,6 +1,6 @@
 import { cloneElement, Fragment, isValidElement, type ReactElement } from "react";
 import { FileText } from "lucide-react";
-import { flattenTree, sanitizeHref, type InlineNode, type WireBlock } from "@folevi/editor-schema";
+import { flattenTree, liftTabs, tabGroupAt, tabName, sanitizeHref, type FlatEntry, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import { formatCalendarDate } from "@/i18n";
 import {
   ReadOnlyCollection,
@@ -25,6 +25,7 @@ const VISUALS: Record<string, { name: string; Static: (p: { data: string; height
   wireframe: { name: "Wireframe", Static: WireframeStatic },
 };
 import { ReadOnlyBookmark, ReadOnlyFile } from "./ReadOnlyCards";
+import { ReadOnlyTabs } from "./ReadOnlyTabs";
 
 function Inline({ nodes }: { nodes: InlineNode[] }) {
   return (
@@ -156,8 +157,11 @@ export function ReadOnlyBlocks({
   changes,
   people,
   anchors = false,
+  entries,
 }: {
   blocks: WireBlock[];
+  /** Blocks already in order with their depths (a tab's blocks; a slide): used instead of `blocks`. */
+  entries?: FlatEntry<WireBlock>[];
   fileUrls: Record<string, string>;
   /** Read-only data for collection blocks, keyed by collection id (from the share-link response). */
   collections?: Record<string, ReadOnlyCollectionData>;
@@ -167,12 +171,16 @@ export function ReadOnlyBlocks({
   /** Headings get ids (`block-<id>`) so a table of contents can link to them (a published page's Docs theme). */
   anchors?: boolean;
 }) {
-  const flat = flattenTree(blocks);
+  // In version history every tab shows, under its name (as in exports), so no change is out of sight.
+  const flat = changes ? liftTabs(entries ?? flattenTree(blocks)) : (entries ?? flattenTree(blocks));
   const counters: number[] = [];
   let hideBelow: number | null = null;
+  // Past the end of a tabs block already drawn (its tabs are drawn inside it).
+  let skipTo = -1;
   return (
-    <div className="fb-editor" style={{ paddingBottom: 48 }}>
-      {flat.map(({ block, depth }) => {
+    <div className="fb-editor" style={{ paddingBottom: entries ? 0 : 48 }}>
+      {flat.map(({ block, depth }, index) => {
+        if (index < skipTo) return null;
         if (hideBelow !== null && depth <= hideBelow) hideBelow = null;
         if (hideBelow !== null) return null;
         const p = block.props as Record<string, unknown>;
@@ -198,6 +206,39 @@ export function ReadOnlyBlocks({
         } else counters.length = depth;
         const rendered = ((): React.ReactNode => {
           switch (block.type) {
+            case "tabs": {
+              if (changes) return null;
+              const group = tabGroupAt(flat, index);
+              if (!group) return null;
+              skipTo = group.end;
+              // Each tab's blocks, inside the tabs block (which sits at its own indent).
+              const panels = group.tabs.map((t) => (
+                <ReadOnlyBlocks
+                  key={t.block.id}
+                  blocks={[]}
+                  entries={flat.slice(t.index + 1, t.end).map((e) => ({ block: e.block, depth: Math.max(0, e.depth - depth - 2) }))}
+                  fileUrls={fileUrls}
+                  collections={collections}
+                  anchors={anchors}
+                />
+              ));
+              return (
+                <ReadOnlyTabs
+                  key={block.id}
+                  id={block.id}
+                  tabs={group.tabs.map((t) => ({ id: t.block.id, name: tabName(t.block) }))}
+                  panels={panels}
+                  style={{ marginLeft: `${depth * 1.6}em` }}
+                />
+              );
+            }
+            case "tab":
+              // A tab outside a tabs block, or any tab in version history: its name, like a small heading.
+              return (
+                <h4 key={block.id} className="fb fb-heading fb-h3" style={style}>
+                  {tabName(block)}
+                </h4>
+              );
             case "heading": {
               const level = Math.min(3, Number(p.level) || 1);
               const Tag = (["h2", "h3", "h4"] as const)[level - 1]!;

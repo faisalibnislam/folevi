@@ -14,6 +14,8 @@ import {
   flattenTree,
   normalizeInline,
   normalizeLanguage,
+  plainText,
+  tabNameText,
   type ChangedField,
   type InlineNode,
   type Mark,
@@ -54,6 +56,9 @@ export const NODE_PROPS: Record<string, string[]> = {
   stickies: ["data", "height"],
   chart: ["data", "height"],
   wireframe: ["data", "height"],
+  // A tab's name is its text (tabName); in the editor it's the tab line's `name` (see blockToNode).
+  tabs: [],
+  tab: [],
 };
 
 /** Default heights of the visual blocks whose content is JSON in `data` (a node missing one gets this). */
@@ -166,6 +171,7 @@ export function blockToNode(block: WireBlock, depth: number): JSONContent {
   }
   const attrs: Record<string, unknown> = { id: block.id, depth };
   for (const k of known) attrs[k] = props[k] ?? null;
+  if (block.type === "tab") return { type: "tab", attrs: { ...attrs, name: plainText(block.text).replace(/\s+/g, " ").trim() } };
   if (block.type === "code") {
     const code = String(props.code ?? "");
     return { type: "codeBlock", attrs, content: code ? [{ type: "text", text: code }] : [] };
@@ -202,6 +208,7 @@ export function nodeToFlat(node: PMNode): FlatBlock | null {
     props.language = normalizeLanguage(String(props.language ?? "plaintext"));
     return { id, depth, type, schemaVersion: SCHEMA_VERSION, text: [], props };
   }
+  if (type === "tab") return { id, depth, type, schemaVersion: SCHEMA_VERSION, text: tabNameText(String(node.attrs.name ?? "")), props: {} };
   if (type === "todo") props.checked = Boolean(props.checked);
   if (type === "toggle") props.collapsed = Boolean(props.collapsed);
   if (type === "heading") props.level = Number(props.level ?? 1);

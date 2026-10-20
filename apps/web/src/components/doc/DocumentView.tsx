@@ -25,6 +25,7 @@ import {
   Lock,
   MessageSquare,
   MoreHorizontal,
+  Presentation,
   ScanText,
   Search,
   Star,
@@ -97,6 +98,8 @@ import { Select } from "@/components/ui/Select";
 import { useFileText } from "./useFileText";
 
 // Only a collection's row pages have properties; the collection code loads for those alone.
+// Presenting the note as slides (⌘⌥P, "Present" in its … menu): loaded the first time it's used.
+const NotePresentation = lazy(() => import("@/components/present/NotePresentation"));
 const CollectionRowProperties = lazy(() => import("@/components/editor/CollectionEmbed").then((m) => ({ default: m.CollectionRowProperties })));
 
 const IDLE_SNAPSHOT_MS = 2 * 60_000;
@@ -197,6 +200,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [copyOpen, setCopyOpen] = useState(false);
   const canCopy = useCanCopyElsewhere();
   const [exportOpen, setExportOpen] = useState(false);
+  // The note shown as slides: its blocks when presenting started (null when not presenting).
+  const [presenting, setPresenting] = useState<WireBlock[] | null>(null);
   // The find & replace bar: open with or without the replace row; `key` bumps on every ⌘F to refocus it.
   const [findBar, setFindBar] = useState<{ replace: boolean; key: number } | null>(null);
   const noteRef = useRef<HTMLDivElement>(null);
@@ -658,6 +663,20 @@ export function DocumentView({ documentId }: { documentId: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [editor, mayComment, openBlockThread, openComments]);
 
+  // ⌘⌥P (Ctrl+Alt+P elsewhere): present the note as slides.
+  const present = useCallback(() => {
+    if (engine) setPresenting(engine.documentBlocks(documentId));
+  }, [engine, documentId]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || !e.altKey || e.shiftKey || e.code !== "KeyP" || e.repeat) return;
+      e.preventDefault();
+      present();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [present]);
+
   const noteNotify = useNoteNotifyItems(documentId, Boolean(meta));
   // Move…: top-level notes of the current context (Personal or a workspace) can be filed in a folder (nested
   // pages follow their parent page); managers can nest a page under another one.
@@ -693,6 +712,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
     onCopyTo: meta && !meta.inTrash && (canCopy || !meta.isMember) ? () => setCopyOpen(true) : undefined,
     onFind: editor ? () => openFind(!readOnly) : undefined,
     onExport: () => setExportOpen(true),
+    onPresent: present,
     canMove: canFile || canNest,
     readImages,
   });
@@ -1173,6 +1193,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
         />
       ) : null}
       {copyOpen && meta ? <CopyToDialog open onClose={() => setCopyOpen(false)} documentIds={[documentId]} noteTitle={summary?.title ?? ""} from={meta.isMember ? documentScope(meta.document) : null} /> : null}
+      {presenting ? (
+        <Suspense fallback={null}>
+          <NotePresentation title={summary?.title ?? localTitle ?? ""} blocks={presenting} style={style} cover={summary?.cover ?? DEFAULT_COVER} coverPalette={coverPalette} onClose={() => setPresenting(null)} />
+        </Suspense>
+      ) : null}
       <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} title={summary?.title ?? ""} blocks={() => engine?.documentBlocks(documentId) ?? []} />
     </ViewChrome>
     </NotePaletteProvider>
@@ -1791,6 +1816,7 @@ function useDocumentActions({
   onCopyTo,
   onFind,
   onExport,
+  onPresent,
   canMove,
   reviewCards,
   readImages,
@@ -1822,6 +1848,8 @@ function useDocumentActions({
   onFind?: () => void;
   /** Opens the Export dialog (Markdown, web page, PDF). */
   onExport: () => void;
+  /** Presents the note as slides (absent until the note is ready). */
+  onPresent?: () => void;
   /** Whether Move… can do anything here (file it in a folder, or nest it under a page). */
   canMove: boolean;
   /** "Make text in images searchable": Foli AI reads the note's images (useFileText), when there are any to read. */
@@ -1854,6 +1882,7 @@ function useDocumentActions({
         ...(onFind ? [{ label: canManage ? "Find and replace…" : "Find in note…", icon: <Search size={14} />, shortcut: canManage ? "⌘⌥F" : "⌘F", onSelect: onFind }] : []),
         { label: "Move…", icon: <FolderInput size={14} />, disabled: !canMove, onSelect: onMove },
         { label: "Export…", icon: <Download size={14} />, onSelect: onExport },
+        ...(onPresent ? [{ label: "Present", icon: <Presentation size={14} />, shortcut: "⌘⌥P", onSelect: onPresent }] : []),
         ...(readImages
           ? [{ label: "Make text in images searchable", icon: <ScanText size={14} />, description: `Foli AI reads ${readImages.count === 1 ? "1 image" : `${readImages.count} images`}. Uses AI credits.`, disabled: readImages.busy, onSelect: readImages.run }]
           : []),

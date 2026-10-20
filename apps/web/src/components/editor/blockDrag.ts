@@ -7,6 +7,7 @@
 import type { Editor } from "@tiptap/core";
 import { dropTarget, subtreeRange } from "./commands";
 import { blockElements } from "./plugins";
+import { layoutOf, tabsDrop } from "./tabs/tabsState";
 import { haptic } from "@/lib/nativeApp";
 
 export type DragPayload =
@@ -171,6 +172,7 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
         if (c.classList.contains("fb-hidden")) continue;
         const clone = c.cloneNode(true) as HTMLElement;
         clone.style.setProperty("--depth", String(Number(c.dataset.depth ?? 0) - source.depth));
+        clone.style.removeProperty("--lift");
         ed.appendChild(clone);
       }
       pageClone.appendChild(ed);
@@ -198,9 +200,11 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
 
   const measure = () => {
     const children = blockElements(dom);
-    const boxes = children.map((c) => {
+    // Depths as drawn: a tab's lines sit at their tabs block's indent (tabs/tabsState.ts).
+    const tabs = layoutOf(view.state);
+    const boxes = children.map((c, i) => {
       const r = c.getBoundingClientRect();
-      return { top: r.top, bottom: r.bottom, depth: Number(c.dataset.depth ?? 0), hidden: c.classList.contains("fb-hidden") };
+      return { top: r.top, bottom: r.bottom, depth: Number(c.dataset.depth ?? 0) - (tabs.lift.get(i) ?? 0), hidden: c.classList.contains("fb-hidden") };
     });
     const edRect = dom.getBoundingClientRect();
     // Inserting from the inspector: only while the pointer is over the page column.
@@ -211,9 +215,17 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
     }
     source = findSource() ?? source;
     const desired =
-      payload.kind === "block" && source ? source.depth + Math.round((px - startX) / indent) : Math.floor(Math.max(0, px - edRect.left) / indent);
+      payload.kind === "block" && source ? source.depth - (tabs.lift.get(source.index) ?? 0) + Math.round((px - startX) / indent) : Math.floor(Math.max(0, px - edRect.left) / indent);
     const t = dropTarget(boxes, py, desired, source ? { from: source.index, count: source.count } : null);
-    target = { index: t.index, depth: t.depth };
+    // In a tabs block: into the open tab, or after the tabs block (never into a tab out of sight).
+    let above: number | null = null;
+    for (let i = t.index - 1; i >= 0; i--) {
+      if (boxes[i]?.hidden || (source && i >= source.index && i < source.index + source.count)) continue;
+      above = i;
+      break;
+    }
+    const landed = tabsDrop(tabs, t.index, t.depth, above);
+    target = { index: landed.index, depth: landed.depth };
     if (line) {
       const left = edRect.left + t.depth * indent;
       line.style.opacity = "1";

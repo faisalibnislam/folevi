@@ -9,6 +9,7 @@ import { Autolink } from "./autolink";
 import { BlockHighlight } from "./blockHighlight";
 import { PageLinkStatus } from "./pageLinkStatus";
 import { RemoteCarets } from "./remoteCarets";
+import { TabsExtension } from "./tabs/tabsExtension";
 
 /**
  * The editor's extensions: every block and mark, their node views, undo, the drop and gap cursors, the
@@ -53,6 +54,7 @@ export function editorExtensions({
     BlockIdentity,
     BlockDecorations,
     BlockKeymap,
+    TabsExtension,
     BlockSelectionExtension,
     MarkdownShortcuts,
     FindReplace,

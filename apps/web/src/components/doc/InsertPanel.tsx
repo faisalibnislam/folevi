@@ -71,6 +71,7 @@ const MORE: InsertItem[] = [
   { label: "Bulleted list", type: "bulleted", preview: "bulleted", keywords: "bullets unordered" },
   { label: "Numbered list", type: "numbered", preview: "numbered", keywords: "numbers ordered" },
   { label: "Toggle", type: "toggle", attrs: () => ({ collapsed: false }), preview: "toggle", keywords: "collapse disclosure details" },
+  { label: "Tabs", special: "tabs", preview: "tabs", keywords: "tabs tabbed sections panes switch" },
   { label: "Quote", type: "quote", preview: "quote", keywords: "blockquote citation" },
   { label: "Callout", type: "callout", attrs: () => ({ tone: "note" }), preview: "callout", keywords: "note tip info warning" },
   { label: "Bookmark", special: "bookmark", preview: "bookmark", keywords: "web link url" },
@@ -123,7 +124,7 @@ const DATA = "Data and more";
 const SECTIONS: { title: string; tiles: Tile[] }[] = [
   { title: "Suggested", tiles: tiles("suggested", ["Text", "Page", "Card", "To-do", "Table", "Image"]) },
   { title: "Text", tiles: tiles("text", ["Heading 1", "Heading 2", "Heading 3", "Quote", "Callout"]) },
-  { title: "Lists and tasks", tiles: tiles("lists", ["Bulleted list", "Numbered list", "To-do", "Toggle"]) },
+  { title: "Lists and tasks", tiles: tiles("lists", ["Bulleted list", "Numbered list", "To-do", "Toggle", "Tabs"]) },
   { title: "Visuals", tiles: tiles("visuals", ["Flowchart", "Mind map", "Chart", "Sticky notes", "Wireframe", "Whiteboard", "Mermaid diagram"]) },
   { title: "Media", tiles: tiles("media", ["Image", "Image from Unsplash", "File attachment", "Audio recording", "Bookmark", "Embed"]) },
   { title: DATA, tiles: [...tiles("data", ["Table", "Gallery", "Kanban", "Calendar", "Page", "Card", "Date", "Code block", "TeX formula"]), ...SEPARATORS] },

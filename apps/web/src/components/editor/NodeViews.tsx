@@ -39,7 +39,9 @@ import {
   UnknownBlock,
   WhiteboardBlock,
   WireframeBlock,
+  TabsBlock,
 } from "./extensions";
+import { TabsView } from "./tabs/TabsView";
 import { FormulaView } from "./FormulaView";
 import { TableView, tableHandlesEvent } from "./table/TableView";
 import { useEditorEnvironment } from "./environment";
@@ -825,4 +827,6 @@ export const NODE_VIEW_EXTENSIONS = [
   StickiesBlock.extend({ addNodeView: () => blockView(LazyStickies, () => true) }),
   ChartBlock.extend({ addNodeView: () => blockView(LazyChart, () => true) }),
   WireframeBlock.extend({ addNodeView: () => blockView(LazyWireframe, () => true) }),
+  // The tab strip's tabs, buttons and rename field handle their own input (tabs/TabsView.tsx).
+  TabsBlock.extend({ addNodeView: () => blockView(TabsView, ({ event }) => event.target instanceof Element && Boolean(event.target.closest("button, input, [role=tablist]"))) }),
 ];

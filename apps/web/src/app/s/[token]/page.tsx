@@ -9,6 +9,7 @@ import { api } from "@/lib/convex/api";
 import { BlurredBackdrop } from "@/components/doc/BlurredBackdrop";
 import { ReadOnlyBlocks } from "@/components/doc/ReadOnlyBlocks";
 import { SheetPageBreaks } from "@/components/doc/SheetPageBreaks";
+import { PresentButton } from "@/components/present/PresentButton";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { coverArtOf, coverBackground, pageBackdrop, sheetProps } from "@/lib/cover";
 import { setThemeRows, themeFontVars, type ThemeRow } from "@/lib/themes";
@@ -209,7 +210,10 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
       {bg ? <div className="h-36 rounded-t-chip" style={{ background: bg }} aria-hidden /> : <div className="h-8" />}
       <div className="px-5 pb-6 pt-4 sm:px-16">
         <h1 className={`mt-2 px-0.5 text-[40px] leading-tight ${look.font === "serif" ? "ui-display [font-family:var(--note-serif,var(--font-serif))]" : look.font === "rounded" ? "font-semibold [font-family:var(--note-soft,var(--font-rounded))]" : look.font === "mono" ? "font-semibold [font-family:var(--note-mono,var(--font-mono))]" : "font-semibold tracking-tight [font-family:var(--note-modern,var(--font-modern))]"}`}>{document.title || "Untitled"}</h1>
-        <p className="mb-6 mt-1 px-0.5 text-xs text-muted">{tFor(locale, "share.lastUpdated", { date: formatDate(updated, { dateStyle: "medium", timeZone: "UTC" }, locale) })}</p>
+        <div className="mb-6 mt-1 flex flex-wrap items-center justify-between gap-2 px-0.5">
+          <p className="text-xs text-muted">{tFor(locale, "share.lastUpdated", { date: formatDate(updated, { dateStyle: "medium", timeZone: "UTC" }, locale) })}</p>
+          <PresentButton title={document.title} blocks={blocks} style={document.style} cover={document.cover} coverPalette={coverPalette} fileUrls={fileUrls} collections={collections} />
+        </div>
         {toc.length > 1 ? (
           // Docs on narrower screens: the same contents, folded away above the note (the side list needs room).
           <details className="fb-publish-toc-compact group mb-6 rounded-control border border-line xl:hidden">

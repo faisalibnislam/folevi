@@ -3,6 +3,8 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { hiddenIndices } from "./blockSelectionState";
+import { layoutOf } from "./tabs/tabsState";
+import { openTab } from "./tabs/tabsExtension";
 
 /** Inline atoms (mentions, dates, page links) read as one object character, so offsets map to positions. */
 const OBJECT = "￼";
@@ -191,6 +193,11 @@ export function revealCurrent(editor: Editor) {
       depth = d;
     }
     if (tr.docChanged) editor.view.dispatch(tr);
+  }
+  // A match in a tab that isn't open: open that tab (on this device), outermost first.
+  for (const g of layoutOf(editor.state).groups) {
+    const tab = g.tabs.find((t) => index > t.index && index < t.end);
+    if (tab && tab.id !== g.open) openTab(editor.view, g.id, tab.id);
   }
   requestAnimationFrame(() => {
     if (editor.isDestroyed) return;

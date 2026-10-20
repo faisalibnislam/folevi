@@ -8,6 +8,7 @@ import { LIMITS, normalizeLanguage, ulid } from "@folevi/editor-schema";
 import { blocksInSelection, changeDepth, deleteBlocks, duplicateBlocks, moveBlock, normalizeDepths, turnInto } from "./commands";
 import { TEXT_NODES } from "./convert";
 import { hiddenIndices, neighbourIndex, syncDomSelection } from "./blockSelectionState";
+import { layoutOf, tabFloor, tabsKey, type TabLayout } from "./tabs/tabsState";
 import { setBlockSelection } from "./blockSelection";
 import { sliceToText } from "./clipboardText";
 import { clipboardSerializer } from "./clipboardHtml";
@@ -323,25 +324,31 @@ export function personInk(color: string): string {
  * decorations on top-level blocks grows with the number of lines times the number of decorations, which a
  * long note feels on every key.
  */
-function buildDecorations(doc: PMNode, inputs: DecorationInputs): DecorationSet {
+function buildDecorations(doc: PMNode, inputs: DecorationInputs, tabs: TabLayout): DecorationSet {
   const decos: Decoration[] = [];
   let hideBelow: number | null = null;
   let pos = 0;
-  doc.forEach((node) => {
+  doc.forEach((node, _offset, index) => {
     const depth = Number(node.attrs.depth ?? 0);
     const id = node.attrs.id as string | null;
     const end = pos + node.nodeSize;
     if (hideBelow !== null && depth <= hideBelow) hideBelow = null;
     const attrs: Record<string, string> = {};
     const classes: string[] = [];
-    if (hideBelow !== null) classes.push("fb-hidden");
+    if (hideBelow !== null || tabs.hidden.has(index)) classes.push("fb-hidden");
     if (node.type.name === "toggle" && node.attrs.collapsed && hideBelow === null) hideBelow = depth;
+    // A tab's lines are drawn at their tabs block's indent (--lift levels further out); the open tab's last
+    // shown line closes the tabs block.
+    const lift = tabs.lift.get(index);
+    if (lift) attrs.style = `--lift:${lift}`;
+    const panel = tabs.panel.get(index);
+    if (panel && !tabs.hidden.has(index)) classes.push("fb-in-tab");
     if (id && inputs.selectedBlocks.has(id)) classes.push("fb-selected");
     if (id && inputs.conflictBlocks.has(id)) classes.push("fb-conflict");
     const who = id ? inputs.presence.find((p) => p.blockId === id) : undefined;
     if (who) {
       classes.push("fb-presence");
-      attrs.style = `--presence:var(--color-${who.color});--presence-ink:${personInk(who.color)}`;
+      attrs.style = `${attrs.style ? `${attrs.style};` : ""}--presence:var(--color-${who.color});--presence-ink:${personInk(who.color)}`;
       attrs["data-presence"] = who.name;
     }
     if (classes.length || Object.keys(attrs).length) decos.push(Decoration.node(pos, end, { ...attrs, class: classes.join(" ") }));
@@ -351,16 +358,28 @@ function buildDecorations(doc: PMNode, inputs: DecorationInputs): DecorationSet 
       const list = LIST_BLOCKS.has(node.type.name);
       decos.push(Decoration.widget(end, () => commentLine(id, depth, list, summary, inputs.onOpenComments), { side: -1, key, ignoreSelection: true, stopEvent: () => true }));
     }
+    // The tabs block's bottom edge, under its open tab's last shown line.
+    const closes = tabs.last.get(index);
+    if (closes !== undefined) decos.push(Decoration.widget(end, () => tabsEnd(closes), { side: 1, key: `tabs-end:${closes}`, ignoreSelection: true }));
     pos = end;
   });
   return DecorationSet.create(doc, decos);
+}
+
+function tabsEnd(depth: number): HTMLElement {
+  const el = document.createElement("div");
+  el.className = "fb-tabs-end";
+  el.setAttribute("data-fb-widget", "");
+  el.setAttribute("aria-hidden", "true");
+  el.style.setProperty("--end-depth", String(depth));
+  return el;
 }
 
 /**
  * Whether a transaction changes only text inside lines (typing, marks): then the decorations just move
  * with it. Anything that adds, removes, reorders or retypes blocks rebuilds them (hiding, comment lines).
  */
-function onlyEditsText(tr: Transaction): boolean {
+export function onlyEditsText(tr: Transaction): boolean {
   return tr.steps.every((step, i) => {
     if (step instanceof AddMarkStep || step instanceof RemoveMarkStep) return true;
     if (!(step instanceof ReplaceStep)) return false;
@@ -425,12 +444,12 @@ export const BlockDecorations = Extension.create({
       new Plugin<DecorationSet>({
         key: decoCacheKey,
         state: {
-          init: (_config, state) => buildDecorations(state.doc, decorationsKey.getState(state)!),
+          init: (_config, state) => buildDecorations(state.doc, decorationsKey.getState(state)!, layoutOf(state)),
           apply: (tr, set, _old, state) => {
-            if (tr.getMeta(decorationsKey)) return buildDecorations(state.doc, decorationsKey.getState(state)!);
+            if (tr.getMeta(decorationsKey) || tr.getMeta(tabsKey)) return buildDecorations(state.doc, decorationsKey.getState(state)!, layoutOf(state));
             if (!tr.docChanged) return set;
             if (onlyEditsText(tr)) return set.map(tr.mapping, tr.doc);
-            return buildDecorations(state.doc, decorationsKey.getState(state)!);
+            return buildDecorations(state.doc, decorationsKey.getState(state)!, layoutOf(state));
           },
         },
         props: {
@@ -535,6 +554,9 @@ export function deleteVisibleRange(state: EditorState): Transaction | null {
   const keep = new Set<number>();
   const aNode = state.doc.child(a);
   if (aNode.type.name === "toggle" && aNode.attrs.collapsed) for (let i = a + 1; i < b && hidden.has(i); i++) keep.add(i);
+  // Tabs that aren't open stay too, unless their whole tabs block is in the range (its tab strip selected).
+  const tabs = layoutOf(state);
+  for (const g of tabs.groups) if (g.index <= a && g.end > a + 1) for (let i = a + 1; i < Math.min(b, g.end); i++) if (tabs.hidden.has(i)) keep.add(i);
   const codeEnd = $from.parent.type.name === "codeBlock" || $to.parent.type.name === "codeBlock";
   if (!keep.size && !codeEnd) return null;
   const starts: number[] = [];
@@ -724,8 +746,8 @@ export const BlockKeymap = Extension.create({
         const listLike = LIST_TYPES.has(type) || type === "quote" || type === "toggle" || type === "callout";
         if (cur.empty && listLike) {
           if (base) editor.view.dispatch(base);
-          // An empty list item ends the list (or outdents when nested).
-          if (depth > 0) return changeDepth(editor, -1);
+          // An empty list item ends the list (or outdents when nested; a tab's lines no further than the tab).
+          if (depth > tabFloor(state, index)) return changeDepth(editor, -1);
           return turnInto(editor, "paragraph");
         }
         // At the start of a line with text: a new empty line above. The block itself keeps its id, type,
@@ -857,8 +879,9 @@ export const BlockKeymap = Extension.create({
       if (type !== "paragraph" && TEXT_NODES.has(type)) return turnInto(editor, "paragraph");
       // Code at the start: an empty block becomes text; one with code stays put (merging would flatten it).
       if (type === "codeBlock") return cur.empty ? turnInto(editor, "paragraph") : true;
-      if (Number(cur.node.attrs.depth ?? 0) > 0) return changeDepth(editor, -1);
       const index = state.selection.$from.index(0);
+      // A tab's lines outdent no further than the tab (tabs/tabsState.ts).
+      if (Number(cur.node.attrs.depth ?? 0) > tabFloor(state, index)) return changeDepth(editor, -1);
       if (index === 0) return false;
       const prev = state.doc.child(index - 1);
       const hiddenAbove = hiddenIndices(state).has(index - 1);

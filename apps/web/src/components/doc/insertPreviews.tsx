@@ -22,6 +22,7 @@ export type PreviewKind =
   | "bulleted"
   | "numbered"
   | "toggle"
+  | "tabs"
   | "quote"
   | "callout"
   | "code"
@@ -221,6 +222,19 @@ function Picture({ kind }: { kind: PreviewKind }) {
           <Bar x={15} y={17} w={24} h={2.5} />
           <Bar x={15} y={23} w={20} h={2.5} />
           <Bar x={15} y={29} w={14} h={2.5} o={0.14} />
+        </>
+      );
+    case "tabs":
+      // Three tabs, the first one open (its underline on the strip's hairline), and its lines.
+      return (
+        <>
+          <Bar x={6} y={8} w={9} h={3} o={0.45} />
+          <Bar x={19} y={8} w={9} h={3} o={0.2} />
+          <Bar x={32} y={8} w={9} h={3} o={0.2} />
+          <path d="M4 15.5h40" {...line} strokeOpacity={0.14} />
+          <rect x={5} y={14.5} width={11} height={2} rx={1} fill={ACCENT} fillOpacity={0.5} />
+          <Bar x={6} y={21} w={30} h={2.5} />
+          <Bar x={6} y={27} w={22} h={2.5} o={0.14} />
         </>
       );
     case "quote":

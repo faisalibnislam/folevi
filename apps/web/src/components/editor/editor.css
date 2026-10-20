@@ -1,4 +1,4 @@
-/* Folevi editor. Blocks are flat; nesting comes from --depth. Quiet, legible, generous. */
+/* Folevi editor. Blocks are flat; nesting comes from --depth (less --lift: a tab's lines are drawn at their tabs block's indent). Quiet, legible, generous. */
 /* The font types draw in the note theme's typefaces (--note-*, set from lib/themes.ts themeFontVars) or the
    app's standard ones. */
 .fb-page {
@@ -35,7 +35,7 @@
 .fb-editor > .fb {
   position: relative;
   margin: 0;
-  padding: 3px 2px 3px calc(var(--depth, 0) * 1.6em + 2px + var(--pad-extra, 0px));
+  padding: 3px 2px 3px calc((var(--depth, 0) - var(--lift, 0)) * 1.6em + 2px + var(--pad-extra, 0px));
   border-radius: var(--radius-chip);
   min-height: 1.6em;
 }
@@ -121,7 +121,7 @@
 .fb-editor .fb-range-highlight { background: var(--color-selection); border-radius: var(--radius-tiny); }
 /* The "2 comments · 8:18 AM" line under a block with open comments (a widget between blocks), in the note's accent. */
 .fb-editor > .fb-comment-line {
-  padding: 0 2px 4px calc(var(--depth, 0) * 1.6em + var(--pad-list, 0px) + var(--pad-extra, 0px));
+  padding: 0 2px 4px calc((var(--depth, 0) - var(--lift, 0)) * 1.6em + var(--pad-list, 0px) + var(--pad-extra, 0px));
   line-height: 1;
   user-select: none;
 }
@@ -159,10 +159,10 @@
 /* Lists and quotes draw their marker with ::before, so their hint is ::after, where the text starts. */
 .fb-editor .fb-bulleted.is-empty::after, .fb-editor .fb-numbered.is-empty::after, .fb-editor .fb-quote.is-empty::after {
   content: attr(data-placeholder);
-  position: absolute; top: 3px; left: calc(var(--depth, 0) * 1.6em + 1.6em + var(--pad-extra, 0px));
+  position: absolute; top: 3px; left: calc((var(--depth, 0) - var(--lift, 0)) * 1.6em + 1.6em + var(--pad-extra, 0px));
   color: var(--color-ink-faint); pointer-events: none;
 }
-.fb-editor .fb-quote.is-empty::after { left: calc(var(--depth, 0) * 1.6em + 1.05em + var(--pad-extra, 0px)); }
+.fb-editor .fb-quote.is-empty::after { left: calc((var(--depth, 0) - var(--lift, 0)) * 1.6em + 1.05em + var(--pad-extra, 0px)); }
 
 /* Headings (the document title is the h1) */
 .fb-editor .fb-heading { font-family: var(--editor-font); font-weight: 600; color: var(--color-heading); letter-spacing: -0.022em; line-height: 1.22; }
@@ -173,10 +173,10 @@
 .fb-page[data-font="serif"] .fb-editor .fb-h1 { font-size: 1.95em; }
 
 /* Lists */
-.fb-editor .fb-bulleted, .fb-editor .fb-numbered { padding-left: calc(var(--depth, 0) * 1.6em + 1.6em + var(--pad-extra, 0px)); }
+.fb-editor .fb-bulleted, .fb-editor .fb-numbered { padding-left: calc((var(--depth, 0) - var(--lift, 0)) * 1.6em + 1.6em + var(--pad-extra, 0px)); }
 .fb-editor .fb-bulleted::before {
   content: "";
-  position: absolute; left: calc(var(--depth, 0) * 1.6em + 0.55em + var(--pad-extra, 0px)); top: 0.8em;
+  position: absolute; left: calc((var(--depth, 0) - var(--lift, 0)) * 1.6em + 0.55em + var(--pad-extra, 0px)); top: 0.8em;
   width: 0.36em; height: 0.36em; border-radius: var(--radius-chip);
   background: color-mix(in oklab, var(--doc-accent) 85%, var(--color-heading));
 }
@@ -184,7 +184,7 @@
 .fb-editor .fb-bulleted[data-depth="2"]::before, .fb-editor .fb-bulleted[data-depth="5"]::before { border-radius: var(--radius-tiny); }
 .fb-editor .fb-numbered::before {
   content: attr(data-index) ".";
-  position: absolute; left: calc(var(--depth, 0) * 1.6em + var(--pad-extra, 0px)); width: 1.35em; text-align: right;
+  position: absolute; left: calc((var(--depth, 0) - var(--lift, 0)) * 1.6em + var(--pad-extra, 0px)); width: 1.35em; text-align: right;
   color: var(--color-ink-muted); font-variant-numeric: tabular-nums; font-weight: 550;
 }
 /* In the editor the numbers are CSS counters, one per depth (fb-n0 to fb-n8, the deepest nesting): every line
@@ -273,12 +273,12 @@
 .fb-editor details.fb[open] > summary::before { transform: rotate(90deg); }
 
 /* Quote & callout */
-.fb-editor .fb-quote { padding-left: calc(var(--depth, 0) * 1.6em + 1.05em + var(--pad-extra, 0px)); margin: 0.35em 0; color: color-mix(in oklab, var(--color-heading) 80%, var(--color-ink)); font-style: italic; }
-.fb-editor .fb-quote::before { content: ""; position: absolute; left: calc(var(--depth, 0) * 1.6em + 2px); top: 0.3em; bottom: 0.3em; width: 3px; border-radius: var(--radius-chip); background: var(--doc-accent); }
+.fb-editor .fb-quote { padding-left: calc((var(--depth, 0) - var(--lift, 0)) * 1.6em + 1.05em + var(--pad-extra, 0px)); margin: 0.35em 0; color: color-mix(in oklab, var(--color-heading) 80%, var(--color-ink)); font-style: italic; }
+.fb-editor .fb-quote::before { content: ""; position: absolute; left: calc((var(--depth, 0) - var(--lift, 0)) * 1.6em + 2px); top: 0.3em; bottom: 0.3em; width: 3px; border-radius: var(--radius-chip); background: var(--doc-accent); }
 .fb-page[data-font="serif"] .fb-editor .fb-quote { font-size: 1.08em; }
 .fb-editor .fb-callout {
   display: flex; gap: 0.6em; align-items: flex-start;
-  margin: 0.5em 0 0.5em calc(var(--depth, 0) * 1.6em); padding: 0.8em 1em;
+  margin: 0.5em 0 0.5em calc((var(--depth, 0) - var(--lift, 0)) * 1.6em); padding: 0.8em 1em;
   border-radius: var(--radius-control);
   background: var(--color-surface-sunken);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 6%, transparent);
@@ -305,7 +305,7 @@
 
 /* Code */
 .fb-editor pre.fb-code {
-  margin: 0.5em 0 0.5em calc(var(--depth, 0) * 1.6em); padding: 0.85em 1em;
+  margin: 0.5em 0 0.5em calc((var(--depth, 0) - var(--lift, 0)) * 1.6em); padding: 0.85em 1em;
   background: var(--color-code-bg); color: var(--color-code-ink);
   border-radius: var(--radius-chip);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 8%, transparent);
@@ -314,14 +314,14 @@
 .fb-inline-code { font: 0.86em var(--font-mono); background: var(--color-code-bg); color: var(--color-ember-ink); padding: 0.12em 0.4em; border-radius: var(--radius-chip); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 8%, transparent); }
 
 /* Divider */
-.fb-editor .fb-divider { padding: 0.7em 0 0.7em calc(var(--depth, 0) * 1.6em); }
+.fb-editor .fb-divider { padding: 0.7em 0 0.7em calc((var(--depth, 0) - var(--lift, 0)) * 1.6em); }
 .fb-editor .fb-divider hr { border: 0; border-top: 1px solid var(--color-line); }
 .fb-editor .fb-divider.ProseMirror-selectednode { background: var(--color-selection); border-radius: var(--radius-chip); }
 
 /* Atoms. A selected block never gets a coloured ring: it gets the same quiet highlight selected text blocks
    have, as a soft halo round the block (opaque cards like charts and flowcharts show it at their edge).
    Tables while a cell is being edited show nothing at all. */
-.fb-atom { margin-left: calc(var(--depth, 0) * 1.6em); border-radius: var(--radius-chip); }
+.fb-atom { margin-left: calc((var(--depth, 0) - var(--lift, 0)) * 1.6em); border-radius: var(--radius-chip); }
 .fb-atom-selected, .ProseMirror-selectednode > .fb-atom { background: var(--color-selection); box-shadow: 0 0 0 4px var(--color-selection); }
 .fb-atom.fb-table-block.fb-atom-selected:focus-within,
 .ProseMirror-selectednode > .fb-atom.fb-table-block:focus-within { background: none; box-shadow: none; }
@@ -536,7 +536,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
   border-radius: var(--radius-tiny) var(--radius-chip) var(--radius-chip) var(--radius-tiny);
 }
 .fb-editor > .fb[data-decoration="focus"]::after {
-  content: ""; position: absolute; left: calc(var(--depth, 0) * 1.6em); top: 0.2em; bottom: 0.2em; width: 3px; border-radius: var(--radius-chip);
+  content: ""; position: absolute; left: calc((var(--depth, 0) - var(--lift, 0)) * 1.6em); top: 0.2em; bottom: 0.2em; width: 3px; border-radius: var(--radius-chip);
   background: var(--block-color, var(--doc-accent));
 }
 .fb-editor > .fb[data-decoration="block"] {

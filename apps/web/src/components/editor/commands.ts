@@ -6,6 +6,7 @@ import { closeHistory } from "@tiptap/pm/history";
 import { LIMITS, sanitizeHref, ulid } from "@folevi/editor-schema";
 import { TEXT_NODES } from "./convert";
 import { blockSelectionRange } from "./blockSelectionState";
+import { tabCeiling, tabFloor } from "./tabs/tabsState";
 import { announce } from "@/lib/a11y/announce";
 
 export interface BlockRef {
@@ -191,9 +192,12 @@ export function changeDepth(editor: Editor, delta: 1 | -1): boolean {
     if (handled.has(b.index)) continue;
     const depth = Number(b.node.attrs.depth ?? 0);
     const prev = b.index > 0 ? state.doc.child(b.index - 1) : null;
-    const maxDepth = prev ? Math.min(LIMITS.maxDepth, Number(prev.attrs.depth ?? 0) + 1) : 0;
-    const next = Math.max(0, Math.min(maxDepth, depth + delta));
-    if (next === depth && !(delta < 0 && depth > 0)) continue;
+    // In a tabs block, a line stays in its tab and the line after one doesn't go into it (tabs/tabsState.ts).
+    const ceiling = tabCeiling(state, b.index);
+    const maxDepth = Math.min(prev ? Math.min(LIMITS.maxDepth, Number(prev.attrs.depth ?? 0) + 1) : 0, ceiling ?? LIMITS.maxDepth);
+    const floor = Math.min(depth, tabFloor(state, b.index));
+    const next = Math.max(floor, Math.min(maxDepth, depth + delta));
+    if (next === depth && !(delta < 0 && depth > floor)) continue;
     const range = subtreeRange(state, b.index);
     const applied = next - depth;
     if (applied === 0) continue;

@@ -520,6 +520,21 @@ export const MindmapBlock = atom("mindmap", { data: kept("data", ""), height: ke
 export const StickiesBlock = atom("stickies", { data: kept("data", ""), height: kept("height", STICKIES_DEFAULT_HEIGHT) });
 export const ChartBlock = atom("chart", { data: kept("data", ""), height: kept("height", CHART_DEFAULT_HEIGHT) });
 export const WireframeBlock = atom("wireframe", { data: kept("data", ""), height: kept("height", WIREFRAME_DEFAULT_HEIGHT) });
+/**
+ * Tabs inside a note (packages/editor-schema/src/tabs.ts): the tabs block draws the tab strip (tabs/TabsView.tsx);
+ * each tab is a line of its own holding the tab's name, never shown (the strip shows it), and the tab's blocks
+ * are nested under it. Only the open tab's blocks show (tabs/tabsState.ts).
+ */
+export const TabsBlock = atom("tabs", {});
+export const TabBlock = Node.create({
+  name: "tab",
+  group: "block",
+  atom: true,
+  selectable: false,
+  addAttributes: () => blockAttrs({ name: kept("name", "") }),
+  parseHTML: () => [{ tag: 'div[data-block="tab"]' }],
+  renderHTML: ({ HTMLAttributes }) => ["div", mergeAttributes(HTMLAttributes, { "data-block": "tab", class: "fb fb-tab", "aria-hidden": "true" })],
+});
 export const UnknownBlock = atom("unknownBlock", { wire: { default: null, rendered: false } });
 
 // ------------------------------------------------------------------ inline atoms
@@ -658,6 +673,8 @@ export const ALL_NODES = [
   StickiesBlock,
   ChartBlock,
   WireframeBlock,
+  TabsBlock,
+  TabBlock,
   UnknownBlock,
   Mention,
   DateMention,

@@ -2211,6 +2211,58 @@ publishCopy: mutation({ documentId, linkId?, copy: PlainCopyInput }); unpublish:
 - Accept: guards tests for every owned §5.7 row; email-to-note and MCP writes end up sealed; no-plaintext scan
   cases added to WP3's suite through an exported `noPlaintextCases` list in `tests/convex/e2ee-features.test.ts`.
 
+**Settled while building WP5.**
+
+- The gate. Every AI entry point goes through `ai.begin`, which runs `aiGate` (`convex/lib/e2ee/ai.ts`): Foli AI
+  not `off` in any scope involved, no locked note named, and a valid `provided` (ids only: `begin` gets
+  `provided: { scope, noteIds, consent }`, never note text). `consent: "auto"` needs the switch at `auto`. Requests
+  that already carry block data (the editor AI modules) are checked for off and locked only, not for consent.
+  `begin` returns `sealed`; streams of sealed requests are marked `ephemeral` by `claimStream` and deleted when
+  `writeStream` gets a final status. `metered` takes the provided memories instead of the server's.
+- Results can't change for old shells (the API contract), so the stored-chat functions don't take `provided`:
+  `aiChat.send`/`regenerate`/`edit`/`create` and `aiResearch.start` refuse encrypted spaces with `e2ee_required`,
+  the agent with `e2ee_unavailable` (`feature: "agent"`). New additive functions take their place:
+  `aiChat.sendSealed({ scope, text, history, provided, web?, streamId? })` returns the answer (nothing stored);
+  `aiResearch.startSealed({ scope, text, provided, streamId })` keeps the question and notes in an `aiStreams`
+  row of kind `context` (deleted as the run starts), shows steps and the report as JSON in the ephemeral answer
+  stream, and `aiResearch.collect({ streamId })` hands the device the finished report and deletes the row (else
+  it goes after 5 minutes). With `provided`, Ask AI doesn't offer plans of changes (aiActions) in v1.
+- `aiStudy.translateNote` for a sealed note takes the note's `blocks` with `provided` and only `output: "replace"`.
+  `aiAttachments.transcribe` takes one recording in `provided.files` (up to 8 MB, inline, one window: nothing is
+  uploaded to Gemini's Files API). `readableKind` refuses sealed files everywhere (chat, agent, mind map PDF).
+- Background Foli AI: embeddings (`aiIndex`) are built from purpose `ai` copies (one chunk line per Markdown line,
+  no block ids; the copy's `updatedAt` stands for the content version), and digests and routines read copies and
+  deliver into an encrypted space as an `e2eeInbox` item (row kind `app`, payload kind `note`). The knowledge graph
+  (`aiGraph`: related, duplicates, contradictions, missing connections) skips sealed notes in v1, since copies
+  carry no block ids; `aiSuggestions.forNote` returns nothing for a sealed note without a copy, and line-based
+  suggestions are the device's.
+- Mirrors. `mirrors.put` needs write access to the note. `mirrors.hashes` is paged: `{ scope, purpose, cursor? }`
+  returns `{ items: { documentId, contentHash }[], cursor: string | null }` (a page of whole copies can exceed a
+  query's read limit). An `apps` copy that changes fires `note.created` (first copy), `note.updated`, and
+  `task.created` / `task.completed` by comparing tasks; webhook data for sealed notes comes from the copy.
+  Helpers for WP4's purge: `removeMirrors(ctx, documentId)` (`e2ee/mirrors.ts`), `dropPublishedCopies(ctx,
+  documentId)` (`e2ee/links.ts`).
+- Inbox. Convex reads at most 16 MiB in a transaction, so a space holds at most 12 MiB waiting (not 25 MiB) and an
+  item is at most 512 KB. While an item waits, `appliedBy` names the person it came for (an email, an app's write,
+  a digest), so in a workspace only their devices list and open it (no schema change). `markFailed` stores no
+  reason (no field); a short code is logged. Expiry is `e2ee.inbox.expire` (daily).
+- Email. Attachments travel as names only, as today (they were never imported). A sealed email has no
+  `emailNoteReceipts` row (its `documentId` is required); retries are recognised by the item's deterministic id
+  (`email-` + a hash of the address row and Resend's email id). Inbound mail can't bounce, so with the switch off the
+  person gets the bell notice once a day ("this Folevi space is end-to-end encrypted and doesn't accept email").
+  MCP and REST writes to an encrypted place answer `{ status: "queued", id, message, noteId? | taskId? }` (REST: 202);
+  ids come from the request key, so a retried request finds its item.
+- Notifications. `notify` takes `preview?: { title, excerpt? }` (WP3's mentions and WP4's comments pass the device's
+  preview); for a sealed note it writes the generic text of §7.7 unless the space has previews on and the note isn't
+  locked, sets `sealedDocument`, and emails name "an encrypted note". Access-change texts say "a note".
+- Publishing. `links.publishCopy` without `linkId` makes the `plainCopy` link itself (token returned once). The copy is
+  `JSON { v: 1, blocks, tables, fileIds }` in chunks of 250,000 characters; `publishedCopy(ctx, link)` in
+  `e2ee/links.ts` is what `sharing.openPublicLink` (WP4) serves. Unpublishing deletes the plain image files listed.
+- Crons (WP2 owns `convex/crons.ts`): `e2ee.reminders.process` every minute and `e2ee.inbox.expire` daily still need
+  their lines there.
+- `noPlaintextCases` lives in `tests/convex/e2ee-ai-cases.ts` and is re-exported from `e2ee-features.test.ts`; import
+  it from the cases file so the features suite's own tests aren't collected twice.
+
 ### WP6: Client keys, unlock, devices, Mac bridge
 
 - Goal: §4.7, §4.8, §6.2, §6.3, §6.10 (key side), §6.11.

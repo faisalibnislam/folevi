@@ -6,8 +6,32 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 
 type Command = { type: "navigate"; path: string } | { type: "new-note" } | { type: "quick-add-shown" };
 
+// End-to-end encryption (docs/E2EE_DESIGN.md §6.2, e2ee.ts in the main process): this Mac's device keys. The
+// private halves stay in the main process; the page gets the public halves, what a box sealed to this Mac
+// holds, and signatures. On both bridges, because the website the app shows and the built-in interface both
+// unlock encrypted notes. (A sandboxed preload can't load e2ee.ts: the channel names are its E2EE_CHANNELS,
+// checked by its test.)
+async function e2eeCall<T = unknown>(name: string, ...args: unknown[]): Promise<T> {
+  const r = (await ipcRenderer.invoke(`shell:e2ee-${name}`, ...args)) as { ok: true; value: T } | { ok: false; error: { code: string; message: string } } | null;
+  if (r && r.ok) return r.value;
+  const error = r && !r.ok ? r.error : { code: "unavailable", message: "Folevi couldn't reach this Mac's encryption keys." };
+  throw { name: "E2eeBridgeError", code: error.code, message: error.message };
+}
+const e2eeBridge = {
+  deviceKeys: () => e2eeCall<{ deviceId: string; x25519Pub: Uint8Array; ed25519Pub: Uint8Array }>("device-keys"),
+  open: (sealedBox: Uint8Array, context: string) => e2eeCall<Uint8Array>("open", sealedBox, String(context)),
+  sign: (kind: string, body: string) => e2eeCall<string>("sign", String(kind), String(body)),
+  reset: async () => {
+    await e2eeCall("reset");
+  },
+  /** Settings > Desktop app: "Ask for Touch ID to unlock encrypted notes". */
+  settings: () => e2eeCall<{ touchId: boolean; available: boolean }>("settings"),
+  setTouchId: (on: boolean) => e2eeCall<{ touchId: boolean; available: boolean }>("set-touch-id", on === true),
+};
+
 const bridge = {
   platform: "mac" as const,
+  e2ee: e2eeBridge,
   /** getDisplayMedia answers with this Mac's sound (main.ts), so the recorder can record both sides of a call. */
   callCapture: true,
   /** Whether macOS lets Folevi record the screen and its sound: "granted", "denied"… */
@@ -85,6 +109,7 @@ try {
 if (boot.shell) {
   const shellBridge = {
     platform: "mac" as const,
+    e2ee: e2eeBridge,
     shellVersion: boot.version,
     /** This Mac's name, for the library's device list. */
     deviceName: boot.deviceName ?? "Mac",

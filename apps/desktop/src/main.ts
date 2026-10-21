@@ -67,6 +67,7 @@ import { LibraryService, type CloudSource } from "./library/service";
 import { createSecretStore } from "./secrets";
 import { AppLock, electronCover } from "./lock";
 import { AiService, allowedAiUrl, HelperClient, registerAiIpc } from "./ai";
+import { DeviceKeys, registerE2eeIpc } from "./e2ee";
 
 const PARTITION = "persist:folevi";
 
@@ -111,6 +112,17 @@ let aiHelper: HelperClient | null = null;
 /** The Touch ID lock (lock.ts): only with the bundled interface. */
 let appLock: AppLock | null = null;
 let lockCover: ReturnType<typeof electronCover> | null = null;
+/**
+ * This Mac's end-to-end encryption device keys (e2ee.ts): made on the page's first ask, private halves sealed
+ * with safeStorage in userData/e2ee. For the website the app shows and for the built-in interface alike.
+ */
+let deviceKeys: DeviceKeys | null = null;
+const e2eeKeys = () =>
+  (deviceKeys ??= new DeviceKeys({
+    dir: join(app.getPath("userData"), "e2ee"),
+    cipher: safeStorage,
+    touchId: { canPrompt: () => systemPreferences.canPromptTouchID(), prompt: (reason) => systemPreferences.promptTouchID(reason) },
+  }));
 
 // Folevi puts its window back itself (windowState.ts). macOS's own window restoration adds nothing but a
 // "reopen its windows?" alert after a forced quit (an update replacing the app, a hang), and that alert
@@ -869,6 +881,12 @@ function listen() {
       return { key: String(contents.id), send: (channel, ...args) => !contents.isDestroyed() && contents.send(channel, ...args), onGone: (cb) => contents.once("destroyed", cb) };
     },
   });
+  // foleviShell.e2ee / foleviDesktop.e2ee: this Mac's encryption device keys (e2ee.ts), for Folevi's own pages only.
+  registerE2eeIpc(
+    (channel, listener) => ipcMain.handle(channel, listener),
+    e2eeKeys,
+    (e) => fromFolevi(e as IpcMainInvokeEvent),
+  );
   // foleviShell.lock: the Touch ID lock's settings (lock.ts); turning it on or off asks for Touch ID.
   ipcMain.handle("shell:lock-get", (e) => (bundled && fromFolevi(e) && appLock ? appLock.getSettings() : null));
   ipcMain.handle("shell:lock-set", async (e, patch: unknown) => {

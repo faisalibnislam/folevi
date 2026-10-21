@@ -1955,6 +1955,27 @@ encryption when they join, then an admin's device shares the key with them autom
 
 Bell: titles are filled in on the device (§7.7). Push and email use exactly the generic strings in §7.7.
 
+### Settled while building WP9
+
+- Dialogs use the app's own `Dialog` (its `rounded-panel` corners): `rounded-sheet` is the iPhone app's
+  bottom-sheet radius in docs/DESIGN_SYSTEM.md, and the iPhone app already turns every `Dialog` into a sheet.
+- The note's "…" menu is built in `components/doc/DocumentView.tsx` (`useDocumentActions`), not in
+  `AppContextMenu.tsx` or `PageDock.tsx`. WP9 adds the "Always fully encrypted" item there with one hook
+  (`useLockMenuItem` from `components/e2ee/LockDialog.tsx`); its dialogs live in one `LockDialogHost` mounted
+  by `E2eeGate`, so menus only add the item. `AppContextMenu.tsx` and `PageDock.tsx` are unchanged.
+- Settings > Workspace > Privacy is the route `/settings/workspace-privacy` (added to `lib/app/router.tsx`
+  beside `/settings/privacy`).
+- Until encryption ships, Standard accounts see only Settings > Privacy: the "Always fully encrypted" item
+  shows once the account has keys (`LOCK_MENU_FOR_EVERYONE = false` in `LockDialog.tsx`). Flip it at launch
+  so the §10.8 path (the wizard first, then the lock) is open to everyone; `e2ee-lock.spec.ts` needs it on.
+- The unlock screen (§10.5) replaces the app while the current space is e2ee-active and locked, with "Go to
+  Personal" from a workspace, because the Shell's content area isn't WP9's to change. A query refused with
+  `e2ee_locked_session` anywhere below lands there too.
+- The consent popover (§10.9) anchors to the control that had focus when the request came, and is a small
+  centred dialog when there is none. "Don't ask again for this note today" is one checkbox for the request's
+  notes ("Don't ask again for these notes today"); `answer(ok, remember)` applies it to each.
+- "Things to know" says 30 days for backups until the owner confirms §14 Q4 (`copy.meaning.backupDays`).
+
 ## 11. Testing
 
 ### 11.1 Unit (vitest)

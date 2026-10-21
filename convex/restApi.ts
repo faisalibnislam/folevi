@@ -8,12 +8,14 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { localDate, ulid } from "@folevi/editor-schema";
-import { PageReader } from "./lib/auth";
+import { accessAtLeast, documentAccess, PageReader } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { inScope } from "./lib/scope";
 import { consume } from "./lib/rateLimit";
 import { sha256Base64url } from "./lib/crypto";
-import { grantPlaces, link, noteDetail, placeOf, readableHere, runWrite, type Place } from "./mcp";
+import { appsCopy, grantPlaces, link, noteDetail, placeOf, readableHere, runWrite, sealedTasks, type Place } from "./mcp";
+import { isLocked, isSealed, readableFor } from "./lib/e2ee/state";
+import { searchMirrors } from "./e2ee/mirrors";
 import { reachOf, tokenContext } from "./apiTokens";
 import { searchDocuments } from "./search";
 import { listTasks } from "./tasks";
@@ -70,7 +72,7 @@ function decodeCursor(cursor: string): number {
  */
 async function recentPage(ctx: QueryCtx, profile: Doc<"profiles">, places: Place[], before: number, limit: number) {
   const cap = limit * 2 + 1;
-  const found: { doc: Doc<"documents">; place: Place }[] = [];
+  const found: { doc: Doc<"documents">; place: Place; title: string }[] = [];
   let floor = -Infinity;
   for (const p of places) {
     const s = p.scope;
@@ -83,7 +85,12 @@ async function recentPage(ctx: QueryCtx, profile: Doc<"profiles">, places: Place
       .take(cap);
     if (rows.length === cap) floor = Math.max(floor, rows[rows.length - 1]!.updatedAt);
     const reader = await PageReader.forScope(ctx, profile, s);
-    for (const doc of await reader.filter(rows.filter((d) => (d.kind === "document" || d.kind === "daily") && !d.archivedAt && d.deletedAt === undefined))) found.push({ doc, place: p });
+    for (const doc of await reader.filter(rows.filter((d) => (d.kind === "document" || d.kind === "daily") && !d.archivedAt && d.deletedAt === undefined))) {
+      // An encrypted note shows only through its readable copy for apps (Apps and integrations on).
+      const title = isSealed(doc) ? (await readableFor(ctx, doc, "apps"))?.title : doc.title;
+      if (title === undefined) continue;
+      found.push({ doc, place: p, title: title || "Untitled" });
+    }
   }
   const certain = found.filter((f) => f.doc.updatedAt >= floor).sort((a, b) => b.doc.updatedAt - a.doc.updatedAt);
   const page = certain.slice(0, limit);
@@ -110,8 +117,18 @@ export const read = internalQuery({
           const limit = Math.min(Number(q.limit ?? 10) || 10, 20);
           const out: Record<string, unknown>[] = [];
           for (const p of within) {
+            const seen = new Set<string>();
             for (const r of await searchDocuments(ctx, profile, p.scope, { query: text, limit })) {
+              seen.add(r.id);
               out.push({ id: r.id, title: r.title || "Untitled", place: placeRef(p), snippet: r.snippet ?? "", updatedAt: new Date(r.updatedAt).toISOString(), url: link(r.id) });
+            }
+            // Encrypted notes, through their readable copies for apps.
+            for (const m of await searchMirrors(ctx, p.scope, "apps", text, limit)) {
+              const d = await ctx.db.get(m.documentId);
+              if (!d || seen.has(d.publicId) || d.inTrash || d.deletedAt !== undefined || (await isLocked(ctx, d))) continue;
+              if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
+              seen.add(d.publicId);
+              out.push({ id: d.publicId, title: m.title || "Untitled", place: placeRef(p), snippet: m.text.replace(/\s+/g, " ").slice(0, 200), updatedAt: new Date(d.updatedAt).toISOString(), url: link(d.publicId) });
             }
           }
           return { data: out.slice(0, limit), nextCursor: null };
@@ -131,7 +148,9 @@ export const read = internalQuery({
             if (!doc || doc.inTrash || doc.archivedAt || doc.deletedAt !== undefined || (doc.kind !== "document" && doc.kind !== "daily")) continue;
             const place = within.find((p) => inScope(doc, p.scope));
             if (!place || !(await (await PageReader.forScope(ctx, profile, place.scope)).filter([doc])).length) continue;
-            out.push({ id: doc.publicId, title: doc.title || "Untitled", place: placeRef(place), updatedAt: new Date(doc.updatedAt).toISOString(), url: link(doc.publicId) });
+            const title = isSealed(doc) ? (await readableFor(ctx, doc, "apps"))?.title : doc.title;
+            if (title === undefined) continue;
+            out.push({ id: doc.publicId, title: title || "Untitled", place: placeRef(place), updatedAt: new Date(doc.updatedAt).toISOString(), url: link(doc.publicId) });
           }
           return { data: out, nextCursor: null };
         }
@@ -139,7 +158,7 @@ export const read = internalQuery({
         const before = typeof q.cursor === "string" && q.cursor ? decodeCursor(q.cursor) : Number.MAX_SAFE_INTEGER;
         const { page, nextCursor } = await recentPage(ctx, profile, within, before, limit);
         return {
-          data: page.map(({ doc, place }) => ({ id: doc.publicId, title: doc.title || "Untitled", place: placeRef(place), updatedAt: new Date(doc.updatedAt).toISOString(), url: link(doc.publicId) })),
+          data: page.map(({ doc, place, title }) => ({ id: doc.publicId, title, place: placeRef(place), updatedAt: new Date(doc.updatedAt).toISOString(), url: link(doc.publicId) })),
           nextCursor,
         };
       }
@@ -150,7 +169,7 @@ export const read = internalQuery({
         const place = places.find((p) => inScope(doc, p.scope));
         return {
           id: doc.publicId,
-          title: doc.title || "Untitled",
+          title: isSealed(doc) ? (await appsCopy(ctx, doc)).title || "Untitled" : doc.title || "Untitled",
           place: place ? placeRef(place) : { id: null, name: await placeOf(ctx, doc, places) },
           folder,
           tags,
@@ -185,6 +204,22 @@ export const read = internalQuery({
                 note: { id: t.documentId, title: t.documentTitle || "Untitled", url: link(t.documentId) },
                 place: placeRef(p),
                 url: `${link(t.documentId)}#block-${t.blockId}`,
+              });
+            }
+            // To-dos of encrypted notes, from their readable copies for apps.
+            for (const t of await sealedTasks(ctx, profile, p.scope, view, today)) {
+              if (dueBefore && (!t.dueDate || t.dueDate > dueBefore)) continue;
+              out.push({
+                id: t.taskId,
+                text: t.text || "Untitled task",
+                status: t.done ? "done" : "open",
+                dueDate: t.dueDate,
+                dueTime: t.dueTime,
+                priority: "none",
+                assigneeId: null,
+                note: { id: t.noteId, title: t.noteTitle, url: link(t.noteId) },
+                place: placeRef(p),
+                url: `${link(t.noteId)}#block-${t.taskId}`,
               });
             }
           }
@@ -231,17 +266,30 @@ export const write = internalMutation({
     if (b.place !== undefined) placesFor(places, b.place);
     const writer = { device: `api:${token._id}`, reason: "api" as const, app: { name: token.name, tokenId: token._id } };
     const run = async (tool: string, input: Args) => (await runWrite(ctx, reach, profile, tool, input, requestKey, writer)).result;
+    // An encrypted place: the write waits for one of the person's devices (202, docs/E2EE_DESIGN.md §7.4).
+    const queued = (r: Record<string, unknown>): Answer | null =>
+      r.status === "queued" ? { status: 202, body: { status: "queued", id: r.id, message: r.message, ...(r.noteId ? { noteId: r.noteId } : {}), ...(r.taskId ? { taskId: r.taskId } : {}) } } : null;
     let answer: Answer;
     switch (args.route as RouteName) {
       case "notes.create": {
         // Where it goes, as connected apps decide it: the place named, else Personal, else the only one.
         const target = b.place !== undefined ? placesFor(places, b.place)[0] : (places.find((p) => p.id === "personal") ?? (places.length === 1 ? places[0] : undefined));
         const r = await run("create_note", b);
+        const q = queued(r);
+        if (q) {
+          answer = q;
+          break;
+        }
         answer = { status: 201, body: { id: r.noteId, title: r.title, place: target ? placeRef(target) : null, inInbox: r.inInbox === true, url: r.url } };
         break;
       }
       case "notes.append": {
         const r = await run("append_to_note", { noteId: args.id, markdown: b.markdown });
+        const q = queued(r);
+        if (q) {
+          answer = q;
+          break;
+        }
         // Waiting for the person's review (they asked to see changes to existing notes first): 202, not made yet.
         answer = r.proposed
           ? { status: 202, body: { id: r.noteId, title: r.title, proposed: true, status: "pending", proposalId: r.proposalId, expiresAt: r.expiresAt, message: r.message, url: r.url } }
@@ -250,6 +298,11 @@ export const write = internalMutation({
       }
       case "tasks.create": {
         const r = await run("add_task", b);
+        const q = queued(r);
+        if (q) {
+          answer = q;
+          break;
+        }
         const note = r.note as { id: string; title: string };
         answer = { status: 201, body: { id: r.taskId, note: { ...note, url: link(note.id) }, url: r.url } };
         break;
@@ -259,6 +312,11 @@ export const write = internalMutation({
         const r = fields.length
           ? await run("update_task", { taskId: args.id, ...Object.fromEntries(fields.map((k) => [k, b[k]])), ...(typeof b.completed === "boolean" ? { done: b.completed } : {}) })
           : await run("complete_task", { taskId: args.id, done: b.completed !== false });
+        const q = queued(r);
+        if (q) {
+          answer = q;
+          break;
+        }
         answer = { status: 200, body: { id: r.taskId, completed: r.done, dueDate: r.dueDate, dueTime: r.dueTime, priority: r.priority, remindAt: r.remindAt } };
         break;
       }

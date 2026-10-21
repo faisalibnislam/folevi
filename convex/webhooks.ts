@@ -20,7 +20,8 @@ import { appUrl } from "./lib/notify";
 import { consume } from "./lib/rateLimit";
 import { openSecret, randomToken, sealSecret } from "./lib/crypto";
 import { scopeOfRow } from "./lib/scope";
-import { DISABLE_AFTER_FAILED_DELIVERIES, LOG_SIZE, MAX_WEBHOOKS, placeKey, postWebhook, retryDelay, WEBHOOK_EVENTS, webhookUrlProblem } from "./lib/webhooks";
+import { DISABLE_AFTER_FAILED_DELIVERIES, LOG_SIZE, MAX_WEBHOOKS, placeKey, postWebhook, retryDelay, sealedEventsAllowed, WEBHOOK_EVENTS, webhookUrlProblem } from "./lib/webhooks";
+import { isSealed, readableFor } from "./lib/e2ee/state";
 
 const SEAL = "webhook";
 
@@ -160,6 +161,8 @@ export const sendTest = mutation({
 
 /** The event's data, as it is now; null when there's nothing to send any more (the note went, a task was removed). */
 async function eventData(ctx: MutationCtx, event: Doc<"webhookEvents">, doc: Doc<"documents">): Promise<Record<string, unknown> | null> {
+  // An encrypted note: what the space's readable copy for apps says, or nothing (the switch went off).
+  if (isSealed(doc)) return await sealedEventData(ctx, event, doc);
   const note = { id: doc.publicId, title: doc.title || "Untitled", url: noteLink(doc.publicId) };
   switch (event.type) {
     case "note.created":
@@ -186,6 +189,35 @@ async function eventData(ctx: MutationCtx, event: Doc<"webhookEvents">, doc: Doc
         note,
         url: `${note.url}#block-${task.blockId}`,
       };
+    }
+    case "comment.created": {
+      const comment = event.commentId ? await ctx.db.get(event.commentId) : null;
+      if (!comment || comment.deletedAt !== undefined) return null;
+      const thread = await ctx.db.get(comment.threadId);
+      return { id: comment.publicId, threadId: thread?.publicId ?? null, note, url: note.url, createdAt: iso(comment.createdAt) };
+    }
+  }
+  return null;
+}
+
+/** eventData for an encrypted note, from its readable copy for apps (docs/E2EE_DESIGN.md §7.4). */
+async function sealedEventData(ctx: MutationCtx, event: Doc<"webhookEvents">, doc: Doc<"documents">): Promise<Record<string, unknown> | null> {
+  if (!(await sealedEventsAllowed(ctx, doc))) return null;
+  const copy = await readableFor(ctx, doc, "apps");
+  if (!copy) return null;
+  const note = { id: doc.publicId, title: copy.title || "Untitled", url: noteLink(doc.publicId) };
+  switch (event.type) {
+    case "note.created":
+    case "note.updated":
+      if (doc.inTrash || doc.deletedAt !== undefined) return null;
+      return { ...note, createdAt: iso(doc.createdAt), updatedAt: iso(doc.updatedAt) };
+    case "note.deleted":
+      return { ...note, deletedAt: iso(doc.deletedAt ?? event.createdAt) };
+    case "task.created":
+    case "task.completed": {
+      const task = copy.tasks?.find((t) => t.blockId === event.taskBlockId);
+      if (!task) return null;
+      return { id: task.blockId, text: task.text, status: task.done ? "done" : "open", dueDate: task.due ?? null, dueTime: task.dueTime ?? null, priority: "none", note, url: `${note.url}#block-${task.blockId}` };
     }
     case "comment.created": {
       const comment = event.commentId ? await ctx.db.get(event.commentId) : null;

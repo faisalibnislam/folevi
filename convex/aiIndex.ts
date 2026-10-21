@@ -24,7 +24,8 @@ import { sharedLabels } from "./lib/linkLabels";
 import { consume } from "./lib/rateLimit";
 import { personalEntitlementsOf, type WorkspacePlanId } from "./lib/plans";
 import { insertScoped, personalScope, sameScope, scopeKey, scopeOfRow, vScope, vScopeArg, workspaceScope, type Scope, type ScopeArg } from "./lib/scope";
-import { indexable, indexEligible, indexScopeRow, indexStateOf, planIndexes, queueIndex, startBackfill } from "./lib/ai/indexing";
+import { indexable, indexEligible, indexScopeRow, indexStateOf, planIndexes, queueIndex, sealedAiCopy, startBackfill } from "./lib/ai/indexing";
+import { isSealed } from "./lib/e2ee/state";
 import { chunkHash, chunkLines, embeddingText, lineOf, type ChunkLine } from "./lib/ai/retrieval";
 import { provider } from "./lib/ai/provider";
 import { withSyncedShared } from "./lib/synced";
@@ -64,6 +65,21 @@ async function chunksOf(ctx: MutationCtx, doc: Doc<"documents">) {
     .map((e) => lineOf(e.block, e.depth))
     .filter((l): l is ChunkLine => l !== null);
   return chunkLines(lines);
+}
+
+/**
+ * Chunks of an encrypted note's readable copy (its Markdown, made on the device): one line per paragraph,
+ * headings kept as headings. Copies carry no block ids, so their chunks point at none.
+ */
+function copyChunks(markdown: string) {
+  const lines: ChunkLine[] = [];
+  for (const raw of markdown.split("\n")) {
+    const text = raw.replace(/[ \t]+/g, " ").trim();
+    if (!text) continue;
+    const heading = /^(#{1,3})\s+(.*)$/.exec(text);
+    lines.push(heading ? { blockId: "", type: "heading", text: heading[2]!, level: heading[1]!.length, depth: 0 } : { blockId: "", type: "paragraph", text, depth: 0 });
+  }
+  return chunkLines(lines).map((c) => ({ ...c, blockIds: c.blockIds.filter(Boolean) }));
 }
 
 const vChunk = v.object({ index: v.number(), text: v.string(), blockIds: v.array(v.string()), hash: v.string() });
@@ -134,8 +150,10 @@ export const prepare = internalMutation({
     const scope = scopeOfRow(doc);
     const model = provider().embeddingModel();
     const settled = { dueAt: undefined, queuedAt: undefined };
+    // An encrypted note: only its readable copy for Foli AI is indexed (none: its chunks go).
+    const copy = isSealed(doc) ? await sealedAiCopy(ctx, doc) : null;
     // Trashed, a template, or the plan no longer includes it: its chunks go.
-    if (!indexable(doc) || !(await indexEligible(ctx, scope, now))) {
+    if (!indexable(doc) || !(await indexEligible(ctx, scope, now)) || (isSealed(doc) && !copy)) {
       if ((await dropChunks(ctx, doc._id)) === REMOVE_BATCH) {
         await ctx.scheduler.runAfter(0, internal.aiIndex.indexDocument, { documentId: doc._id });
         return { kind: "later" };
@@ -148,13 +166,15 @@ export const prepare = internalMutation({
       if (state) await ctx.db.patch(state._id, settled);
       return { kind: "done" };
     }
-    if (state && state.indexedContentSeq === doc.contentSeq && state.embeddingModel === model) {
+    // The copy's last change stands for an encrypted note's content version.
+    const contentSeq = copy ? copy.updatedAt : doc.contentSeq;
+    if (state && state.indexedContentSeq === contentSeq && state.embeddingModel === model) {
       await ctx.db.patch(state._id, settled);
       return { kind: "done" };
     }
-    const title = doc.title || "Untitled";
+    const title = (copy ? copy.title : doc.title) || "Untitled";
     const chunks: ChunkRow[] = [];
-    for (const c of await chunksOf(ctx, doc)) chunks.push({ ...c, hash: await chunkHash(title, c, model) });
+    for (const c of copy ? copyChunks(copy.text) : await chunksOf(ctx, doc)) chunks.push({ ...c, hash: await chunkHash(title, c, model) });
     const known = new Set<string>();
     for (const r of await ctx.db
       .query("aiChunks")
@@ -171,7 +191,7 @@ export const prepare = internalMutation({
     const stateId = state?._id ?? (await insertScoped(ctx, "aiIndexState", scope, { documentId: doc._id, indexedContentSeq: -1, chunks: 0 }));
     if (!embed.length) {
       await writeChunks(ctx, doc, model, chunks, new Map());
-      await ctx.db.patch(stateId, { ...settled, indexedContentSeq: doc.contentSeq, chunks: chunks.length, embeddingModel: model, indexedAt: now, failures: undefined });
+      await ctx.db.patch(stateId, { ...settled, indexedContentSeq: contentSeq, chunks: chunks.length, embeddingModel: model, indexedAt: now, failures: undefined });
       return { kind: "done" };
     }
     try {
@@ -184,7 +204,7 @@ export const prepare = internalMutation({
     }
     // Edits from now on schedule a new job; this one finishes with what it read.
     await ctx.db.patch(stateId, settled);
-    return { kind: "embed", contentSeq: doc.contentSeq, model, chunks, embed };
+    return { kind: "embed", contentSeq, model, chunks, embed };
   },
 });
 
@@ -194,6 +214,8 @@ export const store = internalMutation({
   handler: async (ctx, args) => {
     const doc = await ctx.db.get(args.documentId);
     if (!doc || !indexable(doc)) return null;
+    // Background Foli AI turned off (or the note locked) while it was being embedded: nothing is kept.
+    if (isSealed(doc) && !(await sealedAiCopy(ctx, doc))) return null;
     await writeChunks(ctx, doc, args.model, args.chunks, new Map(args.vectors.map((x) => [x.hash, x.embedding])));
     const state = await indexStateOf(ctx, doc._id);
     const done = { indexedContentSeq: args.contentSeq, chunks: args.chunks.length, embeddingModel: args.model, indexedAt: Date.now(), failures: undefined };
@@ -274,7 +296,7 @@ export const backfill = internalMutation({
     for (const doc of page.page) {
       if (!indexable(doc)) continue;
       const state = await indexStateOf(ctx, doc._id);
-      if (state && state.indexedContentSeq === doc.contentSeq) continue;
+      if (state && !isSealed(doc) && state.indexedContentSeq === doc.contentSeq) continue;
       await queueIndex(ctx, doc, { eligible: true, delayMs: Math.round((queued++ * BACKFILL_STEP_MS) / BACKFILL_PAGE) });
     }
     if (page.isDone) {

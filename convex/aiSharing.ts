@@ -15,12 +15,13 @@
 //
 // Sharing and unsharing write an audit-style log line (who, which conversation, counts); never content.
 import { v } from "convex/values";
+import { requireServerCompose } from "./lib/e2ee/ai";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireProfile, requireRowScope, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { recordUserAction } from "./lib/audit";
-import { vScopeArg } from "./lib/scope";
+import { scopeOfRow, vScopeArg } from "./lib/scope";
 import { attachmentChips } from "./lib/ai/attachmentFiles";
 import { MAX_NOTE_REFS, allNoteIds, conversationNoteIds } from "./lib/ai/sharing";
 import { SHOWN_MESSAGES, byPublicId, contextItems, ownConversation, runsOf, scopeArgOf, wireMessage } from "./aiChat";
@@ -83,6 +84,8 @@ export const share = mutation({
     if (!c) fail("not_found", GONE);
     if (!c.workspaceId) fail("invalid_argument", PERSONAL_NOT_SHARED);
     if (c.ephemeral) fail("invalid_argument", NOT_KEPT);
+    // An encrypted workspace keeps chats on devices; one from before it was encrypted isn't shared from here.
+    await requireServerCompose(ctx, scopeOfRow(c));
     const noteRefs = await allNoteIds(ctx, c);
     if (noteRefs.length > MAX_NOTE_REFS) fail("limit_exceeded", TOO_MANY_NOTES);
     if (c.sharedWith !== "workspace") {

@@ -48,15 +48,17 @@ import {
   summarizeMapRequest,
   tidyRequest,
 } from "./lib/mindmapAi";
-import { gemini, metered } from "./ai";
+import { gemini, metered, providedArgs, requestNote } from "./ai";
+import { vProvidedContext, type ProvidedContext } from "./lib/e2ee/ai";
+import { failE2ee } from "./lib/e2ee/state";
 
 const vLayout = v.optional(v.union(v.literal("both"), v.literal("right"), v.literal("down")));
 /** Where a request is made from: the scope, and the note the block is in (the request is made in its scope). */
-const placeArgs = { scope: vScopeArg, documentId: v.optional(v.string()) };
+const placeArgs = { scope: vScopeArg, documentId: v.optional(v.string()), provided: v.optional(vProvidedContext) };
 
 /** The gates and the credit hold, in the note's scope when there's a note. */
-async function hold(ctx: ActionCtx, args: { scope: ScopeArg; documentId?: string }, plan: PlannedCall[]): Promise<Id<"aiCreditHolds">> {
-  const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing" });
+async function hold(ctx: ActionCtx, args: { scope: ScopeArg; documentId?: string; provided?: ProvidedContext }, plan: PlannedCall[]): Promise<Id<"aiCreditHolds">> {
+  const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing", ...providedArgs(args.provided) });
   return holdId;
 }
 
@@ -71,6 +73,8 @@ export const pdfFile = internalQuery({
     const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
     const f = await fileByPublicId(ctx, args.fileId);
     if (!f || f.documentId !== doc._id || f.status !== "ready" || doc.inTrash) fail("not_found", FILE_GONE);
+    // An encrypted file's bytes can't be read here: the device sends the PDF's found text instead.
+    if (f.sealed !== undefined) failE2ee("e2ee_required", "This PDF is end-to-end encrypted. Update Folevi to use Foli AI with it.");
     const check = readableKind(f);
     if (!check.ok) fail("unsupported_file", check.reason);
     if (check.kind !== "pdf") fail("unsupported_file", MINDMAP_MESSAGES.pickPdf);
@@ -105,7 +109,7 @@ export const generate = action({
       inputChars += text.length;
     } else if (args.source === "note") {
       if (!args.documentId) fail("invalid_argument", MINDMAP_MESSAGES.noNote);
-      const note = await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId });
+      const note = await requestNote(ctx, args.documentId, args.provided);
       if (!note.text.trim()) fail("invalid_argument", MINDMAP_MESSAGES.emptyNote);
       request = mapPromptRequest({ source: "note", instruction, note });
       inputChars += note.text.length;
@@ -127,7 +131,7 @@ export const generate = action({
       const data = parseMapReply(raw, { layout: args.layout });
       if (!data) fail("invalid_argument", MINDMAP_MESSAGES.mapFailed);
       return { data };
-    });
+    }, undefined, args.provided);
   },
 });
 
@@ -145,7 +149,7 @@ export const expand = action({
       const ideas = parseIdeasReply(raw, at.children, EXPAND_MAX);
       if (!ideas.length) fail("invalid_argument", MINDMAP_MESSAGES.expandFailed);
       return { ideas };
-    });
+    }, undefined, args.provided);
   },
 });
 
@@ -160,7 +164,7 @@ export const summarize = action({
       const markdown = cleanSummary(await gemini(req, meter));
       if (!markdown) fail("invalid_argument", MINDMAP_MESSAGES.summaryFailed);
       return { markdown };
-    });
+    }, undefined, args.provided);
   },
 });
 
@@ -175,7 +179,7 @@ export const tasks = action({
       const list = parseTasksReply(await gemini(req, meter)).slice(0, AI_MAX_TASKS);
       if (!list.length) fail("invalid_argument", MINDMAP_MESSAGES.tasksFailed);
       return { tasks: list };
-    });
+    }, undefined, args.provided);
   },
 });
 
@@ -191,6 +195,6 @@ export const tidy = action({
       const data = parseMapReply(await gemini(req, meter), { keep: current });
       if (!data) fail("invalid_argument", MINDMAP_MESSAGES.tidyFailed);
       return { data };
-    });
+    }, undefined, args.provided);
   },
 });

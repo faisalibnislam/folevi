@@ -66,7 +66,9 @@ import {
   type RoutineKind,
 } from "./lib/ai/routines";
 import { holdFor, metered } from "./ai";
-import { isInboxOrDigest, placeOf, saveToInbox } from "./aiDigest";
+import { backgroundAiAllowed, encryptedPlace, isInboxOrDigest, placeOf, queueAiNote, saveToInbox } from "./aiDigest";
+import { isSealed } from "./lib/e2ee/state";
+import { sealedAiCopy } from "./lib/ai/indexing";
 import { storedError } from "./aiChat";
 import { contradictionItems, scopeContradictionRows } from "./aiGraph";
 import { schedulePush } from "./lib/push";
@@ -364,7 +366,10 @@ async function morningMaterial(ctx: Ctx, profile: Doc<"profiles">, scope: Scope,
   for (const d of await editedSince(ctx, scope, since).take(80)) {
     if (changed.length >= MORNING_LIMITS.notes) break;
     if (d.lastEditedBy === profile._id || !isNews(d, profile) || !(await readDoc(d._id))) continue;
-    changed.push({ id: d.publicId, title: d.title || "Untitled", text: d.searchText.slice(0, MORNING_LIMITS.noteChars), by: await nameOf(d.lastEditedBy) });
+    // An encrypted note: its readable copy for Foli AI (Background Foli AI on), else it's left out.
+    const copy = isSealed(d) ? await sealedAiCopy(ctx, d) : null;
+    if (isSealed(d) && !copy) continue;
+    changed.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : d.searchText).slice(0, MORNING_LIMITS.noteChars), by: await nameOf(d.lastEditedBy) });
   }
 
   const recent = await (
@@ -473,6 +478,8 @@ export const start = internalMutation({
     if (!place) return await skip(ctx, row, profile, "access");
     // No plan with routines here: nothing is read or sent.
     if (!(await routinesIncluded(ctx, profile, place.scope))) return await skip(ctx, row, profile, "plan");
+    // An encrypted space: only with Background Foli AI on (docs/E2EE_DESIGN.md §7.2).
+    if (!(await backgroundAiAllowed(ctx, place.scope))) return { status: "skipped", reason: "off" };
     const until = Date.now();
     if (spentIn(row.spend, periodKey(until, profile.timeZone)) + perRun(row.kind) > row.monthlyCap) return await skip(ctx, row, profile, "cap");
     const today = localDay(until, profile.timeZone);
@@ -558,6 +565,7 @@ export const deliver = internalMutation({
     // What the model wrote (the brief, or Open loops' intro), then for the brief links to the notes others
     // changed (the ones the person can still open), for Open loops the items, each linking to its block.
     const text = unfence(args.markdown).trim();
+    const labels = new Map<string, string>();
     const body: WireBlock[] = text ? markdownToBlocks(text, { titleFromHeading: false }).blocks.slice(0, MAX_NOTE_BLOCKS) : [];
     if (row.kind === "openLoops") {
       body.push(...loopBlocks(body, args.loops.slice(0, MAX_LOOPS)));
@@ -565,16 +573,33 @@ export const deliver = internalMutation({
       const links: Doc<"documents">[] = [];
       for (const id of args.noteIds.slice(0, MORNING_LIMITS.notes)) {
         const d = await getDocumentByPublicId(ctx, id);
-        if (d && !d.inTrash && accessAtLeast(await documentAccess(ctx, profile, d), "read")) links.push(d);
+        if (!d || d.inTrash || !accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
+        const copy = isSealed(d) ? await sealedAiCopy(ctx, d) : null;
+        if (isSealed(d) && !copy) continue;
+        labels.set(d.publicId, (copy ? copy.title : d.title) || "Untitled");
+        links.push(d);
       }
       if (links.length) {
         const ranks = ranksAfter(body, links.length + 1);
         body.push({ id: ulid(), type: "heading", parentId: null, rank: ranks[0]!, schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text: "Notes" }], props: { level: 2 } });
-        links.forEach((d, i) => body.push({ id: ulid(), type: "bulleted", parentId: null, rank: ranks[i + 1]!, schemaVersion: SCHEMA_VERSION, text: [{ type: "pageLink", documentId: d.publicId, label: d.title || "Untitled" }], props: {} }));
+        links.forEach((d, i) => body.push({ id: ulid(), type: "bulleted", parentId: null, rank: ranks[i + 1]!, schemaVersion: SCHEMA_VERSION, text: [{ type: "pageLink", documentId: d.publicId, label: labels.get(d.publicId) ?? "Untitled" }], props: {} }));
       }
     }
-    const doc = await saveToInbox(ctx, profile, place, routineTitle(row.kind, args.until, profile.timeZone, profile.locale), body);
     const title = row.kind === "morning" ? "Your Morning brief is ready." : "Your Open loops are ready.";
+    // An encrypted space: one of the person's devices makes the note (sealed) from the inbox item.
+    if (await encryptedPlace(ctx, place.scope)) {
+      const { documentId } = await queueAiNote(ctx, profile, place, "routine", routineTitle(row.kind, args.until, profile.timeZone, profile.locale), body);
+      await ctx.db.insert("notifications", {
+        profileId: profile._id,
+        ...(place.scope.kind === "workspace" ? { workspaceId: place.scope.workspaceId } : {}),
+        kind: "system",
+        title: `${title} It's added to your Inbox when one of your devices opens Folevi.`,
+        createdAt: Date.now(),
+      });
+      await ctx.db.patch(row._id, { lastAt: args.until, lastSkip: undefined, updatedAt: Date.now() });
+      return { status: "delivered", documentId };
+    }
+    const doc = await saveToInbox(ctx, profile, place, routineTitle(row.kind, args.until, profile.timeZone, profile.locale), body);
     await ctx.db.insert("notifications", {
       profileId: profile._id,
       ...(place.scope.kind === "workspace" ? { workspaceId: place.scope.workspaceId } : {}),

@@ -14,7 +14,8 @@ import { requireIdentity } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { vScopeArg } from "./lib/scope";
 import type { PlannedCall } from "./lib/credits";
-import { gemini, metered } from "./ai";
+import { gemini, metered, providedArgs, requestNote } from "./ai";
+import { vProvidedContext } from "./lib/e2ee/ai";
 import { CHART_MESSAGES, MAX_CHART, MAX_INSTRUCTION, NOTE_CHARS, chartTaskRequest, fromWordsRequest, parseChartDraft, parseChartPatch, type ChartPatch } from "./lib/chartAi";
 
 const vTask = v.union(v.literal("suggest"), v.literal("explain"), v.literal("tidy"), v.literal("title"));
@@ -25,20 +26,20 @@ const vTask = v.union(v.literal("suggest"), v.literal("explain"), v.literal("tid
  * labels and options; never a value).
  */
 export const assist = action({
-  args: { scope: vScopeArg, task: vTask, chart: v.string(), documentId: v.optional(v.string()) },
+  args: { scope: vScopeArg, task: vTask, chart: v.string(), documentId: v.optional(v.string()), provided: v.optional(vProvidedContext) },
   handler: async (ctx, args): Promise<ChartPatch> => {
     await requireIdentity(ctx);
     const chart = normalizeChart(safeJson(args.chart.slice(0, MAX_CHART)));
     if (!chart.columns.length || !chart.rows.length) fail("invalid_argument", CHART_MESSAGES.noData);
     const req = chartTaskRequest(args.task, chart);
     const plan: PlannedCall[] = [{ fast: req.fast, inputChars: req.system.length + req.prompt.length, maxOutputTokens: req.maxOutputTokens }];
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing" });
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing", ...providedArgs(args.provided) });
     return await metered(ctx, holdId, async (meter) => {
       const raw = await gemini(req, meter);
       const patch = parseChartPatch(args.task, raw, chart);
       if (!patch) fail("invalid_argument", CHART_MESSAGES.taskFailed);
       return patch;
-    });
+    }, undefined, args.provided);
   },
 });
 
@@ -47,22 +48,22 @@ export const assist = action({
  * read only if this person can open it). Returns the new chart's data, checked like any chart.
  */
 export const fromWords = action({
-  args: { scope: vScopeArg, instruction: v.string(), documentId: v.optional(v.string()) },
+  args: { scope: vScopeArg, instruction: v.string(), documentId: v.optional(v.string()), provided: v.optional(vProvidedContext) },
   handler: async (ctx, args): Promise<{ data: string }> => {
     await requireIdentity(ctx);
     const instruction = args.instruction.trim().slice(0, MAX_INSTRUCTION);
     if (!instruction) fail("invalid_argument", CHART_MESSAGES.noInstruction);
     const estimate = fromWordsRequest(instruction, args.documentId ? { title: "", text: "x".repeat(NOTE_CHARS) } : null);
     const plan: PlannedCall[] = [{ fast: false, inputChars: estimate.system.length + estimate.prompt.length, maxOutputTokens: estimate.maxOutputTokens }];
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing" });
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing", ...providedArgs(args.provided) });
     return await metered(ctx, holdId, async (meter) => {
-      const note = args.documentId ? await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId }) : null;
+      const note = args.documentId ? await requestNote(ctx, args.documentId, args.provided) : null;
       const req = fromWordsRequest(instruction, note ? { title: note.title, text: note.text.slice(0, NOTE_CHARS) } : null);
       const raw = await gemini(req, meter);
       const data = parseChartDraft(raw);
       if (!data) fail("invalid_argument", note ? CHART_MESSAGES.noNumbersInNote : CHART_MESSAGES.noNumbers);
       return { data };
-    });
+    }, undefined, args.provided);
   },
 });
 

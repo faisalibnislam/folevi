@@ -15,7 +15,8 @@ import { requireIdentity } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { vScopeArg } from "./lib/scope";
 import type { PlannedCall } from "./lib/credits";
-import { gemini, metered } from "./ai";
+import { gemini, metered, providedArgs, requestNote } from "./ai";
+import { vProvidedContext } from "./lib/e2ee/ai";
 import {
   FLOWCHART_MESSAGES,
   FROM_TEXT_CHARS,
@@ -54,18 +55,18 @@ function chartOf(data: string, opts: { ids?: boolean; min?: number } = {}) {
  * (`documentId`, read only if this person can open it). Returns a draft like ai.flowchart's.
  */
 export const fromText = action({
-  args: { scope: vScopeArg, text: v.optional(v.string()), documentId: v.optional(v.string()), instruction: v.optional(v.string()) },
+  args: { scope: vScopeArg, text: v.optional(v.string()), documentId: v.optional(v.string()), instruction: v.optional(v.string()), provided: v.optional(vProvidedContext) },
   handler: async (ctx, args): Promise<FlowDraft> => {
     await requireIdentity(ctx);
     const text = (args.text ?? "").trim().slice(0, FROM_TEXT_CHARS);
     const instruction = (args.instruction ?? "").trim().slice(0, MAX_INSTRUCTION);
     if (!text && !args.documentId) fail("invalid_argument", FLOWCHART_MESSAGES.noText);
     const estimate = fromTextRequest({ text: text || "x".repeat(FROM_TEXT_CHARS), title: args.documentId && !text ? "Note" : null, instruction });
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan: planOf(estimate), feature: "writing" });
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan: planOf(estimate), feature: "writing", ...providedArgs(args.provided) });
     return await metered(ctx, holdId, async (meter) => {
       let source = { text, title: null as string | null };
       if (!text) {
-        const note = await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId! });
+        const note = await requestNote(ctx, args.documentId!, args.provided);
         // The note as Markdown starts with its title; a note with nothing under it has no steps.
         const body = note.text.replace(/^#[^\n]*\n?/, "").trim();
         if (!body) fail("invalid_argument", FLOWCHART_MESSAGES.emptyNote);
@@ -74,7 +75,7 @@ export const fromText = action({
       const draft = parseFlowchartDraft(await gemini(fromTextRequest({ ...source, instruction }), meter));
       if (!draft) fail("invalid_argument", FLOWCHART_MESSAGES.fromTextFailed);
       return draft;
-    });
+    }, undefined, args.provided);
   },
 });
 
@@ -84,7 +85,7 @@ export const fromText = action({
  * places it beside the selection with the layout engine.
  */
 export const extend = action({
-  args: { scope: vScopeArg, data: v.string(), nodeIds: v.array(v.string()), kind: v.union(v.literal("next"), v.literal("branches")), instruction: v.optional(v.string()), documentId: v.optional(v.string()) },
+  args: { scope: vScopeArg, data: v.string(), nodeIds: v.array(v.string()), kind: v.union(v.literal("next"), v.literal("branches")), instruction: v.optional(v.string()), documentId: v.optional(v.string()), provided: v.optional(vProvidedContext) },
   handler: async (ctx, args): Promise<FlowExtension> => {
     await requireIdentity(ctx);
     const { fc, current } = chartOf(args.data, { ids: true });
@@ -93,59 +94,59 @@ export const extend = action({
     const selected = args.nodeIds.slice(0, 20).flatMap((id) => (byId.has(id) ? [{ id, text: byId.get(id)!.text }] : []));
     if (!selected.length) fail("invalid_argument", FLOWCHART_MESSAGES.shapesGone);
     const req = extendRequest({ current, selected, kind: args.kind, instruction: (args.instruction ?? "").slice(0, MAX_INSTRUCTION) });
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan: planOf(req), feature: "writing" });
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan: planOf(req), feature: "writing", ...providedArgs(args.provided) });
     return await metered(ctx, holdId, async (meter) => {
       const ext = parseExtendReply(await gemini(req, meter), fc, selected.map((s) => s.id));
       if (!ext) fail("invalid_argument", FLOWCHART_MESSAGES.extendFailed);
       return ext;
-    });
+    }, undefined, args.provided);
   },
 });
 
 /** The chart explained in words (with what the deterministic check found), and as Markdown for the note. */
 export const explain = action({
-  args: { scope: vScopeArg, data: v.string(), documentId: v.optional(v.string()) },
+  args: { scope: vScopeArg, data: v.string(), documentId: v.optional(v.string()), provided: v.optional(vProvidedContext) },
   handler: async (ctx, args): Promise<FlowExplanation> => {
     await requireIdentity(ctx);
     const { fc, current } = chartOf(args.data);
     const req = explainRequest({ current, issues: checkFlowchart(fc).map((i) => i.message) });
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan: planOf(req), feature: "writing" });
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan: planOf(req), feature: "writing", ...providedArgs(args.provided) });
     return await metered(ctx, holdId, async (meter) => {
       const out = parseExplainReply(await gemini(req, meter));
       if (!out) fail("invalid_argument", FLOWCHART_MESSAGES.explainFailed);
       return out;
-    });
+    }, undefined, args.provided);
   },
 });
 
 /** Clearer labels for shapes and connectors, each a suggestion the person can take or leave. */
 export const labels = action({
-  args: { scope: vScopeArg, data: v.string(), documentId: v.optional(v.string()) },
+  args: { scope: vScopeArg, data: v.string(), documentId: v.optional(v.string()), provided: v.optional(vProvidedContext) },
   handler: async (ctx, args): Promise<LabelSuggestions> => {
     await requireIdentity(ctx);
     const { fc, current } = chartOf(args.data, { ids: true });
     const req = labelsRequest({ current });
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan: planOf(req), feature: "writing" });
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan: planOf(req), feature: "writing", ...providedArgs(args.provided) });
     return await metered(ctx, holdId, async (meter) => {
       const out = parseLabelsReply(await gemini(req, meter), fc);
       if (!out) fail("invalid_argument", FLOWCHART_MESSAGES.labelsFailed);
       return out;
-    });
+    }, undefined, args.provided);
   },
 });
 
 /** An order of the shapes rank by rank, for the client's layout engine ("Tidy up with Foli AI"). */
 export const arrange = action({
-  args: { scope: vScopeArg, data: v.string(), documentId: v.optional(v.string()) },
+  args: { scope: vScopeArg, data: v.string(), documentId: v.optional(v.string()), provided: v.optional(vProvidedContext) },
   handler: async (ctx, args): Promise<FlowArrangement> => {
     await requireIdentity(ctx);
     const { fc, current } = chartOf(args.data, { min: 2 });
     const req = arrangeRequest({ current });
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan: planOf(req), feature: "writing" });
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan: planOf(req), feature: "writing", ...providedArgs(args.provided) });
     return await metered(ctx, holdId, async (meter) => {
       const out = parseArrangeReply(await gemini(req, meter), fc);
       if (!out) fail("invalid_argument", FLOWCHART_MESSAGES.arrangeFailed);
       return out;
-    });
+    }, undefined, args.provided);
   },
 });

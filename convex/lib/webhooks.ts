@@ -8,6 +8,7 @@ import type { MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { checkUrl, isPrivateAddress, lookup } from "./ai/web";
 import { scopeOfRow, type Scope } from "./scope";
+import { isLocked, isSealed, spaceE2ee, switchesOf } from "./e2ee/state";
 
 export const WEBHOOK_EVENTS = ["note.created", "note.updated", "note.deleted", "task.created", "task.completed", "comment.created"] as const;
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
@@ -111,6 +112,12 @@ export function retryDelay(attempts: number): number | null {
   return attempts >= MAX_ATTEMPTS ? null : (RETRY_DELAYS_MS[attempts - 1] ?? null);
 }
 
+/** Whether webhooks may hear about an encrypted note: Apps and integrations on, and the note not locked. */
+export async function sealedEventsAllowed(ctx: MutationCtx, doc: Doc<"documents">): Promise<boolean> {
+  if (await isLocked(ctx, doc)) return false;
+  return switchesOf(await spaceE2ee(ctx, scopeOfRow(doc))).apps;
+}
+
 /**
  * Queues an event for webhooks in the place of `doc` (when anyone there listens for it). note.updated
  * waits a minute and absorbs further edits; so does a new note, briefly. Templates and collection rows
@@ -123,6 +130,9 @@ export async function emitWebhook(
   extra: { taskBlockId?: string; commentId?: Id<"comments"> } = {},
 ): Promise<void> {
   if (doc.kind !== "document" && doc.kind !== "daily") return;
+  // An encrypted note sends events only while its space lets apps read it (Apps and integrations on), and
+  // never when it's locked; the event's data then comes from the note's readable copy (webhooks.ts).
+  if (isSealed(doc) && !(await sealedEventsAllowed(ctx, doc))) return;
   const place = placeKey(scopeOfRow(doc));
   const listeners = await ctx.db
     .query("webhookPlaces")

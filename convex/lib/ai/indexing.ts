@@ -14,6 +14,20 @@ import { internal } from "../../_generated/api";
 import { personalEntitlements, workspaceEntitlements } from "../entitlements";
 import { PLAN_CATALOG, type PersonalEntitlements, type PlanTier, type WorkspaceEntitlements } from "../plans";
 import { hasValidScope, insertScoped, scopeOfRow, type Scope } from "../scope";
+import { isLocked, isSealed, spaceE2ee, switchesOf } from "../e2ee/state";
+
+/**
+ * An encrypted note's readable copy for Foli AI, when its space keeps one (Background Foli AI on) and the
+ * note isn't locked: what embeddings are made from (docs/E2EE_DESIGN.md §7.2). Null otherwise.
+ */
+export async function sealedAiCopy(ctx: Ctx, doc: Doc<"documents">): Promise<Doc<"e2eeMirrors"> | null> {
+  if (await isLocked(ctx, doc)) return null;
+  if (!switchesOf(await spaceE2ee(ctx, scopeOfRow(doc))).backgroundAi) return null;
+  return await ctx.db
+    .query("e2eeMirrors")
+    .withIndex("by_document_purpose", (q) => q.eq("documentId", doc._id).eq("purpose", "ai"))
+    .unique();
+}
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -91,6 +105,8 @@ export async function queueIndex(ctx: MutationCtx, doc: Doc<"documents">, opts: 
   if (state?.dueAt !== undefined && state.dueAt > now - LOST_JOB_MS) return;
   // A template, or a note in Trash, with nothing indexed: nothing to do.
   if (!indexable(doc) && !state?.chunks) return;
+  // An end-to-end encrypted note is indexed only from its readable copy for Foli AI (Background Foli AI on).
+  if (isSealed(doc) && !state?.chunks && !(await sealedAiCopy(ctx, doc))) return;
   const scope = scopeOfRow(doc);
   const eligible = opts.eligible ?? (await indexEligible(ctx, scope, now));
   if (!eligible && !state?.chunks) return;

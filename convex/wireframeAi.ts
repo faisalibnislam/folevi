@@ -32,14 +32,15 @@ import {
   variationCount,
   varyRequest,
 } from "./lib/wireframeAi";
-import { gemini, metered } from "./ai";
+import { gemini, metered, providedArgs } from "./ai";
+import { vProvidedContext, type ProvidedContext } from "./lib/e2ee/ai";
 
 const vFrame = v.union(v.literal("phone"), v.literal("tablet"), v.literal("browser"), v.literal("plain"));
 /** Where a request is made from: the scope, and the note the block is in (the request is made in its scope). */
-const placeArgs = { scope: vScopeArg, documentId: v.optional(v.string()) };
+const placeArgs = { scope: vScopeArg, documentId: v.optional(v.string()), provided: v.optional(vProvidedContext) };
 
-async function hold(ctx: ActionCtx, args: { scope: ScopeArg; documentId?: string }, plan: PlannedCall[]): Promise<Id<"aiCreditHolds">> {
-  const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing" });
+async function hold(ctx: ActionCtx, args: { scope: ScopeArg; documentId?: string; provided?: ProvidedContext }, plan: PlannedCall[]): Promise<Id<"aiCreditHolds">> {
+  const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing", ...providedArgs(args.provided) });
   return holdId;
 }
 

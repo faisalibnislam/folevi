@@ -12,8 +12,8 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { blocksToMarkdown, folderPath, localDate, markdownToBlocks, rankBetween, rankSequence, repeatProps, LIMITS, SCHEMA_VERSION, ulid, type RepeatRule, type SyncOp, type WireBlock } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, requireProfile, resolveScope } from "./lib/auth";
+import { blocksToMarkdown, folderPath, localDate, markdownToBlocks, rankBetween, rankSequence, repeatProps, taskViews, LIMITS, SCHEMA_VERSION, ulid, type RepeatRule, type SyncOp, type WireBlock } from "@folevi/editor-schema";
+import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, PageReader, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { createDocument } from "./lib/create";
@@ -23,7 +23,7 @@ import { ReaderLabels } from "./lib/linkLabels";
 import { appUrl } from "./lib/notify";
 import { consume } from "./lib/rateLimit";
 import { findOAuthAccessToken, findOAuthClient, revokeOAuthClient } from "./lib/authStore";
-import { recentNotes, scopeFolders, scopeTags } from "./lib/ai/tools/read";
+import { scopeFolders, scopeTags } from "./lib/ai/tools/read";
 import { requireCreate } from "./lib/ai/tools/propose";
 import { untrusted } from "./lib/ai/tools/untrusted";
 import { MAX_NOTE_CHARS, TOOL_BY_NAME, withoutTitleHeading } from "./lib/mcp/tools";
@@ -34,6 +34,9 @@ import { snapshot } from "./documents";
 import { PROPOSED_MESSAGE, proposeAppend } from "./proposals";
 import { saveToInbox } from "./aiDigest";
 import { withSyncedForReader } from "./lib/synced";
+import { failE2ee, isLocked, isSealed, readableFor, spaceE2ee, switchesOf, type Readable } from "./lib/e2ee/state";
+import { inboxItem, sealToInbox, stableInboxId } from "./lib/e2ee/inboxSeal";
+import { scopeMirrors, searchMirrors } from "./e2ee/mirrors";
 
 /** What a token is worth, once checked. */
 export type Authorized =
@@ -147,7 +150,117 @@ export async function readableHere(ctx: QueryCtx, grant: Pick<Reach, "includeSha
   if (!doc || doc.inTrash || doc.deletedAt !== undefined || doc.kind === "template" || doc.kind === "synced") fail("not_found", NOT_HERE);
   if (!accessAtLeast(await documentAccess(ctx, profile, doc), "read")) fail("not_found", NOT_HERE);
   if (!places.some((p) => inScope(doc, p.scope)) && !grant.includeShared) fail("not_found", NOT_HERE);
+  // An end-to-end encrypted note is visible to apps only through its readable copy (Apps and integrations on).
+  if (isSealed(doc) && !(await readableFor(ctx, doc, "apps"))) fail("not_found", NOT_HERE);
   return doc;
+}
+
+// ---------------------------------------------------------------- end-to-end encrypted places (docs/E2EE_DESIGN.md §7.4)
+
+/** What an app is told when its write waits for one of the person's devices. */
+export const QUEUED_MESSAGE = "Folevi will add this the next time one of your devices is online.";
+
+/** An encrypted place (level above Standard): its notes are read through readable copies and written through the inbox. */
+async function encryptedPlace(ctx: QueryCtx, scope: Scope) {
+  const space = await spaceE2ee(ctx, scope);
+  return space && space.level !== "standard" ? space : null;
+}
+
+/** A sealed note's readable copy for apps (readableHere checked it exists). */
+export async function appsCopy(ctx: QueryCtx, doc: Doc<"documents">): Promise<Readable> {
+  const copy = await readableFor(ctx, doc, "apps");
+  if (!copy) fail("not_found", "There's no note with that id that this connection can open.");
+  return copy;
+}
+
+/**
+ * Queues a write to an encrypted place (or a sealed note) for one of the person's devices: the request is
+ * sealed to the space's inbox key and answered "queued". Needs Apps and integrations on (clips: the web
+ * clipper), and never targets a locked note. A retried request finds the item it already queued.
+ */
+async function queueWrite(
+  ctx: MutationCtx,
+  profile: Doc<"profiles">,
+  scope: Scope,
+  input: { tool: string; args: Record<string, unknown>; requestKey: string; writer: Writer; clip?: boolean; doc?: Doc<"documents">; taskId?: string; newNoteId?: string },
+): Promise<Record<string, unknown>> {
+  const sw = switchesOf(await spaceE2ee(ctx, scope));
+  const needed = input.clip ? "webClipper" : "apps";
+  if (!sw[needed]) {
+    failE2ee(
+      "e2ee_switch_off",
+      input.clip ? "This space is end-to-end encrypted. Turn on the web clipper in Settings > Privacy to save clips here." : "This space is end-to-end encrypted. Turn on Apps and integrations in Settings > Privacy to let apps add to it.",
+      { switch: needed },
+    );
+  }
+  if (input.doc && (await isLocked(ctx, input.doc))) failE2ee("e2ee_locked");
+  const publicId = await stableInboxId(input.clip ? "clip-" : "app-", input.requestKey);
+  const earlier = await inboxItem(ctx, publicId);
+  const documentId = input.newNoteId ?? input.doc?.publicId;
+  const answer = { status: "queued", id: publicId, message: QUEUED_MESSAGE, ...(documentId ? { noteId: documentId } : {}), ...(input.taskId ? { taskId: input.taskId } : {}) };
+  if (earlier) return answer;
+  const at = Date.now();
+  const payload = input.clip
+    ? {
+        kind: "clip" as const,
+        title: String(input.args.title ?? "").slice(0, 200),
+        markdown: String(input.args.markdown ?? ""),
+        documentId: input.newNoteId!,
+        ...(typeof input.args.url === "string" ? { url: input.args.url.slice(0, 2000) } : {}),
+      }
+    : {
+        kind: "app" as const,
+        tool: input.tool,
+        app: { name: input.writer.app.name.slice(0, 120), device: input.writer.device.slice(0, 64), reason: input.writer.reason },
+        args: input.args,
+        ...(documentId ? { documentId } : {}),
+        ...(input.taskId ? { taskId: input.taskId } : {}),
+        profileId: profile._id as string,
+        at,
+      };
+  await sealToInbox(ctx, scope, input.clip ? "clip" : "app", payload, { publicId, for: profile._id, ...(documentId ? { targetDocumentId: documentId } : {}) });
+  return answer;
+}
+
+/** Up to `n` recent notes of a place an app may see, encrypted ones (with Apps on) through their copies. */
+async function recentForApps(ctx: QueryCtx, profile: Doc<"profiles">, scope: Scope, n: number): Promise<{ doc: Doc<"documents">; title: string }[]> {
+  const rows = await (
+    scope.kind === "personal"
+      ? ctx.db.query("documents").withIndex("by_owner_trash", (q) => q.eq("ownerProfileId", scope.profileId).eq("inTrash", false))
+      : ctx.db.query("documents").withIndex("by_workspace_trash", (q) => q.eq("workspaceId", scope.workspaceId).eq("inTrash", false))
+  )
+    .order("desc")
+    .take(n * 2);
+  const reader = await PageReader.forScope(ctx, profile, scope);
+  const usable = await reader.filter(rows.filter((d) => (d.kind === "document" || d.kind === "daily") && !d.archivedAt));
+  const out: { doc: Doc<"documents">; title: string }[] = [];
+  for (const d of usable.sort((a, b) => b.updatedAt - a.updatedAt)) {
+    if (out.length >= n) break;
+    if (!isSealed(d)) out.push({ doc: d, title: d.title || "Untitled" });
+    else {
+      const copy = await readableFor(ctx, d, "apps");
+      if (copy) out.push({ doc: d, title: copy.title || "Untitled" });
+    }
+  }
+  return out;
+}
+
+/** Encrypted notes' to-dos from their copies for apps, in one task view. */
+export async function sealedTasks(ctx: QueryCtx, profile: Doc<"profiles">, scope: Scope, view: TaskView, today: string) {
+  if (!switchesOf(await spaceE2ee(ctx, scope)).apps) return [];
+  const out: { taskId: string; text: string; done: boolean; dueDate: string | null; dueTime: string | null; noteId: string; noteTitle: string }[] = [];
+  for (const m of await scopeMirrors(ctx, scope, "apps").take(200)) {
+    const doc = await ctx.db.get(m.documentId);
+    if (!doc || doc.inTrash || doc.deletedAt !== undefined || !isSealed(doc) || (await isLocked(ctx, doc))) continue;
+    if (!accessAtLeast(await documentAccess(ctx, profile, doc), "read")) continue;
+    for (const t of m.tasks ?? []) {
+      const status = t.done ? "done" : "open";
+      const views = taskViews({ status, dueDate: t.due ?? null, assigneeId: null }, today, profile._id, { personal: scope.kind === "personal" });
+      if (view === "completed" ? !t.done : !views.includes(view)) continue;
+      out.push({ taskId: t.blockId, text: t.text, done: t.done, dueDate: t.due ?? null, dueTime: t.dueTime ?? null, noteId: doc.publicId, noteTitle: m.title || "Untitled" });
+    }
+  }
+  return out;
 }
 
 /** A note this connection may add to: in one of its places, where the person can edit. */
@@ -175,6 +288,18 @@ const int = (v: unknown, fallback: number) => (typeof v === "number" && Number.i
 
 /** A note's Markdown and where it lives: its place, folder (and the folder's path), tags and link. */
 export async function noteDetail(ctx: QueryCtx, profile: Doc<"profiles">, doc: Doc<"documents">, places: Place[]) {
+  // An encrypted note: its readable copy for apps (made on the person's device, docs/E2EE_DESIGN.md §7.4).
+  if (isSealed(doc)) {
+    const copy = await appsCopy(ctx, doc);
+    const folder = doc.folderId ? await ctx.db.get(doc.folderId) : null;
+    const path = copy.folderPath ?? null;
+    return {
+      markdown: copy.text,
+      place: await placeOf(ctx, doc, places),
+      folder: folder && !folder.deletedAt && path ? { id: folder.publicId, name: path.split(" / ").pop() || path, path } : null,
+      tags: copy.tags ?? [],
+    };
+  }
   // With the synced blocks this person can see in place (lib/synced.ts).
   const blocks = await new ReaderLabels(ctx, profile).blocks(await withSyncedForReader(ctx, profile, (await liveBlocks(ctx, doc._id)).map(toWireBlock)));
   const folder = doc.folderId ? await ctx.db.get(doc.folderId) : null;
@@ -226,7 +351,19 @@ export async function runRead(ctx: QueryCtx, reach: Reach, profile: Doc<"profile
       const results: Record<string, unknown>[] = [];
       for (const p of pickPlaces(places, a.place)) {
         const found = await searchDocuments(ctx, profile, p.scope, { query: str(a.query), limit });
-        for (const r of found) results.push({ id: r.id, title: r.title || "Untitled", place: p.name, snippet: untrusted("note", { id: r.id }, r.snippet ?? ""), updated: new Date(r.updatedAt).toISOString().slice(0, 10), url: link(r.id) });
+        const seen = new Set<string>();
+        for (const r of found) {
+          seen.add(r.id);
+          results.push({ id: r.id, title: r.title || "Untitled", place: p.name, snippet: untrusted("note", { id: r.id }, r.snippet ?? ""), updated: new Date(r.updatedAt).toISOString().slice(0, 10), url: link(r.id) });
+        }
+        // Encrypted notes, through their readable copies for apps (Apps and integrations on).
+        for (const m of await searchMirrors(ctx, p.scope, "apps", str(a.query), limit)) {
+          const d = await ctx.db.get(m.documentId);
+          if (!d || seen.has(d.publicId) || d.inTrash || d.deletedAt !== undefined || (await isLocked(ctx, d))) continue;
+          if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
+          seen.add(d.publicId);
+          results.push({ id: d.publicId, title: m.title || "Untitled", place: p.name, snippet: untrusted("note", { id: d.publicId }, m.text.replace(/\s+/g, " ").slice(0, 200)), updated: new Date(d.updatedAt).toISOString().slice(0, 10), url: link(d.publicId) });
+        }
       }
       results.sort((x, y) => String(y.updated).localeCompare(String(x.updated)));
       return { results: results.slice(0, limit) };
@@ -236,16 +373,17 @@ export async function runRead(ctx: QueryCtx, reach: Reach, profile: Doc<"profile
       const doc = await readableHere(ctx, grant, profile, places, str(a.noteId));
       const { markdown, place, folder, tags } = await noteDetail(ctx, profile, doc, places);
       const max = int(a.maxChars, MAX_NOTE_CHARS);
+      const title = isSealed(doc) ? (await appsCopy(ctx, doc)).title || "Untitled" : doc.title || "Untitled";
       return {
         id: doc.publicId,
-        title: doc.title || "Untitled",
+        title,
         place,
         folder: folder?.name ?? null,
         tags,
         updated: new Date(doc.updatedAt).toISOString(),
         url: link(doc.publicId),
         ...(markdown.length > max ? { truncated: `Showing the first ${max} of ${markdown.length} characters.` } : {}),
-        markdown: untrusted("note", { id: doc.publicId, title: doc.title || "Untitled" }, markdown.slice(0, max) || "(empty note)"),
+        markdown: untrusted("note", { id: doc.publicId, title }, markdown.slice(0, max) || "(empty note)"),
       };
     }
 
@@ -253,8 +391,7 @@ export async function runRead(ctx: QueryCtx, reach: Reach, profile: Doc<"profile
       const limit = int(a.limit, 15);
       const out: Record<string, unknown>[] = [];
       for (const p of pickPlaces(places, a.place)) {
-        const notes = await recentNotes(ctx, { profile, scope: p.scope, context: { kind: "none", ids: [] }, today: localDate(Date.now(), profile.timeZone) }, limit);
-        for (const d of notes) out.push({ id: d.publicId, title: d.title || "Untitled", place: p.name, updatedAt: d.updatedAt, url: link(d.publicId) });
+        for (const { doc: d, title } of await recentForApps(ctx, profile, p.scope, limit)) out.push({ id: d.publicId, title, place: p.name, updatedAt: d.updatedAt, url: link(d.publicId) });
       }
       out.sort((x, y) => Number(y.updatedAt) - Number(x.updatedAt));
       return { notes: out.slice(0, limit).map((n) => ({ ...n, updatedAt: new Date(Number(n.updatedAt)).toISOString() })) };
@@ -295,6 +432,19 @@ export async function runRead(ctx: QueryCtx, reach: Reach, profile: Doc<"profile
             url: `${link(t.documentId)}#block-${t.blockId}`,
           });
         }
+        for (const t of await sealedTasks(ctx, profile, p.scope, view, today)) {
+          out.push({
+            taskId: t.taskId,
+            text: untrusted("note", { task: t.taskId }, t.text || "Untitled task"),
+            status: t.done ? "done" : "open",
+            dueDate: t.dueDate,
+            dueTime: t.dueTime,
+            priority: "none",
+            note: { id: t.noteId, title: t.noteTitle },
+            place: p.name,
+            url: `${link(t.noteId)}#block-${t.taskId}`,
+          });
+        }
       }
       return { today, view, tasks: out.slice(0, 150) };
     }
@@ -309,6 +459,10 @@ export const readResource = internalQuery({
     const { grant, profile } = await grantContext(ctx, grantId);
     const places = await grantPlaces(ctx, grant, profile);
     const doc = await readableHere(ctx, grant, profile, places, noteId);
+    if (isSealed(doc)) {
+      const copy = await appsCopy(ctx, doc);
+      return { title: copy.title || "Untitled", markdown: copy.text.slice(0, MAX_NOTE_CHARS) };
+    }
     const blocks = await new ReaderLabels(ctx, profile).blocks(await withSyncedForReader(ctx, profile, (await liveBlocks(ctx, doc._id)).map(toWireBlock)));
     return { title: doc.title || "Untitled", markdown: blocksToMarkdown(blocks, { title: doc.title || "Untitled" }).slice(0, MAX_NOTE_CHARS) };
   },
@@ -400,6 +554,13 @@ export async function runWrite(
         folderId = folder._id;
       }
       if (a.inInbox === true && folderId) fail("invalid_argument", "Use folderId or inInbox, not both.");
+      // An encrypted place: the note is made by one of the person's devices (its id is chosen here).
+      if (await encryptedPlace(ctx, place.scope)) {
+        const newNoteId = ulid();
+        result = await queueWrite(ctx, profile, place.scope, { tool, args: a, requestKey, writer, clip: a.inInbox === true, newNoteId });
+        targets = [newNoteId];
+        break;
+      }
       const title = str(a.title).trim().slice(0, 200);
       const blocks = blocksFrom(withoutTitleHeading(str(a.markdown), title), null);
       if (blocks.length > LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "That note would be too long.");
@@ -415,6 +576,11 @@ export async function runWrite(
 
     case "append_to_note": {
       const doc = await writableHere(ctx, profile, places, str(a.noteId));
+      if (isSealed(doc)) {
+        result = await queueWrite(ctx, profile, scopeOfRow(doc), { tool, args: a, requestKey, writer, doc });
+        targets = [doc.publicId];
+        break;
+      }
       const rows = await liveBlocks(ctx, doc._id);
       const blocks = blocksFrom(str(a.markdown), lastRootRank(rows));
       if (rows.length + blocks.length > LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "The note would have too many blocks.");
@@ -435,9 +601,22 @@ export async function runWrite(
       let doc: Doc<"documents">;
       if (a.noteId !== undefined) {
         doc = await writableHere(ctx, profile, places, str(a.noteId));
+        if (isSealed(doc)) {
+          const taskId = ulid();
+          result = await queueWrite(ctx, profile, scopeOfRow(doc), { tool, args: a, requestKey, writer, doc, taskId });
+          targets = [taskId];
+          break;
+        }
       } else {
         const place = writePlace(places, a.place);
         await requireCreate(ctx, profile, place.scope);
+        // An encrypted place: the to-do goes into its Inbox on one of the person's devices.
+        if (await encryptedPlace(ctx, place.scope)) {
+          const taskId = ulid();
+          result = await queueWrite(ctx, profile, place.scope, { tool, args: a, requestKey, writer, taskId });
+          targets = [taskId];
+          break;
+        }
         doc = (await getDocumentByPublicId(ctx, await ensureInbox(ctx, profile, place.scope, scopeArgOf(place), device.slice(0, 64))))!;
       }
       const rows = await liveBlocks(ctx, doc._id);
@@ -459,6 +638,13 @@ export async function runWrite(
 
     case "complete_task":
     case "update_task": {
+      // A to-do in an encrypted note is changed by one of the person's devices.
+      const sealedTask = await sealedTaskNote(ctx, profile, places, str(a.taskId));
+      if (sealedTask) {
+        result = await queueWrite(ctx, profile, scopeOfRow(sealedTask), { tool, args: a, requestKey, writer, doc: sealedTask, taskId: str(a.taskId) });
+        targets = [str(a.taskId)];
+        break;
+      }
       const { row, doc } = await taskBlock(ctx, profile, str(a.taskId));
       if (!places.some((p) => inScope(doc, p.scope))) fail("not_found", "Task not found.");
       const wire = toWireBlock(row);
@@ -512,6 +698,20 @@ export async function runWrite(
       fail("not_found", `Unknown tool "${tool}".`);
   }
   return { result, targets };
+}
+
+/** The encrypted note a to-do is in, when it is in one this connection may change (else null: the usual path). */
+async function sealedTaskNote(ctx: QueryCtx, profile: Doc<"profiles">, places: Place[], taskId: string): Promise<Doc<"documents"> | null> {
+  const row = await ctx.db
+    .query("blocks")
+    .withIndex("by_block_id", (q) => q.eq("blockId", taskId))
+    .unique();
+  if (!row || row.deletedAt !== undefined) return null;
+  const doc = await ctx.db.get(row.documentId);
+  if (!doc || !isSealed(doc)) return null;
+  if (!places.some((p) => inScope(doc, p.scope))) fail("not_found", "Task not found.");
+  if (!accessAtLeast(await documentAccess(ctx, profile, doc), "write")) fail("forbidden", "You can't edit this task.");
+  return doc;
 }
 
 /** Who a new task may be assigned to: yourself, or in a workspace, one of its members. */

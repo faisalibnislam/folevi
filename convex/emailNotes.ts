@@ -30,6 +30,9 @@ import { vScopeArg } from "./lib/scope";
 import { isEmail, normalizeEmail } from "./lib/support";
 import { EMAIL_NOTE_LIMITS, emailNoteBlocks, fromIsVerified, newNoteToken, noteAddress } from "./lib/emailNotes";
 import { placeOf, saveToInbox } from "./aiDigest";
+import { ulid } from "@folevi/editor-schema";
+import { spaceE2ee, switchesOf } from "./lib/e2ee/state";
+import { inboxItem, sealToInbox, stableInboxId } from "./lib/e2ee/inboxSeal";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -199,7 +202,10 @@ export const pending = internalQuery({
 
 const vAuthCheck = v.union(v.literal("pass"), v.literal("fail"), v.literal("gray"), v.literal("processing_failed"), v.literal("unknown"));
 
-type Outcome = "saved" | "unknown" | "duplicate" | "inactive" | "rejected_sender" | "rejected_unverified" | "rate_limited";
+type Outcome = "saved" | "queued" | "unknown" | "duplicate" | "inactive" | "rejected_sender" | "rejected_unverified" | "rejected_e2ee" | "rate_limited";
+
+/** The notice when mail reaches an encrypted space that doesn't take email (docs/E2EE_DESIGN.md §5.7). */
+export const E2EE_NO_EMAIL = "We ignored an email to your Folevi address: this Folevi space is end-to-end encrypted and doesn't accept email. Turn on Email to note in Settings > Privacy to receive it.";
 
 /** A notice in the person's bell, at most once a day for each kind. */
 async function notice(ctx: MutationCtx, row: Doc<"emailNoteAddresses">, field: "lastRejectNoticeAt" | "lastLimitNoticeAt", title: string): Promise<void> {
@@ -273,6 +279,36 @@ export const receive = internalMutation({
     const receivedAt = args.receivedAt ?? Date.now();
     const title = args.subject.trim() || `Email from ${from}`;
     const blocks = emailNoteBlocks({ fromAddress: from, fromName: args.fromName, receivedAt, timeZone: profile.timeZone, text: args.text, truncated: args.truncated, attachments: args.attachments });
+
+    // An encrypted space: the mail is sealed to the space's inbox key and a device makes the note (§7.5).
+    // Nothing of it is stored readable; the address's counts and the bell's notice carry no content.
+    const space = await spaceE2ee(ctx, place.scope);
+    if (space && space.level !== "standard") {
+      if (!switchesOf(space).emailToNote) {
+        await notice(ctx, row, "lastRejectNoticeAt", E2EE_NO_EMAIL);
+        return { outcome: "rejected_e2ee" };
+      }
+      // One item per message and address: a delivery Resend retries finds the one already stored.
+      const publicId = await stableInboxId("email-", row._id, args.emailId);
+      if (await inboxItem(ctx, publicId)) return { outcome: "duplicate" };
+      const documentId = ulid();
+      await sealToInbox(
+        ctx,
+        place.scope,
+        "email",
+        { kind: "email", subject: title, from: { address: from, name: args.fromName }, receivedAt, blocks, attachments: args.attachments, documentId },
+        { publicId, for: profile._id, targetDocumentId: documentId },
+      );
+      await ctx.db.patch(row._id, { count: row.count + 1, lastReceivedAt: Date.now() });
+      await ctx.db.insert("notifications", {
+        profileId: profile._id,
+        ...(place.scope.kind === "workspace" ? { workspaceId: place.scope.workspaceId } : {}),
+        kind: "system",
+        title: "An email arrived for your Inbox. It's added when one of your devices opens Folevi.",
+        createdAt: Date.now(),
+      });
+      return { outcome: "queued", documentId };
+    }
     const doc = await saveToInbox(ctx, profile, place, title, blocks);
     await ctx.db.insert("emailNoteReceipts", { addressId: row._id, profileId: profile._id, emailId: args.emailId, ...(args.rfcMessageId ? { rfcMessageId: args.rfcMessageId } : {}), documentId: doc._id, createdAt: Date.now() });
     await ctx.db.patch(row._id, { count: row.count + 1, lastReceivedAt: Date.now() });

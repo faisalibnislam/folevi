@@ -12,6 +12,8 @@
 // dismissed suggestion stays dismissed for that person on that note (`aiSuggestionDismissals`). Settings >
 // AI "Suggestions" off, AI off, or a Core scope: nothing is computed or shown.
 import { v } from "convex/values";
+import { isSealed } from "./lib/e2ee/state";
+import { sealedAiCopy } from "./lib/ai/indexing";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { accessAtLeast, documentAccess, getDocumentByPublicId, requireDocument, requireProfile } from "./lib/auth";
@@ -65,6 +67,9 @@ export const forNote = query({
     const access = await documentAccess(ctx, profile, doc);
     if (!accessAtLeast(access, "read")) return off;
     if (await aiBlockedIn(ctx, profile._id, scopeOfRow(doc))) return off;
+    // An end-to-end encrypted note: only with Background Foli AI on (from the graph); its lines are read on the device.
+    const sealed = isSealed(doc);
+    if (sealed && !(await sealedAiCopy(ctx, doc))) return off;
 
     const dismissed = new Set(
       (
@@ -114,7 +119,7 @@ export const forNote = query({
     }
 
     // From the note's own lines (link labels as this person may see them), unless the caller reads them.
-    if (args.lines !== false) {
+    if (args.lines !== false && !sealed) {
       const blocks = await new ReaderLabels(ctx, profile).blocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
       items.push(...patternItems(patternSuggestions(suggestionLines(blocks)), dismissed));
     }

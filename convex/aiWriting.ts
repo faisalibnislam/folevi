@@ -3,6 +3,7 @@
 // note" or "Save as template" does it become a document here: a regular note, or a regular template that
 // shows in the Templates list and the template picker like any other.
 import { v } from "convex/values";
+import { requireServerCompose } from "./lib/e2ee/ai";
 import { mutation, type MutationCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { linkPeople, markdownToBlocks, type MentionablePerson } from "@folevi/editor-schema";
@@ -49,6 +50,7 @@ export const saveDraft = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
+    await requireServerCompose(ctx, scope);
     if (args.markdown.length > MAX_DRAFT_CHARS) fail("limit_exceeded", "That draft is too long to save. Make it shorter first.");
     await consume(ctx, "bulk", profile._id);
     let folderId;

@@ -36,7 +36,10 @@ import {
   type BlockTranslation,
 } from "./lib/ai/translate";
 import { snapshot } from "./documents";
-import { gemini, metered } from "./ai";
+import { gemini, metered, providedArgs } from "./ai";
+import { vProvidedContext } from "./lib/e2ee/ai";
+import { failE2ee, isSealed } from "./lib/e2ee/state";
+import { vWireBlock } from "./lib/validators";
 
 /** Chunks translated at the same time. */
 const PARALLEL = 3;
@@ -50,6 +53,8 @@ export const translationSource = internalQuery({
     const profile = await requireProfile(ctx);
     const { doc } = await requireDocument(ctx, profile, args.documentId, args.need);
     if (doc.inTrash) fail("not_found", "Document not found.");
+    // An encrypted note's blocks come from the device (`blocks` on translateNote), never from here.
+    if (isSealed(doc)) failE2ee("e2ee_required", "This note is end-to-end encrypted. Update Folevi to translate it.");
     // Link labels as this person may see them (lib/linkLabels.ts), as for every AI read of a note.
     const blocks = await new ReaderLabels(ctx, profile).blocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
     return { title: doc.title || "Untitled", blocks };
@@ -69,6 +74,7 @@ export const saveTranslated = internalMutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
+    if (isSealed(doc)) failE2ee("e2ee_device_only");
     const { scope } = await requireRowScope(ctx, profile, doc, "edit", "Document not found.");
     const blocks = applyTranslations((await liveBlocks(ctx, doc._id)).map(toWireBlock), args.translations as BlockTranslation[]);
     const copy = await createDocument(ctx, {
@@ -124,11 +130,21 @@ export const translateNote = action({
     documentId: v.string(),
     language: v.string(),
     output: v.union(v.literal("note"), v.literal("replace")),
+    /**
+     * An encrypted note (docs/E2EE_DESIGN.md §7.2): its blocks as the device read them, with `provided`
+     * naming the note. Only "replace" works: the device applies the result, or saves the copy itself.
+     */
+    blocks: v.optional(v.array(vWireBlock)),
+    provided: v.optional(vProvidedContext),
   },
   handler: async (ctx, args): Promise<{ id?: string; title?: string; translations?: BlockTranslation[]; preview?: string; translated: number; untranslated: number }> => {
     await requireIdentity(ctx);
     const language = cleanLanguage(args.language);
-    const source = await ctx.runQuery(internal.aiStudy.translationSource, { documentId: args.documentId, need: args.output === "replace" ? "write" : "read" });
+    if (args.blocks && !args.provided?.notes.some((n) => n.id === args.documentId)) fail("invalid_argument", "Send the note with the request.");
+    if (args.blocks && args.output !== "replace") failE2ee("e2ee_device_only");
+    const source = args.blocks
+      ? { title: args.provided!.notes.find((n) => n.id === args.documentId)!.title || "Untitled", blocks: args.blocks.slice(0, 5_000) as WireBlock[] }
+      : await ctx.runQuery(internal.aiStudy.translationSource, { documentId: args.documentId, need: args.output === "replace" ? "write" : "read" });
     const segments = segmentsOf(source.blocks);
     if (!segments.length) fail("invalid_argument", "There's no text in this note to translate.");
     const chars = segments.reduce((n, s) => n + s.text.length, 0);
@@ -136,7 +152,7 @@ export const translateNote = action({
     if (chars > MAX_TRANSLATE_CHARS || chunks.length > MAX_TRANSLATE_CHUNKS) fail("limit_exceeded", "This note is too long to translate in one go. Split it into shorter notes first.");
     // Every chunk's call is held up front.
     const plan: PlannedCall[] = chunks.map((c) => ({ fast: false, inputChars: TRANSLATE_SYSTEM.length + 400 + c.reduce((n, s) => n + s.text.length + 16, 0), maxOutputTokens: TRANSLATE_MAX_OUTPUT }));
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing" });
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing", ...providedArgs(args.provided) });
     return await metered(ctx, holdId, async (meter) => {
       const done = new Map<string, InlineNode[]>();
       await inParallel(chunks, PARALLEL, async (chunk) => {
@@ -152,6 +168,6 @@ export const translateNote = action({
       }
       const preview = blocksToMarkdown(applyTranslations(source.blocks, translations)).slice(0, PREVIEW_CHARS);
       return { translations, preview, ...counts };
-    });
+    }, undefined, args.provided);
   },
 });

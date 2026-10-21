@@ -19,7 +19,9 @@ import { ReaderLabels } from "./lib/linkLabels";
 import { vScopeArg } from "./lib/scope";
 import type { PlannedCall } from "./lib/credits";
 import { FIND_TODOS_MAX_OUTPUT, findTodosInputChars, findTodosRequest, parseActionItems } from "./lib/ai/actionItems";
-import { gemini, metered } from "./ai";
+import { gemini, metered, providedArgs, requestNote } from "./ai";
+import { vProvidedContext } from "./lib/e2ee/ai";
+import { isSealed } from "./lib/e2ee/state";
 
 /** The selected text sent is at most this long, and the whole note at most this much Markdown. */
 const MAX_TEXT = 24_000;
@@ -36,7 +38,8 @@ export const source = internalQuery({
     const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
     if (doc.inTrash) fail("not_found", "Document not found.");
     let note: { title: string; text: string } | null = null;
-    if (args.withNote) {
+    // An encrypted note is never read here: the device sends it with the request.
+    if (args.withNote && !isSealed(doc)) {
       // Link labels as this person may see them (lib/linkLabels.ts), as for every AI read of a note.
       const blocks = await new ReaderLabels(ctx, profile).blocks((await liveBlocks(ctx, doc._id)).map(toWireBlock));
       // A note with nothing written in it (only its title) has no to-dos to find.
@@ -106,16 +109,24 @@ export interface ProposedTodo {
  * note: the person picks which to add, and the editor adds them.
  */
 export const find = action({
-  args: { scope: vScopeArg, documentId: v.string(), text: v.optional(v.string()) },
+  args: { scope: vScopeArg, documentId: v.string(), text: v.optional(v.string()), provided: v.optional(vProvidedContext) },
   handler: async (ctx, args): Promise<{ items: ProposedTodo[]; people: { profileId: string; displayName: string; isYou: boolean }[] }> => {
     await requireIdentity(ctx);
     const text = (args.text ?? "").slice(0, MAX_TEXT);
     const withNote = !text.trim();
     const plan: PlannedCall[] = [{ fast: false, inputChars: findTodosInputChars(withNote ? NOTE_CHARS : text.length), maxOutputTokens: FIND_TODOS_MAX_OUTPUT }];
     // The note's own scope decides (and pays), as for all writing help on a note.
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing" });
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing", ...providedArgs(args.provided) });
     return await metered(ctx, holdId, async (meter) => {
-      const { note, people } = await ctx.runQuery(internal.aiTodos.source, { documentId: args.documentId, withNote });
+      const found = await ctx.runQuery(internal.aiTodos.source, { documentId: args.documentId, withNote: withNote && !args.provided });
+      const people = found.people;
+      let note = found.note;
+      if (withNote && args.provided) {
+        const sent = await requestNote(ctx, args.documentId, args.provided);
+        // The note's Markdown starts with its title heading; the to-dos are in what follows.
+        const body = sent.text.replace(/^#[^\n]*\n?/, "").slice(0, NOTE_CHARS);
+        note = { title: sent.title, text: body.trim() ? body : "" };
+      }
       if (withNote && !note?.text.trim()) fail("invalid_argument", "There's nothing in this note to find to-dos in yet.");
       const raw = await gemini(findTodosRequest({ note, text: withNote ? undefined : text }), meter);
       const items = parseActionItems(raw, withNote ? note!.text : text).map((item): ProposedTodo => {
@@ -123,6 +134,6 @@ export const find = action({
         return { ...item, assigneeId, match: status };
       });
       return { items, people };
-    });
+    }, undefined, args.provided);
   },
 });

@@ -47,6 +47,9 @@ import {
 import { holdFor, metered } from "./ai";
 import { ensureInbox } from "./tasks";
 import { storedError } from "./aiChat";
+import { isSealed, spaceE2ee, switchesOf } from "./lib/e2ee/state";
+import { sealToInbox } from "./lib/e2ee/inboxSeal";
+import { sealedAiCopy } from "./lib/ai/indexing";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -245,7 +248,10 @@ async function material(ctx: Ctx, profile: Doc<"profiles">, scope: Scope, since:
     if (notes.length >= DIGEST_LIMITS.notes) break;
     if (d.archivedAt || d.kind === "template" || isInboxOrDigest(d, profile._id)) continue;
     if (!(await readDoc(d._id))) continue;
-    notes.push({ id: d.publicId, title: d.title || "Untitled", text: d.searchText.slice(0, DIGEST_LIMITS.noteChars), isNew: d.createdAt > since });
+    // An encrypted note: its readable copy for Foli AI (Background Foli AI on), else it's left out.
+    const copy = isSealed(d) ? await sealedAiCopy(ctx, d) : null;
+    if (isSealed(d) && !copy) continue;
+    notes.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : d.searchText).slice(0, DIGEST_LIMITS.noteChars), isNew: d.createdAt > since });
   }
 
   // Tasks: in a workspace only the person's own (assigned to them or made by them); in Personal, all.
@@ -322,6 +328,8 @@ export const start = internalMutation({
     if (!place) return await skip(ctx, row, "access");
     // No AI on the plan here: nothing is read or sent.
     if (!(await aiAccountFor(ctx, profile, place.scope)).allowed) return await skip(ctx, row, "plan");
+    // An encrypted space: only with Background Foli AI on (and Foli AI not off) (docs/E2EE_DESIGN.md §7.2).
+    if (!(await backgroundAiAllowed(ctx, place.scope))) return { status: "skipped", reason: "off" };
     const until = Date.now();
     const period = periodMs(row.frequency);
     const since = Math.max(row.lastAt ?? until - period, until - MAX_LOOKBACK_PERIODS * period);
@@ -356,17 +364,36 @@ export const deliver = internalMutation({
     const { blocks } = markdownToBlocks(unfence(args.markdown).trim(), { titleFromHeading: false });
     const body: WireBlock[] = blocks.slice(0, MAX_DIGEST_BLOCKS);
     const links: Doc<"documents">[] = [];
+    const labels = new Map<string, string>();
     for (const id of args.noteIds.slice(0, DIGEST_LIMITS.notes)) {
       const d = await getDocumentByPublicId(ctx, id);
-      if (d && !d.inTrash && accessAtLeast(await documentAccess(ctx, profile, d), "read")) links.push(d);
+      if (!d || d.inTrash || !accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
+      const copy = isSealed(d) ? await sealedAiCopy(ctx, d) : null;
+      if (isSealed(d) && !copy) continue;
+      labels.set(d.publicId, (copy ? copy.title : d.title) || "Untitled");
+      links.push(d);
     }
     if (links.length) {
       const last = body.filter((b) => b.parentId === null).reduce<string | null>((max, b) => (max === null || b.rank > max ? b.rank : max), null);
       const ranks = rankSequence(links.length + 1, last, null);
       body.push({ id: ulid(), type: "heading", parentId: null, rank: ranks[0]!, schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text: "Notes" }], props: { level: 2 } });
-      links.forEach((d, i) => body.push({ id: ulid(), type: "bulleted", parentId: null, rank: ranks[i + 1]!, schemaVersion: SCHEMA_VERSION, text: [{ type: "pageLink", documentId: d.publicId, label: d.title || "Untitled" }], props: {} }));
+      links.forEach((d, i) => body.push({ id: ulid(), type: "bulleted", parentId: null, rank: ranks[i + 1]!, schemaVersion: SCHEMA_VERSION, text: [{ type: "pageLink", documentId: d.publicId, label: labels.get(d.publicId) ?? "Untitled" }], props: {} }));
     }
-    const doc = await saveToInbox(ctx, profile, place, digestTitle(row.frequency, args.since, args.until, profile.timeZone, profile.locale), body);
+    const title = digestTitle(row.frequency, args.since, args.until, profile.timeZone, profile.locale);
+    // An encrypted space: one of the person's devices makes the note (sealed) from the inbox item.
+    if (await encryptedPlace(ctx, place.scope)) {
+      const { documentId } = await queueAiNote(ctx, profile, place, "digest", title, body);
+      await ctx.db.insert("notifications", {
+        profileId: profile._id,
+        ...(place.scope.kind === "workspace" ? { workspaceId: place.scope.workspaceId } : {}),
+        kind: "system",
+        title: `Your ${frequencyLabel(row.frequency)} digest is ready. It's added to your Inbox when one of your devices opens Folevi.`,
+        createdAt: Date.now(),
+      });
+      await ctx.db.patch(row._id, { lastAt: args.until, lastSkip: undefined, updatedAt: Date.now() });
+      return { status: "delivered", documentId };
+    }
+    const doc = await saveToInbox(ctx, profile, place, title, body);
     await ctx.db.insert("notifications", {
       profileId: profile._id,
       ...(place.scope.kind === "workspace" ? { workspaceId: place.scope.workspaceId } : {}),
@@ -379,6 +406,28 @@ export const deliver = internalMutation({
     return { status: "delivered", documentId: doc.publicId };
   },
 });
+
+/** Whether a place is end-to-end encrypted (above Standard): AI-written notes are then made on a device. */
+export async function encryptedPlace(ctx: Ctx, scope: Scope): Promise<boolean> {
+  const space = await spaceE2ee(ctx, scope);
+  return space !== null && space.level !== "standard";
+}
+
+/** Whether background Foli AI (digests, routines) may run in a place: always in Standard; in an encrypted space only with its switch. */
+export async function backgroundAiAllowed(ctx: Ctx, scope: Scope): Promise<boolean> {
+  const sw = switchesOf(await spaceE2ee(ctx, scope));
+  return sw.backgroundAi && sw.foliAi !== "off";
+}
+
+/**
+ * An AI-written note (a digest, a routine) for an encrypted place: sealed into the space's inbox for one of
+ * the person's devices to make under their Inbox page (docs/E2EE_DESIGN.md §5.7). Its id is chosen here.
+ */
+export async function queueAiNote(ctx: MutationCtx, profile: Doc<"profiles">, place: Place, source: "digest" | "routine", title: string, blocks: WireBlock[]): Promise<{ documentId: string }> {
+  const documentId = ulid();
+  await sealToInbox(ctx, place.scope, "app", { kind: "note", source, title, blocks, documentId, profileId: profile._id, at: Date.now() }, { for: profile._id, targetDocumentId: documentId });
+  return { documentId };
+}
 
 /**
  * Saves a note the person's AI wrote for them (a digest, a routine) under their Inbox page in `place`, with a

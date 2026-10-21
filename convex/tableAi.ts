@@ -34,13 +34,14 @@ import {
   type AiTable,
 } from "./lib/tableAi";
 import type { PromptRequest } from "@folevi/ai-prompts";
-import { gemini, metered } from "./ai";
+import { gemini, metered, providedArgs } from "./ai";
+import { vProvidedContext, type ProvidedContext } from "./lib/e2ee/ai";
 
 const vTable = v.object({ rows: v.array(v.array(v.string())), headerRow: v.boolean(), totalsRow: v.optional(v.boolean()) });
-const placeArgs = { scope: vScopeArg, documentId: v.optional(v.string()), table: vTable };
+const placeArgs = { scope: vScopeArg, documentId: v.optional(v.string()), table: vTable, provided: v.optional(vProvidedContext) };
 
-async function hold(ctx: ActionCtx, args: { scope: ScopeArg; documentId?: string }, plan: PlannedCall[]): Promise<Id<"aiCreditHolds">> {
-  const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing" });
+async function hold(ctx: ActionCtx, args: { scope: ScopeArg; documentId?: string; provided?: ProvidedContext }, plan: PlannedCall[]): Promise<Id<"aiCreditHolds">> {
+  const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing", ...providedArgs(args.provided) });
   return holdId;
 }
 

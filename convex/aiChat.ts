@@ -32,9 +32,11 @@ import { capabilities as modelCapabilities, provider } from "./lib/ai/provider";
 import { vAiAction } from "./lib/aiActions";
 import { wireRun } from "./lib/ai/tools/wire";
 import { NEW_CHAT_TITLE, bestBlock, citingSentences, passageBlock, cleanTitle, conversationFilename, conversationMarkdown, normalizeContext, titleFromQuestion, vAiContext, type AiContext, type MarkdownMessage } from "./lib/ai/chat";
-import { answerFromNotes, answerPlan, gemini, hideFollowUps, metered, type AnswerSink, type Settled } from "./ai";
+import { answerFromNotes, answerPlan, gemini, hideFollowUps, metered, providedArgs, providedPlan, streamSink, type AnswerSink, type Settled } from "./ai";
+import { checkProvidedSizes, vProvidedContext } from "./lib/e2ee/ai";
+import { failE2ee, requirePlainWriteInScope, spaceE2ee } from "./lib/e2ee/state";
 import { attachmentChips, claimAttachments, deleteConversationFiles, sweepUnsentAttachments, type AttachmentChip } from "./lib/ai/attachmentFiles";
-import { answerWithFiles, filesPlan, type FileForModel } from "./aiAttachments";
+import { answerWithFiles, filesPlan, providedFiles, type FileForModel } from "./aiAttachments";
 import { domainOf, entryPointsToShow, extractUrls, resolveLink } from "./lib/ai/web";
 import { hideRemember, vMemoryKind } from "./lib/ai/memory";
 import { refreshNoteRefs } from "./lib/ai/sharing";
@@ -200,6 +202,8 @@ const applied = (run: Doc<"aiRuns"> | null) => Boolean(run && (run.status === "d
 async function createConversation(ctx: MutationCtx, profile: Doc<"profiles">, scopeArg: ScopeArg, publicId: string | undefined, context: AiContext | undefined): Promise<Doc<"aiConversations">> {
   if (profile.aiEnabled === false) fail("forbidden", "Foli AI is turned off in your settings.");
   const { scope } = await resolveScope(ctx, profile, scopeArg);
+  // An encrypted space keeps its chats on the person's devices (aiChat records): none is stored here.
+  await requirePlainWriteInScope(ctx, scope);
   const id = publicId ?? ulid();
   if (!ULID.test(id)) fail("invalid_argument", "That conversation id isn't valid.");
   if (await byPublicId(ctx, id)) fail("not_found", GONE);
@@ -494,6 +498,8 @@ export const saveAsNote = mutation({
     await assertWritable(ctx, profile);
     const c = await requireConversation(ctx, profile, args.conversationId);
     const { scope } = await requireRowScope(ctx, profile, c, "edit", GONE);
+    // An encrypted space: the device makes the note (sealed) from its own copy of the chat.
+    await requirePlainWriteInScope(ctx, scope);
     const all = await allMessages(ctx, c);
     const messages = args.messageId ? oneAnswer(all, args.messageId) : all;
     if (!messages.some((m) => m.role === "assistant" && m.text.trim())) fail("invalid_argument", "There's nothing to save yet.");
@@ -602,6 +608,14 @@ export const post = internalMutation({
       if (text.length > MAX_MESSAGE) fail("invalid_argument", `That message is too long (at most ${MAX_MESSAGE.toLocaleString("en-US")} characters).`);
     }
     let c = await ownConversation(ctx, profile, args.conversationId);
+    // An encrypted space stores no chats (its devices keep them, sendSealed answers), and the agent, which
+    // reads and edits notes through server tools, isn't available there (docs/E2EE_DESIGN.md §5.7, §14 Q5).
+    const where = c ? scopeOfRow(c) : args.scope ? (await resolveScope(ctx, profile, args.scope)).scope : null;
+    const space = where ? await spaceE2ee(ctx, where) : null;
+    if (space && space.level !== "standard") {
+      if (args.agent) failE2ee("e2ee_unavailable", "Foli AI's agent isn't available in end-to-end encrypted spaces yet.", { feature: "agent" });
+      failE2ee("e2ee_required", "This space is end-to-end encrypted. Update Folevi to chat with Foli AI here.");
+    }
     if (!c) {
       // A new conversation (the client picked its id); anything else is gone.
       if (args.mode !== "send" || !args.scope) fail("not_found", GONE);
@@ -940,6 +954,119 @@ export const edit = action({
     await requireIdentity(ctx);
     const { messageId } = await ctx.runMutation(internal.aiChat.post, { mode: "edit", conversationId: args.conversationId, messageId: args.messageId, text: args.text });
     return { messageId, ...(await respond(ctx, messageId, args.web === true)) };
+  },
+});
+
+// ---------------------------------------------------------------------------------------------------
+// Encrypted spaces: an answer with nothing stored (docs/E2EE_DESIGN.md §7.2)
+// ---------------------------------------------------------------------------------------------------
+
+const vTurnSealed = v.object({ role: v.union(v.literal("user"), v.literal("assistant")), text: v.string() });
+
+/** An answer for an encrypted space's chat, returned to the device (which keeps the chat as an aiChat record). */
+export interface SealedAnswer {
+  status: "done" | "error";
+  text: string;
+  citations: { n: number; noteId: string; title: string }[];
+  webCitations: { n: number; url: string; title: string; domain: string }[];
+  searchEntryPoints: string[];
+  suggestions: string[];
+  memory: { kind: "tone" | "language" | "length" | "term" | "instruction"; text: string } | null;
+  error: { code: string; message: string; action?: string; reason?: string } | null;
+  usage: { credits: number; tokensIn: number; tokensOut: number } | null;
+}
+
+/**
+ * A chat turn in an encrypted space: the question, the conversation so far and the notes the device found
+ * (`provided`), answered from those only. Nothing is stored: no conversation or message rows; the answer
+ * streams into `streamId` (an ephemeral stream, deleted when it's done) and is returned. Regenerating or
+ * editing is the device sending the turn again. Refusals come back as `status: "error"`, as in `send`.
+ */
+export const sendSealed = action({
+  args: {
+    scope: vScopeArg,
+    text: v.string(),
+    history: v.array(vTurnSealed),
+    provided: vProvidedContext,
+    web: v.optional(v.boolean()),
+    streamId: v.optional(v.id("aiStreams")),
+  },
+  handler: async (ctx, args): Promise<SealedAnswer> => {
+    await requireIdentity(ctx);
+    const empty: SealedAnswer = { status: "error", text: "", citations: [], webCitations: [], searchEntryPoints: [], suggestions: [], memory: null, error: null, usage: null };
+    const question = args.text.trim();
+    if (!question) fail("invalid_argument", ASK_MESSAGES.noQuestion);
+    if (question.length > MAX_MESSAGE) fail("invalid_argument", `That message is too long (at most ${MAX_MESSAGE.toLocaleString("en-US")} characters).`);
+    checkProvidedSizes(args.provided);
+    const history = args.history.slice(-6).map((t) => ({ role: t.role, text: t.text.slice(0, 3000) }));
+    const prefs = await ctx.runQuery(internal.aiAgent.prefs, {});
+    const web = args.web === true;
+    const refusal = web && !prefs.webResearch ? WEB_OFF : web && !modelCapabilities().searchGrounding ? WEB_UNSUPPORTED : null;
+    if (refusal) return { ...empty, error: { code: "forbidden", message: refusal } };
+    const urls = prefs.webResearch ? extractUrls(question) : [];
+    const withWeb = web || urls.length > 0;
+    let files: FileForModel[];
+    try {
+      files = providedFiles(args.provided);
+      if (files.length && !prefs.attachments) fail("forbidden", "Reading attachments and recordings is turned off in Settings > AI.");
+    } catch (e) {
+      return { ...empty, error: storedError(e) };
+    }
+    const historyChars = history.reduce((n, t) => n + t.text.length + 12, 0);
+    const plan = files.length ? filesPlan({ questionChars: question.length, historyChars, notes: args.provided.notes.length, files }) : providedPlan(question.length, historyChars, args.provided);
+    let holdId: Id<"aiCreditHolds">;
+    try {
+      ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, plan, feature: files.length ? "attachments" : "chat", ...providedArgs(args.provided) }));
+    } catch (e) {
+      const error = storedError(e);
+      console.warn(JSON.stringify({ event: "ai.chat_refused", code: error.code, sealed: true }));
+      return { ...empty, error };
+    }
+    let sink: AnswerSink | undefined;
+    if (args.streamId) {
+      await ctx.runMutation(internal.ai.claimStream, { id: args.streamId, ephemeral: true });
+      sink = { ...streamSink(ctx, args.streamId), shown: (text: string) => hideFollowUps(hideRemember(text)) };
+    }
+    let cost: Settled | undefined;
+    try {
+      const out = await metered(
+        ctx,
+        holdId,
+        async (meter) =>
+          files.length
+            ? await answerWithFiles(ctx, { question, history, documentIds: [], files, sink, provided: args.provided }, meter)
+            : await answerFromNotes(ctx, { scope: args.scope, question, history, documentIds: [], notesOnly: true, sink, chat: true, remember: prefs.memory, provided: args.provided, ...(withWeb ? { web: { search: web, urls } } : {}) }, meter),
+        async (c) => {
+          cost = c;
+        },
+        args.provided,
+      );
+      const citations = out.notes.map((n, i) => ({ n: i + 1, noteId: n.id, title: n.title })).filter((c) => out.cited.has(c.n - 1));
+      const webCitations = await Promise.all(
+        (out.web ?? [])
+          .map((w, i) => ({ ...w, n: out.notes.length + i + 1 }))
+          .filter((w) => out.cited.has(w.n - 1))
+          .map(async (w) => {
+            const url = w.kind === "search" ? await resolveLink(w.url) : w.url;
+            return { n: w.n, url, title: w.title.slice(0, 200), domain: (url === w.url ? w.domain : domainOf(url)) || w.domain };
+          }),
+      );
+      return {
+        status: "done",
+        text: out.answer,
+        citations,
+        webCitations,
+        searchEntryPoints: "searchEntryPoint" in out && out.searchEntryPoint ? entryPointsToShow([out.searchEntryPoint]) : [],
+        suggestions: out.suggestions,
+        memory: "memory" in out && out.memory ? out.memory : null,
+        error: null,
+        usage: cost ?? null,
+      };
+    } catch (e) {
+      const error = storedError(e);
+      console.warn(JSON.stringify({ event: "ai.chat_error", code: error.code, sealed: true }));
+      return { ...empty, error, usage: cost ?? null };
+    }
   },
 });
 

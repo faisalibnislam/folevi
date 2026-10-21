@@ -49,7 +49,9 @@ import {
   toBase64,
   type AttachmentKind,
 } from "./lib/ai/attachments";
-import { ATTACHMENTS_OFF, canAttach, FILE_GONE, fileByPublicId, readableKind } from "./lib/ai/attachmentFiles";
+import { ATTACHMENTS_OFF, canAttach, FILE_GONE, fileByPublicId, providedFileKind, readableKind, SEALED_FILE } from "./lib/ai/attachmentFiles";
+import { providedSources, vProvidedContext, type ProvidedContext } from "./lib/e2ee/ai";
+import { failE2ee } from "./lib/e2ee/state";
 import { calculate } from "./lib/ai/tools/calculate";
 import { withGeminiFile } from "./lib/ai/geminiFiles";
 import {
@@ -67,7 +69,7 @@ import {
 import { docxToText } from "./lib/ai/docx";
 import { toolDeclarations } from "./lib/ai/tools";
 import { untrusted } from "./lib/ai/tools/untrusted";
-import { FOLLOW_UPS, metered, splitFollowUps, type AnswerOutput, type AnswerSink, type Settled, type SourceNote } from "./ai";
+import { FOLLOW_UPS, metered, providedArgs, splitFollowUps, type AnswerOutput, type AnswerSink, type Settled, type SourceNote } from "./ai";
 
 const GONE = "That conversation isn't there anymore.";
 /** Model calls an answer about spreadsheet data may make (each round of `calculate`, then the answer). */
@@ -85,9 +87,21 @@ export interface FileForModel {
   mimeType: string;
   size: number;
   kind: AttachmentKind;
-  storageId: Id<"_storage">;
+  /** Where its bytes are stored; unset for a file an encrypted space's device sent with the request. */
+  storageId?: Id<"_storage">;
+  /** The bytes, when the device sent them with the request (`provided.files`, docs/E2EE_DESIGN.md §7.2). */
+  bytes?: Uint8Array;
   /** Sent with this message (not carried from an earlier one): it must be read, or the answer fails. */
   current: boolean;
+}
+
+/** Files an encrypted space's device sent with a request, as the model reads them (each must be readable). */
+export function providedFiles(provided: ProvidedContext | undefined): FileForModel[] {
+  return (provided?.files ?? []).map((f, i) => {
+    const check = providedFileKind(f.name, f.mime, f.bytes.byteLength);
+    if (!check.ok) fail("unsupported_file", check.reason);
+    return { fileId: `provided-${i + 1}`, name: f.name.slice(0, 200), mimeType: f.mime, size: f.bytes.byteLength, kind: check.kind, bytes: new Uint8Array(f.bytes), current: true };
+  });
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -186,6 +200,8 @@ export const forTurn = internalQuery({
 
 /** A file's bytes from storage. */
 async function bytesOf(ctx: ActionCtx, f: FileForModel): Promise<Uint8Array> {
+  if (f.bytes) return f.bytes;
+  if (!f.storageId) fail("not_found", FILE_GONE);
   const blob = await ctx.storage.get(f.storageId);
   if (!blob) fail("not_found", FILE_GONE);
   return new Uint8Array(await blob.arrayBuffer());
@@ -316,6 +332,8 @@ export interface FilesInput {
   documentIds: string[];
   files: FileForModel[];
   sink?: AnswerSink;
+  /** An encrypted space: the notes as the device sent them (nothing is read here). */
+  provided?: ProvidedContext;
 }
 
 /**
@@ -327,7 +345,12 @@ export async function answerWithFiles(ctx: ActionCtx, input: FilesInput, meter: 
   const { sink } = input;
   await sink?.phase?.("reading");
   const notes: SourceNote[] = [];
-  for (const id of input.documentIds) notes.push(await ctx.runQuery(internal.ai.noteText, { documentId: id }));
+  if (input.provided) notes.push(...providedSources(input.provided));
+  else
+    for (const id of input.documentIds) {
+      const note = await ctx.runQuery(internal.ai.noteText, { documentId: id });
+      if (note) notes.push(note);
+    }
   const fileParts = await filesAsParts(ctx, input.files);
   const sheet = input.files.some((f) => isSheet(f.kind));
   const sources = notes.map((n, i) => `[${i + 1}] ${n.title}\n${n.text}`).join("\n\n---\n\n");
@@ -418,7 +441,9 @@ async function recordingFor(ctx: QueryCtx, profile: Doc<"profiles">, args: { doc
   if (!aiPrefsOf(profile).attachments) fail("forbidden", ATTACHMENTS_OFF);
   const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
   const f = await fileByPublicId(ctx, args.fileId);
-  if (!f || f.documentId !== doc._id || f.status !== "ready" || !(f.kind === "audio" || f.mimeType.startsWith("audio/"))) fail("not_found", "That recording isn't there anymore.");
+  if (!f || f.documentId !== doc._id || f.status !== "ready") fail("not_found", "That recording isn't there anymore.");
+  if (f.sealed !== undefined) failE2ee("e2ee_required", SEALED_FILE);
+  if (!(f.kind === "audio" || f.mimeType.startsWith("audio/"))) fail("not_found", "That recording isn't there anymore.");
   if (!capabilities().audioIn) fail("maintenance", "The AI model in use can't listen to recordings.");
   let duration: number | undefined;
   for (const b of await liveBlocks(ctx, doc._id)) {
@@ -431,6 +456,19 @@ async function recordingFor(ctx: QueryCtx, profile: Doc<"profiles">, args: { doc
   const seconds = recordingSeconds(duration, f.size);
   if (seconds > MAX_TRANSCRIBE_SECONDS) fail("limit_exceeded", `This recording is too long to transcribe. Recordings up to ${MAX_TRANSCRIBE_SECONDS / 3600} hours can be transcribed.`);
   return { fileId: f.publicId, name: f.filename, mimeType: f.mimeType, size: f.size, kind: "audio", storageId: f.storageId, current: true, seconds };
+}
+
+/** A recording an encrypted note's device sent with the request: one audio file, read inline. */
+async function providedRecording(ctx: ActionCtx, provided: ProvidedContext, seconds: number | undefined): Promise<RecordingForModel> {
+  const [file, ...rest] = providedFiles(provided);
+  if (!file || rest.length || file.kind !== "audio") fail("invalid_argument", "Send the recording with the request.");
+  if (!(await ctx.runQuery(internal.stickiesAi.photoAllowed, {}))) fail("forbidden", ATTACHMENTS_OFF);
+  if (!capabilities().audioIn) fail("maintenance", "The AI model in use can't listen to recordings.");
+  const length = recordingSeconds(seconds, file.size);
+  if (length > MAX_TRANSCRIBE_SECONDS) fail("limit_exceeded", `This recording is too long to transcribe. Recordings up to ${MAX_TRANSCRIBE_SECONDS / 3600} hours can be transcribed.`);
+  // Read inline in one go: windows over an uploaded copy would leave the recording with Google's Files API.
+  if (transcriptWindows(length).length > 1) fail("limit_exceeded", "Recordings this long in encrypted notes can't be transcribed yet.");
+  return { ...file, seconds: length };
 }
 
 /** A note's recording the person may have transcribed (see recordingFor). */
@@ -509,14 +547,24 @@ const quietly = async () => true;
  * (nothing is written to the note here) and what it cost.
  */
 export const transcribe = action({
-  args: { scope: vScopeArg, documentId: v.string(), fileId: v.string() },
+  args: {
+    scope: vScopeArg,
+    documentId: v.string(),
+    fileId: v.string(),
+    /**
+     * An encrypted note (docs/E2EE_DESIGN.md §7.2): the recording as the device decrypted it (one file in
+     * `provided.files`, up to 8 MB), with its length in seconds. It's read for this request only.
+     */
+    provided: v.optional(vProvidedContext),
+    seconds: v.optional(v.number()),
+  },
   handler: async (ctx, args): Promise<{ text: string; credits: number }> => {
     await requireIdentity(ctx);
-    const f = await ctx.runQuery(internal.aiAttachments.audioFor, { documentId: args.documentId, fileId: args.fileId });
+    const f = args.provided ? await providedRecording(ctx, args.provided, args.seconds) : await ctx.runQuery(internal.aiAttachments.audioFor, { documentId: args.documentId, fileId: args.fileId });
     const windows = transcriptWindows(f.seconds);
-    const inline = f.size <= ATTACHMENT_LIMITS.audio && windows.length === 1;
+    const inline = Boolean(f.bytes) || (f.size <= ATTACHMENT_LIMITS.audio && windows.length === 1);
     const plan: PlannedCall[] = transcriptPlan(f.seconds, "hold");
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "transcription" });
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "transcription", ...providedArgs(args.provided) });
     let cost: Settled | undefined;
     const text = await metered(
       ctx,
@@ -528,7 +576,7 @@ export const transcribe = action({
           return cleanTranscript(res.text);
         }
         // The stored Blob goes to Google as it is: a long recording is never copied in memory here.
-        const blob = await ctx.storage.get(f.storageId);
+        const blob = f.storageId ? await ctx.storage.get(f.storageId) : null;
         if (!blob) fail("not_found", FILE_GONE);
         return await withGeminiFile(blob, { mimeType: f.mimeType, displayName: "Folevi recording" }, async (file) => {
           const audio: Part = { fileData: { mimeType: f.mimeType, fileUri: file.uri } };

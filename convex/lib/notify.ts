@@ -3,6 +3,8 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { accessAtLeast, documentAccess } from "./auth";
 import { schedulePush } from "./push";
+import { scopeOfRow } from "./scope";
+import { isLocked, isSealed, spaceE2ee, switchesOf } from "./e2ee/state";
 
 /** The web app's address for links in emails and redirects (no trailing slash). */
 export const appUrl = () => (process.env.FOLEVI_APP_URL ?? "https://app.folevi.com").replace(/\/$/, "");
@@ -92,6 +94,51 @@ export async function noteMode(ctx: QueryCtx, profileId: Id<"profiles">, documen
   return row?.mode ?? null;
 }
 
+// ---------------------------------------------------------------- end-to-end encrypted notes (§7.7)
+
+/** What a notification about an encrypted note may say: generic, or the preview the acting device sent. */
+export interface SealedPreview {
+  /** The note's title. */
+  title: string;
+  /** The line mentioned in, or the comment's first words. */
+  excerpt?: string;
+}
+
+/** How emails name an encrypted note when no preview may be shown. */
+export const SEALED_NOTE_NAME = "an encrypted note";
+const PREVIEW_CHARS = 140;
+
+/**
+ * The title and body of a notification about an encrypted note (docs/E2EE_DESIGN.md §7.7): generic unless
+ * the space has notification previews on and the device supplied the text.
+ */
+export function sealedNotificationText(kind: Kind, actorName: string, preview?: SealedPreview): { title: string; excerpt?: string } {
+  const who = actorName.slice(0, 80) || "Someone";
+  const title = preview?.title.trim().slice(0, PREVIEW_CHARS);
+  const excerpt = preview?.excerpt?.trim().slice(0, PREVIEW_CHARS) || undefined;
+  switch (kind) {
+    case "mention":
+      return title ? { title: `${who} mentioned you in ${title}`, excerpt } : { title: `${who} mentioned you in a note` };
+    case "comment":
+      return title ? { title: `${who} commented on ${title}`, excerpt } : { title: `${who} commented on a note` };
+    case "reply":
+      return title ? { title: `${who} replied to your comment on ${title}`, excerpt } : { title: `${who} replied to your comment` };
+    case "share":
+      return title ? { title: `${who} shared ${title} with you` } : { title: `${who} shared a note with you` };
+    case "share_change":
+      return { title: `${who} changed your access to a note` };
+    case "invite":
+    case "system":
+      return title ? { title: title } : { title: "Something changed in an encrypted note" };
+  }
+}
+
+/** Whether the server may show a sealed note's preview: the space allows previews and the note isn't locked. */
+export async function sealedPreviewAllowed(ctx: QueryCtx, doc: Doc<"documents">): Promise<boolean> {
+  if (await isLocked(ctx, doc)) return false;
+  return switchesOf(await spaceE2ee(ctx, scopeOfRow(doc))).notificationPreviews;
+}
+
 /** Repeated events from the same person in the same place within this window fold into one notification. */
 export const BURST_WINDOW_MS = 10 * 60_000;
 
@@ -121,9 +168,20 @@ export async function notify(
     title: string;
     excerpt?: string;
     email?: { key: NotificationEmailKey; role?: string };
+    /** An encrypted note: the text the acting device supplied (used only with notification previews on). */
+    preview?: SealedPreview;
   },
 ): Promise<void> {
   if (input.recipientId === input.actor._id) return;
+  // An encrypted note: the server has no title or text to show, only what the device supplied (§7.7).
+  const sealed = Boolean(input.doc && isSealed(input.doc));
+  let sealedTitle: string | undefined;
+  if (sealed) {
+    const preview = input.preview && (await sealedPreviewAllowed(ctx, input.doc!)) ? input.preview : undefined;
+    const text = sealedNotificationText(input.kind, input.actor.displayName, preview);
+    input = { ...input, title: text.title, excerpt: text.excerpt };
+    sealedTitle = preview?.title.trim().slice(0, 120) || undefined;
+  }
   const recipient = await ctx.db.get(input.recipientId);
   if (!recipient || recipient.status !== "active") return;
   if (input.doc) {
@@ -159,6 +217,7 @@ export async function notify(
       commentId: input.commentId ?? burst.commentId,
       count: (burst.count ?? 1) + 1,
       createdAt: now,
+      ...(sealed ? { sealedDocument: true } : {}),
     });
     return;
   }
@@ -176,6 +235,7 @@ export async function notify(
     body: input.excerpt?.slice(0, 140),
     createdAt: now,
     ...(inApp ? {} : { silent: true, readAt: now }),
+    ...(sealed ? { sealedDocument: true } : {}),
   });
   // Mentions also reach the person's browsers and iPhones and iPads that asked for push (only who and
   // where, never note text).
@@ -192,7 +252,7 @@ export async function notify(
   if (!input.email || !input.doc || !emailNow) return;
   const vars: Record<string, string | number> = {
     actorName: input.actor.displayName.slice(0, 80),
-    documentTitle: (input.doc.title || "Untitled").slice(0, 120),
+    documentTitle: sealed ? (sealedTitle ?? SEALED_NOTE_NAME) : (input.doc.title || "Untitled").slice(0, 120),
     documentUrl: `${appUrl()}/d/${input.doc.publicId}`,
     preferencesUrl: `${appUrl()}/settings/notifications`,
   };
@@ -234,6 +294,8 @@ export function workspaceRoleLabel(role: string, memberAccess?: string): string 
 }
 
 const quote = (s: string, max: number) => `“${(s.trim() || "Untitled").slice(0, max)}”`;
+/** A note as access-change texts name it: its title, or "a note" when it's encrypted (the server can't read it). */
+const noteName = (doc: Doc<"documents">) => (isSealed(doc) ? "a note" : quote(doc.title, 100));
 
 export type AccessChange =
   | { type: "document_role"; doc: Doc<"documents">; role: string }
@@ -248,11 +310,11 @@ export type AccessChange =
 export function describeAccessChange(change: AccessChange): string {
   switch (change.type) {
     case "document_role":
-      return `changed your access to ${quote(change.doc.title, 100)} to ${shareRoleLabel(change.role)}.`;
+      return `changed your access to ${noteName(change.doc)} to ${shareRoleLabel(change.role)}.`;
     case "document_revoked":
-      return `removed your access to ${quote(change.doc.title, 100)}.`;
+      return `removed your access to ${noteName(change.doc)}.`;
     case "document_restricted":
-      return `limited ${quote(change.doc.title, 100)} to people who were given access, so you can no longer open it.`;
+      return `limited ${noteName(change.doc)} to people who were given access, so you can no longer open it.`;
     case "workspace_role":
       return `changed your role in ${quote(change.workspace.name, 80)} to ${workspaceRoleLabel(change.role)}.`;
     case "workspace_removed":
@@ -295,6 +357,7 @@ export async function notifyAccessChange(ctx: MutationCtx, input: { recipientId:
     documentId: stillReadable ? doc!._id : undefined,
     title: `${input.actor.displayName} ${summary}`.slice(0, 200),
     createdAt: now,
+    ...(doc && isSealed(doc) ? { sealedDocument: true } : {}),
     ...(inApp ? {} : { silent: true, readAt: now }),
   });
   if (!emailNow) return;

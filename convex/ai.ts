@@ -42,6 +42,9 @@ import { setMeterMemory, takeRemember, type MemoryKind } from "./lib/ai/memory";
 import { vAiFeature, type AiFeature } from "./lib/ai/usage";
 import { finishWriting, needsInstruction, needsSelection, readsNoteWith, taskSpec, textOrNote, usesFlashLite, writingInputChars, writingRequest, writingTask } from "./lib/ai/writing";
 import { withSyncedForReader } from "./lib/synced";
+import { failE2ee, isSealed, readableFor } from "./lib/e2ee/state";
+import { aiGate, providedMemories, providedMeta, providedNote, providedSources, vProvidedContext, vProvidedMeta, type ProvidedContext } from "./lib/e2ee/ai";
+import { memoryPrompt } from "./lib/ai/memory";
 import {
   ASK_MESSAGES,
   BRIEF_EMPTY,
@@ -122,14 +125,17 @@ export const cancelStream = mutation({
   },
 });
 
-/** Checks the caller owns a pending stream (before any AI call writes to it). */
+/**
+ * Checks the caller owns a pending stream (before any AI call writes to it). A request about an encrypted
+ * space marks it `ephemeral`: it is deleted as soon as the answer is finished (docs/E2EE_DESIGN.md §7.2).
+ */
 export const claimStream = internalMutation({
-  args: { id: v.id("aiStreams") },
+  args: { id: v.id("aiStreams"), ephemeral: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const row = await ctx.db.get(args.id);
     if (!row || row.profileId !== profile._id || row.status !== "pending") fail("not_found", "That AI request has expired. Try again.");
-    await ctx.db.patch(row._id, { status: "streaming", updatedAt: Date.now() });
+    await ctx.db.patch(row._id, { status: "streaming", updatedAt: Date.now(), ...(args.ephemeral ? { kind: "answer" as const, ephemeral: true } : {}) });
     return null;
   },
 });
@@ -140,6 +146,11 @@ export const writeStream = internalMutation({
   handler: async (ctx, args) => {
     const row = await ctx.db.get(args.id);
     if (!row || row.status === "cancelled") return false;
+    // An answer about an encrypted space isn't kept: the request returns it, and the row goes now.
+    if (args.status && row.ephemeral) {
+      await ctx.db.delete(row._id);
+      return true;
+    }
     await ctx.db.patch(row._id, { text: args.text.slice(0, 60_000), status: args.status ?? "streaming", updatedAt: Date.now() });
     if (args.status) await ctx.scheduler.runAfter(STREAM_TTL_MS, internal.ai.dropStream, { id: row._id });
     return true;
@@ -184,7 +195,7 @@ export interface AnswerSink {
 }
 
 /** A sink writing into an `aiStreams` row. */
-function streamSink(ctx: RunCtx, id: Id<"aiStreams">): AnswerSink {
+export function streamSink(ctx: RunCtx, id: Id<"aiStreams">): AnswerSink {
   return {
     write: (text) => ctx.runMutation(internal.ai.writeStream, { id, text }),
     finish: async (text) => void (await ctx.runMutation(internal.ai.writeStream, { id, text, status: "done" })),
@@ -243,23 +254,30 @@ export const begin = internalMutation({
     plan: v.optional(v.array(vPlannedCall)),
     /** What the credits are spent on, for the usage card (lib/ai/usage.ts). */
     feature: v.optional(vAiFeature),
+    /** The ids of the notes an encrypted space's device sent with the request (lib/e2ee/ai.ts), never their text. */
+    provided: v.optional(vProvidedMeta),
   },
-  handler: async (ctx, args): Promise<{ holdId: Id<"aiCreditHolds"> }> => {
+  handler: async (ctx, args): Promise<{ holdId: Id<"aiCreditHolds">; sealed: boolean }> => {
     const profile = await requireProfile(ctx);
     if (profile.aiEnabled === false) fail("forbidden", ASK_MESSAGES.aiOff);
     const docs = [...(args.documentId ? [args.documentId] : []), ...(args.documentIds ?? [])].slice(0, 12);
     let target: Scope;
     const also: Scope[] = [];
+    const rows: Doc<"documents">[] = [];
     if (docs.length && args.noteOnly) {
       target = scopeOfRow((await requireDocument(ctx, profile, docs[0]!, "read")).doc);
     } else {
       target = (await resolveScope(ctx, profile, args.scope)).scope;
     }
     for (const id of docs) {
-      const home = scopeOfRow((await requireDocument(ctx, profile, id, "read")).doc);
+      const { doc } = await requireDocument(ctx, profile, id, "read");
+      rows.push(doc);
+      const home = scopeOfRow(doc);
       if (!sameScope(home, target)) also.push(home);
     }
-    return { holdId: await holdFor(ctx, profile, target, (args.plan ?? []) as PlannedCall[], also, args.feature) };
+    // End-to-end encryption: Foli AI allowed in every scope involved, no locked note, a valid provided context.
+    const gate = await aiGate(ctx, profile, [target, ...also], rows, args.provided);
+    return { holdId: await holdFor(ctx, profile, target, (args.plan ?? []) as PlannedCall[], also, args.feature), sealed: gate.sealed };
   },
 });
 
@@ -304,15 +322,25 @@ export interface Settled {
  * hears what it cost (an AI chat stores it on the answer). The person's saved preferences (memory, when
  * it's on) ride on the meter, so every call the work makes gets them (lib/ai/memory.ts).
  */
-export async function metered<T>(ctx: SettleCtx, holdId: Id<"aiCreditHolds">, work: (meter: CallUsage[]) => Promise<T>, onSettled?: (cost: Settled) => Promise<void>): Promise<T> {
+export async function metered<T>(
+  ctx: SettleCtx,
+  holdId: Id<"aiCreditHolds">,
+  work: (meter: CallUsage[]) => Promise<T>,
+  onSettled?: (cost: Settled) => Promise<void>,
+  provided?: ProvidedContext,
+): Promise<T> {
   const meter: CallUsage[] = [];
   try {
     let memory: string | null = null;
-    try {
-      memory = await ctx.runQuery(internal.aiMemory.forHold, { holdId });
-    } catch {
-      /* answered without preferences */
-    }
+    // An encrypted space's device sends the person's preferences with the request (they're sealed records there).
+    const sent = providedMemories(provided);
+    if (sent) memory = memoryPrompt(sent);
+    else
+      try {
+        memory = await ctx.runQuery(internal.aiMemory.forHold, { holdId });
+      } catch {
+        /* answered without preferences */
+      }
     setMeterMemory(meter, memory);
     return await work(meter);
   } finally {
@@ -330,9 +358,15 @@ export async function metered<T>(ctx: SettleCtx, holdId: Id<"aiCreditHolds">, wo
 /** A note as Markdown, if this person can read it (the note being worked on). */
 export const noteText = internalQuery({
   args: { documentId: v.string() },
-  handler: async (ctx, args): Promise<SourceNote> => {
+  handler: async (ctx, args): Promise<SourceNote | null> => {
     const profile = await requireProfile(ctx);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
+    // An encrypted note: its readable copy for Foli AI when the space keeps one, else nothing (the device
+    // sends the note with the request instead).
+    if (isSealed(doc)) {
+      const copy = await readableFor(ctx, doc, "ai");
+      return copy ? { id: doc.publicId, title: copy.title || "Untitled", text: copy.text.slice(0, FOCUS_CHARS) } : null;
+    }
     // Link labels as this person may see them (lib/linkLabels.ts): the AI never learns a title they can't.
     // With its synced blocks' content, as this person can see it (lib/synced.ts).
     const blocks = await new ReaderLabels(ctx, profile).blocks(await withSyncedForReader(ctx, profile, (await liveBlocks(ctx, doc._id)).map(toWireBlock)));
@@ -340,6 +374,21 @@ export const noteText = internalQuery({
     return { id: doc.publicId, title: doc.title || "Untitled", text };
   },
 });
+
+/**
+ * The note a request about one note works on: as an encrypted space's device sent it (`provided`), or read
+ * here (ai.noteText). An encrypted note that came without its text is refused (an old client).
+ */
+export async function requestNote(ctx: Pick<ActionCtx, "runQuery">, documentId: string, provided?: ProvidedContext): Promise<SourceNote> {
+  const sent = providedNote(provided, documentId);
+  if (sent) return sent;
+  const note = provided ? null : await ctx.runQuery(internal.ai.noteText, { documentId });
+  if (!note) failE2ee("e2ee_required", "This note is end-to-end encrypted. Update Folevi to use Foli AI with it.");
+  return note;
+}
+
+/** What `ai.begin` gets about a provided context: the ids only (none of its text). */
+export const providedArgs = (provided: ProvidedContext | undefined) => (provided ? { provided: providedMeta(provided) } : {});
 
 /** Vector matches below this cosine similarity are left out (unrelated text still has a nearest neighbour). */
 const MIN_VECTOR_SCORE = 0.55;
@@ -424,13 +473,16 @@ export const gather = internalQuery({
       if (!d || !inScope(d, scope) || d.inTrash || d.deletedAt !== undefined || d.archivedAt || d.kind === "template" || d.publicId === args.exclude) continue;
       if (folder && d.folderId !== folder._id) continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
-      const title = d.title || "Untitled";
+      // An encrypted note is read only through its readable copy for Foli AI (Background Foli AI on).
+      const copy = isSealed(d) ? await readableFor(ctx, d, "ai") : null;
+      if (isSealed(d) && !copy) continue;
+      const title = copy ? copy.title || "Untitled" : d.title || "Untitled";
       const chunks = (passages.get(id) ?? []).slice(0, PASSAGES_PER_NOTE);
       if (chunks.length) {
         const ordered = [...chunks].sort((a, b) => a.chunk.chunkIndex - b.chunk.chunkIndex);
         out.push({ id: d.publicId, title, text: ordered.map((c) => c.chunk.text).join("\n\n…\n\n").slice(0, NOTE_CHARS), blockIds: [...new Set(chunks.flatMap((c) => c.chunk.blockIds))] });
       } else {
-        out.push({ id: d.publicId, title, text: d.searchText.slice(0, NOTE_CHARS) });
+        out.push({ id: d.publicId, title, text: (copy ? copy.text : d.searchText).slice(0, NOTE_CHARS) });
       }
     }
     if (out.length) return fitToBudget(dedupePassages(out), SOURCES_TOKENS, Math.ceil(NOTE_CHARS / 4));
@@ -454,7 +506,9 @@ export const gather = internalQuery({
       if (out.length >= args.limit) break;
       if (d.publicId === args.exclude || d.archivedAt || d.kind === "template") continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
-      out.push({ id: d.publicId, title: d.title || "Untitled", text: d.searchText.slice(0, NOTE_CHARS), recent: true });
+      const copy = isSealed(d) ? await readableFor(ctx, d, "ai") : null;
+      if (isSealed(d) && !copy) continue;
+      out.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : d.searchText).slice(0, NOTE_CHARS), recent: true });
     }
     return fitToBudget(out, SOURCES_TOKENS, Math.ceil(NOTE_CHARS / 4));
   },
@@ -498,6 +552,11 @@ export interface AnswerInput {
   web?: { search: boolean; urls: string[] };
   /** A chat with memory on: the answer may offer to remember a preference (lib/ai/memory.ts). */
   remember?: boolean;
+  /**
+   * An encrypted space (lib/e2ee/ai.ts): the notes the device gathered (the ones asked about, then its own
+   * search's). Nothing is read or searched on the server for it, and no plan of changes is offered.
+   */
+  provided?: ProvidedContext;
 }
 
 export interface AnswerOutput {
@@ -527,8 +586,13 @@ export async function answerFromNotes(ctx: ActionCtx, input: AnswerInput, meter:
   const notes: SourceNote[] = [];
   let act = false;
   let queries: string[] = [question];
-  for (const id of input.documentIds) notes.push(await ctx.runQuery(internal.ai.noteText, { documentId: id }));
-  if (!input.notesOnly) {
+  if (input.provided) notes.push(...providedSources(input.provided));
+  else
+    for (const id of input.documentIds) {
+      const note = await ctx.runQuery(internal.ai.noteText, { documentId: id });
+      if (note) notes.push(note);
+    }
+  if (!input.notesOnly && !input.provided) {
     await sink?.phase?.("searching");
     const raw = await gemini(searchTermsRequest({ question, history }), meter);
     act = parseAct(raw);
@@ -592,6 +656,8 @@ export const ask = action({
     history: v.optional(v.array(vTurn)),
     /** Write the answer into this stream as it's generated (startStream). */
     streamId: v.optional(v.id("aiStreams")),
+    /** An encrypted space: the notes the device gathered for the question (lib/e2ee/ai.ts). */
+    provided: v.optional(vProvidedContext),
   },
   handler: async (ctx, args): Promise<{ answer: string; sources: { id: string; title: string }[]; actions?: AiAction[] }> => {
     // Signed in (checked here), then profile, scope access and budget (ai.begin).
@@ -600,27 +666,41 @@ export const ask = action({
     if (!question) fail("invalid_argument", ASK_MESSAGES.noQuestion);
     const history = (args.history ?? []).slice(-6).map((t) => ({ role: t.role, text: t.text.slice(0, 3000) }));
     const historyChars = history.reduce((n, t) => n + t.text.length + 12, 0);
-    const plan = answerPlan({ questionChars: question.length, historyChars, focusNotes: args.documentId ? 1 : 0, search: args.range !== "note" });
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: args.range === "note", plan, feature: "chat" });
-    return await metered(ctx, holdId, async (meter) => {
-      if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
-      const out = await answerFromNotes(ctx, {
-        scope: args.scope,
-        question,
-        history,
-        documentIds: args.documentId ? [args.documentId] : [],
-        notesOnly: args.range === "note",
-        folderId: args.folderId,
-        sink: args.streamId ? streamSink(ctx, args.streamId) : undefined,
-      }, meter);
-      if (out.actions) return { answer: out.answer, sources: [], actions: out.actions };
-      return {
-        answer: out.answer,
-        sources: out.notes.map((n, i) => ({ id: n.id, title: n.title, i })).filter((n) => out.cited.has(n.i)).map(({ id, title }) => ({ id, title })),
-      };
-    });
+    const provided = args.provided;
+    const plan = provided ? providedPlan(question.length, historyChars, provided) : answerPlan({ questionChars: question.length, historyChars, focusNotes: args.documentId ? 1 : 0, search: args.range !== "note" });
+    const { holdId, sealed } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: args.range === "note", plan, feature: "chat", ...(provided ? { provided: providedMeta(provided) } : {}) });
+    return await metered(
+      ctx,
+      holdId,
+      async (meter) => {
+        if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId, ephemeral: sealed });
+        const out = await answerFromNotes(ctx, {
+          scope: args.scope,
+          question,
+          history,
+          documentIds: args.documentId ? [args.documentId] : [],
+          notesOnly: args.range === "note",
+          folderId: args.folderId,
+          sink: args.streamId ? streamSink(ctx, args.streamId) : undefined,
+          provided,
+        }, meter);
+        if (out.actions) return { answer: out.answer, sources: [], actions: out.actions };
+        return {
+          answer: out.answer,
+          sources: out.notes.map((n, i) => ({ id: n.id, title: n.title, i })).filter((n) => out.cited.has(n.i)).map(({ id, title }) => ({ id, title })),
+        };
+      },
+      undefined,
+      provided,
+    );
   },
 });
+
+/** The estimate held for an answer from provided notes: no search call, the notes as sent. */
+export function providedPlan(questionChars: number, historyChars: number, provided: ProvidedContext): PlannedCall[] {
+  const notesChars = provided.notes.reduce((n, x) => n + x.markdown.length + x.title.length + 80, 0);
+  return [{ fast: false, inputChars: PERSONA.length + 600 + questionChars + historyChars + notesChars, maxOutputTokens: 8192 }];
+}
 
 /**
  * Writing help (lib/ai/writing.ts has every task): rewrite a selection (improve, fix, shorter, a tone,
@@ -643,6 +723,8 @@ export const write = action({
     language: v.optional(v.string()),
     /** Write the text into this stream as it's generated (startStream). */
     streamId: v.optional(v.id("aiStreams")),
+    /** An encrypted note: the note as the device read it (lib/e2ee/ai.ts). */
+    provided: v.optional(vProvidedContext),
   },
   handler: async (ctx, args): Promise<{ text: string; title?: string; mindmap?: string }> => {
     await requireIdentity(ctx);
@@ -657,10 +739,11 @@ export const write = action({
     const json = Boolean(taskSpec(task).json);
     // Writing help works on one note (or text from it), so that note's scope decides.
     const plan: PlannedCall[] = [{ fast, inputChars: writingInputChars(task, text, instruction, readsThisNote ? FOCUS_CHARS : 0), maxOutputTokens: taskSpec(task).maxOutputTokens }];
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing" });
+    const provided = args.provided;
+    const { holdId, sealed } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing", ...(provided ? { provided: providedMeta(provided) } : {}) });
     return await metered(ctx, holdId, async (meter) => {
-      if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
-      const note = readsThisNote ? await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId! }) : null;
+      if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId, ephemeral: sealed });
+      const note = readsThisNote ? (providedNote(provided, args.documentId) ?? (provided ? null : await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId! }))) : null;
       const out = await streamed(ctx, json ? undefined : args.streamId, writingRequest({ task, note, text, instruction, language: args.language }, fast), meter);
       if (!json || !args.streamId) return finishWriting(task, out);
       try {
@@ -671,7 +754,7 @@ export const write = action({
         await ctx.runMutation(internal.ai.writeStream, { id: args.streamId, text: "", status: "error" });
         throw e;
       }
-    });
+    }, undefined, provided);
   },
 });
 
@@ -686,6 +769,8 @@ export const flowchart = action({
     mode: v.union(v.literal("create"), v.literal("update")),
     instruction: v.string(),
     current: v.optional(v.string()),
+    /** An encrypted space: consent and preferences from the device (the chart itself is in `current`). */
+    provided: v.optional(vProvidedContext),
   },
   handler: async (ctx, args): Promise<FlowDraft> => {
     await requireIdentity(ctx);
@@ -694,14 +779,14 @@ export const flowchart = action({
     const current = args.mode === "update" ? flowchartForPrompt(args.current ?? "") : null;
     if (args.mode === "update" && !current) fail("invalid_argument", ASK_MESSAGES.noFlowchart);
     const plan: PlannedCall[] = [{ fast: false, inputChars: FLOWCHART_SYSTEM.length + 300 + instruction.length + (current?.length ?? 0), maxOutputTokens: 6144 }];
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, plan, feature: "writing" });
+    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, plan, feature: "writing", ...(args.provided ? { provided: providedMeta(args.provided) } : {}) });
     const req = flowchartRequest({ mode: args.mode, instruction, current });
     return await metered(ctx, holdId, async (meter) => {
       const raw = await gemini(req, meter);
       const draft = parseFlowchartDraft(raw);
       if (!draft) fail("invalid_argument", ASK_MESSAGES.flowchartFailed);
       return draft;
-    });
+    }, undefined, args.provided);
   },
 });
 
@@ -724,7 +809,9 @@ export const recent = internalQuery({
       if (notes.length >= 8) break;
       if (d.inTrash || d.archivedAt || d.kind === "template") continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
-      notes.push({ id: d.publicId, title: d.title || "Untitled", text: d.searchText.slice(0, 2500) });
+      const copy = isSealed(d) ? await readableFor(ctx, d, "ai") : null;
+      if (isSealed(d) && !copy) continue;
+      notes.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : d.searchText).slice(0, 2500) });
     }
     const open = await (
       scope.kind === "personal"
@@ -743,7 +830,7 @@ export const recent = internalQuery({
         docCache.set(t.documentId, d && accessAtLeast(await documentAccess(ctx, profile, d), "read") ? d : null);
         d = docCache.get(t.documentId);
       }
-      if (!d) continue;
+      if (!d || isSealed(d)) continue;
       tasks.push({ title: t.title.slice(0, 200), due: t.dueDate ?? null, note: d.title || "Untitled" });
     }
     return { notes, tasks };
@@ -752,16 +839,25 @@ export const recent = internalQuery({
 
 /** "Catch me up": a short brief of recent notes and what's due, citing the notes. */
 export const brief = action({
-  args: { scope: vScopeArg, today: v.string(), streamId: v.optional(v.id("aiStreams")) },
+  args: {
+    scope: vScopeArg,
+    today: v.string(),
+    streamId: v.optional(v.id("aiStreams")),
+    /** An encrypted space: the notes edited in the last 7 days, as the device read them (their open to-dos inside). */
+    provided: v.optional(vProvidedContext),
+  },
   handler: async (ctx, args): Promise<{ answer: string; sources: { id: string; title: string }[] }> => {
     await requireIdentity(ctx);
+    const provided = args.provided;
     // At most 8 recent notes (2,500 characters each) and 20 tasks.
     const plan: PlannedCall[] = [{ fast: false, inputChars: PERSONA.length + 700 + 8 * 2600 + 20 * 260, maxOutputTokens: 1024 }];
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, plan, feature: "chat" });
+    const { holdId, sealed } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, plan, feature: "chat", ...(provided ? { provided: providedMeta(provided) } : {}) });
     return await metered(ctx, holdId, async (meter) => {
-      if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId });
+      if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId, ephemeral: sealed });
       const today = cleanToday(args.today);
-      const { notes, tasks } = await ctx.runQuery(internal.ai.recent, { scope: args.scope, today });
+      const { notes, tasks } = provided
+        ? { notes: providedSources(provided).slice(0, 8).map((n) => ({ ...n, text: n.text.slice(0, 2500) })), tasks: [] }
+        : await ctx.runQuery(internal.ai.recent, { scope: args.scope, today });
       if (!notes.length && !tasks.length) {
         const answer = BRIEF_EMPTY;
         if (args.streamId) await ctx.runMutation(internal.ai.writeStream, { id: args.streamId, text: answer, status: "done" });
@@ -770,6 +866,6 @@ export const brief = action({
       const answer = await streamed(ctx, args.streamId, briefRequest({ today, notes, tasks }), meter);
       const cited = citedIndexes(answer);
       return { answer, sources: notes.map((n, i) => ({ id: n.id, title: n.title, i })).filter((n) => cited.has(n.i)).map(({ id, title }) => ({ id, title })) };
-    });
+    }, undefined, provided);
   },
 });

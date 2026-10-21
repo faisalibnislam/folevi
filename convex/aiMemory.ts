@@ -17,7 +17,8 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { assertWritable, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
-import { insertScoped, personalScope, type Scope } from "./lib/scope";
+import { insertScoped, personalScope, scopeOfRow, type Scope } from "./lib/scope";
+import { requireServerCompose } from "./lib/e2ee/ai";
 import { aiPrefsOf } from "./lib/ai/prefs";
 import { cleanMemoryText, MAX_MEMORIES, memoryKey, memoryPrompt, vMemoryKind, type MemoryKind } from "./lib/ai/memory";
 
@@ -39,6 +40,8 @@ async function ownEntry(ctx: Ctx, profile: Doc<"profiles">, id: Id<"aiMemories">
 
 /** Adds an entry, unless the same one is already there. Refused at MAX_MEMORIES in one place. */
 async function addEntry(ctx: MutationCtx, profile: Doc<"profiles">, scope: Scope, kind: MemoryKind, raw: string, source: "settings" | "chat"): Promise<Id<"aiMemories">> {
+  // An encrypted space keeps memories on the person's devices (aiMemory records, sent with each request).
+  await requireServerCompose(ctx, scope);
   const text = cleanMemoryText(raw);
   if (text.length < 2) fail("invalid_argument", "Write what to remember first.");
   const existing = await entriesIn(ctx, profile._id, scope.kind === "workspace" ? scope.workspaceId : undefined).take(MAX_MEMORIES + 1);
@@ -115,6 +118,7 @@ export const update = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const row = await ownEntry(ctx, profile, args.id);
+    await requireServerCompose(ctx, scopeOfRow(row));
     const text = args.text === undefined ? row.text : cleanMemoryText(args.text);
     if (text.length < 2) fail("invalid_argument", "Write what to remember first.");
     await ctx.db.patch(row._id, { kind: args.kind ?? row.kind, text, updatedAt: Date.now() });

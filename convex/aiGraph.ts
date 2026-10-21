@@ -14,6 +14,7 @@
 // Explicit links stay in `documentLinks` and are read from there; only inferred relations are stored. Note
 // text is never logged; only counts are.
 import { v } from "convex/values";
+import { isSealed } from "./lib/e2ee/state";
 import { internalAction, internalMutation, internalQuery, mutation, query, type QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -97,7 +98,8 @@ export const prepareExtract = internalMutation({
     const doc = await ctx.db.get(args.documentId);
     if (!doc || !hasValidScope(doc)) return { kind: (await dropAll(ctx, args.documentId)) ? "done" : "later" };
     const scope = scopeOfRow(doc);
-    if (!indexable(doc) || !(await indexEligible(ctx, scope))) return { kind: (await dropAll(ctx, doc._id)) ? "done" : "later" };
+    // An end-to-end encrypted note isn't read into the graph (v1: its copy for Foli AI gives embeddings only).
+    if (!indexable(doc) || isSealed(doc) || !(await indexEligible(ctx, scope))) return { kind: (await dropAll(ctx, doc._id)) ? "done" : "later" };
     // AI isn't set up on this server (or the fast model can't answer in JSON): nothing to read with.
     if (!process.env.GEMINI_API_KEY || !capabilities(true).json) return { kind: "done" };
     const title = doc.title || "Untitled";
@@ -153,7 +155,7 @@ export const neighbours = internalQuery({
     for (const s of noteSimilarity(hits, args.queries, args.documentId)) {
       if (s.score < SIMILAR_MIN || similar.length >= SIMILAR_KEPT) break;
       const doc = await ctx.db.get(s.documentId as Id<"documents">);
-      if (!doc || !indexable(doc) || !inScope(doc, scope)) continue;
+      if (!doc || !indexable(doc) || !inScope(doc, scope) || isSealed(doc)) continue;
       similar.push({ documentId: doc._id, score: s.score });
       if (context.length >= CONTEXT_NOTES) continue;
       // The lines of its best-matching chunk.

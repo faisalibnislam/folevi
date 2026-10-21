@@ -47,8 +47,18 @@ export async function canAttach(ctx: Ctx, profile: Doc<"profiles">, file: Doc<"f
 
 /** What the model reads a file as: its kind, or the reason it can't. */
 export function readableKind(file: Doc<"files">): { ok: true; kind: AttachmentKind } | { ok: false; reason: string } {
+  // An end-to-end encrypted file's bytes are ciphertext here: the device sends a readable copy with the
+  // request instead (docs/E2EE_DESIGN.md §7.2, `provided.files`).
+  if (file.sealed !== undefined) return { ok: false, reason: SEALED_FILE };
+  return providedFileKind(file.filename, file.mimeType, file.size);
+}
+
+export const SEALED_FILE = "This file is end-to-end encrypted. Update Folevi to use Foli AI with it.";
+
+/** What the model reads a file sent with a request as (a provided file of an encrypted note), or why not. */
+export function providedFileKind(name: string, mimeType: string, size: number): { ok: true; kind: AttachmentKind } | { ok: false; reason: string } {
   const c = capabilities();
-  return checkAttachment({ filename: file.filename, mimeType: file.mimeType, size: file.size }, { vision: c.vision, audioIn: c.audioIn });
+  return checkAttachment({ filename: name, mimeType, size }, { vision: c.vision, audioIn: c.audioIn });
 }
 
 /**

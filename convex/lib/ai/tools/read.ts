@@ -13,6 +13,7 @@ import { inScope, type Scope } from "../../scope";
 import { duplicatePairs, noteSimilarity } from "./similarity";
 import { untrusted } from "./untrusted";
 import { withSyncedForReader } from "../../synced";
+import { isSealed } from "../../e2ee/state";
 
 export interface ReadEnv {
   profile: Doc<"profiles">;
@@ -31,7 +32,8 @@ const NOT_HERE = "There's no note with that id here (or you can't open it).";
 /** A note of this place the person can open (not in Trash), or a refusal the model sees. */
 export async function readableNote(ctx: QueryCtx, env: ReadEnv, noteId: string): Promise<Doc<"documents">> {
   const doc = await getDocumentByPublicId(ctx, noteId);
-  if (!doc || doc.inTrash || doc.deletedAt !== undefined || !inScope(doc, env.scope)) fail("not_found", NOT_HERE);
+  // An end-to-end encrypted note can't be read on the server (docs/E2EE_DESIGN.md §5.7).
+  if (!doc || doc.inTrash || doc.deletedAt !== undefined || !inScope(doc, env.scope) || isSealed(doc)) fail("not_found", NOT_HERE);
   if (!accessAtLeast(await documentAccess(ctx, env.profile, doc), "read")) fail("not_found", NOT_HERE);
   return doc;
 }
@@ -112,7 +114,7 @@ export async function recentNotes(ctx: QueryCtx, env: ReadEnv, n: number): Promi
     .order("desc")
     .take(n * 2);
   const reader = await PageReader.forScope(ctx, env.profile, s);
-  const usable = rows.filter((d) => (d.kind === "document" || d.kind === "daily") && !d.archivedAt);
+  const usable = rows.filter((d) => (d.kind === "document" || d.kind === "daily") && !d.archivedAt && !isSealed(d));
   return (await reader.filter(usable)).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, n);
 }
 
@@ -122,15 +124,18 @@ export async function scopeFolders(ctx: QueryCtx, scope: Scope): Promise<Doc<"fo
       ? ctx.db.query("folders").withIndex("by_owner", (q) => q.eq("ownerProfileId", scope.profileId))
       : ctx.db.query("folders").withIndex("by_workspace", (q) => q.eq("workspaceId", scope.workspaceId))
   ).take(500);
-  return rows.filter((f) => !f.deletedAt).sort((a, b) => (a.rank < b.rank ? -1 : 1));
+  // Encrypted folders' names are ciphertext: they're left out.
+  return rows.filter((f) => !f.deletedAt && f.sealedName === undefined).sort((a, b) => (a.rank < b.rank ? -1 : 1));
 }
 
 export async function scopeTags(ctx: QueryCtx, scope: Scope): Promise<Doc<"tags">[]> {
-  return await (
+  const rows = await (
     scope.kind === "personal"
       ? ctx.db.query("tags").withIndex("by_owner", (q) => q.eq("ownerProfileId", scope.profileId))
       : ctx.db.query("tags").withIndex("by_workspace", (q) => q.eq("workspaceId", scope.workspaceId))
   ).take(500);
+  // Encrypted tags' names are ciphertext: they're left out.
+  return rows.filter((t) => t.sealedName === undefined);
 }
 
 type Reader = (ctx: QueryCtx, env: ReadEnv, args: Record<string, unknown>) => Promise<Record<string, unknown>>;

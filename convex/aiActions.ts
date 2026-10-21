@@ -1,6 +1,7 @@
 // Applying what Ask AI proposed (lib/aiActions.ts), once the person has checked it: make folders, write
 // notes into them, move notes into them. Everything is authorized here as if the person did it by hand.
 import { v } from "convex/values";
+import { requireServerCompose } from "./lib/e2ee/ai";
 import { internalQuery, mutation } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { markdownToBlocks, rankBetween, ulid } from "@folevi/editor-schema";
@@ -29,7 +30,11 @@ export const folders = internalQuery({
   handler: async (ctx, args): Promise<{ id: string; name: string }[]> => {
     const profile = await requireProfile(ctx);
     const { scope } = await resolveScope(ctx, profile, args.scope);
-    return (await scopeFolders(ctx, scope)).slice(0, 200).map((f) => ({ id: f.publicId, name: f.name }));
+    // An encrypted folder's name can't be read here (the device sends folder names with `provided`).
+    return (await scopeFolders(ctx, scope))
+      .filter((f) => f.sealedName === undefined)
+      .slice(0, 200)
+      .map((f) => ({ id: f.publicId, name: f.name }));
   },
 });
 
@@ -40,6 +45,7 @@ export const apply = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
+    await requireServerCompose(ctx, scope);
     if (args.actions.length > MAX_ACTIONS) fail("limit_exceeded", `At most ${MAX_ACTIONS} changes at once.`);
     const existing = await scopeFolders(ctx, scope);
     const folderIds = new Map<string, Id<"folders">>(existing.map((f) => [f.publicId, f._id]));

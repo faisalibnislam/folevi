@@ -24,7 +24,7 @@ import { markdownToBlocks, ulid } from "@folevi/editor-schema";
 import { assertWritable, requireIdentity, requireProfile, requireRowScope, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
-import { insertScoped, sameScopeRows, scopeOfRow, vScopeArg } from "./lib/scope";
+import { insertScoped, sameScopeRows, scopeOfRow, vScopeArg, type ScopeArg } from "./lib/scope";
 import { createDocument } from "./lib/create";
 import { capabilities, provider } from "./lib/ai/provider";
 import { titleFromQuestion, vAiContext } from "./lib/ai/chat";
@@ -54,7 +54,9 @@ import {
   type ResearchStep,
 } from "./lib/ai/research";
 import { hybridSearch } from "./aiIndex";
-import { metered, type Settled } from "./ai";
+import { metered, providedArgs, type Settled } from "./ai";
+import type { CallUsage } from "./lib/credits";
+import { checkProvidedSizes, vProvidedContext, type ProvidedContext } from "./lib/e2ee/ai";
 import { storedError } from "./aiChat";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -236,7 +238,7 @@ async function launch(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ me
   for (const id of ids) {
     try {
       const n = await ctx.runQuery(internal.ai.noteText, { documentId: id });
-      notes.push({ id: n.id, title: n.title, text: n.text.slice(0, 6_000) });
+      if (n) notes.push({ id: n.id, title: n.title, text: n.text.slice(0, 6_000) });
     } catch {
       /* gone, or no longer theirs */
     }
@@ -367,6 +369,79 @@ const fatal = (e: unknown) => {
   return code === "maintenance" || code === "rate_limited";
 };
 
+/** How a research run shows its steps (into the job row, or an encrypted space's stream). */
+interface Steps {
+  step: (s: ResearchStep) => Promise<number>;
+  update: (i: number, patch: Partial<ResearchStep>) => Promise<void>;
+  show: () => Promise<void>;
+}
+
+/** The research itself: plan, web searches, pages read, the report (shared by both kinds of run). */
+async function research(meter: CallUsage[], input: { question: string; notes: ResearchNote[]; deadline: number } & Steps): Promise<{ report: string; web: WebSource[]; entryPoints: string[] }> {
+  const { question, notes, deadline, step, update, show } = input;
+
+  // 1. The plan: a few sub-questions to search for.
+  let i = await step({ kind: "plan", label: "Planning the research", status: "running" });
+  const plan = await provider().generate({ system: PLAN_SYSTEM, prompt: planPrompt(question, notes.map((n) => n.title)), json: true, temperature: 0.2, maxOutputTokens: 800 }, meter);
+  const subs = parseSubQuestions(plan.text, question);
+  await update(i, { status: "done", label: `Planned ${subs.length === 1 ? "1 search" : `${subs.length} searches`}`, count: subs.length });
+
+  // 2. A grounded web search for each, until the time is up.
+  const web: WebSource[] = [];
+  const findings: string[] = [];
+  // Google's Search Suggestions for each search, shown with the report as Google requires.
+  const entryPoints: string[] = [];
+  for (const q of subs) {
+    if (Date.now() > deadline) {
+      await step({ kind: "search", label: `Skipped (out of time): ${q}`, status: "skipped" });
+      continue;
+    }
+    i = await step({ kind: "search", label: `Searching the web: ${q}`, status: "running" });
+    try {
+      const r = await searchWeb(q, meter, question);
+      if (r.summary) findings.push(r.summary);
+      if (r.entryPoint) entryPoints.push(r.entryPoint);
+      mergeSources(web, r.sources, MAX_WEB_SOURCES);
+      await update(i, { status: "done", label: `Searched the web: ${q}`, count: r.sources.length });
+    } catch (e) {
+      if (e instanceof Cancelled || fatal(e)) throw e;
+      await update(i, { status: "failed", label: `Couldn't search: ${q}` });
+    }
+  }
+
+  // 3. The most useful pages, read in full (the ones most of the findings rest on come first).
+  const toRead = [...web].sort((a, b) => b.text.length - a.text.length).slice(0, MAX_PAGES);
+  if (toRead.length && Date.now() <= deadline) {
+    i = await step({ kind: "read", label: "Reading pages", status: "running" });
+    let read = 0;
+    for (const s of toRead) {
+      if (Date.now() > deadline) break;
+      const page = await readPage(s.url, RESEARCH_PAGE_CHARS);
+      if (page.ok) {
+        const at = web.indexOf(s);
+        web[at] = { url: page.url, title: page.title || s.title, domain: page.domain, text: `${s.text ? `${s.text}\n\n` : ""}${page.text}`, kind: "page" };
+        read++;
+      }
+      await show();
+    }
+    await update(i, { status: read ? "done" : "failed", label: read ? `Read ${read === 1 ? "1 page" : `${read} pages`}` : "Couldn't read the pages", count: read });
+  }
+
+  // 4. The report, citing notes and pages with one numbering.
+  i = await step({ kind: "write", label: "Writing the report", status: "running" });
+  const res = await provider().generate(
+    {
+      system: [...REPORT_RULES, WEB_RULE].join("\n"),
+      prompt: reportPrompt(question, subs, notes, web.length ? webBlock(web, notes.length + 1) : "", findings),
+      temperature: 0.3,
+      maxOutputTokens: 6_144,
+    },
+    meter,
+  );
+  await update(i, { status: "done", label: "Wrote the report" });
+  return { report: res.text, web, entryPoints };
+}
+
 export const run = internalAction({
   args: { researchId: v.string(), notes: v.array(vNote), nameIt: v.boolean() },
   handler: async (ctx, args) => {
@@ -399,68 +474,7 @@ export const run = internalAction({
       const out = await metered(
         ctx,
         job.holdId,
-        async (meter) => {
-          // 1. The plan: a few sub-questions to search for.
-          let i = await step({ kind: "plan", label: "Planning the research", status: "running" });
-          const plan = await provider().generate({ system: PLAN_SYSTEM, prompt: planPrompt(question, notes.map((n) => n.title)), json: true, temperature: 0.2, maxOutputTokens: 800 }, meter);
-          const subs = parseSubQuestions(plan.text, question);
-          await update(i, { status: "done", label: `Planned ${subs.length === 1 ? "1 search" : `${subs.length} searches`}`, count: subs.length });
-
-          // 2. A grounded web search for each, until the time is up.
-          const web: WebSource[] = [];
-          const findings: string[] = [];
-          // Google's Search Suggestions for each search, shown with the report as Google requires.
-          const entryPoints: string[] = [];
-          for (const q of subs) {
-            if (Date.now() > deadline) {
-              await step({ kind: "search", label: `Skipped (out of time): ${q}`, status: "skipped" });
-              continue;
-            }
-            i = await step({ kind: "search", label: `Searching the web: ${q}`, status: "running" });
-            try {
-              const r = await searchWeb(q, meter, question);
-              if (r.summary) findings.push(r.summary);
-              if (r.entryPoint) entryPoints.push(r.entryPoint);
-              mergeSources(web, r.sources, MAX_WEB_SOURCES);
-              await update(i, { status: "done", label: `Searched the web: ${q}`, count: r.sources.length });
-            } catch (e) {
-              if (e instanceof Cancelled || fatal(e)) throw e;
-              await update(i, { status: "failed", label: `Couldn't search: ${q}` });
-            }
-          }
-
-          // 3. The most useful pages, read in full (the ones most of the findings rest on come first).
-          const toRead = [...web].sort((a, b) => b.text.length - a.text.length).slice(0, MAX_PAGES);
-          if (toRead.length && Date.now() <= deadline) {
-            i = await step({ kind: "read", label: "Reading pages", status: "running" });
-            let read = 0;
-            for (const s of toRead) {
-              if (Date.now() > deadline) break;
-              const page = await readPage(s.url, RESEARCH_PAGE_CHARS);
-              if (page.ok) {
-                const at = web.indexOf(s);
-                web[at] = { url: page.url, title: page.title || s.title, domain: page.domain, text: `${s.text ? `${s.text}\n\n` : ""}${page.text}`, kind: "page" };
-                read++;
-              }
-              await show();
-            }
-            await update(i, { status: read ? "done" : "failed", label: read ? `Read ${read === 1 ? "1 page" : `${read} pages`}` : "Couldn't read the pages", count: read });
-          }
-
-          // 4. The report, citing notes and pages with one numbering.
-          i = await step({ kind: "write", label: "Writing the report", status: "running" });
-          const res = await provider().generate(
-            {
-              system: [...REPORT_RULES, WEB_RULE].join("\n"),
-              prompt: reportPrompt(question, subs, notes, web.length ? webBlock(web, notes.length + 1) : "", findings),
-              temperature: 0.3,
-              maxOutputTokens: 6_144,
-            },
-            meter,
-          );
-          await update(i, { status: "done", label: "Wrote the report" });
-          return { report: res.text, web, entryPoints };
-        },
+        (meter) => research(meter, { question, notes, deadline, step, update, show }),
         async (c) => {
           cost = c;
         },
@@ -498,6 +512,176 @@ export const run = internalAction({
       console.warn(JSON.stringify({ event: "ai.research_error", code: error.code }));
       await ctx.runMutation(internal.aiResearch.finish, { researchId: args.researchId, status: "failed", steps, error, usage: cost });
       await ctx.runMutation(internal.aiChat.finishMessage, { messageId, status: "error", error, usage: cost });
+    }
+    return null;
+  },
+});
+
+// ---------------------------------------------------------------------------------------------------
+// Encrypted spaces: a run with no rows but two temporary streams (the provided notes, and the answer)
+// ---------------------------------------------------------------------------------------------------
+
+/** The question and the provided notes, in a temporary row (never in the scheduler's arguments). */
+const vSealedContext = v.object({ question: v.string(), notes: v.array(vNote) });
+
+/** What the answer stream holds while a sealed run goes on, and when it's done. */
+interface SealedState {
+  steps: ResearchStep[];
+  report?: string;
+  sources?: ReportSource[];
+  searchEntryPoints?: string[];
+  error?: { code: string; message: string };
+  usage?: Settled;
+}
+
+/** Stores a sealed run's context (deleted when the run ends) and claims its answer stream. */
+export const stashSealed = internalMutation({
+  args: { streamId: v.id("aiStreams"), context: vSealedContext },
+  handler: async (ctx, args): Promise<{ contextId: Id<"aiStreams">; createdAt: number }> => {
+    const profile = await requireProfile(ctx);
+    const answer = await ctx.db.get(args.streamId);
+    if (!answer || answer.profileId !== profile._id || answer.status !== "pending") fail("not_found", "That AI request has expired. Try again.");
+    const now = Date.now();
+    await ctx.db.patch(answer._id, { status: "streaming", kind: "answer", ephemeral: true, text: JSON.stringify({ steps: [] }), updatedAt: now });
+    const contextId = await ctx.db.insert("aiStreams", { profileId: profile._id, text: JSON.stringify(args.context), status: "pending", kind: "context", ephemeral: true, createdAt: now, updatedAt: now });
+    // Whatever happens to the run, both rows go within the hour (ai.sweepStreams too).
+    await ctx.scheduler.runAfter(60 * 60_000, internal.ai.dropStream, { id: contextId });
+    return { contextId, createdAt: now };
+  },
+});
+
+/** A sealed run's context, read once by the run. */
+export const sealedContext = internalQuery({
+  args: { contextId: v.id("aiStreams") },
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.contextId);
+    if (!row || row.kind !== "context") return null;
+    return JSON.parse(row.text) as { question: string; notes: ResearchNote[] };
+  },
+});
+
+/** Shows a sealed run's state in its answer stream. Returns false once the person pressed Stop. */
+export const sealedProgress = internalMutation({
+  args: { streamId: v.id("aiStreams"), state: v.string(), done: v.optional(v.union(v.literal("done"), v.literal("error"))) },
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.streamId);
+    if (!row || row.status === "cancelled") return false;
+    await ctx.db.patch(row._id, { text: args.state.slice(0, 120_000), status: args.done ?? "streaming", updatedAt: Date.now() });
+    // A finished report waits a few minutes for the device to collect it, then goes.
+    if (args.done) await ctx.scheduler.runAfter(5 * 60_000, internal.ai.dropStream, { id: row._id });
+    return true;
+  },
+});
+
+/** The device takes a finished sealed report (it keeps it as an aiChat record): read once, then deleted. */
+export const collect = mutation({
+  args: { streamId: v.id("aiStreams") },
+  handler: async (ctx, args): Promise<(SealedState & { status: "running" | "done" | "error" | "cancelled" }) | null> => {
+    const profile = await requireProfile(ctx);
+    const row = await ctx.db.get(args.streamId);
+    if (!row || row.profileId !== profile._id || row.kind !== "answer") return null;
+    const state = JSON.parse(row.text || "{}") as SealedState;
+    if (row.status === "done" || row.status === "error" || row.status === "cancelled") {
+      await ctx.db.delete(row._id);
+      return { ...state, status: row.status };
+    }
+    return { ...state, status: "running" };
+  },
+});
+
+/**
+ * Deep research for an encrypted space (docs/E2EE_DESIGN.md §7.2): the notes the device found for the
+ * question, and a stream (ai.startStream) the run shows its steps and report in. No conversation, message
+ * or job row is written; the device keeps the report (as an aiChat record), takes it with `collect`, and
+ * stops the run with ai.cancelStream.
+ */
+export const startSealed = action({
+  args: { scope: vScopeArg, text: v.string(), provided: vProvidedContext, streamId: v.id("aiStreams") },
+  handler: async (ctx, args): Promise<{ researchId: string; status: "running" | "error" }> => {
+    await requireIdentity(ctx);
+    await ctx.runQuery(internal.aiResearch.allowed, {});
+    return await launchSealed(ctx, args.scope, args.text, args.provided, args.streamId);
+  },
+});
+
+/** Starts a sealed run: the gates and the hold (with the provided notes' ids only), then the background part. */
+async function launchSealed(ctx: ActionCtx, scope: ScopeArg, text: string, provided: ProvidedContext, streamId: Id<"aiStreams"> | undefined): Promise<{ researchId: string; status: "running" | "error" }> {
+  if (!streamId) fail("invalid_argument", "Start a stream for the report first.");
+  const question = text.trim().slice(0, 4_000);
+  if (!question) fail("invalid_argument", "Ask a question first.");
+  checkProvidedSizes(provided);
+  await ctx.runMutation(internal.aiResearch.limit, {});
+  const { holdId } = await ctx.runMutation(internal.ai.begin, { scope, plan: RESEARCH_PLAN, feature: "research", ...providedArgs(provided) });
+  const notes = provided.notes.slice(0, MAX_NOTES).map((n) => ({ id: n.id, title: n.title.trim() || "Untitled", text: n.markdown.slice(0, 6_000) }));
+  let contextId: Id<"aiStreams">;
+  try {
+    ({ contextId } = await ctx.runMutation(internal.aiResearch.stashSealed, { streamId, context: { question, notes } }));
+  } catch (e) {
+    await ctx.runMutation(internal.ai.settle, { holdId, calls: [] });
+    throw e;
+  }
+  await ctx.scheduler.runAfter(0, internal.aiResearch.runSealed, { contextId, streamId, holdId, startedAt: Date.now() });
+  console.log(JSON.stringify({ event: "ai.research_started", notes: notes.length, sealed: true }));
+  return { researchId: streamId, status: "running" };
+}
+
+/** The background part of a sealed run: like `run`, writing into the answer stream instead of rows. */
+export const runSealed = internalAction({
+  args: { contextId: v.id("aiStreams"), streamId: v.id("aiStreams"), holdId: v.id("aiCreditHolds"), startedAt: v.number() },
+  handler: async (ctx, args) => {
+    const context = await ctx.runQuery(internal.aiResearch.sealedContext, { contextId: args.contextId });
+    // The provided notes are needed only here: their row goes now, whatever happens next.
+    await ctx.runMutation(internal.ai.dropStream, { id: args.contextId });
+    if (!context) {
+      await ctx.runMutation(internal.ai.settle, { holdId: args.holdId, calls: [] });
+      return null;
+    }
+    const { question, notes } = context;
+    const state: SealedState = { steps: [] };
+    const show = async () => {
+      if (!(await ctx.runMutation(internal.aiResearch.sealedProgress, { streamId: args.streamId, state: JSON.stringify(state) }))) throw new Cancelled();
+    };
+    const step = async (s: ResearchStep) => {
+      state.steps.push(s);
+      await show();
+      return state.steps.length - 1;
+    };
+    const update = async (i: number, patch: Partial<ResearchStep>) => {
+      state.steps[i] = { ...state.steps[i]!, ...patch };
+      await show();
+    };
+    let cost: Settled | undefined;
+    try {
+      const out = await metered(
+        ctx,
+        args.holdId,
+        (meter) => research(meter, { question, notes, deadline: args.startedAt + MAX_RESEARCH_MS, step, update, show }),
+        async (c) => {
+          cost = c;
+        },
+      );
+      const cited = citedNumbers(out.report);
+      const sources: ReportSource[] = notes.map((n, k) => ({ n: k + 1, kind: "note" as const, id: n.id, title: n.title })).filter((x) => cited.has(x.n));
+      for (const [k, w] of out.web.entries()) {
+        const n = notes.length + k + 1;
+        if (!cited.has(n)) continue;
+        const url = w.kind === "search" ? await resolveLink(w.url) : w.url;
+        sources.push({ n, kind: "web", url, title: w.title.slice(0, 200), domain: (url === w.url ? w.domain : domainOf(url)) || w.domain });
+      }
+      Object.assign(state, { report: out.report, sources, searchEntryPoints: entryPointsToShow(out.entryPoints), usage: cost });
+      await ctx.runMutation(internal.aiResearch.sealedProgress, { streamId: args.streamId, state: JSON.stringify(state), done: "done" });
+      console.log(JSON.stringify({ event: "ai.research_done", steps: state.steps.length, sources: sources.length, credits: cost?.credits ?? 0, sealed: true }));
+    } catch (e) {
+      if (e instanceof Cancelled) {
+        await ctx.runMutation(internal.ai.dropStream, { id: args.streamId });
+        console.log(JSON.stringify({ event: "ai.research_cancelled", credits: cost?.credits ?? 0, sealed: true }));
+        return null;
+      }
+      const error = storedError(e);
+      console.warn(JSON.stringify({ event: "ai.research_error", code: error.code, sealed: true }));
+      state.error = { code: error.code, message: error.message };
+      state.usage = cost;
+      await ctx.runMutation(internal.aiResearch.sealedProgress, { streamId: args.streamId, state: JSON.stringify(state), done: "error" });
     }
     return null;
   },

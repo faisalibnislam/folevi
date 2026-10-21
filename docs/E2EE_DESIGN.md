@@ -995,6 +995,68 @@ type SealedVersionContent = { e2ee: 1;
 It is built from the rows' ciphertext with no decryption, so automatic versions, "before restore" versions and
 retention keep working. `documentSnapshots.title` is `""`, `sealed: true`.
 
+**Settled while building WP3.**
+
+- Sync ops. `sync.push` takes sealed ops through sync-only validators in `convex/lib/validators.ts`
+  (`vWireBlock`, `vDocumentCreate` and `vDocumentPatch` plus the §4.6 sealed fields); every other function
+  keeps the plain shapes. A sealed block's `c` must be an FLV1 0x03 record whose header key version equals `k`.
+  A stored sealed block row keeps `props` as `{}` or `{ collapsed: true }`; on the wire `props` is `{}` and the
+  state travels as `sealed.collapsed`. Results carry `sealed.mentions` from `mentionIds`.
+- `blockCount` stays the real number of live blocks for sealed notes (the server enforces
+  `maxBlocksPerDocument` on it; the count is visible metadata, §3.2). `refreshDerived` keeps only that for a
+  sealed note; `wordCount`, `charCount`, `searchText`, `excerpt` and `preview` are placeholders.
+- Results that carry titles (`DocumentSummary`, `documents.titles`, `pageTree`, breadcrumbs, `backlinks`,
+  `dailyDates`, `changes.list`, `synced.info`, folder previews) gain `sealed: { title, appearance, meta? }`
+  only for sealed notes; folders and tags gain `sealedName` (and `locked`); `files.urls` gains `sealed`.
+  Standard results are byte-identical. A link to a sealed note reads "Encrypted note" on the server.
+- Locks. A new note under a locked folder or a sealed parent must be sealed; moving a plain note (or a
+  folder holding plain notes) into a locked folder is refused with `e2ee_required` (the device seals first).
+  Moves, `moveFolder`, `deleteFolder` and `setFolderLocked` keep `lockedVia` in step for the notes and their
+  sub-pages. `setFolderLocked` / `setDocumentLocked` need encryption set up, two recovery methods (WP2's
+  `requireTwoMethods`) and edit rights in the space; in a Standard space they start a `folder` / `document`
+  job (`startLockMigration` in `lib/e2ee/sealedWrites.ts`).
+- Versions. `SealedVersionContent` blocks carry their `mac` and the title its `mac`; `authors` and `removed`
+  are the same per-block maps as `VersionContent` (who and when; `string[]` lost the attribution).
+  `snapshotContent` returns the content without them (as today, they come as lists) plus `sealed: true`.
+  A sealed version's name is `sealedName`; `documentSnapshots.name` then holds the marker `"\u0001sealed"`
+  so named versions are still kept and listed. `createSnapshot` with a name, `nameVersion` and
+  `importSnapshot` on a sealed note answer `e2ee_required` (use `e2ee.content.nameVersion` / `importVersion`).
+- Migration API. `beginDocument`, `sealBlocks`, `sealDocumentFields`, `finishDocument`, `unsealBlocks`,
+  `unsealDocumentFields` and `finishUnseal` take `deviceId` (it is `documents.sealing.by`). Added:
+  `plainBlocks({ documentId, cursor })` (every block row with its revision, tombstones too: `blocks.deleted`
+  returns only the last 100), `plainExtras({ documentId })` (found text, hosted collections with rows and
+  values, comment bodies sealed or not) and `unsealComments`. `claim` returns `{ busy, phase, documents:
+  string[], snapshots: { snapshotId, documentId }[], files: { fileId, documentId }[] }`; its cursor is a
+  pagination cursor over the scope's notes by creation, moved only past pages with nothing left to do, so a
+  lapsed lease's half-done note is offered again. `sealBlocks` keeps each row's revision (the content is the
+  same) and moves `seq`. `finishPhase("cleanup")` runs the per-person sweep below; the last phase sets the
+  space's state (`on` after a seal, `off` after an unseal).
+- Purge. `purgeDerivedPlaintext(ctx, doc)` (`lib/e2ee/purge.ts`) covers what is indexed by the note; the
+  per-person copies (notifications, `mcpEvents.result`, `apiRequests.body`, pending `webhookDeliveries`,
+  `aiConversations.noteRefs`) are found by person and cleaned by `purgeCopiesInScope(ctx, scope, opts)`, paged
+  over the space's people: once in a space job's cleanup phase, at once (for that note's people) when a lock
+  job finishes a note. Pending proposals expire with their blocks and summary emptied. A sealed synced block
+  keeps its `documentLinks` row to its source (the source is visible on purpose), and
+  `lib/syncedRefs.ts` counts sealed synced blocks by `syncedSource`.
+- Files. `e2ee.files.commit` and `replaceBlob` take the `intentId` from `e2ee.files.generateUploadUrl`;
+  the file id is the device's (it is inside the AAD contexts); the server checks the blob's size, SHA-256 and
+  FLV1 0x04 header. The file key record's key version is the note key version, the metadata record's is 0.
+  `replaceBlob` with `sealed: null` and `plain` puts a plaintext copy back (unseal). `rewrap({ fileId,
+  targetDocumentId, newFileId, key, meta, k })` adds a row that shares the bytes; since the bytes' context is
+  `file/<source file id>`, the device records the source file id inside the new row's sealed metadata.
+  Server-side copies (`FileCopies`) leave sealed files' references as they are.
+- Content. `editComment`'s `mentions` are the people the edit newly mentions (the server can't compare sealed
+  bodies). Comment notifications use the §7.7 generic text unless a preview is sent and the space has
+  notification previews on (never for locked notes). `putRecord` enforces 900 KiB per record but not the
+  20,000-per-kind count (counting would read up to 20,000 rows per write). Folders and tags have a `seq` but no
+  seq index, so `pull` reads a space's folders and tags (up to 5,000 each) and filters by seq.
+- Asked of WP2 (schema): `by_workspace_seq` / `by_owner_seq` on `folders` and `tags`, and a `by_document`
+  index on `notifications`, to make `pull` and the purge cheaper.
+- Elsewhere: `fileText.readImage` on a sealed note answers `e2ee_unavailable` (feature `readImage`) until WP5
+  sends the device's bytes; `documents.deletePermanently` takes `confirmTitle: "sealed"` for a sealed note;
+  `documents.duplicate`, `copies.copyTo`, `changes.undo`, `copyVersion`, `restoreSnapshot` and
+  `files.shareForPaste` across notes answer `e2ee_device_only` for sealed notes.
+
 ### 5.5 What the server still validates, and what it purges
 
 On ciphertext the server checks: placeholders, byte sizes, block counts (`maxBlocksPerDocument`), tree

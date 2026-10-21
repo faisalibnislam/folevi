@@ -134,10 +134,14 @@ describe("signing in and out through the host", () => {
     document.body.append(host);
     const root = createRoot(host);
     await act(async () => root.render(<ShellSignIn />));
-    const button = [...host.querySelectorAll("button")].find((b) => b.textContent === "Sign in to Folevi")!;
+    // Signed out, both ways in are offered (ModeChoice); signing in goes to the browser.
+    expect(host.textContent).toMatch(/Keep notes on my devices/);
+    const button = [...host.querySelectorAll("button")].find((b) => b.textContent?.startsWith("Sign in to Folevi"))!;
     await act(async () => button.click());
     expect(auth.signIn).toHaveBeenCalledTimes(1);
     expect(host.querySelector('[role="alert"]')?.textContent).toMatch(/didn.t finish/);
+    // After a failed try, keeping notes on the device is still offered.
+    expect([...host.querySelectorAll("button")].some((b) => b.textContent === "Keep notes on my devices instead")).toBe(true);
     expect(host.textContent).not.toMatch(/\/signin/);
     act(() => root.unmount());
   });

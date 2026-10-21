@@ -2,11 +2,15 @@
 // Signing in from the apps' built-in interface (docs/LOCAL_MODE_PLAN.md §1, WP4). The interface has no
 // sign-in pages of its own: the website opens in the browser (shell().auth.signIn()), the person signs in
 // there as usual (password, two-step verification, Google, passkeys) and approves the app, and the app comes
-// back signed in. Shown wherever the website would send someone to /signin.
+// back signed in. Shown wherever the website would send someone to /signin. Signed out, the app always offers
+// both ways in (ModeChoice): signing in, or keeping notes on this person's devices instead, even for someone
+// the app started in account mode because it found an earlier account on this Mac.
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { FullPageMessage } from "@/lib/app/state";
 import { shellSignIn } from "@/lib/auth/shellFetch";
+import { setShellMode } from "@/lib/shell";
+import { ModeChoice } from "./ModeChoice";
 
 export function ShellSignIn() {
   const [state, setState] = useState<"idle" | "waiting" | "failed">("idle");
@@ -19,6 +23,19 @@ export function ShellSignIn() {
     const ok = await shellSignIn().catch(() => false);
     if (!ok && mine === attempt.current) setState("failed");
   };
+  // Keeping notes on this device instead: the app reloads in local mode and asks where the library goes.
+  const useLocally = () => setShellMode("local");
+  if (state === "idle")
+    return (
+      <div data-testid="shell-sign-in">
+        <ModeChoice
+        onChoose={async (mode) => {
+          if (mode === "local") await useLocally();
+          else void start();
+        }}
+        />
+      </div>
+    );
   return (
     <FullPageMessage
       title="Sign in to Folevi"
@@ -51,6 +68,9 @@ export function ShellSignIn() {
             Signing in didn’t finish. Try again.
           </p>
         ) : null}
+        <Button variant="ghost" className="h-11 w-full text-[15px]" onClick={() => void useLocally()}>
+          Keep notes on my devices instead
+        </Button>
       </div>
     </FullPageMessage>
   );

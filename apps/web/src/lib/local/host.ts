@@ -174,6 +174,8 @@ export interface LocalHostOptions {
   locks?: LockManagerLike | null;
   /** Default: new BroadcastChannel(LIBRARY_CHANNEL). */
   channel?: () => ChannelLike;
+  /** The Web Lock the windows elect a host with (default LIBRARY_LOCK; an encrypted space's replica uses its own). */
+  lockName?: string;
   /** Where `pagehide` is heard, to hand the library over (default: window). */
   target?: Pick<Window, "addEventListener" | "removeEventListener"> | null;
   windowId?: string;
@@ -260,11 +262,11 @@ export function startLocalHost(opts: LocalHostOptions): LocalHost {
     void host();
   } else {
     void locks
-      .request(LIBRARY_LOCK, { ifAvailable: true }, async (lock) => {
+      .request(opts.lockName ?? LIBRARY_LOCK, { ifAvailable: true }, async (lock) => {
         if (lock) return await host();
         setRole("follower");
         // In line for the lock: when the host window goes, this one takes over.
-        void locks.request(LIBRARY_LOCK, { signal: abort.signal }, () => host()).catch(() => undefined);
+        void locks.request(opts.lockName ?? LIBRARY_LOCK, { signal: abort.signal }, () => host()).catch(() => undefined);
       })
       .catch(() => undefined);
   }

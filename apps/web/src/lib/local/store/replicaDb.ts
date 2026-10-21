@@ -100,7 +100,12 @@ export class IdbReplicaDb implements ReplicaDb {
   private constructor(private db: IDBPDatabase) {}
 
   static async open(libraryId: string): Promise<IdbReplicaDb> {
-    const db = await openDB(replicaDbName(libraryId), 1, {
+    return await IdbReplicaDb.openNamed(replicaDbName(libraryId));
+  }
+
+  /** The same layout under another database name (an encrypted space's replica, `folevi-e2ee-<scope>`). */
+  static async openNamed(name: string): Promise<IdbReplicaDb> {
+    const db = await openDB(name, 1, {
       upgrade(d) {
         for (const s of STORES) if (!d.objectStoreNames.contains(s)) d.createObjectStore(s);
       },

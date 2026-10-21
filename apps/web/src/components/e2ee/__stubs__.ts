@@ -487,8 +487,14 @@ export const e2eeActions = {
   },
   /** e2ee.keys.getWrap({kind}) opened on this device: proves a recovery method again before lowering (§5.3 `lower`). */
   async recheck(kind: "passphrase" | "recoveryKey" | "passkey", input: string): Promise<{ ok: true; wrapId: string } | { ok: false; reason: "wrong" | "bad_format" | "rate_limited" | "cancelled" | "unsupported" }> {
-    const r = kind === "passphrase" ? await session.unlockWithPassphrase(input) : kind === "recoveryKey" ? await session.unlockWithRecoveryKey(input) : await session.unlockWithPasskey();
-    write({ lock: "unlocked" });
+    // The session stays unlocked: this only proves the method again.
+    await wait(400);
+    const r =
+      kind === "passphrase"
+        ? input === "wrong passphrase" ? "wrong" : input === "too many" ? "rate_limited" : "ok"
+        : kind === "recoveryKey"
+          ? input.replace(/[\s-]/g, "").length !== 36 ? "bad_format" : "ok"
+          : read().passkeys ? "ok" : "unsupported";
     return r === "ok" ? { ok: true, wrapId: "wrap_recheck" } : { ok: false, reason: r };
   },
   /** e2ee.migrate: puts failed documents back in the queue. */

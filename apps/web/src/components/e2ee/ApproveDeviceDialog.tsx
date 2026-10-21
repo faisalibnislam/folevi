@@ -80,8 +80,23 @@ export function NewDeviceApprovalDialog({ open, onClose, onApproved }: { open: b
 export function IncomingApprovalHost() {
   const approvals = useApprovals();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const current = approvals.find((r) => !dismissed.has(r.requestId)) ?? null;
-  return current ? <IncomingApprovalDialog key={current.requestId} request={current} onClose={() => setDismissed(new Set([...dismissed, current.requestId]))} /> : null;
+  // The request on show stays on show until it's closed, even once the server stops listing it (answered,
+  // cancelled), so the person can read what happened.
+  const [showing, setShowing] = useState<IncomingApproval | null>(null);
+  const next = approvals.find((r) => !dismissed.has(r.requestId)) ?? null;
+  useEffect(() => {
+    if (!showing && next) setShowing(next);
+  }, [showing, next]);
+  return showing ? (
+    <IncomingApprovalDialog
+      key={showing.requestId}
+      request={showing}
+      onClose={() => {
+        setDismissed(new Set([...dismissed, showing.requestId]));
+        setShowing(null);
+      }}
+    />
+  ) : null;
 }
 
 function IncomingApprovalDialog({ request, onClose }: { request: IncomingApproval; onClose: () => void }) {

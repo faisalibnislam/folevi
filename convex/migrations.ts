@@ -10,6 +10,7 @@ import { randomNoteEmoji, randomNoteCover } from "@folevi/editor-schema";
 import { currentFolderColor, isFolderColor, randomFolderColor } from "./lib/folderColors";
 import { startTrial } from "./lib/billing";
 import { hasValidScope, SCOPED_TABLES, sameScope, scopeOfRow, type ScopedTable } from "./lib/scope";
+import { isSealed } from "./lib/e2ee/state";
 
 /** Fills in the card preview (documents.preview) for pages saved before previews existed. */
 export const backfillDocumentPreviews = internalMutation({
@@ -18,7 +19,8 @@ export const backfillDocumentPreviews = internalMutation({
     const page = await ctx.db.query("documents").paginate({ numItems: 50, cursor: args.cursor ?? null });
     let updated = 0;
     for (const doc of page.page) {
-      if (doc.preview !== undefined) continue;
+      // Sealed notes keep placeholders: their previews are made on the device (docs/E2EE_DESIGN.md §5.7).
+      if (doc.preview !== undefined || isSealed(doc)) continue;
       await refreshDerived(ctx, doc);
       updated++;
     }
@@ -55,7 +57,8 @@ export const backfillNoteIcons = internalMutation({
     const page = await ctx.db.query("documents").paginate({ numItems: 100, cursor: args.cursor ?? null });
     let updated = 0;
     for (const doc of page.page) {
-      if (doc.icon || doc.kind !== "document") continue;
+      // A sealed note's icon is in its sealed appearance; the plain column stays empty.
+      if (doc.icon || doc.kind !== "document" || isSealed(doc)) continue;
       await ctx.db.patch(doc._id, { icon: randomNoteEmoji() });
       updated++;
     }
@@ -85,7 +88,7 @@ export const wideByDefault = internalMutation({
     const page = await ctx.db.query("documents").paginate({ numItems: 200, cursor: args.cursor ?? null });
     let updated = 0;
     for (const d of page.page) {
-      if (d.style.width === "wide") continue;
+      if (d.style.width === "wide" || isSealed(d)) continue;
       await ctx.db.patch(d._id, { style: { ...d.style, width: "wide" } });
       updated++;
     }
@@ -104,7 +107,7 @@ export const randomizeNoteStyles = internalMutation({
     const page = await ctx.db.query("documents").paginate({ numItems: 200, cursor: args.cursor ?? null });
     let updated = 0;
     for (const d of page.page) {
-      if (d.kind !== "document") continue;
+      if (d.kind !== "document" || isSealed(d)) continue;
       const { sheet: _sheet, text: _text, backdrop: _backdrop, ...style } = d.style as typeof d.style & { sheet?: string; text?: string; backdrop?: string };
       await ctx.db.patch(d._id, { cover: randomNoteCover(), style: { ...style, width: "wide" } });
       updated++;
@@ -175,7 +178,7 @@ export const backfillStudyCards = internalMutation({
     for (const row of page.page) {
       if (!studyKindOf(row)) continue;
       const doc = await ctx.db.get(row.documentId);
-      if (!doc) continue;
+      if (!doc || isSealed(doc)) continue;
       await syncStudyCard(ctx, row, doc);
       cards++;
     }
@@ -208,7 +211,7 @@ export const refreshLinkingPages = internalMutation({
     let refreshed = 0;
     for (const id of sources) {
       const doc = await ctx.db.get(id);
-      if (!doc) continue;
+      if (!doc || isSealed(doc)) continue;
       const rows = await liveBlocks(ctx, doc._id);
       await refreshDerived(ctx, doc, rows);
       for (const row of rows) if (row.type === "todo" && JSON.stringify(row.text).includes('"pageLink"')) await syncTaskProjection(ctx, row, doc, doc.createdBy);

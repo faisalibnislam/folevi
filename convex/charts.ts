@@ -4,6 +4,7 @@
 import { query } from "./_generated/server";
 import { accessAtLeast, documentAccess, requireProfile, resolveScope } from "./lib/auth";
 import { inScope, vScopeArg } from "./lib/scope";
+import { isSealed } from "./lib/e2ee/state";
 
 const MAX_LISTED = 60;
 
@@ -22,7 +23,8 @@ export const collections = query({
       if (out.length >= MAX_LISTED) break;
       if (c.deletedAt || !inScope(c, scope)) continue;
       const host = await ctx.db.get(c.documentId);
-      if (!host || host.inTrash) continue;
+      // A sealed note's collections are sealed records the device lists (docs/E2EE_DESIGN.md §5.7).
+      if (!host || host.inTrash || isSealed(host)) continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, host), "read")) continue;
       out.push({ id: c.publicId, name: c.name || "Collection", note: host.title || "Untitled", noteId: host.publicId, updatedAt: c.updatedAt });
     }

@@ -11,6 +11,7 @@ import { mentionedIds, notify } from "./lib/notify";
 import { insertScoped, scopeOfRow } from "./lib/scope";
 import { REACTION_KINDS, REACTION_NAMES_SHOWN, vReactionKind, type ReactionKind } from "./lib/reactions";
 import { emitWebhook } from "./lib/webhooks";
+import { isSealedBlock, requirePlainWrite } from "./lib/e2ee/state";
 
 function cleanBody(body: unknown): InlineNode[] {
   const issues = validateInline(body, "body");
@@ -116,6 +117,8 @@ export const threads = query({
           authorName: author.name,
           authorAvatarUrl: author.avatarUrl,
           body: c.deletedAt ? [] : (c.body as InlineNode[]),
+          // End-to-end encrypted: the body is sealed with the note key; the router opens it (docs/E2EE_DESIGN.md §5.7).
+          ...(c.sealedBody && !c.deletedAt ? { sealedBody: { c: c.sealedBody.c, k: c.sealedBody.k } } : {}),
           deleted: c.deletedAt !== undefined,
           createdAt: c.createdAt,
           editedAt: c.editedAt ?? null,
@@ -132,7 +135,8 @@ export const threads = query({
         blockId: t.blockId ?? null,
         /** False when the block this thread was on has been deleted (the thread stays readable). */
         blockExists: t.blockId ? block !== null : null,
-        blockText: block ? plainText(block.text as InlineNode[]).trim().slice(0, 140) : null,
+        // A sealed block's text is ciphertext: the device fills this in.
+        blockText: block ? (isSealedBlock(block) ? "" : plainText(block.text as InlineNode[]).trim().slice(0, 140)) : null,
         status: t.status,
         createdAt: t.createdAt,
         lastActivityAt: t.lastActivityAt,
@@ -335,6 +339,8 @@ export const create = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "comment");
+    // A sealed note's comments are sealed too (e2ee.content.createComment); an old client is told to update.
+    await requirePlainWrite(ctx, doc);
     const wantedThread = clientId(args.threadId);
     const wantedComment = clientId(args.commentId);
     if (wantedThread) {
@@ -398,6 +404,7 @@ export const reply = mutation({
   handler: async (ctx, args) => {
     const { profile, thread, doc } = await threadFor(ctx, args.threadId, "comment");
     await assertWritable(ctx, profile);
+    await requirePlainWrite(ctx, doc);
     const wanted = clientId(args.commentId);
     const existing = wanted ? await commentByPublicId(ctx, wanted) : null;
     if (existing) {
@@ -448,6 +455,7 @@ export const edit = mutation({
     await assertWritable(ctx, profile);
     if (comment.authorId !== profile._id) fail("forbidden", "You can only edit your own comments.");
     if (!accessAtLeast(access, "comment")) fail("forbidden", "You can't comment on this document.");
+    await requirePlainWrite(ctx, doc);
     await consume(ctx, "comment", profile._id);
     const body = cleanBody(args.body);
     await ctx.db.patch(comment._id, { body, editedAt: Date.now() });
@@ -500,7 +508,7 @@ export const remove = mutation({
     await assertWritable(ctx, profile);
     const own = comment.authorId === profile._id && accessAtLeast(access, "comment");
     if (!own && !accessAtLeast(access, "manage")) fail("forbidden", "You can't delete this comment.");
-    await ctx.db.patch(comment._id, { deletedAt: Date.now(), body: [] });
+    await ctx.db.patch(comment._id, { deletedAt: Date.now(), body: [], sealedBody: undefined });
     await deleteReactions(ctx, comment._id);
     const thread = (await ctx.db.get(comment.threadId))!;
     const rest = await ctx.db

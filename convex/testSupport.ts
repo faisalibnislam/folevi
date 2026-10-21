@@ -2,9 +2,10 @@
 // Convex CLI (`npx convex run testSupport:…`), never from browsers. They also refuse to run on a
 // production deployment.
 import { v } from "convex/values";
-import { internalMutation } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { components, internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Id, TableNames } from "./_generated/dataModel";
+import schema from "./schema";
 import { SCHEMA_VERSION, normalizeForSearch, randomNoteCover, rankBetween, ulid, type WireBlock } from "@folevi/editor-schema";
 import { createDocument } from "./lib/create";
 import { nextSeq } from "./lib/seq";
@@ -416,5 +417,164 @@ export const seedExternalCalendar = internalMutation({
       });
     }
     return { events: events.length };
+  },
+});
+
+// ---------------------------------------------------------------- end-to-end encryption scan (dev only)
+//
+// docs/E2EE_DESIGN.md §11.2, §11.4: after an e2e flow encrypts seeded notes, nothing the server stores may
+// still hold their marker strings. `e2eeScan` reads every row of every table in the schema, every scheduled
+// function's arguments and every stored blob, and reports where a marker turns up as UTF-8, UTF-16 or base64.
+// It never returns the content around a hit, only where it is. Refused on production deployments.
+//
+//   npx convex run testSupport:e2eeScan '{"markers":["ZQXJ-TITLE-7f3a"]}'
+
+const SCAN_PAGE = 200;
+/** Blob bytes read at most per scan (a dev deployment's files; larger blobs are skipped and counted). */
+const SCAN_BLOB_BYTES = 200 * 1024 * 1024;
+const SYSTEM_TABLES = ["_scheduled_functions", "_storage"] as const;
+
+/** One byte per char: how bytes are searched. */
+function latin1(bytes: Uint8Array): string {
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 8192) out += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  return out;
+}
+
+function utf16(text: string, littleEndian: boolean): Uint8Array {
+  const out = new Uint8Array(text.length * 2);
+  const view = new DataView(out.buffer);
+  for (let i = 0; i < text.length; i++) view.setUint16(i * 2, text.charCodeAt(i), littleEndian);
+  return out;
+}
+
+function base64(bytes: Uint8Array): string {
+  return btoa(latin1(bytes));
+}
+
+/**
+ * The forms a marker can take in stored data: its UTF-8 and UTF-16 bytes, and its base64 and base64url
+ * encodings at each of the three byte alignments (only the characters the marker alone decides).
+ */
+export function markerNeedles(marker: string): { needle: string; encoding: string }[] {
+  const utf8 = new TextEncoder().encode(marker);
+  const out: { needle: string; encoding: string }[] = [
+    { needle: marker, encoding: "text" },
+    { needle: latin1(utf8), encoding: "utf8" },
+    { needle: latin1(utf16(marker, true)), encoding: "utf16le" },
+    { needle: latin1(utf16(marker, false)), encoding: "utf16be" },
+  ];
+  for (const [bytes, name] of [
+    [utf8, "base64"],
+    [utf16(marker, true), "base64-utf16"],
+  ] as const) {
+    for (let k = 0; k < 3; k++) {
+      const padded = new Uint8Array(k + bytes.length);
+      padded.set(bytes, k);
+      const encoded = base64(padded);
+      const needle = encoded.slice(Math.ceil((k * 8) / 6), Math.floor(padded.length / 3) * 4);
+      if (needle.length < 4) continue;
+      out.push({ needle, encoding: name });
+      out.push({ needle: needle.replace(/\+/g, "-").replace(/\//g, "_"), encoding: `${name}url` });
+    }
+  }
+  const seen = new Set<string>();
+  return out.filter((n) => (seen.has(n.needle) ? false : (seen.add(n.needle), true)));
+}
+
+/** Every string in a stored value (bytes as one char per byte), for searching. */
+function strings(value: unknown, out: string[] = []): string[] {
+  if (typeof value === "string") out.push(value);
+  else if (value instanceof ArrayBuffer) out.push(latin1(new Uint8Array(value)));
+  else if (ArrayBuffer.isView(value)) out.push(latin1(new Uint8Array(value.buffer, value.byteOffset, value.byteLength)));
+  else if (Array.isArray(value)) for (const v of value) strings(v, out);
+  else if (value && typeof value === "object") for (const [k, v] of Object.entries(value)) {
+    out.push(k);
+    strings(v, out);
+  }
+  return out;
+}
+
+type ScanHit = { table: string; id: string; marker: string; encoding: string };
+
+function findMarkers(table: string, id: string, haystacks: string[], needles: { marker: string; needle: string; encoding: string }[], hits: ScanHit[]) {
+  for (const n of needles) {
+    if (haystacks.some((h) => h.includes(n.needle)) && !hits.some((x) => x.table === table && x.id === id && x.marker === n.marker)) {
+      hits.push({ table, id, marker: n.marker, encoding: n.encoding });
+    }
+  }
+}
+
+function needlesOf(markers: string[]) {
+  return markers.flatMap((marker) => markerNeedles(marker).map((n) => ({ marker, ...n })));
+}
+
+/** One page of one table: the marker hits in it, and (for `_storage`) the blobs to read. */
+export const e2eeScanPage = internalQuery({
+  args: { table: v.string(), cursor: v.union(v.string(), v.null()), markers: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    assertNotProduction();
+    const opts = { cursor: args.cursor, numItems: SCAN_PAGE };
+    const page =
+      args.table === "_scheduled_functions"
+        ? await ctx.db.system.query("_scheduled_functions").paginate(opts)
+        : args.table === "_storage"
+          ? await ctx.db.system.query("_storage").paginate(opts)
+          : await ctx.db.query(args.table as TableNames).paginate(opts);
+    const needles = needlesOf(args.markers);
+    const hits: ScanHit[] = [];
+    for (const row of page.page) findMarkers(args.table, row._id, strings(row), needles, hits);
+    const blobs = args.table === "_storage" ? (page.page as { _id: Id<"_storage">; size: number }[]).map((b) => ({ id: b._id, size: b.size })) : [];
+    return { hits, rows: page.page.length, blobs, isDone: page.isDone, continueCursor: page.continueCursor };
+  },
+});
+
+/**
+ * Scans the whole deployment for marker strings (see above). `clean` is true when none was found anywhere.
+ * Markers must be at least 8 characters, so an ordinary word can't match by chance.
+ */
+export const e2eeScan = internalAction({
+  args: { markers: v.array(v.string()) },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ clean: boolean; hits: ScanHit[]; scanned: { tables: number; rows: number; blobs: number; blobsSkipped: number } }> => {
+    assertNotProduction();
+    if (!args.markers.length || args.markers.some((m) => m.length < 8)) throw new Error("Give markers of at least 8 characters.");
+    const hits: ScanHit[] = [];
+    const tables = [...(Object.keys(schema.tables) as TableNames[]), ...SYSTEM_TABLES];
+    const blobs: { id: Id<"_storage">; size: number }[] = [];
+    let rows = 0;
+    for (const table of tables) {
+      let cursor: string | null = null;
+      for (;;) {
+        const page: { hits: ScanHit[]; rows: number; blobs: { id: Id<"_storage">; size: number }[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.testSupport.e2eeScanPage, {
+          table,
+          cursor,
+          markers: args.markers,
+        });
+        hits.push(...page.hits);
+        rows += page.rows;
+        blobs.push(...page.blobs);
+        if (page.isDone) break;
+        cursor = page.continueCursor;
+      }
+    }
+    const needles = needlesOf(args.markers);
+    let read = 0;
+    let blobsRead = 0;
+    let blobsSkipped = 0;
+    for (const b of blobs) {
+      if (read + b.size > SCAN_BLOB_BYTES) {
+        blobsSkipped++;
+        continue;
+      }
+      const blob = await ctx.storage.get(b.id);
+      if (!blob) continue;
+      read += b.size;
+      blobsRead++;
+      findMarkers("_storage", b.id, [latin1(new Uint8Array(await blob.arrayBuffer()))], needles, hits);
+    }
+    return { clean: hits.length === 0, hits: hits.slice(0, 500), scanned: { tables: tables.length, rows, blobs: blobsRead, blobsSkipped } };
   },
 });

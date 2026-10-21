@@ -23,6 +23,7 @@ import { liveBlocks } from "./lib/documents";
 import { ReaderLabels } from "./lib/linkLabels";
 import { SyncEngine } from "./lib/syncEngine";
 import { latestBlockSeq, seenMark, snapshot } from "./documents";
+import { failE2ee, isSealed } from "./lib/e2ee/state";
 
 /** How long a proposal waits for the person before it expires. */
 export const PROPOSAL_TTL = 14 * 24 * 60 * 60_000;
@@ -65,6 +66,9 @@ export async function proposeAppend(
   from: ProposalSource,
   requestKey: string,
 ): Promise<{ proposalId: string; expiresAt: number }> {
+  // A sealed note can't hold a plaintext proposal: an app's write to it waits in e2eeInbox for a device
+  // (docs/E2EE_DESIGN.md §5.7, e2ee/inbox.ts).
+  if (isSealed(doc)) failE2ee("e2ee_device_only");
   const earlier = await ctx.db
     .query("proposals")
     .withIndex("by_request", (q) => q.eq("requestKey", requestKey))
@@ -138,7 +142,9 @@ export const list = query({
     for (const r of rows) {
       const doc = await ctx.db.get(r.documentId);
       const readable = doc && !doc.inTrash && doc.deletedAt === undefined ? await documentAccess(ctx, profile, doc) : "none";
-      const canRead = accessAtLeast(readable, "read");
+      // A note encrypted since: its proposals can only be rejected (encrypting it expires them, §5.5).
+      const sealed = Boolean(doc && isSealed(doc));
+      const canRead = accessAtLeast(readable, "read") && !sealed;
       out.push({
         id: r.publicId,
         documentId: canRead ? doc!.publicId : null,
@@ -150,7 +156,13 @@ export const list = query({
         expiresAt: r.expiresAt,
         blocks: canRead ? await labels.blocks(r.blocks as WireBlock[]) : [],
         /** Why it can't be accepted now (it can still be rejected), or null. */
-        problem: !doc || doc.inTrash || doc.deletedAt !== undefined ? "This note is gone, so the proposal can't be applied." : !accessAtLeast(readable, "write") ? "You can't edit this note anymore." : null,
+        problem: !doc || doc.inTrash || doc.deletedAt !== undefined
+          ? "This note is gone, so the proposal can't be applied."
+          : sealed
+            ? "This note is end-to-end encrypted now, so the proposal can't be applied."
+            : !accessAtLeast(readable, "write")
+              ? "You can't edit this note anymore."
+              : null,
       });
     }
     return out;
@@ -184,6 +196,7 @@ export const accept = mutation({
     const doc = await ctx.db.get(row.documentId);
     if (!doc || doc.inTrash || doc.deletedAt !== undefined) fail("conflict", CANT_APPLY);
     if (!accessAtLeast(await documentAccess(ctx, profile, doc), "write")) fail("forbidden", "You can't edit this note anymore.");
+    if (isSealed(doc)) failE2ee("e2ee_device_only");
     const rows = await liveBlocks(ctx, doc._id);
     const blocks = (row.blocks as WireBlock[]).map((b) => ({ ...b }));
     // Placed at the end of the note as it is now, whatever happened to it since.

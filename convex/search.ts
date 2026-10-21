@@ -10,6 +10,7 @@ import { fileTextHits } from "./fileText";
 import { accessAtLeast, documentAccess, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
 import { HomeFolders } from "./lib/documents";
 import { inScope, personalScope, vScopeArg, workspaceScope, type Scope } from "./lib/scope";
+import { failE2ee, isLocked, isSealed, spaceE2ee, switchesOf } from "./lib/e2ee/state";
 
 /**
  * Full-text search of one scope (your Personal, or a workspace you're in) over titles, text blocks (incl.
@@ -43,6 +44,39 @@ export interface SearchArgs {
   updatedAfter?: number;
   includeArchived?: boolean;
   limit?: number;
+}
+
+/**
+ * Hits from an encrypted space's readable search copies (purpose "search"), when its "Search everywhere"
+ * switch is on: the notes they belong to (not in Trash, not locked) and the copy of each.
+ */
+async function mirrorSearchHits(ctx: QueryCtx, scope: Scope, q: string): Promise<{ docs: Doc<"documents">[]; byDoc: Map<string, Doc<"e2eeMirrors">> }> {
+  const byDoc = new Map<string, Doc<"e2eeMirrors">>();
+  const docs: Doc<"documents">[] = [];
+  const space = await spaceE2ee(ctx, scope);
+  if (!space || space.level === "standard" || !switchesOf(space).searchEverywhere) return { docs, byDoc };
+  const mirrors = ctx.db.query("e2eeMirrors");
+  const byTitle = await mirrors
+    .withSearchIndex("search_title", (s) => {
+      const b = s.search("title", q);
+      return (scope.kind === "personal" ? b.eq("ownerProfileId", scope.profileId) : b.eq("workspaceId", scope.workspaceId)).eq("purpose", "search");
+    })
+    .take(30);
+  const byText = await ctx.db
+    .query("e2eeMirrors")
+    .withSearchIndex("search_text", (s) => {
+      const b = s.search("text", q);
+      return (scope.kind === "personal" ? b.eq("ownerProfileId", scope.profileId) : b.eq("workspaceId", scope.workspaceId)).eq("purpose", "search");
+    })
+    .take(100);
+  for (const m of [...byTitle, ...byText]) {
+    if (byDoc.has(m.documentId) || !inScope(m, scope)) continue;
+    const d = await ctx.db.get(m.documentId);
+    if (!d || d.inTrash || !inScope(d, scope) || (await isLocked(ctx, d))) continue;
+    byDoc.set(d._id, m);
+    docs.push(d);
+  }
+  return { docs, byDoc };
 }
 
 /** The search itself, for a person in a scope they're in (also used by the MCP server, convex/mcp.ts). */
@@ -99,7 +133,8 @@ export async function searchDocuments(ctx: QueryCtx, profile: Doc<"profiles">, s
   const tags = await (
     scope.kind === "personal" ? tagBase.withIndex("by_owner", (x) => x.eq("ownerProfileId", scope.profileId)) : tagBase.withIndex("by_workspace", (x) => x.eq("workspaceId", scope.workspaceId))
   ).take(500);
-  for (const t of tags.filter((t) => t.normalizedName.includes(nq)).slice(0, 5)) {
+  // A sealed tag's name is ciphertext and its normalizedName a blind MAC (docs/E2EE_DESIGN.md §5.2): never matched.
+  for (const t of tags.filter((t) => !t.sealedName && t.normalizedName.includes(nq)).slice(0, 5)) {
     const links = await ctx.db
       .query("documentTags")
       .withIndex("by_tag", (x) => x.eq("tagId", t._id))
@@ -118,9 +153,14 @@ export async function searchDocuments(ctx: QueryCtx, profile: Doc<"profiles">, s
     if (d && !d.inTrash && inScope(d, scope)) fileMatches.push(d);
   }
 
+  // An encrypted space with "Search everywhere" on keeps a readable search copy of its notes (e2eeMirrors,
+  // docs/E2EE_DESIGN.md §7.3): its hits join the rest. Locked notes never have one; a Standard space has no
+  // space row and skips this.
+  const mirrorHits = await mirrorSearchHits(ctx, scope, q);
+
   const seen = new Set<string>();
   const ordered: Doc<"documents">[] = [];
-  for (const d of [...byTitle, ...byText, ...tagMatches, ...fileMatches]) {
+  for (const d of [...byTitle, ...byText, ...tagMatches, ...fileMatches, ...mirrorHits.docs]) {
     if (seen.has(d._id)) continue;
     seen.add(d._id);
     ordered.push(d);
@@ -128,12 +168,31 @@ export async function searchDocuments(ctx: QueryCtx, profile: Doc<"profiles">, s
   const out = [];
   const homes = new HomeFolders(ctx);
   for (const d of ordered) {
+    // Sealed notes are searched on the device (their searchText is empty), or through their mirror.
+    const mirror = isSealed(d) ? mirrorHits.byDoc.get(d._id) : undefined;
+    if (isSealed(d) && !mirror) continue;
     if (folderId && d.folderId !== folderId) continue;
     if (creator && d.createdBy !== creator) continue;
     if (tagDocs && !tagDocs.has(d._id)) continue;
     if (args.updatedAfter && d.updatedAt < args.updatedAfter) continue;
     if (!args.includeArchived && d.archivedAt) continue;
     if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
+    if (mirror) {
+      const mirrorBody = mirror.text.startsWith(mirror.title) ? mirror.text.slice(mirror.title.length + 1) : mirror.text;
+      out.push({
+        id: d.publicId,
+        title: mirror.title,
+        icon: null,
+        kind: d.kind,
+        updatedAt: d.updatedAt,
+        snippet: searchSnippet(mirrorBody, q, 70),
+        match: null,
+        archived: Boolean(d.archivedAt),
+        homeFolder: await homes.of(d),
+      });
+      if (out.length >= limit) break;
+      continue;
+    }
     const body = d.searchText.slice(d.title.length + 1);
     // Found only in a file or drawing (not in the note's own text): the result says where, and opens there.
     const file = inFiles.get(d._id);
@@ -196,14 +255,21 @@ export const meaningAvailable = query({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const { scope } = await resolveScope(ctx, profile, args.scope);
+    // An encrypted space searches by meaning only with "Background Foli AI" on (its index is built from the
+    // readable copies that switch keeps, docs/E2EE_DESIGN.md §7.2).
+    if (!switchesOf(await spaceE2ee(ctx, scope)).backgroundAi) return false;
     return await indexEligible(ctx, scope);
   },
 });
 
 export const limitMeaning = internalMutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { scope: v.optional(vScopeArg) },
+  handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
+    if (args.scope) {
+      const { scope } = await resolveScope(ctx, profile, args.scope);
+      if (!switchesOf(await spaceE2ee(ctx, scope)).backgroundAi) failE2ee("e2ee_switch_off", undefined, { switch: "backgroundAi" });
+    }
     await consume(ctx, "searchMeaning", profile._id);
     return null;
   },
@@ -220,7 +286,7 @@ export const byMeaning = action({
     await requireIdentity(ctx);
     const q = args.query.trim().slice(0, 200);
     if (q.length < 3) return [];
-    await ctx.runMutation(internal.search.limitMeaning, {});
+    await ctx.runMutation(internal.search.limitMeaning, { scope: args.scope });
     const notes = await hybridSearch(ctx, { scope: args.scope, question: q, queries: [q], limit: 8 });
     return notes.filter((n) => !n.recent).map((n) => ({ id: n.id, title: n.title, snippet: n.text.replace(/\s+/g, " ").trim().slice(0, 160) }));
   },

@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { blocksFileIds, ulid } from "@folevi/editor-schema";
+import { blocksFileIds, isValidId, ulid, type WireBlock } from "@folevi/editor-schema";
 import {
   accessAtLeast,
   assertWritable,
@@ -29,6 +29,11 @@ import { sharePermissions } from "./lib/permissions";
 import { vPublishTheme, vShareRole } from "./lib/validators";
 import { isFeatureEnabled } from "./lib/flags";
 import { insertScoped, scopeOfRow } from "./lib/scope";
+import { nextSeq } from "./lib/seq";
+import { failE2ee, isLocked, isSealed, isSealedBlock } from "./lib/e2ee/state";
+import { E2EE_LIMITS, vPublicLinkE2ee } from "./lib/e2ee/validators";
+import { addPendingGrant, dropNoteGrant, hasAccountKeys, hasNoteGrant, sealedFieldOut, sealedTitleOut } from "./lib/e2ee/coreGuards";
+import { sealedFieldsOf, toSealedWireBlock } from "./lib/e2ee/sealedRows";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 
@@ -138,6 +143,124 @@ async function scopeIsOpen(ctx: MutationCtx, doc: Doc<"documents">): Promise<boo
   return Boolean(workspace && workspace.status === "active" && !isScheduledForDeletion(workspace));
 }
 
+/** A short-lived signed address for one of a shared page's files. */
+async function signedFileUrl(fileId: string, exp: number): Promise<string> {
+  return `${process.env.CONVEX_SITE_URL ?? ""}/files/${fileId}?exp=${exp}&sig=${await signFileUrl(`${fileId}:${exp}`)}`;
+}
+
+/**
+ * What an encrypted link serves (docs/E2EE_DESIGN.md §9.1): the note's sealed title, appearance, meta and
+ * blocks, its files' sealed keys and metadata with signed addresses for their ciphertext, its collection and
+ * found-text records, and the note key wrapped by the link's key (the newest version, so a rotated note
+ * still opens). Nothing here is readable without the secret in the URL fragment, which never reaches us.
+ * Synced content from other notes is left out (their keys aren't the link's).
+ */
+async function sealedShare(ctx: MutationCtx, link: Doc<"publicLinks">, doc: Doc<"documents">) {
+  const wraps = await ctx.db
+    .query("e2eeNoteKeys")
+    .withIndex("by_link", (q) => q.eq("linkId", link._id))
+    .collect();
+  const newest = wraps.filter((w) => w.wrappedBy === "link").sort((a, b) => b.version - a.version)[0];
+  const noteKey = newest ? { version: newest.version, wrapped: newest.wrapped } : { version: link.e2ee!.noteVersion, wrapped: link.e2ee!.wrapped };
+  const blocks = [];
+  for (const row of await liveBlocks(ctx, doc._id)) {
+    if (!isSealedBlock(row)) continue;
+    // Who is mentioned stays with the server and the note's members: an anonymous reader doesn't need it.
+    const { revision: _revision, ...block } = toSealedWireBlock(row);
+    const { mentions: _mentions, ...sealed } = block.sealed;
+    blocks.push({ ...block, sealed });
+  }
+  const exp = Date.now() + 60 * 60_000;
+  const files = [];
+  for (const f of await ctx.db
+    .query("files")
+    .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+    .take(2000)) {
+    if (f.status !== "ready" || !f.sealed) continue;
+    files.push({ id: f.publicId, url: await signedFileUrl(f.publicId, exp), size: f.size, sealed: { key: f.sealed.key, meta: f.sealed.meta, k: f.sealed.k, plainSize: f.sealed.plainSize } });
+  }
+  // Collections and found text belong to the note; records only one person reads (chats, study) never leave.
+  const records = [];
+  for (const r of await ctx.db
+    .query("e2eeRecords")
+    .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+    .take(2000)) {
+    if (r.deletedAt !== undefined || r.profileId !== undefined || (r.kind !== "collection" && r.kind !== "fileText")) continue;
+    records.push({ kind: r.kind, recordId: r.recordId, keyVersion: r.keyVersion, sealed: r.sealed });
+  }
+  return {
+    status: "ok" as const,
+    // Placeholders: the page renders from `e2ee` on the reader's device.
+    document: { title: "", icon: null, style: doc.style, cover: { kind: "none" as const }, coverUrl: null, coverPalette: null, updatedAt: doc.updatedAt },
+    blocks: [] as WireBlock[],
+    fileUrls: {} as Record<string, string>,
+    collections: {} as Record<string, PublicCollection>,
+    e2ee: {
+      documentId: doc.publicId,
+      linkId: link.publicId,
+      noteKey,
+      title: sealedTitleOut(doc),
+      appearance: sealedFieldOut(doc.sealedAppearance),
+      meta: sealedFieldOut(doc.sealedMeta),
+      blocks,
+      files,
+      records,
+    },
+  };
+}
+
+/**
+ * The readable copy a person published on purpose for a sealed note (docs/E2EE_DESIGN.md §9.3), shaped like
+ * a Standard page's share. Its chunks join into canonical JSON `{ blocks, collections? }` (e2ee.links.publishCopy
+ * writes it); its images are plain files of the note. Null when nothing has been published yet.
+ */
+async function publishedCopy(ctx: MutationCtx, link: Doc<"publicLinks">, doc: Doc<"documents">) {
+  const copy = await ctx.db
+    .query("e2eePublishedCopies")
+    .withIndex("by_link", (q) => q.eq("linkId", link._id))
+    .unique();
+  if (!copy || copy.documentId !== doc._id) return null;
+  const chunks = await ctx.db
+    .query("e2eePublishedChunks")
+    .withIndex("by_copy", (q) => q.eq("copyId", copy._id))
+    .collect();
+  let body: { blocks?: unknown; collections?: unknown };
+  try {
+    body = JSON.parse(chunks.map((c) => c.data).join("")) as typeof body;
+  } catch {
+    return null;
+  }
+  const blocks = Array.isArray(body.blocks) ? (body.blocks as WireBlock[]) : [];
+  const collections = body.collections && typeof body.collections === "object" ? (body.collections as Record<string, PublicCollection>) : {};
+  const exp = Date.now() + 60 * 60_000;
+  const plainFile = async (fileId: string) => {
+    const file = await ctx.db
+      .query("files")
+      .withIndex("by_public_id", (q) => q.eq("publicId", fileId))
+      .unique();
+    return file && file.documentId === doc._id && file.status === "ready" && !file.sealed ? file : null;
+  };
+  const fileUrls: Record<string, string> = {};
+  for (const fileId of blocksFileIds(blocks).slice(0, 2000)) if (await plainFile(fileId)) fileUrls[fileId] = await signedFileUrl(fileId, exp);
+  let coverUrl: string | null = null;
+  let coverPalette: Doc<"files">["palette"] | null = null;
+  if (copy.cover.kind === "image" && copy.cover.value) {
+    const file = await plainFile(copy.cover.value);
+    if (file) {
+      coverUrl = await signedFileUrl(file.publicId, exp);
+      coverPalette = file.palette ?? null;
+    }
+  }
+  return {
+    status: "ok" as const,
+    document: { title: copy.title, icon: copy.icon ?? null, style: copy.style, cover: copy.cover, coverUrl, coverPalette, updatedAt: copy.publishedAt },
+    blocks,
+    fileUrls,
+    collections,
+    description: null,
+  };
+}
+
 /** A page and how the caller stands on it; anything they can't open reads as not found. */
 async function sharingTarget(ctx: QueryCtx, profile: Doc<"profiles">, documentId: string): Promise<{ doc: Doc<"documents">; info: DocumentAccessInfo; manage: boolean; share: boolean }> {
   const doc = await getDocumentByPublicId(ctx, documentId);
@@ -244,6 +367,9 @@ export const get = query({
             theme: l.theme ?? ("note" as const),
             viewCount: l.viewCount,
             createdAt: l.createdAt,
+            // An encrypted link (the key is in the link) or a published readable copy (docs/E2EE_DESIGN.md §9).
+            ...(l.e2ee ? { encrypted: true as const } : {}),
+            ...(l.plainCopy ? { plainCopy: true as const } : {}),
           }))
       : [];
     return {
@@ -328,6 +454,15 @@ export const grant = mutation({
       .withIndex("by_document_profile", (q) => q.eq("documentId", doc._id).eq("profileId", target._id))
       .unique();
     if (existing && !manage && existing.grantedBy !== profile._id) fail("forbidden", "Someone else already shared this page with them. A workspace admin can change their access.");
+    // End-to-end encrypted (docs/E2EE_DESIGN.md §8.4): someone with keys gets the note key from the sharer's
+    // device first (e2ee.grants.grantNote); someone without keys gets the page now and the key once they set
+    // encryption up (a pending page grant any manager's device completes).
+    const sealed = isSealed(doc);
+    if (sealed && !existing) {
+      if (await hasAccountKeys(ctx, target._id)) {
+        if (!(await hasNoteGrant(ctx, doc._id, target._id))) failE2ee("e2ee_not_set_up", "Share the note's key with them first.");
+      } else await addPendingGrant(ctx, scopeOfRow(doc), target._id, "page", doc._id);
+    }
     if (existing) await ctx.db.patch(existing._id, { role: args.role });
     else await insertScoped(ctx, "documentPermissions", scopeOfRow(doc), { documentId: doc._id, profileId: target._id, role: args.role, grantedBy: profile._id, createdAt: Date.now() });
     if (existing) {
@@ -340,7 +475,8 @@ export const grant = mutation({
         actor: profile,
         kind: "share",
         doc,
-        title: `${profile.displayName} shared ${doc.title || "Untitled"} with you`,
+        // A sealed note's title stays on the device (docs/E2EE_DESIGN.md §7.7, §9.2).
+        title: sealed ? `${profile.displayName} shared a note with you` : `${profile.displayName} shared ${doc.title || "Untitled"} with you`,
         email: { key: "share_notification", role: args.role },
       });
     }
@@ -381,7 +517,8 @@ async function invitePageByEmail(ctx: MutationCtx, actor: Doc<"profiles">, doc: 
     idempotencyKey: `page-invite:${publicId}`,
     dataVariables: {
       actorName: actor.displayName.slice(0, 80),
-      documentTitle: (doc.title || "Untitled").slice(0, 120),
+      // Invitation emails never carry a sealed note's title (docs/E2EE_DESIGN.md §9.2).
+      documentTitle: isSealed(doc) ? "a note" : (doc.title || "Untitled").slice(0, 120),
       role: shareRoleLabel(role),
       documentUrl: `${appUrl()}/share-invite/${token}`,
       preferencesUrl: `${appUrl()}/settings/notifications`,
@@ -407,6 +544,8 @@ export const revoke = mutation({
     if (row) {
       if (!manage && row.grantedBy !== profile._id) fail("forbidden", "Only a workspace admin can remove access someone else gave.");
       await ctx.db.delete(row._id);
+      // The note key sealed to them goes too (the sharer's device rotates the note key next, §8.4).
+      if (isSealed(doc)) await dropNoteGrant(ctx, doc._id, row.profileId);
       await notifyAccessChange(ctx, { recipientId: row.profileId, actor: profile, change: { type: "document_revoked", doc } });
     }
     return null;
@@ -481,7 +620,8 @@ export const previewPageInvite = query({
       valid: true as const,
       emailMatches,
       inviterName: inviter?.displayName ?? "Someone",
-      title: emailMatches ? doc.title || "Untitled" : null,
+      // A sealed note's title opens on the invitee's device once they hold its key (docs/E2EE_DESIGN.md §5.7).
+      title: emailMatches ? (isSealed(doc) ? "A note shared with you" : doc.title || "Untitled") : null,
       roleLabel: shareRoleLabel(invite.role),
     };
   },
@@ -512,6 +652,8 @@ export const acceptPageInvite = mutation({
     } else {
       await insertScoped(ctx, "documentPermissions", scopeOfRow(doc), { documentId: doc._id, profileId: profile._id, role: invite.role, grantedBy: invite.invitedBy, createdAt: Date.now() });
     }
+    // A sealed page: the note key follows from the sharer's or a manager's device (docs/E2EE_DESIGN.md §8.4).
+    if (isSealed(doc) && !(await hasNoteGrant(ctx, doc._id, profile._id))) await addPendingGrant(ctx, scopeOfRow(doc), profile._id, "page", doc._id);
     await ctx.db.patch(invite._id, { status: "accepted", acceptedBy: profile._id });
     const notes = await ctx.db
       .query("notifications")
@@ -550,6 +692,8 @@ export const sharedWithMe = query({
         ownerName: owner && owner.status !== "deleted" ? owner.displayName : null,
         updatedAt: d.updatedAt,
         excerpt: d.excerpt,
+        // End-to-end encrypted: the title and appearance are sealed; the device opens them with the note key.
+        ...(isSealed(d) ? { sealed: sealedFieldsOf(d) } : {}),
       });
     }
     return out.sort((a, b) => b.sharedAt - a.sharedAt);
@@ -560,12 +704,50 @@ export const sharedWithMe = query({
 
 /** Creates an unguessable public link. The raw token is returned exactly once; only its hash is stored. */
 export const createPublicLink = mutation({
-  args: { documentId: v.string(), expiresAt: v.optional(v.number()), password: v.optional(v.string()), allowIndexing: v.optional(v.boolean()), theme: v.optional(vPublishTheme) },
+  args: {
+    documentId: v.string(),
+    expiresAt: v.optional(v.number()),
+    password: v.optional(v.string()),
+    allowIndexing: v.optional(v.boolean()),
+    theme: v.optional(vPublishTheme),
+    /**
+     * End-to-end encrypted notes (docs/E2EE_DESIGN.md §9): `e2ee` is the note key wrapped by the link's key
+     * (whose secret is only in the URL fragment); `plainCopy` makes a link that serves a readable copy the
+     * device publishes with e2ee.links.publishCopy. A sealed note needs exactly one of them. `linkId` is the
+     * link's public id, chosen by the device because the wrap's context names it.
+     */
+    e2ee: v.optional(vPublicLinkE2ee),
+    plainCopy: v.optional(v.boolean()),
+    linkId: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "manage");
     if (!(await isFeatureEnabled(ctx, "public_links"))) fail("forbidden", "Public links are turned off for Folevi right now.");
+    const sealed = isSealed(doc);
+    if (sealed) {
+      if (Boolean(args.e2ee) === Boolean(args.plainCopy)) failE2ee("e2ee_required");
+      // An "Always fully encrypted" note is never shared in a readable form (docs/E2EE_DESIGN.md §10.8).
+      if (args.plainCopy && (await isLocked(ctx, doc))) failE2ee("e2ee_locked");
+      if (args.e2ee) {
+        if (args.e2ee.wrapped.byteLength === 0 || args.e2ee.wrapped.byteLength > E2EE_LIMITS.keyWrapBytes) fail("invalid_argument", "Invalid link key.");
+        const version = args.e2ee.noteVersion;
+        const known = await ctx.db
+          .query("e2eeNoteKeys")
+          .withIndex("by_document", (q) => q.eq("documentId", doc._id).eq("version", version))
+          .first();
+        if (!known) fail("invalid_argument", "Unknown note key version.");
+      }
+    } else if (args.e2ee || args.plainCopy) fail("invalid_argument", "This note isn't end-to-end encrypted.");
+    if (args.linkId !== undefined) {
+      if (!isValidId(args.linkId)) fail("invalid_argument", "Invalid link id.");
+      const taken = await ctx.db
+        .query("publicLinks")
+        .withIndex("by_public_id", (q) => q.eq("publicId", args.linkId!))
+        .unique();
+      if (taken) fail("invalid_argument", "That link id is taken.");
+    }
     if (args.expiresAt !== undefined && args.expiresAt <= Date.now()) fail("invalid_argument", "Choose an expiry in the future.");
     let passwordHash: string | undefined;
     let passwordSalt: string | undefined;
@@ -578,8 +760,8 @@ export const createPublicLink = mutation({
       passwordSalt = h.salt;
     }
     const token = randomToken(32);
-    const publicId = ulid();
-    await insertScoped(ctx, "publicLinks", scopeOfRow(doc), {
+    const publicId = args.linkId ?? ulid();
+    const linkId = await insertScoped(ctx, "publicLinks", scopeOfRow(doc), {
       publicId,
       documentId: doc._id,
       tokenHash: await sha256Hex(token),
@@ -587,14 +769,30 @@ export const createPublicLink = mutation({
       expiresAt: args.expiresAt,
       passwordHash,
       passwordSalt,
-      // A password-protected page can't be read by a search engine, so it is never offered to one.
-      allowIndexing: !passwordHash && (args.allowIndexing ?? false),
+      // A password-protected page can't be read by a search engine, so it is never offered to one; nor is an
+      // encrypted link's (its HTML has no content).
+      allowIndexing: !passwordHash && !args.e2ee && (args.allowIndexing ?? false),
       // The note's own style needs nothing stored.
       theme: args.theme === "note" ? undefined : args.theme,
       createdBy: profile._id,
       createdAt: Date.now(),
       viewCount: 0,
+      ...(args.e2ee ? { e2ee: { noteVersion: args.e2ee.noteVersion, wrapped: args.e2ee.wrapped } } : {}),
+      ...(args.plainCopy ? { plainCopy: true } : {}),
     });
+    // The link's note key wrap is also a note key row, so rotating the note (§4.9) re-wraps it with the rest.
+    if (args.e2ee) {
+      await insertScoped(ctx, "e2eeNoteKeys", scopeOfRow(doc), {
+        documentId: doc._id,
+        version: args.e2ee.noteVersion,
+        wrappedBy: "link",
+        linkId,
+        wrapped: args.e2ee.wrapped,
+        createdBy: profile._id,
+        createdAt: Date.now(),
+        seq: await nextSeq(ctx, scopeOfRow(doc)),
+      });
+    }
     return { id: publicId, token };
   },
 });
@@ -630,6 +828,15 @@ export const revokePublicLink = mutation({
     const doc = (await ctx.db.get(link.documentId))!;
     await requireDocument(ctx, profile, doc.publicId, "manage");
     if (!link.revokedAt) await ctx.db.patch(link._id, { revokedAt: Date.now() });
+    // An encrypted link's note key wraps go with it; the device then rotates the note key (docs/E2EE_DESIGN.md §9.1).
+    if (link.e2ee) {
+      for (const k of await ctx.db
+        .query("e2eeNoteKeys")
+        .withIndex("by_link", (q) => q.eq("linkId", link._id))
+        .collect()) {
+        await ctx.db.delete(k._id);
+      }
+    }
     return null;
   },
 });
@@ -663,6 +870,20 @@ export const openPublicLink = mutation({
       await consume(ctx, "publicLinkPassword", `${client}:${found._id}`);
       const { hash } = await hashSharePassword(args.password, found.passwordSalt);
       if (!timingSafeEqualHex(hash, found.passwordHash)) return { status: "password_incorrect" as const };
+    }
+    // End-to-end encrypted notes (docs/E2EE_DESIGN.md §9): an encrypted link gets the sealed rows and the
+    // link's note key wrap (the page opens them with the key in the URL fragment); a published readable copy
+    // is served as it was published. A plain link made before the note was encrypted shows nothing.
+    if (isSealed(doc)) {
+      if (found.plainCopy) {
+        const copy = await publishedCopy(ctx, found, doc);
+        if (!copy) return { status: "not_found" as const };
+        await ctx.db.patch(found._id, { viewCount: found.viewCount + 1 });
+        return { ...copy, allowIndexing: found.allowIndexing, theme: found.theme ?? ("note" as const) };
+      }
+      if (!found.e2ee) return { status: "not_found" as const };
+      await ctx.db.patch(found._id, { viewCount: found.viewCount + 1 });
+      return { ...(await sealedShare(ctx, found, doc)), allowIndexing: false, theme: found.theme ?? ("note" as const), description: null };
     }
     await ctx.db.patch(found._id, { viewCount: found.viewCount + 1 });
     // Links show only titles every reader of this page may see (never a restricted page's, nor one from

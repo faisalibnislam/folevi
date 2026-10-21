@@ -12,6 +12,8 @@ import { inScope, sameScopeRows, scopeOfRow, vScopeArg, type Scope, type ScopeAr
 import { setTrashState } from "./documents";
 import { appUrl } from "./lib/notify";
 import { schedulePush } from "./lib/push";
+import { failE2ee, isSealed, isSealedBlock, spaceE2ee } from "./lib/e2ee/state";
+import { requireServerWritable } from "./lib/e2ee/coreGuards";
 
 /** A scope's tasks of one status (Personal: by owner; a workspace: by workspace), by due date. */
 function tasksByDue(ctx: QueryCtx, scope: Scope, status: Doc<"tasks">["status"], range?: { from: string; to: string }) {
@@ -47,7 +49,8 @@ async function present(ctx: QueryCtx, profile: Doc<"profiles">, tasks: Doc<"task
   for (const t of tasks) {
     if (!docs.has(t.documentId)) docs.set(t.documentId, await ctx.db.get(t.documentId));
     const d = docs.get(t.documentId);
-    if (!d || d.inTrash) continue;
+    // A sealed note's to-dos are projected on the device (docs/E2EE_DESIGN.md §5.7).
+    if (!d || d.inTrash || isSealed(d)) continue;
     if (!readable.has(d._id)) readable.set(d._id, accessAtLeast(await documentAccess(ctx, profile, d), "read"));
     if (!readable.get(d._id)) continue;
     const assignee = t.assigneeId ? await ctx.db.get(t.assigneeId) : null;
@@ -161,11 +164,15 @@ export async function taskBlock(ctx: MutationCtx, profile: Doc<"profiles">, bloc
     .query("blocks")
     .withIndex("by_block_id", (q) => q.eq("blockId", blockId))
     .unique();
-  if (!row || row.deletedAt !== undefined || row.type !== "todo") fail("not_found", "Task not found.");
+  if (!row || row.deletedAt !== undefined) fail("not_found", "Task not found.");
   const doc = (await ctx.db.get(row.documentId))!;
   const access = await documentAccess(ctx, profile, doc);
   if (access === "none") fail("not_found", "Task not found.");
+  // A sealed to-do is edited on the device, which seals the change (docs/E2EE_DESIGN.md §5.7).
+  if (isSealedBlock(row) || isSealed(doc)) failE2ee("e2ee_device_only");
+  if (row.type !== "todo") fail("not_found", "Task not found.");
   if (!accessAtLeast(access, "write")) fail("forbidden", "You can't edit this task.");
+  await requireServerWritable(ctx, doc);
   return { row, doc };
 }
 
@@ -279,9 +286,13 @@ export const quickAdd = mutation({
     const scopeArg: ScopeArg = workspace ? { kind: "workspace", workspaceId: workspace.publicId } : { kind: "personal" };
     const title = args.title.trim().slice(0, 500);
     if (!title) fail("invalid_argument", "Write the task first.");
+    // In an encrypted space the device writes the sealed to-do itself (docs/E2EE_DESIGN.md §5.7).
+    const space = await spaceE2ee(ctx, scope);
+    if (space && space.level !== "standard") failE2ee("e2ee_device_only");
     const docPublicId = args.documentId ?? (await ensureInbox(ctx, profile, scope, scopeArg, args.deviceId ?? "server"));
     const doc = await getDocumentByPublicId(ctx, docPublicId);
     if (!doc) fail("not_found", "Document not found.");
+    await requireServerWritable(ctx, doc);
     const roots = (await liveBlocks(ctx, doc._id)).filter((b) => b.parentId === null).sort((a, b) => (a.rank < b.rank ? -1 : 1));
     const last = roots[roots.length - 1]?.rank ?? null;
     const props: Record<string, unknown> = { checked: false };
@@ -314,6 +325,16 @@ export const quickAdd = mutation({
  */
 export async function ensureInbox(ctx: MutationCtx, profile: Doc<"profiles">, scope: Scope, scopeArg: ScopeArg, deviceId = "server"): Promise<string> {
   let docPublicId = inboxDocumentId(profile._id, scopeIdKey(scopeArg));
+  // An encrypted space's Inbox is sealed: it's the page the space row names, or the one at the deterministic
+  // id, never found by its title. Only a device can make a sealed one (docs/E2EE_DESIGN.md §5.7).
+  const space = await spaceE2ee(ctx, scope);
+  if (space && space.level !== "standard") {
+    const named = space.inboxDocumentId ? await ctx.db.get(space.inboxDocumentId) : null;
+    const sealedInbox = named && inScope(named, scope) ? named : await getDocumentByPublicId(ctx, docPublicId);
+    if (!sealedInbox || !inScope(sealedInbox, scope) || sealedInbox.deletedAt !== undefined) failE2ee("e2ee_device_only");
+    if (sealedInbox.inTrash) await setTrashState(ctx, sealedInbox, profile._id, false, undefined);
+    return sealedInbox.publicId;
+  }
   let existing = await getDocumentByPublicId(ctx, docPublicId);
   // Someone else's page can't have this id, but never write into one that isn't in this scope.
   if (existing && !inScope(existing, scope)) fail("conflict", "Could not find your Inbox.");
@@ -393,6 +414,7 @@ export const moveToDocument = mutation({
     const target = await getDocumentByPublicId(ctx, targetId);
     // Tasks never move between Personal and a workspace.
     if (!target || !sameScopeRows(target, doc)) fail("not_found", "Document not found.");
+    await requireServerWritable(ctx, target);
     const roots = (await liveBlocks(ctx, target._id)).filter((b) => b.parentId === null).sort((a, b) => (a.rank < b.rank ? -1 : 1));
     const moved: WireBlock = { ...toWireBlock(row), id: ulid(), parentId: null, rank: rankBetween(roots[roots.length - 1]?.rank ?? null, null) };
     delete moved.revision;
@@ -421,13 +443,14 @@ export const repeatTask = internalMutation({
       .query("blocks")
       .withIndex("by_block_id", (q) => q.eq("blockId", args.blockId))
       .unique();
-    if (!row || row.deletedAt !== undefined || row.type !== "todo") return null;
+    // A sealed to-do repeats on the device (docs/E2EE_DESIGN.md §5.7).
+    if (!row || row.deletedAt !== undefined || row.type !== "todo" || isSealedBlock(row)) return null;
     const props = row.props as Record<string, unknown>;
     const rule = repeatRule(props);
     if (!rule || props.checked !== true || props.canceled === true) return null;
     const doc = await ctx.db.get(row.documentId);
     const actor = await ctx.db.get(args.actorId);
-    if (!doc || doc.inTrash || doc.deletedAt !== undefined || !actor || actor.status !== "active") return null;
+    if (!doc || doc.inTrash || doc.deletedAt !== undefined || isSealed(doc) || !actor || actor.status !== "active") return null;
     const today = localDate(Date.now(), actor.timeZone);
     const due = typeof props.dueDate === "string" ? props.dueDate : null;
     const next = nextOccurrence(rule, due, today);
@@ -483,6 +506,8 @@ export const processReminders = internalMutation({
       if (!profile || profile.status === "deleted") continue;
       const title = t.title.slice(0, 200) || "Task";
       const doc = await ctx.db.get(t.documentId);
+      // Sealed to-dos' reminders come from e2eeReminders (e2ee.reminders.process, docs/E2EE_DESIGN.md §7.6).
+      if (doc && isSealed(doc)) continue;
       if (profile.notificationPrefs.inApp?.reminders !== false) {
         await ctx.db.insert("notifications", {
           profileId: recipient,

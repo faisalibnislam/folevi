@@ -1132,6 +1132,58 @@ Owner WP in brackets.
 | calendarFeeds.render | Switch `apps` (tasks from purpose `apps` mirrors); else sealed tasks are left out |
 | bookmarks.preview | Off by default for encrypted spaces: the server would see the link. Switch: none; the device fetches the preview itself on the Mac (native fetch, as local mode does); on the web the bookmark shows the link only (§14 Q6) |
 
+**Settled while building WP4.**
+
+- Codes. A Device or composed function called for a sealed note refuses with `e2ee_device_only`; a plaintext
+  write into an encrypted space on a note not sealed yet (an old client during a migration) refuses with
+  `e2ee_required` (`requireServerWritable` in `convex/lib/e2ee/coreGuards.ts`, a WP4 file with the shared
+  guards: `isEncryptedSpace`, `refuseSealed`, `addPendingGrant`, `dropMemberKeys`, `dropNoteGrant`,
+  `hasAccountKeys`, `hasNoteGrant`). Plaintext comment writes on a sealed note give `e2ee_required`.
+- Results carry sealed fields as an optional `sealed` (`SealedDocumentFields` from `lib/e2ee/sealedRows.ts`):
+  `sharing.sharedWithMe`, `workspaces.guests` (pages and pending invitations), `migration.documents` (plus
+  `locked`, `lockedVia`, `fileIds`). `comments.threads` adds `sealedBody: {c, k}` per comment;
+  `notifications.list` adds `sealedDocument: true` and `documentSealed`; `sharing.get`'s links add
+  `encrypted` / `plainCopy`. Plaintext columns keep their placeholders.
+- `sharing.createPublicLink` takes `e2ee`, `plainCopy` and an optional client-chosen `linkId` (a ULID; the link
+  wrap's context names the link, so the device chooses it before sealing). A sealed note needs exactly one of
+  `e2ee` / `plainCopy` (else `e2ee_required`); `plainCopy` on a locked note is `e2ee_locked`; `e2ee` needs a
+  note key version that exists; `allowIndexing` is forced off for encrypted links. The wrap is also stored as an
+  `e2eeNoteKeys` row (`wrappedBy: "link"`), so note rotation re-wraps it; revoking deletes those rows.
+- `sharing.openPublicLink` for a sealed note: a plain link made before the note was sealed answers
+  `not_found`; a `plainCopy` link serves the copy (or `not_found` until one exists); an encrypted link answers
+  `status: "ok"` with placeholders in `document`, empty `blocks`, `fileUrls` and `collections`, and
+  `e2ee: { documentId, linkId, noteKey: { version, wrapped }, title, appearance, meta, blocks, files, records }`:
+  `noteKey` is the newest link wrap; `blocks` are `SealedWireBlock`s without `revision` and `mentions`; `files`
+  are `{ id, url, size, sealed }` with signed URLs for the ciphertext; `records` are the note's `collection` and
+  `fileText` records (never profile-only kinds). Synced content from other notes is not included.
+- Published copies (§9.3): `e2eePublishedChunks.data` of a copy, joined in `index` order, is the JSON
+  `{ blocks: WireBlock[], collections?: Record<string, PublicCollection> }`; its images are plain (unsealed)
+  `files` of the same note. `e2ee.links.publishCopy` (WP5) writes that format.
+- Page grants (§8.4): `sharing.grant` on a sealed note to someone with account keys refuses with
+  `e2ee_not_set_up` ("Share the note's key with them first.") until their `e2eeNoteKeys` grant row exists;
+  someone without keys gets the page grant and a `page` pending grant. `acceptPageInvite` and
+  `convertMemberToGuest` add `page` pending grants for sealed pages the person holds no note key for.
+  `sharing.revoke`, `removeGuest` and `removeMember` delete the person's grant-wrapped note keys for the pages
+  they lose. `acceptInvite` adds `joined`; `removeMember` (and leaving) and `convertMemberToGuest` delete the
+  person's space grants and non-page pending grants and add `rotation`. All only when the space has an
+  `e2eeSpaces` row.
+- `tasks.ensureInbox` in an encrypted space returns `e2eeSpaces.inboxDocumentId`, else the note at the
+  deterministic Inbox id, else refuses with `e2ee_device_only`; it never searches by title there. Who sets
+  `inboxDocumentId` is still open (the device that creates the sealed Inbox).
+- `search.byMeaning` refuses with `e2ee_switch_off` (`switch: "backgroundAi"`); `meaningAvailable` is false.
+  `bookmarks.preview` takes optional `scope` / `documentId` and refuses with `e2ee_unavailable`
+  (`feature: "bookmarkPreview"`) for sealed notes and encrypted spaces. `calendarFeeds.render` adds to-dos from
+  Personal's `apps` mirrors only (a mirror task doesn't say who it's assigned to).
+- The server's export writes `ENCRYPTED.txt` and `manifest.json` `encryptedLeftOut`. Sealed folder names are
+  left out of paths.
+- Maintenance: `purgeDocument`, `purgePersonal`, workspace and account purges delete the new tables' rows.
+  Inbox expiry and old approvals stay with WP2's crons (`e2ee.inbox.expire`, `e2ee.devices.expireRequests`),
+  not `housekeeping`. Open: grant-wrapped `e2eeNoteKeys` and profile-only `e2eeRecords` of a deleted person in
+  other people's spaces can't be found without a `by_profile` index on those tables.
+- `testSupport.e2eeScan({ markers })` is an internal action (it reads blobs), paging each table through the
+  internal query `testSupport.e2eeScanPage`; it returns `{ clean, hits: { table, id, marker, encoding }[],
+  scanned }` and never the content around a hit. Markers must be 8 characters or more.
+
 **AI, integrations, inbound, notifications and push (WP5)**
 
 | Function | Encrypted behaviour |

@@ -13,6 +13,8 @@ import { storageUsage } from "./lib/entitlements";
 import { MAX_FILE_BYTES, MAX_IMAGE_BYTES } from "./lib/images";
 import { personalScope, vScopeArg } from "./lib/scope";
 import { fail } from "./lib/errors";
+import { isSealed } from "./lib/e2ee/state";
+import { sealedFieldsOf, type SealedDocumentFields } from "./lib/e2ee/sealedRows";
 
 /** Notes counted in an account for the preflight's "you already have notes here" (counting stops after). */
 const EXISTING_COUNT_CAP = 1000;
@@ -91,6 +93,11 @@ export interface MigrationDocument {
   /** It has comments, or is shared beyond its place (people, an invitation, a public link): server-only. */
   hasComments: boolean;
   shared: boolean;
+  /**
+   * End-to-end encrypted (docs/E2EE_DESIGN.md §5.7): the title, appearance and meta are sealed (the plain
+   * fields hold placeholders); the export-to-local flow opens them on the device.
+   */
+  sealed?: Partial<SealedDocumentFields> & { locked: boolean; lockedVia: string | null; fileIds: string[] };
 }
 
 /**
@@ -162,6 +169,16 @@ export const documents = query({
         tagIds,
         hasComments: Boolean(thread),
         shared: Boolean(grant || link) || d.accessMode === "restricted",
+        ...(isSealed(d)
+          ? {
+              sealed: {
+                ...sealedFieldsOf(d),
+                locked: d.locked === true,
+                lockedVia: await publicId(d.lockedVia),
+                fileIds: d.fileIds ?? [],
+              },
+            }
+          : {}),
       });
     }
     return { page, isDone: result.isDone, continueCursor: result.continueCursor };
@@ -177,6 +194,8 @@ export const fileTexts = query({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+    // A sealed note's found text is a sealed record (e2ee.pull gives it to the device).
+    if (isSealed(doc)) return [];
     const rows = await ctx.db
       .query("fileTexts")
       .withIndex("by_document_block", (q) => q.eq("documentId", doc._id))

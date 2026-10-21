@@ -6,6 +6,9 @@ import { fail } from "./lib/errors";
 import { createDocument } from "./lib/create";
 import { IdResolver, toSummary } from "./lib/documents";
 import { inScope, vScopeArg } from "./lib/scope";
+import { failE2ee, isLocked, isSealed } from "./lib/e2ee/state";
+import { isEncryptedSpace } from "./lib/e2ee/coreGuards";
+import { lockFor } from "./lib/e2ee/sealedRows";
 
 const MAX_IMPORT_CHARS = 2_000_000;
 
@@ -45,6 +48,9 @@ export const importText = mutation({
     await assertWritable(ctx, profile);
     const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
     if (args.content.length > MAX_IMPORT_CHARS) fail("limit_exceeded", "That file is too large to import (2 MB of text max).");
+    // A new note in an encrypted space, or in a locked folder or page, must be sealed: the device parses and
+    // seals it (the local import handler), docs/E2EE_DESIGN.md §5.7.
+    if (await isEncryptedSpace(ctx, scope)) failE2ee("e2ee_device_only");
     let folderId;
     if (args.folderId) {
       const folder = await ctx.db
@@ -52,6 +58,8 @@ export const importText = mutation({
         .withIndex("by_public_id", (q) => q.eq("publicId", args.folderId!))
         .unique();
       if (!folder || !inScope(folder, scope)) fail("not_found", "Folder not found.");
+      // A locked folder (or one inside it) takes only sealed notes.
+      if (folder.sealedName || (await lockFor(ctx, folder._id, null))) failE2ee("e2ee_device_only");
       folderId = folder._id;
     }
     const baseName = args.filename.replace(/\.(md|markdown|txt|text)$/i, "").slice(0, 200) || "Imported";
@@ -86,6 +94,7 @@ export const importText = mutation({
       const parent = await getDocumentByPublicId(ctx, args.parentId);
       if (!parent || parent.deletedAt !== undefined || !inScope(parent, scope)) fail("not_found", "The page to put it in isn't here.");
       if (!accessAtLeast(await documentAccess(ctx, profile, parent), "write")) fail("forbidden", "You can't add pages inside that one.");
+      if (isSealed(parent) || (await isLocked(ctx, parent)) || (await lockFor(ctx, undefined, parent))) failE2ee("e2ee_device_only");
       parentDocumentId = parent._id;
     }
     const doc = await createDocument(ctx, { scope, actor: profile, title, folderId, blocks, publicId: args.publicId, parentDocumentId });

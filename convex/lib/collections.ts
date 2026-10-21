@@ -12,6 +12,7 @@ import {
 import { fail } from "./errors";
 import { insertScoped, scopeOfRow, type Scope } from "./scope";
 import { nextSeq } from "./seq";
+import { failE2ee, isSealed } from "./e2ee/state";
 
 export type PropertyType = Doc<"collectionProperties">["type"];
 
@@ -121,6 +122,8 @@ export async function addView(
  * sharing them meant a row deleted in the copy was deleted in the original too.
  */
 export async function copyCollectionsInto(ctx: MutationCtx, doc: Doc<"documents">): Promise<void> {
+  // A sealed note's collections are sealed records: the device copies them (docs/E2EE_DESIGN.md §5.7, §6.7).
+  if (isSealed(doc)) failE2ee("e2ee_device_only");
   const rows = await ctx.db
     .query("blocks")
     .withIndex("by_document", (q) => q.eq("documentId", doc._id))

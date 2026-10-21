@@ -15,6 +15,7 @@ import { fail } from "./lib/errors";
 import { liveBlocks } from "./lib/documents";
 import { inScope, personalScope, scopeKey, scopeOfRow, vScopeArg, workspaceScope, type Scope } from "./lib/scope";
 import { cardTexts, intervals, newPerDay, nextSchedule, NEW_PER_DAY_OPTIONS, type StudyKind } from "./lib/study";
+import { failE2ee, isSealed } from "./lib/e2ee/state";
 
 /** Schedules looked at per range (due now, later today): enough for any day's reviews. */
 const SCAN = 500;
@@ -79,7 +80,8 @@ class Deck {
   async noteOf(card: Doc<"studyCards">): Promise<Doc<"documents"> | null> {
     if (!this.docs.has(card.documentId)) this.docs.set(card.documentId, await this.ctx.db.get(card.documentId));
     const doc = this.docs.get(card.documentId);
-    if (!doc || doc.inTrash || doc.kind === "template") return null;
+    // Sealed notes are studied on the device (studyReview records, docs/E2EE_DESIGN.md §5.7).
+    if (!doc || doc.inTrash || doc.kind === "template" || isSealed(doc)) return null;
     if (this.target.kind === "note" && doc._id !== this.target.doc._id) return null;
     if (this.target.kind === "scope" && !inScope(doc, this.target.scope)) return null;
     const scope = scopeOfRow(doc);
@@ -160,6 +162,7 @@ async function targetFor(ctx: QueryCtx, profile: Doc<"profiles">, args: { scope?
   if (args.documentId !== undefined) {
     const doc = await getDocumentByPublicId(ctx, args.documentId);
     if (!doc || doc.inTrash || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) return null;
+    if (isSealed(doc)) failE2ee("e2ee_device_only");
     return { kind: "note", doc };
   }
   if (args.scope) return { kind: "scope", scope: (await resolveScope(ctx, profile, args.scope)).scope };
@@ -251,6 +254,7 @@ export const review = mutation({
       .unique();
     const doc = card ? await ctx.db.get(card.documentId) : null;
     if (!card || !doc || doc.inTrash || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) fail("not_found", "This card isn't in a note you can open any more.");
+    if (isSealed(doc)) failE2ee("e2ee_device_only");
     const existing = await ctx.db
       .query("studyReviews")
       .withIndex("by_block", (q) => q.eq("profileId", profile._id).eq("blockId", args.blockId))

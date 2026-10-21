@@ -35,6 +35,7 @@ import { createDocument, specsToWireBlocks } from "./lib/create";
 import { BUILT_IN_TEMPLATES } from "./lib/templates";
 import { builtInTemplateEnabled } from "./lib/syncEngine";
 import { WELCOME_TITLE } from "./lib/seedContent";
+import { isEncryptedSpace } from "./lib/e2ee/coreGuards";
 import { PLAIN_STYLE, USE_CASE_IDS, isOnboardingNoteStyle, laterStep, starterPagesFor, stepAfter } from "./lib/onboarding";
 
 const DELETION_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -234,6 +235,9 @@ export const completeOnboardingStep = mutation({
     if (args.appearance !== undefined && args.step !== "appearance") fail("invalid_argument", "Appearance belongs to the appearance step.");
 
     const patch: Partial<Doc<"profiles">> = {};
+    // A Personal already end-to-end encrypted: its notes are sealed on the device, so the device adds the
+    // starter pages itself and the Welcome page's theme is chosen there (docs/E2EE_DESIGN.md §5.7).
+    const sealedPersonal = args.step === "uses" || args.step === "style" ? await isEncryptedSpace(ctx, personalScope(profile._id)) : false;
     if (args.step === "uses" && args.useCases !== undefined) {
       const ids = args.useCases;
       if (ids.length > USE_CASE_IDS.length) fail("invalid_argument", "Too many use cases.");
@@ -241,13 +245,13 @@ export const completeOnboardingStep = mutation({
       const applied = profile.onboardingUseCases ?? [];
       const fresh = [...new Set(ids)].filter((id) => !applied.includes(id));
       if (fresh.length) {
-        await addStarterPages(ctx, profile, applied, fresh);
+        if (!sealedPersonal) await addStarterPages(ctx, profile, applied, fresh);
         patch.onboardingUseCases = [...applied, ...fresh];
       }
     }
     if (args.step === "style" && args.noteStyle !== undefined) {
       if (!isOnboardingNoteStyle(args.noteStyle)) fail("invalid_argument", "Unknown note theme.");
-      await styleWelcomePage(ctx, profile, args.noteStyle);
+      if (!sealedPersonal) await styleWelcomePage(ctx, profile, args.noteStyle);
     }
     // Personal needs no name; `workspaceName` is accepted from older clients and ignored.
     if (args.appearance) patch.appearance = args.appearance;

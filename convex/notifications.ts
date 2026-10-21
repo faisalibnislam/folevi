@@ -6,6 +6,8 @@ import { accessAtLeast, documentAccess, getDocumentByPublicId, requireProfile } 
 import { identityImageUrl } from "./lib/identityImages";
 import { noteMode } from "./lib/notify";
 import { insertScoped, scopeOfRow } from "./lib/scope";
+import { isSealed } from "./lib/e2ee/state";
+import { sealedFieldsOf } from "./lib/e2ee/sealedRows";
 
 /**
  * The caller's notifications, newest first. A query's result is cached until the rows it read change, so it
@@ -68,6 +70,9 @@ export const list = query({
         toChanges: n.proposalId !== undefined,
         /** The note's current title (the stored `title` sentence keeps the one it had then). */
         documentTitle: doc ? doc.title || "Untitled" : null,
+        // About an end-to-end encrypted note: its title and the text are generic here; the device opens the
+        // sealed title and fills them in (docs/E2EE_DESIGN.md §7.7).
+        ...(n.sealedDocument || (doc && isSealed(doc)) ? { sealedDocument: true as const, documentSealed: doc ? (sealedFieldsOf(doc) ?? null) : null } : {}),
         threadId: thread ? thread.publicId : null,
         blockId: doc ? (n.blockId ?? thread?.blockId ?? null) : null,
         commentId: thread ? (n.commentId ?? null) : null,

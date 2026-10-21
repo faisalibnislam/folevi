@@ -12,13 +12,15 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { insertScoped, scopeOfRow } from "./scope";
 import { toWireBlock } from "./documents";
 import { sharedLabels } from "./linkLabels";
+import { isSealed, isSealedBlock } from "./e2ee/state";
 
 export type StudyKind = Doc<"studyCards">["kind"];
 export { NEW_PER_DAY, NEW_PER_DAY_OPTIONS, RATINGS, intervals, newPerDay, nextSchedule, studyKindOf, type CardText, type StudyRating } from "@folevi/editor-schema";
 
 /** Keeps a block's card row in step with it (the block stays canonical). Templates hold no cards. */
 export async function syncStudyCard(ctx: MutationCtx, row: Doc<"blocks">, doc: Doc<"documents">): Promise<void> {
-  const kind = doc.kind === "template" ? null : studyKindOf(row);
+  // A sealed note's cards are listed on the device; the server keeps no card rows for it (docs/E2EE_DESIGN.md §5.5).
+  const kind = doc.kind === "template" || isSealed(doc) || isSealedBlock(row) ? null : studyKindOf(row);
   const existing = await ctx.db
     .query("studyCards")
     .withIndex("by_block", (q) => q.eq("blockId", row.blockId))
@@ -38,7 +40,8 @@ export async function syncStudyCard(ctx: MutationCtx, row: Doc<"blocks">, doc: D
  */
 export async function cardTexts(ctx: QueryCtx | MutationCtx, doc: Doc<"documents">, rows: Doc<"blocks">[], blockIds: ReadonlySet<string>): Promise<Map<string, CardText>> {
   const out = new Map<string, CardText>();
-  const blocks = rows.map(toWireBlock);
+  if (isSealed(doc)) return out;
+  const blocks = rows.filter((r) => !isSealedBlock(r)).map(toWireBlock);
   const children = childrenMap(blocks);
   for (const id of blockIds) {
     const card = studyCardBlocks(blocks, id, children);

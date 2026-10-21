@@ -13,13 +13,15 @@ import { seatsChanged } from "./lib/seats";
 import { normalizeMembership } from "./lib/auth";
 import { workspaceClosing } from "./workspaceBilling";
 import { subscriptionOf } from "./lib/billing";
-import { hasValidScope, personalScope, SCOPED_TABLES, scopedRows, scopeOfRow, workspaceScope } from "./lib/scope";
+import { hasValidScope, personalScope, SCOPED_TABLES, scopedRows, scopeOfRow, workspaceScope, type ScopedTable } from "./lib/scope";
 import { bumpSeq, deleteSeq } from "./lib/seq";
 import { dropNoteGraph } from "./lib/ai/graphStore";
 import { deleteFileBlob, releaseNoteFile } from "./lib/fileCopies";
 import { purgeOldReceipts } from "./lib/emailNotes";
 
 const BUDGET = 400;
+/** End-to-end encryption's scoped tables (docs/E2EE_DESIGN.md §5.1), purged with their workspace. */
+const E2EE_SCOPED_TABLES = SCOPED_TABLES.filter((t): t is Extract<ScopedTable, `e2ee${string}`> => t.startsWith("e2ee"));
 const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const TOMBSTONE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const SYNC_OP_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -68,6 +70,13 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     () => ctx.db.query("aiIndexState").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     // Suggestions people dismissed on it.
     () => ctx.db.query("aiSuggestionDismissals").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
+    // End-to-end encryption (docs/E2EE_DESIGN.md §5.1): its note keys, sealed records, readable copies,
+    // reminder times and the grants waiting for it. Published copies are below (they have chunks).
+    () => ctx.db.query("e2eeNoteKeys").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
+    () => ctx.db.query("e2eeRecords").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
+    () => ctx.db.query("e2eeMirrors").withIndex("by_document_purpose", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
+    () => ctx.db.query("e2eeReminders").withIndex("by_document_block", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
+    () => ctx.db.query("e2eePendingGrants").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
   ] as never;
   for (const load of batches) {
     const rows = await load();
@@ -105,6 +114,13 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     budget.spend();
   }
   if (threads.length) return false;
+  // A readable copy published on purpose (docs/E2EE_DESIGN.md §9.3), with its chunks.
+  const copies = await ctx.db
+    .query("e2eePublishedCopies")
+    .withIndex("by_document", (q) => q.eq("documentId", docId))
+    .take(5);
+  for (const c of copies) if (!(await deletePublishedCopy(ctx, c, budget))) return false;
+  if (copies.length) return false;
   const reads = await ctx.db
     .query("readStates")
     .withIndex("by_document", (q) => q.eq("documentId", docId))
@@ -202,6 +218,20 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
  * given on it, which hold its guests' access, and public links), then folders, tags, files and anything else left
  * in it. Bounded per call; returns true when nothing is left.
  */
+/** Deletes a published readable copy and its chunks; false when the budget ran out first (call again). */
+async function deletePublishedCopy(ctx: MutationCtx, copy: Doc<"e2eePublishedCopies">, budget: Budget): Promise<boolean> {
+  const chunks = await ctx.db
+    .query("e2eePublishedChunks")
+    .withIndex("by_copy", (q) => q.eq("copyId", copy._id))
+    .take(Math.max(1, budget.left));
+  for (const c of chunks) await ctx.db.delete(c._id);
+  budget.spend(chunks.length);
+  if (budget.exhausted) return false;
+  await ctx.db.delete(copy._id);
+  budget.spend();
+  return true;
+}
+
 /** Deletes the text found in a file (fileText.ts), with the file. */
 async function deleteFileText(ctx: MutationCtx, fileId: Id<"files">): Promise<void> {
   const rows = await ctx.db
@@ -247,6 +277,10 @@ async function purgePersonal(ctx: MutationCtx, profileId: Id<"profiles">, budget
           .collect();
         for (const c of chunks) await ctx.db.delete(c._id);
       }
+      if (table === "e2eePublishedCopies") {
+        if (!(await deletePublishedCopy(ctx, r as unknown as Doc<"e2eePublishedCopies">, budget))) return false;
+        continue;
+      }
       await ctx.db.delete(r._id);
       budget.spend();
     }
@@ -286,6 +320,20 @@ async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, b
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
       .take(200);
     for (const r of rows) await ctx.db.delete(r._id);
+    if (rows.length) return false;
+  }
+  // Its end-to-end encryption: the space row, key versions, members' grants, waiting grants, note keys,
+  // records, readable copies, inbox items, reminder times, published copies and migrations (§5.1).
+  const scope = workspaceScope(workspaceId);
+  for (const table of E2EE_SCOPED_TABLES) {
+    const rows = await scopedRows(ctx, table, scope, 200);
+    for (const r of rows) {
+      if (table === "e2eePublishedCopies") {
+        if (!(await deletePublishedCopy(ctx, r as unknown as Doc<"e2eePublishedCopies">, budget))) return false;
+        continue;
+      }
+      await ctx.db.delete(r._id);
+    }
     if (rows.length) return false;
   }
   // Digests about this workspace stop (their notes went with it).
@@ -423,6 +471,16 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("mcpGrants").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     // When their passkeys were last used (the passkeys go with the auth user).
     () => ctx.db.query("passkeyUsage").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    // Their end-to-end encryption identity: account keys, every wrap of their master key, devices and approval
+    // requests; and, in workspaces, the space keys granted to them, grants waiting for them and reminder times
+    // (the rows in their Personal went with it above).
+    () => ctx.db.query("e2eeAccountWraps").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("e2eeAccounts").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("e2eeDevices").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("e2eeApprovals").withIndex("by_profile_status", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("e2eeSpaceGrants").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("e2eePendingGrants").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("e2eeReminders").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     // Their webhooks: where they listen, what's waiting, the log, then the endpoints.
     () => ctx.db.query("webhookPlaces").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("webhookDeliveries").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),

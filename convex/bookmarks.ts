@@ -5,8 +5,11 @@
 import { v } from "convex/values";
 import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { assertWritable, requireIdentity, requireProfile } from "./lib/auth";
+import { assertWritable, getDocumentByPublicId, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
 import { consume } from "./lib/rateLimit";
+import { vScopeArg, scopeOfRow } from "./lib/scope";
+import { failE2ee, isSealed } from "./lib/e2ee/state";
+import { isEncryptedSpace } from "./lib/e2ee/coreGuards";
 
 export interface BookmarkPreview {
   title: string | null;
@@ -22,10 +25,16 @@ const TIMEOUT_MS = 7_000;
 
 /** Counts one preview against the caller's hourly allowance. */
 export const consumeQuota = internalMutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { scope: v.optional(vScopeArg), documentId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
+    // Fetching the page would show Folevi the link: never for an end-to-end encrypted note or space
+    // (docs/E2EE_DESIGN.md §5.7, §14 Q6). The Mac app fetches previews on the device instead.
+    const doc = args.documentId ? await getDocumentByPublicId(ctx, args.documentId) : null;
+    if (doc && isSealed(doc)) failE2ee("e2ee_unavailable", undefined, { feature: "bookmarkPreview" });
+    const scope = doc ? scopeOfRow(doc) : args.scope ? (await resolveScope(ctx, profile, args.scope)).scope : null;
+    if (scope && (await isEncryptedSpace(ctx, scope))) failE2ee("e2ee_unavailable", undefined, { feature: "bookmarkPreview" });
     await consume(ctx, "bookmarkPreview", profile._id);
     return null;
   },
@@ -124,7 +133,8 @@ export function previewFromHtml(html: string, base: string): BookmarkPreview {
 
 /** The preview of a public web page, or empty fields when it can't be read. */
 export const preview = action({
-  args: { url: v.string() },
+  /** Where the bookmark is (a note, or its place): previews are off in end-to-end encrypted ones. */
+  args: { url: v.string(), scope: v.optional(vScopeArg), documentId: v.optional(v.string()) },
   handler: async (ctx, args): Promise<BookmarkPreview> => {
     await requireIdentity(ctx);
     let target: URL;
@@ -134,7 +144,7 @@ export const preview = action({
       return EMPTY;
     }
     if (!/^https?:$/.test(target.protocol) || target.username || target.password || isPrivateHost(target.hostname)) return EMPTY;
-    await ctx.runMutation(internal.bookmarks.consumeQuota, {});
+    await ctx.runMutation(internal.bookmarks.consumeQuota, { scope: args.scope, documentId: args.documentId });
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {

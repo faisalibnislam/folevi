@@ -33,6 +33,9 @@ import { canInviteMember, canManageMember, canManageWorkspace, memberCanManageBi
 import { billableSeatCount, seatsChanged, seatSummary } from "./lib/seats";
 import { appUrl, notifyAccessChange, notifyInvite, workspaceRoleLabel } from "./lib/notify";
 import { workspaceClosing } from "./workspaceBilling";
+import { isSealed, spaceE2ee } from "./lib/e2ee/state";
+import { addPendingGrant, dropMemberKeys, dropNoteGrant, hasNoteGrant } from "./lib/e2ee/coreGuards";
+import { sealedFieldsOf } from "./lib/e2ee/sealedRows";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 /** How long a workspace the owner deleted can still be restored (like accounts). */
@@ -398,6 +401,9 @@ export const acceptInvite = mutation({
       });
       // A new member takes a seat once they accept (pending invitations are free).
       await seatsChanged(ctx, workspace._id);
+      // An end-to-end encrypted workspace: an admin's device shares the key with them once they have keys
+      // (docs/E2EE_DESIGN.md §8.2). Nothing happens for a workspace without encryption.
+      await addPendingGrant(ctx, workspaceScope(workspace._id), profile._id, "joined");
     }
     await ctx.db.patch(invite._id, { status: "accepted", acceptedBy: profile._id });
     const notes = await ctx.db
@@ -447,12 +453,25 @@ async function revokeWorkspaceGrants(ctx: MutationCtx, workspace: Doc<"workspace
     .withIndex("by_profile", (q) => q.eq("profileId", profileId))
     .collect();
   let n = 0;
+  // In an end-to-end encrypted workspace the note keys sealed to them for those pages go too (§8.4).
+  const e2ee = (await spaceE2ee(ctx, workspaceScope(workspace._id))) !== null;
   for (const g of grants) {
     if (g.workspaceId !== workspace._id) continue;
     await ctx.db.delete(g._id);
+    if (e2ee) await dropNoteGrant(ctx, g.documentId, profileId);
     n++;
   }
   return n;
+}
+
+/**
+ * End-to-end encryption (docs/E2EE_DESIGN.md §8.3): someone who stops being a member loses the workspace's
+ * key grants at once, and the next owner's or admin's device changes the key (a "rotation" pending entry),
+ * so they can't read anything new. Nothing happens for a workspace without encryption.
+ */
+async function memberLeftKeys(ctx: MutationCtx, workspace: Doc<"workspaces">, profileId: Id<"profiles">): Promise<void> {
+  const scope = workspaceScope(workspace._id);
+  if (await dropMemberKeys(ctx, scope, profileId)) await addPendingGrant(ctx, scope, profileId, "rotation");
 }
 
 /**
@@ -473,6 +492,7 @@ export const removeMember = mutation({
     if (!leaving && !canManageMember(member, target)) fail("forbidden", "Only the owner can remove admins.");
     await ctx.db.delete(target._id);
     await revokeWorkspaceGrants(ctx, workspace, target.profileId);
+    await memberLeftKeys(ctx, workspace, target.profileId);
     await seatsChanged(ctx, workspace._id);
     if (!leaving) await notifyAccessChange(ctx, { recipientId: target.profileId, actor: profile, change: { type: "workspace_removed", workspace } });
     return null;
@@ -584,7 +604,16 @@ export const guests = query({
       for (const g of list) {
         const d = await ctx.db.get(g.documentId);
         if (!d) continue;
-        pages.push({ documentId: d.publicId, title: d.title || "Untitled", icon: d.icon ?? null, inTrash: d.inTrash, role: g.role, grantedAt: g.createdAt });
+        pages.push({
+          documentId: d.publicId,
+          title: d.title || "Untitled",
+          icon: d.icon ?? null,
+          inTrash: d.inTrash,
+          role: g.role,
+          grantedAt: g.createdAt,
+          // End-to-end encrypted: the device opens the title (docs/E2EE_DESIGN.md §5.7).
+          ...(isSealed(d) ? { sealed: sealedFieldsOf(d) } : {}),
+        });
       }
       pages.sort((a, b) => a.title.localeCompare(b.title));
       out.push({ profileId: p._id as string, displayName: p.displayName, email: p.email, pages });
@@ -598,7 +627,16 @@ export const guests = query({
       if (i.status !== "pending") continue;
       const d = await ctx.db.get(i.documentId);
       if (!d) continue;
-      pending.push({ id: i.publicId, email: i.email, documentId: d.publicId, title: d.title || "Untitled", role: i.role, expiresAt: i.expiresAt, expired: i.expiresAt < Date.now() });
+      pending.push({
+        id: i.publicId,
+        email: i.email,
+        documentId: d.publicId,
+        title: d.title || "Untitled",
+        role: i.role,
+        expiresAt: i.expiresAt,
+        expired: i.expiresAt < Date.now(),
+        ...(isSealed(d) ? { sealed: sealedFieldsOf(d) } : {}),
+      });
     }
     return { guests: out, pendingInvites: pending };
   },
@@ -742,7 +780,20 @@ export const convertMemberToGuest = mutation({
       }
       granted++;
     }
+    // End-to-end encrypted: as a guest they read a sealed page only with its note key sealed to them, which a
+    // manager's device adds for every page they keep (docs/E2EE_DESIGN.md §8.4).
+    if (await spaceE2ee(ctx, workspaceScope(workspace._id))) {
+      for (const g of await ctx.db
+        .query("documentPermissions")
+        .withIndex("by_profile", (q) => q.eq("profileId", target.profileId))
+        .take(500)) {
+        if (g.workspaceId !== workspace._id) continue;
+        const d = await ctx.db.get(g.documentId);
+        if (d && isSealed(d) && !(await hasNoteGrant(ctx, d._id, target.profileId))) await addPendingGrant(ctx, workspaceScope(workspace._id), target.profileId, "page", d._id);
+      }
+    }
     await ctx.db.delete(target._id);
+    await memberLeftKeys(ctx, workspace, target.profileId);
     await seatsChanged(ctx, workspace._id);
     await notifyAccessChange(ctx, { recipientId: target.profileId, actor: profile, change: { type: "workspace_guest", workspace } });
     return { granted };

@@ -12,6 +12,8 @@ import { scopeOfRow } from "./lib/scope";
 import { vCollectionNumberFormat, vCollectionPropertyType, vCollectionSummary, vCollectionViewType } from "./lib/validators";
 import { SyncEngine } from "./lib/syncEngine";
 import { queueIndex } from "./lib/ai/indexing";
+import { isSealed, requirePlainWrite } from "./lib/e2ee/state";
+import { refuseSealed, requireServerWritable } from "./lib/e2ee/coreGuards";
 
 const VIEW_NAMES: Record<Doc<"collectionViews">["type"], string> = COLLECTION_VIEW_NAMES;
 
@@ -40,6 +42,10 @@ async function collectionFor(ctx: QueryCtx | MutationCtx, collectionPublicId: st
   const access = await documentAccess(ctx, profile, host);
   if (access === "none") fail("not_found", "Collection not found.");
   if (!accessAtLeast(access, need)) fail("forbidden", "You can't edit this collection.");
+  // End-to-end encryption (docs/E2EE_DESIGN.md §5.7, §6.7): a sealed note's collections are sealed records
+  // the device reads and writes; plaintext edits never go into an encrypted space.
+  refuseSealed(host);
+  if (need !== "read") await requirePlainWrite(ctx as MutationCtx, host);
   return { profile, collection, host, access };
 }
 
@@ -182,6 +188,7 @@ export const create = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+    await requireServerWritable(ctx, doc);
     if (args.id !== undefined) {
       if (!isValidId(args.id)) fail("invalid_argument", "Invalid collection id.");
       const made = await ctx.db
@@ -560,7 +567,8 @@ export const rowForDocument = query({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const doc = await getDocumentByPublicId(ctx, args.documentId);
-    if (!doc || doc.kind !== "collectionRow" || !doc.collectionId) return null;
+    // A sealed row's values live in its own sealed meta (docs/E2EE_DESIGN.md §6.7): the device shows them.
+    if (!doc || doc.kind !== "collectionRow" || !doc.collectionId || isSealed(doc)) return null;
     const access = await documentAccess(ctx, profile, doc);
     if (!accessAtLeast(access, "read")) return null;
     const collection = await ctx.db.get(doc.collectionId);
@@ -573,6 +581,7 @@ export const rowForDocument = query({
     ).find((r) => r.documentId === doc._id && !r.deletedAt);
     if (!row) return null;
     const host = await ctx.db.get(collection.documentId);
+    if (host && isSealed(host)) return null;
     const hostReadable = host ? accessAtLeast(await documentAccess(ctx, profile, host), "read") : false;
     const props = (
       await ctx.db

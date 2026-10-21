@@ -14,6 +14,7 @@ import { safeFilename } from "./lib/images";
 import { signFileUrl } from "./lib/fileUrls";
 import { insertScoped, vScope, vScopeArg, type Scope } from "./lib/scope";
 import { canExportWorkspace } from "./lib/permissions";
+import { isSealed } from "./lib/e2ee/state";
 
 /** What an export of Personal is called (a workspace export is named after the workspace). */
 const PERSONAL_EXPORT_NAME = "Personal";
@@ -48,18 +49,27 @@ export const documentPage = internalQuery({
         : base.withIndex("by_workspace_created", (q) => q.eq("workspaceId", scope.workspaceId))
     ).paginate({ cursor: args.cursor, numItems: 25 });
     const docs = [];
+    // End-to-end encrypted notes can't be read here: the device exports them (docs/E2EE_DESIGN.md §5.7). The
+    // server's export counts what it left out, so the ZIP can say so.
+    let sealed = 0;
     // Links carry the current title of pages the exporter can open, a neutral label otherwise.
     const labels = new ReaderLabels(ctx, profile);
     for (const d of page.page) {
       // Synced content is written into each note that shows it (lib/synced.ts), not as a page of its own.
       if (d.inTrash || d.kind === "synced") continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
+      if (isSealed(d)) {
+        sealed++;
+        continue;
+      }
       const blocks = await labels.blocks(await withSyncedForReader(ctx, profile, (await liveBlocks(ctx, d._id)).map(toWireBlock)));
       const parent = d.parentDocumentId ? await ctx.db.get(d.parentDocumentId) : null;
       const folder = d.folderId ? await ctx.db.get(d.folderId) : null;
       // Folders nest (up to five levels); keep the whole path so the export mirrors the sidebar.
       const folderPath: string[] = [];
       for (let f = folder, i = 0; f && !f.deletedAt && i < 8; i++) {
+        // A sealed folder's name is ciphertext: the path stops above it.
+        if (f.sealedName) break;
         folderPath.unshift(f.name);
         f = f.parentFolderId ? await ctx.db.get(f.parentFolderId) : null;
       }
@@ -79,7 +89,7 @@ export const documentPage = internalQuery({
         kind: d.kind,
         icon: d.icon ?? null,
         parentId: parent?.publicId ?? null,
-        folder: folder && !folder.deletedAt ? folder.name : null,
+        folder: folder && !folder.deletedAt && !folder.sealedName ? folder.name : null,
         folderPath,
         createdAt: d.createdAt,
         updatedAt: d.updatedAt,
@@ -92,7 +102,7 @@ export const documentPage = internalQuery({
           .map((r) => ({ blockId: r.blockId, fileId: r.fileId ? filePublicId.get(r.fileId)! : null, source: r.source, by: r.by, pageStarts: r.pageStarts ?? null, text: r.text })),
       });
     }
-    return { docs, isDone: page.isDone, continueCursor: page.continueCursor };
+    return { docs, sealed, isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });
 
@@ -166,7 +176,7 @@ export const exportScope = action({
 /** Builds the export ZIP of one scope as `prep.profileId` sees it, stores it, and returns its file id. */
 async function buildExport(ctx: ActionCtx, prep: Prep): Promise<Built> {
   {
-    const manifest: { format: string; version: number; exportedAt: string; scope: Scope["kind"]; workspace: string; documents: unknown[]; assets: unknown[]; skippedAssets: unknown[] } = {
+    const manifest: { format: string; version: number; exportedAt: string; scope: Scope["kind"]; workspace: string; documents: unknown[]; assets: unknown[]; skippedAssets: unknown[]; encryptedLeftOut?: number } = {
       format: "folevi-export",
       version: 1,
       exportedAt: new Date().toISOString(),
@@ -204,11 +214,13 @@ async function buildExport(ctx: ActionCtx, prep: Prep): Promise<Built> {
     let totalBytes = 0;
     const skipped: string[] = [];
     let skippedReason: "size" | "missing" | null = null;
-    type Page = { docs: ExportDoc[]; isDone: boolean; continueCursor: string };
+    type Page = { docs: ExportDoc[]; sealed: number; isDone: boolean; continueCursor: string };
     const collected: ExportDoc[] = [];
+    let encryptedLeftOut = 0;
     for (let i = 0; i < 400; i++) {
       const page: Page = await ctx.runQuery(internal.exports.documentPage, { profileId: prep.profileId, scope: prep.scope, cursor });
       collected.push(...page.docs);
+      encryptedLeftOut += page.sealed;
       if (page.isDone) break;
       cursor = page.continueCursor;
     }
@@ -274,6 +286,17 @@ async function buildExport(ctx: ActionCtx, prep: Prep): Promise<Built> {
         markdown: `${path}.md`,
         blocks: d.blocks.length,
       });
+    }
+    // End-to-end encrypted notes were left out: only the person's devices can read them (docs/E2EE_DESIGN.md §5.7).
+    if (encryptedLeftOut) {
+      manifest.encryptedLeftOut = encryptedLeftOut;
+      addFile(
+        "ENCRYPTED.txt",
+        strToU8(
+          `${encryptedLeftOut} end-to-end encrypted ${encryptedLeftOut === 1 ? "note was" : "notes were"} left out of this export. Folevi's servers can't read them. To export them, use Export in Folevi on a device where your notes are unlocked.\n`,
+        ),
+        true,
+      );
     }
     // Canonical block data for lossless re-import by future versions.
     addFile("manifest.json", strToU8(JSON.stringify(manifest, null, 2)), true);

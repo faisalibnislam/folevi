@@ -10,9 +10,11 @@ import {
   ctx as aad,
   deriveNoteKeys,
   deriveSpaceKeys,
+  importAead,
   macOf,
   openRecord,
   randomBytes,
+  sealFileStream,
   sealRecord,
   tagNameMac,
   type NoteKeys,
@@ -242,6 +244,19 @@ export class Sealer {
 
   async tagMac(name: string): Promise<string> {
     return await tagNameMac(this.space.keys.mac, name);
+  }
+
+  /** A file sealed for a note (§6.8): the keyed stream bytes, its SHA-256 and the row's sealed fields. */
+  async sealFileBytes(docId: string, fileId: string, plain: Uint8Array, meta: { name: string; mime: string }) {
+    const n = await this.note(docId);
+    const fk = randomBytes(32);
+    const key = buf(await sealRecord(n.keys.files, n.v, aad.fileKey(docId, fileId), fk));
+    const fileKey = await importAead(fk.slice());
+    const sealedMeta = buf(await sealRecord(fileKey, 0, aad.fileMeta(docId, fileId), enc.encode(canonicalJson(meta))));
+    const bytes = await sealFileStream(fileKey, aad.file(fileId), plain);
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes.slice()));
+    const sha256 = [...digest].map((b) => b.toString(16).padStart(2, "0")).join("");
+    return { bytes: buf(bytes), sha256, row: { key, meta: sealedMeta, k: n.v, plainSize: plain.length } };
   }
 
   noteVersion(docId: string): number {

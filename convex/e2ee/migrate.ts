@@ -18,7 +18,7 @@ import { failE2ee, spaceE2ee } from "../lib/e2ee/state";
 import { E2EE_LIMITS, vMigrationDirection, vMigrationPhase, vMigrationScopeOf, vNoteKeyWrapInput, vRecordKind, vE2eeLevel } from "../lib/e2ee/validators";
 import { NoteKeyVersions, checkMac, checkRecord, lockFor, recordHeaderVersion, requireSpaceKey, sealedBlockIssue, sealedPlaceholders } from "../lib/e2ee/sealedRows";
 import { peopleOfDocument, purgeCopiesInScope, purgeDerivedPlaintext } from "../lib/e2ee/purge";
-import { liveBlocks, refreshDerived, syncTaskProjection } from "../lib/documents";
+import { liveBlocks, refreshDerived, syncTaskProjection, toWireBlock } from "../lib/documents";
 import { syncLinks } from "../lib/syncEngine";
 import { syncStudyCard } from "../lib/study";
 import { queueIndex } from "../lib/ai/indexing";
@@ -132,10 +132,11 @@ export const claim = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { job, scope } = await jobFor(ctx, profile, args.migrationId);
-    if (job.phase === "done") return { busy: false, phase: job.phase, documents: [] as string[], snapshots: [] as string[], files: [] as string[] };
+    const none: WorkItems = { documents: [], snapshots: [], files: [] };
+    if (job.phase === "done") return { busy: false, phase: job.phase, ...none };
     const now = Date.now();
     if (job.leaseDeviceId && job.leaseDeviceId !== args.deviceId && (job.leaseUntil ?? 0) > now) {
-      return { busy: true, phase: job.phase, documents: [] as string[], snapshots: [] as string[], files: [] as string[] };
+      return { busy: true, phase: job.phase, ...none };
     }
     await ctx.db.patch(job._id, { leaseDeviceId: args.deviceId, leaseProfileId: profile._id, leaseUntil: now + LEASE_MS });
     const work = await nextWork(ctx, job, scope);
@@ -145,8 +146,10 @@ export const claim = mutation({
 });
 
 /** The next items of the job's phase, and the cursor to start from next time (past fully handled rows only). */
-async function nextWork(ctx: MutationCtx, job: Migration, scope: Scope): Promise<{ cursor: string | undefined; items: { documents: string[]; snapshots: string[]; files: string[] } }> {
-  const items = { documents: [] as string[], snapshots: [] as string[], files: [] as string[] };
+type WorkItems = { documents: string[]; snapshots: { snapshotId: string; documentId: string }[]; files: { fileId: string; documentId: string }[] };
+
+async function nextWork(ctx: MutationCtx, job: Migration, scope: Scope): Promise<{ cursor: string | undefined; items: WorkItems }> {
+  const items: WorkItems = { documents: [], snapshots: [], files: [] };
   if (job.phase === "documents") {
     if (job.scopeOf !== "space") {
       for (const d of await lockDocs(ctx, job)) if (items.documents.length < CLAIM_BATCH && (await needsWork(ctx, job, d))) items.documents.push(d.publicId);
@@ -174,26 +177,28 @@ async function nextWork(ctx: MutationCtx, job: Migration, scope: Scope): Promise
     return { cursor: advanced, items };
   }
   if (job.phase === "history") {
+    // Versions of notes already converted: sealed ones for a seal, plain ones for an unseal (a re-seal's
+    // versions are re-sealed by the device from `versions`, so nothing is listed here).
+    if (job.direction === "reseal") return { cursor: job.cursor, items };
     for (const doc of await jobDocs(ctx, job, scope)) {
       if (items.snapshots.length >= CLAIM_BATCH) break;
+      if ((doc.sealedAt !== undefined) !== (job.direction === "seal")) continue;
       for (const s of await ctx.db.query("documentSnapshots").withIndex("by_document", (q) => q.eq("documentId", doc._id)).take(200)) {
-        const wantSealed = job.direction !== "unseal";
-        if (Boolean(s.sealed) !== wantSealed || (job.direction === "reseal" && s.sealed)) {
-          if (job.direction === "reseal") continue;
-          items.snapshots.push(s.publicId);
-        }
+        if (Boolean(s.sealed) === (job.direction === "seal")) continue;
+        items.snapshots.push({ snapshotId: s.publicId, documentId: doc.publicId });
         if (items.snapshots.length >= CLAIM_BATCH) break;
       }
     }
     return { cursor: job.cursor, items };
   }
   if (job.phase === "files") {
+    if (job.direction === "reseal") return { cursor: job.cursor, items };
     for (const doc of await jobDocs(ctx, job, scope)) {
       if (items.files.length >= CLAIM_BATCH) break;
+      if ((doc.sealedAt !== undefined) !== (job.direction === "seal")) continue;
       for (const f of await ctx.db.query("files").withIndex("by_document", (q) => q.eq("documentId", doc._id)).take(200)) {
-        if (f.status !== "ready") continue;
-        const wantSealed = job.direction !== "unseal";
-        if (Boolean(f.sealed) !== wantSealed) items.files.push(f.publicId);
+        if (f.status !== "ready" || Boolean(f.sealed) === (job.direction === "seal")) continue;
+        items.files.push({ fileId: f.publicId, documentId: doc.publicId });
         if (items.files.length >= CLAIM_BATCH) break;
       }
     }
@@ -548,6 +553,78 @@ async function activeJob(ctx: MutationCtx, scope: Scope): Promise<Migration | nu
   const jobs = await ctx.db.query("e2eeMigrations").withIndex("by_scope", (q) => q.eq("scopeKey", scopeKey(scope))).order("desc").take(5);
   return jobs.find((j) => j.phase !== "done") ?? null;
 }
+
+// ---------------------------------------------------------------- what a device reads to convert a note
+
+/**
+ * A note's block rows for converting it: live ones and tombstones, as stored (plaintext, or sealed for a note
+ * being unsealed), with their revisions for the compare-and-set. Paged (`cursor` from the last page).
+ * For people who can edit the note and are in its space (the same rows they can open today).
+ */
+export const plainBlocks = query({
+  args: { documentId: v.string(), cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+    if (!(await documentAccessInfo(ctx, profile, doc)).inScope) fail("forbidden", "Only members can convert notes.");
+    const page = await ctx.db
+      .query("blocks")
+      .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+      .paginate({ cursor: args.cursor ?? null, numItems: 500 });
+    return {
+      blocks: page.page.map((r) => ({ block: toWireBlock(r), revision: r.revision, deleted: r.deletedAt !== undefined })),
+      cursor: page.continueCursor,
+      isDone: page.isDone,
+    };
+  },
+});
+
+/**
+ * What else of a note a device needs to convert it, that no other query serves whole: its found text, the
+ * collections it hosts (definitions, rows and values) and its comments' bodies (sealed or not).
+ */
+export const plainExtras = query({
+  args: { documentId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+    if (!(await documentAccessInfo(ctx, profile, doc)).inScope) fail("forbidden", "Only members can convert notes.");
+    const fileTexts = [];
+    for (const f of await ctx.db.query("fileTexts").withIndex("by_document_block", (q) => q.eq("documentId", doc._id)).take(500)) {
+      const file = f.fileId ? await ctx.db.get(f.fileId) : null;
+      fileTexts.push({ blockId: f.blockId, fileId: file?.publicId ?? null, source: f.source, by: f.by, text: f.text, pageStarts: f.pageStarts ?? null, hash: f.hash });
+    }
+    const collections = [];
+    for (const c of await ctx.db.query("collections").withIndex("by_document", (q) => q.eq("documentId", doc._id)).take(50)) {
+      if (c.deletedAt) continue;
+      const properties = (await ctx.db.query("collectionProperties").withIndex("by_collection", (q) => q.eq("collectionId", c._id)).collect()).filter((p) => !p.deletedAt);
+      const propertyIds = new Map(properties.map((p) => [p._id as string, p.publicId]));
+      const views = await ctx.db.query("collectionViews").withIndex("by_collection", (q) => q.eq("collectionId", c._id)).collect();
+      const rows = [];
+      for (const r of await ctx.db.query("collectionRows").withIndex("by_collection", (q) => q.eq("collectionId", c._id)).take(5000)) {
+        if (r.deletedAt) continue;
+        const rowDoc = await ctx.db.get(r.documentId);
+        if (!rowDoc) continue;
+        const values = (await ctx.db.query("collectionValues").withIndex("by_row", (q) => q.eq("rowId", r._id)).collect()).map((x) => ({ propertyId: propertyIds.get(x.propertyId) ?? "", value: x.value }));
+        rows.push({ id: r.publicId, documentId: rowDoc.publicId, rank: r.rank, values: values.filter((x) => x.propertyId) });
+      }
+      collections.push({
+        id: c.publicId,
+        name: c.name,
+        properties: properties.map((p) => ({ id: p.publicId, name: p.name, type: p.type, options: p.options, ...(p.formula !== undefined ? { formula: p.formula } : {}), ...(p.numberFormat ? { numberFormat: p.numberFormat } : {}), rank: p.rank })),
+        views: views.map((x) => ({ id: x.publicId, name: x.name, type: x.type, config: x.config, rank: x.rank })),
+        rows,
+      });
+    }
+    const comments = [];
+    for (const t of await ctx.db.query("commentThreads").withIndex("by_document", (q) => q.eq("documentId", doc._id)).take(500)) {
+      for (const c of await ctx.db.query("comments").withIndex("by_thread", (q) => q.eq("threadId", t._id)).take(500)) {
+        comments.push({ commentId: c.publicId, threadId: t.publicId, ...(c.sealedBody ? { sealedBody: c.sealedBody } : { body: c.body }), deleted: c.deletedAt !== undefined });
+      }
+    }
+    return { fileTexts, collections, comments };
+  },
+});
 
 // ---------------------------------------------------------------- unsealing
 

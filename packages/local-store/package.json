@@ -6,6 +6,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./e2ee": "./src/crypto/e2ee/index.ts",
     "./fixtures/*": "./fixtures/*"
   },
   "scripts": {
@@ -16,6 +17,9 @@
   },
   "dependencies": {
     "@folevi/editor-schema": "workspace:*",
+    "@noble/ciphers": "2.4.0",
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0",
     "fflate": "0.8.3"
   },
   "devDependencies": {

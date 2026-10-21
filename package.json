@@ -28,6 +28,7 @@
     "@folevi/ai-prompts": "workspace:*",
     "@folevi/editor-schema": "workspace:*",
     "@folevi/email": "workspace:*",
+    "@folevi/local-store": "workspace:*",
     "better-auth": "1.6.33",
     "convex": "1.46.0",
     "fflate": "0.8.3",

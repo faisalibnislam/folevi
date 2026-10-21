@@ -46,10 +46,26 @@ The golden scenarios in `fixtures/merge-scenarios.json` cover each rule. Their s
 
 `crypto/envelope.ts` is the reference for the FLV1 envelope: PBKDF2-SHA256 wraps a random master key; HKDF-SHA256 derives a key per file from its canonical path; files are AES-256-GCM, and attachments use 64 KiB STREAM chunks so they can be read by byte range. Names are HMACs of ids. `EncryptedFs` does all of this transparently around a `LocalFs`, the way the native layers do. The vectors in `fixtures/crypto-vectors.json` are checked against node:crypto, and natives must reproduce them. In the apps the key stays in native code; the TypeScript version is for tests and the FakeShell.
 
+## End-to-end encryption (`@folevi/local-store/e2ee`)
+
+`crypto/e2ee/` is the crypto core for encrypted Folevi spaces (docs/E2EE_DESIGN.md §4), shared by the web app, the Mac app and Convex (which only seals). Every format starts with a 4-byte magic and a mode byte, so `envelopeKind` recognises all of them next to modes `0x01` and `0x02` above.
+
+| Format | Layout | Used for |
+| --- | --- | --- |
+| FLV1 `0x03` keyed record | `"FLV1"` `0x03` flags(1) keyVersion(u32 BE) nonce(12), then AES-256-GCM with AAD = the 22 header bytes ‖ utf8(context) | every sealed field and every symmetric key wrap; flag bit 0 = deflate-raw (used from 1024 bytes when it saves 10 %; readers refuse more than 8 MiB inflated) |
+| FLV1 `0x04` keyed stream | `"FLV1"` `0x04` chunkSize(u32 BE, 65536) noncePrefix(8), then chunk i = AES-256-GCM(nonce = prefix ‖ u32 BE(i), AAD = header ‖ context ‖ last flag) | attachment bytes, readable by byte range; the final chunk is always authenticated |
+| FLS1 sealed box | `"FLS1"` `0x01` E(32) nonce(12), then AES-256-GCM with k = HKDF(X25519(e, R), salt E ‖ R, "seal/" ‖ context), AAD = header ‖ context | anything sealed to an X25519 public key; all-zero shared secrets are refused |
+| FST1 statement | Ed25519 over utf8("folevi/e2ee/v1/statement\n" ‖ kind ‖ "\n") ‖ canonicalJson(body), stored `{ kind, body, sig }` | device, account-key, space-grant and note-grant statements |
+
+Contexts (`ctx`, one builder per row of §4.5) are never stored: the reader rebuilds them from where the bytes were found, so ciphertext moved to another document, block or person fails to open. HKDF-SHA256 uses salt `"folevi/e2ee/v1"`; derivation strings, the recovery key text (36 Crockford base32 characters with a 20-bit check), the Argon2id parameters and the approval and member codes are in §4.3 to §4.8 and pinned in `fixtures/e2ee-vectors.json`.
+
+Each primitive runs on WebCrypto where the runtime has it and on `@noble` otherwise (`cryptoBackend()`); a `CryptoKey` always runs on WebCrypto and raw key bytes on noble, so keys keep working across backends. `forceBackend` is for tests, which run every vector on both.
+
 ## Tests
 
 - `merge-scenarios.test.ts`: the golden scenarios, plus commutativity, idempotence and absorption at every merge.
 - `convergence.test.ts`: 2 to 4 devices make random concurrent edits through `FaultyCloud`, which delays, duplicates, reorders, truncates, makes conflict copies and loses updates, also through `EncryptedFs`. It asserts that every replica and the folder end identical, and that every edit is live, in history, or knowingly superseded.
 - `crypto.test.ts`, `files.test.ts`, `format.test.ts`, `web-runtime.test.ts`: vectors and tampering, conflict-copy names, the never-overwrite rule, the codecs, history thinning, the index, catalogs, garbage collection, compaction and the journal.
+- `e2ee-vectors.test.ts`, `e2ee-web-runtime.test.ts`: every E2EE vector recomputed on WebCrypto and on noble (in Node and the edge runtime) and checked against node:crypto; `e2ee-envelope.test.ts`: every changed byte, wrong contexts, truncation, a compression bomb, fast-check round trips and garbage; `e2ee-keys.test.ts`: derivations, the four AMK wraps, recovery key text, statements, codes, low-order X25519 keys.
 
 `UPDATE_GOLDEN=1 npx vitest run` rewrites the golden checksums and vectors after an intended format change.

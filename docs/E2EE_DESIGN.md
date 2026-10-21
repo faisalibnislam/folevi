@@ -564,6 +564,27 @@ two ranges; FLS1 with a fixed ephemeral key; FST1 signatures; MACs; the recovery
 fixed passphrase (and with m = 1024 for fast tests); the approval commit and the SAS code. Both the WebCrypto
 and the noble backends must reproduce every vector (the test runs each backend explicitly).
 
+**Settled while building WP1.**
+- `SignedStatement` is `{ kind, body, sig }` with `body` the canonical JSON string that was signed (as the
+  `v.string()` validators store it) and `sig` base64url without padding. Public keys inside bodies are
+  base64url strings. The `note-grant` body, not listed above, is `{ documentId, version, profileId,
+  granteeX25519Pub, grantedBy, at }`. `openStatement` returns the parsed body only when it verifies and is
+  canonical.
+- `ctx` builders, one per row of §4.5: `amkDevice`, `amkRecovery`, `amkPasskey`, `amkPassphrase`,
+  `spaceGrant`, `noteKeySpace`, `noteKeyGrant`, `noteKeyLink`, `docTitle`, `docAppearance`, `docMeta`,
+  `block`, `comment`, `fileText`, `versionName`, `fileKey`, `fileMeta`, `file`, `folder`, `tag`,
+  `spaceRecord` (also for records under a note), `accountRecord`, `inbox`. They return the full string and
+  refuse empty parts or parts containing `/`.
+- Recovery key text: the 20 key bytes then the 20 check bits, most significant bit first, 5 bits per
+  character. `parseRecoveryKey` also returns null for a wrong length or a character outside the alphabet.
+- `approvalCode` and `memberSecurityCode` return bare digits; `formatCode` adds the spaces for display.
+- Readers of FLV1 `0x04` refuse a chunk size over 16 MiB. Writers of `0x03` never compress a plaintext over
+  8 MiB (readers would refuse it); `compress: false` turns compression off.
+- `passphraseWrapKey` also accepts `{ name: "pbkdf2-sha256", iterations, salt }` (iterations ≥ 600,000) for
+  reading, and refuses stored Argon2id parameters outside m 8 to 1 GiB, t 1 to 64, p 1 to 16, or a salt
+  under 16 bytes.
+- `blockFromPlaintext(bytes, shell, collapsed?)` takes the row's `sealed.collapsed` as a third argument.
+
 ## 5. Server changes
 
 ### 5.1 New tables (all in `convex/schema.ts`, written by WP2 in its first commit)

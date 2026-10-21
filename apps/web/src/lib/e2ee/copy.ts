@@ -14,7 +14,7 @@ export const copy = {
   privacy: {
     heading: "Privacy",
     intro: "Choose how much of your Personal space Folevi's servers can read. Workspaces have their own setting, chosen by their admins.",
-    workspaceIntro: (name: string) => `Choose how much of ${name} Folevi's servers can read. Only the owner and admins can change this.`,
+    workspaceIntro: (name: string) => `Choose what Folevi's servers can read in ${name}. Only the owner and admins can change this.`,
     workspaceReadOnly: "Only this workspace's owner and admins can change these settings.",
     cardTitle: "How private your notes are",
     levels: {

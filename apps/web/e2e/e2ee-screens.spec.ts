@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { APP, newPerson, settle, showFolders, signIn, type Account } from "./helpers";
-import { stubState, type StubName } from "./e2ee-stub";
+import { APP, createWorkspace, newPerson, settle, showFolders, signIn, type Account } from "./helpers";
+import { setStub, stubState, type StubName } from "./e2ee-stub";
 
 // The end-to-end encryption screens (docs/E2EE_DESIGN.md §10) on the stubs of WP6, WP7 and WP8
 // (components/e2ee/__stubs__.ts). These pass before integration; the flows against the real keys and server
@@ -301,6 +301,42 @@ test("sharing a sealed note: the key is in the link, and publishing makes a read
   await expect(warn.getByText("The note itself stays encrypted.", { exact: false })).toBeVisible();
   await warn.getByRole("button", { name: "Publish readable copy" }).click();
   await expect(page.getByText("Published. Copy the link below.")).toBeVisible();
+  await context.close();
+});
+
+test("a workspace's privacy: members read it, the key holders, rotation and the invite note", async ({ browser }) => {
+  test.setTimeout(180_000);
+  const { context, page } = await open(browser, "encrypted");
+  await page.goto(`${APP}/documents`);
+  await createWorkspace(page, "Cipher Team");
+  const ws = (await page.evaluate(() => localStorage.getItem("folevi:context")))!.replace(/^workspace:/, "");
+  await page.goto(`${APP}/settings/workspace-privacy`);
+  await expect(page.getByRole("radiogroup", { name: "How private your notes are" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("radio", { name: /^Standard/ })).toHaveAttribute("aria-checked", "true");
+  await setStub(page, {
+    spaces: {
+      personal: { level: "selected", state: "on", switches: { foliAi: "ask", backgroundAi: false, searchEverywhere: false, apps: false, emailToNote: false, webClipper: false, notificationPreviews: false }, lockedCount: 0, keyHolders: 1 },
+      [ws]: { level: "full", state: "on", switches: { foliAi: "off", backgroundAi: false, searchEverywhere: false, apps: false, emailToNote: false, webClipper: false, notificationPreviews: false }, lockedCount: 0, keyHolders: 1 },
+    },
+    rotation: { done: 120, total: 900 },
+  });
+  await expect(page.getByText("Only you can unlock this workspace.", { exact: false })).toBeVisible();
+  const dir = process.env.E2EE_SHOTS;
+  for (const scheme of dir ? (["light", "dark"] as const) : []) {
+    await page.evaluate((s) => localStorage.setItem("folevi:appearance", s), scheme);
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.reload();
+    await expect(page.getByText("Only you can unlock this workspace.", { exact: false })).toBeVisible({ timeout: 30_000 });
+    await settle(page);
+    await page.screenshot({ path: `${dir}/27-workspace-privacy-${scheme}-desktop.png` });
+  }
+  await page.goto(`${APP}/settings/members`);
+  await expect(page.getByText("Changing the workspace key… 120 of 900 notes")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("This workspace is end-to-end encrypted. New members set up encryption when they join", { exact: false })).toBeVisible();
+  if (dir) {
+    await settle(page);
+    await page.screenshot({ path: `${dir}/28-workspace-members-dark-desktop.png` });
+  }
   await context.close();
 });
 

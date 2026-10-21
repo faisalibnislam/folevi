@@ -6,8 +6,8 @@ import { resolve } from "node:path";
 import { SCHEMA_VERSION, canonicalJson, sync, validateWireBlock, type OpResult, type SyncOp, type SyncState, type WireBlock } from "@folevi/editor-schema";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { para, person, setup, ulid, type T } from "./helpers";
-import { deriveSpaceKeys } from "@folevi/local-store/e2ee";
+import { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, person, setup, ulid, type T } from "./helpers";
+import { ctx as aadCtx, deriveSpaceKeys } from "@folevi/local-store/e2ee";
 import { encryptedSpace, push, Sealer } from "./e2ee-fixtures";
 
 type Person = Awaited<ReturnType<typeof person>>;
@@ -383,3 +383,147 @@ describe("golden sync scenarios over sealed blocks", () => {
 });
 
 export type { SyncOp };
+
+// ---------------------------------------------------------------- e2ee.content and e2ee.files
+
+describe("sealed content mutations", () => {
+  test("folders and tags: sealed names, blind duplicate check, plaintext refused in an encrypted space", async () => {
+    const t = setup();
+    const { p, sealer } = await sealedPerson(t, "content-names@example.com");
+    const scope = { kind: "personal" } as const;
+    await expect(p.as.mutation(api.organization.createFolder, { scope, name: "readable" })).rejects.toThrow(/encrypted|e2ee_required/);
+    await expect(p.as.mutation(api.organization.createTag, { scope, name: "readable" })).rejects.toThrow(/encrypted|e2ee_required/);
+    const folderId = ulid();
+    await p.as.mutation(api.e2ee.content.createFolder, { scope, folderId, sealedName: await sealer.sealSpaceName("folder", folderId, "ZQXJ-FOLDER-x") });
+    const sidebar = await p.as.query(api.organization.sidebar, { scope });
+    const f = sidebar.folders.find((x) => x.id === folderId)!;
+    expect(f.name).toBe("");
+    expect(await sealer.openSpaceName("folder", folderId, (f as { sealedName: { c: ArrayBuffer } }).sealedName.c)).toBe("ZQXJ-FOLDER-x");
+    const tagId = ulid();
+    const mac = await sealer.tagMac("Projects");
+    await p.as.mutation(api.e2ee.content.createTag, { scope, tagId, sealedName: await sealer.sealSpaceName("tag", tagId, "Projects"), nameMac: mac });
+    // The same name again (any case) is the same tag.
+    const again = await p.as.mutation(api.e2ee.content.createTag, { scope, tagId: ulid(), sealedName: await sealer.sealSpaceName("tag", tagId, "projects"), nameMac: await sealer.tagMac("projects") });
+    expect(again.id).toBe(tagId);
+    // Plaintext renames of sealed names are refused.
+    await expect(p.as.mutation(api.organization.renameFolder, { folderId, name: "readable" })).rejects.toThrow();
+    await expect(p.as.mutation(api.organization.updateTag, { tagId, name: "readable" })).rejects.toThrow();
+    // Tags on a sealed note: the links carry the change's seq.
+    const doc = await sealedNote(p, sealer);
+    await p.as.mutation(api.e2ee.content.setDocumentTags, { documentId: doc, tagIds: [tagId] });
+    const links = await t.run(async (ctx) => {
+      const d = await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", doc)).unique();
+      return { links: await ctx.db.query("documentTags").withIndex("by_document", (q) => q.eq("documentId", d!._id)).collect(), seq: d!.seq };
+    });
+    expect(links.links).toHaveLength(1);
+    expect(links.links[0]!.seq).toBe(links.seq);
+  });
+
+  test("records: compare-and-set, tombstones, a person's own kinds stay theirs", async () => {
+    const t = setup();
+    const { p, sealer } = await sealedPerson(t, "content-records@example.com");
+    const scope = { kind: "personal" } as const;
+    const doc = await sealedNote(p, sealer);
+    const sealed = async (v: unknown) => await sealer.sealNoteRecord(doc, aadCtx.spaceRecord(sealer.space.scope, "collection", "c1"), v);
+    const r1 = await p.as.mutation(api.e2ee.content.putRecord, { scope, kind: "collection", recordId: "c1", documentId: doc, sealed: await sealed({ v: 1 }), keyVersion: 1, baseRev: 0 });
+    expect(r1.rev).toBe(1);
+    await expect(p.as.mutation(api.e2ee.content.putRecord, { scope, kind: "collection", recordId: "c1", documentId: doc, sealed: await sealed({ v: 2 }), keyVersion: 1, baseRev: 0 })).rejects.toThrow(/e2ee_conflict|changed on another device/);
+    const r2 = await p.as.mutation(api.e2ee.content.putRecord, { scope, kind: "collection", recordId: "c1", documentId: doc, sealed: await sealed({ v: 2 }), keyVersion: 1, baseRev: 1 });
+    expect(r2.rev).toBe(2);
+    // A record sealed with a key version the note doesn't have is refused.
+    await expect(p.as.mutation(api.e2ee.content.putRecord, { scope, kind: "collection", recordId: "c2", documentId: doc, sealed: await sealed({ v: 1 }), keyVersion: 7, baseRev: 0 })).rejects.toThrow();
+    const del = await p.as.mutation(api.e2ee.content.deleteRecord, { scope, kind: "collection", recordId: "c1", documentId: doc, baseRev: 2 });
+    expect(del.rev).toBe(3);
+    const pulled = await p.as.query(api.e2ee.pull.pull, { scope, cursor: 0 });
+    const rec = pulled.records.find((r) => r.recordId === "c1")!;
+    expect(rec.deletedAt).toBeTypeOf("number");
+    expect(rec.sealed.byteLength).toBe(0);
+  });
+
+  test("comments on a sealed note are sealed; plaintext comments are refused", async () => {
+    const t = setup();
+    const { p, sealer } = await sealedPerson(t, "content-comments@example.com");
+    const doc = await sealedNote(p, sealer);
+    await expect(p.as.mutation(api.comments.create, { documentId: doc, body: [{ type: "text", text: "readable" }] })).rejects.toThrow();
+    const threadId = ulid();
+    const commentId = ulid();
+    const body = [{ type: "text", text: "ZQXJ-COMMENT-sealed" }];
+    await p.as.mutation(api.e2ee.content.createComment, { documentId: doc, threadId, commentId, sealedBody: await sealer.sealNoteRecord(doc, aadCtx.comment(doc, commentId), body), mentions: [] });
+    const rows = await t.run(async (ctx) => await ctx.db.query("comments").withIndex("by_public_id", (q) => q.eq("publicId", commentId)).unique());
+    expect(rows!.body).toEqual([]);
+    expect(JSON.parse(await sealer.openNoteRecord(doc, aadCtx.comment(doc, commentId), rows!.sealedBody!.c))).toEqual(body);
+    const reply = ulid();
+    await p.as.mutation(api.e2ee.content.replyComment, { threadId, commentId: reply, sealedBody: await sealer.sealNoteRecord(doc, aadCtx.comment(doc, reply), [{ type: "text", text: "ok" }]), mentions: [] });
+    await p.as.mutation(api.e2ee.content.editComment, { commentId, sealedBody: await sealer.sealNoteRecord(doc, aadCtx.comment(doc, commentId), [{ type: "text", text: "edited" }]), mentions: [] });
+  });
+
+  test("version names are sealed; a plaintext name on a sealed note is refused", async () => {
+    const t = setup();
+    const { p, sealer } = await sealedPerson(t, "content-versions@example.com");
+    const doc = await sealedNote(p, sealer);
+    await push(p, [await sealer.upsert(doc, para(ulid(), "x"), null)]);
+    await expect(p.as.mutation(api.documents.createSnapshot, { documentId: doc, reason: "manual", name: "readable" })).rejects.toThrow();
+    const { id } = await p.as.mutation(api.documents.createSnapshot, { documentId: doc, reason: "manual" });
+    await expect(p.as.mutation(api.documents.nameVersion, { snapshotId: id!, name: "readable" })).rejects.toThrow();
+    await p.as.mutation(api.e2ee.content.nameVersion, { snapshotId: id!, sealedName: await sealer.sealNoteRecord(doc, aadCtx.versionName(doc, id!), "Sent to the client") });
+    const listed = await p.as.query(api.documents.versions, { documentId: doc, namedOnly: true });
+    expect(listed.versions).toHaveLength(1);
+    const v = listed.versions[0] as { sealed?: true; sealedName?: { c: ArrayBuffer } | null };
+    expect(v.sealed).toBe(true);
+    expect(await sealer.openNoteRecord(doc, aadCtx.versionName(doc, id!), v.sealedName!.c)).toBe("Sent to the client");
+    // Copy and restore are composed on the device.
+    await expect(p.as.mutation(api.documents.copyVersion, { snapshotId: id! })).rejects.toThrow(/device|e2ee_device_only/);
+    await expect(p.as.mutation(api.documents.restoreSnapshot, { snapshotId: id! })).rejects.toThrow(/device|e2ee_device_only/);
+  });
+
+  test("sealed files: upload checked by size and hash only, served as ciphertext, pasted with the key rewrapped", async () => {
+    const t = setup();
+    const { p, sealer } = await sealedPerson(t, "content-files@example.com");
+    const doc = await sealedNote(p, sealer);
+    // Plaintext uploads into a sealed note are refused.
+    await expect(p.as.mutation(api.files.generateUploadUrl, { documentId: doc, filename: "a.png", size: 10, mimeType: "image/png", kind: "image" })).rejects.toThrow();
+    const fileId = ulid();
+    const plain = new TextEncoder().encode("ZQXJ-FILE-bytes ".repeat(10));
+    const sealed = await sealer.sealFileBytes(doc, fileId, plain, { name: "notes.txt", mime: "text/plain" });
+    const { intentId } = await p.as.mutation(api.e2ee.files.generateUploadUrl, { documentId: doc, kind: "file", declaredSize: sealed.bytes.byteLength });
+    // A wrong hash is refused (and the blob dropped).
+    const bad = await t.run(async (ctx) => await ctx.storage.store(new Blob([sealed.bytes])));
+    await expect(p.as.action(api.e2ee.files.commit, { intentId, documentId: doc, fileId, storageId: bad, sealed: sealed.row, size: sealed.bytes.byteLength, sha256: "0".repeat(64) })).rejects.toThrow();
+    const { intentId: again } = await p.as.mutation(api.e2ee.files.generateUploadUrl, { documentId: doc, kind: "file", declaredSize: sealed.bytes.byteLength });
+    const good = await t.run(async (ctx) => await ctx.storage.store(new Blob([sealed.bytes])));
+    await p.as.action(api.e2ee.files.commit, { intentId: again, documentId: doc, fileId, storageId: good, sealed: sealed.row, size: sealed.bytes.byteLength, sha256: sealed.sha256 });
+    const urls = await p.as.query(api.files.urls, { fileIds: [fileId], now: Date.now() });
+    expect(urls[fileId]!.mimeType).toBe("application/octet-stream");
+    expect(urls[fileId]!.filename).toBe("file");
+    expect(urls[fileId]!.sealed?.plainSize).toBe(plain.length);
+    const row = await t.run(async (ctx) => await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", doc)).unique());
+    expect(row!.fileIds).toEqual([fileId]);
+    // Palette changes go into the sealed details.
+    await expect(p.as.mutation(api.files.setPalette, { fileId, palette: { paper: "#ffffff", ink: "#000000", paperDark: "#000000", inkDark: "#ffffff", tone: "light" } as never })).rejects.toThrow();
+    await p.as.mutation(api.e2ee.files.updateMeta, { fileId, meta: sealed.row.meta });
+    // Pasted into another note of the same space: same bytes, a new row with the key for that note.
+    const other = await sealedNote(p, sealer, "Other");
+    await expect(p.as.mutation(api.files.shareForPaste, { documentId: other, fileIds: [fileId] })).rejects.toThrow(/device|e2ee_device_only/);
+    const copy = await sealer.sealFileBytes(other, ulid(), plain, { name: "notes.txt", mime: "text/plain" });
+    const newFileId = ulid();
+    await p.as.mutation(api.e2ee.files.rewrap, { fileId, targetDocumentId: other, newFileId, key: copy.row.key, meta: copy.row.meta, k: 1 });
+    const rows = await t.run(async (ctx) => await ctx.db.query("files").withIndex("by_storage", (q) => q.eq("storageId", good)).collect());
+    expect(rows.map((r) => r.publicId).sort()).toEqual([fileId, newFileId].sort());
+    expect(rows.find((r) => r.publicId === newFileId)!.sharesBlob).toBe(true);
+  });
+
+  test("locking one note in a Standard space, and its readable copies dropped", async () => {
+    const t = setup();
+    const p = await e2eePerson(t, "content-lock-note@example.com");
+    await e2eeRecoveryMethods(p);
+    await e2eeSpace(p, { kind: "personal" });
+    const id = ulid();
+    await push(p, [{ opId: ulid(), kind: "document.create", document: { id, parentDocumentId: null, folderId: null, kind: "document", title: "Private", icon: null } }]);
+    const r = await p.as.mutation(api.e2ee.content.setDocumentLocked, { documentId: id, locked: true });
+    expect(r.migrationId).toBeTruthy();
+    const space = await t.run(async (ctx) => await ctx.db.query("e2eeSpaces").withIndex("by_scope_key", (q) => q.eq("scopeKey", `p:${p.profileId}`)).unique());
+    expect(space!.lockedCount).toBe(1);
+    const job = await p.as.query(api.e2ee.migrate.progress, { scope: { kind: "personal" } });
+    expect(job[0]!.scopeOf).toBe("document");
+  });
+});

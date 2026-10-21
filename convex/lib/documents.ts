@@ -17,6 +17,7 @@ import { accessAtLeast, documentAccess, membership } from "./auth";
 import { sharedLabels } from "./linkLabels";
 import { emitWebhook } from "./webhooks";
 import { notesShowingInPlace, withSyncedShared } from "./synced";
+import { sealedFieldsOf, toSealedWireBlock, type SealedDocumentFields } from "./e2ee/sealedRows";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -49,6 +50,16 @@ export interface DocumentSummary {
   wordCount: number;
   charCount: number;
   blockCount: number;
+  /**
+   * End-to-end encrypted notes only (docs/E2EE_DESIGN.md §4.6): the sealed title, appearance and meta (the
+   * plaintext fields above then hold placeholders), whether the note itself is Always fully encrypted, the
+   * locked folder it inherits that from (only for readers in its scope, like `folderId`) and its files.
+   * Standard notes never have these keys.
+   */
+  sealed?: SealedDocumentFields;
+  locked?: true;
+  lockedVia?: string;
+  fileIds?: string[];
 }
 
 /** Resolves Convex ids to public ids with a per-call cache. */
@@ -121,6 +132,11 @@ export class Placement {
     const s = await toSummary(ids, doc);
     const folderId = s.folderId !== null && (await this.inScope(doc)) ? s.folderId : null;
     const parentDocumentId = doc.parentDocumentId !== undefined && (await this.canOpen(doc.parentDocumentId)) ? s.parentDocumentId : null;
+    if (s.lockedVia !== undefined && !(await this.inScope(doc))) {
+      const { lockedVia: _hidden, ...rest } = s;
+      void _hidden;
+      return { ...rest, folderId, parentDocumentId };
+    }
     return { ...s, folderId, parentDocumentId };
   }
 }
@@ -130,6 +146,8 @@ export interface HomeFolder {
   id: string;
   name: string;
   color: string | null;
+  /** An end-to-end encrypted folder's sealed name (`name` is then ""). */
+  sealedName?: { c: ArrayBuffer; k: number };
 }
 
 /**
@@ -143,7 +161,7 @@ export class HomeFolders {
   private async folder(id: Id<"folders">): Promise<HomeFolder | null> {
     if (!this.byFolder.has(id)) {
       const f = await this.ctx.db.get(id);
-      this.byFolder.set(id, f && !f.deletedAt ? { id: f.publicId, name: f.name, color: f.color ?? null } : null);
+      this.byFolder.set(id, f && !f.deletedAt ? { id: f.publicId, name: f.name, color: f.color ?? null, ...(f.sealedName ? { sealedName: f.sealedName } : {}) } : null);
     }
     return this.byFolder.get(id) ?? null;
   }
@@ -196,10 +214,28 @@ export async function toSummary(ids: IdResolver, doc: Doc<"documents">): Promise
     wordCount: doc.wordCount,
     charCount: doc.charCount,
     blockCount: doc.blockCount,
+    ...(await sealedSummary(ids, doc)),
   };
 }
 
+/** The sealed part of a summary; nothing at all for a Standard note (its summary is exactly as before). */
+async function sealedSummary(ids: IdResolver, doc: Doc<"documents">): Promise<Partial<DocumentSummary>> {
+  const sealed = sealedFieldsOf(doc);
+  if (!sealed && !doc.locked && doc.lockedVia === undefined) return {};
+  const out: Partial<DocumentSummary> = {};
+  if (sealed) out.sealed = sealed;
+  if (doc.locked) out.locked = true;
+  if (doc.lockedVia !== undefined) {
+    const via = await ids.folder(doc.lockedVia);
+    if (via) out.lockedVia = via;
+  }
+  if (doc.fileIds?.length) out.fileIds = doc.fileIds;
+  return out;
+}
+
+/** A block as clients receive it; a sealed block travels as a SealedWireBlock (placeholders plus `sealed`). */
 export function toWireBlock(row: Doc<"blocks">): WireBlock {
+  if (row.sealed !== undefined) return toSealedWireBlock(row);
   return {
     id: row.blockId,
     type: row.type,
@@ -228,6 +264,13 @@ export { buildPreview, newDocumentRank, sanitizeTitle, type PreviewLine };
  * read the page sees these, so links in them carry only titles everyone there may see (sharedLabels).
  */
 export async function refreshDerived(ctx: MutationCtx, doc: Doc<"documents">, rows?: Doc<"blocks">[]): Promise<void> {
+  // A sealed note's text is ciphertext: devices derive its search text and preview (docs/E2EE_DESIGN.md
+  // §6.7). Only the number of blocks is kept (the limit per note is enforced on it).
+  if (doc.sealedAt !== undefined) {
+    const count = (rows ?? (await liveBlocks(ctx, doc._id))).length;
+    if (count !== doc.blockCount) await ctx.db.patch(doc._id, { blockCount: count });
+    return;
+  }
   const own = (rows ?? (await liveBlocks(ctx, doc._id))).map(toWireBlock);
   // A note reads with the synced blocks from its own place in it (lib/synced.ts): searching finds the note.
   const blocks = await sharedLabels(ctx, doc, (await withSyncedShared(ctx, doc, own)).blocks);
@@ -258,6 +301,11 @@ export async function syncTaskProjection(
     .query("tasks")
     .withIndex("by_block", (q) => q.eq("blockId", row.blockId))
     .unique();
+  // Sealed to-dos are projected on devices (docs/E2EE_DESIGN.md §6.7); a projection left from before goes.
+  if (row.sealed !== undefined || doc.sealedAt !== undefined) {
+    if (existing) await ctx.db.delete(existing._id);
+    return;
+  }
   // Checklists inside templates are blueprints, not tasks. A task's title is shown to everyone who can read
   // the page, so links in it carry only titles everyone there may see.
   const live = row.deletedAt === undefined && doc.kind !== "template";

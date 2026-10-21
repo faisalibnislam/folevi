@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { vScopeArg } from "./scope";
+import { vSealedBlockFields, vSealedDocumentCreateFields, vSealedDocumentPatchFields } from "./e2ee/validators";
 
 export const vPlatformRole = v.union(v.literal("super_admin"), v.literal("support_admin"), v.literal("ops_admin"));
 export const vProfileStatus = v.union(
@@ -233,12 +234,19 @@ export const vDocumentPatch = v.object({
   parentDocumentId: v.optional(v.union(v.string(), v.null())),
 });
 
+// Sync ops may carry sealed content for end-to-end encrypted notes (docs/E2EE_DESIGN.md §4.6, §5.4): a
+// sealed block keeps the placeholders of vWireBlock and adds `sealed`; a sealed create and patch add their
+// sealed fields. Only sync.push takes these; every other function keeps the plain shapes above.
+const vSyncWireBlock = v.object({ ...vWireBlock.fields, sealed: v.optional(vSealedBlockFields) });
+const vSyncDocumentCreate = v.object({ ...vDocumentCreate.fields, sealed: v.optional(vSealedDocumentCreateFields) });
+const vSyncDocumentPatch = v.object({ ...vDocumentPatch.fields, ...vSealedDocumentPatchFields });
+
 export const vSyncOp = v.union(
   v.object({
     opId: v.string(),
     kind: v.literal("block.upsert"),
     documentId: v.string(),
-    block: vWireBlock,
+    block: vSyncWireBlock,
     baseRevision: v.union(v.number(), v.null()),
     fields: v.array(v.union(v.literal("content"), v.literal("position"), v.literal("collapsed"))),
   }),
@@ -250,12 +258,12 @@ export const vSyncOp = v.union(
     baseRevision: v.union(v.number(), v.null()),
   }),
   v.object({ opId: v.string(), kind: v.literal("block.restore"), documentId: v.string(), blockId: v.string() }),
-  v.object({ opId: v.string(), kind: v.literal("document.create"), document: vDocumentCreate }),
+  v.object({ opId: v.string(), kind: v.literal("document.create"), document: vSyncDocumentCreate }),
   v.object({
     opId: v.string(),
     kind: v.literal("document.update"),
     documentId: v.string(),
-    patch: vDocumentPatch,
+    patch: vSyncDocumentPatch,
     baseRevision: v.union(v.number(), v.null()),
   }),
 );

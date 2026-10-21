@@ -37,15 +37,18 @@ const pendingOf = async (ctx: MutationCtx, documentId: Id<"documents">) =>
  */
 export async function noteEdited(ctx: MutationCtx, doc: Doc<"documents">, actorId: Id<"profiles">, opts: { seq?: number; bulk?: boolean } = {}): Promise<void> {
   const now = Date.now();
+  // A sealed note (docs/E2EE_DESIGN.md §5.4) gets its versions and edited time as before, but nothing that
+  // reads its text: no webhooks (they'd need a readable copy, WP5), no semantic search, no derived text.
+  const sealed = doc.sealedAt !== undefined;
   // Webhooks hear of it (at most once a minute per note; nothing at all when no one listens).
-  await emitWebhook(ctx, "note.updated", doc);
+  if (!sealed) await emitWebhook(ctx, "note.updated", doc);
   if (doc.settleAt !== undefined && doc.settleAt > now) {
     const pending = await pendingOf(ctx, doc._id);
     const bulk = Boolean(opts.bulk) || Boolean(pending?.bulk);
     if (pending) await ctx.db.patch(pending._id, { profileId: actorId, at: now, bulk });
     else await ctx.db.insert("documentEdits", { documentId: doc._id, profileId: actorId, at: now, bulk });
     // Semantic search still hears of every edit (its own state row, not the note's).
-    await queueIndex(ctx, doc);
+    if (!sealed) await queueIndex(ctx, doc);
     return;
   }
   await writeEdit(ctx, doc, actorId, now, opts);
@@ -81,7 +84,7 @@ async function writeEdit(ctx: MutationCtx, doc: Doc<"documents">, actorId: Id<"p
   if (versionDue) await ctx.scheduler.runAfter(AUTO_VERSION_MS, internal.documents.autoVersion, { documentId: doc._id });
   const fresh = (await ctx.db.get(doc._id))!;
   // Semantic search re-reads the note a little later (one job per burst of edits; eligible plans only).
-  await queueIndex(ctx, fresh);
+  if (fresh.sealedAt === undefined) await queueIndex(ctx, fresh);
   // A big batch (a paste of many lines) gets its search text, counts and preview a moment later, so saving
   // it doesn't wait on reading the whole page; small edits update them at once.
   if (opts.bulk) await ctx.scheduler.runAfter(0, internal.documents.refreshDerivedLater, { documentId: doc._id });

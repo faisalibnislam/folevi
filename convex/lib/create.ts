@@ -32,6 +32,21 @@ export interface CreateDocumentInput {
   collectionId?: Id<"collections">;
   accessMode?: Doc<"documents">["accessMode"];
   blocks?: WireBlock[];
+  /**
+   * An end-to-end encrypted note (docs/E2EE_DESIGN.md §5.4): its sealed title, appearance and meta and its
+   * first note key, wrapped by the space key. The plaintext columns get placeholders (`title`, `icon`,
+   * `style`, `cover` and `templateKey` above are ignored), nothing is derived from it, and it starts empty.
+   * The caller has checked the space key version and the sizes.
+   */
+  sealed?: {
+    title: { c: ArrayBuffer; k: number; mac: string };
+    appearance: { c: ArrayBuffer; k: number };
+    meta?: { c: ArrayBuffer; k: number };
+    noteKey: { spaceVersion: number; wrapped: ArrayBuffer };
+    locked?: true;
+    lockedVia?: Id<"folders">;
+    fileIds?: string[];
+  };
 }
 
 export async function createDocument(ctx: MutationCtx, input: CreateDocumentInput): Promise<Doc<"documents">> {
@@ -45,6 +60,7 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
     .unique();
   if (existing) fail("conflict", "Document already exists.");
   const blocks = input.blocks ?? [];
+  if (input.sealed) return await createSealedDocument(ctx, input, publicId, seq, now);
   for (const b of blocks) {
     const issues = validateWireBlock(b);
     if (issues.length) fail("invalid_block", `${issues[0]!.path}: ${issues[0]!.message}`);
@@ -119,6 +135,64 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
   const created = (await ctx.db.get(docId))!;
   await emitWebhook(ctx, "note.created", created);
   return created;
+}
+
+/** createDocument for a sealed note: placeholders, the sealed fields and the first note key, nothing derived. */
+async function createSealedDocument(ctx: MutationCtx, input: CreateDocumentInput, publicId: string, seq: number, now: number): Promise<Doc<"documents">> {
+  const sealed = input.sealed!;
+  if (input.blocks?.length) fail("invalid_argument", "An encrypted note starts empty; its blocks come as sealed operations.");
+  const scope = input.scope;
+  const docId = await insertScoped(ctx, "documents", scope, {
+    publicId,
+    parentDocumentId: input.parentDocumentId,
+    folderId: input.folderId,
+    kind: input.kind ?? "document",
+    title: "",
+    cover: DEFAULTS.cover,
+    style: DEFAULTS.style,
+    dailyDate: input.dailyDate,
+    dailyOwnerId: input.dailyOwnerId,
+    accessMode: input.accessMode ?? "workspace",
+    rank: newDocumentRank(await lastRootRank(ctx, scope)),
+    createdBy: input.actor._id,
+    lastEditedBy: input.actor._id,
+    createdAt: now,
+    updatedAt: now,
+    inTrash: false,
+    revision: 1,
+    titleRev: 1,
+    seq,
+    contentSeq: 0,
+    searchText: "",
+    wordCount: 0,
+    charCount: 0,
+    blockCount: 0,
+    excerpt: "",
+    sealedAt: now,
+    sealedTitle: sealed.title,
+    sealedAppearance: sealed.appearance,
+    ...(sealed.meta ? { sealedMeta: sealed.meta } : {}),
+    ...(sealed.locked ? { locked: true } : {}),
+    ...(sealed.lockedVia ? { lockedVia: sealed.lockedVia } : {}),
+    ...(sealed.fileIds?.length ? { fileIds: sealed.fileIds } : {}),
+  });
+  // The note never exists without its key (§4.9).
+  await insertScoped(ctx, "e2eeNoteKeys", scope, {
+    documentId: docId,
+    version: 1,
+    wrappedBy: "space",
+    spaceVersion: sealed.noteKey.spaceVersion,
+    wrapped: sealed.noteKey.wrapped,
+    createdBy: input.actor._id,
+    createdAt: now,
+    seq,
+  });
+  const doc = (await ctx.db.get(docId))!;
+  if (doc.kind !== "synced") {
+    await adjustDocumentCount(ctx, scope, 1);
+    await bump(ctx, "documents_total");
+  }
+  return doc;
 }
 
 /** Keeps a scope's document counter (admin views) in step. */

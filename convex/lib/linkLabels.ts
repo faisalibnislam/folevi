@@ -77,7 +77,11 @@ export function relabel(blocks: WireBlock[], labels: Map<string, Label>): WireBl
   });
 }
 
-const labelOf = (doc: Doc<"documents">): Label => ({ title: doc.title || "Untitled", icon: doc.icon ?? null });
+/** What a link to an end-to-end encrypted note says on the server (its title is sealed; devices fill it in). */
+export const SEALED_PAGE_LABEL = "Encrypted note";
+
+const labelOf = (doc: Doc<"documents">): Label =>
+  doc.sealedAt !== undefined ? { title: SEALED_PAGE_LABEL, icon: null } : { title: doc.title || "Untitled", icon: doc.icon ?? null };
 
 /**
  * Labels as one signed-in reader may see them: the current title of pages they can open, hidden for the

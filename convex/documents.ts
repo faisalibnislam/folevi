@@ -38,6 +38,19 @@ import { People } from "./lib/authors";
 import { queueIndex } from "./lib/ai/indexing";
 import { emitWebhook } from "./lib/webhooks";
 import { refreshSourcesShownBy } from "./lib/synced";
+import { failE2ee } from "./lib/e2ee/state";
+import { bytesToB64u, sealedFieldsOf } from "./lib/e2ee/sealedRows";
+
+/** A sealed note's sealed title and appearance next to the placeholders of a result row; nothing for a Standard note. */
+function sealedOf(doc: Doc<"documents">): { sealed?: ReturnType<typeof sealedFieldsOf> } {
+  const sealed = sealedFieldsOf(doc);
+  return sealed ? { sealed } : {};
+}
+
+/** A sealed folder's or tag's sealed name; nothing for a Standard one. */
+function sealedNameOf(row: { sealedName?: { c: ArrayBuffer; k: number } }): { sealedName?: { c: ArrayBuffer; k: number } } {
+  return row.sealedName ? { sealedName: row.sealedName } : {};
+}
 
 export const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -95,7 +108,7 @@ const TAG_PRELOAD = 200;
  * complete set of starred page ids when the caller already has it (the Starred view).
  */
 async function withExtras(ctx: QueryCtx, profile: Doc<"profiles">, ids: IdResolver, docs: Doc<"documents">[], opts: { scope?: Scope; starred?: Set<string> } = {}) {
-  const out: (DocumentSummary & { starred: boolean; tags: { id: string; name: string; color: string }[]; homeFolder: HomeFolder | null })[] = [];
+  const out: (DocumentSummary & { starred: boolean; tags: { id: string; name: string; color: string; sealedName?: { c: ArrayBuffer; k: number } }[]; homeFolder: HomeFolder | null })[] = [];
   const homes = new HomeFolders(ctx);
   const place = new Placement(ctx, profile);
   let starred = opts.starred ?? null;
@@ -135,7 +148,7 @@ async function withExtras(ctx: QueryCtx, profile: Doc<"profiles">, ids: IdResolv
         t = await ctx.db.get(l.tagId);
         tags.set(l.tagId, t);
       }
-      if (t) docTags.push({ id: t.publicId, name: t.name, color: t.color });
+      if (t) docTags.push({ id: t.publicId, name: t.name, color: t.color, ...sealedNameOf(t) });
     }
     out.push({ ...(await place.summary(ids, d)), starred: star, tags: docTags, homeFolder: await homes.of(d) });
   }
@@ -338,11 +351,11 @@ export const get = query({
     const access = await documentAccess(ctx, profile, doc);
     if (access === "none") return null;
     const ids = new IdResolver(ctx);
-    const breadcrumbs: { id: string; title: string; icon: string | null }[] = [];
+    const breadcrumbs: { id: string; title: string; icon: string | null; sealed?: ReturnType<typeof sealedFieldsOf> }[] = [];
     let cursor = doc.parentDocumentId ? await ctx.db.get(doc.parentDocumentId) : null;
     for (let i = 0; cursor && i < 12; i++) {
       if (accessAtLeast(await documentAccess(ctx, profile, cursor), "read")) {
-        breadcrumbs.unshift({ id: cursor.publicId, title: cursor.title, icon: cursor.icon ?? null });
+        breadcrumbs.unshift({ id: cursor.publicId, title: cursor.title, icon: cursor.icon ?? null, ...sealedOf(cursor) });
       }
       cursor = cursor.parentDocumentId ? await ctx.db.get(cursor.parentDocumentId) : null;
     }
@@ -368,7 +381,7 @@ export const get = query({
       document,
       access,
       isMember: inItsScope,
-      folder: folder && !folder.deletedAt ? { id: folder.publicId, name: folder.name } : null,
+      folder: folder && !folder.deletedAt ? { id: folder.publicId, name: folder.name, ...sealedNameOf(folder) } : null,
       breadcrumbs,
       lastEditedBy: lastEditor?.displayName ?? null,
       createdByName: creator?.displayName ?? null,
@@ -383,12 +396,12 @@ export const titles = query({
   handler: async (ctx, args) => {
     const profile = await optionalProfile(ctx);
     if (!profile) return {};
-    const out: Record<string, { title: string; icon: string | null; excerpt: string; inTrash: boolean; cover: Doc<"documents">["cover"]; style: Doc<"documents">["style"] }> = {};
+    const out: Record<string, { title: string; icon: string | null; excerpt: string; inTrash: boolean; cover: Doc<"documents">["cover"]; style: Doc<"documents">["style"]; sealed?: ReturnType<typeof sealedFieldsOf> }> = {};
     for (const id of args.documentIds.slice(0, 200)) {
       const d = await getDocumentByPublicId(ctx, id);
       if (!d) continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
-      out[id] = { title: d.title, icon: d.icon ?? null, excerpt: d.excerpt, inTrash: d.inTrash, cover: d.cover, style: d.style };
+      out[id] = { title: d.title, icon: d.icon ?? null, excerpt: d.excerpt, inTrash: d.inTrash, cover: d.cover, style: d.style, ...sealedOf(d) };
     }
     return out;
   },
@@ -436,14 +449,14 @@ export const pageTree = query({
       if (!parent || parent.inTrash || !(await reader.filter([parent])).length) break;
       root = parent;
     }
-    const pages: { id: string; title: string; parentId: string | null; depth: number }[] = [];
+    const pages: { id: string; title: string; parentId: string | null; depth: number; sealed?: ReturnType<typeof sealedFieldsOf> }[] = [];
     let truncated = false;
     const walk = async (page: Doc<"documents">, parentId: string | null, depth: number): Promise<void> => {
       if (pages.length >= PAGE_TREE_LIMIT) {
         truncated = true;
         return;
       }
-      pages.push({ id: page.publicId, title: page.title, parentId, depth });
+      pages.push({ id: page.publicId, title: page.title, parentId, depth, ...sealedOf(page) });
       if (depth >= 8) return;
       const kids = await ctx.db
         .query("documents")
@@ -469,14 +482,14 @@ export const backlinks = query({
       .withIndex("by_target", (q) => q.eq("targetPublicId", doc.publicId))
       .take(200);
     const seen = new Set<string>();
-    const linked: { id: string; title: string; icon: string | null; excerpt: string }[] = [];
+    const linked: { id: string; title: string; icon: string | null; excerpt: string; sealed?: ReturnType<typeof sealedFieldsOf> }[] = [];
     for (const l of links) {
       if (seen.has(l.sourceDocumentId)) continue;
       seen.add(l.sourceDocumentId);
       const src = await ctx.db.get(l.sourceDocumentId);
       if (!src || src.inTrash) continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, src), "read")) continue;
-      linked.push({ id: src.publicId, title: src.title, icon: src.icon ?? null, excerpt: src.excerpt.slice(0, 140) });
+      linked.push({ id: src.publicId, title: src.title, icon: src.icon ?? null, excerpt: src.excerpt.slice(0, 140), ...sealedOf(src) });
     }
     const unlinked: typeof linked = [];
     const title = doc.title.trim();
@@ -493,7 +506,7 @@ export const backlinks = query({
         .take(30);
       const needle = title.toLowerCase();
       for (const h of hits) {
-        if (h._id === doc._id || seen.has(h._id)) continue;
+        if (h._id === doc._id || seen.has(h._id) || h.sealedAt !== undefined) continue;
         if (!h.searchText.toLowerCase().includes(needle)) continue;
         if (!accessAtLeast(await documentAccess(ctx, profile, h), "read")) continue;
         unlinked.push({ id: h.publicId, title: h.title, icon: h.icon ?? null, excerpt: h.excerpt.slice(0, 140) });
@@ -1260,7 +1273,7 @@ export const dailyDates = query({
     const profile = await requireProfile(ctx);
     const { scope } = await resolveScope(ctx, profile, args.scope);
     const docs = await scopeDailies(ctx, scope, profile._id, args.from, args.to).take(400);
-    return docs.filter((d) => !d.inTrash).map((d) => ({ id: d.publicId, date: d.dailyDate!, title: d.title, wordCount: d.wordCount }));
+    return docs.filter((d) => !d.inTrash).map((d) => ({ id: d.publicId, date: d.dailyDate!, title: d.title, wordCount: d.wordCount, ...sealedOf(d) }));
   },
 });
 
@@ -1282,6 +1295,32 @@ interface VersionContent {
   blocks: WireBlock[];
   authors?: Record<string, [Id<"profiles">, number]>;
   removed?: Record<string, [Id<"profiles">, number]>;
+}
+
+/**
+ * A version of an end-to-end encrypted note (docs/E2EE_DESIGN.md §5.4): its sealed title, appearance, meta
+ * and blocks copied as they are (base64url ciphertext), so automatic versions, "before restore" versions and
+ * retention keep working without the server reading anything. Devices open it (WP7 decoders). `authors` and
+ * `removed` are the same per-block maps as in VersionContent (who and when only, never content).
+ */
+export interface SealedVersionContent {
+  e2ee: 1;
+  title: { c: string; k: number; mac?: string };
+  appearance: { c: string; k: number };
+  meta?: { c: string; k: number };
+  blocks: { id: string; parentId: string | null; rank: string; c: string; k: number; mac: string; collapsed?: true }[];
+  authors?: Record<string, [Id<"profiles">, number]>;
+  removed?: Record<string, [Id<"profiles">, number]>;
+}
+
+/** Whether stored version content is a SealedVersionContent. */
+function isSealedVersion(parsed: unknown): parsed is SealedVersionContent {
+  return Boolean(parsed && typeof parsed === "object" && (parsed as { e2ee?: unknown }).e2ee === 1);
+}
+
+/** Refuses the server-side version tools that need plaintext (copy, restore, rewrite) for a sealed note. */
+function deviceOnlyForSealed(doc: Doc<"documents">, snap?: Doc<"documentSnapshots">) {
+  if (doc.sealedAt !== undefined || snap?.sealed) failE2ee("e2ee_device_only");
 }
 
 async function snapshotText(ctx: QueryCtx | MutationCtx, snap: Doc<"documentSnapshots">): Promise<string | null> {
@@ -1335,6 +1374,8 @@ export const createSnapshot = mutation({
   },
   handler: async (ctx, args) => {
     const { profile, doc } = await writableDoc(ctx, args.documentId);
+    // A sealed note's version is made blind; its name is sealed afterwards (e2ee.content.nameVersion).
+    if (doc.sealedAt !== undefined && args.name) failE2ee("e2ee_required");
     return await snapshot(ctx, doc, profile._id, args.reason, versionName(args.name));
   },
 });
@@ -1364,6 +1405,8 @@ export const importSnapshot = mutation({
   handler: async (ctx, args) => {
     const { profile, doc } = await writableDoc(ctx, args.documentId);
     if (doc.ownerProfileId !== profile._id) fail("forbidden", "Only the note's owner can bring in its history.");
+    // A sealed note's history comes in sealed (e2ee.content.importVersion).
+    if (doc.sealedAt !== undefined) failE2ee("e2ee_required");
     if (!isValidId(args.id)) fail("invalid_argument", "Invalid version id.");
     const existing = await ctx.db
       .query("documentSnapshots")
@@ -1426,7 +1469,9 @@ export async function snapshot(
     .withIndex("by_document", (q) => q.eq("documentId", doc._id))
     .order("desc")
     .first();
-  if (last && last.contentSeq === doc.contentSeq && last.title === doc.title && reason !== "before_restore" && reason !== "ai_run") {
+  // A sealed note's title is ciphertext: "nothing changed" is its content counter and no edit since that version.
+  const unchanged = doc.sealedAt !== undefined ? last?.sealed === true && last.contentSeq === doc.contentSeq && doc.updatedAt <= last.createdAt : last?.title === doc.title && last.contentSeq === doc.contentSeq;
+  if (last && unchanged && reason !== "before_restore" && reason !== "ai_run") {
     // Nothing new to keep: naming "the current version" names the one that already holds it.
     if (name && last.name !== name) await ctx.db.patch(last._id, { name });
     return { created: false, id: last.publicId };
@@ -1460,7 +1505,8 @@ export async function snapshot(
     .sort((a, b) => b[1] - a[1])
     .slice(0, 20)
     .map(([id]) => id);
-  const stored: VersionContent = { title: doc.title, icon: doc.icon ?? null, style: doc.style, blocks, authors, removed };
+  const sealed = doc.sealedAt !== undefined;
+  const stored: VersionContent | SealedVersionContent = sealed ? sealedVersionOf(doc, rows, authors, removed) : { title: doc.title, icon: doc.icon ?? null, style: doc.style, blocks, authors, removed };
   const content = JSON.stringify(stored);
   // Always in snapshotChunks, never on the version's own row: listing versions reads whole rows, and
   // hundreds of versions of a long page held inline would pass the 16 MiB a query may read.
@@ -1478,11 +1524,33 @@ export async function snapshot(
     contentSeq: doc.contentSeq,
     createdBy: actor,
     createdAt: Date.now(),
-    name,
+    name: sealed ? undefined : name,
     editors,
+    ...(sealed ? { sealed: true } : {}),
   });
   for (const [index, data] of chunks.entries()) await ctx.db.insert("snapshotChunks", { snapshotId, index, data });
   return { created: true, id: publicId };
+}
+
+/** A sealed note's version content, from its rows' ciphertext (no decryption). */
+function sealedVersionOf(doc: Doc<"documents">, rows: Doc<"blocks">[], authors: SealedVersionContent["authors"], removed: SealedVersionContent["removed"]): SealedVersionContent {
+  const out: SealedVersionContent = {
+    e2ee: 1,
+    title: { c: bytesToB64u(doc.sealedTitle!.c), k: doc.sealedTitle!.k, mac: doc.sealedTitle!.mac },
+    appearance: { c: bytesToB64u(doc.sealedAppearance!.c), k: doc.sealedAppearance!.k },
+    // Blocks not sealed yet (a note half way through its migration) are left out: a version never holds plaintext of a sealed note.
+    blocks: rows
+      .filter((r) => r.sealed !== undefined)
+      .map((r) => {
+        const b: SealedVersionContent["blocks"][number] = { id: r.blockId, parentId: r.parentId, rank: r.rank, c: bytesToB64u(r.sealed!.c), k: r.sealed!.k, mac: r.sealed!.mac };
+        if ((r.props as { collapsed?: unknown } | null)?.collapsed === true) b.collapsed = true;
+        return b;
+      }),
+    authors,
+    removed,
+  };
+  if (doc.sealedMeta) out.meta = { c: bytesToB64u(doc.sealedMeta.c), k: doc.sealedMeta.k };
+  return out;
 }
 
 /**
@@ -1562,6 +1630,8 @@ export const versions = query({
         blockCount: r.blockCount,
         createdAt: r.createdAt,
         editors: await Promise.all(editors.map(async (e) => (await people.get(e)).key)),
+        // A sealed version: its title and content are ciphertext, its name is sealed (devices open both).
+        ...(r.sealed ? { sealed: true as const, sealedName: r.sealedName ?? null } : {}),
       });
     }
     return { versions: out, people: await people.all(), current: { contentSeq: doc.contentSeq, latestContentSeq: rows[0]?.contentSeq ?? null } };
@@ -1570,8 +1640,9 @@ export const versions = query({
 
 /** Turns stored version content into what a client may see: links labelled for this reader, people as keys. */
 async function versionContent(ctx: QueryCtx, profile: Doc<"profiles">, raw: string) {
-  const parsed = JSON.parse(raw) as VersionContent;
+  const parsed = JSON.parse(raw) as VersionContent | SealedVersionContent;
   if (!Array.isArray(parsed.blocks)) throw new Error("no blocks");
+  if (isSealedVersion(parsed)) return await sealedVersionContent(ctx, parsed);
   const people = new People(ctx);
   // As lists of [block id, person key, time]: an object keyed by block can't go over the wire past 1024 blocks.
   const attribution = async (map: VersionContent["authors"]) => {
@@ -1588,6 +1659,24 @@ async function versionContent(ctx: QueryCtx, profile: Doc<"profiles">, raw: stri
     authors: parsed.authors ? authors : null,
     removed: parsed.removed ? removed : null,
     people: await people.all(),
+  };
+}
+
+/** A sealed version as it reaches the device: the ciphertext as stored, people as keys (§5.7 Blind). */
+async function sealedVersionContent(ctx: QueryCtx, parsed: SealedVersionContent) {
+  const people = new People(ctx);
+  const attribution = async (map: SealedVersionContent["authors"]) => {
+    const out: [string, string, number][] = [];
+    for (const [blockId, [who, at]] of Object.entries(map ?? {})) out.push([blockId, (await people.get(who)).key, at]);
+    return out;
+  };
+  const { authors, removed, ...content } = parsed;
+  return {
+    content: JSON.stringify(content),
+    authors: authors ? await attribution(authors) : null,
+    removed: removed ? await attribution(removed) : null,
+    people: await people.all(),
+    sealed: true as const,
   };
 }
 
@@ -1648,8 +1737,10 @@ export const blockAuthors = query({
 export const nameVersion = mutation({
   args: { snapshotId: v.string(), name: v.string() },
   handler: async (ctx, args) => {
-    const { snap, profile } = await versionByPublicId(ctx, args.snapshotId);
+    const { snap, doc, profile } = await versionByPublicId(ctx, args.snapshotId);
     await assertWritable(ctx, profile);
+    // A sealed note's version names are sealed too (e2ee.content.nameVersion).
+    if (doc.sealedAt !== undefined || snap.sealed) failE2ee("e2ee_required");
     await ctx.db.patch(snap._id, { name: versionName(args.name) });
     return null;
   },
@@ -1661,6 +1752,7 @@ export const copyVersion = mutation({
   handler: async (ctx, args) => {
     const { snap, doc, profile } = await versionByPublicId(ctx, args.snapshotId);
     await assertWritable(ctx, profile);
+    deviceOnlyForSealed(doc, snap);
     const { scope } = await requireRowScope(ctx, profile, doc, "edit", "Document not found.");
     const raw = await snapshotText(ctx, snap);
     if (!raw) fail("not_found", "Version content is unavailable.");
@@ -1700,6 +1792,7 @@ export const restoreSnapshot = mutation({
  * it is now, so the restore can itself be undone. Callers check the person may edit the page.
  */
 export async function restoreVersion(ctx: MutationCtx, writable: Doc<"documents">, snap: Doc<"documentSnapshots">, profile: Doc<"profiles">): Promise<{ undoVersionId: string | null }> {
+  deviceOnlyForSealed(writable, snap);
   const raw = await snapshotText(ctx, snap);
   if (!raw) fail("not_found", "Version content is unavailable.");
   return await rewritePage(ctx, writable, JSON.parse(raw) as VersionContent, profile);
@@ -1707,6 +1800,8 @@ export async function restoreVersion(ctx: MutationCtx, writable: Doc<"documents"
 
 /** A stored version's blocks (null when it's gone or can't be read). */
 export async function versionBlocks(ctx: QueryCtx | MutationCtx, snap: Doc<"documentSnapshots">): Promise<WireBlock[] | null> {
+  // A sealed version's blocks are ciphertext: nothing on the server can use them as blocks.
+  if (snap.sealed) return null;
   const raw = await snapshotText(ctx, snap);
   if (!raw) return null;
   try {
@@ -1723,6 +1818,8 @@ export async function versionBlocks(ctx: QueryCtx | MutationCtx, snap: Doc<"docu
  * lines put back as they were (Changes, "Undo this change"). Callers check the person may edit the page.
  */
 export async function rewritePage(ctx: MutationCtx, writable: Doc<"documents">, parsed: Pick<VersionContent, "title" | "icon" | "style" | "blocks">, profile: Doc<"profiles">): Promise<{ undoVersionId: string | null }> {
+  // Composed on the device for a sealed note (§6.7).
+  deviceOnlyForSealed(writable);
   // The page as it is now is kept first, so a restore can be undone (by restoring that version).
   const before = await snapshot(ctx, writable, profile._id, "before_restore");
   const seq = await nextSeq(ctx, scopeOfRow(writable));

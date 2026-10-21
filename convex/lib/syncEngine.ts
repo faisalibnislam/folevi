@@ -40,6 +40,36 @@ import { FileCopies } from "./fileCopies";
 import { noteEdited } from "./editSettle";
 import { emitWebhook } from "./webhooks";
 import { canReferenceSource, refreshSyncedSource } from "./synced";
+import { failE2ee } from "./e2ee/state";
+import { E2EE_LIMITS } from "./e2ee/validators";
+import {
+  NoteKeyVersions,
+  SpaceRows,
+  checkMac,
+  checkRecord,
+  lockFor,
+  recordHeaderVersion,
+  requireSpaceKey,
+  sealedBlockIssue,
+  sealedPlaceholders,
+  sealsNewNotes,
+  type SealedWireBlockIn,
+} from "./e2ee/sealedRows";
+
+/** A create op as it may arrive for a sealed note (§4.6 SealedDocumentCreate). */
+type SealedCreateIn = WireDocumentCreate & {
+  sealed?: {
+    title: ArrayBuffer;
+    titleMac: string;
+    appearance: ArrayBuffer;
+    meta?: ArrayBuffer;
+    noteKey: { v: 1; spaceVersion: number; wrapped: ArrayBuffer };
+    lockedOwn?: true;
+    fileIds?: string[];
+  };
+};
+/** A patch as it may arrive for a sealed note (§4.6 SealedDocumentPatch). */
+type SealedPatchIn = WireDocumentPatch & { sealedTitle?: { c: ArrayBuffer; mac: string }; sealedAppearance?: ArrayBuffer; sealedMeta?: ArrayBuffer };
 
 export const MAX_BATCH = 100;
 
@@ -55,7 +85,10 @@ export class SyncEngine {
   private seq: SeqAllocator;
   private touched = new Map<string, Touched>();
   /** People newly @-mentioned in block text during this batch (notified after the batch applies). */
-  private newMentions: { doc: Doc<"documents">; blockId: string; userIds: string[]; excerpt: string }[] = [];
+  private newMentions: { doc: Doc<"documents">; blockId: string; userIds: string[]; excerpt: string; title?: string }[] = [];
+  /** End-to-end encryption (docs/E2EE_DESIGN.md §5.4): each scope's space row and each note's key versions, read once per batch. */
+  private spaces: SpaceRows;
+  private noteKeys: NoteKeyVersions;
   private ids: IdResolver;
   /**
    * The batch's routing scope (see docs/SYNC_PROTOCOL.md §Routing): the caller's Personal, or a workspace
@@ -71,6 +104,8 @@ export class SyncEngine {
   ) {
     this.seq = new SeqAllocator(ctx);
     this.ids = new IdResolver(ctx);
+    this.spaces = new SpaceRows(ctx);
+    this.noteKeys = new NoteKeyVersions(ctx);
   }
 
   /**
@@ -213,7 +248,9 @@ export class SyncEngine {
       }
     } catch (e) {
       const data = (e as { data?: { code?: string; message?: string } }).data;
-      if (!data?.code) throw e;
+      // A note another device is converting (sealing or unsealing) fails the whole batch, so the client
+      // retries it later as it is (§5.4); nothing in it is lost or half-applied.
+      if (!data?.code || data.code === "e2ee_busy") throw e;
       result = { opId: op.opId, status: "rejected", error: { code: data.code, message: data.message ?? data.code } };
     }
     await this.record(op, result);
@@ -293,7 +330,22 @@ export class SyncEngine {
     if (access === "none") fail("not_found", "Document not found.");
     if (!accessAtLeast(access, "write")) fail("forbidden", "You can't edit this document.");
     if (doc.inTrash) fail("forbidden", "Restore this document from Trash to edit it.");
+    this.checkNotBusy(doc);
     return doc;
+  }
+
+  /** Refuses (for the whole batch) a note another device is converting right now (§5.4 e2ee_busy). */
+  private checkNotBusy(doc: Doc<"documents">) {
+    if (doc.sealing && doc.sealing.by !== this.deviceId && doc.sealing.until > Date.now()) failE2ee("e2ee_busy");
+  }
+
+  /**
+   * A plaintext content write: refused for a sealed note and for any note of an encrypted space (an old
+   * client), §5.4. Standard spaces pay one cached read per scope per batch.
+   */
+  private async requirePlainContent(doc: Doc<"documents">) {
+    if (doc.sealedAt !== undefined) failE2ee("e2ee_required");
+    if (sealsNewNotes(await this.spaces.of(scopeOfRow(doc)))) failE2ee("e2ee_required");
   }
 
   /**
@@ -368,6 +420,8 @@ export class SyncEngine {
 
   private async upsertBlock(op: Extract<SyncOp, { kind: "block.upsert" }>): Promise<ServerOpResult> {
     const doc = await this.blockDoc(op.documentId);
+    if ((op.block as SealedWireBlockIn).sealed !== undefined || doc.sealedAt !== undefined) return await this.upsertSealed(op, doc);
+    await this.requirePlainContent(doc);
     const incoming: WireBlock = { ...op.block };
     delete incoming.revision;
     const issues = validateWireBlock(incoming);
@@ -515,6 +569,163 @@ export class SyncEngine {
     }
     // (Not quite as sent when the toggle kept its state: the client re-reads it.)
     return { opId: op.opId, status: "applied", revision: row.revision, block: toWireBlock(row), deleted: false, normalized: normalized || keptCollapse || undefined };
+  }
+
+  /**
+   * block.upsert for a sealed note (§5.4): the same rules as upsertBlock on blind content. Equality is the
+   * keyed MAC, a toggle's open state is `sealed.collapsed`, a synced block's source is `sealed.syncedSource`,
+   * and nothing is derived from it (tasks, cards, backlinks and search come from devices).
+   */
+  private async upsertSealed(op: Extract<SyncOp, { kind: "block.upsert" }>, doc: Doc<"documents">): Promise<ServerOpResult> {
+    const incoming = { ...op.block } as SealedWireBlockIn;
+    delete incoming.revision;
+    const existingRow = async () => {
+      const row = await this.findBlock(incoming.id);
+      return row && row.documentId === doc._id ? toWireBlock(row) : null;
+    };
+    const s = incoming.sealed;
+    if (!s) failE2ee("e2ee_required");
+    // Only a sealed note takes sealed blocks, or one this device is converting right now (the migration).
+    if (doc.sealedAt === undefined && !(doc.sealing && doc.sealing.by === this.deviceId)) {
+      return { opId: op.opId, status: "rejected", error: { code: "invalid_block", message: "This note isn't encrypted." }, block: await existingRow() };
+    }
+    const issue = sealedBlockIssue(incoming);
+    if (issue) {
+      console.warn("sealed block refused", { issue });
+      return { opId: op.opId, status: "rejected", error: { code: "invalid_block", message: issue }, block: await existingRow() };
+    }
+    if (!(await this.noteKeys.has(doc._id, s.k))) {
+      return { opId: op.opId, status: "rejected", error: { code: "invalid_block", message: "sealed.k: this note has no key with that version" }, block: await existingRow() };
+    }
+    const existing = await this.findBlock(incoming.id);
+    if (existing && existing.documentId !== doc._id) {
+      return { opId: op.opId, status: "rejected", error: { code: "wrong_document", message: "Block belongs to another document." } };
+    }
+    if (s.syncedSource !== undefined) await this.checkSealedSynced(doc, s.syncedSource, existing);
+    const { parentId, normalized } = await this.checkParent(doc, incoming);
+    const seq = await this.seq.for(scopeOfRow(doc));
+    const now = Date.now();
+    const mentionIds = this.mentionIdsOf(s.mentions);
+    const incomingCollapsed = s.collapsed === true;
+    const content = {
+      ...sealedPlaceholders(incomingCollapsed),
+      sealed: { c: s.c, mac: s.mac, k: s.k },
+      syncedSource: s.syncedSource,
+      mentionIds: mentionIds.length ? mentionIds : undefined,
+    };
+
+    if (!existing) {
+      const added = this.insertedHere.get(op.documentId) ?? 0;
+      if (doc.blockCount + added >= LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "This document has too many blocks.");
+      this.insertedHere.set(op.documentId, added + 1);
+      this.newRows.add(incoming.id);
+      const values = {
+        blockId: incoming.id,
+        documentId: doc._id,
+        parentId,
+        rank: incoming.rank,
+        ...content,
+        revision: 1,
+        contentRev: 1,
+        positionRev: 1,
+        seq,
+        createdAt: now,
+        updatedAt: now,
+        updatedBy: this.profile._id,
+        ...(this.via ? { updatedVia: this.via } : {}),
+      };
+      if (values.syncedSource === undefined) delete values.syncedSource;
+      if (values.mentionIds === undefined) delete values.mentionIds;
+      const rowId = await insertScoped(this.ctx, "blocks", scopeOfRow(doc), values);
+      this.reparented(doc._id, incoming.id, rowId, null, parentId);
+      this.touch(doc, rowId);
+      this.trackSealedMentions(doc, [], incoming.id, mentionIds, s.mentionPreview);
+      // Only a synced block needs anything afterwards (its link to the content it shows).
+      if (s.syncedSource === undefined) this.plainNewRows.add(rowId);
+      return { opId: op.opId, status: "applied", revision: 1, block: toWireBlock(values as unknown as Doc<"blocks">), deleted: false, normalized: normalized || undefined };
+    }
+
+    if (existing.deletedAt !== undefined) {
+      return {
+        opId: op.opId,
+        status: "conflict",
+        revision: existing.revision,
+        block: toWireBlock(existing),
+        deleted: true,
+        conflict: { reason: "deleted", server: toWireBlock(existing), client: incoming },
+      };
+    }
+    // Equal content is told blind by the MAC (it binds the block's context, §4.5).
+    const contentChanged = existing.sealed?.mac !== s.mac;
+    const positionChanged = existing.parentId !== parentId || existing.rank !== incoming.rank;
+    if (op.baseRevision === null) {
+      if (contentChanged) {
+        return { opId: op.opId, status: "conflict", revision: existing.revision, block: toWireBlock(existing), conflict: { reason: "exists", server: toWireBlock(existing), client: incoming } };
+      }
+      return { opId: op.opId, status: "applied", revision: existing.revision, block: toWireBlock(existing), deleted: false };
+    }
+    const existingCollapsed = (existing.props as { collapsed?: unknown } | null)?.collapsed === true;
+    const wantsContent = op.fields.includes("content") && contentChanged;
+    const wantsPosition = op.fields.includes("position") && positionChanged;
+    const contentConflict = wantsContent && existing.contentRev > op.baseRevision;
+    const wantsCollapse = op.fields.includes("collapsed") && existingCollapsed !== incomingCollapsed;
+    if (!wantsContent && !wantsPosition && !wantsCollapse) {
+      return { opId: op.opId, status: "applied", revision: existing.revision, block: toWireBlock(existing), deleted: false };
+    }
+    const revision = existing.revision + 1;
+    const patch: Partial<Doc<"blocks">> = { revision, seq, updatedAt: now, updatedBy: this.profile._id, updatedVia: this.via };
+    let keptCollapse = false;
+    if (wantsContent && !contentConflict) {
+      Object.assign(patch, content);
+      // As upsertBlock: a content edit from a device that hadn't seen the toggle opened or closed keeps that.
+      if (!op.fields.includes("collapsed") && existingCollapsed !== incomingCollapsed && existing.revision > op.baseRevision) {
+        patch.props = existingCollapsed ? { collapsed: true } : {};
+        keptCollapse = true;
+      }
+      patch.contentRev = revision;
+    }
+    if (wantsPosition) {
+      patch.parentId = parentId;
+      patch.rank = incoming.rank;
+      patch.positionRev = revision;
+    }
+    if (wantsCollapse) patch.props = incomingCollapsed ? { collapsed: true } : {};
+    if (contentConflict && !wantsPosition && !wantsCollapse) {
+      return { opId: op.opId, status: "conflict", revision: existing.revision, block: toWireBlock(existing), conflict: { reason: "content", server: toWireBlock(existing), client: incoming } };
+    }
+    await this.ctx.db.patch(existing._id, patch);
+    if (patch.parentId !== undefined) this.reparented(doc._id, existing.blockId, existing._id, existing.parentId, patch.parentId);
+    this.touch(doc, existing._id);
+    if (patch.sealed !== undefined) this.trackSealedMentions(doc, existing.mentionIds ?? [], incoming.id, mentionIds, s.mentionPreview);
+    const row = (await this.ctx.db.get(existing._id))!;
+    if (contentConflict) {
+      return { opId: op.opId, status: "conflict", revision: row.revision, block: toWireBlock(row), conflict: { reason: "content", server: toWireBlock(row), client: incoming } };
+    }
+    return { opId: op.opId, status: "applied", revision: row.revision, block: toWireBlock(row), deleted: false, normalized: normalized || keptCollapse || undefined };
+  }
+
+  /** A sealed synced block shows content the writer can read, from the same space only (§6.7). */
+  private async checkSealedSynced(doc: Doc<"documents">, sourceId: string, existing: Doc<"blocks"> | null): Promise<void> {
+    if (doc.kind === "synced") fail("invalid_block", "A synced block can't go inside another synced block.");
+    if (existing?.syncedSource === sourceId) return;
+    const source = await getDocumentByPublicId(this.ctx, sourceId);
+    if (!source || !sameScopeRows(source, doc) || !(await canReferenceSource(this.ctx, this.profile, sourceId))) fail("not_found", "That synced block isn't available.");
+  }
+
+  /** Mentioned people as profile ids (anything that isn't one is dropped). */
+  private mentionIdsOf(mentions: string[] | undefined): string[] {
+    const out: string[] = [];
+    for (const m of mentions ?? []) if (this.ctx.db.normalizeId("profiles", m) && !out.includes(m)) out.push(m);
+    return out;
+  }
+
+  /** People newly mentioned in a sealed block: told with generic text, or the preview the device sent (§7.7). */
+  private trackSealedMentions(doc: Doc<"documents">, before: string[], blockId: string, after: string[], preview?: { title: string; line: string }) {
+    const had = new Set(before);
+    const added = after.filter((id) => !had.has(id) && id !== this.profile._id);
+    if (!added.length) return;
+    const title = preview ? `${this.profile.displayName} mentioned you in ${preview.title.slice(0, 140) || "a note"}` : `${this.profile.displayName} mentioned you in a note`;
+    this.newMentions.push({ doc, blockId, userIds: added, excerpt: preview ? preview.line.slice(0, 140) : "", title });
   }
 
   /**
@@ -720,6 +931,13 @@ export class SyncEngine {
         };
       }
     }
+    const sealedInput = (op.document as SealedCreateIn).sealed;
+    const space = await this.spaces.of(scope);
+    // A locked folder (or a page in one) makes every note in it sealed, at any level (§6.9).
+    const lockedVia = space ? await lockFor(this.ctx, folderId, parent) : undefined;
+    const mustSeal = sealsNewNotes(space) || lockedVia !== undefined || parent?.sealedAt !== undefined;
+    if (sealedInput) return await this.createSealed(op, sealedInput, { scope, space, parentDocumentId, folderId, accessMode, lockedVia });
+    if (mustSeal) failE2ee("e2ee_required");
     let blocks: WireBlock[] = [];
     let templateKey: string | undefined;
     // A note from a template owns its files, so deleting the template for good leaves its images in place.
@@ -765,6 +983,72 @@ export class SyncEngine {
   }
 
   /**
+   * document.create of a sealed note (§5.4): placeholders, the sealed fields and the first note key, in one
+   * write. Templates are copied on the device (`e2ee_device_only`); nothing is derived, indexed or announced.
+   */
+  private async createSealed(
+    op: Extract<SyncOp, { kind: "document.create" }>,
+    sealed: NonNullable<SealedCreateIn["sealed"]>,
+    at: { scope: Scope; space: Doc<"e2eeSpaces"> | null; parentDocumentId?: Id<"documents">; folderId?: Id<"folders">; accessMode: Doc<"documents">["accessMode"]; lockedVia?: Id<"folders"> },
+  ): Promise<ServerOpResult> {
+    const input = op.document as SealedCreateIn;
+    if (!at.space) failE2ee("e2ee_not_set_up");
+    if (input.templateId) failE2ee("e2ee_device_only");
+    // The plaintext fields are placeholders: anything else would store readable text next to the sealed copy.
+    if (input.title !== "" || input.icon !== null || input.style !== undefined || input.cover !== undefined || input.collectionId) failE2ee("e2ee_plaintext");
+    await requireSpaceKey(this.ctx, at.scope, sealed.noteKey.spaceVersion);
+    if (sealed.noteKey.v !== 1) failE2ee("e2ee_plaintext", "A new note starts with note key version 1.");
+    if (!(sealed.noteKey.wrapped instanceof ArrayBuffer) || sealed.noteKey.wrapped.byteLength > E2EE_LIMITS.keyWrapBytes || sealed.noteKey.wrapped.byteLength < 32) {
+      failE2ee("e2ee_plaintext", "The note key must be wrapped.");
+    }
+    const title = { c: checkRecord(sealed.title, E2EE_LIMITS.fieldBytes, "The title", 1), k: 1, mac: checkMac(sealed.titleMac, "The title") };
+    const appearance = { c: checkRecord(sealed.appearance, E2EE_LIMITS.fieldBytes, "The appearance", 1), k: 1 };
+    const meta = sealed.meta !== undefined ? { c: checkRecord(sealed.meta, E2EE_LIMITS.fieldBytes, "The meta", 1), k: 1 } : undefined;
+    const fileIds = await this.checkFileIds(sealed.fileIds, at.scope);
+    const locked = sealed.lockedOwn === true;
+    const doc = await createDocument(this.ctx, {
+      scope: at.scope,
+      actor: this.profile,
+      publicId: input.id,
+      title: "",
+      kind: input.kind === "template" || input.kind === "daily" || input.kind === "synced" ? input.kind : "document",
+      parentDocumentId: at.parentDocumentId,
+      folderId: at.folderId,
+      dailyDate: input.kind === "daily" ? (input.dailyDate ?? undefined) : undefined,
+      dailyOwnerId: input.kind === "daily" ? this.profile._id : undefined,
+      accessMode: at.accessMode,
+      sealed: {
+        title,
+        appearance,
+        meta,
+        noteKey: { spaceVersion: sealed.noteKey.spaceVersion, wrapped: sealed.noteKey.wrapped },
+        locked: locked || undefined,
+        lockedVia: at.lockedVia,
+        fileIds,
+      },
+    });
+    this.noteKeys.add(doc._id, 1);
+    if (locked) await this.ctx.db.patch(at.space._id, { lockedCount: at.space.lockedCount + 1, seq: await this.seq.for(at.scope) });
+    return { opId: op.opId, status: "applied", revision: doc.revision, document: await this.summary(doc) };
+  }
+
+  /** A sealed note's files: public ids of files in its scope (checked so a note can't claim another's files). */
+  private async checkFileIds(fileIds: string[] | undefined, scope: Scope): Promise<string[] | undefined> {
+    if (!fileIds?.length) return undefined;
+    if (fileIds.length > 500) fail("limit_exceeded", "Too many files.");
+    const out: string[] = [];
+    for (const id of new Set(fileIds)) {
+      const file = await this.ctx.db
+        .query("files")
+        .withIndex("by_public_id", (q) => q.eq("publicId", id))
+        .unique();
+      if (!file || !inScope(file, scope)) fail("invalid_argument", "That file isn't in this space.");
+      out.push(id);
+    }
+    return out;
+  }
+
+  /**
    * A note theme image must be an image already uploaded into the note's own scope; anything else is
    * refused (the client never gets to point a note at someone else's file).
    */
@@ -786,10 +1070,20 @@ export class SyncEngine {
   private async updateDoc(op: Extract<SyncOp, { kind: "document.update" }>): Promise<ServerOpResult> {
     this.blockDocs.delete(op.documentId);
     const doc = await this.writableDoc(op.documentId);
-    const patch: WireDocumentPatch = op.patch;
+    const patch: SealedPatchIn = op.patch;
     const now = Date.now();
     const update: Partial<Doc<"documents">> = {};
     let titleConflict = false;
+    const plainFields = patch.title !== undefined || patch.icon !== undefined || patch.cover !== undefined || patch.style !== undefined;
+    const sealedFields = patch.sealedTitle !== undefined || patch.sealedAppearance !== undefined || patch.sealedMeta !== undefined;
+    if (doc.sealedAt !== undefined) {
+      // A sealed note's title and appearance change only sealed (§5.4); moves stay plaintext.
+      if (plainFields) failE2ee("e2ee_required");
+      titleConflict = await this.sealedPatch(doc, patch, op.baseRevision, update);
+    } else {
+      if (sealedFields) fail("invalid_argument", "This note isn't encrypted.");
+      if (plainFields) await this.requirePlainContent(doc);
+    }
     if (patch.title !== undefined) {
       const title = sanitizeTitle(patch.title);
       if (title !== doc.title) {
@@ -841,6 +1135,7 @@ export class SyncEngine {
         if (!stillRestricted) fail("forbidden", "Only people who manage this page can move it out of a restricted page.");
       }
     }
+    if (moving) await this.followLock(doc, update);
     const changed = Object.keys(update).length > 0;
     if (changed) {
       const seq = await this.seq.for(scopeOfRow(doc));
@@ -848,7 +1143,7 @@ export class SyncEngine {
       await this.ctx.db.patch(doc._id, {
         ...update,
         revision,
-        titleRev: update.title !== undefined ? revision : doc.titleRev,
+        titleRev: update.title !== undefined || update.sealedTitle !== undefined ? revision : doc.titleRev,
         seq,
         updatedAt: now,
         lastEditedBy: this.profile._id,
@@ -867,6 +1162,63 @@ export class SyncEngine {
       return { opId: op.opId, status: "conflict", revision: fresh.revision, document: summary, conflict: { reason: "content", server: null, client: null } };
     }
     return { opId: op.opId, status: "applied", revision: fresh.revision, document: summary };
+  }
+
+  /**
+   * The sealed part of a document.update (§5.4): the title by MAC with the same conflict rule as a plain
+   * title (titleRev), the appearance and meta replaced. Each must be sealed with a note key the note has.
+   * Returns whether the title is in conflict.
+   */
+  private async sealedPatch(doc: Doc<"documents">, patch: SealedPatchIn, baseRevision: number | null, update: Partial<Doc<"documents">>): Promise<boolean> {
+    const version = async (bytes: ArrayBuffer, what: string) => {
+      const c = checkRecord(bytes, E2EE_LIMITS.fieldBytes, what);
+      const k = recordHeaderVersion(c)!;
+      if (!(await this.noteKeys.has(doc._id, k))) failE2ee("e2ee_plaintext", `${what}: this note has no key with that version.`);
+      return { c, k };
+    };
+    let conflict = false;
+    if (patch.sealedTitle !== undefined) {
+      const mac = checkMac(patch.sealedTitle.mac, "The title");
+      if (mac !== doc.sealedTitle?.mac) {
+        if (baseRevision !== null && doc.titleRev > baseRevision) conflict = true;
+        else update.sealedTitle = { ...(await version(patch.sealedTitle.c, "The title")), mac };
+      }
+    }
+    if (patch.sealedAppearance !== undefined) update.sealedAppearance = await version(patch.sealedAppearance, "The appearance");
+    if (patch.sealedMeta !== undefined) update.sealedMeta = await version(patch.sealedMeta, "The meta");
+    return conflict;
+  }
+
+  /**
+   * Keeps `lockedVia` in step when a note moves (§5.7): into a locked folder only once it is sealed (the
+   * device seals it first, §6.9), out of one it keeps its seal and loses the lock. Its sub-pages follow.
+   * Only spaces that ever had encryption can have locks, so a Standard move costs the cached space read.
+   */
+  private async followLock(doc: Doc<"documents">, update: Partial<Doc<"documents">>): Promise<void> {
+    if (!(await this.spaces.of(scopeOfRow(doc)))) return;
+    const folderId = "folderId" in update ? update.folderId : doc.folderId;
+    const parentId = "parentDocumentId" in update ? update.parentDocumentId : doc.parentDocumentId;
+    const parent = parentId ? await this.ctx.db.get(parentId) : null;
+    const lock = await lockFor(this.ctx, parent ? undefined : folderId, parent);
+    if (lock === doc.lockedVia) return;
+    if (lock !== undefined && doc.sealedAt === undefined) failE2ee("e2ee_required", "Encrypt this note before moving it into an always encrypted folder.");
+    update.lockedVia = lock;
+    // Sub-pages live where their parent does.
+    const queue: Id<"documents">[] = [doc._id];
+    let seen = 0;
+    while (queue.length && seen < 500) {
+      const id = queue.shift()!;
+      const kids = await this.ctx.db
+        .query("documents")
+        .withIndex("by_parent", (q) => q.eq("parentDocumentId", id))
+        .take(200);
+      for (const kid of kids) {
+        seen++;
+        if (lock !== undefined && kid.sealedAt === undefined) failE2ee("e2ee_required", "Encrypt this page's sub-pages before moving it into an always encrypted folder.");
+        if (kid.lockedVia !== lock) await this.ctx.db.patch(kid._id, { lockedVia: lock });
+        queue.push(kid._id);
+      }
+    }
   }
 
   private trackMentions(doc: Doc<"documents">, before: unknown, after: WireBlock) {
@@ -889,7 +1241,7 @@ export class SyncEngine {
           kind: "mention",
           doc: m.doc,
           blockId: m.blockId,
-          title: `${this.profile.displayName} mentioned you in ${m.doc.title || "Untitled"}`,
+          title: m.title ?? `${this.profile.displayName} mentioned you in ${m.doc.title || "Untitled"}`,
           excerpt: m.excerpt,
           email: { key: "mention_notification" },
         });
@@ -908,6 +1260,12 @@ export class SyncEngine {
         // marked toggle a card, only a block with page links needs backlinks (a pasted page of plain lines
         // skips these lookups per line).
         const fresh_ = this.newRows.has(row.blockId);
+        // A sealed block only keeps its synced link (the source is visible on purpose, §4.6); its to-dos,
+        // cards and page links are the device's.
+        if (row.sealed !== undefined) {
+          await syncLinks(this.ctx, fresh, row);
+          continue;
+        }
         if (!fresh_ || row.type === "todo") await syncTaskProjection(this.ctx, row, fresh, this.profile._id);
         if (!fresh_ || studyKindOf(row)) await syncStudyCard(this.ctx, row, fresh);
         if (!fresh_ || hasLinkTargets(row)) await syncLinks(this.ctx, fresh, row);
@@ -933,7 +1291,8 @@ export async function syncLinks(ctx: MutationCtx, doc: Doc<"documents">, row: Do
     .collect();
   // The pages it links to (a page card, page links in its text or cells), and the content a synced block
   // shows (how the notes showing it are found, lib/syncedRefs.ts): packages/editor-schema derive.ts.
-  const targets = row.deletedAt === undefined ? blockLinkTargets(row) : new Set<string>();
+  // A sealed block links only to the synced content it shows (its other links are inside the ciphertext).
+  const targets = row.deletedAt !== undefined ? new Set<string>() : row.sealed !== undefined ? new Set(row.syncedSource ? [row.syncedSource] : []) : blockLinkTargets(row);
   targets.delete(doc.publicId);
   const have = new Set(existing.map((l) => l.targetPublicId));
   for (const l of existing) if (!targets.has(l.targetPublicId)) await ctx.db.delete(l._id);

@@ -102,7 +102,7 @@ export async function searchMirrors(ctx: QueryCtx, scope: Scope, purpose: Mirror
 /** Deletes the AI rows built from a note's copy (embeddings, the knowledge graph), up to `n` per table. */
 export async function dropAiRows(ctx: MutationCtx, documentId: Id<"documents">, n = 200): Promise<number> {
   let dropped = 0;
-  const take = async <T extends { _id: Id<any> }>(rows: Promise<T[]>) => {
+  const take = async <T extends { _id: Id<"aiChunks" | "aiIndexState" | "aiGraphState" | "aiRelations"> }>(rows: Promise<T[]>) => {
     for (const r of await rows) {
       await ctx.db.delete(r._id);
       dropped++;

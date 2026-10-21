@@ -10,7 +10,10 @@
 //            a sparse grid made from the shapes' padded edges and the gaps between them. Bend points are
 //            visited in order.
 //   Curved   a smooth curve: one S-curve along the ends' directions when nothing is in the way, otherwise
-//            the elbow route with its corners smoothed. Straight: straight lines through the bend points.
+//            the elbow route with its corners smoothed. With bend points, a spline through every bend (each
+//            stretch a cubic piece, leaving and reaching the shapes square to their sides); a stretch that
+//            would cut through a shape also passes the corners of the elbow route around it.
+//   Straight straight lines through the bend points.
 //   Tidying  segments of different connectors that would run on top of each other are moved apart, and
 //            crossings are found so lines can draw a small hop where they cross.
 //
@@ -896,6 +899,56 @@ function smoothPolyline(pts: readonly Pt[]): { segs: CurveSeg[]; samples: Pt[] }
   return { segs, samples };
 }
 
+const unitV = (x: number, y: number): Pt => {
+  const len = Math.hypot(x, y);
+  return len > EPS ? { x: x / len, y: y / len } : { x: 0, y: 0 };
+};
+
+/**
+ * A smooth curve through every point in order (a Catmull-Rom style spline as cubic pieces). `d0` and `dn`
+ * are the directions leaving the first point and arriving at the last (unit vectors; zero to let the
+ * neighbours decide). Each piece's handles are a third of its own length, so short stretches don't
+ * overshoot, and the ends leave along their directions a little further, like the S-curve.
+ */
+export function splineThrough(pts: readonly Pt[], d0: Pt = { x: 0, y: 0 }, dn: Pt = { x: 0, y: 0 }): CurveSeg[] {
+  const n = pts.length;
+  if (n < 2) return [];
+  const tan: Pt[] = pts.map((p, i) => {
+    if (i === 0 && (d0.x || d0.y)) return d0;
+    if (i === n - 1 && (dn.x || dn.y)) return dn;
+    const prev = pts[Math.max(0, i - 1)]!;
+    const next = pts[Math.min(n - 1, i + 1)]!;
+    const t = unitV(next.x - prev.x, next.y - prev.y);
+    return t.x || t.y ? t : unitV(next.x - p.x, next.y - p.y);
+  });
+  const segs: CurveSeg[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const a = pts[i]!;
+    const b = pts[i + 1]!;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const endHandle = Math.min(160, Math.max(Math.min(30, len), len / 2));
+    const ha = i === 0 && (d0.x || d0.y) ? endHandle : len / 3;
+    const hb = i === n - 2 && (dn.x || dn.y) ? endHandle : len / 3;
+    segs.push({
+      c1: { x: a.x + tan[i]!.x * ha, y: a.y + tan[i]!.y * ha },
+      c2: { x: b.x - tan[i + 1]!.x * hb, y: b.y - tan[i + 1]!.y * hb },
+      to: { ...b },
+    });
+  }
+  return segs;
+}
+
+/** Samples of cubic pieces starting at `start` (`per` samples each, the start included once). */
+function sampleSegs(start: Pt, segs: readonly CurveSeg[], per = 16): Pt[] {
+  const out: Pt[] = [{ ...start }];
+  let from = start;
+  for (const s of segs) {
+    for (let k = 1; k <= per; k++) out.push(k === per ? { ...s.to } : cubicAt(from, s.c1, s.c2, s.to, k / per));
+    from = s.to;
+  }
+  return out;
+}
+
 function curveClear(samples: readonly Pt[], obstacles: readonly Rect[]): boolean {
   for (let i = 1; i < samples.length; i++) {
     const a = samples[i - 1]!;
@@ -1014,6 +1067,7 @@ function routeOne(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, nodes: readonly F
       raw = { points: samples, curve: [{ c1, c2, to: b.point }], searched: false };
     }
   }
+  if (!raw && kind === "curved" && e.bends.length) raw = curveThroughBends(e, a, b, s, t, ds, de, obstacles, o, all);
   if (!raw) {
     // Elbow legs: start → each bend → end.
     const stops = [s, ...e.bends, t];
@@ -1039,6 +1093,53 @@ function routeOne(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, nodes: readonly F
   cache.set(key, raw);
   if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value!);
   return { raw, cached: false };
+}
+
+/**
+ * A curved connector with bend points: a spline through the ends and every bend. A stretch between two of
+ * them that would cut through a shape also passes the corners of the elbow route around it (its own ends
+ * stay fixed), so the curve still goes through each bend exactly.
+ */
+function curveThroughBends(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, s: Pt, t: Pt, ds: Dir | null, de: Dir | null, obstacles: readonly Rect[], o: Required<RouteOptions>, all: readonly Rect[]): Raw {
+  const keys = [a.point, ...e.bends, b.point];
+  const d0 = ds !== null ? { x: DX[ds]!, y: DY[ds]! } : { x: 0, y: 0 };
+  const dn = de !== null ? { x: DX[de]!, y: DY[de]! } : { x: 0, y: 0 };
+  const others = obstacles.filter((r) => !sameRect(r, a.node, o.padding) && !sameRect(r, b.node, o.padding));
+  const PER = 16;
+  const build = (vias: Pt[][]) => {
+    const pts: Pt[] = [keys[0]!];
+    const legOf: number[] = [];
+    for (let i = 1; i < keys.length; i++) {
+      for (const v of vias[i - 1]!) {
+        pts.push(v);
+        legOf.push(i - 1);
+      }
+      pts.push(keys[i]!);
+      legOf.push(i - 1);
+    }
+    const segs = splineThrough(pts, d0, dn);
+    return { segs, legOf, samples: sampleSegs(pts[0]!, segs, PER) };
+  };
+  const vias: Pt[][] = keys.slice(1).map(() => []);
+  let built = build(vias);
+  let searched = false;
+  for (let leg = 0; leg < keys.length - 1; leg++) {
+    // The samples of this stretch, less a little at a shape end (the curve leaves the shape's margin there).
+    const idx = built.legOf.flatMap((l, k) => (l === leg ? [k] : []));
+    const from = idx[0]! * PER;
+    const to = (idx[idx.length - 1]! + 1) * PER;
+    const lo = leg === 0 && a.node ? from + 3 : from;
+    const hi = leg === keys.length - 2 && b.node ? to - 3 : to;
+    if (curveClear(built.samples.slice(lo, hi + 1), others)) continue;
+    const first = leg === 0;
+    const last = leg === keys.length - 2;
+    const route = routeLeg(first ? s : keys[leg]!, first ? ds : null, last ? t : keys[leg + 1]!, last ? de : null, obstacles, null, o, all);
+    searched ||= route.searched;
+    // The elbow route's corners (not its ends, nor the stub points straight out of a shape).
+    vias[leg] = route.pts.slice(1, -1);
+    built = build(vias);
+  }
+  return { points: built.samples, curve: built.segs, searched };
 }
 
 function unionRect(a: Rect, b: Rect): Rect {

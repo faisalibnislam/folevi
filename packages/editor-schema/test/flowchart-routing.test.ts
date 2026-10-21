@@ -260,6 +260,57 @@ describe("curved and straight routes", () => {
     expect(drawn.d).toMatch(/^M[\d.]+ [\d.]+C/);
   });
 
+  it("passes through every bend point of a curved connector, smoothly", () => {
+    const bends = [
+      { x: 360, y: 40 },
+      { x: 420, y: 260 },
+    ];
+    const fc = flowchart({
+      nodes: [node("a"), node("b", 600, 300)],
+      edges: [newEdge("a", "b", { id: "e", route: "curved", bends })],
+    });
+    const r = routeFlowchart(fc).routes[0]!;
+    const segs = r.curve!;
+    expect(segs.length).toBe(3);
+    // Each bend is the end of one cubic piece and on the sampled polyline.
+    for (const [i, p] of bends.entries()) {
+      expect(segs[i]!.to.x).toBeCloseTo(p.x, 5);
+      expect(segs[i]!.to.y).toBeCloseTo(p.y, 5);
+      expect(r.points.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < 0.01)).toBe(true);
+      // No kink: the handles either side of the bend are on one line through it.
+      const inV = { x: p.x - segs[i]!.c2.x, y: p.y - segs[i]!.c2.y };
+      const outV = { x: segs[i + 1]!.c1.x - p.x, y: segs[i + 1]!.c1.y - p.y };
+      const cross = (inV.x * outV.y - inV.y * outV.x) / (Math.hypot(inV.x, inV.y) * Math.hypot(outV.x, outV.y));
+      expect(Math.abs(cross)).toBeLessThan(1e-6);
+      expect(inV.x * outV.x + inV.y * outV.y).toBeGreaterThan(0);
+    }
+    // It leaves and reaches the shapes square to their sides.
+    const first = segs[0]!;
+    const lastSeg = segs[segs.length - 1]!;
+    const p0 = r.points[0]!;
+    if (r.fromSide === "right" || r.fromSide === "left") expect(first.c1.y).toBeCloseTo(p0.y, 5);
+    else expect(first.c1.x).toBeCloseTo(p0.x, 5);
+    if (r.toSide === "left" || r.toSide === "right") expect(lastSeg.c2.y).toBeCloseTo(lastSeg.to.y, 5);
+    else expect(lastSeg.c2.x).toBeCloseTo(lastSeg.to.x, 5);
+    // The drawing, exports included, is the same curve: one C per piece, ending at the arrow.
+    const drawn = routeEdges(fc)[0]!;
+    expect(drawn.d.match(/C/g)).toHaveLength(3);
+    expect(drawn.d).toContain(`C`);
+    expect(drawn.hops).toEqual([]);
+  });
+
+  it("keeps a curved stretch between bends clear of a shape in its way, still through the bends", () => {
+    const wall = { x: 260, y: -60, w: 80, h: 200 };
+    const bends = [{ x: 200, y: 200 }, { x: 420, y: 60 }];
+    const fc = flowchart({
+      nodes: [node("a"), node("wall", wall.x, wall.y, { w: wall.w, h: wall.h }), node("b", 520, 300)],
+      edges: [newEdge("a", "b", { id: "e", route: "curved", bends })],
+    });
+    const r = routeFlowchart(fc).routes[0]!;
+    for (const p of bends) expect(r.points.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < 0.01)).toBe(true);
+    expect(r.points.every((p) => !(p.x > wall.x + 1 && p.x < wall.x + wall.w - 1 && p.y > wall.y + 1 && p.y < wall.y + wall.h - 1))).toBe(true);
+  });
+
   it("draws straight connectors aimed at each other's centres when no side is set", () => {
     const fc = flowchart({
       nodes: [node("a"), node("b", 400, 300)],

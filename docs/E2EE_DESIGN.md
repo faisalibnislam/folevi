@@ -2254,6 +2254,45 @@ export function useKeySession(): { state: LockState; methods: MethodSummary[] };
 - Accept: unit tests; unlock paths work in Chromium, WebKit and Firefox Playwright projects against a dev
   backend; Mac unit tests; the Mac build unlocks with the device key after restart.
 
+**Settled while building WP6.**
+
+- The AMK in a tab is held as a `SecretBox` (AES-GCM ciphertext under a random non-extractable key made for
+  the tab), not only as a non-extractable HKDF key, because it must be re-wrapped after unlocking (approving
+  a device, adding a method, rotation). Its bytes exist in the clear only inside `use()` and are zeroed after.
+  Space and note keys are kept as derived keys; to re-wrap one, the ring opens it again from its wrapped row
+  for a moment.
+- The Mac bridge is on both `foleviShell.e2ee` (built-in interface) and `foleviDesktop.e2ee` (the website in
+  the app), because §6.11 says the same web code runs at either origin. It adds `settings()` and
+  `setTouchId(on)` for "Ask for Touch ID to unlock encrypted notes" (kept in `userData/e2ee/prefs.json`;
+  windows opening within 30 s of a yes don't ask again). The Settings > Desktop app toggle is a screen for
+  WP9 to add.
+- `setup.rotateAccount(o?: { passphrase?: string; passkeys?: boolean }): Promise<{ recoveryKey: string | null }>`.
+  Knowledge methods can't be re-wrapped without their secret: a recovery key is made anew (returned, to be
+  shown once), the passphrase is re-wrapped when given, passkeys through a passkey prompt (same credential
+  and salt). The server's two-method rule then decides. Devices are re-wrapped only when their statement
+  verifies against the old account key.
+- `KeyRing.linkNoteKey(documentId, secret, wrapped, version, linkPublicId?)`: the link's public id is part of
+  the wrap's context (§4.5), so it is a fifth parameter (required in practice).
+- `KeySession` also has `recheckedWrapId()` (the wrap a method unlock or re-check opened, for
+  `spaces.lower`); `MethodSummary` carries `deviceId` for device wraps. Lifecycle:
+  `startKeySession({ server: convexKeysServer(getConvexClient()), profileId, email, newDeviceId })` once
+  signed in, `endKeySession({ forget })` at sign-out, and `clearAllLocalData({ keep: keepOnSignOut(forget) })`
+  so a trusted browser keeps `folevi-e2ee`.
+- The first device's statement and a recovery-unlocked device's statement say `approvedBy: "recovery"`.
+  Choosing "public computer" after an approval forgets the browser's keys and removes its device wrap (best
+  effort). A device whose id was revoked, or that the account trusts with other keys, starts again with a new
+  id (`web-<ulid>`).
+- Reset registers this device in three steps (pending without a statement, then `resetAccount` with its wrap,
+  then a statement signed by the new account key), because the server checks statements against the
+  account's current key. Personal then gets a new space key version with no note keys (the old notes stay
+  unreadable, as §8.7 says).
+- Grants made by someone else whose signature doesn't verify against their current account key are used but
+  listed in `KeyRing.unverified` (key changes don't block anything in v1, §8.6); a grant that names another
+  space, version, person or key, or one of the person's own grants not signed by them, is refused.
+- The common-password check ships the 12-plus-character entries such lists contain and refuses the patterns
+  behind most of the rest at that length (a character or a short run repeated, keyboard and alphabet runs, a
+  common word padded with digits or symbols), instead of a 10,000-entry file.
+
 ### WP7: Client router, transport, replica, composers, files
 
 - Goal: §6.4 to §6.8 and §6.10 (data side).

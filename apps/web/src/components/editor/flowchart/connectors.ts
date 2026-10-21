@@ -9,8 +9,11 @@
 //     inside the shape                             the shape as a whole: the router picks the side
 //     anywhere else                                a free end at that point
 import {
+  FLOWCHART_COLOR_LABEL,
   FLOWCHART_GRID,
+  FLOWCHART_HEAD_LABEL,
   FLOWCHART_LIMITS,
+  FLOWCHART_SHAPE_LABEL,
   nearestAlong,
   newEdge,
   outlinePoint,
@@ -393,4 +396,48 @@ export function stableRouted(prev: ReadonlyMap<string, RoutedEdge>, next: readon
     const old = prev.get(r.edge.id);
     return old && sameDrawing(old, r) ? old : r;
   });
+}
+
+// ------------------------------------------------------------------------------------------ keyboard
+
+/** A shape as a connector's name gives it: its text, or its kind when it has none. */
+function shapeName(n: FlowNode | undefined): string {
+  if (!n) return "a missing shape";
+  return n.text.trim().replace(/\s+/g, " ") || `an empty ${FLOWCHART_SHAPE_LABEL[n.shape].toLowerCase()}`;
+}
+
+/** What a screen reader says for a connector: "Connector from Start to Check, Yes". */
+export function connectorName(e: FlowEdge, byId: ReadonlyMap<string, FlowNode>): string {
+  const from = e.from ? shapeName(byId.get(e.from)) : "a point";
+  const to = e.to ? shapeName(byId.get(e.to)) : "a point";
+  const labels = e.labels.map((l) => l.text.trim()).filter(Boolean);
+  return `Connector from ${from} to ${to}${labels.length ? `, ${labels.join(", ")}` : ""}`;
+}
+
+/** The connectors at shape `id`, in the order ] steps through them: the ones leaving it, then the ones arriving. */
+export function connectorsOf(fc: FlowchartData, id: string): string[] {
+  const out = fc.edges.filter((e) => e.from === id).map((e) => e.id);
+  for (const e of fc.edges) if (e.to === id && e.from !== id) out.push(e.id);
+  return out;
+}
+
+/** The next (`step` 1) or previous (-1) connector in `list` after `current` (the first or last without one), wrapping. */
+export function stepConnector(list: readonly string[], current: string | null, step: 1 | -1): string | null {
+  if (!list.length) return null;
+  const i = current ? list.indexOf(current) : -1;
+  if (i < 0) return step === 1 ? list[0]! : list[list.length - 1]!;
+  return list[(i + step + list.length) % list.length]!;
+}
+
+/** What changed, said after a choice in the connector bar ("Route: curved, 2 connectors."). */
+export function describeEdgeStyle(patch: EdgeStylePatch, count: number): string {
+  const parts: string[] = [];
+  if (patch.route) parts.push(`route ${patch.route}`);
+  if (patch.start) parts.push(`start ${FLOWCHART_HEAD_LABEL[patch.start].toLowerCase()}`);
+  if (patch.end) parts.push(`end ${FLOWCHART_HEAD_LABEL[patch.end].toLowerCase()}`);
+  if (patch.style) parts.push(`${patch.style} line`);
+  if (patch.width !== undefined) parts.push(`${(EDGE_WIDTHS.find((w) => w.value === patch.width)?.label ?? `${patch.width} point`).toLowerCase()} line`);
+  if (patch.color !== undefined) parts.push(`colour ${patch.color === "neutral" || !patch.color ? "grey" : (FLOWCHART_COLOR_LABEL[patch.color as keyof typeof FLOWCHART_COLOR_LABEL] ?? "custom").toLowerCase()}`);
+  const what = parts.join(", ") || "unchanged";
+  return `${what.charAt(0).toUpperCase()}${what.slice(1)}${count > 1 ? `, ${count} connectors` : ""}.`;
 }

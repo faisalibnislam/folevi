@@ -4,9 +4,10 @@
 // the overlay (selection boxes, then whatever the interactions draw: guides, handles, previews). Shapes and
 // connectors are drawn by render.tsx, shared with the read-only view and exports. Presentational only: no
 // state, and the data-fc-* attributes are what the interactions look for under the pointer.
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import type { FlowNode, RoutedEdge } from "../schema";
 import { FlowNodeShape, nodeAriaLabel } from "../render";
+import { connectorName } from "../connectors";
 import { ConnectorLabelLayer, ConnectorLines } from "./Connectors";
 import type { Editing, View } from "../controller/types";
 
@@ -70,9 +71,14 @@ export function SceneLayers({
   uid?: string;
 }) {
   const count = nodes.length;
+  // Each connector's spoken name; the same strings while nothing it names changes, so lines stay memoised.
+  const names = useMemo(() => {
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    return new Map(routed.map((r) => [r.edge.id, connectorName(r.edge, byId)]));
+  }, [nodes, routed]);
   return (
     <>
-      <ConnectorLines routed={routed} selEdges={selEdges} />
+      <ConnectorLines routed={routed} selEdges={selEdges} names={names} />
       <g>
         {nodes.map((n, i) => (
           <NodeItem key={n.id} node={n} selected={selNodes.includes(n.id)} hideText={editing?.kind === "node" && editing.id === n.id} onFocusNode={onFocusNode} position={`shape ${i + 1} of ${count}`} imageHref={n.image ? imageUrls?.[n.image.fileId] : undefined} uid={uid} />

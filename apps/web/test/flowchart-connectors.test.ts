@@ -292,3 +292,35 @@ describe("drawing only what changed", () => {
     expect(median).toBeLessThan(25);
   });
 });
+
+describe("connectors from the keyboard", () => {
+  const fc = chart(
+    [node("a", 0, 0, { text: "Start" }), node("b", 0, 240, { text: "Check" }), node("c", 300, 240, { text: "" }), node("d", 300, 0, { text: "Back" })],
+    [edge("e1", "a", "b", { labels: [{ text: "Yes", at: 0.5 }] }), edge("e2", "d", "a"), edge("e3", "a", "c"), newEdge("b", "", { id: "e4", toPoint: { x: 0, y: 600 } })],
+  );
+  const byId = new Map(fc.nodes.map((n) => [n.id, n]));
+
+  test("name says where a connector goes and what it says", () => {
+    expect(C.connectorName(fc.edges[0]!, byId)).toBe("Connector from Start to Check, Yes");
+    expect(C.connectorName(fc.edges[2]!, byId)).toBe("Connector from Start to an empty process");
+    expect(C.connectorName(fc.edges[3]!, byId)).toBe("Connector from Check to a point");
+  });
+
+  test("] steps through a shape's connectors: leaving it first, then arriving, wrapping round", () => {
+    const list = C.connectorsOf(fc, "a");
+    expect(list).toEqual(["e1", "e3", "e2"]);
+    expect(C.stepConnector(list, null, 1)).toBe("e1");
+    expect(C.stepConnector(list, null, -1)).toBe("e2");
+    expect(C.stepConnector(list, "e1", 1)).toBe("e3");
+    expect(C.stepConnector(list, "e2", 1)).toBe("e1");
+    expect(C.stepConnector(list, "e1", -1)).toBe("e2");
+    expect(C.stepConnector([], null, 1)).toBeNull();
+  });
+
+  test("a change in the connector bar is said in words", () => {
+    expect(C.describeEdgeStyle({ route: "curved" }, 1)).toBe("Route curved.");
+    expect(C.describeEdgeStyle({ end: "open" }, 3)).toBe("End open arrow, 3 connectors.");
+    expect(C.describeEdgeStyle({ width: 4 }, 1)).toBe("Thick line.");
+    expect(C.describeEdgeStyle({ color: "neutral" }, 1)).toBe("Colour grey.");
+  });
+});

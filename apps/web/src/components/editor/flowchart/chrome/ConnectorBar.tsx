@@ -7,7 +7,8 @@
 import { Tag, Trash2 } from "lucide-react";
 import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
 import { FLOWCHART_COLORS, FLOWCHART_COLOR_LABEL, FLOWCHART_HEADS, FLOWCHART_HEAD_LABEL, FLOWCHART_LINE_STYLES, headShape, pointAlong, type FlowHead, type FlowLineStyle, type FlowRoute } from "../schema";
-import { EDGE_WIDTHS, edgeDash, shared, styleEdges, type EdgeStylePatch } from "../connectors";
+import { EDGE_WIDTHS, describeEdgeStyle, edgeDash, shared, styleEdges, type EdgeStylePatch } from "../connectors";
+import { focusConnector } from "../interactions/connectorKeys";
 import { ROUTE_LABEL } from "../interactions/connectorMenu";
 import { isCoarse } from "../interactions/connect";
 import { startNewLabel } from "../interactions/edgeLabels";
@@ -110,7 +111,29 @@ const ColorDot = ({ color }: { color: string }) => <span aria-hidden className="
 
 export function ConnectorBar({ ctrl, actions, style }: { ctrl: FlowController; actions: FlowActions; style: React.CSSProperties }) {
   const { selEdges, docRef, commit, sel } = ctrl;
-  const apply = (patch: EdgeStylePatch) => commit(styleEdges(docRef.current, sel.edges, patch));
+  const apply = (patch: EdgeStylePatch) => {
+    commit(styleEdges(docRef.current, sel.edges, patch));
+    ctrl.say(describeEdgeStyle(patch, sel.edges.length));
+  };
+  // From the keyboard: Left and Right move along the bar, Home and End to its ends, Esc goes back to the
+  // connector (interactions/connectorKeys.ts). Keys in an open menu stay in the menu.
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const bar = e.currentTarget;
+    if (!(e.target instanceof HTMLElement) || !bar.contains(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+    const buttons = [...bar.querySelectorAll<HTMLElement>("button:not(:disabled)")];
+    const i = buttons.indexOf(e.target);
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (sel.edges[0]) focusConnector(ctrl.wrapRef.current, sel.edges[0]);
+      else ctrl.wrapRef.current?.focus({ preventScroll: true });
+      return;
+    }
+    const to = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? buttons.length - 1 : null;
+    if (to === null || i < 0 || !buttons.length) return;
+    e.preventDefault();
+    buttons[(to + buttons.length) % buttons.length]!.focus();
+  };
   const route = shared(selEdges, (e) => e.route);
   const start = shared(selEdges, (e) => e.start);
   const end = shared(selEdges, (e) => e.end);
@@ -125,7 +148,7 @@ export function ConnectorBar({ ctrl, actions, style }: { ctrl: FlowController; a
     FLOWCHART_HEADS.map((h) => ({ label: FLOWCHART_HEAD_LABEL[h], icon: <HeadIcon kind={h} at={which} />, checked: current === h, onSelect: () => apply(which === "start" ? { start: h } : { end: h }) }));
 
   return (
-    <div className="fc-bar fc-bar-float fc-bar-edge" role="toolbar" aria-label={many ? `${selEdges.length} selected connectors` : "Selected connectors"} style={style} onPointerDown={(e) => e.stopPropagation()}>
+    <div className="fc-bar fc-bar-float fc-bar-edge" role="toolbar" aria-label={many ? `${selEdges.length} selected connectors` : "Selected connectors"} style={style} onPointerDown={(e) => e.stopPropagation()} onKeyDown={onKeyDown}>
       <MenuButton
         label={`Route: ${ROUTE_LABEL[route ?? first.route]}`}
         align="start"
@@ -179,7 +202,16 @@ export function ConnectorBar({ ctrl, actions, style }: { ctrl: FlowController; a
         </>
       ) : null}
       <span className="fc-sep" aria-hidden />
-      <button type="button" className="fc-btn" aria-label={many ? "Delete connectors" : "Delete connector"} title="Delete (⌫)" onClick={actions.removeSelection}>
+      <button type="button" className="fc-btn" aria-label={many ? "Delete connectors" : "Delete connector"} title="Delete (⌫)" onClick={() => {
+          const back = !many ? first.from || first.to : "";
+          actions.removeSelection();
+          ctrl.say(many ? "Connectors deleted." : "Connector deleted.");
+          // The keyboard goes back to the shape (the bar and the line are gone).
+          if (back && docRef.current.nodes.some((n) => n.id === back)) {
+            ctrl.setSel({ nodes: [back], edges: [] });
+            ctrl.wrapRef.current?.querySelector<SVGGElement>(`[data-fc-node="${CSS.escape(back)}"]`)?.focus({ preventScroll: true });
+          } else ctrl.wrapRef.current?.focus({ preventScroll: true });
+        }}>
         <Trash2 size={14} aria-hidden />
       </button>
     </div>

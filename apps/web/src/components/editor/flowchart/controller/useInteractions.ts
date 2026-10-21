@@ -128,6 +128,9 @@ export function useInteractions(ctrl: FlowController, interactions: Interaction[
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const t = e.target as HTMLElement;
+    // Keys in a menu opened from the canvas's bars reach here through React's tree (menus render in the
+    // top layer, outside the canvas): they belong to the menu.
+    if (!e.currentTarget.contains(t)) return;
     if (t instanceof HTMLTextAreaElement || t instanceof HTMLInputElement || t.closest(CHROME)) return;
     for (const i of interactions) {
       if (i.keyDown?.(e)) {

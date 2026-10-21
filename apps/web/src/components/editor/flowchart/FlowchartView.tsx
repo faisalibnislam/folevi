@@ -15,6 +15,8 @@
 //             menu restyle every selected connector (interactions/connect, bends, edgeLabels, connectorMenu)
 //   Keyboard  Tab to a shape, then Tab adds the next step (⇧Tab a branch) · arrows move between shapes
 //             (⌥ nudges, ⇧ nudges more) · Enter or typing edits · ⌫ delete · ⌘D duplicate
+//             ] and [ step through a shape's connectors; on one, Enter edits its label, Tab goes into its bar,
+//             Home / End go to its shapes, ⌫ removes it, Esc goes back (interactions/connectorKeys.ts)
 //             ⌘A select all · ⌘Z / ⇧⌘Z undo and redo · +/− zoom · ⇧1 fit · ⇧⌘F full canvas · Esc back to the note
 //
 // Full canvas: the card lifts into the top layer (a popover, so nothing in the page clips it) and fills the
@@ -87,6 +89,7 @@ import { useContainers } from "./interactions/containers";
 import { ContainerLayer } from "./layers/Containers";
 import { useQuickAdd } from "./interactions/quickAdd";
 import { useKeyboardFlow } from "./interactions/keyboardFlow";
+import { useConnectorKeys } from "./interactions/connectorKeys";
 import { DotGrid, SceneLayers, SelectionBoxes } from "./layers/Scene";
 import { SelectionBar } from "./chrome/SelectionBar";
 import { HeightHandle } from "./chrome/HeightHandle";
@@ -166,6 +169,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   const menu = useContextMenu(ctrl, { actions, startEdit: text.startEdit, contentItems: content.menuItems, nodeItems: () => [...(boxes.nodeMenuItems?.() ?? []), ...walk.menuItems(), ...(aiOn ? [{ label: "Add next steps", icon: <ListPlus size={14} />, onSelect: () => void flowAi.extend("next", ctrl.selRef.current.nodes) }, { label: "Fill in missing branches", icon: <GitBranchPlus size={14} />, onSelect: () => void flowAi.extend("branches", ctrl.selRef.current.nodes) }] : [])] });
   const quick = useQuickAdd(ctrl);
   const flow = useKeyboardFlow(ctrl, { actions, finishEdit: text.finishEdit });
+  const connectorKeys = useConnectorKeys(ctrl);
   const events = useInteractions(ctrl, [
     walk.interaction, // Present and Follow a path: while one runs, every press and key is its own
     text.interaction, // any press ends writing first
@@ -174,6 +178,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
     tidy.interaction, // Tidy up's move: shapes can't be grabbed while they glide
     quick.interaction, // the + arrows around a shape, and the shape picker
     connect.interaction, // side handles and connector ends
+    connectorKeys.interaction, // ] and [ reach a shape's connectors; keys on a focused connector
     labels.interaction, // connector labels: drag along the line, double-click to write, typing
     bends.interaction, // connector lines and bend points: drag to bend, double-click a point to remove it
     resize.interaction,
@@ -214,7 +219,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
           {...walk.canvasProps}
         >
           <p id={`${uid}-help`} className="sr-only">
-            Tab moves to the shapes; on a selected shape, Tab adds the next step and Shift Tab a branch beside it. Arrow keys move between shapes, Option with arrow keys moves the shape. Enter or typing edits the selected shape, Delete removes it, Command D duplicates. Command Z undoes. Escape steps back to the note.
+            Tab moves to the shapes; on a selected shape, Tab adds the next step and Shift Tab a branch beside it. Arrow keys move between shapes, Option with arrow keys moves the shape. Enter or typing edits the selected shape, Delete removes it, Command D duplicates. Right bracket and left bracket move through the selected shape's connectors. On a connector, Enter edits its label, Tab moves into its style bar (Escape comes back), Home and End go to the shapes at its start and end, Delete removes it, and Escape goes back to the shape. Command Z undoes. Escape steps back to the note.
           </p>
           <svg ref={ctrl.svgRef} className="fc-root fc-svg" width={ctrl.width} height={ctrl.height} {...events.svg}>
             <DotGrid id={`${uid}-dots`} view={view} />

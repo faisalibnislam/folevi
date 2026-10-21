@@ -5,6 +5,10 @@
 // frames), so moving one shape redraws only the connectors whose route changed. Hit-testing is the
 // browser's own: a wide transparent stroke along each line, and each label's box, carry the data-fc-*
 // attributes the interactions look for (data-fc-edge, data-fc-label).
+//
+// Each line is also a keyboard stop outside the Tab order (tabIndex -1): ] and [ on a shape reach its
+// connectors, and its name says where it goes ("Connector from Start to Check, Yes"); see
+// interactions/connectorKeys.ts.
 import { memo, type CSSProperties } from "react";
 import { FLOWCHART_LABEL_FONT_SIZE, type RoutedEdge } from "../schema";
 import { edgeDash, edgeStroke } from "../connectors";
@@ -16,17 +20,29 @@ const lineVars = (r: RoutedEdge): CSSProperties => {
 };
 
 /** One connector's line and heads, with a wide invisible stroke to hit it. */
-export const ConnectorLine = memo(function ConnectorLine({ routed, selected }: { routed: RoutedEdge; selected: boolean }) {
+export const ConnectorLine = memo(function ConnectorLine({ routed, selected, name }: { routed: RoutedEdge; selected: boolean; name?: string }) {
   const e = routed.edge;
   return (
-    <g className="fc-edge" data-fc-edge={e.id} data-selected={selected || undefined} data-free={!e.from || !e.to || undefined} style={lineVars(routed)}>
-      <path className="fc-edge-hit" d={routed.d} />
-      {selected ? <path className="fc-edge-halo" d={routed.d} /> : null}
-      <path className="fc-edge-line" d={routed.d} strokeDasharray={edgeDash(e.style, e.width)} />
+    <g
+      className="fc-edge"
+      data-fc-edge={e.id}
+      data-fc-edge-line=""
+      data-selected={selected || undefined}
+      data-free={!e.from || !e.to || undefined}
+      style={lineVars(routed)}
+      tabIndex={-1}
+      role="button"
+      aria-pressed={selected}
+      aria-label={name ?? "Connector"}
+    >
+      <path aria-hidden className="fc-edge-hit" d={routed.d} />
+      {selected ? <path aria-hidden className="fc-edge-halo" d={routed.d} /> : null}
+      <path aria-hidden className="fc-edge-line" d={routed.d} strokeDasharray={edgeDash(e.style, e.width)} />
       {routed.markers.map((m, i) => (
         // Open arrows and bars are lines, not filled shapes.
-        <path key={i} className={m.filled ? "fc-edge-head" : "fc-edge-head fc-edge-head-open"} d={m.d} />
+        <path aria-hidden key={i} className={m.filled ? "fc-edge-head" : "fc-edge-head fc-edge-head-open"} d={m.d} />
       ))}
+      <path aria-hidden className="fc-edge-focus" d={routed.d} />
     </g>
   );
 });
@@ -53,11 +69,11 @@ export const ConnectorLabels = memo(function ConnectorLabels({ routed, selected,
 const editingLabelOf = (editing: Editing | null, id: string): number | null => (editing?.kind === "edge" && editing.id === id ? (editing.label ?? 0) : null);
 
 /** Every connector's line (drawn under the shapes). */
-export function ConnectorLines({ routed, selEdges }: { routed: readonly RoutedEdge[]; selEdges: readonly string[] }) {
+export function ConnectorLines({ routed, selEdges, names }: { routed: readonly RoutedEdge[]; selEdges: readonly string[]; names?: ReadonlyMap<string, string> }) {
   return (
-    <g aria-hidden className="fc-edges">
+    <g className="fc-edges">
       {routed.map((r) => (
-        <ConnectorLine key={r.edge.id} routed={r} selected={selEdges.includes(r.edge.id)} />
+        <ConnectorLine key={r.edge.id} routed={r} selected={selEdges.includes(r.edge.id)} name={names?.get(r.edge.id)} />
       ))}
     </g>
   );

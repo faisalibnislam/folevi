@@ -80,6 +80,9 @@
 .fc-edges .fc-edge:hover:not([data-selected]) .fc-edge-hit { stroke: color-mix(in oklab, var(--fc-select) 12%, transparent); }
 .fc-edge[data-selected] .fc-edge-label-bg { stroke: var(--fc-select); }
 .fc-edge-label-item { cursor: grab; }
+.fc-edge:focus { outline: none; }
+.fc-edge-focus { fill: none; stroke: none; pointer-events: none; }
+.fc-edge:focus-visible .fc-edge-focus { stroke: var(--fc-select); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-dasharray: 4 3; stroke-linecap: round; stroke-linejoin: round; }
 @media (pointer: coarse) { .fc-edge-hit { stroke-width: 26px; } }
 
 /* ---------------------------------------------------------------- the block */

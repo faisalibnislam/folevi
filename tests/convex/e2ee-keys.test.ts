@@ -342,6 +342,19 @@ describe("revoking a device", () => {
     await expect(a.as.mutation(api.e2ee.devices.register, { device: deviceRegistration(keys, "browser", statement) })).rejects.toThrow(/removed/);
   });
 
+  test("a device statement not signed by the account key is refused (a stolen session can't mark a device trusted)", async () => {
+    const t = setup();
+    const a = await e2eePerson(t, "forged@example.com");
+    const keys = await e2eeDeviceKeys();
+    const impostor = await e2eeEpoch(a.profileId, 1);
+    const forged = await deviceStatement(impostor.keys, a.profileId, keys, "recovery");
+    await expect(a.as.mutation(api.e2ee.devices.register, { device: deviceRegistration(keys, "browser", forged) })).rejects.toThrow(/isn't signed by your encryption key/);
+    const tampered = { ...(await deviceStatement(a.account, a.profileId, keys, "recovery")) };
+    tampered.body = tampered.body.replace("Test browser", "Evil browser");
+    await expect(a.as.mutation(api.e2ee.devices.register, { device: deviceRegistration(keys, "browser", tampered) })).rejects.toThrow(/isn't signed/);
+    expect(await a.as.mutation(api.e2ee.devices.register, { device: deviceRegistration(keys) })).toEqual({ status: "pending" });
+  });
+
   test("a trusted device's keys can't be swapped by registering again", async () => {
     const t = setup();
     const a = await e2eePerson(t, "swap@example.com");

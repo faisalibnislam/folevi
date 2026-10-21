@@ -1,10 +1,12 @@
 // End-to-end encryption: shared helpers of the key-management modules (convex/e2ee/keys.ts, devices.ts,
 // spaces.ts, grants.ts; docs/E2EE_DESIGN.md §4.7 to §4.9, §5.3). WP2.
 //
-// The server stores public keys, wrapped keys and signed statements. It never opens a wrap and never
-// verifies a signature as a security decision: devices verify statements against the keys they trust
-// (§4.8, §8.6). What it does check here is consistency (sizes, that a statement's body names the row it is
-// stored with), so a buggy client can't store something other devices would reject later.
+// The server stores public keys, wrapped keys and signed statements. It never opens a wrap. It checks that
+// each statement's body names the row it is stored with and that it is signed by the account key it should
+// be, so a buggy client (or someone holding only a stolen session) can't store something devices would
+// reject later. Devices still verify statements themselves against the keys they trust (§4.8, §8.6): a
+// server that lies can't be caught by its own checks.
+import { verifyStatement } from "@folevi/local-store/e2ee";
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import { isFeatureEnabled } from "../flags";
@@ -79,6 +81,12 @@ export function expectStatement(statement: { body: string; sig: string }, expect
   for (const [k, value] of Object.entries(expected)) {
     if (body[k] !== value) fail("invalid_argument", `The statement doesn't match (${k}).`);
   }
+}
+
+/** Refuses a statement not signed by `pub` (an account's Ed25519 public key). */
+export async function requireSigned(pub: ArrayBuffer, statement: { kind: string; body: string; sig: string }): Promise<void> {
+  const valid = await verifyStatement(new Uint8Array(pub), statement as Parameters<typeof verifyStatement>[1]).catch(() => false);
+  if (!valid) fail("invalid_argument", "The statement isn't signed by your encryption key.");
 }
 
 // ---------------------------------------------------------------- accounts
@@ -263,6 +271,7 @@ export async function storeGrants(ctx: MutationCtx, scope: Scope, granter: Id<"p
   const scopeId = await e2eeScopeId(ctx, scope);
   const key = scopeKey(scope);
   const space = await requireSpace(ctx, scope);
+  const granterAccount = await requireAccount(ctx, granter);
   const now = Date.now();
   const granted = new Set<Id<"profiles">>();
   for (const g of grants) {
@@ -276,6 +285,7 @@ export async function storeGrants(ctx: MutationCtx, scope: Scope, granter: Id<"p
     if (!account || account.status !== "active") fail("conflict", "That person's encryption keys changed. Try again.");
     checkBytes(g.wrapped, "A grant", 49 + 16, E2EE_LIMITS.keyWrapBytes);
     expectStatement(g.statement, { scope: scopeId, version: g.version, profileId: g.profileId, granteeX25519Pub: b64u(account.x25519Pub), grantedBy: granter });
+    await requireSigned(granterAccount.ed25519Pub, g.statement);
     const existing = (await grantsOf(ctx, scope, profileId)).filter((r) => r.version === g.version && r.epoch === g.epoch);
     for (const r of existing) await ctx.db.delete(r._id);
     await insertScoped(ctx, "e2eeSpaceGrants", scope, {

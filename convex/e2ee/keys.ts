@@ -25,6 +25,7 @@ import {
   methodKinds,
   requireAccount,
   requireE2eeFlag,
+  requireSigned,
   storeGrants,
   trustedDevices,
   wrapsOf,
@@ -50,13 +51,14 @@ export const SUPERSEDED_WRAP_DAYS = 30;
 /** Minimum passphrase stretching a wrap may declare (§4.7.3); parameters may rise later, never fall. */
 const KDF_MIN = { m: 65536, t: 3, p: 1, saltBytes: 16 };
 
-/** Checks an account registration against the caller and the epoch it must be. */
-function checkRegistration(profileId: Id<"profiles">, reg: AccountRegistration, epoch: number): void {
+/** Checks an account registration against the caller and the epoch it must be (self-signed by its new key). */
+async function checkRegistration(profileId: Id<"profiles">, reg: AccountRegistration, epoch: number): Promise<void> {
   if (reg.epoch !== epoch) fail("conflict", "Your encryption keys changed on another device. Reload and try again.");
   checkPublicKey(reg.x25519Pub, "The account key");
   checkPublicKey(reg.ed25519Pub, "The account signing key");
   checkBytes(reg.amkCheck, "The check value", E2EE_LIMITS.checkBytes);
   expectStatement(reg.statement, { profileId, epoch, x25519Pub: b64u(reg.x25519Pub), ed25519Pub: b64u(reg.ed25519Pub) });
+  await requireSigned(reg.ed25519Pub, reg.statement);
 }
 
 /** The session behind this call, as sessionsMirror keys it (to sign a revoked device out). */
@@ -100,8 +102,14 @@ export async function upsertDevice(
   return (await ctx.db.get(id))!;
 }
 
-/** Checks a device statement names this device, its keys and who approved it. */
-export function checkDeviceStatement(profileId: Id<"profiles">, device: Pick<DeviceRegistration, "deviceId" | "kind" | "x25519Pub" | "ed25519Pub">, statement: { body: string; sig: string }, approvedBy?: string): void {
+/** Checks a device statement names this device, its keys and who approved it, signed by the account key `signer`. */
+export async function checkDeviceStatement(
+  profileId: Id<"profiles">,
+  device: Pick<DeviceRegistration, "deviceId" | "kind" | "x25519Pub" | "ed25519Pub">,
+  statement: { kind: "device"; body: string; sig: string },
+  signer: ArrayBuffer,
+  approvedBy?: string,
+): Promise<void> {
   expectStatement(statement, {
     profileId,
     deviceId: device.deviceId,
@@ -110,6 +118,7 @@ export function checkDeviceStatement(profileId: Id<"profiles">, device: Pick<Dev
     ed25519Pub: b64u(device.ed25519Pub),
     ...(approvedBy ? { approvedBy } : {}),
   });
+  await requireSigned(signer, statement);
 }
 
 /** Checks one AMK wrap before it's stored; returns the row's kind-specific fields. */
@@ -213,8 +222,8 @@ export const createAccount = mutation({
       .first();
     if (latest) fail("conflict", "Encryption is already set up for this account.");
     const reg = { epoch: 1, x25519Pub: args.x25519Pub, ed25519Pub: args.ed25519Pub, amkCheck: args.amkCheck, statement: args.statement };
-    checkRegistration(profile._id, reg, 1);
-    if (args.device.statement) checkDeviceStatement(profile._id, args.device, args.device.statement);
+    await checkRegistration(profile._id, reg, 1);
+    if (args.device.statement) await checkDeviceStatement(profile._id, args.device, args.device.statement, reg.ed25519Pub);
     await ctx.db.insert("e2eeAccounts", { profileId: profile._id, ...reg, status: "active", createdAt: Date.now() });
     const device = await upsertDevice(ctx, profile._id, args.device, "trusted");
     const wrapId = device.kind === "session" ? null : await storeWrap(ctx, profile._id, 1, { kind: "device", deviceId: device.deviceId, wrapped: args.deviceWrap });
@@ -329,7 +338,7 @@ export const getDeviceWrap = query({
 
 /** Supersedes the current epoch with a new one (keeps the old one's wraps for SUPERSEDED_WRAP_DAYS). */
 async function newEpoch(ctx: MutationCtx, profileId: Id<"profiles">, current: Doc<"e2eeAccounts">, reg: AccountRegistration): Promise<void> {
-  checkRegistration(profileId, reg, current.epoch + 1);
+  await checkRegistration(profileId, reg, current.epoch + 1);
   const now = Date.now();
   await ctx.db.patch(current._id, { status: "superseded", supersededAt: now });
   await ctx.db.insert("e2eeAccounts", { profileId, ...reg, status: "active", createdAt: now });
@@ -373,7 +382,7 @@ export const rotateAccount = mutation({
         .withIndex("by_profile_device", (q) => q.eq("profileId", profile._id).eq("deviceId", deviceId))
         .unique();
       if (!device || device.status !== "trusted") continue;
-      checkDeviceStatement(profile._id, device, statement);
+      await checkDeviceStatement(profile._id, device, statement, fresh.ed25519Pub);
       await ctx.db.patch(device._id, { statement });
     }
     return { epoch };

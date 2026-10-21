@@ -74,18 +74,20 @@ export const register = mutation({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    await requireAccount(ctx, profile._id);
+    const account = await requireAccount(ctx, profile._id);
     const existing = await deviceOf(ctx, profile._id, args.device.deviceId);
     if (existing && existing.status === "trusted") {
       // A trusted device's keys never change (its wrap is sealed to them); it re-registers only to refresh.
       if (!sameKeys(existing, args.device)) fail("conflict", "This device already has keys. Remove it in Settings > Devices to start again.");
-      const next = await upsertDevice(ctx, profile._id, { ...args.device, statement: args.device.statement ?? existing.statement }, "trusted");
+      // Its statement changes only through approval or an account rotation, never by re-registering.
+      const { statement: _ignored, ...device } = args.device;
+      const next = await upsertDevice(ctx, profile._id, { ...device, ...(existing.statement ? { statement: existing.statement } : {}) }, "trusted");
       return { status: next.status };
     }
     // Unlocking with a recovery method on this device: it opened the AMK itself and signed its own statement.
     let status: Doc<"e2eeDevices">["status"] = "pending";
     if (args.device.statement) {
-      checkDeviceStatement(profile._id, args.device, args.device.statement, "recovery");
+      await checkDeviceStatement(profile._id, args.device, args.device.statement, account.ed25519Pub, "recovery");
       status = "trusted";
     }
     const device = await upsertDevice(ctx, profile._id, args.device, status);
@@ -179,7 +181,7 @@ export const completeApproval = mutation({
     await requireApprover(ctx, profile._id, approval.approverDeviceId);
     const device = await deviceOf(ctx, profile._id, approval.deviceId);
     if (!device || device.status === "revoked") fail("not_found", "Device not found.");
-    checkDeviceStatement(profile._id, device, args.statement, approval.approverDeviceId);
+    await checkDeviceStatement(profile._id, device, args.statement, account.ed25519Pub, approval.approverDeviceId);
     checkBytes(args.wrapped, "The wrapped key", 49 + 16, E2EE_LIMITS.wrapBytes);
     if (device.kind !== "session") {
       for (const w of await wrapsOf(ctx, profile._id, account.epoch)) if (w.kind === "device" && w.deviceId === device.deviceId) await ctx.db.delete(w._id);

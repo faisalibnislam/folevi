@@ -940,7 +940,9 @@ functions.
   device's statement signed again by the new account key). `keys.sweep` (daily) deletes wraps and the public
   keys of epochs superseded more than 30 days ago (index `e2eeAccounts.by_status_superseded`).
 - The server checks that a statement's body names the row it is stored with (person, device, keys, scope,
-  version, granter) but does not verify signatures; devices do (§4.8, §8.6).
+  version, granter) and that it is signed by the right account key (`verifyStatement` from WP1; it never
+  opens anything), so a stolen session alone can't mark a device trusted. Devices still verify statements
+  themselves (§4.8, §8.6). A trusted device re-registering keeps its stored statement.
 - `e2eeNoteKeys` has an optional `statement` (the `note-grant` statement of a grant-wrapped key). Every new
   scoped table also has `by_workspace` / `by_owner` (or `_seq`) indexes for `scopedRows`.
 - `devices.completeApproval` also stores the sealed AMK on the approval row, which `devices.approval` returns

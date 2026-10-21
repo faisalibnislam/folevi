@@ -10,7 +10,7 @@ import { fail } from "../lib/errors";
 import { canShareDocument, MANAGER_ONLY } from "../lib/permissions";
 import { insertScoped, scopeKey, scopeOfRow, vScopeArg, type Scope } from "../lib/scope";
 import { nextSeq } from "../lib/seq";
-import { activeAccount, b64u, checkBytes, expectStatement, profileIdOf, requireSpace, storeGrants } from "../lib/e2ee/keyStore";
+import { activeAccount, b64u, checkBytes, expectStatement, profileIdOf, requireSigned, requireSpace, storeGrants } from "../lib/e2ee/keyStore";
 import { E2EE_LIMITS, vNoteGrantStatement, vNoteKeyWrapInput, vSpaceGrantInput, type NoteKeyWrapInput } from "../lib/e2ee/validators";
 
 /** Ancestors walked for inherited page grants (as lib/auth.ts inheritedGrant). */
@@ -100,6 +100,9 @@ async function checkGuestWrap(
   if (!w.statement) fail("invalid_argument", "A note key for a person is signed by the person sharing it.");
   checkBytes(w.wrapped, "A note key", 49 + 16, E2EE_LIMITS.keyWrapBytes);
   expectStatement(w.statement, { documentId: doc.publicId, version: w.version, profileId: w.profileId, granteeX25519Pub: b64u(account.x25519Pub), grantedBy: granter });
+  const granterAccount = await activeAccount(ctx, granter);
+  if (!granterAccount) fail("conflict", "Set up encryption first.");
+  await requireSigned(granterAccount.ed25519Pub, w.statement);
   return profileId;
 }
 

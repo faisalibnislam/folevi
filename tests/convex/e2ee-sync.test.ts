@@ -1,7 +1,9 @@
 // Sealed content through sync.push (docs/E2EE_DESIGN.md §5.4, §11.2 e2ee-sync): sealed creates, upserts,
 // conflicts by MAC, toggles, synced sources, plaintext refused, e2ee_busy, mentions, locks, blind versions.
 import { describe, expect, test } from "vitest";
-import { SCHEMA_VERSION, type SyncOp, type WireBlock } from "@folevi/editor-schema";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { SCHEMA_VERSION, canonicalJson, sync, validateWireBlock, type OpResult, type SyncOp, type SyncState, type WireBlock } from "@folevi/editor-schema";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { para, person, setup, ulid, type T } from "./helpers";
@@ -267,6 +269,116 @@ describe("sealed notes through sync.push", () => {
     const after = await rows(t, id);
     expect(after.doc.searchText).toBe("");
     expect(after.doc.preview).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------- golden scenarios, sealed
+
+type Step = { action: string; input?: unknown } & Record<string, unknown>;
+const golden = JSON.parse(readFileSync(resolve(__dirname, "../../packages/editor-schema/fixtures/sync-scenarios.json"), "utf8")) as { scenarios: { name: string; steps: Step[] }[] };
+
+/**
+ * Runs a golden scenario (packages/editor-schema/fixtures/sync-scenarios.json) against the real server: the
+ * client reducer's batches go to sync.push (sealed by a sealing adapter in the sealed run, as WP7's router
+ * does: blocks that fail validation are refused on the device, results opened back), and each scripted
+ * remote update is another device writing that row. Returns the reducer's final state.
+ */
+async function driveScenario(scenario: { name: string; steps: Step[] }, mode: "plain" | "sealed", n: number): Promise<SyncState> {
+  const t = setup();
+  const p = await person(t, `golden-${mode}-${n}@example.com`);
+  const docId = "01J9ZDOC000000000000000001";
+  let sealer: Sealer | null = null;
+  if (mode === "sealed") {
+    sealer = new Sealer(await encryptedSpace(t, p, { level: "full" }));
+    expect((await push(p, [await sealer.createOp(docId, { title: "Golden" })]))[0]!.status).toBe("applied");
+  } else {
+    expect((await push(p, [{ opId: ulid(), kind: "document.create", document: { id: docId, parentDocumentId: null, folderId: null, kind: "document", title: "Golden", icon: null } }]))[0]!.status).toBe("applied");
+  }
+  const open = async (b: WireBlock | null | undefined) => (b && sealer ? await sealer.openBlock(docId, b as never) : (b ?? null));
+  const openResult = async (r: OpResult): Promise<OpResult> => {
+    const out: OpResult = { ...r };
+    if (r.block) out.block = await open(r.block);
+    if (r.conflict) out.conflict = { ...r.conflict, server: await open(r.conflict.server), client: await open(r.conflict.client) };
+    return out;
+  };
+  /** One batch through the adapter: seal (or refuse invalid blocks on the device), push, open the results. */
+  const send = async (queued: SyncOp[], deviceId: string): Promise<OpResult[]> => {
+    // As the engine sends them (engine.ts wireOp): without the reducer's own bookkeeping.
+    const ops = queued.map((op) => {
+      const { sent: _s, ...rest } = op as SyncOp & { blockedBy?: string };
+      void _s;
+      if ("blockedBy" in rest) delete (rest as { blockedBy?: string }).blockedBy;
+      return rest as SyncOp;
+    });
+    if (!sealer) return (await push(p, ops, deviceId)) as OpResult[];
+    const local = new Map<string, OpResult>();
+    const sendable: SyncOp[] = [];
+    for (const op of ops) {
+      if (op.kind === "block.upsert") {
+        const { revision: _r, ...block } = op.block;
+        void _r;
+        const issues = validateWireBlock(block);
+        if (issues.length) {
+          local.set(op.opId, { opId: op.opId, status: "rejected", error: { code: "invalid_block", message: `${issues[0]!.path}: ${issues[0]!.message}` }, block: null });
+          continue;
+        }
+        sendable.push({ ...op, block: await sealer.sealBlock(docId, op.block) });
+      } else sendable.push(op);
+    }
+    const results = sendable.length ? ((await push(p, sendable, deviceId)) as OpResult[]) : [];
+    const byId = new Map(results.map((r) => [r.opId, r]));
+    const out: OpResult[] = [];
+    for (const op of ops) out.push(local.get(op.opId) ?? (await openResult(byId.get(op.opId)!)));
+    return out;
+  };
+  const serverRevision = async (blockId: string) =>
+    await t.run(async (ctx) => (await ctx.db.query("blocks").withIndex("by_block_id", (q) => q.eq("blockId", blockId)).unique())?.revision ?? null);
+  let state = sync.emptySyncState();
+  let results: OpResult[] | null = null;
+  for (const step of scenario.steps) {
+    const input = step.input as never;
+    switch (step.action) {
+      case "takeBatch":
+        state = sync.takeBatch(state);
+        results = state.inflight.length ? await send(state.inflight, "device-golden-1") : null;
+        break;
+      case "applyResults":
+        if (results) state = sync.applyResults(state, results);
+        results = null;
+        break;
+      case "batchFailed":
+        // The batch reached the server or not: either way the client resends it later (replayed by op id).
+        state = sync.batchFailed(state, input);
+        results = null;
+        break;
+      case "remoteUpdate": {
+        const row = step.input as { documentId: string; block: WireBlock; deleted: boolean };
+        const { revision: _r, ...block } = row.block;
+        void _r;
+        const base = await serverRevision(block.id);
+        const [r] = await send([{ opId: ulid(), kind: "block.upsert", documentId: docId, block, baseRevision: base, fields: ["content", "position"] }], "device-golden-2");
+        const fresh = r!.block ?? null;
+        if (fresh) state = sync.remoteUpdate(state, { documentId: docId, block: fresh, deleted: Boolean(r!.deleted) });
+        break;
+      }
+      case "expect":
+        break;
+      default:
+        state = (sync as unknown as Record<string, (s: SyncState, i: unknown) => SyncState>)[step.action]!(state, input);
+    }
+  }
+  return state;
+}
+
+describe("golden sync scenarios over sealed blocks", () => {
+  golden.scenarios.forEach((scenario, n) => {
+    test(`${scenario.name}: the sealed run ends exactly as the plain one`, async () => {
+      const plain = await driveScenario(scenario, "plain", n);
+      const sealed = await driveScenario(scenario, "sealed", n);
+      // The run did something (blocks synced, or the server's refusal recorded).
+      expect(Object.keys(plain.blocks).length + plain.errors.length).toBeGreaterThan(0);
+      expect(canonicalJson(sealed)).toBe(canonicalJson(plain));
+    });
   });
 });
 

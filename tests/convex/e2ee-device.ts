@@ -136,9 +136,9 @@ export async function sealFile(t: T, p: Who, sealer: Sealer, fileId: string) {
     const f = await ctx.db.query("files").withIndex("by_public_id", (x) => x.eq("publicId", fileId)).unique();
     const doc = await ctx.db.get(f!.documentId as Id<"documents">);
     const blob = await ctx.storage.get(f!.storageId);
-    return { documentId: doc!.publicId, plain: new Uint8Array(await blob!.arrayBuffer()), kind: f!.kind };
+    return { documentId: doc!.publicId, plain: await blob!.arrayBuffer(), kind: f!.kind };
   });
-  const sealed = await sealer.sealFileBytes(documentId, fileId, plain, { name: "file.bin", mime: "application/octet-stream" });
+  const sealed = await sealer.sealFileBytes(documentId, fileId, new Uint8Array(plain), { name: "file.bin", mime: "application/octet-stream" });
   const { intentId } = (await m(p)(api.e2ee.files.generateUploadUrl, { documentId, kind: "file", declaredSize: sealed.bytes.byteLength })) as { intentId: string };
   const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([sealed.bytes])));
   await a(p)(api.e2ee.files.replaceBlob, { intentId, fileId, storageId, size: sealed.bytes.byteLength, sha256: sealed.sha256, sealed: sealed.row });

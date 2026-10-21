@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
+import { rankSequence } from "@folevi/editor-schema";
 import { para, person, PERSONAL, setup, teamWorkspace, ulid, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
@@ -356,5 +357,32 @@ describe("notifications", () => {
     const atLater = (await friend.as.query(api.notifications.list, { now: later })).find((n) => n.id === item.id)!;
     expect(atLater.pageInviteId).toBeNull();
     expect(atLater.pageInviteExpiresAt).toBeNull();
+  });
+});
+
+describe("end-to-end encryption costs a Standard space nothing visible", () => {
+  test("a Standard batch writes no encryption rows and returns exactly the plain shapes", async () => {
+    const t = setup();
+    const a = await person(t, "e2ee-standard-perf@example.com");
+    const docId = await newDoc(a);
+    const ranks = rankSequence(40);
+    const ops = ranks.map((rank, i) => upsertOp(docId, para(ulid(), `line ${i}`, rank)));
+    const results = await push(a, PERSONAL, ops);
+    expect(results.every((r) => r.status === "applied")).toBe(true);
+    for (const r of results) expect(Object.keys(r.block!).sort()).toEqual(["id", "parentId", "props", "rank", "revision", "schemaVersion", "text", "type"]);
+    const got = await a.as.query(api.documents.get, { documentId: docId });
+    for (const key of ["sealed", "locked", "lockedVia", "fileIds"]) expect(got!.document).not.toHaveProperty(key);
+    const rows = await t.run(async (ctx) => ({
+      spaces: await ctx.db.query("e2eeSpaces").collect(),
+      keys: await ctx.db.query("e2eeNoteKeys").collect(),
+      records: await ctx.db.query("e2eeRecords").collect(),
+      sealedBlocks: (await ctx.db.query("blocks").collect()).filter((b) => b.sealed !== undefined),
+    }));
+    expect(rows).toEqual({ spaces: [], keys: [], records: [], sealedBlocks: [] });
+    // Derived data is as always: a big batch refreshes the search text a moment later (refreshDerivedLater).
+    const doc = await t.run(async (ctx) => await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", docId)).unique());
+    await t.mutation(internal.documents.refreshDerivedLater, { documentId: doc!._id });
+    const fresh = await t.run(async (ctx) => await ctx.db.get(doc!._id));
+    expect(fresh!.searchText).toContain("line 0");
   });
 });

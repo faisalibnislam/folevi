@@ -382,6 +382,14 @@ export const deleteFolder = mutation({
       .withIndex("by_folder", (q) => q.eq("folderId", folder._id))
       .collect();
     for (const d of docs) await ctx.db.patch(d._id, { folderId: undefined, seq, revision: d.revision + 1, ...(d.lockedVia !== undefined ? { lockedVia: undefined } : {}) });
+    // Their sub-pages lived in the folder too: a lock they inherited from it goes with it.
+    const queue = docs.filter((d) => d.lockedVia !== undefined).map((d) => d._id);
+    for (let i = 0; i < queue.length && i < 2000; i++) {
+      for (const kid of await ctx.db.query("documents").withIndex("by_parent", (q) => q.eq("parentDocumentId", queue[i]!)).take(200)) {
+        if (kid.lockedVia !== undefined) await ctx.db.patch(kid._id, { lockedVia: undefined });
+        queue.push(kid._id);
+      }
+    }
     await ctx.db.patch(folder._id, { deletedAt: Date.now(), seq });
     // A locked folder that goes: its notes stay sealed (Drafts), its subfolders' notes follow their new place.
     if (folder.locked) {

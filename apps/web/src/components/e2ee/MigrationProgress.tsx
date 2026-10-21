@@ -103,9 +103,9 @@ export function SidebarMigrationLine({ scope, href }: { scope: WireScope; href: 
       href={href}
       className="mb-1.5 flex flex-col gap-1 rounded-chip px-2.5 py-1.5 text-[12px] text-muted outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:min-h-11"
     >
-      <span className="flex items-center gap-1.5">
-        {progress.paused ? <Pause size={12} aria-hidden className="flex-none" /> : <LockKeyhole size={12} aria-hidden className="flex-none" />}
-        <span className="truncate">{progress.paused ? copy.migration.paused : line}</span>
+      <span className="flex items-start gap-1.5 leading-snug">
+        {progress.paused ? <Pause size={12} aria-hidden className="mt-0.5 flex-none" /> : <LockKeyhole size={12} aria-hidden className="mt-0.5 flex-none" />}
+        <span className="min-w-0">{progress.paused ? copy.migration.paused : line}</span>
       </span>
       <span aria-hidden className="h-1 overflow-hidden rounded-tiny bg-[color-mix(in_oklab,var(--color-ink)_10%,transparent)]">
         <span className="block h-full rounded-tiny bg-heading" style={{ width: `${Math.max(fraction * 100, 3)}%` }} />

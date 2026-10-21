@@ -27,7 +27,8 @@ export function WhatEachChoiceMeans({ open, onClose }: { open: boolean; onClose:
   const m = copy.meaning;
   return (
     <Dialog open={open} onClose={onClose} title={m.title} size="lg" footer={<Button onClick={onClose}>{m.close}</Button>}>
-      <div className="space-y-6 text-sm">
+      {/* Focusable, so the dialog's scrolling body can be scrolled from the keyboard. */}
+      <div tabIndex={0} role="group" aria-label={m.title} className="space-y-6 rounded-chip text-sm outline-none focus-visible:ring-2 focus-visible:ring-focus">
         {/* Wide screens: one table. Phones: each row as its own short list. */}
         <table className="hidden w-full border-separate border-spacing-0 text-left sm:table">
           <thead>

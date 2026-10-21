@@ -73,7 +73,7 @@ export function PrivacyPanel({ scope, workspaceName = null, canChange = true }: 
                   <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-heading">
                     <span className="text-muted">{LEVEL_ICON[level]}</span>
                     {p.levels[level].title}
-                    {level === current ? <span className="ui-chip h-5 bg-[var(--glass-hover)] px-1.5 text-[11px] font-medium text-muted">{p.current}</span> : null}
+                    {level === current ? <span className="ui-chip h-5 bg-[color-mix(in_oklab,var(--color-ink)_10%,transparent)] px-1.5 text-[11px] font-medium text-ink">{p.current}</span> : null}
                   </span>
                   <span className="mt-1 block text-[13px] leading-snug text-muted">{p.levels[level].body}</span>
                 </span>
@@ -173,8 +173,13 @@ function SwitchesCard({ scope, switches, canChange }: { scope: WireScope; switch
                 {s[key].body}
               </p>
             </div>
-            {/* The switch sits in a 44 pt box on touch screens. */}
-            <span className="-m-2.5 grid flex-none place-items-center p-2.5 pointer-coarse:min-h-11 pointer-coarse:min-w-11">
+            {/* On touch screens the 44 pt box around the switch toggles it too (the switch is the control). */}
+            <span
+              className="mt-0.5 grid flex-none place-items-end pointer-coarse:-my-2.5 pointer-coarse:min-h-11 pointer-coarse:min-w-14 pointer-coarse:place-items-center"
+              onClick={(e) => {
+                if (e.target === e.currentTarget && canChange) save({ ...switches, [key]: !switches[key] }, s[key].label, switches[key]);
+              }}
+            >
               <Switch checked={switches[key]} disabled={!canChange} label={s[key].label} describedBy={`${uid}-${key}`} onChange={(on) => save({ ...switches, [key]: on }, s[key].label, !on)} />
             </span>
           </div>

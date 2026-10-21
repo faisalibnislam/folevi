@@ -210,7 +210,8 @@ export class FakeKeysServer {
         self.notify();
         return r;
       };
-    const watch = <T>(read: () => T, cb: (v: T) => void) => {
+    const watch = <T>(name: string, read: () => T, cb: (v: T) => void) => {
+      self.calls.push(`watch.${name}`);
       const run = () => cb(structuredClone(read()));
       self.watchers.add(run);
       queueMicrotask(run);
@@ -509,14 +510,14 @@ export class FakeKeysServer {
         const rows = self.noteKeys.filter((n) => n.scopeKey === key && n.seq > a.cursor && n.wrappedBy === "space");
         return { noteKeys: rows.map((n) => ({ documentId: n.documentId, version: n.version, wrappedBy: n.wrappedBy, spaceVersion: n.spaceVersion ?? null, wrapped: n.wrapped })), nextCursor: Math.max(a.cursor, ...rows.map((r) => r.seq)), hasMore: false };
       }),
-      watchApprovals: (cb: (rows: unknown[]) => void) => watch(() => (self.tamperApprovals ? self.tamperApprovals(self.approvalRows(me)) : self.approvalRows(me)), cb),
+      watchApprovals: (cb: (rows: unknown[]) => void) => watch("approvals", () => (self.tamperApprovals ? self.tamperApprovals(self.approvalRows(me)) : self.approvalRows(me)), cb),
       watchApproval: (requestId: string, cb: (row: unknown) => void) =>
-        watch(() => {
+        watch("approval", () => {
           const r = self.approvalRow(me, requestId);
           return r && self.tamperApproval ? self.tamperApproval(r) : r;
         }, cb),
-      watchWraps: (cb: (rows: unknown[]) => void) => watch(listWraps, cb),
-      watchStatus: (cb: (s: unknown) => void) => watch(status, cb),
+      watchWraps: (cb: (rows: unknown[]) => void) => watch("wraps", listWraps, cb),
+      watchStatus: (cb: (s: unknown) => void) => watch("status", status, cb),
     };
     return server as unknown as KeysServer;
   }

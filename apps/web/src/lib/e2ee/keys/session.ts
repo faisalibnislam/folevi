@@ -172,14 +172,8 @@ export class KeySessionImpl implements KeySession {
     if (gen !== this.generation) return;
     if (status) this.applyStatus(status);
     else this.set(this.expected ? "locked" : "none");
+    // A Standard account watches only its status (one small query), to notice encryption set up elsewhere.
     this.offs.push(binding.server.watchStatus((s) => gen === this.generation && this.applyStatus(s)));
-    this.offs.push(
-      binding.server.watchWraps((rows) => {
-        if (gen !== this.generation) return;
-        this.methods = methodsOf(rows, this.device?.deviceId ?? "", !!this.mac());
-        this.emitter.emit();
-      }),
-    );
     if (this.st === "locked") await this.unlockWithDevice().catch(() => false);
   }
 
@@ -196,6 +190,23 @@ export class KeySessionImpl implements KeySession {
     this.set("none");
   }
 
+  private wrapsOff: (() => void) | null = null;
+  /** The ways to unlock, live, once the account has keys. */
+  private watchWraps(): void {
+    const b = this.binding;
+    if (!b || this.wrapsOff) return;
+    const gen = this.generation;
+    this.wrapsOff = b.server.watchWraps((rows) => {
+      if (gen !== this.generation) return;
+      this.methods = methodsOf(rows, this.device?.deviceId ?? "", !!this.mac());
+      this.emitter.emit();
+    });
+    this.offs.push(() => {
+      this.wrapsOff?.();
+      this.wrapsOff = null;
+    });
+  }
+
   private applyStatus(s: AccountStatus): void {
     const before = this.status;
     this.status = s;
@@ -206,6 +217,7 @@ export class KeySessionImpl implements KeySession {
       return;
     }
     if (this.st === "none") this.set("locked");
+    this.watchWraps();
     // The account key changed on another device (rotated or reset): what this tab holds is the old one.
     if (this.st === "unlocked" && before?.setUp && before.epoch !== s.epoch) {
       this.clearKeys();
@@ -433,6 +445,7 @@ export class KeySessionImpl implements KeySession {
     const s = await b.server.keys.status({});
     this.status = s;
     if (this.st === "none" && s.setUp) this.set("locked");
+    if (s.setUp) this.watchWraps();
     this.expected = expectedOf(s) ?? this.expected;
     return s;
   }

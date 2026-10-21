@@ -61,7 +61,8 @@ describe("standard accounts", () => {
     const fake = new FakeKeysServer();
     const s = await signIn(fake, "p1");
     expect(s.state()).toBe("none");
-    expect(fake.calls).toEqual(["keys.status"]);
+    // One status query and its subscription; nothing else (no wraps, devices, approvals or spaces).
+    expect(fake.calls).toEqual(["keys.status", "watch.status"]);
     expect(await s.unlockWithDevice()).toBe(false);
     expect(() => s.accountKeys()).toThrow(KeysError);
   });

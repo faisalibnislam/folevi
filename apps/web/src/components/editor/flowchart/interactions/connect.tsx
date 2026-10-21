@@ -10,10 +10,11 @@
 //   (ctrl.dropInEmptyRef, interactions/quickAdd.tsx), or adds a connected shape there; with ⌥ it is left
 //   with a free end. A selected connector's ends can be dragged to another shape, side or point, or off
 //   into empty space to float free (⌥ never snaps). Each finished drag is one undo step.
-import { useState } from "react";
-import { OPPOSITE, flowId, newEdge, portPoint, type FlowEdge, type FlowNode, type FlowShape, type FlowSide } from "../schema";
+import { useMemo, useState } from "react";
+import { OPPOSITE, flowId, newEdge, type FlowEdge, type FlowNode, type FlowShape, type FlowSide } from "../schema";
 import { addNode, connect } from "../ops";
 import { SIDES, connectionPoint, endNode, newConnector, patchEdges, setEnd, snapEnd, type End, type EndTarget } from "../connectors";
+import { connectionHandles, containerGrabRects } from "../building";
 import { haptic } from "@/lib/nativeApp";
 import type { FlowController, Interaction } from "../controller/types";
 
@@ -184,21 +185,18 @@ export function useConnect(ctrl: FlowController, { hover }: { hover: string | nu
   const portNode: FlowNode | null = drawing ? null : (hovered ?? single);
   const dragging = isDragging();
   const hitR = (coarse ? 22 : 12) / k;
+  // Frames' and lanes' title bands are pressed to move them: connection points keep off them.
+  const grabs = useMemo(() => containerGrabRects(ctrl.doc), [ctrl.doc]);
   /** Connection points on a shape, and the selected connectors' end handles (drawn above the resize handles). */
   const handlesOverlay = (
     <>
       {portNode && !dragging
-        ? SIDES.map((side) => {
-            const p = portPoint(portNode, side);
-            const off = 14 / k;
-            const o = { top: [0, -off], right: [off, 0], bottom: [0, off], left: [-off, 0] }[side];
-            return (
-              <g key={side} className="fc-port" data-fc-handle="" data-node={portNode.id} data-side={side}>
-                <circle cx={p.x + o[0]!} cy={p.y + o[1]!} r={hitR} className="fc-port-hit" />
-                <circle cx={p.x + o[0]!} cy={p.y + o[1]!} r={4.5 / k} className="fc-port-dot" />
-              </g>
-            );
-          })
+        ? connectionHandles(portNode, 14 / k, hitR, grabs).map(({ side, at: p }) => (
+            <g key={side} className="fc-port" data-fc-handle="" data-node={portNode.id} data-side={side}>
+              <circle cx={p.x} cy={p.y} r={hitR} className="fc-port-hit" />
+              <circle cx={p.x} cy={p.y} r={4.5 / k} className="fc-port-dot" />
+            </g>
+          ))
         : null}
       {!editing && !drawing
         ? selEdges.slice(0, 24).flatMap((edge) => {

@@ -14,6 +14,7 @@ import {
   FLOWCHART_POOL_TITLE,
   laneBoxes,
   poolRect,
+  portPoint,
   type FlowchartData,
   type Rect,
   type FlowNode,
@@ -164,4 +165,21 @@ export function circleHitsRect(c: Pt, r: number, rect: Rect): boolean {
   const dx = c.x - Math.max(rect.x, Math.min(c.x, rect.x + rect.w));
   const dy = c.y - Math.max(rect.y, Math.min(c.y, rect.y + rect.h));
   return dx * dx + dy * dy < r * r;
+}
+
+/**
+ * Where a shape's connection points sit (interactions/connect.tsx): just outside the middle of each side,
+ * `off` away. A point whose touch area (`hitR`) would cover a frame's or lane's title band (`grabs`, from
+ * containerGrabRects) stays hidden, as the + arrows do, so pressing the band always moves the container.
+ */
+export function connectionHandles(n: FlowNode, off: number, hitR: number, grabs: readonly Rect[], sides: readonly FlowSide[] = ["top", "right", "bottom", "left"]): { side: FlowSide; at: Pt }[] {
+  const out: { side: FlowSide; at: Pt }[] = [];
+  for (const side of sides) {
+    const p = portPoint(n, side);
+    const d = { top: [0, -off], right: [off, 0], bottom: [0, off], left: [-off, 0] }[side];
+    const at = { x: p.x + d[0]!, y: p.y + d[1]! };
+    if (grabs.some((g) => circleHitsRect(at, hitR, g))) continue;
+    out.push({ side, at });
+  }
+  return out;
 }

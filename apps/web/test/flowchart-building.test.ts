@@ -7,7 +7,7 @@ import { flowchart, newEdge, rectsOverlap, type FlowchartData, type FlowNode } f
 
 const building = await import("@/components/editor/flowchart/building");
 const picker = await import("@/components/editor/flowchart/chrome/ShapePicker");
-const { addConnectedAt, circleHitsRect, containerGrabRects, flowSide, neighbourInDirection, nextShapeKind, quickAdd, quickBranch } = building;
+const { addConnectedAt, circleHitsRect, connectionHandles, containerGrabRects, flowSide, neighbourInDirection, nextShapeKind, quickAdd, quickBranch } = building;
 
 const node = (id: string, x = 0, y = 0, extra: Partial<FlowNode> = {}): FlowNode => ({ id, shape: "process", x, y, w: 160, h: 64, text: id, color: "neutral", ...extra });
 const chart = (nodes: FlowNode[], edges: [string, string][] = []): FlowchartData => flowchart({ nodes, edges: edges.map(([from, to], i) => newEdge(from, to, { id: `e${i}`, fromSide: "bottom", toSide: "top" })) });
@@ -159,6 +159,27 @@ describe("frames and swimlanes", () => {
     // The selected shape's top arrow, 40 above it, lands on the frame's title band.
     expect(rects.some((r) => circleHitsRect({ x: 120, y: 20 }, 14, r))).toBe(true);
     expect(rects.some((r) => circleHitsRect({ x: 120, y: 200 }, 14, r))).toBe(false);
+  });
+
+  test("connection points that would cover a frame's or lane's title band stay hidden", () => {
+    const fc = flowchart({
+      nodes: [node("a", 40, 44, { parent: "f" }), node("b", 40, 160, { parent: "f" }), node("c", 60, 460)],
+      edges: [],
+      frames: [{ id: "f", x: 0, y: 0, w: 400, h: 300, title: "Sign up", color: "neutral" }],
+      pools: [{ id: "p", x: 0, y: 400, orient: "rows", title: "Team", length: 600, lanes: [{ id: "l1", title: "Sales", size: 160, color: "neutral" }] }],
+    });
+    const grabs = containerGrabRects(fc);
+    const sides = (id: string) => connectionHandles(byId(fc, id), 14, 12, grabs).map((h) => h.side);
+    // Just under the frame's title: the top point would sit on the band.
+    expect(sides("a")).toEqual(["right", "bottom", "left"]);
+    // Clear of the band: all four.
+    expect(sides("b")).toEqual(["top", "right", "bottom", "left"]);
+    // Next to the lane's header: the left point would sit on it.
+    expect(sides("c")).not.toContain("left");
+    // Each point sits just outside the middle of its side.
+    expect(connectionHandles(byId(fc, "b"), 14, 12, grabs)[0]).toEqual({ side: "top", at: { x: 120, y: 146 } });
+    // With nothing to keep off, every side has one.
+    expect(connectionHandles(byId(fc, "a"), 14, 12, [])).toHaveLength(4);
   });
 });
 

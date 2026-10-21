@@ -926,6 +926,33 @@ export const finishPhase = mutation({ args: { migrationId, phase } });
 **`convex/e2ee/mirrors.ts`, `inbox.ts`, `reminders.ts`, `links.ts` (WP5)**: see §7 and §9 for their
 functions.
 
+**Settled while building WP2.**
+
+- Scope strings. `e2eeSpaces.scopeKey` and the other `scopeKey` columns hold `lib/scope.ts` `scopeKey(scope)`
+  (`p:<profile _id>` or `w:<workspace _id>`), the same key `scopeCounters` uses, so guards need no extra read.
+  The scope inside AAD contexts and statements (§4.5) is `e2eeScopeId(ctx, scope)` from `lib/e2ee/state.ts`:
+  `personal:<profile id>` or `workspace:<workspace public id>`. Profiles have no separate public id; their id
+  is what clients already see (members lists, mentions). `spaces.get` and `spaces.mine` return it as `scopeId`.
+- `keys.addWrap` (and the wraps of `rotateAccount` / `resetAccount`) accept an optional client-chosen `wrapId`
+  (a ULID), because the recovery and passphrase contexts contain the wrap id and the device seals before the
+  server answers. Passphrase wraps must declare at least m 65536, t 3, p 1 and a 16-byte salt.
+- `keys.rotateAccount` takes `regrants: { scope, grant }[]` and optional `deviceStatements` (each trusted
+  device's statement signed again by the new account key). `keys.sweep` (daily) deletes wraps and the public
+  keys of epochs superseded more than 30 days ago (index `e2eeAccounts.by_status_superseded`).
+- The server checks that a statement's body names the row it is stored with (person, device, keys, scope,
+  version, granter) but does not verify signatures; devices do (§4.8, §8.6).
+- `e2eeNoteKeys` has an optional `statement` (the `note-grant` statement of a grant-wrapped key). Every new
+  scoped table also has `by_workspace` / `by_owner` (or `_seq`) indexes for `scopedRows`.
+- `devices.completeApproval` also stores the sealed AMK on the approval row, which `devices.approval` returns
+  once done (a public session gets no stored wrap). `createAccount` from a public session stores no wrap.
+- The `e2ee` feature flag is in `lib/flags.ts` (default off). Error codes are thrown with `failE2ee` from
+  `lib/e2ee/state.ts` (`lib/errors.ts` is unchanged). `isE2eeActive` also counts a space being decrypted
+  (`state: "disabling"`).
+- `spaces.setSwitches` and `spaces.enable` schedule `e2ee/mirrors:purge` with `{ scope: vScope, purpose }`.
+  `spaces.enable`, `lower` and `rotate` create the `e2eeMigrations` row through `startSpaceMigration` in
+  `lib/e2ee/keyStore.ts` (a space-wide job, `total` from the scope's note count); WP3's `migrate` claims it.
+- `grants.ts` exports `addPagePending(ctx, doc, profileId)` for the sharing hooks (§8.4).
+
 ### 5.4 The sync engine branch (`convex/lib/syncEngine.ts`, WP3)
 
 In `SyncEngine`, a document is sealed when `doc.sealedAt !== undefined` or the space's `level !== "standard"`

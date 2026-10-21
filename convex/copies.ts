@@ -13,6 +13,7 @@
 //
 // Moving between places isn't offered: a copy leaves the original where it was.
 import { v } from "convex/values";
+import { failE2ee, requirePlainWriteInScope } from "./lib/e2ee/state";
 import { mutation, type MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { LIMITS, SCHEMA_VERSION, evaluateCollectionFormulas, ulid, type InlineNode, type WireBlock } from "@folevi/editor-schema";
@@ -228,8 +229,12 @@ export const copyTo = mutation({
       folderId = folder._id;
     }
 
+    // A copy from or into an encrypted note or space is made on the device (docs/E2EE_DESIGN.md §6.7).
+    if (root.sealedAt !== undefined) failE2ee("e2ee_device_only");
+    await requirePlainWriteInScope(ctx, scope);
     const reader = await PageReader.forScope(ctx, profile, scopeOfRow(root));
     const pages = await pagesToCopy(ctx, reader, root, args.includeSubpages ?? true);
+    if (pages.some((p) => p.sealedAt !== undefined)) failE2ee("e2ee_device_only");
     // Every copied page gets its id up front, so links between them can point at the copies.
     const ids = new Map(pages.map((p) => [p.publicId, ulid()] as const));
     const copies = new Map<Id<"documents">, Doc<"documents">>();

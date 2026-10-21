@@ -23,6 +23,7 @@ import { aiPrefsOf } from "./lib/ai/prefs";
 import { capabilities } from "./lib/ai/provider";
 import { attachmentTokens } from "./lib/ai/attachments";
 import { gemini, metered } from "./ai";
+import { failE2ee } from "./lib/e2ee/state";
 
 const vSource = v.union(v.literal("pdf"), v.literal("image"), v.literal("handwriting"));
 const BLOCK_ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -85,6 +86,8 @@ export const forDocument = query({
     const profile = await requireProfile(ctx);
     const { doc, access } = await requireDocument(ctx, profile, args.documentId, "read");
     if (!accessAtLeast(access, "write")) return [];
+    // A sealed note's found text is a sealed record on the device (docs/E2EE_DESIGN.md §5.7).
+    if (doc.sealedAt !== undefined) return [];
     const rows = await ctx.db
       .query("fileTexts")
       .withIndex("by_document_block", (q) => q.eq("documentId", doc._id))
@@ -120,6 +123,8 @@ export const save = mutation({
     await assertWritable(ctx, profile);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
     if (doc.inTrash) fail("not_found", "Document not found.");
+    // Found text of a sealed note is sealed too (e2ee.content.putRecord, kind fileText).
+    if (doc.sealedAt !== undefined) failE2ee("e2ee_required");
     if (!BLOCK_ID.test(args.blockId)) fail("invalid_argument", "Unknown block.");
     if (args.text.length > MAX_FILE_TEXT * 2) fail("invalid_argument", "That's more text than a file can keep.");
     await consume(ctx, "fileText", profile._id);
@@ -166,6 +171,9 @@ export const imageForFoli = internalQuery({
     if (args.auto && !aiPrefsOf(profile).readImages) fail("forbidden", READ_IMAGES_OFF);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
     if (doc.inTrash) fail("not_found", "Document not found.");
+    // The server can't read a sealed note's image: with Foli AI allowed there, the device sends the picture
+    // itself (docs/E2EE_DESIGN.md §7.2, WP5).
+    if (doc.sealedAt !== undefined) failE2ee("e2ee_unavailable", undefined, { feature: "readImage" });
     const file = checkFile(await fileByPublicId(ctx, args.fileId), doc, "image");
     if (!FOLI_IMAGE_TYPES.has(file.mimeType)) fail("unsupported_file", "Foli AI reads PNG, JPEG and WebP images.");
     if (file.size > MAX_FOLI_IMAGE_BYTES) fail("unsupported_file", "That image is too large for Foli AI to read.");
@@ -183,6 +191,7 @@ export const saveFromFoli = internalMutation({
     // The person and their access again: the image or their access may have gone while Foli AI read it.
     const profile = await requireProfile(ctx);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+    if (doc.sealedAt !== undefined) failE2ee("e2ee_required");
     const file = checkFile(await fileByPublicId(ctx, args.fileId), doc, "image");
     await upsert(ctx, doc, { fileId: file._id, blockId: args.blockId, source: "image", by: "foli", text: cleanFileText(args.text), hash: file.sha256, createdBy: profile._id });
     return null;

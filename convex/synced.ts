@@ -3,6 +3,7 @@ import { query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { accessAtLeast, documentAccess, getDocumentByPublicId, requireProfile } from "./lib/auth";
 import { syncedReferences } from "./lib/syncedRefs";
+import { sealedFieldsOf } from "./lib/e2ee/sealedRows";
 
 /**
  * What a synced block (lib/synced.ts) needs to draw itself: whether this person can see its content (and edit
@@ -20,10 +21,13 @@ export const info = query({
     if (!accessAtLeast(access, "read")) return { status: "forbidden" as const };
     const notes = new Map<string, Doc<"documents">>();
     for (const { note } of await syncedReferences(ctx, source)) if (!note.inTrash) notes.set(note._id, note);
-    const open: { id: string; title: string; icon: string | null }[] = [];
+    const open: { id: string; title: string; icon: string | null; sealed?: ReturnType<typeof sealedFieldsOf> }[] = [];
     for (const note of notes.values()) {
       if (open.length >= 50) break;
-      if (accessAtLeast(await documentAccess(ctx, profile, note), "read")) open.push({ id: note.publicId, title: note.title || "Untitled", icon: note.icon ?? null });
+      if (!accessAtLeast(await documentAccess(ctx, profile, note), "read")) continue;
+      // A sealed note's title is opened on the device (docs/E2EE_DESIGN.md §5.7).
+      const sealed = sealedFieldsOf(note);
+      open.push({ id: note.publicId, title: sealed ? "" : note.title || "Untitled", icon: note.icon ?? null, ...(sealed ? { sealed } : {}) });
     }
     return {
       status: "ok" as const,

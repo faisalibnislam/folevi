@@ -36,8 +36,10 @@ export async function syncedReferences(ctx: Ctx, source: Doc<"documents">): Prom
       .query("blocks")
       .withIndex("by_block_id", (q) => q.eq("blockId", link.blockId))
       .unique();
-    if (!row || row.deletedAt !== undefined || row.documentId !== link.sourceDocumentId || row.type !== "synced") continue;
-    if ((row.props as { sourceId?: unknown }).sourceId !== source.publicId) continue;
+    if (!row || row.deletedAt !== undefined || row.documentId !== link.sourceDocumentId) continue;
+    // A sealed synced block names its source in plain `syncedSource` (docs/E2EE_DESIGN.md §4.6).
+    const shows = row.sealed !== undefined ? row.syncedSource === source.publicId : row.type === "synced" && (row.props as { sourceId?: unknown }).sourceId === source.publicId;
+    if (!shows) continue;
     let note = notes.get(row.documentId);
     if (note === undefined) {
       note = await ctx.db.get(row.documentId);

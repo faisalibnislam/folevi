@@ -8,6 +8,8 @@
 // are its changes; the version is what they're compared with, and what "Undo this change" puts those lines
 // back to. Lists stay bounded: the most recently opened notes, and a cap on the lines read per note.
 import { v } from "convex/values";
+import { failE2ee } from "./lib/e2ee/state";
+import { sealedFieldsOf } from "./lib/e2ee/sealedRows";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -96,10 +98,13 @@ export const list = query({
       if (!actors.size) continue;
       // (Checked last: only notes that changed cost the access check.)
       if (!accessAtLeast(await documentAccess(ctx, profile, doc), "read")) continue;
+      const sealed = sealedFieldsOf(doc);
       notes.push({
         id: doc.publicId,
         title: doc.title,
         icon: doc.icon ?? null,
+        // A sealed note: the device opens its title (docs/E2EE_DESIGN.md §5.7).
+        ...(sealed ? { sealed } : {}),
         at,
         since: r.seenAt,
         actors: [...actors.entries()].sort((a, b) => b[1] - a[1]).map(([key]) => key),
@@ -261,6 +266,8 @@ export const undo = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+    // Undoing changes in a sealed note is done on the device, from the opened version (§6.7).
+    if (doc.sealedAt !== undefined) failE2ee("e2ee_device_only");
     const row = await seenRow(ctx, profile._id, doc._id);
     const base = row?.seenVersionId ? await ctx.db.get(row.seenVersionId) : null;
     const before = base && base.documentId === doc._id ? await versionBlocks(ctx, base) : null;

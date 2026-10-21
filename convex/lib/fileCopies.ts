@@ -107,6 +107,8 @@ export class FileCopies {
       .withIndex("by_public_id", (q) => q.eq("publicId", fileId))
       .unique();
     if (!source?.documentId || source.status !== "ready" || !NOTE_FILE_KINDS.has(source.kind)) return null;
+    // A sealed file's bytes are bound to its own id (docs/E2EE_DESIGN.md §4.5): copies of it are made on the device.
+    if (source.sealed) return null;
     if (!(await this.canRead(source.documentId))) return null;
     const publicId = ulid();
     this.copies.set(fileId, { source, publicId });

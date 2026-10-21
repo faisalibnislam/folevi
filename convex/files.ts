@@ -48,6 +48,7 @@ import { FileCopies } from "./lib/fileCopies";
 import { MAX_ATTACHMENT_UPLOAD } from "./lib/ai/attachments";
 import { ATTACHMENTS_OFF } from "./lib/ai/attachmentFiles";
 import { aiPrefsOf } from "./lib/ai/prefs";
+import { failE2ee, requirePlainWrite } from "./lib/e2ee/state";
 
 const INTENT_TTL_MS = 10 * 60_000;
 const vKind = v.union(
@@ -114,6 +115,8 @@ export const generateUploadUrl = mutation({
       scope = (await resolveScope(ctx, profile, args.scope, "edit")).scope;
     } else if (args.documentId) {
       const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+      // A sealed note's files are uploaded sealed (e2ee.files.generateUploadUrl).
+      await requirePlainWrite(ctx, doc);
       scope = scopeOfRow(doc);
       if (scope.kind === "workspace") {
         const owner = await ctx.db.get(scope.workspaceId);
@@ -177,6 +180,9 @@ export const commitFile = internalMutation({
     )
       fail("expired", "Upload expired. Try again.");
     const scope = scopeOfRow(intent);
+    // The note was sealed between the upload URL and now: its files are sealed only (docs/E2EE_DESIGN.md §5.7).
+    const forDoc = intent.documentId ? await ctx.db.get(intent.documentId) : null;
+    if (forDoc?.sealedAt !== undefined) failE2ee("e2ee_required");
     const storageProblem = await assertStorageFor(
       ctx,
       scope,
@@ -373,6 +379,8 @@ export const setPalette = mutation({
       .unique();
     if (!file || file.status !== "ready" || (file.kind !== "cover" && file.kind !== "image"))
       fail("not_found", "File not found.");
+    // A sealed file's palette lives in its sealed details (e2ee.files.updateMeta).
+    if (file.sealed) failE2ee("e2ee_required");
     if (file.documentId) {
       const doc = await ctx.db.get(file.documentId);
       if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "write"))
@@ -444,6 +452,8 @@ export const urls = query({
         width: number | null;
         height: number | null;
         palette: Doc<"files">["palette"] | null;
+        /** A sealed file (docs/E2EE_DESIGN.md §6.8): the bytes behind `url` are ciphertext; the device opens them with this. */
+        sealed?: Doc<"files">["sealed"];
       }
     > = {};
     for (const id of args.fileIds.slice(0, 200)) {
@@ -467,6 +477,7 @@ export const urls = query({
         width: file.width ?? null,
         height: file.height ?? null,
         palette: file.palette ?? null,
+        ...(file.sealed ? { sealed: file.sealed } : {}),
       };
     }
     return out;
@@ -519,6 +530,8 @@ export const shareForPaste = mutation({
         out[id] = id;
         continue;
       }
+      // Into or out of a sealed note: the file key is wrapped for the target note on the device (e2ee.files.rewrap).
+      if (f.sealed || doc.sealedAt !== undefined) failE2ee("e2ee_device_only");
       const source = await ctx.db.get(f.documentId);
       if (!source || !accessAtLeast(await documentAccess(ctx, profile, source), "read")) continue;
       if (!sameScope(scopeOfRow(f), here)) {

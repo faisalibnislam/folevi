@@ -2,13 +2,28 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import type { QueryCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { MAX_FOLDER_DEPTH, canNestFolderIn, folderMoveProblem, isValidId, normalizeForSearch, rankBetween, ulid, type FolderLink } from "@folevi/editor-schema";
 import { assertWritable, documentAccessInfo, PageReader, requireDocument, requireProfile, requireRowScope, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { nextSeq } from "./lib/seq";
 import { inScope, insertScoped, sameScopeRows, scopeOfRow, vScopeArg, type Scope } from "./lib/scope";
 import { isFolderColor, randomFolderColor } from "./lib/folderColors";
+import { failE2ee, requirePlainWriteInScope, spaceE2ee } from "./lib/e2ee/state";
+import { lockOfFolder, sealedFieldsOf } from "./lib/e2ee/sealedRows";
+import { applyDocumentTags, relockFolder } from "./e2ee/content";
+
+/** A sealed folder's or tag's sealed name next to its placeholder; nothing for a Standard one (docs/E2EE_DESIGN.md §5.2). */
+const sealedName = (row: { sealedName?: { c: ArrayBuffer; k: number }; locked?: boolean }) => ({
+  ...(row.sealedName ? { sealedName: row.sealedName } : {}),
+  ...(row.locked ? { locked: true as const } : {}),
+});
+
+/** A sealed name can only change sealed (e2ee.content.renameFolder / updateTag); an old client is told to update. */
+async function requirePlainName(ctx: MutationCtx, row: Doc<"folders"> | Doc<"tags">) {
+  if (row.sealedName) failE2ee("e2ee_required");
+  await requirePlainWriteInScope(ctx, scopeOfRow(row));
+}
 
 const TAG_COLORS = ["accent", "moss", "marigold", "plum", "coral", "muted"];
 
@@ -64,8 +79,9 @@ export const sidebar = query({
           color: f.color ?? null,
           parentFolderId: f.parentFolderId ? (idToPublic.get(f.parentFolderId) ?? null) : null,
           rank: f.rank,
+          ...sealedName(f),
         })),
-      tags: tags.sort((a, b) => a.name.localeCompare(b.name)).map((t) => ({ id: t.publicId, name: t.name, color: t.color })),
+      tags: tags.sort((a, b) => a.name.localeCompare(b.name)).map((t) => ({ id: t.publicId, name: t.name, color: t.color, ...sealedName(t) })),
     };
   },
 });
@@ -90,6 +106,7 @@ async function folderRow(ctx: QueryCtx, reader: PageReader, f: Doc<"folders">, i
     color: f.color ?? null,
     parentFolderId: f.parentFolderId ? (idToPublic.get(f.parentFolderId) ?? null) : null,
     rank: f.rank,
+    ...sealedName(f),
     createdAt: f.createdAt,
     updatedAt: Math.max(f.updatedAt, ...docs.map((d) => d.updatedAt)),
     documentCount: docs.length,
@@ -98,7 +115,10 @@ async function folderRow(ctx: QueryCtx, reader: PageReader, f: Doc<"folders">, i
     previews: [...docs]
       .sort((a, b) => b.updatedAt - a.updatedAt || a._creationTime - b._creationTime)
       .slice(0, 3)
-      .map((d) => ({ cover: d.cover, title: d.title, excerpt: d.excerpt.slice(0, 280) })),
+      .map((d) => {
+        const sealed = sealedFieldsOf(d);
+        return { cover: d.cover, title: d.title, excerpt: d.excerpt.slice(0, 280), ...(sealed ? { sealed } : {}) };
+      }),
   };
 }
 
@@ -135,7 +155,7 @@ export const index = query({
           documentCount = 0;
           for (const l of links) if (await reader.canOpenId(l.documentId)) documentCount++;
         }
-        tagRows.push({ id: t.publicId, name: t.name, color: t.color, createdAt: t.createdAt, documentCount });
+        tagRows.push({ id: t.publicId, name: t.name, color: t.color, createdAt: t.createdAt, documentCount, ...sealedName(t) });
       }
     }
     return { folders: folderRows, tags: tagRows };
@@ -172,7 +192,7 @@ export const recentFolders = query({
     const rows = [];
     for (const f of recent) {
       const parent = f.parentFolderId ? byId.get(f.parentFolderId) : undefined;
-      rows.push({ ...(await folderRow(ctx, reader, f, idToPublic)), parentName: parent?.name ?? null });
+      rows.push({ ...(await folderRow(ctx, reader, f, idToPublic)), parentName: parent?.name ?? null, ...(parent?.sealedName ? { parentSealedName: parent.sealedName } : {}) });
     }
     return { total: folders.length, folders: rows };
   },
@@ -188,6 +208,8 @@ export const createFolder = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
+    // An encrypted space's folder names are sealed (e2ee.content.createFolder).
+    await requirePlainWriteInScope(ctx, scope);
     if (args.id !== undefined) {
       if (!isValidId(args.id)) fail("invalid_argument", "Invalid folder id.");
       const existing = await ctx.db
@@ -247,6 +269,7 @@ export const renameFolder = mutation({
   handler: async (ctx, args) => {
     const { profile, folder } = await folderFor(ctx, args.folderId);
     await assertWritable(ctx, profile);
+    await requirePlainName(ctx, folder);
     await ctx.db.patch(folder._id, {
       name: cleanName(args.name),
       icon: args.icon === undefined ? folder.icon : args.icon.slice(0, 16),
@@ -321,7 +344,17 @@ export const moveFolder = mutation({
       const next = siblings[idx + 1]?.rank ?? null;
       rank = rankBetween(prev, next);
     }
+    // Locks follow folders (docs/E2EE_DESIGN.md §5.7): into a locked folder only once every note inside is sealed.
+    const space = await spaceE2ee(ctx, scope);
+    const lockBefore = space ? await lockOfFolder(ctx, folder._id) : undefined;
     await ctx.db.patch(folder._id, { parentFolderId, rank, updatedAt: Date.now(), seq: await nextSeq(ctx, scope) });
+    if (space) {
+      const lockAfter = await lockOfFolder(ctx, folder._id);
+      if (lockAfter !== lockBefore) {
+        const docs = await relockFolder(ctx, (await ctx.db.get(folder._id))!);
+        if (lockAfter !== undefined && docs.some((d) => d.sealedAt === undefined)) failE2ee("e2ee_required", "Encrypt the notes in this folder before moving it into an always encrypted folder.");
+      }
+    }
     return null;
   },
 });
@@ -348,8 +381,14 @@ export const deleteFolder = mutation({
       .query("documents")
       .withIndex("by_folder", (q) => q.eq("folderId", folder._id))
       .collect();
-    for (const d of docs) await ctx.db.patch(d._id, { folderId: undefined, seq, revision: d.revision + 1 });
+    for (const d of docs) await ctx.db.patch(d._id, { folderId: undefined, seq, revision: d.revision + 1, ...(d.lockedVia !== undefined ? { lockedVia: undefined } : {}) });
     await ctx.db.patch(folder._id, { deletedAt: Date.now(), seq });
+    // A locked folder that goes: its notes stay sealed (Drafts), its subfolders' notes follow their new place.
+    if (folder.locked) {
+      const space = await spaceE2ee(ctx, scopeOfRow(folder));
+      if (space) await ctx.db.patch(space._id, { lockedCount: Math.max(0, space.lockedCount - 1), seq });
+      for (const c of children) if (!c.deletedAt) await relockFolder(ctx, (await ctx.db.get(c._id))!);
+    }
     return null;
   },
 });
@@ -360,6 +399,8 @@ export const createTag = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
+    // An encrypted space's tag names are sealed (e2ee.content.createTag).
+    await requirePlainWriteInScope(ctx, scope);
     const name = cleanName(args.name.replace(/^#/, ""), 40);
     const normalizedName = normalizeForSearch(name);
     const existing = await tagNamed(ctx, scope, normalizedName);
@@ -393,6 +434,13 @@ export const updateTag = mutation({
   handler: async (ctx, args) => {
     const { profile, tag, scope } = await tagFor(ctx, args.tagId);
     await assertWritable(ctx, profile);
+    if (args.name !== undefined) await requirePlainName(ctx, tag);
+    else if (tag.sealedName) {
+      // Only the colour changes: the sealed name stays as it is.
+      if (args.color !== undefined && !TAG_COLORS.includes(args.color)) fail("invalid_argument", "Unknown tag color.");
+      await ctx.db.patch(tag._id, { color: args.color ?? tag.color, seq: await nextSeq(ctx, scope) });
+      return null;
+    }
     const name = args.name !== undefined ? cleanName(args.name.replace(/^#/, ""), 40) : tag.name;
     const normalizedName = normalizeForSearch(name);
     if (normalizedName !== tag.normalizedName) {
@@ -435,6 +483,11 @@ export const setDocumentTags = mutation({
     // Tags belong to the page's Personal or workspace: guests (who can edit a shared page) don't see them
     // and can't change them.
     if (!(await documentAccessInfo(ctx, profile, doc)).inScope) fail("forbidden", "Only members can tag pages.");
+    // A sealed note's tag links carry the change's seq, so replicas see them (docs/E2EE_DESIGN.md §5.2).
+    if (doc.sealedAt !== undefined) {
+      await applyDocumentTags(ctx, doc, args.tagIds);
+      return null;
+    }
     const wanted = new Map<string, Id<"tags">>();
     for (const id of args.tagIds.slice(0, 20)) {
       const tag = await ctx.db

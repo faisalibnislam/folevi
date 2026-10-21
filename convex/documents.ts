@@ -38,7 +38,7 @@ import { People } from "./lib/authors";
 import { queueIndex } from "./lib/ai/indexing";
 import { emitWebhook } from "./lib/webhooks";
 import { refreshSourcesShownBy } from "./lib/synced";
-import { failE2ee } from "./lib/e2ee/state";
+import { failE2ee, requirePlainWriteInScope } from "./lib/e2ee/state";
 import { bytesToB64u, sealedFieldsOf } from "./lib/e2ee/sealedRows";
 
 /** A sealed note's sealed title and appearance next to the placeholders of a result row; nothing for a Standard note. */
@@ -857,7 +857,9 @@ export async function setTrashState(ctx: MutationCtx, doc: Doc<"documents">, act
       .withIndex("by_document", (q) => q.eq("documentId", d._id))
       .collect();
     for (const t of tasks) await ctx.db.patch(t._id, { documentInTrash: inTrash });
-    // Semantic search drops a trashed note's chunks, and indexes a restored one again.
+    // Semantic search drops a trashed note's chunks, and indexes a restored one again. A sealed note has
+    // neither an index nor webhooks (docs/E2EE_DESIGN.md §5.7).
+    if (d.sealedAt !== undefined) continue;
     await queueIndex(ctx, { ...d, inTrash, deletedAt: stamp });
     if (inTrash) await emitWebhook(ctx, "note.deleted", (await ctx.db.get(d._id))!);
   }
@@ -947,7 +949,9 @@ export const deletePermanently = mutation({
     if (access === "none") fail("not_found", "Document not found.");
     if (!(await canDeletePermanently(ctx, profile, doc, access))) fail("forbidden", "Only the owner or a workspace admin can delete permanently.");
     if (!doc.inTrash) fail("invalid_argument", "Move the document to Trash first.");
-    if (args.confirmTitle.trim() !== (doc.title.trim() || "Untitled")) fail("invalid_argument", "Type the document title to confirm.");
+    // A sealed note's title is checked on the device, which sends "sealed" (docs/E2EE_DESIGN.md §5.7).
+    const expected = doc.sealedAt !== undefined ? "sealed" : doc.title.trim() || "Untitled";
+    if (args.confirmTitle.trim() !== expected) fail("invalid_argument", "Type the document title to confirm.");
     await queueDeletion(ctx, doc, profile._id, "user_request");
     await ctx.scheduler.runAfter(0, internal.maintenance.runDeletionJobs, {});
     return null;
@@ -1232,6 +1236,9 @@ export const duplicate = mutation({
     const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
     // A copy stays in the page's scope, so it needs the right to add pages there (a guest can't).
     const { scope } = await requireRowScope(ctx, profile, doc, "edit", "Document not found.");
+    // Duplicating a sealed note (or into an encrypted space) is composed on the device (§6.7).
+    if (doc.sealedAt !== undefined) failE2ee("e2ee_device_only");
+    await requirePlainWriteInScope(ctx, scope);
     // The copy owns its files, so deleting the original for good leaves its images in place.
     const files = new FileCopies(ctx, profile);
     const blocks = await files.blocks(cloneBlocks((await liveBlocks(ctx, doc._id)).map(toWireBlock)));

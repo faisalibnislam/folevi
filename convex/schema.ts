@@ -33,6 +33,36 @@ import { vReportSource, vResearchStep } from "./lib/ai/research";
 import { vMemoryKind } from "./lib/ai/memory";
 import { vAiFeature } from "./lib/ai/usage";
 import { vReactionKind } from "./lib/reactions";
+import {
+  vAccountKeyStatement,
+  vAiStreamKind,
+  vApprovalStatus,
+  vDeviceKind,
+  vDeviceStatement,
+  vDeviceStatus,
+  vDocumentSealing,
+  vE2eeLevel,
+  vE2eeState,
+  vE2eeSwitches,
+  vInboxKind,
+  vInboxStatus,
+  vKdf,
+  vMigrationDirection,
+  vMigrationPhase,
+  vMigrationScopeOf,
+  vMirrorPurpose,
+  vMirrorTask,
+  vNoteKeyWrappedBy,
+  vPendingGrantReason,
+  vPublicLinkE2ee,
+  vRecordKind,
+  vSealedBlockRow,
+  vSealedField,
+  vSealedFileRow,
+  vSealedTitleField,
+  vSpaceGrantStatement,
+  vWrapKind,
+} from "./lib/e2ee/validators";
 
 /**
  * Where a content row lives: exactly one of these is set (convex/lib/scope.ts).
@@ -222,6 +252,10 @@ export default defineSchema({
     updatedAt: v.number(),
     deletedAt: v.optional(v.number()),
     seq: v.number(),
+    /** End-to-end encryption (docs/E2EE_DESIGN.md §5.2): the sealed name; `name` is then "". */
+    sealedName: v.optional(vSealedField),
+    /** "Always fully encrypted": its notes are sealed whatever the space's level. */
+    locked: v.optional(v.boolean()),
   })
     .index("by_workspace", ["workspaceId"])
     .index("by_owner", ["ownerProfileId"])
@@ -236,17 +270,27 @@ export default defineSchema({
     color: v.string(),
     createdAt: v.number(),
     seq: v.number(),
+    /**
+     * End-to-end encryption (docs/E2EE_DESIGN.md §5.2): the sealed name and its blind uniqueness MAC.
+     * `name` is then "" and `normalizedName` = `nameMac`, so the duplicate check by name keeps working.
+     */
+    sealedName: v.optional(vSealedField),
+    nameMac: v.optional(v.string()),
   })
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_name", ["workspaceId", "normalizedName"])
     .index("by_owner", ["ownerProfileId"])
     .index("by_owner_name", ["ownerProfileId", "normalizedName"])
-    .index("by_public_id", ["publicId"]),
+    .index("by_public_id", ["publicId"])
+    .index("by_workspace_name_mac", ["workspaceId", "nameMac"])
+    .index("by_owner_name_mac", ["ownerProfileId", "nameMac"]),
 
   documentTags: defineTable({
     ...scoped,
     documentId: v.id("documents"),
     tagId: v.id("tags"),
+    /** Stamped by end-to-end encrypted writes so a device's replica sees tag changes (docs/E2EE_DESIGN.md §5.2). */
+    seq: v.optional(v.number()),
   })
     .index("by_document", ["documentId"])
     .index("by_tag", ["tagId"])
@@ -303,6 +347,23 @@ export default defineSchema({
         }),
       ),
     ),
+    /**
+     * End-to-end encryption (docs/E2EE_DESIGN.md §5.2). A sealed note has `sealedAt`; its plaintext columns
+     * then hold placeholders (title "", no icon, cover none, default style, empty derived text, counts 0) and
+     * the real title, appearance and meta are sealed with the note key. Standard notes never have these.
+     */
+    sealedAt: v.optional(v.number()),
+    sealedTitle: v.optional(vSealedTitleField),
+    sealedAppearance: v.optional(vSealedField),
+    sealedMeta: v.optional(vSealedField),
+    /** This note is "Always fully encrypted". */
+    locked: v.optional(v.boolean()),
+    /** Inherited from a locked folder (kept in step by moves). */
+    lockedVia: v.optional(v.id("folders")),
+    /** A device is converting this note (sealing or unsealing) until `until`. */
+    sealing: v.optional(vDocumentSealing),
+    /** Files this sealed note references (public ids), for access checks and clean-up. */
+    fileIds: v.optional(v.array(v.string())),
   })
     .index("by_public_id", ["publicId"])
     .index("by_workspace_updated", ["workspaceId", "updatedAt"])
@@ -443,6 +504,14 @@ export default defineSchema({
     /** The last change came through a connected app ("app") or Foli AI ("ai") acting for `updatedBy` (Changes). */
     updatedVia: v.optional(v.union(v.literal("app"), v.literal("ai"))),
     deletedAt: v.optional(v.number()),
+    /**
+     * End-to-end encryption (docs/E2EE_DESIGN.md §5.2): the sealed content (type "sealed", schemaVersion 0,
+     * empty text and props hold placeholders; props may hold only `{collapsed: true}`), the synced block's
+     * source note (public id; the server checks access) and the people mentioned (profile ids).
+     */
+    sealed: v.optional(vSealedBlockRow),
+    syncedSource: v.optional(v.string()),
+    mentionIds: v.optional(v.array(v.string())),
   })
     .index("by_document", ["documentId"])
     // A page's live blocks (deletedAt unset) without reading its tombstones (lib/documents.ts liveBlocks).
@@ -473,6 +542,9 @@ export default defineSchema({
     name: v.optional(v.string()),
     /** Who changed the page since the version before this one, most changes first (unset on older rows). */
     editors: v.optional(v.array(v.id("profiles"))),
+    /** End-to-end encryption (docs/E2EE_DESIGN.md §5.2): the chunks hold a SealedVersionContent and `title` is "". */
+    sealed: v.optional(v.boolean()),
+    sealedName: v.optional(vSealedField),
   })
     .index("by_document", ["documentId", "createdAt"])
     .index("by_document_name", ["documentId", "name"])
@@ -735,6 +807,13 @@ export default defineSchema({
     status: v.union(v.literal("pending"), v.literal("streaming"), v.literal("done"), v.literal("error"), v.literal("cancelled")),
     createdAt: v.number(),
     updatedAt: v.number(),
+    /**
+     * End-to-end encryption (docs/E2EE_DESIGN.md §5.2, §7.2): "context" holds a request's provided notes
+     * (deep research) and "answer" an answer for an encrypted space; `ephemeral` rows are deleted when the
+     * request finishes. Unset = an ordinary answer stream.
+     */
+    kind: v.optional(vAiStreamKind),
+    ephemeral: v.optional(v.boolean()),
   }).index("by_created", ["createdAt"]),
 
   /**
@@ -1335,6 +1414,8 @@ export default defineSchema({
     createdAt: v.number(),
     editedAt: v.optional(v.number()),
     deletedAt: v.optional(v.number()),
+    /** End-to-end encryption (docs/E2EE_DESIGN.md §5.2): the sealed body; `body` is then []. */
+    sealedBody: v.optional(vSealedField),
   })
     .index("by_thread", ["threadId", "createdAt"])
     .index("by_public_id", ["publicId"])
@@ -1421,6 +1502,12 @@ export default defineSchema({
     createdAt: v.number(),
     revokedAt: v.optional(v.number()),
     viewCount: v.number(),
+    /**
+     * End-to-end encryption (docs/E2EE_DESIGN.md §5.2, §9): an encrypted link carries the note key wrapped
+     * by the link key; `plainCopy` marks a link that serves a plain copy published on purpose.
+     */
+    e2ee: v.optional(vPublicLinkE2ee),
+    plainCopy: v.optional(v.boolean()),
   })
     .index("by_token_hash", ["tokenHash"])
     .index("by_document", ["documentId"])
@@ -1850,6 +1937,8 @@ export default defineSchema({
     createdAt: v.number(),
     readAt: v.optional(v.number()),
     emailedAt: v.optional(v.number()),
+    /** About an end-to-end encrypted note: the title and body are generic, the device fills in the title (§7.7). */
+    sealedDocument: v.optional(v.boolean()),
   })
     .index("by_profile_created", ["profileId", "createdAt"])
     .index("by_profile_unread", ["profileId", "readAt"])
@@ -1907,6 +1996,12 @@ export default defineSchema({
     status: v.union(v.literal("ready"), v.literal("rejected"), v.literal("deleted")),
     createdAt: v.number(),
     deletedAt: v.optional(v.number()),
+    /**
+     * End-to-end encryption (docs/E2EE_DESIGN.md §5.2): the file key wrapped by the note key, the sealed
+     * metadata, the note key version and the plaintext size. Then `filename` is "file", `mimeType`
+     * "application/octet-stream", and `sha256` and `size` describe the ciphertext (what counts toward storage).
+     */
+    sealed: v.optional(vSealedFileRow),
   })
     .index("by_public_id", ["publicId"])
     .index("by_workspace", ["workspaceId", "createdAt"])
@@ -2307,4 +2402,316 @@ export default defineSchema({
     .index("by_document", ["documentId", "updatedAt"])
     .index("by_session", ["sessionKey", "documentId"])
     .index("by_updated", ["updatedAt"]),
+
+  // ---------------------------------------------------------------- end-to-end encryption
+  // docs/E2EE_DESIGN.md §5.1. Rows exist only for people and spaces that set encryption up; Standard
+  // accounts never have any. Keys reach the server only wrapped (sealed boxes or keyed records) or as
+  // public halves; the server never opens them.
+
+  /** Per person: the account's E2EE identity (public keys and check value). One row per profile and epoch. */
+  e2eeAccounts: defineTable({
+    profileId: v.id("profiles"),
+    epoch: v.number(),
+    x25519Pub: v.bytes(),
+    ed25519Pub: v.bytes(),
+    amkCheck: v.bytes(),
+    statement: vAccountKeyStatement,
+    status: v.union(v.literal("active"), v.literal("superseded")),
+    createdAt: v.number(),
+    supersededAt: v.optional(v.number()),
+  }).index("by_profile", ["profileId", "epoch"]),
+
+  /** The account master key, wrapped for each way in (a trusted device, the recovery key, a passkey, the passphrase). */
+  e2eeAccountWraps: defineTable({
+    profileId: v.id("profiles"),
+    epoch: v.number(),
+    publicId: v.string(),
+    kind: vWrapKind,
+    /** kind device. */
+    deviceId: v.optional(v.string()),
+    /** kind passkey (base64url). */
+    credentialId: v.optional(v.string()),
+    /** kind passkey. */
+    prfSalt: v.optional(v.bytes()),
+    /** kind passphrase. */
+    kdf: v.optional(vKdf),
+    /** A sealed box (device) or a keyed record (the others). */
+    wrapped: v.bytes(),
+    /** "iPhone passkey", shown in Settings > Privacy. */
+    label: v.optional(v.string()),
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_profile", ["profileId", "epoch"])
+    .index("by_profile_device", ["profileId", "deviceId"])
+    .index("by_public_id", ["publicId"]),
+
+  /** Devices and browsers that hold (or asked for) the account master key. */
+  e2eeDevices: defineTable({
+    profileId: v.id("profiles"),
+    deviceId: v.string(),
+    kind: vDeviceKind,
+    label: v.string(),
+    platform: v.string(),
+    x25519Pub: v.bytes(),
+    ed25519Pub: v.bytes(),
+    status: vDeviceStatus,
+    statement: v.optional(vDeviceStatement),
+    /** sessionsMirror.sessionKey of the session that registered it, to sign the device out with it. */
+    sessionKey: v.optional(v.string()),
+    createdAt: v.number(),
+    lastSeenAt: v.number(),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("by_profile", ["profileId", "status"])
+    .index("by_profile_device", ["profileId", "deviceId"]),
+
+  /** A new device asking a trusted one for the key (commit, then reveal; docs/E2EE_DESIGN.md §4.8). */
+  e2eeApprovals: defineTable({
+    publicId: v.string(),
+    profileId: v.id("profiles"),
+    deviceId: v.string(),
+    commit: v.bytes(),
+    approverDeviceId: v.optional(v.string()),
+    approverNonce: v.optional(v.bytes()),
+    requesterNonce: v.optional(v.bytes()),
+    wrapped: v.optional(v.bytes()),
+    status: vApprovalStatus,
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index("by_public_id", ["publicId"])
+    .index("by_profile_status", ["profileId", "status"])
+    .index("by_expires", ["expiresAt"]),
+
+  /** Per space: level, state, switches. One row per scope that ever had encryption set up. */
+  e2eeSpaces: defineTable({
+    ...scoped,
+    /** lib/scope.ts scopeKey(scope). */
+    scopeKey: v.string(),
+    level: vE2eeLevel,
+    state: vE2eeState,
+    switches: vE2eeSwitches,
+    currentKeyVersion: v.number(),
+    /** The space's Inbox page when sealed (tasks.ensureInbox can't find it by title). */
+    inboxDocumentId: v.optional(v.id("documents")),
+    /** Folders and notes marked Always fully encrypted (a Standard space with locks is "e2ee-active"). */
+    lockedCount: v.number(),
+    migrationId: v.optional(v.id("e2eeMigrations")),
+    changedBy: v.id("profiles"),
+    changedAt: v.number(),
+    seq: v.number(),
+  })
+    .index("by_scope_key", ["scopeKey"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** One row per space key version: its public inbox key and check value. The newest non-retired is current. */
+  e2eeSpaceKeys: defineTable({
+    ...scoped,
+    scopeKey: v.string(),
+    version: v.number(),
+    inboxPub: v.bytes(),
+    skCheck: v.bytes(),
+    createdBy: v.id("profiles"),
+    createdAt: v.number(),
+    retiredAt: v.optional(v.number()),
+  })
+    .index("by_scope_version", ["scopeKey", "version"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** A space key version sealed to one member's account key, with the granter's signed statement. */
+  e2eeSpaceGrants: defineTable({
+    ...scoped,
+    scopeKey: v.string(),
+    version: v.number(),
+    profileId: v.id("profiles"),
+    /** The grantee's account epoch it was sealed to. */
+    epoch: v.number(),
+    wrapped: v.bytes(),
+    statement: vSpaceGrantStatement,
+    grantedBy: v.id("profiles"),
+    createdAt: v.number(),
+  })
+    .index("by_scope_profile", ["scopeKey", "profileId", "version"])
+    .index("by_profile", ["profileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** Members waiting for a grant (they joined before they had keys, reset their keys, a rotation, a shared page). */
+  e2eePendingGrants: defineTable({
+    ...scoped,
+    scopeKey: v.string(),
+    profileId: v.id("profiles"),
+    reason: vPendingGrantReason,
+    /** reason page: a page shared with someone who has no keys yet. */
+    documentId: v.optional(v.id("documents")),
+    createdAt: v.number(),
+  })
+    .index("by_scope", ["scopeKey"])
+    .index("by_profile", ["profileId"])
+    .index("by_document", ["documentId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** One row per (note, note key version, way it is wrapped): by the space key, to a guest, or for a link. */
+  e2eeNoteKeys: defineTable({
+    ...scoped,
+    documentId: v.id("documents"),
+    version: v.number(),
+    wrappedBy: vNoteKeyWrappedBy,
+    /** wrappedBy space. */
+    spaceVersion: v.optional(v.number()),
+    /** wrappedBy grant. */
+    profileId: v.optional(v.id("profiles")),
+    /** wrappedBy link. */
+    linkId: v.optional(v.id("publicLinks")),
+    wrapped: v.bytes(),
+    createdBy: v.id("profiles"),
+    createdAt: v.number(),
+    seq: v.number(),
+  })
+    .index("by_document", ["documentId", "version"])
+    .index("by_document_grantee", ["documentId", "profileId"])
+    .index("by_link", ["linkId"])
+    .index("by_workspace_seq", ["workspaceId", "seq"])
+    .index("by_owner_seq", ["ownerProfileId", "seq"]),
+
+  /**
+   * Sealed rows the server never interprets: collections on a host note, found text, study schedules, Foli AI
+   * chats and memories, note-level settings. `documentId` is set when the record belongs to a note.
+   */
+  e2eeRecords: defineTable({
+    ...scoped,
+    kind: vRecordKind,
+    recordId: v.string(),
+    documentId: v.optional(v.id("documents")),
+    /** Set for records only one person reads (aiChat, aiMemory, studyReview, prefs). */
+    profileId: v.optional(v.id("profiles")),
+    keyVersion: v.number(),
+    sealed: v.bytes(),
+    size: v.number(),
+    /** Compare-and-set on write. */
+    rev: v.number(),
+    updatedBy: v.id("profiles"),
+    updatedAt: v.number(),
+    deletedAt: v.optional(v.number()),
+    seq: v.number(),
+  })
+    .index("by_scope_kind_record", ["workspaceId", "ownerProfileId", "kind", "recordId"])
+    .index("by_document", ["documentId"])
+    .index("by_workspace_seq", ["workspaceId", "seq"])
+    .index("by_owner_seq", ["ownerProfileId", "seq"]),
+
+  /** Readable copies a feature switch asked for (docs/E2EE_DESIGN.md §7). Deleted when the switch goes off. */
+  e2eeMirrors: defineTable({
+    ...scoped,
+    purpose: vMirrorPurpose,
+    documentId: v.id("documents"),
+    title: v.string(),
+    /** search: searchText plus found text; ai and apps: the note as Markdown. */
+    text: v.string(),
+    folderPath: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    tasks: v.optional(v.array(vMirrorTask)),
+    contentHash: v.string(),
+    updatedAt: v.number(),
+  })
+    .index("by_document_purpose", ["documentId", "purpose"])
+    .index("by_scope_purpose", ["workspaceId", "ownerProfileId", "purpose"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"])
+    .searchIndex("search_text", { searchField: "text", filterFields: ["workspaceId", "ownerProfileId", "purpose"] })
+    .searchIndex("search_title", { searchField: "title", filterFields: ["workspaceId", "ownerProfileId", "purpose"] }),
+
+  /** Things that arrived for an encrypted space (an email, a clip, an app's write), sealed to the space inbox key. */
+  e2eeInbox: defineTable({
+    ...scoped,
+    publicId: v.string(),
+    scopeKey: v.string(),
+    keyVersion: v.number(),
+    kind: vInboxKind,
+    sealed: v.bytes(),
+    size: v.number(),
+    /** The id the new note will have, or the note an app appends to. */
+    targetDocumentId: v.optional(v.string()),
+    status: vInboxStatus,
+    receivedAt: v.number(),
+    expiresAt: v.number(),
+    appliedBy: v.optional(v.id("profiles")),
+  })
+    .index("by_scope_status", ["scopeKey", "status", "receivedAt"])
+    .index("by_public_id", ["publicId"])
+    .index("by_expires", ["expiresAt"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** Reminder times for sealed to-dos (tasks.processReminders can't read sealed blocks). */
+  e2eeReminders: defineTable({
+    ...scoped,
+    profileId: v.id("profiles"),
+    documentId: v.id("documents"),
+    blockId: v.string(),
+    remindAt: v.number(),
+    /** Only with notification previews on. */
+    preview: v.optional(v.object({ title: v.string(), note: v.string() })),
+    sentAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_remind", ["sentAt", "remindAt"])
+    .index("by_document_block", ["documentId", "blockId"])
+    .index("by_profile", ["profileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** A plaintext copy made on purpose by Publish to the web (docs/E2EE_DESIGN.md §9.3). */
+  e2eePublishedCopies: defineTable({
+    ...scoped,
+    linkId: v.id("publicLinks"),
+    documentId: v.id("documents"),
+    title: v.string(),
+    icon: v.optional(v.string()),
+    cover: vDocumentCover,
+    style: vDocumentStyle,
+    chunkCount: v.number(),
+    publishedBy: v.id("profiles"),
+    publishedAt: v.number(),
+  })
+    .index("by_link", ["linkId"])
+    .index("by_document", ["documentId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  e2eePublishedChunks: defineTable({
+    copyId: v.id("e2eePublishedCopies"),
+    index: v.number(),
+    data: v.string(),
+  }).index("by_copy", ["copyId", "index"]),
+
+  /** Background encrypt, decrypt and re-seal jobs, resumable by any eligible device. */
+  e2eeMigrations: defineTable({
+    ...scoped,
+    scopeKey: v.string(),
+    direction: vMigrationDirection,
+    targetLevel: vE2eeLevel,
+    scopeOf: vMigrationScopeOf,
+    /** Folder or note public id, for a lock. */
+    rootId: v.optional(v.string()),
+    total: v.number(),
+    done: v.number(),
+    failed: v.number(),
+    /** The last note public id handled (ULID order). */
+    cursor: v.optional(v.string()),
+    phase: vMigrationPhase,
+    leaseDeviceId: v.optional(v.string()),
+    leaseProfileId: v.optional(v.id("profiles")),
+    leaseUntil: v.optional(v.number()),
+    startedBy: v.id("profiles"),
+    startedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+  })
+    .index("by_scope", ["scopeKey", "startedAt"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
 });

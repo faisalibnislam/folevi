@@ -68,6 +68,18 @@ export const SCOPED_TABLES = [
   "aiGraphState",
   "aiMemories",
   "aiSuggestionDismissals",
+  // End-to-end encryption (docs/E2EE_DESIGN.md §5.1).
+  "e2eeSpaces",
+  "e2eeSpaceKeys",
+  "e2eeSpaceGrants",
+  "e2eePendingGrants",
+  "e2eeNoteKeys",
+  "e2eeRecords",
+  "e2eeMirrors",
+  "e2eeInbox",
+  "e2eeReminders",
+  "e2eePublishedCopies",
+  "e2eeMigrations",
 ] as const satisfies readonly TableNames[];
 export type ScopedTable = (typeof SCOPED_TABLES)[number];
 
@@ -152,6 +164,17 @@ const WORKSPACE_INDEX: Record<ScopedTable, string> = {
   aiGraphState: "by_workspace",
   aiMemories: "by_workspace",
   aiSuggestionDismissals: "by_workspace",
+  e2eeSpaces: "by_workspace",
+  e2eeSpaceKeys: "by_workspace",
+  e2eeSpaceGrants: "by_workspace",
+  e2eePendingGrants: "by_workspace",
+  e2eeNoteKeys: "by_workspace_seq",
+  e2eeRecords: "by_workspace_seq",
+  e2eeMirrors: "by_workspace",
+  e2eeInbox: "by_workspace",
+  e2eeReminders: "by_workspace",
+  e2eePublishedCopies: "by_workspace",
+  e2eeMigrations: "by_workspace",
 };
 const OWNER_INDEX: Record<ScopedTable, string> = {
   folders: "by_owner",
@@ -190,6 +213,17 @@ const OWNER_INDEX: Record<ScopedTable, string> = {
   aiGraphState: "by_owner",
   aiMemories: "by_owner",
   aiSuggestionDismissals: "by_owner",
+  e2eeSpaces: "by_owner",
+  e2eeSpaceKeys: "by_owner",
+  e2eeSpaceGrants: "by_owner",
+  e2eePendingGrants: "by_owner",
+  e2eeNoteKeys: "by_owner_seq",
+  e2eeRecords: "by_owner_seq",
+  e2eeMirrors: "by_owner",
+  e2eeInbox: "by_owner",
+  e2eeReminders: "by_owner",
+  e2eePublishedCopies: "by_owner",
+  e2eeMigrations: "by_owner",
 };
 
 export type AnyScopedRow = ScopedRow & { _id: Id<ScopedTable>; _creationTime: number };

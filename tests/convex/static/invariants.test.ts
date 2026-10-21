@@ -53,9 +53,25 @@ describe("backend invariants", () => {
   });
 
   test("identity cryptography is delegated to Better Auth (no hand-rolled password or TOTP code)", () => {
-    for (const { p, s } of sources) {
+    for (const { p, s: source } of sources) {
+      // The E2EE validators name the passphrase KDF a device used (docs/E2EE_DESIGN.md §4.7.3); the server
+      // only stores its parameters and never runs it. That one literal is the only exception.
+      const s = p.endsWith(join("lib", "e2ee", "validators.ts")) ? source.replace('v.literal("argon2id")', "") : source;
       if (/bcrypt|scrypt|argon2|hmac-sha1|base32/i.test(s) && !p.includes("betterAuth")) throw new Error(`${p}: credential crypto should come from Better Auth`);
     }
+  });
+
+  test("end-to-end encryption: the server may seal but never opens (docs/E2EE_DESIGN.md §11.2)", () => {
+    const opening = /\b(openRecord|openSealed|openFileStream|openFileStreamRange|passphraseWrapKey|recoveryWrapKey|prfWrapKey|linkWrapKey|deriveAccountKeys|deriveSpaceKeys|deriveNoteKeys)\b/;
+    for (const { p, s } of sources) {
+      if (!/@folevi\/local-store\/e2ee/.test(s)) continue;
+      for (const m of s.matchAll(/import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*"@folevi\/local-store\/e2ee"/g)) {
+        if (opening.test(m[1]!)) throw new Error(`${p}: imports a function that opens sealed data or derives keys`);
+      }
+      if (/import\s*\*\s*as\s+\w+\s+from\s*"@folevi\/local-store\/e2ee"/.test(s)) throw new Error(`${p}: namespace import of @folevi/local-store/e2ee (import only the sealing functions by name)`);
+    }
+    // The KDF never runs here: nothing in convex/ calls it.
+    for (const { p, s } of sources) if (/argon2id(Async)?\(/.test(s)) throw new Error(`${p}: runs the passphrase KDF`);
   });
 
   test("content rows are written only through insertScoped (exactly one of ownerProfileId / workspaceId)", () => {

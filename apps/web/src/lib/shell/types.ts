@@ -221,6 +221,28 @@ export interface ShellHttp {
   calendar(url: string, previous?: { etag?: string | null; lastModified?: string | null }): Promise<CalendarDownload>;
 }
 
+/**
+ * This device's end-to-end encryption keys, kept by the host (docs/E2EE_DESIGN.md §6.2): on the Mac in the
+ * main process, private halves sealed with safeStorage. The page never sees a private key; it gets the public
+ * halves, what a sealed box addressed to this device holds (the account master key, which it imports as
+ * non-extractable keys and zeroes), and signatures. The Mac adds the same object as `foleviDesktop.e2ee` on
+ * the website. Failures reject with `{ code: "unavailable" | "invalid_argument" | "cancelled" | "failed" }`.
+ */
+export interface ShellE2ee {
+  /** Made on the first call and kept. */
+  deviceKeys(): Promise<{ deviceId: string; x25519Pub: Uint8Array; ed25519Pub: Uint8Array }>;
+  /** FLS1 open with the device X25519 key; asks for Touch ID first when the person turned that on. */
+  open(sealedBox: Uint8Array, context: string): Promise<Uint8Array>;
+  /** FST1 signature (base64url) with the device Ed25519 key over a statement's canonical JSON body. */
+  sign(kind: string, body: string): Promise<string>;
+  /** Forgets the device keys (sign-out with "Forget this device", or the device was removed). */
+  reset(): Promise<void>;
+  /** "Ask for Touch ID to unlock encrypted notes" (Settings > Desktop app). Hosts without it leave it out. */
+  settings?(): Promise<{ touchId: boolean; available: boolean }>;
+  /** Turning it on or off asks for Touch ID too. */
+  setTouchId?(on: boolean): Promise<{ touchId: boolean; available: boolean }>;
+}
+
 export interface FoleviShell {
   platform: ShellPlatform;
   /** The app's version, for minShellVersion checks. */
@@ -238,6 +260,8 @@ export interface FoleviShell {
   files: { save(name: string, bytes: Uint8Array): Promise<boolean> };
   /** Fetches from hosts that aren't Folevi's: bookmark previews, subscribed calendars. */
   http: ShellHttp;
+  /** End-to-end encryption device keys (absent on hosts that predate it). */
+  e2ee?: ShellE2ee;
 }
 
 declare global {

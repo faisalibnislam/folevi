@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { buildContentSecurityPolicy, createNonce } from "@/lib/security/csp";
 import { themeBootScriptHash } from "@/lib/theme/bootScript";
+import { SIGNED_IN_HINT, hintCookie, hintDomain } from "@/lib/auth/signedInHint";
 
 const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.folevi.com";
@@ -61,7 +62,30 @@ async function withNonce(request: NextRequest): Promise<NextResponse> {
   return response;
 }
 
+const hasSessionCookie = (request: NextRequest) => request.cookies.getAll().some((c) => c.name.endsWith("folevi.session_token") && !!c.value);
+const hasSignedInHint = (request: NextRequest) => request.cookies.get(SIGNED_IN_HINT)?.value === "1";
+
+/**
+ * Keeps the marketing site's signed-in hint matching the session cookie on app-host requests: sessions
+ * from before the hint existed get it, and an expired or revoked session loses it. /api/auth/* sets it
+ * itself (lib/auth/server.ts), since a sign-out request still carries the cookie it's about to clear.
+ */
+function syncSignedInHint(request: NextRequest, response: NextResponse): NextResponse {
+  if (request.nextUrl.pathname.startsWith("/api/auth/")) return response;
+  const signedIn = hasSessionCookie(request);
+  if (signedIn === hasSignedInHint(request)) return response;
+  if (!signedIn && !request.cookies.has(SIGNED_IN_HINT)) return response;
+  response.headers.append("set-cookie", hintCookie(signedIn, hintDomain(appHost, marketingHost), APP_URL.startsWith("https:")));
+  return response;
+}
+
 export async function proxy(request: NextRequest) {
+  const response = await route(request);
+  const host = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() || request.headers.get("host") || "";
+  return host === appHost ? syncSignedInHint(request, response) : response;
+}
+
+async function route(request: NextRequest): Promise<NextResponse> {
   const url = request.nextUrl;
   // The public host. Next's own internal requests (e.g. rendering a server action's redirect target) go to
   // request.url's origin but carry the original host in x-forwarded-host, as does Vercel's edge.
@@ -78,6 +102,13 @@ export async function proxy(request: NextRequest) {
     if (MARKETING_ONLY.test(pathname) && !isAppPath(pathname)) {
       const redirect = crossHostRedirect(request, new URL(`${pathname}${url.search}`, MARKETING_URL));
       if (redirect) return redirect;
+    }
+  } else if (host === marketingHost && pathname === "/" && hasSignedInHint(request) && !url.searchParams.has("home")) {
+    // Signed in on this browser: folevi.com opens your notes. folevi.com/?home still shows the landing page.
+    const redirect = crossHostRedirect(request, new URL("/documents", APP_URL));
+    if (redirect) {
+      redirect.headers.set("cache-control", "private, no-store");
+      return redirect;
     }
   } else if (host === marketingHost && isAppPath(pathname) && !pathname.startsWith("/api/")) {
     const redirect = crossHostRedirect(request, new URL(`${pathname}${url.search}`, APP_URL));

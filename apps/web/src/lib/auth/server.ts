@@ -1,5 +1,7 @@
 import "server-only";
 import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs";
+import { APP_HOST, APP_URL, MARKETING_HOST } from "@/lib/env";
+import { hintCookie, hintDomain, sessionChange } from "@/lib/auth/signedInHint";
 
 const convexAuth = convexBetterAuthNextJs({
   convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL ?? "",
@@ -96,8 +98,17 @@ async function redirectPageLoads(request: Request, response: Response): Promise<
   return new Response(null, { status: 302, headers });
 }
 
+/** Keeps the marketing site's signed-in hint in step with the session cookie Better Auth just set or cleared. */
+function withSignedInHint(response: Response): Response {
+  const change = sessionChange(response.headers.getSetCookie());
+  if (!change) return response;
+  const headers = new Headers(response.headers);
+  headers.append("set-cookie", hintCookie(change === "set", hintDomain(APP_HOST, MARKETING_HOST), APP_URL.startsWith("https:")));
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 /** Proxies /api/auth/* to the Convex site URL (so auth cookies are first-party on the app host). */
 export const handler = {
-  GET: async (request: Request) => redirectPageLoads(request, await convexAuth.handler.GET(await withSignedClientIp(request))),
-  POST: async (request: Request) => convexAuth.handler.POST(await withSignedClientIp(request)),
+  GET: async (request: Request) => withSignedInHint(await redirectPageLoads(request, await convexAuth.handler.GET(await withSignedClientIp(request)))),
+  POST: async (request: Request) => withSignedInHint(await convexAuth.handler.POST(await withSignedClientIp(request))),
 };

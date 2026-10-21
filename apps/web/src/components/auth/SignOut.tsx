@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
+import { MARKETING_URL } from "@/lib/env";
 import { hostAuth } from "@/lib/auth/shellFetch";
 import { shell } from "@/lib/shell";
 import { forgetThisDevice } from "@/lib/nativeDevice";
@@ -28,9 +29,10 @@ export async function unsyncedChangeCount(accountKey: string | null): Promise<nu
 /**
  * Ends the session on the server, then clears this device's copy (in the iOS app, its token too). In the
  * apps' built-in interface the host ends its own session and forgets the token, and the app opens on its
- * sign-in screen (there are no /signin pages there, so `destination` doesn't apply).
+ * sign-in screen (there are no /signin pages there, so `destination` doesn't apply). On the web, signing
+ * out lands on the marketing site's home page by default.
  */
-export async function signOutNow(destination = "/signin?notice=signed_out") {
+export async function signOutNow(destination = `${MARKETING_URL}/`) {
   await forgetThisDevice();
   if (hostAuth()) {
     await shell()

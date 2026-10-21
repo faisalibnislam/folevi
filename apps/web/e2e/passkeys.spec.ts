@@ -33,7 +33,9 @@ test("a passkey added in Settings signs the person in without a password", async
   // Sign out, then back in with the passkey alone: no password, no authenticator code.
   await page.getByRole("navigation", { name: "Folio" }).getByRole("button", { name: /Personal, workspaces and account$/ }).click();
   await page.getByRole("menuitem", { name: "Sign out" }).click();
-  await page.waitForURL(/\/signin/);
+  // Signing out lands on the marketing site's home page; sign in again from there.
+  await page.waitForURL((url) => url.pathname === "/" && !url.host.startsWith("app."));
+  await page.goto(`${APP}/signin`);
   await expect(page.getByLabel("Email")).toHaveAttribute("autocomplete", "username webauthn");
   await page.getByRole("button", { name: "Sign in with a passkey" }).click();
   await page.waitForURL((url) => !/\/(signin|two-factor)/.test(url.pathname), { timeout: 20_000 });

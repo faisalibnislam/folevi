@@ -12,13 +12,14 @@ export interface KnownFlag {
   default: boolean;
 }
 
-export type FlagKey = "public_links" | "workspace_invites" | "new_signups" | "workspace_export";
+export type FlagKey = "public_links" | "workspace_invites" | "new_signups" | "workspace_export" | "e2ee";
 
 export const KNOWN_FLAGS: readonly KnownFlag[] = [
   { key: "public_links", description: "Allow documents to be published with a public share link.", default: true },
   { key: "workspace_invites", description: "Allow inviting people to workspaces.", default: true },
   { key: "new_signups", description: "Allow new accounts to be created (existing accounts are unaffected).", default: true },
   { key: "workspace_export", description: "Allow workspace ZIP exports.", default: true },
+  { key: "e2ee", description: "Allow setting up end-to-end encryption and encrypting spaces (docs/E2EE_DESIGN.md §5.9).", default: false },
 ];
 
 export function knownFlag(key: string): KnownFlag | undefined {

@@ -15,6 +15,7 @@ crons.interval("expired plans", { minutes: 60 }, internal.billing.settleExpiredP
 crons.interval("calendar subscriptions", { minutes: 30 }, internal.externalCalendars.refreshDue, {});
 crons.interval("api idempotency cleanup", { minutes: 60 }, internal.restApi.sweep, {});
 crons.interval("proposal expiry", { minutes: 60 }, internal.proposals.sweep, {});
+crons.interval("e2ee approval expiry", { minutes: 5 }, internal.e2ee.devices.expireRequests, {});
 crons.daily("webhook delivery cleanup", { hourUTC: 4, minuteUTC: 50 }, internal.webhooks.sweep, {});
 crons.daily("trash retention", { hourUTC: 3, minuteUTC: 0 }, internal.maintenance.purgeExpiredTrash, {});
 crons.daily("tombstone retention", { hourUTC: 3, minuteUTC: 20 }, internal.maintenance.purgeTombstones, {});
@@ -26,5 +27,6 @@ crons.daily("export retention", { hourUTC: 4, minuteUTC: 45 }, internal.files.pu
 crons.daily("daily metrics", { hourUTC: 0, minuteUTC: 15 }, internal.maintenance.dailyMetrics, {});
 crons.daily("ai index sweep", { hourUTC: 5, minuteUTC: 0 }, internal.aiIndex.sweep, {});
 crons.daily("ai graph sweep", { hourUTC: 5, minuteUTC: 30 }, internal.aiGraph.sweep, {});
+crons.daily("e2ee superseded key cleanup", { hourUTC: 5, minuteUTC: 45 }, internal.e2ee.keys.sweep, {});
 
 export default crons;

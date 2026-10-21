@@ -52,6 +52,7 @@ import {
   vMigrationScopeOf,
   vMirrorPurpose,
   vMirrorTask,
+  vNoteGrantStatement,
   vNoteKeyWrappedBy,
   vPendingGrantReason,
   vPublicLinkE2ee,
@@ -2419,7 +2420,10 @@ export default defineSchema({
     status: v.union(v.literal("active"), v.literal("superseded")),
     createdAt: v.number(),
     supersededAt: v.optional(v.number()),
-  }).index("by_profile", ["profileId", "epoch"]),
+  })
+    .index("by_profile", ["profileId", "epoch"])
+    // Wraps of superseded epochs are kept 30 days, then swept (e2ee.keys.sweep).
+    .index("by_status_superseded", ["status", "supersededAt"]),
 
   /** The account master key, wrapped for each way in (a trusted device, the recovery key, a passkey, the passphrase). */
   e2eeAccountWraps: defineTable({
@@ -2568,6 +2572,8 @@ export default defineSchema({
     /** wrappedBy link. */
     linkId: v.optional(v.id("publicLinks")),
     wrapped: v.bytes(),
+    /** wrappedBy grant: the granter's signed `note-grant` statement (the guest's device checks it). */
+    statement: v.optional(vNoteGrantStatement),
     createdBy: v.id("profiles"),
     createdAt: v.number(),
     seq: v.number(),

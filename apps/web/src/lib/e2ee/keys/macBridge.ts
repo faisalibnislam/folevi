@@ -17,7 +17,7 @@ export function macE2ee(): ShellE2ee | null {
 export function inMacApp(): boolean {
   if (typeof window === "undefined") return false;
   const w = window as unknown as { foleviShell?: { platform?: string }; foleviDesktop?: { platform?: string } };
-  return w.foleviShell?.platform === "mac" || w.foleviDesktop?.platform === "mac" || location.protocol === "app:";
+  return w.foleviShell?.platform === "mac" || w.foleviDesktop?.platform === "mac" || (typeof location !== "undefined" && location.protocol === "app:");
 }
 
 /** This Mac as a device: kind "app", keys made by the app on the first ask. */

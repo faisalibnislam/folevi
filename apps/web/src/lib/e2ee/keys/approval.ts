@@ -41,8 +41,10 @@ export async function newDeviceApproval(s: KeySessionImpl): Promise<ApprovalHand
   try {
     requestId = (await ask()).requestId;
   } catch (e) {
-    // A device id removed from the account before: start again with new keys and a new id.
-    if (errorCode(e) !== "forbidden") throw e;
+    // A device id removed from the account before, or one the account trusts with other keys (this browser
+    // lost its copy): start again with new keys and a new id.
+    const code = errorCode(e);
+    if (code !== "forbidden" && code !== "conflict") throw e;
     await s.mac()?.reset();
     dev = await s.deviceToTrust(true);
     requestId = (await ask()).requestId;

@@ -357,8 +357,10 @@ export class KeySessionImpl implements KeySession {
       try {
         await this.registerTrusted(u, dev);
       } catch (e) {
-        // This device's id was removed from the account earlier: it starts again with new keys and a new id.
-        if (errorCode(e) !== "forbidden") throw e;
+        // This device's id was removed from the account earlier, or the account holds other keys for it (this
+        // browser lost its copy): it starts again with new keys and a new id.
+        const code = errorCode(e);
+        if (code !== "forbidden" && code !== "conflict") throw e;
         await this.forgetTrust(dev);
         await this.mac()?.reset();
         dev = await this.deviceToTrust(true);

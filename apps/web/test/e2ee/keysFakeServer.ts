@@ -3,6 +3,7 @@
 // and one passphrase per epoch, device wraps only for registered non-session devices, the unlock rate limit,
 // the approval relay, grants only to members, pending rows. It never opens or verifies anything sealed.
 // Each person gets a view with `fake.as(profileId)`; watchers re-run after every mutation.
+import { verifyStatement } from "@folevi/local-store/e2ee";
 import type { KeysServer } from "@/lib/e2ee/keys/server";
 
 type Bytes = ArrayBuffer;
@@ -45,6 +46,10 @@ const isUlid = (s: string) => /^[0-9A-HJKMNP-TV-Z]{26}$/.test(s);
 
 function body(s: Statement): Record<string, unknown> {
   return JSON.parse(s.body) as Record<string, unknown>;
+}
+/** As WP2's requireSigned: the statement must verify against the account key. */
+async function signed(pub: Bytes, st: Statement): Promise<void> {
+  if (!(await verifyStatement(new Uint8Array(pub), st as Parameters<typeof verifyStatement>[1]))) fail("invalid_argument", "The statement isn't signed by your encryption key.");
 }
 function b64u(b: Bytes): string {
   return Buffer.from(new Uint8Array(b)).toString("base64url");
@@ -172,8 +177,9 @@ export class FakeKeysServer {
     if (!a || !["waiting", "answered", "revealed"].includes(a.status)) fail("expired", "This request has ended.");
     return a!;
   }
-  private storeGrants(scopeKey: string, granter: string, grants: { profileId: string; version: number; epoch: number; wrapped: Bytes; statement: Statement }[]) {
+  private async storeGrants(scopeKey: string, granter: string, grants: { profileId: string; version: number; epoch: number; wrapped: Bytes; statement: Statement }[]) {
     for (const g of grants) {
+      await signed((this.active(granter) ?? fail("conflict")).ed25519Pub, g.statement);
       if (!this.members(scopeKey).some((m) => m.profileId === g.profileId)) fail("forbidden", "Keys can only be shared with people in this space.");
       const acct = this.accounts.find((a) => a.profileId === g.profileId && a.epoch === g.epoch && a.status === "active");
       if (!acct) fail("conflict", "That person's encryption keys changed.");
@@ -197,10 +203,10 @@ export class FakeKeysServer {
         return structuredClone(fn(a));
       };
     const m =
-      <A, R>(name: string, fn: (a: A) => R) =>
+      <A, R>(name: string, fn: (a: A) => R | Promise<R>) =>
       async (a: A): Promise<R> => {
         self.calls.push(name);
-        const r = fn(structuredClone(a));
+        const r = await fn(structuredClone(a));
         self.notify();
         return r;
       };
@@ -229,10 +235,12 @@ export class FakeKeysServer {
     const server = {
       keys: {
         status: q("keys.status", status),
-        createAccount: m("keys.createAccount", (a: { x25519Pub: Bytes; ed25519Pub: Bytes; amkCheck: Bytes; statement: Statement; device: Parameters<FakeKeysServer["upsertDevice"]>[1]; deviceWrap: Bytes }) => {
+        createAccount: m("keys.createAccount", async (a: { x25519Pub: Bytes; ed25519Pub: Bytes; amkCheck: Bytes; statement: Statement; device: Parameters<FakeKeysServer["upsertDevice"]>[1]; deviceWrap: Bytes }) => {
           if (self.accounts.some((x) => x.profileId === me)) fail("conflict", "Already set up.");
           const b = body(a.statement);
           if (b.profileId !== me || b.epoch !== 1 || b.x25519Pub !== b64u(a.x25519Pub)) fail("invalid_argument", "statement");
+          await signed(a.ed25519Pub, a.statement);
+          if (a.device.statement) await signed(a.ed25519Pub, a.device.statement);
           self.accounts.push({ profileId: me, epoch: 1, x25519Pub: a.x25519Pub, ed25519Pub: a.ed25519Pub, amkCheck: a.amkCheck, statement: a.statement, status: "active" });
           self.upsertDevice(me, a.device, "trusted");
           const wrapId = a.device.kind === "session" ? null : self.storeWrap(me, 1, { kind: "device", deviceId: a.device.deviceId, wrapped: a.deviceWrap });
@@ -268,7 +276,7 @@ export class FakeKeysServer {
           const w = self.wraps.find((x) => x.profileId === me && x.deviceId === a.deviceId && x.epoch === acct.epoch);
           return w ? { publicId: w.publicId, epoch: w.epoch, wrapped: w.wrapped } : null;
         }),
-        rotateAccount: m("keys.rotateAccount", (a: { newEpoch: { epoch: number; x25519Pub: Bytes; ed25519Pub: Bytes; amkCheck: Bytes; statement: Statement }; wraps: Parameters<FakeKeysServer["storeWrap"]>[2][]; regrants: { scope: Scope; grant: Grant }[]; deviceStatements?: { deviceId: string; statement: Statement }[] }) => {
+        rotateAccount: m("keys.rotateAccount", async (a: { newEpoch: { epoch: number; x25519Pub: Bytes; ed25519Pub: Bytes; amkCheck: Bytes; statement: Statement }; wraps: Parameters<FakeKeysServer["storeWrap"]>[2][]; regrants: { scope: Scope; grant: Grant }[]; deviceStatements?: { deviceId: string; statement: Statement }[] }) => {
           const cur = requireAccount();
           if (a.newEpoch.epoch !== cur.epoch + 1) fail("conflict");
           cur.status = "superseded";
@@ -281,8 +289,9 @@ export class FakeKeysServer {
             self.wraps = self.wraps.filter((w) => w.epoch !== a.newEpoch.epoch || w.profileId !== me);
             fail("e2ee_recovery_required");
           }
-          for (const { scope, grant } of a.regrants) self.storeGrants(self.scopeKeyOf(scope, me), me, [grant]);
+          for (const { scope, grant } of a.regrants) await self.storeGrants(self.scopeKeyOf(scope, me), me, [grant]);
           for (const { deviceId, statement } of a.deviceStatements ?? []) {
+            await signed(a.newEpoch.ed25519Pub, statement);
             const d = self.devices.find((x) => x.profileId === me && x.deviceId === deviceId);
             if (d) d.statement = statement;
           }
@@ -311,17 +320,19 @@ export class FakeKeysServer {
         ),
       },
       devices: {
-        register: m("devices.register", (a: { device: Parameters<FakeKeysServer["upsertDevice"]>[1] }) => {
-          requireAccount();
+        register: m("devices.register", async (a: { device: Parameters<FakeKeysServer["upsertDevice"]>[1] }) => {
+          const acct = requireAccount();
           const existing = self.devices.find((x) => x.profileId === me && x.deviceId === a.device.deviceId);
           if (existing?.status === "trusted") {
-            self.upsertDevice(me, a.device, "trusted");
+            if (b64u(existing.x25519Pub) !== b64u(a.device.x25519Pub)) fail("conflict", "This device already has keys.");
+            self.upsertDevice(me, { ...a.device, statement: existing.statement }, "trusted");
             return { status: "trusted" as const };
           }
           let st: Device["status"] = "pending";
           if (a.device.statement) {
             const b = body(a.device.statement);
             if (b.approvedBy !== "recovery" || b.deviceId !== a.device.deviceId) fail("invalid_argument", "statement");
+            await signed(acct.ed25519Pub, a.device.statement);
             st = "trusted";
           }
           self.upsertDevice(me, a.device, st);
@@ -352,13 +363,14 @@ export class FakeKeysServer {
           Object.assign(ap, { status: "revealed", requesterNonce: a.nonce });
           return null;
         }),
-        completeApproval: m("devices.completeApproval", (a: { requestId: string; wrapped: Bytes; statement: Statement }) => {
+        completeApproval: m("devices.completeApproval", async (a: { requestId: string; wrapped: Bytes; statement: Statement }) => {
           const acct = requireAccount();
           const ap = self.openApproval(me, a.requestId);
           if (ap.status !== "revealed") fail("conflict");
           const d = self.devices.find((x) => x.profileId === me && x.deviceId === ap.deviceId)!;
           const b = body(a.statement);
           if (b.deviceId !== d.deviceId || b.approvedBy !== ap.approverDeviceId || b.x25519Pub !== b64u(d.x25519Pub)) fail("invalid_argument", "statement");
+          await signed(acct.ed25519Pub, a.statement);
           if (d.kind !== "session") {
             self.wraps = self.wraps.filter((w) => !(w.profileId === me && w.kind === "device" && w.deviceId === d.deviceId));
             self.wraps.push({ publicId: fakeUlid(), profileId: me, epoch: acct.epoch, kind: "device", deviceId: d.deviceId, wrapped: a.wrapped, createdAt: self.now });
@@ -414,14 +426,14 @@ export class FakeKeysServer {
             ];
           });
         }),
-        setUp: m("spaces.setUp", (a: { scope: Scope; key: { version: number; inboxPub: Bytes; skCheck: Bytes }; grants: Grant[] }) => {
+        setUp: m("spaces.setUp", async (a: { scope: Scope; key: { version: number; inboxPub: Bytes; skCheck: Bytes }; grants: Grant[] }) => {
           const key = self.scopeKeyOf(a.scope, me);
           self.requireManager(key, me);
           if ((self.spaces.get(key)?.currentKeyVersion ?? 0) > 0) fail("conflict", "This space already has a key.");
           if (!a.grants.some((g) => g.profileId === me && g.version === 1)) fail("invalid_argument", "Grant the key to yourself too.");
           self.spaceKeys.push({ scopeKey: key, ...a.key });
           self.spaces.set(key, { scopeKey: key, level: "selected", state: "on", currentKeyVersion: 1, lockedCount: 0, seq: ++self.seq });
-          self.storeGrants(key, me, a.grants);
+          await self.storeGrants(key, me, a.grants);
           let pending = 0;
           for (const mm of self.members(key)) {
             if (a.grants.some((g) => g.profileId === mm.profileId)) continue;
@@ -430,7 +442,7 @@ export class FakeKeysServer {
           }
           return { version: 1, pending };
         }),
-        rotate: m("spaces.rotate", (a: { scope: Scope; key: { version: number; inboxPub: Bytes; skCheck: Bytes }; grants: Grant[]; noteKeys: { documentId: string; version: number; wrappedBy: "space"; spaceVersion: number; wrapped: Bytes }[] }) => {
+        rotate: m("spaces.rotate", async (a: { scope: Scope; key: { version: number; inboxPub: Bytes; skCheck: Bytes }; grants: Grant[]; noteKeys: { documentId: string; version: number; wrappedBy: "space"; spaceVersion: number; wrapped: Bytes }[] }) => {
           const key = self.scopeKeyOf(a.scope, me);
           self.requireManager(key, me);
           const s = self.spaces.get(key) ?? fail("e2ee_not_set_up");
@@ -439,7 +451,7 @@ export class FakeKeysServer {
           for (const k of self.spaceKeys) if (k.scopeKey === key && k.retiredAt === undefined) k.retiredAt = self.now;
           self.spaceKeys.push({ scopeKey: key, ...a.key });
           s!.currentKeyVersion = version;
-          self.storeGrants(key, me, a.grants.filter((g) => g.version === version));
+          await self.storeGrants(key, me, a.grants.filter((g) => g.version === version));
           for (const nk of a.noteKeys) self.noteKeys.push({ ...nk, scopeKey: key, createdBy: me, seq: ++self.seq });
           return { version, pending: 0, noteKeys: a.noteKeys.length, migrationId: "m1" };
         }),
@@ -461,10 +473,10 @@ export class FakeKeysServer {
         }),
       },
       grants: {
-        grantSpace: m("grants.grantSpace", (a: { scope: Scope; grants: Grant[] }) => {
+        grantSpace: m("grants.grantSpace", async (a: { scope: Scope; grants: Grant[] }) => {
           const key = self.scopeKeyOf(a.scope, me);
           self.requireManager(key, me);
-          self.storeGrants(key, me, a.grants);
+          await self.storeGrants(key, me, a.grants);
           return { granted: new Set(a.grants.map((g) => g.profileId)).size };
         }),
         pending: q("grants.pending", (a: { scope: Scope }) => {
@@ -474,7 +486,8 @@ export class FakeKeysServer {
             .filter((p) => p.scopeKey === key)
             .map((p) => ({ profileId: p.profileId, displayName: "", reason: p.reason, documentId: p.documentId ?? null, hasKeys: !!self.active(p.profileId), epoch: self.active(p.profileId)?.epoch ?? null, createdAt: p.createdAt }));
         }),
-        grantNote: m("grants.grantNote", (a: { documentId: string; version: number; profileId: string; wrapped: Bytes; statement: Statement }) => {
+        grantNote: m("grants.grantNote", async (a: { documentId: string; version: number; profileId: string; wrapped: Bytes; statement: Statement }) => {
+          await signed((self.active(me) ?? fail("conflict")).ed25519Pub, a.statement);
           const acct = self.active(a.profileId) ?? fail("conflict", "They haven't set up encryption yet.");
           const b = body(a.statement);
           if (b.documentId !== a.documentId || b.version !== a.version || b.profileId !== a.profileId || b.granteeX25519Pub !== b64u(acct!.x25519Pub) || b.grantedBy !== me) fail("invalid_argument", "statement");

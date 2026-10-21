@@ -301,22 +301,25 @@ export const setup = {
     const { amk, keys, reg } = await newAccount(b.profileId, epoch, now);
     try {
       s.lock();
+      // 1. This device's keys, registered without a statement (pending): the server checks statements against
+      //    the account key, and the new one doesn't exist yet.
       let dev = await s.deviceToTrust();
-      // Signed by the new account key, which is the one every device will check it against.
-      const statement = await deviceStatement(keys, s, b.profileId, dev, now);
-      const device = { deviceId: dev.deviceId, kind: dev.kind, label: s.label(dev.kind), platform: s.platform(), x25519Pub: wire(dev.x25519Pub), ed25519Pub: wire(dev.ed25519Pub), statement };
+      const registration = (d: DeviceIdentity) => ({ deviceId: d.deviceId, kind: d.kind, label: s.label(d.kind), platform: s.platform(), x25519Pub: wire(d.x25519Pub), ed25519Pub: wire(d.ed25519Pub) });
       try {
-        await b.server.devices.register({ device });
+        await b.server.devices.register({ device: registration(dev) });
       } catch (e) {
-        if (errorCode(e) !== "forbidden") throw e;
-        // This device's id was removed from the account before: new keys and a new id.
+        const code = errorCode(e);
+        if (code !== "forbidden" && code !== "conflict") throw e;
+        // This device's id was removed from the account, or holds other keys there: new keys and a new id.
         await s.mac()?.reset();
         dev = await s.deviceToTrust(true);
-        Object.assign(device, { deviceId: dev.deviceId, x25519Pub: wire(dev.x25519Pub), ed25519Pub: wire(dev.ed25519Pub), statement: await deviceStatement(keys, s, b.profileId, dev, now) });
-        await b.server.devices.register({ device });
+        await b.server.devices.register({ device: registration(dev) });
       }
+      // 2. The new epoch, with this device's wrap.
       const wrapped = await sealTo(dev.x25519Pub, ctx.amkDevice(b.profileId, dev.deviceId), amk);
       await b.server.keys.resetAccount({ newEpoch: reg, wraps: [{ kind: "device", deviceId: dev.deviceId, wrapped: wire(wrapped) }] });
+      // 3. Trusted, with a statement signed by the new account key.
+      await b.server.devices.register({ device: { ...registration(dev), statement: await deviceStatement(keys, s, b.profileId, dev, now) } });
       await s.markTrusted(dev);
       await s.adopt(new Uint8Array(amk), epoch, keys, dev);
       await s.cacheWrap(dev, epoch, wrapped);

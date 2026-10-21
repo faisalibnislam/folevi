@@ -1,7 +1,7 @@
 // The server calls the key code makes (docs/E2EE_DESIGN.md §5.3: e2ee.keys, devices, spaces, grants, and the
 // note key pages of e2ee.pull), behind one small interface so the unit tests run against a fake server
 // (test/e2ee/fakeKeysServer.ts) and the app against Convex. Results are the server's own types.
-import { makeFunctionReference, type FunctionArgs, type FunctionReference, type FunctionReturnType } from "convex/server";
+import type { FunctionArgs, FunctionReference, FunctionReturnType } from "convex/server";
 import { api } from "@/lib/convex/api";
 
 type Q<F extends FunctionReference<"query">> = (args: FunctionArgs<F>) => Promise<FunctionReturnType<F>>;
@@ -22,11 +22,7 @@ export interface NoteKeyRow {
 }
 
 /** WP3's pull, read only for its note keys (a space rotation re-wraps every note's key). */
-export const pullNoteKeysRef = makeFunctionReference<
-  "query",
-  { scope: { kind: "personal" } | { kind: "workspace"; workspaceId: string }; cursor: number; limit?: number },
-  { noteKeys: NoteKeyRow[]; nextCursor: number; hasMore: boolean }
->("e2ee/pull:pull");
+export const pullNoteKeysRef = api.e2ee.pull.pull;
 
 export type AccountStatus = FunctionReturnType<typeof k.status>;
 export type WrapListRow = FunctionReturnType<typeof k.listWraps>[number];

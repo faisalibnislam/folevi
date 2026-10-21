@@ -70,6 +70,30 @@ On the web side:
   clipboard, full screen and notifications. Everything else is refused. The page can open one System Settings
   pane (Screen & System Audio Recording) by name, never a URL it supplies.
 
+## End-to-end encryption
+
+The Mac's device keys for end-to-end encryption (docs/E2EE_DESIGN.md §6.2, §6.11) live in the main process,
+`apps/desktop/src/e2ee.ts`:
+
+- An X25519 key pair (the account master key is sealed to it as an FLS1 box) and an Ed25519 key pair, made on
+  the page's first ask. The private halves are sealed with `safeStorage` (a Keychain key for this app) in
+  `userData/e2ee/device.bin`; the device id (`mac-<ulid>`) and the public halves are in
+  `userData/e2ee/device.json`. Keys another Mac's Keychain can't open, or a `device.json` whose public keys
+  don't match, are replaced (the page then asks to approve this Mac again), never trusted. Without
+  `safeStorage` nothing is written and the calls fail with `unavailable`.
+- The page reaches them as `foleviShell.e2ee` in the built-in interface and `foleviDesktop.e2ee` on the
+  website the app shows (`preload.ts`, channels `shell:e2ee-*`, origin-checked with `fromFolevi` in
+  `main.ts`): `deviceKeys()`, `open(box, context)` (FLS1 open; the one secret that crosses is the account
+  master key, which the page imports as non-extractable keys and zeroes), `sign(kind, body)` (FST1),
+  `reset()`, and `settings()` / `setTouchId(on)` for "Ask for Touch ID to unlock encrypted notes"
+  (`userData/e2ee/prefs.json`; turning it on or off asks for Touch ID, and windows opening within 30 seconds
+  of a yes don't ask again). Errors carry only a code and a fixed message, never anything about a key or a box.
+- The web side is `apps/web/src/lib/e2ee/keys/macBridge.ts`. Passkeys aren't offered in the app (§14 Q2).
+
+Checks after a build (§11.5): `cd apps/desktop && pnpm test` (`src/e2ee.test.ts` opens WP1's vector boxes and
+checks the signed bytes against its vector signatures), then rebuild, install to /Applications, unlock, quit,
+reopen (no prompt), remove the Mac in Settings > Devices on the web, and the Mac asks to unlock.
+
 ## Offline
 
 The same as the web: the site's service worker serves the app and IndexedDB keeps notes and queued edits.

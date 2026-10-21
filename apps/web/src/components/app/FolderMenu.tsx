@@ -18,12 +18,15 @@ import { useCreateDocument } from "./useCreateDocument";
 import { InviteDialog } from "./InviteDialog";
 import { useShell } from "./Shell";
 import { useAiEnabled } from "@/components/ai/useAi";
+import { useLockMenuItem } from "@/components/e2ee/LockDialog";
 
 export interface MenuFolder {
   id: string;
   name: string;
   parentFolderId: string | null;
   color: string | null;
+  /** Always fully encrypted (end-to-end encryption, docs/E2EE_DESIGN.md §10.8), when the folder list says so. */
+  locked?: boolean;
 }
 
 /**
@@ -53,6 +56,8 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
   const [coloring, setColoring] = useState(false);
   // Personal has no members: inviting people is for team workspaces (single pages are shared instead).
   const canManage = workspace !== null && managesWorkspace;
+  // "Always fully encrypted" (only once the account has encryption set up; see LockDialog).
+  const lockItem = useLockMenuItem({ kind: "folder", id: folder.id, name: folder.name, locked: folder.locked });
   const act = (p: Promise<unknown>, msg: string) => p.then(() => toast.show(msg), (e) => toast.show(errorMessage(e), { tone: "error" }));
 
   const copyLink = () => {
@@ -78,6 +83,7 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
         ]
       : []),
     ...(aiOn ? [{ label: "Ask Foli AI about this folder…", icon: <AiIcon size={14} className="text-[#7c6cf0]" />, onSelect: () => openAsk(undefined, { id: folder.id, name: folder.name }) }] : []),
+    ...(lockItem ? [lockItem] : []),
     { label: "Copy link", icon: <Link2 size={14} />, onSelect: copyLink },
     ...(canManage ? [{ label: "Invite people…", icon: <UserPlus size={14} />, onSelect: () => setInviting(true) }] : []),
     ...(canEdit ? ["separator" as const, { label: "Delete folder…", icon: <Trash2 size={14} />, danger: true, onSelect: () => setDeleting(true) }] : []),

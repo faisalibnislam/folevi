@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, ShieldCheck, Smartphone, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
+import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, LockKeyhole, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, ShieldCheck, Smartphone, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { ViewChrome } from "@/components/app/Shell";
@@ -25,6 +25,8 @@ import { DataSection } from "./settings/DataSection";
 import { DesktopSection } from "./settings/DesktopSection";
 import { ThisDeviceSection } from "./settings/ThisDeviceSection";
 import { ConnectedAppsSection } from "./settings/ConnectedAppsSection";
+import { PrivacySection } from "./settings/PrivacySection";
+import { WorkspacePrivacySection } from "./settings/WorkspacePrivacySection";
 import { Card } from "./settings/Card";
 import { useCapabilities, type Capability } from "@/lib/mode";
 import { desktop } from "@/lib/desktop";
@@ -33,7 +35,7 @@ import { useIphoneApp } from "@/lib/iphone";
 import { GroupedRow, GroupedSection, RowIcon } from "@/components/iphone/Grouped";
 import { IosRow, IosSection, IosText, SettingsScreensHost } from "@/components/iphone/SettingsKit";
 
-type Section = "account" | "ai" | "billing" | "security" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "sync" | "library" | "data" | "desktop" | "this-device";
+type Section = "account" | "ai" | "billing" | "security" | "privacy" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "workspace-privacy" | "sync" | "library" | "data" | "desktop" | "this-device";
 type Item = { id: Section; label: string; icon: LucideIcon };
 /** Things about you (your account and your Personal), the same whichever context is open. */
 const YOU: Item[] = [
@@ -41,6 +43,8 @@ const YOU: Item[] = [
   { id: "ai", label: "AI", icon: Sparkles },
   { id: "billing", label: "Plan & billing", icon: CreditCard },
   { id: "security", label: "Security", icon: ShieldCheck },
+  // End-to-end encryption (docs/E2EE_DESIGN.md §10.1).
+  { id: "privacy", label: "Privacy", icon: LockKeyhole },
   { id: "devices", label: "Devices", icon: MonitorSmartphone },
   { id: "connected-apps", label: "Connected apps", icon: Plug },
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -62,6 +66,8 @@ const YOU: Item[] = [
 const WORKSPACE: (Item & { who: "everyone" | "managers" | "billing" })[] = [
   { id: "workspace", label: "General", icon: Building2, who: "everyone" },
   { id: "members", label: "Members", icon: Users, who: "everyone" },
+  // The workspace's end-to-end encryption: owners and admins change it, members read it (§10.1).
+  { id: "workspace-privacy", label: "Privacy", icon: LockKeyhole, who: "everyone" },
   { id: "workspace-guests", label: "Guests", icon: UserRoundPlus, who: "managers" },
   { id: "workspace-billing", label: "Plan & billing", icon: CreditCard, who: "billing" },
   { id: "workspace-data", label: "Import & export", icon: ArrowDownUp, who: "managers" },
@@ -76,6 +82,7 @@ const NEEDS: Partial<Record<Section, Capability>> = {
   account: "account",
   billing: "billing",
   security: "account",
+  privacy: "account",
   devices: "account",
   "connected-apps": "connectedApps",
   notifications: "notifications",
@@ -85,7 +92,7 @@ const NEEDS: Partial<Record<Section, Capability>> = {
 };
 /** Where Settings opens when the account's first section, Account, isn't there (local mode). */
 const LOCAL_FIRST: Section = "library";
-const HEADINGS: Partial<Record<Section, string>> = { workspace: "Workspace" };
+const HEADINGS: Partial<Record<Section, string>> = { workspace: "Workspace", "workspace-privacy": "Workspace privacy" };
 
 export function SettingsView({ section: asked }: { section: Section }) {
   const { workspace } = useAppState();
@@ -199,6 +206,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
           {section === "ai" ? caps.account ? <AiSection /> : <LocalAiSection /> : null}
           {section === "billing" ? <BillingSection /> : null}
           {section === "security" ? <SecuritySection /> : null}
+          {section === "privacy" ? <PrivacySection /> : null}
           {section === "devices" ? <DevicesSection /> : null}
           {section === "connected-apps" ? <ConnectedAppsSection /> : null}
           {section === "appearance" ? <AppearanceSection /> : null}
@@ -206,6 +214,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
           {noWorkspace ? <NoWorkspaceCard /> : null}
           {section === "workspace" && workspace ? <WorkspaceSection /> : null}
           {section === "members" && workspace ? <MembersSection key={workspace.id} workspace={workspace} /> : null}
+          {section === "workspace-privacy" && workspace ? <WorkspacePrivacySection key={workspace.id} workspace={workspace} /> : null}
           {section === "workspace-guests" && workspace && !sectionHidden ? <GuestsSection key={workspace.id} workspace={workspace} /> : null}
           {section === "workspace-billing" && workspace && !sectionHidden ? <WorkspaceBillingSection key={workspace.id} workspace={workspace} /> : null}
           {sectionHidden ? (
@@ -239,6 +248,7 @@ function IphoneSection({ section, title, noWorkspace, sectionHidden }: { section
       {section === "ai" ? caps.account ? <AiSection /> : <LocalAiSection /> : null}
       {section === "billing" ? <BillingSection /> : null}
       {section === "security" ? <SecuritySection /> : null}
+      {section === "privacy" ? <PrivacySection /> : null}
       {section === "devices" ? <DevicesSection /> : null}
       {section === "connected-apps" ? <ConnectedAppsSection /> : null}
       {section === "appearance" ? <AppearanceSection /> : null}
@@ -246,6 +256,7 @@ function IphoneSection({ section, title, noWorkspace, sectionHidden }: { section
       {noWorkspace ? <NoWorkspaceCard /> : null}
       {section === "workspace" && workspace ? <WorkspaceSection /> : null}
       {section === "members" && workspace ? <MembersSection key={workspace.id} workspace={workspace} /> : null}
+      {section === "workspace-privacy" && workspace ? <WorkspacePrivacySection key={workspace.id} workspace={workspace} /> : null}
       {section === "workspace-guests" && workspace && !sectionHidden ? <GuestsSection key={workspace.id} workspace={workspace} /> : null}
       {section === "workspace-billing" && workspace && !sectionHidden ? <WorkspaceBillingSection key={workspace.id} workspace={workspace} /> : null}
       {sectionHidden ? (

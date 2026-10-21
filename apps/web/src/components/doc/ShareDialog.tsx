@@ -14,6 +14,9 @@ import { Switch } from "@/components/ui/Switch";
 import { useRadioGroup } from "@/lib/a11y/radioGroup";
 import { PUBLISH_THEMES, publishTheme, type PublishTheme } from "@/lib/publishThemes";
 import { PublishThemePreview } from "./publishPreviews";
+import { copy as e2eeCopy } from "@/lib/e2ee/copy";
+import { createEncryptedLink, isSealedDocument, publishPlainCopy } from "@/components/e2ee/__stubs__";
+import { PublishCopyDialog } from "@/components/e2ee/PublishCopyDialog";
 
 /** `personal`: the page is in someone's Personal, which has no members. Only the people added here (and its owner) can open it. */
 export function ShareDialog({ open, onClose, documentId, title, personal = false }: { open: boolean; onClose: () => void; documentId: string; title: string; personal?: boolean }) {
@@ -36,6 +39,11 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
   // change what they added. The server checks both again.
   const canManage = data?.canManage === true;
   const canShare = data?.canShare === true;
+  // An end-to-end encrypted note (docs/E2EE_DESIGN.md §9, §10.13): links carry their key after "#", and
+  // publishing makes a readable copy on purpose. Always false for Standard notes.
+  const sealed = open && isSealedDocument(documentId);
+  const [publishing, setPublishing] = useState(false);
+  const [published, setPublished] = useState<string | null>(null);
 
   const run = async (p: Promise<unknown>, ok?: string) => {
     try {
@@ -47,7 +55,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
   };
 
   return (
-    <Dialog open={open} onClose={() => { setFreshLink(null); onClose(); }} title={`Share “${title || "Untitled"}”`} size="md">
+    <Dialog open={open} onClose={() => { setFreshLink(null); setPublished(null); onClose(); }} title={`Share “${title || "Untitled"}”`} size="md">
       {!data ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : (
@@ -125,6 +133,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                 <Button type="submit" variant="primary">
                   Share
                 </Button>
+                {sealed ? <p className="w-full text-xs text-muted">{e2eeCopy.share.invite}</p> : null}
                 <p className="w-full text-xs text-muted">
                   {personal ? "Anyone with an email address: people without a Folevi account get an invitation by email." : "People outside the workspace join as guests on this page only and aren’t billed. People without a Folevi account get an invitation by email."}
                 </p>
@@ -154,6 +163,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
             {data.pendingInvites.length ? (
               <>
                 <h4 className="mb-1.5 mt-4 text-xs font-semibold uppercase tracking-[0.06em] text-faint">Invited by email</h4>
+                {sealed ? <p className="mb-1.5 text-xs text-muted">{e2eeCopy.share.pendingPerson}</p> : null}
                 <ul className="divide-y divide-line rounded-chip border border-line">
                   {data.pendingInvites.map((i) => (
                     <li key={i.id} className="flex items-center gap-3 px-3 py-2">
@@ -176,11 +186,13 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
               <h3 className="mb-1 flex items-center gap-2 font-semibold">
                 <Globe size={15} aria-hidden /> Public link
               </h3>
-              <p className="text-xs text-muted">Off by default. Anyone with the link can read this page (not its comments or nested pages). Search engines skip it unless you let them find it, and you can revoke it instantly.</p>
+              <p className="text-xs text-muted">
+                {sealed ? e2eeCopy.share.encryptedLink : "Off by default. Anyone with the link can read this page (not its comments or nested pages). Search engines skip it unless you let them find it, and you can revoke it instantly."}
+              </p>
               {!data.publicLinksAvailable ? <p className="mt-2 text-xs text-warning">Public links are temporarily turned off for Folevi.</p> : null}
               {freshLink ? (
                 <div className="mt-3 rounded-chip border border-success/40 bg-success-soft p-3">
-                  <p className="text-xs font-medium">Copy this link now. For your security, it isn’t shown again.</p>
+                  <p className="text-xs font-medium">{sealed ? e2eeCopy.share.copyWhole : "Copy this link now. For your security, it isn’t shown again."}</p>
                   <div className="mt-2 flex gap-2">
                     <input readOnly value={freshLink} aria-label="Public link" className="h-9 min-w-0 flex-1 ui-well rounded-chip px-2 font-mono text-xs" onFocus={(e) => e.target.select()} />
                     <Button size="sm" onClick={() => void navigator.clipboard.writeText(freshLink).then(() => toast.show("Link copied"))}>
@@ -223,6 +235,13 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                       return;
                     }
                     try {
+                      if (sealed) {
+                        // The key goes in the fragment, which never reaches the server (§9.1).
+                        const r = await createEncryptedLink(documentId, { expiresAt: linkForm.expires ? new Date(linkForm.expires).getTime() : undefined, password: linkForm.password || undefined, theme: linkForm.theme });
+                        setFreshLink(r.url);
+                        setLinkForm({ expires: "", password: "", index: false, theme: "note" });
+                        return;
+                      }
                       const r = await createLink({
                         documentId,
                         expiresAt: linkForm.expires ? new Date(linkForm.expires).getTime() : undefined,
@@ -274,7 +293,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                       ))}
                     </div>
                   </div>
-                  <div className="flex items-center justify-between gap-3">
+                  <div className={`flex items-center justify-between gap-3 ${sealed ? "hidden" : ""}`}>
                     <span className="min-w-0">
                       <span className="block text-[13px] font-medium text-ink">Let search engines find it</span>
                       <span id="share-link-index-hint" className="block text-xs text-muted">
@@ -296,6 +315,41 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                   </div>
                 </form>
               ) : null}
+            </section>
+          ) : null}
+
+          {canManage && sealed ? (
+            <section>
+              <h3 className="mb-1 flex items-center gap-2 font-semibold">
+                <Globe size={15} aria-hidden /> {e2eeCopy.publish.row}
+              </h3>
+              <ul className="mt-2 space-y-2">
+                {data.links
+                  .filter((l) => (l as { plainCopy?: boolean }).plainCopy)
+                  .map((l) => (
+                    <li key={l.id} className="flex flex-wrap items-center gap-2 rounded-chip border border-line px-3 py-2">
+                      <span className="min-w-0 flex-1 text-xs text-muted">{e2eeCopy.publish.publishedFrom(formatDateTime((l as { publishedAt?: number }).publishedAt ?? l.createdAt))}</span>
+                      <Button size="sm" variant="quiet" onClick={() => void run(publishPlainCopy(documentId), e2eeCopy.publish.updated)}>
+                        {e2eeCopy.publish.update}
+                      </Button>
+                      <Button size="sm" variant="quiet" className="text-danger" onClick={() => void run(revokeLink({ linkId: l.id }), e2eeCopy.publish.stopped)}>
+                        {e2eeCopy.publish.stop}
+                      </Button>
+                    </li>
+                  ))}
+              </ul>
+              {published ? (
+                <div className="mt-2 flex gap-2">
+                  <input readOnly value={published} aria-label={e2eeCopy.publish.row} className="h-9 min-w-0 flex-1 ui-well rounded-chip px-2 font-mono text-xs" onFocus={(e) => e.target.select()} />
+                  <Button size="sm" onClick={() => void navigator.clipboard.writeText(published).then(() => toast.show("Link copied"))}>
+                    <Copy size={13} aria-hidden /> Copy
+                  </Button>
+                </div>
+              ) : null}
+              <Button className="mt-2" onClick={() => setPublishing(true)}>
+                {e2eeCopy.publish.rowButton}
+              </Button>
+              <PublishCopyDialog open={publishing} onClose={() => setPublishing(false)} documentId={documentId} onPublished={setPublished} />
             </section>
           ) : null}
         </div>

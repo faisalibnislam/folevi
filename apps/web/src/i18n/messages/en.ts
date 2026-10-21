@@ -38,6 +38,21 @@ export const en = {
 
   // Public share page (app/s/[token])
   "share.lastUpdated": "Last updated {date}",
+
+  // End-to-end encryption screens (lib/e2ee/copy.ts, components/e2ee)
+  "e2ee.privacy.lockedCount": "{count, plural, one {# folder or note is always fully encrypted.} other {# folders and notes are always fully encrypted.}}",
+  "e2ee.privacy.trustedDevices": "{count, plural, one {# trusted device} other {# trusted devices}}",
+  "e2ee.privacy.keyHolders": "{count, plural, one {# person can unlock this workspace.} other {# people can unlock this workspace.}}",
+  "e2ee.wizard.deviceCount": "{count, plural, =0 {No trusted devices yet} one {# trusted device so far} other {# trusted devices}}",
+  "e2ee.consent.chars": "{count, plural, one {# character} other {# characters}}",
+  "e2ee.migration.encrypting": "Encrypting your notes: {done, number} of {total, number}",
+  "e2ee.migration.decrypting": "Decrypting your notes: {done, number} of {total, number}",
+  "e2ee.migration.rekeying": "Changing the key: {done, number} of {total, number}",
+  "e2ee.migration.history": "History: {done, number} of {total, plural, one {# version} other {# versions}}.",
+  "e2ee.migration.failed": "{count, plural, one {# note couldn't be encrypted.} other {# notes couldn't be encrypted.}}",
+  "e2ee.members.waiting": "{count, plural, one {# member is waiting for the key} other {# members are waiting for the key}}",
+  "e2ee.members.rotating": "Changing the workspace key… {done, number} of {total, plural, one {# note} other {# notes}}",
+  "e2ee.unavailable.downloading": "Still downloading this space ({have, number} of {total, plural, one {# note} other {# notes}}). Some results may be missing.",
 } as const;
 
 export type MessageKey = keyof typeof en;

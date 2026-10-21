@@ -36,6 +36,9 @@ import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { modKey, useLocalStorage } from "@/lib/hooks/useEngine";
 import { useShell } from "./Shell";
 import { FolderMenu } from "./FolderMenu";
+import { LockGlyph } from "@/components/e2ee/LockGlyph";
+import { SidebarMigrationLine } from "@/components/e2ee/MigrationProgress";
+import { useLockedIds } from "@/components/e2ee/__stubs__";
 import { NotificationsButton } from "./NotificationsButton";
 import { SidebarMenu } from "./SidebarMenu";
 import { SyncStatus } from "./SyncStatus";
@@ -96,6 +99,7 @@ function NavItem({
   onNavigate,
   draggableFolderId,
   folder,
+  locked,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -104,6 +108,8 @@ function NavItem({
   onNavigate?: () => void;
   /** Makes the item a drop target for notes: a folder id, or "" for Drafts. */ draggableFolderId?: string;
   folder?: FolderDrag;
+  /** Always fully encrypted: a small lock after the name (docs/E2EE_DESIGN.md §10.8). */
+  locked?: boolean;
 }) {
   const { route } = useAppRouter();
   const active = isActive(route, href);
@@ -167,6 +173,7 @@ function NavItem({
         {icon}
       </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
+      {locked ? <LockGlyph /> : null}
       {count ? <span className={`min-w-5 rounded-chip px-1.5 text-center text-[11px] font-semibold leading-5 tabular-nums ${active ? "bg-heading text-canvas" : "bg-[var(--glass-hover)] text-muted"}`}>{count}</span> : null}
     </AppLink>
   );
@@ -466,6 +473,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [starredOpen, setStarredOpen] = useLocalStorage("folevi:sidebar-starred-open", true);
   // The AI page, where AI is included and on (never on Core).
   const aiOn = useAiEnabled();
+  // Folders and notes marked Always fully encrypted (empty unless the account has encryption set up).
+  const lockedIds = useLockedIds();
+  const isLockedFolder = (f: { id: string }) => (f as { locked?: boolean }).locked === true || lockedIds.folders.has(f.id);
 
   const folders = org?.folders ?? [];
   // The folder tree: each folder followed by what's inside it.
@@ -539,7 +549,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <span className="w-5 flex-none" />
           )}
           <div className="min-w-0 flex-1">
-            <NavItem href={`/folders/${f.id}`} icon={<FolderGlyph color={f.color} size={18} />} label={f.name} onNavigate={onNavigate} draggableFolderId={f.id} folder={folderDrag(f.id)} />
+            <NavItem href={`/folders/${f.id}`} icon={<FolderGlyph color={f.color} size={18} />} label={f.name} onNavigate={onNavigate} draggableFolderId={f.id} folder={folderDrag(f.id)} locked={isLockedFolder(f)} />
           </div>
           <FolderMenu folder={f} className={FOLDER_MENU_REVEAL} />
         </div>
@@ -586,7 +596,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           {starred?.page.length && starredOpen ? (
             <div className="space-y-0.5 pl-5" aria-label="Starred pages" role="group">
               {starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).map((d) => (
-                <NavItem key={d.id} href={`/d/${d.id}`} icon={<FileText size={15} />} label={d.title || "Untitled"} onNavigate={onNavigate} />
+                <NavItem key={d.id} href={`/d/${d.id}`} icon={<FileText size={15} />} label={d.title || "Untitled"} onNavigate={onNavigate} locked={lockedIds.documents.has(d.id)} />
               ))}
               <MoreLink href="/starred" count={starred.page.length - starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).length} noun="starred pages" onNavigate={onNavigate} exact={starred.isDone} />
             </div>
@@ -651,6 +661,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         }}
       />
       <div className="flex-none px-2.5 pb-2">
+        {/* While a space is being encrypted or decrypted: one line with its progress (§10.10). */}
+        <SidebarMigrationLine scope={scope} href={scope.kind === "personal" ? "/settings/privacy" : "/settings/workspace-privacy"} />
         <WorkspaceMenu onNavigate={onNavigate} />
       </div>
     </nav>

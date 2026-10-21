@@ -21,6 +21,8 @@ import { ActionSheet, ChoiceRow, DestructiveRow, IosRow, IosSection, IosText, Su
 import { RowIcon } from "@/components/iphone/Grouped";
 import { GlassTextButton } from "@/components/iphone/Glass";
 import { UserRoundPlus } from "lucide-react";
+import { copy } from "@/lib/e2ee/copy";
+import { useMemberSecurityCode, useWorkspaceKeys } from "@/components/e2ee/__stubs__";
 
 type MemberAccess = "edit" | "comment" | "view";
 /** A role choice in the member list: Member with an access, or Admin. */
@@ -55,6 +57,9 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
   const [revoking, setRevoking] = useState<NonNullable<typeof data>["invites"][number]["id"] | null>(null);
   const iphone = useIphoneApp();
   const { navigate } = useAppRouter();
+  // End-to-end encryption (docs/E2EE_DESIGN.md §8): null unless this workspace is encrypted.
+  const keys = useWorkspaceKeys({ kind: "workspace", workspaceId: workspace.id });
+  const [codeFor, setCodeFor] = useState<{ profileId: string; name: string } | null>(null);
   const canAdmin = data?.canManage === true;
   const isOwner = data?.yourRole === "owner";
   const act = (p: Promise<unknown>, ok: string) => p.then(() => toast.show(ok, { tone: "success" }), (e) => toast.show(errorMessage(e), { tone: "error" }));
@@ -215,14 +220,26 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
           ) : undefined
         }
       >
+        {keys?.rotation ? (
+          <p role="status" className="mb-3 text-[13px] font-medium text-heading">
+            {copy.members.rotating(keys.rotation.done, keys.rotation.total)}
+          </p>
+        ) : null}
+        {keys && canAdmin && keys.pending.size ? (
+          <p role="status" className="mb-3 text-[13px] text-muted">
+            <span className="font-medium text-heading">{copy.members.waitingBadge(keys.pending.size)}</span>. {copy.members.waitingHint}
+          </p>
+        ) : null}
         <ul className="divide-y divide-line rounded-control border border-line">
           {data?.members.map((m) => (
             <li key={m.profileId} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium">
                   {m.displayName} {m.isYou ? <span className="text-xs text-muted">(you)</span> : null}
+                  {keys?.pending.has(m.profileId) ? <span className="ml-1.5 rounded-chip border border-line px-1.5 py-px text-[11px] font-medium text-muted">{copy.members.waiting}</span> : null}
                 </span>
                 <span className="block text-xs text-muted">{m.email}</span>
+                {keys?.keyChanged.has(m.profileId) ? <span className="mt-0.5 block text-xs text-ink">{copy.members.keyChanged(m.displayName)}</span> : null}
                 {/* The owner decides which admins may manage the plan and billing. */}
                 {isOwner && m.role === "admin" ? (
                   <span className="mt-1.5 flex items-center gap-2 text-xs text-muted">
@@ -239,6 +256,11 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
                   <span className="mt-0.5 block text-xs text-muted">Can manage billing</span>
                 ) : null}
               </span>
+              {keys && !m.isYou && !keys.pending.has(m.profileId) ? (
+                <Button size="sm" variant="quiet" onClick={() => setCodeFor({ profileId: m.profileId, name: m.displayName })}>
+                  {copy.members.securityCode}
+                </Button>
+              ) : null}
               {m.canManage ? (
                 <>
                   <Select
@@ -294,6 +316,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
         ) : null}
         {data && !canAdmin ? <p className="mt-3 text-sm text-muted">Only owners and admins can invite people or change roles.</p> : null}
       </Card>
+      <SecurityCodeDialog member={codeFor} onClose={() => setCodeFor(null)} />
       <Dialog
         open={confirm !== null}
         onClose={() => setConfirm(null)}
@@ -377,5 +400,21 @@ function IphoneInvite({ workspace, isOwner }: { workspace: Workspace; isOwner: b
         />
       </IosSection>
     </Subscreen>
+  );
+}
+
+/** A member's security code (§8.6): 12 digits in four groups of three, to compare in person or on a call. */
+function SecurityCodeDialog({ member, onClose }: { member: { profileId: string; name: string } | null; onClose: () => void }) {
+  const code = useMemberSecurityCode(member?.profileId ?? null);
+  return (
+    <Dialog open={member !== null} onClose={onClose} title={member ? copy.members.securityTitle(member.name) : ""} description={member ? copy.members.securityBody(member.name) : undefined} size="sm" footer={<Button onClick={onClose}>{copy.members.close}</Button>}>
+      {code ? (
+        <p className="py-2 text-center font-mono text-[26px] font-semibold tracking-[0.1em] text-heading tabular-nums" aria-label={code.split("").join(" ")}>
+          {code.match(/.{3}/g)?.join(" ")}
+        </p>
+      ) : (
+        <p className="text-sm text-muted">Loading…</p>
+      )}
+    </Dialog>
   );
 }

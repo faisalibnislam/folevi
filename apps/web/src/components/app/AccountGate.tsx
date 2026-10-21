@@ -21,6 +21,7 @@ import { ShareSheet } from "./ShareSheet";
 import { MigrationGate } from "@/components/migrate/MigrationGate";
 import { ShellSignIn } from "./ShellSignIn";
 import { ShellUpdateGate } from "./ShellUpdateGate";
+import { E2eeGate } from "@/components/e2ee/E2eeGate";
 
 // Seen once per account, so it loads only for people who haven't finished it.
 const Onboarding = lazy(() => import("./Onboarding").then((m) => ({ default: m.Onboarding })));
@@ -202,7 +203,10 @@ export function AccountGate() {
               </Suspense>
             ) : (
               <MigrationGate>
-                <Shell />
+                {/* End-to-end encryption: the unlock screen for encrypted spaces; Standard passes straight through. */}
+                <E2eeGate>
+                  <Shell />
+                </E2eeGate>
               </MigrationGate>
             )}
           </AppStateProvider>

@@ -16,6 +16,11 @@ import { canPurchaseHere } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
 import { DestructiveRow, IosRow, IosSection, IosText, Subscreen } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
+import { MenuButton } from "@/components/ui/Menu";
+import { Switch } from "@/components/ui/Switch";
+import { MoreHorizontal } from "lucide-react";
+import { copy } from "@/lib/e2ee/copy";
+import { e2eeActions, useE2eeDevices } from "@/components/e2ee/__stubs__";
 
 function DeviceIcon({ client, label }: { client: string; label: string }) {
   const Icon = client === "mac" ? Laptop : /iPad/.test(label) ? Tablet : /iPhone|iOS|Android/.test(label) ? Smartphone : Monitor;
@@ -45,6 +50,13 @@ export function DevicesSection() {
   const pct = limit && count !== undefined ? Math.min(100, (count / limit) * 100) : 0;
   const plural = (n: number) => (n === 1 ? "device" : "devices");
   const iphone = useIphoneApp();
+  // End-to-end encryption (docs/E2EE_DESIGN.md §10.7): null for Standard accounts, so nothing changes for them.
+  const e2ee = useE2eeDevices();
+  const [removing, setRemoving] = useState<{ id: string; label: string; lastSeenAt: number } | null>(null);
+  const e2eeLine = (id: string) => {
+    const st = e2ee?.(id);
+    return st === undefined ? null : st === "trusted" ? copy.devices.canUnlock : st === "session" ? copy.devices.publicSession : copy.devices.cannotUnlock;
+  };
   const signOut = (id: (typeof sessions & object)[number]["id"]) => void revoke({ sessionId: id }).then(() => toast.show("Device signed out"), (e) => toast.show(errorMessage(e), { tone: "error" }));
   if (iphone) {
     const icon = (client: string, label: string) => {
@@ -75,7 +87,7 @@ export function DevicesSection() {
               key={s.id}
               icon={icon(s.client, s.label)}
               label={s.label}
-              description={`Signed in ${formatDateTime(s.createdAt)} · active ${formatRelative(s.lastSeenAt)}`}
+              description={`Signed in ${formatDateTime(s.createdAt)} · active ${formatRelative(s.lastSeenAt)}${e2eeLine(s.id) ? `. ${e2eeLine(s.id)}` : ""}`}
               value={s.current ? "This device" : undefined}
               screen={s.current ? undefined : `device-${s.id}`}
             />
@@ -158,9 +170,19 @@ export function DevicesSection() {
                 <span className="block text-xs text-muted">
                   Signed in {formatDateTime(s.createdAt)} · active {formatRelative(s.lastSeenAt)}
                 </span>
+                {e2eeLine(s.id) ? <span className="mt-0.5 block text-xs text-muted">{e2eeLine(s.id)}</span> : null}
               </span>
               {s.current ? (
                 <span className="ui-chip h-6 flex-none self-center bg-moss-soft text-[11.5px] text-moss-ink">This device</span>
+              ) : e2ee ? (
+                <MenuButton
+                  label={copy.devices.menuLabel(s.label)}
+                  trigger={<MoreHorizontal size={15} aria-hidden />}
+                  items={[
+                    ...(e2ee(s.id) !== "none" ? [{ label: copy.devices.removeFromEncryption, onSelect: () => setRemoving({ id: s.id, label: s.label, lastSeenAt: s.lastSeenAt }) }] : []),
+                    { label: copy.devices.signOut, danger: true, onSelect: () => signOut(s.id) },
+                  ]}
+                />
               ) : (
                 <Button size="sm" aria-label={`Sign out ${s.label}`} onClick={() => signOut(s.id)}>
                   Sign out
@@ -172,6 +194,7 @@ export function DevicesSection() {
         <Button className="mt-3" disabled={others === 0} onClick={() => setConfirmAll(true)}>
           Sign out of all other devices
         </Button>
+        {removing ? <RemoveFromEncryption device={removing} onClose={() => setRemoving(null)} /> : null}
         <Dialog
           open={confirmAll}
           onClose={() => setConfirmAll(false)}
@@ -198,5 +221,56 @@ export function DevicesSection() {
         />
       </Card>
     </>
+  );
+}
+
+/** "Remove <device>?" (§10.7): it keeps its session but can't unlock; changing the key is on for a device not seen in 14 days. */
+function RemoveFromEncryption({ device, onClose }: { device: { id: string; label: string; lastSeenAt: number }; onClose: () => void }) {
+  const toast = useToast();
+  const [rotate, setRotate] = useState(() => Date.now() - device.lastSeenAt > 14 * 86_400_000);
+  const [busy, setBusy] = useState(false);
+  const d = copy.devices;
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={d.removeTitle(device.label)}
+      description={d.removeBody}
+      size="sm"
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button
+            variant="danger"
+            disabled={busy}
+            aria-busy={busy || undefined}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await e2eeActions.removeDevice(device.id, rotate);
+                toast.show(d.removed(device.label), { tone: "success" });
+                onClose();
+              } catch (e) {
+                toast.show(errorMessage(e), { tone: "error" });
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {d.removeButton}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex items-start justify-between gap-4">
+        <span className="min-w-0">
+          <span className="block text-sm font-medium text-heading">{d.rotate.label}</span>
+          <span id="e2ee-rotate-hint" className="mt-0.5 block text-[13px] text-muted">
+            {d.rotate.body}
+          </span>
+        </span>
+        <Switch checked={rotate} onChange={setRotate} label={d.rotate.label} describedBy="e2ee-rotate-hint" />
+      </div>
+    </Dialog>
   );
 }

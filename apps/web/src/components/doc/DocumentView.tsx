@@ -101,6 +101,7 @@ import "@/components/editor/chart/chart.css";
 import "@/components/editor/wireframe/wireframe.css";
 import { Select } from "@/components/ui/Select";
 import { useFileText } from "./useFileText";
+import { useLockMenuItem } from "@/components/e2ee/LockDialog";
 
 // Only a collection's row pages have properties; the collection code loads for those alone.
 // Presenting the note as slides (⌘⌥P, "Present" in its … menu): loaded the first time it's used.
@@ -730,7 +731,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
     readImages,
   });
   // Plus following or muting this note's comment notifications.
-  const actions: (MenuItem | "separator")[] = noteNotify.length ? [...docActions, "separator", ...noteNotify] : docActions;
+  // End-to-end encryption: "Always fully encrypted" for a note of yours (docs/E2EE_DESIGN.md §10.8; nothing for Standard accounts).
+  const lockItem = useLockMenuItem(meta?.isMember && inCurrentScope(meta.document, meta.isMember, scopeKey) ? { kind: "document", id: documentId, name: summary?.title ?? "", locked: (meta.document as { locked?: boolean }).locked } : null);
+  const actions: (MenuItem | "separator")[] = [...(noteNotify.length ? [...docActions, "separator" as const, ...noteNotify] : docActions), ...(lockItem ? ["separator" as const, lockItem] : [])];
 
   if (meta === null && !pendingCreate && !waitingRow && (server === null || server === undefined) && (online || cacheLoaded)) {
     if (meta === null && server === null) {

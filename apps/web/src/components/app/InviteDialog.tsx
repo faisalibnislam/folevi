@@ -10,6 +10,8 @@ import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatPrice } from "@/lib/plans";
 import { canPurchaseHere } from "@/lib/nativeApp";
+import { copy } from "@/lib/e2ee/copy";
+import { useE2eeSpace } from "@/components/e2ee/__stubs__";
 
 /** What an invitation offers: Member with full, comment-only or view-only access, or Admin (owner only). */
 type Offer = "member:edit" | "member:comment" | "member:view" | "admin";
@@ -26,8 +28,11 @@ export function InviteForm({ workspace, onSent }: { workspace: InviteWorkspace; 
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const isOwner = data?.yourRole === "owner";
+  // An encrypted workspace: new members set up encryption, then an admin's device shares the key (§10.13).
+  const e2ee = useE2eeSpace({ kind: "workspace", workspaceId: workspace.id });
   return (
     <>
+      {e2ee && e2ee.level !== "standard" ? <p className="mb-3 text-[13px] text-muted">{copy.invite.encryptedWorkspace}</p> : null}
       <form
         className="flex flex-wrap gap-2"
         onSubmit={async (e) => {

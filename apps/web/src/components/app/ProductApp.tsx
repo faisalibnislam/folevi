@@ -10,6 +10,7 @@ import { ServiceWorkerRegistration } from "./ServiceWorkerRegistration";
 import { ThemesSync } from "./ThemesSync";
 import { FullPageMessage } from "@/lib/app/state";
 import type { Backend } from "@/lib/shell";
+import { E2eeWorkers } from "@/components/e2ee/E2eeGate";
 
 /**
  * The product. `backend` says where the notes live: "account" (Folevi's servers, the website and the default)
@@ -25,6 +26,8 @@ export function ProductApp({ backend = "account" }: { backend?: Backend } = {}) 
             <ServiceWorkerRegistration />
             {/* Local mode reads the note themes bundled with the app (lib/shell/snapshot.ts). */}
             {backend === "account" ? <ThemesSync /> : null}
+            {/* End-to-end encryption's background work (migration, feature mirrors), only once a device is unlocked. */}
+            {backend === "account" ? <E2eeWorkers /> : null}
             {backend === "local" ? <LocalGate /> : <AccountGate />}
           </ToastProvider>
         </AppRouterProvider>

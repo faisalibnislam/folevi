@@ -45,7 +45,7 @@ export function LockDialog({ open, onClose, kind, id, name, locked }: { open: bo
       open={open}
       onClose={onClose}
       title={locked ? l.stopTitle(name) : l.title(name)}
-      description={locked ? (standard ? l.stopStandard : l.stopEncrypted) : l.body}
+      description={kind === "folder" ? (locked ? (standard ? l.stopStandard : l.stopEncrypted) : l.body) : locked ? (standard ? l.noteStopStandard : l.noteStopEncrypted) : l.noteBody}
       size="sm"
       footer={
         <>

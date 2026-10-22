@@ -21,6 +21,17 @@ import "./editor-phone.css";
  */
 export function NoteBars({ editor, ai, open, tab, onPick, readOnly }: { editor: Editor | null; ai: boolean; open: boolean; tab: InspectorTab; onPick: (t: InspectorTab) => void; readOnly: boolean }) {
   const { keyboard } = useIphoneChrome();
+  // Drawn again as the note gains or loses focus (the keyboard's own news can come first).
+  const [, focusChanged] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    if (!editor) return;
+    editor.on("focus", focusChanged);
+    editor.on("blur", focusChanged);
+    return () => {
+      editor.off("focus", focusChanged);
+      editor.off("blur", focusChanged);
+    };
+  }, [editor]);
   const editing = keyboard && Boolean(editor?.isFocused || editor?.view.hasFocus());
   const writing = editing && Boolean(editor) && !readOnly;
   // (Followed from the start: the keyboard's first move can come before the bar on it is drawn.)

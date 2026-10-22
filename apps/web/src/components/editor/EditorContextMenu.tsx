@@ -156,6 +156,8 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
   // The iPhone layout: a held line lifts while its menu is open (the app's own picture of it, as iOS lifts what
   // it opens a menu for; lib/native/lift.ts), and the menu opens under it (or above), never over it.
   const lift = useRef<ReturnType<typeof liftController> | null>(null);
+  // Makes the note editable text again after a hold (below).
+  const thawRef = useRef<() => void>(() => undefined);
 
   const targetAt = useCallback(
     (pos: number, el: HTMLElement | null): Target => {
@@ -231,6 +233,8 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       const line = held && phoneRef.current ? (blockElements(dom)[target.index] ?? null) : null;
       const box = line?.getBoundingClientRect();
       // (A block taller than most of the screen doesn't lift; its menu opens at the finger.)
+      // Writing (the caret's in the note), a held finger is iOS's: its loupe and text selection, no menu.
+      if (held && phoneRef.current && view.hasFocus()) return;
       if (line && box && box.height < window.innerHeight * 0.6) {
         setMenu({ x: Math.max(16, box.left), y: box.bottom + 6, top: box.top - 6, target, keyboard: false, held: line });
       } else setMenu({ x: e.clientX, y: e.clientY, top: e.clientY, target, keyboard: false });
@@ -256,6 +260,7 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
     // Held, then moved on: the menu gives way to moving the block (BlockHandle lifts it).
     const onHoldMove = () => {
       lift.current?.drop("fade");
+      thawRef.current();
       setMenu(null);
     };
     dom.addEventListener("contextmenu", onContext);
@@ -298,12 +303,75 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
     };
   }, [held]);
 
+  // Reading (no caret in the note), a finger resting on a line is about to open its menu: just before iOS
+  // would start selecting the word under it (focusing the note and raising the keyboard, which closes the
+  // menu), the note stops being editable text for iOS, until the finger lifts and the menu has gone. (Only the
+  // page's attribute: the editor itself stays editable, so what the menu does still works, and ProseMirror
+  // leaves that attribute to whoever sets it.)
+  const open = menu !== null;
+  const openRef = useRef(open);
+  openRef.current = open;
+  const thaw = useCallback(() => {
+    const root = document.documentElement;
+    if (!("noteHold" in root.dataset)) return;
+    delete root.dataset.noteHold;
+    if (!editor.isDestroyed) (editor.view.dom as HTMLElement).contentEditable = String(editor.isEditable);
+  }, [editor]);
+  thawRef.current = thaw;
+  const heldMenu = useRef(false);
+  heldMenu.current = Boolean(menu?.held);
+  useEffect(() => {
+    if (!phone) return;
+    const dom = editor.view.dom as HTMLElement;
+    const root = document.documentElement;
+    let timer = 0;
+    let at: { x: number; y: number } | null = null;
+    const stop = () => {
+      window.clearTimeout(timer);
+      at = null;
+      if (!openRef.current) thaw();
+    };
+    const onStart = (e: TouchEvent) => {
+      stop();
+      const t = e.touches.length === 1 ? e.touches[0] : undefined;
+      if (!t || editor.view.hasFocus() || !editor.isEditable) return;
+      at = { x: t.clientX, y: t.clientY };
+      timer = window.setTimeout(() => {
+        root.dataset.noteHold = "";
+        dom.contentEditable = "false";
+      }, 300);
+    };
+    const onMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (at && t && Math.hypot(t.clientX - at.x, t.clientY - at.y) > 10 && !openRef.current) stop();
+    };
+    const opts = { passive: true } as const;
+    dom.addEventListener("touchstart", onStart, opts);
+    dom.addEventListener("touchmove", onMove, opts);
+    window.addEventListener("touchend", stop, opts);
+    window.addEventListener("touchcancel", stop, opts);
+    return () => {
+      window.clearTimeout(timer);
+      thaw();
+      dom.removeEventListener("touchstart", onStart);
+      dom.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", stop);
+      window.removeEventListener("touchcancel", stop);
+    };
+  }, [phone, editor, thaw]);
+  useEffect(() => {
+    if (!open) thaw();
+  }, [open, thaw]);
+
   const close = useCallback(
     (refocus: boolean) => {
+      // (Editable again before the chosen item runs.)
+      thaw();
       setMenu(null);
-      if (refocus && !editor.isDestroyed) editor.view.focus();
+      // (A line held while reading leaves the keyboard down afterwards, too.)
+      if (refocus && !heldMenu.current && !editor.isDestroyed) editor.view.focus();
     },
-    [editor],
+    [editor, thaw],
   );
 
   if (!menu) return null;

@@ -41,9 +41,11 @@
 :root[data-iphone] .fb-due-chip .fb-prio:only-child::before { margin-left: 0; }
 /* Insert (doc/InsertPanel.tsx): the search stays under the sheet's title on the sheet's own glass; each
    picture sits on a soft wash of its block's colour. */
-:root[data-iphone] .iphone-insert-search { background: var(--liquid-fill-strong); -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); }
+/* (No fill of its own: the sheet's glass shows through, and what scrolls under it blurs away, as at the top
+   edge of an iOS scroll view.) */
+:root[data-iphone] .iphone-insert-search { -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); -webkit-mask-image: linear-gradient(#000 calc(100% - 10px), transparent); mask-image: linear-gradient(#000 calc(100% - 10px), transparent); padding-bottom: 14px; }
 :root[data-iphone][data-iphone-keyboard] .iphone-insert-search,
-:root[data-reduce-transparency] .iphone-insert-search { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-reduce-transparency] .iphone-insert-search { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; -webkit-mask-image: none; mask-image: none; }
 :root[data-iphone] .iphone-insert-art { background: color-mix(in oklab, currentColor 8%, var(--color-surface-raised)); box-shadow: inset 0 0 0 0.5px color-mix(in oklab, currentColor 14%, transparent); }
 /* Format (doc/FormatPanel.tsx): preview tiles for the text styles, capsules of 44 pt buttons, then rows. The
    chosen one is filled in the heading colour, never outlined. */
@@ -91,3 +93,7 @@
 :root[data-iphone] .iphone-collection-list > li { position: relative; }
 :root[data-iphone] .iphone-collection-list > li + li::before { content: ""; position: absolute; top: 0; right: 0; left: 48px; height: 0.5px; background: var(--iphone-separator); }
 :root[data-iphone] .iphone-collection > button:last-of-type { box-shadow: inset 0 0.5px 0 var(--iphone-separator); }
+/* A finger resting on a line to open its menu: iOS doesn't start selecting the words under it meanwhile
+   (EditorContextMenu.tsx). */
+:root[data-iphone][data-note-hold] .fb-editor,
+:root[data-iphone][data-note-hold] .fb-editor * { -webkit-user-select: none !important; user-select: none !important; }

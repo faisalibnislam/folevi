@@ -151,6 +151,19 @@ test("iPhone note: the bar on the keyboard, writing without the top bar, Insert 
   const tile = insert.getByRole("button", { name: "Heading 1", exact: true });
   expect((await tile.boundingBox())!.height).toBeGreaterThanOrEqual(74);
   await shot(page, "note-insert");
+  // The search stays under the sheet's title while the tiles scroll.
+  const search = insert.getByRole("searchbox", { name: "Search blocks" });
+  // (Once the sheet has come up.)
+  await page.waitForTimeout(900);
+  const before = (await search.boundingBox())!.y;
+  await search.evaluate((el) => {
+    for (let p = el.parentElement; p; p = p.parentElement) if (/(auto|scroll)/.test(getComputedStyle(p).overflowY) && p.scrollHeight > p.clientHeight) return void (p.scrollTop = 500);
+  });
+  await page.waitForTimeout(300);
+  expect(Math.abs((await search.boundingBox())!.y - before)).toBeLessThan(8);
+  await search.evaluate((el) => {
+    for (let p = el.parentElement; p; p = p.parentElement) if (/(auto|scroll)/.test(getComputedStyle(p).overflowY) && p.scrollHeight > p.clientHeight) return void (p.scrollTop = 0);
+  });
   const headings = await page.locator(".fb-editor .fb-h1").count();
   await tile.tap();
   await expect(page.locator(".fb-editor .fb-h1")).toHaveCount(headings + 1);
@@ -258,6 +271,7 @@ test("iPhone note: holding a line opens its menu beside it, the block's own acti
   expect(items.at(-1)).toMatch(/^Delete block/);
   // The line is held (lifted, or marked where the app can't lift it) and the menu doesn't cover it.
   await expect(page.locator("[data-block-held]")).toHaveCount(1);
+  await expect(body(page)).toHaveAttribute("contenteditable", "false");
   const m = (await menu.boundingBox())!;
   const held = (await page.locator("[data-block-held]").boundingBox())!;
   expect(m.y >= held.y + held.height - 1 || m.y + m.height <= held.y + 1).toBe(true);
@@ -266,7 +280,9 @@ test("iPhone note: holding a line opens its menu beside it, the block's own acti
   const first = menu.getByRole("menuitem").first();
   expect(await first.evaluate((el) => getComputedStyle(el).fontSize)).toBe("17px");
   expect(Math.round((await first.boundingBox())!.height)).toBeGreaterThanOrEqual(44);
-  // A submenu opens in place of the menu, with a row back to it.
+  // A submenu opens in place of the menu, with a row back to it. (A tap just as the held finger lifts belongs
+  // to the hold: a moment later.)
+  await page.waitForTimeout(500);
   await first.tap();
   const sub = page.getByRole("menu", { name: "Turn into" });
   await expect(sub).toBeVisible();
@@ -279,6 +295,16 @@ test("iPhone note: holding a line opens its menu beside it, the block's own acti
   await page.touchscreen.tap(200, 120);
   await expect(menu).toBeHidden();
   await expect(page.locator("[data-block-held]")).toHaveCount(0);
+  // iOS doesn't select the words under the held finger meanwhile (the page isn't editable text for it while
+  // the menu is up); afterwards it is again.
+  await expect(body(page)).toHaveAttribute("contenteditable", "true");
+  // Writing (the caret in the note), a held finger is iOS's own: its loupe and selection, no block menu.
+  await page.waitForTimeout(600);
+  await line.tap();
+  await expect(page.getByRole("toolbar", { name: "Writing tools" })).toBeVisible();
+  await finger(page, r.x + 40, r.y + r.height / 2, 900);
+  await page.waitForTimeout(300);
+  await expect(menu).toHaveCount(0);
   await context.close();
 });
 

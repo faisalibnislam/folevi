@@ -59,6 +59,8 @@ export const E2EE_ROUTES: Record<string, Route> = {
   ...each(pass, "organization", "deleteFolder deleteTag moveFolder setFolderColor"),
   ...each(pass, "notifications", "markRead markUnread noteSubscription remove setNoteSubscription unreadCount"),
   "blocks:rebalance": pass,
+  // Sealed per op by the router itself (client.ts pushSealed, §6.6), not through a route.
+  "sync:push": pass,
   "files:generateUploadUrl": pass,
   "files:finalize": pass,
   "files:shareForPaste": pass,
@@ -94,6 +96,9 @@ export const E2EE_ROUTES: Record<string, Route> = {
   "migration:documents": decode,
   "migration:fileTexts": decode,
   "documents:trashSummary": decode,
+  // Not called by the app today (no local handler); the server's answer carries sealed fields, opened here.
+  "documents:daily": decode,
+  "documents:dailyDates": pass,
 
   // ---- the replica ------------------------------------------------------------------------------------------
   "documents:list": device,
@@ -103,8 +108,6 @@ export const E2EE_ROUTES: Record<string, Route> = {
   "documents:info": device,
   "documents:recent": device,
   "documents:recentNotes": device,
-  "documents:daily": device,
-  "documents:dailyDates": device,
   "documents:backlinks": deviceAppend,
   "organization:sidebar": device,
   "organization:index": device,

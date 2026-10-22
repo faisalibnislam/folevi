@@ -44,6 +44,20 @@ export default defineConfig({
           server: { deps: { inline: ["convex-test"] } },
         },
       },
+      {
+        // End-to-end encryption's route table covers every function the product calls (docs/E2EE_DESIGN.md §6.4).
+        resolve: {
+          alias: {
+            "@": fileURLToPath(new URL("./apps/web/src", import.meta.url)),
+            "@convex": fileURLToPath(new URL("./convex", import.meta.url)),
+          },
+        },
+        test: {
+          name: "e2ee",
+          environment: "node",
+          include: ["tests/e2ee/**/*.test.ts"],
+        },
+      },
     ],
   },
 });

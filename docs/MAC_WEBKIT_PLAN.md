@@ -568,6 +568,23 @@ the owner's support folder or Keychain items).
   token refresh), two places (switch, the runner keeps the other syncing for 30 minutes with the window
   hidden, labelled notification), E2EE (WP1 vectors open and sign as `apps/desktop/src/e2ee.test.ts` checks);
   the existing web e2e `local` project still passes against the shell export.
+- Landed (2026-10-23): `Bridge/ShellRouter.swift` answers every method `shell-bridge.js` calls with the iOS plugin's
+  names (FoleviTests checks the list against both), each call run with `ShellPlaces.acting` set to the sender view's
+  place, so the session, E2EE keys and what a page says of itself are its own place's; `App/Places.swift` (places at
+  launch, runners on `/place-sync` in no window, `setMode` and switches that rebuild every main window in the new
+  place, the library's views blocked from Folevi's and Convex's hosts, `inactiveSchedulingPolicy = .none` for
+  runners and the library's windows through `WebViewFactory.configure`, `/_files` through `LibraryAttachments`);
+  `Services/MacAppLock.swift` (Electron's lock.ts rules, `lock.json`, an AppKit cover over every main window);
+  `Bridge/DesktopRouter+SignIn.swift` (`signInInBrowser` in the sign-in sheet). Shared-file extension points:
+  `Platform.e2ee` (mac-<ulid> ids, Touch ID words), `Platform.canAskOwner`, `Platform.dropboxRedirect`
+  (folevi://oauth/dropbox on the Mac), `Platform.libraryPlace` (Electron's displayPath), `ShellPlaces.acting`.
+  For WM2: `Places.switched` (reset the menu bar's recent notes and status) and `Places.quickAddChanged` (load
+  Quick Add again in its place). Debug commands (`mac.mjs cmd`): `places`, `runner-eval`, `switch`,
+  `test-session`, `add-account`, `hide`, `lock-cover`, `forget-library-key`. e2e: `apps/web/e2e/mac-app.spec.ts`
+  (`E2E_MAC_APP=<Folevi Dev.app>`): the same foleviShell script in Electron and in the native app, local mode with
+  the journal after a kill, account mode with two places. Owner: add `folevi://oauth/dropbox` to the Dropbox App
+  Console's redirect URIs; a build with cloud sync sets `FOLEVI_DROPBOX_APP_KEY` and `FOLEVI_GOOGLE_IOS_CLIENT_ID`
+  (an iOS-type Google client) or Info.plist's `FoleviDropboxAppKey` and `FoleviGoogleClientId`.
 
 ### WM2: Mac chrome (menus, windows, title bar, Quick Add, status item, Dock, Settings window)
 

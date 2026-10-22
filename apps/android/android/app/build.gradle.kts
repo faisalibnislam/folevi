@@ -90,6 +90,8 @@ dependencies {
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.window)
     implementation(libs.okhttp)
+    // End-to-end encryption's device keys: X25519 and Ed25519 (Tink), sealed with a Keystore key.
+    implementation(libs.tink.android)
     // Google Drive: Google's authorization for the drive.file scope on Android (no client secret, no redirect).
     implementation(libs.play.services.auth)
     // Foli AI on the device: Gemini Nano through ML Kit's GenAI Prompt API, where the phone's AICore has it.

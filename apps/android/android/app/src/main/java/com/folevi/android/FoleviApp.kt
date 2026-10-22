@@ -21,6 +21,8 @@ class FoleviApp : Application() {
         private set
     lateinit var ai: com.folevi.android.ai.AiService
         private set
+    lateinit var deviceKeys: com.folevi.android.e2ee.DeviceKeys
+        private set
 
     /** Shows a system screen that answers with a result (Google's consent screen): set by the activity on screen. */
     @Volatile var showForResult: (suspend (android.app.PendingIntent) -> android.content.Intent?)? = null
@@ -49,6 +51,7 @@ class FoleviApp : Application() {
             },
         )
         ai = com.folevi.android.ai.AiService(secrets, Http.client)
+        deviceKeys = com.folevi.android.e2ee.DeviceKeys(File(noBackupFilesDir, "e2ee"), KeystoreCipher("folevi.e2ee.v1"))
         auth = AuthBridge(
             serviceUrl = BuildConfig.SERVICE_URL,
             redirectUri = BuildConfig.AUTH_REDIRECT_URI,

@@ -70,6 +70,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(com.folevi.android.host.FilesPlugin::class.java)
         registerPlugin(com.folevi.android.host.HttpPlugin::class.java)
         registerPlugin(com.folevi.android.lock.LockPlugin::class.java)
+        registerPlugin(com.folevi.android.e2ee.E2eePlugin::class.java)
         applyBars(systemDark())
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this, back)

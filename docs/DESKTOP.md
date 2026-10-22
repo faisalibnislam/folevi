@@ -93,6 +93,10 @@ The Mac's device keys for end-to-end encryption (docs/E2EE_DESIGN.md §6.2, §6.
 Checks after a build (§11.5): `cd apps/desktop && pnpm test` (`src/e2ee.test.ts` opens WP1's vector boxes and
 checks the signed bytes against its vector signatures), then rebuild, install to /Applications, unlock, quit,
 reopen (no prompt), remove the Mac in Settings > Devices on the web, and the Mac asks to unlock.
+`apps/web/e2e/desktop-e2ee.spec.ts` runs those steps (and checks the passkey isn't offered and the Touch ID
+switch is there) against the dev site, from source or on a packaged build without touching /Applications:
+`pnpm release:dry-run --out <dir>`, then `FOLEVI_MAC_APP=<dir>/Applications/Folevi.app` with the usual
+`E2E_BASE_URL=… E2E_NO_SERVER=1`. It doesn't toggle Touch ID (that shows a real prompt); `src/e2ee.test.ts` covers it.
 
 ## Offline
 

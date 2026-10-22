@@ -47,7 +47,8 @@ mac:
   category: public.app-category.productivity
   # The Icon Composer icon: Liquid Glass on macOS 26 and later (electron-builder also makes the older .icns from it).
   icon: build/Folevi.icon
-  identity: "Developer ID Application: Abu Mohammad Faisal (7K32QQ2FX8)"
+  # electron-builder adds the "Developer ID Application:" prefix itself (it refuses a name that has it).
+  identity: "Abu Mohammad Faisal (7K32QQ2FX8)"
   hardenedRuntime: true
   gatekeeperAssess: false
   notarize: false

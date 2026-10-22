@@ -49,7 +49,8 @@ mac:
       arch: universal
   category: public.app-category.productivity
   icon: build/Folevi.icon
-  identity: "Developer ID Application: Abu Mohammad Faisal (7K32QQ2FX8)"
+  # electron-builder adds the "Developer ID Application:" prefix itself (it refuses a name that has it).
+  identity: "Abu Mohammad Faisal (7K32QQ2FX8)"
   type: distribution
   hardenedRuntime: true
   # folevi-text, folevi-files and folevi-ai are built universal already: they go into the universal app as they are.

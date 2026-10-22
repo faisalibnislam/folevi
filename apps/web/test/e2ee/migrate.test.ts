@@ -3,19 +3,25 @@
 // convex-test: a seeded Personal sealed by the runner (notes, comments, versions, folder names), resumed by a
 // second device after a lease lapses (including a note left half done), an edit from another device waiting
 // while a note is converted, and unsealing back to Standard.
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { SCHEMA_VERSION, type WireBlock } from "@folevi/editor-schema";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Sealer } from "@/lib/e2ee/seal";
 import { runJob } from "@/lib/e2ee/migrate/runner";
 import { sealDocument } from "@/lib/e2ee/migrate/seal";
+import { resealDocument, rotateNote } from "@/lib/e2ee/migrate/reseal";
+import { hex } from "@/lib/e2ee/migrate/env";
+import { ctx as aad, importAead, openFileStream, sealFileStream, sha256 } from "@folevi/local-store/e2ee";
 import type { MigrateEnv } from "@/lib/e2ee/migrate/env";
 import { convexHelpers, innerOf, TestKeyRing, type Person, type T } from "./wp8Fakes";
 
 const { helpers, fixtures } = await convexHelpers();
 const { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, PERSONAL, setup, ulid } = helpers;
 const { push } = fixtures;
+
+// The first call loads the whole backend into convex-test: slow on a busy machine.
+vi.setConfig({ testTimeout: 60_000 });
 
 const SWITCHES = { foliAi: "off", backgroundAi: false, searchEverywhere: false, apps: false, emailToNote: false, webClipper: false, notificationPreviews: false } as const;
 
@@ -162,47 +168,91 @@ describe("the migration runner", () => {
     expect(ok!.status).toBe("applied");
   });
 
-  test("lowering to Standard unseals the notes; the server derives search text and tasks again", async () => {
-    const t = setup();
+  test("seal then unseal round trip: notes, versions, folder names, study schedules and Foli AI memories come back", async () => {
+    const t: T = setup();
     const { p, space, keyring } = await encryptedPersonal(t, "wp8-unseal@example.com");
     const a = await plainNote(p, "ZQXJ-TITLE-u", "ZQXJ-BODY-u");
+    const card: WireBlock = { id: ulid(), type: "toggle", parentId: null, rank: "X", schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text: "ZQXJ-CARD-q" }], props: { collapsed: false, study: "card" } };
+    await push(p, [{ opId: ulid(), kind: "block.upsert", documentId: a, block: card, baseRevision: null, fields: ["content", "position"] }]);
+    await p.as.mutation(api.study.review, { blockId: card.id, rating: "good", lastReview: null } as never);
+    await p.as.mutation(api.documents.createSnapshot, { documentId: a, reason: "manual" });
+    const { id: folderId } = await p.as.mutation(api.organization.createFolder, { scope: PERSONAL, name: "ZQXJ-FOLDER-u" });
+    await p.as.mutation(api.aiMemory.add, { kind: "instruction", text: "ZQXJ-MEMORY-u" });
     const { migrationId } = await p.as.mutation(api.e2ee.spaces.enable, { scope: PERSONAL, level: "full", switches: SWITCHES });
     const env = envOf(p, keyring, space.scopeId, "device-wp8-unseal-1");
     expect(await runJob(env, await job(p, migrationId!))).toBe("done");
+    const sealedState = await t.run(async (ctx) => ({
+      study: await ctx.db.query("studyReviews").collect(),
+      memories: await ctx.db.query("aiMemories").collect(),
+      records: await ctx.db.query("e2eeRecords").collect(),
+    }));
     expect((await docRow(t, a)).searchText).toBe("");
+    // Schedules and memories moved into this person's sealed records; nothing readable is left.
+    expect(sealedState.study).toHaveLength(0);
+    expect(sealedState.memories).toHaveLength(0);
+    expect(sealedState.records.filter((r) => r.kind === "studyReview")).toHaveLength(1);
+    expect(sealedState.records.filter((r) => r.kind === "aiMemory")).toHaveLength(1);
+    expect(JSON.stringify(sealedState)).not.toContain("ZQXJ-MEMORY-u");
 
     const wraps = (await p.as.query(api.e2ee.keys.listWraps, {})) as { publicId: string; kind: string }[];
     await p.as.mutation(api.e2ee.keys.getWrap, { kind: "recoveryKey" });
     const lowered = await p.as.mutation(api.e2ee.spaces.lower, { scope: PERSONAL, level: "standard", recheckedWrapId: wraps.find((w) => w.kind === "recoveryKey")!.publicId });
     const failed = new Map<string, string>();
-    const result = await runJob(env, { id: lowered.migrationId!, direction: "unseal", scopeOf: "space", rootId: null }, { failed });
-    // The starter folders' names were sealed; putting them back needs e2ee.migrate.unsealNames (WP8 design note).
-    expect(result).toBe("paused");
-    expect([...failed.entries()]).toEqual([[`cleanup:${lowered.migrationId}`, "server"]]);
+    expect(await runJob(env, { id: lowered.migrationId!, direction: "unseal", scopeOf: "space", rootId: null }, { failed })).toBe("done");
+    expect(failed.size).toBe(0);
     const row = await docRow(t, a);
     expect(row.sealedAt).toBeUndefined();
     expect(row.title).toBe("ZQXJ-TITLE-u");
     expect(row.searchText).toContain("ZQXJ-BODY-u");
-    const tasks = await t.run(async (ctx) => await ctx.db.query("tasks").withIndex("by_document", (q) => q.eq("documentId", row._id)).collect());
-    expect(tasks).toHaveLength(1);
+    const after = await t.run(async (ctx) => ({
+      tasks: await ctx.db.query("tasks").withIndex("by_document", (q) => q.eq("documentId", row._id)).collect(),
+      snaps: await ctx.db.query("documentSnapshots").withIndex("by_document", (q) => q.eq("documentId", row._id)).collect(),
+      folder: await ctx.db.query("folders").withIndex("by_public_id", (q) => q.eq("publicId", folderId)).unique(),
+      study: await ctx.db.query("studyReviews").collect(),
+      memories: await ctx.db.query("aiMemories").collect(),
+      space: await ctx.db.query("e2eeSpaces").first(),
+    }));
+    expect(after.tasks).toHaveLength(1);
+    expect(after.snaps.every((s) => !s.sealed && s.title === "ZQXJ-TITLE-u")).toBe(true);
+    expect(after.folder!.name).toBe("ZQXJ-FOLDER-u");
+    expect(after.folder!.sealedName).toBeUndefined();
+    expect(after.study.map((r) => r.blockId)).toEqual([card.id]);
+    expect(after.memories.map((m) => m.text)).toEqual(["ZQXJ-MEMORY-u"]);
+    expect(after.space!.state).toBe("off");
   });
 
-  test("an unseal with versions pauses at history until the server can take plain versions back", async () => {
-    const t = setup();
-    const { p, space, keyring } = await encryptedPersonal(t, "wp8-unseal-history@example.com");
-    const a = await plainNote(p, "Versioned", "body");
-    await p.as.mutation(api.documents.createSnapshot, { documentId: a, reason: "manual" });
+  test("a note's key changes: its blocks and its files' keys move to the new key; the old one isn't needed", async () => {
+    const t: T = setup();
+    const { p, space, keyring } = await encryptedPersonal(t, "wp8-rotate@example.com");
+    const a = await plainNote(p, "Rotated", "ZQXJ-BODY-r");
     const { migrationId } = await p.as.mutation(api.e2ee.spaces.enable, { scope: PERSONAL, level: "full", switches: SWITCHES });
-    const env = envOf(p, keyring, space.scopeId, "device-wp8-unseal-2");
+    const env = envOf(p, keyring, space.scopeId, "device-wp8-rotate-1");
     expect(await runJob(env, await job(p, migrationId!))).toBe("done");
-    const wraps = (await p.as.query(api.e2ee.keys.listWraps, {})) as { publicId: string; kind: string }[];
-    await p.as.mutation(api.e2ee.keys.getWrap, { kind: "recoveryKey" });
-    const lowered = await p.as.mutation(api.e2ee.spaces.lower, { scope: PERSONAL, level: "standard", recheckedWrapId: wraps.find((w) => w.kind === "recoveryKey")!.publicId });
-    const failed = new Map<string, string>();
-    const result = await runJob(env, { id: lowered.migrationId!, direction: "unseal", scopeOf: "space", rootId: null }, { failed });
-    expect((await docRow(t, a)).sealedAt).toBeUndefined();
-    // e2ee.migrate.unsealSnapshot isn't on the server yet (design note "Settled while building WP8").
-    expect(result).toBe("paused");
-    expect([...failed.values()]).toContain("server");
+    // A sealed file of the note (as e2ee.files.commit stores one).
+    const fileId = ulid();
+    const plain = new TextEncoder().encode("ZQXJ-FILE-r");
+    const { raw, wrapped, k } = await env.sealer.newFileKey(a, fileId);
+    const meta = await Sealer.sealFileMeta(raw, a, fileId, { name: "r.txt", mime: "text/plain", width: null, height: null, sha256: "" });
+    const envelope = await sealFileStream(await importAead(raw.slice()), aad.file(fileId), plain);
+    raw.fill(0);
+    const { intentId } = await p.as.mutation(api.e2ee.files.generateUploadUrl, { documentId: a, kind: "file", declaredSize: envelope.length });
+    const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([envelope as Uint8Array<ArrayBuffer>])));
+    await p.as.action(api.e2ee.files.commit, { intentId, documentId: a, fileId, storageId, sealed: { key: wrapped, meta, k, plainSize: plain.length }, size: envelope.length, sha256: hex(sha256(envelope)) });
+
+    const v2 = await rotateNote(env, { accountKeys: () => p.account, profileId: p.profileId }, a);
+    expect(v2).toBe(2);
+    expect(((await p.as.query(api.e2ee.files.oldKeyFiles, { documentId: a })) as unknown[]).length).toBe(1);
+    expect(await resealDocument(env, a)).toBe(true);
+    expect(await p.as.query(api.e2ee.files.oldKeyFiles, { documentId: a })).toEqual([]);
+    const rows = await t.run(async (ctx) => {
+      const d = (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", a)).unique())!;
+      return { blocks: await ctx.db.query("blocks").withIndex("by_document", (q) => q.eq("documentId", d._id)).collect(), file: (await ctx.db.query("files").withIndex("by_public_id", (q) => q.eq("publicId", fileId)).unique())! };
+    });
+    expect(rows.blocks.every((b) => b.sealed!.k === 2)).toBe(true);
+    expect(rows.file.sealed!.k).toBe(2);
+    // The rewrapped key opens the same bytes.
+    const key = await env.sealer.openFileKey(a, fileId, rows.file.sealed!.key);
+    const bytes = await openFileStream(await importAead(key), aad.file(fileId), envelope);
+    expect(new TextDecoder().decode(bytes)).toBe("ZQXJ-FILE-r");
   });
 });

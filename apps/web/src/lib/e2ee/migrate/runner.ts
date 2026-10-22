@@ -127,7 +127,7 @@ export async function runJob(env: MigrateEnv, job: Pick<Job, "id" | "direction" 
       } else if (work.phase === "cleanup") {
         try {
           if (job.direction === "seal") await sealNames(env, job);
-          else if (job.direction === "unseal") await unsealNames(env, job);
+          else if (job.direction === "unseal") await unsealNames(env, job, { store: hooks.store });
         } catch (e) {
           if (e instanceof StopRun) throw e;
           failed.set(`cleanup:${job.id}`, isMissingFunction(e) ? "server" : (codeOf(e) ?? "error"));

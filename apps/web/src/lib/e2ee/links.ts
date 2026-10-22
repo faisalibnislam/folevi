@@ -22,12 +22,13 @@ import {
   openRecord,
   randomBytes,
   sealRecord,
+  sha256,
   toBase64Url,
   toWireBytes,
   type NoteKeys,
   type SpaceKeys,
 } from "@folevi/local-store/e2ee";
-import { ulid, type WireBlock } from "@folevi/editor-schema";
+import { blockFileIds, ulid, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import type { LocalCollection, LocalDocument } from "@/lib/local/store";
 import type { LocalReader } from "@/lib/local/registry";
@@ -221,16 +222,63 @@ export async function publicCollections(store: LocalReader, blocks: WireBlock[],
   return out;
 }
 
-/** Blocks that show a file (the copy can't carry a sealed note's attachments yet: see the design note). */
-const FILE_BLOCKS = new Set(["image", "file", "audio", "video", "pdf"]);
+/** The bytes of one of a sealed note's files, decrypted on this device (null when it can't be read here). */
+async function plainFileOf(router: Pick<E2eeRouterClient, "env">, documentId: string, fileId: string): Promise<{ bytes: Uint8Array; name: string; mime: string } | null> {
+  const urls = (await router.env.inner.query(api.files.urls, { fileIds: [fileId], now: Date.now() })) as Record<string, { url: string; sealed?: { key: ArrayBuffer; meta: ArrayBuffer; k: number; plainSize: number } } | undefined>;
+  const entry = urls[fileId];
+  if (!entry?.sealed) return null;
+  const { bytes, meta } = await router.env.files.bytes(fileId, documentId, entry.url, entry.sealed);
+  return { bytes, name: meta.name, mime: meta.mime };
+}
+
+/**
+ * The copy's own plain files (§9.3): each file the copy shows is decrypted here and uploaded as a plain file of
+ * the note for publishing (e2ee.links.generateFileUploadUrl, then files.finalize as any upload). Returns the
+ * new id for each old one; a file that can't be read or uploaded is left out.
+ */
+export async function publishFiles(router: Pick<E2eeRouterClient, "env">, documentId: string, wanted: { fileId: string; kind: "image" | "file" | "cover" }[], o: { fetch?: typeof fetch } = {}): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  for (const w of wanted) {
+    if (out.has(w.fileId)) continue;
+    try {
+      const plain = await plainFileOf(router, documentId, w.fileId);
+      if (!plain) continue;
+      const target = (await router.env.inner.mutation(api.e2ee.links.generateFileUploadUrl, { documentId, filename: plain.name || "file", size: plain.bytes.length, mimeType: plain.mime || "application/octet-stream", kind: w.kind })) as { uploadUrl: string; intentId: string };
+      const res = await (o.fetch ?? fetch)(target.uploadUrl, { method: "POST", headers: { "Content-Type": plain.mime || "application/octet-stream" }, body: plain.bytes as Uint8Array<ArrayBuffer> });
+      if (!res.ok) continue;
+      const { storageId } = (await res.json()) as { storageId: string };
+      const done = (await router.env.inner.action(api.files.finalize, { intentId: target.intentId, storageId, sha256: hexOf(sha256(plain.bytes)) } as never)) as { fileId: string };
+      out.set(w.fileId, done.fileId);
+      plain.bytes.fill(0);
+    } catch (e) {
+      console.warn("[e2ee] A file of the published copy couldn't be added.", e instanceof Error ? e.name : "error");
+    }
+  }
+  return out;
+}
+
+const hexOf = (b: Uint8Array) => [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+
+/** A block with its file ids swapped for the copy's (ids are unique ULIDs, so a text swap in its props is exact, flowchart data included). */
+function withFiles(block: WireBlock, ids: Map<string, string>): WireBlock | null {
+  const own = blockFileIds(block);
+  if (own.some((id) => !ids.has(id))) return null;
+  if (!own.length) return block;
+  let props = JSON.stringify(block.props);
+  for (const id of own) props = props.split(id).join(ids.get(id)!);
+  return { ...block, props: JSON.parse(props) as WireBlock["props"] };
+}
 
 /**
  * §12 WP8: publishes a readable copy of a sealed note (after the person confirmed the §10.11 warning). The
- * copy is made on this device from the replica; it doesn't follow later edits. `linkId` updates an existing
- * published copy.
+ * copy is made on this device from the replica, its images and files uploaded as plain files of their own; it
+ * doesn't follow later edits. `linkId` updates an existing published copy.
  */
 export async function publishPlainCopy(documentId: string, o: { linkId?: string } = {}): Promise<{ url: string }> {
-  const router = requireActiveRouter();
+  return await publishPlainCopyWith(requireActiveRouter(), documentId, o);
+}
+
+export async function publishPlainCopyWith(router: Pick<E2eeRouterClient, "env" | "spaces" | "replicas">, documentId: string, o: { linkId?: string; fetch?: typeof fetch } = {}): Promise<{ url: string; linkId: string }> {
   const doc = router.spaces.document(documentId);
   const space = doc ? router.spaces.get(doc.scope) : null;
   const store = space ? (router.replicas.hostedStore?.(space.scope) ?? null) : null;
@@ -239,11 +287,17 @@ export async function publishPlainCopy(documentId: string, o: { linkId?: string 
   if (!note) throw new ConvexError({ code: "not_found", message: "Document not found." });
   const own = (await liveBlocks(store, documentId)).map(toWireBlock);
   const labelled = await new ReaderLabels(store).blocks(await withSyncedContent(store, note, own));
-  const blocks = labelled.filter((b) => !FILE_BLOCKS.has(b.type)).map(({ revision: _r, ...b }) => {
+  const plain = labelled.map(({ revision: _r, ...b }) => {
     void _r;
     return b as WireBlock;
   });
-  const cover = (note.cover as { kind?: string } | null)?.kind === "image" ? { kind: "none" as const } : note.cover;
+  const coverValue = (note.cover as { kind?: string; value?: unknown } | null)?.kind === "image" ? (note.cover as { value?: unknown }).value : null;
+  const wanted: { fileId: string; kind: "image" | "file" | "cover" }[] = [];
+  for (const b of plain) for (const id of blockFileIds(b)) wanted.push({ fileId: id, kind: b.type === "image" ? "image" : "file" });
+  if (typeof coverValue === "string") wanted.push({ fileId: coverValue, kind: "cover" });
+  const ids = await publishFiles(router, documentId, wanted, { fetch: o.fetch });
+  const blocks = plain.map((b) => withFiles(b, ids)).filter((b): b is WireBlock => b !== null);
+  const cover = typeof coverValue === "string" ? (ids.has(coverValue) ? { ...(note.cover as object), value: ids.get(coverValue) } : { kind: "none" as const }) : note.cover;
   const copy = {
     title: note.title,
     ...(note.icon ? { icon: note.icon } : {}),
@@ -251,11 +305,10 @@ export async function publishPlainCopy(documentId: string, o: { linkId?: string 
     style: note.style,
     blocks,
     collections: await publicCollections(store, blocks, documentId),
-    fileIds: [] as string[],
+    fileIds: [...new Set(ids.values())],
   };
   const r = (await router.env.inner.mutation(api.e2ee.links.publishCopy, { documentId, ...(o.linkId ? { linkId: o.linkId } : {}), copy } as never)) as { linkId: string; token?: string };
-  if (!r.token) return { url: `${appOrigin()}/s/` };
-  return { url: `${appOrigin()}/s/${r.token}` };
+  return { url: r.token ? `${appOrigin()}/s/${r.token}` : "", linkId: r.linkId };
 }
 
 // ---- opening a link in the reader's browser (no account) --------------------------------------------

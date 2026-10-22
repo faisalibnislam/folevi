@@ -2,10 +2,9 @@
 // migration reads plaintext rows through the normal queries and writes through e2ee.migrate, never through the
 // router), the sealer and key ring (WP7, WP6), this device's id (it is `documents.sealing.by`) and the space.
 //
-// The server functions are WP3's (convex/e2ee/migrate.ts). Two that an unseal needs aren't there yet; they
-// are called by name (see `pending` below and the "Settled while building WP8" note in docs/E2EE_DESIGN.md),
-// and a missing one pauses the job with a clear failure instead of looping.
-import { makeFunctionReference, type FunctionReference } from "convex/server";
+// The server functions are WP3's (convex/e2ee/migrate.ts). One a deployment doesn't have yet pauses the job
+// with a clear failure instead of looping.
+import type { FunctionReference } from "convex/server";
 import { ConvexError } from "convex/values";
 import type { WireBlock, WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -42,16 +41,6 @@ export const call = {
 
 /** The e2ee.migrate functions (WP3). */
 export const migrate = api.e2ee.migrate as unknown as Record<string, FunctionReference<"query" | "mutation">>;
-
-/**
- * Functions an unseal needs that WP3 hasn't added yet, by name, with the signatures WP8 calls:
- * - unsealSnapshot({ snapshotId, content: { title, icon, cover?, style?, blocks }, name: string | null })
- * - unsealNames({ scope, folders: { folderId, name }[], tags: { tagId, name }[] })
- */
-export const pending = {
-  unsealSnapshot: makeFunctionReference<"mutation", { snapshotId: string; content: PlainVersionContent; name: string | null }, unknown>("e2ee/migrate:unsealSnapshot"),
-  unsealNames: makeFunctionReference<"mutation", { scope: WireScope; folders: { folderId: string; name: string }[]; tags: { tagId: string; name: string }[] }, unknown>("e2ee/migrate:unsealNames"),
-};
 
 /** A version's content in the plain shape `documents.snapshotContent` serves for Standard notes. */
 export interface PlainVersionContent {

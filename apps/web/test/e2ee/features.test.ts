@@ -3,7 +3,7 @@
 // convex-test, with a real replica (WP7's ingest over e2ee.pull): readable copies made and dropped per switch
 // and never for locked notes; reminder rows kept in step; inbox items applied once; Foli AI's per-request
 // rules (off, locked, consent, the notes sent); an encrypted link opened with the key from its fragment.
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { SCHEMA_VERSION, canonicalJson, type SyncOp, type WireBlock } from "@folevi/editor-schema";
 import { ctx as aad, sealTo } from "@folevi/local-store/e2ee";
 import { api, internal } from "../../../../convex/_generated/api";
@@ -20,13 +20,17 @@ import { syncMirrors } from "@/lib/e2ee/features/mirror";
 import { syncReminders } from "@/lib/e2ee/features/reminders";
 import { applyInbox, ensureInbox } from "@/lib/e2ee/features/inbox";
 import { aiRoute, answerConsent, pendingConsent } from "@/lib/e2ee/features/ai";
-import { createEncryptedLinkWith, openShare } from "@/lib/e2ee/links";
+import { createEncryptedLinkWith, openShare, publishPlainCopyWith } from "@/lib/e2ee/links";
+import { carryStudy } from "@/lib/e2ee/features/study";
 import { sharePayload } from "@/lib/e2ee/sharePayload";
 import { convexHelpers, innerOf, TestKeyRing, type Person, type T } from "./wp8Fakes";
 
 const { helpers, fixtures } = await convexHelpers();
 const { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, PERSONAL, setup, ulid } = helpers;
 const { push } = fixtures;
+
+// The first call loads the whole backend into convex-test: slow on a busy machine.
+vi.setConfig({ testTimeout: 60_000 });
 
 const OFF: Switches = { foliAi: "off", backgroundAi: false, searchEverywhere: false, apps: false, emailToNote: false, webClipper: false, notificationPreviews: false };
 
@@ -92,6 +96,29 @@ async function world(t: T, email: string, switches: Partial<Switches>, seed: (p:
   return { p, s, keyring, sealer, server, store, ids, pull, spaceRow, send, profileId: p.profileId };
 }
 
+const CARD = ulid();
+
+/**
+ * One space for the whole file (setting a person up and sealing their starter notes is the slow part): every
+ * test adds what it needs and looks only at its own notes.
+ */
+let sharedWorld: Promise<{ t: T; w: Awaited<ReturnType<typeof world>> }> | null = null;
+function shared() {
+  sharedWorld ??= (async () => {
+    const t: T = setup();
+    const w = await world(t, "wp8-features@example.com", { searchEverywhere: true, apps: true, emailToNote: true }, async (p) => ({
+      open: await plainNote(p, "ZQXJ-TITLE-open", [para(ulid(), "ZQXJ-BODY-open"), todo("ZQXJ-TASK-open", { dueDate: "2026-11-02" })]),
+      locked: await plainNote(p, "ZQXJ-TITLE-locked", [para(ulid(), "ZQXJ-BODY-locked")]),
+      ai: await plainNote(p, "ZQXJ-TITLE-ai", [para(ulid(), "ZQXJ-BODY-ai")]),
+      link: await plainNote(p, "ZQXJ-TITLE-link", [para(ulid(), "ZQXJ-BODY-link")]),
+      pub: await plainNote(p, "ZQXJ-TITLE-pub", [para(ulid(), "ZQXJ-BODY-pub")]),
+      cards: await plainNote(p, "Cards", [{ id: CARD, type: "toggle", parentId: null, rank: "V", schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text: "Q" }], props: { collapsed: false, study: "card" } }]),
+    }));
+    return { t, w };
+  })();
+  return sharedWorld;
+}
+
 const todo = (text: string, props: Record<string, unknown> = {}): WireBlock => ({ id: ulid(), type: "todo", parentId: null, rank: "W", schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text }], props: { checked: false, ...props } });
 
 async function mirrorRows(t: T) {
@@ -100,11 +127,7 @@ async function mirrorRows(t: T) {
 
 describe("readable copies (features/mirror.ts)", () => {
   test("made for each switch that's on, never for a locked note, only uploaded when changed, gone when the switch goes off", async () => {
-    const t = setup();
-    const w = await world(t, "wp8-mirror@example.com", { searchEverywhere: true, apps: true }, async (p) => ({
-      open: await plainNote(p, "ZQXJ-TITLE-open", [para(ulid(), "ZQXJ-BODY-open"), todo("ZQXJ-TASK-open", { dueDate: "2026-11-02" })]),
-      locked: await plainNote(p, "ZQXJ-TITLE-locked", [para(ulid(), "ZQXJ-BODY-locked")]),
-    }));
+    const { t, w } = await shared();
     await w.p.as.mutation(api.e2ee.content.setDocumentLocked, { documentId: w.ids.locked!, locked: true });
     let space = await w.spaceRow();
     expect(space.lockedCount).toBe(1);
@@ -141,9 +164,8 @@ describe("readable copies (features/mirror.ts)", () => {
 
 describe("reminders (features/reminders.ts)", () => {
   test("an open to-do with a reminder gets its row; checking it off removes the row", async () => {
-    const t = setup();
+    const { t, w } = await shared();
     const at = Date.now() + 3_600_000;
-    const w = await world(t, "wp8-remind@example.com", {}, async () => ({}));
     const space = await w.spaceRow();
     const locks = new LockIndex(w.server, () => space);
     const docId = ulid();
@@ -167,8 +189,7 @@ describe("reminders (features/reminders.ts)", () => {
 
 describe("the inbox (features/inbox.ts)", () => {
   test("an email sealed to the space is opened, made into a sealed note under the Inbox, and applied once", async () => {
-    const t = setup();
-    const w = await world(t, "wp8-inbox@example.com", { emailToNote: true }, async () => ({}));
+    const { t, w } = await shared();
     const space = await w.spaceRow();
     const noteId = ulid();
     const itemId = `email-${ulid()}`;
@@ -196,9 +217,10 @@ describe("the inbox (features/inbox.ts)", () => {
 });
 
 describe("Foli AI per request (features/ai.ts)", () => {
-  async function aiWorld(t: T, foliAi: Switches["foliAi"]) {
-    const w = await world(t, `wp8-ai-${foliAi}@example.com`, { foliAi }, async (p) => ({ note: await plainNote(p, "ZQXJ-TITLE-ai", [para(ulid(), "ZQXJ-BODY-ai")]) }));
-    const space = await w.spaceRow();
+  async function aiWorld(foliAi: Switches["foliAi"]) {
+    const { w } = await shared();
+    const row = await w.spaceRow();
+    const space: E2eeSpace = { ...row, switches: { ...row.switches, foliAi } };
     const sent: { name: string; args: Record<string, unknown> }[] = [];
     const env = {
       inner: {
@@ -219,12 +241,11 @@ describe("Foli AI per request (features/ai.ts)", () => {
   }
 
   test("asks first, sends the note's Markdown with consent, and sends nothing on Don't send", async () => {
-    const t = setup();
-    const { w, env, sent, call } = await aiWorld(t, "ask");
+    const { w, env, sent, call } = await aiWorld("ask");
     const forward = async () => {
       throw new Error("never forwarded plain");
     };
-    const write = aiRoute(call("ai:write", { scope: PERSONAL, task: "summarize", documentId: w.ids.note }), env, forward);
+    const write = aiRoute(call("ai:write", { scope: PERSONAL, task: "summarize", documentId: w.ids.ai }), env, forward);
     await new Promise((r) => setTimeout(r, 50));
     expect(pendingConsent()?.notes.map((n) => n.title)).toEqual(["ZQXJ-TITLE-ai"]);
     answerConsent(true);
@@ -235,7 +256,7 @@ describe("Foli AI per request (features/ai.ts)", () => {
     expect(provided.ephemeral).toBe(true);
     expect(provided.notes[0]!.markdown).toContain("ZQXJ-BODY-ai");
 
-    const declined = aiRoute(call("ai:write", { scope: PERSONAL, task: "summarize", documentId: w.ids.note }), env, forward);
+    const declined = aiRoute(call("ai:write", { scope: PERSONAL, task: "summarize", documentId: w.ids.ai }), env, forward);
     await new Promise((r) => setTimeout(r, 50));
     answerConsent(false);
     await expect(declined).rejects.toMatchObject({ data: { code: "e2ee_consent_declined" } });
@@ -243,14 +264,13 @@ describe("Foli AI per request (features/ai.ts)", () => {
   });
 
   test("automatic: no question; off: refused before anything is gathered; a locked note in a Standard space: refused", async () => {
-    const t = setup();
-    const auto = await aiWorld(t, "auto");
-    await aiRoute(auto.call("ai:ask", { scope: PERSONAL, question: "ZQXJ-BODY-ai", documentId: auto.w.ids.note }), auto.env, async () => null);
+    const auto = await aiWorld("auto");
+    await aiRoute(auto.call("ai:ask", { scope: PERSONAL, question: "ZQXJ-BODY-ai", documentId: auto.w.ids.ai }), auto.env, async () => null);
     expect((auto.sent[0]!.args.provided as { consent: string }).consent).toBe("auto");
     const offSpace: E2eeSpace = { ...auto.space, switches: { ...auto.space.switches, foliAi: "off" } };
     await expect(aiRoute({ ...auto.call("ai:write", { scope: PERSONAL }), res: { active: true, space: offSpace, sealed: true, documentId: null } as never }, auto.env, async () => null)).rejects.toMatchObject({ data: { code: "e2ee_switch_off" } });
     const standard: E2eeSpace = { ...auto.space, level: "standard", lockedCount: 1 };
-    await expect(aiRoute({ ...auto.call("ai:write", { scope: PERSONAL, documentId: auto.w.ids.note }), res: { active: true, space: standard, sealed: true, documentId: auto.w.ids.note } as never }, auto.env, async () => null)).rejects.toMatchObject({ data: { code: "e2ee_locked" } });
+    await expect(aiRoute({ ...auto.call("ai:write", { scope: PERSONAL, documentId: auto.w.ids.ai }), res: { active: true, space: standard, sealed: true, documentId: auto.w.ids.ai } as never }, auto.env, async () => null)).rejects.toMatchObject({ data: { code: "e2ee_locked" } });
     // Stored chats aren't for encrypted spaces: told why, nothing sent.
     await expect(aiRoute(auto.call("aiChat:send", { scope: PERSONAL, conversationId: "x", text: "hi" }), auto.env, async () => null)).rejects.toMatchObject({ data: { code: "e2ee_unavailable" } });
     expect(auto.sent).toHaveLength(1);
@@ -259,19 +279,18 @@ describe("Foli AI per request (features/ai.ts)", () => {
 
 describe("encrypted links (links.ts)", () => {
   test("a link opens the note with the key in its fragment; without it, or with a wrong one, it doesn't", async () => {
-    const t = setup();
-    const w = await world(t, "wp8-link@example.com", {}, async (p) => ({ note: await plainNote(p, "ZQXJ-TITLE-link", [para(ulid(), "ZQXJ-BODY-link")]) }));
+    const { t, w } = await shared();
     const space = await w.spaceRow();
     const router = {
       env: { inner: w.server, keyring: w.keyring, sealer: w.sealer },
       spaces: { document: () => ({ scope: "personal", sealed: true }), get: () => space },
       replicas: { hostedStore: () => w.store },
     } as never;
-    await w.keyring.noteKeys(w.ids.note!).catch(async () => {
-      const rows = (await w.p.as.query(api.e2ee.grants.myNoteKeys, { documentIds: [w.ids.note!] })) as never[];
+    await w.keyring.noteKeys(w.ids.link!).catch(async () => {
+      const rows = (await w.p.as.query(api.e2ee.grants.myNoteKeys, { documentIds: [w.ids.link!] })) as never[];
       await w.keyring.addNoteKeys((rows as { documentId: string; version: number; wrappedBy: "space"; spaceVersion: number; wrapped: ArrayBuffer }[]).map((r) => ({ ...r, scope: PERSONAL })));
     });
-    const { url } = await createEncryptedLinkWith(router, w.ids.note!);
+    const { url } = await createEncryptedLinkWith(router, w.ids.link!);
     const token = url.split("/s/")[1]!.split("#")[0]!;
     const hash = `#${url.split("#")[1]}`;
     const opened = (await t.mutation(api.sharing.openPublicLink, { token, serverSecret: "a".repeat(64), clientKey: "test" } as never)) as { status: string; e2ee?: unknown; document: { title: string } };
@@ -287,5 +306,89 @@ describe("encrypted links (links.ts)", () => {
     }
     expect(await openShare(payload, "")).toEqual({ ok: false, reason: "missing_key" });
     expect(await openShare(payload, `#k=${"A".repeat(43)}`)).toEqual({ ok: false, reason: "wrong_key" });
+  });
+});
+
+describe("published copies (links.ts)", () => {
+  test("a copy keeps its images as plain files of its own; the note's own files stay sealed", async () => {
+    const { t, w } = await shared();
+    const space = await w.spaceRow();
+    const png = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="), (c) => c.charCodeAt(0));
+    const sealedId = ulid();
+    const image: WireBlock = { id: ulid(), type: "image", parentId: null, rank: "Y", schemaVersion: SCHEMA_VERSION, text: [], props: { fileId: sealedId, alt: "", caption: "" } };
+    await w.send([{ opId: ulid(), kind: "block.upsert", documentId: w.ids.pub!, block: image, baseRevision: null, fields: ["content", "position"] }]);
+    const router = {
+      env: {
+        inner: { ...w.server, query: async (ref: unknown, args: Record<string, unknown>) => ((await import("convex/server")).getFunctionName(ref as never) === "files:urls" ? { [sealedId]: { url: "https://files.test/x", sealed: { key: new ArrayBuffer(0), meta: new ArrayBuffer(0), k: 1, plainSize: png.length } } } : w.server.query(ref as never, args)) },
+        keyring: w.keyring,
+        sealer: w.sealer,
+        files: { bytes: async () => ({ bytes: png.slice(), meta: { name: "dot.png", mime: "image/png", width: 1, height: 1, sha256: "" } }) },
+      },
+      spaces: { document: () => ({ scope: "personal", sealed: true }), get: () => space },
+      replicas: { hostedStore: () => w.store },
+    } as never;
+    const uploads: number[] = [];
+    const fetcher = (async (_url: string, init?: { body?: Uint8Array }) => {
+      const body = init!.body!;
+      uploads.push(body.length);
+      const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([body as Uint8Array<ArrayBuffer>], { type: "image/png" })));
+      return new Response(JSON.stringify({ storageId }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const { linkId } = await publishPlainCopyWith(router, w.ids.pub!, { fetch: fetcher });
+    expect(uploads).toEqual([png.length]);
+    const copy = await t.run(async (ctx) => {
+      const link = (await ctx.db.query("publicLinks").withIndex("by_public_id", (q) => q.eq("publicId", linkId)).unique())!;
+      const row = (await ctx.db.query("e2eePublishedCopies").withIndex("by_link", (q) => q.eq("linkId", link._id)).unique())!;
+      const chunks = await ctx.db.query("e2eePublishedChunks").withIndex("by_copy", (q) => q.eq("copyId", row._id)).collect();
+      return { row, body: JSON.parse(chunks.map((c) => c.data).join("")) as { blocks: WireBlock[]; fileIds: string[] } };
+    });
+    expect(copy.row.title).toBe("ZQXJ-TITLE-pub");
+    expect(copy.body.fileIds).toHaveLength(1);
+    const shown = copy.body.blocks.find((b) => b.type === "image")!;
+    expect((shown.props as { fileId: string }).fileId).toBe(copy.body.fileIds[0]);
+    expect((shown.props as { fileId: string }).fileId).not.toBe(sealedId);
+    const plainFile = await t.run(async (ctx) => (await ctx.db.query("files").withIndex("by_public_id", (q) => q.eq("publicId", copy.body.fileIds[0]!)).unique())!);
+    expect(plainFile.sealed).toBeUndefined();
+    expect(plainFile.publishedCopy).toBe(true);
+  });
+});
+
+describe("study schedules (features/study.ts)", () => {
+  test("a reader's schedules left on the server for a sealed note move into their own sealed record", async () => {
+    const { t, w } = await shared();
+    const cardId = CARD;
+    const space = await w.spaceRow();
+    await t.run(async (ctx) => {
+      const doc = (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", w.ids.cards!)).unique())!;
+      await ctx.db.insert("studyReviews", { profileId: w.profileId as Id<"profiles">, documentId: doc._id, blockId: cardId, due: Date.now(), stability: 1, difficulty: 5, elapsedDays: 0, scheduledDays: 1, learningSteps: 0, reps: 1, lapses: 0, state: 1, firstReview: Date.now() } as never);
+    });
+    const done = new Set<string>();
+    expect(await carryStudy({ server: w.server, sealer: w.sealer, space, store: w.store, isSealed: () => true, done })).toBe(1);
+    const left = await t.run(async (ctx) => ({ rows: await ctx.db.query("studyReviews").collect(), records: (await ctx.db.query("e2eeRecords").collect()).filter((r) => r.kind === "studyReview") }));
+    expect(left.rows).toHaveLength(0);
+    expect(left.records).toHaveLength(1);
+    expect(left.records[0]!.recordId).toBe(cardId);
+    // Nothing more to carry this session.
+    expect(await carryStudy({ server: w.server, sealer: w.sealer, space, store: w.store, isSealed: () => true, done })).toBe(0);
+  });
+});
+
+describe("startFeatureWorkers", () => {
+  test("hands the router WP8's Foli AI route, and takes it back when stopped", async () => {
+    const { setActiveRouter } = await import("@/lib/e2ee/router/active");
+    const { startFeatureWorkers } = await import("@/lib/e2ee/features");
+    const set: unknown[] = [];
+    const router = {
+      setAiRouter: (r: unknown) => set.push(r),
+      onRoutesChanged: () => () => undefined,
+      env: { session: { subscribe: () => () => undefined, state: () => "unlocked" } },
+      spaces: { list: () => [] },
+    };
+    setActiveRouter(router as never);
+    const stop = startFeatureWorkers();
+    expect(set).toEqual([aiRoute]);
+    stop();
+    expect(set).toEqual([aiRoute, null]);
+    setActiveRouter(null);
   });
 });

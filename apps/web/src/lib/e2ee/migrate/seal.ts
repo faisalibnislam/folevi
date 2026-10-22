@@ -8,9 +8,10 @@
 import { blocksFileIds, type WireBlock } from "@folevi/editor-schema";
 import { ctx as aad, importAead, sealFileStream, sha256, toWireBytes } from "@folevi/local-store/e2ee";
 import { api } from "@/lib/convex/api";
-import type { LocalCollection, LocalCollectionProperty, LocalCollectionView, LocalFileText } from "@/lib/local/store";
+import type { LocalCollection, LocalCollectionProperty, LocalCollectionView, LocalFileText, LocalStudyReview } from "@/lib/local/store";
 import { Sealer, type DocumentMeta } from "../seal";
 import { b64, call, checkStop, hex, loadNoteKeys, migrate, type MigrateEnv } from "./env";
+import { moveMemories } from "./memories";
 
 /** e2ee.migrate.sealBlocks takes at most 200 blocks or 4 MiB a call; this stays under both. */
 const BLOCKS_PER_CALL = 200;
@@ -53,6 +54,8 @@ export interface PlainExtras {
     rows: { id: string; documentId: string; rank: string; values: { propertyId: string; value: unknown }[] }[];
   }[];
   comments: { commentId: string; threadId: string; body?: unknown[]; sealedBody?: { c: ArrayBuffer; k: number }; deleted: boolean }[];
+  /** The caller's own study schedules for the note (other people carry theirs, features/study.ts). */
+  studyReviews?: (Omit<LocalStudyReview, "documentId">)[];
 }
 
 /** documents.get's answer, the parts the migration reads. */
@@ -216,7 +219,7 @@ async function fileIdsOf(env: MigrateEnv, documentId: string, rows: PlainBlockRo
 
 /** A sealed record for finishDocument: found text and hosted collections, sealed with the note's key. */
 export interface SealedRecordInput {
-  kind: "collection" | "fileText";
+  kind: "collection" | "fileText" | "studyReview";
   recordId: string;
   sealed: ArrayBuffer;
   keyVersion: number;
@@ -247,7 +250,16 @@ async function recordsOf(env: MigrateEnv, documentId: string, extras: PlainExtra
     const s = await env.sealer.sealRecordValue({ documentId }, env.space.scopeId, "collection", c.id, localCollection(c, documentId, i + 1, now));
     out.push({ kind: "collection", recordId: c.id, sealed: s.sealed, keyVersion: s.keyVersion });
   }
+  // This person's study schedules, one record per card (the replica's studyReviews rows, keyed by block).
+  for (const r of extras.studyReviews ?? []) out.push(await studyRecord(env, documentId, r));
   return out;
+}
+
+/** One study schedule as a sealed `studyReview` record (record id = the card's block id, as local mode keys it). */
+export async function studyRecord(env: Pick<MigrateEnv, "sealer" | "space">, documentId: string, row: Omit<LocalStudyReview, "documentId">): Promise<{ kind: "studyReview"; recordId: string; sealed: ArrayBuffer; keyVersion: number }> {
+  const value: LocalStudyReview = { ...row, documentId };
+  const s = await env.sealer.sealRecordValue({ documentId }, env.space.scopeId, "studyReview", row.blockId, value);
+  return { kind: "studyReview", recordId: row.blockId, sealed: s.sealed, keyVersion: s.keyVersion };
 }
 
 // ---- history -------------------------------------------------------------------------------------------
@@ -394,6 +406,8 @@ export function folderTree(folders: SidebarRows["folders"], rootId: string): Set
  */
 export async function sealNames(env: MigrateEnv, job: { scopeOf: "space" | "folder" | "document"; rootId: string | null }): Promise<void> {
   if (job.scopeOf === "document") return;
+  // A whole space's Foli AI memories become this person's sealed records (§5.7 aiMemory).
+  if (job.scopeOf === "space") await moveMemories(env);
   const { folders, tags } = await sidebarRows(env);
   const only = job.scopeOf === "folder" && job.rootId ? folderTree(folders, job.rootId) : null;
   for (const f of folders) {

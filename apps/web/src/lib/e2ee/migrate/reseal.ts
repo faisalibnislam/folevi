@@ -81,11 +81,33 @@ export async function rotateNote(env: MigrateEnv, deps: RotateDeps, documentId: 
   }
 }
 
+/**
+ * Wraps the keys of a note's files that are under an older note key with the newest (e2ee.files.oldKeyFiles /
+ * rewrapKeys): the bytes and their metadata stay as they are. Returns how many moved.
+ */
+export async function rewrapFileKeys(env: MigrateEnv, documentId: string): Promise<number> {
+  const old = ((await call.query(env, api.e2ee.files.oldKeyFiles, { documentId })) as { fileId: string; k: number; key: ArrayBuffer }[] | null) ?? [];
+  if (!old.length) return 0;
+  const nk = await env.keyring.noteKeys(documentId);
+  const files = [];
+  for (const f of old) {
+    const raw = await env.sealer.openFileKey(documentId, f.fileId, f.key);
+    try {
+      const key = await sealRecord(nk.files, nk.version, aad.fileKey(documentId, f.fileId), raw, { compress: false });
+      files.push({ fileId: f.fileId, key: toWireBytes(key), k: nk.version });
+    } finally {
+      raw.fill(0);
+    }
+  }
+  for (let i = 0; i < files.length; i += 200) await call.mutation(env, api.e2ee.files.rewrapKeys, { documentId, files: files.slice(i, i + 200) });
+  return files.length;
+}
+
 /** Re-seals everything of one note still under an older note key. Returns whether anything changed. */
 export async function resealDocument(env: MigrateEnv, documentId: string): Promise<boolean> {
   const newest = await loadNoteKeys(env, documentId);
   if (newest < 1) return false;
-  let changed = false;
+  let changed = (await rewrapFileKeys(env, documentId)) > 0;
 
   for (let round = 0; round < 3; round++) {
     const old = (await allBlocks(env, documentId)).filter((r) => r.block.sealed && r.block.sealed.k < newest);

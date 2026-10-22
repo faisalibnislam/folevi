@@ -117,7 +117,7 @@ export const bytes = (b: ArrayBuffer | Uint8Array) => toWireBytes(b instanceof U
  * given the few it needs here.
  */
 export type T = TestConvex<typeof schema>;
-export type Person = { as: ReturnType<T["withIdentity"]>; profileId: string };
+export type Person = { as: ReturnType<T["withIdentity"]>; profileId: string; account: import("@folevi/local-store/e2ee").AccountKeys };
 export interface Helpers {
   setup(): T;
   e2eePerson(t: T, email: string): Promise<Person>;

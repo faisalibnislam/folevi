@@ -5,11 +5,12 @@
 import { validateWireBlock, type WireBlock } from "@folevi/editor-schema";
 import { ctx as aad, importAead, openFileStream, sha256 } from "@folevi/local-store/e2ee";
 import { api } from "@/lib/convex/api";
-import type { LocalCollection, LocalCollectionRow, LocalDocument, LocalFileText } from "@/lib/local/store";
+import type { LocalCollection, LocalCollectionRow, LocalDocument, LocalFileText, LocalStudyReview } from "@/lib/local/store";
 import type { LocalReader } from "@/lib/local/registry";
 import { Sealer } from "../seal";
 import type { FileMeta } from "../files";
-import { call, checkStop, hex, loadNoteKeys, migrate, pending, unb64, type MigrateEnv, type PlainVersionContent } from "./env";
+import { call, checkStop, hex, loadNoteKeys, migrate, unb64, type MigrateEnv, type PlainVersionContent } from "./env";
+import { memoryRecords } from "./memories";
 import { allBlocks, fileEntry, folderTree, getDocument, sidebarRows, upload, type PlainExtras, type VersionNames } from "./seal";
 
 const PER_CALL = 200;
@@ -37,18 +38,32 @@ export interface UnsealOptions {
   store?: LocalReader | null;
 }
 
-/** Opens a note's sealed records (found text and hosted collections). */
-async function openRecords(env: MigrateEnv, documentId: string): Promise<{ collections: LocalCollection[]; fileTexts: LocalFileText[] }> {
+/** A study schedule row as the server keeps it (e2ee.migrate vStudyReviewRow): the record's value without its note. */
+export type StudyRow = Omit<LocalStudyReview, "documentId">;
+
+export function studyRow(v: LocalStudyReview): StudyRow {
+  const { documentId: _d, ...row } = v;
+  void _d;
+  return row;
+}
+
+/**
+ * Opens a note's sealed records: found text and hosted collections, and this person's study schedules (the
+ * server returns only the caller's own `studyReview` records).
+ */
+export async function openRecords(env: Pick<MigrateEnv, "server" | "sealer" | "space">, documentId: string): Promise<{ collections: LocalCollection[]; fileTexts: LocalFileText[]; studyReviews: StudyRow[] }> {
   const pulled = (await call.query(env, api.e2ee.pull.document, { documentId })) as PulledRecords | null;
   const collections: LocalCollection[] = [];
   const fileTexts: LocalFileText[] = [];
+  const studyReviews: StudyRow[] = [];
   for (const r of pulled?.records ?? []) {
-    if (r.kind !== "collection" && r.kind !== "fileText") continue;
+    if (r.kind !== "collection" && r.kind !== "fileText" && r.kind !== "studyReview") continue;
     const value = await env.sealer.openRecordValue({ documentId }, env.space.scopeId, r.kind, r.recordId, r.sealed);
     if (r.kind === "collection") collections.push({ ...(value as LocalCollection), id: r.recordId, documentId });
-    else fileTexts.push({ ...(value as LocalFileText), id: r.recordId, documentId });
+    else if (r.kind === "fileText") fileTexts.push({ ...(value as LocalFileText), id: r.recordId, documentId });
+    else studyReviews.push(studyRow({ ...(value as LocalStudyReview), documentId }));
   }
-  return { collections, fileTexts };
+  return { collections, fileTexts, studyReviews };
 }
 
 /** The server's PlainCollectionInput for finishUnseal, rows from the replica (each row note's sealed meta). */
@@ -133,7 +148,7 @@ export async function unsealDocument(env: MigrateEnv, documentId: string, o: Uns
   for (const c of extras.comments) if (c.sealedBody) comments.push({ commentId: c.commentId, body: await env.sealer.openComment(documentId, c.commentId, c.sealedBody.c) });
   for (let i = 0; i < comments.length; i += PER_CALL) await call.mutation(env, migrate.unsealComments as never, { documentId, deviceId: env.deviceId, comments: comments.slice(i, i + PER_CALL) });
 
-  const { collections, fileTexts } = await openRecords(env, documentId);
+  const { collections, fileTexts, studyReviews } = await openRecords(env, documentId);
   let rows: { documentId: string; row: LocalCollectionRow }[] = [];
   if (collections.length && o.store) {
     const ids = new Set(collections.map((c) => c.id));
@@ -144,6 +159,7 @@ export async function unsealDocument(env: MigrateEnv, documentId: string, o: Uns
     deviceId: env.deviceId,
     collections: collections.filter((c) => c.deletedAt === null).map((c) => plainCollection(c, rows)),
     fileTexts: fileTexts.map(plainFileText),
+    ...(studyReviews.length ? { studyReviews } : {}),
   });
   return true;
 }
@@ -172,7 +188,7 @@ export async function unsealSnapshot(env: MigrateEnv, snapshotId: string, docume
   const entry = (await names.of(documentId)).get(snapshotId);
   const name = entry?.sealedName ? await env.sealer.openVersionName(documentId, snapshotId, entry.sealedName.c) : null;
   const content: PlainVersionContent = { title, icon: look.icon, cover: look.cover, style: look.style, blocks };
-  await call.mutation(env, pending.unsealSnapshot, { snapshotId, content, name });
+  await call.mutation(env, migrate.unsealSnapshot as never, { snapshotId, content, name });
   return true;
 }
 
@@ -208,8 +224,11 @@ export async function unsealFile(env: MigrateEnv, fileId: string, documentId: st
   }
 }
 
-/** Cleanup of an unseal: folder (and for a space, tag) names back in plaintext (needs WP3's unsealNames). */
-export async function unsealNames(env: MigrateEnv, job: { scopeOf: "space" | "folder" | "document"; rootId: string | null }): Promise<void> {
+/**
+ * Cleanup of an unseal: folder (and for a space, tag) names back in plaintext, then this person's Foli AI
+ * memories back as server rows (their aiMemory records go).
+ */
+export async function unsealNames(env: MigrateEnv, job: { scopeOf: "space" | "folder" | "document"; rootId: string | null }, o: { store?: LocalReader | null } = {}): Promise<void> {
   if (job.scopeOf === "document") return;
   const { folders, tags } = await sidebarRows(env);
   const only = job.scopeOf === "folder" && job.rootId ? folderTree(folders, job.rootId) : null;
@@ -221,6 +240,14 @@ export async function unsealNames(env: MigrateEnv, job: { scopeOf: "space" | "fo
   }
   const plainTags: { tagId: string; name: string }[] = [];
   if (!only) for (const t of tags) if (t.sealedName) plainTags.push({ tagId: t.id, name: await env.sealer.openTagName(env.space.scope, env.space.scopeId, t.id, t.sealedName.c) });
-  if (!plainFolders.length && !plainTags.length) return;
-  await call.mutation(env, pending.unsealNames, { scope: env.space.scope, folders: plainFolders, tags: plainTags });
+  if (plainFolders.length || plainTags.length) await call.mutation(env, migrate.unsealNames as never, { scope: env.space.scope, folders: plainFolders, tags: plainTags });
+  if (only) return;
+  const memories = await memoryRecords(env, o.store ?? null);
+  if (memories.length) {
+    await call.mutation(env, migrate.restoreMemories as never, {
+      scope: env.space.scope,
+      memories: memories.map((m) => ({ kind: m.kind, text: m.text, source: m.source })),
+      recordIds: memories.map((m) => m.recordId),
+    });
+  }
 }

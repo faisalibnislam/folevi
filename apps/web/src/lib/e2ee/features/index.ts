@@ -14,6 +14,7 @@ import { completeGrants } from "./grants";
 import { forgetLocks, lockIndexFor } from "./locks";
 import { mirrorOn, syncMirrors, type MirrorPurpose } from "./mirror";
 import { syncReminders } from "./reminders";
+import { carryStudy, restoreStudy } from "./study";
 import { aiRoute, resetConsent } from "./ai";
 
 export { aiRoute, useAiConsent, askConsent, sealedChat, type ConsentRequest } from "./ai";
@@ -47,6 +48,7 @@ class SpaceWorker {
   private manager = true;
   private readonly sent = new Map<string, string>();
   private readonly applied = new Set<string>();
+  private readonly studied = new Set<string>();
   private lastSwitches = "";
 
   constructor(
@@ -99,6 +101,9 @@ class SpaceWorker {
     try {
       for (const purpose of PURPOSES) if (mirrorOn(space, purpose)) await syncMirrors({ server: env.inner, space, store, locks, isSealed }, purpose).catch((e) => warn("copies", e));
       await syncReminders({ server: env.inner, space, store, locks, profileId, isSealed, sent: this.sent }).catch((e) => warn("reminders", e));
+      const study = { server: env.inner, sealer: env.sealer, space, store, isSealed, done: this.studied };
+      await carryStudy(study).catch((e) => warn("study", e));
+      await restoreStudy(study).catch((e) => warn("study", e));
       if (space.level !== "standard") {
         await applyInbox({
           server: env.inner,

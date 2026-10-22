@@ -435,7 +435,14 @@ final class LibraryAttachments: LibraryFiles {
                 // One read at a time: a stream reader isn't shared across threads.
                 lock.lock()
                 defer { lock.unlock() }
-                return try f.read(start, end - start + 1)
+                let length = end - start + 1
+                // LibraryService.openAttachment's reader takes (position, length) for a plain library but an
+                // encrypted one's takes (start, end) today (StreamReader.range): asked the other way when the
+                // answer isn't the length asked for (reported to the iOS owner; harmless once that's fixed).
+                if let d = try? f.read(start, length), d.count == length { return d }
+                let d = try f.read(start, start + length)
+                guard d.count == length else { throw URLError(.cannotDecodeContentData) }
+                return d
             } catch where attempt == 0 {
                 continue
             }

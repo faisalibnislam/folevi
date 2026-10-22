@@ -3,6 +3,8 @@ import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs";
 import { APP_HOST, APP_URL, MARKETING_HOST } from "@/lib/env";
 import { hintCookie, hintDomain, sessionChange } from "@/lib/auth/signedInHint";
 import { appleFormPost, withAppleUser } from "@/lib/auth/appleCallback";
+import { checkPinnedSession, listPlaces, pinRequest, signOutPlace, type Forward } from "@/lib/auth/places";
+import { isPrivateAuthPath } from "@/lib/auth/placesCookies";
 
 const convexAuth = convexBetterAuthNextJs({
   convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL ?? "",
@@ -118,14 +120,47 @@ function withCookie(response: Response, cookie: string | null): Response {
 
 const secureCookies = () => APP_URL.startsWith("https:");
 
+/** Adds Set-Cookies to a response (the places map, a kept session: lib/auth/places.ts). */
+function withCookies(response: Response, cookies: string[]): Response {
+  if (!cookies.length) return response;
+  const headers = new Headers(response.headers);
+  for (const c of cookies) headers.append("set-cookie", c);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+/** Better Auth, as the proxy reaches it (with the signed client IP). For lib/auth/places.ts's own requests. */
+const forward: Forward = async (request) => (request.method === "GET" || request.method === "HEAD" ? convexAuth.handler.GET : convexAuth.handler.POST)(await withSignedClientIp(request));
+
+/** The multi-session plugin's endpoints take raw session tokens: a browser never calls them (lib/auth/places.ts does). */
+const refused = () => new Response(JSON.stringify({ code: "NOT_FOUND", message: "Not found" }), { status: 404, headers: { "content-type": "application/json" } });
+
 /**
  * Proxies /api/auth/* to the Convex site URL (so auth cookies are first-party on the app host). Apple's
  * cross-site form post to its callback is answered here with a same-site GET of it (lib/auth/appleCallback.ts).
+ * A tab's request that names its account (`x-folevi-account`) reaches Better Auth as that account's, whichever
+ * account the browser's active cookie holds (docs/MULTI_ACCOUNT_PLAN.md §2.1).
  */
 export const handler = {
   GET: async (request: Request) => {
+    const path = new URL(request.url).pathname;
+    if (isPrivateAuthPath(path)) return refused();
     const apple = withAppleUser(request, secureCookies());
-    return withCookie(withSignedInHint(await redirectPageLoads(apple.request, await convexAuth.handler.GET(await withSignedClientIp(apple.request)))), apple.clear);
+    const pin = await pinRequest(apple.request, forward, secureCookies());
+    const answer = await checkPinnedSession(await redirectPageLoads(pin.request, await convexAuth.handler.GET(await withSignedClientIp(pin.request))), pin.pinned, path);
+    return withCookies(withCookie(withSignedInHint(answer), apple.clear), pin.setCookies);
   },
-  POST: async (request: Request) => (await appleFormPost(request, secureCookies())) ?? withSignedInHint(await convexAuth.handler.POST(await withSignedClientIp(request))),
+  POST: async (request: Request) => {
+    const path = new URL(request.url).pathname;
+    if (isPrivateAuthPath(path)) return refused();
+    const apple = await appleFormPost(request, secureCookies());
+    if (apple) return apple;
+    const pin = await pinRequest(request, forward, secureCookies());
+    return withCookies(withSignedInHint(await convexAuth.handler.POST(await withSignedClientIp(pin.request))), pin.setCookies);
+  },
+};
+
+/** /api/places: the accounts this browser is signed in to, and signing out of one (lib/auth/places.ts). */
+export const places = {
+  list: async (request: Request) => listPlaces(request, forward, secureCookies()),
+  signOut: async (request: Request) => withSignedInHint(await signOutPlace(request, forward, secureCookies())),
 };

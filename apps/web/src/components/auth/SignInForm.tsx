@@ -20,7 +20,10 @@ export function SignInForm({
   notice,
   social = { google: false, apple: false },
   socialProblem,
+  adding = false,
 }: {
+  /** "Sign in to another account": the accounts already signed in here stay signed in. */
+  adding?: boolean;
   returnTo?: string;
   notice?: string;
   social?: { google: boolean; apple: boolean };
@@ -70,7 +73,11 @@ export function SignInForm({
 
   return (
     <>
-      <AuthHeading title="Welcome back" lede={`Sign in with ${socialLede(social)}your email and password.`} />
+      {adding ? (
+        <AuthHeading title="Add an account" lede={`Sign in to another Folevi account with ${socialLede(social)}your email and password. You stay signed in to the others.`} />
+      ) : (
+        <AuthHeading title="Welcome back" lede={`Sign in with ${socialLede(social)}your email and password.`} />
+      )}
       {notice ? (
         <div className="mb-4">
           <Alert tone="success">{notice}</Alert>
@@ -136,8 +143,13 @@ export function SignInForm({
         </>
       ) : null}
       <p className="mt-6 text-sm text-muted">
-        New to Folevi? <TextLink href="/signup">Create an account</TextLink>
+        New to Folevi? <TextLink href={adding ? "/signup?add=1" : "/signup"}>Create an account</TextLink>
       </p>
+      {adding ? (
+        <p className="mt-2 text-sm text-muted">
+          <TextLink href={destination}>Back to Folevi</TextLink>
+        </p>
+      ) : null}
     </>
   );
 }

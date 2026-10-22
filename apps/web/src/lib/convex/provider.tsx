@@ -10,6 +10,7 @@ import type { LocalClient } from "@/lib/local/client";
 import { api } from "@/lib/convex/api";
 import type { E2eeRouterClient } from "@/lib/e2ee/router/client";
 import { setActiveRouter } from "@/lib/e2ee/router/active";
+import { adoptSession, pinnedUserId } from "@/lib/places/pin";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
@@ -159,6 +160,12 @@ function useFoleviAuth() {
     [sessionId],
   );
 
+  // A tab that opened on the browser's active session (no account named yet) stays with it from now on.
+  const userId = session?.user?.id;
+  useEffect(() => {
+    if (userId) adoptSession(userId);
+  }, [userId]);
+
   const phase = authPhaseOf({ hasSession: Boolean(session?.session), isPending, error, online, slow });
   const auth = useMemo(
     () => ({
@@ -171,12 +178,22 @@ function useFoleviAuth() {
   return { auth, phase };
 }
 
-/** This browser has seen the signed-in account with E2EE set up: start with the router, so nothing remounts. */
+/**
+ * This browser has seen the signed-in account with E2EE set up: start with the router, so nothing remounts. Per
+ * account (`folevi:e2ee:<user id>`, several accounts in one browser); the browser-wide key from before is read
+ * by an account with no hint of its own yet.
+ */
 const E2EE_HINT = "folevi:e2ee";
+const hintKey = () => {
+  const user = pinnedUserId();
+  return user ? `${E2EE_HINT}:${user}` : E2EE_HINT;
+};
 
 function readHint(): boolean {
   try {
-    return typeof localStorage !== "undefined" && localStorage.getItem(E2EE_HINT) === "1";
+    if (typeof localStorage === "undefined") return false;
+    const own = localStorage.getItem(hintKey());
+    return (own ?? localStorage.getItem(E2EE_HINT)) === "1";
   } catch {
     return false;
   }
@@ -184,8 +201,9 @@ function readHint(): boolean {
 
 function writeHint(on: boolean) {
   try {
-    if (on) localStorage.setItem(E2EE_HINT, "1");
-    else localStorage.removeItem(E2EE_HINT);
+    if (on) localStorage.setItem(hintKey(), "1");
+    else localStorage.setItem(hintKey(), "0");
+    if (hintKey() !== E2EE_HINT) localStorage.removeItem(E2EE_HINT);
   } catch {
     /* storage unavailable */
   }

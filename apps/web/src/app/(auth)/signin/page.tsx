@@ -15,13 +15,15 @@ const NOTICES: Record<string, string> = {
   session_ended: "Your session ended. Sign in again to keep writing. Anything you wrote offline is still on this device.",
 };
 
-export default async function SignInPage({ searchParams }: { searchParams: Promise<{ returnTo?: string; notice?: string; error?: string; via?: string }> }) {
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ returnTo?: string; notice?: string; error?: string; via?: string; add?: string }> }) {
   const params = await searchParams;
   const returnTo = safeReturnTo(params.returnTo);
   // A session cookie usually means "already signed in", except when the app just found that session gone
   // (expired or revoked): then the cookie is stale, and bouncing back would loop between the two pages.
-  if (params.notice !== "session_ended" && (await hasSessionCookie())) redirect(returnTo);
+  // `add=1`: "Sign in to another account" from the switcher; the accounts already signed in stay signed in.
+  const adding = params.add === "1";
+  if (!adding && params.notice !== "session_ended" && (await hasSessionCookie())) redirect(returnTo);
   // ?error=…&via=apple|google: a sign-in with Apple or Google that came back refused (or cancelled).
   const problem = socialError(params.error, isSocialProvider(params.via) ? params.via : "google");
-  return <SignInForm returnTo={returnTo} notice={params.notice ? NOTICES[params.notice] : undefined} social={await socialSignInOptions()} socialProblem={problem} />;
+  return <SignInForm adding={adding} returnTo={returnTo} notice={params.notice ? NOTICES[params.notice] : undefined} social={await socialSignInOptions()} socialProblem={problem} />;
 }

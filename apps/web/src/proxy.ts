@@ -62,7 +62,8 @@ async function withNonce(request: NextRequest): Promise<NextResponse> {
   return response;
 }
 
-const hasSessionCookie = (request: NextRequest) => request.cookies.getAll().some((c) => c.name.endsWith("folevi.session_token") && !!c.value);
+// Another account's session kept in the jar counts too (docs/MULTI_ACCOUNT_PLAN.md §2.1).
+const hasSessionCookie = (request: NextRequest) => request.cookies.getAll().some((c) => !!c.value && (c.name.endsWith("folevi.session_token") || c.name.includes("folevi.session_token_multi-")));
 const hasSignedInHint = (request: NextRequest) => request.cookies.get(SIGNED_IN_HINT)?.value === "1";
 
 /**

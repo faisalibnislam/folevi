@@ -6,6 +6,7 @@ import { convexClient } from "@convex-dev/better-auth/client/plugins";
 import { oauthProviderClient } from "@better-auth/oauth-provider/client";
 import { passkeyClient } from "@better-auth/passkey/client";
 import { authFetch, serviceUrl } from "./shellFetch";
+import { pinnedFetch } from "@/lib/places/pin";
 
 /**
  * Browser client for Folevi's built-in accounts (email + password, verified email, authenticator-app
@@ -18,7 +19,9 @@ export const authClient = createAuthClient({
   // cookie can't work: it's given the service's address, and every request goes through the host's native
   // fetch, which holds the bearer session (lib/auth/shellFetch.ts, docs/LOCAL_MODE_PLAN.md §1). Website
   // builds never set the flag, so this branch and shellFetch.ts are dropped from them.
-  ...(process.env.NEXT_PUBLIC_FOLEVI_SHELL === "1" ? { baseURL: `${serviceUrl()}/api/auth`, fetchOptions: { customFetchImpl: authFetch } } : {}),
+  // On the website every request names this tab's account (several accounts in one browser,
+  // lib/places/pin.ts): the proxy answers as that account whatever the browser's active session is.
+  ...(process.env.NEXT_PUBLIC_FOLEVI_SHELL === "1" ? { baseURL: `${serviceUrl()}/api/auth`, fetchOptions: { customFetchImpl: authFetch } } : { fetchOptions: { customFetchImpl: pinnedFetch } }),
   // oauthProviderClient: on the connected-app consent page (/oauth/consent), sends its signed query along.
   plugins: [convexClient(), twoFactorClient(), oauthProviderClient(), passkeyClient()],
 });

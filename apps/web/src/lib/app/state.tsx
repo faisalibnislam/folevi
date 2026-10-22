@@ -60,19 +60,28 @@ export function resolveContext(stored: StoredContext | null, workspaces: readonl
   return { kind: "personal" };
 }
 
-function readStoredContext(): { stored: StoredContext | null; legacy: boolean } {
+/**
+ * Each account remembers its own context (`folevi:context:<profileId>`; several accounts in one browser,
+ * docs/MULTI_ACCOUNT_PLAN.md §4). The browser-wide key from before is read once, by the first account to open.
+ */
+export const contextKey = (profileId: string) => `${CONTEXT_KEY}:${profileId}`;
+
+function readStoredContext(profileId: string): { stored: StoredContext | null; legacy: boolean } {
   try {
+    const own = localStorage.getItem(contextKey(profileId));
+    if (own !== null) return { stored: parseStoredContext(own, null), legacy: false };
     const raw = localStorage.getItem(CONTEXT_KEY);
     const legacy = raw === null ? localStorage.getItem(LEGACY_WORKSPACE_KEY) : null;
-    return { stored: parseStoredContext(raw, legacy), legacy: legacy !== null };
+    return { stored: parseStoredContext(raw, legacy), legacy: legacy !== null || raw !== null };
   } catch {
     return { stored: null, legacy: false };
   }
 }
 
-function writeStoredContext(scope: WireScope) {
+function writeStoredContext(profileId: string, scope: WireScope) {
   try {
-    localStorage.setItem(CONTEXT_KEY, serializeContext(scope));
+    localStorage.setItem(contextKey(profileId), serializeContext(scope));
+    localStorage.removeItem(CONTEXT_KEY);
     localStorage.removeItem(LEGACY_WORKSPACE_KEY);
   } catch {
     /* storage unavailable */
@@ -177,7 +186,7 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
   useEffect(() => {
     if (liveWorkspaces && !offlineWorkspaces && !local) void saveAccountSnapshot(profile, liveWorkspaces);
   }, [profile, liveWorkspaces, offlineWorkspaces, local]);
-  const [initial] = useState(readStoredContext);
+  const [initial] = useState(() => readStoredContext(profile.id));
   const [selected, setSelected] = useState<StoredContext | null>(initial.stored);
   const context = useMemo(() => (workspaces ? resolveContext(selected, workspaces) : null), [workspaces, selected]);
   const contextWorkspaceId = context?.kind === "workspace" ? context.workspaceId : null;
@@ -189,8 +198,8 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
   useEffect(() => {
     if (migrated.current || !liveWorkspaces) return;
     migrated.current = true;
-    writeStoredContext(scope);
-  }, [liveWorkspaces, scope]);
+    writeStoredContext(profile.id, scope);
+  }, [liveWorkspaces, scope, profile.id]);
 
   const [engine, setEngine] = useState<SyncEngine | null>(null);
   const [outbox, setOutbox] = useState<Outbox | null>(null);
@@ -329,7 +338,7 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
       canEdit: context.kind === "workspace" ? context.workspace.canEdit !== false : true,
       canManage: context.kind === "workspace" ? context.workspace.canManage === true : false,
       setContext: (next: WireScope) => {
-        writeStoredContext(next);
+        writeStoredContext(profile.id, next);
         setSelected(next.kind === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: next.workspaceId });
       },
       engine,

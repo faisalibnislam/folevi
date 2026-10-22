@@ -176,6 +176,47 @@ export async function deviceId(accountKey: string): Promise<string> {
   return id;
 }
 
+/** localStorage keys an account's own (each ends in its profile id, or has it after the prefix). */
+const ACCOUNT_KEY_PREFIXES = ["folevi:tabs:", "folevi:home-href:", "folevi:context:", "folevi:e2ee:", "folevi:sync-journal:", "folevi:iphone-tabs:"];
+
+function deleteDatabase(name: string): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const req = indexedDB.deleteDatabase(name);
+    req.onsuccess = req.onerror = req.onblocked = () => resolve();
+  });
+}
+
+/**
+ * Forgets one account's copy on this device (signing out of it while other places stay, docs/MULTI_ACCOUNT_PLAN.md
+ * §9): its database, its end-to-end encrypted replicas (`folevi-e2ee-<profileId>-*`) and its own localStorage
+ * keys. Nothing of any other account or of the library is touched.
+ */
+export async function clearAccountData(profileId: string, userId?: string | null): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(profileId)) return;
+  const ids = [profileId, ...(userId && /^[A-Za-z0-9_-]{1,64}$/.test(userId) ? [userId] : [])];
+  const own = `folevi-${profileId}`;
+  const replicas = `folevi-e2ee-${profileId}-`;
+  for (const [name, db] of [...dbs]) {
+    if (name !== own) continue;
+    (await db).close();
+    dbs.delete(name);
+  }
+  const all = (await indexedDB.databases?.()) ?? [];
+  await Promise.all(all.filter((d) => d.name === own || d.name?.startsWith(replicas)).map((d) => deleteDatabase(d.name!)));
+  if (!all.some((d) => d.name === own)) await deleteDatabase(own);
+  try {
+    if (localStorage.getItem("folevi:last-account") === profileId) localStorage.removeItem("folevi:last-account");
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && ACCOUNT_KEY_PREFIXES.some((p) => ids.some((id) => k === `${p}${id}` || k.startsWith(`${p}${id}:`)))) keys.push(k);
+    }
+    for (const k of keys) localStorage.removeItem(k);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 /**
  * Forgets this device's copy of the account (sign-out). `keep` spares databases by name: an account moved
  * into a library on this device keeps that library's copy (`folevi-local-*`, lib/migrate/exportToLocal.ts).

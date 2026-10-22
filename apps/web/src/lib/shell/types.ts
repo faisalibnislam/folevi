@@ -244,6 +244,75 @@ export interface ShellE2ee {
   setTouchId?(on: boolean): Promise<{ touchId: boolean; available: boolean }>;
 }
 
+/** A workspace as the switcher shows it under its account. */
+export interface ShellPlaceWorkspace {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+}
+
+/**
+ * A place as the host lists it (docs/MULTI_ACCOUNT_PLAN.md §2.2): the library on this device, or a Folevi account
+ * the app holds a session for. Ids: "library", or "acct:<Better Auth user id>". Counts are what the place's own
+ * page (or its background runner) last reported.
+ */
+export type ShellPlace =
+  | { kind: "library"; id: "library"; configured: boolean; syncs: LibraryKind | null; displayPath: string; unread: number; reminders: number; waiting: number }
+  | {
+      kind: "account";
+      id: string;
+      userId: string;
+      profileId: string | null;
+      name: string;
+      email: string;
+      avatarUrl: string | null;
+      workspaces: ShellPlaceWorkspace[];
+      unread: number;
+      reminders: number;
+      waiting: number;
+    };
+
+/** What the open account's page tells the host about itself (for the switcher, the dots and the Dock badge). */
+export interface ShellPlaceDescription {
+  profileId: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  workspaces: ShellPlaceWorkspace[];
+  unread?: number;
+  reminders?: number;
+  waiting?: number;
+}
+
+/**
+ * Several places in one app (docs/MULTI_ACCOUNT_PLAN.md §2.2, §3): the host keeps a session, keys and data per
+ * account, and a page is bound to one place by the host (its token, keys and reminders are that place's; a page
+ * never names another's, except `convexToken` for a move). Hosts that predate it leave it out: one place then.
+ */
+export interface ShellPlaces {
+  /** The place this page shows, set before page scripts run: "library", "acct:<id>", or null (none yet). */
+  current: string | null;
+  /** This page is a hidden runner keeping its place in sync (/place-sync), not a window people see. */
+  background?: boolean;
+  list(): Promise<ShellPlace[]>;
+  /** The list on every change (a sign-in, a runner's counts). Returns the unsubscribe function. */
+  onChange(cb: (places: ShellPlace[]) => void): () => void;
+  /** Opens a place in every window (they reload into it). */
+  switchTo(id: string, o?: { path?: string }): Promise<void>;
+  /** Signs in to one more account (the browser or the sign-in sheet); its id, or null when it didn't finish. It doesn't switch. */
+  signIn(): Promise<string | null>;
+  describe(d: ShellPlaceDescription): Promise<void>;
+  /** Ends an account's session here and deletes its token and keys (the page clears its data first). */
+  signOut(id: string): Promise<void>;
+  /** Forgets the library: this device's copy and journal go, its folder stays as it is. */
+  forgetLibrary(): Promise<void>;
+  /** Another account's short-lived Convex token, for moving notes between two accounts. */
+  convexToken(id: string): Promise<string | null>;
+  /** Quick Add's place, remembered between uses. */
+  quickAddPlace?(): Promise<string | null>;
+  setQuickAddPlace?(id: string): Promise<void>;
+}
+
 export interface FoleviShell {
   platform: ShellPlatform;
   /** The app's version, for minShellVersion checks. */
@@ -265,6 +334,8 @@ export interface FoleviShell {
   http: ShellHttp;
   /** End-to-end encryption device keys (absent on hosts that predate it). */
   e2ee?: ShellE2ee;
+  /** Several places: the library and any number of accounts (absent on hosts that predate it). */
+  places?: ShellPlaces;
 }
 
 declare global {

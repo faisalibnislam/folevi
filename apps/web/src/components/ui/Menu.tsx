@@ -24,6 +24,12 @@ export interface MenuItem {
   description?: string;
   /** Quiet text at the end of the row (e.g. your role in a workspace). */
   detail?: string;
+  /** Sits under the item above it (a workspace under its account). */
+  indent?: boolean;
+  /** A count at the end of the row (unread notifications in another place); 0 shows nothing. */
+  badge?: number;
+  /** A dot at the end of the row (something waiting there, without a count). */
+  dot?: boolean;
 }
 
 /** A small caps label above a group of items (not focusable). */
@@ -282,7 +288,7 @@ function MenuPanel({
             aria-checked={item.checked}
             // The label names the item; the quieter lines are read as its description.
             aria-label={item.description || item.detail ? item.label : undefined}
-            aria-description={[item.description, item.detail].filter(Boolean).join(" · ") || undefined}
+            aria-description={[item.description, item.detail, item.badge ? `${item.badge} unread` : null, item.dot && !item.badge ? "something new" : null].filter(Boolean).join(" · ") || undefined}
             data-index={i}
             tabIndex={i === active ? 0 : -1}
             disabled={item.disabled}
@@ -293,7 +299,7 @@ function MenuPanel({
               item.onSelect();
             }}
             // A row with a second line (a workspace and its plan) gets room to breathe.
-            className={`ui-menu-item disabled:opacity-40 pointer-coarse:min-h-11 ${item.description ? "!gap-3 py-2" : ""} ${item.danger ? "!text-danger" : ""}`}
+            className={`ui-menu-item disabled:opacity-40 pointer-coarse:min-h-11 ${item.description ? "!gap-3 py-2" : ""} ${item.indent ? "!pl-8" : ""} ${item.danger ? "!text-danger" : ""}`}
           >
             {item.icon ? <span className="text-muted" aria-hidden>{item.icon}</span> : null}
             {item.description ? (
@@ -305,6 +311,13 @@ function MenuPanel({
               <span className="flex-1">{item.label}</span>
             )}
             {item.detail ? <span className="flex-none text-xs text-muted">{item.detail}</span> : null}
+            {item.badge ? (
+              <span aria-hidden className="grid h-4 min-w-4 flex-none place-items-center rounded-chip bg-coral px-1 text-[10px] font-semibold leading-none text-white">
+                {item.badge > 99 ? "99+" : item.badge}
+              </span>
+            ) : item.dot ? (
+              <span aria-hidden className="h-2 w-2 flex-none rounded-tiny bg-coral" />
+            ) : null}
             {item.shortcut ? <span className="text-xs text-faint pointer-coarse:hidden">{keyLabel(item.shortcut)}</span> : null}
             {item.checked ? <Check size={14} strokeWidth={2.5} aria-hidden className="text-heading" /> : null}
           </button>

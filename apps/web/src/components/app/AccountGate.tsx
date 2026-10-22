@@ -25,6 +25,10 @@ import { E2eeGate } from "@/components/e2ee/E2eeGate";
 import { getConvexClient } from "@/lib/convex/provider";
 import { convexKeysServer, startKeySession } from "@/lib/e2ee/keys";
 import { deviceId as loadDeviceId } from "@/lib/sync/db";
+import { adoptNextSignIn, pinnedUserId } from "@/lib/places/pin";
+import { accountPlaceId, forgetAccount } from "@/lib/places/registry";
+import { openPlaceInTab, signedInAccounts, signOutOfAccount } from "@/lib/places/web";
+import { PlacesReporter } from "@/components/places/PlacesReporter";
 
 // Seen once per account, so it loads only for people who haven't finished it.
 const Onboarding = lazy(() => import("./Onboarding").then((m) => ({ default: m.Onboarding })));
@@ -76,7 +80,7 @@ export function AccountGate() {
       return;
     }
     let cancelled = false;
-    const go = () => window.location.replace(`/signin?notice=session_ended&returnTo=${encodeURIComponent(currentPath())}`);
+    const go = (others = false) => window.location.replace(`/signin?notice=session_ended${others ? "&add=1" : ""}&returnTo=${encodeURIComponent(currentPath())}`);
     const withTimeout = <T,>(p: Promise<T>) => Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), 3000))]);
     void (async () => {
       // Check once more before acting: a server hiccup (5xx, rate limit) also ends up here, and must never
@@ -102,8 +106,23 @@ export function AccountGate() {
       // replaces whatever session the host still held (and ends it). Calling the host's signOut here would
       // also cancel a sign-in the person may already have started from that screen.
       if (hostAuth()) return;
-      await withTimeout(authClient.signOut().catch(() => undefined));
-      go();
+      // Several accounts in one browser (docs/MULTI_ACCOUNT_PLAN.md §2.1): only this tab's account ended. Its
+      // cookies go; every other account stays signed in. (Better Auth's own sign-out would end them all.)
+      const pinned = pinnedUserId();
+      const others = (await withTimeout(signedInAccounts()))?.filter((a) => a.userId !== pinned) ?? [];
+      if (pinned) {
+        await withTimeout(signOutOfAccount(pinned));
+        forgetAccount(pinned);
+      } else if (others.length) {
+        // A tab on the browser's active session, which ended: another account is still here.
+        openPlaceInTab(accountPlaceId(others[0]!.userId));
+        return;
+      } else {
+        await withTimeout(authClient.signOut().catch(() => undefined));
+      }
+      // Signing in again opens that account in this tab.
+      adoptNextSignIn();
+      go(others.length > 0);
     })();
     return () => {
       cancelled = true;
@@ -195,6 +214,7 @@ export function AccountGate() {
         <ShellUpdateGate>
           <KeySessionStarter profileId={me.profile.id} email={me.profile.email ?? undefined} />
           <AppStateProvider profile={me.profile}>
+            <PlacesReporter />
             {route.name === "oauth-consent" ? (
               <OauthConsent />
             ) : route.name === "quick-add" && me.profile.onboardingStep === "done" ? (

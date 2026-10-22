@@ -12,5 +12,6 @@ export async function hasSessionCookie(): Promise<boolean> {
   const h = new Headers(await headers());
   if (getSessionCookie(h, { cookiePrefix: COOKIE_PREFIX })) return true;
   const jar = await cookies();
-  return jar.getAll().some((c) => c.name.endsWith(`${COOKIE_PREFIX}.session_token`));
+  // Another account's session counts too (several accounts in one browser, docs/MULTI_ACCOUNT_PLAN.md §2.1).
+  return jar.getAll().some((c) => Boolean(c.value) && (c.name.endsWith(`${COOKIE_PREFIX}.session_token`) || c.name.includes(`${COOKIE_PREFIX}.session_token_multi-`)));
 }

@@ -17,7 +17,7 @@ function passwordProblem(password: string, email: string): string | null {
   return null;
 }
 
-export function SignUpForm({ template, social = { google: false, apple: false } }: { template?: string; social?: { google: boolean; apple: boolean } }) {
+export function SignUpForm({ template, social = { google: false, apple: false }, adding = false }: { template?: string; social?: { google: boolean; apple: boolean }; adding?: boolean }) {
   // A template picked on folevi.com opens as the first page after sign-up (Shell), in this browser.
   useEffect(() => rememberTemplate(template), [template]);
   const [name, setName] = useState("");
@@ -92,7 +92,7 @@ export function SignUpForm({ template, social = { google: false, apple: false } 
         </p>
       </form>
       <p className="mt-6 text-sm text-muted">
-        Already have an account? <TextLink href="/signin">Sign in</TextLink>
+        Already have an account? <TextLink href={adding ? "/signin?add=1" : "/signin"}>Sign in</TextLink>
       </p>
     </>
   );

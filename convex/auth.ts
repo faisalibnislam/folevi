@@ -12,6 +12,7 @@ import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { bearer } from "better-auth/plugins/bearer";
+import { multiSession } from "better-auth/plugins/multi-session";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { passkey, type PasskeyOptions } from "@better-auth/passkey";
 import { components, internal } from "./_generated/api";
@@ -155,6 +156,9 @@ async function appleProvider() {
     audience: [config.clientId, config.bundleId],
   };
 }
+
+/** How many accounts one browser keeps signed in at once (the multi-session cookie jar; the apps keep any number). */
+export const MAX_BROWSER_ACCOUNTS = 10;
 
 /** What a sign-in with Google or Apple can't do, as the error code the sign-in page shows a message for. */
 export const SOCIAL_REFUSED = {
@@ -370,6 +374,11 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
       // The iOS app's own Apple sheet hands over its authorization code, so its token can be revoked later.
       appleNative(),
       bearer(),
+      // Several accounts in one browser (docs/MULTI_ACCOUNT_PLAN.md §2.1): each session also gets a signed
+      // multi-session cookie. Ten fit in a Cookie header comfortably. The web's /api/auth proxy picks the tab's
+      // own account from them, and refuses the plugin's endpoints from browsers (they take raw session tokens);
+      // Folevi's /api/places routes call them server to server.
+      multiSession({ maximumSessions: MAX_BROWSER_ACCOUNTS }),
       convex({
         authConfig,
         jwt: {

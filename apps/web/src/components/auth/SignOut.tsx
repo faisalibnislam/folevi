@@ -8,7 +8,10 @@ import { nativeApp } from "@/lib/nativeApp";
 import { hostAuth } from "@/lib/auth/shellFetch";
 import { shell } from "@/lib/shell";
 import { forgetThisDevice } from "@/lib/nativeDevice";
-import { clearAllLocalData, localDb } from "@/lib/sync/db";
+import { clearAccountData, clearAllLocalData, localDb } from "@/lib/sync/db";
+import { adoptNextSignIn, pinnedUserId } from "@/lib/places/pin";
+import { knownAccount } from "@/lib/places/registry";
+import { afterAccountSignedOut, signOutOfAccount } from "@/lib/places/web";
 import { endKeySession, keepOnSignOut } from "@/lib/e2ee/keys";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -35,17 +38,23 @@ function signedOutDestination(): string {
 }
 
 /**
- * Ends the session on the server, then clears this device's copy (in the iOS app, its token too). In the
- * apps' built-in interface the host ends its own session and forgets the token, and the app opens on its
- * sign-in screen (there are no /signin pages there, so `destination` doesn't apply). On the web, signing
- * out lands on the marketing site's home page by default.
+ * Signs this device out of the account it shows, and only that one (several accounts in one browser or app,
+ * docs/MULTI_ACCOUNT_PLAN.md §9): the session ends on the server, this account's copy on the device goes, and
+ * its encryption keys too. The other accounts stay signed in, and the page opens the next one; with none left
+ * the website lands on the marketing home page and the apps on their sign-in screen, as before.
+ *
+ * A `destination` on /signin is "sign in again" (to confirm it's you, or because the session ended): the keys
+ * stay (a trusted browser unlocks with no prompt afterwards) and the page opens whoever signs in next.
+ *
+ * In the apps' built-in interface the host ends its own session and forgets the token.
  */
-export async function signOutNow(destination = signedOutDestination(), opts: { forget?: boolean } = {}) {
+export async function signOutNow(destination = signedOutDestination(), opts: { forget?: boolean; profileId?: string | null } = {}) {
+  const again = destination.startsWith("/signin");
   await forgetThisDevice();
-  // End-to-end encryption: a trusted browser keeps its device keys (IndexedDB "folevi-e2ee") so the next
-  // sign-in here unlocks with no prompt, unless the person asked to forget this browser or it was a public
-  // computer (docs/E2EE_DESIGN.md §6.3). Decided before the session ends, while it still knows which it was.
-  const forget = opts.forget ?? false;
+  // End-to-end encryption: signing out of an account removes its device keys from here; signing in again (above)
+  // keeps a trusted browser's (IndexedDB "folevi-e2ee"), unless it was a public computer (docs/E2EE_DESIGN.md §6.3).
+  // Decided before the session ends, while it still knows which it was.
+  const forget = opts.forget ?? !again;
   const keepE2ee = keepOnSignOut(forget)("folevi-e2ee");
   const keep = (name: string) => name === "folevi-e2ee" && keepE2ee;
   await endKeySession({ forget }).catch(() => undefined);
@@ -57,10 +66,30 @@ export async function signOutNow(destination = signedOutDestination(), opts: { f
     window.location.assign("/");
     return;
   }
-  try {
-    await authClient.signOut();
-  } catch {
-    // Offline: the cookie is still cleared locally by the POST route below if we can't reach the server.
+  const userId = pinnedUserId() ?? (await authClient.getSession().catch(() => null))?.data?.user?.id ?? null;
+  const profileId = opts.profileId ?? (userId ? knownAccount(userId)?.profileId : null) ?? null;
+  let left: string[] | null = null;
+  if (userId) {
+    // Only this account's session ends. (Better Auth's own sign-out would end every account in the browser.)
+    left = await signOutOfAccount(userId);
+  } else {
+    try {
+      await authClient.signOut();
+    } catch {
+      // Offline: the session expires on its own, and Settings > Devices can end it from anywhere.
+    }
+  }
+  if (profileId) await clearAccountData(profileId, userId);
+  const next = userId ? afterAccountSignedOut(userId, left) : null;
+  if (again) {
+    adoptNextSignIn();
+    if (!next) await clearAllLocalData({ keep });
+    window.location.assign(destination);
+    return;
+  }
+  if (next) {
+    window.location.assign("/documents");
+    return;
   }
   await clearAllLocalData({ keep });
   window.location.assign(destination);
@@ -78,7 +107,7 @@ export function useSafeSignOut(accountKey: string | null) {
     if (count > 0) setPending(count);
     else {
       setBusy(true);
-      await signOutNow();
+      await signOutNow(undefined, { profileId: accountKey });
     }
   };
   const dialog = (
@@ -102,7 +131,7 @@ export function useSafeSignOut(accountKey: string | null) {
             disabled={busy}
             onClick={async () => {
               setBusy(true);
-              await signOutNow();
+              await signOutNow(undefined, { profileId: accountKey });
             }}
           >
             Sign out and delete them

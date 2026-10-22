@@ -28,7 +28,7 @@ vi.mock("@/components/ui/Toast", async () => {
   return { useToast: () => ({ show: vi.fn() }), errorMessage: (e: { data?: { message?: string } }) => withoutPurchaseHints(e?.data?.message ?? "Something went wrong.") };
 });
 
-const { canPurchaseHere, inIosApp, nativeApp, withoutPurchaseHints } = await import("@/lib/nativeApp");
+const { canPurchaseHere, inAndroidApp, inIosApp, isNativeStoreApp, nativeApp, withoutPurchaseHints } = await import("@/lib/nativeApp");
 const { parseDeepLink } = await import("@/lib/deepLink");
 const { BillingSection } = await import("@/components/views/settings/BillingSection");
 const { AiProblemNotice, aiProblem } = await import("@/components/ai/AiCredits");
@@ -90,8 +90,26 @@ describe("the bridge", () => {
   });
 
   test("a bridge for another platform isn't taken for the iOS app's", () => {
-    Object.defineProperty(window, "foleviNative", { value: { ...bridge, platform: "android" }, configurable: true, writable: true });
+    Object.defineProperty(window, "foleviNative", { value: { ...bridge, platform: "windows" }, configurable: true, writable: true });
     expect(nativeApp()).toBeNull();
+    expect(inIosApp()).toBe(false);
+  });
+
+  test("the Android app's bridge gives the same extras, isn't the iOS app, and hides purchases too", () => {
+    Object.defineProperty(window, "foleviNative", { value: { ...bridge, platform: "android" }, configurable: true, writable: true });
+    expect(nativeApp()?.platform).toBe("android");
+    expect(inIosApp()).toBe(false);
+    expect(inAndroidApp()).toBe(true);
+    expect(isNativeStoreApp()).toBe(true);
+    expect(canPurchaseHere()).toBe(false);
+    expect(withoutPurchaseHints("Couldn't add more. Buy more in Settings → Plan & billing.")).toBe("Couldn't add more.");
+  });
+
+  test("the Android app's mark alone is enough to hide purchases", () => {
+    document.documentElement.dataset.native = "android";
+    expect(nativeApp()).toBeNull();
+    expect(inIosApp()).toBe(false);
+    expect(canPurchaseHere()).toBe(false);
   });
 });
 

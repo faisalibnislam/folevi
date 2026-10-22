@@ -216,13 +216,16 @@ describe("file CORS for the built-in interface", () => {
 describe("minShellVersion", () => {
   test("settings.status reports the floor per platform, the newer of code and the operators' setting", async () => {
     const t = setup();
-    expect((await t.query(api.settings.status, {})).minShellVersion).toEqual({ mac: null, ios: null });
+    expect((await t.query(api.settings.status, {})).minShellVersion).toEqual({ mac: null, ios: null, android: null });
     await t.mutation(internal.settings.setMinShellVersion, { mac: "1.16.0" });
-    expect((await t.query(api.settings.status, {})).minShellVersion).toEqual({ mac: "1.16.0", ios: null });
+    expect((await t.query(api.settings.status, {})).minShellVersion).toEqual({ mac: "1.16.0", ios: null, android: null });
     await t.mutation(internal.settings.setMinShellVersion, { ios: "1.2" });
-    expect((await t.query(api.settings.status, {})).minShellVersion).toEqual({ mac: "1.16.0", ios: "1.2" });
+    expect((await t.query(api.settings.status, {})).minShellVersion).toEqual({ mac: "1.16.0", ios: "1.2", android: null });
+    await t.mutation(internal.settings.setMinShellVersion, { android: "1.3.0" });
+    expect((await t.query(api.settings.status, {})).minShellVersion).toEqual({ mac: "1.16.0", ios: "1.2", android: "1.3.0" });
     await t.mutation(internal.settings.setMinShellVersion, { mac: null });
-    expect((await t.query(api.settings.status, {})).minShellVersion).toEqual({ mac: null, ios: "1.2" });
+    expect((await t.query(api.settings.status, {})).minShellVersion).toEqual({ mac: null, ios: "1.2", android: "1.3.0" });
+    await expect(t.mutation(internal.settings.setMinShellVersion, { android: "newest" })).rejects.toThrow(/Not a version/);
     await expect(t.mutation(internal.settings.setMinShellVersion, { mac: "latest" })).rejects.toThrow(/Not a version/);
   });
 

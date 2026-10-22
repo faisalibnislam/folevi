@@ -13,7 +13,15 @@ export const feedUrl = (base = UPDATE_BASE_URL) => `${base.replace(/\/+$/, "")}/
 
 const SIX_HOURS = 6 * 60 * 60 * 1000;
 
-export type UpdateState = { state: "idle" } | { state: "checking" } | { state: "downloading" } | { state: "ready"; version: string } | { state: "none" } | { state: "error" };
+export type UpdateState =
+  | { state: "idle" }
+  | { state: "checking" }
+  | { state: "downloading" }
+  // 1.22: downloaded, the normal sync sending what's waiting before it's offered (handover.ts).
+  | { state: "finishing"; version: string }
+  | { state: "ready"; version: string }
+  | { state: "none" }
+  | { state: "error" };
 
 /** Whether this copy of the app can install updates: packaged, and signed with a Developer ID. */
 function canUpdate(): boolean {
@@ -24,8 +32,11 @@ function canUpdate(): boolean {
   return /Authority=Developer ID Application:/.test(stderr ?? "");
 }
 
-/** Starts looking for updates; `onChange` hears every change (the app menu shows it). Returns "check now". */
-export function startUpdates(onChange: (s: UpdateState) => void): (() => void) | null {
+/**
+ * Starts looking for updates; `onChange` hears every change (the app menu shows it). Returns "check now".
+ * `beforeReady` runs once an update is downloaded, before it's offered (1.22: the sync finishes first).
+ */
+export function startUpdates(onChange: (s: UpdateState) => void, o: { beforeReady?: () => Promise<void> } = {}): (() => void) | null {
   if (!canUpdate()) return null;
   let state: UpdateState = { state: "idle" };
   const set = (next: UpdateState) => {
@@ -36,11 +47,16 @@ export function startUpdates(onChange: (s: UpdateState) => void): (() => void) |
   autoUpdater.on("checking-for-update", () => set({ state: "checking" }));
   autoUpdater.on("update-available", () => set({ state: "downloading" }));
   autoUpdater.on("update-not-available", () => set({ state: "none" }));
-  autoUpdater.on("update-downloaded", (_e, _notes, name) => set({ state: "ready", version: String(name || "") }));
+  autoUpdater.on("update-downloaded", (_e, _notes, name) => {
+    const version = String(name || "");
+    if (!o.beforeReady) return set({ state: "ready", version });
+    set({ state: "finishing", version });
+    void o.beforeReady().finally(() => set({ state: "ready", version }));
+  });
   // Offline, or the bucket isn't there yet: quietly try again later.
   autoUpdater.on("error", () => set({ state: "error" }));
   const check = () => {
-    if (state.state === "ready" || state.state === "downloading") return;
+    if (state.state === "ready" || state.state === "downloading" || state.state === "finishing") return;
     try {
       autoUpdater.checkForUpdates();
     } catch {

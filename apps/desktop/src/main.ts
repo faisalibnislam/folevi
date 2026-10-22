@@ -55,6 +55,8 @@ import { installUpdate, startUpdates, type UpdateState } from "./updates";
 import { cleanSettings, loadSettings, pageSettings, saveSettings, type DesktopSettings } from "./settings";
 import { APP_SCHEME, APP_SCHEME_PRIVILEGES, createAppHandler, HANDOFF_CSP, HANDOFF_PAGE, HANDOFF_PATH, isBlockedInLocalMode, localModeBlockPatterns, NO_LIBRARY_FILES, shellRoot } from "./protocol";
 import { handOver, handoffDue, indexedDbFolder, kitScript, parseHandoffState, type HandoffState, type KitCall } from "./handoff";
+// 1.22 handover to the native Folevi for Mac (docs/MAC_WEBKIT_PLAN.md §8.3).
+import { removeStaleHandover, waitForSync, writeHandover } from "./handover";
 import { readShellBuild, shellBuildProblems, type ShellBuild } from "./shellBuild";
 import { restoreWindow, saveWindow } from "./windowState";
 import { Reminders, type Reminder } from "./reminders";
@@ -612,6 +614,59 @@ async function runHandoff(ses: Session) {
   }
 }
 
+// ---------------------------------------------------------------- 1.22: the handover to the native app (handover.ts)
+
+/** Set once the handover is written for this quit (an update's restart writes it first). */
+let handoverWritten = false;
+
+/** The kit on a hidden page of the app's own origin (the bundled interface's storage), and a way to close it. */
+async function handoverPage(): Promise<{ call: KitCall; close: () => void } | null> {
+  if (!bundled || APP_URL !== BUNDLED_URL) return null;
+  const win = new BrowserWindow({ show: false, width: 200, height: 200, webPreferences: { partition: PARTITION, contextIsolation: true, sandbox: true, nodeIntegration: false } });
+  await win.loadURL(appUrl(HANDOFF_PATH));
+  return { call: (fn, ...args) => win.webContents.executeJavaScript(kitScript(fn, args)), close: () => !win.isDestroyed() && win.destroy() };
+}
+
+/** Writes userData/handover (what isn't sent yet, for the native app), within `ms`; never stops a quit. */
+async function writeHandoverNow(ms: number): Promise<void> {
+  let page: Awaited<ReturnType<typeof handoverPage>> = null;
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    const work = (async () => {
+      page = await handoverPage();
+      if (!page) return;
+      const index = await writeHandover(page.call, app.getPath("userData"), { appVersion: app.getVersion(), dbVersion: shellBuild?.dbVersion ?? null, origin: BUNDLED_URL.origin });
+      if (index.databases.length) console.log(`Folevi handover: ${index.databases.map((d) => d.name).join(", ")} for the next Folevi`);
+    })();
+    await Promise.race([work, new Promise<never>((_r, reject) => (timer = setTimeout(() => reject(new Error("timed out")), ms)))]);
+  } catch (e) {
+    console.error("Folevi handover:", e);
+  } finally {
+    clearTimeout(timer);
+    (page as { close: () => void } | null)?.close();
+  }
+}
+
+/** Before an update installs: the normal sync gets up to ten minutes to send what's waiting (the menu says so). */
+async function finishSyncBeforeUpdate(): Promise<void> {
+  const page = await handoverPage().catch(() => null);
+  if (!page) return;
+  try {
+    await waitForSync(page.call);
+  } catch (e) {
+    console.error("Folevi handover:", e);
+  } finally {
+    page.close();
+  }
+}
+
+/** "Restart to Update": the handover first, then the update installs. */
+async function restartToUpdate(): Promise<void> {
+  await writeHandoverNow(20_000);
+  handoverWritten = true;
+  installUpdate();
+}
+
 // ---------------------------------------------------------------- main windows
 
 function createMainWindow(path = "/documents"): BrowserWindow {
@@ -970,7 +1025,8 @@ function buildMenu() {
 
 function updateMenuItems(): MenuItemConstructorOptions[] {
   if (!checkForUpdates) return [];
-  if (update.state === "ready") return [{ label: `Restart to Update${update.version ? ` to ${update.version}` : ""}`, click: installUpdate }];
+  if (update.state === "ready") return [{ label: `Restart to Update${update.version ? ` to ${update.version}` : ""}`, click: () => void restartToUpdate() }];
+  if (update.state === "finishing") return [{ label: "Finishing Sync Before the Update…", enabled: false }];
   const busy = update.state === "checking" || update.state === "downloading";
   return [{ label: update.state === "downloading" ? "Downloading Update…" : "Check for Updates…", enabled: !busy, click: () => checkForUpdates?.() }];
 }
@@ -1266,7 +1322,8 @@ function listen() {
   });
   ipcMain.on("desktop:quick-add-size", (e, height: unknown) => {
     if (!fromFolevi(e) || !quickAdd || typeof height !== "number" || !Number.isFinite(height)) return;
-    const h = Math.round(Math.min(640, Math.max(160, height)));
+    // (From 56: the one growing field of the page's Quick Add, docs/MAC_POLISH_PLAN.md §3.8.)
+    const h = Math.round(Math.min(640, Math.max(56, height)));
     const [w] = quickAdd.getContentSize() as [number, number];
     quickAdd.setContentSize(w, h);
   });
@@ -1418,6 +1475,8 @@ app.whenReady().then(async () => {
     ai = createAi();
     // Before any window shows the new origin: hand over edits waiting on the website's origin (once).
     await runHandoff(folevi).catch((e) => console.error("Folevi handoff:", e));
+    // 1.22: a handover left by an earlier quit is stale now this app runs again (its storage is the truth).
+    removeStaleHandover(app.getPath("userData"));
     await startPlaces();
     applyNetworkGuard();
   }
@@ -1439,10 +1498,14 @@ app.whenReady().then(async () => {
     openLink(pendingLink);
     pendingLink = null;
   }
-  checkForUpdates = startUpdates((next) => {
-    update = next;
-    buildMenu();
-  });
+  checkForUpdates = startUpdates(
+    (next) => {
+      update = next;
+      buildMenu();
+    },
+    // 1.22: the normal sync sends what it can before an update is offered (handover.ts).
+    { beforeReady: finishSyncBeforeUpdate },
+  );
   buildMenu();
   nativeTheme.on("updated", () => {
     for (const win of BrowserWindow.getAllWindows()) win.setBackgroundColor(background());
@@ -1452,8 +1515,15 @@ app.whenReady().then(async () => {
 
 // The Dock icon reopens the main window.
 app.on("activate", () => showMain());
-app.on("before-quit", () => {
+app.on("before-quit", (event) => {
   quitting = true;
+  // 1.22: every quit leaves the handover for a native Folevi that may replace this app (handover.ts); the quit
+  // goes on once it's written (20 seconds at most).
+  if (bundled && !handoverWritten) {
+    event.preventDefault();
+    handoverWritten = true;
+    void writeHandoverNow(20_000).finally(() => app.quit());
+  }
 });
 app.on("will-quit", (event) => {
   globalShortcut.unregisterAll();

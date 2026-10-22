@@ -17,16 +17,29 @@ enum Folevi {
         return value?.isEmpty == false ? value : nil
     }
 
+    #if os(macOS)
+    /// The Mac app (apps/mac) has no extensions to share with: these are its build's own settings (Platform's,
+    /// so Folevi Dev's never mix with Folevi's, nor a FOLEVI_USER_DATA run's with either).
+    static var defaults: UserDefaults { Platform.defaults }
+    #else
     /// Settings both the app and the extensions see.
     static let defaults: UserDefaults = UserDefaults(suiteName: appGroup) ?? .standard
+    #endif
 
     /// The shared container (queued shares, the widgets' copy of tasks and notes). Falls back to the target's
     /// own Application Support when the App Group isn't there (a build without its entitlement).
     static var container: URL {
+        #if os(macOS)
+        // On the Mac every build answers for any App Group, entitlement or not: the build's own folder instead.
+        let own = Platform.supportFolder.appendingPathComponent("Shared", isDirectory: true)
+        try? FileManager.default.createDirectory(at: own, withIntermediateDirectories: true)
+        return own
+        #else
         if let shared = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) { return shared }
         let own = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try? FileManager.default.createDirectory(at: own, withIntermediateDirectories: true)
         return own
+        #endif
     }
 
     /// The app's bundle id; extensions are com.folevi.ios.<name>.

@@ -15,7 +15,13 @@ final class DeviceCredential {
     /// each account also keeps its own, "rest-api.<user id>" (SaveTargets.credential), so the share sheet and
     /// Siri reach an account that isn't open.
     init(service: String, accessGroup: String?, account: String = "rest-api") {
+        #if os(macOS)
+        // The Mac's builds keep their tokens apart ("com.folevi.dev.device-token" for Folevi Dev, and a
+        // FOLEVI_USER_DATA run's own): Platform names the service, as for every other Keychain item there.
+        self.service = Platform.keychainService(service)
+        #else
         self.service = service
+        #endif
         self.accessGroup = accessGroup
         self.account = account
     }

@@ -129,6 +129,8 @@ describe("a tab's pin", () => {
     expect(resolvePin({ ...base, pathname: "/oauth/consent", tab: "acct:userAna" })).toBeNull();
     expect(resolvePin({ ...base, pathname: "/documents", tab: "acct:userAna", shell: true })).toBeNull();
     expect(resolvePin({ ...base, pathname: "/documents", last: "library" })).toBeNull();
+    // A link that names its account (another account's notification) opens that one.
+    expect(resolvePin({ ...base, pathname: "/d/x", search: "?place=acct:userBen", tab: "acct:userAna" })).toBe("userBen");
   });
 });
 

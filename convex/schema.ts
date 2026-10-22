@@ -1561,6 +1561,11 @@ export default defineSchema({
     auth: v.string(),
     /** A short label for Settings ("Chrome on macOS"), from the browser. */
     label: v.optional(v.string()),
+    /**
+     * A browser signed in to several accounts (docs/MULTI_ACCOUNT_PLAN.md §5): the account's name for its
+     * notifications there, and their links open that account.
+     */
+    placeLabel: v.optional(v.string()),
     createdAt: v.number(),
     lastSentAt: v.optional(v.number()),
   })

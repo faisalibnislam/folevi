@@ -16,11 +16,18 @@ export const sendToProfile = internalAction({
     const subs = await ctx.runQuery(internal.push.subscriptionsFor, { profileId: args.profileId });
     if (!subs.length) return { sent: 0 };
     const payload = JSON.stringify({ title: args.title.slice(0, 120), body: args.body?.slice(0, 240), url: args.url, tag: args.tag });
+    // A browser signed in to several accounts: the notification says whose it is, and its link opens that account.
+    const place = subs.some((s) => s.placeLabel) ? await ctx.runQuery(internal.push.placeOf, { profileId: args.profileId }) : null;
+    const labelled = (label: string) => {
+      const url = new URL(args.url);
+      if (place) url.searchParams.set("place", `acct:${place}`);
+      return JSON.stringify({ title: `${label} · ${args.title}`.slice(0, 160), body: args.body?.slice(0, 240), url: url.toString(), tag: args.tag });
+    };
     const gone: Id<"pushSubscriptions">[] = [];
     const sent: Id<"pushSubscriptions">[] = [];
     for (const s of subs) {
       try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, {
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, s.placeLabel ? labelled(s.placeLabel) : payload, {
           vapidDetails: { subject: process.env.VAPID_SUBJECT || "mailto:support@folevi.com", publicKey, privateKey },
           TTL: 60 * 60,
           urgency: "normal",

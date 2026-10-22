@@ -42,6 +42,9 @@ export function resolvePin(o: { pathname: string; search: string; tab: string | 
   if (o.shell) return null;
   if (o.pathname === "/place-sync") return userIdOf(new URLSearchParams(o.search).get("place"));
   if (UNPINNED.test(o.pathname)) return null;
+  // A link that names its account (a notification from another account of this browser): that one.
+  const named = userIdOf(new URLSearchParams(o.search).get("place"));
+  if (named) return named;
   if (o.tab === ADOPT) return null;
   if (o.tab) return userIdOf(o.tab);
   return userIdOf(o.last);
@@ -52,8 +55,9 @@ export function pinnedUserId(): string | null {
   if (pin === undefined) {
     const tab = typeof window === "undefined" ? null : readTab();
     pin = typeof window === "undefined" ? null : resolvePin({ pathname: location.pathname, search: location.search, tab, last: lastPlace(), shell: isShell() });
-    // A tab that took the browser's last place keeps it from now on: another tab switching later doesn't move it.
-    if (pin && !tab && !isPlaceRunner()) writeTab(accountPlaceId(pin));
+    // A tab that took the browser's last place (or a link's) keeps it from now on: another tab switching later
+    // doesn't move it.
+    if (pin && (!tab || tab === ADOPT || tab !== accountPlaceId(pin)) && !isPlaceRunner()) writeTab(accountPlaceId(pin));
   }
   return pin;
 }

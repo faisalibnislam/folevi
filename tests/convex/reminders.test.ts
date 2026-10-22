@@ -122,6 +122,22 @@ describe("web push", () => {
     await expect(a.as.mutation(api.push.subscribe, { ...sub("2"), endpoint: "http://insecure.example.com/x" })).rejects.toThrow();
   });
 
+  test("a browser signed in to several accounts keeps each one's subscription, labelled (docs/MULTI_ACCOUNT_PLAN.md §5)", async () => {
+    const t = setup();
+    const a = await person(t, "push-multi-a@example.com");
+    const b = await person(t, "push-multi-b@example.com");
+    await a.as.mutation(api.push.subscribe, { ...sub("9"), keepOthers: true, placeLabel: "a@example.com" });
+    await b.as.mutation(api.push.subscribe, { ...sub("9"), keepOthers: true, placeLabel: "b@example.com" });
+    expect(await a.as.query(api.push.status, { endpoint: sub("9").endpoint })).toEqual({ devices: 1, thisDevice: true });
+    expect(await b.as.query(api.push.status, { endpoint: sub("9").endpoint })).toEqual({ devices: 1, thisDevice: true });
+    const rows = await t.run(async (ctx) => await ctx.db.query("pushSubscriptions").collect());
+    expect(rows.map((r) => r.placeLabel).sort()).toEqual(["a@example.com", "b@example.com"]);
+    // Turning it off for one account leaves the other's.
+    await a.as.mutation(api.push.unsubscribe, { endpoint: sub("9").endpoint });
+    expect((await b.as.query(api.push.status, { endpoint: sub("9").endpoint })).thisDevice).toBe(true);
+    expect((await a.as.query(api.push.status, {})).devices).toBe(0);
+  });
+
   test("a due reminder is pushed with its to-do line; one turned off in the bell isn't", async () => {
     const t = setup();
     const a = await person(t, "push-reminder@example.com");

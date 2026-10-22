@@ -38,22 +38,25 @@ export const status = query({
 });
 
 export const subscribe = mutation({
-  args: { endpoint: v.string(), p256dh: v.string(), auth: v.string(), label: v.optional(v.string()) },
+  args: { endpoint: v.string(), p256dh: v.string(), auth: v.string(), label: v.optional(v.string()), placeLabel: v.optional(v.string()), keepOthers: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     if (!ENDPOINT_RE.test(args.endpoint) || !KEY_RE.test(args.p256dh) || !KEY_RE.test(args.auth)) fail("invalid_argument", "This browser's push details look wrong.");
-    const existing = await ctx.db
+    // An endpoint belongs to one browser: if it was someone else's (a shared computer), it's now yours. A browser
+    // signed in to several accounts at once (keepOthers) keeps each account's own.
+    for (const existing of await ctx.db
       .query("pushSubscriptions")
       .withIndex("by_endpoint", (q) => q.eq("endpoint", args.endpoint))
-      .first();
-    // An endpoint belongs to one browser: if it was someone else's (a shared computer), it's now yours.
-    if (existing) await ctx.db.delete(existing._id);
+      .take(20)) {
+      if (existing.profileId === profile._id || !args.keepOthers) await ctx.db.delete(existing._id);
+    }
     const mine = await ctx.db
       .query("pushSubscriptions")
       .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
       .take(30);
     if (mine.length >= 20) await ctx.db.delete(mine.sort((a, b) => a.createdAt - b.createdAt)[0]!._id);
-    await ctx.db.insert("pushSubscriptions", { profileId: profile._id, endpoint: args.endpoint, p256dh: args.p256dh, auth: args.auth, label: args.label?.slice(0, 80), createdAt: Date.now() });
+    const placeLabel = args.keepOthers ? pushLabel(args.placeLabel) : undefined;
+    await ctx.db.insert("pushSubscriptions", { profileId: profile._id, endpoint: args.endpoint, p256dh: args.p256dh, auth: args.auth, label: args.label?.slice(0, 80), ...(placeLabel ? { placeLabel } : {}), createdAt: Date.now() });
     return null;
   },
 });
@@ -62,11 +65,13 @@ export const unsubscribe = mutation({
   args: { endpoint: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const existing = await ctx.db
+    // (A browser with several accounts holds one row per account: only this account's goes.)
+    for (const existing of await ctx.db
       .query("pushSubscriptions")
       .withIndex("by_endpoint", (q) => q.eq("endpoint", args.endpoint))
-      .first();
-    if (existing && existing.profileId === profile._id) await ctx.db.delete(existing._id);
+      .take(20)) {
+      if (existing.profileId === profile._id) await ctx.db.delete(existing._id);
+    }
     return null;
   },
 });
@@ -79,7 +84,13 @@ export const subscriptionsFor = internalQuery({
         .query("pushSubscriptions")
         .withIndex("by_profile", (q) => q.eq("profileId", args.profileId))
         .take(20)
-    ).map((s) => ({ id: s._id, endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth })),
+    ).map((s) => ({ id: s._id, endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth, placeLabel: s.placeLabel ?? null })),
+});
+
+/** The account a push is for (its Better Auth user id): the link in a shared browser's notification opens it. */
+export const placeOf = internalQuery({
+  args: { profileId: v.id("profiles") },
+  handler: async (ctx, args) => (await ctx.db.get(args.profileId))?.authSubject ?? null,
 });
 
 /** After a send: drops subscriptions the push service says are gone, marks the others used. */

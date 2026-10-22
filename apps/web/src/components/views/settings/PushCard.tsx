@@ -9,6 +9,8 @@ import { desktop } from "@/lib/desktop";
 import { nativeApp } from "@/lib/nativeApp";
 import { isShell } from "@/lib/shell";
 import { Card } from "./Card";
+import { useAppState } from "@/lib/app/state";
+import { knownAccounts } from "@/lib/places/registry";
 import { NativePushCard } from "./NativePushCard";
 
 /** The VAPID public key as the bytes PushManager wants. */
@@ -45,6 +47,7 @@ function WebPushCard() {
   const status = useQuery(api.push.status, supported ? { endpoint: endpoint ?? undefined } : "skip");
   const subscribe = useMutation(api.push.subscribe);
   const unsubscribe = useMutation(api.push.unsubscribe);
+  const { profile } = useAppState();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
 
@@ -70,7 +73,10 @@ function WebPushCard() {
       const reg = await navigator.serviceWorker.ready;
       const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) }));
       const json = sub.toJSON() as { endpoint: string; keys?: { p256dh?: string; auth?: string } };
-      await subscribe({ endpoint: json.endpoint, p256dh: json.keys?.p256dh ?? "", auth: json.keys?.auth ?? "", label: deviceLabel() });
+      // A browser signed in to several accounts (docs/MULTI_ACCOUNT_PLAN.md §5): each keeps its own subscription, and
+      // this account's notifications say they're its.
+      const several = knownAccounts().length > 1;
+      await subscribe({ endpoint: json.endpoint, p256dh: json.keys?.p256dh ?? "", auth: json.keys?.auth ?? "", label: deviceLabel(), ...(several ? { keepOthers: true, placeLabel: profile.email ?? profile.displayName } : {}) });
       setEndpoint(json.endpoint);
       toast.show("Notifications are on for this device");
     } catch (e) {

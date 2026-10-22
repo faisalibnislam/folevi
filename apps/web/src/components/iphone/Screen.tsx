@@ -156,12 +156,27 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
       const mid = window.innerWidth / 2;
       // (A `display: contents` wrapper has no box of its own: its children count.)
       const boxes = (el: Element): Element[] => [...el.children].flatMap((c) => (getComputedStyle(c).display === "contents" ? boxes(c) : [c]));
-      const kids = (el: HTMLElement) => boxes(el).map((c) => c.getBoundingClientRect()).filter((r) => r.width > 0);
+      // (Only what's drawn in the bar itself: not a menu or anything else positioned elsewhere from inside it.)
+      const kids = (el: HTMLElement) => {
+        const bar = el.getBoundingClientRect();
+        return boxes(el)
+          .map((c) => c.getBoundingClientRect())
+          .filter((r) => r.width > 0 && r.left >= bar.left - 1 && r.right <= bar.right + 1);
+      };
       const l = kids(lead);
       const r = kids(trail);
       const left = l.length ? Math.max(...l.map((x) => x.right)) : lead.getBoundingClientRect().left;
       const right = r.length ? Math.min(...r.map((x) => x.left)) : trail.getBoundingClientRect().right;
-      small.style.maxWidth = `${Math.max(60, 2 * Math.min(mid - left, right - mid) - 16)}px`;
+      const centred = 2 * Math.min(mid - left, right - mid) - 16;
+      const natural = (small.firstElementChild as HTMLElement | null)?.scrollWidth ?? 0;
+      // Too long to sit centred: it moves to the middle of the room there is, as UIKit's title does.
+      if (natural > centred && right - left - 16 > centred) {
+        small.style.left = `${(left + right) / 2}px`;
+        small.style.maxWidth = `${Math.max(60, right - left - 16)}px`;
+      } else {
+        small.style.left = "";
+        small.style.maxWidth = `${Math.max(60, centred)}px`;
+      }
     };
     fit();
     const ro = new ResizeObserver(fit);
@@ -171,6 +186,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
     const mo = new MutationObserver(fit);
     mo.observe(lead, { childList: true, subtree: true });
     mo.observe(trail, { childList: true, subtree: true });
+    mo.observe(small, { childList: true, subtree: true, characterData: true });
     window.addEventListener("resize", fit);
     return () => {
       ro.disconnect();
@@ -187,7 +203,9 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
   }, [canBack, goBackInHistory, navigate, back, route]);
 
   // A tab's first screen opened on top of others in its tab (Completed tasks from Tasks) has Back.
-  const stacked = Boolean(root && canBack);
+  // (Never Home: it's the bottom of its tab, even when the web view's history holds pages from before the app's
+  // interface started, such as first-run setup.)
+  const stacked = Boolean(root && canBack && route.name !== "documents");
   const showBack = (!root && !leading) || stacked;
   const smallTitle = large ? collapsed : collapsed && Boolean(title);
   return (

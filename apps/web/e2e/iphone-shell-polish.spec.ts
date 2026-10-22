@@ -111,8 +111,25 @@ test("iPhone shell polish: bar material, tab bar, Home, cards, focus rings, swip
   await page.locator("main#main").evaluate((m) => (m.scrollTop = 0));
   await expect(bar).not.toHaveAttribute("data-on", "");
 
-  // All notes: cards with one date (the footer's) and the title at 17 points.
+  // All notes slides in on the navigation spring (a linear() spring curve, not the old 420 ms ease), and the
+  // screen underneath moves 30 % and dims.
+  await page.evaluate(() => {
+    const seen: { easing: string; duration: number; frames: string }[] = [];
+    (window as unknown as { __anims: typeof seen }).__anims = seen;
+    const orig = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      const o = typeof options === "object" ? options : {};
+      seen.push({ easing: String(o.easing ?? ""), duration: Number(o.duration ?? 0), frames: JSON.stringify(keyframes) });
+      return orig.call(this, keyframes, options);
+    };
+  });
   await page.getByRole("link", { name: "All notes" }).click();
+  const anims = await page.evaluate(() => (window as unknown as { __anims: { easing: string; duration: number; frames: string }[] }).__anims);
+  const push = anims.find((a) => a.frames.includes("translateX(100%)"));
+  expect(push?.easing).toMatch(/^linear\(/);
+  expect(push!.duration).toBeGreaterThan(450);
+  expect(push!.duration).toBeLessThan(800);
+  expect(anims.some((a) => a.frames.includes("translateX(-30%)") && a.frames.includes("brightness(0.88)"))).toBe(true);
   await expect(page.getByRole("heading", { level: 1, name: "All notes" })).toBeVisible();
   const card = page.locator("main li a[href^='/d/']").first();
   await expect(card).toBeVisible();

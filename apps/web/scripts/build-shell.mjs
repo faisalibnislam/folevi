@@ -15,6 +15,7 @@
 // (the Mac app's handoff refuses a website database that is newer, docs/LOCAL_MODE.md).
 // --platform ios: the export the iPhone and iPad app carries (apps/ios/web, docs/IOS.md), in .next-shell-ios (or
 // .next-shell-ios-release with --production), with the iOS app's version in shell/build.json.
+// --app-version <v>: the version shell/build.json records (the native Mac app's release passes its own, 2.0.0 and on).
 // --platform android: the export Folevi for Android carries (apps/android/web, docs/ANDROID_PLAN.md), built in a
 // folder of its own (.next-shell-android, or .next-shell-android-release with --production) so it never replaces
 // another app's export while it builds, with the Android app's version in shell/build.json.
@@ -201,7 +202,8 @@ async function writeBuildInfo(env) {
     convexUrl: env.NEXT_PUBLIC_CONVEX_URL ?? null,
     siteUrl: env.NEXT_PUBLIC_APP_URL || "https://app.folevi.com",
     dbVersion: await dbVersion(),
-    appVersion: desktop.version,
+    // --app-version: the native Folevi for Mac's own version (apps/mac/scripts/release.mjs), not Electron's.
+    appVersion: flagValue("--app-version") ?? desktop.version,
     builtAt: new Date().toISOString(),
   };
   await mkdir(join(out, "shell"), { recursive: true });

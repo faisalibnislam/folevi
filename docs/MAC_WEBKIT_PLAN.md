@@ -476,16 +476,16 @@ The last Electron release (1.22.0, WM3) adds a handover step that reuses `handof
   entitlements (Electron needed `allow-jit` and `allow-unsigned-executable-memory`; WebKit's JIT runs in its own
   signed processes).
 - **Provisioning profile**: iCloud and the Keychain group on a Developer ID app need a "Developer ID" provisioning
-  profile for `com.folevi.mac` with the iCloud capability, embedded as `Contents/embedded.provisionprofile`. The
-  owner creates it in the developer portal (decision M10); Debug builds use an Apple Development profile for
-  `com.folevi.mac.dev`, or run without iCloud.
+  profile for `com.folevi.mac` with the iCloud capability, embedded as `Contents/embedded.provisionprofile`. Made
+  through the App Store Connect API (decision M10): "Folevi for Mac Developer ID iCloud", committed as
+  `apps/mac/signing/Folevi.provisionprofile` (docs/MAC_RELEASE.md §3). Debug builds run without iCloud.
 - **Notarization**: `xcrun notarytool submit <zip> --keychain-profile folevi-notary --wait`, then
   `xcrun stapler staple` on the app and the DMG (the profile `docs/DESKTOP.md` already uses).
 - **Updates: Sparkle 2** (SPM, `Sparkle.framework` embedded and signed inside out). `SUFeedURL` =
   `https://updates.folevi.com/mac/appcast.xml`, `SUPublicEDKey` in Info.plist; automatic checks every 6 hours
-  (Electron's interval), background download, "Restart to Update" in the Folevi menu. The EdDSA private key is
-  made once by the owner with Sparkle's `generate_keys` and stays in the owner's Keychain (rule: builders never
-  handle keys); `generate_appcast` signs each release on the owner's Mac.
+  (Electron's interval), background download, "Restart to Update" in the Folevi menu. The EdDSA key pair was made
+  on this Mac with Sparkle's `generate_keys --account folevi` (decision M10): the private key stays in the login
+  Keychain, the public key is `SUPublicEDKey`; `generate_appcast` signs each release on the owner's Mac.
 - **Delta updates**: Sparkle's binary deltas between consecutive versions (the web export changes every release,
   so a delta is about the size of the changed chunks).
 - **Electron users**: the last Electron release's Squirrel feed points at a ZIP of the native app (Squirrel.Mac
@@ -614,6 +614,26 @@ the owner's support folder or Keychain items).
   `FOLEVI_USER_DATA` pointing at a copy of that folder migrates it: sessions work without sign-in, the E2EE
   device id is the same and unlocks, the library opens, a queued offline edit from the handover reaches the dev
   server; `release.mjs --dry-run` passes every verification in 9.1. Never run against the owner's folder.
+
+- Landed (2026-10-23, docs/MAC_RELEASE.md has the details and the owner's steps):
+  - **R1 proved**: a Swift app with Electron's bundle id and team (Developer ID) read a "Safe Storage" item that
+    Electron 44 made, with every prompt refused, in 15 ms; the same binary under another bundle id, or ad hoc
+    signed, got "needs permission" with no dialog. Throwaway bundle id `com.folevi.migration-test` and item, deleted
+    after; the owner's item was never read. `release.mjs` checks every release keeps the Electron app's designated
+    requirement.
+  - `Migration/`: `ElectronMigration.swift` (the five steps of 8.1, idempotent, `migration.json`, the 30-day
+    clean-up), `SafeStorage.swift`, `HandoverImport.swift` (with `handover-kit.js` made from `handoffKit.ts`),
+    `MigrationWindow.swift` (8.4), run from `AppDelegate.migrate` before anything else reads the support folder.
+    `ElectronMigration.firstWindowFrame(record)` is the old window's frame for WM2's first window.
+  - Electron 1.22's handover (`apps/desktop/src/handover.ts`): written at every quit and before an update installs,
+    after up to ten minutes of normal sync ("Finishing Sync Before the Update…").
+  - Signing: the Developer ID profile "Folevi for Mac Developer ID iCloud" (made through the App Store Connect API
+    on 2026-10-22, checked and adopted, `apps/mac/signing/`), `Folevi.entitlements` (iCloud, Keychain group,
+    microphone). Updates: Sparkle 2.10.0, `Updates/Updater.swift`, the EdDSA key generated on this Mac (login
+    Keychain, account `folevi`; public key in Info.plist). Scripts: `release.mjs` (dry run by default),
+    `publish.mjs` (owner only), `bump-version.mjs`, `migration-fixture.mjs`.
+  - For WM2: the Folevi menu's update item shows `Updater.shared.menuTitle` and calls `Updater.shared.menuAction()`
+    (refresh on `Updater.changed`); `Chrome.checkForUpdates` and `Chrome.updateTitle` can point there.
 
 ### WM4: Web-layer Mac polish (shared by Electron today and WebKit tomorrow)
 

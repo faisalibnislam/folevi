@@ -575,6 +575,8 @@ const LOCK_AFTER: { value: number; label: string }[] = [
 function lockName(method: ShellLockSettings["method"]): string {
   if (method === "biometric") return "your fingerprint or face";
   if (method === "screenLock") return "your screen lock";
+  // No lock set up on this device: the name it would have once there is one.
+  if (method === "none") return shell()?.platform === "android" ? "your fingerprint or face" : deviceWords().ios ? "Face ID" : "Touch ID";
   return method === "faceID" ? "Face ID" : method === "opticID" ? "Optic ID" : method === "passcode" ? "your passcode" : "Touch ID";
 }
 
@@ -627,13 +629,13 @@ function LockCard() {
 
 function AiKeysCard() {
   return (
-    <Card title="Foli AI" description={`In a library on your devices, Foli AI runs on Apple's model on ${deviceWords().here}, or on your own OpenAI, Anthropic or Google key, called straight from ${deviceWords().here}.`}>
+    <Card title="Foli AI" description={`In a library on your devices, Foli AI runs on ${deviceWords().onDeviceModel} on ${deviceWords().here}, or on your own OpenAI, Anthropic or Google key, called straight from ${deviceWords().here}.`}>
       <p className="text-sm text-muted" data-testid="library-ai-keys">
         Choose the model and add your keys in{" "}
         <AppLink href="/settings/ai" className="text-ink underline underline-offset-2">
           Settings, under AI
         </AppLink>
-        . Keys stay in the Keychain on {deviceWords().here}; Folevi never sees them.
+        . Keys stay {shell()?.platform === "android" ? "sealed by the Android Keystore" : "in the Keychain"} on {deviceWords().here}; Folevi never sees them.
       </p>
     </Card>
   );

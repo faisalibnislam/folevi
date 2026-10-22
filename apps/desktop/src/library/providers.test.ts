@@ -11,7 +11,7 @@ import { cleanupTemps, tempDir } from "../../test/library-kit";
 import { hmacName } from "./crypto";
 import { EncryptedNodeFs } from "./encryptedFs";
 import { NodeFs } from "./fs";
-import { defaultLocation, displayPath, providerFor, providerOf } from "./locations";
+import { defaultLocation, displayPath, iCloudContainerDocuments, iCloudLocation, providerFor, providerOf } from "./locations";
 
 afterAll(cleanupTemps);
 
@@ -107,5 +107,16 @@ describe("cloud folder kinds", () => {
     expect(displayPath(`${home}/Library/CloudStorage/GoogleDrive-a@b.com/My Drive/Folevi`, home)).toBe("Google Drive › My Drive › Folevi");
     expect(displayPath(`${home}/Library/CloudStorage/OneDrive-Personal/Folevi`, home)).toBe("OneDrive › Folevi");
     expect(displayPath("/Volumes/Disk/Folevi", home)).toBe("/Volumes/Disk/Folevi");
+  });
+
+  test("Sync with iCloud uses the iPhone's container once it's on this Mac", async () => {
+    const home = tempDir();
+    {
+      expect(await iCloudLocation(home)).toBe(defaultLocation("icloud", home));
+      mkdirSync(join(home, "Library", "Mobile Documents", "iCloud~com~folevi"), { recursive: true });
+      expect(await iCloudLocation(home)).toBe(iCloudContainerDocuments(home));
+      expect(displayPath(iCloudContainerDocuments(home), home)).toBe("iCloud Drive › Folevi");
+      expect(providerFor(iCloudContainerDocuments(home), home)).toBe("icloud");
+    }
   });
 });

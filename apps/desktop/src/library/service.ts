@@ -16,7 +16,7 @@ import { NodeFs } from "./fs";
 import { FilesHelper, type Coordinator } from "./helper";
 import { FileJournal } from "./journal";
 import { KeyCache, type StringSealer } from "./keys";
-import { checkICloud, defaultLocation, displayPath, iCloudDriveRoot, isFolder, probeWritable, providerOf, DEVICE_FOLDER } from "./locations";
+import { checkICloud, defaultLocation, displayPath, iCloudDriveRoot, iCloudLocation, isFolder, probeWritable, providerOf, DEVICE_FOLDER } from "./locations";
 import { checkPath, FILES_DIR, LIBRARY_FILE } from "./paths";
 import { LibraryWatcher, type WatchSource } from "./watch";
 import { LibraryError, type LibraryChange, type LibraryFs, type LibraryInfo, type LibraryKind, type LocalFsEntry, type ReadResult, type WriteResult } from "./types";
@@ -485,7 +485,7 @@ export class LibraryService {
       const why = { drive_off: "iCloud Drive is turned off on this Mac.", signed_out: "This Mac isn't signed in to iCloud.", not_writable: "Folevi can't write to iCloud Drive." }[st.reason];
       throw new LibraryError("unavailable", why, st.reason);
     }
-    return defaultLocation("icloud", this.o.home);
+    return iCloudLocation(this.o.home);
   }
 
   /** The library folder for a folder the person chose: it, if it's a library or empty; else "Folevi Library" in it. */

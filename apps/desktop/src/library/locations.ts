@@ -1,8 +1,12 @@
 // Where a local library lives on the Mac (docs/LOCAL_MODE_PLAN.md §3.1, owner decisions):
 // - "This device only": ~/Documents/Folevi Library.
-// - "Sync with iCloud": until the paid Developer Program gives the app its own iCloud container (risk R7,
-//   spike S6), an ordinary folder in iCloud Drive, ~/Library/Mobile Documents/com~apple~CloudDocs/Folevi. The
-//   app isn't sandboxed, so it needs no entitlement; `library.move` moves it into the container later.
+// - "Sync with iCloud": Folevi's own iCloud container, iCloud.com.folevi, its Documents folder
+//   (~/Library/Mobile Documents/iCloud~com~folevi/Documents, "Folevi" in iCloud Drive), the same files the
+//   iPhone and iPad app keeps its library in (apps/ios Native/Shell/LibraryService.swift). The container's folder
+//   is there once any of the person's devices has used it (the iOS app makes it); the Mac app isn't sandboxed, so
+//   it reads and writes it like any iCloud Drive folder (coordinated, through folevi-files). Until it's there,
+//   an ordinary iCloud Drive folder, ~/Library/Mobile Documents/com~apple~CloudDocs/Folevi, as before;
+//   Settings > Library's "Move library" > Sync with iCloud moves such a library into the container.
 // - "Choose a folder": any folder (Dropbox, Google Drive, OneDrive, a USB disk), remembered in library.json.
 // Folders in iCloud Drive and in ~/Library/CloudStorage (File Provider apps) get coordinated I/O through
 // folevi-files; everything else is a plain folder.
@@ -14,6 +18,13 @@ import type { LibraryKind } from "./types";
 
 export const DEVICE_FOLDER = "Folevi Library";
 export const ICLOUD_FOLDER = "Folevi";
+/** The iCloud container iCloud.com.folevi as it appears in ~/Library/Mobile Documents. */
+export const ICLOUD_CONTAINER = "iCloud~com~folevi";
+
+/** The container's Documents folder: the library "Sync with iCloud" shares with the iPhone and iPad. */
+export function iCloudContainerDocuments(home: string): string {
+  return join(home, "Library", "Mobile Documents", ICLOUD_CONTAINER, "Documents");
+}
 
 export function iCloudDriveRoot(home: string): string {
   return join(home, "Library", "Mobile Documents", "com~apple~CloudDocs");
@@ -60,6 +71,8 @@ const CLOUD_NAMES: [RegExp, string][] = [
 export function displayPath(path: string, home: string): string {
   const drive = iCloudDriveRoot(home);
   if (inside(path, drive)) return ["iCloud Drive", ...relative(drive, path).split(sep).filter(Boolean)].join(" › ");
+  const container = iCloudContainerDocuments(home);
+  if (inside(path, container)) return ["iCloud Drive", ICLOUD_FOLDER, ...relative(container, path).split(sep).filter(Boolean)].join(" › ");
   const cloud = join(home, "Library", "CloudStorage");
   if (inside(path, cloud)) {
     const [first, ...rest] = relative(cloud, path).split(sep).filter(Boolean);
@@ -68,6 +81,11 @@ export function displayPath(path: string, home: string): string {
   }
   if (inside(path, home)) return `~/${relative(home, path)}`.replace(/\/$/, "");
   return path;
+}
+
+/** Where "Sync with iCloud" goes: the container when it's on this Mac, else the iCloud Drive folder. */
+export async function iCloudLocation(home: string): Promise<string> {
+  return (await isFolder(join(home, "Library", "Mobile Documents", ICLOUD_CONTAINER))) ? iCloudContainerDocuments(home) : defaultLocation("icloud", home);
 }
 
 /** Whether Folevi can write in a folder: it exists (or can be made) and a probe file goes in and out. */
@@ -108,6 +126,6 @@ export async function checkICloud(home: string, o: { signedIn?: () => Promise<bo
   } catch {
     return { available: false, reason: "not_writable" };
   }
-  if (o.probe !== false && !(await probeWritable(defaultLocation("icloud", home)))) return { available: false, reason: "not_writable" };
+  if (o.probe !== false && !(await probeWritable(await iCloudLocation(home)))) return { available: false, reason: "not_writable" };
   return { available: true };
 }

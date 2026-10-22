@@ -711,8 +711,9 @@ final class LibraryService {
         return AttachmentPlace(fs: base, abs: abs, rel: rel, key: key)
     }
 
-    /// An attachment's size and a reader of its plain bytes [start, end), or nil when it isn't here. A file
-    /// still in the cloud is asked for and waited on a little (off the library's queue).
+    /// An attachment's size and a reader of its plain bytes, `read(position, length)` (fewer at the end), the
+    /// same for an encrypted library as for a plain one; nil when it isn't here. A file still in the cloud is
+    /// asked for and waited on a little (off the library's queue).
     static func openAttachment(_ place: AttachmentPlace) -> (size: Int, read: (Int, Int) throws -> Data)? {
         let fs = place.fs
         let abs = place.abs
@@ -739,6 +740,8 @@ final class LibraryService {
         }
         guard let key = place.key else { return (Int(size), readAt) }
         guard let reader = try? LibraryCrypto.StreamReader(master: key, pathId: place.rel, envelopeLength: Int(size), readAt: readAt) else { return nil }
-        return (reader.layout.plainLength, { try reader.range($0, $1) })
+        // (position, length), as the plain reader above: an encrypted library's attachments used to take (start,
+        // end) here, which cut every read after the first piece and every byte range short.
+        return (reader.layout.plainLength, { try reader.read(position: $0, length: $1) })
     }
 }

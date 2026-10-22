@@ -250,6 +250,13 @@ enum LibraryCrypto {
             return try LibraryCrypto.gcmOpen(key, LibraryCrypto.chunkNonce(layout.prefix, i), sealed, LibraryCrypto.chunkAAD(layout.header, last: i == layout.count - 1))
         }
 
+        /// Up to `length` plaintext bytes from `position` (fewer at the end), as a plain file reads: the shape
+        /// `LibraryService.openAttachment`'s readers share, encrypted or not.
+        func read(position: Int, length: Int) throws -> Data {
+            guard position >= 0, length >= 0, position <= layout.plainLength else { throw EnvelopeError("Range out of bounds.") }
+            return try range(position, min(layout.plainLength, position + length))
+        }
+
         /// Plaintext bytes [start, end).
         func range(_ start: Int, _ end: Int) throws -> Data {
             guard start >= 0, end >= start, end <= layout.plainLength else { throw EnvelopeError("Range out of bounds.") }

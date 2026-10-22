@@ -246,6 +246,48 @@ final class ShellFilesTests: XCTestCase {
         again.destroy()
     }
 
+    /// An encrypted library's attachments read like a plain one's: in (position, length) pieces as
+    /// LibraryFileHandler asks for them (256 KB at a time), and byte ranges that cross chunk boundaries, against
+    /// the FLV1 stream vectors and a file over 1 MB. (They took (start, end) once, which cut large images, audio
+    /// and video short after the first piece.)
+    func testEncryptedAttachmentsReadInPiecesAndRanges() throws {
+        let v = try fixture("crypto-vectors.json")
+        var cases: [(master: Data, pathId: String, prefix: Data, chunk: Int, length: Int)] = (v["stream"] as! [[String: Any]]).map {
+            (hex($0["masterKeyHex"] as! String), $0["pathId"] as! String, hex($0["noncePrefixHex"] as! String), $0["chunkSize"] as! Int, $0["plaintextLength"] as! Int)
+        }
+        // Over 1 MB in the library's own 64 KB chunks: 20 full chunks and a short last one.
+        cases.append((cases[0].master, cases[0].pathId, cases[0].prefix, LibraryCrypto.streamChunk, 1_300_001))
+        for c in cases {
+            let plain = Data((0..<c.length).map { UInt8($0 % 251) })
+            let env = try LibraryCrypto.sealStream(c.master, pathId: c.pathId, plain, noncePrefix: c.prefix, chunkSize: c.chunk)
+            let root = freshRoot()
+            let abs = root.appendingPathComponent(c.pathId).path
+            try FileManager.default.createDirectory(atPath: (abs as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
+            try env.write(to: URL(fileURLWithPath: abs))
+            let place = LibraryService.AttachmentPlace(fs: FolderFS(root: root), abs: abs, rel: c.pathId, key: c.master)
+            let file = try XCTUnwrap(LibraryService.openAttachment(place), "\(c.length) bytes")
+            XCTAssertEqual(file.size, c.length)
+            // The handler's pieces, end to end.
+            var whole = Data()
+            var pos = 0
+            while pos < c.length {
+                whole += try file.read(pos, min(256 * 1024, c.length - pos))
+                pos += 256 * 1024
+            }
+            XCTAssertEqual(whole, plain, "\(c.length) bytes in pieces")
+            // Ranges inside a chunk, across one or more boundaries, and at both ends.
+            let k = c.chunk
+            var ranges = [(0, 1), (k - 1, 2), (k - 3, k + 6), (k, k), (2 * k - 1, 3), (c.length / 2, 2 * k + 5), (c.length - 5, 5), (1, c.length - 2)]
+            if c.length <= 64 { ranges = (0..<c.length).flatMap { s in (1...(c.length - s)).map { (s, $0) } } }
+            for (start, length) in ranges where start >= 0 && length > 0 && start < c.length {
+                XCTAssertEqual(try file.read(start, length), plain.subdata(in: start..<min(c.length, start + length)), "\(c.length) bytes, \(start)+\(length)")
+            }
+            // Past the end comes back short, as a plain file does; past it entirely, nothing.
+            if c.length > 0 { XCTAssertEqual(try file.read(c.length - 1, 10).count, 1) }
+            XCTAssertEqual(try file.read(c.length, 10).count, 0)
+        }
+    }
+
     func testRangesForAttachments() {
         XCTAssertEqual(LibraryFileHandler.parse("bytes=2-5", size: 10).map { [$0.0, $0.1] }, [2, 5])
         XCTAssertEqual(LibraryFileHandler.parse("bytes=4-", size: 10).map { [$0.0, $0.1] }, [4, 9])
@@ -322,7 +364,12 @@ final class ShellFilesTests: XCTestCase {
 /// Several places (Native/Shell/ShellPlaces.swift, docs/MULTI_ACCOUNT_PLAN.md §2.2): the list, the open place, each
 /// account's own session and encryption keys.
 final class ShellPlacesTests: XCTestCase {
+    private var kept: ShellPlaces.TestSnapshot!
+
     override func setUp() {
+        // The app's own places, mode and the extensions' copy go back as they were afterwards (other tests, and
+        // the app on this simulator, read them).
+        kept = ShellPlaces.snapshotForTests()
         ShellPlaces.resetForTests()
     }
 
@@ -330,8 +377,10 @@ final class ShellPlacesTests: XCTestCase {
         for id in ["placesAna", "placesBen"] {
             ShellAuth.shared.setToken(nil, for: id)
             E2eeKeys.forget(userId: id)
+            SaveTargets.forget(userId: id)
         }
         ShellPlaces.resetForTests()
+        ShellPlaces.restoreForTests(kept)
     }
 
     func testTheLibraryAndAccountsTheOpenOneAndQuickAdd() {

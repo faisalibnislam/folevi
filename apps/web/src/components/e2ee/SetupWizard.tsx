@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { scopeIdKey } from "@folevi/editor-schema";
 import { Check, KeyRound, LockKeyhole, ScrollText, ShieldCheck, Smartphone } from "lucide-react";
 import type { WireScope } from "@folevi/editor-schema";
 import { Dialog } from "@/components/ui/Dialog";
@@ -9,11 +10,33 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { useAppState } from "@/lib/app/state";
 import { desktop } from "@/lib/desktop";
 import { copy, type LevelId, type MethodId, type SwitchId } from "@/lib/e2ee/copy";
-import { DEFAULT_SWITCHES, FULL_SWITCHES, e2eeActions, setup, useKeySession, useMigrationProgress, type MethodSummary, type Switches } from "./__stubs__";
+import { passkeysPossible, passphraseProblem, setup, useKeySession, type MethodSummary } from "@/lib/e2ee/keys";
+import { DEFAULT_SWITCHES, FULL_SWITCHES, e2eeActions, useMigrationProgress, type Switches } from "./__stubs__";
 import { RecoveryKeyPanel } from "./RecoveryKeyPanel";
 import { MigrationBar } from "./MigrationProgress";
 
 type Step = "start" | "methods" | "recovery" | "passphrase" | "confirm" | "done";
+type RecoveryInProgress = { text: string; confirm(groups: [string, string]): Promise<boolean> };
+
+/**
+ * Where an open wizard is, kept outside React: creating the account's keys swaps the app's Convex client for
+ * the encrypted-notes router (lib/convex/provider.tsx), which remounts everything below it. The screen that
+ * opened the wizard reopens it from here (`pendingWizard`), at the same step with the same recovery key.
+ */
+export interface WizardResume {
+  scopeKey: string;
+  level: Exclude<LevelId, "standard">;
+  mode: "space" | "methods";
+  step: Step;
+  recovery: RecoveryInProgress | null;
+  /** What the opener needs to carry on (LockDialogHost: the folder or note to lock). */
+  extra?: unknown;
+}
+let resume: WizardResume | null = null;
+export function pendingWizard(scope: WireScope, mode: "space" | "methods"): WizardResume | null {
+  return resume && resume.scopeKey === scopeIdKey(scope) && resume.mode === mode ? resume : null;
+}
+
 /** Kinds that count toward the two-method rule (§4.7.5): devices only once there are two. */
 export function methodKinds(methods: MethodSummary[]): Set<MethodId> {
   const kinds = new Set<MethodId>();
@@ -22,13 +45,11 @@ export function methodKinds(methods: MethodSummary[]): Set<MethodId> {
   return kinds;
 }
 
-/** A small list of passwords nobody should use, for the strength line; WP6's passphrase check has the full 10,000. */
-const COMMON = ["password", "123456", "qwerty", "letmein", "iloveyou", "welcome", "admin", "monkey", "dragon", "football", "baseball", "sunshine", "princess", "trustno1"];
+/** The strength line under the passphrase: WP6's check (length, common passwords and their patterns), then a rough measure. */
 export function passphraseStrength(p: string): "short" | "common" | "fine" | "strong" {
   const v = p.normalize("NFC");
-  if (v.length < 12) return "short";
-  const lower = v.toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (new Set(v).size <= 3 || COMMON.some((c) => lower.includes(c) && lower.length - c.length < 6)) return "common";
+  const problem = passphraseProblem(v);
+  if (problem) return problem;
   const classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((r) => r.test(v)).length;
   const words = v.trim().split(/\s+/).length;
   return v.length >= 20 || words >= 4 || (v.length >= 14 && classes >= 3) ? "strong" : "fine";
@@ -56,6 +77,7 @@ export function SetupWizard({
   mode = "space",
   reason,
   onDone,
+  resumeExtra,
 }: {
   open: boolean;
   onClose: () => void;
@@ -67,25 +89,41 @@ export function SetupWizard({
   /** A line on the first step saying why the wizard opened (e.g. to lock a folder). */
   reason?: string;
   onDone?: () => void;
+  /** Kept with the resume point for the opener (see WizardResume). */
+  resumeExtra?: unknown;
 }) {
   const { profile } = useAppState();
   const { state, methods } = useKeySession();
   const toast = useToast();
-  const [step, setStep] = useState<Step>("start");
+  const scopeKey = scopeIdKey(scope);
+  const [step, setStep] = useState<Step>(() => pendingWizard(scope, mode)?.step ?? "start");
   const [busy, setBusy] = useState(false);
-  const [recovery, setRecovery] = useState<{ text: string; confirm(groups: [string, string]): Promise<boolean> } | null>(null);
+  const [recovery, setRecovery] = useState<RecoveryInProgress | null>(() => pendingWizard(scope, mode)?.recovery ?? null);
   const [passkeyNote, setPasskeyNote] = useState<string | null>(null);
   const progress = useMigrationProgress(scope);
+  // Opening again starts over; a wizard mounted open (first open, or resumed after a remount) keeps its state.
+  const wasOpen = useRef(open);
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpen.current) {
       setStep("start");
       setRecovery(null);
       setPasskeyNote(null);
     }
+    wasOpen.current = open;
   }, [open]);
+  // Kept outside React while open, so a remount carries on here.
+  useEffect(() => {
+    if (open) resume = { scopeKey, level, mode, step, recovery, extra: resumeExtra };
+  }, [open, scopeKey, level, mode, step, recovery, resumeExtra]);
+  const close = () => {
+    resume = null;
+    onClose();
+  };
   const kinds = methodKinds(methods);
   const enough = kinds.size >= 2;
   const onMac = desktop() !== null;
+  // Where WebAuthn isn't there at all, the passkey row says so instead of offering Add.
+  const passkeyHere = passkeysPossible();
   const chosen = level === "full" ? FULL_SWITCHES : (switches ?? DEFAULT_SWITCHES);
   const w = copy.wizard;
   const stepNumber = step === "start" ? 1 : step === "methods" || step === "recovery" || step === "passphrase" ? 2 : step === "confirm" ? 3 : 4;
@@ -104,7 +142,7 @@ export function SetupWizard({
   const afterMethods = () => {
     if (mode === "methods") {
       onDone?.();
-      onClose();
+      close();
     } else setStep("confirm");
   };
 
@@ -131,14 +169,23 @@ export function SetupWizard({
     );
     footer = (
       <>
-        <Button onClick={onClose}>{w.cancel}</Button>
+        <Button onClick={close}>{w.cancel}</Button>
         <Button
           variant="primary"
           disabled={busy}
           aria-busy={busy || undefined}
           onClick={() =>
             void run(async () => {
-              if (state === "none") await setup.createAccount();
+              if (state === "none") {
+                // Creating the keys remounts the app (see WizardResume): it carries on at the ways to unlock.
+                if (resume) resume = { ...resume, step: "methods" };
+                try {
+                  await setup.createAccount();
+                } catch (e) {
+                  if (resume) resume = { ...resume, step: "start" };
+                  throw e;
+                }
+              }
               // Someone who already has two kinds goes straight on.
               if (methodKinds(methods).size >= 2 && state !== "none") afterMethods();
               else setStep("methods");
@@ -167,14 +214,14 @@ export function SetupWizard({
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium text-heading">{w.methods[kind].label}</span>
                   <span className="block text-[13px] text-muted">{kind === "device" ? `${w.methods.device.body} ${w.methods.deviceCount(devices)}.` : w.methods[kind].body}</span>
-                  {kind === "passkey" && passkeyNote ? <span className="mt-1 block text-[13px] text-muted">{passkeyNote}</span> : null}
+                  {kind === "passkey" && (passkeyNote || !passkeyHere) ? <span className="mt-1 block text-[13px] text-muted">{passkeyNote ?? w.methods.passkeyUnsupported}</span> : null}
                 </span>
                 {done ? (
                   <span className="inline-flex h-8 flex-none items-center gap-1 rounded-chip px-2 text-[13px] font-medium text-heading">
                     <Check size={15} aria-hidden /> {w.methods.added}
                     <span className="sr-only">: {w.methods[kind].label}</span>
                   </span>
-                ) : kind === "device" ? null : (
+                ) : kind === "device" || (kind === "passkey" && (!passkeyHere || passkeyNote)) ? null : (
                   <Button
                     size="sm"
                     disabled={busy}
@@ -295,7 +342,7 @@ export function SetupWizard({
         variant="primary"
         onClick={() => {
           onDone?.();
-          onClose();
+          close();
         }}
       >
         {w.done.close}
@@ -304,7 +351,7 @@ export function SetupWizard({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title={title} description={<span className="text-[12.5px]">{w.stepOf(Math.min(stepNumber, total), total)}</span>} size="md" footer={footer}>
+    <Dialog open={open} onClose={close} title={title} description={<span className="text-[12.5px]">{w.stepOf(Math.min(stepNumber, total), total)}</span>} size="md" footer={footer}>
       <div data-e2ee-step={step}>{body}</div>
     </Dialog>
   );

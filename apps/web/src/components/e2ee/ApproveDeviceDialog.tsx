@@ -5,7 +5,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { copy } from "@/lib/e2ee/copy";
-import { getKeySession, useApprovals, type ApprovalHandle, type IncomingApproval } from "./__stubs__";
+import { getKeySession, useApprovals, type ApprovalHandle, type IncomingApproval } from "@/lib/e2ee/keys";
 
 /** "482019" shown as "482 019", in large type, read out digit by digit. */
 export function ApprovalCode({ code }: { code: string }) {
@@ -24,20 +24,30 @@ export function NewDeviceApprovalDialog({ open, onClose, onApproved }: { open: b
   const a = copy.approve;
   const [code, setCode] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
-  const handle = useRef<ApprovalHandle | null>(null);
+  // One request per opening. React's development double-run of effects must not cancel it: the cancel waits a
+  // tick, and an effect that runs again at once keeps the same request.
+  const request = useRef<{ promise: Promise<ApprovalHandle> | null; cancelTimer: ReturnType<typeof setTimeout> | null }>({ promise: null, cancelTimer: null });
   const done = useRef(onApproved);
   done.current = onApproved;
   useEffect(() => {
     if (!open) return;
+    const r = request.current;
+    if (r.cancelTimer) {
+      clearTimeout(r.cancelTimer);
+      r.cancelTimer = null;
+    }
+    if (!r.promise) {
+      setCode(null);
+      setFailed(false);
+      r.promise = getKeySession().requestApproval();
+    }
     let live = true;
-    setCode(null);
-    setFailed(false);
-    void getKeySession()
-      .requestApproval()
-      .then((h) => {
-        if (!live) return h.cancel();
-        handle.current = h;
-        void h.code.then((c) => live && setCode(c));
+    r.promise.then(
+      (h) => {
+        void h.code.then(
+          (c) => live && setCode(c),
+          () => undefined,
+        );
         void h.done.then(
           (ok) => {
             if (!live) return;
@@ -46,11 +56,16 @@ export function NewDeviceApprovalDialog({ open, onClose, onApproved }: { open: b
           },
           () => live && setFailed(true),
         );
-      }, () => live && setFailed(true));
+      },
+      () => live && setFailed(true),
+    );
     return () => {
       live = false;
-      handle.current?.cancel();
-      handle.current = null;
+      r.cancelTimer = setTimeout(() => {
+        void r.promise?.then((h) => h.cancel(), () => undefined);
+        r.promise = null;
+        r.cancelTimer = null;
+      }, 0);
     };
   }, [open]);
   return (

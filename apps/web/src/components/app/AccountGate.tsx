@@ -22,6 +22,9 @@ import { MigrationGate } from "@/components/migrate/MigrationGate";
 import { ShellSignIn } from "./ShellSignIn";
 import { ShellUpdateGate } from "./ShellUpdateGate";
 import { E2eeGate } from "@/components/e2ee/E2eeGate";
+import { getConvexClient } from "@/lib/convex/provider";
+import { convexKeysServer, startKeySession } from "@/lib/e2ee/keys";
+import { deviceId as loadDeviceId } from "@/lib/sync/db";
 
 // Seen once per account, so it loads only for people who haven't finished it.
 const Onboarding = lazy(() => import("./Onboarding").then((m) => ({ default: m.Onboarding })));
@@ -190,6 +193,7 @@ export function AccountGate() {
     case "ready":
       return (
         <ShellUpdateGate>
+          <KeySessionStarter profileId={me.profile.id} email={me.profile.email ?? undefined} />
           <AppStateProvider profile={me.profile}>
             {route.name === "oauth-consent" ? (
               <OauthConsent />
@@ -213,4 +217,16 @@ export function AccountGate() {
         </ShellUpdateGate>
       );
   }
+}
+
+/**
+ * End-to-end encryption's key session, once signed in (docs/E2EE_DESIGN.md §6.3): it reads the account's status
+ * and, when the account has keys, unlocks with this device's. A Standard account only watches its status.
+ * Sign-out ends it (components/auth/SignOut.tsx).
+ */
+function KeySessionStarter({ profileId, email }: { profileId: string; email?: string }) {
+  useEffect(() => {
+    void startKeySession({ server: convexKeysServer(getConvexClient()), profileId, email, newDeviceId: () => loadDeviceId(profileId) }).catch(() => undefined);
+  }, [profileId, email]);
+  return null;
 }

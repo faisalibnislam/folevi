@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { desktop } from "@/lib/desktop";
 import { copy, type LevelId } from "@/lib/e2ee/copy";
-import { e2eeActions, useKeySession } from "./__stubs__";
+import { useKeySession } from "@/lib/e2ee/keys";
+import { e2eeActions } from "./__stubs__";
 
 type Recheck = "passphrase" | "recoveryKey" | "passkey";
 

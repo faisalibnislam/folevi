@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { copy } from "@/lib/e2ee/copy";
 import { formatDate } from "@/i18n";
+import { groupsMatch } from "@/lib/e2ee/keys/recoveryKey";
 import { printRecoveryKey } from "./PrintRecoveryKey";
 
 /**
  * The recovery key, shown once (§10.4 step 3): nine groups of four in a mono block, Copy, Download and
  * Print, then groups 3 and 7 typed back before it counts.
  */
-export function RecoveryKeyPanel({ text, email, onConfirm, onDone }: { text: string; email: string; onConfirm: (groups: [string, string]) => Promise<boolean>; onDone: () => void }) {
+export function RecoveryKeyPanel({ text, email, onConfirm, onDone }: { text: string; email: string; /** Checks the two groups (WP6's addRecoveryKey); without it they're compared with `text` here (a key from rotateAccount). */ onConfirm?: (groups: [string, string]) => Promise<boolean>; onDone: () => void }) {
   const c = copy.wizard.recovery;
   const toast = useToast();
   const uid = useId();
@@ -62,7 +63,7 @@ export function RecoveryKeyPanel({ text, email, onConfirm, onDone }: { text: str
           if (busy) return;
           setBusy(true);
           setError(null);
-          const ok = await onConfirm([g3, g7]).catch(() => false);
+          const ok = onConfirm ? await onConfirm([g3, g7]).catch(() => false) : groupsMatch(text, [g3, g7]);
           setBusy(false);
           if (ok) onDone();
           else setError(c.wrong);

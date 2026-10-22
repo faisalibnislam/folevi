@@ -3,11 +3,12 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
 import { LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { useAppState } from "@/lib/app/state";
+import { FullPageMessage, useAppState } from "@/lib/app/state";
 import { copy } from "@/lib/e2ee/copy";
-import { startFeatureWorkers, startMigrationRunner, useE2eeSpace, useKeySession, useSpaceAccess } from "./__stubs__";
+import { useKeySession } from "@/lib/e2ee/keys";
+import { startFeatureWorkers, startMigrationRunner, useE2eeSpace, useSpaceAccess } from "./__stubs__";
 import { UnlockScreen } from "./UnlockScreen";
-import { SetupWizard } from "./SetupWizard";
+import { SetupWizard, pendingWizard } from "./SetupWizard";
 import { IncomingApprovalHost } from "./ApproveDeviceDialog";
 import { ConsentHost } from "./ConsentPopover";
 import { LOCK_MENU_FOR_EVERYONE, LockDialogHost } from "./LockDialog";
@@ -43,13 +44,11 @@ export function E2eeGate({ children }: { children: ReactNode }) {
   const access = useSpaceAccess(scope);
   const [unlocking, setUnlocking] = useState(false);
   const [refused, setRefused] = useState(0);
-  const [wizard, setWizard] = useState(false);
+  const [wizard, setWizard] = useState(() => pendingWizard(scope, "methods")?.extra === "gate");
   const locked = state === "locked" || state === "unlocking";
   const active = space?.e2eeActive === true;
-  // The screen stays up after the notes open, until the person picks "Trust this browser" or a public computer.
-  useEffect(() => {
-    if (active && locked) setUnlocking(true);
-  }, [active, locked]);
+  // Once the person starts unlocking by hand, the screen stays up after the notes open, until they pick
+  // "Trust this browser" or a public computer. (Opening with this device's own key needs no screen.)
   if (access === "needs_setup")
     return (
       <GatePage>
@@ -65,7 +64,7 @@ export function E2eeGate({ children }: { children: ReactNode }) {
             </Button>
           </section>
         </div>
-        {wizard ? <SetupWizard open onClose={() => setWizard(false)} scope={scope} mode="methods" /> : null}
+        {wizard ? <SetupWizard open onClose={() => setWizard(false)} scope={scope} mode="methods" resumeExtra="gate" /> : null}
       </GatePage>
     );
   if (access === "waiting_for_key")
@@ -80,10 +79,12 @@ export function E2eeGate({ children }: { children: ReactNode }) {
         </div>
       </GatePage>
     );
+  if (!unlocking && state === "unlocking" && (active || refused > 0)) return <FullPageMessage title={copy.unlock.opening} busy />;
   if ((active && (locked || unlocking)) || (refused > 0 && locked))
     return (
       <GatePage>
         <UnlockScreen
+          onStart={() => setUnlocking(true)}
           onDone={() => {
             setUnlocking(false);
             setRefused(0);

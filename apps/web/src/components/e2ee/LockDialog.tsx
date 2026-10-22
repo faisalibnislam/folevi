@@ -9,8 +9,9 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { useAppState } from "@/lib/app/state";
 import { useCapabilities } from "@/lib/mode";
 import { copy } from "@/lib/e2ee/copy";
-import { e2eeActions, useE2eeSpace, useKeySession, useLockedIds } from "./__stubs__";
-import { SetupWizard } from "./SetupWizard";
+import { useKeySession } from "@/lib/e2ee/keys";
+import { e2eeActions, useE2eeSpace, useLockedIds } from "./__stubs__";
+import { SetupWizard, pendingWizard } from "./SetupWizard";
 
 /**
  * Whether the "Always fully encrypted" item shows before the account has encryption set up. §10.8 offers it
@@ -90,9 +91,13 @@ export function useLockMenuItem(target: { kind: "folder" | "document"; id: strin
 export function LockDialogHost() {
   const { scope } = useAppState();
   const { state } = useKeySession();
-  const [target, setTarget] = useState<LockTarget | null>(null);
+  // A wizard the app remounted under (creating the keys swaps the Convex client) opens again where it was.
+  const [target, setTarget] = useState<LockTarget | null>(() => {
+    const extra = pendingWizard(scope, "methods")?.extra;
+    return extra && typeof extra === "object" ? (extra as LockTarget) : null;
+  });
   const [asking, setAsking] = useState(false);
-  const [wizard, setWizard] = useState(false);
+  const [wizard, setWizard] = useState(() => typeof pendingWizard(scope, "methods")?.extra === "object");
   useEffect(() => {
     openLock = (t) => {
       setTarget(t);
@@ -107,7 +112,7 @@ export function LockDialogHost() {
   return (
     <>
       <LockDialog open={asking} onClose={() => setAsking(false)} kind={target.kind} id={target.id} name={target.name} locked={target.locked} />
-      {wizard ? <SetupWizard open onClose={() => setWizard(false)} scope={scope} mode="methods" reason={copy.wizard.start.firstLock} onDone={() => setAsking(true)} /> : null}
+      {wizard ? <SetupWizard open onClose={() => setWizard(false)} scope={scope} mode="methods" reason={copy.wizard.start.firstLock} onDone={() => setAsking(true)} resumeExtra={target} /> : null}
     </>
   );
 }

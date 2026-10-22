@@ -6,6 +6,7 @@ import { acceleratorFrom, DEFAULT_QUICK_ADD_SHORTCUT, desktop, shortcutLabel, ty
 import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
 import { Card } from "./Card";
+import { TouchIdCard } from "@/components/e2ee/TouchIdCard";
 
 export function DesktopSection() {
   const bridge = desktop();
@@ -41,6 +42,8 @@ export function DesktopSection() {
           />
         </div>
       </Card>
+      {/* End-to-end encryption: Touch ID before the Mac opens its key (only once the account has encryption). */}
+      <TouchIdCard />
     </div>
   );
 }

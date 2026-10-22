@@ -7,6 +7,7 @@ import { hostAuth } from "@/lib/auth/shellFetch";
 import { shell } from "@/lib/shell";
 import { forgetThisDevice } from "@/lib/nativeDevice";
 import { clearAllLocalData, localDb } from "@/lib/sync/db";
+import { endKeySession, keepOnSignOut } from "@/lib/e2ee/keys";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 
@@ -32,13 +33,20 @@ export async function unsyncedChangeCount(accountKey: string | null): Promise<nu
  * sign-in screen (there are no /signin pages there, so `destination` doesn't apply). On the web, signing
  * out lands on the marketing site's home page by default.
  */
-export async function signOutNow(destination = `${MARKETING_URL}/`) {
+export async function signOutNow(destination = `${MARKETING_URL}/`, opts: { forget?: boolean } = {}) {
   await forgetThisDevice();
+  // End-to-end encryption: a trusted browser keeps its device keys (IndexedDB "folevi-e2ee") so the next
+  // sign-in here unlocks with no prompt, unless the person asked to forget this browser or it was a public
+  // computer (docs/E2EE_DESIGN.md §6.3). Decided before the session ends, while it still knows which it was.
+  const forget = opts.forget ?? false;
+  const keepE2ee = keepOnSignOut(forget)("folevi-e2ee");
+  const keep = (name: string) => name === "folevi-e2ee" && keepE2ee;
+  await endKeySession({ forget }).catch(() => undefined);
   if (hostAuth()) {
     await shell()
       ?.auth.signOut()
       .catch(() => undefined);
-    await clearAllLocalData();
+    await clearAllLocalData({ keep });
     window.location.assign("/");
     return;
   }
@@ -47,7 +55,7 @@ export async function signOutNow(destination = `${MARKETING_URL}/`) {
   } catch {
     // Offline: the cookie is still cleared locally by the POST route below if we can't reach the server.
   }
-  await clearAllLocalData();
+  await clearAllLocalData({ keep });
   window.location.assign(destination);
 }
 

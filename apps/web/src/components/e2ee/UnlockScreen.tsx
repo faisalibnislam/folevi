@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { useRadioGroup } from "@/lib/a11y/radioGroup";
 import { desktop } from "@/lib/desktop";
 import { copy } from "@/lib/e2ee/copy";
-import { getKeySession } from "./__stubs__";
+import { getKeySession } from "@/lib/e2ee/keys";
 import { NewDeviceApprovalDialog } from "./ApproveDeviceDialog";
 
 type View = "choose" | "passphrase" | "recovery" | "trust";
@@ -16,7 +16,7 @@ type View = "choose" | "passphrase" | "recovery" | "trust";
  * as a public computer. `onDone` runs once the person has chosen (the gate keeps this screen up until then,
  * even though the notes are already unlocked).
  */
-export function UnlockScreen({ onDone }: { onDone?: () => void }) {
+export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The person started a way to unlock (so the screen stays up for the trust choice). */ onStart?: () => void }) {
   const u = copy.unlock;
   const session = getKeySession();
   const [view, setView] = useState<View>("choose");
@@ -49,7 +49,14 @@ export function UnlockScreen({ onDone }: { onDone?: () => void }) {
             <p className="mt-2 text-sm text-muted">{u.body}</p>
             {view === "choose" ? (
               <div className="mt-6 flex flex-col gap-2">
-                <Button variant="primary" className="h-11 w-full justify-center text-[14px]" onClick={() => setApproving(true)}>
+                <Button
+                  variant="primary"
+                  className="h-11 w-full justify-center text-[14px]"
+                  onClick={() => {
+                    onStart?.();
+                    setApproving(true);
+                  }}
+                >
                   <Smartphone size={15} aria-hidden /> {u.approve}
                 </Button>
                 {onMac ? null : (
@@ -57,6 +64,7 @@ export function UnlockScreen({ onDone }: { onDone?: () => void }) {
                     className="h-11 w-full justify-center text-[14px]"
                     onClick={async () => {
                       setNote(null);
+                      onStart?.();
                       const r = await session.unlockWithPasskey();
                       if (r === "ok") unlocked();
                       else setNote(r === "unsupported" ? u.passkeyUnsupported : u.passkeyCancelled);
@@ -65,10 +73,22 @@ export function UnlockScreen({ onDone }: { onDone?: () => void }) {
                     <KeyRound size={15} aria-hidden /> {u.passkey}
                   </Button>
                 )}
-                <Button className="h-11 w-full justify-center text-[14px]" onClick={() => setView("passphrase")}>
+                <Button
+                  className="h-11 w-full justify-center text-[14px]"
+                  onClick={() => {
+                    onStart?.();
+                    setView("passphrase");
+                  }}
+                >
                   <LockKeyhole size={15} aria-hidden /> {u.passphrase}
                 </Button>
-                <Button className="h-11 w-full justify-center text-[14px]" onClick={() => setView("recovery")}>
+                <Button
+                  className="h-11 w-full justify-center text-[14px]"
+                  onClick={() => {
+                    onStart?.();
+                    setView("recovery");
+                  }}
+                >
                   <ScrollText size={15} aria-hidden /> {u.recoveryKey}
                 </Button>
                 {note ? (

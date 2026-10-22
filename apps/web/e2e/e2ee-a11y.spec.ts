@@ -1,18 +1,34 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { APP, newPerson, settle } from "./helpers";
-import { stubState, type StubName } from "./e2ee-stub";
+import { stubState, trustedPage, turnOnEncryption, type StubName } from "./e2ee-stub";
 
-// Axe on every end-to-end encryption screen (docs/E2EE_DESIGN.md §11.4), light and dark. Runs on the stubs
-// now (components/e2ee/__stubs__.ts); at integration the same screens come from the real hooks.
+// Axe on every end-to-end encryption screen (docs/E2EE_DESIGN.md §11.4), light and dark. The keys are WP6's,
+// real (the wizard needs a person without keys, so the "none" screens use a second one); what WP7 and WP8
+// would report comes from the stubs (components/e2ee/__stubs__.ts).
 
-let storage: Awaited<ReturnType<BrowserContext["storageState"]>>;
+type Storage = Awaited<ReturnType<BrowserContext["storageState"]>>;
+/** One account without keys per colour scheme (the wizard gives an account keys). */
+const standard: Partial<Record<"light" | "dark", Storage>> = {};
+let cookies: Storage;
+/** The browser that set encryption up, kept open (its device keys can't be saved in a storage state). */
+let trusted: BrowserContext;
 test.describe.configure({ mode: "serial" });
 test.beforeAll(async ({ browser }) => {
-  test.setTimeout(120_000);
-  const { context } = await newPerson(browser, "Privacy A11y");
-  storage = await context.storageState();
-  await context.close();
+  test.setTimeout(300_000);
+  for (const scheme of ["light", "dark"] as const) {
+    const plain = await newPerson(browser, "Privacy A11y Standard");
+    standard[scheme] = await plain.context.storageState();
+    await plain.context.close();
+  }
+  const { context, page } = await newPerson(browser, "Privacy A11y");
+  cookies = await context.storageState();
+  await turnOnEncryption(page);
+  trusted = context;
+  await page.close();
+});
+test.afterAll(async () => {
+  await trusted?.close();
 });
 
 async function scan(page: Page, where: string) {
@@ -26,7 +42,12 @@ async function scan(page: Page, where: string) {
 for (const scheme of ["light", "dark"] as const) {
   test(`the encryption screens have no serious accessibility violations (${scheme})`, async ({ browser }) => {
     test.setTimeout(300_000);
-    const at = async (state: StubName, path: string) => {
+    const at = async (state: StubName, path: string, storage?: Storage): Promise<{ context: { close(): Promise<void> }; page: Page }> => {
+      if (!storage) {
+        const t = await trustedPage(trusted, state, { scheme });
+        await t.page.goto(`${APP}${path}`);
+        return t;
+      }
       const context = await browser.newContext({ storageState: storage, colorScheme: scheme });
       await context.addInitScript((s) => localStorage.setItem("folevi:appearance", s), scheme);
       await stubState(context, state);
@@ -35,7 +56,7 @@ for (const scheme of ["light", "dark"] as const) {
       return { context, page };
     };
     {
-      const { context, page } = await at("none", "/settings/privacy");
+      const { context, page } = await at("none", "/settings/privacy", standard[scheme]);
       await expect(page.getByRole("radiogroup", { name: "How private your notes are" })).toBeVisible({ timeout: 30_000 });
       await scan(page, "privacy (standard)");
       await page.getByRole("button", { name: "What each choice means" }).click();
@@ -72,18 +93,17 @@ for (const scheme of ["light", "dark"] as const) {
       await context.close();
     }
     {
-      const { context, page } = await at("locked", "/documents");
+      const { context, page } = await at("encrypted", "/documents", cookies);
       await expect(page.getByRole("heading", { name: "Unlock your encrypted notes" })).toBeVisible({ timeout: 30_000 });
       await scan(page, "unlock");
+      const old = await at("encrypted", "/documents");
       await page.getByRole("button", { name: "Approve from another device" }).click();
       await scan(page, "waiting for approval");
-      await context.close();
-    }
-    {
-      const { context, page } = await at("approval", "/documents");
-      await expect(page.getByRole("dialog", { name: "Approve a new device?" })).toBeVisible({ timeout: 30_000 });
-      await scan(page, "approve a new device");
-      await context.close();
+      const ask = old.page.getByRole("dialog", { name: "Approve a new device?" });
+      await expect(ask.getByLabel(/^Code /)).toBeVisible({ timeout: 60_000 });
+      await scan(old.page, "approve a new device");
+      await ask.getByRole("button", { name: "They don't match" }).click();
+      await Promise.all([context.close(), old.context.close()]);
     }
     {
       const { context, page } = await at("consent", "/documents");

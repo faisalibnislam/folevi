@@ -16,9 +16,10 @@ import { useAppState } from "@/lib/app/state";
 import { desktop } from "@/lib/desktop";
 import { formatRelative } from "@/lib/format";
 import { copy, e2eeErrorMessage, type LevelId, type SwitchId } from "@/lib/e2ee/copy";
-import { DEFAULT_SWITCHES, setup, e2eeActions, useE2eeSpace, useE2eeSpaceStatus, useKeySession, type MethodSummary, type Switches } from "./__stubs__";
+import { setup, useKeySession, type MethodSummary } from "@/lib/e2ee/keys";
+import { DEFAULT_SWITCHES, e2eeActions, useE2eeSpace, useE2eeSpaceStatus, type Switches } from "./__stubs__";
 import { WhatEachChoiceMeans } from "./WhatEachChoiceMeans";
-import { SetupWizard, PassphraseForm } from "./SetupWizard";
+import { SetupWizard, PassphraseForm, pendingWizard } from "./SetupWizard";
 import { LowerLevelDialog } from "./LowerLevelDialog";
 import { MigrationRow } from "./MigrationProgress";
 import { RecoveryKeyPanel } from "./RecoveryKeyPanel";
@@ -40,10 +41,11 @@ export function PrivacyPanel({ scope, workspaceName = null, canChange = true }: 
   const space = useE2eeSpace(scope);
   const { state } = useKeySession();
   const current: LevelId = status.level;
-  const [picked, setPicked] = useState<LevelId | null>(null);
+  // A wizard the app remounted under (creating the keys swaps the Convex client) opens again where it was.
+  const [picked, setPicked] = useState<LevelId | null>(() => pendingWizard(scope, "space")?.level ?? null);
   const choice = picked ?? current;
   const [meaning, setMeaning] = useState(false);
-  const [wizard, setWizard] = useState(false);
+  const [wizard, setWizard] = useState(() => pendingWizard(scope, "space") !== null);
   const [lowering, setLowering] = useState(false);
   const group = useRadioGroup();
   const p = copy.privacy;

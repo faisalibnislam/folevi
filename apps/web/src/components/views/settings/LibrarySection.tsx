@@ -103,6 +103,7 @@ function ForgetLibraryCard({ flush }: { flush: (() => Promise<void>) | null }) {
         title={`Remove the library from ${here}?`}
         description="What's waiting is written to the folder first. Nothing in the folder is deleted: set the library up again on the same folder to bring it back."
         size="sm"
+        confirm={{ label: "Remove", destructive: true, onConfirm: () => void forget() }}
         footer={
           <>
             <Button onClick={() => setOpen(false)} disabled={busy}>

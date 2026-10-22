@@ -49,6 +49,11 @@ Native/AppleSignIn.swift    Sign in with Apple in Apple's own sheet (foleviNativ
   the in-app Safari view as before.
 - The extensions' REST API base is the service (https://app.folevi.com/api/v1), not the page's origin.
 
+- Several places (`docs/MULTI_ACCOUNT_PLAN.md`): `ShellPlaces.swift` keeps the library and the accounts in
+  Application Support (`places.json`); each account's session is the Keychain item `session.<user id>` and its
+  E2EE keys `device.<user id>`. Switching starts the screen again in that place. The share extension and the
+  widgets act on the open place.
+
 ### Local mode on iPhone and iPad
 
 - **First launch**: "Keep notes on my devices" (Free forever. No account.) or "Sign in to Folevi"

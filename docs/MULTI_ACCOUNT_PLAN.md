@@ -317,3 +317,34 @@ go-on, problems and summary as today's move screen.
 - **P5 iPhone, iPad, Android:** the same `places` bridge in Swift and Kotlin (tokens, keys, places file),
   switching, push label and tap to switch, the share and Quick Add pickers; built and run in the Simulator and
   on the emulators.
+
+## 13. Status (2026-10-22)
+
+P0 to P5 are built and committed (not pushed, not deployed to production; the dev Convex deployment has the
+`multiSession` plugin and the push changes).
+
+- **Web:** up to ten accounts in one browser, the switcher, `?place=` links, a pinned tab staying put while
+  another switches, Sign out of <name> (only that account), `/place-sync` runners with Web Locks, labelled
+  toasts and dots, Move or copy notes (account to account, all or picked folders and notes, copy or move),
+  Takeout download and import.
+- **Mac:** `places.json`, a session and E2EE keys per account (an older build's single ones become its one
+  account's), each window bound to its place, per-place policy and network guard, a hidden runner window per
+  place that isn't open, labelled notifications and one Dock badge, Quick Add's place picker, Remove from this
+  Mac for the library.
+- **iPhone, iPad, Android:** `ShellPlaces` and `Places` with the same bridge (list, switch, sign in, describe,
+  sign out, forget the library, another account's Convex token for moves, Quick Add's place); switching
+  reopens the page in that place; library reminders and pushes say which place they're from, and tapping one
+  opens that place first. The iPhone account sheet lists the other places.
+
+Not built, or limited:
+
+- The iOS share extension, widgets, Siri and Shortcuts, and the Android share target, Quick Settings tile and
+  widgets act on the open place (they follow it when it changes). The "Save to" picker of §6 isn't there yet.
+- The apps keep no other place running in the background (§5.3): an account's pushes still arrive, the
+  library's reminders still fire, but nothing of a place that isn't open syncs until it opens.
+- Web push labels and the `?place=` link only on subscriptions made while the browser holds more than one
+  account (`placeLabel`); older ones keep their single-account wording.
+- Signing out of one account now deletes its E2EE keys on this device too; signing in again needs the
+  recovery method or another device, as a new device does.
+- Takeout is built in memory: refused above 2 GB.
+- A background runner unlocks E2EE only silently (device keys); otherwise its place waits until it opens.

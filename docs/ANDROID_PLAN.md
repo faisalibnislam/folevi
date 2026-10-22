@@ -83,6 +83,9 @@ the owner's steps in detail). Checked on the phone, tablet and foldable emulator
   App Links (`FOLEVI_ANDROID_CERT_SHA256`), release signing.
 - **Built, not checked on an emulator:** Gemini Nano (needs AICore on a real phone), the document scanner and
   text recognition (Play services modules), the fingerprint or face lock (needs a screen lock), App Actions.
+- **Several places** (`docs/MULTI_ACCOUNT_PLAN.md`): `Places.kt` and `web/PlacesPlugin.kt`, a session
+  (`auth.session.<user id>`) and E2EE keys (`e2ee/accounts/<user id>`) per account; the share target, the
+  tile and the widgets act on the open place.
 - **Not on Android yet:** the passphrase for a library (the setting says so), bookmark previews in local mode,
   the passkey unlock through Credential Manager, API 33 test runs (the image isn't installed).
 

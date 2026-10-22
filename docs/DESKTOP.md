@@ -20,6 +20,10 @@ The native Swift app it replaces is archived on the git tag `native-mac-archive`
   it at startup and only applies the setting when it changes. A folevi:// link that opens Folevi shows just
   what it names. Closing the main window hides it; ⌘Q quits. Opening Folevi again brings the running one
   forward.
+- **Several places at once** (`docs/MULTI_ACCOUNT_PLAN.md`): the library on this Mac and any number of
+  accounts, switched from the sidebar's account menu with no sign-in. `src/places.ts` keeps `places.json`;
+  each account has its own session (`auth.session.<user id>`) and E2EE keys (`e2ee/accounts/<user id>`); each
+  window is bound to one place, and a hidden window keeps every other place syncing and notifying.
 - **Mac notifications** for comments, mentions and reminders while Folevi isn't the app in front, and the
   **Dock badge** with the unread count. Clicking a notification opens the page it's about.
 - **Seamless title bar**: no title bar of its own. The page keeps an empty `.ui-traffic-space` in the

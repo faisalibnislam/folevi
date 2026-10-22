@@ -169,11 +169,11 @@ test.describe("Folevi for Mac, the web layer", { tag: ["@local", "@mac"] }, () =
     await field.fill("Call the printer tomorrow 9am !high");
     const details = panel.getByRole("group", { name: "Task details" });
     await expect(details.getByRole("button", { name: /Due Tomorrow/ })).toBeVisible();
-    await expect(details.getByRole("button", { name: "High" })).toBeVisible();
+    await expect(details.getByRole("button", { name: "High", exact: true })).toBeVisible();
     await expect.poll(async () => (await calls(page, "sizeQuickAdd")).at(-1)).toBeGreaterThan(100);
     // Keep "!high" as words: the chip goes.
     await details.getByRole("button", { name: "Keep “!high” as text" }).click();
-    await expect(details.getByRole("button", { name: "High" })).toHaveCount(0);
+    await expect(details.getByRole("button", { name: "High", exact: true })).toHaveCount(0);
     await field.press("Enter");
     await expect(panel.getByText("Added to")).toBeVisible();
     await expect.poll(async () => (await calls(page, "closeQuickAdd")).length, { timeout: 5_000 }).toBeGreaterThan(0);

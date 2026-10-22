@@ -150,6 +150,10 @@ export function MenuButton({
           setPress({ x: e.clientX, y: e.clientY });
           show();
         }}
+        // (Opened by that press: the button doesn't take the focus back from the menu, so the keyboard stays in it.)
+        onMouseDown={(e) => {
+          if (pressed.current) e.preventDefault();
+        }}
         onClick={() => {
           if (pressed.current) {
             pressed.current = false;

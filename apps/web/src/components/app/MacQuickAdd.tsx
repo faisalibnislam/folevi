@@ -204,7 +204,7 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
 
   if (added) {
     return (
-      <main ref={panel} aria-live="polite" className="ui-desktop-quick-add mac-quick-add flex h-14 items-center gap-3 px-4 text-ink">
+      <main ref={panel} aria-label="Quick add task" aria-live="polite" className="ui-desktop-quick-add mac-quick-add flex h-14 items-center gap-3 px-4 text-ink">
         <span aria-hidden className="grid h-5 w-5 flex-none place-items-center rounded-chip bg-heading text-canvas">
           <Check size={13} strokeWidth={3} />
         </span>

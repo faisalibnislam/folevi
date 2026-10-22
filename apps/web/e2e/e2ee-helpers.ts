@@ -137,11 +137,21 @@ export async function newNote(page: Page, title: string, body: string): Promise<
   return page.url().replace(/\?.*$/, "");
 }
 
-/** ⌘K search for `query`: the palette's results. */
+/** Hides Next's development overlay in a context (it opens over the app on a dev server's own console errors). */
+export async function hideDevOverlay(context: BrowserContext) {
+  await context.addInitScript(() => {
+    const style = document.createElement("style");
+    style.textContent = "nextjs-portal { display: none !important; }";
+    document.addEventListener("DOMContentLoaded", () => document.head.appendChild(style));
+  });
+}
+
+/** ⌘K search for `query`: the palette's document results. */
 export async function paletteResults(page: Page, query: string) {
   await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible({ timeout: 30_000 });
   await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
   const input = page.getByRole("combobox", { name: /Search documents/ });
   await input.fill(query);
-  return page.getByRole("dialog", { name: "Search and commands" }).getByRole("option");
+  // Documents only: the palette always offers "Ask Foli AI: <what you typed>" too, which would match any query.
+  return page.getByRole("dialog", { name: "Search and commands" }).getByRole("option").filter({ hasNotText: "Ask Foli AI" });
 }

@@ -113,7 +113,15 @@ class SpaceWorker {
           profileId,
           timeZone: timeZone(),
           done: this.applied,
-          send: (ops: SyncOp[], after, created) => send({ before: [], ops, after: after as never, createdDocuments: created }, space, env),
+          send: async (ops: SyncOp[], after, created) => {
+            await send({ before: [], ops, after: after as never, createdDocuments: created }, space, env);
+            // What comes next (registering the Inbox, marking the item applied) needs the new notes on the server.
+            const engine = env.engine();
+            if (engine && created.length) {
+              await engine.flush();
+              for (const id of created) await engine.whenDocumentOnServer(id);
+            }
+          },
         }).catch((e) => warn("inbox", e));
         if (this.manager && space.scope.kind === "workspace") {
           this.manager = await completeGrants({ server: env.inner, space, completePendingGrants: (s) => setup.completePendingGrants(s), rotateSpace: (s, p) => setup.rotateSpace(s, p) }).catch((e) => {

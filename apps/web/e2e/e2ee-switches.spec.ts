@@ -1,6 +1,6 @@
 import { expect, request, test, type Page } from "@playwright/test";
 import { APP, newPerson } from "./helpers";
-import { e2eeScan, marker, migrationDone, newNote, paletteResults, receiveMail, turnOnEncryption } from "./e2ee-helpers";
+import { e2eeScan, hideDevOverlay, marker, migrationDone, newNote, paletteResults, receiveMail, turnOnEncryption } from "./e2ee-helpers";
 
 // §11.4 e2ee-switches: each switch at "Encrypted, with the features you pick". Foli AI's consent needs a
 // Gemini key on the deployment as well, like ai.spec.ts (E2E_AI=1).
@@ -107,6 +107,7 @@ test("email to note: mail to the person's address arrives sealed and is filed in
   // Scanning the whole dev deployment for the marker takes minutes.
   test.setTimeout(1_800_000);
   const { page, context, email } = await newPerson(browser, "Mail Person");
+  await hideDevOverlay(context);
   await turnOnEncryption(page);
   await migrationDone(page);
   await switchOn(page, "Email to note");
@@ -121,7 +122,7 @@ test("email to note: mail to the person's address arrives sealed and is filed in
   await page.goto(`${APP}/documents`);
   await expect.poll(async () => {
     const results = await paletteResults(page, subject);
-    const n = await results.filter({ hasText: subject }).count();
+    const n = await results.filter({ hasText: subject }).filter({ hasNotText: "Ask Foli AI" }).count();
     await page.keyboard.press("Escape");
     return n;
   }, { timeout: 180_000, intervals: [10_000] }).toBeGreaterThan(0);

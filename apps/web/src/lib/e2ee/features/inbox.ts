@@ -128,7 +128,13 @@ export async function ensureInbox(d: InboxDeps): Promise<string> {
     await d.send([{ opId: stableId(fixed, "create"), kind: "document.create", document: { id: fixed, parentDocumentId: null, folderId: null, kind: "document", title: "Inbox", icon: null, scope: d.space.scope } }], [], [fixed]);
   }
   if (!personal) return fixed;
-  const r = (await d.server.mutation(api.e2ee.content.setInbox, { scope: d.space.scope, documentId: fixed })) as { documentId: string };
+  let r: { documentId: string };
+  try {
+    r = (await d.server.mutation(api.e2ee.content.setInbox, { scope: d.space.scope, documentId: fixed })) as { documentId: string };
+  } catch (e) {
+    // The Inbox this device just made hasn't reached the server yet: the item waits for the next pass.
+    throw new ConvexError({ code: "e2ee_inbox_pending", message: "The Inbox isn't on the server yet.", cause: codeOf(e) ?? "error" });
+  }
   return r.documentId;
 }
 
@@ -270,9 +276,13 @@ export async function applyInbox(d: InboxDeps): Promise<number> {
       applied++;
     } catch (e) {
       const code = codeOf(e) ?? "error";
-      // Locked out or offline: tried again next pass. Anything else won't get better: set aside.
-      if (code === "e2ee_locked_session" || code === "e2ee_busy") continue;
-      if (e instanceof TypeError) continue;
+      // Only what can't ever be applied is set aside (marking an item failed drops its sealed bytes): the note it
+      // changes is gone, or the write isn't valid. Anything else (offline, locked, a note still being made) is
+      // tried again next pass.
+      if (code !== "not_found" && code !== "invalid_argument") {
+        console.warn(`[e2ee] An inbox item will be tried again (${w.id}): ${code === "error" && e instanceof Error ? e.name : code}`);
+        continue;
+      }
       await d.server.mutation(api.e2ee.inbox.markFailed, { inboxId: w.id, reason: code }).catch(() => undefined);
     }
   }

@@ -1,7 +1,7 @@
 // WP7 (docs/E2EE_DESIGN.md §11.1): pull ingest is idempotent; derived fields equal local mode's for the same
 // rows; the engine's unsent edits show on top of the replica.
 import { describe, expect, test } from "vitest";
-import { SCHEMA_VERSION, ulid, type SyncOp, type WireBlock, type WireScope } from "@folevi/editor-schema";
+import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, SCHEMA_VERSION, ulid, type SyncOp, type WireBlock, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { E2eeRouterClient } from "@/lib/e2ee/router/client";
 import { SyncEngine } from "@/lib/sync/engine";
@@ -202,6 +202,21 @@ describe("the engine's unsent edits over the replica (§6.5)", () => {
     engine.upsertBlock(doc, todo(ulid(), "Buy stamps offline", "a"), ["content", "position"]);
     const list = await router.query(api.tasks.list, { scope: PERSONAL, view: "all", today: TODAY });
     expect(JSON.stringify(list)).toContain("Buy stamps offline");
+    engine.dispose();
+  });
+
+  test("a note created offline without a look gets the default cover and style (cards draw them)", async () => {
+    const { router } = await encryptedWorld();
+    await until(() => router.status(PERSONAL).state === "ready");
+    const engine = await SyncEngine.open(router as never, `acct-${ulid()}`, PERSONAL, "web-test-device-01");
+    engine.setOnline(false);
+    router.setEngine(engine);
+    const id = ulid();
+    engine.createDocument({ id, parentDocumentId: null, folderId: null, kind: "document", title: "From the inbox", icon: null, scope: PERSONAL });
+    const list = (await router.query(api.documents.list, LIST)) as unknown as { page: { id: string; style?: unknown; cover?: unknown }[] };
+    const doc = list.page.find((d) => d.id === id)!;
+    expect(doc.style).toEqual(DEFAULT_DOCUMENT_STYLE);
+    expect(doc.cover).toEqual(DEFAULT_COVER);
     engine.dispose();
   });
 });

@@ -10,7 +10,7 @@
 // ConvexReactClient. Even here, a call about a Standard space is passed through untouched.
 import { ConvexError } from "convex/values";
 import { getFunctionName, type FunctionReference } from "convex/server";
-import { canonicalJson, randomNoteEmoji, sanitizeTitle, type OpResult, type SyncOp, type WireBlock, type WireScope } from "@folevi/editor-schema";
+import { canonicalJson, DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, randomNoteEmoji, sanitizeTitle, type OpResult, type SyncOp, type WireBlock, type WireScope } from "@folevi/editor-schema";
 import type { ConvexReactClient } from "convex/react";
 import { api } from "@/lib/convex/api";
 import type { SyncEngine } from "@/lib/sync/engine";
@@ -1116,7 +1116,7 @@ function plainLine(block: WireBlock): string {
     .slice(0, 140);
 }
 
-function pendingDocument(d: { id: string; parentDocumentId: string | null; folderId: string | null; kind: LocalDocument["kind"]; title: string; icon: string | null }): LocalDocument {
+function pendingDocument(d: { id: string; parentDocumentId: string | null; folderId: string | null; kind: LocalDocument["kind"]; title: string; icon: string | null; cover?: unknown; style?: unknown }): LocalDocument {
   const now = Date.now();
   return {
     id: d.id,
@@ -1125,8 +1125,9 @@ function pendingDocument(d: { id: string; parentDocumentId: string | null; folde
     kind: d.kind,
     title: d.title,
     icon: d.icon,
-    cover: { kind: "none" } as LocalDocument["cover"],
-    style: undefined as unknown as LocalDocument["style"],
+    // A create may leave its look out (the server fills in the defaults): cards draw it, so it's never missing.
+    cover: (d.cover ?? DEFAULT_COVER) as LocalDocument["cover"],
+    style: (d.style ?? DEFAULT_DOCUMENT_STYLE) as LocalDocument["style"],
     dailyDate: null,
     templateKey: null,
     collectionId: null,

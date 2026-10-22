@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { APP, createWorkspace, newPerson, showFolders, switchTo } from "./helpers";
-import { e2eeScan, marker, migrationDone, paletteResults, turnOnEncryption } from "./e2ee-helpers";
+import { e2eeScan, hideDevOverlay, marker, migrationDone, paletteResults, turnOnEncryption } from "./e2ee-helpers";
 
 // §11.4 e2ee-lock: in a Standard space, lock a folder; its notes are sealed, server search can't find them,
 // search on the device can. Until launch the folder menu offers "Always fully encrypted" only to accounts
@@ -10,6 +10,7 @@ import { e2eeScan, marker, migrationDone, paletteResults, turnOnEncryption } fro
 test("a locked folder in a Standard space", async ({ browser }) => {
   test.setTimeout(1_200_000);
   const { page, context, email } = await newPerson(browser, "Lock Person");
+  await hideDevOverlay(context);
   const since = Date.now();
   await createWorkspace(page, "Key Team");
   await turnOnEncryption(page, { workspace: true });
@@ -44,6 +45,7 @@ test("a locked folder in a Standard space", async ({ browser }) => {
     return n;
   }, { timeout: 120_000, intervals: [5_000] }).toBeGreaterThan(0);
   const viewer = await browser.newContext({ storageState: { cookies: (await context.storageState()).cookies, origins: [] } });
+  await hideDevOverlay(viewer);
   const fresh = await viewer.newPage();
   // The folder's notes are sealed in the background (a lock job): once done, server search has nothing.
   await expect.poll(async () => {

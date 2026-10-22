@@ -103,6 +103,8 @@ export type CreateWithMeta = WireDocumentCreate & { e2eeMeta?: DocumentMeta };
 
 /** The calls a capture stands for, in the order they must happen. */
 export interface Projection {
+  /** Mutations before the ops (a note brought back from Trash so lines can be written into it). */
+  before: { ref: Parameters<RouterEnv["inner"]["mutation"]>[0]; args: Record<string, unknown> }[];
   ops: SyncOp[];
   /** Mutations after the ops reached the server (records, tags, row metas, trash). */
   after: { ref: Parameters<RouterEnv["inner"]["mutation"]>[0]; args: Record<string, unknown> }[];
@@ -114,6 +116,7 @@ const opId = () => ulid();
 /** Turns captured row writes into sync ops and sealed calls (see the file comment). */
 export async function project(c: Captured, space: E2eeSpace, env: RouterEnv): Promise<Projection> {
   const ops: SyncOp[] = [];
+  const first: Projection["before"] = [];
   const after: Projection["after"] = [];
   const createdDocuments: string[] = [];
   const scope: WireScope = space.scope;
@@ -140,7 +143,7 @@ export async function project(c: Captured, space: E2eeSpace, env: RouterEnv): Pr
         collectionId: next.collectionId,
         scope,
       };
-      if (next.row || next.templateKey) create.e2eeMeta = { ...(next.templateKey ? { templateKey: next.templateKey } : {}), ...(next.row ? { row: { collectionId: next.row.collectionId, rank: next.row.rank, values: next.row.values } } : {}) };
+      if (next.row || next.templateKey) create.e2eeMeta = { ...(next.templateKey ? { templateKey: next.templateKey } : {}), ...(next.row ? { row: rowMeta(next.row) } : {}) };
       ops.push({ opId: opId(), kind: "document.create", document: create });
       createdDocuments.push(next.id);
       if (next.tagIds.length) after.push({ ref: content.setDocumentTags, args: { documentId: next.id, tagIds: next.tagIds } });
@@ -155,11 +158,12 @@ export async function project(c: Captured, space: E2eeSpace, env: RouterEnv): Pr
     if (next.parentDocumentId !== prev.parentDocumentId) patch.parentDocumentId = next.parentDocumentId;
     if (Object.keys(patch).length) ops.push({ opId: opId(), kind: "document.update", documentId: next.id, patch, baseRevision: prev.revision });
     if (!sameJson(next.row ?? null, prev.row ?? null) || next.templateKey !== prev.templateKey) {
-      const meta: DocumentMeta = { ...(next.templateKey ? { templateKey: next.templateKey } : {}), ...(next.row ? { row: { collectionId: next.row.collectionId, rank: next.row.rank, values: next.row.values } } : {}) };
+      const meta: DocumentMeta = { ...(next.templateKey ? { templateKey: next.templateKey } : {}), ...(next.row ? { row: rowMeta(next.row) } : {}) };
       after.push({ ref: content.setDocumentRowMeta, args: { documentId: next.id, sealedMeta: await env.sealer.sealMeta(next.id, meta) } });
     }
     if (!sameJson(next.tagIds, prev.tagIds)) after.push({ ref: content.setDocumentTags, args: { documentId: next.id, tagIds: next.tagIds } });
-    if (next.inTrash !== prev.inTrash) after.push({ ref: next.inTrash ? api.documents.moveToTrash : api.documents.restoreFromTrash, args: { documentId: next.id } });
+    // Out of Trash before anything is written into it; into Trash once the rest is done.
+    if (next.inTrash !== prev.inTrash) (next.inTrash ? after : first).push({ ref: next.inTrash ? api.documents.moveToTrash : api.documents.restoreFromTrash, args: { documentId: next.id } });
     if ((next.archivedAt === null) !== (prev.archivedAt === null)) after.push({ ref: api.documents.setArchived, args: { documentId: next.id, archived: next.archivedAt !== null } });
   }
   for (const { w, before } of blocks) {
@@ -177,8 +181,35 @@ export async function project(c: Captured, space: E2eeSpace, env: RouterEnv): Pr
     const fields: ("content" | "position")[] = [...(contentChanged ? (["content"] as const) : []), ...(moved ? (["position"] as const) : [])];
     ops.push({ opId: opId(), kind: "block.upsert", documentId, block: wire(next), baseRevision: prev?.revision ?? null, fields: fields.length ? fields : ["content", "position"] });
   }
-  for (const { w } of c.writes) {
-    if (w.table === "collections") {
+  for (const { w, before } of c.writes) {
+    if (w.table === "folders" && w.value) {
+      const f = w.value as LocalTables["folders"];
+      const prev = before as LocalTables["folders"] | undefined;
+      if (!prev) {
+        const sealed = await env.sealer.sealFolderName(scope, space.scopeId, f.id, f.name);
+        env.spaces.noteRef("folder", f.id, scope);
+        after.push({ ref: content.createFolder, args: { scope, folderId: f.id, parentFolderId: f.parentFolderId, sealedName: sealed.c, ...(f.color ? { color: f.color } : {}), rank: f.rank } });
+      } else if (prev.name !== f.name) {
+        after.push({ ref: content.renameFolder, args: { folderId: f.id, sealedName: (await env.sealer.sealFolderName(scope, space.scopeId, f.id, f.name)).c } });
+      }
+    } else if (w.table === "tags" && w.value) {
+      const t = w.value as LocalTables["tags"];
+      const prev = before as LocalTables["tags"] | undefined;
+      if (!prev) {
+        const sealed = await env.sealer.sealTagName(scope, space.scopeId, t.id, t.name);
+        env.spaces.noteRef("tag", t.id, scope);
+        after.push({ ref: content.createTag, args: { scope, tagId: t.id, sealedName: sealed.c, nameMac: sealed.nameMac, color: t.color } });
+      } else {
+        const args: Record<string, unknown> = { tagId: t.id };
+        if (prev.name !== t.name) {
+          const sealed = await env.sealer.sealTagName(scope, space.scopeId, t.id, t.name);
+          args.sealedName = sealed.c;
+          args.nameMac = sealed.nameMac;
+        }
+        if (prev.color !== t.color) args.color = t.color;
+        if (Object.keys(args).length > 1) after.push({ ref: content.updateTag, args });
+      }
+    } else if (w.table === "collections") {
       const rev = ((await storeMeta(env, scope, `record:collection:${w.id}`)) as { rev?: number } | undefined)?.rev ?? 0;
       if (w.value === null) after.push({ ref: content.deleteRecord, args: { scope, kind: "collection", recordId: w.id, baseRev: rev } });
       else {
@@ -197,7 +228,12 @@ export async function project(c: Captured, space: E2eeSpace, env: RouterEnv): Pr
       }
     }
   }
-  return { ops, after, createdDocuments };
+  return { before: first, ops, after, createdDocuments };
+}
+
+/** A row as its note's sealed meta keeps it: its own id, its place, its values. */
+function rowMeta(row: NonNullable<LocalDocument["row"]>): NonNullable<DocumentMeta["row"]> {
+  return { id: row.id, collectionId: row.collectionId, rank: row.rank, values: row.values, createdAt: row.createdAt };
 }
 
 async function storeMeta(env: RouterEnv, scope: WireScope, key: string): Promise<unknown> {
@@ -207,6 +243,7 @@ async function storeMeta(env: RouterEnv, scope: WireScope, key: string): Promise
 
 /** Sends a projection: the ops (through the engine when there is one, else straight), then the rest in order. */
 export async function send(p: Projection, space: E2eeSpace, env: RouterEnv): Promise<void> {
+  for (const call of p.before) await env.inner.mutation(call.ref, call.args);
   const engine = env.engine();
   if (p.ops.length) {
     if (engine) {
@@ -231,7 +268,9 @@ export async function send(p: Projection, space: E2eeSpace, env: RouterEnv): Pro
 }
 
 /** The hosted replica's store for a space, or the error a composer gives without one. */
-export function replicaStoreFor(env: RouterEnv, space: E2eeSpace): SpaceReplicaStore {
+export async function replicaStoreFor(env: RouterEnv, space: E2eeSpace): Promise<SpaceReplicaStore> {
+  // Opened (and caught up with what this device kept) first, if this is the first thing to need it.
+  await env.replicas.open(space.scope);
   const store = env.replicas.hostedStore?.(space.scope) ?? null;
   if (!store) throw new ConvexError({ code: "e2ee_unavailable", message: "This encrypted space is still opening on this device. Try again in a moment.", feature: "compose" });
   return store;

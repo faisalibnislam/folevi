@@ -65,16 +65,18 @@ export type Route =
   /**
    * The LocalBackend over the space's replica (encrypted spaces). In a Standard space with locked notes the
    * replica holds only those: `locks` says how the server's answer and the replica's combine there.
+   * `serverToo`: part of the answer only the server has (a note's version activity), merged in everywhere.
    */
-  | { kind: "device"; locks: "overlay" | "append"; merge?: Merger }
+  | { kind: "device"; locks: "overlay" | "append"; merge?: Merger; serverToo?: boolean }
   /** Convex, open, then fill sealed entries from the replica (Standard spaces with locks). */
   | { kind: "overlay"; open: Decoder; merge: Merger }
   /** The Convex result plus the replica's hits (search, tasks, backlinks). */
   | { kind: "append"; merge: Merger }
   /** Seal the arguments and call the e2ee variant. */
   | { kind: "sealed"; to: FunctionReference<"mutation"> | null; seal: ArgSealer }
-  /** A device implementation (reads the replica, writes through the engine and sealed calls). */
-  | { kind: "compose"; run: Composer }
+  /** A device implementation (reads the replica, writes through the engine and sealed calls). `personal`: a call
+   * about the person's own Personal whatever its arguments say (onboarding). */
+  | { kind: "compose"; run: Composer; personal?: true }
   /** Foli AI: feature switches and consent. */
   | { kind: "ai"; run?: AiRouter }
   /** Refused with e2ee_unavailable in an encrypted space. */

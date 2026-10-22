@@ -10,18 +10,18 @@
 // ConvexReactClient. Even here, a call about a Standard space is passed through untouched.
 import { ConvexError } from "convex/values";
 import { getFunctionName, type FunctionReference } from "convex/server";
-import { canonicalJson, builtInTemplateBlocks, cloneBlocks, type OpResult, type SyncOp, type WireBlock, type WireScope } from "@folevi/editor-schema";
+import { canonicalJson, randomNoteEmoji, sanitizeTitle, type OpResult, type SyncOp, type WireBlock, type WireScope } from "@folevi/editor-schema";
 import type { ConvexReactClient } from "convex/react";
 import { api } from "@/lib/convex/api";
 import type { SyncEngine } from "@/lib/sync/engine";
 import type { LocalProfile } from "@/lib/local/functions/shared";
-import type { LocalBlock, LocalDocument } from "@/lib/local/store";
+import type { LocalBlock, LocalDocument, LocalFile as LocalFileRow } from "@/lib/local/store";
 import { toWireBytes } from "@folevi/local-store/e2ee";
 import { Sealer, configureSealer, type DocumentMeta } from "../seal";
 import { FileCache } from "../files";
 import { Replicas, type PullSource, type ReplicaStatus } from "../replica/host";
 import type { SpaceReplicaStore, ReplicaOverlay } from "../replica/store";
-import type { CreateWithMeta } from "../compose/capture";
+import { capture, project, type Captured, type CreateWithMeta, type Projection } from "../compose/capture";
 import { openDeep } from "./decoders";
 import { isEncryptedLevel, scopeKeyOf, type E2eeSpace, type KeyRingLike, type KeySessionLike } from "./deps";
 import { pullHead, pullMine, pullPage, spacesMine, type MineSpaceRow } from "./refs";
@@ -284,6 +284,7 @@ export class E2eeRouterClient {
           for (const id of ids.tags) this.spaces.noteRef("tag", id, scope);
           for (const f of ids.files) this.spaces.noteRef("file", f.id, scope, f.documentId);
           for (const c of ids.collections) this.spaces.noteRef("collection", c.id, scope, c.documentId);
+          for (const b of ids.blocks) this.spaces.noteRef("block", b.id, scope, b.documentId);
           this.routesChanged();
         },
         overlay: (scope, store) => this.overlayFor(scope, store),
@@ -303,6 +304,30 @@ export class E2eeRouterClient {
     this.stops.push(this.spaces.subscribe(() => this.routesChanged()));
     this.stops.push(this.session.subscribe(() => this.onSession()));
     this.watchSpaces();
+    this.watchProfile();
+  }
+
+  /** The person's profile as the replicas' handlers read it (study's new cards a day, the time zone …). */
+  private watchProfile() {
+    const w = (this.inner.watchQuery as (r: unknown, a: unknown) => WatchLike)(api.users.me, {});
+    let last = "";
+    const read = () => {
+      let me: { state?: string; profile?: Record<string, unknown> } | undefined;
+      try {
+        me = w.localQueryResult() as typeof me;
+      } catch {
+        return;
+      }
+      if (me?.state !== "ready" || !me.profile) return;
+      const profile = omit(me.profile, ["avatarUrl", "entitlements"]) as LocalProfile;
+      const json = JSON.stringify(profile);
+      if (json === last) return;
+      last = json;
+      this.profile = Promise.resolve(profile);
+      for (const s of this.spaces.list()) void this.replicas.get(s.scope)?.setProfile?.(profile);
+    };
+    this.stops.push(w.onUpdate(read));
+    read();
   }
 
   // ---- state ------------------------------------------------------------------------------------------
@@ -415,6 +440,12 @@ export class E2eeRouterClient {
       watchHead: (scope, cb) => watch<{ seq: number }>(pullHead, { scope }, (h) => cb(h.seq)),
       page: async (scope, cursor, limit) => (await this.inner.query(pullPage, { scope, cursor, limit })) as Awaited<ReturnType<PullSource["page"]>>,
       watchMine: (scope, cb) => watch(pullMine, { scope }, cb),
+      head: async (scope) => ((await this.inner.query(pullHead, { scope })) as { seq: number }).seq,
+      profile: async () => {
+        this.profile = null;
+        return await this.me();
+      },
+      mine: async (scope) => (await this.inner.query(pullMine, { scope })) as Awaited<ReturnType<NonNullable<PullSource["mine"]>>>,
     };
   }
 
@@ -436,8 +467,7 @@ export class E2eeRouterClient {
     if (this.session.state() !== "unlocked") return { kind: "locked" };
     if (route.kind === "decode" || route.kind === "ai") return { kind: "decode", route, res };
     if (route.kind === "device" && res.space) {
-      if (isEncryptedLevel(res.space) && !res.documentId) return { kind: "device", scope: res.space.scope, res };
-      if (isEncryptedLevel(res.space) && res.documentId) return { kind: "device", scope: res.space.scope, res };
+      if (isEncryptedLevel(res.space) && !route.serverToo) return { kind: "device", scope: res.space.scope, res };
       return { kind: "merge", scopes: [res.space.scope], merge: route.merge ?? ((s) => s), res };
     }
     if (route.kind === "overlay") return { kind: "merge", scopes: res.space ? [res.space.scope] : [], merge: route.merge, res };
@@ -479,8 +509,15 @@ export class E2eeRouterClient {
   readMode(m: Exclude<Mode, { kind: "pass" | "locked" | "waiting" }>, ref: FunctionReference<"query">, args: Args, options: unknown): unknown {
     if (m.kind === "device") return this.replicaWatch(m.scope, ref, args)?.localQueryResult();
     if (m.kind === "decode") return this.entry(m, ref, args, options).read();
-    const server = this.entry(m, ref, args, options).read();
-    if (server === undefined) return undefined;
+    let server: unknown;
+    let refused = false;
+    try {
+      server = this.entry(m, ref, args, options).read();
+    } catch (e) {
+      if (!(m.res.space && isEncryptedLevel(m.res.space))) throw e;
+      refused = true;
+    }
+    if (server === undefined && !refused) return undefined;
     let device: unknown = undefined;
     for (const scope of m.scopes) {
       let v: unknown;
@@ -491,6 +528,7 @@ export class E2eeRouterClient {
       }
       if (v !== undefined) device = device === undefined ? v : m.merge(device, v, this.callOf(getFunctionName(ref), "query", args, m.res));
     }
+    if (refused) return device;
     return m.merge(server, device, this.callOf(getFunctionName(ref), "query", args, m.res));
   }
 
@@ -596,12 +634,17 @@ export class E2eeRouterClient {
       case "merge": {
         const call = this.callOf(name, "query", args, m.res);
         const [raw, ...device] = await Promise.all([
-          this.inner.query(ref, args),
+          // In an encrypted space the replica can answer alone if the server refuses (a guard for old clients).
+          this.inner.query(ref, args).catch((e) => {
+            if (m.res.space && isEncryptedLevel(m.res.space)) return undefined;
+            throw e;
+          }),
           ...m.scopes.map(async (s) => await (await this.replicas.open(s)).client.query(ref, deviceArgs(args)).catch(() => undefined)),
         ]);
-        const server = await openDeep(raw, this.env, { documentId: m.res.documentId, space: m.res.space });
         let merged: unknown = undefined;
         for (const d of device) if (d !== undefined) merged = merged === undefined ? d : m.merge(merged, d, call);
+        if (raw === undefined) return merged;
+        const server = await openDeep(raw, this.env, { documentId: m.res.documentId, space: m.res.space });
         return m.merge(server, merged, call);
       }
     }
@@ -618,12 +661,39 @@ export class E2eeRouterClient {
     return await this.routed(ref, "action", name, args, () => this.inner.action(ref, args));
   }
 
+  /** Calls that delete notes for good: the pull won't say so, so the replicas check their Trash afterwards. */
+  private static readonly DELETES = new Set(["documents:deletePermanently", "documents:emptyTrash", "documents:bulkUpdate"]);
+
   private async routed(ref: AnyRef, kind: "mutation" | "action", name: string, args: Args, forward: () => Promise<unknown>): Promise<unknown> {
+    const result = await this.routedCall(ref, kind, name, args, forward);
+    if (E2eeRouterClient.DELETES.has(name) && this.spaces.any) {
+      // Deleted for good on the server shortly (a deletion job): this device's own request is gone at once,
+      // and Trash is checked again once the job has had time to run. (The pull carries no tombstones yet.)
+      if (name === "documents:deletePermanently" && typeof args.documentId === "string") await this.forgetDocuments([args.documentId]);
+      await this.pruneDeleted();
+      setTimeout(() => void this.pruneDeleted().catch(() => undefined), 10_000);
+    }
+    return result;
+  }
+
+  private async forgetDocuments(ids: string[]) {
+    await Promise.all(this.spaces.list().map(async (s) => await this.replicas.get(s.scope)?.pruneDeleted?.(async (id) => !ids.includes(id))));
+    for (const id of ids) this.spaces.forgetDocument(id);
+  }
+
+  /** Drops from the replicas the notes in Trash the server no longer has (deleted for good). */
+  async pruneDeleted() {
+    const exists = async (id: string) => ((await this.inner.query(api.documents.get, { documentId: id }).catch(() => ({}))) as unknown) !== null;
+    await Promise.all(this.spaces.list().map(async (s) => await this.replicas.get(s.scope)?.pruneDeleted?.(exists)));
+  }
+
+  private async routedCall(ref: AnyRef, kind: "mutation" | "action", name: string, args: Args, forward: () => Promise<unknown>): Promise<unknown> {
     const route = routeOf(name);
     if (route.kind === "pass") return await forward();
     if (!this.spacesReady) await this.ready();
     if (!this.spaces.any) return await forward();
-    const res = this.spaces.resolve(args);
+    let res = this.spaces.resolve(args);
+    if (!res.active && route.kind === "compose" && route.personal) res = this.spaces.resolve({ scope: { kind: "personal" } });
     if (!res.active) return await forward();
     if (this.session.state() !== "unlocked") throw lockedSessionError();
     const call = this.callOf(name, kind, args, res);
@@ -643,7 +713,12 @@ export class E2eeRouterClient {
         if (res.sealed) throw new ConvexError({ code: "e2ee_locked", message: "This note is always fully encrypted, so this can't use it.", feature: route.feature });
         return await forward();
       case "device":
-        if (kind === "action" && res.space && isEncryptedLevel(res.space)) return await (await this.replicas.open(res.space.scope)).backend.action(name, deviceArgs(args));
+        if (kind === "action" && res.space && isEncryptedLevel(res.space)) {
+          const replica = await this.replicas.open(res.space.scope);
+          // An export takes the attachments' bytes: fetched and opened first, kept in memory only.
+          if (name === "exports:exportScope") await this.hydrateFiles(res.space.scope);
+          return await replica.backend.action(name, deviceArgs(args));
+        }
         return await forward();
       default:
         void ref;
@@ -704,7 +779,7 @@ export class E2eeRouterClient {
         const patch = { ...op.patch } as Record<string, unknown>;
         const sealedPatch: Record<string, unknown> = {};
         if (patch.title !== undefined) {
-          const t = await this.sealer.sealTitle(op.documentId, String(patch.title));
+          const t = await this.sealer.sealTitle(op.documentId, sanitizeTitle(String(patch.title)));
           sealedPatch.sealedTitle = { c: t.c, mac: t.mac };
         }
         if (patch.icon !== undefined || patch.cover !== undefined || patch.style !== undefined) {
@@ -738,12 +813,14 @@ export class E2eeRouterClient {
           spaceVersion = nk.spaceVersion;
           wrapped = toWireBytes(nk.wrapped);
         }
-        const title = await this.sealer.sealTitle(d.id, d.title ?? "");
-        const appearance = await this.sealer.sealAppearance(d.id, { icon: d.icon ?? null, cover: d.cover, style: d.style });
+        // The server's own rules for a new note, applied here because it can't read these (§5.5).
+        const title = await this.sealer.sealTitle(d.id, sanitizeTitle(d.title ?? ""));
+        const icon = d.icon ?? (d.kind === "document" ? randomNoteEmoji() : null);
+        const appearance = await this.sealer.sealAppearance(d.id, { icon, cover: d.cover, style: d.style });
         const meta: DocumentMeta | undefined = d.e2eeMeta;
         const sealedMeta = meta ? await this.sealer.sealMeta(d.id, meta) : undefined;
         const templateId = d.templateId;
-        const rest = omit(d, ["e2eeMeta", "templateId", "title", "icon", "style", "cover"]);
+        const rest = omit(d, ["e2eeMeta", "templateId", "title", "icon", "style", "cover", "collectionId"]);
         const lockedOwn = undefined;
         const create = {
           ...rest,
@@ -752,13 +829,8 @@ export class E2eeRouterClient {
           sealed: { title: title.c, titleMac: title.mac, appearance, ...(sealedMeta ? { meta: sealedMeta } : {}), noteKey: { v: 1 as const, spaceVersion, wrapped }, ...(lockedOwn ? { lockedOwn } : {}) },
         };
         out = [{ ...op, document: create as never }];
-        // A template's content is copied here (the server can't copy into a sealed note, §6.7).
-        if (templateId) {
-          const blocks = await this.templateBlocks(templateId, space);
-          for (const b of blocks) {
-            out.push({ opId: `${op.opId.slice(0, 40)}-t${out.length}`, kind: "block.upsert", documentId: d.id, block: (await this.sealer.sealBlock(d.id, b)) as unknown as WireBlock, baseRevision: null, fields: ["content", "position"] });
-          }
-        }
+        // A template's content is copied on the device after the create (sideEffects), never by the server.
+        void templateId;
         break;
       }
       default:
@@ -769,13 +841,6 @@ export class E2eeRouterClient {
       if (this.sealedOps.size > 2000) this.sealedOps.delete(this.sealedOps.keys().next().value!);
     }
     return out;
-  }
-
-  private async templateBlocks(templateId: string, space: E2eeSpace | null): Promise<WireBlock[]> {
-    const store = space ? this.replicas.hostedStore(space.scope) : null;
-    const tpl = await store?.get("documents", templateId);
-    if (tpl) return cloneBlocks(((await store!.list("blocks", templateId)) as LocalBlock[]).filter((b) => b.deletedAt === null).sort((a, b) => (a.rank < b.rank ? -1 : 1)).map((b) => ({ id: b.id, type: b.type, parentId: b.parentId, rank: b.rank, schemaVersion: b.schemaVersion, text: b.text, props: b.props })));
-    return builtInTemplateBlocks(templateId) ?? [];
   }
 
   /** Opens what the server answered for sealed ops, into the plaintext shapes the engine expects. */
@@ -798,9 +863,67 @@ export class E2eeRouterClient {
     return await this.pushOps(args.scope, args.deviceId, args.ops);
   }
 
+  /** Whether an op has effects the server would derive and can't for a sealed note (§6.7): a template's
+   * content copied in, a repeating to-do coming back after it's checked off. */
+  private static needsDevice(op: SyncOp): boolean {
+    if (op.kind === "document.create") return Boolean(op.document.templateId);
+    if (op.kind !== "block.upsert" || op.block.type !== "todo") return false;
+    const p = op.block.props as { checked?: unknown; repeat?: unknown };
+    return p.checked === true && typeof p.repeat === "string" && p.repeat !== "";
+  }
+
+  /**
+   * What local mode's sync.push would also write for these ops (its triggers and template copies), run over
+   * the replica before they're sent: blocks and records the server can't make for a sealed note.
+   */
+  private async deviceEffects(space: E2eeSpace, deviceId: string, ops: SyncOp[]): Promise<Captured | null> {
+    const store = this.replicas.hostedStore(space.scope);
+    if (!store) return null;
+    const c = await capture(store, "mutation", "sync:push", { scope: { kind: "personal" }, deviceId, ops }, deviceId);
+    const created = new Set(ops.filter((o) => o.kind === "document.create").map((o) => (o as { document: { id: string } }).document.id));
+    const sent = new Map(ops.filter((o) => o.kind === "block.upsert").map((o) => [(o as { block: WireBlock }).block.id, (o as { block: WireBlock }).block]));
+    const writes = c.writes.filter(({ w, before }) => {
+      if (w.table === "documents") return !created.has(w.id) && !before && w.value !== null;
+      if (w.table === "blocks") {
+        const b = w.value as LocalBlock | null;
+        const op = sent.get(w.id);
+        if (!op || !b) return !!b;
+        // The op's own block, unless something changed it after (a repeat brought it back).
+        return canonicalJson({ t: b.type, x: b.text, p: b.props }) !== canonicalJson({ t: op.type, x: op.text, p: op.props });
+      }
+      return w.table === "collections" || w.table === "fileTexts";
+    });
+    if (!writes.length) return null;
+    // Rows written into notes this batch creates count as new (their creates go first).
+    for (const x of writes) if (x.w.table === "blocks" && created.has(x.w.partition ?? "")) x.before = undefined;
+    return { result: null, writes };
+  }
+
   /** Seals what has to be, sends one sync.push, opens the answers and keeps the replicas in step. */
   async pushOps(scope: WireScope, deviceId: string, ops: SyncOp[]): Promise<OpResult[]> {
     if (!this.spacesReady) await this.ready();
+    const effects: { space: E2eeSpace; c: Captured }[] = [];
+    for (const s of this.spaces.list()) {
+      if (!isEncryptedLevel(s)) continue;
+      const mine = ops.filter((o) => E2eeRouterClient.needsDevice(o) && this.opSealing(o, scope)?.space === s);
+      if (!mine.length) continue;
+      const c = await this.deviceEffects(s, deviceId, mine);
+      if (c) effects.push({ space: s, c });
+    }
+    const results = await this.pushOnce(scope, deviceId, ops);
+    for (const { space, c } of effects) {
+      // Sealed only now: a note this batch created has its key once its create went through.
+      const p: Projection = await project(c, space, this.env);
+      // Follow-ups to blocks just written are based on the revision the server just gave them.
+      const revs = new Map(results.map((r, i) => [ops[i] && ops[i]!.kind === "block.upsert" ? (ops[i] as { block: WireBlock }).block.id : "", r.revision ?? null]));
+      const follow = p.ops.map((o) => (o.kind === "block.upsert" && revs.get(o.block.id) != null ? { ...o, baseRevision: revs.get(o.block.id)! } : o));
+      if (follow.length) await this.pushOnce(space.scope, deviceId, follow);
+      for (const call of p.after) await this.inner.mutation(call.ref as never, call.args as never);
+    }
+    return results;
+  }
+
+  private async pushOnce(scope: WireScope, deviceId: string, ops: SyncOp[]): Promise<OpResult[]> {
     const wire: SyncOp[] = [];
     const sent = new Map<string, SyncOp>();
     const touched = new Map<string, { scope: WireScope; ops: SyncOp[] }>();
@@ -825,6 +948,7 @@ export class E2eeRouterClient {
       if (s.space) {
         track(touched, s.space.scope, op);
         if (op.kind === "document.create") this.spaces.noteDocument(op.document.id, s.space.scope, true, { title: op.document.title, icon: op.document.icon });
+        if (op.kind === "block.upsert") this.spaces.noteRef("block", op.block.id, s.space.scope, op.documentId);
       }
     }
     const raw = (await this.inner.mutation(api.sync.push, { scope, deviceId, ops: wire as never })) as (OpResult & { document?: unknown })[];
@@ -900,6 +1024,29 @@ export class E2eeRouterClient {
         return out;
       },
     };
+  }
+
+  /** Puts the opened bytes of a space's sealed files into its replica (not persisted): exports read them. */
+  private async hydrateFiles(scope: WireScope): Promise<void> {
+    const store = this.replicas.hostedStore(scope);
+    if (!store) return;
+    const files = ((await store.list("files")) as (LocalFileRow & { blob: Blob })[]).filter((f) => f.blob.size === 0 && f.size > 0);
+    for (let i = 0; i < files.length; i += 200) {
+      const chunk = files.slice(i, i + 200);
+      const urls = (await this.inner.query(api.files.urls, { fileIds: chunk.map((f) => f.id), now: Date.now() })) as Record<string, { url: string; sealed?: { key: ArrayBuffer; meta: ArrayBuffer; k: number; plainSize: number } } | undefined>;
+      const writes = [];
+      for (const f of chunk) {
+        const entry = urls[f.id];
+        if (!entry?.sealed || !f.documentId) continue;
+        try {
+          const { bytes, meta } = await this.files.bytes(f.id, f.documentId, entry.url, entry.sealed);
+          writes.push({ table: "files" as const, id: f.id, value: { ...f, blob: new Blob([bytes as Uint8Array<ArrayBuffer>], { type: meta.mime }) } });
+        } catch {
+          console.warn(`[e2ee] A file couldn't be downloaded for the export (${f.id}).`);
+        }
+      }
+      await store.ingest(writes as never, undefined, { persist: false });
+    }
   }
 
   /** §12 WP7: the replica's status for a scope. */

@@ -9,7 +9,7 @@
 import { fromBase64Url, type Bytes } from "@folevi/local-store/e2ee";
 import { HIDDEN_PAGE_LABEL } from "@/lib/local/functions/shared";
 import type { WireBlock } from "@folevi/editor-schema";
-import { isArrayBuffer, type SealedDocumentFields } from "../seal";
+import { isArrayBuffer, type OpenedDocumentFields, type SealedDocumentFields } from "../seal";
 import type { SealedFileFields } from "../files";
 import { scopeKeyOf, type E2eeSpace } from "./deps";
 import type { Call, Decoder, RouterEnv } from "./types";
@@ -88,21 +88,29 @@ function candidateSpaces(env: RouterEnv, hint: DecodeHint): E2eeSpace[] {
   return out;
 }
 
-async function openFolderName(env: RouterEnv, hint: DecodeHint, folderId: string, c: Bytes): Promise<string | null> {
+/** A sealed folder or tag name (both sealed with the space's "space/meta", each with its own context). */
+async function openFolderName(env: RouterEnv, hint: DecodeHint, id: string, c: Bytes): Promise<string | null> {
   for (const s of candidateSpaces(env, hint)) {
     try {
-      const name = await env.sealer.openFolderName(s.scope, s.scopeId, folderId, c);
-      env.spaces.noteRef("folder", folderId, s.scope);
+      const name = await env.sealer.openFolderName(s.scope, s.scopeId, id, c);
+      env.spaces.noteRef("folder", id, s.scope);
       return name;
     } catch {
-      // Not this space's.
+      // Not this space's folder.
+    }
+    try {
+      const name = await env.sealer.openTagName(s.scope, s.scopeId, id, c);
+      env.spaces.noteRef("tag", id, s.scope);
+      return name;
+    } catch {
+      // Not this space's tag either.
     }
   }
   return null;
 }
 
 /** A note's opened title for an object that names it (documentTitle, breadcrumbs). */
-async function openTitleOf(env: RouterEnv, documentId: string, sealed: SealedDocumentFields): Promise<{ title: string; icon: string | null; cover: unknown; style: unknown; templateKey: string | null } | null> {
+async function openTitleOf(env: RouterEnv, documentId: string, sealed: SealedDocumentFields): Promise<OpenedDocumentFields | null> {
   try {
     const opened = await env.sealer.openDocumentFields(documentId, sealed);
     const known = env.spaces.document(documentId);
@@ -112,6 +120,19 @@ async function openTitleOf(env: RouterEnv, documentId: string, sealed: SealedDoc
     console.warn(`[e2ee] A note's title couldn't be decrypted (${documentId}).`);
     return null;
   }
+}
+
+const DERIVED_FIELDS = ["excerpt", "preview", "wordCount", "charCount", "blockCount"] as const;
+
+/** Copies a sealed note's derived fields from the replica that holds it, for the keys the result has. */
+async function fillDerived(env: RouterEnv, documentId: string, obj: Obj, out: Obj): Promise<void> {
+  if (!DERIVED_FIELDS.some((k) => k in obj)) return;
+  const known = env.spaces.document(documentId);
+  const space = known ? env.spaces.get(known.scope) : null;
+  const store = space ? env.replicas.hostedStore?.(space.scope) : null;
+  const doc = (await store?.get("documents", documentId)) as Obj | undefined;
+  if (!doc) return;
+  for (const k of DERIVED_FIELDS) if (k in obj && k in doc) out[k] = doc[k];
 }
 
 const MAX_DEPTH = 12;
@@ -154,7 +175,11 @@ export async function openDeep(value: unknown, env: RouterEnv, hint: DecodeHint 
         if ("cover" in obj) out.cover = opened.cover;
         if ("style" in obj) out.style = opened.style;
         if ("templateKey" in obj) out.templateKey = opened.templateKey;
+        // A collection row's note: its sealed meta holds the row (the server keeps such notes as plain documents).
+        if (opened.row && obj.kind === "document") out.kind = "collectionRow";
       }
+      // What the server can't derive for a sealed note (excerpt, preview, counts) comes from the replica.
+      await fillDerived(env, id, obj, out);
       here.documentId = str(obj.documentId) ?? (here.documentId || id);
       for (const [k, v] of Object.entries(out)) if (v && typeof v === "object") out[k] = await openDeep(v, env, { ...here, documentId: id }, depth + 1);
       return out;
@@ -255,7 +280,13 @@ export const snapshotContent: Decoder = async (value, call, env) => {
       parsed.blocks.map((b) =>
         env.sealer
           .openBlockOrUnreadable(documentId, { id: b.id, parentId: b.parentId, rank: b.rank, sealed: { c: b64(b.c), k: b.k, mac: "", ...(b.collapsed ? { collapsed: true as const } : {}) } })
-          .then((o) => relabel(o, (id) => env.spaces.label(id))),
+          .then((o) => relabel(o, (id) => env.spaces.label(id)))
+          .then(async (o) => {
+            // A version's blocks carry no revision; the note's own block has one (what a restore compares).
+            const store = call.res.space ? env.replicas.hostedStore?.(call.res.space.scope) : null;
+            const live = (await store?.get("blocks", o.id, documentId)) as { revision?: number } | undefined;
+            return live?.revision !== undefined ? { ...o, revision: live.revision } : o;
+          }),
       ),
     ),
   ]);

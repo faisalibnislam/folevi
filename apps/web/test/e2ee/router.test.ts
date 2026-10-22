@@ -41,20 +41,27 @@ describe("resolveSpace (§6.4)", () => {
     expect(idx.resolve({ scope: W }).active).toBe(false);
     idx.noteDocument("D1", PERSONAL, true);
     expect(idx.resolve({ documentId: "D1" })).toMatchObject({ active: true, sealed: true, documentId: "D1", via: "documentId" });
-    expect(idx.resolve({ documentId: "UNKNOWN", scope: PERSONAL })).toMatchObject({ active: false, via: "documentId" });
+    // In an encrypted space every note is in its replica: an id it doesn't know is answered there (not found).
+    expect(idx.resolve({ documentId: "UNKNOWN", scope: PERSONAL })).toMatchObject({ active: true, via: "scope" });
+    // In a space that isn't e2ee-active it's a plain note's.
+    expect(idx.resolve({ documentId: "UNKNOWN", scope: W })).toMatchObject({ active: false, via: "documentId" });
+    expect(idx.resolve({ documentId: "UNKNOWN" })).toMatchObject({ active: false, via: "documentId" });
     idx.noteRef("folder", "F1", PERSONAL);
     expect(idx.resolve({ folderId: "F1" })).toMatchObject({ active: true, via: "folderId" });
     idx.noteRef("comment", "C1", PERSONAL, "D1");
     expect(idx.resolve({ commentId: "C1" })).toMatchObject({ active: true, sealed: true, documentId: "D1" });
   });
 
-  test("the first id argument decides, in §6.4's order; no id falls back to the context scope", () => {
+  test("the first id argument the index knows decides, in §6.4's order; no id falls back to the context scope", () => {
     const idx = new SpaceIndex();
     idx.setSpaces([space(PERSONAL, "full")]);
     idx.noteDocument("D1", PERSONAL, true);
-    // documentId comes before folderId: a Standard note's id decides even with a known folder.
     idx.noteRef("folder", "F1", PERSONAL);
-    expect(idx.resolve({ documentId: "STD", folderId: "F1" }).active).toBe(false);
+    expect(idx.resolve({ documentId: "D1", folderId: "OTHER" })).toMatchObject({ via: "documentId", documentId: "D1" });
+    // A task moved to a note nobody has: its block still says where it is.
+    idx.noteRef("block", "B1", PERSONAL, "D1");
+    expect(idx.resolve({ documentId: "NOWHERE", blockId: "B1" })).toMatchObject({ active: true, via: "blockId", documentId: "D1" });
+    expect(idx.resolve({ documentId: "STD" }).active).toBe(false);
     expect(idx.resolve({}).active).toBe(false);
     idx.setContextScope(PERSONAL);
     expect(idx.resolve({}).active).toBe(true);

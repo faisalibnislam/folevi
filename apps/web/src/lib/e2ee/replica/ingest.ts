@@ -86,6 +86,8 @@ export interface IngestedIds {
   tags: string[];
   files: { id: string; documentId: string | null }[];
   collections: { id: string; documentId: string }[];
+  /** Blocks seen (tasks and study cards are named by block id alone). */
+  blocks: { id: string; documentId: string }[];
 }
 
 const ORDINAL_KEY = "documentOrdinal";
@@ -96,6 +98,11 @@ const PROFILE_KEY = "profile";
 
 export class ReplicaIngest {
   constructor(private readonly c: IngestContext) {}
+
+  /** The notes the replica holds that are in Trash (candidates when the server deletes some for good). */
+  async trashed(): Promise<string[]> {
+    return (await this.c.store.list("documents")).filter((d) => d.inTrash).map((d) => d.id);
+  }
 
   /** Makes sure the handlers find the person's profile. */
   async ensureProfile(): Promise<void> {
@@ -109,7 +116,7 @@ export class ReplicaIngest {
     if (page.noteKeys.length) await this.c.keyring.addNoteKeys(page.noteKeys.map((k) => ({ ...k, scope: this.c.scope })));
     const tx = new Staged(this.c.store);
     const touched = new Set<string>();
-    const ids: IngestedIds = { documents: [], removed: [], folders: [], tags: [], files: [], collections: [] };
+    const ids: IngestedIds = { documents: [], removed: [], folders: [], tags: [], files: [], collections: [], blocks: [] };
 
     for (const d of page.documents) {
       if (d.purged) {
@@ -136,6 +143,7 @@ export class ReplicaIngest {
       if (!row) continue;
       tx.put("blocks", row.id, row, row.documentId);
       touched.add(row.documentId);
+      ids.blocks.push({ id: row.id, documentId: row.documentId });
     }
     for (const f of page.folders) {
       const folder = await this.folder(tx, f);
@@ -149,7 +157,7 @@ export class ReplicaIngest {
         tx.remove("tags", t.id);
         continue;
       }
-      const tag = await this.tag(t);
+      const tag = await this.tag(t, tx);
       if (tag) {
         tx.put("tags", tag.id, tag);
         ids.tags.push(tag.id);
@@ -164,6 +172,20 @@ export class ReplicaIngest {
     await this.derive(tx, touched);
     await this.c.store.ingest(tx.pending());
     this.c.onIds?.(ids);
+  }
+
+  /** Notes deleted for good (the pull doesn't send their absence): gone from the replica with their rows. */
+  async forget(ids: readonly string[]): Promise<void> {
+    if (!ids.length) return;
+    const tx = new Staged(this.c.store);
+    for (const id of ids) await this.removeDocument(tx, id);
+    await this.c.store.ingest(tx.pending());
+  }
+
+  /** The person's profile changed (a setting the handlers read, like new study cards a day). */
+  async setProfile(profile: LocalProfile): Promise<void> {
+    this.c.profile = profile;
+    await this.ensureProfile();
   }
 
   /** The person's stars and recents in the space (e2ee.pull.mine). */
@@ -228,8 +250,9 @@ export class ReplicaIngest {
         const patch = op.kind === "document.update" ? op.patch : op.document;
         const next: LocalDocument = {
           ...base,
-          title: patch.title ?? base.title,
-          icon: patch.icon !== undefined ? patch.icon : base.icon,
+          // The server's answer, opened, is what was stored (a cleaned-up title, the icon picked for it).
+          title: typeof summary?.title === "string" && summary.title !== undefined && (patch.title !== undefined || op.kind === "document.create") ? summary.title : (patch.title ?? base.title),
+          icon: summary && "icon" in summary ? (summary.icon ?? null) : patch.icon !== undefined ? patch.icon : base.icon,
           cover: (patch.cover ?? base.cover) as LocalDocument["cover"],
           style: (patch.style ?? base.style) as LocalDocument["style"],
           folderId: patch.folderId !== undefined ? patch.folderId : base.folderId,
@@ -312,11 +335,11 @@ export class ReplicaIngest {
         if (opened.row) {
           const prevRow = prev?.row ?? null;
           row = {
-            id: d.id,
+            id: opened.row.id ?? prevRow?.id ?? d.id,
             collectionId: opened.row.collectionId,
             rank: opened.row.rank,
             values: opened.row.values,
-            createdAt: prevRow?.createdAt ?? d.createdAt,
+            createdAt: opened.row.createdAt ?? prevRow?.createdAt ?? d.createdAt,
             updatedAt: d.updatedAt,
             deletedAt: d.inTrash ? (d.deletedAt ?? d.updatedAt) : null,
           };
@@ -341,7 +364,8 @@ export class ReplicaIngest {
       ...base,
       parentDocumentId: d.parentDocumentId,
       folderId: d.folderId,
-      kind: d.kind as LocalDocument["kind"],
+      // A sealed collection row travels as a note whose sealed meta holds its row (the server can't tell).
+      kind: (row ? "collectionRow" : d.kind) as LocalDocument["kind"],
       title,
       icon,
       cover: cover as LocalDocument["cover"],
@@ -422,10 +446,11 @@ export class ReplicaIngest {
         console.warn(`[e2ee] A folder name couldn't be decrypted (${f.id}).`);
       }
     }
-    return { id: f.id, name, color: f.color, parentFolderId: f.parentFolderId, rank: f.rank, createdAt: f.createdAt, ordinal: prev?.ordinal, updatedAt: f.updatedAt, deletedAt: f.deletedAt };
+    return { id: f.id, name, color: f.color, parentFolderId: f.parentFolderId, rank: f.rank, createdAt: f.createdAt, ordinal: prev?.ordinal ?? (await this.nextOrdinal(tx, "folderOrdinal")), updatedAt: f.updatedAt, deletedAt: f.deletedAt };
   }
 
-  private async tag(t: PulledTag): Promise<LocalTag | null> {
+  private async tag(t: PulledTag, tx: Staged): Promise<LocalTag | null> {
+    const prev = await tx.get("tags", t.id);
     let name = t.name ?? "";
     if (t.sealedName) {
       try {
@@ -434,7 +459,7 @@ export class ReplicaIngest {
         console.warn(`[e2ee] A tag name couldn't be decrypted (${t.id}).`);
       }
     }
-    return { id: t.id, name, normalizedName: normalizeForSearch(name), color: t.color, createdAt: t.createdAt };
+    return { id: t.id, name, normalizedName: normalizeForSearch(name), color: t.color, createdAt: t.createdAt, ordinal: prev?.ordinal ?? (await this.nextOrdinal(tx, "tagOrdinal")) };
   }
 
   private async file(f: PulledFile, documentId: string): Promise<LocalFile | null> {
@@ -526,6 +551,11 @@ export class ReplicaIngest {
   /** Search text, counts, excerpt, preview and links of the notes whose rows changed. */
   private async derive(tx: Staged, touched: Set<string>): Promise<void> {
     let linkOrdinal: number | null = null;
+    // A note showing synced content reads with it (its search text, its preview): when the content changes,
+    // so do the notes that show it.
+    const synced = new Set<string>();
+    for (const id of touched) if ((await tx.get("documents", id))?.kind === "synced") synced.add(id);
+    if (synced.size) for (const d of await tx.list("documents")) if (!touched.has(d.id) && (d.links ?? []).some((l) => synced.has(l.target))) touched.add(d.id);
     for (const id of touched) {
       const doc = await tx.get("documents", id);
       if (!doc) continue;

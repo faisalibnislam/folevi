@@ -51,7 +51,7 @@ export interface Appearance {
 /** A note's meta (sealed): the template it came from and, on a collection row's note, its row. */
 export interface DocumentMeta {
   templateKey?: string | null;
-  row?: { collectionId: string; rank: string; values: Record<string, unknown> } | null;
+  row?: { id?: string; collectionId: string; rank: string; values: Record<string, unknown>; createdAt?: number } | null;
 }
 
 /** A note's sealed fields as results carry them (§5.3 PulledDocument.sealed). */
@@ -307,6 +307,12 @@ export class Sealer {
     const raw = randomBytes(32);
     const wrapped = await sealRecord(nk.files, nk.version, ctx.fileKey(documentId, fileId), raw, { compress: false });
     return { raw, wrapped: toWireBytes(wrapped), k: nk.version };
+  }
+
+  /** An existing file key wrapped for another note (a pasted file shares its bytes, §5.3 e2ee.files.rewrap). */
+  async wrapFileKey(documentId: string, fileId: string, raw: Uint8Array): Promise<{ wrapped: Bytes; k: number }> {
+    const nk = await this.keyring.noteKeys(documentId);
+    return { wrapped: toWireBytes(await sealRecord(nk.files, nk.version, ctx.fileKey(documentId, fileId), raw, { compress: false })), k: nk.version };
   }
 
   /** The raw file key from its wrap (the caller zeroes it once imported). */

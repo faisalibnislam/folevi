@@ -8,7 +8,7 @@ import type { WireScope } from "@folevi/editor-schema";
 import { isEncryptedLevel, scopeKeyOf, type E2eeSpace } from "./deps";
 
 /** The kinds of id the index keeps, besides notes. */
-export type RefKind = "folder" | "tag" | "collection" | "thread" | "comment" | "file" | "snapshot";
+export type RefKind = "folder" | "tag" | "collection" | "thread" | "comment" | "file" | "snapshot" | "block";
 
 /** The argument names §6.4 looks at, in order, and what each names. */
 const ID_ARGS: readonly [string, RefKind | "document"][] = [
@@ -24,6 +24,8 @@ const ID_ARGS: readonly [string, RefKind | "document"][] = [
   ["fileId", "file"],
   ["snapshotId", "snapshot"],
   ["versionId", "snapshot"],
+  // Tasks and study cards are named by their block alone.
+  ["blockId", "block"],
 ];
 
 interface DocEntry {
@@ -159,17 +161,19 @@ export class SpaceIndex {
   resolve(args: Record<string, unknown> | undefined | null): Resolution {
     if (!this.spaces.size && !this.docs.size) return NONE;
     const a = args ?? {};
+    let named: string | null = null;
     for (const [name, kind] of ID_ARGS) {
       const value = a[name];
       if (typeof value !== "string" || !value) continue;
+      named ??= name;
       if (kind === "document") {
         const d = this.docs.get(value);
-        if (!d) return { ...NONE, via: name };
+        if (!d) continue;
         const space = this.spaces.get(d.scope) ?? null;
         return { space, documentId: value, sealed: d.sealed, via: name, active: d.sealed || isActive(space) };
       }
       const r = this.refs.get(`${kind}:${value}`);
-      if (!r) return { ...NONE, via: name };
+      if (!r) continue;
       const space = this.spaces.get(r.scope) ?? null;
       const sealed = r.documentId ? this.docs.get(r.documentId)?.sealed === true : false;
       return { space, documentId: r.documentId, sealed, via: name, active: sealed || isActive(space) };
@@ -177,8 +181,13 @@ export class SpaceIndex {
     const scope = a.scope as WireScope | undefined | null;
     if (scope && typeof scope === "object" && "kind" in scope) {
       const space = this.get(scope);
+      // Ids the index doesn't know, in an encrypted space: none of its notes is missing from its replica,
+      // so the device answers (not found, as the server would). In a Standard space they're plain notes.
+      if (named && !(space && space.level !== "standard")) return { ...NONE, via: named };
       return { space, documentId: null, sealed: false, via: "scope", active: isActive(space) };
     }
+    // An id nobody here knows, and no scope to place it: a Standard note (or one this person can't decrypt).
+    if (named) return { ...NONE, via: named };
     if (this.contextScope) {
       const space = this.get(this.contextScope);
       return { space, documentId: null, sealed: false, via: "context", active: isActive(space) };

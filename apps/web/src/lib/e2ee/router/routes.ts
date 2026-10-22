@@ -6,7 +6,7 @@
 // Keys are "module:function"; "module:*" covers the rest of a module.
 import { COMPOSERS } from "../compose";
 import { fileUrls, generic, notifications, snapshotContent, versions } from "./decoders";
-import { append, overlay } from "./merge";
+import { append, info, overlay } from "./merge";
 import { content } from "./refs";
 import { SEALERS } from "./sealed";
 import type { Route } from "./types";
@@ -29,6 +29,8 @@ function each(route: Route, mod: string, names: string): Record<string, Route> {
 export const E2EE_ROUTES: Record<string, Route> = {
   // ---- no content -----------------------------------------------------------------------------------------
   "users:*": pass,
+  // Starter notes in an encrypted Personal are written on the device.
+  "users:completeOnboardingStep": { kind: "compose", run: COMPOSERS.onboardingStep, personal: true },
   "workspaces:*": pass,
   "billing:*": pass,
   "workspaceBilling:*": pass,
@@ -53,7 +55,7 @@ export const E2EE_ROUTES: Record<string, Route> = {
   "proposals:*": pass,
   "e2ee:*": pass,
   // Content modules are listed function by function, so a new function there has to be classified.
-  ...each(pass, "documents", "bulkUpdate createSnapshot emptyTrash hideFromRecent move moveToTrash recordView reorder restoreFromTrash setArchived setStarred showInRecent purgeSnapshots seenMark"),
+  ...each(pass, "documents", "bulkUpdate emptyTrash hideFromRecent move moveToTrash recordView reorder restoreFromTrash setArchived setStarred showInRecent purgeSnapshots seenMark"),
   ...each(pass, "comments", "deleteThread markThreadRead markThreadUnread mentionable react remove setResolved unreadCount"),
   ...each(pass, "sharing", "acceptPageInvite createPublicLink grant revoke revokePageInvite revokePublicLink setAccessMode setPublicLinkTheme"),
   ...each(pass, "organization", "deleteFolder deleteTag moveFolder setFolderColor"),
@@ -63,10 +65,10 @@ export const E2EE_ROUTES: Record<string, Route> = {
   "sync:push": pass,
   "files:generateUploadUrl": pass,
   "files:finalize": pass,
-  "files:shareForPaste": pass,
   "migration:preflight": pass,
   "search:meaningAvailable": pass,
-  "study:setNewPerDay": pass,
+  // The person's setting, kept by the server; the replica's study queue is told too.
+  "study:setNewPerDay": { kind: "compose", run: COMPOSERS.newPerDay },
   "ai:cancelStream": pass,
   "ai:stream": pass,
   "aiChat:capabilities": pass,
@@ -105,7 +107,7 @@ export const E2EE_ROUTES: Record<string, Route> = {
   "documents:titles": device,
   "documents:children": device,
   "documents:pageTree": device,
-  "documents:info": device,
+  "documents:info": { kind: "device", locks: "overlay", merge: info, serverToo: true },
   "documents:recent": device,
   "documents:recentNotes": device,
   "documents:backlinks": deviceAppend,
@@ -140,6 +142,8 @@ export const E2EE_ROUTES: Record<string, Route> = {
   "documents:importSnapshot": { kind: "sealed", to: content.importVersion, seal: SEALERS.importSnapshot },
   "documents:deletePermanently": { kind: "sealed", to: null, seal: SEALERS.deletePermanently },
   "files:setPalette": { kind: "sealed", to: null, seal: SEALERS.setPalette },
+  "files:shareForPaste": { kind: "sealed", to: null, seal: SEALERS.shareForPaste },
+  "documents:createSnapshot": { kind: "sealed", to: content.nameVersion, seal: SEALERS.createSnapshot },
   "collections:create": records,
   "collections:rename": records,
   "collections:addProperty": records,

@@ -78,3 +78,10 @@ export const append: Merger = (server, device) => {
   }
   return server;
 };
+
+/** documents.info: the counts from the replica (the server has placeholders), the activity from the server. */
+export const info: Merger = (server, device) => {
+  if (!isObj(device)) return server;
+  if (!isObj(server)) return device;
+  return { ...device, activity: server.activity ?? device.activity };
+};

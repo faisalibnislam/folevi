@@ -9,14 +9,15 @@
 // Download: `FileCache` fetches the ciphertext from the url files.urls signed, opens it and hands out an
 // object URL, keeping up to 200 MB per tab (least recently used goes first). A file over 500 MB isn't opened
 // in the page (v1, §13 R12): it offers a download instead.
-import { ctx, importAead, openFileStream, sealFileStream, sha256, type Bytes } from "@folevi/local-store/e2ee";
+import { ctx, importAead, openFileStream, sealFileStream, sha256, toBase64Url, type Bytes } from "@folevi/local-store/e2ee";
 import { api } from "@/lib/convex/api";
 import { ulid } from "@folevi/editor-schema";
 import { prepareUpload } from "@/lib/local/functions/files";
 import type { PendingUpload } from "@/lib/sync/db";
-import { Sealer } from "./seal";
+import { Sealer, bytesOf } from "./seal";
 import { files as e2eeFiles } from "./router/refs";
 import type { InnerClient } from "./router/types";
+import type { SpaceIndex } from "./router/spaces";
 import { requireActiveRouter } from "./router/active";
 
 export const FILE_CACHE_BYTES = 200 * 1024 * 1024;
@@ -39,6 +40,8 @@ export interface FileMeta {
   palette?: unknown;
   /** SHA-256 of the plaintext, hex. */
   sha256: string;
+  /** A pasted copy shares another file's bytes: the id they were sealed under (their context, §4.5). */
+  blob?: string;
 }
 
 const hex = (b: Uint8Array) => [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
@@ -47,7 +50,11 @@ interface Entry {
   url: string;
   bytes: number;
   meta: FileMeta;
+  /** Which sealed metadata it was opened from (a palette set later seals it again). */
+  sealedMeta: string;
 }
+
+const metaKey = (b: Bytes) => toBase64Url(sha256(bytesOf(b))).slice(0, 22);
 
 export class FileCache {
   private entries = new Map<string, Entry>();
@@ -70,6 +77,12 @@ export class FileCache {
       // Most recently used goes to the end.
       this.entries.delete(fileId);
       this.entries.set(fileId, hit);
+      // The details changed (a palette): opened again; the bytes stay as they are.
+      const key = metaKey(sealed.meta);
+      if (hit.sealedMeta !== key) {
+        hit.meta = await this.meta(fileId, documentId, sealed);
+        hit.sealedMeta = key;
+      }
       return { url: hit.url, meta: hit.meta };
     }
     if (sealed.plainSize > MAX_OPEN_BYTES) return { tooLarge: true, meta: await this.meta(fileId, documentId, sealed) };
@@ -100,7 +113,7 @@ export class FileCache {
     const raw = await this.sealer().openFileKey(documentId, fileId, sealed.key);
     try {
       const meta = (await Sealer.openFileMeta(raw, documentId, fileId, sealed.meta)) as FileMeta;
-      const bytes = await openFileStream(await importAead(raw.slice()), ctx.file(fileId), envelope);
+      const bytes = await openFileStream(await importAead(raw.slice()), ctx.file(meta.blob ?? fileId), envelope);
       return { bytes, meta };
     } finally {
       raw.fill(0);
@@ -111,7 +124,7 @@ export class FileCache {
     const { bytes, meta } = await this.bytes(fileId, documentId, signedUrl, sealed);
     const blob = new Blob([bytes as Uint8Array<ArrayBuffer>], { type: meta.mime || "application/octet-stream" });
     const url = (this.o.createUrl ?? URL.createObjectURL)(blob);
-    const entry = { url, bytes: bytes.length, meta };
+    const entry = { url, bytes: bytes.length, meta, sealedMeta: metaKey(sealed.meta) };
     this.entries.set(fileId, entry);
     this.total += entry.bytes;
     this.evict();
@@ -144,6 +157,8 @@ export interface SealedUploadDeps {
   inner: InnerClient;
   sealer: Sealer;
   fetch?: typeof fetch;
+  /** The router's space index: the new file is known at once (its note's pull may come later). */
+  spaces?: SpaceIndex;
 }
 
 /**
@@ -172,7 +187,9 @@ export async function uploadSealedWith(d: SealedUploadDeps, p: Pick<PendingUploa
       size: envelope.length,
       sha256: hex(sha256(envelope)),
     })) as { fileId?: string } | null;
-    return { fileId: committed?.fileId ?? fileId, mimeType: prepared.mimeType };
+    const id = committed?.fileId ?? fileId;
+    d.spaces?.noteRef("file", id, d.spaces.document(p.documentId)?.scope ?? "", p.documentId);
+    return { fileId: id, mimeType: prepared.mimeType };
   } finally {
     raw.fill(0);
   }
@@ -181,7 +198,7 @@ export async function uploadSealedWith(d: SealedUploadDeps, p: Pick<PendingUploa
 /** §12 WP7: uploads one queued attachment of a sealed note through the active router. */
 export async function uploadSealed(p: PendingUpload): Promise<{ fileId: string; mimeType: string }> {
   const r = requireActiveRouter();
-  return await uploadSealedWith({ inner: r.env.inner, sealer: r.env.sealer }, p);
+  return await uploadSealedWith({ inner: r.env.inner, sealer: r.env.sealer, spaces: r.spaces }, p);
 }
 
 /** §12 WP7: a sealed file as a `blob:` URL (files.urls signs the ciphertext's address; the cache opens it). */

@@ -23,6 +23,12 @@ export interface SpaceReplica {
   readonly client: LocalClient;
   status(): ReplicaStatus;
   whenSynced(): Promise<void>;
+  /** Asks the server for anything newer now (the head, the pages, the person's marks) and applies it. */
+  catchUp?(): Promise<void>;
+  /** Drops notes deleted for good; `exists` asks the server about each note in Trash. */
+  pruneDeleted?(exists: (id: string) => Promise<boolean>): Promise<void>;
+  /** The person's profile changed. */
+  setProfile?(profile: LocalProfile): Promise<void>;
   /** Applies the router's own accepted writes at once (resolves once a device query would see them). */
   applyAccepted(results: OpResult[], ops?: readonly SyncOp[]): void | Promise<void>;
   close(): Promise<void>;
@@ -43,6 +49,10 @@ export interface PullSource {
   watchHead(scope: WireScope, cb: (seq: number) => void): () => void;
   page(scope: WireScope, cursor: number, limit: number): Promise<E2eePullPage>;
   watchMine(scope: WireScope, cb: (mine: PulledMine) => void): () => void;
+  /** One-shot reads (catching up on demand). */
+  profile?(): Promise<LocalProfile>;
+  head?(scope: WireScope): Promise<number>;
+  mine?(scope: WireScope): Promise<PulledMine>;
 }
 
 export interface ReplicaHubOptions {
@@ -120,7 +130,7 @@ class HostedReplica {
     // What the database kept is shown at once; ids reach the space index before the first pull.
     if (replica.have) {
       const docs = await store.list("documents");
-      o.onIds?.(scope, { documents: docs.map((d) => ({ id: d.id, sealed: true, title: d.title, icon: d.icon })), removed: [], folders: (await store.list("folders")).map((f) => f.id), tags: [], files: [], collections: (await store.list("collections")).map((c) => ({ id: c.id, documentId: c.documentId })) });
+      o.onIds?.(scope, { documents: docs.map((d) => ({ id: d.id, sealed: true, title: d.title, icon: d.icon })), removed: [], folders: (await store.list("folders")).map((f) => f.id), tags: [], files: [], collections: (await store.list("collections")).map((c) => ({ id: c.id, documentId: c.documentId })), blocks: (await Promise.all(docs.map((d) => store.list("blocks", d.id)))).flat().map((b) => ({ id: b.id, documentId: b.documentId })) });
     }
     const overlay = o.overlay?.(scope, store) ?? null;
     if (overlay) store.setOverlay(overlay);
@@ -201,6 +211,25 @@ class HostedReplica {
     return this.synced;
   }
 
+  async pruneDeleted(exists: (id: string) => Promise<boolean>): Promise<void> {
+    const gone: string[] = [];
+    for (const id of await this.ingest.trashed()) if (!(await exists(id))) gone.push(id);
+    await this.ingest.forget(gone);
+  }
+
+  async setProfile(profile: LocalProfile): Promise<void> {
+    await this.ingest.setProfile(profile);
+  }
+
+  async catchUp(): Promise<void> {
+    if (this.closed || this.o.session.state() !== "unlocked") return;
+    if (this.o.source.head) this.head = Math.max(this.head, await this.o.source.head(this.scope));
+    while (this.draining) await this.draining;
+    if (this.head > this.cursor) await this.drain();
+    if (this.o.source.mine) await this.ingest.mine(await this.o.source.mine(this.scope));
+    if (this.o.source.profile) await this.ingest.setProfile(await this.o.source.profile());
+  }
+
   status(): ReplicaStatus {
     if (this.state === "locked") return LOCKED;
     return { state: this.state, have: this.have, total: this.state === "ready" ? this.have : null };
@@ -256,6 +285,18 @@ class WindowReplica implements SpaceReplica {
     return this.host.role === "follower" ? { state: "ready", have: 0, total: null } : OPENING;
   }
 
+  async catchUp(): Promise<void> {
+    await this.hosted?.catchUp();
+  }
+
+  async pruneDeleted(exists: (id: string) => Promise<boolean>): Promise<void> {
+    await this.hosted?.pruneDeleted(exists);
+  }
+
+  async setProfile(profile: LocalProfile): Promise<void> {
+    await this.hosted?.setProfile(profile);
+  }
+
   whenSynced(): Promise<void> {
     if (this.hosted) return this.hosted.whenSynced();
     if (this.host.role === "follower") return Promise.resolve();
@@ -282,9 +323,11 @@ export class Replicas implements ReplicaHub {
 
   open(scope: WireScope): Promise<SpaceReplica> {
     const key = scopeKeyOf(scope);
+    // Still opening: the same wait (the window may not be hosting it yet).
+    let p = this.opening.get(key);
+    if (p) return p;
     const have = this.replicas.get(key);
     if (have) return Promise.resolve(have);
-    let p = this.opening.get(key);
     if (!p) {
       p = this.start(scope).finally(() => this.opening.delete(key));
       this.opening.set(key, p);

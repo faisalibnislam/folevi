@@ -24,6 +24,54 @@ function requireSpace(call: Call): E2eeSpace {
   return call.res.space;
 }
 
+interface Palette {
+  paper: string;
+  ink: string;
+  paperDark: string;
+  inkDark: string;
+  tone?: string;
+  accent?: string;
+  accentDark?: string;
+  text?: string[];
+  textDark?: string[];
+  names?: string[];
+  highlight?: string[];
+  highlightDark?: string[];
+}
+
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/** A note theme image's colours as the server checks and keeps them (convex/files.ts setPalette). */
+function checkedPalette(p: Palette): Record<string, unknown> {
+  const bad = (message: string) => new ConvexError({ code: "invalid_argument", message });
+  const colours = [p.paper, p.ink, p.paperDark, p.inkDark, p.accent, p.accentDark, ...(p.text ?? []), ...(p.textDark ?? []), ...(p.highlight ?? []), ...(p.highlightDark ?? [])].filter((c): c is string => c !== undefined);
+  if (!colours.every((c) => HEX.test(c))) throw bad("Colours must be #rrggbb.");
+  if ((p.text && p.text.length !== 5) || (p.textDark && p.textDark.length !== 5) || (p.highlight && p.highlight.length !== 4) || (p.highlightDark && p.highlightDark.length !== 4)) throw bad("Unexpected palette size.");
+  if (p.names && (p.names.length !== 5 || !p.names.every((n) => /^[A-Za-z ]{1,20}$/.test(n)))) throw bad("Unexpected colour names.");
+  const lower = (list: string[] | undefined) => list?.map((c) => c.toLowerCase());
+  return Object.fromEntries(
+    Object.entries({
+      paper: p.paper.toLowerCase(),
+      ink: p.ink.toLowerCase(),
+      paperDark: p.paperDark.toLowerCase(),
+      inkDark: p.inkDark.toLowerCase(),
+      tone: p.tone,
+      accent: p.accent?.toLowerCase(),
+      accentDark: p.accentDark?.toLowerCase(),
+      text: lower(p.text),
+      textDark: lower(p.textDark),
+      names: p.names,
+      highlight: lower(p.highlight),
+      highlightDark: lower(p.highlightDark),
+    }).filter(([, v]) => v !== undefined),
+  );
+}
+
+/** A version's name as the server keeps one (convex/documents.ts versionName): spaces collapsed, 80 at most. */
+function versionName(raw: string): string {
+  return raw.replace(/\s+/g, " ").trim().slice(0, 80);
+}
+
 /** Plain text of inline nodes (a comment's preview). */
 function plainText(nodes: unknown): string {
   if (!Array.isArray(nodes)) return "";
@@ -42,6 +90,24 @@ function commentPreview(call: Call, env: RouterEnv, documentId: string, body: un
 }
 
 // ---- organization -------------------------------------------------------------------------------------------
+
+/**
+ * In an encrypted space, folders and tags go through local mode's handler over the replica (its checks are
+ * the server's: empty names, nesting depth, one tag per name), and what it wrote is sent sealed (capture.ts).
+ */
+async function capturedNames(call: Call, env: RouterEnv): Promise<SealResult | null> {
+  const space = call.res.space;
+  if (!space || !isEncryptedLevel(space)) return null;
+  const c = await capture((await replicaStoreFor(env, space)), "mutation", call.name, call.args, env.engine()?.deviceId ?? env.session.deviceId());
+  await send(await project(c, space, env), space, env);
+  return done(c.result);
+}
+
+/** Folder and tag calls: captured in an encrypted space, else the lock-aware sealer, else plain. */
+const names =
+  (locked: Sealing): Sealing =>
+  async (call, env) =>
+    (await capturedNames(call, env)) ?? (await locked(call, env));
 
 const createFolder: Sealing = async (call, env) => {
   const a = call.args as { scope: E2eeSpace["scope"]; name: string; parentFolderId?: string; id?: string };
@@ -142,7 +208,7 @@ const nameVersion: Sealing = async (call, env) => {
   const documentId = env.spaces.ref("snapshot", a.snapshotId)?.documentId;
   if (!documentId || !call.res.sealed) return null;
   const name = a.name.trim();
-  const sealedName = name ? (await env.sealer.sealVersionName(documentId, a.snapshotId, name.slice(0, 120))).c : null;
+  const sealedName = name ? (await env.sealer.sealVersionName(documentId, a.snapshotId, versionName(name))).c : null;
   return one(content.nameVersion, { snapshotId: a.snapshotId, sealedName }, () => null);
 };
 
@@ -159,7 +225,7 @@ const importSnapshot: Sealing = async (call, env) => {
     }),
   );
   const sealedVersion = { e2ee: 1 as const, title: { c: b64(title.c), k: title.k, mac: title.mac }, appearance: { c: b64(appearanceBytes), k: title.k }, blocks };
-  const sealedName = a.name ? (await env.sealer.sealVersionName(a.documentId, a.id, a.name)).c : undefined;
+  const sealedName = a.name && versionName(a.name) ? (await env.sealer.sealVersionName(a.documentId, a.id, versionName(a.name))).c : undefined;
   return one(content.importVersion, { documentId: a.documentId, id: a.id, content: sealedVersion, createdAt: a.createdAt, ...(sealedName ? { sealedName } : {}) });
 };
 
@@ -177,22 +243,91 @@ const deletePermanently: Sealing = async (call, env) => {
 
 // ---- files --------------------------------------------------------------------------------------------------
 
+/** A sealed file's key wrap and metadata: from files.urls, else from what the replica pulled. */
+async function sealedFile(env: RouterEnv, call: Call, fileId: string): Promise<{ documentId: string; key: Bytes; meta: Bytes; k: number } | null> {
+  const urls = (await env.inner.query(api.files.urls, { fileIds: [fileId], now: Date.now() })) as Record<string, { sealed?: { key: Bytes; meta: Bytes; k: number }; documentId?: string } | undefined>;
+  const entry = urls[fileId];
+  const store = call.res.space ? env.replicas.hostedStore?.(call.res.space.scope) : null;
+  const held = (await store?.get("meta", `fileKey:${fileId}`)) as { documentId: string; key: Bytes; meta: Bytes; k: number } | undefined;
+  if (entry?.sealed) {
+    const documentId = entry.documentId ?? held?.documentId ?? env.spaces.ref("file", fileId)?.documentId;
+    return documentId ? { documentId, ...entry.sealed } : null;
+  }
+  return held ?? null;
+}
+
 /** files.setPalette: the palette lives in the file's sealed meta, which is sealed again with it. */
 const setPalette: Sealing = async (call, env) => {
   const a = call.args as { fileId: string; palette: unknown };
-  const urls = (await env.inner.query(api.files.urls, { fileIds: [a.fileId], now: Date.now() })) as Record<string, { sealed?: { key: Bytes; meta: Bytes }; documentId?: string } | undefined>;
-  const entry = urls[a.fileId];
-  if (!entry?.sealed) return null;
-  const documentId = entry.documentId ?? env.spaces.ref("file", a.fileId)?.documentId ?? call.res.documentId;
-  if (!documentId) return null;
-  const raw = await env.sealer.openFileKey(documentId, a.fileId, entry.sealed.key);
+  const f = await sealedFile(env, call, a.fileId);
+  if (!f) return null;
+  const raw = await env.sealer.openFileKey(f.documentId, a.fileId, f.key);
   try {
-    const meta = (await Sealer.openFileMeta(raw, documentId, a.fileId, entry.sealed.meta)) as Record<string, unknown>;
-    const sealedMeta = await Sealer.sealFileMeta(raw, documentId, a.fileId, { ...meta, palette: a.palette });
+    const meta = (await Sealer.openFileMeta(raw, f.documentId, a.fileId, f.meta)) as Record<string, unknown>;
+    // The server's checks (files.setPalette), here because it can't read what kind of file this is.
+    if (typeof meta.mime !== "string" || !meta.mime.startsWith("image/")) throw new ConvexError({ code: "not_found", message: "File not found." });
+    const sealedMeta = await Sealer.sealFileMeta(raw, f.documentId, a.fileId, { ...meta, palette: checkedPalette(a.palette as Palette) });
     return { calls: [{ ref: e2eeFiles.updateMeta as never, args: { fileId: a.fileId, meta: sealedMeta } }], result: () => null };
   } finally {
     raw.fill(0);
   }
+};
+
+/**
+ * files.shareForPaste into a sealed note: each file's key is wrapped again for the note it's pasted into
+ * (the bytes are shared, §5.3 e2ee.files.rewrap). A file already pasted there keeps its row.
+ */
+/** Files this tab pasted into sealed notes (target note and plaintext hash → the new file): pasting again reuses it. */
+const pasted = new Map<string, string>();
+
+const shareForPaste: Sealing = async (call, env) => {
+  if (!call.res.sealed) return null;
+  const a = call.args as { documentId: string; fileIds: string[] };
+  const out: Record<string, string> = {};
+  const store = call.res.space ? env.replicas.hostedStore?.(call.res.space.scope) : null;
+  const here = store ? ((await store.list("files")) as { id: string; documentId: string | null; sha256: string }[]).filter((f) => f.documentId === a.documentId) : [];
+  for (const fileId of [...new Set(a.fileIds)].slice(0, 50)) {
+    const f = await sealedFile(env, call, fileId);
+    if (!f) continue;
+    if (f.documentId === a.documentId) {
+      out[fileId] = fileId;
+      continue;
+    }
+    const raw = await env.sealer.openFileKey(f.documentId, fileId, f.key);
+    try {
+      const meta = (await Sealer.openFileMeta(raw, f.documentId, fileId, f.meta)) as { sha256?: string; blob?: string };
+      const again = meta.sha256 ? (pasted.get(`${a.documentId}|${meta.sha256}`) ?? here.find((x) => x.sha256 === meta.sha256)?.id) : undefined;
+      if (again) {
+        out[fileId] = again;
+        continue;
+      }
+      const newFileId = ulid();
+      const wrap = await env.sealer.wrapFileKey(a.documentId, newFileId, raw);
+      // The bytes stay sealed under the first file's id: the copy's details say which.
+      const sealedMeta = await Sealer.sealFileMeta(raw, a.documentId, newFileId, { ...meta, blob: meta.blob ?? fileId });
+      const r = (await env.inner.mutation(e2eeFiles.rewrap as never, { fileId, targetDocumentId: a.documentId, newFileId, key: wrap.wrapped, meta: sealedMeta, k: wrap.k } as never)) as { fileId?: string } | null;
+      out[fileId] = r?.fileId ?? newFileId;
+      if (meta.sha256) pasted.set(`${a.documentId}|${meta.sha256}`, out[fileId]!);
+      env.spaces.noteRef("file", out[fileId]!, env.spaces.document(a.documentId)?.scope ?? "", a.documentId);
+    } finally {
+      raw.fill(0);
+    }
+  }
+  return done(out);
+};
+
+/** documents.createSnapshot with a name, for a sealed note: the version is made blind, then named sealed. */
+const createSnapshot: Sealing = async (call, env) => {
+  const a = call.args as { documentId: string; reason: string; name?: string };
+  if (!call.res.sealed || !a.name?.trim()) return null;
+  const made = (await env.inner.mutation(api.documents.createSnapshot, { documentId: a.documentId, reason: a.reason as never })) as { created?: boolean; id?: string } | null;
+  const snapshotId = made?.id;
+  if (snapshotId) {
+    env.spaces.noteRef("snapshot", snapshotId, env.spaces.document(a.documentId)?.scope ?? "", a.documentId);
+    const sealedName = (await env.sealer.sealVersionName(a.documentId, snapshotId, versionName(a.name))).c;
+    await env.inner.mutation(content.nameVersion, { snapshotId, sealedName });
+  }
+  return done(made);
 };
 
 // ---- records: collections, found text, study (the local handler's writes, as records) --------------------------
@@ -205,7 +340,7 @@ const setPalette: Sealing = async (call, env) => {
 const records: Sealing = async (call, env) => {
   const space = requireSpace(call);
   if (!call.res.sealed && !isEncryptedLevel(space)) return null;
-  const c = await capture(replicaStoreFor(env, space), "mutation", call.name, call.args, env.engine()?.deviceId ?? env.session.deviceId());
+  const c = await capture((await replicaStoreFor(env, space)), "mutation", call.name, call.args, env.engine()?.deviceId ?? env.session.deviceId());
   await send(await project(c, space, env), space, env);
   return done(c.result);
 };
@@ -223,11 +358,11 @@ export function sealedRoute(fn: Sealing): ArgSealer {
 }
 
 export const SEALERS = {
-  createFolder: sealedRoute(createFolder),
-  renameFolder: sealedRoute(renameFolder),
-  createTag: sealedRoute(createTag),
-  updateTag: sealedRoute(updateTag),
-  setDocumentTags: sealedRoute(setDocumentTags),
+  createFolder: sealedRoute(names(createFolder)),
+  renameFolder: sealedRoute(names(renameFolder)),
+  createTag: sealedRoute(names(createTag)),
+  updateTag: sealedRoute(names(updateTag)),
+  setDocumentTags: sealedRoute(names(setDocumentTags)),
   commentCreate: sealedRoute(commentCreate),
   commentReply: sealedRoute(commentReply),
   commentEdit: sealedRoute(commentEdit),
@@ -235,6 +370,8 @@ export const SEALERS = {
   importSnapshot: sealedRoute(importSnapshot),
   deletePermanently: sealedRoute(deletePermanently),
   setPalette: sealedRoute(setPalette),
+  shareForPaste: sealedRoute(shareForPaste),
+  createSnapshot: sealedRoute(createSnapshot),
   records: sealedRoute(records),
 };
 

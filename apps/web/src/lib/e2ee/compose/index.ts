@@ -42,7 +42,7 @@ function refOf<K extends "mutation" | "action">(name: string, _kind: K) {
 export function captured(kind: "mutation" | "action" = "mutation"): Composer {
   return async (call, env) => {
     const space = spaceOf(call);
-    const store = replicaStoreFor(env, space);
+    const store = (await replicaStoreFor(env, space));
     let c: Captured;
     try {
       c = await capture(store, kind, call.name, call.args, deviceOf(env));
@@ -58,7 +58,7 @@ export function captured(kind: "mutation" | "action" = "mutation"): Composer {
 /** Runs a function over the replica (a handler's helpers), capturing its writes. */
 async function captureFn<T>(env: RouterEnv, space: E2eeSpace, fn: (ctx: LocalMutationCtx) => Promise<T>): Promise<{ result: T; c: Captured }> {
   let result: T | undefined;
-  const c = await captureRun(replicaStoreFor(env, space), deviceOf(env), async (ctx) => {
+  const c = await captureRun((await replicaStoreFor(env, space)), deviceOf(env), async (ctx) => {
     result = await fn(ctx);
     return result;
   });
@@ -93,12 +93,15 @@ const restoreSnapshot: Composer = async (call, env) => {
 const copyVersion: Composer = async (call, env) => {
   const space = spaceOf(call);
   const { documentId, content } = await openedVersion(call, env);
+  // Named after the version's name when it has one, as the server does.
+  const listed = (await env.call("query", getFunctionName(api.documents.versions), { documentId })) as { versions?: { id: string; name: string | null }[] } | null;
+  const name = listed?.versions?.find((v) => v.id === call.args.snapshotId)?.name ?? null;
   const { result, c } = await captureFn(env, space, async (ctx) => {
     const doc = await ctx.db.get("documents", documentId);
     if (!doc) throw new ConvexError({ code: "not_found", message: "Document not found." });
     const profile = (await ctx.db.get("meta", "profile")) as { id: string };
     const copy = await insertDocument(ctx, {
-      title: `${content.title || "Untitled"} (copy)`.slice(0, 500),
+      title: `${name ?? (content.title || "Untitled")} (copy)`.slice(0, 500),
       icon: content.icon ?? doc.icon,
       kind: doc.kind === "template" ? "template" : "document",
       folderId: doc.folderId,
@@ -156,7 +159,7 @@ const chatAsNote: Composer = async (call, env) => {
   const space = spaceOf(call);
   const exported = (await env.inner.query(api.aiChat.exportMarkdown, { conversationId: call.args.conversationId, ...(call.args.messageId ? { messageId: call.args.messageId } : {}) })) as { filename: string; markdown: string };
   const title = exported.filename.replace(/\.md$/, "") || "Foli AI chat";
-  const c = await capture(replicaStoreFor(env, space), "mutation", getFunctionName(api.aiWriting.saveDraft), { scope: space.scope, kind: "note", title, markdown: exported.markdown }, deviceOf(env));
+  const c = await capture((await replicaStoreFor(env, space)), "mutation", getFunctionName(api.aiWriting.saveDraft), { scope: space.scope, kind: "note", title, markdown: exported.markdown }, deviceOf(env));
   await send(await project(c, space, env), space, env);
   return c.result;
 };
@@ -171,7 +174,7 @@ function unavailable(feature: string): Composer {
 /** copies.copyTo from a sealed note: the note and its sub-pages read from the replica, created again where asked. */
 const copyTo: Composer = async (call, env) => {
   const space = spaceOf(call);
-  const store = replicaStoreFor(env, space);
+  const store = (await replicaStoreFor(env, space));
   const documentId = String(call.args.documentId);
   const includeSubpages = call.args.includeSubpages !== false;
   const destination = call.args.destination as E2eeSpace["scope"];
@@ -222,7 +225,35 @@ export function markdownBlocks(markdown: string): WireBlock[] {
   return markdownToBlocks(markdown, { titleFromHeading: false }).blocks;
 }
 
+/** study.setNewPerDay: a setting of the person's (the server keeps it); the replica's study queue reads it too. */
+const newPerDay: Composer = async (call, env) => {
+  const r = await env.inner.mutation(api.study.setNewPerDay, call.args);
+  for (const s of env.spaces.list()) await env.replicas.hostedStore?.(s.scope)?.ingest([{ table: "meta", id: "studyNewPerDay", value: call.args.value }]);
+  return r;
+};
+
+/**
+ * users.completeOnboardingStep in an encrypted Personal: the server records the step but can't write the
+ * starter notes or style the Welcome note there (§5.7 users row), so local mode's handler works out what it
+ * would add (from the replica, before the step moves on), the server takes the step, then the notes go sealed.
+ */
+const onboardingStep: Composer = async (call, env) => {
+  const space = call.res.space;
+  if (!space || space.scope.kind !== "personal" || !isEncryptedLevel(space)) return await env.inner.mutation(api.users.completeOnboardingStep, call.args);
+  let c: Captured | null = null;
+  try {
+    c = await capture((await replicaStoreFor(env, space)), "mutation", call.name, call.args, deviceOf(env));
+  } catch {
+    // Whatever the server answers (a step out of order) is the answer.
+  }
+  const r = await env.inner.mutation(api.users.completeOnboardingStep, call.args);
+  if (c) await send(await project({ result: null, writes: c.writes.filter(({ w }) => w.table === "documents" || w.table === "blocks") }, space, env), space, env);
+  return r;
+};
+
 export const COMPOSERS = {
+  onboardingStep,
+  newPerDay,
   captured,
   restoreSnapshot,
   copyVersion,

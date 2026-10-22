@@ -19,7 +19,8 @@ export function replicaDbName(scopeKey: string): string {
 export async function openReplicaDb(scopeKey: string, persist: boolean): Promise<ReplicaDb> {
   const name = replicaDbName(scopeKey);
   if (persist && typeof indexedDB !== "undefined") return await IdbReplicaDb.openNamed(name);
-  return MemoryReplicaDb.open(name);
+  // Not kept (a public session, or no IndexedDB): a fresh copy in memory each time, shared with nothing.
+  return new MemoryReplicaDb();
 }
 
 /** What the replica's overlay (the engine's unsent edits, §6.5 "Pending edits") answers. */
@@ -109,10 +110,10 @@ export class SpaceReplicaStore implements LocalStore {
   }
 
   /** Rows from the pull or from accepted writes: kept (and persisted), then announced. */
-  async ingest(writes: readonly StoreWrite[], state?: [string, unknown][]): Promise<void> {
+  async ingest(writes: readonly StoreWrite[], state?: [string, unknown][], o: { persist?: boolean } = {}): Promise<void> {
     if (!writes.length && !state?.length) return;
     if (writes.length) this.mem.ingest(writes);
-    if (this.db) await this.db.write({ rows: writes.map((w) => [rowKey(w.table, w.partition, w.id), w.value] as [string, unknown]), state });
+    if (this.db && o.persist !== false) await this.db.write({ rows: writes.map((w) => [rowKey(w.table, w.partition, w.id), w.value] as [string, unknown]), state });
   }
 
   /** The replica's own bookkeeping (the pull cursor, counts), persisted with the rows. */

@@ -140,3 +140,22 @@ describe("the engine's unsent edits over the replica (§6.5)", () => {
     engine.dispose();
   });
 });
+
+describe("public computer mode keeps the account's data in memory (§6.10)", () => {
+  test("localDb opens in the given in-memory IndexedDB and leaves the browser's untouched", async () => {
+    const { IDBFactory } = await import("fake-indexeddb");
+    const { localDb, openLocalDbInMemory, localDbInMemory } = await import("@/lib/sync/db");
+    const account = `public-${ulid()}`;
+    openLocalDbInMemory(new IDBFactory());
+    try {
+      expect(localDbInMemory()).toBe(true);
+      const db = await localDb(account);
+      await db.put("meta", "kept in memory", "probe");
+      expect(await db.get("meta", "probe")).toBe("kept in memory");
+      const names = ((await indexedDB.databases?.()) ?? []).map((d) => d.name);
+      expect(names).not.toContain(`folevi-${account}`);
+    } finally {
+      openLocalDbInMemory(null);
+    }
+  });
+});

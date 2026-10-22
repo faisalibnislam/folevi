@@ -5,6 +5,13 @@ import { ulid, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { localDb, type PendingUpload } from "./db";
 import type { SyncEngine } from "./engine";
+import { isSealedDocument } from "@/lib/e2ee/router/hooks";
+
+/** An attachment of an end-to-end encrypted note: encrypted here, then uploaded (lib/e2ee/files.ts, §6.8). */
+async function uploadSealedFile(u: Pick<PendingUpload, "documentId" | "filename" | "mimeType" | "kind" | "blob">): Promise<{ fileId: string; mimeType: string }> {
+  const { uploadSealed } = await import("@/lib/e2ee/files");
+  return await uploadSealed(u as PendingUpload);
+}
 
 export async function sha256Hex(blob: Blob): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
@@ -23,6 +30,9 @@ export async function uploadFileNow(
   // Local mode: the bytes go straight into the library (no upload address, no server).
   const local = localApiOf(client);
   if (local) return (await local.putFile(input.blob, { name: input.filename, mimeType: input.mimeType, kind: input.kind, documentId: input.documentId ?? null })).fileId;
+  if (input.documentId && isSealedDocument(input.documentId) && input.kind !== "attachment") {
+    return (await uploadSealedFile({ documentId: input.documentId, filename: input.filename, mimeType: input.mimeType, kind: input.kind as PendingUpload["kind"], blob: input.blob })).fileId;
+  }
   const { uploadUrl, intentId } = await client.mutation(api.files.generateUploadUrl, {
     scope: input.scope,
     documentId: input.documentId,
@@ -100,6 +110,7 @@ export async function enqueueUpload(
     blob: input.file,
     attempts: 0,
     nextAttemptAt: 0,
+    ...(isSealedDocument(input.documentId) ? { sealed: true as const } : {}),
   };
   const db = await localDb(accountKey);
   await db.put("uploads", record);
@@ -147,6 +158,8 @@ export class Uploader {
 
   /** Two-phase upload: an authorized short-lived address, the bytes, then the server's check of them. */
   private async uploadToServer(u: PendingUpload): Promise<{ fileId: string; mimeType: string }> {
+    // A sealed note's file is encrypted on this device first (§6.8); a retry encrypts the kept plaintext again.
+    if (u.sealed || isSealedDocument(u.documentId)) return await uploadSealedFile(u);
     // The page's scope decides where the file is stored (the server checks access to the page).
     const { uploadUrl, intentId } = await this.client.mutation(api.files.generateUploadUrl, {
       documentId: u.documentId,

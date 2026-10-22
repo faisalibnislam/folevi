@@ -1,6 +1,6 @@
 "use client";
 
-import { openDB, type DBSchema, type IDBPDatabase } from "idb";
+import { openDB, wrap, type DBSchema, type IDBPDatabase, type OpenDBCallbacks } from "idb";
 import { ulid, type SyncState, type WireBlock } from "@folevi/editor-schema";
 
 /**
@@ -44,6 +44,8 @@ export interface PendingUpload {
   blob: Blob;
   attempts: number;
   nextAttemptAt: number;
+  /** For an end-to-end encrypted note: encrypted on this device when sent (the blob kept here is the plaintext). */
+  sealed?: true;
 }
 
 /** v1 stores · v2 uploads · v3 scope-keyed document cache (Personal is not a workspace). */
@@ -75,11 +77,39 @@ export const queryKeys = () => IDBKeyRange.bound(QUERY_PREFIX, `${QUERY_PREFIX}\
 
 const dbs = new Map<string, Promise<IDBPDatabase<FoleviDB>>>();
 
+/**
+ * Public computer mode (docs/E2EE_DESIGN.md §6.10): the sync state, the outbox, the query cache and waiting
+ * uploads live in an in-memory IndexedDB for this tab (`factory`, e.g. fake-indexeddb's IDBFactory), so
+ * nothing is left on the computer when the tab closes. Call before the account's engine opens; null goes
+ * back to the browser's IndexedDB.
+ */
+export function openLocalDbInMemory(factory: IDBFactory | null): void {
+  memoryFactory = factory;
+  dbs.clear();
+}
+
+let memoryFactory: IDBFactory | null = null;
+
+/** Whether this tab keeps the account's data in memory only. */
+export function localDbInMemory(): boolean {
+  return memoryFactory !== null;
+}
+
+function openWith<T extends DBSchema>(factory: IDBFactory, name: string, version: number, callbacks: OpenDBCallbacks<T>): Promise<IDBPDatabase<T>> {
+  const request = factory.open(name, version);
+  const opened = wrap(request) as unknown as Promise<IDBPDatabase<T>>;
+  if (callbacks.upgrade) {
+    const upgrade = callbacks.upgrade;
+    request.addEventListener("upgradeneeded", (e) => upgrade(wrap(request.result) as never, e.oldVersion, e.newVersion, wrap(request.transaction!) as never, e));
+  }
+  return opened;
+}
+
 export function localDb(accountKey: string): Promise<IDBPDatabase<FoleviDB>> {
   const name = `folevi-${accountKey}`;
   let db = dbs.get(name);
   if (!db) {
-    db = openDB<FoleviDB>(name, DB_VERSION, {
+    db = (memoryFactory ? (n: string, v: number, c: OpenDBCallbacks<FoleviDB>) => openWith<FoleviDB>(memoryFactory!, n, v, c) : openDB<FoleviDB>)(name, DB_VERSION, {
       async upgrade(database, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           database.createObjectStore("meta");

@@ -7,6 +7,9 @@ import { hostAuth, hostConvexToken } from "@/lib/auth/shellFetch";
 import { currentBackendMode, setCurrentBackendMode, type BackendMode } from "@/lib/backendMode";
 import { BackendModeContext } from "@/lib/mode";
 import type { LocalClient } from "@/lib/local/client";
+import { api } from "@/lib/convex/api";
+import type { E2eeRouterClient } from "@/lib/e2ee/router/client";
+import { setActiveRouter } from "@/lib/e2ee/router/active";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
@@ -168,6 +171,96 @@ function useFoleviAuth() {
   return { auth, phase };
 }
 
+/** This browser has seen the signed-in account with E2EE set up: start with the router, so nothing remounts. */
+const E2EE_HINT = "folevi:e2ee";
+
+function readHint(): boolean {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem(E2EE_HINT) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeHint(on: boolean) {
+  try {
+    if (on) localStorage.setItem(E2EE_HINT, "1");
+    else localStorage.removeItem(E2EE_HINT);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+type StatusWatch = { onUpdate(cb: () => void): () => void; localQueryResult(): unknown };
+
+/** Builds the router (loaded on demand: Standard accounts never download it, docs/E2EE_DESIGN.md §6.4). */
+export async function makeE2eeRouter(raw: ConvexReactClient): Promise<E2eeRouterClient> {
+  const [{ E2eeRouterClient }, keys] = await Promise.all([import("@/lib/e2ee/router/client"), import("@/lib/e2ee/keys")]);
+  const session = keys.getKeySession();
+  return new E2eeRouterClient(raw, {
+    session,
+    keyring: keys.getKeyRing(),
+    // A public or shared computer keeps nothing readable: its replicas stay in memory (§6.10).
+    persist: () => !(session as { isPublic?: () => boolean }).isPublic?.(),
+  });
+}
+
+/**
+ * The client the account's pages use (§6.4): the raw ConvexReactClient, unless the account has end-to-end
+ * encryption set up (e2ee.keys.status().setUp), in which case the E2eeRouterClient wrapping it. Standard
+ * accounts get exactly the raw client and never load the router (test/e2ee/provider.test.tsx).
+ */
+export function useAccountClient(raw: ConvexReactClient, make: (raw: ConvexReactClient) => Promise<E2eeRouterClient> = makeE2eeRouter): { client: ConvexReactClient; ready: boolean } {
+  const [hinted] = useState(readHint);
+  const [router, setRouter] = useState<E2eeRouterClient | null>(null);
+  const [wanted, setWanted] = useState(hinted);
+  useEffect(() => {
+    const w = (raw.watchQuery as unknown as (r: unknown, a: unknown) => StatusWatch)(api.e2ee.keys.status, {});
+    const read = () => {
+      let s: { setUp?: boolean } | undefined;
+      try {
+        s = w.localQueryResult() as { setUp?: boolean } | undefined;
+      } catch {
+        // Not signed in yet, or no answer: nothing changes.
+        return;
+      }
+      if (s === undefined) return;
+      writeHint(s.setUp === true);
+      setWanted(s.setUp === true);
+    };
+    const off = w.onUpdate(read);
+    read();
+    return off;
+  }, [raw]);
+  useEffect(() => {
+    if (!wanted) return;
+    let live = true;
+    let made: E2eeRouterClient | null = null;
+    void make(raw).then(
+      (r) => {
+        made = r;
+        if (!live) return void r.dispose();
+        setActiveRouter(r);
+        setRouter(r);
+      },
+      (e) => {
+        console.warn("[e2ee] The encrypted notes router couldn't start.", e instanceof Error ? e.name : typeof e);
+        if (live) setWanted(false);
+      },
+    );
+    return () => {
+      live = false;
+      if (made) {
+        setActiveRouter(null);
+        void made.dispose();
+      }
+      setRouter(null);
+    };
+  }, [wanted, raw, make]);
+  if (!wanted) return { client: raw, ready: true };
+  return { client: (router as unknown as ConvexReactClient) ?? raw, ready: router !== null };
+}
+
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<AuthPhase>("loading");
   const useAuth = useCallback(function useAuth() {
@@ -183,10 +276,15 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
       </div>
     );
   }
+  return <AccountConvex phase={phase} useAuth={useAuth}>{children}</AccountConvex>;
+}
+
+function AccountConvex({ phase, useAuth, children }: { phase: AuthPhase; useAuth: Parameters<typeof ConvexProviderWithAuth>[0]["useAuth"]; children: ReactNode }) {
+  const { client, ready } = useAccountClient(getConvexClient());
   return (
     <AuthPhaseContext.Provider value={phase}>
-      <ConvexProviderWithAuth client={getConvexClient()} useAuth={useAuth}>
-        {children}
+      <ConvexProviderWithAuth client={client} useAuth={useAuth}>
+        {ready ? children : null}
       </ConvexProviderWithAuth>
     </AuthPhaseContext.Provider>
   );

@@ -2,7 +2,9 @@
 // server functions in convex-test (tests/convex/helpers.ts sets a person and a space up with WP1's real keys),
 // with a key ring that holds the space key the helper made (WP6's KeyRing does the same from grants).
 import { ctx as aad, deriveNoteKeys, deriveSpaceKeys, openRecord, randomBytes, sealRecord, toWireBytes, type NoteKeys, type SpaceKeys } from "@folevi/local-store/e2ee";
-import type { WireScope } from "@folevi/editor-schema";
+import type { SyncOp, WireBlock, WireScope } from "@folevi/editor-schema";
+import type { TestConvex } from "convex-test";
+import type schema from "../../../../convex/schema";
 import type { KeyRingLike, PulledNoteKey } from "@/lib/e2ee/router/deps";
 import type { InnerClient } from "@/lib/e2ee/router/types";
 
@@ -108,3 +110,27 @@ export function innerOf(as: unknown, hooks: { beforeMutation?(name: string, args
 }
 
 export const bytes = (b: ArrayBuffer | Uint8Array) => toWireBytes(b instanceof Uint8Array ? b : new Uint8Array(b));
+
+/**
+ * tests/convex (convex-test setup, people and spaces with real keys, sealed pushes). It sits outside this app's
+ * TypeScript project (its module list references vite's client types), so it is loaded without its types and
+ * given the few it needs here.
+ */
+export type T = TestConvex<typeof schema>;
+export type Person = { as: ReturnType<T["withIdentity"]>; profileId: string };
+export interface Helpers {
+  setup(): T;
+  e2eePerson(t: T, email: string): Promise<Person>;
+  e2eeRecoveryMethods(p: Person): Promise<unknown>;
+  e2eeSpace(p: Person, scope: { kind: "personal" }): Promise<{ sk: Uint8Array; scopeId: string }>;
+  para(id: string, text: string): WireBlock;
+  PERSONAL: { kind: "personal" };
+  ulid(): string;
+}
+export interface Fixtures {
+  push(p: Person, ops: SyncOp[], deviceId?: string): Promise<{ opId: string; status: string; error?: { code: string; message: string } }[]>;
+}
+export async function convexHelpers(): Promise<{ helpers: Helpers; fixtures: Fixtures }> {
+  const [helpers, fixtures] = await Promise.all([import("../../../../tests/convex/helpers" as string), import("../../../../tests/convex/e2ee-fixtures" as string)]);
+  return { helpers: helpers as Helpers, fixtures: fixtures as Fixtures };
+}

@@ -7,13 +7,15 @@ import { describe, expect, test } from "vitest";
 import { SCHEMA_VERSION, type WireBlock } from "@folevi/editor-schema";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, PERSONAL, setup, ulid, type T } from "../../../../tests/convex/helpers";
-import { push } from "../../../../tests/convex/e2ee-fixtures";
 import { Sealer } from "@/lib/e2ee/seal";
 import { runJob } from "@/lib/e2ee/migrate/runner";
 import { sealDocument } from "@/lib/e2ee/migrate/seal";
 import type { MigrateEnv } from "@/lib/e2ee/migrate/env";
-import { innerOf, TestKeyRing } from "./wp8Fakes";
+import { convexHelpers, innerOf, TestKeyRing, type Person, type T } from "./wp8Fakes";
+
+const { helpers, fixtures } = await convexHelpers();
+const { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, PERSONAL, setup, ulid } = helpers;
+const { push } = fixtures;
 
 const SWITCHES = { foliAi: "off", backgroundAi: false, searchEverywhere: false, apps: false, emailToNote: false, webClipper: false, notificationPreviews: false } as const;
 
@@ -38,7 +40,7 @@ async function blockRows(t: T, documentId: Id<"documents">) {
 }
 
 /** A plain note with text and a to-do, made before encryption was on. */
-async function plainNote(p: Awaited<ReturnType<typeof e2eePerson>>, title: string, body: string) {
+async function plainNote(p: Person, title: string, body: string) {
   const id = ulid();
   const todo: WireBlock = { id: ulid(), type: "todo", parentId: null, rank: "W", schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text: `${body} task` }], props: { checked: false } };
   await push(p, [{ opId: ulid(), kind: "document.create", document: { id, parentDocumentId: null, folderId: null, kind: "document", title, icon: null } }]);

@@ -8,8 +8,6 @@ import { SCHEMA_VERSION, canonicalJson, type SyncOp, type WireBlock } from "@fol
 import { ctx as aad, sealTo } from "@folevi/local-store/e2ee";
 import { api, internal } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, PERSONAL, setup, ulid, type T } from "../../../../tests/convex/helpers";
-import { push } from "../../../../tests/convex/e2ee-fixtures";
 import { Sealer } from "@/lib/e2ee/seal";
 import { runJob } from "@/lib/e2ee/migrate/runner";
 import { ReplicaIngest } from "@/lib/e2ee/replica/ingest";
@@ -24,11 +22,15 @@ import { applyInbox, ensureInbox } from "@/lib/e2ee/features/inbox";
 import { aiRoute, answerConsent, pendingConsent } from "@/lib/e2ee/features/ai";
 import { createEncryptedLinkWith, openShare } from "@/lib/e2ee/links";
 import { sharePayload } from "@/lib/e2ee/sharePayload";
-import { innerOf, TestKeyRing } from "./wp8Fakes";
+import { convexHelpers, innerOf, TestKeyRing, type Person, type T } from "./wp8Fakes";
+
+const { helpers, fixtures } = await convexHelpers();
+const { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, PERSONAL, setup, ulid } = helpers;
+const { push } = fixtures;
 
 const OFF: Switches = { foliAi: "off", backgroundAi: false, searchEverywhere: false, apps: false, emailToNote: false, webClipper: false, notificationPreviews: false };
 
-async function plainNote(p: Awaited<ReturnType<typeof e2eePerson>>, title: string, blocks: WireBlock[]) {
+async function plainNote(p: Person, title: string, blocks: WireBlock[]) {
   const id = ulid();
   await push(p, [{ opId: ulid(), kind: "document.create", document: { id, parentDocumentId: null, folderId: null, kind: "document", title, icon: null } }]);
   await push(p, blocks.map((b) => ({ opId: ulid(), kind: "block.upsert" as const, documentId: id, block: b, baseRevision: null, fields: ["content" as const, "position" as const] })));
@@ -36,7 +38,7 @@ async function plainNote(p: Awaited<ReturnType<typeof e2eePerson>>, title: strin
 }
 
 /** An encrypted Personal at "features you pick" with its notes sealed, and this device's replica of it. */
-async function world(t: T, email: string, switches: Partial<Switches>, seed: (p: Awaited<ReturnType<typeof e2eePerson>>) => Promise<Record<string, string>>) {
+async function world(t: T, email: string, switches: Partial<Switches>, seed: (p: Person) => Promise<Record<string, string>>) {
   const p = await e2eePerson(t, email);
   await e2eeRecoveryMethods(p);
   const s = await e2eeSpace(p, PERSONAL);

@@ -6,7 +6,7 @@
 // ipc.ts carries the page's calls to it. Its own state is `library.json` in Application Support:
 // { kind, path, libraryId, chosenFolder?, move?, encryptionJob? }.
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { mkdir, readdir, realpath } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { LibraryAttachments } from "./attachments";
@@ -893,6 +893,21 @@ export class LibraryService {
   }
 
   // ---------------------------------------------------------------- the end
+
+  /**
+   * Forgets the library on this Mac (several places, docs/MULTI_ACCOUNT_PLAN.md §9): this Mac's journal of it and
+   * where it is go; the folder itself stays exactly as it is, so setting up the same folder again brings it back.
+   * The page writes out what's waiting first.
+   */
+  async forget(): Promise<void> {
+    const s = this.state;
+    this.detach();
+    const journal = this.journalStore;
+    this.journalStore = null;
+    await journal?.close().catch(() => undefined);
+    if (s) rmSync(join(this.o.userData, "library", `journal-${s.libraryId}.bin`), { force: true });
+    this.saveState(null);
+  }
 
   dispose() {
     this.detach();

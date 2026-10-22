@@ -89,18 +89,18 @@ export function ConnectApp({ clientId, redirectUri, codeChallenge, codeChallenge
           Cancel
         </button>
       </form>
-      {!isPending && !email ? (
+      {!isPending ? (
         <p className="mt-6 text-sm text-muted">
           <button
             type="button"
             className="font-medium text-accent underline decoration-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] underline-offset-2 hover:decoration-current"
-            onClick={async () => {
-              // A stale session cookie would send /signin straight back here; clear it first.
-              await authClient.signOut().catch(() => undefined);
-              window.location.assign(`/signin?returnTo=${encodeURIComponent(`/connect${window.location.search}`)}`);
+            onClick={() => {
+              // The sign-in page for one more account (add=1): it shows even with a session cookie, and the accounts
+              // this browser is signed in to stay signed in (Better Auth's sign-out would end them all).
+              window.location.assign(`/signin?add=1&returnTo=${encodeURIComponent(`/connect${window.location.search}`)}`);
             }}
           >
-            Sign in again
+            {email ? "Use another account" : "Sign in again"}
           </button>
         </p>
       ) : null}

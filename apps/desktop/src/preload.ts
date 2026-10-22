@@ -78,7 +78,16 @@ contextBridge.exposeInMainWorld("foleviDesktop", bridge);
 // ---------------------------------------------------------------- foleviShell (the bundled interface only)
 
 type ShellMode = "unset" | "local" | "account";
-type Bootstrap = { shell: false } | { shell: true; mode: ShellMode; version: string; deviceName?: string };
+type Bootstrap = { shell: false } | { shell: true; mode: ShellMode; version: string; deviceName?: string; places?: { current: string | null; background: boolean } | null };
+
+/** Plain data only across the bridge (contextBridge already copied the page's object; this drops anything else). */
+function plain(v: unknown): unknown {
+  try {
+    return JSON.parse(JSON.stringify(v ?? null));
+  } catch {
+    return null;
+  }
+}
 
 /**
  * A part of the bridge that later work fills in (the library layer, the Keychain, sign-in, Foli AI on this
@@ -286,6 +295,43 @@ if (boot.shell) {
         throw { name: "LockError", code: error.code, message: error.message };
       },
     },
+    // Several places (main.ts, docs/MULTI_ACCOUNT_PLAN.md §2.2): this page's place (main binds it; the page never
+    // names another for its session, keys or reminders), the list, switching, signing in to one more account.
+    ...(boot.places
+      ? {
+          places: {
+            current: boot.places.current,
+            background: boot.places.background,
+            list: () => ipcRenderer.invoke("shell:places-list"),
+            onChange: (cb: (places: unknown) => void) => {
+              const listener = (_e: IpcRendererEvent, list: unknown) => cb(list);
+              ipcRenderer.on("places:changed", listener);
+              return () => {
+                ipcRenderer.removeListener("places:changed", listener);
+              };
+            },
+            switchTo: async (id: string, o?: { path?: string }) => {
+              const ok = (await ipcRenderer.invoke("shell:places-switch", String(id), { path: typeof o?.path === "string" ? o.path : undefined })) as boolean;
+              if (!ok) throw new Error("Folevi couldn't open that place.");
+            },
+            signIn: () => ipcRenderer.invoke("shell:places-sign-in") as Promise<string | null>,
+            describe: async (d: unknown) => {
+              await ipcRenderer.invoke("shell:places-describe", plain(d));
+            },
+            signOut: async (id: string, o?: { next?: string }) => {
+              await ipcRenderer.invoke("shell:places-sign-out", String(id), typeof o?.next === "string" ? o.next : null);
+            },
+            forgetLibrary: async () => {
+              await ipcRenderer.invoke("shell:places-forget-library");
+            },
+            convexToken: (id: string) => ipcRenderer.invoke("shell:places-convex-token", String(id)) as Promise<string | null>,
+            quickAddPlace: () => ipcRenderer.invoke("shell:places-quick-add") as Promise<string | null>,
+            setQuickAddPlace: async (id: string) => {
+              await ipcRenderer.invoke("shell:places-set-quick-add", String(id));
+            },
+          },
+        }
+      : {}),
     /** Reminders as Mac notifications, kept by the app across restarts (reminders.ts). */
     notify: {
       schedule: async (n: { id: string; at: number; title: string; body: string; path: string }) => {

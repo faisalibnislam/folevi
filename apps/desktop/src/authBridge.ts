@@ -15,7 +15,7 @@
 // Everything Electron-specific (net.fetch, shell.openExternal, safeStorage) is passed in, so this loads in
 // plain Node: the unit tests (authBridge.test.ts) and the web app's e2e FakeShell run this same code.
 import { createHash, randomBytes } from "node:crypto";
-import type { SecretStore } from "./secrets";
+import { accountSessionName, type SecretName, type SecretStore } from "./secrets";
 
 export const SHELL_CLIENT_ID = "folevi-shell";
 export const SHELL_REDIRECT_URI = "folevi://auth/callback";
@@ -39,15 +39,31 @@ export interface AuthBridgeDeps {
   signInTimeoutMs?: number;
 }
 
+/** Who a session belongs to, as Better Auth says (after signing in; never the token). */
+export interface SessionUser {
+  userId: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+}
+
+/**
+ * The calls below take an optional `slot`: the account's user id (several places, docs/MULTI_ACCOUNT_PLAN.md
+ * §2.2; its token is `auth.session.<user id>`). Without one they use the single session older builds kept.
+ */
 export interface AuthBridge {
   signIn(): Promise<boolean>;
-  signOut(): Promise<void>;
-  fetch(path: unknown, init: unknown): Promise<BridgeResponse>;
-  convexToken(): Promise<string | null>;
+  /** Signs in to one more account: its user, or null when it didn't finish. The same person again replaces their old session. */
+  signInAccount(): Promise<SessionUser | null>;
+  /** The single session an older build kept, moved to its account's slot: that account, or null (none, or ended). */
+  adoptLegacy(): Promise<SessionUser | null>;
+  signOut(slot?: string): Promise<void>;
+  fetch(path: unknown, init: unknown, slot?: string): Promise<BridgeResponse>;
+  convexToken(slot?: string): Promise<string | null>;
   /** A folevi://auth/callback link from the browser: true when it was one (whether or not it was expected). */
   handleCallback(url: string): boolean;
   /** Whether a session token is stored (for main's logs and tests; never sent to the page). */
-  signedIn(): boolean;
+  signedIn(slot?: string): boolean;
 }
 
 /** Whether a link is the end of a sign-in in the browser: folevi://auth/callback?… */
@@ -141,17 +157,33 @@ export function createAuthBridge(deps: AuthBridgeDeps): AuthBridge {
     p?.resolve(null);
   };
 
-  const token = () => deps.store.get(TOKEN);
+  const nameOf = (slot?: string | null): SecretName => (slot ? accountSessionName(slot) : TOKEN);
+  const token = (slot?: string) => deps.store.get(nameOf(slot));
 
-  /** A request to the website with the bearer, as native code sends it. */
-  const send = async (url: URL, init: { method: string; headers?: Record<string, string>; body?: string }, bearer = token()) => {
+  /** A request to the website with the bearer, as native code sends it. A rotated token goes back to `slot`. */
+  const send = async (url: URL, init: { method: string; headers?: Record<string, string>; body?: string }, bearer = token(), slot?: string | null) => {
     const headers: Record<string, string> = { ...(init.headers ?? {}), origin: service.origin };
     if (bearer) headers.authorization = `Bearer ${bearer}`;
     const res = await deps.fetch(url.toString(), { method: init.method, headers, body: init.body, credentials: "omit", redirect: "manual", cache: "no-store" });
     // A refreshed session comes back as a new token (Better Auth's bearer plugin): keep it.
     const rotated = res.headers.get("set-auth-token");
-    if (bearer && rotated && rotated !== bearer && TOKEN_RE.test(rotated)) deps.store.set(TOKEN, rotated);
+    // (`slot` null: a token being checked, kept nowhere yet.)
+    if (bearer && rotated && rotated !== bearer && TOKEN_RE.test(rotated) && slot !== null) deps.store.set(nameOf(slot), rotated);
     return { res, rotated };
+  };
+
+  /** Who a token's session belongs to (null: no live session, or no answer). */
+  const userOf = async (bearer: string): Promise<SessionUser | null> => {
+    try {
+      const { res } = await send(new URL("/api/auth/get-session", service), { method: "GET" }, bearer, null);
+      if (!res.ok) return null;
+      const body = (await res.json()) as { user?: { id?: unknown; name?: unknown; email?: unknown; image?: unknown } } | null;
+      const u = body?.user;
+      if (!u || typeof u.id !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(u.id)) return null;
+      return { userId: u.id, name: typeof u.name === "string" ? u.name.slice(0, 120) : "", email: typeof u.email === "string" ? u.email.slice(0, 254) : "", avatarUrl: typeof u.image === "string" && /^https:\/\//.test(u.image) ? u.image.slice(0, 2000) : null };
+    } catch {
+      return null;
+    }
   };
 
   const endSession = async (bearer: string) => {
@@ -163,7 +195,7 @@ export function createAuthBridge(deps: AuthBridgeDeps): AuthBridge {
   };
 
   return {
-    signedIn: () => token() !== null,
+    signedIn: (slot) => token(slot) !== null,
 
     handleCallback(url) {
       if (!isAuthCallback(url)) return false;
@@ -183,6 +215,83 @@ export function createAuthBridge(deps: AuthBridgeDeps): AuthBridge {
     },
 
     async signIn() {
+      const access = await obtain();
+      if (!access) return false;
+      const previous = token();
+      deps.store.set(TOKEN, access);
+      // Signing in again (another account, or after a stale session) ends the session this Mac held before.
+      if (previous && previous !== access) await endSession(previous);
+      return true;
+    },
+
+    async signInAccount() {
+      const access = await obtain();
+      if (!access) return null;
+      const user = await userOf(access);
+      if (!user) {
+        await endSession(access);
+        return null;
+      }
+      const previous = token(user.userId);
+      deps.store.set(nameOf(user.userId), access);
+      // The same person signing in again: their old session here ends. Other accounts keep theirs.
+      if (previous && previous !== access) await endSession(previous);
+      return user;
+    },
+
+    async adoptLegacy() {
+      const legacy = token();
+      if (!legacy) return null;
+      const user = await userOf(legacy);
+      if (!user) {
+        // Ended (or the server can't say right now: then it's tried again next launch).
+        return null;
+      }
+      if (!token(user.userId)) deps.store.set(nameOf(user.userId), legacy);
+      deps.store.delete(TOKEN);
+      return user;
+    },
+
+    async signOut(slot) {
+      cancelPending();
+      const bearer = token(slot);
+      if (bearer) await endSession(bearer);
+      deps.store.delete(nameOf(slot));
+    },
+
+    async fetch(path, init, slot) {
+      const url = authUrl(service, path);
+      const clean = cleanInit(init);
+      if (!url || !clean) throw new Error("Folevi only sends the website's /api/auth requests from here.");
+      const bearer = token(slot);
+      const { res, rotated } = await send(url, clean, bearer, slot);
+      const headers: Record<string, string> = {};
+      res.headers.forEach((value, key) => {
+        if (!HIDDEN_HEADERS.has(key.toLowerCase())) headers[key.toLowerCase()] = value;
+      });
+      const body = scrub(await res.text(), [bearer, rotated, token(slot)]);
+      return { status: res.status, headers, body };
+    },
+
+    async convexToken(slot) {
+      const bearer = token(slot);
+      if (!bearer) return null;
+      const { res } = await send(new URL("/api/auth/convex/token", service), { method: "GET" }, bearer, slot);
+      if (res.status === 401) {
+        // The session ended (signed out from Settings → Devices, expired): forget it.
+        deps.store.delete(nameOf(slot));
+        return null;
+      }
+      if (res.status === 403) return null;
+      if (!res.ok) throw new Error(`Folevi couldn't get a sync token (${res.status}).`);
+      const jwt = ((await res.json()) as { token?: unknown }).token;
+      return typeof jwt === "string" && jwt ? jwt : null;
+    },
+  };
+
+  /** The PKCE sign-in in the browser, ending with a new session's token (or null). */
+  async function obtain(): Promise<string | null> {
+    {
       // A new attempt replaces the one before it.
       cancelPending();
       const { verifier, challenge } = pkcePair(random);
@@ -206,10 +315,10 @@ export function createAuthBridge(deps: AuthBridgeDeps): AuthBridge {
       }
       const callback = await answer;
       clearTimeout(timer);
-      if (!callback) return false;
+      if (!callback) return null;
       const params = new URL(callback).searchParams;
       const code = params.get("code");
-      if (params.get("error") || !code || code.length > 128) return false;
+      if (params.get("error") || !code || code.length > 128) return null;
 
       let access: unknown;
       try {
@@ -221,55 +330,15 @@ export function createAuthBridge(deps: AuthBridgeDeps): AuthBridge {
           redirect: "manual",
           cache: "no-store",
         });
-        if (res.status !== 200) return false;
+        if (res.status !== 200) return null;
         access = ((await res.json()) as { access_token?: unknown }).access_token;
       } catch {
-        return false;
-      }
-      if (typeof access !== "string" || !TOKEN_RE.test(access)) return false;
-      const previous = token();
-      deps.store.set(TOKEN, access);
-      // Signing in again (another account, or after a stale session) ends the session this Mac held before.
-      if (previous && previous !== access) await endSession(previous);
-      return true;
-    },
-
-    async signOut() {
-      cancelPending();
-      const bearer = token();
-      if (bearer) await endSession(bearer);
-      deps.store.delete(TOKEN);
-    },
-
-    async fetch(path, init) {
-      const url = authUrl(service, path);
-      const clean = cleanInit(init);
-      if (!url || !clean) throw new Error("Folevi only sends the website's /api/auth requests from here.");
-      const bearer = token();
-      const { res, rotated } = await send(url, clean, bearer);
-      const headers: Record<string, string> = {};
-      res.headers.forEach((value, key) => {
-        if (!HIDDEN_HEADERS.has(key.toLowerCase())) headers[key.toLowerCase()] = value;
-      });
-      const body = scrub(await res.text(), [bearer, rotated, token()]);
-      return { status: res.status, headers, body };
-    },
-
-    async convexToken() {
-      const bearer = token();
-      if (!bearer) return null;
-      const { res } = await send(new URL("/api/auth/convex/token", service), { method: "GET" }, bearer);
-      if (res.status === 401) {
-        // The session ended (signed out from Settings → Devices, expired): forget it.
-        deps.store.delete(TOKEN);
         return null;
       }
-      if (res.status === 403) return null;
-      if (!res.ok) throw new Error(`Folevi couldn't get a sync token (${res.status}).`);
-      const jwt = ((await res.json()) as { token?: unknown }).token;
-      return typeof jwt === "string" && jwt ? jwt : null;
-    },
-  };
+      if (typeof access !== "string" || !TOKEN_RE.test(access)) return null;
+      return access;
+    }
+  }
 }
 
 /** The four calls preload.ts makes, answered only for the built-in interface's own pages. */
@@ -282,20 +351,30 @@ export const AUTH_CHANNELS = {
 
 type Handle = (channel: string, listener: (event: unknown, ...args: unknown[]) => unknown) => void;
 
-/** Registers the IPC handlers (ipcMain.handle). `allowed` checks the call came from the app's own page. */
-export function registerAuthIpc(handle: Handle, bridge: () => AuthBridge | null, allowed: (event: unknown) => boolean) {
+/**
+ * Registers the IPC handlers (ipcMain.handle). `allowed` checks the call came from the app's own page. With several
+ * places, `slot` names the account the calling page is bound to (its user id; undefined: the single session of
+ * older builds), and `signIn` replaces the plain sign-in (main adds the account to the places).
+ */
+export function registerAuthIpc(
+  handle: Handle,
+  bridge: () => AuthBridge | null,
+  allowed: (event: unknown) => boolean,
+  o: { slot?: (event: unknown) => string | undefined; signIn?: (event: unknown, b: AuthBridge) => Promise<boolean>; signOut?: (event: unknown, b: AuthBridge) => Promise<void> } = {},
+) {
   const guard =
-    <T>(fn: (b: AuthBridge, ...args: unknown[]) => Promise<T>, refused: T) =>
+    <T>(fn: (b: AuthBridge, event: unknown, ...args: unknown[]) => Promise<T>, refused: T) =>
     async (event: unknown, ...args: unknown[]) => {
       const b = bridge();
       if (!b || !allowed(event)) return refused;
-      return fn(b, ...args);
+      return fn(b, event, ...args);
     };
-  handle(AUTH_CHANNELS.signIn, guard((b) => b.signIn(), false));
-  handle(AUTH_CHANNELS.signOut, guard((b) => b.signOut(), undefined));
+  const slot = (event: unknown) => o.slot?.(event);
+  handle(AUTH_CHANNELS.signIn, guard((b, e) => (o.signIn ? o.signIn(e, b) : b.signIn()), false));
+  handle(AUTH_CHANNELS.signOut, guard((b, e) => (o.signOut ? o.signOut(e, b) : b.signOut(slot(e))), undefined));
   handle(
     AUTH_CHANNELS.fetch,
-    guard((b, path, init) => b.fetch(path, init), null),
+    guard((b, e, path, init) => b.fetch(path, init, slot(e)), null),
   );
-  handle(AUTH_CHANNELS.convexToken, guard((b) => b.convexToken(), null));
+  handle(AUTH_CHANNELS.convexToken, guard((b, e) => b.convexToken(slot(e)), null));
 }

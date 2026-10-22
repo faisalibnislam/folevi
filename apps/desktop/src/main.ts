@@ -29,8 +29,9 @@ import {
   type MenuItemConstructorOptions,
   type Session,
   type WebContents,
+  webContents as allContents,
 } from "electron";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
@@ -68,6 +69,8 @@ import { createSecretStore } from "./secrets";
 import { AppLock, electronCover } from "./lock";
 import { AiService, allowedAiUrl, HelperClient, registerAiIpc } from "./ai";
 import { DeviceKeys, registerE2eeIpc } from "./e2ee";
+import { LIBRARY, PlacesStore, userIdOf } from "./places";
+import type { SessionUser } from "./authBridge";
 
 const PARTITION = "persist:folevi";
 
@@ -123,6 +126,77 @@ const e2eeKeys = () =>
     cipher: safeStorage,
     touchId: { canPrompt: () => systemPreferences.canPromptTouchID(), prompt: (reason) => systemPreferences.promptTouchID(reason) },
   }));
+
+// ---------------------------------------------------------------- several places (docs/MULTI_ACCOUNT_PLAN.md §2.2)
+
+/**
+ * The library on this Mac and any number of accounts (places.ts): the bundled interface only. Each page is bound
+ * to one place (`bound`, by webContents id, set as it starts loading): its session (`auth.session.<user id>`), its
+ * encryption keys and its reminders are that place's, never one the page names. Main windows show the open place;
+ * every other place has a hidden runner window (/place-sync) that keeps it in sync and its notifications coming.
+ */
+let places: PlacesStore | null = null;
+const bound = new Map<number, string | null>();
+const runners = new Map<string, BrowserWindow>();
+/** The unread count the open place's window reports (desktop:badge); other places' come from places.json. */
+let currentBadge = 0;
+/** The account signed in last (a sign-in from the library opens it once the page has said what to do). */
+let lastAdded: string | null = null;
+/** Whether the library is set up (library.info().configured), for its runner. */
+let libraryConfigured = false;
+
+/** The place a page is bound to (main windows: the open place, until they load again). */
+function placeOfContents(wc: WebContents | null | undefined): string | null {
+  if (wc && bound.has(wc.id)) return bound.get(wc.id) ?? null;
+  return places?.state.current ?? null;
+}
+const placeOfEvent = (e: unknown) => placeOfContents((e as IpcMainInvokeEvent | null)?.sender ?? null);
+
+/** How a place's pages open: "local" (the library), "account", or "unset" (the first-launch choice). */
+function modeOf(place: string | null): DesktopSettings["mode"] {
+  if (!places) return settings.mode;
+  return places.modeOf(place);
+}
+
+/** Keeps a window bound to the place it loads: `place` is asked each time its page starts loading. */
+function bindOnLoad(win: BrowserWindow, place: () => string | null) {
+  const id = win.webContents.id;
+  bound.set(id, place());
+  win.webContents.on("did-start-navigation", (details) => {
+    if (details.isMainFrame && !details.isSameDocument) bound.set(id, place());
+  });
+  win.on("closed", () => bound.delete(id));
+}
+
+/** Each account's own encryption keys (userData/e2ee/accounts/<user id>); the library and older builds use the Mac's first pair. */
+const accountKeys = new Map<string, DeviceKeys>();
+function keysFor(event?: unknown): DeviceKeys {
+  const user = bundled && event ? userIdOf(placeOfEvent(event)) : null;
+  if (!user) return e2eeKeys();
+  let k = accountKeys.get(user);
+  if (!k) {
+    k = new DeviceKeys({
+      dir: join(app.getPath("userData"), "e2ee", "accounts", user),
+      cipher: safeStorage,
+      touchId: { canPrompt: () => systemPreferences.canPromptTouchID(), prompt: (reason) => systemPreferences.promptTouchID(reason) },
+    });
+    accountKeys.set(user, k);
+  }
+  return k;
+}
+
+/** The Mac's first pair of keys belonged to the one account older builds had: they become that account's. */
+function adoptLegacyKeys(userId: string) {
+  const legacy = join(app.getPath("userData"), "e2ee");
+  const target = join(legacy, "accounts", userId);
+  if (existsSync(target) || !existsSync(join(legacy, "device.bin"))) return;
+  try {
+    mkdirSync(target, { recursive: true, mode: 0o700 });
+    for (const f of ["device.bin", "device.json", "prefs.json"]) if (existsSync(join(legacy, f))) renameSync(join(legacy, f), join(target, f));
+  } catch {
+    /* tried again with the next sign-in */
+  }
+}
 
 // Folevi puts its window back itself (windowState.ts). macOS's own window restoration adds nothing but a
 // "reopen its windows?" alert after a forced quit (an update replacing the app, a hang), and that alert
@@ -269,7 +343,7 @@ const background = () => (nativeTheme.shouldUseDarkColors ? "#0E0E0F" : "#FFFFFF
  * speed while the app is in local mode. (Elsewhere, and on the website, hidden windows stay slowed down.)
  */
 function applyThrottling(win: BrowserWindow) {
-  if (!win.isDestroyed()) win.webContents.setBackgroundThrottling(!(bundled && settings.mode === "local"));
+  if (!win.isDestroyed()) win.webContents.setBackgroundThrottling(!(bundled && modeOf(placeOfContents(win.webContents)) === "local"));
 }
 
 /**
@@ -308,7 +382,11 @@ function installBundledInterface(ses: Session) {
     APP_SCHEME,
     createAppHandler({
       root,
-      mode: () => settings.mode,
+      // A runner's and Quick Add's page names its place (`?place=`); main windows show the open place.
+      mode: (url) => {
+        const named = url && (url.pathname === "/place-sync" || url.pathname === "/quick-add") ? url.searchParams.get("place") : null;
+        return modeOf(named && places?.has(named) ? named : (places?.state.current ?? null));
+      },
       csp: { serviceOrigin: SERVICE_URL.origin, extraConnect },
       // A local library's attachments (src/library/attachments.ts: STREAM chunks decrypted, by Range).
       files: library?.files ?? NO_LIBRARY_FILES,
@@ -442,23 +520,20 @@ if (noNetwork) {
   });
 }
 
-let guarded = false;
 /**
- * Local mode never contacts Folevi: besides the page's policy, the session cancels every request to Folevi's
- * and Convex's hosts (and the website the app points at), from any window.
+ * Local mode never contacts Folevi: besides the page's policy, the session cancels every request to Folevi's and
+ * Convex's hosts (and the website the app points at) from any page bound to the library, while an account's pages
+ * (the open place's, or a runner's) in the same session go through.
  */
 function applyNetworkGuard() {
   const ses = folevi;
   // (With no network at all, the session already cancels everything.)
   if (!ses || !bundled || noNetwork) return;
   const host = SERVICE_URL.hostname;
-  if (settings.mode === "local") {
-    ses.webRequest.onBeforeRequest({ urls: localModeBlockPatterns(host) }, (details, callback) => callback({ cancel: isBlockedInLocalMode(details.url, host) }));
-    guarded = true;
-  } else if (guarded) {
-    ses.webRequest.onBeforeRequest(null);
-    guarded = false;
-  }
+  ses.webRequest.onBeforeRequest({ urls: localModeBlockPatterns(host) }, (details, callback) => {
+    const wc = details.webContents ?? (details.webContentsId ? allContents.fromId(details.webContentsId) : undefined);
+    callback({ cancel: modeOf(placeOfContents(wc)) === "local" && isBlockedInLocalMode(details.url, host) });
+  });
 }
 
 const handoffFile = () => join(app.getPath("userData"), "handoff.json");
@@ -560,6 +635,8 @@ function createMainWindow(path = "/documents"): BrowserWindow {
     mainWindow = win;
     if (saved.maximized) win.maximize();
   }
+  // Every main window shows the open place (it changes with a switch, which loads the windows again).
+  if (bundled) bindOnLoad(win, () => places?.state.current ?? null);
   applyThrottling(win);
   guardNavigation(win.webContents);
   lockCover?.attach(win);
@@ -601,6 +678,122 @@ function showMain(path?: string) {
   app.focus({ steal: true });
 }
 
+/** The hidden runner windows: one per place no main window shows (docs/MULTI_ACCOUNT_PLAN.md §5.2). */
+function ensureRunners() {
+  if (!places || !bundled || needsUpdate) return;
+  const want = new Set<string>();
+  for (const a of places.state.accounts) if (a.id !== places.state.current) want.add(a.id);
+  if (places.state.library && libraryConfigured && places.state.current !== LIBRARY) want.add(LIBRARY);
+  for (const [id, win] of runners) {
+    if (want.has(id) && !win.isDestroyed()) continue;
+    runners.delete(id);
+    if (!win.isDestroyed()) win.destroy();
+  }
+  for (const id of want) if (!runners.has(id)) runners.set(id, createRunner(id));
+}
+
+function createRunner(place: string): BrowserWindow {
+  const win = new BrowserWindow({ show: false, width: 480, height: 320, paintWhenInitiallyHidden: false, webPreferences: webPreferences() });
+  bindOnLoad(win, () => place);
+  applyThrottling(win);
+  guardNavigation(win.webContents);
+  win.on("closed", () => {
+    if (runners.get(place) === win) runners.delete(place);
+  });
+  load(win, appUrl(`/place-sync?place=${encodeURIComponent(place)}`));
+  return win;
+}
+
+const isRunner = (wc: WebContents | null | undefined) => !!wc && [...runners.values()].some((w) => !w.isDestroyed() && w.webContents.id === wc.id);
+
+/**
+ * Opens a place in every main window (they load again, at `path`); the place that was open gets a runner. `null`
+ * with `pending`: account mode with no account yet (the sign-in screen); without: the first-launch choice.
+ */
+function switchTo(place: string | null, path = "/documents", o: { pending?: boolean } = {}) {
+  if (!places) return;
+  places.setCurrent(place);
+  if (place === null && o.pending) places.pendingAccount = true;
+  settings = { ...settings, mode: modeOf(place) };
+  saveSettings(settingsFile(), settings);
+  // The menu bar's recent notes and save state were the other place's.
+  recent = [];
+  status = "";
+  updateTray();
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (win === quickAdd || isRunner(win.webContents) || win.isDestroyed()) continue;
+    if (!isAppUrl(win.webContents.getURL()) && !win.webContents.getURL().startsWith("file:")) continue;
+    bound.set(win.webContents.id, place);
+    applyThrottling(win);
+    load(win, appUrl(path));
+  }
+  // Quick Add follows the open place unless it was given one of its own.
+  if (quickAdd && !quickAdd.isDestroyed() && !places.state.quickAdd) load(quickAdd, quickAddUrl());
+  ensureRunners();
+  updateDock();
+}
+
+/** Quick Add's place: the one picked there last, or the open place. */
+function quickAddPlace(): string | null {
+  const q = places?.state.quickAdd ?? null;
+  return q && places?.has(q) ? q : (places?.state.current ?? null);
+}
+
+function quickAddUrl(): string {
+  const p = bundled ? quickAddPlace() : null;
+  return appUrl(p ? `/quick-add?place=${encodeURIComponent(p)}` : "/quick-add");
+}
+
+/** The Dock badge: the open place's unread count and every other account's. */
+function updateDock() {
+  const others = places ? places.state.accounts.filter((a) => a.id !== places!.state.current).reduce((n, a) => n + a.unread, 0) : 0;
+  const n = currentBadge + others;
+  app.dock?.setBadge(n === 0 ? "" : n > 99 ? "99+" : String(n));
+}
+
+/** An account the app has just signed in to: a place (and its runner); the Mac's first keys if it's the first. */
+function addAccount(u: SessionUser) {
+  if (!places) return null;
+  const first = places.state.accounts.length === 0;
+  const a = places.addAccount(u);
+  if (!a) return null;
+  if (first) adoptLegacyKeys(u.userId);
+  lastAdded = a.id;
+  ensureRunners();
+  return a;
+}
+
+/**
+ * Signs this Mac out of one account: its session ends, its token and keys go, its runner closes. The page has
+ * already deleted that account's copy. When it was open, the windows go to the next place.
+ */
+async function signOutPlace(id: string, nextPlace: string | null = null) {
+  const user = userIdOf(id);
+  if (!places || !user || !places.has(id)) return;
+  await authBridge?.signOut(user).catch(() => undefined);
+  try {
+    accountKeys.get(user)?.reset();
+  } catch {
+    /* no keys made for it */
+  }
+  accountKeys.delete(user);
+  rmSync(join(app.getPath("userData"), "e2ee", "accounts", user), { recursive: true, force: true });
+  const runner = runners.get(id);
+  runners.delete(id);
+  if (runner && !runner.isDestroyed()) runner.destroy();
+  const wasOpen = places.state.current === id;
+  const next = places.removeAccount(id);
+  if (lastAdded === id) lastAdded = null;
+  // (The page may name where to go: the library, after the account came down into it.)
+  if (nextPlace === LIBRARY && !places.state.library) {
+    places.setLibrary(true);
+    libraryConfigured = true;
+  }
+  if (wasOpen) switchTo(nextPlace && places.has(nextPlace) ? nextPlace : next);
+  else ensureRunners();
+  updateDock();
+}
+
 function commandMain(command: { type: "new-note" } | { type: "navigate"; path: string }) {
   showMain();
   mainWindow?.webContents.send("desktop:command", command);
@@ -632,13 +825,14 @@ function createQuickAdd() {
     app.setActivationPolicy("regular");
     void app.dock?.show();
   }
+  if (bundled) bindOnLoad(quickAdd, quickAddPlace);
   applyThrottling(quickAdd);
   guardNavigation(quickAdd.webContents);
   lockCover?.attach(quickAdd);
   // Clicking elsewhere puts it away, like Spotlight.
   quickAdd.on("blur", () => quickAdd?.hide());
   quickAdd.on("closed", () => (quickAdd = null));
-  load(quickAdd, appUrl("/quick-add"));
+  load(quickAdd, quickAddUrl());
 }
 
 function toggleQuickAdd() {
@@ -654,7 +848,7 @@ function toggleQuickAdd() {
     return;
   }
   // Loaded before signing in (it showed the sign-in page), or left elsewhere: back to the form.
-  if (!win.webContents.getURL().startsWith(appUrl("/quick-add"))) load(win, appUrl("/quick-add"));
+  if (!win.webContents.getURL().startsWith(appUrl("/quick-add"))) load(win, quickAddUrl());
   // On the screen the pointer is on, a little above the middle.
   const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
   const [w, h] = win.getSize() as [number, number];
@@ -821,11 +1015,16 @@ const showing = new Set<Notification>();
 /** A reminder going off: a Mac notification (if Settings allows them) that opens its to-do when clicked. */
 function showReminder(r: Reminder) {
   if (!settings.notifications || !Notification.isSupported()) return;
-  const note = new Notification({ title: r.title, body: r.body });
+  // Reminders are the library's: with accounts here too, they say so, and clicking one opens the library.
+  const labelled = !!places && places.state.accounts.length > 0;
+  const note = new Notification({ title: labelled ? `On this Mac · ${r.title}` : r.title, body: r.body });
   showing.add(note);
   note.on("click", () => {
     showing.delete(note);
-    showMain(r.path);
+    if (places && places.state.current !== LIBRARY && places.state.library) {
+      switchTo(LIBRARY, r.path.startsWith("/") ? r.path : "/documents");
+      showMain();
+    } else showMain(r.path);
   });
   note.on("close", () => showing.delete(note));
   note.show();
@@ -841,7 +1040,10 @@ function listen() {
   ipcMain.on("desktop:badge", (e, count: unknown) => {
     if (!fromFolevi(e)) return;
     const n = typeof count === "number" && Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
-    app.dock?.setBadge(n === 0 ? "" : n > 99 ? "99+" : String(n));
+    // A runner's count comes with its place (places-describe); the badge here is the open place's.
+    if (isRunner(e.sender)) return;
+    currentBadge = n;
+    updateDock();
   });
   ipcMain.on("desktop:notify", (e, input: unknown) => {
     if (!fromFolevi(e) || !settings.notifications || !Notification.isSupported()) return;
@@ -850,7 +1052,14 @@ function listen() {
     if (!title) return;
     const path = text(n.path, 500);
     const note = new Notification({ title, body: text(n.body, 400) });
-    note.on("click", () => showMain(path || undefined));
+    // From another place (its runner): clicking it opens that place, at the page it's about.
+    const place = bundled ? placeOfContents(e.sender) : null;
+    note.on("click", () => {
+      if (place && places && place !== places.state.current && places.has(place)) {
+        switchTo(place, path.startsWith("/") ? path : "/documents");
+        showMain();
+      } else showMain(path || undefined);
+    });
     note.show();
   });
   ipcMain.on("desktop:recent", (e, list: unknown) => {
@@ -878,13 +1087,40 @@ function listen() {
   // interface's own pages.
   ipcMain.on("shell:bootstrap", (e, href: unknown) => {
     const url = e.senderFrame?.url || (typeof href === "string" ? href : "");
-    e.returnValue = bundled && isAppUrl(url) ? { shell: true, mode: settings.mode, version: app.getVersion(), deviceName: computerName() } : { shell: false };
+    const place = placeOfContents(e.sender);
+    e.returnValue =
+      bundled && isAppUrl(url)
+        ? { shell: true, mode: modeOf(place), version: app.getVersion(), deviceName: computerName(), places: places ? { current: place, background: isRunner(e.sender) } : null }
+        : { shell: false };
   });
   // foleviShell.auth: signing in, the page's /api/auth requests and Convex tokens (authBridge.ts).
   registerAuthIpc(
     (channel, listener) => ipcMain.handle(channel, listener),
     () => authBridge,
     (e) => bundled && fromFolevi(e as IpcMainInvokeEvent),
+    {
+      // The page's own account (its user id), never one it names; a page with no account yet uses the single
+      // session older builds kept.
+      slot: (e) => userIdOf(placeOfEvent(e)) ?? undefined,
+      signIn: async (e, b) => {
+        if (!places) return b.signIn();
+        const place = placeOfEvent(e);
+        const u = await b.signInAccount();
+        if (!u) return false;
+        const a = addAccount(u);
+        if (!a) return false;
+        // From the library the page goes on itself (move my notes, or keep them separate) and then opens it.
+        if (place === LIBRARY) return true;
+        // A first sign-in, or someone else on a "session ended" screen: the windows open that account.
+        if (a.id !== place) switchTo(a.id);
+        return true;
+      },
+      signOut: async (e, b) => {
+        const place = placeOfEvent(e);
+        if (places && userIdOf(place)) await signOutPlace(place!);
+        else await b.signOut();
+      },
+    },
   );
   // foleviShell.secrets and foleviShell.ai (ai.ts): the page may store its three Foli AI keys but never read
   // them back ("auth.session" is refused), and its AI requests stream back on shell:ai-chunk.
@@ -900,7 +1136,8 @@ function listen() {
   // foleviShell.e2ee / foleviDesktop.e2ee: this Mac's encryption device keys (e2ee.ts), for Folevi's own pages only.
   registerE2eeIpc(
     (channel, listener) => ipcMain.handle(channel, listener),
-    e2eeKeys,
+    // Each account's own keys (the page's account), the Mac's first pair for the website and the library.
+    (e) => keysFor(e),
     (e) => fromFolevi(e as IpcMainInvokeEvent),
   );
   // foleviShell.lock: the Touch ID lock's settings (lock.ts); turning it on or off asks for Touch ID.
@@ -915,24 +1152,82 @@ function listen() {
     }
   });
   ipcMain.handle("shell:set-mode", (e, mode: unknown) => {
-    if (!bundled || !fromFolevi(e) || (mode !== "local" && mode !== "account")) return false;
-    if (settings.mode === mode) return true;
-    applySettings({ ...settings, mode });
-    for (const win of BrowserWindow.getAllWindows()) applyThrottling(win);
-    // Reminders are this Mac's only in local mode; in account mode the server sends them.
-    if (mode === "local") reminders?.load();
-    else reminders?.clear();
-    applyNetworkGuard();
-    // The page's policy and the network rules follow the mode: every window opens again in it, once the page
-    // has its answer.
-    setTimeout(() => {
-      for (const win of BrowserWindow.getAllWindows()) if (isAppUrl(win.webContents.getURL())) win.webContents.reload();
-    }, 50);
+    if (!bundled || !fromFolevi(e) || (mode !== "local" && mode !== "account") || !places) return false;
+    const place = placeOfEvent(e);
+    // The page's policy and the network rules follow the place: every window opens again in it, once the page
+    // has its answer. "local": the library (it's one of the places from now on); "account": the account signed in
+    // last, else the first one, else the sign-in screen.
+    if (mode === "local") {
+      if (place === LIBRARY && settings.mode === "local") return true;
+      places.setLibrary(true);
+      libraryConfigured = true;
+      setTimeout(() => switchTo(LIBRARY), 50);
+      return true;
+    }
+    const target = (lastAdded && places.has(lastAdded) ? lastAdded : null) ?? places.state.accounts[0]?.id ?? null;
+    if (target === place && userIdOf(place)) return true;
+    setTimeout(() => switchTo(target, "/documents", { pending: target === null }), 50);
+    return true;
+  });
+  // foleviShell.places (preload.ts, docs/MULTI_ACCOUNT_PLAN.md §2.2): the list, switching, signing in to one more
+  // account, what a page says of its own place, signing out of one, forgetting the library, another account's
+  // token for a move, and Quick Add's place. Only for the bundled interface's own pages.
+  const placesCall = (e: IpcMainInvokeEvent) => bundled && fromFolevi(e) && places !== null;
+  ipcMain.handle("shell:places-list", async (e) => (placesCall(e) ? await placesList() : []));
+  ipcMain.handle("shell:places-switch", (e, id: unknown, o: unknown) => {
+    if (!placesCall(e) || typeof id !== "string" || !places!.has(id)) return false;
+    const raw = o && typeof o === "object" ? (o as Record<string, unknown>).path : undefined;
+    const path = typeof raw === "string" && raw.startsWith("/") && !raw.startsWith("//") && raw.length <= 500 ? raw : "/documents";
+    // Once the page has its answer.
+    setTimeout(() => switchTo(id, path), 50);
+    return true;
+  });
+  ipcMain.handle("shell:places-sign-in", async (e) => {
+    if (!placesCall(e) || !authBridge) return null;
+    const u = await authBridge.signInAccount();
+    return u ? (addAccount(u)?.id ?? null) : null;
+  });
+  ipcMain.handle("shell:places-describe", (e, d: unknown) => {
+    if (!placesCall(e)) return null;
+    const place = placeOfEvent(e);
+    if (place === LIBRARY) places!.describeLibrary(d);
+    else if (place && userIdOf(place)) places!.describe(place, d);
+    return null;
+  });
+  ipcMain.handle("shell:places-sign-out", async (e, id: unknown, next: unknown) => {
+    if (!placesCall(e) || typeof id !== "string" || !userIdOf(id)) return false;
+    await signOutPlace(id, typeof next === "string" ? next : null);
+    return true;
+  });
+  ipcMain.handle("shell:places-forget-library", async (e) => {
+    if (!placesCall(e) || !library) return false;
+    await library.forget().catch(() => undefined);
+    libraryConfigured = false;
+    const wasOpen = places!.state.current === LIBRARY;
+    places!.setLibrary(false);
+    reminders?.clear();
+    const runner = runners.get(LIBRARY);
+    runners.delete(LIBRARY);
+    if (runner && !runner.isDestroyed()) runner.destroy();
+    if (wasOpen) setTimeout(() => switchTo(places!.state.accounts[0]?.id ?? null), 50);
+    return true;
+  });
+  ipcMain.handle("shell:places-convex-token", async (e, id: unknown) => {
+    // Only a page that is itself signed in moves notes between accounts.
+    if (!placesCall(e) || !authBridge || typeof id !== "string" || !places!.has(id) || !userIdOf(placeOfEvent(e))) return null;
+    return await authBridge.convexToken(userIdOf(id)!).catch(() => null);
+  });
+  ipcMain.handle("shell:places-quick-add", (e) => (placesCall(e) ? quickAddPlace() : null));
+  ipcMain.handle("shell:places-set-quick-add", (e, id: unknown) => {
+    if (!placesCall(e) || typeof id !== "string" || !places!.has(id)) return false;
+    places!.setQuickAdd(id);
+    // Quick Add opens again in that place (its policy and session are the place's).
+    if (quickAdd && !quickAdd.isDestroyed()) setTimeout(() => quickAdd && !quickAdd.isDestroyed() && load(quickAdd, quickAddUrl()), 50);
     return true;
   });
   // Local mode's reminders and subscribed calendars (WP14, reminders.ts and calendarFetch.ts): only for the
   // bundled interface in local mode (in account mode the server sends reminders and reads calendars).
-  const localShell = (e: IpcMainInvokeEvent) => bundled && settings.mode === "local" && fromFolevi(e);
+  const localShell = (e: IpcMainInvokeEvent) => bundled && modeOf(placeOfEvent(e)) === "local" && fromFolevi(e);
   ipcMain.handle("shell:notify-schedule", (e, n: unknown) => (localShell(e) ? (reminders?.schedule(n) ?? false) : false));
   ipcMain.handle("shell:notify-cancel", (e, id: unknown) => {
     if (localShell(e)) reminders?.cancel(id);
@@ -1046,6 +1341,56 @@ function listen() {
 let dragStarted = false;
 let exiting = false;
 
+// ---------------------------------------------------------------- places at launch
+
+/**
+ * The places (places.json). A Mac that ran an older Folevi has none: its mode says where it was (the library, or
+ * the one account, whose session moves to its own slot once the server says whose it is).
+ */
+async function startPlaces() {
+  const file = join(app.getPath("userData"), "places.json");
+  const first = !PlacesStore.exists(file);
+  places = new PlacesStore(file);
+  const info = await library?.info().catch(() => null);
+  libraryConfigured = info?.configured !== false && !!info;
+  if (first) {
+    if (libraryConfigured) places.setLibrary(true);
+    if (settings.mode === "local") {
+      places.setLibrary(true);
+      places.setCurrent(LIBRARY);
+    }
+  } else if (libraryConfigured && settings.mode === "local") places.setLibrary(true);
+  // The single session older builds kept: it becomes its account's (a few seconds at most; else next launch).
+  if (authBridge?.signedIn()) {
+    const adopted = await Promise.race([authBridge.adoptLegacy().catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 4000))]);
+    if (adopted) {
+      const a = addAccount(adopted);
+      if (a && settings.mode === "account" && !places.state.current) places.setCurrent(a.id);
+    }
+  }
+  if (settings.mode === "account" && !places.state.current) {
+    if (places.state.accounts[0]) places.setCurrent(places.state.accounts[0].id);
+    // Account mode with no account yet (or a session not yet moved to its slot): the sign-in screen, or the
+    // older build's session.
+    else places.pendingAccount = true;
+  }
+  if (settings.mode === "local" && !places.state.current && places.state.library) places.setCurrent(LIBRARY);
+  // Every window hears of a change to the list (a sign-in, a runner's counts).
+  places.subscribe(() => {
+    void placesList().then((list) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.isDestroyed() && isAppUrl(win.webContents.getURL())) win.webContents.send("places:changed", list);
+    });
+    updateDock();
+  });
+}
+
+/** The places as the page lists them. */
+async function placesList() {
+  if (!places) return [];
+  const info = await library?.info().catch(() => null);
+  return places.list({ libraryKind: info?.configured ? info.kind : null, displayPath: info?.displayPath ?? "", configured: info?.configured === true });
+}
+
 // ---------------------------------------------------------------- start
 
 app.setAboutPanelOptions({ applicationName: "Folevi", applicationVersion: app.getVersion(), copyright: "© 2026 Folevi", website: "https://folevi.com" });
@@ -1073,11 +1418,13 @@ app.whenReady().then(async () => {
     ai = createAi();
     // Before any window shows the new origin: hand over edits waiting on the website's origin (once).
     await runHandoff(folevi).catch((e) => console.error("Folevi handoff:", e));
+    await startPlaces();
     applyNetworkGuard();
   }
   listen();
   reminders = new Reminders(join(app.getPath("userData"), "reminders.json"), { show: showReminder });
-  if (bundled && settings.mode === "local") reminders.load();
+  // The library's reminders go off whichever place is open (they were cleared when an account opened).
+  if (bundled && (settings.mode === "local" || places?.state.library)) reminders.load();
   buildMenu();
   shortcutError = registerShortcut();
   updateTray();
@@ -1086,6 +1433,8 @@ app.whenReady().then(async () => {
   // recent macOS.)
   if (!pendingLink) createMainWindow();
   createQuickAdd();
+  // The other places keep syncing behind the open one.
+  ensureRunners();
   if (pendingLink) {
     openLink(pendingLink);
     pendingLink = null;

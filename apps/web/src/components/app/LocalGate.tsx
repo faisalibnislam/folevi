@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/components/ui/Toast";
 import { Shell } from "./Shell";
 import { DesktopQuickAdd } from "./DesktopQuickAdd";
+import { LibraryPlaceSync } from "@/components/places/LibraryPlaceSync";
 import { LockedLibrary } from "./LockedLibrary";
 
 /**
@@ -123,5 +124,5 @@ export function LocalGate() {
     }
     return <FullPageMessage title="Opening your folio…" busy />;
   }
-  return <AppStateProvider profile={me.profile}>{route.name === "quick-add" ? <DesktopQuickAdd /> : <Shell />}</AppStateProvider>;
+  return <AppStateProvider profile={me.profile}>{route.name === "place-sync" ? <LibraryPlaceSync /> : route.name === "quick-add" ? <DesktopQuickAdd /> : <Shell />}</AppStateProvider>;
 }

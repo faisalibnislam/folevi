@@ -133,6 +133,12 @@ export async function switchToPlace(place: Place, o: { workspaceId?: string | nu
 export async function signInToAnotherAccount(): Promise<void> {
   const host = isShell() ? shell()?.places : null;
   if (host) {
+    // From the library: the account opens on one screen that asks "Move my notes into this account" or "Keep them
+    // separate" (components/migrate/MigrationGate.tsx).
+    if (host.current === LIBRARY_PLACE) {
+      const flow = (await import("@/lib/local/signIn")).signInToFolevi();
+      if (flow) return await flow();
+    }
     const id = await host.signIn();
     if (id) await host.switchTo(id, { path: "/documents" });
     return;

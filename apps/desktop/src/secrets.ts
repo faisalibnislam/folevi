@@ -16,10 +16,19 @@ export interface Cipher {
 
 /** Every secret the app keeps, by name. The page's own (write-only) ones are the `ai.` keys. */
 export const SECRET_NAMES = ["auth.session", "ai.openai", "ai.anthropic", "ai.google"] as const;
-export type SecretName = (typeof SECRET_NAMES)[number];
+/** Each account's own session (several places, docs/MULTI_ACCOUNT_PLAN.md §2.2): `auth.session.<user id>`. */
+export type AccountSessionName = `auth.session.${string}`;
+export type SecretName = (typeof SECRET_NAMES)[number] | AccountSessionName;
+
+const ACCOUNT_SESSION = /^auth\.session\.[A-Za-z0-9_-]{1,64}$/;
 
 export function isSecretName(v: unknown): v is SecretName {
-  return typeof v === "string" && (SECRET_NAMES as readonly string[]).includes(v);
+  return typeof v === "string" && ((SECRET_NAMES as readonly string[]).includes(v) || ACCOUNT_SESSION.test(v));
+}
+
+/** The secret an account's session is kept under. */
+export function accountSessionName(userId: string): AccountSessionName {
+  return `auth.session.${userId}`;
 }
 
 export interface SecretStore {

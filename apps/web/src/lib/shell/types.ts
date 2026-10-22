@@ -302,8 +302,8 @@ export interface ShellPlaces {
   /** Signs in to one more account (the browser or the sign-in sheet); its id, or null when it didn't finish. It doesn't switch. */
   signIn(): Promise<string | null>;
   describe(d: ShellPlaceDescription): Promise<void>;
-  /** Ends an account's session here and deletes its token and keys (the page clears its data first). */
-  signOut(id: string): Promise<void>;
+  /** Ends an account's session here and deletes its token and keys (the page clears its data first). `next`: the place the windows open after, when it was the open one. */
+  signOut(id: string, o?: { next?: string }): Promise<void>;
   /** Forgets the library: this device's copy and journal go, its folder stays as it is. */
   forgetLibrary(): Promise<void>;
   /** Another account's short-lived Convex token, for moving notes between two accounts. */

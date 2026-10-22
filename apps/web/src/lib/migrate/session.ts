@@ -113,9 +113,18 @@ export type OpenLibrary = Awaited<ReturnType<typeof openLibraryHere>>;
  * session and forgets the token), forgets the account's copy here (but never the library's, `folevi-local-*`),
  * and opens in local mode. The account itself goes on existing.
  */
-export async function signOutAfterExport(): Promise<void> {
-  const [{ forgetThisDevice }, { clearAllLocalData }] = await Promise.all([import("@/lib/nativeDevice"), import("@/lib/sync/db")]);
+export async function signOutAfterExport(profileId?: string): Promise<void> {
+  const [{ forgetThisDevice }, { clearAllLocalData, clearAccountData }] = await Promise.all([import("@/lib/nativeDevice"), import("@/lib/sync/db")]);
   await forgetThisDevice().catch(() => undefined);
+  // Several places: only this account goes, and the library opens (the other accounts stay signed in).
+  const places = shell()?.places;
+  const place = places?.current ?? null;
+  if (places && place?.startsWith("acct:")) {
+    if (profileId) await clearAccountData(profileId, place.slice(5));
+    setPendingMove(null);
+    await places.signOut(place, { next: "library" }).catch(() => undefined);
+    return;
+  }
   await shell()
     ?.auth.signOut()
     .catch(() => undefined);

@@ -6,6 +6,10 @@ import { useEffect, useRef, useState } from "react";
 import { useAppRouter } from "@/lib/app/router";
 import { desktop } from "@/lib/desktop";
 import { QuickAddForm } from "./QuickAddTask";
+import { Select } from "@/components/ui/Select";
+import { shell } from "@/lib/shell";
+import { deviceWords } from "@/lib/shell/words";
+import { usePlaces } from "@/lib/places";
 
 export function DesktopQuickAdd() {
   const bridge = desktop();
@@ -43,6 +47,7 @@ export function DesktopQuickAdd() {
         </h1>
         <p className="text-xs text-muted">Tasks without a page go to your Inbox.</p>
       </div>
+      <QuickAddPlace />
       <QuickAddForm
         key={round}
         onClose={close}
@@ -52,5 +57,28 @@ export function DesktopQuickAdd() {
         }}
       />
     </main>
+  );
+}
+
+/**
+ * Several places (docs/MULTI_ACCOUNT_PLAN.md §6): which place the task goes to, remembered for next time. Picking
+ * another opens Quick Add again in that place (its session and its notes are that place's).
+ */
+function QuickAddPlace() {
+  const host = shell()?.places;
+  const { places, current } = usePlaces();
+  if (!host?.setQuickAddPlace || places.length < 2) return null;
+  const label = (p: (typeof places)[number]) => (p.kind === "library" ? `On ${deviceWords().here}` : p.name || p.email || "Folevi account");
+  return (
+    <div className="mb-3 flex items-center gap-2 text-[13px] text-muted">
+      <span>Add to</span>
+      <Select aria-label="Add to" value={current ?? ""} onChange={(e) => void host.setQuickAddPlace?.(e.target.value)} className="min-w-0 flex-1">
+        {places.map((p) => (
+          <option key={p.id} value={p.id}>
+            {label(p)}
+          </option>
+        ))}
+      </Select>
+    </div>
   );
 }

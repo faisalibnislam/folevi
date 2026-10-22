@@ -421,11 +421,15 @@ type Answer<T> = { ok: true; value: T } | { ok: false; error: { code: string; me
  * Registers the page's calls. `allowed` checks the sender is one of Folevi's own pages (main.ts `fromFolevi`:
  * the website the app shows, or app://folevi); anything else is refused without touching the keys.
  */
-export function registerE2eeIpc(handle: Handle, keys: () => DeviceKeys | null, allowed: (event: unknown) => boolean): void {
+/**
+ * `keys` gets the call's event: several places in the app (docs/MULTI_ACCOUNT_PLAN.md §4) keep a pair of device keys
+ * per account, and the page asking is bound to one (main.ts).
+ */
+export function registerE2eeIpc(handle: Handle, keys: (event: unknown) => DeviceKeys | null, allowed: (event: unknown) => boolean): void {
   const answer =
     <T>(fn: (k: DeviceKeys, ...args: unknown[]) => T | Promise<T>) =>
     async (event: unknown, ...args: unknown[]): Promise<Answer<T>> => {
-      const k = keys();
+      const k = keys(event);
       if (!k || !allowed(event)) return { ok: false, error: { code: "unavailable", message: "Encryption keys aren't available here." } };
       try {
         return { ok: true, value: await fn(k, ...args) };

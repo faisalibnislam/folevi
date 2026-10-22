@@ -161,7 +161,12 @@ function UploadToAccount({ move }: { move: Extract<PendingMove, { direction: "up
     started.current = true;
     void (async () => {
       try {
-        const state = await uploadState(lib.backend);
+        let state = await uploadState(lib.backend);
+        // A move into another account (several places): this one starts afresh.
+        if (state && state.targetProfileId !== profile.id) {
+          await forgetUpload(lib.backend).catch(() => undefined);
+          state = null;
+        }
         if (state?.finishedAt) return setPhase({ kind: "done", state });
         // A move that stopped goes on by itself: the person said yes before.
         if (state) {
@@ -227,15 +232,15 @@ function UploadToAccount({ move }: { move: Extract<PendingMove, { direction: "up
               <span>Bring version history</span>
               <Switch checked={versions} onChange={setVersions} label="Bring version history" />
             </label>
-            <p className="text-sm">Your library folder stays as it is either way. Keep them separate to use this account with nothing moved; you can move notes in later from Settings &gt; Library.</p>
+            <p className="text-sm">Your library folder stays as it is either way. Keep them separate to use this account with nothing moved: both stay in the account menu, and you can move notes later with Move or copy notes.</p>
           </div>
         }
       >
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" disabled={!engine || !lib || !pre.writable} onClick={() => lib && void run(lib)}>
-            {engine ? "Move my notes" : "Getting ready…"}
+            {engine ? "Move my notes into this account" : "Getting ready…"}
           </Button>
-          <Button onClick={() => void openApp()}>Keep them separate</Button>
+          <Button onClick={() => void openApp()}>Keep them separate on {deviceWords().here}</Button>
           <Button variant="ghost" onClick={() => void backToLibrary()}>
             Back to my library
           </Button>
@@ -321,7 +326,7 @@ function ExportToLibrary({ move }: { move: Extract<PendingMove, { direction: "ex
   const finish = async () => {
     setPhase({ kind: "signing-out" });
     await close();
-    await signOutAfterExport();
+    await signOutAfterExport(profile.id);
   };
 
   if (error) {

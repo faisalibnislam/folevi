@@ -133,8 +133,11 @@ export function parseRange(header: string | null, size: number): { start: number
 export interface AppHandlerOptions {
   /** The static export's folder. */
   root: string;
-  /** The current mode (changes when the person chooses; main reloads the windows then). */
-  mode: () => ShellMode;
+  /**
+   * The mode a page opens in, by its address (several places: a hidden runner's or Quick Add's `?place=`; main
+   * windows follow the open place). Main reloads the windows when it changes.
+   */
+  mode: (url?: URL) => ShellMode;
   csp: CspOptions;
   files?: LibraryFiles;
 }
@@ -224,9 +227,9 @@ export function createAppHandler(o: AppHandlerOptions): (request: Request) => Pr
   const root = resolve(o.root);
   const files = o.files ?? NO_LIBRARY_FILES;
   let realRoot: string | null = null;
-  const pageHeaders = () => ({ "content-security-policy": shellCsp(o.mode(), o.csp), "cache-control": "no-cache" });
+  const pageHeaders = (url?: URL) => ({ "content-security-policy": shellCsp(o.mode(url), o.csp), "cache-control": "no-cache" });
 
-  async function serveStatic(segments: string[], request: Request): Promise<Response | null> {
+  async function serveStatic(segments: string[], request: Request, url?: URL): Promise<Response | null> {
     const file = join(root, ...segments);
     // join() can't climb out after safeSegments, but a symlink inside the export could: checked for real.
     if (file !== root && !file.startsWith(root + sep)) return null;
@@ -237,7 +240,7 @@ export function createAppHandler(o: AppHandlerOptions): (request: Request) => Pr
     if (!real || !real.startsWith(realRoot + sep)) return null;
     const type = TYPES[extname(file).toLowerCase()] ?? "application/octet-stream";
     const headers: Record<string, string> = { "content-type": type };
-    if (type.startsWith("text/html")) Object.assign(headers, pageHeaders());
+    if (type.startsWith("text/html")) Object.assign(headers, pageHeaders(url));
     // Next's hashed assets never change under the same name.
     else if (segments[0] === "_next" && segments[1] === "static") headers["cache-control"] = "public, max-age=31536000, immutable";
     return bytesResponse(await readFile(file), request, headers);
@@ -290,14 +293,14 @@ export function createAppHandler(o: AppHandlerOptions): (request: Request) => Pr
       });
     }
 
-    const file = segments.length ? await serveStatic(segments, request) : null;
+    const file = segments.length ? await serveStatic(segments, request, url) : null;
     if (file) return file;
     // Missing assets stay missing (index.html in place of a script would only confuse), and the website's
     // server routes don't exist here.
     const last = segments[segments.length - 1] ?? "";
     if (segments[0] === "_next" || segments[0] === "api" || /\.[A-Za-z0-9]{1,8}$/.test(last)) return text(404, "Not found");
     // The SPA fallback: index.html for "/" and every app path.
-    const index = await serveStatic(["index.html"], request);
+    const index = await serveStatic(["index.html"], request, url);
     return index ?? text(503, "The interface built into Folevi is missing. Reinstall Folevi.");
   };
 }

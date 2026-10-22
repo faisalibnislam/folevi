@@ -59,9 +59,16 @@ export async function signOutNow(destination = signedOutDestination(), opts: { f
   const keep = (name: string) => name === "folevi-e2ee" && keepE2ee;
   await endKeySession({ forget }).catch(() => undefined);
   if (hostAuth()) {
-    await shell()
-      ?.auth.signOut()
-      .catch(() => undefined);
+    const host = shell();
+    const place = host?.places?.current ?? null;
+    // Several places: only this account goes (its copy here, then its session, token and keys in the host, which
+    // opens the next place). The library and the other accounts stay.
+    if (host?.places && place?.startsWith("acct:")) {
+      if (opts.profileId) await clearAccountData(opts.profileId, place.slice(5));
+      await host.places.signOut(place).catch(() => undefined);
+      return;
+    }
+    await host?.auth.signOut().catch(() => undefined);
     await clearAllLocalData({ keep });
     window.location.assign("/");
     return;

@@ -356,3 +356,75 @@ describe("secrets", () => {
     expect(readdirSync(dir)).toEqual([]);
   });
 });
+
+describe("several accounts (docs/MULTI_ACCOUNT_PLAN.md §2.2)", () => {
+  /** A server whose sessions belong to people: get-session answers who a bearer is. */
+  function server(people: Record<string, { id: string; email: string }>, issue: () => string) {
+    return (url: URL, init: RequestInit) => {
+      if (url.pathname === "/api/auth/native/token") return json({ access_token: issue() });
+      const bearer = ((init.headers as Record<string, string>).authorization ?? "").replace(/^Bearer /, "");
+      if (url.pathname === "/api/auth/get-session") return people[bearer] ? json({ session: { token: bearer }, user: { ...people[bearer], name: people[bearer]!.email.split("@")[0] } }) : json(null);
+      if (url.pathname === "/api/auth/convex/token") return people[bearer] ? json({ token: `jwt-for-${people[bearer]!.id}` }) : json({}, 401);
+      return json({ success: true });
+    };
+  }
+  const finish = async (h: ReturnType<typeof harness>, n: number) => {
+    await tick();
+    h.bridge.handleCallback(`folevi://auth/callback?code=c${n}&state=${new URL(h.opened[n]!).searchParams.get("state")}`);
+  };
+
+  test("each account keeps its own session; the same person signing in again replaces only theirs", async () => {
+    const ana1 = "Anasessiontoken0123456789abcdefA";
+    const ben1 = "Bensessiontoken0123456789abcdefB";
+    const ana2 = "Anasessiontoken0123456789abcde2A";
+    const queue = [ana1, ben1, ana2];
+    const people = { [ana1]: { id: "userAna", email: "ana@example.com" }, [ben1]: { id: "userBen", email: "ben@example.com" }, [ana2]: { id: "userAna", email: "ana@example.com" } };
+    const h = harness({ token: null, respond: server(people, () => queue.shift()!) });
+    let p = h.bridge.signInAccount();
+    await finish(h, 0);
+    expect(await p).toMatchObject({ userId: "userAna", email: "ana@example.com" });
+    p = h.bridge.signInAccount();
+    await finish(h, 1);
+    expect(await p).toMatchObject({ userId: "userBen" });
+    expect(h.store.get("auth.session.userAna")).toBe(ana1);
+    expect(h.store.get("auth.session.userBen")).toBe(ben1);
+    expect(h.store.get("auth.session")).toBeNull();
+    // Requests go with the named account's bearer.
+    expect(await h.bridge.convexToken("userBen")).toBe("jwt-for-userBen");
+    expect(await h.bridge.convexToken("userAna")).toBe("jwt-for-userAna");
+    // Ana again: her old session ends, Ben's stays.
+    h.sent.length = 0;
+    p = h.bridge.signInAccount();
+    await finish(h, 2);
+    expect(await p).toMatchObject({ userId: "userAna" });
+    expect(h.store.get("auth.session.userAna")).toBe(ana2);
+    expect(h.store.get("auth.session.userBen")).toBe(ben1);
+    const signOuts = h.sent.filter((x) => x.url.endsWith("/api/auth/sign-out"));
+    expect(signOuts.map((x) => x.init.headers.authorization)).toEqual([`Bearer ${ana1}`]);
+    // Signing out of Ben leaves Ana.
+    await h.bridge.signOut("userBen");
+    expect(h.store.get("auth.session.userBen")).toBeNull();
+    expect(h.bridge.signedIn("userAna")).toBe(true);
+  });
+
+  test("an older build's single session moves to its account's slot; an ended one stays for the next try", async () => {
+    const people = { [TOKEN]: { id: "userOld", email: "old@example.com" } };
+    const h = harness({ respond: server(people, () => "x") });
+    expect(await h.bridge.adoptLegacy()).toMatchObject({ userId: "userOld" });
+    expect(h.store.get("auth.session")).toBeNull();
+    expect(h.store.get("auth.session.userOld")).toBe(TOKEN);
+    const ended = harness({ respond: server({}, () => "x") });
+    expect(await ended.bridge.adoptLegacy()).toBeNull();
+    expect(ended.store.get("auth.session")).toBe(TOKEN);
+  });
+
+  test("the IPC answers each page as its own account (main says which), never one the page names", async () => {
+    const people = { [TOKEN]: { id: "userAna", email: "a@example.com" } };
+    const h = harness({ token: null, respond: server(people, () => "x") });
+    h.store.set("auth.session.userAna", TOKEN);
+    const handlers = new Map<string, (event: unknown, ...args: unknown[]) => unknown>();
+    registerAuthIpc((c, l) => void handlers.set(c, l), () => h.bridge, () => true, { slot: (e) => (e as { place: string }).place });
+    expect(await handlers.get(AUTH_CHANNELS.convexToken)!({ place: "userAna" })).toBe("jwt-for-userAna");
+    expect(await handlers.get(AUTH_CHANNELS.convexToken)!({ place: "userBen" })).toBeNull();
+  });
+});

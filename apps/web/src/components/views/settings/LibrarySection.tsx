@@ -53,7 +53,68 @@ export function LibrarySection() {
       <LockCard />
       <AiKeysCard />
       <AccountCard />
+      {shell()?.places ? <ForgetLibraryCard flush={control ? () => control.flush() : null} /> : null}
     </div>
+  );
+}
+
+/**
+ * Several places (docs/MULTI_ACCOUNT_PLAN.md §9): "Remove from this Mac" forgets the library here (this device's copy
+ * and journal go) after writing out what's waiting. Its folder, with every note in it, stays exactly as it is.
+ */
+function ForgetLibraryCard({ flush }: { flush: (() => Promise<void>) | null }) {
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const here = deviceWords().here;
+  const forget = async () => {
+    setBusy(true);
+    try {
+      await flush?.();
+      const { closeLocalLibrary } = await import("@/lib/local/index");
+      await closeLocalLibrary();
+      const all = (await indexedDB.databases?.()) ?? [];
+      await Promise.all(
+        all
+          .filter((d) => d.name?.startsWith("folevi-local-"))
+          .map(
+            (d) =>
+              new Promise<void>((resolve) => {
+                const req = indexedDB.deleteDatabase(d.name!);
+                req.onsuccess = req.onerror = req.onblocked = () => resolve();
+              }),
+          ),
+      );
+      // The app opens another place (an account, or the first-launch choice).
+      await shell()?.places?.forgetLibrary();
+    } catch (e) {
+      setBusy(false);
+      toast.show(hostError(e).message || "Folevi couldn't remove the library.", { tone: "error" });
+    }
+  };
+  return (
+    <Card title={`Remove from ${here}`} description={`Folevi stops showing this library on ${here}. Its folder stays exactly as it is, with every note in it, and other devices keep using it.`}>
+      <Button variant="danger" onClick={() => setOpen(true)} disabled={busy}>
+        Remove from {here}…
+      </Button>
+      <Dialog
+        open={open}
+        onClose={() => !busy && setOpen(false)}
+        title={`Remove the library from ${here}?`}
+        description="What's waiting is written to the folder first. Nothing in the folder is deleted: set the library up again on the same folder to bring it back."
+        size="sm"
+        footer={
+          <>
+            <Button onClick={() => setOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={() => void forget()} disabled={busy}>
+              {busy ? "Removing…" : "Remove"}
+            </Button>
+          </>
+        }
+      />
+    </Card>
   );
 }
 

@@ -876,7 +876,7 @@
 /* The tab strip: a glass capsule, capsule tabs and their close buttons. */
 :root[data-ipad] :is([data-ipad-tabs], [data-ipad-tab], [data-ipad-tab-close]) { border-radius: var(--radius-capsule); }
 /* Keyboard hints (⌘K in the search box) only while a hardware keyboard is attached (bridge.js, Shell.tsx). */
-:root[data-ipad]:not([data-hardware-keyboard]) .ui-kbd { display: none; }
+:root[data-ipad]:not([data-hardware-keyboard]) :is(.ui-kbd, .ui-shortcut-hint) { display: none; }
 /* No focus ring after a tap: only while a keyboard moves focus (data-input="key", components/iphone/chrome.tsx). */
 :root[data-ipad]:not([data-input="key"]) :focus-visible { outline: none !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important; }
 :root[data-ipad][data-input="key"] :focus-visible { --tw-ring-color: var(--color-focus); }

@@ -11,6 +11,7 @@ import { flushSync } from "react-dom";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Calendar, TimeField, todayLocal } from "@/components/ui/DateField";
+import { useIphoneApp } from "@/lib/iphone";
 import type { AskTextOptions, ChoiceAction, ConfirmOptions, PickDateOptions } from "./ui";
 
 /** Shows `render`'s dialog until it answers (dismissing it is an answer too); resolves with the answer. */
@@ -141,6 +142,7 @@ function PickDateForm({ o, answer }: { o: PickDateOptions; answer: (v: { value: 
     if (o.mode === "date" && within(d)) answer({ value: d });
   };
   const value = result();
+  const phone = useIphoneApp();
   return (
     <Dialog
       open
@@ -156,7 +158,8 @@ function PickDateForm({ o, answer }: { o: PickDateOptions; answer: (v: { value: 
         </>
       }
     >
-      {o.mode !== "time" ? <Calendar value={date || null} onPick={pickDay} autoFocus /> : null}
+      {/* In the phone layout the dialog is a glass card: the month fills it, with days a finger can hit. */}
+      {o.mode !== "time" ? <Calendar value={date || null} onPick={pickDay} autoFocus fill={phone} /> : null}
       {o.mode !== "date" ? (
         <div className={o.mode === "dateAndTime" ? "mt-3" : ""}>
           <TimeField value={time} onChange={setTime} allowEmpty={false} size="lg" aria-label="Time" className="w-full" />

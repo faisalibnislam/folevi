@@ -206,9 +206,27 @@ test("iPhone: menus, sheets, native alerts and Quick add @local", async ({ brows
   await page.getByRole("menu", { name: /^Priority/ }).getByRole("menuitemradio", { name: "High" }).click();
   await expect(quick.getByRole("button", { name: "Priority: High" })).toBeVisible();
   expect((await calls(page)).some((c) => c.method === "haptic" && c.arg === "selection")).toBe(true);
+  // Due date without the app's picker (an older build): the page's own month in a glass card, filling it,
+  // with days a finger can hit.
+  await quick.getByRole("group", { name: "Task details" }).getByRole("button", { name: "Due date" }).click();
+  const picker = page.getByRole("dialog", { name: "Due date" });
+  await expect(picker).toBeVisible();
+  await page.waitForTimeout(500); // (the card's spring in)
+  const fit = await picker.evaluate((d) => {
+    const card = d.querySelector<HTMLElement>("[data-iphone-sheet]")!.getBoundingClientRect();
+    const grid = d.querySelector<HTMLElement>('[role="grid"]')!.getBoundingClientRect();
+    const day = d.querySelector<HTMLElement>('[role="gridcell"]')!.getBoundingClientRect();
+    return { spare: card.width - grid.width, day: day.height };
+  });
+  expect(fit.spare).toBeLessThanOrEqual(48);
+  expect(fit.day).toBeGreaterThanOrEqual(44);
+  await picker.getByRole("button", { name: "Next month" }).click();
+  await picker.getByRole("gridcell").nth(17).click();
+  await expect(picker).toHaveCount(0);
+  await expect(quick.getByRole("group", { name: "Task details" }).getByRole("button", { name: /^Due .*, change$/ })).toBeVisible();
   await quick.getByPlaceholder("What needs doing?").fill("Water the ferns");
   await quick.getByPlaceholder("What needs doing?").press("Enter");
-  await expect(page.getByText("Task added to Inbox")).toBeVisible();
+  await expect(page.getByText(/^Task added to Inbox/)).toBeVisible();
   await expect(quick).toHaveCount(0);
   await context.close();
 });

@@ -53,11 +53,14 @@ export function Calendar({
   onPick,
   today = todayLocal(),
   autoFocus = false,
+  fill = false,
 }: {
   value: string | null;
   onPick: (date: string) => void;
   today?: string;
   autoFocus?: boolean;
+  /** As wide as its container, with 44 pt days and 17 pt text: the phone layout's date sheet. */
+  fill?: boolean;
 }) {
   const start = isDate(value) ? value : today;
   const [focus, setFocus] = useState(start);
@@ -118,27 +121,26 @@ export function Calendar({
     go(next);
   };
 
-  const nav =
-    "grid h-7 w-7 place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none";
+  const nav = `grid ${fill ? "h-11 w-11" : "h-7 w-7"} place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none`;
   return (
-    <div className="w-[244px] select-none">
+    <div className={`${fill ? "w-full" : "w-[244px]"} select-none`}>
       <div className="mb-1.5 flex items-center justify-between px-0.5">
-        <span id={labelId} className="text-[13px] font-semibold text-heading" aria-live="polite">
+        <span id={labelId} className={`${fill ? "px-1.5 text-[17px]" : "text-[13px]"} font-semibold text-heading`} aria-live="polite">
           {title}
         </span>
         <span className="flex gap-0.5">
           <button type="button" className={nav} aria-label="Previous month" onClick={() => setFocus(shiftMonth(focus, -1))}>
-            <ChevronLeft size={15} aria-hidden />
+            <ChevronLeft size={fill ? 20 : 15} aria-hidden />
           </button>
           <button type="button" className={nav} aria-label="Next month" onClick={() => setFocus(shiftMonth(focus, 1))}>
-            <ChevronRight size={15} aria-hidden />
+            <ChevronRight size={fill ? 20 : 15} aria-hidden />
           </button>
         </span>
       </div>
       <div ref={grid} role="grid" aria-labelledby={labelId} onKeyDown={onKey} className="grid grid-cols-7 gap-0.5">
         <div role="row" className="contents">
           {weekdays.map((w, i) => (
-            <span key={`w${i}`} role="columnheader" className="grid h-7 place-items-center text-[11px] font-semibold text-faint">
+            <span key={`w${i}`} role="columnheader" className={`grid h-7 place-items-center ${fill ? "text-[13px]" : "text-[11px]"} font-semibold text-faint`}>
               {w}
             </span>
           ))}
@@ -161,7 +163,7 @@ export function Calendar({
                   aria-current={isToday ? "date" : undefined}
                   aria-label={dateLabel(day)}
                   onClick={() => onPick(day)}
-                  className={`grid h-8 place-items-center rounded-chip text-[13px] tabular-nums transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none ${
+                  className={`grid ${fill ? "h-11 text-[17px]" : "h-8 text-[13px]"} place-items-center rounded-chip tabular-nums transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none ${
                     selected
                       ? "bg-[var(--color-heading)] font-semibold text-[var(--color-surface)]"
                       : isToday

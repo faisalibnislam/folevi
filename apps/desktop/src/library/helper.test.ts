@@ -119,6 +119,18 @@ describe.skipIf(!binary)("folevi-files", { timeout: 30_000 }, () => {
     expect(again.pid).not.toBe(pid);
   });
 
+  test("falls back on the bare binary when the helper app can't run, with what was waiting", async () => {
+    // /usr/bin/false stands in for a helper app macOS refuses: it stops before answering anything.
+    const h = new FilesHelper("/usr/bin/false", { fallback: binary!, timeoutMs: 20_000 });
+    helpers.push(h);
+    const [a, b] = await Promise.all([h.ping(), h.icloud({ container: true })]);
+    expect(a.version).toBe("1");
+    expect(h.running).toBe(binary);
+    // The bare binary has no container entitlement: it says so rather than making one.
+    expect(b.entitled).toBe(false);
+    expect(b.container).toBeNull();
+  });
+
   test("is missing: a clear error", async () => {
     const h = new FilesHelper("/nonexistent/folevi-files");
     await expect(h.ping()).rejects.toMatchObject({ code: "io" });

@@ -316,8 +316,17 @@ function installBundledInterface(ses: Session) {
   );
 }
 
-/** folevi-files, the coordinated file helper (src/library/helper.ts): in Resources, or native-build/ from source. */
-const filesHelper = () => (app.isPackaged ? join(process.resourcesPath, "folevi-files") : join(__dirname, "..", "native-build", "folevi-files"));
+/**
+ * folevi-files, the coordinated file helper (src/library/helper.ts): the signed helper app's (Contents/Helpers/
+ * FoleviFiles.app, which may use Folevi's iCloud container), with the bare binary in Resources if that can't
+ * run; from source, native-build/'s.
+ */
+const filesHelperApp = (base: string) => join(base, "FoleviFiles.app", "Contents", "MacOS", "folevi-files");
+const filesHelperBare = () => (app.isPackaged ? join(process.resourcesPath, "folevi-files") : join(__dirname, "..", "native-build", "folevi-files"));
+const filesHelper = () => {
+  const bundled = filesHelperApp(app.isPackaged ? join(process.resourcesPath, "..", "Helpers") : join(__dirname, "..", "native-build"));
+  return existsSync(bundled) ? bundled : filesHelperBare();
+};
 
 let library: LibraryService | null = null;
 /**
@@ -331,6 +340,7 @@ function createLibrary(cloud: CloudSource | null): LibraryService {
     userData: app.getPath("userData"),
     home: app.getPath("home"),
     helperPath: filesHelper(),
+    helperFallback: filesHelperBare(),
     sealer: safeStorage,
     chooseFolder: async ({ title, defaultPath }) => {
       const parent = BrowserWindow.getFocusedWindow() ?? mainWindow;

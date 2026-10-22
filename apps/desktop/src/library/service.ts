@@ -51,6 +51,8 @@ export interface LibraryServiceOptions {
   home: string;
   /** folevi-files; null when there is none (tests, or a development build without it). */
   helperPath: string | null;
+  /** The bare folevi-files, if `helperPath` (the signed helper app) can't run (FilesHelperOptions.fallback). */
+  helperFallback?: string | null;
   helperArgs?: string[];
   /** Or a coordinator made elsewhere (tests). */
   coordinator?: Coordinator | null;
@@ -218,14 +220,14 @@ export class LibraryService {
     if ((await providerOf(path, this.o.home)) === "plain") return null;
     if (this.o.coordinator !== undefined) return this.o.coordinator;
     if (!this.o.helperPath || !FilesHelper.available(this.o.helperPath)) return null;
-    this.helperInstance ??= new FilesHelper(this.o.helperPath, { args: this.o.helperArgs });
+    this.helperInstance ??= new FilesHelper(this.o.helperPath, { args: this.o.helperArgs, fallback: this.o.helperFallback ?? undefined });
     return this.helperInstance;
   };
 
   private helper(): FilesHelper | null {
     if (this.o.coordinator !== undefined) return null;
     if (!this.o.helperPath || !FilesHelper.available(this.o.helperPath)) return null;
-    this.helperInstance ??= new FilesHelper(this.o.helperPath, { args: this.o.helperArgs });
+    this.helperInstance ??= new FilesHelper(this.o.helperPath, { args: this.o.helperArgs, fallback: this.o.helperFallback ?? undefined });
     return this.helperInstance;
   }
 
@@ -480,12 +482,14 @@ export class LibraryService {
 
   private async icloudTarget(): Promise<string> {
     const helper = this.helper();
-    const st = await checkICloud(this.o.home, { signedIn: helper ? () => helper.icloud().then((r) => r.signedIn) : undefined });
+    // The signed helper app makes Folevi's container on this Mac when no device has yet (the bare binary can't).
+    const container = helper ? () => helper.icloud({ container: true }).then((r) => r.container ?? null) : undefined;
+    const st = await checkICloud(this.o.home, { signedIn: helper ? () => helper.icloud().then((r) => r.signedIn) : undefined, container });
     if (!st.available) {
       const why = { drive_off: "iCloud Drive is turned off on this Mac.", signed_out: "This Mac isn't signed in to iCloud.", not_writable: "Folevi can't write to iCloud Drive." }[st.reason];
       throw new LibraryError("unavailable", why, st.reason);
     }
-    return iCloudLocation(this.o.home);
+    return iCloudLocation(this.o.home, { container });
   }
 
   /** The library folder for a folder the person chose: it, if it's a library or empty; else "Folevi Library" in it. */

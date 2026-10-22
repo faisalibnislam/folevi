@@ -784,8 +784,8 @@ with `window.foleviShell` in Swift (`apps/ios/ios/App/Native/Shell`, docs/IOS.md
   WebSocket from `capacitor://localhost`, the signed-in product.
 - **S6, settled differently**: the library is the container's Documents folder (`iCloud.com.folevi/Documents`,
   not a `Folevi` subfolder), shown as "iCloud Drive › Folevi". The Mac uses the same folder once iCloud has it on
-  the Mac (`locations.ts` `iCloudLocation`), without an entitlement; making the container from the Mac needs the
-  entitled helper app described in docs/IOS.md.
+  the Mac (`locations.ts` `iCloudLocation`), without an entitlement; the Mac also makes the container itself
+  through its signed helper app, FoleviFiles.app (docs/IOS.md "The Mac and the iCloud container").
 - **The file layer** passes local-store's fs contract plain and encrypted, and the crypto vectors, in XCTest
   (`Tests/ShellTests.swift`).
 - **Added the same day**: Sync with Dropbox and Sync with Google Drive (WP9b's iOS half, `packages/cloud-folders`

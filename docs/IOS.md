@@ -136,23 +136,38 @@ WebAuthn can't run on capacitor://localhost (`inMacApp()` should also cover `pla
 
 ### The Mac and the iCloud container
 
-The Mac app isn't sandboxed and has no iCloud entitlement, so it can't make the container; it reads and writes
-it once iCloud has put it on the Mac (after the iPhone or iPad used "Sync with iCloud" with the same Apple
-Account), with folevi-files' coordinated I/O as for any iCloud Drive folder. Until then "Sync with iCloud" on
-the Mac stays the iCloud Drive folder `Folevi`, and Settings > Library > Move library > Sync with iCloud moves it
-into the container when it's there. NSMetadataQuery reports nothing for an unentitled process, so the Mac keeps
-polling (30 s and on focus).
+The Mac makes and uses the container itself (2026-10-22). folevi-files is also built as a small helper app,
+`Contents/Helpers/FoleviFiles.app` (bundle id `com.folevi.mac`, no Dock icon), with the Developer ID profile
+"Folevi for Mac Developer ID iCloud" embedded (`apps/desktop/build/FoleviFiles.provisionprofile`, made with the
+API key, valid to 2044) and the entitlements in `apps/desktop/native/FoleviFiles.entitlements`
+(`icloud-container-identifiers` and `ubiquity-container-identifiers` `iCloud.com.folevi`, `icloud-services`
+`CloudDocuments`, `icloud-container-environment` `Production`, the application and team identifiers). A bare
+command-line tool can't carry a profile and is killed at launch (spike S6), so the app bundle is what makes it
+allowed.
 
-To let the Mac make the container itself (a Mac that's used first): a Developer ID provisioning profile with
-iCloud for `com.folevi.mac` exists now ("Folevi for Mac Developer ID iCloud", made with the API key; its
-entitlements name `iCloud.com.folevi`). Using it means (1) folevi-files becomes a small app bundle
-(`Contents/Helpers/FoleviFiles.app`, bundle id `com.folevi.mac`) with that profile embedded and the entitlements
-`com.apple.developer.icloud-container-identifiers`, `com.apple.developer.ubiquity-container-identifiers`
-(`iCloud.com.folevi`), `com.apple.developer.icloud-services` (`CloudDocuments`),
-`com.apple.developer.icloud-container-environment` (`Production`), `com.apple.application-identifier` and
-`com.apple.developer.team-identifier`; a command-line helper can't carry a profile and is killed at launch
-(spike S6); (2) its `icloud` request answers `FileManager.url(forUbiquityContainerIdentifier:)` off the main
-thread, which makes the container; (3) `locations.ts` uses that path when the helper gives one. Not done here.
+- `scripts/build-helper.mjs` (`pnpm helper`) assembles it in `native-build/` and signs it with the hardened
+  runtime and a timestamp by "Developer ID Application: Abu Mohammad Faisal (7K32QQ2FX8)"
+  (`FOLEVI_MAC_IDENTITY` overrides). Without that certificate or the profile it's signed ad hoc and without the
+  entitlement: it works, but can't make the container.
+- Both electron-builder configs copy it to `Contents/Helpers` (extraFiles) and leave its signature alone
+  (`signIgnore`); the universal build lists its binary in `x64ArchFiles`. `pnpm release` checks it's there, its
+  signature verifies, it has the container entitlement and its profile.
+- Its `icloud` request with `container: true` asks `FileManager.url(forUbiquityContainerIdentifier:)` off the
+  main thread, which makes `~/Library/Mobile Documents/iCloud~com~folevi` (and its `Documents`) when no device
+  has yet; `locations.ts` `iCloudLocation` and `service.ts` use that folder for Sync with iCloud. In the
+  container its watch uses `NSMetadataQueryUbiquitousDocumentsScope`, so uploads and downloads are reported
+  (polling stays as well).
+- The bare `Resources/folevi-files` is still shipped: `FilesHelper` falls back on it (with the requests that
+  were waiting) if the helper app is stopped before it answers, for example by a profile macOS won't accept.
+  Then only the container is out of reach, and Sync with iCloud is the iCloud Drive folder `Folevi` as before
+  (Settings > Library > Move library > Sync with iCloud moves it into the container later).
+
+Checked on this Mac: the signed helper app launches, says it's entitled, and made the container
+(`brctl status iCloud.com.folevi` lists it, synced down); the bare binary answers `entitled: false`; a
+`pnpm release --dry-run` build into a temporary folder passed its checks, `codesign --verify --deep --strict`
+passes for the whole app, and the packaged helper app answers with the container. Not checked: a library
+syncing between this Mac and an iPhone through the container (no signed-in device), and a notarized,
+universal `pnpm publish-mac` build.
 
 ### Building it
 

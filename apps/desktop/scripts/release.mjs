@@ -55,6 +55,17 @@ if (info.appVersion !== version) problems.push(`Resources/web was built for ${in
 const plist = execFileSync("plutil", ["-extract", "CFBundleShortVersionString", "raw", join(built, "Contents/Info.plist")], { encoding: "utf8" }).trim();
 if (plist !== version) problems.push(`Info.plist says ${plist}, package.json ${version}`);
 for (const helper of ["folevi-text", "folevi-files"]) if (!existsSync(join(built, "Contents/Resources", helper))) problems.push(`Resources/${helper} is missing`);
+// FoleviFiles.app (scripts/build-helper.mjs) kept its signature, its profile and the iCloud container through
+// electron-builder's signing.
+const filesApp = join(built, "Contents/Helpers/FoleviFiles.app");
+if (!existsSync(filesApp)) problems.push("Helpers/FoleviFiles.app is missing");
+else {
+  const verified = spawnSync("codesign", ["--verify", "--strict", filesApp], { encoding: "utf8" });
+  if (verified.status !== 0) problems.push(`Helpers/FoleviFiles.app's signature doesn't verify: ${verified.stderr.trim()}`);
+  const entitlements = spawnSync("codesign", ["-d", "--entitlements", "-", "--xml", filesApp], { encoding: "utf8" }).stdout;
+  if (!entitlements.includes("iCloud.com.folevi")) problems.push("Helpers/FoleviFiles.app lacks the iCloud container (built without the Developer ID certificate or its profile?)");
+  if (!existsSync(join(filesApp, "Contents/embedded.provisionprofile"))) problems.push("Helpers/FoleviFiles.app has no provisioning profile");
+}
 if (problems.length) {
   console.error(`The build isn't fit to install:\n  ${problems.join("\n  ")}`);
   process.exit(1);

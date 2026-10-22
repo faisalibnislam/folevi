@@ -119,4 +119,22 @@ describe("cloud folder kinds", () => {
       expect(providerFor(iCloudContainerDocuments(home), home)).toBe("icloud");
     }
   });
+
+  test("Sync with iCloud makes the container when the helper app can (FoleviFiles.app), and does without", async () => {
+    const home = tempDir();
+    const container = join(home, "Library", "Mobile Documents", "iCloud~com~folevi");
+    // The bare helper (no entitlement) or iCloud signed out: the iCloud Drive folder.
+    expect(await iCloudLocation(home, { container: async () => null })).toBe(defaultLocation("icloud", home));
+    expect(await iCloudLocation(home, { container: async () => Promise.reject(new Error("helper stopped")) })).toBe(defaultLocation("icloud", home));
+    // The helper app makes it (with its Documents folder): the container from then on, without asking again.
+    let asked = 0;
+    const make = async () => {
+      asked++;
+      mkdirSync(join(container, "Documents"), { recursive: true });
+      return container;
+    };
+    expect(await iCloudLocation(home, { container: make })).toBe(join(container, "Documents"));
+    expect(await iCloudLocation(home, { container: make })).toBe(iCloudContainerDocuments(home));
+    expect(asked).toBe(1);
+  });
 });

@@ -53,9 +53,15 @@ export interface FilesHelperOptions {
   args?: string[];
   /** Per request; coordinated access can wait on a provider. */
   timeoutMs?: number;
+  /**
+   * The bare folevi-files binary, used if `binary` (the signed helper app's, which has the iCloud container
+   * entitlement) is stopped before it answers anything: macOS refuses an app whose profile doesn't fit. The
+   * requests sent meanwhile go to it instead; only the container isn't reachable then.
+   */
+  fallback?: string;
 }
 
-type Pending = { resolve: (v: unknown) => void; reject: (e: unknown) => void; timer: NodeJS.Timeout };
+type Pending = { resolve: (v: unknown) => void; reject: (e: unknown) => void; timer: NodeJS.Timeout; line: string };
 
 export class FilesHelper implements Coordinator {
   private child: ChildProcessWithoutNullStreams | null = null;
@@ -65,11 +71,21 @@ export class FilesHelper implements Coordinator {
   private listeners = new Set<(e: StatusEvent) => void>();
   private watched = new Map<string, number>();
   private closed = false;
+  /** Whether the running helper has answered (a helper stopped before then may not be allowed to run). */
+  private answered = false;
+  private current: string;
 
   constructor(
     readonly binary: string,
     private readonly options: FilesHelperOptions = {},
-  ) {}
+  ) {
+    this.current = binary;
+  }
+
+  /** The helper in use: `binary`, or the fallback once `binary` couldn't run. */
+  get running(): string {
+    return this.current;
+  }
 
   static available(binary: string): boolean {
     return existsSync(binary);
@@ -78,10 +94,11 @@ export class FilesHelper implements Coordinator {
   private start(): ChildProcessWithoutNullStreams {
     if (this.child) return this.child;
     if (this.closed) throw new LibraryError("io", "The file helper was closed.");
-    if (!existsSync(this.binary)) throw new LibraryError("io", `folevi-files is missing (${this.binary}).`);
-    const child = spawn(this.binary, this.options.args ?? [], { stdio: ["pipe", "pipe", "pipe"] });
+    if (!existsSync(this.current)) throw new LibraryError("io", `folevi-files is missing (${this.current}).`);
+    const child = spawn(this.current, this.options.args ?? [], { stdio: ["pipe", "pipe", "pipe"] });
     this.child = child;
     this.buffer = "";
+    this.answered = false;
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", (chunk: string) => this.onData(chunk));
     child.stderr.on("data", () => undefined);
@@ -89,6 +106,19 @@ export class FilesHelper implements Coordinator {
     const gone = () => {
       if (this.child !== child) return;
       this.child = null;
+      const fallback = this.options.fallback;
+      if (!this.answered && !this.closed && fallback && this.current !== fallback && existsSync(fallback)) {
+        // The helper app wasn't allowed to run: the bare binary takes over, with what was waiting.
+        this.current = fallback;
+        try {
+          const next = this.start();
+          for (const [, p] of this.pending) next.stdin.write(p.line);
+          if (this.watched.size) this.rewatch();
+          return;
+        } catch {
+          // Fall through: the waiting requests fail.
+        }
+      }
       for (const [, p] of this.pending) {
         clearTimeout(p.timer);
         p.reject(new LibraryError("io", "The file helper stopped."));
@@ -113,6 +143,7 @@ export class FilesHelper implements Coordinator {
       const line = this.buffer.slice(0, nl);
       this.buffer = this.buffer.slice(nl + 1);
       if (!line.trim()) continue;
+      this.answered = true;
       let msg: { id?: number | null; ok?: boolean; result?: unknown; code?: string; message?: string; event?: string };
       try {
         msg = JSON.parse(line);
@@ -150,8 +181,9 @@ export class FilesHelper implements Coordinator {
         this.pending.delete(id);
         reject(new LibraryError("io", `The file helper took too long (${op}).`));
       }, timeoutMs);
-      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer });
-      child.stdin.write(`${JSON.stringify({ id, op, ...params })}\n`);
+      const line = `${JSON.stringify({ id, op, ...params })}\n`;
+      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer, line });
+      (this.child ?? child).stdin.write(line);
     });
   }
 
@@ -159,8 +191,12 @@ export class FilesHelper implements Coordinator {
     return this.request("ping");
   }
 
-  async icloud(): Promise<{ signedIn: boolean; driveRoot: string; driveExists: boolean }> {
-    return this.request("icloud");
+  /**
+   * iCloud on this Mac. With `container`, also Folevi's own container (made here if needed): its folder, or null
+   * when this helper isn't entitled to it (the bare binary) or iCloud is signed out.
+   */
+  async icloud(o: { container?: boolean } = {}): Promise<{ signedIn: boolean; driveRoot: string; driveExists: boolean; entitled?: boolean; container?: string | null }> {
+    return this.request("icloud", o.container ? { container: true } : {}, o.container ? 120_000 : undefined);
   }
 
   async read(path: string) {

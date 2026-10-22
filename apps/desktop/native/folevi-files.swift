@@ -14,12 +14,17 @@
 // - conflictVersions / resolveConflicts: NSFileVersion's unresolved conflict versions, read, then marked
 //   resolved and removed once the app has merged them into a successful write.
 // - watch / unwatch: an NSMetadataQuery over the folder that reports download and upload changes.
-// - icloud: whether this Mac is signed in to iCloud and iCloud Drive's folder exists.
+// - icloud: whether this Mac is signed in to iCloud and iCloud Drive's folder exists; with "container": true,
+//   also Folevi's own iCloud container (iCloud.com.folevi, the iPhone and iPad library), made on this Mac if it
+//   isn't there yet. That needs the container entitlement, which only the signed helper app has
+//   (FoleviFiles.app in the app's Contents/Helpers, with its Developer ID profile: scripts/build-helper.mjs);
+//   the bare binary (tests, a build without the profile) answers "container": null, "entitled": false.
 //
 // `--self-test <dir>` runs its own checks in <dir> and prints them as JSON (no XCTest needed); `--test-hooks`
 // adds two requests only tests use (addVersion, holdWrite). It touches no path it isn't given and talks to no one.
 import CryptoKit
 import Foundation
+import Security
 
 let helperVersion = "1"
 let args = CommandLine.arguments
@@ -311,6 +316,34 @@ func addVersion(_ path: String, _ data: Data) throws -> [String: Any] {
     return ["id": versionId(v)]
 }
 
+// ---------------------------------------------------------------- Folevi's iCloud container
+
+let containerIdentifier = "iCloud.com.folevi"
+
+/// Whether this process was signed with the container (only the helper app is).
+let containerEntitled: Bool = {
+    guard let task = SecTaskCreateFromSelf(nil),
+          let value = SecTaskCopyValueForEntitlement(task, "com.apple.developer.ubiquity-container-identifiers" as CFString, nil) as? [String] else { return false }
+    return value.contains(containerIdentifier)
+}()
+
+let containerLock = NSLock()
+var containerRoot: URL?
+
+/// The container's folder (~/Library/Mobile Documents/iCloud~com~folevi), made with its Documents folder if
+/// this Mac doesn't have it yet. Nil without the entitlement, or signed out of iCloud. iCloud may take a moment
+/// the first time (Apple says to ask off the main thread, as here).
+func iCloudContainer() -> URL? {
+    guard containerEntitled else { return nil }
+    containerLock.lock()
+    defer { containerLock.unlock() }
+    if let containerRoot { return containerRoot }
+    guard let url = FileManager.default.url(forUbiquityContainerIdentifier: containerIdentifier) else { return nil }
+    try? FileManager.default.createDirectory(at: url.appendingPathComponent("Documents", isDirectory: true), withIntermediateDirectories: true)
+    containerRoot = url
+    return url
+}
+
 // ---------------------------------------------------------------- watching (main thread)
 
 final class Watch {
@@ -320,7 +353,13 @@ final class Watch {
 
     init(root: String) {
         self.root = root
-        query.searchScopes = [URL(fileURLWithPath: root)]
+        // In Folevi's own container the query sees uploads and downloads (in other iCloud Drive folders it
+        // reports little, so the app polls too).
+        if let container = containerRoot?.appendingPathComponent("Documents").path, root == container || root.hasPrefix(container + "/") {
+            query.searchScopes = [NSMetadataQueryUbiquitousDocumentsScope]
+        } else {
+            query.searchScopes = [URL(fileURLWithPath: root)]
+        }
         query.predicate = NSPredicate(format: "%K LIKE %@", NSMetadataItemFSNameKey, "*")
         query.notificationBatchingInterval = 0.5
         let center = NotificationCenter.default
@@ -370,7 +409,9 @@ func handle(_ req: [String: Any]) throws -> [String: Any] {
         let drive = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs")
         var isDir: ObjCBool = false
         let exists = FileManager.default.fileExists(atPath: drive.path, isDirectory: &isDir) && isDir.boolValue
-        return ["signedIn": FileManager.default.ubiquityIdentityToken != nil, "driveRoot": drive.path, "driveExists": exists]
+        var out: [String: Any] = ["signedIn": FileManager.default.ubiquityIdentityToken != nil, "driveRoot": drive.path, "driveExists": exists, "entitled": containerEntitled]
+        if (req["container"] as? Bool) == true { out["container"] = iCloudContainer()?.path ?? NSNull() }
+        return out
     case "stat":
         let paths = (req["paths"] as? [Any]) ?? []
         var items: [String: Any] = [:]

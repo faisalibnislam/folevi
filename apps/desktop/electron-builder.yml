@@ -20,7 +20,8 @@ npmRebuild: false
 extraResources:
   - from: native-build/folevi-text
     to: folevi-text
-  # folevi-files: coordinated I/O for a library in iCloud Drive or a File Provider folder (src/library/helper.ts).
+  # folevi-files: coordinated I/O for a library in iCloud Drive or a File Provider folder (src/library/helper.ts),
+  # the bare binary the app falls back on if the helper app below can't run.
   - from: native-build/folevi-files
     to: folevi-files
   # folevi-ai: Foli AI with Apple's on-device model (FoundationModels) in local mode (src/ai.ts).
@@ -32,6 +33,11 @@ extraResources:
     to: web
     filter:
       - "**/*"
+# FoleviFiles.app, folevi-files as a helper app signed with Folevi's iCloud container (scripts/build-helper.mjs):
+# in Contents/Helpers, already signed there, so the signing below leaves it alone (signIgnore).
+extraFiles:
+  - from: native-build/FoleviFiles.app
+    to: Helpers/FoleviFiles.app
 # folevi://d/<id> links open notes in the app (src/urls.ts parseDeepLink).
 protocols:
   - name: Folevi
@@ -54,6 +60,9 @@ mac:
   notarize: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  # FoleviFiles.app keeps its own signature, entitlements and profile (re-signing would drop the container).
+  signIgnore:
+    - "/Contents/Helpers/FoleviFiles\\.app(/|$)"
   minimumSystemVersion: "13.0"
   extendInfo:
     NSMicrophoneUsageDescription: Folevi uses the microphone when you record audio into a note.

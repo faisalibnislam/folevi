@@ -3,10 +3,12 @@
 // - "Sync with iCloud": Folevi's own iCloud container, iCloud.com.folevi, its Documents folder
 //   (~/Library/Mobile Documents/iCloud~com~folevi/Documents, "Folevi" in iCloud Drive), the same files the
 //   iPhone and iPad app keeps its library in (apps/ios Native/Shell/LibraryService.swift). The container's folder
-//   is there once any of the person's devices has used it (the iOS app makes it); the Mac app isn't sandboxed, so
-//   it reads and writes it like any iCloud Drive folder (coordinated, through folevi-files). Until it's there,
-//   an ordinary iCloud Drive folder, ~/Library/Mobile Documents/com~apple~CloudDocs/Folevi, as before;
-//   Settings > Library's "Move library" > Sync with iCloud moves such a library into the container.
+//   is there once any of the person's devices has used it; the Mac makes it itself through folevi-files' signed
+//   helper app (FoleviFiles.app, the only part of Folevi for Mac with the container entitlement). The Mac app
+//   isn't sandboxed, so it reads and writes it like any iCloud Drive folder (coordinated, through folevi-files).
+//   Without the container (a build without the helper app, iCloud signed out): an ordinary iCloud Drive folder,
+//   ~/Library/Mobile Documents/com~apple~CloudDocs/Folevi, as before; Settings > Library's "Move library" >
+//   Sync with iCloud moves such a library into the container.
 // - "Choose a folder": any folder (Dropbox, Google Drive, OneDrive, a USB disk), remembered in library.json.
 // Folders in iCloud Drive and in ~/Library/CloudStorage (File Provider apps) get coordinated I/O through
 // folevi-files; everything else is a plain folder.
@@ -83,9 +85,18 @@ export function displayPath(path: string, home: string): string {
   return path;
 }
 
-/** Where "Sync with iCloud" goes: the container when it's on this Mac, else the iCloud Drive folder. */
-export async function iCloudLocation(home: string): Promise<string> {
-  return (await isFolder(join(home, "Library", "Mobile Documents", ICLOUD_CONTAINER))) ? iCloudContainerDocuments(home) : defaultLocation("icloud", home);
+/** Makes Folevi's iCloud container on this Mac if it isn't here (folevi-files); its folder, or null. */
+export type ContainerMaker = () => Promise<string | null>;
+
+/**
+ * Where "Sync with iCloud" goes: the container when it's on this Mac or can be made here (`container`), else
+ * the iCloud Drive folder.
+ */
+export async function iCloudLocation(home: string, o: { container?: ContainerMaker } = {}): Promise<string> {
+  if (await isFolder(join(home, "Library", "Mobile Documents", ICLOUD_CONTAINER))) return iCloudContainerDocuments(home);
+  const made = o.container ? await o.container().catch(() => null) : null;
+  if (made && (await isFolder(join(made, "Documents")))) return join(made, "Documents");
+  return defaultLocation("icloud", home);
 }
 
 /** Whether Folevi can write in a folder: it exists (or can be made) and a probe file goes in and out. */
@@ -116,7 +127,7 @@ export type ICloudState = { available: true } | { available: false; reason: "dri
  * Whether "Sync with iCloud" can be used: iCloud Drive's folder exists (it's only there while iCloud Drive is
  * on), this Mac is signed in (asked of folevi-files when it's available), and the Folevi folder is writable.
  */
-export async function checkICloud(home: string, o: { signedIn?: () => Promise<boolean | null>; probe?: boolean } = {}): Promise<ICloudState> {
+export async function checkICloud(home: string, o: { signedIn?: () => Promise<boolean | null>; probe?: boolean; container?: ContainerMaker } = {}): Promise<ICloudState> {
   const drive = iCloudDriveRoot(home);
   if (!(await isFolder(drive))) return { available: false, reason: "drive_off" };
   const signedIn = o.signedIn ? await o.signedIn().catch(() => null) : null;
@@ -126,6 +137,6 @@ export async function checkICloud(home: string, o: { signedIn?: () => Promise<bo
   } catch {
     return { available: false, reason: "not_writable" };
   }
-  if (o.probe !== false && !(await probeWritable(await iCloudLocation(home)))) return { available: false, reason: "not_writable" };
+  if (o.probe !== false && !(await probeWritable(await iCloudLocation(home, { container: o.container })))) return { available: false, reason: "not_writable" };
   return { available: true };
 }

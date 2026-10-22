@@ -696,6 +696,48 @@
     haptic: function (kind) {
       call("FoleviShell", "haptic", { kind: String(kind || "light") }).catch(function () {});
     },
+    // The native UI layer (extras/NativeUi.kt; the page calls apps/web/src/lib/native/ui.ts and lift.ts).
+    /** Android's feedback needs no warming up; present so the page uses the newer kinds ("rigid", "soft", "selection"). */
+    hapticPrepare: function () {},
+    /** The long press's lifted preview, 1: a picture of `rect` ({ id, rect, radius }, CSS pixels). */
+    liftArm: function (o) {
+      var r = o && o.rect;
+      if (!r) return;
+      call(NATIVE, "liftArm", { id: String(o.id), rect: { x: Number(r.x), y: Number(r.y), width: Number(r.width), height: Number(r.height) }, radius: Number(o.radius) || 0, scale: window.devicePixelRatio || 1 }).catch(function () {});
+    },
+    /** 2: it lifts over the page ({ id, from }); false when there's no picture. */
+    lift: function (o) {
+      return call(NATIVE, "lift", { id: String((o && o.id) || ""), from: Number(o && o.from) || 1 }).then(
+        function (r) {
+          return !!(r && r.value);
+        },
+        function () {
+          return false;
+        },
+      );
+    },
+    /** 3: it settles back ({ to: "back" }) or fades ({ to: "fade" }). */
+    liftDrop: function (o) {
+      return call(NATIVE, "liftDrop", { id: String((o && o.id) || ""), to: o && o.to === "fade" ? "fade" : "back" }).then(
+        function () {},
+        function () {},
+      );
+    },
+    /** An action sheet ({ title, message, actions: [{ id, title, style }] }): the chosen id, or null. */
+    actionSheet: function (o) {
+      return call(NATIVE, "actionSheet", { title: String((o && o.title) || ""), message: String((o && o.message) || ""), actions: (o && o.actions) || [] }).then(function (r) {
+        return r && typeof r.value === "string" ? r.value : null;
+      });
+    },
+    /** An alert ({ title, message, actions, field: { value, placeholder } }): { id, text } or null. */
+    alert: function (o) {
+      var args = { title: String((o && o.title) || ""), message: String((o && o.message) || ""), actions: (o && o.actions) || [] };
+      if (o && o.field) args.field = { value: String(o.field.value || ""), placeholder: String(o.field.placeholder || "") };
+      return call(NATIVE, "alert", args).then(function (r) {
+        var v = r && r.value;
+        return v && typeof v.id === "string" ? (typeof v.text === "string" ? { id: v.id, text: v.text } : { id: v.id }) : null;
+      });
+    },
     setStatusBar: function (theme) {
       setBars(theme === "dark" ? "dark" : "light");
     },

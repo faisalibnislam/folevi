@@ -7,6 +7,7 @@ import kotlinx.coroutines.launch
 import com.folevi.android.FoleviApp
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
+import org.json.JSONObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
@@ -164,5 +165,60 @@ class NativePlugin : Plugin() {
         val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching { context.startActivity(intent) }
         call.resolve()
+    }
+
+    // ---- the native UI layer (NativeUi.kt): alerts, action sheets and the long press's lifted preview
+
+    @PluginMethod
+    fun alert(call: PluginCall) {
+        val title = call.getString("title").orEmpty()
+        val actions = NativeUi.actions(call.getArray("actions")) ?: return call.reject("An alert needs actions.", "invalid_argument")
+        if (title.isEmpty()) return call.reject("An alert needs a title.", "invalid_argument")
+        val field = call.getObject("field")?.let { it.optString("value").take(500) to it.optString("placeholder") }
+        activity.runOnUiThread {
+            NativeUi.alert(activity, title, call.getString("message"), actions, field) { id, text ->
+                if (id == null) return@alert call.resolve(JSObject().put("value", JSONObject.NULL))
+                val v = JSObject().put("id", id)
+                if (field != null) v.put("text", text.orEmpty())
+                call.resolve(JSObject().put("value", v))
+            }
+        }
+    }
+
+    @PluginMethod
+    fun actionSheet(call: PluginCall) {
+        val actions = NativeUi.actions(call.getArray("actions")) ?: return call.reject("An action sheet needs actions.", "invalid_argument")
+        activity.runOnUiThread {
+            NativeUi.actionSheet(activity, call.getString("title"), call.getString("message"), actions) { id ->
+                call.resolve(JSObject().put("value", id ?: JSONObject.NULL))
+            }
+        }
+    }
+
+    @PluginMethod
+    fun liftArm(call: PluginCall) {
+        val id = call.getString("id")?.takeIf { it.isNotEmpty() && it.length <= 64 } ?: return call.reject("A lift needs an id.", "invalid_argument")
+        val r = call.getObject("rect") ?: return call.reject("A lift needs a rectangle.", "invalid_argument")
+        val scale = call.getDouble("scale") ?: 1.0
+        val radius = (call.getDouble("radius") ?: 12.0).toFloat().coerceIn(0f, 40f)
+        activity.runOnUiThread {
+            val bounds = NativeUi.windowRect(bridge.webView, r.optDouble("x"), r.optDouble("y"), r.optDouble("width"), r.optDouble("height"), scale)
+            if (bounds != null) NativeUi.arm(activity, id, bounds, radius)
+            call.resolve()
+        }
+    }
+
+    @PluginMethod
+    fun lift(call: PluginCall) {
+        val id = call.getString("id").orEmpty()
+        val from = (call.getDouble("from") ?: 1.0).toFloat().coerceIn(0.8f, 1.1f)
+        activity.runOnUiThread { NativeUi.lift(activity, id, from) { ok -> call.resolve(JSObject().put("value", ok)) } }
+    }
+
+    @PluginMethod
+    fun liftDrop(call: PluginCall) {
+        val id = call.getString("id").orEmpty()
+        val to = if (call.getString("to") == "fade") "fade" else "back"
+        activity.runOnUiThread { NativeUi.drop(id, to) { call.resolve() } }
     }
 }

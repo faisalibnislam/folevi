@@ -127,17 +127,17 @@ npx convex env set APPLE_SIGNIN_KEY_ID BNZC6FGWJC
 npx convex env set APPLE_SIGNIN_KEY --from-file ~/.appstoreconnect/private_keys/AuthKey_BNZC6FGWJC.p8
 
 # Production.
-npx convex env set --prod APPLE_SIGNIN_CLIENT_ID com.folevi.signin
-npx convex env set --prod APPLE_SIGNIN_TEAM_ID 7K32QQ2FX8
-npx convex env set --prod APPLE_SIGNIN_KEY_ID BNZC6FGWJC
-npx convex env set --prod APPLE_SIGNIN_KEY --from-file ~/.appstoreconnect/private_keys/AuthKey_BNZC6FGWJC.p8
+npx convex env set --deployment fastidious-clownfish-123 APPLE_SIGNIN_CLIENT_ID com.folevi.signin
+npx convex env set --deployment fastidious-clownfish-123 APPLE_SIGNIN_TEAM_ID 7K32QQ2FX8
+npx convex env set --deployment fastidious-clownfish-123 APPLE_SIGNIN_KEY_ID BNZC6FGWJC
+npx convex env set --deployment fastidious-clownfish-123 APPLE_SIGNIN_KEY --from-file ~/.appstoreconnect/private_keys/AuthKey_BNZC6FGWJC.p8
 ```
 
 To pass the key with `$(cat ...)` instead, put `--` before the name:
-`npx convex env set --prod -- APPLE_SIGNIN_KEY "$(cat ~/.appstoreconnect/private_keys/AuthKey_BNZC6FGWJC.p8)"`.
+`npx convex env set --deployment fastidious-clownfish-123 -- APPLE_SIGNIN_KEY "$(cat ~/.appstoreconnect/private_keys/AuthKey_BNZC6FGWJC.p8)"`.
 Without the `--`, the CLI takes the key's first line (`-----BEGIN PRIVATE KEY-----`) for an option, refuses
 it, and **prints the whole key** in its error. Check what was stored without showing it:
-`npx convex env get --prod APPLE_SIGNIN_KEY | head -1` should print `-----BEGIN PRIVATE KEY-----`.
+`npx convex env get --deployment fastidious-clownfish-123 APPLE_SIGNIN_KEY | head -1` should print `-----BEGIN PRIVATE KEY-----`.
 
 The variables take effect at once (no deploy needed for them). The code itself goes live with the next
 production deploy. Then check:
@@ -159,7 +159,7 @@ production deploy. Then check:
    relay addresses may not arrive. Apple accounts don't need the confirmation email, but they do need the
    others. Fix the SPF record (it must include Resend's sending servers) and click Verify there again.
 
-If something fails, the Convex logs (`npx convex logs --prod`) show Better Auth's reason
+If something fails, the Convex logs (`npx convex logs --deployment fastidious-clownfish-123`) show Better Auth's reason
 (`invalid_code`: the client secret or redirect URL didn't match at Apple; "Sign in with Apple is off:
 APPLE_SIGNIN_KEY can't be used": the key didn't parse).
 

@@ -111,7 +111,9 @@ test("sign-in: generic errors, authenticator code, single-use backup codes, trus
   await p2.goto(`${APP}/settings/account`);
   await p2.getByRole("navigation", { name: "Folio" }).getByRole("button", { name: /Personal, workspaces and account$/ }).click();
   await p2.getByRole("menuitem", { name: "Sign out" }).click();
-  await p2.waitForURL(/\/signin/);
+  // On the web, signing out lands on the marketing home page.
+  await p2.waitForURL((url) => url.pathname === "/" && !url.host.startsWith("app."));
+  await p2.goto(`${APP}/signin`);
   await p2.getByLabel("Email").fill(account.email);
   await p2.getByLabel("Password", { exact: true }).fill(account.password);
   await p2.getByRole("button", { name: "Sign in", exact: true }).click();

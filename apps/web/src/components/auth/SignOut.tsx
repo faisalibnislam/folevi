@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
 import { MARKETING_URL } from "@/lib/env";
+import { desktop } from "@/lib/desktop";
+import { nativeApp } from "@/lib/nativeApp";
 import { hostAuth } from "@/lib/auth/shellFetch";
 import { shell } from "@/lib/shell";
 import { forgetThisDevice } from "@/lib/nativeDevice";
@@ -27,13 +29,18 @@ export async function unsyncedChangeCount(accountKey: string | null): Promise<nu
   }
 }
 
+/** The website lands on the marketing home page; the apps (iPhone, iPad, Android, Mac) stay on their sign-in screen. */
+function signedOutDestination(): string {
+  return nativeApp() || desktop() ? "/signin?notice=signed_out" : `${MARKETING_URL}/`;
+}
+
 /**
  * Ends the session on the server, then clears this device's copy (in the iOS app, its token too). In the
  * apps' built-in interface the host ends its own session and forgets the token, and the app opens on its
  * sign-in screen (there are no /signin pages there, so `destination` doesn't apply). On the web, signing
  * out lands on the marketing site's home page by default.
  */
-export async function signOutNow(destination = `${MARKETING_URL}/`, opts: { forget?: boolean } = {}) {
+export async function signOutNow(destination = signedOutDestination(), opts: { forget?: boolean } = {}) {
   await forgetThisDevice();
   // End-to-end encryption: a trusted browser keeps its device keys (IndexedDB "folevi-e2ee") so the next
   // sign-in here unlocks with no prompt, unless the person asked to forget this browser or it was a public

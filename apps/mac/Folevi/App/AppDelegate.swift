@@ -47,6 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
         // WM1: the library, the places and their runners, the lock (Places.swift).
         Places.install()
+        // WM5: recording, text recognition, drag and drop, print, Share, Services, Spotlight, Shortcuts.
+        Capabilities.install()
         Task { @MainActor in
             await WebViewFactory.prepareRules()
             WebViewFactory.scheme.modeOf = { view in WindowManager.shared.modeOf((view as? FoleviWebView)?.place) }

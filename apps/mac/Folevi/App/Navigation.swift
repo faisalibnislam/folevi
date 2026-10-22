@@ -26,6 +26,8 @@ final class Navigation: NSObject, WKNavigationDelegate, WKUIDelegate {
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = action.request.url else { return decisionHandler(.cancel) }
         let scheme = url.scheme?.lowercased() ?? ""
+        // A `download` link (an export's blob:, an attachment): saved where the person picks (Downloads.swift).
+        if Downloads.isDownload(action: action), ["blob", "data", "https", AppScheme.scheme].contains(scheme) { return decisionHandler(.download) }
         // Frames: the page's own embeds (the policy's frame-src decides which load).
         if let target = action.targetFrame, !target.isMainFrame {
             return decisionHandler(["https", "about", "blob", "data", AppScheme.scheme].contains(scheme) ? .allow : .cancel)

@@ -10,6 +10,8 @@ out/
 out-shell/
 # Its copy inside the Mac app (pnpm --filter @folevi/web build:shell).
 apps/desktop/web/
+# ...and inside the Android app (build-shell.mjs --platform android).
+apps/android/web/
 # ...and inside the iPhone and iPad app (build-shell.mjs --platform ios).
 apps/ios/web/
 dist/
@@ -49,3 +51,5 @@ apps/web/e2e/.visual-account.json
 # Local Claude Code preview config
 .claude/
 backups/
+# The Android e2e scripts' test account on the dev server (apps/android/scripts/e2e).
+apps/android/.e2e-account.json

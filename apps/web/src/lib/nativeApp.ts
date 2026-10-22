@@ -80,7 +80,8 @@ export interface NativePushStatus {
 }
 
 export interface NativeBridge {
-  platform: "ios";
+  /** "android": Folevi for Android (apps/android) adds the same extras with its own bridge (folevi-bridge.js). */
+  platform: "ios" | "android";
   version: string;
   haptic(kind: Haptic): void;
   /** The status bar's text for the page's theme (light text on a dark page). */
@@ -114,7 +115,7 @@ export interface NativeBridge {
   setBackdrop?(r: number, g: number, b: number): void;
   /**
    * Opens `url` in iOS's sign-in sheet (ASWebAuthenticationSession) and answers with the folevi:// link that
-   * ends the sign-in there, or null if it was closed (Google sign-in, components/auth/GoogleSignIn.tsx).
+   * ends the sign-in there, or null if it was closed (Google and Apple sign-in, components/auth/SocialSignIn.tsx).
    */
   authenticate?(url: string): Promise<string | null>;
   /** Folevi's page in the iOS Settings app (where notifications turned off in iOS come back on). */
@@ -132,17 +133,31 @@ declare global {
   }
 }
 
-/** The iPhone and iPad app's bridge, or null in a browser (and in the Mac app). */
+/** The iPhone and iPad app's bridge (or the Android app's, the same extras), or null in a browser and the Mac app. */
 export function nativeApp(): NativeBridge | null {
   if (typeof window === "undefined") return null;
   const bridge = window.foleviNative;
-  return bridge && bridge.platform === "ios" ? bridge : null;
+  return bridge && (bridge.platform === "ios" || bridge.platform === "android") ? bridge : null;
+}
+
+/** Whether the page is inside the Android app (apps/android): its bridge, or the mark it leaves on the page. */
+export function inAndroidApp(): boolean {
+  if (typeof document === "undefined") return false;
+  return window.foleviNative?.platform === "android" || document.documentElement.dataset.native === "android";
+}
+
+/**
+ * Whether the page is inside an app sold through a store (the iPhone and iPad app, the Android app), where
+ * nothing may sell or point at buying: plans are bought on folevi.com and the app unlocks.
+ */
+export function isNativeStoreApp(): boolean {
+  return inIosApp() || inAndroidApp();
 }
 
 /** Whether the page is inside the iOS app: the bridge, or the mark it leaves on the page. */
 export function inIosApp(): boolean {
   if (typeof document === "undefined") return false;
-  return nativeApp() !== null || document.documentElement.dataset.native === "ios";
+  return window.foleviNative?.platform === "ios" || document.documentElement.dataset.native === "ios";
 }
 
 /**
@@ -150,13 +165,13 @@ export function inIosApp(): boolean {
  * there Plan & billing shows the plan as it is, and nothing in the app links to buying or says where to.
  * Never in local mode either, on any platform: a library on the person's devices has no plan to buy.
  */
-export const canPurchaseHere = (): boolean => !inIosApp() && currentBackendMode() !== "local";
+export const canPurchaseHere = (): boolean => !isNativeStoreApp() && currentBackendMode() !== "local";
 
 /**
  * Server messages end with where to buy ("Buy more in Settings → Plan & billing.", "Upgrade to use it.").
  * In the iOS app those sentences go; the rest (what happened, when credits reset) stays.
  */
-export function withoutPurchaseHints(text: string, iosApp: boolean = inIosApp()): string {
+export function withoutPurchaseHints(text: string, iosApp: boolean = isNativeStoreApp()): string {
   if (!iosApp || !text) return text;
   const kept = text
     .split(/(?<=[.!?])\s+/)
@@ -171,7 +186,7 @@ const NOT_ON_PLAN = "This isn't part of your plan.";
 /** A sentence that sends the reader to buy, upgrade or change plans. */
 const PURCHASE_HINT = /\b(buy|upgrade[sd]?|purchase|checkout|choose a plan|change (your )?plans?|see plans|switch to (pro|core|a paid)|choose in settings)\b|Plan (&|and) billing/i;
 
-/** A light tap in the hand inside the iOS app; nothing elsewhere. */
+/** A light tap in the hand inside the iOS and Android apps; nothing elsewhere. */
 export function haptic(kind: Haptic = "light"): void {
   nativeApp()?.haptic(kind);
 }

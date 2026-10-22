@@ -21,14 +21,17 @@ export function useShellOutdated(): boolean {
 export function ShellUpdateGate({ children }: { children: ReactNode }) {
   const outdated = useShellOutdated();
   if (!outdated) return <>{children}</>;
-  const mac = shell()?.platform === "mac";
+  const platform = shell()?.platform;
+  const mac = platform === "mac";
   return (
     <FullPageMessage
       title="Update Folevi to keep syncing"
       body={
         mac
           ? "This version of Folevi for Mac is too old to sync with your account. Choose Check for Updates in the Folevi menu, then open Folevi again. Your notes on this Mac are safe."
-          : "This version of Folevi is too old to sync with your account. Update it from the App Store, then open it again. Your notes on this device are safe."
+          : platform === "android"
+            ? "This version of Folevi is too old to sync with your account. Update it from Google Play, then open it again. Your notes on this phone are safe."
+            : "This version of Folevi is too old to sync with your account. Update it from the App Store, then open it again. Your notes on this device are safe."
       }
     />
   );

@@ -24,9 +24,10 @@ import { ChoiceButton, useSystemTheme } from "./ModeChoice";
 
 export const MIN_PASSPHRASE = 8;
 
-/** "this Mac" on the Mac, "this device" elsewhere. */
+/** "this Mac" on the Mac, "this phone" in the Android app, "this device" elsewhere. */
 export function thisDevice(): string {
-  return shell()?.platform === "ios" ? "this device" : "this Mac";
+  const platform = shell()?.platform;
+  return platform === "android" ? "this phone" : platform === "ios" ? "this device" : "this Mac";
 }
 
 interface Place {
@@ -38,6 +39,15 @@ interface Place {
 
 function places(available: CloudProvider[] | null): Place[] {
   const device = thisDevice();
+  // Android: Dropbox, Google Drive or this phone only (docs/ANDROID_PLAN.md: no iCloud, no folder picker), and
+  // the provider's sign-in opens over the app rather than in a separate browser.
+  if (shell()?.platform === "android") {
+    const out: Place[] = [];
+    if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: "Sign in to Dropbox. Folevi only uses its own folder, Apps › Folevi.", icon: <DropboxGlyph /> });
+    if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: "Sign in to Google. Folevi only sees the files it makes.", icon: <DriveGlyph /> });
+    out.push({ kind: "device", title: "This phone only", detail: "Your notes stay on this phone. You can turn on sync later in Settings.", icon: <HardDrive size={20} aria-hidden /> });
+    return out;
+  }
   const out: Place[] = [{ kind: "icloud", title: "Sync with iCloud", detail: `A Folevi folder in iCloud Drive, on every Mac signed in to your iCloud account.`, icon: <Cloud size={20} aria-hidden /> }];
   if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: "Sign in to Dropbox in your browser. Folevi only uses its own folder, Apps › Folevi.", icon: <DropboxGlyph /> });
   if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: "Sign in to Google in your browser. Folevi only sees the files it makes.", icon: <DriveGlyph /> });

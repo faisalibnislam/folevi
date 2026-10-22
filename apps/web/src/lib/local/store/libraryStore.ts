@@ -89,7 +89,7 @@ export interface LibraryStoreOptions {
   /** The backend's device id (made a valid library device id: letters, digits and "_"). */
   deviceId: string;
   openDb?: OpenReplicaDb;
-  device?: { name?: string; platform?: "mac" | "ios" | "web"; appVersion?: string };
+  device?: { name?: string; platform?: "mac" | "ios" | "android" | "web"; appVersion?: string };
   now?: () => number;
   /** Write a note this long after its last change (1 s)… */
   quietMs?: number;

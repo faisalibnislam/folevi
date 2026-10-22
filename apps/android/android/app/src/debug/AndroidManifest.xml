@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds: sign-in comes back on the app's own scheme (an emulator can't verify App Links for a dev
+     server), and plain http reaches the local dev server (res/xml/network_security_config.xml). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.folevi.android" android:host="auth" android:path="/callback" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

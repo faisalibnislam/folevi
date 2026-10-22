@@ -1,0 +1,19 @@
+{
+  "name": "@folevi/android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Folevi for Android: the built-in interface in a Capacitor shell, with Kotlin for local mode, sign-in, the Keystore, widgets, the share target, the scanner, the lock and notifications.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3",
+    "@types/node": "24.13.6",
+    "typescript": "6.0.3"
+  }
+}

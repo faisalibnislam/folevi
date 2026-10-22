@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { inIosApp } from "./nativeApp";
+import { inAndroidApp, inIosApp } from "./nativeApp";
 
 // The iPhone app's own interface (components/iphone): a navigation stack with large titles, a floating glass
 // tab bar, bottom sheets. Only inside the iOS app (data-native="ios"), on an iPhone, or on an iPad in a
@@ -45,16 +45,26 @@ export function displayCornerRadius(): number | null {
   return sizes[`${w}x${h}`] ?? null;
 }
 
-/** Whether this page shows the iPhone app's interface (the iPhone app, or the iPad app in a compact window). */
+/**
+ * Whether this page shows the native phone interface: the iPhone app, the iPad app in a compact window, or the
+ * Android app on a phone (or a folded foldable, or any window too narrow for the sidebar). Android tablets and
+ * unfolded foldables keep the sidebar layout, as the iPad does, and switch in place when the window changes.
+ * iOS-only touches (glass, Face ID copy) check inIosApp() themselves.
+ */
 export function isIphoneApp(): boolean {
-  if (typeof navigator === "undefined" || !inIosApp()) return false;
+  if (typeof navigator === "undefined") return false;
+  if (inAndroidApp()) return typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches;
+  if (!inIosApp()) return false;
   if (/\b(iPhone|iPod)\b/.test(navigator.userAgent)) return true;
   return isIpadApp() && typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches;
 }
 
+/** The same question by its platform-neutral name (the iPhone and Android apps share the phone interface). */
+export const isNativePhone = (): boolean => isIphoneApp();
+
 const followWidth = (changed: () => void) => {
-  // (Only the iPad app's width can change which interface shows.)
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function" || !isIpadApp()) return () => undefined;
+  // (Only the iPad app's and the Android app's width can change which interface shows.)
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function" || !(isIpadApp() || inAndroidApp())) return () => undefined;
   const mq = window.matchMedia(IPAD_COMPACT);
   mq.addEventListener("change", changed);
   return () => mq.removeEventListener("change", changed);
@@ -72,7 +82,10 @@ export function useIphoneApp(): boolean {
 export function safeInsets(): { top: number; bottom: number } {
   if (typeof document === "undefined" || !isIphoneApp()) return { top: 0, bottom: 0 };
   const probe = document.createElement("div");
-  probe.style.cssText = "position:fixed;left:0;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);width:0;visibility:hidden;pointer-events:none";
+  // (The Android app gives its insets as --android-inset-*: older WebViews leave env() at 0.)
+  probe.style.cssText = inAndroidApp()
+    ? "position:fixed;left:0;top:var(--android-inset-top,0px);bottom:var(--android-inset-bottom,0px);width:0;visibility:hidden;pointer-events:none"
+    : "position:fixed;left:0;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);width:0;visibility:hidden;pointer-events:none";
   document.body.appendChild(probe);
   const r = probe.getBoundingClientRect();
   probe.remove();

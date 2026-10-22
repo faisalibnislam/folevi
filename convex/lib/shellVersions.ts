@@ -1,14 +1,14 @@
 // The oldest app versions whose built-in interface still works with this backend (docs/LOCAL_MODE_PLAN.md
-// §5.3, risk R1). The Mac app (and later the iPhone and iPad app) carries its interface built in, so it keeps
+// §5.3, risk R1). The Mac app (and the Android app, and later the iPhone and iPad app) carries its interface built in, so it keeps
 // calling the functions it shipped with until the person updates. A breaking change to one of those
 // functions (tests/contract/api-snapshot.test.ts says which) raises the floor here, in the same change; an
 // operator can raise it further without a deploy (systemSettings "min_shell_version", settings.ts).
 // Shared with the web app, so it has no imports.
 
-export type ShellPlatformName = "mac" | "ios";
+export type ShellPlatformName = "mac" | "ios" | "android";
 
 /** The floor set in code. null: every version works. */
-export const MIN_SHELL_VERSIONS: Record<ShellPlatformName, string | null> = { mac: null, ios: null };
+export const MIN_SHELL_VERSIONS: Record<ShellPlatformName, string | null> = { mac: null, ios: null, android: null };
 
 const VERSION_RE = /^\d{1,6}(\.\d{1,6}){0,3}$/;
 

@@ -18,7 +18,7 @@ export const status = query({
       .query("systemSettings")
       .withIndex("by_key", (q) => q.eq("key", "min_shell_version"))
       .unique();
-    const floor = (shell?.value as { mac?: string; ios?: string } | undefined) ?? {};
+    const floor = (shell?.value as { mac?: string; ios?: string; android?: string } | undefined) ?? {};
     return {
       bannerMessage: value.bannerMessage || null,
       readOnly: Boolean(value.readOnly),
@@ -27,6 +27,7 @@ export const status = query({
       minShellVersion: {
         mac: newerFloor(MIN_SHELL_VERSIONS.mac, floor.mac),
         ios: newerFloor(MIN_SHELL_VERSIONS.ios, floor.ios),
+        android: newerFloor(MIN_SHELL_VERSIONS.android, floor.android),
       },
     };
   },
@@ -37,17 +38,21 @@ export const status = query({
  * `npx convex run settings:setMinShellVersion '{"mac":"1.16.0"}'`. The newer of it and the floor in code applies.
  */
 export const setMinShellVersion = internalMutation({
-  args: { mac: v.optional(v.union(v.string(), v.null())), ios: v.optional(v.union(v.string(), v.null())) },
+  args: { mac: v.optional(v.union(v.string(), v.null())), ios: v.optional(v.union(v.string(), v.null())), android: v.optional(v.union(v.string(), v.null())) },
   handler: async (ctx, args) => {
-    for (const value of [args.mac, args.ios]) {
+    for (const value of [args.mac, args.ios, args.android]) {
       if (value != null && !isShellVersion(value)) throw new Error(`Not a version: ${value}`);
     }
     const row = await ctx.db
       .query("systemSettings")
       .withIndex("by_key", (q) => q.eq("key", "min_shell_version"))
       .unique();
-    const before = (row?.value as { mac?: string | null; ios?: string | null } | undefined) ?? {};
-    const value = { mac: args.mac === undefined ? (before.mac ?? null) : args.mac, ios: args.ios === undefined ? (before.ios ?? null) : args.ios };
+    const before = (row?.value as { mac?: string | null; ios?: string | null; android?: string | null } | undefined) ?? {};
+    const value = {
+      mac: args.mac === undefined ? (before.mac ?? null) : args.mac,
+      ios: args.ios === undefined ? (before.ios ?? null) : args.ios,
+      android: args.android === undefined ? (before.android ?? null) : args.android,
+    };
     if (row) await ctx.db.patch(row._id, { value, updatedAt: Date.now() });
     else await ctx.db.insert("systemSettings", { key: "min_shell_version", value, updatedAt: Date.now() });
     return value;

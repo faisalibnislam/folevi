@@ -13,7 +13,11 @@
 // .env files as before (development). --dest copies the export somewhere other than apps/desktop/web.
 // Every build writes shell/build.json: which deployment it talks to, and the IndexedDB schema version it opens
 // (the Mac app's handoff refuses a website database that is newer, docs/LOCAL_MODE.md).
-// The iPhone and iPad app (apps/ios/www) is paused and isn't copied to.
+// --platform ios: the export the iPhone and iPad app carries (apps/ios/web, docs/IOS.md), in .next-shell-ios (or
+// .next-shell-ios-release with --production), with the iOS app's version in shell/build.json.
+// --platform android: the export Folevi for Android carries (apps/android/web, docs/ANDROID_PLAN.md), built in a
+// folder of its own (.next-shell-android, or .next-shell-android-release with --production) so it never replaces
+// another app's export while it builds, with the Android app's version in shell/build.json.
 import { spawnSync } from "node:child_process";
 import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
@@ -30,9 +34,14 @@ const flagValue = (name) => {
   const i = argv.indexOf(name);
   return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[i + 1] : null;
 };
-const outName = production ? ".next-shell-release" : "out-shell";
+/** Which app the export is for: "mac" (the default), "android" or "ios". */
+const platform = flagValue("--platform") ?? "mac";
+if (!["mac", "android", "ios"].includes(platform)) throw new Error(`build-shell: unknown --platform ${platform}`);
+const android = platform === "android";
+const ios = platform === "ios";
+const outName = android ? (production ? ".next-shell-android-release" : ".next-shell-android") : ios ? (production ? ".next-shell-ios-release" : ".next-shell-ios") : production ? ".next-shell-release" : "out-shell";
 const out = join(web, outName);
-const desktopWeb = resolve(flagValue("--dest") ?? resolve(web, "../desktop/web"));
+const desktopWeb = resolve(flagValue("--dest") ?? resolve(web, android ? "../android/web" : ios ? "../ios/web" : "../desktop/web"));
 
 /**
  * Folevi in production (docs/DEPLOYMENT.md): the Convex deployment and the website a release talks to. A release
@@ -184,10 +193,11 @@ export async function dbVersion() {
 
 /** shell/build.json: what this export is (read by the Mac app, apps/desktop/src/shellBuild.ts). */
 async function writeBuildInfo(env) {
-  const desktop = JSON.parse(await readFile(resolve(web, "../desktop/package.json"), "utf8"));
+  const desktop = JSON.parse(await readFile(resolve(web, android ? "../android/package.json" : ios ? "../ios/package.json" : "../desktop/package.json"), "utf8"));
   const info = {
     v: 1,
     target: production ? "production" : "development",
+    platform,
     convexUrl: env.NEXT_PUBLIC_CONVEX_URL ?? null,
     siteUrl: env.NEXT_PUBLIC_APP_URL || "https://app.folevi.com",
     dbVersion: await dbVersion(),
@@ -218,7 +228,7 @@ async function main() {
   for (const f of ["next-env.d.ts", "tsconfig.json"]) if (existsSync(join(web, f))) kept.set(f, await readFile(join(web, f), "utf8"));
   await rm(out, { recursive: true, force: true });
   const env = buildEnv(process.env, { production, files });
-  if (production) env.NEXT_DIST_DIR = outName;
+  if (production || android || ios) env.NEXT_DIST_DIR = outName;
   const build = spawnSync(join(web, "node_modules/.bin/next"), ["build"], { cwd: web, stdio: "inherit", env });
   for (const [f, text] of kept) await writeFile(join(web, f), text);
   if (build.status !== 0) process.exit(build.status ?? 1);

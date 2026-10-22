@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app canvas colour (packages/design-tokens, color-canvas in the app theme). -->
+    <color name="canvas">#FFFFFF</color>
+    <color name="ink">#101011</color>
+</resources>

@@ -8,6 +8,13 @@ export const NATIVE_CLIENTS: Record<string, { label: string; redirectUris: reado
   // The interface built into the Mac app (and later the iPhone and iPad app), signed in to an account
   // (docs/LOCAL_MODE_PLAN.md §1): native code keeps the bearer session and the page never sees it.
   "folevi-shell": { label: "Folevi app", redirectUris: ["folevi://auth/callback"] },
+  // Folevi for Android's built-in interface (docs/ANDROID_PLAN.md "Sign-in"): a Custom Tab comes back on the App
+  // Link (release builds), or on the app's own scheme in debug builds (an emulator can't verify App Links for a
+  // dev server).
+  "folevi-android": {
+    label: "Folevi for Android",
+    redirectUris: ["https://app.folevi.com/native/callback", "com.folevi.android://auth/callback"],
+  },
 };
 
 /** The registered client for this id and redirect URI, or null. */

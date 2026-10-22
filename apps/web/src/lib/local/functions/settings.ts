@@ -8,7 +8,7 @@ import { defineLocal } from "../registry";
 import { getProfile } from "./shared";
 import { bundledSnapshot } from "./themes";
 
-defineLocal(api.settings.status, "query", async () => ({ bannerMessage: null, readOnly: false, flags: {}, minShellVersion: { mac: null, ios: null } }));
+defineLocal(api.settings.status, "query", async () => ({ bannerMessage: null, readOnly: false, flags: {}, minShellVersion: { mac: null, ios: null, android: null } }));
 
 defineLocal(api.settings.builtInTemplates, "query", async (ctx) => {
   if (!(await getProfile(ctx.db))) return [];

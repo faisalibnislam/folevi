@@ -228,28 +228,29 @@
 :root[data-desktop]:has(.ui-desktop-quick-add) body::before { display: none; }
 .ui-desktop-quick-add { min-height: 100vh; }
 
-/* The iPhone and iPad app (apps/ios, data-native="ios"): the page fills the screen (viewport-fit=cover, set by
+/* The iPhone and iPad app (apps/ios, data-native="ios") and the Android app (apps/android, data-native="android",
+   which reads the insets from the app on WebViews older than 140): the page fills the screen (viewport-fit=cover, set by
    the app's bridge), so the app's frame keeps clear of the status bar, the home indicator and, in landscape,
    the camera housing. The canvas's own colour shows behind the status bar. Things fixed to the screen's
    edges (the sidebar drawer, toasts, the Ask Foli AI button and chat) move in by the same insets. */
-:root[data-native="ios"] .ui-shell {
+:root:is([data-native="ios"], [data-native="android"]) .ui-shell {
   padding-top: max(var(--ui-shell-pad, 0px), env(safe-area-inset-top));
   padding-right: max(var(--ui-shell-pad, 0px), env(safe-area-inset-right));
   padding-bottom: max(var(--ui-shell-pad, 0px), env(safe-area-inset-bottom));
   padding-left: max(var(--ui-shell-pad, 0px), env(safe-area-inset-left));
 }
-:root[data-native="ios"] .ui-shell.p-2 { --ui-shell-pad: 0.5rem; }
+:root:is([data-native="ios"], [data-native="android"]) .ui-shell.p-2 { --ui-shell-pad: 0.5rem; }
 /* Other full-page canvases (sign in, connecting an app): a clear border, which keeps the page's own padding
    and lets its background reach the screen's edges. Pages without a canvas (onboarding): the body. */
-:root[data-native="ios"] .ui-canvas:not(.ui-shell) { border: 0 solid transparent; border-width: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-:root[data-native="ios"]:not(:has(.ui-canvas)) body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-:root[data-native="ios"] .ui-drawer-panel { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left); }
-:root[data-native="ios"] :is(.ui-toasts, .ui-fab, .ui-fab-panel) { margin-bottom: env(safe-area-inset-bottom); }
-:root[data-native="ios"] .ui-fab { margin-right: env(safe-area-inset-right); }
+:root:is([data-native="ios"], [data-native="android"]) .ui-canvas:not(.ui-shell) { border: 0 solid transparent; border-width: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+:root:is([data-native="ios"], [data-native="android"]):not(:has(.ui-canvas)) body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+:root:is([data-native="ios"], [data-native="android"]) .ui-drawer-panel { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left); }
+:root:is([data-native="ios"], [data-native="android"]) :is(.ui-toasts, .ui-fab, .ui-fab-panel) { margin-bottom: env(safe-area-inset-bottom); }
+:root:is([data-native="ios"], [data-native="android"]) .ui-fab { margin-right: env(safe-area-inset-right); }
 /* A bar stuck to the bottom of a page (onboarding's Back and Continue) keeps its buttons above the home indicator. */
-@media (max-width: 1023px) { :root[data-native="ios"] .ui-safe-bottom { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); } }
+@media (max-width: 1023px) { :root:is([data-native="ios"], [data-native="android"]) .ui-safe-bottom { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); } }
 /* The logo above sign in goes to the public site, where plans are sold: in the app it's only the logo. */
-:root[data-native="ios"] .ui-site-link { pointer-events: none; }
+:root:is([data-native="ios"], [data-native="android"]) .ui-site-link { pointer-events: none; }
 /* A long press opens Folevi's own menus (lib/touchContextMenu.ts), not iOS's link preview and callout. */
 :root[data-native="ios"] :is(a, img) { -webkit-touch-callout: none; }
 /* Dynamic Type: the text follows iOS's text size (--ios-text-scale, from bridge.js), and only the text: set on
@@ -642,6 +643,13 @@
   :root[data-reduce-transparency][data-iphone] :is([role="menu"].ui-pop, [role="listbox"].ui-pop) { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
   /* The fade behind a screen's bar (components/iphone/Screen.tsx): the canvas itself, no blur. */
   :root[data-reduce-transparency] [data-iphone-bar-fade] { background: var(--color-canvas) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  /* Android (apps/android): Folevi's floating bars and sheets without iOS's glass: the same solid surfaces with
+     their rim (docs/ANDROID_PLAN.md "Look"). */
+  :root[data-native="android"] :is(.ui-liquid, .ui-liquid-strong)::before { display: none; }
+  :root[data-native="android"] :is(.ui-liquid, .ui-liquid-strong),
+  :root[data-native="android"][data-iphone] :is([role="menu"].ui-pop, [role="listbox"].ui-pop) { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root[data-native="android"] [data-iphone-bar-fade] { background: var(--color-canvas) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  :root[data-native="android"] .ui-glass-press:active { transform: none; filter: brightness(0.94); }
   /* Increase Contrast: the glass is nearly opaque and its edge a visible line. */
   :root[data-increase-contrast] :is(.ui-liquid, .ui-liquid-strong) { background: var(--iphone-solid); box-shadow: 0 0 0 1px var(--color-line-strong), var(--liquid-shadow); }
   :root[data-increase-contrast] :is(.ui-liquid, .ui-liquid-strong)::after { display: none; }

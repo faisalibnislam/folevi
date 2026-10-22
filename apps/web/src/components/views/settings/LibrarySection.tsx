@@ -240,7 +240,7 @@ function MoveDialog({ open, current, onClose, onMoved }: { open: boolean; curren
 // ---- devices -------------------------------------------------------------------------------------------------
 
 function DevicesCard({ status }: { status: LibraryStatus }) {
-  const platform = (p: string) => (p === "ios" ? "iPhone or iPad" : p === "web" ? "Browser" : "Mac");
+  const platform = (p: string) => (p === "ios" ? "iPhone or iPad" : p === "android" ? "Android phone or tablet" : p === "web" ? "Browser" : "Mac");
   return (
     <Card title="Devices" description="Every device that opens this library, and when each last synced with it.">
       {status.devices.length === 0 ? (
@@ -249,7 +249,7 @@ function DevicesCard({ status }: { status: LibraryStatus }) {
         <ul className="divide-y divide-line" data-testid="library-devices">
           {status.devices.map((d) => (
             <li key={d.deviceId} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-              <span className="grid h-8 w-8 flex-none place-items-center rounded-small bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] text-ink">{d.platform === "ios" ? <Smartphone size={16} aria-hidden /> : <Laptop size={16} aria-hidden />}</span>
+              <span className="grid h-8 w-8 flex-none place-items-center rounded-small bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] text-ink">{d.platform === "ios" || d.platform === "android" ? <Smartphone size={16} aria-hidden /> : <Laptop size={16} aria-hidden />}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-heading">
                   {/* The store names a device "This device" until the host gives it a name of its own. */}

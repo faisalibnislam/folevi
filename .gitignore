@@ -14,6 +14,8 @@ apps/desktop/web/
 apps/android/web/
 # ...and inside the iPhone and iPad app (build-shell.mjs --platform ios).
 apps/ios/web/
+# The iPhone and iPad app's TestFlight builds (apps/ios/scripts/release.mjs).
+apps/ios/release/
 dist/
 build/
 # Folevi for Mac keeps its signing entitlements and icon in build/ (electron-builder's resources folder).

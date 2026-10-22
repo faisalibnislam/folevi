@@ -120,14 +120,17 @@ export const LOCAL_FUNCTIONS: ReadonlyMap<string, LocalFunction> = functions;
 
 type AnyPublicRef = FunctionReference<LocalKind, "public">;
 
-/** Registers the local handler for a server function. Registering a name twice is a mistake and throws. */
+/**
+ * Registers the local handler for a server function. Registering a name twice is a mistake and throws,
+ * except in development, where hot reload runs a handler module again and its new handler replaces the old.
+ */
 export function defineLocal<Ref extends AnyPublicRef, K extends Ref["_type"] & LocalKind>(
   ref: Ref,
   kind: K,
   handler: (ctx: LocalCtxOf<K>, args: FunctionArgs<Ref>) => FunctionReturnType<Ref> | Promise<FunctionReturnType<Ref>>,
 ): void {
   const name = getFunctionName(ref);
-  if (functions.has(name)) throw new Error(`${name} already has a local handler.`);
+  if (functions.has(name) && process.env.NODE_ENV !== "development") throw new Error(`${name} already has a local handler.`);
   functions.set(name, { name, kind, handler: handler as LocalFunction["handler"] });
 }
 

@@ -129,3 +129,66 @@ test("the app's lifted preview for a long press", async ({ browser, browserName 
 
   await context.close();
 });
+
+test("iPad and Split View: a held card's menu sits clear of its lifted picture, on screen", async ({ browser, browserName }) => {
+  test.skip(browserName !== "chromium", "Touch input is driven through Chromium's DevTools protocol.");
+  test.setTimeout(300_000);
+  const { context: signedIn, page: first } = await newPerson(browser, "Lifting iPad");
+  // Something to hold: a few notes, so Home has cards.
+  for (const title of ["Garden plan", "Reading list", "Trip ideas"]) {
+    await first.goto(`${APP}/documents`);
+    await first.keyboard.press("Alt+n").catch(() => undefined);
+    await first.getByRole("button", { name: /^New note/ }).first().click().catch(() => undefined);
+    await first.waitForURL(/\/d\//, { timeout: 20_000 }).catch(() => undefined);
+    await first.keyboard.type(title);
+    await first.waitForTimeout(800);
+  }
+  const state = await signedIn.storageState();
+  await signedIn.close();
+
+  const IPAD_UA = IPHONE_UA.replace("iPhone; CPU iPhone OS", "iPad; CPU OS");
+  for (const viewport of [
+    { width: 1032, height: 1376 },
+    { width: 1376, height: 1032 },
+    { width: 507, height: 1032 },
+  ]) {
+    const context = await browser.newContext({ storageState: state, viewport, userAgent: IPAD_UA, hasTouch: true, isMobile: true });
+    await context.addInitScript(standInBridge);
+    const page = await context.newPage();
+    await page.goto(`${APP}/documents`);
+    const host = page.locator("[data-ctx-host]").filter({ visible: true });
+    await expect(host.first()).toBeVisible({ timeout: 30_000 });
+    const count = Math.min(await host.count(), 4);
+    for (let i = 0; i < count; i++) {
+      const el = host.nth(i);
+      await el.evaluate((n, end) => n.scrollIntoView({ block: end ? "end" : "center" }), i % 2 === 1);
+      await page.waitForTimeout(300);
+      const b = await el.boundingBox();
+      if (!b || b.y < 0 || b.y + b.height > viewport.height) continue;
+      await finger(page, b.x + b.width / 2, b.y + b.height / 2, 700);
+      const menu = page.getByRole("menu").first();
+      await expect(menu).toBeVisible();
+      await page.waitForTimeout(450);
+      const [m, lifted] = await page.evaluate(() => {
+        const menuEl = document.querySelector('[role="menu"]')!.getBoundingClientRect();
+        const held = document.querySelector("[data-held-lift]")!.getBoundingClientRect();
+        // The app's picture is the thing at rest grown 1.04 about its centre.
+        const k = 1.04;
+        const cx = held.x + held.width / 2;
+        const cy = held.y + held.height / 2;
+        return [
+          { x: menuEl.x, y: menuEl.y, r: menuEl.right, b: menuEl.bottom },
+          { x: cx - (held.width * k) / 2, y: cy - (held.height * k) / 2, r: cx + (held.width * k) / 2, b: cy + (held.height * k) / 2 },
+        ];
+      });
+      const label = `${viewport.width}x${viewport.height} card ${i}`;
+      expect(m.x >= 0 && m.y >= 0 && m.r <= viewport.width && m.b <= viewport.height, label).toBe(true);
+      const overlap = m.x < lifted.r - 0.5 && lifted.x < m.r - 0.5 && m.y < lifted.b - 0.5 && lifted.y < m.b - 0.5;
+      expect(overlap, label).toBe(false);
+      await page.touchscreen.tap(viewport.width / 2, 12);
+      await expect(page.getByRole("menu")).toHaveCount(0);
+      await page.waitForTimeout(300);
+    }
+    await context.close();
+  }
+});

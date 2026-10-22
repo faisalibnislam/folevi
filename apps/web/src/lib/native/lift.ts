@@ -24,6 +24,101 @@ export const PRESSED_SCALE = 0.97;
 const MAX_HEIGHT_SHARE = 0.6;
 
 const BACKDROP_ATTR = "data-lift-backdrop";
+/** Marks a held thing whose lift is the app's picture (globals.css keeps the thing itself at rest under it). */
+export const LIFT_NATIVE_ATTR = "data-lift-native";
+/** The scale the app's picture lifts to (Native/UI/LiftPreview.swift liftedScale), and the page's own lift's. */
+export const LIFTED_SCALE = 1.04;
+
+// ------------------------------------------------------------------------- where the menu goes
+
+export interface Box {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * Where the held thing is drawn while its menu is open: the thing at rest (whatever scale its own lift has
+ * reached mid-transition), grown to LIFTED_SCALE about its centre. Null when nothing is held.
+ */
+export function heldLiftRect(): Box | null {
+  if (typeof document === "undefined") return null;
+  const el = document.querySelector<HTMLElement>("[data-held-lift]");
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  // (A transform only scales here: undo it to find the box at rest.)
+  const m = /^matrix\(([^,]+),/.exec(getComputedStyle(el).transform);
+  const now = m ? Math.abs(parseFloat(m[1]!)) || 1 : 1;
+  const k = LIFTED_SCALE / now;
+  const cx = (r.left + r.right) / 2;
+  const cy = (r.top + r.bottom) / 2;
+  return { left: cx - (r.width * k) / 2, right: cx + (r.width * k) / 2, top: cy - (r.height * k) / 2, bottom: cy + (r.height * k) / 2 };
+}
+
+export interface LiftPlacement {
+  left: number;
+  top: number;
+  /** The most the menu may be tall there (it scrolls inside when it's taller). */
+  maxHeight: number;
+  /** Where it grows from (its corner or edge nearest the held thing). */
+  origin: string;
+  side: "below" | "above" | "right" | "left";
+  /** No room anywhere clear of the held thing: the menu covers part of it. */
+  overlaps: boolean;
+}
+
+/**
+ * Where a menu goes for a held thing, as iOS places a context menu: below it, else above it, else beside it
+ * (the roomier side), always on screen (`view`, the usable part of the screen) and never over it. Aligned with
+ * the thing's leading edge ("start") or trailing edge ("end"). When it doesn't fit anywhere whole, the roomiest
+ * clear place with the menu scrolling inside; only when there's no clear place of a useful size does it overlap.
+ */
+export function placeAroundLift(lift: Box, menu: { width: number; height: number }, view: Box, align: "start" | "end" = "start", gap = 8): LiftPlacement {
+  const w = Math.min(menu.width, view.right - view.left);
+  const h = menu.height;
+  const clampX = (x: number) => Math.min(Math.max(view.left, x), view.right - w);
+  const clampY = (y: number, height: number) => Math.min(Math.max(view.top, y), view.bottom - height);
+  const x = clampX(align === "end" ? lift.right - w : lift.left);
+  const hx = align === "end" ? "right" : "left";
+  const rooms = {
+    below: view.bottom - (lift.bottom + gap),
+    above: lift.top - gap - view.top,
+    right: view.right - (lift.right + gap),
+    left: lift.left - gap - view.left,
+  };
+  const full = view.bottom - view.top;
+  const below = (maxHeight: number): LiftPlacement => ({ left: x, top: lift.bottom + gap, maxHeight, origin: `${hx} top`, side: "below", overlaps: false });
+  const above = (maxHeight: number): LiftPlacement => ({ left: x, top: lift.top - gap - Math.min(h, maxHeight), maxHeight, origin: `${hx} bottom`, side: "above", overlaps: false });
+  const beside = (side: "right" | "left"): LiftPlacement => {
+    const height = Math.min(h, full);
+    return { left: side === "right" ? lift.right + gap : lift.left - gap - w, top: clampY(lift.top, height), maxHeight: full, origin: `${side === "right" ? "left" : "right"} top`, side, overlaps: false };
+  };
+  // Whole, in iOS's order.
+  if (h <= rooms.below) return below(rooms.below);
+  if (h <= rooms.above) return above(rooms.above);
+  const sides = (["right", "left"] as const).filter((s) => rooms[s] >= w).sort((a, b) => rooms[b] - rooms[a]);
+  if (sides.length && h <= full) return beside(sides[0]!);
+  // Not whole anywhere: the roomiest clear place, scrolling inside (a side is a whole screen tall).
+  const MIN = 132;
+  const vertical = rooms.below >= rooms.above ? ("below" as const) : ("above" as const);
+  if (sides.length && full > Math.max(rooms.below, rooms.above)) return beside(sides[0]!);
+  if (rooms[vertical] >= MIN) return vertical === "below" ? below(rooms.below) : above(rooms.above);
+  // Nowhere clear (a held thing nearly the whole screen): over it, on screen.
+  const top = clampY(lift.bottom + gap, Math.min(h, full));
+  return { left: x, top, maxHeight: full, origin: `${hx} top`, side: "below", overlaps: true };
+}
+
+/** A menu placed over the held thing (placeAroundLift's `overlaps`) tells the lift so the app's picture steps aside. */
+export const LIFT_COVERED_EVENT = "folevi:lift-covered";
+let coveredSince = 0;
+/** Called by a menu once it's placed for a held thing. */
+export function reportLiftPlacement(p: LiftPlacement): void {
+  if (!p.overlaps) return;
+  coveredSince = Date.now();
+  document.dispatchEvent(new Event(LIFT_COVERED_EVENT));
+}
 
 let counter = 0;
 /** Things whose picture is still settling back: their own visibility, to give back when it has (or a new hold starts). */
@@ -65,6 +160,8 @@ interface Held {
   /** Whether the picture is up (lift resolved true). */
   shown: boolean;
   pressed: boolean;
+  /** Stops listening for the menu covering it. */
+  unlisten?: () => void;
   /** What the thing's inline style had before it was pressed in and hidden. */
   saved: { transform: string; transition: string; visibility: string };
 }
@@ -75,6 +172,8 @@ export function liftController() {
   let backdrop: HTMLElement | null = null;
 
   const restore = (h: Held) => {
+    h.unlisten?.();
+    h.el.removeAttribute(LIFT_NATIVE_ATTR);
     h.el.style.transform = h.saved.transform;
     h.el.style.transition = h.saved.transition;
     h.el.style.visibility = h.saved.visibility;
@@ -192,6 +291,9 @@ export function liftController() {
       if (!h || h.el !== el) return false;
       h.el.style.transition = h.saved.transition;
       h.el.style.transform = h.saved.transform;
+      // (Marked before the menu is placed, so it's placed round the picture's size, not the page's own lift.)
+      if (h.armed) h.el.setAttribute(LIFT_NATIVE_ATTR, "");
+      coveredSince = 0;
       return h.armed;
     },
     /** The menu opened: the picture lifts over the thing (when the app took one). Resolves whether it did. */
@@ -199,12 +301,24 @@ export function liftController() {
       const h = held;
       const bridge = nativeLift();
       if (!h || h.el !== el || !h.armed || !bridge) return false;
+      // The menu had to go over the thing (no room clear of it): the page's own lift, under the menu.
+      if (coveredSince) {
+        this.drop("fade");
+        return false;
+      }
       h.shown = true;
       showBackdrop();
+      const onCovered = () => {
+        if (held === h) this.drop("fade");
+      };
+      document.addEventListener(LIFT_COVERED_EVENT, onCovered, { once: true });
+      h.unlisten = () => document.removeEventListener(LIFT_COVERED_EVENT, onCovered);
       const ok = await bridge.lift!({ id: h.id, from: h.pressed ? PRESSED_SCALE : 1 }).catch(() => false);
       if (held !== h) return ok;
       if (!ok) {
         h.shown = false;
+        h.el.removeAttribute(LIFT_NATIVE_ATTR);
+        h.unlisten?.();
         hideBackdrop();
         return false;
       }

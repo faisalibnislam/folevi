@@ -8,6 +8,7 @@ import { visibleBottom } from "@/lib/hooks/useVisualViewport";
 import { nativeApp } from "@/lib/nativeApp";
 import { safeInsets } from "@/lib/iphone";
 import { feel } from "@/lib/native/ui";
+import { heldLiftRect, placeAroundLift, reportLiftPlacement } from "@/lib/native/lift";
 import { SPRINGS, prefersReducedMotion } from "@/lib/native/physics";
 import { springFrames } from "@/components/iphone/sheetMotion";
 
@@ -252,6 +253,17 @@ function MenuPanel({
       if (!a || !menu) return;
       const gap = a.width || a.height ? 8 : 2;
       const margin = 8;
+      // Opened by holding something (lib/touchContextMenu.ts): never over what lifted (in the app it's the app's
+      // picture, drawn above the page), below, above or beside it, on screen (WP0, lib/native/lift.ts).
+      const held = heldLiftRect();
+      if (held) {
+        const view = { left: margin, top: margin + safeInsets().top, right: window.innerWidth - margin, bottom: visibleBottom() - margin };
+        const size = { width: fullWidth ? held.right - held.left : menu.offsetWidth, height: Math.max(menu.offsetHeight, menu.scrollHeight) };
+        const p = placeAroundLift(held, size, view, align);
+        setPos({ position: "fixed", left: p.left, top: p.top, width: fullWidth ? size.width : undefined, maxHeight: p.maxHeight, margin: 0, right: "auto", bottom: "auto", transformOrigin: p.origin });
+        reportLiftPlacement(p);
+        return;
+      }
       const w = fullWidth ? a.width : menu.offsetWidth;
       const h = menu.offsetHeight;
       // Above the on-screen keyboard, where there is one.

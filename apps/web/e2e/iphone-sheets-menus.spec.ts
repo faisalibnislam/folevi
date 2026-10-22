@@ -213,6 +213,31 @@ test("iPhone: menus, sheets, native alerts and Quick add @local", async ({ brows
   await context.close();
 });
 
+test("iPhone: Empty Trash asks with the system's alert, once it knows how many notes go @local", async ({ browser }, testInfo) => {
+  test.setTimeout(200_000);
+  const { context, page } = await iphone(browser, testInfo);
+  // A note to the Trash, from its card's menu.
+  await page.goto("/notes");
+  const card = page.locator("main a[href^='/d/']").first();
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  const box = (await card.boundingBox())!;
+  await card.dispatchEvent("contextmenu", { bubbles: true, cancelable: true, clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 });
+  await page.getByRole("menu").getByRole("menuitem", { name: "Move to Trash" }).click();
+  await page.goto("/trash");
+  await expect(page.locator("main a[href^='/d/']")).toHaveCount(1, { timeout: 30_000 });
+  // Its "…": Empty Trash, asked as the alert (no web dialog), with the count in its message.
+  await page.evaluate(() => ((window as unknown as { __answer: unknown }).__answer = { id: "confirm" }));
+  await page.getByRole("button", { name: "Trash options" }).click();
+  await page.getByRole("menu").getByRole("menuitem", { name: "Empty Trash" }).click();
+  await expect(page.getByText("1 document will be permanently deleted.")).toBeVisible();
+  const asked = (await calls(page)).filter((c) => c.method === "alert").at(-1) as { arg: { title: string; message?: string; actions: { id: string; title: string; style?: string }[] } };
+  expect(asked.arg.title).toBe("Empty Trash?");
+  expect(asked.arg.message).toMatch(/^1 note will be permanently deleted/);
+  expect(asked.arg.actions.find((a) => a.id === "confirm")).toMatchObject({ title: "Delete permanently", style: "destructive" });
+  await expect(page.getByRole("dialog", { name: "Empty Trash?" })).toHaveCount(0);
+  await context.close();
+});
+
 test("the app's menus leave out the desktop's items @local", async ({ browser }, testInfo) => {
   test.setTimeout(200_000);
   const { context, page } = await iphone(browser, testInfo);

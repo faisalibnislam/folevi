@@ -9,6 +9,7 @@ import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { api } from "@/lib/convex/api";
 import { useFolderTree, useFolderTreeState } from "@/lib/app/folders";
 import { useOutboxEntries } from "@/lib/sync/queryCache";
+import { hasNative } from "@/lib/native/ui";
 import { pendingNoteFolders } from "@/lib/sync/overlays";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -315,6 +316,18 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     select: selectable ? { selected: selection.selected.has(d.id), toggle: () => selection.toggle(d.id) } : undefined,
   });
 
+  const nativeAlert = hasNative("alert");
+  const runEmptyTrash = async () => {
+    const count = trashSummary?.deletable ?? 0;
+    setConfirmEmpty(false);
+    selection.clear();
+    try {
+      const r = await emptyTrash({ scope });
+      toast.show(t("documents.trash.scheduled", { count: Math.max(count, r.scheduled) }));
+    } catch (e) {
+      toast.show(errorMessage(e), { tone: "error" });
+    }
+  };
   const summaryText = trashSummary
     ? `${trashSummary.deletable.toLocaleString()}${trashSummary.more ? "+" : ""} ${trashSummary.deletable === 1 ? "note" : "notes"} will be permanently deleted, including attachments and version history. This can’t be undone.${
         trashSummary.deletable < trashSummary.total ? ` ${(trashSummary.total - trashSummary.deletable).toLocaleString()} you don’t have permission to delete will stay in Trash.` : ""
@@ -344,6 +357,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         title={`Delete ${selectedDocs.length === 1 ? "1 note" : `${selectedDocs.length} notes`} permanently?`}
         description="They’ll be deleted for everyone, with their nested pages, attachments and version history. This can’t be undone. Notes you don’t have permission to delete stay in Trash."
         size="sm"
+        confirm={{ label: "Delete permanently", destructive: true, onConfirm: () => bulk((ids) => notes.deleteForever(ids)) }}
         footer={
           <>
             <Button onClick={() => setBulkDeleteOpen(false)}>Cancel</Button>
@@ -360,29 +374,17 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         }
       />
       <Dialog
-        open={confirmEmpty}
+        // In the apps it's the system's alert, which can't change once shown: it's asked when the count is in.
+        open={confirmEmpty && (!nativeAlert || trashSummary !== undefined)}
         onClose={() => setConfirmEmpty(false)}
         title="Empty Trash?"
         description={summaryText}
         size="sm"
+        confirm={{ label: "Delete permanently", destructive: true, onConfirm: () => void runEmptyTrash() }}
         footer={
           <>
             <Button onClick={() => setConfirmEmpty(false)}>Cancel</Button>
-            <Button
-              variant="danger"
-              disabled={!trashSummary || trashSummary.deletable === 0}
-              onClick={async () => {
-                const count = trashSummary?.deletable ?? 0;
-                setConfirmEmpty(false);
-                selection.clear();
-                try {
-                  const r = await emptyTrash({ scope });
-                  toast.show(t("documents.trash.scheduled", { count: Math.max(count, r.scheduled) }));
-                } catch (e) {
-                  toast.show(errorMessage(e), { tone: "error" });
-                }
-              }}
-            >
+            <Button variant="danger" disabled={!trashSummary || trashSummary.deletable === 0} onClick={() => void runEmptyTrash()}>
               Delete permanently
             </Button>
           </>

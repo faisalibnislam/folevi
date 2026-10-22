@@ -5,6 +5,7 @@ import type { FunctionReturnType } from "convex/server";
 import { useQuery } from "convex/react";
 import { Check, Copy, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Pencil, RotateCcw, Wand2, CornerDownLeft } from "lucide-react";
 import { api } from "@/lib/convex/api";
+import { useIphoneApp } from "@/lib/iphone";
 import { MenuButton } from "@/components/ui/Menu";
 import { AiMarkdown, StreamingText } from "../AiMarkdown";
 import { useTypewriter } from "../useAiStream";
@@ -28,7 +29,15 @@ export function openWebCitation(c: WebCitation) {
   window.open(c.url, "_blank", "noopener,noreferrer");
 }
 
-const ROW_BUTTON = "inline-flex h-7 items-center gap-1 rounded-chip px-1.5 text-[12px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40";
+/**
+ * Messages in the iPhone app (docs/IOS_POLISH_PLAN.md, Foli AI): your words on the right in the strong glass,
+ * Foli AI's as plain text, both at 17/24 (Craft's way); the bubbles stay on the website and the Mac app.
+ */
+const ANSWER = "rounded-panel rounded-bl-tiny bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]";
+const IPHONE_ANSWER = "px-1 [&_.fb-ai-answer]:text-[17px] [&_.fb-ai-answer]:leading-6";
+const answerBox = (iphone: boolean) => (iphone ? IPHONE_ANSWER : ANSWER);
+
+const ROW_BUTTON = "ai-row-btn inline-flex h-7 items-center gap-1 rounded-chip px-1.5 text-[12px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40";
 
 /** Copies text, and says so for a moment. */
 function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
@@ -74,6 +83,7 @@ export function UserMessage({ text, attachments, onEdit, disabled }: { text: str
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(text);
   const fieldId = useId();
+  const iphone = useIphoneApp();
   if (editing && onEdit) {
     return (
       <form
@@ -120,7 +130,7 @@ export function UserMessage({ text, attachments, onEdit, disabled }: { text: str
     <div className="group/user flex flex-col items-end gap-0.5">
       {files?.length ? <AttachmentChips files={files} className="mb-1 max-w-[85%] justify-end" /> : null}
       <NotSharedChips count={hidden} />
-      <p className="w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-panel rounded-br-tiny bg-heading px-3.5 py-2 text-[14px] text-canvas">{text}</p>
+      <p className={iphone ? "ui-liquid-strong w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-container px-4 py-2.5 text-[17px] leading-6 text-ink" : "w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-panel rounded-br-tiny bg-heading px-3.5 py-2 text-[14px] text-canvas"}>{text}</p>
       {onEdit ? (
         <button
           type="button"
@@ -274,6 +284,7 @@ export function AssistantMessage({
   conversation?: { id: string; title: string };
 }) {
   const streaming = message.status === "streaming";
+  const iphone = useIphoneApp();
   const liveText = useLiveText(message);
   // Revealed word by word while it streams, and until the reveal catches up with the finished answer.
   const [reveal, setReveal] = useState(streaming);
@@ -294,7 +305,7 @@ export function AssistantMessage({
     return (
       <div className="space-y-1.5">
         {message.text ? (
-          <div className="rounded-panel rounded-bl-tiny bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]">
+          <div className={answerBox(iphone)}>
             <AiMarkdown markdown={message.text} />
           </div>
         ) : null}
@@ -334,7 +345,7 @@ export function AssistantMessage({
 
   if (reveal) {
     return (
-      <div className="rounded-panel rounded-bl-tiny bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]" aria-busy="true">
+      <div className={answerBox(iphone)} aria-busy="true">
         <StreamingText text={text} cited={cited} />
         {streaming && !readOnly ? (
           <button type="button" onClick={onStop} className={`${ROW_BUTTON} mt-1`}>
@@ -347,7 +358,7 @@ export function AssistantMessage({
 
   return (
     <div className="space-y-2">
-      <div className="rounded-panel rounded-bl-tiny bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]">
+      <div className={answerBox(iphone)}>
         {message.agent ? <AgentSteps steps={message.agent.steps} /> : null}
         {message.text ? <AiMarkdown markdown={message.text} cited={cited} onCite={citeBy} onNavigate={onOpen} /> : <p className="text-[13.5px] text-muted">Stopped before it said anything.</p>}
         {message.agent?.run && (run || readOnly) ? <AgentRunCard run={message.agent.run} activity={run?.activity ?? { busy: null, error: null }} onApprove={run?.onApprove ?? (() => {})} onDiscard={run?.onDiscard ?? (() => {})} onUndo={run?.onUndo ?? (() => {})} onOpen={onOpen} readOnly={readOnly} /> : null}
@@ -383,7 +394,7 @@ export function AssistantMessage({
       {last && message.suggestions.length && !busy && !readOnly ? (
         <div className="flex flex-col items-start gap-1.5" aria-label="Suggested follow-ups" role="group">
           {message.suggestions.map((s) => (
-            <button key={s} type="button" onClick={() => onSuggestion(s)} className="rounded-chip bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+            <button key={s} type="button" onClick={() => onSuggestion(s)} className={iphone ? "min-h-11 rounded-container bg-[color-mix(in_oklab,var(--color-ink)_6.5%,transparent)] px-4 py-2.5 text-left text-[15px] leading-5 text-ink active:bg-[color-mix(in_oklab,var(--color-ink)_11%,transparent)]" : "rounded-chip bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading"}>
               {s}
             </button>
           ))}

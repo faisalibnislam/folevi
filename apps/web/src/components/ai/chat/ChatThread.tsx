@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type 
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ArrowUp, Loader2, Sparkles } from "lucide-react";
 import { useIphoneApp } from "@/lib/iphone";
+import { SendButton } from "@/components/iphone/SendButton";
 import { ulid } from "@folevi/editor-schema";
 import { api, type Id } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -50,6 +51,9 @@ export const AI_FOCUS_EVENT = "folevi:ai-focus";
  * what it's about (context chips) and the box to ask in. Shared by the AI page and the floating chat.
  * A new conversation gets its id on the first question (`onConversation`).
  */
+/** The small actions under an answer (Copy, Regenerate, Edit) at a finger's size in the iPhone app: 44 pt tall, 15 pt words. */
+const IPHONE_ROW_BUTTONS = "[&_.ai-row-btn]:h-11 [&_.ai-row-btn]:gap-1.5 [&_.ai-row-btn]:px-2.5 [&_.ai-row-btn]:text-[15px] [&_.ai-row-btn_svg]:h-4 [&_.ai-row-btn_svg]:w-4";
+
 export function ChatThread({
   conversationId,
   onConversation,
@@ -396,7 +400,7 @@ export function ChatThread({
   return (
     <>
       {/* On iPhone what scrolls fades out just above the composer rather than being cut off by it. */}
-      <div className={`min-h-0 flex-1 overflow-y-auto ${page ? "px-4 py-6 sm:px-8" : variant === "panel" ? "px-0.5 py-2" : "px-4 py-4"} ${iphone && !page ? "pb-6 [mask-image:linear-gradient(to_bottom,#000_calc(100%-24px),transparent)]" : ""}`}>
+      <div className={`min-h-0 flex-1 overflow-y-auto ${page ? "px-4 py-6 sm:px-8" : variant === "panel" ? "px-0.5 py-2" : "px-4 py-4"} ${iphone && !page ? "pb-6 [mask-image:linear-gradient(to_bottom,#000_calc(100%-24px),transparent)]" : ""} ${iphone ? IPHONE_ROW_BUTTONS : ""}`}>
         <div className={`space-y-5 ${page ? "mx-auto max-w-3xl" : ""}`}>
           {loading ? (
             <p className="flex items-center gap-2 px-1 text-[13px] text-muted">
@@ -501,7 +505,7 @@ export function ChatThread({
               }}
               maxLength={4000}
               placeholder={mode === "research" ? "What should I research?" : webOn ? "Ask anything. Answers use your notes and the web…" : messages.length ? "Ask a follow-up…" : "Ask anything, or ask Foli AI to tidy or organize…"}
-              className={`block min-h-[3rem] w-full resize-none bg-transparent leading-[1.5] text-ink outline-none placeholder:text-faint ${iphone ? "px-4 pb-1 pt-2.5 text-[16px]" : "px-3.5 pb-1.5 pt-3 text-[14px]"}`}
+              className={`block min-h-[3rem] w-full resize-none bg-transparent text-ink outline-none placeholder:text-faint ${iphone ? "px-4 pb-1 pt-2.5 text-[17px] leading-6" : "px-3.5 pb-1.5 pt-3 text-[14px] leading-[1.5]"}`}
             />
             {/* How Foli AI helps on the left, attach and send on the right, all inside the box. */}
             {/* 4px from the box's edge: the switch and Send are 10px-cornered inside its 14px corners. */}
@@ -519,13 +523,17 @@ export function ChatThread({
                 ) : null}
               <div className="ml-auto flex flex-none items-center gap-1.5">
                 {attachAvailable ? <AttachControl noteFiles={noteFiles ?? []} onFiles={attachments.add} onPick={attachments.pick} disabled={working} /> : null}
-                <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className={`grid flex-none place-items-center bg-heading text-canvas transition-opacity disabled:opacity-30 ${iphone ? "h-10 w-10 rounded-capsule" : "h-9 w-9 rounded-control"}`}>
-                  <ArrowUp size={16} aria-hidden />
-                </button>
+                {iphone ? (
+                  <SendButton label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="-m-[5px]" />
+                ) : (
+                  <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="grid h-9 w-9 flex-none place-items-center rounded-control bg-heading text-canvas transition-opacity disabled:opacity-30">
+                    <ArrowUp size={16} aria-hidden />
+                  </button>
+                )}
               </div>
             </div>
           </div>
-          <p className={iphone ? "mt-2.5 px-4 text-center text-[12px] text-faint" : "mt-2 px-1 text-[11px] text-faint"}>
+          <p className={iphone ? "mt-2 px-4 text-center text-[13px] leading-[18px] text-faint" : "mt-2 px-1 text-[11px] text-faint"}>
             Foli AI can make mistakes.
             {footNotes.length ? ` ${footNotes.join(" ")}` : ""}
           </p>

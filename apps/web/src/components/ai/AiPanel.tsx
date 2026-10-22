@@ -1,6 +1,7 @@
 "use client";
 
-import { isIphoneApp } from "@/lib/iphone";
+import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
+import { SendButton } from "@/components/iphone/SendButton";
 import type { Editor } from "@tiptap/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -75,6 +76,12 @@ interface Request {
  * The note's AI panel (dock → AI): one-click writing help for the note, a prompt that writes or answers,
  * and a result you can insert, use to replace the selection, copy, retry or discard.
  */
+/**
+ * The note's Foli AI sheet in the iPhone app: the quick actions as 52 pt tiles with 15 pt words, the rest of
+ * the panel's small controls at a finger's size.
+ */
+const IPHONE_PANEL = "[&_.grid-cols-2>button]:h-[52px] [&_.grid-cols-2>button]:px-3.5 [&_.grid-cols-2>button]:text-[15px] [&_.grid-cols-2>button]:gap-2.5";
+
 export function AiPanel({
   documentId,
   editor,
@@ -115,6 +122,7 @@ export function AiPanel({
   const [result, setResult] = useState<Result | null>(null);
   const people = useQuery(api.comments.mentionable, result?.kind === "write" && result.task === "meetingSummary" ? { documentId } : "skip");
   const [notice, setNotice] = useState<string | null>(null);
+  const iphone = useIphoneApp();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const lastRun = useRef<number | null>(null);
   const uid = useId();
@@ -282,7 +290,7 @@ export function AiPanel({
   }
 
   return (
-    <div className="space-y-4 text-sm">
+    <div className={`space-y-4 text-sm ${iphone ? IPHONE_PANEL : ""}`}>
       {/* Prompt */}
       <section aria-label="Ask Foli AI">
         {modes}
@@ -304,20 +312,24 @@ export function AiPanel({
               }
             }}
             placeholder="Write a friendly intro paragraph…"
-            className="block w-full resize-none bg-transparent px-3 pb-9 pt-2.5 text-[13.5px] text-ink outline-none placeholder:text-faint"
+            className={`block w-full resize-none bg-transparent text-ink outline-none placeholder:text-faint ${iphone ? "px-4 pb-12 pt-3 text-[17px] leading-6" : "px-3 pb-9 pt-2.5 text-[13.5px]"}`}
           />
-          <button
-            type="button"
-            aria-label="Write"
-            disabled={!prompt.trim() || Boolean(busy) || (mode === "write" && readOnly)}
-            onClick={submit}
-            className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-chip bg-heading text-canvas transition-opacity disabled:opacity-30"
-          >
-            <ArrowUp size={15} aria-hidden />
-          </button>
+          {iphone ? (
+            <SendButton label="Write" disabled={!prompt.trim() || Boolean(busy) || (mode === "write" && readOnly)} onClick={submit} className="absolute bottom-0.5 right-0.5" />
+          ) : (
+            <button
+              type="button"
+              aria-label="Write"
+              disabled={!prompt.trim() || Boolean(busy) || (mode === "write" && readOnly)}
+              onClick={submit}
+              className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-chip bg-heading text-canvas transition-opacity disabled:opacity-30"
+            >
+              <ArrowUp size={15} aria-hidden />
+            </button>
+          )}
         </div>
-        <p className="mt-1.5 px-1 text-[11.5px] text-faint">
-          Write something new, or ask for a change (fix, shorten, reorganise) and Foli AI edits the note. ↵ to send.
+        <p className={iphone ? "mt-2 px-1 text-[13px] leading-[18px] text-muted" : "mt-1.5 px-1 text-[11.5px] text-faint"}>
+          Write something new, or ask for a change (fix, shorten, reorganise) and Foli AI edits the note.{iphone ? "" : " ↵ to send."}
         </p>
         <AiCreditsNote documentId={documentId} className="mt-2" />
       </section>

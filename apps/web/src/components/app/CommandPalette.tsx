@@ -19,6 +19,10 @@ import { formatRelative } from "@/lib/format";
 import { t } from "@/i18n";
 import { Select } from "@/components/ui/Select";
 import { useIphoneApp } from "@/lib/iphone";
+import { IphoneScopes } from "@/components/iphone/SearchScopes";
+
+/** A group's heading in the iPhone's search: caption caps (13/18 600, uppercase) at the 20 pt inset. */
+const IPHONE_CAPS = "px-5 pb-1.5 pt-6 text-[13px] font-semibold uppercase leading-[18px] tracking-[0.04em] text-muted";
 
 type Item =
   | { kind: "action"; id: string; label: string; hint?: string; icon: React.ReactNode; run: () => void }
@@ -224,7 +228,17 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               <Kbd>Esc</Kbd>
             )}
           </div>
-          <div className={iphone ? "flex flex-none items-center gap-1.5 overflow-x-auto px-4 pb-2 text-[13px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:flex-none" : "flex flex-wrap items-center gap-1.5 px-5 py-2.5 text-xs shadow-[inset_0_-1px_0_var(--color-line)]"} role="group" aria-label="Search filters">
+          {iphone ? (
+            <IphoneScopes
+              folders={flattenFolders(org?.folders ?? []).map(({ folder: f, depth }) => ({ id: f.id, label: `${"\u00a0\u00a0\u00a0".repeat(depth)}${f.name}`, name: f.name }))}
+              tags={(org?.tags ?? []).map((t) => ({ id: t.id, label: `#${t.name}`, name: `#${t.name}` }))}
+              people={workspace ? (members?.members ?? []).map((m) => ({ id: m.profileId, label: m.isYou ? "Me" : m.displayName, name: m.isYou ? "Me" : m.displayName })) : null}
+              filters={filters}
+              onFilters={setFilters}
+              place={manyPlaces ? { here: workspace ? workspace.name : "Personal", all: allPlaces, onAll: setEverywhere } : null}
+            />
+          ) : (
+          <div className="flex flex-wrap items-center gap-1.5 px-5 py-2.5 text-xs shadow-[inset_0_-1px_0_var(--color-line)]" role="group" aria-label="Search filters">
             <Select aria-label="Folder" disabled={allPlaces} value={filters.folderId ?? ""} onChange={(e) => setFilters({ ...filters, folderId: e.target.value || undefined })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
               <option value="">Any folder</option>
               {flattenFolders(org?.folders ?? []).map(({ folder: f, depth }) => (
@@ -267,24 +281,27 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               <span className="ml-auto text-faint">{workspace ? workspace.name : "Personal"}</span>
             )}
           </div>
-          <div className={iphone ? "min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-[calc(env(safe-area-inset-bottom)+16px)]" : "max-h-[55vh] overflow-y-auto p-2"}>
-            {debounced && results === undefined ? <p className="px-3 py-2 text-sm text-muted">Searching…</p> : null}
-            {debounced && results?.length === 0 ? <p className="px-3 py-2 text-sm text-muted">No documents match “{debounced}”.</p> : null}
-            <p className="ui-caps px-3 pb-1.5 pt-2">{debounced ? "Documents" : "Recent"}</p>
+          )}
+          <div className={iphone ? "min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+16px)]" : "max-h-[55vh] overflow-y-auto p-2"}>
+            {debounced && results === undefined ? <p className={iphone ? "px-5 py-3 text-[15px] text-muted" : "px-3 py-2 text-sm text-muted"}>Searching…</p> : null}
+            {debounced && results?.length === 0 ? <p className={iphone ? "px-5 py-3 text-[15px] text-muted" : "px-3 py-2 text-sm text-muted"}>No {iphone ? "notes" : "documents"} match “{debounced}”.</p> : null}
+            <p className={iphone ? IPHONE_CAPS.replace("pt-6", "pt-3") : "ui-caps px-3 pb-1.5 pt-2"}>{debounced ? (iphone ? "Notes" : "Documents") : "Recent"}</p>
             <ul id={listId} role="listbox" aria-label="Results">
               {items.map((item, i) => {
                 const selected = i === active;
+                // The iPhone: full-width list rows (one or two lines, 52 or 64 pt), hairlines inset to the text.
                 const cls = iphone
-                  ? `flex cursor-pointer items-start gap-3 rounded-panel px-3 py-3 transition-colors active:bg-[var(--liquid-press)] [&_.text-sm]:text-[17px] [&_.text-xs]:text-[13px] ${selected && query.trim() ? "bg-[var(--liquid-active)]" : ""}`
+                  ? "flex cursor-pointer items-center gap-3 pl-5 pr-4 transition-colors active:bg-[var(--liquid-press)] [&_.text-sm]:text-[17px] [&_.text-sm]:leading-[22px] [&_.text-sm]:font-normal [&_.text-xs]:text-[15px] [&_.text-xs]:leading-5 [&_.text-xs]:mt-0.5"
                   : `flex cursor-pointer items-start gap-3 rounded-chip px-3 py-2.5 transition-colors ${selected ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_18%,transparent)]" : ""}`;
                 const prev = items[i - 1];
+                const headCls = iphone ? IPHONE_CAPS : "ui-caps px-3 pb-1.5 pt-3";
                 const header =
                   i === docCount && item.kind === "action" ? (
-                    <li role="presentation" className="ui-caps px-3 pb-1.5 pt-3">
+                    <li role="presentation" className={headCls}>
                       Actions
                     </li>
                   ) : item.kind === "doc" && item.meaning && !(prev?.kind === "doc" && prev.meaning) ? (
-                    <li role="presentation" className="ui-caps px-3 pb-1.5 pt-3">
+                    <li role="presentation" className={headCls}>
                       By meaning
                     </li>
                   ) : null;
@@ -293,10 +310,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                     <li id={`${listId}-${i}`} role="option" aria-selected={selected} className={cls} onMouseEnter={() => setActive(i)} onClick={() => run(item)}>
                       {item.kind === "doc" ? (
                         <>
-                          <span className="mt-0.5 w-5 flex-none text-center" aria-hidden>
-                            <FileText size={16} className="inline text-muted" />
+                          <span className={iphone ? "grid w-7 flex-none place-items-center text-muted" : "mt-0.5 w-5 flex-none text-center"} aria-hidden>
+                            <FileText size={iphone ? 22 : 16} strokeWidth={iphone ? 1.8 : 2} className={iphone ? "" : "inline text-muted"} />
                           </span>
-                          <span className="min-w-0 flex-1">
+                          <span className={iphone ? "ui-row-sep flex min-h-16 min-w-0 flex-1 flex-col justify-center py-2.5" : "min-w-0 flex-1"}>
                             <span className="block truncate text-sm font-medium">
                               <Highlight text={item.title || "Untitled"} query={debounced} />
                             </span>
@@ -316,10 +333,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                         </>
                       ) : (
                         <>
-                          <span className="mt-0.5 text-muted" aria-hidden>
+                          <span className={iphone ? "grid w-7 flex-none place-items-center text-muted [&_svg]:h-[22px] [&_svg]:w-[22px]" : "mt-0.5 text-muted"} aria-hidden>
                             {item.icon}
                           </span>
-                          <span className="flex-1 text-sm">{item.label}</span>
+                          <span className={iphone ? "ui-row-sep flex min-h-[52px] min-w-0 flex-1 items-center text-[17px] leading-[22px] text-ink" : "flex-1 text-sm"}>{item.label}</span>
                           {item.hint && !iphone ? <span className="text-xs text-faint">{item.hint}</span> : null}
                         </>
                       )}

@@ -115,9 +115,9 @@ test("the iPhone app: tab bar, large titles, Back, the + menu and sheets", async
   // Picking another tab is felt.
   expect(await haptics(page)).toContain("light");
 
-  // Calendar: the agenda, today as the large title.
+  // Calendar: the agenda under the week strip, today picked in it.
   await tabs.getByRole("link", { name: "Calendar" }).click();
-  await expect(page.getByRole("list", { name: "Today" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Today, / })).toHaveAttribute("aria-pressed", "true");
 
   // Each tab keeps its own stack: Home comes back on the folder it was showing, with Back to Home; Tasks
   // still on Today. Tapping the tab you're on goes back to its first screen.

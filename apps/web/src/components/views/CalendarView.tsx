@@ -21,6 +21,7 @@ import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
 import { IphoneAgenda, calendarMenu } from "@/components/iphone/Agenda";
+import { IphoneTaskSheet } from "@/components/iphone/TaskSheet";
 import { RootAvatar, RootPill } from "@/components/iphone/RootBar";
 
 type Layout = "month" | "week" | "agenda";
@@ -63,10 +64,25 @@ export function CalendarView({ month }: { month: string | null }) {
   const weekDays = visibleDays(anchor, narrow ? 3 : 7);
   const first = `${current}-01`;
   const days = monthGrid(current);
-  const agendaDays = useMemo(() => Array.from({ length: 31 }, (_, i) => addDays(today, i)), [today]);
-  const from = mode === "month" ? days[0]! : mode === "week" ? weekDays[0]! : today;
-  const to = mode === "month" ? days[41]! : mode === "week" ? weekDays[weekDays.length - 1]! : addDays(today, 30);
-  const tasks = useQuery(api.tasks.range, { scope, from, to, includeCompleted: true });
+  const iphone = useIphoneApp();
+  const [selected, setSelected] = useState<string>(today);
+  // The iPhone's agenda starts at the day picked in its week strip; elsewhere it starts today.
+  const iphoneAgenda = iphone && mode === "agenda";
+  const agendaStart = iphoneAgenda ? selected : today;
+  const agendaDays = useMemo(() => Array.from({ length: 31 }, (_, i) => addDays(agendaStart, i)), [agendaStart]);
+  // The strip's dots need the months either side of the picked one too (fetched a month at a time, so paging
+  // through a month's weeks doesn't fetch again).
+  const stripMonth = agendaStart.slice(0, 7);
+  const stripFrom = monthGrid(shiftMonth(stripMonth, -1))[0]!;
+  const stripTo = [monthGrid(shiftMonth(stripMonth, 1))[41]!, addDays(agendaStart, 30)].sort()[1]!;
+  const from = mode === "month" ? days[0]! : mode === "week" ? weekDays[0]! : iphoneAgenda ? stripFrom : today;
+  const to = mode === "month" ? days[41]! : mode === "week" ? weekDays[weekDays.length - 1]! : iphoneAgenda ? stripTo : addDays(today, 30);
+  const liveTasks = useQuery(api.tasks.range, { scope, from, to, includeCompleted: true });
+  // On the iPhone the last answer stays while another range loads, so the strip's dots and the list don't blink.
+  const lastTasks = useRef(liveTasks);
+  if (liveTasks !== undefined) lastTasks.current = liveTasks;
+  const tasks = liveTasks ?? (iphoneAgenda ? lastTasks.current : undefined);
+  const stripDays = useMemo(() => (iphoneAgenda ? Array.from({ length: Math.round((Date.parse(stripTo) - Date.parse(stripFrom)) / 86_400_000) + 1 }, (_, i) => addDays(stripFrom, i)) : null), [iphoneAgenda, stripFrom, stripTo]);
   // The agenda starts with anything still open from before today; undated tasks can be scheduled from here.
   const overdue = useQuery(api.tasks.range, mode === "agenda" ? { scope, from: "0000-01-01", to: addDays(today, -1) } : "skip");
   const open = useQuery(api.tasks.list, { scope, view: "all", today });
@@ -75,13 +91,12 @@ export function CalendarView({ month }: { month: string | null }) {
   const update = useMutation(api.tasks.update);
   const toast = useToast();
   const toggle = useToggleTask();
-  const [selected, setSelected] = useState<string>(today);
   const [feedOpen, setFeedOpen] = useState(false);
   // The tasks feed is served by Folevi: not in local mode.
   const feeds = useCapabilities().calendarFeeds;
   const gridRef = useRef<HTMLDivElement>(null);
   // Events from subscribed calendars (read-only), and the one whose details are open.
-  const eventsByDate = useExternalEvents(mode === "week" ? weekDays : mode === "agenda" ? agendaDays : days, timeZone);
+  const eventsByDate = useExternalEvents(mode === "week" ? weekDays : mode === "agenda" ? (stripDays ?? agendaDays) : days, timeZone);
   const [openEvent, setOpenEvent] = useState<ExternalEvent | null>(null);
   const eventAnchor = useRef<HTMLElement | null>(null);
   const showEvent = (e: ExternalEvent, anchor: HTMLElement) => {
@@ -183,10 +198,9 @@ export function CalendarView({ month }: { month: string | null }) {
       </div>
     ) : null;
 
-  const iphone = useIphoneApp();
   const dialogs = (
     <>
-      <TaskEditDialog task={editing} onClose={() => setEditing(null)} />
+      {iphone ? <IphoneTaskSheet task={editing} onClose={() => setEditing(null)} /> : <TaskEditDialog task={editing} onClose={() => setEditing(null)} />}
       {feeds ? <CalendarFeedDialog open={feedOpen} onClose={() => setFeedOpen(false)} /> : null}
       <EventPopover event={openEvent} anchor={eventAnchor} timeZone={timeZone} onClose={() => setOpenEvent(null)} />
     </>
@@ -194,7 +208,7 @@ export function CalendarView({ month }: { month: string | null }) {
   const iphoneMenu = calendarMenu(mode, pickLayout, feeds ? () => setFeedOpen(true) : null);
   if (iphone && mode === "agenda") {
     return (
-      <IphoneAgenda today={today} days={agendaDays} byDate={byDate} eventsByDate={eventsByDate} overdue={overdue} timeZone={timeZone} onToggle={toggle} onEdit={setEditing} onOpenEvent={showEvent} menu={iphoneMenu}>
+      <IphoneAgenda today={today} selected={selected} onSelect={setSelected} days={agendaDays} byDate={byDate} eventsByDate={eventsByDate} overdue={overdue} timeZone={timeZone} onToggle={toggle} onEdit={setEditing} onOpenEvent={showEvent} menu={iphoneMenu}>
         {dialogs}
       </IphoneAgenda>
     );

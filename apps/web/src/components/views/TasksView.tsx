@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { haptic } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
 import { IphoneTasks } from "@/components/iphone/Tasks";
+import { IphoneTaskSheet } from "@/components/iphone/TaskSheet";
 
 type View = "inbox" | "today" | "upcoming" | "all" | "completed" | "mine";
 const VIEWS: { id: View; label: string; empty: { title: string; body?: string } }[] = [
@@ -175,7 +176,8 @@ export function useToggleTask() {
   const update = useMutation(api.tasks.update);
   const { deviceId } = useAppState();
   const toast = useToast();
-  return (task: TaskRow) => {
+  // `felt`: the caller already gave the tap in the hand (the iPhone's box, as it fills).
+  return (task: TaskRow, opts?: { felt?: boolean }) => {
     if (task.status === "canceled") {
       update({ blockId: task.blockId, canceled: false, deviceId: deviceId ?? undefined }).then(
         () => toast.show("Task reopened", { action: { label: "Undo", onClick: () => void update({ blockId: task.blockId, canceled: true, deviceId: deviceId ?? undefined }) } }),
@@ -184,7 +186,7 @@ export function useToggleTask() {
       return;
     }
     const checked = task.status !== "done";
-    if (checked) haptic("light");
+    if (checked && !opts?.felt) haptic("light");
     update({ blockId: task.blockId, checked, deviceId: deviceId ?? undefined }).then(
       () =>
         toast.show(checked ? "Task completed" : "Task reopened", {
@@ -331,7 +333,7 @@ export function TasksView({ view }: { view: View }) {
   // The rows are memoized below, so they need a toggle that keeps its identity between renders.
   const toggleRef = useRef(toggle);
   toggleRef.current = toggle;
-  const onToggle = useCallback((t: TaskRow) => toggleRef.current(t), []);
+  const onToggle = useCallback((t: TaskRow, opts?: { felt?: boolean }) => toggleRef.current(t, opts), []);
   const meta = VIEWS.find((v) => v.id === view)!;
   const [filter, setFilter] = useState("");
   // Typing in the filter stays immediate; the list (up to a thousand rows) catches up when React has time.
@@ -362,7 +364,7 @@ export function TasksView({ view }: { view: View }) {
   if (iphone) {
     return (
       <IphoneTasks view={view} tasks={tasks === undefined ? undefined : shown} counts={counts} filter={filter} onFilter={setFilter} onToggle={onToggle} onEdit={setEditing} empty={empty}>
-        <TaskEditDialog task={editing} onClose={() => setEditing(null)} />
+        <IphoneTaskSheet task={editing} onClose={() => setEditing(null)} />
       </IphoneTasks>
     );
   }

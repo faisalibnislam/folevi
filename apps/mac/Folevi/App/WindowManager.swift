@@ -29,11 +29,21 @@ final class WindowManager {
     /// Opens Quick Add (WM2); until then a folevi://quick-add link shows the main window.
     var quickAdd: (() -> Void)?
 
+    /// Runs for every view as it's made (WM2's title bar: drag areas, the window's title, zoom).
+    static var viewMade: [(FoleviWebView) -> Void] = []
+
+    /// Whether a main window may close (WM2: the last one hides instead); true without a hook.
+    var shouldClose: ((MainWindowController) -> Bool)?
+
+    /// Opens the first windows at launch (WM2 restores every window); one main window without a hook.
+    var openFirst: (() -> Void)?
+
     /// Paths waiting for a view's first load (a link that arrived while it was loading).
     private var pending: [ObjectIdentifier: [String]] = [:]
 
     func register(_ view: FoleviWebView) {
         views.add(view)
+        for hook in Self.viewMade { hook(view) }
     }
 
     /// The front main window, or the first one.

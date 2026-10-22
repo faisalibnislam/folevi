@@ -65,6 +65,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         next.load(URLRequest(url: Links.appURL(at)))
     }
 
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        WindowManager.shared.shouldClose?(self) ?? true
+    }
+
     func windowWillClose(_ notification: Notification) {
         WindowManager.shared.closed(self)
     }

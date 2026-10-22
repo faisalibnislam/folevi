@@ -9,7 +9,88 @@ export interface DesktopSettings {
   notifications: boolean;
 }
 
-export type DesktopCommand = { type: "navigate"; path: string } | { type: "new-note" } | { type: "quick-add-shown" };
+export type DesktopCommand =
+  | { type: "navigate"; path: string }
+  | { type: "new-note" }
+  | { type: "quick-add-shown" }
+  /** A menu bar item (the native Mac app): one of MAC_MENU_COMMANDS. */
+  | { type: "menu"; id: string }
+  /** A Mac notification's action: "reply" (with `text`, to comment thread `thread`), "read", "complete", "snooze-…". */
+  | { type: "notification"; action: string; id: string; kind?: string; path?: string; text?: string; thread?: string };
+
+/**
+ * The menu bar's page commands in the native Mac app (apps/mac/Folevi/Chrome/MenuModel.swift; its MenuTests checks
+ * this list against the menus). Each reaches the key window's page as { type: "menu", id }.
+ */
+export const MAC_MENU_COMMANDS = [
+  "file.new-note", "file.new-from-template", "file.new-folder", "file.quick-add-task", "file.new-tab", "file.open-quickly", "file.close-tab", "file.reopen-closed-tab", "file.import", "file.export",
+  "edit.find", "edit.find-next", "edit.find-previous", "edit.find-selection", "edit.search-all",
+  "format.bold", "format.italic", "format.underline", "format.strikethrough", "format.code", "format.highlight", "format.link", "format.heading-1", "format.heading-2", "format.heading-3", "format.body",
+  "format.bulleted-list", "format.numbered-list", "format.checklist", "format.indent", "format.outdent", "format.move-up", "format.move-down", "format.duplicate", "format.style",
+  "note.star", "note.archive", "note.move", "note.duplicate", "note.copy-link", "note.history", "note.lock", "note.trash",
+  "view.sidebar", "view.inspector", "view.focus", "view.cards", "view.list",
+  "go.back", "go.forward", "go.home", "go.today", "go.calendar", "go.inbox", "go.search", "go.ask-ai", "go.next-tab", "go.previous-tab",
+  "go.tab-1", "go.tab-2", "go.tab-3", "go.tab-4", "go.tab-5", "go.tab-6", "go.tab-7", "go.tab-8", "go.tab-9",
+  "help.help", "help.shortcuts", "help.whats-new", "help.feedback",
+] as const;
+export type MacMenuCommand = (typeof MAC_MENU_COMMANDS)[number];
+
+/** What the menu bar can do for this page now (foleviDesktop.setMenuState). */
+export interface DesktopMenuState {
+  /** Commands that can't run here now: their items show off. */
+  disabled: string[];
+  /** Commands shown with a check (the view in use, a starred note). */
+  checked?: string[];
+  /** Foli AI is on: Ask Foli AI shows. */
+  ai?: boolean;
+  sidebar?: boolean;
+  inspector?: boolean;
+  focus?: boolean;
+  /** The page has its own find bar (else Find is the system's). */
+  find?: boolean;
+  /** The note in front is locked (Note > Unlock). */
+  locked?: boolean;
+  route?: string;
+}
+
+type MenuHandler = () => boolean | void;
+const menuHandlers = new Map<string, MenuHandler[]>();
+const menuWatchers = new Set<() => void>();
+
+/**
+ * Handles a menu bar command (the native Mac app) while mounted: the most recent handler for an id runs first, and
+ * one that returns false hands it on. Returns the function that stops. Commands nothing handles show off.
+ */
+export function registerMenuCommand(id: MacMenuCommand, run: MenuHandler): () => void {
+  const list = menuHandlers.get(id) ?? [];
+  list.push(run);
+  menuHandlers.set(id, list);
+  menuWatchers.forEach((w) => w());
+  return () => {
+    const now = menuHandlers.get(id) ?? [];
+    const at = now.indexOf(run);
+    if (at >= 0) now.splice(at, 1);
+    if (!now.length) menuHandlers.delete(id);
+    menuWatchers.forEach((w) => w());
+  };
+}
+
+/** Runs the registered handlers for a command, newest first; true once one took it. */
+export function runMenuCommand(id: string): boolean {
+  const list = [...(menuHandlers.get(id) ?? [])].reverse();
+  for (const run of list) if (run() !== false) return true;
+  return false;
+}
+
+export function hasMenuCommand(id: string): boolean {
+  return (menuHandlers.get(id)?.length ?? 0) > 0;
+}
+
+/** Calls `cb` when handlers come or go (the menu state is sent again). */
+export function watchMenuCommands(cb: () => void): () => void {
+  menuWatchers.add(cb);
+  return () => menuWatchers.delete(cb);
+}
 
 /** Which desktop app the page is in: there is only the Mac app. */
 export type DesktopPlatform = "mac";
@@ -17,7 +98,11 @@ export type DesktopPlatform = "mac";
 export interface DesktopBridge {
   platform: DesktopPlatform;
   setBadge(count: number): void;
-  notify(n: { id: string; title: string; body?: string | null; path?: string | null }): void;
+  /**
+   * A Mac notification. The native app also reads `kind` (its actions: Reply and Mark as Read for comments), `thread`
+   * (the note, which groups them), `threadTitle` and `commentThread` (where a reply goes).
+   */
+  notify(n: { id: string; title: string; body?: string | null; path?: string | null; kind?: string; thread?: string | null; threadTitle?: string | null; commentThread?: string | null }): void;
   setRecent(notes: { id: string; title: string }[]): void;
   setStatus(text: string): void;
   getSettings(): Promise<{ settings: DesktopSettings; error: string | null } | null>;
@@ -44,6 +129,17 @@ export interface DesktopBridge {
   /** Opens System Settings at Privacy & Security > Screen & System Audio Recording. Missing before 1.3. */
   openSystemSettings?(pane: "screen-recording"): void;
   onCommand(listener: (command: DesktopCommand) => void): () => void;
+  /** The native Mac app: what its menu bar can do for this page now. */
+  setMenuState?(state: DesktopMenuState): void;
+  /** The native Mac app: closes this window (⌘W with no tab left to close). */
+  closeWindow?(): void;
+  /** The native Mac app: the spell checker on a word, for Folevi's text menu (null when it can't say). */
+  spelling?(word: string): Promise<{ misspelled: boolean; guesses: string[] } | null>;
+  /** The native Mac app: "Learn Spelling" (the Mac's dictionary) and "Ignore Spelling" (this page). */
+  learnWord?(word: string): void;
+  ignoreWord?(word: string): void;
+  /** The native Mac app: the dictionary panel (Look Up) for `text`, its baseline at (x, y) in the page. */
+  lookUp?(o: { text: string; x: number; y: number }): void;
   /**
    * The text in an image, read on this Mac with Vision (a small helper in the app), for search (lib/fileText).
    * Null when it couldn't be read. Missing in Mac app builds before 1.15.

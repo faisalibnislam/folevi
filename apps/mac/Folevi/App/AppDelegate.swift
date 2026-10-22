@@ -29,6 +29,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSAppleEventManager.shared().setEventHandler(self, andSelector: #selector(handleURL(_:reply:)), forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
         // Decision M4: Folevi keeps its own tab strip, so the system's window tabs are off.
         NSWindow.allowsAutomaticWindowTabbing = false
+        // The Mac chrome (WM2): menus, title bar, windows, Quick Add, menu bar icon, Dock, Settings, notifications.
+        if !Paths.testing { Chrome.install() }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -53,7 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 WindowManager.shared.openMain(path: path)
                 first.dropFirst().forEach(self.open)
             } else {
-                WindowManager.shared.openMain()
+                if let openFirst = WindowManager.shared.openFirst { openFirst() } else { WindowManager.shared.openMain() }
                 first.forEach(self.open)
             }
             NSApp.activate()

@@ -2,3 +2,7 @@
 # conflicts in a .pbxproj.
 Folevi.xcodeproj/
 build/
+# Release builds (scripts/release.mjs --install, publish.mjs) and the ZIPs kept for Sparkle deltas: never committed.
+release/
+release-dist/
+release-archive/

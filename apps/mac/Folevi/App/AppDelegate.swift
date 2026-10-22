@@ -21,6 +21,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// WM3's migration, which may hold the first window back by returning false).
     static var beforeFirstWindow: [() async -> Bool] = []
 
+    /// WM3: the first launch after the Electron app moves what it kept (Migration/MigrationWindow.swift), before
+    /// anything else reads the support folder; false holds the windows back (an update comes first, or quitting).
+    static var migrate: () async -> Bool = { await MigrationFlow.runAtLaunch() }
+
     private var launched = false
     private var pendingLinks: [URL] = []
 
@@ -46,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             await WebViewFactory.prepareRules()
             WebViewFactory.scheme.modeOf = { view in WindowManager.shared.modeOf((view as? FoleviWebView)?.place) }
+            guard await Self.migrate() else { return }
             for step in Self.beforeFirstWindow { guard await step() else { return } }
             self.launched = true
             let first = self.pendingLinks
@@ -59,6 +64,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 first.forEach(self.open)
             }
             NSApp.activate()
+            // WM3: updates (Sparkle), release builds only.
+            Updater.shared.start()
         }
     }
 

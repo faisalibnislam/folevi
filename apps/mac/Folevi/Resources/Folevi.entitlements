@@ -2,7 +2,31 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- The release app (com.folevi.mac, Developer ID, hardened runtime, not sandboxed: docs/MAC_WEBKIT_PLAN.md §9).
+	     iCloud and the Keychain group come with the Developer ID provisioning profile "Folevi for Mac Developer ID
+	     iCloud" (apps/mac/signing/Folevi.provisionprofile). No JIT entitlements: WebKit's JIT runs in its own
+	     signed processes. -->
 	<key>com.apple.security.device.audio-input</key>
 	<true/>
+	<!-- "Sync with iCloud": the container the iPhone and iPad share the library through. -->
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.folevi</string>
+	</array>
+	<key>com.apple.developer.ubiquity-container-identifiers</key>
+	<array>
+		<string>iCloud.com.folevi</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudDocuments</string>
+	</array>
+	<!-- A Developer ID app outside the App Store names the production iCloud environment itself. -->
+	<key>com.apple.developer.icloud-container-environment</key>
+	<string>Production</string>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>7K32QQ2FX8.com.folevi.mac</string>
+	</array>
 </dict>
 </plist>

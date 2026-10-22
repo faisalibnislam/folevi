@@ -1,0 +1,51 @@
+{
+  "user": "k17abcuser1",
+  "sessions": {
+    "session.k17abcuser1": "test-session-token-for-user-one-0001",
+    "session": "test-session-token-legacy-single-0002"
+  },
+  "ai": {
+    "ai.openai": "test-openai-key-not-real-0003"
+  },
+  "devices": {
+    "device": {
+      "deviceId": "mac-01JTESTLIBRARY0000000000",
+      "x25519Pub": "k4dtmG9CIYHGaZ1mCXA34kBoT9QPJROnTlK9mx5q6m0",
+      "ed25519Pub": "hWRweqR3TMEIX8eBa38WNThY3rcTOnYpqup8Gh0Hc7Q"
+    },
+    "device.k17abcuser1": {
+      "deviceId": "mac-01JTESTACCOUNT0000000000",
+      "x25519Pub": "d68gR_Tg3-h7zOZrGIu1L9ZEBXYqX6lHx5alI0kyDAk",
+      "ed25519Pub": "iiwJku7UrdWbXUYL4U6fL0CvQnAe0dLarVZP01Y1NiM"
+    }
+  },
+  "libraryKey": {
+    "libraryId": "01JTESTLIBRARY00000000000A",
+    "key": "f5tV4e/N4qkREWcdCAf0nXXNYKLi0eYPUMrduXqendY="
+  },
+  "cloud": {
+    "dropbox": {
+      "accessToken": "test-dropbox-access",
+      "refreshToken": "test-dropbox-refresh",
+      "expiresAt": 1900000000000
+    }
+  },
+  "journal": [
+    "first edit, not yet in its file",
+    "second edit"
+  ],
+  "handover": {
+    "databases": [
+      {
+        "name": "folevi-k17abcuser1",
+        "counts": {
+          "documents": 12,
+          "meta": 2,
+          "syncState": 1,
+          "uploads": 1
+        }
+      }
+    ],
+    "storage": 2
+  }
+}

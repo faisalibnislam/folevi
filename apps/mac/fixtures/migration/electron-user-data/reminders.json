@@ -1,0 +1,25 @@
+{
+  "reminders": [
+    {
+      "id": "r-future",
+      "at": 4102444800000,
+      "title": "Water the plants",
+      "body": "",
+      "path": "/tasks"
+    },
+    {
+      "id": "r-past",
+      "at": 1600000000000,
+      "title": "Long gone",
+      "body": "",
+      "path": "/tasks"
+    }
+  ],
+  "shown": [
+    {
+      "id": "r-shown",
+      "at": 1700000000000,
+      "shownAt": 1700000000000
+    }
+  ]
+}

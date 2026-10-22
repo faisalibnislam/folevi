@@ -1,0 +1,32 @@
+{
+  "v": 1,
+  "current": "acct:k17abcuser1",
+  "library": true,
+  "libraryCounts": {
+    "unread": 0,
+    "reminders": 1,
+    "waiting": 0
+  },
+  "accounts": [
+    {
+      "kind": "account",
+      "id": "acct:k17abcuser1",
+      "userId": "k17abcuser1",
+      "profileId": "p1",
+      "name": "Test Person",
+      "email": "test@example.com",
+      "avatarUrl": null,
+      "workspaces": [
+        {
+          "id": "w1",
+          "name": "Team",
+          "logoUrl": null
+        }
+      ],
+      "unread": 2,
+      "reminders": 0,
+      "waiting": 0
+    }
+  ],
+  "quickAdd": "library"
+}

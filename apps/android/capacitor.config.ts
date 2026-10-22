@@ -11,9 +11,6 @@ const config: CapacitorConfig = {
   webDir: "web",
   android: {
     path: "android",
-    // The page draws under the status and navigation bars and lays itself out with the safe-area insets
-    // (MainActivity sets them; WebView reports them to env(safe-area-inset-*)).
-    adjustMarginsForEdgeToEdge: "disable",
     // Debug builds only: lets chrome://inspect attach to the web view.
     webContentsDebuggingEnabled: process.env.FOLEVI_RELEASE !== "1",
     allowMixedContent: false,
@@ -21,8 +18,9 @@ const config: CapacitorConfig = {
     appendUserAgent: "FoleviAndroid/1.0",
   },
   plugins: {
-    // The app lays out the system bars and the keyboard itself (MainActivity.kt, folevi-bridge.js), not
-    // Capacitor's SystemBars plugin, which would pad the window on WebViews older than 140.
+    // The page draws under the status and navigation bars and lays itself out with the insets the app hands it
+    // (MainActivity.kt, folevi-bridge.js), not Capacitor's SystemBars plugin, which would pad the window on
+    // WebViews older than 140.
     SystemBars: { insetsHandling: "disable" },
   },
   server: {

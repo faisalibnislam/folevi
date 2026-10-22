@@ -38,6 +38,7 @@ export function FolderCard({ folder: f, parentName }: { folder: FolderSummary; p
       </AppLink>
       <FolderMenu
         folder={f}
+        cardMenu
         trigger={<MoreHorizontal size={16} aria-hidden />}
         className={`${FOLDER_CARD_MENU} pointer-events-none focus-within:pointer-events-auto focus-within:opacity-100 group-hover:pointer-events-auto pointer-coarse:pointer-events-auto [&>div>button]:text-[#17171a]/75 [&>div>button:hover]:text-[#17171a]`}
       />

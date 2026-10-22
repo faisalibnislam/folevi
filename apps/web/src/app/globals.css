@@ -880,13 +880,13 @@
 /* No focus ring after a tap: only while a keyboard moves focus (data-input="key", components/iphone/chrome.tsx). */
 :root[data-ipad]:not([data-input="key"]) :focus-visible { outline: none !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important; }
 :root[data-ipad][data-input="key"] :focus-visible { --tw-ring-color: var(--color-focus); }
-/* A note card's "…" on Home and in lists (HomeDashboard, DocumentBrowser) stays out of sight on touch: a long
-   press opens the same menu (and the lifted picture of the card has no "…" either). A pointer hovering the
-   card, or keyboard focus, shows it (not the focus a closing menu hands back after a touch: only a keyboard's,
+/* A note card's "…" on Home and in lists (HomeDashboard, DocumentBrowser), and a folder card's (FolderCard), stays out of sight on touch: a long
+   press opens the same menu (and the lifted picture of the card has no "…" either). A trackpad's pointer
+   hovering the card (data-input="pointer": a finger counts as hovering too), or keyboard focus, shows it (not the focus a closing menu hands back after a touch: only a keyboard's,
    data-input="key"). */
 :root[data-ipad]:not([data-input="key"]) [data-card-menu], :root[data-ipad] [data-card-menu]:not(:has(:focus-visible)) { opacity: 0; pointer-events: none; }
 @media (any-hover: hover) {
-  :root[data-ipad] .group:hover > [data-card-menu], :root[data-ipad] .group:hover [data-card-menu] { opacity: 1; pointer-events: auto; }
+  :root[data-ipad][data-input="pointer"] .group:hover > [data-card-menu], :root[data-ipad][data-input="pointer"] .group:hover [data-card-menu] { opacity: 1; pointer-events: auto; }
 }
 /* The sidebar as an iPadOS sidebar: 44 pt rows in 17 pt text, the open item a filled capsule (no raised card). */
 :root[data-ipad] nav[aria-label="Folio"] a.group { min-height: 44px; font-size: 17px; gap: 12px; padding-inline: 12px; }

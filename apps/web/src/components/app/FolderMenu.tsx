@@ -36,7 +36,18 @@ export interface MenuFolder {
  * colour, move it (into another folder or to the top level), copy link, invite people to the team
  * workspace (a modal), and delete.
  */
-export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder; trigger?: ReactNode; className?: string }) {
+export function FolderMenu({
+  folder,
+  trigger,
+  className,
+  cardMenu = false,
+}: {
+  folder: MenuFolder;
+  trigger?: ReactNode;
+  className?: string;
+  /** The "…" on a folder card: on the iPad, out of sight on touch as a note card's is (globals.css [data-card-menu]). */
+  cardMenu?: boolean;
+}) {
   const { canEdit, canManage: managesWorkspace, workspace, scope } = useAppState();
   const { openAsk } = useShell();
   const aiOn = useAiEnabled();
@@ -160,7 +171,7 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
   );
 
   return (
-    <div className={className}>
+    <div className={className} data-card-menu={cardMenu ? "" : undefined}>
       <MenuButton label={`Folder options for ${folder.name}`} trigger={trigger ?? <MoreHorizontal size={14} aria-hidden />} items={items} />
       {typeof document === "undefined" ? null : createPortal(dialogs, document.body)}
     </div>

@@ -188,7 +188,7 @@ const NAVIGATION_KEYS = new Set(["Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "Ar
 
 /**
  * How focus is being moved, on <html data-input>: "key" once a hardware keyboard moves it (Tab, arrows, a
- * shortcut), gone again at the next touch. Focus rings show only for "key" (globals.css), so a tap never leaves
+ * shortcut), "pointer" while a trackpad or mouse is in use, gone again at the next touch. Focus rings show only for "key" (globals.css), so a tap never leaves
  * one behind, as on iOS. Returns the function that stops (the iPad layout can install it too).
  */
 export function installInputModality(): () => void {
@@ -198,14 +198,23 @@ export function installInputModality(): () => void {
     if (NAVIGATION_KEYS.has(e.key) || ((e.metaKey || e.ctrlKey) && e.key.length === 1)) root.dataset.input = "key";
   };
   const touch = (e: Event) => {
-    if (e.isTrusted && root.dataset.input) delete root.dataset.input;
+    if (!e.isTrusted) return;
+    // A trackpad or mouse (an iPad's): "pointer", so hover-only things (a card's "…") show for it and never
+    // for a finger, which WebKit also counts as hovering what it touched.
+    if (e instanceof PointerEvent && e.pointerType === "mouse") {
+      if (e.type === "pointerdown" || root.dataset.input !== "key") root.dataset.input = "pointer";
+      return;
+    }
+    if (root.dataset.input) delete root.dataset.input;
   };
   window.addEventListener("keydown", key, true);
   window.addEventListener("pointerdown", touch, true);
+  window.addEventListener("pointermove", touch, { capture: true, passive: true });
   window.addEventListener("touchstart", touch, { capture: true, passive: true });
   return () => {
     window.removeEventListener("keydown", key, true);
     window.removeEventListener("pointerdown", touch, true);
+    window.removeEventListener("pointermove", touch, true);
     window.removeEventListener("touchstart", touch, true);
     delete root.dataset.input;
   };

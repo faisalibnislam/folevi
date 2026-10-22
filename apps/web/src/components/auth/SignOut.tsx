@@ -109,6 +109,11 @@ export async function signOutNow(destination = signedOutDestination(), opts: { f
 export function useSafeSignOut(accountKey: string | null) {
   const [pending, setPending] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const unsynced =
+    pending === 1
+      ? "One change on this device hasn't reached Folevi yet. If you sign out now it will be deleted from this device."
+      : `${pending ?? 0} changes on this device haven't reached Folevi yet. If you sign out now they will be deleted from this device.`;
+  const wait = typeof navigator !== "undefined" && !navigator.onLine ? "You're offline. Reconnect and wait for the status to show “Saved”, then sign out." : "Wait a moment for the status to show “Saved”, then sign out.";
   const request = async () => {
     const count = await unsyncedChangeCount(accountKey);
     if (count > 0) setPending(count);
@@ -122,12 +127,19 @@ export function useSafeSignOut(accountKey: string | null) {
       open={pending !== null}
       onClose={() => setPending(null)}
       title="Some changes haven't synced yet"
-      description={
-        pending === 1
-          ? "One change on this device hasn't reached Folevi yet. If you sign out now it will be deleted from this device."
-          : `${pending ?? 0} changes on this device haven't reached Folevi yet. If you sign out now they will be deleted from this device.`
-      }
+      description={unsynced}
       size="sm"
+      // In the iPhone, iPad and Android apps: the system's alert, with the same words and choices.
+      confirm={{
+        label: "Sign out and delete them",
+        destructive: true,
+        cancel: "Stay signed in",
+        message: `${unsynced} ${wait}`,
+        onConfirm: () => {
+          setBusy(true);
+          void signOutNow(undefined, { profileId: accountKey });
+        },
+      }}
       footer={
         <>
           <Button variant="primary" onClick={() => setPending(null)}>
@@ -146,11 +158,7 @@ export function useSafeSignOut(accountKey: string | null) {
         </>
       }
     >
-      <p className="text-sm text-muted">
-        {typeof navigator !== "undefined" && !navigator.onLine
-          ? "You're offline. Reconnect and wait for the status to show “Saved”, then sign out."
-          : "Wait a moment for the status to show “Saved”, then sign out."}
-      </p>
+      <p className="text-sm text-muted">{wait}</p>
     </Dialog>
   );
   return { request, dialog, busy };

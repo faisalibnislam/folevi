@@ -13,7 +13,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ageText, formatRelative } from "@/lib/format";
 import { Card } from "./Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ActionRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen, SwitchRow, TextRow, useSettingsScreens } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 import { GlassTextButton } from "@/components/iphone/Glass";
@@ -40,7 +40,7 @@ export function WebhooksCard() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [logOpen, setLogOpen] = useState<string | null>(null);
   const fail = (e: unknown) => toast.show(errorMessage(e), { tone: "error" });
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   if (iphone) {
     const full = hooks !== undefined && hooks.length >= MAX_WEBHOOKS;
     const what = (h: NonNullable<typeof hooks>[number]) => `${h.events.length === EVENT_LABELS.length ? "Every event" : h.events.join(", ")} in ${h.places.join(", ") || "no places"}`;

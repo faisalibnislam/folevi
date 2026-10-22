@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Card } from "./Card";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ActionRow, IosRow, IosSection, SwitchRow } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 import { Bell } from "lucide-react";
@@ -33,7 +33,7 @@ export function NativePushCard() {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const hintId = useId();
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
 
   const read = useCallback(() => void bridge?.pushStatus?.().then(setStatus), [bridge]);
   useEffect(() => {

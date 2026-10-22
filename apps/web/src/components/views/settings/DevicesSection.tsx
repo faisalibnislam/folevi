@@ -13,7 +13,7 @@ import { formatDateTime, formatRelative } from "@/lib/format";
 import { TIER_NAMES, TRIAL_TIER } from "@/lib/plans";
 import { Card } from "./Card";
 import { canPurchaseHere } from "@/lib/nativeApp";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { DestructiveRow, IosRow, IosSection, IosText, Subscreen } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 import { EncryptionDevices } from "@/components/e2ee/EncryptionDevices";
@@ -45,7 +45,7 @@ export function DevicesSection() {
   const others = sessions?.filter((s) => !s.current).length ?? 0;
   const pct = limit && count !== undefined ? Math.min(100, (count / limit) * 100) : 0;
   const plural = (n: number) => (n === 1 ? "device" : "devices");
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const signOut = (id: (typeof sessions & object)[number]["id"]) => void revoke({ sessionId: id }).then(() => toast.show("Device signed out"), (e) => toast.show(errorMessage(e), { tone: "error" }));
   if (iphone) {
     const icon = (client: string, label: string) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { createContext, useContext, useSyncExternalStore } from "react";
 import { inAndroidApp, inIosApp } from "./nativeApp";
 
 // The iPhone app's own interface (components/iphone): a navigation stack with large titles, a floating glass
@@ -73,6 +73,32 @@ const followWidth = (changed: () => void) => {
 /** The same, for rendering: false on the server; on an iPad it follows the window's width. */
 export function useIphoneApp(): boolean {
   return useSyncExternalStore(followWidth, isIphoneApp, () => false);
+}
+
+/**
+ * Whether this page shows the iPad layout: the iPad app in a window wide enough for the sidebar (Shell marks
+ * <html data-ipad>, and globals.css draws the iPadOS look: touch-sized rows, the tab strip as iPad tabs, no
+ * desktop pills or hints). False on the server, and while the window is compact (the phone interface then).
+ */
+export function isIpadLayout(): boolean {
+  return isIpadApp() && !isIphoneApp();
+}
+
+/** The same, for rendering. */
+export function useIpadLayout(): boolean {
+  return useSyncExternalStore(followWidth, isIpadLayout, () => false);
+}
+
+/**
+ * Settings on the iPad draws its sections as the iPhone's grouped lists (iOS polish WP5): inside it, this says so.
+ * Only the settings sections read it (useIphoneLook), so dialogs, menus and the shell keep the iPad's own.
+ */
+export const IphoneLookContext = createContext(false);
+
+/** Whether a settings section draws its iPhone look: the iPhone app, or Settings on the iPad. */
+export function useIphoneLook(): boolean {
+  const forced = useContext(IphoneLookContext);
+  return useIphoneApp() || forced;
 }
 
 /**

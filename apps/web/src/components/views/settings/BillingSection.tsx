@@ -12,7 +12,7 @@ import { formatDateTime } from "@/lib/format";
 import { DAY_MS, PACK_VALID_MONTHS, PLANS, PLAN_ORDER, TIER_NAMES, formatPrice, isPaidPlan, monthlyEquivalent, yearlySavingPercent, type BillingInterval, type PersonalTier } from "@/lib/plans";
 import { creditCount, creditDate } from "@/components/ai/AiCredits";
 import { AppLink, useAppRouter } from "@/lib/app/router";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { IosRow, IosSection, IosText } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 import { Card } from "./Card";
@@ -101,7 +101,7 @@ export function BillingSection() {
   const [interval, setInterval] = useState<BillingInterval>("year");
   const [busy, setBusy] = useState<string | null>(null);
   const [buyFor, setBuyFor] = useState<{ target: CreditTarget; name: string } | null>(null);
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const { navigate } = useAppRouter();
 
   useEffect(() => {

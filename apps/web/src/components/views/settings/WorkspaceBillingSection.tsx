@@ -17,7 +17,7 @@ import { BuyCreditsDialog } from "./BuyCreditsDialog";
 import { PlanRow, PlanRows } from "./PlanRow";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { canPurchaseHere } from "@/lib/nativeApp";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { IosRow, IosSection } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 
@@ -48,7 +48,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
   const [interval, setInterval] = useState<BillingInterval>("month");
   const [busy, setBusy] = useState<string | null>(null);
   const [buying, setBuying] = useState(false);
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("checkout");

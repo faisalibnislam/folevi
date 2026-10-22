@@ -15,7 +15,7 @@ import { InviteForm } from "@/components/app/InviteDialog";
 import { Switch } from "@/components/ui/Switch";
 import { formatPrice } from "@/lib/plans";
 import { canPurchaseHere } from "@/lib/nativeApp";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { useAppRouter } from "@/lib/app/router";
 import { ActionSheet, ChoiceRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen, SwitchRow, TextRow, useSettingsScreens, type Choice as RowChoice } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
@@ -55,7 +55,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [busy, setBusy] = useState(false);
   const [revoking, setRevoking] = useState<NonNullable<typeof data>["invites"][number]["id"] | null>(null);
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const { navigate } = useAppRouter();
   // End-to-end encryption (docs/E2EE_DESIGN.md §8): null unless this workspace is encrypted.
   const wsScope = { kind: "workspace" as const, workspaceId: workspace.id };

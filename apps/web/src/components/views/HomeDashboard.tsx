@@ -95,7 +95,7 @@ function NoteCard({ d, recent }: { d: Summary; recent?: boolean }) {
           folder={d.homeFolder}
         />
       </AppLink>
-      <div className={`absolute top-2 ${d.starred ? "right-[calc(12cqw+8px)]" : "right-2"} opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100`}>
+      <div data-card-menu="" className={`absolute top-2 ${d.starred ? "right-[calc(12cqw+8px)]" : "right-2"} opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100`}>
         <div className="ui-raised rounded-chip">
           <DocMenu doc={d} view="all" recent={recent} />
         </div>

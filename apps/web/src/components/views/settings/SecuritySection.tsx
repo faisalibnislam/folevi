@@ -20,7 +20,7 @@ import { DeleteAccountCard } from "./DeleteAccountCard";
 import { SignInMethodsCard } from "./SignInMethods";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { nativeApp } from "@/lib/nativeApp";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ActionRow, DestructiveRow, EditRow, IosRow, IosSection, IosText, Subscreen, TextRow, useSettingsScreens } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 import { GlassTextButton } from "@/components/iphone/Glass";
@@ -87,7 +87,7 @@ function TwoStepCard() {
   const [gate, setGate] = useState<"codes" | "key" | "off" | null>(null);
   const [codes, setCodes] = useState<string[] | null>(null);
   const [totpUri, setTotpUri] = useState<string | null>(null);
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   if (iphone) {
     const description = enabled
       ? "Folevi asks for a code from your authenticator app every time you sign in on a new device. When you tick “Trust this device for 30 days” while signing in, that browser skips the code for 30 days. Signing out, revoking the session in Devices, or changing your password ends it."
@@ -261,7 +261,7 @@ function PasskeysCard() {
     void passkeysAvailable().then(setSupported);
   }, []);
   const label = (p: PasskeyRow) => p.name?.trim() || "Passkey";
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const facts = (p: PasskeyRow) =>
     `${p.createdAt ? `Added ${formatDateTime(new Date(p.createdAt).getTime())}` : "Added earlier"}${p.backedUp ? " · syncs across your devices" : " · on one device"}${usage === undefined ? "" : lastUsed.has(p.id) ? ` · Last used ${formatRelative(lastUsed.get(p.id)!)}` : " · Not used yet"}`;
   const unsupported = nativeApp()
@@ -478,7 +478,7 @@ function PasswordCard() {
   const [repeat, setRepeat] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const screens = useSettingsScreens();
   const submit = async (): Promise<boolean> => {
     if (busy) return false;
@@ -560,7 +560,7 @@ function PasswordCard() {
 }
 
 export function SecuritySection() {
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   if (iphone)
     return (
       <>

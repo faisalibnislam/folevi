@@ -14,6 +14,9 @@ import { SidebarMenu } from "./SidebarMenu";
 import { SyncStatus } from "./SyncStatus";
 import { useCreateDocument } from "./useCreateDocument";
 import { BackForward } from "./BackForward";
+import { useIpadLayout } from "@/lib/iphone";
+import { PillButton } from "@/components/iphone/Glass";
+import { useAiAccess } from "@/components/ai/useAi";
 
 const ARROW = "grid h-9 w-6 flex-none place-items-center rounded-control text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
@@ -93,7 +96,12 @@ function ViewIcon({ kind }: { kind: string }) {
  * page. Pages open in tabs; closing the current tab moves to its neighbour.
  */
 export function TabStrip() {
-  const { sidebarOpen } = useShell();
+  const { sidebarOpen, openAsk } = useShell();
+  // The iPad app keeps its tabs (the owner's call, docs/IOS_POLISH_PLAN.md §6 D2), drawn as iPadOS draws them: a
+  // glass capsule bar, 40 pt capsule tabs in 15 pt text, chevrons and round glass buttons instead of the Mac's
+  // arrows and its dark "New note" button. globals.css (data-ipad-tabs) gives the capsule corners.
+  const ipad = useIpadLayout();
+  const ai = useAiAccess();
   const { route, pathname } = useAppRouter();
   const { tabs, close, closeMany, move } = useTabs();
   // Each tab's title as it is now (a tab only learns its title while its page is open, so one left before
@@ -199,14 +207,24 @@ export function TabStrip() {
   };
   const fade = 28;
   const mask = `linear-gradient(to right, ${overflow.start ? "transparent" : "#000"} 0, #000 ${fade}px, #000 calc(100% - ${fade}px), ${overflow.end ? "transparent" : "#000"} 100%)`;
-  const tabBase = "group relative flex h-9 items-center gap-2 rounded-control px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus ring-offset-1 ring-offset-canvas focus-visible:ring-2 has-[:focus-visible]:ring-2";
+  const tabBase = ipad
+    ? "group relative flex h-10 items-center gap-2 rounded-container px-3.5 text-[15px] outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus focus-visible:ring-2 has-[:focus-visible]:ring-2"
+    : "group relative flex h-9 items-center gap-2 rounded-control px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus ring-offset-1 ring-offset-canvas focus-visible:ring-2 has-[:focus-visible]:ring-2";
   // Every tab is an outlined rounded rectangle. Closed tabs sit back (a light grey fill, quiet text); the
-  // open one comes forward: white, a firm dark outline, a soft shadow and bold text.
-  const tabOn = "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
-  const tabOff = "bg-[var(--glass-hover)] text-muted hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
+  // open one comes forward: white, a firm dark outline, a soft shadow and bold text. On the iPad: no outline,
+  // the open tab a raised capsule, the others plain text that tints under the finger.
+  const tabOn = ipad
+    ? "bg-[var(--iphone-row)] font-semibold text-heading shadow-[0_1px_4px_rgb(0_0_0/0.08),0_0_0_0.5px_var(--iphone-separator)]"
+    : "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
+  const tabOff = ipad
+    ? "text-muted active:bg-[var(--liquid-press)] [@media(hover:hover)]:hover:bg-[var(--liquid-active)] [@media(hover:hover)]:hover:text-heading"
+    : "bg-[var(--glass-hover)] text-muted hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
 
   return (
-    <div className="ui-drag ui-glass ui-glass-sidebar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-panel px-1">
+    <div
+      data-ipad-tabs={ipad ? "" : undefined}
+      className={ipad ? "ui-liquid absolute inset-x-2 top-2 z-30 flex h-[52px] items-center gap-1 px-1.5" : "ui-drag ui-glass ui-glass-sidebar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-panel px-1"}
+    >
       {/* While the sidebar is hidden, its menu waits here; otherwise it sits in the sidebar. */}
       {!sidebarOpen ? (
         <>
@@ -214,20 +232,21 @@ export function TabStrip() {
           <span aria-hidden className="ui-traffic-space" />
           <SidebarMenu />
           <SyncStatus align="start" documentId={docId ?? undefined} />
-          <span aria-hidden className="h-5 w-px flex-none bg-black/10" />
+          {ipad ? null : <span aria-hidden className="h-5 w-px flex-none bg-black/10" />}
         </>
       ) : null}
 
       {/* Back and Forward, like a browser's, then a divider before the tab arrows and tabs. */}
-      <BackForward />
-      <span aria-hidden className="h-5 w-px flex-none bg-black/10" />
+      <BackForward ipad={ipad} />
+      {ipad ? null : <span aria-hidden className="h-5 w-px flex-none bg-black/10" />}
 
-      {overflow.start || overflow.end ? (
+      {/* (A finger scrolls the strip on the iPad: no arrows.) */}
+      {!ipad && (overflow.start || overflow.end) ? (
         <button type="button" aria-label="Scroll tabs left" disabled={!overflow.start} onClick={() => scrollTabs(-1)} className={`${ARROW} disabled:opacity-30`}>
           <ChevronLeft size={15} aria-hidden />
         </button>
       ) : null}
-      {overflow.start || overflow.end ? (
+      {!ipad && (overflow.start || overflow.end) ? (
         <button type="button" aria-label="Scroll tabs right" disabled={!overflow.end} onClick={() => scrollTabs(1)} className={`${ARROW} disabled:opacity-30`}>
           <ChevronRight size={15} aria-hidden />
         </button>
@@ -241,9 +260,10 @@ export function TabStrip() {
         <AppLink
           href="/documents"
           aria-current={onHome ? "page" : undefined}
+          data-ipad-tab={ipad ? "" : undefined}
           className={`${tabBase} flex-none ${onHome ? tabOn : tabOff}`}
         >
-          <House size={14} aria-hidden className="flex-none" />
+          <House size={ipad ? 17 : 14} aria-hidden className="flex-none" />
           <span>Home</span>
         </AppLink>
         {tabs.map((t) => {
@@ -256,7 +276,8 @@ export function TabStrip() {
             <div
               key={t.id}
               data-tab={t.id}
-              className={`${tabBase} min-w-[172px] flex-[0_1_284px] pr-1 ${active ? tabOn : tabOff} ${dragging === t.id ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
+              data-ipad-tab={ipad ? "" : undefined}
+              className={`${tabBase} ${ipad ? "min-w-[150px] flex-[0_1_260px] pr-1.5" : "min-w-[172px] flex-[0_1_284px] pr-1"} ${active ? tabOn : tabOff} ${dragging === t.id ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
               onPointerDown={(e) => dragStart(e, t.id)}
               onPointerMove={dragMove}
               onPointerUp={dragEnd}
@@ -306,9 +327,15 @@ export function TabStrip() {
                 type="button"
                 aria-label={`Close ${label}`}
                 onClick={() => close(t.id)}
-                className={`grid h-5 w-5 flex-none place-items-center rounded-chip text-faint transition-opacity hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:outline-none ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                data-ipad-tab-close={ipad ? "" : undefined}
+                className={
+                  ipad
+                    ? // A finger closes only the open tab (a closed one's × would be too easy to hit); a pointer sees them all on hover.
+                      `relative grid h-7 w-7 flex-none place-items-center rounded-container text-muted outline-none transition-opacity before:absolute before:-inset-2 before:content-[''] active:bg-[var(--liquid-press)] focus-visible:opacity-100 ${active ? "opacity-100" : "pointer-events-none opacity-0 [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"}`
+                    : `grid h-5 w-5 flex-none place-items-center rounded-chip text-faint transition-opacity hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:outline-none ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`
+                }
               >
-                <X size={12} aria-hidden />
+                <X size={ipad ? 15 : 12} strokeWidth={ipad ? 2.4 : 2} aria-hidden />
               </button>
             </div>
           );
@@ -335,10 +362,23 @@ export function TabStrip() {
         );
       })() : null}
       <div className="flex-1" />
-      {/* Always here: a new note opens in its own tab (in the open folder, else in Drafts). */}
+      {ipad ? (
+        // Foli AI (the Mac's floating pill has no place on an iPad) and New note, as round glass buttons.
+        <>
+          {ai.on ? (
+            <PillButton label="Foli AI" onClick={() => openAsk()}>
+              <AiIcon size={20} />
+            </PillButton>
+          ) : null}
+          <PillButton label={inFolder ? "New note in this folder" : "New note"} onClick={() => void createDocument({})}>
+            <Plus size={22} strokeWidth={2.2} aria-hidden />
+          </PillButton>
+        </>
+      ) : (
       <Button size="sm" variant="primary" title={inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)"} onClick={() => void createDocument({})} className="h-9 flex-none rounded-control">
         <Plus size={14} aria-hidden /> New note
       </Button>
+      )}
     </div>
   );
 }

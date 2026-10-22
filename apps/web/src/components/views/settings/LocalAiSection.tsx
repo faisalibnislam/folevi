@@ -6,7 +6,7 @@
 // (conversations, memory). Requests go from this Mac straight to the provider; nothing goes through Folevi.
 import { useId, useState } from "react";
 import { useMutation } from "convex/react";
-import { Check, KeyRound, Laptop, Loader2 } from "lucide-react";
+import { Check, KeyRound, Laptop, Loader2, MessagesSquare, Smartphone, Sparkles } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useLocalAi } from "@/lib/mode";
@@ -21,6 +21,10 @@ import { Switch } from "@/components/ui/Switch";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Card } from "./Card";
 import { AiMemoryCard } from "./AiMemory";
+import { useIphoneLook } from "@/lib/iphone";
+import { RowIcon } from "@/components/iphone/Grouped";
+import { GlassTextButton } from "@/components/iphone/Glass";
+import { ActionRow, ChoiceRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen, SwitchRow, TextRow, useSettingsScreens } from "@/components/iphone/SettingsKit";
 
 /** What Apple Intelligence's state means for the person, in a sentence. */
 export const ON_DEVICE_COPY: Record<OnDeviceStatus, string> = {
@@ -99,22 +103,23 @@ function OnDeviceCard({ state }: { state: LocalAiState | null }) {
   );
 }
 
-function KeyRow({ provider, stored, busy, onBusy }: { provider: AiKeyProvider; stored: boolean; busy: boolean; onBusy: (b: boolean) => void }) {
+/** Adding, testing and removing one provider's key (the same for the desktop's rows and the iPhone's screens). */
+function useKeyActions(provider: AiKeyProvider, onBusy: (b: boolean) => void) {
   const info = PROVIDERS[provider];
   const toast = useToast();
   const [adding, setAdding] = useState(false);
   const [value, setValue] = useState("");
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
-  const inputId = useId();
   const host = localAiHost();
   const secrets = host.secrets;
-  const save = async () => {
+  /** Resolves true once the key is saved. */
+  const save = async (): Promise<boolean> => {
     const key = cleanKey(value);
     if (!key) {
       setResult({ ok: false, text: `That doesn't look like a whole ${info.label} key. Paste it again.` });
-      return;
+      return false;
     }
-    if (!secrets || !info.secret) return;
+    if (!secrets || !info.secret) return false;
     onBusy(true);
     try {
       await secrets.set(info.secret, key);
@@ -123,8 +128,10 @@ function KeyRow({ provider, stored, busy, onBusy }: { provider: AiKeyProvider; s
       setResult(null);
       await refreshLocalAi();
       toast.show(`${info.label} key added`, { tone: "success" });
+      return true;
     } catch (e) {
       toast.show(errorMessage(e), { tone: "error" });
+      return false;
     } finally {
       onBusy(false);
     }
@@ -156,6 +163,12 @@ function KeyRow({ provider, stored, busy, onBusy }: { provider: AiKeyProvider; s
       onBusy(false);
     }
   };
+  return { info, host, secrets, adding, setAdding, value, setValue, result, setResult, save, remove, test };
+}
+
+function KeyRow({ provider, stored, busy, onBusy }: { provider: AiKeyProvider; stored: boolean; busy: boolean; onBusy: (b: boolean) => void }) {
+  const { info, host, secrets, adding, setAdding, value, setValue, result, setResult, save, remove, test } = useKeyActions(provider, onBusy);
+  const inputId = useId();
   return (
     <div className="py-3.5 first:pt-0 last:pb-0" data-testid={`local-ai-key-${provider}`} data-stored={stored ? "true" : "false"}>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -356,6 +369,8 @@ function HistoryCard() {
 export function LocalAiSection() {
   const state = useLocalAi();
   const host = localAiHost();
+  const iphone = useIphoneLook();
+  if (iphone) return <IphoneLocalAi state={state} hosted={Boolean(host.ai)} />;
   if (!host.ai)
     return (
       <>
@@ -381,5 +396,179 @@ export function LocalAiSection() {
       <HistoryCard />
       {state?.active ? <AiMemoryCard /> : null}
     </>
+  );
+}
+
+// ---- the iPhone app ------------------------------------------------------------------------------------------
+// The same settings as grouped rows (docs/IOS_POLISH_PLAN.md §3 Settings): switches in rows of their own with the
+// explanation as the group's footer, each key a screen of its own, the model as choices.
+
+function IphoneLocalAi({ state, hosted }: { state: LocalAiState | null; hosted: boolean }) {
+  const { profile } = useAppState();
+  const update = useMutation(api.users.updateProfile);
+  const toast = useToast();
+  const on = (profile as { aiEnabled?: boolean }).aiEnabled !== false;
+  const history = (profile as { aiPrefs?: { history?: boolean } }).aiPrefs?.history !== false;
+  const status = onDeviceStatus(state);
+  const [busy, setBusy] = useState(false);
+  return (
+    <>
+      <IosSection footer={`Foli AI helps you write, answers from your notes and sums them up. It runs on ${deviceWords().onDeviceModel} on ${deviceWords().here}, or on your own key with OpenAI, Anthropic or Google, called straight from ${deviceWords().here}. Nothing goes through Folevi, and nothing is sent while it's off.`} label="Foli AI">
+        <SwitchRow
+          icon={<RowIcon><Sparkles /></RowIcon>}
+          label="Foli AI"
+          checked={on}
+          onChange={(next) =>
+            void update({ aiEnabled: next }).then(
+              () => toast.show(next ? "Foli AI turned on" : "Foli AI turned off"),
+              (e) => toast.show(errorMessage(e), { tone: "error" }),
+            )
+          }
+        />
+      </IosSection>
+      {!hosted ? (
+        <IosSection header={`On ${deviceWords().here}`} label={`On ${deviceWords().here}`} data={{ "data-testid": "local-ai-no-host" }}>
+          <IosText muted>Foli AI in a library on your devices needs Folevi for Mac: it runs on Apple Intelligence there, or on your own key.</IosText>
+        </IosSection>
+      ) : (
+        <>
+          <IosSection
+            header={`On ${deviceWords().here}`}
+            footer={
+              <>
+                {ON_DEVICE_COPY[status]}
+                {status === "available" ? " It's a small model: it does writing help, questions about your notes, chats and the smaller block tools. Long notes are cut to what it can read, and wireframes and flowcharts need your own key." : ""}
+              </>
+            }
+          data={{ "data-testid": "local-ai-on-device", "data-status": status }}>
+            <IosRow icon={<RowIcon>{deviceWords().noun === "Mac" ? <Laptop /> : <Smartphone />}</RowIcon>} label={deviceWords().onDeviceModel} value={state?.loaded === false ? "Checking…" : status === "available" ? "On" : "Not available"} />
+          </IosSection>
+          <IosSection header="Your own keys" footer={`With your own key, Foli AI uses that provider's models, called straight from ${deviceWords().here} under your account with them. Your keys stay in ${deviceWords().here}'s Keychain: Folevi never sees them.`}>
+            {KEY_PROVIDERS.map((p) => (
+              <IphoneKey key={p} provider={p} stored={Boolean(state?.caps?.keys[PROVIDERS[p].secret!])} busy={busy} onBusy={setBusy} />
+            ))}
+          </IosSection>
+          <IphoneModel state={state} />
+        </>
+      )}
+      <IosSection footer={`Your Foli AI conversations are kept on ${deviceWords().here} so you can come back to them, rename, pin and search them. They aren't synced with your library. When this is off, a conversation is deleted as soon as you close it.`} label="Conversations">
+        <SwitchRow
+          icon={<RowIcon><MessagesSquare /></RowIcon>}
+          label="Keep conversations"
+          checked={history}
+          onChange={(next) =>
+            void update({ aiPrefs: { history: next } }).then(
+              () => toast.show(next ? "Conversations are kept" : "New conversations aren't kept"),
+              (e) => toast.show(errorMessage(e), { tone: "error" }),
+            )
+          }
+        />
+      </IosSection>
+      {hosted && state?.active ? <AiMemoryCard /> : null}
+    </>
+  );
+}
+
+/** A provider's key: a row with whether it's added, and a screen to add, test or remove it. */
+function IphoneKey({ provider, stored, busy, onBusy }: { provider: AiKeyProvider; stored: boolean; busy: boolean; onBusy: (b: boolean) => void }) {
+  const { info, host, secrets, value, setValue, result, setResult, save, remove, test } = useKeyActions(provider, onBusy);
+  const screens = useSettingsScreens();
+  const screen = `ai-key-${provider}`;
+  return (
+    <>
+      <IosRow icon={<RowIcon><KeyRound /></RowIcon>} label={info.label} value={stored ? "Added" : "Not added"} screen={screen} disabled={!secrets && !stored} />
+      <Subscreen
+        id={screen}
+        title={`${info.label} key`}
+        trailing={
+          !stored ? (
+            <GlassTextButton strong onClick={() => void save().then((ok) => ok && screens?.back())}>
+              Save
+            </GlassTextButton>
+          ) : undefined
+        }
+      >
+        {stored ? (
+          <IosSection footer={`Key added. It's kept in ${deviceWords().here}'s Keychain and can't be shown again.`} label={`${info.label} key`}>
+            {host.ai?.testKey ? <ActionRow label="Test key" disabled={busy} onClick={() => void test()} /> : null}
+            <DestructiveRow label="Remove key" confirm={`Remove the ${info.label} key`} disabled={busy} onConfirm={() => void remove().then(() => screens?.back())} />
+          </IosSection>
+        ) : (
+          <IosSection
+            footer={
+              info.keyUrl ? (
+                <>
+                  Paste the key from your {info.label} account. <a href={info.keyUrl} target="_blank" rel="noreferrer">Get a key from {info.label}</a>
+                </>
+              ) : (
+                `Paste the key from your ${info.label} account.`
+              )
+            }
+            label={`${info.label} key`}
+          >
+            <TextRow
+              label="Key"
+              type="password"
+              autoComplete="off"
+              placeholder={`Paste your ${info.label} key`}
+              value={value}
+              onChange={(v) => {
+                setValue(v);
+                setResult(null);
+              }}
+            />
+          </IosSection>
+        )}
+        {result ? (
+          <p role="status" className={`flex items-center gap-1.5 px-8 text-[13px] leading-[18px] ${result.ok ? "text-heading" : "text-danger"}`}>
+            {result.ok ? <Check size={14} aria-hidden /> : null}
+            {result.text}
+          </p>
+        ) : null}
+      </Subscreen>
+    </>
+  );
+}
+
+function IphoneModel({ state }: { state: LocalAiState | null }) {
+  const toast = useToast();
+  const caps = state?.caps ?? null;
+  const choices = PROVIDER_ORDER.filter((p) => usable(caps, p));
+  const picked = state?.choice && usable(caps, state.choice.provider) ? state.choice : null;
+  const active = state?.active ?? null;
+  const set = (next: { provider: AiProviderId; model: string } | null) =>
+    void setLocalAiChoice(next).then(
+      (s) => toast.show(s.active ? `Foli AI uses ${modelLabel(s.active.provider, s.active.model)}` : "Saved"),
+      (e) => toast.show(errorMessage(e), { tone: "error" }),
+    );
+  if (!choices.length)
+    return (
+      <IosSection header="Model" label="Model" data={{ "data-testid": "local-ai-model-none" }}>
+        <IosText muted>
+          Foli AI has no model on {deviceWords().here} yet. {deviceWords().ios || shell()?.platform === "mac" ? `Turn on ${deviceWords().onDeviceModel}, or add one of your own keys.` : "Add one of your own keys."}
+        </IosText>
+      </IosSection>
+    );
+  const modelsFor = active && active.provider !== "on-device" ? PROVIDERS[active.provider].models : [];
+  const answering = active ? (active.provider === "on-device" ? `${deviceWords().onDeviceModel}, on ${deviceWords().here}` : `${modelLabel(active.provider, active.model)} (${PROVIDERS[active.provider].label})`) : null;
+  return (
+    <IosSection header="Model" footer={<>{`Which model answers. Folevi picks ${deviceWords().onDeviceModel} when it's on, and otherwise the first key you added.`}{answering ? <span role="status" className="block pt-1">Answering now: {answering}.</span> : null}</>} data={{ "data-testid": "local-ai-model", "data-active": active ? `${active.provider}:${active.model}` : "" }}>
+      <ChoiceRow
+        screen="ai-provider"
+        label="Provider"
+        value={picked?.provider ?? AUTO}
+        choices={[{ value: AUTO, label: "Let Folevi pick" }, ...choices.map((p) => ({ value: p as string, label: PROVIDERS[p].label }))]}
+        onChange={(v) => (v === AUTO ? set(null) : set({ provider: v as AiProviderId, model: PROVIDERS[v as AiProviderId].defaultModel }))}
+      />
+      {modelsFor.length && active ? (
+        <ChoiceRow
+          screen="ai-model"
+          label="Model"
+          value={active.model}
+          choices={[...modelsFor.map((m) => ({ value: m.id, label: m.label, description: m.note })), ...(!modelsFor.some((m) => m.id === active.model) ? [{ value: active.model, label: active.model }] : [])]}
+          onChange={(v) => set({ provider: active.provider, model: v })}
+        />
+      ) : null}
+    </IosSection>
   );
 }

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { download } from "@/components/ai/chat/ConversationActions";
 import { Card } from "./Card";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ActionRow, IosSection } from "@/components/iphone/SettingsKit";
 
 // Settings > AI "Export all conversations": every conversation you keep, as Markdown files in a .zip, one
@@ -45,7 +45,7 @@ export function AiExportCard() {
   const convex = useConvex();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const run = async () => {
     setBusy(true);
     try {

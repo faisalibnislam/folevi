@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/Switch";
 import { Select } from "@/components/ui/Select";
 import { Card } from "./Card";
 import { PushCard } from "./PushCard";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ChoiceRow, IosRow, IosSection, IosText, Subscreen, SwitchRow } from "@/components/iphone/SettingsKit";
 
 type Prefs = ReturnType<typeof useAppState>["profile"]["notificationPrefs"];
@@ -52,7 +52,7 @@ export function NotificationsSection() {
   const update = useMutation(api.users.updateProfile);
   const toast = useToast();
   const prefs = profile.notificationPrefs;
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const inApp = { ...ALL_IN_APP, ...prefs.inApp };
   const set = (patch: Partial<Prefs>) =>
     update({ notificationPrefs: { ...prefs, ...patch } }).then(

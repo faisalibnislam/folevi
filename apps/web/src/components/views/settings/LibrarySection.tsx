@@ -5,10 +5,9 @@
 // to Folevi (WP12). Everything here talks to the host (shell().library, .cloud, .lock) or the library store's
 // controls (client.local.library); none of it reaches Folevi's servers.
 import { useCallback, useEffect, useId, useState } from "react";
-import { AlertTriangle, CloudDownload, Hourglass, Laptop, Loader2, Smartphone } from "lucide-react";
-import { useBackendMode, useLocalAi } from "@/lib/mode";
+import { AlertTriangle, CloudDownload, Hourglass, KeyRound, Laptop, Loader2, LockKeyhole, Smartphone, Sparkles, UserRound } from "lucide-react";
+import { useBackendMode } from "@/lib/mode";
 import { AppLink } from "@/lib/app/router";
-import { PROVIDERS, modelLabel } from "@/lib/local/ai/catalog";
 import { shell } from "@/lib/shell";
 import { deviceWords } from "@/lib/shell/words";
 import type { CloudProvider, LibraryInfo, ShellLockSettings } from "@/lib/shell/types";
@@ -24,6 +23,9 @@ import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "./Card";
+import { useIphoneLook } from "@/lib/iphone";
+import { RowIcon } from "@/components/iphone/Grouped";
+import { ActionRow, ChoiceRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen, SwitchRow, useSettingsScreens } from "@/components/iphone/SettingsKit";
 
 /** The host's own description of the library (it changes with a move or a passphrase), read again on demand. */
 function useHostInfo(): [LibraryInfo | null, () => void] {
@@ -42,8 +44,11 @@ export function LibrarySection() {
   const control = useLibraryControl();
   const status = useLibraryStatus(control);
   const [info, refreshInfo] = useHostInfo();
+  const iphone = useIphoneLook();
   if (mode !== "local") return <Card title="Library">This Folevi keeps your notes in your account. Its offline copy is in Offline &amp; sync.</Card>;
   const where = info ?? status?.info ?? null;
+  // The iPhone app (and a narrow iPad window): a grouped list, as iOS Settings is made.
+  if (iphone) return <IphoneLibrary info={where} status={status} onChanged={refreshInfo} control={control} />;
   return (
     <div className="space-y-5" data-testid="library-section">
       <PlaceCard info={where} status={status} onChanged={refreshInfo} syncNow={control ? () => control.syncNow() : null} />
@@ -67,6 +72,7 @@ function ForgetLibraryCard({ flush }: { flush: (() => Promise<void>) | null }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const here = deviceWords().here;
+  const iphone = useIphoneLook();
   const forget = async () => {
     setBusy(true);
     try {
@@ -92,6 +98,12 @@ function ForgetLibraryCard({ flush }: { flush: (() => Promise<void>) | null }) {
       toast.show(hostError(e).message || "Folevi couldn't remove the library.", { tone: "error" });
     }
   };
+  if (iphone)
+    return (
+      <IosSection footer={`Folevi stops showing this library on ${here}. Its folder stays exactly as it is, with every note in it, and other devices keep using it.`} label={`Remove from ${here}`}>
+        <DestructiveRow label={busy ? "Removing…" : `Remove from ${here}`} confirm="Remove" disabled={busy} message="What's waiting is written to the folder first. Nothing in the folder is deleted: set the library up again on the same folder to bring it back." onConfirm={() => void forget()} />
+      </IosSection>
+    );
   return (
     <Card title={`Remove from ${here}`} description={`Folevi stops showing this library on ${here}. Its folder stays exactly as it is, with every note in it, and other devices keep using it.`}>
       <Button variant="danger" onClick={() => setOpen(true)} disabled={busy}>
@@ -727,5 +739,283 @@ function AccountCard() {
         Sign in to Folevi…
       </Button>
     </Card>
+  );
+}
+
+// ---- the iPhone app ------------------------------------------------------------------------------------------
+// The same settings as rows (docs/IOS_POLISH_PLAN.md §3 Settings): facts as label and value on one line, actions
+// as tinted rows, explanations as the group's footer, choices and long values on screens of their own.
+
+/** The status, short enough for a row's value (the whole sentence goes in the footer when it needs one). */
+function shortStatus(status: LibraryStatus | null): string {
+  if (!status) return "…";
+  if (status.state === "unavailable") return "Can't reach it";
+  if (status.state === "locked") return "Locked";
+  if (status.syncing) return "Syncing…";
+  if (status.unsaved > 0) return `${status.unsaved} waiting`;
+  if (status.lastSyncAt) return `Synced ${formatRelative(status.lastSyncAt)}`;
+  return "Not synced yet";
+}
+
+const devicePlatform = (p: string) => (p === "ios" ? "iPhone or iPad" : p === "android" ? "Android phone or tablet" : p === "web" ? "Browser" : "Mac");
+
+function IphoneLibrary({ info, status, onChanged, control }: { info: LibraryInfo | null; status: LibraryStatus | null; onChanged: () => void; control: ReturnType<typeof useLibraryControl> }) {
+  return (
+    <div className="space-y-7" data-testid="library-section">
+      <IphonePlace info={info} status={status} onChanged={onChanged} syncNow={control ? () => control.syncNow() : null} />
+      {status ? <IphoneDevices status={status} /> : null}
+      {status ? <IphoneHealth status={status} /> : null}
+      {info && passphraseHere() ? <IphonePassphrase info={info} onChanged={onChanged} /> : null}
+      <IphoneLock />
+      <IosSection header="Foli AI" footer={`Foli AI runs on ${deviceWords().onDeviceModel} on ${deviceWords().here}, or on your own OpenAI, Anthropic or Google key. Keys stay ${shell()?.platform === "android" ? "sealed by the Android Keystore" : "in the Keychain"} on ${deviceWords().here}; Folevi never sees them.`}>
+        <IosRow icon={<RowIcon><Sparkles /></RowIcon>} label="Model and keys" href="/settings/ai" />
+      </IosSection>
+      <IphoneAccount />
+      {shell()?.places ? <ForgetLibraryCard flush={control ? () => control.flush() : null} /> : null}
+    </div>
+  );
+}
+
+function IphonePlace({ info, status, onChanged, syncNow }: { info: LibraryInfo | null; status: LibraryStatus | null; onChanged: () => void; syncNow: (() => Promise<void>) | null }) {
+  const toast = useToast();
+  const cloud = useCloudStatus();
+  const screens = useSettingsScreens();
+  const [syncing, setSyncing] = useState(false);
+  const provider = info ? providerOf(info.kind) : null;
+  const sync = async () => {
+    if (!syncNow) return;
+    setSyncing(true);
+    try {
+      await syncNow();
+      toast.show("Library synced");
+    } catch (e) {
+      toast.show(hostError(e).message || "Couldn't sync. Try again.", { tone: "error" });
+    } finally {
+      setSyncing(false);
+    }
+  };
+  const problem = status?.state === "unavailable" ? syncLine(status) : status?.error ? `Last problem: ${status.error}` : null;
+  return (
+    <>
+      <IosSection
+        header="Where your library is"
+        footer={
+          <>
+            {problem ? <span className="mb-1 block text-danger">{problem}</span> : null}
+            Folevi keeps your notes as files in one folder. Other devices that use the same place share the library.
+          </>
+        }
+      >
+        <IosRow label="Syncs with" value={<span data-testid="library-kind">{info ? placeName(info.kind) : "…"}</span>} />
+        <IosRow label="Location" value={<span data-testid="library-path">{info?.displayPath || "…"}</span>} screen="library-location" />
+        <IosRow label="Status" value={<span role="status" data-testid="library-status" aria-label={syncLine(status)}>{shortStatus(status)}</span>} />
+        <ActionRow label="Sync now" busy={syncing ? "Syncing…" : null} disabled={!syncNow || status?.state === "locked"} onClick={() => void sync()} />
+        <IosRow label="Move library" screen="library-move" disabled={!info} />
+      </IosSection>
+      {provider ? <IphoneConnection provider={provider} cloud={cloud} /> : null}
+      <Subscreen id="library-location" title="Location">
+        <IosSection footer={`The folder Folevi keeps your notes in. ${deviceWords().files === "Finder" ? "Finder" : "The Files app"} shows it too.`} label="Location">
+          <IosText>
+            <span className="break-words">{info?.displayPath || "…"}</span>
+          </IosText>
+        </IosSection>
+      </Subscreen>
+      <Subscreen id="library-move" title="Move library">
+        <div className="grid gap-2 px-4">
+          <p className="px-4 pb-1 text-[13px] leading-[18px] text-muted">Folevi copies every file to the new place, checks each one arrived, then uses it. Keep Folevi open until it&apos;s done. Other devices need to be moved too.</p>
+          <PlaceList
+            label="Move the library to"
+            current={info?.kind}
+            onPick={async (kind, onConnecting) => {
+              const next = await movePlace(kind, onConnecting);
+              if (next && next.kind === kind) {
+                onChanged();
+                toast.show(`Library moved to ${placeName(next.kind)}`, { tone: "success" });
+                screens?.back();
+              }
+              return null;
+            }}
+          />
+        </div>
+      </Subscreen>
+    </>
+  );
+}
+
+function IphoneConnection({ provider, cloud }: { provider: CloudProvider; cloud: ReturnType<typeof useCloudStatus> }) {
+  const toast = useToast();
+  const name = providerName(provider);
+  const [busy, setBusy] = useState<"connect" | "signOut" | null>(null);
+  const here = cloud?.provider === provider ? cloud : null;
+  const state = here?.state ?? "none";
+  const connect = async () => {
+    setBusy("connect");
+    try {
+      await shell()?.library.cloud?.connect(provider);
+      toast.show(`Connected to ${name}`, { tone: "success" });
+    } catch (e) {
+      if (hostError(e).code !== "cancelled") toast.show(placeProblem(kindOf(provider), e), { tone: "error" });
+    } finally {
+      setBusy(null);
+    }
+  };
+  const signOut = async () => {
+    setBusy("signOut");
+    try {
+      await shell()?.library.cloud?.signOut();
+      toast.show(`Signed out of ${name}`);
+    } catch (e) {
+      toast.show(hostError(e).message || "Couldn't sign out. Try again.", { tone: "error" });
+    } finally {
+      setBusy(null);
+    }
+  };
+  const footer =
+    busy === "connect"
+      ? `Finish signing in to ${name} in ${deviceWords().signInPlace}.`
+      : state === "offline"
+        ? `Offline: changes go up when ${deviceWords().here} is back online.`
+        : state === "reconnect"
+          ? `${name} stopped letting Folevi in (the access was removed or it expired). Reconnect to keep syncing. Your notes are safe on ${deviceWords().here} meanwhile.`
+          : state === "none"
+            ? `Not connected to ${name}. Your notes are kept on ${deviceWords().here} and sync once you connect again.`
+            : null;
+  return (
+    <IosSection header={name} footer={footer} label={name} data={{ "data-testid": "library-connection" }}>
+      {state === "connected" || state === "offline" ? <IosRow icon={<RowIcon><UserRound /></RowIcon>} label="Connected as" value={here?.account ?? `your ${name} account`} /> : null}
+      {busy === "connect" ? (
+        <ActionRow label="Cancel signing in" onClick={() => void shell()?.library.cloud?.cancel()} />
+      ) : state !== "connected" && state !== "offline" ? (
+        <ActionRow label={state === "reconnect" ? `Reconnect ${name}` : `Connect ${name}`} disabled={busy !== null} onClick={() => void connect()} />
+      ) : null}
+      {state !== "none" && busy !== "connect" ? (
+        <DestructiveRow
+          label={`Sign out of ${name}`}
+          confirm="Sign out"
+          disabled={busy !== null}
+          message={`Folevi stops syncing with ${name}. Your notes stay on ${deviceWords().here} and in ${name}. To sync again, connect again or move the library somewhere else.`}
+          onConfirm={() => void signOut()}
+        />
+      ) : null}
+    </IosSection>
+  );
+}
+
+function IphoneDevices({ status }: { status: LibraryStatus }) {
+  return (
+    <IosSection header="Devices" footer="Every device that opens this library, and when each last synced with it." data={{ "data-testid": "library-devices" }}>
+      {status.devices.length === 0 ? <IosText muted>No device has synced yet.</IosText> : null}
+      {status.devices.map((d) => (
+        <IosRow
+          key={d.deviceId}
+          icon={<RowIcon>{d.platform === "ios" || d.platform === "android" ? <Smartphone /> : <Laptop />}</RowIcon>}
+          label={d.name && d.name !== "This device" ? d.name : d.thisDevice ? devicePlatform(d.platform) : `Another ${devicePlatform(d.platform)}`}
+          description={`${d.thisDevice ? `${deviceWords().Here} · ` : ""}${d.appVersion ? `Folevi ${d.appVersion}` : devicePlatform(d.platform)}`}
+          value={d.thisDevice && status.syncing ? "Syncing…" : formatRelative(d.lastSeen)}
+        />
+      ))}
+    </IosSection>
+  );
+}
+
+function IphoneHealth({ status }: { status: LibraryStatus }) {
+  const total = status.health.unreadable.length + status.health.downloading.length + status.health.waiting.length;
+  return (
+    <>
+      <IosSection header="Library health" footer={total === 0 ? `Every file in the library could be read. ${status.notes.total} ${status.notes.total === 1 ? "note" : "notes"} on ${thisDevice()}.` : "Some files need a moment, or need a look."} data={{ "data-testid": "library-health" }}>
+        {total === 0 ? <IosRow label="Nothing to fix" /> : null}
+        {HEALTH.map((h) => (status.health[h.key].length ? <IosRow key={h.key} label={h.title} value={String(status.health[h.key].length)} screen={`library-health-${h.key}`} /> : null))}
+      </IosSection>
+      {HEALTH.map((h) => (
+        <Subscreen key={h.key} id={`library-health-${h.key}`} title={h.title}>
+          <IosSection footer={h.why} label={h.title}>
+            {status.health[h.key].slice(0, 50).map((item) => (
+              <IosRow key={item.path} label={item.title || item.path} description={[item.title ? item.path : null, `since ${formatRelative(item.since)}`, item.detail].filter(Boolean).join(" · ")} />
+            ))}
+            {status.health[h.key].length > 50 ? <IosText muted>and {status.health[h.key].length - 50} more</IosText> : null}
+          </IosSection>
+        </Subscreen>
+      ))}
+    </>
+  );
+}
+
+function IphonePassphrase({ info, onChanged }: { info: LibraryInfo; onChanged: () => void }) {
+  const [dialog, setDialog] = useState<"set" | "change" | "remove" | null>(null);
+  const close = () => setDialog(null);
+  const done = () => {
+    setDialog(null);
+    onChanged();
+  };
+  return (
+    <IosSection
+      header="Passphrase"
+      footer={info.encrypted ? "The library is encrypted. Its files can't be read without the passphrase, by anyone, including Folevi." : "Encrypt the library's files so the synced copy can't be read without a passphrase. If the passphrase is lost, the synced copy can't be recovered."}
+    data={{ "data-testid": "library-passphrase" }}>
+      {info.encrypted ? (
+        <>
+          <ActionRow icon={<RowIcon><KeyRound /></RowIcon>} label="Change passphrase" onClick={() => setDialog("change")} />
+          <IosRow label="Remove passphrase" danger onClick={() => setDialog("remove")} />
+        </>
+      ) : (
+        <ActionRow icon={<RowIcon><KeyRound /></RowIcon>} label="Encrypt with a passphrase" onClick={() => setDialog("set")} />
+      )}
+      <SetPassphraseDialog open={dialog === "set"} onClose={close} onDone={done} />
+      <ChangePassphraseDialog open={dialog === "change"} onClose={close} onDone={done} />
+      <RemovePassphraseDialog open={dialog === "remove"} onClose={close} onDone={done} />
+    </IosSection>
+  );
+}
+
+function IphoneLock() {
+  const toast = useToast();
+  const [settings, update] = useLockSettings();
+  const [busy, setBusy] = useState(false);
+  if (!settings) return null;
+  const name = lockName(settings.method);
+  const unavailable = settings.method === "none";
+  const change = async (patch: Partial<Pick<ShellLockSettings, "lock" | "lockAfter">>) => {
+    setBusy(true);
+    try {
+      await update(patch);
+    } catch (e) {
+      if (hostError(e).code !== "cancelled") toast.show(hostError(e).message || "Couldn't change the lock.", { tone: "error" });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <IosSection
+      header="App lock"
+      footer={unavailable ? `${deviceWords().Here} has no ${deviceWords().ios ? "Face ID or passcode" : shell()?.platform === "android" ? "fingerprint, face or screen lock" : "Touch ID"}, or it isn't set up in ${deviceWords().settings}, so Folevi can't lock.` : `Folevi asks for ${name} when it opens, and when you come back to it. It covers your notes until then.`}
+    data={{ "data-testid": "library-lock" }}>
+      <SwitchRow icon={<RowIcon><LockKeyhole /></RowIcon>} label={`Lock with ${name}`} checked={settings.lock} disabled={unavailable || busy} onChange={(on) => void change({ lock: on })} />
+      {settings.lock ? <ChoiceRow screen="library-lock-after" label="Ask again" value={String(settings.lockAfter)} choices={LOCK_AFTER.map((o) => ({ value: String(o.value), label: o.label }))} footer="When you come back after Folevi has been in the background this long." disabled={busy} onChange={(v) => void change({ lockAfter: Number(v) })} /> : null}
+    </IosSection>
+  );
+}
+
+function IphoneAccount() {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const start = async () => {
+    const flow = signInToFolevi();
+    if (!flow) {
+      toast.show("Bringing a library into a Folevi account comes in a later update. Your notes stay here meanwhile.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await flow();
+    } catch (e) {
+      toast.show(hostError(e).message || "Couldn't sign in. Try again.", { tone: "error" });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <IosSection header="Folevi account" footer="Sign in to Folevi to share notes and work on them with other people. Your library comes with you into the account." data={{ "data-testid": "library-sign-in" }}>
+      <ActionRow icon={<RowIcon><UserRound /></RowIcon>} label="Sign in to Folevi" busy={busy ? "Signing in…" : null} onClick={() => void start()} />
+    </IosSection>
   );
 }

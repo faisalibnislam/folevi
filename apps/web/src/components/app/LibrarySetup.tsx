@@ -16,14 +16,18 @@ import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Switch } from "@/components/ui/Switch";
+import { IosSwitch } from "@/components/iphone/SettingsKit";
 import { shell } from "@/lib/shell";
 import { deviceWords } from "@/lib/shell/words";
 import type { CloudProvider, LibraryInfo, LibraryKind, ShellLibrary } from "@/lib/shell/types";
 import { useCloudStatus } from "@/lib/local/useLibrary";
 import { holdsLibrary, hostError, placeProblem, providerName, providerOf, rememberSetupIntent } from "@/lib/local/libraryPlace";
-import { ChoiceButton, useSystemTheme } from "./ModeChoice";
+import { ChoiceButton, PRE_APP_PAGE, mobileApp, preAppBackground, preAppTitle, useSystemTheme } from "./ModeChoice";
 
 export const MIN_PASSPHRASE = 8;
+
+/** A plain text button in the phone and tablet apps' screens before the app (Back, Choose another place): 17 pt, 44 tall. */
+export const MOBILE_TEXT_BUTTON = "mx-auto flex min-h-11 items-center justify-center rounded-control px-4 text-[17px] text-heading outline-none transition-opacity active:opacity-50 focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-40";
 
 /** Whether this host can encrypt a library with a passphrase (not in Folevi for Android yet). */
 export function passphraseHere(): boolean {
@@ -151,7 +155,7 @@ function Connecting({ provider }: { provider: CloudProvider }) {
   const [cancelling, setCancelling] = useState(false);
   const name = providerName(provider);
   return (
-    <div role="status" aria-live="polite" className="grid justify-items-center gap-4 rounded-control border border-line bg-surface px-5 py-8 text-center" data-testid="cloud-connecting">
+    <div role="status" aria-live="polite" className={`grid justify-items-center gap-4 px-5 py-8 text-center ${mobileApp() ? "rounded-container bg-[var(--iphone-row)] shadow-[0_0_0_0.5px_var(--iphone-separator)]" : "rounded-control border border-line bg-surface"}`} data-testid="cloud-connecting">
       <Loader2 size={22} aria-hidden className="animate-spin text-heading motion-reduce:animate-none" />
       <div className="grid gap-1.5">
         <p className="text-[15px] font-semibold text-heading">Finish signing in to {name} in {deviceWords().ios ? "the sign-in sheet" : "your browser"}</p>
@@ -258,21 +262,21 @@ export function LibrarySetup({ onDone, onBack }: { onDone: (result: { joining: b
   };
 
   return (
-    <main id="main" tabIndex={-1} className="ui-neutral-chrome grid min-h-dvh place-items-center bg-canvas px-4 py-10 sm:px-6" data-testid="library-setup">
+    <main id="main" tabIndex={-1} data-pre-app="" className={`${PRE_APP_PAGE} ${preAppBackground()}`} data-testid="library-setup">
       <div className="grid w-full max-w-md gap-7">
         <div className="grid justify-items-center gap-5 text-center">
           <FoleviLogo height={26} className="text-ink" />
           {made ? (
             <>
-              <h1 className="font-display text-[2rem] leading-tight text-heading">Your library is ready</h1>
-              <p className="text-[14px] leading-relaxed text-muted">
+              <h1 className={preAppTitle()}>Your library is ready</h1>
+              <p className={mobileApp() ? "text-[15px] leading-[20px] text-muted" : "text-[14px] leading-relaxed text-muted"}>
                 Folevi keeps your notes as files in <span className="font-medium text-ink">{made.displayPath}</span>.
               </p>
             </>
           ) : (
             <>
-              <h1 className="font-display text-[2rem] leading-tight text-heading">Where should your library live?</h1>
-              <p className="text-[14px] leading-relaxed text-muted">Folevi keeps your notes as files in one folder. Pick where that folder goes. If the place already holds your Folevi library, Folevi opens it.</p>
+              <h1 className={preAppTitle()}>Where should your library live?</h1>
+              <p className={mobileApp() ? "text-[15px] leading-[20px] text-muted" : "text-[14px] leading-relaxed text-muted"}>Folevi keeps your notes as files in one folder. Pick where that folder goes. If the place already holds your Folevi library, Folevi opens it.</p>
             </>
           )}
         </div>
@@ -296,16 +300,29 @@ export function LibrarySetup({ onDone, onBack }: { onDone: (result: { joining: b
         )}
         {onBack && !made ? (
           <div className="flex justify-center">
-            <Button
-              variant="quiet"
-              onClick={() => {
-                // A sign-in still waiting in the browser stops too.
-                void shell()?.library.cloud?.cancel().catch(() => undefined);
-                onBack();
-              }}
-            >
-              <ArrowLeft size={15} aria-hidden /> Back
-            </Button>
+            {mobileApp() ? (
+              <button
+                type="button"
+                className={MOBILE_TEXT_BUTTON}
+                onClick={() => {
+                  void shell()?.library.cloud?.cancel().catch(() => undefined);
+                  onBack();
+                }}
+              >
+                Back
+              </button>
+            ) : (
+              <Button
+                variant="quiet"
+                onClick={() => {
+                  // A sign-in still waiting in the browser stops too.
+                  void shell()?.library.cloud?.cancel().catch(() => undefined);
+                  onBack();
+                }}
+              >
+                <ArrowLeft size={15} aria-hidden /> Back
+              </Button>
+            )}
           </div>
         ) : null}
       </div>
@@ -337,20 +354,20 @@ function NewLibrary({ info, onOpen, onElsewhere, failed }: { info: LibraryInfo; 
         void onOpen(encrypt ? passphrase : null).finally(() => setBusy(false));
       }}
     >
-      {passphraseHere() ? <section className="grid gap-3 rounded-control border border-line bg-surface p-4">
+      {passphraseHere() ? <section className={`grid gap-3 p-4 ${mobileApp() ? "rounded-container bg-[var(--iphone-row)] shadow-[0_0_0_0.5px_var(--iphone-separator)]" : "rounded-control border border-line bg-surface"}`}>
         <div className="flex items-start gap-3">
           <span className="grid h-9 w-9 flex-none place-items-center rounded-small bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] text-ink">
             <Lock size={18} aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-semibold text-heading" aria-hidden>
+            <p className={`font-semibold text-heading ${mobileApp() ? "text-[17px] leading-[22px]" : "text-[15px]"}`} aria-hidden>
               Encrypt with a passphrase
             </p>
-            <p id={descId} className="mt-0.5 text-[13px] leading-snug text-muted">
+            <p id={descId} className={`mt-0.5 text-muted ${mobileApp() ? "text-[15px] leading-[20px]" : "text-[13px] leading-snug"}`}>
               {synced ? "Optional. The synced copy can't be read without it, by anyone, including Folevi." : "Optional. The library's files can't be read without it, by anyone, including Folevi."}
             </p>
           </div>
-          <Switch checked={encrypt} onChange={setEncrypt} label="Encrypt with a passphrase" describedBy={descId} />
+          {mobileApp() ? <IosSwitch checked={encrypt} onChange={setEncrypt} label="Encrypt with a passphrase" describedBy={descId} /> : <Switch checked={encrypt} onChange={setEncrypt} label="Encrypt with a passphrase" describedBy={descId} />}
         </div>
         {encrypt ? <PassphraseFields passphrase={passphrase} confirm={confirm} understood={understood} onPassphrase={setPassphrase} onConfirm={setConfirm} onUnderstood={setUnderstood} problem={problem} /> : null}
       </section> : null}
@@ -360,13 +377,19 @@ function NewLibrary({ info, onOpen, onElsewhere, failed }: { info: LibraryInfo; 
         </p>
       ) : null}
       <div className="grid gap-2">
-        <Button type="submit" variant="primary" className="h-11 w-full text-[15px]" disabled={busy}>
+        <Button type="submit" variant="primary" className={mobileApp() ? "h-[50px] w-full rounded-control text-[17px] font-semibold" : "h-11 w-full text-[15px]"} disabled={busy}>
           {busy ? <Loader2 size={16} aria-hidden className="animate-spin motion-reduce:animate-none" /> : null}
           {busy && encrypt ? "Encrypting…" : "Open Folevi"}
         </Button>
-        <Button variant="quiet" onClick={onElsewhere} disabled={busy}>
-          Choose another place
-        </Button>
+        {mobileApp() ? (
+          <button type="button" className={MOBILE_TEXT_BUTTON} onClick={onElsewhere} disabled={busy}>
+            Choose another place
+          </button>
+        ) : (
+          <Button variant="quiet" onClick={onElsewhere} disabled={busy}>
+            Choose another place
+          </Button>
+        )}
       </div>
     </form>
   );

@@ -9,7 +9,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime } from "@/lib/format";
 import { Card } from "./Card";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ActionRow, DestructiveRow, IosRow, IosSection, Subscreen, TextRow } from "@/components/iphone/SettingsKit";
 
 /** Delete account (Settings → Security): scheduled with a 7-day grace period, cancelable. */
@@ -22,7 +22,7 @@ export function DeleteAccountCard() {
   const toast = useToast();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState("");
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const schedule = () =>
     requestDeletion({ confirmEmail }).then(
       () => {

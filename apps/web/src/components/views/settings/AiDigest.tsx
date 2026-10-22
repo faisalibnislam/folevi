@@ -7,7 +7,7 @@ import { AppLink } from "@/lib/app/router";
 import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Card } from "./Card";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { useAppRouter } from "@/lib/app/router";
 import { ChoiceRow, IosRow, IosSection } from "@/components/iphone/SettingsKit";
 
@@ -42,7 +42,7 @@ export function AiDigestCard() {
   const digest = useQuery(api.aiDigest.settings, {});
   const save = useMutation(api.aiDigest.save);
   const toast = useToast();
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const { navigate } = useAppRouter();
   if (!digest || !digest.enabled) return null;
   const locale = (profile as { locale?: string }).locale;

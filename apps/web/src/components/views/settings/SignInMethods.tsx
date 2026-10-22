@@ -8,7 +8,7 @@ import { api } from "@/lib/convex/api";
 import { desktop } from "@/lib/desktop";
 import { formatDateTime } from "@/lib/format";
 import { nativeApp } from "@/lib/nativeApp";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast } from "@/components/ui/Toast";
@@ -40,7 +40,7 @@ export function SignInMethodsCard() {
   const [removing, setRemoving] = useState<SocialProvider | null>(null);
   const [signInAgain, setSignInAgain] = useState(false);
   const [busy, setBusy] = useState<SocialProvider | null>(null);
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   // Linking opens the provider's page, which the apps' windows don't show (Google refuses web views).
   const inApp = Boolean(nativeApp() || desktop());
 

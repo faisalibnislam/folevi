@@ -45,7 +45,7 @@ export interface FakeShellConfig {
   /** The places this pretend Mac offers (the Mac's library service and cloud connections). */
   places?: FakePlaces;
   /** What `lock.getSettings` says unlocks this device (default "none": no Touch ID). */
-  lockMethod?: "touchID" | "none";
+  lockMethod?: "touchID" | "faceID" | "none";
   /**
    * Foli AI on this pretend Mac (WP11): whether Apple's model is on. Requests get scripted answers (search
    * terms, a cited answer, a title, a rewrite) streamed in pieces, so the flows can be driven without a model.

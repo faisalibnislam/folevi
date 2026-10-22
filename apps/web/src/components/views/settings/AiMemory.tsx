@@ -13,7 +13,7 @@ import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Card } from "./Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ActionRow, ChoiceRow, DestructiveRow, EditRow, IosRow, IosSection, IosText, Subscreen, TextRow, useSettingsScreens } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 import { Brain } from "lucide-react";
@@ -274,7 +274,7 @@ export function AiMemoryCard() {
         throw e;
       },
     );
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   if (iphone)
     return memory ? (
       <IphoneMemoryList

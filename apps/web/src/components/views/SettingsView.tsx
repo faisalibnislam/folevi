@@ -31,9 +31,11 @@ import { Card } from "./settings/Card";
 import { useCapabilities, type Capability } from "@/lib/mode";
 import { desktop } from "@/lib/desktop";
 import { nativeApp } from "@/lib/nativeApp";
-import { useIphoneApp } from "@/lib/iphone";
-import { GroupedRow, GroupedSection, RowIcon } from "@/components/iphone/Grouped";
-import { IosRow, IosSection, IosText, SettingsScreensHost } from "@/components/iphone/SettingsKit";
+import { IphoneLookContext, useIpadLayout, useIphoneApp, useIphoneLook } from "@/lib/iphone";
+import { ChevronLeft } from "lucide-react";
+import { PillButton } from "@/components/iphone/Glass";
+import { RowIcon } from "@/components/iphone/Grouped";
+import { IosRow, IosSection, IosText, SettingsScreensHost, VersionFooter, useSettingsScreens } from "@/components/iphone/SettingsKit";
 
 type Section = "account" | "ai" | "billing" | "security" | "privacy" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "workspace-privacy" | "sync" | "library" | "data" | "desktop" | "this-device";
 type Item = { id: Section; label: string; icon: LucideIcon };
@@ -107,6 +109,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
     if (!here(asked) && !bare) navigate(`/settings/${LOCAL_FIRST}`, { replace: true });
   }, [asked, bare]); // eslint-disable-line react-hooks/exhaustive-deps
   const iphone = useIphoneApp();
+  const ipad = useIpadLayout();
   const allowed = (who: (typeof WORKSPACE)[number]["who"]) => who === "everyone" || (who === "managers" ? workspace?.canManage === true : workspace?.canManageBilling === true);
   const workspaceItems = WORKSPACE.filter((i) => allowed(i.who));
   // Desktop app: only in the Mac app; This device: only in the iPhone and iPad app (or opened by its address).
@@ -127,11 +130,11 @@ export function SettingsView({ section: asked }: { section: Section }) {
       <ViewChrome title="Settings" tabTitle="Settings" iphone={{ title: "Settings", grouped: true, back: "/documents" }}>
         <div className="space-y-7 pb-4 pt-3">
           {groups.map((g) => (
-            <GroupedSection key={g.label} title={g.label}>
+            <IosSection key={g.label} header={g.label}>
               {g.items.map((s) => {
                 const Icon = s.icon;
                 return (
-                  <GroupedRow
+                  <IosRow
                     key={s.id}
                     href={`/settings/${s.id}`}
                     icon={
@@ -143,9 +146,10 @@ export function SettingsView({ section: asked }: { section: Section }) {
                   />
                 );
               })}
-            </GroupedSection>
+            </IosSection>
           ))}
           {!workspace && caps.workspaces ? <IphoneCreateWorkspace /> : null}
+          <VersionFooter version={nativeApp()?.version} build={nativeApp()?.build} />
         </div>
       </ViewChrome>
     );
@@ -165,6 +169,60 @@ export function SettingsView({ section: asked }: { section: Section }) {
       >
         <IphoneSection section={section} title={title} noWorkspace={noWorkspace} sectionHidden={sectionHidden} />
       </SettingsScreensHost>
+    );
+  }
+  if (ipad) {
+    // The iPad: iPadOS Settings' two columns. The sections as a grouped list beside the open one, which is drawn
+    // as on the iPhone (its grouped lists, switches, choices on screens of their own, IphoneLookContext).
+    const title = noWorkspace ? "Workspace" : sectionHidden ? "Not found" : (heading ?? "Settings");
+    return (
+      <ViewChrome title={<h1 className="text-sm font-semibold">Settings</h1>} tabTitle="Settings">
+        <div className="-mt-[68px] min-h-[calc(100%+68px)] bg-[var(--iphone-grouped)] pt-[68px]" data-ipad-settings="">
+          <div className="mx-auto grid max-w-5xl grid-cols-[minmax(0,280px)_minmax(0,1fr)] gap-2 pb-16 pr-2 pt-4 [@media(min-width:1200px)]:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+            <nav aria-label="Settings sections" className="sticky top-4 space-y-7 self-start">
+              {groups.map((g) => (
+                <IosSection key={g.label} header={g.label}>
+                  {g.items.map((s) => {
+                    const Icon = s.icon;
+                    return (
+                      <IosRow
+                        key={s.id}
+                        href={`/settings/${s.id}`}
+                        current={section === s.id}
+                        icon={
+                          <RowIcon>
+                            <Icon />
+                          </RowIcon>
+                        }
+                        label={s.label}
+                      />
+                    );
+                  })}
+                </IosSection>
+              ))}
+              {!workspace && caps.workspaces ? <IphoneCreateWorkspace /> : null}
+              <VersionFooter version={nativeApp()?.version} build={nativeApp()?.build} />
+            </nav>
+            <IphoneLookContext.Provider value>
+              <SettingsScreensHost
+                render={({ active, chrome, slot, actions }) =>
+                  active ? (
+                    <div className="min-w-0">
+                      <IpadSubscreenBar title={chrome?.title ?? ""} actions={actions} />
+                      <div ref={slot} />
+                    </div>
+                  ) : null
+                }
+              >
+                <div className="min-w-0">
+                  <h2 className="ui-large-title px-5 pb-1 pt-1">{title}</h2>
+                  <SectionBody section={section} noWorkspace={noWorkspace} sectionHidden={sectionHidden} />
+                </div>
+              </SettingsScreensHost>
+            </IphoneLookContext.Provider>
+          </div>
+        </div>
+      </ViewChrome>
     );
   }
   return (
@@ -240,9 +298,33 @@ export function SettingsView({ section: asked }: { section: Section }) {
  * state and handlers.
  */
 function IphoneSection({ section, title, noWorkspace, sectionHidden }: { section: Section; title: string; noWorkspace: boolean; sectionHidden: boolean }) {
+  // (The same tree whether one of its screens is pushed or not, so the section keeps its state under it.)
+  return (
+    <ViewChrome title={title} tabTitle={`Settings · ${title}`} iphone={{ title, grouped: true, back: "/settings" }}>
+      <SectionBody section={section} noWorkspace={noWorkspace} sectionHidden={sectionHidden} />
+    </ViewChrome>
+  );
+}
+
+/** A pushed screen's bar on the iPad (the iPhone's is the screen's own top bar): Back, its title, its actions. */
+function IpadSubscreenBar({ title, actions }: { title: string; actions: (el: HTMLElement | null) => void }) {
+  const screens = useSettingsScreens();
+  return (
+    <div className="flex items-center gap-2 px-3 pb-1">
+      <PillButton label="Back" onClick={() => screens?.back()}>
+        <ChevronLeft size={24} strokeWidth={2.2} aria-hidden />
+      </PillButton>
+      <h2 className="ui-large-title min-w-0 flex-1 truncate !text-[28px]">{title}</h2>
+      <span ref={actions} className="contents" />
+    </div>
+  );
+}
+
+/** A section's grouped lists (the iPhone's screen, and the iPad's column beside the list of sections). */
+function SectionBody({ section, noWorkspace, sectionHidden }: { section: Section; noWorkspace: boolean; sectionHidden: boolean }) {
   const { workspace } = useAppState();
   const caps = useCapabilities();
-  const content = (
+  return (
     <div className="space-y-7 pb-4 pt-3 [&_.ui-btn]:min-h-11 [&_.ui-btn]:text-[15px]">
       {section === "account" ? <AccountSection /> : null}
       {section === "ai" ? caps.account ? <AiSection /> : <LocalAiSection /> : null}
@@ -272,12 +354,6 @@ function IphoneSection({ section, title, noWorkspace, sectionHidden }: { section
       {section === "this-device" ? <ThisDeviceSection /> : null}
     </div>
   );
-  // (The same tree whether one of its screens is pushed or not, so the section keeps its state under it.)
-  return (
-    <ViewChrome title={title} tabTitle={`Settings · ${title}`} iphone={{ title, grouped: true, back: "/settings" }}>
-      {content}
-    </ViewChrome>
-  );
 }
 
 /** In the iPhone app's Settings, where a workspace's group would be: a way to start one. */
@@ -285,8 +361,8 @@ function IphoneCreateWorkspace() {
   const [open, setOpen] = useState(false);
   const { navigate } = useAppRouter();
   return (
-    <GroupedSection title="Workspace" footer="Work with a team: shared notes, folders and tasks, with its own plan and members.">
-      <GroupedRow
+    <IosSection header="Workspace" footer="Work with a team: shared notes, folders and tasks, with its own plan and members.">
+      <IosRow
         icon={
           <RowIcon>
             <Plus />
@@ -296,7 +372,7 @@ function IphoneCreateWorkspace() {
         onClick={() => setOpen(true)}
       />
       <NewWorkspaceDialog open={open} onClose={() => setOpen(false)} onCreated={() => navigate("/settings/workspace")} />
-    </GroupedSection>
+    </IosSection>
   );
 }
 
@@ -319,7 +395,7 @@ function CreateWorkspaceNudge() {
 function NoWorkspaceCard() {
   const [open, setOpen] = useState(false);
   const { navigate } = useAppRouter();
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   if (iphone)
     return (
       <IosSection header="You're in Personal" footer="Personal is just yours: it has no members or workspace settings. Switch to a workspace from your account (the avatar on Home), or create one for your team.">

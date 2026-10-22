@@ -11,7 +11,7 @@ import { Select } from "@/components/ui/Select";
 import { uploadIdentityImage } from "@/lib/app/identityImages";
 import { IdentityImageField } from "./IdentityImageField";
 import { IdentityImageRows } from "@/components/iphone/IdentityImageRows";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ChoiceRow, IosRow, IosSection, SwitchRow, TextRow } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 import { Sparkles } from "lucide-react";
@@ -28,7 +28,7 @@ export function AccountSection() {
   const removeAvatar = useMutation(api.users.removeAvatar);
   const toast = useToast();
   const [name, setName] = useState(profile.displayName);
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   // About 400 zones: built once per change of zone, not on every keystroke in the name field.
   const zoneField = useMemo(() => {
     const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [timeZone];
@@ -145,7 +145,7 @@ export function AiSettingCard() {
   const update = useMutation(api.users.updateProfile);
   const toast = useToast();
   const descId = useId();
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const turn = (next: boolean) => {
     void update({ aiEnabled: next }).then(
       () => toast.show(next ? "Foli AI turned on" : "Foli AI turned off"),

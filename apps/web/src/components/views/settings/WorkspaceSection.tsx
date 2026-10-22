@@ -14,7 +14,7 @@ import { workspaceRoleLabel } from "@/components/app/NewWorkspaceDialog";
 import { Card } from "./Card";
 import { IdentityImageField } from "./IdentityImageField";
 import { canPurchaseHere } from "@/lib/nativeApp";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { useAppRouter } from "@/lib/app/router";
 import { ActionRow, DestructiveRow, IosRow, IosSection, Subscreen, TextRow } from "@/components/iphone/SettingsKit";
 import { IdentityImageRows } from "@/components/iphone/IdentityImageRows";
@@ -46,7 +46,7 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
   const canLeave = workspace.role !== "owner";
   const pct = workspace.storageQuotaBytes ? (workspace.storageUsedBytes / workspace.storageQuotaBytes) * 100 : 0;
   const access = workspace.role === "member" && workspace.memberAccess !== "edit" ? (workspace.memberAccess === "comment" ? " who can comment" : " with view-only access") : "";
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const { navigate } = useAppRouter();
   const doLeave = async () => {
     setLeaving(true);
@@ -248,7 +248,7 @@ function DeleteWorkspaceCard({ workspace }: { workspace: Workspace }) {
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const doSchedule = async () => {
     setBusy(true);
     try {
@@ -316,7 +316,7 @@ function DeleteWorkspaceCard({ workspace }: { workspace: Workspace }) {
 function ScheduledDeletionCard({ workspace, at }: { workspace: Workspace; at: number }) {
   const cancel = useMutation(api.workspaces.cancelDeletion);
   const toast = useToast();
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const undo = () =>
     void cancel({ workspaceId: workspace.id }).then(
       () => toast.show(`${workspace.name} won’t be deleted. If it had a paid plan, resume it in Plan & billing.`, { tone: "success" }),

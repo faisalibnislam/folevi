@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { creditDate } from "@/components/ai/AiCredits";
 import { Card } from "./Card";
 import { canPurchaseHere, withoutPurchaseHints } from "@/lib/nativeApp";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ChoiceRow, IosRow, IosSection, IosText, Subscreen } from "@/components/iphone/SettingsKit";
 
 // The usage card in Settings > AI (billing.aiUsage): your Personal credits, or your seat in a paid workspace
@@ -174,7 +174,7 @@ export function AiUsageCard() {
   const seats = accounts?.accounts.filter((a) => a.kind === "seat" && a.workspaceId) ?? [];
   const pick = seats.find((a) => a.workspaceId === which) ? which : "personal";
   const usage = useQuery(api.billing.aiUsage, { scope: pick === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: pick } });
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   if (iphone) {
     const about = usage ? (usage.account === "seat" ? `AI credits for your seat in ${usage.place} (${usage.plan}). Seats have their own credits.` : `Your Personal AI credits (${usage.plan}), the same as in Plan & billing. They're also used in free workspaces and on pages shared with you.`) : undefined;
     return (

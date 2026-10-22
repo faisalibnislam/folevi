@@ -13,7 +13,7 @@ import { Card } from "./Card";
 import { ApiTokensCard } from "./ApiTokens";
 import { WebhooksCard } from "./Webhooks";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ActionRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen, SwitchRow } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 
@@ -53,7 +53,7 @@ export function ConnectedAppsSection() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [address, setAddress] = useState("https://app.folevi.com/mcp");
   useEffect(() => setAddress(`${window.location.origin}/mcp`), []);
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const copy = () => void navigator.clipboard.writeText(address).then(() => toast.show("Address copied"));
   const disconnect = (g: { id: (typeof grants & object)[number]["id"]; name: string }) =>
     void revoke({ grantId: g.id }).then(
@@ -221,7 +221,7 @@ function ReviewChangesCard() {
   const toast = useToast();
   const descId = useId();
   const on = profile.reviewAppEdits === true;
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const turn = (next: boolean) =>
     void update({ reviewAppEdits: next }).then(
       () => toast.show(next ? "Apps will ask before changing your notes" : "Apps will change your notes directly"),

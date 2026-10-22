@@ -14,7 +14,7 @@ import { AiDigestCard } from "./AiDigest";
 import { AiRoutinesCard } from "./AiRoutines";
 import { AiUsageCard } from "./AiUsage";
 import { AiExportCard } from "./AiExport";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { IosRow, IosSection, Subscreen, SwitchRow } from "@/components/iphone/SettingsKit";
 
 type PrefKey = "history" | "memory" | "suggestions" | "attachments" | "webResearch" | "digests" | "readImages" | "deviceText";
@@ -116,7 +116,7 @@ export function AiSection() {
   const update = useMutation(api.users.updateProfile);
   const saveDigest = useMutation(api.aiDigest.save);
   const toast = useToast();
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const prefs: Prefs = { ...DEFAULTS, ...((profile as { aiPrefs?: Partial<Prefs> }).aiPrefs ?? {}) };
   const set = (item: (typeof SETTINGS)[number], next: boolean) => {
     // Digests also schedule (or stop) the next one on the server.

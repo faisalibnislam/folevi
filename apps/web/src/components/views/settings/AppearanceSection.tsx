@@ -2,7 +2,7 @@
 
 import { useMutation } from "convex/react";
 import { Monitor, Moon, Sun, Type } from "lucide-react";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ChoiceRow, IosSection } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 import { api } from "@/lib/convex/api";
@@ -16,7 +16,7 @@ export function AppearanceSection() {
   const { appearance, setAppearance } = useAppState();
   const update = useMutation(api.users.updateProfile);
   const [zoom, setZoom] = useLocalStorage<number>("folevi:editor-zoom", 1);
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const applyZoom = (v: number) => {
     setZoom(v);
     document.documentElement.style.setProperty("--editor-zoom", String(v));

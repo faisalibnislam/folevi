@@ -14,7 +14,12 @@ import { FullPageMessage } from "@/lib/app/state";
 import { shellSignIn } from "@/lib/auth/shellFetch";
 import { setShellMode } from "@/lib/shell";
 import { deviceWords } from "@/lib/shell/words";
-import { ModeChoice } from "./ModeChoice";
+import { FoleviLogo } from "@/components/brand/FoleviMark";
+import { ModeChoice, PRE_APP_PAGE, mobileApp, preAppBackground, preAppTitle } from "./ModeChoice";
+import { MOBILE_TEXT_BUTTON } from "./LibrarySetup";
+
+/** The phone and tablet apps' sign-in buttons: full width, 50 tall, 17 pt (12 apart, from the grid). */
+const MOBILE_BUTTON = "!h-[50px] w-full !rounded-control !text-[17px] font-semibold";
 
 export function ShellSignIn() {
   // "choose": the iPhone and iPad app offers Apple's own sheet next to the website's sign-in.
@@ -53,6 +58,58 @@ export function ShellSignIn() {
     }
     setApple(r === "cancelled" ? "idle" : r);
   };
+  const body =
+    state === "waiting"
+      ? sheet
+        ? "The sign-in sheet is open. Finish signing in there, and Folevi comes back here by itself."
+        : "Your browser is open. Finish signing in there, and Folevi comes back here by itself."
+      : appleHere
+        ? "Continue with Apple, or sign in with your email or Google in a sign-in sheet. You come back here signed in."
+        : sheet
+          ? "Folevi opens a sign-in sheet. Sign in there, and you come back here signed in."
+          : "Folevi opens in your browser. Sign in there, and you come back here signed in.";
+  if (state !== "idle" && mobileApp())
+    // The phone and tablet apps: a screen of the app's own (no web card), the buttons iOS's size.
+    return (
+      <main id="main" tabIndex={-1} data-pre-app="" className={`${PRE_APP_PAGE} ${preAppBackground()}`}>
+        <div className="grid w-full max-w-md gap-8">
+          <div className="grid justify-items-center gap-5 text-center">
+            <FoleviLogo height={26} className="text-ink" />
+            <h1 className={preAppTitle()}>Sign in to Folevi</h1>
+            <p className="px-2 text-[15px] leading-[20px] text-muted">{body}</p>
+          </div>
+          <div className="grid gap-3" data-testid="shell-sign-in">
+            {appleHere && state !== "waiting" ? (
+              <button type="button" className={`${APPLE_BUTTON} ${MOBILE_BUTTON}`} disabled={apple === "busy"} aria-busy={apple === "busy"} onClick={() => void withApple()}>
+                {apple === "busy" ? <Loader2 size={18} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <AppleMark />}
+                Continue with Apple
+              </button>
+            ) : null}
+            {typeof apple === "object" ? (
+              <p role="alert" className="text-center text-[15px] leading-[20px] text-danger">
+                {apple.error}
+              </p>
+            ) : null}
+            <Button variant={appleHere && state !== "waiting" ? "secondary" : "primary"} className={MOBILE_BUTTON} disabled={state === "waiting"} onClick={() => void start()}>
+              {state === "waiting" ? (sheet ? "Waiting for the sign-in sheet…" : "Waiting for your browser…") : appleHere ? "Sign in with email or Google" : "Sign in to Folevi"}
+            </Button>
+            {state === "waiting" ? (
+              <Button variant="secondary" className={MOBILE_BUTTON} onClick={() => void start()}>
+                {sheet ? "Open the sign-in sheet again" : "Open the browser again"}
+              </Button>
+            ) : null}
+            {state === "failed" ? (
+              <p role="alert" className="text-center text-[15px] leading-[20px] text-muted">
+                Signing in didn’t finish. Try again.
+              </p>
+            ) : null}
+            <button type="button" className={MOBILE_TEXT_BUTTON} onClick={() => void keepLocally()}>
+              Keep notes on my devices instead
+            </button>
+          </div>
+        </div>
+      </main>
+    );
   if (state === "idle")
     return (
       <div data-testid="shell-sign-in">
@@ -67,17 +124,7 @@ export function ShellSignIn() {
   return (
     <FullPageMessage
       title="Sign in to Folevi"
-      body={
-        state === "waiting"
-          ? sheet
-            ? "The sign-in sheet is open. Finish signing in there, and Folevi comes back here by itself."
-            : "Your browser is open. Finish signing in there, and Folevi comes back here by itself."
-          : appleHere
-            ? "Continue with Apple, or sign in with your email or Google in a sign-in sheet. You come back here signed in."
-            : sheet
-              ? "Folevi opens a sign-in sheet. Sign in there, and you come back here signed in."
-            : "Folevi opens in your browser. Sign in there, and you come back here signed in."
-      }
+      body={body}
     >
       <div className="grid gap-3" data-testid="shell-sign-in">
         {appleHere && state !== "waiting" ? (

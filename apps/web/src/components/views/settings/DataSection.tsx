@@ -7,7 +7,7 @@ import { FolderUp, Upload } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import type { WireScope } from "@folevi/editor-schema";
 import { AppLink, useAppRouter } from "@/lib/app/router";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ActionRow, IosRow, IosSection, IosText, Subscreen } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 import { Button } from "@/components/ui/Button";
@@ -46,7 +46,7 @@ export function DataSection({ target }: { target: DataTarget }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const [exportNote, setExportNote] = useState<string | null>(null);
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const { navigate } = useAppRouter();
 
   // Folder picking isn't in React's typed attributes.

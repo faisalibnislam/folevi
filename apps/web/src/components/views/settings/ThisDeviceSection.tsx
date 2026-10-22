@@ -7,7 +7,7 @@ import { inAndroidApp, nativeApp, type LockAfter, type NativeSettings } from "@/
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { Card } from "./Card";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ChoiceRow, IosSection, SwitchRow } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 import { KeyRound, LockKeyhole } from "lucide-react";
@@ -33,7 +33,7 @@ export function ThisDeviceSection() {
   const [busy, setBusy] = useState(false);
   const hintId = useId();
   const afterId = useId();
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   useEffect(() => {
     void bridge?.getSettings().then(setSettings);
   }, [bridge]);

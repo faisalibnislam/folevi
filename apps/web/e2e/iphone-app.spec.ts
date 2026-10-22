@@ -191,8 +191,17 @@ test("the iPad app in a narrow window (Slide Over, a third of Split View) takes 
   await expect(page.getByRole("navigation", { name: "Tabs" })).toHaveCount(0);
   await expect(page.locator("html")).not.toHaveAttribute("data-iphone", "");
   await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible();
+  // ...in iPadOS's look (WP5): <html data-ipad>, the tabs kept as iPad tabs with 44 pt round buttons, no
+  // floating Ask Foli AI pill, no ⌘K hint without a keyboard.
+  await expect(page.locator("html")).toHaveAttribute("data-ipad", "");
+  const strip = page.locator("[data-ipad-tabs]");
+  await expect(strip).toBeVisible();
+  expect((await strip.getByRole("button", { name: "New note", exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await expect(page.locator(".ui-fab")).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Folio" }).locator(".ui-kbd")).toBeHidden();
   // And narrow again.
   await page.setViewportSize({ width: 360, height: 900 });
   await expect(page.getByRole("navigation", { name: "Tabs" })).toBeVisible();
+  await expect(page.locator("html")).not.toHaveAttribute("data-ipad", "");
   await context.close();
 });

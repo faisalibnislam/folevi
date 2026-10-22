@@ -27,9 +27,10 @@ import { DesktopBridge } from "./DesktopBridge";
 import { PlaceRunners } from "@/components/places/PlaceRunners";
 import { MovePlacesHost } from "@/components/places/MovePlaces";
 import { NativeBridge } from "./NativeBridge";
-import { displayCornerRadius, useIphoneApp } from "@/lib/iphone";
+import { displayCornerRadius, useIpadLayout, useIphoneApp } from "@/lib/iphone";
 import { nativeApp } from "@/lib/nativeApp";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
+import { installInputModality } from "@/components/iphone/chrome";
 import { IphoneScreen, type IphoneScreenOptions } from "@/components/iphone/Screen";
 
 interface ShellValue {
@@ -178,6 +179,28 @@ export function Shell() {
       root.style.removeProperty("--iphone-sheet-bottom");
     };
   }, [iphone]);
+  // The iPad app with room for the sidebar: <html data-ipad> gives the desktop layout iPadOS's look (globals.css).
+  const ipad = useIpadLayout();
+  useLayoutEffect(() => {
+    if (!ipad) return;
+    const root = document.documentElement;
+    root.dataset.ipad = "";
+    // Keyboard hints (⌘K) show only while a hardware keyboard is attached: the app says so (bridge.js,
+    // data-hardware-keyboard). An older app doesn't, and then the first key pressed with ⌘, ⌃ or ⌥ (which
+    // the on-screen keyboard has none of) or Tab says one is there.
+    const onKey = (e: KeyboardEvent) => {
+      if (root.hasAttribute("data-keyboard-known")) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || e.key === "Tab") root.setAttribute("data-hardware-keyboard", "");
+    };
+    window.addEventListener("keydown", onKey, true);
+    // Focus rings only while a keyboard moves focus, never left behind by a tap (globals.css, data-input).
+    const stopModality = installInputModality();
+    return () => {
+      delete root.dataset.ipad;
+      window.removeEventListener("keydown", onKey, true);
+      stopModality();
+    };
+  }, [ipad]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -350,7 +373,7 @@ export function Shell() {
       <OutboxRefusals />
       <QuickAddTask open={quickAddOpen} due={quickAddDue} onClose={() => setQuickAddOpen(false)} />
       {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
-      {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} hideLauncher={(isNarrow && drawerOpen) || iphone} /> : null}
+      {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} hideLauncher={(isNarrow && drawerOpen) || iphone || ipad} /> : null}
     </>
   );
 
@@ -396,9 +419,10 @@ export function Shell() {
         {isNarrow ? (
           drawerOpen ? <NavDrawer onClose={closeDrawer}>{pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar onNavigate={closeDrawer} />}</NavDrawer> : null
         ) : !collapsed ? (
-          <div ref={sidebarPanel} className="relative z-20 flex-none" style={{ width }}>
+          // The iPad's sidebar is iPadOS's width, 320, and isn't dragged (a finger can't hold a 4 pt edge).
+          <div ref={sidebarPanel} className="relative z-20 flex-none" style={{ width: ipad ? 320 : width }}>
             {pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar />}
-            <div
+            {ipad ? null : <div
               role="separator"
               aria-orientation="vertical"
               aria-label="Resize sidebar"
@@ -412,7 +436,7 @@ export function Shell() {
                 if (e.key === "ArrowRight") setWidth(Math.min(320, width + 8));
               }}
               className="absolute inset-y-3 -right-[6px] z-10 w-1 cursor-col-resize rounded-chip outline-none transition-colors hover:bg-heading/20 focus-visible:bg-heading/30"
-            />
+            />}
           </div>
         ) : null}
         {/* While the modal drawer is open, the page behind it is inert (not focusable, hidden from AT). */}
@@ -436,6 +460,7 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   useDocumentTitle(tabTitle ?? (typeof title === "string" ? title : undefined));
   useViewTab(tabTitle ?? (typeof title === "string" ? title : undefined));
   const inIphone = useIphoneApp();
+  const ipad = useIpadLayout();
   if (inIphone) {
     // A view that says nothing about the iPhone app gets a large title, and its facts and actions in a row under it.
     const extra = !iphone && (subtitle || leading || actions) ? (
@@ -493,10 +518,11 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   // Phones keep it pinned: it holds the only way to open the navigation drawer.
   const inFlow = route.name !== "doc" && !drawerMode;
   // Room for the floating tab strip (desktop); list views scroll underneath it.
-  const clear = drawerMode ? "" : "pt-[56px] [scroll-padding-top:60px]";
+  // (The iPad's strip is taller: 52 pt, 8 from the top.)
+  const clear = drawerMode ? "" : ipad ? "pt-[68px] [scroll-padding-top:72px]" : "pt-[56px] [scroll-padding-top:60px]";
   return (
     <div className={`relative flex min-h-0 flex-1 flex-col ${tint ? "ui-view-tint" : ""}`} style={tint ? ({ ["--view-tint" as string]: tint } as React.CSSProperties) : undefined}>
-      {inFlow ? null : <div className={drawerMode ? "" : "pt-[56px]"}>{bar}</div>}
+      {inFlow ? null : <div className={drawerMode ? "" : ipad ? "pt-[68px]" : "pt-[56px]"}>{bar}</div>}
       {/* A note scrolls inside its own page, so <main> doesn't clip: the page's edge and shadow show whole, and the
           tools panel can run to the window's bottom edge. */}
       <main id="main" tabIndex={-1} className={`min-h-0 flex-1 outline-none ${route.name === "doc" && !drawerMode ? "overflow-visible" : "overflow-y-auto"} ${inFlow ? clear : ""}`}>

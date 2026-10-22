@@ -10,7 +10,7 @@ import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ActionRow, ChoiceRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen, TextRow, ActionSheet } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 
@@ -48,7 +48,7 @@ export function EmailToNoteView({ status, places, ...on }: { status: EmailNoteSt
   const [sender, setSender] = useState("");
   const [busy, setBusy] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const run = async (p: () => Promise<unknown>) => {
     setBusy(true);
     try {

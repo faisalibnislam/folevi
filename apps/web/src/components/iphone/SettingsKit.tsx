@@ -13,8 +13,9 @@
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronRight } from "lucide-react";
-import { useAppRouter } from "@/lib/app/router";
+import { AppLink, useAppRouter } from "@/lib/app/router";
 import { haptic } from "@/lib/nativeApp";
+import { confirmAction, hasNative } from "@/lib/native/ui";
 import { GlassTextButton } from "./Glass";
 
 export const SCREEN_PARAM = "screen";
@@ -95,25 +96,31 @@ export function Subscreen({ id, title, trailing, children }: { id: string; title
   return null;
 }
 
-/** A section of an inset grouped list: a short heading in sentence case, rounded rows, an explanation under it. */
-export function IosSection({ header, footer, children, label, role }: { header?: ReactNode; footer?: ReactNode; children: ReactNode; /** The section's name for VoiceOver when it has no heading. */ label?: string; /** The rows' own role (a radio group of choices). */ role?: string }) {
+/** A group's heading: 13/18 semibold capitals (docs/IOS_POLISH_PLAN.md §2.2 "caption caps"), the same on every screen. */
+export const GROUP_HEADER = "px-4 pb-2 text-[13px] font-semibold uppercase leading-[18px] tracking-[0.04em] text-muted";
+/** The explanation under a group: 13/18, muted, 8 below it. */
+export const GROUP_FOOTER = "px-4 pt-2 text-[13px] leading-[18px] text-muted [&_a]:underline [&_a]:underline-offset-2";
+
+/** A section of an inset grouped list: a short heading in capitals, rounded rows, an explanation under it. */
+export function IosSection({ header, footer, children, label, role, data }: { header?: ReactNode; footer?: ReactNode; children: ReactNode; /** The section's name for VoiceOver when it has no heading. */ label?: string; /** The rows' own role (a radio group of choices). */ role?: string; /** data-* attributes for the rows' box (a test id, a state). */ data?: Record<`data-${string}`, string> }) {
   const id = useId();
   return (
     <section className="px-4" aria-labelledby={header ? id : undefined} aria-label={header ? undefined : label}>
       {header ? (
-        <h3 id={id} className="px-4 pb-1.5 text-[13px] leading-[18px] text-muted">
+        <h3 id={id} className={GROUP_HEADER}>
           {header}
         </h3>
       ) : null}
-      <div className="ui-grouped" role={role} aria-label={role ? label : undefined}>
+      <div className="ui-grouped" role={role} aria-label={role ? label : undefined} {...data}>
         {children}
       </div>
-      {footer ? <div className="px-4 pt-1.5 text-[13px] leading-[18px] text-muted [&_a]:underline [&_a]:underline-offset-2">{footer}</div> : null}
+      {footer ? <div className={GROUP_FOOTER}>{footer}</div> : null}
     </section>
   );
 }
 
-const ROW = "relative flex min-h-11 w-full items-center gap-3 px-4 text-left outline-none transition-colors focus-visible:bg-[var(--liquid-active)] disabled:opacity-40";
+/** A one-line row is 52 tall, two lines 64 (§2.1); the text sets the height, so Dynamic Type grows it. */
+const ROW = "relative flex min-h-[52px] w-full items-center gap-3 px-4 text-left outline-none transition-colors focus-visible:bg-[var(--liquid-active)] disabled:opacity-40";
 const PRESS = "active:bg-[var(--liquid-press)]";
 /** Where the hairline above a row starts: past its icon (16 + 30 + 12), else at the text. */
 const insetFor = (icon: boolean) => ({ ["--sep-inset" as string]: icon ? "58px" : "16px" }) as React.CSSProperties;
@@ -136,6 +143,8 @@ export function IosRow({
   disabled,
   ariaLabel,
   center,
+  href,
+  current,
 }: {
   icon?: ReactNode;
   label: ReactNode;
@@ -152,23 +161,33 @@ export function IosRow({
   ariaLabel?: string;
   /** A button row whose label sits in the middle (Sign out). */
   center?: boolean;
+  /** Opens another page of the app (a link row, with a chevron). */
+  href?: string;
+  /** The page on show (the iPad's Settings list beside its section): filled, no chevron. */
+  current?: boolean;
 }) {
   const screens = useSettingsScreens();
   const opens = screen ? () => screens?.open(screen) : onClick;
   const body = (
     <>
       {icon}
-      <span className={`min-w-0 flex-1 py-[11px] ${center ? "text-center" : ""}`}>
+      <span className={`min-w-0 flex-1 ${description ? "py-[11px]" : "py-[15px]"} ${center ? "text-center" : ""}`}>
         <span className={`block text-[17px] leading-[22px] [overflow-wrap:anywhere] ${danger ? "text-danger" : opens && !screen && !chevron && checked === undefined && !trailing && value === undefined ? "font-medium text-heading" : "text-ink"}`}>{label}</span>
-        {description ? <span className="mt-0.5 block text-[13px] leading-[17px] text-muted [overflow-wrap:anywhere]">{description}</span> : null}
+        {description ? <span className="mt-0.5 block text-[15px] leading-[20px] text-muted [overflow-wrap:anywhere]">{description}</span> : null}
       </span>
-      {value !== undefined && value !== null ? <span className="max-w-[55%] flex-none truncate text-right text-[17px] text-muted">{value}</span> : null}
+      {value !== undefined && value !== null ? <span className="max-w-[55%] flex-none truncate text-right text-[17px] leading-[22px] text-muted">{value}</span> : null}
       {trailing}
       {checked ? <Check size={20} strokeWidth={2.4} aria-hidden className="flex-none text-heading" /> : checked === false ? <span aria-hidden className="w-5 flex-none" /> : null}
-      {(chevron ?? Boolean(screen)) ? <ChevronRight size={18} strokeWidth={2.2} aria-hidden className="-mr-1 flex-none text-faint" /> : null}
+      {(chevron ?? Boolean(screen || (href && !current))) ? <ChevronRight size={18} strokeWidth={2.2} aria-hidden className="-mr-1 flex-none text-faint" /> : null}
     </>
   );
   const style = insetFor(Boolean(icon));
+  if (href)
+    return (
+      <AppLink href={href} onClick={onClick} aria-label={ariaLabel} aria-current={current ? "page" : undefined} className={`${ROW} ${PRESS} ${current ? "bg-[color-mix(in_oklab,var(--color-heading)_9%,transparent)]" : ""}`} style={style}>
+        {body}
+      </AppLink>
+    );
   if (opens)
     return (
       <button type="button" onClick={opens} disabled={disabled} aria-label={ariaLabel} aria-pressed={checked === undefined ? undefined : checked} className={`${ROW} ${PRESS}`} style={style}>
@@ -299,9 +318,9 @@ function ChoiceList<T extends string>({ label, value, choices, onChange, header,
               style={insetFor(Boolean(c.icon))}
             >
               {c.icon}
-              <span className="min-w-0 flex-1 py-[11px]">
+              <span className={`min-w-0 flex-1 ${c.description ? "py-[11px]" : "py-[15px]"}`}>
                 <span className="block text-[17px] leading-[22px] text-ink [overflow-wrap:anywhere]">{c.label}</span>
-                {c.description ? <span className="mt-0.5 block text-[13px] leading-[17px] text-muted">{c.description}</span> : null}
+                {c.description ? <span className="mt-0.5 block text-[15px] leading-[20px] text-muted">{c.description}</span> : null}
               </span>
               {c.value === value ? <Check size={20} strokeWidth={2.4} aria-hidden className="flex-none text-heading" /> : null}
             </button>
@@ -344,7 +363,7 @@ export function TextRow({
 }) {
   const id = useId();
   return (
-    <label htmlFor={id} className={`relative flex min-h-11 w-full px-4 ${stacked ? "flex-col justify-center gap-0.5 py-2" : "items-center gap-3"}`} style={insetFor(false)}>
+    <label htmlFor={id} className={`relative flex min-h-[52px] w-full px-4 ${stacked ? "flex-col justify-center gap-0.5 py-2" : "items-center gap-3"}`} style={insetFor(false)}>
       <span className={`flex-none ${stacked ? "text-[13px] text-muted" : "text-[17px] text-ink"}`}>{label}</span>
       <input
         id={id}
@@ -364,7 +383,7 @@ export function TextRow({
             (e.target as HTMLInputElement).blur();
           }
         }}
-        className={`min-w-0 flex-1 bg-transparent text-[17px] outline-none placeholder:text-faint ${stacked ? "py-0.5" : "py-[11px] text-right"} ${readOnly ? "text-muted" : "text-ink"}`}
+        className={`min-w-0 flex-1 bg-transparent text-[17px] outline-none placeholder:text-faint ${stacked ? "py-0.5" : "py-[15px] text-right"} ${readOnly ? "text-muted" : "text-ink"}`}
       />
     </label>
   );
@@ -424,7 +443,7 @@ export function EditScreen({ screen, label, value, onSave, placeholder, multilin
                 void done();
               }
             }}
-            className="block h-11 w-full bg-transparent px-4 text-[17px] text-ink outline-none placeholder:text-faint"
+            className="block h-[52px] w-full bg-transparent px-4 text-[17px] text-ink outline-none placeholder:text-faint"
           />
         )}
       </IosSection>
@@ -516,9 +535,17 @@ export function ActionSheet({ open, onClose, title, message, actions }: { open: 
  */
 export function DestructiveRow({ label, confirm, message, onConfirm, disabled, icon }: { label: string; /** The action sheet's red button (defaults to the row's label). */ confirm?: string; message?: ReactNode; onConfirm: () => void; disabled?: boolean; icon?: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const host = useRef<HTMLDivElement>(null);
+  // In the apps, iOS's own action sheet (from the row on an iPad); elsewhere the one drawn here.
+  const ask = () => {
+    if (!hasNative("actionSheet")) return setOpen(true);
+    const row = host.current?.previousElementSibling ?? null;
+    void confirmAction({ title: typeof message === "string" ? message : label, confirm: confirm ?? label, destructive: true, style: "sheet", anchor: row }).then((yes) => yes && onConfirm());
+  };
   return (
     <>
-      <IosRow icon={icon} label={label} danger disabled={disabled} onClick={() => setOpen(true)} />
+      <IosRow icon={icon} label={label} danger disabled={disabled} onClick={ask} />
+      <div ref={host} hidden />
       <ActionSheet open={open} onClose={() => setOpen(false)} message={message} actions={[{ label: confirm ?? label, danger: true, onSelect: onConfirm }]} />
     </>
   );
@@ -532,4 +559,15 @@ export function ActionRow({ label, onClick, disabled, icon, busy }: { label: str
 /** Plain text inside a grouped section (an explanation, a status) with a row's padding. */
 export function IosText({ children, muted }: { children: ReactNode; muted?: boolean }) {
   return <div className={`relative px-4 py-3 text-[15px] leading-snug ${muted ? "text-muted" : "text-ink"}`} style={insetFor(false)}>{children}</div>;
+}
+
+/** The last thing on the root Settings screen: which Folevi this is (its version and build), centred and quiet. */
+export function VersionFooter({ version, build }: { version?: string | null; build?: string | null }) {
+  if (!version) return null;
+  return (
+    <p className="px-8 pb-2 pt-1 text-center text-[13px] leading-[18px] text-muted" data-testid="settings-version">
+      Folevi {version}
+      {build ? ` (${build})` : ""}
+    </p>
+  );
 }

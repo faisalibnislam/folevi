@@ -13,7 +13,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { useAppRouter } from "@/lib/app/router";
 import { ActionSheet, ChoiceRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen } from "@/components/iphone/SettingsKit";
 
@@ -36,7 +36,7 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [busy, setBusy] = useState(false);
   const act = (p: Promise<unknown>, ok: string) => p.then(() => toast.show(ok, { tone: "success" }), (e) => toast.show(errorMessage(e), { tone: "error" }));
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const { navigate } = useAppRouter();
   const [revoking, setRevoking] = useState<NonNullable<typeof data>["pendingInvites"][number]["id"] | null>(null);
   const doConfirm = async (c: NonNullable<Confirm>) => {

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { bookmarkletHref } from "@/lib/share/payload";
 import { Card } from "./Card";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ActionRow, IosSection } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 
@@ -18,7 +18,7 @@ export function SaveFromAnywhereCard() {
   const toast = useToast();
   const link = useRef<HTMLAnchorElement>(null);
   const [code, setCode] = useState("");
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   // React refuses javascript: addresses in href, so the bookmarklet is put on the link directly.
   useEffect(() => {
     const href = bookmarkletHref(window.location.origin);

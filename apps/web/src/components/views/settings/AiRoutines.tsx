@@ -13,7 +13,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Card } from "./Card";
 import { hourLabel, nextLabel } from "./AiDigest";
 import { canPurchaseHere } from "@/lib/nativeApp";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { useAppRouter } from "@/lib/app/router";
 import { ActionRow, ChoiceRow, IosRow, IosSection, Subscreen, SwitchRow } from "@/components/iphone/SettingsKit";
 
@@ -62,7 +62,7 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
       .finally(() => setRunning(false));
   };
   const locked = !r.available;
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const { navigate } = useAppRouter();
   if (iphone) {
     const screen = `routine-${r.kind}`;
@@ -191,7 +191,7 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
 export function AiRoutinesCard() {
   const { profile } = useAppState();
   const data = useQuery(api.routines.list, {});
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   if ((profile as { aiEnabled?: boolean }).aiEnabled === false || !data) return null;
   const locked = data.routines.every((r) => !r.available);
   if (iphone)

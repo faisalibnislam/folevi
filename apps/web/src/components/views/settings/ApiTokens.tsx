@@ -14,7 +14,7 @@ import { formatRelative } from "@/lib/format";
 import { Card } from "./Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useNativeDevice } from "@/lib/nativeDevice";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneLook } from "@/lib/iphone";
 import { ActionRow, ChoiceRow, DestructiveRow, IosRow, IosSection, IosText, Subscreen, TextRow, useSettingsScreens } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
 import { GlassTextButton } from "@/components/iphone/Glass";
@@ -54,7 +54,7 @@ export function ApiTokensCard() {
   const [creating, setCreating] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const now = Date.now();
-  const iphone = useIphoneApp();
+  const iphone = useIphoneLook();
   const revokeToken = (t: { id: (typeof all & object)[number]["id"]; name: string }) =>
     void revoke({ tokenId: t.id }).then(
       () => {

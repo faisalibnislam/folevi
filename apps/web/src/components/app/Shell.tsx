@@ -25,6 +25,7 @@ import { useCreateDocument } from "./useCreateDocument";
 import { captureTemplateFromUrl, clearPendingTemplate, pendingTemplate } from "@/lib/pendingTemplate";
 import { DesktopBridge } from "./DesktopBridge";
 import { PlaceRunners } from "@/components/places/PlaceRunners";
+import { MovePlacesHost } from "@/components/places/MovePlaces";
 import { NativeBridge } from "./NativeBridge";
 import { displayCornerRadius, useIphoneApp } from "@/lib/iphone";
 import { nativeApp } from "@/lib/nativeApp";
@@ -343,6 +344,7 @@ export function Shell() {
       <AppContextMenu />
       <DesktopBridge />
       <PlaceRunners />
+      <MovePlacesHost />
       <NativeBridge />
       <WarmNotes />
       <OutboxRefusals />

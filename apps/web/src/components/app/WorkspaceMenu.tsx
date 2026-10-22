@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ChevronsUpDown, CreditCard, HelpCircle, Laptop, LifeBuoy, LogIn, LogOut, Monitor, Moon, Smartphone, Sun, Plus, Settings, Shield, ShieldCheck, Tablet, UserPlus, Users, MonitorSmartphone } from "lucide-react";
+import { ArrowRightLeft, ChevronsUpDown, CreditCard, HelpCircle, Laptop, LifeBuoy, LogIn, LogOut, Monitor, Moon, Smartphone, Sun, Plus, Settings, Shield, ShieldCheck, Tablet, UserPlus, Users, MonitorSmartphone } from "lucide-react";
 import type { WireScope } from "@folevi/editor-schema";
 import { PLANS, TIER_NAMES, TRIAL_TIER } from "@/lib/plans";
 import { useAppState, type Profile, type Workspace } from "@/lib/app/state";
@@ -21,6 +21,7 @@ import { flushBeforeSwitch, placesAvailable, signInToAnotherAccount, switchToPla
 import { MAX_BROWSER_ACCOUNTS } from "@/lib/places/web";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { deviceWords } from "@/lib/shell/words";
+import { openMovePlaces } from "@/components/places/MovePlaces";
 
 // The console is part of the website; the bundled app shell has no /admin, so it opens there in the browser.
 const openAdminConsole = () => (isShell() ? void window.open(`${APP_URL}/admin`, "_blank", "noopener") : void (window.location.href = "/admin"));
@@ -139,6 +140,7 @@ function LibraryMenu({ onNavigate }: { onNavigate?: () => void }) {
     { label: "Match system", icon: <Monitor size={14} />, checked: appearance === "system", onSelect: () => setAppearance("system") },
     "separator",
     ...(several ? [{ label: "Sign in to another account", icon: <LogIn size={14} />, onSelect: () => void signInToAnotherAccount() }] : []),
+    ...(others.length ? [{ label: "Move or copy notes…", icon: <ArrowRightLeft size={14} />, onSelect: () => openMovePlaces() }] : []),
     { label: "Settings", icon: <Settings size={14} />, onSelect: () => go("/settings") },
   ];
   return (
@@ -249,6 +251,7 @@ function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
           },
         ]
       : []),
+    ...(others.length ? [{ label: "Move or copy notes…", icon: <ArrowRightLeft size={14} />, onSelect: () => openMovePlaces() }] : []),
     { label: "Settings", icon: <Settings size={14} />, onSelect: () => go("/settings/account") },
     // Only this account: the others stay signed in. Warns (and asks for an explicit choice) if anything of it on
     // this device hasn't synced yet.

@@ -3,7 +3,9 @@
 import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { FilePlus2, FolderInput, FolderPlus, Link2, MoreHorizontal, Palette, PencilLine, Trash2, Undo2, UserPlus } from "lucide-react";
+import { ArrowRightLeft, FilePlus2, FolderInput, FolderPlus, Link2, MoreHorizontal, Palette, PencilLine, Trash2, Undo2, UserPlus } from "lucide-react";
+import { placesAvailable, usePlaces } from "@/lib/places";
+import { openMovePlaces } from "@/components/places/MovePlaces";
 import { canNestFolderIn } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
@@ -68,6 +70,9 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
     );
   };
 
+  // Several places (docs/MULTI_ACCOUNT_PLAN.md §7.3): another account, or the library on this device.
+  const places = usePlaces();
+  const elsewhere = placesAvailable() && places.places.some((p) => p.id !== places.current);
   const items: (MenuItem | "separator")[] = [
     ...(canEdit
       ? [
@@ -77,6 +82,7 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
           { label: "Rename…", icon: <PencilLine size={14} />, onSelect: () => setRenaming(true) },
           { label: "Change color…", icon: <Palette size={14} />, onSelect: () => setColoring(true) },
           { label: "Move folder…", icon: <FolderInput size={14} />, onSelect: () => setMoving(true) },
+          ...(elsewhere ? [{ label: "Move to another place…", icon: <ArrowRightLeft size={14} />, onSelect: () => openMovePlaces({ folders: [folder.id], notes: [] }) }] : []),
           ...(folder.parentFolderId
             ? [{ label: "Move to top level", icon: <Undo2 size={14} />, onSelect: () => void act(moveFolder({ folderId: folder.id, parentFolderId: null }), "Moved to the top level") }]
             : []),

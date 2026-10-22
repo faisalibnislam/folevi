@@ -10,6 +10,7 @@ import {
   Archive,
   ArchiveRestore,
   ArrowLeft,
+  ArrowRightLeft,
   ChevronRight,
   Copy,
   CopyPlus,
@@ -38,6 +39,8 @@ import {
 } from "lucide-react";
 import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, folderAncestors, rankForPosition, type DocumentStyle, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
+import { placesAvailable, usePlaces } from "@/lib/places";
+import { openMovePlaces } from "@/components/places/MovePlaces";
 import { useFolderTree } from "@/lib/app/folders";
 import { useOutboxEntries } from "@/lib/sync/queryCache";
 import { pendingNoteFolders, waitingRowPage } from "@/lib/sync/overlays";
@@ -1894,6 +1897,9 @@ function useDocumentActions({
   const duplicate = useMutation(api.documents.duplicate);
   const toast = useToast();
   const { navigate } = useAppRouter();
+  // Several places (docs/MULTI_ACCOUNT_PLAN.md §7.3): another account, or the library on this device.
+  const places = usePlaces();
+  const elsewhere = placesAvailable() && places.places.some((p) => p.id !== places.current);
   const act = (p: Promise<unknown>, msg: string, undo?: () => void) =>
     p.then(() => toast.show(msg, undo ? { action: { label: "Undo", onClick: undo } } : undefined), (e) => toast.show(errorMessage(e), { tone: "error" }));
   const items = inTrash
@@ -1921,6 +1927,7 @@ function useDocumentActions({
         "separator" as const,
         { label: "Duplicate", icon: <Copy size={14} />, onSelect: () => void duplicate({ documentId }).then((d) => navigate(`/d/${d.id}`), (e) => toast.show(errorMessage(e), { tone: "error" })) },
         ...(onCopyTo ? [{ label: "Copy to…", icon: <CopyPlus size={14} />, onSelect: onCopyTo }] : []),
+        ...(elsewhere ? [{ label: "Move to another place…", icon: <ArrowRightLeft size={14} />, onSelect: () => openMovePlaces({ folders: [], notes: [documentId] }) }] : []),
         ...(kind !== "template" ? [{ label: "Save as template", icon: <LayoutTemplate size={14} />, onSelect: () => void act(duplicate({ documentId, asTemplate: true }), "Saved to Templates") }] : []),
         archived
           ? { label: "Unarchive", icon: <ArchiveRestore size={14} />, onSelect: () => void act(setArchived({ documentId, archived: false }), "Moved out of Archive") }

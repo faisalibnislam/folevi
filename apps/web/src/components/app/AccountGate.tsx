@@ -30,6 +30,7 @@ import { accountPlaceId, forgetAccount } from "@/lib/places/registry";
 import { openPlaceInTab, signedInAccounts, signOutOfAccount } from "@/lib/places/web";
 import { PlacesReporter } from "@/components/places/PlacesReporter";
 import { PlaceSync, reportToParent } from "@/components/places/PlaceSync";
+import { PlaceMoveGate } from "@/components/places/MovePlaces";
 
 // Seen once per account, so it loads only for people who haven't finished it.
 const Onboarding = lazy(() => import("./Onboarding").then((m) => ({ default: m.Onboarding })));
@@ -236,10 +237,13 @@ export function AccountGate() {
               </Suspense>
             ) : (
               <MigrationGate>
-                {/* End-to-end encryption: the unlock screen for encrypted spaces; Standard passes straight through. */}
-                <E2eeGate>
-                  <Shell />
-                </E2eeGate>
+                {/* A move between places that switched here to run (components/places/MovePlaces.tsx). */}
+                <PlaceMoveGate>
+                  {/* End-to-end encryption: the unlock screen for encrypted spaces; Standard passes straight through. */}
+                  <E2eeGate>
+                    <Shell />
+                  </E2eeGate>
+                </PlaceMoveGate>
               </MigrationGate>
             )}
           </AppStateProvider>

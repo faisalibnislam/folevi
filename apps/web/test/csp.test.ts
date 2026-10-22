@@ -36,6 +36,12 @@ describe("content security policy", () => {
     }
   });
 
+  test("only /place-sync may be framed, and only by the app itself", () => {
+    expect(buildContentSecurityPolicy({ ...env, dev: false, frameAncestors: "self" })).toContain("frame-ancestors 'self'");
+    expect(buildContentSecurityPolicy({ ...env, dev: false })).toContain("frame-ancestors 'none'");
+    expect(buildContentSecurityPolicy({ ...env, dev: false }).split("; ").find((d) => d.startsWith("frame-src"))).toMatch(/^frame-src 'self' /);
+  });
+
   test("nonces are unique and unguessable-length", () => {
     const a = createNonce();
     const b = createNonce();

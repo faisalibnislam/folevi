@@ -41,6 +41,8 @@ export type Route =
   | { name: "onboarding" }
   /** The Mac app's Quick Add window (apps/desktop). */
   | { name: "quick-add" }
+  /** A place kept in sync behind the scenes (several places at once): no window shows it (components/places/PlaceSync.tsx). */
+  | { name: "place-sync" }
   /** Save to Folevi: a share from another app (share target) or the bookmarklet, saved to an Inbox. */
   | { name: "share" }
   /** Connecting an app (MCP) to Folevi: the OAuth consent screen. */
@@ -84,6 +86,7 @@ export function parseRoute(pathname: string): Route {
     case "help":
     case "onboarding":
     case "quick-add":
+    case "place-sync":
     case "share":
       return { name: head };
     // Drafts was called Unsorted; old /unsorted links keep working.

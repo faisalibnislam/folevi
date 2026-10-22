@@ -18,6 +18,11 @@ export interface CspOptions {
   scriptHashes?: string[];
   /** Extra origins allowed for connect-src/form-action (none today; sign-in is served by the app itself). */
   extraOrigins?: string[];
+  /**
+   * Who may frame the page: nobody (every page), or the app itself for /place-sync, the hidden page that keeps
+   * another account of this browser in sync (docs/MULTI_ACCOUNT_PLAN.md §5.1).
+   */
+  frameAncestors?: "none" | "self";
 }
 
 export function origin(url: string): string {
@@ -58,8 +63,9 @@ export function buildContentSecurityPolicy(opts: CspOptions): string {
     "font-src 'self'",
     `connect-src 'self' ${convex} ${convexWs} ${site} ${extra}${opts.dev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
     // Embed blocks: only the players that packages/editor-schema/src/embeds.ts builds addresses for.
-    `frame-src ${site} ${EMBED_FRAME_ORIGINS.join(" ")}`,
-    "frame-ancestors 'none'",
+    // 'self': the hidden pages that keep this browser's other accounts in sync (components/places/PlaceRunners.tsx).
+    `frame-src 'self' ${site} ${EMBED_FRAME_ORIGINS.join(" ")}`,
+    `frame-ancestors ${opts.frameAncestors === "self" ? "'self'" : "'none'"}`,
     "base-uri 'self'",
     `form-action 'self' ${app} ${extra}`,
     "object-src 'none'",

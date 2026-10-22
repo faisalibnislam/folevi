@@ -37,7 +37,7 @@ export const staticCsp = [
   "font-src 'self'",
   `connect-src 'self' ${convexOrigin} ${convexWs} ${origin(convexSite)}${isDev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
   // Embed blocks (EMBED_FRAME_ORIGINS in packages/editor-schema/src/embeds.ts).
-  `frame-src ${origin(convexSite)} https://www.youtube-nocookie.com https://player.vimeo.com https://www.loom.com https://www.figma.com https://maps.google.com`,
+  `frame-src 'self' ${origin(convexSite)} https://www.youtube-nocookie.com https://player.vimeo.com https://www.loom.com https://www.figma.com https://maps.google.com`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   `form-action 'self' ${appOrigin}`,
@@ -113,6 +113,16 @@ async function redirects() {
 async function headers() {
   return [
     { source: "/:path*", headers: securityHeaders },
+    // The hidden page that keeps another account of this browser in sync: framed by the app itself, nobody else
+    // (docs/MULTI_ACCOUNT_PLAN.md §5.1).
+    {
+      source: "/place-sync",
+      headers: [
+        { key: "Content-Security-Policy", value: staticCsp.replace("frame-ancestors 'none'", "frame-ancestors 'self'") },
+        { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        { key: "Cache-Control", value: "private, no-store" },
+      ],
+    },
     {
       // Authenticated surfaces and share pages are never cached by shared caches.
       source: "/:path(d|ai|graph|documents|notes|tasks|calendar|review|changes|daily|settings|admin|s|api|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|onboarding|invite|share-invite|share|share-target)/:rest*",

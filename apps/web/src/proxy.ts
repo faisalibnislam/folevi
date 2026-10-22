@@ -12,7 +12,7 @@ const appHost = new URL(APP_URL).host;
 const MARKETING_ONLY = /^\/($|mac$|mac\/|features|template-gallery|security|pricing|changelog|privacy|terms|docs|status|support|compare|blog)/;
 // Paths that only exist on the product host (app + admin + auth + share pages).
 const APP_ONLY =
-  /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|review(?:\/|$)|changes(?:\/|$)|daily|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|share(?:$|\/)|share-target$|admin|signin|signup|connect|verify-email|forgot-password|reset-password|two-factor|signout|s\/|api\/|offline|dev\/|oauth\/|mcp(?:\/|$)|native\/callback$|\.well-known\/oauth-|\.well-known\/assetlinks\.json$)/;
+  /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|review(?:\/|$)|changes(?:\/|$)|daily|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|share(?:$|\/)|share-target$|place-sync$|admin|signin|signup|connect|verify-email|forgot-password|reset-password|two-factor|signout|s\/|api\/|offline|dev\/|oauth\/|mcp(?:\/|$)|native\/callback$|\.well-known\/oauth-|\.well-known\/assetlinks\.json$)/;
 
 function isAppPath(pathname: string): boolean {
   return APP_ONLY.test(pathname);
@@ -22,7 +22,7 @@ function isAppPath(pathname: string): boolean {
 // nonce-based CSP without 'unsafe-inline'. Statically prerendered pages keep next.config's static policy,
 // because they have no per-request nonce to put on Next's inline scripts.
 const NONCE_ROUTES =
-  /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|review(?:\/|$)|changes(?:\/|$)|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|share(?:$|\/)|admin|signin|signup|connect|verify-email|reset-password|two-factor|s\/)/;
+  /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|review(?:\/|$)|changes(?:\/|$)|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|share(?:$|\/)|place-sync$|admin|signin|signup|connect|verify-email|reset-password|two-factor|s\/)/;
 
 /**
  * Redirects to another host. Next rewrites a redirect whose host equals the request URL's host into a
@@ -53,6 +53,7 @@ async function withNonce(request: NextRequest): Promise<NextResponse> {
     convexSiteUrl: process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "",
     appUrl: APP_URL,
     scriptHashes: [await themeBootScriptHash()],
+    frameAncestors: request.nextUrl.pathname === "/place-sync" ? "self" : "none",
   });
   const headers = new Headers(request.headers);
   headers.set("x-nonce", nonce);

@@ -24,6 +24,7 @@ import { OutboxRefusals, SyncStatus } from "./SyncStatus";
 import { useCreateDocument } from "./useCreateDocument";
 import { captureTemplateFromUrl, clearPendingTemplate, pendingTemplate } from "@/lib/pendingTemplate";
 import { DesktopBridge } from "./DesktopBridge";
+import { PlaceRunners } from "@/components/places/PlaceRunners";
 import { NativeBridge } from "./NativeBridge";
 import { displayCornerRadius, useIphoneApp } from "@/lib/iphone";
 import { nativeApp } from "@/lib/nativeApp";
@@ -341,6 +342,7 @@ export function Shell() {
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppContextMenu />
       <DesktopBridge />
+      <PlaceRunners />
       <NativeBridge />
       <WarmNotes />
       <OutboxRefusals />

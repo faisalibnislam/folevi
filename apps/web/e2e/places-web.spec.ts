@@ -4,7 +4,7 @@
 //
 //   E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 npx playwright test e2e/places-web.spec.ts --project account
 import { expect, test, type Page } from "@playwright/test";
-import { APP, completeOnboarding, confirmEmail, PASSWORD, showFolders, switcher, uniqueEmail, waitForSaved } from "./helpers";
+import { APP, completeOnboarding, confirmEmail, openShare, pick, PASSWORD, showFolders, switcher, uniqueEmail, waitForSaved } from "./helpers";
 
 async function openSwitcher(page: Page) {
   await showFolders(page);
@@ -108,5 +108,63 @@ test("two accounts in one browser: add one, switch in one tab while another stay
   // Ben's copy on this device is gone.
   const left = await page.evaluate(async () => ((await indexedDB.databases?.()) ?? []).map((d) => d.name ?? ""));
   expect(left.filter((n) => n.startsWith("folevi-") && !n.startsWith("folevi-e2ee") && !n.startsWith("folevi-local")).length).toBe(1);
+  await context.close();
+});
+
+/** Signs a new person up in this tab (with "Sign in to another account" first when `adding`). */
+async function newAccountHere(page: Page, who: { email: string; name: string }, adding: boolean) {
+  if (adding) {
+    const menu = await openSwitcher(page);
+    await menu.getByRole("menuitem", { name: "Sign in to another account" }).click();
+    await page.waitForURL(/\/signin\?add=1/);
+    await page.getByRole("link", { name: "Create an account" }).click();
+    await page.waitForURL(/\/signup\?add=1/);
+  } else {
+    await page.goto(`${APP}/signup`);
+  }
+  await page.getByLabel("Your name").fill(who.name);
+  await page.getByLabel("Email").fill(who.email);
+  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible({ timeout: 20_000 });
+  await confirmEmail(page, who.email);
+  await completeOnboarding(page);
+}
+
+test("another account's notifications arrive in the open one, labelled, and Open switches to it", async ({ browser }) => {
+  test.setTimeout(240_000);
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const ana = { email: uniqueEmail("bg-ana"), name: "Ana Background" };
+  const ben = { email: uniqueEmail("bg-ben"), name: "Ben Background" };
+  await newAccountHere(page, ben, false);
+  await newAccountHere(page, ana, true);
+  await makeNote(page, "Shared from Ana");
+
+  // Ana's tab keeps Ben's account in sync behind it: one hidden runner.
+  await expect(page.locator("iframe[data-place-sync]")).toHaveCount(1, { timeout: 20_000 });
+
+  // Ana shares the note with Ben: Ben's notification shows here, in Ana's tab, saying it's Ben's.
+  await openShare(page);
+  const share = page.getByRole("dialog", { name: /Share/ });
+  await share.getByLabel("Email address").fill(ben.email);
+  await pick(share.getByLabel("Role"), "Can edit");
+  await share.getByRole("button", { name: "Share", exact: true }).click();
+  await expect(share.getByText(ben.name)).toBeVisible({ timeout: 20_000 });
+  await page.keyboard.press("Escape");
+  const toast = page.getByRole("status").filter({ hasText: `In ${ben.name}:` });
+  await expect(toast).toBeVisible({ timeout: 45_000 });
+  // The switcher's row for Ben has the dot.
+  const menu = await openSwitcher(page);
+  await expect(menu.getByRole("menuitem", { name: ben.name })).toHaveAttribute("aria-description", /1 unread/);
+  await page.keyboard.press("Escape");
+
+  // Open switches this tab to Ben, on the note.
+  await toast.getByRole("button", { name: "Open" }).click();
+  await page.waitForURL(/\/d\//);
+  await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Shared from Ana", { timeout: 30_000 });
+  await expect(switcher(page)).toBeVisible();
+  const after = await openSwitcher(page);
+  await expect(after.getByRole("menuitem", { name: ana.name })).toBeVisible();
   await context.close();
 });

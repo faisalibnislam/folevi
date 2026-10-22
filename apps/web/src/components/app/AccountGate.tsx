@@ -25,10 +25,11 @@ import { E2eeGate } from "@/components/e2ee/E2eeGate";
 import { getConvexClient } from "@/lib/convex/provider";
 import { convexKeysServer, startKeySession } from "@/lib/e2ee/keys";
 import { deviceId as loadDeviceId } from "@/lib/sync/db";
-import { adoptNextSignIn, pinnedUserId } from "@/lib/places/pin";
+import { adoptNextSignIn, isPlaceRunner, pinnedUserId } from "@/lib/places/pin";
 import { accountPlaceId, forgetAccount } from "@/lib/places/registry";
 import { openPlaceInTab, signedInAccounts, signOutOfAccount } from "@/lib/places/web";
 import { PlacesReporter } from "@/components/places/PlacesReporter";
+import { PlaceSync, reportToParent } from "@/components/places/PlaceSync";
 
 // Seen once per account, so it loads only for people who haven't finished it.
 const Onboarding = lazy(() => import("./Onboarding").then((m) => ({ default: m.Onboarding })));
@@ -77,6 +78,12 @@ export function AccountGate() {
   useEffect(() => {
     if (reported !== "signed_out") {
       setUnconfirmed(false);
+      return;
+    }
+    // A background runner whose account ended says so to the page running it, and leaves the cookies to that page.
+    if (isPlaceRunner()) {
+      const id = pinnedUserId();
+      if (id) reportToParent({ userId: id, unread: 0, waiting: 0, fresh: [], signedOut: true });
       return;
     }
     let cancelled = false;
@@ -134,7 +141,7 @@ export function AccountGate() {
   // `me` recovers by itself. Only when no live session exists do we sign out; if one exists but the
   // backend still disagrees after a few seconds, reload as a last resort.
   useEffect(() => {
-    if (me?.state !== "session_revoked") return;
+    if (me?.state !== "session_revoked" || isPlaceRunner()) return;
     let cancelled = false;
     void (async () => {
       for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
@@ -215,7 +222,9 @@ export function AccountGate() {
           <KeySessionStarter profileId={me.profile.id} email={me.profile.email ?? undefined} />
           <AppStateProvider profile={me.profile}>
             <PlacesReporter />
-            {route.name === "oauth-consent" ? (
+            {route.name === "place-sync" ? (
+              <PlaceSync />
+            ) : route.name === "oauth-consent" ? (
               <OauthConsent />
             ) : route.name === "quick-add" && me.profile.onboardingStep === "done" ? (
               <DesktopQuickAdd />

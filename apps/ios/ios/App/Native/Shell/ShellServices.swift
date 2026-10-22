@@ -18,8 +18,8 @@ enum ShellMode {
 
     /// "unset" on the very first launch, then "local" or "account".
     static var current: String {
-        get { UserDefaults.standard.string(forKey: key).flatMap { ["local", "account"].contains($0) ? $0 : nil } ?? "unset" }
-        set { UserDefaults.standard.set(newValue, forKey: key) }
+        get { Platform.defaults.string(forKey: key).flatMap { ["local", "account"].contains($0) ? $0 : nil } ?? "unset" }
+        set { Platform.defaults.set(newValue, forKey: key) }
     }
 }
 
@@ -40,7 +40,7 @@ enum ShellNotify {
         }
         // Each id and time shows once: a reminder already shown at this time isn't shown again.
         let stamp = "\(id)@\(Int(at.timeIntervalSince1970))"
-        var shown = UserDefaults.standard.stringArray(forKey: shownKey) ?? []
+        var shown = Platform.defaults.stringArray(forKey: shownKey) ?? []
         if shown.contains(stamp) { return }
         if at.timeIntervalSinceNow < -86_400 { return }
         let content = UNMutableNotificationContent()
@@ -59,7 +59,7 @@ enum ShellNotify {
         }
         try await center.add(UNNotificationRequest(identifier: prefix + id, content: content, trigger: trigger))
         shown.append(stamp)
-        UserDefaults.standard.set(Array(shown.suffix(500)), forKey: shownKey)
+        Platform.defaults.set(Array(shown.suffix(500)), forKey: shownKey)
     }
 
     /// Every reminder the library scheduled (the library was removed from this device).

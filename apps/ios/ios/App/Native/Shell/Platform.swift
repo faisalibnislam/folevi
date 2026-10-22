@@ -45,6 +45,9 @@ enum Platform {
     /// The Keychain service a shared service's name stands for (the same on iOS).
     static func keychainService(_ service: String) -> String { service }
 
+    /// Where the shared services keep their small settings (the mode, the Face ID switch, shown reminders).
+    static var defaults: UserDefaults { .standard }
+
     /// Whether the app is in front. Main thread only.
     static var isActive: Bool { UIApplication.shared.applicationState == .active }
 
@@ -80,6 +83,9 @@ enum Platform {
 
     /// "com.folevi.e2ee" becomes this build's own ("com.folevi.dev.e2ee" for Debug builds).
     static func keychainService(_ service: String) -> String { Paths.keychainService(service) }
+
+    /// This build's own settings (a test run with FOLEVI_USER_DATA gets its own).
+    static var defaults: UserDefaults { Paths.defaults }
 
     static var isActive: Bool { NSApplication.shared.isActive }
 

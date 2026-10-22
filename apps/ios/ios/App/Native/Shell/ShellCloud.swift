@@ -42,7 +42,7 @@ final class ShellCloud: NSObject {
     private static let forbidden: Set<String> = ["authorization", "cookie", "host", "origin", "referer", "proxy-authorization"]
     private static let keychainService = "com.folevi.cloud-tokens"
 
-    private let defaults = UserDefaults.standard
+    private let defaults = Platform.defaults
     private var connecting: String?
     private var sheet: SignInSheet?
     private let refreshLock = NSLock()

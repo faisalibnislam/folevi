@@ -49,10 +49,10 @@ enum Keychain {
     /// signs anyone in or unlocks anything (its session, Foli AI keys, library keys and encryption keys go).
     static func forgetAfterReinstall() {
         let key = "folevi.installed"
-        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        guard !Platform.defaults.bool(forKey: key) else { return }
         for service in ["com.folevi.shell-auth", "com.folevi.shell-secrets", "com.folevi.library-key", "com.folevi.e2ee"] {
             SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: Platform.keychainService(service)] as CFDictionary)
         }
-        UserDefaults.standard.set(true, forKey: key)
+        Platform.defaults.set(true, forKey: key)
     }
 }

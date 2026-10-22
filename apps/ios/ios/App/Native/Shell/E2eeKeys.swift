@@ -156,8 +156,8 @@ final class E2eeKeys {
     // MARK: Face ID before unlocking
 
     private var faceIdOn: Bool {
-        get { UserDefaults.standard.bool(forKey: "e2ee.faceId") }
-        set { UserDefaults.standard.set(newValue, forKey: "e2ee.faceId") }
+        get { Platform.defaults.bool(forKey: "e2ee.faceId") }
+        set { Platform.defaults.set(newValue, forKey: "e2ee.faceId") }
     }
 
     /// Whether this device can ask (Face ID, Touch ID or Optic ID, else its passcode).

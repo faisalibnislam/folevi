@@ -121,12 +121,14 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
     };
   }, []);
 
-  // An open row closes on the next tap anywhere (and that tap does nothing else on the row).
+  // An open row closes on the next tap anywhere, and as in iOS a tap in its list (on it or another row) does
+  // nothing else: it only puts the actions away.
   useEffect(() => {
     if (!offset || dragging) return;
     const close = (e: Event) => {
       if (row.current?.querySelector("[data-swipe-actions]")?.contains(e.target as Node)) return;
-      if (row.current?.contains(e.target as Node)) {
+      const list = row.current?.closest("ul, ol") ?? row.current;
+      if (list?.contains(e.target as Node)) {
         e.preventDefault();
         e.stopPropagation();
       }

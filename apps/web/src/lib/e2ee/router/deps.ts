@@ -4,10 +4,10 @@
 // ring over real WP1 crypto, and the app hands it WP6's `getKeySession()` / `getKeyRing()`.
 import type { AccountKeys, NoteKeys, SpaceKeys } from "@folevi/local-store/e2ee";
 import type { WireScope } from "@folevi/editor-schema";
-import { STANDARD_SWITCHES, type E2eeLevel, type Switches } from "@convex/lib/e2ee/validators";
+import { STANDARD_SWITCHES, type E2eeLevel, type Switches } from "../../../../../../convex/lib/e2ee/validators";
 
 export type { WireScope } from "@folevi/editor-schema";
-export type { Switches } from "@convex/lib/e2ee/validators";
+export type { Switches } from "../../../../../../convex/lib/e2ee/validators";
 export type Level = E2eeLevel;
 export { STANDARD_SWITCHES };
 

@@ -9,7 +9,7 @@
 import { fromBase64Url, type Bytes } from "@folevi/local-store/e2ee";
 import { HIDDEN_PAGE_LABEL } from "@/lib/local/functions/shared";
 import type { WireBlock } from "@folevi/editor-schema";
-import type { SealedDocumentFields } from "../seal";
+import { isArrayBuffer, type SealedDocumentFields } from "../seal";
 import type { SealedFileFields } from "../files";
 import { scopeKeyOf, type E2eeSpace } from "./deps";
 import type { Call, Decoder, RouterEnv } from "./types";
@@ -23,9 +23,9 @@ export interface DecodeHint {
   space?: E2eeSpace | null;
 }
 
-const isObj = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v) && !(v instanceof ArrayBuffer) && !ArrayBuffer.isView(v);
+const isBytes = (v: unknown): v is Bytes => isArrayBuffer(v) || ArrayBuffer.isView(v);
+const isObj = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v) && !isBytes(v);
 const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
-const isBytes = (v: unknown): v is Bytes => v instanceof ArrayBuffer || ArrayBuffer.isView(v);
 
 function isSealedBlockFields(v: unknown): v is { c: Bytes; mac: string; k: number; collapsed?: true } {
   return isObj(v) && isBytes(v.c) && typeof v.mac === "string" && typeof v.k === "number";

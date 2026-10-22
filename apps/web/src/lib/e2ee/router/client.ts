@@ -831,11 +831,9 @@ export class E2eeRouterClient {
     const opened = await this.openResults(raw, sent);
     // Template blocks this router added aren't the engine's: their results stay here.
     const answer = opened.filter((r) => !extra.has(r.opId));
-    for (const { scope: s, ops: list } of touched.values()) {
-      const replica = this.replicas.get(s);
-      const extras = [...sent.values()].filter((o) => extra.has(o.opId));
-      replica?.applyAccepted(opened, [...list, ...extras]);
-    }
+    const extras = [...sent.values()].filter((o) => extra.has(o.opId));
+    // A device query right after this mutation already sees the change (§6.5).
+    await Promise.all([...touched.values()].map(async ({ scope: s, ops: list }) => await this.replicas.get(s)?.applyAccepted(opened, [...list, ...extras])));
     return answer;
   }
 

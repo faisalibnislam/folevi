@@ -30,8 +30,14 @@ const dec = new TextDecoder();
 const json = (value: unknown) => enc.encode(canonicalJson(value));
 const parse = (bytes: Uint8Array): unknown => JSON.parse(dec.decode(bytes));
 
+/** Whether a value is an ArrayBuffer (from any realm: a worker, a test environment, a structured clone). */
+export function isArrayBuffer(v: unknown): v is ArrayBuffer {
+  return v instanceof ArrayBuffer || Object.prototype.toString.call(v) === "[object ArrayBuffer]";
+}
+
 /** Wire bytes (an ArrayBuffer, or a view of one) as a Uint8Array. */
 export function bytesOf(b: Bytes | ArrayBufferView): Uint8Array {
+  if (isArrayBuffer(b)) return new Uint8Array(b);
   return fromWireBytes(b);
 }
 

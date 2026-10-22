@@ -23,7 +23,8 @@ export interface SpaceReplica {
   readonly client: LocalClient;
   status(): ReplicaStatus;
   whenSynced(): Promise<void>;
-  applyAccepted(results: OpResult[], ops?: readonly SyncOp[]): void;
+  /** Applies the router's own accepted writes at once (resolves once a device query would see them). */
+  applyAccepted(results: OpResult[], ops?: readonly SyncOp[]): void | Promise<void>;
   close(): Promise<void>;
 }
 
@@ -261,9 +262,9 @@ class WindowReplica implements SpaceReplica {
     return new Promise((r) => this.syncedWaiters.push(r));
   }
 
-  applyAccepted(results: OpResult[], ops: readonly SyncOp[] = []): void {
+  async applyAccepted(results: OpResult[], ops: readonly SyncOp[] = []): Promise<void> {
     // In a follower window the host window hears of these through the pull.
-    if (this.hosted) void this.hosted.applyAccepted(results, ops);
+    if (this.hosted) await this.hosted.applyAccepted(results, ops);
     else if (this.host.role !== "follower") this.waiting.push({ results, ops });
   }
 
@@ -300,7 +301,8 @@ export class Replicas implements ReplicaHub {
     const host = startLocalHost({
       lockName: name,
       locks: this.o.locks,
-      channel: this.o.channel ? () => this.o.channel!(name) : typeof BroadcastChannel !== "undefined" ? () => new BroadcastChannel(name) as unknown as ChannelLike : () => memoryChannel(),
+      // No election (locks: null) means this window always hosts: it needs no channel to the others.
+      channel: this.o.channel ? () => this.o.channel!(name) : this.o.locks !== null && typeof BroadcastChannel !== "undefined" ? () => new BroadcastChannel(name) as unknown as ChannelLike : () => memoryChannel(),
       target: null,
       openBackend: async () => {
         const h = await HostedReplica.open(this.o, scope);

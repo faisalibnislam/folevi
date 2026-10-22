@@ -1098,7 +1098,8 @@
 /* §3.10 The Settings window (components/app/Shell.tsx, ?window=1): the section alone, 32 points in from the sides,
    from the top of the page (the window's toolbar is above it), its rows grouped as in the main window. */
 :root[data-desktop="mac"] .ui-settings-window main#main { padding-top: 0; scroll-padding-top: 0; }
-:root[data-desktop="mac"] .ui-settings-window main#main > header { display: none; }
+/* (Its narrow width would show the phone's bar, with the drawer's button and the save state: not here.) */
+:root[data-desktop="mac"] .ui-settings-window header.min-h-11 { display: none; }
 :root[data-desktop="mac"] [data-mac-settings-window] { display: block; max-width: none; margin: 0; padding: 20px 32px 32px; }
 :root[data-desktop="mac"] [data-mac-settings-window] > nav[hidden] { display: none; }
 /* The note's own right-click menu (EditorContextMenu.tsx) sets its rows with !important utilities: the same 26 point

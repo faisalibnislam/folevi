@@ -2134,6 +2134,20 @@ Bell: titles are filled in on the device (§7.7). Push and email use exactly the
   centred dialog when there is none. "Don't ask again for this note today" is one checkbox for the request's
   notes ("Don't ask again for these notes today"); `answer(ok, remember)` applies it to each.
 - "Things to know" says 30 days for backups until the owner confirms §14 Q4 (`copy.meaning.backupDays`).
+- Settings > Devices (§10.7): `e2ee.devices.list` can't be joined to the signed-in sessions (it has no session
+  key), so the encryption side is its own card under them, "Encrypted notes": each device or browser that
+  holds the key, "Can unlock encrypted notes" / "Can't unlock" / "Public session", and "Remove from
+  encryption". `e2ee.devices.revoke` also signs that device out (§4.8), so the dialog says so instead of
+  "keeps the session". With "Also change your encryption key" on, it asks for the passphrase (to keep it)
+  and shows the new recovery key from `setup.rotateAccount` with the same groups 3 and 7 check.
+- Making the account's keys flips `e2ee.keys.status().setUp`, and `lib/convex/provider.tsx` then swaps the
+  Convex client for the router, remounting the app. The wizard keeps where it is outside React and the screen
+  that opened it reopens it at the same step (`pendingWizard` in `SetupWizard.tsx`).
+- While this device opens its own key at start (locked, then unlocking), the gate shows "Unlocking your
+  notes…" rather than the unlock screen; the unlock screen stays up for the trust choice only once the
+  person has started a way to unlock.
+- Settings > Desktop app has "Ask for Touch ID to unlock encrypted notes" (`TouchIdCard`, WP6's
+  `settings()` / `setTouchId()`), shown in a Mac app with the bridge once the account has encryption.
 
 ## 11. Testing
 

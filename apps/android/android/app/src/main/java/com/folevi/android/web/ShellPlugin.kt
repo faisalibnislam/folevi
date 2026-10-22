@@ -28,6 +28,16 @@ class ShellPlugin : Plugin() {
         val mode = call.getString("mode")
         if (mode != "local" && mode != "account") return call.reject("Not a mode.", "invalid_argument")
         val was = FoleviApp.instance.settings.mode
+        // Several places (Places.kt): "local" opens the library (one of the places from now on); "account" the
+        // account signed in last, else the first, else the sign-in screen.
+        val places = FoleviApp.instance.places
+        if (mode == "local") {
+            places.setLibrary(true)
+            places.setCurrent(com.folevi.android.Places.LIBRARY)
+        } else {
+            val target = places.state.lastAdded ?: places.state.accounts.firstOrNull()?.id
+            places.setCurrent(target, pending = target == null)
+        }
         FoleviApp.instance.settings.mode = mode
         if (was != mode) {
             // The widgets' copy and their waiting check-offs belong to the other mode's notes.

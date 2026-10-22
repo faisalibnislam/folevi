@@ -4,6 +4,7 @@
     <string name="package_name">com.folevi.android</string>
     <string name="custom_url_scheme">com.folevi.android</string>
     <string name="channel_reminders">Reminders</string>
+    <string name="place_this_phone">On this phone</string>
     <string name="channel_reminders_about">Reminders on your to-dos</string>
     <string name="channel_activity">Mentions and comments</string>
     <string name="channel_activity_about">When someone mentions you or comments on your notes</string>

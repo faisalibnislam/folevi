@@ -574,8 +574,70 @@
     },
   };
 
+  // ---------------------------------------------------------------- several places (web/PlacesPlugin.kt)
+  // docs/MULTI_ACCOUNT_PLAN.md §2.2: the library and any number of accounts. The page is the open place's (one web
+  // view), and never names another for its session or keys.
+  var placeList = function (r) {
+    return r && Array.isArray(r.places) ? r.places : [];
+  };
+  var placesBoot = boot.places && typeof boot.places === "object" ? boot.places : null;
+  var places = placesBoot
+    ? Object.freeze({
+        current: typeof placesBoot.current === "string" ? placesBoot.current : null,
+        background: false,
+        list: function () {
+          return call("FoleviPlaces", "list").then(placeList);
+        },
+        onChange: function (cb) {
+          return onNative("places", function (e) {
+            var d = e && e.detail ? e.detail : e;
+            cb(placeList(typeof d === "string" ? JSON.parse(d) : d));
+          });
+        },
+        switchTo: function (id, o) {
+          return call("FoleviPlaces", "switchTo", { id: String(id), path: o && typeof o.path === "string" ? o.path : "/documents" }).then(function () {});
+        },
+        signIn: function () {
+          return call("FoleviPlaces", "signIn").then(function (r) {
+            return r && typeof r.value === "string" ? r.value : null;
+          });
+        },
+        describe: function (d) {
+          var plain = {};
+          try {
+            plain = JSON.parse(JSON.stringify(d || {}));
+          } catch (e) {
+            plain = {};
+          }
+          return call("FoleviPlaces", "describe", plain).then(function () {});
+        },
+        signOut: function (id, o) {
+          var args = { id: String(id) };
+          if (o && typeof o.next === "string") args.next = o.next;
+          return call("FoleviPlaces", "signOut", args).then(function () {});
+        },
+        forgetLibrary: function () {
+          return call("FoleviPlaces", "forgetLibrary").then(function () {});
+        },
+        convexToken: function (id) {
+          return call("FoleviPlaces", "convexToken", { id: String(id) }).then(function (r) {
+            return r && typeof r.value === "string" ? r.value : null;
+          });
+        },
+        quickAddPlace: function () {
+          return call("FoleviPlaces", "quickAddPlace").then(function (r) {
+            return r && typeof r.value === "string" ? r.value : null;
+          });
+        },
+        setQuickAddPlace: function (id) {
+          return call("FoleviPlaces", "setQuickAddPlace", { id: String(id) }).then(function () {});
+        },
+      })
+    : undefined;
+
   var shellBridge = {
     platform: "android",
+    places: places,
     shellVersion: boot.version,
     deviceName: boot.deviceName,
     /** "tablet" on a big screen (600 dp or more on its short side), else "phone". */

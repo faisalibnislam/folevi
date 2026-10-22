@@ -41,10 +41,12 @@ enum ShellNotify {
         if at.timeIntervalSinceNow < -86_400 { return }
         let content = UNMutableNotificationContent()
         content.title = String(title.prefix(200))
+        // With accounts here too, a reminder says it's the library's (several places, docs/MULTI_ACCOUNT_PLAN.md §5.3).
+        if !ShellPlaces.state.accounts.isEmpty { content.subtitle = UIDevice.current.userInterfaceIdiom == .pad ? "On this iPad" : "On this iPhone" }
         content.body = String(body.prefix(500))
         content.sound = .default
         content.threadIdentifier = "local-reminders"
-        content.userInfo = ["kind": "local-reminder", "path": path]
+        content.userInfo = ["kind": "local-reminder", "path": path, "place": ShellPlaces.library]
         let trigger: UNNotificationTrigger
         if at.timeIntervalSinceNow <= 1 {
             trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
@@ -54,6 +56,14 @@ enum ShellNotify {
         try await center.add(UNNotificationRequest(identifier: prefix + id, content: content, trigger: trigger))
         shown.append(stamp)
         UserDefaults.standard.set(Array(shown.suffix(500)), forKey: shownKey)
+    }
+
+    /// Every reminder the library scheduled (the library was removed from this device).
+    static func cancelAll() {
+        let center = UNUserNotificationCenter.current()
+        center.getPendingNotificationRequests { requests in
+            center.removePendingNotificationRequests(withIdentifiers: requests.map(\.identifier).filter { $0.hasPrefix(prefix) })
+        }
     }
 
     static func cancel(id: String) {

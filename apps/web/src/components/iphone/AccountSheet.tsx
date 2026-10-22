@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HelpCircle, LifeBuoy, LogOut, Plus, Settings, Shield, UserPlus, Users } from "lucide-react";
+import { ArrowRightLeft, HelpCircle, LifeBuoy, LogIn, LogOut, Plus, Settings, Shield, UserPlus, Users } from "lucide-react";
 import type { WireScope } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
@@ -9,7 +9,11 @@ import { useSafeSignOut } from "@/components/auth/SignOut";
 import { SupportDialog } from "@/components/support/SupportDialog";
 import { InviteDialog } from "@/components/app/InviteDialog";
 import { NewWorkspaceDialog, workspaceRoleLabel } from "@/components/app/NewWorkspaceDialog";
-import { PersonalMark, WorkspaceLogo, personalPlanLabel } from "@/components/app/WorkspaceMenu";
+import { AccountMark, LibraryMark, PersonalMark, WorkspaceLogo, personalPlanLabel } from "@/components/app/WorkspaceMenu";
+import { flushBeforeSwitch, placesAvailable, signInToAnotherAccount, switchToPlace, usePlaces, type Place } from "@/lib/places";
+import { openMovePlaces } from "@/components/places/MovePlaces";
+import { deviceWords } from "@/lib/shell/words";
+import { currentBackendMode } from "@/lib/backendMode";
 import { Sheet } from "./Sheet";
 import { GroupedRow, GroupedSection, RowIcon } from "./Grouped";
 
@@ -19,7 +23,15 @@ import { GroupedRow, GroupedSection, RowIcon } from "./Grouped";
  * the sidebar's switcher menu on the web.
  */
 export function AccountSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { context, workspace, workspaces, setContext, profile, appearance, setAppearance } = useAppState();
+  const { context, workspace, workspaces, setContext, profile, appearance, setAppearance, engine, outbox } = useAppState();
+  // Several places (docs/MULTI_ACCOUNT_PLAN.md): the other accounts and the library on this device.
+  const { places, current } = usePlaces();
+  const several = placesAvailable();
+  const others = several ? places.filter((p) => p.id !== current) : [];
+  const openPlace = (p: Place, workspaceId?: string | null) => {
+    onClose();
+    void switchToPlace(p, { workspaceId, flush: () => flushBeforeSwitch({ engine, outbox }) });
+  };
   const { navigate, route } = useAppRouter();
   const safeSignOut = useSafeSignOut(profile.id);
   const [creating, setCreating] = useState(false);
@@ -62,6 +74,26 @@ export function AccountSheet({ open, onClose }: { open: boolean; onClose: () => 
           ))}
           <GroupedRow icon={<RowIcon><Plus /></RowIcon>} label="New workspace" onClick={() => setCreating(true)} />
         </GroupedSection>
+        {others.length ? (
+          <GroupedSection title="Other places" className="mt-6">
+            {others.map((p) =>
+              p.kind === "library" ? (
+                <GroupedRow key={p.id} icon={<RowIcon><LibraryMark /></RowIcon>} label={`On ${deviceWords().here}`} description={p.syncs} onClick={() => openPlace(p)} />
+              ) : (
+                [
+                  <GroupedRow key={p.id} icon={<AccountMark name={p.name || p.email} avatarUrl={p.avatarUrl} size={30} />} label={p.name || p.email} description={[p.email, p.unread ? `${p.unread} unread` : null].filter(Boolean).join(" · ") || undefined} onClick={() => openPlace(p, null)} />,
+                  ...p.workspaces.map((w) => <GroupedRow key={`${p.id}:${w.id}`} icon={<WorkspaceLogo workspace={w} size={30} />} label={w.name} description={`In ${p.name || p.email}`} onClick={() => openPlace(p, w.id)} />),
+                ]
+              ),
+            )}
+          </GroupedSection>
+        ) : null}
+        {several ? (
+          <GroupedSection className="mt-6">
+            <GroupedRow icon={<RowIcon><LogIn /></RowIcon>} label="Sign in to another account" onClick={() => { onClose(); void signInToAnotherAccount(); }} />
+            {others.length ? <GroupedRow icon={<RowIcon><ArrowRightLeft /></RowIcon>} label="Move or copy notes" onClick={() => { onClose(); openMovePlaces(); }} /> : null}
+          </GroupedSection>
+        ) : null}
         {workspace ? (
           <GroupedSection title={workspace.name} className="mt-6">
             {canManage ? <GroupedRow icon={<RowIcon><UserPlus /></RowIcon>} label="Invite people" onClick={() => setInviting(true)} /> : null}
@@ -91,7 +123,7 @@ export function AccountSheet({ open, onClose }: { open: boolean; onClose: () => 
           </div>
         </GroupedSection>
         <GroupedSection className="mt-6">
-          <GroupedRow icon={<RowIcon tone="color-mix(in oklab, var(--color-destructive) 14%, transparent)"><LogOut className="text-danger" /></RowIcon>} label="Sign out" danger onClick={() => void safeSignOut.request()} />
+          <GroupedRow icon={<RowIcon tone="color-mix(in oklab, var(--color-destructive) 14%, transparent)"><LogOut className="text-danger" /></RowIcon>} label={currentBackendMode() === "local" ? "Sign out" : `Sign out of ${profile.displayName || "this account"}`} danger onClick={() => void safeSignOut.request()} />
         </GroupedSection>
       </Sheet>
       <NewWorkspaceDialog open={creating} onClose={() => setCreating(false)} onCreated={() => go("/documents")} />

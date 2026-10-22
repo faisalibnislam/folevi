@@ -26,7 +26,8 @@ import kotlinx.coroutines.withContext
 @CapacitorPlugin(name = "FoleviE2ee")
 class E2eePlugin : Plugin() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val keys get() = FoleviApp.instance.deviceKeys
+    // The open account's own keys (several places, docs/MULTI_ACCOUNT_PLAN.md §4).
+    private val keys get() = FoleviApp.instance.currentKeys()
     private var confirmedAt = 0L
     private val asking = Mutex()
 

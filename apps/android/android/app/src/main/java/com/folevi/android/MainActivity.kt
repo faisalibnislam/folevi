@@ -29,6 +29,7 @@ import com.folevi.android.web.ShellPlugin
 import com.getcapacitor.Bridge
 import com.getcapacitor.BridgeActivity
 import org.json.JSONObject
+import kotlinx.coroutines.launch
 
 /**
  * The one activity: Capacitor's web view showing the built-in interface (https://localhost), drawn edge to edge,
@@ -71,12 +72,14 @@ class MainActivity : BridgeActivity() {
         registerPlugin(com.folevi.android.host.HttpPlugin::class.java)
         registerPlugin(com.folevi.android.lock.LockPlugin::class.java)
         registerPlugin(com.folevi.android.e2ee.E2eePlugin::class.java)
+        registerPlugin(com.folevi.android.web.PlacesPlugin::class.java)
         applyBars(systemDark())
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this, back)
         app.showForResult = { pi -> showForResult(pi) }
         current = java.lang.ref.WeakReference(this)
         bridge?.webView?.let { setUpWebView(it) }
+        adoptLegacySession()
     }
 
     // ---------------------------------------------------------------- system screens with a result
@@ -180,6 +183,8 @@ class MainActivity : BridgeActivity() {
             .put("deviceFamily", if (resources.configuration.smallestScreenWidthDp >= 600 && !packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_SENSOR_HINGE_ANGLE)) "tablet" else "phone")
             .put("webViewVersion", WebViewCompat.getCurrentWebViewPackage(this)?.versionName ?: "")
             .put("insets", lastInsets)
+            // Several places (Places.kt): the page is the open place's.
+            .put("places", JSONObject().put("current", app.places.state.current ?: JSONObject.NULL).put("background", false))
         script.install(wv, boot, APP_ORIGIN)
     }
 
@@ -259,11 +264,29 @@ class MainActivity : BridgeActivity() {
         parent?.let { ViewCompat.requestApplyInsets(it) }
     }
 
-    fun reloadForMode() {
+    /**
+     * Several places: the one session older builds kept moves to its account (a first launch of this version, once the
+     * server says whose it is); the page then opens again in that account.
+     */
+    private fun adoptLegacySession() {
+        if (app.auth.token(null) == null) return
+        kotlinx.coroutines.MainScope().launch {
+            val user = runCatching { app.auth.adoptLegacy() }.getOrNull() ?: return@launch
+            val first = app.places.state.accounts.isEmpty()
+            val added = app.places.addAccount(user.userId, user.name, user.email, user.avatarUrl) ?: return@launch
+            if (first) app.adoptLegacyKeys(user.userId)
+            if (app.places.state.current == null && app.settings.mode == "account") {
+                app.places.setCurrent(added.id)
+                reloadForMode()
+            }
+        }
+    }
+
+    fun reloadForMode(path: String = "/documents") {
         val wv = bridge?.webView ?: return
         ready = false
         installScript(wv)
-        wv.loadUrl("$APP_ORIGIN/documents")
+        wv.loadUrl("$APP_ORIGIN$path")
     }
 
     /** The bridge script is up and listening: commands that waited (a link that opened the app) go now. */
@@ -394,6 +417,17 @@ class MainActivity : BridgeActivity() {
     private fun handleIntent(intent: Intent?) {
         val data = intent?.dataString ?: return
         if (intent.action != Intent.ACTION_VIEW) return
+        // A notification from another place on this phone (several places): that place opens first, at the page.
+        if (data.startsWith("folevi://")) {
+            val uri = Uri.parse(data)
+            val place = uri.getQueryParameter("place")
+            if (place != null && app.places.has(place) && place != app.places.state.current) {
+                app.places.setCurrent(place)
+                val path = "/" + (uri.host ?: "documents") + (uri.path ?: "")
+                reloadForMode(path.takeIf { Regex("^/[A-Za-z0-9/_-]{0,200}$").matches(it) } ?: "/documents")
+                return
+            }
+        }
         if (app.cloud.handleCallback(data)) {
             signInOpen = false
             return

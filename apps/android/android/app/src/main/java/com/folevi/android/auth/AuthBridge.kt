@@ -38,6 +38,8 @@ class AuthBridge(
     private val deviceName: () -> String,
     private val random: SecureRandom = SecureRandom(),
     private val signInTimeoutMs: Long = 10 * 60_000L,
+    /** Several places (com.folevi.android.Places): the open account's user id, whose session the page's calls use. */
+    private val currentUser: () -> String? = { null },
 ) {
     val service: HttpUrl = requireNotNull(serviceUrl.toHttpUrlOrNull()) { "Not a website: $serviceUrl" }.newBuilder().encodedPath("/").query(null).build()
     private val origin = service.toString().removeSuffix("/")
@@ -48,9 +50,69 @@ class AuthBridge(
 
     @Volatile private var pending: Pending? = null
 
-    private fun token(): String? = store.get(TOKEN)?.takeIf { TOKEN_RE.matches(it) }
+    /** Each account's session is its own secret, `auth.session.<user id>`; null is the one older builds kept. */
+    private fun slotName(user: String?) = if (user == null) TOKEN else "$TOKEN.$user"
+
+    fun token(user: String?): String? = store.get(slotName(user))?.takeIf { TOKEN_RE.matches(it) }
+
+    private fun token(): String? = token(currentUser())
 
     fun signedIn(): Boolean = token() != null
+
+    data class User(val userId: String, val name: String, val email: String, val avatarUrl: String?)
+
+    /** Who a session belongs to (get-session with that bearer), or null. */
+    suspend fun userOf(bearer: String): User? = withContext(Dispatchers.IO) {
+        runCatching {
+            val (res) = send(service.resolve("/api/auth/get-session")!!, "GET", emptyMap(), null, bearer, keep = false)
+            res.use {
+                if (it.code != 200) return@use null
+                val user = JSONObject(it.body.string()).optJSONObject("user") ?: return@use null
+                val id = user.optString("id").takeIf { i -> Regex("^[A-Za-z0-9_-]{1,64}$").matches(i) } ?: return@use null
+                User(id, user.optString("name"), user.optString("email"), user.optString("image").takeIf { u -> u.startsWith("https://") })
+            }
+        }.getOrNull()
+    }
+
+    /** The single session an older build kept, moved to its account's own secret: that account, or null. */
+    suspend fun adoptLegacy(): User? {
+        val legacy = token(null) ?: return null
+        val user = userOf(legacy) ?: return null
+        if (token(user.userId) == null) store.set(slotName(user.userId), legacy)
+        store.delete(TOKEN)
+        return user
+    }
+
+    /** Builds a sign-in for one more account: the /connect address, and what finishes it (who it was, or null). */
+    fun beginAccount(): Pair<String, suspend () -> User?> {
+        val (url, code) = beginCode()
+        return url to finish@{
+            val access = code() ?: return@finish null
+            val user = userOf(access)
+            if (user == null) {
+                withContext(Dispatchers.IO) { endSession(access) }
+                return@finish null
+            }
+            val previous = token(user.userId)
+            store.set(slotName(user.userId), access)
+            // The same person again: only their old session here ends.
+            if (previous != null && previous != access) withContext(Dispatchers.IO) { endSession(previous) }
+            user
+        }
+    }
+
+    /** Another account's Convex token (moving notes between two accounts). */
+    suspend fun convexTokenFor(user: String): String? = withContext(Dispatchers.IO) {
+        val bearer = token(user) ?: return@withContext null
+        val (res) = send(service.resolve("/api/auth/convex/token")!!, "GET", emptyMap(), null, bearer, slot = user)
+        res.use { if (!it.isSuccessful) null else JSONObject(it.body.string()).optString("token").takeIf { t -> t.isNotEmpty() } }
+    }
+
+    /** Ends one account's session here and forgets its token. */
+    suspend fun signOutUser(user: String) = withContext(Dispatchers.IO) {
+        token(user)?.let { endSession(it) }
+        store.delete(slotName(user))
+    }
 
     /** Whether a link that opened the app ends a sign-in (the custom scheme or the App Link). */
     fun isCallback(url: String): Boolean = Companion.isCallback(url, redirectUri)
@@ -77,8 +139,21 @@ class AuthBridge(
 
     fun pendingSignIn(): Boolean = pending != null
 
-    /** Builds the /connect address for a new sign-in and remembers its state and verifier. */
+    /** Builds the /connect address for a new sign-in; what finishes it stores the session as the open place's. */
     fun begin(): Pair<String, suspend () -> Boolean> {
+        val (url, code) = beginCode()
+        return url to finish@{
+            val access = code() ?: return@finish false
+            val previous = token()
+            store.set(slotName(currentUser()), access)
+            // Signing in again (after a stale session) ends the session this phone held before.
+            if (previous != null && previous != access) withContext(Dispatchers.IO) { endSession(previous) }
+            true
+        }
+    }
+
+    /** The /connect address for a new sign-in, and what waits for it to end in a new session's token (or null). */
+    private fun beginCode(): Pair<String, suspend () -> String?> {
         cancelPending()
         val verifier = b64url(bytes(32))
         val challenge = b64url(MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray()))
@@ -93,18 +168,18 @@ class AuthBridge(
             .build()
         val entry = Pending(state, CompletableDeferred())
         pending = entry
-        val finish: suspend () -> Boolean = finish@{
+        val finish: suspend () -> String? = finish@{
             val callback = withTimeoutOrNull(signInTimeoutMs) { entry.answer.await() }
             if (pending === entry) pending = null
-            if (callback == null) return@finish false
-            if (queryParam(callback, "error") != null) return@finish false
-            val code = queryParam(callback, "code")?.takeIf { it.isNotEmpty() && it.length <= 128 } ?: return@finish false
+            if (callback == null) return@finish null
+            if (queryParam(callback, "error") != null) return@finish null
+            val code = queryParam(callback, "code")?.takeIf { it.isNotEmpty() && it.length <= 128 } ?: return@finish null
             exchange(code, verifier)
         }
         return connect.toString() to finish
     }
 
-    private suspend fun exchange(code: String, verifier: String): Boolean = withContext(Dispatchers.IO) {
+    private suspend fun exchange(code: String, verifier: String): String? = withContext(Dispatchers.IO) {
         val body = JSONObject()
             .put("grant_type", "authorization_code")
             .put("code", code)
@@ -124,15 +199,12 @@ class AuthBridge(
                 if (res.code != 200) return@use null
                 JSONObject(res.body.string()).optString("access_token").takeIf { TOKEN_RE.matches(it) }
             }
-        }.getOrNull() ?: return@withContext false
-        val previous = token()
-        store.set(TOKEN, access)
-        // Signing in again (another account, or after a stale session) ends the session this phone held before.
-        if (previous != null && previous != access) endSession(previous)
-        true
+        }.getOrNull()
+        access
     }
 
-    private fun send(url: HttpUrl, method: String, headers: Map<String, String>, body: String?, bearer: String?): Pair<okhttp3.Response, String?> {
+    /** `keep`: a rotated token goes back to `slot` (the open place's by default); false for a token being checked. */
+    private fun send(url: HttpUrl, method: String, headers: Map<String, String>, body: String?, bearer: String?, keep: Boolean = true, slot: String? = currentUser()): Pair<okhttp3.Response, String?> {
         val b = Request.Builder().url(url)
         for ((k, v) in headers) b.header(k, v)
         b.header("origin", origin)
@@ -141,7 +213,7 @@ class AuthBridge(
         val res = http.newCall(b.build()).execute()
         // A refreshed session comes back as a new token (Better Auth's bearer plugin): keep it.
         val rotated = res.header("set-auth-token")
-        if (bearer != null && rotated != null && rotated != bearer && TOKEN_RE.matches(rotated)) store.set(TOKEN, rotated)
+        if (keep && bearer != null && rotated != null && rotated != bearer && TOKEN_RE.matches(rotated)) store.set(slotName(slot), rotated)
         return res to rotated
     }
 
@@ -155,7 +227,7 @@ class AuthBridge(
     suspend fun signOut() = withContext(Dispatchers.IO) {
         cancelPending()
         token()?.let { endSession(it) }
-        store.delete(TOKEN)
+        store.delete(slotName(currentUser()))
     }
 
     /** The page's request, only to the website's /api/auth. Throws for anything else. */
@@ -185,7 +257,7 @@ class AuthBridge(
             when {
                 it.code == 401 -> {
                     // The session ended (signed out from Settings > Devices, expired): forget it.
-                    store.delete(TOKEN)
+                    store.delete(slotName(currentUser()))
                     null
                 }
                 it.code == 403 -> null

@@ -28,17 +28,34 @@ class AuthPlugin : Plugin() {
     fun signIn(call: PluginCall) {
         val a = activity as? MainActivity ?: return call.resolve(JSObject().put("value", false))
         scope.launch {
-            val (url, finish) = auth.begin()
+            // Several places: the account becomes one of them. From the library the page goes on itself (move my
+            // notes, or keep them separate) and opens it; otherwise the app opens it now.
+            val places = FoleviApp.instance.places
+            val place = places.state.current
+            val (url, finish) = auth.beginAccount()
             a.openSignIn(url)
-            val ok = runCatching { finish() }.getOrDefault(false)
-            call.resolve(JSObject().put("value", ok))
+            val user = runCatching { finish() }.getOrNull() ?: return@launch call.resolve(JSObject().put("value", false))
+            val first = places.state.accounts.isEmpty()
+            val added = places.addAccount(user.userId, user.name, user.email, user.avatarUrl) ?: return@launch call.resolve(JSObject().put("value", false))
+            if (first) FoleviApp.instance.adoptLegacyKeys(user.userId)
+            if (place != com.folevi.android.Places.LIBRARY && added.id != place) places.setCurrent(added.id)
+            call.resolve(JSObject().put("value", true))
         }
     }
 
     @PluginMethod
     fun signOut(call: PluginCall) {
         scope.launch {
-            runCatching { auth.signOut() }
+            val places = FoleviApp.instance.places
+            val place = places.state.current
+            val user = com.folevi.android.Places.userIdOf(place)
+            if (place != null && user != null) {
+                runCatching { auth.signOutUser(user) }
+                FoleviApp.instance.forgetKeys(user)
+                places.setCurrent(places.removeAccount(place))
+            } else {
+                runCatching { auth.signOut() }
+            }
             call.resolve()
         }
     }

@@ -65,6 +65,7 @@ final class FoleviViewController: CAPBridgeViewController {
             ShellCloud.shared.googleClientId = bridge?.config.getPluginConfig("FoleviShell").getString("googleClientId") ?? ""
             libraryFiles.origin = AppOrigin.of(bridge?.config.serverURL)
             bridge?.registerPluginInstance(FoleviShellPlugin())
+            Self.startPlaces()
             applyMode()
         }
         // Local mode's widgets, Shortcuts and Spotlight work from the page (Native/LocalExtensions.swift).
@@ -102,9 +103,40 @@ final class FoleviViewController: CAPBridgeViewController {
             .replacingOccurrences(of: "\"__FOLEVI_SHELL__\"", with: shellJSON)
     }
 
-    /// What the page starts with. A mode switch starts the app's screen again (`restart`), so it's read anew.
+    /// Where the next page opens after a switch to another place (placesSwitch), once.
+    static var startPath: String?
+
+    /// What the page starts with. A mode switch starts the app's screen again (`restart`), so it's read anew. The
+    /// page's place (several places, docs/MULTI_ACCOUNT_PLAN.md §2.2) is the open one: the app has one web view.
     private static func shellBootstrap() -> [String: Any] {
-        ["mode": ShellMode.current, "deviceName": ShellAuth.deviceName, "deviceFamily": UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"]
+        let start = startPath
+        startPath = nil
+        return [
+            "mode": ShellMode.current, "deviceName": ShellAuth.deviceName, "deviceFamily": UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone",
+            "places": ["current": ShellPlaces.state.current.map { $0 as Any } ?? NSNull(), "background": false] as [String: Any],
+            "start": start.map { $0 as Any } ?? NSNull(),
+        ]
+    }
+
+    /// A first launch of this version: where the app was becomes the places; the one session older builds kept moves
+    /// to its account (then the screen opens again in it).
+    private static func startPlaces() {
+        let libraryFile = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Folevi", isDirectory: true).appendingPathComponent("library.json")
+        ShellPlaces.migrate(libraryConfigured: FileManager.default.fileExists(atPath: libraryFile.path))
+        if ShellMode.current == "account", ShellPlaces.state.current == nil, let first = ShellPlaces.state.accounts.first { ShellPlaces.setCurrent(first.id) }
+        guard ShellAuth.shared.token(for: nil) != nil else { return }
+        Task {
+            guard let u = await ShellAuth.shared.adoptLegacy() else { return }
+            await MainActor.run {
+                let first = ShellPlaces.state.accounts.isEmpty
+                guard let a = ShellPlaces.addAccount(userId: u.userId, name: u.name, email: u.email, avatarUrl: u.avatarUrl) else { return }
+                if first { E2eeKeys.adoptLegacy(userId: u.userId) }
+                if ShellPlaces.state.current == nil && ShellMode.current == "account" {
+                    ShellPlaces.setCurrent(a.id)
+                    restart()
+                }
+            }
+        }
     }
 
     /// A new web view on the same storage, for a new mode: its scripts and network rules start from it.

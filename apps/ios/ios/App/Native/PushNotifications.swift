@@ -220,6 +220,17 @@ final class PushNotifications: NSObject, UNUserNotificationCenterDelegate {
         switch route {
         case .open(let url):
             Self.log.info("Opened from a notification")
+            // From another place on this device (several places, docs/MULTI_ACCOUNT_PLAN.md §5.3): that place opens
+            // first, at what the notification is about.
+            if let raw = content.userInfo["place"] as? String {
+                let place = raw == ShellPlaces.library ? raw : "acct:\(raw)"
+                if ShellPlaces.has(place), place != ShellPlaces.state.current {
+                    ShellPlaces.setCurrent(place)
+                    FoleviViewController.startPath = DeepLink.path(of: url)
+                    FoleviViewController.restart()
+                    return
+                }
+            }
             DeepLinkRouter.open(url)
         case .complete(let taskId):
             // The widgets' check-off: sent now, or kept and sent with the next refresh when offline.

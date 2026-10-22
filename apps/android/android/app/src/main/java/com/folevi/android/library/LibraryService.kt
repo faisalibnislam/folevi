@@ -27,6 +27,17 @@ class LibraryService(private val base: File, private val prefsContext: Context?)
 
     val kind: String? get() = get("kind")?.takeIf { it in KINDS }
     val libraryId: String? get() = get("libraryId")
+    val configured: Boolean get() = kind != null
+
+    /**
+     * Forgets the library on this phone (several places, docs/MULTI_ACCOUNT_PLAN.md §9): its journal and where it is
+     * go; its files stay (in the app's storage, or the provider's folder), so setting it up again brings it back.
+     */
+    fun forget() {
+        libraryId?.let { File(base, "journal/$it.fj").delete() }
+        put("kind", null)
+        put("libraryId", null)
+    }
 
     /** The device library's folder (This phone only). */
     val deviceFs: FolderFs by lazy { FolderFs(File(base, "library").apply { mkdirs() }) }

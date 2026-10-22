@@ -56,6 +56,12 @@ enum DeepLink: Equatable {
         return nil
     }
 
+    /// The page path a folevi:// link opens ("/d/ID#block-X"), or nil for one that isn't a page.
+    static func path(of url: URL) -> String? {
+        if case .open(let path)? = parse(url.absoluteString) { return path }
+        return nil
+    }
+
     /// A path inside the app as the server writes it ("/d/ID#block-X", "/tasks/today") as the folevi:// link
     /// that opens it. Nil when it isn't one the page would open.
     static func fromPath(_ path: String) -> URL? {

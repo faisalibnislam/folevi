@@ -123,6 +123,16 @@ final class LibraryService {
         }
     }
 
+    /// Forgets the library on this device (several places, docs/MULTI_ACCOUNT_PLAN.md §9): its journal and where it
+    /// is go; the folder stays exactly as it is, so setting up the same folder again brings it back. Call on `queue`.
+    func forget() {
+        let id = stored?.libraryId
+        detach()
+        journalStore = nil
+        if let id { try? fm.removeItem(at: Self.support.appendingPathComponent("library", isDirectory: true).appendingPathComponent("journal-\(id).bin")) }
+        saveState(nil)
+    }
+
     /// Loads library.json and opens the library it names; finishes a move or encryption switch left half done.
     func open() {
         guard !opened else { return }

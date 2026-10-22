@@ -318,3 +318,68 @@ final class ShellFilesTests: XCTestCase {
         XCTAssertNil(try ShellCloud.mirrorRead("dropbox", "notes/01J9ZDOC000000000000000001.fnote"))
     }
 }
+
+/// Several places (Native/Shell/ShellPlaces.swift, docs/MULTI_ACCOUNT_PLAN.md §2.2): the list, the open place, each
+/// account's own session and encryption keys.
+final class ShellPlacesTests: XCTestCase {
+    override func setUp() {
+        ShellPlaces.resetForTests()
+    }
+
+    override func tearDown() {
+        for id in ["placesAna", "placesBen"] {
+            ShellAuth.shared.setToken(nil, for: id)
+            E2eeKeys.forget(userId: id)
+        }
+        ShellPlaces.resetForTests()
+    }
+
+    func testTheLibraryAndAccountsTheOpenOneAndQuickAdd() {
+        ShellPlaces.setLibrary(true)
+        let ana = ShellPlaces.addAccount(userId: "placesAna", name: "Ana", email: "ana@example.com", avatarUrl: nil)!
+        ShellPlaces.addAccount(userId: "placesBen", name: "Ben", email: "ben@example.com", avatarUrl: "https://example.com/b.png")
+        ShellPlaces.setCurrent(ana.id)
+        XCTAssertEqual(ShellPlaces.state.current, "acct:placesAna")
+        XCTAssertEqual(ShellMode.current, "account")
+        XCTAssertEqual(ShellPlaces.currentUserId, "placesAna")
+        ShellPlaces.setCurrent(ShellPlaces.library)
+        XCTAssertEqual(ShellMode.current, "local")
+        XCTAssertNil(ShellPlaces.currentUserId)
+        ShellPlaces.setQuickAdd("acct:placesBen")
+        XCTAssertEqual(ShellPlaces.state.quickAdd, "acct:placesBen")
+        ShellPlaces.setCurrent("acct:nobody")
+        XCTAssertEqual(ShellPlaces.state.current, ShellPlaces.library)
+        let list = ShellPlaces.list(libraryKind: "icloud", displayPath: "iCloud Drive › Folevi", configured: true)
+        XCTAssertEqual(list.map { $0["id"] as? String }, ["library", "acct:placesAna", "acct:placesBen"])
+    }
+
+    func testWhatAPageSaysOfItsAccountAndRemovingOne() {
+        let ana = ShellPlaces.addAccount(userId: "placesAna", name: "Ana", email: "ana@example.com", avatarUrl: nil)!
+        let ben = ShellPlaces.addAccount(userId: "placesBen", name: "Ben", email: "ben@example.com", avatarUrl: nil)!
+        ShellPlaces.setCurrent(ana.id)
+        ShellPlaces.describe(ana.id, ["profileId": "prof_1", "unread": 3, "workspaces": [["id": "w1", "name": "Acme", "logoUrl": "javascript:x"], ["bad": true]]])
+        let now = ShellPlaces.state.accounts.first { $0.id == ana.id }!
+        XCTAssertEqual(now.profileId, "prof_1")
+        XCTAssertEqual(now.unread, 3)
+        XCTAssertEqual(now.workspaces, [ShellPlaces.Workspace(id: "w1", name: "Acme", logoUrl: nil)])
+        XCTAssertEqual(ShellPlaces.removeAccount(ana.id), ben.id)
+        XCTAssertEqual(ShellPlaces.state.accounts.map(\.userId), ["placesBen"])
+    }
+
+    func testEachAccountKeepsItsOwnSessionAndKeys() throws {
+        let ana = ShellPlaces.addAccount(userId: "placesAna", name: "Ana", email: "a@example.com", avatarUrl: nil)!
+        let ben = ShellPlaces.addAccount(userId: "placesBen", name: "Ben", email: "b@example.com", avatarUrl: nil)!
+        ShellAuth.shared.setToken("Anasessiontoken0123456789abcdefA", for: "placesAna")
+        ShellAuth.shared.setToken("Bensessiontoken0123456789abcdefB", for: "placesBen")
+        ShellPlaces.setCurrent(ana.id)
+        XCTAssertEqual(ShellAuth.shared.token, "Anasessiontoken0123456789abcdefA")
+        let anaKeys = try E2eeKeys.shared.deviceKeys()
+        ShellPlaces.setCurrent(ben.id)
+        XCTAssertEqual(ShellAuth.shared.token, "Bensessiontoken0123456789abcdefB")
+        let benKeys = try E2eeKeys.shared.deviceKeys()
+        XCTAssertNotEqual(anaKeys.deviceId, benKeys.deviceId)
+        XCTAssertNotEqual(anaKeys.x25519Pub, benKeys.x25519Pub)
+        ShellPlaces.setCurrent(ana.id)
+        XCTAssertEqual(try E2eeKeys.shared.deviceKeys().deviceId, anaKeys.deviceId)
+    }
+}

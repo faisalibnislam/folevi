@@ -41,14 +41,70 @@ final class ShellAuth: NSObject {
 
     private var sheet: SignInSheet?
 
+    /// Several places (ShellPlaces): each account's session is its own Keychain item, `session.<user id>`; nil is the
+    /// single session older builds kept (`session`).
+    private static func account(_ userId: String?) -> String { userId.map { "\(keychainAccount).\($0)" } ?? keychainAccount }
+
+    func token(for userId: String?) -> String? { Keychain.getString(Self.keychainService, Self.account(userId)) }
+
+    func setToken(_ value: String?, for userId: String?) {
+        if let value { Keychain.setString(Self.keychainService, Self.account(userId), value) } else { Keychain.delete(Self.keychainService, Self.account(userId)) }
+    }
+
+    /// The open place's session: the page's (the app has one web view, bound to the open place).
     var token: String? {
-        get { Keychain.getString(Self.keychainService, Self.keychainAccount) }
-        set {
-            if let newValue { Keychain.setString(Self.keychainService, Self.keychainAccount, newValue) } else { Keychain.delete(Self.keychainService, Self.keychainAccount) }
-        }
+        get { token(for: ShellPlaces.currentUserId) }
+        set { setToken(newValue, for: ShellPlaces.currentUserId) }
     }
 
     var signedIn: Bool { token != nil }
+
+    /// Who a session belongs to (Better Auth's get-session with that bearer), or nil.
+    func userOf(_ bearer: String) async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
+        guard let url = URL(string: "/api/auth/get-session", relativeTo: service)?.absoluteURL,
+              let (res, data, _) = try? await send(url, method: "GET", bearer: bearer, keepRotated: false), res.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let user = json["user"] as? [String: Any],
+              let id = user["id"] as? String, id.range(of: #"^[A-Za-z0-9_-]{1,64}$"#, options: .regularExpression) != nil else { return nil }
+        let image = (user["image"] as? String).flatMap { $0.hasPrefix("https://") ? $0 : nil }
+        return (id, (user["name"] as? String) ?? "", (user["email"] as? String) ?? "", image)
+    }
+
+    /// The single session an older build kept, moved to its account's own item: that account, or nil.
+    func adoptLegacy() async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
+        guard let legacy = token(for: nil), let user = await userOf(legacy) else { return nil }
+        if token(for: user.userId) == nil { setToken(legacy, for: user.userId) }
+        setToken(nil, for: nil)
+        return user
+    }
+
+    /// Signs in to one more account: who it is, or nil. The same person again replaces only their own session.
+    @MainActor
+    func signInAccount(window: UIWindow?) async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
+        guard let access = await obtain(window: window) else { return nil }
+        guard let user = await userOf(access) else {
+            await endSession(access)
+            return nil
+        }
+        let previous = token(for: user.userId)
+        setToken(access, for: user.userId)
+        if let previous, previous != access { await endSession(previous) }
+        return user
+    }
+
+    /// Another account's Convex token (moving notes between two accounts).
+    func convexToken(for userId: String) async throws -> String? {
+        guard let bearer = token(for: userId), let url = URL(string: "/api/auth/convex/token", relativeTo: service)?.absoluteURL else { return nil }
+        let (res, data, _) = try await send(url, method: "GET", bearer: bearer, slot: .some(userId))
+        guard (200..<300).contains(res.statusCode) else { return nil }
+        let jwt = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["token"] as? String
+        return (jwt?.isEmpty ?? true) ? nil : jwt
+    }
+
+    /// Ends one account's session here and forgets its token.
+    func signOut(userId: String) async {
+        if let bearer = token(for: userId) { await endSession(bearer) }
+        setToken(nil, for: userId)
+    }
 
     private static func b64url(_ d: Data) -> String {
         d.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
@@ -83,7 +139,8 @@ final class ShellAuth: NSObject {
         return out
     }
 
-    private func send(_ url: URL, method: String, headers: [String: String] = [:], body: String? = nil, bearer: String?) async throws -> (HTTPURLResponse, Data, String?) {
+    /// `slot`: whose item a rotated token goes back to (nil: the open place's; `.some(id)`: that account's).
+    private func send(_ url: URL, method: String, headers: [String: String] = [:], body: String? = nil, bearer: String?, keepRotated: Bool = true, slot: String?? = nil) async throws -> (HTTPURLResponse, Data, String?) {
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
@@ -95,7 +152,9 @@ final class ShellAuth: NSObject {
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         // A refreshed session comes back as a new token (Better Auth's bearer plugin): keep it.
         let rotated = http.value(forHTTPHeaderField: "set-auth-token")
-        if let bearer, let rotated, rotated != bearer, rotated.range(of: Self.tokenPattern, options: .regularExpression) != nil { token = rotated }
+        if keepRotated, let bearer, let rotated, rotated != bearer, rotated.range(of: Self.tokenPattern, options: .regularExpression) != nil {
+            if let slot { setToken(rotated, for: slot) } else { token = rotated }
+        }
         return (http, data, rotated)
     }
 
@@ -113,6 +172,17 @@ final class ShellAuth: NSObject {
 
     @MainActor
     func signIn(window: UIWindow?) async -> Bool {
+        guard let access = await obtain(window: window) else { return false }
+        let previous = token
+        token = access
+        // Signing in again (another account, or after a stale session) ends the session this device held before.
+        if let previous, previous != access { await endSession(previous) }
+        return true
+    }
+
+    /// The sign-in sheet, ending with a new session's token (or nil).
+    @MainActor
+    private func obtain(window: UIWindow?) async -> String? {
         sheet?.session.cancel()
         let pkce = Self.pkcePair()
         let state = Self.b64url(LibraryCrypto.randomBytes(24))
@@ -121,7 +191,7 @@ final class ShellAuth: NSObject {
             .init(name: "client_id", value: Self.clientId), .init(name: "redirect_uri", value: Self.redirectURI),
             .init(name: "code_challenge", value: pkce.challenge), .init(name: "code_challenge_method", value: "S256"), .init(name: "state", value: state),
         ]
-        guard let connect = c.url else { return false }
+        guard let connect = c.url else { return nil }
         let callback: URL? = await withCheckedContinuation { cont in
             let session = ASWebAuthenticationSession(url: connect, callbackURLScheme: "folevi") { url, _ in cont.resume(returning: url) }
             // Safari's own sign-in to Folevi (and Google's) carries over, so there's often nothing to type.
@@ -136,18 +206,14 @@ final class ShellAuth: NSObject {
               let items = URLComponents(url: callback, resolvingAgainstBaseURL: false)?.queryItems,
               items.first(where: { $0.name == "state" })?.value == state,
               items.first(where: { $0.name == "error" }) == nil,
-              let code = items.first(where: { $0.name == "code" })?.value, code.count <= 128 else { return false }
+              let code = items.first(where: { $0.name == "code" })?.value, code.count <= 128 else { return nil }
         let body: [String: Any] = ["grant_type": "authorization_code", "code": code, "code_verifier": pkce.verifier, "client_id": Self.clientId, "redirect_uri": Self.redirectURI, "device_name": String(Self.deviceName.prefix(60))]
         guard let data = try? JSONSerialization.data(withJSONObject: body), let url = URL(string: "/api/auth/native/token", relativeTo: service)?.absoluteURL,
               let (res, out, _) = try? await send(url, method: "POST", headers: ["content-type": "application/json"], body: String(data: data, encoding: .utf8), bearer: nil),
               res.statusCode == 200,
               let json = try? JSONSerialization.jsonObject(with: out) as? [String: Any], let access = json["access_token"] as? String,
-              access.range(of: Self.tokenPattern, options: .regularExpression) != nil else { return false }
-        let previous = token
-        token = access
-        // Signing in again (another account, or after a stale session) ends the session this device held before.
-        if let previous, previous != access { await endSession(previous) }
-        return true
+              access.range(of: Self.tokenPattern, options: .regularExpression) != nil else { return nil }
+        return access
     }
 
     /// "Folevi app (Faisal's iPhone)" in Settings > Devices.

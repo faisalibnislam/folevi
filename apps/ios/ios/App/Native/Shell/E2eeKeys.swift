@@ -48,11 +48,26 @@ final class E2eeKeys {
         d.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
     }
 
+    /// Each account's own keys (several places, docs/MULTI_ACCOUNT_PLAN.md §4): the open account's Keychain item,
+    /// `device.<user id>`; the library and older builds use `device`.
+    private static var item: String { ShellPlaces.currentUserId.map { "device.\($0)" } ?? "device" }
+
+    /// The keys this device made before it held several accounts belonged to its one account: they become its.
+    static func adoptLegacy(userId: String) {
+        guard Keychain.get(service, "device.\(userId)") == nil, let legacy = Keychain.get(service, "device") else { return }
+        if Keychain.set(service, "device.\(userId)", legacy) { Keychain.delete(service, "device") }
+    }
+
+    /// Forgets an account's keys (signing out of it).
+    static func forget(userId: String) {
+        Keychain.delete(service, "device.\(userId)")
+    }
+
     /// A ULID (time, then 80 random bits): the device id is `ios-<ulid>`, like the Mac's `mac-<ulid>`.
     static func ulid(_ now: Date = Date()) -> String { LibraryService.newLibraryId(now) }
 
     private func load() -> (x: Curve25519.KeyAgreement.PrivateKey, ed: Curve25519.Signing.PrivateKey, id: String)? {
-        guard let data = Keychain.get(Self.service, "device"), let s = try? JSONDecoder().decode(Stored.self, from: data), s.version == 1,
+        guard let data = Keychain.get(Self.service, Self.item), let s = try? JSONDecoder().decode(Stored.self, from: data), s.version == 1,
               let xRaw = Data(base64Encoded: s.x), let edRaw = Data(base64Encoded: s.ed),
               let x = try? Curve25519.KeyAgreement.PrivateKey(rawRepresentation: xRaw), let ed = try? Curve25519.Signing.PrivateKey(rawRepresentation: edRaw) else { return nil }
         return (x, ed, s.deviceId)
@@ -63,7 +78,7 @@ final class E2eeKeys {
         let x = Curve25519.KeyAgreement.PrivateKey()
         let ed = Curve25519.Signing.PrivateKey()
         let s = Stored(version: 1, deviceId: "ios-\(Self.ulid())", x: x.rawRepresentation.base64EncodedString(), ed: ed.rawRepresentation.base64EncodedString())
-        guard let data = try? JSONEncoder().encode(s), Keychain.set(Self.service, "device", data) else { throw E2eeError(code: "unavailable", message: "This device can't keep encryption keys safely right now.") }
+        guard let data = try? JSONEncoder().encode(s), Keychain.set(Self.service, Self.item, data) else { throw E2eeError(code: "unavailable", message: "This device can't keep encryption keys safely right now.") }
         return (x, ed, s.deviceId)
     }
 
@@ -132,7 +147,7 @@ final class E2eeKeys {
 
     /// Forgets this device's keys (signed out for good, or the device was removed). The next call makes new ones.
     func reset() {
-        Keychain.delete(Self.service, "device")
+        Keychain.delete(Self.service, Self.item)
         lock.lock()
         confirmedAt = nil
         lock.unlock()

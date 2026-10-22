@@ -15,6 +15,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
     let jsName = "FoleviShell"
     let pluginMethods: [CAPPluginMethod] = [
         "setMode",
+        "placesList", "placesSwitch", "placesSignIn", "placesDescribe", "placesSignOut", "placesForgetLibrary", "placesConvexToken", "placesQuickAdd", "placesSetQuickAdd",
         "libSetup", "libInfo", "libList", "libRead", "libWrite", "libRemove", "libConflictVersions", "libResolveConflicts", "libStartDownload",
         "libWatch", "libUnwatch", "libRescan", "journalAppend", "journalRead", "journalTruncate", "libUnlock", "libSetPassphrase", "libChangePassphrase", "libMove",
         "secretsHas", "secretsSet", "secretsDelete",
@@ -88,10 +89,125 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func setMode(_ call: CAPPluginCall) {
         guarded(call) {
             guard let mode = call.getString("mode"), mode == "local" || mode == "account" else { return call.reject("Unknown mode", "invalid_argument") }
-            ShellMode.current = mode
+            // Several places (ShellPlaces): "local" opens the library (one of the places from now on); "account" the
+            // account signed in last, else the first, else the sign-in screen.
+            if mode == "local" {
+                ShellPlaces.setLibrary(true)
+                ShellPlaces.setCurrent(ShellPlaces.library)
+            } else {
+                let s = ShellPlaces.state
+                let target = s.lastAdded ?? s.accounts.first?.id
+                ShellPlaces.setCurrent(target, pending: target == nil)
+            }
             call.resolve()
-            // The page opens again in that mode (the network rules change with it).
+            // The page opens again in that place (the network rules change with it).
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { FoleviViewController.restart() }
+        }
+    }
+
+    // MARK: places (docs/MULTI_ACCOUNT_PLAN.md §2.2)
+
+    private func libraryInfo(_ done: @escaping (_ kind: String?, _ path: String, _ configured: Bool) -> Void) {
+        library.queue.async {
+            let i = self.library.info()
+            let configured = (i["configured"] as? Bool) == true
+            done(configured ? i["kind"] as? String : nil, (i["displayPath"] as? String) ?? "", configured)
+        }
+    }
+
+    private func broadcastPlaces() {
+        libraryInfo { kind, path, configured in
+            self.notifyListeners("placesChanged", data: ["places": ShellPlaces.list(libraryKind: kind, displayPath: path, configured: configured)])
+        }
+    }
+
+    @objc func placesList(_ call: CAPPluginCall) {
+        guarded(call) { self.libraryInfo { kind, path, configured in call.resolve(["places": ShellPlaces.list(libraryKind: kind, displayPath: path, configured: configured)]) } }
+    }
+
+    @objc func placesSwitch(_ call: CAPPluginCall) {
+        guarded(call) {
+            guard let id = call.getString("id"), ShellPlaces.has(id) else { return call.reject("That place isn't on this device.", "invalid_argument") }
+            let path = call.getString("path").flatMap { $0.hasPrefix("/") && !$0.hasPrefix("//") && $0.count <= 500 ? $0 : nil } ?? "/documents"
+            ShellPlaces.setCurrent(id)
+            FoleviViewController.startPath = path
+            call.resolve()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { FoleviViewController.restart() }
+        }
+    }
+
+    @objc func placesSignIn(_ call: CAPPluginCall) {
+        guarded(call) {
+            Task { @MainActor in
+                guard let u = await ShellAuth.shared.signInAccount(window: self.bridge?.viewController?.view.window) else { return call.resolve(["value": NSNull()]) }
+                let first = ShellPlaces.state.accounts.isEmpty
+                let a = ShellPlaces.addAccount(userId: u.userId, name: u.name, email: u.email, avatarUrl: u.avatarUrl)
+                if first { E2eeKeys.adoptLegacy(userId: u.userId) }
+                self.broadcastPlaces()
+                call.resolve(["value": a.map { $0.id as Any } ?? NSNull()])
+            }
+        }
+    }
+
+    @objc func placesDescribe(_ call: CAPPluginCall) {
+        guarded(call) {
+            if let place = ShellPlaces.state.current, ShellPlaces.userIdOf(place) != nil { ShellPlaces.describe(place, call.options as? [String: Any] ?? [:]) }
+            call.resolve()
+        }
+    }
+
+    @objc func placesSignOut(_ call: CAPPluginCall) {
+        guarded(call) {
+            guard let id = call.getString("id"), let user = ShellPlaces.userIdOf(id), ShellPlaces.has(id) else { return call.reject("That account isn't on this device.", "invalid_argument") }
+            let next = call.getString("next")
+            Task {
+                await ShellAuth.shared.signOut(userId: user)
+                E2eeKeys.forget(userId: user)
+                let wasOpen = ShellPlaces.state.current == id
+                var after = ShellPlaces.removeAccount(id)
+                if next == ShellPlaces.library {
+                    ShellPlaces.setLibrary(true)
+                    after = ShellPlaces.library
+                }
+                if wasOpen { ShellPlaces.setCurrent(after) }
+                call.resolve()
+                if wasOpen { DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { FoleviViewController.restart() } } else { self.broadcastPlaces() }
+            }
+        }
+    }
+
+    @objc func placesForgetLibrary(_ call: CAPPluginCall) {
+        guarded(call) {
+            self.library.queue.async {
+                self.library.forget()
+                DispatchQueue.main.async {
+                    let wasOpen = ShellPlaces.state.current == ShellPlaces.library
+                    ShellPlaces.setLibrary(false)
+                    ShellNotify.cancelAll()
+                    if wasOpen { ShellPlaces.setCurrent(ShellPlaces.state.accounts.first?.id) }
+                    call.resolve()
+                    if wasOpen { DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { FoleviViewController.restart() } }
+                }
+            }
+        }
+    }
+
+    @objc func placesConvexToken(_ call: CAPPluginCall) {
+        guarded(call) {
+            // Only a page that is itself signed in moves notes between accounts.
+            guard let id = call.getString("id"), let user = ShellPlaces.userIdOf(id), ShellPlaces.has(id), ShellPlaces.currentUserId != nil else { return call.resolve(["value": NSNull()]) }
+            Task { call.resolve(["value": ((try? await ShellAuth.shared.convexToken(for: user)) ?? nil).map { $0 as Any } ?? NSNull()]) }
+        }
+    }
+
+    @objc func placesQuickAdd(_ call: CAPPluginCall) {
+        guarded(call) { call.resolve(["value": (ShellPlaces.state.quickAdd ?? ShellPlaces.state.current).map { $0 as Any } ?? NSNull()]) }
+    }
+
+    @objc func placesSetQuickAdd(_ call: CAPPluginCall) {
+        guarded(call) {
+            if let id = call.getString("id") { ShellPlaces.setQuickAdd(id) }
+            call.resolve()
         }
     }
 
@@ -337,14 +453,30 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func authSignIn(_ call: CAPPluginCall) {
         guarded(call) {
-            Task { @MainActor in call.resolve(["value": await ShellAuth.shared.signIn(window: self.bridge?.viewController?.view.window)]) }
+            Task { @MainActor in
+                // Several places: the account becomes one of them. From the library the page goes on itself (move my
+                // notes, or keep them separate) and opens it; otherwise the app opens it now.
+                let place = ShellPlaces.state.current
+                guard let u = await ShellAuth.shared.signInAccount(window: self.bridge?.viewController?.view.window) else { return call.resolve(["value": false]) }
+                let first = ShellPlaces.state.accounts.isEmpty
+                guard let a = ShellPlaces.addAccount(userId: u.userId, name: u.name, email: u.email, avatarUrl: u.avatarUrl) else { return call.resolve(["value": false]) }
+                if first { E2eeKeys.adoptLegacy(userId: u.userId) }
+                if place != ShellPlaces.library && a.id != place { ShellPlaces.setCurrent(a.id) }
+                call.resolve(["value": true])
+            }
         }
     }
 
     @objc func authSignOut(_ call: CAPPluginCall) {
         guarded(call) {
             Task {
-                await ShellAuth.shared.signOut()
+                if let place = ShellPlaces.state.current, let user = ShellPlaces.userIdOf(place) {
+                    await ShellAuth.shared.signOut(userId: user)
+                    E2eeKeys.forget(userId: user)
+                    ShellPlaces.setCurrent(ShellPlaces.removeAccount(place))
+                } else {
+                    await ShellAuth.shared.signOut()
+                }
                 call.resolve()
             }
         }

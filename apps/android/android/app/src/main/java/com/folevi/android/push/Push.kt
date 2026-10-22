@@ -115,7 +115,11 @@ object Push {
         val path = data["path"]?.takeIf { Regex("^/[A-Za-z0-9/_#-]{0,200}$").matches(it) } ?: "/documents"
         val id = (data["collapseId"] ?: "$kind:$path").hashCode()
         val reminder = kind == "reminder"
-        Reminders.show(context, id, title, body, path, if (reminder) Reminders.CHANNEL_REMINDERS else Reminders.CHANNEL_ACTIVITY) { n ->
+        // A phone with several accounts: which account it's for (its name under the title), and tapping it opens that one.
+        val place = data["place"]?.takeIf { Regex("^[A-Za-z0-9_-]{1,64}$").matches(it) }?.let { "acct:$it" }
+        val placeLabel = data["placeLabel"]?.take(40)
+        Reminders.show(context, id, title, body, path, if (reminder) Reminders.CHANNEL_REMINDERS else Reminders.CHANNEL_ACTIVITY, place = place) { n ->
+            placeLabel?.let { n.setSubText(it) }
             data["threadId"]?.let { n.setGroup("note:$it") }
             val taskId = data["taskId"]
             if (reminder && taskId != null && Regex("^[A-Za-z0-9_-]{1,64}$").matches(taskId)) {

@@ -183,7 +183,9 @@
     /*__FOLEVI_CLOUD_KIT__*/
     // The app starts at index.html ("/"); the product's start page is /documents (as on the website, where "/"
     // is a redirect). Set before the page's router reads the address.
-    if (location.pathname === "/" || location.pathname === "/index.html") history.replaceState(history.state, "", "/documents" + location.search + location.hash);
+    // (After a switch to another place, where the switch asked to open: SHELL.start.)
+    var START = typeof SHELL.start === "string" && SHELL.start.charAt(0) === "/" && SHELL.start.charAt(1) !== "/" ? SHELL.start : "/documents";
+    if (location.pathname === "/" || location.pathname === "/index.html") history.replaceState(history.state, "", START + (START === "/documents" ? location.search + location.hash : ""));
     var toB64 = function (bytes) {
       var u8 = bytes instanceof Uint8Array ? bytes : ArrayBuffer.isView(bytes) ? new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength) : bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : null;
       if (!u8) throw { name: "LocalFsError", code: "invalid_argument", message: "Bytes are needed." };
@@ -484,8 +486,70 @@
       }),
     });
 
+    // ---- several places (Native/Shell/ShellPlaces.swift, docs/MULTI_ACCOUNT_PLAN.md §2.2): the library and any
+    // number of accounts; the page is the open place's (one web view), and never names another for its session or keys.
+    var placeList = function (r) {
+      return r && Array.isArray(r.places) ? r.places : [];
+    };
+    var places = SHELL.places && typeof SHELL.places === "object"
+      ? Object.freeze({
+          current: typeof SHELL.places.current === "string" ? SHELL.places.current : null,
+          background: false,
+          list: function () {
+            return shellCall("placesList", {}, "Error").then(placeList);
+          },
+          onChange: function (cb) {
+            var handle = cap.addListener("FoleviShell", "placesChanged", function (event) {
+              try {
+                cb(placeList(event));
+              } catch (e) {
+                /* the page's own callback failing changes nothing here */
+              }
+            });
+            return function () {
+              void Promise.resolve(handle).then(function (h) {
+                if (h && h.remove) h.remove();
+              });
+            };
+          },
+          switchTo: function (id, o) {
+            return shellCall("placesSwitch", { id: String(id), path: o && typeof o.path === "string" ? o.path : "/documents" }, "Error").then(nothing);
+          },
+          signIn: function () {
+            return shellCall("placesSignIn", {}, "Error").then(value);
+          },
+          describe: function (d) {
+            var plain = {};
+            try {
+              plain = JSON.parse(JSON.stringify(d || {}));
+            } catch (e) {
+              plain = {};
+            }
+            return shellCall("placesDescribe", plain, "Error").then(nothing);
+          },
+          signOut: function (id, o) {
+            var opts = { id: String(id) };
+            if (o && typeof o.next === "string") opts.next = o.next;
+            return shellCall("placesSignOut", opts, "Error").then(nothing);
+          },
+          forgetLibrary: function () {
+            return shellCall("placesForgetLibrary", {}, "Error").then(nothing);
+          },
+          convexToken: function (id) {
+            return shellCall("placesConvexToken", { id: String(id) }, "Error").then(value);
+          },
+          quickAddPlace: function () {
+            return shellCall("placesQuickAdd", {}, "Error").then(value);
+          },
+          setQuickAddPlace: function (id) {
+            return shellCall("placesSetQuickAdd", { id: String(id) }, "Error").then(nothing);
+          },
+        })
+      : undefined;
+
     var shellBridge = Object.freeze({
       platform: "ios",
+      places: places,
       shellVersion: VERSION,
       deviceName: String(SHELL.deviceName || "iPhone"),
       deviceFamily: SHELL.deviceFamily === "iPad" ? "iPad" : "iPhone",

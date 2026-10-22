@@ -96,7 +96,17 @@ class Reminders(private val context: Context) {
         all.remove(id)
         save(all)
         if (System.currentTimeMillis() - r.at > DAY) return
-        show(context, id.hashCode(), r.title, r.body, r.path, CHANNEL_REMINDERS)
+        // Reminders are the library's: with accounts here too, they say so, and tapping one opens the library
+        // (several places, docs/MULTI_ACCOUNT_PLAN.md §5.3).
+        val labelled = runCatching { com.folevi.android.FoleviApp.instance.places.state.accounts.isNotEmpty() }.getOrDefault(false)
+        show(context, id.hashCode(), r.title, r.body, r.path, CHANNEL_REMINDERS, place = com.folevi.android.Places.LIBRARY) { n -> if (labelled) n.setSubText(context.getString(R.string.place_this_phone)) }
+    }
+
+    /** Every reminder goes (the library was removed from this phone). */
+    fun cancelAll() {
+        val all = load()
+        for (id in all.keys) pending(id, null, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)?.let { alarms().cancel(it) }
+        save(emptyMap())
     }
 
     companion object {
@@ -113,14 +123,16 @@ class Reminders(private val context: Context) {
 
         fun allowed(context: Context) = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
-        /** Folevi at a page (a note's to-do), as the activity's deep link. */
-        fun openIntent(context: Context, path: String, request: Int): PendingIntent {
-            val link = "folevi://" + path.removePrefix("/")
+        fun cancelAll(context: Context) = Reminders(context).cancelAll()
+
+        /** Folevi at a page (a note's to-do), as the activity's deep link; `place`: the place it's in (several places). */
+        fun openIntent(context: Context, path: String, request: Int, place: String? = null): PendingIntent {
+            val link = "folevi://" + path.removePrefix("/") + (place?.let { (if (path.contains("?")) "&" else "?") + "place=" + Uri.encode(it) } ?: "")
             val i = Intent(Intent.ACTION_VIEW, Uri.parse(link), context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             return PendingIntent.getActivity(context, request, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         }
 
-        fun show(context: Context, notificationId: Int, title: String, body: String, path: String, channel: String, build: (NotificationCompat.Builder) -> Unit = {}) {
+        fun show(context: Context, notificationId: Int, title: String, body: String, path: String, channel: String, place: String? = null, build: (NotificationCompat.Builder) -> Unit = {}) {
             if (!allowed(context)) return
             val n = NotificationCompat.Builder(context, channel)
                 .setSmallIcon(R.drawable.ic_stat_folevi)
@@ -129,7 +141,7 @@ class Reminders(private val context: Context) {
                 .setStyle(NotificationCompat.BigTextStyle().bigText(body))
                 .setAutoCancel(true)
                 .setCategory(if (channel == CHANNEL_REMINDERS) NotificationCompat.CATEGORY_REMINDER else NotificationCompat.CATEGORY_SOCIAL)
-                .setContentIntent(openIntent(context, path, notificationId))
+                .setContentIntent(openIntent(context, path, notificationId, place))
             build(n)
             runCatching { NotificationManagerCompat.from(context).notify(notificationId, n.build()) }
         }

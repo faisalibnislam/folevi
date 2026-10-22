@@ -8,7 +8,7 @@ import { LocalBackend } from "@/lib/local/backend";
 import type { LocalClient, LocalExecutor } from "@/lib/local/client";
 import { startLocalHost, type ChannelLike, type LocalHost, type LockManagerLike } from "@/lib/local/host";
 import type { LocalProfile } from "@/lib/local/functions/shared";
-import { Sealer } from "../seal";
+import { Sealer, isUnreadableBlock } from "../seal";
 import { scopeKeyOf, type E2eeSpace, type KeyRingLike, type KeySessionLike, type WireScope } from "../router/deps";
 import type { E2eePullPage, PulledMine } from "../router/refs";
 import { ReplicaIngest, type IngestedIds } from "./ingest";
@@ -76,6 +76,9 @@ export interface ReplicaHubOptions {
   channel?: (name: string) => ChannelLike;
   deviceId(): string;
 }
+
+/** How often a replica waiting for its space's key checks again. */
+const KEY_WAIT_MS = 10_000;
 
 const LOCKED: ReplicaStatus = Object.freeze({ state: "locked", have: 0, total: null });
 const OPENING: ReplicaStatus = Object.freeze({ state: "opening", have: 0, total: null });
@@ -183,10 +186,46 @@ class HostedReplica {
     this.markSynced();
   }
 
-  /** Pages through e2ee.pull until it has caught up with the head. */
+  /** Whether this person holds the space's current key (a new member waits for an admin's device to share it). */
+  private async keyReady(): Promise<boolean> {
+    try {
+      await this.o.keyring.spaceKeys(this.scope);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private keyWait: ReturnType<typeof setTimeout> | null = null;
+  /** Rows came in while the key was missing (here or in an earlier session): pull everything again once it's here. */
+  private repull: boolean | null = null;
+
+  /**
+   * Pages through e2ee.pull until it has caught up with the head. Not before this person holds the space's
+   * key: rows pulled without it would be kept as "couldn't be decrypted" and never asked for again.
+   */
   private drain(): Promise<void> {
     this.draining ??= (async () => {
+      let waiting = false;
       try {
+        if (!(await this.keyReady())) {
+          waiting = true;
+          this.repull = true;
+          if (!this.keyWait && !this.closed) {
+            this.keyWait = setTimeout(() => {
+              this.keyWait = null;
+              void this.drain();
+            }, KEY_WAIT_MS);
+          }
+          return;
+        }
+        this.repull ??= (await this.store.list("blocks")).some((b) => isUnreadableBlock(b));
+        if (this.repull && this.cursor > 0) {
+          // Opened again from the start; rows already held whole are left as they are (ingest is idempotent).
+          this.cursor = 0;
+          await this.store.writeState([["cursor", 0]]);
+        }
+        this.repull = false;
         for (let guard = 0; guard < 100_000 && !this.closed; guard++) {
           const page = await this.o.source.page(this.scope, this.cursor, this.o.pageSize ?? 500);
           await this.ingest.page(page);
@@ -204,7 +243,7 @@ class HostedReplica {
       } finally {
         this.draining = null;
       }
-      if (!this.closed && this.head > this.cursor) await this.drain();
+      if (!this.closed && !waiting && this.head > this.cursor) await this.drain();
     })();
     return this.draining;
   }
@@ -238,6 +277,7 @@ class HostedReplica {
   async close() {
     if (this.closed) return;
     this.closed = true;
+    if (this.keyWait) clearTimeout(this.keyWait);
     this.offSession();
     for (const s of this.stops.splice(0)) s();
     await this.backend.close();

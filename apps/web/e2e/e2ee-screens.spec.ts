@@ -288,11 +288,8 @@ test("sharing an encrypted note: the dialog says the key is in the link", async 
   await context.close();
 });
 
-// Fails at integration (2026-10-22) for a note the background migration sealed (the Welcome note here):
-// createEncryptedLink refuses with e2ee_no_key ("You don't have the key to this note.") because the key ring
-// can't hand lib/e2ee/links.ts that note key's raw bytes. A note made after encryption was on works
-// (e2ee-link.spec.ts passes). WP6/WP8 to fix; the share dialog shows the refusal as a toast meanwhile.
-test.fixme("an encrypted link opens signed out and needs its fragment; publishing makes a readable copy", async ({ browser }) => {
+// A note the background migration sealed (the Welcome note here), shared by an encrypted link.
+test("an encrypted link opens signed out and needs its fragment; publishing makes a readable copy", async ({ browser }) => {
   test.setTimeout(180_000);
   const { context, page } = await open(browser);
   await page.goto(`${APP}${welcomePath}`);

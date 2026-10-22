@@ -125,6 +125,51 @@ describe("ingest", () => {
   });
 });
 
+describe("a member waiting for the space's key", () => {
+  test("pulls nothing until the key is shared, then opens every row (none kept as couldn't be decrypted)", async () => {
+    const { fake, router, keyring } = await encryptedWorld();
+    const { a, ops } = scenario();
+    await router.mutation(api.sync.push, { scope: PERSONAL, deviceId: "web-test-device-01", ops: ops as never });
+    // Another person's device: their key ring has no grant of the space key yet.
+    const sibling = keyring.sibling();
+    let granted = false;
+    const gated = Object.assign(Object.create(sibling) as FakeKeyRing, {
+      spaceKeys: (scope: WireScope, version?: number) => (granted ? sibling.spaceKeys(scope, version) : Promise.reject(Object.assign(new Error("no key"), { data: { code: "e2ee_no_key" } }))),
+    });
+    const other = new E2eeRouterClient(fake.client as never, { session: new FakeSession("unlocked", "web-test-device-02"), keyring: gated, persist: () => false, locks: null });
+    await other.ready();
+    await other.replicas.open(PERSONAL);
+    await new Promise((r) => setTimeout(r, 100));
+    const store = other.replicas.hostedStore!(PERSONAL)!;
+    expect(await store.list("blocks", a)).toHaveLength(0);
+    expect(other.status(PERSONAL).state).not.toBe("ready");
+
+    // An admin's device shares the key (the space's row moves, so the head moves).
+    granted = true;
+    await router.mutation(api.sync.push, { scope: PERSONAL, deviceId: "web-test-device-01", ops: [upsert(a, para(ulid(), "After the grant", "d"))] as never });
+    await until(async () => (await store.list("blocks", a)).length === 4);
+    const blocks = await store.list("blocks", a);
+    expect(blocks.some((b) => (b.props as { e2eeUnreadable?: true }).e2eeUnreadable)).toBe(false);
+    expect(blocks.map((x) => x.text)).toContainEqual([{ type: "text", text: "Renew passport" }]);
+    await other.dispose();
+  });
+
+  test("rows kept as couldn't be decrypted (an earlier session without the key) are opened again", async () => {
+    const { fake, router, keyring, profile, scopeId } = await encryptedWorld();
+    const { a, ops } = scenario();
+    await router.mutation(api.sync.push, { scope: PERSONAL, deviceId: "web-test-device-01", ops: ops as never });
+    const page = (await fake.client.query(pullPage as never, { scope: PERSONAL, cursor: 0 })) as never;
+    const store = new SpaceReplicaStore(null);
+    const noKey = Object.assign(Object.create(keyring.sibling()) as FakeKeyRing, { spaceKeys: () => Promise.reject(new Error("no key")) });
+    await new ReplicaIngest({ store, sealer: new Sealer(noKey), keyring: noKey, scope: PERSONAL, scopeId, profile }).page(page);
+    expect((await store.list("blocks", a)).every((b) => (b.props as { e2eeUnreadable?: true }).e2eeUnreadable)).toBe(true);
+    const withKey = keyring.sibling();
+    await new ReplicaIngest({ store, sealer: new Sealer(withKey), keyring: withKey, scope: PERSONAL, scopeId, profile }).page(page);
+    const blocks = await store.list("blocks", a);
+    expect(blocks.some((b) => (b.props as { e2eeUnreadable?: true }).e2eeUnreadable)).toBe(false);
+  });
+});
+
 describe("tombstones and locks from the pull", () => {
   test("a note deleted for good goes with its blocks; a deleted tag leaves every note; unknown ids are ignored", async () => {
     const { fake, router, keyring, profile, scopeId } = await encryptedWorld();

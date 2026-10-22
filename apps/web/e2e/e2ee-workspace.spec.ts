@@ -41,8 +41,13 @@ test("members of an encrypted workspace get the key from an admin's device; remo
   await adminPage.goto(`${APP}/documents`);
   await unlockWithPassphrase(adminPage);
   await expect(member.page.getByText(title).first()).toBeVisible({ timeout: 60_000 });
+  // The note itself opens with the key the member got (nothing left as "couldn't be decrypted").
+  await member.page.getByText(title).first().click();
+  await expect(member.page.getByText("For the team only.")).toBeVisible({ timeout: 30_000 });
+  await expect(member.page.getByText("This block couldn't be decrypted.", { exact: false })).toHaveCount(0);
 
-  // Removing the member changes the key.
+  // Removing the member changes the key (a fresh sign-in opens in Personal: back to the workspace first).
+  await switchTo(adminPage, "Cipher Team");
   await adminPage.goto(`${APP}/settings/members`);
   await adminPage.getByRole("button", { name: "Remove" }).last().click();
   await adminPage.getByRole("dialog").getByRole("button", { name: "Remove" }).click();

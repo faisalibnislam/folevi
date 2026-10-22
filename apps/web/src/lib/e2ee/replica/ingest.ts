@@ -25,7 +25,7 @@ import type {
   LocalTag,
   StoreWrite,
 } from "@/lib/local/store";
-import { Sealer, unreadableBlock } from "../seal";
+import { Sealer, isUnreadableBlock, unreadableBlock } from "../seal";
 import type { KeyRingLike, WireScope } from "../router/deps";
 import type { E2eePullPage, PulledBlock, PulledDocument, PulledFile, PulledFolder, PulledMine, PulledRecord, PulledTag } from "../router/refs";
 import type { SpaceReplicaStore } from "./store";
@@ -430,7 +430,8 @@ export class ReplicaIngest {
     const b = p.block;
     const prev = await tx.get("blocks", b.id, p.documentId);
     const revision = b.revision ?? (prev?.revision ?? 0) + 1;
-    if (prev && prev.revision >= revision && (prev.deletedAt !== null) === p.deleted) return null;
+    // A row held as "couldn't be decrypted" (its key wasn't here yet) is opened again when it comes back.
+    if (prev && prev.revision >= revision && (prev.deletedAt !== null) === p.deleted && !isUnreadableBlock(prev)) return null;
     const shell = { id: b.id, parentId: b.parentId, rank: b.rank, revision };
     let wire: WireBlock;
     if (p.deleted && b.sealed) {

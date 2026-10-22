@@ -65,11 +65,16 @@ enum DeepLink: Equatable {
     }
 
     /// A Folevi page's address (https://app.folevi.com/d/ID) as the folevi:// link that opens it in the app.
+    /// Also a universal link (a note or one of the app pages apple-app-site-association claims, on
+    /// app.folevi.com only; Handoff of a page from the dev server keeps working for notes).
     static func fromWeb(_ url: URL) -> URL? {
         let parts = url.path.split(separator: "/").map(String.init)
-        guard parts.count == 2, parts[0] == "d" else { return nil }
-        let link = URL(string: "folevi://d/\(parts[1])\(url.fragment.map { "#\($0)" } ?? "")")
-        return link.flatMap { parse($0.absoluteString) != nil ? $0 : nil }
+        if parts.count == 2, parts[0] == "d" {
+            let link = URL(string: "folevi://d/\(parts[1])\(url.fragment.map { "#\($0)" } ?? "")")
+            return link.flatMap { parse($0.absoluteString) != nil ? $0 : nil }
+        }
+        guard url.scheme == "https", url.host == "app.folevi.com", let first = parts.first, pages.contains(first) else { return nil }
+        return fromPath("/" + parts.joined(separator: "/"))
     }
 }
 

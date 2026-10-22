@@ -47,6 +47,18 @@
 	<string>Folevi uses the microphone when you record audio in a note, for voice notes and transcripts.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Folevi reads the photos you choose when you scan pages from them into a note.</string>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.com.folevi</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<true/>
+			<key>NSUbiquitousContainerName</key>
+			<string>Folevi</string>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>Any</string>
+		</dict>
+	</dict>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -175,7 +175,12 @@ final class DeepLinkTests: XCTestCase {
             XCTAssertNotNil(DeepLink.parse(url.absoluteString), url.absoluteString)
         }
         XCTAssertEqual(DeepLink.fromWeb(URL(string: "https://app.folevi.com/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V")!)?.absoluteString, "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V")
-        XCTAssertNil(DeepLink.fromWeb(URL(string: "https://app.folevi.com/settings")!))
+        // Universal links (apple-app-site-association): the app pages too, on Folevi's own host only.
+        XCTAssertEqual(DeepLink.fromWeb(URL(string: "https://app.folevi.com/settings")!)?.absoluteString, "folevi://settings")
+        XCTAssertEqual(DeepLink.fromWeb(URL(string: "https://app.folevi.com/tasks/today")!)?.absoluteString, "folevi://tasks/today")
+        XCTAssertNil(DeepLink.fromWeb(URL(string: "https://example.com/tasks/today")!))
+        XCTAssertNil(DeepLink.fromWeb(URL(string: "https://app.folevi.com/signin")!))
+        XCTAssertNil(DeepLink.fromWeb(URL(string: "https://app.folevi.com/s/abc")!))
     }
 
     @MainActor

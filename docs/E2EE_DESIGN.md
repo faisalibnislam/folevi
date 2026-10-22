@@ -1674,9 +1674,9 @@ in a Standard space asks the same question.
   meta `place` (`{ kind, workspaceId, name }`) makes task views count "mine" as the server does there and
   names the place in search and exports (`placeOf`); answers get `workspaceId` set and `ownerProfileId` null
   (`ownersOf`), and notes keep their `createdBy`. The parity scenarios run in a team workspace too.
-- `changes.undo` on the device reverts the changed lines from `changes.note` (`previous`, or the opened
-  `seenVersionId` once WP3 returns it for sealed notes; until then a sealed note's undo says the version is
-  gone). `aiResearch.saveAsNote` into a sealed place builds the report's Markdown on the device. A Standard
+- `changes.undo` on the device reverts the changed lines from `changes.note`: for a sealed note its decoder
+  opens `previousSealed` (the version from when the person last looked) into `previous`, the shape a plain
+  note gets, so the Changes view and the composer read one thing (`seenVersionId` is the fallback). `aiResearch.saveAsNote` into a sealed place builds the report's Markdown on the device. A Standard
   note's file pasted into a sealed note is downloaded and uploaded again sealed.
 - `study.setNewPerDay` is the person's setting, not content: it goes to Convex, and the replica is told.
 - A device-route call whose server function refuses sealed notes still merges: in an encrypted space the

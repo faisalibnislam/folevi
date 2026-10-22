@@ -20,11 +20,26 @@ const evalJs = (js) => {
     return String(e.stdout ?? e);
   }
 };
+// A page is ready once its screen has a title and nothing is loading (on a busy Mac the dev server can take
+// far longer than a fixed wait; a click before then finds nothing to open).
+const ready = () => evalJs(`return !!document.querySelector("main h1, h1") && !document.querySelector("[aria-busy=true]") && document.readyState === "complete"`).includes("true");
 const go = (path) => {
   evalJs(`location.href = ${JSON.stringify(path)}; return 1`);
-  sleep(3500);
+  sleep(1500);
+  for (let i = 0; i < 40 && !ready(); i++) sleep(500);
+  sleep(800);
 };
-const click = (selectorJs) => evalJs(`const el = (${selectorJs}); if (!el) return "missing"; el.click(); return "ok"`);
+// element.click() opens the app's menus and sheets in the Simulator's WebKit (checked on the combined build,
+// 2026-10-22). A menu button that didn't open (the page was still settling) is clicked once more.
+const click = (selectorJs) => {
+  const run = () => evalJs(`const el = (${selectorJs}); if (!el) return "missing"; el.click(); await new Promise((r) => setTimeout(r, 350)); return el.getAttribute("aria-haspopup") && el.getAttribute("aria-expanded") === "false" ? "closed" : "ok"`);
+  const first = run();
+  if (/missing|closed/.test(first)) {
+    sleep(1000);
+    return run();
+  }
+  return first;
+};
 const byLabel = (label) => `[...document.querySelectorAll("button[aria-label], a[aria-label]")].filter(b => b.getBoundingClientRect().width > 0).find(b => b.getAttribute("aria-label") === ${JSON.stringify(label)})`;
 const byText = (text, sel = "button, a, [role=menuitem], [role=menuitemradio]") => `[...document.querySelectorAll(${JSON.stringify(sel)})].filter(b => b.getBoundingClientRect().width > 0).find(b => b.textContent.trim().startsWith(${JSON.stringify(text)}))`;
 

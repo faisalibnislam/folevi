@@ -27,7 +27,7 @@ export function DesktopSection() {
   const { settings } = state;
   return (
     <div className="space-y-5">
-      <Card title="Quick Add" description="Add a task from any app without switching to Folevi. Tasks without a page go to your Inbox.">
+      <Card title="Quick Add" description="Add a task from any app without switching to Folevi. Write “tomorrow 9am”, “!high” or “#page” as you type; tasks without a page go to your Inbox.">
         <ShortcutField value={settings.quickAddShortcut} error={state.error} onChange={(quickAddShortcut) => save({ quickAddShortcut })} />
       </Card>
       <Card title="On this Mac">

@@ -157,13 +157,13 @@ test("the bundled Mac app: the handoff from the website's origin, a cold offline
     await expect.poll(() => app.windows().some(isQuickAdd)).toBe(true);
     const quick = app.windows().find(isQuickAdd)!;
     expect(quick.url()).toMatch(/^app:\/\/folevi\/quick-add/);
-    await expect(quick.getByRole("heading", { name: "Quick add task" })).toBeVisible({ timeout: 30_000 });
+    await expect(quick.getByRole("main", { name: "Quick add task" })).toBeVisible({ timeout: 30_000 });
     // The form reports its height (the window fits it) and Escape puts the window away, both through the
     // Mac bridge on the new origin. (Adding the task itself is a server call, so it waits for the network,
     // as on the website.)
     const quickSize = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w: { getURL(): string }) => w.getURL().includes("/quick-add"))!.getContentSize());
     await expect.poll(async () => (await quickSize())[1]).not.toBe(320);
-    await quick.getByPlaceholder("What needs doing?").fill("Call the printer");
+    await quick.getByPlaceholder("New task").fill("Call the printer");
     await quick.keyboard.press("Escape");
     await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter((w: { isVisible(): boolean }) => w.isVisible()).length)).toBe(1);
 

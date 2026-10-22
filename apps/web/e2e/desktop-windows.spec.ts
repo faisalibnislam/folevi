@@ -63,8 +63,8 @@ async function quickAdd(app: ElectronApplication, title: string) {
   const before = await visibleWindows(app);
   await clickMenu(app, "File", "Quick Add Task…");
   const quick = await quickAddWindow(app);
-  await expect(quick.getByRole("heading", { name: "Quick add task" })).toBeVisible({ timeout: 30_000 });
-  const field = quick.getByPlaceholder("What needs doing?");
+  await expect(quick.getByRole("main", { name: "Quick add task" })).toBeVisible({ timeout: 30_000 });
+  const field = quick.getByPlaceholder("New task");
   await expect(field).toHaveValue("");
   await field.fill(title);
   await quick.keyboard.press("Enter");

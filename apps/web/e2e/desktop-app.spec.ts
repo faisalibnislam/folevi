@@ -129,8 +129,8 @@ test("the Mac app: seamless window, Settings > Desktop app, New Note from the me
     // File > Quick Add Task…: the small window, then the task lands in the Inbox.
     await clickMenu(app, "File", "Quick Add Task…");
     const quick = app.windows().find(isQuickAdd)!;
-    await expect(quick.getByRole("heading", { name: "Quick add task" })).toBeVisible({ timeout: 30_000 });
-    await quick.getByPlaceholder("What needs doing?").fill("Call the printer");
+    await expect(quick.getByRole("main", { name: "Quick add task" })).toBeVisible({ timeout: 30_000 });
+    await quick.getByPlaceholder("New task").fill("Call the printer");
     await quick.keyboard.press("Enter");
     await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter((w: { isVisible(): boolean }) => w.isVisible()).length)).toBe(1);
     await page.goto(`${APP}/tasks/inbox`);

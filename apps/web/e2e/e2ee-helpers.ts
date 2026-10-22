@@ -26,9 +26,20 @@ export function marker(kind: "TITLE" | "BODY" | "FOLDER" | "TAG" | "COMMENT" | "
   return `ZQXJ-${kind}-${Math.random().toString(16).slice(2, 10)}`;
 }
 
-/** testSupport.e2eeScan on the dev deployment (refused in production): where any marker turns up. */
-export function e2eeScan(markers: string[]): { clean: boolean; hits: { table: string; id: string; encoding: string }[] } {
-  const out = execFileSync("npx", ["convex", "run", "testSupport:e2eeScan", JSON.stringify({ markers })], {
+/**
+ * Rows made before this are left out of a scan: everything a spec writes (its fresh account, notes, files and
+ * jobs) comes after its worker started. Ten minutes of margin for a clock that differs from the deployment's.
+ */
+const SCAN_SINCE = Date.now() - 10 * 60_000;
+
+/**
+ * testSupport.e2eeScan on the dev deployment (refused in production): where any marker turns up. Scoped to
+ * what was made since this worker started (and to `email`'s spaces when given), so it takes seconds on a
+ * deployment full of other runs' data.
+ */
+export function e2eeScan(markers: string[], scope: { since?: number; email?: string } = {}): { clean: boolean; hits: { table: string; id: string; encoding: string }[] } {
+  const args = { markers, since: scope.since ?? SCAN_SINCE, ...(scope.email ? { email: scope.email } : {}) };
+  const out = execFileSync("npx", ["convex", "run", "testSupport:e2eeScan", JSON.stringify(args)], {
     cwd: REPO_ROOT,
     encoding: "utf8",
     timeout: 900_000,

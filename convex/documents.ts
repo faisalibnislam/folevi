@@ -1805,6 +1805,26 @@ export async function restoreVersion(ctx: MutationCtx, writable: Doc<"documents"
   return await rewritePage(ctx, writable, JSON.parse(raw) as VersionContent, profile);
 }
 
+/**
+ * A sealed version's content as devices read it (ciphertext only, no who-changed-what), or null for a plain
+ * version or one that can't be read. Changes uses it so the device can undo changes in a sealed note itself.
+ */
+export async function sealedVersionContentOf(ctx: QueryCtx | MutationCtx, snap: Doc<"documentSnapshots">): Promise<Omit<SealedVersionContent, "authors" | "removed"> | null> {
+  if (!snap.sealed) return null;
+  const raw = await snapshotText(ctx, snap);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as SealedVersionContent;
+    if (!isSealedVersion(parsed)) return null;
+    const { authors: _a, removed: _r, ...content } = parsed;
+    void _a;
+    void _r;
+    return content;
+  } catch {
+    return null;
+  }
+}
+
 /** A stored version's blocks (null when it's gone or can't be read). */
 export async function versionBlocks(ctx: QueryCtx | MutationCtx, snap: Doc<"documentSnapshots">): Promise<WireBlock[] | null> {
   // A sealed version's blocks are ciphertext: nothing on the server can use them as blocks.

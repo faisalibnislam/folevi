@@ -19,7 +19,7 @@ import { People, type PersonView } from "./lib/authors";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { ReaderLabels } from "./lib/linkLabels";
 import { fail } from "./lib/errors";
-import { rewritePage, seenMark, versionBlocks } from "./documents";
+import { rewritePage, sealedVersionContentOf, seenMark, versionBlocks } from "./documents";
 
 /** Notes looked at per list: the most recently opened ones. */
 const CANDIDATES = 60;
@@ -138,6 +138,8 @@ export const note = query({
     const canEdit = accessAtLeast(access, "write");
     const base = canEdit && row.seenVersionId ? await ctx.db.get(row.seenVersionId) : null;
     const before = base && base.documentId === doc._id ? await versionBlocks(ctx, base) : null;
+    // A sealed note's version from then holds ciphertext: the device opens it and works out the undo itself.
+    const sealedBase = base && base.documentId === doc._id && base.sealed ? await sealedVersionContentOf(ctx, base) : null;
     const people = new People(ctx);
     const labels = new ReaderLabels(ctx, profile);
     const authors: [string, string, number][] = [];
@@ -165,7 +167,15 @@ export const note = query({
       removed: canEdit ? removed : [],
       kinds,
       more,
-      canUndo: Boolean(before) && ids.size > 0,
+      canUndo: (Boolean(before) || Boolean(sealedBase)) && ids.size > 0,
+      // A sealed note (docs/E2EE_DESIGN.md §6.7): the version from when they last looked, by id, and its
+      // sealed lines that changed since (the device opens them; `previous` stays null).
+      ...(doc.sealedAt !== undefined || base?.sealed
+        ? {
+            seenVersionId: canEdit && base && base.documentId === doc._id ? base.publicId : null,
+            previousSealed: sealedBase ? { ...sealedBase, blocks: sealedBase.blocks.filter((b) => ids.has(b.id)) } : null,
+          }
+        : {}),
       people: { ...(await people.all()), [APP.key]: APP, [AI.key]: AI },
     };
   },

@@ -1117,6 +1117,12 @@ retention keep working. `documentSnapshots.title` is `""`, `sealed: true`.
   everything in the space. Tombstones are kept (ids only). A sealed create keeps `kind: "collectionRow"` and
   then needs `sealed.meta`. Committing, replacing, re-describing or re-wrapping a file moves its note's `seq`
   and revision. `e2ee.content.createFolder` nests at most `MAX_FOLDER_DEPTH` (5) levels, as the plain path.
+- `changes.note` for a sealed note adds `seenVersionId` (the version from when they last looked, for people
+  who can edit) and `previousSealed` (that version's title, appearance and the changed lines, as ciphertext);
+  `previous` stays null and `canUndo` counts the sealed version. The device opens them and writes the undo as
+  sync ops (`changes.undo` stays `e2ee_device_only`). `testSupport.e2eeScan` takes an optional scope: `since`
+  (rows, scheduled jobs and stored files made since then, newest first) and `profileId` / `email` (every row of
+  that person's spaces in the scoped tables); with neither it scans everything, as before.
 
 ### 5.5 What the server still validates, and what it purges
 

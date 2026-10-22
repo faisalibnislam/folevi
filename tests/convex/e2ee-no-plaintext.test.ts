@@ -8,9 +8,9 @@ import { describe, expect, test } from "vitest";
 import { SCHEMA_VERSION, type WireBlock } from "@folevi/editor-schema";
 import { ctx as aad } from "@folevi/local-store/e2ee";
 import schema from "../../convex/schema";
-import { api } from "../../convex/_generated/api";
+import { api, internal } from "../../convex/_generated/api";
 import type { Id, TableNames } from "../../convex/_generated/dataModel";
-import { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, PERSONAL, setup, ulid, type T } from "./helpers";
+import { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, person, PERSONAL, setup, ulid, type T } from "./helpers";
 import { findMarkers, push } from "./e2ee-fixtures";
 import { runSealJob, sealerFor } from "./e2ee-device";
 import { noPlaintextCases } from "./e2ee-ai-cases";
@@ -143,4 +143,34 @@ describe("no plaintext left by the AI, integration and inbound flows (WP5's case
       expect(hits).toEqual([]);
     });
   }
+});
+
+describe("testSupport.e2eeScan with a scope (the e2e specs on a busy dev deployment)", () => {
+  test("`since` reads only what was made since then; `email` adds that person's spaces whatever their age", async () => {
+    const t = setup();
+    const a = await person(t, "scan-scope-a@example.com");
+    const b = await person(t, "scan-scope-b@example.com");
+    const record = (pid: string, recordId: string, text: string) =>
+      t.run(async (ctx) => {
+        const owner = pid as Id<"profiles">;
+        await ctx.db.insert("e2eeRecords", { ownerProfileId: owner, kind: "prefs", recordId, keyVersion: 1, sealed: new TextEncoder().encode(text).buffer, size: 1, rev: 1, updatedBy: owner, updatedAt: 1, seq: 1 });
+      });
+    await record(a.profileId, "old-a", "ZQXJ-OLDA-1111");
+    await record(b.profileId, "old-b", "ZQXJ-OLDB-2222");
+    await t.run(async (ctx) => void (await ctx.storage.store(new Blob(["ZQXJ-OLDBLOB-3333"]))));
+    await new Promise((r) => setTimeout(r, 5));
+    const since = Date.now();
+    await new Promise((r) => setTimeout(r, 5));
+    await t.run(async (ctx) => {
+      await ctx.db.insert("notifications", { profileId: b.profileId as Id<"profiles">, kind: "system", title: "ZQXJ-NEWROW-4444", createdAt: Date.now() });
+      await ctx.storage.store(new Blob(["ZQXJ-NEWBLOB-5555"]));
+    });
+    const markers = ["ZQXJ-OLDA-1111", "ZQXJ-OLDB-2222", "ZQXJ-OLDBLOB-3333", "ZQXJ-NEWROW-4444", "ZQXJ-NEWBLOB-5555"];
+    const found = async (scope: Record<string, unknown>) => (await t.action(internal.testSupport.e2eeScan, { markers, ...scope })).hits.map((h) => h.marker).sort();
+    expect(await found({ since })).toEqual(["ZQXJ-NEWBLOB-5555", "ZQXJ-NEWROW-4444"]);
+    expect(await found({ email: "scan-scope-a@example.com" })).toEqual(["ZQXJ-OLDA-1111"]);
+    expect(await found({ since, profileId: a.profileId })).toEqual(["ZQXJ-NEWBLOB-5555", "ZQXJ-NEWROW-4444", "ZQXJ-OLDA-1111"]);
+    // No scope: the whole deployment, as before.
+    expect(await found({})).toEqual([...markers].sort());
+  });
 });

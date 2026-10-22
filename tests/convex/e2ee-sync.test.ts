@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import { MAX_FOLDER_DEPTH, SCHEMA_VERSION, canonicalJson, sync, validateWireBlock, type OpResult, type SyncOp, type SyncState, type WireBlock } from "@folevi/editor-schema";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, person, setup, ulid, type T } from "./helpers";
+import { e2eePerson, e2eeRecoveryMethods, e2eeSpace, join, para, person, setup, teamWorkspace, ulid, type T } from "./helpers";
 import { ctx as aadCtx, deriveSpaceKeys } from "@folevi/local-store/e2ee";
 import { encryptedSpace, push, Sealer } from "./e2ee-fixtures";
 
@@ -625,5 +625,51 @@ describe("sealed creates and folders, as WP7 sends them", () => {
     }
     const tooDeep = ulid();
     await expect(p.as.mutation(api.e2ee.content.createFolder, { scope, folderId: tooDeep, parentFolderId: parent, sealedName: await sealer.sealSpaceName("folder", tooDeep, "Too deep") })).rejects.toThrow(/nested/);
+  });
+});
+
+describe("Changes on a sealed note", () => {
+  test("changes.note gives the version from when they last looked, sealed, so the device can undo", async () => {
+    const t = setup();
+    const owner = await e2eePerson(t, "changes-owner@example.com");
+    await e2eeRecoveryMethods(owner);
+    const editor = await e2eePerson(t, "changes-editor@example.com");
+    const { workspaceId, scope } = await teamWorkspace(owner);
+    await join(t, owner, editor, "changes-editor@example.com", workspaceId, "editor");
+    const space = await e2eeSpace(owner, scope, [editor]);
+    await t.run(async (ctx) => {
+      const ws = await ctx.db.query("workspaces").withIndex("by_public_id", (q) => q.eq("publicId", workspaceId)).unique();
+      const row = await ctx.db.query("e2eeSpaces").withIndex("by_scope_key", (q) => q.eq("scopeKey", `w:${ws!._id}`)).unique();
+      await ctx.db.patch(row!._id, { level: "full", state: "on" });
+    });
+    const sealer = new Sealer({ keys: await deriveSpaceKeys(space.sk.slice()), scope: space.scopeId });
+    const doc = ulid();
+    const line = para(ulid(), "As it was");
+    await push(owner, [await sealer.createOp(doc, { title: "Shared" })], "device-owner-chg", scope);
+    const [made] = await push(owner, [await sealer.upsert(doc, line, null)], "device-owner-chg", scope);
+    await owner.as.mutation(api.documents.recordView, { documentId: doc });
+    // Marking it seen saves the version that holds it as it is now (blind for a sealed note).
+    await owner.as.mutation(api.changes.markSeen, { documentIds: [doc] });
+    const [edited] = await push(editor, [await sealer.upsert(doc, { ...line, text: [{ type: "text", text: "Changed by the editor" }] }, made!.revision!, ["content"])], "device-editor-chg", scope);
+    expect(edited!.status).toBe("applied");
+    const note = (await owner.as.query(api.changes.note, { documentId: doc }))! as unknown as {
+      previous: unknown;
+      canUndo: boolean;
+      kinds: [string, string][];
+      seenVersionId: string | null;
+      previousSealed: { blocks: { id: string; parentId: string | null; rank: string; c: string; k: number }[] } | null;
+    };
+    expect(note.kinds).toEqual([[line.id, "edited"]]);
+    expect(note.previous).toBeNull();
+    expect(note.canUndo).toBe(true);
+    expect(note.seenVersionId).toBeTruthy();
+    expect(note.previousSealed!.blocks.map((b) => b.id)).toEqual([line.id]);
+    const b = note.previousSealed!.blocks[0]!;
+    const bin = atob(b.c.replace(/-/g, "+").replace(/_/g, "/") + "==".slice(0, (4 - (b.c.length % 4)) % 4));
+    const c = Uint8Array.from(bin, (ch) => ch.charCodeAt(0)).buffer;
+    const opened = await sealer.openBlock(doc, { id: b.id, type: "sealed", parentId: b.parentId, rank: b.rank, schemaVersion: 0, text: [], props: {}, sealed: { c } } as never);
+    expect(opened.text).toEqual([{ type: "text", text: "As it was" }]);
+    // The server still doesn't rewrite a sealed note itself.
+    await expect(owner.as.mutation(api.changes.undo, { documentId: doc })).rejects.toThrow(/device|e2ee_device_only/);
   });
 });

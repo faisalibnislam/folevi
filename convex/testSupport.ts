@@ -9,7 +9,7 @@ import schema from "./schema";
 import { SCHEMA_VERSION, normalizeForSearch, randomNoteCover, rankBetween, ulid, type WireBlock } from "@folevi/editor-schema";
 import { createDocument } from "./lib/create";
 import { nextSeq } from "./lib/seq";
-import { insertScoped, personalScope } from "./lib/scope";
+import { SCOPED_TABLES, insertScoped, personalScope, scopedPage, vScope, workspaceScope, type Scope, type ScopedTable } from "./lib/scope";
 import { FOLDER_COLORS } from "./lib/folderColors";
 import { deductCredits, personalAccount, seatAccount } from "./lib/credits";
 import { parseIcs } from "./lib/icsParse";
@@ -529,32 +529,66 @@ function needlesOf(markers: string[]) {
   return markers.flatMap((marker) => markerNeedles(marker).map((n) => ({ marker, ...n })));
 }
 
-/** One page of one table: the marker hits in it, and (for `_storage`) the blobs to read. */
+/**
+ * One page of one table: the marker hits in it, and (for `_storage`) the blobs to read. With `since`, the
+ * table is walked newest first and the page stops at the first row older than that (`isDone`); with `scope`,
+ * only the scope's rows of a scoped table are read (its scope index).
+ */
 export const e2eeScanPage = internalQuery({
-  args: { table: v.string(), cursor: v.union(v.string(), v.null()), markers: v.array(v.string()) },
+  args: { table: v.string(), cursor: v.union(v.string(), v.null()), markers: v.array(v.string()), since: v.optional(v.number()), scope: v.optional(vScope) },
   handler: async (ctx, args) => {
     assertNotProduction();
     const opts = { cursor: args.cursor, numItems: SCAN_PAGE };
-    const page =
-      args.table === "_scheduled_functions"
-        ? await ctx.db.system.query("_scheduled_functions").paginate(opts)
-        : args.table === "_storage"
-          ? await ctx.db.system.query("_storage").paginate(opts)
-          : await ctx.db.query(args.table as TableNames).paginate(opts);
+    type Row = { _id: string; _creationTime: number };
+    let page: { page: Row[]; isDone: boolean; continueCursor: string };
+    if (args.scope) page = await scopedPage(ctx, args.table as ScopedTable, args.scope, args.cursor, SCAN_PAGE);
+    else if (args.table === "_scheduled_functions") page = await (args.since !== undefined ? ctx.db.system.query("_scheduled_functions").order("desc") : ctx.db.system.query("_scheduled_functions")).paginate(opts);
+    else if (args.table === "_storage") page = await (args.since !== undefined ? ctx.db.system.query("_storage").order("desc") : ctx.db.system.query("_storage")).paginate(opts);
+    else page = await (args.since !== undefined ? ctx.db.query(args.table as TableNames).order("desc") : ctx.db.query(args.table as TableNames)).paginate(opts);
+    let rows = page.page;
+    let isDone = page.isDone;
+    if (args.since !== undefined && !args.scope) {
+      const since = args.since;
+      const fresh = rows.filter((r) => r._creationTime >= since);
+      if (fresh.length < rows.length) isDone = true;
+      rows = fresh;
+    }
     const needles = needlesOf(args.markers);
     const hits: ScanHit[] = [];
-    for (const row of page.page) findMarkers(args.table, row._id, strings(row), needles, hits);
-    const blobs = args.table === "_storage" ? (page.page as { _id: Id<"_storage">; size: number }[]).map((b) => ({ id: b._id, size: b.size })) : [];
-    return { hits, rows: page.page.length, blobs, isDone: page.isDone, continueCursor: page.continueCursor };
+    for (const row of rows) findMarkers(args.table, row._id, strings(row), needles, hits);
+    const blobs = args.table === "_storage" ? (rows as unknown as { _id: Id<"_storage">; size: number }[]).map((b) => ({ id: b._id, size: b.size })) : [];
+    return { hits, rows: rows.length, blobs, isDone, continueCursor: page.continueCursor };
+  },
+});
+
+/** The scopes a person's rows live in: their Personal and every workspace they belong to. */
+export const e2eeScanScopes = internalQuery({
+  args: { profileId: v.optional(v.string()), email: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    assertNotProduction();
+    let profileId = args.profileId ? ctx.db.normalizeId("profiles", args.profileId) : null;
+    if (!profileId && args.email) {
+      const email = args.email.trim().toLowerCase();
+      profileId = (await ctx.db.query("profiles").withIndex("by_email", (q) => q.eq("email", email)).first())?._id ?? null;
+    }
+    if (!profileId) throw new Error("No such person on this deployment.");
+    const scopes: Scope[] = [personalScope(profileId)];
+    for (const m of await ctx.db.query("workspaceMembers").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(100)) scopes.push(workspaceScope(m.workspaceId));
+    return scopes;
   },
 });
 
 /**
- * Scans the whole deployment for marker strings (see above). `clean` is true when none was found anywhere.
- * Markers must be at least 8 characters, so an ordinary word can't match by chance.
+ * Scans for marker strings (see above). `clean` is true when none was found. Markers must be at least 8
+ * characters, so an ordinary word can't match by chance.
+ *
+ * With no scope it reads the whole deployment (convex-test, a fresh dev deployment). On a busy dev deployment
+ * the e2e specs pass a scope so it takes seconds: `since` (a time just before the test began) reads every
+ * table's rows, scheduled jobs and stored files made since then, newest first; `profileId` or `email` adds
+ * every row of that person's Personal and workspaces in the scoped tables, whenever it was made.
  */
 export const e2eeScan = internalAction({
-  args: { markers: v.array(v.string()) },
+  args: { markers: v.array(v.string()), since: v.optional(v.number()), profileId: v.optional(v.string()), email: v.optional(v.string()) },
   handler: async (
     ctx,
     args,
@@ -565,20 +599,24 @@ export const e2eeScan = internalAction({
     const tables = [...(Object.keys(schema.tables) as TableNames[]), ...SYSTEM_TABLES];
     const blobs: { id: Id<"_storage">; size: number }[] = [];
     let rows = 0;
-    for (const table of tables) {
+    type Page = { hits: ScanHit[]; rows: number; blobs: { id: Id<"_storage">; size: number }[]; isDone: boolean; continueCursor: string };
+    const walk = async (table: string, extra: { since?: number; scope?: Scope }) => {
       let cursor: string | null = null;
       for (;;) {
-        const page: { hits: ScanHit[]; rows: number; blobs: { id: Id<"_storage">; size: number }[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.testSupport.e2eeScanPage, {
-          table,
-          cursor,
-          markers: args.markers,
-        });
-        hits.push(...page.hits);
+        const page: Page = await ctx.runQuery(internal.testSupport.e2eeScanPage, { table, cursor, markers: args.markers, ...extra });
+        for (const h of page.hits) if (!hits.some((x) => x.table === h.table && x.id === h.id && x.marker === h.marker)) hits.push(h);
         rows += page.rows;
-        blobs.push(...page.blobs);
+        for (const b of page.blobs) if (!blobs.some((x) => x.id === b.id)) blobs.push(b);
         if (page.isDone) break;
         cursor = page.continueCursor;
       }
+    };
+    const scoped = args.since !== undefined || args.profileId !== undefined || args.email !== undefined;
+    if (!scoped) for (const table of tables) await walk(table, {});
+    if (args.since !== undefined) for (const table of tables) await walk(table, { since: args.since });
+    if (args.profileId !== undefined || args.email !== undefined) {
+      const scopes: Scope[] = await ctx.runQuery(internal.testSupport.e2eeScanScopes, { profileId: args.profileId, email: args.email });
+      for (const scope of scopes) for (const table of SCOPED_TABLES) await walk(table, { scope });
     }
     const needles = needlesOf(args.markers);
     let read = 0;

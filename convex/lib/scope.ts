@@ -248,6 +248,16 @@ export async function scopedRows(ctx: QueryCtx, table: ScopedTable, scope: Scope
     : await query.withIndex(WORKSPACE_INDEX[table], (q) => q.eq("workspaceId", scope.workspaceId)).take(n);
 }
 
+/** One page of a scoped table in a scope, through its scope index (table-generic scans: testSupport.e2eeScan). */
+export async function scopedPage(ctx: QueryCtx, table: ScopedTable, scope: Scope, cursor: string | null, numItems: number): Promise<{ page: AnyScopedRow[]; isDone: boolean; continueCursor: string }> {
+  const query = ctx.db.query(table) as unknown as {
+    withIndex(name: string, range: (q: LooseRange) => LooseRange): { paginate(o: { cursor: string | null; numItems: number }): Promise<{ page: AnyScopedRow[]; isDone: boolean; continueCursor: string }> };
+  };
+  return scope.kind === "personal"
+    ? await query.withIndex(OWNER_INDEX[table], (q) => q.eq("ownerProfileId", scope.profileId)).paginate({ cursor, numItems })
+    : await query.withIndex(WORKSPACE_INDEX[table], (q) => q.eq("workspaceId", scope.workspaceId)).paginate({ cursor, numItems });
+}
+
 type ScopedInsert<T extends ScopedTable> = Omit<WithoutSystemFields<Doc<T>>, "workspaceId" | "ownerProfileId">;
 
 /**

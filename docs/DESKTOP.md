@@ -29,6 +29,11 @@ The native Swift app it replaces is archived on the git tag `native-mac-archive`
   Notes, Tasks, Calendar); Folevi > Settings (⌘,) opens Settings > Desktop app; Help opens Folevi Help.
 - Links to anywhere but Folevi open in the default browser; Folevi's own "open in new tab" opens a new
   window. The window's size and position are remembered.
+- **Continue with Google or Apple** signs in through the default browser (neither works inside the window):
+  the page asks `signInInBrowser` to open `/app-google` (with `provider=apple` for Apple), the browser signs
+  in and hands back a one-time code on `folevi://auth/google`, and the window redeems it for its own session
+  (`components/auth/SocialSignIn.tsx`, `convex/lib/nativeAuth.ts`). Apple reuses Google's page and return
+  link, so Mac apps already installed handle it without an update.
 - **Record a call** (1.3): the audio recorder asks Microphone or Call (mic and Mac sound). A call answers the
   page's `getDisplayMedia` with the whole screen and this Mac's sound (`audio: "loopback"`, in
   `setDisplayMediaRequestHandler`); the page drops the picture at once and mixes the system sound with the

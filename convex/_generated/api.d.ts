@@ -108,6 +108,7 @@ import type * as lib_aiActions from "../lib/aiActions.js";
 import type * as lib_apns from "../lib/apns.js";
 import type * as lib_apnsHttp2 from "../lib/apnsHttp2.js";
 import type * as lib_apnsJwt from "../lib/apnsJwt.js";
+import type * as lib_appleSignIn from "../lib/appleSignIn.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_authAdapter from "../lib/authAdapter.js";
@@ -329,6 +330,7 @@ declare const fullApi: ApiFromModules<{
   "lib/apns": typeof lib_apns;
   "lib/apnsHttp2": typeof lib_apnsHttp2;
   "lib/apnsJwt": typeof lib_apnsJwt;
+  "lib/appleSignIn": typeof lib_appleSignIn;
   "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
   "lib/authAdapter": typeof lib_authAdapter;

@@ -17,6 +17,7 @@ import { Alert, PasswordField } from "@/components/auth/fields";
 import { BackupCodes, TotpEnrollment } from "@/components/auth/TwoFactor";
 import { Card } from "./Card";
 import { DeleteAccountCard } from "./DeleteAccountCard";
+import { SignInMethodsCard } from "./SignInMethods";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { nativeApp } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
@@ -566,6 +567,7 @@ export function SecuritySection() {
         <IosSection header="Signing in">
           <TwoStepCard />
           <PasskeysCard />
+          <SignInMethodsCard />
           <PasswordCard />
         </IosSection>
         <DeleteAccountCard />
@@ -575,6 +577,7 @@ export function SecuritySection() {
     <>
       <TwoStepCard />
       <PasskeysCard />
+      <SignInMethodsCard />
       <PasswordCard />
       <DeleteAccountCard />
     </>

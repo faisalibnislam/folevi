@@ -89,6 +89,80 @@ through the web app's `/api/auth/*` proxy so cookies are first-party on `app.fol
 - Admin → Configuration → Feature flags → `new_signups` controls whether new accounts can be created.
 - There is no DNS for identity (no `auth.folevi.com`); sign-in lives at `https://app.folevi.com/signin`.
 
+### Sign in with Apple
+
+"Continue with Apple" shows on sign-in and sign-up (web, the Mac app through the browser, the iPhone and iPad
+app's web view) and in Settings > Security > Sign-in methods once all four `APPLE_SIGNIN_*` variables are set
+on a Convex deployment; with any missing there's no Apple button (`scripts/check-prod-env.mjs` warns about a
+partial set). Code: `convex/auth.ts` (`appleSignIn`), `convex/lib/appleSignIn.ts`, and
+`apps/web/src/lib/auth/appleCallback.ts`, which answers Apple's cross-site form post to the callback.
+
+Already set up at Apple (team `7K32QQ2FX8`): the App ID `com.folevi.ios` with Sign in with Apple (primary
+app), the Services ID `com.folevi.signin` (website `app.folevi.com`, return URL
+`https://app.folevi.com/api/auth/callback/apple`), the key `BNZC6FGWJC`, and the private email relay sources
+`folevi.com`, `hello@`, `security@` and `support@folevi.com`.
+
+| Variable | Value |
+| --- | --- |
+| `APPLE_SIGNIN_CLIENT_ID` | `com.folevi.signin` (the Services ID) |
+| `APPLE_SIGNIN_TEAM_ID` | `7K32QQ2FX8` |
+| `APPLE_SIGNIN_KEY_ID` | `BNZC6FGWJC` |
+| `APPLE_SIGNIN_KEY` | the whole `.p8` file (PEM) |
+| `APPLE_SIGNIN_BUNDLE_ID` | optional, defaults to `com.folevi.ios` (the audience of the iOS app's native id tokens) |
+
+There's no client secret to rotate: Apple wants a JWT signed with the key, and the backend makes one at
+runtime (ES256, `iss` the team, `sub` the Services ID, `aud` `https://appleid.apple.com`, valid 30 days, well
+under Apple's 6-month limit) and makes a new one a day before it runs out. Replacing the key means setting the
+new `APPLE_SIGNIN_KEY_ID` and `APPLE_SIGNIN_KEY`; nothing else.
+
+Set them from the repository root. `--from-file` reads the key from the file, so it never appears in the
+command, the shell history or the output:
+
+```sh
+# Development deployment (the one `npx convex dev` uses). Apple can't send anyone back to localhost, so here
+# this only shows the button and exercises the server side.
+npx convex env set APPLE_SIGNIN_CLIENT_ID com.folevi.signin
+npx convex env set APPLE_SIGNIN_TEAM_ID 7K32QQ2FX8
+npx convex env set APPLE_SIGNIN_KEY_ID BNZC6FGWJC
+npx convex env set APPLE_SIGNIN_KEY --from-file ~/.appstoreconnect/private_keys/AuthKey_BNZC6FGWJC.p8
+
+# Production.
+npx convex env set --prod APPLE_SIGNIN_CLIENT_ID com.folevi.signin
+npx convex env set --prod APPLE_SIGNIN_TEAM_ID 7K32QQ2FX8
+npx convex env set --prod APPLE_SIGNIN_KEY_ID BNZC6FGWJC
+npx convex env set --prod APPLE_SIGNIN_KEY --from-file ~/.appstoreconnect/private_keys/AuthKey_BNZC6FGWJC.p8
+```
+
+To pass the key with `$(cat ...)` instead, put `--` before the name:
+`npx convex env set --prod -- APPLE_SIGNIN_KEY "$(cat ~/.appstoreconnect/private_keys/AuthKey_BNZC6FGWJC.p8)"`.
+Without the `--`, the CLI takes the key's first line (`-----BEGIN PRIVATE KEY-----`) for an option, refuses
+it, and **prints the whole key** in its error. Check what was stored without showing it:
+`npx convex env get --prod APPLE_SIGNIN_KEY | head -1` should print `-----BEGIN PRIVATE KEY-----`.
+
+The variables take effect at once (no deploy needed for them). The code itself goes live with the next
+production deploy. Then check:
+
+1. `https://app.folevi.com/signin` and `/signup` show "Continue with Apple" (black in light mode, white in
+   dark mode).
+2. Continue with Apple, sign in at Apple and choose **Share My Email** with the address of an existing,
+   confirmed Folevi account: it comes back signed in to that account, and Settings > Security > Sign-in
+   methods lists Apple as linked.
+3. With another Apple ID choose **Hide My Email**: a new account is created with the
+   `@privaterelay.appleid.com` address, already confirmed, named with the name given at Apple (only sent the
+   first time; "Friend" if it wasn't).
+4. Settings > Security: Remove Apple, then Link it again (any Apple address works there).
+5. Cancel at Apple: back on `/signin` with "Apple sign-in was cancelled."
+6. The Mac app: Continue with Apple opens the browser, and the app signs in when it hands back.
+7. Email to Hide My Email addresses: Apple only relays mail from the registered sources, and checks SPF.
+   SPF for `folevi.com` currently fails at Apple (Certificates, Identifiers & Profiles > Services > Sign in
+   with Apple for Email Communication), so until it passes, verification, reset and notification emails to
+   relay addresses may not arrive. Apple accounts don't need the confirmation email, but they do need the
+   others. Fix the SPF record (it must include Resend's sending servers) and click Verify there again.
+
+If something fails, the Convex logs (`npx convex logs --prod`) show Better Auth's reason
+(`invalid_code`: the client secret or redirect URL didn't match at Apple; "Sign in with Apple is off:
+APPLE_SIGNIN_KEY can't be used": the key didn't parse).
+
 ## 4. Email (Resend)
 
 Follow `docs/EMAIL_OPERATIONS.md` §1: add `folevi.com` as a Resend domain (sending and receiving), copy the exact records

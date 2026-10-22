@@ -2,6 +2,7 @@ import "server-only";
 import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs";
 import { APP_HOST, APP_URL, MARKETING_HOST } from "@/lib/env";
 import { hintCookie, hintDomain, sessionChange } from "@/lib/auth/signedInHint";
+import { appleFormPost, withAppleUser } from "@/lib/auth/appleCallback";
 
 const convexAuth = convexBetterAuthNextJs({
   convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL ?? "",
@@ -107,8 +108,24 @@ function withSignedInHint(response: Response): Response {
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
-/** Proxies /api/auth/* to the Convex site URL (so auth cookies are first-party on the app host). */
+/** Adds a Set-Cookie to a response (Apple's `user` cookie being cleared). */
+function withCookie(response: Response, cookie: string | null): Response {
+  if (!cookie) return response;
+  const headers = new Headers(response.headers);
+  headers.append("set-cookie", cookie);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+const secureCookies = () => APP_URL.startsWith("https:");
+
+/**
+ * Proxies /api/auth/* to the Convex site URL (so auth cookies are first-party on the app host). Apple's
+ * cross-site form post to its callback is answered here with a same-site GET of it (lib/auth/appleCallback.ts).
+ */
 export const handler = {
-  GET: async (request: Request) => withSignedInHint(await redirectPageLoads(request, await convexAuth.handler.GET(await withSignedClientIp(request)))),
-  POST: async (request: Request) => withSignedInHint(await convexAuth.handler.POST(await withSignedClientIp(request))),
+  GET: async (request: Request) => {
+    const apple = withAppleUser(request, secureCookies());
+    return withCookie(withSignedInHint(await redirectPageLoads(apple.request, await convexAuth.handler.GET(await withSignedClientIp(apple.request)))), apple.clear);
+  },
+  POST: async (request: Request) => (await appleFormPost(request, secureCookies())) ?? withSignedInHint(await convexAuth.handler.POST(await withSignedClientIp(request))),
 };

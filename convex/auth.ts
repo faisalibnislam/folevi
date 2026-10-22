@@ -22,6 +22,7 @@ import { CLAIM_EMAIL_VERIFIED, CLAIM_MFA } from "./lib/claims";
 import { CLIENT_IP_HEADER } from "./lib/clientIp";
 import { nativeAuth } from "./lib/nativeAuth";
 import { breachedPasswords } from "./lib/breachedPasswords";
+import { appleClientSecret, appleSignInConfig, type AppleSignInConfig } from "./lib/appleSignIn";
 import { guardRefreshTokenRevoke } from "./lib/authAdapter";
 import { ACCESS_TOKEN_PREFIX, mcpResourceUrl, OAUTH_SCOPES, REFRESH_TOKEN_PREFIX } from "./lib/mcp/config";
 
@@ -118,16 +119,58 @@ export function googleSignIn(): { clientId: string; clientSecret: string } | nul
   return clientId && clientSecret ? { clientId, clientSecret } : null;
 }
 
-/** What a sign-in with Google can't do, as the error code the sign-in page shows a message for. */
-export const GOOGLE_REFUSED = {
+/**
+ * Sign in with Apple, when APPLE_SIGNIN_CLIENT_ID (the Services ID, com.folevi.signin), APPLE_SIGNIN_TEAM_ID,
+ * APPLE_SIGNIN_KEY_ID and APPLE_SIGNIN_KEY (the .p8 key) are all set (docs/DEPLOYMENT.md). Its return URL is
+ * ${SITE_URL}/api/auth/callback/apple, which Apple posts to (apps/web lib/auth/appleCallback.ts). Without them
+ * there's no Apple button.
+ */
+export function appleSignIn(): AppleSignInConfig | null {
+  return appleSignInConfig();
+}
+
+/**
+ * Better Auth's Apple provider: the web flow with the Services ID and a client secret made from the key
+ * (lib/appleSignIn.ts, kept and renewed by itself), and id tokens from the iPhone and iPad app's own sign-in
+ * sheet, whose audience is the bundle ID. Switched off when it isn't set up, or when the key can't be read, so
+ * a bad key never takes the other ways of signing in down with it.
+ */
+async function appleProvider() {
+  const off = { enabled: false, clientId: "", clientSecret: "" };
+  const config = appleSignIn();
+  if (!config) return off;
+  let clientSecret: string;
+  try {
+    clientSecret = await appleClientSecret(config);
+  } catch (error) {
+    console.error("Sign in with Apple is off: APPLE_SIGNIN_KEY can't be used", error instanceof Error ? error.message : "");
+    return off;
+  }
+  return {
+    clientId: config.clientId,
+    clientSecret,
+    appBundleIdentifier: config.bundleId,
+    audience: [config.clientId, config.bundleId],
+  };
+}
+
+/** What a sign-in with Google or Apple can't do, as the error code the sign-in page shows a message for. */
+export const SOCIAL_REFUSED = {
   /** The account has two-step verification on: its code is needed, which only the password sign-in asks for. */
   twoFactor: "two_factor_required",
   /** New sign-ups are paused (Admin → Feature flags → new_signups). */
   signupsPaused: "signups_paused",
 } as const;
 
-/** Whether a Better Auth call is the return from Google (or any other social provider). */
-const fromSocialSignIn = (hookCtx: unknown) => ((hookCtx as { path?: string } | null | undefined)?.path ?? "").startsWith("/callback/");
+/**
+ * Whether a Better Auth call signs someone in with Google or Apple: the return from the provider's page
+ * (/callback/…), or an id token from the iPhone and iPad app's own Apple sheet (/sign-in/social; the browser
+ * flow's first step there creates nobody and no session, so it never reaches the hooks below).
+ */
+const fromSocialSignIn = (hookCtx: unknown) => {
+  const path = (hookCtx as { path?: string } | null | undefined)?.path ?? "";
+  return path.startsWith("/callback/") || path === "/sign-in/social";
+};
 
 type Scheduler = { runAfter: (delay: number, fn: never, args: never) => Promise<unknown> };
 
@@ -197,31 +240,44 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
       customRules: rateLimitRules(),
     },
     user: { deleteUser: { enabled: false } },
-    // Google: a Google account with the same (Google-verified) email signs in to the existing Folevi account.
-    socialProviders: googleSignIn() ? { google: { ...googleSignIn()!, prompt: "select_account" } } : {},
-    account: { accountLinking: { enabled: true, trustedProviders: ["google"] } },
+    // Google and Apple: an account there with the same email (verified by Google or Apple) signs in to the
+    // existing Folevi account, once that account's own address is confirmed (Better Auth's
+    // requireLocalEmailVerified), so nobody can claim an address first and wait for its owner to arrive.
+    socialProviders: {
+      ...(googleSignIn() ? { google: { ...googleSignIn()!, prompt: "select_account" as const } } : {}),
+      ...(appleSignIn() ? { apple: appleProvider } : {}),
+    },
+    account: {
+      accountLinking: {
+        enabled: true,
+        trustedProviders: ["google", "apple"],
+        // Linking from Settings > Security (signed in, on purpose) may use another address: Apple's "Hide My
+        // Email" always does. Signing in still only links by the same address (above).
+        allowDifferentEmails: true,
+      },
+    },
     databaseHooks: {
       user: {
         create: {
-          // A first sign-in with Google is a sign-up, so it follows the same switch as email sign-ups.
+          // A first sign-in with Google or Apple is a sign-up, so it follows the same switch as email sign-ups.
           before: async (user: Record<string, unknown>, hookCtx: unknown) => {
             if (!fromSocialSignIn(hookCtx)) return { data: user };
             const runQuery = (ctx as { runQuery?: (fn: never, args: never) => Promise<unknown> }).runQuery;
             const open = runQuery ? await runQuery(internal.authEmails.signupsOpen as never, {} as never) : true;
-            if (open === false) throw new APIError("FORBIDDEN", { message: GOOGLE_REFUSED.signupsPaused });
+            if (open === false) throw new APIError("FORBIDDEN", { message: SOCIAL_REFUSED.signupsPaused });
             return { data: user };
           },
         },
       },
       session: {
         create: {
-          // Google never asks for Folevi's authenticator code, so an account with two-step verification on
+          // Google and Apple never ask for Folevi's authenticator code, so an account with two-step verification on
           // signs in with its password and code instead (the sign-in page says so).
           before: async (session: { userId: string } & Record<string, unknown>, hookCtx: unknown) => {
             if (!fromSocialSignIn(hookCtx)) return { data: session };
             const adapter = (hookCtx as { context: { internalAdapter: { findUserById: (id: string) => Promise<unknown> } } }).context.internalAdapter;
             const user = (await adapter.findUserById(session.userId)) as { twoFactorEnabled?: boolean | null } | null;
-            if (user?.twoFactorEnabled === true) throw new APIError("FORBIDDEN", { message: "This account uses two-step verification.", code: GOOGLE_REFUSED.twoFactor });
+            if (user?.twoFactorEnabled === true) throw new APIError("FORBIDDEN", { message: "This account uses two-step verification.", code: SOCIAL_REFUSED.twoFactor });
             return { data: session };
           },
         },

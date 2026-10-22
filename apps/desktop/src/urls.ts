@@ -103,7 +103,7 @@ export function linkTarget(raw: string): { kind: "app"; path: string } | { kind:
   return isExternalSafe(raw) ? { kind: "browser" } : { kind: "ignore" };
 }
 
-/** Whether a link is the end of a Google sign-in in the browser (folevi://auth/google?code=…&state=…). */
+/** Whether a link is the end of a Google or Apple sign-in in the browser (folevi://auth/google?code=…&state=…). */
 export function isSignInReturn(raw: string): boolean {
   try {
     const url = new URL(raw);
@@ -113,7 +113,7 @@ export function isSignInReturn(raw: string): boolean {
   }
 }
 
-/** Where a Google sign-in for the app starts in the browser: Folevi's own /app-google page. */
+/** Where a Google or Apple sign-in for the app starts in the browser: Folevi's own /app-google page (Apple adds provider=apple). */
 export function isSignInStart(raw: string): boolean {
   try {
     const url = new URL(raw);

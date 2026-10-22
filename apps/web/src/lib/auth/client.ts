@@ -79,6 +79,10 @@ export function authErrorMessage(error: AuthErrorLike, fallback = "Something wen
     case "FAILED_TO_VERIFY_REGISTRATION":
     case "ERROR_AUTHENTICATOR_GENERAL_ERROR":
       return "The passkey couldn't be added. Please try again.";
+    case "FAILED_TO_UNLINK_LAST_ACCOUNT":
+      return "This is the only way you sign in, so it can't be removed. Set a password first (Forgot your password? on the sign-in page sends a link).";
+    case "ACCOUNT_NOT_FOUND":
+      return "That sign-in method isn't linked to your account any more.";
     case "PASSKEY_ADMIN_NEEDS_CODE":
       return "Admin accounts sign in with a password and an authenticator code.";
     case "PASSKEY_NOT_VERIFIED":

@@ -57,7 +57,7 @@ const bridge = {
   sizeQuickAdd: (height: number) => ipcRenderer.send("desktop:quick-add-size", height),
   /** Starts dragging a note out of the app as a Markdown file (call from a dragstart, after preventDefault). */
   dragFile: (file: { name: string; text: string }) => ipcRenderer.send("desktop:drag-file", file),
-  /** Signs in with Google in the default browser: answers with the folevi://auth/google link it ends on, or null. */
+  /** Signs in with Google or Apple in the default browser: answers with the folevi://auth/google link it ends on, or null. */
   signInInBrowser: (url: string) => ipcRenderer.invoke("desktop:sign-in", url) as Promise<string | null>,
   /** The words in an image, read on this Mac with Vision (search in files): { text }, or null. */
   recognizeText: (image: Uint8Array, handwriting = false) => ipcRenderer.invoke("desktop:recognize-text", image, handwriting) as Promise<{ text: string } | null>,

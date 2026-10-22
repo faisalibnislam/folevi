@@ -102,7 +102,7 @@ let update: UpdateState = { state: "idle" };
 let checkForUpdates: (() => void) | null = null;
 /** A folevi:// link that arrived before the app was ready. */
 let pendingLink: string | null = null;
-/** A Google sign-in in the browser on its way (desktop:sign-in): answered by the folevi://auth/google link it ends on. */
+/** A Google or Apple sign-in in the browser on its way (desktop:sign-in): answered by the folevi://auth/google link it ends on. */
 let pendingSignIn: ((url: string | null) => void) | null = null;
 /** The built-in interface's account sign-in (authBridge.ts): only with the bundled interface. */
 let authBridge: AuthBridge | null = null;
@@ -991,7 +991,7 @@ function listen() {
     return bytes ? await recognize(bytes, handwriting === true) : null;
   });
   ipcMain.handle("desktop:screen-access", (e) => (fromFolevi(e) ? systemPreferences.getMediaAccessStatus("screen") : null));
-  // Signing in with Google, which doesn't sign in inside the app's window: Folevi's /app-google page opens in
+  // Signing in with Google or Apple, which the app's window doesn't do: Folevi's /app-google page opens in
   // the default browser, and the folevi://auth/google link it ends on (with a one-time code) goes back to the
   // page that asked. Ten minutes, then it gives up.
   ipcMain.handle("desktop:sign-in", async (e, url: unknown) => {

@@ -2,25 +2,32 @@ import "server-only";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/lib/convex/api";
 
-/** How long the sign-in page waits for the backend before leaving Google out. */
+/** How long the sign-in page waits for the backend before leaving Google and Apple out. */
 const TIMEOUT_MS = 2000;
 
+/** Which of "Continue with Google" and "Continue with Apple" this deployment offers. */
+export type SocialOptions = { google: boolean; apple: boolean };
+
+const NONE: SocialOptions = { google: false, apple: false };
+
 /**
- * Whether the sign-in and sign-up pages show "Continue with Google": only when the backend has Google's keys
- * (convex/signInOptions.ts). Server only. If the backend can't be reached, the email form is still there.
+ * What the sign-in and sign-up pages offer besides email and password: Google and Apple only when the backend
+ * has their keys (convex/signInOptions.ts). Server only. If the backend can't be reached, the email form is
+ * still there.
  */
-export async function googleSignInAvailable(): Promise<boolean> {
+export async function socialSignInOptions(): Promise<SocialOptions> {
   const url = process.env.NEXT_PUBLIC_CONVEX_URL;
-  if (!url) return false;
+  if (!url) return NONE;
   try {
     const options = await Promise.race([
       new ConvexHttpClient(url).query(api.signInOptions.options, {}),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), TIMEOUT_MS)),
     ]);
-    return options.google;
+    // A backend from before Apple was added answers without it.
+    return { google: options.google === true, apple: options.apple === true };
   } catch {
-    return false;
+    return NONE;
   }
 }
 
-export { googleError } from "./googleErrors";
+export { socialError } from "./socialErrors";

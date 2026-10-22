@@ -600,6 +600,52 @@ Simulator build that can't reach Apple, the app uses a stand-in token made from 
   apnsSend:sendToProfile` reaches the sandbox host and Apple answers `InvalidProviderToken` (the request and
   JWT are well formed; the key just isn't registered). Never set APNS_* on production until the real key.
 
+## Sign in with Apple
+
+App Store rule 4.8: an app that offers another social sign-in (Google) must offer Sign in with Apple too. The
+server side is done (`docs/AUTH_DECISION.md`, "Google and Apple"; setup in `docs/DEPLOYMENT.md`, "Sign in with
+Apple"), and `App.entitlements` has `com.apple.developer.applesignin` = `["Default"]` (the App ID
+`com.folevi.ios` already has the capability; a build signed with the team picks it up).
+
+**Today** the app's web view shows "Continue with Apple" and signs in like Google: iOS's sign-in sheet
+(`authenticate`, ASWebAuthenticationSession) opens `/app-google?provider=apple`, the browser signs in at Apple
+and hands the app a one-time code through `folevi://auth/google`, and the web view redeems it
+(`components/auth/SocialSignIn.tsx`, `/native/redeem`). That works, but App Review prefers the native sheet,
+which is the next step.
+
+**Next: the native sheet.** No new endpoint is needed; Better Auth takes Apple's id token directly:
+
+1. The page asks the bridge, e.g. `foleviNative.signInWithApple({ nonce })`, where `nonce` is a random string
+   the page made (32 random bytes, base64url) and keeps.
+2. Native code runs `ASAuthorizationAppleIDProvider().createRequest()` with `requestedScopes = [.fullName,
+   .email]` and `request.nonce = sha256hex(nonce)` (Apple puts the request's nonce in the id token as is;
+   Better Auth accepts a token whose nonce is the raw value or its SHA-256 in hex), presents
+   `ASAuthorizationController`, and answers with `{ idToken, firstName, lastName }` from the credential
+   (`identityToken` as UTF-8; the name only comes the first time someone uses Apple with Folevi), or null if
+   it was cancelled.
+3. The page signs in with it, same origin, so the session cookie lands in the web view:
+
+   ```ts
+   const { error } = await authClient.signIn.social({
+     provider: "apple",
+     idToken: { token: idToken, nonce, user: { name: { firstName, lastName } } },
+   });
+   ```
+
+   Better Auth checks the token against Apple's keys, the issuer, the audience (the bundle ID,
+   `APPLE_SIGNIN_BUNDLE_ID`, default `com.folevi.ios`; the Services ID is accepted too) and the nonce, then
+   links or creates the account exactly as the web flow does. An account with two-step verification on is
+   refused (403, code `two_factor_required`): show the same message as the web
+   (`socialError("two_factor_required", "apple")`) and offer the password sign-in.
+4. `SocialSignIn.tsx`'s `routeHere()` picks the native sheet when the bridge has `signInWithApple`, and keeps
+   the browser route for Google and for older app builds.
+
+Also before App Review: rule 5.1.1(v) asks apps with Sign in with Apple to revoke the person's Apple tokens
+when they delete their account (`POST https://appleid.apple.com/auth/revoke` with the client secret from
+`convex/lib/appleSignIn.ts` and a refresh token: the web flow's is stored on the account row; for the native
+sheet, also pass its `authorizationCode` and trade it for one). Not built yet; add it to account deletion
+(`convex/lib/authStore.ts` `deleteAuthUser`) before submitting.
+
 ## No purchases in the app
 
 Plans are sold on folevi.com. Inside the app nothing shows a price or offers to buy, upgrade or change plans:

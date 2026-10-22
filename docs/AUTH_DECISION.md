@@ -94,6 +94,34 @@ the app has its own session, it appears in Settings → Devices, counts toward t
 and is signed out by the same actions as any other device (sign out, revoke, password change or reset,
 suspension).
 
+## Google and Apple
+
+Added after this decision: "Continue with Google" and "Continue with Apple" (App Store rule 4.8 asks for
+Apple wherever another social sign-in is offered), each only when its keys are set on Convex
+(`convex/auth.ts` `googleSignIn`, `appleSignIn`; setup in `docs/DEPLOYMENT.md`, "Sign in with Apple").
+
+- **Linking by email**: an account there with the same address signs in to the existing Folevi account,
+  only once that account's own address is confirmed (Better Auth's `requireLocalEmailVerified`), so nobody
+  can create an unconfirmed account for someone else's address and wait for its owner to sign in.
+- **Settings > Security > Sign-in methods** links and removes them. Linking on purpose there accepts any
+  address (`allowDifferentEmails`), since Apple's Hide My Email always differs; removing needs a sign-in
+  from the last 10 minutes, and the last way to sign in can't be removed.
+- **Two-step verification**: neither provider asks for Folevi's code, so an account with it on signs in
+  with its password and code instead (refused in the session hook, for the browser flow and for the iOS
+  app's id tokens alike).
+- **Apple's return** is a cross-site form post. The web app answers it with a same-site GET of the same
+  callback before it reaches Better Auth (`apps/web/src/lib/auth/appleCallback.ts`), so `trustedOrigins`
+  stays the app origin alone and Better Auth's origin check for cross-site POSTs is unchanged. Apple's
+  `user` field (the name, sent only on the first sign-in) is carried in a 10-minute HttpOnly cookie scoped to
+  the callback, not in the address.
+- **Apple's client secret** is a JWT the backend signs with the `.p8` key at runtime, valid 30 days and
+  renewed a day before it runs out (`convex/lib/appleSignIn.ts`).
+- **Hide My Email** addresses are kept as the account's address, confirmed as Apple says. A new account
+  with no name from Apple is called "Friend" rather than after the relay address's random letters.
+- **The apps** (Mac, and the iOS app's web view for now) sign in through the browser on `/app-google`
+  (`?provider=apple` for Apple) and redeem a one-time code (`convex/lib/nativeAuth.ts`). The iOS app's native
+  Apple sheet is next (`docs/IOS.md`, "Sign in with Apple").
+
 ## Security properties
 
 - **Credentials:** scrypt password hashes; TOTP secrets and backup codes encrypted at rest with a key
@@ -179,7 +207,7 @@ first, and check the Better Auth documentation for the version in use before doi
 
 - **No breached-password check yet** (Better Auth ships a `haveibeenpwned` plugin; it is not enabled).
 - **No passkeys** yet.
-- **No social sign-in, by design.**
+- **Social sign-in** was left out at first; Google and Apple were added later (see "Google and Apple" above).
 - **No admin or support procedure for a lost second factor** (see threat notes).
 - **Email address changes** are handled by support, not self-service.
 - **Not yet run in production:** everything above has been exercised locally and in the automated

@@ -5,11 +5,27 @@ import { KeyRound, Loader2 } from "lucide-react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { passkeyAutofillAvailable, passkeysAvailable } from "@/lib/auth/passkeys";
 import { Alert, AuthHeading, Field, PasswordField, SubmitButton, TextLink, safeReturnTo } from "./fields";
-import { GoogleSignIn } from "./GoogleSignIn";
+import { SocialSignIn } from "./SocialSignIn";
+
+/** "Apple, Google, or with " (whichever are offered) before "your email and password". */
+export function socialLede(social: { google: boolean; apple: boolean }): string {
+  const names = [social.apple ? "Apple" : null, social.google ? "Google" : null].filter(Boolean);
+  return names.length ? `${names.join(" or ")}, or with ` : "";
+}
 
 const CANCELLED = new Set(["AUTH_CANCELLED", "ERROR_CEREMONY_ABORTED", "ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY"]);
 
-export function SignInForm({ returnTo, notice, google, googleProblem }: { returnTo?: string; notice?: string; google?: boolean; googleProblem?: string }) {
+export function SignInForm({
+  returnTo,
+  notice,
+  social = { google: false, apple: false },
+  socialProblem,
+}: {
+  returnTo?: string;
+  notice?: string;
+  social?: { google: boolean; apple: boolean };
+  socialProblem?: string;
+}) {
   const destination = safeReturnTo(returnTo);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,19 +70,13 @@ export function SignInForm({ returnTo, notice, google, googleProblem }: { return
 
   return (
     <>
-      <AuthHeading title="Welcome back" lede={google ? "Sign in with Google, or with your email and password." : "Sign in with your email and password."} />
+      <AuthHeading title="Welcome back" lede={`Sign in with ${socialLede(social)}your email and password.`} />
       {notice ? (
         <div className="mb-4">
           <Alert tone="success">{notice}</Alert>
         </div>
       ) : null}
-      {google ? (
-        <GoogleSignIn returnTo={destination} error={googleProblem} />
-      ) : googleProblem ? (
-        <div className="mb-4">
-          <Alert>{googleProblem}</Alert>
-        </div>
-      ) : null}
+      <SocialSignIn providers={social} returnTo={destination} error={socialProblem} />
       <form
         className="space-y-4"
         noValidate

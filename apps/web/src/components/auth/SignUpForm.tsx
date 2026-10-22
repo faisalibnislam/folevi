@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { Alert, AuthHeading, Field, PasswordField, SubmitButton, TextLink } from "./fields";
 import { CheckInbox } from "./CheckInbox";
-import { GoogleSignIn } from "./GoogleSignIn";
+import { SocialSignIn } from "./SocialSignIn";
 import { pendingTemplate, rememberTemplate, signUpCallback } from "@/lib/pendingTemplate";
 
 /** Password guidance: length matters most; we only block what's too short or obviously weak. */
@@ -17,7 +17,7 @@ function passwordProblem(password: string, email: string): string | null {
   return null;
 }
 
-export function SignUpForm({ template, google }: { template?: string; google?: boolean }) {
+export function SignUpForm({ template, social = { google: false, apple: false } }: { template?: string; social?: { google: boolean; apple: boolean } }) {
   // A template picked on folevi.com opens as the first page after sign-up (Shell), in this browser.
   useEffect(() => rememberTemplate(template), [template]);
   const [name, setName] = useState("");
@@ -28,12 +28,13 @@ export function SignUpForm({ template, google }: { template?: string; google?: b
   const [fieldError, setFieldError] = useState<{ name?: string; email?: string; password?: string }>({});
   const [sentTo, setSentTo] = useState<string | null>(null);
 
+  const offered = [social.apple ? "Apple" : null, social.google ? "Google" : null].filter(Boolean).join(" or ");
   if (sentTo) return <CheckInbox email={sentTo} callbackURL={signUpCallback(template ?? pendingTemplate()?.key)} />;
 
   return (
     <>
-      <AuthHeading title="Start writing" lede={google ? "Create your Folevi account with Google, or with your email (we'll email you a link to confirm it)." : "Create your Folevi account. We'll email you a link to confirm your address."} />
-      {google ? <GoogleSignIn returnTo={signUpCallback(template ?? pendingTemplate()?.key)} /> : null}
+      <AuthHeading title="Start writing" lede={offered ? `Create your Folevi account with ${offered}, or with your email (we'll email you a link to confirm it).` : "Create your Folevi account. We'll email you a link to confirm your address."} />
+      <SocialSignIn providers={social} returnTo={signUpCallback(template ?? pendingTemplate()?.key)} />
       <form
         className="space-y-4"
         noValidate

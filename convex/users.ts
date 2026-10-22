@@ -24,6 +24,7 @@ import { personalEntitlements } from "./lib/entitlements";
 import { consume } from "./lib/rateLimit";
 import { bump } from "./lib/metrics";
 import { keyedHash } from "./lib/crypto";
+import { isApplePrivateRelay } from "./lib/appleSignIn";
 import { vAppearance, vNotificationPrefs } from "./lib/validators";
 import { seedPersonal } from "./seed";
 import { notifyInvite, wantsInApp } from "./lib/notify";
@@ -142,7 +143,10 @@ export const bootstrap = mutation({
       return { created: false, profileId: legacy._id };
     }
     const now = Date.now();
-    const displayName = sanitizeName(identity.name ?? identity.nickname ?? email.split("@")[0] ?? "Friend") || "Friend";
+    // Apple sends a name only the first time someone signs in with it, and "Hide My Email" addresses start with
+    // random letters, so neither an empty name nor such an address names anybody: they're "Friend" until renamed.
+    const fromAddress = isApplePrivateRelay(email) ? undefined : email.split("@")[0];
+    const displayName = sanitizeName(identity.name || identity.nickname || fromAddress || "Friend") || "Friend";
     const timeZone = isValidTimeZone(args.timeZone) ? args.timeZone : "UTC";
     const profileId = await ctx.db.insert("profiles", {
       tokenIdentifier: identity.tokenIdentifier,

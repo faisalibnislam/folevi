@@ -324,8 +324,10 @@ describe("folevi:// links", () => {
     }
   });
 
-  test("a Google sign-in starts only on Folevi's /app-google page and ends only on folevi://auth/google", () => {
+  test("a Google or Apple sign-in starts only on Folevi's /app-google page and ends only on folevi://auth/google", () => {
     expect(isSignInStart("https://app.folevi.com/app-google?client_id=folevi-app&state=x")).toBe(true);
+    // Sign in with Apple goes the same way (the same page, with provider=apple), so Mac apps already installed handle it.
+    expect(isSignInStart("https://app.folevi.com/app-google?client_id=folevi-app&state=x&provider=apple")).toBe(true);
     for (const bad of ["https://evil.com/app-google", "https://app.folevi.com/signin", "http://app.folevi.com/app-google", "folevi://auth/google"]) expect(isSignInStart(bad)).toBe(false);
     expect(isSignInReturn("folevi://auth/google?code=abc&state=x")).toBe(true);
     for (const bad of ["folevi://auth/other?code=abc", "folevi://d/01JAZ3XQ5V8K2M4N6P7R9S0T1U", "https://app.folevi.com/auth/google", `folevi://auth/google?code=${"a".repeat(1200)}`]) expect(isSignInReturn(bad)).toBe(false);

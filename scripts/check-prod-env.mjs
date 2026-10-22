@@ -48,6 +48,12 @@ if (env === "production") {
       if (apnsSet.length && get("APNS_BUNDLE_ID") && get("APNS_BUNDLE_ID") !== "com.folevi.ios") warn.push("Convex APNS_BUNDLE_ID is not com.folevi.ios (the iOS app's bundle id): Apple refuses notifications for another app.");
       if (get("APNS_ENV") && !["sandbox", "production"].includes(get("APNS_ENV"))) warn.push("Convex APNS_ENV must be 'sandbox' or 'production'.");
       if (apnsSet.length === apns.length && get("APNS_ENV") === "sandbox") warn.push("Convex APNS_ENV is 'sandbox' in production: tokens registered without an environment go to Apple's sandbox.");
+      // Sign in with Apple (docs/DEPLOYMENT.md): all four or none. Without them there's no Apple button.
+      const apple = ["APPLE_SIGNIN_CLIENT_ID", "APPLE_SIGNIN_TEAM_ID", "APPLE_SIGNIN_KEY_ID", "APPLE_SIGNIN_KEY"];
+      const appleSet = apple.filter(has);
+      if (appleSet.length && appleSet.length < apple.length) warn.push(`Convex Sign in with Apple is only partly set up (missing ${apple.filter((k) => !has(k)).join(", ")}): there's no Apple button until all of ${apple.join(", ")} are set.`);
+      if (appleSet.length && get("APPLE_SIGNIN_CLIENT_ID") && get("APPLE_SIGNIN_CLIENT_ID") !== "com.folevi.signin") warn.push("Convex APPLE_SIGNIN_CLIENT_ID is not com.folevi.signin (Folevi's Services ID): Apple refuses sign-ins for another client.");
+      if (has("APPLE_SIGNIN_KEY") && !/BEGIN PRIVATE KEY/.test(get("APPLE_SIGNIN_KEY") ?? "")) warn.push("Convex APPLE_SIGNIN_KEY doesn't look like a .p8 key (no BEGIN PRIVATE KEY line): Sign in with Apple stays off.");
       if (["support@folevi.com", "security@folevi.com"].includes((get("SUPPORT_NOTIFY_EMAIL") ?? "").trim().toLowerCase())) {
         warn.push("Convex SUPPORT_NOTIFY_EMAIL must not be the support or security mailbox (it is ignored); use a staff address.");
       }

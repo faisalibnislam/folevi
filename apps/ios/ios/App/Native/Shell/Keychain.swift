@@ -8,7 +8,7 @@ import Security
 
 enum Keychain {
     private static func query(_ service: String, _ account: String) -> [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account, kSecAttrSynchronizable as String: false]
+        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: Platform.keychainService(service), kSecAttrAccount as String: account, kSecAttrSynchronizable as String: false]
     }
 
     static func get(_ service: String, _ account: String) -> Data? {
@@ -51,7 +51,7 @@ enum Keychain {
         let key = "folevi.installed"
         guard !UserDefaults.standard.bool(forKey: key) else { return }
         for service in ["com.folevi.shell-auth", "com.folevi.shell-secrets", "com.folevi.library-key", "com.folevi.e2ee"] {
-            SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service] as CFDictionary)
+            SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: Platform.keychainService(service)] as CFDictionary)
         }
         UserDefaults.standard.set(true, forKey: key)
     }

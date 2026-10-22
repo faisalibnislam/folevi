@@ -15,7 +15,11 @@
 import AuthenticationServices
 import CryptoKit
 import Foundation
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 final class ShellAuth: NSObject {
     static let shared = ShellAuth()
@@ -79,7 +83,7 @@ final class ShellAuth: NSObject {
 
     /// Signs in to one more account: who it is, or nil. The same person again replaces only their own session.
     @MainActor
-    func signInAccount(window: UIWindow?) async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
+    func signInAccount(window: PlatformWindow?) async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
         guard let access = await obtain(window: window) else { return nil }
         guard let user = await userOf(access) else {
             await endSession(access)
@@ -171,7 +175,7 @@ final class ShellAuth: NSObject {
     }
 
     @MainActor
-    func signIn(window: UIWindow?) async -> Bool {
+    func signIn(window: PlatformWindow?) async -> Bool {
         guard let access = await obtain(window: window) else { return false }
         let previous = token
         token = access
@@ -182,7 +186,7 @@ final class ShellAuth: NSObject {
 
     /// The sign-in sheet, ending with a new session's token (or nil).
     @MainActor
-    private func obtain(window: UIWindow?) async -> String? {
+    private func obtain(window: PlatformWindow?) async -> String? {
         sheet?.session.cancel()
         let pkce = Self.pkcePair()
         let state = Self.b64url(LibraryCrypto.randomBytes(24))
@@ -217,10 +221,7 @@ final class ShellAuth: NSObject {
     }
 
     /// "Folevi app (Faisal's iPhone)" in Settings > Devices.
-    static var deviceName: String {
-        let name = UIDevice.current.name
-        return name.isEmpty ? (UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone") : name
-    }
+    static var deviceName: String { Platform.deviceName }
 
     func signOut() async {
         await MainActor.run { sheet?.session.cancel() }

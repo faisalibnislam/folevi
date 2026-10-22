@@ -16,7 +16,11 @@
 import AuthenticationServices
 import CryptoKit
 import Foundation
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 struct CloudError: Error {
     /// "unavailable" | "one_connection" | "cancelled" | "reconnect" | "offline" | "invalid" | "protocol"
@@ -109,7 +113,7 @@ final class ShellCloud: NSObject {
 
     /// Signs in to the provider (also to reconnect). Throws when cancelled, refused or another provider holds it.
     @MainActor
-    func connect(_ p: String, window: UIWindow?) async throws -> [String: Any] {
+    func connect(_ p: String, window: PlatformWindow?) async throws -> [String: Any] {
         guard available.contains(p) else { throw CloudError(code: "unavailable", message: "\(Self.name(p)) isn't in this build of Folevi.") }
         if let current = provider, current != p { throw CloudError(code: "one_connection", message: "This library syncs with \(Self.name(current)). Sign out of \(Self.name(current)) first.") }
         connecting = p
@@ -304,7 +308,7 @@ final class ShellCloud: NSObject {
     /// file's provider etag beside it and the provider's state (cursor, index) in .state.json.
     static func mirrorRoot(_ p: String) throws -> URL {
         guard p == "dropbox" || p == "googleDrive" else { throw CloudError(code: "invalid", message: "Not a provider.") }
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Folevi/Cloud libraries/\(p)", isDirectory: true)
+        let dir = Platform.supportFolder.appendingPathComponent("Cloud libraries/\(p)", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }

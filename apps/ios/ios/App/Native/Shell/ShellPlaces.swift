@@ -5,7 +5,11 @@
 // accounts (what each account's own page last said of itself, for the switcher), and Quick Add's last place.
 // Nothing here is secret. The app has one web view: the open place is the page's place.
 import Foundation
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 enum ShellPlaces {
     static let library = "library"
@@ -43,8 +47,7 @@ enum ShellPlaces {
     private static var cached: State?
 
     private static var file: URL {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return dir.appendingPathComponent("Folevi", isDirectory: true).appendingPathComponent("places.json")
+        Platform.supportFolder.appendingPathComponent("places.json")
     }
 
     static var exists: Bool { FileManager.default.fileExists(atPath: file.path) }
@@ -88,7 +91,7 @@ enum ShellPlaces {
     /// What the share sheet, Quick Add, Siri and Shortcuts offer (Shared/SaveTargets.swift), written with every
     /// change; another place opening also swaps the open place's REST token for that account's own.
     private static func mirror(_ s: State, before: String?) {
-        let here = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        let here = Platform.deviceLabel
         var targets: [SaveTarget] = []
         if s.library { targets.append(SaveTarget(id: library, name: "On this \(here)", detail: "Kept on this device only")) }
         for a in s.accounts { targets.append(SaveTarget(id: a.id, name: a.name.isEmpty ? a.email : a.name, detail: a.email)) }

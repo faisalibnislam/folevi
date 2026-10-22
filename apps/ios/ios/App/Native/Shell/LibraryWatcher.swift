@@ -6,7 +6,11 @@
 //
 // Kinds: "changed" (new or a different etag), "removed", "downloaded" (a placeholder's contents arrived).
 import Foundation
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 final class LibraryWatcher: NSObject {
     private struct Known {
@@ -37,13 +41,13 @@ final class LibraryWatcher: NSObject {
             guard let self else { return }
             // Only while Folevi is in front (the page isn't running in the background anyway).
             DispatchQueue.main.async {
-                guard UIApplication.shared.applicationState == .active else { return }
+                guard Platform.isActive else { return }
                 self.queue.async { self.scan() }
             }
         }
         t.resume()
         timer = t
-        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: nil) { [weak self] _ in self?.soon() })
+        observers.append(NotificationCenter.default.addObserver(forName: Platform.didBecomeActive, object: nil, queue: nil) { [weak self] _ in self?.soon() })
         if iCloudScope {
             DispatchQueue.main.async { self.startQuery() }
         }

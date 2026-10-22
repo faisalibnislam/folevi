@@ -16,7 +16,11 @@
 // The state is library.json in Application Support: { v, kind, libraryId, bookmark?, sub?, move?, encryptionJob? }.
 import CryptoKit
 import Foundation
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 final class LibraryService {
     static let shared = LibraryService()
@@ -68,14 +72,14 @@ final class LibraryService {
     // MARK: places on this device
 
     private static var support: URL {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Folevi", isDirectory: true)
+        let dir = Platform.supportFolder
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
 
     private var stateFile: URL { Self.support.appendingPathComponent("library.json") }
 
-    static var documents: URL { FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0] }
+    static var documents: URL { Platform.documentsFolder }
 
     /// The iCloud container's Documents folder, or the reason there's none. Never on the main thread.
     static func iCloudRoot() -> Result<URL, LibraryError> {
@@ -274,7 +278,7 @@ final class LibraryService {
     }
 
     private func displayPath(_ s: Stored) -> String {
-        let device = UIDevice.current.userInterfaceIdiom == .pad ? "On My iPad" : "On My iPhone"
+        let device = "On My \(Platform.deviceLabel)"
         switch s.kind {
         case "icloud": return "iCloud Drive › Folevi"
         case "device": return "\(device) › Folevi › \(Self.deviceFolder)"
@@ -297,7 +301,7 @@ final class LibraryService {
             let provider = names.first { url.path.contains($0.0) }?.1 ?? "Files"
             return ([provider] + parts.suffix(2)).joined(separator: " › ")
         }
-        if parts.contains("Documents") { return ([UIDevice.current.userInterfaceIdiom == .pad ? "On My iPad" : "On My iPhone"] + parts.suffix(1)).joined(separator: " › ") }
+        if parts.contains("Documents") { return (["On My \(Platform.deviceLabel)"] + parts.suffix(1)).joined(separator: " › ") }
         return url.lastPathComponent
     }
 
@@ -448,9 +452,8 @@ final class LibraryService {
 
     /// A write that finishes even if Folevi goes to the background meanwhile.
     private static func inBackground<T>(_ work: () throws -> T) throws -> T {
-        var task = UIBackgroundTaskIdentifier.invalid
-        DispatchQueue.main.sync { task = UIApplication.shared.beginBackgroundTask(withName: "folevi-library-write") {} }
-        defer { DispatchQueue.main.async { if task != .invalid { UIApplication.shared.endBackgroundTask(task) } } }
+        let task = Platform.beginBackgroundWork("folevi-library-write")
+        defer { Platform.endBackgroundWork(task) }
         return try work()
     }
 

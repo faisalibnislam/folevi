@@ -3,7 +3,11 @@
 // from the sites themselves (`http`, never through Folevi), saving a file the page made (`files.save`), and
 // the mode the built-in interface opens in.
 import Foundation
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 import UniformTypeIdentifiers
 import UserNotifications
 
@@ -42,7 +46,7 @@ enum ShellNotify {
         let content = UNMutableNotificationContent()
         content.title = String(title.prefix(200))
         // With accounts here too, a reminder says it's the library's (several places, docs/MULTI_ACCOUNT_PLAN.md §5.3).
-        if !ShellPlaces.state.accounts.isEmpty { content.subtitle = UIDevice.current.userInterfaceIdiom == .pad ? "On this iPad" : "On this iPhone" }
+        if !ShellPlaces.state.accounts.isEmpty { content.subtitle = "On this \(Platform.deviceLabel)" }
         content.body = String(body.prefix(500))
         content.sound = .default
         content.threadIdentifier = "local-reminders"
@@ -169,6 +173,9 @@ final class ShellHTTP: NSObject, URLSessionTaskDelegate {
 
 // MARK: saving a file
 
+#if os(iOS)
+// (The Mac's ShellFiles and FolderPicker are in Platform.swift.)
+
 /// Saves a file the page made (an export) where the person picks in the Files app; false when cancelled.
 @MainActor
 final class ShellFiles: NSObject, UIDocumentPickerDelegate {
@@ -230,3 +237,4 @@ final class FolderPicker: NSObject, UIDocumentPickerDelegate {
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) { done(urls.first) }
     func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { done(nil) }
 }
+#endif

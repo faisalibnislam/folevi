@@ -405,7 +405,7 @@ enum ShellAI {
 enum OnDeviceModel {
     static func availability() -> (status: String, context: Int?) {
         #if canImport(FoundationModels)
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.0, macOS 26.0, *) {
             let model = SystemLanguageModel.default
             switch model.availability {
             case .available: return ("available", model.contextSize)
@@ -425,13 +425,13 @@ enum OnDeviceModel {
 
     static func generate(_ req: AiRequest, onChunk: @escaping (String) -> Void) async -> AiResult {
         #if canImport(FoundationModels)
-        if #available(iOS 26.0, *) { return await run(req, onChunk: onChunk) }
+        if #available(iOS 26.0, macOS 26.0, *) { return await run(req, onChunk: onChunk) }
         #endif
         return AiResult(text: "", stopReason: "error", error: "Apple's on-device model needs iOS 26 or later.", errorCode: "unavailable")
     }
 
     #if canImport(FoundationModels)
-    @available(iOS 26.0, *)
+    @available(iOS 26.0, macOS 26.0, *)
     private static func describe(_ error: Error) -> (String, String?) {
         if let e = error as? LanguageModelSession.GenerationError {
             switch e {
@@ -446,7 +446,7 @@ enum OnDeviceModel {
         return (error.localizedDescription, nil)
     }
 
-    @available(iOS 26.0, *)
+    @available(iOS 26.0, macOS 26.0, *)
     private static func run(_ req: AiRequest, onChunk: @escaping (String) -> Void) async -> AiResult {
         let model = SystemLanguageModel.default
         let status = availability().status

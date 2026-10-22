@@ -17,8 +17,11 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Select } from "@/components/ui/Select";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { quickAddOnDevice } from "@/lib/quickAddOffline";
+import { useIphoneApp } from "@/lib/iphone";
+import { Sheet } from "@/components/iphone/Sheet";
+import { PhoneQuickAdd } from "@/components/iphone/QuickAddSheet";
 
-type Priority = "none" | "low" | "medium" | "high";
+export type Priority = "none" | "low" | "medium" | "high";
 export type Target = { id: string; title: string; icon: string | null } | null;
 
 /**
@@ -29,6 +32,14 @@ export function QuickAddTask({ open, onClose, documentId, due }: { open: boolean
   const { route } = useAppRouter();
   const currentDoc = documentId ?? (route.name === "doc" ? route.id : undefined);
   const touch = useMediaQuery("(pointer: coarse)");
+  // The phone layout: a sheet at the keyboard's top (docs/IOS_POLISH_PLAN.md §3, Quick add task).
+  const iphone = useIphoneApp();
+  if (iphone)
+    return (
+      <Sheet open={open} onClose={onClose} label="Quick add task" closeButton={false} bodyClassName="pb-1">
+        <PhoneQuickAdd onClose={onClose} currentDoc={currentDoc} initialDue={due} />
+      </Sheet>
+    );
   return (
     // (A finger has no Enter key to be told about: the keyboard's Return, or Add task, adds it.)
     <Dialog open={open} onClose={onClose} title="Quick add task" description={`${touch ? "" : "Press Enter to add. "}Tasks without a page go to your Inbox page.`} size="sm">
@@ -37,8 +48,8 @@ export function QuickAddTask({ open, onClose, documentId, due }: { open: boolean
   );
 }
 
-/** The form itself: in the dialog above, and alone in the Mac app's Quick Add window (`onAdded` says where it went). */
-export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onClose: () => void; currentDoc?: string; onAdded?: (added: { documentId: string; where: string }) => void; initialDue?: string }) {
+/** What a quick-add form holds and does (the dialog's form, the phone's sheet, the Mac app's Quick Add window). */
+export function useQuickAdd({ onClose, currentDoc, onAdded, initialDue }: { onClose: () => void; currentDoc?: string; onAdded?: (added: { documentId: string; where: string }) => void; initialDue?: string }) {
   const { scope, today, deviceId, engine, profile, online } = useAppState();
   const quickAdd = useMutation(api.tasks.quickAdd);
   const { navigate } = useAppRouter();
@@ -76,41 +87,52 @@ export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onC
   // Default: the open page (if it's a normal page you can see), otherwise the Inbox.
   const effective: Target = target !== undefined ? target : currentDoc && currentInfo && !currentInfo.inTrash ? { id: currentDoc, title: currentInfo.title, icon: currentInfo.icon } : null;
 
+  const submit = async () => {
+    if (busy) return;
+    if (!title.trim()) {
+      setError("Write the task first.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const task = {
+        title: parsed ? parsed.rest : text,
+        dueDate: due || parsed?.date || (repeat ? firstDate(repeat.rule) : undefined),
+        dueTime: due ? time || undefined : parsed?.time,
+        ...(repeat ? { repeat: repeatProps(repeat.rule) } : {}),
+        priority: priority === "none" ? undefined : priority,
+        documentId: effective?.id,
+      };
+      // Offline (account mode): kept on this device and sent with the rest of the queue, rather than
+      // waiting for the server. (Local mode is always "online": its server is the library on this device.)
+      const r =
+        !online && engine
+          ? await quickAddOnDevice({ engine, profileId: profile.id, deviceId }, scope, task)
+          : await quickAdd({ scope, today, ...task, deviceId: deviceId ?? undefined });
+      onClose();
+      const where = effective ? effective.title || "Untitled" : "Inbox";
+      if (onAdded) onAdded({ documentId: r.documentId, where });
+      else toast.show(`Task added to ${where}`, { tone: "success", action: { label: "Open", onClick: () => navigate(`/d/${r.documentId}`) } });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return { scope, today, title, setTitle, due, setDue, time, setTime, priority, setPriority, setTarget, effective, busy, error, setError, repeat, parsed, setKeptAsText, setRepeatKept, submit };
+}
+
+/** The form itself: in the dialog above, and alone in the Mac app's Quick Add window (`onAdded` says where it went). */
+export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onClose: () => void; currentDoc?: string; onAdded?: (added: { documentId: string; where: string }) => void; initialDue?: string }) {
+  const { scope, today, title, setTitle, due, setDue, time, setTime, priority, setPriority, setTarget, effective, busy, error, setError, repeat, parsed, setKeptAsText, setRepeatKept, submit } = useQuickAdd({ onClose, currentDoc, onAdded, initialDue });
+
   return (
     <form
       onSubmit={async (e) => {
         e.preventDefault();
-        if (busy) return;
-        if (!title.trim()) {
-          setError("Write the task first.");
-          return;
-        }
-        setBusy(true);
-        setError(null);
-        try {
-          const task = {
-            title: parsed ? parsed.rest : text,
-            dueDate: due || parsed?.date || (repeat ? firstDate(repeat.rule) : undefined),
-            dueTime: due ? time || undefined : parsed?.time,
-            ...(repeat ? { repeat: repeatProps(repeat.rule) } : {}),
-            priority: priority === "none" ? undefined : priority,
-            documentId: effective?.id,
-          };
-          // Offline (account mode): kept on this device and sent with the rest of the queue, rather than
-          // waiting for the server. (Local mode is always "online": its server is the library on this device.)
-          const r =
-            !online && engine
-              ? await quickAddOnDevice({ engine, profileId: profile.id, deviceId }, scope, task)
-              : await quickAdd({ scope, today, ...task, deviceId: deviceId ?? undefined });
-          onClose();
-          const where = effective ? effective.title || "Untitled" : "Inbox";
-          if (onAdded) onAdded({ documentId: r.documentId, where });
-          else toast.show(`Task added to ${where}`, { tone: "success", action: { label: "Open", onClick: () => navigate(`/d/${r.documentId}`) } });
-        } catch (err) {
-          setError(errorMessage(err));
-        } finally {
-          setBusy(false);
-        }
+        await submit();
       }}
     >
       <label htmlFor="qa-title" className="sr-only">
@@ -189,6 +211,7 @@ export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onC
     </form>
   );
 }
+
 
 /** "Add to" field: the Inbox, or any page in the current context (Personal or a workspace) found by search. */
 export function DocumentPicker({ scope, value, onChange, label = "Add to", exclude }: { scope: WireScope; value: Target; onChange: (t: Target) => void; label?: string; exclude?: string }) {

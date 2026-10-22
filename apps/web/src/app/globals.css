@@ -694,15 +694,6 @@
    (AppContextMenu, through [data-ctx-host]). It stays in place for that and for VoiceOver, and shows only for
    keyboard focus (the focus a closing menu hands back after a tap doesn't bring it back). */
 :root[data-iphone] [data-ctx-host] .pointer-coarse\:opacity-100:not(:has(:focus-visible)) { opacity: 0; }
-/* Menus (a "…" button, a long press): iOS sized rows on liquid glass, growing out of what opened them. */
-:root[data-iphone] [role="menu"].ui-pop {
-  min-width: 15rem;
-  background: var(--liquid-fill-strong);
-  -webkit-backdrop-filter: blur(30px) saturate(1.8);
-  backdrop-filter: blur(30px) saturate(1.8);
-  box-shadow: var(--liquid-edge), 0 18px 50px -12px rgb(0 0 0 / 0.3), 0 2px 10px rgb(0 0 0 / 0.08);
-  animation: iphone-menu-in 260ms cubic-bezier(0.2, 0.9, 0.25, 1.08);
-}
 /* What a held finger opened a menu on lifts while the menu is open (lib/touchContextMenu.ts): a card or a row
    with its own menu grows a little, a link or button row gets the pressed tint. */
 :root:is([data-iphone], [data-native]) [data-held-lift]:is([data-ctx-host], [data-lift]) { transform: scale(1.04); transition: transform 220ms cubic-bezier(0.2, 0.9, 0.25, 1.08); }
@@ -711,15 +702,6 @@
    on their rows and tiles (text fields and notes keep theirs). */
 :root[data-iphone] [data-iphone-tappable] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 :root[data-iphone] [data-iphone-tappable] :is(input, textarea, [contenteditable]:not([contenteditable="false"])) { -webkit-user-select: text; user-select: text; }
-:root[data-iphone] [role="menu"] .ui-menu-item { min-height: 44px; gap: 0.8rem; padding: 0 0.85rem; font-size: 16px; }
-/* A finger isn't a mouse: the item under where it last was isn't highlighted (after a long press that's the
-   item under the lifted finger, which mustn't look chosen); the one being pressed is. */
-:root[data-iphone] [role="menu"] .ui-menu-item:hover:not(:active, :focus-visible, [data-highlighted="true"]) { background: transparent; }
-:root[data-iphone] [role="menu"] .ui-menu-item:active { background: color-mix(in oklab, var(--color-ink) 9%, transparent); }
-/* The first item takes focus as a menu opens (for a keyboard); on a phone that isn't shown as a choice. */
-:root[data-iphone] [role="menu"] .ui-menu-item:focus-visible:not(:active, [data-highlighted="true"]) { background: transparent; }
-:root[data-iphone] [role="menu"] .ui-menu-item > span:first-child svg { width: 18px; height: 18px; }
-:root[data-iphone] [role="menu"] [role="separator"] { margin: 0.3rem 0; height: 6px; background: color-mix(in oklab, var(--color-ink) 6%, transparent); }
 :root[data-iphone] [role="listbox"].ui-pop { background: var(--liquid-fill-strong); }
 /* Toasts float above the tab bar. */
 :root[data-iphone] .ui-toasts { bottom: calc(env(safe-area-inset-bottom) + 80px); }
@@ -736,3 +718,66 @@
 :root[data-iphone] .ui-shortcut-hint { display: none; }
 /* The picture of a screen sliding away (components/iphone/transitions.ts) doesn't replay its own animations. */
 [data-iphone-picture], [data-iphone-picture] * { animation: none !important; transition: none !important; }
+
+/* ------------------------------------------------------------------------------------------------
+ * iOS polish WP3: menus, sheets and dialogs in the iPhone, iPad and Android apps (docs/IOS_POLISH_PLAN.md §2,
+ * §4.1, owner's decision D1). Menus stay Folevi's, in Folevi's fonts, drawn as iOS draws a menu: glass, 17 pt
+ * rows 44 tall edge to edge, hairlines between the items of a section and an 8 pt band between sections, the
+ * icon at the end and the checkmark at the start, destructive items in red. They grow out of what opened them
+ * on a spring and shrink away (components/ui/Menu.tsx). Only inside the apps (the website and the Mac app keep
+ * theirs): <html data-iphone> (iPhone, Android phone) or data-native="ios" (iPad too).
+ * --------------------------------------------------------------------------------------------- */
+:root:is([data-iphone], [data-native="ios"]) [role="menu"].ui-pop {
+  --menu-pad: 16px;
+  min-width: 250px;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: 0;
+  border-radius: var(--radius-container);
+  background: var(--liquid-fill-strong);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  backdrop-filter: blur(30px) saturate(1.8);
+  box-shadow: var(--liquid-edge), 0 18px 50px -12px rgb(0 0 0 / 0.3), 0 2px 10px rgb(0 0 0 / 0.08);
+  font-family: var(--font-sans);
+  animation: none;
+}
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item {
+  min-height: 44px;
+  gap: 12px;
+  padding: 11px var(--menu-pad);
+  border-radius: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 400;
+  color: var(--color-ink);
+}
+/* Hairlines between the items of a section (an 8 pt band between sections, below). */
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item + .ui-menu-item { box-shadow: inset 0 0.5px 0 var(--iphone-separator); }
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] [role="separator"] { margin: 0; height: 8px; background: color-mix(in oklab, var(--color-ink) 7%, transparent); }
+:root[data-theme="dark"]:is([data-iphone], [data-native="ios"]) [role="menu"] [role="separator"] { background: rgb(0 0 0 / 0.28); }
+/* A section's title (a menu heading): iOS's footnote, quiet, in sentence case. */
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-caps { padding: 10px var(--menu-pad) 6px; font-size: 13px; line-height: 18px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--color-ink-muted); }
+/* The icon at the end, in the words' colour, 20 pt; the checkmark in a column at the start. */
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="icon"] { order: 5; display: inline-flex; flex: none; width: 22px; justify-content: center; color: inherit; }
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="icon"] svg { width: 20px; height: 20px; stroke-width: 1.9; }
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="check"] { order: -1; display: inline-flex; flex: none; width: 16px; margin-right: -2px; justify-content: center; color: var(--color-ink); }
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="check"] svg { width: 16px; height: 16px; stroke-width: 2.6; }
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="label"] { min-width: 0; }
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="description"] { margin-top: 1px; font-size: 15px; line-height: 20px; color: var(--color-ink-muted); }
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="detail"] { font-size: 15px; line-height: 20px; color: var(--color-ink-muted); }
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:is(.\!text-danger, [data-danger]) { color: var(--color-danger) !important; }
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:disabled { opacity: 0.35; }
+/* An item under another (a workspace under its account) steps in by the checkmark column. */
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item.\!pl-8 { padding-left: calc(var(--menu-pad) + 20px) !important; }
+/* A finger isn't a mouse: the item under where it last was isn't highlighted (after a long press that's the
+   item under the lifted finger, which mustn't look chosen); the one being pressed is. The first item takes
+   focus as a menu opens (for a keyboard); on a touch screen that isn't shown as a choice. */
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:hover:not(:active, :focus-visible, [data-highlighted="true"]) { background: transparent; }
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:focus-visible:not(:active, [data-highlighted="true"]) { background: transparent; }
+:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:active { background: color-mix(in oklab, var(--color-ink) 10%, transparent); }
+/* A keyboard on an iPad: the item it's on, as a pressed one. */
+:root[data-input="key"]:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:focus-visible { background: color-mix(in oklab, var(--color-ink) 10%, transparent); }
+/* Reduce Transparency, Increase Contrast, and Android (no iOS glass there): a solid menu. */
+:root:is([data-reduce-transparency], [data-increase-contrast], [data-native="android"]):is([data-iphone], [data-native="ios"]) [role="menu"].ui-pop { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-increase-contrast]:is([data-iphone], [data-native="ios"]) [role="menu"].ui-pop { box-shadow: 0 0 0 1px var(--color-line-strong), 0 18px 50px -12px rgb(0 0 0 / 0.3); }
+@media (prefers-reduced-transparency: reduce) {
+  :root:is([data-iphone], [data-native="ios"]) [role="menu"].ui-pop { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }

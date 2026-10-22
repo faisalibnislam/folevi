@@ -14,6 +14,8 @@ import { flushBeforeSwitch, placesAvailable, signInToAnotherAccount, switchToPla
 import { openMovePlaces } from "@/components/places/MovePlaces";
 import { deviceWords } from "@/lib/shell/words";
 import { currentBackendMode } from "@/lib/backendMode";
+import { inAndroidApp } from "@/lib/nativeApp";
+import { isIpadApp } from "@/lib/iphone";
 import { Sheet } from "./Sheet";
 import { GroupedRow, GroupedSection, RowIcon } from "./Grouped";
 
@@ -50,14 +52,17 @@ export function AccountSheet({ open, onClose }: { open: boolean; onClose: () => 
     if (!same && route.name !== "documents" && route.name !== "tasks" && route.name !== "calendar") navigate("/documents");
   };
   const email = (profile as { email?: string }).email;
+  // Without an account (notes kept on the device) the row says where they are rather than nothing.
+  const detail = email ?? (currentBackendMode() === "local" ? `Notes on this ${inAndroidApp() ? "phone" : isIpadApp() ? "iPad" : "iPhone"}` : null);
   return (
     <>
-      <Sheet open={open} onClose={onClose} title="Account" size="medium" bodyClassName="pb-6">
+      {/* The medium detent ends after a whole group (not part way through Appearance). */}
+      <Sheet open={open} onClose={onClose} title="Account" size="medium" snapMedium="section" bodyClassName="pb-6">
         <div className="flex items-center gap-3 px-5 pb-5 pt-2">
           <PersonalMark size={52} className="!rounded-capsule" />
           <div className="min-w-0">
             <p className="truncate text-[19px] font-semibold text-heading">{profile.displayName}</p>
-            {email ? <p className="truncate text-[14px] text-muted">{email}</p> : null}
+            {detail ? <p className="truncate text-[15px] leading-5 text-muted">{detail}</p> : null}
           </div>
         </div>
         <GroupedSection title="Places">

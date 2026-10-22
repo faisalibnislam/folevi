@@ -5,8 +5,11 @@ import { createPortal } from "react-dom";
 import { Check } from "lucide-react";
 import { keyLabel } from "@/lib/shortcuts";
 import { visibleBottom } from "@/lib/hooks/useVisualViewport";
-import { haptic } from "@/lib/nativeApp";
+import { nativeApp } from "@/lib/nativeApp";
 import { safeInsets } from "@/lib/iphone";
+import { feel } from "@/lib/native/ui";
+import { SPRINGS, prefersReducedMotion } from "@/lib/native/physics";
+import { springFrames } from "@/components/iphone/sheetMotion";
 
 export interface MenuItem {
   label: string;
@@ -30,6 +33,8 @@ export interface MenuItem {
   badge?: number;
   /** A dot at the end of the row (something waiting there, without a count). */
   dot?: boolean;
+  /** Means nothing inside the iPhone, iPad and Android apps (a new browser tab, Back, Reload): left out there. */
+  desktopOnly?: boolean;
 }
 
 /** A small caps label above a group of items (not focusable). */
@@ -42,6 +47,36 @@ export type MenuEntry = MenuItem | MenuHeading | "separator";
 function isHeading(entry: MenuEntry): entry is MenuHeading {
   return typeof entry !== "string" && "heading" in entry;
 }
+
+/** Items that only make sense in a browser or the Mac app, by their words, where a caller hasn't marked them. */
+const DESKTOP_ONLY = new Set(["Open in new tab", "Open in new browser tab", "Open in new window", "Back", "Forward", "Reload"]);
+
+/**
+ * The entries a menu shows here: inside the iOS and Android apps without the desktop's items (new tabs and
+ * windows, Back, Forward, Reload; docs/IOS_POLISH_PLAN.md §7), and without the separators and headings that
+ * leaves with nothing between them.
+ */
+export function menuEntriesHere(items: MenuEntry[], inApp: boolean = nativeApp() !== null): MenuEntry[] {
+  if (!inApp) return items;
+  const kept = items.filter((it) => it === "separator" || isHeading(it) || !(it.desktopOnly ?? DESKTOP_ONLY.has(it.label)));
+  const out: MenuEntry[] = [];
+  for (let i = 0; i < kept.length; i++) {
+    const it = kept[i]!;
+    if (it === "separator" || isHeading(it)) {
+      // A break (or a heading) only between items: not first, not doubled, not last.
+      const next = kept.slice(i + 1).find((n) => n === "separator" || !isHeading(n));
+      const prev = out[out.length - 1];
+      if (it === "separator" && (!prev || prev === "separator" || next === undefined || next === "separator")) continue;
+      if (isHeading(it) && (next === undefined || next === "separator")) continue;
+    }
+    out.push(it);
+  }
+  while (out.length && (out[out.length - 1] === "separator" || isHeading(out[out.length - 1]!))) out.pop();
+  return out;
+}
+
+/** The iPhone, iPad and Android apps draw menus as iOS does (globals.css, "iOS polish WP3"). */
+const appMenus = () => typeof document !== "undefined" && document.documentElement.matches('[data-iphone], [data-native="ios"]');
 
 /**
  * Menu button following the WAI-ARIA menu pattern: arrow keys move, Enter/Space select, Escape closes
@@ -187,6 +222,10 @@ function MenuPanel({
 }) {
   const besideRef = useRef(beside);
   besideRef.current = beside;
+  const [inApp] = useState(() => nativeApp() !== null);
+  items = menuEntriesHere(items, inApp);
+  // A leading column for the checkmarks when any item can be checked (iOS puts them before the words).
+  const checks = items.some((it) => it !== "separator" && !isHeading(it) && it.checked !== undefined);
   const actionable = items.map((it, i) => (it === "separator" || isHeading(it) || it.disabled ? -1 : i)).filter((i) => i >= 0);
   const [active, setActive] = useState(actionable[0] ?? 0);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -256,6 +295,49 @@ function MenuPanel({
     if (pos) menuRef.current?.querySelector<HTMLElement>(`[data-index="${active}"]`)?.focus();
   }, [active, pos]);
 
+  // In the apps (§2.4): the menu grows out of what opened it on a spring (scale 0.5 to 1), and when it closes a
+  // picture of it shrinks to 0.9 and fades over 160 ms while whatever was chosen goes ahead. Reduce Motion: fades.
+  const entered = useRef(false);
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    if (!pos || entered.current || !menu || !appMenus()) return;
+    entered.current = true;
+    if (prefersReducedMotion()) {
+      menu.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "linear" });
+      return;
+    }
+    const { progress, ms } = springFrames(SPRINGS.menu);
+    menu.animate(
+      progress.map((k, i) => ({ transform: `scale(${0.5 + 0.5 * k})`, opacity: Math.min(1, (i / Math.max(1, progress.length - 1)) * 3.2) })),
+      { duration: ms, easing: "linear" },
+    );
+  }, [pos]);
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    const opened = performance.now();
+    return () => {
+      // (A menu shown for a moment only, React's development double mount, has nothing to fade.)
+      if (!menu || !appMenus() || performance.now() - opened < 80 || !host.isConnected) return;
+      const ghost = menu.cloneNode(true) as HTMLElement;
+      ghost.removeAttribute("id");
+      ghost.removeAttribute("role");
+      ghost.setAttribute("aria-hidden", "true");
+      ghost.inert = true;
+      ghost.style.pointerEvents = "none";
+      host.appendChild(ghost);
+      try {
+        ghost.showPopover();
+      } catch {
+        /* Popover API missing: it's fixed in place already. */
+      }
+      const fade = prefersReducedMotion()
+        ? ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: "linear", fill: "forwards" })
+        : ghost.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.9)" }], { duration: 160, easing: "ease-in", fill: "forwards" });
+      fade.onfinish = () => ghost.remove();
+      fade.oncancel = () => ghost.remove();
+    };
+  }, [host]);
+
   return createPortal(
     <div
       ref={menuRef}
@@ -263,6 +345,7 @@ function MenuPanel({
       role="menu"
       aria-label={label}
       popover="manual"
+      data-checks={checks || undefined}
       style={pos ?? { position: "fixed", left: 0, top: 0, margin: 0, right: "auto", bottom: "auto", visibility: "hidden" }}
       className={`ui-pop z-[100] min-w-56 overflow-y-auto border-0 p-1.5 text-ink animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none ${(menuClassName ?? "").replace(/(^|\s)w-full(?=\s|$)/g, " ")}`}
       onContextMenu={(e) => e.preventDefault()}
@@ -311,31 +394,37 @@ function MenuPanel({
             onClick={() => {
               // Focus goes back to the menu button first, so a dialog the item opens returns it there when it closes.
               onClose(true);
-              if (item.danger) haptic("warning");
+              if (item.danger) feel("destructive");
+              else if (item.checked !== undefined) feel("choose");
               item.onSelect();
             }}
             // A row with a second line (a workspace and its plan) gets room to breathe.
             className={`ui-menu-item disabled:opacity-40 pointer-coarse:min-h-11 ${item.description ? "!gap-3 py-2" : ""} ${item.indent ? "!pl-8" : ""} ${item.danger ? "!text-danger" : ""}`}
           >
-            {item.icon ? <span className="text-muted" aria-hidden>{item.icon}</span> : null}
+            {/* The checkmark: at the end on the desktop; in the apps, in a column before the words (globals.css). */}
+            {checks ? (
+              <span data-menu-part="check" aria-hidden className={item.checked ? "order-last flex-none text-heading" : "hidden"}>
+                {item.checked ? <Check size={14} strokeWidth={2.5} /> : null}
+              </span>
+            ) : null}
+            {item.icon ? <span data-menu-part="icon" className="text-muted" aria-hidden>{item.icon}</span> : null}
             {item.description ? (
-              <span className="min-w-0 flex-1 leading-tight">
+              <span data-menu-part="label" className="min-w-0 flex-1 leading-tight">
                 <span className="block truncate">{item.label}</span>
-                <span className="mt-0.5 block truncate text-[11.5px] text-muted">{item.description}</span>
+                <span data-menu-part="description" className="mt-0.5 block truncate text-[11.5px] text-muted">{item.description}</span>
               </span>
             ) : (
-              <span className="flex-1">{item.label}</span>
+              <span data-menu-part="label" className="flex-1">{item.label}</span>
             )}
-            {item.detail ? <span className="flex-none text-xs text-muted">{item.detail}</span> : null}
+            {item.detail ? <span data-menu-part="detail" className="flex-none text-xs text-muted">{item.detail}</span> : null}
             {item.badge ? (
-              <span aria-hidden className="grid h-4 min-w-4 flex-none place-items-center rounded-chip bg-coral px-1 text-[10px] font-semibold leading-none text-white">
+              <span data-menu-part="badge" aria-hidden className="grid h-4 min-w-4 flex-none place-items-center rounded-chip bg-coral px-1 text-[10px] font-semibold leading-none text-white">
                 {item.badge > 99 ? "99+" : item.badge}
               </span>
             ) : item.dot ? (
-              <span aria-hidden className="h-2 w-2 flex-none rounded-tiny bg-coral" />
+              <span data-menu-part="badge" aria-hidden className="h-2 w-2 flex-none rounded-tiny bg-coral" />
             ) : null}
             {item.shortcut ? <span className="text-xs text-faint pointer-coarse:hidden">{keyLabel(item.shortcut)}</span> : null}
-            {item.checked ? <Check size={14} strokeWidth={2.5} aria-hidden className="text-heading" /> : null}
           </button>
         ),
       )}

@@ -3,7 +3,7 @@
 import { useConvex, useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
-import { Bell, BellOff, Check, FileText, MoreHorizontal, Settings, UserPlus, KeyRound, AtSign, MessageSquare, Share2 } from "lucide-react";
+import { Bell, BellOff, Check, FileText, MoreHorizontal, Settings, UserPlus, KeyRound, AtSign, MessageSquare, Share2, Trash2, CircleDot } from "lucide-react";
 import { useTopLayer } from "@/components/ui/topLayer";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
@@ -14,6 +14,8 @@ import { ageText } from "@/lib/format";
 import { t } from "@/i18n";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useCapabilities } from "@/lib/mode";
+import { useIphoneApp } from "@/lib/iphone";
+import { SwipeRow } from "@/components/iphone/Swipe";
 
 type Item = FunctionReturnType<typeof api.notifications.list>[number];
 
@@ -118,6 +120,7 @@ export function NotificationPanel({ unread, onClose, hideTitle = false }: { unre
   const listRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const toast = useToast();
+  const phone = useIphoneApp();
 
   // Focus lands in the panel so arrow keys work right away. On a touch screen it goes to the title (no ring):
   // a ring round the first notification after a tap isn't wanted there, and there are no arrow keys.
@@ -216,10 +219,10 @@ export function NotificationPanel({ unread, onClose, hideTitle = false }: { unre
         ) : (
           groups.map((g) => (
             <div key={g.label} role="group" aria-labelledby={`notifications-${g.label}`}>
-              <h3 id={`notifications-${g.label}`} className="ui-caps px-4 pb-1 pt-3">
+              <h3 id={`notifications-${g.label}`} className={phone ? "ui-caption-caps px-5 pb-1.5 pt-4" : "ui-caps px-4 pb-1 pt-3"}>
                 {g.label}
               </h3>
-              <ul className="px-1.5">
+              <ul className={phone ? "" : "px-1.5"} data-iphone-tappable={phone ? "" : undefined}>
                 {g.rows.map((n) => (
                   <NotificationRow key={n.id} n={n} onOpen={() => open(n)} />
                 ))}
@@ -272,10 +275,14 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
   const acceptPage = useMutation(api.sharing.acceptPageInvite);
   const { navigate } = useAppRouter();
   const toast = useToast();
+  // The phone layout: phone-sized text, swipe actions, and the row's options in its long-press menu (no "…").
+  const phone = useIphoneApp();
   const fail = (e: unknown) => toast.show(errorMessage(e), { tone: "error" });
   const actionable = Boolean(n.documentId) || n.toChanges;
-  return (
-    <li className="group relative">
+  const toggleRead = () => void (n.read ? markUnread({ ids: [n.id] }) : markRead({ ids: [n.id] })).catch(fail);
+  const drop = () => void remove({ ids: [n.id] }).catch(fail);
+  const row = (
+    <>
       <button
         type="button"
         data-nav-item
@@ -284,39 +291,43 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           else if (!n.read) void markRead({ ids: [n.id] }).catch(fail);
         }}
         aria-describedby={`${n.id}-meta`}
-        className="flex w-full gap-3 rounded-control py-2.5 pl-2.5 pr-9 text-left outline-none transition-colors hover:bg-[var(--glass-hover)] focus-visible:bg-[var(--glass-hover)] focus-visible:ring-2 focus-visible:ring-focus"
+        className={
+          phone
+            ? "flex w-full gap-3 py-3 pl-5 pr-9 text-left outline-none transition-colors active:bg-[var(--liquid-press)] ui-key-focus"
+            : "flex w-full gap-3 rounded-control py-2.5 pl-2.5 pr-9 text-left outline-none transition-colors hover:bg-[var(--glass-hover)] focus-visible:bg-[var(--glass-hover)] focus-visible:ring-2 focus-visible:ring-focus"
+        }
       >
         <span className="relative mt-0.5 flex-none">
           {n.actorName ? (
-            <Avatar name={n.actorName} url={n.actorAvatarUrl} size={28} />
+            <Avatar name={n.actorName} url={n.actorAvatarUrl} size={phone ? 36 : 28} />
           ) : (
-            <span aria-hidden className="grid h-7 w-7 place-items-center rounded-chip bg-sunken text-muted">
-              <Bell size={13} />
+            <span aria-hidden className={`grid place-items-center rounded-chip bg-sunken text-muted ${phone ? "h-9 w-9" : "h-7 w-7"}`}>
+              <Bell size={phone ? 17 : 13} />
             </span>
           )}
           {n.actorName ? <KindIcon kind={n.kind} /> : null}
         </span>
         <span className="min-w-0 flex-1">
-          <span className={`block text-[13px] leading-snug ${n.read ? "text-muted" : "text-ink"}`}>
+          <span className={`block ${phone ? "text-[15px] leading-5" : "text-[13px] leading-snug"} ${n.read ? "text-muted" : "text-ink"}`}>
             <Sentence n={n} />
           </span>
           {n.body ? (
-            <span className="mt-1 line-clamp-2 block border-l-2 border-line-strong pl-2 text-[12.5px] leading-snug text-muted">{n.body}</span>
+            <span className={`mt-1 line-clamp-2 block border-l-2 border-line-strong pl-2 text-muted ${phone ? "text-[15px] leading-5" : "text-[12.5px] leading-snug"}`}>{n.body}</span>
           ) : null}
-          <span id={`${n.id}-meta`} className="mt-1 block text-[11.5px] text-faint">
+          <span id={`${n.id}-meta`} className={`mt-1 block text-faint ${phone ? "text-[13px] leading-[18px]" : "text-[11.5px]"}`}>
             {ageText(n.createdAt)}
             {n.read ? null : <span className="sr-only">, unread</span>}
           </span>
         </span>
-        {n.read ? null : <span aria-hidden className="absolute right-3.5 top-4 h-2 w-2 rounded-tiny bg-coral transition-opacity group-hover:opacity-0 group-focus-within:opacity-0" />}
+        {n.read ? null : <span aria-hidden className={`absolute h-2 w-2 rounded-tiny bg-coral transition-opacity ${phone ? "right-4 top-5" : "right-3.5 top-4 group-hover:opacity-0 group-focus-within:opacity-0"}`} />}
       </button>
       {n.fileId || (n.kind === "invite" && n.inviteId) || n.pageInviteId ? (
-        <div className="-mt-1 flex gap-1.5 pb-2.5 pl-[50px]">
+        <div className={`-mt-1 flex gap-1.5 pb-2.5 ${phone ? "pl-[68px]" : "pl-[50px]"}`}>
           {n.fileId ? <DownloadFile fileId={n.fileId} /> : null}
           {n.pageInviteId ? (
             <button
               type="button"
-              className="ui-btn ui-btn-primary h-7 px-2.5 text-xs font-medium"
+              className={`ui-btn ui-btn-primary font-medium ${phone ? "h-9 px-3.5 text-[15px]" : "h-7 px-2.5 text-xs"}`}
               onClick={() =>
                 acceptPage({ inviteId: n.pageInviteId! }).then((r) => {
                   toast.show("The page was added to Shared with Me.", { tone: "success" });
@@ -330,7 +341,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           {n.kind === "invite" && n.inviteId ? (
             <button
               type="button"
-              className="ui-btn ui-btn-primary h-7 px-2.5 text-xs font-medium"
+              className={`ui-btn ui-btn-primary font-medium ${phone ? "h-9 px-3.5 text-[15px]" : "h-7 px-2.5 text-xs"}`}
               onClick={() =>
                 accept({ inviteId: n.inviteId! }).then(
                   () => toast.show("You joined the workspace.", { tone: "success" }),
@@ -343,6 +354,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           ) : null}
         </div>
       ) : null}
+      {/* On the phone this stays out of sight (globals.css, [data-ctx-host]): a long press opens it, VoiceOver finds it. */}
       <MenuButton
         label={`Options for this notification`}
         className="!absolute right-1.5 top-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
@@ -350,11 +362,23 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
         trigger={<MoreHorizontal size={15} aria-hidden />}
         items={[
           n.read
-            ? { label: "Mark as unread", onSelect: () => void markUnread({ ids: [n.id] }).catch(fail) }
-            : { label: "Mark as read", onSelect: () => void markRead({ ids: [n.id] }).catch(fail) },
-          { label: "Remove", danger: true, onSelect: () => void remove({ ids: [n.id] }).catch(fail) },
+            ? { label: "Mark as unread", icon: phone ? <CircleDot size={14} /> : undefined, onSelect: toggleRead }
+            : { label: "Mark as read", icon: phone ? <Check size={14} /> : undefined, onSelect: toggleRead },
+          ...(phone ? ["separator" as const] : []),
+          { label: "Remove", icon: phone ? <Trash2 size={14} /> : undefined, danger: true, onSelect: drop },
         ]}
       />
+    </>
+  );
+  if (!phone) return <li className="group relative">{row}</li>;
+  return (
+    <li data-ctx-host="" className="relative">
+      <SwipeRow
+        leading={[n.read ? { label: "Unread", icon: <CircleDot />, tone: "#5b6ad0", onAction: toggleRead } : { label: "Read", icon: <Check />, tone: "#5b6ad0", onAction: toggleRead }]}
+        trailing={[{ label: "Remove", icon: <Trash2 />, tone: "#d6453d", danger: true, onAction: drop }]}
+      >
+        <div className="relative">{row}</div>
+      </SwipeRow>
     </li>
   );
 }

@@ -1,0 +1,228 @@
+// The iPhone app's menus, sheets and dialogs (docs/IOS_POLISH_PLAN.md WP3): menus drawn to the iOS menu spec
+// in Folevi's fonts (17 pt rows 44 tall, hairlines in a section, 8 pt bands between, icons at the end, no
+// desktop items), shrinking away when they close; sheets with a 56 pt header and 44 pt buttons that follow the
+// finger 1:1 and settle or go away by where and how fast they're let go; confirmations and renames as the
+// system's alert through the native bridge (a stand-in here that records the calls), and Quick add task as a
+// sheet of glass chips.
+import type { Browser, Page, TestInfo } from "@playwright/test";
+import { expect, prepareContext, test } from "./fixtures/localShell";
+
+const IPHONE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 FoleviiOS/1.0";
+
+/** The app's bridge, with the native alert answered by `window.__answer` (set by the test). */
+function fakeBridge() {
+  const calls: { method: string; arg?: unknown }[] = [];
+  const w = window as unknown as { __answer: unknown; __native: { calls: typeof calls } };
+  w.__answer = null;
+  const bridge = {
+    platform: "ios",
+    version: "1.0",
+    haptic: (kind: string) => calls.push({ method: "haptic", arg: kind }),
+    hapticPrepare: () => undefined,
+    setStatusBar: () => undefined,
+    openExternal: async () => true,
+    getSettings: async () => ({ lock: false, lockAfter: 0, method: "faceID" }),
+    setSettings: async () => ({ lock: false, lockAfter: 0, method: "faceID" }),
+    onCommand: () => () => undefined,
+    alert: async (o: unknown) => {
+      calls.push({ method: "alert", arg: o });
+      return w.__answer;
+    },
+  };
+  Object.defineProperty(window, "foleviNative", { value: bridge });
+  Object.assign(window, { __native: { calls } });
+  const mark = () => document.documentElement?.setAttribute("data-native", "ios");
+  mark();
+  if (!document.documentElement) new MutationObserver((_, watch) => document.documentElement && (mark(), watch.disconnect())).observe(document, { childList: true });
+  window.addEventListener("contextmenu", (e) => (e.isTrusted ? (e.stopImmediatePropagation(), e.preventDefault()) : undefined), true);
+  const hideBadge = () => {
+    const style = document.createElement("style");
+    style.textContent = "nextjs-portal { display: none !important; }";
+    document.head.appendChild(style);
+  };
+  if (document.head) hideBadge();
+  else document.addEventListener("DOMContentLoaded", hideBadge, { once: true });
+}
+
+/** A finger down at a point, moving through `path` (one step every `step` ms), then up. */
+async function drag(page: Page, from: { x: number; y: number }, path: { x: number; y: number }[], step = 40, hold = 0) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [from] });
+  for (const p of path) {
+    await page.waitForTimeout(step);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [p] });
+  }
+  if (hold) await page.waitForTimeout(hold);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+}
+
+let n = 0;
+/** An iPhone in the app, on a library of its own (the built-in interface in local mode). */
+async function iphone(browser: Browser, testInfo: TestInfo) {
+  const context = await browser.newContext({ viewport: { width: 402, height: 874 }, userAgent: IPHONE_UA, hasTouch: true, isMobile: true });
+  await prepareContext(context, testInfo, { libraryName: `iphone-sheets-${Date.now()}-${n++}`, platform: "ios" });
+  await context.addInitScript(fakeBridge);
+  const page = await context.newPage();
+  await page.goto("/documents");
+  await expect(page.locator("html")).toHaveAttribute("data-iphone", "", { timeout: 60_000 });
+  await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible({ timeout: 60_000 });
+  return { context, page };
+}
+
+const calls = (page: Page) => page.evaluate(() => (window as unknown as { __native: { calls: { method: string; arg?: unknown }[] } }).__native.calls);
+
+test("iPhone: menus, sheets, native alerts and Quick add @local", async ({ browser, browserName }, testInfo) => {
+  test.skip(browserName !== "chromium", "Touch input is driven through Chromium's DevTools protocol.");
+  test.setTimeout(300_000);
+  const { context, page } = await iphone(browser, testInfo);
+
+  // A menu, as iOS draws one in Folevi's fonts.
+  await page.getByRole("button", { name: "Create" }).click();
+  const create = page.getByRole("menu", { name: "Create" });
+  await expect(create).toBeVisible();
+  // (Once it has grown to its size.)
+  await page.waitForTimeout(700);
+  const look = await create.evaluate((m) => {
+    const items = [...m.querySelectorAll<HTMLElement>(".ui-menu-item")];
+    const first = items[0]!;
+    const icon = first.querySelector<HTMLElement>('[data-menu-part="icon"]');
+    const label = first.querySelector<HTMLElement>('[data-menu-part="label"]')!;
+    const cs = getComputedStyle(first);
+    return {
+      radius: getComputedStyle(m).borderTopLeftRadius,
+      padding: getComputedStyle(m).paddingTop,
+      fontSize: cs.fontSize,
+      height: first.offsetHeight,
+      font: cs.fontFamily,
+      iconAfterLabel: icon ? icon.getBoundingClientRect().left > label.getBoundingClientRect().right : null,
+      minWidth: (m as HTMLElement).offsetWidth,
+      bands: [...m.querySelectorAll<HTMLElement>('[role="separator"]')].map((s) => s.offsetHeight),
+      hairline: items[1] ? getComputedStyle(items[1]).boxShadow : "",
+    };
+  });
+  expect(look.radius).toBe("18px");
+  expect(look.padding).toBe("0px");
+  expect(look.fontSize).toBe("17px");
+  expect(look.height).toBeGreaterThanOrEqual(44);
+  expect(look.font).toMatch(/^"?Instrument Sans/);
+  expect(look.iconAfterLabel).toBe(true);
+  // (250 unless the caller asks for its own, as the tab bar does with 248.)
+  expect(look.minWidth).toBeGreaterThanOrEqual(240);
+  for (const b of look.bands) expect(b).toBe(8);
+
+  // A folder (New folder, in its glass card).
+  await create.getByRole("menuitem", { name: "New folder" }).click();
+  const card = page.getByRole("dialog", { name: "New folder" });
+  await card.getByPlaceholder("Folder name").fill("Field notes");
+  await card.getByRole("button", { name: "Create" }).click();
+  await expect(card).toHaveCount(0);
+  // The menu went away as a fading picture of itself, gone by now.
+  await expect(page.locator('[popover][aria-hidden="true"]')).toHaveCount(0);
+
+  // Its tile's "…" menu on Home: Rename… asks with the system's alert and its text field.
+  await page.goto(`/documents`);
+  await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible({ timeout: 60_000 });
+  const folders = page.getByRole("list", { name: "Folders" });
+  await expect(folders.getByText("Field notes", { exact: true })).toBeVisible();
+  await page.evaluate(() => ((window as unknown as { __answer: unknown }).__answer = { id: "confirm", text: "  Field journal " }));
+  await page.locator('button[aria-label="Folder options for Field notes"]').first().click();
+  await page.getByRole("menu", { name: "Folder options for Field notes" }).getByRole("menuitem", { name: "Rename…" }).click();
+  await expect(folders.getByText("Field journal", { exact: true })).toBeVisible();
+  const rename = (await calls(page)).find((c) => c.method === "alert") as { arg: { title: string; field?: { value: string } } };
+  expect(rename.arg.title).toBe("Rename folder");
+  expect(rename.arg.field?.value).toBe("Field notes");
+  // No Folevi dialog came up for it.
+  await expect(page.getByRole("dialog", { name: "Rename folder" })).toHaveCount(0);
+
+  // Delete folder…: the alert, destructive, and a warning felt when it's done.
+  await page.evaluate(() => ((window as unknown as { __answer: unknown }).__answer = { id: "confirm" }));
+  await page.locator('button[aria-label="Folder options for Field journal"]').first().click();
+  await page.getByRole("menu", { name: "Folder options for Field journal" }).getByRole("menuitem", { name: "Delete folder…" }).click();
+  await expect(page.getByText("Folder deleted")).toBeVisible();
+  const asked = (await calls(page)).filter((c) => c.method === "alert").at(-1) as { arg: { title: string; actions: { id: string; title: string; style?: string }[] } };
+  expect(asked.arg.title).toBe("Delete “Field journal”?");
+  expect(asked.arg.actions.find((a) => a.id === "confirm")).toMatchObject({ title: "Delete folder", style: "destructive" });
+  expect((await calls(page)).some((c) => c.method === "haptic" && c.arg === "warning")).toBe(true);
+
+  // A sheet: the account sheet's 56 pt header, its Close a 44 pt target with a 32 pt circle 12 pt in.
+  await page.goto(`/documents`);
+  await page.locator("button[aria-label$='account and places']").first().click();
+  const sheet = page.getByRole("dialog", { name: "Account" });
+  await expect(sheet).toBeVisible();
+  await page.waitForTimeout(900);
+  const panel = sheet.locator('[data-iphone-sheet="sheet"]');
+  const header = await panel.evaluate((p) => {
+    const h = p.querySelector("header")!.getBoundingClientRect();
+    const close = p.querySelector<HTMLElement>('button[aria-label="Close"]')!;
+    const c = close.getBoundingClientRect();
+    const circle = getComputedStyle(close, "::before");
+    const pr = p.getBoundingClientRect();
+    return { header: h.height, w: c.width, h: c.height, circle: circle.width, right: pr.right - (c.right - 6), top: c.top + 6 - pr.top };
+  });
+  expect(header).toMatchObject({ header: 56, w: 44, h: 44, circle: "32px" });
+  expect(Math.round(header.right)).toBe(12);
+  expect(Math.round(header.top)).toBe(12);
+
+  // Dragged down a little and let go slowly: it follows the finger, then settles back.
+  const box = (await panel.boundingBox())!;
+  const grab = { x: box.x + box.width / 2, y: box.y + 28 };
+  await drag(page, grab, [1, 2, 3, 4, 5, 6].map((i) => ({ x: grab.x, y: grab.y + i * 10 })), 40, 160);
+  await page.waitForTimeout(1200);
+  await expect(sheet).toBeVisible();
+  expect(Math.abs((await panel.boundingBox())!.y - box.y)).toBeLessThan(2);
+
+  // While the finger holds it 120 points down, the sheet is 120 points down (1:1).
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [grab] });
+  for (let i = 1; i <= 6; i++) {
+    await page.waitForTimeout(30);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: grab.x, y: grab.y + i * 20 }] });
+  }
+  await page.waitForTimeout(60);
+  // (The first 6 points decide it's a drag.)
+  expect(Math.abs((await panel.boundingBox())!.y - box.y - 120)).toBeLessThan(8);
+  // A fast flick on down: it goes.
+  for (let i = 7; i <= 10; i++) {
+    await page.waitForTimeout(10);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: grab.x, y: grab.y + i * 45 }] });
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+  await expect(sheet).toHaveCount(0, { timeout: 3000 });
+
+  // Quick add task: a field, a round add button, and glass chips; Return adds it.
+  await page.goto(`/tasks/today`);
+  await page.getByRole("button", { name: "Quick task" }).click();
+  const quick = page.getByRole("dialog", { name: "Quick add task" });
+  await expect(quick).toBeVisible();
+  await expect(quick.getByRole("group", { name: "Task details" }).getByRole("button", { name: "Due date" })).toBeVisible();
+  await expect(quick.getByRole("button", { name: /^Priority/ })).toBeVisible();
+  await expect(quick.getByRole("button", { name: /^Adds to Inbox/ })).toBeVisible();
+  const add = quick.getByRole("button", { name: "Add task" });
+  expect(await add.evaluate((b) => [b.getBoundingClientRect().width, b.getAttribute("aria-disabled")])).toEqual([44, "true"]);
+  // Priority from its menu (a choice, felt as one).
+  await quick.getByRole("button", { name: /^Priority/ }).click();
+  await page.getByRole("menu", { name: /^Priority/ }).getByRole("menuitemradio", { name: "High" }).click();
+  await expect(quick.getByRole("button", { name: "Priority: High" })).toBeVisible();
+  expect((await calls(page)).some((c) => c.method === "haptic" && c.arg === "selection")).toBe(true);
+  await quick.getByPlaceholder("What needs doing?").fill("Water the ferns");
+  await quick.getByPlaceholder("What needs doing?").press("Enter");
+  await expect(page.getByText("Task added to Inbox")).toBeVisible();
+  await expect(quick).toHaveCount(0);
+  await context.close();
+});
+
+test("the app's menus leave out the desktop's items @local", async ({ browser }, testInfo) => {
+  test.setTimeout(200_000);
+  const { context, page } = await iphone(browser, testInfo);
+  // The page's own menu (a press anywhere without one of its own): no Back, Forward or Reload.
+  await page.locator("h1").first().dispatchEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 100, clientY: 140 });
+  const menu = page.getByRole("menu", { name: "Folevi" });
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: "New note" })).toBeVisible();
+  for (const name of ["Back", "Forward", "Reload"]) await expect(menu.getByRole("menuitem", { name, exact: true })).toHaveCount(0);
+  // And no separator left dangling at its end.
+  expect(await menu.evaluate((m) => m.lastElementChild?.getAttribute("role"))).not.toBe("separator");
+  await context.close();
+});

@@ -1,10 +1,28 @@
 "use client";
 
-import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { IconButton } from "./Button";
 import { useIphoneApp } from "@/lib/iphone";
 import { Sheet } from "@/components/iphone/Sheet";
+import { confirmAction, hasNative } from "@/lib/native/ui";
+
+/**
+ * A dialog that only asks before doing something (Delete, Sign out): inside the iOS and Android apps it's the
+ * system's own alert instead (docs/IOS_POLISH_PLAN.md §4.2), with these words; elsewhere the dialog as drawn.
+ */
+export interface DialogConfirm {
+  /** The confirming button's words, as on the dialog's own button ("Delete folder"). */
+  label: string;
+  destructive?: boolean;
+  cancel?: string;
+  /** The alert's message, when the dialog's description isn't plain text. */
+  message?: string;
+  /** Runs when confirmed (the dialog's onClose runs after, as when it's dismissed). */
+  onConfirm: () => void;
+  /** "sheet": an action sheet from the bottom (on iPad from `anchor`), as iOS asks before deleting from a menu. */
+  style?: "alert" | "sheet";
+}
 
 /**
  * Modal dialog on the native <dialog> element: focus trapping, Escape to close, inert background and
@@ -18,6 +36,7 @@ export function Dialog({
   children,
   footer,
   size = "md",
+  confirm,
 }: {
   open: boolean;
   onClose: () => void;
@@ -26,6 +45,8 @@ export function Dialog({
   children?: ReactNode;
   footer?: ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
+  /** A confirmation: the system's alert in the apps (see DialogConfirm). */
+  confirm?: DialogConfirm;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -41,8 +62,24 @@ export function Dialog({
     if (!open && el.open) el.close();
     setShown(open);
   }, [open]);
+  // A confirmation in the apps: the system's alert, asked once each time the dialog opens.
+  const [native] = useState(() => Boolean(confirm) && hasNative("alert"));
+  const asking = useRef(false);
+  const latest = useRef({ confirm, onClose, title, description });
+  latest.current = { confirm, onClose, title, description };
+  useEffect(() => {
+    if (!native || !open || asking.current) return;
+    asking.current = true;
+    const { confirm: c, title: t, description: d } = latest.current;
+    void confirmAction({ title: t, message: c?.message ?? (typeof d === "string" ? d : undefined), confirm: c!.label, cancel: c?.cancel, destructive: c?.destructive, style: c?.style }).then((yes) => {
+      asking.current = false;
+      if (yes) latest.current.confirm?.onConfirm();
+      latest.current.onClose();
+    });
+  }, [native, open]);
   // In the iPhone app a dialog is a sheet from the bottom (a short one, a glass card in the middle).
   const iphone = useIphoneApp();
+  if (native) return null;
   if (iphone) {
     return (
       <Sheet open={open} onClose={onClose} title={title} description={description} footer={footer} variant={size === "sm" ? "card" : "sheet"} size={size === "lg" || size === "xl" ? "large" : "fit"}>

@@ -139,6 +139,8 @@ export function FolderMenu({ folder, trigger, className }: { folder: MenuFolder;
             : "The folder is removed. Its documents are kept and move to Drafts."
         }
         size="sm"
+        // In the apps: the system's alert.
+        confirm={{ label: "Delete folder", destructive: true, onConfirm: () => void act(Promise.resolve().then(() => folderActions.remove(folder.id, folder.name)), "Folder deleted") }}
         footer={
           <>
             <Button onClick={() => setDeleting(false)}>Cancel</Button>

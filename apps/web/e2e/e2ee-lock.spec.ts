@@ -1,16 +1,20 @@
 import { expect, test } from "@playwright/test";
-import { APP, newPerson, showFolders } from "./helpers";
-import { e2eeScan, marker, paletteResults } from "./e2ee-helpers";
+import { APP, createWorkspace, newPerson, showFolders, switchTo } from "./helpers";
+import { e2eeScan, marker, migrationDone, paletteResults, turnOnEncryption } from "./e2ee-helpers";
 
 // §11.4 e2ee-lock: in a Standard space, lock a folder; its notes are sealed, server search can't find them,
-// search on the device can. Needs LOCK_MENU_FOR_EVERYONE on (components/e2ee/LockDialog.tsx), which is off until launch.
+// search on the device can. Until launch the folder menu offers "Always fully encrypted" only to accounts
+// that have keys (LOCK_MENU_FOR_EVERYONE in components/e2ee/LockDialog.tsx), so the account gets its keys by
+// encrypting a workspace first; Personal stays Standard. Once the flag is on, the first lock opens the wizard.
 
-// The item shows to accounts without keys only once LOCK_MENU_FOR_EVERYONE is on (components/e2ee/LockDialog.tsx),
-// which waits for launch; flip this to `test` then.
-test.fixme("a locked folder in a Standard space", async ({ browser }) => {
-  test.setTimeout(420_000);
-  const { page, context } = await newPerson(browser, "Lock Person");
-  await showFolders(page);
+test("a locked folder in a Standard space", async ({ browser }) => {
+  test.setTimeout(1_200_000);
+  const { page, context, email } = await newPerson(browser, "Lock Person");
+  const since = Date.now();
+  await createWorkspace(page, "Key Team");
+  await turnOnEncryption(page, { workspace: true });
+  await switchTo(page, "Personal");
+  await page.goto(`${APP}/documents`);
   const nav = page.getByRole("navigation", { name: "Folio" });
   const folder = marker("FOLDER");
   const title = marker("TITLE");
@@ -23,36 +27,32 @@ test.fixme("a locked folder in a Standard space", async ({ browser }) => {
   await page.waitForURL(/\/d\/[0-9A-Z]{26}/);
   await page.keyboard.type(title);
   await expect(page.getByTestId("sync-status")).toHaveAttribute("data-status", "saved", { timeout: 20_000 });
+  await showFolders(page);
 
-  // The first lock sets up encryption (two ways to unlock), then asks.
   await nav.getByRole("link", { name: new RegExp(`^${folder}`) }).hover();
   await nav.getByRole("button", { name: `Folder options for ${folder}` }).click();
   await page.getByRole("menuitemcheckbox", { name: "Always fully encrypted" }).click();
-  const w = page.getByRole("dialog", { name: "Turn on encryption" });
-  await expect(w.getByText("To encrypt this folder, set up encryption first.")).toBeVisible();
-  await w.getByRole("button", { name: "Continue" }).click();
-  await w.getByRole("button", { name: "Add Recovery key" }).click();
-  const groups = (await w.getByRole("list", { name: "Your recovery key" }).getByRole("listitem").allTextContents()).map((t) => t.replace(/^Group \d+: /, "").trim());
-  await w.getByLabel("Group 3").fill(groups[2]!);
-  await w.getByLabel("Group 7").fill(groups[6]!);
-  await w.getByRole("button", { name: "Check and continue" }).click();
-  await w.getByRole("button", { name: "Add Encryption passphrase" }).click();
-  await w.getByLabel("Passphrase", { exact: true }).fill("lantern orchard velvet compass");
-  await w.getByLabel("Type it again").fill("lantern orchard velvet compass");
-  await w.getByRole("button", { name: "Save passphrase" }).click();
-  await w.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("dialog", { name: `Always fully encrypt ${folder}?` }).getByRole("button", { name: "Encrypt" }).click();
   await expect(nav.getByRole("link", { name: `${folder} Always fully encrypted` })).toBeVisible({ timeout: 60_000 });
+  await migrationDone(page);
 
-  // This device finds it; a browser without the replica (server search only) doesn't.
-  await expect((await paletteResults(page, title)).filter({ hasText: title })).toBeVisible({ timeout: 45_000 });
-  await page.keyboard.press("Escape");
+  // This device finds it; a browser without the replica (locked: server search only) doesn't, and opens.
+  await page.goto(`${APP}/documents`);
+  await expect.poll(async () => {
+    const n = await (await paletteResults(page, title)).filter({ hasText: title }).filter({ hasNotText: "Ask Foli AI" }).count();
+    await page.keyboard.press("Escape");
+    return n;
+  }, { timeout: 120_000, intervals: [5_000] }).toBeGreaterThan(0);
   const viewer = await browser.newContext({ storageState: { cookies: (await context.storageState()).cookies, origins: [] } });
   const fresh = await viewer.newPage();
-  await fresh.goto(`${APP}/documents`);
-  const results = await paletteResults(fresh, title);
-  await fresh.waitForTimeout(3000);
-  await expect(results.filter({ hasText: title })).toHaveCount(0);
-  await expect.poll(() => e2eeScan([title, folder]).clean, { timeout: 120_000 }).toBe(true);
+  // The folder's notes are sealed in the background (a lock job): once done, server search has nothing.
+  await expect.poll(async () => {
+    await fresh.goto(`${APP}/documents`);
+    const results = await paletteResults(fresh, title);
+    await fresh.waitForTimeout(3000);
+    // The palette always offers "Ask Foli AI: <what you typed>": only documents count.
+    return await results.filter({ hasText: title }).filter({ hasNotText: "Ask Foli AI" }).count();
+  }, { timeout: 240_000, intervals: [10_000] }).toBe(0);
+  await expect.poll(() => e2eeScan([title, folder], { since, email }).clean, { timeout: 600_000, intervals: [30_000] }).toBe(true);
   await Promise.all([context.close(), viewer.close()]);
 });

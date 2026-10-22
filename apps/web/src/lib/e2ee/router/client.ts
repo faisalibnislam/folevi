@@ -37,6 +37,15 @@ export function lockedSessionError(): ConvexError<{ code: string; message: strin
   return new ConvexError({ code: "e2ee_locked_session", message: "Unlock end-to-end encryption on this device to open this." });
 }
 
+/**
+ * A call while this device is locked: about an encrypted space or a sealed note, it waits for the unlock
+ * screen; about a Standard space that only has some locked notes, it goes to Convex as it is (Standard
+ * stays usable; the locked notes show as the server has them, and opening one asks to unlock).
+ */
+function lockedMode(res: Resolution): { kind: "locked" } | { kind: "pass" } {
+  return res.sealed || isEncryptedLevel(res.space) || res.space?.state === "disabling" ? { kind: "locked" } : { kind: "pass" };
+}
+
 /** What the router needs of the plain Convex client (a ConvexReactClient, or a test double with watchQuery). */
 export type InnerReactClient = Pick<ConvexReactClient, "watchQuery" | "query" | "mutation" | "action" | "connectionState" | "subscribeToConnectionState" | "setAuth" | "clearAuth" | "close"> & {
   logger?: unknown;
@@ -469,7 +478,7 @@ export class E2eeRouterClient {
     }
     const res = this.spaces.resolve(args);
     if (!res.active) return { kind: "pass" };
-    if (this.session.state() !== "unlocked") return { kind: "locked" };
+    if (this.session.state() !== "unlocked") return lockedMode(res);
     if (route.kind === "decode" || route.kind === "ai") return { kind: "decode", route, res };
     if (route.kind === "device" && res.space) {
       if (isEncryptedLevel(res.space) && !route.serverToo) return { kind: "device", scope: res.space.scope, res };
@@ -708,7 +717,10 @@ export class E2eeRouterClient {
     let res = this.spaces.resolve(args);
     if (!res.active && route.kind === "compose" && route.personal) res = this.spaces.resolve({ scope: { kind: "personal" } });
     if (!res.active) return await forward();
-    if (this.session.state() !== "unlocked") throw lockedSessionError();
+    if (this.session.state() !== "unlocked") {
+      if (lockedMode(res).kind === "pass") return await forward();
+      throw lockedSessionError();
+    }
     const call = this.callOf(name, kind, args, res);
     switch (route.kind) {
       case "sealed": {

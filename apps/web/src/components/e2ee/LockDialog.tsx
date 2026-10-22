@@ -9,7 +9,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { useAppState } from "@/lib/app/state";
 import { useCapabilities } from "@/lib/mode";
 import { copy } from "@/lib/e2ee/copy";
-import { useKeySession } from "@/lib/e2ee/keys";
+import { setup, useKeySession } from "@/lib/e2ee/keys";
 import { useE2eeActions, useE2eeSpaceStatus } from "./hooks";
 import { SetupWizard, pendingWizard } from "./SetupWizard";
 
@@ -32,8 +32,16 @@ export function LockDialog({ open, onClose, kind, id, name, locked }: { open: bo
   const apply = async () => {
     setBusy(true);
     try {
-      if (kind === "folder") await actions.setFolderLocked(id, !locked);
-      else await actions.setDocumentLocked(id, !locked);
+      const run = () => (kind === "folder" ? actions.setFolderLocked(id, !locked) : actions.setDocumentLocked(id, !locked));
+      try {
+        await run();
+      } catch (e) {
+        // The first lock in a space that has no key yet (an account with keys from another space): make the
+        // space's key, then lock (§6.9).
+        if (locked || (e as { data?: { code?: string } }).data?.code !== "e2ee_not_set_up") throw e;
+        await setup.setUpSpace(scope);
+        await run();
+      }
       toast.show(locked ? l.stopped(name) : l.done(name), { tone: "success" });
       onClose();
     } catch (e) {

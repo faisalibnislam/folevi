@@ -203,6 +203,17 @@ describe("locked sessions (§6.3)", () => {
   });
 });
 
+describe("locked sessions in a Standard space with locked notes", () => {
+  test("the space's lists come from the server as they are; a locked note's own calls wait for the unlock", async () => {
+    const { router, fake } = await world({ level: "standard", lockedCount: 1, locked: true });
+    fake.extra.set("documents:list", () => [{ id: "x", title: "Plain" }]);
+    await expect(router.query(api.documents.list, LIST)).resolves.toEqual([{ id: "x", title: "Plain" }]);
+    expect(() => router.watchQuery(api.documents.list, LIST).localQueryResult()).not.toThrow();
+    router.spaces.noteDocument("LOCKED-NOTE", PERSONAL, true);
+    await expect(router.query(api.documents.get, { documentId: "LOCKED-NOTE" })).rejects.toMatchObject({ data: { code: "e2ee_locked_session" } });
+  });
+});
+
 describe("sealed variants (§6.4 sealed)", () => {
   test("a folder made in an encrypted space has a sealed name", async () => {
     const { router, fake } = await world();

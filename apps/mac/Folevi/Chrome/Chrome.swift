@@ -143,8 +143,17 @@ enum Chrome {
     /// the front main window's if one is showing; nil otherwise (Settings or Quick Add is key, or no window).
     static var keyMainView: FoleviWebView? {
         if let key = WindowManager.shared.mains.first(where: { $0.window?.isKeyWindow == true }) { return key.view }
-        guard !NSApp.isActive, let front = WindowManager.shared.frontMain, front.window?.isVisible == true else { return nil }
+        guard !NSApp.isActive, let front = frontmostMain else { return nil }
         return front.view
+    }
+
+    /// The main window nearest the front of the screen that's showing.
+    static var frontmostMain: MainWindowController? {
+        let mains = WindowManager.shared.mains
+        for w in NSApp.orderedWindows where w.isVisible {
+            if let m = mains.first(where: { $0.window === w }) { return m }
+        }
+        return nil
     }
 
     /// The key window's web view, whatever window it is (a main window, Settings, Quick Add).

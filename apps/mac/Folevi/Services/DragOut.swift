@@ -170,7 +170,7 @@ final class DragOut: NSObject, NSFilePromiseProviderDelegate {
     }
 
     /// File promises for `notes` that also carry what WebKit wrote for its drag, laid out like WebKit's item.
-    func items(for notes: [NoteRef], token: String, view: FoleviWebView, carrying extra: [(NSPasteboard.PasteboardType, Data)], frame: NSRect, image: Any?) -> [NSDraggingItem] {
+    func items(for notes: [NoteRef], token: String, view: FoleviWebView, carrying extra: [(NSPasteboard.PasteboardType, Data)], frame: NSRect, image: Any?, looks: NSDraggingItem? = nil) -> [NSDraggingItem] {
         promises = []
         return notes.enumerated().map { i, note in
             let provider = Promise(fileType: Self.markdownType.identifier, delegate: self)
@@ -179,6 +179,8 @@ final class DragOut: NSObject, NSFilePromiseProviderDelegate {
             if i == 0 { provider.extra = extra }
             let item = NSDraggingItem(pasteboardWriter: provider)
             item.setDraggingFrame(frame.offsetBy(dx: CGFloat(i) * 4, dy: CGFloat(i) * -4), contents: i == 0 ? image : nil)
+            // The picture WebKit made for the drag (the page's setDragImage), as WebKit would have shown it.
+            if i == 0, let looks, let provider = looks.imageComponentsProvider { item.imageComponentsProvider = provider }
             return item
         }
     }
@@ -347,7 +349,7 @@ extension FoleviWebView {
             }
             var image: Any?
             if let component = first.imageComponents?.first { image = component.contents }
-            let mine = DragOut.shared.items(for: drag.notes, token: drag.token, view: self, carrying: extra, frame: first.draggingFrame, image: image)
+            let mine = DragOut.shared.items(for: drag.notes, token: drag.token, view: self, carrying: extra, frame: first.draggingFrame, image: image, looks: first)
             DragOut.shared.starting = true
             defer { DragOut.shared.starting = false }
             let session = super.beginDraggingSession(with: mine, event: event, source: source)

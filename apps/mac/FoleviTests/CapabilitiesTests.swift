@@ -2,6 +2,7 @@
 // image, a dragged note's file promise written on drop, file names and paths, Spotlight's identifiers, the
 // clipboard for the app's menus and the System Settings panes a page may open.
 import AppKit
+import AudioToolbox
 import AVFoundation
 import CoreText
 import XCTest
@@ -77,9 +78,15 @@ final class CapabilitiesTests: XCTestCase {
         XCTAssertEqual(read.fileFormat.channelCount, 1)
         XCTAssertEqual(read.fileFormat.sampleRate, 48_000)
         XCTAssertEqual(Double(read.length) / read.fileFormat.sampleRate, 1, accuracy: 0.1)
-        let size = try XCTUnwrap(FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int)
-        // AAC at 64 kbit/s: about 8 KB a second.
-        XCTAssertLessThan(size, 20_000)
+        // AAC at 64 kbit/s: about 8 KB of audio a second (the file adds a fixed header of its own).
+        var audioFile: AudioFileID?
+        XCTAssertEqual(AudioFileOpenURL(url as CFURL, .readPermission, 0, &audioFile), noErr)
+        var bytes: UInt64 = 0
+        var size = UInt32(MemoryLayout<UInt64>.size)
+        XCTAssertEqual(AudioFileGetProperty(try XCTUnwrap(audioFile), kAudioFilePropertyAudioDataByteCount, &size, &bytes), noErr)
+        AudioFileClose(audioFile!)
+        XCTAssertGreaterThan(bytes, 6_000)
+        XCTAssertLessThan(bytes, 10_000)
     }
 
     // MARK: text recognition

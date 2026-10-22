@@ -123,12 +123,15 @@
     keyboard: function (o) {
       void quietly(call("FoleviNative", "keyboard", { interactiveDismiss: !!(o && o.interactiveDismiss) }));
     },
-    /** Every move of the keyboard ({ height, duration, curve, visible }); returns the function that stops. */
+    /** Every move of the keyboard ({ height, duration, curve, visible, late }); returns the function that stops. */
     onKeyboard: function (listener) {
       var handle = cap.addListener("FoleviNative", "keyboard", function (event) {
         if (!event) return;
         try {
-          listener({ height: Number(event.height) || 0, duration: Number(event.duration) || 0, curve: event.curve === "keyboard" ? "keyboard" : "linear", visible: !!event.visible });
+          // How long the news took to get here (the app stamps it as the keyboard sets off): a bar moving with the
+          // keyboard starts that far along.
+          var late = Number(event.sentAt) > 0 ? Math.max(0, Math.min(250, Date.now() - Number(event.sentAt))) : 0;
+          listener({ height: Number(event.height) || 0, duration: Number(event.duration) || 0, curve: event.curve === "keyboard" ? "keyboard" : "linear", visible: !!event.visible, late: late });
         } catch (e) {
           /* the page's own listener failing changes nothing here */
         }

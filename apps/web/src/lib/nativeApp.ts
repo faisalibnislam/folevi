@@ -55,6 +55,8 @@ export interface NativeKeyboardFrame {
   curve: "keyboard" | "linear";
   /** Whether it's on its way up (or there), as opposed to going away. */
   visible: boolean;
+  /** How long ago the keyboard set off on this move, in milliseconds (its news takes a moment to reach the page). */
+  late?: number;
 }
 
 /**

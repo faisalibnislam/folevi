@@ -77,7 +77,11 @@ final class KeyboardBridge {
 
     private func send(_ frame: [String: Any], height: CGFloat) {
         lastHeight = height
-        plugin?.notifyListeners("keyboard", data: frame)
+        // When it was sent (the keyboard sets off now): the page starts its bar as far along as the news took to
+        // arrive, instead of a few frames behind the keyboard.
+        var data = frame
+        data["sentAt"] = (Date().timeIntervalSince1970 * 1000).rounded()
+        plugin?.notifyListeners("keyboard", data: data)
     }
 
     // MARK: Interactive dismissal

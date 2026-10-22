@@ -253,6 +253,13 @@ final class MacAppLock {
 
     /// Debug and tests: whether the windows are covered.
     var isCovered: Bool { up }
+
+    #if DEBUG
+    /// Debug only (mac.mjs `cmd lock-cover`): the cover up or down without Touch ID, for screenshots.
+    func debugCover(_ on: Bool) {
+        if on { show() } else { hide() }
+    }
+    #endif
 }
 
 /// What shows instead of the notes while Folevi is locked: the lock, a line, and Unlock with Touch ID (Electron's

@@ -232,9 +232,13 @@ final class ShellRouter {
             }
         case "libUnlock":
             let passphrase = s(o, "passphrase") ?? ""
-            return try await onLibrary { try self.library.unlock(passphrase) }
+            let answer = try await onLibrary { try self.library.unlock(passphrase) }
+            places.libraryChanged()
+            return answer
         case "libSetPassphrase":
             let passphrase = s(o, "passphrase")
+            // The files are rewritten (encrypted or plain): what /_files opened before is stale, done or not.
+            defer { places.libraryChanged() }
             return try await onLibrary {
                 try self.library.setPassphrase(passphrase)
                 return nil

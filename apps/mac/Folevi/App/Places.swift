@@ -22,6 +22,8 @@ final class Places {
     /// Whether the library is set up (library.info().configured), for its runner.
     private(set) var libraryConfigured = false
     private var localRules: WKContentRuleList?
+    /// The /_files reader (AppScheme.files).
+    let attachments = LibraryAttachments()
     private var broadcastQueued = false
     private var started = false
 
@@ -35,6 +37,7 @@ final class Places {
     static func install() {
         guard !Paths.testing else { return }
         AppDelegate.beforeFirstWindow.append { await Places.shared.start() }
+        SignInInBrowser.install()
         #if DEBUG
         installEval()
         #endif
@@ -47,7 +50,11 @@ final class Places {
         started = true
         configureServices()
         let lib = LibraryService.shared
-        lib.onChanges = { changes in Self.toLibrary("libraryChanges", ["changes": changes]) }
+        let attachments = self.attachments
+        lib.onChanges = { changes in
+            attachments.reset()
+            Self.toLibrary("libraryChanges", ["changes": changes])
+        }
         lib.onCloudWant = { path in Self.toLibrary("cloudWant", ["path": path]) }
         ShellCloud.shared.onStatus = { status in Self.toLibrary("cloudStatus", ["status": status]) }
         let info = await Self.onLibraryQueue { () -> [String: Any] in
@@ -68,7 +75,7 @@ final class Places {
             // run in the page), keep their timers behind other windows.
             if role == .runner || ShellPlaces.modeOf(place) == "local" { config.preferences.inactiveSchedulingPolicy = .none }
         }
-        WebViewFactory.scheme.files = LibraryAttachments()
+        WebViewFactory.scheme.files = attachments
         NotificationCenter.default.addObserver(forName: ShellPlaces.changed, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { Places.shared.placesChanged() }
         }
@@ -124,6 +131,7 @@ final class Places {
 
     /// The library was set up, moved or forgotten: its place and runner follow.
     func libraryChanged() {
+        attachments.reset()
         Task { @MainActor in
             let info = await Self.onLibraryQueue { LibraryService.shared.info() }
             self.libraryConfigured = (info["configured"] as? Bool) == true
@@ -339,12 +347,15 @@ extension Places {
     static func installEval() {
         MacEval.commands["places"] = { _, done in
             let s = ShellPlaces.state
-            let runners: [[String: Any]] = Places.shared.runners.map { id, v in ["place": id, "url": v.url?.absoluteString ?? "", "loaded": v.loaded, "inWindow": v.window != nil] }
+            // The page's process (WebKit's private _webProcessIdentifier, Debug only), for footprint measurements.
+            let pid = { (v: FoleviWebView) -> Int in v.responds(to: Selector(("_webProcessIdentifier"))) ? ((v.value(forKey: "_webProcessIdentifier") as? Int) ?? 0) : 0 }
+            let runners: [[String: Any]] = Places.shared.runners.map { id, v in ["place": id, "url": v.url?.absoluteString ?? "", "loaded": v.loaded, "inWindow": v.window != nil, "pid": pid(v)] }
             done(["value": [
                 "current": s.current ?? NSNull(), "library": s.library, "accounts": s.accounts.map(\.id), "quickAdd": s.quickAdd ?? NSNull(), "mode": ShellMode.current,
                 "pending": ShellPlaces.pendingAccount, "libraryConfigured": Places.shared.libraryConfigured, "runners": runners.sorted { ($0["place"] as! String) < ($1["place"] as! String) },
                 "lock": MacAppLock.shared.settings(), "covered": MacAppLock.shared.isCovered,
                 "mains": WindowManager.shared.mains.map { $0.view.place ?? "" },
+                "mainPids": WindowManager.shared.mains.map { pid($0.view) },
             ] as [String: Any]])
         }
         MacEval.commands["runner-eval"] = { req, done in
@@ -375,10 +386,20 @@ extension Places {
                 done(["value": a.id])
             }
         }
+        // An account place with no session (scripts that check places and runners without the website).
+        MacEval.commands["add-account"] = { req, done in
+            guard let user = req["userId"] as? String, let a = Places.shared.addAccount((userId: user, name: req["name"] as? String ?? "Test", email: req["email"] as? String ?? "test@example.com", avatarUrl: nil)) else { return done(["error": "not an account"]) }
+            if req["open"] as? Bool == true { Places.shared.switchTo(a.id) }
+            done(["value": a.id])
+        }
         // Hides the app (every window off screen, as when another app is in front), or shows it again.
         MacEval.commands["hide"] = { req, done in
             if req["value"] as? Bool == false { NSApp.unhide(nil) } else { NSApp.hide(nil) }
             done(["value": NSApp.isHidden])
+        }
+        MacEval.commands["lock-cover"] = { req, done in
+            MacAppLock.shared.debugCover(req["value"] as? Bool != false)
+            done(["value": MacAppLock.shared.isCovered])
         }
         MacEval.commands["switch"] = { req, done in
             Places.shared.switchTo(req["place"] as? String, path: Places.safePath(req["path"] as? String))
@@ -406,15 +427,32 @@ final class LibraryAttachments: LibraryFiles {
     }
 
     func read(_ sha256: String, _ start: Int, _ end: Int) throws -> Data {
-        guard let f = file(sha256), start >= 0, end >= start, end < f.size else { throw URLError(.fileDoesNotExist) }
-        // One read at a time: a stream reader isn't shared across threads.
-        lock.lock()
-        defer { lock.unlock() }
-        return try f.read(start, end - start + 1)
+        // A file opened a moment ago may have moved since (the library encrypted, moved, or written again): once
+        // more from the library before giving up.
+        for attempt in 0..<2 {
+            guard let f = file(sha256, fresh: attempt > 0), start >= 0, end >= start, end < f.size else { throw URLError(.fileDoesNotExist) }
+            do {
+                // One read at a time: a stream reader isn't shared across threads.
+                lock.lock()
+                defer { lock.unlock() }
+                return try f.read(start, end - start + 1)
+            } catch where attempt == 0 {
+                continue
+            }
+        }
+        throw URLError(.fileDoesNotExist)
     }
 
-    private func file(_ sha: String) -> Open? {
+    /// Forgets what was opened (the library changed).
+    func reset() {
         lock.lock()
+        open.removeAll()
+        lock.unlock()
+    }
+
+    private func file(_ sha: String, fresh: Bool = false) -> Open? {
+        lock.lock()
+        if fresh { open[sha] = nil }
         if let o = open[sha], Date().timeIntervalSince(o.at) < 30 {
             lock.unlock()
             return o

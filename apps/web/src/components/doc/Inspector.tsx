@@ -14,6 +14,7 @@ import {
   Grip,
   X,
   ChevronRight,
+  Lock,
 } from "lucide-react";
 import { flattenFolders, type DocumentStyle } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -47,6 +48,8 @@ import { useAiAccess, type AiRunDetail } from "@/components/ai/useAi";
 import { AiPanel } from "@/components/ai/AiPanel";
 import { AiUnavailable } from "@/components/ai/AiUnavailable";
 import { RelatedPanel } from "./RelatedPanel";
+import { useIphoneApp } from "@/lib/iphone";
+import { feel } from "@/lib/native/ui";
 
 // The page outline lives in the document sidebar (Table of contents); comments open from the top bar.
 export type InspectorTab = "ai" | "insert" | "format" | "style" | "info" | "comments" | "related";
@@ -226,6 +229,24 @@ function cleanStyle(style: DocumentStyle): DocumentStyle {
 
 function StyleRow({ label, swatch, open, onToggle, children, disabled }: { label: string; swatch: React.ReactNode; open: boolean; onToggle: () => void; children: React.ReactNode; disabled: boolean }) {
   const id = useId();
+  const phone = useIphoneApp();
+  if (phone) {
+    // The iPhone layout: an iOS row (17 pt, 52 tall) with its round swatch, opening its choices under it.
+    return (
+      <div className="iphone-style-row-wrap">
+        <button type="button" disabled={disabled} aria-expanded={open} aria-controls={id} onClick={onToggle} className="iphone-style-row">
+          <span className="min-w-0 flex-1 truncate">{label}</span>
+          {swatch}
+          <ChevronRight size={15} strokeWidth={2.4} aria-hidden className={`flex-none text-faint transition-transform duration-200 ${open ? "rotate-90" : ""}`} />
+        </button>
+        {open ? (
+          <div id={id} className="px-4 pb-4 pt-1">
+            {children}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
   return (
     <div>
       <button
@@ -249,21 +270,64 @@ function StyleRow({ label, swatch, open, onToggle, children, disabled }: { label
 }
 
 function ColorDot({ css, ring }: { css: string; ring?: boolean }) {
+  // On the iPhone a 28 pt round swatch with a hairline edge.
+  const phone = useIphoneApp();
+  if (phone) {
+    return <span aria-hidden className="inline-block h-7 w-7 flex-none iphone-round shadow-[inset_0_0_0_0.5px_rgb(0_0_0/0.16),0_0_0_0.5px_rgb(255_255_255/0.08)]" style={{ background: css }} />;
+  }
   return <span aria-hidden className={`inline-block h-7 w-9 rounded-chip shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] ${ring ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : ""}`} style={{ background: css }} />;
 }
 
 function Choice({ label, on, onPick, children, wide }: { label: string; on: boolean; onPick: () => void; children: React.ReactNode; wide?: boolean }) {
+  const phone = useIphoneApp();
   return (
     <button
       type="button"
       role="radio"
       aria-checked={on}
       aria-label={label}
-      title={label}
-      onClick={onPick}
-      className={`relative overflow-hidden rounded-chip transition-transform hover:-translate-y-px ${wide ? "h-12" : "h-9"} ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : "shadow-[var(--shadow-hairline)]"}`}
+      title={phone ? undefined : label}
+      onClick={() => {
+        if (phone) feel("choose");
+        onPick();
+      }}
+      className={
+        phone
+          ? `relative mx-auto h-11 w-11 overflow-hidden iphone-round transition-transform active:scale-95 ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--iphone-solid)]" : "shadow-[inset_0_0_0_0.5px_rgb(0_0_0/0.16)]"}`
+          : `relative overflow-hidden rounded-chip transition-transform hover:-translate-y-px ${wide ? "h-12" : "h-9"} ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : "shadow-[var(--shadow-hairline)]"}`
+      }
     >
       {children}
+    </button>
+  );
+}
+
+/** A theme in the iPhone layout's row of themes: its picture, its name under it. */
+function ThemeChip({ label, art, on, locked, onPick }: { label: string; art: string; on: boolean; locked?: boolean; onPick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={on}
+      aria-label={locked ? `${label}, not on this plan` : label}
+      onClick={() => {
+        feel("choose");
+        onPick();
+      }}
+      className="flex w-16 flex-none snap-start flex-col items-center gap-1.5"
+    >
+      <span
+        aria-hidden
+        className={`relative block h-20 w-16 overflow-hidden rounded-panel transition-transform active:scale-95 ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--iphone-solid)]" : "shadow-[inset_0_0_0_0.5px_rgb(0_0_0/0.16)]"}`}
+        style={{ background: art }}
+      >
+        {locked ? (
+          <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center iphone-round bg-[rgb(0_0_0/0.45)] text-white">
+            <Lock size={11} strokeWidth={2.5} />
+          </span>
+        ) : null}
+      </span>
+      <span className={`w-full truncate text-center text-[13px] leading-4 ${on ? "font-semibold text-heading" : "text-ink"}`}>{label}</span>
     </button>
   );
 }
@@ -294,6 +358,8 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
   // Each set of swatches is one Tab stop; the arrow keys move between its choices.
   const sheetGroup = useRadioGroup();
   const textGroup = useRadioGroup();
+  const phone = useIphoneApp();
+  const caps = phone ? "ui-caption-caps mb-2 px-1" : "ui-caps mb-2 px-1";
   if (!meta) return <p className="text-sm text-muted">Style is available once the document has synced.</p>;
   const style = pendingStyle ?? meta.document.style;
   const cover = meta.document.cover;
@@ -366,6 +432,55 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
         </div>
       </section>
 
+      {phone ? (
+        <fieldset disabled={disabled}>
+          <legend className={caps}>Note theme</legend>
+          {/* The themes side by side, as in the preview above: a tap picks one; all of them in the gallery. */}
+          <div role="radiogroup" aria-label="Note theme" className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <ThemeChip label="Plain" on={!art && !ownImage} art={PLAIN_CSS} onPick={() => setCover({ kind: "none" }, PLAIN_DEFAULTS)} />
+            {ownImage ? <ThemeChip label="Your image" on art={imageCss} onPick={() => setGallery(true)} /> : null}
+            {themes.map((t) => (
+              <ThemeChip
+                key={t.id}
+                label={t.name}
+                on={art?.id === t.id}
+                locked={Boolean(plan && !planAllows(plan, t.plan) && t.id !== art?.id)}
+                art={`url(${coverArtThumbUrl(t.id)}) center / cover no-repeat`}
+                onPick={() => pickTheme(t)}
+              />
+            ))}
+            <button type="button" aria-haspopup="dialog" onClick={() => setGallery(true)} className="flex w-16 flex-none snap-start flex-col items-center gap-1.5">
+              <span aria-hidden className="grid h-20 w-16 place-items-center rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_5.5%,transparent)] text-heading">
+                <ChevronRight size={20} strokeWidth={2.2} />
+              </span>
+              <span className="w-full truncate text-center text-[13px] leading-4 text-ink">All themes</span>
+            </button>
+          </div>
+          <ThemeGallery
+            open={gallery}
+            onClose={() => setGallery(false)}
+            themes={themes}
+            currentId={art?.id ?? (ownImage ? "image" : "plain")}
+            plain={PLAIN_DEFAULTS}
+            ownImage={ownImage ? imageCss : null}
+            plan={plan}
+            onPickTheme={pickTheme}
+            onPickPlain={() => setCover({ kind: "none" }, PLAIN_DEFAULTS)}
+            onUpload={(file) => void uploadImage(file)}
+            uploading={uploading}
+          />
+          {hasBackdrop ? (
+            <div className="iphone-style-list mt-3">
+              <div className="iphone-style-row">
+                <span aria-hidden className="min-w-0 flex-1">
+                  Blur background
+                </span>
+                <Switch checked={Boolean(style.blur)} label="Blur background" disabled={disabled} onChange={(on) => set({ blur: on || undefined })} />
+              </div>
+            </div>
+          ) : null}
+        </fieldset>
+      ) : (
       <fieldset disabled={disabled}>
         <legend className="ui-caps mb-1 px-1">Note Theme</legend>
         {/* One choice: the theme is the note's cover, page background, colours and fonts. Its gallery opens in a modal. */}
@@ -403,11 +518,13 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
           </div>
         ) : null}
       </fieldset>
+      )}
 
       <fieldset disabled={disabled}>
-        <legend className="ui-caps mb-1 px-1">Color</legend>
+        <legend className={phone ? caps : "ui-caps mb-1 px-1"}>Color</legend>
+        <div className={phone ? "iphone-style-list" : undefined}>
         <StyleRow label="Document color" swatch={<ColorDot css={sheetColor} />} open={open === "sheet"} onToggle={() => toggle("sheet")} disabled={disabled}>
-          <div role="radiogroup" aria-label="Document color" ref={sheetGroup.ref} onKeyDown={sheetGroup.onKeyDown} className="grid grid-cols-4 gap-2">
+          <div role="radiogroup" aria-label="Document color" ref={sheetGroup.ref} onKeyDown={sheetGroup.onKeyDown} className={phone ? "grid grid-cols-5 gap-y-3" : "grid grid-cols-4 gap-2"}>
             <Choice label="Auto (from the note theme)" on={!style.sheet} onPick={() => set({ sheet: undefined })}>
               <span className="grid h-full place-items-center text-[11px]" style={{ background: auto?.paper ?? "var(--color-surface)", color: auto?.ink ?? "var(--color-ink-muted)" }}>Auto</span>
             </Choice>
@@ -419,7 +536,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
           </div>
         </StyleRow>
         <StyleRow label="Text color" swatch={<ColorDot css={textColor} />} open={open === "text"} onToggle={() => toggle("text")} disabled={disabled}>
-          <div role="radiogroup" aria-label="Text color" ref={textGroup.ref} onKeyDown={textGroup.onKeyDown} className="grid grid-cols-4 gap-2">
+          <div role="radiogroup" aria-label="Text color" ref={textGroup.ref} onKeyDown={textGroup.onKeyDown} className={phone ? "grid grid-cols-5 gap-y-3" : "grid grid-cols-4 gap-2"}>
             <Choice label="Auto (from the note theme)" on={!style.text} onPick={() => set({ text: undefined })}>
               <span className="grid h-full place-items-center text-[11px] font-semibold" style={{ background: auto?.paper ?? "var(--color-surface)", color: auto?.ink ?? "var(--color-ink)" }}>Auto</span>
             </Choice>
@@ -432,11 +549,12 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
             ))}
           </div>
         </StyleRow>
+        </div>
       </fieldset>
 
 
       <fieldset disabled={disabled}>
-        <legend className="ui-caps mb-2 px-1">Separator style</legend>
+        <legend className={caps}>Separator style</legend>
         <div className="ui-seg ui-well">
           {SEPARATORS.map((s) => {
             const on = (style.separator ?? "line") === s.id;
@@ -451,7 +569,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
       </fieldset>
 
       <fieldset disabled={disabled}>
-        <legend className="ui-caps mb-2 px-1">Font</legend>
+        <legend className={caps}>Font</legend>
         <div className="ui-seg ui-well">
           {FONTS.map((f) => {
             const on = style.font === f.id;
@@ -465,7 +583,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
       </fieldset>
 
       <fieldset disabled={disabled}>
-        <legend className="ui-caps mb-2 px-1">Page width</legend>
+        <legend className={caps}>Page width</legend>
         <div className="ui-seg ui-well" role="group" aria-label="Page width">
           {(
             [

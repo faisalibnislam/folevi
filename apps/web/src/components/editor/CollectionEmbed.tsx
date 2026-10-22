@@ -4,7 +4,7 @@ import { DateField } from "@/components/ui/DateField";
 import { useQuery } from "convex/react";
 import type { AnchorHTMLAttributes } from "react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { ArrowDownUp, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Columns3, Filter, GalleryHorizontalEnd, Plus, Search, Settings2, SquareFunction, Table2, Trash2, FileText } from "lucide-react";
+import { ArrowDownUp, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Columns3, Filter, GalleryHorizontalEnd, MoreHorizontal, Plus, Search, Settings2, SquareFunction, Table2, Trash2, FileText } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { localDate, ulid, type WireScope } from "@folevi/editor-schema";
 import { AppLink } from "@/lib/app/router";
@@ -22,7 +22,10 @@ import { useCoverImageUrl } from "@/lib/app/coverImage";
 import { formatCalendarDate, t } from "@/i18n";
 import { NO_VALUE_OPS, OPS, TITLE_ID, applyView, exportValue, filterTargets, formatPropertyNumber, formulaGroupKey, formulaGroups, isEmptyValue, isFormulaResult, opLabel, resolveOption, rowsByDate, withFormulaValues, type FilterTarget, type ViewSummary } from "@/components/views/collectionView";
 import { FormulaEditor, FormulaValue, NumberFormatFields } from "./collection/FormulaEditor";
-import { ExportMenu, SummaryRow } from "./collection/CollectionTools";
+import { ExportMenu, SummaryRow, useExportItems } from "./collection/CollectionTools";
+import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
+import { useIphoneApp } from "@/lib/iphone";
+import { feel } from "@/lib/native/ui";
 import type { CollectionFormulaResult, CollectionNumberFormat } from "@folevi/editor-schema";
 import { monthGrid, shiftMonth } from "@/components/views/calendarLayout";
 import { Select } from "@/components/ui/Select";
@@ -245,6 +248,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
   const [editingFormula, setEditingFormula] = useState<string | null>(null);
   const { rename, addRow, addView, updateProperty } = useCollectionMutations();
   const toast = useToast();
+  const phone = useIphoneApp();
 
   if (data === undefined) return <div className="h-40 animate-pulse ui-card rounded-control motion-reduce:animate-none" aria-busy />;
   if (data === null) return <p className="rounded-chip border border-dashed border-line p-4 text-sm text-muted">This collection is unavailable.</p>;
@@ -265,6 +269,52 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
       toast.show(errorMessage(e), { tone: "error" });
     }
   };
+  const addViewOf = (type: View["type"]) => {
+    // What the server would refuse is said now, not once the view is sent.
+    if (data.views.length >= 20) return toast.show("Up to 20 views per collection.", { tone: "error" });
+    if (!newView("", VIEW_NAMES[type], type, data.properties)) {
+      return toast.show(type === "board" ? "Add a single-select property to group a board by." : "Add a date property to show a calendar.", { tone: "error" });
+    }
+    addView({ collectionId, name: VIEW_NAMES[type], type }).then(
+      (r) => setViewId(r.id),
+      (err) => toast.show(errorMessage(err), { tone: "error" }),
+    );
+  };
+
+  if (phone) {
+    return (
+      <PhoneCollection
+        data={data}
+        view={view}
+        rows={rows}
+        visible={visible}
+        canEdit={canEdit}
+        onView={(id) => {
+          feel("choose");
+          setViewId(id);
+        }}
+        onRename={(name) => void rename({ collectionId, name: name || "Collection" }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
+        onAdd={add}
+        onAddView={addViewOf}
+        onSettings={() => setSettingsOpen(true)}
+      >
+        {canEdit ? <ViewSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} data={data} view={view} onEditFormula={setEditingFormula} /> : null}
+        {canEdit && editingProp ? (
+          <FormulaEditor
+            open
+            onClose={() => setEditingFormula(null)}
+            property={editingProp}
+            properties={data.properties}
+            rows={rows}
+            people={data.people}
+            hostDocumentId={data.hostDocumentId}
+            typeLabel={typeLabel}
+            onSave={(change) => updateProperty({ collectionId, propertyId: editingProp.id, ...change }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
+          />
+        ) : null}
+      </PhoneCollection>
+    );
+  }
 
   return (
     <section className="ui-card rounded-control" aria-label={`Collection ${data.name}`}>
@@ -311,16 +361,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
                 value=""
                 onChange={(e) => {
                   const type = e.target.value as View["type"];
-                  if (!type) return;
-                  // What the server would refuse is said now, not once the view is sent.
-                  if (data.views.length >= 20) return toast.show("Up to 20 views per collection.", { tone: "error" });
-                  if (!newView("", VIEW_NAMES[type], type, data.properties)) {
-                    return toast.show(type === "board" ? "Add a single-select property to group a board by." : "Add a date property to show a calendar.", { tone: "error" });
-                  }
-                  addView({ collectionId, name: VIEW_NAMES[type], type }).then(
-                    (r) => setViewId(r.id),
-                    (err) => toast.show(errorMessage(err), { tone: "error" }),
-                  );
+                  if (type) addViewOf(type);
                 }}
                 className="h-7 ui-input rounded-chip px-3 text-xs text-muted"
               >
@@ -365,6 +406,157 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
           onSave={(change) => updateProperty({ collectionId, propertyId: editingProp.id, ...change }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
         />
       ) : null}
+    </section>
+  );
+}
+
+/**
+ * A collection in the iPhone layout (docs/IOS_POLISH_PLAN.md §3 Note): its name and a "…" menu (export, the
+ * view's settings, a new view), its views as a segmented control, and a table view as a list of rows (the
+ * title, two properties under it) or a gallery in two columns. Board and calendar views stay as they are.
+ */
+function PhoneCollection({
+  data,
+  view,
+  rows,
+  visible,
+  canEdit,
+  onView,
+  onRename,
+  onAdd,
+  onAddView,
+  onSettings,
+  children,
+}: {
+  data: CollectionData;
+  view: View;
+  rows: Row[];
+  visible: Property[];
+  canEdit: boolean;
+  onView: (id: string) => void;
+  onRename: (name: string) => void;
+  onAdd: (values?: Record<string, unknown>) => Promise<void>;
+  onAddView: (type: View["type"]) => void;
+  onSettings: () => void;
+  children?: ReactNode;
+}) {
+  const exportItems = useExportItems({ name: data.name, rows, visible, people: data.people });
+  const menu: MenuEntry[] = [
+    ...(canEdit ? [{ label: "Filter, sort and properties…", icon: <Settings2 size={18} aria-hidden />, onSelect: onSettings }, "separator" as const] : []),
+    { heading: "Export" },
+    ...exportItems,
+    ...(canEdit
+      ? [
+          "separator" as const,
+          { heading: "New view" },
+          ...(["table", "board", "gallery", "calendar"] as const).map((type) => ({ label: VIEW_NAMES[type], icon: <ViewIcon type={type} />, onSelect: () => onAddView(type) })),
+        ]
+      : []),
+  ];
+  const subtitle = visible.slice(0, 2);
+  return (
+    <section className="iphone-collection" aria-label={`Collection ${data.name}`}>
+      <header className="flex min-h-11 items-center gap-2 pl-4 pr-1">
+        {canEdit ? (
+          <InlineText value={data.name} label="Collection name" maxLength={80} className="min-w-0 flex-1 text-[17px] font-semibold text-heading" onCommit={onRename} />
+        ) : (
+          <h3 className="min-w-0 flex-1 truncate text-[17px] font-semibold text-heading">{data.name}</h3>
+        )}
+        {view.config.filters.length ? (
+          <span className="inline-flex h-7 flex-none items-center gap-1 iphone-round bg-accent-soft px-2.5 text-[13px] text-accent-soft-ink">
+            <Filter size={12} aria-hidden /> {view.config.filters.length}
+          </span>
+        ) : null}
+        <MenuButton
+          label="Collection options"
+          trigger={<MoreHorizontal size={20} strokeWidth={2.2} aria-hidden />}
+          items={menu}
+          triggerClassName="grid h-11 w-11 place-items-center iphone-round text-heading outline-none active:bg-[color-mix(in_oklab,var(--color-ink)_8%,transparent)]"
+        />
+      </header>
+      {data.views.length > 1 ? (
+        <div role="group" aria-label="Views" className="iphone-seg mx-3 mb-2">
+          {data.views.map((v) => (
+            <button key={v.id} type="button" aria-pressed={v.id === view.id} onClick={() => onView(v.id)}>
+              <ViewIcon type={v.type} />
+              <span className="truncate">{v.name}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <p className="sr-only" aria-live="polite">
+        {t("collection.rowsShown", { shown: rows.length, total: data.rows.length })}
+      </p>
+      {view.type === "table" ? (
+        rows.length ? (
+          <ul className="iphone-collection-list">
+            {rows.map((row) => {
+              const shown = subtitle.filter((p) => !isEmptyValue(row.values[p.id]));
+              return (
+                <li key={row.id}>
+                  <RowLink row={row} className="flex min-h-16 items-center gap-3 px-4 py-2.5 outline-none active:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
+                    <FileText size={20} strokeWidth={1.9} aria-hidden className="flex-none text-muted" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[17px] leading-[22px] text-ink">{row.title || "Untitled"}</span>
+                      {shown.length ? (
+                        <span className="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-[15px] leading-5 text-muted">
+                          {shown.map((p, i) => (
+                            <span key={p.id} className="flex min-w-0 items-center gap-1.5">
+                              {i ? <span aria-hidden>·</span> : null}
+                              <span className="min-w-0 truncate">
+                                <CellDisplay prop={p} value={row.values[p.id]} people={data.people} inLink />
+                              </span>
+                            </span>
+                          ))}
+                        </span>
+                      ) : null}
+                    </span>
+                    <ChevronRight size={15} strokeWidth={2.4} aria-hidden className="flex-none text-faint" />
+                  </RowLink>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="px-4 pb-3 text-[15px] italic text-muted">No rows{data.rows.length ? " match this view" : " yet"}.</p>
+        )
+      ) : view.type === "gallery" ? (
+        <ul className="grid grid-cols-2 gap-3 px-3 pb-3">
+          {rows.map((row) => (
+            <li key={row.id}>
+              <RowLink row={row} className="block overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-hairline)] outline-none transition-transform active:scale-[0.98]">
+                {view.config.cardPreview !== "none" ? (
+                  <GalleryCover cover={row.cover}>
+                    {view.config.cardPreview === "content" ? <p className="line-clamp-4 p-3 text-[13px] leading-[18px] text-muted">{row.excerpt}</p> : <div className="grid h-full place-items-center text-faint"><FileText size={26} aria-hidden /></div>}
+                  </GalleryCover>
+                ) : null}
+                <div className="px-3 py-2.5">
+                  <p className="line-clamp-2 text-[15px] font-semibold leading-5 text-heading">{row.title || "Untitled"}</p>
+                  {subtitle.length ? (
+                    <div className="mt-1 space-y-0.5 text-[13px] leading-[18px] text-muted">
+                      {subtitle.map((p) => (
+                        <div key={p.id} className="truncate">
+                          <CellDisplay prop={p} value={row.values[p.id]} people={data.people} inLink />
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </RowLink>
+            </li>
+          ))}
+        </ul>
+      ) : view.type === "board" ? (
+        <BoardCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onAdd={onAdd} />
+      ) : (
+        <CalendarCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onAdd={onAdd} />
+      )}
+      {canEdit && (view.type !== "board" || data.properties.some((p) => p.id === view.config.groupBy && p.type === "formula")) ? (
+        <button type="button" onClick={() => void onAdd()} className="flex min-h-11 w-full items-center gap-2.5 px-4 text-left text-[17px] text-heading outline-none active:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
+          <Plus size={20} strokeWidth={2.2} aria-hidden /> New row
+        </button>
+      ) : null}
+      {children}
     </section>
   );
 }

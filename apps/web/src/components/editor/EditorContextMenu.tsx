@@ -65,7 +65,8 @@ import { colorName, useNotePalette } from "./notePalette";
 import { EDIT_BOOKMARK_EVENT } from "./NodeViews";
 import { keyLabel } from "@/lib/shortcuts";
 import { HOLD_MOVE_EVENT, isLongPress } from "@/lib/touchContextMenu";
-import { safeInsets } from "@/lib/iphone";
+import { safeInsets, useIphoneApp } from "@/lib/iphone";
+import { liftController } from "@/lib/native/lift";
 import { inNestedNote } from "./synced/nested";
 
 /** Asks the selection toolbar to open its link field (the "Edit link…" item). */
@@ -141,11 +142,17 @@ const INSERT_BELOW: [string, string, Record<string, unknown>, ReactNode][] = [
 export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor: Editor; editable: boolean; onCommentBlock?: (blockId: string) => void }) {
   // `y` is where the menu opens downward from; `top` (the caret line's top, from the keyboard) is where it
   // ends when it opens upward, so it never covers the line.
-  const [menu, setMenu] = useState<{ x: number; y: number; top: number; target: Target; keyboard: boolean } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; top: number; target: Target; keyboard: boolean; held?: HTMLElement | null } | null>(null);
   const aiOn = useAiEnabled();
   const toast = useToast();
   const palette = useNotePalette();
   const { navigate } = useAppRouter();
+  const phone = useIphoneApp();
+  const phoneRef = useRef(phone);
+  phoneRef.current = phone;
+  // The iPhone layout: a held line lifts while its menu is open (the app's own picture of it, as iOS lifts what
+  // it opens a menu for; lib/native/lift.ts), and the menu opens under it (or above), never over it.
+  const lift = useRef<ReturnType<typeof liftController> | null>(null);
 
   const targetAt = useCallback(
     (pos: number, el: HTMLElement | null): Target => {
@@ -216,8 +223,14 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
         view.dispatch(tr.setMeta("addToHistory", false));
       }
       // (Held on a touch screen: the keyboard stays down, the menu is what was asked for.)
-      if (!view.hasFocus() && !isLongPress(e)) view.focus();
-      setMenu({ x: e.clientX, y: e.clientY, top: e.clientY, target, keyboard: false });
+      const held = isLongPress(e);
+      if (!view.hasFocus() && !held) view.focus();
+      const line = held && phoneRef.current ? (blockElements(dom)[target.index] ?? null) : null;
+      const box = line?.getBoundingClientRect();
+      // (A block taller than most of the screen doesn't lift; its menu opens at the finger.)
+      if (line && box && box.height < window.innerHeight * 0.6) {
+        setMenu({ x: Math.max(16, box.left), y: box.bottom + 6, top: box.top - 6, target, keyboard: false, held: line });
+      } else setMenu({ x: e.clientX, y: e.clientY, top: e.clientY, target, keyboard: false });
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
@@ -238,7 +251,10 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       setMenu({ x: c.left, y: c.bottom, top: c.top, target: targetAt(from, el), keyboard: true });
     };
     // Held, then moved on: the menu gives way to moving the block (BlockHandle lifts it).
-    const onHoldMove = () => setMenu(null);
+    const onHoldMove = () => {
+      lift.current?.drop("fade");
+      setMenu(null);
+    };
     dom.addEventListener("contextmenu", onContext);
     dom.addEventListener("keydown", onKey);
     dom.addEventListener(HOLD_MOVE_EVENT, onHoldMove);
@@ -248,6 +264,36 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       dom.removeEventListener(HOLD_MOVE_EVENT, onHoldMove);
     };
   }, [editor, targetAt]);
+
+  // The held line: lifted once its menu is on screen, set back down when it closes. The line itself is the
+  // editor's (anything set on it would be undone as an edit), so what's held is a stand-in laid over it: the
+  // app takes its picture of that place, and where it can't, the stand-in shows the line as held.
+  const held = menu?.held ?? null;
+  useEffect(() => {
+    if (!held) return;
+    const lc = (lift.current ??= liftController());
+    const box = held.getBoundingClientRect();
+    const stand = document.createElement("div");
+    stand.setAttribute("data-block-held", "");
+    stand.setAttribute("aria-hidden", "true");
+    stand.style.cssText = `position:fixed;left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;pointer-events:none;z-index:1`;
+    document.body.appendChild(stand);
+    lc.arm(stand, 0);
+    lc.prelift(stand);
+    let up = false;
+    const frame = requestAnimationFrame(() => {
+      void lc.lift(stand).then((ok) => {
+        up = ok;
+        if (ok) stand.setAttribute("data-lifted", "");
+      });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      lc.drop(up && held.isConnected ? "back" : "fade");
+      // (After the picture has settled back onto it.)
+      window.setTimeout(() => stand.remove(), up ? 400 : 0);
+    };
+  }, [held]);
 
   const close = useCallback(
     (refocus: boolean) => {
@@ -259,7 +305,7 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
 
   if (!menu) return null;
 
-  const entries = buildEntries({ editor, editable, target: menu.target, aiOn, palette, onCommentBlock, navigate, toast });
+  const entries = buildEntries({ editor, editable, target: menu.target, aiOn, palette, onCommentBlock, navigate, toast, phone });
   if (!entries.length) return null;
   return <MenuLayer entries={entries} at={{ x: menu.x, y: menu.y, top: menu.top }} keyboard={menu.keyboard} onClose={close} />;
 }
@@ -275,6 +321,7 @@ function buildEntries({
   onCommentBlock,
   navigate,
   toast,
+  phone = false,
 }: {
   editor: Editor;
   editable: boolean;
@@ -284,6 +331,12 @@ function buildEntries({
   onCommentBlock?: (blockId: string) => void;
   navigate: (href: string) => void;
   toast: ReturnType<typeof useToast>;
+  /**
+   * The iPhone layout (docs/IOS_POLISH_PLAN.md §3 Note): no tabs to open things in, no Paste at the top (the
+   * text's own iOS menu has it), and the block's own actions first: Turn into, Insert below, Duplicate, Copy
+   * link to block, Ask Foli AI, then Delete on its own.
+   */
+  phone?: boolean;
 }): Entry[] {
   const { state } = editor;
   const sel = state.selection;
@@ -322,7 +375,7 @@ function buildEntries({
     const href = `/d/${target.pageLink.documentId}`;
     context.push(
       { label: "Open page", icon: <ExternalLink size={14} />, run: () => navigate(href) },
-      { label: "Open in new tab", icon: <ExternalLink size={14} />, run: () => window.open(href, "_blank", "noopener") },
+      ...(phone ? [] : [{ label: "Open in new tab", icon: <ExternalLink size={14} />, run: () => window.open(href, "_blank", "noopener") }]),
       { label: "Copy page link", icon: <Link2 size={14} />, run: () => void copyText(`${location.origin}${href}`, "Link copied") },
     );
   } else if (target.link?.href) {
@@ -373,7 +426,7 @@ function buildEntries({
     if (name === "image" && target.image) {
       const src = target.image.src;
       context.push(
-        { label: "Open image in new tab", icon: <ExternalLink size={14} />, run: () => window.open(src, "_blank", "noopener") },
+        { label: phone ? "Open image" : "Open image in new tab", icon: <ExternalLink size={14} />, run: () => window.open(src, "_blank", "noopener") },
         { label: "Copy image address", icon: <Link2 size={14} />, run: () => void copyText(src, "Image address copied") },
       );
     } else if (name === "bookmark" && block.attrs.url) {
@@ -465,7 +518,7 @@ function buildEntries({
   // Only what can be done here: Cut and Copy when something is selected; Paste as plain text stays on ⌘⇧V.
   if (editable && hasSelection) clipboard.push({ label: "Cut", icon: <Scissors size={14} />, shortcut: "⌘X", run: () => clipboardCommand(editor, "cut", toast) });
   if (hasSelection) clipboard.push({ label: "Copy", icon: <Copy size={14} />, shortcut: "⌘C", run: () => clipboardCommand(editor, "copy", toast) });
-  if (editable) clipboard.push({ label: "Paste", icon: <ClipboardPaste size={14} />, shortcut: "⌘V", run: () => void pasteFromClipboard(editor, false, toast) });
+  if (editable && !phone) clipboard.push({ label: "Paste", icon: <ClipboardPaste size={14} />, shortcut: "⌘V", run: () => void pasteFromClipboard(editor, false, toast) });
   sections.push(clipboard);
 
   if (editable && textSelected) {
@@ -513,9 +566,12 @@ function buildEntries({
   // The block (or every selected block).
   const blockEntries: Entry[] = [];
   const anyText = refs.some((r) => r.node.isTextblock);
+  // (On the iPhone, Foli AI and Comment come after the block's own actions.)
+  const later: Entry[] = [];
+  const ahead = phone ? later : blockEntries;
   if (editable) {
     if (aiOn && (textSelected || anyText)) {
-      blockEntries.push({
+      ahead.push({
         label: "Ask Foli AI…",
         icon: <AiIcon size={14} className="text-[#7c6cf0]" />,
         shortcut: "⌘J",
@@ -534,7 +590,7 @@ function buildEntries({
     }
     if (onCommentBlock && count === 1 && block?.attrs.id) {
       const id = String(block.attrs.id);
-      blockEntries.push({ label: "Comment", icon: <MessageSquare size={14} />, shortcut: "⌘⌥M", run: () => onCommentBlock(id) });
+      ahead.push({ label: "Comment", icon: <MessageSquare size={14} />, shortcut: "⌘⌥M", run: () => onCommentBlock(id) });
     }
     if (blockEntries.length) blockEntries.push("separator");
     if (anyText) {
@@ -570,7 +626,7 @@ function buildEntries({
       })),
     });
     blockEntries.push(
-      "separator",
+      ...(phone ? [] : ["separator" as const]),
       { label: "Duplicate", icon: <CopyPlus size={14} />, shortcut: "⌘D", run: () => duplicateBlocks(editor) },
       // Moving and nesting stay on the keyboard (⌥⇧↑↓, Tab) and the drag handle, not in the menu.
     );
@@ -579,6 +635,7 @@ function buildEntries({
     const id = String(block.attrs.id);
     blockEntries.push({ label: "Copy link to block", icon: <Link2 size={14} />, run: () => void copyText(`${location.origin}${location.pathname}#block-${id}`, "Link copied") });
   }
+  if (later.length) blockEntries.push("separator", ...later);
   if (editable) {
     const doomed = new Set((range ? Array.from({ length: count }, (_, i) => range.from + i) : refs.map((r) => r.index)).map((i) => state.doc.maybeChild(i)?.attrs.id as string));
     blockEntries.push("separator", {

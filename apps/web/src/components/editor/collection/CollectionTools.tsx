@@ -78,8 +78,8 @@ export function SummaryRow({
 
 const fileName = (name: string, ext: string) => `${(name.trim() || "Collection").replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 80)}.${ext}`;
 
-/** Export: the view's rows (its filters and sorts, its visible properties) as CSV or Markdown. */
-export function ExportMenu({ name, rows, visible, people }: { name: string; rows: readonly ViewRow[]; visible: readonly ViewProperty[]; people: readonly { id: string; name: string }[] }) {
+/** The Export menu's items (a phone's collection lists them in its "…" menu). */
+export function useExportItems({ name, rows, visible, people }: { name: string; rows: readonly ViewRow[]; visible: readonly ViewProperty[]; people: readonly { id: string; name: string }[] }): MenuEntry[] {
   const convex = useConvex();
   const toast = useToast();
   /** Linked pages' titles, for relation columns (only when one is shown). */
@@ -109,6 +109,16 @@ export function ExportMenu({ name, rows, visible, people }: { name: string; rows
       toast.show(copy ? "Couldn't copy. Try again." : "Couldn't export. Try again.", { tone: "error" });
     }
   };
+  return [
+    { label: "Download CSV", onSelect: () => void run("csv") },
+    { label: "Download Markdown", onSelect: () => void run("markdown") },
+    { label: "Copy as Markdown", onSelect: () => void run("markdown", true) },
+  ];
+}
+
+/** Export: the view's rows (its filters and sorts, its visible properties) as CSV or Markdown. */
+export function ExportMenu(props: { name: string; rows: readonly ViewRow[]; visible: readonly ViewProperty[]; people: readonly { id: string; name: string }[] }) {
+  const items = useExportItems(props);
   return (
     <MenuButton
       label="Export"
@@ -117,11 +127,7 @@ export function ExportMenu({ name, rows, visible, people }: { name: string; rows
           <Download size={13} aria-hidden /> Export
         </span>
       }
-      items={[
-        { label: "Download CSV", onSelect: () => void run("csv") },
-        { label: "Download Markdown", onSelect: () => void run("markdown") },
-        { label: "Copy as Markdown", onSelect: () => void run("markdown", true) },
-      ]}
+      items={items}
       triggerClassName="inline-flex h-7 items-center rounded-chip px-2.5 text-xs text-muted hover:bg-surface pointer-coarse:h-11"
     />
   );

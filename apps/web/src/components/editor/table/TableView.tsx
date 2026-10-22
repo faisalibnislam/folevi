@@ -27,6 +27,7 @@ import { keyLabel } from "@/lib/shortcuts";
 import { MenuButton } from "@/components/ui/Menu";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { AiIcon } from "@/components/ai/AiIcon";
+import { useIphoneApp } from "@/lib/iphone";
 import { useScrollEdges } from "../scrollEdges";
 import { endHistoryGroup } from "../commands";
 import { useEditable } from "../useEditable";
@@ -83,6 +84,10 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
   useScrollEdges(scrollerRef);
   // Tools show while the table is selected or being edited.
   const tools = editable && !preview && (selected || focusWithin || active !== null);
+  // The iPhone layout: a 44 pt "+" after the last column and under the last row (always there, as in Numbers),
+  // instead of the small "+ Row" and "+ Column" links; the other tools show only while the table is in use.
+  const phone = useIphoneApp();
+  const phoneAdd = phone && editable && !preview;
   const viewOn = Boolean(t.view?.sort || t.view?.filters?.length);
   const activeText = active ? tableCellText(t.rows[active.r]?.[active.c] ?? []) : "";
   const formulaMode = active !== null && /^\s*=/.test(activeText);
@@ -456,6 +461,7 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
                       </span>
                     </td>
                   ))}
+                  {phoneAdd ? <td className="border-0" /> : null}
                   <td className="border-0" />
                 </tr>
               </thead>
@@ -517,7 +523,21 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
                         </Tag>
                       );
                     })}
-                    {editable ? (
+                    {phoneAdd && r === order[0] ? (
+                      <td rowSpan={order.length} className="fb-table-add-col border-0 p-0 pl-1.5 align-top">
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => tool((d) => model.addColumn(d))}
+                          disabled={width >= LIMITS.maxTableColumns}
+                          aria-label="Add a column"
+                          className="fb-table-add grid h-full min-h-11 w-11 place-items-center"
+                        >
+                          <Plus size={20} strokeWidth={2.2} aria-hidden />
+                        </button>
+                      </td>
+                    ) : null}
+                    {editable && !(phone && !tools) ? (
                       <td className={`w-[6.25rem] border-0 pl-1 ${tools ? "" : "invisible"}`} aria-hidden={tools ? undefined : true}>
                         <span className="flex items-center gap-0.5" role="group" aria-label={`Row ${r + 1}`}>
                           <span className={`fb-table-label w-6 text-right ${formulaMode ? "is-on" : ""}`} aria-hidden>
@@ -539,15 +559,30 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
                 );
               })}
             </tbody>
+            {phoneAdd ? (
+              <tfoot>
+                <tr>
+                  <td colSpan={width} className="border-0 p-0 pt-1.5">
+                    <button type="button" tabIndex={-1} onClick={() => addRowAndOpen(0)} disabled={t.rows.length >= LIMITS.maxTableRows} aria-label="Add a row" className="fb-table-add grid h-11 w-full place-items-center">
+                      <Plus size={20} strokeWidth={2.2} aria-hidden />
+                    </button>
+                  </td>
+                </tr>
+              </tfoot>
+            ) : null}
           </table>
-          {editable && !preview ? (
-            <div className="mt-1.5 flex flex-wrap gap-2 text-xs text-muted">
+          {editable && !preview && !(phone && !tools) ? (
+            <div className={`mt-1.5 flex flex-wrap gap-2 text-xs text-muted ${phone ? "fb-table-tools-phone" : ""}`}>
+              {phone ? null : (
+              <>
               <button type="button" onClick={() => addRowAndOpen(0)} disabled={t.rows.length >= LIMITS.maxTableRows} className="inline-flex items-center gap-1 rounded-chip px-2 py-1 hover:bg-accent-soft hover:text-heading disabled:opacity-40">
                 <Plus size={12} aria-hidden /> Row
               </button>
               <button type="button" onClick={() => tool((d) => model.addColumn(d))} disabled={width >= LIMITS.maxTableColumns} className="inline-flex items-center gap-1 rounded-chip px-2 py-1 hover:bg-accent-soft hover:text-heading disabled:opacity-40">
                 <Plus size={12} aria-hidden /> Column
               </button>
+              </>
+              )}
               <button type="button" aria-pressed={t.headerRow} onClick={() => tool((d) => ({ ...d, headerRow: !d.headerRow }))} className={`inline-flex items-center gap-1 rounded-chip px-2 py-1 hover:bg-accent-soft hover:text-heading ${tools ? "" : "invisible"} ${t.headerRow ? "text-heading" : ""}`}>
                 {t.headerRow ? <Check size={12} aria-hidden /> : <Plus size={12} aria-hidden />} Header row
               </button>

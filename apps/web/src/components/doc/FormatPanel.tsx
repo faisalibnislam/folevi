@@ -25,6 +25,8 @@ import {
   SquareCheck,
   StickyNote,
   ChevronRight,
+  Link2,
+  Unlink,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -43,6 +45,9 @@ import {
 } from "@/components/editor/commands";
 import { colorName, useNotePalette } from "@/components/editor/notePalette";
 import { useActiveCellEditor } from "@/components/editor/table/cellEditorStore";
+import { useIphoneApp } from "@/lib/iphone";
+import { askText, feel } from "@/lib/native/ui";
+import { useToast } from "@/components/ui/Toast";
 
 /*
  * The page tools' Format panel: turn the current block into another kind, format the selected text, its
@@ -86,6 +91,8 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
   const [href, setHref] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
   const linkId = useId();
+  const phone = useIphoneApp();
+  const toast = useToast();
   // A table cell being edited takes the text formatting (its own editor, table/CellEditor.tsx); the block
   // tools are for the note's lines and wait until the cell is closed.
   const cell = useActiveCellEditor(editor);
@@ -129,6 +136,146 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
   const segBtn = (on: boolean) =>
     `grid h-9 flex-1 place-items-center rounded-chip text-[13px] transition-colors focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)] disabled:opacity-40 ${on ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "text-ink hover:bg-surface"}`;
   const toggleList = (t: string, attrs: Record<string, unknown> = {}) => (type === t ? turnInto(editor, "paragraph") : turnInto(editor, t, attrs));
+  if (phone) {
+    // The iPhone layout (docs/IOS_POLISH_PLAN.md §3 Format): one system. Text styles as a row of preview
+    // tiles, then rows of 44 pt buttons in capsules (the chosen one filled), then the rest as rows.
+    const pick = (run: () => unknown) => () => {
+      feel("choose");
+      run();
+    };
+    const styles = [
+      ["Title", type === "heading" && level === 1, () => turnInto(editor, "heading", { level: 1 }), "font-[family-name:var(--font-display)] text-[22px] font-semibold leading-none"],
+      ["Subtitle", type === "heading" && level === 2, () => turnInto(editor, "heading", { level: 2 }), "text-[17px] font-semibold leading-none"],
+      ["Heading", type === "heading" && level === 3, () => turnInto(editor, "heading", { level: 3 }), "text-[15px] font-semibold leading-none"],
+      ["Strong", textStyle === "strong", () => turnInto(editor, "paragraph", { textStyle: "strong" }), "text-[15px] font-semibold leading-none"],
+      ["Body", textStyle === "body", () => turnInto(editor, "paragraph", { textStyle: null }), "text-[15px] leading-none"],
+      ["Caption", textStyle === "caption", () => turnInto(editor, "paragraph", { textStyle: "caption" }), "text-[12px] leading-none opacity-70"],
+    ] as const;
+    const iconBtn = (label: string, icon: React.ReactNode, on: boolean, run: () => unknown, off = false, swatch = false) => (
+      <button key={label} type="button" aria-label={label} aria-pressed={on} disabled={off} onMouseDown={(e) => e.preventDefault()} onClick={pick(run)} className={`iphone-fmt-btn ${swatch ? "is-swatch" : ""} ${on ? "is-on" : ""}`}>
+        {icon}
+      </button>
+    );
+    const ic = { size: 20, strokeWidth: 2, "aria-hidden": true } as const;
+    const row = (label: string, icon: React.ReactNode, on: boolean, run: () => unknown, off = false) => (
+      <button key={label} type="button" aria-pressed={on} disabled={off} onMouseDown={(e) => e.preventDefault()} onClick={pick(run)} className="iphone-fmt-row">
+        <span aria-hidden className="grid w-7 flex-none place-items-center text-heading">
+          {icon}
+        </span>
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        {on ? <span aria-hidden className="h-2 w-2 flex-none iphone-round bg-heading" /> : null}
+      </button>
+    );
+    const link = async () => {
+      const current = String(marks.getAttributes("link").href ?? "");
+      const next = await askText({ title: current ? "Edit link" : "Add link", value: current, placeholder: "Paste or type a link", confirm: current ? "Update" : "Link", capitalize: "none", maxLength: 2000 });
+      if (next === null) return;
+      if (!applyLink(marks, next)) toast.show("That doesn’t look like a web address.", { tone: "error" });
+    };
+    return (
+      <div
+        className="iphone-format space-y-3 pb-2"
+        data-cell-tools=""
+        onMouseDown={(e) => {
+          const t = e.target as Element;
+          if (t.closest("button") && !t.closest("[aria-haspopup], [role=combobox], input, textarea, select")) e.preventDefault();
+        }}
+      >
+        <div role="group" aria-label="Text style" className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {styles.map(([label, on, run, cls]) => (
+            <button key={label} type="button" aria-pressed={on} disabled={d || inCode} onMouseDown={(e) => e.preventDefault()} onClick={pick(run)} className={`iphone-fmt-style snap-start ${on ? "is-on" : ""}`}>
+              <span className={cls}>{label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div role="group" aria-label="Text marks" className="iphone-fmt-group col-span-2">
+            {iconBtn("Bold", <Bold {...ic} strokeWidth={2.4} />, marks.isActive("bold"), () => marks.chain().focus().toggleMark("bold").run(), marksOff)}
+            {iconBtn("Italic", <Italic {...ic} />, marks.isActive("italic"), () => marks.chain().focus().toggleMark("italic").run(), marksOff)}
+            {iconBtn("Underline", <Underline {...ic} />, marks.isActive("underline"), () => marks.chain().focus().toggleMark("underline").run(), marksOff)}
+            {iconBtn("Strikethrough", <Strikethrough {...ic} />, marks.isActive("strike"), () => marks.chain().focus().toggleMark("strike").run(), marksOff)}
+            {iconBtn("Inline code", <Code2 {...ic} />, marks.isActive("code"), () => marks.chain().focus().toggleMark("code").run(), marksOff)}
+          </div>
+          <div role="group" aria-label="Lists" className="iphone-fmt-group col-span-2">
+            {iconBtn("To-do", <SquareCheck {...ic} />, type === "todo", () => toggleList("todo", { checked: false }), d || inCode)}
+            {iconBtn("Toggle", <Play size={16} aria-hidden className="fill-current" />, type === "toggle", () => toggleList("toggle", { collapsed: false }), d || inCode)}
+            {iconBtn("Bullets", <List {...ic} />, type === "bulleted", () => toggleList("bulleted"), d || inCode)}
+            {iconBtn("Numbers", <ListOrdered {...ic} />, type === "numbered", () => toggleList("numbered"), d || inCode)}
+          </div>
+          <div role="group" aria-label="Indent" className="iphone-fmt-group">
+            {iconBtn("Outdent", <IndentDecrease {...ic} />, false, () => changeDepth(editor, -1), d)}
+            {iconBtn("Indent", <IndentIncrease {...ic} />, false, () => changeDepth(editor, 1), d)}
+          </div>
+          <div role="group" aria-label="Group" className="iphone-fmt-group">
+            {iconBtn("Page", <span className="flex items-center gap-1.5 text-[15px]"><FileText size={17} strokeWidth={2} aria-hidden /> Page</span>, fmt.group !== "card", () => setBlockFormat(editor, { group: null }), blockOff)}
+            {iconBtn("Card", <span className="flex items-center gap-1.5 text-[15px]"><PanelTop size={17} strokeWidth={2} aria-hidden /> Card</span>, fmt.group === "card", () => setBlockFormat(editor, { group: fmt.group === "card" ? null : "card" }), blockOff)}
+          </div>
+          <div role="group" aria-label="Alignment" className="iphone-fmt-group col-span-2">
+            {(
+              [
+                ["left", "Align left", <AlignLeft key="l" {...ic} />],
+                ["center", "Align center", <AlignCenter key="c" {...ic} />],
+                ["right", "Align right", <AlignRight key="r" {...ic} />],
+                ["justify", "Justify", <AlignJustify key="j" {...ic} />],
+              ] as const
+            ).map(([value, label, icon]) => iconBtn(label, icon, (fmt.align ?? "left") === value, () => setBlockFormat(editor, { align: value === "left" ? null : value }), blockOff))}
+          </div>
+        </div>
+        <div role="group" aria-label="Text color" className="iphone-fmt-group" {...palette?.attrs}>
+          {iconBtn("Default text color", <span className="text-[17px] font-semibold">A</span>, !marks.isActive("textColor"), () => setTextColor(marks, null), marksOff, true)}
+          {TEXT_COLORS.map((c) => iconBtn(`Text color: ${colorName(palette, c)}`, <span className={`fb-color-${c} text-[17px] font-semibold`}>A</span>, marks.isActive("textColor", { value: c }), () => setTextColor(marks, c), marksOff, true))}
+        </div>
+        <div role="group" aria-label="Highlight" className="iphone-fmt-group" {...palette?.attrs}>
+          {iconBtn("No highlight", <span className="h-[18px] w-[18px] iphone-round shadow-[inset_0_0_0_1.5px_var(--color-ink-faint)]" />, !marks.isActive("highlight"), () => setHighlight(marks, null), marksOff, true)}
+          {HIGHLIGHT_COLORS.map((h) => iconBtn(`Highlight: ${colorName(palette, h)}`, <span className={`fb-hl-${h} fb-swatch h-[18px] w-[18px] iphone-round`} />, marks.isActive("highlight", { value: h }), () => setHighlight(marks, h), marksOff, true))}
+        </div>
+        <div className="iphone-fmt-list" role="group" aria-label="More">
+          {row("Quote", <Quote {...ic} />, type === "quote", () => turnInto(editor, "quote"), d)}
+          {row("Callout", <StickyNote {...ic} />, type === "callout", () => turnInto(editor, "callout", { tone: "note" }), d)}
+          {row("Code block", <Code2 {...ic} />, inCode, () => turnInto(editor, "code", { language: "plaintext" }), d)}
+          {row("Focus line", <span className="h-4 w-[3px] iphone-round bg-current" />, fmt.decoration === "focus", () => setBlockFormat(editor, { decoration: fmt.decoration === "focus" ? null : "focus" }), blockOff)}
+          {row("Block background", <span className="h-3.5 w-5 rounded-tiny bg-[var(--glass-active)] shadow-[inset_0_0_0_1px_var(--glass-border)]" />, fmt.decoration === "block", () => setBlockFormat(editor, { decoration: fmt.decoration === "block" ? null : "block" }), blockOff)}
+          <button type="button" aria-haspopup="dialog" disabled={marksOff} onMouseDown={(e) => e.preventDefault()} onClick={() => void link()} className="iphone-fmt-row">
+            <span aria-hidden className="grid w-7 flex-none place-items-center text-heading">
+              <Link2 {...ic} />
+            </span>
+            <span className="min-w-0 flex-1 truncate">{linkActive ? "Edit link" : "Link"}</span>
+          </button>
+          {linkActive ? row("Remove link", <Unlink {...ic} />, false, () => removeLink(marks), marksOff) : null}
+          {row("Clear formatting", <Eraser {...ic} />, false, () => clearFormatting(marks), marksOff)}
+        </div>
+        {type === "callout" ? (
+          <div role="group" aria-label="Callout tone" className="iphone-fmt-group">
+            {["note", "info", "success", "warning", "danger"].map((tone) => (
+              <button key={tone} type="button" disabled={d} aria-pressed={node?.attrs.tone === tone} onMouseDown={(e) => e.preventDefault()} onClick={pick(() => turnInto(editor, "callout", { tone }))} className={`iphone-fmt-btn !w-auto flex-1 px-2 text-[15px] capitalize ${node?.attrs.tone === tone ? "is-on" : ""}`}>
+                {tone}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {inCode ? (
+          <label className="block">
+            <span className="ui-caption-caps mb-1.5 block px-1">Language</span>
+            <Select
+              disabled={d}
+              value={String(node?.attrs.language ?? "plaintext")}
+              onChange={(e) => {
+                const pos = editor.state.selection.$from.before(1);
+                editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...node!.attrs, language: e.target.value }));
+              }}
+              className="ui-input h-11 w-full rounded-control px-3 text-[17px]"
+            >
+              {["plaintext", "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "html", "java", "javascript", "json", "kotlin", "latex", "markdown", "mermaid", "php", "python", "ruby", "rust", "sql", "swift", "toml", "typescript", "xml", "yaml"].map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </Select>
+          </label>
+        ) : null}
+      </div>
+    );
+  }
   return (
     // Its buttons don't take focus from the note (dropdowns and fields do): what's typed next goes on where
     // the caret was, and a Space can't press a button.

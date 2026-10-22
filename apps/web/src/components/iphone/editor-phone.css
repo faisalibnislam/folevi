@@ -1,0 +1,93 @@
+/* ------------------------------------------------------------------------------------------------
+ * The note editor in the iPhone layout (docs/IOS_POLISH_PLAN.md §3 Note, Insert, Format, Style; WP2): the
+ * bar on the keyboard and the note's tools (NoteBars.tsx), tables, collections, the held line, Insert,
+ * Format and Style in their sheets. Everything here is under <html data-iphone> (the iPhone app, the iPad
+ * app in a compact window, the Android app on a phone); nothing changes on the website or the Mac app.
+ * --------------------------------------------------------------------------------------------- */
+/* Round, for the few round things the shared panels draw in the iPhone layout (dots, swatches, capsules). */
+:root[data-iphone] .iphone-round { border-radius: var(--radius-capsule); }
+/* No grip beside the line on a phone: there's no room for a finger's target in the margin without covering
+   the text. A long press on a line opens its menu, and holding it then moving lifts it (blockDrag.ts). */
+:root[data-iphone] [data-block-grip] { display: none; }
+/* Writing: the note has the screen, as in Craft; only the bar on the keyboard stays (NoteBars.tsx). The
+   top bar comes back when the keyboard goes. */
+:root[data-iphone] :is(header, .iphone-bar):has(~ main#main) { transition: opacity 200ms ease-out, visibility 0s linear 0s; }
+:root[data-iphone][data-iphone-writing] :is(header, .iphone-bar):has(~ main#main) { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 160ms ease-in, visibility 0s linear 160ms; }
+@media (prefers-reduced-motion: reduce) { :root[data-iphone] :is(header, .iphone-bar):has(~ main#main) { transition-duration: 150ms; } }
+/* Tables: a wider fade at the screen's edge while there's more to scroll to, and a 44 pt "+" after the last
+   column and under the last row (TableView.tsx). */
+:root[data-iphone] .fb-editor .fb-hscroll[data-more-start] { --fade-start: 36px; }
+:root[data-iphone] .fb-editor .fb-hscroll[data-more-end] { --fade-end: 36px; }
+:root[data-iphone] .fb-table .fb-table-add-col { height: 1px; }
+:root[data-iphone] .fb-table-add {
+  border-radius: var(--radius-chip);
+  color: var(--color-ink-muted);
+  background: color-mix(in oklab, var(--color-ink) 4.5%, transparent);
+  transition: background-color 150ms, color 150ms;
+}
+:root[data-iphone] .fb-table-add:active { background: color-mix(in oklab, var(--color-ink) 10%, transparent); color: var(--color-heading); }
+:root[data-iphone] .fb-table-add:disabled { opacity: 0.35; }
+:root[data-iphone] .fb-table-tools-phone { gap: 6px; margin-top: 8px; font-size: 15px; }
+:root[data-iphone] .fb-table-tools-phone > button { min-height: 44px; padding-inline: 14px; border-radius: var(--radius-capsule); background: color-mix(in oklab, var(--color-ink) 4.5%, transparent); }
+:root[data-iphone] .fb-table-tools-phone > button[aria-pressed="true"] { background: var(--color-heading); color: var(--color-canvas); }
+:root[data-iphone] .fb-table-tools-phone svg { width: 15px; height: 15px; }
+/* A task's priority on its chip: a dot, not "!!!" (which reads as an error); the chip stays grey. */
+:root[data-iphone] .fb-task-meta[data-priority="high"] .fb-due-chip { color: var(--color-ink-muted); background: var(--color-surface-sunken); }
+:root[data-iphone] .fb-due-chip { font-size: 13px; }
+:root[data-iphone] .fb-due-chip .fb-prio { font-size: 0; }
+:root[data-iphone] .fb-due-chip .fb-prio::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: var(--radius-capsule); vertical-align: 1px; background: var(--color-ink-faint); }
+:root[data-iphone] .fb-task-meta[data-priority="high"] .fb-due-chip .fb-prio::before { background: var(--color-danger); }
+:root[data-iphone] .fb-task-meta[data-priority="medium"] .fb-due-chip .fb-prio::before { background: var(--color-marigold); }
+:root[data-iphone] .fb-due-chip .fb-prio:only-child::before { margin-left: 0; }
+/* Insert (doc/InsertPanel.tsx): the search stays under the sheet's title on the sheet's own glass; each
+   picture sits on a soft wash of its block's colour. */
+:root[data-iphone] .iphone-insert-search { background: var(--liquid-fill-strong); -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); }
+:root[data-iphone][data-iphone-keyboard] .iphone-insert-search,
+:root[data-reduce-transparency] .iphone-insert-search { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-iphone] .iphone-insert-art { background: color-mix(in oklab, currentColor 8%, var(--color-surface-raised)); box-shadow: inset 0 0 0 0.5px color-mix(in oklab, currentColor 14%, transparent); }
+/* Format (doc/FormatPanel.tsx): preview tiles for the text styles, capsules of 44 pt buttons, then rows. The
+   chosen one is filled in the heading colour, never outlined. */
+:root[data-iphone] .iphone-format { --fmt-wash: color-mix(in oklab, var(--color-ink) 5.5%, transparent); --fmt-press: color-mix(in oklab, var(--color-ink) 11%, transparent); }
+:root[data-iphone] .iphone-fmt-style {
+  display: grid; place-items: center; flex: none; width: 72px; height: 56px; border-radius: var(--radius-panel);
+  background: var(--fmt-wash); color: var(--color-heading); transition: background-color 150ms, color 150ms, transform 150ms;
+}
+:root[data-iphone] .iphone-fmt-style:active { transform: scale(0.96); }
+:root[data-iphone] .iphone-fmt-group { display: flex; align-items: center; gap: 2px; padding: 2px; border-radius: var(--radius-capsule); background: var(--fmt-wash); }
+:root[data-iphone] .iphone-fmt-btn {
+  display: grid; place-items: center; flex: 1 1 0; min-width: 0; height: 44px; border-radius: var(--radius-capsule);
+  color: var(--color-heading); transition: background-color 150ms, color 150ms;
+}
+:root[data-iphone] .iphone-fmt-btn:active:not(.is-on) { background: var(--fmt-press); }
+:root[data-iphone] :is(.iphone-fmt-btn, .iphone-fmt-style).is-on { background: var(--color-heading); color: var(--color-canvas); }
+:root[data-iphone] :is(.iphone-fmt-btn, .iphone-fmt-style, .iphone-fmt-row):disabled { opacity: 0.35; }
+/* A colour keeps its colour when chosen: it sits on a raised thumb, as in a segmented control. */
+:root[data-iphone] .iphone-fmt-btn.is-swatch.is-on { background: var(--color-surface-raised); color: var(--color-heading); box-shadow: 0 1px 3px rgb(0 0 0 / 0.14), 0 0 0 0.5px rgb(0 0 0 / 0.06); }
+:root[data-iphone] .iphone-fmt-list { border-radius: var(--radius-container); background: var(--fmt-wash); overflow: hidden; }
+:root[data-iphone] .iphone-fmt-row {
+  position: relative; display: flex; width: 100%; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px;
+  text-align: left; font-size: 17px; line-height: 22px; color: var(--color-ink); transition: background-color 150ms;
+}
+:root[data-iphone] .iphone-fmt-row:active { background: var(--fmt-press); }
+:root[data-iphone] .iphone-fmt-row + .iphone-fmt-row::before { content: ""; position: absolute; top: 0; right: 0; left: 56px; height: 0.5px; background: var(--iphone-separator); }
+/* Style (doc/Inspector.tsx StylePanel): iOS rows in an inset group, round swatches. */
+:root[data-iphone] .iphone-style-list { border-radius: var(--radius-container); background: color-mix(in oklab, var(--color-ink) 5.5%, transparent); overflow: hidden; }
+:root[data-iphone] .iphone-style-row-wrap { position: relative; }
+:root[data-iphone] .iphone-style-row-wrap + .iphone-style-row-wrap::before { content: ""; position: absolute; top: 0; right: 0; left: 16px; height: 0.5px; background: var(--iphone-separator); }
+:root[data-iphone] .iphone-style-row { display: flex; width: 100%; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; text-align: left; font-size: 17px; line-height: 22px; color: var(--color-ink); }
+:root[data-iphone] button.iphone-style-row:active { background: color-mix(in oklab, var(--color-ink) 6%, transparent); }
+:root[data-iphone] button.iphone-style-row:disabled { opacity: 0.4; }
+/* A held line while its menu is open, where the app has no lifted picture of it (the website, Android). */
+:root[data-iphone] [data-block-held]:not([data-lifted]) { border-radius: var(--radius-small); background: color-mix(in oklab, var(--color-ink) 6%, transparent); box-shadow: 0 0 0 6px color-mix(in oklab, var(--color-ink) 6%, transparent); animation: iphone-fade-in 150ms ease-out; }
+/* Collections (CollectionEmbed.tsx PhoneCollection): a card with its views as a segmented control, rows as an
+   iOS list. */
+:root[data-iphone] .iphone-collection { border-radius: var(--radius-container); background: var(--color-surface-raised); box-shadow: var(--shadow-hairline); overflow: hidden; padding-top: 4px; }
+:root[data-theme="dark"][data-iphone] .iphone-collection { box-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.08); }
+:root[data-iphone] .iphone-seg { display: flex; gap: 2px; padding: 2px; overflow-x: auto; border-radius: var(--radius-capsule); background: color-mix(in oklab, var(--color-ink) 6%, transparent); scrollbar-width: none; }
+:root[data-iphone] .iphone-seg::-webkit-scrollbar { display: none; }
+:root[data-iphone] .iphone-seg > button { display: inline-flex; flex: 1 0 auto; min-width: 0; height: 32px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border-radius: var(--radius-capsule); font-size: 15px; color: var(--color-ink); transition: background-color 150ms, box-shadow 150ms; }
+:root[data-iphone] .iphone-seg > button[aria-pressed="true"] { background: var(--color-surface-raised); font-weight: 600; color: var(--color-heading); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.05); }
+:root[data-theme="dark"][data-iphone] .iphone-seg > button[aria-pressed="true"] { background: rgb(255 255 255 / 0.16); }
+:root[data-iphone] .iphone-collection-list > li { position: relative; }
+:root[data-iphone] .iphone-collection-list > li + li::before { content: ""; position: absolute; top: 0; right: 0; left: 48px; height: 0.5px; background: var(--iphone-separator); }
+:root[data-iphone] .iphone-collection > button:last-of-type { box-shadow: inset 0 0.5px 0 var(--iphone-separator); }

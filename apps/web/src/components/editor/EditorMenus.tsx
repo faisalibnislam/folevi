@@ -2225,6 +2225,7 @@ function BlockHandle({
       </p>
       {hover && !menu && !dragging ? (
         <div
+          data-block-grip=""
           className="ui-raised fixed z-30 flex items-center gap-px rounded-control p-0.5 opacity-90 transition-opacity hover:opacity-100 animate-[folio-rise_120ms_var(--ease-folio)]"
           // Where there's no room beside the line (narrow windows, phones) only the grip shows, so the handle
           // never covers the start of the text (the grip's menu has Insert below).

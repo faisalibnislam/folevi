@@ -16,6 +16,7 @@ import { DIVIDER_STYLES, MERMAID_SAMPLE } from "@/components/editor/insertCatalo
 import { requestSyncedInsert } from "@/components/editor/synced/actions";
 import { nativeApp } from "@/lib/nativeApp";
 import { useNativeDevice } from "@/lib/nativeDevice";
+import { useIphoneApp } from "@/lib/iphone";
 import { InsertPreview, type PreviewKind } from "./insertPreviews";
 import { useCapabilities } from "@/lib/mode";
 
@@ -208,6 +209,42 @@ function useInsertDrag(editor: Editor | null, disabled: boolean, action: InsertA
 const PICTURE = "grid h-14 w-full place-items-center overflow-hidden rounded-chip bg-sunken/80 transition-[background-color,transform] duration-150";
 const PICTURE_LIVE = "group-hover:bg-accent-soft/70 group-active:scale-[0.97]";
 
+// The iPhone layout: each picture in its block's own colour family (lines and its one detail), so the grid
+// reads at a glance; the tiles are touch-sized and nothing drags out of a sheet there.
+const TILE_HUE: Partial<Record<PreviewKind, string>> = {
+  todo: "moss", table: "moss", gallery: "moss", kanban: "moss", monthGrid: "moss",
+  image: "ember", unsplash: "ember", scan: "ember", audio: "ember", file: "ember",
+  flowchart: "plum", mindmap: "plum", whiteboard: "plum", wireframe: "plum", mermaid: "plum",
+  chart: "marigold", stickies: "marigold", callout: "marigold", date: "marigold",
+  bookmark: "coral", embed: "coral",
+};
+
+function PhoneTile({ tile, editor, disabled }: { tile: Tile; editor: Editor | null; disabled: boolean }) {
+  const hue = TILE_HUE[(tile.action as InsertItem).preview];
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-label={tile.name ?? tile.label}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => {
+        if (!editor || disabled) return;
+        runInsert(editor, tile.action);
+      }}
+      className="group flex min-w-0 select-none flex-col items-center gap-1 rounded-chip outline-none disabled:opacity-45 focus-visible:ring-2 focus-visible:ring-focus"
+    >
+      <span
+        aria-hidden
+        className="iphone-insert-art grid h-14 w-full place-items-center overflow-hidden rounded-panel transition-transform duration-150 group-active:scale-[0.96]"
+        style={hue ? ({ color: `var(--color-${hue})`, ["--color-accent" as string]: `var(--color-${hue})` } as React.CSSProperties) : undefined}
+      >
+        {tile.picture}
+      </span>
+      <span className="line-clamp-2 w-full break-words px-0.5 text-center text-[13px] leading-4 text-ink">{tile.label}</span>
+    </button>
+  );
+}
+
 function TileButton({ tile, editor, disabled }: { tile: Tile; editor: Editor | null; disabled: boolean }) {
   const handlers = useInsertDrag(editor, disabled, tile.action);
   return (
@@ -311,10 +348,10 @@ function TableSizePicker({ editor, disabled }: { editor: Editor | null; disabled
 }
 
 /** A titled group of tiles (or the table picker); search hides it when nothing in it matches. */
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, phone }: { title: string; children: React.ReactNode; phone?: boolean }) {
   return (
-    <div role="group" aria-label={title} className="mt-5">
-      <h3 className="ui-caps mb-2 px-1">{title}</h3>
+    <div role="group" aria-label={title} className={phone ? "mt-6" : "mt-5"}>
+      <h3 className={phone ? "ui-caption-caps mb-2.5 px-1" : "ui-caps mb-2 px-1"}>{title}</h3>
       {children}
     </div>
   );
@@ -330,22 +367,44 @@ export function InsertPanel({ editor, disabled }: { editor: Editor | null; disab
   // Unsplash is searched through Folevi's servers: not in local mode.
   const stockPhotos = useCapabilities().stockPhotos;
   // Search runs across every group; a group with nothing that matches goes.
+  const phone = useIphoneApp();
   const sections = SECTIONS.map((s) => ({ ...s, tiles: [...s.tiles, ...(s.title === "Media" ? scans : [])].filter((t) => matches(query, t.keywords) && (stockPhotos || t.action.special !== "unsplash")) })).filter((s) => s.tiles.length || (s.title === DATA && showTable));
   return (
     <div>
-      <p className="mb-2 px-1 text-[12.5px] text-muted">Drag and drop any item to the document</p>
-      <label className="ui-well flex h-9 items-center gap-2 rounded-chip px-3 text-[13px] text-muted focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
-        <Search size={14} aria-hidden />
-        <input data-autofocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search blocks" className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-[var(--color-ink-faint)]" />
-      </label>
+      {phone ? (
+        // Under the sheet's title, staying there while the tiles scroll (it isn't focused on open: that would
+        // bring the keyboard up over the tiles).
+        <div className="iphone-insert-search sticky top-0 z-10 -mx-4 px-4 pb-2 pt-0.5">
+          <label className="flex h-10 items-center gap-2 rounded-control bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] px-3 text-[17px] text-muted">
+            <Search size={17} strokeWidth={2.2} aria-hidden />
+            <input type="search" enterKeyHint="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search blocks" className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-[var(--color-ink-faint)] [&::-webkit-search-cancel-button]:hidden" />
+          </label>
+        </div>
+      ) : (
+        <>
+          <p className="mb-2 px-1 text-[12.5px] text-muted">Drag and drop any item to the document</p>
+          <label className="ui-well flex h-9 items-center gap-2 rounded-chip px-3 text-[13px] text-muted focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
+            <Search size={14} aria-hidden />
+            <input data-autofocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search blocks" className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-[var(--color-ink-faint)]" />
+          </label>
+        </>
+      )}
       {sections.map((s) => (
-        <Section key={s.title} title={s.title}>
+        <Section key={s.title} title={s.title} phone={phone}>
           {s.tiles.length ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-x-2 gap-y-3">
-              {s.tiles.map((t) => (
-                <TileButton key={t.key} tile={t} editor={editor} disabled={d} />
-              ))}
-            </div>
+            phone ? (
+              <div className="grid grid-cols-4 gap-x-2 gap-y-3.5">
+                {s.tiles.map((t) => (
+                  <PhoneTile key={t.key} tile={t} editor={editor} disabled={d} />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-x-2 gap-y-3">
+                {s.tiles.map((t) => (
+                  <TileButton key={t.key} tile={t} editor={editor} disabled={d} />
+                ))}
+              </div>
+            )
           ) : null}
           {s.title === DATA && showTable ? (
             <div role="group" aria-label="Quick table" className={s.tiles.length ? "mt-4" : ""}>

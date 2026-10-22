@@ -173,7 +173,15 @@ export const Todo = Node.create({
           chip.type = "button";
           chip.className = "fb-due-chip";
           chip.dataset.action = "task-details";
-          chip.textContent = formatChip(current.attrs.dueDate, current.attrs.dueTime, current.attrs.priority);
+          chip.textContent = formatChip(current.attrs.dueDate, current.attrs.dueTime, null);
+          // The priority marks on their own, so the iPhone layout can draw them as a dot (iphone/editor-phone.css).
+          const marks = formatChip(null, null, current.attrs.priority);
+          if (marks) {
+            const prio = document.createElement("span");
+            prio.className = "fb-prio";
+            prio.textContent = `${chip.textContent ? " · " : ""}${marks}`;
+            chip.append(prio);
+          }
           if (rule) {
             // A small repeat mark (the arrows of lucide's "repeat"), drawn, not a character.
             chip.dataset.repeat = "true";

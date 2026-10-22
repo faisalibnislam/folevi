@@ -1,8 +1,8 @@
 // Folevi for Mac on WebKit (apps/mac, docs/MAC_WEBKIT_PLAN.md §5.1, package WM1): the native Debug app, driven
 // through its eval hook (apps/mac/scripts/mac.mjs, each run on a data folder of its own), answers foleviShell as
 // today's Electron app does.
-//   1. Parity: the same script runs in Electron from source (the interface built in, a scratch HOME and data folder,
-//      a mock Keychain) and in the native app; every answer the page reads has the same shape and value, apart
+//   1. Parity: the same script runs in Electron from source (the interface built in, a scratch data folder and
+//      library folder, a mock Keychain) and in the native app; every answer the page reads has the same shape and value, apart
 //      from the few listed where the native app does more.
 //   2. Local mode: the first-launch choice, a library on this Mac, the mode switch loads the window again in the
 //      library, a note written, the app killed while the journal holds the last edit, the next launch replays it.
@@ -16,7 +16,7 @@
 // build`). E2E_MAC_RUNNER_SECONDS sets how long 3 watches the runner (default 20).
 //   E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 npx playwright test e2e/mac-app.spec.ts --project account --workers=1
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -83,6 +83,8 @@ const click = (text: string) =>
  * library on this device and opened it. Self-contained (it's sent to the page as text).
  */
 async function parity() {
+  // The page's own object, called the way the page calls it (lib/shell/types.ts is the contract being checked).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const S = (window as unknown as { foleviShell: any }).foleviShell;
   const shape = (v: unknown): unknown =>
     v === null ? "null" : Array.isArray(v) ? (v.length ? [shape(v[0])] : []) : v instanceof Uint8Array ? `bytes` : typeof v === "object" ? Object.fromEntries(Object.keys(v as object).sort().map((k) => [k, shape((v as Record<string, unknown>)[k])])) : typeof v;
@@ -128,11 +130,11 @@ async function parity() {
   out.removeMismatch = await err(S.library.remove(path, { ifMatch: "nope" }));
   await S.library.remove(path);
   out.readRemoved = await err(S.library.read(path));
-  await S.library.journal.truncate((await S.library.journal.readAll()).length);
+  // (The page journals its own edits meanwhile: only the record added here is compared, and nothing is cut.)
   await S.library.journal.append(new Uint8Array([7, 8]));
-  out.journalRead = (await S.library.journal.readAll()).map((r: Uint8Array) => Array.from(r));
-  await S.library.journal.truncate(1);
-  out.journalAfter = (await S.library.journal.readAll()).length;
+  const records = await S.library.journal.readAll();
+  out.journalHasOurs = records.some((r: Uint8Array) => r.length === 2 && r[0] === 7 && r[1] === 8);
+  out.journalRecords = records.every((r: unknown) => r instanceof Uint8Array);
   out.unlockPlain = await err(S.library.unlock("anything"));
   out.conflicts = await S.library.conflictVersions(path).catch((e: { code?: string }) => ({ code: e.code }));
   out.calendarHttp = await S.http.calendar("http://example.com/a.ics");
@@ -154,40 +156,59 @@ test("1. the native app answers foleviShell as Electron does", async () => {
   test.skip(!electronReady, "Needs Electron built (cd apps/desktop && pnpm build).");
   test.setTimeout(240_000);
 
-  // ---- Electron from source, the interface built in, nothing of the owner's (HOME, data, Keychain)
-  const home = mkdtempSync(join(tmpdir(), "folevi-electron-home-"));
+  // Both apps get a folder library inside this test's own scratch folder. Never "This device only": Electron puts
+  // that in ~/Documents/Folevi Library (it ignores HOME), which is the owner's real library.
+  const scratch = mkdtempSync(join(tmpdir(), "folevi-parity-"));
+  const electronLib = join(scratch, "electron-library");
+  const macLib = join(scratch, "mac-library");
+  mkdirSync(electronLib);
+  mkdirSync(macLib);
+  const ownLibrary = (info: { displayPath?: string } | null, dir: string) => {
+    // displayPath reads "~/…" for a folder in the home folder: compare the folder's own name.
+    if (!info || !String(info.displayPath ?? "").endsWith(dir.split("/").pop()!)) throw new Error(`Not the test's own library: ${JSON.stringify(info)}. Stopped before writing anything.`);
+  };
+
+  // ---- Electron from source, the interface built in, nothing of the owner's (data folder, Keychain, library)
   const electron = await _electron.launch({
     executablePath: electronBinary,
     args: [desktopDir, "--use-mock-keychain"],
-    env: { ...process.env, HOME: home, FOLEVI_URL: APP, FOLEVI_USER_DATA: join(home, "userData"), FOLEVI_SHELL: "1", FOLEVI_SHELL_DIR: shellDir },
+    env: { ...process.env, FOLEVI_URL: APP, FOLEVI_USER_DATA: join(scratch, "electron-data"), FOLEVI_SHELL: "1", FOLEVI_SHELL_DIR: shellDir },
   });
-  let fromElectron: Record<string, unknown> = {};
+  let fromElectron: Record<string, unknown> | undefined;
   try {
+    // "Choose a folder" answers with the test's own folder.
+    await electron.evaluate(({ dialog }, dir) => {
+      dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [dir] })) as unknown as typeof dialog.showOpenDialog;
+    }, electronLib);
     const isMain = (w: Page) => w.url().startsWith("app://folevi/") && !/\/(quick-add|place-sync|_folevi)/.test(decodeURIComponent(w.url()));
     await expect.poll(() => electron.windows().filter(isMain).length, { timeout: 60_000 }).toBeGreaterThan(0);
     let page = electron.windows().find(isMain)!;
     await expect(page.getByText("Where should your notes live?")).toBeVisible({ timeout: 60_000 });
-    await page.evaluate(async () => {
-      const S = (window as unknown as { foleviShell: { library: { setup(o: { kind: string }): Promise<unknown> }; setMode(m: string): Promise<void> } }).foleviShell;
-      await S.library.setup({ kind: "device" });
-      await S.setMode("local");
-    });
+    const setUp = (await page.evaluate(async () => {
+      const S = (window as unknown as { foleviShell: { library: { setup(o: { kind: string }): Promise<{ displayPath?: string } | null> } } }).foleviShell;
+      return S.library.setup({ kind: "folder" });
+    })) as { displayPath?: string } | null;
+    ownLibrary(setUp, electronLib);
+    await page.evaluate(() => (window as unknown as { foleviShell: { setMode(m: string): Promise<void> } }).foleviShell.setMode("local"));
     await expect.poll(async () => {
       page = electron.windows().find(isMain) ?? page;
       return page.evaluate(() => (window as unknown as { foleviShell?: { initialMode: string } }).foleviShell?.initialMode).catch(() => null);
     }, { timeout: 30_000 }).toBe("local");
+    ownLibrary((await page.evaluate(() => (window as unknown as { foleviShell: { library: { info(): Promise<{ displayPath?: string }> } } }).foleviShell.library.info())) as { displayPath?: string }, electronLib);
     fromElectron = (await page.evaluate(parity)) as Record<string, unknown>;
   } finally {
     await electron.close();
   }
 
-  // ---- the native app, the same steps
-  const app = await launchMac();
-  let fromMac: Record<string, unknown> = {};
+  // ---- the native app, the same steps (FOLEVI_TEST_FOLDER: a Debug build's "Choose a folder" answer)
+  const app = await launchMac({ FOLEVI_TEST_FOLDER: macLib });
+  let fromMac: Record<string, unknown> | undefined;
   try {
     await app.until(`return document.body.innerText.includes("Where should your notes live?")`, 60_000);
-    await app.run(`await foleviShell.library.setup({ kind: "device" }); await foleviShell.setMode("local"); return true;`);
+    ownLibrary((await app.run(`return await foleviShell.library.setup({ kind: "folder" })`)) as { displayPath?: string }, macLib);
+    await app.run(`await foleviShell.setMode("local"); return true;`);
     await app.until(`return window.foleviShell && foleviShell.initialMode === "local" && document.readyState === "complete"`, 30_000);
+    ownLibrary((await app.run(`return await foleviShell.library.info()`)) as { displayPath?: string }, macLib);
     fromMac = (await app.run(`return await (${parity.toString()})();`)) as Record<string, unknown>;
   } finally {
     await app.quit();
@@ -196,6 +217,7 @@ test("1. the native app answers foleviShell as Electron does", async () => {
   // Where the two differ on purpose, the same as the iPhone and iPad app (the shared Swift services):
   // - two refusals carry a code in the native app (invalid_argument) where Electron's have none;
   // - a calendar link that isn't https is refused in the iOS services' words, Electron's own differ.
+  if (!fromMac || !fromElectron) throw new Error("A side gave no answers.");
   for (const r of [fromMac, fromElectron]) {
     for (const k of ["placesSwitchUnknown", "secretRefused"]) (r[k] as { code: unknown }).code = "(either)";
     (r.calendarHttp as { message: unknown }).message = typeof (r.calendarHttp as { message: unknown }).message;
@@ -272,7 +294,10 @@ test("3. account mode and two places: signed in, a note syncs, the library's run
   try {
     // A library first (the place the account joins), then the account.
     await app.until(`return document.body.innerText.includes("Where should your notes live?")`, 60_000);
-    await app.run(`await foleviShell.library.setup({ kind: "device" }); await foleviShell.setMode("local"); return true;`);
+    // A Debug build keeps "This device only" inside its own data folder (Paths.documentsFolder), never ~/Documents.
+    const lib = (await app.run(`return await foleviShell.library.setup({ kind: "device" })`)) as { displayPath?: string };
+    expect(lib.displayPath ?? "").toContain(app.dir.split("/").pop()!);
+    await app.run(`await foleviShell.setMode("local"); return true;`);
     await app.until(`return window.foleviShell && foleviShell.places && foleviShell.places.current === "library" && document.readyState === "complete"`);
     const id = String(await app.cmd("test-session", { token }));
     expect(id).toMatch(/^acct:/);

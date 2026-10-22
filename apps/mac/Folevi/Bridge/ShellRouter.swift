@@ -146,7 +146,11 @@ final class ShellRouter {
             guard ["icloud", "folder", "device"].contains(kind) else { throw BridgeError(code: "unavailable", message: "This place isn't on the Mac.", path: "unsupported") }
             var picked: URL?
             if kind == "folder" {
-                picked = await FolderPicker.shared.pick(from: window())
+                #if DEBUG
+                // Tests: FOLEVI_TEST_FOLDER answers "Choose a folder" (a scratch folder; never a real library).
+                if let test = ProcessInfo.processInfo.environment["FOLEVI_TEST_FOLDER"], !test.isEmpty { picked = URL(fileURLWithPath: test, isDirectory: true) }
+                #endif
+                if picked == nil { picked = await FolderPicker.shared.pick(from: window()) }
                 if picked == nil { return method == "libSetup" ? ["value": NSNull()] : try await onLibrary { self.library.info() } }
             }
             let answer = try await onLibrary { method == "libSetup" ? try self.library.setup(kind: kind, picked: picked) : try self.library.move(kind: kind, picked: picked) }

@@ -1,7 +1,9 @@
 # Folevi for iPhone and iPad
 
-The web app (https://app.folevi.com) in a Capacitor shell, the way the Mac app (`apps/desktop`) is the web app in
-an Electron window. The native parts are in Swift: a Face ID lock, links that open in an in-app Safari view,
+The web app in a Capacitor shell, the way the Mac app (`apps/desktop`) is the web app in an Electron window. Since
+2026-10-22 the app carries the interface built in (the shell export in `web/`, git-ignored) with
+`window.foleviShell` in Swift (`ios/App/Native/Shell`): local mode ("Keep notes on my devices", a library in
+iCloud, a folder or on the device), signing in, Foli AI on the device and end-to-end encryption keys. The native parts are in Swift: a Face ID lock, links that open in an in-app Safari view,
 `folevi://` links, haptics, the bridge the page talks to (`window.foleviNative`), and (stage 2) a share
 extension, widgets and a Control Center control, App Intents for Siri and Shortcuts, Spotlight and a document
 scanner, which reach Folevi through the REST API with a token made for the device, and (stage 3) push
@@ -34,10 +36,18 @@ Needs Xcode 27 (or 26) and Node 22. iOS 17 or later; iPhone and iPad.
 cd apps/ios
 pnpm install --ignore-workspace
 
-# Point the app at production (https://app.folevi.com) and copy the config and offline page into Xcode
-pnpm sync
+# The built-in interface (apps/web's shell export) into web/, then the config into Xcode
+pnpm shell                         # development (dev Convex); pnpm release builds the production one
+FOLEVI_SERVICE_URL=http://app.localhost:3002 npx cap sync ios   # signing in against the dev server
+pnpm sync                          # signing in against https://app.folevi.com
 
-# Or at the local dev server (Debug builds allow its plain http; the dev server must be on port 3002)
+# TestFlight (internal testing only): production export, archive, profiles, upload (docs/IOS.md)
+pnpm release                       # node scripts/release.mjs [--build <n>] [--no-upload]
+
+# The website in the app instead of the built-in interface (as before 2026-10-22)
+FOLEVI_URL=https://app.folevi.com npx cap sync ios
+
+# Or the website from the local dev server (Debug builds allow its plain http; port 3002)
 pnpm sync:dev                      # FOLEVI_URL=http://app.localhost:3002 cap sync ios
 
 # Build for the Simulator, or build, install and open it there

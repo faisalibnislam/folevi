@@ -297,23 +297,17 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
             case .success(let req):
                 let task = Task {
                     let result = await ShellAI.generate(req) { [weak self] text in self?.notifyListeners("aiChunk", data: ["id": id, "text": text]) }
-                    self.aiLock.lock()
-                    self.aiTasks[id] = nil
-                    self.aiLock.unlock()
+                    self.aiLock.withLock { self.aiTasks[id] = nil }
                     call.resolve(result.json)
                 }
-                self.aiLock.lock()
-                self.aiTasks[id] = task
-                self.aiLock.unlock()
+                self.aiLock.withLock { self.aiTasks[id] = task }
             }
         }
     }
 
     @objc func aiCancel(_ call: CAPPluginCall) {
         guarded(call) {
-            self.aiLock.lock()
-            let t = self.aiTasks[call.getString("id") ?? ""]
-            self.aiLock.unlock()
+            let t = self.aiLock.withLock { self.aiTasks[call.getString("id") ?? ""] }
             t?.cancel()
             call.resolve()
         }

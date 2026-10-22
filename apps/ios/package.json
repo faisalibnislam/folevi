@@ -11,7 +11,9 @@
     "start": "node scripts/simulator.mjs run",
     "test": "node scripts/simulator.mjs test",
     "icon": "node ../../packages/design-tokens/scripts/app-icon.mjs",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "shell": "node ../web/scripts/build-shell.mjs --platform ios",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "@capacitor/app": "8.1.2",

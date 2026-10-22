@@ -1,14 +1,144 @@
 # Folevi for iPhone and iPad
 
 Folevi for iPhone and iPad is the web app in an app of its own, the way Folevi for Mac is (`docs/DESKTOP.md`):
-a small Capacitor shell (`apps/ios`) whose web view loads https://app.folevi.com. Features, layout and fixes
-come from the site, so the app matches the web the moment a web change ships. The shell adds what a browser
-tab can't do, in a few hundred lines of Swift and one script.
+a Capacitor shell (`apps/ios`) around the same product code. Since 2026-10-22 the app carries the interface
+built in (the web app's shell export, `docs/LOCAL_MODE_PLAN.md` §1), served from `capacitor://localhost`, so it
+opens offline in both modes: "Keep notes on my devices" (local mode, no account) and "Sign in to Folevi". The
+shell adds what a browser tab can't do in Swift: the library over files, sign-in, Foli AI on the device,
+end-to-end encryption keys, and the native parts below. Web changes reach the app with each app build
+(`pnpm release`), like the Mac app's built-in interface. The sections below "The built-in interface" describe
+the parts that predate it; they apply unchanged unless that section says otherwise.
 
 - Universal (iPhone and iPad), iOS 17 and later, bundle id `com.folevi.ios`, display name "Folevi".
 - Capacitor 8 with Swift Package Manager (no CocoaPods), pinned exact versions, outside the pnpm workspace
   (Vercel builds only `apps/web`).
 - Commands: `apps/ios/README.md`.
+
+## The built-in interface (2026-10-22)
+
+### What runs where
+
+```
+apps/web (shell export, build-shell.mjs --platform ios) -> apps/ios/web/ (git-ignored) -> ios/App/App/public
+apps/ios/ios/App/Native/Shell/
+  FoleviShellPlugin.swift   "FoleviShell": every foleviShell call, origin-checked like FoleviNative
+  LibraryService.swift      the library: where it is, its manifest, passphrase, move, attachments
+  LibraryFS.swift           LocalFs over a folder: coordinated I/O, etags, placeholders, conflict versions
+  EncryptedFS.swift         FLV1 envelopes under HMAC names (the Mac's encryptedFs.ts)
+  LibraryCrypto.swift       PBKDF2, HKDF, AES-GCM single and STREAM envelopes, HMAC names (CryptoKit)
+  LibraryJournal.swift      the native journal (the Mac's format: "FLVJ" 0x01, length, CRC-32, record)
+  LibraryWatcher.swift      NSMetadataQuery for iCloud, a listing every 30 s and on coming to the front
+  LibraryFileHandler.swift  folevi-file://lib/<sha256>?type=<mime>: attachments, Range, CORS for the page
+  ShellAuth.swift           bearer sign-in (client folevi-shell) in iOS's sign-in sheet, /api/auth/* fetch
+  ShellAI.swift             Foli AI: Apple's on-device model (FoundationModels, iOS 26+) or the person's keys
+  E2eeKeys.swift            this device's X25519 and Ed25519 keys for end-to-end encryption
+  ShellServices.swift       the mode, reminders (local notifications), calendars and previews, saving files
+  Keychain.swift            the app's own Keychain items; a reinstall forgets them
+Native/AppleSignIn.swift    Sign in with Apple in Apple's own sheet (foleviNative.signInWithApple)
+```
+
+- `bridge.js` adds `window.foleviShell` (types: `apps/web/src/lib/shell/types.ts`, platform `"ios"`, with
+  `deviceFamily` "iPhone" or "iPad") next to `window.foleviNative`, on the app's own origin only.
+  `FoleviViewController` fills in the mode (read before any page script runs), the version and the device's
+  name. Bytes cross the bridge as base64; failures reject with `{ name, code, message, path }`.
+- The start page is `/documents` (bridge.js sets it before the router reads the address; index.html is "/").
+- `setMode` saves the choice (`UserDefaults`) and starts the app's screen again with a new web view on the same
+  storage, so the mode in the page and the network rules match. In local mode a `WKContentRuleList` blocks
+  folevi.com, `*.convex.cloud` and `*.convex.site` under the page's own policy.
+- Links to the app's own pages on the website (https://app.folevi.com/d/...) open in the app; others open in
+  the in-app Safari view as before.
+- The extensions' REST API base is the service (https://app.folevi.com/api/v1), not the page's origin.
+
+### Local mode on iPhone and iPad
+
+- **First launch**: "Keep notes on my devices" (Free forever. No account.) or "Sign in to Folevi"
+  (`ShellRoot`, `ModeChoice`, `LibrarySetup` from the web). Choosing to sign in goes straight on to signing in
+  after the app restarts in account mode (no second choice).
+- **Places**: Sync with iCloud, Choose a folder (the Files app's folder picker: On My iPhone, iCloud Drive,
+  Dropbox, Google Drive, OneDrive and other File Providers; a security-scoped bookmark), This device only
+  (`Documents/Folevi Library`, visible in the Files app under On My iPhone > Folevi). Dropbox and Google Drive
+  connections (WP9b) are Mac and Android only for now: "Choose a folder" reaches their File Providers instead.
+- **iCloud**: the app's own container, `iCloud.com.folevi`, its `Documents` folder (`NSUbiquitousContainers`
+  makes it public: "Folevi" in iCloud Drive). The library is the container's Documents folder itself (not a
+  subfolder), shown as "iCloud Drive › Folevi". Notes, catalogs, the index and devices' files start
+  downloading as soon as iCloud lists them; attachments when they're shown. A device not signed in to iCloud,
+  or with iCloud Drive off for Folevi, gets the reason and what to do in the Settings app.
+- **The same files on the Mac**: Folevi for Mac uses `~/Library/Mobile Documents/iCloud~com~folevi/Documents`
+  once that folder is on the Mac (apps/desktop/src/library/locations.ts `iCloudLocation`); see "The Mac and the
+  iCloud container" below.
+- **Writes**: every write is `NSFileCoordinator(.forReplacing)` with `Data.write(.atomic)`, F_FULLFSYNC, and
+  the `ifMatch` check inside the coordinated block, inside a background task assertion so a flush finishes when
+  the app leaves the screen. Reads never block on the network: a file whose contents are in the cloud reads as
+  `notDownloaded` and is asked for.
+- **Encryption** with a passphrase (on, change, off, resumable) works as on the Mac; the unwrapped key is kept
+  in the Keychain (this device only). Checked in the Simulator: HMAC names and FLV1 envelopes on disk, plain
+  reads in the page, and back.
+- **Foli AI**: Apple's on-device model where iOS 26 and Apple Intelligence are there (the Simulator on this Mac
+  reports it available and streams answers), else the person's OpenAI, Anthropic or Google key, kept in the
+  Keychain and sent only to that provider.
+- **Reminders** are local notifications (up to iOS's 64 pending; the page schedules the next ones again after
+  each change); tapping one opens its note.
+- **Moving** between modes (WP12) and moving the library between places are the web's flows on this bridge.
+
+### Signed in
+
+`ShellAuth` signs in the way the Mac app does (Authorization Code with PKCE, client `folevi-shell`,
+`folevi://auth/callback`), with the website in iOS's sign-in sheet (ASWebAuthenticationSession; Safari's
+session carries over). The bearer token stays in the Keychain; the page's Better Auth client sends
+`/api/auth/*` through `foleviShell.auth.fetch`, and Convex gets its JWT from `convexToken()`. Checked in the
+Simulator against the dev server: sign-in, the signed-in Home, the device's REST token for the extensions.
+
+**Sign in with Apple** in Apple's own sheet (`Native/AppleSignIn.swift`, `lib/auth/appleSheet.ts`): the iOS
+sign-in screen of the built-in interface shows "Continue with Apple" (Apple's black or white button) next to
+"Sign in with email or Google". The page makes a nonce, the app asks Apple with its SHA-256, the page signs in
+with the id token (`signIn.social({ provider: "apple", idToken })`; in the built-in interface the app keeps the
+session the answer's `set-auth-token` carries), then posts the one-time authorization code to
+`/api/auth/apple/native-code`. A two-step account gets the web's message. The website-in-the-app mode
+(FOLEVI_URL) uses the same sheet from `SocialSignIn`. Only the sheet opening was checked (the Simulator has no
+Apple Account); a full sign-in needs a device signed in to an Apple Account.
+
+### End-to-end encryption
+
+`foleviShell.e2ee` has the Mac's shape (`deviceKeys`, `open`, `sign`, `reset`, `settings`, `setTouchId`):
+X25519 and Ed25519 keys made with CryptoKit and kept in the Keychain (this device only, after first unlock),
+device ids `ios-<ulid>`. `open` checks the FLS1 box and context and asks for Face ID first when "Ask for Face ID
+to unlock encrypted notes" is on (Settings > This device; turning it on or off asks too). Unit tests open
+local-store's FLS1 vectors and verify the FST1 statements. Approving this device from another one, or another
+from this one, is the web's flow on these keys. Still the E2EE code's to do (lib/e2ee/keys/macBridge.ts, owned
+there): the device is labelled "Folevi for Mac" with platform "mac", and passkey unlock is offered although
+WebAuthn can't run on capacitor://localhost (`inMacApp()` should also cover `platform === "ios"`, with the label
+"Folevi for iPhone on <name>" or iPad).
+
+### The Mac and the iCloud container
+
+The Mac app isn't sandboxed and has no iCloud entitlement, so it can't make the container; it reads and writes
+it once iCloud has put it on the Mac (after the iPhone or iPad used "Sync with iCloud" with the same Apple
+Account), with folevi-files' coordinated I/O as for any iCloud Drive folder. Until then "Sync with iCloud" on
+the Mac stays the iCloud Drive folder `Folevi`, and Settings > Library > Move library > Sync with iCloud moves it
+into the container when it's there. NSMetadataQuery reports nothing for an unentitled process, so the Mac keeps
+polling (30 s and on focus).
+
+To let the Mac make the container itself (a Mac that's used first): a Developer ID provisioning profile with
+iCloud for `com.folevi.mac` exists now ("Folevi for Mac Developer ID iCloud", made with the API key; its
+entitlements name `iCloud.com.folevi`). Using it means (1) folevi-files becomes a small app bundle
+(`Contents/Helpers/FoleviFiles.app`, bundle id `com.folevi.mac`) with that profile embedded and the entitlements
+`com.apple.developer.icloud-container-identifiers`, `com.apple.developer.ubiquity-container-identifiers`
+(`iCloud.com.folevi`), `com.apple.developer.icloud-services` (`CloudDocuments`),
+`com.apple.developer.icloud-container-environment` (`Production`), `com.apple.application-identifier` and
+`com.apple.developer.team-identifier`; a command-line helper can't carry a profile and is killed at launch
+(spike S6); (2) its `icloud` request answers `FileManager.url(forUbiquityContainerIdentifier:)` off the main
+thread, which makes the container; (3) `locations.ts` uses that path when the helper gives one. Not done here.
+
+### Building it
+
+```sh
+cd apps/ios
+pnpm shell                                  # the built-in interface for development (dev Convex) into web/
+FOLEVI_SERVICE_URL=http://app.localhost:3002 npx cap sync ios   # sign in against the dev server
+node scripts/simulator.mjs run "Folevi iPhone 18 Pro"
+FOLEVI_SHELL_URL=http://localhost:3003 npx cap sync ios         # or the interface from next dev (dev:shell)
+pnpm release [--build <n>]                  # TestFlight: production export, archive, profiles, upload
+```
 
 ## How it fits together
 
@@ -694,59 +824,71 @@ by those links).
   `NSCameraUsageDescription` (the file picker's Take Photo or Video, and scanning a document into a note),
   `NSPhotoLibraryUsageDescription` (scanning pages from photos; the system picker doesn't need it, but it says
   what the photos are for), `NSFaceIDUsageDescription` (the optional lock). No tracking.
-  `ITSAppUsesNonExemptEncryption` is false (HTTPS only).
+  `ITSAppUsesNonExemptEncryption` is false; see "Export compliance" below.
 - **Privacy labels**: the same data the web app handles (account, notes, usage for AI credits).
 - **Demo account** for the reviewer: a Pro account without two-step verification, or with a code shared in
   the review notes.
-- **server.url**: Capacitor documents a remote URL as meant for development. The app loads the live site on
-  purpose, like the Mac app; App-Bound Domains, the origin checks and the offline page are the parts that make
-  that safe and usable.
+- **The interface is in the app** (no remote server.url since 2026-10-22): no downloaded code, and local mode
+  works with no account and no network (4.2, 2.5.2).
+- **Sign in with Apple** (4.8): Apple's own sheet next to Google and email.
+
+## Export compliance
+
+`ITSAppUsesNonExemptEncryption` is `false` in Info.plist, for the owner to confirm before external testing or
+the App Store. What the app uses: HTTPS (URLSession, WebKit), and for end-to-end encryption and encrypted
+libraries standard algorithms only (AES-256-GCM, X25519, Ed25519, HKDF-SHA256, PBKDF2-SHA256, Argon2id), through
+Apple's CryptoKit and CommonCrypto, WebKit's WebCrypto, and the open-source @noble JavaScript libraries. Nothing
+proprietary. The case for `false`: Apple's exemptions cover standard encryption in a mass-market app whose
+primary function isn't information security (a notes app), and none of it needs documents uploaded to Apple.
+The stricter reading: encryption beyond HTTPS that isn't only Apple's own (the @noble code) is "standard
+encryption algorithms instead of, or in addition to, Apple's", which App Store Connect accepts without
+documents but which, under the US EAR (5D992, License Exception ENC 740.17(b)(1)), asks for a yearly
+self-classification report to BIS and the NSA (and a declaration to ANSSI to sell in France). If the owner
+takes that reading: set the key to `true`, answer App Store Connect's questions once ("standard encryption
+algorithms"), and file the report each year by February 1. Internal TestFlight builds aren't affected either
+way.
+
+## Release and TestFlight
+
+`pnpm release` (`scripts/release.mjs`): the production export (`build-shell.mjs --platform ios --production
+--required`), `cap sync ios`, a Release archive signed automatically on team 7K32QQ2FX8 with the App Store
+Connect API key (`-allowProvisioningUpdates`), App Store profiles (made through the API when missing: the key
+can't use cloud-managed certificates, so they name the "Apple Distribution" certificate in this Mac's
+keychain), the export and the upload with altool. Build 2 (version 1.0) was uploaded on 2026-10-22 for the
+internal group "Folevi team"; never submitted for external review.
+
+The TestFlight build talks to production. Until the owner deploys the local commits, production lacks what
+came after origin/main (end-to-end encryption, Sign in with Apple's server parts, the apple-app-site-association
+route): local mode works fully, signing in works (folevi-shell is on production), but encrypted spaces and
+"Continue with Apple" need the deploy, and universal links need the AASA file live.
 
 ## After joining the Apple Developer Program
 
-What's needed to go from the Simulator to devices, TestFlight and the App Store:
+Status on 2026-10-22 (team 7K32QQ2FX8):
 
-1. **Signing**: set the team on the App target (Signing & Capabilities, automatic signing), keep the bundle id
-   `com.folevi.ios`, then archive (Product > Archive) and upload.
-2. **Associated Domains** (`webcredentials:app.folevi.com`, `applinks:app.folevi.com`) and an
-   `apple-app-site-association` file served by the web app at `/.well-known/`. That turns on passkeys in the
-   app (then drop the `foleviNative` check in `lib/auth/passkeys.ts`) and universal links
-   (https://app.folevi.com/d/... opening in the app; handle them like folevi:// links).
-3. **App Group and Keychain sharing**: register the App Group `group.com.folevi` and turn on App Groups and
-   Keychain Sharing (`com.folevi.shared`) for all three App IDs (`com.folevi.ios`, `com.folevi.ios.share`,
-   `com.folevi.ios.widgets`), then set the team on the ShareExtension and FoleviWidgets targets too. The
-   entitlements files are already in place; in the Simulator they work unsigned (Xcode embeds them, and used
-   the free personal team's prefix for the Keychain group here). On a device without them the extensions
-   can't see the token or the queue. Also App Intents' Siri phrases and the Control Center control need a
-   device (and a signed build) to try with Siri and the Action button.
-4. **Push notifications** (everything else is built; see Notifications above):
-   1. Certificates, Identifiers & Profiles > Keys > +: name it "Folevi APNs", tick Apple Push Notifications
-      service (APNs), choose Sandbox & Production, Continue, Register, then Download the `.p8` (it can be
-      downloaded only once; keep it in the password manager). Note the Key ID, and the Team ID (top right of
-      the developer account, or Membership).
-   2. Identifiers > `com.folevi.ios`: tick Push Notifications (automatic signing does this when the team is
-      set, since App.entitlements already has `aps-environment`).
-   3. Convex, dev first (`npx convex env set ...`), then production when it's time:
-      `APNS_KEY_ID` (the Key ID), `APNS_TEAM_ID`, `APNS_KEY` (the whole .p8 file, PEM; written out with `\n`
-      for newlines also works), `APNS_BUNDLE_ID=com.folevi.ios`, `APNS_ENV=production` (on production; on a
-      deployment only Debug builds use, `sandbox`). Settings > Notifications in the app then shows the switch.
-      `scripts/check-prod-env.mjs` warns when only some of them are set.
-   4. Sandbox and production: each device token is sent to the host of the environment it was registered
-      from (Debug builds from Xcode: sandbox; TestFlight and the App Store: production), with the same key.
-      A token sent to the wrong host comes back `BadDeviceToken` and is removed; the app registers it again
-      on its next launch. `APNS_ENV` is only the default for a token registered without one.
-   5. Try it on a device: a Debug build from Xcode (sandbox), turn notifications on, set a reminder a minute
-      ahead, lock the phone; Done and Snooze from the Lock Screen; then the same from a TestFlight build
-      (production).
-5. **TestFlight**: internal testers first; the review notes above and a demo account for external testing.
+1. **Signing**: done. `DEVELOPMENT_TEAM` on every target, automatic signing; Debug Simulator builds and a
+   Release archive sign; App Store profiles for the app and both extensions exist.
+2. **Associated Domains**: done in the app (`applinks:` and `webcredentials:app.folevi.com`); the web app serves
+   `/.well-known/apple-app-site-association` (team 7K32QQ2FX8: `com.folevi.ios`, notes and app pages only), live
+   once deployed. Universal links become folevi:// links (`DeepLink.fromWeb`).
+3. **App Group, Keychain sharing, iCloud container**: done (signed builds carry `group.com.folevi`,
+   `7K32QQ2FX8.com.folevi.shared` and `iCloud.com.folevi`).
+4. **Push**: the app side is unchanged and signed with `aps-environment` (production in TestFlight). The dev
+   deployment has no `APNS_*` variables (checked with `npx convex env list`, names only), so Settings >
+   Notifications hides the switch there; production wasn't checked (never touched from here). To try it:
+   the owner sets `APNS_KEY_ID=5PG87M528M`, `APNS_TEAM_ID=7K32QQ2FX8`, `APNS_KEY` (the .p8),
+   `APNS_BUNDLE_ID=com.folevi.ios` on dev (`APNS_ENV=sandbox`) and/or production, then a reminder a minute
+   ahead on a TestFlight build (production token) or a Debug build from Xcode (sandbox).
+5. **TestFlight**: build 2 uploaded, processed (VALID) and in the internal group "Folevi team" (it has access
+   to all builds). Testers install it from the TestFlight app.
 6. App Store Connect: screenshots (6.9" iPhone and 13" iPad), privacy labels, age rating, the support URL
    (folevi.com/support) and the privacy policy URL (folevi.com/privacy).
 
-Also worth doing then: notifications on a device (above; the Simulator gets a token but Apple never delivers
-a server's push to it), check the iOS 17 behaviour on a device (the Simulator here only had iOS 27), real
-airplane mode, Face ID on a device, the background recording behaviour, the camera's document scanner (the
-Simulator has none), widgets refreshing on a locked phone (data protection doesn't exist in the Simulator),
-and Siri speaking the phrases.
+On a real device (the owner's iPhone wasn't available: Developer Mode off and not connected at the time):
+enable Settings > Privacy & Security > Developer Mode, connect it, then `xcodebuild -scheme App -destination
+'platform=iOS,name=Faisal’s iPhone' -allowProvisioningUpdates ...` or install from TestFlight. Worth checking there:
+iCloud sync between iPhone, iPad and Mac, Sign in with Apple, Face ID, push, the document scanner, widgets on a
+locked phone, iOS 17 behaviour, real airplane mode, background recording, Siri phrases.
 
 ## iOS versions
 

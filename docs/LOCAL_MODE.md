@@ -772,3 +772,23 @@ the same way and the parity harness can drive both.
   before its record was saved leaves an extra, unreferenced file row in the account (storage it counts until a
   sweep). `signOutNow` (WP4) still clears every `folevi-*` database, the library's copy too, on a normal sign-out in
   the Mac app. Not run in the real Electron app or against iCloud, Dropbox or Drive folders; iOS paused.
+
+## WP3 and the iOS halves of WP9, WP11, WP13 (2026-10-22)
+
+The iPhone and iPad app carries the built-in interface (`build-shell.mjs --platform ios`, `capacitor://localhost`)
+with `window.foleviShell` in Swift (`apps/ios/ios/App/Native/Shell`, docs/IOS.md "The built-in interface"):
+
+- **S3, run**: IndexedDB, Web Locks, `crypto.subtle` and the whole product work on `capacitor://localhost` in the
+  iOS 27 Simulator; `folevi-file://` answers fetches with CORS and Range (206 with Content-Range).
+- **The iOS half of S4, run**: bearer sign-in through iOS's sign-in sheet against the dev server, the Convex
+  WebSocket from `capacitor://localhost`, the signed-in product.
+- **S6, settled differently**: the library is the container's Documents folder (`iCloud.com.folevi/Documents`,
+  not a `Folevi` subfolder), shown as "iCloud Drive › Folevi". The Mac uses the same folder once iCloud has it on
+  the Mac (`locations.ts` `iCloudLocation`), without an entitlement; making the container from the Mac needs the
+  entitled helper app described in docs/IOS.md.
+- **The file layer** passes local-store's fs contract plain and encrypted, and the crypto vectors, in XCTest
+  (`Tests/ShellTests.swift`).
+- **Not done on iOS yet**: Dropbox and Google Drive connections (Choose a folder reaches their File Providers),
+  the widgets, intents and Spotlight in local mode (WP13's LocalActions queue and setWidgetSnapshot), iCloud
+  sync between two real devices (the Simulators here aren't signed in to iCloud).
+

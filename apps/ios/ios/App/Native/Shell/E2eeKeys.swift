@@ -167,13 +167,9 @@ final class E2eeKeys {
 
     private func confirm() async throws {
         guard faceIdOn, Self.canAsk else { return }
-        lock.lock()
-        let recent = confirmedAt.map { Date().timeIntervalSince($0) < Self.grace } ?? false
-        lock.unlock()
+        let recent = lock.withLock { confirmedAt.map { Date().timeIntervalSince($0) < Self.grace } ?? false }
         if recent { return }
         guard await AppLock.confirm(reason: "Unlock your encrypted notes") else { throw E2eeError(code: "cancelled", message: "Face ID didn't confirm it.") }
-        lock.lock()
-        confirmedAt = Date()
-        lock.unlock()
+        lock.withLock { confirmedAt = Date() }
     }
 }

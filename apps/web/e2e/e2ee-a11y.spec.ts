@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { APP, newPerson, settle } from "./helpers";
-import { PASSPHRASE, migrationDone, trustedPage } from "./e2ee-helpers";
+import { PASSPHRASE, migrationDone } from "./e2ee-helpers";
 
 // Axe on every end-to-end encryption screen (docs/E2EE_DESIGN.md §11.4), light and dark, against the real
 // keys and server on the dev deployment. Each colour scheme has an account of its own (the wizard gives an
@@ -75,13 +75,13 @@ for (const scheme of ["light", "dark"] as const) {
     await locked.goto(`${APP}/documents`);
     await expect(locked.getByRole("heading", { name: "Unlock your encrypted notes" })).toBeVisible({ timeout: 30_000 });
     await scan(locked, "unlock");
-    const old = await trustedPage(context, { scheme });
-    await old.page.goto(`${APP}/documents`);
+    // The trusted browser's tab answers (one tab per browser shows the request).
+    await page.goto(`${APP}/documents`);
     await locked.getByRole("button", { name: "Approve from another device" }).click();
     await scan(locked, "waiting for approval");
-    const ask = old.page.getByRole("dialog", { name: "Approve a new device?" });
+    const ask = page.getByRole("dialog", { name: "Approve a new device?" });
     await expect(ask.getByLabel(/^Code /)).toBeVisible({ timeout: 60_000 });
-    await scan(old.page, "approve a new device");
+    await scan(page, "approve a new device");
     await ask.getByRole("button", { name: "They don't match" }).click();
     await fresh.close();
 

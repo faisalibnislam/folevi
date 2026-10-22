@@ -2167,6 +2167,13 @@ Bell: titles are filled in on the device (§7.7). Push and email use exactly the
 - While this device opens its own key at start (locked, then unlocking), the gate shows "Unlocking your
   notes…" rather than the unlock screen; the unlock screen stays up for the trust choice only once the
   person has started a way to unlock.
+- Every lowering re-checks a recovery method, Fully encrypted to features you pick included (§10.11 said no
+  check there; `e2ee.spaces.lower` asks for `recheckedWrapId` on every lowering, which is the safer reading).
+  Raising to Fully encrypted goes through `e2ee.spaces.enable` and only confirms.
+- The consent popover answers WP8's `askConsent` queue (the Foli AI actions outside chat). Foli AI chat in an
+  encrypted space asks in its own card (`components/ai/chat/SealedChat.tsx`) and never reaches the popover.
+- `lib/local/functions/organization.ts` (`organization.sidebar`) passes a folder's `locked` through, as the
+  server's sidebar does, so an encrypted space's replica shows the lock in the sidebar.
 - Settings > Desktop app has "Ask for Touch ID to unlock encrypted notes" (`TouchIdCard`, WP6's
   `settings()` / `setTouchId()`), shown in a Mac app with the bridge once the account has encryption.
 

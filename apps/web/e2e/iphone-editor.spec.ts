@@ -122,6 +122,10 @@ test("iPhone note: the bar on the keyboard, writing without the top bar, Insert 
   await keyboard(page, 336);
   await expect.poll(async () => Math.round((await bar.boundingBox())!.y + (await bar.boundingBox())!.height), { timeout: 5_000 }).toBe(874 - 336 - 8);
   await shot(page, "note-keyboard");
+  // The web view shrinks to end at the keyboard (the app's keyboard setting): the bar stays where it is.
+  await page.setViewportSize({ width: 402, height: 874 - 336 });
+  await expect.poll(async () => Math.round((await bar.boundingBox())!.y + (await bar.boundingBox())!.height), { timeout: 5_000 }).toBe(874 - 336 - 8);
+  await page.setViewportSize({ width: 402, height: 874 });
   // Its keys: 44 pt, Insert and Format first, the keyboard key at the end.
   const keys = bar.getByRole("button");
   const names = await keys.evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
@@ -167,7 +171,8 @@ test("iPhone note: the bar on the keyboard, writing without the top bar, Insert 
   await expect(subtitle).toHaveAttribute("aria-pressed", "true");
   await expect(styles.getByRole("button", { name: "Body", exact: true })).toHaveAttribute("aria-pressed", "false");
   // Chosen: filled, not outlined.
-  expect(await subtitle.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(await styles.getByRole("button", { name: "Body", exact: true }).evaluate((el) => getComputedStyle(el).backgroundColor));
+  const plain = await styles.getByRole("button", { name: "Body", exact: true }).evaluate((el) => getComputedStyle(el).backgroundColor);
+  await expect.poll(() => subtitle.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(plain);
   await page.keyboard.press("Escape");
   await expect(format).toBeHidden();
 
@@ -257,7 +262,21 @@ test("iPhone note: holding a line opens its menu beside it, the block's own acti
   const held = (await page.locator("[data-block-held]").boundingBox())!;
   expect(m.y >= held.y + held.height - 1 || m.y + m.height <= held.y + 1).toBe(true);
   await shot(page, "note-block-menu");
-  await page.mouse.click(200, 120);
+  // Drawn as the app's other menus: 17 pt rows, 44 tall.
+  const first = menu.getByRole("menuitem").first();
+  expect(await first.evaluate((el) => getComputedStyle(el).fontSize)).toBe("17px");
+  expect(Math.round((await first.boundingBox())!.height)).toBeGreaterThanOrEqual(44);
+  // A submenu opens in place of the menu, with a row back to it.
+  await first.tap();
+  const sub = page.getByRole("menu", { name: "Turn into" });
+  await expect(sub).toBeVisible();
+  const s = (await sub.boundingBox())!;
+  expect(Math.abs(s.x - m.x)).toBeLessThan(2);
+  await shot(page, "note-block-submenu");
+  await sub.getByRole("menuitem", { name: "Turn into" }).tap();
+  await expect(sub).toBeHidden();
+  await expect(menu).toBeVisible();
+  await page.touchscreen.tap(200, 120);
   await expect(menu).toBeHidden();
   await expect(page.locator("[data-block-held]")).toHaveCount(0);
   await context.close();

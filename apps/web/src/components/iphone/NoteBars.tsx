@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useReducer, useRef, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
 import { AtSign, ChevronDown, Image as ImageIcon, IndentDecrease, IndentIncrease, Link2, MessageCircle, Paintbrush, Plus, Redo2, SquareCheck, Type, Undo2 } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -8,7 +8,7 @@ import { applyLink, changeDepth, turnInto } from "@/components/editor/commands";
 import { requestSpecialInsert } from "@/components/editor/EditorMenus";
 import type { InspectorTab } from "@/components/doc/Inspector";
 import { useToast } from "@/components/ui/Toast";
-import { askText, feel, keyboardTransition, onKeyboardFrame, prepareFeel, setKeyboardInteractiveDismiss, type NativeKeyboardFrame } from "@/lib/native/ui";
+import { KEYBOARD_EASE, askText, feel, onKeyboardFrame, prepareFeel, setKeyboardInteractiveDismiss, type NativeKeyboardFrame } from "@/lib/native/ui";
 import { PillButton } from "./Glass";
 import { useIphoneChrome } from "./chrome";
 import "./editor-phone.css";
@@ -94,26 +94,70 @@ export function NoteBars({ editor, ai, open, tab, onPick, readOnly }: { editor: 
 }
 
 /**
- * How far the bar over the keyboard rides above the page's bottom edge, and how it gets there. The app says
- * where the keyboard is going (and how fast) before it moves, so the bar moves with it in the same frames; the
- * part of the keyboard the web view already makes room for (it shrinks while the keyboard is up) isn't
- * counted twice.
+ * Moves the bar over the keyboard with the keyboard. The app says where the keyboard is going (and how fast)
+ * before it moves, so the bar rides with it in the same frames. The web view also shrinks while the keyboard
+ * is up, moving the page's bottom edge (where the bar is anchored) at once: the bar is kept where it was on
+ * screen when that happens and carries on to where it's going in the time the keyboard has left. Returns the
+ * bar's ref.
  */
-function useKeyboardRide(): { lift: number; transition: string } {
-  const [frame, setFrame] = useState<NativeKeyboardFrame | null>(null);
-  // The page's height with no keyboard (it changes on rotation).
-  const rest = useRef(0);
-  const [, resized] = useReducer((n: number) => n + 1, 0);
+function useKeyboardRide(): (el: HTMLElement | null) => void {
+  const state = useRef({ frame: null as NativeKeyboardFrame | null, at: 0, rest: 0, inner: 0 });
+  const bar = useRef<HTMLElement | null>(null);
+  const ride = useRef<{ apply: (el: HTMLElement, shift: number, ms: number) => void; mount: (el: HTMLElement) => void } | null>(null);
+  if (!ride.current) {
+    // How high above the page's bottom edge the bar belongs: the keyboard's height less what the web view
+    // already gave up for it.
+    const target = () => {
+      const s = state.current;
+      if (!s.frame) return 0;
+      return Math.max(0, Math.round(s.frame.height - Math.max(0, s.rest - window.innerHeight)));
+    };
+    const left = () => {
+      const s = state.current;
+      return s.frame && s.frame.duration > 0 ? Math.max(0, s.frame.duration - (performance.now() - s.at)) : 0;
+    };
+    const now = (el: HTMLElement) => {
+      try {
+        return new DOMMatrixReadOnly(getComputedStyle(el).transform === "none" ? undefined : getComputedStyle(el).transform).m42;
+      } catch {
+        return 0;
+      }
+    };
+    const move = (el: HTMLElement, from: number, ms: number) => {
+      const to = -target();
+      el.style.transition = "none";
+      el.style.transform = `translate3d(0, ${from}px, 0)`;
+      if (ms > 0 && Math.abs(to - from) > 0.5) {
+        void el.offsetHeight;
+        el.style.transition = `transform ${Math.round(ms)}ms ${state.current.frame?.curve === "linear" ? "linear" : KEYBOARD_EASE}`;
+      }
+      el.style.transform = `translate3d(0, ${to}px, 0)`;
+    };
+    ride.current = {
+      apply: (el, shift, ms) => move(el, now(el) + shift, ms),
+      // Drawn while the keyboard is still coming up: it starts below the screen's edge, as the keyboard did.
+      mount: (el) => move(el, left() > 0 ? Math.max(0, state.current.rest - window.innerHeight) + 64 : -target(), left()),
+    };
+  }
   useEffect(() => {
-    rest.current = window.innerHeight;
+    const s = state.current;
+    s.rest = s.inner = window.innerHeight;
     const stop = onKeyboardFrame((f) => {
-      if (!f.visible) rest.current = Math.max(rest.current, window.innerHeight);
-      setFrame(f);
+      if (!f.visible) s.rest = Math.max(s.rest, window.innerHeight);
+      s.frame = f;
+      s.at = performance.now();
+      if (bar.current) ride.current!.apply(bar.current, 0, f.duration);
     });
     const onResize = () => {
-      if (!document.documentElement.hasAttribute("data-iphone-keyboard")) rest.current = window.innerHeight;
-      else rest.current = Math.max(rest.current, window.innerHeight);
-      resized();
+      // The page's bottom edge moved up by `moved` (or down): the bar stays where it is on screen.
+      const moved = s.inner - window.innerHeight;
+      s.inner = window.innerHeight;
+      if (!document.documentElement.hasAttribute("data-iphone-keyboard") && !s.frame?.visible) s.rest = window.innerHeight;
+      else s.rest = Math.max(s.rest, window.innerHeight);
+      if (bar.current) {
+        const ms = s.frame && s.frame.duration > 0 ? Math.max(0, s.frame.duration - (performance.now() - s.at)) : 0;
+        ride.current!.apply(bar.current, moved, ms);
+      }
     };
     window.addEventListener("resize", onResize);
     return () => {
@@ -121,19 +165,19 @@ function useKeyboardRide(): { lift: number; transition: string } {
       window.removeEventListener("resize", onResize);
     };
   }, []);
-  if (!frame || typeof window === "undefined") return { lift: 0, transition: "none" };
-  const shrunk = Math.max(0, rest.current - window.innerHeight);
-  return { lift: Math.max(0, Math.round(frame.height - shrunk)), transition: keyboardTransition(frame) };
+  return useCallback((el: HTMLElement | null) => {
+    bar.current = el;
+    if (el) ride.current!.mount(el);
+  }, []);
 }
 
 /** The bar over the keyboard while writing. Its buttons never take focus, so the keyboard stays up. */
-function KeyboardBar({ editor, onPick, ride }: { editor: Editor; onPick: (t: InspectorTab) => void; ride: { lift: number; transition: string } }) {
+function KeyboardBar({ editor, onPick, ride }: { editor: Editor; onPick: (t: InspectorTab) => void; ride: (el: HTMLElement | null) => void }) {
   // Re-render as the caret moves, so the buttons show what the line is.
   const [, refresh] = useReducer((n: number) => n + 1, 0);
   // Where a finger went down: lifting it far from there was a scroll along the bar, not a tap.
   const down = useRef<{ x: number; y: number } | null>(null);
   const toast = useToast();
-  const { lift, transition } = ride;
   useEffect(() => {
     editor.on("selectionUpdate", refresh);
     editor.on("transaction", refresh);
@@ -189,7 +233,7 @@ function KeyboardBar({ editor, onPick, ride }: { editor: Editor; onPick: (t: Ins
     <div
       data-iphone-keyboard-bar=""
       className="fixed inset-x-0 bottom-0 z-40 px-2 pb-2 pl-[calc(8px+env(safe-area-inset-left))] pr-[calc(8px+env(safe-area-inset-right))]"
-      style={{ transform: lift ? `translate3d(0, ${-lift}px, 0)` : undefined, transition }}
+      ref={ride}
     >
       <div role="toolbar" aria-label="Writing tools" className="ui-liquid flex h-12 items-center rounded-capsule px-0.5">
         <div className="iphone-kb-scroll flex min-w-0 flex-1 items-center overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

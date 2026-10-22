@@ -14,6 +14,7 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   ClipboardPaste,
   Code2,
@@ -67,6 +68,8 @@ import { keyLabel } from "@/lib/shortcuts";
 import { HOLD_MOVE_EVENT, isLongPress } from "@/lib/touchContextMenu";
 import { safeInsets, useIphoneApp } from "@/lib/iphone";
 import { liftController } from "@/lib/native/lift";
+import { feel } from "@/lib/native/ui";
+import { nativeApp } from "@/lib/nativeApp";
 import { inNestedNote } from "./synced/nested";
 
 /** Asks the selection toolbar to open its link field (the "Edit link…" item). */
@@ -305,7 +308,7 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
 
   if (!menu) return null;
 
-  const entries = buildEntries({ editor, editable, target: menu.target, aiOn, palette, onCommentBlock, navigate, toast, phone });
+  const entries = buildEntries({ editor, editable, target: menu.target, aiOn, palette, onCommentBlock, navigate, toast, phone, inApp: phone || nativeApp() !== null });
   if (!entries.length) return null;
   return <MenuLayer entries={entries} at={{ x: menu.x, y: menu.y, top: menu.top }} keyboard={menu.keyboard} onClose={close} />;
 }
@@ -322,6 +325,7 @@ function buildEntries({
   navigate,
   toast,
   phone = false,
+  inApp = phone,
 }: {
   editor: Editor;
   editable: boolean;
@@ -337,6 +341,8 @@ function buildEntries({
    * link to block, Ask Foli AI, then Delete on its own.
    */
   phone?: boolean;
+  /** Inside the iOS or Android app (the iPad too): nothing opens in a new tab there. */
+  inApp?: boolean;
 }): Entry[] {
   const { state } = editor;
   const sel = state.selection;
@@ -375,7 +381,7 @@ function buildEntries({
     const href = `/d/${target.pageLink.documentId}`;
     context.push(
       { label: "Open page", icon: <ExternalLink size={14} />, run: () => navigate(href) },
-      ...(phone ? [] : [{ label: "Open in new tab", icon: <ExternalLink size={14} />, run: () => window.open(href, "_blank", "noopener") }]),
+      ...(inApp ? [] : [{ label: "Open in new tab", icon: <ExternalLink size={14} />, run: () => window.open(href, "_blank", "noopener") }]),
       { label: "Copy page link", icon: <Link2 size={14} />, run: () => void copyText(`${location.origin}${href}`, "Link copied") },
     );
   } else if (target.link?.href) {
@@ -426,7 +432,7 @@ function buildEntries({
     if (name === "image" && target.image) {
       const src = target.image.src;
       context.push(
-        { label: phone ? "Open image" : "Open image in new tab", icon: <ExternalLink size={14} />, run: () => window.open(src, "_blank", "noopener") },
+        { label: inApp ? "Open image" : "Open image in new tab", icon: <ExternalLink size={14} />, run: () => window.open(src, "_blank", "noopener") },
         { label: "Copy image address", icon: <Link2 size={14} />, run: () => void copyText(src, "Image address copied") },
       );
     } else if (name === "bookmark" && block.attrs.url) {
@@ -770,6 +776,10 @@ function Panel({
   label: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Inside the iPhone, iPad and Android apps the menu is drawn as the app's other menus are (globals.css, "iOS
+  // polish WP3": 17 pt rows, hairlines, icons at the end, checks at the start), and a submenu opens in place of
+  // its menu with a row back to it, as iOS's do.
+  const [appLook] = useState(() => typeof document !== "undefined" && document.documentElement.matches('[data-iphone], [data-native="ios"]'));
   const actionable = entries.map((e, i) => (e === "separator" || (!isSub(e) && e.disabled) ? -1 : i)).filter((i) => i >= 0);
   const [active, setActive] = useState(highlightFirst ? (actionable[0] ?? -1) : -1);
   const [open, setOpen] = useState<{ index: number; rect: Rect; keyboard: boolean } | null>(null);
@@ -796,6 +806,10 @@ function Panel({
     if (root) {
       left = anchor.left + w + margin > window.innerWidth ? anchor.left - w : anchor.left;
       top = anchor.bottom + h + margin > bottom ? anchor.top - h : anchor.bottom;
+    } else if (appLook) {
+      // Over the menu it came from.
+      left = anchor.left;
+      top = anchor.top;
     } else {
       // Beside the parent row, its first item level with the row.
       left = anchor.right + w + margin > window.innerWidth ? anchor.left - w + 4 : anchor.right - 4;
@@ -805,7 +819,7 @@ function Panel({
     // (In the iPhone app, below the status bar.)
     top = Math.min(Math.max(margin + safeInsets().top, top), bottom - h - margin);
     setPos({ left, top });
-  }, [anchor, root]);
+  }, [anchor, root, appLook]);
 
   // Keyboard focus follows the highlighted row. With none highlighted the root menu holds focus itself; a
   // submenu opened by hovering leaves focus where it is until the pointer moves into it.
@@ -826,7 +840,8 @@ function Panel({
     return r ? { left: r.left, right: r.right, top: r.top, bottom: r.bottom } : null;
   };
   const openSub = (i: number, keyboard: boolean) => {
-    const rect = rowRect(i);
+    const box = appLook ? ref.current?.getBoundingClientRect() : null;
+    const rect = box ? { left: box.left, right: box.right, top: box.top, bottom: box.bottom } : rowRect(i);
     if (rect) setOpen({ index: i, rect, keyboard });
   };
   const activate = (i: number, keyboard: boolean) => {
@@ -838,6 +853,7 @@ function Panel({
     }
     if (e.disabled) return;
     onCloseAll(true);
+    if (appLook) feel(e.danger ? "destructive" : e.checked !== undefined ? "choose" : "toggle");
     e.run();
   };
 
@@ -940,9 +956,48 @@ function Panel({
         onContextMenu={(e) => e.preventDefault()}
         onMouseDown={(e) => e.preventDefault()}
       >
+        {appLook && !root ? (
+          <button type="button" role="menuitem" tabIndex={-1} onClick={onBack} className="ui-menu-item font-semibold">
+            <ChevronLeft size={18} strokeWidth={2.4} aria-hidden className="-ml-1 flex-none" />
+            <span data-menu-part="label" className="min-w-0 flex-1 truncate">
+              {label}
+            </span>
+          </button>
+        ) : null}
+        {appLook && !root ? <div role="separator" /> : null}
         {entries.map((entry, i) =>
           entry === "separator" ? (
             <div key={`sep-${i}`} role="separator" className="mx-2 my-1 h-px bg-line" />
+          ) : appLook ? (
+            <button
+              key={`${entry.label}-${i}`}
+              type="button"
+              role={!isSub(entry) && entry.checked !== undefined ? "menuitemcheckbox" : "menuitem"}
+              aria-checked={!isSub(entry) && entry.checked !== undefined ? entry.checked : undefined}
+              aria-haspopup={isSub(entry) ? "menu" : undefined}
+              aria-expanded={isSub(entry) ? open?.index === i : undefined}
+              data-index={i}
+              data-highlighted={active === i ? "true" : undefined}
+              tabIndex={-1}
+              disabled={!isSub(entry) && entry.disabled}
+              onClick={() => activate(i, false)}
+              className={`ui-menu-item ${!isSub(entry) && entry.danger ? "!text-danger" : ""}`}
+            >
+              {entries.some((x) => x !== "separator" && !isSub(x) && x.checked !== undefined) ? (
+                <span data-menu-part="check" aria-hidden>
+                  {!isSub(entry) && entry.checked ? <Check size={14} strokeWidth={2.5} /> : null}
+                </span>
+              ) : null}
+              {entry.icon && !isSub(entry) ? (
+                <span data-menu-part="icon" aria-hidden>
+                  {entry.icon}
+                </span>
+              ) : null}
+              <span data-menu-part="label" className="min-w-0 flex-1 truncate">
+                {entry.label}
+              </span>
+              {isSub(entry) ? <ChevronRight size={18} strokeWidth={2.2} aria-hidden className="flex-none text-muted" /> : null}
+            </button>
           ) : (
             <button
               key={`${entry.label}-${i}`}

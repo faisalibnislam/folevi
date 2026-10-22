@@ -680,3 +680,23 @@ Then the owner dogfoods the Debug build beside Electron for a week, approves, an
 - **M9** Version 2.0.0 for the first native build?
 - **M10** Create the Developer ID provisioning profile for `com.folevi.mac` with iCloud and the Keychain group, and
   the Sparkle EdDSA key pair (both are the owner's to make and keep).
+
+### Owner's answers (2026-10-22)
+
+- **M1: Folevi's own menus everywhere**, right-click on text included, restyled to the macOS spec (Folevi's fonts).
+  Spelling suggestions, Look Up and Share are added into Folevi's text menu through the native shell
+  (NSSpellChecker and friends), since the system text menu isn't used.
+- **M2: a separate Settings window** for ⌘, (toolbar of sections, like Apple's apps).
+- **M3: the system's translucent sidebar** (vibrancy that tints with the wallpaper), the Mac exception to
+  "neutral chrome"; content stays Folevi's.
+- **M4: macOS window tabs off**; Folevi keeps its own tab strip.
+- **M5: Apple's Writing Tools off** in notes (Foli AI covers writing help).
+- **M6: minimum macOS 15 Sequoia.**
+- **M7 to M9:** keep the bundle ID `com.folevi.mac`; Developer ID only (no Mac App Store sandbox); the first
+  native build is version 2.0.0.
+- **M10:** Claude creates the Developer ID provisioning profile (iCloud and Keychain group) through the App
+  Store Connect API key and generates the Sparkle signing key on this Mac (private key in the owner's
+  Keychain; public key in the app).
+- **Polish (MAC_POLISH_PLAN.md):** only **P3, Quick Add as one growing field** with natural dates. Not chosen:
+  the quiet "+" (keep the "New note" button), Ask Foli AI as a toolbar button (keep the pill), native alert
+  sheets (keep Folevi's dialogs, restyled).

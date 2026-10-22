@@ -23,6 +23,8 @@ test("the recovery key unlocks a new browser, which then removes the old one fro
   await card.getByRole("button", { name: "Unlock", exact: true }).click();
   await expect(page.getByRole("radiogroup", { name: "Your notes are unlocked" })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Continue" }).click();
+  // Trusting the browser registers it; the app opens once that's done.
+  await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible({ timeout: 30_000 });
 
   // From here, the first browser stops being able to unlock (it keeps its session).
   await page.goto(`${APP}/settings/devices`);

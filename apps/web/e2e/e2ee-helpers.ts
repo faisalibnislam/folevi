@@ -31,7 +31,7 @@ export function e2eeScan(markers: string[]): { clean: boolean; hits: { table: st
   const out = execFileSync("npx", ["convex", "run", "testSupport:e2eeScan", JSON.stringify({ markers })], {
     cwd: REPO_ROOT,
     encoding: "utf8",
-    timeout: 300_000,
+    timeout: 900_000,
     env: { ...process.env, CONVEX_AGENT_MODE: process.env.CONVEX_AGENT_MODE ?? "anonymous" },
   });
   return JSON.parse(out.slice(out.indexOf("{")));
@@ -53,23 +53,31 @@ export async function turnOnEncryption(page: Page, opts: { level?: "selected" | 
   const next = page.locator('[data-e2ee-step="methods"], [data-e2ee-step="confirm"]');
   await expect(next).toBeVisible({ timeout: 60_000 });
   if ((await next.getAttribute("data-e2ee-step")) === "methods") {
-    await w.getByRole("button", { name: "Add Recovery key" }).click();
-    const groups = (await w.getByRole("list", { name: "Your recovery key" }).getByRole("listitem").allTextContents()).map((t) => t.replace(/^Group \d+: /, "").trim());
-    recoveryKey = groups.join("-");
-    await w.getByLabel("Group 3").fill(groups[2]!);
-    await w.getByLabel("Group 7").fill(groups[6]!);
-    await w.getByRole("button", { name: "Check and continue" }).click();
-    await w.getByRole("button", { name: "Add Encryption passphrase" }).click();
-    await w.getByLabel("Passphrase", { exact: true }).fill(PASSPHRASE);
-    await w.getByLabel("Type it again").fill(PASSPHRASE);
-    await w.getByRole("button", { name: "Save passphrase" }).click();
-    await expect(w.getByRole("status")).toHaveText("2 of 2 needed");
+    recoveryKey = await addTwoMethods(page, w);
     await w.getByRole("button", { name: "Continue" }).click();
   }
   await w.getByRole("button", { name: "Turn on encryption" }).click();
   await expect(w.getByText("Encryption is on", { exact: true })).toBeVisible({ timeout: 30_000 });
   await w.getByRole("button", { name: "Done" }).click();
   return { recoveryKey };
+}
+
+/** In an open wizard at the ways to unlock: a recovery key (checked) and the passphrase. Returns the key. */
+export async function addTwoMethods(page: Page, w: ReturnType<Page["getByRole"]>): Promise<string> {
+  await expect(page.locator('[data-e2ee-step="methods"]')).toBeVisible({ timeout: 60_000 });
+  await w.getByRole("button", { name: "Add Recovery key" }).click();
+  const list = w.getByRole("list", { name: "Your recovery key" });
+  await expect(list.getByRole("listitem")).toHaveCount(9, { timeout: 30_000 });
+  const groups = (await list.getByRole("listitem").allTextContents()).map((t) => t.replace(/^Group \d+: /, "").trim());
+  await w.getByLabel("Group 3").fill(groups[2]!);
+  await w.getByLabel("Group 7").fill(groups[6]!);
+  await w.getByRole("button", { name: "Check and continue" }).click();
+  await w.getByRole("button", { name: "Add Encryption passphrase" }).click({ timeout: 30_000 });
+  await w.getByLabel("Passphrase", { exact: true }).fill(PASSPHRASE);
+  await w.getByLabel("Type it again").fill(PASSPHRASE);
+  await w.getByRole("button", { name: "Save passphrase" }).click();
+  await expect(w.getByRole("status")).toHaveText("2 of 2 needed", { timeout: 60_000 });
+  return groups.join("-");
 }
 
 /** Waits until Settings > Privacy no longer shows a migration running. */
@@ -105,6 +113,7 @@ export async function newNote(page: Page, title: string, body: string): Promise<
 
 /** ⌘K search for `query`: the palette's results. */
 export async function paletteResults(page: Page, query: string) {
+  await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible({ timeout: 30_000 });
   await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
   const input = page.getByRole("combobox", { name: /Search documents/ });
   await input.fill(query);

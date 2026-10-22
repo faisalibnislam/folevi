@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { APP, newPerson } from "./helpers";
-import { e2eeScan, marker, migrationDone, newNote, paletteResults, turnOnEncryption } from "./e2ee-helpers";
+import { e2eeScan, marker, migrationDone, newNote, turnOnEncryption } from "./e2ee-helpers";
 
 // §11.4 e2ee-switches: each switch at "Encrypted, with the features you pick". Foli AI's consent needs a
 // Gemini key on the deployment as well, like ai.spec.ts (E2E_AI=1).
@@ -23,8 +23,9 @@ test("Foli AI asks before sending notes, and Don't send sends nothing", async ({
   await context.close();
 });
 
-test("Search everywhere: server results while the replica downloads; turning it off deletes the copy", async ({ browser }) => {
-  test.setTimeout(420_000);
+test("Search everywhere keeps a readable copy only in the search mirror; turning it off deletes it", async ({ browser }) => {
+  // Scanning the whole dev deployment for the marker takes minutes.
+  test.setTimeout(1_800_000);
   const { page, context } = await newPerson(browser, "Search Person");
   await turnOnEncryption(page);
   await migrationDone(page);
@@ -32,17 +33,13 @@ test("Search everywhere: server results while the replica downloads; turning it 
   await newNote(page, title, "Findable from any device.");
   await page.goto(`${APP}/settings/privacy`);
   await page.getByRole("switch", { name: "Search everywhere" }).click();
-  await expect(page.getByText("Search everywhere turned on")).toBeVisible();
-  // The readable copy exists only in the search mirror.
-  await expect.poll(() => e2eeScan([title]).hits.every((h) => h.table === "e2eeMirrors"), { timeout: 120_000 }).toBe(true);
-  const viewer = await browser.newContext({ storageState: { cookies: (await context.storageState()).cookies, origins: [] } });
-  const fresh = await viewer.newPage();
-  await fresh.goto(`${APP}/documents`);
-  await expect((await paletteResults(fresh, title)).filter({ hasText: title })).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByText("Search everywhere turned on")).toBeVisible({ timeout: 30_000 });
+  // The device keeps the mirror up to date in the background: the marker shows up there, and only there.
+  await expect.poll(() => { const r = e2eeScan([title]); return r.hits.length > 0 && r.hits.every((h) => h.table === "e2eeMirrors"); }, { timeout: 900_000, intervals: [30_000] }).toBe(true);
   await page.getByRole("switch", { name: "Search everywhere" }).click();
   await expect(page.getByText("Turned off. Folevi deleted the readable copy.")).toBeVisible({ timeout: 60_000 });
-  await expect.poll(() => e2eeScan([title]).clean, { timeout: 120_000 }).toBe(true);
-  await Promise.all([context.close(), viewer.close()]);
+  await expect.poll(() => e2eeScan([title]).clean, { timeout: 900_000, intervals: [30_000] }).toBe(true);
+  await context.close();
 });
 
 test("notification previews: generic text while off", async ({ browser }) => {

@@ -6,7 +6,7 @@ import { e2eeScan, marker, migrationDone, newNote, turnOnEncryption } from "./e2
 // notes encrypted in the background, titles still showing, and nothing readable left on the server.
 
 test("turning on encryption seals what's there; the server keeps no marker", async ({ browser }) => {
-  test.setTimeout(420_000);
+  test.setTimeout(1_200_000);
   const { page, context } = await newPerson(browser, "Setup Person");
   const title = marker("TITLE");
   const body = marker("BODY");

@@ -5,7 +5,9 @@ import { e2eeScan, marker, paletteResults } from "./e2ee-helpers";
 // §11.4 e2ee-lock: in a Standard space, lock a folder; its notes are sealed, server search can't find them,
 // search on the device can. Needs LOCK_MENU_FOR_EVERYONE on (components/e2ee/LockDialog.tsx), which is off until launch.
 
-test("a locked folder in a Standard space", async ({ browser }) => {
+// The item shows to accounts without keys only once LOCK_MENU_FOR_EVERYONE is on (components/e2ee/LockDialog.tsx),
+// which waits for launch; flip this to `test` then.
+test.fixme("a locked folder in a Standard space", async ({ browser }) => {
   test.setTimeout(420_000);
   const { page, context } = await newPerson(browser, "Lock Person");
   await showFolders(page);

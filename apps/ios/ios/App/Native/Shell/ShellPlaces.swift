@@ -241,6 +241,38 @@ enum ShellPlaces {
         commit(s)
     }
 
+    /// Tests only: what the app keeps for its places (the file, the mode, the extensions' copy and the open place's
+    /// REST token), to put back after a test so it never changes the app on that simulator or another test.
+    struct TestSnapshot {
+        let file: Data?
+        let mode: String?
+        let shared: [String: Any]
+        let token: String?
+        let accountId: String?
+        let tokenId: String?
+    }
+
+    private static let sharedKeys = ["saveTargets", "saveTargetCurrent", "saveTargetLast", "saveTargetAccounts", "saveTargetTokenIds", "localMode"]
+
+    static func snapshotForTests() -> TestSnapshot {
+        var shared: [String: Any] = [:]
+        for k in sharedKeys { if let v = Folevi.defaults.object(forKey: k) { shared[k] = v } }
+        return TestSnapshot(file: try? Data(contentsOf: file), mode: Platform.defaults.string(forKey: "folevi.shell.mode"), shared: shared, token: DeviceCredential.shared.token, accountId: SharedAccount.accountId, tokenId: SharedAccount.tokenId)
+    }
+
+    static func restoreForTests(_ s: TestSnapshot) {
+        lock.lock()
+        cached = nil
+        lock.unlock()
+        if let data = s.file { try? data.write(to: file, options: .atomic) } else { try? FileManager.default.removeItem(at: file) }
+        Platform.defaults.set(s.mode, forKey: "folevi.shell.mode")
+        for k in sharedKeys { Folevi.defaults.set(s.shared[k], forKey: k) }
+        DeviceCredential.shared.token = s.token
+        SharedAccount.accountId = s.accountId
+        SharedAccount.tokenId = s.tokenId
+        pendingAccount = false
+    }
+
     /// Tests only.
     static func resetForTests() {
         lock.lock()

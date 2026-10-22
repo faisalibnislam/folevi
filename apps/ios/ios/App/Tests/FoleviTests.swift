@@ -302,15 +302,21 @@ final class CredentialTests: XCTestCase {
 final class WidgetTests: XCTestCase {
     private var store: WidgetStore!
     private var file: URL!
+    private var wasLocal = false
 
     override func setUp() {
         StubAPI.reset()
         file = FileManager.default.temporaryDirectory.appendingPathComponent("widgets-\(UUID().uuidString).json")
         store = WidgetStore(file: file)
+        // These are the account's widgets (the REST API): whatever mode the app on this simulator was last in
+        // (the library, with several places) doesn't decide them. LocalExtrasTests cover local mode's.
+        wasLocal = LocalMode.on
+        LocalMode.on = false
     }
 
     override func tearDown() {
         try? FileManager.default.removeItem(at: file)
+        LocalMode.on = wasLocal
     }
 
     private static let day: Date = {

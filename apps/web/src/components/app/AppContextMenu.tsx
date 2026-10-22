@@ -7,7 +7,7 @@
 // - selected text: copy it, or ask AI about it;
 // - anywhere else: a new note, search, Ask AI, and back / forward / reload.
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, ClipboardPaste, Copy, ExternalLink, FilePlus2, Link2, RotateCw, Scissors, Search, TextSelect } from "lucide-react";
+import { ArrowLeft, ArrowRight, ClipboardPaste, Copy, ExternalLink, FilePlus2, Link2, RotateCw, Scissors, Search, Share, TextSelect } from "lucide-react";
 import { ContextMenu, type MenuItem } from "@/components/ui/Menu";
 import { useToast } from "@/components/ui/Toast";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -17,6 +17,7 @@ import { modKey } from "@/lib/hooks/useEngine";
 import { installTouchContextMenu } from "@/lib/touchContextMenu";
 import { useShell } from "./Shell";
 import { useCreateDocument } from "./useCreateDocument";
+import { macTextActions, readClipboardText, wordAround, type MacTextAction } from "@/lib/desktop/textMenu";
 
 type Field = HTMLInputElement | HTMLTextAreaElement;
 const TEXT_INPUTS = /^(text|search|email|url|tel|password|number)$/;
@@ -28,7 +29,7 @@ function textField(el: Element | null): Field | null {
 }
 
 export function AppContextMenu() {
-  const [menu, setMenu] = useState<{ at: { x: number; y: number }; items: (MenuItem | "separator")[]; label: string; host?: HTMLElement } | null>(null);
+  const [menu, setMenu] = useState<{ at: { x: number; y: number }; items: (MenuItem | "separator")[]; label: string; host?: HTMLElement; id?: number } | null>(null);
   const { openPalette, openAsk } = useShell();
   const { navigate } = useAppRouter();
   const createDocument = useCreateDocument();
@@ -44,6 +45,24 @@ export function AppContextMenu() {
         () => toast.show(done),
         () => toast.show("Couldn’t copy. Your browser blocked clipboard access.", { tone: "error" }),
       );
+    // Folevi for Mac: spelling suggestions, Look Up and Share join the text menu once the app has answered
+    // (lib/desktop/textMenu.ts); nothing changes elsewhere.
+    let opened = 0;
+    const withMacText = (id: number, ask: Parameters<typeof macTextActions>[0]) =>
+      void macTextActions(ask).then(({ spelling, lookUp, share }) => {
+        if (!spelling && !lookUp && !share) return;
+        const item = (a: MacTextAction): MenuItem => ({ label: a.label, disabled: a.disabled, onSelect: a.run });
+        setMenu((m) => {
+          if (!m || m.id !== id) return m;
+          const items: (MenuItem | "separator")[] = [
+            ...(spelling ? [...spelling.map(item), "separator" as const] : []),
+            ...(lookUp ? [item(lookUp), "separator" as const] : []),
+            ...m.items,
+            ...(share ? ["separator" as const, { ...item(share), icon: <Share size={14} /> }] : []),
+          ];
+          return { ...m, items };
+        });
+      });
     const onContext = (e: MouseEvent) => {
       // Handled already (the editor, a card, a tab), or Shift for the browser's own menu.
       if (e.defaultPrevented || e.shiftKey) return;
@@ -74,7 +93,9 @@ export function AppContextMenu() {
         e.preventDefault();
         const selected = (field.selectionEnd ?? 0) > (field.selectionStart ?? 0);
         const editable = !field.readOnly && !field.disabled;
+        const id = ++opened;
         setMenu({
+          id,
           at,
           host,
           label: "Text options",
@@ -88,7 +109,7 @@ export function AppContextMenu() {
                     icon: <ClipboardPaste size={14} />,
                     shortcut: "⌘V",
                     onSelect: () =>
-                      void navigator.clipboard.readText().then(
+                      void readClipboardText().then(
                         (text) => {
                           field.focus();
                           document.execCommand("insertText", false, text);
@@ -102,6 +123,24 @@ export function AppContextMenu() {
             { label: "Select all", icon: <TextSelect size={14} />, shortcut: "⌘A", onSelect: () => (field.focus(), field.select()) },
           ],
         });
+        if (field.type !== "password") {
+          const start = field.selectionStart ?? 0;
+          const end = field.selectionEnd ?? start;
+          const picked = field.value.slice(start, end);
+          const word = editable ? wordAround(field.value, start) : null;
+          withMacText(id, {
+            word: word && (!picked || picked === word.word) ? word.word : null,
+            selection: picked,
+            at,
+            replace: word
+              ? (guess) => {
+                  field.focus();
+                  field.setSelectionRange(word.start, word.end);
+                  document.execCommand("insertText", false, guess);
+                }
+              : undefined,
+          });
+        }
         return;
       }
       // Other editable text (not the editor, which has its own menu): leave the browser's.
@@ -139,7 +178,9 @@ export function AppContextMenu() {
         { label: "Reload", icon: <RotateCw size={14} />, onSelect: () => location.reload() },
       );
       e.preventDefault();
-      setMenu({ at, host, label: "Folevi", items });
+      const id = ++opened;
+      setMenu({ id, at, host, label: "Folevi", items });
+      if (selection) withMacText(id, { selection, at });
     };
     document.addEventListener("contextmenu", onContext);
     return () => document.removeEventListener("contextmenu", onContext);

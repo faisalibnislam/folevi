@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import { visibleBottom } from "@/lib/hooks/useVisualViewport";
 import {
   Bold,
+  BookOpen,
   CalendarDays,
   Check,
   ChevronDown,
@@ -42,6 +43,7 @@ import {
   Quote,
   Repeat2,
   Scissors,
+  Share,
   SquareCheck,
   Square,
   StickyNote,
@@ -71,6 +73,7 @@ import { liftController } from "@/lib/native/lift";
 import { feel } from "@/lib/native/ui";
 import { nativeApp } from "@/lib/nativeApp";
 import { inNestedNote } from "./synced/nested";
+import { macTextActions, macTextServices, wordAround, type MacTextItems } from "@/lib/desktop/textMenu";
 
 /** Asks the selection toolbar to open its link field (the "Edit link…" item). */
 export const EDIT_LINK_EVENT = "folevi:edit-link";
@@ -363,6 +366,40 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
     if (!open) thaw();
   }, [open, thaw]);
 
+  // Folevi for Mac: what the app's text services add for the word or text under the pointer (asked as the menu
+  // opens; the items join it once answered).
+  const [macText, setMacText] = useState<{ for: object; items: MacTextItems } | null>(null);
+  useEffect(() => {
+    if (!menu || phone || !macTextServices()) return;
+    const { state, view } = editor;
+    const hit = menu.keyboard ? null : view.posAtCoords({ left: menu.x, top: menu.y });
+    const sel = state.selection;
+    const selection = !sel.empty && !(sel instanceof NodeSelection) ? state.doc.textBetween(sel.from, sel.to, " ") : "";
+    const $p = state.doc.resolve(Math.max(0, Math.min(hit?.pos ?? sel.from, state.doc.content.size)));
+    let word: string | null = null;
+    let replace: ((guess: string) => void) | undefined;
+    if (editable && $p.parent.isTextblock && $p.parent.type.name !== "codeBlock") {
+      const w = wordAround($p.parent.textBetween(0, $p.parent.content.size, undefined, "\ufffc"), $p.parentOffset);
+      if (w && (!selection.trim() || selection.trim() === w.word)) {
+        const from = $p.start() + w.start;
+        const to = $p.start() + w.end;
+        word = w.word;
+        replace = (guess) => {
+          if (editor.isDestroyed || editor.state.doc.textBetween(from, to) !== w.word) return;
+          editor.view.dispatch(editor.state.tr.insertText(guess, from, to));
+          editor.view.focus();
+        };
+      }
+    }
+    let live = true;
+    void macTextActions({ word, selection, at: { x: menu.x, y: menu.y }, replace }).then((items) => {
+      if (live) setMacText({ for: menu, items });
+    });
+    return () => {
+      live = false;
+    };
+  }, [menu, editor, editable, phone]);
+
   const close = useCallback(
     (refocus: boolean) => {
       // (Editable again before the chosen item runs.)
@@ -376,7 +413,15 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
 
   if (!menu) return null;
 
-  const entries = buildEntries({ editor, editable, target: menu.target, aiOn, palette, onCommentBlock, navigate, toast, phone, inApp: phone || nativeApp() !== null });
+  const built = buildEntries({ editor, editable, target: menu.target, aiOn, palette, onCommentBlock, navigate, toast, phone, inApp: phone || nativeApp() !== null });
+  // Folevi for Mac: the spelling suggestions and Look Up first, Share last (lib/desktop/textMenu.ts).
+  const mac = macText && macText.for === menu ? macText.items : null;
+  const entries: Entry[] = [
+    ...(mac?.spelling ? [...mac.spelling.map((a): Item => ({ label: a.label, run: a.run, disabled: a.disabled })), "separator" as const] : []),
+    ...(mac?.lookUp ? [{ label: mac.lookUp.label, icon: <BookOpen size={14} />, run: mac.lookUp.run }, "separator" as const] : []),
+    ...built,
+    ...(mac?.share ? ["separator" as const, { label: mac.share.label, icon: <Share size={14} />, run: mac.share.run }] : []),
+  ];
   if (!entries.length) return null;
   return <MenuLayer entries={entries} at={{ x: menu.x, y: menu.y, top: menu.top }} keyboard={menu.keyboard} onClose={close} />;
 }
@@ -754,8 +799,15 @@ function clipboardCommand(editor: Editor, command: "copy" | "cut", toast: Return
 
 async function pasteFromClipboard(editor: Editor, plain: boolean, toast: ReturnType<typeof useToast>) {
   const data = new DataTransfer();
+  // Folevi for Mac reads the clipboard itself (WebKit asks with a "Paste" bubble when a page does, outside ⌘V).
+  const mac = macTextServices()?.clipboard;
   try {
-    if (!plain && navigator.clipboard.read) {
+    const fromMac = mac ? await mac.read() : null;
+    if (fromMac) {
+      if (fromMac.text !== undefined) data.setData("text/plain", fromMac.text);
+      if (!plain && fromMac.html !== undefined) data.setData("text/html", fromMac.html);
+      if (!plain && fromMac.image) data.items.add(new File([fromMac.image as BlobPart], "Pasted image.png", { type: "image/png" }));
+    } else if (!plain && navigator.clipboard.read) {
       for (const item of await navigator.clipboard.read()) {
         for (const type of item.types) {
           const blob = await item.getType(type);

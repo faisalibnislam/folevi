@@ -2,6 +2,7 @@
 // the cloud kit call is routed, with the iOS plugin's names; answers and refusals keep the shapes the page reads
 // (lib/shell/types.ts); the library works end to end through the router; secrets are written, never read back;
 // reminders and calendars answer only the library's pages (Electron's localShell).
+import CryptoKit
 import XCTest
 @testable import Folevi
 
@@ -137,6 +138,47 @@ final class ShellTests: XCTestCase {
         await Places.onLibraryQueue { lib.forget() }
         let got17 = try await call("libInfo")
         XCTAssertEqual(got17["configured"] as? Bool, false)
+    }
+
+    /// app://folevi/_files/<sha256> from the library (Places.swift's LibraryAttachments): a file over the 256 KB a
+    /// reader piece holds, whole and by byte range, and a 404 for one that isn't there, plain and encrypted.
+    @MainActor
+    func testAttachmentsWholeAndByRangePlainAndEncrypted() async throws {
+        let lib = LibraryService.shared
+        lib.iterations = 1000
+        defer { lib.iterations = LibraryCrypto.defaultIterations }
+        await Places.onLibraryQueue { lib.forget() }
+        try? FileManager.default.removeItem(at: Paths.documentsFolder.appendingPathComponent(LibraryService.deviceFolder, isDirectory: true))
+        _ = try await call("libSetup", ["kind": "device"])
+        let bytes = Data((0..<700_000).map { UInt8(($0 * 7) % 251) })
+        let sha = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+        let scheme = AppScheme(root: FileManager.default.temporaryDirectory, serviceOrigin: "https://app.folevi.com")
+        let files = LibraryAttachments()
+        scheme.files = files
+        func get(_ path: String, range: String? = nil) -> AppResponse {
+            var r = AppRequest(url: URL(string: "app://folevi/_files/\(path)")!)
+            if let range { r.headers["Range"] = range }
+            return scheme.respond(r)
+        }
+        for encrypted in [false, true] {
+            if encrypted { _ = try await call("libSetPassphrase", ["passphrase": "attachments"]) }
+            files.reset()
+            _ = try await call("libWrite", ["path": "files/\(sha.prefix(2))/\(sha)", "bytes": bytes.base64EncodedString()])
+            let whole = get("\(sha)?type=image%2Fpng")
+            XCTAssertEqual(whole.status, 200, "encrypted: \(encrypted)")
+            XCTAssertEqual(whole.body, bytes, "encrypted: \(encrypted)")
+            XCTAssertEqual(whole.header("Content-Type"), "image/png")
+            for (range, lo, hi) in [("bytes=10-19", 10, 19), ("bytes=262140-262150", 262_140, 262_150), ("bytes=699990-", 699_990, 699_999), ("bytes=-5", 699_995, 699_999)] {
+                let part = get(sha, range: range)
+                XCTAssertEqual(part.status, 206, "\(range) encrypted: \(encrypted)")
+                XCTAssertEqual(part.body, bytes.subdata(in: lo..<(hi + 1)), "\(range) encrypted: \(encrypted)")
+                XCTAssertEqual(part.header("Content-Range"), "bytes \(lo)-\(hi)/\(bytes.count)")
+            }
+            XCTAssertEqual(get(String(repeating: "0", count: 64)).status, 404)
+            XCTAssertEqual(get(sha, range: "bytes=800000-").status, 416)
+        }
+        _ = try await call("libSetPassphrase", [:])
+        await Places.onLibraryQueue { lib.forget() }
     }
 
     @MainActor

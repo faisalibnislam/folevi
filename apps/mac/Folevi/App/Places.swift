@@ -73,7 +73,17 @@ final class Places {
         WebViewFactory.configure.append { config, place, role in
             // Electron's applyThrottling, and §6.6: a runner, and the library's windows (its sync and reminders
             // run in the page), keep their timers behind other windows.
-            if role == .runner || ShellPlaces.modeOf(place) == "local" { config.preferences.inactiveSchedulingPolicy = .none }
+            guard role == .runner || ShellPlaces.modeOf(place) == "local" else { return }
+            config.preferences.inactiveSchedulingPolicy = .none
+            // A page in no window (or behind others) counts as hidden, and WebKit also stretches a hidden page's
+            // timers (1 s became 2 s in a 30-minute check) and lets its process nap: both off for these pages,
+            // through WebKit's own switches where this macOS has them (nothing changes where it doesn't).
+            for (name, value) in [("_setHiddenPageDOMTimerThrottlingEnabled:", false), ("_setPageVisibilityBasedProcessSuppressionEnabled:", false)] {
+                let selector = Selector((name))
+                guard config.preferences.responds(to: selector) else { continue }
+                typealias Setter = @convention(c) (AnyObject, Selector, Bool) -> Void
+                unsafeBitCast(config.preferences.method(for: selector), to: Setter.self)(config.preferences, selector, value)
+            }
         }
         WebViewFactory.scheme.files = attachments
         NotificationCenter.default.addObserver(forName: ShellPlaces.changed, object: nil, queue: .main) { _ in
@@ -436,11 +446,7 @@ final class LibraryAttachments: LibraryFiles {
                 lock.lock()
                 defer { lock.unlock() }
                 let length = end - start + 1
-                // LibraryService.openAttachment's reader takes (position, length) for a plain library but an
-                // encrypted one's takes (start, end) today (StreamReader.range): asked the other way when the
-                // answer isn't the length asked for (reported to the iOS owner; harmless once that's fixed).
-                if let d = try? f.read(start, length), d.count == length { return d }
-                let d = try f.read(start, start + length)
+                let d = try f.read(start, length)
                 guard d.count == length else { throw URLError(.cannotDecodeContentData) }
                 return d
             } catch where attempt == 0 {

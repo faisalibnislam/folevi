@@ -151,6 +151,29 @@ test("a library moves into an account: the same notes under their own ids, and t
   await person.context.close();
 });
 
+test("signing in from a library can keep them separate: the account opens and the library stays as it was", async ({ browser }) => {
+  test.setTimeout(300_000);
+  const person = await newPerson(browser, "Library Keeper");
+  const b = nodeBridge(() => person.page);
+  const context = await browser.newContext();
+  await prepare(context, b, { initialMode: "local", libraryName: `keep-apart-${Date.now()}`, platform: "mac" });
+  const page = await context.newPage();
+  await page.goto(`${SHELL}/`);
+  await expect.poll(() => libraryNote(page, "Welcome to Folevi"), { timeout: 90_000 }).not.toBeNull();
+
+  await page.goto(`${SHELL}/settings/library`);
+  await page.getByTestId("library-sign-in").click({ timeout: 90_000 });
+  await expect(page.getByTestId("migration-summary")).toBeVisible({ timeout: 180_000 });
+  await page.getByRole("button", { name: "Keep them separate" }).click();
+  // Signed in, the account opens; nothing moved and the library doesn't say it went anywhere.
+  await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByTestId("migration-summary")).toHaveCount(0);
+  const manifest = JSON.parse((await libraryFile(page, "folevi-library.json"))!) as { migratedTo?: string };
+  expect(manifest.migratedTo).toBeFalsy();
+  await context.close();
+  await person.context.close();
+});
+
 test("an account comes down into a library on this Mac, then this Mac signs out and the account goes on", async ({ browser }) => {
   test.setTimeout(420_000);
   const person = await newPerson(browser, "Account Keeper");

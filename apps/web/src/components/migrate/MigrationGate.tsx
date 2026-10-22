@@ -227,7 +227,7 @@ function UploadToAccount({ move }: { move: Extract<PendingMove, { direction: "up
               <span>Bring version history</span>
               <Switch checked={versions} onChange={setVersions} label="Bring version history" />
             </label>
-            <p className="text-sm">Your library folder stays as it is. You can remove it once you’ve looked things over.</p>
+            <p className="text-sm">Your library folder stays as it is either way. Keep them separate to use this account with nothing moved; you can move notes in later from Settings &gt; Library.</p>
           </div>
         }
       >
@@ -235,7 +235,10 @@ function UploadToAccount({ move }: { move: Extract<PendingMove, { direction: "up
           <Button variant="primary" disabled={!engine || !lib || !pre.writable} onClick={() => lib && void run(lib)}>
             {engine ? "Move my notes" : "Getting ready…"}
           </Button>
-          <Button onClick={() => void backToLibrary()}>Not now</Button>
+          <Button onClick={() => void openApp()}>Keep them separate</Button>
+          <Button variant="ghost" onClick={() => void backToLibrary()}>
+            Back to my library
+          </Button>
         </div>
       </FullPageMessage>
     );

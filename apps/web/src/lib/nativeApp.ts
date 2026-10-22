@@ -23,7 +23,39 @@ export type LockAfter = 0 | 60 | 300 | 900;
 
 export type NativeCommand = { type: "link"; url: string };
 
-export type Haptic = "light" | "medium" | "heavy" | "success" | "warning" | "error";
+/**
+ * Impacts ("light" to "heavy", and iOS's "rigid" and "soft"), a "selection" tick (a choice moved), and the
+ * notices ("success", "warning", "error"). Screens say what happened with lib/native/ui.ts `feel()` instead.
+ * (An older app plays "rigid", "soft" and "selection" as "light".)
+ */
+export type Haptic = "light" | "medium" | "heavy" | "rigid" | "soft" | "selection" | "success" | "warning" | "error";
+
+/** A rectangle on screen, in CSS pixels from the top left of what's visible (the visual viewport). */
+export interface NativeRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** A button in an action sheet or an alert. "cancel" is the one the app adds when the person taps away. */
+export interface NativeAction {
+  id: string;
+  title: string;
+  style?: "default" | "cancel" | "destructive";
+}
+
+/** The keyboard as the app sees it: how much of the screen it covers and how it's moving there. */
+export interface NativeKeyboardFrame {
+  /** From the bottom of the screen to the keyboard's top, in CSS pixels; 0 when it's away (or undocked). */
+  height: number;
+  /** How long the move takes, in milliseconds (0 while it follows a finger dragging it down). */
+  duration: number;
+  /** "keyboard": iOS's own keyboard curve (lib/native/ui.ts KEYBOARD_EASE); "linear" while it follows a finger. */
+  curve: "keyboard" | "linear";
+  /** Whether it's on its way up (or there), as opposed to going away. */
+  visible: boolean;
+}
 
 /**
  * This iPhone or iPad, and the REST API token its widgets, share extension, Shortcuts and Spotlight use
@@ -134,6 +166,8 @@ export interface NativeBridge {
   /** "android": Folevi for Android (apps/android) adds the same extras with its own bridge (folevi-bridge.js). */
   platform: "ios" | "android";
   version: string;
+  /** The build number (CFBundleVersion), shown beside the version in Settings. Missing in older builds. */
+  build?: string;
   haptic(kind: Haptic): void;
   /** The status bar's text for the page's theme (light text on a dark page). */
   setStatusBar(theme: "light" | "dark"): void;
@@ -189,6 +223,45 @@ export interface NativeBridge {
   finishLocalAction?(id: string): Promise<void>;
   /** Spotlight holds exactly these notes afterwards. */
   indexSpotlight?(items: NativeSpotlightItem[]): Promise<void>;
+  // The native UI layer (docs/IOS_POLISH_PLAN.md §4; the page calls lib/native/ui.ts and lib/native/lift.ts,
+  // never these). Missing in older builds and wherever the app has no such piece: the page draws its own then.
+  /** Readies the generator for `kind` (a control that's about to fire one was touched), so it plays on time. */
+  hapticPrepare?(kind: Haptic): void;
+  /**
+   * The lifted preview of a long press, step 1: the app takes a picture of `rect` now, while it's still drawn
+   * as it is at rest. `radius` rounds its corners. A later arm replaces it; one not lifted within 2 s is dropped.
+   */
+  liftArm?(o: { id: string; rect: NativeRect; radius: number }): void;
+  /**
+   * Step 2, the menu opened: the picture floats over the page where `rect` is, lifting from `from` (the scale
+   * the page had pressed it in to) with a shadow. Resolves false when there's no picture for `id` (nothing shows).
+   */
+  lift?(o: { id: string; from?: number }): Promise<boolean>;
+  /** Step 3, the menu closed: it settles back into place ("back") or fades where it is ("fade"), then goes. */
+  liftDrop?(o: { id: string; to?: "back" | "fade" }): Promise<void>;
+  /** An action sheet (on iPad a popover from `anchor`): the chosen action's id, or null when dismissed. */
+  actionSheet?(o: { title?: string; message?: string; actions: NativeAction[]; anchor?: NativeRect }): Promise<string | null>;
+  /** An alert, with one text field when `field` is given: the chosen action and the field's text, or null. */
+  alert?(o: {
+    title: string;
+    message?: string;
+    actions: NativeAction[];
+    field?: { value?: string; placeholder?: string; capitalize?: "none" | "words" | "sentences" };
+  }): Promise<{ id: string; text?: string } | null>;
+  /**
+   * The system's date and time picker in a sheet. `value`, `min`, `max`: YYYY-MM-DD, HH:MM or
+   * YYYY-MM-DDTHH:MM (local time) for the mode. Resolves { value } (null when "Clear" was tapped, only
+   * offered with `clearable`), or null when the sheet was dismissed.
+   */
+  pickDate?(o: { value?: string | null; mode: "date" | "time" | "dateAndTime"; min?: string; max?: string; title?: string; clearable?: boolean }): Promise<{ value: string | null } | null>;
+  /** The system's colour picker: "#rrggbb", or null when it was closed without a choice. */
+  pickColor?(o: { value?: string; title?: string }): Promise<string | null>;
+  /** The share sheet (on iPad from `anchor`): true when something was shared, false when it was closed. */
+  share?(o: { title?: string; text?: string; url?: string; anchor?: NativeRect }): Promise<boolean>;
+  /** How the keyboard behaves: dragging a view that scrolls down past the keyboard takes it away with the finger. */
+  keyboard?(o: { interactiveDismiss?: boolean }): void;
+  /** Every move of the keyboard (shown, hidden, resized, dragged by a finger); returns the function that stops. */
+  onKeyboard?(listener: (frame: NativeKeyboardFrame) => void): () => void;
 }
 
 declare global {

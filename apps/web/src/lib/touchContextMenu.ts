@@ -6,8 +6,12 @@
 // also kept tidy: iOS doesn't start selecting the words next to it, what was held lifts while its menu is open
 // (and is felt), the lift of the finger doesn't also open what was held or tap the menu item under it, and
 // what opened the menu doesn't keep a "…" showing once it closes.
+//
+// In the iPhone and iPad app the lift is the app's own picture of what was held, floating over a frosted page
+// (lib/native/lift.ts, docs/IOS_POLISH_PLAN.md §4.1); the menu stays the page's.
 
 import { haptic } from "./nativeApp";
+import { ARM_MS, liftController } from "./native/lift";
 
 /** How long a finger rests before the menu opens; just under iOS's own text selection, so the menu wins. */
 const HOLD_MS = 450;
@@ -71,13 +75,25 @@ function pressGuard(root: HTMLElement) {
   let watcher: MutationObserver | null = null;
   let swallowUntil = 0;
   let pressing = false;
+  // The app's lifted picture (and, everywhere, the press-in while the finger rests).
+  const lift = liftController();
+  let armTimer: ReturnType<typeof setTimeout> | null = null;
+  const disarm = () => {
+    if (armTimer !== null) clearTimeout(armTimer);
+    armTimer = null;
+  };
   const selection = (on: boolean) => {
     root.style.setProperty("-webkit-user-select", on ? "none" : "");
     root.style.setProperty("user-select", on ? "none" : "");
   };
-  const unlift = () => {
+  /** What lifted settles back (`to`); with `keepPicture`, the app's picture of it stays (the menu is about to open). */
+  const unlift = (to?: "back" | "fade", keepPicture = false) => {
     watcher?.disconnect();
     watcher = null;
+    if (!keepPicture) {
+      disarm();
+      lift.drop(to);
+    }
     if (!lifted) return;
     lifted.removeAttribute(LIFT_ATTR);
     lifted = null;
@@ -91,9 +107,14 @@ function pressGuard(root: HTMLElement) {
       unlift();
       pressing = !!target.closest(PRESSABLE) && !target.closest(EDITABLE);
       if (pressing) selection(true);
+      // Still resting there a moment later: the app takes its picture, and it starts pressing in.
+      const el = pressing ? liftable(target) : null;
+      if (el) armTimer = setTimeout(() => (armTimer = null, lift.arm(el, HOLD_MS - ARM_MS)), ARM_MS);
     },
     /** The press ended without a menu (lifted early, scrolled, moved). */
     release() {
+      disarm();
+      lift.cancel();
       if (!pressing) return;
       pressing = false;
       setTimeout(() => selection(false), 50);
@@ -103,13 +124,16 @@ function pressGuard(root: HTMLElement) {
      * (components/ui/Menu.tsx) goes beside the lifted card instead of over it. `drop()` if nothing opened.
      */
     prelift(target: Element) {
-      unlift();
+      unlift(undefined, true);
       const el = liftable(target);
       if (!el) return;
       lifted = el;
+      lift.prelift(el);
       el.setAttribute(LIFT_ATTR, "");
     },
-    drop: () => unlift(),
+    drop: () => unlift("fade"),
+    /** The finger moved on with the menu open (dragging what it held): the picture goes where it is. */
+    moved: () => lift.drop("fade"),
     /** A menu opened for `target`: it lifts (until the menu closes) and is felt. */
     opened(target: Element) {
       const el = liftable(target);
@@ -118,6 +142,14 @@ function pressGuard(root: HTMLElement) {
       if (!el) return;
       lifted = el;
       el.setAttribute(LIFT_ATTR, "");
+      // The app's picture lifts once the menu is there (a hold that opened a sheet or started a drag gets none).
+      let frames = 0;
+      const liftWhenMenu = () => {
+        if (lifted !== el) return;
+        if (document.querySelector('[role="menu"]')) return void lift.lift(el);
+        if (++frames < 4) requestAnimationFrame(liftWhenMenu);
+      };
+      liftWhenMenu();
       watcher = new MutationObserver(() => {
         if (!document.querySelector('[role="menu"]')) unlift();
       });
@@ -135,7 +167,8 @@ function pressGuard(root: HTMLElement) {
     },
     swallowing: () => Date.now() < swallowUntil,
     stop() {
-      unlift();
+      unlift("fade");
+      lift.stop();
       selection(false);
     },
   };
@@ -291,6 +324,7 @@ export function installTouchContextMenu(): () => void {
     const touch = e.touches[0];
     if (held && heldAt && touch && !heldAt.moved && Math.hypot(touch.clientX - heldAt.x, touch.clientY - heldAt.y) > SLOP) {
       heldAt.moved = true;
+      guard.moved();
       const detail: HoldMoveDetail = { startX: heldAt.x, startY: heldAt.y, x: touch.clientX, y: touch.clientY };
       heldAt.target.dispatchEvent(new CustomEvent(HOLD_MOVE_EVENT, { bubbles: true, cancelable: true, detail }));
       return;

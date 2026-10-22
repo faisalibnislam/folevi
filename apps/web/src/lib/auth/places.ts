@@ -93,6 +93,9 @@ async function rememberJar(jar: CookieJar, accounts: JarAccount[], secure: boole
   const map: Record<string, string> = {};
   for (const a of accounts) map[a.userId] = await tokenHash(a.token);
   const out = [placesSetCookie(map, { secure, maxAge: accounts.length ? FOURTEEN_DAYS : 0 })];
+  // A kept session that has ended (replaced by turning on two-step verification, a new password): its cookie goes.
+  const live = new Set(accounts.map((a) => a.token.toLowerCase()));
+  for (const m of jar.multi) if (!live.has(m.token)) out.push(expireCookie(m.name, secure));
   const active = accounts.find((a) => a.active);
   if (active && jar.session && !jar.multi.some((m) => m.token === active.token.toLowerCase())) {
     const adopt = multiSetCookie(jar.session.name, jar.session.value, { secure, maxAge: Math.max(60, (active.expiresAt - Date.now()) / 1000) });
@@ -113,7 +116,7 @@ function valueFor(jar: CookieJar, account: Pick<JarAccount, "token">): string | 
  * The request as the pinned account's (or as it came, when nothing is pinned), and the cookies to set on the
  * answer (the map, when it had to be looked up). A pinned account this browser doesn't hold runs signed out.
  */
-export async function pinRequest(request: Request, forward: Forward, secure: boolean): Promise<{ request: Request; setCookies: string[]; pinned: string | null }> {
+export async function pinRequest(request: Request, forward: Forward, secure: boolean, o: { fresh?: boolean } = {}): Promise<{ request: Request; setCookies: string[]; pinned: string | null; fromMap?: boolean }> {
   const raw = request.headers.get(PIN_HEADER);
   const headers = new Headers(request.headers);
   headers.delete(PIN_HEADER);
@@ -127,8 +130,8 @@ export async function pinRequest(request: Request, forward: Forward, secure: boo
   if (!raw || !USER_ID.test(raw)) return { request: raw ? await rebuild(request.headers.get("cookie")) : request, setCookies: [], pinned: null };
   const jar = readJar(request.headers.get("cookie"));
   const name = jar.session?.name ?? sessionCookieName(secure);
-  const known = await multiFor(jar, raw);
-  if (known) return { request: await rebuild(withSessionValue(jar, known.value, name)), setCookies: [], pinned: raw };
+  const known = o.fresh ? null : await multiFor(jar, raw);
+  if (known) return { request: await rebuild(withSessionValue(jar, known.value, name)), setCookies: [], pinned: raw, fromMap: true };
   const accounts = await jarAccounts(request, forward, jar);
   const setCookies = await rememberJar(jar, accounts, secure);
   const mine = accounts.find((a) => a.userId === raw);
@@ -150,6 +153,16 @@ export async function checkPinnedSession(response: Response, pinned: string | nu
   headers.delete("content-length");
   headers.delete("set-cookie");
   return new Response("null", { status: 200, headers });
+}
+
+/**
+ * Whether an answer says the pinned account has no session: then a request sent with the map's cookie is sent
+ * again with the accounts looked up afresh (the map can name a session that was just replaced).
+ */
+export async function answeredSignedOut(response: Response, pathname: string): Promise<boolean> {
+  if (response.status === 401) return true;
+  if (!pathname.endsWith("/get-session") || !response.ok) return false;
+  return (await json(response.clone())) === null;
 }
 
 export interface PlaceListEntry {

@@ -2,7 +2,7 @@
 // decides at load, the registry of places, and the lock that keeps one background runner per account.
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { decodeMap, encodeMap, expireCookie, hasAnySession, isPrivateAuthPath, multiFor, multiSetCookie, placesSetCookie, readJar, tokenHash, tokenOfValue, withSessionValue } from "@/lib/auth/placesCookies";
-import { checkPinnedSession, pinRequest, type Forward } from "@/lib/auth/places";
+import { answeredSignedOut, checkPinnedSession, pinRequest, type Forward } from "@/lib/auth/places";
 import { resolvePin } from "@/lib/places/pin";
 import { accountPlaceId, forgetAccount, knownAccounts, lastPlace, parseStored, reconcileAccounts, rememberAccount, userIdOf } from "@/lib/places/registry";
 import { holdPlaceOpen, runWhileNotOpen } from "@/lib/places/locks";
@@ -99,6 +99,15 @@ describe("the proxy's pin", () => {
     const pinned = await pinRequest(new Request("http://app.test/api/auth/get-session", { headers: { cookie: `folevi.session_token=${signed(ANA)}`, "x-folevi-account": "userAna" } }), forward, false);
     expect(readJar(pinned.request.headers.get("cookie")).session?.value).toBe(signed(ANA));
     expect(pinned.setCookies.some((c) => c.startsWith(`folevi.session_token_multi-${ANA.toLowerCase()}=${signed(ANA)}`))).toBe(true);
+  });
+
+  test("a kept session that has ended is dropped, and a signed-out answer is recognised (the proxy then looks again)", async () => {
+    const dead = "deadToken1234567890abcdefABCDEF1";
+    const pinned = await pinRequest(new Request("http://app.test/api/auth/get-session", { headers: { cookie: `${browserCookies}; folevi.session_token_multi-${dead.toLowerCase()}=${signed(dead)}`, "x-folevi-account": "userAna" } }), forward, false);
+    expect(pinned.setCookies.some((c) => c.startsWith(`folevi.session_token_multi-${dead.toLowerCase()}=;`) && c.includes("Max-Age=0"))).toBe(true);
+    expect(await answeredSignedOut(new Response("", { status: 401 }), "/api/auth/convex/token")).toBe(true);
+    expect(await answeredSignedOut(new Response("null", { status: 200 }), "/api/auth/get-session")).toBe(true);
+    expect(await answeredSignedOut(new Response('{"user":{}}', { status: 200 }), "/api/auth/get-session")).toBe(false);
   });
 
   test("a get-session answer naming anyone but the pinned account is answered as no session", async () => {

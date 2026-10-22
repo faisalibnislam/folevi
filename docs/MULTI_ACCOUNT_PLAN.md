@@ -132,7 +132,7 @@ Clicking a workspace of another account switches place and opens that workspace 
 | What | Today | Change |
 | --- | --- | --- |
 | Account data (IndexedDB) | `folevi-<profileId>` | none |
-| E2EE replicas | `folevi-e2ee-<scopeKey>`: Personal is `personal` for every account, so two accounts collide | `folevi-e2ee-<profileId>-<scopeKey>`; the old name is read once by the account it belongs to (its rows carry the profile) and then removed |
+| E2EE replicas | `folevi-e2ee-<scope id>`: Personal's (`personal:<profileId>`) already names its owner, but a workspace two accounts both belong to would share one copy (and one hosting window) | a workspace's gets `_<profileId>` (database, Web Lock and channel); the old shared copy is dropped (it's a cache the pull refills) |
 | E2EE key store (web) | `folevi-e2ee`, one record per profile | none |
 | E2EE device keys (Mac) | `userData/e2ee/device.bin`, one pair per Mac | per account: `userData/e2ee/accounts/<placeId>/`; the existing pair moves to the first account. Separate keys also stop the server from linking two accounts through one device key |
 | E2EE device keys (iOS, Android) | one Keychain or Keystore entry | per account (`<placeId>` in the key alias) |

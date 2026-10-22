@@ -202,7 +202,9 @@ export async function clearAccountData(profileId: string, userId?: string | null
     dbs.delete(name);
   }
   const all = (await indexedDB.databases?.()) ?? [];
-  await Promise.all(all.filter((d) => d.name === own || d.name?.startsWith(replicas)).map((d) => deleteDatabase(d.name!)));
+  // Its end-to-end encrypted copies: Personal's (`folevi-e2ee-personal_<profileId>`) and each workspace's (`…_<profileId>`).
+  const isReplica = (n: string) => n.startsWith(replicas) || (n.startsWith("folevi-e2ee-") && (n === `folevi-e2ee-personal_${profileId}` || n.endsWith(`_${profileId}`)));
+  await Promise.all(all.filter((d) => d.name === own || (d.name && isReplica(d.name))).map((d) => deleteDatabase(d.name!)));
   if (!all.some((d) => d.name === own)) await deleteDatabase(own);
   try {
     if (localStorage.getItem("folevi:last-account") === profileId) localStorage.removeItem("folevi:last-account");

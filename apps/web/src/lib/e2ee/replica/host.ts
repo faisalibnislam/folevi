@@ -12,7 +12,7 @@ import { Sealer, isUnreadableBlock } from "../seal";
 import { scopeKeyOf, type E2eeSpace, type KeyRingLike, type KeySessionLike, type WireScope } from "../router/deps";
 import type { E2eePullPage, PulledMine } from "../router/refs";
 import { ReplicaIngest, type IngestedIds } from "./ingest";
-import { openReplicaDb, SpaceReplicaStore, type ReplicaOverlay } from "./store";
+import { openReplicaDb, replicaDbName, SpaceReplicaStore, type ReplicaOverlay } from "./store";
 
 export type ReplicaStatus = { state: "opening" | "downloading" | "ready" | "locked"; have: number; total: number | null };
 
@@ -126,9 +126,10 @@ class HostedReplica {
   static async open(o: ReplicaHubOptions, scope: WireScope): Promise<HostedReplica> {
     const space = o.space(scope);
     if (!space) throw new Error("This space isn't end-to-end encrypted.");
-    const store = new SpaceReplicaStore(await openReplicaDb(space.scopeId, o.persist()));
+    const profile = await o.profile();
+    const store = new SpaceReplicaStore(await openReplicaDb(space.scopeId, o.persist(), profile.id));
     await store.load();
-    const replica = new HostedReplica(o, scope, store, await o.profile(), space.scopeId, scope.kind === "workspace" ? await o.placeName?.(scope).catch(() => undefined) : undefined);
+    const replica = new HostedReplica(o, scope, store, profile, space.scopeId, scope.kind === "workspace" ? await o.placeName?.(scope).catch(() => undefined) : undefined);
     await replica.ingest.ensureProfile();
     replica.cursor = ((await store.readState("cursor")) as number | undefined) ?? 0;
     replica.have = (await store.list("documents")).length;
@@ -379,7 +380,8 @@ export class Replicas implements ReplicaHub {
     const key = scopeKeyOf(scope);
     const space = this.o.space(scope);
     if (!space) throw new Error("This space isn't end-to-end encrypted.");
-    const name = `folevi-e2ee-${space.scopeId}`;
+    // Per account for a workspace (replicaDbName): another account's window never hosts this one's copy.
+    const name = replicaDbName(space.scopeId, (await this.o.profile()).id);
     let win: WindowReplica | null = null;
     const host = startLocalHost({
       lockName: name,

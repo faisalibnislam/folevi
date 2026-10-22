@@ -11,13 +11,27 @@ import { ConvexError } from "convex/values";
 import { MemoryStore, writeKeys, type CommitHints, type LocalBlock, type LocalDocument, type LocalIndexStorage, type LocalStore, type LocalTable, type LocalTables, type StoreWrite } from "@/lib/local/store";
 import { IdbReplicaDb, MemoryReplicaDb, parseRowKey, rowKey, type ReplicaDb } from "@/lib/local/store/replicaDb";
 
-/** The database a space's replica is kept in (`folevi-e2ee-<scopeKey>`, §6.5). */
-export function replicaDbName(scopeKey: string): string {
-  return `folevi-e2ee-${scopeKey.replace(/[^A-Za-z0-9_-]/g, "_")}`;
+/**
+ * The database a space's replica is kept in (`folevi-e2ee-<scopeKey>`, §6.5), and the Web Lock and channel of the
+ * window hosting it. A team workspace's also names whose copy it is (`…_<profileId>`): two accounts in one browser
+ * can both belong to a workspace, each seeing what that account may see, and must never share a copy
+ * (docs/MULTI_ACCOUNT_PLAN.md §4). Personal's scope id already names its owner.
+ */
+export function replicaDbName(scopeKey: string, profileId?: string | null): string {
+  const base = `folevi-e2ee-${scopeKey.replace(/[^A-Za-z0-9_-]/g, "_")}`;
+  return profileId && !scopeKey.startsWith("personal:") ? `${base}_${profileId.replace(/[^A-Za-z0-9_-]/g, "_")}` : base;
 }
 
-export async function openReplicaDb(scopeKey: string, persist: boolean): Promise<ReplicaDb> {
-  const name = replicaDbName(scopeKey);
+export async function openReplicaDb(scopeKey: string, persist: boolean, profileId?: string | null): Promise<ReplicaDb> {
+  const name = replicaDbName(scopeKey, profileId);
+  // A workspace's copy from before copies were per account is only a cache: it's dropped (the pull fills the new one).
+  if (profileId && persist && typeof indexedDB !== "undefined" && name !== replicaDbName(scopeKey)) {
+    try {
+      indexedDB.deleteDatabase(replicaDbName(scopeKey));
+    } catch {
+      /* nothing to drop */
+    }
+  }
   if (persist && typeof indexedDB !== "undefined") return await IdbReplicaDb.openNamed(name);
   // Not kept (a public session, or no IndexedDB): a fresh copy in memory each time, shared with nothing.
   return new MemoryReplicaDb();

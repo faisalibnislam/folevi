@@ -3,7 +3,7 @@ import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs";
 import { APP_HOST, APP_URL, MARKETING_HOST } from "@/lib/env";
 import { hintCookie, hintDomain, sessionChange } from "@/lib/auth/signedInHint";
 import { appleFormPost, withAppleUser } from "@/lib/auth/appleCallback";
-import { checkPinnedSession, listPlaces, pinRequest, signOutPlace, type Forward } from "@/lib/auth/places";
+import { answeredSignedOut, checkPinnedSession, listPlaces, pinRequest, signOutPlace, type Forward } from "@/lib/auth/places";
 import { isPrivateAuthPath } from "@/lib/auth/placesCookies";
 
 const convexAuth = convexBetterAuthNextJs({
@@ -145,8 +145,14 @@ export const handler = {
     const path = new URL(request.url).pathname;
     if (isPrivateAuthPath(path)) return refused();
     const apple = withAppleUser(request, secureCookies());
-    const pin = await pinRequest(apple.request, forward, secureCookies());
-    const answer = await checkPinnedSession(await redirectPageLoads(pin.request, await convexAuth.handler.GET(await withSignedClientIp(pin.request))), pin.pinned, path);
+    const send = async (fresh: boolean) => {
+      const pin = await pinRequest(apple.request.clone(), forward, secureCookies(), { fresh });
+      return { pin, res: await convexAuth.handler.GET(await withSignedClientIp(pin.request)) };
+    };
+    let { pin, res } = await send(false);
+    // The map named a session that has just been replaced: look the accounts up again and resend.
+    if (pin.fromMap && (await answeredSignedOut(res, path))) ({ pin, res } = await send(true));
+    const answer = await checkPinnedSession(await redirectPageLoads(pin.request, res), pin.pinned, path);
     return withCookies(withCookie(withSignedInHint(answer), apple.clear), pin.setCookies);
   },
   POST: async (request: Request) => {
@@ -154,8 +160,13 @@ export const handler = {
     if (isPrivateAuthPath(path)) return refused();
     const apple = await appleFormPost(request, secureCookies());
     if (apple) return apple;
-    const pin = await pinRequest(request, forward, secureCookies());
-    return withCookies(withSignedInHint(await convexAuth.handler.POST(await withSignedClientIp(pin.request))), pin.setCookies);
+    const send = async (fresh: boolean) => {
+      const pin = await pinRequest(request.clone(), forward, secureCookies(), { fresh });
+      return { pin, res: await convexAuth.handler.POST(await withSignedClientIp(pin.request)) };
+    };
+    let { pin, res } = await send(false);
+    if (pin.fromMap && (await answeredSignedOut(res, path))) ({ pin, res } = await send(true));
+    return withCookies(withSignedInHint(res), pin.setCookies);
   },
 };
 

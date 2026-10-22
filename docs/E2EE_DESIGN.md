@@ -2588,14 +2588,16 @@ export function publishPlainCopy(documentId: string): Promise<{ url: string }>;
 - A toggle's open state travels only as `sealed.collapsed: true`, so an opened block may lack
   `props.collapsed`; unsealing puts `false` back where the schema needs it (`withCollapsed` in
   `migrate/unseal.ts`). WP7's `openBlock` has the same gap for display.
-- Server functions an unseal still needs (WP3), called by name and listed in `migrate/env.ts` `pending`; until
-  they exist an unseal job pauses (Settings > Privacy shows it with "Try again"):
-  `e2ee.migrate.unsealSnapshot({ snapshotId, content: { title, icon, cover?, style?, blocks }, name })` (history
-  phase) and `e2ee.migrate.unsealNames({ scope, folders: { folderId, name }[], tags: { tagId, name }[] })`
-  (cleanup). File keys under old note key versions aren't re-wrapped by a re-seal (no mutation replaces
-  `files.sealed.key`); old note key versions must stay while files use them. A sealed note's study schedules
-  aren't carried into `studyReview` records (`plainExtras` has none). AI chats stored before encryption stay
-  as they were (R15 is open).
+- With WP3's follow-up, decrypting finishes: versions go back through `unsealSnapshot`, folder and tag names
+  through `unsealNames`, then this person's Foli AI memories through `restoreMemories` (memories moved into
+  `aiMemory` records with `moveMemories` in a seal's cleanup, one record `mem-<memoryId>` each, holding
+  `{ e2eeKind: "aiMemory", recordId, kind, text, source, … }`). Study schedules are one `studyReview` record
+  per card (record id = the card's block id, as local mode keys `studyReviews`): the converting device writes
+  its own in `finishDocument` and gets them back in `finishUnseal`; every other reader's device carries theirs
+  (`plainStudy`, then `putRecord`) and puts them back with `restoreStudy` once a note it can't find sealed any
+  more had them (features/study.ts; only in spaces at Standard level, being decrypted or with locks). A re-seal
+  (and a note key change after a revoked link) re-wraps file keys first (`oldKeyFiles`, `rewrapKeys`). AI chats
+  stored before encryption stay as they were (R15 is open).
 - Space key rotation: before re-sealing, the runner gives every note of the space a new note key
   (`rotateNote`, resumable through the replica's state `rotation:<jobId>`), since a reseal claim only lists
   notes with rows under an older note key. `rotateNote` wraps the new key for the space, for each guest whose
@@ -2605,7 +2607,7 @@ export function publishPlainCopy(documentId: string): Promise<{ url: string }>;
 - Locks. The replica's rows don't carry `locked` / `lockedVia` yet, so features ask `e2ee.pull.document` per
   note (and its parent pages) in spaces with `lockedCount > 0`, before any text leaves the device; unknown
   counts as locked. When WP7's `LocalDocument` gains `locked` and `lockedVia`, `features/locks.ts` uses them.
-- Foli AI. `startFeatureWorkers` hands the router `aiRoute` (`setAiRouter`). "Don't send" refuses with a new
+- Foli AI. `startFeatureWorkers` hands the router `aiRoute` (`setAiRouter`) and takes it back when stopped. "Don't send" refuses with a new
   code `e2ee_consent_declined` (nothing was sent). Only functions whose arguments take `provided` get it
   (`ai.ask/write/flowchart/brief`, `aiTodos.find`, `aiStudy.translateNote`, `aiAttachments.transcribe`,
   `fileText.readImage`, `aiChat.sendSealed`, `aiResearch.startSealed`, and every function of chartAi,
@@ -2617,9 +2619,9 @@ export function publishPlainCopy(documentId: string): Promise<{ url: string }>;
   records' context names the space, which the share payload doesn't carry. Collections show without rows (a row
   is another note, which the link doesn't open). The share page passes the payload as base64url text
   (`lib/e2ee/sharePayload.ts`).
-- Published copies leave out image and file blocks and an image cover: plain uploads into a sealed note are
-  refused (`files.generateUploadUrl` / `finalize`), so there is no way yet to store the copy's plain images.
-  Needs a server path (for example `e2ee.links.generateImageUploadUrl`).
+- Published copies keep their images and files: each is decrypted on the device and uploaded as the copy's own
+  plain file (`e2ee.links.generateFileUploadUrl`, then `files.finalize`), the block's file ids swapped for the
+  new ones, and the new ids sent as `copy.fileIds`. A file that can't be read or uploaded drops its block.
 - Inbox. App writes are applied as MCP applies them for Standard notes; ids come from the item (the promised
   note id, the to-do id) or are derived from the item id, so a second device writes the same rows. The Inbox is
   made at `inboxDocumentId(profileId, scopeIdKey(scope))` and, in Personal, registered with

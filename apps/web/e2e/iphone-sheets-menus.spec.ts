@@ -239,8 +239,12 @@ test("iPhone: Empty Trash asks with the system's alert, once it knows how many n
   const card = page.locator("main a[href^='/d/']").first();
   await expect(card).toBeVisible({ timeout: 30_000 });
   const box = (await card.boundingBox())!;
+  const href = (await card.getAttribute("href"))!;
   await card.dispatchEvent("contextmenu", { bubbles: true, cancelable: true, clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 });
   await page.getByRole("menu").getByRole("menuitem", { name: "Move to Trash" }).click();
+  // (Gone from the list once the library has it: a page loaded before then wouldn't know yet.)
+  await expect(page.locator(`main a[href='${href}']`)).toHaveCount(0);
+  await page.waitForTimeout(1000);
   await page.goto("/trash");
   await expect(page.locator("main a[href^='/d/']")).toHaveCount(1, { timeout: 30_000 });
   // Its "…": Empty Trash, asked as the alert (no web dialog), with the count in its message.

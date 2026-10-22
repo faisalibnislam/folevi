@@ -70,6 +70,14 @@ function androidTouch(): boolean {
  * tappable thing is pressed, the lift, and the clicks that follow a hold swallowed. `held()` says a menu
  * opened by holding is up with the finger still down.
  */
+/**
+ * The press the frosted page behind a held menu sends for a new tap on it (lib/native/lift.ts: WebKit sends none
+ * of its own there), which closes the menu: never one of the hold's, even just after the held finger lifted.
+ */
+function tapOnBackdrop(e: MouseEvent): boolean {
+  return !e.isTrusted && e.type === "mousedown" && e.target instanceof Element && e.target.hasAttribute("data-lift-backdrop");
+}
+
 function pressGuard(root: HTMLElement) {
   let lifted: HTMLElement | null = null;
   let watcher: MutationObserver | null = null;
@@ -207,7 +215,7 @@ function installAndroidGuard(): () => void {
     guard.opened(e.target);
   };
   const onClick = (e: MouseEvent) => {
-    if (!held && !guard.swallowing()) return;
+    if ((!held && !guard.swallowing()) || tapOnBackdrop(e)) return;
     e.preventDefault();
     e.stopImmediatePropagation();
   };
@@ -344,7 +352,7 @@ export function installTouchContextMenu(): () => void {
   // 200 ms in): that isn't a tap outside the menu, so it never reaches the menu's close-on-outside-press.
   const onMouse = (e: MouseEvent) => {
     // (And just after the finger lifts: WebKit's mouse press for the lift would close the menu it opened.)
-    if (!held && !guard.swallowing()) return;
+    if ((!held && !guard.swallowing()) || tapOnBackdrop(e)) return;
     e.preventDefault();
     e.stopImmediatePropagation();
   };

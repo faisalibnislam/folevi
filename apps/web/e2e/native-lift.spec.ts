@@ -108,9 +108,11 @@ test("the app's lifted preview for a long press", async ({ browser, browserName 
   const seen = await calls(page);
   const arm = seen.find((c) => c.method === "liftArm")!.arg as { id: string; rect: { x: number; y: number; width: number; height: number }; radius: number };
   const held = (await page.locator("[data-held-lift]").boundingBox())!;
-  // (The rectangle is of the thing at rest; it has lifted to 1.04 since.)
+  // (The rectangle is of the thing at rest. The app's picture of it is what lifts to 1.04; the thing itself stays
+  // at rest under the picture, out of sight: globals.css [data-lift-native].)
   expect(Math.abs(arm.rect.x + arm.rect.width / 2 - (held.x + held.width / 2))).toBeLessThan(2);
-  expect(Math.abs(arm.rect.width * 1.04 - held.width)).toBeLessThan(3);
+  expect(Math.abs(arm.rect.width - held.width)).toBeLessThan(1.5);
+  await expect(page.locator("[data-held-lift]")).toHaveAttribute("data-lift-native", "");
   expect(arm.radius).toBeGreaterThan(0);
   await expect.poll(async () => (await calls(page)).find((c) => c.method === "lift")?.arg).toEqual({ id: arm.id, from: 0.97 });
   // The page behind is frosted, the menu is above it (its items take taps), the tile is under the picture.
@@ -120,8 +122,12 @@ test("the app's lifted preview for a long press", async ({ browser, browserName 
   expect(await page.evaluate(([x, y]) => !!document.elementFromPoint(x!, y!)?.closest('[role="menu"]'), [ib.x + ib.width / 2, ib.y + ib.height / 2])).toBe(true);
   await expect(page.locator("[data-held-lift]")).toHaveCSS("visibility", "hidden");
 
-  // A tap outside: the menu closes, the picture settles back, the tile shows again.
-  await page.touchscreen.tap(200, 120);
+  // A tap outside (clear of the menu and the tile, wherever the menu was placed): the menu closes, the picture
+  // settles back, the tile shows again.
+  const mb = (await menu.boundingBox())!;
+  const tb = (await tile.boundingBox())!;
+  const clearY = [mb.y + mb.height + 40, tb.y + tb.height + 40, 700].find((y) => y > mb.y + mb.height && y > tb.y + tb.height && y < 780)!;
+  await page.touchscreen.tap(60, clearY);
   await expect(menu).toHaveCount(0);
   await expect.poll(async () => (await calls(page)).find((c) => c.method === "liftDrop")?.arg).toEqual({ id: arm.id, to: "back" });
   await expect(page.locator("[data-lift-backdrop]")).toHaveCount(0);

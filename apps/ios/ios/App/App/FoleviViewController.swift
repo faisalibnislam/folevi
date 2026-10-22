@@ -93,6 +93,7 @@ final class FoleviViewController: CAPBridgeViewController {
     private static func bridgeScript(origin: String, shell: [String: Any]?) -> String? {
         guard let url = Bundle.main.url(forResource: "bridge", withExtension: "js"), let template = try? String(contentsOf: url, encoding: .utf8) else { return nil }
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
         let shellJSON = shell.flatMap { try? JSONSerialization.data(withJSONObject: $0) }.flatMap { String(data: $0, encoding: .utf8) } ?? "null"
         // The shared Dropbox and Google Drive code, inside bridge.js's function (scripts/bundle-cloud.mjs).
         let kit = shell == nil ? "" : (Bundle.main.url(forResource: "folevi-cloud", withExtension: "js").flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? "")
@@ -100,6 +101,7 @@ final class FoleviViewController: CAPBridgeViewController {
             .replacingOccurrences(of: "/*__FOLEVI_CLOUD_KIT__*/", with: kit)
             .replacingOccurrences(of: "\"__FOLEVI_ORIGIN__\"", with: jsString(origin))
             .replacingOccurrences(of: "\"__FOLEVI_VERSION__\"", with: jsString(version))
+            .replacingOccurrences(of: "\"__FOLEVI_BUILD__\"", with: jsString(build))
             .replacingOccurrences(of: "\"__FOLEVI_SHELL__\"", with: shellJSON)
     }
 

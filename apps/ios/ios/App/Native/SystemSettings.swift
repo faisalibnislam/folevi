@@ -1,11 +1,13 @@
 // What iOS knows about the person's settings that a web view can't read, handed to the page (bridge.js):
-// Reduce Transparency, Increase Contrast, Bold Text, Reduce Motion and the text size (Dynamic Type), and
+// Reduce Transparency, Increase Contrast, Bold Text, Reduce Motion, the text size (Dynamic Type) and whether a
+// hardware keyboard is attached, and
 // taps on the status bar, which scroll the current screen back to its top as in every iOS app.
 //
 // The page scrolls inside its own views, not as a page, so the web view's scroll view has nothing to scroll
 // when the status bar is tapped. A scroll view of the app's own (StatusBarTapProxy, behind the web view) is
 // the one iOS asks instead, and the page is told (the "folevi:status-bar-tap" window event).
 import Capacitor
+import GameController
 import UIKit
 
 enum SystemAccessibility {
@@ -23,6 +25,9 @@ enum SystemAccessibility {
             "boldText": UIAccessibility.isBoldTextEnabled,
             "reduceMotion": UIAccessibility.isReduceMotionEnabled,
             "textScale": textScale,
+            // A hardware keyboard (the Magic Keyboard, a Bluetooth one): the iPad layout shows keyboard hints
+            // such as ⌘K only while one is attached.
+            "hardwareKeyboard": GCKeyboard.coalesced != nil,
         ]
     }
 
@@ -33,6 +38,8 @@ enum SystemAccessibility {
         UIAccessibility.boldTextStatusDidChangeNotification,
         UIAccessibility.reduceMotionStatusDidChangeNotification,
         UIContentSizeCategory.didChangeNotification,
+        .GCKeyboardDidConnect,
+        .GCKeyboardDidDisconnect,
     ]
 }
 
@@ -85,7 +92,7 @@ extension FoleviNativePlugin {
         }
     }
 
-    /// { reduceTransparency, increaseContrast, boldText, reduceMotion, textScale } (SystemAccessibility).
+    /// { reduceTransparency, increaseContrast, boldText, reduceMotion, textScale, hardwareKeyboard } (SystemAccessibility).
     @objc func accessibility(_ call: CAPPluginCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }

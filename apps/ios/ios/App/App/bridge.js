@@ -6,6 +6,7 @@
   "use strict";
   var ORIGIN = "__FOLEVI_ORIGIN__";
   var VERSION = "__FOLEVI_VERSION__";
+  var BUILD = "__FOLEVI_BUILD__";
   if (location.origin !== ORIGIN || window.top !== window) return;
   var cap = window.Capacitor;
   if (!cap || typeof cap.nativePromise !== "function") return;
@@ -838,6 +839,12 @@
     flag("data-reduce-transparency", a.reduceTransparency === true);
     flag("data-increase-contrast", a.increaseContrast === true);
     flag("data-bold-text", a.boldText === true);
+    // A hardware keyboard attached (the iPad layout's ⌘K hints, Shell.tsx); data-keyboard-known says the app
+    // answers this, so the page doesn't guess from key presses.
+    if (typeof a.hardwareKeyboard === "boolean") {
+      flag("data-keyboard-known", true);
+      flag("data-hardware-keyboard", a.hardwareKeyboard);
+    }
     var scale = Math.max(80, Math.min(150, Math.round(Number(a.textScale) || 100)));
     root.style.setProperty("--ios-text-scale", scale + "%");
     root.setAttribute("data-text-scale", String(scale));

@@ -88,6 +88,7 @@ if (!flag("--skip-shell")) {
   console.log("build-shell: the built-in interface for production");
   run("node", [resolve(ios, "../web/scripts/build-shell.mjs"), "--platform", "ios", "--production", "--required"]);
 }
+run("node", [join(here, "bundle-cloud.mjs")]);
 const env = { ...process.env };
 delete env.FOLEVI_URL;
 delete env.FOLEVI_SHELL_URL;

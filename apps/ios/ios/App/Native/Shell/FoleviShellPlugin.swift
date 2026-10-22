@@ -22,6 +22,8 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         "aiCapabilities", "aiGenerate", "aiCancel", "aiTestKey",
         "lockGet", "lockSet", "notifySchedule", "notifyCancel", "filesSave", "httpPreview", "httpCalendar",
         "e2eeDeviceKeys", "e2eeOpen", "e2eeSign", "e2eeReset", "e2eeSettings", "e2eeSetTouchId",
+        "cloudStatus", "cloudConnect", "cloudCancel", "cloudSignOut", "cloudRequest", "libSetCloud",
+        "mirrorRead", "mirrorWrite", "mirrorDelete", "mirrorPaths", "mirrorLoadState", "mirrorSaveState",
     ].map { CAPPluginMethod(name: $0, returnType: CAPPluginReturnPromise) }
 
     private var appOrigin: String { AppOrigin.of(bridge?.config.serverURL) }
@@ -34,6 +36,8 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
             self?.notifyListeners("libraryChanges", data: ["changes": changes])
         }
         library.queue.async { self.library.open() }
+        library.onCloudWant = { [weak self] path in self?.notifyListeners("cloudWant", data: ["path": path]) }
+        ShellCloud.shared.onStatus = { [weak self] status in self?.notifyListeners("cloudStatus", data: ["status": status]) }
     }
 
     /// Whether the page asking is the app's own (the built-in interface), never another site.
@@ -132,12 +136,17 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func libInfo(_ call: CAPPluginCall) { onLibrary(call) { self.library.info() } }
 
     @objc func libList(_ call: CAPPluginCall) {
-        onLibrary(call) { ["entries": try self.library.list(call.getString("dir") ?? "")] }
+        onLibrary(call) {
+            if let root = call.getString("root") { return ["entries": try self.library.filesAt(root).list(try LibraryPaths.checkDir(call.getString("dir") ?? "")).map(\.json)] }
+            return ["entries": try self.library.list(call.getString("dir") ?? "")]
+        }
     }
 
     @objc func libRead(_ call: CAPPluginCall) {
         onLibrary(call) {
-            switch try self.library.read(call.getString("path") ?? "") {
+            let path = call.getString("path") ?? ""
+            let r = try call.getString("root").map { try self.library.filesAt($0).read(try LibraryPaths.check(path)) } ?? self.library.read(path)
+            switch r {
             case .notDownloaded: return ["notDownloaded": true]
             case .bytes(let d, let etag): return ["bytes": d.base64EncodedString(), "etag": etag]
             }
@@ -154,7 +163,10 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
                 ifMatch = .match(e)
             default: ifMatch = .any
             }
-            switch try self.library.write(call.getString("path") ?? "", try self.bytes(call, "bytes"), ifMatch) {
+            let path = call.getString("path") ?? ""
+            let data = try self.bytes(call, "bytes")
+            let r = try call.getString("root").map { try self.library.filesAt($0).write(try LibraryPaths.check(path), data, ifMatch) } ?? self.library.write(path, data, ifMatch)
+            switch r {
             case .written(let etag): return ["etag": etag]
             case .mismatch(let etag): return ["mismatch": true, "etag": etag]
             }
@@ -225,6 +237,78 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func libChangePassphrase(_ call: CAPPluginCall) {
         onLibrary(call) { try self.library.changePassphrase(call.getString("old") ?? "", call.getString("new") ?? "") }
+    }
+
+    // MARK: Dropbox and Google Drive (ShellCloud.swift; the provider code itself runs in the bridge)
+
+    private func cloudFail(_ call: CAPPluginCall, _ error: Error) {
+        if let e = error as? CloudError { call.reject(e.message, e.code) } else { fail(call, error) }
+    }
+
+    @objc func cloudStatus(_ call: CAPPluginCall) { guarded(call) { call.resolve(ShellCloud.shared.status()) } }
+
+    @objc func cloudConnect(_ call: CAPPluginCall) {
+        guarded(call) {
+            Task { @MainActor in
+                do { call.resolve(try await ShellCloud.shared.connect(call.getString("provider") ?? "", window: self.bridge?.viewController?.view.window)) } catch { self.cloudFail(call, error) }
+            }
+        }
+    }
+
+    @objc func cloudCancel(_ call: CAPPluginCall) {
+        guarded(call) {
+            ShellCloud.shared.cancel()
+            call.resolve()
+        }
+    }
+
+    @objc func cloudSignOut(_ call: CAPPluginCall) { guarded(call) { Task { call.resolve(await ShellCloud.shared.signOut()) } } }
+
+    @objc func cloudRequest(_ call: CAPPluginCall) {
+        guarded(call) {
+            var headers: [String: String] = [:]
+            for (k, v) in (call.options["headers"] as? [String: Any]) ?? [:] { if let s = v as? String { headers[k] = s } }
+            let body = call.getString("body").flatMap { Data(base64Encoded: $0) }
+            Task {
+                do {
+                    let r = try await ShellCloud.shared.request(call.getString("provider") ?? "", url: call.getString("url") ?? "", method: call.getString("method") ?? "GET", headers: headers, body: body, authorized: call.getBool("authorized") != false)
+                    call.resolve(["status": r.status, "headers": r.headers, "body": r.body.base64EncodedString()])
+                } catch { self.cloudFail(call, error) }
+            }
+        }
+    }
+
+    @objc func libSetCloud(_ call: CAPPluginCall) { onLibrary(call) { try self.library.setCloud(kind: call.getString("kind") ?? "", libraryId: call.getString("libraryId") ?? "") } }
+
+    @objc func mirrorRead(_ call: CAPPluginCall) {
+        onLibrary(call) {
+            guard let r = try ShellCloud.mirrorRead(call.getString("provider") ?? "", call.getString("path") ?? "") else { return ["missing": true] }
+            return ["data": r.data.base64EncodedString(), "etag": r.etag]
+        }
+    }
+
+    @objc func mirrorWrite(_ call: CAPPluginCall) {
+        onLibrary(call) {
+            try ShellCloud.mirrorWrite(call.getString("provider") ?? "", call.getString("path") ?? "", try self.bytes(call, "data"), etag: call.getString("etag") ?? "")
+            return nil
+        }
+    }
+
+    @objc func mirrorDelete(_ call: CAPPluginCall) {
+        onLibrary(call) {
+            try ShellCloud.mirrorDelete(call.getString("provider") ?? "", call.getString("path") ?? "")
+            return nil
+        }
+    }
+
+    @objc func mirrorPaths(_ call: CAPPluginCall) { onLibrary(call) { ["paths": try ShellCloud.mirrorPaths(call.getString("provider") ?? "")] } }
+    @objc func mirrorLoadState(_ call: CAPPluginCall) { onLibrary(call) { ["state": (try ShellCloud.mirrorLoadState(call.getString("provider") ?? "")).map { $0 as Any } ?? NSNull()] } }
+
+    @objc func mirrorSaveState(_ call: CAPPluginCall) {
+        onLibrary(call) {
+            try ShellCloud.mirrorSaveState(call.getString("provider") ?? "", call.getString("state") ?? "null")
+            return nil
+        }
     }
 
     // MARK: secrets

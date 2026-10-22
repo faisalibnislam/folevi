@@ -54,7 +54,9 @@ const config: CapacitorConfig = {
     Keyboard: { resize: "native", resizeOnFullScreen: true },
     StatusBar: { overlaysWebView: true },
     // Native/Shell: `window.foleviShell` for the built-in interface, and where it signs in.
-    FoleviShell: { bundled, serviceUrl: service.origin },
+    // Sync with Dropbox and Google Drive: public client ids from the build (FOLEVI_DROPBOX_APP_KEY and
+    // FOLEVI_GOOGLE_IOS_CLIENT_ID, never the repository); a provider without one isn't offered.
+    FoleviShell: { bundled, serviceUrl: service.origin, dropboxAppKey: process.env.FOLEVI_DROPBOX_APP_KEY ?? "", googleClientId: process.env.FOLEVI_GOOGLE_IOS_CLIENT_ID ?? "" },
   },
 };
 

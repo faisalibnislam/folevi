@@ -12,8 +12,9 @@
     "test": "node scripts/simulator.mjs test",
     "icon": "node ../../packages/design-tokens/scripts/app-icon.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "shell": "node ../web/scripts/build-shell.mjs --platform ios",
-    "release": "node scripts/release.mjs"
+    "shell": "node scripts/bundle-cloud.mjs && node ../web/scripts/build-shell.mjs --platform ios",
+    "release": "node scripts/release.mjs",
+    "bundle-cloud": "node scripts/bundle-cloud.mjs"
   },
   "dependencies": {
     "@capacitor/app": "8.1.2",

@@ -156,6 +156,9 @@
   // built into it: the mode it opens in (read before any page script runs), its version and this device's name.
   var SHELL = "__FOLEVI_SHELL__";
   if (SHELL && typeof SHELL === "object") {
+    // The shared Dropbox and Google Drive code (scripts/bundle-cloud.mjs), filled in by FoleviViewController:
+    // `var FoleviCloudKit = …`, inside this function, never on the page's window.
+    /*__FOLEVI_CLOUD_KIT__*/
     // The app starts at index.html ("/"); the product's start page is /documents (as on the website, where "/"
     // is a redirect). Set before the page's router reads the address.
     if (location.pathname === "/" || location.pathname === "/index.html") history.replaceState(history.state, "", "/documents" + location.search + location.hash);
@@ -191,38 +194,70 @@
     var libraryWatchers = 0;
     var aiRequests = 0;
 
-    var shellBridge = Object.freeze({
-      platform: "ios",
-      shellVersion: VERSION,
-      deviceName: String(SHELL.deviceName || "iPhone"),
-      deviceFamily: SHELL.deviceFamily === "iPad" ? "iPad" : "iPhone",
-      initialMode: SHELL.mode === "local" || SHELL.mode === "account" ? SHELL.mode : "unset",
-      setMode: function (mode) {
-        return shellCall("setMode", { mode: String(mode) }).then(nothing);
-      },
-      library: Object.freeze({
-        setup: function (o) {
-          return shellCall("libSetup", { kind: String((o && o.kind) || "") }).then(function (r) {
-            return r && r.value === null ? null : r;
+    // ---- the library: on this device, in iCloud or a folder (Swift), or on Dropbox or Google Drive (the shared
+    // provider code, packages/cloud-folders, bundled here as folevi-cloud.js; requests and tokens stay in Swift).
+    var KIT = typeof FoleviCloudKit === "object" && FoleviCloudKit ? FoleviCloudKit : null;
+    var NATIVE_CALL = { request: "cloudRequest", status: "cloudStatus" };
+    var cloudKit = KIT
+      ? KIT.createCloudKit(function (plugin, method, args) {
+          var name = plugin === "FoleviCloud" ? NATIVE_CALL[method] : method;
+          return call("FoleviShell", name, args || {}).catch(function (e) {
+            throw { name: "CloudError", code: (e && e.code) || "io", message: (e && e.message) || "Folevi couldn't reach its cloud connection." };
           });
-        },
-        info: function () {
-          return shellCall("libInfo");
-        },
+        }, { toBase64: toB64, fromBase64: fromB64 }, function (m) {
+          console.info("[Folevi cloud] " + m);
+        })
+      : null;
+    var isCloud = function (k) {
+      return k === "dropbox" || k === "gdrive";
+    };
+    var kindNow = null;
+    var currentKind = function () {
+      if (!kindNow)
+        kindNow = shellCall("libInfo").then(
+          function (i) {
+            return i && i.configured !== false ? i.kind : null;
+          },
+          function (e) {
+            kindNow = null;
+            throw e;
+          },
+        );
+      return kindNow;
+    };
+    var asFsError = function (e) {
+      if (e && e.name === "LocalFsError") return e;
+      var err = { name: "LocalFsError", code: (e && e.code) || "io", message: (e && e.message) || "Folevi couldn't reach its library." };
+      if (e && e.path) err.path = e.path;
+      return err;
+    };
+    /** Runs `cloud(fs)` for a Dropbox or Google Drive library, else `here()` (Swift). */
+    var route = function (cloud, here) {
+      return currentKind().then(function (k) {
+        if (isCloud(k) && cloudKit)
+          return cloudKit.fs(k).then(cloud).catch(function (e) {
+            throw asFsError(e);
+          });
+        return here();
+      });
+    };
+    var nativeFiles = function (root) {
+      var extra = root ? { root: root } : {};
+      return {
         list: function (dir) {
-          return shellCall("libList", { dir: String(dir) }).then(function (r) {
+          return shellCall("libList", Object.assign({ dir: String(dir) }, extra)).then(function (r) {
             return (r && r.entries) || [];
           });
         },
         read: function (path) {
-          return shellCall("libRead", { path: String(path) }).then(function (r) {
+          return shellCall("libRead", Object.assign({ path: String(path) }, extra)).then(function (r) {
             return r.notDownloaded ? { notDownloaded: true } : { bytes: fromB64(r.bytes), etag: r.etag };
           });
         },
         write: function (path, bytes, o) {
           var has = o && Object.prototype.hasOwnProperty.call(o, "ifMatch") && o.ifMatch !== undefined;
           var mode = !has ? "any" : o.ifMatch === null ? "create" : "match";
-          var opts = { path: String(path), bytes: toB64(bytes), mode: mode };
+          var opts = Object.assign({ path: String(path), bytes: toB64(bytes), mode: mode }, extra);
           if (mode === "match") opts.ifMatch = String(o.ifMatch);
           return shellCall("libWrite", opts).then(function (r) {
             return r.mismatch ? { mismatch: true, etag: r.etag } : { etag: r.etag };
@@ -233,65 +268,210 @@
           if (o && typeof o.ifMatch === "string") opts.ifMatch = o.ifMatch;
           return shellCall("libRemove", opts).then(nothing);
         },
-        conflictVersions: function (path) {
+      };
+    };
+    var here = nativeFiles(null);
+    // A cloud library's attachment the app's file handler wants on this device: fetched into its copy.
+    cap.addListener("FoleviShell", "cloudWant", function (event) {
+      if (!event || typeof event.path !== "string") return;
+      currentKind().then(function (k) {
+        if (isCloud(k) && cloudKit) return cloudKit.fs(k).then(function (fs) {
+          return fs.startDownload([event.path]);
+        });
+      }).catch(nothing);
+    });
+
+    var library = Object.freeze({
+      setup: function (o) {
+        var kind = String((o && o.kind) || "");
+        if (isCloud(kind)) {
+          if (!cloudKit) return Promise.reject({ name: "LocalFsError", code: "unavailable", message: "Dropbox and Google Drive aren't in this build of Folevi." });
+          return cloudKit
+            .prepare(kind)
+            .then(function (m) {
+              return shellCall("libSetCloud", { kind: kind, libraryId: m.libraryId });
+            })
+            .then(function () {
+              kindNow = Promise.resolve(kind);
+              return cloudKit.info(kind);
+            })
+            .catch(function (e) {
+              throw asFsError(e);
+            });
+        }
+        return shellCall("libSetup", { kind: kind }).then(function (r) {
+          kindNow = null;
+          return r && r.value === null ? null : r;
+        });
+      },
+      info: function () {
+        return shellCall("libInfo").then(function (i) {
+          kindNow = Promise.resolve(i && i.configured !== false ? i.kind : null);
+          if (i && isCloud(i.kind) && cloudKit) return cloudKit.info(i.kind);
+          return i;
+        });
+      },
+      list: function (dir) {
+        return route(function (fs) { return fs.list(String(dir)); }, function () { return here.list(dir); });
+      },
+      read: function (path) {
+        return route(function (fs) { return fs.read(String(path)); }, function () { return here.read(path); });
+      },
+      write: function (path, bytes, o) {
+        return route(function (fs) {
+          var u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+          return fs.write(String(path), u8, o && "ifMatch" in o ? { ifMatch: o.ifMatch === null ? null : String(o.ifMatch) } : {});
+        }, function () { return here.write(path, bytes, o); });
+      },
+      remove: function (path, o) {
+        return route(function (fs) { return fs.remove(String(path), o && typeof o.ifMatch === "string" ? { ifMatch: o.ifMatch } : {}); }, function () { return here.remove(path, o); }).then(nothing);
+      },
+      conflictVersions: function (path) {
+        return route(function (fs) { return fs.conflictVersions(String(path)); }, function () {
           return shellCall("libConflictVersions", { path: String(path) }).then(function (r) {
             return ((r && r.versions) || []).map(function (v) {
               return { id: v.id, bytes: fromB64(v.bytes) };
             });
           });
-        },
-        resolveConflicts: function (path, ids) {
-          return shellCall("libResolveConflicts", { path: String(path), ids: Array.isArray(ids) ? ids.map(String) : [] }).then(nothing);
-        },
-        startDownload: function (paths) {
-          return shellCall("libStartDownload", { paths: Array.isArray(paths) ? paths.map(String) : [] }).then(nothing);
-        },
-        /** Change batches from the app's watcher; returns the function that stops listening. */
-        watch: function (cb) {
+        });
+      },
+      resolveConflicts: function (path, ids) {
+        var list = Array.isArray(ids) ? ids.map(String) : [];
+        return route(function (fs) { return fs.resolveConflicts(String(path), list); }, function () {
+          return shellCall("libResolveConflicts", { path: String(path), ids: list });
+        }).then(nothing);
+      },
+      startDownload: function (paths) {
+        var list = Array.isArray(paths) ? paths.map(String) : [];
+        return route(function (fs) { return fs.startDownload(list); }, function () {
+          return shellCall("libStartDownload", { paths: list });
+        }).then(nothing);
+      },
+      /** Change batches from the app's watcher (or the provider's change feed); returns the unsubscribe function. */
+      watch: function (cb) {
+        var on = true;
+        var stop = null;
+        currentKind().then(function (k) {
+          if (!on) return;
+          if (isCloud(k) && cloudKit) {
+            stop = cloudKit.watch(k, function (changes) {
+              if (changes && changes.length) cb(changes);
+            });
+            return;
+          }
           var handle = cap.addListener("FoleviShell", "libraryChanges", function (event) {
             if (event && Array.isArray(event.changes)) cb(event.changes);
           });
           if (libraryWatchers++ === 0) void shellCall("libWatch").catch(nothing);
-          var on = true;
-          return function () {
-            if (!on) return;
-            on = false;
+          stop = function () {
             void handle.remove();
             if (--libraryWatchers === 0) void shellCall("libUnwatch").catch(nothing);
           };
+        }, nothing);
+        return function () {
+          if (!on) return;
+          on = false;
+          if (stop) stop();
+        };
+      },
+      journal: Object.freeze({
+        append: function (record) {
+          return shellCall("journalAppend", { record: toB64(record) }).then(nothing);
         },
-        journal: Object.freeze({
-          append: function (record) {
-            return shellCall("journalAppend", { record: toB64(record) }).then(nothing);
-          },
-          readAll: function () {
-            return shellCall("journalRead").then(function (r) {
-              return ((r && r.records) || []).map(fromB64);
-            });
-          },
-          truncate: function (n) {
-            return shellCall("journalTruncate", { n: Number(n) }).then(nothing);
-          },
-        }),
-        unlock: function (passphrase) {
-          return shellCall("libUnlock", { passphrase: String(passphrase) }).then(value);
+        readAll: function () {
+          return shellCall("journalRead").then(function (r) {
+            return ((r && r.records) || []).map(fromB64);
+          });
         },
-        setPassphrase: function (passphrase) {
-          return shellCall("libSetPassphrase", passphrase === null ? {} : { passphrase: String(passphrase) }).then(nothing);
-        },
-        changePassphrase: function (oldPassphrase, newPassphrase) {
-          return shellCall("libChangePassphrase", { old: String(oldPassphrase), new: String(newPassphrase) }).then(value);
-        },
-        /** Served by the app (Native/Shell/LibraryFileHandler.swift) from the library. */
-        fileUrl: function (sha256, mime) {
-          var sha = String(sha256).toLowerCase();
-          if (!/^[0-9a-f]{64}$/.test(sha)) throw new Error("Not a SHA-256 file name.");
-          return "folevi-file://lib/" + sha + (mime ? "?type=" + encodeURIComponent(String(mime)) : "");
-        },
-        move: function (to) {
-          return shellCall("libMove", { kind: String((to && to.kind) || "") });
+        truncate: function (n) {
+          return shellCall("journalTruncate", { n: Number(n) }).then(nothing);
         },
       }),
+      unlock: function (passphrase) {
+        return shellCall("libUnlock", { passphrase: String(passphrase) }).then(value);
+      },
+      setPassphrase: function (passphrase) {
+        return shellCall("libSetPassphrase", passphrase === null ? {} : { passphrase: String(passphrase) }).then(nothing);
+      },
+      changePassphrase: function (oldPassphrase, newPassphrase) {
+        return shellCall("libChangePassphrase", { old: String(oldPassphrase), new: String(newPassphrase) }).then(value);
+      },
+      /** Served by the app (Native/Shell/LibraryFileHandler.swift) from the library, or a cloud library's copy here. */
+      fileUrl: function (sha256, mime) {
+        var sha = String(sha256).toLowerCase();
+        if (!/^[0-9a-f]{64}$/.test(sha)) throw new Error("Not a SHA-256 file name.");
+        return "folevi-file://lib/" + sha + (mime ? "?type=" + encodeURIComponent(String(mime)) : "");
+      },
+      /** Another place. To or from Dropbox and Google Drive the files are copied here (merged, never replaced). */
+      move: function (to) {
+        var target = String((to && to.kind) || "");
+        return currentKind().then(function (from) {
+          if (!isCloud(from) && !isCloud(target)) {
+            return shellCall("libMove", { kind: target }).then(function (r) {
+              kindNow = null;
+              return r;
+            });
+          }
+          if (from === target) return library.info();
+          if (!cloudKit || !KIT) throw { name: "LocalFsError", code: "unavailable", message: "Dropbox and Google Drive aren't in this build of Folevi." };
+          if (target === "folder") throw { name: "LocalFsError", code: "unavailable", message: "Move the library to this device first, then to a folder.", path: "unsupported" };
+          var source = isCloud(from) ? cloudKit.fs(from) : Promise.resolve(here);
+          var dest = isCloud(target) ? cloudKit.prepare(target).then(function () { return cloudKit.fs(target); }) : Promise.resolve(nativeFiles(target));
+          return Promise.all([source, dest])
+            .then(function (pair) {
+              return KIT.copyLibrary(pair[0], pair[1]);
+            })
+            .then(function () {
+              if (isCloud(target)) return cloudKit.prepare(target).then(function (m) { return shellCall("libSetCloud", { kind: target, libraryId: m.libraryId }); });
+              return shellCall("libSetup", { kind: target });
+            })
+            .then(function () {
+              kindNow = null;
+              return library.info();
+            });
+        }).catch(function (e) {
+          throw asFsError(e);
+        });
+      },
+      // Sync with Dropbox and Google Drive: status and sign-in only; the tokens stay in Swift (ShellCloud.swift).
+      cloud: Object.freeze({
+        status: function () {
+          return shellCall("cloudStatus", {}, "CloudError");
+        },
+        connect: function (provider) {
+          return shellCall("cloudConnect", { provider: String(provider) }, "CloudError");
+        },
+        cancel: function () {
+          return shellCall("cloudCancel", {}, "CloudError").then(nothing);
+        },
+        signOut: function () {
+          return shellCall("cloudSignOut", {}, "CloudError").then(function (s) {
+            if (cloudKit) cloudKit.reset();
+            return s;
+          });
+        },
+        onStatus: function (cb) {
+          var handle = cap.addListener("FoleviShell", "cloudStatus", function (event) {
+            if (event && event.status) cb(event.status);
+          });
+          shellCall("cloudStatus", {}, "CloudError").then(cb, nothing);
+          return function () {
+            void handle.remove();
+          };
+        },
+      }),
+    });
+
+    var shellBridge = Object.freeze({
+      platform: "ios",
+      shellVersion: VERSION,
+      deviceName: String(SHELL.deviceName || "iPhone"),
+      deviceFamily: SHELL.deviceFamily === "iPad" ? "iPad" : "iPhone",
+      initialMode: SHELL.mode === "local" || SHELL.mode === "account" ? SHELL.mode : "unset",
+      setMode: function (mode) {
+        return shellCall("setMode", { mode: String(mode) }).then(nothing);
+      },
+      library: library,
       // The person's Foli AI keys, kept in the Keychain: stored and removed, never read back.
       secrets: Object.freeze({
         has: function (name) {

@@ -56,8 +56,8 @@ function places(available: CloudProvider[] | null): Place[] {
   }
   const icloud = shell()?.platform === "ios" ? "The Folevi folder in iCloud Drive, on every iPhone, iPad and Mac signed in to your iCloud account." : "A Folevi folder in iCloud Drive, on every Mac signed in to your iCloud account.";
   const out: Place[] = [{ kind: "icloud", title: "Sync with iCloud", detail: icloud, icon: <Cloud size={20} aria-hidden /> }];
-  if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: "Sign in to Dropbox in your browser. Folevi only uses its own folder, Apps › Folevi.", icon: <DropboxGlyph /> });
-  if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: "Sign in to Google in your browser. Folevi only sees the files it makes.", icon: <DriveGlyph /> });
+  if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: `Sign in to Dropbox in ${deviceWords().signInPlace}. Folevi only uses its own folder, Apps › Folevi.`, icon: <DropboxGlyph /> });
+  if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: `Sign in to Google in ${deviceWords().signInPlace}. Folevi only sees the files it makes.`, icon: <DriveGlyph /> });
   out.push(
     { kind: "folder", title: "Choose a folder", detail: shell()?.platform === "ios" ? "Any folder the Files app offers, such as one in Dropbox, Google Drive or OneDrive." : `Any folder on ${device}, such as one OneDrive or another app keeps in sync.`, icon: <Folder size={20} aria-hidden /> },
     { kind: "device", title: "This device only", detail: `Your notes stay on ${device}. You can turn on sync later in Settings.`, icon: <HardDrive size={20} aria-hidden /> },
@@ -154,7 +154,7 @@ function Connecting({ provider }: { provider: CloudProvider }) {
     <div role="status" aria-live="polite" className="grid justify-items-center gap-4 rounded-control border border-line bg-surface px-5 py-8 text-center" data-testid="cloud-connecting">
       <Loader2 size={22} aria-hidden className="animate-spin text-heading motion-reduce:animate-none" />
       <div className="grid gap-1.5">
-        <p className="text-[15px] font-semibold text-heading">Finish signing in to {name} in your browser</p>
+        <p className="text-[15px] font-semibold text-heading">Finish signing in to {name} in {deviceWords().ios ? "the sign-in sheet" : "your browser"}</p>
         <p className="text-[13.5px] leading-snug text-muted">Folevi opened {name}'s sign-in page. Once you allow access there, come back here. Folevi only gets its own folder.</p>
       </div>
       <Button

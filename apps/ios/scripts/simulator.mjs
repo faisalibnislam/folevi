@@ -42,6 +42,8 @@ function deviceId(name) {
 
 function build(device) {
   if (!existsSync(resolve(project, "App/capacitor.config.json"))) throw new Error("Run `pnpm sync` (or `pnpm sync:dev`) first.");
+  // The shared Dropbox and Google Drive code for the built-in interface.
+  sh("node", [resolve(here, "bundle-cloud.mjs")]);
   sh("xcodebuild", ["-quiet", "-project", resolve(project, "App.xcodeproj"), "-scheme", "App", "-configuration", "Debug", "-destination", `platform=iOS Simulator,id=${device.udid}`, "-derivedDataPath", derived, "build"]);
 }
 

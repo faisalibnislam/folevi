@@ -287,4 +287,34 @@ final class ShellFilesTests: XCTestCase {
         XCTAssertFalse(ShellHTTP.allowed(URL(string: "https://127.0.0.1/cal.ics")!))
         XCTAssertFalse(ShellHTTP.allowed(URL(string: "https://192.168.1.4/cal.ics")!))
     }
+
+    func testDropboxAndDriveOnlyReachTheirOwnHostsAndKeepACopyHere() async throws {
+        let cloud = ShellCloud()
+        cloud.dropboxAppKey = "abcd1234efgh"
+        cloud.googleClientId = "123-abc.apps.googleusercontent.com"
+        XCTAssertEqual(cloud.available, ["dropbox", "googleDrive"])
+        XCTAssertEqual(cloud.googleRedirectScheme, "com.googleusercontent.apps.123-abc")
+        cloud.dropboxAppKey = "NOT A KEY"
+        XCTAssertEqual(cloud.available, ["googleDrive"])
+        for (p, url) in [("dropbox", "https://evil.example/2/files"), ("dropbox", "http://api.dropboxapi.com/2/x"), ("googleDrive", "https://api.dropboxapi.com/2/x"), ("dropbox", "https://api.dropboxapi.com:8443/2/x")] {
+            do {
+                _ = try await cloud.request(p, url: url, method: "GET", headers: [:], body: nil, authorized: true)
+                XCTFail(url)
+            } catch let e as CloudError {
+                XCTAssertTrue(["invalid", "reconnect"].contains(e.code), url)
+            }
+        }
+        // Not connected: an authorized request is refused before anything is sent.
+        do {
+            _ = try await cloud.request("googleDrive", url: "https://www.googleapis.com/drive/v3/files", method: "GET", headers: [:], body: nil, authorized: true)
+            XCTFail("not connected")
+        } catch let e as CloudError { XCTAssertEqual(e.code, "reconnect") }
+        // The copy on this device keeps each file's provider etag.
+        try ShellCloud.mirrorWrite("dropbox", "notes/01J9ZDOC000000000000000001.fnote", Data("x".utf8), etag: "rev1")
+        XCTAssertEqual(try ShellCloud.mirrorRead("dropbox", "notes/01J9ZDOC000000000000000001.fnote")?.etag, "rev1")
+        XCTAssertTrue(try ShellCloud.mirrorPaths("dropbox").contains("notes/01J9ZDOC000000000000000001.fnote"))
+        XCTAssertThrowsError(try ShellCloud.mirrorWrite("dropbox", "../escape", Data(), etag: ""))
+        try ShellCloud.mirrorDelete("dropbox", "notes/01J9ZDOC000000000000000001.fnote")
+        XCTAssertNil(try ShellCloud.mirrorRead("dropbox", "notes/01J9ZDOC000000000000000001.fnote"))
+    }
 }

@@ -11,3 +11,6 @@ capacitor-cordova-ios-plugins
 # Generated Config files
 App/App/capacitor.config.json
 App/App/config.xml
+
+# The shared Dropbox and Google Drive code, built by scripts/bundle-cloud.mjs.
+App/Native/Shell/folevi-cloud.js

@@ -58,7 +58,12 @@ final class LibraryService {
     var iterations = LibraryCrypto.defaultIterations
 
     private let fm = FileManager.default
-    private static let kinds: Set<String> = ["icloud", "folder", "device"]
+    private static let kinds: Set<String> = ["icloud", "folder", "device", "dropbox", "gdrive"]
+    static func isCloud(_ kind: String?) -> Bool { kind == "dropbox" || kind == "gdrive" }
+    /// A cloud library's files are the provider's, handled by the shared provider code in the bridge.
+    static let cloudProvider = ["dropbox": "dropbox", "gdrive": "googleDrive"]
+    /// Asks the bridge to bring an attachment of a cloud library into this device's copy (LibraryFileHandler).
+    var onCloudWant: ((String) -> Void)?
 
     // MARK: places on this device
 
@@ -251,6 +256,8 @@ final class LibraryService {
 
     func info() -> [String: Any] {
         guard let s = stored else { return ["kind": "device", "displayPath": "", "available": false, "encrypted": false, "locked": false, "configured": false] }
+        // Dropbox and Google Drive: the bridge's provider code says the rest (cloudKit.info).
+        if Self.isCloud(s.kind) { return ["kind": s.kind, "displayPath": s.kind == "dropbox" ? "Dropbox" : "Google Drive", "available": true, "encrypted": false, "locked": false, "configured": true] }
         if manifest == nil { attach() }
         let encrypted = header != nil
         return ["kind": s.kind, "displayPath": displayPath(s), "available": base != nil && manifest != nil, "encrypted": encrypted, "locked": encrypted && enc == nil, "configured": true]
@@ -358,6 +365,15 @@ final class LibraryService {
         return info()
     }
 
+    /// A library on Dropbox or Google Drive (the bridge prepared its library file there): kept as this device's.
+    func setCloud(kind: String, libraryId: String) throws -> [String: Any] {
+        guard Self.isCloud(kind), LibraryPaths.isValidId(libraryId) else { throw LibraryError(.invalidArgument, "Not a cloud library.") }
+        detach()
+        saveState(Stored(kind: kind, libraryId: libraryId))
+        journalStore = nil
+        return info()
+    }
+
     // MARK: files (the page's calls)
 
     private func current() throws -> LibraryFS {
@@ -369,6 +385,14 @@ final class LibraryService {
             return enc
         }
         return base
+    }
+
+    /// A place's files as stored, whatever the library is now (moving a cloud library to this device or iCloud).
+    func filesAt(_ root: String) throws -> FolderFS {
+        guard let p = place(kind: root, bookmark: nil, sub: nil) else { throw LibraryError(.unavailable, "That place can't be reached right now.") }
+        let fs = FolderFS(root: p.root, scoped: p.scoped)
+        try fs.access { try fm.createDirectory(at: fs.root, withIntermediateDirectories: true) }
+        return fs
     }
 
     func list(_ dir: String) throws -> [[String: Any]] {
@@ -649,11 +673,22 @@ final class LibraryService {
         let abs: String
         let rel: String
         let key: Data?
+        /// A cloud library's file the bridge is fetching: there's no placeholder to say it's coming.
+        var waitForArrival = false
     }
 
     /// Where an attachment is kept (on `queue`): nil when there's no library, it's locked, or the name is wrong.
     func locateAttachment(sha: String) -> AttachmentPlace? {
-        guard sha.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil, let base, manifest != nil else { return nil }
+        guard sha.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil else { return nil }
+        if let s = stored, Self.isCloud(s.kind), let p = Self.cloudProvider[s.kind], let root = try? ShellCloud.mirrorRoot(p) {
+            // A cloud library's copy on this device; a file not here yet is asked of the bridge.
+            let rel = "\(LibraryPaths.filesDir)/\(sha.prefix(2))/\(sha)"
+            let fs = FolderFS(root: root)
+            if (try? ShellCloud.mirrorRead(p, rel)) == nil { onCloudWant?(rel) }
+            guard let abs = try? fs.abs(rel) else { return nil }
+            return AttachmentPlace(fs: fs, abs: abs, rel: rel, key: nil, waitForArrival: true)
+        }
+        guard let base, manifest != nil else { return nil }
         let key = header != nil ? self.key() : nil
         if header != nil && key == nil { return nil }
         let name = key.flatMap { try? LibraryCrypto.hmacName($0, kind: "file", id: sha) } ?? sha
@@ -675,7 +710,7 @@ final class LibraryService {
                 return (file && FolderFS.status(abs).downloaded, file || FileStat.of(placeholder) != nil)
             }) ?? (false, false)
             if state.0 { here = true; break }
-            if !state.1 { return nil }
+            if !state.1 && !place.waitForArrival { return nil }
             if i == 0 { try? fs.startDownload([place.rel]) }
             Thread.sleep(forTimeInterval: 0.25)
         }

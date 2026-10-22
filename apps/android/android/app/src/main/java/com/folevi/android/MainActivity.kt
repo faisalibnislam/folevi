@@ -75,6 +75,7 @@ class MainActivity : BridgeActivity() {
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this, back)
         app.showForResult = { pi -> showForResult(pi) }
+        current = java.lang.ref.WeakReference(this)
         bridge?.webView?.let { setUpWebView(it) }
     }
 
@@ -446,7 +447,15 @@ class MainActivity : BridgeActivity() {
         }
     }
 
+    override fun onDestroy() {
+        if (current?.get() === this) current = null
+        super.onDestroy()
+    }
+
     companion object {
+        /** The open app, for a widget's word to the page (Widgets.kt CompleteTask). */
+        @Volatile var current: java.lang.ref.WeakReference<MainActivity>? = null
+
         const val APP_ORIGIN = "https://localhost"
         const val CANVAS_LIGHT = 0xFFFFFFFF.toInt()
         const val CANVAS_DARK = 0xFF101011.toInt()

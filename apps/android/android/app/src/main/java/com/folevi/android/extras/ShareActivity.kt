@@ -136,7 +136,8 @@ class ShareActivity : ComponentActivity() {
         column.addView(text("Save to Folevi", 22f, ink, serif = true))
         column.addView(text(c.title, 15f, ink, bold = true).apply { maxLines = 2; setPadding(0, dp(12f), 0, 0) })
         val preview = buildString {
-            if (c.url.isNotEmpty()) appendLine(c.url)
+            // A link already in the text is shown once.
+            if (c.url.isNotEmpty() && !c.text.contains(c.url)) appendLine(c.url)
             if (c.text.isNotEmpty() && c.text != c.title) appendLine(c.text.take(300))
             if (c.files.isNotEmpty()) appendLine(if (c.files.size == 1) c.files[0].name else "${c.files.size} files")
             if (c.skipped > 0) appendLine(if (c.skipped == 1) "1 file is too big to save (20 MB at most)." else "${c.skipped} files are too big to save (20 MB at most).")
@@ -206,7 +207,7 @@ class ShareActivity : ComponentActivity() {
             val local = FoleviApp.instance.settings.mode != "account"
             val api = if (local) null else FoleviApi.forDevice(this@ShareActivity)
             val direct = c.files.isEmpty() && api != null && withContext(Dispatchers.IO) {
-                val markdown = listOf(c.url, c.text).filter { it.isNotEmpty() }.joinToString("\n\n")
+                val markdown = (if (c.text.contains(c.url)) listOf(c.text) else listOf(c.url, c.text)).filter { it.isNotEmpty() }.joinToString("\n\n")
                 runCatching { api.createNote(c.title, markdown, chosen) }.isSuccess
             }
             if (!direct) withContext(Dispatchers.IO) { ShareQueue.get(this@ShareActivity).add(c.title, c.text, c.url, chosen, c.files) }

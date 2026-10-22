@@ -73,6 +73,29 @@ class NativePlugin : Plugin() {
         call.resolve()
     }
 
+    // ---------------------------------------------------------------- local mode's widgets
+
+    /** Local mode: the widgets' copy from the page that holds the library (components/app/LocalExtensions.tsx). */
+    @PluginMethod
+    fun setWidgetSnapshot(call: PluginCall) {
+        if (FoleviApp.instance.settings.mode != "local") return call.resolve()
+        val snapshot = call.getObject("snapshot") ?: return call.reject("No snapshot.", "invalid_argument")
+        Widgets.setSnapshot(context, snapshot)
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun takeLocalActions(call: PluginCall) {
+        val all = LocalActions.get(context).pending()
+        call.resolve(JSObject().put("actions", JSArray().also { a -> for (i in 0 until all.length()) a.put(all.get(i)) }))
+    }
+
+    @PluginMethod
+    fun finishLocalAction(call: PluginCall) {
+        call.getString("id")?.let { LocalActions.get(context).finish(it) }
+        call.resolve()
+    }
+
     @PluginMethod
     fun scanDocument(call: PluginCall) {
         val a = activity as? com.folevi.android.MainActivity ?: return call.resolve(JSObject().put("scan", null))

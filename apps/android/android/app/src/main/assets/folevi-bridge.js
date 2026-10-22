@@ -616,6 +616,10 @@
     });
   }
   // The app back in front: the page takes what was shared meanwhile (components/app/NativeBridge.tsx).
+  // A widget kept a check-off while the app is open: the page takes it now.
+  onNative("local-actions", function () {
+    window.dispatchEvent(new Event("folevi:local-actions"));
+  });
   onNative("app-active", function () {
     window.dispatchEvent(new Event("folevi:app-active"));
   });
@@ -714,6 +718,19 @@
           return null;
         },
       );
+    },
+    // Local mode: the widgets' copy from the page that holds the library, and the check-offs they kept for it
+    // (components/app/LocalExtensions.tsx). No Spotlight on Android.
+    setWidgetSnapshot: function (snapshot) {
+      return call(NATIVE, "setWidgetSnapshot", { snapshot: snapshot || {} }).then(function () {});
+    },
+    takeLocalActions: function () {
+      return call(NATIVE, "takeLocalActions").then(function (r) {
+        return (r && r.actions) || [];
+      });
+    },
+    finishLocalAction: function (id) {
+      return call(NATIVE, "finishLocalAction", { id: String(id) }).then(function () {});
     },
     /** What this app adds beyond the iPhone app's list: which of its own extras this build has. */
     android: Object.freeze({ webViewVersion: boot.webViewVersion }),

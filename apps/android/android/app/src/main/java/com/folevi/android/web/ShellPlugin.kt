@@ -27,7 +27,13 @@ class ShellPlugin : Plugin() {
     fun setMode(call: PluginCall) {
         val mode = call.getString("mode")
         if (mode != "local" && mode != "account") return call.reject("Not a mode.", "invalid_argument")
+        val was = FoleviApp.instance.settings.mode
         FoleviApp.instance.settings.mode = mode
+        if (was != mode) {
+            // The widgets' copy and their waiting check-offs belong to the other mode's notes.
+            com.folevi.android.extras.LocalActions.get(context).clear()
+            com.folevi.android.extras.Widgets.clear(context)
+        }
         call.resolve(JSObject().put("ok", true))
         // The page reloads in the new mode (its bridge says so before the first render).
         activity.runOnUiThread { activityOrNull?.reloadForMode() }

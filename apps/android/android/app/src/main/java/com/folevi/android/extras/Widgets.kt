@@ -60,8 +60,10 @@ import java.util.concurrent.TimeUnit
  * Home screen widgets (docs/ANDROID_PLAN.md "Native v1"), drawn with Glance from the phone's copy of what they show
  * (widgets.json), so they draw at once and offline: Today (today's and overdue to-dos, a circle checks one off),
  * Recent notes, and Quick add. The copy is refreshed from the REST API with this phone's token every 30 minutes
- * (WorkManager), when the app comes and goes, and after a check-off. Signed out (or in local mode, where no copy
- * leaves the app yet): "Open Folevi". Neutral colours that follow the phone's light and dark theme.
+ * (WorkManager), when the app comes and goes, and after a check-off. In local mode there's no account and no REST
+ * API: the page that holds the library hands over the copy whenever it changes (setSnapshot, from
+ * components/app/LocalExtensions.tsx), and a check-off waits in LocalActions until the page puts it in. Signed
+ * out: "Open Folevi". Neutral colours that follow the phone's light and dark theme.
  */
 object Widgets {
     private fun file(context: Context) = File(context.noBackupFilesDir, "widgets.json")
@@ -93,8 +95,42 @@ object Widgets {
         }
     }
 
+    /** A string field, "" when it's missing or null (org.json's optString says "null" for null). */
+    private fun JSONObject.text(k: String): String = if (isNull(k)) "" else optString(k)
+
+    private fun localMode() = runCatching { com.folevi.android.FoleviApp.instance.settings.mode == "local" }.getOrDefault(false)
+
+    /**
+     * Local mode: the page's copy (NativeWidgetSnapshot in apps/web lib/nativeApp.ts): today's and overdue open
+     * tasks and the recent notes, in the same shape the REST API's copy is kept in. Tasks checked off here that
+     * the page hasn't put in yet stay hidden.
+     */
+    fun setSnapshot(context: Context, snapshot: JSONObject) {
+        val day = snapshot.text("day").takeIf { Regex("\\d{4}-\\d{2}-\\d{2}").matches(it) } ?: LocalDate.now().toString()
+        val done = LocalActions.get(context).doneTaskIds()
+        val tasks = snapshot.optJSONArray("tasks") ?: JSONArray()
+        val t = JSONArray()
+        (0 until tasks.length()).map { tasks.getJSONObject(it) }
+            .filter { it.text("id").isNotEmpty() && it.text("id") !in done && it.text("dueDate").let { d -> d.isNotEmpty() && d <= day } }
+            .sortedWith(compareBy({ it.text("dueDate") }, { it.text("dueTime").ifEmpty { "99" } }))
+            .take(100)
+            .forEach {
+                val note = it.optJSONObject("note") ?: JSONObject()
+                t.put(JSONObject().put("id", it.text("id")).put("text", it.text("text").take(300)).put("due", it.text("dueDate")).put("time", it.text("dueTime").ifEmpty { null }).put("noteId", note.text("id")).put("noteTitle", note.text("title").take(200)).put("overdue", it.text("dueDate") < day))
+            }
+        val notes = snapshot.optJSONArray("notes") ?: JSONArray()
+        val n = JSONArray()
+        (0 until minOf(notes.length(), 10)).map { notes.getJSONObject(it) }.filter { it.text("id").isNotEmpty() }.forEach {
+            n.put(JSONObject().put("id", it.text("id")).put("title", it.text("title").take(200)).put("place", (it.optJSONObject("place")?.text("name") ?: "").take(100)).put("updatedAt", it.text("updatedAt")))
+        }
+        write(context, JSONObject().put("signedIn", true).put("local", true).put("updatedAt", System.currentTimeMillis()).put("tasks", t).put("notes", n))
+        redraw(context)
+    }
+
     /** Refreshes the copy from the REST API. False when the phone isn't signed in (or the token was revoked). */
     suspend fun refresh(context: Context): Boolean {
+        // Local mode: the page keeps the copy (setSnapshot); there's nothing to ask.
+        if (localMode()) return read(context).optBoolean("local", false)
         val api = FoleviApi.forDevice(context)
         if (api == null) {
             write(context, JSONObject().put("signedIn", false))
@@ -217,11 +253,18 @@ class TodayWidget : GlanceAppWidget() {
     }
 }
 
-/** The circle on a to-do: it goes from the widget at once, and Folevi hears of it through the REST API. */
+/**
+ * The circle on a to-do: it goes from the widget at once, and Folevi hears of it through the REST API, or in
+ * local mode from the page, which takes it from LocalActions (now, if the app is open).
+ */
 class CompleteTask : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val id = parameters[TodayWidget.TASK_ID] ?: return
         val data = Widgets.read(context)
+        if (data.optBoolean("local", false)) {
+            LocalActions.get(context).toggleTask(id, true)
+            MainActivity.current?.get()?.event("local-actions", JSONObject())
+        }
         val tasks = data.optJSONArray("tasks") ?: JSONArray()
         val kept = JSONArray()
         for (i in 0 until tasks.length()) if (tasks.getJSONObject(i).optString("id") != id) kept.put(tasks.getJSONObject(i))
@@ -231,6 +274,7 @@ class CompleteTask : ActionCallback {
         data.put("pendingDone", pending)
         Widgets.write(context, data)
         TodayWidget().update(context, glanceId)
+        if (data.optBoolean("local", false)) return
         val api = FoleviApi.forDevice(context) ?: return
         val sent = runCatching { api.setTask(id, true) }.isSuccess
         if (sent) {

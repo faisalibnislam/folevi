@@ -2,6 +2,8 @@ package com.folevi.android.extras
 
 import android.content.Intent
 import android.provider.Settings
+import android.util.Base64
+import kotlinx.coroutines.launch
 import com.folevi.android.FoleviApp
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
@@ -15,8 +17,9 @@ import com.getcapacitor.annotation.CapacitorPlugin
  * device and its REST token, shares waiting for the page, the scanner, notifications, text in images. Each
  * part answers in its own file; this plugin is only the door.
  */
-@CapacitorPlugin(name = "FoleviNative")
+@CapacitorPlugin(name = "FoleviNative", permissions = [com.getcapacitor.annotation.Permission(alias = "notifications", strings = [android.Manifest.permission.POST_NOTIFICATIONS])])
 class NativePlugin : Plugin() {
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main)
     private val credential get() = DeviceCredential.get(context)
 
     @PluginMethod
@@ -52,6 +55,7 @@ class NativePlugin : Plugin() {
     @PluginMethod
     fun clearCredential(call: PluginCall) {
         credential.clear()
+        scope.launch { com.folevi.android.push.Push.disable(context) }
         Widgets.clear(context)
         call.resolve()
     }
@@ -67,6 +71,63 @@ class NativePlugin : Plugin() {
     fun finishShare(call: PluginCall) {
         call.getString("id")?.let { ShareQueue.get(context).remove(it) }
         call.resolve()
+    }
+
+    @PluginMethod
+    fun scanDocument(call: PluginCall) {
+        val a = activity as? com.folevi.android.MainActivity ?: return call.resolve(JSObject().put("scan", null))
+        scope.launch {
+            try {
+                val pages = if (call.getString("source") == "photos") a.pickImages() else Scanner.scan(a) { a.showForResult(it) }
+                if (pages.isNullOrEmpty()) call.resolve(JSObject().put("scan", null))
+                else call.resolve(JSObject().put("scan", Scanner.answer(context, pages)))
+            } catch (e: Exception) {
+                call.reject("The scanner couldn't open on this phone.", "unavailable")
+            }
+        }
+    }
+
+    /** The words in an image (search in files), read on the phone. Null when it couldn't be read. */
+    @PluginMethod
+    fun recognizeText(call: PluginCall) {
+        val data = call.getString("data") ?: return call.resolve(JSObject().put("text", null))
+        scope.launch {
+            val text = runCatching {
+                val bytes = Base64.decode(data, Base64.NO_WRAP)
+                if (bytes.size > 40 * 1024 * 1024) return@runCatching null
+                val bitmap = Scanner.decodeBytes(bytes) ?: return@runCatching null
+                Scanner.read(bitmap).also { bitmap.recycle() }
+            }.getOrNull()
+            call.resolve(JSObject().put("text", text))
+        }
+    }
+
+    @PluginMethod
+    fun pushStatus(call: PluginCall) = call.resolve(JSObject().put("status", com.folevi.android.push.Push.status(context)))
+
+    /** Asks Android the first time (Android 13's notification permission), then gets the FCM token. */
+    @PluginMethod
+    fun enablePush(call: PluginCall) {
+        if (!com.folevi.android.push.Push.configured()) return call.resolve(JSObject().put("status", null))
+        if (getPermissionState("notifications") != com.getcapacitor.PermissionState.GRANTED) {
+            com.folevi.android.push.Push.markAsked(context)
+            requestPermissionForAlias("notifications", call, "afterPushAsk")
+        } else afterPushAsk(call)
+    }
+
+    @com.getcapacitor.annotation.PermissionCallback
+    private fun afterPushAsk(call: PluginCall) {
+        com.folevi.android.push.Push.markAsked(context)
+        if (getPermissionState("notifications") != com.getcapacitor.PermissionState.GRANTED) return call.resolve(JSObject().put("status", com.folevi.android.push.Push.status(context)))
+        scope.launch { call.resolve(JSObject().put("status", com.folevi.android.push.Push.enable(context))) }
+    }
+
+    @PluginMethod
+    fun disablePush(call: PluginCall) {
+        scope.launch {
+            com.folevi.android.push.Push.disable(context)
+            call.resolve()
+        }
     }
 
     @PluginMethod

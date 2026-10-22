@@ -12,17 +12,26 @@ import { nativeDevice } from "./nativeDevice";
 /** The token registered in this page's life (registering it again on every launch is enough). */
 let registered: string | null = null;
 
+/** The Android app gets its token from Firebase Cloud Messaging and registers it with push.registerFcm. */
+const onAndroid = () => nativeApp()?.platform === "android";
+
 async function register(status: NativePushStatus): Promise<void> {
   const d = await nativeDevice();
   if (!status.token || !d) return;
-  await getConvexClient().mutation(api.push.registerApns, { token: status.token, environment: status.environment, bundleId: status.bundleId, deviceId: d.id, deviceName: d.model || d.family });
+  if (onAndroid()) await getConvexClient().mutation(api.push.registerFcm, { token: status.token, deviceId: d.id, deviceName: d.model || d.family });
+  else await getConvexClient().mutation(api.push.registerApns, { token: status.token, environment: status.environment, bundleId: status.bundleId, deviceId: d.id, deviceName: d.model || d.family });
   registered = status.token;
 }
 
-/** Whether this deployment sends to the iOS app at all (its APNs key is set). */
+/** This device stops being sent to (by its token or install id), through whichever service it uses. */
+async function unregister(args: { token?: string; deviceId?: string }): Promise<void> {
+  await getConvexClient().mutation(onAndroid() ? api.push.unregisterFcm : api.push.unregisterApns, args);
+}
+
+/** Whether this deployment sends to this app at all (its APNs key, or the Firebase service account, is set). */
 async function available(): Promise<boolean> {
   try {
-    return await getConvexClient().query(api.push.apnsAvailable, {});
+    return await getConvexClient().query(onAndroid() ? api.push.fcmAvailable : api.push.apnsAvailable, {});
   } catch {
     return false;
   }
@@ -42,7 +51,7 @@ export async function turnOffPush(): Promise<void> {
   const bridge = nativeApp();
   if (!bridge?.disablePush) return;
   const [status, d] = await Promise.all([bridge.pushStatus?.() ?? null, nativeDevice()]);
-  await getConvexClient().mutation(api.push.unregisterApns, { ...(status?.token ? { token: status.token } : {}), ...(d ? { deviceId: d.id } : {}) });
+  await unregister({ ...(status?.token ? { token: status.token } : {}), ...(d ? { deviceId: d.id } : {}) });
   registered = null;
   await bridge.disablePush();
 }
@@ -56,7 +65,7 @@ export async function syncPushRegistration(): Promise<void> {
   if (!status?.enabled) return;
   if (status.permission === "denied") {
     const d = await nativeDevice();
-    if (d && registered !== "") await getConvexClient().mutation(api.push.unregisterApns, { deviceId: d.id });
+    if (d && registered !== "") await unregister({ deviceId: d.id });
     registered = "";
     return;
   }
@@ -77,5 +86,5 @@ export async function offerPushAfterReminder(): Promise<void> {
 export async function forgetPush(deviceId: string): Promise<void> {
   if (!nativeApp()?.pushStatus) return;
   registered = null;
-  await getConvexClient().mutation(api.push.unregisterApns, { deviceId });
+  await unregister({ deviceId });
 }

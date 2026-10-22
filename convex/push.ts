@@ -8,6 +8,7 @@ import { internalMutation, internalQuery, mutation, query } from "./_generated/s
 import { requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { APNS_TOKEN_RE, apnsConfig } from "./lib/apns";
+import { FCM_TOKEN_RE, fcmConfig } from "./lib/fcm";
 import type { Id } from "./_generated/dataModel";
 
 const ENDPOINT_RE = /^https:\/\/[^\s]{10,2000}$/;
@@ -201,6 +202,114 @@ export const apnsTargets = internalQuery({
 /** After a send: drops tokens Apple says are gone, marks the others used. */
 export const afterApnsSend = internalMutation({
   args: { gone: v.array(v.id("apnsTokens")), sent: v.array(v.id("apnsTokens")) },
+  handler: async (ctx, args) => {
+    for (const id of args.gone) if (await ctx.db.get(id)) await ctx.db.delete(id);
+    const now = Date.now();
+    for (const id of args.sent) if (await ctx.db.get(id)) await ctx.db.patch(id, { lastSentAt: now });
+    return null;
+  },
+});
+
+// ---------------------------------------------------------------- the Android app (FCM)
+
+/** Whether this deployment can send to the Android app (the Firebase service account is set). */
+export const fcmAvailable = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireProfile(ctx);
+    return fcmConfig() !== null;
+  },
+});
+
+/** Whether this Android device (by the app's install id) gets notifications, and how many of your devices do. */
+export const fcmStatus = query({
+  args: { deviceId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const rows = await ctx.db
+      .query("fcmTokens")
+      .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+      .take(50);
+    return { devices: rows.length, thisDevice: args.deviceId ? rows.some((r) => r.deviceId === args.deviceId) : false };
+  },
+});
+
+/**
+ * The Android app's FCM registration token, after the person allowed notifications. The same rules as the iOS
+ * app's registerApns: one row per token and per device, a token or device that was someone else's moves to you,
+ * a device's new token replaces its old one, at most 20 per person.
+ */
+export const registerFcm = mutation({
+  args: { token: v.string(), deviceId: v.string(), deviceName: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const token = args.token.trim();
+    if (!FCM_TOKEN_RE.test(token) || !DEVICE_ID_RE.test(args.deviceId)) fail("invalid_argument", "This device's notification details look wrong.");
+    const deviceName = args.deviceName.replace(/[^\p{L}\p{N} .,()'-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 60) || "Android";
+    const now = Date.now();
+    let mine: Id<"fcmTokens"> | null = null;
+    for (const row of await ctx.db.query("fcmTokens").withIndex("by_token", (q) => q.eq("token", token)).take(5)) {
+      if (row.profileId === profile._id && !mine) mine = row._id;
+      else await ctx.db.delete(row._id);
+    }
+    for (const row of await ctx.db.query("fcmTokens").withIndex("by_device", (q) => q.eq("deviceId", args.deviceId)).take(10)) {
+      if (row._id !== mine) await ctx.db.delete(row._id);
+    }
+    const fields = { deviceId: args.deviceId, deviceName, updatedAt: now };
+    if (mine) {
+      await ctx.db.patch(mine, fields);
+      return null;
+    }
+    const others = await ctx.db
+      .query("fcmTokens")
+      .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+      .take(30);
+    if (others.length >= 20) await ctx.db.delete(others.sort((a, b) => a.updatedAt - b.updatedAt)[0]!._id);
+    await ctx.db.insert("fcmTokens", { profileId: profile._id, token, ...fields, createdAt: now });
+    return null;
+  },
+});
+
+/** Turned off in Settings, or signing out: this Android device (by its token or install id) gets nothing more. */
+export const unregisterFcm = mutation({
+  args: { token: v.optional(v.string()), deviceId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const rows = [
+      ...(args.token ? await ctx.db.query("fcmTokens").withIndex("by_token", (q) => q.eq("token", args.token!.trim())).take(5) : []),
+      ...(args.deviceId ? await ctx.db.query("fcmTokens").withIndex("by_device", (q) => q.eq("deviceId", args.deviceId!)).take(10) : []),
+    ];
+    const seen = new Set<string>();
+    for (const r of rows) {
+      if (r.profileId !== profile._id || seen.has(r._id)) continue;
+      seen.add(r._id);
+      await ctx.db.delete(r._id);
+    }
+    return null;
+  },
+});
+
+/** Where to send on Android, and the bell's unread count. */
+export const fcmTargets = internalQuery({
+  args: { profileId: v.id("profiles") },
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("fcmTokens")
+      .withIndex("by_profile", (q) => q.eq("profileId", args.profileId))
+      .take(20);
+    const unread = rows.length
+      ? await ctx.db
+          .query("notifications")
+          .withIndex("by_profile_unread", (q) => q.eq("profileId", args.profileId).eq("readAt", undefined))
+          .take(100)
+      : [];
+    return { tokens: rows.map((r) => ({ id: r._id, token: r.token })), badge: unread.length };
+  },
+});
+
+/** After a send: drops tokens Google says are gone, marks the others used. */
+export const afterFcmSend = internalMutation({
+  args: { gone: v.array(v.id("fcmTokens")), sent: v.array(v.id("fcmTokens")) },
   handler: async (ctx, args) => {
     for (const id of args.gone) if (await ctx.db.get(id)) await ctx.db.delete(id);
     const now = Date.now();

@@ -468,9 +468,10 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     // Their API tokens (they stop working) and the answers kept for retries.
     () => ctx.db.query("apiRequests").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("apiTokens").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
-    // Where their notifications went: browsers (web push) and iPhones and iPads (APNs).
+    // Where their notifications went: browsers (web push), iPhones and iPads (APNs) and Android devices (FCM).
     () => ctx.db.query("pushSubscriptions").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("apnsTokens").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("fcmTokens").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     // Their connected apps (the OAuth tokens go with the auth user): what each did and proposed, then the grants.
     () => ctx.db.query("mcpEvents").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("proposals").withIndex("by_profile_status", (q) => q.eq("profileId", profileId)).take(200),

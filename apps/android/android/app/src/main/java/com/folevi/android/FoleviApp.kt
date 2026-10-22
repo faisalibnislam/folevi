@@ -30,6 +30,8 @@ class FoleviApp : Application() {
         instance = this
         settings = ShellSettings(this)
         com.folevi.android.host.Reminders.channels(this)
+        com.folevi.android.extras.Widgets.schedule(this)
+        com.folevi.android.push.Push.start(this)
         secrets = SecretStore(File(noBackupFilesDir, "secrets"), KeystoreCipher("folevi.secrets.v1"))
         library = com.folevi.android.library.LibraryService(noBackupFilesDir, this)
         val cloudPrefs = getSharedPreferences("folevi-cloud", MODE_PRIVATE)

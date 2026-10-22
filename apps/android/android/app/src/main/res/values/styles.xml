@@ -16,6 +16,17 @@
         <item name="android:background">@null</item>
     </style>
 
+    <!-- "Save to Folevi": a card over the app it was shared from, the rest dimmed. -->
+    <style name="AppTheme.Share" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.3</item>
+        <item name="android:windowMinWidthMajor">100%</item>
+        <item name="android:windowMinWidthMinor">100%</item>
+    </style>
+
     <!-- The launch screen: the canvas colour with Folevi's mark. -->
     <style name="AppTheme.Launch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/canvas</item>

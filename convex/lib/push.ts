@@ -1,10 +1,11 @@
-// One push, everywhere the person asked for it: their browsers (web push, pushSend.ts) and their iPhones
-// and iPads (APNs, apnsSend.ts). Callers decide whether a push is wanted at all (the bell's choices);
+// One push, everywhere the person asked for it: their browsers (web push, pushSend.ts), their iPhones and
+// iPads (APNs, apnsSend.ts) and their Android devices (FCM, fcmSend.ts). Callers decide whether a push is wanted at all (the bell's choices);
 // this only schedules the sends, and skips APNs when it isn't set up or the person has no device for it.
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { apnsConfig, type ApnsKind } from "./apns";
+import { fcmConfig } from "./fcm";
 import { appUrl } from "./notify";
 
 export interface Push {
@@ -24,6 +25,7 @@ export interface Push {
 
 export async function schedulePush(ctx: MutationCtx, push: Push): Promise<void> {
   await ctx.scheduler.runAfter(0, internal.pushSend.sendToProfile, { profileId: push.profileId, title: push.title, body: push.body, url: `${appUrl()}${push.path}`, tag: push.tag });
+  await scheduleFcm(ctx, push);
   if (!apnsConfig()) return;
   const device = await ctx.db
     .query("apnsTokens")
@@ -31,6 +33,28 @@ export async function schedulePush(ctx: MutationCtx, push: Push): Promise<void> 
     .first();
   if (!device) return;
   await ctx.scheduler.runAfter(0, internal.apnsSend.sendToProfile, {
+    profileId: push.profileId,
+    message: {
+      kind: push.kind,
+      title: push.title,
+      ...(push.body ? { body: push.body } : {}),
+      path: push.path,
+      ...(push.noteId ? { threadId: push.noteId } : {}),
+      ...(push.taskId ? { taskId: push.taskId } : {}),
+      collapseId: push.tag.slice(0, 64),
+    },
+  });
+}
+
+/** The Android app (FCM, fcmSend.ts): only when it's set up and the person has an Android device for it. */
+async function scheduleFcm(ctx: MutationCtx, push: Push): Promise<void> {
+  if (!fcmConfig()) return;
+  const device = await ctx.db
+    .query("fcmTokens")
+    .withIndex("by_profile", (q) => q.eq("profileId", push.profileId))
+    .first();
+  if (!device) return;
+  await ctx.scheduler.runAfter(0, internal.fcmSend.sendToProfile, {
     profileId: push.profileId,
     message: {
       kind: push.kind,

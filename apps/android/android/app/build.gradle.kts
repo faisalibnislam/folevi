@@ -27,6 +27,12 @@ android {
         // repository (docs/LOCAL_MODE.md "Owner setup checklist"; apps/android/README.md). Empty hides the option.
         buildConfigField("String", "DROPBOX_APP_KEY", quoted(setting("folevi.dropboxAppKey", "FOLEVI_DROPBOX_APP_KEY", "")))
         buildConfigField("String", "GOOGLE_ANDROID_CLIENT_ID", quoted(setting("folevi.googleAndroidClientId", "FOLEVI_GOOGLE_ANDROID_CLIENT_ID", "")))
+        // The Firebase project's Android app settings (Firebase console > Project settings > Your apps), all public;
+        // without them the app has no push notifications and Settings > Notifications says so (README "Notifications").
+        buildConfigField("String", "FIREBASE_APP_ID", quoted(setting("folevi.firebaseAppId", "FOLEVI_FIREBASE_APP_ID", "")))
+        buildConfigField("String", "FIREBASE_API_KEY", quoted(setting("folevi.firebaseApiKey", "FOLEVI_FIREBASE_API_KEY", "")))
+        buildConfigField("String", "FIREBASE_PROJECT_ID", quoted(setting("folevi.firebaseProjectId", "FOLEVI_FIREBASE_PROJECT_ID", "")))
+        buildConfigField("String", "FIREBASE_SENDER_ID", quoted(setting("folevi.firebaseSenderId", "FOLEVI_FIREBASE_SENDER_ID", "")))
         manifestPlaceholders["appLinkHost"] = "app.folevi.com"
     }
 
@@ -73,6 +79,7 @@ dependencies {
     implementation(project(":capacitor-android"))
     implementation(project(":capacitor-cordova-android-plugins"))
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.appcompat)
@@ -91,6 +98,13 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.runtime)
     implementation(libs.glance.appwidget)
+    implementation(libs.androidx.work)
+    // The document scanner and the words in an image (ML Kit, on the phone).
+    implementation(libs.mlkit.docscanner)
+    implementation(libs.mlkit.text)
+    // Notifications from Folevi's server (Firebase Cloud Messaging), switched on by the Firebase settings below.
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     testImplementation(libs.junit)
     testImplementation(libs.orgjson)

@@ -48,6 +48,17 @@ if (env === "production") {
       if (apnsSet.length && get("APNS_BUNDLE_ID") && get("APNS_BUNDLE_ID") !== "com.folevi.ios") warn.push("Convex APNS_BUNDLE_ID is not com.folevi.ios (the iOS app's bundle id): Apple refuses notifications for another app.");
       if (get("APNS_ENV") && !["sandbox", "production"].includes(get("APNS_ENV"))) warn.push("Convex APNS_ENV must be 'sandbox' or 'production'.");
       if (apnsSet.length === apns.length && get("APNS_ENV") === "sandbox") warn.push("Convex APNS_ENV is 'sandbox' in production: tokens registered without an environment go to Apple's sandbox.");
+      // Push to the Android app (FCM, docs/ANDROID_PLAN.md): the Firebase service account as JSON, or nothing.
+      if (has("FCM_SERVICE_ACCOUNT")) {
+        let account = null;
+        try {
+          account = JSON.parse(get("FCM_SERVICE_ACCOUNT"));
+        } catch {
+          account = null;
+        }
+        if (!account || !account.client_email || !account.private_key || !(account.project_id || has("FCM_PROJECT_ID")))
+          warn.push("Convex FCM_SERVICE_ACCOUNT isn't a Firebase service account key (JSON with project_id, client_email and private_key): nothing is sent to the Android app.");
+      }
       // Sign in with Apple (docs/DEPLOYMENT.md): all four or none. Without them there's no Apple button.
       const apple = ["APPLE_SIGNIN_CLIENT_ID", "APPLE_SIGNIN_TEAM_ID", "APPLE_SIGNIN_KEY_ID", "APPLE_SIGNIN_KEY"];
       const appleSet = apple.filter(has);

@@ -1595,6 +1595,22 @@ export default defineSchema({
    * A person's private calendar feed of dated tasks (convex/calendarFeeds.ts), subscribed to from a calendar
    * app. Only a hash of the link's token is kept; a new link replaces the old one.
    */
+  /** Folevi for Android's FCM registration tokens (push.ts registerFcm), one per token and per device. */
+  fcmTokens: defineTable({
+    profileId: v.id("profiles"),
+    /** The registration token. Never logged. */
+    token: v.string(),
+    /** The app's install id on the device (the same one its API token is made for). */
+    deviceId: v.string(),
+    /** "Pixel 9", for telling devices apart. */
+    deviceName: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastSentAt: v.optional(v.number()),
+  })
+    .index("by_profile", ["profileId"])
+    .index("by_token", ["token"])
+    .index("by_device", ["deviceId"]),
   calendarFeeds: defineTable({
     profileId: v.id("profiles"),
     tokenHash: v.string(),

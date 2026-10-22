@@ -47,6 +47,7 @@ class MainActivity : BridgeActivity() {
     /** The optional fingerprint or face lock (AppLock.kt). */
     val lock: com.folevi.android.lock.AppLock by lazy { com.folevi.android.lock.AppLock(this) }
     private var started = false
+    private var widgetsAt = 0L
 
     private val back = object : OnBackPressedCallback(false) {
         override fun handleOnBackStarted(backEvent: BackEventCompat) = sendBack("progress", backEvent)
@@ -86,12 +87,31 @@ class MainActivity : BridgeActivity() {
     }
 
     /** Google's consent screen (and others like it): its result's data, or null when the person backed out. */
-    suspend fun showForResult(pi: android.app.PendingIntent): Intent? {
+    suspend fun showForResult(pi: android.app.PendingIntent): Intent? = showForResult(pi.intentSender)
+
+    suspend fun showForResult(sender: android.content.IntentSender): Intent? {
         resultWaiting?.complete(null)
         val w = kotlinx.coroutines.CompletableDeferred<Intent?>()
         resultWaiting = w
         lock.openingOwnScreen()
-        forResult.launch(androidx.activity.result.IntentSenderRequest.Builder(pi).build())
+        forResult.launch(androidx.activity.result.IntentSenderRequest.Builder(sender).build())
+        return w.await()
+    }
+
+    private var photosWaiting: kotlinx.coroutines.CompletableDeferred<List<Uri>>? = null
+    private val pickPhotos = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia(10)) { uris ->
+        val w = photosWaiting
+        photosWaiting = null
+        w?.complete(uris)
+    }
+
+    /** Android's photo picker (no permission needed): up to ten images, or none when the person backed out. */
+    suspend fun pickImages(): List<Uri> {
+        photosWaiting?.complete(emptyList())
+        val w = kotlinx.coroutines.CompletableDeferred<List<Uri>>()
+        photosWaiting = w
+        lock.openingOwnScreen()
+        pickPhotos.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
         return w.await()
     }
 
@@ -378,6 +398,18 @@ class MainActivity : BridgeActivity() {
             signInOpen = false
             return
         }
+        // App Actions (shortcuts.xml): "new note", "quick add", "today" from Google Assistant or Gemini.
+        if (data.startsWith("folevi://feature/")) {
+            val feature = Uri.decode(data.removePrefix("folevi://feature/")).lowercase()
+            deliverLink(
+                when {
+                    feature.contains("note") -> "folevi://new"
+                    feature.contains("today") || feature.contains("my task") -> "folevi://tasks/today"
+                    else -> "folevi://quick-add"
+                },
+            )
+            return
+        }
         Links.asDeepLink(data, serviceOrigin())?.let { deliverLink(it) }
     }
 
@@ -394,6 +426,13 @@ class MainActivity : BridgeActivity() {
 
     override fun onResume() {
         super.onResume()
+        // The page takes what was shared meanwhile, and the widgets' copy is refreshed (at most every 5 minutes).
+        event("app-active", JSONObject())
+        val now = System.currentTimeMillis()
+        if (now - widgetsAt > 5 * 60_000) {
+            widgetsAt = now
+            com.folevi.android.extras.Widgets.refreshSoon(this)
+        }
         // Back from the sign-in tab without finishing (closed it): the sign-in ends.
         if (signInOpen) {
             signInOpen = false

@@ -613,6 +613,10 @@
       }
     });
   }
+  // The app back in front: the page takes what was shared meanwhile (components/app/NativeBridge.tsx).
+  onNative("app-active", function () {
+    window.dispatchEvent(new Event("folevi:app-active"));
+  });
   onNative("command", function (e) {
     if (e && e.command) deliverCommand(e.command);
   });

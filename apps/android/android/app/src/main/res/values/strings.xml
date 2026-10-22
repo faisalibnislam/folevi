@@ -7,4 +7,16 @@
     <string name="channel_reminders_about">Reminders on your to-dos</string>
     <string name="channel_activity">Mentions and comments</string>
     <string name="channel_activity_about">When someone mentions you or comments on your notes</string>
+    <string name="shortcut_new_note">New note</string>
+    <string name="shortcut_quick_add">Quick add</string>
+    <string name="shortcut_quick_add_long">Quick add task</string>
+    <string name="shortcut_today">Today</string>
+    <string name="shortcut_today_long">Today\'s tasks</string>
+    <string name="widget_today">Today</string>
+    <string name="widget_today_about">Today\'s to-dos and what\'s overdue</string>
+    <string name="widget_recent">Recent notes</string>
+    <string name="widget_recent_about">The notes you edited last</string>
+    <string name="widget_quick_add">Quick add</string>
+    <string name="widget_quick_add_about">Add a to-do in a tap</string>
+    <string name="share_label">Save to Folevi</string>
 </resources>

@@ -20,9 +20,15 @@ import { Bell } from "lucide-react";
 
 export function NativePushCard() {
   const bridge = nativeApp();
-  const available = useQuery(api.push.apnsAvailable, {});
+  // The Android app goes through Firebase Cloud Messaging (push.fcm*), the iOS app through Apple's (push.apns*).
+  const android = bridge?.platform === "android";
+  const apnsAvailable = useQuery(api.push.apnsAvailable, android ? "skip" : {});
+  const fcmAvailable = useQuery(api.push.fcmAvailable, android ? {} : "skip");
+  const available = android ? fcmAvailable : apnsAvailable;
   const here = useNativeDevice();
-  const server = useQuery(api.push.apnsStatus, here ? { deviceId: here.id } : "skip");
+  const apnsServer = useQuery(api.push.apnsStatus, here && !android ? { deviceId: here.id } : "skip");
+  const fcmServer = useQuery(api.push.fcmStatus, here && android ? { deviceId: here.id } : "skip");
+  const server = android ? fcmServer : apnsServer;
   const [status, setStatus] = useState<NativePushStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -39,7 +45,11 @@ export function NativePushCard() {
 
   if (!bridge?.pushStatus || available !== true || !status) return null;
 
-  const device = here?.family ?? "iPhone";
+  const device = android ? "phone" : (here?.family ?? "iPhone");
+  // Where notifications are allowed or blocked for Folevi, and what each kind shows, on this system.
+  const os = android ? "Android settings" : "iOS Settings";
+  const asks = android ? "Off. Turning them on asks Android once." : "Off. Turning them on asks iOS once.";
+  const actions = android ? "A reminder shows its to-do line and note, with Done and Snooze 1 hour; a mention says only who and where, with Reply and Open." : "A reminder shows its to-do line and note, with Done and Snooze 1 hour; a mention says only who and where.";
   const denied = status.permission === "denied";
   const on = status.enabled && status.permission === "granted";
   const others = Math.max(0, (server?.devices ?? 0) - (server?.thisDevice ? 1 : 0));
@@ -63,14 +73,14 @@ export function NativePushCard() {
   };
 
   if (iphone) {
-    const explain = `Reminders and mentions show up on this ${device} even when Folevi isn't open, following the In app choices below. A reminder shows its to-do line and note, with Done and Snooze 1 hour; a mention says only who and where.`;
+    const explain = `Reminders and mentions show up on this ${device} even when Folevi isn't open, following the In app choices below. ${actions}`;
     return denied ? (
-      <IosSection footer={`Notifications are turned off for Folevi in iOS Settings. Allow them there, then come back. ${explain}`}>
+      <IosSection footer={`Notifications are turned off for Folevi in ${os}. Allow them there, then come back. ${explain}`}>
         <IosRow icon={<RowIcon><Bell /></RowIcon>} label={`Notifications on this ${device}`} value="Off" />
-        <ActionRow label="Open iOS Settings" onClick={() => void bridge.openNotificationSettings?.()} />
+        <ActionRow label={`Open ${os}`} onClick={() => void bridge.openNotificationSettings?.()} />
       </IosSection>
     ) : (
-      <IosSection footer={`${on ? "On." : status.asked ? "Off." : "Off. Turning them on asks iOS once."}${others ? ` ${others} other device${others === 1 ? "" : "s"} too.` : ""} ${explain}`}>
+      <IosSection footer={`${on ? "On." : status.asked ? "Off." : asks}${others ? ` ${others} other device${others === 1 ? "" : "s"} too.` : ""} ${explain}`}>
         <SwitchRow icon={<RowIcon><Bell /></RowIcon>} label={`Notifications on this ${device}`} checked={on} disabled={busy} onChange={(next) => void change(next)} />
       </IosSection>
     );
@@ -78,13 +88,13 @@ export function NativePushCard() {
   return (
     <Card
       title={`Notifications on this ${device}`}
-      description={`Reminders and mentions show up on this ${device} even when Folevi isn’t open, following the In app choices above. A reminder shows its to-do line and note, with Done and Snooze 1 hour; a mention says only who and where.`}
+      description={`Reminders and mentions show up on this ${device} even when Folevi isn’t open, following the In app choices above. ${actions}`}
     >
       {denied ? (
         <div className="flex max-w-xl items-center justify-between gap-4">
-          <p className="text-sm text-muted">Notifications are turned off for Folevi in iOS Settings. Allow them there, then come back.</p>
+          <p className="text-sm text-muted">Notifications are turned off for Folevi in {os}. Allow them there, then come back.</p>
           <Button variant="secondary" onClick={() => void bridge.openNotificationSettings?.()}>
-            Open iOS Settings
+            Open {os}
           </Button>
         </div>
       ) : (
@@ -92,7 +102,7 @@ export function NativePushCard() {
           <span className="min-w-0">
             <span className="block text-sm text-ink">Notifications on this {device}</span>
             <span id={hintId} className="block text-xs text-muted">
-              {on ? "On." : status.asked ? "Off." : "Off. Turning them on asks iOS once."}
+              {on ? "On." : status.asked ? "Off." : asks}
               {others ? ` ${others} other device${others === 1 ? "" : "s"} too.` : ""}
             </span>
           </span>

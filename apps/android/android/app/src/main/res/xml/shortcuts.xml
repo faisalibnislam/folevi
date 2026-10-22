@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App shortcuts (long-press the launcher icon) and App Actions for Google Assistant and Gemini: new note,
+     Quick add task, today's tasks. Each opens a folevi:// link, the same links the Mac and iPhone apps take. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <capability android:name="actions.intent.OPEN_APP_FEATURE">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.folevi.android" android:targetClass="com.folevi.android.MainActivity">
+            <parameter android:name="feature" android:key="feature" />
+            <url-template android:value="folevi://feature/{feature}" />
+        </intent>
+    </capability>
+
+    <shortcut android:shortcutId="new_note" android:enabled="true" android:icon="@drawable/ic_shortcut_note"
+        android:shortcutShortLabel="@string/shortcut_new_note" android:shortcutLongLabel="@string/shortcut_new_note">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.folevi.android" android:targetClass="com.folevi.android.MainActivity" android:data="folevi://new" />
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding android:key="feature" android:value="@array/feature_new_note" />
+        </capability-binding>
+    </shortcut>
+    <shortcut android:shortcutId="quick_add" android:enabled="true" android:icon="@drawable/ic_shortcut_task"
+        android:shortcutShortLabel="@string/shortcut_quick_add" android:shortcutLongLabel="@string/shortcut_quick_add_long">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.folevi.android" android:targetClass="com.folevi.android.MainActivity" android:data="folevi://quick-add" />
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding android:key="feature" android:value="@array/feature_quick_add" />
+        </capability-binding>
+    </shortcut>
+    <shortcut android:shortcutId="today" android:enabled="true" android:icon="@drawable/ic_shortcut_today"
+        android:shortcutShortLabel="@string/shortcut_today" android:shortcutLongLabel="@string/shortcut_today_long">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.folevi.android" android:targetClass="com.folevi.android.MainActivity" android:data="folevi://tasks/today" />
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding android:key="feature" android:value="@array/feature_today" />
+        </capability-binding>
+    </shortcut>
+</shortcuts>

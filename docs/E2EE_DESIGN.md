@@ -2536,6 +2536,53 @@ export function publishPlainCopy(documentId: string): Promise<{ url: string }>;
 - Accept: unit tests; migration resumes after a killed tab; turning each switch off leaves no mirror rows
   within one minute; encrypted link opens in a signed-out browser.
 
+**Settled while building WP8.**
+
+- Migration order. A collection's rows are sealed before the note hosting it (each row's sealed meta gets its
+  `row` from `plainExtras` of the host), because sealing the host deletes the server's collection tables; a row
+  reached on its own seals its host first. Unsealing goes the other way: a row's host first, its rows read from
+  the replica. Note key v1 is the one the server already holds when a lapsed lease stored it
+  (`e2ee.grants.myNoteKeys` before `beginDocument`), so a resumed note never gets a second key.
+- A toggle's open state travels only as `sealed.collapsed: true`, so an opened block may lack
+  `props.collapsed`; unsealing puts `false` back where the schema needs it (`withCollapsed` in
+  `migrate/unseal.ts`). WP7's `openBlock` has the same gap for display.
+- Server functions an unseal still needs (WP3), called by name and listed in `migrate/env.ts` `pending`; until
+  they exist an unseal job pauses (Settings > Privacy shows it with "Try again"):
+  `e2ee.migrate.unsealSnapshot({ snapshotId, content: { title, icon, cover?, style?, blocks }, name })` (history
+  phase) and `e2ee.migrate.unsealNames({ scope, folders: { folderId, name }[], tags: { tagId, name }[] })`
+  (cleanup). File keys under old note key versions aren't re-wrapped by a re-seal (no mutation replaces
+  `files.sealed.key`); old note key versions must stay while files use them. A sealed note's study schedules
+  aren't carried into `studyReview` records (`plainExtras` has none). AI chats stored before encryption stay
+  as they were (R15 is open).
+- Space key rotation: before re-sealing, the runner gives every note of the space a new note key
+  (`rotateNote`, resumable through the replica's state `rotation:<jobId>`), since a reseal claim only lists
+  notes with rows under an older note key. `rotateNote` wraps the new key for the space, for each guest whose
+  account-key statement verifies, and for this person's encrypted links whose secret they kept: link secrets
+  are kept as a per-person `prefs` record `link-<linkId>` under the note. Links someone else made stop opening
+  new content after a rotation.
+- Locks. The replica's rows don't carry `locked` / `lockedVia` yet, so features ask `e2ee.pull.document` per
+  note (and its parent pages) in spaces with `lockedCount > 0`, before any text leaves the device; unknown
+  counts as locked. When WP7's `LocalDocument` gains `locked` and `lockedVia`, `features/locks.ts` uses them.
+- Foli AI. `startFeatureWorkers` hands the router `aiRoute` (`setAiRouter`). "Don't send" refuses with a new
+  code `e2ee_consent_declined` (nothing was sent). Only functions whose arguments take `provided` get it
+  (`ai.ask/write/flowchart/brief`, `aiTodos.find`, `aiStudy.translateNote`, `aiAttachments.transcribe`,
+  `fileText.readImage`, `aiChat.sendSealed`, `aiResearch.startSealed`, and every function of chartAi,
+  mindmapAi, wireframeAi, flowchartAi, tableAi, stickiesAi); the stored chat and research functions answer
+  `e2ee_unavailable` (`feature: "chat"`) in encrypted spaces, and `sealedChat` (features/ai.ts) keeps a chat as
+  an `aiChat` record. The chat panel itself still has to move to it. Memories aren't sent yet (the replica
+  doesn't open `aiMemory` records into a list).
+- Encrypted links. A note hosting collections adds the space id to the fragment (`#k=…&s=…`): its collection
+  records' context names the space, which the share payload doesn't carry. Collections show without rows (a row
+  is another note, which the link doesn't open). The share page passes the payload as base64url text
+  (`lib/e2ee/sharePayload.ts`).
+- Published copies leave out image and file blocks and an image cover: plain uploads into a sealed note are
+  refused (`files.generateUploadUrl` / `finalize`), so there is no way yet to store the copy's plain images.
+  Needs a server path (for example `e2ee.links.generateImageUploadUrl`).
+- Inbox. App writes are applied as MCP applies them for Standard notes; ids come from the item (the promised
+  note id, the to-do id) or are derived from the item id, so a second device writes the same rows. The Inbox is
+  made at `inboxDocumentId(profileId, scopeIdKey(scope))` and, in Personal, registered with
+  `e2ee.content.setInbox` (the id in force is used).
+
 ### WP9: Screens, copy and end-to-end tests
 
 - Goal: §10 and §11.4.

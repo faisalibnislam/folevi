@@ -625,7 +625,13 @@ function createQuickAdd() {
     backgroundColor: background(),
     webPreferences: webPreferences(),
   });
+  // Over full-screen apps too. Electron makes this by turning the whole app into a background (UIElement)
+  // app and back; on recent macOS it stays one (no Dock icon, no menu bar), so make it a regular app again.
   quickAdd.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  if (process.platform === "darwin") {
+    app.setActivationPolicy("regular");
+    void app.dock?.show();
+  }
   applyThrottling(quickAdd);
   guardNavigation(quickAdd.webContents);
   lockCover?.attach(quickAdd);

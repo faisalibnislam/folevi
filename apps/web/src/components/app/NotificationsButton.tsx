@@ -119,12 +119,14 @@ export function NotificationPanel({ unread, onClose, hideTitle = false }: { unre
   const headingRef = useRef<HTMLHeadingElement>(null);
   const toast = useToast();
 
-  // Focus lands in the panel so arrow keys work right away.
+  // Focus lands in the panel so arrow keys work right away. On a touch screen it goes to the title (no ring):
+  // a ring round the first notification after a tap isn't wanted there, and there are no arrow keys.
   const focused = useRef(false);
   useEffect(() => {
     if (focused.current || items === undefined) return;
     focused.current = true;
-    const first = listRef.current?.querySelector<HTMLElement>("[data-nav-item]");
+    const touch = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+    const first = touch ? null : listRef.current?.querySelector<HTMLElement>("[data-nav-item]");
     (first ?? headingRef.current)?.focus({ preventScroll: true });
   }, [items]);
 
@@ -171,7 +173,8 @@ export function NotificationPanel({ unread, onClose, hideTitle = false }: { unre
           type="button"
           disabled={!unread}
           onClick={() => void markRead({}).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
-          className="inline-flex h-7 items-center gap-1 rounded-chip px-2 text-[12px] font-medium text-muted transition-colors hover:bg-accent-soft hover:text-heading disabled:pointer-events-none disabled:opacity-40"
+          // On a touch screen: a 44 pt button with phone-sized text, readable while there's something to mark.
+          className="inline-flex h-7 items-center gap-1 rounded-chip px-2 text-[12px] font-medium text-muted transition-colors hover:bg-accent-soft hover:text-heading disabled:pointer-events-none disabled:opacity-40 pointer-coarse:h-11 pointer-coarse:gap-1.5 pointer-coarse:px-3.5 pointer-coarse:text-[15px] pointer-coarse:text-heading pointer-coarse:active:bg-[var(--liquid-press,var(--color-accent-soft))] pointer-coarse:disabled:text-muted pointer-coarse:disabled:opacity-50 [&>svg]:pointer-coarse:h-[18px] [&>svg]:pointer-coarse:w-[18px]"
         >
           <Check size={13} aria-hidden /> Mark all read
         </button>
@@ -183,7 +186,7 @@ export function NotificationPanel({ unread, onClose, hideTitle = false }: { unre
             navigate("/settings/notifications");
             onClose(false);
           }}
-          className="grid h-7 w-7 place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading"
+          className="grid h-7 w-7 place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:text-heading pointer-coarse:active:bg-[var(--liquid-press,var(--color-accent-soft))] [&>svg]:pointer-coarse:h-5 [&>svg]:pointer-coarse:w-5"
         >
           <Settings size={14} aria-hidden />
         </button>

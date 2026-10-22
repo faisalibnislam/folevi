@@ -32,6 +32,8 @@ function RecentCard({ doc }: { doc: Summary }) {
   return (
     <li className="w-[156px] flex-none snap-start [container-type:inline-size]">
       <div
+        data-lift=""
+        className="transition-transform"
         onContextMenu={(e) => {
           e.preventDefault();
           setCtx(contextPoint(e));
@@ -126,7 +128,7 @@ export function IphoneHome() {
           ))}
         </div>
       ) : recent.length ? (
-        <ul aria-label="Recent notes" className="flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-6 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul aria-label="Recent notes" data-iphone-tappable="" className="flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-6 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {recent.map((d) => (
             <RecentCard key={d.id} doc={d} />
           ))}
@@ -137,7 +139,7 @@ export function IphoneHome() {
         </div>
       )}
 
-      <nav aria-label="Notes">
+      <nav aria-label="Notes" data-iphone-tappable="">
         {aiOn ? <CatchUp row /> : null}
         <ListRow href="/notes" icon={<Files />} label="All notes" />
         <ListRow href="/drafts" icon={<Inbox />} label="Drafts" detail={drafts || undefined} />
@@ -164,7 +166,7 @@ export function IphoneHome() {
         empty={org && !topFolders.length ? <EmptyBox>Folders keep related notes together</EmptyBox> : undefined}
       >
         {/* The app's own folder cards, side by side, as on Home in the browser and the Mac app. */}
-        <ul aria-label="Folders" className="flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 pb-8 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul aria-label="Folders" data-iphone-tappable="" className="flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 pb-8 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {topFolders.map((f) => {
             const summary = summaries.get(f.id);
             return (
@@ -184,7 +186,7 @@ export function IphoneHome() {
         </HomeSection>
       ) : null}
 
-      <nav aria-label="More" className="mt-7">
+      <nav aria-label="More" data-iphone-tappable="" className="mt-7">
         <ListRow href="/templates" icon={<LayoutTemplate />} label="Templates" />
         <ListRow href="/archive" icon={<Archive />} label="Archive" />
         <ListRow href="/trash" icon={<Trash2 />} label="Trash" />

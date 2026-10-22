@@ -47,18 +47,18 @@ export function RootPill({ more, moreLabel = "More" }: { more?: MenuEntry[]; mor
   );
 }
 
-/** A "…" button in a glass pill, opening an iOS-style menu. */
+/**
+ * A "…" button in a glass pill, opening an iOS-style menu that grows out of it (right-aligned under it). A
+ * plain ellipsis, no ring of its own (the pill is already round), drawn like the back chevron beside it:
+ * 24 px at a 2.2 stroke.
+ */
 export function MoreMenu({ items, label = "More" }: { items: MenuEntry[]; label?: string }) {
   return (
     <MenuButton
       label={label}
       align="end"
       triggerClassName="grid h-11 min-w-11 place-items-center rounded-capsule px-2.5 text-heading outline-none transition-transform active:scale-[0.92] focus-visible:ring-2 focus-visible:ring-focus"
-      trigger={
-        <span className="grid h-[23px] w-[23px] place-items-center rounded-capsule border-[1.8px] border-current">
-          <MoreHorizontal size={15} strokeWidth={2.6} aria-hidden />
-        </span>
-      }
+      trigger={<MoreHorizontal size={24} strokeWidth={2.2} aria-hidden />}
       items={items}
     />
   );

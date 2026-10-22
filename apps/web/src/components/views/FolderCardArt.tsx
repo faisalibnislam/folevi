@@ -84,28 +84,30 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
           <div className="absolute left-[12%] top-[12%] h-[60%] w-[76%] rounded-chip bg-white/60" />
         )}
       </div>
-      {/* frosted front cover */}
+      {/* frosted front cover, with the count, last update and name on it. They're its children, not siblings
+          after it: on an iPhone's GPU a later sibling of a backdrop-filtered layer can be drawn under it and only
+          show while the card is pressed; a child is always drawn over its own backdrop. */}
       <div
         aria-hidden
         className="absolute inset-x-0 bottom-0 top-[46%] rounded-panel shadow-[inset_0_1px_0_rgb(255_255_255/0.75),inset_0_0_0_1px_rgb(0_0_0/0.08),0_-6px_16px_-10px_rgb(0_0_0/0.25)] [-webkit-backdrop-filter:blur(9px)_saturate(1.3)] [backdrop-filter:blur(9px)_saturate(1.3)]"
         style={{ background: `linear-gradient(180deg, color-mix(in oklab, ${base} 62%, transparent), color-mix(in oklab, ${base} 86%, transparent))` }}
-      />
-      {/* page count */}
-      <span
-        aria-hidden
-        className="absolute left-[7%] top-[51%] inline-flex items-center rounded-tiny px-[2.2cqw] py-[1.3cqw] font-serif text-[clamp(12px,5.4cqw,22px)] font-semibold leading-none tabular-nums text-[#111114]"
-        style={{ background: `color-mix(in oklab, ${base} 55%, #8e94a3)` }}
       >
-        {count.toLocaleString()}
-      </span>
-      {/* last update */}
-      <span aria-hidden className="absolute right-[7%] top-[51.6%] -mt-[0.15em] max-w-[55%] truncate pb-[0.1em] font-serif text-[clamp(11px,5.6cqw,24px)] leading-[1.2]" style={{ color: `color-mix(in oklab, ${base} 25%, #3c4250)` }}>
-        {age}
-      </span>
-      {/* name */}
-      <span aria-hidden className="absolute bottom-[6.2%] left-[7%] right-[7%] line-clamp-2 break-words font-serif text-[clamp(16px,9.4cqw,40px)] leading-[1.12] tracking-[-0.01em] text-[#0d0d10]">
-        {name}
-      </span>
+        {/* page count */}
+        <span
+          className="absolute left-[7%] top-[9.26%] inline-flex items-center rounded-tiny px-[2.2cqw] py-[1.3cqw] font-serif text-[clamp(12px,5.4cqw,22px)] font-semibold leading-none tabular-nums text-[#111114]"
+          style={{ background: `color-mix(in oklab, ${base} 55%, #8e94a3)` }}
+        >
+          {count.toLocaleString()}
+        </span>
+        {/* last update */}
+        <span className="absolute right-[7%] top-[10.37%] -mt-[0.15em] max-w-[55%] truncate pb-[0.1em] font-serif text-[clamp(11px,5.6cqw,24px)] leading-[1.2]" style={{ color: `color-mix(in oklab, ${base} 25%, #3c4250)` }}>
+          {age}
+        </span>
+        {/* name */}
+        <span className="absolute bottom-[11.48%] left-[7%] right-[7%] line-clamp-2 break-words font-serif text-[clamp(16px,9.4cqw,40px)] leading-[1.12] tracking-[-0.01em] text-[#0d0d10]">
+          {name}
+        </span>
+      </div>
     </>
   );
 }

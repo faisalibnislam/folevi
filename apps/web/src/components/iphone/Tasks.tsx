@@ -173,7 +173,7 @@ export function IphoneTasks({
                 </button>
               </div>
               {isFolded ? null : (
-                <ul>
+                <ul data-iphone-tappable="">
                   {g.items.map((t) => (
                     <li key={t.blockId}>
                       <SwipeRow

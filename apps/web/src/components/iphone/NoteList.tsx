@@ -161,11 +161,11 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
           <EmptyState icon={empty.icon} title={subfolders.length && view === "folder" ? "No notes directly in this folder yet" : empty.title} body={empty.body} action={empty.action} />
         )
       ) : layout === "cards" ? (
-        <ul className="grid grid-cols-2 gap-x-3.5 gap-y-5 px-4 pt-4 [@media(orientation:landscape)]:grid-cols-4">
+        <ul data-iphone-tappable="" className="grid grid-cols-2 gap-x-3.5 gap-y-5 px-4 pt-4 [@media(orientation:landscape)]:grid-cols-4">
           {shown.map((d) => {
             const on = selection.selected.has(d.id);
             return (
-              <li key={d.id} className="relative [container-type:inline-size]" onContextMenu={longPress(d)}>
+              <li key={d.id} data-lift="" className="relative transition-transform [container-type:inline-size]" onContextMenu={longPress(d)}>
                 <AppLink href={`/d/${d.id}`} onClickCapture={tap(d)} aria-pressed={selecting ? on : undefined} className={`${NOTE_CARD_LINK} active:scale-[0.97]`}>
                   <NoteCardFace
                     title={d.title}
@@ -186,7 +186,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
           })}
         </ul>
       ) : (
-        <ul className="pt-2">
+        <ul data-iphone-tappable="" className="pt-2">
           {shown.map((d) => {
             const on = selection.selected.has(d.id);
             const row = (

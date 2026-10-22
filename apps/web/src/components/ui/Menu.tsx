@@ -118,7 +118,10 @@ export function MenuButton({
           label={label}
           items={items}
           host={host}
-          anchor={() => wrapRef.current?.getBoundingClientRect() ?? null}
+          // Opened by holding a card or row on a touch screen (lib/touchContextMenu.ts marks what lifted): beside
+          // that, not over it from its hidden "…".
+          anchor={() => (wrapRef.current?.closest<HTMLElement>("[data-held-lift]") ?? wrapRef.current)?.getBoundingClientRect() ?? null}
+          beside={() => !!wrapRef.current?.closest("[data-held-lift]")}
           ignore={buttonRef}
           align={align}
           side={side}
@@ -166,6 +169,7 @@ function MenuPanel({
   side,
   menuClassName,
   onClose,
+  beside,
 }: {
   id: string;
   label: string;
@@ -178,7 +182,11 @@ function MenuPanel({
   side: "bottom" | "top";
   menuClassName?: string;
   onClose: (refocus?: boolean) => void;
+  /** Keep clear of the anchor (a lifted card): scroll inside the room beside it rather than cover it. */
+  beside?: () => boolean;
 }) {
+  const besideRef = useRef(beside);
+  besideRef.current = beside;
   const actionable = items.map((it, i) => (it === "separator" || isHeading(it) || it.disabled ? -1 : i)).filter((i) => i >= 0);
   const [active, setActive] = useState(actionable[0] ?? 0);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -217,6 +225,14 @@ function MenuPanel({
       let top = up ? a.top - gap - h : a.bottom + gap;
       // (In the iPhone app, below the status bar.)
       const safeTop = safeInsets().top;
+      // Beside a lifted card: in the roomier side of it, scrolling there if it's too long, unless that side is
+      // too small to be a menu at all.
+      const room = up ? a.top - gap - margin - safeTop : below;
+      if (besideRef.current?.() && h > room && room >= 160) {
+        top = up ? margin + safeTop : a.bottom + gap;
+        setPos({ position: "fixed", left, top, width: fullWidth ? w : undefined, maxHeight: room, margin: 0, right: "auto", bottom: "auto", transformOrigin: `${align === "end" ? "right" : "left"} ${up ? "bottom" : "top"}` });
+        return;
+      }
       top = Math.min(Math.max(margin + safeTop, top), bottom - h - margin);
       setPos({ position: "fixed", left, top, width: fullWidth ? w : undefined, maxHeight: bottom - margin * 2 - safeTop, margin: 0, right: "auto", bottom: "auto", transformOrigin: `${align === "end" ? "right" : "left"} ${up ? "bottom" : "top"}` });
     };

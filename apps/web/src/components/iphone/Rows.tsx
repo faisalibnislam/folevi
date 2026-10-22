@@ -25,12 +25,12 @@ export function ListRow({ href, onClick, icon, label, detail, chevron = true, on
   const cls = "flex w-full items-center gap-3 pl-5 pr-4 text-left outline-none transition-colors active:bg-[var(--liquid-press)] focus-visible:bg-[var(--liquid-active)]";
   if (href)
     return (
-      <AppLink href={href} onClick={onClick} onContextMenu={onContextMenu} aria-label={ariaLabel} className={cls}>
+      <AppLink href={href} onClick={onClick} onContextMenu={onContextMenu} aria-label={ariaLabel} data-iphone-tappable="" className={cls}>
         {inner}
       </AppLink>
     );
   return (
-    <button type="button" onClick={onClick} onContextMenu={onContextMenu} aria-label={ariaLabel} className={cls}>
+    <button type="button" onClick={onClick} onContextMenu={onContextMenu} aria-label={ariaLabel} data-iphone-tappable="" className={cls}>
       {inner}
     </button>
   );
@@ -54,7 +54,7 @@ export function HomeSection({ id, title, href, menu, children, empty, collapsibl
     </>
   );
   return (
-    <section aria-labelledby={`home-${id}`} className="mt-7">
+    <section aria-labelledby={`home-${id}`} data-iphone-tappable="" className="mt-7">
       <div className="flex items-center gap-2 pl-5 pr-3">
         <h2 id={`home-${id}`} className="min-w-0 flex-1">
           {collapsible ? (

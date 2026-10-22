@@ -69,7 +69,7 @@ export function IphoneFolders<S extends string>({
       {folders && !folders.length ? (
         <EmptyState icon={FolderOpen} title={query.trim() ? `No folders match “${query.trim()}”` : "No folders yet"} body={query.trim() ? undefined : "Folders keep related notes together."} />
       ) : layout === "tiles" ? (
-        <ul className="grid grid-cols-2 gap-x-4 gap-y-6 px-4 pt-4 [@media(orientation:landscape)]:grid-cols-4" aria-label="Folders">
+        <ul data-iphone-tappable="" className="grid grid-cols-2 gap-x-4 gap-y-6 px-4 pt-4 [@media(orientation:landscape)]:grid-cols-4" aria-label="Folders">
           {(folders ?? []).map((f) => (
             <li key={f.id}>
               <FolderCard folder={f} parentName={where.get(f.id) || undefined} />
@@ -77,7 +77,7 @@ export function IphoneFolders<S extends string>({
           ))}
         </ul>
       ) : (
-        <ul className="pt-2" aria-label="Folders">
+        <ul data-iphone-tappable="" className="pt-2" aria-label="Folders">
           {(folders ?? []).map((f) => (
             <li key={f.id}>
               <ListRow href={`/folders/${f.id}`} icon={<FolderGlyph color={f.color} size={22} />} label={f.name} detail={f.documentCount} />
@@ -109,7 +109,7 @@ export function IphoneTags<S extends string>({ tags, query, onQuery, sort, sorts
       {tags && !tags.length ? (
         <EmptyState icon={Hash} title={query.trim() ? `No tags match “${query.trim()}”` : "No tags yet"} body={query.trim() ? undefined : "Add tags to a note from its Info panel."} />
       ) : (
-        <ul className="pt-2" aria-label="Tags">
+        <ul data-iphone-tappable="" className="pt-2" aria-label="Tags">
           {(tags ?? []).map((t) => (
             <li key={t.id}>
               <ListRow href={`/tags/${t.id}`} icon={<Hash style={{ color: `var(--color-${t.color === "muted" ? "ink-muted" : t.color})` }} />} label={t.name} detail={t.documentCount} />

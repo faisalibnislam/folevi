@@ -219,7 +219,7 @@ const TILE_HUE: Partial<Record<PreviewKind, string>> = {
   bookmark: "coral", embed: "coral",
 };
 
-function PhoneTile({ tile, editor, disabled }: { tile: Tile; editor: Editor | null; disabled: boolean }) {
+function PhoneTile({ tile, editor, disabled, onDone }: { tile: Tile; editor: Editor | null; disabled: boolean; onDone?: () => void }) {
   const hue = TILE_HUE[(tile.action as InsertItem).preview];
   return (
     <button
@@ -230,6 +230,8 @@ function PhoneTile({ tile, editor, disabled }: { tile: Tile; editor: Editor | nu
       onClick={() => {
         if (!editor || disabled) return;
         runInsert(editor, tile.action);
+        // The sheet steps aside to show what was added, as Craft's does.
+        onDone?.();
       }}
       className="group flex min-w-0 select-none flex-col items-center gap-1 rounded-chip outline-none disabled:opacity-45 focus-visible:ring-2 focus-visible:ring-focus"
     >
@@ -357,7 +359,7 @@ function Section({ title, children, phone }: { title: string; children: React.Re
   );
 }
 
-export function InsertPanel({ editor, disabled }: { editor: Editor | null; disabled: boolean }) {
+export function InsertPanel({ editor, disabled, onDone }: { editor: Editor | null; disabled: boolean; /** In the iPhone layout's sheet: after an insert, it closes. */ onDone?: () => void }) {
   const d = disabled || !editor;
   const [q, setQ] = useState("");
   const query = q.trim().toLowerCase();
@@ -395,7 +397,7 @@ export function InsertPanel({ editor, disabled }: { editor: Editor | null; disab
             phone ? (
               <div className="grid grid-cols-4 gap-x-2 gap-y-3.5">
                 {s.tiles.map((t) => (
-                  <PhoneTile key={t.key} tile={t} editor={editor} disabled={d} />
+                  <PhoneTile key={t.key} tile={t} editor={editor} disabled={d} onDone={onDone} />
                 ))}
               </div>
             ) : (

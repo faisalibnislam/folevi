@@ -150,7 +150,7 @@ test("iPhone note: the bar on the keyboard, writing without the top bar, Insert 
   const headings = await page.locator(".fb-editor .fb-h1").count();
   await tile.tap();
   await expect(page.locator(".fb-editor .fb-h1")).toHaveCount(headings + 1);
-  await page.keyboard.press("Escape");
+  // The sheet steps aside to show what was added.
   await expect(insert).toBeHidden();
 
   // Format: preview tiles for text styles, capsules of 44 pt buttons, the chosen one filled.

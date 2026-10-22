@@ -189,7 +189,7 @@ export function Inspector({
         {tab === "ai" && aiOn ? <AiPanel documentId={documentId} editor={editor} readOnly={readOnly} run={aiRun} onTitle={(t) => onAiTitle?.(t)} /> : null}
         {/* AI off, or not on the plan where this note lives: how to turn it on, or what a plan with AI includes. */}
         {tab === "ai" && !aiOn ? <AiUnavailable ai={aiAccess} compact headingLevel={3} /> : null}
-        {tab === "insert" ? <InsertPanel editor={editor} disabled={readOnly} /> : null}
+        {tab === "insert" ? <InsertPanel editor={editor} disabled={readOnly} onDone={sheet ? onClose : undefined} /> : null}
         {tab === "format" ? <FormatPanel editor={editor} disabled={readOnly} /> : null}
         {tab === "style" ? <StylePanel documentId={documentId} meta={meta} disabled={readOnly} /> : null}
         {tab === "info" ? <InfoPanel documentId={documentId} meta={meta} onHistory={onHistory} actions={actions} disabled={readOnly} /> : null}

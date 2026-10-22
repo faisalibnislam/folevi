@@ -49,7 +49,7 @@
    chosen one is filled in the heading colour, never outlined. */
 :root[data-iphone] .iphone-format { --fmt-wash: color-mix(in oklab, var(--color-ink) 5.5%, transparent); --fmt-press: color-mix(in oklab, var(--color-ink) 11%, transparent); }
 :root[data-iphone] .iphone-fmt-style {
-  display: grid; place-items: center; flex: none; width: 72px; height: 56px; border-radius: var(--radius-panel);
+  display: grid; place-items: center; flex: none; min-width: 72px; min-height: 56px; padding: 0 12px; white-space: nowrap; border-radius: var(--radius-panel);
   background: var(--fmt-wash); color: var(--color-heading); transition: background-color 150ms, color 150ms, transform 150ms;
 }
 :root[data-iphone] .iphone-fmt-style:active { transform: scale(0.96); }

@@ -6,9 +6,8 @@ import type { WireScope } from "@folevi/editor-schema";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
-import { desktop } from "@/lib/desktop";
 import { copy, type LevelId } from "@/lib/e2ee/copy";
-import { getKeySession, useKeySession } from "@/lib/e2ee/keys";
+import { getKeySession, inNativeApp, useKeySession } from "@/lib/e2ee/keys";
 import { FULL_SWITCHES, useE2eeActions } from "./hooks";
 
 type Recheck = "passphrase" | "recoveryKey" | "passkey";
@@ -47,7 +46,7 @@ export function LowerLevelDialog({ open, onClose, scope, to, onDone }: { open: b
     }
   };
   const kinds = new Set(methods.map((m) => m.kind));
-  const options: Recheck[] = (["passphrase", "recoveryKey", "passkey"] as const).filter((k) => kinds.has(k) && !(k === "passkey" && desktop() !== null));
+  const options: Recheck[] = (["passphrase", "recoveryKey", "passkey"] as const).filter((k) => kinds.has(k) && !(k === "passkey" && inNativeApp()));
   return (
     <Dialog
       open={open}

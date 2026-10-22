@@ -204,6 +204,8 @@ export const copy = {
     passkeyCancelled: "The passkey wasn't used. Try again, or use another way to unlock.",
     passkeyUnsupported: "This browser's passkeys can't unlock encryption. Use another way, or set this up in Chrome, Safari or Firefox on a recent system.",
     passkeyMac: "To use your passkey, open Folevi in your browser and approve this Mac from there.",
+    /** In any native app: "this Mac", "this iPhone", "this iPad", "this phone". */
+    passkeyApp: (device: string) => `To use your passkey, open Folevi in your browser and approve ${device} from there.`,
     otherWays: "Other ways to unlock",
     trustTitle: "Your notes are unlocked",
     trustBrowser: { label: "Trust this browser", body: "You won't have to unlock again here. You can remove it in Settings > Devices." },

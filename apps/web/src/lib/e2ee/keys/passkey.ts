@@ -1,17 +1,18 @@
 // A passkey as a way to unlock (docs/E2EE_DESIGN.md §4.7.2): a credential of its own, made by this ceremony
 // (not the sign-in passkey), used only for its PRF output. The PRF output, through HKDF "passkey/wrap", wraps
-// the account master key. Offered only where the browser's passkeys support PRF; never in the Mac app
-// (`app://folevi` can't use app.folevi.com passkeys, and Electron has no dependable PRF; §14 Q2).
+// the account master key. Offered only where the browser's passkeys support PRF; never in a native app (the
+// Mac, iPhone and iPad, Android): their own origins can't use app.folevi.com passkeys and their web views have
+// no dependable PRF (§14 Q2).
 import { prfWrapKey, randomBytes, toBase64Url, fromBase64Url, openRecord, sealRecord } from "@folevi/local-store/e2ee";
-import { inMacApp } from "./macBridge";
+import { inNativeApp } from "./macBridge";
 
 export type PasskeyFailure = "unsupported" | "cancelled";
 
 type PrfResults = { prf?: { enabled?: boolean; results?: { first?: ArrayBuffer | ArrayBufferView } } };
 
-/** Whether this page can even try (WebAuthn present, a secure context, not the Mac app). */
+/** Whether this page can even try (WebAuthn present, a secure context, not a native app). */
 export function passkeysPossible(): boolean {
-  return typeof window !== "undefined" && typeof window.PublicKeyCredential === "function" && !!navigator.credentials && window.isSecureContext !== false && !inMacApp();
+  return typeof window !== "undefined" && typeof window.PublicKeyCredential === "function" && !!navigator.credentials && window.isSecureContext !== false && !inNativeApp();
 }
 
 /** The relying party: the site itself (app.folevi.com in production; app.localhost in development). */

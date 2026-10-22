@@ -2559,6 +2559,12 @@ export function useKeySession(): { state: LockState; methods: MethodSummary[] };
   sets the flag, forgets the key and reloads, so it continues in memory and that load wipes what was written
   before the choice; the person unlocks once more. `KeySession.publicBrowser()` tells the trust step to
   start on "public computer" there.
+- Native apps (integration): the iPhone and iPad app and the Android app implement the Mac's device-key
+  bridge (`foleviShell.e2ee`). Their devices register as kind `app` with the shell's platform (`mac`, `ios`,
+  `android`) and a label after the app and the device ("Folevi for iPhone on <name>", "Folevi for iPad",
+  "Folevi for Android on <name or model>", "Folevi for Mac"). Passkeys are offered in none of them (the
+  unlock screen says to approve "this iPhone" or "this phone" from a browser instead); helpers in
+  `keys/macBridge.ts`: `nativePlatform()`, `inNativeApp()`, `nativeE2ee()`, `nativeLabel()`, `thisDevice()`.
 
 ### WP7: Client router, transport, replica, composers, files
 

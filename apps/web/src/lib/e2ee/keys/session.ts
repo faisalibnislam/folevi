@@ -21,7 +21,7 @@ import {
 import { ulid } from "@folevi/editor-schema";
 import type { ShellE2ee } from "@/lib/shell/types";
 import { browserIdentity, idbKeyStore, memoryKeyStore, newBrowserDevice, persistable, type BrowserDeviceRecord, type DeviceIdentity, type DeviceKind, type KeyStore } from "./keystore";
-import { inMacApp, macE2ee, macIdentity, macLabel } from "./macBridge";
+import { devicePlatform, nativeE2ee, nativeIdentity, nativeLabel, thisDevice } from "./macBridge";
 import { openWithPassphrase } from "./passphrase";
 import { evaluatePrf, openWithPrf, passkeysPossible } from "./passkey";
 import { clearPublicDatabases, clearPublicLeftovers, markPublicSession, sessionIdentity, wasPublicSession } from "./publicMode";
@@ -125,11 +125,11 @@ function expectedOf(status: AccountStatus | null): Expected | null {
   return { x25519Pub: bytes(status.x25519Pub), ed25519Pub: bytes(status.ed25519Pub), amkCheck: bytes(status.amkCheck) };
 }
 
-function methodsOf(rows: WrapListRow[], myDeviceId: string, mac: boolean): MethodSummary[] {
+function methodsOf(rows: WrapListRow[], myDeviceId: string, thisLabel: string): MethodSummary[] {
   const defaults: Record<MethodKind, string> = { device: "Another device", recoveryKey: "Recovery key", passkey: "Passkey", passphrase: "Encryption passphrase" };
   return rows.map((w) => {
     const kind = w.kind as MethodKind;
-    const label = w.label || (kind === "device" && w.deviceId === myDeviceId ? (mac ? "This Mac" : "This browser") : defaults[kind]);
+    const label = w.label || (kind === "device" && w.deviceId === myDeviceId ? thisLabel : defaults[kind]);
     const m: MethodSummary = { publicId: w.publicId, kind, label, createdAt: w.createdAt };
     if (w.lastUsedAt != null) m.lastUsedAt = w.lastUsedAt;
     if (w.deviceId) m.deviceId = w.deviceId;
@@ -205,7 +205,7 @@ export class KeySessionImpl implements KeySession {
     const gen = this.generation;
     this.wrapsOff = b.server.watchWraps((rows) => {
       if (gen !== this.generation) return;
-      this.methods = methodsOf(rows, this.device?.deviceId ?? "", !!this.mac());
+      this.methods = methodsOf(rows, this.device?.deviceId ?? "", this.mac() ? `T${thisDevice().slice(1)}` : "This browser");
       this.emitter.emit();
     });
     this.offs.push(() => {
@@ -474,7 +474,7 @@ export class KeySessionImpl implements KeySession {
   /** This device as it will be trusted: the Mac's keys, or this browser's (made and kept on first use). */
   async deviceToTrust(freshId = false): Promise<DeviceIdentity> {
     const mac = this.mac();
-    if (mac) return macIdentity(mac);
+    if (mac) return nativeIdentity(mac);
     const rec = await this.browserRecord(true, freshId);
     return browserIdentity(rec!);
   }
@@ -497,10 +497,10 @@ export class KeySessionImpl implements KeySession {
   }
 
   label(kind: DeviceKind): string {
-    return kind === "app" ? macLabel() : browserLabel();
+    return kind === "app" ? nativeLabel() : browserLabel();
   }
   platform(): string {
-    return this.mac() || inMacApp() ? "mac" : "web";
+    return devicePlatform();
   }
 
   /** A browser's device record (made when `create`). */
@@ -543,7 +543,7 @@ export class KeySessionImpl implements KeySession {
   mac(): ShellE2ee | null {
     const b = this.binding;
     if (b && b.mac !== undefined) return b.mac;
-    return macE2ee();
+    return nativeE2ee();
   }
   private store(): KeyStore {
     // A public computer keeps no keys or wraps on disk (until someone trusts it).
@@ -553,7 +553,7 @@ export class KeySessionImpl implements KeySession {
   /** A device that holds a wrap here: the Mac's, or this browser's record once trusted. */
   private async trustedDevice(): Promise<DeviceIdentity | null> {
     const mac = this.mac();
-    if (mac) return macIdentity(mac);
+    if (mac) return nativeIdentity(mac);
     const rec = await this.browserRecord(false);
     return rec && rec.trusted ? browserIdentity(rec) : null;
   }

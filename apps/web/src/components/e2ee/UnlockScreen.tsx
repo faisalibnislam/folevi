@@ -4,9 +4,8 @@ import { useId, useState } from "react";
 import { ArrowLeft, KeyRound, LockKeyhole, ScrollText, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useRadioGroup } from "@/lib/a11y/radioGroup";
-import { desktop } from "@/lib/desktop";
 import { copy } from "@/lib/e2ee/copy";
-import { getKeySession } from "@/lib/e2ee/keys";
+import { getKeySession, inNativeApp, thisDevice } from "@/lib/e2ee/keys";
 import { NewDeviceApprovalDialog } from "./ApproveDeviceDialog";
 
 type View = "choose" | "passphrase" | "recovery" | "trust";
@@ -22,7 +21,8 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
   const [view, setView] = useState<View>("choose");
   const [approving, setApproving] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const onMac = desktop() !== null;
+  // No passkeys in the native apps (Mac, iPhone and iPad, Android): they unlock another way (§6.11).
+  const onMac = inNativeApp();
   const unlocked = () => {
     setApproving(false);
     setNote(null);
@@ -96,7 +96,7 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
                     {note}
                   </p>
                 ) : null}
-                {onMac ? <p className="mt-1 text-[13px] text-muted">{u.passkeyMac}</p> : null}
+                {onMac ? <p className="mt-1 text-[13px] text-muted">{u.passkeyApp(thisDevice())}</p> : null}
               </div>
             ) : (
               <SecretForm kind={view} onBack={() => setView("choose")} onUnlocked={unlocked} />

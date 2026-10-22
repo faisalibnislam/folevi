@@ -20,4 +20,4 @@ export { useApprovals, useKeySession, useRecoveryMethods } from "./useKeys";
 export { convexKeysServer, type KeysServer } from "./server";
 export { passphraseProblem, MIN_PASSPHRASE, type PassphraseProblem } from "./passphrase";
 export { passkeysPossible } from "./passkey";
-export { inMacApp, macE2ee } from "./macBridge";
+export { inMacApp, inNativeApp, macE2ee, nativeE2ee, nativeLabel, nativePlatform, nativeProduct, thisDevice, type NativePlatform } from "./macBridge";

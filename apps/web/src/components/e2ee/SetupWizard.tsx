@@ -8,9 +8,8 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { useAppState } from "@/lib/app/state";
-import { desktop } from "@/lib/desktop";
 import { copy, type LevelId, type MethodId, type SwitchId } from "@/lib/e2ee/copy";
-import { passkeysPossible, passphraseProblem, setup, useKeySession, type MethodSummary } from "@/lib/e2ee/keys";
+import { inNativeApp, passkeysPossible, passphraseProblem, setup, useKeySession, type MethodSummary } from "@/lib/e2ee/keys";
 import { DEFAULT_SWITCHES, FULL_SWITCHES, useE2eeActions, useMigrationProgress, type Switches } from "./hooks";
 import { RecoveryKeyPanel } from "./RecoveryKeyPanel";
 import { MigrationBar } from "./MigrationProgress";
@@ -122,7 +121,7 @@ export function SetupWizard({
   };
   const kinds = methodKinds(methods);
   const enough = kinds.size >= 2;
-  const onMac = desktop() !== null;
+  const onMac = inNativeApp();
   // Where WebAuthn isn't there at all, the passkey row says so instead of offering Add.
   const passkeyHere = passkeysPossible();
   const chosen = level === "full" ? FULL_SWITCHES : (switches ?? DEFAULT_SWITCHES);

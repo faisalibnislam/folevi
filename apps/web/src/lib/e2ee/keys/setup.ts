@@ -17,7 +17,7 @@ import {
 import { ulid, type WireScope } from "@folevi/editor-schema";
 import { keyRingImpl } from "./keyring";
 import type { DeviceIdentity } from "./keystore";
-import { inMacApp } from "./macBridge";
+import { inNativeApp } from "./macBridge";
 import { newKdf, passphraseProblem, wrapWithPassphrase } from "./passphrase";
 import { createPrfCredential, evaluatePrf, passkeysPossible, wrapWithPrf } from "./passkey";
 import { groupsMatch, newRecoveryKey, wrapWithRecoveryKey } from "./recoveryKey";
@@ -185,9 +185,9 @@ export const setup = {
     });
   },
 
-  /** A passkey with PRF (§4.7.2). Not in the Mac app. */
+  /** A passkey with PRF (§4.7.2). Not in the native apps (Mac, iPhone and iPad, Android). */
   async addPasskey(label: string): Promise<"ok" | "unsupported" | "cancelled"> {
-    if (inMacApp() || !passkeysPossible()) return "unsupported";
+    if (inNativeApp() || !passkeysPossible()) return "unsupported";
     const u = sessionImpl().unlocked();
     const r = await createPrfCredential(u.email);
     if (typeof r === "string") return r;

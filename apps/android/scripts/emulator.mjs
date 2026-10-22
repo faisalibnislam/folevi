@@ -6,6 +6,7 @@
 //   node scripts/emulator.mjs install [serial]             install the debug build, adb reverse for the dev server
 //   node scripts/emulator.mjs run [serial]                 install, then open the app
 //   node scripts/emulator.mjs eval '<js>' [serial]         run JavaScript in the app's web view (debug builds)
+//   node scripts/emulator.mjs click '<text>' [serial]      click the button or link with that name in the web view
 //   node scripts/emulator.mjs shot <file.png> [serial]     screenshot
 //   node scripts/emulator.mjs theme <light|dark> [serial]  the system's dark theme on or off
 //   node scripts/emulator.mjs unit                         Kotlin unit tests (gradle testDebugUnitTest)
@@ -70,6 +71,21 @@ export async function evaluate(serial, expression) {
   return result;
 }
 
+/** A script that clicks the visible control whose label or text is (or starts with) `name`. */
+export function clickScript(name) {
+  return `const want = ${JSON.stringify(name)};
+  const all = [...document.querySelectorAll('button, a, [role="button"], [role="menuitem"], [role="tab"], [role="option"], [role="link"], label, summary')];
+  const seen = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !e.closest('[aria-hidden="true"], [inert]'); };
+  const label = (e) => (e.getAttribute('aria-label') || e.textContent || '').replace(/\\s+/g, ' ').trim();
+  const hits = all.filter((e) => seen(e) && (label(e) === want || label(e).startsWith(want)));
+  hits.sort((a, b) => (label(a) === want ? 0 : 1) - (label(b) === want ? 0 : 1) || label(a).length - label(b).length);
+  const el = hits[0];
+  if (!el) return false;
+  el.scrollIntoView({ block: 'center' });
+  el.click();
+  return true;`;
+}
+
 function gradle(...tasks) {
   execFileSync(join(root, "android/gradlew"), tasks, { cwd: join(root, "android"), env, stdio: "inherit" });
 }
@@ -125,6 +141,12 @@ async function main() {
     case "eval": {
       const value = await evaluate(serialOf(args[1]), args[0] ?? "return location.href");
       console.log(typeof value === "string" ? value : JSON.stringify(value, null, 2));
+      break;
+    }
+    case "click": {
+      const ok = await evaluate(serialOf(args[1]), clickScript(args[0] ?? ""));
+      if (!ok) throw new Error(`nothing to click called ${args[0]}`);
+      console.log("clicked", args[0]);
       break;
     }
     case "shot": {

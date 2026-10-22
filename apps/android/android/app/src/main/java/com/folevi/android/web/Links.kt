@@ -1,6 +1,6 @@
 package com.folevi.android.web
 
-import android.net.Uri
+import java.net.URI
 
 /**
  * Where a link the page follows goes (the Android twin of apps/desktop/src/urls.ts linkTarget):
@@ -29,7 +29,7 @@ object Links {
 
     fun target(raw: String, appOrigin: String, serviceOrigin: String, marketingHosts: Set<String> = setOf("folevi.com", "www.folevi.com")): Target {
         if (raw.length > 8192) return Target.Ignore
-        val uri = runCatching { Uri.parse(raw) }.getOrNull() ?: return Target.Ignore
+        val uri = parse(raw) ?: return Target.Ignore
         val scheme = uri.scheme?.lowercase() ?: return Target.Ignore
         return when (scheme) {
             "folevi" -> Target.DeepLink(raw)
@@ -37,11 +37,11 @@ object Links {
             "http", "https" -> {
                 val origin = originOf(uri)
                 val path = buildString {
-                    append(uri.encodedPath?.takeIf { it.isNotEmpty() } ?: "/")
-                    uri.encodedQuery?.let { append('?').append(it) }
-                    uri.encodedFragment?.let { append('#').append(it) }
+                    append(uri.rawPath?.takeIf { it.isNotEmpty() } ?: "/")
+                    uri.rawQuery?.let { append('?').append(it) }
+                    uri.rawFragment?.let { append('#').append(it) }
                 }
-                val head = uri.pathSegments.firstOrNull().orEmpty()
+                val head = segments(uri).firstOrNull().orEmpty()
                 when {
                     origin == appOrigin -> Target.App(path)
                     isPricing(uri, serviceOrigin, marketingHosts) -> Target.Ignore
@@ -54,14 +54,22 @@ object Links {
     }
 
     /** Folevi's pricing page is never opened from the app (no buying in the app, docs/ANDROID_PLAN.md). */
-    private fun isPricing(uri: Uri, serviceOrigin: String, marketingHosts: Set<String>): Boolean {
-        val first = uri.pathSegments.firstOrNull()?.lowercase() ?: return false
+    private fun isPricing(uri: URI, serviceOrigin: String, marketingHosts: Set<String>): Boolean {
+        val first = segments(uri).firstOrNull()?.lowercase() ?: return false
         if (first != "pricing" && first != "checkout" && first != "billing") return false
         val host = uri.host?.lowercase() ?: return false
         return host in marketingHosts || originOf(uri) == serviceOrigin || host.endsWith(".folevi.com")
     }
 
-    fun originOf(uri: Uri): String {
+    fun parse(raw: String): URI? = runCatching { URI(raw.trim()) }.getOrNull()
+
+    fun segments(uri: URI): List<String> = (uri.rawPath ?: "").split('/').filter { it.isNotEmpty() }.map { java.net.URLDecoder.decode(it.replace("+", "%2B"), "UTF-8") }
+
+    fun originOf(raw: String): String = parse(raw)?.let { originOf(it) } ?: ""
+
+    fun originOf(uri: android.net.Uri): String = originOf(uri.toString())
+
+    fun originOf(uri: URI): String {
         val scheme = uri.scheme?.lowercase() ?: return ""
         val host = uri.host?.lowercase() ?: return ""
         val port = uri.port
@@ -74,16 +82,16 @@ object Links {
      * becomes folevi://d/<id> (the block or comment kept), other product pages folevi://<page>. Null for anything else.
      */
     fun asDeepLink(raw: String, serviceOrigin: String): String? {
-        val uri = runCatching { Uri.parse(raw) }.getOrNull() ?: return null
+        val uri = parse(raw) ?: return null
         val scheme = uri.scheme?.lowercase()
         if (scheme == "folevi") return raw.takeIf { it.length <= 600 }
         if (scheme != "https" && scheme != "http") return null
         if (originOf(uri) != serviceOrigin) return null
-        val segments = uri.pathSegments
+        val segments = segments(uri)
         if (segments.isEmpty() || segments.size > 3) return null
         if (segments.any { !Regex("^[A-Za-z0-9_-]{1,64}$").matches(it) }) return null
         if (segments[0] !in setOf("d", "documents", "tasks", "calendar", "inbox", "settings", "foli-ai", "trash", "templates", "help")) return null
-        val hash = uri.encodedFragment?.let { "#$it" }.orEmpty()
+        val hash = uri.rawFragment?.let { "#$it" }.orEmpty()
         return "folevi://" + segments.joinToString("/") + hash
     }
 }

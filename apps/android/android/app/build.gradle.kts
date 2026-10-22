@@ -90,6 +90,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.orgjson)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.uiautomator)

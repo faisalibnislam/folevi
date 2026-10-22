@@ -15,12 +15,15 @@ class FoleviApp : Application() {
         private set
     lateinit var auth: AuthBridge
         private set
+    lateinit var library: com.folevi.android.library.LibraryService
+        private set
 
     override fun onCreate() {
         super.onCreate()
         instance = this
         settings = ShellSettings(this)
         secrets = SecretStore(File(noBackupFilesDir, "secrets"), KeystoreCipher("folevi.secrets.v1"))
+        library = com.folevi.android.library.LibraryService(noBackupFilesDir, this)
         auth = AuthBridge(
             serviceUrl = BuildConfig.SERVICE_URL,
             redirectUri = BuildConfig.AUTH_REDIRECT_URI,

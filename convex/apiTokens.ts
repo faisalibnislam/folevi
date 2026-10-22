@@ -186,9 +186,9 @@ export const MAX_DEVICES = 10;
 export const DEVICE_SCOPES: McpScope[] = ["notes:read", "notes:write", "tasks:read", "tasks:write"];
 const DEVICE_ID = /^[A-Za-z0-9-]{8,64}$/;
 
-/** "Folevi for iPhone (iPhone 18 Pro)": the family, and the model when the app knows its name. */
+/** "Folevi for iPhone (iPhone 18 Pro)", "Folevi for Android (Pixel 9)": the family, and the model when the app knows it. */
 export function deviceTokenName(family: string, model: string): string {
-  const kind = family === "iPad" ? "iPad" : "iPhone";
+  const kind = family === "iPad" ? "iPad" : family === "Android" ? "Android" : "iPhone";
   const named = model.replace(/[^\p{L}\p{N} .,()'-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 32);
   return named && named !== kind ? `Folevi for ${kind} (${named})` : `Folevi for ${kind}`;
 }

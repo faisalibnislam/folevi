@@ -28,7 +28,11 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: "https",
     hostname: "localhost",
+    // Straight to the app's start page, as the Mac app opens /documents.
+    appStartPath: "/documents",
   },
+  // Capacitor's own logging would write what crosses the bridge (note text, library files) to the system log.
+  loggingBehavior: "none",
 };
 
 export default config;

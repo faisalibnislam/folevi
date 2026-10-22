@@ -58,6 +58,8 @@ class MainActivity : BridgeActivity() {
         registerPlugin(ShellPlugin::class.java)
         registerPlugin(AuthPlugin::class.java)
         registerPlugin(SecretsPlugin::class.java)
+        registerPlugin(com.folevi.android.extras.NativePlugin::class.java)
+        registerPlugin(com.folevi.android.library.LibraryPlugin::class.java)
         applyBars(systemDark())
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this, back)
@@ -79,7 +81,15 @@ class MainActivity : BridgeActivity() {
                 serviceOrigin = serviceOrigin(),
                 openBrowser = { openBrowser(it) },
                 deepLink = { deliverLink(it) },
-                files = null,
+                files = com.folevi.android.library.LibraryFiles {
+                    val lib = app.library
+                    when (lib.kind) {
+                        "device" -> lib.deviceFs.root
+                        "dropbox" -> lib.mirror("dropbox").root
+                        "gdrive" -> lib.mirror("googleDrive").root
+                        else -> null
+                    }
+                },
             ),
         )
     }
@@ -176,7 +186,7 @@ class MainActivity : BridgeActivity() {
         val wv = bridge?.webView ?: return
         ready = false
         installScript(wv)
-        wv.loadUrl("$APP_ORIGIN/")
+        wv.loadUrl("$APP_ORIGIN/documents")
     }
 
     /** The bridge script is up and listening: commands that waited (a link that opened the app) go now. */
@@ -244,7 +254,7 @@ class MainActivity : BridgeActivity() {
 
     // ---------------------------------------------------------------- links
 
-    private fun serviceOrigin(): String = Links.originOf(Uri.parse(BuildConfig.SERVICE_URL))
+    private fun serviceOrigin(): String = Links.originOf(BuildConfig.SERVICE_URL)
 
     private fun tabColours(): CustomTabColorSchemeParams {
         val dark = pageDark ?: systemDark()

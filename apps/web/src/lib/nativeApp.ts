@@ -31,7 +31,7 @@ export type Haptic = "light" | "medium" | "heavy" | "success" | "warning" | "err
 export interface NativeDevice {
   /** The app's install id on this device. */
   id: string;
-  family: "iPhone" | "iPad";
+  family: "iPhone" | "iPad" | "Android";
   /** "iPhone 18 Pro", or "" when the app doesn't know the model's name. */
   model: string;
   /** The account the app's token is for, and the token's id; null when it holds none. */

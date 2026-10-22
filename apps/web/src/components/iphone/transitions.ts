@@ -1,22 +1,30 @@
 "use client";
 
 // The iPhone app's push and pop: a new screen slides in from the right over the one you were on (which
-// eases left and dims), and Back slides the top screen away to the right. The screen that leaves is a
+// moves 30 % left and dims to 12 % black), and Back slides the top screen away to the right, both on UIKit's
+// navigation spring (critically damped, response 0.42 s; docs/IOS_POLISH_PLAN.md §2.4). With Reduce Motion the
+// new screen cross-fades in over 150 ms instead. The screen that leaves is a
 // picture of itself (a copy of its elements, kept just long enough to animate), taken the moment the router
 // moves (lib/app/historyNav.ts tells us), before React draws the next one.
 //
 // The edge swipe isn't animated here: WebKit draws its own interactive swipe (allowsBackForwardNavigationGestures
-// in FoleviViewController), so only Back pressed in the bar plays the pop. Switching tabs never animates
-// (as on iOS), and neither does anything with reduced motion on.
+// in FoleviViewController; it follows the finger 1:1 and finishes with its release speed), so only Back pressed
+// in the bar plays the pop. Switching tabs never animates (as on iOS).
 
 import { onHistoryMove } from "@/lib/app/historyNav";
+import { SPRINGS, springCss } from "@/lib/native/physics";
 
-const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
-const DURATION = 420;
+/** The navigation spring as a CSS timing function (Safari 17.2 and later), else UIKit's older push curve. */
+const PUSH = springCss(SPRINGS.push);
+const supportsLinear = () => typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("transition-timing-function", "linear(0, 1)");
+const timing = (): KeyframeAnimationOptions => (supportsLinear() ? { duration: PUSH.ms, easing: PUSH.easing } : { duration: 420, easing: "cubic-bezier(0.32, 0.72, 0, 1)" });
+/** How far the screen underneath moves, and how dark it gets. */
+const UNDER_SHIFT = "-30%";
+const UNDER_DIM = "brightness(0.88)";
 
 let backButton = false;
 let tabSwitch = false;
-let pending: { kind: "push" | "pop"; picture: HTMLElement; scrolls: number[] } | null = null;
+let pending: { kind: "push" | "pop"; picture: HTMLElement; scrolls: number[]; fade?: boolean } | null = null;
 let stage: HTMLElement | null = null;
 let layer: HTMLElement | null = null;
 
@@ -54,10 +62,15 @@ function onMove(kind: "push" | "pop") {
   backButton = false;
   tabSwitch = false;
   pending = null;
-  if (!stage || !layer || reduced() || fromTab) return;
+  if (!stage || !layer || fromTab) return;
   if (kind === "pop" && !fromBack) return;
   const current = stage.firstElementChild as HTMLElement | null;
   if (!current) return;
+  // (Reduce Motion: only a cross-fade, which needs no picture.)
+  if (reduced()) {
+    pending = { kind, picture: document.createElement("div"), scrolls: [], fade: true };
+    return;
+  }
   pending = { kind, picture: picture(current), scrolls: scrollersOf(current).map((s) => s.scrollTop) };
 }
 
@@ -82,23 +95,27 @@ export function playTransition(entering: HTMLElement | null) {
   const move = pending;
   pending = null;
   if (!move || !entering || !layer) return;
+  if (move.fade) {
+    entering.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "ease-out" });
+    return;
+  }
   const { kind, picture: leaving, scrolls } = move;
   layer.replaceChildren(leaving);
   layer.style.zIndex = kind === "pop" ? "2" : "0";
   scrollersOf(leaving).forEach((s, i) => (s.scrollTop = scrolls[i] ?? 0));
-  const timing = { duration: DURATION, easing: EASE };
+  const t = timing();
   const done = () => {
     if (leaving.parentElement === layer) leaving.remove();
   };
   const shadow = "-12px 0 32px rgb(0 0 0 / 0.14)";
   if (kind === "push") {
-    entering.animate([{ transform: "translateX(100%)", boxShadow: shadow }, { transform: "translateX(0)", boxShadow: "0 0 0 transparent" }], timing);
-    const out = leaving.animate([{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-28%)", filter: "brightness(0.94)" }], timing);
+    entering.animate([{ transform: "translateX(100%)", boxShadow: shadow }, { transform: "translateX(0)", boxShadow: "0 0 0 transparent" }], t);
+    const out = leaving.animate([{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: `translateX(${UNDER_SHIFT})`, filter: UNDER_DIM }], t);
     out.onfinish = done;
     out.oncancel = done;
   } else {
-    entering.animate([{ transform: "translateX(-28%)", filter: "brightness(0.94)" }, { transform: "translateX(0)", filter: "brightness(1)" }], timing);
-    const out = leaving.animate([{ transform: "translateX(0)", boxShadow: shadow }, { transform: "translateX(100%)", boxShadow: shadow }], timing);
+    entering.animate([{ transform: `translateX(${UNDER_SHIFT})`, filter: UNDER_DIM }, { transform: "translateX(0)", filter: "brightness(1)" }], t);
+    const out = leaving.animate([{ transform: "translateX(0)", boxShadow: shadow }, { transform: "translateX(100%)", boxShadow: shadow }], t);
     out.onfinish = done;
     out.oncancel = done;
   }

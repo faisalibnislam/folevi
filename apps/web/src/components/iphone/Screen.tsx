@@ -14,8 +14,12 @@ export interface IphoneScreenOptions {
   title?: string;
   /** A large title at the top of the content (default), or only the small one in the bar (a note). */
   large?: boolean;
-  /** A line under the large title ("Personal", "Today · Friday"). */
+  /** A line under the large title ("Today · Friday"). */
   subtitle?: ReactNode;
+  /** A small caption above the large title (the workspace you're in, on Home). */
+  eyebrow?: ReactNode;
+  /** Shown in the bar's middle instead of the small title, all the time ("2 selected" in Select mode). */
+  status?: ReactNode;
   /** Replaces the Back button (the avatar on Home, Tasks and Calendar). */
   leading?: ReactNode;
   /** The screen's actions, top right (a glass pill). */
@@ -59,11 +63,14 @@ function parentOf(route: Route): string {
  * which scrolls under the bar and the floating tab bar. Taps on the current tab scroll it back to the top.
  */
 export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }: { options: IphoneScreenOptions; fallbackTitle?: string; children: ReactNode; overlay?: ReactNode; tint?: string }) {
-  const { title = fallbackTitle ?? "", large = true, subtitle, leading, trailing, center, root, back, collapseAt, edge = "canvas", header, innerScroll, grouped } = options;
+  const { title = fallbackTitle ?? "", large = true, subtitle, eyebrow, status, leading, trailing, center, root, back, collapseAt, edge = "canvas", header, innerScroll, grouped } = options;
   const { route, canBack, back: goBackInHistory, navigate } = useAppRouter();
   const rootRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const smallRef = useRef<HTMLParagraphElement>(null);
+  const leadRef = useRef<HTMLDivElement>(null);
+  const trailRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { pathname, search } = useAppRouter();
@@ -111,9 +118,14 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
       // (Kept as it scrolls, not when the screen goes: a screen drawn again while loading has scrolled nowhere.)
       if (place.current) saveScroll(place.current.tab, place.current.at, hrefRef.current, top);
       const t = titleRef.current;
-      const at = collapseAt ?? (t && mainRef.current ? t.offsetTop + t.offsetHeight - (parseFloat(getComputedStyle(mainRef.current).paddingTop) || 0) : 60);
-      setCollapsed(top > Math.max(8, at));
-      setScrolled(top > 2);
+      const at = Math.max(8, collapseAt ?? (t && mainRef.current ? t.offsetTop + t.offsetHeight - (parseFloat(getComputedStyle(mainRef.current).paddingTop) || 0) : 60));
+      setCollapsed(top > at - 12);
+      // The bar's material once anything has passed under it (iOS: after a few points).
+      setScrolled(top > 4);
+      // The small title fades in over the last 12 points of the large one going under the bar, with the
+      // scroll (not on a timer), as UIKit's navigation bar does.
+      const small = smallRef.current;
+      if (small && !small.hasAttribute("data-status")) small.style.setProperty("--title-in", String(Math.min(1, Math.max(0, (top - (at - 12)) / 12))));
     };
     const onScroll = (e: Event) => {
       cancelAnimationFrame(frame);
@@ -133,6 +145,40 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
     };
   }, [collapseAt, innerScroll]);
 
+  // The small title stays centred on the screen but never runs under the bar's buttons: as wide as the room
+  // between them allows on its narrower side.
+  useEffect(() => {
+    const small = smallRef.current;
+    const lead = leadRef.current;
+    const trail = trailRef.current;
+    if (!small || !lead || !trail) return;
+    const fit = () => {
+      const mid = window.innerWidth / 2;
+      // (A `display: contents` wrapper has no box of its own: its children count.)
+      const boxes = (el: Element): Element[] => [...el.children].flatMap((c) => (getComputedStyle(c).display === "contents" ? boxes(c) : [c]));
+      const kids = (el: HTMLElement) => boxes(el).map((c) => c.getBoundingClientRect()).filter((r) => r.width > 0);
+      const l = kids(lead);
+      const r = kids(trail);
+      const left = l.length ? Math.max(...l.map((x) => x.right)) : lead.getBoundingClientRect().left;
+      const right = r.length ? Math.min(...r.map((x) => x.left)) : trail.getBoundingClientRect().right;
+      small.style.maxWidth = `${Math.max(60, 2 * Math.min(mid - left, right - mid) - 16)}px`;
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(lead);
+    ro.observe(trail);
+    for (const c of [...lead.children, ...trail.children]) ro.observe(c);
+    const mo = new MutationObserver(fit);
+    mo.observe(lead, { childList: true, subtree: true });
+    mo.observe(trail, { childList: true, subtree: true });
+    window.addEventListener("resize", fit);
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+      window.removeEventListener("resize", fit);
+    };
+  }, []);
+
   const goBack = useCallback(() => {
     if (canBack) {
       markBackButton();
@@ -150,25 +196,11 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
       className={`relative flex min-h-0 flex-1 flex-col pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ${tint ? "ui-view-tint" : ""} ${grouped ? "bg-[var(--iphone-grouped)]" : ""}`}
       style={tint ? ({ ["--view-tint" as string]: tint } as React.CSSProperties) : undefined}
     >
-      {/* The fade behind the bar, once content scrolls under it: a soft blur that clears towards the content. */}
-      <div
-        aria-hidden
-        data-iphone-bar-fade=""
-        className={`pointer-events-none absolute inset-x-0 top-0 z-20 h-[calc(env(safe-area-inset-top)+68px)] transition-opacity duration-200 ${scrolled ? "opacity-100" : "opacity-0"}`}
-        style={{
-          // Over a note ("clear") a lighter veil of the canvas, so the small title still reads over its text.
-          background:
-            edge === "canvas"
-              ? `linear-gradient(to bottom, ${grouped ? "var(--iphone-grouped)" : "var(--color-canvas)"} 0%, color-mix(in oklab, ${grouped ? "var(--iphone-grouped)" : "var(--color-canvas)"} 82%, transparent) 55%, transparent 100%)`
-              : "linear-gradient(to bottom, color-mix(in oklab, var(--color-canvas) 92%, transparent) 0%, color-mix(in oklab, var(--color-canvas) 80%, transparent) 70%, transparent 100%)",
-          WebkitBackdropFilter: "blur(12px)",
-          backdropFilter: "blur(12px)",
-          WebkitMaskImage: `linear-gradient(to bottom, #000 0%, #000 ${edge === "canvas" ? 50 : 72}%, transparent 100%)`,
-          maskImage: `linear-gradient(to bottom, #000 0%, #000 ${edge === "canvas" ? 50 : 72}%, transparent 100%)`,
-        }}
-      />
+      {/* The bar's material once content scrolls under it: frosted, in the screen's own colour (a folder's
+          tint, Settings' grey), with a hairline at its foot (globals.css, .iphone-bar). */}
+      <div aria-hidden data-iphone-bar-fade="" data-surface={tint ? "tint" : grouped ? "grouped" : edge === "clear" ? "clear" : "canvas"} data-on={scrolled ? "" : undefined} className="iphone-bar" />
       <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 px-4 pt-[calc(env(safe-area-inset-top)+4px)] pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))]">
-        <div className="pointer-events-auto flex min-w-11 flex-1 basis-0 items-center">
+        <div ref={leadRef} className="pointer-events-auto flex min-w-11 flex-1 basis-0 items-center">
           {(stacked ? null : leading) ??
             (showBack ? (
               <GlassCircle label="Back" onClick={goBack}>
@@ -181,27 +213,33 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
         </div>
         {/* The small title, centred on the screen (not between the bar's two sides, which differ in width). */}
         <p
-          aria-hidden={!smallTitle}
-          className={`pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+4px)] flex h-11 max-w-[50%] -translate-x-1/2 items-center text-[17px] font-semibold text-heading transition-[opacity,transform] duration-200 ${smallTitle ? "opacity-100" : "translate-y-1 opacity-0"}`}
+          ref={smallRef}
+          aria-hidden={status ? undefined : !smallTitle}
+          data-status={status ? "" : undefined}
+          style={status ? ({ ["--title-in" as string]: 1 } as React.CSSProperties) : undefined}
+          className={`iphone-small-title pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+4px)] flex h-11 -translate-x-1/2 items-center text-[17px] font-semibold leading-[22px] text-heading`}
         >
-          <span className="truncate">{title}</span>
+          <span className="truncate">{status ?? title}</span>
         </p>
-        <div className="pointer-events-auto flex min-w-11 flex-1 basis-0 items-center justify-end gap-2">{trailing}</div>
+        <div ref={trailRef} className="pointer-events-auto flex min-w-11 flex-1 basis-0 items-center justify-end gap-2">
+          {trailing}
+        </div>
       </header>
       <main
         id="main"
         ref={mainRef}
         tabIndex={-1}
-        className={`min-h-0 flex-1 outline-none ${innerScroll ? "flex flex-col overflow-hidden" : "overflow-y-auto overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] pt-[calc(env(safe-area-inset-top)+52px)]"}`}
+        className={`min-h-0 flex-1 outline-none ${innerScroll ? "flex flex-col overflow-hidden" : "overflow-y-auto overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+96px)] pt-[calc(env(safe-area-inset-top)+52px)]"}`}
       >
         {innerScroll ? (
           <h1 className="sr-only">{title}</h1>
         ) : large ? (
-          <div className="px-5 pb-1 pt-2">
+          <div className="px-5 pb-1.5 pt-1">
+            {eyebrow ? <p className="ui-caption-caps truncate">{eyebrow}</p> : null}
             <h1 ref={titleRef} className="ui-large-title">
               {title}
             </h1>
-            {subtitle ? <div className="mt-0.5 text-[15px] text-muted">{subtitle}</div> : null}
+            {subtitle ? <div className="mt-0.5 text-[15px] leading-5 text-muted">{subtitle}</div> : null}
           </div>
         ) : (
           <h1 className="sr-only">{title}</h1>
@@ -209,6 +247,8 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
         {header}
         {children}
       </main>
+      {/* Content fades out above the floating tab bar (globals.css, .iphone-tab-edge). */}
+      {innerScroll ? null : <div aria-hidden data-surface={tint ? "tint" : grouped ? "grouped" : "canvas"} className="iphone-tab-edge" />}
       {overlay}
     </div>
   );

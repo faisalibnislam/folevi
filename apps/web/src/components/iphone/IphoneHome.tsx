@@ -107,7 +107,8 @@ export function IphoneHome() {
       iphone={{
         title: "Home",
         root: true,
-        subtitle: place,
+        // The place shows in the avatar; only a workspace names itself above the title.
+        eyebrow: workspace ? workspace.name : undefined,
         leading: <RootAvatar />,
         trailing: (
           <RootPill
@@ -122,13 +123,13 @@ export function IphoneHome() {
       }}
     >
       {recent === undefined ? (
-        <div className="flex gap-3 overflow-hidden px-4 pb-4 pt-3" aria-busy aria-label="Loading">
+        <div className="flex gap-3.5 overflow-hidden px-4 pb-6 pt-3" aria-busy aria-label="Loading">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="aspect-[25/27] w-[156px] flex-none animate-pulse rounded-panel bg-sunken motion-reduce:animate-none" />
+            <div key={i} className="aspect-[25/27] w-[156px] flex-none animate-pulse rounded-container bg-sunken motion-reduce:animate-none" />
           ))}
         </div>
       ) : recent.length ? (
-        <ul aria-label="Recent notes" data-iphone-tappable="" className="flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-6 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul aria-label="Recent notes" data-iphone-tappable="" className="flex snap-x snap-mandatory scroll-px-4 gap-3.5 overflow-x-auto px-4 pb-6 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {recent.map((d) => (
             <RecentCard key={d.id} doc={d} />
           ))}
@@ -166,7 +167,7 @@ export function IphoneHome() {
         empty={org && !topFolders.length ? <EmptyBox>Folders keep related notes together</EmptyBox> : undefined}
       >
         {/* The app's own folder cards, side by side, as on Home in the browser and the Mac app. */}
-        <ul aria-label="Folders" data-iphone-tappable="" className="flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 pb-8 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul aria-label="Folders" data-iphone-tappable="" className="flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-7 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {topFolders.map((f) => {
             const summary = summaries.get(f.id);
             return (
@@ -186,7 +187,7 @@ export function IphoneHome() {
         </HomeSection>
       ) : null}
 
-      <nav aria-label="More" data-iphone-tappable="" className="mt-7">
+      <nav aria-label="More" data-iphone-tappable="" className="mt-5">
         <ListRow href="/templates" icon={<LayoutTemplate />} label="Templates" />
         <ListRow href="/archive" icon={<Archive />} label="Archive" />
         <ListRow href="/trash" icon={<Trash2 />} label="Trash" />

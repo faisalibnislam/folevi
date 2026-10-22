@@ -73,7 +73,7 @@ test("iPhone: holding a folder tile, the more button, and the Notifications shee
   const [button, menuBox] = [(await more.boundingBox())!, (await moreMenu.boundingBox())!];
   expect(Math.abs(menuBox.x + menuBox.width - (button.x + button.width))).toBeLessThan(10);
   expect(menuBox.y).toBeGreaterThan(button.y + button.height);
-  expect(await moreMenu.evaluate((m) => Math.abs(parseFloat(getComputedStyle(m).transformOrigin) - m.offsetWidth) < 1.5 && parseFloat(getComputedStyle(m).transformOrigin.split(" ")[1]!) === 0)).toBe(true);
+  expect(await moreMenu.evaluate((m) => Math.abs(parseFloat(getComputedStyle(m).transformOrigin) - (m as HTMLElement).offsetWidth) < 1.5 && parseFloat(getComputedStyle(m).transformOrigin.split(" ")[1]!) === 0)).toBe(true);
   await page.keyboard.press("Escape");
 
   // A folder to hold.

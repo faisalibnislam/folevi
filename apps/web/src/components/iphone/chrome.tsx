@@ -183,8 +183,37 @@ function useKeyboardBackdrop(keyboard: boolean) {
   }, [keyboard]);
 }
 
+/** Keys only a hardware keyboard sends while moving around (the on-screen keyboard's typing doesn't count). */
+const NAVIGATION_KEYS = new Set(["Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape", "PageUp", "PageDown", "Home", "End"]);
+
+/**
+ * How focus is being moved, on <html data-input>: "key" once a hardware keyboard moves it (Tab, arrows, a
+ * shortcut), gone again at the next touch. Focus rings show only for "key" (globals.css), so a tap never leaves
+ * one behind, as on iOS. Returns the function that stops (the iPad layout can install it too).
+ */
+export function installInputModality(): () => void {
+  const root = document.documentElement;
+  const key = (e: KeyboardEvent) => {
+    if (!e.isTrusted) return;
+    if (NAVIGATION_KEYS.has(e.key) || ((e.metaKey || e.ctrlKey) && e.key.length === 1)) root.dataset.input = "key";
+  };
+  const touch = (e: Event) => {
+    if (e.isTrusted && root.dataset.input) delete root.dataset.input;
+  };
+  window.addEventListener("keydown", key, true);
+  window.addEventListener("pointerdown", touch, true);
+  window.addEventListener("touchstart", touch, { capture: true, passive: true });
+  return () => {
+    window.removeEventListener("keydown", key, true);
+    window.removeEventListener("pointerdown", touch, true);
+    window.removeEventListener("touchstart", touch, true);
+    delete root.dataset.input;
+  };
+}
+
 export function IphoneChromeProvider({ children }: { children: ReactNode }) {
   const keyboard = useKeyboardOpen();
+  useEffect(() => installInputModality(), []);
   useCaretInView(keyboard);
   useKeyboardBackdrop(keyboard);
   const [hiders, setHiders] = useState<ReadonlySet<string>>(() => new Set());

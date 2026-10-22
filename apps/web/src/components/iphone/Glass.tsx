@@ -63,7 +63,7 @@ export const GlassTextButton = forwardRef<HTMLButtonElement, ButtonHTMLAttribute
       ref={ref}
       type="button"
       {...rest}
-      className={`grid h-11 flex-none place-items-center rounded-capsule px-4 text-[16px] outline-none ui-glass-press focus-visible:ring-2 focus-visible:ring-focus ${strong ? "bg-heading font-semibold text-canvas shadow-[var(--liquid-shadow)]" : "ui-liquid font-medium text-heading"} ${className}`}
+      className={`grid h-11 flex-none place-items-center rounded-capsule px-4 text-[17px] outline-none ui-glass-press focus-visible:ring-2 focus-visible:ring-focus ${strong ? "bg-heading font-semibold text-canvas shadow-[var(--liquid-shadow)]" : "ui-liquid font-medium text-heading"} ${className}`}
     >
       {children}
     </button>

@@ -642,13 +642,13 @@
   :root[data-reduce-transparency] :is(.ui-liquid, .ui-liquid-strong),
   :root[data-reduce-transparency][data-iphone] :is([role="menu"].ui-pop, [role="listbox"].ui-pop) { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
   /* The fade behind a screen's bar (components/iphone/Screen.tsx): the canvas itself, no blur. */
-  :root[data-reduce-transparency] [data-iphone-bar-fade] { background: var(--color-canvas) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  :root[data-reduce-transparency] [data-iphone-bar-fade] { background: var(--bar-solid, var(--color-canvas)) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
   /* Android (apps/android): Folevi's floating bars and sheets without iOS's glass: the same solid surfaces with
      their rim (docs/ANDROID_PLAN.md "Look"). */
   :root[data-native="android"] :is(.ui-liquid, .ui-liquid-strong)::before { display: none; }
   :root[data-native="android"] :is(.ui-liquid, .ui-liquid-strong),
   :root[data-native="android"][data-iphone] :is([role="menu"].ui-pop, [role="listbox"].ui-pop) { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
-  :root[data-native="android"] [data-iphone-bar-fade] { background: var(--color-canvas) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  :root[data-native="android"] [data-iphone-bar-fade] { background: var(--bar-solid, var(--color-canvas)) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
   :root[data-native="android"] .ui-glass-press:active { transform: none; filter: brightness(0.94); }
   /* Increase Contrast: the glass is nearly opaque and its edge a visible line. */
   :root[data-increase-contrast] :is(.ui-liquid, .ui-liquid-strong) { background: var(--iphone-solid); box-shadow: 0 0 0 1px var(--color-line-strong), var(--liquid-shadow); }
@@ -720,6 +720,63 @@
 [data-iphone-picture], [data-iphone-picture] * { animation: none !important; transition: none !important; }
 
 /* ------------------------------------------------------------------------------------------------
+ * iOS polish WP1: the shell, lists and Home on the iPhone (docs/IOS_POLISH_PLAN.md §2). Phone layout only.
+ * --------------------------------------------------------------------------------------------- */
+/* The top bar's material (components/iphone/Screen.tsx): it appears once content has scrolled 4 points under
+   the bar, frosted in the screen's own colour, with a hairline at its foot. */
+.iphone-bar {
+  --bar-solid: var(--color-canvas);
+  --bar-fill: color-mix(in oklab, var(--bar-solid) 78%, transparent);
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  z-index: 20;
+  height: calc(env(safe-area-inset-top) + 52px);
+  pointer-events: none;
+  background: var(--bar-fill);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
+  box-shadow: inset 0 -0.5px 0 var(--iphone-separator);
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+.iphone-bar[data-on] { opacity: 1; }
+.iphone-bar[data-surface="grouped"] { --bar-solid: var(--iphone-grouped); }
+/* A folder's screen: the bar takes the folder's wash. */
+.iphone-bar[data-surface="tint"] { --bar-solid: color-mix(in oklab, var(--view-tint) var(--view-tint-amount, 10%), var(--color-canvas)); }
+/* Over a note's artwork: clear glass, so the art shows through. */
+.iphone-bar[data-surface="clear"] { --bar-fill: var(--liquid-fill); }
+/* The small title in the bar fades in with the scroll (Screen.tsx sets --title-in from 0 to 1). */
+.iphone-small-title { opacity: var(--title-in, 0); transform: translateY(calc((1 - var(--title-in, 0)) * 4px)); }
+@media (prefers-reduced-motion: reduce) { .iphone-small-title { transform: none; } }
+/* Caption caps: grouped list headers, the place above Home's title (§2.2). */
+.ui-caption-caps { font-size: 13px; line-height: 18px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-muted); }
+/* Content fades out over the 24 points above the floating tab bar instead of showing through it: the screen's
+   own colour rises over it (a layer, not a mask on the scrolling view, which would also hide what's fixed in it). */
+.iphone-tab-edge {
+  --bar-solid: var(--color-canvas);
+  --tab-edge: calc(max(10px, env(safe-area-inset-bottom) - 10px) + 64px);
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 10;
+  height: calc(var(--tab-edge) + 24px);
+  pointer-events: none;
+  background: linear-gradient(to top, var(--bar-solid) 0, var(--bar-solid) var(--tab-edge), color-mix(in oklab, var(--bar-solid) 55%, transparent) calc(var(--tab-edge) + 8px), transparent 100%);
+}
+:root[data-iphone-keyboard] .iphone-tab-edge { display: none; }
+.iphone-tab-edge[data-surface="grouped"] { --bar-solid: var(--iphone-grouped); }
+.iphone-tab-edge[data-surface="tint"] { --bar-solid: color-mix(in oklab, var(--view-tint) var(--view-tint-amount, 10%), var(--color-canvas)); }
+/* No focus ring after a touch, anywhere (§2.3): rings only while a hardware keyboard moves focus (chrome.tsx marks
+   <html data-input="key">), 2 points in the focus colour, 2 points out. */
+:root[data-iphone]:not([data-input="key"]) :focus-visible { outline: none !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important; }
+:root[data-iphone]:not([data-input="key"]) :is(.ui-liquid, .ui-liquid-strong):focus-visible { box-shadow: var(--liquid-edge), var(--liquid-shadow) !important; }
+:root[data-iphone][data-input="key"] :focus-visible { --tw-ring-color: var(--color-focus); }
+/* A row's focus tint, only for keyboard focus (a tapped row keeps none). */
+:root:not([data-native]) .ui-key-focus:focus-visible,
+:root[data-input="key"] .ui-key-focus:focus-visible { background-color: var(--liquid-active); }
+
+/* ------------------------------------------------------------------------------------------------
  * iOS polish WP3: menus, sheets and dialogs in the iPhone, iPad and Android apps (docs/IOS_POLISH_PLAN.md §2,
  * §4.1, owner's decision D1). Menus stay Folevi's, in Folevi's fonts, drawn as iOS draws a menu: glass, 17 pt
  * rows 44 tall edge to edge, hairlines between the items of a section and an 8 pt band between sections, the
@@ -776,12 +833,34 @@
 :root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:active { background: color-mix(in oklab, var(--color-ink) 10%, transparent); }
 /* A keyboard on an iPad: the item it's on, as a pressed one. */
 :root[data-input="key"]:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:focus-visible { background: color-mix(in oklab, var(--color-ink) 10%, transparent); }
+/* Note cards (components/views/DocumentCard.tsx) on the phone: 18-point corners on the open edge, one date (the
+   footer's), the title in Spectral 17/22, two lines; in dark a faint edge so they don't sink into the canvas. */
+:root[data-iphone] .note-card-r { border-top-right-radius: var(--radius-container); border-bottom-right-radius: var(--radius-container); }
+:root[data-iphone] [data-card="created"] { display: none; }
+:root[data-iphone] [data-card="title"] { font-size: 17px; line-height: 22px; font-weight: 600; letter-spacing: -0.005em; }
+:root[data-iphone][data-theme="dark"] [data-card="edge"] { box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.08); }
+/* Folder tiles (FolderCardArt.tsx) on the phone: the name in Spectral 20/24; in dark the folder's darker tone with
+   light words on it (4.5:1 on every colour). */
+:root[data-iphone] [data-fc="name"] { font-size: 20px; line-height: 24px; }
+:root[data-iphone][data-theme="dark"] [data-fc="back"] { background: color-mix(in oklab, var(--fc) 38%, #23252c) !important; }
+:root[data-iphone][data-theme="dark"] [data-fc="front"] {
+  background: linear-gradient(180deg, color-mix(in oklab, color-mix(in oklab, var(--fc) 46%, #121318) 72%, transparent), color-mix(in oklab, color-mix(in oklab, var(--fc) 46%, #121318) 94%, transparent)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), inset 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 -6px 16px -10px rgb(0 0 0 / 0.6) !important;
+}
+:root[data-iphone][data-theme="dark"] [data-fc="name"] { color: #f6f6f8 !important; }
+:root[data-iphone][data-theme="dark"] [data-fc="age"] { color: color-mix(in oklab, var(--fc) 22%, #dcdee5) !important; }
+:root[data-iphone][data-theme="dark"] [data-fc="count"] { background: color-mix(in oklab, var(--fc) 34%, #0c0d10) !important; color: #f6f6f8 !important; }
+/* The iPad app: a card's or folder's "…" stays out of sight on touch, as on the iPhone (a long press opens the
+   same menu); a pointer hovering shows it. */
+:root[data-native="ios"]:not([data-iphone]) [data-ctx-host]:not(:hover) .pointer-coarse\:opacity-100:not(:has(:focus-visible)) { opacity: 0; }
 /* Reduce Transparency, Increase Contrast, and Android (no iOS glass there): a solid menu. */
 :root:is([data-reduce-transparency], [data-increase-contrast], [data-native="android"]):is([data-iphone], [data-native="ios"]) [role="menu"].ui-pop { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
 :root[data-increase-contrast]:is([data-iphone], [data-native="ios"]) [role="menu"].ui-pop { box-shadow: 0 0 0 1px var(--color-line-strong), 0 18px 50px -12px rgb(0 0 0 / 0.3); }
 @media (prefers-reduced-transparency: reduce) {
   :root:is([data-iphone], [data-native="ios"]) [role="menu"].ui-pop { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
+/* Pull to refresh's spinner (components/iphone/PullToRefresh.tsx) turns a spoke at a time, as iOS's does. */
+@keyframes iphone-spinner { to { transform: rotate(360deg); } }
 
 /* ------------------------------------------------------------------------------------------------
  * iOS polish WP5: the iPad layout (docs/IOS_POLISH_PLAN.md §3 "iPad"). Shell marks <html data-ipad> in the iPad

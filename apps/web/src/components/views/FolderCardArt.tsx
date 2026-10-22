@@ -74,8 +74,8 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
   return (
     <>
       {/* back, with its tab */}
-      <div aria-hidden className="absolute left-0 top-0 h-[9%] w-[44%] rounded-t-control shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ background: backTone }} />
-      <div aria-hidden className="absolute inset-x-0 bottom-0 top-[5%] rounded-panel rounded-tl-none shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ background: backTone }} />
+      <div aria-hidden data-fc="back" className="absolute left-0 top-0 h-[9%] w-[44%] rounded-t-control shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ background: backTone, ["--fc" as string]: base }} />
+      <div aria-hidden data-fc="back" className="absolute inset-x-0 bottom-0 top-[5%] rounded-panel rounded-tl-none shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ background: backTone, ["--fc" as string]: base }} />
       {/* the notes inside, faint and soft */}
       <div aria-hidden className="absolute inset-0">
         {shown.length ? (
@@ -89,22 +89,24 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
           show while the card is pressed; a child is always drawn over its own backdrop. */}
       <div
         aria-hidden
+        data-fc="front"
         className="absolute inset-x-0 bottom-0 top-[46%] rounded-panel shadow-[inset_0_1px_0_rgb(255_255_255/0.75),inset_0_0_0_1px_rgb(0_0_0/0.08),0_-6px_16px_-10px_rgb(0_0_0/0.25)] [-webkit-backdrop-filter:blur(9px)_saturate(1.3)] [backdrop-filter:blur(9px)_saturate(1.3)]"
-        style={{ background: `linear-gradient(180deg, color-mix(in oklab, ${base} 62%, transparent), color-mix(in oklab, ${base} 86%, transparent))` }}
+        style={{ background: `linear-gradient(180deg, color-mix(in oklab, ${base} 62%, transparent), color-mix(in oklab, ${base} 86%, transparent))`, ["--fc" as string]: base }}
       >
         {/* page count */}
         <span
+          data-fc="count"
           className="absolute left-[7%] top-[9.26%] inline-flex items-center rounded-tiny px-[2.2cqw] py-[1.3cqw] font-serif text-[clamp(12px,5.4cqw,22px)] font-semibold leading-none tabular-nums text-[#111114]"
           style={{ background: `color-mix(in oklab, ${base} 55%, #8e94a3)` }}
         >
           {count.toLocaleString()}
         </span>
         {/* last update */}
-        <span className="absolute right-[7%] top-[10.37%] -mt-[0.15em] max-w-[55%] truncate pb-[0.1em] font-serif text-[clamp(11px,5.6cqw,24px)] leading-[1.2]" style={{ color: `color-mix(in oklab, ${base} 25%, #3c4250)` }}>
+        <span data-fc="age" className="absolute right-[7%] top-[10.37%] -mt-[0.15em] max-w-[55%] truncate pb-[0.1em] font-serif text-[clamp(11px,5.6cqw,24px)] leading-[1.2]" style={{ color: `color-mix(in oklab, ${base} 25%, #3c4250)` }}>
           {age}
         </span>
         {/* name */}
-        <span className="absolute bottom-[11.48%] left-[7%] right-[7%] line-clamp-2 break-words font-serif text-[clamp(16px,9.4cqw,40px)] leading-[1.12] tracking-[-0.01em] text-[#0d0d10]">
+        <span data-fc="name" className="absolute bottom-[11.48%] left-[7%] right-[7%] line-clamp-2 break-words font-serif text-[clamp(16px,9.4cqw,40px)] leading-[1.12] tracking-[-0.01em] text-[#0d0d10]">
           {name}
         </span>
       </div>

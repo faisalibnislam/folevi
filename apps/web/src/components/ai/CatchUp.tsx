@@ -74,13 +74,13 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
   if (!data && !busy && row) {
     return (
       <div>
-        <button type="button" onClick={() => void run()} className="flex w-full items-center gap-3 pl-5 pr-4 text-left outline-none transition-colors active:bg-[var(--liquid-press)] focus-visible:bg-[var(--liquid-active)]">
+        {/* One line, as Home's other rows; what it does is said in its brief (and to screen readers here). */}
+        <button type="button" onClick={() => void run()} aria-description="A quick AI brief of this week’s notes and what’s due" className="ui-key-focus flex w-full items-center gap-3 pl-5 pr-4 text-left outline-none transition-colors duration-150 active:bg-[var(--liquid-press)] active:duration-0">
           <span aria-hidden className="grid w-7 flex-none place-items-center">
             <AiIcon size={22} />
           </span>
-          <span className="ui-row-sep flex min-h-[58px] min-w-0 flex-1 flex-col justify-center py-2">
-            <span className="text-[17px] text-ink">Catch me up</span>
-            <span className="truncate text-[13px] text-muted">A quick AI brief of this week’s notes and what’s due</span>
+          <span className="ui-row-sep flex min-h-[52px] min-w-0 flex-1 items-center">
+            <span className="text-[17px] leading-[22px] text-ink">Catch me up</span>
           </span>
         </button>
         {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mx-5 mt-2 text-[13px] text-danger" : "mx-5 mt-2"} /> : null}

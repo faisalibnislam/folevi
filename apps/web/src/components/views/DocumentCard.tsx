@@ -75,7 +75,7 @@ function useFitLines() {
  * pale gap.
  */
 export const NOTE_CARD_LINK =
-  "block aspect-[25/27] rounded-l-tiny rounded-r-panel shadow-[-3px_10px_14px_-8px_rgb(20_20_30/0.16),-4px_18px_30px_-18px_rgb(20_20_30/0.14),0_2px_5px_rgb(20_20_30/0.03)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[-3px_12px_16px_-8px_rgb(20_20_30/0.18),-5px_24px_36px_-18px_rgb(20_20_30/0.18),0_3px_8px_rgb(20_20_30/0.04)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
+  "note-card-r block aspect-[25/27] rounded-l-tiny rounded-r-panel shadow-[-3px_10px_14px_-8px_rgb(20_20_30/0.16),-4px_18px_30px_-18px_rgb(20_20_30/0.14),0_2px_5px_rgb(20_20_30/0.03)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[-3px_12px_16px_-8px_rgb(20_20_30/0.18),-5px_24px_36px_-18px_rgb(20_20_30/0.18),0_3px_8px_rgb(20_20_30/0.04)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 /** Aspect ratio of a note card (a portrait notebook), for placeholders that stand in for one. */
 export const NOTE_CARD_ASPECT = "aspect-[25/27]";
@@ -128,18 +128,18 @@ export function NoteCardFace({
   return (
     <div className="relative h-full w-full [container-type:inline-size]">
       {/* the page block, peeking out past the cover's open edge and bottom */}
-      <span aria-hidden className="absolute bottom-0 left-0 right-0 top-[1.4%] rounded-l-tiny rounded-r-panel bg-[color-mix(in_oklab,var(--color-heading)_13%,var(--color-canvas))]" />
+      <span aria-hidden className="note-card-r absolute bottom-0 left-0 right-0 top-[1.4%] rounded-l-tiny rounded-r-panel bg-[color-mix(in_oklab,var(--color-heading)_13%,var(--color-canvas))]" />
       {/* the cover */}
       <div
         {...sheet}
-        className="fb-sheet absolute bottom-[1cqw] left-0 right-[1cqw] top-0 flex overflow-hidden rounded-l-tiny rounded-r-panel bg-surface text-ink"
+        className="note-card-r fb-sheet absolute bottom-[1cqw] left-0 right-[1cqw] top-0 flex overflow-hidden rounded-l-tiny rounded-r-panel bg-surface text-ink"
       >
       {/* the spine, in the note's theme */}
       <div aria-hidden className="relative w-[6%] flex-none shadow-[inset_-1px_0_0_rgb(0_0_0/0.06)]" style={{ background: strip }} />
       {/* the cover's face: title, preview and footer */}
       <div className="flex min-w-0 flex-1 flex-col pb-[6cqw] pl-[7cqw] pr-[6cqw] pt-[8cqw]">
-        <h3 className="line-clamp-2 break-words pr-[7cqw] font-serif text-[6.6cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
-        <p className="mt-[1cqw] truncate text-[4.5cqw] leading-[1.3] text-faint">
+        <h3 data-card="title" className="line-clamp-2 break-words pr-[7cqw] font-serif text-[6.6cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
+        <p data-card="created" className="mt-[1cqw] truncate text-[4.5cqw] leading-[1.3] text-faint">
           <span className="sr-only">Created </span>
           {ageText(createdAt)}
         </p>
@@ -169,7 +169,7 @@ export function NoteCardFace({
         </div>
       </div>
       {/* A 1px, 5% black outline drawn above the spine and cover so it runs round the whole cover. */}
-      <span aria-hidden className="pointer-events-none absolute inset-0 z-10 rounded-l-tiny rounded-r-panel shadow-[inset_0_0_0_1px_rgb(0_0_0/0.05)]" />
+      <span aria-hidden data-card="edge" className="note-card-r pointer-events-none absolute inset-0 z-10 rounded-l-tiny rounded-r-panel shadow-[inset_0_0_0_1px_rgb(0_0_0/0.05)]" />
       {starred ? (
         <span className={`absolute right-0 top-0 grid h-[12cqw] w-[12cqw] place-items-center rounded-bl-chip text-heading ${chip}`}>
           <Star className="h-[5.6cqw] w-[5.6cqw] fill-current" aria-label="Starred" />

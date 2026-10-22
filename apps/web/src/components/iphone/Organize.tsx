@@ -4,12 +4,12 @@ import { FolderOpen, FolderPlus, Hash, LayoutGrid, List } from "lucide-react";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import type { MenuEntry } from "@/components/ui/Menu";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { ViewChrome } from "@/components/app/Shell";
 import { FolderCard, type FolderSummary } from "@/components/views/FolderCard";
 import { GlassPill } from "./Glass";
 import { MoreMenu } from "./RootBar";
-import { ListRow, SearchField } from "./Rows";
+import { ListRow, ScreenEmpty, SearchField } from "./Rows";
+import { PullToRefresh, useListRefresh } from "./PullToRefresh";
 import { useIphoneActions } from "./IphoneShell";
 
 /**
@@ -40,6 +40,7 @@ export function IphoneFolders<S extends string>({
 }) {
   const [layout, setLayout] = useLocalStorage<"tiles" | "list">("folevi:iphone-folders-layout", "tiles");
   const { openNewFolder } = useIphoneActions();
+  const refresh = useListRefresh();
   const menu: MenuEntry[] = [
     ...(canEdit ? ([{ label: "New folder", icon: <FolderPlus size={18} />, onSelect: openNewFolder }, "separator"] as MenuEntry[]) : []),
     { heading: "View as" },
@@ -63,13 +64,14 @@ export function IphoneFolders<S extends string>({
         header: <SearchField placeholder="Search" value={query} onChange={onQuery} />,
       }}
     >
+      <PullToRefresh onRefresh={refresh} />
       <p role="status" className="sr-only">
         {folders === undefined ? "Loading" : `${folders.length} of ${total} folders`}
       </p>
       {folders && !folders.length ? (
-        <EmptyState icon={FolderOpen} title={query.trim() ? `No folders match “${query.trim()}”` : "No folders yet"} body={query.trim() ? undefined : "Folders keep related notes together."} />
+        <ScreenEmpty icon={FolderOpen} title={query.trim() ? `No folders match “${query.trim()}”` : "No folders yet"} body={query.trim() ? undefined : "Folders keep related notes together."} />
       ) : layout === "tiles" ? (
-        <ul data-iphone-tappable="" className="grid grid-cols-2 gap-x-4 gap-y-6 px-4 pt-4 [@media(orientation:landscape)]:grid-cols-4" aria-label="Folders">
+        <ul data-iphone-tappable="" className="grid grid-cols-2 gap-x-3.5 gap-y-5 px-4 pt-4 [@media(orientation:landscape)]:grid-cols-4" aria-label="Folders">
           {(folders ?? []).map((f) => (
             <li key={f.id}>
               <FolderCard folder={f} parentName={where.get(f.id) || undefined} />
@@ -107,7 +109,7 @@ export function IphoneTags<S extends string>({ tags, query, onQuery, sort, sorts
       }}
     >
       {tags && !tags.length ? (
-        <EmptyState icon={Hash} title={query.trim() ? `No tags match “${query.trim()}”` : "No tags yet"} body={query.trim() ? undefined : "Add tags to a note from its Info panel."} />
+        <ScreenEmpty icon={Hash} title={query.trim() ? `No tags match “${query.trim()}”` : "No tags yet"} body={query.trim() ? undefined : "Add tags to a note from its Info panel."} />
       ) : (
         <ul data-iphone-tappable="" className="pt-2" aria-label="Tags">
           {(tags ?? []).map((t) => (

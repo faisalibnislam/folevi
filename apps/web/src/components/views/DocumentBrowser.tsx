@@ -771,6 +771,9 @@ function useDocMenu({ doc, view, arrange, select, recent }: DocMenuProps): { ite
   const [copyOpen, setCopyOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const canCopy = useCanCopyElsewhere();
+  // In the phone layout there are no tabs to open a note in, and a tap already opens it (docs/IOS_POLISH_PLAN.md
+  // §3 Lists): the menu leads with what you'd do to the note.
+  const phone = useIphoneApp();
   const ids = [doc.id];
 
   const items: (MenuItem | "separator")[] =
@@ -783,13 +786,18 @@ function useDocMenu({ doc, view, arrange, select, recent }: DocMenuProps): { ite
         ]
       : [
           ...(doc.kind === "template" ? [{ label: "New page from template", icon: <FilePlus2 size={14} />, onSelect: () => void createDocument({ title: doc.title, templateId: doc.id }) }] : []),
-          { label: doc.kind === "template" ? "Edit template" : "Open", icon: <ExternalLink size={14} />, onSelect: () => navigate(`/d/${doc.id}`) },
-          { label: "Open in new tab", icon: <ExternalLink size={14} />, onSelect: () => window.open(`/d/${doc.id}`, "_blank", "noopener") },
+          ...(phone && doc.kind !== "template"
+            ? []
+            : [
+                { label: doc.kind === "template" ? "Edit template" : "Open", icon: <ExternalLink size={14} />, onSelect: () => navigate(`/d/${doc.id}`) },
+                ...(phone ? [] : [{ label: "Open in new tab", icon: <ExternalLink size={14} />, onSelect: () => window.open(`/d/${doc.id}`, "_blank", "noopener") }]),
+              ]),
           doc.starred
             ? { label: "Unstar", icon: <StarOff size={14} />, onSelect: () => void notes.star(ids, false) }
             : { label: "Star", icon: <Star size={14} />, onSelect: () => void notes.star(ids, true) },
+          ...(phone && doc.kind !== "template" ? [{ label: "Move to folder…", icon: <FolderInput size={14} />, onSelect: () => setMoveOpen(true) }] : []),
           { label: "Duplicate", icon: <Copy size={14} />, onSelect: () => void duplicate({ documentId: doc.id }).then(() => toast.show("Duplicated"), (e) => toast.show(errorMessage(e), { tone: "error" })) },
-          ...(doc.kind !== "template" ? [{ label: "Move to folder…", icon: <FolderInput size={14} />, onSelect: () => setMoveOpen(true) }] : []),
+          ...(!phone && doc.kind !== "template" ? [{ label: "Move to folder…", icon: <FolderInput size={14} />, onSelect: () => setMoveOpen(true) }] : []),
           ...(canCopy ? [{ label: "Copy to…", icon: <CopyPlus size={14} />, onSelect: () => setCopyOpen(true) }] : []),
           doc.archivedAt
             ? { label: "Unarchive", icon: <ArchiveRestore size={14} />, onSelect: () => void notes.archive(ids, false) }

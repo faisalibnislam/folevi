@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { haptic } from "@/lib/nativeApp";
+import { feel, prepareFeel } from "@/lib/native/ui";
+import { pastFullSwipe, prefersReducedMotion, SPRINGS, springCss } from "@/lib/native/physics";
 
 export interface SwipeAction {
   label: string;
@@ -16,7 +17,8 @@ export interface SwipeAction {
 const ACTION_W = 76;
 /** One row open at a time: opening one closes the others. */
 const OPEN_EVENT = "folevi:swipe-open";
-const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+/** A row settling open or shut, or springing back (§2.4: response 0.3, damping 0.86). */
+const SETTLE = springCss(SPRINGS.swipe);
 
 /**
  * A list row with iOS swipe actions: swipe left to show `trailing` (Archive, Delete…), right for `leading`
@@ -29,6 +31,8 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
   const row = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
+  // Past the full-swipe point: the first action stretches across the row, as iOS shows it.
+  const [full, setFull] = useState(false);
   const openRef = useRef(0);
   const actions = useRef({ leading, trailing });
   actions.current = { leading, trailing };
@@ -47,6 +51,7 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
       start = { x: t.clientX, y: t.clientY, base: openRef.current };
       mode = null;
       crossed = false;
+      prepareFeel("threshold");
     };
     const onMove = (e: TouchEvent) => {
       const t = e.touches[0];
@@ -66,11 +71,12 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
       if (next < 0 && !r.length) next = next / 6;
       x = next;
       setOffset(next);
-      // Past the point where a long swipe runs the first action: a tap in the hand, once.
-      const full = Math.abs(next) > width() * 0.55;
-      if (full !== crossed) {
-        crossed = full;
-        if (full) haptic("light");
+      // Past the point where a long swipe runs the first action (60 %): felt each time it's crossed.
+      const past = pastFullSwipe(next, width()) && (next > 0 ? l.length > 0 : r.length > 0);
+      if (past !== crossed) {
+        crossed = past;
+        setFull(past);
+        if (past) feel("threshold");
       }
     };
     const onEnd = () => {
@@ -80,10 +86,11 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
       }
       start = null;
       setDragging(false);
+      setFull(false);
       const { leading: l, trailing: r } = actions.current;
       const w = width();
-      if (x > w * 0.55 && l[0]) return run(l[0]);
-      if (x < -w * 0.55 && r[0]) return run(r[0]);
+      if (pastFullSwipe(x, w) && x > 0 && l[0]) return run(l[0]);
+      if (pastFullSwipe(x, w) && x < 0 && r[0]) return run(r[0]);
       const open = x > 40 && l.length ? l.length * ACTION_W : x < -40 && r.length ? -r.length * ACTION_W : 0;
       openRef.current = open;
       setOffset(open);
@@ -92,7 +99,7 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
     const run = (a: SwipeAction) => {
       openRef.current = 0;
       setOffset(0);
-      if (a.danger) haptic("warning");
+      if (a.danger) feel("destructive");
       a.onAction();
     };
     const onOtherOpen = (e: Event) => {
@@ -135,7 +142,8 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
     <div ref={row} className={`relative overflow-hidden ${className}`}>
       {side.length ? (
         <div data-swipe-actions="" className={`absolute inset-y-0 flex ${offset > 0 ? "left-0" : "right-0"}`} style={{ width: Math.abs(offset) }}>
-          {(offset > 0 ? side : [...side].reverse()).map((a) => (
+          {(offset > 0 ? side : [...side].reverse()).map((a, i, shownActions) => (
+            // (The first action is the outermost one: first on the left, last on the right.)
             <button
               key={a.label}
               type="button"
@@ -143,11 +151,11 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
               onClick={() => {
                 openRef.current = 0;
                 setOffset(0);
-                if (a.danger) haptic("warning");
+                if (a.danger) feel("destructive");
                 a.onAction();
               }}
-              style={{ background: a.tone, flexGrow: 1 }}
-              className="flex min-w-0 flex-col items-center justify-center gap-1 overflow-hidden text-[12px] font-medium text-white"
+              style={{ background: a.tone, flexGrow: full ? (i === (offset > 0 ? 0 : shownActions.length - 1) ? 1 : 0) : 1, flexBasis: full ? 0 : undefined, transition: dragging ? `flex-grow ${SETTLE.ms}ms ${SETTLE.easing}` : undefined }}
+              className={`flex min-w-0 flex-col justify-center gap-1 overflow-hidden px-3 text-[13px] font-medium text-white ${full ? (offset > 0 ? "items-end" : "items-start") : "items-center"}`}
             >
               <span aria-hidden className="[&_svg]:h-5 [&_svg]:w-5">{a.icon}</span>
               <span className="truncate">{a.label}</span>
@@ -155,7 +163,7 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
           ))}
         </div>
       ) : null}
-      <div ref={content} className="relative bg-canvas" style={{ transform: offset ? `translateX(${offset}px)` : undefined, transition: dragging ? "none" : `transform 360ms ${EASE}` }}>
+      <div ref={content} className="relative bg-canvas" style={{ transform: offset ? `translateX(${offset}px)` : undefined, transition: dragging ? "none" : prefersReducedMotion() ? "transform 150ms ease-out" : `transform ${SETTLE.ms}ms ${SETTLE.easing}` }}>
         {children}
       </div>
     </div>

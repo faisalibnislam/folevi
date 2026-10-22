@@ -281,7 +281,7 @@ final class LibraryService {
         let device = "On My \(Platform.deviceLabel)"
         switch s.kind {
         case "icloud": return "iCloud Drive › Folevi"
-        case "device": return "\(device) › Folevi › \(Self.deviceFolder)"
+        case "device": return Platform.libraryPlace(Self.documents.appendingPathComponent(Self.deviceFolder, isDirectory: true)) ?? "\(device) › Folevi › \(Self.deviceFolder)"
         default:
             guard let p = place(kind: s.kind, bookmark: s.bookmark, sub: s.sub) else { return "A folder you chose" }
             return Self.describe(p.root)
@@ -290,6 +290,7 @@ final class LibraryService {
 
     /// For people to read: "Dropbox › Notes", "iCloud Drive › Notes", "On My iPhone › Notes".
     static func describe(_ url: URL) -> String {
+        if let own = Platform.libraryPlace(url) { return own }
         let parts = url.standardizedFileURL.pathComponents
         if let i = parts.firstIndex(of: "com~apple~CloudDocs") { return (["iCloud Drive"] + parts[(i + 1)...]).joined(separator: " › ") }
         if let i = parts.firstIndex(of: "Mobile Documents"), i + 1 < parts.count {

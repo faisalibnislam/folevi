@@ -77,6 +77,9 @@ enum Platform {
 
     /// Whether the owner can be asked before encrypted notes open (Face ID, Touch ID or Optic ID, else the passcode).
     static var canAskOwner: Bool { LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil) }
+
+    /// How a library's folder reads for people when the platform says it its own way (nil: LibraryService's words).
+    static func libraryPlace(_ url: URL) -> String? { nil }
     #else
     static var deviceLabel: String { "Mac" }
 
@@ -122,6 +125,29 @@ enum Platform {
 
     /// Touch ID only, as Electron's canPromptTouchID: a Mac without it doesn't offer "Ask for Touch ID".
     static var canAskOwner: Bool { LAContext().canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil) }
+
+    /// Electron's displayPath (apps/desktop/src/library/locations.ts): "iCloud Drive › Folevi", "Dropbox › Notes",
+    /// "~/Documents/Folevi Library", or the path itself.
+    static func libraryPlace(_ url: URL) -> String? {
+        let home = FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL.path
+        let path = url.standardizedFileURL.path
+        let inside = { (dir: String) in path == dir || path.hasPrefix(dir + "/") }
+        let rest = { (dir: String) in path.dropFirst(dir.count).split(separator: "/").map(String.init) }
+        let drive = home + "/Library/Mobile Documents/com~apple~CloudDocs"
+        if inside(drive) { return (["iCloud Drive"] + rest(drive)).joined(separator: " › ") }
+        let container = home + "/Library/Mobile Documents/iCloud~com~folevi/Documents"
+        if inside(container) { return (["iCloud Drive", "Folevi"] + rest(container)).joined(separator: " › ") }
+        let cloud = home + "/Library/CloudStorage"
+        if inside(cloud) {
+            var parts = rest(cloud)
+            let first = parts.isEmpty ? "" : parts.removeFirst()
+            let names: [(String, String)] = [("^Dropbox(-.*)?$", "Dropbox"), ("^GoogleDrive-.+$", "Google Drive"), ("^OneDrive(-.*)?$", "OneDrive"), ("^Box(-.*)?$", "Box")]
+            let name = names.first { first.range(of: $0.0, options: .regularExpression) != nil }?.1 ?? (first.isEmpty ? "Cloud storage" : first)
+            return ([name] + parts).joined(separator: " › ")
+        }
+        if inside(home) { return "~/" + rest(home).joined(separator: "/") }
+        return path
+    }
     #endif
 }
 

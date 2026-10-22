@@ -112,9 +112,10 @@ test("iPhone: holding a folder tile, the more button, and the Notifications shee
   await page.waitForTimeout(600);
   await expect(menu).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
-  // Beside the tile, not over it.
+  // Beside the tile, not over it. (What lifted, where it is now: a tile whose menu wouldn't fit under it moves
+  // up to make room, as iOS moves its preview, while its list item stays put.)
   const menuBox2 = (await menu.boundingBox())!;
-  const tileBox = (await tile.boundingBox())!;
+  const tileBox = (await tile.locator("[data-held-lift]").boundingBox())!;
   expect(menuBox2.y >= tileBox.y + tileBox.height - 1 || menuBox2.y + menuBox2.height <= tileBox.y + 1).toBe(true);
   // An item needs its own tap.
   await menu.getByRole("menuitem", { name: "Rename…" }).tap();

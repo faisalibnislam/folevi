@@ -19,6 +19,8 @@ class FoleviApp : Application() {
         private set
     lateinit var cloud: com.folevi.android.cloud.CloudAuth
         private set
+    lateinit var ai: com.folevi.android.ai.AiService
+        private set
 
     /** Shows a system screen that answers with a result (Google's consent screen): set by the activity on screen. */
     @Volatile var showForResult: (suspend (android.app.PendingIntent) -> android.content.Intent?)? = null
@@ -27,6 +29,7 @@ class FoleviApp : Application() {
         super.onCreate()
         instance = this
         settings = ShellSettings(this)
+        com.folevi.android.host.Reminders.channels(this)
         secrets = SecretStore(File(noBackupFilesDir, "secrets"), KeystoreCipher("folevi.secrets.v1"))
         library = com.folevi.android.library.LibraryService(noBackupFilesDir, this)
         val cloudPrefs = getSharedPreferences("folevi-cloud", MODE_PRIVATE)
@@ -43,6 +46,7 @@ class FoleviApp : Application() {
                 }
             },
         )
+        ai = com.folevi.android.ai.AiService(secrets, Http.client)
         auth = AuthBridge(
             serviceUrl = BuildConfig.SERVICE_URL,
             redirectUri = BuildConfig.AUTH_REDIRECT_URI,

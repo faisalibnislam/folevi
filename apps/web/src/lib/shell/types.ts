@@ -186,7 +186,8 @@ export interface ShellLockSettings {
   lock: boolean;
   /** Seconds in the background before it asks again. */
   lockAfter: number;
-  method: "faceID" | "touchID" | "opticID" | "passcode" | "none";
+  /** "biometric" and "screenLock": the Android app (a fingerprint or face, else the phone's PIN, pattern or password). */
+  method: "faceID" | "touchID" | "opticID" | "passcode" | "biometric" | "screenLock" | "none";
 }
 
 export interface ShellLock {

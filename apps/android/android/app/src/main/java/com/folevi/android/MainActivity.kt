@@ -44,6 +44,9 @@ class MainActivity : BridgeActivity() {
     private var lastInsets: JSONObject = JSONObject().put("top", 0).put("right", 0).put("bottom", 0).put("left", 0).put("keyboard", 0)
     private var pageDark: Boolean? = null
     private var signInOpen = false
+    /** The optional fingerprint or face lock (AppLock.kt). */
+    val lock: com.folevi.android.lock.AppLock by lazy { com.folevi.android.lock.AppLock(this) }
+    private var started = false
 
     private val back = object : OnBackPressedCallback(false) {
         override fun handleOnBackStarted(backEvent: BackEventCompat) = sendBack("progress", backEvent)
@@ -61,6 +64,11 @@ class MainActivity : BridgeActivity() {
         registerPlugin(com.folevi.android.extras.NativePlugin::class.java)
         registerPlugin(com.folevi.android.library.LibraryPlugin::class.java)
         registerPlugin(com.folevi.android.cloud.CloudPlugin::class.java)
+        registerPlugin(com.folevi.android.ai.AiPlugin::class.java)
+        registerPlugin(com.folevi.android.host.NotifyPlugin::class.java)
+        registerPlugin(com.folevi.android.host.FilesPlugin::class.java)
+        registerPlugin(com.folevi.android.host.HttpPlugin::class.java)
+        registerPlugin(com.folevi.android.lock.LockPlugin::class.java)
         applyBars(systemDark())
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this, back)
@@ -82,8 +90,33 @@ class MainActivity : BridgeActivity() {
         resultWaiting?.complete(null)
         val w = kotlinx.coroutines.CompletableDeferred<Intent?>()
         resultWaiting = w
+        lock.openingOwnScreen()
         forResult.launch(androidx.activity.result.IntentSenderRequest.Builder(pi).build())
         return w.await()
+    }
+
+    private var saveWaiting: kotlinx.coroutines.CompletableDeferred<Uri?>? = null
+    private var saveMime = "application/octet-stream"
+    private val createDocument = registerForActivityResult(object : androidx.activity.result.contract.ActivityResultContracts.CreateDocument("*/*") {
+        override fun createIntent(context: android.content.Context, input: String): Intent = super.createIntent(context, input).setType(saveMime)
+    }) { uri ->
+        val w = saveWaiting
+        saveWaiting = null
+        w?.complete(uri)
+    }
+
+    /** Android's "Save to" screen for a file the page made (an export); false when the person backed out. */
+    suspend fun saveDocument(name: String, mime: String, bytes: ByteArray): Boolean {
+        saveWaiting?.complete(null)
+        val w = kotlinx.coroutines.CompletableDeferred<Uri?>()
+        saveWaiting = w
+        saveMime = mime
+        lock.openingOwnScreen()
+        createDocument.launch(name)
+        val uri = w.await() ?: return false
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes) } != null
+        }
     }
 
     // ---------------------------------------------------------------- the page
@@ -283,6 +316,7 @@ class MainActivity : BridgeActivity() {
 
     /** Another site in a Custom Tab over the app. */
     fun openBrowser(uri: Uri) {
+        lock.openingOwnScreen()
         runCatching {
             CustomTabsIntent.Builder()
                 .setDefaultColorSchemeParams(tabColours())
@@ -313,6 +347,7 @@ class MainActivity : BridgeActivity() {
     /** The sign-in page in a Custom Tab; it comes back on the redirect (onNewIntent). */
     fun openSignIn(url: String) {
         signInOpen = true
+        lock.openingOwnScreen()
         CustomTabsIntent.Builder()
             .setDefaultColorSchemeParams(tabColours())
             .setShowTitle(true)
@@ -344,6 +379,17 @@ class MainActivity : BridgeActivity() {
             return
         }
         Links.asDeepLink(data, serviceOrigin())?.let { deliverLink(it) }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        lock.onStart(this, launch = !started)
+        started = true
+    }
+
+    override fun onStop() {
+        super.onStop()
+        lock.onStop()
     }
 
     override fun onResume() {

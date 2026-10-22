@@ -6,6 +6,7 @@
 // Model ids are the providers' current ones (checked against their documentation on 2026-10-20). A model the
 // person picked that later disappears from this list still works as long as the provider accepts it.
 import type { AiKeyProvider, AiProviderId, SecretName } from "@/lib/shell/types";
+import { deviceWords } from "@/lib/shell/words";
 
 export interface ModelInfo {
   id: string;
@@ -39,9 +40,14 @@ export const ON_DEVICE_CONTEXT = 4096;
 export const PROVIDERS: Record<AiProviderId, ProviderInfo> = {
   "on-device": {
     id: "on-device",
-    label: "On this Mac",
+    get label() {
+      return `On ${deviceWords().here}`;
+    },
     secret: null,
-    models: [{ id: "apple-on-device", label: "Apple Intelligence", note: "Runs on this Mac. Nothing leaves it." }],
+    // (The id stays "apple-on-device" on every host: it's stored with the person's choice.)
+    get models() {
+      return [{ id: "apple-on-device", label: deviceWords().onDeviceModel, note: `Runs on ${deviceWords().here}. Nothing leaves it.` }];
+    },
     defaultModel: "apple-on-device",
     fastModel: "apple-on-device",
     contextTokens: ON_DEVICE_CONTEXT,

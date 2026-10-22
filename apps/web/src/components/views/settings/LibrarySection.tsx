@@ -573,6 +573,8 @@ const LOCK_AFTER: { value: number; label: string }[] = [
 ];
 
 function lockName(method: ShellLockSettings["method"]): string {
+  if (method === "biometric") return "your fingerprint or face";
+  if (method === "screenLock") return "your screen lock";
   return method === "faceID" ? "Face ID" : method === "opticID" ? "Optic ID" : method === "passcode" ? "your passcode" : "Touch ID";
 }
 
@@ -596,7 +598,7 @@ function LockCard() {
     }
   };
   return (
-    <Card title="App lock" description={unavailable ? `${deviceWords().Here} has no ${deviceWords().ios ? "Face ID or passcode" : "Touch ID"}, or it isn't set up in ${deviceWords().settings}, so Folevi can't lock.` : `Folevi asks for ${name} when it opens, and when you come back to it. It covers your notes until then.`}>
+    <Card title="App lock" description={unavailable ? `${deviceWords().Here} has no ${deviceWords().ios ? "Face ID or passcode" : shell()?.platform === "android" ? "fingerprint, face or screen lock" : "Touch ID"}, or it isn't set up in ${deviceWords().settings}, so Folevi can't lock.` : `Folevi asks for ${name} when it opens, and when you come back to it. It covers your notes until then.`}>
       <div className="grid gap-4" data-testid="library-lock">
         <div className="flex items-center justify-between gap-4">
           <span id={descId} className="text-sm text-ink">

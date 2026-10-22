@@ -14,6 +14,7 @@ import { fail } from "../errors";
 import { PROVIDERS } from "./catalog";
 import type { AiFeature } from "./features";
 import { loadedLocalAi, localAiHost, type ActiveModel } from "./state";
+import { deviceWords } from "@/lib/shell/words";
 
 /** Characters per token, as the server estimates them (lib/ai/retrieval.ts estimateTokens). */
 export const CHARS_PER_TOKEN = 4;
@@ -24,8 +25,13 @@ const FRAMING_TOKENS = 200;
 /** The least room an answer gets before a request is called too long. */
 const MIN_ANSWER_TOKENS = 256;
 
-export const NOT_SET_UP = "Foli AI isn't set up on this device. Turn on Apple Intelligence, or add your own key in Settings > AI.";
-export const TOO_LONG_ON_DEVICE = "That's too long for Foli AI on this Mac. Try a shorter selection, or add your own key in Settings > AI for longer notes.";
+// (Read once the page loads, when the host is known: Gemini Nano and "this phone" in the Android app.)
+const WORDS = deviceWords();
+export const NOT_SET_UP =
+  WORDS.onDeviceModel === "Gemini Nano"
+    ? "Foli AI isn't set up on this phone. Add your own key in Settings > AI."
+    : "Foli AI isn't set up on this device. Turn on Apple Intelligence, or add your own key in Settings > AI.";
+export const TOO_LONG_ON_DEVICE = `That's too long for Foli AI on ${WORDS.here}. Try a shorter selection, or add your own key in Settings > AI for longer notes.`;
 export const OFF_HERE = "Foli AI can't do that with the model on this device. Add your own key in Settings > AI to use it.";
 
 export interface GenerateOptions {
@@ -107,9 +113,9 @@ function failFor(result: AiResult, active: ActiveModel): never {
     case "context":
       return fail("limit_exceeded", active.provider === "on-device" ? TOO_LONG_ON_DEVICE : "That's too long for this model. Try a shorter selection.");
     case "network":
-      return fail("maintenance", active.provider === "on-device" ? "Foli AI on this Mac didn't answer. Try again." : `Foli AI couldn't reach ${name}. Check your connection and try again.`);
+      return fail("maintenance", active.provider === "on-device" ? `Foli AI on ${deviceWords().here} didn't answer. Try again.` : `Foli AI couldn't reach ${name}. Check your connection and try again.`);
     case "unavailable":
-      return fail("maintenance", active.provider === "on-device" ? "Apple Intelligence isn't ready on this Mac right now. Try again later." : `${name} isn't available right now. Try again later.`);
+      return fail("maintenance", active.provider === "on-device" ? `${deviceWords().onDeviceModel} isn't ready on ${deviceWords().here} right now. Try again later.` : `${name} isn't available right now. Try again later.`);
     default:
       return fail("maintenance", result.error?.trim() ? result.error.slice(0, 300) : "Foli AI couldn't answer that. Try again.");
   }

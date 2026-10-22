@@ -3,7 +3,7 @@
 // on, and kept by the app on this device (never on Folevi's servers). Turning it on asks for Face ID once,
 // so it's never on for someone who can't get back in.
 import { useEffect, useId, useState } from "react";
-import { nativeApp, type LockAfter, type NativeSettings } from "@/lib/nativeApp";
+import { inAndroidApp, nativeApp, type LockAfter, type NativeSettings } from "@/lib/nativeApp";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { Card } from "./Card";
@@ -14,7 +14,10 @@ import { KeyRound, LockKeyhole } from "lucide-react";
 import { macE2ee, useKeySession } from "@/lib/e2ee/keys";
 
 /** The unlock method as the device names it. */
-const METHOD: Record<NativeSettings["method"], string> = { faceID: "Face ID", touchID: "Touch ID", opticID: "Optic ID", passcode: "your passcode", none: "Face ID" };
+const METHOD: Record<NativeSettings["method"], string> = { faceID: "Face ID", touchID: "Touch ID", opticID: "Optic ID", passcode: "your passcode", biometric: "your fingerprint or face", screenLock: "your screen lock", none: "Face ID" };
+
+/** What to set up first when the device has no way to unlock (the Android app says it its own way). */
+const noLock = () => (inAndroidApp() ? "Set a screen lock for this phone in the Settings app first." : "Set a passcode for this device in the Settings app first.");
 
 const AFTER: { value: LockAfter; label: string }[] = [
   { value: 0, label: "Immediately" },
@@ -56,7 +59,7 @@ export function ThisDeviceSection() {
       setBusy(false);
     }
   };
-  const label = settings.method === "passcode" ? "Lock with passcode" : `Lock with ${method}`;
+  const label = settings.method === "passcode" ? "Lock with passcode" : settings.method === "screenLock" ? "Lock with screen lock" : settings.method === "biometric" ? "Lock with fingerprint or face" : `Lock with ${method}`;
   if (iphone)
     return (
       <>
@@ -69,7 +72,7 @@ export function ThisDeviceSection() {
         ) : null}
         <IosSection
           header="Lock"
-          footer={`Folevi asks for ${method} when it opens, and hides your notes in the app switcher. This is kept on this device only. ${settings.method === "none" ? "Set a passcode for this device in the Settings app first." : `Turning it on asks for ${method} once.`}`}
+          footer={`Folevi asks for ${method} when it opens, and hides your notes in the app switcher. This is kept on this device only. ${settings.method === "none" ? noLock() : `Turning it on asks for ${method} once.`}`}
         >
           <SwitchRow icon={<RowIcon><LockKeyhole /></RowIcon>} label={label} checked={settings.lock} disabled={busy || (settings.method === "none" && !settings.lock)} onChange={(lock) => void save({ lock })} />
           {settings.lock ? <ChoiceRow screen="lock-after" label="Ask again" value={String(settings.lockAfter)} choices={AFTER.map((a) => ({ value: String(a.value), label: a.label }))} footer="When you come back after Folevi has been in the background this long." disabled={busy} onChange={(v) => void save({ lockAfter: Number(v) as LockAfter })} /> : null}
@@ -84,7 +87,7 @@ export function ThisDeviceSection() {
           <span className="min-w-0">
             <span className="block text-sm text-ink">{label}</span>
             <span id={hintId} className="block text-xs text-muted">
-              {settings.method === "none" ? "Set a passcode for this device in the Settings app first." : `Off unless you turn it on. Turning it on asks for ${method} once.`}
+              {settings.method === "none" ? noLock() : `Off unless you turn it on. Turning it on asks for ${method} once.`}
             </span>
           </span>
           <Switch checked={settings.lock} onChange={(lock) => void save({ lock })} label={label} describedBy={hintId} disabled={busy || (settings.method === "none" && !settings.lock)} />
@@ -135,7 +138,7 @@ function EncryptedNotesUnlock({ method, iphone = false }: { method: string; ipho
   }, [bridge, supported, state]);
   if (!supported || state === "none" || !value) return null;
   const label = `Ask for ${method} to unlock encrypted notes`;
-  const footer = value.available ? `Folevi asks for ${method} before it opens your encrypted notes, each time it opens. Turning this on or off asks too.` : "This device has no Face ID or passcode set up, so Folevi can't ask.";
+  const footer = value.available ? `Folevi asks for ${method} before it opens your encrypted notes, each time it opens. Turning this on or off asks too.` : inAndroidApp() ? "This phone has no fingerprint, face or screen lock set up, so Folevi can't ask." : "This device has no Face ID or passcode set up, so Folevi can't ask.";
   const change = async (on: boolean) => {
     setBusy(true);
     try {

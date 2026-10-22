@@ -17,14 +17,16 @@ export interface DeviceWords {
   /** Where sign-in happens: "your browser" (Mac), "the sign-in sheet" (iOS) or "the sign-in page" (Android). */
   signInPlace: string;
   ios: boolean;
+  /** The model Foli AI runs on the device: "Apple Intelligence" on Apple's, "Gemini Nano" on Android. */
+  onDeviceModel: string;
 }
 
 export function deviceWords(): DeviceWords {
   const s = shell();
   if (s?.platform === "ios") {
     const noun = s.deviceFamily === "iPad" ? "iPad" : "iPhone";
-    return { here: `this ${noun}`, Here: `This ${noun}`, noun, settings: "the Settings app", files: "the Files app", signInPlace: "the sign-in sheet", ios: true };
+    return { here: `this ${noun}`, Here: `This ${noun}`, noun, settings: "the Settings app", files: "the Files app", signInPlace: "the sign-in sheet", ios: true, onDeviceModel: "Apple Intelligence" };
   }
-  if (s?.platform === "android") return { here: "this phone", Here: "This phone", noun: "phone", settings: "the Settings app", files: "the Files app", signInPlace: "the sign-in page", ios: false };
-  return { here: "this Mac", Here: "This Mac", noun: "Mac", settings: "System Settings", files: "Finder", signInPlace: "your browser", ios: false };
+  if (s?.platform === "android") return { here: "this phone", Here: "This phone", noun: "phone", settings: "the Settings app", files: "the Files app", signInPlace: "the sign-in page", ios: false, onDeviceModel: "Gemini Nano" };
+  return { here: "this Mac", Here: "This Mac", noun: "Mac", settings: "System Settings", files: "Finder", signInPlace: "your browser", ios: false, onDeviceModel: "Apple Intelligence" };
 }

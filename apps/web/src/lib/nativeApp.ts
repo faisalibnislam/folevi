@@ -15,7 +15,8 @@ export interface NativeSettings {
   /** Seconds in the background before the app asks to unlock again. */
   lockAfter: LockAfter;
   /** What unlocks this device; "none" when it has no passcode (the lock can't be turned on). */
-  method: "faceID" | "touchID" | "opticID" | "passcode" | "none";
+  /** "biometric" and "screenLock": the Android app (a fingerprint or face, else the phone's PIN, pattern or password). */
+  method: "faceID" | "touchID" | "opticID" | "passcode" | "biometric" | "screenLock" | "none";
 }
 
 export type LockAfter = 0 | 60 | 300 | 900;

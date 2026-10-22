@@ -13,6 +13,7 @@ import { useLocalAi } from "@/lib/mode";
 import { KEY_PROVIDERS, PROVIDERS, PROVIDER_ORDER, modelLabel } from "@/lib/local/ai/catalog";
 import { localAiHost, refreshLocalAi, setLocalAiChoice, usable, type LocalAiState } from "@/lib/local/ai/state";
 import type { AiKeyProvider, AiProviderId, OnDeviceStatus } from "@/lib/shell/types";
+import { shell } from "@/lib/shell";
 import { deviceWords } from "@/lib/shell/words";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -24,19 +25,19 @@ import { AiMemoryCard } from "./AiMemory";
 /** What Apple Intelligence's state means for the person, in a sentence. */
 export const ON_DEVICE_COPY: Record<OnDeviceStatus, string> = {
   get available() {
-    return `Apple Intelligence is on. Foli AI can run on ${deviceWords().here}, and nothing leaves it.`;
+    return `${deviceWords().onDeviceModel} is on. Foli AI can run on ${deviceWords().here}, and nothing leaves it.`;
   },
   get notEnabled() {
-    return `Turn on Apple Intelligence in ${deviceWords().settings} to use Foli AI on ${deviceWords().here} without a key.`;
+    return `Turn on ${deviceWords().onDeviceModel} in ${deviceWords().settings} to use Foli AI on ${deviceWords().here} without a key.`;
   },
   get notReady() {
-    return `Apple Intelligence is still getting ready on ${deviceWords().here}. Try again in a little while.`;
+    return `${deviceWords().onDeviceModel} is still getting ready on ${deviceWords().here}. Try again in a little while.`;
   },
   get notSupported() {
-    return `${deviceWords().Here} can't run Apple Intelligence. Add one of your own keys below to use Foli AI.`;
+    return `${deviceWords().Here} can't run ${deviceWords().onDeviceModel}. Add one of your own keys below to use Foli AI.`;
   },
   get unknown() {
-    return `Folevi couldn't check Apple Intelligence on ${deviceWords().here}. Add one of your own keys below to use Foli AI.`;
+    return `Folevi couldn't check ${deviceWords().onDeviceModel} on ${deviceWords().here}. Add one of your own keys below to use Foli AI.`;
   },
 };
 
@@ -62,7 +63,7 @@ function OnOffCard() {
     <Card title="Foli AI">
       <div className="flex items-start justify-between gap-6">
         <p id={descId} className="max-w-prose text-sm text-muted">
-          Foli AI helps you write, answers from your notes and sums them up. In a library on your devices it runs on Apple Intelligence on {deviceWords().here}, or on your own key with OpenAI, Anthropic or Google, called straight from {deviceWords().here}. Nothing goes through Folevi, and nothing is sent while it&apos;s off.
+          Foli AI helps you write, answers from your notes and sums them up. In a library on your devices it runs on {deviceWords().onDeviceModel} on {deviceWords().here}, or on your own key with OpenAI, Anthropic or Google, called straight from {deviceWords().here}. Nothing goes through Folevi, and nothing is sent while it&apos;s off.
         </p>
         <Switch
           checked={on}
@@ -89,7 +90,7 @@ function OnDeviceCard({ state }: { state: LocalAiState | null }) {
           <Laptop size={16} />
         </span>
         <div className="min-w-0">
-          <p className="text-sm font-medium text-heading">{status === "available" ? "Apple Intelligence" : "Apple Intelligence isn't available"}</p>
+          <p className="text-sm font-medium text-heading">{status === "available" ? deviceWords().onDeviceModel : `${deviceWords().onDeviceModel} isn't available`}</p>
           <p className="mt-0.5 text-sm text-muted">{ON_DEVICE_COPY[status]}</p>
           {status === "available" ? <p className="mt-1 text-sm text-muted">It&apos;s a small model: it does writing help, questions about your notes, chats and the smaller block tools. Long notes are cut to what it can read, and wireframes and flowcharts need your own key.</p> : null}
         </div>
@@ -269,14 +270,14 @@ function ModelCard({ state }: { state: LocalAiState | null }) {
     return (
       <Card title="Model">
         <p className="text-sm text-muted" data-testid="local-ai-model-none">
-          Foli AI has no model on {deviceWords().here} yet. Turn on Apple Intelligence, or add one of your own keys.
+          Foli AI has no model on {deviceWords().here} yet. {deviceWords().ios || shell()?.platform === "mac" ? `Turn on ${deviceWords().onDeviceModel}, or add one of your own keys.` : "Add one of your own keys."}
         </p>
       </Card>
     );
   const shownProvider = picked?.provider ?? AUTO;
   const modelsFor = active && active.provider !== "on-device" ? PROVIDERS[active.provider].models : [];
   return (
-    <Card title="Model" description="Which model answers. Folevi picks Apple Intelligence when it's on, and otherwise the first key you added.">
+    <Card title="Model" description={`Which model answers. Folevi picks ${deviceWords().onDeviceModel} when it's on, and otherwise the first key you added.`}>
       <div className="grid gap-4 sm:max-w-md" data-testid="local-ai-model" data-active={active ? `${active.provider}:${active.model}` : ""}>
         <label className="text-sm" htmlFor={providerId}>
           <span className="mb-1 block font-medium">Provider</span>
@@ -315,7 +316,7 @@ function ModelCard({ state }: { state: LocalAiState | null }) {
         ) : null}
         {active ? (
           <p className="text-sm text-muted" role="status">
-            Answering now: {active.provider === "on-device" ? `Apple Intelligence, on ${deviceWords().here}` : `${modelLabel(active.provider, active.model)} (${PROVIDERS[active.provider].label})`}.
+            Answering now: {active.provider === "on-device" ? `${deviceWords().onDeviceModel}, on ${deviceWords().here}` : `${modelLabel(active.provider, active.model)} (${PROVIDERS[active.provider].label})`}.
           </p>
         ) : null}
       </div>

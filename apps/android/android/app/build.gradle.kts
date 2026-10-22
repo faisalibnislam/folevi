@@ -80,10 +80,13 @@ dependencies {
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.splashscreen)
+    implementation(libs.androidx.biometric)
     implementation(libs.androidx.window)
     implementation(libs.okhttp)
     // Google Drive: Google's authorization for the drive.file scope on Android (no client secret, no redirect).
     implementation(libs.play.services.auth)
+    // Foli AI on the device: Gemini Nano through ML Kit's GenAI Prompt API, where the phone's AICore has it.
+    implementation(libs.mlkit.genai.prompt)
     // Home screen widgets (Glance, which draws with Compose).
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.runtime)

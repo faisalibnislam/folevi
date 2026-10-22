@@ -105,6 +105,12 @@ export function liftController() {
     ]
       .filter(Boolean)
       .join(";");
+    // A tap on it is a tap outside the menu, which closes it (components/ui/Menu.tsx listens for the press):
+    // WebKit sends no mouse press of its own for a tap on something that isn't a control.
+    el.style.cursor = "pointer";
+    el.addEventListener("pointerdown", () => {
+      if (backdrop === el) el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, composed: true }));
+    });
     document.body.appendChild(el);
     try {
       el.showPopover();

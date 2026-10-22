@@ -31,6 +31,7 @@ import { displayCornerRadius, useIpadLayout, useIphoneApp } from "@/lib/iphone";
 import { nativeApp } from "@/lib/nativeApp";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
 import { installInputModality } from "@/components/iphone/chrome";
+import { MacCommands } from "./MacCommands";
 import { inMacApp } from "@/lib/desktop/mac";
 import { IphoneScreen, type IphoneScreenOptions } from "@/components/iphone/Screen";
 
@@ -367,6 +368,8 @@ export function Shell() {
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppContextMenu />
       <DesktopBridge />
+      {/* Folevi for Mac in Electron: the tab shortcuts (⌘1 to ⌘9, ⌃Tab), which its menus don't have. */}
+      <MacCommands />
       <PlaceRunners />
       <MovePlacesHost />
       <NativeBridge />

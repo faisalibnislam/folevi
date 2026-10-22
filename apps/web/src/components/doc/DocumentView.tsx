@@ -104,6 +104,7 @@ import "@/components/editor/chart/chart.css";
 import "@/components/editor/wireframe/wireframe.css";
 import { Select } from "@/components/ui/Select";
 import { useFileText } from "./useFileText";
+import { useMacNoteCommands } from "@/components/app/MacCommands";
 import { useLockMenuItem } from "@/components/e2ee/LockDialog";
 
 // Only a collection's row pages have properties; the collection code loads for those alone.
@@ -1940,6 +1941,8 @@ function useDocumentActions({
           onSelect: () => void act(trash({ documentId }), "Moved to Trash", () => void restore({ documentId })),
         },
       ];
+  // Folevi for Mac: the menu bar's Note menu does what these do.
+  useMacNoteCommands(items);
   return items;
 }
 

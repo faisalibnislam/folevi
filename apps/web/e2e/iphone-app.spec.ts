@@ -199,6 +199,18 @@ test("the iPad app in a narrow window (Slide Over, a third of Split View) takes 
   expect((await strip.getByRole("button", { name: "New note", exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await expect(page.locator(".ui-fab")).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Folio" }).locator(".ui-kbd")).toBeHidden();
+  // Settings: iPadOS Settings' two columns, every account section drawn as the iPhone's grouped lists.
+  await page.goto(`${APP}/settings/account`);
+  const sections = page.getByRole("navigation", { name: "Settings sections" });
+  await expect(sections.getByRole("link", { name: "Account", exact: true })).toHaveAttribute("aria-current", "page", { timeout: 30_000 });
+  for (const name of ["Account", "AI", "Security", "Appearance", "Notifications"]) {
+    await sections.getByRole("link", { name, exact: true }).click();
+    await expect(page.locator("main").getByRole("heading", { level: 2, name, exact: true })).toBeVisible();
+    await expect(page.locator("main select, main input[type=range], main input[type=checkbox]")).toHaveCount(0);
+  }
+  if (process.env.IPAD_SHOTS) await page.screenshot({ path: `${process.env.IPAD_SHOTS}/ipad-settings-account.png` });
+  await page.goto(`${APP}/documents`);
+  await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible({ timeout: 30_000 });
   // And narrow again.
   await page.setViewportSize({ width: 360, height: 900 });
   await expect(page.getByRole("navigation", { name: "Tabs" })).toBeVisible();

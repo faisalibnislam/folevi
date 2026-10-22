@@ -184,7 +184,7 @@ export function IosRow({
   const style = insetFor(Boolean(icon));
   if (href)
     return (
-      <AppLink href={href} onClick={onClick} aria-label={ariaLabel} aria-current={current ? "page" : undefined} className={`${ROW} ${PRESS} ${current ? "bg-[color-mix(in_oklab,var(--color-heading)_9%,transparent)]" : ""}`} style={style}>
+      <AppLink href={href} onClick={onClick} aria-label={ariaLabel} aria-current={current ? "page" : undefined} className={`${ROW} ${PRESS} ${current ? "bg-[color-mix(in_oklab,var(--color-heading)_12%,transparent)]" : ""}`} style={style}>
         {body}
       </AppLink>
     );

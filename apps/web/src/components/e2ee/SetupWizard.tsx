@@ -11,7 +11,7 @@ import { useAppState } from "@/lib/app/state";
 import { desktop } from "@/lib/desktop";
 import { copy, type LevelId, type MethodId, type SwitchId } from "@/lib/e2ee/copy";
 import { passkeysPossible, passphraseProblem, setup, useKeySession, type MethodSummary } from "@/lib/e2ee/keys";
-import { DEFAULT_SWITCHES, FULL_SWITCHES, e2eeActions, useMigrationProgress, type Switches } from "./__stubs__";
+import { DEFAULT_SWITCHES, FULL_SWITCHES, useE2eeActions, useMigrationProgress, type Switches } from "./hooks";
 import { RecoveryKeyPanel } from "./RecoveryKeyPanel";
 import { MigrationBar } from "./MigrationProgress";
 
@@ -101,6 +101,7 @@ export function SetupWizard({
   const [recovery, setRecovery] = useState<RecoveryInProgress | null>(() => pendingWizard(scope, mode)?.recovery ?? null);
   const [passkeyNote, setPasskeyNote] = useState<string | null>(null);
   const progress = useMigrationProgress(scope);
+  const actions = useE2eeActions();
   // Opening again starts over; a wizard mounted open (first open, or resumed after a remount) keeps its state.
   const wasOpen = useRef(open);
   useEffect(() => {
@@ -315,7 +316,7 @@ export function SetupWizard({
           onClick={() =>
             void run(async () => {
               await setup.setUpSpace(scope);
-              await e2eeActions.enable(scope, level, chosen);
+              await actions.enable(scope, level, chosen);
               setStep("done");
             })
           }

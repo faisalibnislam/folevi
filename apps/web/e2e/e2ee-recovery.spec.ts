@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { APP, newPerson, signIn } from "./helpers";
-import { HAS_BACKEND, NEEDS_BACKEND, turnOnEncryption } from "./e2ee-stub";
+import { turnOnEncryption } from "./e2ee-helpers";
 
 // §11.4 e2ee-recovery: the recovery key unlocks with no other device's help, and a browser removed from
 // encryption can't unlock any more; a wrong key says so; too many tries give the rate-limit text.
-test.skip(!HAS_BACKEND, NEEDS_BACKEND);
 
 test("the recovery key unlocks a new browser, which then removes the old one from encryption", async ({ browser }) => {
   test.setTimeout(300_000);

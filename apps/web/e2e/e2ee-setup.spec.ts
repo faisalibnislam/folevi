@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { APP, newPerson } from "./helpers";
-import { HAS_BACKEND, NEEDS_BACKEND, e2eeScan, marker, migrationDone, newNote, turnOnEncryption } from "./e2ee-stub";
+import { e2eeScan, marker, migrationDone, newNote, turnOnEncryption } from "./e2ee-helpers";
 
 // §11.4 e2ee-setup: sign up, Settings > Privacy, the wizard with a recovery key and a passphrase, the seeded
 // notes encrypted in the background, titles still showing, and nothing readable left on the server.
-test.skip(!HAS_BACKEND, NEEDS_BACKEND);
 
 test("turning on encryption seals what's there; the server keeps no marker", async ({ browser }) => {
   test.setTimeout(420_000);

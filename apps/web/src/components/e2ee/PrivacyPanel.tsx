@@ -17,7 +17,7 @@ import { desktop } from "@/lib/desktop";
 import { formatRelative } from "@/lib/format";
 import { copy, e2eeErrorMessage, type LevelId, type SwitchId } from "@/lib/e2ee/copy";
 import { setup, useKeySession, type MethodSummary } from "@/lib/e2ee/keys";
-import { DEFAULT_SWITCHES, e2eeActions, useE2eeSpace, useE2eeSpaceStatus, type Switches } from "./__stubs__";
+import { DEFAULT_SWITCHES, useE2eeActions, useE2eeSpace, useE2eeSpaceStatus, type Switches } from "./hooks";
 import { WhatEachChoiceMeans } from "./WhatEachChoiceMeans";
 import { SetupWizard, PassphraseForm, pendingWizard } from "./SetupWizard";
 import { LowerLevelDialog } from "./LowerLevelDialog";
@@ -40,7 +40,9 @@ export function PrivacyPanel({ scope, workspaceName = null, canChange = true }: 
   const status = useE2eeSpaceStatus(scope);
   const space = useE2eeSpace(scope);
   const { state } = useKeySession();
-  const current: LevelId = status.level;
+  // The server's row is the truth for this screen (this device's router may not have the space yet).
+  const current: LevelId = space?.level ?? status.level;
+  const switches = space?.switches ?? status.switches;
   // A wizard the app remounted under (creating the keys swaps the Convex client) opens again where it was.
   const [picked, setPicked] = useState<LevelId | null>(() => pendingWizard(scope, "space")?.level ?? null);
   const choice = picked ?? current;
@@ -102,7 +104,7 @@ export function PrivacyPanel({ scope, workspaceName = null, canChange = true }: 
 
       <MigrationRow scope={scope} />
 
-      {current === "selected" ? <SwitchesCard scope={scope} switches={status.switches} canChange={canChange} /> : null}
+      {current === "selected" ? <SwitchesCard scope={scope} switches={switches} canChange={canChange} /> : null}
 
       {workspaceName && space && current !== "standard" ? (
         <Card title={p.keyHolders(space.keyHolders)}>
@@ -130,11 +132,12 @@ export function PrivacyPanel({ scope, workspaceName = null, canChange = true }: 
 
 function SwitchesCard({ scope, switches, canChange }: { scope: WireScope; switches: Switches; canChange: boolean }) {
   const toast = useToast();
+  const actions = useE2eeActions();
   const uid = useId();
   const s = copy.switches;
   const save = (next: Switches, label: string, turnedOff: boolean) => {
     if (turnedOff) toast.show(copy.privacy.switchOffDeleting);
-    void e2eeActions.setSwitches(scope, next).then(
+    void actions.setSwitches(scope, next).then(
       () => toast.show(turnedOff ? copy.privacy.switchOffDone : copy.privacy.switchOn(label), { tone: "success" }),
       (e) => toast.show(errorMessage(e), { tone: "error" }),
     );

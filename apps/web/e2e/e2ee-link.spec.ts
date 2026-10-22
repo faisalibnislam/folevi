@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { newPerson, openShare } from "./helpers";
-import { HAS_BACKEND, NEEDS_BACKEND, marker, migrationDone, newNote, turnOnEncryption } from "./e2ee-stub";
+import { marker, migrationDone, newNote, turnOnEncryption } from "./e2ee-helpers";
 
 // §11.4 e2ee-link: an encrypted link opens signed out (the key is after #); without the fragment it says the
 // key is missing; revoking it stops it.
-test.skip(!HAS_BACKEND, NEEDS_BACKEND);
 
 test("an encrypted link opens signed out, needs its fragment, and can be revoked", async ({ browser }) => {
   test.setTimeout(300_000);

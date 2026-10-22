@@ -10,7 +10,7 @@ import { useAppState } from "@/lib/app/state";
 import { useCapabilities } from "@/lib/mode";
 import { copy } from "@/lib/e2ee/copy";
 import { useKeySession } from "@/lib/e2ee/keys";
-import { e2eeActions, useE2eeSpace, useLockedIds } from "./__stubs__";
+import { useE2eeActions, useE2eeSpaceStatus } from "./hooks";
 import { SetupWizard, pendingWizard } from "./SetupWizard";
 
 /**
@@ -23,16 +23,17 @@ export const LOCK_MENU_FOR_EVERYONE = false;
 /** Asks before marking a folder or note Always fully encrypted, or before stopping (§10.8, §6.9). */
 export function LockDialog({ open, onClose, kind, id, name, locked }: { open: boolean; onClose: () => void; kind: "folder" | "document"; id: string; name: string; locked: boolean }) {
   const { scope } = useAppState();
-  const space = useE2eeSpace(scope);
+  const status = useE2eeSpaceStatus(scope);
+  const actions = useE2eeActions();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const l = copy.lock;
-  const standard = !space || space.level === "standard";
+  const standard = status.level === "standard";
   const apply = async () => {
     setBusy(true);
     try {
-      if (kind === "folder") await e2eeActions.setFolderLocked(scope, id, !locked);
-      else await e2eeActions.setDocumentLocked(scope, id, !locked);
+      if (kind === "folder") await actions.setFolderLocked(id, !locked);
+      else await actions.setDocumentLocked(id, !locked);
       toast.show(locked ? l.stopped(name) : l.done(name), { tone: "success" });
       onClose();
     } catch (e) {
@@ -72,9 +73,8 @@ export function useLockMenuItem(target: { kind: "folder" | "document"; id: strin
   const { canEdit, canManage, workspace } = useAppState();
   const caps = useCapabilities();
   const { state } = useKeySession();
-  const ids = useLockedIds();
   if (!target || !caps.account) return null;
-  const locked = target.locked ?? (target.kind === "folder" ? ids.folders.has(target.id) : ids.documents.has(target.id));
+  const locked = target.locked === true;
   // Personal: its owner. A workspace: its owner and admins (like the level and the switches, §8.5).
   const allowed = workspace ? canManage : canEdit;
   if (!allowed || (state === "none" && !LOCK_MENU_FOR_EVERYONE)) return null;

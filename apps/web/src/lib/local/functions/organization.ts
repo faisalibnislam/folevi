@@ -102,7 +102,8 @@ defineLocal(api.organization.sidebar, "query", async (ctx, args) => {
   const live = new Set(folders.map((f) => f.id));
   const tags = await ctx.db.list("tags");
   return {
-    folders: folders.sort(byRank).map((f) => ({ id: f.id, name: f.name, color: f.color, parentFolderId: shownParent(f, live), rank: f.rank })),
+    // An encrypted space's replica knows which folders are Always fully encrypted (as the server's sidebar says).
+    folders: folders.sort(byRank).map((f) => ({ id: f.id, name: f.name, color: f.color, parentFolderId: shownParent(f, live), rank: f.rank, ...((f as { locked?: boolean }).locked ? { locked: true as const } : {}) })),
     tags: tags.sort((a, b) => a.name.localeCompare(b.name)).map((t) => ({ id: t.id, name: t.name, color: t.color })),
   };
 });

@@ -22,7 +22,7 @@ import { RowIcon } from "@/components/iphone/Grouped";
 import { GlassTextButton } from "@/components/iphone/Glass";
 import { UserRoundPlus } from "lucide-react";
 import { copy } from "@/lib/e2ee/copy";
-import { useMemberSecurityCode, useWorkspaceKeys } from "@/components/e2ee/__stubs__";
+import { useMemberSecurityCode, useRotationProgress, useWorkspaceKeys } from "@/components/e2ee/hooks";
 
 type MemberAccess = "edit" | "comment" | "view";
 /** A role choice in the member list: Member with an access, or Admin. */
@@ -58,7 +58,8 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
   const iphone = useIphoneApp();
   const { navigate } = useAppRouter();
   // End-to-end encryption (docs/E2EE_DESIGN.md §8): null unless this workspace is encrypted.
-  const keys = useWorkspaceKeys({ kind: "workspace", workspaceId: workspace.id });
+  const wsScope = { kind: "workspace" as const, workspaceId: workspace.id };
+  const keys = useWorkspaceKeys(wsScope, useRotationProgress(wsScope));
   const [codeFor, setCodeFor] = useState<{ profileId: string; name: string } | null>(null);
   const canAdmin = data?.canManage === true;
   const isOwner = data?.yourRole === "owner";

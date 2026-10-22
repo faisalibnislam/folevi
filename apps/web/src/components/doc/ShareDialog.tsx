@@ -14,8 +14,9 @@ import { Switch } from "@/components/ui/Switch";
 import { useRadioGroup } from "@/lib/a11y/radioGroup";
 import { PUBLISH_THEMES, publishTheme, type PublishTheme } from "@/lib/publishThemes";
 import { PublishThemePreview } from "./publishPreviews";
-import { copy as e2eeCopy } from "@/lib/e2ee/copy";
-import { createEncryptedLink, isSealedDocument, publishPlainCopy } from "@/components/e2ee/__stubs__";
+import { copy as e2eeCopy, e2eeErrorMessage } from "@/lib/e2ee/copy";
+import { createEncryptedLink, isSealedDocument, publishPlainCopy, revokeEncryptedLink, useE2eeSpaceStatus } from "@/components/e2ee/hooks";
+import { useAppState } from "@/lib/app/state";
 import { PublishCopyDialog } from "@/components/e2ee/PublishCopyDialog";
 
 /** `personal`: the page is in someone's Personal, which has no members. Only the people added here (and its owner) can open it. */
@@ -28,6 +29,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
   const createLink = useMutation(api.sharing.createPublicLink);
   const revokeLink = useMutation(api.sharing.revokePublicLink);
   const setLinkTheme = useMutation(api.sharing.setPublicLinkTheme);
+  const unpublish = useMutation(api.e2ee.links.unpublish);
   const toast = useToast();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"viewer" | "commenter" | "editor">("viewer");
@@ -41,6 +43,8 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
   const canShare = data?.canShare === true;
   // An end-to-end encrypted note (docs/E2EE_DESIGN.md §9, §10.13): links carry their key after "#", and
   // publishing makes a readable copy on purpose. Always false for Standard notes.
+  // (Re-read whenever this device's view of the space changes, e.g. as the note is encrypted.)
+  useE2eeSpaceStatus(useAppState().scope);
   const sealed = open && isSealedDocument(documentId);
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState<string | null>(null);
@@ -202,7 +206,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                 </div>
               ) : null}
               <ul className="mt-3 space-y-2">
-                {data.links.map((l) => (
+                {data.links.filter((l) => !(l as { plainCopy?: boolean }).plainCopy).map((l) => (
                   <li key={l.id} className="flex items-center gap-3 rounded-chip border border-line px-3 py-2">
                     <span className="min-w-0 flex-1">
                       <span className="block font-mono text-xs">…/s/{l.tokenHint}••••••••</span>
@@ -219,7 +223,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                         </option>
                       ))}
                     </Select>
-                    <Button size="sm" variant="quiet" className="text-danger" onClick={() => void run(revokeLink({ linkId: l.id }), "Link revoked")}>
+                    <Button size="sm" variant="quiet" className="text-danger" onClick={() => void run(sealed ? revokeEncryptedLink(documentId, l.id) : revokeLink({ linkId: l.id }), "Link revoked")}>
                       Revoke
                     </Button>
                   </li>
@@ -235,7 +239,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                       return;
                     }
                     try {
-                      if (sealed) {
+                      if (isSealedDocument(documentId)) {
                         // The key goes in the fragment, which never reaches the server (§9.1).
                         const r = await createEncryptedLink(documentId, { expiresAt: linkForm.expires ? new Date(linkForm.expires).getTime() : undefined, password: linkForm.password || undefined, theme: linkForm.theme });
                         setFreshLink(r.url);
@@ -252,7 +256,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                       setFreshLink(`${location.origin}/s/${r.token}`);
                       setLinkForm({ expires: "", password: "", index: false, theme: "note" });
                     } catch (err) {
-                      toast.show(errorMessage(err), { tone: "error" });
+                      toast.show(e2eeErrorMessage(err) ?? errorMessage(err), { tone: "error" });
                     }
                   }}
                 >
@@ -329,10 +333,10 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                   .map((l) => (
                     <li key={l.id} className="flex flex-wrap items-center gap-2 rounded-chip border border-line px-3 py-2">
                       <span className="min-w-0 flex-1 text-xs text-muted">{e2eeCopy.publish.publishedFrom(formatDateTime((l as { publishedAt?: number }).publishedAt ?? l.createdAt))}</span>
-                      <Button size="sm" variant="quiet" onClick={() => void run(publishPlainCopy(documentId), e2eeCopy.publish.updated)}>
+                      <Button size="sm" variant="quiet" onClick={() => void run(publishPlainCopy(documentId, { linkId: l.id }), e2eeCopy.publish.updated)}>
                         {e2eeCopy.publish.update}
                       </Button>
-                      <Button size="sm" variant="quiet" className="text-danger" onClick={() => void run(revokeLink({ linkId: l.id }), e2eeCopy.publish.stopped)}>
+                      <Button size="sm" variant="quiet" className="text-danger" onClick={() => void run(unpublish({ linkId: l.id }), e2eeCopy.publish.stopped)}>
                         {e2eeCopy.publish.stop}
                       </Button>
                     </li>

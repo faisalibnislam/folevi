@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { AppLink } from "@/lib/app/router";
 import { formatBytes } from "@/lib/format";
 import { copy } from "@/lib/e2ee/copy";
-import { e2eeActions, useMigrationProgress, type MigrationProgress as Progress } from "./__stubs__";
+import { retryFailed, useMigrationProgress, type MigrationProgress as Progress } from "./hooks";
 
 /** Notes done over notes in all, and the line that says so ("Encrypting your notes: 1,240 of 1,800"). */
 function summary(p: Progress): { line: string; fraction: number } {
@@ -84,7 +84,7 @@ export function MigrationRow({ scope }: { scope: WireScope }) {
               </li>
             ))}
           </ul>
-          <Button size="sm" className="mt-2" onClick={() => void e2eeActions.retryFailed(scope)}>
+          <Button size="sm" className="mt-2" onClick={() => retryFailed()}>
             {m.tryAgain}
           </Button>
         </div>

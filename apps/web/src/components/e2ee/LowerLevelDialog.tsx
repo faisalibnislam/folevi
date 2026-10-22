@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { desktop } from "@/lib/desktop";
 import { copy, type LevelId } from "@/lib/e2ee/copy";
-import { useKeySession } from "@/lib/e2ee/keys";
-import { e2eeActions } from "./__stubs__";
+import { getKeySession, useKeySession } from "@/lib/e2ee/keys";
+import { FULL_SWITCHES, useE2eeActions } from "./hooks";
 
 type Recheck = "passphrase" | "recoveryKey" | "passkey";
 
@@ -23,15 +23,20 @@ export function LowerLevelDialog({ open, onClose, scope, to, onDone }: { open: b
   const { methods } = useKeySession();
   const [wrapId, setWrapId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const actions = useE2eeActions();
   useEffect(() => {
     if (open) setWrapId(null);
   }, [open]);
+  // Every lowering proves a recovery method again (the server checks it for "selected" too); raising to Fully
+  // encrypted makes nothing readable, so it only confirms.
+  const lowering = to !== "full";
   const title = to === "standard" ? c.standardTitle : to === "selected" ? c.toSelectedTitle : c.toFullTitle;
   const body = to === "standard" ? c.standardBody : to === "selected" ? c.toSelectedBody : c.toFullBody;
   const apply = async () => {
     setBusy(true);
     try {
-      await e2eeActions.lower(scope, to, wrapId ?? undefined);
+      if (to === "full") await actions.enable(scope, "full", FULL_SWITCHES);
+      else await actions.lower(scope, to, wrapId ?? "");
       toast.show(to === "standard" ? c.turningOff : c.changed(copy.privacy.levels[to].title), { tone: "success" });
       onDone?.();
       onClose();
@@ -53,13 +58,13 @@ export function LowerLevelDialog({ open, onClose, scope, to, onDone }: { open: b
       footer={
         <>
           <Button onClick={onClose}>{copy.wizard.cancel}</Button>
-          <Button variant={to === "standard" ? "danger" : "primary"} disabled={busy || (to === "standard" && !wrapId)} aria-busy={busy || undefined} onClick={() => void apply()}>
+          <Button variant={to === "standard" ? "danger" : "primary"} disabled={busy || (lowering && !wrapId)} aria-busy={busy || undefined} onClick={() => void apply()}>
             {to === "standard" ? c.standardButton : c.change}
           </Button>
         </>
       }
     >
-      {to === "standard" ? (
+      {lowering ? (
         wrapId ? (
           <p role="status" className="flex items-center gap-2 text-sm font-medium text-heading">
             <Check size={15} aria-hidden /> {c.confirmed}
@@ -83,7 +88,7 @@ function RecheckForm({ options, onConfirmed }: { options: Recheck[]; onConfirmed
     setBusy(true);
     setError(null);
     try {
-      const r = await e2eeActions.recheck(k, input);
+      const r = await recheck(k, input);
       if (r.ok) return onConfirmed(r.wrapId);
       setError(
         r.reason === "rate_limited" ? u.rateLimited : r.reason === "bad_format" ? u.badFormat : r.reason === "unsupported" ? u.passkeyUnsupported : r.reason === "cancelled" ? u.passkeyCancelled : k === "passphrase" ? u.wrongPassphrase : u.wrongRecovery,
@@ -157,4 +162,15 @@ function RecheckForm({ options, onConfirmed }: { options: Recheck[]; onConfirmed
       ) : null}
     </div>
   );
+}
+
+/**
+ * Proves a recovery method again before lowering (§5.3 `lower`): WP6's unlock calls re-check while unlocked,
+ * and the session keeps the wrap it opened (`recheckedWrapId`).
+ */
+async function recheck(kind: Recheck, input: string): Promise<{ ok: true; wrapId: string } | { ok: false; reason: "wrong" | "bad_format" | "rate_limited" | "cancelled" | "unsupported" }> {
+  const session = getKeySession();
+  const r = kind === "passphrase" ? await session.unlockWithPassphrase(input) : kind === "recoveryKey" ? await session.unlockWithRecoveryKey(input) : await session.unlockWithPasskey();
+  const wrapId = (session as { recheckedWrapId?: () => string | null }).recheckedWrapId?.() ?? null;
+  return r === "ok" && wrapId ? { ok: true, wrapId } : { ok: false, reason: r === "ok" ? "wrong" : r };
 }

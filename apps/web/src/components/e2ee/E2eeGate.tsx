@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { FullPageMessage, useAppState } from "@/lib/app/state";
 import { copy } from "@/lib/e2ee/copy";
 import { useKeySession } from "@/lib/e2ee/keys";
-import { startFeatureWorkers, startMigrationRunner, useE2eeSpace, useSpaceAccess } from "./__stubs__";
+import { startFeatureWorkers, startMigrationRunner, useE2eeSpaceStatus, useSpaceAccess } from "./hooks";
 import { UnlockScreen } from "./UnlockScreen";
 import { SetupWizard, pendingWizard } from "./SetupWizard";
 import { IncomingApprovalHost } from "./ApproveDeviceDialog";
@@ -40,13 +40,15 @@ function GatePage({ children }: { children: ReactNode }) {
 export function E2eeGate({ children }: { children: ReactNode }) {
   const { scope, workspace } = useAppState();
   const { state } = useKeySession();
-  const space = useE2eeSpace(scope);
+  const status = useE2eeSpaceStatus(scope);
   const access = useSpaceAccess(scope);
   const [unlocking, setUnlocking] = useState(false);
   const [refused, setRefused] = useState(0);
   const [wizard, setWizard] = useState(() => pendingWizard(scope, "methods")?.extra === "gate");
   const locked = state === "locked" || state === "unlocking";
-  const active = space?.e2eeActive === true;
+  // An encrypted space (WP7's view; Standard accounts read Standard). A Standard space with a few locked notes
+  // stays open: a locked note's own queries land on the unlock screen through the boundary below.
+  const active = status.level !== "standard";
   // Once the person starts unlocking by hand, the screen stays up after the notes open, until they pick
   // "Trust this browser" or a public computer. (Opening with this device's own key needs no screen.)
   if (access === "needs_setup")

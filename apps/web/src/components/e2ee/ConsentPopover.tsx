@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { AppLink } from "@/lib/app/router";
 import { copy } from "@/lib/e2ee/copy";
-import { useAiConsent, type ConsentRequest } from "./__stubs__";
+import { useAiConsent, type ConsentRequest } from "./hooks";
 
 function ConsentBody({ request, onAnswer }: { request: ConsentRequest; onAnswer: (ok: boolean, remember: boolean) => void }) {
   const c = copy.consent;

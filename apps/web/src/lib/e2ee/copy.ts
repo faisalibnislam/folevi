@@ -376,7 +376,7 @@ export const copy = {
   },
 } as const;
 
-/** The message for an E2EE error from the server or a stub (§5.6), or null when it isn't one. */
+/** The message for an E2EE error from the server (§5.6), or null when it isn't one. */
 export function e2eeErrorMessage(error: unknown): string | null {
   const code = (error as { data?: { code?: string } })?.data?.code ?? (error instanceof Error ? error.message : undefined);
   switch (code) {
@@ -389,6 +389,8 @@ export function e2eeErrorMessage(error: unknown): string | null {
     case "e2ee_rate_limited":
       return copy.errors.e2ee_rate_limited;
     default:
+      // Other e2ee refusals made on this device carry their own sentence (the router's and WP8's copy).
+      if (code?.startsWith("e2ee_") && error instanceof Error && error.message && !error.message.startsWith("e2ee_")) return error.message.replace(/^\[CONVEX[^\]]*\]\s*/, "");
       return null;
   }
 }

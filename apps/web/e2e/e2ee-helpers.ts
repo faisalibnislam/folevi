@@ -1,93 +1,22 @@
-// Helpers for the end-to-end encryption specs (docs/E2EE_DESIGN.md §11.4).
-//
-// Until WP6, WP7 and WP8 land, the screens run on components/e2ee/__stubs__.ts, whose state can be forced in
-// development through localStorage["folevi.e2ee.stub"]. The screen-level specs use that (`stubState`) and
-// pass now. The flow specs that need the real keys, router and server skip themselves without `HAS_BACKEND`: they run
-// once E2EE_BACKEND=1 is set at integration, when the stubs are deleted.
+// Helpers for the end-to-end encryption specs (docs/E2EE_DESIGN.md §11.4). They run against the real keys,
+// router, migration and server on the dev deployment (the "e2ee" feature flag must be on there).
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { expect, type BrowserContext, type Page } from "@playwright/test";
 import { APP } from "./helpers";
 
-export const NEEDS_BACKEND = "needs the real E2EE backend (WP2 to WP8); run with E2EE_BACKEND=1 after integration";
-/** Whether the real backend is there (set at integration); the flow specs skip themselves without it. */
-export const HAS_BACKEND = Boolean(process.env.E2EE_BACKEND);
-
-const switches = { foliAi: "ask", backgroundAi: false, searchEverywhere: false, apps: false, emailToNote: false, webClipper: false, notificationPreviews: false };
-const off = { ...switches, foliAi: "off" };
-const space = (level: "selected" | "full", extra: object = {}) => ({ level, state: "on", switches: level === "full" ? off : switches, lockedCount: 0, keyHolders: 1, ...extra });
-
 /**
- * Named stub states (StubState in components/e2ee/__stubs__.ts): what WP7 and WP8 would report. The lock state
- * and the ways to unlock are WP6's, real: a browser holding the account's trusted keys unlocks, a fresh one is
- * locked.
- */
-export const STUB = {
-  none: {},
-  encrypted: { spaces: { personal: space("selected") } },
-  full: { spaces: { personal: space("full") } },
-  migrating: {
-    spaces: { personal: { ...space("selected"), state: "enabling" } },
-    migrations: { personal: { direction: "seal", phase: "history", documents: { done: 1240, total: 1800 }, history: { done: 340, total: 2100 }, files: { done: 12, total: 80, bytesLeft: 1_200_000_000 }, paused: false, failed: [{ documentId: "01JZZZZZZZZZZZZZZZZZZZZZZZ", title: "Trip notes" }] } },
-  },
-  consent: {
-    spaces: { personal: space("selected") },
-    consent: { notes: [{ id: "n1", title: "Welcome to Folevi", chars: 2480 }, { id: "n2", title: "Trip notes", chars: 9120 }] },
-  },
-} as const;
-export type StubName = keyof typeof STUB;
-
-/**
- * The first page of each tab in `context` starts with this stub state (or a custom one); reloads keep what
- * the screens changed since.
- */
-export async function stubState(context: BrowserContext, state: StubName | object) {
-  const value = typeof state === "string" ? STUB[state] : state;
-  await context.addInitScript((v) => {
-    try {
-      if (location.origin === "null" || sessionStorage.getItem("folevi.e2ee.stub.seeded")) return;
-      localStorage.setItem("folevi.e2ee.stub", JSON.stringify(v));
-      sessionStorage.setItem("folevi.e2ee.stub.seeded", "1");
-    } catch {
-      // A page without storage.
-    }
-  }, value);
-}
-
-/** The same for one page (a tab in a context that's shared, such as the trusted browser's). */
-export async function stubStateOnPage(page: Page, state: StubName | object) {
-  const value = typeof state === "string" ? STUB[state] : state;
-  await page.addInitScript((v) => {
-    try {
-      if (location.origin === "null" || sessionStorage.getItem("folevi.e2ee.stub.seeded")) return;
-      localStorage.setItem("folevi.e2ee.stub", JSON.stringify(v));
-      sessionStorage.setItem("folevi.e2ee.stub.seeded", "1");
-    } catch {
-      // A page without storage.
-    }
-  }, value);
-}
-
-/**
- * A page in the browser that holds the account's trusted device keys. Those keys are non-extractable
+ * A tab in the browser that holds the account's trusted device keys. Those keys are non-extractable
  * CryptoKeys in IndexedDB, which a saved storage state can't carry, so the trusted browser is one context
- * kept open for the whole file; each "context" handed out is one of its tabs (closing it closes the tab).
+ * kept open for a whole file; each "context" handed out is one of its tabs (closing it closes the tab).
  */
-export async function trustedPage(context: BrowserContext, state: StubName | object, opts: { scheme?: "light" | "dark"; phone?: boolean } = {}): Promise<{ context: { close(): Promise<void> }; page: Page }> {
+export async function trustedPage(context: BrowserContext, opts: { scheme?: "light" | "dark"; phone?: boolean } = {}): Promise<{ context: { close(): Promise<void> }; page: Page }> {
   const page = await context.newPage();
   await page.setViewportSize(opts.phone ? { width: 390, height: 844 } : { width: 1440, height: 900 });
   await page.emulateMedia({ colorScheme: opts.scheme ?? "light" });
   await page.addInitScript((s) => localStorage.setItem("folevi:appearance", s), opts.scheme ?? "light");
-  await stubStateOnPage(page, state);
   return { context: { close: () => page.close() }, page };
 }
-
-/** Changes the stub state of a page that's already open (the stubs module puts its setter on window in development). */
-export async function setStub(page: Page, patch: object) {
-  await page.evaluate((p) => (window as unknown as { __foleviE2eeStub: { set(p: object): void } }).__foleviE2eeStub.set(p), patch);
-}
-
-// ─── Flow helpers for the specs that need the real backend ─────────────────────────────────────────────────
 
 const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 export const PASSPHRASE = "lantern orchard velvet compass";

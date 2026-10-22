@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { APP, newPerson, showFolders } from "./helpers";
-import { HAS_BACKEND, NEEDS_BACKEND, e2eeScan, marker, paletteResults } from "./e2ee-stub";
+import { e2eeScan, marker, paletteResults } from "./e2ee-helpers";
 
 // §11.4 e2ee-lock: in a Standard space, lock a folder; its notes are sealed, server search can't find them,
 // search on the device can. Needs LOCK_MENU_FOR_EVERYONE on (components/e2ee/LockDialog.tsx), which is off until launch.
-test.skip(!HAS_BACKEND, NEEDS_BACKEND);
 
 test("a locked folder in a Standard space", async ({ browser }) => {
   test.setTimeout(420_000);

@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { APP, newPerson } from "./helpers";
-import { HAS_BACKEND, NEEDS_BACKEND, e2eeScan, marker, migrationDone, newNote, paletteResults, turnOnEncryption } from "./e2ee-stub";
+import { e2eeScan, marker, migrationDone, newNote, paletteResults, turnOnEncryption } from "./e2ee-helpers";
 
 // §11.4 e2ee-switches: each switch at "Encrypted, with the features you pick". Foli AI's consent needs a
 // Gemini key on the deployment as well, like ai.spec.ts (E2E_AI=1).
-test.skip(!HAS_BACKEND, NEEDS_BACKEND);
 
 test("Foli AI asks before sending notes, and Don't send sends nothing", async ({ browser }) => {
   test.skip(!process.env.E2E_AI, "calls Gemini; run with E2E_AI=1");

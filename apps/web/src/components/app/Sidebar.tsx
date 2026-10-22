@@ -38,7 +38,6 @@ import { useShell } from "./Shell";
 import { FolderMenu } from "./FolderMenu";
 import { LockGlyph } from "@/components/e2ee/LockGlyph";
 import { SidebarMigrationLine } from "@/components/e2ee/MigrationProgress";
-import { useLockedIds } from "@/components/e2ee/__stubs__";
 import { NotificationsButton } from "./NotificationsButton";
 import { SidebarMenu } from "./SidebarMenu";
 import { SyncStatus } from "./SyncStatus";
@@ -473,9 +472,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [starredOpen, setStarredOpen] = useLocalStorage("folevi:sidebar-starred-open", true);
   // The AI page, where AI is included and on (never on Core).
   const aiOn = useAiEnabled();
-  // Folders and notes marked Always fully encrypted (empty unless the account has encryption set up).
-  const lockedIds = useLockedIds();
-  const isLockedFolder = (f: { id: string }) => (f as { locked?: boolean }).locked === true || lockedIds.folders.has(f.id);
+  // Folders and notes marked Always fully encrypted (the lists carry `locked` once the account has encryption).
+  const isLockedFolder = (f: object) => (f as { locked?: boolean }).locked === true;
 
   const folders = org?.folders ?? [];
   // The folder tree: each folder followed by what's inside it.
@@ -596,7 +594,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           {starred?.page.length && starredOpen ? (
             <div className="space-y-0.5 pl-5" aria-label="Starred pages" role="group">
               {starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).map((d) => (
-                <NavItem key={d.id} href={`/d/${d.id}`} icon={<FileText size={15} />} label={d.title || "Untitled"} onNavigate={onNavigate} locked={lockedIds.documents.has(d.id)} />
+                <NavItem key={d.id} href={`/d/${d.id}`} icon={<FileText size={15} />} label={d.title || "Untitled"} onNavigate={onNavigate} locked={(d as { locked?: boolean }).locked === true} />
               ))}
               <MoreLink href="/starred" count={starred.page.length - starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).length} noun="starred pages" onNavigate={onNavigate} exact={starred.isDone} />
             </div>

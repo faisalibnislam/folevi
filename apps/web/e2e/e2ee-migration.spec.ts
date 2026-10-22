@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { APP, newPerson } from "./helpers";
-import { HAS_BACKEND, NEEDS_BACKEND, PASSPHRASE, marker, migrationDone, newNote, paletteResults, turnOnEncryption } from "./e2ee-stub";
+import { PASSPHRASE, marker, migrationDone, newNote, paletteResults, turnOnEncryption } from "./e2ee-helpers";
 
 // §11.4 e2ee-migration: turn on, edit while the notes are being encrypted, turn off with a recovery check,
 // and the notes are searchable on the server again.
-test.skip(!HAS_BACKEND, NEEDS_BACKEND);
 
 test("edit during the migration, then turn encryption off again", async ({ browser }) => {
   test.setTimeout(480_000);

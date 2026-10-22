@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { APP, createWorkspace, newPerson, signIn, switchTo } from "./helpers";
-import { HAS_BACKEND, NEEDS_BACKEND, marker, newNote, turnOnEncryption } from "./e2ee-stub";
+import { marker, newNote, turnOnEncryption } from "./e2ee-helpers";
 
 // §11.4 e2ee-workspace: an encrypted workspace; a new member waits for the key until an admin's device is
 // open, then reads; removing them changes the key, and they can't open the workspace any more.
-test.skip(!HAS_BACKEND, NEEDS_BACKEND);
 
 test("members of an encrypted workspace get the key from an admin's device; removal rotates it", async ({ browser }) => {
   test.setTimeout(480_000);

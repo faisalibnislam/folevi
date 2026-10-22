@@ -11,7 +11,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatPrice } from "@/lib/plans";
 import { canPurchaseHere } from "@/lib/nativeApp";
 import { copy } from "@/lib/e2ee/copy";
-import { useE2eeSpace } from "@/components/e2ee/__stubs__";
+import { useE2eeSpace } from "@/components/e2ee/hooks";
 
 /** What an invitation offers: Member with full, comment-only or view-only access, or Admin (owner only). */
 type Offer = "member:edit" | "member:comment" | "member:view" | "admin";

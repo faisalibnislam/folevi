@@ -6,7 +6,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { copy } from "@/lib/e2ee/copy";
-import { publishPlainCopy } from "./__stubs__";
+import { publishPlainCopy } from "./hooks";
 
 /**
  * "Publish a readable copy?" (§9.3, §10.11): the device renders a plain copy of the sealed note and Folevi

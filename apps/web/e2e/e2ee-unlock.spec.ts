@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { APP, newPerson, signIn } from "./helpers";
-import { HAS_BACKEND, NEEDS_BACKEND, turnOnEncryption, unlockWithPassphrase } from "./e2ee-stub";
+import { turnOnEncryption, unlockWithPassphrase } from "./e2ee-helpers";
 
 // §11.4 e2ee-unlock: a second browser unlocks with the passphrase and is trusted; a reload unlocks by itself;
 // public computer mode forgets the key.
-test.skip(!HAS_BACKEND, NEEDS_BACKEND);
 
 test("unlock in a second browser, trust it, and public computer mode", async ({ browser }) => {
   test.setTimeout(300_000);

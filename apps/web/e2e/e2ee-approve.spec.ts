@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { APP, newPerson, signIn } from "./helpers";
-import { HAS_BACKEND, NEEDS_BACKEND, turnOnEncryption } from "./e2ee-stub";
+import { turnOnEncryption } from "./e2ee-helpers";
 
 // §11.4 e2ee-approve: two browsers; the new one asks, the trusted one approves, both show the same code.
 // "They don't match" cancels.
-test.skip(!HAS_BACKEND, NEEDS_BACKEND);
 
 test("approve a new browser from a trusted one, and refuse one", async ({ browser }) => {
   test.setTimeout(300_000);

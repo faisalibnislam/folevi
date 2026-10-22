@@ -14,8 +14,7 @@
 import { abortable, CloudFs, protocolError, type CloudFsOptions, type RemoteEntry } from "./cloudFs";
 import { bodyOf, bytesOf, jsonOf, type RetryingHttp } from "./http";
 import type { MirrorStore } from "./mirror";
-import type { AuthedHttp } from "./oauth";
-import { CloudError, isValidLibraryPath, LocalFsError, notFound, type CloudChange } from "./types";
+import { CloudError, isValidLibraryPath, LocalFsError, notFound, type CloudChange, type ApiHttp } from "./types";
 
 export const DROPBOX_API = "https://api.dropboxapi.com/2";
 export const DROPBOX_CONTENT = "https://content.dropboxapi.com/2";
@@ -65,7 +64,7 @@ export class DropboxFs extends CloudFs<DropboxEntry> {
   private readonly longpollSeconds: number;
 
   constructor(
-    private readonly api: AuthedHttp,
+    private readonly api: ApiHttp,
     /** Unauthenticated requests (the longpoll endpoint refuses an Authorization header). */
     private readonly plain: RetryingHttp,
     mirror: MirrorStore,

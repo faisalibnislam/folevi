@@ -26,8 +26,7 @@
 import { abortable, CloudFs, protocolError, type CloudFsOptions, type RemoteEntry } from "./cloudFs";
 import { bodyOf, bytesOf, defaultClassifier, jsonOf, type RetryClassifier } from "./http";
 import { isImmutablePath, type MirrorStore } from "./mirror";
-import type { AuthedHttp } from "./oauth";
-import { CloudError, isValidLibraryPath, LocalFsError, notFound, type CloudChange } from "./types";
+import { CloudError, isValidLibraryPath, LocalFsError, notFound, type CloudChange, type ApiHttp } from "./types";
 
 export const DRIVE_API = "https://www.googleapis.com/drive/v3";
 export const DRIVE_UPLOAD = "https://www.googleapis.com/upload/drive/v3";
@@ -122,7 +121,7 @@ export class DriveFs extends CloudFs<DriveEntry> {
   private readonly pollMs: number;
 
   constructor(
-    private readonly api: AuthedHttp,
+    private readonly api: ApiHttp,
     mirror: MirrorStore,
     options: DriveFsOptions = {},
   ) {

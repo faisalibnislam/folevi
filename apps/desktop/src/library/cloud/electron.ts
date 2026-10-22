@@ -6,14 +6,14 @@
 import { app, ipcMain, net, safeStorage, shell } from "electron";
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { readCloudConfig, type CloudClientConfig } from "./config";
-import { CloudConnections, type SavedConnection } from "./connection";
+import { readCloudConfig, type CloudClientConfig } from "./shared/config";
+import { CloudConnections, type SavedConnection } from "./shared/connection";
 import { registerCloudIpc, type CloudIpcEvent } from "./ipc";
-import { CloudLibrary } from "./library";
+import { CloudLibrary } from "./shared/library";
 import { DROPBOX_PORTS, startLoopback } from "./loopback";
 import { NodeMirror } from "./nodeMirror";
 import { SafeStorageTokenStore } from "./tokenStore";
-import { PROVIDER_NAMES, type CloudProvider } from "./types";
+import { PROVIDER_NAMES, type CloudProvider } from "./shared/types";
 
 export function loadCloudConfig(): CloudClientConfig {
   let file: unknown = null;

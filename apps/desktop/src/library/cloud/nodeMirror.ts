@@ -4,8 +4,8 @@
 // atomic (a temporary file, then rename). Node only.
 import { mkdir, readFile, rename, rm, writeFile, readdir } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
-import type { MirrorFile, MirrorStore } from "./mirror";
-import { checkPath, isValidLibraryPath } from "./types";
+import type { MirrorFile, MirrorStore } from "./shared/mirror";
+import { checkPath, isValidLibraryPath } from "./shared/types";
 
 const META = ".folevi-cloud";
 

@@ -1,13 +1,14 @@
 // Shared shapes for the built-in Dropbox and Google Drive connections (docs/LOCAL_MODE_PLAN.md WP9b).
 //
-// Everything in library/cloud/ except the files named in index.ts as "Electron only" is platform neutral:
-// it uses only `fetch`-style requests, WebCrypto and plain data, so the iPhone and iPad app can run the same
-// provider logic later. The Mac runs it in the main process, so the provider tokens never reach the page.
+// packages/cloud-folders is platform neutral: `fetch`-style requests, WebCrypto and plain data only. Folevi for
+// Mac runs it in its main process (apps/desktop/src/library/cloud, through the `shared` link to this folder);
+// Folevi for Android runs it in its bridge (apps/android/bridge), where every request goes through the app's
+// Kotlin code, which adds the provider's token. Either way the tokens never reach the page.
 //
 // `LocalFs` below mirrors packages/local-store/src/io.ts (the bridge contract's file API). apps/desktop is
-// built on its own (CommonJS, no workspace packages), so the interface is repeated here; the contract tests
-// run these classes under local-store's own NoteReplica, read-merge-write and EncryptedFs, which would fail
-// on any drift.
+// built on its own (CommonJS, no workspace packages), so this package imports nothing and the interface is
+// repeated here; the contract tests run these classes under local-store's own NoteReplica, read-merge-write
+// and EncryptedFs, which would fail on any drift.
 
 export interface LocalFsEntry {
   path: string;
@@ -79,6 +80,14 @@ export class CloudError extends LocalFsError {
 
 export function isCloudError(error: unknown, kind?: CloudErrorKind): error is CloudError {
   return error instanceof CloudError && (kind === undefined || error.kind === kind);
+}
+
+/**
+ * A provider's API with the person's sign-in added (oauth.ts AuthedHttp on the Mac; on Android the app's
+ * Kotlin side adds the token, refreshing it once after a 401). A second refusal is CloudError "reconnect".
+ */
+export interface ApiHttp {
+  send(url: string, init?: RequestInit): Promise<Response>;
 }
 
 /** The subset of `fetch` the providers use (Electron's `net.fetch`, Node's or a test's fake). */

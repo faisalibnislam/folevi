@@ -21,8 +21,8 @@ import {
   type NoteFile,
 } from "../../../../packages/local-store/src";
 import { para } from "../../../../packages/local-store/test/helpers";
-import type { MemoryMirror } from "../../src/library/cloud/mirror";
-import { isCloudError } from "../../src/library/cloud/types";
+import type { MemoryMirror } from "../../src/library/cloud/shared/mirror";
+import { isCloudError } from "../../src/library/cloud/shared/types";
 import type { FaultInjector } from "./fakeCommon";
 import { FakeDropbox } from "./fakeDropbox";
 import { FakeDrive } from "./fakeDrive";

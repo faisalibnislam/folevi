@@ -1,7 +1,7 @@
 // DropboxFs against the fake Dropbox: the shared LocalFs contract, then what is Dropbox's own (strict write
 // modes, the cursor and its reset, longpoll, deleted folders, case, sessions resuming at correct_offset).
 import { describe, expect, test } from "vitest";
-import { apiArg } from "../../src/library/cloud/dropbox";
+import { apiArg } from "../../src/library/cloud/shared/dropbox";
 import { runContract } from "./contract";
 import { FakeDropbox } from "./fakeDropbox";
 import { dropboxDevice, SMALL_UPLOADS } from "./harness";

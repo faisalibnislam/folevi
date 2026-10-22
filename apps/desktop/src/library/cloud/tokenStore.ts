@@ -3,8 +3,8 @@
 // stored in plain text: without safeStorage, connecting is refused. Node only (the iOS app uses the Keychain).
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import type { TokenSet, TokenStore } from "./oauth";
-import type { CloudProvider } from "./types";
+import type { TokenSet, TokenStore } from "./shared/oauth";
+import type { CloudProvider } from "./shared/types";
 
 /** The part of Electron's safeStorage used here (a fake in tests). */
 export interface Cipher {

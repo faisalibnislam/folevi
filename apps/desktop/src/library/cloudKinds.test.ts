@@ -4,8 +4,8 @@
 // its real CloudLibrary.
 import { createHash } from "node:crypto";
 import { afterAll, afterEach, describe, expect, test } from "vitest";
-import { CloudLibrary } from "./cloud/library";
-import type { CloudConnections } from "./cloud/connection";
+import { CloudLibrary } from "./cloud/shared/library";
+import type { CloudConnections } from "./cloud/shared/connection";
 import { FakeDropbox } from "../../test/cloud/fakeDropbox";
 import { FakeDrive } from "../../test/cloud/fakeDrive";
 import { dropboxDevice, driveDevice, SMALL_UPLOADS } from "../../test/cloud/harness";

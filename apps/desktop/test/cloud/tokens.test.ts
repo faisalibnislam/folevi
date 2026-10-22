@@ -1,9 +1,9 @@
 // Tokens: PKCE sign-in against the fake servers, refresh before expiry and after a 401, one refresh for many
 // requests at once, the "Reconnect" state when access is revoked, and a fresh sign-in recovering from it.
 import { describe, expect, test } from "vitest";
-import { RetryingHttp } from "../../src/library/cloud/http";
-import { AuthedHttp, createPkce, DropboxOAuth, GoogleOAuth, MemoryTokenStore, TokenManager, type AuthState } from "../../src/library/cloud/oauth";
-import { isCloudError } from "../../src/library/cloud/types";
+import { RetryingHttp } from "../../src/library/cloud/shared/http";
+import { AuthedHttp, createPkce, DropboxOAuth, GoogleOAuth, MemoryTokenStore, TokenManager, type AuthState } from "../../src/library/cloud/shared/oauth";
+import { isCloudError } from "../../src/library/cloud/shared/types";
 import { FakeDropbox } from "./fakeDropbox";
 import { FakeDrive } from "./fakeDrive";
 import { dropboxDevice, driveDevice, noSleep } from "./harness";

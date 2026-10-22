@@ -2,7 +2,7 @@
 // twins from concurrent creates, the check-then-upload race and its recovery, page tokens, resumable uploads,
 // 403 rate limits, trash).
 import { describe, expect, test } from "vitest";
-import { numberedCopy, parseDriveEtag } from "../../src/library/cloud/drive";
+import { numberedCopy, parseDriveEtag } from "../../src/library/cloud/shared/drive";
 import { runContract } from "./contract";
 import { NO_FAKE_FAULTS } from "./fakeCommon";
 import { FakeDrive } from "./fakeDrive";

@@ -18,7 +18,7 @@
 //   nodeMirror.ts  the device copy as a folder in Application Support
 //   tokenStore.ts  tokens encrypted with safeStorage
 //   electron.ts    createCloudConnections() for main.ts
-export { CloudConnections, type ConnectionStatus, type ConnectionState } from "./connection";
-export { CloudLibrary } from "./library";
+export { CloudConnections, type ConnectionStatus, type ConnectionState } from "./shared/connection";
+export { CloudLibrary } from "./shared/library";
 export { registerCloudIpc, CLOUD_STATUS_CHANNEL } from "./ipc";
-export { CloudError, isCloudError, PROVIDER_NAMES, type CloudProvider } from "./types";
+export { CloudError, isCloudError, PROVIDER_NAMES, type CloudProvider } from "./shared/types";

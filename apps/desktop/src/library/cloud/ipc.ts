@@ -3,8 +3,8 @@
 // page; tokens never do. Same rules as ../ipc.ts: only the bundled interface's own pages, every argument
 // checked, answers as { ok, value } / { ok: false, error } envelopes. Status changes go to every page that
 // asked, as "cloud:status".
-import type { CloudConnections, ConnectionStatus } from "./connection";
-import { isCloudError, type CloudProvider } from "./types";
+import type { CloudConnections, ConnectionStatus } from "./shared/connection";
+import { isCloudError, type CloudProvider } from "./shared/types";
 
 export const CLOUD_CHANNELS = ["status", "connect", "cancel", "sign-out", "subscribe"] as const;
 export const CLOUD_STATUS_CHANNEL = "cloud:status";

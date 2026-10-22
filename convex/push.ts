@@ -125,6 +125,12 @@ export const apnsStatus = query({
  * the same token again updates its row; a token (or a device) that was someone else's is now yours, the
  * way a shared iPad changes hands; a device's new token replaces its old one.
  */
+/** An account's name for its notifications on a shared device: 40 letters at most, nothing but plain text. */
+export function pushLabel(raw: string | undefined): string | undefined {
+  const clean = (raw ?? "").replace(/[\u0000-\u001f\u007f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 40);
+  return clean || undefined;
+}
+
 export const registerApns = mutation({
   args: {
     token: v.string(),
@@ -132,6 +138,10 @@ export const registerApns = mutation({
     bundleId: v.string(),
     deviceId: v.string(),
     deviceName: v.string(),
+    /** The account's name for its notifications on a device that holds several (docs/MULTI_ACCOUNT_PLAN.md §5.3). */
+    label: v.optional(v.string()),
+    /** The device holds several accounts: each keeps its own registration of the same token. */
+    keepOthers: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
@@ -140,14 +150,18 @@ export const registerApns = mutation({
     const deviceName = args.deviceName.replace(/[^\p{L}\p{N} .,()'-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 60) || "iPhone";
     const now = Date.now();
     let mine: Id<"apnsTokens"> | null = null;
-    for (const row of await ctx.db.query("apnsTokens").withIndex("by_token", (q) => q.eq("token", token)).take(5)) {
+    // A token (or install) another account registered: someone else signed in on this device, so the other account
+    // stops being sent to it. Unless the device holds several accounts at once: then each keeps its own.
+    const theirs = (row: { profileId: Id<"profiles"> }) => row.profileId !== profile._id;
+    for (const row of await ctx.db.query("apnsTokens").withIndex("by_token", (q) => q.eq("token", token)).take(10)) {
       if (row.profileId === profile._id && !mine) mine = row._id;
-      else await ctx.db.delete(row._id);
+      else if (!(args.keepOthers && theirs(row))) await ctx.db.delete(row._id);
     }
-    for (const row of await ctx.db.query("apnsTokens").withIndex("by_device", (q) => q.eq("deviceId", args.deviceId)).take(10)) {
-      if (row._id !== mine) await ctx.db.delete(row._id);
+    for (const row of await ctx.db.query("apnsTokens").withIndex("by_device", (q) => q.eq("deviceId", args.deviceId)).take(20)) {
+      if (row._id !== mine && !(args.keepOthers && theirs(row))) await ctx.db.delete(row._id);
     }
-    const fields = { environment: args.environment, bundleId: args.bundleId, deviceId: args.deviceId, deviceName, updatedAt: now };
+    const label = pushLabel(args.label);
+    const fields = { environment: args.environment, bundleId: args.bundleId, deviceId: args.deviceId, deviceName, label, updatedAt: now };
     if (mine) {
       await ctx.db.patch(mine, fields);
       return null;
@@ -195,7 +209,9 @@ export const apnsTargets = internalQuery({
           .withIndex("by_profile_unread", (q) => q.eq("profileId", args.profileId).eq("readAt", undefined))
           .take(100)
       : [];
-    return { tokens: rows.map((r) => ({ id: r._id, token: r.token, environment: r.environment, bundleId: r.bundleId })), badge: unread.length };
+    // Which account it's for (its Better Auth user id), so tapping it on a device with several opens that one.
+    const place = (await ctx.db.get(args.profileId))?.authSubject;
+    return { tokens: rows.map((r) => ({ id: r._id, token: r.token, environment: r.environment, bundleId: r.bundleId, label: r.label ?? null })), badge: unread.length, place: place ?? null };
   },
 });
 
@@ -240,7 +256,7 @@ export const fcmStatus = query({
  * a device's new token replaces its old one, at most 20 per person.
  */
 export const registerFcm = mutation({
-  args: { token: v.string(), deviceId: v.string(), deviceName: v.string() },
+  args: { token: v.string(), deviceId: v.string(), deviceName: v.string(), label: v.optional(v.string()), keepOthers: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const token = args.token.trim();
@@ -248,14 +264,17 @@ export const registerFcm = mutation({
     const deviceName = args.deviceName.replace(/[^\p{L}\p{N} .,()'-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 60) || "Android";
     const now = Date.now();
     let mine: Id<"fcmTokens"> | null = null;
-    for (const row of await ctx.db.query("fcmTokens").withIndex("by_token", (q) => q.eq("token", token)).take(5)) {
+    // As registerApns: another account's registration goes, unless the phone holds several accounts at once.
+    const theirs = (row: { profileId: Id<"profiles"> }) => row.profileId !== profile._id;
+    for (const row of await ctx.db.query("fcmTokens").withIndex("by_token", (q) => q.eq("token", token)).take(10)) {
       if (row.profileId === profile._id && !mine) mine = row._id;
-      else await ctx.db.delete(row._id);
+      else if (!(args.keepOthers && theirs(row))) await ctx.db.delete(row._id);
     }
-    for (const row of await ctx.db.query("fcmTokens").withIndex("by_device", (q) => q.eq("deviceId", args.deviceId)).take(10)) {
-      if (row._id !== mine) await ctx.db.delete(row._id);
+    for (const row of await ctx.db.query("fcmTokens").withIndex("by_device", (q) => q.eq("deviceId", args.deviceId)).take(20)) {
+      if (row._id !== mine && !(args.keepOthers && theirs(row))) await ctx.db.delete(row._id);
     }
-    const fields = { deviceId: args.deviceId, deviceName, updatedAt: now };
+    const label = pushLabel(args.label);
+    const fields = { deviceId: args.deviceId, deviceName, label, updatedAt: now };
     if (mine) {
       await ctx.db.patch(mine, fields);
       return null;
@@ -303,7 +322,8 @@ export const fcmTargets = internalQuery({
           .withIndex("by_profile_unread", (q) => q.eq("profileId", args.profileId).eq("readAt", undefined))
           .take(100)
       : [];
-    return { tokens: rows.map((r) => ({ id: r._id, token: r.token })), badge: unread.length };
+    const place = (await ctx.db.get(args.profileId))?.authSubject;
+    return { tokens: rows.map((r) => ({ id: r._id, token: r.token, label: r.label ?? null })), badge: unread.length, place: place ?? null };
   },
 });
 

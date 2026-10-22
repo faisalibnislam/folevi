@@ -18,7 +18,7 @@ export const sendToProfile = internalAction({
   handler: async (ctx, args) => {
     const config = apnsConfig();
     if (!config) return { sent: 0 };
-    const { tokens, badge } = await ctx.runQuery(internal.push.apnsTargets, { profileId: args.profileId });
+    const { tokens, badge, place } = await ctx.runQuery(internal.push.apnsTargets, { profileId: args.profileId });
     // Only tokens for this app (a token from another bundle id would be refused as not for this topic).
     const targets = tokens.filter((t) => t.bundleId === config.bundleId);
     if (!targets.length) return { sent: 0 };
@@ -41,8 +41,11 @@ export const sendToProfile = internalAction({
     try {
       for (const t of targets) {
         const host = apnsHost(t.environment);
+        // A device with several accounts gets the account's name with it (its own label), and which account it is.
+        // (Only a device that said it holds several accounts gets these: the label marks it.)
+        const own = t.label ? JSON.stringify(apnsPayload(message, badge, { label: t.label, place })) : body;
         const result = await deliverWithRetry(
-          (fresh) => client.send({ host, token: t.token, headers: { ...headers, authorization: `bearer ${apnsJwt(config, Date.now(), fresh)}` }, body }),
+          (fresh) => client.send({ host, token: t.token, headers: { ...headers, authorization: `bearer ${apnsJwt(config, Date.now(), fresh)}` }, body: own }),
           sleep,
         );
         if (result.outcome === "sent") sent.push(t.id);

@@ -141,6 +141,23 @@ describe("registering a device", () => {
     expect(await rows(t)).toHaveLength(0);
   });
 
+  test("a device with several accounts (docs/MULTI_ACCOUNT_PLAN.md §5.3): each keeps its registration, with its own label", async () => {
+    const t = setup();
+    const a = await person(t, "apns-multi-a@example.com");
+    const b = await person(t, "apns-multi-b@example.com");
+    await a.as.mutation(api.push.registerApns, { ...device(7), label: "a@example.com", keepOthers: true });
+    await b.as.mutation(api.push.registerApns, { ...device(7), label: "b@example.com\u0007<x>", keepOthers: true });
+    const both = await rows(t);
+    expect(both).toHaveLength(2);
+    expect(both.map((r) => r.label).sort()).toEqual(["a@example.com", "b@example.comx"]);
+    // Signing out of one leaves the other.
+    await a.as.mutation(api.push.unregisterApns, { deviceId: device(7).deviceId });
+    expect((await rows(t)).map((r) => r.label)).toEqual(["b@example.comx"]);
+    // Without keepOthers (one account on the device), someone else's registration goes, as before.
+    await a.as.mutation(api.push.registerApns, device(7));
+    expect(await rows(t)).toHaveLength(1);
+  });
+
   test("signing out (by the app's install id) removes the device", async () => {
     const t = setup();
     const a = await person(t, "apns-out@example.com");
@@ -153,6 +170,13 @@ describe("registering a device", () => {
 
 describe("sending", () => {
   const message = { kind: "reminder" as const, title: "Reminder: Take the bins out", body: "In House jobs", path: "/d/01JA2YQ8ABCDEFGHJKMNPQRSTV#block-01JA2Z5XABCDEFGHJKMNPQRSTV", threadId: "01JA2YQ8ABCDEFGHJKMNPQRSTV", taskId: "01JA2Z5XABCDEFGHJKMNPQRSTV", collapseId: "reminder:abc" };
+
+  test("on a device with several accounts the payload names the account: a subtitle, and its user id", () => {
+    const p = apnsPayload(message, 1, { label: "ana@example.com", place: "userAna" }) as { aps: { alert: Record<string, string> }; place?: string };
+    expect(p.aps.alert.subtitle).toBe("ana@example.com");
+    expect(p.place).toBe("userAna");
+    expect((apnsPayload(message, 1) as { place?: string }).place).toBeUndefined();
+  });
 
   test("the payload: alert, badge, thread, category, mutable content and the app path", () => {
     expect(apnsPayload(message, 3)).toEqual({

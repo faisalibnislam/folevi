@@ -17,7 +17,7 @@ export const sendToProfile = internalAction({
   handler: async (ctx, args) => {
     const config = fcmConfig();
     if (!config) return { sent: 0 };
-    const { tokens, badge } = await ctx.runQuery(internal.push.fcmTargets, { profileId: args.profileId });
+    const { tokens, badge, place } = await ctx.runQuery(internal.push.fcmTargets, { profileId: args.profileId });
     if (!tokens.length) return { sent: 0 };
     const message: FcmMessage = args.message;
     const url = `https://fcm.googleapis.com/v1/projects/${config.projectId}/messages:send`;
@@ -28,7 +28,7 @@ export const sendToProfile = internalAction({
     for (const t of tokens) {
       const result = await deliverFcm(async (fresh) => {
         const access = await fcmAccessToken(config, fetch, Date.now(), fresh);
-        const res = await fetch(url, { method: "POST", headers: { authorization: `Bearer ${access}`, "content-type": "application/json" }, body: JSON.stringify(fcmBody(t.token, message, badge)) });
+        const res = await fetch(url, { method: "POST", headers: { authorization: `Bearer ${access}`, "content-type": "application/json" }, body: JSON.stringify(fcmBody(t.token, message, badge, t.label ? { label: t.label, place } : {})) });
         return res.ok ? { status: 200 } : { status: res.status, code: fcmErrorCode(await res.text()) };
       }, sleep);
       if (result.outcome === "sent") sent.push(t.id);

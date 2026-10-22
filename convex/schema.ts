@@ -1583,6 +1583,11 @@ export default defineSchema({
     deviceId: v.string(),
     /** "iPhone 18 Pro", for telling devices apart. */
     deviceName: v.string(),
+    /**
+     * Several accounts on the device (docs/MULTI_ACCOUNT_PLAN.md §5.3): the account's name for its notifications
+     * there (the APNs subtitle), so they say which account they're for.
+     */
+    label: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     lastSentAt: v.optional(v.number()),
@@ -1604,6 +1609,8 @@ export default defineSchema({
     deviceId: v.string(),
     /** "Pixel 9", for telling devices apart. */
     deviceName: v.string(),
+    /** Several accounts on the phone (docs/MULTI_ACCOUNT_PLAN.md §5.3): the account's name for its notifications. */
+    label: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     lastSentAt: v.optional(v.number()),

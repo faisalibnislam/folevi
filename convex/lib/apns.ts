@@ -85,9 +85,11 @@ export const vApnsMessage = v.object({
  * The JSON Apple delivers. Follows the web push policy: a reminder carries its to-do line and the note's
  * title; anything else only who did what and where. The app reads `path`, `kind` and `taskId`.
  */
-export function apnsPayload(message: ApnsMessage, badge: number): Record<string, unknown> {
+export function apnsPayload(message: ApnsMessage, badge: number, to: { label?: string | null; place?: string | null } = {}): Record<string, unknown> {
   const category = message.kind === "reminder" ? APNS_CATEGORY.reminder : message.kind === "mention" ? APNS_CATEGORY.mention : undefined;
   const alert: Record<string, string> = { title: message.title.slice(0, 120) };
+  // On a device with several accounts: which one it's for (docs/MULTI_ACCOUNT_PLAN.md §5.3).
+  if (to.label) alert.subtitle = to.label.slice(0, 40);
   if (message.body) alert.body = message.body.slice(0, 240);
   return {
     aps: {
@@ -101,6 +103,8 @@ export function apnsPayload(message: ApnsMessage, badge: number): Record<string,
     kind: message.kind,
     path: appPath(message.path),
     ...(message.taskId ? { taskId: message.taskId } : {}),
+    // The account (its user id): tapping it opens that one first.
+    ...(to.place ? { place: to.place } : {}),
   };
 }
 

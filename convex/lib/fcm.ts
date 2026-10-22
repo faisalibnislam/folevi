@@ -80,7 +80,7 @@ export function fcmPath(path: string): string {
  * running or not. Follows the web push policy: a reminder carries its to-do line and the note's title, anything
  * else only who did what and where. High priority, an hour to live (as APNs' expiration and web push's TTL).
  */
-export function fcmBody(token: string, message: FcmMessage, badge: number): Record<string, unknown> {
+export function fcmBody(token: string, message: FcmMessage, badge: number, to: { label?: string | null; place?: string | null } = {}): Record<string, unknown> {
   const data: Record<string, string> = {
     kind: message.kind,
     title: message.title.slice(0, 120),
@@ -91,6 +91,9 @@ export function fcmBody(token: string, message: FcmMessage, badge: number): Reco
   if (message.threadId) data.threadId = message.threadId;
   if (message.taskId) data.taskId = message.taskId;
   if (message.collapseId) data.collapseId = message.collapseId.slice(0, 64);
+  // On a phone with several accounts (docs/MULTI_ACCOUNT_PLAN.md §5.3): which one it's for, and its name.
+  if (to.place) data.place = to.place;
+  if (to.label) data.placeLabel = to.label.slice(0, 40);
   return {
     message: {
       token,

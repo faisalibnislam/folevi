@@ -8,6 +8,7 @@ import { api } from "@/lib/convex/api";
 import { getConvexClient } from "@/lib/convex/provider";
 import { nativeApp, type NativePushStatus } from "./nativeApp";
 import { nativeDevice } from "./nativeDevice";
+import { shell } from "./shell";
 
 /** The token registered in this page's life (registering it again on every launch is enough). */
 let registered: string | null = null;
@@ -15,11 +16,30 @@ let registered: string | null = null;
 /** The Android app gets its token from Firebase Cloud Messaging and registers it with push.registerFcm. */
 const onAndroid = () => nativeApp()?.platform === "android";
 
+/**
+ * Several places in the app (docs/MULTI_ACCOUNT_PLAN.md §5.3): each account keeps its own registration of this
+ * device, and its notifications carry its name (the open account's email) so they say which account they're for.
+ */
+async function sharedDevice(): Promise<{ keepOthers?: true; label?: string }> {
+  const places = shell()?.places;
+  if (!places) return {};
+  try {
+    const list = await places.list();
+    if (list.length < 2) return {};
+    const me = list.find((p) => p.id === places.current);
+    const label = me && me.kind === "account" ? me.email || me.name : "";
+    return { keepOthers: true, ...(label ? { label } : {}) };
+  } catch {
+    return {};
+  }
+}
+
 async function register(status: NativePushStatus): Promise<void> {
   const d = await nativeDevice();
   if (!status.token || !d) return;
-  if (onAndroid()) await getConvexClient().mutation(api.push.registerFcm, { token: status.token, deviceId: d.id, deviceName: d.model || d.family });
-  else await getConvexClient().mutation(api.push.registerApns, { token: status.token, environment: status.environment, bundleId: status.bundleId, deviceId: d.id, deviceName: d.model || d.family });
+  const shared = await sharedDevice();
+  if (onAndroid()) await getConvexClient().mutation(api.push.registerFcm, { token: status.token, deviceId: d.id, deviceName: d.model || d.family, ...shared });
+  else await getConvexClient().mutation(api.push.registerApns, { token: status.token, environment: status.environment, bundleId: status.bundleId, deviceId: d.id, deviceName: d.model || d.family, ...shared });
   registered = status.token;
 }
 

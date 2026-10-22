@@ -8,6 +8,11 @@ options:
   createIntermediateGroups: true
   generateEmptyDirectories: true
   groupSortPosition: top
+# Sparkle 2 for updates (Updates/Updater.swift, docs/MAC_WEBKIT_PLAN.md §9), at an exact version.
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.10.0
 settings:
   base:
     MARKETING_VERSION: 2.0.0
@@ -85,6 +90,8 @@ targets:
         group: Shared
       - path: ../ios/ios/App/Shared/LocalExtras.swift
         group: Shared
+    dependencies:
+      - package: Sparkle
     settings:
       base:
         PRODUCT_MODULE_NAME: Folevi
@@ -111,6 +118,8 @@ targets:
           PRODUCT_NAME: Folevi
           CODE_SIGN_IDENTITY: Developer ID Application
           CODE_SIGN_ENTITLEMENTS: Folevi/Resources/Folevi.entitlements
+          # iCloud and the Keychain group need the Developer ID profile (apps/mac/signing, installed by release.mjs).
+          PROVISIONING_PROFILE_SPECIFIER: Folevi for Mac Developer ID iCloud
           OTHER_CODE_SIGN_FLAGS: "--timestamp"
           FOLEVI_URL_SCHEME: folevi
           FOLEVI_DEV_SHELL_DIR: ""
@@ -143,5 +152,9 @@ schemes:
       config: Debug
       targets:
         - FoleviTests
+      # The tests' own data folder (WM1): places.json, the library and the Keychain names are a run's own, never
+      # Folevi Dev's (Paths.swift).
+      environmentVariables:
+        FOLEVI_USER_DATA: "$(PROJECT_DIR)/build/run/tests"
     archive:
       config: Release

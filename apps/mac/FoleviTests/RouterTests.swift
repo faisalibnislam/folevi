@@ -66,14 +66,14 @@ final class RouterTests: XCTestCase {
         let sink = Sink()
         let router = MessageRouter(context: BridgeContext(place: { "library" }, window: { nil }, events: sink))
         do {
-            _ = try await router.route(MessageRouter.Call(plugin: "FoleviShell", method: "libInfo", options: [:]))
-            XCTFail("WM0's ShellRouter answers nothing yet")
+            _ = try await router.route(MessageRouter.Call(plugin: "FoleviShell", method: "libNope", options: [:]))
+            XCTFail("ShellRouter doesn't know that method")
         } catch let e as BridgeError {
             XCTAssertEqual(e.code, "unavailable")
         }
         do {
-            _ = try await router.route(MessageRouter.Call(plugin: "FoleviDesktop", method: "setBadge", options: ["count": 2]))
-            XCTFail("WM0's DesktopRouter answers nothing yet")
+            _ = try await router.route(MessageRouter.Call(plugin: "FoleviDesktop", method: "desktopNope", options: [:]))
+            XCTFail("DesktopRouter doesn't know that method")
         } catch let e as BridgeError {
             XCTAssertEqual(e.code, "unavailable")
         }

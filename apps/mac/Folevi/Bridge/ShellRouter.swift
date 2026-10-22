@@ -360,7 +360,7 @@ final class ShellRouter {
         // ---- reminders (local mode only, as Electron), files, the web
         case "notifySchedule":
             guard let id = s(o, "id"), let at = Self.double(o, "at") else { throw BridgeError.invalid("Not a reminder.") }
-            guard WindowManager.shared.modeOf(bound) == "local" else { return ["value": false] }
+            guard ShellPlaces.modeOf(bound) == "local" else { return ["value": false] }
             do {
                 try await ShellNotify.schedule(id: id, at: Date(timeIntervalSince1970: at / 1000), title: s(o, "title") ?? "Reminder", body: s(o, "body") ?? "", path: s(o, "path") ?? "/tasks")
                 return ["value": true]
@@ -368,7 +368,7 @@ final class ShellRouter {
                 return ["value": false]
             }
         case "notifyCancel":
-            if WindowManager.shared.modeOf(bound) == "local" { ShellNotify.cancel(id: s(o, "id") ?? "") }
+            if ShellPlaces.modeOf(bound) == "local" { ShellNotify.cancel(id: s(o, "id") ?? "") }
             return [:]
         case "filesSave":
             guard let data = try? Self.bytes(o, "bytes") else { throw BridgeError.invalid("Bytes are needed.") }
@@ -377,7 +377,7 @@ final class ShellRouter {
             return ["value": Self.orNull(await ShellHTTP.shared.preview(s(o, "url") ?? ""))]
         case "httpCalendar":
             // Electron's words for a page outside the library (the server reads an account's calendars).
-            guard WindowManager.shared.modeOf(bound) == "local" else { return ["kind": "error", "message": "Couldn't load this calendar: the address couldn't be reached."] }
+            guard ShellPlaces.modeOf(bound) == "local" else { return ["kind": "error", "message": "Couldn't load this calendar: the address couldn't be reached."] }
             let prev = (o["previous"] as? [String: Any]) ?? [:]
             return await ShellHTTP.shared.calendar(s(o, "url") ?? "", etag: prev["etag"] as? String, lastModified: prev["lastModified"] as? String)
 

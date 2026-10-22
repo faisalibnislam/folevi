@@ -356,6 +356,30 @@ extension Places {
                 }
             }
         }
+        // Forgets the cached key of an encrypted library (the next launch asks for its passphrase).
+        MacEval.commands["forget-library-key"] = { _, done in
+            let file = Paths.supportFolder.appendingPathComponent("library.json")
+            guard let data = try? Data(contentsOf: file), let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any], let id = json["libraryId"] as? String else { return done(["error": "no library"]) }
+            Keychain.delete("com.folevi.library-key", id)
+            done(["value": id])
+        }
+        // A session made outside the app (a test approving /connect in a browser and trading the code itself, since the
+        // sign-in sheet can't be driven from a script): kept as that account's, which becomes a place.
+        MacEval.commands["test-session"] = { req, done in
+            guard let token = req["token"] as? String, token.range(of: #"^[A-Za-z0-9._~+/=-]{16,1024}$"#, options: .regularExpression) != nil else { return done(["error": "no token"]) }
+            Task { @MainActor in
+                guard let u = await ShellAuth.shared.userOf(token) else { return done(["error": "the website doesn't know that session"]) }
+                ShellAuth.shared.setToken(token, for: u.userId)
+                guard let a = Places.shared.addAccount(u) else { return done(["error": "not an account"]) }
+                if req["open"] as? Bool != false { Places.shared.switchTo(a.id) }
+                done(["value": a.id])
+            }
+        }
+        // Hides the app (every window off screen, as when another app is in front), or shows it again.
+        MacEval.commands["hide"] = { req, done in
+            if req["value"] as? Bool == false { NSApp.unhide(nil) } else { NSApp.hide(nil) }
+            done(["value": NSApp.isHidden])
+        }
         MacEval.commands["switch"] = { req, done in
             Places.shared.switchTo(req["place"] as? String, path: Places.safePath(req["path"] as? String))
             done(["value": true])

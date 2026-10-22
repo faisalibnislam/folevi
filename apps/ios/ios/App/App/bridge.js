@@ -100,7 +100,7 @@
     disablePush: function () {
       return quietly(call("FoleviNative", "disablePush")).then(function () {});
     },
-    /** Google sign-in in iOS's sign-in sheet: answers with the folevi://auth/google link it ends on, or null. */
+    /** Google or Apple sign-in in iOS's sign-in sheet: answers with the folevi://auth/google link it ends on, or null. */
     authenticate: function (url) {
       return quietly(call("FoleviNative", "authenticate", { url: String(url) })).then(function (r) {
         return r && typeof r.url === "string" ? r.url : null;
@@ -140,6 +140,300 @@
   });
 
   Object.defineProperty(window, "foleviNative", { value: bridge, enumerable: false, configurable: false, writable: false });
+
+  // ---------------------------------------------------------------- foleviShell (the built-in interface only)
+  // docs/LOCAL_MODE_PLAN.md §4.1, the page's types in apps/web/src/lib/shell/types.ts, the native side in
+  // Native/Shell/FoleviShellPlugin.swift. Filled in by FoleviViewController when the app shows the interface
+  // built into it: the mode it opens in (read before any page script runs), its version and this device's name.
+  var SHELL = "__FOLEVI_SHELL__";
+  if (SHELL && typeof SHELL === "object") {
+    // The app starts at index.html ("/"); the product's start page is /documents (as on the website, where "/"
+    // is a redirect). Set before the page's router reads the address.
+    if (location.pathname === "/" || location.pathname === "/index.html") history.replaceState(history.state, "", "/documents" + location.search + location.hash);
+    var toB64 = function (bytes) {
+      var u8 = bytes instanceof Uint8Array ? bytes : ArrayBuffer.isView(bytes) ? new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength) : bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : null;
+      if (!u8) throw { name: "LocalFsError", code: "invalid_argument", message: "Bytes are needed." };
+      var out = "";
+      for (var i = 0; i < u8.length; i += 0x8000) out += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+      return btoa(out);
+    };
+    var fromB64 = function (text) {
+      var bin = atob(String(text || ""));
+      var u8 = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      return u8;
+    };
+    // A rejection the page can read: { name, code, message, path } (local-store's isNotFound reads `code`).
+    var plainError = function (name) {
+      return function (e) {
+        var data = (e && e.data) || {};
+        var err = { name: name, code: (e && e.code) || "io", message: (e && e.message) || "Folevi couldn't do that." };
+        if (typeof data.path === "string") err.path = data.path;
+        throw err;
+      };
+    };
+    var shellCall = function (method, options, errorName) {
+      return call("FoleviShell", method, options).catch(plainError(errorName || "LocalFsError"));
+    };
+    var value = function (r) {
+      return r ? r.value : null;
+    };
+    var nothing = function () {};
+    var libraryWatchers = 0;
+    var aiRequests = 0;
+
+    var shellBridge = Object.freeze({
+      platform: "ios",
+      shellVersion: VERSION,
+      deviceName: String(SHELL.deviceName || "iPhone"),
+      initialMode: SHELL.mode === "local" || SHELL.mode === "account" ? SHELL.mode : "unset",
+      setMode: function (mode) {
+        return shellCall("setMode", { mode: String(mode) }).then(nothing);
+      },
+      library: Object.freeze({
+        setup: function (o) {
+          return shellCall("libSetup", { kind: String((o && o.kind) || "") }).then(function (r) {
+            return r && r.value === null ? null : r;
+          });
+        },
+        info: function () {
+          return shellCall("libInfo");
+        },
+        list: function (dir) {
+          return shellCall("libList", { dir: String(dir) }).then(function (r) {
+            return (r && r.entries) || [];
+          });
+        },
+        read: function (path) {
+          return shellCall("libRead", { path: String(path) }).then(function (r) {
+            return r.notDownloaded ? { notDownloaded: true } : { bytes: fromB64(r.bytes), etag: r.etag };
+          });
+        },
+        write: function (path, bytes, o) {
+          var has = o && Object.prototype.hasOwnProperty.call(o, "ifMatch") && o.ifMatch !== undefined;
+          var mode = !has ? "any" : o.ifMatch === null ? "create" : "match";
+          var opts = { path: String(path), bytes: toB64(bytes), mode: mode };
+          if (mode === "match") opts.ifMatch = String(o.ifMatch);
+          return shellCall("libWrite", opts).then(function (r) {
+            return r.mismatch ? { mismatch: true, etag: r.etag } : { etag: r.etag };
+          });
+        },
+        remove: function (path, o) {
+          var opts = { path: String(path) };
+          if (o && typeof o.ifMatch === "string") opts.ifMatch = o.ifMatch;
+          return shellCall("libRemove", opts).then(nothing);
+        },
+        conflictVersions: function (path) {
+          return shellCall("libConflictVersions", { path: String(path) }).then(function (r) {
+            return ((r && r.versions) || []).map(function (v) {
+              return { id: v.id, bytes: fromB64(v.bytes) };
+            });
+          });
+        },
+        resolveConflicts: function (path, ids) {
+          return shellCall("libResolveConflicts", { path: String(path), ids: Array.isArray(ids) ? ids.map(String) : [] }).then(nothing);
+        },
+        startDownload: function (paths) {
+          return shellCall("libStartDownload", { paths: Array.isArray(paths) ? paths.map(String) : [] }).then(nothing);
+        },
+        /** Change batches from the app's watcher; returns the function that stops listening. */
+        watch: function (cb) {
+          var handle = cap.addListener("FoleviShell", "libraryChanges", function (event) {
+            if (event && Array.isArray(event.changes)) cb(event.changes);
+          });
+          if (libraryWatchers++ === 0) void shellCall("libWatch").catch(nothing);
+          var on = true;
+          return function () {
+            if (!on) return;
+            on = false;
+            void handle.remove();
+            if (--libraryWatchers === 0) void shellCall("libUnwatch").catch(nothing);
+          };
+        },
+        journal: Object.freeze({
+          append: function (record) {
+            return shellCall("journalAppend", { record: toB64(record) }).then(nothing);
+          },
+          readAll: function () {
+            return shellCall("journalRead").then(function (r) {
+              return ((r && r.records) || []).map(fromB64);
+            });
+          },
+          truncate: function (n) {
+            return shellCall("journalTruncate", { n: Number(n) }).then(nothing);
+          },
+        }),
+        unlock: function (passphrase) {
+          return shellCall("libUnlock", { passphrase: String(passphrase) }).then(value);
+        },
+        setPassphrase: function (passphrase) {
+          return shellCall("libSetPassphrase", passphrase === null ? {} : { passphrase: String(passphrase) }).then(nothing);
+        },
+        changePassphrase: function (oldPassphrase, newPassphrase) {
+          return shellCall("libChangePassphrase", { old: String(oldPassphrase), new: String(newPassphrase) }).then(value);
+        },
+        /** Served by the app (Native/Shell/LibraryFileHandler.swift) from the library. */
+        fileUrl: function (sha256, mime) {
+          var sha = String(sha256).toLowerCase();
+          if (!/^[0-9a-f]{64}$/.test(sha)) throw new Error("Not a SHA-256 file name.");
+          return "folevi-file://lib/" + sha + (mime ? "?type=" + encodeURIComponent(String(mime)) : "");
+        },
+        move: function (to) {
+          return shellCall("libMove", { kind: String((to && to.kind) || "") });
+        },
+      }),
+      // The person's Foli AI keys, kept in the Keychain: stored and removed, never read back.
+      secrets: Object.freeze({
+        has: function (name) {
+          return shellCall("secretsHas", { name: String(name) }).then(function (r) {
+            return Boolean(r && r.value);
+          });
+        },
+        set: function (name, v) {
+          return shellCall("secretsSet", { name: String(name), value: typeof v === "string" ? v : "" }, "Error").then(nothing);
+        },
+        delete: function (name) {
+          return shellCall("secretsDelete", { name: String(name) }, "Error").then(nothing);
+        },
+      }),
+      // The account session lives in the app (Native/Shell/ShellAuth.swift) and never comes here.
+      auth: Object.freeze({
+        signIn: function () {
+          return shellCall("authSignIn", {}, "Error").then(function (r) {
+            return Boolean(r && r.value);
+          });
+        },
+        signOut: function () {
+          return shellCall("authSignOut", {}, "Error").then(nothing);
+        },
+        fetch: function (path, init) {
+          var i = init || {};
+          var headers = {};
+          if (i.headers && typeof i.headers === "object") {
+            if (typeof i.headers.forEach === "function" && !Array.isArray(i.headers)) i.headers.forEach(function (v, k) { headers[k] = String(v); });
+            else Object.keys(i.headers).forEach(function (k) { headers[k] = String(i.headers[k]); });
+          }
+          var opts = { path: String(path), method: typeof i.method === "string" ? i.method : "GET", headers: headers };
+          if (typeof i.body === "string") opts.body = i.body;
+          return shellCall("authFetch", opts, "Error");
+        },
+        convexToken: function () {
+          return shellCall("authConvexToken", {}, "Error").then(value);
+        },
+      }),
+      // Foli AI on this device (Native/Shell/ShellAI.swift): Apple's on-device model or the person's own keys.
+      ai: Object.freeze({
+        capabilities: function () {
+          return shellCall("aiCapabilities", {}, "Error");
+        },
+        generate: function (req, onChunk) {
+          aiRequests += 1;
+          var id = "g" + aiRequests + Math.random().toString(36).slice(2, 10);
+          var handle = cap.addListener("FoleviShell", "aiChunk", function (event) {
+            if (!event || event.id !== id || typeof event.text !== "string") return;
+            try {
+              onChunk(event.text);
+            } catch (e) {
+              /* The page's own callback failing doesn't stop the answer. */
+            }
+          });
+          var plain;
+          try {
+            plain = JSON.parse(JSON.stringify(req || null));
+          } catch (e) {
+            plain = null;
+          }
+          var done = call("FoleviShell", "aiGenerate", { id: id, req: plain })
+            .catch(function () {
+              return { text: "", stopReason: "error", error: "Folevi couldn't reach Foli AI.", errorCode: "unavailable" };
+            })
+            .then(function (r) {
+              void handle.remove();
+              return r;
+            });
+          return {
+            done: done,
+            cancel: function () {
+              void call("FoleviShell", "aiCancel", { id: id }).catch(nothing);
+            },
+          };
+        },
+        testKey: function (provider) {
+          return shellCall("aiTestKey", { provider: String(provider) }, "Error");
+        },
+      }),
+      // The Face ID lock: its settings; turning it on asks for Face ID.
+      lock: Object.freeze({
+        getSettings: function () {
+          return shellCall("lockGet", {}, "LockError");
+        },
+        setSettings: function (patch) {
+          var p = patch || {};
+          var opts = {};
+          if (typeof p.lock === "boolean") opts.lock = p.lock;
+          if (typeof p.lockAfter === "number") opts.lockAfter = p.lockAfter;
+          return shellCall("lockSet", opts, "LockError");
+        },
+      }),
+      /** Reminders as iOS notifications (Native/Shell/ShellServices.swift). */
+      notify: Object.freeze({
+        schedule: function (n) {
+          var r = n || {};
+          return shellCall("notifySchedule", { id: String(r.id), at: Number(r.at), title: String(r.title || ""), body: String(r.body || ""), path: String(r.path || "/tasks") }, "Error").then(function (x) {
+            if (!x || !x.value) throw new Error("Folevi couldn't schedule that reminder.");
+          });
+        },
+        cancel: function (id) {
+          return shellCall("notifyCancel", { id: String(id) }, "Error").then(nothing);
+        },
+      }),
+      files: Object.freeze({
+        /** Saves a file the page made where the person picks in the Files app; false when cancelled. */
+        save: function (name, bytes) {
+          return shellCall("filesSave", { name: String(name), bytes: toB64(bytes) }, "Error").then(function (r) {
+            return Boolean(r && r.value);
+          });
+        },
+      }),
+      http: Object.freeze({
+        preview: function (url) {
+          return shellCall("httpPreview", { url: String(url) }, "Error").then(value);
+        },
+        calendar: function (url, previous) {
+          var p = previous || {};
+          return shellCall("httpCalendar", { url: String(url), previous: { etag: p.etag || null, lastModified: p.lastModified || null } }, "Error");
+        },
+      }),
+      // This device's end-to-end encryption keys (Native/Shell/E2eeKeys.swift): the private halves stay in
+      // the app; the page gets the public halves, what a box sealed to this device holds, and signatures.
+      e2ee: Object.freeze({
+        deviceKeys: function () {
+          return shellCall("e2eeDeviceKeys", {}, "E2eeBridgeError").then(function (r) {
+            return { deviceId: r.deviceId, x25519Pub: fromB64(r.x25519Pub), ed25519Pub: fromB64(r.ed25519Pub) };
+          });
+        },
+        open: function (sealedBox, context) {
+          return shellCall("e2eeOpen", { box: toB64(sealedBox), context: String(context) }, "E2eeBridgeError").then(function (r) {
+            return fromB64(r.bytes);
+          });
+        },
+        sign: function (kind, body) {
+          return shellCall("e2eeSign", { kind: String(kind), body: String(body) }, "E2eeBridgeError").then(value);
+        },
+        reset: function () {
+          return shellCall("e2eeReset", {}, "E2eeBridgeError").then(nothing);
+        },
+        /** "Ask for Face ID to unlock encrypted notes" (Settings > This device): { touchId, available }. */
+        settings: function () {
+          return shellCall("e2eeSettings", {}, "E2eeBridgeError");
+        },
+        setTouchId: function (on) {
+          return shellCall("e2eeSetTouchId", { on: on === true }, "E2eeBridgeError");
+        },
+      }),
+    });
+    Object.defineProperty(window, "foleviShell", { value: shellBridge, enumerable: false, configurable: false, writable: false });
+  }
 
   // The app coming back to the front, said reliably (a web view's visibilitychange doesn't always fire when
   // iOS suspends and resumes the app): the page picks up what the share extension kept, for one.

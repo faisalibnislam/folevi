@@ -1,30 +1,46 @@
-// Folevi for iPhone and iPad: a Capacitor shell that loads the web app (https://app.folevi.com) in a
-// WKWebView, like the Mac app's Electron window. The site's own service worker caches the shell for offline
-// use; App-Bound Domains (Info.plist WKAppBoundDomains) are what let a service worker run in WKWebView.
-// FOLEVI_URL points the app at the local dev server for the Simulator: FOLEVI_URL=http://app.localhost:3002 npx cap sync ios
+// Folevi for iPhone and iPad: a Capacitor shell around the web app, like the Mac app's Electron window.
+//
+// By default the app carries the interface built in (docs/LOCAL_MODE_PLAN.md §1): the web app's static shell
+// export (`pnpm shell`, copied into web/), served from capacitor://localhost, so both modes start offline and
+// "Keep notes on my devices" never needs Folevi's servers. Signed in, the page talks to Folevi through the app
+// (Native/Shell/ShellAuth.swift, bearer sign-in) and Convex directly.
+//
+// For development:
+//   FOLEVI_SHELL_URL=http://localhost:3003 npx cap sync ios   the built-in interface from `next dev` (dev:shell),
+//                                                            signed in against FOLEVI_SERVICE_URL (default the
+//                                                            dev server, http://app.localhost:3002)
+//   FOLEVI_URL=http://app.localhost:3002 npx cap sync ios     the website in the app, as before the built-in interface
 import type { CapacitorConfig } from "@capacitor/cli";
 
-const url = new URL(process.env.FOLEVI_URL ?? "https://app.folevi.com");
-const dev = url.protocol === "http:";
+const shellDev = process.env.FOLEVI_SHELL_URL ? new URL(process.env.FOLEVI_SHELL_URL) : null;
+const website = !shellDev && process.env.FOLEVI_URL ? new URL(process.env.FOLEVI_URL) : null;
+const bundled = website === null;
+// Where sign-in and /api/auth live for the built-in interface.
+const service = new URL(process.env.FOLEVI_SERVICE_URL ?? (shellDev ? "http://app.localhost:3002" : "https://app.folevi.com"));
+const dev = (shellDev ?? website)?.protocol === "http:";
 
 const config: CapacitorConfig = {
   appId: "com.folevi.ios",
   appName: "Folevi",
-  // Only the offline page lives in the app; everything else comes from the site.
-  webDir: "www",
-  server: {
-    // Straight to the app's start page (the site's "/" is a server redirect to it): the service worker
-    // keeps app pages like /documents for offline launches, not that redirect.
-    url: `${url.origin}/documents`,
-    // Plain http only for the local dev server (the Debug build also lets App Transport Security allow it).
-    cleartext: dev,
-    // Shown when neither the network nor the service worker's cache has the page (first launch offline).
-    errorPath: "offline.html",
-  },
+  // The built-in interface (the shell export, `pnpm shell` writes web/, git-ignored), or only the offline page
+  // (www/) when the app shows the website.
+  webDir: bundled && !shellDev ? "web" : "www",
+  server: shellDev
+    ? { url: shellDev.origin, cleartext: true }
+    : website
+      ? {
+          // Straight to the app's start page (the site's "/" is a server redirect to it): the service worker
+          // keeps app pages like /documents for offline launches, not that redirect.
+          url: `${website.origin}/documents`,
+          cleartext: dev,
+          // Shown when neither the network nor the service worker's cache has the page (first launch offline).
+          errorPath: "offline.html",
+        }
+      : {},
   ios: {
     // The page lays itself out under the status bar and home indicator (viewport-fit=cover, safe-area insets).
     contentInset: "never",
-    // WKAppBoundDomains in Info.plist: service workers, and the bridge only on Folevi's own pages.
+    // WKAppBoundDomains in Info.plist: the bridge only on the app's own pages (and service workers for the website).
     limitsNavigationsToAppBoundDomains: true,
     // iPad gets the desktop layout (and its keyboard shortcuts); iPhone the phone one.
     preferredContentMode: "recommended",
@@ -37,6 +53,8 @@ const config: CapacitorConfig = {
   plugins: {
     Keyboard: { resize: "native", resizeOnFullScreen: true },
     StatusBar: { overlaysWebView: true },
+    // Native/Shell: `window.foleviShell` for the built-in interface, and where it signs in.
+    FoleviShell: { bundled, serviceUrl: service.origin },
   },
 };
 

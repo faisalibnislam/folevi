@@ -36,7 +36,11 @@ final class FoleviViewController: CAPBridgeViewController {
         view.sendSubviewToBack(statusBarTaps)
     }
 
+    /// A local library's attachments (folevi-file://, Native/Shell/LibraryFileHandler.swift).
+    private let libraryFiles = LibraryFileHandler()
+
     override func webView(with frame: CGRect, configuration: WKWebViewConfiguration) -> WKWebView {
+        configuration.setURLSchemeHandler(libraryFiles, forURLScheme: LibraryFileHandler.scheme)
         let webView = super.webView(with: frame, configuration: configuration)
         // The router moves with history.pushState, so the edge swipe steps back through the app's pages.
         webView.allowsBackForwardNavigationGestures = true
@@ -46,17 +50,29 @@ final class FoleviViewController: CAPBridgeViewController {
         return webView
     }
 
+    /// Whether the app shows the interface built into it (capacitor.config.ts plugins.FoleviShell.bundled),
+    /// rather than the website: then the page gets `window.foleviShell` too.
+    private var bundled: Bool { Self.bundled(bridge) }
+
+    static func bundled(_ bridge: CAPBridgeProtocol?) -> Bool { bridge?.config.getPluginConfig("FoleviShell").getBoolean("bundled", false) ?? false }
+
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(FoleviNativePlugin())
+        if bundled {
+            if let raw = bridge?.config.getPluginConfig("FoleviShell").getString("serviceUrl"), let url = URL(string: raw) { ShellAuth.shared.service = url }
+            libraryFiles.origin = AppOrigin.of(bridge?.config.serverURL)
+            bridge?.registerPluginInstance(FoleviShellPlugin())
+            applyMode()
+        }
         // The extensions' REST API is the site this app loads; links that came early can go to the page now.
-        AppServices.launched(serverURL: bridge?.config.serverURL)
+        AppServices.launched(serverURL: bundled ? ShellAuth.shared.service : bridge?.config.serverURL)
         DeepLinkRouter.bridgeReady()
         if let webView, let capacitor = webView.navigationDelegate {
             let guardian = NavigationGuard(forwardingTo: capacitor)
             navigationGuard = guardian
             webView.navigationDelegate = guardian
         }
-        guard let webView, let origin = bridge.map({ AppOrigin.of($0.config.serverURL) }), let source = Self.bridgeScript(origin: origin) else { return }
+        guard let webView, let origin = bridge.map({ AppOrigin.of($0.config.serverURL) }), let source = Self.bridgeScript(origin: origin, shell: bundled ? Self.shellBootstrap() : nil) else { return }
         // After Capacitor's own scripts (they define window.Capacitor, which bridge.js calls through).
         webView.configuration.userContentController.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         #if DEBUG && targetEnvironment(simulator)
@@ -65,13 +81,43 @@ final class FoleviViewController: CAPBridgeViewController {
         #endif
     }
 
-    /// bridge.js with the one origin allowed to use it and the app's version filled in.
-    private static func bridgeScript(origin: String) -> String? {
+    /// bridge.js with the one origin allowed to use it, the app's version and, in the built-in interface, what
+    /// `foleviShell` starts with (the mode, read before any page script runs, and this device's name).
+    private static func bridgeScript(origin: String, shell: [String: Any]?) -> String? {
         guard let url = Bundle.main.url(forResource: "bridge", withExtension: "js"), let template = try? String(contentsOf: url, encoding: .utf8) else { return nil }
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        let shellJSON = shell.flatMap { try? JSONSerialization.data(withJSONObject: $0) }.flatMap { String(data: $0, encoding: .utf8) } ?? "null"
         return template
             .replacingOccurrences(of: "\"__FOLEVI_ORIGIN__\"", with: jsString(origin))
             .replacingOccurrences(of: "\"__FOLEVI_VERSION__\"", with: jsString(version))
+            .replacingOccurrences(of: "\"__FOLEVI_SHELL__\"", with: shellJSON)
+    }
+
+    /// What the page starts with. A mode switch starts the app's screen again (`restart`), so it's read anew.
+    private static func shellBootstrap() -> [String: Any] {
+        ["mode": ShellMode.current, "deviceName": ShellAuth.deviceName]
+    }
+
+    /// A new web view on the same storage, for a new mode: its scripts and network rules start from it.
+    static func restart() {
+        guard let window = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).flatMap(\.windows).first(where: \.isKeyWindow) else { return }
+        window.rootViewController = FoleviViewController()
+    }
+
+    /// Local mode never reaches Folevi or its database: a second layer under the page's own policy (plan §1),
+    /// rules WebKit applies to everything the web view loads. Account mode takes them away again.
+    func applyMode() {
+        guard let controller = webView?.configuration.userContentController else { return }
+        controller.removeAllContentRuleLists()
+        guard ShellMode.current == "local" else { return }
+        // WebKit's rule patterns have no alternation: one rule per host.
+        let patterns = [#"^[a-z]+://([^/]*\.)?folevi\.com"#, #"^[a-z]+://[^/]*\.convex\.cloud"#, #"^[a-z]+://[^/]*\.convex\.site"#]
+        let rules = patterns.map { ["trigger": ["url-filter": $0], "action": ["type": "block"]] }
+        guard let data = try? JSONSerialization.data(withJSONObject: rules), let encoded = String(data: data, encoding: .utf8) else { return }
+        WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "folevi-local-mode", encodedContentRuleList: encoded) { list, _ in
+            guard let list else { return }
+            DispatchQueue.main.async { controller.add(list) }
+        }
     }
 
     private static func jsString(_ value: String) -> String {

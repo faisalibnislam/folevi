@@ -121,6 +121,11 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
             }
             // Embeds (a video in a note) load in their frame; leaving Folevi opens Safari over the app.
             guard topLevel else { return nil }
+            // The built-in interface: a link to one of the app's own pages on the website opens here.
+            if FoleviViewController.bundled(bridge), AppOrigin.of(url) == AppOrigin.of(ShellAuth.shared.service), let link = DeepLink.fromWeb(url) ?? DeepLink.fromPath(url.path) {
+                DispatchQueue.main.async { DeepLinkRouter.open(link) }
+                return true
+            }
             // Folevi's plans page is never opened from the app (App Store rule 3.1.1: no way to buying).
             if Self.isPricing(url) { return true }
             DispatchQueue.main.async { _ = self.openOutside(url) }
@@ -128,7 +133,7 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         case "mailto", "tel", "sms", "folevi":
             DispatchQueue.main.async { _ = self.openOutside(url) }
             return true
-        case "about", "blob", "data", "capacitor":
+        case "about", "blob", "data", "capacitor", LibraryFileHandler.scheme:
             return nil
         default:
             // javascript:, file: and other apps' schemes never load from a page.

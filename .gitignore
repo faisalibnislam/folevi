@@ -10,6 +10,8 @@ out/
 out-shell/
 # Its copy inside the Mac app (pnpm --filter @folevi/web build:shell).
 apps/desktop/web/
+# ...and inside the iPhone and iPad app (build-shell.mjs --platform ios).
+apps/ios/web/
 dist/
 build/
 # Folevi for Mac keeps its signing entitlements and icon in build/ (electron-builder's resources folder).

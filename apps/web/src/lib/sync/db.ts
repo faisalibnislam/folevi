@@ -90,6 +90,26 @@ export function openLocalDbInMemory(factory: IDBFactory | null): void {
 
 let memoryFactory: IDBFactory | null = null;
 
+/** Set by end-to-end encryption's public computer mode (lib/e2ee/keys/publicMode.ts markPublicSession). */
+const PUBLIC_SESSION_FLAG = "folevi.e2ee.publicSession";
+
+/**
+ * Public computer mode: switches this tab's account database to memory before the account opens. Loads the
+ * in-memory IndexedDB (fake-indexeddb) only then: no other tab ever downloads it. Returns whether it did.
+ */
+export async function memoryLocalDbIfPublic(): Promise<boolean> {
+  let on: boolean;
+  try {
+    on = typeof localStorage !== "undefined" && localStorage.getItem(PUBLIC_SESSION_FLAG) === "1";
+  } catch {
+    on = false;
+  }
+  if (!on || memoryFactory) return on;
+  const { IDBFactory } = await import("fake-indexeddb");
+  openLocalDbInMemory(new IDBFactory());
+  return true;
+}
+
 /** Whether this tab keeps the account's data in memory only. */
 export function localDbInMemory(): boolean {
   return memoryFactory !== null;

@@ -175,8 +175,6 @@ export async function openDeep(value: unknown, env: RouterEnv, hint: DecodeHint 
         if ("cover" in obj) out.cover = opened.cover;
         if ("style" in obj) out.style = opened.style;
         if ("templateKey" in obj) out.templateKey = opened.templateKey;
-        // A collection row's note: its sealed meta holds the row (the server keeps such notes as plain documents).
-        if (opened.row && obj.kind === "document") out.kind = "collectionRow";
       }
       // What the server can't derive for a sealed note (excerpt, preview, counts) comes from the replica.
       await fillDerived(env, id, obj, out);

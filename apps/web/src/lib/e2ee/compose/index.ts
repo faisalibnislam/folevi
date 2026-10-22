@@ -12,6 +12,7 @@ import type { LocalDocument } from "@/lib/local/store";
 import type { LocalMutationCtx } from "@/lib/local/registry";
 import { errorCode } from "@/lib/local/errors";
 import { isEncryptedLevel, type E2eeSpace } from "../router/deps";
+import { reportNoteMarkdown, reportTitle, type ReportSource } from "../../../../../../convex/lib/ai/research";
 import type { Call, Composer, RouterEnv } from "../router/types";
 import { capture, captureRun, project, replicaStoreFor, send, type Captured } from "./capture";
 
@@ -251,7 +252,72 @@ const onboardingStep: Composer = async (call, env) => {
   return r;
 };
 
+/**
+ * changes.undo for a sealed note (§6.7): the lines others changed since this person last looked go back to
+ * what they were. changes.note gives the changed lines and, opened, how they were: `previous` (the server's,
+ * for a plain note) or the version saved when they last looked (`seenVersionId`, opened here).
+ */
+const undoChanges: Composer = async (call, env) => {
+  const space = spaceOf(call);
+  const documentId = String(call.args.documentId);
+  const note = (await env.call("query", getFunctionName(api.changes.note), { documentId })) as {
+    kinds?: [string, "added" | "edited" | "removed"][];
+    previous?: WireBlock[] | null;
+    seenVersionId?: string | null;
+    more?: boolean;
+  } | null;
+  const gone = () => new ConvexError({ code: "not_found", message: "The version from when you last looked is gone. Open version history to go back further." });
+  if (!note || !note.kinds) throw gone();
+  if (note.more) throw new ConvexError({ code: "limit_exceeded", message: "That's too many changes to undo here. Open version history instead." });
+  let before = note.previous ?? null;
+  if (!before && note.seenVersionId) {
+    const opened = (await env.call("query", getFunctionName(api.documents.snapshotContent), { snapshotId: note.seenVersionId })) as { content: string | null } | null;
+    before = opened?.content ? (JSON.parse(opened.content) as { blocks: WireBlock[] }).blocks : null;
+  }
+  if (!before) throw gone();
+  if (!note.kinds.length) return { undoVersionId: null, reverted: 0 };
+  const was = new Map(before.map((b) => [b.id, b]));
+  const made = (await env.inner.mutation(api.documents.createSnapshot, { documentId, reason: "manual" })) as { id?: string } | null;
+  const { c } = await captureFn(env, space, async (ctx) => {
+    const doc = await ctx.db.get("documents", documentId);
+    if (!doc) throw new ConvexError({ code: "not_found", message: "Document not found." });
+    const page = new Map((await ctx.db.list("blocks", documentId)).filter((b) => b.deletedAt === null).map((b) => [b.id, { id: b.id, type: b.type, parentId: b.parentId, rank: b.rank, schemaVersion: b.schemaVersion, text: b.text, props: b.props } as WireBlock]));
+    for (const [blockId] of note.kinds!) {
+      const old = was.get(blockId);
+      if (old) page.set(blockId, old);
+      else page.delete(blockId);
+    }
+    const blocks = [...page.values()].map((b) => (b.parentId && !page.has(b.parentId) ? { ...b, parentId: null } : b));
+    return await rewriteNote(ctx, doc, { title: doc.title, icon: doc.icon, blocks });
+  });
+  await send(await project(c, space, env), space, env);
+  await env.inner.mutation(api.changes.markSeen, { documentIds: [documentId] });
+  return { undoVersionId: made?.id ?? null, reverted: note.kinds.length };
+};
+
+/**
+ * aiResearch.saveAsNote into a sealed place (a locked folder): the report's Markdown is made here, as the
+ * server makes it (convex/lib/ai/research.ts), and saved as a sealed note through local mode's draft handler.
+ */
+const researchAsNote: Composer = async (call, env) => {
+  const space = spaceOf(call);
+  const researchId = String(call.args.researchId);
+  const jobs = (await env.inner.query(api.aiResearch.list, { scope: space.scope })) as { id: string; status: string; question: string; sources: ReportSource[]; messageId: string; conversationId: string; noteId: string | null }[];
+  const job = jobs.find((j) => j.id === researchId);
+  if (!job) throw new ConvexError({ code: "not_found", message: "That research isn't there anymore." });
+  if (job.status !== "done") throw new ConvexError({ code: "invalid_argument", message: "The report isn't finished yet." });
+  if (job.noteId && env.spaces.document(job.noteId)) return { id: job.noteId };
+  const chat = (await env.inner.query(api.aiChat.get, { conversationId: job.conversationId })) as { messages?: { id: string; text: string }[] } | null;
+  const text = chat?.messages?.find((m) => m.id === job.messageId)?.text ?? "";
+  if (!text.trim()) throw new ConvexError({ code: "not_found", message: "The report isn't there anymore." });
+  const c = await capture(await replicaStoreFor(env, space), "mutation", getFunctionName(api.aiWriting.saveDraft), { scope: space.scope, kind: "note", title: reportTitle(job.question), markdown: reportNoteMarkdown(text, job.sources), ...(call.args.folderId ? { folderId: call.args.folderId } : {}) }, deviceOf(env));
+  await send(await project(c, space, env), space, env);
+  return c.result;
+};
+
 export const COMPOSERS = {
+  undoChanges,
+  researchAsNote,
   onboardingStep,
   newPerDay,
   captured,

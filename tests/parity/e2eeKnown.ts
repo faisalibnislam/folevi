@@ -11,3 +11,6 @@ export const E2EE_KNOWN: Record<string, string> = {
   "history.ts: restore a version, undo the restore, and make a copy of a version":
     "WP3: a device can't make a before_restore version (createSnapshot takes idle, close or manual), and a sealed version's own title is inside its sealed content (the list shows the note's current title)",
 };
+
+/** Scenarios that differ only in the encrypted team workspace run, and why. */
+export const E2EE_WORKSPACE_KNOWN: Record<string, string> = {};

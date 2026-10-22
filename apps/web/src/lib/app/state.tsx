@@ -7,9 +7,10 @@ import { FoleviLoader } from "@/components/brand/FoleviLoader";
 import { api } from "@/lib/convex/api";
 import { SyncEngine } from "@/lib/sync/engine";
 import { Outbox } from "@/lib/sync/outbox";
-import { deviceId as loadDeviceId } from "@/lib/sync/db";
+import { deviceId as loadDeviceId, memoryLocalDbIfPublic } from "@/lib/sync/db";
 import { Uploader } from "@/lib/sync/uploads";
 import { useAuthPhase } from "@/lib/convex/provider";
+import { activeRouter } from "@/lib/e2ee/router/active";
 import { useBackendMode } from "@/lib/mode";
 import { saveAccountSnapshot } from "./offlineSnapshot";
 
@@ -213,6 +214,20 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
     scopeRef.current = scope;
     engine?.setScope(scope);
   }, [engine, scope]);
+  // End-to-end encryption (docs/E2EE_DESIGN.md §6.4): when the account's client is the router, it learns the
+  // current place (calls naming nothing else concern it) and the engine (composers queue through it, the
+  // replica shows its unsent edits). Standard accounts have no router: nothing happens.
+  useEffect(() => {
+    const router = activeRouter();
+    if (!router || (router as unknown) !== convex) return;
+    router.setScope(scope);
+  }, [convex, scope]);
+  useEffect(() => {
+    const router = activeRouter();
+    if (!router || (router as unknown) !== convex || !engine) return;
+    router.setEngine(engine);
+    return () => router.setEngine(null);
+  }, [convex, engine]);
   const teamIdsRef = useRef<string[]>([]);
   teamIdsRef.current = workspaces?.map((w) => w.id) ?? [];
   const ready = context !== null;
@@ -224,6 +239,8 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
     let unwatch: (() => void) | null = null;
     let uploading: Uploader | null = null;
     (async () => {
+      // A public computer (end-to-end encryption, §6.10) keeps the account's queue and cache in memory.
+      await memoryLocalDbIfPublic();
       const id = await loadDeviceId(profile.id);
       // Your workspaces let page creates queued by an older build find their scope (engine.ts adoptLegacyCreates).
       const e = await SyncEngine.open(convex, profile.id, scopeRef.current, id, teamIdsRef.current);

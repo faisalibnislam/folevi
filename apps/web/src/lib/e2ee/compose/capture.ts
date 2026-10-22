@@ -68,7 +68,9 @@ export interface Captured {
 
 /** Runs a ported local handler against the replica without changing it. */
 export async function capture(store: SpaceReplicaStore, kind: "mutation" | "action", name: string, args: Record<string, unknown>, deviceId: string): Promise<Captured> {
-  return await captureWith(store, deviceId, (backend) => (kind === "mutation" ? backend.mutation(name, args) : backend.action(name, args)));
+  // The handlers know one place, which they call Personal; a workspace's replica is that place for them.
+  const local = args.scope && typeof args.scope === "object" ? { ...args, scope: { kind: "personal" } } : args;
+  return await captureWith(store, deviceId, (backend) => (kind === "mutation" ? backend.mutation(name, local) : backend.action(name, local)));
 }
 
 /** Runs `fn` as one mutation of the local backend over the replica without changing it (a handler's helpers). */

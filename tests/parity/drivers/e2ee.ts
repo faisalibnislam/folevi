@@ -8,7 +8,7 @@
 import { getFunctionName, type FunctionReference } from "convex/server";
 import { ctx as aad, deriveNoteKeys, openRecord, randomBytes, sealRecord, type NoteKeys, type SpaceKeys } from "@folevi/local-store/e2ee";
 import type { WireScope } from "@folevi/editor-schema";
-import { person, setup, type T } from "../../convex/helpers";
+import { person, setup, teamWorkspace, type T } from "../../convex/helpers";
 import { encryptedSpace } from "../../convex/e2ee-fixtures";
 import { api } from "../../../convex/_generated/api";
 import { E2eeRouterClient } from "../../../apps/web/src/lib/e2ee/router/client";
@@ -139,9 +139,13 @@ class TestInner {
   logger = console;
 }
 
+/** Where a driver's scenario runs: the person's Personal, or a team workspace they own. */
+export type ParityPlace = "personal" | "workspace";
+
 export class E2eeDriver implements ParityBackend {
   readonly kind = "convex" as const;
-  readonly scope = { kind: "personal" } as const;
+  /** Typed as the harness's Personal; a workspace driver puts its workspace here (scenarios pass it through). */
+  readonly scope: { kind: "personal" };
   readonly deviceId = PARITY_DEVICE;
   readonly known = new Map<string, string>();
   readonly calls = new Set<string>();
@@ -151,15 +155,20 @@ export class E2eeDriver implements ParityBackend {
     private readonly inner: TestInner,
     readonly router: E2eeRouterClient,
     readonly profileId: string,
+    private readonly place: WireScope,
   ) {
+    this.scope = place as { kind: "personal" };
     this.known.set(profileId, "<profile>");
     this.known.set(PARITY_DEVICE, "<device>");
+    if (place.kind === "workspace") this.known.set(place.workspaceId, "<workspace>");
   }
 
-  static async open(): Promise<E2eeDriver> {
+  static async open(where: ParityPlace = "personal"): Promise<E2eeDriver> {
     const t = setup();
     const p = await person(t, PARITY_EMAIL);
-    const space = await encryptedSpace(t, p as never, { level: "full" });
+    const ws = where === "workspace" ? await teamWorkspace(p as never) : null;
+    const place: WireScope = ws ? { kind: "workspace", workspaceId: ws.workspaceId } : PERSONAL;
+    const space = await encryptedSpace(t, p as never, { level: "full", ...(ws ? { workspaceId: ws.workspaceId } : {}) });
     const inner = new TestInner(p.as);
     // Signed file links (/files/<id>?exp&sig) are fetched from convex-test's HTTP routes.
     const fetchFiles = (async (input: string | URL | Request) => {
@@ -169,9 +178,10 @@ export class E2eeDriver implements ParityBackend {
     }) as typeof fetch;
     const router = new E2eeRouterClient(inner as never, { session: new UnlockedSession(), keyring: new ParityKeyRing(space.keys, space.scope), persist: () => false, locks: null, fetch: fetchFiles });
     await router.ready();
-    await router.replicas.open(PERSONAL);
-    await router.replicas.get(PERSONAL)!.whenSynced();
-    return new E2eeDriver(t, inner, router, p.profileId);
+    await router.replicas.open(place);
+    await router.replicas.get(place)!.whenSynced();
+    router.setScope(place);
+    return new E2eeDriver(t, inner, router, p.profileId, place);
   }
 
   private note(ref: AnyRef) {
@@ -181,7 +191,7 @@ export class E2eeDriver implements ParityBackend {
   /** The replica caught up with the server (writes that weren't the router's own reach it by the pull). */
   private async caughtUp() {
     await this.inner.refreshAll();
-    await this.router.replicas.get(PERSONAL)?.catchUp?.();
+    await this.router.replicas.get(this.place)?.catchUp?.();
   }
 
   async query<R extends FunctionReference<"query", "public">>(ref: R, args: R["_args"]): Promise<R["_returnType"]> {
@@ -208,7 +218,6 @@ export class E2eeDriver implements ParityBackend {
   async settle() {
     await this.t.finishAllScheduledFunctions(() => undefined);
     await this.caughtUp();
-    await this.router.pruneDeleted();
   }
 
   /** A sealed note's file goes up encrypted (e2ee.files); the POST to the upload address stores the bytes directly. */
@@ -248,4 +257,60 @@ export class E2eeDriver implements ParityBackend {
   async close() {
     await this.router.dispose();
   }
+}
+
+/** Plain Convex in a team workspace: what the encrypted workspace must normalize to. */
+export class PlainWorkspaceDriver implements ParityBackend {
+  readonly kind = "convex" as const;
+  readonly scope: { kind: "personal" };
+  readonly deviceId = PARITY_DEVICE;
+  readonly known = new Map<string, string>();
+  readonly calls = new Set<string>();
+
+  private constructor(
+    readonly t: T,
+    private readonly as: Caller,
+    workspaceId: string,
+    profileId: string,
+  ) {
+    this.scope = { kind: "workspace", workspaceId } as unknown as { kind: "personal" };
+    this.known.set(profileId, "<profile>");
+    this.known.set(PARITY_DEVICE, "<device>");
+    this.known.set(workspaceId, "<workspace>");
+  }
+
+  static async open(): Promise<PlainWorkspaceDriver> {
+    const t = setup();
+    const p = await person(t, PARITY_EMAIL);
+    const ws = await teamWorkspace(p as never);
+    return new PlainWorkspaceDriver(t, p.as, ws.workspaceId, p.profileId);
+  }
+
+  async query<R extends FunctionReference<"query", "public">>(ref: R, args: R["_args"]): Promise<R["_returnType"]> {
+    this.calls.add(getFunctionName(ref));
+    return await (this.as.query as (r: R, a: unknown) => Promise<R["_returnType"]>)(ref, args);
+  }
+  async mutation<R extends FunctionReference<"mutation", "public">>(ref: R, args: R["_args"]): Promise<R["_returnType"]> {
+    this.calls.add(getFunctionName(ref));
+    return await (this.as.mutation as (r: R, a: unknown) => Promise<R["_returnType"]>)(ref, args);
+  }
+  async action<R extends FunctionReference<"action", "public">>(ref: R, args: R["_args"]): Promise<R["_returnType"]> {
+    this.calls.add(getFunctionName(ref));
+    return await (this.as.action as (r: R, a: unknown) => Promise<R["_returnType"]>)(ref, args);
+  }
+  async settle() {
+    await this.t.finishAllScheduledFunctions(() => undefined);
+  }
+  async upload(input: UploadInput): Promise<string> {
+    const { intentId } = (await this.mutation(api.files.generateUploadUrl, { scope: this.scope, documentId: input.documentId, filename: input.filename, size: input.bytes.length, mimeType: input.mimeType, kind: input.kind })) as { intentId: string };
+    const storageId = await this.t.run(async (ctx) => await ctx.storage.store(new Blob([input.bytes as Uint8Array<ArrayBuffer>], { type: input.mimeType })));
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", input.bytes as Uint8Array<ArrayBuffer>));
+    const sha256 = [...digest].map((b) => b.toString(16).padStart(2, "0")).join("");
+    return ((await this.action(api.files.finalize, { intentId: intentId as never, storageId, sha256 })) as { fileId: string }).fileId;
+  }
+  async download(url: string): Promise<Uint8Array> {
+    const res = await this.t.fetch(url.slice(url.indexOf("/files/")));
+    return new Uint8Array(await res.arrayBuffer());
+  }
+  async close() {}
 }

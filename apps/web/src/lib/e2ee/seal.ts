@@ -21,7 +21,7 @@ import {
   type SealedBlockFields,
   type SealedWireBlock,
 } from "@folevi/local-store/e2ee";
-import { canonicalJson, DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, type InlineNode, type WireBlock } from "@folevi/editor-schema";
+import { canonicalJson, DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, validateWireBlock, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import type { KeyRingLike } from "./router/deps";
 
 const enc = new TextEncoder();
@@ -94,6 +94,19 @@ export function mentionIds(block: Pick<WireBlock, "text" | "props">): string[] {
   return [...out].slice(0, 50);
 }
 
+/**
+ * A sealed block carries only `collapsed: true` (§4.6, as `sealed.collapsed`), so an open toggle comes back
+ * without `props.collapsed`. Block types whose schema requires the field get `false` again, so an opened block
+ * is the block that was sealed.
+ */
+export function withCollapsedField(block: WireBlock): WireBlock {
+  const props = block.props as Record<string, unknown>;
+  if ("collapsed" in props) return block;
+  const fixed: WireBlock = { ...block, props: { ...props, collapsed: false } };
+  const needs = validateWireBlock(block).some((i) => i.path === "props.collapsed");
+  return needs && !validateWireBlock(fixed).some((i) => i.path === "props.collapsed") ? fixed : block;
+}
+
 /** The text a block shows that fails to open (§6.6): a read-only paragraph in its place. */
 export const UNREADABLE_TEXT = "This block couldn't be decrypted. It may have been damaged.";
 
@@ -156,7 +169,7 @@ export class Sealer {
   async openBlock(documentId: string, block: Pick<SealedWireBlock, "id" | "parentId" | "rank" | "revision" | "sealed">): Promise<WireBlock> {
     const bytes = await openRecord(this.noteContentKey(documentId), ctx.block(documentId, block.id), bytesOf(block.sealed.c));
     try {
-      return blockFromPlaintext(bytes, { id: block.id, parentId: block.parentId, rank: block.rank, revision: block.revision }, block.sealed.collapsed === true);
+      return withCollapsedField(blockFromPlaintext(bytes, { id: block.id, parentId: block.parentId, rank: block.rank, revision: block.revision }, block.sealed.collapsed === true));
     } finally {
       bytes.fill(0);
     }

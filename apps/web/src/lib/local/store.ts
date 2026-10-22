@@ -58,6 +58,14 @@ export interface LocalDocument {
    * downloaded yet ("downloading") or hasn't arrived at all ("waiting"). It has no blocks until it does.
    */
   pending?: "downloading" | "waiting";
+  /**
+   * End-to-end encryption's replica only (docs/E2EE_DESIGN.md §6.5): the note itself is Always fully encrypted,
+   * or the locked folder it inherits that from. Local mode never sets these.
+   */
+  locked?: boolean;
+  lockedVia?: string | null;
+  /** End-to-end encryption's replica of a workspace: who made the note (local mode's notes are all the owner's). */
+  createdBy?: string;
 }
 
 /** A link from one of a note's blocks to another note (a page card, a page link, a synced block's content). */
@@ -146,6 +154,8 @@ export interface LocalFolder {
   ordinal?: number;
   updatedAt: number;
   deletedAt: number | null;
+  /** End-to-end encryption's replica only: the folder is Always fully encrypted (§6.5). */
+  locked?: boolean;
 }
 
 export interface LocalTag {

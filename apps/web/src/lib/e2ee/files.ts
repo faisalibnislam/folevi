@@ -70,6 +70,18 @@ export class FileCache {
     return this.o.fetch ?? ((...a) => fetch(...a));
   }
 
+  /** The fetch this cache uses (uploads made beside it use the same one). */
+  get fetchFn(): typeof fetch {
+    return this.fetcher;
+  }
+
+  /** A plain file's bytes from its signed url (a Standard note's file pasted into a sealed note). */
+  async download(url: string, mime: string): Promise<Blob> {
+    const res = await this.fetcher(url);
+    if (!res.ok) throw new Error(`The file couldn't be downloaded (${res.status}).`);
+    return new Blob([await res.arrayBuffer()], { type: mime });
+  }
+
   /** The decrypted file as an object URL (and its opened metadata), fetched and opened once per tab. */
   async open(fileId: string, documentId: string, signedUrl: string, sealed: SealedFileFields): Promise<{ url: string; meta: FileMeta } | { tooLarge: true; meta: FileMeta }> {
     const hit = this.entries.get(fileId);

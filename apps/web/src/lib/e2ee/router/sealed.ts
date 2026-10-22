@@ -7,6 +7,7 @@ import { ulid, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { Sealer, mentionIds } from "../seal";
 import { capture, project, replicaStoreFor, send } from "../compose/capture";
+import { uploadSealedWith } from "../files";
 import { content, files as e2eeFiles } from "./refs";
 import { isEncryptedLevel, type E2eeSpace } from "./deps";
 import type { ArgSealer, Call, RouterEnv } from "./types";
@@ -288,7 +289,12 @@ const shareForPaste: Sealing = async (call, env) => {
   const here = store ? ((await store.list("files")) as { id: string; documentId: string | null; sha256: string }[]).filter((f) => f.documentId === a.documentId) : [];
   for (const fileId of [...new Set(a.fileIds)].slice(0, 50)) {
     const f = await sealedFile(env, call, fileId);
-    if (!f) continue;
+    if (!f) {
+      // A Standard note's file: its bytes are readable, so they're encrypted here and uploaded as this note's.
+      const copy = await reuploadSealed(env, a.documentId, fileId);
+      if (copy) out[fileId] = copy;
+      continue;
+    }
     if (f.documentId === a.documentId) {
       out[fileId] = fileId;
       continue;
@@ -315,6 +321,21 @@ const shareForPaste: Sealing = async (call, env) => {
   }
   return done(out);
 };
+
+/** A plain file of a Standard note, downloaded and uploaded again sealed into a sealed note (a paste, §6.8). */
+async function reuploadSealed(env: RouterEnv, documentId: string, fileId: string): Promise<string | null> {
+  const urls = (await env.inner.query(api.files.urls, { fileIds: [fileId], now: Date.now() })) as Record<string, { url: string; mimeType: string; filename: string } | undefined>;
+  const entry = urls[fileId];
+  if (!entry) return null;
+  const key = `${documentId}|plain:${fileId}`;
+  const again = pasted.get(key);
+  if (again) return again;
+  const blob = await env.files.download(entry.url, entry.mimeType);
+  const kind = entry.mimeType.startsWith("image/") ? "image" : entry.mimeType.startsWith("audio/") ? "audio" : "file";
+  const r = await uploadSealedWith({ inner: env.inner, sealer: env.sealer, spaces: env.spaces, fetch: env.files.fetchFn }, { documentId, filename: entry.filename, mimeType: entry.mimeType, kind, blob });
+  pasted.set(key, r.fileId);
+  return r.fileId;
+}
 
 /** documents.createSnapshot with a name, for a sealed note: the version is made blind, then named sealed. */
 const createSnapshot: Sealing = async (call, env) => {

@@ -1636,8 +1636,8 @@ in a Standard space asks the same question.
   `setActiveRouter` makes it reachable outside React (`lib/e2ee/router/active.ts`, `hooks.ts`).
 - Results are opened by one generic walker (`openDeep`) over WP3's shapes: a SealedWireBlock, a summary's
   `sealed: { title, appearance, meta? }`, `sealedName` (folders and tags; tried as a folder then as a tag),
-  `sealedBody`. A sealed note's derived fields (excerpt, preview, counts) come from the replica. A note
-  whose sealed meta has a `row` reads as `collectionRow` (WP3's sealed create stores it as `document`).
+  `sealedBody`. A sealed note's derived fields (excerpt, preview, counts) come from the replica. A collection
+  row's note is created with `kind: "collectionRow"` and always carries its sealed meta.
   Function-specific decoders: versions (names opened, ids remembered), SealedVersionContent, files.urls,
   notifications (`documentSealed`).
 - Composers and the record-backed sealed routes (collections, found text, study, and in encrypted spaces
@@ -1657,17 +1657,32 @@ in a Standard space asks the same question.
   can't ask for `before_restore`; WP3 could allow it).
 - `files.shareForPaste` into a sealed note re-wraps the file key for the target (`e2ee.files.rewrap`); the
   copy's sealed meta says `blob: <first file id>`, the id its bytes were sealed under (their AAD context).
-- The pull sends no tombstones for notes deleted for good: a device forgets its own deletions at once and
-  checks the notes in Trash against `documents.get` after deletes. WP3 could add `purged` rows instead.
-  Tags deleted on the server likewise stay in other devices' replicas until then.
+- Pull pages carry `removed: { kind: "document" | "tag", id, seq }[]` (WP3's tombstones): the replica drops
+  the note with its blocks, records, files and collections, or the tag and its place in every note's tags;
+  unknown ids are ignored. A note's `seq` and `revision` also move when only its files change: the replica
+  takes the note's file list as it now is (files no longer listed go). Title conflicts still use `titleRev`.
+- Replica rows carry `locked` / `lockedVia` (notes) and `locked` (folders), so features read locks there.
+  A note an encrypting space hasn't sealed yet is sealed first (WP8's `sealNow`) before an edit to it is sent.
+  An opened toggle gets `collapsed: false` back where its schema needs the field (`withCollapsedField`).
+- A workspace's replica: the handlers still see one place (args' scope rewritten to Personal for them); its
+  meta `place` (`{ kind, workspaceId, name }`) makes task views count "mine" as the server does there and
+  names the place in search and exports (`placeOf`); answers get `workspaceId` set and `ownerProfileId` null
+  (`ownersOf`), and notes keep their `createdBy`. The parity scenarios run in a team workspace too.
+- `changes.undo` on the device reverts the changed lines from `changes.note` (`previous`, or the opened
+  `seenVersionId` once WP3 returns it for sealed notes; until then a sealed note's undo says the version is
+  gone). `aiResearch.saveAsNote` into a sealed place builds the report's Markdown on the device. A Standard
+  note's file pasted into a sealed note is downloaded and uploaded again sealed.
 - `study.setNewPerDay` is the person's setting, not content: it goes to Convex, and the replica is told.
 - A device-route call whose server function refuses sealed notes still merges: in an encrypted space the
   replica answers alone (`documents.info` takes its activity from the server and its counts from the replica).
 - An id the index doesn't know resolves to the call's `scope` if that space is encrypted (its replica has
   every note, so the device answers "not found" as the server would); block ids are indexed too.
 - `openLocalDbInMemory(factory)` replaces `openLocalDb({ memory: true })`: the tab's account database opens in
-  an in-memory IndexedDB (fake-indexeddb's `IDBFactory`, which must move to `dependencies` when public mode
-  turns it on). Unpersisted replicas get a fresh `MemoryReplicaDb` each time.
+  an in-memory IndexedDB. `memoryLocalDbIfPublic()` (called by AppState before the engine opens) loads
+  fake-indexeddb (a dependency now) by dynamic import, only when the public-session flag is set. The first tab
+  that picks "public computer" has already opened its account database: that choice should come before the
+  account opens. Unpersisted replicas get a fresh `MemoryReplicaDb` each time.
+- AppState tells the active router its scope (`setScope`) and the engine (`setEngine`).
 - Parity (§11.3) runs in `tests/parity/e2ee.test.ts` with `drivers/e2ee.ts`; the scenarios that differ, and
   why, are listed in `tests/parity/e2eeKnown.ts`.
 

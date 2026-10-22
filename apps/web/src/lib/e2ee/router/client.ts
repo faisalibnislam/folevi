@@ -274,6 +274,11 @@ export class E2eeRouterClient {
         session: deps.session,
         space: (scope) => this.spaces.get(scope),
         profile: () => this.me(),
+        placeName: async (scope) => {
+          if (scope.kind !== "workspace") return undefined;
+          const mine = (await this.inner.query(api.workspaces.mine, {})) as { id: string; name: string }[] | null;
+          return mine?.find((w) => w.id === scope.workspaceId)?.name;
+        },
         persist: deps.persist ?? (() => true),
         deviceId: () => this.engineOf()?.deviceId ?? safeDeviceId(deps.session),
         locks: deps.locks,
@@ -507,7 +512,7 @@ export class E2eeRouterClient {
 
   /** The current value of a routed (not passed) query; undefined while loading. */
   readMode(m: Exclude<Mode, { kind: "pass" | "locked" | "waiting" }>, ref: FunctionReference<"query">, args: Args, options: unknown): unknown {
-    if (m.kind === "device") return this.replicaWatch(m.scope, ref, args)?.localQueryResult();
+    if (m.kind === "device") return this.ownersOf(m.scope, this.replicaWatch(m.scope, ref, args)?.localQueryResult());
     if (m.kind === "decode") return this.entry(m, ref, args, options).read();
     let server: unknown;
     let refused = false;
@@ -522,7 +527,7 @@ export class E2eeRouterClient {
     for (const scope of m.scopes) {
       let v: unknown;
       try {
-        v = this.replicaWatch(scope, ref, args)?.localQueryResult();
+        v = this.ownersOf(scope, this.replicaWatch(scope, ref, args)?.localQueryResult());
       } catch {
         v = undefined;
       }
@@ -542,6 +547,36 @@ export class E2eeRouterClient {
     }
     if (m.kind === "decode" || m.kind === "merge") offs.push(this.entry(m, ref, args, options).subscribe(cb));
     return () => offs.forEach((o) => o());
+  }
+
+  private owned = new WeakMap<object, unknown>();
+
+  /**
+   * A replica's handlers answer as local mode does, for the one place it has (a Personal: `workspaceId` null,
+   * `ownerProfileId` the person). A workspace's replica answers for the workspace: those fields are set as the
+   * server sets them. The same answer gives the same object (React compares them).
+   */
+  ownersOf<T>(scope: WireScope, value: T): T {
+    if (scope.kind !== "workspace" || !value || typeof value !== "object") return value;
+    const hit = this.owned.get(value as object);
+    if (hit !== undefined) return hit as T;
+    const workspaceId = scope.workspaceId;
+    const walk = (v: unknown, depth: number): unknown => {
+      if (depth > 12 || !v || typeof v !== "object") return v;
+      if (Array.isArray(v)) return v.map((x) => walk(x, depth + 1));
+      if (v instanceof Blob || ArrayBuffer.isView(v) || v instanceof ArrayBuffer) return v;
+      const o = v as Record<string, unknown>;
+      const out: Record<string, unknown> = {};
+      for (const [k, x] of Object.entries(o)) out[k] = x && typeof x === "object" ? walk(x, depth + 1) : x;
+      if ("workspaceId" in o && o.workspaceId === null) {
+        out.workspaceId = workspaceId;
+        if ("ownerProfileId" in o) out.ownerProfileId = null;
+      }
+      return out;
+    };
+    const fixed = walk(value, 0) as T;
+    this.owned.set(value as object, fixed);
+    return fixed;
   }
 
   // ---- the ConvexReactClient surface -------------------------------------------------------------------
@@ -625,7 +660,7 @@ export class E2eeRouterClient {
       case "locked":
         throw lockedSessionError();
       case "device":
-        return await (await this.replicas.open(m.scope)).client.query(ref, deviceArgs(args));
+        return this.ownersOf(m.scope, await (await this.replicas.open(m.scope)).client.query(ref, deviceArgs(args)));
       case "decode": {
         const raw = await this.inner.query(ref, args);
         if (m.route.kind === "ai") return await this.ai(this.callOf(name, "query", args, m.res), this.env, async () => await openDeep(raw, this.env, { documentId: m.res.documentId, space: m.res.space }));
@@ -639,7 +674,7 @@ export class E2eeRouterClient {
             if (m.res.space && isEncryptedLevel(m.res.space)) return undefined;
             throw e;
           }),
-          ...m.scopes.map(async (s) => await (await this.replicas.open(s)).client.query(ref, deviceArgs(args)).catch(() => undefined)),
+          ...m.scopes.map(async (s) => this.ownersOf(s, await (await this.replicas.open(s)).client.query(ref, deviceArgs(args)).catch(() => undefined))),
         ]);
         let merged: unknown = undefined;
         for (const d of device) if (d !== undefined) merged = merged === undefined ? d : m.merge(merged, d, call);
@@ -661,30 +696,8 @@ export class E2eeRouterClient {
     return await this.routed(ref, "action", name, args, () => this.inner.action(ref, args));
   }
 
-  /** Calls that delete notes for good: the pull won't say so, so the replicas check their Trash afterwards. */
-  private static readonly DELETES = new Set(["documents:deletePermanently", "documents:emptyTrash", "documents:bulkUpdate"]);
-
   private async routed(ref: AnyRef, kind: "mutation" | "action", name: string, args: Args, forward: () => Promise<unknown>): Promise<unknown> {
-    const result = await this.routedCall(ref, kind, name, args, forward);
-    if (E2eeRouterClient.DELETES.has(name) && this.spaces.any) {
-      // Deleted for good on the server shortly (a deletion job): this device's own request is gone at once,
-      // and Trash is checked again once the job has had time to run. (The pull carries no tombstones yet.)
-      if (name === "documents:deletePermanently" && typeof args.documentId === "string") await this.forgetDocuments([args.documentId]);
-      await this.pruneDeleted();
-      setTimeout(() => void this.pruneDeleted().catch(() => undefined), 10_000);
-    }
-    return result;
-  }
-
-  private async forgetDocuments(ids: string[]) {
-    await Promise.all(this.spaces.list().map(async (s) => await this.replicas.get(s.scope)?.pruneDeleted?.(async (id) => !ids.includes(id))));
-    for (const id of ids) this.spaces.forgetDocument(id);
-  }
-
-  /** Drops from the replicas the notes in Trash the server no longer has (deleted for good). */
-  async pruneDeleted() {
-    const exists = async (id: string) => ((await this.inner.query(api.documents.get, { documentId: id }).catch(() => ({}))) as unknown) !== null;
-    await Promise.all(this.spaces.list().map(async (s) => await this.replicas.get(s.scope)?.pruneDeleted?.(exists)));
+    return await this.routedCall(ref, kind, name, args, forward);
   }
 
   private async routedCall(ref: AnyRef, kind: "mutation" | "action", name: string, args: Args, forward: () => Promise<unknown>): Promise<unknown> {
@@ -702,10 +715,11 @@ export class E2eeRouterClient {
         const { calls, result } = await route.seal(call, this.env);
         const results: unknown[] = [];
         for (const c of calls) results.push(await (this.inner.mutation as (r: unknown, a: unknown) => Promise<unknown>)(c.ref, c.args));
-        return result(results);
+        // Device-made answers (records) are a workspace's when the call was about one.
+        return res.space ? this.ownersOf(res.space.scope, result(results)) : result(results);
       }
       case "compose":
-        return await route.run(call, this.env);
+        return res.space ? this.ownersOf(res.space.scope, await route.run(call, this.env)) : await route.run(call, this.env);
       case "ai":
         return await (route.run ?? this.ai)(call, this.env, forward);
       case "off":
@@ -717,7 +731,7 @@ export class E2eeRouterClient {
           const replica = await this.replicas.open(res.space.scope);
           // An export takes the attachments' bytes: fetched and opened first, kept in memory only.
           if (name === "exports:exportScope") await this.hydrateFiles(res.space.scope);
-          return await replica.backend.action(name, deviceArgs(args));
+          return this.ownersOf(res.space.scope, await replica.backend.action(name, deviceArgs(args)));
         }
         return await forward();
       default:
@@ -923,7 +937,28 @@ export class E2eeRouterClient {
     return results;
   }
 
+  /**
+   * A note an encrypting space hasn't sealed yet takes no plaintext edit (the server refuses it, §5.4): it's
+   * sealed now, out of order, by WP8's runner (§6.9 "Edits during a migration"), then the edit goes sealed.
+   */
+  private async sealBeforeEditing(ops: SyncOp[]): Promise<void> {
+    const ids = new Set<string>();
+    for (const op of ops) {
+      if (op.kind === "document.create") continue;
+      const d = this.spaces.document(op.documentId);
+      if (d && !d.sealed && isEncryptedLevel(this.spaces.get(d.scope))) ids.add(op.documentId);
+    }
+    if (!ids.size) return;
+    const { sealNow } = await import("../migrate");
+    for (const id of ids) {
+      await sealNow(id);
+      const d = this.spaces.document(id);
+      if (d) this.spaces.noteDocument(id, d.scope, true);
+    }
+  }
+
   private async pushOnce(scope: WireScope, deviceId: string, ops: SyncOp[]): Promise<OpResult[]> {
+    await this.sealBeforeEditing(ops);
     const wire: SyncOp[] = [];
     const sent = new Map<string, SyncOp>();
     const touched = new Map<string, { scope: WireScope; ops: SyncOp[] }>();

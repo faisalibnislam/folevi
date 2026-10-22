@@ -61,8 +61,6 @@ export interface PulledDocument {
   lockedVia?: string | null;
   tagIds: string[];
   fileIds?: string[];
-  /** Deleted for good: the replica drops it (sent once WP3 keeps tombstones of purged notes). */
-  purged?: boolean;
   sealed?: { title: SealedField & { mac: string }; appearance: SealedField; meta?: SealedField | null };
   /** Only while a migration hasn't reached this note. */
   plain?: { title: string; icon: string | null; cover?: unknown; style?: unknown; templateKey?: string | null; collectionId?: string | null };
@@ -143,6 +141,8 @@ export interface E2eePullPage {
   tags: PulledTag[];
   records: PulledRecord[];
   noteKeys: PulledNoteKey[];
+  /** Deleted for good since the cursor: a note purged from Trash, a tag deleted (ids the replica may not know). */
+  removed?: { kind: "document" | "tag"; id: string; seq: number }[];
   space: PulledSpace | null;
   nextCursor: number;
   hasMore: boolean;

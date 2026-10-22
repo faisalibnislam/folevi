@@ -38,6 +38,21 @@ export async function requireProfile(ctx: LocalQueryCtx | LocalMutationCtx): Pro
   return p;
 }
 
+/**
+ * Whether the store is a Personal (a local library always is). End-to-end encryption's replica of a team
+ * workspace answers through these handlers too, and says so in meta "place" (lib/e2ee/replica/ingest.ts).
+ */
+export async function isPersonalPlace(db: LocalReader): Promise<boolean> {
+  return (await placeOf(db)).kind === "personal";
+}
+
+/** The store's place as answers name it: Personal (a local library), or the workspace a replica is of. */
+export async function placeOf(db: LocalReader): Promise<{ kind: "personal" | "workspace"; id: string; name: string }> {
+  const p = (await db.get("meta", "place")) as { kind?: string; workspaceId?: string; name?: string } | undefined;
+  if (p?.kind === "workspace" && p.workspaceId) return { kind: "workspace", id: p.workspaceId, name: p.name ?? "Workspace" };
+  return { kind: "personal", id: "personal", name: "Personal" };
+}
+
 /** A local library has one place, Personal. A workspace scope names nothing here. */
 export function checkScope(scope: WireScope | null | undefined): void {
   if (scope && scope.kind !== "personal") fail("not_found", "Workspace not found.");
@@ -69,7 +84,7 @@ export function toSummary(doc: LocalDocument, profileId: string): DocumentSummar
     rank: doc.rank,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
-    createdBy: profileId,
+    createdBy: doc.createdBy ?? profileId,
     archivedAt: doc.archivedAt,
     deletedAt: doc.deletedAt,
     revision: doc.revision,
@@ -80,6 +95,9 @@ export function toSummary(doc: LocalDocument, profileId: string): DocumentSummar
     wordCount: doc.wordCount,
     charCount: doc.charCount,
     blockCount: doc.blockCount,
+    // An end-to-end encrypted space's replica (lib/e2ee/replica) answers as the server does for a locked note.
+    ...(doc.locked ? { locked: true as const } : {}),
+    ...(doc.lockedVia ? { lockedVia: doc.lockedVia } : {}),
   };
 }
 

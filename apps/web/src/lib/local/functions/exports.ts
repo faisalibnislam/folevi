@@ -15,7 +15,7 @@ import { api } from "@/lib/convex/api";
 import { shell } from "@/lib/shell";
 import { defineLocal, type LocalReader } from "../registry";
 import type { LocalFile, LocalFileText } from "../store";
-import { checkScope, liveBlocks, ReaderLabels, requireProfile, toWireBlock, withSyncedContent } from "./shared";
+import { checkScope, liveBlocks, placeOf, ReaderLabels, requireProfile, toWireBlock, withSyncedContent } from "./shared";
 
 /** What an export of Personal is called. */
 const PERSONAL_EXPORT_NAME = "Personal";
@@ -88,14 +88,14 @@ async function collect(db: LocalReader): Promise<ExportDoc[]> {
 }
 
 /** The ZIP of the library, laid out exactly as the server's (convex/exports.ts buildExport). */
-async function buildZip(collected: ExportDoc[], now: number): Promise<{ bytes: Uint8Array; filename: string; documents: number; assets: number; skippedAssets: string[]; skippedReason: "size" | "missing" | null }> {
+async function buildZip(collected: ExportDoc[], now: number, place: { kind: "personal" | "workspace"; name: string } = { kind: "personal", name: PERSONAL_EXPORT_NAME }): Promise<{ bytes: Uint8Array; filename: string; documents: number; assets: number; skippedAssets: string[]; skippedReason: "size" | "missing" | null }> {
   const exportedAt = new Date(now).toISOString();
-  const manifest: { format: string; version: number; exportedAt: string; scope: "personal"; workspace: string; documents: unknown[]; assets: unknown[]; skippedAssets: unknown[] } = {
+  const manifest: { format: string; version: number; exportedAt: string; scope: "personal" | "workspace"; workspace: string; documents: unknown[]; assets: unknown[]; skippedAssets: unknown[] } = {
     format: "folevi-export",
     version: 1,
     exportedAt,
-    scope: "personal",
-    workspace: PERSONAL_EXPORT_NAME,
+    scope: place.kind,
+    workspace: place.name,
     documents: [],
     assets: [],
     skippedAssets: [],
@@ -191,7 +191,7 @@ async function buildZip(collected: ExportDoc[], now: number): Promise<{ bytes: U
   addFile(
     "README.txt",
     strToU8(
-      `Folevi export of "${PERSONAL_EXPORT_NAME}" (${exportedAt}).\n\nEach document is a Markdown file in a folder matching your sidebar; attachments are in assets/. manifest.json lists documents, folders and assets (and any attachments left out); blocks.json holds the canonical Folevi block data; found-text.json (when there is any) holds the text found in PDFs, images and handwriting, which search uses.\n`,
+      `Folevi export of "${place.name}" (${exportedAt}).\n\nEach document is a Markdown file in a folder matching your sidebar; attachments are in assets/. manifest.json lists documents, folders and assets (and any attachments left out); blocks.json holds the canonical Folevi block data; found-text.json (when there is any) holds the text found in PDFs, images and handwriting, which search uses.\n`,
     ),
     true,
   );
@@ -204,7 +204,7 @@ async function buildZip(collected: ExportDoc[], now: number): Promise<{ bytes: U
     bytes.set(c, at);
     at += c.length;
   }
-  const filename = `${safeFilename(PERSONAL_EXPORT_NAME)}-folevi-export-${exportedAt.slice(0, 10)}.zip`;
+  const filename = `${safeFilename(place.name)}-folevi-export-${exportedAt.slice(0, 10)}.zip`;
   return { bytes, filename, documents: collected.length, assets: assetCount, skippedAssets: skipped, skippedReason: skipped.length ? skippedReason : null };
 }
 
@@ -218,11 +218,11 @@ function downloadUrl(bytes: Uint8Array): string {
 
 defineLocal(api.exports.exportScope, "action", async (ctx, args) => {
   checkScope(args.scope);
-  const collected = await ctx.mutate(async (m) => {
+  const { collected, place } = await ctx.mutate(async (m) => {
     await requireProfile(m);
-    return await collect(m.db);
+    return { collected: await collect(m.db), place: await placeOf(m.db) };
   });
-  const { bytes, ...built } = await buildZip(collected, ctx.now());
+  const { bytes, ...built } = await buildZip(collected, ctx.now(), place);
   const files = shell()?.files;
   if (files) {
     if (!(await files.save(built.filename, bytes))) throw new ConvexError({ code: "cancelled", message: "Export cancelled." });

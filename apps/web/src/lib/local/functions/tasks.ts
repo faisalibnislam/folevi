@@ -24,7 +24,7 @@ import { api } from "@/lib/convex/api";
 import { fail } from "../errors";
 import { LOCAL_FUNCTIONS, defineLocal, defineTrigger, type LocalMutationCtx, type LocalReader } from "../registry";
 import type { LocalBlock, LocalDocument } from "../store";
-import { checkScope, getProfile, liveBlocks, requireProfile, toWireBlock, type LocalProfile } from "./shared";
+import { checkScope, getProfile, isPersonalPlace, liveBlocks, requireProfile, toWireBlock, type LocalProfile } from "./shared";
 
 type PushResult = FunctionReturnType<typeof api.sync.push>[number];
 type Presented = FunctionReturnType<typeof api.tasks.list>[number];
@@ -123,6 +123,7 @@ defineLocal(api.tasks.list, "query", async (ctx, args) => {
   checkScope(args.scope);
   if (!DATE.test(args.today)) fail("invalid_argument", "Invalid date.");
   const all = await allTasks(ctx.db);
+  const personal = await isPersonalPlace(ctx.db);
   let rows: TaskRow[];
   if (args.view === "completed") {
     // Closed tasks: done and canceled, most recently closed first.
@@ -133,7 +134,7 @@ defineLocal(api.tasks.list, "query", async (ctx, args) => {
     // In your own Personal (the only place here) unassigned tasks are yours.
     rows = byDue(all.filter((r) => r.task.status === "open"))
       .slice(0, 1000)
-      .filter((r) => taskViews(r.task, args.today, profile.id, { personal: true }).includes(args.view));
+      .filter((r) => taskViews(r.task, args.today, profile.id, { personal }).includes(args.view));
   }
   const presented = present(profile, rows.filter((r) => !r.doc.inTrash));
   if (args.view !== "completed") {
@@ -150,10 +151,11 @@ defineLocal(api.tasks.counts, "query", async (ctx, args) => {
   const profile = await requireProfile(ctx);
   checkScope(args.scope);
   const c = { inbox: 0, today: 0, upcoming: 0, all: 0, mine: 0 };
+  const personal = await isPersonalPlace(ctx.db);
   const open = byDue((await allTasks(ctx.db)).filter((r) => r.task.status === "open")).slice(0, 1000);
   for (const r of open) {
     if (r.doc.inTrash) continue;
-    for (const view of taskViews(r.task, args.today, profile.id, { personal: true })) if (view in c) c[view as keyof typeof c]++;
+    for (const view of taskViews(r.task, args.today, profile.id, { personal })) if (view in c) c[view as keyof typeof c]++;
   }
   return c;
 });

@@ -14,14 +14,14 @@ const PERSONAL: WireScope = { kind: "personal" };
 const LIST = { scope: PERSONAL, view: "all" as const, paginationOpts: { numItems: 50, cursor: null } };
 const para = (id: string, text: string, rank = "a"): WireBlock => ({ id, type: "paragraph", parentId: null, rank, schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text }], props: {} });
 
-async function world(opts: { level?: "standard" | "selected" | "full"; lockedCount?: number; encrypted?: boolean; locked?: boolean } = {}) {
+async function world(opts: { level?: "standard" | "selected" | "full"; lockedCount?: number; encrypted?: boolean; locked?: boolean; fetch?: typeof fetch } = {}) {
   const profile = await testProfile();
   const fake = new FakeConvex(profile);
   const scopeId = `personal:${profile.id}`;
   if (opts.encrypted !== false) fake.encrypt(PERSONAL, scopeId, opts.level ?? "full", opts.lockedCount ?? 0);
   const keyring = new FakeKeyRing([{ scope: PERSONAL, scopeId }]);
   const session = new FakeSession(opts.locked ? "locked" : "unlocked");
-  const router = new E2eeRouterClient(fake.client as never, { session, keyring, persist: () => false, locks: null });
+  const router = new E2eeRouterClient(fake.client as never, { session, keyring, persist: () => false, locks: null, fetch: opts.fetch });
   await router.ready();
   return { profile, fake, scopeId, keyring, session, router };
 }
@@ -253,5 +253,84 @@ describe("device routes (§6.5)", () => {
     expect(list.find((d) => d.id === doc)).toMatchObject({ title: "Shared title" });
     expect(list.find((d) => d.id === doc)!.excerpt).toContain("pulled words");
     void profile;
+  });
+});
+
+const PNG = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="), (c) => c.charCodeAt(0));
+
+describe("composers added after the first cut", () => {
+  test("changes.undo puts the lines others changed back, sealed, and keeps a version first", async () => {
+    const { router, fake } = await world();
+    const doc = ulid();
+    const b = ulid();
+    await push(router, [create(doc, "Shared"), upsert(doc, para(b, "ZQXJ-theirs"))]);
+    await until(() => router.status(PERSONAL).state === "ready");
+    fake.extra.set("changes:note", () => ({ kinds: [[b, "edited"]], previous: [para(b, "ZQXJ-mine")], more: false, authors: [], removed: [], blocks: [], canUndo: true, people: {} }));
+    fake.extra.set("documents:createSnapshot", () => ({ created: true, id: "SNAP1" }));
+    fake.extra.set("changes:markSeen", () => null);
+    const r = (await router.mutation(api.changes.undo, { documentId: doc })) as { undoVersionId: string | null; reverted: number };
+    expect(r).toEqual({ undoVersionId: "SNAP1", reverted: 1 });
+    const listed = (await router.query(api.blocks.list, { documentId: doc })) as { blocks: WireBlock[] };
+    expect(listed.blocks[0]!.text).toEqual([{ type: "text", text: "ZQXJ-mine" }]);
+    expect(fake.stored()).not.toContain("ZQXJ");
+    expect(fake.log.map((l) => l.name)).toContain("changes:markSeen");
+  });
+
+  test("changes.undo without the version from when they last looked says so", async () => {
+    const { router, fake } = await world();
+    const doc = ulid();
+    await push(router, [create(doc, "Shared")]);
+    fake.extra.set("changes:note", () => ({ kinds: [["X", "edited"]], previous: null, more: false }));
+    await expect(router.mutation(api.changes.undo, { documentId: doc })).rejects.toMatchObject({ data: { code: "not_found" } });
+  });
+
+  test("aiResearch.saveAsNote into an encrypted place makes the report a sealed note", async () => {
+    const { router, fake } = await world();
+    router.setScope(PERSONAL);
+    fake.extra.set("aiResearch:list", () => [{ id: "R1", status: "done", question: "ZQXJ which tea?", sources: [{ n: 1, kind: "web", url: "https://tea.example", title: "Tea", domain: "tea.example" }], messageId: "M1", conversationId: "C1", noteId: null }]);
+    fake.extra.set("aiChat:get", () => ({ messages: [{ id: "M1", text: "ZQXJ-REPORT Green tea [1]." }] }));
+    const r = (await router.mutation(api.aiResearch.saveAsNote, { researchId: "R1" })) as { id: string };
+    const listed = (await router.query(api.blocks.list, { documentId: r.id })) as { blocks: WireBlock[] };
+    expect(JSON.stringify(listed.blocks)).toContain("ZQXJ-REPORT Green tea");
+    const got = (await router.query(api.documents.get, { documentId: r.id })) as { document: { title: string } };
+    expect(got.document.title).toBe("ZQXJ which tea?");
+    expect(fake.stored()).not.toContain("ZQXJ");
+  });
+
+  test("a Standard note's file pasted into a sealed note is encrypted and uploaded as that note's", async () => {
+    const stored: Uint8Array[] = [];
+    const fetchStub = (async (url: string, init?: { body?: Uint8Array }) => {
+      if (String(url).includes("plain-file")) return new Response(PNG as Uint8Array<ArrayBuffer>, { status: 200 });
+      stored.push(init!.body!);
+      return new Response(JSON.stringify({ storageId: "S1" }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const { router, fake } = await world({ fetch: fetchStub });
+    const doc = ulid();
+    await push(router, [create(doc, "Sealed")]);
+    fake.extra.set("files:urls", () => ({ PLAIN: { url: "https://site/files/plain-file", mimeType: "image/png", filename: "photo.png", size: PNG.length } }));
+    fake.extra.set("e2ee/files:generateUploadUrl", () => ({ uploadUrl: "https://upload", intentId: "I1" }));
+    fake.extra.set("e2ee/files:commit", (a) => ({ fileId: a.fileId, size: a.size }));
+    const map = (await router.mutation(api.files.shareForPaste, { documentId: doc, fileIds: ["PLAIN"] })) as Record<string, string>;
+    expect(map.PLAIN).toBeTruthy();
+    expect(map.PLAIN).not.toBe("PLAIN");
+    // What went up is a keyed stream (FLV1 0x04), not the PNG.
+    expect([...stored[0]!.slice(0, 5)]).toEqual([0x46, 0x4c, 0x56, 0x31, 0x04]);
+    const commit = fake.log.find((l) => l.name === "e2ee/files:commit")!.args as { documentId: string; sealed: { plainSize: number } };
+    expect(commit.documentId).toBe(doc);
+    expect(commit.sealed.plainSize).toBe(PNG.length);
+    // Pasting the same file again reuses the copy.
+    const again = (await router.mutation(api.files.shareForPaste, { documentId: doc, fileIds: ["PLAIN"] })) as Record<string, string>;
+    expect(again.PLAIN).toBe(map.PLAIN);
+  });
+
+  test("an opened toggle keeps collapsed: false, as it was sealed", async () => {
+    const { router } = await world();
+    const doc = ulid();
+    const t = ulid();
+    await push(router, [create(doc, "Toggles")]);
+    const toggle: WireBlock = { id: t, type: "toggle", parentId: null, rank: "a", schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text: "Open" }], props: { collapsed: false } };
+    await push(router, [upsert(doc, toggle)]);
+    const listed = (await router.query(api.blocks.list, { documentId: doc })) as { blocks: WireBlock[] };
+    expect(listed.blocks[0]!.props).toEqual({ collapsed: false });
   });
 });

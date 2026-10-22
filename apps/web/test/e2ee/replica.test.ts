@@ -9,7 +9,7 @@ import { LocalBackend, LocalClient, MemoryStore } from "@/lib/local";
 import { ReplicaIngest } from "@/lib/e2ee/replica/ingest";
 import { SpaceReplicaStore } from "@/lib/e2ee/replica/store";
 import { Sealer } from "@/lib/e2ee/seal";
-import { pullPage } from "@/lib/e2ee/router/refs";
+import { pullPage, type E2eePullPage } from "@/lib/e2ee/router/refs";
 import { FakeConvex, FakeKeyRing, FakeSession, testProfile, until } from "./routerFakes";
 
 const PERSONAL: WireScope = { kind: "personal" };
@@ -125,6 +125,26 @@ describe("ingest", () => {
   });
 });
 
+describe("tombstones and locks from the pull", () => {
+  test("a note deleted for good goes with its blocks; a deleted tag leaves every note; unknown ids are ignored", async () => {
+    const { fake, router, keyring, profile, scopeId } = await encryptedWorld();
+    const { a, b, ops } = scenario();
+    await router.mutation(api.sync.push, { scope: PERSONAL, deviceId: "web-test-device-01", ops: ops as never });
+    const page = (await fake.client.query(pullPage as never, { scope: PERSONAL, cursor: 0 })) as E2eePullPage;
+    const store = new SpaceReplicaStore(null);
+    const ingest = new ReplicaIngest({ store, sealer: new Sealer(keyring), keyring, scope: PERSONAL, scopeId, profile });
+    const withTag = { ...page, documents: page.documents.map((d) => (d.id === b ? { ...d, tagIds: ["T1"], locked: true, lockedVia: "F1" } : d)), tags: [{ id: "T1", color: "moss", createdAt: 1, name: "trip", seq: 1 }] };
+    await ingest.page(withTag);
+    expect((await store.get("documents", b))).toMatchObject({ tagIds: ["T1"], locked: true, lockedVia: "F1" });
+    const empty = { ...page, documents: [], blocks: [], folders: [], tags: [], records: [], noteKeys: [] };
+    await ingest.page({ ...empty, removed: [{ kind: "document", id: a, seq: 99 }, { kind: "tag", id: "T1", seq: 99 }, { kind: "document", id: "NEVER-HELD", seq: 99 }] });
+    expect(await store.get("documents", a)).toBeUndefined();
+    expect(await store.list("blocks", a)).toEqual([]);
+    expect(await store.get("tags", "T1")).toBeUndefined();
+    expect((await store.get("documents", b))!.tagIds).toEqual([]);
+  });
+});
+
 describe("the engine's unsent edits over the replica (§6.5)", () => {
   test("a to-do typed offline shows in the task list before it reaches the server", async () => {
     const { router } = await encryptedWorld();
@@ -142,6 +162,38 @@ describe("the engine's unsent edits over the replica (§6.5)", () => {
 });
 
 describe("public computer mode keeps the account's data in memory (§6.10)", () => {
+  test("the in-memory IndexedDB is loaded only in that mode: one dynamic import, in lib/sync/db.ts", async () => {
+    const { readFileSync, readdirSync, statSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const hits: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (/\.(ts|tsx)$/.test(name) && readFileSync(p, "utf8").includes("fake-indexeddb")) hits.push(p.slice(p.indexOf("src/")));
+      }
+    };
+    walk(join(process.cwd(), "src"));
+    expect(hits).toEqual(["src/lib/sync/db.ts"]);
+    const text = readFileSync(join(process.cwd(), "src/lib/sync/db.ts"), "utf8");
+    expect(text).toMatch(/await import\("fake-indexeddb"\)/);
+    expect(text).not.toMatch(/^import .*fake-indexeddb/m);
+  });
+
+  test("a public session's flag switches the account database to memory before the account opens", async () => {
+    const { memoryLocalDbIfPublic, localDbInMemory, openLocalDbInMemory } = await import("@/lib/sync/db");
+    expect(await memoryLocalDbIfPublic()).toBe(false);
+    expect(localDbInMemory()).toBe(false);
+    localStorage.setItem("folevi.e2ee.publicSession", "1");
+    try {
+      expect(await memoryLocalDbIfPublic()).toBe(true);
+      expect(localDbInMemory()).toBe(true);
+    } finally {
+      localStorage.removeItem("folevi.e2ee.publicSession");
+      openLocalDbInMemory(null);
+    }
+  });
+
   test("localDb opens in the given in-memory IndexedDB and leaves the browser's untouched", async () => {
     const { IDBFactory } = await import("fake-indexeddb");
     const { localDb, openLocalDbInMemory, localDbInMemory } = await import("@/lib/sync/db");

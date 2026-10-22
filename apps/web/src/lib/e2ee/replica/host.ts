@@ -25,8 +25,6 @@ export interface SpaceReplica {
   whenSynced(): Promise<void>;
   /** Asks the server for anything newer now (the head, the pages, the person's marks) and applies it. */
   catchUp?(): Promise<void>;
-  /** Drops notes deleted for good; `exists` asks the server about each note in Trash. */
-  pruneDeleted?(exists: (id: string) => Promise<boolean>): Promise<void>;
   /** The person's profile changed. */
   setProfile?(profile: LocalProfile): Promise<void>;
   /** Applies the router's own accepted writes at once (resolves once a device query would see them). */
@@ -63,6 +61,8 @@ export interface ReplicaHubOptions {
   space(scope: WireScope): E2eeSpace | null;
   /** The person, as users.me gives it. */
   profile(): Promise<LocalProfile>;
+  /** A workspace's name (answers name the place). */
+  placeName?(scope: WireScope): Promise<string | undefined>;
   /** Keep the replica in IndexedDB (a trusted device) or only in memory (a public session, §6.10). */
   persist(): boolean;
   /** Ids each ingest saw (the router's space index). */
@@ -103,6 +103,7 @@ class HostedReplica {
     store: SpaceReplicaStore,
     profile: LocalProfile,
     scopeId: string,
+    placeName?: string,
   ) {
     this.store = store;
     this.backend = new LocalBackend(store, { deviceId: o.deviceId() });
@@ -113,6 +114,7 @@ class HostedReplica {
       scope,
       scopeId,
       profile,
+      placeName,
       onIds: (ids) => o.onIds?.(scope, ids),
     });
     this.synced = new Promise((r) => (this.markSynced = r));
@@ -123,7 +125,7 @@ class HostedReplica {
     if (!space) throw new Error("This space isn't end-to-end encrypted.");
     const store = new SpaceReplicaStore(await openReplicaDb(space.scopeId, o.persist()));
     await store.load();
-    const replica = new HostedReplica(o, scope, store, await o.profile(), space.scopeId);
+    const replica = new HostedReplica(o, scope, store, await o.profile(), space.scopeId, scope.kind === "workspace" ? await o.placeName?.(scope).catch(() => undefined) : undefined);
     await replica.ingest.ensureProfile();
     replica.cursor = ((await store.readState("cursor")) as number | undefined) ?? 0;
     replica.have = (await store.list("documents")).length;
@@ -211,12 +213,6 @@ class HostedReplica {
     return this.synced;
   }
 
-  async pruneDeleted(exists: (id: string) => Promise<boolean>): Promise<void> {
-    const gone: string[] = [];
-    for (const id of await this.ingest.trashed()) if (!(await exists(id))) gone.push(id);
-    await this.ingest.forget(gone);
-  }
-
   async setProfile(profile: LocalProfile): Promise<void> {
     await this.ingest.setProfile(profile);
   }
@@ -287,10 +283,6 @@ class WindowReplica implements SpaceReplica {
 
   async catchUp(): Promise<void> {
     await this.hosted?.catchUp();
-  }
-
-  async pruneDeleted(exists: (id: string) => Promise<boolean>): Promise<void> {
-    await this.hosted?.pruneDeleted(exists);
   }
 
   async setProfile(profile: LocalProfile): Promise<void> {

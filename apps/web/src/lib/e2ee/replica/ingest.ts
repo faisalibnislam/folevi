@@ -75,6 +75,8 @@ export interface IngestContext {
   scopeId: string;
   /** The person (users.me's profile): the local handlers read it as the library's profile. */
   profile: LocalProfile;
+  /** A workspace's name (what answers call the place: search's places, an export's name). */
+  placeName?: string;
   /** Every id this ingest saw, for the router's space index. */
   onIds?(ids: IngestedIds): void;
 }
@@ -99,16 +101,17 @@ const PROFILE_KEY = "profile";
 export class ReplicaIngest {
   constructor(private readonly c: IngestContext) {}
 
-  /** The notes the replica holds that are in Trash (candidates when the server deletes some for good). */
-  async trashed(): Promise<string[]> {
-    return (await this.c.store.list("documents")).filter((d) => d.inTrash).map((d) => d.id);
-  }
 
   /** Makes sure the handlers find the person's profile. */
   async ensureProfile(): Promise<void> {
     const held = await this.c.store.get("meta", PROFILE_KEY);
-    if (JSON.stringify(held) === JSON.stringify(this.c.profile)) return;
-    await this.c.store.ingest([{ table: "meta", id: PROFILE_KEY, value: this.c.profile }]);
+    const place = await this.c.store.get("meta", "place");
+    const writes: StoreWrite[] = [];
+    if (JSON.stringify(held) !== JSON.stringify(this.c.profile)) writes.push({ table: "meta", id: PROFILE_KEY, value: this.c.profile });
+    // The handlers' one place: a Personal, or (this replica) a team workspace (lib/local/functions/shared.ts isPersonalPlace).
+    const want = { ...this.c.scope, ...(this.c.placeName ? { name: this.c.placeName } : {}) };
+    if (JSON.stringify(place) !== JSON.stringify(want)) writes.push({ table: "meta", id: "place", value: want });
+    if (writes.length) await this.c.store.ingest(writes);
   }
 
   /** One pull page: opened, derived, committed together. Returns how many notes the replica holds now. */
@@ -119,16 +122,19 @@ export class ReplicaIngest {
     const ids: IngestedIds = { documents: [], removed: [], folders: [], tags: [], files: [], collections: [], blocks: [] };
 
     for (const d of page.documents) {
-      if (d.purged) {
-        await this.removeDocument(tx, d.id);
-        ids.removed.push(d.id);
-        continue;
-      }
       const doc = await this.document(tx, d);
       if (!doc) continue;
       tx.put("documents", doc.id, doc);
       touched.add(doc.id);
       ids.documents.push({ id: doc.id, sealed: d.sealed !== undefined, title: doc.title, icon: doc.icon });
+      // The note's files as they are now (a file change moves the note's seq and revision, nothing else):
+      // ones no longer listed go.
+      const listed = new Set((d.files ?? []).map((f) => f.id));
+      for (const held of await tx.list("files")) {
+        if (held.documentId !== d.id || listed.has(held.id)) continue;
+        tx.remove("files", held.id);
+        tx.remove("meta", `fileKey:${held.id}`);
+      }
       for (const f of d.files ?? []) {
         const file = await this.file(f, d.id);
         if (file) {
@@ -167,19 +173,24 @@ export class ReplicaIngest {
       const collection = await this.record(tx, r);
       if (collection) ids.collections.push(collection);
     }
+    // Deleted for good (WP3's tombstones): the note with its blocks, records and files; a tag from every note.
+    for (const r of page.removed ?? []) {
+      if (r.kind === "document") {
+        if (!(await tx.get("documents", r.id))) continue;
+        await this.removeDocument(tx, r.id);
+        touched.delete(r.id);
+        ids.removed.push(r.id);
+      } else if (r.kind === "tag") {
+        if (!(await tx.get("tags", r.id))) continue;
+        tx.remove("tags", r.id);
+        for (const d of await tx.list("documents")) if (d.tagIds.includes(r.id)) tx.put("documents", d.id, { ...d, tagIds: d.tagIds.filter((t) => t !== r.id) });
+      }
+    }
     if (page.space) tx.put("meta", "space", page.space);
 
     await this.derive(tx, touched);
     await this.c.store.ingest(tx.pending());
     this.c.onIds?.(ids);
-  }
-
-  /** Notes deleted for good (the pull doesn't send their absence): gone from the replica with their rows. */
-  async forget(ids: readonly string[]): Promise<void> {
-    if (!ids.length) return;
-    const tx = new Staged(this.c.store);
-    for (const id of ids) await this.removeDocument(tx, id);
-    await this.c.store.ingest(tx.pending());
   }
 
   /** The person's profile changed (a setting the handlers read, like new study cards a day). */
@@ -364,8 +375,7 @@ export class ReplicaIngest {
       ...base,
       parentDocumentId: d.parentDocumentId,
       folderId: d.folderId,
-      // A sealed collection row travels as a note whose sealed meta holds its row (the server can't tell).
-      kind: (row ? "collectionRow" : d.kind) as LocalDocument["kind"],
+      kind: d.kind as LocalDocument["kind"],
       title,
       icon,
       cover: cover as LocalDocument["cover"],
@@ -385,6 +395,10 @@ export class ReplicaIngest {
       contentSeq: d.contentSeq,
       tagIds: d.tagIds ?? [],
       row,
+      // Locks travel plainly: features read them here instead of asking the server per note (WP8).
+      locked: d.locked === true,
+      lockedVia: d.lockedVia ?? null,
+      ...(d.createdBy ? { createdBy: d.createdBy } : {}),
     };
     return doc;
   }
@@ -446,7 +460,7 @@ export class ReplicaIngest {
         console.warn(`[e2ee] A folder name couldn't be decrypted (${f.id}).`);
       }
     }
-    return { id: f.id, name, color: f.color, parentFolderId: f.parentFolderId, rank: f.rank, createdAt: f.createdAt, ordinal: prev?.ordinal ?? (await this.nextOrdinal(tx, "folderOrdinal")), updatedAt: f.updatedAt, deletedAt: f.deletedAt };
+    return { id: f.id, name, color: f.color, parentFolderId: f.parentFolderId, rank: f.rank, createdAt: f.createdAt, ordinal: prev?.ordinal ?? (await this.nextOrdinal(tx, "folderOrdinal")), updatedAt: f.updatedAt, deletedAt: f.deletedAt, locked: f.locked === true };
   }
 
   private async tag(t: PulledTag, tx: Staged): Promise<LocalTag | null> {
@@ -543,6 +557,12 @@ export class ReplicaIngest {
     for (const b of await tx.list("blocks", id)) tx.remove("blocks", b.id, id);
     for (const f of await tx.list("fileTexts", id)) tx.remove("fileTexts", f.id, id);
     for (const s of await tx.list("studyReviews", id)) tx.remove("studyReviews", s.blockId, id);
+    for (const c of await tx.list("collections")) if (c.documentId === id) tx.remove("collections", c.id);
+    for (const f of await tx.list("files")) {
+      if (f.documentId !== id) continue;
+      tx.remove("files", f.id);
+      tx.remove("meta", `fileKey:${f.id}`);
+    }
     tx.remove("recents", id);
   }
 

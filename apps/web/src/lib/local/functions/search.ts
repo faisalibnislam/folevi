@@ -13,7 +13,7 @@ import { api } from "@/lib/convex/api";
 import { defineLocal, type LocalQueryCtx } from "../registry";
 import type { LocalDocument } from "../store";
 import { fileTextHits } from "./fileText";
-import { checkScope, HomeFolders, requireProfile, type LocalProfile } from "./shared";
+import { checkScope, HomeFolders, placeOf, requireProfile, type LocalProfile } from "./shared";
 
 type SearchArgs = Omit<FunctionArgs<typeof api.search.documents>, "scope">;
 type SearchResult = FunctionReturnType<typeof api.search.documents>[number];
@@ -122,7 +122,8 @@ defineLocal(api.search.everywhere, "query", async (ctx, args) => {
   if (!q) return [];
   const limit = Math.min(args.limit ?? 20, 40);
   const perPlace = Math.max(4, limit + 2);
-  const place = { id: "personal", name: "Personal" };
+  const { id, name } = await placeOf(ctx.db);
+  const place = { id, name };
   const out = (await searchDocuments(ctx, profile, { query: q, limit: perPlace })).map((r) => ({ ...r, place }));
   // Title matches first (as within one place), then the most recently edited.
   const lower = q.toLowerCase();

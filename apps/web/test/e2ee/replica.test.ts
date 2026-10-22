@@ -159,3 +159,29 @@ describe("public computer mode keeps the account's data in memory (§6.10)", () 
     }
   });
 });
+
+// §12 WP7 accept: a 1,000-note space ingests in under 20 s (Chromium on an M1). Skipped in CI: WP7_BENCH=1 runs it.
+describe.skipIf(!process.env.WP7_BENCH)("ingest benchmark", () => {
+  test("1,000 notes of 5 blocks each, pulled and opened by a second device", async () => {
+    const { router, fake, keyring, profile, scopeId } = await encryptedWorld();
+    for (let n = 0; n < 1000; n += 20) {
+      const ops: SyncOp[] = [];
+      for (let i = n; i < n + 20; i++) {
+        const doc = ulid();
+        ops.push(create(doc, `Note ${i}`));
+        for (let j = 0; j < 4; j++) ops.push(upsert(doc, para(ulid(), `Line ${j} of note ${i}, with a few more words to search.`, `a${j}`)));
+      }
+      await router.mutation(api.sync.push, { scope: PERSONAL, deviceId: "web-test-device-01", ops: ops as never });
+    }
+    const page = (await fake.client.query(pullPage as never, { scope: PERSONAL, cursor: 0 })) as never;
+    const sibling = keyring.sibling();
+    const store = new SpaceReplicaStore(null);
+    const ingest = new ReplicaIngest({ store, sealer: new Sealer(sibling), keyring: sibling, scope: PERSONAL, scopeId, profile });
+    const started = performance.now();
+    await ingest.page(page);
+    const ms = performance.now() - started;
+    process.stderr.write(`\n[e2ee bench] 1,000 notes, 5,000 blocks ingested in ${Math.round(ms)} ms\n`);
+    expect((await store.list("documents")).length).toBe(1000);
+    expect(ms).toBeLessThan(20_000);
+  }, 120_000);
+});

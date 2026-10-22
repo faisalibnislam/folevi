@@ -144,9 +144,9 @@ check any time (`done: true, ok: true`).
 ## Folevi for Mac
 
 Folevi for Mac (`apps/desktop`) loads `app.folevi.com`, so a web deploy updates it too; the shell itself only
-changes when its own code does. It is built and installed on the owner's Mac with `pnpm release` (personal
-Apple Development signature, not notarized), so it isn't distributed. Sharing it would need a Developer ID
-certificate, notarization and an update channel. See `docs/DESKTOP.md`. The browser sign-in endpoints for
+changes when its own code does. It is built and installed on the owner's Mac with `pnpm release` (Developer ID
+signature of team 7K32QQ2FX8, not notarized). `pnpm publish` makes the notarized build for everyone and puts
+it in the update bucket. See `docs/DESKTOP.md`. The browser sign-in endpoints for
 native apps (Authorization Code + PKCE, `convex/lib/nativeAuth.ts`) remain on the server, unused by the shell,
 which signs in like the web.
 

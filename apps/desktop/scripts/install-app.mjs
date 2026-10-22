@@ -25,11 +25,13 @@ if (!existsSync(built)) {
   process.exit(1);
 }
 
-// The build must carry the personal signature (a stable one is what keeps macOS from asking for permissions again).
+// The build must carry the team's Developer ID signature (a stable one is what keeps macOS from asking for
+// permissions again).
+const TEAM = "7K32QQ2FX8";
 execFileSync("codesign", ["--verify", "--deep", "--strict", built], { stdio: "inherit" });
 const details = spawnSync("codesign", ["-dv", "--verbose=2", built], { encoding: "utf8" }).stderr;
-if (!/Authority=Apple Development:/.test(details)) {
-  console.error("The build isn't signed with the Apple Development certificate; not installing it.");
+if (!/Authority=Developer ID Application:/.test(details) || !details.includes(`TeamIdentifier=${TEAM}`)) {
+  console.error(`The build isn't signed with the Developer ID Application certificate of team ${TEAM}; not installing it.`);
   process.exit(1);
 }
 

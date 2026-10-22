@@ -31,7 +31,15 @@ if (!/Developer ID Application:/.test(identities) && !process.env.CSC_LINK) {
 }
 const apiKey = process.env.APPLE_API_KEY && process.env.APPLE_API_KEY_ID && process.env.APPLE_API_ISSUER;
 const appleId = process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD && process.env.APPLE_TEAM_ID;
-if (!apiKey && !appleId) fail("Notarizing needs APPLE_API_KEY, APPLE_API_KEY_ID and APPLE_API_ISSUER (or APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID).");
+// The usual way: credentials saved once in the keychain with `xcrun notarytool store-credentials folevi-notary`.
+process.env.APPLE_KEYCHAIN_PROFILE ??= "folevi-notary";
+const profile = spawnSync("xcrun", ["notarytool", "history", "--keychain-profile", process.env.APPLE_KEYCHAIN_PROFILE], { encoding: "utf8" }).status === 0;
+if (!profile) delete process.env.APPLE_KEYCHAIN_PROFILE;
+if (!apiKey && !appleId && !profile) {
+  fail(
+    "Notarizing needs credentials: run `xcrun notarytool store-credentials folevi-notary --apple-id <your Apple ID> --team-id 7K32QQ2FX8` once (it asks for an app-specific password), or set APPLE_API_KEY, APPLE_API_KEY_ID and APPLE_API_ISSUER.",
+  );
+}
 
 // 2. Build (the interface built into the app first: the production build of apps/web build-shell into
 // web-release/, shipped in Resources/web; web/ keeps the development one).

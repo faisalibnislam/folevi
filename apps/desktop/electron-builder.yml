@@ -1,5 +1,5 @@
-# Folevi for Mac. Built for this Mac only: signed with the personal Apple Development certificate (no
-# notarization, so it isn't for sharing). `pnpm release` builds, signs, puts it in /Applications and opens it.
+# Folevi for Mac. Built for this Mac only: signed with the team's Developer ID Application certificate
+# (team 7K32QQ2FX8) but not notarized, so it isn't for sharing. `pnpm release` builds, signs, puts it in /Applications and opens it.
 # The build for everyone (Developer ID, notarized, universal, with updates) is electron-builder.dist.yml.
 appId: com.folevi.mac
 productName: Folevi
@@ -47,7 +47,7 @@ mac:
   category: public.app-category.productivity
   # The Icon Composer icon: Liquid Glass on macOS 26 and later (electron-builder also makes the older .icns from it).
   icon: build/Folevi.icon
-  identity: "Apple Development: abumohammadfaisal@icloud.com (XS494CQ48W)"
+  identity: "Developer ID Application: Abu Mohammad Faisal (7K32QQ2FX8)"
   hardenedRuntime: true
   gatekeeperAssess: false
   notarize: false

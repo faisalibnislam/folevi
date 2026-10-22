@@ -101,9 +101,13 @@ If nothing is cached yet (first launch offline), the shell shows its own offline
 
 ## Signing
 
-Built for this Mac only: signed with the personal Apple Development certificate (team `558GMKM4KY`),
-hardened runtime, no notarization, arm64. It isn't for sharing. Config: `apps/desktop/electron-builder.yml`
-and `apps/desktop/build/entitlements.mac.plist`.
+Since 2026-10-22 the owner has the Apple Developer Program (team `7K32QQ2FX8`). `pnpm release` (this Mac
+only) signs with "Developer ID Application: Abu Mohammad Faisal (7K32QQ2FX8)", hardened runtime, no
+notarization, arm64. `pnpm publish` (for everyone: universal, notarized, stapled) uses the same certificate
+and the notarization credentials saved once with
+`xcrun notarytool store-credentials folevi-notary --apple-id <Apple ID> --team-id 7K32QQ2FX8`
+(or `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`). Config: `apps/desktop/electron-builder.yml`,
+`apps/desktop/electron-builder.dist.yml` and `apps/desktop/build/entitlements.mac.plist`.
 
 ## Commands
 

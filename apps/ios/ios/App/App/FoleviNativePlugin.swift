@@ -49,7 +49,25 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "takeLocalActions", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "finishLocalAction", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "indexSpotlight", returnType: CAPPluginReturnPromise),
+        // Native/UI: the native UI layer (docs/IOS_POLISH_PLAN.md §4): haptics, the long press's lifted
+        // preview, action sheets and alerts, the pickers and share sheet, the keyboard's moves.
+        CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "hapticPrepare", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "liftArm", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "lift", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "liftDrop", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "actionSheet", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "alert", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pickDate", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pickColor", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "share", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "keyboard", returnType: CAPPluginReturnPromise),
     ]
+
+    override func load() {
+        // The keyboard's moves go to the page from the start (Native/UI/KeyboardBridge.swift).
+        Task { @MainActor in KeyboardBridge.shared.attach(self) }
+    }
 
     var appOrigin: String { AppOrigin.of(bridge?.config.serverURL) }
 

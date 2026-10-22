@@ -23,16 +23,120 @@
       },
     );
   };
-  var IMPACT = { light: "LIGHT", medium: "MEDIUM", heavy: "HEAVY" };
-  var NOTICE = { success: "SUCCESS", warning: "WARNING", error: "ERROR" };
+  var HAPTICS = { light: 1, medium: 1, heavy: 1, rigid: 1, soft: 1, selection: 1, success: 1, warning: 1, error: 1 };
+  // A rectangle on screen from the page ({ x, y, width, height }, CSS pixels of what's visible), as plain numbers.
+  var rect = function (r) {
+    if (!r || typeof r !== "object") return undefined;
+    var out = { x: Number(r.x), y: Number(r.y), width: Number(r.width), height: Number(r.height) };
+    return isFinite(out.x) && isFinite(out.y) && isFinite(out.width) && isFinite(out.height) ? out : undefined;
+  };
+  var actionList = function (actions) {
+    return (Array.isArray(actions) ? actions : []).map(function (a) {
+      return { id: String((a && a.id) || ""), title: String((a && a.title) || ""), style: a && (a.style === "cancel" || a.style === "destructive") ? a.style : "default" };
+    });
+  };
 
   var bridge = Object.freeze({
     platform: "ios",
     version: VERSION,
-    /** A tap felt in the hand: "light" | "medium" | "heavy" impacts, or "success" | "warning" | "error". */
+    /** The build number (CFBundleVersion), shown with the version in Settings. */
+    build: BUILD || undefined,
+    /**
+     * A tap felt in the hand (Native/UI/Haptics.swift): "light" | "medium" | "heavy" | "rigid" | "soft" impacts,
+     * a "selection" tick, or "success" | "warning" | "error".
+     */
     haptic: function (kind) {
-      if (IMPACT[kind]) void quietly(call("Haptics", "impact", { style: IMPACT[kind] }));
-      else if (NOTICE[kind]) void quietly(call("Haptics", "notification", { type: NOTICE[kind] }));
+      if (HAPTICS[kind] === 1) void quietly(call("FoleviNative", "haptic", { kind: kind }));
+    },
+    /** Readies the generator for `kind` (a control that will fire one was touched). */
+    hapticPrepare: function (kind) {
+      if (HAPTICS[kind] === 1) void quietly(call("FoleviNative", "hapticPrepare", { kind: kind }));
+    },
+    /** The long press's lifted preview (Native/UI/LiftPreview.swift), 1: a picture of `rect` ({ id, rect, radius }). */
+    liftArm: function (o) {
+      var r = rect(o && o.rect);
+      if (!o || !r) return;
+      void quietly(call("FoleviNative", "liftArm", { id: String(o.id), rect: r, radius: Number(o.radius) || 0 }));
+    },
+    /** 2: the picture lifts over the page ({ id, from }); false when there's none. */
+    lift: function (o) {
+      return quietly(call("FoleviNative", "lift", { id: String((o && o.id) || ""), from: Number(o && o.from) || 1 })).then(function (r) {
+        return !!(r && r.value);
+      });
+    },
+    /** 3: it settles back ({ id, to: "back" }) or fades ({ to: "fade" }); resolves once it's in place. */
+    liftDrop: function (o) {
+      return quietly(call("FoleviNative", "liftDrop", { id: String((o && o.id) || ""), to: o && o.to === "fade" ? "fade" : "back" })).then(function () {});
+    },
+    /** An action sheet ({ title, message, actions: [{ id, title, style }], anchor }): the chosen id, or null. */
+    actionSheet: function (o) {
+      var opts = { title: String((o && o.title) || ""), message: String((o && o.message) || ""), actions: actionList(o && o.actions) };
+      var a = rect(o && o.anchor);
+      if (a) opts.anchor = a;
+      return call("FoleviNative", "actionSheet", opts).then(function (r) {
+        return r && typeof r.value === "string" ? r.value : null;
+      });
+    },
+    /** An alert ({ title, message, actions, field: { value, placeholder, capitalize } }): { id, text } or null. */
+    alert: function (o) {
+      var opts = { title: String((o && o.title) || ""), message: String((o && o.message) || ""), actions: actionList(o && o.actions) };
+      if (o && o.field) opts.field = { value: String(o.field.value || ""), placeholder: String(o.field.placeholder || ""), capitalize: String(o.field.capitalize || "sentences") };
+      return call("FoleviNative", "alert", opts).then(function (r) {
+        var v = r && r.value;
+        return v && typeof v.id === "string" ? (typeof v.text === "string" ? { id: v.id, text: v.text } : { id: v.id }) : null;
+      });
+    },
+    /** The date and time picker in a sheet ({ value, mode, min, max, title, clearable }): { value } or null. */
+    pickDate: function (o) {
+      var opts = { mode: String((o && o.mode) || "date"), clearable: !!(o && o.clearable) };
+      ["value", "min", "max", "title"].forEach(function (k) {
+        if (o && typeof o[k] === "string" && o[k]) opts[k] = o[k];
+      });
+      return call("FoleviNative", "pickDate", opts).then(function (r) {
+        var v = r && r.value;
+        return v && typeof v === "object" ? { value: typeof v.value === "string" ? v.value : null } : null;
+      });
+    },
+    /** The colour picker ({ value: "#rrggbb", title }): "#rrggbb", or null. */
+    pickColor: function (o) {
+      var opts = {};
+      if (o && typeof o.value === "string") opts.value = o.value;
+      if (o && typeof o.title === "string") opts.title = o.title;
+      return call("FoleviNative", "pickColor", opts).then(function (r) {
+        return r && typeof r.value === "string" ? r.value : null;
+      });
+    },
+    /** The share sheet ({ title, text, url, anchor }): true when something was shared. */
+    share: function (o) {
+      var opts = {};
+      ["title", "text", "url"].forEach(function (k) {
+        if (o && typeof o[k] === "string" && o[k]) opts[k] = o[k];
+      });
+      var a = rect(o && o.anchor);
+      if (a) opts.anchor = a;
+      return call("FoleviNative", "share", opts).then(function (r) {
+        return !!(r && r.value);
+      });
+    },
+    /** How the keyboard behaves ({ interactiveDismiss }): a drag down in a scrolling view takes it away. */
+    keyboard: function (o) {
+      void quietly(call("FoleviNative", "keyboard", { interactiveDismiss: !!(o && o.interactiveDismiss) }));
+    },
+    /** Every move of the keyboard ({ height, duration, curve, visible }); returns the function that stops. */
+    onKeyboard: function (listener) {
+      var handle = cap.addListener("FoleviNative", "keyboard", function (event) {
+        if (!event) return;
+        try {
+          listener({ height: Number(event.height) || 0, duration: Number(event.duration) || 0, curve: event.curve === "keyboard" ? "keyboard" : "linear", visible: !!event.visible });
+        } catch (e) {
+          /* the page's own listener failing changes nothing here */
+        }
+      });
+      return function () {
+        void Promise.resolve(handle).then(function (h) {
+          if (h && h.remove) h.remove();
+        });
+      };
     },
     /** The status bar's text for the page's theme: "dark" (a dark page, light text) or "light". */
     setStatusBar: function (theme) {

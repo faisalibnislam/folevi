@@ -27,6 +27,10 @@ export function deviceWords(): DeviceWords {
     const noun = s.deviceFamily === "iPad" ? "iPad" : "iPhone";
     return { here: `this ${noun}`, Here: `This ${noun}`, noun, settings: "the Settings app", files: "the Files app", signInPlace: "the sign-in sheet", ios: true, onDeviceModel: "Apple Intelligence" };
   }
-  if (s?.platform === "android") return { here: "this phone", Here: "This phone", noun: "phone", settings: "the Settings app", files: "the Files app", signInPlace: "the sign-in page", ios: false, onDeviceModel: "Gemini Nano" };
+  if (s?.platform === "android") {
+    // A tablet says so (deviceFamily from the shell); a foldable is a phone, folded or not.
+    const noun = s.deviceFamily === "tablet" ? "tablet" : "phone";
+    return { here: `this ${noun}`, Here: `This ${noun}`, noun, settings: "the Settings app", files: "the Files app", signInPlace: "the sign-in page", ios: false, onDeviceModel: "Gemini Nano" };
+  }
   return { here: "this Mac", Here: "This Mac", noun: "Mac", settings: "System Settings", files: "Finder", signInPlace: "your browser", ios: false, onDeviceModel: "Apple Intelligence" };
 }

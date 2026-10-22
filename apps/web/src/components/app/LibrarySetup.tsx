@@ -33,7 +33,7 @@ export function passphraseHere(): boolean {
 /** "this Mac" on the Mac, "this phone" in the Android app, "this device" elsewhere. */
 export function thisDevice(): string {
   const platform = shell()?.platform;
-  return platform === "android" ? "this phone" : platform === "ios" ? deviceWords().here : "this Mac";
+  return platform === "android" || platform === "ios" ? deviceWords().here : "this Mac";
 }
 
 interface Place {
@@ -51,7 +51,7 @@ function places(available: CloudProvider[] | null): Place[] {
     const out: Place[] = [];
     if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: "Sign in to Dropbox. Folevi only uses its own folder, Apps › Folevi.", icon: <DropboxGlyph /> });
     if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: "Sign in to Google. Folevi only sees the files it makes.", icon: <DriveGlyph /> });
-    out.push({ kind: "device", title: "This phone only", detail: "Your notes stay on this phone. You can turn on sync later in Settings.", icon: <HardDrive size={20} aria-hidden /> });
+    out.push({ kind: "device", title: `${deviceWords().Here} only`, detail: `Your notes stay on ${deviceWords().here}. You can turn on sync later in Settings.`, icon: <HardDrive size={20} aria-hidden /> });
     return out;
   }
   const icloud = shell()?.platform === "ios" ? "The Folevi folder in iCloud Drive, on every iPhone, iPad and Mac signed in to your iCloud account." : "A Folevi folder in iCloud Drive, on every Mac signed in to your iCloud account.";

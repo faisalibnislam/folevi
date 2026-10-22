@@ -578,6 +578,8 @@
     platform: "android",
     shellVersion: boot.version,
     deviceName: boot.deviceName,
+    /** "tablet" on a big screen (600 dp or more on its short side), else "phone". */
+    deviceFamily: boot.deviceFamily,
     initialMode: boot.mode,
     /** Saves the choice; the app then reloads the page in that mode. */
     setMode: function (mode) {

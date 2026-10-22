@@ -7,7 +7,7 @@
 //   node scripts/emulator.mjs run [serial]                 install, then open the app
 //   node scripts/emulator.mjs eval '<js>' [serial]         run JavaScript in the app's web view (debug builds)
 //   node scripts/emulator.mjs click '<text>' [serial]      click the button or link with that name in the web view
-//   node scripts/emulator.mjs shot <file.png> [serial]     screenshot
+//   node scripts/emulator.mjs shot <file.png> [serial] [display]   screenshot (a foldable's display id third)
 //   node scripts/emulator.mjs theme <light|dark> [serial]  the system's dark theme on or off
 //   node scripts/emulator.mjs unit                         Kotlin unit tests (gradle testDebugUnitTest)
 // Everything uses the SDK in ANDROID_HOME (default ~/Library/Android/sdk) and JAVA_HOME (default Homebrew's
@@ -151,8 +151,12 @@ async function main() {
     }
     case "shot": {
       const serial = serialOf(args[1]);
-      const png = execFileSync(adbPath, ["-s", serial, "exec-out", "screencap", "-p"], { env, maxBuffer: 64 * 1024 * 1024 });
-      writeFileSync(args[0], png);
+      // A foldable has two displays: the third argument picks one (`adb shell dumpsys SurfaceFlinger --display-id`).
+      const display = args[2] ? ["-d", args[2]] : [];
+      const raw = execFileSync(adbPath, ["-s", serial, "exec-out", "screencap", "-p", ...display], { env, maxBuffer: 64 * 1024 * 1024 });
+      // (screencap may print a warning before the image.)
+      const at = raw.indexOf(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+      writeFileSync(args[0], at > 0 ? raw.subarray(at) : raw);
       console.log(args[0]);
       break;
     }

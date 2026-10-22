@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { ChevronRight, HardDrive, Loader2, UserRound } from "lucide-react";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { shell, type Backend } from "@/lib/shell";
+import { deviceWords } from "@/lib/shell/words";
 
 /**
  * The screens before the app (this one, LibrarySetup, LockedLibrary) follow the Mac's light or dark look as it
@@ -72,7 +73,7 @@ export function ModeChoice({ onChoose }: { onChoose: (mode: Backend) => Promise<
         </div>
         <p className="text-center text-[13px] leading-relaxed text-muted">
           {shell()?.platform === "android"
-            ? "Notes on your devices stay on this phone, or in Dropbox or Google Drive if you choose. Folevi's servers never see them."
+            ? `Notes on your devices stay on ${deviceWords().here}, or in Dropbox or Google Drive if you choose. Folevi's servers never see them.`
             : "Notes on your devices stay in a folder you pick, such as iCloud Drive or Dropbox. Folevi's servers never see them."}
         </p>
         {failed ? (

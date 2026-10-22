@@ -175,6 +175,8 @@ class MainActivity : BridgeActivity() {
             .put("mode", s.mode)
             .put("version", BuildConfig.VERSION_NAME)
             .put("deviceName", s.deviceName)
+            // A foldable is a phone, folded or not; a big screen without a hinge is a tablet.
+            .put("deviceFamily", if (resources.configuration.smallestScreenWidthDp >= 600 && !packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_SENSOR_HINGE_ANGLE)) "tablet" else "phone")
             .put("webViewVersion", WebViewCompat.getCurrentWebViewPackage(this)?.versionName ?: "")
             .put("insets", lastInsets)
         script.install(wv, boot, APP_ORIGIN)

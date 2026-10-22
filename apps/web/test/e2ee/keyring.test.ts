@@ -18,7 +18,7 @@ import { getKeyRing, keyRingImpl, resetKeyRingForTests } from "@/lib/e2ee/keys/k
 import { idbKeyStore, memoryKeyStore, type KeyStore } from "@/lib/e2ee/keys/keystore";
 import { passphraseProblem, setPassphraseCostsForTests } from "@/lib/e2ee/keys/passphrase";
 import { wasPublicSession } from "@/lib/e2ee/keys/publicMode";
-import { localDbInMemory, memoryLocalDbIfPublic, openLocalDbInMemory } from "@/lib/sync/db";
+import { localDb, localDbInMemory, memoryLocalDbIfPublic, openLocalDbInMemory } from "@/lib/sync/db";
 import { groupsMatch } from "@/lib/e2ee/keys/recoveryKey";
 import { resetKeySessionForTests, sessionImpl } from "@/lib/e2ee/keys/session";
 import { KeysError, SecretBox, browserLabel } from "@/lib/e2ee/keys/util";
@@ -250,6 +250,21 @@ describe("account and ways in", () => {
     expect(await later.unlockWithRecoveryKey(rk.text)).toBe("ok");
     await later.trust("browser");
     expect(wasPublicSession()).toBe(false);
+  });
+
+  test("on a public computer the account's database is in memory whichever code opens it first, and no keys go to disk", async () => {
+    localStorage.setItem("folevi.e2ee.publicSession", "1");
+    // The cached snapshot or the query cache can ask before the engine does (no memoryLocalDbIfPublic first).
+    const db = await localDb("acct1");
+    await db.put("meta", "plaintext", "probe");
+    expect(localDbInMemory()).toBe(true);
+    expect(await idbNames()).toEqual([]);
+    const fake = new FakeKeysServer();
+    resetKeySessionForTests();
+    await startKeySession({ server: fake.as("p9"), profileId: "p9", mac: null, reload: () => undefined });
+    await setup.createAccount();
+    expect(sessionImpl().isPublic()).toBe(true);
+    expect(await idbNames()).toEqual([]);
   });
 
   test("an AMK that doesn't match the account is refused", async () => {

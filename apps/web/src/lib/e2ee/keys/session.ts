@@ -20,7 +20,7 @@ import {
 } from "@folevi/local-store/e2ee";
 import { ulid } from "@folevi/editor-schema";
 import type { ShellE2ee } from "@/lib/shell/types";
-import { browserIdentity, idbKeyStore, newBrowserDevice, persistable, type BrowserDeviceRecord, type DeviceIdentity, type DeviceKind, type KeyStore } from "./keystore";
+import { browserIdentity, idbKeyStore, memoryKeyStore, newBrowserDevice, persistable, type BrowserDeviceRecord, type DeviceIdentity, type DeviceKind, type KeyStore } from "./keystore";
 import { inMacApp, macE2ee, macIdentity, macLabel } from "./macBridge";
 import { openWithPassphrase } from "./passphrase";
 import { evaluatePrf, openWithPrf, passkeysPossible } from "./passkey";
@@ -110,6 +110,7 @@ export interface Unlocked {
 }
 
 const TOUCH_EVERY_MS = 60 * 60_000;
+const publicStore = memoryKeyStore();
 const reloadPage = () => {
   if (typeof location !== "undefined") location.reload();
 };
@@ -438,8 +439,9 @@ export class KeySessionImpl implements KeySession {
   accountStatus(): AccountStatus | null {
     return this.status;
   }
+  /** Nothing of this tab's may be kept on disk: a public session, or a browser used as a public computer. */
   isPublic(): boolean {
-    return this.publicMode;
+    return this.publicMode || wasPublicSession();
   }
   /** The wrap the last method unlock (or re-check) opened: `e2ee.spaces.lower`'s `recheckedWrapId`. */
   recheckedWrapId(): string | null {
@@ -544,7 +546,8 @@ export class KeySessionImpl implements KeySession {
     return macE2ee();
   }
   private store(): KeyStore {
-    return this.binding?.store ?? idbKeyStore;
+    // A public computer keeps no keys or wraps on disk (until someone trusts it).
+    return this.binding?.store ?? (wasPublicSession() ? publicStore : idbKeyStore);
   }
 
   /** A device that holds a wrap here: the Mac's, or this browser's record once trusted. */

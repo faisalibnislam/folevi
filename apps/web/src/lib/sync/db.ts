@@ -93,17 +93,20 @@ let memoryFactory: IDBFactory | null = null;
 /** Set by end-to-end encryption's public computer mode (lib/e2ee/keys/publicMode.ts markPublicSession). */
 const PUBLIC_SESSION_FLAG = "folevi.e2ee.publicSession";
 
+function publicSessionFlag(): boolean {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem(PUBLIC_SESSION_FLAG) === "1";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Public computer mode: switches this tab's account database to memory before the account opens. Loads the
  * in-memory IndexedDB (fake-indexeddb) only then: no other tab ever downloads it. Returns whether it did.
  */
 export async function memoryLocalDbIfPublic(): Promise<boolean> {
-  let on: boolean;
-  try {
-    on = typeof localStorage !== "undefined" && localStorage.getItem(PUBLIC_SESSION_FLAG) === "1";
-  } catch {
-    on = false;
-  }
+  const on = publicSessionFlag();
   if (!on || memoryFactory) return on;
   const { IDBFactory } = await import("fake-indexeddb");
   openLocalDbInMemory(new IDBFactory());
@@ -129,7 +132,9 @@ export function localDb(accountKey: string): Promise<IDBPDatabase<FoleviDB>> {
   const name = `folevi-${accountKey}`;
   let db = dbs.get(name);
   if (!db) {
-    db = (memoryFactory ? (n: string, v: number, c: OpenDBCallbacks<FoleviDB>) => openWith<FoleviDB>(memoryFactory!, n, v, c) : openDB<FoleviDB>)(name, DB_VERSION, {
+    // A browser used as a public computer opens even its first account database in memory, whichever code asks
+    // first (the cached snapshot and query cache can come before the engine).
+    const open = () => (memoryFactory ? (n: string, v: number, c: OpenDBCallbacks<FoleviDB>) => openWith<FoleviDB>(memoryFactory!, n, v, c) : openDB<FoleviDB>)(name, DB_VERSION, {
       async upgrade(database, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           database.createObjectStore("meta");
@@ -156,6 +161,7 @@ export function localDb(accountKey: string): Promise<IDBPDatabase<FoleviDB>> {
         }
       },
     });
+    db = !memoryFactory && publicSessionFlag() ? memoryLocalDbIfPublic().then(open) : open();
     dbs.set(name, db);
   }
   return db;

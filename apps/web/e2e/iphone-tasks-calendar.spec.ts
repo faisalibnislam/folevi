@@ -42,6 +42,18 @@ function fakeBridge() {
 }
 
 type Call = { method: string; arg?: unknown };
+
+/** A finger down at a point, moving through `path` (one step every `step` ms), then up. */
+async function drag(page: Page, from: { x: number; y: number }, path: { x: number; y: number }[], step = 30) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [from] });
+  for (const p of path) {
+    await page.waitForTimeout(step);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [p] });
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+}
 const calls = (page: Page) => page.evaluate(() => (window as unknown as { __native: { calls: Call[] } }).__native.calls);
 const clearCalls = (page: Page) => page.evaluate(() => void ((window as unknown as { __native: { calls: Call[] } }).__native.calls.length = 0));
 const day = (offset: number) => {
@@ -139,24 +151,54 @@ test("iPhone Tasks, Calendar and Search: capsules, the box, the details sheet, t
   const todayCell = page.getByRole("button", { name: /^Today, / });
   await expect(todayCell).toHaveAttribute("aria-pressed", "true");
   await expect(todayCell).toHaveAttribute("aria-current", "date");
-  await expect(page.locator(`[data-date="${day(1)}"]`).first()).toHaveAttribute("aria-label", /has tasks or events$/);
+  await expect(page.locator(`[data-date="${day(1)}"]:visible`).first()).toHaveAttribute("aria-label", /has tasks or events$/);
   await expect(page.getByRole("heading", { level: 2, name: /^Tomorrow/ })).toBeVisible();
   // Another day: the list starts there, and Today comes back with a tap.
   await clearCalls(page);
-  await page.locator(`[data-date="${day(1)}"]`).first().click();
-  await expect(page.locator(`[data-date="${day(1)}"]`).first()).toHaveAttribute("aria-pressed", "true");
+  await page.locator(`[data-date="${day(1)}"]:visible`).first().click();
+  await expect(page.locator(`[data-date="${day(1)}"]:visible`).first()).toHaveAttribute("aria-pressed", "true");
   expect((await calls(page)).some((c) => c.method === "haptic" && c.arg === "selection")).toBe(true);
   await expect(page.getByRole("button", { name: /^Post the letters/ })).toBeVisible();
   await page.getByRole("button", { name: "Today", exact: true }).click();
   await expect(todayCell).toHaveAttribute("aria-pressed", "true");
   // The pull-down month: the grabber opens the whole month (four to six weeks), and a day folds it again.
-  const strip = page.locator("[data-date]").first().locator("xpath=ancestor::div[contains(@class,'overflow-hidden')][1]");
+  const strip = page.locator("[data-date]:visible").first().locator("xpath=ancestor::div[contains(@class,'overflow-hidden')][1]");
   const weekHeight = await strip.evaluate((el) => el.getBoundingClientRect().height);
   await page.getByRole("button", { name: "Show the whole month" }).click();
   await expect.poll(() => strip.evaluate((el) => Math.round(el.getBoundingClientRect().height / 48))).toBeGreaterThanOrEqual(4);
   await expect(page.getByRole("button", { name: "Show the week" })).toHaveAttribute("aria-expanded", "true");
-  await page.locator(`[data-date="${day(1)}"]`).first().click();
+  await page.locator(`[data-date="${day(1)}"]:visible`).first().click();
   await expect.poll(() => strip.evaluate((el) => el.getBoundingClientRect().height)).toBe(weekHeight);
+
+  // By touch: pulling the strip down follows the finger, and let go past half way it opens the month.
+  const at = (await strip.boundingBox())!;
+  const from = { x: at.x + at.width / 2, y: at.y + 20 };
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [from] });
+  for (let i = 1; i <= 6; i++) {
+    await page.waitForTimeout(30);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: from.x, y: from.y + i * 15 }] });
+  }
+  // (Held 90 points down, the strip is 90 points taller: 1:1 with the finger.)
+  await expect.poll(() => strip.evaluate((el) => el.getBoundingClientRect().height), { timeout: 3000 }).toBeGreaterThan(weekHeight + 80);
+  expect(await strip.evaluate((el) => el.getBoundingClientRect().height)).toBeLessThan(weekHeight + 100);
+  for (let i = 7; i <= 10; i++) {
+    await page.waitForTimeout(30);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: from.x, y: from.y + i * 15 }] });
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+  await expect(page.getByRole("button", { name: "Show the week" })).toHaveAttribute("aria-expanded", "true");
+  // Pushed back up, it folds to the week.
+  await page.waitForTimeout(400);
+  const open = (await strip.boundingBox())!;
+  await drag(page, { x: open.x + open.width / 2, y: open.y + open.height - 30 }, [1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({ x: open.x + open.width / 2, y: open.y + open.height - 30 - i * 20 })));
+  await expect(page.getByRole("button", { name: "Show the whole month" })).toHaveAttribute("aria-expanded", "false");
+  await expect.poll(() => strip.evaluate((el) => el.getBoundingClientRect().height)).toBe(weekHeight);
+  // A swipe sideways pages to the next week, keeping the weekday picked.
+  const week = (await strip.boundingBox())!;
+  await drag(page, { x: week.x + week.width - 30, y: week.y + 20 }, [1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({ x: week.x + week.width - 30 - i * 40, y: week.y + 21 })), 20);
+  await expect(page.locator(`[data-date="${day(8)}"]:visible`).first()).toHaveAttribute("aria-pressed", "true", { timeout: 5000 });
 
   // Search: the filters are scope capsules that open menus; one in use is filled with its choice.
   await page.goto(`${APP}/documents`);

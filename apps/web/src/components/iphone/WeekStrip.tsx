@@ -175,11 +175,16 @@ export function WeekStrip({ today, selected, onSelect, marked }: { today: string
         ))}
       </div>
       <div className="relative overflow-hidden" style={{ height, transition: pull === null && !reduceMotion() ? `height ${SETTLE}` : "none" }}>
-        {showMonth ? (
-          <MonthPager month={month} today={today} rows={rows} selRow={selRow} progress={progress} paging={open && pull === null && !animating} pull={pull} onMonth={(m) => onSelect(m === today.slice(0, 7) ? today : `${m}-01`)} render={day} />
-        ) : (
+        {/* The week stays mounted under the month: a touch that started on one of its days keeps being
+            delivered (to a node still in the page) while the month takes its place. */}
+        <div className={`absolute inset-x-0 top-0 h-12 ${showMonth ? "invisible" : ""}`} inert={showMonth || undefined}>
           <WeekPager today={today} selected={selected} onWeek={(date) => onSelect(date)} render={(d) => day(d, true, 0)} />
-        )}
+        </div>
+        {showMonth ? (
+          <div className="absolute inset-0 bg-canvas">
+            <MonthPager month={month} today={today} rows={rows} selRow={selRow} progress={progress} paging={open && pull === null && !animating} pull={pull} onMonth={(m) => onSelect(m === today.slice(0, 7) ? today : `${m}-01`)} render={day} />
+          </div>
+        ) : null}
       </div>
       {/* The grabber: tap for the month (or back to the week); the whole strip drags too. */}
       <button
@@ -314,7 +319,7 @@ function MonthPager({
   onMonthRef.current = onMonth;
   useLayoutEffect(() => {
     const el = scroller.current;
-    if (!el || !paging) return;
+    if (!el) return;
     const target = index * el.clientWidth;
     if (Math.abs(el.scrollLeft - target) > 1) el.scrollLeft = target;
   }, [index, paging]);
@@ -338,14 +343,16 @@ function MonthPager({
     };
   }, [paging, origin]);
 
-  if (!paging) return grid(month, rows, -selRow * ROW_H * (1 - p), p);
+  // One structure whether it pages or not, so what a finger is holding stays in the page while the month
+  // is pulled open or pushed shut.
   return (
-    <div ref={scroller} className="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Month">
+    <div ref={scroller} className={`flex h-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${paging ? "snap-x snap-mandatory overflow-x-auto overscroll-x-contain" : "overflow-hidden"}`} aria-label="Month">
       {Array.from({ length: count }, (_, i) => {
         const m = shiftMonth(origin, i);
+        const near = paging ? Math.abs(i - index) <= 1 : i === index;
         return (
           <div key={m} className="w-full flex-none snap-start snap-always" role="group" aria-label={formatCalendarDate(`${m}-01`, { month: "long", year: "numeric" })} inert={i !== index || undefined}>
-            {Math.abs(i - index) <= 1 ? grid(m, i === index ? rows : monthRows(m), 0, 1) : null}
+            {near ? (i === index ? grid(m, rows, paging ? 0 : -selRow * ROW_H * (1 - p), paging ? 1 : p) : grid(m, monthRows(m), 0, 1)) : null}
           </div>
         );
       })}

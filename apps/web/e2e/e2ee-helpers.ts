@@ -48,6 +48,17 @@ export function e2eeScan(markers: string[], scope: { since?: number; email?: str
   return JSON.parse(out.slice(out.indexOf("{")));
 }
 
+/** emailNotes.receive on the dev deployment: one parsed email for an address, as the inbound mail webhook files it. */
+export function receiveMail(args: Record<string, unknown>): { outcome: string } {
+  const out = execFileSync("npx", ["convex", "run", "emailNotes:receive", JSON.stringify(args)], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    timeout: 120_000,
+    env: { ...process.env, CONVEX_AGENT_MODE: process.env.CONVEX_AGENT_MODE ?? "anonymous" },
+  });
+  return JSON.parse(out.slice(out.indexOf("{")));
+}
+
 /**
  * Settings > Privacy → the wizard with a recovery key and a passphrase → Turn on encryption. Returns the
  * recovery key it showed. `workspace` opens Settings > Workspace > Privacy instead.

@@ -3,7 +3,8 @@
 import { createHash } from "node:crypto";
 import { describe, expect, test } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
-import { matchRoute } from "../../convex/lib/restApi";
+import { errorFor, matchRoute } from "../../convex/lib/restApi";
+import { ConvexError } from "convex/values";
 import { join, para, person, PERSONAL, setup, teamWorkspace, ulid, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
@@ -50,6 +51,17 @@ describe("routes", () => {
     expect(matchRoute("DELETE", "/notes")).toEqual({ allowed: ["GET", "POST"] });
     expect(matchRoute("GET", "/notes/../secrets")).toBeNull();
     expect(matchRoute("GET", "/nope")).toBeNull();
+  });
+});
+
+describe("errors for end-to-end encrypted places", () => {
+  test("a switch that's off, a locked note or a device-only write get their own codes and messages, not a 500", () => {
+    const off = errorFor(new ConvexError({ code: "e2ee_switch_off", message: "Turn on Apps and integrations in Settings > Privacy.", switch: "apps" }));
+    expect(off).toEqual({ status: 403, code: "e2ee_switch_off", message: "Turn on Apps and integrations in Settings > Privacy." });
+    expect(errorFor(new ConvexError({ code: "e2ee_locked", message: "Locked." })).status).toBe(403);
+    expect(errorFor(new ConvexError({ code: "e2ee_required", message: "Update." })).status).toBe(409);
+    expect(errorFor(new ConvexError({ code: "e2ee_device_only", message: "Device." })).status).toBe(409);
+    expect(errorFor(new Error("boom")).status).toBe(500);
   });
 });
 

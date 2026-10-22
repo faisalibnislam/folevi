@@ -238,8 +238,16 @@ class HostedReplica {
         }
         if (this.cursor >= this.head) this.finishFirst();
       } catch (e) {
-        console.warn("[e2ee] The encrypted space's copy couldn't be brought up to date; trying again.", errorName(e));
-        setTimeout(() => void this.drain(), 5000);
+        // Tried again in a while, never straight away (a failure that repeats must not spin). Its database closed
+        // under it (the space was turned off, the account signed out): this replica is done.
+        waiting = true;
+        if (errorName(e) === "InvalidStateError") void this.close();
+        else {
+          console.warn("[e2ee] The encrypted space's copy couldn't be brought up to date; trying again.", errorName(e));
+          setTimeout(() => {
+            if (!this.closed) void this.drain();
+          }, 5000);
+        }
       } finally {
         this.draining = null;
       }

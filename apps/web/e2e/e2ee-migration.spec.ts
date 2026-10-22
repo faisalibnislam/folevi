@@ -31,6 +31,9 @@ test("edit during the migration, then turn encryption off again", async ({ brows
   await dialog.getByLabel("Encryption passphrase").fill(PASSPHRASE);
   await dialog.getByRole("button", { name: "Unlock", exact: true }).click();
   await dialog.getByRole("button", { name: "Turn off encryption" }).click();
+  // The change is sent once the dialog closes; leaving the page before that would drop it.
+  await expect(dialog).toBeHidden({ timeout: 30_000 });
+  await expect(page.getByRole("region", { name: /Decrypting your notes/ })).toBeVisible({ timeout: 30_000 });
   await migrationDone(page, 300_000);
 
   // Server search (a fresh browser holds no replica) finds it again.

@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, request, test, type Page } from "@playwright/test";
 import { APP, newPerson } from "./helpers";
-import { e2eeScan, marker, migrationDone, newNote, turnOnEncryption } from "./e2ee-helpers";
+import { e2eeScan, marker, migrationDone, newNote, paletteResults, receiveMail, turnOnEncryption } from "./e2ee-helpers";
 
 // §11.4 e2ee-switches: each switch at "Encrypted, with the features you pick". Foli AI's consent needs a
 // Gemini key on the deployment as well, like ai.spec.ts (E2E_AI=1).
@@ -52,9 +52,80 @@ test("notification previews: generic text while off", async ({ browser }) => {
   await context.close();
 });
 
-test.fixme("apps: an MCP read sees nothing until Apps and integrations is on; a write is queued, then applied", async () => {
-  // Needs an MCP client in the e2e harness (mcp-connect.spec.ts drives the consent screen only).
+/** A personal access token that may add notes (Settings > Connected apps), as rest-api.spec.ts makes one. */
+async function noteToken(page: Page): Promise<string> {
+  await page.goto(`${APP}/settings/connected-apps`);
+  const card = page.getByRole("region", { name: "Personal access tokens" });
+  await card.getByRole("button", { name: "New token" }).click();
+  const dialog = page.getByRole("dialog", { name: "New personal access token" });
+  await dialog.getByLabel("Name").fill("E2EE script");
+  await dialog.getByRole("checkbox", { name: "Create notes and add to them" }).click();
+  await dialog.getByRole("button", { name: "Create token" }).click();
+  const shown = page.getByRole("dialog", { name: "Copy your new token" });
+  const token = await shown.getByLabel("Your new token").inputValue();
+  await shown.getByRole("button", { name: "Done" }).click();
+  return token;
+}
+
+async function switchOn(page: Page, label: string) {
+  await page.goto(`${APP}/settings/privacy`);
+  const sw = page.getByRole("switch", { name: label });
+  await sw.click();
+  await expect(sw).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
+}
+
+test("apps: a write is refused until Apps and integrations is on, then queued, then made by this device; reads see its copy", async ({ browser }) => {
+  test.setTimeout(480_000);
+  const { page, context } = await newPerson(browser, "Apps Person");
+  await turnOnEncryption(page);
+  await migrationDone(page);
+  const token = await noteToken(page);
+  const api = await request.newContext();
+  const auth = { authorization: `Bearer ${token}` };
+  const title = marker("TITLE");
+  const refused = await api.post(`${APP}/api/v1/notes`, { headers: { ...auth, "idempotency-key": `e2ee-${Date.now()}-a` }, data: { title, markdown: "Written by a script." } });
+  expect(refused.status()).toBe(403);
+  expect(((await refused.json()) as { error: { code: string } }).error.code).toBe("e2ee_switch_off");
+
+  await switchOn(page, "Apps and integrations");
+  const queued = await api.post(`${APP}/api/v1/notes`, { headers: { ...auth, "idempotency-key": `e2ee-${Date.now()}-b` }, data: { title, markdown: "Written by a script." } });
+  expect(queued.status(), await queued.text()).toBe(202);
+  const body = (await queued.json()) as { status: string; noteId: string };
+  expect(body.status).toBe("queued");
+
+  // This (unlocked) browser applies it: the note is made, encrypted, with the id the app was given.
+  await page.goto(`${APP}/d/${body.noteId}`);
+  await expect(page.getByRole("textbox", { name: "Title" })).toHaveText(title, { timeout: 120_000 });
+  await expect(page.getByText("Written by a script.")).toBeVisible();
+  // Apps read it through the readable copy this device keeps for them.
+  await expect.poll(async () => JSON.stringify(await (await api.get(`${APP}/api/v1/notes/${body.noteId}`, { headers: auth })).json()), { timeout: 180_000, intervals: [5_000] }).toContain("Written by a script.");
+  await api.dispose();
+  await context.close();
 });
-test.fixme("email to note: mail to the space's address arrives sealed and is filed by a device", async () => {
-  // Needs the inbound mail webhook in the e2e harness.
+
+test("email to note: mail to the person's address arrives sealed and is filed in the Inbox by this device", async ({ browser }) => {
+  // Scanning the whole dev deployment for the marker takes minutes.
+  test.setTimeout(1_800_000);
+  const { page, context, email } = await newPerson(browser, "Mail Person");
+  await turnOnEncryption(page);
+  await migrationDone(page);
+  await switchOn(page, "Email to note");
+  await page.goto(`${APP}/settings/data`);
+  await page.getByRole("button", { name: "Create my address" }).click();
+  const address = await page.getByLabel("Your address").inputValue({ timeout: 30_000 });
+  const token = /^n-([^@]+)@/.exec(address)![1]!;
+  const subject = marker("TITLE");
+  // What the inbound mail webhook hands over once Resend has delivered and parsed the message.
+  receiveMail({ token, emailId: `e2e-${Date.now()}`, fromAddress: email, fromName: "Mail Person", subject, text: "Sent from my phone.", truncated: false, rfcMessageId: null, receivedAt: Date.now(), attachments: [], authentication: { spf: "pass", dkim: "pass", dmarc: "pass" } });
+  // This device files it under the Inbox; search on the device finds it.
+  await page.goto(`${APP}/documents`);
+  await expect.poll(async () => {
+    const results = await paletteResults(page, subject);
+    const n = await results.filter({ hasText: subject }).count();
+    await page.keyboard.press("Escape");
+    return n;
+  }, { timeout: 180_000, intervals: [10_000] }).toBeGreaterThan(0);
+  // Nothing readable was stored on the way: sealed to the space when it arrived, a sealed note once filed.
+  expect(e2eeScan([subject]).clean).toBe(true);
+  await context.close();
 });

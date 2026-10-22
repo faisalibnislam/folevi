@@ -110,6 +110,15 @@ export function errorFor(e: unknown): { status: number; code: string; message: s
         return { status: 429, code: "rate_limited", message: "Too many requests for this token. Wait a moment and try again.", retryAfterMs: typeof data.retryAfterMs === "number" ? data.retryAfterMs : 60_000 };
       case "maintenance":
         return { status: 503, code: "unavailable", message };
+      // End-to-end encrypted places (docs/E2EE_DESIGN.md §7.4): the switch is off, the note is locked, or the
+      // server can't do it for an encrypted note. The message says what to change.
+      case "e2ee_switch_off":
+      case "e2ee_locked":
+      case "e2ee_unavailable":
+        return { status: 403, code: data.code, message };
+      case "e2ee_required":
+      case "e2ee_device_only":
+        return { status: 409, code: data.code, message };
     }
   }
   return { status: 500, code: "internal_error", message: "Something went wrong in Folevi. Try again in a moment." };

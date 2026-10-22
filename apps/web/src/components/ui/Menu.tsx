@@ -333,6 +333,8 @@ function MenuPanel({
       const ghost = menu.cloneNode(true) as HTMLElement;
       ghost.removeAttribute("id");
       ghost.removeAttribute("role");
+      // (Still drawn as the app's menu while it fades: globals.css styles [data-menu-ghost] as [role="menu"].)
+      ghost.setAttribute("data-menu-ghost", "");
       ghost.setAttribute("aria-hidden", "true");
       ghost.inert = true;
       ghost.style.pointerEvents = "none";

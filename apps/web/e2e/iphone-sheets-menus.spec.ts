@@ -111,8 +111,23 @@ test("iPhone: menus, sheets, native alerts and Quick add @local", async ({ brows
   expect(look.minWidth).toBeGreaterThanOrEqual(240);
   for (const b of look.bands) expect(b).toBe(8);
 
-  // A folder (New folder, in its glass card).
+  // A folder (New folder, in its glass card). The menu fades as a picture of itself, still drawn as the app's
+  // menu (17 pt rows, not the desktop's) while it goes.
+  const ghostLook = page.evaluate(
+    () =>
+      new Promise<string | null>((done) => {
+        const watch = new MutationObserver(() => {
+          const item = document.querySelector<HTMLElement>("[data-menu-ghost] .ui-menu-item");
+          if (!item) return;
+          watch.disconnect();
+          done(getComputedStyle(item).fontSize);
+        });
+        watch.observe(document.body, { childList: true, subtree: true });
+        setTimeout(() => (watch.disconnect(), done(null)), 3000);
+      }),
+  );
   await create.getByRole("menuitem", { name: "New folder" }).click();
+  expect(await ghostLook).toBe("17px");
   const card = page.getByRole("dialog", { name: "New folder" });
   await card.getByPlaceholder("Folder name").fill("Field notes");
   await card.getByRole("button", { name: "Create" }).click();

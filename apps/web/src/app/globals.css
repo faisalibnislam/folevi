@@ -640,14 +640,14 @@
   /* Reduce Transparency in iOS Settings (bridge.js marks it): the glass is a solid surface with its rim. */
   :root[data-reduce-transparency] :is(.ui-liquid, .ui-liquid-strong)::before { display: none; }
   :root[data-reduce-transparency] :is(.ui-liquid, .ui-liquid-strong),
-  :root[data-reduce-transparency][data-iphone] :is([role="menu"].ui-pop, [role="listbox"].ui-pop) { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root[data-reduce-transparency][data-iphone] :is(:is([role="menu"], [data-menu-ghost]).ui-pop, [role="listbox"].ui-pop) { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
   /* The fade behind a screen's bar (components/iphone/Screen.tsx): the canvas itself, no blur. */
   :root[data-reduce-transparency] [data-iphone-bar-fade] { background: var(--bar-solid, var(--color-canvas)) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
   /* Android (apps/android): Folevi's floating bars and sheets without iOS's glass: the same solid surfaces with
      their rim (docs/ANDROID_PLAN.md "Look"). */
   :root[data-native="android"] :is(.ui-liquid, .ui-liquid-strong)::before { display: none; }
   :root[data-native="android"] :is(.ui-liquid, .ui-liquid-strong),
-  :root[data-native="android"][data-iphone] :is([role="menu"].ui-pop, [role="listbox"].ui-pop) { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root[data-native="android"][data-iphone] :is(:is([role="menu"], [data-menu-ghost]).ui-pop, [role="listbox"].ui-pop) { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
   :root[data-native="android"] [data-iphone-bar-fade] { background: var(--bar-solid, var(--color-canvas)) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
   :root[data-native="android"] .ui-glass-press:active { transform: none; filter: brightness(0.94); }
   /* Increase Contrast: the glass is nearly opaque and its edge a visible line. */
@@ -787,7 +787,7 @@
  * on a spring and shrink away (components/ui/Menu.tsx). Only inside the apps (the website and the Mac app keep
  * theirs): <html data-iphone> (iPhone, Android phone) or data-native="ios" (iPad too).
  * --------------------------------------------------------------------------------------------- */
-:root:is([data-iphone], [data-native="ios"]) [role="menu"].ui-pop {
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]).ui-pop {
   --menu-pad: 16px;
   min-width: 250px;
   max-width: min(320px, calc(100vw - 16px));
@@ -800,7 +800,7 @@
   font-family: var(--font-sans);
   animation: none;
 }
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item {
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-menu-item {
   min-height: 44px;
   gap: 12px;
   padding: 11px var(--menu-pad);
@@ -811,31 +811,31 @@
   color: var(--color-ink);
 }
 /* Hairlines between the items of a section (an 8 pt band between sections, below). */
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item + .ui-menu-item { box-shadow: inset 0 0.5px 0 var(--iphone-separator); }
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] [role="separator"] { margin: 0; height: 8px; background: color-mix(in oklab, var(--color-ink) 7%, transparent); }
-:root[data-theme="dark"]:is([data-iphone], [data-native="ios"]) [role="menu"] [role="separator"] { background: rgb(0 0 0 / 0.28); }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-menu-item + .ui-menu-item { box-shadow: inset 0 0.5px 0 var(--iphone-separator); }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [role="separator"] { margin: 0; height: 8px; background: color-mix(in oklab, var(--color-ink) 7%, transparent); }
+:root[data-theme="dark"]:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [role="separator"] { background: rgb(0 0 0 / 0.28); }
 /* A section's title (a menu heading): iOS's footnote, quiet, in sentence case. */
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-caps { padding: 10px var(--menu-pad) 6px; font-size: 13px; line-height: 18px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--color-ink-muted); }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-caps { padding: 10px var(--menu-pad) 6px; font-size: 13px; line-height: 18px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--color-ink-muted); }
 /* The icon at the end, in the words' colour, 20 pt; the checkmark in a column at the start. */
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="icon"] { order: 5; display: inline-flex; flex: none; width: 22px; justify-content: center; color: inherit; }
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="icon"] svg { width: 20px; height: 20px; stroke-width: 1.9; }
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="check"] { order: -1; display: inline-flex; flex: none; width: 16px; margin-right: -2px; justify-content: center; color: var(--color-ink); }
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="check"] svg { width: 16px; height: 16px; stroke-width: 2.6; }
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="label"] { min-width: 0; }
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="description"] { margin-top: 1px; font-size: 15px; line-height: 20px; color: var(--color-ink-muted); }
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] [data-menu-part="detail"] { font-size: 15px; line-height: 20px; color: var(--color-ink-muted); }
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:is(.\!text-danger, [data-danger]) { color: var(--color-danger) !important; }
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:disabled { opacity: 0.35; }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="icon"] { order: 5; display: inline-flex; flex: none; width: 22px; justify-content: center; color: inherit; }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="icon"] svg { width: 20px; height: 20px; stroke-width: 1.9; }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] { order: -1; display: inline-flex; flex: none; width: 16px; margin-right: -2px; justify-content: center; color: var(--color-ink); }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] svg { width: 16px; height: 16px; stroke-width: 2.6; }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="label"] { min-width: 0; }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="description"] { margin-top: 1px; font-size: 15px; line-height: 20px; color: var(--color-ink-muted); }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="detail"] { font-size: 15px; line-height: 20px; color: var(--color-ink-muted); }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-menu-item:is(.\!text-danger, [data-danger]) { color: var(--color-danger) !important; }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-menu-item:disabled { opacity: 0.35; }
 /* An item under another (a workspace under its account) steps in by the checkmark column. */
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item.\!pl-8 { padding-left: calc(var(--menu-pad) + 20px) !important; }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-menu-item.\!pl-8 { padding-left: calc(var(--menu-pad) + 20px) !important; }
 /* A finger isn't a mouse: the item under where it last was isn't highlighted (after a long press that's the
    item under the lifted finger, which mustn't look chosen); the one being pressed is. The first item takes
    focus as a menu opens (for a keyboard); on a touch screen that isn't shown as a choice. */
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:hover:not(:active, :focus-visible, [data-highlighted="true"]) { background: transparent; }
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:focus-visible:not(:active, [data-highlighted="true"]) { background: transparent; }
-:root:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:active { background: color-mix(in oklab, var(--color-ink) 10%, transparent); }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-menu-item:hover:not(:active, :focus-visible, [data-highlighted="true"]) { background: transparent; }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-menu-item:focus-visible:not(:active, [data-highlighted="true"]) { background: transparent; }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-menu-item:active { background: color-mix(in oklab, var(--color-ink) 10%, transparent); }
 /* A keyboard on an iPad: the item it's on, as a pressed one. */
-:root[data-input="key"]:is([data-iphone], [data-native="ios"]) [role="menu"] .ui-menu-item:focus-visible { background: color-mix(in oklab, var(--color-ink) 10%, transparent); }
+:root[data-input="key"]:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-menu-item:focus-visible { background: color-mix(in oklab, var(--color-ink) 10%, transparent); }
 /* Note cards (components/views/DocumentCard.tsx) on the phone: 18-point corners on the open edge, one date (the
    footer's), the title in Spectral 17/22, two lines; in dark a faint edge so they don't sink into the canvas. */
 :root[data-iphone] .note-card-r { border-top-right-radius: var(--radius-container); border-bottom-right-radius: var(--radius-container); }
@@ -857,10 +857,10 @@
    same menu); a pointer hovering shows it. */
 :root[data-native="ios"]:not([data-iphone]) [data-ctx-host]:not(:hover) .pointer-coarse\:opacity-100:not(:has(:focus-visible)) { opacity: 0; }
 /* Reduce Transparency, Increase Contrast, and Android (no iOS glass there): a solid menu. */
-:root:is([data-reduce-transparency], [data-increase-contrast], [data-native="android"]):is([data-iphone], [data-native="ios"]) [role="menu"].ui-pop { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
-:root[data-increase-contrast]:is([data-iphone], [data-native="ios"]) [role="menu"].ui-pop { box-shadow: 0 0 0 1px var(--color-line-strong), 0 18px 50px -12px rgb(0 0 0 / 0.3); }
+:root:is([data-reduce-transparency], [data-increase-contrast], [data-native="android"]):is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]).ui-pop { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-increase-contrast]:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]).ui-pop { box-shadow: 0 0 0 1px var(--color-line-strong), 0 18px 50px -12px rgb(0 0 0 / 0.3); }
 @media (prefers-reduced-transparency: reduce) {
-  :root:is([data-iphone], [data-native="ios"]) [role="menu"].ui-pop { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]).ui-pop { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 /* Pull to refresh's spinner (components/iphone/PullToRefresh.tsx) turns a spoke at a time, as iOS's does. */
 @keyframes iphone-spinner { to { transform: rotate(360deg); } }

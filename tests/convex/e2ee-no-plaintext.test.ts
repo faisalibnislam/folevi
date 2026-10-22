@@ -13,6 +13,7 @@ import type { Id, TableNames } from "../../convex/_generated/dataModel";
 import { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, PERSONAL, setup, ulid, type T } from "./helpers";
 import { findMarkers, push } from "./e2ee-fixtures";
 import { runSealJob, sealerFor } from "./e2ee-device";
+import { noPlaintextCases } from "./e2ee-ai-cases";
 
 const SWITCHES = { foliAi: "off", backgroundAi: false, searchEverywhere: false, apps: false, emailToNote: false, webClipper: false, notificationPreviews: false } as const;
 
@@ -128,4 +129,18 @@ describe("no plaintext left on the server", () => {
     const notif = await t.run(async (ctx) => await ctx.db.query("notifications").withIndex("by_profile_created", (q) => q.eq("profileId", p.profileId as Id<"profiles">)).collect());
     expect(notif.find((n) => n.documentId === doc._id)?.sealedDocument).toBe(true);
   });
+});
+
+// WP5's flows (Foli AI with provided context, email, MCP, webhooks, digests, reminders, published copies…)
+// under this suite's full scan: tables, stored blobs and scheduled jobs. A case may name tables where its
+// markers are readable on purpose (a switch's copies); hits anywhere else fail.
+describe("no plaintext left by the AI, integration and inbound flows (WP5's cases)", () => {
+  for (const c of noPlaintextCases) {
+    test(c.name, async () => {
+      const t = setup();
+      const { markers, allowedIn } = await c.run(t);
+      const hits = (await scanForMarkers(t, markers)).filter((h) => !allowedIn.includes(h.split("/")[0]!));
+      expect(hits).toEqual([]);
+    });
+  }
 });

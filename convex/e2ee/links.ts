@@ -28,14 +28,29 @@ import { ulid } from "@folevi/editor-schema";
 
 /** Characters per stored chunk (a Convex document holds at most 1 MiB; UTF-8 takes up to 3 bytes a character). */
 const CHUNK_CHARS = 250_000;
-const MAX_TABLES = 50;
+const MAX_COLLECTIONS = 50;
 const MAX_FILES = 200;
 
-export const vPlainTable = v.object({
-  id: v.string(),
-  title: v.string(),
-  columns: v.array(v.string()),
-  rows: v.array(v.array(v.string())),
+/**
+ * A collection as the published page shows it: the same `PublicCollection` shape sharing.openPublicLink
+ * serves for a Standard page (convex/sharing.ts), keyed by the collection id the block names. The device
+ * builds it from the note's sealed `collection` record.
+ */
+export const vPublicCollectionInput = v.object({
+  name: v.string(),
+  viewType: v.union(v.literal("table"), v.literal("board"), v.literal("gallery"), v.literal("calendar")),
+  config: v.any(),
+  properties: v.array(
+    v.object({
+      id: v.string(),
+      name: v.string(),
+      type: v.string(),
+      options: v.any(),
+      formula: v.optional(v.union(v.string(), v.null())),
+      numberFormat: v.optional(v.any()),
+    }),
+  ),
+  rows: v.array(v.object({ id: v.string(), title: v.string(), icon: v.union(v.string(), v.null()), values: v.any() })),
 });
 
 /** The plain copy a device renders from a sealed note. */
@@ -45,8 +60,8 @@ export const vPlainCopyInput = v.object({
   cover: v.optional(vDocumentCover),
   style: v.optional(vDocumentStyle),
   blocks: v.array(vWireBlock),
-  /** Collections, as read-only tables (the block that shows one names its id). */
-  tables: v.optional(v.array(vPlainTable)),
+  /** Collections the blocks show, keyed by collection id (read-only, as on a Standard shared page). */
+  collections: v.optional(v.record(v.string(), vPublicCollectionInput)),
   /** Images re-uploaded as plain public files (files rows of this note, kind image, not sealed). */
   fileIds: v.optional(v.array(v.string())),
 });
@@ -59,7 +74,7 @@ export interface PublishedCopy {
   cover: Doc<"e2eePublishedCopies">["cover"];
   style: Doc<"e2eePublishedCopies">["style"];
   blocks: WireBlock[];
-  tables: Infer<typeof vPlainTable>[];
+  collections: Record<string, Infer<typeof vPublicCollectionInput>>;
   fileIds: string[];
   publishedAt: number;
 }
@@ -83,8 +98,22 @@ export async function publishedCopy(ctx: QueryCtx, link: Doc<"publicLinks">): Pr
     .withIndex("by_copy", (q) => q.eq("copyId", row._id))
     .take(row.chunkCount + 1);
   if (chunks.length !== row.chunkCount) return null;
-  const body = JSON.parse(chunks.map((c) => c.data).join("")) as { blocks: WireBlock[]; tables?: Infer<typeof vPlainTable>[]; fileIds?: string[] };
-  return { title: row.title, ...(row.icon ? { icon: row.icon } : {}), cover: row.cover, style: row.style, blocks: body.blocks, tables: body.tables ?? [], fileIds: body.fileIds ?? [], publishedAt: row.publishedAt };
+  let body: { blocks?: unknown; collections?: unknown; fileIds?: unknown };
+  try {
+    body = JSON.parse(chunks.sort((a, b) => a.index - b.index).map((c) => c.data).join("")) as typeof body;
+  } catch {
+    return null;
+  }
+  return {
+    title: row.title,
+    ...(row.icon ? { icon: row.icon } : {}),
+    cover: row.cover,
+    style: row.style,
+    blocks: Array.isArray(body.blocks) ? (body.blocks as WireBlock[]) : [],
+    collections: body.collections && typeof body.collections === "object" && !Array.isArray(body.collections) ? (body.collections as PublishedCopy["collections"]) : {},
+    fileIds: Array.isArray(body.fileIds) ? (body.fileIds as string[]) : [],
+    publishedAt: row.publishedAt,
+  };
 }
 
 /** Deletes a copy's chunks and its row (and, when asked, its plain files). */
@@ -125,7 +154,7 @@ async function checkCopy(ctx: QueryCtx, doc: Doc<"documents">, copy: PlainCopyIn
     const issues = validateWireBlock(b as WireBlock);
     if (issues.length) fail("invalid_argument", "The published copy has a block that isn't valid.");
   }
-  if ((copy.tables?.length ?? 0) > MAX_TABLES) fail("limit_exceeded", "The published copy has too many tables.");
+  if (Object.keys(copy.collections ?? {}).length > MAX_COLLECTIONS) fail("limit_exceeded", "The published copy has too many collections.");
   if ((copy.fileIds?.length ?? 0) > MAX_FILES) fail("limit_exceeded", "The published copy has too many images.");
   for (const id of copy.fileIds ?? []) {
     const file = await ctx.db
@@ -134,7 +163,8 @@ async function checkCopy(ctx: QueryCtx, doc: Doc<"documents">, copy: PlainCopyIn
       .unique();
     if (!file || file.sealed !== undefined || file.documentId !== doc._id || !sameScopeRows(file, doc)) fail("invalid_argument", "The published copy refers to a file that isn't a plain file of this note.");
   }
-  const body = JSON.stringify({ v: 1, blocks: copy.blocks, tables: copy.tables ?? [], fileIds: copy.fileIds ?? [] });
+  // The format sharing.openPublicLink reads (docs/E2EE_DESIGN.md §5.6 WP4 note): { blocks, collections?, fileIds }.
+  const body = JSON.stringify({ blocks: copy.blocks, ...(copy.collections ? { collections: copy.collections } : {}), fileIds: copy.fileIds ?? [] });
   if (bytesOf(body) + bytesOf(copy.title) > E2EE_LIMITS.publishedCopyBytes) fail("limit_exceeded", "This note is too large to publish (5 MB at most).");
   return body;
 }

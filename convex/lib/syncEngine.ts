@@ -85,7 +85,7 @@ export class SyncEngine {
   private seq: SeqAllocator;
   private touched = new Map<string, Touched>();
   /** People newly @-mentioned in block text during this batch (notified after the batch applies). */
-  private newMentions: { doc: Doc<"documents">; blockId: string; userIds: string[]; excerpt: string; title?: string }[] = [];
+  private newMentions: { doc: Doc<"documents">; blockId: string; userIds: string[]; excerpt: string; title?: string; preview?: { title: string; excerpt?: string } }[] = [];
   /** End-to-end encryption (docs/E2EE_DESIGN.md §5.4): each scope's space row and each note's key versions, read once per batch. */
   private spaces: SpaceRows;
   private noteKeys: NoteKeyVersions;
@@ -724,8 +724,9 @@ export class SyncEngine {
     const had = new Set(before);
     const added = after.filter((id) => !had.has(id) && id !== this.profile._id);
     if (!added.length) return;
-    const title = preview ? `${this.profile.displayName} mentioned you in ${preview.title.slice(0, 140) || "a note"}` : `${this.profile.displayName} mentioned you in a note`;
-    this.newMentions.push({ doc, blockId, userIds: added, excerpt: preview ? preview.line.slice(0, 140) : "", title });
+    // notify() decides what is shown: the device's preview only when the space has previews on and the
+    // note isn't locked, else the generic text.
+    this.newMentions.push({ doc, blockId, userIds: added, excerpt: "", title: `${this.profile.displayName} mentioned you in a note`, ...(preview ? { preview: { title: preview.title.slice(0, 140), excerpt: preview.line.slice(0, 140) } } : {}) });
   }
 
   /**
@@ -1243,6 +1244,7 @@ export class SyncEngine {
           blockId: m.blockId,
           title: m.title ?? `${this.profile.displayName} mentioned you in ${m.doc.title || "Untitled"}`,
           excerpt: m.excerpt,
+          ...(m.preview ? { preview: m.preview } : {}),
           email: { key: "mention_notification" },
         });
       }

@@ -325,11 +325,13 @@ export const quickAdd = mutation({
  */
 export async function ensureInbox(ctx: MutationCtx, profile: Doc<"profiles">, scope: Scope, scopeArg: ScopeArg, deviceId = "server"): Promise<string> {
   let docPublicId = inboxDocumentId(profile._id, scopeIdKey(scopeArg));
-  // An encrypted space's Inbox is sealed: it's the page the space row names, or the one at the deterministic
-  // id, never found by its title. Only a device can make a sealed one (docs/E2EE_DESIGN.md §5.7).
+  // An encrypted space's Inbox is sealed: in a Personal it's the page the space row names (set when the space
+  // was encrypted, or by the device that made it, e2ee.content.setInbox), else the one at the deterministic
+  // id; in a workspace (one Inbox per person) always the deterministic id. Never found by its title. Only a
+  // device can make a sealed one (docs/E2EE_DESIGN.md §5.7).
   const space = await spaceE2ee(ctx, scope);
   if (space && space.level !== "standard") {
-    const named = space.inboxDocumentId ? await ctx.db.get(space.inboxDocumentId) : null;
+    const named = scope.kind === "personal" && space.inboxDocumentId ? await ctx.db.get(space.inboxDocumentId) : null;
     const sealedInbox = named && inScope(named, scope) ? named : await getDocumentByPublicId(ctx, docPublicId);
     if (!sealedInbox || !inScope(sealedInbox, scope) || sealedInbox.deletedAt !== undefined) failE2ee("e2ee_device_only");
     if (sealedInbox.inTrash) await setTrashState(ctx, sealedInbox, profile._id, false, undefined);
@@ -385,7 +387,7 @@ export const inbox = mutation({
  * The Inbox page someone made in their Personal back when it was a workspace (its deterministic id was
  * keyed by that workspace, which no longer exists): their own page titled Inbox with an "inbox-" id.
  */
-async function legacyPersonalInbox(ctx: MutationCtx, owner: Doc<"profiles">["_id"]): Promise<Doc<"documents"> | null> {
+export async function legacyPersonalInbox(ctx: MutationCtx, owner: Doc<"profiles">["_id"]): Promise<Doc<"documents"> | null> {
   const hits = await ctx.db
     .query("documents")
     .withSearchIndex("search_title", (q) => q.search("title", "Inbox").eq("ownerProfileId", owner))

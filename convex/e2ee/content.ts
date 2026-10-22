@@ -7,7 +7,7 @@ import { v } from "convex/values";
 import { mutation, type MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { isValidId, rankBetween } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, documentAccessInfo, requireDocument, requireProfile, requireRowScope, resolveScope } from "../lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, documentAccessInfo, getDocumentByPublicId, requireDocument, requireProfile, requireRowScope, resolveScope } from "../lib/auth";
 import { fail } from "../lib/errors";
 import { consume } from "../lib/rateLimit";
 import { nextSeq } from "../lib/seq";
@@ -356,7 +356,8 @@ async function notifySealed(
 ) {
   const { actor, doc, thread } = input;
   const preview = input.preview && (await previewsAllowed(ctx, doc)) ? { title: input.preview.title.slice(0, 140), excerpt: input.preview.excerpt.slice(0, 140) } : null;
-  const base = { actor, doc, threadId: thread._id, blockId: thread.blockId, commentId: input.commentId, excerpt: preview?.excerpt };
+  // notify() writes the generic text for a sealed note unless `preview` is given (and allowed there too).
+  const base = { actor, doc, threadId: thread._id, blockId: thread.blockId, commentId: input.commentId, excerpt: preview?.excerpt, ...(preview ? { preview } : {}) };
   const where = preview ? preview.title || "a note" : "a note";
   const done = new Set<string>([actor._id]);
   for (const pid of input.mentions) {
@@ -517,6 +518,7 @@ export const editComment = mutation({
         commentId: comment.publicId,
         title: `${profile.displayName} mentioned you in ${preview?.title.slice(0, 140) || "a note"}`,
         excerpt: preview?.excerpt.slice(0, 140),
+        ...(preview ? { preview: { title: preview.title.slice(0, 140), excerpt: preview.excerpt.slice(0, 140) } } : {}),
         email: { key: "mention_notification" },
       });
     }
@@ -729,3 +731,30 @@ async function dropMirrors(ctx: MutationCtx, docs: Doc<"documents">[]) {
     }
   }
 }
+
+// ---------------------------------------------------------------- the Inbox
+
+/**
+ * Names the sealed Inbox of an encrypted Personal (docs/E2EE_DESIGN.md §5.7 tasks.ensureInbox), for a device
+ * that had to make one itself because tasks.inbox / quickAdd answered `e2ee_device_only`. The first one
+ * registered wins: if another live Inbox is already named, its id comes back and the device uses that one
+ * (and may delete its own). A workspace has one Inbox per person at its deterministic id
+ * (`inboxDocumentId(profileId, scopeIdKey(scope))` from @folevi/editor-schema), so it needs no registration.
+ */
+export const setInbox = mutation({
+  args: { scope: vScopeArg, documentId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
+    if (scope.kind !== "personal") fail("invalid_argument", "A workspace's Inboxes are each person's own, at a fixed id: nothing to register.");
+    const space = await requireSpaceRow(ctx, scope);
+    const doc = await getDocumentByPublicId(ctx, args.documentId);
+    if (!doc || !inScope(doc, scope) || doc.deletedAt !== undefined || doc.kind !== "document" || doc.parentDocumentId !== undefined) fail("not_found", "Document not found.");
+    requireSealedDoc(doc);
+    const current = space.inboxDocumentId ? await ctx.db.get(space.inboxDocumentId) : null;
+    if (current && current._id !== doc._id && current.deletedAt === undefined && inScope(current, scope)) return { documentId: current.publicId };
+    if (current?._id !== doc._id) await ctx.db.patch(space._id, { inboxDocumentId: doc._id, changedBy: profile._id, changedAt: Date.now(), seq: await nextSeq(ctx, scope) });
+    return { documentId: doc.publicId };
+  },
+});

@@ -18,6 +18,8 @@ import { bumpSeq, deleteSeq } from "./lib/seq";
 import { dropNoteGraph } from "./lib/ai/graphStore";
 import { deleteFileBlob, releaseNoteFile } from "./lib/fileCopies";
 import { purgeOldReceipts } from "./lib/emailNotes";
+import { removeMirrors } from "./e2ee/mirrors";
+import { dropPublishedCopies } from "./e2ee/links";
 
 const BUDGET = 400;
 /** End-to-end encryption's scoped tables (docs/E2EE_DESIGN.md §5.1), purged with their workspace. */
@@ -70,11 +72,10 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     () => ctx.db.query("aiIndexState").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     // Suggestions people dismissed on it.
     () => ctx.db.query("aiSuggestionDismissals").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
-    // End-to-end encryption (docs/E2EE_DESIGN.md §5.1): its note keys, sealed records, readable copies,
-    // reminder times and the grants waiting for it. Published copies are below (they have chunks).
+    // End-to-end encryption (docs/E2EE_DESIGN.md §5.1): its note keys, sealed records, reminder times and
+    // the grants waiting for it. Readable copies and published copies are below (they have helpers).
     () => ctx.db.query("e2eeNoteKeys").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("e2eeRecords").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
-    () => ctx.db.query("e2eeMirrors").withIndex("by_document_purpose", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("e2eeReminders").withIndex("by_document_block", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
     () => ctx.db.query("e2eePendingGrants").withIndex("by_document", (q) => q.eq("documentId", docId)).take(Math.max(1, budget.left)),
   ] as never;
@@ -114,13 +115,18 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     budget.spend();
   }
   if (threads.length) return false;
-  // A readable copy published on purpose (docs/E2EE_DESIGN.md §9.3), with its chunks.
+  // Readable copies a feature switch kept (and the Foli AI rows built from them), and copies published on
+  // purpose (docs/E2EE_DESIGN.md §7, §9.3) with their chunks and plain images: WP5's helpers.
+  await removeMirrors(ctx, docId);
   const copies = await ctx.db
     .query("e2eePublishedCopies")
     .withIndex("by_document", (q) => q.eq("documentId", docId))
-    .take(5);
-  for (const c of copies) if (!(await deletePublishedCopy(ctx, c, budget))) return false;
-  if (copies.length) return false;
+    .take(1);
+  if (copies.length) {
+    await dropPublishedCopies(ctx, docId);
+    budget.spend(5);
+    return false;
+  }
   const reads = await ctx.db
     .query("readStates")
     .withIndex("by_document", (q) => q.eq("documentId", docId))
@@ -481,6 +487,10 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("e2eeSpaceGrants").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("e2eePendingGrants").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("e2eeReminders").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    // Note keys sealed to them as a guest, and their own sealed records (chats, memories, study), in other
+    // people's spaces.
+    () => ctx.db.query("e2eeNoteKeys").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("e2eeRecords").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     // Their webhooks: where they listen, what's waiting, the log, then the endpoints.
     () => ctx.db.query("webhookPlaces").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("webhookDeliveries").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),

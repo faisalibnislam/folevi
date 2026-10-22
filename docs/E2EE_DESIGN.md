@@ -955,6 +955,39 @@ functions.
   `lib/e2ee/keyStore.ts` (a space-wide job, `total` from the scope's note count); WP3's `migrate` claims it.
 - `grants.ts` exports `addPagePending(ctx, doc, profileId)` for the sharing hooks (§8.4).
 
+**Settled during server integration (after WP2 to WP5).**
+
+- Indexes: `folders` and `tags` have `by_workspace_seq` / `by_owner_seq`, and `e2ee.pull` pages them like the
+  other tables (they share the page boundary). `notifications.by_document` lets `purgeDerivedPlaintext` make a
+  note's notifications generic when it is sealed. `e2eeNoteKeys.by_profile` and `e2eeRecords.by_profile` let
+  account deletion remove a person's guest note keys and own records in other people's spaces;
+  `purgeAccount` also deletes `e2eeAccounts`, `e2eeAccountWraps`, `e2eeDevices` and `e2eeApprovals`.
+- Notification previews: the sync engine (sealed mentions) and `e2ee.content` comments pass the device's
+  text to `notify` as `preview`; `notify` alone decides (previews on in the space and the note not locked),
+  else the generic text of §7.7.
+- Published copies: one format, written by `e2ee.links.publishCopy` and read by its `publishedCopy(ctx,
+  link)`, which `sharing.openPublicLink` serves: chunks join to JSON `{ blocks, collections?, fileIds }`.
+  `collections` is keyed by collection id in the `PublicCollection` shape of a Standard shared page (the
+  device builds it from the note's `collection` record); `fileIds` lists the plain images to delete when
+  unpublished. The input field is `copy.collections` (not `tables`). `purgeDocument` uses WP5's
+  `removeMirrors` and `dropPublishedCopies`.
+- The sealed Inbox (`tasks.ensureInbox`). Personal: `spaces.enable` (from Standard) records the existing
+  Inbox in `e2eeSpaces.inboxDocumentId` while it can still be found by its id or title. If there is none, Quick
+  Add and `tasks.inbox` answer `e2ee_device_only`; the device (WP8) then creates a sealed note titled "Inbox"
+  through the engine (any id; the deterministic `inboxDocumentId(profileId, scopeIdKey({ kind: "personal" }))`
+  is a good choice) and calls `e2ee.content.setInbox({ scope, documentId })`. The first registered Inbox wins:
+  `setInbox` returns the id in force, and a device whose own Inbox lost uses that one (and may trash its own).
+  Workspace: one Inbox per person at `inboxDocumentId(profileId, scopeIdKey(scope))`; the device creates it
+  sealed at that id when the server answers `e2ee_device_only`, with no registration (`setInbox` refuses
+  workspaces).
+- `fileText.readImage` takes `provided` (§7.2): one PNG, JPEG or WebP image the device decrypted, in
+  `provided.files`. The server checks the note is sealed and writable and the file is a sealed image of it,
+  gates Foli AI as every AI request (`ai.begin`: off, locked, consent), and returns `{ status: "read", chars,
+  text }` without storing anything; the device seals the text as the note's `fileText` record. Without
+  `provided`, a sealed note's image still answers `e2ee_unavailable` (`feature: "readImage"`).
+- Development deployments turn flags on with `npx convex run testSupport:setFeatureFlag
+  '{"key":"e2ee","enabled":true}'` (refused in production); the `e2ee` flag is on in the dev deployment.
+
 ### 5.4 The sync engine branch (`convex/lib/syncEngine.ts`, WP3)
 
 In `SyncEngine`, a document is sealed when `doc.sealedAt !== undefined` or the space's `level !== "standard"`

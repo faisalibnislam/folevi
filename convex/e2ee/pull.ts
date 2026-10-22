@@ -42,8 +42,8 @@ async function seqStream<T extends SeqRow>(
   return { rows: [...rows.filter((r) => r.seq < boundary), ...rest], upTo: boundary };
 }
 
-function bySeq<T extends "documents" | "blocks" | "e2eeRecords" | "e2eeNoteKeys">(ctx: QueryCtx, table: T, scope: Scope, cursor: number, cap: number): Promise<Stream<Doc<T>>> {
-  // The four tables share the index names by_owner_seq / by_workspace_seq.
+function bySeq<T extends "documents" | "blocks" | "e2eeRecords" | "e2eeNoteKeys" | "folders" | "tags">(ctx: QueryCtx, table: T, scope: Scope, cursor: number, cap: number): Promise<Stream<Doc<T>>> {
+  // The tables share the index names by_owner_seq / by_workspace_seq.
   const base = () => ctx.db.query(table) as unknown as {
     withIndex(name: string, f: (q: { eq(f: string, v: unknown): { gt(f: string, v: number): unknown; eq(f: string, v: unknown): unknown } }) => unknown): { take(n: number): Promise<Doc<T>[]>; collect(): Promise<Doc<T>[]> };
   };
@@ -56,13 +56,6 @@ function bySeq<T extends "documents" | "blocks" | "e2eeRecords" | "e2eeNoteKeys"
       ? base().withIndex("by_owner_seq", (q) => q.eq("ownerProfileId", scope.profileId).eq("seq", seq))
       : base().withIndex("by_workspace_seq", (q) => q.eq("workspaceId", scope.workspaceId).eq("seq", seq));
   return seqStream(page as never, exactly as never, cursor, cap) as unknown as Promise<Stream<Doc<T>>>;
-}
-
-/** Folders and tags have a seq but no seq index: the scope's few hundred rows are read and filtered. */
-async function smallTable<T extends "folders" | "tags">(ctx: QueryCtx, table: T, scope: Scope, cursor: number): Promise<Doc<T>[]> {
-  const base = ctx.db.query(table) as unknown as { withIndex(name: string, f: (q: { eq(f: string, v: unknown): unknown }) => unknown): { take(n: number): Promise<Doc<T>[]> } };
-  const rows = await (scope.kind === "personal" ? base.withIndex("by_owner", (q) => q.eq("ownerProfileId", scope.profileId)) : base.withIndex("by_workspace", (q) => q.eq("workspaceId", scope.workspaceId))).take(5000);
-  return rows.filter((r) => r.seq > cursor);
 }
 
 /** A file of a note as the replica keeps it: sealed metadata, or plain fields while not converted yet. */
@@ -146,7 +139,9 @@ export const pull = query({
     const blocks = await bySeq(ctx, "blocks", scope, cursor, cap);
     const records = await bySeq(ctx, "e2eeRecords", scope, cursor, cap);
     const noteKeys = await bySeq(ctx, "e2eeNoteKeys", scope, cursor, cap);
-    let upTo = Math.min(docs.upTo, blocks.upTo, records.upTo, noteKeys.upTo);
+    const folders = await bySeq(ctx, "folders", scope, cursor, cap);
+    const tags = await bySeq(ctx, "tags", scope, cursor, cap);
+    let upTo = Math.min(docs.upTo, blocks.upTo, records.upTo, noteKeys.upTo, folders.upTo, tags.upTo);
     const hasMore = upTo !== Infinity;
     if (!hasMore) upTo = head;
 
@@ -199,10 +194,9 @@ export const pull = query({
       if (!d) continue;
       outKeys.push({ documentId: d.publicId, version: k.version, wrappedBy: k.wrappedBy, spaceVersion: k.spaceVersion ?? null, wrapped: k.wrapped, statement: k.statement ?? null, seq: k.seq });
     }
-    // Folders and tags: small tables, read whole and cut at the same boundary.
     const folderIds = new IdResolver(ctx);
     const outFolders = [];
-    for (const f of await smallTable(ctx, "folders", scope, cursor)) {
+    for (const f of folders.rows) {
       if (f.seq > upTo || (sealedOnly && !f.locked && !f.sealedName)) continue;
       outFolders.push({
         id: f.publicId,
@@ -218,7 +212,7 @@ export const pull = query({
       });
     }
     const outTags = [];
-    for (const t of await smallTable(ctx, "tags", scope, cursor)) {
+    for (const t of tags.rows) {
       if (t.seq > upTo) continue;
       outTags.push({ id: t.publicId, color: t.color, createdAt: t.createdAt, seq: t.seq, ...(t.sealedName ? { sealedName: t.sealedName, nameMac: t.nameMac ?? null } : { name: t.name }) });
     }

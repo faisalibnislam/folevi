@@ -3,7 +3,9 @@
 // and a workspace's owner and admins change any of it (§8.5); members read it. WP2.
 import { v } from "convex/values";
 import { makeFunctionReference } from "convex/server";
+import { inboxDocumentId, scopeIdKey } from "@folevi/editor-schema";
 import { mutation, query } from "../_generated/server";
+import { legacyPersonalInbox } from "../tasks";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { assertWritable, requireProfile, resolveScope, type ScopeAccess } from "../lib/auth";
@@ -102,6 +104,16 @@ async function schedulePurges(ctx: MutationCtx, scope: Scope, before: Switches, 
 /** Switches as stored for a level: Fully encrypted turns everything off; Foli AI's agent-free modes stay as picked. */
 function switchesFor(level: "selected" | "full", picked: Switches): Switches {
   return level === "full" ? FULL_SWITCHES : { ...picked };
+}
+
+/** A Personal's Inbox page, if it has one: the page at its deterministic id, else an old one found by its title. */
+async function personalInbox(ctx: MutationCtx, profileId: Id<"profiles">): Promise<Id<"documents"> | null> {
+  const atId = await ctx.db
+    .query("documents")
+    .withIndex("by_public_id", (q) => q.eq("publicId", inboxDocumentId(profileId, scopeIdKey({ kind: "personal" }))))
+    .unique();
+  const doc = atId && atId.ownerProfileId === profileId ? atId : await legacyPersonalInbox(ctx, profileId);
+  return doc && doc.deletedAt === undefined ? doc._id : null;
 }
 
 /** A space's encryption, for Settings > Privacy and the router. Standard spaces with no row read as Standard. */
@@ -231,7 +243,9 @@ export const enable = mutation({
     const switches = switchesFor(args.level, args.switches);
     if (space.level === "standard") {
       const migrationId = await startSpaceMigration(ctx, scope, profile._id, "seal", args.level);
-      await touchSpace(ctx, space, scope, profile._id, { level: args.level, state: "enabling", switches, migrationId });
+      // A Personal's Inbox can still be found by its id or (an old one) its title now; once sealed it can't.
+      const inbox = scope.kind === "personal" && !space.inboxDocumentId ? await personalInbox(ctx, scope.profileId) : null;
+      await touchSpace(ctx, space, scope, profile._id, { level: args.level, state: "enabling", switches, migrationId, ...(inbox ? { inboxDocumentId: inbox } : {}) });
       return { migrationId: migrationId as string, purged: [] as MirrorPurpose[] };
     }
     const purged = await schedulePurges(ctx, scope, before, switches);

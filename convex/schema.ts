@@ -261,7 +261,10 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_owner", ["ownerProfileId"])
     .index("by_public_id", ["publicId"])
-    .index("by_parent", ["parentFolderId"]),
+    .index("by_parent", ["parentFolderId"])
+    // A replica's changes since its cursor (e2ee.pull).
+    .index("by_workspace_seq", ["workspaceId", "seq"])
+    .index("by_owner_seq", ["ownerProfileId", "seq"]),
 
   tags: defineTable({
     publicId: v.string(),
@@ -284,7 +287,10 @@ export default defineSchema({
     .index("by_owner_name", ["ownerProfileId", "normalizedName"])
     .index("by_public_id", ["publicId"])
     .index("by_workspace_name_mac", ["workspaceId", "nameMac"])
-    .index("by_owner_name_mac", ["ownerProfileId", "nameMac"]),
+    .index("by_owner_name_mac", ["ownerProfileId", "nameMac"])
+    // A replica's changes since its cursor (e2ee.pull).
+    .index("by_workspace_seq", ["workspaceId", "seq"])
+    .index("by_owner_seq", ["ownerProfileId", "seq"]),
 
   documentTags: defineTable({
     ...scoped,
@@ -1945,7 +1951,9 @@ export default defineSchema({
     .index("by_profile_unread", ["profileId", "readAt"])
     .index("by_thread", ["threadId"])
     .index("by_created", ["createdAt"])
-    .index("by_workspace", ["workspaceId"]),
+    .index("by_workspace", ["workspaceId"])
+    // A note's notifications (made generic when it's sealed, lib/e2ee/purge.ts; deleted with it).
+    .index("by_document", ["documentId"]),
 
   /** Per-note notification choice: follow (comments on it notify you) or mute (no comment/reply notifications). */
   noteSubscriptions: defineTable({
@@ -2582,7 +2590,9 @@ export default defineSchema({
     .index("by_document_grantee", ["documentId", "profileId"])
     .index("by_link", ["linkId"])
     .index("by_workspace_seq", ["workspaceId", "seq"])
-    .index("by_owner_seq", ["ownerProfileId", "seq"]),
+    .index("by_owner_seq", ["ownerProfileId", "seq"])
+    // A guest's note keys in other people's spaces (deleted with their account).
+    .index("by_profile", ["profileId"]),
 
   /**
    * Sealed rows the server never interprets: collections on a host note, found text, study schedules, Foli AI
@@ -2608,7 +2618,9 @@ export default defineSchema({
     .index("by_scope_kind_record", ["workspaceId", "ownerProfileId", "kind", "recordId"])
     .index("by_document", ["documentId"])
     .index("by_workspace_seq", ["workspaceId", "seq"])
-    .index("by_owner_seq", ["ownerProfileId", "seq"]),
+    .index("by_owner_seq", ["ownerProfileId", "seq"])
+    // One person's own records (chats, memories, study, prefs) in any space (deleted with their account).
+    .index("by_profile", ["profileId"]),
 
   /** Readable copies a feature switch asked for (docs/E2EE_DESIGN.md §7). Deleted when the switch goes off. */
   e2eeMirrors: defineTable({

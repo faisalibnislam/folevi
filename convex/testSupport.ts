@@ -13,10 +13,30 @@ import { insertScoped, personalScope } from "./lib/scope";
 import { FOLDER_COLORS } from "./lib/folderColors";
 import { deductCredits, personalAccount, seatAccount } from "./lib/credits";
 import { parseIcs } from "./lib/icsParse";
+import { knownFlag } from "./lib/flags";
 
 function assertNotProduction() {
   if (process.env.FOLEVI_ENV === "production") throw new Error("testSupport functions are disabled in production.");
 }
+
+/**
+ * Turns a platform feature flag on or off (as an admin would in the console), for a development or e2e
+ * deployment: `npx convex run testSupport:setFeatureFlag '{"key":"e2ee","enabled":true}'`. Known flags only.
+ */
+export const setFeatureFlag = internalMutation({
+  args: { key: v.string(), enabled: v.boolean() },
+  handler: async (ctx, args) => {
+    assertNotProduction();
+    if (!knownFlag(args.key)) throw new Error(`Unknown flag: ${args.key}`);
+    const row = await ctx.db
+      .query("featureFlags")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .unique();
+    if (row) await ctx.db.patch(row._id, { enabled: args.enabled, updatedAt: Date.now() });
+    else await ctx.db.insert("featureFlags", { key: args.key, enabled: args.enabled, description: knownFlag(args.key)!.description, updatedAt: Date.now() });
+    return { key: args.key, enabled: args.enabled };
+  },
+});
 
 /** Ends someone's Pro AI trial now (e2e plan and device-limit tests). */
 export const endTrial = internalMutation({

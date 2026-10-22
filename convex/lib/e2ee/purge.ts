@@ -114,6 +114,14 @@ export async function purgeDerivedPlaintext(ctx: MutationCtx, doc: Doc<"document
     await ctx.db.patch(p._id, { status: "expired", blocks: [], summary: "", decidedAt: Date.now() });
   }
 
+  // Its notifications (everyone's bell): the generic text of their kind, no body (§5.5, §7.7).
+  const actors = new Map<Id<"profiles">, string | null>();
+  for (const n of await ctx.db.query("notifications").withIndex("by_document", (q) => q.eq("documentId", id)).take(PER_TABLE)) {
+    if (n.sealedDocument) continue;
+    if (n.actorId && !actors.has(n.actorId)) actors.set(n.actorId, (await ctx.db.get(n.actorId))?.displayName ?? null);
+    await ctx.db.patch(n._id, { title: genericNotificationTitle(n.kind, n.actorId ? (actors.get(n.actorId) ?? null) : null), body: undefined, sealedDocument: true });
+  }
+
   // Webhook events still waiting to fan out (the outbox is small; webhooks.fanout empties it).
   for (const e of await ctx.db.query("webhookEvents").take(PER_TABLE)) {
     if (e.documentId === id) {

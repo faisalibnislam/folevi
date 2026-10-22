@@ -34,6 +34,7 @@ import { failE2ee, isLocked, isSealed, isSealedBlock } from "./lib/e2ee/state";
 import { E2EE_LIMITS, vPublicLinkE2ee } from "./lib/e2ee/validators";
 import { addPendingGrant, dropNoteGrant, hasAccountKeys, hasNoteGrant, sealedFieldOut, sealedTitleOut } from "./lib/e2ee/coreGuards";
 import { sealedFieldsOf, toSealedWireBlock } from "./lib/e2ee/sealedRows";
+import { publishedCopy } from "./e2ee/links";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 
@@ -211,27 +212,16 @@ async function sealedShare(ctx: MutationCtx, link: Doc<"publicLinks">, doc: Doc<
 
 /**
  * The readable copy a person published on purpose for a sealed note (docs/E2EE_DESIGN.md §9.3), shaped like
- * a Standard page's share. Its chunks join into canonical JSON `{ blocks, collections? }` (e2ee.links.publishCopy
- * writes it); its images are plain files of the note. Null when nothing has been published yet.
+ * a Standard page's share. e2ee.links (WP5) stores and reads it (`publishedCopy`): its chunks join into JSON
+ * `{ blocks, collections?, fileIds }`; its images are plain files of the note. Null when nothing has been
+ * published yet.
  */
-async function publishedCopy(ctx: MutationCtx, link: Doc<"publicLinks">, doc: Doc<"documents">) {
-  const copy = await ctx.db
-    .query("e2eePublishedCopies")
-    .withIndex("by_link", (q) => q.eq("linkId", link._id))
-    .unique();
-  if (!copy || copy.documentId !== doc._id) return null;
-  const chunks = await ctx.db
-    .query("e2eePublishedChunks")
-    .withIndex("by_copy", (q) => q.eq("copyId", copy._id))
-    .collect();
-  let body: { blocks?: unknown; collections?: unknown };
-  try {
-    body = JSON.parse(chunks.map((c) => c.data).join("")) as typeof body;
-  } catch {
-    return null;
-  }
-  const blocks = Array.isArray(body.blocks) ? (body.blocks as WireBlock[]) : [];
-  const collections = body.collections && typeof body.collections === "object" ? (body.collections as Record<string, PublicCollection>) : {};
+async function servedCopy(ctx: MutationCtx, link: Doc<"publicLinks">, doc: Doc<"documents">) {
+  const copy = await publishedCopy(ctx, link);
+  if (!copy) return null;
+  const blocks = copy.blocks;
+  // The device built each collection in the shape a Standard shared page has.
+  const collections = copy.collections as unknown as Record<string, PublicCollection>;
   const exp = Date.now() + 60 * 60_000;
   const plainFile = async (fileId: string) => {
     const file = await ctx.db
@@ -876,7 +866,7 @@ export const openPublicLink = mutation({
     // is served as it was published. A plain link made before the note was encrypted shows nothing.
     if (isSealed(doc)) {
       if (found.plainCopy) {
-        const copy = await publishedCopy(ctx, found, doc);
+        const copy = await servedCopy(ctx, found, doc);
         if (!copy) return { status: "not_found" as const };
         await ctx.db.patch(found._id, { viewCount: found.viewCount + 1 });
         return { ...copy, allowIndexing: found.allowIndexing, theme: found.theme ?? ("note" as const) };

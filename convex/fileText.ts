@@ -22,8 +22,9 @@ import { insertScoped, scopeOfRow, type Scope } from "./lib/scope";
 import { aiPrefsOf } from "./lib/ai/prefs";
 import { capabilities } from "./lib/ai/provider";
 import { attachmentTokens } from "./lib/ai/attachments";
-import { gemini, metered } from "./ai";
+import { gemini, metered, providedArgs } from "./ai";
 import { failE2ee } from "./lib/e2ee/state";
+import { checkProvidedSizes, vProvidedContext } from "./lib/e2ee/ai";
 
 const vSource = v.union(v.literal("pdf"), v.literal("image"), v.literal("handwriting"));
 const BLOCK_ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -185,6 +186,25 @@ export const imageForFoli = internalQuery({
   },
 });
 
+/**
+ * An encrypted note's image for Foli AI (docs/E2EE_DESIGN.md §7.2): the server checks the person, the note
+ * (sealed, writable) and that the file is a sealed image of it; the bytes come from the device.
+ */
+export const sealedImageForFoli = internalQuery({
+  args: { documentId: v.string(), fileId: v.string(), auto: v.boolean() },
+  handler: async (ctx, args): Promise<null> => {
+    const profile = await requireProfile(ctx);
+    if (profile.aiEnabled === false) fail("forbidden", "Foli AI is turned off in your settings.");
+    if (args.auto && !aiPrefsOf(profile).readImages) fail("forbidden", READ_IMAGES_OFF);
+    const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+    if (doc.inTrash) fail("not_found", "Document not found.");
+    if (doc.sealedAt === undefined) fail("invalid_argument", "This note isn't encrypted: Foli AI reads its images on the server.");
+    const file = await fileByPublicId(ctx, args.fileId);
+    if (!file || file.status !== "ready" || file.documentId !== doc._id || file.kind !== "image" || file.sealed === undefined) fail("not_found", "File not found.");
+    return null;
+  },
+});
+
 export const saveFromFoli = internalMutation({
   args: { documentId: v.string(), fileId: v.string(), blockId: v.string(), text: v.string() },
   handler: async (ctx, args) => {
@@ -205,10 +225,41 @@ export const saveFromFoli = internalMutation({
  * like any Foli AI request (AI off, Core, the hourly limit and running out are refused before anything is sent).
  */
 export const readImage = action({
-  args: { documentId: v.string(), fileId: v.string(), blockId: v.string(), auto: v.optional(v.boolean()) },
-  handler: async (ctx, args): Promise<{ status: "read" | "known"; chars: number }> => {
+  args: {
+    documentId: v.string(),
+    fileId: v.string(),
+    blockId: v.string(),
+    auto: v.optional(v.boolean()),
+    /**
+     * An encrypted note (docs/E2EE_DESIGN.md §7.2): the image as the device decrypted it (one PNG, JPEG or
+     * WebP file in `provided.files`), with Foli AI allowed in its space (asked or automatic). The text found is
+     * returned, not stored: the device seals it as the note's `fileText` record.
+     */
+    provided: v.optional(vProvidedContext),
+  },
+  handler: async (ctx, args): Promise<{ status: "read" | "known"; chars: number; text?: string }> => {
     await requireIdentity(ctx);
     if (!BLOCK_ID.test(args.blockId)) fail("invalid_argument", "Unknown block.");
+    if (args.provided) {
+      checkProvidedSizes(args.provided);
+      const files = args.provided.files ?? [];
+      if (files.length !== 1) fail("invalid_argument", "Send the one image to read.");
+      const [file] = files as [(typeof files)[number]];
+      if (!FOLI_IMAGE_TYPES.has(file.mime)) fail("unsupported_file", "Foli AI reads PNG, JPEG and WebP images.");
+      if (file.bytes.byteLength > MAX_FOLI_IMAGE_BYTES) fail("unsupported_file", "That image is too large for Foli AI to read.");
+      await ctx.runQuery(internal.fileText.sealedImageForFoli, { documentId: args.documentId, fileId: args.fileId, auto: Boolean(args.auto) });
+      if (!capabilities(true).vision) fail("unsupported_file", "Foli AI can't read images right now.");
+      const prompt = "Copy the text in this image.";
+      const plan = [{ fast: true, inputChars: OCR_SYSTEM.length + prompt.length + attachmentTokens("image", file.bytes.byteLength) * 4, maxOutputTokens: 4096 }];
+      // The gate (lib/e2ee/ai.ts): Foli AI not off in the space, the note not locked, consent as the switch says.
+      const { holdId } = await ctx.runMutation(internal.ai.begin, { feature: "attachments", scope: args.provided.scope, documentId: args.documentId, noteOnly: true, plan, ...providedArgs(args.provided) });
+      const data = Buffer.from(file.bytes).toString("base64");
+      const text = await metered(ctx, holdId, async (meter) =>
+        await gemini({ system: OCR_SYSTEM, prompt, attachments: [{ inlineData: { mimeType: file.mime, data } }], noMemory: true, fast: true, temperature: 0, maxOutputTokens: 4096 }, meter),
+      );
+      const clean = cleanFileText(text);
+      return { status: "read", chars: clean.length, text: clean };
+    }
     const image = await ctx.runQuery(internal.fileText.imageForFoli, { documentId: args.documentId, fileId: args.fileId, auto: Boolean(args.auto) });
     if (image.known) return { status: "known", chars: 0 };
     if (!capabilities(true).vision) fail("unsupported_file", "Foli AI can't read images right now.");

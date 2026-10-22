@@ -124,8 +124,13 @@ enum ShellPlaces {
         return (place == library && s.library) || s.accounts.contains { $0.id == place }
     }
 
-    /// The open place's user id (nil: the library, or no account yet).
-    static var currentUserId: String? { userIdOf(state.current) }
+    /// The place a call acts for when the host binds it (the Mac app's views are each bound to a place, and a
+    /// place's background runner isn't the open one: docs/MAC_WEBKIT_PLAN.md §3). Set around a call by the Mac's
+    /// router; iOS never sets it (its one web view is the open place's).
+    @TaskLocal static var acting: String?
+
+    /// The open place's user id (nil: the library, or no account yet); the acting place's when one is set.
+    static var currentUserId: String? { userIdOf(acting ?? state.current) }
 
     static func setCurrent(_ place: String?, pending: Bool = false) {
         var s = state

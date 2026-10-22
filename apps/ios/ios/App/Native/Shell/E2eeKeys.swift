@@ -63,7 +63,7 @@ final class E2eeKeys {
         Keychain.delete(service, "device.\(userId)")
     }
 
-    /// A ULID (time, then 80 random bits): the device id is `ios-<ulid>`, like the Mac's `mac-<ulid>`.
+    /// A ULID (time, then 80 random bits): the device id is `ios-<ulid>` on iOS, `mac-<ulid>` on the Mac (Platform.e2ee).
     static func ulid(_ now: Date = Date()) -> String { LibraryService.newLibraryId(now) }
 
     private func load() -> (x: Curve25519.KeyAgreement.PrivateKey, ed: Curve25519.Signing.PrivateKey, id: String)? {
@@ -77,8 +77,8 @@ final class E2eeKeys {
         if let k = load() { return k }
         let x = Curve25519.KeyAgreement.PrivateKey()
         let ed = Curve25519.Signing.PrivateKey()
-        let s = Stored(version: 1, deviceId: "ios-\(Self.ulid())", x: x.rawRepresentation.base64EncodedString(), ed: ed.rawRepresentation.base64EncodedString())
-        guard let data = try? JSONEncoder().encode(s), Keychain.set(Self.service, Self.item, data) else { throw E2eeError(code: "unavailable", message: "This device can't keep encryption keys safely right now.") }
+        let s = Stored(version: 1, deviceId: "\(Platform.e2ee.idPrefix)-\(Self.ulid())", x: x.rawRepresentation.base64EncodedString(), ed: ed.rawRepresentation.base64EncodedString())
+        guard let data = try? JSONEncoder().encode(s), Keychain.set(Self.service, Self.item, data) else { throw E2eeError(code: "unavailable", message: Platform.e2ee.cantKeep) }
         return (x, ed, s.deviceId)
     }
 
@@ -102,7 +102,7 @@ final class E2eeKeys {
             throw E2eeError(code: "invalid_argument", message: "Not a sealed Folevi box.")
         }
         let ctx = try Self.checkContext(context)
-        guard let k = load() else { throw E2eeError(code: "unavailable", message: "This device has no encryption keys yet.") }
+        guard let k = load() else { throw E2eeError(code: "unavailable", message: Platform.e2ee.noKeys) }
         try await confirm()
         return try Self.openSealedBox(k.x, recipientPub: k.x.publicKey.rawRepresentation, context: ctx, box: Data(b))
     }
@@ -140,7 +140,7 @@ final class E2eeKeys {
         guard body.count <= Self.maxStatement, let parsed = try? JSONSerialization.jsonObject(with: Data(body.utf8)), parsed is [String: Any] else {
             throw E2eeError(code: "invalid_argument", message: "Not a statement.")
         }
-        guard let k = load() else { throw E2eeError(code: "unavailable", message: "This device has no encryption keys yet.") }
+        guard let k = load() else { throw E2eeError(code: "unavailable", message: Platform.e2ee.noKeys) }
         guard let sig = try? k.ed.signature(for: Self.statementMessage(kind: kind, body: body)) else { throw E2eeError(code: "failed", message: "Signing failed.") }
         return Self.b64u(sig)
     }
@@ -161,7 +161,7 @@ final class E2eeKeys {
     }
 
     /// Whether this device can ask (Face ID, Touch ID or Optic ID, else its passcode).
-    static var canAsk: Bool { LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil) }
+    static var canAsk: Bool { Platform.canAskOwner }
 
     func settings() -> (touchId: Bool, available: Bool) {
         let available = Self.canAsk
@@ -170,10 +170,10 @@ final class E2eeKeys {
 
     /// Turning it on or off asks too, so someone holding an unlocked phone can't switch it off.
     func setFaceId(_ on: Bool) async throws -> (touchId: Bool, available: Bool) {
-        guard Self.canAsk else { throw E2eeError(code: "unavailable", message: "This device has no Face ID or passcode set up.") }
+        guard Self.canAsk else { throw E2eeError(code: "unavailable", message: Platform.e2ee.noCheck) }
         if on != faceIdOn {
             guard await AppLock.confirm(reason: on ? "Ask before unlocking encrypted notes" : "Stop asking before unlocking encrypted notes") else {
-                throw E2eeError(code: "cancelled", message: "Face ID didn't confirm it.")
+                throw E2eeError(code: "cancelled", message: Platform.e2ee.notConfirmed)
             }
             faceIdOn = on
         }
@@ -184,7 +184,7 @@ final class E2eeKeys {
         guard faceIdOn, Self.canAsk else { return }
         let recent = lock.withLock { confirmedAt.map { Date().timeIntervalSince($0) < Self.grace } ?? false }
         if recent { return }
-        guard await AppLock.confirm(reason: "Unlock your encrypted notes") else { throw E2eeError(code: "cancelled", message: "Face ID didn't confirm it.") }
+        guard await AppLock.confirm(reason: "Unlock your encrypted notes") else { throw E2eeError(code: "cancelled", message: Platform.e2ee.notConfirmed) }
         lock.withLock { confirmedAt = Date() }
     }
 }

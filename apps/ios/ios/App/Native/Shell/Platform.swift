@@ -4,6 +4,7 @@
 // in the background, and the window a sheet or picker is shown over. Each shared file then needs one `#if` at most
 // (its import). The iOS answers are exactly what those files did before; the Mac's come from apps/mac Paths.swift.
 import Foundation
+import LocalAuthentication
 #if os(iOS)
 import UIKit
 #else
@@ -66,6 +67,16 @@ enum Platform {
     static func endBackgroundWork(_ task: BackgroundWork) {
         DispatchQueue.main.async { if task != .invalid { UIApplication.shared.endBackgroundTask(task) } }
     }
+
+    /// Where Dropbox sends a sign-in back (registered in the Dropbox App Console); the sign-in sheet catches it.
+    static let dropboxRedirect = "com.folevi.ios://oauth/dropbox"
+
+    /// The words E2eeKeys says things in, and its device ids' start ("ios-<ulid>").
+    static let e2ee = E2eeWords(idPrefix: "ios", cantKeep: "This device can't keep encryption keys safely right now.", noKeys: "This device has no encryption keys yet.",
+                                noCheck: "This device has no Face ID or passcode set up.", notConfirmed: "Face ID didn't confirm it.")
+
+    /// Whether the owner can be asked before encrypted notes open (Face ID, Touch ID or Optic ID, else the passcode).
+    static var canAskOwner: Bool { LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil) }
     #else
     static var deviceLabel: String { "Mac" }
 
@@ -101,7 +112,31 @@ enum Platform {
     static func endBackgroundWork(_ work: BackgroundWork) {
         ProcessInfo.processInfo.endActivity(work)
     }
+
+    /// Dropbox's sign-in comes back on folevi:// (every build: the sign-in sheet catches it, nothing else sees it).
+    static let dropboxRedirect = "folevi://oauth/dropbox"
+
+    /// Electron's e2ee.ts words, and its device ids ("mac-<ulid>"), so the server sees the same kind of Mac.
+    static let e2ee = E2eeWords(idPrefix: "mac", cantKeep: "This Mac can't keep encryption keys safely right now.", noKeys: "This Mac has no encryption keys yet.",
+                                noCheck: "This Mac has no Touch ID, or it isn't set up.", notConfirmed: "Touch ID didn't confirm it.")
+
+    /// Touch ID only, as Electron's canPromptTouchID: a Mac without it doesn't offer "Ask for Touch ID".
+    static var canAskOwner: Bool { LAContext().canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil) }
     #endif
+}
+
+/// What E2eeKeys says, in the platform's words (Platform.e2ee).
+struct E2eeWords {
+    let idPrefix: String
+    let cantKeep: String
+    let noKeys: String
+    let noCheck: String
+    let notConfirmed: String
+}
+
+/// Dropbox's redirect scheme (the sign-in sheet's callback scheme).
+extension Platform {
+    static var dropboxScheme: String { URL(string: dropboxRedirect)?.scheme ?? "folevi" }
 }
 
 #if os(macOS)

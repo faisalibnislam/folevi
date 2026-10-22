@@ -8,7 +8,8 @@
 // - Both providers: OAuth 2 authorization code with PKCE (S256, no client secret) in iOS's sign-in sheet
 //   (ASWebAuthenticationSession), refresh tokens in the Keychain, refreshed a minute before they expire or after a
 //   401. A refused refresh (access revoked) leaves the connection in "reconnect".
-// - Dropbox: app-folder access, back on com.folevi.ios://oauth/dropbox (registered in the Dropbox App Console).
+// - Dropbox: app-folder access, back on com.folevi.ios://oauth/dropbox on iOS and folevi://oauth/dropbox on the Mac
+//   (Platform.dropboxRedirect, each registered in the Dropbox App Console).
 // - Google Drive: the drive.file scope with an iOS OAuth client, back on its reversed client id
 //   (com.googleusercontent.apps.<id>:/oauth2redirect).
 // - Client ids come from the build (capacitor.config.ts plugins.FoleviShell, from FOLEVI_DROPBOX_APP_KEY and
@@ -36,7 +37,7 @@ final class ShellCloud: NSObject {
     /// Status changes for the page ("cloud-status").
     var onStatus: (([String: Any]) -> Void)?
 
-    static let dropboxRedirect = "com.folevi.ios://oauth/dropbox"
+    static let dropboxRedirect = Platform.dropboxRedirect
     private static let dropboxHosts: Set<String> = ["api.dropboxapi.com", "content.dropboxapi.com"]
     private static let googleHosts: Set<String> = ["www.googleapis.com"]
     private static let forbidden: Set<String> = ["authorization", "cookie", "host", "origin", "referer", "proxy-authorization"]
@@ -135,7 +136,7 @@ final class ShellCloud: NSObject {
             c.queryItems = [.init(name: "client_id", value: googleClientId), .init(name: "scope", value: "https://www.googleapis.com/auth/drive.file email"), .init(name: "access_type", value: "offline"), .init(name: "prompt", value: "consent")]
         }
         c.queryItems! += [.init(name: "response_type", value: "code"), .init(name: "redirect_uri", value: redirect), .init(name: "code_challenge", value: challenge), .init(name: "code_challenge_method", value: "S256"), .init(name: "state", value: state)]
-        let scheme = p == "dropbox" ? "com.folevi.ios" : googleRedirectScheme
+        let scheme = p == "dropbox" ? Platform.dropboxScheme : googleRedirectScheme
         let back: URL? = await withCheckedContinuation { cont in
             let s = ASWebAuthenticationSession(url: c.url!, callbackURLScheme: scheme) { url, _ in cont.resume(returning: url) }
             s.prefersEphemeralWebBrowserSession = false

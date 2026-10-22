@@ -26,8 +26,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         window.delegate = self
         install(view)
         if WindowManager.shared.mains.isEmpty {
+            if !window.setFrameUsingName("FoleviMain") { window.center() }
             window.setFrameAutosaveName("FoleviMain")
-            if window.frame.origin == .zero { window.center() }
         } else if let front = WindowManager.shared.frontMain?.window {
             window.setFrame(front.frame.offsetBy(dx: 24, dy: -24), display: false)
         } else {

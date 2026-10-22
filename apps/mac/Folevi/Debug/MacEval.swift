@@ -90,13 +90,22 @@ enum MacEval {
             app.open(url)
             done(["value": true])
         case "appearance":
+            // A window behind other apps doesn't run CSS transitions, so a page caught mid-fade would stay
+            // half in the old theme in a screenshot: transitions are off around the switch.
+            let views = WindowManager.shared.allViews
+            let off = "let s = document.getElementById('__macEvalStill'); if (!s) { s = document.createElement('style'); s.id = '__macEvalStill'; s.textContent = '*, *::before, *::after { transition: none !important; animation-duration: 0s !important; }'; document.documentElement.appendChild(s); }"
+            let on = "document.getElementById('__macEvalStill')?.remove()"
+            views.forEach { $0.callAsyncJavaScript(off, arguments: [:], in: nil, in: .page, completionHandler: nil) }
             switch req["value"] as? String {
             case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
             case "light": NSApp.appearance = NSAppearance(named: .aqua)
             default: NSApp.appearance = nil
             }
             // The page's prefers-color-scheme follows on the next frame.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { done(["value": NSApp.effectiveAppearance.name.rawValue]) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                views.forEach { $0.callAsyncJavaScript(on, arguments: [:], in: nil, in: .page, completionHandler: nil) }
+                done(["value": NSApp.effectiveAppearance.name.rawValue])
+            }
         case "windows":
             let list: [[String: Any]] = WindowManager.shared.mains.enumerated().map { i, m in
                 let f = m.window?.frame ?? .zero

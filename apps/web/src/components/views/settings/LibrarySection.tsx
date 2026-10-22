@@ -10,13 +10,14 @@ import { useBackendMode, useLocalAi } from "@/lib/mode";
 import { AppLink } from "@/lib/app/router";
 import { PROVIDERS, modelLabel } from "@/lib/local/ai/catalog";
 import { shell } from "@/lib/shell";
+import { deviceWords } from "@/lib/shell/words";
 import type { CloudProvider, LibraryInfo, ShellLockSettings } from "@/lib/shell/types";
 import { formatRelative } from "@/lib/format";
 import type { HealthItem, LibraryStatus } from "@/lib/local/store/types";
-import { PLACE_NAMES, hostError, kindOf, placeProblem, providerName, providerOf } from "@/lib/local/libraryPlace";
+import { hostError, placeName, kindOf, placeProblem, providerName, providerOf } from "@/lib/local/libraryPlace";
 import { signInToFolevi } from "@/lib/local/signIn";
 import { useCloudStatus, useLibraryControl, useLibraryStatus, useLockSettings } from "@/lib/local/useLibrary";
-import { PassphraseFields, PlaceList, movePlace, passphraseProblem, thisDevice } from "@/components/app/LibrarySetup";
+import { PassphraseFields, PlaceList, movePlace, passphraseHere, passphraseProblem, thisDevice } from "@/components/app/LibrarySetup";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
@@ -48,7 +49,7 @@ export function LibrarySection() {
       <PlaceCard info={where} status={status} onChanged={refreshInfo} syncNow={control ? () => control.syncNow() : null} />
       {status ? <DevicesCard status={status} /> : null}
       {status ? <HealthCard status={status} /> : null}
-      {where ? <PassphraseCard info={where} onChanged={refreshInfo} /> : null}
+      {where && passphraseHere() ? <PassphraseCard info={where} onChanged={refreshInfo} /> : null}
       <LockCard />
       <AiKeysCard />
       <AccountCard />
@@ -90,7 +91,7 @@ function PlaceCard({ info, status, onChanged, syncNow }: { info: LibraryInfo | n
     <Card title="Where your library is" description="Folevi keeps your notes as files in one folder. Other devices that use the same place share the library.">
       <dl className="grid max-w-lg grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
         <dt className="text-muted">Syncs with</dt>
-        <dd data-testid="library-kind">{info ? PLACE_NAMES[info.kind] : "…"}</dd>
+        <dd data-testid="library-kind">{info ? placeName(info.kind) : "…"}</dd>
         <dt className="text-muted">Location</dt>
         <dd className="break-words" data-testid="library-path">
           {info?.displayPath || "…"}
@@ -125,7 +126,7 @@ function PlaceCard({ info, status, onChanged, syncNow }: { info: LibraryInfo | n
         onMoved={(next) => {
           setMoving(false);
           onChanged();
-          toast.show(`Library moved to ${PLACE_NAMES[next.kind]}`, { tone: "success" });
+          toast.show(`Library moved to ${placeName(next.kind)}`, { tone: "success" });
         }}
       />
     </Card>
@@ -168,7 +169,7 @@ function Connection({ provider, cloud }: { provider: CloudProvider; cloud: Retur
       {busy === "connect" ? (
         <div role="status" className="flex flex-wrap items-center gap-3 text-sm">
           <Loader2 size={15} aria-hidden className="animate-spin text-heading motion-reduce:animate-none" />
-          <span className="min-w-0 flex-1">Finish signing in to {name} in your browser.</span>
+          <span className="min-w-0 flex-1">Finish signing in to {name} in {deviceWords().signInPlace}.</span>
           <Button size="sm" onClick={() => void shell()?.library.cloud?.cancel()}>
             Cancel
           </Button>
@@ -176,15 +177,15 @@ function Connection({ provider, cloud }: { provider: CloudProvider; cloud: Retur
       ) : state === "connected" || state === "offline" ? (
         <p className="text-sm">
           Connected as <span className="font-medium text-heading">{here?.account ?? `your ${name} account`}</span>
-          {state === "offline" ? <span className="text-muted">. Offline: changes go up when this Mac is back online.</span> : null}
+          {state === "offline" ? <span className="text-muted">. Offline: changes go up when {deviceWords().here} is back online.</span> : null}
         </p>
       ) : state === "reconnect" ? (
         <p className="flex gap-2 text-sm">
           <AlertTriangle size={16} aria-hidden className="mt-0.5 flex-none text-danger" />
-          {name} stopped letting Folevi in (the access was removed or it expired). Reconnect to keep syncing. Your notes are safe on this Mac meanwhile.
+          {name} stopped letting Folevi in (the access was removed or it expired). Reconnect to keep syncing. Your notes are safe on {deviceWords().here} meanwhile.
         </p>
       ) : (
-        <p className="text-sm text-muted">Not connected to {name}. Your notes are kept on this Mac and sync once you connect again.</p>
+        <p className="text-sm text-muted">Not connected to {name}. Your notes are kept on {deviceWords().here} and sync once you connect again.</p>
       )}
       {busy !== "connect" ? (
         <div className="flex flex-wrap gap-2">
@@ -205,7 +206,7 @@ function Connection({ provider, cloud }: { provider: CloudProvider; cloud: Retur
         onClose={() => setConfirm(false)}
         title={`Sign out of ${name}?`}
         size="sm"
-        description={`Folevi stops syncing with ${name}. Your notes stay on this Mac and in ${name}. To sync again, connect again or move the library somewhere else.`}
+        description={`Folevi stops syncing with ${name}. Your notes stay on ${deviceWords().here} and in ${name}. To sync again, connect again or move the library somewhere else.`}
         footer={
           <>
             <Button onClick={() => setConfirm(false)}>Cancel</Button>
@@ -254,7 +255,7 @@ function DevicesCard({ status }: { status: LibraryStatus }) {
                 <span className="block truncate text-sm font-medium text-heading">
                   {/* The store names a device "This device" until the host gives it a name of its own. */}
                   {d.name && d.name !== "This device" ? d.name : d.thisDevice ? platform(d.platform) : `Another ${platform(d.platform)}`}
-                  {d.thisDevice ? <span className="ml-2 text-xs font-normal text-muted">{thisDevice() === "this Mac" ? "This Mac" : "This device"}</span> : null}
+                  {d.thisDevice ? <span className="ml-2 text-xs font-normal text-muted">{deviceWords().Here}</span> : null}
                 </span>
                 <span className="block truncate text-xs text-muted">
                   {platform(d.platform)}
@@ -282,7 +283,7 @@ const HEALTH: { key: keyof LibraryStatus["health"]; title: string; why: string; 
   {
     key: "downloading",
     title: "Still downloading",
-    why: "Your sync service hasn't brought these to this Mac yet. They open as soon as they arrive.",
+    why: "Your sync service hasn't brought these to this device yet. They open as soon as they arrive.",
     icon: <CloudDownload size={15} aria-hidden className="text-muted" />,
   },
   {
@@ -595,7 +596,7 @@ function LockCard() {
     }
   };
   return (
-    <Card title="App lock" description={unavailable ? "This Mac has no Touch ID, or it isn't set up in System Settings, so Folevi can't lock." : `Folevi asks for ${name} when it opens, and when you come back to it. It covers your notes until then.`}>
+    <Card title="App lock" description={unavailable ? `${deviceWords().Here} has no ${deviceWords().ios ? "Face ID or passcode" : "Touch ID"}, or it isn't set up in ${deviceWords().settings}, so Folevi can't lock.` : `Folevi asks for ${name} when it opens, and when you come back to it. It covers your notes until then.`}>
       <div className="grid gap-4" data-testid="library-lock">
         <div className="flex items-center justify-between gap-4">
           <span id={descId} className="text-sm text-ink">
@@ -624,13 +625,13 @@ function LockCard() {
 
 function AiKeysCard() {
   return (
-    <Card title="Foli AI" description="In a library on your devices, Foli AI runs on Apple's model on this Mac, or on your own OpenAI, Anthropic or Google key, called straight from this Mac.">
+    <Card title="Foli AI" description={`In a library on your devices, Foli AI runs on Apple's model on ${deviceWords().here}, or on your own OpenAI, Anthropic or Google key, called straight from ${deviceWords().here}.`}>
       <p className="text-sm text-muted" data-testid="library-ai-keys">
         Choose the model and add your keys in{" "}
         <AppLink href="/settings/ai" className="text-ink underline underline-offset-2">
           Settings, under AI
         </AppLink>
-        . Keys stay in the Keychain on this Mac; Folevi never sees them.
+        . Keys stay in the Keychain on {deviceWords().here}; Folevi never sees them.
       </p>
     </Card>
   );

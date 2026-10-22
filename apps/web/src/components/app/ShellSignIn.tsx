@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { FullPageMessage } from "@/lib/app/state";
 import { shellSignIn } from "@/lib/auth/shellFetch";
 import { setShellMode } from "@/lib/shell";
+import { deviceWords } from "@/lib/shell/words";
 import { ModeChoice } from "./ModeChoice";
 
 export function ShellSignIn() {
@@ -25,6 +26,8 @@ export function ShellSignIn() {
   };
   // Keeping notes on this device instead: the app reloads in local mode and asks where the library goes.
   const useLocally = () => setShellMode("local");
+  // In the iPhone and iPad app the website opens in iOS's sign-in sheet, not a browser.
+  const sheet = deviceWords().ios;
   if (state === "idle")
     return (
       <div data-testid="shell-sign-in">
@@ -41,8 +44,12 @@ export function ShellSignIn() {
       title="Sign in to Folevi"
       body={
         state === "waiting"
-          ? "Your browser is open. Finish signing in there, and Folevi comes back here by itself."
-          : "Folevi opens in your browser. Sign in there, and you come back here signed in."
+          ? sheet
+            ? "The sign-in sheet is open. Finish signing in there, and Folevi comes back here by itself."
+            : "Your browser is open. Finish signing in there, and Folevi comes back here by itself."
+          : sheet
+            ? "Folevi opens a sign-in sheet. Sign in there, and you come back here signed in."
+            : "Folevi opens in your browser. Sign in there, and you come back here signed in."
       }
     >
       <div className="grid gap-3" data-testid="shell-sign-in">
@@ -52,7 +59,7 @@ export function ShellSignIn() {
           disabled={state === "waiting"}
           onClick={() => void start()}
         >
-          {state === "waiting" ? "Waiting for your browser…" : "Sign in to Folevi"}
+          {state === "waiting" ? (sheet ? "Waiting for the sign-in sheet…" : "Waiting for your browser…") : "Sign in to Folevi"}
         </Button>
         {state === "waiting" ? (
           <Button
@@ -60,7 +67,7 @@ export function ShellSignIn() {
             className="h-11 w-full text-[15px]"
             onClick={() => void start()}
           >
-            Open the browser again
+            {sheet ? "Open the sign-in sheet again" : "Open the browser again"}
           </Button>
         ) : null}
         {state === "failed" ? (

@@ -15,6 +15,7 @@ import { openLibraryHere, pendingMove, setPendingMove, signOutAfterExport, subsc
 import type { MigrationProblem, MigrationProgress, MigrationState } from "@/lib/migrate/types";
 import { forgetUpload, libraryCounts, markMigrated, preflightUpload, uploadLibrary, uploadState, type LibraryCounts, type Preflight } from "@/lib/migrate/uploadLibrary";
 import { fileSize } from "@/lib/migrate/remap";
+import { deviceWords } from "@/lib/shell/words";
 
 /** Shows the move under way instead of the app, and the app once there's none. */
 export function MigrationGate({ children }: { children: ReactNode }) {
@@ -220,7 +221,7 @@ function UploadToAccount({ move }: { move: Extract<PendingMove, { direction: "up
                 : `Some files won’t fit: they need ${fileSize(pre.shortByBytes)} more than the ${fileSize(pre.availableBytes)} your account has free. Those stay in your library folder, and their notes say so.`}
             </p>
             {pre.existingNotes ? <p>Your account already has {pre.existingMore ? "more than 1,000" : plural(pre.existingNotes, "note")}. These go beside them; nothing there is replaced.</p> : null}
-            {counts.downloading ? <p>{plural(counts.downloading, "note")} hasn’t reached this Mac yet and stays in the library.</p> : null}
+            {counts.downloading ? <p>{plural(counts.downloading, "note")} hasn’t reached {deviceWords().here} yet and stays in the library.</p> : null}
             {!pre.writable ? <p className="text-danger">This account can’t take new notes right now.</p> : null}
             <label className="flex items-center justify-between gap-3 pt-1 text-ink">
               <span>Bring version history</span>
@@ -263,7 +264,7 @@ function UploadToAccount({ move }: { move: Extract<PendingMove, { direction: "up
     );
   }
   return (
-    <FullPageMessage title="Your notes are in Folevi" body={<><p>Everything from your library is in your account now. The library folder on this Mac is still there, untouched.</p><Problems problems={phase.state.problems} /></>}>
+    <FullPageMessage title="Your notes are in Folevi" body={<><p>Everything from your library is in your account now. The library folder on {deviceWords().here} is still there, untouched.</p><Problems problems={phase.state.problems} /></>}>
       <Button variant="primary" onClick={() => void openApp()}>
         Open Folevi
       </Button>
@@ -333,10 +334,10 @@ function ExportToLibrary({ move }: { move: Extract<PendingMove, { direction: "ex
     );
   }
   if (phase.kind === "starting") return <FullPageMessage title="Getting the library ready…" busy />;
-  if (phase.kind === "signing-out") return <FullPageMessage title="Signing out of Folevi on this Mac…" busy />;
+  if (phase.kind === "signing-out") return <FullPageMessage title={`Signing out of Folevi on ${deviceWords().here}…`} busy />;
   if (phase.kind === "moving") {
     return (
-      <FullPageMessage title="Bringing your notes to this Mac" body={`Keep Folevi open. If it closes, this goes on from here next time.${progress?.place && progress.place !== "Personal" ? ` Now: ${progress.place}.` : ""}`}>
+      <FullPageMessage title={`Bringing your notes to ${deviceWords().here}`} body={`Keep Folevi open. If it closes, this goes on from here next time.${progress?.place && progress.place !== "Personal" ? ` Now: ${progress.place}.` : ""}`}>
         <Progress p={progress} verb="Bringing notes" />
         <div className="mt-4">
           <Button onClick={() => abort.current?.abort()}>Stop</Button>
@@ -358,11 +359,11 @@ function ExportToLibrary({ move }: { move: Extract<PendingMove, { direction: "ex
   }
   return (
     <FullPageMessage
-      title="Your notes are on this Mac"
+      title={`Your notes are on ${deviceWords().here}`}
       body={
         <>
           <p>Every note, folder, tag and file is in the library now. Comments, sharing and workspace members stay in your account; a record of them is in the library’s “exported” folder.</p>
-          <p className="mt-2">Next, Folevi signs out on this Mac. Your Folevi account isn’t deleted: it’s still there, and you can sign in again any time.</p>
+          <p className="mt-2">Next, Folevi signs out on {deviceWords().here}. Your Folevi account isn’t deleted: it’s still there, and you can sign in again any time.</p>
           <Problems problems={phase.problems} />
         </>
       }

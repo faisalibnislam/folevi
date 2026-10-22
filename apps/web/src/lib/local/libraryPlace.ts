@@ -2,6 +2,7 @@
 // leave for LocalGate: whether the place chosen already held a library (join it, no welcome notes) or not
 // (a new library, with them). Small and free of the local backend, so the website bundle doesn't pull it in.
 import type { CloudProvider, LibraryKind, ShellLibrary } from "@/lib/shell/types";
+import { deviceWords } from "@/lib/shell/words";
 
 /** The kind's name as Settings and the setup screen say it. */
 export const PLACE_NAMES: Record<LibraryKind, string> = {
@@ -11,6 +12,11 @@ export const PLACE_NAMES: Record<LibraryKind, string> = {
   folder: "A folder you chose",
   device: "This Mac only",
 };
+
+/** The kind's name for this device ("This iPhone only" in the iOS app). */
+export function placeName(kind: LibraryKind): string {
+  return kind === "device" ? `${deviceWords().Here} only` : PLACE_NAMES[kind];
+}
 
 /** The built-in connection behind a kind, if it is one. */
 export function providerOf(kind: LibraryKind): CloudProvider | null {
@@ -96,6 +102,11 @@ export function hostError(e: unknown): { code: string; reason: string | null; me
 /** Plain words for a place that can't be used, with what to do about it. */
 export function placeProblem(kind: LibraryKind, e: unknown): string {
   const { code, reason, message } = hostError(e);
+  const w = deviceWords();
+  if (w.ios && kind === "icloud" && reason === "drive_off") return `iCloud Drive is turned off for Folevi. In the Settings app, tap your name, then iCloud, then turn on iCloud Drive and Folevi. Then try again.`;
+  if (w.ios && kind === "icloud" && reason === "signed_out") return `${w.Here} isn't signed in to iCloud, or iCloud Drive is off. Sign in in the Settings app and turn on iCloud Drive, then try again.`;
+  if (w.ios && reason === "not_writable") return "Folevi can't write to that place. Choose another folder in the Files app.";
+  if (w.ios && reason === "unsupported") return `That place isn't available on ${w.here} yet.`;
   if (kind === "icloud" && reason === "drive_off") return "iCloud Drive is turned off on this Mac. Turn it on in System Settings, under your name, then iCloud, then iCloud Drive. Then try again.";
   if (kind === "icloud" && reason === "signed_out") return "This Mac isn't signed in to iCloud. Sign in in System Settings, turn on iCloud Drive, then try again.";
   if (reason === "not_writable") return "Folevi can't write to that place. Choose another folder, or check its permissions in Finder.";

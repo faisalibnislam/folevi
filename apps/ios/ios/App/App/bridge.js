@@ -186,6 +186,7 @@
       platform: "ios",
       shellVersion: VERSION,
       deviceName: String(SHELL.deviceName || "iPhone"),
+      deviceFamily: SHELL.deviceFamily === "iPad" ? "iPad" : "iPhone",
       initialMode: SHELL.mode === "local" || SHELL.mode === "account" ? SHELL.mode : "unset",
       setMode: function (mode) {
         return shellCall("setMode", { mode: String(mode) }).then(nothing);

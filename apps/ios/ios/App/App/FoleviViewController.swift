@@ -95,7 +95,7 @@ final class FoleviViewController: CAPBridgeViewController {
 
     /// What the page starts with. A mode switch starts the app's screen again (`restart`), so it's read anew.
     private static func shellBootstrap() -> [String: Any] {
-        ["mode": ShellMode.current, "deviceName": ShellAuth.deviceName]
+        ["mode": ShellMode.current, "deviceName": ShellAuth.deviceName, "deviceFamily": UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"]
     }
 
     /// A new web view on the same storage, for a new mode: its scripts and network rules start from it.

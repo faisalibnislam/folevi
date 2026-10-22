@@ -13,6 +13,7 @@ import { useLocalAi } from "@/lib/mode";
 import { KEY_PROVIDERS, PROVIDERS, PROVIDER_ORDER, modelLabel } from "@/lib/local/ai/catalog";
 import { localAiHost, refreshLocalAi, setLocalAiChoice, usable, type LocalAiState } from "@/lib/local/ai/state";
 import type { AiKeyProvider, AiProviderId, OnDeviceStatus } from "@/lib/shell/types";
+import { deviceWords } from "@/lib/shell/words";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
@@ -22,11 +23,21 @@ import { AiMemoryCard } from "./AiMemory";
 
 /** What Apple Intelligence's state means for the person, in a sentence. */
 export const ON_DEVICE_COPY: Record<OnDeviceStatus, string> = {
-  available: "Apple Intelligence is on. Foli AI can run on this Mac, and nothing leaves it.",
-  notEnabled: "Turn on Apple Intelligence in System Settings to use Foli AI on this Mac without a key.",
-  notReady: "Apple Intelligence is still getting ready on this Mac. Try again in a little while.",
-  notSupported: "This Mac can't run Apple Intelligence. Add one of your own keys below to use Foli AI.",
-  unknown: "Folevi couldn't check Apple Intelligence on this Mac. Add one of your own keys below to use Foli AI.",
+  get available() {
+    return `Apple Intelligence is on. Foli AI can run on ${deviceWords().here}, and nothing leaves it.`;
+  },
+  get notEnabled() {
+    return `Turn on Apple Intelligence in ${deviceWords().settings} to use Foli AI on ${deviceWords().here} without a key.`;
+  },
+  get notReady() {
+    return `Apple Intelligence is still getting ready on ${deviceWords().here}. Try again in a little while.`;
+  },
+  get notSupported() {
+    return `${deviceWords().Here} can't run Apple Intelligence. Add one of your own keys below to use Foli AI.`;
+  },
+  get unknown() {
+    return `Folevi couldn't check Apple Intelligence on ${deviceWords().here}. Add one of your own keys below to use Foli AI.`;
+  },
 };
 
 function onDeviceStatus(state: LocalAiState | null): OnDeviceStatus {
@@ -51,7 +62,7 @@ function OnOffCard() {
     <Card title="Foli AI">
       <div className="flex items-start justify-between gap-6">
         <p id={descId} className="max-w-prose text-sm text-muted">
-          Foli AI helps you write, answers from your notes and sums them up. In a library on your devices it runs on Apple Intelligence on this Mac, or on your own key with OpenAI, Anthropic or Google, called straight from this Mac. Nothing goes through Folevi, and nothing is sent while it&apos;s off.
+          Foli AI helps you write, answers from your notes and sums them up. In a library on your devices it runs on Apple Intelligence on {deviceWords().here}, or on your own key with OpenAI, Anthropic or Google, called straight from {deviceWords().here}. Nothing goes through Folevi, and nothing is sent while it&apos;s off.
         </p>
         <Switch
           checked={on}
@@ -72,7 +83,7 @@ function OnOffCard() {
 function OnDeviceCard({ state }: { state: LocalAiState | null }) {
   const status = onDeviceStatus(state);
   return (
-    <Card title="On this Mac">
+    <Card title={`On ${deviceWords().here}`}>
       <div className="flex items-start gap-3" data-testid="local-ai-on-device" data-status={status}>
         <span className="mt-0.5 grid h-8 w-8 flex-none place-items-center rounded-chip bg-[var(--glass-hover)] text-muted shadow-[inset_0_0_0_1px_var(--glass-border)]" aria-hidden>
           <Laptop size={16} />
@@ -152,7 +163,7 @@ function KeyRow({ provider, stored, busy, onBusy }: { provider: AiKeyProvider; s
             <KeyRound size={14} className="text-muted" aria-hidden />
             {info.label}
           </p>
-          <p className="mt-0.5 text-sm text-muted">{stored ? "Key added. It's kept in this Mac's Keychain and can't be shown again." : "No key."}</p>
+          <p className="mt-0.5 text-sm text-muted">{stored ? `Key added. It's kept in ${deviceWords().here}'s Keychain and can't be shown again.` : "No key."}</p>
         </div>
         <div className="flex flex-none items-center gap-2">
           {stored ? (
@@ -229,7 +240,7 @@ function KeyRow({ provider, stored, busy, onBusy }: { provider: AiKeyProvider; s
 function KeysCard({ state }: { state: LocalAiState | null }) {
   const [busy, setBusy] = useState(false);
   return (
-    <Card title="Your own keys" description="With your own key, Foli AI uses that provider's models, called straight from this Mac under your account with them. Your keys stay in this Mac's Keychain: Folevi never sees them.">
+    <Card title="Your own keys" description={`With your own key, Foli AI uses that provider's models, called straight from ${deviceWords().here} under your account with them. Your keys stay in ${deviceWords().here}'s Keychain: Folevi never sees them.`}>
       <div className="divide-y divide-line/70">
         {KEY_PROVIDERS.map((p) => (
           <KeyRow key={p} provider={p} stored={Boolean(state?.caps?.keys[PROVIDERS[p].secret!])} busy={busy} onBusy={setBusy} />
@@ -258,7 +269,7 @@ function ModelCard({ state }: { state: LocalAiState | null }) {
     return (
       <Card title="Model">
         <p className="text-sm text-muted" data-testid="local-ai-model-none">
-          Foli AI has no model on this Mac yet. Turn on Apple Intelligence, or add one of your own keys.
+          Foli AI has no model on {deviceWords().here} yet. Turn on Apple Intelligence, or add one of your own keys.
         </p>
       </Card>
     );
@@ -304,7 +315,7 @@ function ModelCard({ state }: { state: LocalAiState | null }) {
         ) : null}
         {active ? (
           <p className="text-sm text-muted" role="status">
-            Answering now: {active.provider === "on-device" ? "Apple Intelligence, on this Mac" : `${modelLabel(active.provider, active.model)} (${PROVIDERS[active.provider].label})`}.
+            Answering now: {active.provider === "on-device" ? `Apple Intelligence, on ${deviceWords().here}` : `${modelLabel(active.provider, active.model)} (${PROVIDERS[active.provider].label})`}.
           </p>
         ) : null}
       </div>
@@ -322,7 +333,7 @@ function HistoryCard() {
     <Card title="Conversations">
       <div className="flex items-start justify-between gap-6">
         <p id={descId} className="max-w-prose text-sm text-muted">
-          Your Foli AI conversations are kept on this Mac so you can come back to them, rename, pin and search them. They stay on this device and aren&apos;t synced with your library. When this is off, a conversation is deleted as soon as you close it.
+          Your Foli AI conversations are kept on {deviceWords().here} so you can come back to them, rename, pin and search them. They stay on this device and aren&apos;t synced with your library. When this is off, a conversation is deleted as soon as you close it.
         </p>
         <Switch
           checked={history}
@@ -360,7 +371,7 @@ export function LocalAiSection() {
       <OnOffCard />
       {state?.loaded ? null : (
         <p className="flex items-center gap-2 text-sm text-muted">
-          <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> Checking Foli AI on this Mac…
+          <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> Checking Foli AI on {deviceWords().here}…
         </p>
       )}
       <OnDeviceCard state={state} />

@@ -249,6 +249,8 @@ export interface FoleviShell {
   shellVersion: string;
   /** The device's own name (the Mac's name in System Settings), for the library's device list. */
   deviceName?: string;
+  /** On iOS: "iPhone" or "iPad", for words like "this iPhone" (lib/shell/words.ts). */
+  deviceFamily?: "iPhone" | "iPad";
   initialMode: ShellMode;
   setMode(m: Backend): Promise<void>;
   library: ShellLibrary;

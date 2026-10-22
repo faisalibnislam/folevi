@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Switch } from "@/components/ui/Switch";
 import { shell } from "@/lib/shell";
+import { deviceWords } from "@/lib/shell/words";
 import type { CloudProvider, LibraryInfo, LibraryKind, ShellLibrary } from "@/lib/shell/types";
 import { useCloudStatus } from "@/lib/local/useLibrary";
 import { holdsLibrary, hostError, placeProblem, providerName, providerOf, rememberSetupIntent } from "@/lib/local/libraryPlace";
@@ -24,10 +25,15 @@ import { ChoiceButton, useSystemTheme } from "./ModeChoice";
 
 export const MIN_PASSPHRASE = 8;
 
+/** Whether this host can encrypt a library with a passphrase (not in Folevi for Android yet). */
+export function passphraseHere(): boolean {
+  return shell()?.platform !== "android";
+}
+
 /** "this Mac" on the Mac, "this phone" in the Android app, "this device" elsewhere. */
 export function thisDevice(): string {
   const platform = shell()?.platform;
-  return platform === "android" ? "this phone" : platform === "ios" ? "this device" : "this Mac";
+  return platform === "android" ? "this phone" : platform === "ios" ? deviceWords().here : "this Mac";
 }
 
 interface Place {
@@ -48,11 +54,12 @@ function places(available: CloudProvider[] | null): Place[] {
     out.push({ kind: "device", title: "This phone only", detail: "Your notes stay on this phone. You can turn on sync later in Settings.", icon: <HardDrive size={20} aria-hidden /> });
     return out;
   }
-  const out: Place[] = [{ kind: "icloud", title: "Sync with iCloud", detail: `A Folevi folder in iCloud Drive, on every Mac signed in to your iCloud account.`, icon: <Cloud size={20} aria-hidden /> }];
+  const icloud = shell()?.platform === "ios" ? "The Folevi folder in iCloud Drive, on every iPhone, iPad and Mac signed in to your iCloud account." : "A Folevi folder in iCloud Drive, on every Mac signed in to your iCloud account.";
+  const out: Place[] = [{ kind: "icloud", title: "Sync with iCloud", detail: icloud, icon: <Cloud size={20} aria-hidden /> }];
   if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: "Sign in to Dropbox in your browser. Folevi only uses its own folder, Apps › Folevi.", icon: <DropboxGlyph /> });
   if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: "Sign in to Google in your browser. Folevi only sees the files it makes.", icon: <DriveGlyph /> });
   out.push(
-    { kind: "folder", title: "Choose a folder", detail: `Any folder on ${device}, such as one OneDrive or another app keeps in sync.`, icon: <Folder size={20} aria-hidden /> },
+    { kind: "folder", title: "Choose a folder", detail: shell()?.platform === "ios" ? "Any folder the Files app offers, such as one in Dropbox, Google Drive or OneDrive." : `Any folder on ${device}, such as one OneDrive or another app keeps in sync.`, icon: <Folder size={20} aria-hidden /> },
     { kind: "device", title: "This device only", detail: `Your notes stay on ${device}. You can turn on sync later in Settings.`, icon: <HardDrive size={20} aria-hidden /> },
   );
   return out;
@@ -330,7 +337,7 @@ function NewLibrary({ info, onOpen, onElsewhere, failed }: { info: LibraryInfo; 
         void onOpen(encrypt ? passphrase : null).finally(() => setBusy(false));
       }}
     >
-      <section className="grid gap-3 rounded-control border border-line bg-surface p-4">
+      {passphraseHere() ? <section className="grid gap-3 rounded-control border border-line bg-surface p-4">
         <div className="flex items-start gap-3">
           <span className="grid h-9 w-9 flex-none place-items-center rounded-small bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] text-ink">
             <Lock size={18} aria-hidden />
@@ -346,7 +353,7 @@ function NewLibrary({ info, onOpen, onElsewhere, failed }: { info: LibraryInfo; 
           <Switch checked={encrypt} onChange={setEncrypt} label="Encrypt with a passphrase" describedBy={descId} />
         </div>
         {encrypt ? <PassphraseFields passphrase={passphrase} confirm={confirm} understood={understood} onPassphrase={setPassphrase} onConfirm={setConfirm} onUnderstood={setUnderstood} problem={problem} /> : null}
-      </section>
+      </section> : null}
       {failed ? (
         <p role="alert" className="text-center text-[13.5px] text-danger">
           {failed}

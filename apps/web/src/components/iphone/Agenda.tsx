@@ -129,7 +129,9 @@ export function IphoneAgenda({
           </>
         ),
         header: (
-          <div ref={top} className="sticky top-[calc(env(safe-area-inset-top)+52px)] z-10 bg-canvas">
+          // Stuck under the bar while the days scroll. WebKit measures a sticky offset from inside the
+          // scroller's padding (which already clears the bar), Chromium (Android) from its edge.
+          <div ref={top} className="sticky top-[calc(env(safe-area-inset-top)+52px)] z-10 bg-canvas [:root[data-native=ios]_&]:top-0">
             <WeekStrip today={today} selected={selected} onSelect={onSelect} marked={marked} />
           </div>
         ),

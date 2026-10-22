@@ -180,7 +180,7 @@ function TaskDetails({ task, onClose }: { task: TaskRow; onClose: () => void }) 
                 feel("choose");
                 save({ dueDate: d.date });
               }}
-              className={`h-[34px] flex-1 rounded-capsule text-[15px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${draft.dueDate === d.date ? "bg-heading text-canvas" : "bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] text-ink active:bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]"}`}
+              className={`min-h-[34px] flex-1 rounded-capsule py-1 text-[15px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${draft.dueDate === d.date ? "bg-heading text-canvas" : "bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] text-ink active:bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]"}`}
             >
               {d.label}
             </button>
@@ -285,7 +285,7 @@ function MenuRow({ label, icon, value, items }: { label: string; icon: ReactNode
 export function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { id: T; label: string }[]; onChange: (v: T) => void }) {
   const index = Math.max(0, options.findIndex((o) => o.id === value));
   return (
-    <div role="radiogroup" aria-label={label} className="relative flex h-9 rounded-capsule bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] p-0.5">
+    <div role="radiogroup" aria-label={label} className="relative flex min-h-9 rounded-capsule bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] p-0.5">
       <span
         aria-hidden
         className="absolute inset-y-0.5 left-0.5 rounded-capsule bg-canvas shadow-[0_3px_8px_rgb(0_0_0/0.12),0_0_0_0.5px_rgb(0_0_0/0.04)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none dark:bg-raised"
@@ -302,7 +302,7 @@ export function Segmented<T extends string>({ label, value, options, onChange }:
             feel("choose");
             onChange(o.id);
           }}
-          className={`relative flex-1 rounded-capsule text-[14px] leading-none outline-none focus-visible:ring-2 focus-visible:ring-focus ${o.id === value ? "font-semibold text-heading" : "font-medium text-ink"}`}
+          className={`relative flex-1 rounded-capsule py-1.5 text-[14px] leading-tight outline-none focus-visible:ring-2 focus-visible:ring-focus ${o.id === value ? "font-semibold text-heading" : "font-medium text-ink"}`}
         >
           {o.label}
         </button>

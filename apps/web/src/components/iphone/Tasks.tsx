@@ -145,7 +145,7 @@ export function IphoneTasks({
                     className="group flex h-11 flex-none items-center outline-none"
                   >
                     <span
-                      className={`flex h-[34px] items-center gap-1.5 rounded-capsule pl-3 pr-3.5 text-[15px] font-medium leading-5 transition-[background-color,color,transform] duration-200 group-active:scale-[0.96] group-focus-visible:ring-2 group-focus-visible:ring-focus motion-reduce:transition-none ${
+                      className={`flex min-h-[34px] items-center gap-1.5 rounded-capsule py-1 pl-3 pr-3.5 text-[15px] font-medium leading-5 transition-[background-color,color,transform] duration-200 group-active:scale-[0.96] group-focus-visible:ring-2 group-focus-visible:ring-focus motion-reduce:transition-none ${
                         on ? "bg-heading text-canvas" : "bg-[color-mix(in_oklab,var(--color-ink)_6.5%,transparent)] text-ink"
                       }`}
                     >

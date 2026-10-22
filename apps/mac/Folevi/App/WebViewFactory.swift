@@ -76,6 +76,10 @@ enum WebViewFactory {
     static var rules: [WKContentRuleList] = []
     static var rulesFor: ((String?, ViewRole) -> [WKContentRuleList])?
 
+    /// More settings for a view's configuration by its place and role, before the view is made (WM1: runners and
+    /// the library's windows keep running behind other windows, `inactiveSchedulingPolicy`).
+    static var configure: [(WKWebViewConfiguration, String?, ViewRole) -> Void] = []
+
     static func origin(_ url: URL) -> String {
         guard let scheme = url.scheme, let host = url.host else { return url.absoluteString }
         return "\(scheme)://\(host)\(url.port.map { ":\($0)" } ?? "")"
@@ -92,6 +96,7 @@ enum WebViewFactory {
         config.mediaTypesRequiringUserActionForPlayback = []
         // Decision M5: Apple's Writing Tools stay out of notes (Foli AI covers writing help).
         config.writingToolsBehavior = .none
+        for step in configure { step(config, place, role) }
         let ucc = WKUserContentController()
         if let source = bridgeScript(bootstrap) {
             ucc.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true))

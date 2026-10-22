@@ -39,6 +39,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if DEBUG
         MacEval.install()
         #endif
+        // WM1: the library, the places and their runners, the lock (Places.swift).
+        Places.install()
         Task { @MainActor in
             await WebViewFactory.prepareRules()
             WebViewFactory.scheme.modeOf = { view in WindowManager.shared.modeOf((view as? FoleviWebView)?.place) }

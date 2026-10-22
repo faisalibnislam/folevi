@@ -47,7 +47,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     }
 
     /// The page again from a fresh bootstrap (a mode or place switch): new scripts and rules, the same path.
-    func rebuild(place newPlace: String? = nil, path: String? = nil) {
+    /// `place: .some(nil)` binds the window to no place (the first-launch choice or the sign-in screen).
+    func rebuild(place newPlace: String?? = nil, path: String? = nil) {
         if let newPlace { place = newPlace }
         let at = path ?? view.url.flatMap { Links.isAppUrl($0) ? $0 : nil }.map { u -> String in
             var s = u.path(percentEncoded: true)

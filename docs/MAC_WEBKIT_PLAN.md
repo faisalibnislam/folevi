@@ -661,6 +661,47 @@ the owner's support folder or Keychain items).
   call through a test tone (`afplay`) with the microphone muted; drag a note to a scratch Finder folder; the
   service appears in the Services menu of TextEdit.
 
+- Landed (2026-10-23). Everything registers in `Capabilities.install()` (`Bridge/DesktopRouter+Capabilities.swift`,
+  one line in AppDelegate) through WM0's hooks; the page side is `Bridge/capabilities.js` (members appear only
+  once listed in `DesktopRouter.features`), typed in `apps/web/src/lib/desktop/capabilities.ts`, and the page's
+  answers live in `components/app/DesktopCapabilities.tsx` (mounted by Shell; nothing in Electron or a browser).
+  - Text recognition: `TextRecognition.swift`, Vision in process with folevi-text's rules (one at a time, 25 MB,
+    3000 px, 30 s, 100,000 characters).
+  - Call recording: `CallRecorder.swift`. ScreenCaptureKit audio (Folevi's own sound left out, the picture never
+    kept) and the microphone through AVAudioEngine, mixed by `AudioMix` into mono 48 kHz, AAC 64 kbit/s in an
+    .m4a in the temporary folder, handed over once through `/_bridge/<id>` and deleted. The page drives it as
+    `foleviDesktop.recordCall` through `lib/callCapture.ts` `NativeCallRecording` (MediaRecorder's shape), so
+    the recorder panel's pause, meter, limits and "stopped" states are unchanged. A page that loads again cancels
+    its recording.
+  - Drag out: `DragOut.swift`. `dragFile` (the Export dialog) starts a native file-promise drag from the last mouse
+    event. Note cards and rows (`lib/app/noteDrag.ts` calls `dragNotes`) keep WebKit's own drag: when WebKit
+    begins it, the item becomes the notes' `NSFilePromiseProvider`s; over Folevi's windows the pasteboard holds
+    WebKit's data alone (with file promises on it WebKit reads a drag as files and hides the notes' ids), outside
+    them the promises with WebKit's data. The Markdown (`export.ts` `markdownWithFiles`, attachments in
+    "<title> files" beside it) is asked of the page only on a drop. Tab drags aren't wired (the tab strip has no
+    HTML5 drag today).
+  - Printing and downloads: `Printing.swift` answers WebKit's private print delegate (`_webView:printFrame:...`)
+    with `_printOperationWithPrintInfo:forFrame:`, so `print()` in a hidden frame (PDF export, recovery key)
+    prints that frame as a sheet; File > Print asks the page, which prints the open note through the PDF export's
+    clean page, else the page as it is. `Downloads.swift` turns `download` links and attachment responses into
+    WKDownloads saved through a save panel (WebKit otherwise does nothing with them; exports depend on it).
+  - Share: `Sharing.swift`: `foleviDesktop.share` (the picker for text, a link, or Markdown as a file, at a page
+    rect or point; WM2's text menu uses it), File > Share's services (WM2's `Chrome.shareItems`, from the page's
+    `setShareTarget`), File > Print (`Chrome.print`), hooked in `ChromeHooks.swift`.
+  - Services: `ServicesProvider.swift` and `NSServices` in Info.plist ("New Folevi Note with Selection", "New
+    Folevi Dev Note with Selection" in Debug; plain text, RTF): the page makes the note (first line the title).
+  - Spotlight: `Spotlight.swift`. Each place's page hands over its recent and starred notes (both modes; the Mac
+    has no REST token of its own), a domain per place, pruned when a place goes; a result opens the note in its
+    place (`Places.switchTo`) through `application(_:continue:)`.
+  - Shortcuts: `Intents.swift`: New Note (with text), Add a Task (with a due date) and Open Note (from the notes
+    Spotlight holds), with phrases; they go through the open place's page as the menus do.
+  - Also `Clipboard.swift` (`foleviDesktop.clipboard` for WM4's menus) and `QuickLook.swift` (attachments'
+    Quick Look button in the Mac app).
+  - Debug commands for scripts (`mac.mjs cmd ...`): `printToFile`, `downloadTo`, `service`, `intent`,
+    `spotlight`, `openSpotlight`, `printNote`, `shareAnswer`, `dragLog`, `dragProbe`.
+  - WM0 follow-up: the shared `Folevi.defaults`, `Folevi.container` and `DeviceCredential` are the build's own on
+    the Mac (Platform), never shared between Folevi Dev, Folevi and FOLEVI_USER_DATA runs.
+
 ### Sequence
 
 | Day | WM0 | WM1 | WM2 | WM3 | WM4 | WM5 |

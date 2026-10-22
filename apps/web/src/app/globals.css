@@ -1055,6 +1055,9 @@
 :root[data-desktop="mac"] dialog.ui-pop[open] { animation: mac-sheet-in 180ms ease-out; }
 :root[data-desktop="mac"] dialog.ui-pop > div { max-height: calc(100dvh - 76px); }
 :root[data-desktop="mac"] dialog.ui-pop > div > header h2 { font-size: 19px; }
+/* §3.14 The command palette isn't a sheet: it keeps its place, 640 wide, its rows 36 tall. */
+:root[data-desktop="mac"] dialog.ui-pop.mt-\[12vh\] { margin-top: 12vh; max-width: 640px; }
+:root[data-desktop="mac"] dialog.ui-pop.mt-\[12vh\] [role="option"] { min-height: 36px; border-radius: var(--radius-chip); }
 @keyframes mac-pop-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes mac-sheet-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 @keyframes mac-fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -1088,6 +1091,9 @@
 :root[data-desktop="mac"][data-vibrancy]:has(.mac-quick-add),
 :root[data-desktop="mac"][data-vibrancy]:has(.mac-quick-add) body { background: transparent; }
 :root[data-desktop="mac"] .ui-desktop-quick-add.mac-quick-add { min-height: 0; }
+/* Over the panel's material the fills and lines are the material's own tints, not the surface's colours. */
+:root[data-desktop="mac"][data-vibrancy] .mac-quick-add { --mac-hover: rgb(0 0 0 / 0.06); --mac-press: rgb(0 0 0 / 0.1); --color-line: rgb(0 0 0 / 0.1); }
+:root[data-desktop="mac"][data-vibrancy][data-theme="dark"] .mac-quick-add { --mac-hover: rgb(255 255 255 / 0.1); --mac-press: rgb(255 255 255 / 0.16); --color-line: rgb(255 255 255 / 0.12); --color-ink-muted: rgb(255 255 255 / 0.66); --color-ink-faint: rgb(255 255 255 / 0.48); }
 
 /* §3.10 The Settings window (components/app/Shell.tsx, ?window=1): the section alone, 32 points in from the sides,
    from the top of the page (the window's toolbar is above it), its rows grouped as in the main window. */

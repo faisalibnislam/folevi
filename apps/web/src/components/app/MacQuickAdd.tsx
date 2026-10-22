@@ -123,14 +123,18 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
     return () => window.clearTimeout(t);
   }, [added, bridge]);
 
-  // The panel is as tall as what's in it, including a calendar or list opened from the second row.
+  // The panel is as tall as what's in it, including a calendar or list opened from the second row. Told again each
+  // time it's shown (the app may have put it back to one row), and on a timer rather than an animation frame: a
+  // panel behind others, or not yet on screen, gets no frames in WebKit.
+  const resize = useRef<(force?: boolean) => void>(() => undefined);
   useLayoutEffect(() => {
-    const el = panel.current;
-    if (!el || !bridge) return;
+    if (!bridge) return;
     let last = 0;
     let frame = 0;
     const report = () => {
       frame = 0;
+      const el = panel.current;
+      if (!el) return;
       let bottom = el.getBoundingClientRect().bottom;
       for (const pop of document.querySelectorAll<HTMLElement>(":popover-open")) bottom = Math.max(bottom, pop.getBoundingClientRect().bottom + 8);
       const h = Math.ceil(bottom);
@@ -140,10 +144,16 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
       }
     };
     const soon = () => {
-      if (!frame) frame = requestAnimationFrame(report);
+      if (!frame) frame = window.setTimeout(report, 0);
     };
+    resize.current = (force) => {
+      if (force) last = 0;
+      soon();
+    };
+    // (The body, not the panel's element, which changes between the form and the confirmation.)
     const ro = new ResizeObserver(soon);
-    ro.observe(el);
+    ro.observe(document.body);
+    if (panel.current) ro.observe(panel.current);
     document.addEventListener("toggle", soon, true);
     const mo = new MutationObserver(soon);
     mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["popover", "style"] });
@@ -152,9 +162,11 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
       ro.disconnect();
       mo.disconnect();
       document.removeEventListener("toggle", soon, true);
-      cancelAnimationFrame(frame);
+      window.clearTimeout(frame);
     };
   }, [bridge]);
+  // (Measured again when shown, and when the confirmation takes the form's place.)
+  useLayoutEffect(() => resize.current(true), [round, added]);
 
   const add = (mode: After) => {
     if (!q.title.trim() || q.busy) return;

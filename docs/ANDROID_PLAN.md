@@ -68,6 +68,24 @@
    - internal testing, then closed testing, then production.
    - From then on, web changes ship to Android too, like the Mac.
 
+## Status (2026-10-22)
+
+Phases 1 to 5 are built in `apps/android` (how to build, run and test: `apps/android/README.md`, which also has
+the owner's steps in detail). Checked on the phone, tablet and foldable emulators (android-36), light and dark.
+
+- **Built and seen working:** the shell, insets, back and predictive back, the keyboard, sign-in through a
+  Custom Tab (debug redirect `com.folevi.android://auth/callback`), local mode on the phone, the phone layout on
+  phones and folded foldables and the sidebar on tablets and open foldables, the share target (offline queue in
+  local mode, straight to the Inbox with an account), the Quick add tile, the three widgets (fed by the page in
+  local mode, by the REST API with an account), local reminders.
+- **Built, waiting on owner accounts (off until set):** Dropbox and Google Drive sync (shared code in
+  `packages/cloud-folders`, used by the Mac too), FCM notifications (`convex/fcmSend.ts`, `FCM_SERVICE_ACCOUNT`),
+  App Links (`FOLEVI_ANDROID_CERT_SHA256`), release signing.
+- **Built, not checked on an emulator:** Gemini Nano (needs AICore on a real phone), the document scanner and
+  text recognition (Play services modules), the fingerprint or face lock (needs a screen lock), App Actions.
+- **Not on Android yet:** the passphrase for a library (the setting says so), bookmark previews in local mode,
+  the passkey unlock through Credential Manager, API 33 test runs (the image isn't installed).
+
 ## Steps only the owner can do (given in detail when each phase starts)
 
 - **Play Console:** create the app `com.folevi.android`, turn on Play App Signing, and add internal testers.

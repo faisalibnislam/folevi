@@ -382,8 +382,10 @@ the page can never set either. `FOLEVI_SHELL=0` forces it off.
 
 ## WP9b: Sync with Dropbox and Sync with Google Drive on the Mac (2026-10-20)
 
-**Built:** `apps/desktop/src/library/cloud/`. The provider logic is platform neutral (fetch, WebCrypto and plain
-data), so the iPhone and iPad app can reuse it later; only `loopback.ts`, `nodeMirror.ts`, `tokenStore.ts` and
+**Built:** `apps/desktop/src/library/cloud/`. (Since 2026-10-22 the platform neutral part lives in
+`packages/cloud-folders`, linked into the Mac as `cloud/shared`, and the Android and iPhone apps use the same
+code.) The provider logic is platform neutral (fetch, WebCrypto and plain data), so the iPhone and iPad app can
+reuse it later; only `loopback.ts`, `nodeMirror.ts`, `tokenStore.ts` and
 `electron.ts` are Node or Electron. Everything runs in the Mac's main process: the page gets the connection's
 status and the library's files, never a token.
 

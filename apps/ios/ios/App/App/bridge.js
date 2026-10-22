@@ -119,6 +119,12 @@
         return !!(r && r.value);
       });
     },
+    /** Text onto the pasteboard (true once it's there). */
+    copyText: function (text) {
+      return quietly(call("FoleviNative", "copyText", { text: String(text) })).then(function (r) {
+        return !!(r && r.value);
+      });
+    },
     /** How the keyboard behaves ({ interactiveDismiss }): a drag down in a scrolling view takes it away. */
     keyboard: function (o) {
       void quietly(call("FoleviNative", "keyboard", { interactiveDismiss: !!(o && o.interactiveDismiss) }));
@@ -279,6 +285,29 @@
   });
 
   Object.defineProperty(window, "foleviNative", { value: bridge, enumerable: false, configurable: false, writable: false });
+
+  // The page's clipboard needs a tap to allow it, and WebKit doesn't count every touch as one (a held finger let
+  // go on a menu item's "Copy link", say): when it says no, the app puts the text on the pasteboard instead.
+  try {
+    var clip = navigator.clipboard;
+    if (clip && typeof clip.writeText === "function") {
+      var writeText = clip.writeText.bind(clip);
+      clip.writeText = function (text) {
+        return writeText(text).catch(function (e) {
+          return call("FoleviNative", "copyText", { text: String(text) }).then(
+            function () {
+              return undefined;
+            },
+            function () {
+              throw e;
+            },
+          );
+        });
+      };
+    }
+  } catch (e) {
+    /* the page's own clipboard stays as it is */
+  }
 
   // ---------------------------------------------------------------- foleviShell (the built-in interface only)
   // docs/LOCAL_MODE_PLAN.md §4.1, the page's types in apps/web/src/lib/shell/types.ts, the native side in

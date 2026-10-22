@@ -264,6 +264,8 @@ export interface NativeBridge {
   keyboard?(o: { interactiveDismiss?: boolean }): void;
   /** Every move of the keyboard (shown, hidden, resized, dragged by a finger); returns the function that stops. */
   onKeyboard?(listener: (frame: NativeKeyboardFrame) => void): () => void;
+  /** Text onto the pasteboard; true once it's there. (The app also stands in for navigator.clipboard.writeText when WebKit refuses it.) */
+  copyText?(text: string): Promise<boolean>;
 }
 
 declare global {

@@ -261,4 +261,15 @@ extension FoleviNativePlugin {
             presenter.present(sheet, animated: true)
         }
     }
+
+    /// { text }: puts the text on the pasteboard. The page's own clipboard needs a tap to allow it, and WebKit
+    /// doesn't count every touch as one (a held finger let go on a menu item, say): bridge.js falls back to this.
+    @objc func copyText(_ call: CAPPluginCall) {
+        guard let text = call.getString("text"), text.utf8.count <= 1_000_000 else { return call.reject("Nothing to copy") }
+        Task { @MainActor in
+            guard self.fromFolevi else { return call.reject("Not allowed here") }
+            UIPasteboard.general.string = text
+            call.resolve(["value": true])
+        }
+    }
 }

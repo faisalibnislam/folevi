@@ -58,6 +58,7 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "liftDrop", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "actionSheet", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "alert", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "copyText", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "pickDate", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "pickColor", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "share", returnType: CAPPluginReturnPromise),

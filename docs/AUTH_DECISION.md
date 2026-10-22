@@ -114,6 +114,11 @@ Apple wherever another social sign-in is offered), each only when its keys are s
   stays the app origin alone and Better Auth's origin check for cross-site POSTs is unchanged. Apple's
   `user` field (the name, sent only on the first sign-in) is carried in a 10-minute HttpOnly cookie scoped to
   the callback, not in the address.
+- **Revoking at Apple** (App Store guideline 5.1.1(v)): deleting the account or removing Apple queues its
+  token, and `convex/appleRevoke.ts` asks Apple to revoke it in the background, as the client that issued it
+  (Services ID or bundle ID), retrying for 3 days; it never holds up the deletion. The iOS app's own sheet
+  hands over its authorization code (`/apple/native-code`, `convex/lib/appleNative.ts`) so there's a token
+  to revoke for those sign-ins too.
 - **Apple's client secret** is a JWT the backend signs with the `.p8` key at runtime, valid 30 days and
   renewed a day before it runs out (`convex/lib/appleSignIn.ts`).
 - **Hide My Email** addresses are kept as the account's address, confirmed as Apple says. A new account

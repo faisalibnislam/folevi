@@ -1,6 +1,7 @@
 // Read/revoke helpers over the Better Auth component's tables (sessions, users, connected apps' OAuth
 // clients and tokens). All access to the component's data from Folevi functions goes through here.
-import { components } from "../_generated/api";
+import { components, internal } from "../_generated/api";
+import { appleRevocationFor, type StoredAppleAccount } from "./appleSignIn";
 import type { ActionCtx, MutationCtx, QueryCtx } from "../_generated/server";
 
 type ReadCtx = QueryCtx | MutationCtx | ActionCtx;
@@ -134,8 +135,27 @@ export async function revokeOAuthClient(ctx: WriteCtx, userId: string, clientId:
   });
 }
 
+/**
+ * Queues the person's Sign in with Apple tokens for revocation at Apple (convex/appleRevoke.ts), before their
+ * account rows go. Never stops a deletion: a failure here is logged and the deletion carries on.
+ */
+async function queueAppleRevocations(ctx: WriteCtx, userId: string): Promise<void> {
+  try {
+    const res = (await ctx.runQuery(components.betterAuth.adapter.findMany, {
+      model: "account",
+      where: [{ field: "userId", value: userId }],
+      paginationOpts: { numItems: 50, cursor: null },
+    })) as { page: StoredAppleAccount[] };
+    const items = res.page.map((a) => appleRevocationFor(a)).filter((x) => x !== null);
+    if (items.length) await ctx.runMutation(internal.appleRevoke.queue, { items });
+  } catch (error) {
+    console.error(JSON.stringify({ event: "apple.revoke.queue_failed", where: "account_deletion", message: error instanceof Error ? error.name : "unknown" }));
+  }
+}
+
 /** Removes the Better Auth user and everything attached to it (sessions, credentials, 2FA, passkeys, connected apps). */
 export async function deleteAuthUser(ctx: WriteCtx, userId: string): Promise<void> {
+  await queueAppleRevocations(ctx, userId);
   for (const model of ["session", "account", "twoFactor", "passkey", "oauthAccessToken", "oauthRefreshToken", "oauthConsent"] as const) {
     let cursor: string | null = null;
     for (let i = 0; i < 20; i++) {

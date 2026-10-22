@@ -2756,4 +2756,18 @@ export default defineSchema({
     .index("by_scope", ["scopeKey", "startedAt"])
     .index("by_workspace", ["workspaceId"])
     .index("by_owner", ["ownerProfileId"]),
+
+  // Sign in with Apple tokens still to be revoked at Apple (convex/appleRevoke.ts): queued when someone deletes
+  // their account or removes Apple in Settings > Security, and tried again in the background until Apple
+  // confirms. App Store guideline 5.1.1(v). The row goes once Apple has answered, or after the last try.
+  appleRevocations: defineTable({
+    token: v.string(),
+    hint: v.union(v.literal("refresh_token"), v.literal("access_token")),
+    /** The Services ID (a web sign-in) or the bundle ID (the iOS app's own sheet). */
+    clientId: v.string(),
+    attempts: v.number(),
+    /** Apple's error code (or "network") from the last try, never the token. */
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+  }),
 });

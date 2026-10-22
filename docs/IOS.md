@@ -613,16 +613,17 @@ and hands the app a one-time code through `folevi://auth/google`, and the web vi
 (`components/auth/SocialSignIn.tsx`, `/native/redeem`). That works, but App Review prefers the native sheet,
 which is the next step.
 
-**Next: the native sheet.** No new endpoint is needed; Better Auth takes Apple's id token directly:
+**Next: the native sheet.** Better Auth takes Apple's id token directly, and one small endpoint keeps a token
+Folevi can revoke later:
 
 1. The page asks the bridge, e.g. `foleviNative.signInWithApple({ nonce })`, where `nonce` is a random string
    the page made (32 random bytes, base64url) and keeps.
 2. Native code runs `ASAuthorizationAppleIDProvider().createRequest()` with `requestedScopes = [.fullName,
    .email]` and `request.nonce = sha256hex(nonce)` (Apple puts the request's nonce in the id token as is;
    Better Auth accepts a token whose nonce is the raw value or its SHA-256 in hex), presents
-   `ASAuthorizationController`, and answers with `{ idToken, firstName, lastName }` from the credential
-   (`identityToken` as UTF-8; the name only comes the first time someone uses Apple with Folevi), or null if
-   it was cancelled.
+   `ASAuthorizationController`, and answers with `{ idToken, authorizationCode, firstName, lastName }` from
+   the credential (`identityToken` and `authorizationCode` as UTF-8; the name only comes the first time
+   someone uses Apple with Folevi), or null if it was cancelled.
 3. The page signs in with it, same origin, so the session cookie lands in the web view:
 
    ```ts
@@ -637,14 +638,21 @@ which is the next step.
    links or creates the account exactly as the web flow does. An account with two-step verification on is
    refused (403, code `two_factor_required`): show the same message as the web
    (`socialError("two_factor_required", "apple")`) and offer the password sign-in.
-4. `SocialSignIn.tsx`'s `routeHere()` picks the native sheet when the bridge has `signInWithApple`, and keeps
+4. Right after, the page sends the sheet's authorization code (single use, valid 5 minutes):
+   `authClient.$fetch("/apple/native-code", { method: "POST", body: { authorization_code: authorizationCode } })`.
+   The server trades it at Apple as the app (client id `com.folevi.ios`, a client secret made for it), checks
+   it's for the Apple ID linked to this account, and keeps the refresh token on that account
+   (`convex/lib/appleNative.ts`). If this step fails the person is still signed in; only revoking later has
+   nothing to send (log it, and the next sign-in with the sheet tries again).
+5. `SocialSignIn.tsx`'s `routeHere()` picks the native sheet when the bridge has `signInWithApple`, and keeps
    the browser route for Google and for older app builds.
 
-Also before App Review: rule 5.1.1(v) asks apps with Sign in with Apple to revoke the person's Apple tokens
-when they delete their account (`POST https://appleid.apple.com/auth/revoke` with the client secret from
-`convex/lib/appleSignIn.ts` and a refresh token: the web flow's is stored on the account row; for the native
-sheet, also pass its `authorizationCode` and trade it for one). Not built yet; add it to account deletion
-(`convex/lib/authStore.ts` `deleteAuthUser`) before submitting.
+**Revoking (5.1.1(v)), built.** Deleting the account (Settings > Security > Delete account) or removing Apple
+in Sign-in methods queues the account's Apple token in `appleRevocations`, and `convex/appleRevoke.ts` asks
+Apple to revoke it (`POST https://appleid.apple.com/auth/revoke`) as the client it was issued to: the bundle ID
+for the native sheet's token, the Services ID for a web sign-in's (read from the stored id token's audience).
+Neither waits for Apple; failures are logged with Apple's error code only and tried again (1 minute, 10
+minutes, an hour, 6 hours, then daily for 3 days). Tests: `tests/convex/apple-signin.test.ts`.
 
 ## No purchases in the app
 

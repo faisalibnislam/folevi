@@ -150,7 +150,12 @@ production deploy. Then check:
 3. With another Apple ID choose **Hide My Email**: a new account is created with the
    `@privaterelay.appleid.com` address, already confirmed, named with the name given at Apple (only sent the
    first time; "Friend" if it wasn't).
-4. Settings > Security: Remove Apple, then Link it again (any Apple address works there).
+4. Settings > Security: Remove Apple, then Link it again (any Apple address works there). Removing it, or
+   deleting an account that used Apple, has Apple revoke Folevi's token (App Store guideline 5.1.1(v)): within
+   a minute the Apple ID's settings (Sign in with Apple, or appleid.apple.com > Sign-In and Security) no longer
+   list Folevi, and the Convex logs show `apple.revoke` with `"ok":true`. Tries that fail log
+   `apple.revoke.retry` and run again in the background for 3 days (`appleRevocations` holds what's still
+   pending).
 5. Cancel at Apple: back on `/signin` with "Apple sign-in was cancelled."
 6. The Mac app: Continue with Apple opens the browser, and the app signs in when it hands back.
 7. Email to Hide My Email addresses: Apple only relays mail from the registered sources, and checks SPF.

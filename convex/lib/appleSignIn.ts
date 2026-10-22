@@ -79,8 +79,11 @@ export async function makeAppleClientSecret(config: AppleSignInConfig, now = Dat
   return { jwt: `${input}.${base64url(signature)}`, expiresAt: exp * 1000 };
 }
 
-let cached: { fingerprint: string; jwt: string; expiresAt: number } | null = null;
-let pending: { fingerprint: string; promise: Promise<{ jwt: string; expiresAt: number }> } | null = null;
+type Made = { jwt: string; expiresAt: number };
+
+/** Per client id (the Services ID for the web, the bundle ID for the iOS app's own sign-in), the last one made. */
+const cached = new Map<string, { fingerprint: string } & Made>();
+const pending = new Map<string, { fingerprint: string; promise: Promise<Made> }>();
 
 const fingerprintOf = (c: AppleSignInConfig) => `${c.clientId}\u0000${c.teamId}\u0000${c.keyId}\u0000${c.privateKey}`;
 
@@ -90,27 +93,102 @@ const fingerprintOf = (c: AppleSignInConfig) => `${c.clientId}\u0000${c.teamId}\
  */
 export async function appleClientSecret(config: AppleSignInConfig, now = Date.now()): Promise<string> {
   const fingerprint = fingerprintOf(config);
-  if (cached && cached.fingerprint === fingerprint && cached.expiresAt - now > APPLE_SECRET_RENEW_SECONDS * 1000) return cached.jwt;
-  if (!pending || pending.fingerprint !== fingerprint) {
+  const kept = cached.get(config.clientId);
+  if (kept && kept.fingerprint === fingerprint && kept.expiresAt - now > APPLE_SECRET_RENEW_SECONDS * 1000) return kept.jwt;
+  let inFlight = pending.get(config.clientId);
+  if (!inFlight || inFlight.fingerprint !== fingerprint) {
     const promise = makeAppleClientSecret(config, now);
-    pending = { fingerprint, promise };
+    inFlight = { fingerprint, promise };
+    pending.set(config.clientId, inFlight);
     promise.then(
       (made) => {
-        cached = { fingerprint, ...made };
-        if (pending?.promise === promise) pending = null;
+        cached.set(config.clientId, { fingerprint, ...made });
+        if (pending.get(config.clientId)?.promise === promise) pending.delete(config.clientId);
       },
       () => {
-        if (pending?.promise === promise) pending = null;
+        if (pending.get(config.clientId)?.promise === promise) pending.delete(config.clientId);
       },
     );
   }
-  return (await pending.promise).jwt;
+  return (await inFlight.promise).jwt;
 }
 
-/** Forgets the kept client secret (tests). */
+/** Forgets the kept client secrets (tests). */
 export function forgetAppleClientSecret(): void {
-  cached = null;
-  pending = null;
+  cached.clear();
+  pending.clear();
+}
+
+/**
+ * The settings for talking to Apple as `clientId`: the Services ID (the web's sign-ins) or the bundle ID (the
+ * iPhone and iPad app's own sheet). Apple wants the client secret's `sub` to name the client the token is for.
+ */
+export function asAppleClient(config: AppleSignInConfig, clientId: string): AppleSignInConfig {
+  return clientId === config.bundleId ? { ...config, clientId: config.bundleId } : { ...config };
+}
+
+/** The client an Apple id token was issued to (its `aud`), or null if it can't be read. */
+export function appleTokenAudience(idToken: string | null | undefined): string | null {
+  const part = typeof idToken === "string" ? idToken.split(".")[1] : undefined;
+  if (!part) return null;
+  try {
+    const json = atob(part.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((part.length + 3) % 4));
+    const aud = (JSON.parse(json) as { aud?: unknown }).aud;
+    return typeof aud === "string" ? aud : Array.isArray(aud) && typeof aud[0] === "string" ? aud[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+export const APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
+export const APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
+
+export type AppleTokenHint = "refresh_token" | "access_token";
+
+/**
+ * What Apple answered a revocation: done (200, or a token Apple no longer knows), or why not and whether
+ * trying again later can help. Never carries the token or the secret, so it can be logged as is.
+ */
+export type AppleRevokeResult = { ok: true } | { ok: false; status: number; error: string; retry: boolean };
+
+/** Asks Apple to revoke one token (https://developer.apple.com/documentation/sign_in_with_apple/revoke_tokens). */
+export async function revokeAppleToken(
+  input: { clientId: string; clientSecret: string; token: string; hint: AppleTokenHint },
+  fetchImpl: typeof fetch = fetch,
+): Promise<AppleRevokeResult> {
+  const body = new URLSearchParams({ client_id: input.clientId, client_secret: input.clientSecret, token: input.token, token_type_hint: input.hint });
+  let res: Response;
+  try {
+    res = await fetchImpl(APPLE_REVOKE_URL, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" }, body: body.toString() });
+  } catch {
+    return { ok: false, status: 0, error: "network", retry: true };
+  }
+  if (res.ok) return { ok: true };
+  let error = "unknown";
+  try {
+    const parsed = (await res.json()) as { error?: unknown };
+    if (typeof parsed.error === "string") error = parsed.error.replace(/[^a-z_]/gi, "").slice(0, 40) || "unknown";
+  } catch {
+    // Not JSON: the status says enough.
+  }
+  // A token Apple doesn't know (already revoked, or expired) leaves nothing to revoke.
+  if (error === "invalid_grant") return { ok: true };
+  return { ok: false, status: res.status, error, retry: res.status >= 500 || res.status === 429 || error === "invalid_client" || error === "unknown" };
+}
+
+/** An Apple account row as Better Auth stores it (only what revoking needs). */
+export type StoredAppleAccount = { providerId: string; refreshToken?: string | null; accessToken?: string | null; idToken?: string | null };
+
+/**
+ * What to revoke at Apple for an account row: its refresh token (else its access token), for the client its
+ * tokens were issued to (the stored id token's audience: the bundle ID after the iOS app's own sheet, the
+ * Services ID after a web sign-in). Null when it isn't Apple's or holds no token.
+ */
+export function appleRevocationFor(account: StoredAppleAccount, config: AppleSignInConfig | null = appleSignInConfig()): { token: string; hint: AppleTokenHint; clientId: string } | null {
+  if (account.providerId !== "apple") return null;
+  const token = account.refreshToken || account.accessToken;
+  if (!token) return null;
+  return { token, hint: account.refreshToken ? "refresh_token" : "access_token", clientId: appleTokenAudience(account.idToken) ?? config?.clientId ?? "" };
 }
 
 /** Whether an address is one of Apple's private relay addresses ("Hide My Email"). */

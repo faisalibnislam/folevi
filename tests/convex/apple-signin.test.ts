@@ -4,12 +4,16 @@
 // The real Apple can't be reached from tests, and doesn't send people back to localhost.
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, components } from "../../convex/_generated/api";
+import { APPLE_REVOKE_BACKOFF_MS } from "../../convex/appleRevoke";
+import { deleteAuthUser } from "../../convex/lib/authStore";
 import {
   APPLE_SECRET_LIFETIME_SECONDS,
   APPLE_SECRET_MAX_SECONDS,
   APPLE_SECRET_RENEW_SECONDS,
   appleClientSecret,
+  appleRevocationFor,
   appleSignInConfig,
+  revokeAppleToken,
   forgetAppleClientSecret,
   isApplePrivateRelay,
   makeAppleClientSecret,
@@ -113,6 +117,34 @@ describe("setting it up", () => {
     expect(appleSignInConfig({})).toBeNull();
   });
 
+  test("what's revoked for an account row: its refresh token, else its access token, for the client its id token names", async () => {
+    const { pem } = await appleKey();
+    const c = config(pem);
+    const idFor = (aud: string) => `x.${b64url(JSON.stringify({ aud, sub: "s" }))}.y`;
+    expect(appleRevocationFor({ providerId: "apple", refreshToken: "r", accessToken: "a", idToken: idFor(SERVICES_ID) }, c)).toEqual({ token: "r", hint: "refresh_token", clientId: SERVICES_ID });
+    expect(appleRevocationFor({ providerId: "apple", accessToken: "a", idToken: idFor(BUNDLE_ID) }, c)).toEqual({ token: "a", hint: "access_token", clientId: BUNDLE_ID });
+    expect(appleRevocationFor({ providerId: "apple", refreshToken: "r" }, c)?.clientId).toBe(SERVICES_ID);
+    expect(appleRevocationFor({ providerId: "apple" }, c)).toBeNull();
+    expect(appleRevocationFor({ providerId: "google", refreshToken: "r" }, c)).toBeNull();
+  });
+
+  test("Apple's answers to a revocation: done, retried later, or not worth retrying", async () => {
+    const answer = (status: number, error?: string) => vi.fn(async () => new Response(error ? JSON.stringify({ error }) : null, { status, headers: { "content-type": "application/json" } }));
+    const input = { clientId: SERVICES_ID, clientSecret: "secret", token: "tok", hint: "refresh_token" as const };
+    expect(await revokeAppleToken(input, answer(200) as never)).toEqual({ ok: true });
+    // Already revoked or expired: nothing left to do.
+    expect(await revokeAppleToken(input, answer(400, "invalid_grant") as never)).toEqual({ ok: true });
+    expect(await revokeAppleToken(input, answer(503) as never)).toEqual({ ok: false, status: 503, error: "unknown", retry: true });
+    expect(await revokeAppleToken(input, answer(400, "invalid_client") as never)).toMatchObject({ ok: false, retry: true });
+    expect(await revokeAppleToken(input, answer(400, "unsupported_token_type") as never)).toMatchObject({ ok: false, retry: false });
+    expect(await revokeAppleToken(input, vi.fn(async () => { throw new Error("offline"); }) as never)).toEqual({ ok: false, status: 0, error: "network", retry: true });
+    const sent = answer(200);
+    await revokeAppleToken(input, sent as never);
+    const [url, init] = sent.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://appleid.apple.com/auth/revoke");
+    expect(Object.fromEntries(new URLSearchParams(init.body as string))).toEqual({ client_id: SERVICES_ID, client_secret: "secret", token: "tok", token_type_hint: "refresh_token" });
+  });
+
   test("Hide My Email addresses are recognised", () => {
     expect(isApplePrivateRelay("x7k2abcd9f@privaterelay.appleid.com")).toBe(true);
     expect(isApplePrivateRelay("ada@icloud.com")).toBe(false);
@@ -145,24 +177,38 @@ type IdClaims = { sub: string; email: string; email_verified?: boolean | string;
 /** Stands in for appleid.apple.com: its token endpoint answers with an id token for `who`. */
 function fakeApple(idKey: Awaited<ReturnType<typeof appleIdKey>>) {
   const tokenRequests: URLSearchParams[] = [];
+  const revokeRequests: URLSearchParams[] = [];
+  /** How the revoke endpoint answers, one status per call (200 once the list runs out). */
+  const revokeAnswers: number[] = [];
   let who: IdClaims | null = null;
   const real = globalThis.fetch;
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   const mock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    const body = () => new URLSearchParams(typeof init?.body === "string" ? init.body : (init?.body as URLSearchParams | undefined)?.toString() ?? "");
     if (url === "https://appleid.apple.com/auth/token") {
-      const body = new URLSearchParams(typeof init?.body === "string" ? init.body : (init?.body as URLSearchParams | undefined)?.toString() ?? "");
-      tokenRequests.push(body);
-      if (!who || body.get("code") !== "good-code") return new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400, headers: { "content-type": "application/json" } });
+      const sent = body();
+      tokenRequests.push(sent);
       const now = Math.floor(Date.now() / 1000);
-      const idToken = await idKey.sign({ iss: "https://appleid.apple.com", aud: SERVICES_ID, iat: now, exp: now + 600, email_verified: true, ...who });
-      return new Response(JSON.stringify({ access_token: "apple-access", token_type: "Bearer", expires_in: 3600, refresh_token: "apple-refresh", id_token: idToken }), { status: 200, headers: { "content-type": "application/json" } });
+      // The web flow's code (for the Services ID), and the iOS sheet's (for the bundle ID).
+      const native = sent.get("code") === "native-code" && sent.get("client_id") === BUNDLE_ID;
+      if (!who || !(native || (sent.get("code") === "good-code" && sent.get("client_id") === SERVICES_ID))) return json({ error: "invalid_grant" }, 400);
+      const idToken = await idKey.sign({ iss: "https://appleid.apple.com", aud: native ? BUNDLE_ID : SERVICES_ID, iat: now, exp: now + 600, email_verified: true, ...who });
+      return json({ access_token: native ? "native-access" : "apple-access", token_type: "Bearer", expires_in: 3600, refresh_token: native ? "native-refresh" : "apple-refresh", id_token: idToken });
     }
-    if (url === "https://appleid.apple.com/auth/keys") return new Response(JSON.stringify(idKey.jwks), { status: 200, headers: { "content-type": "application/json" } });
+    if (url === "https://appleid.apple.com/auth/revoke") {
+      revokeRequests.push(body());
+      const status = revokeAnswers.shift() ?? 200;
+      return status === 200 ? new Response(null, { status: 200 }) : json({ error: status === 400 ? "invalid_client" : "server_error" }, status);
+    }
+    if (url === "https://appleid.apple.com/auth/keys") return json(idKey.jwks);
     return await real(input, init);
   });
   vi.stubGlobal("fetch", mock);
   return {
     tokenRequests,
+    revokeRequests,
+    revokeAnswers,
     signInAs(claims: IdClaims | null) {
       who = claims;
     },
@@ -239,6 +285,8 @@ describe("signing in with Apple", () => {
   });
   afterEach(() => {
     for (const name of ENV_NAMES) delete process.env[name];
+    vi.useRealTimers();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
     forgetAppleClientSecret();
   });
@@ -373,6 +421,80 @@ describe("signing in with Apple", () => {
     expect(((await res.json()) as { code?: string }).code).toBe("FAILED_TO_UNLINK_LAST_ACCOUNT");
   });
 
+
+  // Revoking at Apple (convex/appleRevoke.ts, App Store guideline 5.1.1(v)).
+  const backgroundTimers = () => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] });
+  const queued = async (t: T) => await t.run(async (ctx) => await ctx.db.query("appleRevocations").collect());
+  const claimsOf = (jwt: string) => decodePart(jwt.split(".")[1]!);
+
+  async function linkedWithApple(t: T, email: string, sub: string) {
+    const userId = await passwordAccount(t, email);
+    const token = await sessionToken(t, userId);
+    apple.signInAs({ sub, email });
+    await finish(t, await startSignIn(t));
+    expect(await accountsOf(t, userId)).toContain(`apple:${sub}`);
+    return { userId, token };
+  }
+
+  test("removing Apple in Settings has Apple revoke its token as the web client, in the background", async () => {
+    backgroundTimers();
+    const t = setup();
+    const { userId, token } = await linkedWithApple(t, "revoke-unlink@example.com", "001234.apple-unlink");
+    const removed = await t.fetch("/api/auth/unlink-account", { method: "POST", headers: authed(token), body: JSON.stringify({ providerId: "apple" }) });
+    expect(removed.status).toBe(200);
+    expect(await accountsOf(t, userId)).toEqual(["credential:-"]);
+    expect((await queued(t)).map((r) => [r.hint, r.clientId])).toEqual([["refresh_token", SERVICES_ID]]);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(apple.revokeRequests).toHaveLength(1);
+    const sent = apple.revokeRequests[0]!;
+    expect(sent.get("client_id")).toBe(SERVICES_ID);
+    expect(sent.get("token")).toBe("apple-refresh");
+    expect(sent.get("token_type_hint")).toBe("refresh_token");
+    expect(claimsOf(sent.get("client_secret")!)).toMatchObject({ iss: TEAM_ID, sub: SERVICES_ID, aud: "https://appleid.apple.com" });
+    expect(await verifiesWith(sent.get("client_secret")!, publicKey)).toBe(true);
+    expect(await queued(t)).toEqual([]);
+  });
+
+  test("deleting the account never waits for Apple: it's gone at once, and the revocation keeps trying while Apple is down", async () => {
+    backgroundTimers();
+    const logs = vi.spyOn(console, "log");
+    const t = setup();
+    const { userId } = await linkedWithApple(t, "revoke-delete@example.com", "001234.apple-delete");
+    apple.revokeAnswers.push(503, 503);
+    await t.run(async (ctx) => await deleteAuthUser(ctx, userId));
+    expect(await userByEmail(t, "revoke-delete@example.com")).toBeNull();
+    expect(await queued(t)).toHaveLength(1);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(apple.revokeRequests.map((r) => r.get("token"))).toEqual(["apple-refresh", "apple-refresh", "apple-refresh"]);
+    expect(await queued(t)).toEqual([]);
+    const lines = logs.mock.calls.map((c) => String(c[0]));
+    expect(lines.filter((l) => l.includes('"apple.revoke.retry"'))).toHaveLength(2);
+    expect(lines.some((l) => l.includes('"apple.revoke"') && l.includes('"ok":true'))).toBe(true);
+    // Never the token or the secret.
+    expect(lines.some((l) => l.includes("apple-refresh") || l.includes("eyJ"))).toBe(false);
+  });
+
+  test("gives up after the last try, logging Apple's error", async () => {
+    backgroundTimers();
+    const logs = vi.spyOn(console, "log");
+    const t = setup();
+    const { userId } = await linkedWithApple(t, "revoke-down@example.com", "001234.apple-down");
+    apple.revokeAnswers.push(...Array.from({ length: 20 }, () => 500));
+    await t.run(async (ctx) => await deleteAuthUser(ctx, userId));
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(apple.revokeRequests).toHaveLength(APPLE_REVOKE_BACKOFF_MS.length + 1);
+    expect(await queued(t)).toEqual([]);
+    const gaveUp = logs.mock.calls.map((c) => String(c[0])).find((l) => l.includes('"apple.revoke.gave_up"'));
+    expect(JSON.parse(gaveUp!)).toMatchObject({ ok: false, status: 500, error: "server_error", client: "web", attempts: APPLE_REVOKE_BACKOFF_MS.length + 1 });
+  });
+
+  test("an account without an Apple token (or without Apple) queues nothing", async () => {
+    const t = setup();
+    const userId = await passwordAccount(t, "no-apple@example.com");
+    await t.run(async (ctx) => await deleteAuthUser(ctx, userId));
+    expect(await queued(t)).toEqual([]);
+  });
+
   async function nativeSignIn(t: T, idKey: Awaited<ReturnType<typeof appleIdKey>>, over: Record<string, unknown>, nonce = "n-123") {
     const now = Math.floor(Date.now() / 1000);
     const claims = { iss: "https://appleid.apple.com", sub: "001234.apple-native", email: "native@example.com", email_verified: true, iat: now, exp: now + 600, nonce: "n-123", aud: BUNDLE_ID, ...over };
@@ -403,5 +525,34 @@ describe("signing in with Apple", () => {
     const refused = await nativeSignIn(t, idKey, { sub: "001234.apple-native2", email: "native2@example.com" });
     expect(refused.status).toBe(403);
     expect(((await refused.json()) as { code?: string }).code).toBe("two_factor_required");
+  });
+  test("the iOS sheet's authorization code is traded as the app, and its token is revoked with the bundle ID", async () => {
+    backgroundTimers();
+    const t = setup();
+    const idKey = await appleIdKey();
+    const stand = fakeApple(idKey);
+    const signedIn = await nativeSignIn(t, idKey, {});
+    const token = ((await signedIn.json()) as { token: string }).token;
+    const send = async (code: string) => await t.fetch("/api/auth/apple/native-code", { method: "POST", headers: authed(token), body: JSON.stringify({ authorization_code: code }) });
+
+    // A code for another Apple ID is refused; so is one Apple doesn't know.
+    stand.signInAs({ sub: "001234.someone-else", email: "else@example.com" });
+    expect(((await (await send("native-code")).json()) as { code?: string }).code).toBe("APPLE_ACCOUNT_MISMATCH");
+    stand.signInAs({ sub: "001234.apple-native", email: "native@example.com" });
+    expect(((await (await send("unknown-code")).json()) as { code?: string }).code).toBe("APPLE_CODE_REJECTED");
+    expect((await t.fetch("/api/auth/apple/native-code", { method: "POST", headers: { origin: ORIGIN, "content-type": "application/json" }, body: JSON.stringify({ authorization_code: "native-code" }) })).status).toBe(401);
+
+    expect((await send("native-code")).status).toBe(200);
+    const exchanged = stand.tokenRequests.at(-1)!;
+    expect(exchanged.get("client_id")).toBe(BUNDLE_ID);
+    expect(claimsOf(exchanged.get("client_secret")!)).toMatchObject({ iss: TEAM_ID, sub: BUNDLE_ID });
+
+    const user = await userByEmail(t, "native@example.com");
+    await t.run(async (ctx) => await deleteAuthUser(ctx, user!._id));
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const revoked = stand.revokeRequests.at(-1)!;
+    expect(revoked.get("client_id")).toBe(BUNDLE_ID);
+    expect(revoked.get("token")).toBe("native-refresh");
+    expect(claimsOf(revoked.get("client_secret")!)).toMatchObject({ sub: BUNDLE_ID });
   });
 });

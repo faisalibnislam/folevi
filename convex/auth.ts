@@ -22,7 +22,8 @@ import { CLAIM_EMAIL_VERIFIED, CLAIM_MFA } from "./lib/claims";
 import { CLIENT_IP_HEADER } from "./lib/clientIp";
 import { nativeAuth } from "./lib/nativeAuth";
 import { breachedPasswords } from "./lib/breachedPasswords";
-import { appleClientSecret, appleSignInConfig, type AppleSignInConfig } from "./lib/appleSignIn";
+import { appleClientSecret, appleRevocationFor, appleSignInConfig, type AppleSignInConfig, type StoredAppleAccount } from "./lib/appleSignIn";
+import { appleNative } from "./lib/appleNative";
 import { guardRefreshTokenRevoke } from "./lib/authAdapter";
 import { ACCESS_TOKEN_PREFIX, mcpResourceUrl, OAUTH_SCOPES, REFRESH_TOKEN_PREFIX } from "./lib/mcp/config";
 
@@ -100,6 +101,7 @@ function rateLimitRules() {
     "/native/authorize": rule(60, 10),
     "/native/token": rule(60, 10),
     "/native/redeem": rule(60, 10),
+    "/apple/native-code": rule(60, 10),
     // Connected apps (MCP): registering, and trading codes and refresh tokens.
     "/oauth2/register": rule(60 * 60, 20),
     "/oauth2/token": rule(60, 30),
@@ -257,6 +259,22 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
       },
     },
     databaseHooks: {
+      account: {
+        delete: {
+          // Apple removed in Settings > Security: Apple is told to revoke its token (convex/appleRevoke.ts,
+          // App Store guideline 5.1.1(v)). In the background, so removing never waits for Apple or fails for it.
+          after: async (account: StoredAppleAccount & Record<string, unknown>) => {
+            const item = appleRevocationFor(account);
+            const runMutation = (ctx as { runMutation?: (fn: never, args: never) => Promise<unknown> }).runMutation;
+            if (!item || !runMutation) return;
+            try {
+              await runMutation(internal.appleRevoke.queue as never, { items: [item] } as never);
+            } catch (error) {
+              console.error(JSON.stringify({ event: "apple.revoke.queue_failed", where: "unlink", message: error instanceof Error ? error.name : "unknown" }));
+            }
+          },
+        },
+      },
       user: {
         create: {
           // A first sign-in with Google or Apple is a sign-up, so it follows the same switch as email sign-ups.
@@ -349,6 +367,8 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
       }),
       // The native apps' sign-in (lib/nativeAuth.ts) and their `Authorization: Bearer <session token>`.
       nativeAuth(),
+      // The iOS app's own Apple sheet hands over its authorization code, so its token can be revoked later.
+      appleNative(),
       bearer(),
       convex({
         authConfig,

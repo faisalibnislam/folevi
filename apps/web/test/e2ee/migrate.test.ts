@@ -46,7 +46,7 @@ async function plainNote(p: Awaited<ReturnType<typeof e2eePerson>>, title: strin
   return id;
 }
 
-async function job(p: { as: unknown }, migrationId: string) {
+async function job(_p: { as: unknown }, migrationId: string) {
   return { id: migrationId, direction: "seal" as const, scopeOf: "space" as const, rootId: null };
 }
 
@@ -77,12 +77,9 @@ describe("the migration runner", () => {
       const rows = await blockRows(t, row._id);
       expect(rows.every((r) => r.sealed !== undefined && r.type === "sealed")).toBe(true);
       // What the device sealed, the device opens.
-      const reader = new Sealer(keyring.sibling());
-      await env.keyring.addNoteKeys([]);
       const opened = await Promise.all(rows.map((r) => new Sealer(keyring).openBlock(id, { id: r.blockId, parentId: null, rank: r.rank, sealed: r.sealed! })));
       expect(opened.map((o) => (o.text as { text?: string }[]).map((n) => n.text).join("")).sort()).toEqual([body, `${body} task`].sort());
       expect(await new Sealer(keyring).openTitle(id, row.sealedTitle!.c)).toBe(title);
-      void reader;
     }
     const scan = await t.run(async (ctx) => ({
       comments: await ctx.db.query("comments").collect(),

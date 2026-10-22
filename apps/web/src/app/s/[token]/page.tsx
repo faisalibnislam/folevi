@@ -17,6 +17,8 @@ import { publishLook, publishTheme, tableOfContents } from "@/lib/publishThemes"
 import { formatDate, localeFromAcceptLanguage, tFor } from "@/i18n";
 import { currentRequestId, logEvent } from "@/lib/server/log";
 import { GRANT_COOKIE, GRANT_TTL_MS, openGrant, sealGrant } from "./grant";
+import { EncryptedShare } from "./EncryptedShare";
+import { sharePayload } from "@/lib/e2ee/sharePayload";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
 import "@/components/editor/flowchart/flowchart.css";
@@ -182,6 +184,13 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
       </div>,
     );
   }
+  // An encrypted link (docs/E2EE_DESIGN.md §9.1): only ciphertext here; the reader's browser opens it with
+  // the key in the URL fragment, which never reaches a server.
+  const sealedPayload = (result as { e2ee?: unknown }).e2ee;
+  if (sealedPayload) {
+    const updatedLabel = tFor(locale, "share.lastUpdated", { date: formatDate(new Date(result.document.updatedAt), { dateStyle: "medium", timeZone: "UTC" }, locale) });
+    return shell(<EncryptedShare payload={sharePayload(sealedPayload)} updatedLabel={updatedLabel} />);
+  }
   const { document, blocks, fileUrls, collections } = result;
   // The link's look (lib/publishThemes.ts): the note's own style, or Article, Docs or Minimal.
   const publish = publishTheme(result.theme);
@@ -277,3 +286,4 @@ function TocList({ toc }: { toc: ReturnType<typeof tableOfContents> }) {
     </ol>
   );
 }
+

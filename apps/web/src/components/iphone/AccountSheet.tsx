@@ -53,7 +53,7 @@ export function AccountSheet({ open, onClose }: { open: boolean; onClose: () => 
   };
   const email = (profile as { email?: string }).email;
   // Without an account (notes kept on the device) the row says where they are rather than nothing.
-  const detail = email ?? (currentBackendMode() === "local" ? `Notes on this ${inAndroidApp() ? "phone" : isIpadApp() ? "iPad" : "iPhone"}` : null);
+  const detail = email || (currentBackendMode() === "local" ? `Notes on this ${inAndroidApp() ? "phone" : isIpadApp() ? "iPad" : "iPhone"}` : null);
   return (
     <>
       {/* The medium detent ends after a whole group (not part way through Appearance). */}

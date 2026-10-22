@@ -226,3 +226,73 @@ test("the app's menus leave out the desktop's items @local", async ({ browser },
   expect(await menu.evaluate((m) => m.lastElementChild?.getAttribute("role"))).not.toBe("separator");
   await context.close();
 });
+
+// Pictures of every piece, light and dark, when WP3_SHOTS names a folder (docs/IOS_POLISH_PLAN.md: before and after).
+test("pictures: menus, sheets and dialogs @local", async ({ browser }, testInfo) => {
+  const dir = process.env.WP3_SHOTS;
+  test.skip(!dir, "Set WP3_SHOTS to a folder to take the pictures.");
+  test.setTimeout(300_000);
+  const { context, page } = await iphone(browser, testInfo);
+  const shot = async (name: string) => {
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `${dir}/${name}-${scheme}.png` });
+    }
+    await page.emulateMedia({ colorScheme: "light" });
+  };
+  const escape = async () => {
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(600);
+  };
+  await page.getByRole("button", { name: "Create" }).click();
+  await page.waitForTimeout(700);
+  await shot("create-menu");
+  await escape();
+  await page.getByRole("button", { name: "More", exact: true }).click();
+  await page.waitForTimeout(700);
+  await shot("more-menu");
+  await escape();
+  // A held note card: its menu beside it.
+  const card = page.locator("main a[href^='/d/']").first();
+  const box = (await card.boundingBox())!;
+  await card.dispatchEvent("contextmenu", { bubbles: true, cancelable: true, clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 });
+  await page.waitForTimeout(700);
+  await shot("note-card-menu");
+  await escape();
+  await page.locator("button[aria-label$='account and places']").first().click();
+  await page.waitForTimeout(1000);
+  await shot("account-sheet");
+  await escape();
+  await page.getByRole("button", { name: "Create" }).click();
+  await page.getByRole("menu", { name: "Create" }).getByRole("menuitem", { name: "New folder" }).click();
+  await page.waitForTimeout(800);
+  await shot("new-folder-card");
+  await escape();
+  await page.goto("/tasks/today");
+  await page.getByRole("button", { name: "Quick task" }).click();
+  await page.waitForTimeout(900);
+  await page.getByPlaceholder("What needs doing?").fill("Call Sam tomorrow 3pm");
+  await shot("quick-add");
+  await page.getByRole("button", { name: /^Priority/ }).click();
+  await page.waitForTimeout(700);
+  await shot("quick-add-priority");
+  await context.close();
+
+  // The iPad (its own layout): the same iOS menus under a finger.
+  const ipad = await browser.newContext({ viewport: { width: 1032, height: 1376 }, userAgent: IPHONE_UA.replace("iPhone; CPU iPhone OS", "iPad; CPU OS"), hasTouch: true, isMobile: true });
+  await prepareContext(ipad, testInfo, { libraryName: `ipad-sheets-${Date.now()}`, platform: "ios" });
+  await ipad.addInitScript(fakeBridge);
+  const pad = await ipad.newPage();
+  await pad.goto("/documents");
+  await pad.waitForTimeout(6000);
+  const trigger = pad.locator('button[aria-haspopup="menu"]').filter({ visible: true }).first();
+  await trigger.click();
+  await pad.waitForTimeout(800);
+  for (const scheme of ["light", "dark"] as const) {
+    await pad.emulateMedia({ colorScheme: scheme });
+    await pad.waitForTimeout(500);
+    await pad.screenshot({ path: `${dir}/ipad-menu-${scheme}.png` });
+  }
+  await ipad.close();
+});

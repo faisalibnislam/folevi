@@ -62,7 +62,7 @@ export function NewFolderSheet({ open, onClose }: { open: boolean; onClose: () =
         }}
         className="px-4 pb-4"
       >
-        <label htmlFor={nameId} className="block px-1 pb-1.5 text-[13px] font-medium text-muted">
+        <label htmlFor={nameId} className="block px-1 pb-1.5 text-[13px] leading-[18px] text-muted">
           Title
         </label>
         <div className="flex items-center gap-3 rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] px-3">
@@ -79,10 +79,10 @@ export function NewFolderSheet({ open, onClose }: { open: boolean; onClose: () =
             className="h-12 min-w-0 flex-1 bg-transparent text-[17px] text-ink outline-none placeholder:text-faint"
           />
         </div>
-        <p id={`${nameId}-color`} className="px-1 pb-2 pt-4 text-[13px] font-medium text-muted">
+        <p id={`${nameId}-color`} className="px-1 pb-1 pt-4 text-[13px] leading-[18px] text-muted">
           Color
         </p>
-        <div ref={swatches} role="radiogroup" aria-labelledby={`${nameId}-color`} className="-mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div ref={swatches} role="radiogroup" aria-labelledby={`${nameId}-color`} className="-mx-4 flex gap-0.5 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {FOLDER_COLORS.map((c) => {
             const on = c.id === color;
             return (
@@ -93,10 +93,15 @@ export function NewFolderSheet({ open, onClose }: { open: boolean; onClose: () =
                 aria-checked={on}
                 aria-label={c.name}
                 onClick={() => setColor(c.id)}
-                style={{ background: c.hex }}
-                className={`grid h-9 w-9 flex-none place-items-center rounded-capsule shadow-[inset_0_0_0_1px_rgb(0_0_0/0.1)] outline-none transition-transform active:scale-90 focus-visible:ring-2 focus-visible:ring-focus ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--liquid-fill-strong)]" : ""}`}
+                // A 44 pt target round a 34 pt swatch with a 0.5 pt edge; the chosen one ringed.
+                className="group grid h-11 w-11 flex-none place-items-center rounded-capsule outline-none"
               >
-                {on ? <Check size={17} strokeWidth={2.6} className="text-[#17171a]" aria-hidden /> : null}
+                <span
+                  style={{ background: c.hex }}
+                  className={`grid h-[34px] w-[34px] place-items-center rounded-capsule shadow-[inset_0_0_0_0.5px_rgb(0_0_0/0.16)] transition-transform group-active:scale-90 group-focus-visible:ring-2 group-focus-visible:ring-focus ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--liquid-fill-strong)]" : ""}`}
+                >
+                  {on ? <Check size={17} strokeWidth={2.6} className="text-[#17171a]" aria-hidden /> : null}
+                </span>
               </button>
             );
           })}

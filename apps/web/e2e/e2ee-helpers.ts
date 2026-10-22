@@ -94,7 +94,11 @@ export async function addTwoMethods(page: Page, w: ReturnType<Page["getByRole"]>
 /** Waits until Settings > Privacy no longer shows a migration running. */
 export async function migrationDone(page: Page, timeout = 180_000) {
   await page.goto(`${APP}/settings/privacy`);
-  await expect(page.getByRole("region", { name: /(Encrypting|Decrypting) your notes/ })).toHaveCount(0, { timeout });
+  const progress = page.getByRole("region", { name: /(Encrypting|Decrypting) your notes/ });
+  // The progress shows once the page has loaded the job: wait for it a moment first, or "none shown" passes
+  // before the page knows (a job that already finished never shows, hence the catch).
+  await progress.first().waitFor({ state: "visible", timeout: 15_000 }).catch(() => undefined);
+  await expect(progress).toHaveCount(0, { timeout });
 }
 
 /** The unlock screen with a passphrase, then the trust choice. */

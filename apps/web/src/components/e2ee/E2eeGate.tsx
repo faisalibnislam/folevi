@@ -79,6 +79,8 @@ export function E2eeGate({ children }: { children: ReactNode }) {
             {workspace ? <p className="mt-3 text-[13px] text-faint">{workspace.name}</p> : null}
           </section>
         </div>
+        {/* The wizard opened from "Set up encryption" carries on here once the keys exist (ways to unlock). */}
+        {wizard ? <SetupWizard open onClose={() => setWizard(false)} scope={scope} mode="methods" resumeExtra="gate" /> : null}
       </GatePage>
     );
   if (!unlocking && state === "unlocking" && (active || refused > 0)) return <FullPageMessage title={copy.unlock.opening} busy />;

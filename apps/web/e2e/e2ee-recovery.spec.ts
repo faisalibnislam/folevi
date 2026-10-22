@@ -26,14 +26,14 @@ test("the recovery key unlocks a new browser, which then removes the old one fro
   // Trusting the browser registers it; the app opens once that's done.
   await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible({ timeout: 30_000 });
 
-  // From here, the first browser stops being able to unlock (it keeps its session).
+  // From here, the first browser can't unlock any more; removing it also signs it out.
   await page.goto(`${APP}/settings/devices`);
   await page.getByRole("button", { name: /^Options for / }).first().click();
   await page.getByRole("menuitem", { name: "Remove from encryption" }).click();
   await page.getByRole("dialog", { name: /^Remove / }).getByRole("button", { name: "Remove" }).click();
   await expect(page.getByText(/can't unlock encrypted notes any more/)).toBeVisible();
   await first.page.reload();
-  await expect(first.page.getByRole("heading", { name: "Unlock your encrypted notes" })).toBeVisible({ timeout: 30_000 });
+  await expect(first.page).toHaveURL(/\/signin/, { timeout: 30_000 });
   await Promise.all([first.context.close(), other.close()]);
 });
 

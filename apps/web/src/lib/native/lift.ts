@@ -48,12 +48,12 @@ export function heldLiftRect(): Box | null {
   if (!el) return null;
   const r = el.getBoundingClientRect();
   if (!r.width || !r.height) return null;
-  // (A transform only scales here: undo it to find the box at rest.)
-  const m = /^matrix\(([^,]+),/.exec(getComputedStyle(el).transform);
+  // (A transform scales here, and moves it up when the menu needed the room: undo both to find the box at rest.)
+  const m = /^matrix\(([^,]+),[^,]+,[^,]+,[^,]+,([^,]+),([^)]+)\)/.exec(getComputedStyle(el).transform);
   const now = m ? Math.abs(parseFloat(m[1]!)) || 1 : 1;
   const k = LIFTED_SCALE / now;
-  const cx = (r.left + r.right) / 2;
-  const cy = (r.top + r.bottom) / 2;
+  const cx = (r.left + r.right) / 2 - (m ? parseFloat(m[2]!) || 0 : 0);
+  const cy = (r.top + r.bottom) / 2 - (m ? parseFloat(m[3]!) || 0 : 0);
   return { left: cx - (r.width * k) / 2, right: cx + (r.width * k) / 2, top: cy - (r.height * k) / 2, bottom: cy + (r.height * k) / 2 };
 }
 
@@ -67,6 +67,11 @@ export interface LiftPlacement {
   side: "below" | "above" | "right" | "left";
   /** No room anywhere clear of the held thing: the menu covers part of it. */
   overlaps: boolean;
+  /**
+   * How far up the held thing moves while its menu is open, so the whole menu fits under it (as iOS moves its
+   * preview): `shiftHeldLift` does it. Absent when it stays where it is.
+   */
+  shift?: number;
 }
 
 /**
@@ -100,6 +105,10 @@ export function placeAroundLift(lift: Box, menu: { width: number; height: number
   if (h <= rooms.above) return above(rooms.above);
   const sides = (["right", "left"] as const).filter((s) => rooms[s] >= w).sort((a, b) => rooms[b] - rooms[a]);
   if (sides.length && h <= full) return beside(sides[0]!);
+  // Not whole as it stands, but whole if the held thing moves up (no further than the top of the screen): as
+  // iOS does with its preview, so nothing in the menu (its last item, often Delete) hides in a scroll.
+  const need = h - rooms.below;
+  if (need > 0 && need <= lift.top - view.top) return { left: x, top: lift.bottom - need + gap, maxHeight: h, origin: `${hx} top`, side: "below", overlaps: false, shift: need };
   // Not whole anywhere: the roomiest clear place, scrolling inside (a side is a whole screen tall).
   const MIN = 132;
   const vertical = rooms.below >= rooms.above ? ("below" as const) : ("above" as const);
@@ -108,6 +117,25 @@ export function placeAroundLift(lift: Box, menu: { width: number; height: number
   // Nowhere clear (a held thing nearly the whole screen): over it, on screen.
   const top = clampY(lift.bottom + gap, Math.min(h, full));
   return { left: x, top, maxHeight: full, origin: `${hx} top`, side: "below", overlaps: true };
+}
+
+/** The held thing moved up for its menu (placeAroundLift's `shift`): the app's picture moves with it. */
+export const LIFT_SHIFT_EVENT = "folevi:lift-shift";
+let currentShift = 0;
+
+/**
+ * Moves what's held up by `dy` while its menu is open (0: back down): the page's own lift through
+ * `--held-shift` (globals.css), the app's picture through `liftMove`. It settles back with the lift.
+ */
+export function shiftHeldLift(dy: number): void {
+  if (typeof document === "undefined" || dy === currentShift) return;
+  currentShift = dy;
+  const el = document.querySelector<HTMLElement>("[data-held-lift]");
+  if (el) {
+    if (dy) el.style.setProperty("--held-shift", `${-dy}px`);
+    else el.style.removeProperty("--held-shift");
+  }
+  document.dispatchEvent(new CustomEvent(LIFT_SHIFT_EVENT, { detail: dy }));
 }
 
 /** A menu placed over the held thing (placeAroundLift's `overlaps`) tells the lift so the app's picture steps aside. */
@@ -173,6 +201,8 @@ export function liftController() {
 
   const restore = (h: Held) => {
     h.unlisten?.();
+    currentShift = 0;
+    h.el.style.removeProperty("--held-shift");
     h.el.removeAttribute(LIFT_NATIVE_ATTR);
     h.el.style.transform = h.saved.transform;
     h.el.style.transition = h.saved.transition;
@@ -311,10 +341,19 @@ export function liftController() {
       const onCovered = () => {
         if (held === h) this.drop("fade");
       };
+      // The menu moved the held thing up (it fits whole under it then): the picture goes up with it.
+      const onShift = () => {
+        if (held === h && h.shown) bridge.liftMove?.({ id: h.id, dy: currentShift });
+      };
       document.addEventListener(LIFT_COVERED_EVENT, onCovered, { once: true });
-      h.unlisten = () => document.removeEventListener(LIFT_COVERED_EVENT, onCovered);
+      document.addEventListener(LIFT_SHIFT_EVENT, onShift);
+      h.unlisten = () => {
+        document.removeEventListener(LIFT_COVERED_EVENT, onCovered);
+        document.removeEventListener(LIFT_SHIFT_EVENT, onShift);
+      };
       const ok = await bridge.lift!({ id: h.id, from: h.pressed ? PRESSED_SCALE : 1 }).catch(() => false);
       if (held !== h) return ok;
+      if (ok && currentShift) bridge.liftMove?.({ id: h.id, dy: currentShift });
       if (!ok) {
         h.shown = false;
         h.el.removeAttribute(LIFT_NATIVE_ATTR);

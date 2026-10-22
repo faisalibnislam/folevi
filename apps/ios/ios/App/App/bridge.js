@@ -65,6 +65,11 @@
         return !!(r && r.value);
       });
     },
+    /** 2b: the lifted picture moves up ({ id, dy }; 0 is back) so the page's menu fits whole under it. */
+    liftMove: function (o) {
+      if (!o) return;
+      void quietly(call("FoleviNative", "liftMove", { id: String(o.id || ""), dy: Math.max(0, Number(o.dy) || 0) }));
+    },
     /** 3: it settles back ({ id, to: "back" }) or fades ({ to: "fade" }); resolves once it's in place. */
     liftDrop: function (o) {
       return quietly(call("FoleviNative", "liftDrop", { id: String((o && o.id) || ""), to: o && o.to === "fade" ? "fade" : "back" })).then(function () {});

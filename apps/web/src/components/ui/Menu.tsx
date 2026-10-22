@@ -8,7 +8,7 @@ import { visibleBottom } from "@/lib/hooks/useVisualViewport";
 import { nativeApp } from "@/lib/nativeApp";
 import { safeInsets } from "@/lib/iphone";
 import { feel } from "@/lib/native/ui";
-import { heldLiftRect, placeAroundLift, reportLiftPlacement } from "@/lib/native/lift";
+import { heldLiftRect, placeAroundLift, shiftHeldLift, reportLiftPlacement } from "@/lib/native/lift";
 import { SPRINGS, prefersReducedMotion } from "@/lib/native/physics";
 import { springFrames } from "@/components/iphone/sheetMotion";
 
@@ -335,6 +335,8 @@ function MenuPanel({
         const size = { width: fullWidth ? held.right - held.left : menu.offsetWidth, height: Math.max(menu.offsetHeight, menu.scrollHeight) };
         const p = placeAroundLift(held, size, view, align);
         setPos({ position: "fixed", left: p.left, top: p.top, width: fullWidth ? size.width : undefined, maxHeight: p.maxHeight, margin: 0, right: "auto", bottom: "auto", transformOrigin: p.origin });
+        // (Moved up, as iOS moves its preview, when that lets the whole menu fit under it.)
+        shiftHeldLift(p.shift ?? 0);
         reportLiftPlacement(p);
         return;
       }

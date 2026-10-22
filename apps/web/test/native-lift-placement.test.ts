@@ -15,7 +15,10 @@ function check(lift: Box, menu: { width: number; height: number }, view: Box, al
   expect(placed.right).toBeLessThanOrEqual(view.right + 0.01);
   expect(placed.top).toBeGreaterThanOrEqual(view.top - 0.01);
   expect(placed.bottom).toBeLessThanOrEqual(view.bottom + 0.01);
-  if (!p.overlaps) expect(overlapsBox(placed, lift)).toBe(false);
+  // (Clear of the held thing where it is while the menu is open: moved up when the placement says so.)
+  const held = p.shift ? { ...lift, top: lift.top - p.shift, bottom: lift.bottom - p.shift } : lift;
+  if (p.shift) expect(held.top).toBeGreaterThanOrEqual(view.top - 0.01);
+  if (!p.overlaps) expect(overlapsBox(placed, held)).toBe(false);
   return p;
 }
 
@@ -28,12 +31,33 @@ describe("a held thing's menu", () => {
     expect(check(box(16, 560, 148, 164), menu, view).side).toBe("above");
   });
 
-  test("iPhone: a tile in the middle with no whole room above or below: the roomier side, scrolling", () => {
+  test("iPhone: a tile in the middle with no whole room above or below moves up so the whole menu fits under it", () => {
     const view = screen(402, 874, 62);
-    const p = check(box(16, 330, 148, 164), menu, view);
+    const tile = box(16, 330, 148, 164);
+    const p = check(tile, menu, view);
+    expect(p.side).toBe("below");
+    expect(p.maxHeight).toBe(menu.height);
+    // Up by just what the menu needs, no higher than the top of the screen, and the menu clear of it there.
+    expect(p.shift).toBe(menu.height - (view.bottom - (tile.bottom + 8)));
+    expect(tile.top - p.shift!).toBeGreaterThanOrEqual(view.top);
+    const moved = box(tile.left, tile.top - p.shift!, 148, 164);
+    expect(overlapsBox(box(p.left, p.top, menu.width, menu.height), moved)).toBe(false);
+    expect(p.top).toBe(moved.bottom + 8);
+  });
+
+  test("iPhone: a menu too tall to fit whole even with the tile moved to the top: the roomier side, scrolling", () => {
+    const view = screen(402, 874, 62);
+    const p = check(box(16, 330, 148, 164), { width: 250, height: 760 }, view);
+    expect(p.shift).toBeUndefined();
     expect(p.overlaps).toBe(false);
     expect(["below", "above"]).toContain(p.side);
-    expect(p.maxHeight).toBeLessThan(menu.height);
+    expect(p.maxHeight).toBeLessThan(760);
+  });
+
+  test("a menu that fits as things stand doesn't move the held thing", () => {
+    const view = screen(402, 874, 62);
+    expect(placeAroundLift(box(16, 120, 148, 164), menu, view).shift).toBeUndefined();
+    expect(placeAroundLift(box(16, 560, 148, 164), menu, view).shift).toBeUndefined();
   });
 
   test("iPad portrait and landscape: a card in the grid, the menu below, above or beside, never over it", () => {

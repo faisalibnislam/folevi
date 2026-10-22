@@ -241,6 +241,8 @@ export interface NativeBridge {
   lift?(o: { id: string; from?: number }): Promise<boolean>;
   /** Step 3, the menu closed: it settles back into place ("back") or fades where it is ("fade"), then goes. */
   liftDrop?(o: { id: string; to?: "back" | "fade" }): Promise<void>;
+  /** While lifted: the picture moves up by `dy` from where it lifted (0: back), so its menu fits under it. */
+  liftMove?(o: { id: string; dy: number }): void;
   /** An action sheet (on iPad a popover from `anchor`): the chosen action's id, or null when dismissed. */
   actionSheet?(o: { title?: string; message?: string; actions: NativeAction[]; anchor?: NativeRect }): Promise<string | null>;
   /** An alert, with one text field when `field` is given: the chosen action and the field's text, or null. */

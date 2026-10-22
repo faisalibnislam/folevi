@@ -18,6 +18,7 @@ import { CalendarWeek } from "./CalendarWeek";
 import { CalendarsButton, EventPopover, calendarColor, eventWhen, useExternalEvents, type ExternalEvent, type PlacedEvent } from "./CalendarSubscriptions";
 import { minutesToTime, monthGrid, shiftMonth, visibleDays } from "./calendarLayout";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
+import { useHardwareKeyboard } from "@/lib/hooks/useHardwareKeyboard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
 import { IphoneAgenda, calendarMenu } from "@/components/iphone/Agenda";
@@ -59,6 +60,8 @@ export function CalendarView({ month }: { month: string | null }) {
     }
   };
   const narrow = useMediaQuery("(max-width: 767px)");
+  // (An iPad without a keyboard has no arrow keys to mention.)
+  const keyboard = useHardwareKeyboard();
   // The week view's first day (any day of the week on wide screens; the first of three on narrow ones).
   const [anchor, setAnchor] = useState(today);
   const weekDays = visibleDays(anchor, narrow ? 3 : 7);
@@ -353,7 +356,7 @@ export function CalendarView({ month }: { month: string | null }) {
                   </ul>
                 </section>
               ) : null}
-              <p className="mt-3 text-xs text-muted">Drag tasks between days to reschedule, or use a task’s edit button to pick a date. Arrow keys move between days.</p>
+              <p className="mt-3 text-xs text-muted">Drag tasks between days to reschedule, or use a task’s edit button to pick a date.{keyboard ? " Arrow keys move between days." : ""}</p>
               <Unscheduled tasks={unscheduled} today={today} target={selected} onSchedule={reschedule} onToggle={toggle} onEdit={setEditing} />
             </aside>
           </div>

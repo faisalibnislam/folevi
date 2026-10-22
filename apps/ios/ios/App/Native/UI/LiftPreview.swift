@@ -8,6 +8,8 @@
 // 2. lift: its menu opened. The picture goes over the web view at the same place, from the scale the page had
 //    pressed it in to, and springs to 1.04 with an 18 pt shadow. It never takes touches: a tap on it reaches the
 //    page (which closes the menu, as a tap outside it does).
+// 2b. move: the page's menu needed the room (it fits whole under the thing only higher up): the picture moves up
+//    on the settle spring, as iOS moves its preview, and comes back down when it drops.
 // 3. drop: the menu closed. The picture settles back into place and goes, or fades where it is (the thing is
 //    gone, or was dragged away).
 //
@@ -103,6 +105,7 @@ final class LiftPreview {
         guard let image, armed[id] != nil, let host = webView.superview else { return false }
         let preview = PreviewView(image: image, radius: entry.radius)
         preview.frame = webView.convert(entry.rect, to: host)
+        preview.home = preview.center
         host.insertSubview(preview, aboveSubview: webView)
         shown[id] = preview
         let start = min(max(from, 0.8), 1.1)
@@ -135,6 +138,21 @@ final class LiftPreview {
         }
     }
 
+    // MARK: 2b. move
+
+    /// Moves `id`'s picture `dy` points up from where it lifted (0: back to it).
+    func move(id: String, dy: CGFloat) {
+        guard let preview = shown[id] else { return }
+        let to = CGPoint(x: preview.home.x, y: preview.home.y - max(0, min(dy, 2000)))
+        if UIAccessibility.isReduceMotionEnabled {
+            UIView.animate(withDuration: 0.15) { preview.center = to }
+            return
+        }
+        let animator = UIViewPropertyAnimator(duration: 0.5, timingParameters: Self.spring(response: Self.settleSpring.response, damping: Self.settleSpring.damping))
+        animator.addAnimations { preview.center = to }
+        animator.startAnimation()
+    }
+
     // MARK: 3. drop
 
     /// Settles the picture back ("back") or fades it ("fade"); returns once it's back in place (or gone).
@@ -145,7 +163,10 @@ final class LiftPreview {
         if to == "back" && !reduce {
             preview.setShadow(lifted: false, duration: 0.25)
             let animator = UIViewPropertyAnimator(duration: 0.5, timingParameters: Self.spring(response: Self.settleSpring.response, damping: Self.settleSpring.damping))
-            animator.addAnimations { preview.transform = .identity }
+            animator.addAnimations {
+                preview.transform = .identity
+                preview.center = preview.home
+            }
             await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
                 animator.addCompletion { _ in cont.resume() }
                 animator.startAnimation()
@@ -204,6 +225,8 @@ final class PreviewView: UIView {
     }
 
     private var radius: CGFloat = 0
+    /// Where it lifted (its centre in the host), which a move goes up from and a drop comes back to.
+    var home: CGPoint = .zero
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
@@ -248,6 +271,18 @@ extension FoleviNativePlugin {
             guard self.fromFolevi, let webView = self.bridge?.webView else { return call.reject("Not allowed here") }
             let ok = await LiftPreview.shared.lift(id: id, from: from, in: webView)
             call.resolve(["value": ok])
+        }
+    }
+
+    /// { id, dy }: moves the lifted picture `dy` points up (0: back), so the page's menu fits under it.
+    @objc func liftMove(_ call: CAPPluginCall) {
+        guard let id = call.getString("id") else { return call.reject("A lift needs an id") }
+        let dy = CGFloat(call.getDouble("dy") ?? 0)
+        guard dy.isFinite else { return call.reject("Not a distance") }
+        Task { @MainActor in
+            guard self.fromFolevi else { return call.reject("Not allowed here") }
+            LiftPreview.shared.move(id: id, dy: dy)
+            call.resolve()
         }
     }
 

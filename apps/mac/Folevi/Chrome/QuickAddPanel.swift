@@ -1,10 +1,10 @@
 // Quick Add from any app (docs/MAC_POLISH_PLAN.md §3.8): a floating panel that takes the keyboard without making
 // Folevi the active app, so the app in front stays in front and a full-screen Space doesn't switch (Things' Quick
-// Entry, Raycast). The HUD material is under a clear page (the page draws the field; WM4's one growing field,
-// <html data-mac-panel="quick-add" data-vibrancy="hud">). It opens on the screen with the pointer, 28 % from the
-// top, grows with the page (foleviDesktop.sizeQuickAdd), and goes away on Escape (the page) or a click elsewhere.
-// It shows the Quick Add place's page (docs/MULTI_ACCOUNT_PLAN.md §6): picking another place there opens it again
-// in that place.
+// Entry, Raycast). The popover material (light or dark, as the page's theme) is under a clear page, which draws
+// the field (WM4's one growing field, under <html data-mac-panel="quick-add" data-vibrancy="hud">). It opens on
+// the screen with the pointer, 28 % from the top, grows with the page (foleviDesktop.sizeQuickAdd), and goes away
+// on Escape (the page) or a click elsewhere. It shows the Quick Add place's page (docs/MULTI_ACCOUNT_PLAN.md §6):
+// picking another place there opens it again in that place.
 import AppKit
 import WebKit
 
@@ -74,6 +74,11 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         })
     }
 
+    /// The material follows the page's theme (Settings > Appearance), not only the Mac's.
+    func setMaterialAppearance(_ appearance: NSAppearance?) {
+        material?.appearance = appearance
+    }
+
     /// The page's height (CSS px): the panel grows downwards, its top staying put.
     func size(height h: Double) {
         let next = min(Self.maxHeight, max(Self.minHeight, CGFloat(h) * (view?.pageZoom ?? 1))).rounded()
@@ -107,7 +112,8 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         panel.delegate = self
 
         let effect = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: Self.width, height: height))
-        effect.material = .hudWindow
+        // A material that follows the appearance (light or dark, as the page's theme): .hudWindow is dark in both.
+        effect.material = .popover
         effect.blendingMode = .behindWindow
         effect.state = .active
         effect.maskImage = Self.roundedMask(radius: Self.radius)
@@ -117,13 +123,15 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         self.panel = panel
 
         placesObserver = NotificationCenter.default.addObserver(forName: ShellPlaces.changed, object: nil, queue: .main) { _ in
-            MainActor.assumeIsolated {
-                // Another place picked for Quick Add (or the open place changed): its page, in that place.
-                let me = QuickAddPanel.shared
-                if me.view != nil, me.view?.place != me.place { me.load() }
-            }
+            MainActor.assumeIsolated { QuickAddPanel.shared.placeChanged() }
         }
         return panel
+    }
+
+    /// Another place picked for Quick Add, or the open place changed (Places.quickAddChanged, Places.switched): its
+    /// page, in that place.
+    func placeChanged() {
+        if view != nil, view?.place != place { load() }
     }
 
     /// The page of the Quick Add place, new (a place change makes a new view: its session and data are that place's).

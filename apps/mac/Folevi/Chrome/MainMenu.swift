@@ -34,6 +34,7 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
         }
         refreshShortcuts()
         refreshShare()
+        refreshUpdates()
         return main
     }
 
@@ -148,7 +149,7 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
     /// Runs a menu item by id (also the eval hook's "menu" command): page commands to their page, app ones here.
     func run(_ raw: String) {
         let id = raw.hasSuffix(".alt") ? String(raw.dropLast(4)) : raw
-        guard let spec = MenuModel.allItems(debug: Paths.isDebug).first(where: { $0.id == id }) else { return }
+        guard let spec = Self.specs[id] else { return }
         switch spec.action {
         case .page(let command): sendToPage(command, needsWindow: spec.needsWindow)
         case .app(let command): runApp(command)
@@ -183,6 +184,9 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
             pendingForLoad[ObjectIdentifier(view), default: []].append(id)
         }
     }
+
+    /// Every item of the model by id (validation runs for each item each time a menu opens).
+    static let specs: [String: MenuItemSpec] = Dictionary(MenuModel.allItems(debug: Paths.isDebug).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
 
     static let finderActions: [String: NSTextFinder.Action] = [
         "edit.find": .showFindInterface, "edit.find-next": .nextMatch, "edit.find-previous": .previousMatch, "edit.find-selection": .setSearchString,
@@ -247,7 +251,7 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
         }
         // Foli AI's items are hidden while AI is off (Go's menuNeedsUpdate hides it; its ⌘J does nothing).
         if base == "go.ask-ai", state.ai == false { return false }
-        guard let spec = MenuModel.allItems(debug: Paths.isDebug).first(where: { $0.id == base }) else { return true }
+        guard let spec = Self.specs[base] else { return true }
         switch spec.action {
         case .page(let command):
             if command == "file.close-tab" { return NSApp.keyWindow != nil || view != nil }
@@ -287,6 +291,14 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
             return
         }
         items.forEach(menu.addItem)
+    }
+
+    /// Check for Updates… or Restart to Update (WM3's Updater); hidden while updates are off (Debug builds).
+    func refreshUpdates() {
+        guard let item = itemsById["app.check-for-updates"] else { return }
+        let title = Chrome.updateTitle?()
+        item.isHidden = title == nil
+        if let title { item.title = title }
     }
 
     /// File > Share shows only once something fills it (WM5).

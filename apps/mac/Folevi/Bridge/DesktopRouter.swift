@@ -24,8 +24,7 @@ final class DesktopRouter {
     /// The view the call came from.
     @MainActor
     var view: FoleviWebView? {
-        let events = context.events as AnyObject
-        return WindowManager.shared.allViews.first { $0.events === events }
+        (context.events as? ViewEvents)?.view as? FoleviWebView
     }
 
     @MainActor
@@ -151,6 +150,11 @@ final class DesktopRouter {
             if view === SettingsWindow.shared.view { SettingsWindow.shared.pageStateChanged() }
             return [:]
 
+        case "pageTheme":
+            guard let view, let theme = options["theme"] as? String, ["dark", "light"].contains(theme) else { return [:] }
+            TitleBar.pageTheme(theme, view: view)
+            return [:]
+
         case "closeWindow":
             guard let view, view.role == .main, let window = view.window else { return [:] }
             window.performClose(nil)
@@ -185,8 +189,10 @@ final class DesktopRouter {
     }
 
     static func number(_ v: Any?) -> Double? {
-        if let n = v as? NSNumber, !(v is Bool) { let d = n.doubleValue; return d.isFinite ? d : nil }
-        return nil
+        // (An NSNumber of 0 or 1 also reads as a Bool in Swift: only a real boolean is refused.)
+        guard let n = v as? NSNumber, CFGetTypeID(n) != CFBooleanGetTypeID() else { return nil }
+        let d = n.doubleValue
+        return d.isFinite ? d : nil
     }
 
     static func int(_ v: Any?) -> Int? { number(v).map { Int($0.rounded(.down)) } }

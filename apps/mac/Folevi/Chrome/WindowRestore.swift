@@ -108,12 +108,16 @@ enum WindowRestore {
     }
 
     /// The first windows at launch: those saved, back to front so the front one ends up in front, each on a
-    /// screen that's still there; else one window (920 × 640 on the very first launch, polish §2.1).
+    /// screen that's still there; else one window where Electron's was (after the migration), or 920 × 640 on the
+    /// very first launch (polish §2.1).
     static func openFirstWindows() {
         let saved = load()
         guard !saved.isEmpty else {
             let first = WindowManager.shared.openMain()
-            if ShellMode.current == "unset", let w = first.window, w.frame.size == NSSize(width: 1280, height: 820) {
+            // Moved from the Electron app (WM3): its window's place and size.
+            if let old = ElectronMigration.firstWindowFrame(ElectronMigration.forThisApp().record), let w = first.window {
+                w.setFrame(onScreen(old), display: false)
+            } else if ShellMode.current == "unset", let w = first.window, w.frame.size == NSSize(width: 1280, height: 820) {
                 w.setContentSize(NSSize(width: 920, height: 640))
                 w.center()
             }

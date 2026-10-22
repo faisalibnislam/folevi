@@ -151,4 +151,10 @@ final class ChromeTests: XCTestCase {
         XCTAssertNil(TextMenu.word("two words"))
         XCTAssertNil(TextMenu.word("  "))
     }
+
+    func testNumbersFromThePage() throws {
+        // JSON's 0 and 1 arrive as NSNumbers that Swift would also read as Bools: they're numbers here.
+        let parsed = try JSONSerialization.jsonObject(with: Data("[0, 1, 2.5, true, \"3\"]".utf8)) as! [Any]
+        XCTAssertEqual(parsed.map(DesktopRouter.number), [0, 1, 2.5, nil, nil])
+    }
 }

@@ -61,6 +61,25 @@ enum Chrome {
             return true
         }, at: 0)
         HotKey.shared.action = { QuickAddPanel.shared.toggle() }
+        // Updates (WM3's Sparkle): the Folevi menu's item says what Updater says; off (hidden) in Debug builds.
+        checkForUpdates = { Updater.shared.menuAction() }
+        updateTitle = { Updater.shared.menuTitle }
+        let nc = NotificationCenter.default
+        nc.addObserver(forName: Updater.changed, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { MainMenu.shared.refreshUpdates() }
+        }
+        // Another place opened (WM1): its recent notes and save state come from its pages; the menus start over.
+        nc.addObserver(forName: Places.switched, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated {
+                Chrome.recent = []
+                Chrome.status = ""
+                Chrome.refresh()
+                QuickAddPanel.shared.placeChanged()
+            }
+        }
+        nc.addObserver(forName: Places.quickAddChanged, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { QuickAddPanel.shared.placeChanged() }
+        }
         #if DEBUG
         ChromeEval.install()
         #endif
@@ -120,9 +139,12 @@ enum Chrome {
         MainMenu.shared.viewLoaded(view)
     }
 
-    /// The front main window's view, or nil when none is open.
+    /// The key main window's view; while Folevi isn't the active app (the Dock menu, the menu bar icon, a script),
+    /// the front main window's if one is showing; nil otherwise (Settings or Quick Add is key, or no window).
     static var keyMainView: FoleviWebView? {
-        WindowManager.shared.mains.first { $0.window?.isKeyWindow == true }?.view
+        if let key = WindowManager.shared.mains.first(where: { $0.window?.isKeyWindow == true }) { return key.view }
+        guard !NSApp.isActive, let front = WindowManager.shared.frontMain, front.window?.isVisible == true else { return nil }
+        return front.view
     }
 
     /// The key window's web view, whatever window it is (a main window, Settings, Quick Add).

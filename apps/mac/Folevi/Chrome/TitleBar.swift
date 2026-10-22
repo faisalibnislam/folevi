@@ -91,6 +91,17 @@ enum TitleBar {
         content.addSubview(material, positioned: .below, relativeTo: content.subviews.first)
     }
 
+    /// The page's theme for the materials behind it (never the page's own window: its prefers-color-scheme would
+    /// then stop following the Mac).
+    static func pageTheme(_ theme: String, view: FoleviWebView) {
+        let appearance = NSAppearance(named: theme == "dark" ? .darkAqua : .aqua)
+        if view.role == .quickAdd {
+            QuickAddPanel.shared.setMaterialAppearance(appearance)
+        } else if let content = view.window?.contentView {
+            for case let m as SidebarMaterial in content.subviews { m.appearance = appearance }
+        }
+    }
+
     final class SidebarMaterial: NSVisualEffectView {
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
@@ -169,12 +180,34 @@ enum TitleBar {
               let titlebar = close.superview, let container = titlebar.superview else { return }
         let zoom = WindowManager.shared.mains.first { $0.window === window }?.view.pageZoom ?? 1
         let frames = layout(spot: spot, zoom: zoom, buttonSize: close.frame.size, spacing: mini.frame.minX - close.frame.minX, windowHeight: window.frame.height)
+        guard !laying else { return }
+        laying = true
+        defer { laying = false }
         var frame = frames.container
         frame.origin.x = container.frame.origin.x
         frame.size.width = container.frame.width
         if container.frame != frame { container.frame = frame }
         for (button, origin) in zip([close, mini, zoomButton], frames.buttons) where button.frame.origin != origin {
             button.setFrameOrigin(origin)
+        }
+        watch(window, views: [container, close])
+    }
+
+    private static var laying = false
+    private static var watched = Set<ObjectIdentifier>()
+
+    /// AppKit lays the title bar out again on its own (showing the window, becoming key, its toolbar): when the
+    /// container or a button moves, they go back on the page's spot.
+    private static func watch(_ window: NSWindow, views: [NSView]) {
+        for v in views where !watched.contains(ObjectIdentifier(v)) {
+            watched.insert(ObjectIdentifier(v))
+            v.postsFrameChangedNotifications = true
+            NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification, object: v, queue: .main) { [weak window] _ in
+                MainActor.assumeIsolated {
+                    guard let window else { return }
+                    DispatchQueue.main.async { TitleBar.relayout(window) }
+                }
+            }
         }
     }
 

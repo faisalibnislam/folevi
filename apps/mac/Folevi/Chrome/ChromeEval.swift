@@ -2,8 +2,8 @@
 // Settings and the title bar can be checked and photographed without clicks.
 //
 //   menu        { action: "list" } every menu as the app would show it now (titles, shortcuts, on/off, checked)
-//               { action: "run", id } runs an item as a click would
-//               { action: "open", id, x?, y?, seconds? } opens a menu ("file", "status", "dock", ...) at a point
+//               { action: "run", item } runs an item as a click would ("item": "id" is the request's own)
+//               { action: "open", item, x?, y?, seconds? } opens a menu ("file", "status", "dock", ...) at a point
 //               for `seconds` (a screenshot can be taken meanwhile), then closes it
 //   quickAdd    { action: "show" | "hide" | "toggle" | "state" }
 //   settings    { action: "show" | "close" | "state", section? }
@@ -12,6 +12,7 @@
 //   hitTest     { window?, x, y }   what a click at (x, y) from the window's top left would reach
 //   chrome      the Dock badge, recent notes, save state, the front page's menu state, the settings
 //   restore     { action: "save" | "read" }   windows.json now
+//   notifyAction { action, kind, notification, path?, place?, text?, thread? }   a notification's click or action
 #if DEBUG
 import AppKit
 import WebKit
@@ -40,6 +41,12 @@ enum ChromeEval {
                 "zoom": Zoom.level,
                 "active": NSApp.isActive,
             ] as [String: Any]])
+        }
+        // A notification's action as if it had been clicked (no notification is shown: that would ask the owner).
+        MacEval.commands["notifyAction"] = { req, done in
+            Notifications.shared.respond(action: req["action"] as? String ?? "open", kind: req["kind"] as? String ?? "comment", id: req["notification"] as? String ?? "",
+                                         path: req["path"] as? String, place: req["place"] as? String, text: req["text"] as? String ?? "", commentThread: req["thread"] as? String ?? "")
+            done(["value": true])
         }
         MacEval.commands["restore"] = { req, done in
             if req["action"] as? String == "save" { WindowRestore.save() }
@@ -89,11 +96,11 @@ enum ChromeEval {
     private static func menu(_ req: [String: Any], _ done: @escaping ([String: Any]) -> Void) {
         switch req["action"] as? String ?? "list" {
         case "run":
-            guard let id = req["id"] as? String else { return done(["error": "id?"]) }
+            guard let id = req["item"] as? String else { return done(["error": "item?"]) }
             MainMenu.shared.run(id)
             done(["value": true])
         case "open":
-            guard let id = req["id"] as? String, let menu = namedMenu(id) else { return done(["error": "no such menu"]) }
+            guard let id = req["item"] as? String, let menu = namedMenu(id) else { return done(["error": "no such menu"]) }
             let seconds = req["seconds"] as? Double ?? 3
             let screen = NSScreen.main?.frame ?? .zero
             let p = NSPoint(x: req["x"] as? Double ?? Double(screen.minX + 120), y: req["y"] as? Double ?? Double(screen.maxY - 40))

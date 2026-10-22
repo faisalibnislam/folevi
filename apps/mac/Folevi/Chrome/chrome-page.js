@@ -41,6 +41,26 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", hello, { once: true });
   else hello();
 
+  // The page's own theme (Settings > Appearance can differ from the Mac's): the materials behind it follow it.
+  var lastTheme = "";
+  var tellTheme = function () {
+    var t = root() && root().getAttribute("data-theme");
+    if ((t === "dark" || t === "light") && t !== lastTheme) {
+      lastTheme = t;
+      fire("pageTheme", { theme: t });
+    }
+  };
+  if (!background) {
+    var themeWatch = new MutationObserver(tellTheme);
+    var watchTheme = function () {
+      if (!root()) return;
+      themeWatch.observe(root(), { attributes: true, attributeFilter: ["data-theme"] });
+      tellTheme();
+    };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", watchTheme, { once: true });
+    else watchTheme();
+  }
+
   // ---------------------------------------------------------------- drag areas
   var CLICKABLE = 'a, button, input, textarea, select, [role="button"], [role="tab"], [role="combobox"], [role="switch"], [role="checkbox"], [tabindex], [contenteditable=""], [contenteditable="true"]';
   var FLOATING = 'dialog[open], .ui-pop, [role="menu"], [role="listbox"], [role="dialog"], [role="tooltip"], [data-radix-popper-content-wrapper]';
@@ -83,16 +103,22 @@
   };
   var last = "";
   var frame = 0;
+  var timer = 0;
   var report = function () {
+    if (frame) cancelAnimationFrame(frame);
+    if (timer) clearTimeout(timer);
     frame = 0;
+    timer = 0;
     var m = measure();
     var key = JSON.stringify(m);
     if (key === last) return;
     last = key;
     fire("dragRegions", m);
   };
+  // On the next frame; a window behind others gets no frames, so a timer too (whichever comes first).
   var soon = function () {
     if (!frame) frame = requestAnimationFrame(report);
+    if (!timer) timer = setTimeout(report, 120);
   };
   // Typing in a note changes nothing up there: mutations inside an editor don't count.
   var inEditor = function (node) {

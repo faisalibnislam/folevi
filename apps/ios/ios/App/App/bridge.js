@@ -106,6 +106,15 @@
         return r && typeof r.url === "string" ? r.url : null;
       });
     },
+    /**
+     * Sign in with Apple in Apple's own sheet: { idToken, authorizationCode, firstName, lastName }, or null when
+     * it was closed. `nonce` is the page's own random string (the request carries its SHA-256).
+     */
+    signInWithApple: function (o) {
+      return quietly(call("FoleviNative", "signInWithApple", { nonce: String((o && o.nonce) || "") })).then(function (r) {
+        return r && typeof r.idToken === "string" ? { idToken: r.idToken, authorizationCode: String(r.authorizationCode || ""), firstName: r.firstName || null, lastName: r.lastName || null } : null;
+      });
+    },
     /** The colour behind the web view, which shows round the keyboard's corners (0 to 255 each). */
     setBackdrop: function (r, g, b) {
       void quietly(call("FoleviNative", "setBackdrop", { r: Number(r) || 0, g: Number(g) || 0, b: Number(b) || 0 }));

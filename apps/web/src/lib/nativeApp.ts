@@ -125,6 +125,12 @@ export interface NativeBridge {
    * it couldn't be read. Missing in apps built before it.
    */
   recognizeText?(image: { data: string; type: string; handwriting?: boolean }): Promise<{ text: string } | null>;
+  /**
+   * Sign in with Apple in Apple's own sheet (Native/AppleSignIn.swift): the credential's id token and one-time
+   * authorization code, and the person's name the first time they use Apple with Folevi; null when it was
+   * closed. `nonce` is the page's random string (the request carries its SHA-256). Missing in older builds.
+   */
+  signInWithApple?(o: { nonce: string }): Promise<{ idToken: string; authorizationCode: string; firstName: string | null; lastName: string | null } | null>;
 }
 
 declare global {

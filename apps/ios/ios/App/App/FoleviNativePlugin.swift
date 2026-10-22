@@ -42,6 +42,8 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "authenticate", returnType: CAPPluginReturnPromise),
         // Native/TextRecognition.swift: the words in an image, read on the device (search in files).
         CAPPluginMethod(name: "recognizeText", returnType: CAPPluginReturnPromise),
+        // Native/AppleSignIn.swift: Sign in with Apple in Apple's own sheet.
+        CAPPluginMethod(name: "signInWithApple", returnType: CAPPluginReturnPromise),
     ]
 
     var appOrigin: String { AppOrigin.of(bridge?.config.serverURL) }

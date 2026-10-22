@@ -11,6 +11,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         PendingLink.handler = { url in Task { @MainActor in DeepLinkRouter.open(url) } }
         // Before launching finishes: a notification that opened the app (or a button pressed on one) arrives.
         PushNotifications.shared.attach()
+        Keychain.forgetAfterReinstall()
         return true
     }
 

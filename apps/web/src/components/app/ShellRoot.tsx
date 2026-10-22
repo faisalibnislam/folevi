@@ -10,6 +10,7 @@ import { FullPageMessage } from "@/lib/app/state";
 import { initialShellMode, setShellMode, shell, type Backend, type ShellMode } from "@/lib/shell";
 import { LibrarySetup } from "./LibrarySetup";
 import { ModeChoice } from "./ModeChoice";
+import { rememberSignInNext } from "./ShellSignIn";
 import { ProductApp } from "./ProductApp";
 
 // The host's mode never changes under a loaded page (a switch reloads it), so there's nothing to subscribe to.
@@ -60,6 +61,7 @@ export function ShellRoot() {
             setSetup(true);
             return;
           }
+          if (next === "account") rememberSignInNext();
           await setShellMode(next);
           setChosen(next);
         }}

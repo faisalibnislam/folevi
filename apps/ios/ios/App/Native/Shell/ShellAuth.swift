@@ -173,8 +173,16 @@ final class ShellAuth: NSObject {
             let key = k.lowercased()
             if Self.pageHeaders.contains(key), let s = v as? String, s.count <= 1000, !s.contains("\r"), !s.contains("\n") { clean[key] = s }
         }
-        let bearer = token
+        // Sign in with Apple's own sheet (AppleSignIn.swift): the page signs in with the id token through here,
+        // and the new session's token (the bearer plugin's set-auth-token) becomes this app's session.
+        let social = m == "POST" && url.path == "/api/auth/sign-in/social"
+        let bearer = social ? nil : token
         let (res, data, rotated) = try await send(url, method: m, headers: clean, body: body, bearer: bearer)
+        if social, res.statusCode == 200, let rotated, rotated.range(of: Self.tokenPattern, options: .regularExpression) != nil {
+            let previous = token
+            token = rotated
+            if let previous, previous != rotated { await endSession(previous) }
+        }
         var out: [String: String] = [:]
         for (k, v) in res.allHeaderFields {
             guard let key = (k as? String)?.lowercased(), !Self.hiddenHeaders.contains(key) else { continue }

@@ -44,4 +44,15 @@ enum Keychain {
     static func setString(_ service: String, _ account: String, _ value: String) -> Bool {
         set(service, account, Data(value.utf8))
     }
+
+    /// The Keychain outlives the app: after Folevi is deleted and installed again, nothing of the earlier install
+    /// signs anyone in or unlocks anything (its session, Foli AI keys, library keys and encryption keys go).
+    static func forgetAfterReinstall() {
+        let key = "folevi.installed"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        for service in ["com.folevi.shell-auth", "com.folevi.shell-secrets", "com.folevi.library-key", "com.folevi.e2ee"] {
+            SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service] as CFDictionary)
+        }
+        UserDefaults.standard.set(true, forKey: key)
+    }
 }

@@ -6,6 +6,7 @@ import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { socialError, type SocialProvider } from "@/lib/auth/socialErrors";
 import { inIosApp, nativeApp } from "@/lib/nativeApp";
 import { desktop } from "@/lib/desktop";
+import { appleSheetHere, signInWithAppleSheet } from "@/lib/auth/appleSheet";
 import { Alert } from "./fields";
 
 /** Google's "G", in its own colours (Google's sign-in branding asks for it as is). */
@@ -55,7 +56,7 @@ function routeHere(): Route {
 }
 
 /** Apple's own button: black on a light page, white on a dark one, with Apple's logo and "Continue with Apple". */
-const APPLE_BUTTON =
+export const APPLE_BUTTON =
   "ui-btn h-11 w-full gap-2 text-[15px] [font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif] bg-black text-white hover:bg-[#1d1d1f] active:bg-[#2c2c2e] dark:bg-white dark:text-black dark:hover:bg-[#f2f2f4] dark:active:bg-[#e5e5ea] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]";
 
 /**
@@ -126,7 +127,15 @@ export function SocialSignIn({
     setError(undefined);
     setBusy(provider);
     try {
-      if (route.kind === "browser") {
+      if (provider === "apple" && inIosApp() && appleSheetHere()) {
+        // The iPhone and iPad app: Apple's own sheet (lib/auth/appleSheet.ts).
+        const r = await signInWithAppleSheet();
+        if (r === "signed-in") {
+          window.location.assign(newUserTo ?? returnTo);
+          return;
+        }
+        if (r !== "cancelled") setError(r.error);
+      } else if (route.kind === "browser") {
         if (!(await inBrowser(provider))) return; // leaving for the provider: stay busy
       } else await throughBrowser(provider, route.open);
     } catch {

@@ -78,6 +78,14 @@ export function menuEntriesHere(items: MenuEntry[], inApp: boolean = nativeApp()
 
 /** The iPhone, iPad and Android apps draw menus as iOS does (globals.css, "iOS polish WP3"). */
 const appMenus = () => typeof document !== "undefined" && document.documentElement.matches('[data-iphone], [data-native="ios"]');
+/**
+ * Folevi for Mac (docs/MAC_POLISH_PLAN.md §3.14, globals.css "Mac polish WM4"): menus open on mouse-down and a
+ * press, drag and release picks an item, as AppKit's do; the row under the pointer is the one the keyboard is on;
+ * typing a name's first letters moves there; closing fades over 150 ms.
+ */
+const macMenus = () => typeof document !== "undefined" && document.documentElement.getAttribute("data-desktop") === "mac";
+/** How far a pressed pointer moves before its release counts as choosing (a press and release in place is a click). */
+const PRESS_DRAG = 4;
 
 /**
  * Menu button following the WAI-ARIA menu pattern: arrow keys move, Enter/Space select, Escape closes
@@ -111,6 +119,10 @@ export function MenuButton({
   // Rendered at the end of the enclosing modal dialog (so it isn't inert) or <body>.
   const [host, setHost] = useState<HTMLElement | null>(null);
   const id = useId();
+  // On the Mac the menu opens as the button goes down (the click that follows doesn't close it again), and where
+  // the press started, for press, drag and release.
+  const [press, setPress] = useState<{ x: number; y: number } | null>(null);
+  const pressed = useRef(false);
 
   const show = () => {
     setHost(buttonRef.current?.closest("dialog") ?? document.body);
@@ -132,7 +144,21 @@ export function MenuButton({
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         title={label}
-        onClick={() => (open ? close(false) : show())}
+        onPointerDown={(e) => {
+          if (!macMenus() || e.pointerType !== "mouse" || e.button !== 0 || e.ctrlKey || open) return;
+          pressed.current = true;
+          setPress({ x: e.clientX, y: e.clientY });
+          show();
+        }}
+        onClick={() => {
+          if (pressed.current) {
+            pressed.current = false;
+            return;
+          }
+          setPress(null);
+          if (open) close(false);
+          else show();
+        }}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown") {
             e.preventDefault();
@@ -162,7 +188,12 @@ export function MenuButton({
           align={align}
           side={side}
           menuClassName={menuClassName}
-          onClose={close}
+          press={press}
+          onClose={(refocus) => {
+            pressed.current = false;
+            setPress(null);
+            close(refocus);
+          }}
         />
       ) : null}
     </div>
@@ -177,6 +208,7 @@ export function ContextMenu({ at, label, items, onClose, host }: { at: { x: numb
   const id = useId();
   // Whatever had focus when the menu opened (the card), to return to on Escape.
   const [opener] = useState(() => (document.activeElement instanceof HTMLElement ? document.activeElement : null));
+  const [macPress] = useState(() => (macMenus() ? at : null));
   return (
     <MenuPanel
       id={id}
@@ -186,6 +218,8 @@ export function ContextMenu({ at, label, items, onClose, host }: { at: { x: numb
       anchor={() => new DOMRect(at.x, at.y, 0, 0)}
       align="start"
       side="bottom"
+      // (The Mac opens a context menu as the button goes down: releasing it over an item picks that.)
+      press={macPress}
       onClose={(refocus) => {
         onClose();
         if (refocus && opener?.isConnected) opener.focus({ preventScroll: true });
@@ -206,6 +240,7 @@ function MenuPanel({
   menuClassName,
   onClose,
   beside,
+  press,
 }: {
   id: string;
   label: string;
@@ -220,6 +255,8 @@ function MenuPanel({
   onClose: (refocus?: boolean) => void;
   /** Keep clear of the anchor (a lifted card): scroll inside the room beside it rather than cover it. */
   beside?: () => boolean;
+  /** On the Mac: where the press that opened it started, while that button is still down (press, drag, release). */
+  press?: { x: number; y: number } | null;
 }) {
   const besideRef = useRef(beside);
   besideRef.current = beside;
@@ -236,6 +273,43 @@ function MenuPanel({
   anchorRef.current = anchor;
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const [mac] = useState(macMenus);
+  // The Mac: the row under the pointer (or the one the arrows moved to) is the highlighted one, and only that.
+  // (Opened from the keyboard, the first item is highlighted at once; from the pointer, none until it moves.)
+  const [lit, setLit] = useState<number | null>(() => (mac && document.documentElement.dataset.input === "key" ? (actionable[0] ?? null) : null));
+  const typed = useRef({ text: "", at: 0 });
+
+  // Press, drag and release (the Mac): the button that opened the menu is still down; letting it go over an item
+  // chooses that item, letting it go elsewhere after a drag closes the menu, and letting it go where it was
+  // pressed leaves the menu open (that was a click).
+  const pressRef = useRef(press);
+  pressRef.current = press;
+  useEffect(() => {
+    const start = pressRef.current;
+    if (!mac || !start) return;
+    let moved = false;
+    const onMove = (e: PointerEvent) => {
+      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > PRESS_DRAG) moved = true;
+    };
+    const onUp = (e: PointerEvent) => {
+      stopListening();
+      if (!moved) return;
+      const under = document.elementFromPoint(e.clientX, e.clientY);
+      const item = under instanceof Element ? under.closest<HTMLButtonElement>(".ui-menu-item") : null;
+      if (item && menuRef.current?.contains(item)) {
+        if (!item.disabled) item.click();
+        return;
+      }
+      if (!menuRef.current?.contains(under) && !ignore?.current?.contains(under)) onCloseRef.current(false);
+    };
+    const stopListening = () => {
+      window.removeEventListener("pointermove", onMove, true);
+      window.removeEventListener("pointerup", onUp, true);
+    };
+    window.addEventListener("pointermove", onMove, true);
+    window.addEventListener("pointerup", onUp, true);
+    return stopListening;
+  }, [mac, ignore]);
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -306,6 +380,11 @@ function MenuPanel({
   useEffect(() => {
     if (pos) menuRef.current?.querySelector<HTMLElement>(`[data-index="${active}"]`)?.focus();
   }, [active, pos]);
+  /** The keyboard moved to `i`: on the Mac that row is the highlighted one too. */
+  const moveTo = (i: number) => {
+    setActive(i);
+    if (mac) setLit(i);
+  };
 
   // In the apps (§2.4): the menu grows out of what opened it on a spring (scale 0.5 to 1), and when it closes a
   // picture of it shrinks to 0.9 and fades over 160 ms while whatever was chosen goes ahead. Reduce Motion: fades.
@@ -329,7 +408,8 @@ function MenuPanel({
     const opened = performance.now();
     return () => {
       // (A menu shown for a moment only, React's development double mount, has nothing to fade.)
-      if (!menu || !appMenus() || performance.now() - opened < 80 || !host.isConnected) return;
+      const macFade = macMenus();
+      if (!menu || !(appMenus() || macFade) || performance.now() - opened < 80 || !host.isConnected) return;
       const ghost = menu.cloneNode(true) as HTMLElement;
       ghost.removeAttribute("id");
       ghost.removeAttribute("role");
@@ -344,7 +424,10 @@ function MenuPanel({
       } catch {
         /* Popover API missing: it's fixed in place already. */
       }
-      const fade = prefersReducedMotion()
+      // (The Mac's menus only fade, as AppKit's: 150 ms.)
+      const fade = macFade
+        ? ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: "ease-out", fill: "forwards" })
+        : prefersReducedMotion()
         ? ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: "linear", fill: "forwards" })
         : ghost.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.9)" }], { duration: 160, easing: "ease-in", fill: "forwards" });
       fade.onfinish = () => ghost.remove();
@@ -365,23 +448,42 @@ function MenuPanel({
       onContextMenu={(e) => e.preventDefault()}
       onKeyDown={(e) => {
         const at = actionable.indexOf(active);
+        // (On the Mac the first arrow press lands on the first or last item when none is highlighted yet.)
+        const from = mac && lit === null ? -1 : at;
         if (e.key === "ArrowDown") {
           e.preventDefault();
-          setActive(actionable[(at + 1) % actionable.length]!);
+          moveTo(actionable[(from + 1) % actionable.length]!);
         } else if (e.key === "ArrowUp") {
           e.preventDefault();
-          setActive(actionable[(at - 1 + actionable.length) % actionable.length]!);
+          moveTo(actionable[from < 0 ? actionable.length - 1 : (at - 1 + actionable.length) % actionable.length]!);
         } else if (e.key === "Home") {
           e.preventDefault();
-          setActive(actionable[0]!);
+          moveTo(actionable[0]!);
         } else if (e.key === "End") {
           e.preventDefault();
-          setActive(actionable[actionable.length - 1]!);
+          moveTo(actionable[actionable.length - 1]!);
         } else if (e.key === "Escape" || e.key === "Tab") {
           e.preventDefault();
           // Don't let Escape also clear a selection or close a panel behind the menu.
           e.stopPropagation();
           onClose();
+        } else if (mac && e.key.length === 1 && e.key !== " " && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          // Type-to-select (the Mac): the next item starting with what's typed; the same letter again moves on.
+          e.preventDefault();
+          const now = Date.now();
+          typed.current = { text: now - typed.current.at > 700 ? e.key : typed.current.text + e.key, at: now };
+          const text = typed.current.text.toLowerCase();
+          const same = [...text].every((c) => c === text[0]);
+          const needle = same ? text[0]! : text;
+          const begin = same || from < 0 ? from + 1 : from;
+          for (let k = 0; k < actionable.length; k++) {
+            const i = actionable[(begin + k + actionable.length) % actionable.length]!;
+            const entry = items[i];
+            if (entry && entry !== "separator" && !isHeading(entry) && entry.label.toLowerCase().startsWith(needle)) {
+              moveTo(i);
+              break;
+            }
+          }
         }
       }}
     >
@@ -403,8 +505,19 @@ function MenuPanel({
             aria-label={item.description || item.detail ? item.label : undefined}
             aria-description={[item.description, item.detail, item.badge ? `${item.badge} unread` : null, item.dot && !item.badge ? "something new" : null].filter(Boolean).join(" · ") || undefined}
             data-index={i}
+            data-highlighted={mac ? lit === i || undefined : undefined}
             tabIndex={i === active ? 0 : -1}
             disabled={item.disabled}
+            onMouseMove={
+              mac
+                ? () => {
+                    if (item.disabled || lit === i) return;
+                    setLit(i);
+                    setActive(i);
+                  }
+                : undefined
+            }
+            onMouseLeave={mac ? () => setLit((l) => (l === i ? null : l)) : undefined}
             onClick={() => {
               // Focus goes back to the menu button first, so a dialog the item opens returns it there when it closes.
               onClose(true);
@@ -438,7 +551,7 @@ function MenuPanel({
             ) : item.dot ? (
               <span data-menu-part="badge" aria-hidden className="h-2 w-2 flex-none rounded-tiny bg-coral" />
             ) : null}
-            {item.shortcut ? <span className="text-xs text-faint pointer-coarse:hidden">{keyLabel(item.shortcut)}</span> : null}
+            {item.shortcut ? <span data-menu-part="shortcut" className="text-xs text-faint pointer-coarse:hidden">{keyLabel(item.shortcut)}</span> : null}
           </button>
         ),
       )}

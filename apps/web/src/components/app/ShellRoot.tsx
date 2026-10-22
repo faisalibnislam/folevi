@@ -12,6 +12,7 @@ import { LibrarySetup } from "./LibrarySetup";
 import { ModeChoice } from "./ModeChoice";
 import { rememberSignInNext } from "./ShellSignIn";
 import { ProductApp } from "./ProductApp";
+import { MacPolish } from "./MacPolish";
 
 // The host's mode never changes under a loaded page (a switch reloads it), so there's nothing to subscribe to.
 const noSubscription = () => () => {};
@@ -19,6 +20,16 @@ const noSubscription = () => () => {};
 const serverMode = () => null;
 
 export function ShellRoot() {
+  return (
+    <>
+      {/* Folevi for Mac's polish on the screens before the product too (the first-launch choice, the library). */}
+      <MacPolish />
+      <ShellScreens />
+    </>
+  );
+}
+
+function ShellScreens() {
   const hostMode = useSyncExternalStore<ShellMode | null>(noSubscription, initialShellMode, serverMode);
   const [chosen, setChosen] = useState<Backend | null>(null);
   const [setup, setSetup] = useState(false);

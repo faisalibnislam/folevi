@@ -44,8 +44,17 @@ export const IconButton = forwardRef<HTMLButtonElement, ButtonProps & { label: s
   { label, shortcut, variant = "quiet", ...rest },
   ref,
 ) {
-  return <Button ref={ref} variant={variant} size="icon" aria-label={label} title={shortcut ? `${label} (${shortcut})` : label} {...rest} />;
+  return <Button ref={ref} variant={variant} size="icon" aria-label={label} title={shortcut ? `${label} (${shortcut})` : label} aria-keyshortcuts={shortcut ? ariaShortcut(shortcut) : undefined} {...rest} />;
 });
+
+const ARIA_MODS: Record<string, string> = { "⌘": "Meta", "⌃": "Control", "⌥": "Alt", "⇧": "Shift" };
+/** "⌘⇧K" as ARIA writes shortcuts ("Meta+Shift+K"), so assistive tech can announce it (docs/MAC_POLISH_PLAN.md §3.15). */
+export function ariaShortcut(shortcut: string): string {
+  const chars = [...shortcut];
+  const mods: string[] = [];
+  while (chars.length > 1 && ARIA_MODS[chars[0]!]) mods.push(ARIA_MODS[chars.shift()!]!);
+  return [...mods, chars.join("")].join("+");
+}
 
 export function Kbd({ children }: { children: React.ReactNode }) {
   return (

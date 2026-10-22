@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { IconButton } from "./Button";
 import { useIphoneApp } from "@/lib/iphone";
@@ -101,6 +101,7 @@ export function Dialog({
       onClick={(e) => {
         if (e.target === ref.current) onClose();
       }}
+      onKeyDown={(e) => macDialogKeys(e, ref.current, onClose)}
       className={`m-auto w-[calc(100%-2rem)] ${width} ui-pop rounded-panel p-0 text-ink outline-none backdrop:bg-transparent shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-rise_180ms_var(--ease-folio)]`}
     >
       {open && shown ? (
@@ -126,4 +127,26 @@ export function Dialog({
       ) : null}
     </dialog>
   );
+}
+
+/**
+ * Folevi for Mac (docs/MAC_POLISH_PLAN.md §3.14): Return is the dialog's default button (its primary one, at the
+ * end of the footer) wherever a form or a control of its own doesn't take Return, and ⌘. cancels, as in a Mac
+ * sheet. Escape closes it everywhere already (the <dialog>'s own cancel).
+ */
+function macDialogKeys(e: KeyboardEvent<HTMLDialogElement>, dialog: HTMLDialogElement | null, onClose: () => void) {
+  if (!dialog || document.documentElement.getAttribute("data-desktop") !== "mac" || e.defaultPrevented) return;
+  if (e.key === "." && e.metaKey && !e.shiftKey && !e.altKey && !e.ctrlKey) {
+    e.preventDefault();
+    onClose();
+    return;
+  }
+  if (e.key !== "Enter" || e.shiftKey || e.metaKey || e.altKey || e.ctrlKey || e.nativeEvent.isComposing) return;
+  const target = e.target instanceof Element ? e.target : null;
+  if (!target || target.closest("form, textarea, button, a[href], select, [contenteditable='true'], [role='combobox'], [role='listbox'], [role='menu'], [role='option']")) return;
+  const footer = [...dialog.querySelectorAll("footer")].pop();
+  const primary = footer ? [...footer.querySelectorAll<HTMLButtonElement>("button.ui-btn-primary, button.ui-btn-danger")].filter((b) => !b.disabled).pop() : undefined;
+  if (!primary) return;
+  e.preventDefault();
+  primary.click();
 }

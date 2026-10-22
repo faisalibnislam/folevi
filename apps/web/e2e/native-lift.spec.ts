@@ -124,10 +124,18 @@ test("the app's lifted preview for a long press", async ({ browser, browserName 
 
   // A tap outside (clear of the menu and the tile, wherever the menu was placed): the menu closes, the picture
   // settles back, the tile shows again.
-  const mb = (await menu.boundingBox())!;
-  const tb = (await tile.boundingBox())!;
-  const clearY = [mb.y + mb.height + 40, tb.y + tb.height + 40, 700].find((y) => y > mb.y + mb.height && y > tb.y + tb.height && y < 780)!;
-  await page.touchscreen.tap(60, clearY);
+  const clear = await page.evaluate(() => {
+    const held = document.querySelector("[data-held-lift]")!.getBoundingClientRect();
+    for (let y = 120; y < window.innerHeight - 120; y += 30)
+      for (const x of [40, window.innerWidth / 2, window.innerWidth - 40]) {
+        const under = document.elementFromPoint(x, y);
+        const onHeld = x > held.left - 12 && x < held.right + 12 && y > held.top - 12 && y < held.bottom + 12;
+        if (under?.hasAttribute("data-lift-backdrop") && !onHeld) return { x, y };
+      }
+    return null;
+  });
+  expect(clear, "somewhere on the frosted page clear of the menu and the tile").not.toBeNull();
+  await page.touchscreen.tap(clear!.x, clear!.y);
   await expect(menu).toHaveCount(0);
   await expect.poll(async () => (await calls(page)).find((c) => c.method === "liftDrop")?.arg).toEqual({ id: arm.id, to: "back" });
   await expect(page.locator("[data-lift-backdrop]")).toHaveCount(0);

@@ -21,6 +21,7 @@ import { AppStateProvider, type Profile } from "@/lib/app/state";
 import { ToastProvider } from "@/components/ui/Toast";
 import { Shell } from "@/components/app/Shell";
 import { SIGN_IN_TO_COLLABORATE } from "@/components/app/SignInToCollaborate";
+import { loadDocumentView } from "@/lib/app/noteView";
 import { settle } from "./local-fixtures";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -131,10 +132,13 @@ describe("local mode's main views", () => {
   test("a note calls nothing local mode doesn't have, and has no account surfaces", async () => {
     const recent = (await client.query(api.documents.recentNotes, { scope: { kind: "personal" }, limit: 1 })) as { id: string }[];
     expect(recent.length).toBe(1);
+    // The note's code (the editor and all of Tiptap) is its own chunk (lib/app/noteView.ts). The first import
+    // here has the whole graph to transform, which takes seconds on a busy machine, far longer than any count
+    // of event-loop turns: fetch it first, then give the editor time (not turns) to mount.
+    await loadDocumentView();
     called.clear();
     const view = await open(`/d/${recent[0]!.id}`);
-    // The note's code loads on its own: give it time.
-    for (let i = 0; i < 40 && !view.host.querySelector(".fb-editor"); i++) await settle(4);
+    for (const until = Date.now() + 20_000; Date.now() < until && !view.host.querySelector(".fb-editor"); ) await settle(4);
     expect(view.host.querySelector(".fb-editor"), "the editor rendered").not.toBeNull();
     expect(notHere()).toEqual([]);
     await close(view);

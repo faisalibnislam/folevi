@@ -138,11 +138,14 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const { scope, scopeKey, profile, online, engine, outbox } = useAppState();
   const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
   const [sort, setSort] = useLocalStorage<Sort>(`folevi:sort:${view}`, "updated");
-  const { results, status, loadMore } = usePaginatedQuery(
-    api.documents.list,
-    { scope, view, folderId, tagId, sort },
-    { initialNumItems: PAGE_SIZE },
-  );
+  // A folder made on this device whose creation is still in the outbox (just made, or made offline) isn't on
+  // the server (or in the library) yet: asking for its notes would fail as not found and take the page down.
+  // Until it's there it's an empty folder; its notes, if any were filed while it waited, arrive with it.
+  const queued = useOutboxEntries(outbox);
+  const unsent = view === "folder" && !!folderId && queued.some((e) => e.creates?.includes(folderId));
+  const paged = usePaginatedQuery(api.documents.list, unsent ? "skip" : { scope, view, folderId, tagId, sort }, { initialNumItems: PAGE_SIZE });
+  const { results, loadMore } = paged;
+  const status = unsent ? ("Exhausted" as const) : paged.status;
   const builtIns = useQuery(api.settings.builtInTemplates, view === "templates" ? {} : "skip");
   // Templates can be generated with AI (where AI is on and included).
   const aiOn = useAiEnabled();
@@ -203,7 +206,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     titleOverride ?? (view === "folder" ? (org?.folders.find((f) => f.id === folderId)?.name ?? "Folder") : view === "tag" ? `#${org?.tags.find((t) => t.id === tagId)?.name ?? "tag"}` : TITLES[view]);
   const fromCache = status === "LoadingFirstPage" && cached !== null;
   // The saved copies, with notes moved while offline in their new folders, and a folder's view showing its own.
-  const waiting = useOutboxEntries(outbox);
+  const waiting = queued;
   const kept = useMemo(() => {
     if (!cached) return null;
     const moved = pendingNoteFolders(waiting);

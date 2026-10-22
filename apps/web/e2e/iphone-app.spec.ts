@@ -68,13 +68,13 @@ test("the iPhone app: tab bar, large titles, Back, the + menu and sheets", async
   await expect(page.getByRole("button", { name: "Search in Personal" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Show sidebar" })).toHaveCount(0);
   // Tab roots have no Back button.
-  await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Back", exact: true })).toHaveCount(0);
 
   // All notes is pushed: its own large title and a Back button that returns Home.
   await page.getByRole("link", { name: "All notes" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "All notes" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Select" })).toBeVisible();
-  await page.getByRole("button", { name: "Back" }).click();
+  await page.getByRole("button", { name: "Back", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
 
   // The account sheet: places, Settings, Sign out.
@@ -99,7 +99,7 @@ test("the iPhone app: tab bar, large titles, Back, the + menu and sheets", async
   await sheet.getByRole("radiogroup", { name: "Color" }).getByRole("radio").nth(3).click();
   await sheet.getByRole("button", { name: "Create" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Garden plans" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Back" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back", exact: true })).toBeVisible();
 
   // Tasks: its own tab, a large title, the views as chips, + goes straight to Quick task (a sheet).
   await tabs.getByRole("link", { name: "Tasks" }).click();
@@ -110,7 +110,8 @@ test("the iPhone app: tab bar, large titles, Back, the + menu and sheets", async
   const quick = page.getByRole("dialog", { name: "Quick add task" });
   await expect(quick).toBeVisible();
   await expect(quick.locator("[data-iphone-sheet]")).toHaveCount(1);
-  await quick.getByRole("button", { name: "Close" }).click();
+  // The sheet has no Close button (it sits on the keyboard): a tap on the dimmed page above it closes it.
+  await quick.locator("[data-sheet-scrim]").click({ position: { x: 200, y: 40 } });
   await expect(quick).toHaveCount(0);
   // Picking another tab is felt.
   expect(await haptics(page)).toContain("light");
@@ -128,9 +129,9 @@ test("the iPhone app: tab bar, large titles, Back, the + menu and sheets", async
   await expect(page.getByRole("heading", { level: 1, name: "Tasks" })).toBeVisible();
   await tabs.getByRole("link", { name: "Home" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Garden plans" })).toBeVisible();
-  await page.getByRole("button", { name: "Back" }).click();
+  await page.getByRole("button", { name: "Back", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Back", exact: true })).toHaveCount(0);
   // Home's folders are the app's own folder cards, and their "…" stays hidden (a long press opens it).
   const card = page.getByRole("list", { name: "Folders" }).getByRole("link", { name: /^Garden plans, / });
   await expect(card).toBeVisible();
@@ -157,8 +158,9 @@ test("the iPhone app: tab bar, large titles, Back, the + menu and sheets", async
   await page.getByRole("toolbar", { name: "Note tools" }).getByRole("button", { name: "Format" }).click();
   await expect(page.getByRole("dialog", { name: "Format" })).toBeVisible();
   await page.getByRole("dialog", { name: "Format" }).getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("dialog", { name: "Format" })).toHaveCount(0);
   // Back goes to where the note was opened from.
-  await page.getByRole("button", { name: "Back" }).click();
+  await page.getByRole("button", { name: "Back", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
 
   // Settings is a grouped list; a section is its own screen.

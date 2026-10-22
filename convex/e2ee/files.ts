@@ -18,6 +18,7 @@ import { isValidId } from "@folevi/editor-schema";
 import { assertWritable, requireDocument, requireIdentity, requireProfile } from "../lib/auth";
 import { fail } from "../lib/errors";
 import { consume } from "../lib/rateLimit";
+import { nextSeq } from "../lib/seq";
 import { adjustStorageUsed, assertStorageFor, storageChargeFor } from "../lib/entitlements";
 import { insertScoped, sameScopeRows, scopeOfRow } from "../lib/scope";
 import { MAX_FILE_BYTES, MAX_IMAGE_BYTES } from "../lib/images";
@@ -168,11 +169,21 @@ export const commitSealed = internalMutation({
   },
 });
 
-/** Notes which files a sealed note references (§5.2 fileIds), for access and clean-up. */
+/**
+ * Notes which files a sealed note references (§5.2 fileIds), for access and clean-up, and moves the note's
+ * `seq` and revision so other devices' replicas pick up the file at once (e2ee.pull sends a note with its files).
+ */
 async function addFileId(ctx: MutationCtx, doc: Doc<"documents">, fileId: string) {
-  const ids = doc.fileIds ?? [];
-  if (ids.includes(fileId) || ids.length >= 500) return;
-  await ctx.db.patch(doc._id, { fileIds: [...ids, fileId] });
+  const fresh = (await ctx.db.get(doc._id)) ?? doc;
+  const ids = fresh.fileIds ?? [];
+  const fileIds = ids.includes(fileId) || ids.length >= 500 ? ids : [...ids, fileId];
+  await ctx.db.patch(doc._id, { fileIds, seq: await nextSeq(ctx, scopeOfRow(doc)), revision: fresh.revision + 1 });
+}
+
+/** A note's file changed (its sealed details or key): the note's `seq` and revision move so replicas re-read it. */
+async function touchNote(ctx: MutationCtx, documentId: Id<"documents">) {
+  const doc = await ctx.db.get(documentId);
+  if (doc) await ctx.db.patch(doc._id, { seq: await nextSeq(ctx, scopeOfRow(doc)), revision: doc.revision + 1 });
 }
 
 /**
@@ -263,6 +274,7 @@ export const swapSealed = internalMutation({
         : { sealed: undefined, filename: args.plain!.filename.slice(0, 200), mimeType: args.plain!.mimeType.slice(0, 100), width: args.plain!.width, height: args.plain!.height }),
     });
     if (args.sealed) await addFileId(ctx, doc, file.publicId);
+    else await touchNote(ctx, doc._id);
     if (users.length) return null;
     const snapshot = await ctx.db
       .query("documentSnapshots")
@@ -288,6 +300,7 @@ export const updateMeta = mutation({
     await requireDocument(ctx, profile, doc.publicId, "write");
     const meta = checkRecord(args.meta, E2EE_LIMITS.fieldBytes, "The file's details", 0);
     await ctx.db.patch(file._id, { sealed: { ...file.sealed, meta } });
+    await touchNote(ctx, doc._id);
     return null;
   },
 });
@@ -377,6 +390,7 @@ export const rewrapKeys = mutation({
       await ctx.db.patch(file._id, { sealed: { ...file.sealed, key: f.key, k: f.k } });
       rewrapped++;
     }
+    if (rewrapped) await touchNote(ctx, doc._id);
     return { rewrapped, skipped };
   },
 });

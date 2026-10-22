@@ -12,6 +12,7 @@ import { isFolderColor, randomFolderColor } from "./lib/folderColors";
 import { failE2ee, requirePlainWriteInScope, spaceE2ee } from "./lib/e2ee/state";
 import { lockOfFolder, sealedFieldsOf } from "./lib/e2ee/sealedRows";
 import { applyDocumentTags, relockFolder } from "./e2ee/content";
+import { writeTombstone } from "./lib/e2ee/sealedWrites";
 
 /** A sealed folder's or tag's sealed name next to its placeholder; nothing for a Standard one (docs/E2EE_DESIGN.md §5.2). */
 const sealedName = (row: { sealedName?: { c: ArrayBuffer; k: number }; locked?: boolean }) => ({
@@ -477,7 +478,8 @@ export const deleteTag = mutation({
       .collect();
     for (const l of links) await ctx.db.delete(l._id);
     await ctx.db.delete(tag._id);
-    await nextSeq(ctx, scope);
+    // Replicas of an encrypted space forget it through a tombstone (e2ee.pull `removed`).
+    await writeTombstone(ctx, scope, "tag", tag.publicId, await nextSeq(ctx, scope));
     return null;
   },
 });

@@ -1007,12 +1007,14 @@ export class SyncEngine {
     const meta = sealed.meta !== undefined ? { c: checkRecord(sealed.meta, E2EE_LIMITS.fieldBytes, "The meta", 1), k: 1 } : undefined;
     const fileIds = await this.checkFileIds(sealed.fileIds, at.scope);
     const locked = sealed.lockedOwn === true;
+    // A collection's row note keeps its kind (lists leave rows out); its row lives in its sealed meta (§6.7).
+    if (input.kind === "collectionRow" && !meta) failE2ee("e2ee_plaintext", "A collection row's values travel in its sealed meta.");
     const doc = await createDocument(this.ctx, {
       scope: at.scope,
       actor: this.profile,
       publicId: input.id,
       title: "",
-      kind: input.kind === "template" || input.kind === "daily" || input.kind === "synced" ? input.kind : "document",
+      kind: input.kind === "template" || input.kind === "daily" || input.kind === "synced" || input.kind === "collectionRow" ? input.kind : "document",
       parentDocumentId: at.parentDocumentId,
       folderId: at.folderId,
       dailyDate: input.kind === "daily" ? (input.dailyDate ?? undefined) : undefined,

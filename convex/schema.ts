@@ -2714,6 +2714,23 @@ export default defineSchema({
     data: v.string(),
   }).index("by_copy", ["copyId", "index"]),
 
+  /**
+   * Rows of an end-to-end encrypted space that were deleted for good (a note purged from Trash, a tag
+   * deleted), so devices' replicas forget them (e2ee.pull `removed`). Only written for spaces that have an
+   * `e2eeSpaces` row; holds the public id and kind only.
+   */
+  e2eeTombstones: defineTable({
+    ...scoped,
+    kind: v.union(v.literal("document"), v.literal("tag"), v.literal("folder")),
+    publicId: v.string(),
+    /** A restricted page: only people who open everything in the space hear it went (its id is theirs to have). */
+    restricted: v.optional(v.boolean()),
+    deletedAt: v.number(),
+    seq: v.number(),
+  })
+    .index("by_workspace_seq", ["workspaceId", "seq"])
+    .index("by_owner_seq", ["ownerProfileId", "seq"]),
+
   /** Background encrypt, decrypt and re-seal jobs, resumable by any eligible device. */
   e2eeMigrations: defineTable({
     ...scoped,

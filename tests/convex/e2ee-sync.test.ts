@@ -3,7 +3,7 @@
 import { describe, expect, test } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { SCHEMA_VERSION, canonicalJson, sync, validateWireBlock, type OpResult, type SyncOp, type SyncState, type WireBlock } from "@folevi/editor-schema";
+import { MAX_FOLDER_DEPTH, SCHEMA_VERSION, canonicalJson, sync, validateWireBlock, type OpResult, type SyncOp, type SyncState, type WireBlock } from "@folevi/editor-schema";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, person, setup, ulid, type T } from "./helpers";
@@ -593,5 +593,37 @@ describe("after a note key rotation, and published copies with images", () => {
     const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([s.bytes])));
     await p.as.action(api.e2ee.files.commit, { intentId, documentId: doc, fileId: sealedFile, storageId, sealed: s.row, size: s.bytes.byteLength, sha256: s.sha256 });
     await expect(p.as.mutation(api.e2ee.links.publishCopy, { documentId: doc, copy: { title: "Public", blocks: [], fileIds: [sealedFile] } })).rejects.toThrow();
+  });
+});
+
+describe("sealed creates and folders, as WP7 sends them", () => {
+  test("a collection row stays a collectionRow, and needs its sealed meta", async () => {
+    const t = setup();
+    const { p, sealer } = await sealedPerson(t, "row-kind@example.com");
+    const without = ulid();
+    const [refused] = await push(p, [await sealer.createOp(without, { kind: "collectionRow" })]);
+    expect(refused!.status).toBe("rejected");
+    expect(refused!.error!.code).toBe("e2ee_plaintext");
+    const row = ulid();
+    const [ok] = await push(p, [await sealer.createOp(row, { kind: "collectionRow", meta: { row: { id: ulid(), collectionId: ulid(), rank: "V", values: {}, createdAt: 1 } } })]);
+    expect(ok!.status).toBe("applied");
+    expect((ok!.document as { kind: string }).kind).toBe("collectionRow");
+    const stored = await t.run(async (ctx) => await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", row)).unique());
+    expect(stored!.kind).toBe("collectionRow");
+    expect(stored!.sealedMeta).toBeDefined();
+  });
+
+  test("sealed folders nest as deep as plain ones and no deeper", async () => {
+    const t = setup();
+    const { p, sealer } = await sealedPerson(t, "folder-depth@example.com");
+    const scope = { kind: "personal" } as const;
+    let parent: string | null = null;
+    for (let level = 1; level <= MAX_FOLDER_DEPTH; level++) {
+      const folderId = ulid();
+      await p.as.mutation(api.e2ee.content.createFolder, { scope, folderId, parentFolderId: parent, sealedName: await sealer.sealSpaceName("folder", folderId, `Level ${level}`) });
+      parent = folderId;
+    }
+    const tooDeep = ulid();
+    await expect(p.as.mutation(api.e2ee.content.createFolder, { scope, folderId: tooDeep, parentFolderId: parent, sealedName: await sealer.sealSpaceName("folder", tooDeep, "Too deep") })).rejects.toThrow(/nested/);
   });
 });

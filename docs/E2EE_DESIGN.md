@@ -1111,6 +1111,12 @@ retention keep working. `documentSnapshots.title` is `""`, `sealed: true`.
   files (pull, migration and `replaceBlob` leave it out), and `publishCopy` accepts only such files. It goes when
   no copy of the note uses it any more, with the note, and with the account or workspace (the purges call
   `dropPublishedCopies`).
+- Follow-up for WP7 (2026-10-22). `e2ee.pull` pages carry `removed: { kind: "document" | "tag", id, seq }[]`
+  from a new scoped table `e2eeTombstones` (written, only in spaces with an `e2eeSpaces` row, when a note is
+  purged for good and when a tag is deleted); a restricted page's tombstone goes only to people who open
+  everything in the space. Tombstones are kept (ids only). A sealed create keeps `kind: "collectionRow"` and
+  then needs `sealed.meta`. Committing, replacing, re-describing or re-wrapping a file moves its note's `seq`
+  and revision. `e2ee.content.createFolder` nests at most `MAX_FOLDER_DEPTH` (5) levels, as the plain path.
 
 ### 5.5 What the server still validates, and what it purges
 

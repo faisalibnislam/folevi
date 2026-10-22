@@ -80,6 +80,7 @@ export const SCOPED_TABLES = [
   "e2eeReminders",
   "e2eePublishedCopies",
   "e2eeMigrations",
+  "e2eeTombstones",
 ] as const satisfies readonly TableNames[];
 export type ScopedTable = (typeof SCOPED_TABLES)[number];
 
@@ -175,6 +176,7 @@ const WORKSPACE_INDEX: Record<ScopedTable, string> = {
   e2eeReminders: "by_workspace",
   e2eePublishedCopies: "by_workspace",
   e2eeMigrations: "by_workspace",
+  e2eeTombstones: "by_workspace_seq",
 };
 const OWNER_INDEX: Record<ScopedTable, string> = {
   folders: "by_owner",
@@ -224,6 +226,7 @@ const OWNER_INDEX: Record<ScopedTable, string> = {
   e2eeReminders: "by_owner",
   e2eePublishedCopies: "by_owner",
   e2eeMigrations: "by_owner",
+  e2eeTombstones: "by_owner_seq",
 };
 
 export type AnyScopedRow = ScopedRow & { _id: Id<ScopedTable>; _creationTime: number };

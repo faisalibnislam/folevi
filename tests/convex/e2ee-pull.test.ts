@@ -1,7 +1,7 @@
 // e2ee.pull (docs/E2EE_DESIGN.md §5.3, §6.5, §11.2 e2ee-pull): paging by seq with ties kept whole,
 // filtering by what the caller may read (restricted pages), and sealed rows only in a Standard space with locks.
 import { describe, expect, test } from "vitest";
-import { api } from "../../convex/_generated/api";
+import { api, internal } from "../../convex/_generated/api";
 import { e2eePerson, e2eeRecoveryMethods, e2eeSpace, inWorkspace, join, para, PERSONAL, setup, teamWorkspace, ulid, type T } from "./helpers";
 import { push } from "./e2ee-fixtures";
 import { sealerFor } from "./e2ee-device";
@@ -137,5 +137,72 @@ describe("e2ee.pull", () => {
     await p.as.mutation(api.documents.setStarred, { documentId: id, starred: true });
     const mine = await p.as.query(api.e2ee.pull.mine, { scope: PERSONAL });
     expect(mine.stars.map((s) => s.documentId)).toContain(id);
+  });
+});
+
+describe("e2ee.pull after WP7's integration", () => {
+  test("notes deleted for good and deleted tags come as `removed`; a restricted page's only to who opens everything", async () => {
+    const t = setup();
+    const owner = await e2eePerson(t, "pull-removed-owner@example.com");
+    await e2eeRecoveryMethods(owner);
+    const member = await e2eePerson(t, "pull-removed-member@example.com");
+    const { workspaceId, scope } = await teamWorkspace(owner);
+    await join(t, owner, member, "pull-removed-member@example.com", workspaceId, "editor");
+    const space = await e2eeSpace(owner, scope, [member]);
+    await t.run(async (ctx) => {
+      const ws = await ctx.db.query("workspaces").withIndex("by_public_id", (q) => q.eq("publicId", workspaceId)).unique();
+      const row = await ctx.db.query("e2eeSpaces").withIndex("by_scope_key", (q) => q.eq("scopeKey", `w:${ws!._id}`)).unique();
+      await ctx.db.patch(row!._id, { level: "full", state: "on" });
+    });
+    const sealer = await sealerFor(space.sk, space.scopeId);
+    const open = ulid();
+    const secret = ulid();
+    await push(owner, [await sealer.createOp(open, { title: "Open" }), await sealer.createOp(secret, { title: "Secret" })], "device-owner-002", scope);
+    await owner.as.mutation(api.sharing.setAccessMode, { documentId: secret, mode: "restricted" });
+    const tagId = ulid();
+    await owner.as.mutation(api.e2ee.content.createTag, { scope, tagId, sealedName: await sealer.sealSpaceName("tag", tagId, "Gone"), nameMac: await sealer.tagMac("Gone") });
+    const ownerCursor = (await pullAll(owner, scope, 500)).at(-1)!.nextCursor;
+    const memberCursor = (await pullAll(member, scope, 500)).at(-1)!.nextCursor;
+
+    for (const id of [open, secret]) {
+      await owner.as.mutation(api.documents.moveToTrash, { documentId: id });
+      await owner.as.mutation(api.documents.deletePermanently, { documentId: id, confirmTitle: "sealed" });
+    }
+    for (let i = 0; i < 5; i++) await t.mutation(internal.maintenance.runDeletionJobs, {});
+    await owner.as.mutation(api.organization.deleteTag, { tagId });
+
+    const ownerRemoved = (await owner.as.query(api.e2ee.pull.pull, { scope, cursor: ownerCursor })).removed;
+    expect(ownerRemoved.map((r) => [r.kind, r.id]).sort()).toEqual([["document", open], ["document", secret], ["tag", tagId]].sort());
+    const memberRemoved = (await member.as.query(api.e2ee.pull.pull, { scope, cursor: memberCursor })).removed;
+    expect(memberRemoved.map((r) => r.id).sort()).toEqual([open, tagId].sort());
+  });
+
+  test("a Standard space without encryption writes no tombstones", async () => {
+    const t = setup();
+    const p = await e2eePerson(t, "pull-removed-standard@example.com");
+    const { id: tagId } = await p.as.mutation(api.organization.createTag, { scope: PERSONAL, name: "plain" });
+    await p.as.mutation(api.organization.deleteTag, { tagId });
+    expect(await t.run(async (ctx) => await ctx.db.query("e2eeTombstones").collect())).toEqual([]);
+  });
+
+  test("a file committed or re-wrapped moves its note's seq, so the note comes again with the file", async () => {
+    const t = setup();
+    const { p, sealer } = await fullPersonal(t, "pull-files-seq@example.com");
+    const doc = ulid();
+    await push(p, [await sealer.createOp(doc, { title: "With a file" })]);
+    const cursor = (await pullAll(p, PERSONAL, 500)).at(-1)!.nextCursor;
+    const fileId = ulid();
+    const plain = new TextEncoder().encode("file bytes ".repeat(10));
+    const sealed = await sealer.sealFileBytes(doc, fileId, plain, { name: "a.txt", mime: "text/plain" });
+    const { intentId } = await p.as.mutation(api.e2ee.files.generateUploadUrl, { documentId: doc, kind: "file", declaredSize: sealed.bytes.byteLength });
+    const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([sealed.bytes])));
+    await p.as.action(api.e2ee.files.commit, { intentId, documentId: doc, fileId, storageId, sealed: sealed.row, size: sealed.bytes.byteLength, sha256: sealed.sha256 });
+    const after = await p.as.query(api.e2ee.pull.pull, { scope: PERSONAL, cursor });
+    const pulled = after.documents.find((d) => d.id === doc)!;
+    expect(pulled.files.map((f) => f.id)).toEqual([fileId]);
+    expect(pulled.fileIds).toEqual([fileId]);
+    // The details sealed again: the note comes once more.
+    await p.as.mutation(api.e2ee.files.updateMeta, { fileId, meta: sealed.row.meta });
+    expect((await p.as.query(api.e2ee.pull.pull, { scope: PERSONAL, cursor: after.nextCursor })).documents.map((d) => d.id)).toContain(doc);
   });
 });

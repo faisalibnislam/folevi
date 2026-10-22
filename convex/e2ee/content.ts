@@ -6,7 +6,7 @@
 import { v } from "convex/values";
 import { mutation, type MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
-import { isValidId, rankBetween } from "@folevi/editor-schema";
+import { MAX_FOLDER_DEPTH, canNestFolderIn, isValidId, rankBetween } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, documentAccessInfo, getDocumentByPublicId, requireDocument, requireProfile, requireRowScope, resolveScope } from "../lib/auth";
 import { fail } from "../lib/errors";
 import { consume } from "../lib/rateLimit";
@@ -112,9 +112,9 @@ export const createFolder = mutation({
       parentFolderId = parent._id;
     }
     const all = await scopeFolders(ctx, scope);
-    let depth = 0;
-    for (let cursor = parentFolderId; cursor && depth < 32; depth++) cursor = all.find((f) => f._id === cursor)?.parentFolderId;
-    if (depth >= 8) fail("invalid_argument", "Folders can be nested up to 8 levels deep.");
+    // The same nesting limit as organization.createFolder (packages/editor-schema folders.ts).
+    const links = all.filter((f) => !f.deletedAt).map((f) => ({ id: f._id as string, parentFolderId: (f.parentFolderId as string | undefined) ?? null }));
+    if (parentFolderId && !canNestFolderIn(links, parentFolderId)) fail("invalid_argument", `Folders can be nested up to ${MAX_FOLDER_DEPTH} levels deep.`);
     if (args.color !== undefined && !isFolderColor(args.color)) fail("invalid_argument", "Unknown folder colour.");
     if (args.rank !== undefined && (args.rank.length < 1 || args.rank.length > 200)) fail("invalid_argument", "Invalid rank.");
     const sealedName = await spaceSealed(ctx, scope, args.sealedName, "The folder name");

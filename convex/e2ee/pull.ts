@@ -42,7 +42,7 @@ async function seqStream<T extends SeqRow>(
   return { rows: [...rows.filter((r) => r.seq < boundary), ...rest], upTo: boundary };
 }
 
-function bySeq<T extends "documents" | "blocks" | "e2eeRecords" | "e2eeNoteKeys" | "folders" | "tags">(ctx: QueryCtx, table: T, scope: Scope, cursor: number, cap: number): Promise<Stream<Doc<T>>> {
+function bySeq<T extends "documents" | "blocks" | "e2eeRecords" | "e2eeNoteKeys" | "folders" | "tags" | "e2eeTombstones">(ctx: QueryCtx, table: T, scope: Scope, cursor: number, cap: number): Promise<Stream<Doc<T>>> {
   // The tables share the index names by_owner_seq / by_workspace_seq.
   const base = () => ctx.db.query(table) as unknown as {
     withIndex(name: string, f: (q: { eq(f: string, v: unknown): { gt(f: string, v: number): unknown; eq(f: string, v: unknown): unknown } }) => unknown): { take(n: number): Promise<Doc<T>[]>; collect(): Promise<Doc<T>[]> };
@@ -129,7 +129,7 @@ export const pull = query({
     const { scope } = standing;
     const head = await headSeq(ctx, scope);
     const space = await spaceE2ee(ctx, scope);
-    const empty = { documents: [], blocks: [], folders: [], tags: [], records: [], noteKeys: [], space: null, nextCursor: head, hasMore: false, head };
+    const empty = { documents: [], blocks: [], folders: [], tags: [], records: [], noteKeys: [], removed: [], space: null, nextCursor: head, hasMore: false, head };
     if (!space || (!isE2eeActive(space) && space.state === "off" && space.seq <= args.cursor)) return empty;
     // A Standard space with locks: only what is sealed (the rest the server serves as always).
     const sealedOnly = space.level === "standard" && space.state !== "disabling";
@@ -141,7 +141,8 @@ export const pull = query({
     const noteKeys = await bySeq(ctx, "e2eeNoteKeys", scope, cursor, cap);
     const folders = await bySeq(ctx, "folders", scope, cursor, cap);
     const tags = await bySeq(ctx, "tags", scope, cursor, cap);
-    let upTo = Math.min(docs.upTo, blocks.upTo, records.upTo, noteKeys.upTo, folders.upTo, tags.upTo);
+    const tombstones = await bySeq(ctx, "e2eeTombstones", scope, cursor, cap);
+    let upTo = Math.min(docs.upTo, blocks.upTo, records.upTo, noteKeys.upTo, folders.upTo, tags.upTo, tombstones.upTo);
     const hasMore = upTo !== Infinity;
     if (!hasMore) upTo = head;
 
@@ -229,7 +230,11 @@ export const pull = query({
             seq: space.seq,
           }
         : null;
-    return { documents: outDocs, blocks: outBlocks, folders: outFolders, tags: outTags, records: outRecords, noteKeys: outKeys, space: outSpace, nextCursor: upTo, hasMore, head };
+    // Rows deleted for good since the cursor (a note purged from Trash, a tag deleted): replicas forget them.
+    // Only ids and kinds; an id the caller's replica never had is simply ignored there.
+    // A restricted page's id only to people who open everything in the space (owners, admins, Personal).
+    const removed = tombstones.rows.filter((r) => r.seq <= upTo && (!r.restricted || reader.opensEverything)).map((r) => ({ kind: r.kind, id: r.publicId, seq: r.seq }));
+    return { documents: outDocs, blocks: outBlocks, folders: outFolders, tags: outTags, records: outRecords, noteKeys: outKeys, removed, space: outSpace, nextCursor: upTo, hasMore, head };
   },
 });
 

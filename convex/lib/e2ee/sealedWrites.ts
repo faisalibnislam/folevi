@@ -6,7 +6,7 @@ import type { MutationCtx } from "../../_generated/server";
 import { fail } from "../errors";
 import { nextSeq } from "../seq";
 import { insertScoped, scopeKey, scopeOfRow, type Scope } from "../scope";
-import { failE2ee } from "./state";
+import { failE2ee, spaceE2ee } from "./state";
 import { E2EE_LIMITS, type RecordKind } from "./validators";
 import { NoteKeyVersions, b64uToBytes, checkRecord } from "./sealedRows";
 
@@ -156,3 +156,12 @@ export async function startLockMigration(
   });
 }
 
+
+/**
+ * Notes that a row of an encrypted space was deleted for good (a note purged, a tag deleted), with the change's
+ * `seq`, so replicas forget it (e2ee.pull `removed`). Spaces that never set encryption up write nothing.
+ */
+export async function writeTombstone(ctx: MutationCtx, scope: Scope, kind: "document" | "tag" | "folder", publicId: string, seq: number, restricted = false): Promise<void> {
+  if (!(await spaceE2ee(ctx, scope))) return;
+  await insertScoped(ctx, "e2eeTombstones", scope, { kind, publicId, deletedAt: Date.now(), seq, ...(restricted ? { restricted: true } : {}) });
+}

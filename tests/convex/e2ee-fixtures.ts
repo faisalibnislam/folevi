@@ -151,7 +151,7 @@ export class Sealer {
   }
 
   /** document.create for a sealed note (§4.6 SealedDocumentCreate). */
-  async createOp(docId: string, o: { title?: string; icon?: string; parentDocumentId?: string | null; folderId?: string | null; kind?: string; dailyDate?: string; lockedOwn?: true; fileIds?: string[] } = {}): Promise<SyncOp> {
+  async createOp(docId: string, o: { title?: string; icon?: string; parentDocumentId?: string | null; folderId?: string | null; kind?: string; dailyDate?: string; lockedOwn?: true; fileIds?: string[]; meta?: unknown } = {}): Promise<SyncOp> {
     const title = o.title ?? "";
     return {
       opId: ulid(),
@@ -169,6 +169,7 @@ export class Sealer {
           titleMac: await this.titleMac(docId, title),
           appearance: await this.sealField(docId, "appearance", { icon: o.icon ?? null, cover: { kind: "none" }, style: null }),
           noteKey: { v: 1, spaceVersion: this.spaceVersion, wrapped: await this.wrappedNoteKey(docId) },
+          ...(o.meta !== undefined ? { meta: await this.sealField(docId, "meta", o.meta) } : {}),
           ...(o.lockedOwn ? { lockedOwn: true } : {}),
           ...(o.fileIds ? { fileIds: o.fileIds } : {}),
         },

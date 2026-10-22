@@ -14,12 +14,13 @@ import { normalizeMembership } from "./lib/auth";
 import { workspaceClosing } from "./workspaceBilling";
 import { subscriptionOf } from "./lib/billing";
 import { hasValidScope, personalScope, SCOPED_TABLES, scopedRows, scopeOfRow, workspaceScope, type ScopedTable } from "./lib/scope";
-import { bumpSeq, deleteSeq } from "./lib/seq";
+import { bumpSeq, deleteSeq, headSeq } from "./lib/seq";
 import { dropNoteGraph } from "./lib/ai/graphStore";
 import { deleteFileBlob, releaseNoteFile } from "./lib/fileCopies";
 import { purgeOldReceipts } from "./lib/emailNotes";
 import { removeMirrors } from "./e2ee/mirrors";
 import { dropPublishedCopies } from "./e2ee/links";
+import { writeTombstone } from "./lib/e2ee/sealedWrites";
 
 const BUDGET = 400;
 /** End-to-end encryption's scoped tables (docs/E2EE_DESIGN.md §5.1), purged with their workspace. */
@@ -212,6 +213,8 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     if (doc.kind !== "synced") await adjustDocumentCount(ctx, scope, -1);
     // Clients re-pull and notice the page is gone.
     await bumpSeq(ctx, scope);
+    // Replicas of an encrypted space are told by a tombstone (e2ee.pull `removed`).
+    await writeTombstone(ctx, scope, "document", doc.publicId, await headSeq(ctx, scope), doc.accessMode === "restricted");
   }
   await ctx.db.delete(docId);
   if (doc.kind !== "synced") await bump(ctx, "documents_total", -1);

@@ -2,7 +2,8 @@
 // site it loads, capacitor.config.ts server.url) to the App Group; when it comes to the front it refreshes
 // the share sheet's places, the widgets' copy and Spotlight (at most every few minutes); when it goes to the
 // background it refreshes them once more and reloads the widgets. Signing out clears all of it, and turns
-// notifications off on this device (FoleviNativePlugin.clearCredential).
+// notifications off on this device (FoleviNativePlugin.clearCredential). In local mode the page hands the
+// extensions what they show instead (Native/LocalExtensions.swift) and none of this reaches the REST API.
 import CoreSpotlight
 import UIKit
 import WidgetKit
@@ -17,6 +18,20 @@ enum AppServices {
         if let origin = serverURL.map({ AppOrigin.of($0) }), !origin.isEmpty, let base = URL(string: "\(origin)/api/v1") {
             SharedAccount.apiBase = base
         }
+    }
+
+    /// At launch, the mode the app is in (local: the built-in interface with a library on the device). A change
+    /// of mode leaves nothing of the other one in the widgets, the share sheet's places or Spotlight; actions
+    /// queued in local mode wait for it to come back.
+    static func modeApplied(local: Bool) {
+        guard LocalMode.on != local else { return }
+        LocalMode.on = local
+        WidgetStore.shared.clear()
+        LocalCatalog.clear()
+        PlacesCache.save([])
+        WidgetCenter.shared.reloadAllTimelines()
+        Task { await SpotlightIndex.shared.removeAll() }
+        if !local { refresh() }
     }
 
     static func becameActive() {
@@ -41,7 +56,7 @@ enum AppServices {
     /// The widgets' tasks and notes, the share sheet's places and Spotlight's notes, fetched again.
     static func refresh(then done: (() -> Void)? = nil) {
         guard !refreshing, let api = SharedAccount.api() else {
-            if !SharedAccount.signedIn { WidgetCenter.shared.reloadAllTimelines() }
+            if !SharedAccount.signedIn || LocalMode.on { WidgetCenter.shared.reloadAllTimelines() }
             done?()
             return
         }

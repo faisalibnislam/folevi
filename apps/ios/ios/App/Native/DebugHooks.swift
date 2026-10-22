@@ -64,6 +64,9 @@ enum DebugHooks {
                 "model": DeviceModel.name,
                 "queued": ShareQueue.shared.all().map { ["id": $0.id, "title": $0.title, "files": $0.files.count] },
                 "places": PlacesCache.load().map(\.name),
+                "localMode": LocalMode.on,
+                "localActions": LocalActions.shared.all().map { ["kind": $0.kind.rawValue, "taskId": $0.taskId ?? "", "text": $0.text ?? $0.title ?? ""] },
+                "catalog": LocalCatalog.load().count,
             ]
         case "refresh":
             let snapshot = await WidgetStore.shared.refresh()

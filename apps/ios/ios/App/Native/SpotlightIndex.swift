@@ -1,5 +1,6 @@
 // Folevi's notes in Spotlight: the recent and starred ones (title, an excerpt, and where it is: the folder
-// path or the place), indexed from the REST API when the app comes and goes. A note's details are fetched
+// path or the place), indexed from the REST API when the app comes and goes (in local mode, handed over by
+// the page instead: replace(with:)). A note's details are fetched
 // only when it changed since it was last indexed. Tapping a result opens the note (DeepLinkRouter, through
 // CSSearchableItemActionType). Signing out removes them all.
 import CoreSpotlight
@@ -54,6 +55,56 @@ actor SpotlightIndex {
         } catch {
             // Spotlight isn't available right now: tried again next time.
         }
+    }
+
+    /// A note as the page lists it in local mode (no REST API there): its text is the library's excerpt.
+    struct LocalNote: Equatable {
+        let id: String
+        let title: String
+        let excerpt: String
+        /// Its folder, or where the library is.
+        let location: String
+        let starred: Bool
+        /// Milliseconds since 1970.
+        let updatedAt: Double
+    }
+
+    /// Local mode: Spotlight holds exactly these notes (the page's recent and starred ones); only the ones
+    /// that changed since they were last indexed are written again.
+    func replace(with notes: [LocalNote]) async {
+        var known = indexed
+        let wanted = Dictionary(notes.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        var items: [CSSearchableItem] = []
+        for note in wanted.values {
+            let version = "local:\(Int64(note.updatedAt))" + (note.starred ? "*" : "")
+            guard known[note.id] != version else { continue }
+            items.append(Self.item(note))
+            known[note.id] = version
+        }
+        let gone = known.keys.filter { wanted[$0] == nil }
+        do {
+            if !items.isEmpty { try await index.indexSearchableItems(items) }
+            if !gone.isEmpty { try await index.deleteSearchableItems(withIdentifiers: Array(gone)) }
+            for id in gone { known[id] = nil }
+            indexed = known
+        } catch {
+            // Spotlight isn't available right now: the page hands them over again after its next change.
+        }
+    }
+
+    static func item(_ note: LocalNote) -> CSSearchableItem {
+        let attributes = CSSearchableItemAttributeSet(contentType: UTType.text)
+        let title = note.title.isEmpty ? "Untitled" : note.title
+        attributes.title = title
+        attributes.displayName = title
+        attributes.contentDescription = String(note.excerpt.prefix(300))
+        attributes.containerTitle = note.location
+        attributes.containerDisplayName = note.location
+        attributes.keywords = [note.location] + (note.starred ? ["starred"] : [])
+        attributes.contentModificationDate = Date(timeIntervalSince1970: note.updatedAt / 1000)
+        let item = CSSearchableItem(uniqueIdentifier: note.id, domainIdentifier: domain, attributeSet: attributes)
+        item.expirationDate = .distantFuture
+        return item
     }
 
     func removeAll() async {

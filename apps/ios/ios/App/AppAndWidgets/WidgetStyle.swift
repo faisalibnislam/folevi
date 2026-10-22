@@ -28,11 +28,15 @@ struct WidgetMark: View {
 struct SignedOutView: View {
     var compact = false
 
+    /// What a widget says before it has anything: sign in, or (local mode, no account) just open the app,
+    /// which hands the widgets the library's tasks and notes.
+    static var prompt: String { LocalMode.on ? "Open Folevi" : "Open Folevi to sign in" }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             WidgetMark()
             Spacer(minLength: 0)
-            Text("Open Folevi to sign in")
+            Text(Self.prompt)
                 .font(Typeface.title(compact ? 15 : 17))
                 .foregroundStyle(Palette.heading)
                 .fixedSize(horizontal: false, vertical: true)

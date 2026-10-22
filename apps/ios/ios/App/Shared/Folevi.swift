@@ -68,9 +68,10 @@ enum SharedAccount {
         return id
     }
 
-    /// The REST API with this device's token, or nil when signed out (or the app hasn't been opened yet).
+    /// The REST API with this device's token, or nil when signed out (or the app hasn't been opened yet). Nil in
+    /// local mode too, even with an account's token still kept: nothing there reaches Folevi (LocalExtras.swift).
     static func api(session: URLSession = .shared) -> FoleviAPI? {
-        guard let base = apiBase, let token = DeviceCredential.shared.token else { return nil }
+        guard !LocalMode.on, let base = apiBase, let token = DeviceCredential.shared.token else { return nil }
         return FoleviAPI(base: base, token: token, session: session)
     }
 

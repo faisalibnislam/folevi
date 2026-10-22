@@ -44,6 +44,11 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "recognizeText", returnType: CAPPluginReturnPromise),
         // Native/AppleSignIn.swift: Sign in with Apple in Apple's own sheet.
         CAPPluginMethod(name: "signInWithApple", returnType: CAPPluginReturnPromise),
+        // Native/LocalExtensions.swift: the widgets, Shortcuts and Spotlight in local mode.
+        CAPPluginMethod(name: "setWidgetSnapshot", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "takeLocalActions", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "finishLocalAction", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "indexSpotlight", returnType: CAPPluginReturnPromise),
     ]
 
     var appOrigin: String { AppOrigin.of(bridge?.config.serverURL) }

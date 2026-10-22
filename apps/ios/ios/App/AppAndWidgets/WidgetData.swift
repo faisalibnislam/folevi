@@ -112,6 +112,9 @@ final class WidgetStore {
     /// Offline: what was there, unchanged.
     @discardableResult
     func refresh(api: FoleviAPI? = SharedAccount.api(), now: Date = Date()) async -> WidgetSnapshot {
+        // Local mode: the page writes the copy (setLocal); here only the day moves on at midnight, so
+        // tomorrow's tasks count as today's until the page next runs.
+        if LocalMode.on { return rollLocal(now: now) }
         guard let api else {
             let out = WidgetSnapshot.signedOut
             save(out)
@@ -148,11 +151,20 @@ final class WidgetStore {
         }
     }
 
-    /// A check in a widget: shown at once, then sent (kept in `pending` while it can't be).
+    /// A check in a widget: shown at once, then sent (kept in `pending` while it can't be). In local mode it
+    /// waits for the page in the local-actions queue instead.
     func setTask(_ id: String, completed: Bool, api: FoleviAPI? = SharedAccount.api()) async {
         var snapshot = load()
         snapshot.pending[id] = completed
         save(snapshot)
+        if LocalMode.on {
+            if (try? LocalActions.shared.add(.toggleTask, taskId: id, completed: completed)) == nil {
+                // Couldn't be kept: not shown as done either.
+                snapshot.pending[id] = nil
+                save(snapshot)
+            }
+            return
+        }
         guard let api else { return }
         do {
             try await api.setTask(id, completed: completed)
@@ -167,6 +179,40 @@ final class WidgetStore {
         } catch {
             // Sent on the next refresh.
         }
+    }
+}
+
+// MARK: Local mode
+
+extension WidgetStore {
+    /// The page's copy (local mode): today's, overdue and tomorrow's open tasks and the recent notes. Checks
+    /// made in a widget that the page hasn't taken yet stay checked.
+    @discardableResult
+    func setLocal(tasks: [TaskItem], notes: [NoteSummary], day: String, now: Date = Date(), actions: LocalActions = .shared) -> WidgetSnapshot {
+        var pending: [String: Bool] = [:]
+        for (id, completed) in load().pending where actions.togglePending(id) { pending[id] = completed }
+        let snapshot = WidgetSnapshot(state: .ready, tasks: WidgetSnapshot.ordered(tasks, today: day), notes: Array(notes.prefix(10)), day: day, fetchedAt: now, pending: pending)
+        save(snapshot)
+        return snapshot
+    }
+
+    /// A check-off the page has put in the library: no longer pending (a task checked off leaves the list).
+    func settleLocal(_ id: String, completed: Bool) {
+        var snapshot = load()
+        snapshot.pending[id] = nil
+        if completed { snapshot.tasks.removeAll { $0.id == id } }
+        save(snapshot)
+    }
+
+    /// The day moved on since the page last wrote the copy: what was tomorrow is today.
+    func rollLocal(now: Date) -> WidgetSnapshot {
+        var snapshot = load()
+        let today = DayFormat.string(now)
+        guard snapshot.state == .ready, snapshot.day < today else { return snapshot }
+        snapshot.day = today
+        snapshot.tasks = WidgetSnapshot.ordered(snapshot.tasks, today: today)
+        save(snapshot)
+        return snapshot
     }
 }
 

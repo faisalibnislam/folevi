@@ -56,8 +56,21 @@ Native/AppleSignIn.swift    Sign in with Apple in Apple's own sheet (foleviNativ
   after the app restarts in account mode (no second choice).
 - **Places**: Sync with iCloud, Choose a folder (the Files app's folder picker: On My iPhone, iCloud Drive,
   Dropbox, Google Drive, OneDrive and other File Providers; a security-scoped bookmark), This device only
-  (`Documents/Folevi Library`, visible in the Files app under On My iPhone > Folevi). Dropbox and Google Drive
-  connections (WP9b) are Mac and Android only for now: "Choose a folder" reaches their File Providers instead.
+  (`Documents/Folevi Library`, visible in the Files app under On My iPhone > Folevi), and Sync with Dropbox and
+  Sync with Google Drive when the build has their client ids.
+- **Dropbox and Google Drive** (WP9b): the provider code is `packages/cloud-folders`, through the Android
+  bridge's kit (`apps/android/bridge/cloud.ts`), bundled by `scripts/bundle-cloud.mjs` into
+  `Native/Shell/folevi-cloud.js` (git-ignored, made by `pnpm shell`, `pnpm build` and `pnpm release`) and put
+  into bridge.js. Sign-in is OAuth with PKCE in iOS's sign-in sheet (`Native/Shell/ShellCloud.swift`;
+  Dropbox's redirect is `com.folevi.ios://oauth/dropbox`, Google's the reversed iOS client id); the tokens stay
+  in the Keychain (`com.folevi.cloud-tokens`, this device only), requests go only to the providers' own hosts,
+  and the library's copy on the device (Application Support/Folevi/Cloud libraries) serves attachments. The
+  client ids come from the build: `FOLEVI_DROPBOX_APP_KEY` and `FOLEVI_GOOGLE_IOS_CLIENT_ID` when running
+  `cap sync` or `pnpm release`; without one, that place isn't offered. Owner: make the Dropbox app (scoped,
+  App folder, redirect above) and a Google OAuth client of type iOS for `com.folevi.ios`, then build with them.
+  Checked in the Simulator with placeholder ids: the sheet opens on each provider and a cancel comes back as
+  cancelled; a real sign-in hasn't been run. A passphrase isn't offered for these two on iOS yet, and moving
+  from one of them to "Choose a folder" goes through This device only first.
 - **iCloud**: the app's own container, `iCloud.com.folevi`, its `Documents` folder (`NSUbiquitousContainers`
   makes it public: "Folevi" in iCloud Drive). The library is the container's Documents folder itself (not a
   subfolder), shown as "iCloud Drive › Folevi". Notes, catalogs, the index and devices' files start
@@ -79,6 +92,18 @@ Native/AppleSignIn.swift    Sign in with Apple in Apple's own sheet (foleviNativ
 - **Reminders** are local notifications (up to iOS's 64 pending; the page schedules the next ones again after
   each change); tapping one opens its note.
 - **Moving** between modes (WP12) and moving the library between places are the web's flows on this bridge.
+- **Widgets, Siri, Shortcuts and Spotlight** (WP13) work without an account: there's no REST API in local mode
+  (`SharedAccount.api()` is nil there even with an old token kept), so the page that holds the library feeds
+  them (`components/app/LocalExtensions.tsx`). It hands the app the widgets' copy (open tasks through tomorrow,
+  the recent notes: `foleviNative.setWidgetSnapshot`), the notes Shortcuts can pick from (`local-notes.json`)
+  and Spotlight's notes (the recent and starred ones: `indexSpotlight`) whenever the library changes. What a
+  widget's check-off, Add a task or New note with text does while the page isn't running waits in the App
+  Group's `LocalActions/` queue (`Shared/LocalExtras.swift`); the page takes it as it opens or comes back
+  (`takeLocalActions`, `finishLocalAction`; a Darwin notification tells a running app at once), a new note
+  opens, and the widget shows the check meanwhile. Add a task says "It goes into your Inbox when you next open
+  Folevi." A change of mode clears the widgets, Shortcuts' notes and Spotlight; queued actions wait for local
+  mode. Checked in the Simulator: Add a task (app running and app closed), a check-off from a widget, New note
+  with text, Open note by name, Spotlight's entries and the widgets drawn from a local library.
 
 ### Signed in
 

@@ -4,7 +4,8 @@
 // (widgets, Shortcuts, Spotlight) land where they point (a note, a page, a new note, Quick add task). It also
 // gives the app this device's token for its extensions (lib/nativeDevice.ts), saves what the share
 // extension kept while it couldn't reach Folevi, keeps this device's notifications registered
-// (lib/nativePush.ts) and puts the bell's unread count on the app icon, like the Mac app's Dock badge. In a
+// (lib/nativePush.ts) and puts the bell's unread count on the app icon, like the Mac app's Dock badge. In local
+// mode it feeds the widgets, Shortcuts and Spotlight from the library instead (LocalExtensions). In a
 // browser and in the Mac app: nothing.
 import { useMutation, useQuery } from "convex/react";
 import { useCapabilities } from "@/lib/mode";
@@ -21,6 +22,7 @@ import { saveShare } from "@/lib/share/save";
 import { useToast } from "@/components/ui/Toast";
 import { useShell } from "./Shell";
 import { useCreateDocument } from "./useCreateDocument";
+import { LocalExtensions } from "./LocalExtensions";
 
 export function NativeBridge() {
   return nativeApp() ? <Bridge /> : null;
@@ -32,6 +34,7 @@ function Bridge() {
   const createDocument = useCreateDocument();
   const { openQuickAdd } = useShell();
   const { profile, online } = useAppState();
+  const local = !useCapabilities().account;
   useDeviceToken(profile.id, online);
   useKeptShares();
   usePush(online);
@@ -77,13 +80,14 @@ function Bridge() {
       }),
     [bridge, navigate, createDocument, openQuickAdd],
   );
-  return null;
+  return local ? <LocalExtensions /> : null;
 }
 
 /** On each launch, signed in and online: the app holds a working token for this account. */
 function useDeviceToken(accountId: string, online: boolean) {
   const done = useRef<string | null>(null);
-  // Local mode: no account, so no token (the widgets and intents use the local-actions queue there, WP13).
+  // Local mode: no account, so no token (the widgets and intents use the local-actions queue there, WP13:
+  // LocalExtensions).
   const account = useCapabilities().account;
   useEffect(() => {
     if (!online || !account || done.current === accountId) return;

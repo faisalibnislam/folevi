@@ -79,6 +79,28 @@
     finishShare: function (id) {
       return quietly(call("FoleviNative", "finishShare", { id: String(id) })).then(function () {});
     },
+    /**
+     * Local mode (no account): the widgets' copy ({ day, tasks, notes, catalog }), handed over by the page that
+     * holds the library; the app draws the widgets again and offers `catalog`'s notes in Shortcuts.
+     */
+    setWidgetSnapshot: function (snapshot) {
+      var s = snapshot || {};
+      return quietly(call("FoleviNative", "setWidgetSnapshot", { day: String(s.day || ""), tasks: s.tasks || [], notes: s.notes || [], catalog: s.catalog || [] })).then(function () {});
+    },
+    /** Local mode: what a widget, Siri or Shortcuts did while the page wasn't there, oldest first. */
+    takeLocalActions: function () {
+      return quietly(call("FoleviNative", "takeLocalActions")).then(function (r) {
+        return (r && r.value) || [];
+      });
+    },
+    /** Local mode: an action is in the library now (or there was nothing to do): the app lets it go. */
+    finishLocalAction: function (id) {
+      return quietly(call("FoleviNative", "finishLocalAction", { id: String(id) })).then(function () {});
+    },
+    /** Local mode: the notes Spotlight finds ([{ id, title, excerpt, location, starred, updatedAt }]), exactly these. */
+    indexSpotlight: function (items) {
+      return quietly(call("FoleviNative", "indexSpotlight", { items: items || [] })).then(function () {});
+    },
     /** Scans a document ("camera") or reads pages from photos ("photos"): { pages, text }, or null if cancelled. */
     scanDocument: function (source) {
       return call("FoleviNative", "scanDocument", { source: source === "camera" ? "camera" : "photos" }).then(function (r) {

@@ -2,6 +2,8 @@
 // Control Center control. Compiled into the app and the widget extension (an interactive widget runs its
 // intent there). The ones that work in the background call the REST API with this device's token; the ones
 // that open the app hand it a folevi:// link (PendingLink), the same way a link from another app arrives.
+// In local mode there's no REST API: notes are picked from the page's list (LocalCatalog) and what can't be
+// done without the page waits for it in the local-actions queue (Shared/LocalExtras.swift).
 import AppIntents
 import Foundation
 import WidgetKit
@@ -54,10 +56,11 @@ struct NoteEntity: AppEntity, Identifiable {
     }
 }
 
-/// Notes found by searching Folevi (GET /notes?q=), with the recent ones as suggestions.
+/// Notes found by searching Folevi (GET /notes?q=), with the recent ones as suggestions. In local mode: the
+/// library's notes as the page last listed them.
 struct NoteQuery: EntityStringQuery {
     func entities(for identifiers: [String]) async throws -> [NoteEntity] {
-        let cached = WidgetStore.shared.load().notes
+        let cached = WidgetStore.shared.load().notes + (LocalMode.on ? LocalCatalog.load() : [])
         var out: [NoteEntity] = []
         for id in identifiers {
             if let note = cached.first(where: { $0.id == id }) {
@@ -70,6 +73,7 @@ struct NoteQuery: EntityStringQuery {
     }
 
     func entities(matching string: String) async throws -> [NoteEntity] {
+        if LocalMode.on { return LocalCatalog.search(string).map(NoteEntity.init) }
         guard let api = SharedAccount.api() else { throw FoleviIntentError.signedOut }
         do {
             return try await api.searchNotes(string, limit: 10).map(NoteEntity.init)
@@ -79,6 +83,7 @@ struct NoteQuery: EntityStringQuery {
     }
 
     func suggestedEntities() async throws -> [NoteEntity] {
+        if LocalMode.on { return Array(LocalCatalog.load().prefix(10)).map(NoteEntity.init) }
         if let api = SharedAccount.api(), let recent = try? await api.recentNotes(limit: 10) { return recent.map(NoteEntity.init) }
         return WidgetStore.shared.load().notes.map(NoteEntity.init)
     }
@@ -117,6 +122,16 @@ struct AddTaskIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { throw FoleviIntentError.refused("Say what the task is.") }
+        if LocalMode.on {
+            // The library is the page's: the task waits for it, and goes in when Folevi next opens.
+            do {
+                try LocalActions.shared.add(.addTask, text: String(text.prefix(500)), dueDate: dueDate.map { DayFormat.string($0) }, noteId: note?.id)
+            } catch {
+                throw FoleviIntentError.refused("Folevi couldn't keep that task. Try again.")
+            }
+            if let note { return .result(dialog: "Added. It goes into \(note.title) when you next open Folevi.") }
+            return .result(dialog: "Added. It goes into your Inbox when you next open Folevi.")
+        }
         guard let api = SharedAccount.api() else { throw FoleviIntentError.signedOut }
         do {
             _ = try await api.createTask(text: text, dueDate: dueDate.map { DayFormat.string($0) }, noteId: note?.id)
@@ -187,6 +202,12 @@ struct NewNoteIntent: AppIntent {
         // The first line is the title (as in the editor), the rest the note.
         let lines = text.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
         let body = lines[0].trimmingCharacters(in: .whitespaces) == content.title ? (lines.count > 1 ? String(lines[1]).trimmingCharacters(in: .whitespacesAndNewlines) : "") : text
+        if LocalMode.on {
+            // Made by the page as the app opens (it takes the local-actions queue), which then shows it.
+            if (try? LocalActions.shared.add(.newNote, title: content.title.isEmpty ? "Untitled" : content.title, markdown: ShareContent.paragraphs(body))) != nil {
+                return .result()
+            }
+        }
         if let api = SharedAccount.api(), let note = try? await api.createNote(title: content.title.isEmpty ? "Untitled" : content.title, markdown: ShareContent.paragraphs(body), place: nil, inInbox: false) {
             openInApp(DeepLink.forNote(note.id) ?? URL(string: "folevi://documents")!)
         } else {

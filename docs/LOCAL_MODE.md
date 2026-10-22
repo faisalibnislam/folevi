@@ -788,7 +788,10 @@ with `window.foleviShell` in Swift (`apps/ios/ios/App/Native/Shell`, docs/IOS.md
   entitled helper app described in docs/IOS.md.
 - **The file layer** passes local-store's fs contract plain and encrypted, and the crypto vectors, in XCTest
   (`Tests/ShellTests.swift`).
-- **Not done on iOS yet**: Dropbox and Google Drive connections (Choose a folder reaches their File Providers),
-  the widgets, intents and Spotlight in local mode (WP13's LocalActions queue and setWidgetSnapshot), iCloud
+- **Added the same day**: Sync with Dropbox and Sync with Google Drive (WP9b's iOS half, `packages/cloud-folders`
+  in bridge.js, OAuth in iOS's sign-in sheet, tokens in the Keychain) and the widgets, Siri, Shortcuts and
+  Spotlight in local mode (WP13's iOS half: `setWidgetSnapshot`, the `LocalActions/` queue, `indexSpotlight`,
+  `components/app/LocalExtensions.tsx`); docs/IOS.md "Local mode on iPhone and iPad".
+- **Not done on iOS yet**: a real Dropbox or Google sign-in (the build needs the owner's client ids), iCloud
   sync between two real devices (the Simulators here aren't signed in to iCloud).
 

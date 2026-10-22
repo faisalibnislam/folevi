@@ -471,14 +471,14 @@ struct LockScreenView: View {
                         .font(.system(size: 10, weight: .semibold))
                 }
             }
-            .accessibilityLabel(signedOut ? "Open Folevi to sign in" : "\(tasks.count) tasks today")
+            .accessibilityLabel(signedOut ? SignedOutView.prompt : "\(tasks.count) tasks today")
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
                 Text(signedOut ? "Folevi" : (tasks.isEmpty ? "Today" : "Next"))
                     .font(.system(size: 13, weight: .semibold))
                     .widgetAccentable()
                 if signedOut {
-                    Text("Open Folevi to sign in").font(.system(size: 13)).lineLimit(2)
+                    Text(SignedOutView.prompt).font(.system(size: 13)).lineLimit(2)
                 } else if let next = tasks.first {
                     Text(next.text).font(.system(size: 13)).lineLimit(2)
                     if let due = DueLabel.text(for: next.dueDate, time: next.dueTime, today: DayFormat.string(entry.date)) {
@@ -491,7 +491,7 @@ struct LockScreenView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         default:
             if signedOut {
-                Text("Open Folevi to sign in")
+                Text(SignedOutView.prompt)
             } else if tasks.isEmpty {
                 Text("Nothing due today")
             } else {

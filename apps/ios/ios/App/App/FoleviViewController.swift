@@ -67,6 +67,9 @@ final class FoleviViewController: CAPBridgeViewController {
             bridge?.registerPluginInstance(FoleviShellPlugin())
             applyMode()
         }
+        // Local mode's widgets, Shortcuts and Spotlight work from the page (Native/LocalExtensions.swift).
+        AppServices.modeApplied(local: bundled && ShellMode.current == "local")
+        LocalExtensions.attach(bridge)
         // The extensions' REST API is the site this app loads; links that came early can go to the page now.
         AppServices.launched(serverURL: bundled ? ShellAuth.shared.service : bridge?.config.serverURL)
         DeepLinkRouter.bridgeReady()

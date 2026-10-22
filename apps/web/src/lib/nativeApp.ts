@@ -80,6 +80,56 @@ export interface NativePushStatus {
   bundleId: string;
 }
 
+/** A task as the widgets show it (the REST API's shape, GET /api/v1/tasks): its id is the to-do block's. */
+export interface NativeWidgetTask {
+  id: string;
+  text: string;
+  status: "open";
+  dueDate: string | null;
+  dueTime: string | null;
+  priority: "low" | "medium" | "high" | null;
+  note: { id: string; title: string };
+}
+
+/** A note as the widgets and Shortcuts show it (GET /api/v1/notes's shape). */
+export interface NativeWidgetNote {
+  id: string;
+  title: string;
+  place: { id: string | null; name: string };
+  /** ISO 8601. */
+  updatedAt: string;
+}
+
+/** Local mode: the widgets' copy, from the page that holds the library. */
+export interface NativeWidgetSnapshot {
+  /** Today, YYYY-MM-DD on this device. */
+  day: string;
+  /** Open tasks due tomorrow or earlier. */
+  tasks: NativeWidgetTask[];
+  /** The most recently edited notes (the widgets show up to 10). */
+  notes: NativeWidgetNote[];
+  /** The notes Shortcuts can pick from (Open note, Add a task to a note), most recently edited first. */
+  catalog: NativeWidgetNote[];
+}
+
+/** Local mode: something a widget, Siri or Shortcuts did while the page wasn't there to do it. */
+export type NativeLocalAction =
+  | { id: string; kind: "toggleTask"; taskId: string; completed: boolean }
+  | { id: string; kind: "addTask"; text: string; dueDate: string | null; noteId: string | null }
+  | { id: string; kind: "newNote"; title: string; markdown: string };
+
+/** Local mode: a note as Spotlight shows it. */
+export interface NativeSpotlightItem {
+  id: string;
+  title: string;
+  excerpt: string;
+  /** Its folder, or where the library is. */
+  location: string;
+  starred: boolean;
+  /** Milliseconds since 1970. */
+  updatedAt: number;
+}
+
 export interface NativeBridge {
   /** "android": Folevi for Android (apps/android) adds the same extras with its own bridge (folevi-bridge.js). */
   platform: "ios" | "android";
@@ -132,6 +182,13 @@ export interface NativeBridge {
    * closed. `nonce` is the page's random string (the request carries its SHA-256). Missing in older builds.
    */
   signInWithApple?(o: { nonce: string }): Promise<{ idToken: string; authorizationCode: string; firstName: string | null; lastName: string | null } | null>;
+  // Local mode (no account, so no REST API for the widgets, Shortcuts and Spotlight): the page that holds the
+  // library feeds them and takes what they did (components/app/NativeBridge.tsx). Missing in older builds.
+  setWidgetSnapshot?(snapshot: NativeWidgetSnapshot): Promise<void>;
+  takeLocalActions?(): Promise<NativeLocalAction[]>;
+  finishLocalAction?(id: string): Promise<void>;
+  /** Spotlight holds exactly these notes afterwards. */
+  indexSpotlight?(items: NativeSpotlightItem[]): Promise<void>;
 }
 
 declare global {

@@ -264,13 +264,8 @@ interface SealedVersionJson {
 const b64 = (s: string): Bytes => fromBase64Url(s).slice().buffer as ArrayBuffer;
 
 /** documents.snapshotContent: a sealed version's SealedVersionContent opened into the plaintext content JSON. */
-export const snapshotContent: Decoder = async (value, call, env) => {
-  const v = value as Obj | null;
-  if (!v || v.sealed !== true || typeof v.content !== "string") return await generic(value, call, env);
-  const snapshotId = str(call.args.snapshotId);
-  const documentId = (snapshotId && env.spaces.ref("snapshot", snapshotId)?.documentId) ?? call.res.documentId;
-  if (!documentId) return { ...v, content: null };
-  const parsed = JSON.parse(v.content) as SealedVersionJson;
+/** A SealedVersionContent opened: its title, look and blocks as the plaintext version content has them. */
+async function openSealedVersion(env: RouterEnv, call: Call, documentId: string, parsed: SealedVersionJson): Promise<{ title: string; icon: string | null; style: unknown; blocks: WireBlock[] }> {
   const [title, appearance, blocks] = await Promise.all([
     env.sealer.openTitle(documentId, b64(parsed.title.c)).catch(() => ""),
     env.sealer.openAppearance(documentId, b64(parsed.appearance.c)).catch(() => ({ icon: null, cover: undefined, style: undefined })),
@@ -288,8 +283,35 @@ export const snapshotContent: Decoder = async (value, call, env) => {
       ),
     ),
   ]);
-  const out: Obj = { ...v, content: JSON.stringify({ title, icon: appearance.icon, style: appearance.style, blocks }) };
+  return { title, icon: appearance.icon, style: appearance.style, blocks };
+}
+
+/** documents.snapshotContent: a sealed version's SealedVersionContent opened into the plaintext content JSON. */
+export const snapshotContent: Decoder = async (value, call, env) => {
+  const v = value as Obj | null;
+  if (!v || v.sealed !== true || typeof v.content !== "string") return await generic(value, call, env);
+  const snapshotId = str(call.args.snapshotId);
+  const documentId = (snapshotId && env.spaces.ref("snapshot", snapshotId)?.documentId) ?? call.res.documentId;
+  if (!documentId) return { ...v, content: null };
+  const out: Obj = { ...v, content: JSON.stringify(await openSealedVersion(env, call, documentId, JSON.parse(v.content) as SealedVersionJson)) };
   delete out.sealed;
+  return out;
+};
+
+/**
+ * changes.note for a sealed note: the changed lines as they were (`previousSealed`, ciphertext of the version
+ * from when the person last looked) opened into `previous`, as a plain note's comes, so the Changes view and
+ * the undo composer read one shape. The version's id is remembered (it belongs to this note).
+ */
+export const changesNote: Decoder = async (value, call, env) => {
+  const opened = (await openDeep(value, env, hintOf(call))) as Obj | null;
+  const documentId = str(call.args.documentId);
+  if (!opened || !documentId) return opened;
+  const sealed = opened.previousSealed as SealedVersionJson | null | undefined;
+  if (str(opened.seenVersionId)) env.spaces.noteRef("snapshot", opened.seenVersionId as string, env.spaces.document(documentId)?.scope ?? "", documentId);
+  if (!sealed || !Array.isArray(sealed.blocks)) return opened;
+  const out: Obj = { ...opened, previous: (await openSealedVersion(env, call, documentId, sealed)).blocks };
+  delete out.previousSealed;
   return out;
 };
 

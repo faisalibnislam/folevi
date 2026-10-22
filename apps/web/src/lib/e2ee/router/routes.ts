@@ -5,7 +5,7 @@
 //
 // Keys are "module:function"; "module:*" covers the rest of a module.
 import { COMPOSERS } from "../compose";
-import { fileUrls, generic, notifications, snapshotContent, versions } from "./decoders";
+import { changesNote, fileUrls, generic, notifications, snapshotContent, versions } from "./decoders";
 import { append, info, overlay } from "./merge";
 import { content } from "./refs";
 import { SEALERS } from "./sealed";
@@ -86,7 +86,7 @@ export const E2EE_ROUTES: Record<string, Route> = {
   "documents:blockAuthors": decode,
   "comments:threads": decode,
   "changes:list": decode,
-  "changes:note": decode,
+  "changes:note": { kind: "decode", open: changesNote },
   "changes:away": decode,
   "synced:info": decode,
   "notifications:list": { kind: "decode", open: notifications },

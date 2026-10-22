@@ -22,7 +22,7 @@ type AnyRef = FunctionReference<"query" | "mutation" | "action">;
 const PERSONAL: WireScope = { kind: "personal" };
 
 /** The person's key ring: the Personal space key, and note keys made here or pulled. */
-class ParityKeyRing implements KeyRingLike {
+export class ParityKeyRing implements KeyRingLike {
   private notes = new Map<string, NoteKeys & { version: number }>();
   private rows = new Map<string, PulledNoteKey[]>();
   constructor(
@@ -59,7 +59,7 @@ class ParityKeyRing implements KeyRingLike {
   async linkNoteKey(): Promise<void> {}
 }
 
-class UnlockedSession implements KeySessionLike {
+export class UnlockedSession implements KeySessionLike {
   state(): LockState {
     return "unlocked";
   }
@@ -83,7 +83,7 @@ interface Watched {
 }
 
 /** convex-test's caller as the ConvexReactClient the router wraps: watches re-run after every write. */
-class TestInner {
+export class TestInner {
   private watched = new Map<string, Watched>();
   constructor(private readonly as: Caller) {}
 

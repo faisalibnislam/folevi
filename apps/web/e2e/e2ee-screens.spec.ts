@@ -402,6 +402,13 @@ test("screenshots of every screen, light and dark, desktop and phone", async ({ 
       await person.context.close();
       const mine = await browser.newContext({ storageState: storage, colorScheme: scheme, viewport: phone ? { width: 390, height: 844 } : { width: 1440, height: 900 } });
       await mine.addInitScript((s) => localStorage.setItem("folevi:appearance", s), scheme);
+      // Next's development overlay (its issues badge) sits over the dock on a phone and isn't part of the app.
+      const hideOverlay = () => {
+        const style = document.createElement("style");
+        style.textContent = "nextjs-portal { display: none !important; }";
+        document.addEventListener("DOMContentLoaded", () => document.head.appendChild(style));
+      };
+      await mine.addInitScript(hideOverlay);
       const page = await mine.newPage();
       await wizard(page, shoot(page));
       // While the notes are being encrypted (a new account has few: it may be done already).
@@ -417,6 +424,7 @@ test("screenshots of every screen, light and dark, desktop and phone", async ({ 
       await page.keyboard.press("Escape");
 
       const fresh = await open(browser, { fresh: true, storage, scheme, phone });
+      await fresh.page.addInitScript(hideOverlay);
       await fresh.page.goto(`${APP}/documents`);
       const card = unlockCard(fresh.page);
       await expect(card).toBeVisible({ timeout: 30_000 });

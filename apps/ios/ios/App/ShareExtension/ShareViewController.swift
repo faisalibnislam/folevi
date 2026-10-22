@@ -55,6 +55,10 @@ final class ShareModel: ObservableObject {
     @Published var skipped: [String] = []
     @Published var places: [Place] = PlacesCache.load()
     @Published var place = "personal"
+    /// Several places on this device (SaveTargets): the library and each account, the last one chosen first.
+    /// Empty with one place: the sheet saves as it always has.
+    @Published var targets: [SaveTarget] = SaveTargets.several() ? SaveTargets.load() : []
+    @Published var target: SaveTarget? = SaveTargets.several() ? SaveTargets.preferred() : nil
 
     var finish: (Bool) -> Void = { _ in }
 
@@ -95,9 +99,18 @@ final class ShareModel: ObservableObject {
         content = ShareContent.tidy(title: url != nil ? title : nil, text: url != nil ? texts.joined(separator: "\n\n") : ([title].compactMap { $0 } + texts).joined(separator: "\n\n"), url: url)
         if content.title.isEmpty, let first = files.first { content.title = (first.name as NSString).deletingPathExtension }
         self.title = content.title
+        if let target { places = target.isLibrary ? [] : PlacesCache.load(userId: target.userId) }
         if let saved = PlacesCache.lastPlace, places.contains(where: { $0.id == saved }) { place = saved }
         phase = .editing
         await refreshPlaces()
+    }
+
+    /// Another place chosen: its own workspaces (as last seen, then fetched again).
+    func choose(_ next: SaveTarget) {
+        target = next
+        places = next.isLibrary ? [] : PlacesCache.load(userId: next.userId)
+        if !places.contains(where: { $0.id == place }) { place = places.first?.id ?? "personal" }
+        Task { await refreshPlaces() }
     }
 
     private func add(_ file: SharedFile) {
@@ -106,8 +119,11 @@ final class ShareModel: ObservableObject {
 
     /// The places this device's token can use, fetched again in case a workspace was added.
     private func refreshPlaces() async {
-        guard let api = SharedAccount.api(), let fresh = try? await api.places(), !fresh.isEmpty else { return }
-        PlacesCache.save(fresh)
+        let chosen = target
+        if let chosen, chosen.isLibrary { return }
+        guard let api = chosen.flatMap({ SaveTargets.api(for: $0) }) ?? (chosen == nil || SaveTargets.isOpen(chosen?.id) ? SharedAccount.api() : nil),
+              let fresh = try? await api.places(), !fresh.isEmpty, chosen == target else { return }
+        PlacesCache.save(fresh, userId: chosen?.userId)
         places = fresh
         if !fresh.contains(where: { $0.id == place }) { place = fresh[0].id }
     }
@@ -120,10 +136,12 @@ final class ShareModel: ObservableObject {
         PlacesCache.lastPlace = place
         let files = self.files.map { (name: $0.name, type: $0.type, data: $0.data) }
         let place = self.place
+        let target = self.target
+        if let target { SaveTargets.remember(target.id) }
         Task {
             do {
-                let outcome = try await ShareSaver().save(chosen, place: place, files: files)
-                phase = .done(outcome == .queued ? "Saved, it will sync when Folevi opens" : "Saved to your Inbox")
+                let outcome = try await ShareSaver().save(chosen, place: place, target: target, files: files)
+                phase = .done(Self.doneMessage(outcome, target: target))
                 try? await Task.sleep(nanoseconds: 1_600_000_000)
                 finish(false)
             } catch {
@@ -134,6 +152,12 @@ final class ShareModel: ObservableObject {
 
     func cancel() {
         finish(true)
+    }
+
+    static func doneMessage(_ outcome: ShareSaver.Outcome, target: SaveTarget?) -> String {
+        guard let target else { return outcome == .queued ? "Saved, it will sync when Folevi opens" : "Saved to your Inbox" }
+        if outcome != .queued { return "Saved to the Inbox in \(target.name)" }
+        return target.isLibrary ? "Saved. It goes into the library when you next open it" : "Saved. It goes to \(target.name) when you next open it"
     }
 
     // MARK: Reading attachments

@@ -51,8 +51,11 @@ Native/AppleSignIn.swift    Sign in with Apple in Apple's own sheet (foleviNativ
 
 - Several places (`docs/MULTI_ACCOUNT_PLAN.md`): `ShellPlaces.swift` keeps the library and the accounts in
   Application Support (`places.json`); each account's session is the Keychain item `session.<user id>` and its
-  E2EE keys `device.<user id>`. Switching starts the screen again in that place. The share extension and the
-  widgets act on the open place.
+  E2EE keys `device.<user id>`. Switching starts the screen again in that place (the old page is sent to
+  about:blank first, so it lets go of the library's locks). With several places the share extension, Add a
+  task, New note and the Quick add widget have a Save to place (Shared/SaveTargets.swift, each account's own
+  REST token `rest-api.<user id>`); a BGAppRefreshTask and silent pushes send what's queued for accounts that
+  aren't open (Native/BackgroundRefresh.swift). The Today and Recent notes widgets show the open place.
 
 ### Local mode on iPhone and iPad
 

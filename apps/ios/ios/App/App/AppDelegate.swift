@@ -12,7 +12,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Before launching finishes: a notification that opened the app (or a button pressed on one) arrives.
         PushNotifications.shared.attach()
         Keychain.forgetAfterReinstall()
+        // Several places: what was saved to an account that isn't open goes to it in the background too.
+        BackgroundRefresh.register()
         return true
+    }
+
+    // A silent push (content-available): the same work as a background refresh.
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        guard (userInfo["aps"] as? [String: Any])?["content-available"] as? Int == 1 else { return completionHandler(.noData) }
+        Task {
+            let sent = await BackgroundRefresh.run()
+            completionHandler(sent > 0 ? .newData : .noData)
+        }
     }
 
     // The device token for Apple's push service (PushNotifications asked for it).

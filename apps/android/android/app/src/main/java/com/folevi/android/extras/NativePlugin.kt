@@ -5,6 +5,7 @@ import android.provider.Settings
 import android.util.Base64
 import kotlinx.coroutines.launch
 import com.folevi.android.FoleviApp
+import com.folevi.android.Places
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import org.json.JSONObject
@@ -46,6 +47,8 @@ class NativePlugin : Plugin() {
             return call.resolve(JSObject().put("value", false))
         try {
             credential.set(token, tokenId, accountId)
+            // Several places: the open account keeps its own copy, for the share target and the background worker.
+            FoleviApp.instance.places.currentUserId?.let { credential.setFor(it, token, tokenId, accountId) }
             Widgets.refreshSoon(context)
             call.resolve(JSObject().put("value", true))
         } catch (e: Exception) {
@@ -55,8 +58,11 @@ class NativePlugin : Plugin() {
 
     @PluginMethod
     fun clearCredential(call: PluginCall) {
+        val places = FoleviApp.instance.places
+        places.currentUserId?.let { credential.clearFor(it) }
         credential.clear()
-        scope.launch { com.folevi.android.push.Push.disable(context) }
+        // With other accounts still on this phone, notifications stay on for them.
+        if (places.state.accounts.size <= 1) scope.launch { com.folevi.android.push.Push.disable(context) }
         Widgets.clear(context)
         call.resolve()
     }
@@ -64,7 +70,8 @@ class NativePlugin : Plugin() {
     @PluginMethod
     fun takeShares(call: PluginCall) {
         val arr = JSArray()
-        for (share in ShareQueue.get(context).pending()) arr.put(share)
+        // Several places: only what was saved to the open one; older shares (no place) to whichever opens.
+        for (share in ShareQueue.get(context).pending(openPlace())) arr.put(share)
         call.resolve(JSObject().put("shares", arr))
     }
 
@@ -87,9 +94,12 @@ class NativePlugin : Plugin() {
 
     @PluginMethod
     fun takeLocalActions(call: PluginCall) {
-        val all = LocalActions.get(context).pending()
+        val all = LocalActions.get(context).pendingFor(openPlace())
         call.resolve(JSObject().put("actions", JSArray().also { a -> for (i in 0 until all.length()) a.put(all.get(i)) }))
     }
+
+    /** The place the open page is: the library in local mode, else the open account (null before any). */
+    private fun openPlace(): String? = if (FoleviApp.instance.settings.mode == "local") Places.LIBRARY else FoleviApp.instance.places.state.current
 
     @PluginMethod
     fun finishLocalAction(call: PluginCall) {

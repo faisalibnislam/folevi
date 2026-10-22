@@ -80,11 +80,15 @@ extension FoleviNativePlugin {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             guard let token = call.getString("token"), token.hasPrefix("fvpat_"), token.count < 200, let tokenId = call.getString("tokenId"), let accountId = call.getString("accountId") else { return call.reject("That isn't a token") }
+            // Several places: the open account keeps its own copy too, for the share sheet and Siri when it isn't open.
+            let userId = ShellPlaces.currentUserId
             if SharedAccount.accountId != nil, SharedAccount.accountId != accountId {
-                // Another account: nothing of the last one stays for the widgets or Spotlight.
-                AppServices.signedOut()
+                // Another account: nothing of the last one stays for the widgets or Spotlight. With several places
+                // the last one is still signed in here: its token and notifications stay, only what's shown goes.
+                if userId != nil { AppServices.placeChanged() } else { AppServices.signedOut() }
             }
             guard DeviceCredential.shared.store(token) else { return call.reject("The Keychain didn't keep it") }
+            if let userId { SaveTargets.keep(userId: userId, accountId: accountId, tokenId: tokenId, token: token) }
             SharedAccount.accountId = accountId
             SharedAccount.tokenId = tokenId
             AppServices.launched(serverURL: self.bridge?.config.serverURL)
@@ -97,7 +101,8 @@ extension FoleviNativePlugin {
     @objc func clearCredential(_ call: CAPPluginCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
-            AppServices.signedOut()
+            if let userId = ShellPlaces.currentUserId { SaveTargets.forget(userId: userId) }
+            AppServices.signedOut(keepNotifications: ShellPlaces.state.accounts.count > 1)
             call.resolve()
         }
     }
@@ -106,9 +111,9 @@ extension FoleviNativePlugin {
     @objc func takeShares(_ call: CAPPluginCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
-            let account = SharedAccount.accountId
             let queue = ShareQueue.shared
-            let shares = queue.all().filter { $0.accountId == nil || $0.accountId == account }
+            // Several places: only what was saved to the open one (SaveTargets); older shares by their account.
+            let shares = queue.forOpenPlace(current: LocalMode.on ? SaveTargets.library : SaveTargets.current(), accountId: SharedAccount.accountId)
             let list: [[String: Any]] = shares.map { share in
                 [
                     "id": share.id,

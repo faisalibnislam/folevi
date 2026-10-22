@@ -101,8 +101,28 @@ struct ShareView: View {
                     .font(.system(size: 12.5))
                     .foregroundStyle(Palette.muted)
             }
+            if !model.targets.isEmpty {
+                // Several places on this device: which one first, then (for an account) which Inbox.
+                VStack(alignment: .leading, spacing: 6) {
+                    caps("Save to")
+                    Menu {
+                        ForEach(model.targets) { target in
+                            Button {
+                                model.choose(target)
+                            } label: {
+                                if target.id == model.target?.id { Label(target.name, systemImage: "checkmark") } else { Text(target.name) }
+                                Text(target.detail)
+                            }
+                        }
+                    } label: {
+                        pickerLabel(model.target?.name ?? "Choose a place")
+                    }
+                    .accessibilityLabel("Save to")
+                }
+            }
+            if model.target?.isLibrary != true, model.targets.isEmpty || model.places.count > 1 {
             VStack(alignment: .leading, spacing: 6) {
-                caps("Save to")
+                caps(model.targets.isEmpty ? "Save to" : "Inbox")
                 Menu {
                     ForEach(model.places) { place in
                         Button {
@@ -125,7 +145,8 @@ struct ShareView: View {
                     .frame(height: 40)
                     .background(Palette.sunken, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                 }
-                .accessibilityLabel("Save to")
+                .accessibilityLabel(model.targets.isEmpty ? "Save to" : "Inbox")
+            }
             }
             if case .failed(let message) = model.phase {
                 Text(message)
@@ -178,6 +199,22 @@ struct ShareView: View {
         .background(Palette.sunken, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("What will be saved")
+    }
+
+    private func pickerLabel(_ text: String) -> some View {
+        HStack {
+            Text(text)
+                .font(.system(size: 15))
+                .foregroundStyle(Palette.ink)
+                .lineLimit(1)
+            Spacer()
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Palette.muted)
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 40)
+        .background(Palette.sunken, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     private func caps(_ text: String) -> some View {

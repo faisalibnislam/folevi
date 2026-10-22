@@ -35,6 +35,20 @@ class LocalActions private constructor(private val file: File) {
         return id
     }
 
+    /** The actions for one place's page: the library's (no place, as before places) or an account's. */
+    @Synchronized
+    fun pendingFor(place: String?): JSONArray {
+        val wanted = if (place == null || place == com.folevi.android.Places.LIBRARY) null else place
+        val out = JSONArray()
+        val all = pending()
+        for (i in 0 until all.length()) {
+            val a = all.getJSONObject(i)
+            val p = if (a.isNull("place")) null else a.optString("place").ifEmpty { null }
+            if (p == wanted && (wanted != null || place != null)) out.put(a)
+        }
+        return out
+    }
+
     @Synchronized
     fun finish(id: String) {
         val kept = JSONArray()

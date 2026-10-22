@@ -27,7 +27,8 @@ enum LocalExtensions {
     }
 
     private static func queued() {
-        guard LocalMode.on else { return }
+        // With several places an account's page takes what was saved to it while offline, too.
+        guard LocalMode.on || SaveTargets.current() != nil else { return }
         bridge?.triggerWindowJSEvent(eventName: "folevi:local-actions")
     }
 
@@ -45,6 +46,22 @@ enum LocalExtensions {
 private func orNull(_ value: Any?) -> Any { value ?? NSNull() }
 
 extension FoleviNativePlugin {
+    /// The queue's calls: in local mode, and with several places in an account too (what was saved to it offline).
+    @MainActor private func queueAllowed(_ call: CAPPluginCall) -> Bool {
+        guard fromFolevi else {
+            call.reject("Not allowed here")
+            return false
+        }
+        guard LocalMode.on || SaveTargets.current() != nil else {
+            call.reject("Only in local mode")
+            return false
+        }
+        return true
+    }
+
+    /// The place whose actions the open page puts in: the library in local mode, else the open account.
+    @MainActor private var openPlace: String? { LocalMode.on ? SaveTargets.library : SaveTargets.current() }
+
     @MainActor private func localOnly(_ call: CAPPluginCall) -> Bool {
         guard fromFolevi else {
             call.reject("Not allowed here")
@@ -77,8 +94,8 @@ extension FoleviNativePlugin {
     /// What's waiting for the page, oldest first: [{ id, kind, taskId, completed, text, dueDate, noteId, title, markdown }].
     @objc func takeLocalActions(_ call: CAPPluginCall) {
         Task { @MainActor in
-            guard self.localOnly(call) else { return }
-            let list: [[String: Any]] = LocalActions.shared.all().map { a in
+            guard self.queueAllowed(call) else { return }
+            let list: [[String: Any]] = LocalActions.shared.for(place: self.openPlace).map { a in
                 [
                     "id": a.id,
                     "kind": a.kind.rawValue,
@@ -98,9 +115,9 @@ extension FoleviNativePlugin {
     /// { id }: the page put it in the library (or there was nothing to do): it goes from the queue.
     @objc func finishLocalAction(_ call: CAPPluginCall) {
         Task { @MainActor in
-            guard self.localOnly(call) else { return }
+            guard self.queueAllowed(call) else { return }
             guard let id = call.getString("id"), LocalActions.validId(id) else { return call.reject("Not an action") }
-            if let action = LocalActions.shared.action(id) {
+            if let action = LocalActions.shared.action(id), (action.place ?? SaveTargets.library) == (self.openPlace ?? SaveTargets.library) {
                 LocalActions.shared.remove(id)
                 if action.kind == .toggleTask, let taskId = action.taskId {
                     WidgetStore.shared.settleLocal(taskId, completed: action.completed ?? true)

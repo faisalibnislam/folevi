@@ -22,7 +22,8 @@ import { saveShare } from "@/lib/share/save";
 import { useToast } from "@/components/ui/Toast";
 import { useShell } from "./Shell";
 import { useCreateDocument } from "./useCreateDocument";
-import { LocalExtensions } from "./LocalExtensions";
+import { LocalExtensions, PlaceActions } from "./LocalExtensions";
+import { shell } from "@/lib/shell";
 
 export function NativeBridge() {
   return nativeApp() ? <Bridge /> : null;
@@ -80,7 +81,9 @@ function Bridge() {
       }),
     [bridge, navigate, createDocument, openQuickAdd],
   );
-  return local ? <LocalExtensions /> : null;
+  if (local) return <LocalExtensions />;
+  // Several places: what was saved to this account from outside the app while it couldn't be sent.
+  return shell()?.places && bridge.takeLocalActions ? <PlaceActions /> : null;
 }
 
 /** On each launch, signed in and online: the app holds a working token for this account. */

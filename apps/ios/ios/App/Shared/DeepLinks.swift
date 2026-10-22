@@ -56,6 +56,22 @@ enum DeepLink: Equatable {
         return nil
     }
 
+    /// A link that opens in one of this device's places first ("library" or "acct:<user id>", SaveTargets): the
+    /// app switches to it, then opens the link there. Nil place: the link as it is.
+    static func inPlace(_ url: URL, _ place: String?) -> URL {
+        guard let place, SaveTargets.valid(place), var c = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
+        c.queryItems = (c.queryItems ?? []).filter { $0.name != "place" } + [URLQueryItem(name: "place", value: place)]
+        return c.url ?? url
+    }
+
+    /// The place a link asks to open in, and the link without it.
+    static func place(of url: URL) -> (place: String?, link: URL) {
+        guard var c = URLComponents(url: url, resolvingAgainstBaseURL: false), let item = c.queryItems?.first(where: { $0.name == "place" }) else { return (nil, url) }
+        c.queryItems = c.queryItems?.filter { $0.name != "place" }
+        if c.queryItems?.isEmpty == true { c.queryItems = nil }
+        return (SaveTargets.valid(item.value) ? item.value : nil, c.url ?? url)
+    }
+
     /// The page path a folevi:// link opens ("/d/ID#block-X"), or nil for one that isn't a page.
     static func path(of url: URL) -> String? {
         if case .open(let path)? = parse(url.absoluteString) { return path }

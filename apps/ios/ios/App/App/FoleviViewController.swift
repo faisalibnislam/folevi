@@ -144,7 +144,31 @@ final class FoleviViewController: CAPBridgeViewController {
     /// A new web view on the same storage, for a new mode: its scripts and network rules start from it.
     static func restart() {
         guard let window = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).flatMap(\.windows).first(where: \.isKeyWindow) else { return }
-        window.rootViewController = FoleviViewController()
+        guard let old = window.rootViewController as? FoleviViewController, old.webView != nil else {
+            window.rootViewController = FoleviViewController()
+            return
+        }
+        // The old page leaves first, while it's still on screen (a web view taken off it stops running, and would
+        // keep its databases and locks open: the next page, the same library maybe, would wait on it for ever).
+        old.retire { window.rootViewController = FoleviViewController() }
+    }
+
+    private var retiring: BlankLoad?
+
+    /// Sends this web view's page away (about:blank), then `done`; at most a second and a half.
+    private func retire(then done: @escaping () -> Void) {
+        guard let webView else { return done() }
+        let load = BlankLoad { [weak self] in
+            self?.retiring = nil
+            webView.configuration.userContentController.removeAllUserScripts()
+            webView.configuration.userContentController.removeAllScriptMessageHandlers()
+            done()
+        }
+        retiring = load
+        webView.stopLoading()
+        webView.navigationDelegate = load
+        webView.load(URLRequest(url: URL(string: "about:blank")!))
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { load.finish() }
     }
 
     /// Local mode never reaches Folevi or its database: a second layer under the page's own policy (plan §1),
@@ -210,4 +234,27 @@ final class NavigationGuard: NSObject, WKNavigationDelegate {
         let error = error as NSError
         return (error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled) || (error.domain == "WebKitErrorDomain" && error.code == 102)
     }
+}
+
+/// Waits for a web view's about:blank to load (or fail), once.
+private final class BlankLoad: NSObject, WKNavigationDelegate {
+    private var done: (() -> Void)?
+
+    init(_ done: @escaping () -> Void) {
+        self.done = done
+    }
+
+    func finish() {
+        let d = done
+        done = nil
+        d?()
+    }
+
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        decisionHandler(navigationAction.request.url?.absoluteString == "about:blank" ? .allow : .cancel)
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { finish() }
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { finish() }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { finish() }
 }

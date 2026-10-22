@@ -415,14 +415,24 @@ class MainActivity : BridgeActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        val data = intent?.dataString ?: return
+        var data = intent?.dataString ?: return
         if (intent.action != Intent.ACTION_VIEW) return
         // A notification from another place on this phone (several places): that place opens first, at the page.
         if (data.startsWith("folevi://")) {
             val uri = Uri.parse(data)
             val place = uri.getQueryParameter("place")
+            if (place != null) {
+                // The link without its place, for the page.
+                data = uri.buildUpon().clearQuery().apply { for (k in uri.queryParameterNames) if (k != "place") for (v in uri.getQueryParameters(k)) appendQueryParameter(k, v) }.build().toString()
+            }
             if (place != null && app.places.has(place) && place != app.places.state.current) {
                 app.places.setCurrent(place)
+                // Quick add and a new note are things the page does, not pages: it opens Home, then does them.
+                if (uri.host == "quick-add" || uri.host == "new") {
+                    reloadForMode("/documents")
+                    deliverLink(data)
+                    return
+                }
                 val path = "/" + (uri.host ?: "documents") + (uri.path ?: "")
                 reloadForMode(path.takeIf { Regex("^/[A-Za-z0-9/_-]{0,200}$").matches(it) } ?: "/documents")
                 return

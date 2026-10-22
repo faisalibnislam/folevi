@@ -117,6 +117,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Quick add from the tile and the widgets with several places on the phone: "Quick add to". -->
+        <activity
+            android:name=".extras.QuickAddChooser"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/AppTheme.Share" />
+
         <!-- Quick add in Quick Settings. -->
         <service
             android:name=".extras.QuickAddTile"

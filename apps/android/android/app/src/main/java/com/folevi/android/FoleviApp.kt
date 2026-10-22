@@ -51,6 +51,23 @@ class FoleviApp : Application() {
         File(noBackupFilesDir, "e2ee/accounts/$user").deleteRecursively()
     }
 
+    /**
+     * The places changed: an account that went takes its own REST token with it; another place opening makes its
+     * token the open one (the widgets show it) and the widgets draw again from it.
+     */
+    private fun placesChanged(s: Places.State, before: String?) {
+        val credential = com.folevi.android.extras.DeviceCredential.get(this)
+        val kept = s.accounts.map { it.userId }.toSet()
+        for (gone in credential.users() - kept) credential.clearFor(gone)
+        // The open place's token (one kept before places, the one account this phone had) stays that account's own.
+        Places.userIdOf(before)?.takeIf { it in kept }?.let { credential.keepOpen(it) }
+        if (before != s.current) {
+            credential.openedPlace(Places.userIdOf(s.current))
+            com.folevi.android.extras.Widgets.clear(this)
+            com.folevi.android.extras.Widgets.refreshSoon(this)
+        }
+    }
+
     /** Shows a system screen that answers with a result (Google's consent screen): set by the activity on screen. */
     @Volatile var showForResult: (suspend (android.app.PendingIntent) -> android.content.Intent?)? = null
 
@@ -60,6 +77,7 @@ class FoleviApp : Application() {
         settings = ShellSettings(this)
         com.folevi.android.host.Reminders.channels(this)
         com.folevi.android.extras.Widgets.schedule(this)
+        com.folevi.android.extras.PlaceOutbox.schedule(this)
         com.folevi.android.push.Push.start(this)
         secrets = SecretStore(File(noBackupFilesDir, "secrets"), KeystoreCipher("folevi.secrets.v1"))
         library = com.folevi.android.library.LibraryService(noBackupFilesDir, this)
@@ -79,10 +97,14 @@ class FoleviApp : Application() {
         )
         ai = com.folevi.android.ai.AiService(secrets, Http.client)
         deviceKeys = com.folevi.android.e2ee.DeviceKeys(File(noBackupFilesDir, "e2ee"), KeystoreCipher("folevi.e2ee.v1"))
+        var opened: String? = null
         places = Places(Places.preferences(this)) { s ->
             // The mode older code reads (widgets, extras, the bridge's initialMode) follows the open place.
             settings.mode = places.modeOf(s.current)
+            placesChanged(s, opened)
+            opened = s.current
         }
+        opened = places.state.current
         places.migrate(settings.mode, library.configured)
         // Account mode with no account yet (the sign-in screen), or the session an older build kept.
         if (settings.mode == "account" && places.state.current == null) {

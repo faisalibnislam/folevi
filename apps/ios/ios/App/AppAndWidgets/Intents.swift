@@ -89,6 +89,51 @@ struct NoteQuery: EntityStringQuery {
     }
 }
 
+// MARK: Places as entities (Save to: the library and each account, several places only)
+
+struct SavePlaceEntity: AppEntity, Identifiable {
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Place"
+    static let defaultQuery = SavePlaceQuery()
+
+    let id: String
+    let name: String
+    let detail: String
+
+    var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(title: "\(name)", subtitle: "\(detail)")
+    }
+
+    init(_ target: SaveTarget) {
+        id = target.id
+        name = target.name
+        detail = target.detail
+    }
+}
+
+/// This device's places as the app last listed them (SaveTargets), the one chosen last first.
+struct SavePlaceQuery: EntityQuery {
+    func entities(for identifiers: [String]) async throws -> [SavePlaceEntity] {
+        let all = SaveTargets.load()
+        return identifiers.compactMap { id in all.first { $0.id == id }.map(SavePlaceEntity.init) }
+    }
+
+    func suggestedEntities() async throws -> [SavePlaceEntity] {
+        let all = SaveTargets.load()
+        let first = SaveTargets.preferred()?.id
+        return (all.filter { $0.id == first } + all.filter { $0.id != first }).map(SavePlaceEntity.init)
+    }
+
+    func defaultResult() async -> SavePlaceEntity? {
+        SaveTargets.several() ? SaveTargets.preferred().map(SavePlaceEntity.init) : nil
+    }
+}
+
+/// Where an intent saves: the place asked for, else (several places) the one chosen last; nil with one place.
+func saveTarget(_ asked: SavePlaceEntity?) -> SaveTarget? {
+    if let asked, let target = SaveTargets.target(asked.id) { return target }
+    return SaveTargets.several() ? SaveTargets.preferred() : nil
+}
+
 // MARK: Background: add a task, check one off
 
 struct AddTaskIntent: AppIntent {
@@ -104,24 +149,34 @@ struct AddTaskIntent: AppIntent {
     @Parameter(title: "Note")
     var note: NoteEntity?
 
+    /// With several places on this device: the library or one of the accounts (the last one chosen by default).
+    @Parameter(title: "Save to")
+    var place: SavePlaceEntity?
+
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$text) in Folevi") {
             \.$dueDate
             \.$note
+            \.$place
         }
     }
 
     init() {}
 
-    init(text: String, dueDate: Date? = nil, note: NoteEntity? = nil) {
+    init(text: String, dueDate: Date? = nil, note: NoteEntity? = nil, place: SavePlaceEntity? = nil) {
         self.text = text
         self.dueDate = dueDate
         self.note = note
+        self.place = place
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { throw FoleviIntentError.refused("Say what the task is.") }
+        if let target = saveTarget(place) {
+            SaveTargets.remember(target.id)
+            return .result(dialog: IntentDialog(stringLiteral: try await add(text, to: target)))
+        }
         if LocalMode.on {
             // The library is the page's: the task waits for it, and goes in when Folevi next opens.
             do {
@@ -142,6 +197,37 @@ struct AddTaskIntent: AppIntent {
         WidgetCenter.shared.reloadAllTimelines()
         if let note { return .result(dialog: "Added to \(note.title).") }
         return .result(dialog: "Added to your Inbox.")
+    }
+
+    /// Several places: to the one chosen. An account takes it now with its own token; the library (and an account
+    /// that's offline, or has no token here yet) keeps it, tagged, for that place's page.
+    private func add(_ text: String, to target: SaveTarget) async throws -> String {
+        let open = SaveTargets.isOpen(target.id)
+        // A note picked from the open place's notes only means something there.
+        let note = open ? self.note : nil
+        let due = dueDate.map { DayFormat.string($0) }
+        if !target.isLibrary, let api = SaveTargets.api(for: target) ?? (open ? SharedAccount.api() : nil) {
+            do {
+                _ = try await api.createTask(text: text, dueDate: due, noteId: note?.id)
+                if open {
+                    await WidgetStore.shared.refresh(api: api)
+                    WidgetCenter.shared.reloadAllTimelines()
+                }
+                if let note { return "Added to \(note.title)." }
+                return "Added to your Inbox in \(target.name)."
+            } catch FoleviAPI.Failure.offline, FoleviAPI.Failure.rateLimited {
+                // Kept below, for that account's page.
+            } catch {
+                throw FoleviIntentError.from(error)
+            }
+        }
+        do {
+            try LocalActions.shared.add(.addTask, text: String(text.prefix(500)), dueDate: due, noteId: note?.id, place: target.id)
+        } catch {
+            throw FoleviIntentError.refused("Folevi couldn't keep that task. Try again.")
+        }
+        if target.isLibrary { return open ? "Added. It goes into your Inbox when you next open Folevi." : "Added. It goes into the library's Inbox when you next open it." }
+        return "Added. It goes into the Inbox in \(target.name) when you next open it."
     }
 }
 
@@ -186,22 +272,43 @@ struct NewNoteIntent: AppIntent {
     @Parameter(title: "Text")
     var text: String?
 
+    /// With several places on this device: the library or one of the accounts (the last one chosen by default).
+    @Parameter(title: "Save to")
+    var place: SavePlaceEntity?
+
     init() {}
 
-    init(text: String?) {
+    init(text: String?, place: SavePlaceEntity? = nil) {
         self.text = text
+        self.place = place
     }
 
     @MainActor
     func perform() async throws -> some IntentResult {
+        let target = saveTarget(place)
+        if let target { SaveTargets.remember(target.id) }
         guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else {
-            openInApp(DeepLink.newNoteURL)
+            openInApp(DeepLink.inPlace(DeepLink.newNoteURL, target?.id))
             return .result()
         }
         let content = ShareContent.tidy(title: nil, text: text, url: nil)
         // The first line is the title (as in the editor), the rest the note.
         let lines = text.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
         let body = lines[0].trimmingCharacters(in: .whitespaces) == content.title ? (lines.count > 1 ? String(lines[1]).trimmingCharacters(in: .whitespacesAndNewlines) : "") : text
+        if let target {
+            // Several places: made in the one chosen, which then opens on it.
+            let title = content.title.isEmpty ? "Untitled" : content.title
+            if !target.isLibrary, let api = SaveTargets.api(for: target) ?? (SaveTargets.isOpen(target.id) ? SharedAccount.api() : nil),
+               let note = try? await api.createNote(title: title, markdown: ShareContent.paragraphs(body), place: nil, inInbox: false) {
+                openInApp(DeepLink.inPlace(DeepLink.forNote(note.id) ?? URL(string: "folevi://documents")!, target.id))
+                return .result()
+            }
+            // The library, or an account offline: kept for that place's page, which makes it as it opens.
+            if (try? LocalActions.shared.add(.newNote, title: title, markdown: ShareContent.paragraphs(body), place: target.id)) != nil {
+                openInApp(DeepLink.inPlace(URL(string: "folevi://documents")!, target.id))
+                return .result()
+            }
+        }
         if LocalMode.on {
             // Made by the page as the app opens (it takes the local-actions queue), which then shows it.
             if (try? LocalActions.shared.add(.newNote, title: content.title.isEmpty ? "Untitled" : content.title, markdown: ShareContent.paragraphs(body))) != nil {
@@ -267,9 +374,21 @@ struct OpenQuickAddIntent: AppIntent {
 
     init() {}
 
+    /// With several places: Quick add opens in the one chosen last.
     @MainActor
     func perform() async throws -> some IntentResult {
-        openInApp(DeepLink.quickAddURL)
+        openInApp(DeepLink.inPlace(DeepLink.quickAddURL, SaveTargets.several() ? SaveTargets.preferred()?.id : nil))
         return .result()
     }
+}
+
+/// The Quick add widget's setting: which place it adds to (the last one chosen, unless one is picked).
+struct QuickAddPlaceIntent: WidgetConfigurationIntent {
+    static let title: LocalizedStringResource = "Quick add"
+    static let description = IntentDescription("Choose where Quick add puts tasks when this device holds several places.")
+
+    @Parameter(title: "Save to")
+    var place: SavePlaceEntity?
+
+    init() {}
 }

@@ -7,13 +7,14 @@ enum PlacesCache {
     private static let key = "places"
     private static let lastKey = "sharePlace"
 
-    static func load() -> [Place] {
-        guard let data = Folevi.defaults.data(forKey: key), let places = try? JSONDecoder().decode([Place].self, from: data), !places.isEmpty else { return [Place(id: "personal", name: "Personal")] }
+    /// `userId`: with several places (SaveTargets) each account's own list; nil is the open account's.
+    static func load(userId: String? = nil) -> [Place] {
+        guard let data = Folevi.defaults.data(forKey: userId.map { "\(key).\($0)" } ?? key), let places = try? JSONDecoder().decode([Place].self, from: data), !places.isEmpty else { return [Place(id: "personal", name: "Personal")] }
         return places
     }
 
-    static func save(_ places: [Place]) {
-        Folevi.defaults.set(try? JSONEncoder().encode(places), forKey: key)
+    static func save(_ places: [Place], userId: String? = nil) {
+        Folevi.defaults.set(try? JSONEncoder().encode(places), forKey: userId.map { "\(key).\($0)" } ?? key)
     }
 
     static var lastPlace: String? {

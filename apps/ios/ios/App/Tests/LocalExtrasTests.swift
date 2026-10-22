@@ -85,3 +85,92 @@ final class LocalExtrasTests: XCTestCase {
         XCTAssertNil(SharedAccount.api())
     }
 }
+
+/// Several places (Shared/SaveTargets.swift, docs/MULTI_ACCOUNT_PLAN.md §6): where the share sheet and intents save,
+/// and which page takes what was kept.
+final class SaveTargetsTests: XCTestCase {
+    private var defaults: UserDefaults!
+    private var folder: URL!
+    private let suite = "save-targets-\(UUID().uuidString)"
+
+    override func setUpWithError() throws {
+        defaults = UserDefaults(suiteName: suite)
+        folder = FileManager.default.temporaryDirectory.appendingPathComponent(suite, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        defaults.removePersistentDomain(forName: suite)
+        try? FileManager.default.removeItem(at: folder)
+    }
+
+    private let targets = [
+        SaveTarget(id: "library", name: "On this iPhone", detail: "Kept on this iPhone"),
+        SaveTarget(id: "acct:userAna", name: "Ana", detail: "ana@example.com"),
+        SaveTarget(id: "acct:userBen", name: "Ben", detail: "ben@example.com"),
+    ]
+
+    func testThePickerStartsOnTheLastChoiceThenTheOpenPlace() {
+        XCTAssertFalse(SaveTargets.several(defaults: defaults))
+        XCTAssertNil(SaveTargets.preferred(defaults: defaults))
+        SaveTargets.write(targets + [SaveTarget(id: "acct:../x", name: "Bad", detail: "")], current: "acct:userAna", defaults: defaults)
+        XCTAssertEqual(SaveTargets.load(defaults: defaults).map(\.id), ["library", "acct:userAna", "acct:userBen"])
+        XCTAssertTrue(SaveTargets.several(defaults: defaults))
+        XCTAssertEqual(SaveTargets.preferred(defaults: defaults)?.id, "acct:userAna")
+        SaveTargets.remember("acct:userBen", defaults: defaults)
+        XCTAssertEqual(SaveTargets.preferred(defaults: defaults)?.id, "acct:userBen")
+        SaveTargets.remember("nowhere", defaults: defaults)
+        XCTAssertEqual(SaveTargets.last(defaults: defaults), "acct:userBen")
+        // A place that went: back to the open one.
+        SaveTargets.write(Array(targets.prefix(2)), current: "library", defaults: defaults)
+        XCTAssertEqual(SaveTargets.preferred(defaults: defaults)?.id, "library")
+        XCTAssertTrue(SaveTargets.isOpen("library", defaults: defaults))
+        XCTAssertFalse(SaveTargets.isOpen("acct:userAna", defaults: defaults))
+    }
+
+    func testEachAccountKeepsItsOwnTokenUntilItGoes() {
+        SaveTargets.write(targets, current: "acct:userAna", defaults: defaults)
+        SaveTargets.keep(userId: "userAna", accountId: "accountAna", tokenId: "tokAna", token: "fvpat_ana_0123456789", defaults: defaults)
+        SaveTargets.keep(userId: "userBen", accountId: "accountBen", tokenId: "tokBen", token: "fvpat_ben_0123456789", defaults: defaults)
+        XCTAssertEqual(SaveTargets.credential(userId: "userBen").token, "fvpat_ben_0123456789")
+        XCTAssertEqual(SaveTargets.accountIds(defaults: defaults)["userAna"], "accountAna")
+        // Ben signed out on this device: his token goes with him, Ana's stays.
+        SaveTargets.write(Array(targets.prefix(2)), current: "acct:userAna", defaults: defaults)
+        XCTAssertNil(SaveTargets.credential(userId: "userBen").token)
+        XCTAssertEqual(SaveTargets.credential(userId: "userAna").token, "fvpat_ana_0123456789")
+        SaveTargets.forget(userId: "userAna", defaults: defaults)
+        XCTAssertNil(SaveTargets.credential(userId: "userAna").token)
+        XCTAssertTrue(SaveTargets.accountIds(defaults: defaults).isEmpty)
+    }
+
+    func testEachPlacesPageTakesOnlyWhatWasSavedToIt() throws {
+        let actions = LocalActions(root: folder.appendingPathComponent("LocalActions"))
+        try actions.add(.toggleTask, taskId: "t1", completed: true)
+        try actions.add(.addTask, text: "For the library", place: "library")
+        try actions.add(.addTask, text: "For Ben", place: "acct:userBen")
+        XCTAssertEqual(actions.for(place: "library").map(\.text), [nil, "For the library"])
+        XCTAssertEqual(actions.for(place: nil).count, 2)
+        XCTAssertEqual(actions.for(place: "acct:userBen").map(\.text), ["For Ben"])
+        XCTAssertTrue(actions.for(place: "acct:userAna").isEmpty)
+
+        let shares = ShareQueue(root: folder.appendingPathComponent("Shares"))
+        try shares.add(title: "Old", text: "", url: "", place: nil, accountId: "accountAna", files: [])
+        try shares.add(title: "To Ben", text: "", url: "https://example.com", place: "personal", accountId: "accountBen", target: "acct:userBen", files: [])
+        try shares.add(title: "To the library", text: "x", url: "", place: nil, accountId: nil, target: "library", files: [])
+        XCTAssertEqual(shares.forOpenPlace(current: "acct:userAna", accountId: "accountAna").map(\.title), ["Old"])
+        XCTAssertEqual(shares.forOpenPlace(current: "acct:userBen", accountId: "accountBen").map(\.title), ["To Ben"])
+        XCTAssertEqual(shares.forOpenPlace(current: "library", accountId: nil).map(\.title), ["To the library"])
+    }
+
+    func testALinkOpensInItsPlace() {
+        let url = DeepLink.inPlace(DeepLink.quickAddURL, "acct:userBen")
+        XCTAssertEqual(url.absoluteString, "folevi://quick-add?place=acct:userBen")
+        let (place, link) = DeepLink.place(of: url)
+        XCTAssertEqual(place, "acct:userBen")
+        XCTAssertEqual(link, DeepLink.quickAddURL)
+        XCTAssertEqual(DeepLink.parse(link.absoluteString), .quickAdd)
+        XCTAssertEqual(DeepLink.inPlace(DeepLink.newNoteURL, nil), DeepLink.newNoteURL)
+        XCTAssertEqual(DeepLink.inPlace(DeepLink.newNoteURL, "javascript:x"), DeepLink.newNoteURL)
+        XCTAssertNil(DeepLink.place(of: URL(string: "folevi://new?place=evil")!).place)
+    }
+}

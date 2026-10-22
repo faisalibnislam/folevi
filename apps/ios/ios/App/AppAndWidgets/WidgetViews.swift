@@ -419,6 +419,8 @@ struct RowColumns<Item: Identifiable, Row: View>: View {
 
 struct QuickAddView: View {
     let entry: FoleviEntry
+    /// With several places on this device: where it adds to (named under the button; the app opens there).
+    var place: SaveTarget? = nil
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -435,9 +437,15 @@ struct QuickAddView: View {
                 .font(Typeface.title(17))
                 .foregroundStyle(Palette.heading)
                 .padding(.top, 6)
+            if let place {
+                Text(place.name)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Palette.muted)
+                    .lineLimit(1)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(DeepLink.quickAddURL)
+        .widgetURL(DeepLink.inPlace(DeepLink.quickAddURL, place?.id))
         .foleviBackground()
     }
 }

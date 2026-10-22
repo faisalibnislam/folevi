@@ -5,6 +5,7 @@
 // accounts (what each account's own page last said of itself, for the switcher), and Quick Add's last place.
 // Nothing here is secret. The app has one web view: the open place is the page's place.
 import Foundation
+import UIKit
 
 enum ShellPlaces {
     static let library = "library"
@@ -70,9 +71,11 @@ enum ShellPlaces {
 
     private static func commit(_ next: State) {
         lock.lock()
+        let before = cached?.current
         cached = clean(next)
         let value = cached!
         lock.unlock()
+        mirror(value, before: before)
         try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
         if let data = try? JSONEncoder().encode(value) { try? data.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]) }
         // The mode older code reads (AppServices, the extensions' rules) follows the open place.
@@ -81,6 +84,21 @@ enum ShellPlaces {
     }
 
     static let changed = Notification.Name("folevi.places.changed")
+
+    /// What the share sheet, Quick Add, Siri and Shortcuts offer (Shared/SaveTargets.swift), written with every
+    /// change; another place opening also swaps the open place's REST token for that account's own.
+    private static func mirror(_ s: State, before: String?) {
+        let here = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        var targets: [SaveTarget] = []
+        if s.library { targets.append(SaveTarget(id: library, name: "On this \(here)", detail: "Kept on this device only")) }
+        for a in s.accounts { targets.append(SaveTarget(id: a.id, name: a.name.isEmpty ? a.email : a.name, detail: a.email)) }
+        SaveTargets.write(targets, current: s.current)
+        if let quickAdd = s.quickAdd, SaveTargets.last() == nil { SaveTargets.remember(quickAdd) }
+        // The open place's token (one kept before places, the one account this device had) stays that account's
+        // own when another place opens.
+        SaveTargets.keepOpenToken(userId: userIdOf(before == s.current ? s.current : before))
+        if before != s.current { SaveTargets.openedPlace(s.current) }
+    }
 
     /// Account mode with no account yet (the sign-in screen). Kept for this run only.
     static var pendingAccount = false
@@ -176,6 +194,7 @@ enum ShellPlaces {
 
     static func setQuickAdd(_ place: String) {
         guard has(place) else { return }
+        SaveTargets.remember(place)
         var s = state
         s.quickAdd = place
         commit(s)

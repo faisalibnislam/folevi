@@ -36,6 +36,10 @@ class ShareActivity : ComponentActivity() {
 
     private var places: List<FoleviApi.Place> = emptyList()
     private var place: String? = null
+    /** Several places on this phone (SaveTargets): the library and each account, the last one chosen first. */
+    private val targets: List<SaveTargets.Target> by lazy { if (SaveTargets.several()) SaveTargets.all() else emptyList() }
+    private var target: SaveTargets.Target? = null
+    private lateinit var targetRows: LinearLayout
     private lateinit var placeRows: LinearLayout
     private lateinit var status: TextView
 
@@ -53,6 +57,7 @@ class ShareActivity : ComponentActivity() {
             return
         }
         place = getSharedPreferences("folevi-share", MODE_PRIVATE).getString("place", null)
+        if (targets.isNotEmpty()) target = SaveTargets.preferred()
         setContentView(card(content))
         lifecycleScope.launch { loadPlaces() }
     }
@@ -144,8 +149,11 @@ class ShareActivity : ComponentActivity() {
         }.trim()
         if (preview.isNotEmpty()) column.addView(text(preview, 14f, muted).apply { maxLines = 5; setPadding(0, dp(4f), 0, 0) })
         column.addView(text("Save to", 13f, muted).apply { setPadding(0, dp(16f), 0, dp(4f)) })
+        targetRows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(targetRows)
         placeRows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         column.addView(placeRows)
+        renderTargets()
         renderPlaces()
         status = text("", 13f, muted).apply { setPadding(0, dp(8f), 0, 0); visibility = View.GONE }
         column.addView(status)
@@ -167,8 +175,38 @@ class ShareActivity : ComponentActivity() {
         }
     }
 
+    private fun row(label: String, detail: String?, chosen: Boolean, onClick: () -> Unit) = TextView(this).apply {
+        text = (if (chosen) "✓  " else "     ") + label + (detail?.takeIf { it.isNotEmpty() && it != label }?.let { "\n     $it" } ?: "")
+        setTextColor(ink)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+        minHeight = dp(44f)
+        gravity = Gravity.CENTER_VERTICAL
+        isClickable = true
+        contentDescription = label + if (chosen) ", chosen" else ""
+        setOnClickListener { onClick() }
+    }
+
+    /** The places on this phone, when there are several: choosing one shows its own Inboxes below. */
+    private fun renderTargets() {
+        targetRows.removeAllViews()
+        for (t in targets) {
+            targetRows.addView(row(t.name, t.detail, t.id == target?.id) {
+                if (target?.id != t.id) {
+                    target = t
+                    places = emptyList()
+                    renderTargets()
+                    renderPlaces()
+                    lifecycleScope.launch { loadPlaces() }
+                }
+            })
+        }
+        if (targets.isNotEmpty()) targetRows.addView(View(this), LinearLayout.LayoutParams(1, dp(8f)))
+    }
+
     private fun renderPlaces() {
         placeRows.removeAllViews()
+        // The library's notes go to its Inbox: there's nothing to choose.
+        if (target?.isLibrary == true) return
         val options = listOf<Pair<String?, String>>(null to "Inbox in Personal") + places.filter { it.id != "personal" }.map { it.id to "Inbox in ${it.name}" }
         if (options.none { it.first == place }) place = null
         for ((id, label) in options) {
@@ -190,8 +228,10 @@ class ShareActivity : ComponentActivity() {
     }
 
     private suspend fun loadPlaces() {
-        val api = FoleviApi.forDevice(this) ?: return
+        val chosen = target
+        val api = (if (chosen != null) SaveTargets.api(this, chosen) else FoleviApi.forDevice(this)) ?: return
         val list = withContext(Dispatchers.IO) { runCatching { api.places() }.getOrNull() } ?: return
+        if (chosen != target) return
         places = list
         renderPlaces()
     }
@@ -203,6 +243,10 @@ class ShareActivity : ComponentActivity() {
         status.visibility = View.VISIBLE
         status.text = "Saving…"
         val chosen = place
+        target?.let { t ->
+            SaveTargets.remember(t.id)
+            return saveTo(t, c, if (t.isLibrary) null else chosen)
+        }
         lifecycleScope.launch {
             val local = FoleviApp.instance.settings.mode != "account"
             val api = if (local) null else FoleviApi.forDevice(this@ShareActivity)
@@ -213,6 +257,25 @@ class ShareActivity : ComponentActivity() {
             if (!direct) withContext(Dispatchers.IO) { ShareQueue.get(this@ShareActivity).add(c.title, c.text, c.url, chosen, c.files) }
             Haptics.perform(window.decorView, "success")
             status.text = if (direct) "Saved to your Inbox" else "Saved. It goes to your Inbox when Folevi opens."
+            window.decorView.postDelayed({ finish() }, 900)
+        }
+    }
+
+    /** Several places: straight to an account with its own token, else kept (tagged) for that place's page. */
+    private fun saveTo(t: SaveTargets.Target, c: Content, chosen: String?) {
+        lifecycleScope.launch {
+            val api = if (t.isLibrary) null else SaveTargets.api(this@ShareActivity, t)
+            val direct = c.files.isEmpty() && api != null && withContext(Dispatchers.IO) {
+                val markdown = (if (c.text.contains(c.url)) listOf(c.text) else listOf(c.url, c.text)).filter { it.isNotEmpty() }.joinToString("\n\n")
+                runCatching { api.createNote(c.title, markdown, chosen) }.isSuccess
+            }
+            if (!direct) withContext(Dispatchers.IO) { ShareQueue.get(this@ShareActivity).add(c.title, c.text, c.url, chosen, c.files, target = t.id) }
+            Haptics.perform(window.decorView, "success")
+            status.text = when {
+                direct -> "Saved to the Inbox in ${t.name}"
+                t.isLibrary -> "Saved. It goes into the library when you next open it."
+                else -> "Saved. It goes to ${t.name} when you next open it."
+            }
             window.decorView.postDelayed({ finish() }, 900)
         }
     }

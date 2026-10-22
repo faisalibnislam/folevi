@@ -335,13 +335,34 @@ P0 to P5 are built and committed (not pushed, not deployed to production; the de
   sign out, forget the library, another account's Convex token for moves, Quick Add's place); switching
   reopens the page in that place; library reminders and pushes say which place they're from, and tapping one
   opens that place first. The iPhone account sheet lists the other places.
+- **Save to (§6), with two places or more:** the iOS share extension and the Android share target ask which
+  place (then which Inbox, for an account), the last one chosen first; Siri and Shortcuts' Add a task and New
+  note take a Save to place (the last one by default); the iOS Quick add widget has a Save to setting and the
+  Control Center control opens in the last place; Android's Quick Settings tile and its widgets' Quick add ask
+  "Quick add to" and open Quick add in that place. Each account keeps its own REST token on the device
+  (Keychain `rest-api.<user id>`, Android `device.token.<user id>`), so something saved to an account that
+  isn't open goes straight there. The library, and an account that's offline or has no token here yet, keep
+  it in the LocalActions or share queue tagged with the place (`place` / `target`); only that place's page
+  takes it, the next time it's open (the account's page through `PlaceActions`, components/app/LocalExtensions.tsx).
+  One place: no pickers, everything as before.
+- **Background (§5.3):** iOS registers a BGAppRefreshTask (`com.folevi.ios.refresh`, Native/BackgroundRefresh.swift)
+  and answers silent pushes (content-available) with the same work; Android runs a WorkManager job about every
+  15 minutes with a network (extras/PlaceOutbox.kt). Both send what's queued for accounts that aren't open with
+  their own tokens (text and links; files wait for the page's upload), and iOS refreshes the open account's
+  widgets.
 
 Not built, or limited:
 
-- The iOS share extension, widgets, Siri and Shortcuts, and the Android share target, Quick Settings tile and
-  widgets act on the open place (they follow it when it changes). The "Save to" picker of §6 isn't there yet.
-- The apps keep no other place running in the background (§5.3): an account's pushes still arrive, the
-  library's reminders still fire, but nothing of a place that isn't open syncs until it opens.
+- A place that isn't open doesn't sync its notes in the background on the phones: its edits, encryption and
+  sync engine live in its page, and iOS and Android don't keep a web view running behind the app. What's
+  possible natively is sending what the share sheet, Siri and Quick add saved (above); pushes still arrive for
+  every account and the library's reminders still fire. iOS decides when a background refresh runs (often a
+  few times a day, never on a schedule), and Android's 15 minutes is a floor that Doze and battery saver
+  stretch. The server sends no silent pushes yet (the app is ready for them).
+- The library's queue only goes in when the library is open: it has no REST API, and only its page can write it.
+- The Today and Recent notes widgets show the open place (they follow it when it changes).
+- An account added before this build gets its own token when it's next opened on the device; until then the
+  share sheet and Siri keep what's saved to it for its page.
 - Web push labels and the `?place=` link only on subscriptions made while the browser holds more than one
   account (`placeLabel`); older ones keep their single-account wording.
 - Signing out of one account now deletes its E2EE keys on this device too; signing in again needs the

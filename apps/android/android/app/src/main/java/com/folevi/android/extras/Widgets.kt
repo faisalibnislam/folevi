@@ -166,6 +166,9 @@ object Widgets {
         }
     }
 
+    /** Quick add: with several places on the phone it asks which one first (QuickAddChooser opens it at once with one). */
+    fun quickAdd(context: Context): Intent = QuickAddChooser.intent(context)
+
     fun open(context: Context, link: String): Intent =
         Intent(Intent.ACTION_VIEW, Uri.parse(link), context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 }
@@ -229,7 +232,7 @@ class TodayWidget : GlanceAppWidget() {
             Column(GlanceModifier.fillMaxSize()) {
                 Row(GlanceModifier.fillMaxWidth().clickable(actionStartActivity(Widgets.open(context, "folevi://tasks/today"))), verticalAlignment = Alignment.CenterVertically) {
                     Text("Today", style = Look.title, modifier = GlanceModifier.defaultWeight())
-                    Text("+", style = TextStyle(color = Look.ink, fontSize = 22.sp), modifier = GlanceModifier.size(36.dp).clickable(actionStartActivity(Widgets.open(context, "folevi://quick-add"))))
+                    Text("+", style = TextStyle(color = Look.ink, fontSize = 22.sp), modifier = GlanceModifier.size(36.dp).clickable(actionStartActivity(Widgets.quickAdd(context))))
                 }
                 Spacer(GlanceModifier.height(6.dp))
                 if (tasks.length() == 0) {
@@ -340,7 +343,7 @@ class QuickAddWidget : GlanceAppWidget() {
         provideContent {
             GlanceTheme {
                 Frame {
-                    Column(GlanceModifier.fillMaxSize().clickable(actionStartActivity(Widgets.open(context, "folevi://quick-add"))), verticalAlignment = Alignment.CenterVertically, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(GlanceModifier.fillMaxSize().clickable(actionStartActivity(Widgets.quickAdd(context))), verticalAlignment = Alignment.CenterVertically, horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("+", style = TextStyle(color = Look.ink, fontSize = 34.sp))
                         Text("Quick add", style = Look.small)
                     }

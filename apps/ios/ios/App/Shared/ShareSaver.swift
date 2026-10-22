@@ -70,8 +70,18 @@ struct ShareSaver {
     var api: FoleviAPI? = SharedAccount.api()
     var accountId: String? = SharedAccount.accountId
 
-    /// Saves the share in `place` ("personal" or a workspace's id).
-    func save(_ content: ShareContent, place: String?, files: [(name: String, type: String, data: Data)]) async throws -> Outcome {
+    /// Saves the share in `place` ("personal" or a workspace's id) of `target`, one of this device's places
+    /// (SaveTargets; nil with only one place, which saves as before).
+    func save(_ content: ShareContent, place: String?, target: SaveTarget? = nil, files: [(name: String, type: String, data: Data)]) async throws -> Outcome {
+        if let target {
+            // The library: its page puts it in when the library is next open. An account: straight there with its
+            // own token, else kept for that account's page.
+            if files.isEmpty, let api = SaveTargets.api(for: target) ?? (SaveTargets.isOpen(target.id) ? self.api : nil) {
+                if let note = try? await api.createNote(title: content.title.isEmpty ? "Untitled" : content.title, markdown: content.markdown, place: place) { return .sent(noteId: note.id) }
+            }
+            try queue.add(title: content.title, text: content.text, url: content.url ?? "", place: target.isLibrary ? nil : place, accountId: SaveTargets.accountId(for: target), target: target.id, files: files)
+            return .queued
+        }
         if files.isEmpty, let api {
             do {
                 let note = try await api.createNote(title: content.title.isEmpty ? "Untitled" : content.title, markdown: content.markdown, place: place)

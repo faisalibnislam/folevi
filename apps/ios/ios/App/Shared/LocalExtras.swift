@@ -44,6 +44,9 @@ struct LocalAction: Codable, Equatable, Identifiable {
     var markdown: String?
     /// Microseconds since 1970 (the queue's order).
     let createdAt: Int64
+    /// With several places (SaveTargets): the place it's for, "library" or "acct:<user id>" (an account's when
+    /// it couldn't be sent, offline). Only that place's page puts it in. Nil: the library (as before places).
+    var place: String? = nil
 }
 
 final class LocalActions {
@@ -66,9 +69,9 @@ final class LocalActions {
 
     /// Queues an action. A check-off replaces an earlier one for the same task (only the last one counts).
     @discardableResult
-    func add(_ kind: LocalAction.Kind, taskId: String? = nil, completed: Bool? = nil, text: String? = nil, dueDate: String? = nil, noteId: String? = nil, title: String? = nil, markdown: String? = nil) throws -> LocalAction {
+    func add(_ kind: LocalAction.Kind, taskId: String? = nil, completed: Bool? = nil, text: String? = nil, dueDate: String? = nil, noteId: String? = nil, title: String? = nil, markdown: String? = nil, place: String? = nil) throws -> LocalAction {
         let now = Int64(Date().timeIntervalSince1970 * 1_000_000)
-        let action = LocalAction(id: "\(now)-\(UUID().uuidString.prefix(8).lowercased())", kind: kind, taskId: taskId, completed: completed, text: text, dueDate: dueDate, noteId: noteId, title: title, markdown: markdown, createdAt: now)
+        let action = LocalAction(id: "\(now)-\(UUID().uuidString.prefix(8).lowercased())", kind: kind, taskId: taskId, completed: completed, text: text, dueDate: dueDate, noteId: noteId, title: title, markdown: markdown, createdAt: now, place: place == SaveTargets.library ? nil : place)
         try lock.withLock {
             try fm.createDirectory(at: root, withIntermediateDirectories: true, attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
             var queued = unlockedAll()
@@ -95,6 +98,12 @@ final class LocalActions {
             .filter { $0.pathExtension == "json" }
             .compactMap { (try? Data(contentsOf: $0)).flatMap { try? decoder.decode(LocalAction.self, from: $0) } }
             .sorted { ($0.createdAt, $0.id) < ($1.createdAt, $1.id) }
+    }
+
+    /// The actions for one place: `place` nil (or "library") is the library's.
+    func `for`(place: String?) -> [LocalAction] {
+        let wanted = place == SaveTargets.library ? nil : place
+        return all().filter { $0.place == wanted }
     }
 
     func action(_ id: String) -> LocalAction? {

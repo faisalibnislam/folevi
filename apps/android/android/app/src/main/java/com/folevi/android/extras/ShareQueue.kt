@@ -20,7 +20,8 @@ class ShareQueue private constructor(context: Context) {
 
     data class SharedFile(val name: String, val type: String, val bytes: ByteArray)
 
-    fun add(title: String, text: String, url: String, place: String?, files: List<SharedFile>): String = synchronized(lock) {
+    /** `target`: with several places (Places.kt), the one it's saved to ("library" or "acct:<user id>"). */
+    fun add(title: String, text: String, url: String, place: String?, files: List<SharedFile>, target: String? = null): String = synchronized(lock) {
         val id = UUID.randomUUID().toString()
         val d = File(dir, id).apply { mkdirs() }
         val list = JSONArray()
@@ -29,15 +30,19 @@ class ShareQueue private constructor(context: Context) {
             File(d, name).writeBytes(f.bytes)
             list.put(JSONObject().put("file", name).put("name", f.name).put("type", f.type))
         }
-        val meta = JSONObject().put("id", id).put("title", title).put("text", text).put("url", url).put("place", place ?: JSONObject.NULL).put("files", list).put("at", System.currentTimeMillis())
+        val meta = JSONObject().put("id", id).put("title", title).put("text", text).put("url", url).put("place", place ?: JSONObject.NULL).put("files", list).put("at", System.currentTimeMillis()).put("target", target ?: JSONObject.NULL)
         com.folevi.android.library.MirrorStore.atomicWrite(File(d, "share.json"), meta.toString().toByteArray())
         id
     }
 
-    /** Everything waiting, oldest first, with its files (base64) for the page. */
-    fun pending(): List<JSObject> = synchronized(lock) {
+    /**
+     * Everything waiting for the page that's open, oldest first, with its files (base64): what was saved to its
+     * place, and what has no place (saved before places, or with only one).
+     */
+    fun pending(open: String? = null): List<JSObject> = synchronized(lock) {
         (dir.listFiles() ?: emptyArray()).mapNotNull { d ->
             val meta = runCatching { JSONObject(File(d, "share.json").readText()) }.getOrNull() ?: return@mapNotNull null
+            if (!meta.isNull("target") && meta.optString("target").isNotEmpty() && meta.optString("target") != open) return@mapNotNull null
             val files = JSArray()
             val list = meta.optJSONArray("files") ?: JSONArray()
             for (i in 0 until list.length()) {
@@ -53,6 +58,17 @@ class ShareQueue private constructor(context: Context) {
                 .put("place", if (meta.isNull("place")) null else meta.optString("place"))
                 .put("files", files)
         }.sortedBy { it.first }.map { it.second }
+    }
+
+    data class Waiting(val id: String, val title: String, val text: String, val url: String, val place: String?, val target: String?, val hasFiles: Boolean)
+
+    /** What's waiting for `target` (the background worker sends text and links for an account that isn't open). */
+    fun waitingFor(target: String): List<Waiting> = synchronized(lock) {
+        (dir.listFiles() ?: emptyArray()).mapNotNull { d ->
+            val m = runCatching { JSONObject(File(d, "share.json").readText()) }.getOrNull() ?: return@mapNotNull null
+            if (m.isNull("target") || m.optString("target") != target) return@mapNotNull null
+            Waiting(m.getString("id"), m.optString("title"), m.optString("text"), m.optString("url"), if (m.isNull("place")) null else m.optString("place"), target, (m.optJSONArray("files")?.length() ?: 0) > 0)
+        }
     }
 
     fun remove(id: String) = synchronized(lock) {

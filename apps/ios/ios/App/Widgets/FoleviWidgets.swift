@@ -49,12 +49,43 @@ struct RecentNotesWidget: Widget {
 
 struct QuickAddWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "com.folevi.ios.quick-add", provider: FoleviTimelineProvider()) { entry in
-            QuickAddView(entry: entry)
+        // Its one setting, Save to, matters only with several places on this device (the library and accounts):
+        // the place picked, else the one chosen last.
+        AppIntentConfiguration(kind: "com.folevi.ios.quick-add", intent: QuickAddPlaceIntent.self, provider: QuickAddProvider()) { entry in
+            QuickAddView(entry: entry.base, place: entry.place)
         }
         .configurationDisplayName("Quick add")
         .description("Add a task to Folevi in a tap.")
         .supportedFamilies([.systemSmall])
+    }
+}
+
+struct QuickAddEntry: TimelineEntry {
+    let base: FoleviEntry
+    let place: SaveTarget?
+    var date: Date { base.date }
+}
+
+/// The Quick add widget's timeline: the usual entry, and the place it adds to.
+struct QuickAddProvider: AppIntentTimelineProvider {
+    private let inner = FoleviTimelineProvider()
+
+    private func place(_ config: QuickAddPlaceIntent) -> SaveTarget? {
+        guard SaveTargets.several() else { return nil }
+        return config.place.flatMap { SaveTargets.target($0.id) } ?? SaveTargets.preferred()
+    }
+
+    func placeholder(in context: Context) -> QuickAddEntry {
+        QuickAddEntry(base: FoleviEntry(date: Date(), snapshot: .sample), place: nil)
+    }
+
+    func snapshot(for configuration: QuickAddPlaceIntent, in context: Context) async -> QuickAddEntry {
+        QuickAddEntry(base: FoleviEntry(date: Date(), snapshot: WidgetStore.shared.load()), place: place(configuration))
+    }
+
+    func timeline(for configuration: QuickAddPlaceIntent, in context: Context) async -> Timeline<QuickAddEntry> {
+        let t = await inner.timeline()
+        return Timeline(entries: t.entries.map { QuickAddEntry(base: $0, place: place(configuration)) }, policy: t.policy)
     }
 }
 

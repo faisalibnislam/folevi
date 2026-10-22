@@ -6,7 +6,8 @@
 //   refresh       the widgets' copy fetched again: { state, tasks, notes }
 //   spotlight     the index updated, then searched: the notes Spotlight has from Folevi
 //   share         the share extension's save path (ShareSaver) with sample items: { text, url, title, image }
-//   intent        an App Intent run here: { name: "addTask" | "newNote" | "openNote" | "showToday" | "quickAdd", text?, id? }
+//   intent        an App Intent run here: { name: "addTask" | "newNote" | "openNote" | "showToday" | "quickAdd", text?, id?, place? }
+//   outbox        what's waiting for accounts that aren't open sent with their own tokens (BackgroundRefresh): { queue? }
 //   complete      a widget's check-off (ToggleTaskIntent): { id }
 //   activity      a Spotlight result tapped: { id }
 //   widgets       every widget drawn to PNGs in tmp/widgets (WidgetSnapshots): { font? (Spectral's path) }
@@ -20,7 +21,12 @@ import WidgetKit
 
 @MainActor
 enum DebugHooks {
+    private static var installed = false
+
+    /// Once per run: switching places starts the app's screen again, which would add a second listener.
     static func install() {
+        guard !installed else { return }
+        installed = true
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, _, _, _ in
             Task { @MainActor in await DebugHooks.run() }
         }, "com.folevi.ios.native" as CFString, nil, .deliverImmediately)
@@ -67,7 +73,20 @@ enum DebugHooks {
                 "localMode": LocalMode.on,
                 "localActions": LocalActions.shared.all().map { ["kind": $0.kind.rawValue, "taskId": $0.taskId ?? "", "text": $0.text ?? $0.title ?? ""] },
                 "catalog": LocalCatalog.load().count,
+                // Several places (SaveTargets): what the pickers offer and which accounts hold their own token.
+                "saveTargets": SaveTargets.load().map(\.id),
+                "saveCurrent": SaveTargets.current() ?? NSNull(),
+                "saveLast": SaveTargets.last() ?? NSNull(),
+                "ownTokens": SaveTargets.load().compactMap(\.userId).filter { SaveTargets.credential(userId: $0).token != nil },
+                "placeActions": LocalActions.shared.all().map { ["kind": $0.kind.rawValue, "place": $0.place ?? "library", "text": $0.text ?? $0.title ?? ""] },
+                "queuedTargets": ShareQueue.shared.all().map { $0.target ?? "" },
             ]
+        case "outbox":
+            // { queue?: { place, text } }: keeps a task for a place first (as Siri does offline), then sends.
+            if let q = input["queue"] as? [String: Any], let place = q["place"] as? String {
+                try LocalActions.shared.add(.addTask, text: q["text"] as? String ?? "Kept offline", place: place)
+            }
+            return ["sent": await PlaceOutbox.send(), "left": LocalActions.shared.all().map { $0.place ?? "library" }]
         case "refresh":
             let snapshot = await WidgetStore.shared.refresh()
             WidgetCenter.shared.reloadAllTimelines()
@@ -82,7 +101,7 @@ enum DebugHooks {
             let content = ShareContent.tidy(title: input["title"] as? String, text: input["text"] as? String, url: input["url"] as? String)
             var files: [(name: String, type: String, data: Data)] = []
             if input["image"] as? Bool == true, let png = sampleImage().pngData() { files.append((name: "Sample.png", type: "image/png", data: png)) }
-            let outcome = try await ShareSaver().save(content, place: input["place"] as? String, files: files)
+            let outcome = try await ShareSaver().save(content, place: input["place"] as? String, target: SaveTargets.target(input["target"] as? String), files: files)
             switch outcome {
             case .sent(let id): return ["outcome": "sent", "noteId": id, "message": "Saved to your Inbox"]
             case .queued: return ["outcome": "queued", "queued": ShareQueue.shared.all().count, "message": "Saved, it will sync when Folevi opens"]
@@ -91,9 +110,11 @@ enum DebugHooks {
             switch input["name"] as? String {
             case "addTask":
                 let due = (input["due"] as? String) == "today" ? Date() : nil
-                _ = try await AddTaskIntent(text: input["text"] as? String ?? "From a Shortcut", dueDate: due).perform()
+                let place = SaveTargets.target(input["place"] as? String).map(SavePlaceEntity.init)
+                let result = try await AddTaskIntent(text: input["text"] as? String ?? "From a Shortcut", dueDate: due, place: place).perform()
+                return ["ran": "addTask", "dialog": String(describing: result)]
             case "newNote":
-                _ = try await NewNoteIntent(text: input["text"] as? String).perform()
+                _ = try await NewNoteIntent(text: input["text"] as? String, place: SaveTargets.target(input["place"] as? String).map(SavePlaceEntity.init)).perform()
             case "openNote":
                 let entities = try await NoteQuery().entities(matching: input["text"] as? String ?? "")
                 guard let first = entities.first else { return ["found": 0] }

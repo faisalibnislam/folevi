@@ -16,11 +16,15 @@ import WebKit
 
 enum SimulatorEval {
     private static weak var webView: WKWebView?
+    private static var observing = false
 
     static func install(on webView: WKWebView) {
         self.webView = webView
         let setter = NSSelectorFromString("_setInputDelegate:")
         if webView.responds(to: setter) { webView.perform(setter, with: inputDelegate) }
+        // One listener per run: a new screen (a mode or place switch) only changes which web view it runs in.
+        guard !observing else { return }
+        observing = true
         let center = CFNotificationCenterGetDarwinNotifyCenter()
         CFNotificationCenterAddObserver(center, nil, { _, _, _, _, _ in
             DispatchQueue.main.async { SimulatorEval.run() }

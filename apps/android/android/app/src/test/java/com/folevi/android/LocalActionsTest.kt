@@ -25,6 +25,19 @@ class LocalActionsTest {
     }
 
     @Test
+    fun eachPlacesPageTakesOnlyItsOwn() {
+        // Several places: the library's check-offs (no place) for the library's page, an account's for that account.
+        val f = File(Files.createTempDirectory("local-actions").toFile(), "q.json")
+        f.writeText("""[{"id":"1","kind":"toggleTask","taskId":"t","completed":true},{"id":"2","kind":"addTask","text":"Buy milk","place":"acct:ana"}]""")
+        val q = LocalActions.at(f)
+        assertEquals(listOf("1"), (0 until q.pendingFor("library").length()).map { q.pendingFor("library").getJSONObject(it).getString("id") })
+        assertEquals(listOf("2"), (0 until q.pendingFor("acct:ana").length()).map { q.pendingFor("acct:ana").getJSONObject(it).getString("id") })
+        assertEquals(0, q.pendingFor("acct:ben").length())
+        // No place open yet (the sign-in screen): nothing.
+        assertEquals(0, q.pendingFor(null).length())
+    }
+
+    @Test
     fun theSameTaskTwiceKeepsTheLastWord() {
         val q = queue()
         q.toggleTask("task-a", true)

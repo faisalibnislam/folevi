@@ -51,6 +51,7 @@ enum AppServices {
         }
         holder.task = UIApplication.shared.beginBackgroundTask(withName: "Folevi widgets", expirationHandler: end)
         refresh(then: end)
+        BackgroundRefresh.schedule()
     }
 
     /// The widgets' tasks and notes, the share sheet's places and Spotlight's notes, fetched again.
@@ -63,7 +64,11 @@ enum AppServices {
         refreshing = true
         lastRefresh = Date()
         Task {
-            if let places = try? await api.places(), !places.isEmpty { PlacesCache.save(places) }
+            if let places = try? await api.places(), !places.isEmpty {
+                PlacesCache.save(places)
+                // Several places: the share sheet shows this account's workspaces when it's chosen there too.
+                if let userId = SaveTargets.userId(of: SaveTargets.current()) { PlacesCache.save(places, userId: userId) }
+            }
             await WidgetStore.shared.refresh(api: api)
             WidgetCenter.shared.reloadAllTimelines()
             await SpotlightIndex.shared.update(api: api)
@@ -72,11 +77,22 @@ enum AppServices {
         }
     }
 
-    /// Signing out: nothing of the account stays for the widgets, the share sheet or Spotlight.
-    static func signedOut() {
+    /// Another place opened (several places): what the widgets, the share sheet's workspaces and Spotlight
+    /// showed was the last place's. Its token and notifications stay: it's still signed in on this device.
+    static func placeChanged() {
+        WidgetStore.shared.clear()
+        PlacesCache.save([])
+        WidgetCenter.shared.reloadAllTimelines()
+        Task { await SpotlightIndex.shared.removeAll() }
+        lastRefresh = .distantPast
+    }
+
+    /// Signing out: nothing of the account stays for the widgets, the share sheet or Spotlight. With other
+    /// accounts still here (several places) notifications stay on for them.
+    static func signedOut(keepNotifications: Bool = false) {
         SharedAccount.forget()
         // Notifications were for that account: off, none left on the Lock Screen, no badge.
-        PushNotifications.shared.disable()
+        if !keepNotifications { PushNotifications.shared.disable() }
         WidgetStore.shared.clear()
         PlacesCache.save([])
         WidgetCenter.shared.reloadAllTimelines()

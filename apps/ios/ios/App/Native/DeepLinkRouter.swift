@@ -14,6 +14,18 @@ enum DeepLinkRouter {
 
     /// Opens a folevi:// link in the page (now, or once the web view is ready).
     static func open(_ url: URL) {
+        // A link for another of this device's places (a widget's or an intent's Save to): that place opens first,
+        // then the link opens in it (the new page's bridge says when it's ready).
+        let (place, link) = DeepLink.place(of: url)
+        if let place, ShellPlaces.has(place), place != ShellPlaces.state.current {
+            guard DeepLink.parse(link.absoluteString) != nil else { return }
+            ShellPlaces.setCurrent(place)
+            ready = false
+            waiting.append(link)
+            FoleviViewController.restart()
+            return
+        }
+        let url = link
         guard DeepLink.parse(url.absoluteString) != nil else { return }
         guard ready else { return waiting.append(url) }
         _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: url, options: [:])

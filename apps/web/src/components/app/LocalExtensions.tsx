@@ -107,6 +107,19 @@ export function LocalExtensions() {
   return null;
 }
 
+/**
+ * Several places (docs/MULTI_ACCOUNT_PLAN.md §6): in an account, what the share sheet, Siri, Shortcuts or a widget
+ * saved to it while offline (or before it had a token on this device) waits in the same queue, tagged with the
+ * account; the app hands this page only its own. Put into Personal, as the REST API would have.
+ */
+const PERSONAL: ReturnType<typeof useAppState>["scope"] = { kind: "personal" };
+
+export function PlaceActions() {
+  const { today, deviceId } = useAppState();
+  useLocalActions({ scope: PERSONAL, today, deviceId });
+  return null;
+}
+
 /** What a widget, Siri or Shortcuts did while this page wasn't there: put into the library, then let go. */
 function useLocalActions(state: { scope: ReturnType<typeof useAppState>["scope"]; today: string; deviceId: string | null }) {
   const bridge = nativeApp()!;

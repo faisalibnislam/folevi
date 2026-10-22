@@ -201,7 +201,8 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func placesQuickAdd(_ call: CAPPluginCall) {
-        guarded(call) { call.resolve(["value": (ShellPlaces.state.quickAdd ?? ShellPlaces.state.current).map { $0 as Any } ?? NSNull()]) }
+        // The place chosen last anywhere: in the app's Quick Add, the share sheet, Siri or a widget (SaveTargets).
+        guarded(call) { call.resolve(["value": ([SaveTargets.last(), ShellPlaces.state.quickAdd, ShellPlaces.state.current].compactMap { $0 }.first { ShellPlaces.has($0) }).map { $0 as Any } ?? NSNull()]) }
     }
 
     @objc func placesSetQuickAdd(_ call: CAPPluginCall) {

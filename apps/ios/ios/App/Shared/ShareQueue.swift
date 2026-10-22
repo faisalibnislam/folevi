@@ -17,6 +17,9 @@ struct QueuedShare: Codable, Equatable, Identifiable {
     let place: String?
     /// The account signed in when it was shared (nil: none); the app only saves it into that account.
     let accountId: String?
+    /// With several places (SaveTargets): the one it was saved to ("library" or "acct:<user id>"). Only that
+    /// place's page takes it. Nil in shares from before, which go by `accountId`.
+    var target: String? = nil
     let files: [File]
     /// When it was shared, in microseconds since 1970 (the queue's order).
     let createdAt: Int64
@@ -45,7 +48,7 @@ final class ShareQueue {
 
     /// Keeps a share. Files beyond the limits are left out and their names returned.
     @discardableResult
-    func add(title: String, text: String, url: String, place: String?, accountId: String?, files: [(name: String, type: String, data: Data)]) throws -> (share: QueuedShare, skipped: [String]) {
+    func add(title: String, text: String, url: String, place: String?, accountId: String?, target: String? = nil, files: [(name: String, type: String, data: Data)]) throws -> (share: QueuedShare, skipped: [String]) {
         let now = Int64(Date().timeIntervalSince1970 * 1_000_000)
         let id = "\(now)-\(UUID().uuidString.prefix(8).lowercased())"
         let folder = root.appendingPathComponent(id, isDirectory: true)
@@ -61,7 +64,7 @@ final class ShareQueue {
             try file.data.write(to: folder.appendingPathComponent(stored), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             kept.append(.init(name: file.name, type: file.type, stored: stored))
         }
-        let share = QueuedShare(id: id, title: title, text: text, url: url, place: place, accountId: accountId, files: kept, createdAt: now)
+        let share = QueuedShare(id: id, title: title, text: text, url: url, place: place, accountId: accountId, target: target, files: kept, createdAt: now)
         let encoder = JSONEncoder()
         // Written last: a share without its share.json (the extension was stopped halfway) isn't one yet.
         try encoder.encode(share).write(to: folder.appendingPathComponent("share.json"), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
@@ -75,6 +78,15 @@ final class ShareQueue {
         return folders
             .compactMap { folder in (try? Data(contentsOf: folder.appendingPathComponent("share.json"))).flatMap { try? decoder.decode(QueuedShare.self, from: $0) } }
             .sorted { ($0.createdAt, $0.id) < ($1.createdAt, $1.id) }
+    }
+
+    /// The shares the page that's open now takes: those saved to its place, and older untagged ones for its
+    /// account (or shared while signed out).
+    func forOpenPlace(current: String?, accountId: String?) -> [QueuedShare] {
+        all().filter { share in
+            if let target = share.target { return target == current }
+            return share.accountId == nil || share.accountId == accountId
+        }
     }
 
     func data(of file: QueuedShare.File, in share: QueuedShare) -> Data? {

@@ -9,11 +9,15 @@ final class DeviceCredential {
 
     private let service: String
     private let accessGroup: String?
-    private let account = "rest-api"
+    private let account: String
 
-    init(service: String, accessGroup: String?) {
+    /// `account`: "rest-api" is the open place's token (what the widgets and Spotlight use); with several places
+    /// each account also keeps its own, "rest-api.<user id>" (SaveTargets.credential), so the share sheet and
+    /// Siri reach an account that isn't open.
+    init(service: String, accessGroup: String?, account: String = "rest-api") {
         self.service = service
         self.accessGroup = accessGroup
+        self.account = account
     }
 
     private func query() -> [String: Any] {

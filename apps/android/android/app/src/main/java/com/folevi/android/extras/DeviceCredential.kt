@@ -31,6 +31,50 @@ class DeviceCredential(context: Context, private val secrets: Secrets) {
         prefs.edit().remove("tokenId").remove("accountId").apply()
     }
 
+    // ---------------------------------------------------------------- several places (Places.kt)
+    // Each account keeps its own token too ("device.token.<user id>"), so the share target and the background
+    // worker reach an account that isn't open. The one above is always the open place's (the widgets use it).
+
+    fun tokenFor(userId: String): String? = secrets.get("$TOKEN.$userId")
+    fun accountIdFor(userId: String): String? = prefs.getString("accountId.$userId", null)
+
+    fun setFor(userId: String, token: String, tokenId: String, accountId: String) {
+        if (!ID_RE.matches(userId)) return
+        secrets.set("$TOKEN.$userId", token)
+        prefs.edit().putString("tokenId.$userId", tokenId).putString("accountId.$userId", accountId).apply()
+    }
+
+    fun clearFor(userId: String) {
+        if (!ID_RE.matches(userId)) return
+        secrets.delete("$TOKEN.$userId")
+        prefs.edit().remove("tokenId.$userId").remove("accountId.$userId").apply()
+    }
+
+    /** The accounts holding a token of their own here. */
+    fun users(): Set<String> = prefs.all.keys.filter { it.startsWith("accountId.") }.map { it.removePrefix("accountId.") }.toSet()
+
+    /**
+     * Another place opened: the open place's token becomes that account's own, or none for the library and an
+     * account with none yet (its page asks for one as it opens). A token kept before places (the one account
+     * this phone had) becomes that account's first.
+     */
+    /** The open place's token becomes `userId`'s own when it has none yet, unless it's another account's here. */
+    fun keepOpen(userId: String) {
+        if (tokenFor(userId) != null) return
+        val legacy = token() ?: return
+        val account = accountId ?: return
+        val id = tokenId ?: return
+        if (users().none { accountIdFor(it) == account }) setFor(userId, legacy, id, account)
+    }
+
+    fun openedPlace(userId: String?) {
+        if (userId == null) return clear()
+        keepOpen(userId)
+        val own = tokenFor(userId) ?: return clear()
+        secrets.set(TOKEN, own)
+        prefs.edit().putString("tokenId", prefs.getString("tokenId.$userId", null)).putString("accountId", accountIdFor(userId)).apply()
+    }
+
     companion object {
         const val TOKEN = "device.token"
         private var shared: DeviceCredential? = null

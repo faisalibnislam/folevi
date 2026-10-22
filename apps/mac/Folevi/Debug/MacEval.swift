@@ -1,0 +1,118 @@
+// Debug builds only (compiled out of release): a way for scripts to drive the running app without Safari's Web
+// Inspector, like the iOS app's SimulatorEval.swift. scripts/mac.mjs writes a request to
+// <support folder>/Debug/request.json, posts the Darwin notification named in Debug/app.json, and reads
+// Debug/result-<id>.json. Requests:
+//
+//   { id, cmd: "eval", script, window? }        runs `script` as an async function body in a window's page
+//                                               (callAsyncJavaScript: it may await and return a JSON value)
+//   { id, cmd: "shot", out, window? }           a PNG of the window's page (WKWebView's snapshot)
+//   { id, cmd: "open", url }                    opens a folevi-dev:// link as if another app had
+//   { id, cmd: "appearance", value }            "light", "dark" or "system", for screenshots of both
+//   { id, cmd: "windows" }                      the windows: number, frame, address, place, key
+//   { id, cmd: "newWindow", path? }             another main window
+//   { id, cmd: "quit" }
+//
+// Other packages add commands through MacEval.commands (WM2: "menu", WM1: "places").
+#if DEBUG
+import AppKit
+import WebKit
+
+@MainActor
+enum MacEval {
+    typealias Command = (_ request: [String: Any], _ done: @escaping ([String: Any]) -> Void) -> Void
+    /// More commands by name (other packages register theirs at launch).
+    static var commands: [String: Command] = [:]
+
+    private static var notifyName: String { "com.folevi.mac.dev.eval.\(ProcessInfo.processInfo.processIdentifier)" }
+
+    static func install() {
+        let info: [String: Any] = [
+            "pid": ProcessInfo.processInfo.processIdentifier, "notify": notifyName, "version": Paths.version,
+            "bundleId": Bundle.main.bundleIdentifier ?? "", "supportFolder": Paths.supportFolder.path, "shellRoot": Paths.shellRoot.path,
+            "serviceUrl": Paths.serviceURL.absoluteString, "startedAt": Date().timeIntervalSince1970,
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys]) {
+            try? data.write(to: Paths.debugFolder.appendingPathComponent("app.json"), options: .atomic)
+        }
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, _, _, _ in
+            DispatchQueue.main.async { MainActor.assumeIsolated { MacEval.run() } }
+        }, notifyName as CFString, nil, .deliverImmediately)
+    }
+
+    private static func run() {
+        let file = Paths.debugFolder.appendingPathComponent("request.json")
+        guard let data = try? Data(contentsOf: file), let req = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any], let id = req["id"] as? String,
+              id.range(of: "^[A-Za-z0-9_-]{1,64}$", options: .regularExpression) != nil else { return }
+        try? FileManager.default.removeItem(at: file)
+        let out = Paths.debugFolder.appendingPathComponent("result-\(id).json")
+        let done: ([String: Any]) -> Void = { answer in
+            let safe = JSONSerialization.isValidJSONObject(answer) ? answer : ["value": String(describing: answer)]
+            let data = (try? JSONSerialization.data(withJSONObject: safe, options: [.prettyPrinted, .sortedKeys])) ?? Data("{}".utf8)
+            try? data.write(to: out, options: .atomic)
+        }
+        handle(req, done)
+    }
+
+    private static func view(_ req: [String: Any]) -> FoleviWebView? {
+        let mains = WindowManager.shared.mains
+        if let i = req["window"] as? Int, mains.indices.contains(i) { return mains[i].view }
+        return WindowManager.shared.frontMain?.view
+    }
+
+    private static func handle(_ req: [String: Any], _ done: @escaping ([String: Any]) -> Void) {
+        let cmd = req["cmd"] as? String ?? ""
+        switch cmd {
+        case "eval":
+            guard let view = view(req), let script = req["script"] as? String else { return done(["error": "no window or no script"]) }
+            view.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { result in
+                switch result {
+                case .success(let value):
+                    done(["value": JSONSerialization.isValidJSONObject(["v": value]) ? value : String(describing: value)])
+                case .failure(let error):
+                    done(["error": (error as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String ?? error.localizedDescription])
+                }
+            }
+        case "shot":
+            guard let view = view(req), let path = req["out"] as? String else { return done(["error": "no window or no out"]) }
+            view.takeSnapshot(with: nil) { image, error in
+                guard let image, let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff), let png = rep.representation(using: .png, properties: [:]) else {
+                    return done(["error": error?.localizedDescription ?? "no snapshot"])
+                }
+                do {
+                    try png.write(to: URL(fileURLWithPath: path))
+                    done(["value": ["path": path, "width": rep.pixelsWide, "height": rep.pixelsHigh]])
+                } catch {
+                    done(["error": error.localizedDescription])
+                }
+            }
+        case "open":
+            guard let raw = req["url"] as? String, let url = URL(string: raw), let app = NSApp.delegate as? AppDelegate else { return done(["error": "no url"]) }
+            app.open(url)
+            done(["value": true])
+        case "appearance":
+            switch req["value"] as? String {
+            case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+            case "light": NSApp.appearance = NSAppearance(named: .aqua)
+            default: NSApp.appearance = nil
+            }
+            // The page's prefers-color-scheme follows on the next frame.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { done(["value": NSApp.effectiveAppearance.name.rawValue]) }
+        case "windows":
+            let list: [[String: Any]] = WindowManager.shared.mains.enumerated().map { i, m in
+                let f = m.window?.frame ?? .zero
+                return ["index": i, "number": m.window?.windowNumber ?? 0, "frame": [f.origin.x, f.origin.y, f.size.width, f.size.height], "url": m.view.url?.absoluteString ?? "",
+                        "place": m.view.place ?? NSNull(), "key": m.window?.isKeyWindow ?? false, "visible": m.window?.isVisible ?? false, "loaded": m.view.loaded]
+            }
+            done(["value": list])
+        case "newWindow":
+            WindowManager.shared.openMain(path: req["path"] as? String ?? "/")
+            done(["value": WindowManager.shared.mains.count])
+        case "quit":
+            done(["value": true])
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { NSApp.terminate(nil) }
+        default:
+            if let extra = commands[cmd] { extra(req, done) } else { done(["error": "unknown command \(cmd)"]) }
+        }
+    }
+}
+#endif

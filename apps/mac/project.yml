@@ -1,0 +1,119 @@
+# Folevi for Mac, the native app (AppKit + WKWebView, docs/MAC_WEBKIT_PLAN.md). XcodeGen spec: scripts/project.mjs
+# turns it into Folevi.xcodeproj (not committed). Add Swift files under Folevi/ and they're in; files shared with
+# the iPhone and iPad app are listed one by one below (a new iOS-only file there must never break this build).
+name: Folevi
+options:
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  groupSortPosition: top
+settings:
+  base:
+    MARKETING_VERSION: 2.0.0
+    CURRENT_PROJECT_VERSION: 1
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    DEVELOPMENT_TEAM: 7K32QQ2FX8
+    # The shared iOS Swift is written for the Swift 5 language mode (as the iOS project builds it).
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    ENABLE_HARDENED_RUNTIME: YES
+    DEAD_CODE_STRIPPING: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+targets:
+  Folevi:
+    type: application
+    platform: macOS
+    sources:
+      - path: Folevi
+        excludes:
+          - "Resources/Info.plist"
+          - "Resources/*.entitlements"
+          - "Bridge/mac-bridge.js"
+      - path: Folevi/Bridge/mac-bridge.js
+        buildPhase: resources
+      # The app icon, the iPhone and iPad app's (Icon Composer files serve every platform).
+      - path: ../ios/ios/App/App/AppIcon.icon
+        group: Shared
+      # Shared with the iPhone and iPad app (apps/ios/ios/App/Native/Shell), by path: never copied.
+      - path: ../ios/ios/App/Native/Shell
+        group: Shared
+        excludes:
+          - "FoleviShellPlugin.swift"
+          - "*.js"
+      - path: ../ios/ios/App/Native/Shell/shell-bridge.js
+        group: Shared
+        buildPhase: resources
+      - path: ../ios/ios/App/Native/Shell/folevi-cloud.js
+        group: Shared
+        buildPhase: resources
+      - path: ../ios/ios/App/Shared/SaveTargets.swift
+        group: Shared
+      - path: ../ios/ios/App/Shared/DeviceCredential.swift
+        group: Shared
+      - path: ../ios/ios/App/Shared/Folevi.swift
+        group: Shared
+      - path: ../ios/ios/App/Shared/FoleviAPI.swift
+        group: Shared
+      - path: ../ios/ios/App/Shared/LocalExtras.swift
+        group: Shared
+    settings:
+      base:
+        PRODUCT_MODULE_NAME: Folevi
+        INFOPLIST_FILE: Folevi/Resources/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Manual
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+        COMBINE_HIDPI_IMAGES: YES
+      configs:
+        # Development: its own bundle id, support folder, Keychain names and URL scheme (§3.2), so it never
+        # touches the installed app or its data. Signed with Apple Development (a stable signature, so its
+        # Keychain items open again after each rebuild without a prompt).
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: com.folevi.mac.dev
+          PRODUCT_NAME: Folevi Dev
+          CODE_SIGN_IDENTITY: Apple Development
+          CODE_SIGN_ENTITLEMENTS: Folevi/Resources/FoleviDev.entitlements
+          FOLEVI_URL_SCHEME: folevi-dev
+          # The development copy of the built-in interface (apps/desktop/web, from build-shell.mjs).
+          FOLEVI_DEV_SHELL_DIR: "$(SRCROOT)/../desktop/web"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG $(inherited)"
+        Release:
+          PRODUCT_BUNDLE_IDENTIFIER: com.folevi.mac
+          PRODUCT_NAME: Folevi
+          CODE_SIGN_IDENTITY: Developer ID Application
+          CODE_SIGN_ENTITLEMENTS: Folevi/Resources/Folevi.entitlements
+          OTHER_CODE_SIGN_FLAGS: "--timestamp"
+          FOLEVI_URL_SCHEME: folevi
+          FOLEVI_DEV_SHELL_DIR: ""
+  FoleviTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: FoleviTests
+    dependencies:
+      - target: Folevi
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.folevi.mac.dev.tests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Folevi Dev.app/Contents/MacOS/Folevi Dev"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: Apple Development
+schemes:
+  Folevi:
+    build:
+      targets:
+        Folevi: all
+        FoleviTests: [test]
+    run:
+      config: Debug
+      environmentVariables:
+        FOLEVI_DEV_RUN: "1"
+    test:
+      config: Debug
+      targets:
+        - FoleviTests
+    archive:
+      config: Release

@@ -1601,6 +1601,48 @@ in a Standard space asks the same question.
   only until you close this tab", and closing with unsent changes shows the browser's leave-page prompt.
 - At sign-out or the next load, anything left over from a public session in IndexedDB is deleted.
 
+**Settled while building WP7** (§6.4 to §6.10).
+- The provider (`useAccountClient`) watches `e2ee.keys.status` on the raw client and wraps it only when
+  `setUp` is true; it loads the router module on demand, so Standard accounts never download it. A
+  `localStorage` hint (`folevi:e2ee`) starts an E2EE account with the router at once (no remount).
+  `setActiveRouter` makes it reachable outside React (`lib/e2ee/router/active.ts`, `hooks.ts`).
+- Results are opened by one generic walker (`openDeep`) over WP3's shapes: a SealedWireBlock, a summary's
+  `sealed: { title, appearance, meta? }`, `sealedName` (folders and tags; tried as a folder then as a tag),
+  `sealedBody`. A sealed note's derived fields (excerpt, preview, counts) come from the replica. A note
+  whose sealed meta has a `row` reads as `collectionRow` (WP3's sealed create stores it as `document`).
+  Function-specific decoders: versions (names opened, ids remembered), SealedVersionContent, files.urls,
+  notifications (`documentSealed`).
+- Composers and the record-backed sealed routes (collections, found text, study, and in encrypted spaces
+  folders, tags and tag sets) run local mode's ported handler over a scratch transaction on the replica and
+  project what it wrote: notes and blocks as sync ops, collections/found text/study schedules as records, a
+  row's values as sealed meta, tags through `setDocumentTags`. Only content tables are projected. This reuses
+  local mode's checks, which already match the server's (the parity scenarios run them).
+- A collection row's sealed meta is `{ row: { id, collectionId, rank, values, createdAt } }` (the row's own
+  id is needed: a resend with a client-chosen id finds it). `collectionId` is never sent plaintext.
+- The server's own rules for sealed creates and titles run on the device: `sanitizeTitle`, a random note
+  icon for a document made without one; version names collapse spaces and stop at 80 characters.
+- Template copies and repeating to-dos (what the server derives for plain notes) come from running local
+  mode's `sync.push` over the replica for those ops before they're sent; the extra blocks and records go in a
+  second push once the first is applied.
+- `documents.createSnapshot` with a name on a sealed note makes the version blind, then names it with
+  `e2ee.content.nameVersion`. `documents.restoreSnapshot` keeps the note first as a `manual` version (devices
+  can't ask for `before_restore`; WP3 could allow it).
+- `files.shareForPaste` into a sealed note re-wraps the file key for the target (`e2ee.files.rewrap`); the
+  copy's sealed meta says `blob: <first file id>`, the id its bytes were sealed under (their AAD context).
+- The pull sends no tombstones for notes deleted for good: a device forgets its own deletions at once and
+  checks the notes in Trash against `documents.get` after deletes. WP3 could add `purged` rows instead.
+  Tags deleted on the server likewise stay in other devices' replicas until then.
+- `study.setNewPerDay` is the person's setting, not content: it goes to Convex, and the replica is told.
+- A device-route call whose server function refuses sealed notes still merges: in an encrypted space the
+  replica answers alone (`documents.info` takes its activity from the server and its counts from the replica).
+- An id the index doesn't know resolves to the call's `scope` if that space is encrypted (its replica has
+  every note, so the device answers "not found" as the server would); block ids are indexed too.
+- `openLocalDbInMemory(factory)` replaces `openLocalDb({ memory: true })`: the tab's account database opens in
+  an in-memory IndexedDB (fake-indexeddb's `IDBFactory`, which must move to `dependencies` when public mode
+  turns it on). Unpersisted replicas get a fresh `MemoryReplicaDb` each time.
+- Parity (§11.3) runs in `tests/parity/e2ee.test.ts` with `drivers/e2ee.ts`; the scenarios that differ, and
+  why, are listed in `tests/parity/e2eeKnown.ts`.
+
 ### 6.11 Mac app
 
 - Same web code at either origin. The main process owns the device keys (§6.2). Settings > Desktop app

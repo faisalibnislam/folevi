@@ -60,10 +60,30 @@ class MainActivity : BridgeActivity() {
         registerPlugin(SecretsPlugin::class.java)
         registerPlugin(com.folevi.android.extras.NativePlugin::class.java)
         registerPlugin(com.folevi.android.library.LibraryPlugin::class.java)
+        registerPlugin(com.folevi.android.cloud.CloudPlugin::class.java)
         applyBars(systemDark())
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this, back)
+        app.showForResult = { pi -> showForResult(pi) }
         bridge?.webView?.let { setUpWebView(it) }
+    }
+
+    // ---------------------------------------------------------------- system screens with a result
+
+    private var resultWaiting: kotlinx.coroutines.CompletableDeferred<Intent?>? = null
+    private val forResult = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()) { r ->
+        val w = resultWaiting
+        resultWaiting = null
+        w?.complete(if (r.resultCode == RESULT_OK) r.data else null)
+    }
+
+    /** Google's consent screen (and others like it): its result's data, or null when the person backed out. */
+    suspend fun showForResult(pi: android.app.PendingIntent): Intent? {
+        resultWaiting?.complete(null)
+        val w = kotlinx.coroutines.CompletableDeferred<Intent?>()
+        resultWaiting = w
+        forResult.launch(androidx.activity.result.IntentSenderRequest.Builder(pi).build())
+        return w.await()
     }
 
     // ---------------------------------------------------------------- the page
@@ -315,6 +335,10 @@ class MainActivity : BridgeActivity() {
     private fun handleIntent(intent: Intent?) {
         val data = intent?.dataString ?: return
         if (intent.action != Intent.ACTION_VIEW) return
+        if (app.cloud.handleCallback(data)) {
+            signInOpen = false
+            return
+        }
         if (app.auth.handleCallback(data)) {
             signInOpen = false
             return
@@ -327,7 +351,10 @@ class MainActivity : BridgeActivity() {
         // Back from the sign-in tab without finishing (closed it): the sign-in ends.
         if (signInOpen) {
             signInOpen = false
-            bridge?.webView?.postDelayed({ if (app.auth.pendingSignIn()) app.auth.cancelPending() }, 1500)
+            bridge?.webView?.postDelayed({
+                if (app.auth.pendingSignIn()) app.auth.cancelPending()
+                app.cloud.cancel()
+            }, 1500)
         }
     }
 

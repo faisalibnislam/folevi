@@ -82,6 +82,8 @@ dependencies {
     implementation(libs.androidx.splashscreen)
     implementation(libs.androidx.window)
     implementation(libs.okhttp)
+    // Google Drive: Google's authorization for the drive.file scope on Android (no client secret, no redirect).
+    implementation(libs.play.services.auth)
     // Home screen widgets (Glance, which draws with Compose).
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.runtime)
@@ -97,3 +99,14 @@ dependencies {
 }
 
 apply(from = "capacitor.build.gradle")
+
+// The bridge's TypeScript half (apps/android/bridge with packages/cloud-folders) into assets/folevi-cloud.js.
+val bundleBridge by tasks.registering(Exec::class) {
+    description = "Builds assets/folevi-cloud.js from apps/android/bridge (esbuild)."
+    workingDir = rootProject.projectDir.parentFile
+    commandLine("node", "scripts/bundle-bridge.mjs")
+    inputs.dir(rootProject.projectDir.parentFile.resolve("bridge"))
+    inputs.dir(rootProject.projectDir.parentFile.resolve("../../packages/cloud-folders/src"))
+    outputs.file(layout.projectDirectory.file("src/main/assets/folevi-cloud.js"))
+}
+tasks.named("preBuild") { dependsOn(bundleBridge) }

@@ -99,3 +99,6 @@ app/src/main/assets/public
 app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
+
+# Built from apps/android/bridge by scripts/bundle-bridge.mjs (Gradle runs it before every build).
+app/src/main/assets/folevi-cloud.js

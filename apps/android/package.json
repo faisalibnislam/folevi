@@ -5,7 +5,10 @@
   "description": "Folevi for Android: the built-in interface in a Capacitor shell, with Kotlin for local mode, sign-in, the Keystore, widgets, the share target, the scanner, the lock and notifications.",
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc -p bridge/tsconfig.json",
+    "bundle": "node scripts/bundle-bridge.mjs",
+    "test:bridge": "../../node_modules/.bin/vitest run --config bridge/vitest.config.ts",
+    "test": "pnpm test:bridge && cd android && ./gradlew :app:testDebugUnitTest"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",

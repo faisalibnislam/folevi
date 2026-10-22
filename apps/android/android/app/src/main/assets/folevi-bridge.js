@@ -14,7 +14,7 @@
 // It also marks <html data-native="android">, keeps the system bars' icons in step with the page's theme,
 // lays the page out under the system bars (safe areas), tells the page about the keyboard, and runs the back
 // gesture: sheets, menus and full canvas close first, then the page goes back, then Android leaves the app.
-(function (boot) {
+(function (boot, kit) {
   "use strict";
   if (window.foleviShell || location.origin !== boot.origin) return;
 
@@ -134,68 +134,176 @@
   var lib = function (method, args) {
     return call(LIB, method, args, "LocalFsError", "io");
   };
+  var bytesApi = { toBase64: toBase64, fromBase64: fromBase64 };
+
+  // A library on Dropbox or Google Drive runs here, in the shared provider code (packages/cloud-folders through
+  // bridge/cloud.ts); a library on this phone runs in Kotlin (LibraryPlugin.kt). Which one is open is the
+  // library's kind, read from the app and kept here.
+  var cloudKit = kit && typeof kit.createCloudKit === "function" ? kit.createCloudKit(function (plugin, method, args) {
+    return call(plugin, method, args, "CloudError", "io");
+  }, bytesApi, function (m) {
+    console.info("[Folevi cloud] " + m);
+  }) : null;
+  var kindNow = null;
+  function currentKind() {
+    if (!kindNow) kindNow = lib("info").then(function (i) {
+      return i && i.configured !== false ? i.kind : null;
+    }, function (e) {
+      kindNow = null;
+      throw e;
+    });
+    return kindNow;
+  }
+  function isCloud(kind) {
+    return kind === "dropbox" || kind === "gdrive";
+  }
+  function localFsError(e) {
+    if (e && e.name === "LocalFsError") return e;
+    var code = (e && e.code) || "io";
+    if (e && e.name === "CloudError" && e.kind) code = "io";
+    return failure({ code: code, message: e && e.message, data: e && e.path ? { path: e.path } : null }, "LocalFsError", "io");
+  }
+  /** Runs `onCloud(fs)` for a cloud library, else `onPhone()`. */
+  function route(onCloud, onPhone) {
+    return currentKind().then(function (k) {
+      if (isCloud(k) && cloudKit) return cloudKit.fs(k).then(onCloud).catch(function (e) {
+        throw localFsError(e);
+      });
+      return onPhone();
+    });
+  }
+  /** The phone's own library folder, as a file layer for copying. */
+  var phoneFiles = {
+    list: function (dir) { return lib("list", { dir: dir, root: "device" }).then(function (r) { return r.entries || []; }); },
+    read: function (path) { return lib("read", { path: path, root: "device" }).then(function (r) { return r.notDownloaded ? { notDownloaded: true } : { bytes: readBytes(r), etag: r.etag }; }); },
+    write: function (path, bytes, o) {
+      var args = { path: path, root: "device", hasIfMatch: !!(o && "ifMatch" in o) };
+      if (o && "ifMatch" in o) args.ifMatch = o.ifMatch === null ? null : String(o.ifMatch);
+      return writeBytes(LIB, "write", args, bytes, "LocalFsError").then(function (r) { return r.mismatch ? { mismatch: true, etag: r.etag } : { etag: r.etag }; });
+    },
+    remove: function (path, o) { return lib("remove", Object.assign({ path: path, root: "device" }, o && o.ifMatch ? { ifMatch: o.ifMatch } : {})); },
+  };
+  function filesFor(kind) {
+    if (isCloud(kind)) return cloudKit.fs(kind);
+    return Promise.resolve(phoneFiles);
+  }
 
   var library = {
     setup: function (o) {
-      return lib("setup", { kind: o && o.kind }).then(function (r) {
+      var kind = o && o.kind;
+      if (isCloud(kind)) {
+        if (!cloudKit) return Promise.reject(failure({ code: "unavailable", message: "Dropbox and Google Drive aren't in this build of Folevi." }, "LocalFsError"));
+        return cloudKit.prepare(kind).then(function (m) {
+          return lib("setState", { kind: kind, libraryId: m.libraryId });
+        }).then(function () {
+          kindNow = Promise.resolve(kind);
+          return cloudKit.info(kind);
+        }).catch(function (e) {
+          throw localFsError(e);
+        });
+      }
+      return lib("setup", { kind: kind }).then(function (r) {
+        kindNow = null;
         return r && r.info ? r.info : null;
       });
     },
     info: function () {
-      return lib("info");
+      return lib("info").then(function (i) {
+        kindNow = Promise.resolve(i && i.configured !== false ? i.kind : null);
+        if (i && isCloud(i.kind) && cloudKit) return cloudKit.info(i.kind);
+        return i;
+      });
     },
     list: function (dir) {
-      return lib("list", { dir: String(dir == null ? "" : dir) }).then(function (r) {
-        return r.entries || [];
+      var d = String(dir == null ? "" : dir);
+      return route(function (fs) { return fs.list(d); }, function () {
+        return lib("list", { dir: d }).then(function (r) {
+          return r.entries || [];
+        });
       });
     },
     read: function (path) {
-      return lib("read", { path: String(path) }).then(function (r) {
-        if (r.notDownloaded) return { notDownloaded: true };
-        return { bytes: readBytes(r), etag: r.etag };
+      var p = String(path);
+      return route(function (fs) { return fs.read(p); }, function () {
+        return lib("read", { path: p }).then(function (r) {
+          if (r.notDownloaded) return { notDownloaded: true };
+          return { bytes: readBytes(r), etag: r.etag };
+        });
       });
     },
     write: function (path, bytes, o) {
-      var args = { path: String(path) };
-      if (o && "ifMatch" in o) args.ifMatch = o.ifMatch === null ? null : String(o.ifMatch);
-      args.hasIfMatch = !!(o && "ifMatch" in o);
-      return writeBytes(LIB, "write", args, bytes, "LocalFsError").then(function (r) {
-        return r.mismatch ? { mismatch: true, etag: r.etag } : { etag: r.etag };
+      var p = String(path);
+      return route(function (fs) {
+        var u8 = bytesOf(bytes);
+        if (!u8) throw failure({ code: "invalid_argument", message: "Expected bytes." }, "LocalFsError");
+        return fs.write(p, u8, o && "ifMatch" in o ? { ifMatch: o.ifMatch === null ? null : String(o.ifMatch) } : {});
+      }, function () {
+        var args = { path: p, hasIfMatch: !!(o && "ifMatch" in o) };
+        if (o && "ifMatch" in o) args.ifMatch = o.ifMatch === null ? null : String(o.ifMatch);
+        return writeBytes(LIB, "write", args, bytes, "LocalFsError").then(function (r) {
+          return r.mismatch ? { mismatch: true, etag: r.etag } : { etag: r.etag };
+        });
       });
     },
     remove: function (path, o) {
-      var args = { path: String(path) };
-      if (o && "ifMatch" in o) args.ifMatch = String(o.ifMatch);
-      return lib("remove", args).then(function () {});
+      var p = String(path);
+      return route(function (fs) { return fs.remove(p, o && "ifMatch" in o ? { ifMatch: String(o.ifMatch) } : {}); }, function () {
+        var args = { path: p };
+        if (o && "ifMatch" in o) args.ifMatch = String(o.ifMatch);
+        return lib("remove", args);
+      }).then(function () {});
     },
     conflictVersions: function (path) {
-      return lib("conflictVersions", { path: String(path) }).then(function (r) {
-        return (r.versions || []).map(function (v) {
-          return { id: v.id, bytes: fromBase64(v.data) };
+      var p = String(path);
+      return route(function (fs) { return fs.conflictVersions(p); }, function () {
+        return lib("conflictVersions", { path: p }).then(function (r) {
+          return (r.versions || []).map(function (v) {
+            return { id: v.id, bytes: fromBase64(v.data) };
+          });
         });
       });
     },
     resolveConflicts: function (path, ids) {
-      return lib("resolveConflicts", { path: String(path), ids: Array.isArray(ids) ? ids.map(String) : [] }).then(function () {});
+      var p = String(path);
+      var list = Array.isArray(ids) ? ids.map(String) : [];
+      return route(function (fs) { return fs.resolveConflicts(p, list); }, function () {
+        return lib("resolveConflicts", { path: p, ids: list });
+      }).then(function () {});
     },
     startDownload: function (paths) {
-      return lib("startDownload", { paths: Array.isArray(paths) ? paths.map(String) : [] }).then(function () {});
+      var list = Array.isArray(paths) ? paths.map(String) : [];
+      return route(function (fs) { return fs.startDownload(list); }, function () {
+        return lib("startDownload", { paths: list });
+      }).then(function () {});
     },
     watch: function (cb) {
-      var id = stream(LIB, "watch", {}, function (data) {
-        if (data && Array.isArray(data.changes) && data.changes.length) {
+      var deliver = function (changes) {
+        if (changes && changes.length) {
           try {
-            cb(data.changes);
+            cb(changes);
           } catch (e) {
             console.error(e);
           }
         }
-      });
+      };
+      var stop = null;
       var on = true;
+      currentKind().then(function (k) {
+        if (!on) return;
+        if (isCloud(k) && cloudKit) stop = cloudKit.watch(k, deliver);
+        else {
+          var id = stream(LIB, "watch", {}, function (data) {
+            if (data && Array.isArray(data.changes)) deliver(data.changes);
+          });
+          stop = function () {
+            if (id) call(LIB, "unwatch", { callbackId: id }).catch(function () {});
+          };
+        }
+      }, function () {});
       return function () {
         if (!on) return;
         on = false;
-        if (id) call(LIB, "unwatch", { callbackId: id }).catch(function () {});
+        if (stop) stop();
       };
     },
     journal: {
@@ -224,14 +332,36 @@
         return r.ok === true;
       });
     },
-    /** Served by the app from the library (FoleviWebViewClient.kt), on this origin. */
+    /** Served by the app from the library (or a cloud library's copy here), on this origin (LibraryFiles.kt). */
     fileUrl: function (sha256, mime) {
       var sha = String(sha256).toLowerCase();
       if (!/^[0-9a-f]{64}$/.test(sha)) throw new Error("Not a SHA-256 file name.");
       return boot.origin + "/_files/" + sha + (mime ? "?type=" + encodeURIComponent(String(mime)) : "");
     },
+    /** Copies the library to the other place (files already there are kept and merged), then opens it there. */
     move: function (to) {
-      return lib("move", { kind: to && to.kind });
+      var target = to && to.kind;
+      return currentKind().then(function (from) {
+        if (from === target) return library.info();
+        // A cloud place gets its library file first (or keeps the one there); the phone's folder takes the copied one.
+        var prepared = isCloud(target) ? cloudKit.prepare(target) : null;
+        return Promise.resolve(prepared)
+          .then(function () {
+            return Promise.all([filesFor(from), filesFor(target)]);
+          })
+          .then(function (pair) {
+            return kit.copyLibrary(pair[0], pair[1]);
+          })
+          .then(function () {
+            return isCloud(target) ? cloudKit.prepare(target).then(function (m) { return lib("setState", { kind: target, libraryId: m.libraryId }); }) : lib("setup", { kind: "device" });
+          })
+          .then(function () {
+            kindNow = Promise.resolve(target);
+            return library.info();
+          });
+      }).catch(function (e) {
+        throw localFsError(e);
+      });
     },
   };
 

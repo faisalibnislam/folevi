@@ -44,6 +44,8 @@ class LibraryPlugin : Plugin() {
                 if (service.kind != "device") throw LibraryException("not_set_up", "There's no library on this phone yet.")
                 service.deviceFs
             }
+            // The phone's folder whatever the library's place is now (moving a library there or away).
+            root == "device" -> service.deviceFs
             root.startsWith("mirror:") -> service.mirror(root.removePrefix("mirror:"))
             else -> throw IllegalArgumentException("Unknown library root.")
         }

@@ -21,6 +21,7 @@ mlkit-docscanner = "16.0.0"
 mlkit-text = "16.0.1"
 mlkit-genai-prompt = "1.0.0-beta4"
 firebase-bom = "35.1.0"
+play-services-auth = "21.6.0"
 google-services = "4.5.0"
 junit = "4.13.2"
 orgjson = "20260814"
@@ -51,6 +52,7 @@ mlkit-docscanner = { module = "com.google.android.gms:play-services-mlkit-docume
 mlkit-text = { module = "com.google.mlkit:text-recognition", version.ref = "mlkit-text" }
 mlkit-genai-prompt = { module = "com.google.mlkit:genai-prompt", version.ref = "mlkit-genai-prompt" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "play-services-auth" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 junit = { module = "junit:junit", version.ref = "junit" }
 orgjson = { module = "org.json:json", version.ref = "orgjson" }

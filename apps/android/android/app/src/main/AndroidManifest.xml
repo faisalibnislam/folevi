@@ -61,6 +61,14 @@
                 <data android:scheme="folevi" />
             </intent-filter>
 
+            <!-- Dropbox's sign-in comes back here (the redirect registered in the Dropbox App Console). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.folevi.android" android:host="oauth" android:path="/dropbox" />
+            </intent-filter>
+
             <!-- App Links: Folevi's own pages open in the app, and sign-in comes back here
                  (/.well-known/assetlinks.json on app.folevi.com names this app's signing key). -->
             <intent-filter android:autoVerify="true">

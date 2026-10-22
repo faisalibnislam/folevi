@@ -15,6 +15,8 @@ import org.json.JSONObject
 class BridgeScript(private val context: Context) {
     private var handle: ScriptHandler? = null
     private val source: String by lazy { context.assets.open("folevi-bridge.js").bufferedReader().use { it.readText() } }
+    /** The bridge's TypeScript half (scripts/bundle-bridge.mjs): defines FoleviCloudKit, local to the wrapper below. */
+    private val kit: String by lazy { context.assets.open("folevi-cloud.js").bufferedReader().use { it.readText() } }
 
     fun supported(): Boolean = WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
 
@@ -22,7 +24,7 @@ class BridgeScript(private val context: Context) {
         handle?.remove()
         handle = null
         if (!supported()) return
-        val script = "${source.trimEnd().removeSuffix(";")}(${boot});"
+        val script = "(function () {\n$kit\n;(${source.trimEnd().removeSuffix(";")})($boot, FoleviCloudKit);\n})();"
         handle = WebViewCompat.addDocumentStartJavaScript(webView, script, setOf(origin))
     }
 }

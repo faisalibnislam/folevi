@@ -17,6 +17,11 @@ class FoleviApp : Application() {
         private set
     lateinit var library: com.folevi.android.library.LibraryService
         private set
+    lateinit var cloud: com.folevi.android.cloud.CloudAuth
+        private set
+
+    /** Shows a system screen that answers with a result (Google's consent screen): set by the activity on screen. */
+    @Volatile var showForResult: (suspend (android.app.PendingIntent) -> android.content.Intent?)? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -24,6 +29,20 @@ class FoleviApp : Application() {
         settings = ShellSettings(this)
         secrets = SecretStore(File(noBackupFilesDir, "secrets"), KeystoreCipher("folevi.secrets.v1"))
         library = com.folevi.android.library.LibraryService(noBackupFilesDir, this)
+        val cloudPrefs = getSharedPreferences("folevi-cloud", MODE_PRIVATE)
+        cloud = com.folevi.android.cloud.CloudAuth(
+            store = secrets,
+            http = Http.client,
+            dropboxAppKey = BuildConfig.DROPBOX_APP_KEY,
+            driveEnabled = BuildConfig.GOOGLE_ANDROID_CLIENT_ID.isNotEmpty(),
+            drive = com.folevi.android.cloud.GoogleDriveAuthorizer(this, Http.client) { pi -> showForResult?.invoke(pi) },
+            prefs = object : com.folevi.android.cloud.CloudAuth.Prefs {
+                override fun get(key: String) = cloudPrefs.getString(key, null)
+                override fun set(key: String, value: String?) {
+                    cloudPrefs.edit().apply { if (value == null) remove(key) else putString(key, value) }.apply()
+                }
+            },
+        )
         auth = AuthBridge(
             serviceUrl = BuildConfig.SERVICE_URL,
             redirectUri = BuildConfig.AUTH_REDIRECT_URI,

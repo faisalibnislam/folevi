@@ -70,8 +70,8 @@ export function PrivacyPanel({ scope, workspaceName = null, canChange = true }: 
                   on ? "border-heading bg-[var(--glass-active)] shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]" : "border-line hover:bg-[var(--glass-hover)] disabled:hover:bg-transparent"
                 }`}
               >
-                <span aria-hidden className={`mt-0.5 grid h-4 w-4 flex-none place-items-center rounded-tiny ${on ? "bg-heading" : "shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-ink)_35%,transparent)]"}`}>
-                  {on ? <span className="h-1.5 w-1.5 rounded-tiny bg-canvas" /> : null}
+                <span aria-hidden className={`mt-0.5 grid h-4 w-4 flex-none place-items-center rounded-capsule ${on ? "bg-heading" : "shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-ink)_35%,transparent)]"}`}>
+                  {on ? <span className="h-1.5 w-1.5 rounded-capsule bg-canvas" /> : null}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-heading">

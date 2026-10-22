@@ -204,8 +204,8 @@ function TrustChoice({ onContinue }: { onContinue: (mode: "browser" | "public") 
             onClick={() => setMode(id)}
             className={`flex w-full items-start gap-3 rounded-control border p-3.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${mode === id ? "border-heading bg-[var(--glass-active)]" : "border-line hover:bg-[var(--glass-hover)]"}`}
           >
-            <span aria-hidden className={`mt-0.5 grid h-4 w-4 flex-none place-items-center rounded-tiny ${mode === id ? "bg-heading" : "shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-ink)_35%,transparent)]"}`}>
-              {mode === id ? <span className="h-1.5 w-1.5 rounded-tiny bg-canvas" /> : null}
+            <span aria-hidden className={`mt-0.5 grid h-4 w-4 flex-none place-items-center rounded-capsule ${mode === id ? "bg-heading" : "shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-ink)_35%,transparent)]"}`}>
+              {mode === id ? <span className="h-1.5 w-1.5 rounded-capsule bg-canvas" /> : null}
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-medium text-heading">{c.label}</span>

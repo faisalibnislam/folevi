@@ -2545,6 +2545,14 @@ export function useKeySession(): { state: LockState; methods: MethodSummary[] };
 - The common-password check ships the 12-plus-character entries such lists contain and refuses the patterns
   behind most of the rest at that length (a character or a short run repeated, keyboard and alphabet runs, a
   common word padded with digits or symbols), instead of a 10,000-entry file.
+- Public computer, chosen after the account's database opened (integration): the choice is kept for the
+  browser (localStorage `folevi.e2ee.publicSession`) until someone picks "Trust this browser". While it's set,
+  every load opens the account's database in memory from the start (`memoryLocalDbIfPublic` in
+  `lib/sync/db.ts`, before the engine opens) and the key session deletes every `folevi-*` database on disk
+  except local libraries; sign-out does too. A tab that picks "public computer" while its database is on disk
+  sets the flag, forgets the key and reloads, so it continues in memory and that load wipes what was written
+  before the choice; the person unlocks once more. `KeySession.publicBrowser()` tells the trust step to
+  start on "public computer" there.
 
 ### WP7: Client router, transport, replica, composers, files
 

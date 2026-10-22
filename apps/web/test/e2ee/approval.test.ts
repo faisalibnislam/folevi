@@ -7,6 +7,8 @@ import { resetKeyRingForTests } from "@/lib/e2ee/keys/keyring";
 import { memoryKeyStore } from "@/lib/e2ee/keys/keystore";
 import { setPassphraseCostsForTests } from "@/lib/e2ee/keys/passphrase";
 import { KeySessionImpl, resetKeySessionForTests, sessionImpl, type IncomingApproval } from "@/lib/e2ee/keys/session";
+import { IDBFactory } from "fake-indexeddb";
+import { openLocalDbInMemory } from "@/lib/sync/db";
 import { FakeKeysServer } from "./keysFakeServer";
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -37,6 +39,12 @@ async function twoDevices() {
 
 beforeEach(() => setPassphraseCostsForTests(ARGON2ID_TEST));
 afterEach(() => {
+  openLocalDbInMemory(null);
+  try {
+    localStorage.clear();
+  } catch {
+    /* jsdom */
+  }
   resetKeySessionForTests();
   resetKeyRingForTests();
   setPassphraseCostsForTests(null);
@@ -115,10 +123,13 @@ describe("device approval", () => {
     await setup.addPassphrase("tidal orchard lamp 42");
     resetKeySessionForTests();
     resetKeyRingForTests();
-    await startKeySession({ server: fake.as("p1"), profileId: "p1", store: memoryKeyStore(), mac: null });
+    // That tab's account database is in memory from the start (a browser already used as a public computer).
+    openLocalDbInMemory(new IDBFactory());
+    await startKeySession({ server: fake.as("p1"), profileId: "p1", store: memoryKeyStore(), mac: null, reload: () => undefined });
     const pub = sessionImpl();
     expect(await pub.unlockWithPassphrase("tidal orchard lamp 42")).toBe("ok");
     await pub.trust("public");
+    expect(pub.state()).toBe("unlocked");
     await fresh.requestApproval();
     await tick();
     await tick();

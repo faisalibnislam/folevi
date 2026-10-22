@@ -18,12 +18,30 @@ import { getKeyRing, keyRingImpl, resetKeyRingForTests } from "@/lib/e2ee/keys/k
 import { idbKeyStore, memoryKeyStore, type KeyStore } from "@/lib/e2ee/keys/keystore";
 import { passphraseProblem, setPassphraseCostsForTests } from "@/lib/e2ee/keys/passphrase";
 import { wasPublicSession } from "@/lib/e2ee/keys/publicMode";
+import { localDbInMemory, memoryLocalDbIfPublic, openLocalDbInMemory } from "@/lib/sync/db";
 import { groupsMatch } from "@/lib/e2ee/keys/recoveryKey";
 import { resetKeySessionForTests, sessionImpl } from "@/lib/e2ee/keys/session";
 import { KeysError, SecretBox, browserLabel } from "@/lib/e2ee/keys/util";
 import { FakeKeysServer } from "./keysFakeServer";
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
+/** A database on this browser's disk (fake-indexeddb's global IndexedDB) with one value in it. */
+function idbPut(name: string, value: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(name, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore("s");
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const tx = req.result.transaction("s", "readwrite");
+      tx.objectStore("s").put(value, "k");
+      tx.oncomplete = () => {
+        req.result.close();
+        resolve();
+      };
+    };
+  });
+}
+const idbNames = async () => ((await indexedDB.databases()).map((d) => d.name!).filter((n) => n.startsWith("folevi-"))).sort();
 const stores = new Map<string, KeyStore>();
 const storeOf = (who: string) => {
   let s = stores.get(who);
@@ -32,11 +50,12 @@ const storeOf = (who: string) => {
 };
 
 /** Signs `profileId` in on `device` (a browser with its own IndexedDB), like AccountGate would. */
+let reloads = 0;
 async function signIn(fake: FakeKeysServer, profileId: string, device = `${profileId}-browser`) {
   resetKeySessionForTests();
   resetKeyRingForTests();
   let n = 0;
-  await startKeySession({ server: fake.as(profileId), profileId, email: `${profileId}@example.com`, store: storeOf(device), mac: null, newDeviceId: async () => `web-${device}-${++n}` });
+  await startKeySession({ server: fake.as(profileId), profileId, email: `${profileId}@example.com`, store: storeOf(device), mac: null, newDeviceId: async () => `web-${device}-${++n}`, reload: () => void reloads++ });
   await tick();
   return getKeySession();
 }
@@ -50,7 +69,9 @@ beforeEach(() => {
     /* jsdom */
   }
 });
-afterEach(() => {
+afterEach(async () => {
+  openLocalDbInMemory(null);
+  for (const n of await idbNames()) await new Promise((r) => (indexedDB.deleteDatabase(n).onsuccess = r));
   resetKeySessionForTests();
   resetKeyRingForTests();
   setPassphraseCostsForTests(null);
@@ -178,26 +199,56 @@ describe("account and ways in", () => {
     expect(getKeySession().state()).toBe("unlocked");
   });
 
-  test("public computer: the key stays in this tab; nothing is wrapped for it; the next load clears up", async () => {
+  test("public computer chosen after the account database opened on disk: the tab starts again in memory and the next load wipes the disk", async () => {
     const fake = new FakeKeysServer();
     await signIn(fake, "p1");
     await setup.createAccount();
     const rk = await setup.addRecoveryKey();
     const g = rk.text.split("-");
     await rk.confirm([g[2]!, g[6]!]);
+    // A library computer: signing in opened the account's database on disk (as the app does today) and the
+    // replica kept a copy, before the unlock screen asked.
+    await idbPut("folevi-p1", "plaintext");
+    await idbPut("folevi-e2ee-replica-p1", "decrypted rows");
+    await idbPut("folevi-local-lib", "a local library");
     const s = await signIn(fake, "p1", "library");
     expect(await s.unlockWithRecoveryKey(rk.text)).toBe("ok");
+    reloads = 0;
     await s.trust("public");
+    // It reloads (so this tab opens in memory from the start) and holds no key meanwhile.
+    expect(reloads).toBe(1);
+    expect(s.state()).toBe("locked");
+    expect(wasPublicSession()).toBe(true);
+    expect(fake.devices.some((d) => d.kind === "session")).toBe(false);
+
+    // The reload: the account's database opens in memory before anything else (state.tsx), and the key
+    // session deletes what the earlier load wrote, except a local library's copy.
+    expect(await memoryLocalDbIfPublic()).toBe(true);
+    expect(localDbInMemory()).toBe(true);
+    const next = await signIn(fake, "p1", "library");
+    expect(next.state()).toBe("locked");
+    expect(await idbNames()).toEqual(["folevi-local-lib"]);
+    expect(sessionImpl().publicBrowser()).toBe(true);
+    expect(await next.unlockWithRecoveryKey(rk.text)).toBe("ok");
+    reloads = 0;
+    await next.trust("public");
+    expect(reloads).toBe(0);
+    expect(next.state()).toBe("unlocked");
     const session = fake.devices.find((d) => d.kind === "session")!;
     expect(session.status).toBe("trusted");
     expect(fake.wraps.some((w) => w.deviceId === session.deviceId)).toBe(false);
     expect(await storeOf("library").getWrap("p1")).toBeNull();
     expect(await storeOf("library").getDevice("p1")).toBeNull();
-    expect(wasPublicSession()).toBe(true);
     expect(keepOnSignOut(false)("folevi-e2ee")).toBe(false);
-    // Another load of this browser: locked again, and the flag is cleared.
-    const next = await signIn(fake, "p1", "library");
-    expect(next.state()).toBe("locked");
+    // Sign-out leaves nothing; the browser stays a public computer for the next person.
+    await idbPut("folevi-e2ee-replica-p1", "again");
+    await endKeySession();
+    expect(await idbNames()).toEqual(["folevi-local-lib"]);
+    expect(wasPublicSession()).toBe(true);
+    // Until someone trusts it.
+    const later = await signIn(fake, "p1", "library");
+    expect(await later.unlockWithRecoveryKey(rk.text)).toBe("ok");
+    await later.trust("browser");
     expect(wasPublicSession()).toBe(false);
   });
 

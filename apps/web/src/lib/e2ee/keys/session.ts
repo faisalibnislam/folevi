@@ -24,7 +24,8 @@ import { browserIdentity, idbKeyStore, newBrowserDevice, persistable, type Brows
 import { inMacApp, macE2ee, macIdentity, macLabel } from "./macBridge";
 import { openWithPassphrase } from "./passphrase";
 import { evaluatePrf, openWithPrf, passkeysPossible } from "./passkey";
-import { clearE2eeDatabases, clearPublicLeftovers, markPublicSession, sessionIdentity } from "./publicMode";
+import { clearPublicDatabases, clearPublicLeftovers, markPublicSession, sessionIdentity, wasPublicSession } from "./publicMode";
+import { localDbInMemory } from "@/lib/sync/db";
 import { openWithRecoveryKey, parseRecoveryKey } from "./recoveryKey";
 import type { AccountStatus, KeysServer, WrapListRow } from "./server";
 import { Emitter, KeysError, SecretBox, browserLabel, bytes, errorCode, wire } from "./util";
@@ -88,6 +89,8 @@ export interface KeysBinding {
   email?: string;
   /** The id a new browser device starts with: the sync engine's (`lib/sync/db.ts` deviceId). */
   newDeviceId?: () => Promise<string>;
+  /** Reloads the page (public computer chosen after the account's database opened on disk). Tests pass their own. */
+  reload?: () => void;
   /** Defaults: IndexedDB "folevi-e2ee", and the Mac app's bridge when there is one. Tests pass their own. */
   store?: KeyStore;
   mac?: ShellE2ee | null;
@@ -107,6 +110,9 @@ export interface Unlocked {
 }
 
 const TOUCH_EVERY_MS = 60 * 60_000;
+const reloadPage = () => {
+  if (typeof location !== "undefined") location.reload();
+};
 const randomId = () => `web-${ulid()}`;
 
 const eq = (a: Uint8Array, b: Uint8Array) => constantTimeEqual(a, b);
@@ -160,7 +166,7 @@ export class KeySessionImpl implements KeySession {
     this.stop();
     const gen = ++this.generation;
     this.binding = binding;
-    if (!this.mac()) await clearPublicLeftovers().catch(() => undefined);
+    await clearPublicLeftovers().catch(() => undefined);
     let status: AccountStatus | null = null;
     try {
       status = await binding.server.keys.status({});
@@ -393,12 +399,25 @@ export class KeySessionImpl implements KeySession {
       const own = this.methods.find((m) => m.kind === "device" && m.deviceId === prev.deviceId);
       if (own) await u.server.keys.removeWrap({ publicId: own.publicId }).catch(() => undefined);
     }
+    markPublicSession(true);
+    if (!localDbInMemory()) {
+      // This tab opened the account's database on disk before the choice (and may have kept a replica):
+      // it starts again in memory, and that load deletes what was written. The key goes with the tab, so the
+      // person unlocks once more (this browser then reads as a public computer from the start).
+      this.lock();
+      (this.binding?.reload ?? reloadPage)();
+      return;
+    }
     const dev = await sessionIdentity();
     await this.registerTrusted(u, dev);
     this.device = dev;
     this.publicMode = true;
-    markPublicSession(true);
     this.afterUnlock();
+  }
+
+  /** This browser is a public computer (chosen here before): the trust step can say so, and keeps it. */
+  publicBrowser(): boolean {
+    return wasPublicSession();
   }
 
   // ---------------------------------------------------------------- for the other key modules
@@ -669,10 +688,8 @@ export class KeySessionImpl implements KeySession {
     const wasPublic = this.publicMode;
     this.stop();
     this.publicMode = false;
-    if (wasPublic) {
-      await clearE2eeDatabases().catch(() => undefined);
-      markPublicSession(false);
-    }
+    // A public computer stays one (the next person also starts in memory); what is on disk goes.
+    if (wasPublic || wasPublicSession()) await clearPublicDatabases().catch(() => undefined);
     if (o.forget && b) {
       await (b.store ?? idbKeyStore).deleteDevice(b.profileId).catch(() => undefined);
       await (b.store ?? idbKeyStore).deleteWrap(b.profileId).catch(() => undefined);
@@ -707,7 +724,7 @@ export function endKeySession(o: { forget?: boolean } = {}): Promise<void> {
  * the next sign-in here unlocks with no prompt (§6.3), unless the person chose "Forget this browser".
  */
 export function keepOnSignOut(forget: boolean): (name: string) => boolean {
-  return (name) => !forget && name === "folevi-e2ee" && !sessionImpl().isPublic();
+  return (name) => !forget && name === "folevi-e2ee" && !sessionImpl().isPublic() && !wasPublicSession();
 }
 
 /** Tests only: a fresh session. */

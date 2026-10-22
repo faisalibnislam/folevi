@@ -1,7 +1,13 @@
 // Public computer mode, the key side (docs/E2EE_DESIGN.md §4.8, §6.10): the device is a `session` device
 // whose keys exist only in this tab's memory; the account master key is never wrapped to it on the server,
-// so a reload asks to unlock again. Anything a public session left in IndexedDB (`folevi-e2ee*`) is deleted
-// at sign-out or on the next load.
+// so a reload asks to unlock again.
+//
+// The choice is kept for the browser (localStorage "folevi.e2ee.publicSession") until someone picks "Trust
+// this browser": while it's set, every load opens the account's database in memory from the start
+// (lib/sync/db.ts memoryLocalDbIfPublic, called before the account's engine opens) and deletes what an
+// earlier session left on disk. A tab that picks "public computer" after its account database already opened
+// on disk sets the flag and reloads (`trust("public")`), so the same tab continues in memory and the next
+// load wipes what was written before the choice.
 import { generateEd25519, generateX25519, openSealed } from "@folevi/local-store/e2ee";
 import { ulid } from "@folevi/editor-schema";
 import type { DeviceIdentity } from "./keystore";
@@ -39,14 +45,27 @@ export function wasPublicSession(): boolean {
   }
 }
 
-/** Deletes every `folevi-e2ee*` database (keys, wrap cache, the replica and outbox of a public session). */
+/** Deletes every `folevi-e2ee*` database (keys, wrap cache, the replicas of a public session). */
 export async function clearE2eeDatabases(): Promise<void> {
+  await deleteDatabases((n) => n === KEYSTORE_DB || n.startsWith(`${KEYSTORE_DB}-`), [KEYSTORE_DB]);
+}
+
+/**
+ * What a public computer may have on disk: the key store and replicas (`folevi-e2ee*`) and the accounts' own
+ * databases (`folevi-<account>`: sync state, outbox, cached pages). A local library's copy (`folevi-local-*`)
+ * isn't an account's and stays, as at sign-out (lib/sync/db.ts clearAllLocalData).
+ */
+export async function clearPublicDatabases(): Promise<void> {
+  await deleteDatabases((n) => n.startsWith("folevi-") && !n.startsWith("folevi-local-"), [KEYSTORE_DB]);
+}
+
+async function deleteDatabases(match: (name: string) => boolean, fallback: string[]): Promise<void> {
   if (typeof indexedDB === "undefined") return;
   await closeKeyStore();
-  let names: string[] = [KEYSTORE_DB];
+  let names = fallback;
   try {
     const list = await indexedDB.databases?.();
-    if (list) names = list.map((d) => d.name ?? "").filter((n) => n === KEYSTORE_DB || n.startsWith(`${KEYSTORE_DB}-`));
+    if (list) names = list.map((d) => d.name ?? "").filter(match);
   } catch {
     /* Older browsers can't list: the key store at least goes. */
   }
@@ -61,10 +80,12 @@ export async function clearE2eeDatabases(): Promise<void> {
   );
 }
 
-/** At load: a public session's leftovers go. */
+/**
+ * At load, on a browser used as a public computer: deletes what is on disk (this tab's own account database
+ * is in memory, so none of it is open here). The browser stays a public computer.
+ */
 export async function clearPublicLeftovers(): Promise<boolean> {
   if (!wasPublicSession()) return false;
-  await clearE2eeDatabases();
-  markPublicSession(false);
+  await clearPublicDatabases();
   return true;
 }

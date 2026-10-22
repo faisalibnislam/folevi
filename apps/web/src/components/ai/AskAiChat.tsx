@@ -12,6 +12,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { modKey } from "@/lib/hooks/useEngine";
 import { ChatThread } from "./chat/ChatThread";
+import { SealedChatThread, useEncryptedChatSpace } from "./chat/SealedChat";
 import { useConversationActions } from "./chat/ConversationActions";
 import { MenuButton } from "@/components/ui/Menu";
 import type { ChatContext } from "./chat/chatText";
@@ -63,7 +64,9 @@ export function AskAiChat({
     setConversationId(null);
     setThread((n) => n + 1);
   };
-  const convo = useQuery(api.aiChat.get, conversationId ? { conversationId } : "skip");
+  // An end-to-end encrypted place: its chat is kept sealed on this person's devices (chat/SealedChat.tsx).
+  const sealedSpace = useEncryptedChatSpace();
+  const convo = useQuery(api.aiChat.get, conversationId && !sealedSpace ? { conversationId } : "skip");
   const discard = useMutation(api.aiChat.discard);
   // Share with the workspace, copy, download or save as a note (once there's a conversation).
   const current = convo?.conversation;
@@ -139,7 +142,11 @@ export function AskAiChat({
             </>
           }
         >
-          <ChatThread key={thread} variant="floating" conversationId={conversationId} onConversation={setConversationId} initialContext={folderContext} initialNames={folderNames} initialDraft={initial} autoFocus={open} onNavigate={close} />
+          {sealedSpace ? (
+            <SealedChatThread key={thread} space={sealedSpace} chatId={conversationId} onChat={setConversationId} initialDraft={initial} autoFocus={open} />
+          ) : (
+            <ChatThread key={thread} variant="floating" conversationId={conversationId} onConversation={setConversationId} initialContext={folderContext} initialNames={folderNames} initialDraft={initial} autoFocus={open} onNavigate={close} />
+          )}
         </Sheet>
         {actions.dialog}
       </>
@@ -187,17 +194,21 @@ export function AskAiChat({
             <X size={16} aria-hidden />
           </button>
         </header>
-        <ChatThread
-          key={thread}
-          variant="floating"
-          conversationId={conversationId}
-          onConversation={setConversationId}
-          initialContext={folderContext}
-          initialNames={folderNames}
-          initialDraft={initial}
-          autoFocus={open}
-          onNavigate={close}
-        />
+        {sealedSpace ? (
+          <SealedChatThread key={thread} space={sealedSpace} chatId={conversationId} onChat={setConversationId} initialDraft={initial} autoFocus={open} />
+        ) : (
+          <ChatThread
+            key={thread}
+            variant="floating"
+            conversationId={conversationId}
+            onConversation={setConversationId}
+            initialContext={folderContext}
+            initialNames={folderNames}
+            initialDraft={initial}
+            autoFocus={open}
+            onNavigate={close}
+          />
+        )}
       </section>
       {/* Outside the chat, so Escape in it doesn't close the chat too. */}
       {actions.dialog}

@@ -21,7 +21,7 @@ import { syncReminders } from "@/lib/e2ee/features/reminders";
 import { applyInbox, ensureInbox } from "@/lib/e2ee/features/inbox";
 import { aiRoute, answerConsent, pendingConsent } from "@/lib/e2ee/features/ai";
 import { createEncryptedLinkWith, openShare, publishPlainCopyWith } from "@/lib/e2ee/links";
-import { carryStudy } from "@/lib/e2ee/features/study";
+import { carryStudy, restoreStudy } from "@/lib/e2ee/features/study";
 import { sharePayload } from "@/lib/e2ee/sharePayload";
 import { convexHelpers, innerOf, TestKeyRing, type Person, type T } from "./wp8Fakes";
 
@@ -370,6 +370,33 @@ describe("study schedules (features/study.ts)", () => {
     expect(left.records[0]!.recordId).toBe(cardId);
     // Nothing more to carry this session.
     expect(await carryStudy({ server: w.server, sealer: w.sealer, space, store: w.store, isSealed: () => true, done })).toBe(0);
+  });
+});
+
+describe("study schedules put back (features/study.ts restoreStudy)", () => {
+  test("after someone else made a note readable again, this person's schedules go back to the server; sealed notes keep theirs", async () => {
+    const { w } = await shared();
+    const row = (documentId: string, blockId: string) => ({ blockId, documentId, due: 1, stability: 1, difficulty: 5, elapsedDays: 0, scheduledDays: 1, learningSteps: 0, reps: 1, lapses: 0, state: 1, firstReview: 1 });
+    const rows = [row("note-plain-again", "card-1"), row("note-plain-again", "card-2"), row("note-still-sealed", "card-3")];
+    const store = { list: async (table: string) => (table === "studyReviews" ? rows : []), get: async () => undefined };
+    const sent: { name: string; args: Record<string, unknown> }[] = [];
+    const server = {
+      query: async (_ref: unknown, args: Record<string, unknown>) => (args.documentId === "note-plain-again" ? null : { document: { id: args.documentId } }),
+      mutation: async (ref: unknown, args: Record<string, unknown>) => {
+        sent.push({ name: (await import("convex/server")).getFunctionName(ref as never), args });
+        return null;
+      },
+    };
+    const space = { ...(await w.spaceRow()), level: "standard" as const };
+    const done = new Set<string>();
+    const deps = { server: server as never, sealer: w.sealer, space, store: store as never, isSealed: () => true, done };
+    expect(await restoreStudy(deps)).toBe(2);
+    expect(sent).toEqual([{ name: "e2ee/migrate:restoreStudy", args: { documentId: "note-plain-again", studyReviews: [expect.objectContaining({ blockId: "card-1" }), expect.objectContaining({ blockId: "card-2" })] } }]);
+    expect((sent[0]!.args.studyReviews as Record<string, unknown>[]).every((r) => !("documentId" in r))).toBe(true);
+    // Once per note per session; and never in an encrypted space (nothing there is readable again).
+    expect(await restoreStudy(deps)).toBe(0);
+    expect(await restoreStudy({ ...deps, done: new Set(), space: { ...space, level: "selected" } })).toBe(0);
+    expect(sent).toHaveLength(1);
   });
 });
 

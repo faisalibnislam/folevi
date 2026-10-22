@@ -10,6 +10,7 @@ import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { ViewChrome } from "@/components/app/Shell";
 import { useAiAccess } from "@/components/ai/useAi";
 import { ChatThread } from "@/components/ai/chat/ChatThread";
+import { SealedChatList, SealedChatThread, useEncryptedChatSpace } from "@/components/ai/chat/SealedChat";
 import { AiUnavailable } from "@/components/ai/AiUnavailable";
 import { ConversationList } from "@/components/ai/chat/ConversationList";
 import { ResearchList } from "@/components/ai/chat/ResearchList";
@@ -63,10 +64,12 @@ export function AiView({ id }: { id: string | null }) {
   const narrow = useMediaQuery("(max-width: 767px)");
   const ai = useAiAccess();
   const [listOpen, setListOpen] = useState(false);
-  const data = useQuery(api.aiChat.get, id && ai.on ? { conversationId: id } : "skip");
+  // An end-to-end encrypted place: its chats are sealed records on this person's devices (chat/SealedChat.tsx).
+  const sealedSpace = useEncryptedChatSpace();
+  const data = useQuery(api.aiChat.get, id && ai.on && !sealedSpace ? { conversationId: id } : "skip");
   // Not yours: maybe one a member shared with the workspace (read-only, aiSharing.get).
   const sharing = useCapability("sharing");
-  const shared = useQuery(api.aiSharing.get, id && ai.on && sharing && data === null ? { conversationId: id } : "skip");
+  const shared = useQuery(api.aiSharing.get, id && ai.on && sharing && data === null && !sealedSpace ? { conversationId: id } : "skip");
   const discard = useMutation(api.aiChat.discard);
   const mine = data?.conversation;
   const actions = useConversationActions(mine ? { id: mine.id, title: mine.title, shared: mine.shared, workspace: mine.scope.kind === "workspace", ephemeral: mine.ephemeral } : null);
@@ -89,6 +92,34 @@ export function AiView({ id }: { id: string | null }) {
   const threadKey = id && id === created.current ? "new" : (id ?? "new");
 
   const title = data?.conversation.title ?? shared?.conversation.title ?? (id ? "" : "New chat");
+
+  if (ai.on && sealedSpace) {
+    return (
+      <ViewChrome title="Foli AI" tabTitle="Foli AI">
+        <div className="flex h-full min-h-0">
+          {narrow ? null : (
+            <aside className="flex w-[264px] flex-none flex-col border-r border-line/70">
+              <SealedChatList space={sealedSpace} activeId={id} onOpen={(next) => navigate(next ? `/ai/${next}` : "/ai")} />
+            </aside>
+          )}
+          <section aria-label="Conversation" className="flex min-w-0 flex-1 flex-col">
+            <SealedChatThread
+              key={threadKey}
+              space={sealedSpace}
+              variant="page"
+              chatId={id}
+              autoFocus
+              onChat={(next) => {
+                if (next === id) return;
+                created.current = next;
+                navigate(`/ai/${next}`, { replace: true });
+              }}
+            />
+          </section>
+        </div>
+      </ViewChrome>
+    );
+  }
 
   if (!ai.on) {
     return (

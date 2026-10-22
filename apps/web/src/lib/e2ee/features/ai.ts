@@ -87,6 +87,16 @@ export function useAiConsent(): { pending: ConsentRequest | null; answer(ok: boo
   return { pending, answer: answerConsent };
 }
 
+/** Whether every note of a request was allowed earlier today ("Don't ask again for these notes today"). */
+export function consentRemembered(request: ConsentRequest): boolean {
+  return request.notes.length > 0 && request.notes.every((n) => remembered.get(n.id) === today());
+}
+
+/** Remembers a request's notes as allowed for today (memory only). */
+export function rememberConsent(request: ConsentRequest): void {
+  for (const n of request.notes) remembered.set(n.id, today());
+}
+
 /** Sign-out: nothing remembered, nothing waiting. */
 export function resetConsent(): void {
   remembered.clear();
@@ -302,6 +312,8 @@ export interface SealedTurn {
 }
 
 export interface SealedChat {
+  /** Marks the record's value (the replica keeps opened records of this kind in meta). */
+  e2eeKind?: "aiChat";
   id: string;
   title: string;
   turns: SealedTurn[];
@@ -313,12 +325,19 @@ export interface SealedChat {
  * aiChat.sendSealed and keeps the conversation as an `aiChat` record (sealed with the space key, this person
  * only). Returns the chat with the answer added.
  */
-export async function sealedChat(env: RouterEnv, space: E2eeSpace, chat: SealedChat | null, text: string, o: { web?: boolean; streamId?: string; baseRev?: number } = {}): Promise<{ chat: SealedChat; rev: number; answer: unknown }> {
+export async function sealedChat(
+  env: RouterEnv,
+  space: E2eeSpace,
+  chat: SealedChat | null,
+  text: string,
+  o: { web?: boolean; streamId?: string; baseRev?: number; confirm?: (request: ConsentRequest) => Promise<boolean> } = {},
+): Promise<{ chat: SealedChat; rev: number; answer: unknown }> {
   if (space.switches.foliAi === "off") throw refuse("e2ee_switch_off", COPY.off, { switch: "foliAi" });
   const store = env.replicas.hostedStore?.(space.scope) ?? null;
   if (!store) throw refuse("e2ee_unavailable", COPY.opening, { feature: "ai" });
   const notes = await notesForQuestion({ env, space, store }, text);
-  if (space.switches.foliAi === "ask" && notes.length && !(await askConsent({ notes: notes.map((n) => ({ id: n.id, title: n.title, chars: n.markdown.length })) }))) throw refuse("e2ee_consent_declined", COPY.declined);
+  const request: ConsentRequest = { notes: notes.map((n) => ({ id: n.id, title: n.title, chars: n.markdown.length })) };
+  if (space.switches.foliAi === "ask" && notes.length && !(await (o.confirm ?? askConsent)(request))) throw refuse("e2ee_consent_declined", COPY.declined);
   const history = (chat?.turns ?? []).slice(-6).map((t) => ({ role: t.role, text: t.text.slice(0, 3000) }));
   const answer = (await env.inner.action(api.aiChat.sendSealed, {
     scope: space.scope,
@@ -330,6 +349,7 @@ export async function sealedChat(env: RouterEnv, space: E2eeSpace, chat: SealedC
   } as never)) as { status: string; text: string; citations?: SealedTurn["citations"] };
   const now = Date.now();
   const next: SealedChat = {
+    e2eeKind: "aiChat",
     id: chat?.id ?? `chat-${now.toString(36)}${Math.random().toString(36).slice(2, 8)}`,
     title: chat?.title ?? text.slice(0, 80),
     turns: [...(chat?.turns ?? []), { role: "user", text, at: now }, ...(answer.status === "done" ? [{ role: "assistant" as const, text: answer.text, at: Date.now(), citations: answer.citations ?? [] }] : [])],
@@ -338,4 +358,19 @@ export async function sealedChat(env: RouterEnv, space: E2eeSpace, chat: SealedC
   const sealed = await env.sealer.sealRecordValue({ scope: space.scope }, space.scopeId, "aiChat", next.id, next);
   const r = (await env.inner.mutation(api.e2ee.content.putRecord, { scope: space.scope, kind: "aiChat", recordId: next.id, sealed: sealed.sealed, keyVersion: sealed.keyVersion, baseRev: o.baseRev ?? 0 })) as { rev: number };
   return { chat: next, rev: r.rev, answer };
+}
+
+/** This person's chats in a space, newest first (the replica's opened `aiChat` records). */
+export async function sealedChats(store: LocalReader): Promise<SealedChat[]> {
+  return ((await store.list("meta")) as unknown[])
+    .filter((v): v is SealedChat => !!v && typeof v === "object" && (v as SealedChat).e2eeKind === "aiChat" && Array.isArray((v as SealedChat).turns))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/** One chat and its record's revision (for the next write's compare-and-set), or null. */
+export async function sealedChatById(store: LocalReader, id: string): Promise<{ chat: SealedChat; rev: number } | null> {
+  const chat = (await store.get("meta", `record-value:aiChat:${id}`)) as SealedChat | undefined;
+  if (!chat || chat.e2eeKind !== "aiChat") return null;
+  const rev = ((await store.get("meta", `record:aiChat:${id}`)) as { rev?: number } | undefined)?.rev ?? 0;
+  return { chat, rev };
 }

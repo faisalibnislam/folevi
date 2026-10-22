@@ -11,6 +11,8 @@ import { Sealer } from "@/lib/e2ee/seal";
 import { runJob } from "@/lib/e2ee/migrate/runner";
 import { sealDocument } from "@/lib/e2ee/migrate/seal";
 import { resealDocument, rotateNote } from "@/lib/e2ee/migrate/reseal";
+import { unsealDocument } from "@/lib/e2ee/migrate/unseal";
+import { restoreStudy } from "@/lib/e2ee/features/study";
 import { hex } from "@/lib/e2ee/migrate/env";
 import { ctx as aad, importAead, openFileStream, sealFileStream, sha256 } from "@folevi/local-store/e2ee";
 import type { MigrateEnv } from "@/lib/e2ee/migrate/env";
@@ -219,6 +221,43 @@ describe("the migration runner", () => {
     expect(after.study.map((r) => r.blockId)).toEqual([card.id]);
     expect(after.memories.map((m) => m.text)).toEqual(["ZQXJ-MEMORY-u"]);
     expect(after.space!.state).toBe("off");
+  });
+
+  test("schedules left in a record by a note someone else decrypted come back with restoreStudy", async () => {
+    const t: T = setup();
+    const { p, space, keyring } = await encryptedPersonal(t, "wp8-restore-study@example.com");
+    const a = await plainNote(p, "Cards", "body");
+    const card: WireBlock = { id: ulid(), type: "toggle", parentId: null, rank: "X", schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text: "Q" }], props: { collapsed: false, study: "card" } };
+    await push(p, [{ opId: ulid(), kind: "block.upsert", documentId: a, block: card, baseRevision: null, fields: ["content", "position"] }]);
+    await p.as.mutation(api.study.review, { blockId: card.id, rating: "good", lastReview: null } as never);
+    const { migrationId } = await p.as.mutation(api.e2ee.spaces.enable, { scope: PERSONAL, level: "full", switches: SWITCHES });
+    const env = envOf(p, keyring, space.scopeId, "device-wp8-study-01");
+    expect(await runJob(env, await job(p, migrationId!))).toBe("done");
+    const wraps = (await p.as.query(api.e2ee.keys.listWraps, {})) as { publicId: string; kind: string }[];
+    await p.as.mutation(api.e2ee.keys.getWrap, { kind: "recoveryKey" });
+    await p.as.mutation(api.e2ee.spaces.lower, { scope: PERSONAL, level: "standard", recheckedWrapId: wraps.find((w) => w.kind === "recoveryKey")!.publicId });
+    // The converting device doesn't see this person's schedule record (as when someone else converts the note).
+    const blind = envOf(p, keyring, space.scopeId, "device-wp8-study-02", {
+      server: {
+        ...innerOf(p.as),
+        query: async (ref, args) => {
+          const r = (await innerOf(p.as).query(ref, args)) as { records?: { kind: string }[] } | null;
+          return r && Array.isArray(r.records) ? { ...r, records: r.records.filter((x) => x.kind !== "studyReview") } : r;
+        },
+      },
+    });
+    await unsealDocument(blind, a);
+    expect(await t.run(async (ctx) => await ctx.db.query("studyReviews").collect())).toHaveLength(0);
+    const record = await t.run(async (ctx) => (await ctx.db.query("e2eeRecords").collect()).find((r) => r.kind === "studyReview" && r.deletedAt === undefined)!);
+    const value = (await env.sealer.openRecordValue({ documentId: a }, space.scopeId, "studyReview", record.recordId, record.sealed)) as Record<string, unknown>;
+    // This person's device: its replica still holds the schedule; the note isn't sealed any more.
+    const store = { list: async (table: string) => (table === "studyReviews" ? [{ ...value, documentId: a }] : []), get: async () => undefined };
+    const row = await t.run(async (ctx) => (await ctx.db.query("e2eeSpaces").first())!);
+    const restored = await restoreStudy({ server: innerOf(p.as), sealer: env.sealer, space: { scope: PERSONAL, scopeId: space.scopeId, level: row.level, state: row.state, switches: row.switches, currentKeyVersion: row.currentKeyVersion, lockedCount: row.lockedCount }, store: store as never, isSealed: () => false, done: new Set() });
+    expect(restored).toBe(1);
+    const after = await t.run(async (ctx) => ({ rows: await ctx.db.query("studyReviews").collect(), record: await ctx.db.get(record._id) }));
+    expect(after.rows.map((r) => r.blockId)).toEqual([card.id]);
+    expect(after.record?.deletedAt !== undefined || after.record === null).toBe(true);
   });
 
   test("a note's key changes: its blocks and its files' keys move to the new key; the old one isn't needed", async () => {

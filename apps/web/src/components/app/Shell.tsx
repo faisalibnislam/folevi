@@ -420,7 +420,7 @@ export function Shell() {
           drawerOpen ? <NavDrawer onClose={closeDrawer}>{pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar onNavigate={closeDrawer} />}</NavDrawer> : null
         ) : !collapsed ? (
           // The iPad's sidebar is iPadOS's width, 320, and isn't dragged (a finger can't hold a 4 pt edge).
-          <div ref={sidebarPanel} className="relative z-20 flex-none" style={{ width: ipad ? 320 : width }}>
+          <div ref={sidebarPanel} data-ipad-sidebar={ipad ? "" : undefined} className="relative z-20 flex-none" style={{ width: ipad ? 320 : width }}>
             {pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar />}
             {ipad ? null : <div
               role="separator"

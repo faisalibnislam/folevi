@@ -799,8 +799,10 @@
 :root[data-ipad]:not([data-input="key"]) :focus-visible { outline: none !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important; }
 :root[data-ipad][data-input="key"] :focus-visible { --tw-ring-color: var(--color-focus); }
 /* A note card's "…" on Home and in lists (HomeDashboard, DocumentBrowser) stays out of sight on touch: a long
-   press opens the same menu. A pointer hovering the card, keyboard focus or its open menu shows it. */
-:root[data-ipad] [data-card-menu]:not(:has(:focus-visible, [aria-expanded="true"])) { opacity: 0; pointer-events: none; }
+   press opens the same menu (and the lifted picture of the card has no "…" either). A pointer hovering the
+   card, or keyboard focus, shows it (not the focus a closing menu hands back after a touch: only a keyboard's,
+   data-input="key"). */
+:root[data-ipad]:not([data-input="key"]) [data-card-menu], :root[data-ipad] [data-card-menu]:not(:has(:focus-visible)) { opacity: 0; pointer-events: none; }
 @media (any-hover: hover) {
   :root[data-ipad] .group:hover > [data-card-menu], :root[data-ipad] .group:hover [data-card-menu] { opacity: 1; pointer-events: auto; }
 }
@@ -808,10 +810,14 @@
 :root[data-ipad] nav[aria-label="Folio"] a.group { min-height: 44px; font-size: 17px; gap: 12px; padding-inline: 12px; }
 :root[data-ipad] nav[aria-label="Folio"] a.group > span:first-child svg { width: 20px; height: 20px; }
 :root[data-ipad] nav[aria-label="Folio"] a.group,
-:root[data-ipad] nav[aria-label="Folio"] .ui-well { border-radius: var(--radius-capsule); }
+:root[data-ipad] [data-ipad-sidebar] button.ui-well { border-radius: var(--radius-capsule); }
 :root[data-ipad] nav[aria-label="Folio"] a.group[aria-current="page"] { background: color-mix(in oklab, var(--color-heading) 9%, transparent); box-shadow: none; }
-:root[data-ipad] nav[aria-label="Folio"] .ui-well { min-height: 44px; font-size: 17px; padding-left: 14px; }
-:root[data-ipad] nav[aria-label="Folio"] .ui-well svg { width: 18px; height: 18px; }
+/* The search box at the top of either sidebar (the app's and a note's own). */
+:root[data-ipad] [data-ipad-sidebar] button.ui-well { min-height: 44px; font-size: 17px; padding-left: 14px; }
+:root[data-ipad] [data-ipad-sidebar] button.ui-well svg { width: 18px; height: 18px; }
+/* A note's own sidebar (its contents, comments, tasks, files, find): the desktop's 12 to 13.5 pt text at 15. */
+:root[data-ipad] [data-ipad-sidebar] [role="tabpanel"] :is(.text-\[11\.5px\], .text-\[12\.5px\], .text-\[13px\], .text-\[13\.5px\], .text-sm) { font-size: 15px; line-height: 20px; }
+:root[data-ipad] [data-ipad-sidebar] [role="tabpanel"] :is(a, button):is(.block, .w-full) { min-height: 36px; }
 /* Foli AI's floating chat has no launcher pill on the iPad (the tab strip's Foli AI opens it): it sits low. */
 :root[data-ipad] .ai-chat .ui-fab-panel { bottom: calc(16px + env(safe-area-inset-bottom)); right: 16px; }
 /* A finger scrolls Home's rows of cards: no arrow buttons over them. */

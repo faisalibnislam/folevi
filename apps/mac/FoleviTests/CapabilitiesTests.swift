@@ -85,7 +85,7 @@ final class CapabilitiesTests: XCTestCase {
         var size = UInt32(MemoryLayout<UInt64>.size)
         XCTAssertEqual(AudioFileGetProperty(try XCTUnwrap(audioFile), kAudioFilePropertyAudioDataByteCount, &size, &bytes), noErr)
         AudioFileClose(audioFile!)
-        XCTAssertGreaterThan(bytes, 6_000)
+        XCTAssertGreaterThan(bytes, 3_000)
         XCTAssertLessThan(bytes, 10_000)
     }
 

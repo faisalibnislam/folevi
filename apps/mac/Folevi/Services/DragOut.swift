@@ -90,10 +90,14 @@ final class DragOut: NSObject, NSFilePromiseProviderDelegate {
     /// The pointer moved: leaving Folevi's windows, the pasteboard becomes the notes' file promises (with WebKit's
     /// data too); coming back, WebKit's data alone.
     func moved(_ session: NSDraggingSession, to screenPoint: NSPoint) {
-        guard session === notesSession, let first = promises.first else { return }
         let number = NSWindow.windowNumber(at: screenPoint, belowWindowWithWindowNumber: 0)
-        let outside = NSApp.window(withWindowNumber: number) == nil
-        guard outside != promisesOn else { return }
+        place(session, outside: NSApp.window(withWindowNumber: number) == nil)
+    }
+
+    /// The same, from where AppKit says the drag is (it asks the source what it allows whenever the drag reaches
+    /// another destination: inside the app or outside it).
+    func place(_ session: NSDraggingSession, outside: Bool) {
+        guard session === notesSession, let first = promises.first, outside != promisesOn else { return }
         let board = session.draggingPasteboard
         board.clearContents()
         if outside {
@@ -382,7 +386,10 @@ extension FoleviWebView {
         if let imp = class_getMethodImplementation(WKWebView.self, sel), WKWebView.instancesRespond(to: sel) {
             mask = unsafeBitCast(imp, to: Original.self)(self, sel, session, context)
         }
-        let notes = MainActor.assumeIsolated { DragOut.shared.notesSession === session }
+        let notes = MainActor.assumeIsolated {
+            DragOut.shared.place(session, outside: context == .outsideApplication)
+            return DragOut.shared.notesSession === session
+        }
         if notes, context == .outsideApplication { mask.insert(.copy) }
         return mask
     }

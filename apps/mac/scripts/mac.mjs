@@ -287,7 +287,9 @@ async function measure() {
     const elDir = join(out, "electron-user-data");
     rmSync(elDir, { recursive: true, force: true });
     const port = 9333;
-    electron = spawn(join(desktop, "node_modules", ".bin", "electron"), [".", `--remote-debugging-port=${port}`], {
+    // --use-mock-keychain: Electron from source is also called "Folevi", so its safeStorage would otherwise reach
+    // the installed app's "Folevi Safe Storage" Keychain item. This never touches the real Keychain.
+    electron = spawn(join(desktop, "node_modules", ".bin", "electron"), [".", `--remote-debugging-port=${port}`, "--use-mock-keychain"], {
       cwd: desktop,
       env: { ...process.env, FOLEVI_SHELL: "1", FOLEVI_USER_DATA: elDir },
       detached: true,

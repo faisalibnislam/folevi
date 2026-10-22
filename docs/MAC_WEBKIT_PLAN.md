@@ -147,7 +147,7 @@ Rules that carry over from Electron (`main.ts`, `docs/DESKTOP.md` "Security"), u
 | `apps/mac/FoleviTests/` | XCTest: router validation, scheme handler, migration from fixtures, safeStorage vectors, menus |
 | `apps/mac/scripts/` | `project.mjs`, `build.mjs`, `release.mjs`, `publish.mjs`, `mac.mjs` (eval, menu, shot, the screens script), `screens.mjs`, `bump-version.mjs` |
 | `apps/ios/ios/App/Native/Shell/*.swift` | **shared**: referenced by path from `project.yml` (no copies); the six files with UIKit touch points get `#if os(iOS)` / `#if os(macOS)` (section 4.2) |
-| `apps/ios/ios/App/App/shell-bridge.js` | **shared, new**: the `foleviShell` half of today's `bridge.js` (its lines 282 to the end), taking a transport `{ call(plugin, method, options), listen(plugin, event, cb) }`; iOS `bridge.js` keeps `foleviNative` and passes Capacitor as the transport, the Mac passes `mac-bridge.js`'s |
+| `apps/ios/ios/App/Native/Shell/shell-bridge.js` | **shared** (WM0, done): the `foleviShell` half of `bridge.js`, `foleviShellBridge(SHELL, host)` with a transport `{ call(plugin, method, options), listen(plugin, event, cb) }` and the host's words (platform, version, device name and family, `fileBase`, the cloud kit); iOS `bridge.js` keeps `foleviNative` and passes Capacitor as the transport, the Mac passes `mac-bridge.js`'s. In `Native/Shell` (a synchronized folder) so the iOS project needed no `.pbxproj` edit |
 
 Later, once the iOS polish is done and the files are quiet: move the shared Swift into a Swift package
 (`apps/apple/FoleviShellKit`) used by both projects. Not now: the iOS builders are editing these files today.
@@ -195,8 +195,12 @@ The Mac's own Node library layer (`apps/desktop/src/library/`, the `folevi-files
 | `E2eeKeys.swift` | calls `AppLock.confirm(reason:)` | `MacAppLock.confirm` (LAContext, same semantics: a yes within 30 seconds covers windows opening, as `e2ee.ts`) |
 | `App/AppLock.swift` | the cover is UIKit views | the logic stays shared; the cover becomes an AppKit `NSView` over each window's content (Electron's `lock.ts` `electronCover`) |
 
-A shared `Platform.swift` (new, in `Native/Shell/`) holds the small differences (`deviceLabel`, `deviceName`,
-`PresentationAnchor`, `pickFolder`, `saveFile`) so each file has one `#if` at most.
+A shared `Platform.swift` (WM0, in `Native/Shell/`) holds the small differences (`deviceLabel`, `deviceName`, the
+`PlatformWindow` and `PlatformPresenter` types, being in front, background work, and on the Mac `SignInSheet`,
+`ShellFiles` and `FolderPicker`) plus where the services keep things (`supportFolder`, `documentsFolder`,
+`keychainService`, `defaults`: on iOS exactly as before, on the Mac from `Paths.swift`, so a Debug build or a
+`FOLEVI_USER_DATA` run never reaches the installed app's folder, Keychain items or settings). Each file has one
+`#if` at most (its import).
 
 ### 4.3 The router instead of the Capacitor plugin
 
@@ -538,6 +542,18 @@ the owner's support folder or Keychain items).
   the first-launch screen renders in light and dark; the iOS project still builds (`xcodebuild -project
   apps/ios/ios/App/App.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' build`), one at a
   time on this loaded Mac.
+
+- Landed (2026-10-23): `node apps/mac/scripts/build.mjs` (Debug "Folevi Dev.app" in `apps/mac/build`, never
+  installed), `build.mjs --test` (XCTest), `node apps/mac/scripts/mac.mjs launch` then `eval`, `shot`, `open`,
+  `appearance`, `windows`, `checks`, `measure` (each run on its own `FOLEVI_USER_DATA`, by default
+  `apps/mac/build/run/default`). Extension points for the other packages, so they don't edit WM0's files:
+  `ShellRouter.handle` and `DesktopRouter.handle` (WM1, WM2), `DesktopRouter.features` and `extraHandlers` (the
+  optional `foleviDesktop` members appear in the page only once listed), `WebViewFactory.extraScripts` (page-side
+  files placed inside `mac-bridge.js`'s function, with `call`, `listen`, `desk`, `fire` in reach),
+  `WebViewFactory.rulesFor` (content rules per place), `WindowManager.modeOf`, `bootstrapOf`, `currentPlace`,
+  `quickAdd` and `reload`, `AppDelegate.buildMenu` and `beforeFirstWindow`, `Links.handlers` (sign-in callbacks),
+  `AppScheme.files` (the `/_files` reader), `FoleviWebView.mouseDownHook` (drag areas), `MacEval.commands`. A new
+  file in `apps/ios/ios/App/Native/Shell` must be added to `apps/mac/project.yml` by name if the Mac should build it.
 
 ### WM1: `foleviShell` parity (library, sign-in, keys, Foli AI, places)
 

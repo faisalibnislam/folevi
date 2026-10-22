@@ -35,12 +35,40 @@ targets:
       # The app icon, the iPhone and iPad app's (Icon Composer files serve every platform).
       - path: ../ios/ios/App/App/AppIcon.icon
         group: Shared
-      # Shared with the iPhone and iPad app (apps/ios/ios/App/Native/Shell), by path: never copied.
-      - path: ../ios/ios/App/Native/Shell
+      # Shared with the iPhone and iPad app (apps/ios/ios/App/Native/Shell), by path, never copied, one by one
+      # (everything there but FoleviShellPlugin.swift, the Capacitor transport).
+      - path: ../ios/ios/App/Native/Shell/E2eeKeys.swift
         group: Shared
-        excludes:
-          - "FoleviShellPlugin.swift"
-          - "*.js"
+      - path: ../ios/ios/App/Native/Shell/EncryptedFS.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/Keychain.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/LibraryCrypto.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/LibraryFileHandler.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/LibraryFS.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/LibraryJournal.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/LibraryPaths.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/LibraryService.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/LibraryWatcher.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/Platform.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/ShellAI.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/ShellAuth.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/ShellCloud.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/ShellPlaces.swift
+        group: Shared
+      - path: ../ios/ios/App/Native/Shell/ShellServices.swift
+        group: Shared
       - path: ../ios/ios/App/Native/Shell/shell-bridge.js
         group: Shared
         buildPhase: resources

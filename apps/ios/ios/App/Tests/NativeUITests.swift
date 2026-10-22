@@ -48,7 +48,7 @@ final class NativeUITests: XCTestCase {
         XCTAssertEqual(sheet.actions.last?.style, .cancel)
         // An action sheet takes no text field, even if one is sent.
         let withField = NativeAlerts.make(style: .actionSheet, title: "T", message: nil, actions: actions, field: .init(value: "x", placeholder: "", capitalize: .none)) { _, _ in }
-        XCTAssertNil(withField.textFields)
+        XCTAssertTrue((withField.textFields ?? []).isEmpty)
     }
 
     // MARK: Pickers

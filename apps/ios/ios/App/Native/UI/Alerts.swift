@@ -56,6 +56,8 @@ enum NativeAlerts {
     /// cancel) answers nil, as does an alert's cancel.
     @MainActor static func make(style: UIAlertController.Style, title: String?, message: String?, actions: [Action], field: Field?, answer: @escaping (String?, String?) -> Void) -> UIAlertController {
         let alert = UIAlertController(title: title?.isEmpty == true ? nil : title, message: message?.isEmpty == true ? nil : message, preferredStyle: style)
+        // Folevi's chrome is neutral: the bold button in the heading colour, not iOS blue (red stays red).
+        alert.view.tintColor = .label
         if let field, style == .alert {
             alert.addTextField { text in
                 text.text = field.value
@@ -104,7 +106,8 @@ extension FoleviNativePlugin {
                 call.resolve(["value": id.map { $0 as Any } ?? NSNull()])
             }
             let sheet = NativeAlerts.make(style: .actionSheet, title: call.getString("title"), message: call.getString("message"), actions: actions, field: nil, answer: answer)
-            if let popover = sheet.popoverPresentationController, let webView = self.bridge?.webView {
+            // (On iPhone it comes up from the bottom unless the page names what it's about; on iPad it's always a popover.)
+            if anchor != nil || UIDevice.current.userInterfaceIdiom == .pad, let popover = sheet.popoverPresentationController, let webView = self.bridge?.webView {
                 popover.sourceView = webView
                 popover.sourceRect = anchor ?? CGRect(x: webView.bounds.midX, y: webView.bounds.midY, width: 1, height: 1)
                 if anchor == nil { popover.permittedArrowDirections = [] }

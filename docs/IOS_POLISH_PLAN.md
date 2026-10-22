@@ -507,6 +507,16 @@ shared files are edited only by the package named, others ask.
 - **D3** Task checkboxes: keep Folevi's rounded squares, or round as iOS Reminders and Craft?
 - **D4** Calendar: a week strip with a pull-down month (proposed), or a month grid at the top?
 
+### Owner's answers (2026-10-22)
+
+- **D1: Folevi-font menus.** Menus stay web menus in Folevi's fonts, styled exactly to the iOS spec (sizes,
+  blur material, separators, radii, physics). Native code is used only for the lifted preview on long press and
+  for haptics, not for the menu text.
+- **D2: Keep the tab strip on iPad**, restyled to match iPad (no Mac-style look), with the rest of the iPad
+  polish.
+- **D3: Keep Folevi's rounded-square task checkboxes** on every platform.
+- **D4: Calendar is a week strip with a pull-down month** on iPhone.
+
 ## 7. Found during the audit, outside polish
 
 - The iPad Simulator's tab strip keeps tabs for pages that no longer exist ("Folder not found", "Untitled"),

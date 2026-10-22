@@ -31,6 +31,7 @@ import { displayCornerRadius, useIpadLayout, useIphoneApp } from "@/lib/iphone";
 import { nativeApp } from "@/lib/nativeApp";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
 import { installInputModality } from "@/components/iphone/chrome";
+import { inMacApp } from "@/lib/desktop/mac";
 import { IphoneScreen, type IphoneScreenOptions } from "@/components/iphone/Screen";
 
 interface ShellValue {
@@ -159,7 +160,7 @@ export function useShell(): ShellValue {
 }
 
 export function Shell() {
-  const { route, navigate } = useAppRouter();
+  const { route, navigate, search } = useAppRouter();
   const [collapsed, setCollapsed] = useLocalStorage("folevi:sidebar-collapsed", false);
   const [width, setWidth] = useLocalStorage("folevi:sidebar-width", 248);
   const [inspectorPref, setInspectorPref] = useLocalStorage("folevi:inspector-open", false);
@@ -376,6 +377,22 @@ export function Shell() {
       {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} hideLauncher={(isNarrow && drawerOpen) || iphone || ipad} /> : null}
     </>
   );
+
+  // Folevi for Mac's Settings window (⌘,, decision M2, docs/MAC_POLISH_PLAN.md §3.10): the section alone, under the
+  // window's own toolbar of sections (/settings/<section>?window=1); no sidebar, tab strip or Foli AI pill, and
+  // none of the main window's work (badge, notifications, runners), which the main window does.
+  if (route.name === "settings" && search.get("window") === "1" && inMacApp()) {
+    return (
+      <TabsProvider accountKey={profile.id} workspaceId={context.kind === "workspace" ? context.workspaceId : null}>
+        <ShellContext.Provider value={value}>
+          <div className="ui-settings-window flex h-dvh min-h-0 flex-col overflow-hidden bg-[var(--color-surface)] text-ink">
+            <RouteView />
+          </div>
+          <AppContextMenu />
+        </ShellContext.Provider>
+      </TabsProvider>
+    );
+  }
 
   if (iphone) {
     return (

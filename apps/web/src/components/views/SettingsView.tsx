@@ -35,6 +35,7 @@ import { IphoneLookContext, useIpadLayout, useIphoneApp, useIphoneLook } from "@
 import { ChevronLeft } from "lucide-react";
 import { PillButton } from "@/components/iphone/Glass";
 import { RowIcon } from "@/components/iphone/Grouped";
+import { inMacApp } from "@/lib/desktop/mac";
 import { IosRow, IosSection, IosText, SettingsScreensHost, VersionFooter, useSettingsScreens } from "@/components/iphone/SettingsKit";
 
 type Section = "account" | "ai" | "billing" | "security" | "privacy" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "workspace-privacy" | "sync" | "library" | "data" | "desktop" | "this-device";
@@ -98,7 +99,9 @@ const HEADINGS: Partial<Record<Section, string>> = { workspace: "Workspace", "wo
 
 export function SettingsView({ section: asked }: { section: Section }) {
   const { workspace } = useAppState();
-  const { pathname, navigate } = useAppRouter();
+  const { pathname, navigate, search } = useAppRouter();
+  // Folevi for Mac's Settings window (/settings/<section>?window=1): the section alone (its toolbar lists them).
+  const settingsWindow = search.get("window") === "1" && inMacApp();
   const caps = useCapabilities();
   const here = (id: Section) => !NEEDS[id] || caps[NEEDS[id]!];
   // A section this backend doesn't have (plain /settings opens on Account; an old link) shows the first one
@@ -227,8 +230,8 @@ export function SettingsView({ section: asked }: { section: Section }) {
   }
   return (
     <ViewChrome title={<h1 className="text-sm font-semibold">Settings</h1>} tabTitle="Settings">
-      <div className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8 md:grid-cols-[216px_minmax(0,1fr)] md:gap-10">
-        <nav aria-label="Settings sections" className="md:sticky md:top-6 md:self-start">
+      <div data-mac-settings-window={settingsWindow ? "" : undefined} className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8 md:grid-cols-[216px_minmax(0,1fr)] md:gap-10">
+        <nav aria-label="Settings sections" hidden={settingsWindow} className="md:sticky md:top-6 md:self-start">
           <div className="flex gap-6 overflow-x-auto pb-1 md:flex-col md:gap-5 md:overflow-visible md:pb-0">
             {groups.map((g) => (
               <div key={g.label} className="flex-none">
@@ -259,7 +262,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
           </div>
         </nav>
         <div className="min-w-0 space-y-5">
-          <h2 className="ui-display text-[34px] leading-tight">{noWorkspace ? "Workspace" : sectionHidden ? "Not found" : heading}</h2>
+          <h2 className={settingsWindow ? "sr-only" : "ui-display text-[34px] leading-tight"}>{noWorkspace ? "Workspace" : sectionHidden ? "Not found" : heading}</h2>
           {section === "account" ? <AccountSection /> : null}
           {section === "ai" ? caps.account ? <AiSection /> : <LocalAiSection /> : null}
           {section === "billing" ? <BillingSection /> : null}

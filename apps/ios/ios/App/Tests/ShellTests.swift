@@ -254,6 +254,32 @@ final class ShellFilesTests: XCTestCase {
         XCTAssertNil(LibraryFileHandler.parse("bytes=0-1,4-5", size: 10))
     }
 
+    func testAnEncryptedAttachmentReadsByPositionAndLength() throws {
+        let root = freshRoot()
+        let master = LibraryCrypto.randomBytes(32)
+        let rel = "files/ab/abcdef"
+        var plain = Data(count: 700 * 1024)
+        for i in plain.indices { plain[i] = UInt8(truncatingIfNeeded: i &* 31 &+ i >> 8) }
+        try FileManager.default.createDirectory(at: root.appendingPathComponent("files/ab"), withIntermediateDirectories: true)
+        try LibraryCrypto.sealStream(master, pathId: rel, plain).write(to: root.appendingPathComponent(rel))
+        let place = LibraryService.AttachmentPlace(fs: FolderFS(root: root), abs: root.appendingPathComponent(rel).path, rel: rel, key: master)
+        let file = try XCTUnwrap(LibraryService.openAttachment(place))
+        XCTAssertEqual(file.size, plain.count)
+        // In LibraryFileHandler's 256 KB pieces.
+        var joined = Data()
+        var pos = 0
+        while pos < file.size {
+            let upTo = min(file.size, pos + 256 * 1024)
+            joined += try file.read(pos, upTo - pos)
+            pos = upTo
+        }
+        XCTAssertEqual(joined, plain)
+        // A Range request that starts past the first piece and crosses chunks.
+        XCTAssertEqual(try file.read(300_000, 100_000), plain.subdata(in: 300_000..<400_000))
+        XCTAssertEqual(try file.read(file.size - 10, 10), plain.suffix(10))
+        XCTAssertThrowsError(try file.read(file.size - 10, 11))
+    }
+
     func testSignInOnlyReachesTheServicesAuthPaths() {
         let auth = ShellAuth()
         auth.service = URL(string: "https://app.folevi.com")!

@@ -711,7 +711,7 @@ final class LibraryService {
         return AttachmentPlace(fs: base, abs: abs, rel: rel, key: key)
     }
 
-    /// An attachment's size and a reader of its plain bytes [start, end), or nil when it isn't here. A file
+    /// An attachment's size and a reader of its plain bytes (position, length), or nil when it isn't here. A file
     /// still in the cloud is asked for and waited on a little (off the library's queue).
     static func openAttachment(_ place: AttachmentPlace) -> (size: Int, read: (Int, Int) throws -> Data)? {
         let fs = place.fs
@@ -739,6 +739,6 @@ final class LibraryService {
         }
         guard let key = place.key else { return (Int(size), readAt) }
         guard let reader = try? LibraryCrypto.StreamReader(master: key, pathId: place.rel, envelopeLength: Int(size), readAt: readAt) else { return nil }
-        return (reader.layout.plainLength, { try reader.range($0, $1) })
+        return (reader.layout.plainLength, { try reader.range($0, $0 + $1) })
     }
 }

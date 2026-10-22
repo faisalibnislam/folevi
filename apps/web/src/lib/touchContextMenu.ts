@@ -74,6 +74,12 @@ function androidTouch(): boolean {
  * The press the frosted page behind a held menu sends for a new tap on it (lib/native/lift.ts: WebKit sends none
  * of its own there), which closes the menu: never one of the hold's, even just after the held finger lifted.
  */
+/** The menu item (one that can be chosen) at a point on screen, if any. */
+function menuItemAt(x: number, y: number): HTMLElement | null {
+  const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('[role="menu"] :is([role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"])');
+  return el && !(el as HTMLButtonElement).disabled && el.getAttribute("aria-disabled") !== "true" ? el : null;
+}
+
 function tapOnBackdrop(e: MouseEvent): boolean {
   return !e.isTrusted && e.type === "mousedown" && e.target instanceof Element && e.target.hasAttribute("data-lift-backdrop");
 }
@@ -250,6 +256,9 @@ export function installTouchContextMenu(): () => void {
   // thing held (not scroll the page).
   let frozen: { el: HTMLElement; overflow: string } | null = null;
   let heldAt: { x: number; y: number; target: Element; moved: boolean } | null = null;
+  // The menu item a held finger slid onto, and whether it's being chosen (its click isn't the hold's).
+  let over: HTMLElement | null = null;
+  let choosing = false;
   const unfreeze = () => {
     if (frozen) frozen.el.style.overflowY = frozen.overflow;
     frozen = null;
@@ -312,9 +321,20 @@ export function installTouchContextMenu(): () => void {
     guard.lifted();
     setTimeout(() => holdSelection(false), 50);
   };
+  let ending: ReturnType<typeof setTimeout> | null = null;
   const onPointerEnd = (e: PointerEvent) => {
-    // (A moment later: its touchend, which comes just after, ends the hold itself when it arrives.)
-    if (e.pointerType === "touch" && held) setTimeout(release, 60);
+    // (A moment later: its touchend, which comes just after, ends the hold itself when it arrives. A
+    // pointercancel can also just mean the browser gave the finger to scrolling: touches still moving after it
+    // say the finger is down, and the hold goes on.)
+    if (e.pointerType !== "touch" || !held) return;
+    if (ending) clearTimeout(ending);
+    ending = setTimeout(
+      () => {
+        ending = null;
+        release();
+      },
+      e.type === "pointercancel" ? 250 : 60,
+    );
   };
 
   const onStart = (e: TouchEvent) => {
@@ -330,11 +350,32 @@ export function installTouchContextMenu(): () => void {
   };
   const onMove = (e: TouchEvent) => {
     const touch = e.touches[0];
+    if (held && touch && ending) {
+      clearTimeout(ending);
+      ending = null;
+    }
+    // The held finger slid onto the menu: the item under it is picked out (felt as it changes), and letting go
+    // there chooses it, as in iOS's own menus.
+    if (held && touch) {
+      const item = menuItemAt(touch.clientX, touch.clientY);
+      if (item !== over) {
+        over?.removeAttribute("data-highlighted");
+        over = item;
+        if (item) {
+          item.setAttribute("data-highlighted", "true");
+          haptic("selection");
+        }
+      }
+      if (item) return;
+    }
     if (held && heldAt && touch && !heldAt.moved && Math.hypot(touch.clientX - heldAt.x, touch.clientY - heldAt.y) > SLOP) {
       heldAt.moved = true;
-      guard.moved();
       const detail: HoldMoveDetail = { startX: heldAt.x, startY: heldAt.y, x: touch.clientX, y: touch.clientY };
-      heldAt.target.dispatchEvent(new CustomEvent(HOLD_MOVE_EVENT, { bubbles: true, cancelable: true, detail }));
+      const move = new CustomEvent(HOLD_MOVE_EVENT, { bubbles: true, cancelable: true, detail });
+      heldAt.target.dispatchEvent(move);
+      // Only when something takes the move (a block lifts to follow the finger) does the app's picture go:
+      // a card that can't be dragged keeps its lifted picture and its menu.
+      if (move.defaultPrevented) guard.moved();
       return;
     }
     if (!start || !touch) return;
@@ -343,9 +384,21 @@ export function installTouchContextMenu(): () => void {
   const onEnd = (e: TouchEvent) => {
     cancel();
     if (!held) return;
-    // The lift that ends a hold isn't a tap on whatever is under the finger (the menu, or the page).
+    // The lift that ends a hold isn't a tap on whatever is under the finger (the menu, or the page)...
     if (e.cancelable) e.preventDefault();
+    const chosen = over;
+    over?.removeAttribute("data-highlighted");
+    over = null;
     release();
+    // ...unless the finger slid onto an item and let go there.
+    if (chosen?.isConnected && e.type === "touchend") {
+      choosing = true;
+      try {
+        chosen.click();
+      } finally {
+        choosing = false;
+      }
+    }
   };
 
   // While a held finger has a menu open, WebKit can still send a mouse press for it (a held link does, about
@@ -359,7 +412,7 @@ export function installTouchContextMenu(): () => void {
   // The click WebKit can still send when a held finger lifts opens neither what was held nor the menu item
   // under the finger (a "Delete folder…" under it must be tapped on its own).
   const onClick = (e: MouseEvent) => {
-    if (!held && !guard.swallowing()) return;
+    if ((!held && !guard.swallowing()) || choosing) return;
     e.preventDefault();
     e.stopImmediatePropagation();
   };

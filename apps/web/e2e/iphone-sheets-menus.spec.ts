@@ -231,6 +231,40 @@ test("iPhone: menus, sheets, native alerts and Quick add @local", async ({ brows
   await context.close();
 });
 
+test("iPhone: a held card's finger slides onto its menu and lets go on an item to choose it, as in iOS @local", async ({ browser }, testInfo) => {
+  test.setTimeout(200_000);
+  const { context, page } = await iphone(browser, testInfo);
+  const card = page.locator("main a[href^='/d/']").first();
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  const b = (await card.boundingBox())!;
+  const at = { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2) };
+  // Held still (the menu opens), then the finger slides down onto "Star" and lets go there.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [at] });
+  await page.waitForTimeout(700);
+  const menu = page.getByRole("menu").first();
+  await expect(menu).toBeVisible();
+  const star = menu.getByRole("menuitem", { name: "Star" });
+  const sb = (await star.boundingBox())!;
+  const to = { x: Math.round(sb.x + sb.width / 2), y: Math.round(sb.y + sb.height / 2) };
+  for (let i = 1; i <= 6; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: at.x + ((to.x - at.x) * i) / 6, y: at.y + ((to.y - at.y) * i) / 6 }] });
+    await page.waitForTimeout(40);
+  }
+  // Picked out under the finger, and felt.
+  await expect(star).toHaveAttribute("data-highlighted", "true");
+  expect((await calls(page)).some((c) => c.method === "haptic" && c.arg === "selection")).toBe(true);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  // Chosen: the note is starred (its menu now offers Unstar).
+  await page.waitForTimeout(600);
+  const nb = (await card.boundingBox())!;
+  await card.dispatchEvent("contextmenu", { bubbles: true, cancelable: true, clientX: nb.x + nb.width / 2, clientY: nb.y + nb.height / 2 });
+  await expect(page.getByRole("menu").first().getByRole("menuitem", { name: "Unstar" })).toBeVisible();
+  await context.close();
+});
+
 test("iPhone: Empty Trash asks with the system's alert, once it knows how many notes go @local", async ({ browser }, testInfo) => {
   test.setTimeout(200_000);
   const { context, page } = await iphone(browser, testInfo);

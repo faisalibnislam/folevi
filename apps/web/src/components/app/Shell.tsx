@@ -24,6 +24,7 @@ import { OutboxRefusals, SyncStatus } from "./SyncStatus";
 import { useCreateDocument } from "./useCreateDocument";
 import { captureTemplateFromUrl, clearPendingTemplate, pendingTemplate } from "@/lib/pendingTemplate";
 import { DesktopBridge } from "./DesktopBridge";
+import { DesktopCapabilities } from "./DesktopCapabilities";
 import { PlaceRunners } from "@/components/places/PlaceRunners";
 import { MovePlacesHost } from "@/components/places/MovePlaces";
 import { NativeBridge } from "./NativeBridge";
@@ -368,6 +369,7 @@ export function Shell() {
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppContextMenu />
       <DesktopBridge />
+      <DesktopCapabilities />
       {/* Folevi for Mac in Electron: the tab shortcuts (⌘1 to ⌘9, ⌃Tab), which its menus don't have. */}
       <MacCommands />
       <PlaceRunners />

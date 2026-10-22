@@ -76,7 +76,7 @@ function NoteCard({ d, recent }: { d: Summary; recent?: boolean }) {
     <div
       className="group relative [container-type:inline-size]"
       draggable
-      onDragStart={(e) => startNoteDrag(e, [d.id])}
+      onDragStart={(e) => startNoteDrag(e, [d.id], () => d.title)}
       onContextMenu={(e) => {
         e.preventDefault();
         setCtx(contextPoint(e));

@@ -91,6 +91,25 @@ async function fetchAssets(client: ConvexReactClient, blocks: WireBlock[], opts:
 }
 
 /**
+ * The note as Markdown with its attachments as files in `folder` beside it (linked from it), for a note dragged out
+ * of the native Mac app to Finder or another app (lib/desktop/capabilities.ts).
+ */
+export async function markdownWithFiles(client: ConvexReactClient, title: string, noteBlocks: WireBlock[], folder: string): Promise<{ text: string; files: { path: string; bytes: Uint8Array }[] }> {
+  const blocks = await withSyncedContent(client, noteBlocks);
+  const [{ assets }, links] = await Promise.all([fetchAssets(client, blocks), pageLinks(client, blocks)]);
+  const inFolder = (path: string) => `${folder}/${path.replace(/^assets\//, "")}`;
+  const text = blocksToMarkdown(blocks, {
+    title: title || "Untitled",
+    resolveFile: (id) => {
+      const a = assets.get(id);
+      return a ? encodeURI(inFolder(a.path)) : null;
+    },
+    ...links,
+  });
+  return { text, files: [...assets.values()].map((a) => ({ path: inFolder(a.path), bytes: a.bytes })) };
+}
+
+/**
  * The note as Markdown at once, for dragging it out of the Mac app: no attachment files (they stay links
  * to the note) and linked pages by the titles their links carry.
  */

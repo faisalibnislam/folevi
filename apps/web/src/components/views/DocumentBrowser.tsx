@@ -306,7 +306,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     },
     draggable: view !== "trash",
     // Dragging a selected card takes the whole selection along.
-    onDragStart: (e: React.DragEvent) => startNoteDrag(e, selection.selected.has(d.id) ? selection.selectedIds : [d.id]),
+    onDragStart: (e: React.DragEvent) => startNoteDrag(e, selection.selected.has(d.id) ? selection.selectedIds : [d.id], (id) => (id === d.id ? d.title : docs.find((x) => x.id === id)?.title)),
     ...dropProps(d),
   });
   const menuProps = (d: Summary) => ({

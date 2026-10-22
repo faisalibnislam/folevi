@@ -8,6 +8,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import {
   Download,
   ExternalLink,
+  Eye,
   FileText,
   ImageOff,
   Link2,
@@ -23,6 +24,7 @@ import { AppLink } from "@/lib/app/router";
 import { useEngineSelector } from "@/lib/hooks/useEngine";
 import { localPreviewUrl, releaseLocalPreview } from "@/lib/sync/uploads";
 import { formatBytes } from "@/lib/format";
+import { macDesktop } from "@/lib/desktop/capabilities";
 import {
   AudioBlock,
   BookmarkBlock,
@@ -308,6 +310,17 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
   );
 }
 
+/** The native Mac app's Quick Look on an attachment (its bytes go to the app's preview panel). */
+async function quickLookFile(url: string, name: string) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return;
+    await macDesktop()?.quickLook?.([{ name, bytes: new Uint8Array(await res.arrayBuffer()) }]);
+  } catch {
+    // The file couldn't be fetched: Download still works.
+  }
+}
+
 function FileView({ node, selected }: ReactNodeViewProps) {
   const a = node.attrs as {
     id: string;
@@ -335,6 +348,17 @@ function FileView({ node, selected }: ReactNodeViewProps) {
                 : ""}
           </p>
         </div>
+        {file && macDesktop()?.quickLook ? (
+          <button
+            type="button"
+            onClick={() => void quickLookFile(file.url, a.name ?? "Attachment")}
+            className="inline-flex h-8 items-center gap-1.5 rounded-chip border border-line px-2.5 text-xs hover:bg-surface"
+            contentEditable={false}
+            title="Quick Look"
+          >
+            <Eye size={14} aria-hidden /> Quick Look
+          </button>
+        ) : null}
         {file ? (
           <a
             href={file.url}

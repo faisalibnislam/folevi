@@ -1,6 +1,7 @@
 "use client";
 
 import type { DragEvent } from "react";
+import { dragNotesOut } from "@/lib/desktop/capabilities";
 
 /** One dragged note (also what list reordering reads). */
 export const NOTE_MIME = "application/x-folevi-document";
@@ -13,11 +14,13 @@ export const NOTES_MIME = "application/x-folevi-documents";
  * count on it when several notes go along. Without this a card dragged by its link showed the browser's
  * link chip (the title and address in a box).
  */
-export function startNoteDrag(e: DragEvent, ids: string[]) {
+export function startNoteDrag(e: DragEvent, ids: string[], titleOf?: (id: string) => string | null | undefined) {
   if (!ids.length) return;
   e.dataTransfer.effectAllowed = "move";
   e.dataTransfer.setData(NOTE_MIME, ids[0]!);
   e.dataTransfer.setData(NOTES_MIME, JSON.stringify(ids));
+  // The native Mac app: dropped in Finder, Mail or another app, the notes become Markdown files.
+  dragNotesOut(ids, titleOf);
   const image = previewOf(e.currentTarget);
   if (!image) return;
   const box = image.getBoundingClientRect();

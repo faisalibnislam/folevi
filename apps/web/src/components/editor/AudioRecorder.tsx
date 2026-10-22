@@ -5,7 +5,7 @@ import { Mic, Pause, Play, PhoneCall, Square, X } from "lucide-react";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { desktop } from "@/lib/desktop";
 import { inIosApp } from "@/lib/nativeApp";
-import { callProblem, canRecordCalls, mixAudio, type RecordingSource } from "@/lib/callCapture";
+import { NativeCallRecording, callProblem, callRecordingAvailable, mixAudio, nativeCallProblem, nativeCallRecorder, type RecordingSource } from "@/lib/callCapture";
 
 /*
  * The "/Audio recording" panel: records from the microphone with MediaRecorder and hands the finished
@@ -53,6 +53,12 @@ export function recordingName(mime: string, at = new Date()): string {
   return `Recording ${stamp}.${EXTENSION[mime] ?? "webm"}`;
 }
 
+/** Stops a recording that's being thrown away (the native Mac app deletes its file rather than sending it). */
+function throwAway(rec: MediaRecorder | NativeCallRecording) {
+  if (rec instanceof NativeCallRecording) rec.discard();
+  else rec.stop();
+}
+
 export function formatDuration(seconds: number): string {
   const s = Math.max(0, Math.round(seconds));
   const h = Math.floor(s / 3600);
@@ -91,7 +97,7 @@ export function AudioRecorder({
   onClose: () => void;
 }) {
   // Calls can be recorded in a Mac app that says so (older installed apps can't).
-  const [calls] = useState(() => canRecordCalls(desktop()) && Boolean(navigator.mediaDevices?.getDisplayMedia));
+  const [calls] = useState(() => callRecordingAvailable());
   const [phase, setPhase] = useState<Phase>(() =>
     canRecordAudio()
       ? calls
@@ -105,7 +111,7 @@ export function AudioRecorder({
   const [source, setSource] = useState<RecordingSource>("mic");
   const [elapsed, setElapsed] = useState(0);
   const [levels, setLevels] = useState<number[]>(() => Array(BARS).fill(0));
-  const recorder = useRef<MediaRecorder | null>(null);
+  const recorder = useRef<MediaRecorder | NativeCallRecording | null>(null);
   // Every stream in use (the microphone, and for a call this Mac's sound), stopped when recording ends.
   const streams = useRef<MediaStream[]>([]);
   const chunks = useRef<Blob[]>([]);
@@ -152,14 +158,88 @@ export function AudioRecorder({
   }, []);
 
   /**
-   * Starts recording from `from`: the microphone, or a call (this Mac's sound first, while the click that
-   * chose it still counts as one, then the microphone, mixed into one stream).
+   * Starts recording from `from`: the microphone, or a call. In the native Mac app the app records a call itself
+   * (this Mac's sound and the microphone, mixed there: lib/callCapture.ts); in the Electron app this Mac's sound
+   * comes first, while the click that chose it still counts as one, then the microphone, mixed into one stream.
    */
   const begin = useCallback(async (from: RecordingSource) => {
     const gen = generation.current;
     const stale = () => gen !== generation.current;
     setSource(from);
     setPhase({ kind: "asking" });
+
+    /** The recording ended (Save, the limit, a source gone): kept for Save or stored, unless it was discarded. */
+    const ended = (mime: string, call: boolean) => {
+      clock.current = { total: now(), since: 0 };
+      release();
+      if (discard.current) return;
+      const blob = new Blob(chunks.current, { type: mime });
+      const file = new File([blob], recordingName(mime), { type: mime });
+      const seconds = now() / 1000;
+      setElapsed(now());
+      if (requested.current) void store(file, seconds);
+      else
+        setPhase({
+          kind: "stopped",
+          file,
+          seconds,
+          message: call
+            ? "The call’s sound or the microphone stopped (sharing ended, or a permission was turned off). What was recorded so far is kept."
+            : "The microphone stopped (it was disconnected or its permission was turned off). What was recorded so far is kept.",
+        });
+    };
+
+    /** Recording now: the clock, the meter (from `level`, 0 to 1) and the length limits. */
+    const running = (rec: { state: string; stop(): void }, level: () => number) => {
+      clock.current = { total: 0, since: performance.now() };
+      setPhase({ kind: "recording" });
+      let last = 0;
+      const tick = (t: number) => {
+        frame.current = requestAnimationFrame(tick);
+        if (t - last < 80) return;
+        last = t;
+        setElapsed(now());
+        if ((now() >= MAX_RECORDING_MS || bytes.current >= MAX_RECORDING_BYTES) && rec.state !== "inactive") {
+          requested.current = true;
+          setPhase({ kind: "saving" });
+          rec.stop();
+          return;
+        }
+        if (rec.state !== "recording") return;
+        setLevels((prev) => [...prev.slice(1), Math.min(1, level())]);
+      };
+      frame.current = requestAnimationFrame(tick);
+    };
+
+    const native = from === "call" ? nativeCallRecorder() : null;
+    if (native) {
+      const rec = new NativeCallRecording(native);
+      rec.ondataavailable = (e) => {
+        if (e.data.size) {
+          chunks.current.push(e.data);
+          bytes.current += e.data.size;
+        }
+      };
+      rec.onstop = () => ended(rec.mimeType, true);
+      try {
+        await rec.start();
+      } catch (error) {
+        if (!stale()) {
+          const problem = nativeCallProblem(error);
+          setPhase({ kind: "error", message: problem.message, settings: problem.settings });
+        }
+        return;
+      }
+      if (stale()) {
+        discard.current = true;
+        rec.discard();
+        return;
+      }
+      recorder.current = rec;
+      running(rec, () => rec.level() * 1.8);
+      return;
+    }
+
     let system: MediaStream | null = null;
     if (from === "call") {
       try {
@@ -212,26 +292,7 @@ export function AudioRecorder({
           bytes.current += e.data.size;
         }
       };
-      rec.onstop = () => {
-        clock.current = { total: now(), since: 0 };
-        release();
-        if (discard.current) return;
-        const mime = (rec.mimeType || type || "audio/webm").split(";")[0]!;
-        const blob = new Blob(chunks.current, { type: mime });
-        const file = new File([blob], recordingName(mime), { type: mime });
-        const seconds = now() / 1000;
-        setElapsed(now());
-        if (requested.current) void store(file, seconds);
-        else
-          setPhase({
-            kind: "stopped",
-            file,
-            seconds,
-            message: system
-              ? "The call’s sound or the microphone stopped (sharing ended, or a permission was turned off). What was recorded so far is kept."
-              : "The microphone stopped (it was disconnected or its permission was turned off). What was recorded so far is kept.",
-          });
-      };
+      rec.onstop = () => ended((rec.mimeType || type || "audio/webm").split(";")[0]!, Boolean(system));
       // Most browsers stop the recorder when its microphone goes away; this makes sure of it (and for a
       // call, when this Mac's sound stops coming).
       for (const track of [...media.getAudioTracks(), ...(system?.getAudioTracks() ?? [])])
@@ -240,29 +301,13 @@ export function AudioRecorder({
         });
       recorder.current = rec;
       rec.start(1000);
-      clock.current = { total: 0, since: performance.now() };
-      setPhase({ kind: "recording" });
-
       const data = new Uint8Array(analyser.fftSize);
-      let last = 0;
-      const tick = (t: number) => {
-        frame.current = requestAnimationFrame(tick);
-        if (t - last < 80) return;
-        last = t;
-        setElapsed(now());
-        if ((now() >= MAX_RECORDING_MS || bytes.current >= MAX_RECORDING_BYTES) && rec.state !== "inactive") {
-          requested.current = true;
-          setPhase({ kind: "saving" });
-          rec.stop();
-          return;
-        }
-        if (rec.state !== "recording") return;
+      running(rec, () => {
         analyser.getByteTimeDomainData(data);
         let peak = 0;
         for (const v of data) peak = Math.max(peak, Math.abs(v - 128) / 128);
-        setLevels((prev) => [...prev.slice(1), Math.min(1, peak * 1.8)]);
-      };
-      frame.current = requestAnimationFrame(tick);
+        return peak * 1.8;
+      });
     } catch (error) {
       system?.getTracks().forEach((t) => t.stop());
       if (stale()) return;
@@ -283,7 +328,7 @@ export function AudioRecorder({
       // Unmounting without Save discards the recording.
       if (recorder.current && recorder.current.state !== "inactive" && !requested.current) {
         discard.current = true;
-        recorder.current.stop();
+        throwAway(recorder.current);
       }
       release();
     };
@@ -339,7 +384,7 @@ export function AudioRecorder({
   };
   const cancel = () => {
     discard.current = true;
-    if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
+    if (recorder.current && recorder.current.state !== "inactive") throwAway(recorder.current);
     release();
     onClose();
   };

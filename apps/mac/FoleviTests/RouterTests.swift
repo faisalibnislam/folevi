@@ -152,6 +152,17 @@ final class RouterTests: XCTestCase {
         XCTAssertEqual(Links.appURL("/d/X").absoluteString, "app://folevi/d/X")
     }
 
+    /// FOLEVI_OFFLINE=1 (read at launch): the refusing protocol takes every web request and nothing of the app's
+    /// own. (The swap that puts it first in every session's configuration was checked in a plain process, a real
+    /// data task failing with -1009; it isn't installed here, in the test host XCTest itself uses.)
+    func testOfflineRefusesTheNetworkOnly() {
+        for raw in ["https://app.folevi.com/", "http://app.localhost:3002/", "wss://x.convex.cloud/", "ws://127.0.0.1:3210/"] {
+            XCTAssertTrue(RefuseNetwork.canInit(with: URLRequest(url: URL(string: raw)!)), raw)
+        }
+        XCTAssertFalse(RefuseNetwork.canInit(with: URLRequest(url: URL(string: "app://folevi/")!)))
+        XCTAssertFalse(RefuseNetwork.canInit(with: URLRequest(url: URL(fileURLWithPath: "/tmp/x"))))
+    }
+
     private func refusal(_ r: Result<MessageRouter.Call, MessageRouter.Refusal>) -> MessageRouter.Refusal? {
         if case .failure(let e) = r { return e }
         return nil

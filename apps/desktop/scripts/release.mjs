@@ -65,6 +65,9 @@ else {
   const entitlements = spawnSync("codesign", ["-d", "--entitlements", "-", "--xml", filesApp], { encoding: "utf8" }).stdout;
   if (!entitlements.includes("iCloud.com.folevi")) problems.push("Helpers/FoleviFiles.app lacks the iCloud container (built without the Developer ID certificate or its profile?)");
   if (!existsSync(join(filesApp, "Contents/embedded.provisionprofile"))) problems.push("Helpers/FoleviFiles.app has no provisioning profile");
+  // A helper with the app's own bundle id makes macOS treat Folevi as a background app (no Dock icon, no menu bar).
+  const plistId = (file) => spawnSync("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleIdentifier", file], { encoding: "utf8" }).stdout.trim();
+  if (plistId(join(filesApp, "Contents/Info.plist")) === plistId(join(built, "Contents/Info.plist"))) problems.push("Helpers/FoleviFiles.app has the app's own bundle id");
 }
 if (problems.length) {
   console.error(`The build isn't fit to install:\n  ${problems.join("\n  ")}`);

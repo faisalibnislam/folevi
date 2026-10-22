@@ -4,10 +4,10 @@
 <!-- FoleviFiles.app (folevi-files as a signed helper app, scripts/build-helper.mjs): Folevi's iCloud container,
      iCloud.com.folevi, the folder the iPhone and iPad app keeps its library in. These are restricted
      entitlements: macOS allows them only with build/FoleviFiles.provisionprofile (Developer ID, App ID
-     com.folevi.mac, team 7K32QQ2FX8) embedded in the bundle. -->
+     com.folevi.mac.files, team 7K32QQ2FX8) embedded in the bundle. -->
 <dict>
 	<key>com.apple.application-identifier</key>
-	<string>7K32QQ2FX8.com.folevi.mac</string>
+	<string>7K32QQ2FX8.com.folevi.mac.files</string>
 	<key>com.apple.developer.team-identifier</key>
 	<string>7K32QQ2FX8</string>
 	<key>com.apple.developer.icloud-container-identifiers</key>

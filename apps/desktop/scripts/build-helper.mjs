@@ -11,7 +11,7 @@
 // folevi-files is also made into a small helper app, native-build/FoleviFiles.app (Contents/Helpers in the
 // app), so it can carry Folevi's iCloud container entitlement (native/FoleviFiles.entitlements): macOS allows
 // that only for code in a bundle with a provisioning profile, build/FoleviFiles.provisionprofile (Developer ID,
-// App ID com.folevi.mac, team 7K32QQ2FX8, iCloud.com.folevi). It's signed here, with the hardened runtime and a
+// App ID com.folevi.mac.files, team 7K32QQ2FX8, iCloud.com.folevi). It's signed here, with the hardened runtime and a
 // timestamp, by the team's Developer ID Application certificate (FOLEVI_MAC_IDENTITY overrides the name); both
 // electron-builder configs leave it as it is (signIgnore). Without that certificate or the profile it's signed
 // ad hoc and without the entitlement: it works, but can't make the container.
@@ -50,7 +50,9 @@ function helperApp(binary) {
   const { version } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   // Its own process with no window: no Dock icon, no menu bar. The bundle id is the profile's App ID.
   const info = {
-    CFBundleIdentifier: "com.folevi.mac",
+    // Its own App ID: sharing the app's (com.folevi.mac) made macOS apply this helper's LSUIElement to Folevi
+    // itself, which then ran with no Dock icon and no menu bar.
+    CFBundleIdentifier: "com.folevi.mac.files",
     CFBundleName: "FoleviFiles",
     CFBundleDisplayName: "Folevi Files",
     CFBundleExecutable: "folevi-files",

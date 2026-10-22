@@ -7,7 +7,7 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, PERSONAL, setup, ulid, type T } from "./helpers";
 import { push } from "./e2ee-fixtures";
-import { runSealJob, sealerFor, sealNote, unsealNote } from "./e2ee-device";
+import { runSealJob, runUnsealJob, sealerFor, sealNote, unsealNote } from "./e2ee-device";
 
 const SWITCHES = { foliAi: "off", backgroundAi: false, searchEverywhere: false, apps: false, emailToNote: false, webClipper: false, notificationPreviews: false } as const;
 
@@ -186,5 +186,76 @@ describe("locks in a Standard space", () => {
     // Elsewhere in the Standard space plain notes work as before.
     const [plainOk] = await push(p, [{ opId: ulid(), kind: "block.upsert", documentId: outside, block: para(ulid(), "still fine"), baseRevision: null, fields: ["content", "position"] }]);
     expect(plainOk!.status).toBe("applied");
+  });
+});
+
+describe("a whole decrypt job (WP8's unseal runner needs every phase to finish)", () => {
+  test("notes, versions, folder and tag names, study schedules and memories go back, and the job ends", async () => {
+    const t = setup();
+    const { p, sealer } = await encryptedPersonal(t, "migrate-unseal-all@example.com");
+    const { id: folderId } = await p.as.mutation(api.organization.createFolder, { scope: PERSONAL, name: "ZQXJ-FOLDER-back" });
+    const { id: tagId } = await p.as.mutation(api.organization.createTag, { scope: PERSONAL, name: "ZQXJ-TAG-back" });
+    const note = await plainNote(p, "ZQXJ-TITLE-back", "ZQXJ-BODY-back");
+    await p.as.mutation(api.organization.setDocumentTags, { documentId: note, tagIds: [tagId] });
+    await p.as.mutation(api.documents.createSnapshot, { documentId: note, reason: "manual", name: "Before" });
+    const studyBlock = ulid();
+    await t.run(async (ctx) => {
+      const d = (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", note)).unique())!;
+      await ctx.db.insert("studyReviews", { profileId: d.createdBy, documentId: d._id, blockId: studyBlock, due: 1, stability: 2, difficulty: 3, elapsedDays: 0, scheduledDays: 1, learningSteps: 0, reps: 1, lapses: 0, state: 1, firstReview: 1 });
+      await ctx.db.insert("aiMemories", { ownerProfileId: d.createdBy, profileId: d.createdBy, kind: "tone", text: "ZQXJ-MEMORY-back", source: "settings", createdAt: 1, updatedAt: 1 });
+    });
+
+    // Seal everything: notes (study schedules into a record), versions, then names and memories in cleanup.
+    const { migrationId } = await p.as.mutation(api.e2ee.spaces.enable, { scope: PERSONAL, level: "full", switches: SWITCHES });
+    await runSealJob(t, p, sealer, migrationId!, "device-all-00001");
+    await p.as.mutation(api.e2ee.content.renameFolder, { folderId, sealedName: await sealer.sealSpaceName("folder", folderId, "ZQXJ-FOLDER-back") });
+    await p.as.mutation(api.e2ee.content.updateTag, { tagId, sealedName: await sealer.sealSpaceName("tag", tagId, "ZQXJ-TAG-back"), nameMac: await sealer.tagMac("ZQXJ-TAG-back") });
+    const memories = (await t.run(async (ctx) => await ctx.db.query("aiMemories").collect())).map((m) => m._id as string);
+    const memoryRecord = ulid();
+    await p.as.mutation(api.e2ee.migrate.moveMemories, { scope: PERSONAL, records: [{ recordId: memoryRecord, sealed: await sealer.sealSpaceName("folder", memoryRecord, "tone: ZQXJ-MEMORY-back"), keyVersion: 1 }], memoryIds: memories });
+    const sealedState = await t.run(async (ctx) => ({
+      study: await ctx.db.query("studyReviews").collect(),
+      memories: await ctx.db.query("aiMemories").collect(),
+      records: (await ctx.db.query("e2eeRecords").collect()).map((r) => r.kind).sort(),
+    }));
+    expect(sealedState.study).toHaveLength(0);
+    expect(sealedState.memories).toHaveLength(0);
+    expect(sealedState.records).toEqual(expect.arrayContaining(["aiMemory", "studyReview"]));
+
+    // Lower to Standard and run the whole unseal job.
+    const wrap = ((await p.as.query(api.e2ee.keys.listWraps, {})) as { publicId: string; kind: string }[]).find((w) => w.kind === "recoveryKey")!;
+    await p.as.mutation(api.e2ee.keys.getWrap, { kind: "recoveryKey" });
+    const lowered = await p.as.mutation(api.e2ee.spaces.lower, { scope: PERSONAL, level: "standard", recheckedWrapId: wrap.publicId });
+    const titles = new Map([[note, "ZQXJ-TITLE-back"]]);
+    await runUnsealJob(p, sealer, lowered.migrationId!, "device-all-00001", { folders: [{ folderId, name: "ZQXJ-FOLDER-back" }], tags: [{ tagId, name: "ZQXJ-TAG-back" }] }, titles);
+    await p.as.mutation(api.e2ee.migrate.restoreMemories, { scope: PERSONAL, memories: [{ kind: "tone", text: "ZQXJ-MEMORY-back", source: "settings" }], recordIds: [memoryRecord] });
+
+    const after = await t.run(async (ctx) => ({
+      space: await ctx.db.query("e2eeSpaces").withIndex("by_scope_key", (q) => q.eq("scopeKey", `p:${p.profileId}`)).unique(),
+      job: await ctx.db.get(lowered.migrationId as Id<"e2eeMigrations">),
+      docs: await ctx.db.query("documents").withIndex("by_owner_created", (q) => q.eq("ownerProfileId", p.profileId as Id<"profiles">)).collect(),
+      snaps: await ctx.db.query("documentSnapshots").collect(),
+      folder: await ctx.db.query("folders").withIndex("by_public_id", (q) => q.eq("publicId", folderId)).unique(),
+      tag: await ctx.db.query("tags").withIndex("by_public_id", (q) => q.eq("publicId", tagId)).unique(),
+      study: await ctx.db.query("studyReviews").collect(),
+      memories: await ctx.db.query("aiMemories").collect(),
+      liveRecords: (await ctx.db.query("e2eeRecords").collect()).filter((r) => r.deletedAt === undefined).map((r) => r.kind),
+    }));
+    expect(after.job!.phase).toBe("done");
+    expect(after.space!.state).toBe("off");
+    expect(after.docs.filter((d) => d.sealedAt !== undefined)).toEqual([]);
+    expect(after.docs.find((d) => d.publicId === note)!.searchText).toContain("ZQXJ-BODY-back");
+    expect(after.snaps.filter((s) => s.sealed)).toEqual([]);
+    const ours = after.snaps.find((s) => s.title === "ZQXJ-TITLE-back");
+    expect(ours).toBeDefined();
+    const content = await p.as.query(api.documents.snapshotContent, { snapshotId: ours!.publicId });
+    expect(content!.content).toContain("ZQXJ-BODY-back");
+    expect(after.folder!.name).toBe("ZQXJ-FOLDER-back");
+    expect(after.folder!.sealedName).toBeUndefined();
+    expect(after.tag!.name).toBe("ZQXJ-TAG-back");
+    expect(after.tag!.normalizedName).toBe("zqxj-tag-back");
+    expect(after.study.map((r) => r.blockId)).toEqual([studyBlock]);
+    expect(after.memories.map((m) => m.text)).toEqual(["ZQXJ-MEMORY-back"]);
+    expect(after.liveRecords).toEqual([]);
   });
 });

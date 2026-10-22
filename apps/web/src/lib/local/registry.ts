@@ -168,6 +168,8 @@ export const LOCAL_HIDDEN: Readonly<Record<string, Capability>> = {
   "aiGraph:linkNote": "aiServer",
   "search:byMeaning": "semanticSearch",
   "fileText:readImage": "aiServer",
+  // Foli AI for an end-to-end encrypted space (lib/e2ee/features/ai.ts): never reached in local mode.
+  "aiChat:sendSealed": "aiServer",
   "unsplash:*": "stockPhotos",
   "copies:copyTo": "copyTo",
   "users:listSessions": "account",

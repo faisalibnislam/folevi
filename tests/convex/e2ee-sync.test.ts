@@ -527,3 +527,71 @@ describe("sealed content mutations", () => {
     expect(job[0]!.scopeOf).toBe("document");
   });
 });
+
+describe("after a note key rotation, and published copies with images", () => {
+  test("file keys under an old note key are listed and re-wrapped with the newest one", async () => {
+    const t = setup();
+    const { p, sealer } = await sealedPerson(t, "files-rewrap@example.com");
+    const doc = await sealedNote(p, sealer);
+    const fileId = ulid();
+    const plain = new TextEncoder().encode("bytes ".repeat(20));
+    const sealed = await sealer.sealFileBytes(doc, fileId, plain, { name: "a.txt", mime: "text/plain" });
+    const { intentId } = await p.as.mutation(api.e2ee.files.generateUploadUrl, { documentId: doc, kind: "file", declaredSize: sealed.bytes.byteLength });
+    const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([sealed.bytes])));
+    await p.as.action(api.e2ee.files.commit, { intentId, documentId: doc, fileId, storageId, sealed: sealed.row, size: sealed.bytes.byteLength, sha256: sealed.sha256 });
+    expect(await p.as.query(api.e2ee.files.oldKeyFiles, { documentId: doc })).toEqual([]);
+    const { version, wrapped } = await sealer.rotate(doc);
+    await t.run(async (ctx) => {
+      const d = (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", doc)).unique())!;
+      await ctx.db.insert("e2eeNoteKeys", { ownerProfileId: d.ownerProfileId, documentId: d._id, version, wrappedBy: "space", spaceVersion: 1, wrapped, createdBy: d.createdBy, createdAt: Date.now(), seq: 1 } as never);
+    });
+    const old = await p.as.query(api.e2ee.files.oldKeyFiles, { documentId: doc });
+    expect(old.map((f) => [f.fileId, f.k])).toEqual([[fileId, 1]]);
+    const rewrapped = (await sealer.sealFileBytes(doc, fileId, plain, { name: "a.txt", mime: "text/plain" })).row.key;
+    const r = await p.as.mutation(api.e2ee.files.rewrapKeys, { documentId: doc, files: [{ fileId, key: rewrapped, k: version }] });
+    expect(r).toEqual({ rewrapped: 1, skipped: [] });
+    const row = await t.run(async (ctx) => await ctx.db.query("files").withIndex("by_public_id", (q) => q.eq("publicId", fileId)).unique());
+    expect(row!.sealed!.k).toBe(version);
+    expect(row!.storageId).toBe(storageId);
+    expect(await p.as.query(api.e2ee.files.oldKeyFiles, { documentId: doc })).toEqual([]);
+    // Again: skipped, never rolled back to an older key.
+    expect((await p.as.mutation(api.e2ee.files.rewrapKeys, { documentId: doc, files: [{ fileId, key: rewrapped, k: version }] })).skipped).toEqual([fileId]);
+  });
+
+  test("a published copy carries its own plain files, which go when it stops using them", async () => {
+    const t = setup();
+    const { p, sealer } = await sealedPerson(t, "publish-files@example.com", "selected");
+    const doc = await sealedNote(p, sealer, "Public");
+    // The note's ordinary uploads are still refused plaintext.
+    const bytes = new TextEncoder().encode("%PDF-1.4\n% published copy\n");
+    await expect(p.as.mutation(api.files.generateUploadUrl, { documentId: doc, filename: "a.pdf", size: bytes.length, mimeType: "application/pdf", kind: "file" })).rejects.toThrow();
+    const upload = async () => {
+      const { intentId } = await p.as.mutation(api.e2ee.links.generateFileUploadUrl, { documentId: doc, filename: "a.pdf", size: bytes.length, mimeType: "application/pdf", kind: "file" });
+      const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([bytes])));
+      const sha256 = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((b) => b.toString(16).padStart(2, "0")).join("");
+      return (await p.as.action(api.files.finalize, { intentId, storageId, sha256 })).fileId;
+    };
+    const first = await upload();
+    const row = await t.run(async (ctx) => await ctx.db.query("files").withIndex("by_public_id", (q) => q.eq("publicId", first)).unique());
+    expect(row!.publishedCopy).toBe(true);
+    expect(row!.sealed).toBeUndefined();
+    // Not one of the note's own files: the replica and the migration leave it out.
+    const pulled = await p.as.query(api.e2ee.pull.document, { documentId: doc });
+    expect(pulled!.document.files.map((f) => f.id)).not.toContain(first);
+    const { linkId } = await p.as.mutation(api.e2ee.links.publishCopy, { documentId: doc, copy: { title: "Public", blocks: [], fileIds: [first] } });
+    // An update that uses another file drops the first one; stopping drops the rest.
+    const second = await upload();
+    await p.as.mutation(api.e2ee.links.publishCopy, { documentId: doc, linkId, copy: { title: "Public", blocks: [], fileIds: [second] } });
+    const files = async () => (await t.run(async (ctx) => await ctx.db.query("files").collect())).filter((f) => f.publishedCopy).map((f) => f.publicId);
+    expect(await files()).toEqual([second]);
+    await p.as.mutation(api.e2ee.links.unpublish, { linkId });
+    expect(await files()).toEqual([]);
+    // A file that wasn't uploaded for the copy can't be named in it.
+    const sealedFile = ulid();
+    const s = await sealer.sealFileBytes(doc, sealedFile, bytes, { name: "x", mime: "application/pdf" });
+    const { intentId } = await p.as.mutation(api.e2ee.files.generateUploadUrl, { documentId: doc, kind: "file", declaredSize: s.bytes.byteLength });
+    const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([s.bytes])));
+    await p.as.action(api.e2ee.files.commit, { intentId, documentId: doc, fileId: sealedFile, storageId, sealed: s.row, size: s.bytes.byteLength, sha256: s.sha256 });
+    await expect(p.as.mutation(api.e2ee.links.publishCopy, { documentId: doc, copy: { title: "Public", blocks: [], fileIds: [sealedFile] } })).rejects.toThrow();
+  });
+});

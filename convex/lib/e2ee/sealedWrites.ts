@@ -41,6 +41,11 @@ export async function writeRecord(
   if (input.baseRev !== undefined && input.baseRev !== null && (existing?.rev ?? 0) !== input.baseRev) failE2ee("e2ee_conflict");
   const seq = await nextSeq(ctx, at.scope);
   const now = Date.now();
+  // A person's study schedules for a note, now in their sealed record: the server's rows of them go (§6.7).
+  if (input.kind === "studyReview" && at.doc) {
+    const docId = at.doc._id;
+    for (const r of await ctx.db.query("studyReviews").withIndex("by_document", (q) => q.eq("documentId", docId)).take(2000)) if (r.profileId === profile._id) await ctx.db.delete(r._id);
+  }
   if (existing) {
     const rev = existing.rev + 1;
     await ctx.db.patch(existing._id, { sealed: c, size: c.byteLength, keyVersion: input.keyVersion, rev, updatedBy: profile._id, updatedAt: now, deletedAt: undefined, seq });

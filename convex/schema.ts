@@ -2011,6 +2011,11 @@ export default defineSchema({
      * "application/octet-stream", and `sha256` and `size` describe the ciphertext (what counts toward storage).
      */
     sealed: v.optional(vSealedFileRow),
+    /**
+     * A plain image or file made on purpose for a sealed note's published copy (Publish to the web,
+     * docs/E2EE_DESIGN.md §9.3): readable by design, never part of the note's own sealed files, deleted with the copy.
+     */
+    publishedCopy: v.optional(v.boolean()),
   })
     .index("by_public_id", ["publicId"])
     .index("by_workspace", ["workspaceId", "createdAt"])
@@ -2061,6 +2066,8 @@ export default defineSchema({
     createdAt: v.number(),
     expiresAt: v.number(),
     consumedAt: v.optional(v.number()),
+    /** An upload for a sealed note's published copy (e2ee.links.generateFileUploadUrl): finalized as a plain `publishedCopy` file. */
+    forPublish: v.optional(v.boolean()),
   })
     .index("by_profile", ["profileId", "createdAt"])
     .index("by_workspace", ["workspaceId"])

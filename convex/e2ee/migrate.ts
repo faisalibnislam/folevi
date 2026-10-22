@@ -9,14 +9,14 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
-import { sanitizeTitle, validateWireBlock, type WireBlock } from "@folevi/editor-schema";
+import { normalizeForSearch, sanitizeTitle, validateWireBlock, type WireBlock } from "@folevi/editor-schema";
 import { assertWritable, documentAccessInfo, membership, memberLevel, requireDocument, requireProfile, resolveScope } from "../lib/auth";
 import { fail } from "../lib/errors";
 import { nextSeq } from "../lib/seq";
 import { insertScoped, scopeKey, scopeOfRow, vScope, vScopeArg, type Scope } from "../lib/scope";
 import { failE2ee, spaceE2ee } from "../lib/e2ee/state";
 import { E2EE_LIMITS, vMigrationDirection, vMigrationPhase, vMigrationScopeOf, vNoteKeyWrapInput, vRecordKind, vE2eeLevel } from "../lib/e2ee/validators";
-import { NoteKeyVersions, checkMac, checkRecord, lockFor, recordHeaderVersion, requireSpaceKey, sealedBlockIssue, sealedPlaceholders } from "../lib/e2ee/sealedRows";
+import { NoteKeyVersions, checkMac, checkRecord, lockFor, lockOfFolder, recordHeaderVersion, requireSpaceKey, sealedBlockIssue, sealedPlaceholders } from "../lib/e2ee/sealedRows";
 import { peopleOfDocument, purgeCopiesInScope, purgeDerivedPlaintext } from "../lib/e2ee/purge";
 import { liveBlocks, refreshDerived, syncTaskProjection, toWireBlock } from "../lib/documents";
 import { syncLinks } from "../lib/syncEngine";
@@ -24,7 +24,8 @@ import { syncStudyCard } from "../lib/study";
 import { queueIndex } from "../lib/ai/indexing";
 import { normalizeNumberFormat, normalizeValue } from "../lib/collections";
 import { vCollectionPropertyType, vDocumentStyle, vDocumentCover } from "../lib/validators";
-import { checkSealedVersion, startLockMigration, startSpaceJob, vSealedVersionContent, writeRecord } from "../lib/e2ee/sealedWrites";
+import { checkSealedVersion, findRecord, startLockMigration, startSpaceJob, vSealedVersionContent, writeRecord } from "../lib/e2ee/sealedWrites";
+import { vMemoryKind } from "../lib/ai/memory";
 
 /** How long a device holds a job, or a note it is converting, without a heartbeat (§6.9). */
 export const LEASE_MS = 2 * 60_000;
@@ -197,7 +198,8 @@ async function nextWork(ctx: MutationCtx, job: Migration, scope: Scope): Promise
       if (items.files.length >= CLAIM_BATCH) break;
       if ((doc.sealedAt !== undefined) !== (job.direction === "seal")) continue;
       for (const f of await ctx.db.query("files").withIndex("by_document", (q) => q.eq("documentId", doc._id)).take(200)) {
-        if (f.status !== "ready" || Boolean(f.sealed) === (job.direction === "seal")) continue;
+        // A published copy's own plain files stay plain on purpose (§9.3).
+        if (f.status !== "ready" || f.publishedCopy || Boolean(f.sealed) === (job.direction === "seal")) continue;
         items.files.push({ fileId: f.publicId, documentId: doc.publicId });
         if (items.files.length >= CLAIM_BATCH) break;
       }
@@ -622,7 +624,50 @@ export const plainExtras = query({
         comments.push({ commentId: c.publicId, threadId: t.publicId, ...(c.sealedBody ? { sealedBody: c.sealedBody } : { body: c.body }), deleted: c.deletedAt !== undefined });
       }
     }
-    return { fileTexts, collections, comments };
+    // The caller's own study schedules for the note (each person's are theirs; §6.7 studyReview records).
+    const studyReviews = (await ctx.db.query("studyReviews").withIndex("by_document", (q) => q.eq("documentId", doc._id)).take(2000))
+      .filter((r) => r.profileId === profile._id)
+      .map(studyRowOut);
+    return { fileTexts, collections, comments, studyReviews };
+  },
+});
+
+/** A study schedule row as a device carries it into a sealed `studyReview` record and back (no ids). */
+const vStudyReviewRow = v.object({
+  blockId: v.string(),
+  due: v.number(),
+  stability: v.number(),
+  difficulty: v.number(),
+  elapsedDays: v.number(),
+  scheduledDays: v.number(),
+  learningSteps: v.number(),
+  reps: v.number(),
+  lapses: v.number(),
+  state: v.number(),
+  lastReview: v.optional(v.number()),
+  firstReview: v.number(),
+});
+
+function studyRowOut(r: Doc<"studyReviews">): typeof vStudyReviewRow.type {
+  const { _id, _creationTime, profileId, documentId, ...rest } = r;
+  void _id;
+  void _creationTime;
+  void profileId;
+  void documentId;
+  return rest;
+}
+
+/**
+ * The caller's own study schedules for a note, for any reader (not only the person converting it): each
+ * person's device carries their own into a `studyReview` record (e2ee.content.putRecord, which then removes
+ * these rows), since nobody else may write a record that only they read.
+ */
+export const plainStudy = query({
+  args: { documentId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
+    return (await ctx.db.query("studyReviews").withIndex("by_document", (q) => q.eq("documentId", doc._id)).take(2000)).filter((r) => r.profileId === profile._id).map(studyRowOut);
   },
 });
 
@@ -710,7 +755,14 @@ const vPlainFileText = v.object({ blockId: v.string(), fileId: v.optional(v.stri
  * computed again (search text, tasks, links, study cards, semantic index).
  */
 export const finishUnseal = mutation({
-  args: { documentId: v.string(), deviceId: v.string(), collections: v.array(vPlainCollection), fileTexts: v.array(vPlainFileText) },
+  args: {
+    documentId: v.string(),
+    deviceId: v.string(),
+    collections: v.array(vPlainCollection),
+    fileTexts: v.array(vPlainFileText),
+    /** The caller's own study schedules, opened from their `studyReview` record (others keep theirs, see restoreStudy). */
+    studyReviews: v.optional(v.array(vStudyReviewRow)),
+  },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
@@ -728,6 +780,7 @@ export const finishUnseal = mutation({
     for (const r of await ctx.db.query("e2eeRecords").withIndex("by_document", (q) => q.eq("documentId", doc._id)).take(2000)) {
       if (r.kind === "collection" || r.kind === "fileText") await ctx.db.delete(r._id);
     }
+    if (args.studyReviews) await restoreStudyRows(ctx, profile._id, doc, args.studyReviews);
     await ctx.db.patch(doc._id, { sealedAt: undefined, sealedTitle: undefined, sealedAppearance: undefined, sealedMeta: undefined, sealing: undefined, revision: doc.revision + 1, titleRev: doc.revision + 1, seq, updatedAt: now });
     const fresh = (await ctx.db.get(doc._id))!;
     for (const r of rows) {
@@ -739,6 +792,200 @@ export const finishUnseal = mutation({
     await queueIndex(ctx, (await ctx.db.get(doc._id))!);
     const job = await activeJob(ctx, scope);
     if (job) await ctx.db.patch(job._id, { done: job.done + 1 });
+    return null;
+  },
+});
+
+/** Puts a person's study schedules for a note back into the server's table and drops their sealed record. */
+async function restoreStudyRows(ctx: MutationCtx, profileId: Id<"profiles">, doc: Doc<"documents">, rows: (typeof vStudyReviewRow.type)[]) {
+  if (rows.length > 2000) fail("limit_exceeded", "Too many study schedules.");
+  for (const r of rows) {
+    const existing = await ctx.db.query("studyReviews").withIndex("by_block", (q) => q.eq("profileId", profileId).eq("blockId", r.blockId)).unique();
+    if (existing) await ctx.db.patch(existing._id, { ...r, documentId: doc._id });
+    else await ctx.db.insert("studyReviews", { ...r, profileId, documentId: doc._id });
+  }
+  for (const rec of await ctx.db.query("e2eeRecords").withIndex("by_document", (q) => q.eq("documentId", doc._id)).take(2000)) {
+    if (rec.kind === "studyReview" && rec.profileId === profileId) await ctx.db.delete(rec._id);
+  }
+}
+
+/**
+ * Someone's own study schedules for a note that is readable again (after an unseal finished on another
+ * person's device): put back from their `studyReview` record, which then goes.
+ */
+export const restoreStudy = mutation({
+  args: { documentId: v.string(), studyReviews: v.array(vStudyReviewRow) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
+    if (doc.sealedAt !== undefined) fail("invalid_argument", "This note is still encrypted: its schedules stay sealed.");
+    await restoreStudyRows(ctx, profile._id, doc, args.studyReviews);
+    return null;
+  },
+});
+
+// ---------------------------------------------------------------- versions and names back to plaintext
+
+const vPlainVersionContent = v.object({
+  title: v.string(),
+  icon: v.union(v.string(), v.null()),
+  cover: v.optional(v.any()),
+  style: v.optional(vDocumentStyle),
+  blocks: v.array(v.any()),
+});
+
+/**
+ * Puts one version of an unsealed note back in plaintext (the unseal's history phase): its content as a
+ * Standard version holds it, and its name. Who changed what (`authors`, `removed`) is kept from the sealed
+ * version, which never held content there.
+ */
+export const unsealSnapshot = mutation({
+  args: { snapshotId: v.string(), content: vPlainVersionContent, name: v.union(v.string(), v.null()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const snap = await ctx.db.query("documentSnapshots").withIndex("by_public_id", (q) => q.eq("publicId", args.snapshotId)).unique();
+    if (!snap) fail("not_found", "Version not found.");
+    const doc = await ctx.db.get(snap.documentId);
+    if (!doc) fail("not_found", "Version not found.");
+    await requireDocument(ctx, profile, doc.publicId, "write");
+    if (doc.sealedAt !== undefined) fail("invalid_argument", "Unseal the note before its history.");
+    await requireReadable(ctx, doc);
+    if (!snap.sealed) return { unsealed: false };
+    if (args.content.blocks.length > 5000) fail("limit_exceeded", "That version has too many blocks.");
+    const blocks = args.content.blocks as WireBlock[];
+    for (const b of blocks) {
+      const issues = validateWireBlock(b);
+      if (issues.length) fail("invalid_block", `${issues[0]!.path}: ${issues[0]!.message}`);
+    }
+    const oldChunks = await ctx.db.query("snapshotChunks").withIndex("by_snapshot", (q) => q.eq("snapshotId", snap._id)).collect();
+    let attribution: { authors?: unknown; removed?: unknown };
+    try {
+      const old = JSON.parse(oldChunks.sort((a, b) => a.index - b.index).map((c) => c.data).join("")) as { authors?: unknown; removed?: unknown };
+      attribution = { ...(old.authors ? { authors: old.authors } : {}), ...(old.removed ? { removed: old.removed } : {}) };
+    } catch {
+      attribution = {};
+    }
+    const title = sanitizeTitle(args.content.title);
+    const json = JSON.stringify({ title, icon: args.content.icon, ...(args.content.style ? { style: args.content.style } : {}), blocks, ...attribution });
+    if (json.length > 8_000_000) fail("limit_exceeded", "That version is too big.");
+    for (const c of oldChunks) await ctx.db.delete(c._id);
+    const chunks = json.match(/[\s\S]{1,250000}/gu) ?? [""];
+    for (const [index, data] of chunks.entries()) await ctx.db.insert("snapshotChunks", { snapshotId: snap._id, index, data });
+    const name = (args.name ?? "").replace(/\s+/g, " ").trim().slice(0, 80) || undefined;
+    await ctx.db.patch(snap._id, { title, chunkCount: chunks.length, sizeBytes: json.length, blockCount: blocks.length, sealed: undefined, sealedName: undefined, name });
+    return { unsealed: true };
+  },
+});
+
+/**
+ * Puts folder and tag names back in plaintext (the unseal's cleanup phase). Only in a space that is Standard
+ * again, and never for a folder that is still Always fully encrypted (or inside one). A tag whose name now
+ * matches a plain tag merges into it.
+ */
+export const unsealNames = mutation({
+  args: { scope: vScopeArg, folders: v.array(v.object({ folderId: v.string(), name: v.string() })), tags: v.array(v.object({ tagId: v.string(), name: v.string() })) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
+    const space = await spaceE2ee(ctx, scope);
+    if (space && space.level !== "standard") failE2ee("e2ee_required");
+    if (args.folders.length > 1000 || args.tags.length > 1000) fail("limit_exceeded", "Too many names in one call.");
+    const seq = await nextSeq(ctx, scope);
+    const clean = (name: string, max: number) => {
+      const n = name.replace(/[\u0000-\u001F\u007F]/g, "").trim().slice(0, max);
+      if (!n) fail("invalid_argument", "Name can't be empty.");
+      return n;
+    };
+    let folders = 0;
+    for (const f of args.folders) {
+      const row = await ctx.db.query("folders").withIndex("by_public_id", (q) => q.eq("publicId", f.folderId)).unique();
+      if (!row || scopeKey(scopeOfRow(row)) !== scopeKey(scope)) fail("not_found", "Folder not found.");
+      if (!row.sealedName) continue;
+      if ((await lockOfFolder(ctx, row._id)) !== undefined) failE2ee("e2ee_locked");
+      await ctx.db.patch(row._id, { name: clean(f.name, 80), sealedName: undefined, updatedAt: Date.now(), seq });
+      folders++;
+    }
+    let tags = 0;
+    for (const t of args.tags) {
+      const row = await ctx.db.query("tags").withIndex("by_public_id", (q) => q.eq("publicId", t.tagId)).unique();
+      if (!row || scopeKey(scopeOfRow(row)) !== scopeKey(scope)) fail("not_found", "Tag not found.");
+      if (!row.sealedName) continue;
+      const name = clean(t.name.replace(/^#/, ""), 40);
+      const normalizedName = normalizeForSearch(name);
+      const base = ctx.db.query("tags");
+      const clash = (
+        await (scope.kind === "personal"
+          ? base.withIndex("by_owner_name", (q) => q.eq("ownerProfileId", scope.profileId).eq("normalizedName", normalizedName))
+          : base.withIndex("by_workspace_name", (q) => q.eq("workspaceId", scope.workspaceId).eq("normalizedName", normalizedName))
+        ).take(5)
+      ).find((x) => x._id !== row._id);
+      if (clash) {
+        // The same name as a plain tag made meanwhile: its notes join that tag.
+        for (const link of await ctx.db.query("documentTags").withIndex("by_tag", (q) => q.eq("tagId", row._id)).collect()) {
+          const dup = (await ctx.db.query("documentTags").withIndex("by_document", (q) => q.eq("documentId", link.documentId)).collect()).some((l) => l.tagId === clash._id);
+          if (dup) await ctx.db.delete(link._id);
+          else await ctx.db.patch(link._id, { tagId: clash._id, seq });
+        }
+        await ctx.db.delete(row._id);
+      } else {
+        await ctx.db.patch(row._id, { name, normalizedName, nameMac: undefined, sealedName: undefined, seq });
+      }
+      tags++;
+    }
+    return { folders, tags };
+  },
+});
+
+// ---------------------------------------------------------------- Foli AI memories (§5.7 aiMemory)
+
+/**
+ * Moves the caller's Foli AI memories of an encrypted space into sealed `aiMemory` records (the seal's cleanup
+ * phase, §6.9): the records are written and the server's rows deleted in one mutation.
+ */
+export const moveMemories = mutation({
+  args: { scope: vScopeArg, records: v.array(v.object({ recordId: v.string(), sealed: v.bytes(), keyVersion: v.number() })), memoryIds: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const { scope } = await resolveScope(ctx, profile, args.scope);
+    const space = await spaceE2ee(ctx, scope);
+    if (!space || space.currentKeyVersion < 1) failE2ee("e2ee_not_set_up");
+    if (args.records.length > 500 || args.memoryIds.length > 500) fail("limit_exceeded", "Too many memories in one call.");
+    for (const r of args.records) await writeRecord(ctx, profile, { scope, doc: null }, { kind: "aiMemory", recordId: r.recordId, sealed: r.sealed, keyVersion: r.keyVersion, baseRev: null });
+    let removed = 0;
+    for (const id of args.memoryIds) {
+      const memoryId = ctx.db.normalizeId("aiMemories", id);
+      const row = memoryId ? await ctx.db.get(memoryId) : null;
+      if (!row || row.profileId !== profile._id || scopeKey(scopeOfRow(row)) !== scopeKey(scope)) continue;
+      await ctx.db.delete(row._id);
+      removed++;
+    }
+    return { removed };
+  },
+});
+
+/** Puts the caller's memories back as server rows when the space is Standard again (the unseal's cleanup); their records go. */
+export const restoreMemories = mutation({
+  args: { scope: vScopeArg, memories: v.array(v.object({ kind: vMemoryKind, text: v.string(), source: v.union(v.literal("settings"), v.literal("chat")) })), recordIds: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const { scope } = await resolveScope(ctx, profile, args.scope);
+    const space = await spaceE2ee(ctx, scope);
+    if (space && space.level !== "standard") failE2ee("e2ee_required");
+    if (args.memories.length > 500 || args.recordIds.length > 500) fail("limit_exceeded", "Too many memories in one call.");
+    const now = Date.now();
+    for (const m of args.memories) {
+      const text = m.text.trim().slice(0, 500);
+      if (text) await insertScoped(ctx, "aiMemories", scope, { profileId: profile._id, kind: m.kind, text, source: m.source, createdAt: now, updatedAt: now });
+    }
+    const seq = await nextSeq(ctx, scope);
+    for (const recordId of args.recordIds) {
+      const rec = await findRecord(ctx, scope, "aiMemory", recordId, profile._id);
+      if (rec && rec.deletedAt === undefined) await ctx.db.patch(rec._id, { sealed: new ArrayBuffer(0), size: 0, rev: rec.rev + 1, deletedAt: now, updatedAt: now, updatedBy: profile._id, seq });
+    }
     return null;
   },
 });

@@ -7,6 +7,8 @@
 // copy for `plainCopy` links exactly like a Standard page (`publishedCopy` below reads it). The copy doesn't
 // follow edits: "Update published copy" sends it again, "Stop publishing" deletes it and its plain files.
 //
+//   generateFileUploadUrl: an upload of a plain image or file for the copy (then files.finalize as usual):
+//                the file is the copy's own (`files.publishedCopy`), never one of the note's sealed files;
 //   publishCopy: stores (or replaces) the copy for a link (makes a `plainCopy` link when none is given);
 //   unpublish:   deletes the copy, its chunks and its plain files, and revokes the link.
 import { v, type Infer } from "convex/values";
@@ -20,7 +22,9 @@ import { randomToken, sha256Hex } from "../lib/crypto";
 import { DEFAULTS } from "../lib/documents";
 import { insertScoped, sameScopeRows, scopeOfRow } from "../lib/scope";
 import { vDocumentCover, vDocumentStyle, vWireBlock } from "../lib/validators";
-import { releaseFileStorage } from "../lib/entitlements";
+import { assertStorageFor, releaseFileStorage } from "../lib/entitlements";
+import { consume } from "../lib/rateLimit";
+import { MAX_FILE_BYTES, MAX_IMAGE_BYTES, safeFilename } from "../lib/images";
 import { deleteFileBlob } from "../lib/fileCopies";
 import { isLocked, isSealed } from "../lib/e2ee/state";
 import { E2EE_LIMITS } from "../lib/e2ee/validators";
@@ -141,8 +145,21 @@ async function dropPlainFile(ctx: MutationCtx, row: Doc<"e2eePublishedCopies">, 
     .query("files")
     .withIndex("by_public_id", (q) => q.eq("publicId", publicId))
     .unique();
-  // Only a plain file of the same note: never a sealed file or someone else's.
-  if (!file || file.sealed !== undefined || file.documentId !== row.documentId || !sameScopeRows(file, row)) return;
+  // Only a plain file made for a published copy of the same note: never a sealed file, the note's own, or someone else's.
+  if (!file || file.sealed !== undefined || !file.publishedCopy || file.documentId !== row.documentId || !sameScopeRows(file, row)) return;
+  // Another published copy of the note (another link) may show the same image.
+  const others = await ctx.db
+    .query("e2eePublishedCopies")
+    .withIndex("by_document", (q) => q.eq("documentId", row.documentId))
+    .take(20);
+  for (const other of others) {
+    if (other._id === row._id) continue;
+    const chunks = await ctx.db
+      .query("e2eePublishedChunks")
+      .withIndex("by_copy", (q) => q.eq("copyId", other._id))
+      .collect();
+    if (chunks.some((c) => c.data.includes(publicId))) return;
+  }
   if (file.status === "ready" && !file.sharesBlob) await releaseFileStorage(ctx, file, scopeOfRow(file));
   await deleteFileBlob(ctx, file);
   await ctx.db.delete(file._id);
@@ -161,13 +178,62 @@ async function checkCopy(ctx: QueryCtx, doc: Doc<"documents">, copy: PlainCopyIn
       .query("files")
       .withIndex("by_public_id", (q) => q.eq("publicId", id))
       .unique();
-    if (!file || file.sealed !== undefined || file.documentId !== doc._id || !sameScopeRows(file, doc)) fail("invalid_argument", "The published copy refers to a file that isn't a plain file of this note.");
+    if (!file || file.sealed !== undefined || !file.publishedCopy || file.status !== "ready" || file.documentId !== doc._id || !sameScopeRows(file, doc)) {
+      fail("invalid_argument", "The published copy refers to a file that wasn't uploaded for it (e2ee.links.generateFileUploadUrl).");
+    }
   }
   // The format sharing.openPublicLink reads (docs/E2EE_DESIGN.md §5.6 WP4 note): { blocks, collections?, fileIds }.
   const body = JSON.stringify({ blocks: copy.blocks, ...(copy.collections ? { collections: copy.collections } : {}), fileIds: copy.fileIds ?? [] });
   if (bytesOf(body) + bytesOf(copy.title) > E2EE_LIMITS.publishedCopyBytes) fail("limit_exceeded", "This note is too large to publish (5 MB at most).");
   return body;
 }
+
+/** Kinds of plain file a published copy may carry (its images, files and an image cover). */
+const vPublishKind = v.union(v.literal("image"), v.literal("file"), v.literal("cover"));
+const PUBLISH_INTENT_TTL_MS = 10 * 60_000;
+
+/** Who may publish this note: manage access, sealed, not locked, public links on. */
+async function publishable(ctx: MutationCtx, profile: Doc<"profiles">, documentId: string) {
+  await assertWritable(ctx, profile);
+  const { doc } = await requireDocument(ctx, profile, documentId, "manage");
+  if (!isSealed(doc)) fail("invalid_argument", "This note isn't encrypted: publish it as usual.");
+  if (await isLocked(ctx, doc)) fail("forbidden", "This note is always fully encrypted, so it can't be published to the web.");
+  if (!(await isFeatureEnabled(ctx, "public_links"))) fail("forbidden", "Public links are turned off for Folevi right now.");
+  return { doc };
+}
+
+/**
+ * An upload URL for one plain image or file of a published copy (docs/E2EE_DESIGN.md §9.3). The person chose
+ * to make the note public, so these bytes are readable on purpose. The device then calls `files.finalize`
+ * with the intent as for any upload (type sniffed, metadata stripped, counted toward storage); the file is
+ * marked `publishedCopy`, so it is never mistaken for one of the note's sealed files, and it goes when the
+ * copy stops using it (an update or Stop publishing) or with the note.
+ */
+export const generateFileUploadUrl = mutation({
+  args: { documentId: v.string(), filename: v.string(), size: v.number(), mimeType: v.string(), kind: vPublishKind },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { doc } = await publishable(ctx, profile, args.documentId);
+    await consume(ctx, "upload", profile._id);
+    const max = args.kind === "file" ? MAX_FILE_BYTES : MAX_IMAGE_BYTES;
+    if (!Number.isFinite(args.size) || args.size <= 0 || args.size > max) fail("invalid_argument", `Files can be up to ${Math.round(max / 1024 / 1024)} MB.`);
+    const scope = scopeOfRow(doc);
+    const storageProblem = await assertStorageFor(ctx, scope, args.size, profile._id, doc._id);
+    if (storageProblem) fail("quota_exceeded", storageProblem);
+    const intentId = await insertScoped(ctx, "uploadIntents", scope, {
+      profileId: profile._id,
+      documentId: doc._id,
+      kind: args.kind,
+      filename: safeFilename(args.filename),
+      declaredSize: args.size,
+      declaredMime: args.mimeType.slice(0, 100),
+      createdAt: Date.now(),
+      expiresAt: Date.now() + PUBLISH_INTENT_TTL_MS,
+      forPublish: true,
+    });
+    return { uploadUrl: await ctx.storage.generateUploadUrl(), intentId: intentId as string };
+  },
+});
 
 /**
  * Stores the plain copy of a sealed note for a link: replaces an earlier copy of that link, or (no
@@ -177,11 +243,7 @@ export const publishCopy = mutation({
   args: { documentId: v.string(), linkId: v.optional(v.string()), copy: vPlainCopyInput },
   handler: async (ctx, args): Promise<{ linkId: string; token?: string; publishedAt: number }> => {
     const profile = await requireProfile(ctx);
-    await assertWritable(ctx, profile);
-    const { doc } = await requireDocument(ctx, profile, args.documentId, "manage");
-    if (!isSealed(doc)) fail("invalid_argument", "This note isn't encrypted: publish it as usual.");
-    if (await isLocked(ctx, doc)) fail("forbidden", "This note is always fully encrypted, so it can't be published to the web.");
-    if (!(await isFeatureEnabled(ctx, "public_links"))) fail("forbidden", "Public links are turned off for Folevi right now.");
+    const { doc } = await publishable(ctx, profile, args.documentId);
     const title = args.copy.title.trim().slice(0, 300);
     const body = await checkCopy(ctx, doc, args.copy);
     const now = Date.now();

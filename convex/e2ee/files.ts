@@ -11,7 +11,7 @@
 //
 // WP3.
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, mutation, type MutationCtx } from "../_generated/server";
+import { action, internalMutation, internalQuery, mutation, query, type MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { isValidId } from "@folevi/editor-schema";
@@ -232,7 +232,7 @@ export const swapSealed = internalMutation({
       .query("files")
       .withIndex("by_public_id", (q) => q.eq("publicId", args.fileId))
       .unique();
-    if (!file || file.status !== "ready" || !file.documentId || file.documentId !== intent.documentId) fail("not_found", "File not found.");
+    if (!file || file.status !== "ready" || !file.documentId || file.documentId !== intent.documentId || file.publishedCopy) fail("not_found", "File not found.");
     const doc = (await ctx.db.get(file.documentId))!;
     if (args.sealed) await checkSealedFile(ctx, doc, args.sealed);
     else if (!args.plain) fail("invalid_argument", "Say what the file is.");
@@ -342,5 +342,59 @@ export const rewrap = mutation({
     });
     await addFileId(ctx, target, args.newFileId);
     return { fileId: args.newFileId };
+  },
+});
+
+/**
+ * After a note key rotation (a link revoked, a guest or member removed, §4.9): the file keys of the note's
+ * files wrapped again with the newest note key, so old note key versions can go once nothing uses them.
+ * The bytes and their metadata stay as they are (both are sealed with the file key itself). A file whose
+ * key is already under that version or a newer one is skipped.
+ */
+export const rewrapKeys = mutation({
+  args: { documentId: v.string(), files: v.array(v.object({ fileId: v.string(), key: v.bytes(), k: v.number() })) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+    if (doc.sealedAt === undefined) fail("invalid_argument", "This note isn't encrypted.");
+    if (args.files.length > 200) fail("limit_exceeded", "At most 200 files per call.");
+    const versions = new NoteKeyVersions(ctx);
+    const skipped: string[] = [];
+    let rewrapped = 0;
+    for (const f of args.files) {
+      const file = await ctx.db
+        .query("files")
+        .withIndex("by_public_id", (q) => q.eq("publicId", f.fileId))
+        .unique();
+      if (!file || file.documentId !== doc._id || !file.sealed) fail("not_found", "File not found.");
+      if (!(await versions.has(doc._id, f.k))) failE2ee("e2ee_plaintext", "The file key names a key version this note doesn't have.");
+      checkRecord(f.key, E2EE_LIMITS.keyWrapBytes, "The file key", f.k);
+      if (file.sealed.k >= f.k) {
+        skipped.push(f.fileId);
+        continue;
+      }
+      await ctx.db.patch(file._id, { sealed: { ...file.sealed, key: f.key, k: f.k } });
+      rewrapped++;
+    }
+    return { rewrapped, skipped };
+  },
+});
+
+/** The note's sealed files whose key is under a note key older than its newest (what `rewrapKeys` is for). */
+export const oldKeyFiles = query({
+  args: { documentId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { doc } = await requireDocument(ctx, profile, args.documentId, "write");
+    const newest = Math.max(0, ...(await new NoteKeyVersions(ctx).of(doc._id)));
+    return (
+      await ctx.db
+        .query("files")
+        .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+        .take(500)
+    )
+      .filter((f) => f.status === "ready" && f.sealed && f.sealed.k < newest)
+      .map((f) => ({ fileId: f.publicId, k: f.sealed!.k, key: f.sealed!.key }));
   },
 });

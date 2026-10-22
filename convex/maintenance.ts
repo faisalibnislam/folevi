@@ -224,18 +224,15 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
  * given on it, which hold its guests' access, and public links), then folders, tags, files and anything else left
  * in it. Bounded per call; returns true when nothing is left.
  */
-/** Deletes a published readable copy and its chunks; false when the budget ran out first (call again). */
+/**
+ * Deletes a published copy left in a scope (its note is gone already), with its chunks and the plain images
+ * and files made for it: WP5's dropPublishedCopies, which takes every copy of that note. Returns false so the
+ * caller looks again (the budget is spent for the copies' chunks).
+ */
 async function deletePublishedCopy(ctx: MutationCtx, copy: Doc<"e2eePublishedCopies">, budget: Budget): Promise<boolean> {
-  const chunks = await ctx.db
-    .query("e2eePublishedChunks")
-    .withIndex("by_copy", (q) => q.eq("copyId", copy._id))
-    .take(Math.max(1, budget.left));
-  for (const c of chunks) await ctx.db.delete(c._id);
-  budget.spend(chunks.length);
-  if (budget.exhausted) return false;
-  await ctx.db.delete(copy._id);
-  budget.spend();
-  return true;
+  await dropPublishedCopies(ctx, copy.documentId);
+  budget.spend(Math.max(1, copy.chunkCount + 1));
+  return !budget.exhausted;
 }
 
 /** Deletes the text found in a file (fileText.ts), with the file. */

@@ -87,7 +87,7 @@ async function pulledDocument(ctx: QueryCtx, ids: IdResolver, d: Doc<"documents"
       .query("files")
       .withIndex("by_document", (q) => q.eq("documentId", d._id))
       .take(500)
-  ).filter((f) => f.status === "ready");
+  ).filter((f) => f.status === "ready" && !f.publishedCopy);
   const sealed = sealedFieldsOf(d);
   return {
     id: d.publicId,

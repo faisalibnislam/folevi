@@ -182,7 +182,8 @@ export const commitFile = internalMutation({
     const scope = scopeOfRow(intent);
     // The note was sealed between the upload URL and now: its files are sealed only (docs/E2EE_DESIGN.md §5.7).
     const forDoc = intent.documentId ? await ctx.db.get(intent.documentId) : null;
-    if (forDoc?.sealedAt !== undefined) failE2ee("e2ee_required");
+    // (Except a plain image or file made on purpose for its published copy, docs/E2EE_DESIGN.md §9.3.)
+    if (forDoc?.sealedAt !== undefined && !intent.forPublish) failE2ee("e2ee_required");
     const storageProblem = await assertStorageFor(
       ctx,
       scope,
@@ -213,6 +214,7 @@ export const commitFile = internalMutation({
       height: args.height,
       status: "ready",
       createdAt: Date.now(),
+      ...(intent.forPublish ? { publishedCopy: true } : {}),
     });
     await adjustStorageUsed(ctx, scope, args.size, chargedTo);
     await bump(ctx, "storage_bytes", args.size);

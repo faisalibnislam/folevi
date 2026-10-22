@@ -1089,6 +1089,28 @@ retention keep working. `documentSnapshots.title` is `""`, `sealed: true`.
   sends the device's bytes; `documents.deletePermanently` takes `confirmTitle: "sealed"` for a sealed note;
   `documents.duplicate`, `copies.copyTo`, `changes.undo`, `copyVersion`, `restoreSnapshot` and
   `files.shareForPaste` across notes answer `e2ee_device_only` for sealed notes.
+- Follow-up for WP8 (2026-10-22). Decrypting finishes: `e2ee.migrate.unsealSnapshot({ snapshotId, content:
+  { title, icon, cover?, style?, blocks }, name })` puts a version back in plaintext (who changed what is kept
+  from the sealed version; the note must already be unsealed) and `e2ee.migrate.unsealNames({ scope, folders,
+  tags })` puts names back (Standard spaces only, never inside a locked folder; a tag whose name now matches a
+  plain tag merges into it). Rotation: `e2ee.files.oldKeyFiles({ documentId })` lists a note's files whose key
+  is under an older note key and `e2ee.files.rewrapKeys({ documentId, files: { fileId, key, k }[] })` wraps
+  them with the newest (bytes and metadata unchanged; never back to an older key). A re-seal claim still lists
+  notes by their blocks and title only, so the device rewraps files while it re-seals a note.
+- Study schedules (§6.7) travel per person: `plainExtras` and `e2ee.migrate.plainStudy({ documentId })` give
+  the caller's own `studyReviews` rows; writing their `studyReview` record (in `finishDocument` or
+  `e2ee.content.putRecord`) deletes those rows; `finishUnseal({ …, studyReviews })` and
+  `e2ee.migrate.restoreStudy({ documentId, studyReviews })` (for others, after the note is readable again) put
+  them back and drop the record. Others' schedules stay as server rows until their own device carries them
+  (they hold timing only, no text). Foli AI memories: `e2ee.migrate.moveMemories({ scope, records, memoryIds })`
+  writes `aiMemory` records and deletes the server rows in one mutation; `restoreMemories({ scope, memories,
+  recordIds })` reverses it in a Standard space.
+- Published copies carry plain files of their own: `e2ee.links.generateFileUploadUrl({ documentId, filename,
+  size, mimeType, kind: "image" | "file" | "cover" })`, then `files.finalize` as for any upload; the row is
+  marked `files.publishedCopy` (and its intent `uploadIntents.forPublish`), is never one of the note's sealed
+  files (pull, migration and `replaceBlob` leave it out), and `publishCopy` accepts only such files. It goes when
+  no copy of the note uses it any more, with the note, and with the account or workspace (the purges call
+  `dropPublishedCopies`).
 
 ### 5.5 What the server still validates, and what it purges
 

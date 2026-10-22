@@ -138,15 +138,23 @@ object Widgets {
         }
         val today = LocalDate.now()
         return try {
+            // Check-offs made offline go first; one that still can't be sent keeps its task hidden.
+            val pending = read(context).optJSONArray("pendingDone") ?: JSONArray()
+            val unsent = JSONArray()
+            for (i in 0 until pending.length()) {
+                val id = pending.optString(i)
+                if (id.isNotEmpty() && runCatching { api.setTask(id, true) }.isFailure) unsent.put(id)
+            }
+            val hidden = (0 until unsent.length()).map { unsent.getString(it) }.toSet()
             val tasks = api.openTasks(today.plusDays(1))
             val notes = api.recentNotes(10)
             val t = JSONArray()
-            tasks.filter { it.dueDate != null && it.dueDate <= today.toString() }
+            tasks.filter { it.dueDate != null && it.dueDate <= today.toString() && it.id !in hidden }
                 .sortedWith(compareBy({ it.dueDate }, { it.dueTime ?: "99" }))
                 .forEach { t.put(JSONObject().put("id", it.id).put("text", it.text).put("due", it.dueDate).put("time", it.dueTime).put("noteId", it.noteId).put("noteTitle", it.noteTitle).put("overdue", it.dueDate!! < today.toString())) }
             val n = JSONArray()
             notes.forEach { n.put(JSONObject().put("id", it.id).put("title", it.title).put("place", it.place).put("updatedAt", it.updatedAt)) }
-            write(context, JSONObject().put("signedIn", true).put("updatedAt", System.currentTimeMillis()).put("tasks", t).put("notes", n))
+            write(context, JSONObject().put("signedIn", true).put("updatedAt", System.currentTimeMillis()).put("tasks", t).put("notes", n).put("pendingDone", unsent))
             true
         } catch (e: FoleviApi.Failure.SignedOut) {
             DeviceCredential.get(context).clear()

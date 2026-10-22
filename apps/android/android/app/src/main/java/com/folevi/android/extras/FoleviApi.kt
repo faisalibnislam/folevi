@@ -62,13 +62,13 @@ class FoleviApi(private val base: String, private val token: String, private val
     fun places(): List<Place> = list(get("places")) { Place(it.getString("id"), it.getString("name")) }
 
     fun recentNotes(limit: Int = 10): List<Note> = list(get("notes", mapOf("limit" to limit.toString()))) {
-        Note(it.getString("id"), it.optString("title"), it.optJSONObject("place")?.optString("name").orEmpty(), it.optString("updatedAt"))
+        Note(it.getString("id"), it.str("title"), it.optJSONObject("place")?.str("name").orEmpty(), it.str("updatedAt"))
     }
 
     /** Open tasks due on or before `dueBefore` (YYYY-MM-DD). */
     fun openTasks(dueBefore: LocalDate): List<Task> = list(get("tasks", mapOf("status" to "open", "due_before" to dueBefore.toString(), "limit" to "200"))) {
         val note = it.optJSONObject("note") ?: JSONObject()
-        Task(it.getString("id"), it.optString("text"), it.optString("dueDate").ifEmpty { null }, it.optString("dueTime").ifEmpty { null }, it.optString("priority").ifEmpty { null }, note.optString("id"), note.optString("title"))
+        Task(it.getString("id"), it.str("text"), it.str("dueDate").ifEmpty { null }, it.str("dueTime").ifEmpty { null }, it.str("priority").ifEmpty { null }, note.str("id"), note.str("title"))
     }
 
     /** A note in the Inbox of `place` ("personal" or a workspace id; null: Personal). */
@@ -96,3 +96,6 @@ class FoleviApi(private val base: String, private val token: String, private val
         }
     }
 }
+
+/** A string field, "" when it's missing or null (org.json's optString answers "null" for a JSON null). */
+internal fun JSONObject.str(k: String): String = if (isNull(k)) "" else optString(k)

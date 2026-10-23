@@ -41,6 +41,7 @@
     "@types/node": "24.13.6",
     "@types/web-push": "3.6.4",
     "convex-test": "0.0.60",
+    "esbuild": "0.27.0",
     "eslint": "10.11.0",
     "prettier": "3.9.9",
     "turbo": "2.11.4",

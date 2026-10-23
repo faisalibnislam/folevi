@@ -6,6 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { DEFAULT_COVER, folderMoveProblem, renameInCollectionFormula, scopeIdKey, type WireScope } from "@folevi/editor-schema";
 import type { api } from "@/lib/convex/api";
 import type { OutboxArgs, OutboxEntry, OutboxName } from "./outbox";
+import { placeFolder } from "@/lib/app/folderDrop";
 
 /** A change still on this device: waiting for a connection (or being sent), or refused by the server. */
 export type Waiting = "queued" | "failed";
@@ -52,10 +53,12 @@ function overlayFolders<T extends SidebarFolder>(list: T[], entries: readonly Ou
     } else if (is(e, "organization.setFolderColor")) {
       folders = folders.map((f) => (f.id === e.args.folderId ? { ...f, color: e.args.color } : f));
     } else if (is(e, "organization.moveFolder")) {
-      const { folderId, parentFolderId } = e.args;
+      const { folderId, parentFolderId, afterFolderId } = e.args;
       if (!folders.some((f) => f.id === folderId) || (parentFolderId !== null && !folders.some((f) => f.id === parentFolderId))) continue;
       if (folderMoveProblem(folders, folderId, parentFolderId)) continue;
-      folders = folders.map((f) => (f.id === folderId ? { ...f, parentFolderId } : f));
+      // Dragged to a place among its siblings: it shows there at once (lib/app/folderDrop.ts, as the server does it).
+      if (afterFolderId !== undefined) folders = placeFolder(folders, folderId, parentFolderId, afterFolderId) ?? folders;
+      else folders = folders.map((f) => (f.id === folderId ? { ...f, parentFolderId } : f));
     } else if (is(e, "organization.deleteFolder")) {
       const gone = folders.find((f) => f.id === e.args.folderId);
       if (!gone) continue;

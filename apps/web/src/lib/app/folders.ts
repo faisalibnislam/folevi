@@ -8,22 +8,27 @@ import { useCachedQuery, useOutboxEntries } from "@/lib/sync/queryCache";
 import { overlaySidebar, type SidebarData } from "@/lib/sync/overlays";
 import type { Outbox } from "@/lib/sync/outbox";
 import { useAppState } from "./state";
+import { beginDrag, dragState, endDrag } from "./dragSession";
 
 /** A dragged folder (sidebar rows), by id. */
 export const FOLDER_MIME = "application/x-folevi-folder";
 
 // Drop targets decide whether they take a folder while it's still in the air, when the drag's data can't be
-// read yet (only its types): the folder being dragged is kept here from dragstart to dragend.
-let dragging: string | null = null;
-
+// read yet (only its types): the folder being dragged is kept (lib/app/dragSession.ts) from dragstart to dragend.
 export function startFolderDrag(e: DragEvent, id: string) {
   e.dataTransfer.effectAllowed = "move";
   e.dataTransfer.setData(FOLDER_MIME, id);
-  dragging = id;
+  beginDrag({ kind: "folder", id });
+  // The pointer carries the row itself (a link would show the browser's chip with its address).
+  const row = e.currentTarget instanceof HTMLElement ? (e.currentTarget.closest<HTMLElement>("[data-drop-folder]") ?? e.currentTarget) : null;
+  if (row) {
+    const box = row.getBoundingClientRect();
+    e.dataTransfer.setDragImage(row, Math.min(Math.max(e.clientX - box.left, 0), box.width), Math.min(Math.max(e.clientY - box.top, 0), box.height));
+  }
 }
 
 export function endFolderDrag() {
-  dragging = null;
+  endDrag();
 }
 
 export function isFolderDrag(e: DragEvent): boolean {
@@ -32,11 +37,12 @@ export function isFolderDrag(e: DragEvent): boolean {
 
 /** The folder being dragged right now (null when it isn't a folder, or it came from another window). */
 export function draggingFolderId(): string | null {
-  return dragging;
+  const p = dragState().payload;
+  return p?.kind === "folder" ? p.id : null;
 }
 
 export function draggedFolderId(e: DragEvent): string | null {
-  return e.dataTransfer.getData(FOLDER_MIME) || dragging;
+  return e.dataTransfer.getData(FOLDER_MIME) || draggingFolderId();
 }
 
 /** What to tell someone whose folder can't go there. */
@@ -105,10 +111,11 @@ export function useFolderActions() {
       setColor(folderId: string, color: string | null) {
         requireOutbox(outbox).enqueue("organization.setFolderColor", { folderId, color }, { keys: [`folder:${folderId}`], label: "Folder color" });
       },
-      move(folderId: string, parentFolderId: string | null) {
+      /** Moves a folder into `parentFolderId`; with `afterFolderId`, right after that sibling (null: first). */
+      move(folderId: string, parentFolderId: string | null, afterFolderId?: string | null) {
         requireOutbox(outbox).enqueue(
           "organization.moveFolder",
-          { folderId, parentFolderId },
+          { folderId, parentFolderId, ...(afterFolderId !== undefined ? { afterFolderId } : {}) },
           { keys: [`folder:${folderId}`, ...(parentFolderId ? [`folder:${parentFolderId}`] : [])], label: "Move folder" },
         );
       },

@@ -7,6 +7,7 @@ import { ArrowRight, CalendarDays, CheckSquare, FileDiff, FileText, House as Hom
 import { fileTextLabel, flattenFolders, type FileTextSource } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useFolderTree } from "@/lib/app/folders";
+import { startPointerDrag } from "@/lib/app/dragSession";
 import { openNextInNewTab } from "@/lib/app/tabs";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
@@ -93,6 +94,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     }
     if (!open && d.open) d.close();
   }, [open]);
+
+  // A note found here can be dragged onto a folder in the sidebar. The browser's own drag can't leave the
+  // palette (the window behind it is inert while it's open), so the drop layer carries it and the palette closes.
+  const dragOut = (e: React.DragEvent<HTMLElement>, id: string) => {
+    e.preventDefault();
+    startPointerDrag({ payload: { kind: "notes", ids: [id] }, face: e.currentTarget, x: e.clientX, y: e.clientY });
+    onClose();
+  };
 
   const { openAsk } = useShell();
   const aiOn = useAiEnabled();
@@ -307,7 +316,15 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                   ) : null;
                 return (
                   <FragmentWithHeader key={`${item.kind}-${item.id}`} header={header}>
-                    <li id={`${listId}-${i}`} role="option" aria-selected={selected} className={cls} onMouseEnter={() => setActive(i)} onClick={() => run(item)}>
+                    <li
+                      id={`${listId}-${i}`}
+                      role="option"
+                      aria-selected={selected}
+                      className={cls}
+                      onMouseEnter={() => setActive(i)}
+                      onClick={() => run(item)}
+                      {...(item.kind === "doc" && !allPlaces && !iphone ? { draggable: true, onDragStart: (e: React.DragEvent<HTMLElement>) => dragOut(e, item.id) } : {})}
+                    >
                       {item.kind === "doc" ? (
                         <>
                           <span className={iphone ? "grid w-7 flex-none place-items-center text-muted" : "mt-0.5 w-5 flex-none text-center"} aria-hidden>

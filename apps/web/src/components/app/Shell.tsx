@@ -17,6 +17,7 @@ import { TabStrip } from "./TabStrip";
 import { CommandPalette } from "./CommandPalette";
 import { QuickAddTask } from "./QuickAddTask";
 import { AppContextMenu } from "./AppContextMenu";
+import { FolderDropLayer } from "./FolderDropLayer";
 import { AskAiChat } from "@/components/ai/AskAiChat";
 import { AI_FOCUS_EVENT } from "@/components/ai/chat/events";
 import { useAiAccess } from "@/components/ai/useAi";
@@ -372,6 +373,8 @@ export function Shell() {
     <>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppContextMenu />
+      {/* Dropping notes and folders on folders (sidebar, folder cards and chips), by mouse or by finger. */}
+      <FolderDropLayer />
       <DesktopBridge />
       <DesktopCapabilities />
       {/* Folevi for Mac in Electron: the tab shortcuts (⌘1 to ⌘9, ⌃Tab), which its menus don't have. */}

@@ -2,6 +2,7 @@
 
 import type { DragEvent } from "react";
 import { dragNotesOut } from "@/lib/desktop/capabilities";
+import { beginDrag } from "./dragSession";
 
 /** One dragged note (also what list reordering reads). */
 export const NOTE_MIME = "application/x-folevi-document";
@@ -19,6 +20,8 @@ export function startNoteDrag(e: DragEvent, ids: string[], titleOf?: (id: string
   e.dataTransfer.effectAllowed = "move";
   e.dataTransfer.setData(NOTE_MIME, ids[0]!);
   e.dataTransfer.setData(NOTES_MIME, JSON.stringify(ids));
+  // Drop targets read what's dragged while it's in the air (the drag's own data can't be read until the drop).
+  beginDrag({ kind: "notes", ids });
   // The native Mac app: dropped in Finder, Mail or another app, the notes become Markdown files.
   dragNotesOut(ids, titleOf);
   const image = previewOf(e.currentTarget);
@@ -57,7 +60,7 @@ export function startNoteDrag(e: DragEvent, ids: string[], titleOf?: (id: string
 }
 
 /** What the drag shows: a card's face (its link, without the hover buttons), else the row it starts from. */
-function previewOf(target: EventTarget): HTMLElement | null {
+export function previewOf(target: EventTarget): HTMLElement | null {
   if (!(target instanceof HTMLElement)) return null;
   // A drag handle stands for its row.
   const host = target.getBoundingClientRect().height < 24 ? (target.closest<HTMLElement>("li, tr, [role=row]") ?? target) : target;
@@ -65,11 +68,15 @@ function previewOf(target: EventTarget): HTMLElement | null {
   return face && face.getBoundingClientRect().height > 60 ? face : host;
 }
 
-export function isNoteDrag(e: DragEvent): boolean {
-  return e.dataTransfer.types.includes(NOTE_MIME);
+/** Anything carrying a drag's data (React's drag event or the browser's). */
+type WithTransfer = { dataTransfer: DataTransfer | null };
+
+export function isNoteDrag(e: WithTransfer): boolean {
+  return !!e.dataTransfer?.types.includes(NOTE_MIME);
 }
 
-export function draggedNoteIds(e: DragEvent): string[] {
+export function draggedNoteIds(e: WithTransfer): string[] {
+  if (!e.dataTransfer) return [];
   try {
     const many = JSON.parse(e.dataTransfer.getData(NOTES_MIME) || "null") as unknown;
     if (Array.isArray(many) && many.every((x) => typeof x === "string")) return many as string[];

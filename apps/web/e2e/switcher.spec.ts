@@ -27,17 +27,19 @@ test("a new account starts in Personal with no workspaces, and each context show
   await expect(switcher(page)).toContainText("Personal");
   await expect(recent.getByRole("link", { name: /Welcome to Folevi/ })).toBeVisible();
 
-  // The menu: Personal first (checked, with your plan), then Workspaces (none yet) and "New workspace…".
+  // The menu: your places first. You (Personal: your name and email), checked, and "New workspace…" under you.
   await switcher(page).click();
   const menu = page.getByRole("menu", { name: SWITCHER });
+  await expect(menu.getByText("Places", { exact: true })).toBeVisible();
   const personal = menu.getByRole("menuitemradio", { name: "Personal", exact: true });
   await expect(personal).toHaveAttribute("aria-checked", "true");
   await expect(personal).toContainText("Switch Person");
-  await expect(personal).toContainText("Pro AI trial"); // new accounts start with the 7-day Pro AI trial
-  await expect(menu.getByText("Workspaces", { exact: true })).toBeVisible();
-  // Only Personal and the three appearance choices are choices: no workspaces.
-  await expect(menu.getByRole("menuitemradio")).toHaveCount(4);
+  await expect(personal).toHaveAttribute("aria-description", /@example\.com/);
+  // Only Personal is a choice: no workspaces (and the theme is in Settings > Appearance).
+  await expect(menu.getByRole("menuitemradio")).toHaveCount(1);
   await expect(menu.getByRole("menuitem", { name: "New workspace…" })).toBeVisible();
+  // New accounts start with the 7-day Pro AI trial: the note above the button says so.
+  await expect(page.getByRole("navigation", { name: "Folio" }).getByText(/Pro AI trial/)).toBeVisible();
   // Personal has no members or workspace settings, and is never called a workspace.
   await expect(menu.getByRole("menuitem", { name: "Members" })).toHaveCount(0);
   await expect(menu.getByRole("menuitem", { name: "Workspace settings" })).toHaveCount(0);
@@ -61,11 +63,11 @@ test("a new account starts in Personal with no workspaces, and each context show
   await expect(recent.getByRole("link", { name: /Studio plans/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Welcome to Folevi/ })).toHaveCount(0);
 
-  // The menu lists it with your role, checked.
+  // The menu lists it under you with its plan, checked.
   await switcher(page).click();
   const studio = menu.getByRole("menuitemradio", { name: "Switch Studio", exact: true });
   await expect(studio).toHaveAttribute("aria-checked", "true");
-  await expect(studio).toContainText("Owner · Free");
+  await expect(studio).toContainText("Free");
   await expect(menu.getByRole("menuitemradio", { name: "Personal", exact: true })).toHaveAttribute("aria-checked", "false");
   await page.keyboard.press("Escape");
 

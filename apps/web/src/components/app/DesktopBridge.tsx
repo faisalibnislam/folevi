@@ -169,6 +169,7 @@ function useMenuCommands(): (id: string) => void {
   const { tabs, close, homeHref } = useTabs();
   const createDocument = useCreateDocument();
   const ai = useAiAccess().on;
+  const { appearance, setAppearance } = useAppState();
   const onNote = route.name === "doc";
   const docId = route.name === "doc" ? route.id : null;
 
@@ -231,6 +232,12 @@ function useMenuCommands(): (id: string) => void {
           return onNote ? () => shell.setInspectorOpen(!shell.inspectorOpen) : null;
         case "view.focus":
           return () => shell.setFocusMode(!shell.focusMode);
+        case "view.appearance-light":
+          return () => setAppearance("light");
+        case "view.appearance-dark":
+          return () => setAppearance("dark");
+        case "view.appearance-system":
+          return () => setAppearance("system");
         case "go.back":
           return () => back();
         case "go.forward":
@@ -269,7 +276,7 @@ function useMenuCommands(): (id: string) => void {
       if (key && (onNote || !id.startsWith("format."))) return () => press(key);
       return null;
     },
-    [createDocument, navigate, shell, shown, close, tabs, bridge, onNote, back, forward, ai, strip, at],
+    [createDocument, navigate, shell, shown, close, tabs, bridge, onNote, back, forward, ai, strip, at, setAppearance],
   );
 
   // What the menu bar can do now (Find stays the system's: the page has no find bar of its own yet).
@@ -279,12 +286,13 @@ function useMenuCommands(): (id: string) => void {
   useEffect(() => {
     if (!bridge.setMenuState) return;
     const disabled = MAC_MENU_COMMANDS.filter((id) => !id.startsWith("edit.find") && !hasMenuCommand(id) && !builtin(id));
-    const state = { disabled, ai, sidebar: shell.sidebarOpen, inspector: shell.inspectorOpen, focus: shell.focusMode, route: route.name };
+    // (View > Appearance shows the page's theme checked.)
+    const state = { disabled, checked: [`view.appearance-${appearance}`], ai, sidebar: shell.sidebarOpen, inspector: shell.inspectorOpen, focus: shell.focusMode, route: route.name };
     const key = JSON.stringify(state);
     if (key === sent.current) return;
     sent.current = key;
     bridge.setMenuState(state);
-  }, [bridge, builtin, ai, shell.sidebarOpen, shell.inspectorOpen, shell.focusMode, route.name, registered, closedCount]);
+  }, [bridge, builtin, ai, shell.sidebarOpen, shell.inspectorOpen, shell.focusMode, route.name, registered, closedCount, appearance]);
 
   const latest = useRef(builtin);
   latest.current = builtin;

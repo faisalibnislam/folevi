@@ -36,6 +36,26 @@ export interface MenuItem {
   dot?: boolean;
   /** Means nothing inside the iPhone, iPad and Android apps (a new browser tab, Back, Reload): left out there. */
   desktopOnly?: boolean;
+  /** What assistive tech calls the row when the words shown differ (the open account's row shows your name and
+   * is "Personal"). */
+  name?: string;
+  /** A row of a list of places (the account menu): "place" for an account or the library (a large mark, two
+   * lines), "sub" for one under it (a workspace). Both keep the check column. */
+  row?: "place" | "sub";
+  /** The second line is an email: it's cut in the middle, so the start and the domain both stay readable. */
+  middle?: boolean;
+}
+
+/** An email (or any line) cut in the middle when it doesn't fit: the start shrinks, the end ("@domain") stays. */
+function middleCut(text: string): ReactNode {
+  const at = text.lastIndexOf("@");
+  const split = at > 0 && text.length - at <= 20 ? at : Math.max(0, text.length - 10);
+  return (
+    <>
+      <span className="min-w-0 truncate">{text.slice(0, split)}</span>
+      <span className="flex-none whitespace-pre">{text.slice(split)}</span>
+    </>
+  );
 }
 
 /** A small caps label above a group of items (not focusable). */
@@ -102,10 +122,16 @@ export function MenuButton({
   className,
   triggerClassName,
   menuClassName,
+  variant,
+  clear = false,
 }: {
   label: string;
   trigger: ReactNode;
   items: MenuEntry[];
+  /** "switcher": the account menu's look (places, then actions; components/app/accountMenu.css). */
+  variant?: "switcher";
+  /** Never cover the button: a menu taller than the room above or below it scrolls inside that room. */
+  clear?: boolean;
   align?: "start" | "end";
   /** Open below the trigger (default) or above it (for controls at the bottom of the screen). */
   side?: "bottom" | "top";
@@ -187,11 +213,12 @@ export function MenuButton({
           // Opened by holding a card or row on a touch screen (lib/touchContextMenu.ts marks what lifted): beside
           // that, not over it from its hidden "…".
           anchor={() => (wrapRef.current?.closest<HTMLElement>("[data-held-lift]") ?? wrapRef.current)?.getBoundingClientRect() ?? null}
-          beside={() => !!wrapRef.current?.closest("[data-held-lift]")}
+          beside={() => clear || !!wrapRef.current?.closest("[data-held-lift]")}
           ignore={buttonRef}
           align={align}
           side={side}
           menuClassName={menuClassName}
+          variant={variant}
           press={press}
           onClose={(refocus) => {
             pressed.current = false;
@@ -245,8 +272,10 @@ function MenuPanel({
   onClose,
   beside,
   press,
+  variant,
 }: {
   id: string;
+  variant?: "switcher";
   label: string;
   items: MenuEntry[];
   host: HTMLElement;
@@ -452,6 +481,7 @@ function MenuPanel({
       aria-label={label}
       popover="manual"
       data-checks={checks || undefined}
+      data-variant={variant}
       style={pos ?? { position: "fixed", left: 0, top: 0, margin: 0, right: "auto", bottom: "auto", visibility: "hidden" }}
       className={`ui-pop z-[100] min-w-56 overflow-y-auto border-0 p-1.5 text-ink animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none ${(menuClassName ?? "").replace(/(^|\s)w-full(?=\s|$)/g, " ")}`}
       onContextMenu={(e) => e.preventDefault()}
@@ -511,9 +541,10 @@ function MenuPanel({
             role={item.checked === undefined ? "menuitem" : item.multi ? "menuitemcheckbox" : "menuitemradio"}
             aria-checked={item.checked}
             // The label names the item; the quieter lines are read as its description.
-            aria-label={item.description || item.detail ? item.label : undefined}
+            aria-label={item.name ?? (item.description || item.detail ? item.label : undefined)}
             aria-description={[item.description, item.detail, item.badge ? `${item.badge} unread` : null, item.dot && !item.badge ? "something new" : null].filter(Boolean).join(" · ") || undefined}
             data-index={i}
+            data-row={item.row}
             data-highlighted={mac ? lit === i || undefined : undefined}
             tabIndex={i === active ? 0 : -1}
             disabled={item.disabled}
@@ -547,7 +578,11 @@ function MenuPanel({
             {item.description ? (
               <span data-menu-part="label" className="min-w-0 flex-1 leading-tight">
                 <span className="block truncate">{item.label}</span>
-                <span data-menu-part="description" className="mt-0.5 block truncate text-[11.5px] text-muted">{item.description}</span>
+                {item.middle ? (
+                  <span data-menu-part="description" className="mt-0.5 flex min-w-0 text-[11.5px] text-muted">{middleCut(item.description)}</span>
+                ) : (
+                  <span data-menu-part="description" className="mt-0.5 block truncate text-[11.5px] text-muted">{item.description}</span>
+                )}
               </span>
             ) : (
               <span data-menu-part="label" className="flex-1">{item.label}</span>

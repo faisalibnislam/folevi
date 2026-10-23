@@ -237,6 +237,13 @@ enum MenuModel {
                 page("view.cards", "As Cards", window: true),
                 page("view.list", "As List", window: true),
                 .separator,
+                // The page's theme (Settings > Appearance), checked as the page says.
+                .submenu(id: "view.appearance", title: "Appearance", nodes: [
+                    page("view.appearance-light", "Light"),
+                    page("view.appearance-dark", "Dark"),
+                    page("view.appearance-system", "Match System"),
+                ]),
+                .separator,
                 app("view.actual-size", "Actual Size", k("0")),
                 app("view.zoom-in", "Zoom In", k("+")),
                 alt("view.zoom-in", k("="), .app("view.zoom-in")),

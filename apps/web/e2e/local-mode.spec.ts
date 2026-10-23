@@ -91,8 +91,8 @@ test.describe("local mode", { tag: "@local" }, () => {
     const problems = watchPage(page);
     await openHome(page);
     await expectNoAccountChrome(page);
-    // The one note sits where the workspace switcher was; the menu there has the library's own items.
-    await expect(sidebar(page).getByText(NOTE)).toBeVisible();
+    // No note above the account button (signing in is in its menu); the menu there has the library's own items.
+    await expect(sidebar(page).getByText(NOTE)).toHaveCount(0);
     await sidebar(page).getByRole("button", { name: /settings and help/ }).click();
     const menu = page.getByRole("menu");
     await expect(menu.getByRole("menuitem", { name: "Settings" })).toBeVisible();
@@ -277,7 +277,8 @@ test.describe("local mode", { tag: "@local" }, () => {
     // The sidebar is a drawer on a phone.
     await page.getByRole("button", { name: "Show sidebar" }).click();
     const drawer: Locator = sidebar(page);
-    await expect(drawer.getByText(NOTE)).toBeVisible();
+    await expect(drawer.getByRole("button", { name: /settings and help/ })).toBeVisible();
+    await expect(drawer.getByText(NOTE)).toHaveCount(0);
     await expect(drawer.getByRole("link", { name: "Shared with Me" })).toHaveCount(0);
     await page.keyboard.press("Escape");
     await page.goto("/settings");

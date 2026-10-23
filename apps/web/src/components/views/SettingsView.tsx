@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, LockKeyhole, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, ShieldCheck, Smartphone, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
+import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, HelpCircle, LifeBuoy, LockKeyhole, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, Shield, ShieldCheck, Smartphone, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { ViewChrome } from "@/components/app/Shell";
 import { NewWorkspaceDialog } from "@/components/app/NewWorkspaceDialog";
+import { openAdminConsole } from "@/components/app/WorkspaceMenu";
+import { SupportDialog } from "@/components/support/SupportDialog";
 import { Button } from "@/components/ui/Button";
 import { AccountSection } from "./settings/AccountSection";
 import { AiSection } from "./settings/AiSection";
@@ -152,6 +154,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
             </IosSection>
           ))}
           {!workspace && caps.workspaces ? <IphoneCreateWorkspace /> : null}
+          <SupportGroup look="ios" />
           <VersionFooter />
         </div>
       </ViewChrome>
@@ -204,6 +207,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
                 </IosSection>
               ))}
               {!workspace && caps.workspaces ? <IphoneCreateWorkspace /> : null}
+              <SupportGroup look="ios" />
               <VersionFooter />
             </nav>
             <IphoneLookContext.Provider value>
@@ -259,6 +263,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
               </div>
             ))}
             {!workspace && caps.workspaces ? <CreateWorkspaceNudge /> : null}
+            <SupportGroup look="web" />
           </div>
         </nav>
         <div className="min-w-0 space-y-5">
@@ -356,6 +361,59 @@ function SectionBody({ section, noWorkspace, sectionHidden }: { section: Section
       {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
       {section === "desktop" ? <DesktopSection /> : null}
       {section === "this-device" ? <ThisDeviceSection /> : null}
+    </div>
+  );
+}
+
+/**
+ * Help, Contact support and (for Folevi's own admins) the Admin console, at the end of the list of sections: the
+ * account menu keeps only Help, so these live here.
+ */
+function SupportGroup({ look }: { look: "web" | "ios" }) {
+  const { profile } = useAppState();
+  const caps = useCapabilities();
+  const [contacting, setContacting] = useState(false);
+  // Without an account (the library) there's no support form: an email instead.
+  const contact = () => (caps.account ? setContacting(true) : void window.open("mailto:support@folevi.com", "_blank", "noopener"));
+  const admin = Boolean((profile as { platformRole?: unknown }).platformRole);
+  const dialog = <SupportDialog open={contacting} onClose={() => setContacting(false)} />;
+  if (look === "ios")
+    return (
+      <IosSection header="Support">
+        <IosRow icon={<RowIcon><HelpCircle /></RowIcon>} label="Help" href="/help" />
+        <IosRow icon={<RowIcon><LifeBuoy /></RowIcon>} label="Contact support" onClick={contact} />
+        {admin ? <IosRow icon={<RowIcon><Shield /></RowIcon>} label="Admin console" onClick={openAdminConsole} /> : null}
+        {dialog}
+      </IosSection>
+    );
+  const row = "group flex h-8 w-full items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-left text-[13.5px] text-ink/90 outline-none transition-[background-color,color] duration-150 hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
+  const icon = "flex-none text-muted transition-colors group-hover:text-heading";
+  return (
+    <div className="flex-none">
+      <p className="mb-1.5 truncate px-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-faint">Support</p>
+      <ul className="flex gap-0.5 md:flex-col">
+        <li>
+          <AppLink href="/help" className={row}>
+            <HelpCircle size={16} aria-hidden className={icon} />
+            Help
+          </AppLink>
+        </li>
+        <li>
+          <button type="button" onClick={contact} className={row}>
+            <LifeBuoy size={16} aria-hidden className={icon} />
+            Contact support…
+          </button>
+        </li>
+        {admin ? (
+          <li>
+            <button type="button" onClick={openAdminConsole} className={row}>
+              <Shield size={16} aria-hidden className={icon} />
+              Admin console
+            </button>
+          </li>
+        ) : null}
+      </ul>
+      {dialog}
     </div>
   );
 }

@@ -1,0 +1,123 @@
+/* The account menu at the bottom of the sidebar (WorkspaceMenu.tsx; MenuButton variant="switcher"): places first
+   (a quiet label, each account as a 52 pt row with its 36 pt picture, name and email, its workspaces under it as
+   32 pt rows, the library "On this Mac"), one check column at the end, then 32 pt actions. About 300 wide, opening
+   up from the account button without covering it. The hover and keyboard states are the platform menu's own
+   (globals.css): this file only sets the measure. Selectors are long on purpose: they outrank the Mac app's and
+   the iOS app's menu rules, which style every menu. */
+
+/* The website and the Mac app. */
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] {
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  min-width: 0;
+  padding: 6px;
+}
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] .ui-caps {
+  padding: 8px 10px 6px;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] .ui-menu-item {
+  min-height: 32px;
+  gap: 10px;
+  padding-block: 0;
+  padding-inline: 10px;
+  font-size: 13.5px;
+  line-height: 18px;
+}
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-menu-part="icon"] {
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+  justify-content: center;
+}
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [role="separator"] {
+  height: 1px;
+  margin: 6px 10px;
+  background: var(--color-line);
+}
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-menu-part="shortcut"] {
+  padding-left: 12px;
+  font-size: 12px;
+  color: var(--color-ink-faint);
+}
+
+/* An account or the library: 52 tall, the 36 pt mark, the name over the email. */
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] .ui-menu-item[data-row="place"] {
+  min-height: 52px;
+  padding-block: 8px;
+}
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-row="place"] [data-menu-part="icon"] {
+  width: 36px;
+}
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-row="place"] [data-menu-part="label"] > :first-child {
+  font-weight: 550;
+  color: var(--color-heading);
+}
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-row="place"] [data-menu-part="description"] {
+  margin-top: 1px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-ink-muted);
+}
+
+/* A workspace (and "New workspace…") under its account: in line with the account's name, a 20 pt mark. */
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] .ui-menu-item[data-row="sub"] {
+  padding-left: 56px;
+}
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-row="sub"] [data-menu-part="icon"] {
+  width: 20px;
+}
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-row="sub"] [data-menu-part="label"] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-menu-part="detail"] {
+  font-size: 12px;
+  color: var(--color-ink-faint);
+}
+
+/* One check column, at the end of every place's row (empty where you aren't); the actions have none. */
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-row] [data-menu-part="check"] {
+  order: 20;
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+  margin: 0;
+  justify-content: center;
+  color: var(--color-heading);
+  visibility: hidden;
+}
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-row][aria-checked="true"] [data-menu-part="check"] {
+  visibility: visible;
+}
+:root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] .ui-menu-item:not([data-row]) [data-menu-part="check"] {
+  display: none;
+}
+
+/* The iPad (and the iOS app's menus generally): the system's 44 pt rows stay; the places' marks lead their rows. */
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"].ui-pop {
+  width: 300px;
+}
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-row] [data-menu-part="icon"] {
+  order: 0;
+}
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] .ui-menu-item[data-row="place"] {
+  min-height: 60px;
+  padding-block: 8px;
+}
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-row="place"] [data-menu-part="icon"] {
+  width: 36px;
+}
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] .ui-menu-item[data-row="sub"] {
+  padding-left: calc(var(--menu-pad) + 24px);
+}
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-row="sub"] [data-menu-part="icon"] {
+  width: 22px;
+}

@@ -295,6 +295,10 @@ export function Shell() {
       } else if (mod && e.altKey && e.code === "KeyT") {
         e.preventDefault();
         navigate("/tasks/today");
+      } else if (mod && !e.altKey && !e.shiftKey && e.key === ",") {
+        // Settings, as the account menu says (in the Mac app the menu bar's ⌘, opens its Settings window first).
+        e.preventDefault();
+        navigate("/settings");
       }
     };
     window.addEventListener("keydown", onKey);

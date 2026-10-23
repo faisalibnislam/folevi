@@ -144,10 +144,11 @@ describe("local mode's main views", () => {
     await close(view);
   }, 60_000);
 
-  test("the sidebar has the one note where the workspace switcher was, and no Shared with Me or Changes", async () => {
+  test("the sidebar has no sign-in note above the account button (its menu signs in), and no Shared with Me or Changes", async () => {
     const view = await open("/documents");
     const nav = view.host.querySelector('nav[aria-label="Folio"]')!;
-    expect(nav.textContent).toContain(SIGN_IN_TO_COLLABORATE);
+    expect(nav.textContent).not.toContain(SIGN_IN_TO_COLLABORATE);
+    expect(nav.querySelector('button[aria-label$="settings and help"]')).not.toBeNull();
     for (const gone of ["Shared with Me", "Changes", "Work with Foli AI"]) expect([...nav.querySelectorAll("a")].map((a) => a.textContent?.trim())).not.toContain(gone);
     expect(view.host.querySelector('button[aria-label^="Notifications"]')).toBeNull();
     await close(view);

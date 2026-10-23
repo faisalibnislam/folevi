@@ -1,30 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ArrowRightLeft, ChevronsUpDown, CreditCard, HelpCircle, Laptop, LifeBuoy, LogIn, LogOut, Monitor, Moon, Smartphone, Sun, Plus, Settings, Shield, ShieldCheck, Tablet, UserPlus, Users, MonitorSmartphone } from "lucide-react";
+import { ArrowRightLeft, ChevronsUpDown, HelpCircle, Laptop, LogIn, LogOut, Smartphone, Plus, Settings, Tablet } from "lucide-react";
 import type { WireScope } from "@folevi/editor-schema";
-import { PLANS, TIER_NAMES, TRIAL_TIER } from "@/lib/plans";
-import { useAppState, type Profile, type Workspace } from "@/lib/app/state";
+import { TIER_NAMES, TRIAL_TIER } from "@/lib/plans";
+import { useAppState, type Workspace } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
 import { useSafeSignOut } from "@/components/auth/SignOut";
-import { SupportDialog } from "@/components/support/SupportDialog";
-import { InviteDialog } from "./InviteDialog";
-import { NewWorkspaceDialog, workspaceRoleLabel } from "./NewWorkspaceDialog";
+import { NewWorkspaceDialog } from "./NewWorkspaceDialog";
 import { canPurchaseHere } from "@/lib/nativeApp";
-import { isShell } from "@/lib/shell";
+import { isShell, shell } from "@/lib/shell";
+import type { LibraryKind } from "@/lib/shell/types";
 import { APP_URL } from "@/lib/env";
-import { currentBackendMode, useCapabilities } from "@/lib/mode";
-import { SignInToCollaborate } from "./SignInToCollaborate";
-import { flushBeforeSwitch, placesAvailable, signInToAnotherAccount, switchToPlace, usePlaces, type Place } from "@/lib/places";
+import { useCapabilities } from "@/lib/mode";
+import { flushBeforeSwitch, LIBRARY_PLACE, placesAvailable, signInToAnotherAccount, switchToPlace, syncsWords, usePlaces, type AccountPlace, type Place, type PlaceId } from "@/lib/places";
 import { MAX_BROWSER_ACCOUNTS } from "@/lib/places/web";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { deviceWords } from "@/lib/shell/words";
 import { openMovePlaces } from "@/components/places/MovePlaces";
+import "./accountMenu.css";
 
 // The console is part of the website; the bundled app shell has no /admin, so it opens there in the browser.
-const openAdminConsole = () => (isShell() ? void window.open(`${APP_URL}/admin`, "_blank", "noopener") : void (window.location.href = "/admin"));
+export const openAdminConsole = () => (isShell() ? void window.open(`${APP_URL}/admin`, "_blank", "noopener") : void (window.location.href = "/admin"));
 
 /** A team workspace's mark: its square logo, or its initial on a neutral tile. */
 export function WorkspaceLogo({ workspace, size = 24, className = "" }: { workspace: Pick<Workspace, "name" | "logoUrl">; size?: number; className?: string }) {
@@ -55,22 +54,9 @@ function Mark({ src, initial, shape, size, className }: { src: string | null; in
   );
 }
 
-/** Your Personal plan as the switcher shows it: "Pro", "Pro AI trial · 5 days", "Free". */
-export function personalPlanLabel(profile: Profile, now = Date.now()): string | null {
-  // A local library has no plan (lib/local/functions/users.ts LOCAL_ENTITLEMENTS is only a shape).
-  if (currentBackendMode() === "local") return null;
-  const ent = (profile as { entitlements?: { trialing: boolean; trialEndsAt: number | null; plan: keyof typeof PLANS } }).entitlements;
-  if (!ent) return null;
-  if (ent.trialing) {
-    const days = ent.trialEndsAt ? Math.max(1, Math.ceil((ent.trialEndsAt - now) / 86_400_000)) : 0;
-    return days ? `${TIER_NAMES[TRIAL_TIER]} trial · ${days} ${days === 1 ? "day" : "days"}` : `${TIER_NAMES[TRIAL_TIER]} trial`;
-  }
-  return PLANS[ent.plan]?.name ?? null;
-}
-
 /** Another account's mark (its picture or initial), for the switcher. */
-export function AccountMark({ name, avatarUrl, size = 26 }: { name: string; avatarUrl: string | null; size?: number }) {
-  return <Mark src={avatarUrl} initial={name || "?"} shape="rounded-chip" size={size} className="" />;
+export function AccountMark({ name, avatarUrl, size = 26, className = "" }: { name: string; avatarUrl: string | null; size?: number; className?: string }) {
+  return <Mark src={avatarUrl} initial={name || "?"} shape="rounded-chip" size={size} className={className} />;
 }
 
 /** The library's mark: the device it lives on. */
@@ -79,24 +65,108 @@ export function LibraryMark({ size = 16 }: { size?: number }) {
   return noun === "Mac" ? <Laptop size={size} /> : noun === "iPad" || noun === "tablet" ? <Tablet size={size} /> : <Smartphone size={size} />;
 }
 
+/** The library's 36 pt mark in the account menu: its device on a quiet tile. */
+function LibraryTile({ size = 36 }: { size?: number }) {
+  return (
+    <span aria-hidden className="grid flex-none place-items-center rounded-chip bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] text-muted" style={{ width: size, height: size }}>
+      <LibraryMark size={18} />
+    </span>
+  );
+}
+
+/** A small mark the size of a workspace's logo, for "New workspace…" under an account. */
+function SubIcon({ children }: { children: React.ReactNode }) {
+  return <span aria-hidden className="grid h-5 w-5 flex-none place-items-center text-muted">{children}</span>;
+}
+
+/** Where you are now, for the list of places. */
+export type HerePlace =
+  | {
+      kind: "account";
+      /** This account's place id (null when this page doesn't know several). */
+      id: PlaceId | null;
+      name: string;
+      email: string;
+      /** In Personal (not one of the workspaces). */
+      personal: boolean;
+      workspaces: { id: string; name: string; logoUrl: string | null; plan: string; open: boolean }[];
+      pickPersonal: () => void;
+      pickWorkspace: (id: string) => void;
+      newWorkspace: () => void;
+    }
+  | { kind: "library"; syncs: string };
+
 /**
- * The places other than the open one, for the switcher (docs/MULTI_ACCOUNT_PLAN.md, Owner decisions): each account
- * with its picture, name and email and its workspaces under it, and the library ("On this Mac", where it syncs),
- * each with a dot for what's new there. Picking one opens it (this tab reloads into it).
+ * The account menu's places (docs/MULTI_ACCOUNT_PLAN.md, Owner decisions): a quiet "Places" label, then each
+ * account (its picture, name and email) with its workspaces under it (and "New workspace…" under the open one),
+ * then the library ("On this Mac", where it syncs). One check column marks where you are; dots say what's new
+ * elsewhere. Picking another place opens it (this tab reloads into it).
  */
-export function otherPlaceEntries(places: Place[], current: string | null, open: (place: Place, workspaceId?: string | null) => void): MenuEntry[] {
-  const out: MenuEntry[] = [];
-  const here = deviceWords().here;
-  for (const p of places) {
-    if (p.id === current) continue;
-    if (p.kind === "library") {
-      out.push({ label: `On ${here}`, description: p.syncs, icon: <LibraryMark size={16} />, dot: p.reminders > 0 || p.waiting > 0, onSelect: () => open(p) });
+export function placeEntries(places: Place[], here: HerePlace, open: (place: Place, workspaceId?: string | null) => void): MenuEntry[] {
+  const out: MenuEntry[] = [{ heading: "Places" }];
+  const where = deviceWords().here;
+  let accounts: (AccountPlace | null)[] = places.filter((p): p is AccountPlace => p.kind === "account");
+  // (The open account always shows, first when the list doesn't have it yet.)
+  if (here.kind === "account" && !accounts.some((p) => p?.id === here.id)) accounts = [null, ...accounts];
+  for (const p of accounts) {
+    if (here.kind === "account" && (p === null || p.id === here.id)) {
+      out.push({
+        label: here.name || here.email || "Personal",
+        // Picking it opens Personal: that's what it is to assistive tech, and the e2e helpers' switchTo("Personal").
+        name: "Personal",
+        description: here.email || undefined,
+        middle: true,
+        row: "place",
+        icon: <PersonalMark size={36} />,
+        checked: here.personal,
+        onSelect: here.pickPersonal,
+      });
+      for (const w of here.workspaces) {
+        out.push({ label: w.name, detail: w.plan, row: "sub", icon: <WorkspaceLogo workspace={w} size={20} />, checked: w.open, onSelect: () => here.pickWorkspace(w.id) });
+      }
+      out.push({ label: "New workspace…", row: "sub", icon: <SubIcon><Plus size={14} /></SubIcon>, onSelect: here.newWorkspace });
       continue;
     }
-    out.push({ label: p.name || p.email || "Folevi account", description: p.email || undefined, icon: <AccountMark name={p.name || p.email} avatarUrl={p.avatarUrl} />, badge: p.unread, dot: p.reminders > 0, onSelect: () => open(p, null) });
-    for (const w of p.workspaces) out.push({ label: w.name, indent: true, icon: <WorkspaceLogo workspace={w} size={20} />, onSelect: () => open(p, w.id) });
+    if (!p) continue;
+    out.push({
+      label: p.name || p.email || "Folevi account",
+      description: p.name ? p.email || undefined : undefined,
+      middle: true,
+      row: "place",
+      icon: <AccountMark name={p.name || p.email} avatarUrl={p.avatarUrl} size={36} />,
+      badge: p.unread,
+      dot: p.reminders > 0,
+      onSelect: () => open(p, null),
+    });
+    for (const w of p.workspaces) out.push({ label: w.name, row: "sub", icon: <WorkspaceLogo workspace={w} size={20} />, onSelect: () => open(p, w.id) });
+  }
+  const library = places.find((p) => p.kind === "library");
+  if (here.kind === "library") {
+    out.push({ label: `On ${where}`, description: library?.syncs ?? here.syncs, row: "place", icon: <LibraryTile />, checked: true, onSelect: () => undefined });
+  } else if (library) {
+    out.push({ label: `On ${where}`, description: library.syncs, row: "place", icon: <LibraryTile />, dot: library.reminders > 0 || library.waiting > 0, onSelect: () => open(library) });
   }
   return out;
+}
+
+/** Where this device's library syncs, in words ("Kept on this device only", "Syncs with iCloud Drive"). */
+function useLibrarySyncs(places: Place[]): string {
+  const listed = places.find((p) => p.kind === "library")?.syncs ?? null;
+  const [kind, setKind] = useState<LibraryKind | null | undefined>(undefined);
+  useEffect(() => {
+    if (listed) return;
+    let live = true;
+    void shell()
+      ?.library?.info()
+      .then(
+        (info) => live && setKind(info.kind),
+        () => live && setKind(null),
+      );
+    return () => {
+      live = false;
+    };
+  }, [listed]);
+  return listed ?? (kind ? syncsWords(kind) : "On your devices");
 }
 
 /** Opens another place, writing out what's waiting here first. */
@@ -107,10 +177,36 @@ function usePlaceSwitch() {
     void switchToPlace(place, { workspaceId, flush: () => flushBeforeSwitch({ engine, outbox }) }).catch((e: unknown) => toast.show(errorMessage(e), { tone: "error" }));
 }
 
+/** Settings, signing in to one more account, moving notes between places, Help: the account menu's actions. */
+function actionEntries(o: { go: (href: string) => void; several: boolean; others: boolean; full?: boolean }): MenuEntry[] {
+  return [
+    // (⌘, opens Settings: Shell.tsx on the web, the menu bar's Settings window in the Mac app.)
+    { label: "Settings", icon: <Settings size={16} />, shortcut: "⌘,", onSelect: () => o.go("/settings") },
+    ...(o.several
+      ? [
+          {
+            label: "Sign in to another account…",
+            icon: <LogIn size={16} />,
+            disabled: o.full,
+            ...(o.full ? { description: `Up to ${MAX_BROWSER_ACCOUNTS} accounts in one browser` } : {}),
+            onSelect: () => void signInToAnotherAccount(),
+          },
+        ]
+      : []),
+    ...(o.others ? [{ label: "Move or copy notes…", icon: <ArrowRightLeft size={16} />, onSelect: () => openMovePlaces() }] : []),
+    { label: "Help", icon: <HelpCircle size={16} />, onSelect: () => o.go("/help") },
+  ];
+}
+
+/** The account menu's look: about 300 wide, opening up from the button without covering it. */
+const MENU = { variant: "switcher", clear: true, side: "top", align: "start", className: "w-full" } as const;
+const TRIGGER =
+  "flex h-12 w-full items-center gap-2.5 rounded-chip px-2 text-left transition-colors hover:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-expanded:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)]";
+
 /**
- * The bottom of the sidebar: where you are (Personal or a team workspace) and you. One menu holds
- * everything: Personal first, then your workspaces with your role in each, "New workspace…", the
- * current workspace's people and settings, your account, help, appearance and sign out.
+ * The bottom of the sidebar: where you are (Personal, a team workspace or the library) and you. Its menu lists
+ * your places first, then Settings, Sign in to another account, Move or copy notes and Help, then Sign out. Plan
+ * and billing, Security, Devices, Contact support, Admin console and the theme are in Settings.
  */
 export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
   // Local mode has no workspaces, account or plan: the library's own menu instead (docs/LOCAL_MODE_PLAN.md §5.2).
@@ -118,76 +214,54 @@ export function WorkspaceMenu({ onNavigate }: { onNavigate?: () => void }) {
   return <AccountMenu onNavigate={onNavigate} />;
 }
 
-/** Local mode's foot of the sidebar: you, Settings, help and appearance, under the one "Sign in" note. */
+/** Local mode's foot of the sidebar: you, and the same menu with the library checked. */
 function LibraryMenu({ onNavigate }: { onNavigate?: () => void }) {
-  const { profile, appearance, setAppearance } = useAppState();
+  const { profile } = useAppState();
   const { navigate } = useAppRouter();
   const { places, current } = usePlaces();
   const open = usePlaceSwitch();
   const several = placesAvailable();
+  const syncs = useLibrarySyncs(places);
   const go = (href: string) => {
     onNavigate?.();
     navigate(href);
   };
-  const others = several ? otherPlaceEntries(places, current, open) : [];
-  const items: MenuEntry[] = [
-    ...(others.length ? ([...others, "separator"] satisfies MenuEntry[]) : []),
-    { label: "Help", icon: <HelpCircle size={14} />, onSelect: () => go("/help") },
-    { label: "Contact support…", icon: <LifeBuoy size={14} />, onSelect: () => void window.open("mailto:support@folevi.com", "_blank", "noopener") },
-    "separator",
-    { label: "Light", icon: <Sun size={14} />, checked: appearance === "light", onSelect: () => setAppearance("light") },
-    { label: "Dark", icon: <Moon size={14} />, checked: appearance === "dark", onSelect: () => setAppearance("dark") },
-    { label: "Match system", icon: <Monitor size={14} />, checked: appearance === "system", onSelect: () => setAppearance("system") },
-    "separator",
-    ...(several ? [{ label: "Sign in to another account", icon: <LogIn size={14} />, onSelect: () => void signInToAnotherAccount() }] : []),
-    ...(others.length ? [{ label: "Move or copy notes…", icon: <ArrowRightLeft size={14} />, onSelect: () => openMovePlaces() }] : []),
-    { label: "Settings", icon: <Settings size={14} />, onSelect: () => go("/settings") },
-  ];
+  const others = places.some((p) => p.id !== current && p.id !== LIBRARY_PLACE);
+  const items: MenuEntry[] = [...placeEntries(several ? places : [], { kind: "library", syncs }, open), "separator", ...actionEntries({ go, several, others })];
   return (
-    <>
-      <SignInToCollaborate className="mb-1.5" />
-      <MenuButton
-        label={`${profile.displayName}: settings and help`}
-        side="top"
-        align="start"
-        className="w-full"
-        menuClassName="w-full min-w-64"
-        triggerClassName="flex h-12 w-full items-center gap-2.5 rounded-chip px-2 text-left transition-colors hover:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-expanded:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)]"
-        items={items}
-        trigger={
-          <>
-            <PersonalMark size={28} />
-            <span className="min-w-0 flex-1 leading-tight">
-              <span className="block truncate text-[13.5px] font-semibold text-heading">{profile.displayName}</span>
-              <span className="block truncate text-[11.5px] text-muted">On your devices</span>
-            </span>
-            <ChevronsUpDown size={14} aria-hidden className="flex-none text-faint" />
-          </>
-        }
-      />
-    </>
+    <MenuButton
+      {...MENU}
+      label={`${profile.displayName}: settings and help`}
+      triggerClassName={TRIGGER}
+      items={items}
+      trigger={
+        <>
+          <PersonalMark size={28} />
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block truncate text-[13.5px] font-semibold text-heading">{profile.displayName}</span>
+            <span className="block truncate text-[11.5px] text-muted">On your devices</span>
+          </span>
+          <ChevronsUpDown size={14} aria-hidden className="flex-none text-faint" />
+        </>
+      }
+    />
   );
 }
 
 function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
-  const { context, workspace, workspaces, setContext, profile, appearance, setAppearance } = useAppState();
+  const { context, workspace, workspaces, setContext, profile } = useAppState();
   const { navigate, route } = useAppRouter();
   const safeSignOut = useSafeSignOut(profile.id);
   const { places, current } = usePlaces();
   const open = usePlaceSwitch();
   const several = placesAvailable();
-  const others = several ? otherPlaceEntries(places, current, open) : [];
   const accounts = places.filter((p) => p.kind === "account").length;
   const full = !isShell() && accounts >= MAX_BROWSER_ACCOUNTS;
   const [creating, setCreating] = useState(false);
-  const [inviting, setInviting] = useState(false);
-  const [contacting, setContacting] = useState(false);
-  const canManage = workspace !== null && (workspace.role === "owner" || workspace.role === "admin");
   const go = (href: string) => {
     onNavigate?.();
     navigate(href);
   };
-  const plan = personalPlanLabel(profile);
   // A page, folder or tag belongs to one context (and each context has its own tabs): switching away from
   // one goes to the new context's Home instead of leaving the old context's page open without a tab.
   const switchTo = (next: WireScope) => {
@@ -195,67 +269,26 @@ function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
     setContext(next);
     if (!same && (route.name === "doc" || route.name === "folder" || route.name === "tag")) go("/documents");
   };
-
-  const who = [profile.displayName, profile.email, plan].filter(Boolean).join(" · ");
+  const here: HerePlace = {
+    kind: "account",
+    id: current,
+    name: profile.displayName,
+    email: profile.email ?? "",
+    personal: context.kind === "personal",
+    workspaces: workspaces.map((w) => ({ id: w.id, name: w.name, logoUrl: w.logoUrl ?? null, plan: w.plan.shortName, open: context.kind === "workspace" && context.workspaceId === w.id })),
+    pickPersonal: () => switchTo({ kind: "personal" }),
+    pickWorkspace: (id) => switchTo({ kind: "workspace", workspaceId: id }),
+    newWorkspace: () => setCreating(true),
+  };
+  const others = several && places.some((p) => p.id !== current);
   const items: MenuEntry[] = [
-    {
-      label: "Personal",
-      // You (picture, name and email) and your Personal plan: the account this is, with its workspaces under it.
-      description: who || profile.displayName,
-      icon: <PersonalMark size={26} />,
-      checked: context.kind === "personal",
-      onSelect: () => switchTo({ kind: "personal" }),
-    },
-    ...(others.length ? [] : ([{ heading: "Workspaces" }] satisfies MenuEntry[])),
-    ...workspaces.map((w) => ({
-      label: w.name,
-      // "Owner · Pro": your role here, and this workspace's own plan.
-      description: `${workspaceRoleLabel(w.role)} · ${w.plan.shortName}`,
-      icon: <WorkspaceLogo workspace={w} size={26} />,
-      checked: context.kind === "workspace" && context.workspaceId === w.id,
-      indent: others.length > 0,
-      onSelect: () => switchTo({ kind: "workspace", workspaceId: w.id }),
-    })),
-    { label: "New workspace…", icon: <Plus size={14} />, indent: others.length > 0, onSelect: () => setCreating(true) },
+    ...placeEntries(several ? places : [], here, open),
     "separator",
-    // The other places: accounts with their workspaces, and the library on this device.
-    ...(others.length ? ([...others, "separator"] satisfies MenuEntry[]) : []),
-    // People and settings of the current workspace. Personal has no members: pages are shared one by one.
-    ...(workspace
-      ? ([
-          ...(canManage ? [{ label: "Invite people…", icon: <UserPlus size={14} />, onSelect: () => setInviting(true) }] : []),
-          { label: "Members", icon: <Users size={14} />, onSelect: () => go("/settings/members") },
-          { label: "Workspace settings", icon: <Settings size={14} />, onSelect: () => go("/settings/workspace") },
-          "separator",
-        ] satisfies MenuEntry[])
-      : []),
-    { label: "Plan & billing", icon: <CreditCard size={14} />, onSelect: () => go("/settings/billing") },
-    { label: "Security", icon: <ShieldCheck size={14} />, onSelect: () => go("/settings/security") },
-    { label: "Devices", icon: <MonitorSmartphone size={14} />, onSelect: () => go("/settings/devices") },
-    { label: "Help", icon: <HelpCircle size={14} />, onSelect: () => go("/help") },
-    { label: "Contact support…", icon: <LifeBuoy size={14} />, onSelect: () => setContacting(true) },
-    ...(profile.platformRole ? [{ label: "Admin console", icon: <Shield size={14} />, onSelect: openAdminConsole }] : []),
+    ...actionEntries({ go, several, others, full }),
     "separator",
-    { label: "Light", icon: <Sun size={14} />, checked: appearance === "light", onSelect: () => setAppearance("light") },
-    { label: "Dark", icon: <Moon size={14} />, checked: appearance === "dark", onSelect: () => setAppearance("dark") },
-    { label: "Match system", icon: <Monitor size={14} />, checked: appearance === "system", onSelect: () => setAppearance("system") },
-    "separator",
-    ...(several
-      ? [
-          {
-            label: "Sign in to another account",
-            icon: <LogIn size={14} />,
-            disabled: full,
-            ...(full ? { description: `Up to ${MAX_BROWSER_ACCOUNTS} accounts in one browser` } : {}),
-            onSelect: () => void signInToAnotherAccount(),
-          },
-        ]
-      : []),
-    ...(others.length ? [{ label: "Move or copy notes…", icon: <ArrowRightLeft size={14} />, onSelect: () => openMovePlaces() }] : []),
-    { label: "Settings", icon: <Settings size={14} />, onSelect: () => go("/settings/account") },
     // Only this account: the others stay signed in. Warns (and asks for an explicit choice) if anything of it on
     // this device hasn't synced yet.
-    { label: `Sign out of ${profile.displayName || "this account"}`, icon: <LogOut size={14} />, onSelect: () => void safeSignOut.request() },
+    { label: `Sign out of ${profile.displayName || "this account"}`, icon: <LogOut size={16} />, onSelect: () => void safeSignOut.request() },
   ];
 
   // Personal plan: trial days left, or an upgrade nudge on Free; nothing once they're paying. Only shown in
@@ -286,12 +319,9 @@ function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
         </button>
       ) : null}
       <MenuButton
+        {...MENU}
         label={`${workspace ? workspace.name : "Personal"}: Personal, workspaces and account`}
-        side="top"
-        align="start"
-        className="w-full"
-        menuClassName="w-full min-w-64 pt-3"
-        triggerClassName="flex h-12 w-full items-center gap-2.5 rounded-chip px-2 text-left transition-colors hover:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-expanded:bg-[color-mix(in_oklab,var(--color-accent-soft)_75%,transparent)]"
+        triggerClassName={TRIGGER}
         items={items}
         trigger={
           <>
@@ -305,8 +335,6 @@ function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
         }
       />
       <NewWorkspaceDialog open={creating} onClose={() => setCreating(false)} onCreated={() => go("/documents")} />
-      {inviting && workspace ? <InviteDialog workspace={workspace} open onClose={() => setInviting(false)} /> : null}
-      <SupportDialog open={contacting} onClose={() => setContacting(false)} />
       {safeSignOut.dialog}
     </>
   );

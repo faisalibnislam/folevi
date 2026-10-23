@@ -10,6 +10,15 @@ signing out, on the web and in the Mac, iPhone, iPad and Android apps.
   Mac" (or this iPhone, iPad, phone) and where it syncs (iCloud, Dropbox, Drive, a folder); unread and reminder
   dots per place. The menu ends with: Sign in to another account, Move or copy notes..., Settings, Sign out of
   <name>.
+- **Menu redesign (2026-10-23):** places first and short. A quiet "Places" label; each account a 52 pt row (36 pt
+  picture, name over the email, the email cut in the middle if it must be), its workspaces under it as 32 pt rows
+  with their plan as a caption and "New workspace..." under the open account; the library "On this Mac" with
+  where it syncs; one check column for where you are. Then Settings (⌘,), Sign in to another account...,
+  Move or copy notes..., Help; then Sign out of <name>. About 300 wide, opening up from the account button
+  without covering it. Plan & billing, Security, Devices, the workspace's people and settings, Contact support and
+  Admin console are in Settings (Support group at the end of its sections); the theme is Settings > Appearance
+  (and View > Appearance in the Mac app). The iPhone and iPad account sheet has the same contents in 44 pt rows.
+  Local mode no longer shows "Sign in to Folevi to share and collaborate" above the account button.
 - **What:** one library on the device plus any number of Folevi accounts. The website gets several accounts
   too; the library only exists in the apps.
 - **Each place stays signed in** with its own data, settings and encryption keys. Switching needs no sign-in

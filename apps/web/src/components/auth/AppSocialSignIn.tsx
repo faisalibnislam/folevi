@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { PROVIDER_NAMES, socialError, type SocialProvider } from "@/lib/auth/socialErrors";
-import { nativeClient } from "../../../../../convex/lib/nativeClients";
+import { appSignInRequestValid } from "@/lib/auth/appSignIn";
 import { Alert, AuthHeading, SubmitButton } from "./fields";
 
 type Props = {
@@ -29,12 +29,12 @@ function toApp(redirectUri: string, params: Record<string, string>, state: strin
 /**
  * In the browser the Mac or iOS app opened: straight on to Google or Apple (always, so the account picked there
  * is the one the app gets, whoever this browser is already signed in as), then back here, where a one-time code
- * for the app is issued and handed over through the app's own folevi:// link.
+ * for the app is issued and handed over through the app's own folevi:// link. No choices on the way: the app's
+ * own button already chose (lib/auth/appSignIn.ts names the apps it serves).
  */
 export function AppSocialSignIn({ provider, clientId, redirectUri, codeChallenge, codeChallengeMethod, state, returned, error }: Props) {
   const name = PROVIDER_NAMES[provider];
-  const client = clientId === "folevi-app" ? nativeClient(clientId, redirectUri) : null;
-  const valid = Boolean(client) && codeChallengeMethod === "S256" && /^[A-Za-z0-9_-]{43}$/.test(codeChallenge);
+  const valid = appSignInRequestValid({ clientId, redirectUri, codeChallenge, codeChallengeMethod });
   const [problem, setProblem] = useState<string | undefined>(socialError(error, provider));
   const [handedOver, setHandedOver] = useState(false);
   const started = useRef(false);

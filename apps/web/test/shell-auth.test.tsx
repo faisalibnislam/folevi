@@ -134,16 +134,47 @@ describe("signing in and out through the host", () => {
     document.body.append(host);
     const root = createRoot(host);
     await act(async () => root.render(<ShellSignIn />));
-    // Signed out, both ways in are offered (ModeChoice); signing in goes to the browser.
+    // Signed out, both ways in are offered (ModeChoice); signing in asks how before anything opens.
     expect(host.textContent).toMatch(/Keep notes on my devices/);
-    const button = [...host.querySelectorAll("button")].find((b) => b.textContent?.startsWith("Sign in to Folevi"))!;
-    await act(async () => button.click());
+    const buttonNamed = (name: string) => [...host.querySelectorAll("button")].find((b) => b.textContent?.trim().startsWith(name))!;
+    await act(async () => buttonNamed("Sign in to Folevi").click());
+    expect(auth.signIn).not.toHaveBeenCalled();
+    expect([...host.querySelectorAll("button")].map((b) => b.textContent?.trim()).slice(0, 3)).toEqual(["Continue with Apple", "Continue with Google", "Sign in with email"]);
+    // Email: the website's sign-in page (no provider).
+    await act(async () => buttonNamed("Sign in with email").click());
     expect(auth.signIn).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(auth.signIn).mock.calls[0]).toEqual([]);
     expect(host.querySelector('[role="alert"]')?.textContent).toMatch(/didn.t finish/);
-    // After a failed try, keeping notes on the device is still offered.
+    // After a failed try the ways are offered again, and keeping notes on the device too.
     expect([...host.querySelectorAll("button")].some((b) => b.textContent === "Keep notes on my devices instead")).toBe(true);
     expect(host.textContent).not.toMatch(/\/signin/);
     act(() => root.unmount());
+  });
+
+  test("Continue with Google and Continue with Apple open the sheet straight on that provider", async () => {
+    const auth = fakeAuth({ signIn: vi.fn(async (_o?: unknown) => false) });
+    const { ShellSignIn } = await import("@/components/app/ShellSignIn");
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    await act(async () => root.render(<ShellSignIn />));
+    const buttonNamed = (name: string) => [...host.querySelectorAll("button")].find((b) => b.textContent?.trim().startsWith(name))!;
+    await act(async () => buttonNamed("Sign in to Folevi").click());
+    await act(async () => buttonNamed("Continue with Google").click());
+    expect(auth.signIn).toHaveBeenLastCalledWith({ provider: "google" });
+    // (The Mac app, with no Apple sheet of its own: the sign-in sheet on Apple's page.)
+    await act(async () => buttonNamed("Continue with Apple").click());
+    expect(auth.signIn).toHaveBeenLastCalledWith({ provider: "apple" });
+    expect(auth.signIn).toHaveBeenCalledTimes(2);
+    act(() => root.unmount());
+  });
+
+  test("shellSignIn passes the provider on, and only a provider", async () => {
+    const auth = fakeAuth({ signIn: vi.fn(async (_o?: unknown) => false) });
+    await shellSignIn({ provider: "apple" });
+    expect(auth.signIn).toHaveBeenLastCalledWith({ provider: "apple" });
+    await shellSignIn({});
+    expect(vi.mocked(auth.signIn).mock.calls.at(-1)).toEqual([]);
   });
 
   test("signOutNow in the shell ends the host's session and opens the app's own sign-in", async () => {

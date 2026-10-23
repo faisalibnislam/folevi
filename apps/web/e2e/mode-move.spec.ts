@@ -132,6 +132,8 @@ test("a library moves into an account: the same notes under their own ids, and t
   // Settings > Library: sign in (in "the browser"), and the app comes back signed in, ready to move.
   await page.goto(`${SHELL}/settings/library`);
   await page.getByTestId("library-sign-in").click({ timeout: 90_000 });
+  // The app asks how first; email is the website's sign-in page (/connect), as nodeBridge approves.
+  await page.getByRole("dialog", { name: "Sign in to Folevi" }).getByRole("button", { name: "Sign in with email" }).click();
   const summary = page.getByTestId("migration-summary");
   await expect(summary).toBeVisible({ timeout: 180_000 });
   await expect(summary).toContainText(/notes?, \d+ folders?/);
@@ -176,6 +178,8 @@ test("signing in from a library can keep them separate: the account opens and th
 
   await page.goto(`${SHELL}/settings/library`);
   await page.getByTestId("library-sign-in").click({ timeout: 90_000 });
+  // The app asks how first; email is the website's sign-in page (/connect), as nodeBridge approves.
+  await page.getByRole("dialog", { name: "Sign in to Folevi" }).getByRole("button", { name: "Sign in with email" }).click();
   await expect(page.getByTestId("migration-summary")).toBeVisible({ timeout: 180_000 });
   await page.getByRole("button", { name: "Keep them separate" }).click();
   // Signed in, the account opens; nothing moved and the library doesn't say it went anywhere.
@@ -203,6 +207,7 @@ test("an account comes down into a library on this Mac, then this Mac signs out 
   // Signed in through the browser.
   await page.goto(`${SHELL}/settings/data`);
   await page.getByTestId("shell-sign-in").getByRole("button", { name: "Sign in to Folevi" }).click({ timeout: 90_000 });
+  await page.getByTestId("shell-sign-in").getByRole("button", { name: "Sign in with email" }).click();
   await page.getByTestId("move-to-this-mac").click({ timeout: 180_000 });
   const dialog = page.getByRole("dialog", { name: "Keep your notes on this Mac" });
   await expect(dialog).toBeVisible();

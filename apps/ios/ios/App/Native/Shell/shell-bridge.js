@@ -50,6 +50,10 @@ var foleviShellBridge = function (SHELL, host) {
     return r ? r.value : null;
   };
   var nothing = function () {};
+  // signIn's options: only a provider the sign-in sheet can open straight on (ShellAuth.signInStart).
+  var signInOptions = function (o) {
+    return o && (o.provider === "google" || o.provider === "apple") ? { provider: o.provider } : {};
+  };
   var libraryWatchers = 0;
   var aiRequests = 0;
 
@@ -344,8 +348,8 @@ var foleviShellBridge = function (SHELL, host) {
         switchTo: function (id, o) {
           return shellCall("placesSwitch", { id: String(id), path: o && typeof o.path === "string" ? o.path : "/documents" }, "Error").then(nothing);
         },
-        signIn: function () {
-          return shellCall("placesSignIn", {}, "Error").then(value);
+        signIn: function (o) {
+          return shellCall("placesSignIn", signInOptions(o), "Error").then(value);
         },
         describe: function (d) {
           var plain = {};
@@ -402,8 +406,8 @@ var foleviShellBridge = function (SHELL, host) {
     }),
     // The account session lives in the app (Native/Shell/ShellAuth.swift) and never comes here.
     auth: Object.freeze({
-      signIn: function () {
-        return shellCall("authSignIn", {}, "Error").then(function (r) {
+      signIn: function (o) {
+        return shellCall("authSignIn", signInOptions(o), "Error").then(function (r) {
           return Boolean(r && r.value);
         });
       },

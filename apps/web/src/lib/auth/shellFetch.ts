@@ -4,6 +4,7 @@
 // only the service's /api/auth/*, adds the bearer session it keeps in the Keychain (the page never sees it),
 // sends no cookies, and stores a rotated token if one comes back. This file is only used by shell builds.
 import { isShell, shell } from "@/lib/shell";
+import type { ShellSignInOptions } from "@/lib/shell/types";
 
 /** Folevi's website, where /api/auth lives. The built-in interface has no server of its own. */
 export function serviceUrl(): string {
@@ -85,13 +86,14 @@ export function hostAuth(): boolean {
 }
 
 /**
- * Signs in through the host: the website opens in the browser (or the sign-in sheet on iOS), and the app
- * comes back signed in. The page reloads so every query starts with the new session.
+ * Signs in through the host: the sign-in sheet opens (straight on Google's or Apple's page with `provider`,
+ * the website's sign-in page without), and the app comes back signed in. The page reloads so every query
+ * starts with the new session.
  */
-export async function shellSignIn(): Promise<boolean> {
+export async function shellSignIn(o?: ShellSignInOptions): Promise<boolean> {
   const host = shell();
   if (!host) return false;
-  const ok = await host.auth.signIn();
+  const ok = await (o?.provider ? host.auth.signIn({ provider: o.provider }) : host.auth.signIn());
   if (ok) window.location.reload();
   return ok;
 }

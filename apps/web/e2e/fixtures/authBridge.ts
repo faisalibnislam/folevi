@@ -6,7 +6,8 @@
 // The page lives on app://folevi, where a cookie session for the website can't work. So the host signs in
 // the way native apps do (Authorization Code with PKCE, convex/lib/nativeAuth.ts, client "folevi-shell"):
 //   1. signIn() opens the website's /connect page in the default browser; the person signs in there as usual
-//      and presses Continue;
+//      and presses Continue. With a provider ("google" or "apple") it opens /app-google instead, which goes
+//      straight on to that provider and issues the code by itself (ShellAuth.signInStart);
 //   2. the browser hands back folevi://auth/callback?code=…&state=… (handleCallback);
 //   3. the host trades the code and its PKCE verifier for a session of its own at /api/auth/native/token, and
 //      keeps that bearer token in its secret store. It never reaches the page.
@@ -61,9 +62,9 @@ export interface SessionUser {
  * §2.2; its token is `auth.session.<user id>`). Without one they use the single session older builds kept.
  */
 export interface AuthBridge {
-  signIn(): Promise<boolean>;
+  signIn(o?: SignInOptions): Promise<boolean>;
   /** Signs in to one more account: its user, or null when it didn't finish. The same person again replaces their old session. */
-  signInAccount(): Promise<SessionUser | null>;
+  signInAccount(o?: SignInOptions): Promise<SessionUser | null>;
   /** The single session an older build kept, moved to its account's slot: that account, or null (none, or ended). */
   adoptLegacy(): Promise<SessionUser | null>;
   signOut(slot?: string): Promise<void>;
@@ -73,6 +74,19 @@ export interface AuthBridge {
   handleCallback(url: string): boolean;
   /** Whether a session token is stored (for main's logs and tests; never sent to the page). */
   signedIn(slot?: string): boolean;
+}
+
+/** `provider`: the sign-in opens straight on that provider's page (the website's /app-google). */
+export type SignInOptions = { provider?: unknown };
+
+/** Where the sign-in starts in the browser: /app-google for a known provider, otherwise /connect (ShellAuth.signInStart). */
+export function signInStart(service: URL, provider: unknown, challenge: string, state: string): URL {
+  const direct = provider === "google" || provider === "apple";
+  const url = new URL(direct ? "/app-google" : "/connect", service);
+  const q = new URLSearchParams({ client_id: SHELL_CLIENT_ID, redirect_uri: SHELL_REDIRECT_URI, code_challenge: challenge, code_challenge_method: "S256", state });
+  if (direct) q.set("provider", provider);
+  url.search = q.toString();
+  return url;
 }
 
 /** Whether a link is the end of a sign-in in the browser: folevi://auth/callback?… */
@@ -223,8 +237,8 @@ export function createAuthBridge(deps: AuthBridgeDeps): AuthBridge {
       return true;
     },
 
-    async signIn() {
-      const access = await obtain();
+    async signIn(o) {
+      const access = await obtain(o?.provider);
       if (!access) return false;
       const previous = token();
       deps.store.set(TOKEN, access);
@@ -233,8 +247,8 @@ export function createAuthBridge(deps: AuthBridgeDeps): AuthBridge {
       return true;
     },
 
-    async signInAccount() {
-      const access = await obtain();
+    async signInAccount(o) {
+      const access = await obtain(o?.provider);
       if (!access) return null;
       const user = await userOf(access);
       if (!user) {
@@ -299,14 +313,13 @@ export function createAuthBridge(deps: AuthBridgeDeps): AuthBridge {
   };
 
   /** The PKCE sign-in in the browser, ending with a new session's token (or null). */
-  async function obtain(): Promise<string | null> {
+  async function obtain(provider?: unknown): Promise<string | null> {
     {
       // A new attempt replaces the one before it.
       cancelPending();
       const { verifier, challenge } = pkcePair(random);
       const state = b64url(random(24));
-      const connect = new URL("/connect", service);
-      connect.search = new URLSearchParams({ client_id: SHELL_CLIENT_ID, redirect_uri: SHELL_REDIRECT_URI, code_challenge: challenge, code_challenge_method: "S256", state }).toString();
+      const connect = signInStart(service, provider, challenge, state);
 
       let timer: ReturnType<typeof setTimeout> | undefined;
       const answer = new Promise<string | null>((resolve) => {

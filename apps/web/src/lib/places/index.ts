@@ -4,7 +4,7 @@
 // accounts this browser is signed in to (registry.ts, web.ts); in the apps the host's list (shell().places).
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { isShell, shell } from "@/lib/shell";
-import type { LibraryKind, ShellPlace } from "@/lib/shell/types";
+import type { LibraryKind, ShellPlace, ShellSignInOptions } from "@/lib/shell/types";
 import type { SyncEngine } from "@/lib/sync/engine";
 import type { Outbox } from "@/lib/sync/outbox";
 import { pinnedUserId } from "./pin";
@@ -129,17 +129,23 @@ export async function switchToPlace(place: Place, o: { workspaceId?: string | nu
   openPlaceInTab(place.id, { workspaceId: o.workspaceId });
 }
 
-/** "Sign in to another account". */
-export async function signInToAnotherAccount(): Promise<void> {
+/**
+ * "Sign in to another account". In the apps it asks how first (Apple, Google or email,
+ * lib/auth/shellSignInWay.ts), so the sign-in sheet opens straight on that provider's page; `way` skips the
+ * question.
+ */
+export async function signInToAnotherAccount(way?: ShellSignInOptions): Promise<void> {
   const host = isShell() ? shell()?.places : null;
   if (host) {
+    const o = way ?? (await (await import("@/lib/auth/shellSignInWay")).chooseSignInWay());
+    if (!o) return;
     // From the library: the account opens on one screen that asks "Move my notes into this account" or "Keep them
     // separate" (components/migrate/MigrationGate.tsx).
     if (host.current === LIBRARY_PLACE) {
       const flow = (await import("@/lib/local/signIn")).signInToFolevi();
-      if (flow) return await flow();
+      if (flow) return await flow(o);
     }
-    const id = await host.signIn();
+    const id = await (o.provider ? host.signIn({ provider: o.provider }) : host.signIn());
     if (id) await host.switchTo(id, { path: "/documents" });
     return;
   }

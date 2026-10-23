@@ -15,6 +15,7 @@ import { formatRelative } from "@/lib/format";
 import type { HealthItem, LibraryStatus } from "@/lib/local/store/types";
 import { hostError, placeName, kindOf, placeProblem, providerName, providerOf } from "@/lib/local/libraryPlace";
 import { signInToFolevi } from "@/lib/local/signIn";
+import { chooseSignInWay } from "@/lib/auth/shellSignInWay";
 import { useCloudStatus, useLibraryControl, useLibraryStatus, useLockSettings } from "@/lib/local/useLibrary";
 import { PassphraseFields, PlaceList, movePlace, passphraseHere, passphraseProblem, thisDevice } from "@/components/app/LibrarySetup";
 import { Button } from "@/components/ui/Button";
@@ -724,9 +725,12 @@ function AccountCard() {
       toast.show("Bringing a library into a Folevi account comes in a later update. Your notes stay here meanwhile.");
       return;
     }
+    // Apple, Google or email, asked here so the sign-in sheet opens straight on that page.
+    const way = await chooseSignInWay();
+    if (!way) return;
     setBusy(true);
     try {
-      await flow();
+      await flow(way);
     } catch (e) {
       toast.show(hostError(e).message || "Couldn't sign in. Try again.", { tone: "error" });
     } finally {
@@ -1004,9 +1008,12 @@ function IphoneAccount() {
       toast.show("Bringing a library into a Folevi account comes in a later update. Your notes stay here meanwhile.");
       return;
     }
+    // Apple, Google or email, asked here so the sign-in sheet opens straight on that page.
+    const way = await chooseSignInWay();
+    if (!way) return;
     setBusy(true);
     try {
-      await flow();
+      await flow(way);
     } catch (e) {
       toast.show(hostError(e).message || "Couldn't sign in. Try again.", { tone: "error" });
     } finally {

@@ -240,4 +240,26 @@ final class ShellTests: XCTestCase {
         let status = try await call("cloudStatus")
         XCTAssertEqual(Set(status.keys), ["available", "provider", "state", "account"])
     }
+
+    /// The app's own Continue with Google or Apple opens the sheet straight on /app-google for that provider;
+    /// email, or anything else, is the website's sign-in page (/connect). Same PKCE request either way.
+    func testTheSignInSheetStartsOnTheChosenProvider() throws {
+        let service = URL(string: "https://app.folevi.com")!
+        let challenge = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+        func query(_ url: URL?) -> [String: String] {
+            Dictionary(uniqueKeysWithValues: (URLComponents(url: url!, resolvingAgainstBaseURL: false)?.queryItems ?? []).map { ($0.name, $0.value ?? "") })
+        }
+        let common = ["client_id": "folevi-shell", "redirect_uri": "folevi://auth/callback", "code_challenge": challenge, "code_challenge_method": "S256", "state": "st"]
+        for provider in ["google", "apple"] {
+            let url = ShellAuth.signInStart(service: service, provider: provider, challenge: challenge, state: "st")
+            XCTAssertEqual(url?.host, "app.folevi.com")
+            XCTAssertEqual(url?.path, "/app-google")
+            XCTAssertEqual(query(url), common.merging(["provider": provider]) { $1 })
+        }
+        for other in [nil, "email", "facebook", ""] as [String?] {
+            let url = ShellAuth.signInStart(service: service, provider: other, challenge: challenge, state: "st")
+            XCTAssertEqual(url?.path, "/connect")
+            XCTAssertEqual(query(url), common)
+        }
+    }
 }

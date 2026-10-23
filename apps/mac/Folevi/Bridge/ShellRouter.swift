@@ -118,7 +118,7 @@ final class ShellRouter {
             places.switchTo(id, path: Places.safePath(s(o, "path")), later: true)
             return [:]
         case "placesSignIn":
-            guard let u = await ShellAuth.shared.signInAccount(window: window()) else { return ["value": NSNull()] }
+            guard let u = await ShellAuth.shared.signInAccount(window: window(), provider: s(o, "provider")) else { return ["value": NSNull()] }
             return ["value": Self.orNull(places.addAccount(u)?.id)]
         case "placesDescribe":
             places.describe(bound, o)
@@ -319,7 +319,7 @@ final class ShellRouter {
             // The account becomes one of the places. From the library the page goes on itself (move my notes, or
             // keep them separate) and opens it; a first sign-in, or someone else on a "session ended" screen,
             // opens that account in every window (Electron's signIn).
-            guard let u = await ShellAuth.shared.signInAccount(window: window()), let a = places.addAccount(u) else { return ["value": false] }
+            guard let u = await ShellAuth.shared.signInAccount(window: window(), provider: s(o, "provider")), let a = places.addAccount(u) else { return ["value": false] }
             if bound != ShellPlaces.library && a.id != bound { places.switchTo(a.id, path: "/documents", later: true) }
             return ["value": true]
         case "authSignOut":

@@ -7,6 +7,7 @@ import { socialError, type SocialProvider } from "@/lib/auth/socialErrors";
 import { inIosApp, nativeApp } from "@/lib/nativeApp";
 import { desktop } from "@/lib/desktop";
 import { appleSheetHere, signInWithAppleSheet } from "@/lib/auth/appleSheet";
+import { appSignInUrl } from "@/lib/auth/appSignIn";
 import { Alert } from "./fields";
 
 /** Google's "G", in its own colours (Google's sign-in branding asks for it as is). */
@@ -95,14 +96,8 @@ export function SocialSignIn({
   async function throughBrowser(provider: SocialProvider, open: (url: string) => Promise<string | null>) {
     const verifier = randomString(48);
     const state = randomString(16);
-    const start = new URL("/app-google", window.location.origin);
-    start.searchParams.set("client_id", APP_CLIENT);
-    start.searchParams.set("redirect_uri", APP_RETURN);
-    start.searchParams.set("code_challenge", await challengeOf(verifier));
-    start.searchParams.set("code_challenge_method", "S256");
-    start.searchParams.set("state", state);
-    if (provider !== "google") start.searchParams.set("provider", provider);
-    const back = await open(start.toString());
+    const start = appSignInUrl(window.location.origin, { provider, clientId: APP_CLIENT, redirectUri: APP_RETURN, codeChallenge: await challengeOf(verifier), state });
+    const back = await open(start);
     if (!back) return; // closed before it finished
     const answer = new URL(back);
     if (answer.searchParams.get("state") !== state) {

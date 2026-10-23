@@ -139,7 +139,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func placesSignIn(_ call: CAPPluginCall) {
         guarded(call) {
             Task { @MainActor in
-                guard let u = await ShellAuth.shared.signInAccount(window: self.bridge?.viewController?.view.window) else { return call.resolve(["value": NSNull()]) }
+                guard let u = await ShellAuth.shared.signInAccount(window: self.bridge?.viewController?.view.window, provider: call.getString("provider")) else { return call.resolve(["value": NSNull()]) }
                 let first = ShellPlaces.state.accounts.isEmpty
                 let a = ShellPlaces.addAccount(userId: u.userId, name: u.name, email: u.email, avatarUrl: u.avatarUrl)
                 if first { E2eeKeys.adoptLegacy(userId: u.userId) }
@@ -458,7 +458,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
                 // Several places: the account becomes one of them. From the library the page goes on itself (move my
                 // notes, or keep them separate) and opens it; otherwise the app opens it now.
                 let place = ShellPlaces.state.current
-                guard let u = await ShellAuth.shared.signInAccount(window: self.bridge?.viewController?.view.window) else { return call.resolve(["value": false]) }
+                guard let u = await ShellAuth.shared.signInAccount(window: self.bridge?.viewController?.view.window, provider: call.getString("provider")) else { return call.resolve(["value": false]) }
                 let first = ShellPlaces.state.accounts.isEmpty
                 guard let a = ShellPlaces.addAccount(userId: u.userId, name: u.name, email: u.email, avatarUrl: u.avatarUrl) else { return call.resolve(["value": false]) }
                 if first { E2eeKeys.adoptLegacy(userId: u.userId) }

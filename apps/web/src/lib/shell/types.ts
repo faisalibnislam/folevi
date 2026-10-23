@@ -115,9 +115,18 @@ export interface ShellSecrets {
   delete(name: SecretName): Promise<void>;
 }
 
+/**
+ * How the sign-in sheet starts: straight on Google's or Apple's page (`provider`, through the website's
+ * /app-google), or, without one, the website's sign-in page (/connect) for email, passkeys and the rest. A host
+ * from before `provider` opens /connect either way.
+ */
+export interface ShellSignInOptions {
+  provider?: "google" | "apple";
+}
+
 /** Signed-in mode: the bearer token lives in native code and never reaches the page (§1). */
 export interface ShellAuth {
-  signIn(): Promise<boolean>;
+  signIn(o?: ShellSignInOptions): Promise<boolean>;
   signOut(): Promise<void>;
   /** Only `/api/auth/*` on the service; native adds the bearer (and `Origin` on POSTs). */
   fetch(path: string, init: RequestInit): Promise<{ status: number; headers: Record<string, string>; body: string }>;
@@ -300,7 +309,7 @@ export interface ShellPlaces {
   /** Opens a place in every window (they reload into it). */
   switchTo(id: string, o?: { path?: string }): Promise<void>;
   /** Signs in to one more account (the browser or the sign-in sheet); its id, or null when it didn't finish. It doesn't switch. */
-  signIn(): Promise<string | null>;
+  signIn(o?: ShellSignInOptions): Promise<string | null>;
   describe(d: ShellPlaceDescription): Promise<void>;
   /** Ends an account's session here and deletes its token and keys (the page clears its data first). `next`: the place the windows open after, when it was the open one. */
   signOut(id: string, o?: { next?: string }): Promise<void>;

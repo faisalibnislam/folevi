@@ -4,7 +4,9 @@
 // The page lives on capacitor://localhost, where the website's cookie session can't work. So the app signs in
 // the way native apps do (Authorization Code with PKCE, convex/lib/nativeAuth.ts, client "folevi-shell"):
 //   1. signIn() opens the website's /connect page in iOS's sign-in sheet (ASWebAuthenticationSession); the
-//      person signs in there as on the website (password, two-step, Google, Apple, passkeys) and presses Continue;
+//      person signs in there as on the website (password, two-step, Google, Apple, passkeys) and presses Continue.
+//      With a provider (the app's own "Continue with Google" or "Continue with Apple") it opens /app-google
+//      instead, which goes straight on to that provider's page and issues the code by itself afterwards;
 //   2. the sheet ends on folevi://auth/callback?code=…&state=… (only the state this app made is accepted);
 //   3. the app trades the code and its PKCE verifier for a session of its own at /api/auth/native/token and
 //      keeps that bearer token in the Keychain. It never reaches the page.
@@ -82,9 +84,10 @@ final class ShellAuth: NSObject {
     }
 
     /// Signs in to one more account: who it is, or nil. The same person again replaces only their own session.
+    /// `provider` ("google" or "apple"): the sheet opens straight on that provider's page.
     @MainActor
-    func signInAccount(window: PlatformWindow?) async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
-        guard let access = await obtain(window: window) else { return nil }
+    func signInAccount(window: PlatformWindow?, provider: String? = nil) async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
+        guard let access = await obtain(window: window, provider: provider) else { return nil }
         guard let user = await userOf(access) else {
             await endSession(access)
             return nil
@@ -175,8 +178,8 @@ final class ShellAuth: NSObject {
     }
 
     @MainActor
-    func signIn(window: PlatformWindow?) async -> Bool {
-        guard let access = await obtain(window: window) else { return false }
+    func signIn(window: PlatformWindow?, provider: String? = nil) async -> Bool {
+        guard let access = await obtain(window: window, provider: provider) else { return false }
         let previous = token
         token = access
         // Signing in again (another account, or after a stale session) ends the session this device held before.
@@ -184,18 +187,31 @@ final class ShellAuth: NSObject {
         return true
     }
 
+    /// The providers the sheet can open straight on (the website's /app-google); anything else is the sign-in page.
+    static let providers: Set<String> = ["google", "apple"]
+
+    /// Where the sheet starts: /app-google?provider=… for a known provider (straight on to its page, no choices
+    /// on the way), otherwise /connect (the website's sign-in page). Both take the same PKCE request, for this
+    /// client and its folevi://auth/callback, and both end there.
+    static func signInStart(service: URL, provider: String?, challenge: String, state: String) -> URL? {
+        let direct = provider.map { providers.contains($0) } ?? false
+        var c = URLComponents(url: service.appendingPathComponent(direct ? "app-google" : "connect"), resolvingAgainstBaseURL: false)
+        var items: [URLQueryItem] = [
+            .init(name: "client_id", value: clientId), .init(name: "redirect_uri", value: redirectURI),
+            .init(name: "code_challenge", value: challenge), .init(name: "code_challenge_method", value: "S256"), .init(name: "state", value: state),
+        ]
+        if direct, let provider { items.append(.init(name: "provider", value: provider)) }
+        c?.queryItems = items
+        return c?.url
+    }
+
     /// The sign-in sheet, ending with a new session's token (or nil).
     @MainActor
-    private func obtain(window: PlatformWindow?) async -> String? {
+    private func obtain(window: PlatformWindow?, provider: String? = nil) async -> String? {
         sheet?.session.cancel()
         let pkce = Self.pkcePair()
         let state = Self.b64url(LibraryCrypto.randomBytes(24))
-        var c = URLComponents(url: service.appendingPathComponent("connect"), resolvingAgainstBaseURL: false)!
-        c.queryItems = [
-            .init(name: "client_id", value: Self.clientId), .init(name: "redirect_uri", value: Self.redirectURI),
-            .init(name: "code_challenge", value: pkce.challenge), .init(name: "code_challenge_method", value: "S256"), .init(name: "state", value: state),
-        ]
-        guard let connect = c.url else { return nil }
+        guard let connect = Self.signInStart(service: service, provider: provider, challenge: pkce.challenge, state: state) else { return nil }
         let callback: URL? = await withCheckedContinuation { cont in
             let session = ASWebAuthenticationSession(url: connect, callbackURLScheme: "folevi") { url, _ in cont.resume(returning: url) }
             // Safari's own sign-in to Folevi (and Google's) carries over, so there's often nothing to type.

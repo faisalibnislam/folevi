@@ -3,7 +3,7 @@
 // origin's storage, so it goes on after the page reloads into the other mode), opening the library in a
 // signed-in window, and the steps around the copy itself: signing in before going up, signing out after
 // coming down.
-import type { LibraryKind } from "@/lib/shell/types";
+import type { LibraryKind, ShellSignInOptions } from "@/lib/shell/types";
 import { setShellMode, shell } from "@/lib/shell";
 
 /** A move under way. Kept until it's done or the person goes back. */
@@ -65,14 +65,15 @@ export async function switchMode(mode: "local" | "account"): Promise<void> {
 }
 
 /**
- * "Sign in to Folevi" from a library (local mode): the website opens in the browser, the person signs in or
- * makes an account there, and the app comes back signed in, in account mode, where the move starts (plan
- * §6.1 step 1). Nothing changes if signing in doesn't finish. `beforeSwitch` closes the library first.
+ * "Sign in to Folevi" from a library (local mode): the sign-in sheet opens (on Google's or Apple's page with
+ * `provider`), the person signs in or makes an account there, and the app comes back signed in, in account
+ * mode, where the move starts (plan §6.1 step 1). Nothing changes if signing in doesn't finish.
+ * `beforeSwitch` closes the library first.
  */
-export async function startMoveToAccount(o: { versions: boolean; beforeSwitch?: () => Promise<void> }): Promise<boolean> {
+export async function startMoveToAccount(o: { versions: boolean; beforeSwitch?: () => Promise<void> } & ShellSignInOptions): Promise<boolean> {
   const host = shell();
   if (!host) throw new Error("Moving a library needs the Folevi app.");
-  const ok = await host.auth.signIn();
+  const ok = await (o.provider ? host.auth.signIn({ provider: o.provider }) : host.auth.signIn());
   if (!ok) return false;
   setPendingMove({ direction: "upload", startedAt: Date.now(), versions: o.versions });
   await o.beforeSwitch?.();

@@ -431,6 +431,8 @@ test.describe("local mode screens", { tag: "@local" }, () => {
 
     // Sign in to Folevi runs WP12's flow (lib/local/signIn.ts): the FakeShell's sign-in is refused, so nothing changes.
     await section.getByTestId("library-sign-in").click();
+    // The app asks how first (lib/auth/shellSignInWay.ts).
+    await page.getByRole("dialog", { name: "Sign in to Folevi" }).getByRole("button", { name: "Sign in with email" }).click();
     await expect.poll(() => calls(page)).toContain("auth.signIn");
     expect(await calls(page)).not.toContain("setMode");
     await context.close();

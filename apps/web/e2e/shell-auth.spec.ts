@@ -40,12 +40,17 @@ function nodeBridge(approver: () => Page) {
     paths: [] as string[],
     convexTokens: 0,
     connectUrls: [] as string[],
+    /** Every page the browser half showed, in order (the provider's included). */
+    visited: [] as string[],
+    /** What /app-google asked Better Auth for (provider, callbackURL). */
+    socialStarts: [] as { provider?: string; callbackURL?: string }[],
   };
   const bridge: AuthBridge = createAuthBridge({
     serviceUrl: new URL(APP),
     fetch: (url, init) => fetch(url, init),
-    // The browser half: /connect on the website, Continue, and the folevi://auth/callback link it ends on.
-    openExternal: (url) => approve(url),
+    // The browser half: /connect on the website, Continue, and the folevi://auth/callback link it ends on; or,
+    // for the app's own Continue with Google or Apple, /app-google straight on to the provider.
+    openExternal: (url) => (new URL(url).pathname === "/app-google" ? viaProvider(url) : approve(url)),
     store: {
       get: (n) => store.get(n) ?? null,
       set: (n, v) => void store.set(n, v),
@@ -70,6 +75,48 @@ function nodeBridge(approver: () => Page) {
       `folevi://auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`,
     );
   }
+  /**
+   * /app-google: the page goes straight on to Google's or Apple's own page, no choices on the way. Neither runs
+   * here (and the dev deployment has no Google keys), so the provider's host answers with a blank page and the
+   * test then comes back as the provider would, to the callbackURL /app-google gave Better Auth, as `approver`
+   * (signed in, as the provider's callback would have left it). The page issues the code by itself.
+   */
+  async function viaProvider(url: string) {
+    seen.connectUrls.push(url);
+    const page = approver();
+    const start = new URL(url);
+    const state = start.searchParams.get("state")!;
+    const provider = start.searchParams.get("provider") ?? "google";
+    const host = provider === "apple" ? "appleid.apple.com" : "accounts.google.com";
+    const onNav = (f: import("@playwright/test").Frame) => {
+      // (A page can report the same address twice, as it loads and again as Next settles it.)
+      if (f === page.mainFrame() && seen.visited.at(-1) !== f.url()) seen.visited.push(f.url());
+    };
+    page.on("framenavigated", onNav);
+    await page.route(`https://${host}/**`, (r) => r.fulfill({ contentType: "text/html", body: "<!doctype html><title>Provider</title>" }));
+    await page.route(`${APP}/api/auth/sign-in/social`, async (r) => {
+      const body = r.request().postDataJSON() as { provider?: string; callbackURL?: string };
+      seen.socialStarts.push(body);
+      if (body.provider === "google") {
+        return r.fulfill({ json: { url: "https://accounts.google.com/o/oauth2/v2/auth?client_id=e2e&state=e2e", redirect: true } });
+      }
+      return r.continue();
+    });
+    try {
+      await page.goto(url);
+      await page.waitForURL((u) => u.host === host, { timeout: 30_000 });
+      const callback = seen.socialStarts.at(-1)?.callbackURL ?? "";
+      expect(callback).toMatch(/^\/app-google\?/);
+      const authorized = page.waitForResponse((r) => r.url().includes("/api/auth/native/authorize"));
+      await page.goto(`${APP}${callback}`);
+      const { code } = (await (await authorized).json()) as { code: string };
+      await expect(page.getByRole("heading", { name: "Back to Folevi" })).toBeVisible();
+      bridge.handleCallback(`folevi://auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`);
+    } finally {
+      page.off("framenavigated", onNav);
+      await page.unrouteAll({ behavior: "ignoreErrors" });
+    }
+  }
   return { bridge, store, seen };
 }
 
@@ -79,7 +126,7 @@ async function installShell(
   b: ReturnType<typeof nodeBridge>,
   shellVersion = "1.15.0",
 ) {
-  await context.exposeFunction("__e2eAuthSignIn", () => b.bridge.signIn());
+  await context.exposeFunction("__e2eAuthSignIn", (o?: { provider?: unknown }) => b.bridge.signIn(o));
   await context.exposeFunction("__e2eAuthSignOut", () => b.bridge.signOut());
   await context.exposeFunction("__e2eAuthConvexToken", async () => {
     b.seen.convexTokens++;
@@ -107,7 +154,7 @@ async function installShell(
       library: new Proxy({}, { get: () => notHere }),
       secrets: { has: async () => false, set: notHere, delete: notHere },
       auth: {
-        signIn: () => w.__e2eAuthSignIn!(),
+        signIn: (o?: unknown) => w.__e2eAuthSignIn!(o),
         signOut: () => w.__e2eAuthSignOut!(),
         fetch: (path: unknown, init: unknown) => w.__e2eAuthFetch!(path, init),
         convexToken: () => w.__e2eAuthConvexToken!(),
@@ -176,8 +223,9 @@ test("the built-in interface signs in through the browser, opens a note, and sig
   await expect(signIn).toBeVisible({ timeout: 90_000 });
   expect(page.url()).not.toContain("/signin");
 
-  // Sign in: /connect for client folevi-shell opens "in the browser", the page reloads signed in.
+  // Sign in with email: /connect for client folevi-shell opens "in the browser", the page reloads signed in.
   await signIn.click();
+  await page.getByTestId("shell-sign-in").getByRole("button", { name: "Sign in with email" }).click();
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Welcome to Folevi", {
     timeout: 120_000,
   });
@@ -266,6 +314,7 @@ test("an app older than minShellVersion asks to be updated instead of syncing, a
     .getByTestId("shell-sign-in")
     .getByRole("button", { name: "Sign in to Folevi" })
     .click();
+  await page.getByTestId("shell-sign-in").getByRole("button", { name: "Sign in with email" }).click();
   const sidebar = page.getByRole("navigation", { name: "Folio" });
   await expect(sidebar).toBeVisible({ timeout: 120_000 });
   try {
@@ -283,4 +332,69 @@ test("an app older than minShellVersion asks to be updated instead of syncing, a
   await expect(sidebar).toBeVisible({ timeout: 30_000 });
   await context.close();
   await person.context.close();
+});
+
+// The owner's report: "Continue with Google" in the app opened a page offering Apple, Google and email all over
+// again. Now the app's own buttons choose, and the sign-in sheet goes straight to that provider's page
+// (/app-google for client folevi-shell, never /connect or /signin), then back to the app signed in.
+for (const provider of ["google", "apple"] as const) {
+  const name = provider === "google" ? "Google" : "Apple";
+  test(`Continue with ${name} in the app goes straight to ${name}'s page and comes back signed in`, async ({ browser }) => {
+    test.setTimeout(300_000);
+    const person = await newPerson(browser, `Shell ${name}`);
+    const welcome = new URL(person.page.url()).pathname;
+    const b = nodeBridge(() => person.page);
+    const context = await browser.newContext();
+    await installShell(context, b);
+    const page = await context.newPage();
+    await page.goto(`${SHELL}${welcome}`);
+    const screen = page.getByTestId("shell-sign-in");
+    await screen.getByRole("button", { name: "Sign in to Folevi" }).click({ timeout: 90_000 });
+    // Nothing opens until the app knows how.
+    expect(b.seen.connectUrls).toEqual([]);
+    await screen.getByRole("button", { name: `Continue with ${name}` }).click();
+    await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Welcome to Folevi", { timeout: 120_000 });
+
+    // One sheet, on /app-google for this app, naming the provider (Google is the page's default).
+    expect(b.seen.connectUrls).toHaveLength(1);
+    const opened = new URL(b.seen.connectUrls[0]!);
+    expect(opened.pathname).toBe("/app-google");
+    expect(opened.searchParams.get("client_id")).toBe(SHELL_CLIENT_ID);
+    expect(opened.searchParams.get("redirect_uri")).toBe("folevi://auth/callback");
+    expect(opened.searchParams.get("provider")).toBe(provider);
+    // The page asked Better Auth for that provider at once, and the browser went from /app-google straight to the
+    // provider's own host: no /signin, no /connect, no second choice.
+    expect(b.seen.socialStarts[0]?.provider).toBe(provider);
+    const hosts = b.seen.visited.map((u) => new URL(u));
+    const providerHost = provider === "google" ? "accounts.google.com" : "appleid.apple.com";
+    expect(hosts[0]?.pathname).toBe("/app-google");
+    expect(hosts[1]?.host, b.seen.visited.join("\n")).toBe(providerHost);
+    expect(hosts.some((u) => /^\/(signin|signup|connect)(\/|$)/.test(u.pathname))).toBe(false);
+    expect(b.store.get("auth.session")).toBeTruthy();
+    await context.close();
+    await person.context.close();
+  });
+}
+
+test("/app-google refuses a client it doesn't serve, and says so instead of offering a choice", async ({ page }) => {
+  const q = new URLSearchParams({ client_id: "folevi-mac", redirect_uri: "com.folevi.mac://auth/callback", code_challenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM", code_challenge_method: "S256", state: "s", provider: "apple" });
+  let started = false;
+  await page.route(`${APP}/api/auth/sign-in/social`, (r) => {
+    started = true;
+    return r.abort();
+  });
+  await page.goto(`${APP}/app-google?${q}`);
+  await expect(page.getByRole("heading", { name: "This link doesn't work" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("button", { name: /Continue with/ })).toHaveCount(0);
+  expect(started).toBe(false);
+});
+
+test("in a browser, the website's own Continue with Apple goes straight to Apple", async ({ page }) => {
+  await page.route("https://appleid.apple.com/**", (r) => r.fulfill({ contentType: "text/html", body: "<!doctype html><title>Apple</title>" }));
+  await page.goto(`${APP}/signin`);
+  const apple = page.getByRole("button", { name: "Continue with Apple" });
+  // (The dev deployment has Apple's keys; apple-signin.spec.ts checks the buttons follow what it offers.)
+  await apple.click({ timeout: 30_000 });
+  await page.waitForURL((u) => u.host === "appleid.apple.com", { timeout: 30_000 });
+  expect(new URL(page.url()).pathname).toBe("/auth/authorize");
 });

@@ -120,8 +120,8 @@ export interface DesktopBridge {
   /** Drags a note out as a Markdown file (from a dragstart). Missing in Mac app builds before 1.2. */
   dragFile?(file: { name: string; text: string }): void;
   /**
-   * The app answers getDisplayMedia with this Mac's sound, so a recording can hold both sides of a call
-   * (lib/callCapture.ts). Missing in Mac app builds before 1.3.
+   * The app can record a call, both sides of it (with `recordCall`, lib/desktop/capabilities.ts and
+   * lib/callCapture.ts). Missing in Mac app builds before 1.3.
    */
   callCapture?: boolean;
   /** Whether macOS lets Folevi record the screen and its sound ("granted" once allowed). Missing before 1.3. */

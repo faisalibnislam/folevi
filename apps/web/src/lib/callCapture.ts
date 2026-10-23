@@ -1,12 +1,9 @@
 // Recording a call in the Mac app: the microphone and everything this Mac plays, mixed into one recording.
-// - The Electron app (removed; kept while copies of it are about): the page asks for the screen with sound (getDisplayMedia); the app answers
-//   with the whole screen and its system audio ("loopback"), the recorder drops the picture at once, keeping only
-//   the sound, and mixes it with the microphone here (mixAudio).
-// - The native Mac app (apps/mac): WebKit's getDisplayMedia has no system sound, so the app records and mixes
-//   both itself (CallRecorder.swift) and hands the finished recording over (foleviDesktop.recordCall, used through
-//   NativeCallRecording below, shaped like the parts of MediaRecorder the recorder panel uses).
-// macOS asks for Screen & System Audio Recording permission the first time. In a browser, or in a Mac app from
-// before call capture (no `callCapture` on its bridge), only the microphone is offered.
+// WebKit's getDisplayMedia has no system sound, so the native Mac app (apps/mac) records and mixes both itself
+// (CallRecorder.swift) and hands the finished recording over (foleviDesktop.recordCall, used through
+// NativeCallRecording below, shaped like the parts of MediaRecorder the recorder panel uses).
+// macOS asks for Screen & System Audio Recording permission the first time. In a browser, or in a Mac app that
+// can't record calls (no `callCapture` or `recordCall` on its bridge), only the microphone is offered.
 import type { DesktopBridge } from "./desktop";
 import { macDesktop, type MacDesktop, type NativeCallRecorder } from "./desktop/capabilities";
 
@@ -22,43 +19,9 @@ export const CALL_PERMISSION =
   "Folevi needs Screen & System Audio Recording permission to hear the call. Turn it on in System Settings > Privacy & Security, then try again.";
 const CALL_FAILED = "The call’s sound couldn’t be recorded. Try again, or record from the microphone only.";
 
-/**
- * What went wrong getting this Mac's sound, as a sentence, and whether System Settings would fix it. A
- * refusal (or a capture that can't start, which is how macOS answers without the permission) points to
- * the permission; so does a capture that came back without any sound.
- */
-export function callProblem(error: unknown): { message: string; settings: boolean } {
-  const name = error instanceof DOMException ? error.name : error instanceof Error ? error.name : "";
-  if (["NotAllowedError", "SecurityError", "NotReadableError", "AbortError", "NoSystemAudio"].includes(name)) return { message: CALL_PERMISSION, settings: true };
-  return { message: CALL_FAILED, settings: false };
-}
-
-/** The parts of an AudioContext mixing needs (a test passes its own). */
-export type Mixer = Pick<AudioContext, "createMediaStreamSource" | "createMediaStreamDestination">;
-
-/**
- * Mixes the sound of several streams into one: each goes into a single destination, whose stream is what
- * gets recorded. `also` hears every stream too (the level meter).
- */
-export function mixAudio(ctx: Mixer, streams: MediaStream[], also?: AudioNode): MediaStream {
-  const destination = ctx.createMediaStreamDestination();
-  for (const stream of streams) {
-    const source = ctx.createMediaStreamSource(stream);
-    source.connect(destination);
-    if (also) source.connect(also);
-  }
-  return destination.stream;
-}
-
-/**
- * Whether the recorder offers calls: a Mac app that can capture them, either natively (the native Mac app) or
- * through getDisplayMedia (the Electron app).
- */
-export function callRecordingAvailable(
-  bridge: Pick<MacDesktop, "platform" | "callCapture" | "recordCall"> | null = macDesktop(),
-  displayMedia = typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getDisplayMedia),
-): boolean {
-  return canRecordCalls(bridge) && (Boolean(bridge?.recordCall) || displayMedia);
+/** Whether the recorder offers calls: a Mac app that records them itself. */
+export function callRecordingAvailable(bridge: Pick<MacDesktop, "platform" | "callCapture" | "recordCall"> | null = macDesktop()): boolean {
+  return nativeCallRecorder(bridge) !== null;
 }
 
 /** The native Mac app's recorder, when it records calls itself. */

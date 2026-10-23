@@ -14,14 +14,11 @@
 .fb-canvas-card[data-full]::backdrop { background: transparent; }
 /* In full canvas the block's toolbar is centred along the top (it would leave the left looking empty on the
    web, and would run into the window's buttons in the Mac app). The Mac's red, yellow and green buttons sit in
-   the top-left corner, in a .fb-full-traffic space DesktopBridge places them in, and the strip along the top
-   that the toolbar doesn't cover drags the window, as in Freeform. Outside full canvas the space is gone. */
+   the top-left corner, in a .fb-full-traffic space DesktopBridge places them in. Outside full canvas the space
+   is gone. */
 .fb-full-traffic { display: none; }
 :root[data-desktop="mac"] .fb-canvas-card:not([data-full]) .fb-full-traffic { display: none; }
 :root[data-desktop="mac"] .fb-canvas-card[data-full] .fb-full-traffic { position: absolute; left: 14px; top: 10px; width: 56px; height: 38px; }
-:root[data-desktop="mac"] .fb-canvas-card[data-full]::before {
-  content: ""; position: absolute; inset: 0 0 auto; height: 52px; z-index: 2; -webkit-app-region: drag;
-}
 .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) {
   left: 50%; right: auto; transform: translateX(-50%); width: max-content; max-width: calc(100% - var(--fold-inset, 168px));
 }
@@ -29,9 +26,6 @@
    app's full canvas enough to clear the window's buttons on the left, kept on the right too so it stays centred. */
 .fb-vc-bar { --fold-inset: 20px; }
 :root[data-desktop="mac"] .fb-canvas-card[data-full] .fb-vc-bar { --fold-inset: 168px; }
-/* The toolbar's own empty stretches drag too, like a Mac title bar with tools in it; its controls stay clickable. */
-:root[data-desktop="mac"] .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) { -webkit-app-region: drag; }
-:root[data-desktop="mac"] .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) :is(a, button, input, textarea, select, [role="button"], [role="group"] > *, [tabindex]) { -webkit-app-region: no-drag; }
 .fb-canvas-card[data-full] .fb-canvas-body { flex: 1; min-height: 0; }
 .fb-canvas-card[data-full] .fb-wb-resize { display: none; }
 

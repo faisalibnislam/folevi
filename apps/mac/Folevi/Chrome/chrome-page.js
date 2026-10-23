@@ -21,7 +21,7 @@
   var apply = function (a) {
     if (!a || typeof a !== "object") return;
     // Present only in full screen (the page's CSS reads [data-fullscreen]); data-fullscreen-native says the app
-    // keeps it, so the page's own guess from the window's size (lib/desktop/mac.ts) leaves it alone.
+    // keeps it.
     var el = root();
     if (el) {
       el.setAttribute("data-fullscreen-native", "");
@@ -86,8 +86,8 @@
         if (shown(q)) noDrag.push(box(q));
       }
     }
-    // The strip across the window's top (globals.css body::before: 8 px over the app, 36 px over other pages),
-    // except in Quick Add's panel.
+    // The strip across the window's top (8 px over the app, 36 px over other pages, globals.css), except in
+    // Quick Add's panel.
     if (!document.querySelector(".ui-desktop-quick-add")) drag.push([0, 0, window.innerWidth, document.querySelector(".ui-canvas") ? 8 : 36]);
     var floating = [];
     try {

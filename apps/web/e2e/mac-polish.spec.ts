@@ -1,5 +1,5 @@
 // Folevi for Mac's web layer (docs/MAC_POLISH_PLAN.md, package WM4), with the page marked as the Mac app
-// (<html data-desktop="mac">, as both apps do before the first paint) and a stand-in for foleviDesktop that records
+// (<html data-desktop="mac" data-mac-engine="webkit">, as the app does before the first paint) and a stand-in for foleviDesktop that records
 // what the page tells the app and answers the text services as the native app does. Local mode, against the shell
 // dev server, in Chromium (project "local") and in WebKit (the native app's engine, project "mac-webkit"):
 //   E2E_LOCAL_BASE_URL=http://localhost:3003 E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 \
@@ -21,7 +21,10 @@ function macApp() {
   const record = (method: string) => (value?: unknown) => void calls.push({ method, value });
   window.__macCalls = calls;
   window.__macEmit = (c) => listeners.forEach((l) => l(c));
-  const mark = () => document.documentElement?.setAttribute("data-desktop", "mac");
+  const mark = () => {
+    document.documentElement?.setAttribute("data-desktop", "mac");
+    document.documentElement?.setAttribute("data-mac-engine", "webkit");
+  };
   mark();
   document.addEventListener("DOMContentLoaded", mark);
   Object.defineProperty(window, "foleviDesktop", {
@@ -120,7 +123,7 @@ test.describe("Folevi for Mac, the web layer", { tag: ["@local", "@mac"] }, () =
     await expect(menu).toHaveCount(0);
   });
 
-  test("the menu bar: commands reach the page and it says what it can do; the page's tab shortcuts without native menus", async ({ page }) => {
+  test("the menu bar: commands reach the page and it says what it can do, a note's own commands and the tabs included", async ({ page }) => {
     test.setTimeout(120_000);
     await openHome(page);
     // Formatting needs a note: off on Home (DesktopBridge sends what the menu bar can do).
@@ -132,11 +135,11 @@ test.describe("Folevi for Mac, the web layer", { tag: ["@local", "@mac"] }, () =
     await expect(page).toHaveURL(/\/tasks\/today/);
     await page.evaluate(() => window.__macEmit!({ type: "menu", id: "go.home" }));
     await expect(page).toHaveURL(/\/documents/);
-    // A note's own commands reach the Note menu (useMacNoteCommands, in the native app only: data-mac-engine).
-    // Without such menus (no data-mac-engine) the page's own tab shortcuts: a note in a tab, then ⌘1 is the first tab.
+    // A note's own commands reach the Note menu (useMacNoteCommands); Window > the first tab (⌘1) goes back Home.
     await page.locator("a[href^='/d/']").first().click();
     await expect(page).toHaveURL(/\/d\//);
-    await page.keyboard.press("Meta+1");
+    await expect.poll(async () => ((await calls(page, "setMenuState")).at(-1) as { disabled?: string[] } | undefined)?.disabled ?? ["note.duplicate"]).not.toContain("note.duplicate");
+    await page.evaluate(() => window.__macEmit!({ type: "menu", id: "go.tab-1" }));
     await expect(page).not.toHaveURL(/\/d\//);
   });
 

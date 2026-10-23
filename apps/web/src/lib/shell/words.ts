@@ -32,7 +32,6 @@ export function deviceWords(): DeviceWords {
     const noun = s.deviceFamily === "tablet" ? "tablet" : "phone";
     return { here: `this ${noun}`, Here: `This ${noun}`, noun, settings: "the Settings app", files: "the Files app", signInPlace: "the sign-in page", ios: false, onDeviceModel: "Gemini Nano" };
   }
-  // The native Mac app (apps/mac, WebKit) signs in to Dropbox and Google in a sign-in sheet; Electron in the browser.
-  const sheet = typeof document !== "undefined" && document.documentElement?.getAttribute("data-mac-engine") === "webkit";
-  return { here: "this Mac", Here: "This Mac", noun: "Mac", settings: "System Settings", files: "Finder", signInPlace: sheet ? "the sign-in sheet" : "your browser", ios: false, onDeviceModel: "Apple Intelligence" };
+  // The Mac app signs in to Dropbox and Google in a sign-in sheet.
+  return { here: "this Mac", Here: "This Mac", noun: "Mac", settings: "System Settings", files: "Finder", signInPlace: "the sign-in sheet", ios: false, onDeviceModel: "Apple Intelligence" };
 }

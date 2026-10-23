@@ -32,17 +32,18 @@ export async function passkeyAutofillAvailable(win: (Window & typeof globalThis)
 /** A starting name for a new passkey, from the browser and system it's added on: "Chrome on Mac". */
 export function defaultPasskeyName(userAgent: string = typeof navigator !== "undefined" ? navigator.userAgent : ""): string {
   const ua = userAgent;
-  const browser = /Edg\//.test(ua)
-    ? "Edge"
-    : /Firefox\//.test(ua)
-      ? "Firefox"
-      : /Chrome\//.test(ua)
-        ? /Electron\//.test(ua)
-          ? "Folevi app"
-          : "Chrome"
-        : /Safari\//.test(ua)
-          ? "Safari"
-          : null;
+  // (Folevi for Mac's WebKit adds FoleviDesktop/ to Safari's words.)
+  const browser = /FoleviDesktop\//.test(ua)
+    ? "Folevi app"
+    : /Edg\//.test(ua)
+      ? "Edge"
+      : /Firefox\//.test(ua)
+        ? "Firefox"
+        : /Chrome\//.test(ua)
+          ? "Chrome"
+          : /Safari\//.test(ua)
+            ? "Safari"
+            : null;
   const system = /iPhone/.test(ua)
     ? "iPhone"
     : /iPad/.test(ua)

@@ -2,7 +2,7 @@
 // text shows Folevi's menu, never the system's, with what the system's would have added on a Mac: spelling
 // suggestions (with Learn and Ignore), Look Up and Share. The native app answers them (apps/mac/Folevi/Chrome/
 // chrome-page.js: foleviDesktop.spelling, learnWord, ignoreWord, lookUp; Bridge/capabilities.js: share,
-// clipboard); without them (today's Electron app, the website) these items simply aren't there. Pasting from
+// clipboard); without them (the website) these items simply aren't there. Pasting from
 // Folevi's menus reads the Mac's clipboard through the app (no "Paste" bubble in WebKit) when it can.
 import { desktop } from "@/lib/desktop";
 

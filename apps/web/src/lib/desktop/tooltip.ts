@@ -2,7 +2,7 @@
 // drawn by the page in Folevi's type after 700 ms of the pointer resting on it, at once while another has just
 // shown (until a second passes with none), with a shortcut written in it ("New note (⌘⌥N)") in a keycap. The
 // browser's own tooltip is held back while the page's shows (the title comes back as the pointer leaves), so
-// Electron and WebKit show the same thing. Never for touch, never while a button is held or a menu is open.
+// only Folevi's shows. Never for touch, never while a button is held or a menu is open.
 
 const REST_MS = 700;
 const WARM_MS = 1000;

@@ -294,9 +294,8 @@
   box-shadow: var(--glass-edge), 0 6px 20px -8px rgb(0 0 0 / 0.18);
 }
 .fb-whiteboard-box[data-full] .fb-wb-spacer { flex: none; width: 4px; }
-/* The Mac app: clear of the window's buttons, and the bar's own empty stretches drag the window. */
-:root[data-desktop="mac"] .fb-whiteboard-box[data-full] .fb-wb-toolbar { max-width: calc(100% - 168px); -webkit-app-region: drag; }
-:root[data-desktop="mac"] .fb-whiteboard-box[data-full] .fb-wb-toolbar :is(button, [role="button"], [tabindex]) { -webkit-app-region: no-drag; }
+/* The Mac app: clear of the window's buttons. */
+:root[data-desktop="mac"] .fb-whiteboard-box[data-full] .fb-wb-toolbar { max-width: calc(100% - 168px); }
 
 /* Fingers: 44 point targets (docs/IOS.md); a swatch keeps its small chip inside the larger target. */
 @media (pointer: coarse) {

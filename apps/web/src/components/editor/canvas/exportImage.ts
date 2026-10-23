@@ -4,7 +4,7 @@
 // saved as a PNG, SVG or PDF file, or copied to the clipboard as an image. Everything happens on the device;
 // nothing is rendered on a server.
 //
-// Saving follows the rest of the app (doc/export.ts): a download in the browser and in the Mac app (Electron
+// Saving follows the rest of the app (doc/export.ts): a download in the browser and in the Mac app (which
 // asks where to save it). In the iPhone and iPad app the file goes to iOS's share sheet instead (Save to
 // Files, Save Image, AirDrop, Mail), which Capacitor's web view can't do with a download.
 import { inIosApp } from "@/lib/nativeApp";

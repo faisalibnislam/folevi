@@ -5,7 +5,7 @@ import { Mic, Pause, Play, PhoneCall, Square, X } from "lucide-react";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { desktop } from "@/lib/desktop";
 import { inIosApp } from "@/lib/nativeApp";
-import { NativeCallRecording, callProblem, callRecordingAvailable, mixAudio, nativeCallProblem, nativeCallRecorder, type RecordingSource } from "@/lib/callCapture";
+import { NativeCallRecording, callRecordingAvailable, nativeCallProblem, nativeCallRecorder, type RecordingSource } from "@/lib/callCapture";
 
 /*
  * The "/Audio recording" panel: records from the microphone with MediaRecorder and hands the finished
@@ -158,9 +158,8 @@ export function AudioRecorder({
   }, []);
 
   /**
-   * Starts recording from `from`: the microphone, or a call. In the native Mac app the app records a call itself
-   * (this Mac's sound and the microphone, mixed there: lib/callCapture.ts); in the Electron app this Mac's sound
-   * comes first, while the click that chose it still counts as one, then the microphone, mixed into one stream.
+   * Starts recording from `from`: the microphone, or a call, which the native Mac app records itself (this Mac's
+   * sound and the microphone, mixed there: lib/callCapture.ts).
    */
   const begin = useCallback(async (from: RecordingSource) => {
     const gen = generation.current;
@@ -240,50 +239,25 @@ export function AudioRecorder({
       return;
     }
 
-    let system: MediaStream | null = null;
-    if (from === "call") {
-      try {
-        system = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
-        // Only the sound is kept: the picture is never recorded.
-        for (const t of system.getVideoTracks()) {
-          t.stop();
-          system.removeTrack(t);
-        }
-        if (!system.getAudioTracks().length) throw new DOMException("No sound came with the capture.", "NoSystemAudio");
-        // Without Screen & System Audio Recording the capture may start without the call's sound: check first.
-        const access = await desktop()?.screenAccess?.();
-        if (access && access !== "granted") throw new DOMException("Screen recording isn't allowed.", "NotAllowedError");
-      } catch (error) {
-        system?.getTracks().forEach((t) => t.stop());
-        if (!stale()) {
-          const problem = callProblem(error);
-          setPhase({ kind: "error", message: problem.message, settings: problem.settings });
-        }
-        return;
-      }
-    }
     try {
       const media = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true },
       });
       if (stale()) {
         media.getTracks().forEach((t) => t.stop());
-        system?.getTracks().forEach((t) => t.stop());
         return;
       }
-      streams.current = system ? [media, system] : [media];
+      streams.current = [media];
       const ctx = new AudioContext();
       audioCtx.current = ctx;
       void ctx.resume().catch(() => undefined);
-      // A level meter, so it's clear the microphone (and the call) is heard.
+      // A level meter, so it's clear the microphone is heard.
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 512;
-      let recorded = media;
-      if (system) recorded = mixAudio(ctx, [media, system], analyser);
-      else ctx.createMediaStreamSource(media).connect(analyser);
+      ctx.createMediaStreamSource(media).connect(analyser);
       const type = recordingType();
       const rec = new MediaRecorder(
-        recorded,
+        media,
         type ? { mimeType: type, audioBitsPerSecond: 64_000 } : undefined,
       );
       rec.ondataavailable = (e) => {
@@ -292,10 +266,9 @@ export function AudioRecorder({
           bytes.current += e.data.size;
         }
       };
-      rec.onstop = () => ended((rec.mimeType || type || "audio/webm").split(";")[0]!, Boolean(system));
-      // Most browsers stop the recorder when its microphone goes away; this makes sure of it (and for a
-      // call, when this Mac's sound stops coming).
-      for (const track of [...media.getAudioTracks(), ...(system?.getAudioTracks() ?? [])])
+      rec.onstop = () => ended((rec.mimeType || type || "audio/webm").split(";")[0]!, false);
+      // Most browsers stop the recorder when its microphone goes away; this makes sure of it.
+      for (const track of media.getAudioTracks())
         track.addEventListener("ended", () => {
           if (rec.state !== "inactive") rec.stop();
         });
@@ -309,7 +282,6 @@ export function AudioRecorder({
         return peak * 1.8;
       });
     } catch (error) {
-      system?.getTracks().forEach((t) => t.stop());
       if (stale()) return;
       release();
       setPhase({ kind: "error", message: micProblem(error) });

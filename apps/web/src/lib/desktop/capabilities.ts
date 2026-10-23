@@ -2,7 +2,7 @@
 // DesktopRouter+Capabilities.swift, docs/MAC_WEBKIT_PLAN.md §10 WM5): recording a call natively, notes dragged out
 // as Markdown files, Share, Print, Spotlight, the clipboard for Folevi's own menus, Quick Look, and the commands the
 // app sends for File > Share and Print, the "New Folevi Note with Selection" service and Shortcuts. Every member
-// is optional: the Electron app and a browser have none of them.
+// is optional: a browser has none of them.
 import { desktop, type DesktopBridge } from "@/lib/desktop";
 
 /** The native Mac app's call recorder (lib/callCapture.ts): this Mac's sound and the microphone, mixed there. */

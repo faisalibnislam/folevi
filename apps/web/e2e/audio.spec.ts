@@ -72,16 +72,29 @@ test.describe("audio recordings", () => {
     await context.close();
   });
 
-  test("in the Mac app: Microphone or Call; a call records the mic and the Mac's sound, and without the permission it says so and opens System Settings", async ({ browser }) => {
+  test("in the Mac app: Microphone or Call; the app records the call, and without the permission it says so and opens System Settings", async ({ browser }) => {
     const { context, page } = await newPerson(browser, "Call Recorder");
     await context.grantPermissions(["microphone"]);
-    // The Mac app's bridge (foleviDesktop, lib/desktop.ts), with call capture; Chromium's fake devices stand in
-    // for the screen and its sound. `__access` is what macOS says about Screen & System Audio Recording.
+    // The Mac app's bridge (foleviDesktop, lib/desktop.ts), with its call recorder (recordCall, which mixes this
+    // Mac's sound and the microphone in the app: lib/callCapture.ts). `__access` is what macOS says about Screen
+    // & System Audio Recording: without it the recorder refuses as CallRecorder.swift does.
     await page.addInitScript(() => {
       const w = window as unknown as { __opened: string[]; __access: string; foleviDesktop: unknown };
       w.__opened = [];
       w.__access = "denied";
       const noop = () => {};
+      const recordCall = {
+        start: async () => {
+          if (w.__access !== "granted") throw { code: "permission", message: "Screen & System Audio Recording is off." };
+          return true as const;
+        },
+        pause: noop,
+        resume: noop,
+        stop: async () => ({ blob: new Blob([new Uint8Array(2048)], { type: "audio/mp4" }), seconds: 1.5 }),
+        cancel: noop,
+        onLevel: () => noop,
+        onEnded: () => noop,
+      };
       w.foleviDesktop = {
         platform: "mac",
         callCapture: true,
@@ -99,6 +112,7 @@ test.describe("audio recordings", () => {
         onCommand: () => noop,
         screenAccess: async () => w.__access,
         openSystemSettings: (pane: string) => w.__opened.push(pane),
+        recordCall,
       };
     });
     await page.reload();
@@ -127,7 +141,7 @@ test.describe("audio recordings", () => {
     await page.waitForTimeout(1_500);
     await panel.getByRole("button", { name: "Stop and save" }).click();
     await expect(panel).toBeHidden();
-    await expect(page.locator(".fb-audio")).toContainText(/Recording \d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.webm/);
+    await expect(page.locator(".fb-audio")).toContainText(/Recording \d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.m4a/);
     await context.close();
   });
 });

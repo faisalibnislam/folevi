@@ -340,7 +340,7 @@ WebKit has no `-webkit-app-region` (proved). The page already marks drag areas (
 2. `FoleviWebView` (a `WKWebView` subclass) overrides `mouseDown(with:)`: a click inside a drag rect and outside
    every no-drag rect calls `window.performDrag(with:)`; a double-click there does what System Settings says
    (`AppleActionOnDoubleClick`: zoom, minimise or nothing). Everything else goes to `super`.
-3. The web change is additive: `globals.css` keeps `-webkit-app-region` for Electron until it's retired.
+3. The web change is additive. (`globals.css` kept `-webkit-app-region` for Electron; with Electron retired it is gone, and the 8 / 36 px strip along the top is the one `chrome-page.js` reports.)
 
 ### 6.4 Traffic lights
 
@@ -385,7 +385,7 @@ The web app already runs in WKWebView (iPhone, iPad) and Safari, so the list is 
 
 | Difference | Change | Package |
 | --- | --- | --- |
-| No `-webkit-app-region` | drag regions reported to the host (6.3); CSS kept for Electron until it's retired | WM2 (web part in `DesktopBridge.tsx`) |
+| No `-webkit-app-region` | drag regions reported to the host (6.3); the Electron-only CSS removed after Electron was retired | WM2 (web part in `DesktopBridge.tsx`) |
 | `Uint8Array` can't cross `postMessage` | already base64 in `shell-bridge.js`; `foleviDesktop.recognizeText` and `dragFile` go through it too | WM0 |
 | User agent lacks `Safari/` and the `FoleviDesktop/` token (`setUserAgent` in Electron) | `applicationNameForUserAgent = "Version/<system Safari version> Safari/605.1.15 FoleviDesktop/<version>"`, so `browserLabel()` and session names read "Folevi for Mac" | WM0 |
 | `getDisplayMedia` with system audio (`audio: "loopback"`) doesn't exist | `lib/callCapture.ts` asks `foleviDesktop.recordCall()` when present (native recorder), else today's path | WM5 |

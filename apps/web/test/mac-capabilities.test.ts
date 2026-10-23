@@ -42,11 +42,12 @@ function fakeRecorder() {
 }
 
 describe("a call recorded by the native Mac app", () => {
-  test("offered when the app records calls itself, even without getDisplayMedia", () => {
+  test("offered only when the app records calls itself", () => {
     const { native } = fakeRecorder();
-    expect(callRecordingAvailable({ platform: "mac", callCapture: true, recordCall: native }, false)).toBe(true);
-    expect(callRecordingAvailable({ platform: "mac", callCapture: true }, false)).toBe(false);
-    expect(callRecordingAvailable({ platform: "mac", callCapture: true }, true)).toBe(true);
+    expect(callRecordingAvailable({ platform: "mac", callCapture: true, recordCall: native })).toBe(true);
+    expect(callRecordingAvailable({ platform: "mac", callCapture: true })).toBe(false);
+    expect(callRecordingAvailable({ platform: "mac", recordCall: native })).toBe(false);
+    expect(callRecordingAvailable(null)).toBe(false);
     expect(nativeCallRecorder({ platform: "mac", callCapture: true, recordCall: native })).toBe(native);
     expect(nativeCallRecorder({ platform: "mac", callCapture: true })).toBeNull();
   });

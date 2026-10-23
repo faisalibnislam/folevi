@@ -208,24 +208,15 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cover-art-tint: rgb(0 0 0 / 0.18); } }
 
 /* The Mac app (apps/mac): no title bar. The window's buttons sit at the start of the app's top bar (a
-   space is kept for them), and the top bars' empty parts move the window, as a title bar would. */
+   space is kept for them), and the top bars' empty parts (.ui-drag) move the window, as a title bar would: the
+   app moves it from what apps/mac/Folevi/Chrome/chrome-page.js reports, a strip along the window's top
+   included (8 px over the app, 36 px over other pages, none in Quick Add), since WebKit has no app-region. */
 .ui-traffic-space, .ui-desktop-only { display: none; }
 /* (The Mac's buttons take the logo's place in the sidebar.) */
 :root[data-desktop="mac"] .ui-desktop-only { display: block; }
 :root[data-desktop="mac"] .ui-browser-only { display: none; }
 :root[data-desktop="mac"] .ui-traffic-space { display: block; flex: none; align-self: stretch; width: 60px; }
-:root[data-desktop] .ui-drag { -webkit-app-region: drag; }
-:root[data-desktop] .ui-drag :is(a, button, input, textarea, select, [role="button"], [role="tab"], [role="combobox"], [tabindex]) { -webkit-app-region: no-drag; }
-/* What floats over the page never moves the window, wherever it sits in the page (app-region is inherited:
-   a pop-up opened from a top bar, like the save status or the notifications, would otherwise be part of that
-   bar's drag area, so clicks on it drag the window, and the drag area can end up where the pop-up first
-   appeared, swallowing clicks until the page reloads). */
-:root[data-desktop] :is([popover], dialog, .ui-pop, [role="menu"], [role="listbox"], [role="dialog"], [role="tooltip"]) { -webkit-app-region: no-drag; }
-/* The margin above the panels moves the window too; outside the app's frame (sign in, onboarding) a taller strip. */
-:root[data-desktop] body::before { content: ""; position: fixed; inset: 0 0 auto; height: 8px; z-index: 2147483647; -webkit-app-region: drag; }
-:root[data-desktop]:not(:has(.ui-canvas)) body::before { height: 36px; }
 /* The Quick Add window is the form alone: no page around it. */
-:root[data-desktop]:has(.ui-desktop-quick-add) body::before { display: none; }
 .ui-desktop-quick-add { min-height: 100vh; }
 
 /* The iPhone and iPad app (apps/ios, data-native="ios") and the Android app (apps/android, data-native="android",
@@ -925,10 +916,10 @@
 
 /* ------------------------------------------------------------------------------------------------
  * Mac polish WM4 (docs/MAC_POLISH_PLAN.md §2, §3.4, §3.7, §3.12, §3.14 to §3.16; docs/MAC_WEBKIT_PLAN.md §10):
- * the web layer of Folevi for Mac (the native WebKit app; the Electron app it replaced shared it). Only under
+ * the web layer of Folevi for Mac (the native WebKit app). Only under
  * <html data-desktop="mac">, which the app sets before the first paint (apps/mac/Folevi/Bridge/mac-bridge.js); the website in a browser never has it. components/app/MacPolish.tsx keeps
- * data-input ("key" after keyboard navigation, "pointer" after a click), data-window-active and data-fullscreen;
- * the native app may add data-vibrancy (the system's translucent sidebar, decision M3). Everything here is plain
+ * data-input ("key" after keyboard navigation, "pointer" after a click); the app sets data-window-active and
+ * data-fullscreen (present only in full screen) and may add data-vibrancy (the system's translucent sidebar, decision M3). Everything here is plain
  * CSS outside the layers, so it wins over the components' utility classes without !important.
  * --------------------------------------------------------------------------------------------- */
 :root[data-desktop="mac"] {
@@ -982,7 +973,7 @@
 /* §2.1, §3.3: the window buttons' room collapses in full screen (the system shows them at the top edge there), on
    the sidebar's curve. */
 :root[data-desktop="mac"] .ui-traffic-space { transition: width 220ms ease-in-out; }
-:root[data-desktop="mac"][data-fullscreen="true"] .ui-traffic-space { width: 0; }
+:root[data-desktop="mac"][data-fullscreen] .ui-traffic-space { width: 0; }
 
 /* §2.1, §2.3 The sidebar: a quiet fill for the open row (not a raised white pill), dimmed in a window behind
    others; small caps headers in the muted ink; the search box as tall as the rows. */
@@ -1087,7 +1078,7 @@
 :root[data-desktop="mac"] [data-pre-app] [role="group"] > button { min-height: 64px; border-radius: var(--radius-panel); }
 
 /* §3.8 Quick Add (components/app/MacQuickAdd.tsx): the panel is the form alone, as tall as its rows, on the raised
-   surface (Electron's window), or clear over the native panel's material. */
+   surface, or clear over the native panel's material (data-vibrancy). */
 :root[data-desktop="mac"]:has(.mac-quick-add),
 :root[data-desktop="mac"]:has(.mac-quick-add) body { min-height: 0; background: var(--color-surface-raised); }
 :root[data-desktop="mac"][data-vibrancy]:has(.mac-quick-add),

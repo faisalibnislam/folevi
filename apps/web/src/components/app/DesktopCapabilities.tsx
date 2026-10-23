@@ -7,7 +7,7 @@
 // - Shortcuts' Add a Task: a task in the Inbox.
 // - Spotlight: the recent and starred notes of this place, whenever they change.
 // - Notes dragged out to Finder: each one's Markdown and attachments, made when it's dropped.
-// Rendered by Shell next to DesktopBridge; nothing in the Electron app (it has none of these) or a browser.
+// Rendered by Shell next to DesktopBridge; nothing in a browser.
 import { useConvex, useMutation, useQuery } from "convex/react";
 import { useEffect, useRef } from "react";
 import { api } from "@/lib/convex/api";

@@ -850,3 +850,32 @@ memory WebKit can reclaim, 99 MB WebKit's heap), a second page 60 (no window: a 
 
 So a third of an idle day's footprint (183 MB of 641) is pages nobody sees: Quick Add's after its first use and a
 runner per place in the background.
+
+### Step 1: background places (`App/BackgroundSync.swift`)
+
+Two designs for the places no window shows, instead of a page each all day:
+
+- **One shared runner** syncing every place in turn: one runner page is always up (60 MB, the size of each runner
+  above), and it loads a new page for every turn.
+- **Timed wake** (chosen): no page between wakes. A place's runner wakes right away when the place leaves the
+  windows (a switch, so what was queued there goes up), when an account is added, when the library's folder
+  changes (while Folevi is in front, or iCloud says so) and every 10 minutes one place at a time; it stays at least
+  15 s and until its page says nothing waits (at most 2 minutes, 10 while something still waits), then goes, and
+  WebKit ends its process. New notifications stay prompt without a page: every minute each background account asks
+  Convex for its unread count over HTTPS with its own token (`notifications:unreadCount`, one small query); a higher
+  count wakes its page, which shows them as before. The runner now starts from where the last one stopped
+  (`PlaceSync` keeps what it has shown in the Mac app), so nothing that came in between is missed or shown twice.
+  The library's reminders were already the system's (they fire with no page and with Folevi quit).
+
+Measured (the same setup; `cmd places` shows each wake and release in `background.log`):
+
+| | Before | After |
+| --- | --- | --- |
+| Runner, the second account | 60 | 0 (woke for 19 s after setup, released "done") |
+| Runner, the library | 60 | 0 (woke at setup and again for a folder change, released "done" each time) |
+| Total idle | 641 | 588 |
+
+(The windows' own pages vary by 20 to 40 MB between runs with what they show, so the totals move by more than the
+runners; the runners' 120 MB are what this step removes.) Electron's design and the shared runner keep 60 to 120 MB
+for places nobody looks at; the timed wake keeps none between wakes, for one 60 MB page for about 20 s every 10
+minutes per place and one Convex query a minute per background account (about 43,000 a month each).

@@ -203,6 +203,8 @@ test("memory in a realistic setup, per process, idle and typing", async ({ brows
     await run(`clearInterval(window.__memTyping); return true;`, first);
     result.typing = typing;
     mark("typed");
+    // When the places' runners woke and went (BackgroundSync).
+    result.background = ((await cmd("places")) as { background?: unknown }).background ?? null;
     writeFileSync(out!, JSON.stringify(result, null, 2));
     const avg = (xs: { total: number }[]) => Math.round(xs.reduce((t, x) => t + x.total, 0) / xs.length);
     console.log(`memory: after setup ${(result.afterSetup as { total: number }).total} MB, idle ${avg(idle)} MB, typing ${avg(typing)} MB -> ${out}`);

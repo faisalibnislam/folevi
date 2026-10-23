@@ -7,8 +7,9 @@
 //      library, a note written, the app killed while the journal holds the last edit, the next launch replays it.
 //   3. Account mode and two places: a test account approved on the website's /connect, its session handed to the
 //      app (the sign-in sheet itself can't be driven from a script); the page opens signed in, a note made in the
-//      app reaches the website, Convex tokens come; the library is a second place whose runner keeps running
-//      while the app is hidden, and a switch opens it in the window.
+//      app reaches the website, Convex tokens come; the library is a second place whose runner wakes when it goes
+//      into the background, runs at full speed with the app hidden while it's up, goes once its work is done and
+//      wakes again for the next catch-up (BackgroundSync.swift), and a switch opens it in the window.
 //   4. The window and its chrome: the page is marked as the Mac app, the window buttons sit on the page's spot
 //      (and follow it when the sidebar hides), Settings > Desktop app's switches reach the app, File > New Note,
 //      folevi-dev:// links (others ignored), Quick Add's panel adds to the library, Vision reads an image's words.
@@ -207,8 +208,9 @@ test("2. local mode: the library on this Mac, the mode switch, and the journal a
     const state = await app.cmd("places");
     expect(state).toMatchObject({ current: "library", library: true, libraryConfigured: true, mode: "local", mains: ["library"] });
 
-    // A note, then a crash while the journal holds the last edit.
-    expect(await app.run(click("New note"))).toBe(true);
+    // A note, then a crash while the journal holds the last edit. New note is pressed again (every 3 s at most) until
+    // the note opens: a press while the first launch is still putting its starter notes in can go unanswered.
+    await app.until(`if (/^\\/d\\//.test(location.pathname)) return true; if (!window.__newNoteAt || Date.now() - window.__newNoteAt > 3000) { window.__newNoteAt = Date.now(); const el = [...document.querySelectorAll("button")].find((e) => e.innerText.trim().startsWith("New note")); if (el) el.click(); } return false;`);
     await app.until(`return /^\\/d\\//.test(location.pathname) && document.activeElement && document.activeElement.tagName === "TEXTAREA"`);
     await app.run(`document.execCommand("insertText", false, "Written on WebKit"); return true;`);
     const noteId = String(await app.run(`return location.pathname.split("/")[2]`));
@@ -239,7 +241,7 @@ test("2. local mode: the library on this Mac, the mode switch, and the journal a
 
 const b64url = (buf: Buffer) => buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-test("3. account mode and two places: signed in, a note syncs, the library's runner keeps running hidden", async ({ browser }) => {
+test("3. account mode and two places: signed in, a note syncs, the library's runner wakes, runs hidden and goes", async ({ browser }) => {
   test.setTimeout(300_000);
   const seconds = Number(process.env.E2E_MAC_RUNNER_SECONDS ?? 20);
   const person = await newPerson(browser, "Mac WebKit Person");
@@ -257,7 +259,8 @@ test("3. account mode and two places: signed in, a note syncs, the library's run
   expect(res.status()).toBe(200);
   const token = ((await res.json()) as { access_token: string }).access_token;
 
-  const app = await launchMac();
+  // A catch-up every 20 s instead of every 10 minutes, so the runner's second wake comes within the test.
+  const app = await launchMac({ FOLEVI_BACKGROUND_INTERVAL: "20" });
   try {
     // A library first (the place the account joins), then the account.
     await app.until(`return document.body.innerText.includes("Where should your notes live?")`, 60_000);
@@ -290,10 +293,13 @@ test("3. account mode and two places: signed in, a note syncs, the library's run
     await person.page.goto(`${APP}/documents`);
     await expect(person.page.getByText(title).first()).toBeVisible({ timeout: 60_000 });
 
-    // The library is the other place: its runner, in no window, on /place-sync, keeps running with the app hidden.
+    // The library is the other place, in the background: its runner, in no window on /place-sync, woke when the
+    // library left the window, and is kept up (`wake` with a hold) while its timers are measured with the app hidden.
     const places = await app.cmd("places");
     expect(places).toMatchObject({ current: id, library: true, accounts: [id] });
-    const runners = places.runners as { place: string; url: string; inWindow: boolean }[];
+    expect((places.background as { wanted: string[] }).wanted).toEqual(["library"]);
+    expect(await app.cmd("wake", { place: "library", hold: seconds + 15 })).toBe(true);
+    const runners = (await app.cmd("places")).runners as { place: string; url: string; inWindow: boolean }[];
     expect(runners.map((r) => r.place)).toEqual(["library"]);
     expect(runners[0]!.inWindow).toBe(false);
     expect(decodeURIComponent(runners[0]!.url)).toContain("/place-sync?place=library");
@@ -317,12 +323,22 @@ test("3. account mode and two places: signed in, a note syncs, the library's run
     expect(gaps.length, summary).toBeGreaterThanOrEqual(Math.floor(seconds * 0.5));
     expect(median, summary).toBeLessThan(1500);
     expect(sorted.at(-1) ?? Infinity, summary).toBeLessThan(10_000);
+    // Once the hold is over and its page said nothing waits, the runner goes (its process with it); the next
+    // catch-up wakes it again, and it goes again.
+    const awakeNow = async () => ((await app.cmd("places")).runners as { place: string }[]).map((r) => r.place);
+    const woke = async () => ((await app.cmd("places")).background as { log: { place: string; what: string }[] }).log.filter((l) => l.place === "library");
+    await expect.poll(awakeNow, { timeout: 60_000, intervals: [250] }).toEqual([]);
+    expect((await woke()).at(-1)?.what).toBe("released: done");
+    await expect.poll(async () => (await woke()).some((l) => l.what === "catch up"), { timeout: 60_000 }).toBe(true);
+    await expect.poll(async () => (await woke()).filter((l) => l.what.startsWith("released")).length, { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
     // The list both places' pages read, and a switch to the library.
     const list = (await app.run(`return (await foleviShell.places.list()).map((p) => [p.kind, p.id])`)) as string[][];
     expect(list).toEqual([["library", "library"], ["account", id]]);
     await app.run(`await foleviShell.places.switchTo("library", { path: "/tasks" }); return true;`);
     await app.until(`return window.foleviShell && foleviShell.places.current === "library" && location.pathname === "/tasks"`, 30_000);
+    // The account went into the background: its runner wakes at once (what was queued there goes up now).
     const after = await app.cmd("places");
+    expect((after.background as { wanted: string[] }).wanted).toEqual([id]);
     expect((after.runners as { place: string }[]).map((r) => r.place)).toEqual([id]);
   } finally {
     await app.quit();

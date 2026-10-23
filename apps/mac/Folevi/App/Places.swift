@@ -1,8 +1,8 @@
 // Several places on the Mac (docs/MULTI_ACCOUNT_PLAN.md §2.2, docs/MAC_WEBKIT_PLAN.md §6.6; Electron's main.ts
 // "several places" and places.ts): the library on this Mac and any number of Folevi accounts, kept by the shared
 // ShellPlaces (places.json, the same file and model as Electron's). Every main window shows the open place; each
-// other place has a hidden runner, a web view in no window on /place-sync?place=<id>, that keeps it syncing and
-// its notifications coming. A page is bound to its place by the host: switching places loads every main window
+// other place gets a runner, a web view in no window on /place-sync?place=<id>, while it has work (BackgroundSync:
+// woken when it leaves the windows, when its folder or notifications change and every few minutes, then let go). A page is bound to its place by the host: switching places loads every main window
 // again in the new place, with that place's policy, network rules and session.
 //
 // At launch (AppDelegate.beforeFirstWindow) this also opens the library, wires its changes and the cloud status
@@ -54,6 +54,7 @@ final class Places {
         lib.onChanges = { changes in
             attachments.reset()
             Self.toLibrary("libraryChanges", ["changes": changes])
+            DispatchQueue.main.async { MainActor.assumeIsolated { BackgroundSync.shared.libraryChanged() } }
         }
         lib.onCloudWant = { path in Self.toLibrary("cloudWant", ["path": path]) }
         ShellCloud.shared.onStatus = { status in Self.toLibrary("cloudStatus", ["status": status]) }
@@ -197,6 +198,7 @@ final class Places {
 
     /// What a page says of its own place (the sender's, never one it names).
     func describe(_ place: String?, _ d: [String: Any]) {
+        BackgroundSync.shared.reported(place, waiting: Self.count(d["waiting"]))
         if place == ShellPlaces.library {
             let now = Self.libraryCounts
             let next = (reminders: Self.count(d["reminders"]) ?? now.reminders, waiting: Self.count(d["waiting"]) ?? now.waiting)
@@ -300,15 +302,26 @@ final class Places {
 
     // MARK: runners (§6.6)
 
-    /// One runner per place no main window shows: every account but the open one, and the library when it's set
-    /// up and not open.
+    /// The places no main window shows (every account but the open one, and the library when it's set up and not
+    /// open) get a runner while they have work (BackgroundSync decides when).
     func ensureRunners() {
         guard !Paths.testing else { return }
         let s = ShellPlaces.state
         var want = Set(s.accounts.map(\.id).filter { $0 != s.current })
         if s.library && libraryConfigured && s.current != ShellPlaces.library { want.insert(ShellPlaces.library) }
         for id in runners.keys where !want.contains(id) { closeRunner(id) }
-        for id in want.sorted() where runners[id] == nil { runners[id] = makeRunner(id) }
+        BackgroundSync.shared.setWanted(want.sorted())
+    }
+
+    /// A place's runner, now (BackgroundSync); false when there's nothing to run.
+    func startRunner(_ place: String) -> Bool {
+        if runners[place] == nil { runners[place] = makeRunner(place) }
+        return true
+    }
+
+    /// A place's runner goes (its work is done).
+    func stopRunner(_ place: String) {
+        closeRunner(place)
     }
 
     private func makeRunner(_ place: String) -> FoleviWebView {
@@ -352,8 +365,9 @@ final class Places {
 
 #if DEBUG
 extension Places {
-    /// mac.mjs commands: `cmd places` (the places, runners and lock), `cmd runner-eval {"place","script"}` (an async
-    /// function body in a runner's page), `cmd switch {"place","path"}`.
+    /// mac.mjs commands: `cmd places` (the places, runners, their schedule and the lock), `cmd runner-eval
+    /// {"place","script"}` (an async function body in a runner's page), `cmd wake {"place","hold"}`, `cmd switch
+    /// {"place","path"}`.
     static func installEval() {
         MacEval.commands["places"] = { _, done in
             let s = ShellPlaces.state
@@ -364,6 +378,7 @@ extension Places {
                 "current": s.current ?? NSNull(), "library": s.library, "accounts": s.accounts.map(\.id), "quickAdd": s.quickAdd ?? NSNull(), "mode": ShellMode.current,
                 "pending": ShellPlaces.pendingAccount, "libraryConfigured": Places.shared.libraryConfigured, "runners": runners.sorted { ($0["place"] as! String) < ($1["place"] as! String) },
                 "lock": MacAppLock.shared.settings(), "covered": MacAppLock.shared.isCovered,
+                "background": BackgroundSync.shared.debugState,
                 "mains": WindowManager.shared.mains.map { $0.view.place ?? "" },
                 "mainPids": WindowManager.shared.mains.map { pid($0.view) },
             ] as [String: Any]])
@@ -410,6 +425,12 @@ extension Places {
         MacEval.commands["lock-cover"] = { req, done in
             MacAppLock.shared.debugCover(req["value"] as? Bool != false)
             done(["value": MacAppLock.shared.isCovered])
+        }
+        // Wakes a place's runner now and keeps it at least `hold` seconds (scripts that measure the page).
+        MacEval.commands["wake"] = { req, done in
+            guard let place = req["place"] as? String else { return done(["error": "no place"]) }
+            BackgroundSync.shared.wake(place, why: "script", hold: req["hold"] as? Double)
+            done(["value": Places.shared.runners[place] != nil])
         }
         MacEval.commands["switch"] = { req, done in
             Places.shared.switchTo(req["place"] as? String, path: Places.safePath(req["path"] as? String))

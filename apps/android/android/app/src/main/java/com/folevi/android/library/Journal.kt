@@ -7,7 +7,7 @@ import java.util.zip.CRC32
 /**
  * The native journal (docs/LOCAL_MODE_PLAN.md §3.6, `shell.library.journal`): every local edit is appended and
  * synced here before the page calls it saved. It lives in the app's own storage, never in the library. The same
- * file format as the Mac's (apps/desktop/src/library/journal.ts): "FLVJ" 0x01, then frames of u32 BE length,
+ * file format as the Mac's (the Electron Mac app's library/journal.ts): "FLVJ" 0x01, then frames of u32 BE length,
  * u32 BE CRC-32 and the record. A torn last frame (the app died mid-append) is cut off before the next append.
  */
 class Journal(private val file: File) {

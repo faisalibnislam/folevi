@@ -14,8 +14,7 @@
 //     Folevi.icon                                  the Icon Composer document (macOS 26+, iOS 26+)
 //     folevi-macos-1024.png, folevi-ios-1024.png   renders of it (needs Icon Composer's ictool, Xcode 26+)
 //     macos.iconset/ + Folevi.icns                 every macOS size, for DMGs and older tools
-//   apps/desktop/build/Folevi.icon                 Folevi for Mac (electron-builder makes the older .icns from it)
-//   apps/ios/ios/App/App/AppIcon.icon              iOS 26 and later
+//   apps/ios/ios/App/App/AppIcon.icon              iOS 26 and later, and Folevi for Mac (apps/mac uses it by path)
 //   apps/ios/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png   iOS 17 to 25 (opaque)
 //   apps/web/public/favicon.ico, favicon-16x16.png, favicon-32x32.png
 //   apps/web/public/apple-icon.png                 180 px, full bleed (iOS rounds it)
@@ -35,7 +34,6 @@ const source = resolve(brand, "source/app-icon");
 const out = resolve(brand, "app-icon");
 const repo = resolve(here, "../../..");
 const web = resolve(repo, "apps/web/public");
-const desktop = resolve(repo, "apps/desktop");
 const ios = resolve(repo, "apps/ios/ios/App/App");
 // sharp ships with Next (apps/web); borrow it rather than adding a second copy.
 const fromWeb = createRequire(resolve(repo, "apps/web/package.json"));
@@ -201,7 +199,7 @@ if (existsSync(ICTOOL)) {
   console.warn("Icon Composer's ictool isn't installed. Skipped the renders (the .icon document is still complete).");
 }
 
-for (const target of [resolve(desktop, "build/Folevi.icon"), resolve(ios, "AppIcon.icon")]) {
+for (const target of [resolve(ios, "AppIcon.icon")]) {
   rmSync(target, { recursive: true, force: true });
   cpSync(iconDoc, target, { recursive: true });
 }

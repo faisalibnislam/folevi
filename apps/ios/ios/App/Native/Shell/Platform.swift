@@ -126,7 +126,7 @@ enum Platform {
     /// Touch ID only, as Electron's canPromptTouchID: a Mac without it doesn't offer "Ask for Touch ID".
     static var canAskOwner: Bool { LAContext().canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil) }
 
-    /// Electron's displayPath (apps/desktop/src/library/locations.ts): "iCloud Drive › Folevi", "Dropbox › Notes",
+    /// Electron's displayPath (the Electron Mac app's library/locations.ts): "iCloud Drive › Folevi", "Dropbox › Notes",
     /// "~/Documents/Folevi Library", or the path itself.
     static func libraryPlace(_ url: URL) -> String? {
         let home = FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL.path

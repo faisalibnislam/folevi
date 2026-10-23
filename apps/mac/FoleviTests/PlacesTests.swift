@@ -1,7 +1,7 @@
 // Several places on the Mac (App/Places.swift, Electron's main.ts and places.ts): the list with the library's
 // counts, what a page says of its own place (never another's), every call bound to the sender's place, the mode
 // switch, signing out of an account that isn't open, Quick Add's place, the library's network rules; and the
-// Touch ID lock's rules (Services/MacAppLock.swift, the cases of apps/desktop/src/lock.test.ts).
+// Touch ID lock's rules (Services/MacAppLock.swift, the cases of the Electron Mac app's lock.test.ts).
 import WebKit
 import XCTest
 @testable import Folevi

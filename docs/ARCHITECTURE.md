@@ -3,10 +3,10 @@
 ## Overview
 
 ```
- Browser (folevi.com, app.folevi.com)            Mac (Folevi.app, apps/desktop)
+ Browser (folevi.com, app.folevi.com)            Mac (Folevi.app, apps/mac)
  ┌───────────────────────────────┐               ┌──────────────────────────────┐
- │ Next.js 16 on Vercel           │               │ Electron shell that loads    │
- │  • marketing (static)          │◀── same ──────│ app.folevi.com               │
+ │ Next.js 16 on Vercel           │               │ AppKit + WKWebView, the web  │
+ │  • marketing (static)          │◀── same ──────│ app built in (app://folevi)  │
  │  • product shell (1 catch-all) │    web app    │  • Quick Add (⌥Space)        │
  │  • admin console               │               │  • menu bar icon, Dock badge │
  │  • /api/auth/* → Convex proxy  │               │  • Mac notifications         │
@@ -73,7 +73,7 @@ safe for the service worker to keep a copy for offline boot.
   Identity emails are captured in the development mailbox (`devMailbox` table, `/dev/mailbox`,
   `/api/dev/mailbox`, guarded by `FOLEVI_DEV_MAILBOX_SECRET`) and refused when `FOLEVI_ENV=production`;
   `scripts/check-prod-env.mjs` fails a production build if the secret is set.
-- Mac: Folevi for Mac is the web app in Electron and signs in exactly like the web (`docs/DESKTOP.md`).
+- Mac: Folevi for Mac shows the web app's built-in interface and signs in like the other native apps (Authorization Code + PKCE through the browser, `ShellAuth.swift`; `docs/DESKTOP.md`).
   The browser sign-in endpoints for native apps (Authorization Code + PKCE, `convex/lib/nativeAuth.ts`)
   stay on the server, unused since the native Swift app was retired.
 
@@ -123,7 +123,7 @@ The client edits a local copy and sends idempotent operations (`docs/SYNC_PROTOC
   `assignTreePositions`), and `diffBlocks` turns edits into `block.upsert`/`block.delete` ops. The web
   sync engine (`lib/sync/engine.ts`) wraps the shared reducer from `@folevi/editor-schema`, persists every
   change to IndexedDB before sending, and reconciles subscriptions.
-- **Mac:** Folevi for Mac runs the web client above unchanged, in Electron (`docs/DESKTOP.md`).
+- **Mac:** Folevi for Mac runs the web client above unchanged, in the system's web view (`apps/mac`, `docs/DESKTOP.md`).
 - The server (`convex/lib/syncEngine.ts`) enforces the protocol: idempotency by `opId`, content
   conflicts by `contentRev` vs `baseRevision`, last-writer-wins positions, tombstones, parent
   normalization, and post-batch bookkeeping (search text, task projection, backlinks, mentions).
@@ -153,8 +153,8 @@ Nothing heavy runs on Folevi's servers: the words are read on the person's devic
 - **Reading, on the device** (`apps/web/src/lib/fileText`, `components/doc/useFileText.ts`): a PDF with pdf.js
   (lazy-loaded, its own worker, the legacy build so iOS 17 works; 40 MB and 300 pages at most); an image with
   the device's recogniser, which is Vision in the iPhone and iPad app (`FoleviNative.recognizeText`,
-  `apps/ios/ios/App/Native/TextRecognition.swift`) and in the Mac app (`folevi-text`, a small Swift helper
-  that ships with it, `apps/desktop/native`); handwriting by drawing the whiteboard to a PNG and reading it
+  `apps/ios/ios/App/Native/TextRecognition.swift`) and in the Mac app (`foleviDesktop.recognizeText`,
+  `apps/mac/Folevi/Services/TextRecognition.swift`, in process); handwriting by drawing the whiteboard to a PNG and reading it
   the same way, a few seconds after it's left alone. A file just uploaded is read from the bytes the device
   has (`onFileUploaded` in `lib/sync/uploads.ts`); files already in a note are read the first time an editor
   opens it. Development builds accept `window.__foleviTestRecognizer` in place of a device recogniser (e2e).

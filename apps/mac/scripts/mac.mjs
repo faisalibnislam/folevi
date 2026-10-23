@@ -10,9 +10,8 @@
 //   node apps/mac/scripts/mac.mjs appearance light|dark|system
 //   node apps/mac/scripts/mac.mjs windows | new-window [/path] | quit
 //   node apps/mac/scripts/mac.mjs checks [--out results.json]       (the spike's checks, in the real app)
-//   node apps/mac/scripts/mac.mjs measure [--minutes 10] [--electron] [--out DIR]
-//                                       footprint and energy impact, idle then typing, WebKit app and (with
-//                                       --electron) Electron from source, side by side
+//   node apps/mac/scripts/mac.mjs measure [--minutes 10] [--out DIR]
+//                                       footprint and energy impact of the app, idle then typing
 //
 // Commands other packages add on the app's side (MacEval.commands) run with `mac.mjs cmd <name> [json]`.
 import { execFileSync, spawn } from "node:child_process";
@@ -34,7 +33,7 @@ const positional = () => {
   const out = [];
   for (let i = 1; i < argv.length; i++) {
     if (argv[i].startsWith("--")) {
-      if (!["--offline", "--electron", "--release", "--keep"].includes(argv[i])) i++;
+      if (!["--offline", "--release", "--keep"].includes(argv[i])) i++;
       continue;
     }
     out.push(argv[i]);
@@ -196,12 +195,6 @@ const webkitPids = () =>
       .filter((l) => /com\.apple\.WebKit\./.test(l))
       .map((l) => Number(l.trim().split(/\s+/)[0])),
   );
-const childrenOf = (pid) => {
-  const rows = execFileSync("ps", ["-axo", "pid=,ppid="], { encoding: "utf8" }).split("\n").map((l) => l.trim().split(/\s+/).map(Number));
-  const out = [pid];
-  for (let i = 0; i < out.length; i++) for (const [p, pp] of rows) if (pp === out[i] && !out.includes(p)) out.push(p);
-  return out;
-};
 const footprintMB = (pid) => {
   try {
     const text = execFileSync("footprint", ["-p", String(pid)], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
@@ -225,7 +218,7 @@ const powerSample = (pids) => {
   }
   return sum;
 };
-// Typing, the same for both engines: a character every 120 ms into the focused field, or into a box this adds.
+// Typing: a character every 120 ms into the focused field, or into a box this adds.
 const TYPING_START = `
   if (window.__measureTimer) return true;
   let target = document.activeElement && (document.activeElement.isContentEditable || /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) ? document.activeElement : null;
@@ -243,27 +236,6 @@ const TYPING_START = `
 `;
 const TYPING_STOP = `clearInterval(window.__measureTimer); window.__measureTimer = null; return true;`;
 
-async function cdpEval(port, expression) {
-  const list = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-  const page = list.find((t) => t.type === "page" && /^app:\/\/folevi/.test(t.url)) ?? list.find((t) => t.type === "page");
-  if (!page) throw new Error("No Electron page to type into.");
-  const ws = new WebSocket(page.webSocketDebuggerUrl);
-  await new Promise((ok, fail) => {
-    ws.onopen = ok;
-    ws.onerror = fail;
-  });
-  const done = new Promise((ok) => {
-    ws.onmessage = (m) => {
-      const msg = JSON.parse(String(m.data));
-      if (msg.id === 1) ok(msg.result);
-    };
-  });
-  ws.send(JSON.stringify({ id: 1, method: "Runtime.evaluate", params: { expression: `(async () => { ${expression} })()`, awaitPromise: true, returnByValue: true } }));
-  const r = await done;
-  ws.close();
-  return r;
-}
-
 async function measure() {
   const minutes = Number(opt("--minutes", "10"));
   const out = resolve(opt("--out", join(MAC, "build", "measure")));
@@ -280,25 +252,6 @@ async function measure() {
   const wkHelpers = [...webkitPids()].filter((p) => !beforeWk.has(p));
   apps.push({ name: "webkit", pids: () => [wk.pid, ...wkHelpers], type: (on) => evaluate(wkDir, on ? TYPING_START : TYPING_STOP) });
 
-  // Electron from source (apps/desktop), the built-in interface, on a scratch folder too.
-  let electron = null;
-  if (has("--electron")) {
-    const desktop = join(REPO, "apps", "desktop");
-    const elDir = join(out, "electron-user-data");
-    rmSync(elDir, { recursive: true, force: true });
-    const port = 9333;
-    // --use-mock-keychain: Electron from source is also called "Folevi", so its safeStorage would otherwise reach
-    // the installed app's "Folevi Safe Storage" Keychain item. This never touches the real Keychain.
-    electron = spawn(join(desktop, "node_modules", ".bin", "electron"), [".", `--remote-debugging-port=${port}`, "--use-mock-keychain"], {
-      cwd: desktop,
-      env: { ...process.env, FOLEVI_SHELL: "1", FOLEVI_USER_DATA: elDir },
-      detached: true,
-      stdio: "ignore",
-    });
-    electron.unref();
-    await sleep(8000);
-    apps.push({ name: "electron", pids: () => childrenOf(electron.pid), type: (on) => cdpEval(port, on ? TYPING_START : TYPING_STOP) });
-  }
 
   for (const phase of ["idle", "typing"]) {
     if (phase === "typing") for (const a of apps) await a.type(true);
@@ -324,13 +277,6 @@ async function measure() {
   writeFileSync(join(out, "measure.json"), JSON.stringify(results, null, 2));
   if (!has("--keep")) {
     await command(wkDir, { cmd: "quit" }).catch(() => undefined);
-    if (electron) {
-      try {
-        process.kill(electron.pid);
-      } catch {
-        /* gone already */
-      }
-    }
   }
   console.log(JSON.stringify(results, null, 2));
 }

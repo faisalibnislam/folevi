@@ -18,7 +18,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Signed-in mode for the built-in interface (docs/LOCAL_MODE_PLAN.md §1, docs/ANDROID_PLAN.md "Sign-in"):
- * `foleviShell.auth`, the Android twin of the Mac's apps/desktop/src/authBridge.ts.
+ * `foleviShell.auth`, the Android twin of the Electron Mac app's authBridge.ts.
  *   1. signIn() opens the website's /connect page in a Custom Tab (client "folevi-android", PKCE S256); the
  *      person signs in there as usual (password, two-step, Google, passkeys) and presses Continue;
  *   2. the website sends the browser to the app's redirect: an App Link (https://app.folevi.com/native/callback)

@@ -1,5 +1,5 @@
 // The Mac app's own settings (Settings > General, today's "Desktop app" section): Quick Add's shortcut, opening at
-// login, the menu bar icon and Mac notifications. Electron kept them in settings.json (apps/desktop/src/settings.ts);
+// login, the menu bar icon and Mac notifications. Electron kept them in settings.json (the Electron Mac app's settings.ts);
 // here they live in the build's defaults (Paths.defaults: a FOLEVI_USER_DATA run has its own). The page sees and
 // changes the same four keys (`pageSettings`), never the mode.
 import Foundation

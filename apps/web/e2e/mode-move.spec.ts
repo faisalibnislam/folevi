@@ -1,12 +1,12 @@
 // Moving between "Keep notes on my devices" and a Folevi account, both ways (docs/LOCAL_MODE_PLAN.md §6,
 // WP12), end to end against the dev deployment: the apps' built-in interface served by `next dev` with
-// FOLEVI_BUILD=shell (port 3003), the FakeShell's library in the page (OPFS), and the Mac app's own sign-in
-// bridge (apps/desktop/src/authBridge.ts) running here in Node, approving on the website as a real person.
+// FOLEVI_BUILD=shell (port 3003), the FakeShell's library in the page (OPFS), and the native apps' sign-in
+// bridge (fixtures/authBridge.ts) running here in Node, approving on the website as a real person.
 //
 //   E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 npx playwright test e2e/mode-move.spec.ts --project account
 // (E2E_SHELL_BASE_URL overrides http://localhost:3003.)
 import { expect, request as playwrightRequest, test, type BrowserContext, type Page } from "@playwright/test";
-import { createAuthBridge, type AuthBridge, type BridgeResponse } from "../../desktop/src/authBridge";
+import { createAuthBridge, type AuthBridge, type BridgeResponse } from "./fixtures/authBridge";
 import { installFakeShell, type FakeShellConfig } from "./fixtures/localShell";
 import { APP, newPerson } from "./helpers";
 

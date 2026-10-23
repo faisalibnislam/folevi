@@ -77,7 +77,7 @@ enum ShellNotify {
 
 // MARK: fetching from other sites
 
-/// Subscribed calendars and bookmark previews, straight from the site (apps/desktop/src/calendarFetch.ts's
+/// Subscribed calendars and bookmark previews, straight from the site (the Electron Mac app's calendarFetch.ts's
 /// rules): https only, never Folevi's own hosts or a private address, every redirect checked again, 10 seconds and
 /// 5 MB at most, no cookies.
 final class ShellHTTP: NSObject, URLSessionTaskDelegate {

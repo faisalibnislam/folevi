@@ -5,12 +5,12 @@
 // 2. Prunes what only the website uses from the export (public/ is copied in whole by Next).
 // 3. Snapshots admin-managed themes and switched-off templates (scripts/snapshot-themes.mjs).
 // 4. Checks the export (index.html, no route-handler, admin or marketing output) and reports its size.
-// 5. Copies out-shell/ to apps/desktop/web/ (git-ignored), unless --no-copy.
+// 5. Copies out-shell/ to apps/mac/web/ (git-ignored, the Mac Debug build reads it), unless --no-copy.
 // --required makes an unreachable deployment fail the build instead of shipping an empty snapshot (releases).
 // --production (what `pnpm release` builds): Folevi's production deployment and website are baked in, never the
 // development values in .env.local, and the export is checked for them afterwards. It builds into
 // .next-shell-release/ so a development export in out-shell/ is left alone. Without it the build reads the
-// .env files as before (development). --dest copies the export somewhere other than apps/desktop/web.
+// .env files as before (development). --dest copies the export somewhere other than apps/mac/web.
 // Every build writes shell/build.json: which deployment it talks to, and the IndexedDB schema version it opens
 // (the Mac app's handoff refuses a website database that is newer, docs/LOCAL_MODE.md).
 // --platform ios: the export the iPhone and iPad app carries (apps/ios/web, docs/IOS.md), in .next-shell-ios (or
@@ -42,7 +42,7 @@ const android = platform === "android";
 const ios = platform === "ios";
 const outName = android ? (production ? ".next-shell-android-release" : ".next-shell-android") : ios ? (production ? ".next-shell-ios-release" : ".next-shell-ios") : production ? ".next-shell-release" : "out-shell";
 const out = join(web, outName);
-const desktopWeb = resolve(flagValue("--dest") ?? resolve(web, android ? "../android/web" : ios ? "../ios/web" : "../desktop/web"));
+const shellCopy = resolve(flagValue("--dest") ?? resolve(web, android ? "../android/web" : ios ? "../ios/web" : "../mac/web"));
 
 /**
  * Folevi in production (docs/DEPLOYMENT.md): the Convex deployment and the website a release talks to. A release
@@ -192,7 +192,7 @@ export async function dbVersion() {
   return Number(m[1]);
 }
 
-/** shell/build.json: what this export is (read by the Mac app, apps/desktop/src/shellBuild.ts). */
+/** shell/build.json: what this export is (read by the apps, e.g. Paths.shellBuild in apps/mac). */
 async function writeBuildInfo(env) {
   // Folevi's one version (version.json at the repo root, scripts/version.mjs), the same for every app.
   const { version } = JSON.parse(await readFile(resolve(web, "../../version.json"), "utf8"));
@@ -261,9 +261,9 @@ async function main() {
   console.log(`  snapshot: ${snap.themes} theme rows, ${snap.images} images, ${snap.disabledTemplates} templates switched off (${snap.source ?? "none"})`);
 
   if (!args.has("--no-copy")) {
-    await rm(desktopWeb, { recursive: true, force: true });
-    await cp(out, desktopWeb, { recursive: true });
-    console.log(`  copied to ${relative(process.cwd(), desktopWeb) || desktopWeb}`);
+    await rm(shellCopy, { recursive: true, force: true });
+    await cp(out, shellCopy, { recursive: true });
+    console.log(`  copied to ${relative(process.cwd(), shellCopy) || shellCopy}`);
   }
 }
 

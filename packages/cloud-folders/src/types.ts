@@ -1,13 +1,12 @@
 // Shared shapes for the built-in Dropbox and Google Drive connections (docs/LOCAL_MODE_PLAN.md WP9b).
 //
-// packages/cloud-folders is platform neutral: `fetch`-style requests, WebCrypto and plain data only. Folevi for
-// Mac runs it in its main process (apps/desktop/src/library/cloud, through the `shared` link to this folder);
-// Folevi for Android runs it in its bridge (apps/android/bridge), where every request goes through the app's
-// Kotlin code, which adds the provider's token. Either way the tokens never reach the page.
+// packages/cloud-folders is platform neutral: `fetch`-style requests, WebCrypto and plain data only. The native
+// apps run it in their bridges (apps/ios/bridge for iPhone, iPad and Mac; apps/android/bridge), where every
+// request goes through the app's own code, which adds the provider's token. Either way the tokens never reach
+// the page.
 //
-// `LocalFs` below mirrors packages/local-store/src/io.ts (the bridge contract's file API). apps/desktop is
-// built on its own (CommonJS, no workspace packages), so this package imports nothing and the interface is
-// repeated here; the contract tests run these classes under local-store's own NoteReplica, read-merge-write
+// `LocalFs` below mirrors packages/local-store/src/io.ts (the bridge contract's file API). This package
+// imports nothing (the bridges bundle it on their own), so the interface is repeated here; the contract tests run these classes under local-store's own NoteReplica, read-merge-write
 // and EncryptedFs, which would fail on any drift.
 
 export interface LocalFsEntry {

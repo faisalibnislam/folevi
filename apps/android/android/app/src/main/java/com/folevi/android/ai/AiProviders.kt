@@ -5,7 +5,7 @@ import org.json.JSONObject
 
 /**
  * Foli AI with the person's own key in local mode (docs/LOCAL_MODE.md WP11): the request checks, the HTTPS
- * request for each provider, their streams and their errors, the same as the Mac's apps/desktop/src/ai.ts (and
+ * request for each provider, their streams and their errors, the same as the Electron Mac app's ai.ts (and
  * its tests' cases, AiProvidersTest). Nothing goes through Folevi; the key is read from the Keystore just before a
  * request, only ever put in the provider's header, and scrubbed from anything said back.
  */

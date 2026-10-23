@@ -5,7 +5,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Several places on Android (docs/MULTI_ACCOUNT_PLAN.md §2.2; the twin of the Mac's apps/desktop/src/places.ts):
+ * Several places on Android (docs/MULTI_ACCOUNT_PLAN.md §2.2; the twin of the Electron Mac app's places.ts):
  * the library on this phone and any number of Folevi accounts, each with its own session (AuthBridge,
  * `auth.session.<user id>`), encryption keys (DeviceKeys under e2ee/accounts/<user id>) and data. This keeps the
  * list: which place the app shows, the accounts (what each account's own page last said of itself, for the

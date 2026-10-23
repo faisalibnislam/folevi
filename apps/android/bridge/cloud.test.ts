@@ -1,17 +1,17 @@
 // The Android bridge's cloud layer (bridge/cloud.ts: requests through the app, the copy kept by the app) under
-// the same LocalFs contract the Mac's Dropbox and Drive layers pass (apps/desktop/test/cloud/contract.ts), with
-// the Mac's fake providers (imported through the Mac's link to packages/cloud-folders, so their types are the same). What's Android's own: the bridge never sets the Authorization header, base64
+// the same LocalFs contract the providers pass in packages/cloud-folders (test/contract.ts), with the package's
+// fake providers (imported from the package, so their types are the same). What's Android's own: the bridge never sets the Authorization header, base64
 // crosses both ways, a provider's 401 after the app's refresh is "reconnect", the library file is joined.
 import { describe, expect, test } from "vitest";
-import { DriveFs, driveClassifier } from "../../desktop/src/library/cloud/shared/drive";
-import { DropboxFs } from "../../desktop/src/library/cloud/shared/dropbox";
-import { RetryingHttp } from "../../desktop/src/library/cloud/shared/http";
-import { MemoryMirror } from "../../desktop/src/library/cloud/shared/mirror";
-import { runContract } from "../../desktop/test/cloud/contract";
-import { FaultInjector, NO_FAKE_FAULTS, seeded } from "../../desktop/test/cloud/fakeCommon";
-import { FakeDropbox } from "../../desktop/test/cloud/fakeDropbox";
-import { FakeDrive } from "../../desktop/test/cloud/fakeDrive";
-import { SMALL_UPLOADS } from "../../desktop/test/cloud/harness";
+import { DriveFs, driveClassifier } from "../../../packages/cloud-folders/src/drive";
+import { DropboxFs } from "../../../packages/cloud-folders/src/dropbox";
+import { RetryingHttp } from "../../../packages/cloud-folders/src/http";
+import { MemoryMirror } from "../../../packages/cloud-folders/src/mirror";
+import { runContract } from "../../../packages/cloud-folders/test/contract";
+import { FaultInjector, NO_FAKE_FAULTS, seeded } from "../../../packages/cloud-folders/test/fakeCommon";
+import { FakeDropbox } from "../../../packages/cloud-folders/test/fakeDropbox";
+import { FakeDrive } from "../../../packages/cloud-folders/test/fakeDrive";
+import { SMALL_UPLOADS } from "../../../packages/cloud-folders/test/harness";
 import { copyLibrary, nativeFetch, nativeMirror, prepareLibrary, type Call } from "./cloud";
 import { bytes, fakeNative } from "./fakeNative";
 

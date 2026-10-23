@@ -18,7 +18,7 @@ build plan and the contract every part follows. Decisions recorded here were mad
 | Surfaces | The note's AI sidebar (always about that note), the floating chat (everywhere else), and a full-screen AI page (`/ai`) with the conversation list. |
 | Knowledge graph | Derived from notes (never a separate source of truth), used for related notes, duplicates and contradictions, plus a visual graph view. |
 | Modules | Memory and personalization, proactive suggestions, study and meeting tools, recurring digests, audio transcription on request. |
-| Platforms | The web app. The Mac app is the web app in Electron, so it follows. There is no iOS app in the repo. |
+| Platforms | The web app. The Mac app shows the web app's interface built in (`apps/mac`), so it follows. There is no iOS app in the repo. |
 
 ## What exists (before this plan)
 

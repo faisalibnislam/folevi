@@ -1,4 +1,4 @@
-// The Mac app (apps/desktop) shows this site in its own windows and adds `window.foleviDesktop`: the Dock
+// The Mac app (apps/mac) shows Folevi in its own windows and adds `window.foleviDesktop`: the Dock
 // badge, Mac notifications, the menu bar icon, Quick Add from any app and its own settings. In a browser
 // it's absent and nothing here does anything.
 
@@ -28,7 +28,7 @@ export const MAC_MENU_COMMANDS = [
   "format.bold", "format.italic", "format.underline", "format.strikethrough", "format.code", "format.highlight", "format.link", "format.heading-1", "format.heading-2", "format.heading-3", "format.body",
   "format.bulleted-list", "format.numbered-list", "format.checklist", "format.indent", "format.outdent", "format.move-up", "format.move-down", "format.duplicate", "format.style",
   "note.star", "note.archive", "note.move", "note.duplicate", "note.copy-link", "note.history", "note.lock", "note.trash",
-  "view.sidebar", "view.inspector", "view.focus", "view.cards", "view.list",
+  "view.sidebar", "view.inspector", "view.focus", "view.cards", "view.list", "view.appearance-light", "view.appearance-dark", "view.appearance-system",
   "go.back", "go.forward", "go.home", "go.today", "go.calendar", "go.inbox", "go.search", "go.ask-ai", "go.next-tab", "go.previous-tab",
   "go.tab-1", "go.tab-2", "go.tab-3", "go.tab-4", "go.tab-5", "go.tab-6", "go.tab-7", "go.tab-8", "go.tab-9",
   "help.help", "help.shortcuts", "help.whats-new", "help.feedback",

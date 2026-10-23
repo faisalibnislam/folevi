@@ -1,6 +1,6 @@
 // Signed-in mode in the apps' built-in interface (docs/LOCAL_MODE_PLAN.md §1, WP4): Better Auth's client
 // fetches through the host's bridge, Convex tokens come from the host, and sign-in and sign-out go through it.
-// The native side (the bearer, the allowlist, the scrubbing) is apps/desktop/src/authBridge.test.ts.
+// The native side (the bearer, the allowlist, the scrubbing) is ShellAuth.swift (apps/ios, compiled into the Mac app too).
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { act } from "react";
 import { createRoot } from "react-dom/client";

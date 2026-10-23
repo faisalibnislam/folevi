@@ -2,11 +2,13 @@
   "name": "@folevi/cloud-folders",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "description": "Sync with Dropbox and Sync with Google Drive for a local library (LocalFs over the providers' HTTP APIs), shared by Folevi for Mac and Folevi for Android.",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
   }
 }

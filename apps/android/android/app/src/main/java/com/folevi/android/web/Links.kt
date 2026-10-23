@@ -3,7 +3,7 @@ package com.folevi.android.web
 import java.net.URI
 
 /**
- * Where a link the page follows goes (the Android twin of apps/desktop/src/urls.ts linkTarget):
+ * Where a link the page follows goes (the Android twin of the Electron Mac app's urls.ts linkTarget):
  * - [Target.App]: one of the app's own pages, shown in the web view;
  * - [Target.Browser]: another site, in a Custom Tab over the app;
  * - [Target.System]: mail, phone and text links, to the app that handles them;

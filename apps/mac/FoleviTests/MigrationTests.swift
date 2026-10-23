@@ -1,9 +1,8 @@
 // The move from Electron (docs/MAC_WEBKIT_PLAN.md §8): safeStorage against a vector Electron itself made, the whole
-// migration of an Electron support folder (apps/mac/fixtures/migration, scripts/migration-fixture.mjs) into memory and
-// into this run's own Keychain names, the handover import in WebKit, and the 30-day clean-up. Never the owner's
+// migration of an Electron support folder (apps/mac/fixtures/migration, made with the Electron app's own modules before
+// it was removed) into memory and into this run's own Keychain names, and the 30-day clean-up. Never the owner's
 // folder or Keychain items: the fixture is copied into a scratch folder, sealed with Electron's mock Keychain.
 import CryptoKit
-import WebKit
 import XCTest
 @testable import Folevi
 
@@ -115,7 +114,7 @@ final class MigrationTests: XCTestCase {
         XCTAssertTrue(m.hasElectronData)
         XCTAssertTrue(m.isNeeded)
         XCTAssertTrue(m.hasSealed)
-        for step in ElectronMigration.Step.allCases where step != .offline { try await m.run(step) }
+        for step in ElectronMigration.Step.allCases { try await m.run(step) }
         let e = expected
         let user = e["user"] as! String
 
@@ -181,13 +180,12 @@ final class MigrationTests: XCTestCase {
         XCTAssertTrue(defaults.bool(forKey: "folevi.installed"))
 
         // Every step said what it did; again changes nothing (and never overwrites what the native app has).
-        for step in ElectronMigration.Step.allCases where step != .offline { XCTAssertEqual(m.state(step)?.state, "done", step.rawValue) }
+        for step in ElectronMigration.Step.allCases { XCTAssertEqual(m.state(step)?.state, "done", step.rawValue) }
         keychain.items["com.folevi.shell-auth|session"] = Data("newer".utf8)
         let before = keychain.items
-        for step in ElectronMigration.Step.allCases where step != .offline { try await m.run(step) }
+        for step in ElectronMigration.Step.allCases { try await m.run(step) }
         XCTAssertEqual(keychain.items, before)
         XCTAssertTrue(m.isNeeded)
-        m.recordOffline("done", "imported")
         m.finish()
         XCTAssertFalse(m.isNeeded)
     }
@@ -292,88 +290,32 @@ final class MigrationTests: XCTestCase {
         m.schedule = { _, _, _, _, _ in }
         var clock = Date(timeIntervalSince1970: 1_800_000_000)
         m.now = { clock }
-        for step in ElectronMigration.Step.allCases where step != .offline { try await m.run(step) }
-        m.continueWithout(.offline, because: "test")
+        for step in ElectronMigration.Step.allCases { try await m.run(step) }
         m.finish()
         XCTAssertEqual(m.cleanUpIfDue(), [])
         clock = clock.addingTimeInterval(31 * 86_400)
         let removed = Set(m.cleanUpIfDue())
         XCTAssertTrue(removed.isSuperset(of: ["Partitions", "Local State", "secrets", "e2ee", "library-keys", "cloud-tokens.bin", "settings.json", "library.electron.json", "Cloud libraries (previous)"]), "\(removed)")
-        for kept in ["library.json", "places.json", "lock.json", "library", "handover", "migration.json"] {
+        for kept in ["library.json", "places.json", "lock.json", "library", "migration.json"] {
             XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent(kept).path), kept)
         }
         XCTAssertEqual(m.cleanUpIfDue(), [])
     }
 
-    // MARK: the handover, in WebKit
+    // MARK: offline changes
 
-    @MainActor
-    private func importer(_ folder: URL, store: WKWebsiteDataStore, dbVersion: Int? = 3) -> HandoverImport {
-        HandoverImport(folder: folder, dataStore: store, scheme: AppScheme(root: scratch, serviceOrigin: "https://app.folevi.com"), bundledDbVersion: dbVersion)
-    }
-
-    /// A data store of the test's own on disk: WebKit's non-persistent stores refuse Blobs in IndexedDB (waiting
-    /// uploads are Blobs), the app's own store is persistent too.
-    @MainActor
-    private func scratchStore() -> (WKWebsiteDataStore, UUID) {
-        let id = UUID()
-        return (WKWebsiteDataStore(forIdentifier: id), id)
-    }
-
-    @MainActor
-    func testTheHandoverImportsIntoWebKitStorage() async throws {
+    func testEditsLeftInChromiumAreNotAStep() async throws {
+        // No Electron release wrote a handover: the four steps are the whole migration, and Chromium's storage
+        // (where unsent edits would be) is only kept for the 30 days, never read.
+        XCTAssertEqual(ElectronMigration.Step.allCases, [.sessions, .keys, .library, .settings])
         let (folder, _) = try electronFolder()
-        let (store, storeId) = scratchStore()
-        let h = expected["handover"] as! [String: Any]
-        let dbs = h["databases"] as! [[String: Any]]
-        let records = dbs.flatMap { ($0["counts"] as! [String: Int]).values }.reduce(0, +)
-        let first = importer(folder, store: store)
-        let outcome: HandoverImport.Outcome
-        do {
-            outcome = try await first.run()
-        } catch {
-            return XCTFail("import failed: \(type(of: error)) \(error)")
-        }
-        XCTAssertEqual(outcome, .imported(databases: 1, records: records, storage: h["storage"] as! Int, skipped: []))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("handover").path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent("handover (imported)/index.json").path))
-
-        // The records are in the store: the same handover again finds the database there and leaves it alone.
-        let again = scratch.appendingPathComponent("Again", isDirectory: true)
-        try FileManager.default.createDirectory(at: again, withIntermediateDirectories: true)
-        try FileManager.default.copyItem(at: Self.fixtures.appendingPathComponent("electron-user-data/handover"), to: again.appendingPathComponent("handover"))
-        let second = try await importer(again, store: store).run()
-        XCTAssertEqual(second, .imported(databases: 0, records: 0, storage: 0, skipped: [dbs[0]["name"] as! String]))
-        try? await WKWebsiteDataStore.remove(forIdentifier: storeId)
-    }
-
-    @MainActor
-    func testANewerOrDamagedHandoverIsHeldBack() async throws {
-        let (folder, _) = try electronFolder()
-        let store = WKWebsiteDataStore.nonPersistent()
-        guard case .needsUpdate(let names) = try await importer(folder, store: store, dbVersion: 2).run() else { return XCTFail("a newer database was imported") }
-        XCTAssertEqual(names.count, 1)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent("handover/index.json").path))
-        try Data("tampered".utf8).write(to: folder.appendingPathComponent("handover/0001.json"))
-        do {
-            _ = try await importer(folder, store: store).run()
-            XCTFail("a damaged chunk was imported")
-        } catch let f as HandoverImport.Failure {
-            XCTAssertTrue(f.message.contains("damaged"), f.message)
-        }
-    }
-
-    @MainActor
-    func testWithoutAHandoverItSaysWhetherElectronHadStorage() async throws {
-        let (folder, _) = try electronFolder()
-        try FileManager.default.removeItem(at: folder.appendingPathComponent("handover"))
-        let outcome = try await importer(folder, store: .nonPersistent()).run()
-        XCTAssertEqual(outcome, .none(electronStorage: true))
-        try FileManager.default.createDirectory(at: folder.appendingPathComponent("handover"), withIntermediateDirectories: true)
-        try Data(#"{"v":1,"createdAt":1,"appVersion":"1.22.0","dbVersion":3,"origin":"app://folevi","databases":[],"storage":null}"#.utf8).write(to: folder.appendingPathComponent("handover/index.json"))
-        let empty = try await importer(folder, store: .nonPersistent()).run()
-        XCTAssertEqual(empty, .nothingWaiting)
-        XCTAssertEqual(HandoverImport.journalAccount("folevi:sync-journal:acct1:tab9"), "acct1")
-        XCTAssertNil(HandoverImport.journalAccount("folevi:theme"))
+        let m = migration(folder, keychain: MemoryKeychain())
+        m.schedule = { _, _, _, _, _ in }
+        XCTAssertTrue(m.isNeeded)
+        for step in ElectronMigration.Step.allCases { try await m.run(step) }
+        m.finish()
+        XCTAssertFalse(m.isNeeded)
+        XCTAssertNil(m.record?.steps["offline"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent("Partitions").path))
     }
 }

@@ -1,5 +1,5 @@
 // The library's files on iPhone and iPad: local-store's `LocalFs` over a folder (docs/LOCAL_MODE_PLAN.md §3.6,
-// §4.3), the same contract as the Mac's apps/desktop/src/library/fs.ts and folevi-files.swift.
+// §4.3), the same contract as the Electron Mac app's library/fs.ts and folevi-files.swift.
 //
 // - Paths are checked (relative, forward slashes, no `..`, no control characters) and can't leave the folder,
 //   whatever links it holds.

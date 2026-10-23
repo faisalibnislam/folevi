@@ -178,7 +178,7 @@ final class LibraryTests: XCTestCase {
         XCTAssertEqual(j.records().map { String(data: $0, encoding: .utf8)! }, ["one", "two"], "a torn tail is cut")
         try j.truncate(1)
         XCTAssertEqual(j.records().map { String(data: $0, encoding: .utf8)! }, ["two"])
-        // Electron's journal (apps/desktop/src/library/journal.ts): "FLVJ" 0x01, then length, CRC-32, record.
+        // Electron's journal (the Electron Mac app's library/journal.ts): "FLVJ" 0x01, then length, CRC-32, record.
         XCTAssertEqual(Array(try Data(contentsOf: url).prefix(5)), [0x46, 0x4c, 0x56, 0x4a, 0x01])
         j.destroy()
     }

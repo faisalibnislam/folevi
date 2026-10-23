@@ -1,5 +1,5 @@
 // Foli AI in local mode on iPhone and iPad (docs/LOCAL_MODE_PLAN.md §4.1, §4.3, R10): `foleviShell.ai` and
-// `foleviShell.secrets`, the iOS twin of the Mac's apps/desktop/src/ai.ts and native/folevi-ai.swift. A request
+// `foleviShell.secrets`, the iOS twin of the Electron Mac app's ai.ts and native/folevi-ai.swift. A request
 // goes either to Apple's on-device model (FoundationModels, iOS 26 and later on Apple Intelligence devices),
 // or to one of the person's own providers (OpenAI, Anthropic, Google) over HTTPS with the key they stored. The
 // keys stay in native code: they're read from the Keychain just before a request, go only in that provider's

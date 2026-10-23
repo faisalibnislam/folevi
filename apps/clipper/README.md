@@ -26,7 +26,7 @@ It needs no API of its own. It connects like any other connected app: Folevi's O
 
 ## Commands
 
-The clipper sits outside the pnpm workspace with its own lockfile (like `apps/desktop`), so the web app's install and Vercel build never see it.
+The clipper sits outside the pnpm workspace with its own lockfile (like `apps/mac` and `apps/ios`), so the web app's install and Vercel build never see it.
 
 ```sh
 cd apps/clipper

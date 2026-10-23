@@ -68,9 +68,8 @@ Alternatives: keeping Auth0 (rejected for the reasons above) and writing the acc
 
 ## Native apps
 
-Folevi for Mac is now the web app in Electron and signs in like the web (`docs/DESKTOP.md`); these
-endpoints were built for the retired native Swift app (tag `native-mac-archive`) and stay for a future
-native client (iOS). Native apps sign in with **Authorization Code + PKCE** (RFC 7636), the pattern
+Folevi for Mac (`apps/mac`) and the iPhone and iPad app use these endpoints (`docs/DESKTOP.md`); they were
+first built for the retired native Swift app (tag `native-mac-archive`). Native apps sign in with **Authorization Code + PKCE** (RFC 7636), the pattern
 RFC 8252 recommends for native apps. `convex/lib/nativeAuth.ts` adds two endpoints to Better Auth, and
 Better Auth's `bearer` plugin lets the app present its session token as `Authorization: Bearer …`.
 

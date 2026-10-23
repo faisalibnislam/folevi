@@ -5,8 +5,8 @@ soft and slightly tactile (a subtle skeuomorphism): controls have a top highligh
 panels have an inner white rim, and the page lifts off the canvas like a sheet of paper. Nothing is
 glossy, nothing bounces, and every effect stays quiet enough that writing remains the focus.
 
-**The web app is the only implementation.** Folevi for Mac is the web app in an Electron window
-(`docs/DESKTOP.md`), so it has the same fonts, colors, radii, shadows and layout by construction. In it the
+**The web app is the only implementation.** Folevi for Mac shows the web app's interface in the system's
+web view (`docs/DESKTOP.md`), so it has the same fonts, colors, radii, shadows and layout by construction. In it the
 page carries `data-desktop="mac"` and keeps room for the window buttons (`.ui-traffic-space`).
 
 ## Source of truth

@@ -65,7 +65,7 @@ test.describe("without a server", () => {
     expect((await page.request.get("/sw.js")).headers()["content-type"]).toContain("text/html");
   });
 
-  // What local mode builds on (spike S1/S2's probe, now here; the Electron host runs the same on app://folevi).
+  // What local mode builds on (spike S1/S2's probe, now here; the native apps run the same on app://folevi).
   test("the web platform APIs local mode needs work on the shell's origin", async ({ page }) => {
     await page.goto("/documents");
     await hydrated(page);

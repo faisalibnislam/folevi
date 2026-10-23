@@ -1,7 +1,7 @@
 // The library behind `foleviShell.library` on iPhone and iPad (docs/LOCAL_MODE_PLAN.md §3, §4.1, §4.3): where it
 // is, its files (FolderFS, or EncryptedFS around it), change detection (LibraryWatcher), the journal
 // (LibraryJournal), the passphrase and the key (LibraryCrypto, the Keychain), moving it, and attachments for
-// folevi-file://. The iOS twin of the Mac's apps/desktop/src/library/service.ts, with the same rules.
+// folevi-file://. The iOS twin of the Electron Mac app's library/service.ts, with the same rules.
 //
 // Places:
 // - "Sync with iCloud": the app's own iCloud container, iCloud.com.folevi, its Documents folder (shown in iCloud

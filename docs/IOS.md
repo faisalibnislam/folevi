@@ -85,7 +85,7 @@ Native/AppleSignIn.swift    Sign in with Apple in Apple's own sheet (foleviNativ
   downloading as soon as iCloud lists them; attachments when they're shown. A device not signed in to iCloud,
   or with iCloud Drive off for Folevi, gets the reason and what to do in the Settings app.
 - **The same files on the Mac**: Folevi for Mac uses `~/Library/Mobile Documents/iCloud~com~folevi/Documents`
-  once that folder is on the Mac (apps/desktop/src/library/locations.ts `iCloudLocation`); see "The Mac and the
+  once that folder is on the Mac (the shared `Platform.swift` and `LibraryService.swift`); see "The Mac and the
   iCloud container" below.
 - **Writes**: every write is `NSFileCoordinator(.forReplacing)` with `Data.write(.atomic)`, F_FULLFSYNC, and
   the `ifMatch` check inside the coordinated block, inside a background task assertion so a flush finishes when
@@ -144,38 +144,11 @@ WebAuthn can't run on capacitor://localhost (`inMacApp()` should also cover `pla
 
 ### The Mac and the iCloud container
 
-The Mac makes and uses the container itself (2026-10-22). folevi-files is also built as a small helper app,
-`Contents/Helpers/FoleviFiles.app` (bundle id `com.folevi.mac`, no Dock icon), with the Developer ID profile
-"Folevi for Mac Developer ID iCloud" embedded (`apps/desktop/build/FoleviFiles.provisionprofile`, made with the
-API key, valid to 2044) and the entitlements in `apps/desktop/native/FoleviFiles.entitlements`
-(`icloud-container-identifiers` and `ubiquity-container-identifiers` `iCloud.com.folevi`, `icloud-services`
-`CloudDocuments`, `icloud-container-environment` `Production`, the application and team identifiers). A bare
-command-line tool can't carry a profile and is killed at launch (spike S6), so the app bundle is what makes it
-allowed.
-
-- `scripts/build-helper.mjs` (`pnpm helper`) assembles it in `native-build/` and signs it with the hardened
-  runtime and a timestamp by "Developer ID Application: Abu Mohammad Faisal (7K32QQ2FX8)"
-  (`FOLEVI_MAC_IDENTITY` overrides). Without that certificate or the profile it's signed ad hoc and without the
-  entitlement: it works, but can't make the container.
-- Both electron-builder configs copy it to `Contents/Helpers` (extraFiles) and leave its signature alone
-  (`signIgnore`); the universal build lists its binary in `x64ArchFiles`. `pnpm release` checks it's there, its
-  signature verifies, it has the container entitlement and its profile.
-- Its `icloud` request with `container: true` asks `FileManager.url(forUbiquityContainerIdentifier:)` off the
-  main thread, which makes `~/Library/Mobile Documents/iCloud~com~folevi` (and its `Documents`) when no device
-  has yet; `locations.ts` `iCloudLocation` and `service.ts` use that folder for Sync with iCloud. In the
-  container its watch uses `NSMetadataQueryUbiquitousDocumentsScope`, so uploads and downloads are reported
-  (polling stays as well).
-- The bare `Resources/folevi-files` is still shipped: `FilesHelper` falls back on it (with the requests that
-  were waiting) if the helper app is stopped before it answers, for example by a profile macOS won't accept.
-  Then only the container is out of reach, and Sync with iCloud is the iCloud Drive folder `Folevi` as before
-  (Settings > Library > Move library > Sync with iCloud moves it into the container later).
-
-Checked on this Mac: the signed helper app launches, says it's entitled, and made the container
-(`brctl status iCloud.com.folevi` lists it, synced down); the bare binary answers `entitled: false`; a
-`pnpm release --dry-run` build into a temporary folder passed its checks, `codesign --verify --deep --strict`
-passes for the whole app, and the packaged helper app answers with the container. Not checked: a library
-syncing between this Mac and an iPhone through the container (no signed-in device), and a notarized,
-universal `pnpm publish-mac` build.
+Folevi for Mac (`apps/mac`) makes and uses the container itself: its release signature carries the iCloud
+container `iCloud.com.folevi` (CloudDocuments, production) through the Developer ID profile "Folevi for Mac
+Developer ID iCloud" (`apps/mac/signing/Folevi.provisionprofile`, `docs/MAC_RELEASE.md` section 3), and it runs the
+same library code as this app (`Native/Shell/LibraryFS.swift`, `LibraryService.swift`, by path). The Electron
+app did this through a helper app (`FoleviFiles.app`); that went with the Electron code.
 
 ### Building it
 

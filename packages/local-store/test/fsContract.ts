@@ -1,5 +1,5 @@
 // Runs fixtures/fs-contract.json against a LocalFs (WP9). Used by fs-contract.test.ts (MemoryFs, EncryptedFs)
-// and by apps/desktop's library tests (the Mac's NodeFs). No test framework inside: it throws on the first
+// and by packages/cloud-folders (DropboxFs, DriveFs). No test framework inside: it throws on the first
 // difference, naming the case and step.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";

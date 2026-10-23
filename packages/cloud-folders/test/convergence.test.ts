@@ -7,8 +7,8 @@
 //
 // One provider per library: there is no run with one device on Dropbox and another on Drive.
 import { describe, expect, test } from "vitest";
-import { noteSum, seededRandom } from "../../../../packages/local-store/src";
-import { checkProperties, makeSimOn, randomEdit, scenarioOn, settle } from "../../../../packages/local-store/test/sim";
+import { noteSum, seededRandom } from "../../local-store/src";
+import { checkProperties, makeSimOn, randomEdit, scenarioOn, settle } from "../../local-store/test/sim";
 import { FakeDropbox } from "./fakeDropbox";
 import { FakeDrive } from "./fakeDrive";
 import { FakeProviderCloud } from "./harness";

@@ -1,5 +1,5 @@
-// The shared LocalFs contract (fixtures/fs-contract.json) against the reference file layers. The Mac's NodeFs
-// runs the same fixture in apps/desktop/src/library/contract.test.ts.
+// The shared LocalFs contract (fixtures/fs-contract.json) against the reference file layers. The Mac app
+// runs the same fixture in apps/mac/FoleviTests/LibraryTests.swift.
 import { describe, expect, it } from "vitest";
 import { EncryptedFs, MemoryFs } from "../src";
 import { loadContract, runFsContract } from "./fsContract";

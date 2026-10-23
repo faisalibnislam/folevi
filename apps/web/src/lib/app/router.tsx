@@ -39,7 +39,7 @@ export type Route =
   | { name: "settings"; section: "account" | "ai" | "billing" | "security" | "privacy" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "workspace-privacy" | "sync" | "library" | "data" | "desktop" | "this-device" }
   | { name: "help" }
   | { name: "onboarding" }
-  /** The Mac app's Quick Add window (apps/desktop). */
+  /** The Mac app's Quick Add window (apps/mac QuickAddPanel.swift). */
   | { name: "quick-add" }
   /** A place kept in sync behind the scenes (several places at once): no window shows it (components/places/PlaceSync.tsx). */
   | { name: "place-sync" }

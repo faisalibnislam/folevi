@@ -207,7 +207,7 @@
 :root[data-theme="dark"] { --cover-art-tint: rgb(0 0 0 / 0.18); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cover-art-tint: rgb(0 0 0 / 0.18); } }
 
-/* The Mac app (apps/desktop): no title bar. The window's buttons sit at the start of the app's top bar (a
+/* The Mac app (apps/mac): no title bar. The window's buttons sit at the start of the app's top bar (a
    space is kept for them), and the top bars' empty parts move the window, as a title bar would. */
 .ui-traffic-space, .ui-desktop-only { display: none; }
 /* (The Mac's buttons take the logo's place in the sidebar.) */
@@ -925,9 +925,8 @@
 
 /* ------------------------------------------------------------------------------------------------
  * Mac polish WM4 (docs/MAC_POLISH_PLAN.md §2, §3.4, §3.7, §3.12, §3.14 to §3.16; docs/MAC_WEBKIT_PLAN.md §10):
- * the web layer of Folevi for Mac, shared by today's Electron app and the native WebKit app. Only under
- * <html data-desktop="mac">, which both set before the first paint (apps/desktop/src/preload.ts,
- * apps/mac/Folevi/Bridge/mac-bridge.js); the website in a browser never has it. components/app/MacPolish.tsx keeps
+ * the web layer of Folevi for Mac (the native WebKit app; the Electron app it replaced shared it). Only under
+ * <html data-desktop="mac">, which the app sets before the first paint (apps/mac/Folevi/Bridge/mac-bridge.js); the website in a browser never has it. components/app/MacPolish.tsx keeps
  * data-input ("key" after keyboard navigation, "pointer" after a click), data-window-active and data-fullscreen;
  * the native app may add data-vibrancy (the system's translucent sidebar, decision M3). Everything here is plain
  * CSS outside the layers, so it wins over the components' utility classes without !important.

@@ -3,6 +3,13 @@
 This records the Phase 0 spikes from `docs/LOCAL_MODE_PLAN.md` §7: what was built, what ran, what it proved, and
 what changed in the plan as a result. The plan stays the design; this file is the evidence behind it.
 
+**2026-10-23:** the Mac host described below was the Electron app (`apps/desktop`), which has been removed from the
+repository (it's in the git history). Folevi for Mac is now the native app (`apps/mac`, `docs/DESKTOP.md`), which
+implements the same `foleviShell` contract with the iPhone and iPad app's Swift services. The paths into
+`apps/desktop` below are kept as the record. What moved: the Dropbox and Google Drive tests are in
+`packages/cloud-folders/test` (`pnpm --filter @folevi/cloud-folders test`), and `authBridge.ts`, which the e2e
+FakeShell runs in Node, is `apps/web/e2e/fixtures/authBridge.ts`.
+
 **Scope change during Phase 0:** the owner paused the iPhone and iPad apps. S3 (Capacitor) and the iOS halves of
 S4 and S6 were not run and are deferred (see "Deferred"). `apps/ios` was not changed.
 
@@ -47,10 +54,9 @@ node spikes/s1-shell/serve.mjs 4319 & node spikes/s1-shell/check.mjs http://127.
 npx vitest run --config spikes/vitest.config.ts         # S5
 S4_OUT=/tmp/s4-tokens.json E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 \
   npx playwright test --config spikes/playwright.config.ts   # S4, dev deployment only
-cd ../desktop
-SPIKE_USER_DATA=/tmp/folevi-s2 S4_TOKENS=/tmp/s4-tokens.json npx electron spikes/app-scheme/main.js write
-SPIKE_USER_DATA=/tmp/folevi-s2 npx electron spikes/app-scheme/main.js read   # after a restart
 ```
+
+(S2's Electron spike went with the Electron app.)
 
 `next build` rewrites `apps/web/next-env.d.ts`; restore it afterwards (it's never committed).
 
@@ -456,7 +462,7 @@ is that path), and new files go into the older one. Dropbox doesn't have this wi
 
 ### Tests
 
-All in `apps/desktop/test/cloud/`, against in-process fake Dropbox and Drive servers (`fakeDropbox.ts`,
+All in `packages/cloud-folders/test/` (they were in `apps/desktop/test/cloud/`), against in-process fake Dropbox and Drive servers (`fakeDropbox.ts`,
 `fakeDrive.ts`) that model revs, cursors and page tokens (with paging and resets), strict write modes, revisions,
 same-name twins, lagging listings (eventual consistency; a read by path or id is current), 429 and 403 rate limits,
 5xx answers, dropped connections, cut-off chunks and downloads, short-lived access tokens and revocation.

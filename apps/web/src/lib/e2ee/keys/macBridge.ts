@@ -1,5 +1,5 @@
-// The native apps' device keys (docs/E2EE_DESIGN.md §6.2, §6.11): the Mac (apps/desktop/src/e2ee.ts, in the
-// main process), the iPhone and iPad app (apps/ios, Native/Shell/E2eeKeys.swift) and the Android app hold the
+// The native apps' device keys (docs/E2EE_DESIGN.md §6.2, §6.11): the Mac (apps/mac, the shared
+// E2eeKeys.swift), the iPhone and iPad app (apps/ios, Native/Shell/E2eeKeys.swift) and the Android app hold the
 // device's private keys themselves, behind the same bridge, `foleviShell.e2ee` (and `foleviDesktop.e2ee` on
 // the website the Mac app shows). The page never holds a native device's private keys.
 //

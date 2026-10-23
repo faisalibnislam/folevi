@@ -8,7 +8,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The same requests, streams and errors as the Mac's apps/desktop/src/ai.ts (its ai.test.ts cases). */
+/** The same requests, streams and errors as the Electron Mac app's ai.ts (its ai.test.ts cases). */
 class AiProvidersTest {
     private fun req(vararg extra: Pair<String, Any>) = JSONObject().put("provider", "openai").put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", "Hi"))).apply { extra.forEach { put(it.first, it.second) } }
 

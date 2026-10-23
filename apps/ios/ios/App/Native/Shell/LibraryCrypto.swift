@@ -1,6 +1,6 @@
 // The encrypted library's FLV1 envelope on iPhone and iPad (docs/LOCAL_MODE_PLAN.md §3.9, §3.10), with CryptoKit
 // and CommonCrypto, in native code only: the page never holds a key. packages/local-store/src/crypto/envelope.ts
-// is the reference and apps/desktop/src/library/crypto.ts the Mac's copy; FoleviTests checks these bytes against
+// is the reference and the Electron Mac app's library/crypto.ts the Mac's copy; FoleviTests checks these bytes against
 // packages/local-store/fixtures/crypto-vectors.json.
 //
 //   passphrase --PBKDF2-SHA256--> wrapping key; AES-256-GCM(wrapping key, AAD "folevi-library-key/v1") seals the master key

@@ -110,8 +110,8 @@ targets:
           CODE_SIGN_IDENTITY: Apple Development
           CODE_SIGN_ENTITLEMENTS: Folevi/Resources/FoleviDev.entitlements
           FOLEVI_URL_SCHEME: folevi-dev
-          # The development copy of the built-in interface (apps/desktop/web, from build-shell.mjs).
-          FOLEVI_DEV_SHELL_DIR: "$(SRCROOT)/../desktop/web"
+          # The development copy of the built-in interface (apps/mac/web, from build-shell.mjs).
+          FOLEVI_DEV_SHELL_DIR: "$(SRCROOT)/web"
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG $(inherited)"
         Release:
           PRODUCT_BUNDLE_IDENTIFIER: com.folevi.mac

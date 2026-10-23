@@ -19,10 +19,10 @@ import {
   upsertBlock,
   type LocalFs as StoreFs,
   type NoteFile,
-} from "../../../../packages/local-store/src";
-import { para } from "../../../../packages/local-store/test/helpers";
-import type { MemoryMirror } from "../../src/library/cloud/shared/mirror";
-import { isCloudError } from "../../src/library/cloud/shared/types";
+} from "../../local-store/src";
+import { para } from "../../local-store/test/helpers";
+import type { MemoryMirror } from "../src/mirror";
+import { isCloudError } from "../src/types";
 import type { FaultInjector } from "./fakeCommon";
 import { FakeDropbox } from "./fakeDropbox";
 import { FakeDrive } from "./fakeDrive";

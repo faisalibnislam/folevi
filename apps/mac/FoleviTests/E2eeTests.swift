@@ -1,5 +1,5 @@
 // This Mac's end-to-end encryption keys through the shared E2eeKeys and the router: the WP1 vectors
-// (packages/local-store/fixtures/e2ee-vectors.json, as apps/desktop/src/e2ee.test.ts checks them), the device id
+// (packages/local-store/fixtures/e2ee-vectors.json, as the Electron Mac app's e2ee.test.ts checks them), the device id
 // Electron makes (mac-<ulid>), its words (Touch ID, this Mac), and each account's own keys, by the sender's place.
 import CryptoKit
 import XCTest

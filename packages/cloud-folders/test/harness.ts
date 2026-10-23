@@ -1,11 +1,11 @@
 // Devices on the fake providers: each gets its own fetch (and faults), tokens, device copy and LocalFs, wired
-// exactly as main.ts wires the real ones (connection.ts), minus the browser sign-in.
-import { DropboxFs, type DropboxFsOptions } from "../../src/library/cloud/shared/dropbox";
-import { DriveFs, driveClassifier, type DriveFsOptions } from "../../src/library/cloud/shared/drive";
-import { RetryingHttp } from "../../src/library/cloud/shared/http";
-import { MemoryMirror } from "../../src/library/cloud/shared/mirror";
-import { AuthedHttp, DropboxOAuth, GoogleOAuth, MemoryTokenStore, TokenManager, type TokenSet } from "../../src/library/cloud/shared/oauth";
-import type { LocalFs } from "../../src/library/cloud/shared/types";
+// exactly as the hosts wire the real ones (connection.ts), minus the browser sign-in.
+import { DropboxFs, type DropboxFsOptions } from "../src/dropbox";
+import { DriveFs, driveClassifier, type DriveFsOptions } from "../src/drive";
+import { RetryingHttp } from "../src/http";
+import { MemoryMirror } from "../src/mirror";
+import { AuthedHttp, DropboxOAuth, GoogleOAuth, MemoryTokenStore, TokenManager, type TokenSet } from "../src/oauth";
+import type { LocalFs } from "../src/types";
 import { FaultInjector, seeded } from "./fakeCommon";
 import { apiFaults, FakeDropbox, type ProviderSimCloud } from "./fakeDropbox";
 import { FakeDrive } from "./fakeDrive";

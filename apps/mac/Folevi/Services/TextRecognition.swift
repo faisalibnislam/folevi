@@ -1,6 +1,6 @@
 // Search in files (docs/ARCHITECTURE.md, "Search in files"): the words in an image, read on this Mac with Apple's
 // Vision, for the page to keep as the image's searchable text (lib/fileText/recognizer.ts). Electron ran the
-// folevi-text helper (apps/desktop/native/recognize-text.swift) for this; here the same request runs in process,
+// folevi-text helper (the Electron Mac app's native/recognize-text.swift) for this; here the same request runs in process,
 // with the same rules: one image at a time, at most 25 MB, read at most 3000 pixels on its longest side, given up
 // after 30 seconds, at most 100,000 characters kept. Nothing leaves the Mac.
 import CoreGraphics

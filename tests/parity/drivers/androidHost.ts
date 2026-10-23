@@ -7,7 +7,7 @@
 // `foleviShell.library` exactly as it does in the app.
 import { createCloudKit, copyLibrary, prepareLibrary, isCloudKind, KIND_PROVIDER, LIBRARY_FILE } from "../../../apps/android/bridge/cloud";
 import bridgeSource from "../../../apps/android/android/app/src/main/assets/folevi-bridge.js?raw";
-import { FakeDropbox } from "../../../apps/desktop/test/cloud/fakeDropbox";
+import { FakeDropbox } from "../../../packages/cloud-folders/test/fakeDropbox";
 
 const b64 = (u8: Uint8Array) => {
   let s = "";

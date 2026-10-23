@@ -5,7 +5,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { parseDeepLink as desktopParse } from "../../desktop/src/urls";
 
 const convex = vi.hoisted(() => ({ results: {} as Record<string, unknown> }));
 vi.mock("convex/react", () => ({
@@ -136,35 +135,37 @@ describe("server messages in the iOS app", () => {
 });
 
 describe("folevi:// links", () => {
-  const LINKS = [
-    "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V",
-    "folevi://d/01j9zq4k8w2m3n4p5q6r7s8t9v#blockA1",
-    "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#block-01J9ZQ4K8W2M3N4P5Q6R7S8T9W",
-    "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#comment-k57abc",
-    "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#other-01J9",
-    "folevi:///d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V",
-    "folevi://d/inbox-2d0a97ae3b345608",
-    "folevi://inbox",
-    "folevi://d/INBOX-2D0A97AE3B345608",
-    "folevi://tasks/today",
-    "folevi://settings/this-device",
-    "folevi://foli-ai",
-    "folevi://new",
-    "folevi://quick-add",
-    "folevi://",
-    "folevi://d/not-an-id",
-    "folevi://admin",
-    "folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V/extra",
-    "folevi://tasks/a/b/c",
-    "folevi://new/x",
-    "folevi://..%2F..%2Fetc",
-    "https://app.folevi.com/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V",
-    "javascript:alert(1)",
-    `folevi://tasks/${"a".repeat(700)}`,
+  // What the Mac app answers for each (its parser, Links.swift; recorded from the Electron app's urls.ts, which
+  // the native app's RouterTests.testDeepLinks follows too).
+  const LINKS: Array<[string, ReturnType<typeof parseDeepLink>]> = [
+    ["folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V", { type: "open", path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V" }],
+    ["folevi://d/01j9zq4k8w2m3n4p5q6r7s8t9v#blockA1", { type: "open", path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#blockA1" }],
+    ["folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#block-01J9ZQ4K8W2M3N4P5Q6R7S8T9W", { type: "open", path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#block-01J9ZQ4K8W2M3N4P5Q6R7S8T9W" }],
+    ["folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#comment-k57abc", { type: "open", path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#comment-k57abc" }],
+    ["folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V#other-01J9", { type: "open", path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V" }],
+    ["folevi:///d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V", { type: "open", path: "/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V" }],
+    ["folevi://d/inbox-2d0a97ae3b345608", { type: "open", path: "/d/inbox-2d0a97ae3b345608" }],
+    ["folevi://inbox", { type: "open", path: "/inbox" }],
+    ["folevi://d/INBOX-2D0A97AE3B345608", null],
+    ["folevi://tasks/today", { type: "open", path: "/tasks/today" }],
+    ["folevi://settings/this-device", { type: "open", path: "/settings/this-device" }],
+    ["folevi://foli-ai", { type: "open", path: "/foli-ai" }],
+    ["folevi://new", { type: "new-note" }],
+    ["folevi://quick-add", { type: "quick-add" }],
+    ["folevi://", { type: "open", path: "/documents" }],
+    ["folevi://d/not-an-id", null],
+    ["folevi://admin", null],
+    ["folevi://d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V/extra", null],
+    ["folevi://tasks/a/b/c", null],
+    ["folevi://new/x", null],
+    ["folevi://..%2F..%2Fetc", null],
+    ["https://app.folevi.com/d/01J9ZQ4K8W2M3N4P5Q6R7S8T9V", null],
+    ["javascript:alert(1)", null],
+    [`folevi://tasks/${"a".repeat(700)}`, null],
   ];
 
   test("the iOS app (in the page) reads them exactly as the Mac app does", () => {
-    for (const link of LINKS) expect(parseDeepLink(link), link).toEqual(desktopParse(link));
+    for (const [link, mac] of LINKS) expect(parseDeepLink(link), link).toEqual(mac);
   });
 
   test("what they open", () => {

@@ -13,7 +13,10 @@
 // |                 | places.json, library/journal-<id>.bin                       | the same files (one format on both)       |
 // | settings        | settings.json, window.json, reminders.json                  | the app's defaults, the first window's    |
 // |                 |                                                             | frame, the system's pending notifications |
-// | offline changes | handover/ (written by Electron 1.22 as it quits)            | WKWebView storage (HandoverImport.swift)  |
+//
+// Edits the Electron app hadn't sent yet stay in Chromium's storage, which WebKit can't read: no Electron release
+// ever wrote them out for this app (the 1.22 handover was dropped before shipping), so there's nothing to move.
+// Chromium's folders are kept for 30 days like the rest, and "Folevi (previous).app" can still send them.
 //
 // Sealed values (safeStorage, SafeStorage.swift) are decrypted, stored, read back and compared before a step counts
 // as done. E2EE device keys keep their device id (`mac-<ulid>`) and are checked against the public halves in
@@ -41,7 +44,7 @@ struct SharedKeychain: MigrationKeychain {
 
 final class ElectronMigration {
     enum Step: String, CaseIterable, Codable {
-        case sessions, keys, library, settings, offline
+        case sessions, keys, library, settings
 
         var title: String {
             switch self {
@@ -49,7 +52,6 @@ final class ElectronMigration {
             case .keys: return "Encryption keys"
             case .library: return "Library"
             case .settings: return "Settings"
-            case .offline: return "Offline changes"
             }
         }
     }
@@ -158,7 +160,7 @@ final class ElectronMigration {
 
     /// Something only the Electron app writes is here: Chromium's own files, or Folevi's sealed folders.
     var hasElectronData: Bool {
-        for marker in ["Local State", "Partitions", "secrets", "e2ee", "library-keys", "settings.json", "cloud-tokens.bin", "handover"] where exists(marker) { return true }
+        for marker in ["Local State", "Partitions", "secrets", "e2ee", "library-keys", "settings.json", "cloud-tokens.bin"] where exists(marker) { return true }
         return (json("library.json")?["path"] as? String) != nil
     }
 
@@ -244,7 +246,6 @@ final class ElectronMigration {
             case .keys: detail = try moveKeys(allowPrompt: allowPrompt)
             case .library: detail = try moveLibrary()
             case .settings: detail = await moveSettings()
-            case .offline: detail = nil
             }
             if let detail { note(step, "done", detail) } else { note(step, "skipped", "Nothing to move.") }
         } catch let f as Failure {
@@ -252,9 +253,6 @@ final class ElectronMigration {
             throw f
         }
     }
-
-    /// The offline step's answer comes from HandoverImport (it needs a web view).
-    func recordOffline(_ state: String, _ detail: String) { note(.offline, state, detail) }
 
     // MARK: sessions, Foli AI keys, cloud tokens
 
@@ -541,7 +539,7 @@ final class ElectronMigration {
                     "blob_storage", "Shared Dictionary", "Trust Tokens", "Trust Tokens-journal", "Local State", "Preferences", "Network Persistent State",
                     "TransportSecurity", "Cookies", "Cookies-journal", "DIPS", "DIPS-wal", "SharedStorage", "Session Storage", "Local Storage", "WebStorage",
                     "Service Worker", "Crashpad", "handoff.json", "window.json", "settings.json", "reminders.json", "library.electron.json",
-                    "Cloud libraries (previous)", "handover (imported)"]
+                    "Cloud libraries (previous)"]
         let done = { (s: Step) in r.steps[s.rawValue]?.state == "done" || r.steps[s.rawValue]?.state == "skipped" }
         if done(.sessions) { gone += ["secrets", "cloud-tokens.bin", "cloud-connection.json"] }
         if done(.keys) { gone += ["e2ee", "library-keys"] }

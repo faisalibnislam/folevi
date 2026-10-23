@@ -1,5 +1,5 @@
 // The bridge the bundled app shell's host adds as `window.foleviShell` (docs/LOCAL_MODE_PLAN.md §4.1): the Mac
-// app's preload (apps/desktop) today, the iPhone and iPad app's bridge.js later. It is set before any page
+// app's mac-bridge.js (apps/mac) and the iPhone and iPad app's bridge.js, over the shared shell-bridge.js. It is set before any page
 // script runs, so the page can read the mode synchronously on its first render. On the website, and in a
 // shell build opened in a plain browser, it's absent (lib/shell/index.ts falls back).
 //

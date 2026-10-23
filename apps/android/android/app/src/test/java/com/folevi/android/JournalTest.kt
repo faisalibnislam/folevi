@@ -34,7 +34,7 @@ class JournalTest {
 
     @Test
     fun sameBytesAsTheMac() {
-        // apps/desktop/src/library/journal.ts: "FLVJ" 0x01, u32 BE length, u32 BE CRC-32, the record.
+        // the Electron Mac app's library/journal.ts: "FLVJ" 0x01, u32 BE length, u32 BE CRC-32, the record.
         val f = temp()
         Journal(f).append("a".toByteArray())
         assertArrayEquals(byteArrayOf(0x46, 0x4c, 0x56, 0x4a, 0x01, 0, 0, 0, 1, 0xe8.toByte(), 0xb7.toByte(), 0xbe.toByte(), 0x43, 0x61), f.readBytes())

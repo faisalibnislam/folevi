@@ -1,5 +1,12 @@
 # Folevi for Mac on WebKit (2026-10-22)
 
+**Status (2026-10-23):** built and shipping as Folevi 1.0.00 (`apps/mac`, `docs/DESKTOP.md`, `docs/MAC_RELEASE.md`).
+The Electron app (`apps/desktop`) has been removed from the repository, and with it the Electron 1.22 handover
+(section 8.3: it never shipped, so the migration has no offline step) and the Squirrel feed step (section 9: the
+Electron feed never resolved, so no Electron copy can be updated to the native app; people download it). Updates
+and downloads come from `https://folevi.com/download/` (the R2 bucket through a rewrite on the website). The rest
+of this page is the plan as it was written; paths into `apps/desktop` are the record.
+
 Folevi for Mac today is Electron 44 (`apps/desktop`): Chromium plus Node, showing the bundled interface at
 `app://folevi`. This plan replaces Electron with a thin native AppKit app that shows the same bundled interface
 in the system's own web view (`WKWebView`) and reuses the iOS app's Swift services. The web app is not rewritten:
@@ -140,7 +147,7 @@ Rules that carry over from Electron (`main.ts`, `docs/DESKTOP.md` "Security"), u
 | `apps/mac/Folevi/Bridge/` | `MessageRouter.swift`, `ShellRouter.swift`, `DesktopRouter.swift`, `Events.swift` (native to page), `mac-bridge.js` (transport for the shared `shell-bridge.js`, plus `foleviDesktop`) |
 | `apps/mac/Folevi/Chrome/` | `MainMenu.swift`, `StatusItem.swift`, `DockMenu.swift`, `TitleBar.swift` (traffic lights, drag regions), `QuickAddPanel.swift`, `HotKey.swift`, `SettingsWindow.swift`, `TextMenu.swift` |
 | `apps/mac/Folevi/Services/` | `MacAppLock.swift`, `Notifications.swift`, `LoginItem.swift`, `CallRecorder.swift`, `TextRecognition.swift`, `DragOut.swift`, `Sharing.swift`, `ServicesProvider.swift`, `Spotlight.swift`, `Intents.swift`, `Clipboard.swift` |
-| `apps/mac/Folevi/Migration/` | `ElectronMigration.swift`, `SafeStorage.swift`, `HandoverImport.swift` |
+| `apps/mac/Folevi/Migration/` | `ElectronMigration.swift`, `SafeStorage.swift`, `MigrationWindow.swift` |
 | `apps/mac/Folevi/Updates/` | `Updater.swift` (Sparkle) |
 | `apps/mac/Folevi/Debug/` | `MacEval.swift` (DEBUG only: run JavaScript in a window from a script, like iOS `SimulatorEval.swift`) |
 | `apps/mac/Folevi/Resources/` | `Info.plist`, `Folevi.entitlements`, `FoleviDev.entitlements`, `Assets.xcassets`, the app icon (`Folevi.icon` from `packages/design-tokens/scripts/app-icon.mjs`) |
@@ -440,7 +447,8 @@ deletes the Electron copies.
 
 ### 8.3 Edits not yet sent (the handover)
 
-The last Electron release (1.22.0, WM3) adds a handover step that reuses `handoff.ts`'s kit (`handoffKit.ts`
+*Dropped 2026-10-23, before it shipped (see the status at the top and `docs/MAC_RELEASE.md` section 2).* The plan was:
+the last Electron release (1.22.0, WM3) adds a handover step that reuses `handoff.ts`'s kit (`handoffKit.ts`
 `inventory`, `readChunk`, and the localStorage entries):
 
 1. When an update to the native app is ready, Electron first waits for every account's outbox and uploads to be
@@ -482,13 +490,15 @@ The last Electron release (1.22.0, WM3) adds a handover step that reuses `handof
 - **Notarization**: `xcrun notarytool submit <zip> --keychain-profile folevi-notary --wait`, then
   `xcrun stapler staple` on the app and the DMG (the profile `docs/DESKTOP.md` already uses).
 - **Updates: Sparkle 2** (SPM, `Sparkle.framework` embedded and signed inside out). `SUFeedURL` =
-  `https://updates.folevi.com/mac/appcast.xml`, `SUPublicEDKey` in Info.plist; automatic checks every 6 hours
+  `https://folevi.com/download/mac/appcast.xml` (planned as `updates.folevi.com`, which never resolved),
+  `SUPublicEDKey` in Info.plist; automatic checks every 6 hours
   (Electron's interval), background download, "Restart to Update" in the Folevi menu. The EdDSA key pair was made
   on this Mac with Sparkle's `generate_keys --account folevi` (decision M10): the private key stays in the login
   Keychain, the public key is `SUPublicEDKey`; `generate_appcast` signs each release on the owner's Mac.
 - **Delta updates**: Sparkle's binary deltas between consecutive versions (the web export changes every release,
   so a delta is about the size of the changed chunks).
-- **Electron users**: the last Electron release's Squirrel feed points at a ZIP of the native app (Squirrel.Mac
+- **Electron users** (dropped: the Electron feed never resolved, so there's nothing to point; they download the
+  native app): the last Electron release's Squirrel feed points at a ZIP of the native app (Squirrel.Mac
   accepts it: same bundle id and team), after the handover (8.3). Squirrel.Mac checks that the new bundle's signature matches the
   running one's (same bundle id and team), which it should; WM3 verifies it on a dry run. With no public
   Electron users yet, this mainly serves testers.

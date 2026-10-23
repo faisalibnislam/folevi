@@ -9,7 +9,7 @@ added without changing the backend or the other clients.
 
 ## What already carries over
 
-Folevi for Mac is now the web app in Electron (`docs/DESKTOP.md`). The native Swift Mac app, with the
+Folevi for Mac now runs the web app's interface natively (`docs/DESKTOP.md`). The native Swift Mac app, with the
 Swift layers and generators mentioned below, is archived on the git tag `native-mac-archive`; an iOS client
 would start from there.
 

@@ -2,7 +2,7 @@
 
 A quieter place for ideas that keep growing. Folevi is a calm writing and notes workspace with block
 documents, nested pages, tasks, calendar, collections, comments, offline editing and sync. It runs on the web
-and on the Mac (Folevi for Mac: the web app in a window of its own). Each person has their own Personal; teams share
+and on the Mac (Folevi for Mac: a native app showing the same interface in the system's web view). Each person has their own Personal; teams share
 workspaces with their own plans, seats and billing (`docs/ACCOUNT_MODEL_PLAN.md`).
 
 | Surface | Where | Stack |
@@ -10,7 +10,7 @@ workspaces with their own plans, seats and billing (`docs/ACCOUNT_MODEL_PLAN.md`
 | Marketing site | `folevi.com` → `apps/web/src/app/(marketing)` | Next.js 16 (App Router) |
 | Product web app (PWA) | `app.folevi.com` → `apps/web/src/app/(app)` | Next.js, React 19, Tiptap/ProseMirror |
 | Admin console | `app.folevi.com/admin` → `apps/web/src/app/admin` | Next.js |
-| Folevi for Mac | `apps/desktop` (loads `app.folevi.com`) | Electron shell: Quick Add, menu bar icon, notifications |
+| Folevi for Mac | `apps/mac` (the built-in interface on `app://folevi`) | AppKit + WKWebView, Sparkle updates: Quick Add, menu bar icon, notifications |
 | Backend | `convex/` | Convex (queries, mutations, actions, crons, HTTP) |
 | Identity | Built-in accounts: Better Auth inside Convex (email + password, verified email, optional authenticator-app 2FA) | `convex/auth.ts`, `convex/betterAuth` |
 | Transactional email | Resend: sending, plus the support inbox (templates rendered in the repo) | `packages/email` |
@@ -62,11 +62,12 @@ npx convex run admin:bootstrapSuperAdmin '{"email":"you@example.com"}'
 ### Folevi for Mac
 
 ```bash
-cd apps/desktop && pnpm install --ignore-workspace && pnpm dev
+node apps/web/scripts/build-shell.mjs && node apps/mac/scripts/build.mjs && node apps/mac/scripts/mac.mjs launch
 ```
 
-Opens the local web app (http://app.localhost:3000) in the Electron shell; `pnpm release` builds, signs and
-installs it in /Applications. The shell is outside the pnpm workspace. See `docs/DESKTOP.md`.
+Builds the built-in interface into `apps/mac/web`, then the Debug app ("Folevi Dev", its own data and
+`folevi-dev://` links, never installed), and opens it. Releases, signing and downloads are in
+`docs/MAC_RELEASE.md`; the app itself in `docs/DESKTOP.md`.
 
 ## Tests
 
@@ -107,6 +108,6 @@ See `docs/TESTING.md` for what each suite covers, and `docs/DESKTOP.md` for the 
 - `docs/EMAIL_DECISION.md`, `docs/EMAIL_OPERATIONS.md`: email via Resend (identity, security, product, support inbox), templates and operations
 - `docs/DEPLOYMENT.md`: Vercel, Convex (including accounts), Resend, DNS, environments, backups, incidents
 - `docs/TESTING.md`: test suites and manual QA checklists
-- `docs/DESKTOP.md`: Folevi for Mac (the Electron shell), its bridge to the web app, build and release
+- `docs/DESKTOP.md`: Folevi for Mac (apps/mac), its bridge to the web app, building it; `docs/MAC_RELEASE.md`: signing, updates, downloads and releases
 - `docs/IOS.md`: Folevi for iPhone and iPad (`apps/ios`, the web app in a Capacitor shell), App Review notes
 - `docs/FUTURE_IOS.md`: how an iOS client would be added (superseded by docs/IOS.md)

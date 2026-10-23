@@ -2,6 +2,8 @@
 # conflicts in a .pbxproj.
 Folevi.xcodeproj/
 build/
+# The development copy of the built-in interface (apps/web/scripts/build-shell.mjs copies it here).
+web/
 # Release builds (scripts/release.mjs --install, publish.mjs) and the ZIPs kept for Sparkle deltas: never committed.
 release/
 release-dist/

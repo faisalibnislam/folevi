@@ -1,4 +1,4 @@
-// app://folevi (AppScheme.swift): the same cases as apps/desktop/src/shell.test.ts drives against Electron's
+// app://folevi (AppScheme.swift): the same cases as the Electron Mac app's shell.test.ts drives against Electron's
 // protocol.ts handler, on a small export in a temporary folder.
 import XCTest
 @testable import Folevi
@@ -154,7 +154,6 @@ final class SchemeTests: XCTestCase {
         let offline = get("/_folevi-offline?url=app%3A%2F%2Ffolevi%2Fdocuments")
         XCTAssertEqual(offline.status, 200)
         XCTAssertTrue(text(offline).contains("Try again"))
-        XCTAssertEqual(get("/_folevi-handoff").header("Content-Security-Policy"), "default-src 'none'")
     }
 
     func testMissingExport() {

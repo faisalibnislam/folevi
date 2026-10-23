@@ -1,5 +1,5 @@
 // Signed-in mode for the built-in interface (docs/LOCAL_MODE_PLAN.md §1 and §4.3, WP4): `foleviShell.auth` on
-// iPhone and iPad, the iOS twin of the Mac's apps/desktop/src/authBridge.ts.
+// iPhone and iPad, the iOS twin of the Electron Mac app's authBridge.ts.
 //
 // The page lives on capacitor://localhost, where the website's cookie session can't work. So the app signs in
 // the way native apps do (Authorization Code with PKCE, convex/lib/nativeAuth.ts, client "folevi-shell"):

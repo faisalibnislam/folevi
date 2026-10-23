@@ -2,8 +2,8 @@
 
 This document is normative. The TypeScript implementation lives in
 `packages/editor-schema/src/sync.ts` (client reducer) and `convex/sync.ts` (server). The reducer runs the
-golden scenarios in `packages/editor-schema/fixtures/sync-scenarios.json`. Folevi for Mac is the web app in
-Electron (`docs/DESKTOP.md`), so the web client is the only one; the retired native Swift client is archived
+golden scenarios in `packages/editor-schema/fixtures/sync-scenarios.json`. Folevi for Mac runs the web client
+built in (`docs/DESKTOP.md`), so the web client is the only one; the retired native Swift client is archived
 on the tag `native-mac-archive`.
 
 ## Goals and non-goals

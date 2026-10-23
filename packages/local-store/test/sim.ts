@@ -46,7 +46,7 @@ interface EditRecord {
 
 /**
  * What the simulator needs from a cloud: FaultyCloud (a synced folder), or a fake provider API whose devices
- * mount it as their LocalFs (apps/desktop's Dropbox and Google Drive tests).
+ * mount it as their LocalFs (packages/cloud-folders' Dropbox and Google Drive tests).
  */
 export interface SimCloud {
   mount(name: string): LocalFs;

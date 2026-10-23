@@ -41,10 +41,11 @@ jobs:
           pnpm --filter @folevi/editor-schema exec tsc --noEmit
           pnpm --filter @folevi/email typecheck
           pnpm --filter @folevi/web exec tsc --noEmit
-      - name: Schema, sync reducer and email contract tests
+      - name: Schema, sync reducer, email contract and cloud provider tests
         run: |
           pnpm --filter @folevi/editor-schema test
           pnpm --filter @folevi/email test
+          pnpm --filter @folevi/cloud-folders test
       - name: Convex integration tests (tenant isolation, sync, sharing, deletion, admin RBAC)
         run: pnpm exec vitest run
       - name: Web unit tests (editor conversion, paste, sync engine)
@@ -182,28 +183,6 @@ jobs:
           ARGS=$(node -e 'const m=(process.env.COMMIT_MESSAGE||"").split("\n")[0].slice(0,200); process.stdout.write(JSON.stringify({environment:process.env.FOLEVI_DEPLOY_ENVIRONMENT,commitSha:process.env.GITHUB_SHA,commitMessage:m,source:"github-actions"}))')
           npx convex run admin:recordDeployment "$ARGS"
 
-  desktop:
-    name: Folevi for Mac (Electron shell) typecheck & tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: apps/desktop
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: apps/desktop/pnpm-lock.yaml
-      # apps/desktop is outside the pnpm workspace (its own lockfile). Its tests need no Electron binary.
-      - run: pnpm install --ignore-workspace --frozen-lockfile
-        env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
-      - run: pnpm typecheck
-      - run: pnpm test
-
   clipper:
     name: Folevi Web Clipper (Chrome and Edge extension) typecheck, tests & package
     runs-on: ubuntu-latest
@@ -219,7 +198,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: apps/clipper/pnpm-lock.yaml
-      # apps/clipper is outside the pnpm workspace (its own lockfile), like apps/desktop.
+      # apps/clipper is outside the pnpm workspace (its own lockfile).
       - run: pnpm install --ignore-workspace --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test

@@ -1,5 +1,5 @@
 // Several places on iPhone and iPad (docs/MULTI_ACCOUNT_PLAN.md §2.2; the iOS twin of the Mac's
-// apps/desktop/src/places.ts): the library on this device and any number of Folevi accounts, each with its own
+// the Electron Mac app's places.ts): the library on this device and any number of Folevi accounts, each with its own
 // session (ShellAuth, Keychain account `session.<user id>`), encryption keys (E2eeKeys, `device.<user id>`) and
 // data. This keeps the list in the app's Application Support (places.json): which place the app shows, the
 // accounts (what each account's own page last said of itself, for the switcher), and Quick Add's last place.

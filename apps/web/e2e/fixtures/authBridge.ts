@@ -1,25 +1,34 @@
-// Signed-in mode for the built-in interface (docs/LOCAL_MODE_PLAN.md §1 and §4.2, WP4): `foleviShell.auth`.
+// The native apps' sign-in bridge for the built-in interface (docs/LOCAL_MODE_PLAN.md §1 and §4.2, WP4),
+// `foleviShell.auth`, in plain Node: the e2e FakeShell (shell-auth.spec.ts, mode-move.spec.ts) runs it as the host.
+// It began as the Electron Mac app's own (removed); the native apps implement the same contract in Swift
+// (apps/ios/ios/App/Native/Shell/ShellAuth.swift, which the Mac app compiles in too).
 //
-// The page lives on app://folevi, where a cookie session for the website can't work. So the Mac app signs in
+// The page lives on app://folevi, where a cookie session for the website can't work. So the host signs in
 // the way native apps do (Authorization Code with PKCE, convex/lib/nativeAuth.ts, client "folevi-shell"):
 //   1. signIn() opens the website's /connect page in the default browser; the person signs in there as usual
 //      and presses Continue;
-//   2. the browser hands back folevi://auth/callback?code=…&state=… (main.ts openLink → handleCallback);
-//   3. the app trades the code and its PKCE verifier for a session of its own at /api/auth/native/token, and
-//      keeps that bearer token in secrets.ts (safeStorage). It never reaches the page.
+//   2. the browser hands back folevi://auth/callback?code=…&state=… (handleCallback);
+//   3. the host trades the code and its PKCE verifier for a session of its own at /api/auth/native/token, and
+//      keeps that bearer token in its secret store. It never reaches the page.
 // Afterwards the page's Better Auth client sends every request through fetch() here: only the website's
 // /api/auth/*, with `Authorization: Bearer`, no cookies (Better Auth's origin check bites requests that carry
 // cookies), `Origin` set to the website all the same (docs/LOCAL_MODE.md S4: a shipped app must not depend on
-// how strict that check is), a rotated `set-auth-token` kept, and the token scrubbed from anything handed back. convexToken() gets the page its short-lived Convex JWT.
-//
-// Everything Electron-specific (net.fetch, shell.openExternal, safeStorage) is passed in, so this loads in
-// plain Node: the unit tests (authBridge.test.ts) and the web app's e2e FakeShell run this same code.
+// how strict that check is), a rotated `set-auth-token` kept, and the token scrubbed from anything handed back.
+// convexToken() gets the page its short-lived Convex JWT.
 import { createHash, randomBytes } from "node:crypto";
-import { accountSessionName, type SecretName, type SecretStore } from "./secrets";
+
+/** The secrets this bridge keeps: the session, and each account's own (`auth.session.<user id>`). */
+type SecretName = "auth.session" | `auth.session.${string}`;
+interface SecretStore {
+  get(name: SecretName): string | null;
+  set(name: SecretName, value: string): void;
+  delete(name: SecretName): void;
+}
+const accountSessionName = (userId: string): SecretName => `auth.session.${userId}`;
 
 export const SHELL_CLIENT_ID = "folevi-shell";
 export const SHELL_REDIRECT_URI = "folevi://auth/callback";
-const TOKEN: "auth.session" = "auth.session";
+const TOKEN = "auth.session" as const;
 const SIGN_IN_TIMEOUT_MS = 10 * 60_000;
 
 /** The page's request: plain values (it came over IPC). */
@@ -199,7 +208,7 @@ export function createAuthBridge(deps: AuthBridgeDeps): AuthBridge {
 
     handleCallback(url) {
       if (!isAuthCallback(url)) return false;
-      let state = "";
+      let state: string;
       try {
         state = new URL(url).searchParams.get("state") ?? "";
       } catch {

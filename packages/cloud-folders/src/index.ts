@@ -1,6 +1,6 @@
 // Sync with Dropbox and Sync with Google Drive for a local library (docs/LOCAL_MODE_PLAN.md WP9b,
-// docs/LOCAL_MODE.md "Dropbox and Google Drive"), shared by Folevi for Mac (apps/desktop/src/library/cloud) and
-// Folevi for Android (apps/android/bridge). Platform neutral: fetch, WebCrypto and plain data only.
+// docs/LOCAL_MODE.md "Dropbox and Google Drive"), shared by the native apps' bridges (apps/ios/bridge,
+// bundled into folevi-cloud.js for iPhone, iPad and Mac) and Folevi for Android (apps/android/bridge). Platform neutral: fetch, WebCrypto and plain data only.
 //   types.ts       LocalFs shape, CloudError ("offline", "reconnect", "busy", "quota", "protocol"), ApiHttp
 //   http.ts        retries: 429 / 503 with Retry-After, 5xx backoff, dropped connections, offline
 //   oauth.ts       PKCE, Dropbox and Google OAuth clients, TokenManager (refresh, Reconnect), AuthedHttp

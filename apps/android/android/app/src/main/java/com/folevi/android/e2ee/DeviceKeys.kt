@@ -13,7 +13,7 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * End-to-end encryption on Android (docs/E2EE_DESIGN.md §4.8, §6.2, the Mac's apps/desktop/src/e2ee.ts): this
+ * End-to-end encryption on Android (docs/E2EE_DESIGN.md §4.8, §6.2, the Electron Mac app's e2ee.ts): this
  * phone's device keys. An X25519 key pair (the account master key is sealed to it as an FLS1 box) and an Ed25519
  * key pair (it signs as this device), made on the page's first ask. Their private halves never reach the page:
  * they're sealed with an AES key in the Android Keystore (StrongBox where the phone has one, never exportable)

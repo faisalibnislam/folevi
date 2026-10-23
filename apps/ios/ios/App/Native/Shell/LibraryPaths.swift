@@ -1,5 +1,5 @@
-// Library paths and note file names, as packages/local-store/src/layout.ts defines them (the same rules as the
-// Mac's apps/desktop/src/library/paths.ts; FoleviTests checks both against local-store's fs-contract fixture).
+// Library paths and note file names, as packages/local-store/src/layout.ts defines them (the same rules as
+// the Electron Mac app's library/paths.ts; FoleviTests checks both against local-store's fs-contract fixture).
 import Foundation
 
 enum LibraryPaths {

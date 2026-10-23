@@ -1,7 +1,7 @@
 // Signed-in mode in the apps' built-in interface (docs/LOCAL_MODE_PLAN.md §1, WP4), end to end: the shell
 // served by `next dev` with FOLEVI_BUILD=shell (port 3003, NEXT_PUBLIC_APP_URL pointing at the 3002 dev
-// server, see docs/LOCAL_MODE.md) with a FakeShell whose `auth` is the Mac app's own authBridge.ts running here
-// in Node, the way it runs in Electron's main process: real PKCE sign-in through /connect on the website,
+// server, see docs/LOCAL_MODE.md) with a FakeShell whose `auth` is the native apps' sign-in bridge in Node
+// (fixtures/authBridge.ts, the same contract as ShellAuth.swift): real PKCE sign-in through /connect on the website,
 // the code exchanged at /api/auth/native/token, the bearer kept outside the page, every /api/auth request
 // and Convex token through it. The page reaches a signed-in note, never sees the token, and signing out
 // revokes the session.
@@ -22,7 +22,7 @@ import {
   SHELL_CLIENT_ID,
   type AuthBridge,
   type BridgeResponse,
-} from "../../desktop/src/authBridge";
+} from "./fixtures/authBridge";
 import { APP, convexUrl, newPerson } from "./helpers";
 
 const SHELL = (process.env.E2E_SHELL_BASE_URL ?? "http://localhost:3003").replace(/\/$/, "");

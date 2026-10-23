@@ -1,6 +1,6 @@
 // Folevi for Mac's web layer (docs/MAC_POLISH_PLAN.md, package WM4): what the page does differently inside the
-// Mac app, today's Electron app and the native WebKit app alike. Both mark <html data-desktop="mac"> before the
-// first paint (apps/desktop/src/preload.ts, apps/mac/Folevi/Bridge/mac-bridge.js); the website in a browser never
+// Mac app (the native WebKit app; the Electron app it replaced too). It marks <html data-desktop="mac"> before the
+// first paint (apps/mac/Folevi/Bridge/mac-bridge.js); the website in a browser never
 // has it, so nothing here changes the website.
 
 /** Inside Folevi for Mac (either engine). */

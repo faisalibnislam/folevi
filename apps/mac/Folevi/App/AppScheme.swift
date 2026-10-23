@@ -7,7 +7,7 @@
 //   Range for audio and video, nosniff and a sandboxing policy of their own;
 // - /_bridge/<id>: bridge calls too big for a message (POST the JSON body, then name the id in the message) and
 //   answers too big for a reply (the router keeps them for one GET);
-// - /_folevi-handoff: a blank page for the handover import (WM3), and /_folevi-offline: the failed-load page.
+// - /_folevi-offline: the failed-load page.
 // The handler itself is a plain request -> response function (`AppScheme.respond`), so SchemeTests drives it
 // without a web view.
 import CryptoKit
@@ -100,7 +100,6 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
     static let scheme = "app"
     static let host = "folevi"
     static let origin = "app://folevi"
-    static let handoffPath = "/_folevi-handoff"
     static let offlinePath = "/_folevi-offline"
 
     /// The export's folder.
@@ -183,10 +182,6 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
         if segments.first == "_files" {
             guard segments.count == 2 else { return Self.text(404, "Not found") }
             return libraryFile(segments[1], r)
-        }
-        if path == Self.handoffPath {
-            return AppResponse(status: 200, headers: ["Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": "default-src 'none'", "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store"],
-                               body: r.method == "HEAD" ? Data() : Data("<!doctype html><meta charset=utf-8><title>Folevi</title>".utf8))
         }
         if path == Self.offlinePath {
             return AppResponse(status: 200, headers: ["Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'", "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store"],

@@ -1,5 +1,5 @@
 // The bridge's checks (MessageRouter.swift), the empty routers' answers, the bootstrap and bridge script, the
-// build identity (Paths.swift) and links (Links.swift, the cases of apps/desktop/src/urls.ts).
+// build identity (Paths.swift) and links (Links.swift, the cases of the Electron Mac app's urls.ts).
 import WebKit
 import XCTest
 @testable import Folevi
@@ -117,7 +117,11 @@ final class RouterTests: XCTestCase {
         XCTAssertNotEqual(Platform.keychainService("com.folevi.shell-auth"), "com.folevi.shell-auth")
         XCTAssertEqual(Platform.deviceLabel, "Mac")
         XCTAssertFalse(Platform.deviceName.isEmpty)
-        XCTAssertEqual(Paths.version, "2.0.0")
+        // The one version every platform shows (version.json at the repo root, scripts/version.mjs).
+        let versionFile = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../../version.json")
+        let version = (try? JSONSerialization.jsonObject(with: Data(contentsOf: versionFile))) as? [String: Any]
+        XCTAssertEqual(Paths.version, version?["version"] as? String)
+        XCTAssertEqual(Paths.version.split(separator: ".").last?.count, 2, "two digits last")
     }
 
     func testDeepLinks() {

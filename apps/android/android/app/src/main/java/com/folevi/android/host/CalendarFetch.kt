@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Subscribed calendars in local mode (`foleviShell.http.calendar`, docs/LOCAL_MODE_PLAN.md WP14): the phone fetches
- * a calendar's text straight from its own site, never through Folevi. The Mac's rules (apps/desktop/src/
+ * a calendar's text straight from its own site, never through Folevi. The Mac's rules (the Electron Mac app's 
  * calendarFetch.ts) with the same words: https only (webcal:// read as https://), the standard port, no user or
  * password, never Folevi's hosts, never a private, loopback or link-local address (checked on every address DNS
  * gives, at connection time), at most 3 redirects each checked again, 10 seconds, 5 MB, no cookies. The address

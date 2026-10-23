@@ -4,7 +4,7 @@
 // exactly what local mode gives on the in-memory library (which scenarios.test.ts compares with Convex).
 import { describe, expect, test } from "vitest";
 import { ulid } from "@folevi/editor-schema";
-import { FakeDropbox } from "../../apps/desktop/test/cloud/fakeDropbox";
+import { FakeDropbox } from "../../packages/cloud-folders/test/fakeDropbox";
 import { LocalDriver, localAvailability } from "./drivers/localDriver";
 import { androidShell, FakeAndroid } from "./drivers/androidHost";
 import { Kit } from "./kit";

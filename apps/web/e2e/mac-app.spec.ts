@@ -1,36 +1,37 @@
 // Folevi for Mac on WebKit (apps/mac, docs/MAC_WEBKIT_PLAN.md §5.1, package WM1): the native Debug app, driven
-// through its eval hook (apps/mac/scripts/mac.mjs, each run on a data folder of its own), answers foleviShell as
-// today's Electron app does.
-//   1. Parity: the same script runs in Electron from source (the interface built in, a scratch data folder and
-//      library folder, a mock Keychain) and in the native app; every answer the page reads has the same shape and value, apart
-//      from the few listed where the native app does more.
+// through its eval hook (apps/mac/scripts/mac.mjs, each run on a data folder of its own).
+//   1. Parity: the answers the page reads from foleviShell have the shape and values the Electron app gave
+//      (recorded in fixtures/mac-parity-electron.json from Electron 44 before it was removed, the same script on a
+//      folder library), apart from the few listed where the native app does more.
 //   2. Local mode: the first-launch choice, a library on this Mac, the mode switch loads the window again in the
 //      library, a note written, the app killed while the journal holds the last edit, the next launch replays it.
 //   3. Account mode and two places: a test account approved on the website's /connect, its session handed to the
 //      app (the sign-in sheet itself can't be driven from a script); the page opens signed in, a note made in the
 //      app reaches the website, Convex tokens come; the library is a second place whose runner keeps running
 //      while the app is hidden, and a switch opens it in the window.
+//   4. The window and its chrome: the page is marked as the Mac app, the window buttons sit on the page's spot
+//      (and follow it when the sidebar hides), Settings > Desktop app's switches reach the app, File > New Note,
+//      folevi-dev:// links (others ignored), Quick Add's panel adds to the library, Vision reads an image's words.
+//   5. Every window, one library: Quick Add with the app hidden, File > New Window writing to the same library,
+//      the first window seeing it, and all of it in the folder on disk.
 //
-// Needs macOS, the Debug build (`node apps/mac/scripts/build.mjs`, or E2E_MAC_APP=<path to Folevi Dev.app>), the
-// shell export in apps/desktop/web pointing at the dev server, and for 1 Electron built (`cd apps/desktop && pnpm
-// build`). E2E_MAC_RUNNER_SECONDS sets how long 3 watches the runner (default 20).
+// Needs macOS, the Debug build (`node apps/mac/scripts/build.mjs`, or E2E_MAC_APP=<path to Folevi Dev.app>) and the
+// shell export in apps/mac/web pointing at the dev server (`node apps/web/scripts/build-shell.mjs`).
+// E2E_MAC_RUNNER_SECONDS sets how long 3 watches the runner (default 20).
 //   E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 npx playwright test e2e/mac-app.spec.ts --project account --workers=1
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { _electron, expect, request as playwrightRequest, test, type Page } from "@playwright/test";
+import { expect, request as playwrightRequest, test } from "@playwright/test";
 import { APP, newPerson } from "./helpers";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../../..");
-const desktopDir = join(repo, "apps/desktop");
-const electronBinary = join(desktopDir, "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron");
-const shellDir = join(desktopDir, "web");
+const shellDir = join(repo, "apps/mac/web");
 const macApp = process.env.E2E_MAC_APP ?? join(repo, "apps/mac/build/DerivedData/Build/Products/Debug/Folevi Dev.app");
 const macReady = process.platform === "darwin" && existsSync(macApp) && existsSync(join(shellDir, "index.html"));
-const electronReady = existsSync(join(desktopDir, "dist/main.js")) && existsSync(electronBinary);
 
 /** apps/mac/scripts/mac.mjs (plain JavaScript, loaded by its address). */
 interface Mac {
@@ -43,7 +44,7 @@ const macScripts = pathToFileURL(join(repo, "apps/mac/scripts/mac.mjs")).href;
 const mac = async (): Promise<Mac> => (await import(/* @vite-ignore */ macScripts)) as Mac;
 
 test.describe.configure({ mode: "serial" });
-test.skip(!macReady, "Needs macOS, the Debug build of apps/mac and the shell export in apps/desktop/web.");
+test.skip(!macReady, "Needs macOS, the Debug build of apps/mac and the shell export in apps/mac/web.");
 
 /** Starts the native app on a fresh data folder. */
 async function launchMac(env: Record<string, string> = {}) {
@@ -152,55 +153,19 @@ async function parity() {
   return out;
 }
 
-test("1. the native app answers foleviShell as Electron does", async () => {
-  test.skip(!electronReady, "Needs Electron built (cd apps/desktop && pnpm build).");
+test("1. the native app answers foleviShell as Electron did", async () => {
   test.setTimeout(240_000);
 
-  // Both apps get a folder library inside this test's own scratch folder. Never "This device only": Electron puts
-  // that in ~/Documents/Folevi Library (it ignores HOME), which is the owner's real library.
+  // A folder library inside this test's own scratch folder (FOLEVI_TEST_FOLDER: a Debug build's "Choose a folder"
+  // answer), as the recorded Electron run had.
   const scratch = mkdtempSync(join(tmpdir(), "folevi-parity-"));
-  const electronLib = join(scratch, "electron-library");
   const macLib = join(scratch, "mac-library");
-  mkdirSync(electronLib);
   mkdirSync(macLib);
   const ownLibrary = (info: { displayPath?: string } | null, dir: string) => {
     // displayPath reads "~/…" for a folder in the home folder: compare the folder's own name.
     if (!info || !String(info.displayPath ?? "").endsWith(dir.split("/").pop()!)) throw new Error(`Not the test's own library: ${JSON.stringify(info)}. Stopped before writing anything.`);
   };
 
-  // ---- Electron from source, the interface built in, nothing of the owner's (data folder, Keychain, library)
-  const electron = await _electron.launch({
-    executablePath: electronBinary,
-    args: [desktopDir, "--use-mock-keychain"],
-    env: { ...process.env, FOLEVI_URL: APP, FOLEVI_USER_DATA: join(scratch, "electron-data"), FOLEVI_SHELL: "1", FOLEVI_SHELL_DIR: shellDir },
-  });
-  let fromElectron: Record<string, unknown> | undefined;
-  try {
-    // "Choose a folder" answers with the test's own folder.
-    await electron.evaluate(({ dialog }, dir) => {
-      dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [dir] })) as unknown as typeof dialog.showOpenDialog;
-    }, electronLib);
-    const isMain = (w: Page) => w.url().startsWith("app://folevi/") && !/\/(quick-add|place-sync|_folevi)/.test(decodeURIComponent(w.url()));
-    await expect.poll(() => electron.windows().filter(isMain).length, { timeout: 60_000 }).toBeGreaterThan(0);
-    let page = electron.windows().find(isMain)!;
-    await expect(page.getByText("Where should your notes live?")).toBeVisible({ timeout: 60_000 });
-    const setUp = (await page.evaluate(async () => {
-      const S = (window as unknown as { foleviShell: { library: { setup(o: { kind: string }): Promise<{ displayPath?: string } | null> } } }).foleviShell;
-      return S.library.setup({ kind: "folder" });
-    })) as { displayPath?: string } | null;
-    ownLibrary(setUp, electronLib);
-    await page.evaluate(() => (window as unknown as { foleviShell: { setMode(m: string): Promise<void> } }).foleviShell.setMode("local"));
-    await expect.poll(async () => {
-      page = electron.windows().find(isMain) ?? page;
-      return page.evaluate(() => (window as unknown as { foleviShell?: { initialMode: string } }).foleviShell?.initialMode).catch(() => null);
-    }, { timeout: 30_000 }).toBe("local");
-    ownLibrary((await page.evaluate(() => (window as unknown as { foleviShell: { library: { info(): Promise<{ displayPath?: string }> } } }).foleviShell.library.info())) as { displayPath?: string }, electronLib);
-    fromElectron = (await page.evaluate(parity)) as Record<string, unknown>;
-  } finally {
-    await electron.close();
-  }
-
-  // ---- the native app, the same steps (FOLEVI_TEST_FOLDER: a Debug build's "Choose a folder" answer)
   const app = await launchMac({ FOLEVI_TEST_FOLDER: macLib });
   let fromMac: Record<string, unknown> | undefined;
   try {
@@ -212,12 +177,14 @@ test("1. the native app answers foleviShell as Electron does", async () => {
     fromMac = (await app.run(`return await (${parity.toString()})();`)) as Record<string, unknown>;
   } finally {
     await app.quit();
+    rmSync(scratch, { recursive: true, force: true });
   }
 
   // Where the two differ on purpose, the same as the iPhone and iPad app (the shared Swift services):
-  // - two refusals carry a code in the native app (invalid_argument) where Electron's have none;
-  // - a calendar link that isn't https is refused in the iOS services' words, Electron's own differ.
-  if (!fromMac || !fromElectron) throw new Error("A side gave no answers.");
+  // - two refusals carry a code in the native app (invalid_argument) where Electron's had none;
+  // - a calendar link that isn't https is refused in the iOS services' words, Electron's own differed.
+  if (!fromMac) throw new Error("The app gave no answers.");
+  const fromElectron = JSON.parse(readFileSync(join(here, "fixtures/mac-parity-electron.json"), "utf8")) as Record<string, unknown>;
   for (const r of [fromMac, fromElectron]) {
     for (const k of ["placesSwitchUnknown", "secretRefused"]) (r[k] as { code: unknown }).code = "(either)";
     (r.calendarHttp as { message: unknown }).message = typeof (r.calendarHttp as { message: unknown }).message;
@@ -360,5 +327,144 @@ test("3. account mode and two places: signed in, a note syncs, the library's run
   } finally {
     await app.quit();
     await person.context.close();
+  }
+});
+
+/** The app on a folder library of the test's own, opened in local mode (the main window on its Home). */
+async function onFolderLibrary() {
+  const library = mkdtempSync(join(tmpdir(), "folevi-mac-library-"));
+  const app = await launchMac({ FOLEVI_TEST_FOLDER: library });
+  await app.until(`return document.body.innerText.includes("Where should your notes live?")`, 60_000);
+  const info = (await app.run(`return await foleviShell.library.setup({ kind: "folder" })`)) as { displayPath?: string };
+  if (!String(info?.displayPath ?? "").endsWith(library.split("/").pop()!)) throw new Error(`Not the test's own library: ${JSON.stringify(info)}`);
+  await app.run(`await foleviShell.setMode("local"); return true;`);
+  await app.until(`return window.foleviShell && foleviShell.initialMode === "local" && document.readyState === "complete" && !!document.querySelector('nav[aria-label="Folio"]')`, 60_000);
+  return { ...app, library };
+}
+
+/** Files in the library folder whose text includes `text`. */
+const filesContaining = (dir: string, text: string): string[] =>
+  readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile())
+    .map((e) => join(e.parentPath, e.name))
+    .filter((f) => readFileSync(f).includes(text));
+
+/** Types into Quick Add's field and presses Return (the panel's own page, through its eval hook). */
+const quickAddTask = (title: string) => `
+  const f = document.getElementById("qa-title");
+  f.focus();
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(f, ${JSON.stringify(title)});
+  f.dispatchEvent(new Event("input", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 300));
+  f.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true }));
+  return true;`;
+
+test("4. the window and its chrome: buttons on the page's spot, Settings, the menus, links, Quick Add, Vision", async ({ browser }) => {
+  test.setTimeout(240_000);
+  // An image with words in it, as a screenshot would be (drawn in a browser here).
+  const shot = await browser.newPage({ viewport: { width: 900, height: 260 } });
+  await shot.setContent('<body style="margin:40px;background:#fff;font:52px Helvetica">Departures to Wobbleton<br><span style="font-size:30px">Platform 4 at 10:45</span></body>');
+  const png = (await shot.screenshot()).toString("base64");
+  await shot.close();
+
+  const app = await onFolderLibrary();
+  try {
+    // The page knows it's in the Mac app (on WebKit), and keeps room for the window buttons in its top bar.
+    expect(await app.run(`const h = document.documentElement; return [h.getAttribute("data-desktop"), h.getAttribute("data-mac-engine"), typeof window.foleviDesktop?.onCommand]`)).toEqual(["mac", "webkit", "function"]);
+    const spot = `const e = [...document.querySelectorAll(".ui-traffic-space")].find((x) => x.getBoundingClientRect().width > 0); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height };`;
+    const buttonsOnSpot = async () => {
+      const box = (await app.run(spot)) as { x: number; y: number; width: number; height: number } | null;
+      const bar = (await app.cmd("titleBar")) as { buttons: { x: number; midY: number; hidden: boolean }[]; spot: { x: number; y: number; height: number } | null };
+      if (!box || !bar.spot) return null;
+      return { width: box.width, close: { x: Math.round(bar.buttons[0]!.x - box.x), midY: Math.round(bar.buttons[0]!.midY - (box.y + box.height / 2)) }, hidden: bar.buttons.some((b) => b.hidden) };
+    };
+    // The close button 2 pt in from the spot's start, centred on it; the same once the sidebar hides (the spot
+    // moves into the tab strip) and shows again.
+    const onSpot = { width: 60, close: { x: 2, midY: 0 }, hidden: false };
+    await expect.poll(buttonsOnSpot, { timeout: 15_000 }).toEqual(onSpot);
+    const before = await app.run(spot);
+    await app.cmd("menu", { action: "run", item: "view.sidebar" });
+    await app.until(`return !document.querySelector('nav[aria-label="Folio"]') || document.querySelector('nav[aria-label="Folio"]').getBoundingClientRect().width === 0`, 15_000);
+    await expect.poll(buttonsOnSpot, { timeout: 15_000 }).toEqual(onSpot);
+    await app.cmd("menu", { action: "run", item: "view.sidebar" });
+    await expect.poll(() => app.run(spot), { timeout: 15_000 }).toEqual(before);
+    await expect.poll(buttonsOnSpot, { timeout: 15_000 }).toEqual(onSpot);
+
+    // Settings > Desktop app (the Settings window): the shortcut, and the menu bar icon's switch reaches the app.
+    const settings = await app.cmd("settings", { action: "show" });
+    expect(settings).toMatchObject({ visible: true, selected: "desktop" });
+    const inSettings = async (script: string) => ((await app.m.command(app.dir, { cmd: "evalIn", target: "settings", script })) as { value?: unknown }).value;
+    await expect.poll(() => inSettings(`return document.body.innerText.includes("⌥Space")`), { timeout: 30_000 }).toBe(true);
+    const flip = `const s = [...document.querySelectorAll("[role=switch]")].find((e) => e.getAttribute("aria-label") === "Menu bar icon"); s.click(); await new Promise((r) => setTimeout(r, 500)); return s.getAttribute("aria-checked");`;
+    expect((await app.cmd("chrome")).statusItem).toBe(true);
+    expect(await inSettings(flip)).toBe("false");
+    await expect.poll(async () => (await app.cmd("chrome")).statusItem).toBe(false);
+    expect(await inSettings(flip)).toBe("true");
+    await expect.poll(async () => (await app.cmd("chrome")).statusItem).toBe(true);
+    await app.cmd("settings", { action: "close" });
+
+    // File > New Note opens a new note.
+    await app.cmd("menu", { action: "run", item: "file.new-note" });
+    await app.until(`return /^\\/d\\/[0-9A-Z]{26}$/.test(location.pathname)`, 20_000);
+
+    // A folevi-dev:// link (from Shortcuts, Raycast, another app) opens the page it names; anything else is ignored.
+    await app.cmd("open", { url: "folevi-dev://tasks/today" });
+    await app.until(`return location.pathname === "/tasks/today"`, 20_000);
+    await app.cmd("open", { url: "folevi-dev://admin" });
+    await new Promise((r) => setTimeout(r, 1000));
+    expect(await app.run(`return location.pathname`)).toBe("/tasks/today");
+
+    // Quick Add: the panel, then the task lands in the Inbox (and the library's files).
+    expect(await app.cmd("quickAdd", { action: "show" })).toMatchObject({ visible: true, place: "library" });
+    await expect.poll(async () => ((await app.m.command(app.dir, { cmd: "evalIn", target: "quickAdd", script: `return !!document.getElementById("qa-title")` })) as { value?: unknown }).value, { timeout: 30_000 }).toBe(true);
+    await app.m.command(app.dir, { cmd: "evalIn", target: "quickAdd", script: quickAddTask("Call the printer") });
+    await expect.poll(async () => (await app.cmd("quickAdd")).visible, { timeout: 10_000 }).toBe(false);
+    await app.cmd("open", { url: "folevi-dev://tasks/inbox" });
+    await app.until(`return location.pathname === "/tasks/inbox" && document.body.innerText.includes("Call the printer")`, 30_000);
+    await expect.poll(() => filesContaining(app.library, "Call the printer").length, { timeout: 30_000 }).toBeGreaterThan(0);
+
+    // Vision reads the words in an image, on this Mac (what search in files uses).
+    const read = (await app.run(`const b = Uint8Array.from(atob(${JSON.stringify(png)}), (c) => c.charCodeAt(0)); return await window.foleviDesktop.recognizeText(b, false);`)) as { text: string } | null;
+    expect(read?.text ?? "").toContain("Wobbleton");
+  } finally {
+    await app.quit();
+    rmSync(app.library, { recursive: true, force: true });
+  }
+});
+
+test("5. every window, one library: Quick Add with the app hidden, a second window, all of it on disk", async () => {
+  test.setTimeout(240_000);
+  const app = await onFolderLibrary();
+  try {
+    // 1. The app hidden: Quick Add still adds to the library.
+    await app.cmd("hide", { value: true });
+    await app.cmd("quickAdd", { action: "show" });
+    await expect.poll(async () => ((await app.m.command(app.dir, { cmd: "evalIn", target: "quickAdd", script: `return !!document.getElementById("qa-title")` })) as { value?: unknown }).value, { timeout: 30_000 }).toBe(true);
+    await app.m.command(app.dir, { cmd: "evalIn", target: "quickAdd", script: quickAddTask("Water the plants") });
+    await expect.poll(async () => (await app.cmd("quickAdd")).visible, { timeout: 10_000 }).toBe(false);
+    await expect.poll(() => filesContaining(app.library, "Water the plants").length, { timeout: 30_000 }).toBeGreaterThan(0);
+    await app.cmd("hide", { value: false });
+
+    // 2. File > New Window: a second window on the same library writes a note, and the first one sees it.
+    await app.cmd("menu", { action: "run", item: "file.new-window" });
+    await expect.poll(async () => ((await app.m.command(app.dir, { cmd: "windows" })) as { value: { loaded: boolean }[] }).value.filter((w) => w.loaded).length, { timeout: 30_000 }).toBe(2);
+    const inWindow = async (window: number, script: string) => {
+      const r = (await app.m.command(app.dir, { cmd: "eval", window, script })) as { value?: unknown; error?: string };
+      if (r.error) throw new Error(r.error);
+      return r.value;
+    };
+    await expect.poll(() => inWindow(1, `return !!document.querySelector('nav[aria-label="Folio"]')`), { timeout: 60_000 }).toBe(true);
+    expect(await inWindow(1, click("New note"))).toBe(true);
+    await expect.poll(() => inWindow(1, `return /^\\/d\\//.test(location.pathname) && document.activeElement && document.activeElement.tagName === "TEXTAREA"`), { timeout: 30_000 }).toBe(true);
+    await inWindow(1, `document.execCommand("insertText", false, "Written in a second window"); return true;`);
+    await expect.poll(() => filesContaining(app.library, "Written in a second window").length, { timeout: 30_000 }).toBeGreaterThan(0);
+    await inWindow(0, `history.pushState(null, "", "/documents"); window.dispatchEvent(new PopStateEvent("popstate")); return true;`);
+    await expect.poll(() => inWindow(0, `return document.body.innerText.includes("Written in a second window")`), { timeout: 30_000 }).toBe(true);
+    // The task Quick Add made with the app hidden is in that window's Inbox too.
+    await inWindow(0, `history.pushState(null, "", "/tasks/inbox"); window.dispatchEvent(new PopStateEvent("popstate")); return true;`);
+    await expect.poll(() => inWindow(0, `return document.body.innerText.includes("Water the plants")`), { timeout: 30_000 }).toBe(true);
+  } finally {
+    await app.quit();
+    rmSync(app.library, { recursive: true, force: true });
   }
 });

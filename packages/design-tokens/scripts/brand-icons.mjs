@@ -11,7 +11,7 @@
 //   apps/web/public/icon.svg                       the mark as an SVG (older links to it)
 //   apps/web/public/brand/folevi-mark.svg, -256.png   the in-app mark (FoleviMark.tsx, the OG image)
 //   apps/web/public/brand/folevi-mark-dark.svg        the mark in dark mode (from logo-dark.svg)
-//   apps/desktop/assets/trayTemplate.png, @2x.png  the F alone (template) for the menu bar, 16 and 32 px tall
+//   apps/mac/Folevi/Chrome/StatusItemTemplate.png, @2x.png  the F alone (template) for the menu bar, 16 and 32 px tall
 //   apps/web/public/brand/email/folevi-logo@2x.png       the logo for emails (dark letters, light backgrounds)
 //   apps/web/public/brand/email/folevi-logo-dark@2x.png  logo-dark.svg, for dark mode
 //
@@ -26,7 +26,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const brand = resolve(here, "../brand");
 const repo = resolve(here, "../../..");
 const web = resolve(repo, "apps/web/public");
-const desktop = resolve(repo, "apps/desktop");
+const macChrome = resolve(repo, "apps/mac/Folevi/Chrome");
 // sharp ships with Next (apps/web); borrow it rather than adding a second copy.
 const fromWeb = createRequire(resolve(repo, "apps/web/package.json"));
 const sharp = createRequire(fromWeb.resolve("next/package.json"))("sharp");
@@ -82,12 +82,11 @@ mkdirSync(resolve(web, "brand"), { recursive: true });
 
 // ---------------------------------------------------------------- Folevi for Mac's menu bar icon
 
-// The F alone, trimmed to the glyph's bounds, black on transparent. Electron treats files named
-// *Template.png as template images (the system tints them); the @2x file is picked up for Retina.
+// The F alone, trimmed to the glyph's bounds, black on transparent. The app marks it a template image (the
+// system tints it, StatusItem.swift); the @2x file is picked up for Retina.
 const glyphSvg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="150 90 260 340"><path d="${glyphPath}" fill="#000"/></svg>`);
-mkdirSync(resolve(desktop, "assets"), { recursive: true });
-for (const [file, h] of [["trayTemplate.png", 16], ["trayTemplate@2x.png", 32]]) {
-  await save(sharp(glyphSvg, { density: 300 }).resize({ height: h, width: Math.round((h * 260) / 340) }), resolve(desktop, "assets", file));
+for (const [file, h] of [["StatusItemTemplate.png", 16], ["StatusItemTemplate@2x.png", 32]]) {
+  await save(sharp(glyphSvg, { density: 300 }).resize({ height: h, width: Math.round((h * 260) / 340) }), resolve(macChrome, file));
 }
 
 // ---------------------------------------------------------------- the web app

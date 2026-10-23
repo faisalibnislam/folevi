@@ -1,6 +1,6 @@
 /**
  * Menu and shortcut data for the Mac app illustrations. Keys follow macOS glyph order (⌃ ⌥ ⇧ ⌘).
- * MAC_MENUS mirrors the app menu in apps/desktop/src/main.ts (buildMenu). SHORTCUT_GROUPS lists keys the
+ * MAC_MENUS mirrors the app menu in apps/mac/Folevi/Chrome/MenuModel.swift. SHORTCUT_GROUPS lists keys the
  * web app handles itself (components/app/Shell.tsx, editor/plugins.ts, editor/extensions.ts) plus the
  * Mac menu's own (⌘N, ⇧⌘N, ⌘[ ⌘], and Quick Add's ⌥Space, which can be changed).
  */

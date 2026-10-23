@@ -8,8 +8,7 @@ node_modules/
 out/
 # The bundled app shell (FOLEVI_BUILD=shell next build, docs/LOCAL_MODE_PLAN.md §1).
 out-shell/
-# Its copy inside the Mac app (pnpm --filter @folevi/web build:shell).
-apps/desktop/web/
+# Its copy for the Mac app's Debug build (pnpm --filter @folevi/web build:shell): apps/mac/.gitignore.
 # ...and inside the Android app (build-shell.mjs --platform android).
 apps/android/web/
 # ...and inside the iPhone and iPad app (build-shell.mjs --platform ios).
@@ -18,8 +17,6 @@ apps/ios/web/
 apps/ios/release/
 dist/
 build/
-# Folevi for Mac keeps its signing entitlements and icon in build/ (electron-builder's resources folder).
-!apps/desktop/build/
 .turbo/
 *.tsbuildinfo
 coverage/

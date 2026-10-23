@@ -3,12 +3,12 @@
 // EncryptedFs. Placeholders and NSFileVersion conflict versions don't exist on these providers, so the cases
 // needing those hooks are skipped; a provider writing behind Folevi's back is the `put` hook.
 import { describe, expect, test } from "vitest";
-import { EncryptedFs } from "../../../../packages/local-store/src";
-import { loadContract, runFsContract, type Contract } from "../../../../packages/local-store/test/fsContract";
+import { EncryptedFs } from "../../local-store/src";
+import { loadContract, runFsContract, type Contract } from "../../local-store/test/fsContract";
 import { FakeDropbox } from "./fakeDropbox";
 import { FakeDrive } from "./fakeDrive";
 import { dropboxDevice, driveDevice, SMALL_UPLOADS } from "./harness";
-import type { LocalFs as StoreFs } from "../../../../packages/local-store/src";
+import type { LocalFs as StoreFs } from "../../local-store/src";
 
 const KEY = new Uint8Array(32).fill(7);
 

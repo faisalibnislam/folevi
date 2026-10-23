@@ -2,7 +2,7 @@
 // fsync'd, before the page calls it saved, so an edit survives the app being stopped before the note file is
 // written. It lives in Application Support, never in the library (a sync provider must not see it).
 //
-// The file is the Mac's format (apps/desktop/src/library/journal.ts): "FLVJ" 0x01, then frames of u32 BE length ‖
+// The file is the Mac's format (the Electron Mac app's library/journal.ts): "FLVJ" 0x01, then frames of u32 BE length ‖
 // u32 BE CRC-32 ‖ the record. A torn last frame (the app stopped mid-append) fails its length or CRC: reading
 // stops there, and the next append first cuts the file back to the last whole frame.
 import Foundation

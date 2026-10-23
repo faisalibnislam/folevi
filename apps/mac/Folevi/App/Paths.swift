@@ -88,7 +88,7 @@ enum Paths {
     static var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "" }
 
     /// The built-in interface (the shell export): FOLEVI_SHELL_DIR, else the app's Resources/web, else (Debug builds)
-    /// the development copy in apps/desktop/web.
+    /// the development copy in apps/mac/web.
     static var shellRoot: URL {
         if let raw = env["FOLEVI_SHELL_DIR"], !raw.isEmpty { return URL(fileURLWithPath: (raw as NSString).expandingTildeInPath, isDirectory: true).standardizedFileURL }
         if let res = Bundle.main.resourceURL?.appendingPathComponent("web", isDirectory: true), FileManager.default.fileExists(atPath: res.appendingPathComponent("index.html").path) { return res }

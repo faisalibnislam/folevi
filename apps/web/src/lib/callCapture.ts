@@ -1,5 +1,5 @@
 // Recording a call in the Mac app: the microphone and everything this Mac plays, mixed into one recording.
-// - The Electron app (apps/desktop): the page asks for the screen with sound (getDisplayMedia); the app answers
+// - The Electron app (removed; kept while copies of it are about): the page asks for the screen with sound (getDisplayMedia); the app answers
 //   with the whole screen and its system audio ("loopback"), the recorder drops the picture at once, keeping only
 //   the sound, and mixes it with the microphone here (mixAudio).
 // - The native Mac app (apps/mac): WebKit's getDisplayMedia has no system sound, so the app records and mixes

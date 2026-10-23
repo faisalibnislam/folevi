@@ -1,0 +1,255 @@
+{
+  "top": {
+    "platform": "mac",
+    "initialMode": "local",
+    "deviceName": "string",
+    "shellVersion": "string",
+    "places": {
+      "current": "library",
+      "background": false
+    }
+  },
+  "members": [
+    "ai",
+    "auth",
+    "deviceName",
+    "e2ee",
+    "files",
+    "http",
+    "initialMode",
+    "library",
+    "lock",
+    "notify",
+    "places",
+    "platform",
+    "secrets",
+    "setMode",
+    "shellVersion"
+  ],
+  "library": [
+    "changePassphrase",
+    "cloud",
+    "conflictVersions",
+    "fileUrl",
+    "info",
+    "journal",
+    "list",
+    "move",
+    "read",
+    "remove",
+    "resolveConflicts",
+    "setPassphrase",
+    "setup",
+    "startDownload",
+    "unlock",
+    "watch",
+    "write"
+  ],
+  "journal": [
+    "append",
+    "readAll",
+    "truncate"
+  ],
+  "cloudMembers": [
+    "cancel",
+    "connect",
+    "onStatus",
+    "signOut",
+    "status"
+  ],
+  "e2eeMembers": [
+    "deviceKeys",
+    "open",
+    "reset",
+    "setTouchId",
+    "settings",
+    "sign"
+  ],
+  "placesMembers": [
+    "background",
+    "convexToken",
+    "current",
+    "describe",
+    "forgetLibrary",
+    "list",
+    "onChange",
+    "quickAddPlace",
+    "setQuickAddPlace",
+    "signIn",
+    "signOut",
+    "switchTo"
+  ],
+  "info": {
+    "available": "boolean",
+    "configured": "boolean",
+    "displayPath": "string",
+    "encrypted": "boolean",
+    "kind": "string",
+    "locked": "boolean"
+  },
+  "infoValues": {
+    "kind": "folder",
+    "configured": true,
+    "encrypted": false,
+    "locked": false,
+    "available": true
+  },
+  "lock": {
+    "lock": false,
+    "lockAfter": 0,
+    "method": "touchID"
+  },
+  "e2eeSettings": {
+    "touchId": false,
+    "available": true
+  },
+  "ai": {
+    "keys": {
+      "ai.anthropic": "boolean",
+      "ai.google": "boolean",
+      "ai.openai": "boolean"
+    },
+    "onDevice": "boolean",
+    "onDeviceContext": "number",
+    "onDeviceStatus": "string"
+  },
+  "aiKeys": {
+    "ai.openai": false,
+    "ai.anthropic": false,
+    "ai.google": false
+  },
+  "cloud": {
+    "account": "null",
+    "available": [],
+    "provider": "null",
+    "state": "string"
+  },
+  "secretsHas": false,
+  "secretRefused": {
+    "name": "Error",
+    "code": null,
+    "message": true,
+    "path": null
+  },
+  "places": [
+    {
+      "configured": "boolean",
+      "displayPath": "string",
+      "id": "string",
+      "kind": "string",
+      "reminders": "number",
+      "syncs": "string",
+      "unread": "number",
+      "waiting": "number"
+    }
+  ],
+  "placesValues": [
+    {
+      "kind": "library",
+      "id": "library",
+      "configured": true,
+      "syncs": "folder",
+      "unread": 0,
+      "reminders": 0,
+      "waiting": 0
+    }
+  ],
+  "quickAdd": "library",
+  "convexToken": null,
+  "readMissing": {
+    "name": "LocalFsError",
+    "code": "not_found",
+    "message": true,
+    "path": "notes/01J9ZDOC000000000000000999.fnote"
+  },
+  "badPath": {
+    "name": "LocalFsError",
+    "code": "invalid_path",
+    "message": true,
+    "path": null
+  },
+  "write": {
+    "etag": "string"
+  },
+  "writeAgain": {
+    "etag": "string",
+    "mismatch": "boolean"
+  },
+  "read": {
+    "shape": {
+      "bytes": "bytes",
+      "etag": "string"
+    },
+    "bytes": [
+      1,
+      2,
+      3
+    ]
+  },
+  "list": {
+    "downloaded": "boolean",
+    "etag": "string",
+    "hasConflicts": "boolean",
+    "mtimeMs": "number",
+    "path": "string",
+    "size": "number"
+  },
+  "removeMismatch": {
+    "name": "LocalFsError",
+    "code": "mismatch",
+    "message": true,
+    "path": "notes/01J9ZDOC000000000000000998.fnote"
+  },
+  "readRemoved": {
+    "name": "LocalFsError",
+    "code": "not_found",
+    "message": true,
+    "path": "notes/01J9ZDOC000000000000000998.fnote"
+  },
+  "journalHasOurs": true,
+  "journalRecords": true,
+  "unlockPlain": {
+    "resolved": "boolean"
+  },
+  "conflicts": [],
+  "calendarHttp": {
+    "kind": "error",
+    "message": "Couldn't load this calendar: this Mac only reads calendars from secure (https) links."
+  },
+  "deviceKeys": {
+    "id": "mac-<ulid>",
+    "x": 32,
+    "ed": 32
+  },
+  "sign": "string",
+  "signBad": {
+    "name": "E2eeBridgeError",
+    "code": "invalid_argument",
+    "message": true,
+    "path": null
+  },
+  "openBad": {
+    "name": "E2eeBridgeError",
+    "code": "invalid_argument",
+    "message": true,
+    "path": null
+  },
+  "lockBad": {
+    "name": "LockError",
+    "code": "invalid_argument",
+    "message": true,
+    "path": null
+  },
+  "lockRounded": {
+    "lock": false,
+    "lockAfter": 900,
+    "method": "touchID"
+  },
+  "placesSwitchUnknown": {
+    "name": "Error",
+    "code": null,
+    "message": true,
+    "path": null
+  },
+  "convexTokenOther": null
+}

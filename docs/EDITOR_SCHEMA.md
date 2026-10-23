@@ -179,7 +179,7 @@ prototype format) → 1 is implemented as the template. To change the schema:
 
 - `fixtures/document-golden.json`: every v1 block type plus an unknown `timeline` (schema v2) block;
   it must round-trip to identical canonical (sorted-key) JSON. (The retired native Swift app ran these
-  fixtures too; Folevi for Mac is now the web app in Electron, `docs/DESKTOP.md`.)
+  fixtures too; Folevi for Mac now runs the web client, `docs/DESKTOP.md`.)
 - `fixtures/ranks.json`: `rankBetween` cases and an evenly spread sequence.
 - `fixtures/sync-scenarios.json`: the nine offline/sync scenarios from `SYNC_PROTOCOL.md`, with the
   expected final canonical reducer state.

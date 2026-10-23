@@ -1,8 +1,7 @@
 // Folevi for Mac's web layer (docs/MAC_POLISH_PLAN.md, package WM4), with the page marked as the Mac app
 // (<html data-desktop="mac">, as both apps do before the first paint) and a stand-in for foleviDesktop that records
 // what the page tells the app and answers the text services as the native app does. Local mode, against the shell
-// dev server, in Chromium (Electron's engine, project "local") and in WebKit (the native app's, project
-// "mac-webkit"):
+// dev server, in Chromium (project "local") and in WebKit (the native app's engine, project "mac-webkit"):
 //   E2E_LOCAL_BASE_URL=http://localhost:3003 E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 \
 //     npx playwright test e2e/mac-polish.spec.ts --project local --project mac-webkit --workers=1
 import type { Page } from "@playwright/test";
@@ -101,10 +100,10 @@ test.describe("Folevi for Mac, the web layer", { tag: ["@local", "@mac"] }, () =
     const menu = page.getByRole("menu");
     // Open while the button is still held.
     await expect(menu).toBeVisible();
-    const item = menu.getByRole("menuitem", { name: "Settings", exact: true });
+    const item = menu.getByRole("menuitem", { name: /^Settings/ });
     const row = (await item.boundingBox())!;
-    expect(row.height).toBeGreaterThanOrEqual(25);
-    expect(row.height).toBeLessThanOrEqual(27);
+    // (The account menu's actions are 32 tall, its places 52: components/app/accountMenu.css.)
+    expect(Math.round(row.height)).toBe(32);
     expect(await menu.evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).toBe("10px");
     await page.mouse.move(row.x + 20, row.y + row.height / 2, { steps: 6 });
     await expect(item).toHaveAttribute("data-highlighted", "true");
@@ -121,7 +120,7 @@ test.describe("Folevi for Mac, the web layer", { tag: ["@local", "@mac"] }, () =
     await expect(menu).toHaveCount(0);
   });
 
-  test("the menu bar: commands reach the page and it says what it can do; Electron's tab shortcuts", async ({ page }) => {
+  test("the menu bar: commands reach the page and it says what it can do; the page's tab shortcuts without native menus", async ({ page }) => {
     test.setTimeout(120_000);
     await openHome(page);
     // Formatting needs a note: off on Home (DesktopBridge sends what the menu bar can do).
@@ -134,7 +133,7 @@ test.describe("Folevi for Mac, the web layer", { tag: ["@local", "@mac"] }, () =
     await page.evaluate(() => window.__macEmit!({ type: "menu", id: "go.home" }));
     await expect(page).toHaveURL(/\/documents/);
     // A note's own commands reach the Note menu (useMacNoteCommands, in the native app only: data-mac-engine).
-    // In Electron (no such menus) the page's own tab shortcuts: a note in a tab, then ⌘1 is the first tab.
+    // Without such menus (no data-mac-engine) the page's own tab shortcuts: a note in a tab, then ⌘1 is the first tab.
     await page.locator("a[href^='/d/']").first().click();
     await expect(page).toHaveURL(/\/d\//);
     await page.keyboard.press("Meta+1");

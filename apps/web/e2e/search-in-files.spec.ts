@@ -1,20 +1,12 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { _electron, expect, test, type Page } from "@playwright/test";
-import { APP, newPerson, openTool, waitForSaved } from "./helpers";
-
-// The Mac app from source, with its Vision helper built (cd apps/desktop && pnpm build && pnpm helper).
-const desktopDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../desktop");
-const electronBinary = join(desktopDir, "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron");
-const macBuilt = existsSync(join(desktopDir, "dist/main.js")) && existsSync(electronBinary) && existsSync(join(desktopDir, "native-build/folevi-text"));
+import { expect, test, type Page } from "@playwright/test";
+import { newPerson, openTool, waitForSaved } from "./helpers";
 
 // Search in files (docs/ARCHITECTURE.md, "Search in files"): the words in a PDF are read on the device with
 // pdf.js when it's added to a note and found by ⌘K search, which says where ("In PDF, page 2") and opens the
 // note at the file. Images and whiteboard handwriting are read by the device's own recogniser (the iPhone, iPad
 // and Mac apps); a browser has none, so here a test stand-in answers for it (window.__foleviTestRecognizer,
-// development builds only).
+// development builds only). The Mac app's own recogniser (Vision, foleviDesktop.recognizeText) is checked in
+// mac-app.spec.ts and apps/mac's CapabilitiesTests.
 
 /** A small PDF with one line of text on each page (offsets in the cross-reference table worked out). */
 function makePdf(pages: string[]): Buffer {
@@ -182,43 +174,5 @@ test.describe("search in files", () => {
     // The image's own bytes, read once, as an image (not handwriting).
     const sent = await page.evaluate(() => (window as unknown as { __vision: { data: string; type: string; handwriting?: boolean }[] }).__vision);
     expect(sent).toEqual([{ data: PNG, type: "image/png", handwriting: false }]);
-  });
-
-  test("in the Mac app, Vision reads the words in an image (the helper that ships with it)", async ({ browser, browserName }) => {
-    test.skip(!macBuilt || browserName !== "chromium" || process.platform !== "darwin", "Needs the built Mac app and its helper (apps/desktop) on a Mac.");
-    test.setTimeout(180_000);
-    const { context } = await newPerson(browser, "Mac Searcher");
-    const cookies = await context.cookies();
-    // An image with words in it, as a screenshot would be.
-    const shot = await context.newPage();
-    await shot.setViewportSize({ width: 900, height: 260 });
-    await shot.setContent('<body style="margin:40px;background:#fff;font:52px Helvetica">Departures to Wobbleton<br><span style="font-size:30px">Platform 4 at 10:45</span></body>');
-    const png = (await shot.screenshot()).toString("base64");
-    await context.close();
-
-    const userData = mkdtempSync(join(tmpdir(), "folevi-desktop-"));
-    const app = await _electron.launch({ executablePath: electronBinary, args: [desktopDir], env: { ...process.env, FOLEVI_URL: APP, FOLEVI_USER_DATA: userData } });
-    try {
-      await app.evaluate(async ({ session }, list) => {
-        const ses = session.fromPartition("persist:folevi");
-        for (const c of list) {
-          await ses.cookies.set({ url: `http://${c.domain.replace(/^\./, "")}${c.path}`, name: c.name, value: c.value, path: c.path, httpOnly: c.httpOnly, secure: c.secure, expirationDate: c.expires > 0 ? c.expires : undefined, sameSite: c.sameSite === "Strict" ? "strict" : c.sameSite === "None" ? "no_restriction" : "lax" });
-        }
-      }, cookies);
-      await expect.poll(() => app.windows().filter((w) => !decodeURIComponent(w.url()).includes("/quick-add")).length, { timeout: 20_000 }).toBeGreaterThan(0);
-      const page = app.windows().find((w) => !decodeURIComponent(w.url()).includes("/quick-add"))!;
-      await page.goto(`${APP}/documents`);
-      await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible({ timeout: 30_000 });
-      expect(await page.evaluate(() => typeof window.foleviDesktop?.recognizeText)).toBe("function");
-      await newNote(page, "Train times");
-      await pasteFile(page, { name: "departures.png", type: "image/png", base64: png });
-      await expect(page.locator(".fb-editor .fb-atom").first()).toBeVisible({ timeout: 15_000 });
-      await waitForSaved(page);
-      const { result } = await searchUntil(page, "wobbleton", "Train times");
-      await expect(result).toContainText("In image");
-    } finally {
-      await app.close();
-      rmSync(userData, { recursive: true, force: true });
-    }
   });
 });

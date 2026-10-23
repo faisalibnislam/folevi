@@ -1,7 +1,7 @@
 // A fake Dropbox (API v2, app folder) for tests: revs, write modes with strict conflicts, list_folder cursors
 // (with paging, resets and lagging listings), longpoll, upload sessions with offsets, delete_v2 parent_rev,
 // short-lived tokens with refresh, revocation, and seeded faults. Case-insensitive paths like the real one.
-import type { LocalFs } from "../../src/library/cloud/shared/types";
+import type { LocalFs } from "../src/types";
 import { bodyBytes, bodyText, FakeOAuth, FaultInjector, json, NO_FAKE_FAULTS, seeded, yieldRandomly, type FakeFaultRates } from "./fakeCommon";
 
 interface DbxFile {

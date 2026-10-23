@@ -33,19 +33,5 @@
   "journal": [
     "first edit, not yet in its file",
     "second edit"
-  ],
-  "handover": {
-    "databases": [
-      {
-        "name": "folevi-k17abcuser1",
-        "counts": {
-          "documents": 12,
-          "meta": 2,
-          "syncState": 1,
-          "uploads": 1
-        }
-      }
-    ],
-    "storage": 2
-  }
+  ]
 }

@@ -1,7 +1,7 @@
 // What the app's Kotlin side answers the bridge's cloud code with (CloudPlugin.kt, CloudAuth.kt, LibraryPlugin.kt's
 // mirror calls), over a fake provider: the same host rules, the token added on the native side (never by the
 // bridge), base64 bodies both ways, a refresh after a 401. For bridge/cloud.test.ts.
-import type { MemoryMirror } from "../../desktop/src/library/cloud/shared/mirror";
+import type { MemoryMirror } from "../../../packages/cloud-folders/src/mirror";
 import type { Bytes, Call } from "./cloud";
 
 export const bytes: Bytes = {

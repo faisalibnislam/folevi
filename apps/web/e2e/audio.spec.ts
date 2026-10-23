@@ -75,7 +75,7 @@ test.describe("audio recordings", () => {
   test("in the Mac app: Microphone or Call; a call records the mic and the Mac's sound, and without the permission it says so and opens System Settings", async ({ browser }) => {
     const { context, page } = await newPerson(browser, "Call Recorder");
     await context.grantPermissions(["microphone"]);
-    // The Mac app's bridge (apps/desktop/src/preload.ts), with call capture; Chromium's fake devices stand in
+    // The Mac app's bridge (foleviDesktop, lib/desktop.ts), with call capture; Chromium's fake devices stand in
     // for the screen and its sound. `__access` is what macOS says about Screen & System Audio Recording.
     await page.addInitScript(() => {
       const w = window as unknown as { __opened: string[]; __access: string; foleviDesktop: unknown };

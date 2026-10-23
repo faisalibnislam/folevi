@@ -1,5 +1,5 @@
 // End-to-end encryption on iPhone and iPad (docs/E2EE_DESIGN.md §4.8, §6.2; the iOS twin of the Mac's
-// apps/desktop/src/e2ee.ts): this device's keys, as `foleviShell.e2ee`.
+// the Electron Mac app's e2ee.ts): this device's keys, as `foleviShell.e2ee`.
 //
 // The app holds an X25519 key pair (the account master key is sealed to it as an FLS1 box) and an Ed25519 key
 // pair (it signs as this device). Their private halves never leave native code: they're kept in the Keychain

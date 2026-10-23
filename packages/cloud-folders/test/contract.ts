@@ -3,10 +3,10 @@
 // files with cut-off chunks, rate limits and server errors, lagging listings, read-merge-write between two
 // devices, and the device copy saving downloads.
 import { describe, expect, test } from "vitest";
-import { isNotFound, readMergeWrite, type Codec, type LocalFs as StoreFs } from "../../../../packages/local-store/src";
-import type { CloudFs } from "../../src/library/cloud/shared/cloudFs";
-import type { MemoryMirror } from "../../src/library/cloud/shared/mirror";
-import type { LocalFs } from "../../src/library/cloud/shared/types";
+import { isNotFound, readMergeWrite, type Codec, type LocalFs as StoreFs } from "../../local-store/src";
+import type { CloudFs } from "../src/cloudFs";
+import type { MemoryMirror } from "../src/mirror";
+import type { LocalFs } from "../src/types";
 import type { FaultInjector, FakeFaultRates } from "./fakeCommon";
 
 export interface ContractEnv {

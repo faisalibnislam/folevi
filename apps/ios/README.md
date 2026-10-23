@@ -1,6 +1,7 @@
 # Folevi for iPhone and iPad
 
-The web app in a Capacitor shell, the way the Mac app (`apps/desktop`) is the web app in an Electron window. Since
+The web app in a Capacitor shell (the Mac app, `apps/mac`, shows the same interface natively and shares this app's
+Swift services). Since
 2026-10-22 the app carries the interface built in (the shell export in `web/`, git-ignored) with
 `window.foleviShell` in Swift (`ios/App/Native/Shell`): local mode ("Keep notes on my devices", a library in
 iCloud, a folder or on the device), signing in, Foli AI on the device and end-to-end encryption keys. The native parts are in Swift: a Face ID lock, links that open in an in-app Safari view,
@@ -25,7 +26,7 @@ All three products share the App Group `group.com.folevi` and the Keychain group
 gives the code the expanded name). Simulator builds need no team for either. New files in those folders join
 their targets by themselves (Xcode synchronized folders).
 
-This folder is outside the pnpm workspace (like `apps/desktop` and `apps/clipper`), so Vercel's build of
+This folder is outside the pnpm workspace (like `apps/mac` and `apps/clipper`), so Vercel's build of
 `apps/web` never sees it. The Xcode project uses Swift Package Manager (no CocoaPods).
 
 Needs Xcode 27 (or 26) and Node 22. iOS 17 or later; iPhone and iPad.

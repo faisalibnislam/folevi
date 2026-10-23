@@ -7,7 +7,7 @@ import AppKit
 
 @MainActor
 enum MigrationFlow {
-    /// At launch, before the first window: false keeps the windows closed (quitting, or waiting for an update).
+    /// At launch, before the first window: false keeps the windows closed (quitting).
     static func runAtLaunch() async -> Bool {
         guard !Paths.testing else { return true }
         let migration = ElectronMigration.forThisApp()
@@ -137,7 +137,6 @@ final class MigrationWindow: NSObject, NSWindowDelegate {
         case .keys: return "encrypted notes will ask you to approve this Mac again, from another device or with your recovery method."
         case .library: return "Folevi will ask where your library is."
         case .settings: return "Folevi's Mac settings start from their defaults."
-        case .offline: return "changes made offline in the previous version stay in it."
         }
     }
 
@@ -158,7 +157,6 @@ final class MigrationWindow: NSObject, NSWindowDelegate {
             }
             switch await runStep(step) {
             case .go: continue
-            case .hold: return false
             case .quit:
                 window.close()
                 NSApp.terminate(nil)
@@ -172,15 +170,14 @@ final class MigrationWindow: NSObject, NSWindowDelegate {
         return true
     }
 
-    /// What happens after a step: the next one, quitting, or waiting with the windows closed (an update first).
-    private enum Next { case go, quit, hold }
+    /// What happens after a step: the next one, or quitting.
+    private enum Next { case go, quit }
 
     /// One step until it's done or the person goes on without it.
     private func runStep(_ step: ElectronMigration.Step) async -> Next {
         var allowPrompt = false
         while true {
             show(step, "running", "")
-            if step == .offline { return await runOffline() }
             do {
                 try await migration.run(step, allowPrompt: allowPrompt)
                 let s = migration.state(step)
@@ -208,56 +205,6 @@ final class MigrationWindow: NSObject, NSWindowDelegate {
                 }
             } catch {
                 return .quit
-            }
-        }
-    }
-
-    private func runOffline() async -> Next {
-        while true {
-            let outcome: HandoverImport.Outcome
-            do {
-                outcome = try await HandoverImport.forThisApp().run()
-            } catch {
-                let text = (error as? HandoverImport.Failure)?.message ?? error.localizedDescription
-                show(.offline, "failed", "")
-                let a = await ask("\(text)\nIf you continue without them, \(Self.consequence(.offline))", ["Try Again", "Continue Without", "Quit"])
-                if a == "Quit" { return .quit }
-                if a == "Continue Without" {
-                    migration.continueWithout(.offline, because: text)
-                    show(.offline, "continued", Self.without(.offline))
-                    return .go
-                }
-                continue
-            }
-            switch outcome {
-            case .nothingWaiting:
-                migration.recordOffline("skipped", "Nothing was waiting.")
-                show(.offline, "skipped", "Nothing was waiting")
-                return .go
-            case .imported(let databases, let records, _, let skipped):
-                let detail = databases == 0 ? "Already here" : "\(records) changes from \(databases == 1 ? "1 account" : "\(databases) accounts")"
-                migration.recordOffline("done", detail + (skipped.isEmpty ? "" : "; kept what was already here for \(skipped.joined(separator: ", "))"))
-                show(.offline, "done", detail)
-                return .go
-            case .needsUpdate(let names):
-                show(.offline, "failed", "")
-                let a = await ask("These offline changes come from a newer Folevi than this copy (\(names.joined(separator: ", "))). Update Folevi to bring them over.", ["Check for Updates", "Quit"])
-                if a == "Quit" { return .quit }
-                Updater.shared.checkForUpdates()
-                return .hold
-            case .none(let electronStorage):
-                guard electronStorage else {
-                    migration.recordOffline("skipped", "Nothing to move.")
-                    show(.offline, "skipped", "Nothing to move")
-                    return .go
-                }
-                // Installed by hand over an Electron older than 1.22, which never wrote a handover.
-                let previous = FileManager.default.fileExists(atPath: "/Applications/Folevi (previous).app")
-                let text = "Some changes made offline on this Mac may not have reached Folevi. " + (previous ? "Open Folevi (previous) once, wait for it to sync, then quit it to send them." : "Open the previous version of Folevi once to send them.")
-                _ = await ask(text, ["Continue"])
-                migration.recordOffline("continued", "No handover from the previous version.")
-                show(.offline, "continued", "Open the previous version once to send them")
-                return .go
             }
         }
     }

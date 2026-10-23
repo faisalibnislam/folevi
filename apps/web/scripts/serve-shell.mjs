@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Serves the shell export (out-shell/) the way the Mac host's app:// handler does (apps/desktop, and later the
+// Serves the shell export (out-shell/) the way the Mac host's app:// handler does (apps/mac AppScheme.swift, and the
 // iPhone and iPad app's): a path that is a file is served; /api/* and /_next/* misses are 404; every other path
 // gets index.html, so a deep link like /d/<id> opens the app at that route (the SPA fallback).
 // For the shell e2e tests (playwright.shell.config.ts) and for trying a build in a browser:

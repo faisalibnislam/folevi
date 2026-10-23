@@ -1,6 +1,6 @@
 // Transparent encryption around the library folder (docs/LOCAL_MODE_PLAN.md §3.9): the page reads and writes
 // plain paths and bytes; the folder holds FLV1 envelopes under HMAC names. The same mapping as local-store's
-// EncryptedFs and the Mac's apps/desktop/src/library/encryptedFs.ts, with the key held in native code only.
+// EncryptedFs and the Electron Mac app's library/encryptedFs.ts, with the key held in native code only.
 import CryptoKit
 import Foundation
 

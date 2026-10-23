@@ -1,19 +1,18 @@
 # Folevi for Mac: migration, signing, updates and releases (WM3)
 
-The native Folevi for Mac (`apps/mac`, docs/MAC_WEBKIT_PLAN.md) replaces the Electron app (`apps/desktop`) in
-place: same bundle id (`com.folevi.mac`), same team (`7K32QQ2FX8`), same support folder
+The native Folevi for Mac (`apps/mac`, docs/MAC_WEBKIT_PLAN.md, docs/DESKTOP.md) replaces the Electron app (removed
+from the repository on 2026-10-23; its last version was 1.21.0) in place: same bundle id (`com.folevi.mac`), same team (`7K32QQ2FX8`), same support folder
 (`~/Library/Application Support/Folevi`). This page covers how an Electron Mac becomes a native one, how the app
-is signed and updated, and the exact steps the owner runs. Builders only ever run the dry runs.
+is signed, updated and downloaded, and the exact steps the owner runs. Builders only ever run the dry runs.
 
 ## 1. Moving from Electron (first launch)
 
-Code: `apps/mac/Folevi/Migration/` (`ElectronMigration.swift`, `SafeStorage.swift`, `HandoverImport.swift`,
-`MigrationWindow.swift`, `handover-kit.js`). It runs from `AppDelegate.migrate`, before any other part of the app
-reads the support folder, and only when the folder holds something only Electron writes (Chromium's files,
-`secrets/`, `e2ee/`, `settings.json`, an Electron `library.json`, a `handover/`) and `migration.json` doesn't say
-it finished.
+Code: `apps/mac/Folevi/Migration/` (`ElectronMigration.swift`, `SafeStorage.swift`, `MigrationWindow.swift`). It
+runs from `AppDelegate.migrate`, before any other part of the app reads the support folder, and only when the
+folder holds something only Electron writes (Chromium's files, `secrets/`, `e2ee/`, `settings.json`, an Electron
+`library.json`) and `migration.json` doesn't say it finished.
 
-A small window, "Moving Folevi to its new engine", shows five steps. Each is idempotent; a step that can't finish
+A small window, "Moving Folevi to its new engine", shows four steps. Each is idempotent; a step that can't finish
 stops with what happened and Try Again, Continue Without or Quit. Nothing of Electron's is deleted then.
 
 | Step | From (Electron) | To (native) |
@@ -22,7 +21,6 @@ stops with what happened and Try Again, Continue Without or Quit. Nothing of Ele
 | Encryption keys | `e2ee/device.{bin,json}`, `e2ee/accounts/<user id>/`, `prefs.json`, `library-keys/<id>.key` | Keychain `com.folevi.e2ee` `device[.<user id>]` (same `mac-<ulid>` device id, private halves checked against `device.json`), `e2ee.faceId`; `com.folevi.library-key` `<library id>` |
 | Library | `library.json` `{ kind, path, chosenFolder?, move?, encryptionJob? }`, `places.json`, `library/journal-<id>.bin` | `library.json` `{ kind, bookmark?, sub?, move?, encryptionJob? }` (Electron's kept as `library.electron.json`); `places.json` and the journal as they are; Electron's Dropbox or Google Drive copy set aside as `Cloud libraries (previous)` (the native app downloads its own) |
 | Settings | `settings.json`, `window.json`, `reminders.json` | `folevi.desktop.settings` (the page's four settings), `folevi.shell.mode`, the first window's frame (`ElectronMigration.firstWindowFrame`), waiting reminders scheduled with the system, shown ones not shown again. `lock.json` stays (MacAppLock reads it as is) |
-| Offline changes | `handover/` (Electron 1.22, section 2) | WebKit's storage for `app://folevi` through a hidden view running the same kit |
 
 Sealed values are Electron's safeStorage: the password in the login Keychain item "Folevi Safe Storage" (account
 "Folevi Key"), PBKDF2-HMAC-SHA1 (`saltysalt`, 1003 rounds) to an AES-128-CBC key, IV of 16 spaces, blobs that
@@ -49,7 +47,7 @@ never the owner's:
 4. The item was deleted afterwards. The strings and the item's password are the test vector in
    `apps/mac/fixtures/migration/safestorage-vector.json` (they protect nothing now).
 
-`release.mjs` checks that every release build's designated requirement is the installed Electron app's,
+`release.mjs` checks that every release build's designated requirement is the Electron app's,
 character for character. If macOS ever does ask (a Mac whose Keychain was reset, say), the migration window explains
 the one question first ("Choose Always Allow"), then asks. If the person says Deny: Continue Without means signing
 in again and approving the Mac for encrypted notes again; nothing is lost.
@@ -58,30 +56,16 @@ Test runs never touch the real item: a Debug build or a `FOLEVI_USER_DATA` run r
 `FOLEVI_SAFE_STORAGE` names (`mock` for a folder made by Electron with `--use-mock-keychain`, whose password is
 Chromium's `mock_password`, or `<name>` for a throwaway "<name> Safe Storage" item).
 
-## 2. Electron 1.22: the handover
+## 2. Offline changes left in Electron
 
-Electron keeps the web app's account databases in Chromium's IndexedDB, which WebKit can't read. Electron 1.22
-(`apps/desktop/src/handover.ts`, small marked edits in `main.ts` and `updates.ts`) writes every account database
-that still holds unsent work into `userData/handover/` with handoffKit's own chunks, an index (names, versions,
-schema, counts, a SHA-256 per file) and the sync journals:
-
-- **at every quit** (up to 20 seconds), so a native app installed by hand finds it too;
-- **before an update installs**: when Squirrel has downloaded one, the menu says "Finishing Sync Before the
-  Update…" while the normal sync gets up to ten minutes to send what's waiting, then "Restart to Update" writes the
-  handover and installs.
-
-It's written whole into a temporary folder and renamed into place. Electron removes a handover it finds at launch
-(it's running again, so its storage is the truth). The native app imports it before any window opens: nothing
-already there is overwritten, a database newer than the bundled interface holds the import back and asks for an
-update, and the folder is renamed `handover (imported)` until the clean-up.
-
-`apps/mac/Folevi/Migration/handover-kit.js` is made from `handoffKit.ts` as tsc compiles it:
-`cd apps/desktop && pnpm build && node scripts/handover-kit.mjs` (and `--check`). `src/handover.test.ts` runs the
-committed copy against the kit.
-
-With no handover and Chromium storage present (an Electron older than 1.22 replaced by hand), the window says some
-offline changes may not have reached Folevi and to open the previous version once (`release.mjs --install` keeps
-the Electron app as "Folevi (previous).app").
+Electron kept the web app's account databases (and so any edit not yet sent) in Chromium's IndexedDB, which
+WebKit can't read. A handover release (Electron 1.22, writing those databases out for the native app to import)
+was planned and built, then dropped before it shipped: no Electron copy ever got it, because Electron's update feed
+(`updates.folevi.com`) never resolved, so every Electron copy out there is one the owner or a tester installed by
+hand. The migration has no offline step: it moves sign-ins, keys, the library and settings. The library is files
+and its journal moves, so local-mode notes are never at risk; an account edit made offline in Electron and never
+synced stays in Chromium's storage, which the migration keeps for 30 days, and opening "Folevi (previous).app"
+(`release.mjs --install` keeps it) once while online sends it.
 
 ## 3. Signing
 
@@ -105,7 +89,7 @@ the Electron app as "Folevi (previous).app").
 
 - Sparkle 2.10.0 (Swift package, exact version). `Updates/Updater.swift`; release builds only (a Debug build or a
   `FOLEVI_USER_DATA` run never checks; `FOLEVI_UPDATES=on|off`, `FOLEVI_UPDATE_URL` for a test bucket).
-- Feed `https://updates.folevi.com/mac/appcast.xml`, checked every six hours, downloaded in the background,
+- Feed `https://folevi.com/download/mac/appcast.xml`, checked every six hours, downloaded in the background,
   installed on quit or from "Restart to Update" (`Updater.shared.menuTitle`, `menuAction()`, the
   `Updater.changed` notification: the Folevi menu shows it).
 - EdDSA key: generated 2026-10-23 on this Mac with Sparkle's `generate_keys --account folevi`. The private key is
@@ -113,12 +97,17 @@ the Electron app as "Folevi (previous).app").
   `F+N/necf9zCMzOTldJSKppxPoWCYn8rTANGly0mLbtA=` is `SUPublicEDKey` in Info.plist. Back the private key up once
   (`generate_keys --account folevi -x <file>`, kept somewhere safe, never in the repository): without it, no update
   can ever be signed for copies already out there.
-- The bucket: the Electron feed's (`folevi-updates` on Cloudflare R2, served at `https://updates.folevi.com`).
-  Native files live under `mac/`: `Folevi-<v>.zip`, its deltas, `Folevi-<v>.dmg`, `Folevi.dmg` and `appcast.xml`.
-  Electron's stay under `mac/darwin-universal/`.
-- Electron copies update to the native app when its Squirrel feed (`mac/darwin-universal/RELEASES.json`) points at
-  the native ZIP (`publish.mjs --electron-feed`). Squirrel.Mac accepts it: the build meets the running app's
-  designated requirement (checked by `release.mjs`).
+- The bucket: `folevi-updates` on Cloudflare R2, public at `https://pub-e55d5e1b47314fcbbbe3664ed7aed1c2.r2.dev`.
+  folevi.com's DNS is at Namecheap, so the bucket has no custom domain of its own: the website proxies it.
+  `apps/web/next.config.ts` rewrites `https://folevi.com/download/:path*` to the bucket's address, with these
+  caching headers: `public, max-age=31536000, immutable` for versioned files (`Folevi-<v>.zip`, `.dmg`, the
+  `.delta` files), `no-cache` for `mac/appcast.xml` and the stable `mac/Folevi.dmg`, and a short cache for anything
+  else. Keys under `mac/`: `Folevi-<v>.zip`, its deltas, `Folevi-<v>.dmg`, `Folevi.dmg` (the website's download
+  link, `https://folevi.com/download/mac/Folevi.dmg`) and `appcast.xml`. `publish.mjs` uploads with
+  `npx wrangler r2 object put folevi-updates/<key> --remote` and reads the current appcast from the r2.dev address.
+- Electron copies can't be moved over by an update: they read `mac/darwin-universal/RELEASES.json` from
+  `updates.folevi.com`, which never resolved, so there is nothing to redirect. Anyone on Electron downloads the
+  native app from the website (or the owner installs it); the first launch migrates the folder (section 1).
 
 ## 5. Versions
 
@@ -137,53 +126,52 @@ never changes the version: it refuses one that already has a `mac-v<version>` ta
 | --- | --- | --- |
 | `node apps/mac/scripts/release.mjs --out <dir> [--universal] [--launch-check]` | anyone | the dry run: production export, Release archive, Resources/web, signature, every check, `checks.json`. Nothing installed or opened |
 | `node apps/mac/scripts/release.mjs --install` | owner | the same, then `/Applications/Folevi.app` (an Electron copy kept as "Folevi (previous).app"), the tag, opens it |
-| `node apps/mac/scripts/publish.mjs [--electron-feed]` (`--plan` to see) | owner | universal build, notarization (`folevi-notary`), staple, ZIP, DMG, the signed appcast with deltas, upload |
-| `node apps/mac/scripts/migration-fixture.mjs` | anyone | remakes `apps/mac/fixtures/migration` (after `pnpm build` in apps/desktop) |
-| `node apps/desktop/scripts/handover-kit.mjs [--check]` | anyone | remakes `handover-kit.js` from the compiled kit |
+| `node apps/mac/scripts/publish.mjs` (`--plan` to see) | owner | universal build, notarization (`folevi-notary`), staple, ZIP, DMG, the signed appcast with deltas, upload to R2 |
 
 Dry run on 2026-10-23 (arm64, the production export, `release.mjs --out <scratch> --web <export>`): archive in
 under ten minutes, 92 MB, every check passed (Developer ID with a secure timestamp, hardened runtime, the
 entitlements above, the embedded profile, production Resources/web for 2.0.0, Sparkle signed by the team, the
 public key matching the Keychain's, and the installed Electron app's designated requirement, so its Keychain item
-and Squirrel accept the build). Only notarization is left for `publish.mjs`. `--launch-check` is off by default:
+accepts the build). Only notarization is left for `publish.mjs`. `--launch-check` is off by default:
 the run's folder, Keychain names and web storage are its own, but AppKit keeps small window state in
 `com.folevi.mac`'s preferences, which the installed Folevi shares.
 
 ### Testing on this Mac
 
-- `FoleviTests/MigrationTests.swift` (13 tests) runs the migration on `apps/mac/fixtures/migration` (made by
-  `scripts/migration-fixture.mjs` with Electron's own modules) in memory and in the run's own Keychain names, and
-  the handover import in WebKit (a persistent scratch data store: WebKit's non-persistent stores refuse Blobs in
-  IndexedDB).
+- `FoleviTests/MigrationTests.swift` (11 tests) runs the migration on `apps/mac/fixtures/migration` in memory and
+  in the run's own Keychain names. The fixture was made with the Electron app's own modules (its safeStorage with
+  `--use-mock-keychain`) before the Electron code was removed; it's frozen now (the script that made it,
+  `scripts/migration-fixture.mjs`, went with it). Electron's formats won't change again, so it needs no remaking.
 - A test host launched by xcodebuild can't open files in `~/Documents` until macOS has been told it may (the
   repository is there, so dyld waits on the folder's privacy question and xcodebuild reports "the test runner hung
   before establishing connection"). Until the owner allows it, run the tests with derived data, the run's folder
   and a copy of the fixtures outside `~/Documents` (`FOLEVI_MIGRATION_FIXTURES`), as WM3 did.
-- End to end: Electron itself (its safeStorage with `--use-mock-keychain` and apps/desktop's modules) wrote a
+- End to end: Electron itself (its safeStorage with `--use-mock-keychain` and the Electron app's modules) wrote a
   scratch support folder (a folder library in a scratch folder, encrypted, E2EE keys, a session and a Foli AI key,
-  two places, settings, and a handover from Chromium's real IndexedDB); the Debug app on a copy
-  (`FOLEVI_USER_DATA`, `FOLEVI_SAFE_STORAGE=mock`) migrated it in 0.24 s and then answered with the same device id,
-  the library open and unlocked, the note readable, the Foli AI key set, both places, and the handed-over outbox
-  entry and journal in WebKit's storage.
+  two places and settings); the Debug app on a copy (`FOLEVI_USER_DATA`, `FOLEVI_SAFE_STORAGE=mock`) migrated it in
+  0.24 s and then answered with the same device id, the library open and unlocked, the note readable, the Foli AI
+  key set and both places (2026-10-22, before the Electron code was removed).
 
 ## 7. What the owner does, in order
 
 1. **Back up the Sparkle key** (once): `apps/mac/build/DerivedData-release/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_keys --account folevi -x ~/Desktop/folevi-sparkle-key.txt` (the tool comes with the first release build),
    move the file to your password manager or another safe place, delete it from the Desktop.
-2. **Electron 1.22 first** (the handover): in `apps/desktop`, `pnpm release` (installs 1.22.0 on this Mac). For
-   testers, `pnpm publish-mac` so their Electron copies get 1.22 through the current feed. Keep 1.22 the current
-   Electron release for at least two weeks before step 5's `--electron-feed`.
-3. **Dogfood the Debug build** beside Electron for a week (`node apps/mac/scripts/build.mjs`, then
-   `node apps/mac/scripts/mac.mjs launch`; it has its own data and never touches the installed app).
-4. **Install the native app on this Mac**: quit Folevi, then `node apps/mac/scripts/release.mjs --install`. The
+2. **Dogfood the Debug build** for a week (`node apps/web/scripts/build-shell.mjs`, `node apps/mac/scripts/build.mjs`,
+   then `node apps/mac/scripts/mac.mjs launch`; it has its own data and never touches the installed app).
+3. **Install the native app on this Mac**: quit Folevi, then `node apps/mac/scripts/release.mjs --install`. The
    migration window appears once; it should finish by itself in a few seconds without a Keychain question. The
-   Electron app stays as "Folevi (previous).app" until you decide it can go (Trash it then). Commit
-   `apps/mac/project.yml` if the version moved.
-5. **Publish** (when it's ready for others): `xcrun notarytool history --keychain-profile folevi-notary` must
+   Electron app stays as "Folevi (previous).app" until you decide it can go (Trash it then; open it once while
+   online first if it might hold account edits made offline, section 2). Commit `apps/mac/project.yml` if the
+   version moved.
+4. **Publish** (when it's ready for others): `xcrun notarytool history --keychain-profile folevi-notary` must
    work (if not: `xcrun notarytool store-credentials folevi-notary --apple-id <your Apple ID> --team-id 7K32QQ2FX8`),
    `npx wrangler whoami` must show the account that owns `folevi-updates`, then
-   `node apps/mac/scripts/publish.mjs`. macOS asks once whether `generate_appcast` may use the Sparkle key: choose
-   Always Allow. Later, once Electron 1.22 has been out long enough: `node apps/mac/scripts/publish.mjs --electron-feed`
-   moves Electron copies to the native app.
-6. **Make `updates.folevi.com` resolve** to the bucket (Cloudflare R2 custom domain). It doesn't today, so neither
-   Electron nor the native app can update until it does.
+   `node apps/mac/scripts/publish.mjs` (`--plan` first shows every key it uploads). macOS asks once whether
+   `generate_appcast` may use the Sparkle key: choose Always Allow. Check the bucket's own copies:
+   `curl -I https://pub-e55d5e1b47314fcbbbe3664ed7aed1c2.r2.dev/mac/Folevi.dmg` and `.../mac/appcast.xml` answer 200.
+5. **Deploy the website** (push to main) once step 4 is done, so `https://folevi.com/download/mac/Folevi.dmg` (the
+   /mac page's Download button) and the appcast Sparkle reads resolve through the rewrite. Then
+   `curl -I https://folevi.com/download/mac/appcast.xml` shows `cache-control: no-cache` and
+   `curl -I https://folevi.com/download/mac/Folevi-1.0.00.dmg` shows `immutable`.
+6. **Testers on Electron** install the native app from the website by hand (the Electron feed never resolved, so no
+   update reaches them); their first launch migrates the folder.

@@ -7,6 +7,7 @@ import { useCallback, useId, useMemo, useRef, useState } from "react";
 import type { ReactNodeViewProps } from "@tiptap/react";
 import { settleContainers, type FlowNode } from "../schema";
 import { NO_SELECTION, type Selection } from "../ops";
+import { dropIdleBends } from "../connectors";
 import { clampFlowHeight } from "../render";
 import { useFlowDoc } from "../useFlowDoc";
 import { useViewport } from "./useViewport";
@@ -21,9 +22,10 @@ export function useFlowController(props: ReactNodeViewProps): FlowController {
   const { doc, docRef, setLive, commit: commitDoc, undo, redo, canUndo, canRedo, tooLarge, flush } = useFlowDoc(data, write);
   // Frames and swimlanes follow every finished edit: what it added or moved joins the frame or lane it was
   // dropped in (or leaves the one it was dragged out of), frames grow to hold it, lanes keep it inside. Moved
-  // with the keyboard ("nudge"), a shape pushed against its lane's edge steps into the next lane.
+  // with the keyboard ("nudge"), a shape pushed against its lane's edge steps into the next lane. Bend
+  // points the routes no longer use (left behind by moved shapes, or dragged onto a straight run) go.
   const commit = useCallback<FlowController["commit"]>(
-    (next, opts) => commitDoc(settleContainers(opts?.before ?? docRef.current, next, { stepAcross: opts?.key === "nudge" }), opts),
+    (next, opts) => commitDoc(dropIdleBends(settleContainers(opts?.before ?? docRef.current, next, { stepAcross: opts?.key === "nudge" })), opts),
     [commitDoc, docRef],
   );
   const routed = useRouted(doc);

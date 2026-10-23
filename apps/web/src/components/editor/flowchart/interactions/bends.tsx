@@ -103,7 +103,13 @@ export function useBends(ctrl: FlowController, { hidden = false }: { hidden?: bo
     const hitR = (isCoarse() ? 22 : 10) / k;
     // An add point sitting on a label would take the label's drag: leave it out there.
     const onLabel = (p: Pt) => r.labels.some((l) => Math.abs(l.cx - p.x) < l.w / 2 + 6 / k && Math.abs(l.cy - p.y) < l.h / 2 + 6 / k);
-    const adds = bendAddHandles(e, r.points).filter((h) => !onLabel(h.at));
+    // Bends the route leaves out (stale ones, removed with the next edit) show no handle.
+    const dropped = new Set(r.dropped);
+    const kept = e.bends.flatMap((_, i) => (dropped.has(i) ? [] : [i]));
+    const shown = dropped.size ? { ...e, bends: kept.map((i) => e.bends[i]!) } : e;
+    const adds = bendAddHandles(shown, r.points)
+      .map((h) => (dropped.size ? { ...h, index: kept[h.index] ?? e.bends.length } : h))
+      .filter((h) => !onLabel(h.at));
     overlay = (
       <>
         {adds.map((h) => (
@@ -113,6 +119,7 @@ export function useBends(ctrl: FlowController, { hidden = false }: { hidden?: bo
           </g>
         ))}
         {e.bends.map((b, i) => {
+          if (dropped.has(i)) return null;
           // Every route passes through its bend points (curves included), so the handle sits on the bend.
           const p = b;
           return (

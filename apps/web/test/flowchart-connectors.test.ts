@@ -218,12 +218,40 @@ describe("styling connectors together", () => {
     expect(C.shared([], (e) => e.route)).toBeNull();
   });
 
-  test("turning connectors around swaps everything end for end", () => {
+  test("turning connectors around swaps the ends; the line ends stay, so the arrow points the other way", () => {
     const e = edge("r", "a", "", { fromSide: "bottom", fromAt: 0.2, toPoint: { x: 5, y: 6 }, start: "none", end: "arrow", bends: [{ x: 1, y: 1 }, { x: 2, y: 2 }], labels: [{ text: "x", at: 0.25 }] });
     const r = C.reverseEdges(chart([node("a")], [e]), ["r"]).edges[0]!;
-    expect(r).toMatchObject({ from: "", to: "a", toSide: "bottom", toAt: 0.2, fromPoint: { x: 5, y: 6 }, start: "arrow", end: "none", bends: [{ x: 2, y: 2 }, { x: 1, y: 1 }], labels: [{ text: "x", at: 0.75 }] });
+    expect(r).toMatchObject({ from: "", to: "a", toSide: "bottom", toAt: 0.2, fromPoint: { x: 5, y: 6 }, start: "none", end: "arrow", bends: [{ x: 2, y: 2 }, { x: 1, y: 1 }], labels: [{ text: "x", at: 0.75 }] });
     expect(r.fromSide).toBeUndefined();
     expect(r.toPoint).toBeUndefined();
+  });
+
+  test("reversing moves the arrowhead to the other shape, and twice is the original", () => {
+    const fc = chart([node("a", 0, 0), node("b", 0, 240)], [edge("ab", "a", "b")]);
+    const tip = (d: FlowchartData) => {
+      const r = routeEdges(d)[0]!;
+      return r.points[r.points.length - 1]!;
+    };
+    expect(tip(fc).y).toBe(240);
+    const once = C.reverseEdges(fc, ["ab"]);
+    expect(tip(once).y).toBe(64);
+    expect(routeEdges(once)[0]!.d).not.toBe(routeEdges(fc)[0]!.d);
+    expect(C.reverseEdges(once, ["ab"]).edges[0]).toEqual(fc.edges[0]);
+    // It survives saving and loading.
+    expect(parseFlowchart(serializeFlowchart(once)).edges[0]).toMatchObject({ from: "b", to: "a", end: "arrow" });
+  });
+
+  test("bends the route leaves out are dropped from the chart; useful ones stay", () => {
+    // Left behind far to the side of two shapes now in line: the route would loop back over itself.
+    const stale = chart([node("a", 0, 0), node("b", 0, 200)], [edge("e", "b", "a", { fromSide: "top", toSide: "bottom", bends: [{ x: -300, y: 82 }] })]);
+    expect(C.dropIdleBends(stale).edges[0]!.bends).toEqual([]);
+    // A point on the straight run and a repeat go too; a real detour stays.
+    const onRun = chart([node("a", 0, 0), node("b", 0, 200)], [edge("e", "a", "b", { bends: [{ x: 80, y: 130 }] })]);
+    expect(C.dropIdleBends(onRun).edges[0]!.bends).toEqual([]);
+    const detour = chart([node("a", 0, 0), node("b", 400, 300)], [edge("e", "a", "b", { bends: [{ x: 300, y: 100 }] })]);
+    expect(C.dropIdleBends(detour)).toBe(detour);
+    const plain = chart([node("a"), node("b", 0, 200)], [edge("e", "a", "b")]);
+    expect(C.dropIdleBends(plain)).toBe(plain);
   });
 
   test("strokes and dashes for the canvas", () => {

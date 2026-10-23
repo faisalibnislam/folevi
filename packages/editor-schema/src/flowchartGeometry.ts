@@ -187,6 +187,8 @@ export interface RoutedEdge {
   label: LabelBox | null;
   labels: LabelBox[];
   hops: Hop[];
+  /** Indices of the connector's bend points its route leaves out (stale or redundant ones). */
+  dropped: number[];
 }
 
 function curvePath(start: Pt, segs: readonly CurveSeg[]): string {
@@ -207,7 +209,7 @@ export function edgeLabelBoxes(e: FlowEdge, points: readonly Pt[]): LabelBox[] {
 }
 
 /** Line, line ends and label boxes for a connector drawn through `points` (and `curve`, when curved). */
-export function routedFromPoints(e: FlowEdge, points: Pt[], fromSide: FlowSide | null, toSide: FlowSide | null, extra: { curve?: CurveSeg[] | null; hops?: Hop[] } = {}): RoutedEdge {
+export function routedFromPoints(e: FlowEdge, points: Pt[], fromSide: FlowSide | null, toSide: FlowSide | null, extra: { curve?: CurveSeg[] | null; hops?: Hop[]; dropped?: number[] } = {}): RoutedEdge {
   const markers: HeadShape[] = [];
   const width = e.width ?? FLOWCHART_EDGE_WIDTH;
   const curve = extra.curve ? extra.curve.map((s) => ({ ...s })) : null;
@@ -241,12 +243,12 @@ export function routedFromPoints(e: FlowEdge, points: Pt[], fromSide: FlowSide |
   const hops = extra.hops ?? [];
   const d = curve ? curvePath(start, curve) : e.route === "straight" ? polylinePath(line, 0, hops) : polylinePath(line, 10, hops);
   const labels = edgeLabelBoxes(e, points);
-  return { edge: e, points, d, heads: markers.map((m) => m.d), markers, fromSide, toSide, label: labels[0] ?? null, labels, hops };
+  return { edge: e, points, d, heads: markers.map((m) => m.d), markers, fromSide, toSide, label: labels[0] ?? null, labels, hops, dropped: extra.dropped ?? [] };
 }
 
 /** The drawing of a routed connector. */
 export function routedEdge(r: EdgeRoute): RoutedEdge {
-  return routedFromPoints(r.edge, r.points, r.fromSide, r.toSide, { curve: r.curve, hops: r.hops });
+  return routedFromPoints(r.edge, r.points, r.fromSide, r.toSide, { curve: r.curve, hops: r.hops, dropped: r.dropped });
 }
 
 /** Routes and draws every connector of the chart (connectors whose shapes are missing are skipped). */

@@ -18,6 +18,7 @@ import {
   newEdge,
   outlinePoint,
   pointAlong,
+  routeFlowchart,
   sidePosition,
   type FlowchartData,
   type FlowEdge,
@@ -322,10 +323,14 @@ export function shared<T>(edges: readonly FlowEdge[], get: (e: FlowEdge) => T): 
   return edges.every((e) => get(e) === first) ? first : null;
 }
 
-/** Turns connectors around: ends, sides, spots, free points, bends, heads and labels swap. */
+/**
+ * Turns connectors around: the ends swap (shapes, sides, spots, free points), and so do the bends (in
+ * reverse order) and the labels (each keeps its place on the line). The line ends stay as they are, at the
+ * start and the end, so the arrow now points the other way.
+ */
 export function reverseEdges(fc: FlowchartData, ids: readonly string[]): FlowchartData {
   return patchEdges(fc, ids, (e) => {
-    const next: FlowEdge = { ...e, from: e.to, to: e.from, start: e.end, end: e.start, bends: [...e.bends].reverse(), labels: e.labels.map((l) => ({ ...l, at: round3(1 - l.at) })) };
+    const next: FlowEdge = { ...e, from: e.to, to: e.from, bends: [...e.bends].reverse(), labels: e.labels.map((l) => ({ ...l, at: round3(1 - l.at) })) };
     for (const [a, b] of [["fromSide", "toSide"], ["fromAt", "toAt"], ["fromPoint", "toPoint"]] as const) {
       const va = e[a];
       const vb = e[b];
@@ -340,6 +345,19 @@ export function reverseEdges(fc: FlowchartData, ids: readonly string[]): Flowcha
 
 export function clearBends(fc: FlowchartData, ids: readonly string[]): FlowchartData {
   return patchEdges(fc, ids, (e) => (e.bends.length ? { ...e, bends: [] } : e));
+}
+
+/**
+ * The chart without the bend points its routes leave out (the router's `dropped`: repeats, points on a
+ * straight run, and bends left behind where shapes used to be, whose route would double back). Every
+ * finished edit goes through this, so what is stored is what is drawn. The same chart when none are.
+ */
+export function dropIdleBends(fc: FlowchartData): FlowchartData {
+  if (!fc.edges.some((e) => e.bends.length)) return fc;
+  const dropped = new Map<string, Set<number>>();
+  for (const r of routeFlowchart(fc, { hops: false }).routes) if (r.dropped.length) dropped.set(r.edge.id, new Set(r.dropped));
+  if (!dropped.size) return fc;
+  return patchEdges(fc, [...dropped.keys()], (e) => ({ ...e, bends: e.bends.filter((_, i) => !dropped.get(e.id)!.has(i)) }));
 }
 
 /**
@@ -384,7 +402,7 @@ const sameLabels = (a: RoutedEdge, b: RoutedEdge) => a.labels.length === b.label
 
 /** Whether two drawings of a connector look the same (same data, path, heads and labels). */
 export function sameDrawing(a: RoutedEdge, b: RoutedEdge): boolean {
-  return a.edge === b.edge && a.d === b.d && a.fromSide === b.fromSide && a.toSide === b.toSide && a.heads.length === b.heads.length && a.heads.every((h, i) => h === b.heads[i]) && sameLabels(a, b);
+  return a.edge === b.edge && a.d === b.d && a.fromSide === b.fromSide && a.toSide === b.toSide && a.heads.length === b.heads.length && a.heads.every((h, i) => h === b.heads[i]) && sameLabels(a, b) && a.dropped.join() === b.dropped.join();
 }
 
 /**

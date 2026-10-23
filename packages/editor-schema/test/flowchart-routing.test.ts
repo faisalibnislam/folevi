@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   clearRouteCache,
+  doublesBack,
   edgeSides,
   flowchart,
   newEdge,
@@ -11,6 +12,7 @@ import {
   resolveEnds,
   routeEdges,
   routeFlowchart,
+  usefulBends,
   type FlowchartData,
   type FlowEdge,
   type FlowNode,
@@ -458,6 +460,99 @@ describe("tidying", () => {
     // Cached and fresh results agree.
     const c = JSON.stringify(routeFlowchart(fc).routes.map((r) => [r.points, r.hops]));
     expect(c).toBe(a);
+  });
+});
+
+describe("lines that adjust to the shapes", () => {
+  const points = (fc: FlowchartData, id = "e") => routeFlowchart(fc).byId.get(id)!.points;
+  /** Whether a polyline turns back, overlaps itself, or (for elbows) has any diagonal. */
+  const clean = (pts: readonly Pt[]) => doublesBack(pts) === null && pts.slice(1).every((q, i) => Math.abs(q.x - pts[i]!.x) < 0.01 || Math.abs(q.y - pts[i]!.y) < 0.01);
+
+  it("shapes in line, facing each other, at any gap: one straight segment (never a loop out to the side)", () => {
+    for (const gap of [4, 8, 20, 30, 35, 36, 40, 120]) {
+      for (const sides of [{ fromSide: "top", toSide: "bottom" }, {}] as const) {
+        clearRouteCache();
+        const fc = flowchart({ nodes: [node("up", 0, 0), node("down", 0, 64 + gap)], edges: [newEdge("down", "up", { id: "e", ...sides })] });
+        const pts = points(fc);
+        expect(pts, `gap ${gap}`).toHaveLength(2);
+        expect(pts[0]!.x).toBe(pts[1]!.x);
+        expect(pts[0]!.y).toBe(64 + gap);
+        expect(pts[1]!.y).toBe(64);
+      }
+    }
+    // Side by side too.
+    const across = flowchart({ nodes: [node("l", 0, 0), node("r", 180, 0)], edges: [newEdge("l", "r", { id: "e", fromSide: "right", toSide: "left" })] });
+    expect(points(across)).toEqual([{ x: 160, y: 32 }, { x: 180, y: 32 }]);
+  });
+
+  it("close shapes out of line: one jog in the gap between them, no doubling back", () => {
+    const fc = flowchart({ nodes: [node("up", 0, 0), node("down", 120, 90)], edges: [newEdge("down", "up", { id: "e", fromSide: "top", toSide: "bottom" })] });
+    const pts = points(fc);
+    expect(clean(pts)).toBe(true);
+    expect(pts).toHaveLength(4);
+    for (const p of pts) expect(p.y).toBeGreaterThanOrEqual(64);
+    for (const p of pts) expect(p.y).toBeLessThanOrEqual(90);
+  });
+
+  it("moving a shape sideways turns the straight line into an elbow with the fewest bends", () => {
+    for (const dx of [40, 200, -260, 500]) {
+      const fc = flowchart({ nodes: [node("up", 0, 0), node("down", dx, 200)], edges: [newEdge("down", "up", { id: "e", fromSide: "top", toSide: "bottom" })] });
+      const pts = points(fc);
+      expect(clean(pts), `dx ${dx}`).toBe(true);
+      expect(pts).toHaveLength(4);
+    }
+  });
+
+  it("a bend left behind where shapes used to be is left out (and reported), so the line runs straight", () => {
+    const fc = flowchart({ nodes: [node("up", 0, 0), node("down", 0, 200)], edges: [newEdge("down", "up", { id: "e", fromSide: "top", toSide: "bottom", bends: [{ x: -300, y: 82 }] })] });
+    const r = routeFlowchart(fc).byId.get("e")!;
+    expect(r.dropped).toEqual([0]);
+    expect(r.points).toEqual([{ x: 80, y: 200 }, { x: 80, y: 64 }]);
+    // The same both ways round: turned around, the connector still leaves it out.
+    const turned = flowchart({ nodes: fc.nodes, edges: [newEdge("up", "down", { id: "e", fromSide: "bottom", toSide: "top", bends: [{ x: -300, y: 82 }] })] });
+    expect(routeFlowchart(turned).byId.get("e")!.dropped).toEqual([0]);
+    // A bend that still shapes the line stays.
+    const kept = flowchart({ nodes: [node("up", 0, 0), node("down", 0, 200)], edges: [newEdge("down", "up", { id: "e", fromSide: "left", toSide: "left", bends: [{ x: -100, y: 140 }] })] });
+    const k = routeFlowchart(kept).byId.get("e")!;
+    expect(k.dropped).toEqual([]);
+    expect(clean(k.points)).toBe(true);
+  });
+
+  it("repeats, points on the straight run and spikes are not worth routing through", () => {
+    const s = { x: 0, y: 0 };
+    const t = { x: 0, y: 200 };
+    expect(usefulBends("elbow", s, [{ x: 0, y: 100 }], t)).toEqual([]);
+    expect(usefulBends("elbow", s, [{ x: 0, y: 0.5 }, { x: 100, y: 100 }, { x: 100, y: 100 }], t)).toEqual([1]);
+    expect(usefulBends("straight", s, [{ x: 50, y: 50 }, { x: 100, y: 100 }], { x: 200, y: 200 })).toEqual([]);
+    expect(usefulBends("straight", s, [{ x: 0, y: 300 }], t)).toEqual([]);
+    expect(usefulBends("curved", s, [{ x: 120, y: 100 }], t)).toEqual([0]);
+  });
+
+  it("doubling back is found directly, after a tiny jog, and where a loop runs over itself", () => {
+    expect(doublesBack([{ x: 0, y: 0 }, { x: 0, y: -20 }, { x: 0, y: -10 }])).not.toBeNull();
+    expect(doublesBack([{ x: 0, y: 0 }, { x: -200, y: 0 }, { x: -200, y: 3 }, { x: 0, y: 3 }])).not.toBeNull();
+    expect(doublesBack([{ x: 0, y: 200 }, { x: 0, y: 80 }, { x: -300, y: 80 }, { x: -300, y: 130 }, { x: 0, y: 130 }, { x: 0, y: 60 }])).not.toBeNull();
+    expect(doublesBack([{ x: 0, y: 0 }, { x: 0, y: 50 }, { x: 100, y: 50 }, { x: 100, y: 100 }])).toBeNull();
+    expect(doublesBack([{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 100 }, { x: 0, y: 100 }])).toBeNull();
+  });
+
+  it("curved lines between shapes in line look straight; straight lines run directly", () => {
+    const curved = flowchart({ nodes: [node("up", 0, 0), node("down", 0, 200)], edges: [newEdge("down", "up", { id: "e", route: "curved" })] });
+    for (const p of points(curved)) expect(p.x).toBeCloseTo(80, 5);
+    const straight = flowchart({ nodes: [node("a", 0, 0), node("b", 300, 200)], edges: [newEdge("a", "b", { id: "e", route: "straight" })] });
+    expect(points(straight)).toHaveLength(2);
+  });
+
+  it("random charts: no elbow ever doubles back", () => {
+    const rand = rng(7);
+    for (let k = 0; k < 150; k++) {
+      clearRouteCache();
+      const nodes = [node("a", 0, 0), node("b", Math.round(rand() * 600 - 300), Math.round(rand() * 400 - 200))];
+      const sides = ["top", "right", "bottom", "left"] as const;
+      const e = newEdge("a", "b", { id: "e", fromSide: sides[Math.floor(rand() * 4)], toSide: sides[Math.floor(rand() * 4)] });
+      if (Math.abs(nodes[1]!.x) < 170 && Math.abs(nodes[1]!.y) < 74) continue;
+      expect(doublesBack(points(flowchart({ nodes, edges: [e] }))), JSON.stringify({ b: nodes[1], e })).toBeNull();
+    }
   });
 });
 

@@ -69,6 +69,7 @@ export {
   rectsOverlap,
   roundedPolyline,
   routeEdges,
+  routeFlowchart,
   serializeFlowchart,
   shapePath,
   textWidthFor,

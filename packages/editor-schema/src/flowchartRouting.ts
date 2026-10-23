@@ -8,7 +8,12 @@
 //            by length plus a cost per bend that keeps a padding margin around every shape. The few shapes a
 //            person would draw (L, Z and U routes) are tried first; when all of them are blocked, A* runs over
 //            a sparse grid made from the shapes' padded edges and the gaps between them. Bend points are
-//            visited in order.
+//            visited in order. Two shapes facing each other closer than two straight runs share the gap
+//            between them (shorter runs), so the line stays straight or makes one small jog, never a loop.
+//   Bends    bend points a route has no use for are left out (and reported, so the editor can drop them):
+//            repeats, points on the straight run between their neighbours, spikes where a line would go
+//            straight back, and, for elbows, any bend whose route would double back on itself (a bend left
+//            behind where shapes used to be).
 //   Curved   a smooth curve: one S-curve along the ends' directions when nothing is in the way, otherwise
 //            the elbow route with its corners smoothed. With bend points, a spline through every bend (each
 //            stretch a cubic piece, leaving and reaching the shapes square to their sides); a stretch that
@@ -58,6 +63,8 @@ export interface EdgeRoute {
   fromSide: FlowSide | null;
   toSide: FlowSide | null;
   hops: Hop[];
+  /** Indices of the connector's bend points the route leaves out (stale or redundant ones). */
+  dropped: number[];
 }
 
 export interface RoutingResult {
@@ -967,6 +974,8 @@ interface Raw {
   searched: boolean;
   /** Signature of the shapes further out that a wide search went around (checked on reuse). */
   wideSig?: string;
+  /** Where the route doubles back on itself (doublesBack), if it does. */
+  back?: Pt | null;
 }
 
 const NEAR = 72;
@@ -1013,23 +1022,162 @@ function stubEnd(end: ResolvedEnd, len: number): Pt {
   }
 }
 
-function routeOne(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, nodes: readonly FlowNode[], padded: readonly Rect[], o: Required<RouteOptions>): { raw: Raw; cached: boolean } {
+/**
+ * The straight run out of each end. Two shapes facing each other (opposite sides, one in front of the
+ * other) closer than two full runs share the gap: each run goes halfway, so the line stays straight (or
+ * makes one jog in the middle) instead of overshooting and looping back.
+ */
+export function stubLength(a: ResolvedEnd, b: ResolvedEnd, stub: number): number {
+  if (!a.node || !b.node || !a.side || !b.side || b.side !== OPPOSITE[a.side]) return stub;
+  const A = a.node;
+  const B = b.node;
+  const gap = a.side === "top" ? A.y - (B.y + B.h) : a.side === "bottom" ? B.y - (A.y + A.h) : a.side === "left" ? A.x - (B.x + B.w) : B.x - (A.x + A.w);
+  if (gap < 0 || gap >= 2 * stub) return stub;
+  return gap / 2;
+}
+
+/**
+ * Where an orthogonal line turns straight back on itself: directly, or after a jog too short to see (a
+ * hairpin). Null when it never does (or the line is not orthogonal).
+ */
+export function doublesBack(pts: readonly Pt[]): Pt | null {
+  const segs: { d: Dir; len: number; at: Pt }[] = [];
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1]!;
+    const b = pts[i]!;
+    const len = Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+    if (len < EPS) continue;
+    if (Math.abs(a.x - b.x) > EPS && Math.abs(a.y - b.y) > EPS) return null;
+    segs.push({ d: dirOf(a, b), len, at: b });
+  }
+  for (let i = 1; i < segs.length; i++) {
+    if (segs[i]!.d === opposite(segs[i - 1]!.d)) return segs[i - 1]!.at;
+    if (i >= 2 && segs[i - 1]!.len < 6 && segs[i]!.d === opposite(segs[i - 2]!.d)) return segs[i - 1]!.at;
+  }
+  // Or runs back over a stretch it already took (a loop that overlaps itself).
+  const spans = segs.map((sg) => {
+    const a = { x: sg.at.x - DX[sg.d]! * sg.len, y: sg.at.y - DY[sg.d]! * sg.len };
+    const h = sg.d === 0 || sg.d === 2;
+    return { h, at: h ? a.y : a.x, lo: h ? Math.min(a.x, sg.at.x) : Math.min(a.y, sg.at.y), hi: h ? Math.max(a.x, sg.at.x) : Math.max(a.y, sg.at.y) };
+  });
+  for (let i = 0; i < spans.length; i++) {
+    for (let j = i + 2; j < spans.length; j++) {
+      const p = spans[i]!;
+      const q = spans[j]!;
+      if (p.h !== q.h || Math.abs(p.at - q.at) > 0.5) continue;
+      const lo = Math.max(p.lo, q.lo);
+      const hi = Math.min(p.hi, q.hi);
+      if (hi - lo > 1) return p.h ? { x: (lo + hi) / 2, y: p.at } : { x: p.at, y: (lo + hi) / 2 };
+    }
+  }
+  return null;
+}
+
+/** Whether bend `b` between stops `p` and `q` changes nothing (on the straight run) or is a spike straight back. */
+function idleBend(kind: FlowRoute, p: Pt, b: Pt, q: Pt): boolean {
+  const between = (v: number, lo: number, hi: number) => v >= Math.min(lo, hi) - EPS && v <= Math.max(lo, hi) + EPS;
+  if (kind === "elbow") {
+    return (Math.abs(p.x - b.x) < 0.5 && Math.abs(b.x - q.x) < 0.5 && between(b.y, p.y, q.y)) || (Math.abs(p.y - b.y) < 0.5 && Math.abs(b.y - q.y) < 0.5 && between(b.x, p.x, q.x));
+  }
+  const ux = b.x - p.x;
+  const uy = b.y - p.y;
+  const vx = q.x - b.x;
+  const vy = q.y - b.y;
+  const lu = Math.hypot(ux, uy);
+  const lv = Math.hypot(vx, vy);
+  if (lu < EPS || lv < EPS) return true;
+  const cos = (ux * vx + uy * vy) / (lu * lv);
+  return cos > 0.9995 || cos < -0.97;
+}
+
+/**
+ * The bend points (indices) worth routing through from `s` to `t`: repeats of the stop before them and
+ * idle ones (idleBend) are left out.
+ */
+export function usefulBends(kind: FlowRoute, s: Pt, bends: readonly Pt[], t: Pt): number[] {
+  const keep: number[] = [];
+  let prev = s;
+  for (let i = 0; i < bends.length; i++) {
+    const b = bends[i]!;
+    const next = bends[i + 1] ?? t;
+    const last = i === bends.length - 1;
+    if (Math.hypot(b.x - prev.x, b.y - prev.y) < 2 || (last && Math.hypot(b.x - t.x, b.y - t.y) < 2)) continue;
+    if (idleBend(kind, prev, b, next)) continue;
+    keep.push(i);
+    prev = b;
+  }
+  return keep;
+}
+
+/**
+ * One connector's route, leaving out the bend points it has no use for (`dropped`): idle ones first, then,
+ * for elbows, the bend nearest wherever the route would still double back, until it doesn't. A route
+ * that doubles back with no bends left is tried again with the shortest straight runs.
+ */
+function routeOne(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, nodes: readonly FlowNode[], padded: readonly Rect[], o: Required<RouteOptions>): { raw: Raw; cached: boolean; dropped: number[] } {
+  const stub = stubLength(a, b, o.stub);
+  let keep = e.bends.map((_, i) => i);
+  if (e.bends.length) {
+    // Straight ends without a side aim from the shape's centre.
+    const ref = (end: ResolvedEnd) => (end.side && end.node ? stubEnd(end, stub) : end.node ? center(end.node) : end.point);
+    keep = usefulBends(e.route, ref(a), e.bends, ref(b));
+  }
+  for (;;) {
+    const edge = keep.length === e.bends.length ? e : { ...e, bends: keep.map((i) => e.bends[i]!) };
+    let ea = a;
+    let eb = b;
+    if (edge !== e && e.route === "straight") {
+      // Straight ends that aimed at a dropped bend aim again.
+      if (!a.side && a.node) ea = { ...a, point: boundaryToward(a.node, edge.bends[0] ?? (b.node ? center(b.node) : b.point)) };
+      if (!b.side && b.node) eb = { ...b, point: boundaryToward(b.node, edge.bends[edge.bends.length - 1] ?? (a.node ? center(a.node) : a.point)) };
+    }
+    let res = routeWith(edge, ea, eb, nodes, padded, o, stub);
+    let back = res.raw.back;
+    // A bend is only kept when the route through it is clean both ways round, so turning the connector
+    // around (Reverse direction) never brings a dropped bend back into play.
+    if (!back && keep.length && e.route === "elbow") back = routeWith({ ...edge, bends: [...edge.bends].reverse() }, eb, ea, nodes, padded, o, stub).raw.back;
+    if (back && keep.length) {
+      let worst = 0;
+      keep.forEach((i, k) => {
+        const p = e.bends[i]!;
+        const w = e.bends[keep[worst]!]!;
+        if (Math.hypot(p.x - back.x, p.y - back.y) < Math.hypot(w.x - back.x, w.y - back.y)) worst = k;
+      });
+      keep = keep.filter((_, k) => k !== worst);
+      continue;
+    }
+    if (back && stub > 2) {
+      const retry = routeWith(edge, ea, eb, nodes, padded, o, 2);
+      if (!retry.raw.back) res = retry;
+    }
+    const kept = new Set(keep);
+    return { ...res, dropped: e.bends.map((_, i) => i).filter((i) => !kept.has(i)) };
+  }
+}
+
+function routeWith(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, nodes: readonly FlowNode[], padded: readonly Rect[], o: Required<RouteOptions>, stub: number): { raw: Raw; cached: boolean } {
   const kind: FlowRoute = e.route;
   if (kind === "straight") {
     return { raw: { points: [a.point, ...e.bends, b.point], curve: null, searched: false }, cached: false };
   }
-  const sa = a.side && a.node ? stubEnd(a, o.stub) : null;
-  const sb = b.side && b.node ? stubEnd(b, o.stub) : null;
+  const sa = a.side && a.node ? stubEnd(a, stub) : null;
+  const sb = b.side && b.node ? stubEnd(b, stub) : null;
   const s = sa ?? a.point;
   const t = sb ?? b.point;
   const keyPts = [s, t, ...e.bends];
   // Every shape is in the way (with its margin), except where an end or a bend sits in another shape's
-  // margin: that shape keeps no margin for this connector, and is ignored if the end is inside it.
+  // margin: that shape keeps no margin for this connector, and is ignored if the end is inside it. The
+  // connector's own shapes keep a margin no wider than its straight runs out of them.
+  const ownPad = Math.min(o.padding, Math.max(0, stub - 0.5));
+  const own = new Set<Rect>();
   const all: Rect[] = [];
   for (let i = 0; i < nodes.length; i++) {
     const n = nodes[i]!;
     let r = padded[i]!;
-    if (n !== a.node && n !== b.node && keyPts.some((p) => inside(p, r))) {
+    if (n === a.node || n === b.node) {
+      if (ownPad < o.padding) r = inflate(n, ownPad);
+      own.add(r);
+    } else if (keyPts.some((p) => inside(p, r))) {
       r = n;
       if (keyPts.some((p) => inside(p, r))) continue;
     }
@@ -1040,7 +1188,7 @@ function routeOne(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, nodes: readonly F
   const near = windowAround(keyPts, [a.node, b.node], NEAR);
   const obstacles = all.filter((r) => touches(r, near));
   const farSig = () => rectSig(all.filter((r) => touches(r, windowAround(keyPts, [a.node, b.node], FAR))));
-  const key = `${kind}|${r1(a.point.x)},${r1(a.point.y)},${a.side ?? ""}|${r1(b.point.x)},${r1(b.point.y)},${b.side ?? ""}|${e.bends.map((p) => `${p.x},${p.y}`).join(";")}|${o.padding},${o.stub},${o.bendCost}|${rectSig(obstacles)}`;
+  const key = `${kind}|${r1(a.point.x)},${r1(a.point.y)},${a.side ?? ""}|${r1(b.point.x)},${r1(b.point.y)},${b.side ?? ""}|${e.bends.map((p) => `${p.x},${p.y}`).join(";")}|${o.padding},${stub},${o.bendCost}|${rectSig(obstacles)}`;
   const hit = cache.get(key);
   if (hit && (hit.wideSig === undefined || hit.wideSig === farSig())) {
     cache.delete(key);
@@ -1050,6 +1198,8 @@ function routeOne(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, nodes: readonly F
   const ds = a.side ? DIR_OF[a.side] : null;
   const de = b.side ? opposite(DIR_OF[b.side]) : null;
   const around = a.node && b.node ? unionRect(inflate(a.node, o.padding), inflate(b.node, o.padding)) : a.node ? inflate(a.node, o.padding) : b.node ? inflate(b.node, o.padding) : null;
+  const others = obstacles.filter((r) => !own.has(r));
+  const os = { ...o, stub };
 
   let raw: Raw | null = null;
   if (kind === "curved" && !e.bends.length && a.side && b.side) {
@@ -1062,12 +1212,11 @@ function routeOne(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, nodes: readonly F
     const c2 = { x: b.point.x + DX[nb]! * k, y: b.point.y + DY[nb]! * k };
     const samples: Pt[] = [];
     for (let i = 0; i <= 24; i++) samples.push(cubicAt(a.point, c1, c2, b.point, i / 24));
-    const others = obstacles.filter((r) => !sameRect(r, a.node, o.padding) && !sameRect(r, b.node, o.padding));
     if (curveClear(samples.slice(3, -3), others)) {
       raw = { points: samples, curve: [{ c1, c2, to: b.point }], searched: false };
     }
   }
-  if (!raw && kind === "curved" && e.bends.length) raw = curveThroughBends(e, a, b, s, t, ds, de, obstacles, o, all);
+  if (!raw && kind === "curved" && e.bends.length) raw = curveThroughBends(e, a, b, s, t, ds, de, obstacles, others, os, all);
   if (!raw) {
     // Elbow legs: start → each bend → end.
     const stops = [s, ...e.bends, t];
@@ -1077,17 +1226,19 @@ function routeOne(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, nodes: readonly F
     let wide = false;
     for (let i = 1; i < stops.length; i++) {
       const last = i === stops.length - 1;
-      const leg = routeLeg(stops[i - 1]!, dir, stops[i]!, last ? de : null, obstacles, i === 1 && last ? around : null, o, all);
+      const leg = routeLeg(stops[i - 1]!, dir, stops[i]!, last ? de : null, obstacles, i === 1 && last ? around : null, os, all);
       searched ||= leg.searched;
       wide ||= leg.wide;
       pts = pts.concat(leg.pts.slice(1));
       dir = leg.pts.length > 1 ? dirOf(leg.pts[leg.pts.length - 2]!, leg.pts[leg.pts.length - 1]!) : dir;
     }
-    const full = simplify([...(sa ? [a.point] : []), ...pts, ...(sb ? [b.point] : [])]);
+    const joined = [...(sa ? [a.point] : []), ...pts, ...(sb ? [b.point] : [])];
+    const full = simplify(joined);
+    const back = doublesBack(joined);
     if (kind === "curved") {
       const sm = smoothPolyline(full);
-      raw = { points: sm.samples, curve: sm.segs, searched };
-    } else raw = { points: full, curve: null, searched };
+      raw = { points: sm.samples, curve: sm.segs, searched, back };
+    } else raw = { points: full, curve: null, searched, back };
     if (wide) raw.wideSig = farSig();
   }
   cache.set(key, raw);
@@ -1100,11 +1251,10 @@ function routeOne(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, nodes: readonly F
  * them that would cut through a shape also passes the corners of the elbow route around it (its own ends
  * stay fixed), so the curve still goes through each bend exactly.
  */
-function curveThroughBends(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, s: Pt, t: Pt, ds: Dir | null, de: Dir | null, obstacles: readonly Rect[], o: Required<RouteOptions>, all: readonly Rect[]): Raw {
+function curveThroughBends(e: FlowEdge, a: ResolvedEnd, b: ResolvedEnd, s: Pt, t: Pt, ds: Dir | null, de: Dir | null, obstacles: readonly Rect[], others: readonly Rect[], o: Required<RouteOptions>, all: readonly Rect[]): Raw {
   const keys = [a.point, ...e.bends, b.point];
   const d0 = ds !== null ? { x: DX[ds]!, y: DY[ds]! } : { x: 0, y: 0 };
   const dn = de !== null ? { x: DX[de]!, y: DY[de]! } : { x: 0, y: 0 };
-  const others = obstacles.filter((r) => !sameRect(r, a.node, o.padding) && !sameRect(r, b.node, o.padding));
   const PER = 16;
   const build = (vias: Pt[][]) => {
     const pts: Pt[] = [keys[0]!];
@@ -1146,10 +1296,6 @@ function unionRect(a: Rect, b: Rect): Rect {
   const x = Math.min(a.x, b.x);
   const y = Math.min(a.y, b.y);
   return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
-}
-
-function sameRect(r: Rect, n: FlowNode | null, pad: number): boolean {
-  return !!n && Math.abs(r.x - (n.x - pad)) < EPS && Math.abs(r.y - (n.y - pad)) < EPS && Math.abs(r.w - (n.w + 2 * pad)) < EPS;
 }
 
 // ------------------------------------------------------------------------------------------ tidying
@@ -1475,23 +1621,23 @@ export function routeFlowchart(fc: FlowchartData, opts: RouteOptions = {}): Rout
   const byId = new Map(fc.nodes.map((n) => [n.id, n]));
   const ends = resolveEnds(fc, byId);
   const padded = fc.nodes.map((n) => inflate(n, o.padding));
-  const work: { edge: FlowEdge; points: Pt[]; curve: CurveSeg[] | null; orthogonal: boolean; curved: boolean; id: string; hops: Hop[]; a: ResolvedEnd; b: ResolvedEnd }[] = [];
+  const work: { edge: FlowEdge; points: Pt[]; curve: CurveSeg[] | null; orthogonal: boolean; curved: boolean; id: string; hops: Hop[]; a: ResolvedEnd; b: ResolvedEnd; dropped: number[] }[] = [];
   let cached = 0;
   let searched = 0;
   for (const e of fc.edges) {
     const pair = ends.get(e.id);
     if (!pair) continue;
     const [a, b] = pair;
-    const { raw, cached: hit } = routeOne(e, a, b, fc.nodes, padded, o);
+    const { raw, cached: hit, dropped } = routeOne(e, a, b, fc.nodes, padded, o);
     if (hit) cached++;
     if (raw.searched && !hit) searched++;
-    work.push({ edge: e, points: raw.points.map((p) => ({ ...p })), curve: raw.curve, orthogonal: e.route === "elbow", curved: raw.curve !== null, id: e.id, hops: [], a, b });
+    work.push({ edge: e, points: raw.points.map((p) => ({ ...p })), curve: raw.curve, orthogonal: e.route === "elbow", curved: raw.curve !== null, id: e.id, hops: [], a, b, dropped });
   }
   const obstacles = fc.nodes.map((n) => n as Rect);
   detourCrossers(work, fc.nodes, padded, o);
   separate(work, obstacles, o.separation);
   const crossings = o.hops ? findCrossings(work, o.hopRadius) : 0;
-  const routes: EdgeRoute[] = work.map((w) => ({ edge: w.edge, route: w.edge.route, points: w.points, curve: w.curve, fromSide: w.a.side, toSide: w.b.side, hops: w.hops }));
+  const routes: EdgeRoute[] = work.map((w) => ({ edge: w.edge, route: w.edge.route, points: w.points, curve: w.curve, fromSide: w.a.side, toSide: w.b.side, hops: w.hops, dropped: w.dropped }));
   return { routes, byId: new Map(routes.map((r) => [r.edge.id, r])), crossings, stats: { routed: work.length - cached, cached, searched } };
 }
 
@@ -1500,7 +1646,12 @@ export function routeFlowchart(fc: FlowchartData, opts: RouteOptions = {}): Rout
  * of the two boxes (the editor's preview while drawing a connector).
  */
 export function orthogonalRoute(a: Pt, sa: FlowSide, b: Pt, sb: FlowSide, ra: Rect, rb: Rect, opts: RouteOptions = {}): Pt[] {
-  const o = { ...DEFAULTS, ...opts };
+  const base = { ...DEFAULTS, ...opts };
+  // Facing boxes closer than two straight runs share the gap (stubLength).
+  const box = (r: Rect, side: FlowSide): ResolvedEnd | null => (r.w && r.h ? { node: { id: "", shape: "process", text: "", color: "neutral", ...r }, side, point: { x: 0, y: 0 }, at: null } : null);
+  const ea = box(ra, sa);
+  const eb = box(rb, sb);
+  const o = { ...base, stub: ea && eb ? stubLength(ea, eb, base.stub) : base.stub };
   const stub = (p: Pt, side: FlowSide, r: Rect): Pt => {
     if (!r.w && !r.h) return { x: p.x + DX[DIR_OF[side]]! * o.stub, y: p.y + DY[DIR_OF[side]]! * o.stub };
     switch (side) {

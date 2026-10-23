@@ -304,14 +304,15 @@ test.describe("Flowchart connectors", () => {
     await expect.poll(async () => (await labelsOf(page, "ac")).map((l) => l.text)).toEqual(["No"]);
     await shot(page, "labels");
 
-    // The connector's own menu: reverse it, then remove a label from the label's menu.
+    // The connector's own menu: reverse it (the line ends stay put, so the arrow turns round), then remove
+    // a label from the label's menu.
     await page.keyboard.press("Escape");
     await page.mouse.click(...Object.values(await along(canvas, "ab", 0.5)) as [number, number], { button: "right" });
     const menu = page.getByRole("menu", { name: "Connector" });
     await expect(menu.getByRole("menuitem", { name: "Reverse direction" })).toBeVisible();
     await expect(menu.getByRole("menuitemradio", { name: "Curved line" }).or(menu.getByRole("menuitem", { name: "Curved line" })).first()).toBeVisible();
     await menu.getByRole("menuitem", { name: "Reverse direction" }).click();
-    await expect.poll(async () => (await edges(page)).find((e) => e.id === "ab")).toMatchObject({ from: "B", to: "A", start: "diamond", end: "circle" });
+    await expect.poll(async () => (await edges(page)).find((e) => e.id === "ab")).toMatchObject({ from: "B", to: "A", start: "circle", end: "diamond" });
     await page.keyboard.press("Escape");
     await canvas.locator('[data-fc-edge="ab"][data-fc-label="0"]').click({ button: "right" });
     await page.getByRole("menu", { name: "Connector" }).getByRole("menuitem", { name: "Remove label" }).click();

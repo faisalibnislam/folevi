@@ -152,7 +152,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
             </IosSection>
           ))}
           {!workspace && caps.workspaces ? <IphoneCreateWorkspace /> : null}
-          <VersionFooter version={nativeApp()?.version} build={nativeApp()?.build} />
+          <VersionFooter />
         </div>
       </ViewChrome>
     );
@@ -204,7 +204,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
                 </IosSection>
               ))}
               {!workspace && caps.workspaces ? <IphoneCreateWorkspace /> : null}
-              <VersionFooter version={nativeApp()?.version} build={nativeApp()?.build} />
+              <VersionFooter />
             </nav>
             <IphoneLookContext.Provider value>
               <SettingsScreensHost
@@ -289,6 +289,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
           {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
           {section === "desktop" ? <DesktopSection /> : null}
           {section === "this-device" ? <ThisDeviceSection /> : null}
+          <VersionFooter className="pt-4 text-[12px] leading-4 text-muted" />
         </div>
       </div>
     </ViewChrome>

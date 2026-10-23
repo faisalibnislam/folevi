@@ -101,6 +101,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             break
         }
     }
+
+    /// Folevi > About Folevi: AppKit's About panel with the version alone ("Version 1.0.00"), never the build number
+    /// it adds by default ("(4)"); the build stays the hidden number Sparkle compares.
+    @objc func showAboutPanel(_ sender: Any?) {
+        NSApp.activate()
+        NSApp.orderFrontStandardAboutPanel(options: Self.aboutPanelOptions)
+    }
+
+    nonisolated static var aboutPanelOptions: [NSApplication.AboutPanelOptionKey: Any] {
+        [.applicationVersion: Paths.version, .version: ""]
+    }
 }
 
 /// The menu bar until WM2's (MainMenu.swift): the app menu and Edit (copy and paste need it), Window.
@@ -110,7 +121,7 @@ enum StarterMenu {
         let main = NSMenu()
         let name = ProcessInfo.processInfo.processName
         let app = NSMenu(title: name)
-        app.addItem(withTitle: "About \(name)", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        app.addItem(withTitle: "About \(name)", action: #selector(AppDelegate.showAboutPanel(_:)), keyEquivalent: "")
         app.addItem(.separator())
         app.addItem(withTitle: "Hide \(name)", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         let others = app.addItem(withTitle: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")

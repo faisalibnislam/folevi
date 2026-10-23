@@ -46,7 +46,8 @@ function iosBridge() {
   const lock = { lock: false, lockAfter: 0, method: "faceID" };
   const bridge = {
     platform: "ios",
-    version: "1.4",
+    version: "1.0.07",
+    // (An older app also said its build number: it's never shown.)
     build: "12",
     haptic: () => undefined,
     setStatusBar: () => undefined,
@@ -111,10 +112,10 @@ test.describe("the iPhone app in local mode", { tag: "@local" }, () => {
     await setup.getByRole("button", { name: "Open Folevi" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-iphone", "", { timeout: 30_000 });
 
-    // Settings: groups headed in capitals, the version and build at the bottom.
+    // Settings: groups headed in capitals, the version at the bottom (no build number).
     await page.goto(new URL("/settings", page.url()).href);
     await expect(screen(page).getByRole("heading", { level: 1, name: "Settings" })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId("settings-version")).toHaveText("Folevi 1.4 (12)");
+    await expect(page.getByTestId("settings-version")).toHaveText("Folevi 1.0.07");
     const header = screen(page).locator("section h3").first();
     expect(await header.evaluate((el) => [getComputedStyle(el).textTransform, getComputedStyle(el).fontSize])).toEqual(["uppercase", "13px"]);
     // Every row is at least 52 tall.
@@ -203,7 +204,7 @@ test.describe("the iPhone app in local mode", { tag: "@local" }, () => {
     await expect(strip).toBeVisible({ timeout: 30_000 });
     const sections = page.getByRole("navigation", { name: "Settings sections" });
     await expect(sections.getByRole("link", { name: "Appearance" })).toHaveAttribute("aria-current", "page");
-    await expect(page.getByTestId("settings-version")).toHaveText("Folevi 1.4 (12)");
+    await expect(page.getByTestId("settings-version")).toHaveText("Folevi 1.0.07");
     await expect(page.locator('main input[type="range"]')).toHaveCount(0);
     await shot(page, "12-ipad-settings");
     // A choice opens on a screen of its own, with Back.

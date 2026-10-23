@@ -145,7 +145,7 @@ Rules that carry over from Electron (`main.ts`, `docs/DESKTOP.md` "Security"), u
 | `apps/mac/Folevi/Debug/` | `MacEval.swift` (DEBUG only: run JavaScript in a window from a script, like iOS `SimulatorEval.swift`) |
 | `apps/mac/Folevi/Resources/` | `Info.plist`, `Folevi.entitlements`, `FoleviDev.entitlements`, `Assets.xcassets`, the app icon (`Folevi.icon` from `packages/design-tokens/scripts/app-icon.mjs`) |
 | `apps/mac/FoleviTests/` | XCTest: router validation, scheme handler, migration from fixtures, safeStorage vectors, menus |
-| `apps/mac/scripts/` | `project.mjs`, `build.mjs`, `release.mjs`, `publish.mjs`, `mac.mjs` (eval, menu, shot, the screens script), `screens.mjs`, `bump-version.mjs` |
+| `apps/mac/scripts/` | `project.mjs`, `build.mjs`, `release.mjs`, `publish.mjs`, `mac.mjs` (eval, menu, shot, the screens script), `screens.mjs` (the version: `scripts/version.mjs` at the repo root) |
 | `apps/ios/ios/App/Native/Shell/*.swift` | **shared**: referenced by path from `project.yml` (no copies); the six files with UIKit touch points get `#if os(iOS)` / `#if os(macOS)` (section 4.2) |
 | `apps/ios/ios/App/Native/Shell/shell-bridge.js` | **shared** (WM0, done): the `foleviShell` half of `bridge.js`, `foleviShellBridge(SHELL, host)` with a transport `{ call(plugin, method, options), listen(plugin, event, cb) }` and the host's words (platform, version, device name and family, `fileBase`, the cloud kit); iOS `bridge.js` keeps `foleviNative` and passes Capacitor as the transport, the Mac passes `mac-bridge.js`'s. In `Native/Shell` (a synchronized folder) so the iOS project needed no `.pbxproj` edit |
 
@@ -497,8 +497,8 @@ The last Electron release (1.22.0, WM3) adds a handover step that reuses `handof
 
 Same shape as `apps/desktop/scripts/release.mjs`:
 
-1. `bump-version.mjs` (2.0.0 for the first native build, then 2.1.0, 2.2.0: decision M9), commit the bump with
-   the build.
+1. The version from `version.json` (`scripts/version.mjs` at the repo root, one version for every platform:
+   1.0.00, 1.0.01 ... 1.1.00; decision M9's 2.0.0 is replaced), set and committed before the build.
 2. `apps/web/scripts/build-shell.mjs --production` with `FOLEVI_SHELL_PLATFORM=mac` into `apps/mac/web-release/`;
    check `shell/build.json` says production and this version (`shellBuild.ts` rules ported).
 3. `scripts/project.mjs` (XcodeGen), then `xcodebuild -project Folevi.xcodeproj -scheme Folevi -configuration
@@ -603,7 +603,7 @@ the owner's support folder or Keychain items).
 ### WM3: Migration, signing, updates, release
 
 - Owns: `apps/mac/Folevi/Migration/*`, `apps/mac/Folevi/Updates/*`, `apps/mac/Folevi/Resources/{Info.plist,
-  *.entitlements}`, `apps/mac/scripts/{release, publish, bump-version}.mjs`, `apps/mac/FoleviTests/Migration*`;
+  *.entitlements}`, `apps/mac/scripts/{release, publish}.mjs`, `apps/mac/FoleviTests/Migration*`;
   in `apps/desktop`: new `src/handover.ts` (+ test) and small marked edits in `src/main.ts` and
   `src/updates.ts` for the 1.22.0 handover release.
 - Delivers: section 8 and section 9. First task: prove R1 (the safeStorage Keychain item opens without a prompt
@@ -631,7 +631,7 @@ the owner's support folder or Keychain items).
     on 2026-10-22, checked and adopted, `apps/mac/signing/`), `Folevi.entitlements` (iCloud, Keychain group,
     microphone). Updates: Sparkle 2.10.0, `Updates/Updater.swift`, the EdDSA key generated on this Mac (login
     Keychain, account `folevi`; public key in Info.plist). Scripts: `release.mjs` (dry run by default),
-    `publish.mjs` (owner only), `bump-version.mjs`, `migration-fixture.mjs`.
+    `publish.mjs` (owner only), `migration-fixture.mjs`.
   - For WM2: the Folevi menu's update item shows `Updater.shared.menuTitle` and calls `Updater.shared.menuAction()`
     (refresh on `Updater.changed`); `Chrome.checkForUpdates` and `Chrome.updateTitle` can point there.
 
@@ -720,7 +720,7 @@ Then the owner dogfoods the Debug build beside Electron for a week, approves, an
 1. **Phase 0, done**: the spike (section 1).
 2. **Phase 1, foundation** (WM0): the app runs the interface, Debug identity, transport, eval hook, measurement.
 3. **Phase 2, parity** (WM1 to WM5 in parallel): every row of section 5; the polish plan's native pieces.
-4. **Phase 3, switch-over** (WM3): Electron 1.22.0 with the handover; Folevi 2.0.0 native, installed by the owner;
+4. **Phase 3, switch-over** (WM3): Electron 1.22.0 with the handover; Folevi 1.0.00 native (was 2.0.0 before the one-version rule), installed by the owner;
    the migration on the owner's Mac (with the Electron app kept as `Folevi (previous).app` until the owner says
    it can go).
 5. **Phase 4, public**: notarized, Sparkle feed live, DMG on folevi.com/mac.
@@ -787,7 +787,7 @@ Then the owner dogfoods the Debug build beside Electron for a week, approves, an
 - **M5: Apple's Writing Tools off** in notes (Foli AI covers writing help).
 - **M6: minimum macOS 15 Sequoia.**
 - **M7 to M9:** keep the bundle ID `com.folevi.mac`; Developer ID only (no Mac App Store sandbox); the first
-  native build is version 2.0.0.
+  native build is version 2.0.0. (Replaced 2026-10-23: one version for every platform, 1.0.00 first, docs/MAC_RELEASE.md §5.)
 - **M10:** Claude creates the Developer ID provisioning profile (iCloud and Keychain group) through the App
   Store Connect API key and generates the Sparkle signing key on this Mac (private key in the owner's
   Keychain; public key in the app).

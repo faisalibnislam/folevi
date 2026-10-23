@@ -122,9 +122,14 @@ the Electron app as "Folevi (previous).app").
 
 ## 5. Versions
 
-2.0.0 for the first native build, then 2.1.0, 2.2.0 (decision M9). `MARKETING_VERSION` and
-`CURRENT_PROJECT_VERSION` in `apps/mac/project.yml`; `scripts/bump-version.mjs` moves them only once the current
-version has a `mac-v<version>` tag (`release.mjs --install` makes it), so the first release is 2.0.0 (1).
+One version for every platform (the owner's rule, 2026-10-23, replacing decision M9's 2.0.0): biggest.big.minor
+with two digits last, 1.0.00, 1.0.01 ... 1.0.99, then 1.1.00, and 2.0.00 for the biggest changes, shown as
+"Folevi 1.0.00" (the About panel says "Version 1.0.00", with no build number). `version.json` at the repo root holds
+the version and the build, a whole number that goes up by one with every new version and is never shown;
+`node scripts/version.mjs set <version>` or `bump minor|big|biggest` writes them into `apps/mac/project.yml`
+(`MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`), the iOS project and Android's `build.gradle.kts`. Sparkle compares
+the build (`sparkle:version`, CFBundleVersion); 1.0.00 is its `sparkle:shortVersionString`. `release.mjs --install`
+never changes the version: it refuses one that already has a `mac-v<version>` tag.
 
 ## 6. Scripts
 

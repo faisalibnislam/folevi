@@ -14,11 +14,11 @@
 // Every build writes shell/build.json: which deployment it talks to, and the IndexedDB schema version it opens
 // (the Mac app's handoff refuses a website database that is newer, docs/LOCAL_MODE.md).
 // --platform ios: the export the iPhone and iPad app carries (apps/ios/web, docs/IOS.md), in .next-shell-ios (or
-// .next-shell-ios-release with --production), with the iOS app's version in shell/build.json.
-// --app-version <v>: the version shell/build.json records (the native Mac app's release passes its own, 2.0.0 and on).
+// .next-shell-ios-release with --production), with Folevi's version in shell/build.json.
+// --app-version <v>: the version shell/build.json records (else version.json's, the one version of every app).
 // --platform android: the export Folevi for Android carries (apps/android/web, docs/ANDROID_PLAN.md), built in a
 // folder of its own (.next-shell-android, or .next-shell-android-release with --production) so it never replaces
-// another app's export while it builds, with the Android app's version in shell/build.json.
+// another app's export while it builds, with Folevi's version in shell/build.json.
 import { spawnSync } from "node:child_process";
 import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
@@ -194,7 +194,8 @@ export async function dbVersion() {
 
 /** shell/build.json: what this export is (read by the Mac app, apps/desktop/src/shellBuild.ts). */
 async function writeBuildInfo(env) {
-  const desktop = JSON.parse(await readFile(resolve(web, android ? "../android/package.json" : ios ? "../ios/package.json" : "../desktop/package.json"), "utf8"));
+  // Folevi's one version (version.json at the repo root, scripts/version.mjs), the same for every app.
+  const { version } = JSON.parse(await readFile(resolve(web, "../../version.json"), "utf8"));
   const info = {
     v: 1,
     target: production ? "production" : "development",
@@ -202,8 +203,8 @@ async function writeBuildInfo(env) {
     convexUrl: env.NEXT_PUBLIC_CONVEX_URL ?? null,
     siteUrl: env.NEXT_PUBLIC_APP_URL || "https://app.folevi.com",
     dbVersion: await dbVersion(),
-    // --app-version: the native Folevi for Mac's own version (apps/mac/scripts/release.mjs), not Electron's.
-    appVersion: flagValue("--app-version") ?? desktop.version,
+    // --app-version: the version a release script was given (apps/mac/scripts/release.mjs passes version.json's).
+    appVersion: flagValue("--app-version") ?? version,
     builtAt: new Date().toISOString(),
   };
   await mkdir(join(out, "shell"), { recursive: true });

@@ -82,7 +82,8 @@ enum Paths {
         (Bundle.main.object(forInfoDictionaryKey: "FoleviURLScheme") as? String).flatMap { $0.isEmpty ? nil : $0 } ?? (isDebug ? "folevi-dev" : "folevi")
     }
 
-    /// The app's version (2.0.0 for the first native build).
+    /// Folevi's version ("1.0.00", version.json at the repo root, scripts/version.mjs), the one every app shows.
+    /// `build` (CFBundleVersion) is the hidden whole number Sparkle compares; it's never shown.
     static var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0" }
     static var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "" }
 

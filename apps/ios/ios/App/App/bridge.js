@@ -6,7 +6,6 @@
   "use strict";
   var ORIGIN = "__FOLEVI_ORIGIN__";
   var VERSION = "__FOLEVI_VERSION__";
-  var BUILD = "__FOLEVI_BUILD__";
   if (location.origin !== ORIGIN || window.top !== window) return;
   var cap = window.Capacitor;
   if (!cap || typeof cap.nativePromise !== "function") return;
@@ -40,8 +39,6 @@
   var bridge = Object.freeze({
     platform: "ios",
     version: VERSION,
-    /** The build number (CFBundleVersion), shown with the version in Settings. */
-    build: BUILD || undefined,
     /**
      * A tap felt in the hand (Native/UI/Haptics.swift): "light" | "medium" | "heavy" | "rigid" | "soft" impacts,
      * a "selection" tick, or "success" | "warning" | "error".

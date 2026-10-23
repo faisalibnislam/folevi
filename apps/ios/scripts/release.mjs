@@ -6,7 +6,9 @@
 //
 // 1. The built-in interface for production (apps/web build-shell.mjs --platform ios --production) into web/.
 // 2. `cap sync ios` with the production settings (https://app.folevi.com, bundled).
-// 3. The build number: --build <n>, else the project's CURRENT_PROJECT_VERSION (every target the same).
+// 3. The version and build: version.json's (scripts/version.mjs at the repo root writes them into the project for
+//    every target); --build <n> raises the hidden build there first (App Store Connect needs a new one per upload).
+//    "Folevi 1.0.00" is what people see; the build number is never shown.
 // 4. A Release archive, signed automatically on team 7K32QQ2FX8 (-allowProvisioningUpdates with the App Store
 //    Connect API key), then exported for App Store Connect with App Store profiles, which the API makes when
 //    they're missing (the key can't use cloud-managed distribution certificates, so the profiles name the
@@ -22,11 +24,11 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { REPO, outOfSync, readVersion, writeVersion } from "../../../scripts/version.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ios = resolve(here, "..");
 const project = join(ios, "ios/App");
-const pbxproj = join(project, "App.xcodeproj/project.pbxproj");
 const out = join(ios, "release");
 const TEAM = "7K32QQ2FX8";
 const KEY_ID = process.env.FOLEVI_ASC_KEY_ID ?? "HS88CK5RQF";
@@ -98,11 +100,13 @@ run("npx", ["cap", "sync", "ios"], { cwd: ios, env });
 const build = value("--build");
 if (build) {
   if (!/^\d+$/.test(build)) throw new Error("--build is a whole number.");
-  const text = readFileSync(pbxproj, "utf8").replace(/CURRENT_PROJECT_VERSION = \d+;/g, `CURRENT_PROJECT_VERSION = ${build};`);
-  writeFileSync(pbxproj, text);
+  const current = readVersion();
+  if (Number(build) <= current.build) throw new Error(`--build ${build} isn't newer than version.json's ${current.build}.`);
+  writeVersion(REPO, { version: current.version, build: Number(build) });
 }
-const version = /CURRENT_PROJECT_VERSION = (\d+);/.exec(readFileSync(pbxproj, "utf8"))?.[1];
-console.log(`Folevi build ${version}`);
+if (outOfSync().length) throw new Error(`The projects don't say version.json's version (${outOfSync().join(", ")}): run node scripts/version.mjs sync.`);
+const { version, build: buildNumber } = readVersion();
+console.log(`Folevi ${version} (build ${buildNumber}, never shown)`);
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });

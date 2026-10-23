@@ -7,7 +7,8 @@
 //   node apps/mac/scripts/release.mjs [--out DIR] [--universal] [--launch-check] [--web DIR]   dry run (builders)
 //   node apps/mac/scripts/release.mjs --install [--universal]                       the owner's release
 //
-//   1. the version: kept in a dry run; with --install bumped once the current one was released (bump-version.mjs)
+//   1. the version: version.json's (scripts/version.mjs at the repo root sets it, never this script); --install
+//      refuses a version that was released already (its mac-v<version> tag), since Sparkle needs a newer build
 //   2. the built-in interface, production build (apps/web build-shell.mjs --production, this app's version)
 //   3. XcodeGen, then `xcodebuild archive` (Release; arm64, or arm64 + x86_64 with --universal)
 //   4. Resources/web goes into the archived app, which is signed again (the outer bundle only, with the archive's
@@ -27,7 +28,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { bump, currentVersion } from "./bump-version.mjs";
+import { outOfSync, readVersion } from "../../../scripts/version.mjs";
 import { MAC, generateProject } from "./project.mjs";
 
 export const TEAM = "7K32QQ2FX8";
@@ -48,6 +49,17 @@ const read = (cmd, args) => {
   const r = spawnSync(cmd, args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   return { ok: r.status === 0, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
 };
+
+/** Folevi's version and hidden build (version.json), once apps/mac/project.yml says the same. */
+export function currentVersion() {
+  if (outOfSync().includes("apps/mac/project.yml")) throw new Error("apps/mac/project.yml doesn't say version.json's version and build: run node scripts/version.mjs sync.");
+  return readVersion();
+}
+
+/** Whether `version` was released from this Mac (release.mjs --install tags mac-v<version>). */
+export function released(version) {
+  return spawnSync("git", ["rev-parse", "--verify", "--quiet", `refs/tags/mac-v${version}`], { cwd: MAC, stdio: "ignore" }).status === 0;
+}
 
 /** The Developer ID Application identity's SHA-1 in the login keychain. */
 export function identity() {
@@ -91,7 +103,7 @@ export function unregister(...apps) {
 }
 
 /** Every check of step 5; returns the problems (empty when the build is fit). */
-export function verify(app, { version, universal = false, notarized = false } = {}) {
+export function verify(app, { version, build, universal = false, notarized = false } = {}) {
   const problems = [];
   const notes = [];
   const sig = read("codesign", ["--verify", "--deep", "--strict", "--verbose=2", app]);
@@ -125,7 +137,9 @@ export function verify(app, { version, universal = false, notarized = false } = 
   if (!existsSync(embedded)) problems.push("no embedded.provisionprofile");
   else if (profileInfo(embedded).uuid !== profileInfo().uuid) problems.push("the embedded profile isn't signing/Folevi.provisionprofile");
   if (plist(app, "CFBundleIdentifier") !== BUNDLE_ID) problems.push(`bundle id ${plist(app, "CFBundleIdentifier")}`);
-  if (version && plist(app, "CFBundleShortVersionString") !== version) problems.push(`Info.plist says ${plist(app, "CFBundleShortVersionString")}, project.yml ${version}`);
+  if (version && plist(app, "CFBundleShortVersionString") !== version) problems.push(`Info.plist says ${plist(app, "CFBundleShortVersionString")}, version.json ${version}`);
+  // The hidden build number is what Sparkle compares (sparkle:version); the version is only shown.
+  if (build !== undefined && plist(app, "CFBundleVersion") !== String(build)) problems.push(`CFBundleVersion is ${plist(app, "CFBundleVersion")}, version.json's build ${build}`);
   if (plist(app, "LSMinimumSystemVersion") !== "15.0") problems.push(`minimum macOS ${plist(app, "LSMinimumSystemVersion")}`);
   // The built-in interface, production, for this version.
   try {
@@ -209,9 +223,10 @@ async function main() {
   const outFlag = argv.indexOf("--out");
   const out = resolve(outFlag >= 0 && argv[outFlag + 1] ? argv[outFlag + 1] : install ? join(MAC, "release") : mkdtempSync(join(tmpdir(), "folevi-mac-release-")));
   mkdirSync(out, { recursive: true });
-  console.log(`== the version${install ? "" : " (dry run: kept)"}`);
-  const { version, build } = install ? bump() : currentVersion();
-  console.log(`Folevi for Mac ${version} (${build})`);
+  console.log("== the version");
+  const { version, build } = currentVersion();
+  if (install && released(version)) throw new Error(`Folevi ${version} was released already: give the next one a version first (node scripts/version.mjs bump minor).`);
+  console.log(`Folevi ${version} (build ${build}, never shown)`);
 
   // --web <dir>: an export already made by build-shell.mjs --production --app-version <version> (dry runs only).
   const webFlag = argv.indexOf("--web");
@@ -219,7 +234,7 @@ async function main() {
   const app = buildRelease({ out, universal, version, web });
 
   console.log("\n== checks");
-  const { problems, notes } = verify(app, { version, universal });
+  const { problems, notes } = verify(app, { version, build, universal });
   for (const n of notes) console.log(`  ok  ${n}`);
   if (argv.includes("--launch-check")) {
     const alive = await launchCheck(app, out);

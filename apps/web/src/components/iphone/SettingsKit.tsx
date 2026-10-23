@@ -10,11 +10,12 @@
 // work as for any screen; the section stays mounted (hidden) under them, so its state (a draft, a choice
 // half made) and handlers carry on from one of its screens to the next.
 
-import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronRight } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
-import { haptic } from "@/lib/nativeApp";
+import { haptic, nativeApp } from "@/lib/nativeApp";
+import { FOLEVI_VERSION, versionLabel } from "@/lib/version";
 import { confirmAction, hasNative } from "@/lib/native/ui";
 import { GlassTextButton } from "./Glass";
 
@@ -561,13 +562,21 @@ export function IosText({ children, muted }: { children: ReactNode; muted?: bool
   return <div className={`relative px-4 py-3 text-[15px] leading-snug ${muted ? "text-muted" : "text-ink"}`} style={insetFor(false)}>{children}</div>;
 }
 
-/** The last thing on the root Settings screen: which Folevi this is (its version and build), centred and quiet. */
-export function VersionFooter({ version, build }: { version?: string | null; build?: string | null }) {
-  if (!version) return null;
+/** The last thing on the root Settings screen: which Folevi this is ("Folevi 1.0.00"), centred and quiet. The
+ * app's own version where there is one, else the website's; never a build number. */
+export function VersionFooter({ className }: { className?: string }) {
+  const version = useShownVersion();
   return (
-    <p className="px-8 pb-2 pt-1 text-center text-[13px] leading-[18px] text-muted" data-testid="settings-version">
-      Folevi {version}
-      {build ? ` (${build})` : ""}
+    <p className={className ?? "px-8 pb-2 pt-1 text-center text-[13px] leading-[18px] text-muted"} data-testid="settings-version">
+      {versionLabel(version)}
     </p>
   );
 }
+
+/** The iPhone, iPad or Android app's own version, else this interface's (the website's, and the Mac app's, whose
+ * built-in interface is built for its version). Before hydration the interface's, so a page built ahead of time
+ * shows the same words before it knows where it runs. */
+function useShownVersion() {
+  return useSyncExternalStore(noSubscription, () => nativeApp()?.version || FOLEVI_VERSION, () => FOLEVI_VERSION);
+}
+const noSubscription = () => () => undefined;

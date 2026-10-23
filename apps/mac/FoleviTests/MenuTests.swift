@@ -19,7 +19,7 @@ final class MenuTests: XCTestCase {
             case .page(let c), .app(let c): XCTAssertFalse(c.isEmpty, item.id)
             case .system(let name):
                 let sel = NSSelectorFromString(name)
-                let answered = [NSApplication.self, NSWindow.self, WKWebView.self, NSTextView.self, NSResponder.self].contains { $0.instancesRespond(to: sel) }
+                let answered = [NSApplication.self, AppDelegate.self, NSWindow.self, WKWebView.self, NSTextView.self, NSResponder.self].contains { $0.instancesRespond(to: sel) }
                 XCTAssertTrue(answered, "\(item.id): nothing answers \(name)")
             }
             // A hidden second shortcut always stands for a visible item.
@@ -92,6 +92,19 @@ final class MenuTests: XCTestCase {
         XCTAssertTrue(NSApp.windowsMenu === MainMenu.shared.menusById["window"])
         XCTAssertTrue(NSApp.helpMenu === MainMenu.shared.menusById["help"])
         XCTAssertNotNil(NSApp.servicesMenu)
+    }
+
+    /// About Folevi says "Version 1.0.00" and no build number (AppKit adds "(<CFBundleVersion>)" unless told not to).
+    func testAboutShowsTheVersionAlone() {
+        guard case .system(let name)? = items.first(where: { $0.id == "app.about" })?.action else { return XCTFail("no About Folevi") }
+        XCTAssertEqual(name, "showAboutPanel:")
+        let options = AppDelegate.aboutPanelOptions
+        XCTAssertEqual(options[.version] as? String, "")
+        XCTAssertEqual(options[.applicationVersion] as? String, Paths.version)
+        // The owner's format, biggest.big.minor with two digits last (version.json), which Apple takes as three
+        // whole numbers; the build is a whole number on its own.
+        XCTAssertNotNil(Paths.version.range(of: #"^\d{1,3}\.\d{1,3}\.\d{2}$"#, options: .regularExpression), Paths.version)
+        XCTAssertNotNil(Paths.build.range(of: #"^\d+$"#, options: .regularExpression), Paths.build)
     }
 
     func testGlobalShortcutAsAMenuKey() {

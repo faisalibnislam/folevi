@@ -168,8 +168,6 @@ export interface NativeBridge {
   /** "android": Folevi for Android (apps/android) adds the same extras with its own bridge (folevi-bridge.js). */
   platform: "ios" | "android";
   version: string;
-  /** The build number (CFBundleVersion), shown beside the version in Settings. Missing in older builds. */
-  build?: string;
   haptic(kind: Haptic): void;
   /** The status bar's text for the page's theme (light text on a dark page). */
   setStatusBar(theme: "light" | "dark"): void;

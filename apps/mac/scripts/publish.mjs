@@ -21,9 +21,8 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { currentVersion } from "./bump-version.mjs";
 import { MAC } from "./project.mjs";
-import { buildRelease, identity, SPARKLE_ACCOUNT, sparkleBin, unregister, verify } from "./release.mjs";
+import { buildRelease, currentVersion, identity, SPARKLE_ACCOUNT, sparkleBin, unregister, verify } from "./release.mjs";
 
 const argv = process.argv.slice(2);
 const bucket = process.env.FOLEVI_UPDATE_BUCKET ?? "folevi-updates";
@@ -43,7 +42,7 @@ const run = (cmd, args, o = {}) => execFileSync(cmd, args, { stdio: "inherit", m
 const ok = (cmd, args) => spawnSync(cmd, args, { stdio: "ignore" }).status === 0;
 
 if (argv.includes("--plan")) {
-  console.log(`Would publish Folevi for Mac ${version} (${build}) from ${out}:
+  console.log(`Would publish Folevi ${version} (build ${build}, what Sparkle compares) from ${out}:
   notarize with the keychain profile ${notary}, staple, ZIP + DMG,
   sign the appcast with the Sparkle key (login Keychain, account ${SPARKLE_ACCOUNT}), deltas from ${archiveDir},
   upload to ${bucket}: mac/${zipName}, mac/${dmgName}, mac/Folevi.dmg, mac/appcast.xml${argv.includes("--electron-feed") ? ", mac/darwin-universal/RELEASES.json" : ""}`);
@@ -59,7 +58,7 @@ if (!ok("npx", ["wrangler", "whoami"])) fail("wrangler isn't signed in: run `npx
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 const app = buildRelease({ out, universal: true, version });
-const first = verify(app, { version, universal: true });
+const first = verify(app, { version, build, universal: true });
 if (first.problems.length) fail(`The build isn't fit to publish:\n  ${first.problems.join("\n  ")}`);
 const keyPub = spawnSync(join(sparkleBin(), "generate_keys"), ["-p", "--account", SPARKLE_ACCOUNT], { encoding: "utf8" }).stdout.trim();
 if (!keyPub) fail(`No Sparkle key in the login Keychain (account ${SPARKLE_ACCOUNT}).`);
@@ -71,7 +70,7 @@ run("ditto", ["-c", "-k", "--sequesterRsrc", "--keepParent", app, forApple]);
 notarize(forApple);
 run("xcrun", ["stapler", "staple", app]);
 rmSync(forApple, { force: true });
-const checked = verify(app, { version, universal: true, notarized: true });
+const checked = verify(app, { version, build, universal: true, notarized: true });
 if (checked.problems.length) fail(`After notarizing:\n  ${checked.problems.join("\n  ")}`);
 
 // 4. The ZIP (what Sparkle and Squirrel install) and the DMG.
@@ -101,6 +100,8 @@ for (const f of readdirSync(archiveDir).filter((f) => /^Folevi-[0-9.]+\.zip$/.te
 run(join(sparkleBin(), "generate_appcast"), ["--account", SPARKLE_ACCOUNT, "--download-url-prefix", `${base}/mac/`, "--maximum-deltas", "3", updates]);
 const appcast = readFileSync(join(updates, "appcast.xml"), "utf8");
 if (!appcast.includes(`sparkle:shortVersionString>${version}<`) && !appcast.includes(`sparkle:shortVersionString="${version}"`)) fail("generate_appcast didn't add this version.");
+// Sparkle compares the hidden build (sparkle:version, CFBundleVersion); 1.0.00 is only what people see.
+if (!appcast.includes(`sparkle:version>${build}<`) && !appcast.includes(`sparkle:version="${build}"`)) fail(`generate_appcast didn't give this version the build ${build} (sparkle:version).`);
 cpSync(join(updates, zipName), join(archiveDir, zipName));
 
 // 6. Upload, the feed last so it never names a file that isn't there yet.

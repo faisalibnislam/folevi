@@ -108,7 +108,7 @@ enum MenuModel {
     static func menus(debug: Bool) -> [MenuSpec] {
         var all: [MenuSpec] = [
             MenuSpec(id: "app", title: "Folevi", nodes: [
-                sys("app.about", "About Folevi", "orderFrontStandardAboutPanel:"),
+                sys("app.about", "About Folevi", "showAboutPanel:"),
                 app("app.check-for-updates", "Check for Updates…"),
                 .separator,
                 app("app.settings", "Settings…", k(",")),

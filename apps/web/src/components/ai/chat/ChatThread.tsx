@@ -1,5 +1,6 @@
 "use client";
 
+import { AI_FOCUS_EVENT } from "./events";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ArrowUp, Loader2, Sparkles } from "lucide-react";
@@ -44,7 +45,7 @@ export type ChatMode = "ask" | "agent" | "research";
 const IDLE: RunActivity = { busy: null, error: null };
 
 /** Focus the chat's box (⌘J on the AI page). */
-export const AI_FOCUS_EVENT = "folevi:ai-focus";
+export { AI_FOCUS_EVENT };
 
 /**
  * One AI conversation: its messages (answers stream in, with sources, follow-ups and proposed changes),

@@ -18,7 +18,7 @@ import { CommandPalette } from "./CommandPalette";
 import { QuickAddTask } from "./QuickAddTask";
 import { AppContextMenu } from "./AppContextMenu";
 import { AskAiChat } from "@/components/ai/AskAiChat";
-import { AI_FOCUS_EVENT } from "@/components/ai/chat/ChatThread";
+import { AI_FOCUS_EVENT } from "@/components/ai/chat/events";
 import { useAiAccess } from "@/components/ai/useAi";
 import { OutboxRefusals, SyncStatus } from "./SyncStatus";
 import { useCreateDocument } from "./useCreateDocument";

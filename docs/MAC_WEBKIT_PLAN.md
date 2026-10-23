@@ -928,3 +928,28 @@ Memory: no change to measure (tabs held only those subscriptions). The website g
 e2e `tab-switch.spec.ts` "a tab comes back where it was left": a 70-line note scrolled to line 40 with the caret
 there, another tab, back: the same scroll (within 40 px), the caret on line 40, the keyboard in the note, and typing
 goes on there.
+
+### Step 4: heavy blocks and Foli AI load when needed (web)
+
+Checked in the export first (which chunks a fresh window on Home loads, its note page code included, since Home
+fetches that ahead so New note opens at once): the flowchart, whiteboard, mind map, stickies, chart, wireframe,
+embedded collections, synced blocks, Mermaid, KaTeX, PDF.js and the audio recorder already loaded only when a note
+has them. Everything of Foli AI didn't: the floating chat with its conversations, research and agent cards, the note's
+Foli AI panel (and Study mode, Translate), the inline composer and the Foli AI page all came with the first screen,
+the chat because the shell imported a single name from its module. Now:
+
+- the floating chat's button is all that's there until it's first opened (`AskAiChat.tsx`); the chat itself
+  (`AskAiPanel.tsx`) loads then, or as the pointer reaches the button, and stays for the visit;
+- the note's Foli AI panel loads when its tab first opens, the inline composer when it's first called, the Foli AI
+  page and the graph when they're opened; the focus event's name lives in `chat/events.ts`.
+
+(Code highlighting: code blocks have none beyond Mermaid's diagrams, which already loaded on demand.)
+
+| Fresh window on Home (Foli AI on) | Before | After |
+| --- | --- | --- |
+| Scripts loaded | 48, 4.07 MB | 45, 3.91 MB |
+| Its page's footprint | 136 (heap 70) | 125 (heap 65) |
+
+Both exports were built from the same tree, one with these edits taken out. Left as they are: the note page's code
+on Home (on purpose), and the list views (Calendar, Reviews, Changes, Shared...) that RouteView imports up front;
+they could load the same way later.

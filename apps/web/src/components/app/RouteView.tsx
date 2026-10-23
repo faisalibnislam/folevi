@@ -14,8 +14,6 @@ import { InviteView } from "@/components/views/InviteView";
 import { ShareInviteView } from "@/components/views/ShareInviteView";
 import { FoldersIndex, TagsIndex } from "@/components/views/OrganizeIndex";
 import { HomeDashboard } from "@/components/views/HomeDashboard";
-import { AiView } from "@/components/views/AiView";
-import { GraphView } from "@/components/views/GraphView";
 import { ViewChrome } from "./Shell";
 import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
 import { useAppState } from "@/lib/app/state";
@@ -40,6 +38,10 @@ const DocumentView = lazy(() => {
   return loadDocumentView().then((m) => ({ default: m.DocumentView }));
 });
 const SettingsView = lazy(() => import("@/components/views/SettingsView").then((m) => ({ default: m.SettingsView })));
+// The Foli AI page (its chat) and the graph load when they're opened, never with the first screen
+// (docs/MAC_WEBKIT_PLAN.md "Memory", step 4).
+const AiView = lazy(() => import("@/components/views/AiView").then((m) => ({ default: m.AiView })));
+const GraphView = lazy(() => import("@/components/views/GraphView").then((m) => ({ default: m.GraphView })));
 if (typeof window !== "undefined" && window.location.pathname.startsWith("/d/")) void loadDocumentView();
 
 /** Where a note will be, while its code arrives: the same frame and placeholder lines DocumentView shows. */
@@ -110,7 +112,11 @@ function Routes() {
         </Suspense>
       );
     case "ai":
-      return <AiView id={route.id} />;
+      return (
+        <Suspense fallback={<ViewChrome title="Foli AI">{null}</ViewChrome>}>
+          <AiView id={route.id} />
+        </Suspense>
+      );
     case "graph":
       return <Graph />;
     case "inbox":
@@ -178,7 +184,13 @@ function OpenInbox() {
 
 /** The graph, where this backend has it (local mode gets it later, lib/local/registry.ts LOCAL_PLANNED). */
 function Graph() {
-  if (useCanCall(api.aiGraph.graph)) return <GraphView />;
+  if (useCanCall(api.aiGraph.graph)) {
+    return (
+      <Suspense fallback={<ViewChrome title="Graph">{null}</ViewChrome>}>
+        <GraphView />
+      </Suspense>
+    );
+  }
   return (
     <ViewChrome title="Graph">
       <EmptyState icon={Waypoints} title="The graph isn’t available here yet" body="It isn’t part of a library on your devices yet. Links between notes still work everywhere." />

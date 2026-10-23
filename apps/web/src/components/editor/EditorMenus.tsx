@@ -108,7 +108,7 @@ import { UnsplashDialog, unsplashCredit } from "./UnsplashDialog";
 import { colorName, useNotePalette } from "./notePalette";
 import { useShowInTopLayer } from "@/components/ui/topLayer";
 import { AI_TOOL_SLASH_ITEMS, INLINE_AI_EVENT, openInlineAi, useAiEnabled, type InlineAiOpen } from "@/components/ai/useAi";
-import { InlineAi, type InlineAiRequest } from "@/components/ai/InlineAi";
+import type { InlineAiRequest } from "@/components/ai/InlineAi";
 import { FindTodosHost, openFindTodos } from "@/components/ai/FindTodos";
 import { newFormulaAttrs } from "./FormulaView";
 import { DIVIDER_STYLES, MERMAID_SAMPLE } from "./insertCatalog";
@@ -135,6 +135,8 @@ import { offerPushAfterReminder } from "@/lib/nativePush";
 
 // Used now and then, so it loads when first opened rather than with every note.
 const AudioRecorder = lazy(() => import("./AudioRecorder").then((m) => ({ default: m.AudioRecorder })));
+// Foli AI in the note (the composer under a selection) loads the first time it opens.
+const InlineAi = lazy(() => import("@/components/ai/InlineAi").then((m) => ({ default: m.InlineAi })));
 
 interface MenuItem {
   id: string;
@@ -1215,7 +1217,11 @@ export function EditorMenus({
           }}
         />
       ) : null}
-      {editable && aiOn && inlineAi ? <InlineAi key={inlineAi.id} editor={editor} documentId={documentId} request={inlineAi} onClose={() => setInlineAi(null)} /> : null}
+      {editable && aiOn && inlineAi ? (
+        <Suspense fallback={null}>
+          <InlineAi key={inlineAi.id} editor={editor} documentId={documentId} request={inlineAi} onClose={() => setInlineAi(null)} />
+        </Suspense>
+      ) : null}
       <FindTodosHost editor={editor} documentId={documentId} enabled={editable && aiOn} />
       <EditorContextMenu editor={editor} editable={editable} onCommentBlock={onCommentBlock} />
       {editable ? <SelectionBubble editor={editor} onComment={onCommentBlock} /> : null}

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { buildContentSecurityPolicy, createNonce } from "@/lib/security/csp";
 import { themeBootScriptHash } from "@/lib/theme/bootScript";
 import { SIGNED_IN_HINT, hintCookie, hintDomain } from "@/lib/auth/signedInHint";
+import { SIGNED_IN_PATH, signedInCheckScriptHash } from "@/lib/auth/signedInCheck";
 
 const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.folevi.com";
@@ -52,7 +53,7 @@ async function withNonce(request: NextRequest): Promise<NextResponse> {
     convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL ?? "",
     convexSiteUrl: process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "",
     appUrl: APP_URL,
-    scriptHashes: [await themeBootScriptHash()],
+    scriptHashes: [await themeBootScriptHash(), await signedInCheckScriptHash()],
     frameAncestors: request.nextUrl.pathname === "/place-sync" ? "self" : "none",
   });
   const headers = new Headers(request.headers);
@@ -70,10 +71,11 @@ const hasSignedInHint = (request: NextRequest) => request.cookies.get(SIGNED_IN_
 /**
  * Keeps the marketing site's signed-in hint matching the session cookie on app-host requests: sessions
  * from before the hint existed get it, and an expired or revoked session loses it. /api/auth/* sets it
- * itself (lib/auth/server.ts), since a sign-out request still carries the cookie it's about to clear.
+ * itself (lib/auth/server.ts), since a sign-out request still carries the cookie it's about to clear, and so
+ * does /api/signed-in, which checks the session itself rather than the cookie's presence.
  */
 function syncSignedInHint(request: NextRequest, response: NextResponse): NextResponse {
-  if (request.nextUrl.pathname.startsWith("/api/auth/")) return response;
+  if (request.nextUrl.pathname.startsWith("/api/auth/") || request.nextUrl.pathname === SIGNED_IN_PATH) return response;
   const signedIn = hasSessionCookie(request);
   if (signedIn === hasSignedInHint(request)) return response;
   if (!signedIn && !request.cookies.has(SIGNED_IN_HINT)) return response;

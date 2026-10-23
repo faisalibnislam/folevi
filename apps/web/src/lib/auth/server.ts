@@ -175,3 +175,33 @@ export const places = {
   list: async (request: Request) => listPlaces(request, forward, secureCookies()),
   signOut: async (request: Request) => withSignedInHint(await signOutPlace(request, forward, secureCookies())),
 };
+
+const SESSION_COOKIE = /(?:^|;\s*)(?:__Secure-)?folevi\.session_token(?:_multi-[^=]*)?=[^;]/;
+const HINT_COOKIE = /(?:^|;\s*)folevi_signed_in=/;
+
+/**
+ * /api/signed-in (lib/auth/signedInCheck.ts): whether this browser holds a live session, for the marketing
+ * home page. No session cookie answers no at once; otherwise Better Auth's own get-session decides (a revoked
+ * or expired session is a no). The signed-in hint is set or cleared to match, and a session Better Auth
+ * refreshed on the way keeps its new cookie. The answer carries nothing but the boolean.
+ */
+export async function signedInStatus(request: Request): Promise<{ signedIn: boolean; setCookies: string[] }> {
+  const cookie = request.headers.get("cookie") ?? "";
+  const hint = (on: boolean) => hintCookie(on, hintDomain(APP_HOST, MARKETING_HOST), secureCookies());
+  if (!SESSION_COOKIE.test(cookie)) return { signedIn: false, setCookies: HINT_COOKIE.test(cookie) ? [hint(false)] : [] };
+  const headers = new Headers(request.headers);
+  for (const h of ["origin", "referer", "content-length", "content-type"]) headers.delete(h);
+  headers.set("accept", "application/json");
+  let res: Response;
+  try {
+    res = await handler.GET(new Request(new URL("/api/auth/get-session", request.url), { method: "GET", headers }));
+  } catch {
+    return { signedIn: false, setCookies: [] };
+  }
+  // Better Auth unreachable or failing: say no, but leave the cookies alone (the session may well be fine).
+  if (!res.ok) return { signedIn: false, setCookies: [] };
+  const body: unknown = await res.json().catch(() => null);
+  const user = (body as { user?: { id?: unknown } } | null)?.user;
+  const signedIn = typeof user?.id === "string" && user.id.length > 0;
+  return { signedIn, setCookies: [...res.headers.getSetCookie(), hint(signedIn)] };
+}

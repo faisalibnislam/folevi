@@ -61,7 +61,8 @@ export function buildContentSecurityPolicy(opts: CspOptions): string {
     // Audio recordings: blob: while one waits to upload, then signed file URLs.
     `media-src 'self' blob: ${site}`,
     "font-src 'self'",
-    `connect-src 'self' ${convex} ${convexWs} ${site} ${extra}${opts.dev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
+    // The app origin: the marketing home page asks it whether this browser is signed in (lib/auth/signedInCheck.ts).
+    `connect-src 'self' ${convex} ${convexWs} ${site} ${app} ${extra}${opts.dev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
     // Embed blocks: only the players that packages/editor-schema/src/embeds.ts builds addresses for.
     // 'self': the hidden pages that keep this browser's other accounts in sync (components/places/PlaceRunners.tsx).
     `frame-src 'self' ${site} ${EMBED_FRAME_ORIGINS.join(" ")}`,

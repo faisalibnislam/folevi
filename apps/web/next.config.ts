@@ -35,7 +35,7 @@ export const staticCsp = [
   `img-src 'self' data: blob: ${origin(convexSite)} https:`,
   `media-src 'self' blob: ${origin(convexSite)}`,
   "font-src 'self'",
-  `connect-src 'self' ${convexOrigin} ${convexWs} ${origin(convexSite)}${isDev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
+  `connect-src 'self' ${convexOrigin} ${convexWs} ${origin(convexSite)} ${appOrigin}${isDev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
   // Embed blocks (EMBED_FRAME_ORIGINS in packages/editor-schema/src/embeds.ts).
   `frame-src 'self' ${origin(convexSite)} https://www.youtube-nocookie.com https://player.vimeo.com https://www.loom.com https://www.figma.com https://maps.google.com`,
   "frame-ancestors 'none'",

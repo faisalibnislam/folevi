@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/bootScript";
+import { SIGNED_IN_CHECK_SCRIPT } from "@/lib/auth/signedInCheck";
 // Type (./fonts.ts, self-hosted by next/font): Instrument Sans for the UI, Spectral for titles and larger
 // text, and the note themes' typefaces.
 import { fontVariables } from "./fonts";
@@ -41,6 +42,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={fontVariables} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        {/* folevi.com/ opens your notes when this browser is signed in, even without the hint cookie. */}
+        <script dangerouslySetInnerHTML={{ __html: SIGNED_IN_CHECK_SCRIPT }} />
       </head>
       <body>{children}</body>
     </html>

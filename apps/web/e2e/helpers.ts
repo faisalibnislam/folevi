@@ -65,17 +65,23 @@ export async function pickDate(scope: Locator, date: string) {
 /** Latest identity email of a kind for an address, from the development mailbox (non-production only). */
 /**
  * The development backend writes links for app.localhost:3000. Run against a second dev server (another
- * port, while 3000 is busy), a link opens on that server instead, and so does where it returns to.
+ * port, while 3000 is busy, or other hosts such as app.folevi.localhost), a link opens on that server instead,
+ * and so does where it returns to.
  */
 function onThisServer(raw: string): string {
   const app = new URL(APP);
+  const here = (u: URL) => {
+    if (u.hostname !== app.hostname && u.hostname !== "app.localhost") return;
+    u.hostname = app.hostname;
+    u.port = app.port;
+  };
   const link = new URL(raw);
-  if (link.hostname === app.hostname) link.port = app.port;
+  here(link);
   for (const key of ["callbackURL", "redirectTo"]) {
     const inner = link.searchParams.get(key);
     if (inner && /^https?:/.test(inner)) {
       const u = new URL(inner);
-      if (u.hostname === app.hostname) u.port = app.port;
+      here(u);
       link.searchParams.set(key, u.toString());
     }
   }

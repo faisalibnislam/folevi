@@ -28,7 +28,6 @@ const shellDir = process.env.E2E_MAC_SHELL_DIR;
 const settle = Number(process.env.E2E_MAC_MEMORY_SETTLE ?? 90);
 
 interface Mac {
-  launch(o: { dir: string; app?: string; env?: Record<string, string> }): Promise<{ pid: number }>;
   evaluate(dir: string, script: string, window?: number): Promise<unknown>;
   command(dir: string, request: Record<string, unknown>): Promise<unknown>;
   waitFor(dir: string, script: string, timeoutMs?: number): Promise<unknown>;
@@ -114,7 +113,9 @@ function measure(snap: Snapshot) {
   for (const [pid, what] of byPid) rows.push({ process: `WebContent (${what.join(", ")})`, pid, mb: footprintMB(pid) });
   for (const h of snap.helpers) {
     if (byPid.has(h.pid)) continue;
-    rows.push({ process: h.name.replace("com.apple.WebKit.", ""), pid: h.pid, mb: footprintMB(h.pid) });
+    const name = h.name.replace("com.apple.WebKit.", "");
+    // A content process with no page: WebKit's spare or cached one.
+    rows.push({ process: name.startsWith("WebContent") ? `${name} (no page)` : name, pid: h.pid, mb: footprintMB(h.pid) });
   }
   const total = Math.round(rows.reduce((t, r) => t + (r.mb ?? 0), 0) * 10) / 10;
   return { total, rows };
@@ -128,7 +129,12 @@ test("memory in a realistic setup, per process, idle and typing", async ({ brows
   const dir = mkdtempSync(join(tmpdir(), "folevi-mac-memory-"));
   const library = join(dir, "library");
   mkdirSync(library, { recursive: true });
-  await m.launch({ dir, app: macApp, env: { FOLEVI_URL: APP, FOLEVI_TEST_FOLDER: library, ...(shellDir ? { FOLEVI_SHELL_DIR: shellDir } : {}) } });
+  // Through LaunchServices (`open`), so the app is responsible for its WebKit processes and `cmd memory` lists every
+  // one of them, kept and cached ones included (started from a script, the script's app would be).
+  const env = { FOLEVI_USER_DATA: dir, FOLEVI_URL: APP, FOLEVI_TEST_FOLDER: library, ...(shellDir ? { FOLEVI_SHELL_DIR: shellDir } : {}) };
+  execFileSync("open", ["-n", "-a", macApp, ...Object.entries(env).flatMap(([k, v]) => ["--env", `${k}=${v}`])]);
+  await expect.poll(() => existsSync(join(dir, "Debug", "app.json")), { timeout: 60_000 }).toBe(true);
+  await m.waitFor(dir, "return (window.foleviDesktop ? 1 : 0) && document.readyState === 'complete'", 60_000);
   const run = (body: string, window?: number) => m.evaluate(dir, body, window);
   const cmd = async (name: string, request: Record<string, unknown> = {}) => {
     const r = (await m.command(dir, { cmd: name, ...request })) as { value?: unknown; error?: string };

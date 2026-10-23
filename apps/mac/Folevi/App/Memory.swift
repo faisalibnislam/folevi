@@ -9,6 +9,7 @@ enum Memory {
     static func install() {
         #if DEBUG
         installEval()
+        WebViewFactory.extraScripts.append("memory-probe")
         #endif
     }
 }
@@ -43,9 +44,37 @@ extension Memory {
         return out
     }
 
+    /// `mac.mjs cmd quickAddType {"text"}`: opens Quick Add and types `text` into the panel at once, as someone who
+    /// starts typing the moment it shows; answers with what its field holds once the page is ready.
+    static func typeIntoQuickAdd(_ text: String, _ done: @escaping ([String: Any]) -> Void) {
+        let q = QuickAddPanel.shared
+        q.show()
+        let wasReady = q.ready
+        guard let panel = q.panel else { return done(["error": "no panel"]) }
+        for ch in text {
+            for type in [NSEvent.EventType.keyDown, .keyUp] {
+                if let e = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: panel.windowNumber, context: nil, characters: String(ch), charactersIgnoringModifiers: String(ch), isARepeat: false, keyCode: 0) {
+                    panel.sendEvent(e)
+                }
+            }
+        }
+        func check(_ tries: Int) {
+            guard q.ready, let view = q.view else {
+                return tries > 0 ? DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { MainActor.assumeIsolated { check(tries - 1) } } : done(["error": "not ready"])
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                view.callAsyncJavaScript("return document.getElementById('qa-title').value", arguments: [:], in: nil, in: .page) { r in
+                    if case .success(let v) = r { done(["value": ["field": v as? String ?? "", "wasReady": wasReady]]) } else { done(["error": "no field"]) }
+                }
+            }
+        }
+        check(200)
+    }
+
     /// `mac.mjs cmd memory`: every web view (its role, place, address, window and process) and every WebKit process
     /// of the app, so a script can put a footprint on each.
     static func installEval() {
+        MacEval.commands["quickAddType"] = { req, done in typeIntoQuickAdd(req["text"] as? String ?? "", done) }
         MacEval.commands["memory"] = { _, done in
             let views: [[String: Any]] = WindowManager.shared.allViews.map { v in
                 [
@@ -60,7 +89,10 @@ extension Memory {
                     helpers.append(["pid": pid(any, key), "name": name])
                 }
             }
-            done(["value": ["app": Int(getpid()), "views": views, "helpers": helpers] as [String: Any]])
+            done(["value": [
+                "app": Int(getpid()), "views": views, "helpers": helpers,
+                "quickAddShownAt": QuickAddPanel.shared.shownAt.map { $0.timeIntervalSince1970 * 1000 } ?? NSNull(),
+            ] as [String: Any]])
         }
     }
 }

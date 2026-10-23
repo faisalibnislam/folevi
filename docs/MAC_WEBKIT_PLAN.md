@@ -879,3 +879,27 @@ Measured (the same setup; `cmd places` shows each wake and release in `backgroun
 runners; the runners' 120 MB are what this step removes.) Electron's design and the shared runner keep 60 to 120 MB
 for places nobody looks at; the timed wake keeps none between wakes, for one 60 MB page for about 20 s every 10
 minutes per place and one Convex query a minute per background account (about 43,000 a month each).
+
+### Step 2: Quick Add and Settings on demand (`Chrome/QuickAddPanel.swift`)
+
+Settings already made its page when it opened and let it go when it closed (measured "released" above). Quick Add
+made its page on first use and kept it all day. Now its page goes 60 s after the panel closes
+(`FOLEVI_QUICK_ADD_RELEASE`), unless something is still in its field (kept for when it opens again) or it's offline
+(a task added offline waits in that page's queue). Opening it again within the minute is as before.
+
+Opening it after that makes a new page (and process): its field shows 160 to 290 ms after the shortcut (5 opens,
+timed against the app's own clock by a Debug probe, `App/memory-probe.js`); a warm open shows the field at once.
+So nothing is lost to that, keys typed while the new page is on its way are held by the panel and typed into the
+field once it has the keyboard (`cmd quickAddType`: "buy milk" typed the instant it showed lands whole). Two ways to
+keep it warmer were measured and dropped: keeping the released view on `about:blank` as a template kept the
+page's old process in WebKit's back-forward cache (60 MB) plus a 7 MB one, and opened no faster (160 to 280 ms);
+a hotkey-down prewarm buys nothing, since Carbon's hot key fires on key down already.
+
+| | Before | After |
+| --- | --- | --- |
+| Quick Add after use (idle) | 63 | 0 (page and process gone 60 s after closing) |
+| Settings after use | 0 | 0 |
+| Total idle | 588 (step 1) | 450 |
+
+(Measured from here on with the app started through LaunchServices, so every WebKit process it's responsible for
+is listed, spare and cached ones included; none were left.)

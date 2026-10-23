@@ -9,8 +9,9 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const esbuild = resolve(root, "../../node_modules/.bin/esbuild");
-if (!existsSync(esbuild)) throw new Error("bundle-cloud: esbuild isn't installed (run pnpm install at the repository root).");
+// The root's .bin link, or esbuild's own binary wherever pnpm put it (a fresh worktree may not hoist the link).
+const esbuild = [resolve(root, "../../node_modules/.bin/esbuild"), resolve(root, "node_modules/.bin/esbuild")].find((p) => existsSync(p)) ?? "";
+if (!esbuild) throw new Error("bundle-cloud: esbuild isn't installed (run pnpm install at the repository root).");
 execFileSync(
   esbuild,
   [resolve(root, "bridge/index.ts"), "--bundle", "--format=iife", "--global-name=FoleviCloudKit", "--target=safari17", "--legal-comments=none", "--minify", `--outfile=${resolve(root, "ios/App/Native/Shell/folevi-cloud.js")}`, "--log-level=warning"],

@@ -98,8 +98,17 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
   },
-  ...(isShell ? {} : { redirects, headers }),
+  ...(isShell ? {} : { redirects, headers, rewrites }),
 };
+
+// Downloads (docs/MAC_RELEASE.md section 4): folevi.com/download/* is the update bucket (Cloudflare R2
+// `folevi-updates`, at its public r2.dev address: folevi.com's DNS is at Namecheap, so the bucket has no custom
+// domain). The Mac app's DMG and ZIP, Sparkle's deltas and appcast live under mac/.
+export const DOWNLOAD_ORIGIN = "https://pub-e55d5e1b47314fcbbbe3664ed7aed1c2.r2.dev";
+
+async function rewrites() {
+  return [{ source: "/download/:path*", destination: `${DOWNLOAD_ORIGIN}/:path*` }];
+}
 
 async function redirects() {
   return [
@@ -138,6 +147,23 @@ async function headers() {
       headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }],
     },
     { source: "/:file(icon.svg|apple-icon.png)", headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }] },
+    // Downloads (rewrites() below). A file whose name carries its version never changes; the appcast and the
+    // stable Folevi.dmg change with every release, so they're checked each time. Later entries win.
+    { source: "/download/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=300" }] },
+    {
+      source: "/download/mac/:file(Folevi-\\d[^/]*\\.(?:zip|dmg)|[^/]+\\.delta)",
+      headers: [
+        { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        { key: "CDN-Cache-Control", value: "public, max-age=31536000, immutable" },
+      ],
+    },
+    {
+      source: "/download/mac/:file(appcast\\.xml|Folevi\\.dmg)",
+      headers: [
+        { key: "Cache-Control", value: "no-cache" },
+        { key: "CDN-Cache-Control", value: "no-store" },
+      ],
+    },
   ];
 }
 

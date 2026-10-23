@@ -4,16 +4,16 @@ import { ShortcutTable } from "@/components/marketing/mac/ShortcutTable";
 import { Checks } from "@/components/marketing/Checks";
 import { AppWindow, READING_NOTE, artById, artThumb } from "@/components/marketing/product/Replica";
 import { JsonLd, pageMetadata, softwareLd } from "@/components/marketing/seo";
-import { SIGN_UP_URL, WEB_APP_URL } from "@/components/marketing/site";
+import { MAC_DOWNLOAD_URL, SIGN_UP_URL, WEB_APP_URL } from "@/components/marketing/site";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { ButtonLink, Eyebrow, SectionHeading, cx } from "@/components/marketing/ui";
 import { Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
 import { KeysPiece, SyncPiece } from "@/components/marketing/pieces";
 
 export const metadata = pageMetadata({
-  title: "Folevi for Mac: notes, Quick Add and offline (coming soon)",
+  title: "Folevi for Mac: notes, Quick Add and offline",
   description:
-    "Folevi for Mac is the full Folevi app in its own window, plus Quick Add from any app, a menu bar icon, Mac notifications and offline editing. Requires macOS 13 or later on Apple silicon. Coming soon.",
+    "Folevi for Mac is the full Folevi app in its own window, plus Quick Add from any app, a menu bar icon, Mac notifications and offline editing. Free to download. Requires macOS 15 or later.",
   path: "/mac",
 });
 
@@ -44,19 +44,19 @@ export default function MacPage() {
             <div className="mk-card relative p-6 pt-12 sm:p-7 sm:pt-14">
               <p className="absolute -top-5 left-5 sm:-left-4">
                 <Sticker tone="violet" rotate={-8} className="px-5 py-2.5 text-[19px] sm:text-[22px]">
-                  Coming soon
+                  Free
                 </Sticker>
               </p>
-              <p className="text-[15px] leading-relaxed text-muted">Create an account and we’ll email you when it’s ready.</p>
+              <p className="text-[15px] leading-relaxed text-muted">Open the download and drag Folevi to Applications. It updates itself.</p>
               <div className="mt-6 flex flex-wrap gap-2.5">
-                <ButtonLink href={SIGN_UP_URL} icon="arrow-right">
-                  Create an account
+                <ButtonLink href={MAC_DOWNLOAD_URL} icon="arrow-down">
+                  Download for Mac
                 </ButtonLink>
                 <ButtonLink href={WEB_APP_URL} variant="secondary">
                   Open the web app
                 </ButtonLink>
               </div>
-              <p className="mt-5 text-[13px] text-muted">macOS 13 or later, Apple silicon.</p>
+              <p className="mt-5 text-[13px] text-muted">macOS 15 or later, Apple silicon or Intel.</p>
             </div>
           </div>
           <Float depth={0.14} delay={300} className="right-[5%] top-5 hidden xl:block [--tilt:4deg]">
@@ -122,10 +122,10 @@ export default function MacPage() {
               <h3 className="mk-caps">System requirements</h3>
               <dl className="mk-card mt-4 px-5 text-[15px]">
                 {[
-                  ["macOS", "macOS 13 or later"],
-                  ["Mac", "Apple silicon (M1 or later)"],
-                  ["Account", "A Folevi account"],
-                  ["Availability", "Coming soon. We’ll email your account when it’s ready"],
+                  ["macOS", "macOS 15 or later"],
+                  ["Mac", "Apple silicon or Intel"],
+                  ["Account", "Optional: notes can stay on this Mac"],
+                  ["Download", "Free, from this page. Updates install themselves"],
                 ].map(([term, detail], index) => (
                   <div key={term} className={cx("grid gap-1 py-4 sm:grid-cols-[110px_1fr] sm:gap-4", index > 0 && "border-t mk-hair")}>
                     <dt className="text-muted">{term}</dt>

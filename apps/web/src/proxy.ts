@@ -122,5 +122,5 @@ async function route(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|favicon-16x16.png|favicon-32x32.png|icon.svg|apple-icon.png|sitemap.xml|robots.txt|manifest.webmanifest|sw.js|marketing/|fonts/).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|favicon-16x16.png|favicon-32x32.png|icon.svg|apple-icon.png|sitemap.xml|robots.txt|manifest.webmanifest|sw.js|marketing/|fonts/|download/).*)"],
 };

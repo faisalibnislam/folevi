@@ -203,7 +203,7 @@ export const FEATURES: Feature[] = [
     intro:
       "Folevi writes every change to your device before it sends it anywhere. With no connection you keep writing, and your edits wait on the device until you’re back online. The status on each page tells you which of those is happening.",
     plans: "Every plan, including Free.",
-    updated: "2026-09-30",
+    updated: "2026-10-23",
     art: "art-13",
     visual: "offline",
     docs: { label: "Sync and offline", href: "/docs/sync-and-offline" },
@@ -213,7 +213,7 @@ export const FEATURES: Feature[] = [
         title: "Saved on your device first",
         body: (
           <p>
-            Every edit goes into a queue on your device first: in the browser’s storage, on the web and in Folevi for Mac (coming soon). Then it’s sent to the server. Queued edits survive a reload, a closed tab or a restart.
+            Every edit goes into a queue on your device first: in the browser’s storage, on the web and in Folevi for Mac. Then it’s sent to the server. Queued edits survive a reload, a closed tab or a restart.
           </p>
         ),
       },
@@ -348,7 +348,7 @@ export const FEATURES: Feature[] = [
     intro:
       "Type /record on any line and Folevi starts recording from your microphone. Stop and save, and the recording sits in the note with a player, next to the text it belongs to.",
     plans: "Every plan, including Free and Core. Recordings count towards your storage.",
-    updated: "2026-10-01",
+    updated: "2026-10-23",
     art: "art-30",
     visual: "audio",
     docs: { label: "Blocks and slash commands", href: "/docs/blocks-and-slash-commands" },
@@ -394,7 +394,7 @@ export const FEATURES: Feature[] = [
         title: "Sharing and export",
         body: (
           <p>
-            Recordings play on public links with the same player. Markdown and HTML exports include the audio files, and the HTML export plays them. Folevi for Mac (coming soon) records and plays them the same way as the web.
+            Recordings play on public links with the same player. Markdown and HTML exports include the audio files, and the HTML export plays them. Folevi for Mac records and plays them the same way as the web.
           </p>
         ),
       },
@@ -851,7 +851,7 @@ export const FEATURES: Feature[] = [
     intro:
       "A flowchart in Folevi is a block in your note, next to the text that explains it. Add shapes and connectors by hand, describe the process and let the AI draw it, or write a Mermaid diagram.",
     plans: "Flowcharts and Mermaid on every plan. Drawing with AI needs Free, Pro or Pro AI.",
-    updated: "2026-09-30",
+    updated: "2026-10-23",
     art: "art-50",
     visual: "flowchart",
     docs: { label: "Blocks and slash commands", href: "/docs/blocks-and-slash-commands" },
@@ -894,7 +894,7 @@ export const FEATURES: Feature[] = [
       {
         id: "where",
         title: "Where flowcharts work",
-        body: <p>Flowcharts are drawn and edited on the web and in Folevi for Mac (coming soon), and shared pages show them read-only.</p>,
+        body: <p>Flowcharts are drawn and edited on the web and in Folevi for Mac, and shared pages show them read-only.</p>,
       },
     ],
     faq: [

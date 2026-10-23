@@ -1,4 +1,4 @@
-// Updates (docs/MAC_WEBKIT_PLAN.md §9): Sparkle 2 reads https://updates.folevi.com/mac/appcast.xml (SUFeedURL), checks
+// Updates (docs/MAC_WEBKIT_PLAN.md §9): Sparkle 2 reads https://folevi.com/download/mac/appcast.xml (SUFeedURL), checks
 // every six hours (Electron's interval), downloads in the background and installs when Folevi quits, or now from
 // "Restart to Update" in the Folevi menu. Every update is checked against the EdDSA public key in Info.plist
 // (SUPublicEDKey; the private key is in the owner's login Keychain, account "folevi", and signs each release in

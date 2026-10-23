@@ -132,11 +132,11 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "Folevi keyboard shortcuts for new documents and windows, search, the sidebar and inspector, headings, checklists, moving blocks and text formatting.",
     legacyAnchor: "shortcuts",
     published: "2026-09-25",
-    updated: "2026-10-09",
+    updated: "2026-10-23",
     body: () => (
       <>
         <p>
-          These shortcuts work in Folevi for Mac (coming soon). On the web, most work the same way; shortcuts your browser reserves for itself (such as <code>⌘N</code> for a new browser window) are left to the browser, so use <code>⌥⌘N</code> for a new note there. Quick Add from any app (<code>⌥Space</code>) is only in the Mac app.
+          These shortcuts work in Folevi for Mac. On the web, most work the same way; shortcuts your browser reserves for itself (such as <code>⌘N</code> for a new browser window) are left to the browser, so use <code>⌥⌘N</code> for a new note there. Quick Add from any app (<code>⌥Space</code>) is only in the Mac app.
         </p>
         <div className="mk-card p-5 sm:p-6">
           <ShortcutTable caption="Folevi keyboard shortcuts" />

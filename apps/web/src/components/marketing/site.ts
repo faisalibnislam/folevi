@@ -3,6 +3,8 @@ import { APP_URL, MARKETING_URL } from "@/lib/env";
 export const SIGN_IN_URL = `${APP_URL}/signin`;
 export const SIGN_UP_URL = `${APP_URL}/signup`;
 export const WEB_APP_URL = APP_URL;
+/** Folevi for Mac's latest DMG: the update bucket through folevi.com/download (next.config.ts, docs/MAC_RELEASE.md). */
+export const MAC_DOWNLOAD_URL = "https://folevi.com/download/mac/Folevi.dmg";
 export const SECURITY_EMAIL = "security@folevi.com";
 export const SUPPORT_EMAIL = "support@folevi.com";
 
@@ -19,7 +21,7 @@ export function signUpWithTemplate(key: string): string {
 export const MARKETING_ROUTES = [
   { path: "/", priority: 1, changeFrequency: "weekly", updated: "2026-09-30" },
   { path: "/features", priority: 0.9, changeFrequency: "monthly", updated: "2026-09-30" },
-  { path: "/mac", priority: 0.8, changeFrequency: "monthly", updated: "2026-09-29" },
+  { path: "/mac", priority: 0.8, changeFrequency: "monthly", updated: "2026-10-23" },
   { path: "/security", priority: 0.8, changeFrequency: "monthly", updated: "2026-09-30" },
   { path: "/pricing", priority: 0.8, changeFrequency: "monthly", updated: "2026-09-30" },
   { path: "/template-gallery", priority: 0.7, changeFrequency: "monthly", updated: "2026-09-30" },

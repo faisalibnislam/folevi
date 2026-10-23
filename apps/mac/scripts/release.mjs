@@ -16,7 +16,7 @@
 //   5. checks: the signature (deep, strict), Gatekeeper's view (unnotarized until publish.mjs), the entitlements
 //      (iCloud container, Keychain group, microphone, no JIT), the embedded profile, Resources/web's build.json,
 //      Sparkle (framework, feed, public key = the key in the login Keychain), the designated requirement the
-//      Electron app's Keychain item and Squirrel's update check ask for, the architectures
+//      Electron app's Keychain item asks for (the migration reads it, R1), the architectures
 //   6. --launch-check: opens the build once on a scratch FOLEVI_USER_DATA (no updates, no migration of real data).
 //      Its folder, Keychain names and web storage are the run's own, but AppKit still keeps small window state in
 //      com.folevi.mac's preferences, which the installed Folevi shares: leave it off on the owner's Mac
@@ -36,9 +36,9 @@ export const BUNDLE_ID = "com.folevi.mac";
 export const PROFILE_NAME = "Folevi for Mac Developer ID iCloud";
 export const PROFILE_FILE = join(MAC, "signing", "Folevi.provisionprofile");
 export const SPARKLE_ACCOUNT = "folevi";
-export const FEED_URL = "https://updates.folevi.com/mac/appcast.xml";
-/** The designated requirement both the Electron app (installed today) and this one carry: Squirrel.Mac checks an update
- * against the running app's, and the Keychain hands Electron's safeStorage item to an app that meets it (R1). */
+export const FEED_URL = "https://folevi.com/download/mac/appcast.xml";
+/** The designated requirement both the Electron app (on Macs that ran it) and this one carry: the Keychain hands
+ * Electron's safeStorage item to an app that meets it (R1), so the migration opens it without a prompt. */
 export const ELECTRON_REQUIREMENT = `identifier "${BUNDLE_ID}" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = "${TEAM}"`;
 const REPO = resolve(MAC, "../..");
 const DERIVED = join(MAC, "build", "DerivedData-release");
@@ -115,13 +115,13 @@ export function verify(app, { version, build, universal = false, notarized = fal
   const dr = read("codesign", ["-d", "-r-", app]).out;
   const designated = /designated => (.*)/.exec(dr)?.[1]?.trim();
   if (designated !== ELECTRON_REQUIREMENT) problems.push(`designated requirement differs from the Electron app's:\n    ${designated}\n    ${ELECTRON_REQUIREMENT}`);
-  // What Squirrel.Mac asks of an update (it must meet the running Electron app's requirement).
+  // What the Keychain item's access list asks of the app reading it.
   if (!read("codesign", ["--verify", `-R=${ELECTRON_REQUIREMENT}`, app]).ok) problems.push("doesn't meet the Electron app's designated requirement");
   const installed = "/Applications/Folevi.app";
   if (existsSync(installed)) {
     const theirs = /designated => (.*)/.exec(read("codesign", ["-d", "-r-", installed]).out)?.[1]?.trim();
     if (theirs && theirs !== designated) problems.push(`the installed Folevi's designated requirement is different (${theirs})`);
-    else if (theirs) notes.push("same designated requirement as the installed Folevi (its Keychain item and Squirrel accept this build)");
+    else if (theirs) notes.push("same designated requirement as the installed Folevi (its Keychain item accepts this build)");
   }
   const gate = read("spctl", ["-a", "-t", "exec", "-vv", app]).out;
   if (notarized ? !/source=Notarized Developer ID/.test(gate) : !/source=(Unnotarized|Notarized) Developer ID/.test(gate)) problems.push(`Gatekeeper: ${gate.trim()}`);
@@ -154,7 +154,6 @@ export function verify(app, { version, build, universal = false, notarized = fal
   } catch {
     problems.push("Resources/web/shell/build.json is missing");
   }
-  if (!existsSync(join(app, "Contents", "Resources", "handover-kit.js"))) problems.push("Resources/handover-kit.js is missing (the migration's import)");
   // Sparkle.
   const sparkle = join(app, "Contents", "Frameworks", "Sparkle.framework");
   if (!existsSync(sparkle)) problems.push("no Sparkle.framework");

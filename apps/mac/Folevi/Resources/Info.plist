@@ -88,11 +88,11 @@
 			</dict>
 		</dict>
 	</dict>
-	<!-- Updates (Sparkle 2, Updates/Updater.swift): the appcast in the update bucket, signed with the owner's EdDSA key
+	<!-- Updates (Sparkle 2, Updates/Updater.swift): the appcast in the update bucket (served through folevi.com/download), signed with the owner's EdDSA key
 	     (private half in the login Keychain, account "folevi"); checked every six hours, downloaded in the background,
 	     installed on quit or from Restart to Update. Debug builds never check (Updater.enabled). -->
 	<key>SUFeedURL</key>
-	<string>https://updates.folevi.com/mac/appcast.xml</string>
+	<string>https://folevi.com/download/mac/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>F+N/necf9zCMzOTldJSKppxPoWCYn8rTANGly0mLbtA=</string>
 	<key>SUEnableAutomaticChecks</key>

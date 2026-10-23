@@ -56,7 +56,7 @@ Resend API key and webhook signing secret with hidden input. Existing values are
 
 1. Import the GitHub repository. Root directory: `apps/web`. Framework: Next.js. Keep "Include files outside
    the Root Directory" on (the build installs and deploys from the repository root). Vercel deploys only the
-   web app (Folevi for Mac, `apps/desktop`, is built on the Mac with `pnpm release`), and the `ignoreCommand` in
+   web app (Folevi for Mac, `apps/mac`, is built on the Mac with `apps/mac/scripts/release.mjs`), and the `ignoreCommand` in
    `apps/web/vercel.json` skips builds for commits that change only it (or docs). `apps/web/vercel.json`
    sets install and build commands; the build runs `scripts/check-prod-env.mjs`, then
    `npx convex deploy --cmd 'pnpm --filter @folevi/web build'`, which deploys the backend first and injects
@@ -222,12 +222,14 @@ check any time (`done: true, ok: true`).
 
 ## Folevi for Mac
 
-Folevi for Mac (`apps/desktop`) loads `app.folevi.com`, so a web deploy updates it too; the shell itself only
-changes when its own code does. It is built and installed on the owner's Mac with `pnpm release` (Developer ID
-signature of team 7K32QQ2FX8, not notarized). `pnpm publish` makes the notarized build for everyone and puts
-it in the update bucket. See `docs/DESKTOP.md`. The browser sign-in endpoints for
-native apps (Authorization Code + PKCE, `convex/lib/nativeAuth.ts`) remain on the server, unused by the shell,
-which signs in like the web.
+Folevi for Mac (`apps/mac`) carries the web app's interface built in, so a web deploy reaches it with its next
+release (`docs/DESKTOP.md`). `apps/mac/scripts/release.mjs --install` builds and installs it on the owner's Mac;
+`apps/mac/scripts/publish.mjs` makes the notarized build for everyone and uploads it to the update bucket
+(Cloudflare R2 `folevi-updates`). The website serves that bucket at `https://folevi.com/download/` (a rewrite in
+`apps/web/next.config.ts`, with caching headers): the DMG at `https://folevi.com/download/mac/Folevi.dmg`, Sparkle's
+feed at `https://folevi.com/download/mac/appcast.xml`. So a release is downloadable once the website with the
+rewrite is deployed. See `docs/MAC_RELEASE.md`. It signs in through the browser like the other native apps
+(Authorization Code + PKCE, `convex/lib/nativeAuth.ts`).
 
 ## Backups and restore
 

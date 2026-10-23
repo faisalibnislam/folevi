@@ -130,15 +130,20 @@ function Bridge() {
       bridge.placeWindowButtons(next);
     };
     const soon = () => {
+      // A page that isn't drawn (its window behind others, or Folevi hidden) gets no frames: placed now, so the
+      // buttons are on their spot when the window shows.
+      if (document.visibilityState === "hidden") return place();
       if (!frame) frame = requestAnimationFrame(place);
     };
     const watch = new MutationObserver(soon);
     watch.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-full"] });
     window.addEventListener("resize", soon);
+    document.addEventListener("visibilitychange", soon);
     soon();
     return () => {
       watch.disconnect();
       window.removeEventListener("resize", soon);
+      document.removeEventListener("visibilitychange", soon);
       cancelAnimationFrame(frame);
     };
   }, [bridge]);

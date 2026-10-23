@@ -972,12 +972,21 @@ moved little (454 to 475 MB across the typing that came before it). A full garba
 window that had written six notes with flowcharts and whiteboards took it from 289 to 252 MB; a window that wrote six
 plain notes stayed at 175 to 180.
 
-Found while measuring (not fixed here): a note's editor stays in memory after its page goes when a block was added to
-it through the slash menu (any block: a heading, a table, a flowchart, a whiteboard). Seen with weak references to
-each note's editor element after leaving it and a full collection: plain notes' editors were collected, every note
-with a slash-menu insert was kept, detached. About 10 MB per such note in that window. To see it: keep a `WeakRef`
-to each note's `.ProseMirror` element as it's written, go to Home, run `cmd gc` twice, and see which still give an
-element (detached). The fix belongs in the editor (`components/editor`).
+Found while measuring, then fixed (2026-10-23): a note's editor stayed in memory after its page went when the editor
+had been focused while its window wasn't drawn (behind other windows, Folevi hidden, the screen locked). Tiptap's
+`focus` command focuses on the next animation frame, and a page that isn't drawn gets no frames, so each such focus
+waited with its editor (its document and whole DOM; about 10 MB with a flowchart and a whiteboard) until the window
+showed again. It first looked like the slash menu's doing because the measuring scripts inserted blocks by focusing
+the editor from code; with real keys a slash-menu insert was collected. Now `components/editor/safeFocus.ts` replaces
+`focus`: a page that isn't drawn focuses at once, and the frame a drawn one waits for is cancelled when the editor
+goes. Checked by `mac-app.spec.ts` test 6 (three notes typed with real keys, two with a slash-menu block, each focused
+with Folevi hidden, left, two full collections: kept, kept, kept before; collected, collected, collected after) and
+`test/safe-focus.test.ts`. The windows' numbers above were measured with windows that weren't drawn, so the note
+windows in them carry some of this.
+
+The same cause broke `mac-app.spec.ts` test 4: the page reports the window buttons' spot on the next frame
+(`DesktopBridge.tsx`), so a window that wasn't drawn never reported it and the buttons stayed where AppKit puts them
+until it showed. It reports at once in a page that isn't drawn now, and again when the page shows.
 
 ### Where it ends up (the same realistic setup, MB)
 

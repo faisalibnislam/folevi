@@ -11,6 +11,7 @@ import { PageLinkStatus } from "./pageLinkStatus";
 import { RemoteCarets } from "./remoteCarets";
 import { ColumnBlock, ColumnsBlock, ColumnsExtension } from "./columns/columnsExtension";
 import { TabsExtension } from "./tabs/tabsExtension";
+import { SafeFocus } from "./safeFocus";
 
 /**
  * The editor's extensions: every block and mark, their node views, undo, the drop and gap cursors, the
@@ -53,6 +54,8 @@ export function editorExtensions({
       showOnlyCurrent: true,
       includeChildren: false,
     }),
+    // Focus that never keeps an editor waiting for a frame a hidden window won't draw.
+    SafeFocus,
     CaretAfterClick,
     BlockIdentity,
     BlockDecorations,

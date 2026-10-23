@@ -15,6 +15,9 @@
 //      folevi-dev:// links (others ignored), Quick Add's panel adds to the library, Vision reads an image's words.
 //   5. Every window, one library: Quick Add with the app hidden, File > New Window writing to the same library,
 //      the first window seeing it, and all of it in the folder on disk.
+//   6. A note's editor goes once the note is left, even when it was focused while Folevi was hidden (tiptap's focus
+//      waited for a frame a hidden page never draws, components/editor/safeFocus.ts): collected after a full
+//      garbage collection.
 //
 // Needs macOS, the Debug build (`node apps/mac/scripts/build.mjs`, or E2E_MAC_APP=<path to Folevi Dev.app>) and the
 // shell export in apps/mac/web pointing at the dev server (`node apps/web/scripts/build-shell.mjs`).
@@ -480,6 +483,49 @@ test("5. every window, one library: Quick Add with the app hidden, a second wind
     await inWindow(0, `history.pushState(null, "", "/tasks/inbox"); window.dispatchEvent(new PopStateEvent("popstate")); return true;`);
     await expect.poll(() => inWindow(0, `return document.body.innerText.includes("Water the plants")`), { timeout: 30_000 }).toBe(true);
   } finally {
+    await app.quit();
+    rmSync(app.library, { recursive: true, force: true });
+  }
+});
+
+test("6. a note's editor goes once the note is left, even when it was focused while Folevi was hidden", async () => {
+  test.setTimeout(240_000);
+  const app = await onFolderLibrary();
+  try {
+    const newNote = `const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); [...document.querySelectorAll("button")].find((b) => b.innerText.trim() === "New note").click(); const end = Date.now() + 20000; while (Date.now() < end && !(document.activeElement && document.activeElement.tagName === "TEXTAREA")) await sleep(100); return document.activeElement.tagName;`;
+    const keep = (name: string) => `window.__editors ??= []; window.__editors.push([${JSON.stringify(name)}, new WeakRef(document.querySelector(".ProseMirror"))]); return window.__editors.length;`;
+    // Typed with real keys (the app's Debug typeKeys), a block from the slash menu, and the editor focused from code,
+    // as the app focuses it (tiptap's focus waits for a frame, which a window behind others never draws).
+    // With Folevi hidden throughout (as with another app in front, or the screen locked), the page isn't drawn.
+    await app.cmd("hide", { value: true });
+    await app.until(`return document.visibilityState === "hidden"`, 10_000);
+    for (const [title, block] of [["With a heading", "heading"], ["With a table", "table"], ["Plain", null]] as const) {
+      expect(await app.run(newNote)).toBe("TEXTAREA");
+      await app.cmd("typeKeys", { text: `${title}\nSome text${block ? `\n/${block}` : ""}` });
+      if (block) {
+        await app.until(`return !!document.querySelector('[role="option"]')`, 10_000);
+        await app.cmd("typeKeys", { text: "\n" });
+      }
+      await app.run(`document.querySelector(".ProseMirror").editor.commands.focus("end"); return true;`);
+      await app.run(keep(title));
+    }
+    expect(await app.run(newNote)).toBe("TEXTAREA");
+    await app.run(`[...document.querySelectorAll("a,button")].find((e) => e.innerText.trim() === "Home").click(); return true;`);
+    await app.until(`return location.pathname === "/documents"`);
+    // A full collection (WebKit's, Debug only), twice: every left note's editor is gone, none kept detached.
+    for (let i = 0; i < 2; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      await app.cmd("gc");
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+    const left = (await app.run(`return window.__editors.map(([n, r]) => [n, r.deref() ? "kept" : "collected"])`)) as string[][];
+    expect(left).toEqual([
+      ["With a heading", "collected"],
+      ["With a table", "collected"],
+      ["Plain", "collected"],
+    ]);
+  } finally {
+    await app.cmd("hide", { value: false }).catch(() => undefined);
     await app.quit();
     rmSync(app.library, { recursive: true, force: true });
   }

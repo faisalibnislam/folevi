@@ -111,6 +111,27 @@ extension Memory {
     /// of the app, so a script can put a footprint on each.
     static func installEval() {
         MacEval.commands["quickAddType"] = { req, done in typeIntoQuickAdd(req["text"] as? String ?? "", done) }
+        // Real key events into a main window, as typed (WebKit's own typing path, not execCommand): `cmd typeKeys
+        // {"text", "window"}`; "\n" is Return, "\u{1b}" Escape.
+        MacEval.commands["typeKeys"] = { req, done in
+            let mains = WindowManager.shared.mains
+            let i = req["window"] as? Int ?? 0
+            guard mains.indices.contains(i), let window = mains[i].window else { return done(["error": "no window"]) }
+            let text = req["text"] as? String ?? ""
+            var delay = 0.0
+            for ch in text {
+                let (chars, code): (String, UInt16) = ch == "\n" ? ("\r", 36) : ch == "\u{1b}" ? ("\u{1b}", 53) : (String(ch), 0)
+                for type in [NSEvent.EventType.keyDown, .keyUp] {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        if let e = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, characters: chars, charactersIgnoringModifiers: chars, isARepeat: false, keyCode: code) {
+                            window.sendEvent(e)
+                        }
+                    }
+                }
+                delay += 0.03
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay + 0.3) { done(["value": text.count]) }
+        }
         // A full garbage collection in every page's process (WebKit's testing call; Debug only): tells what a page
         // still holds from what it merely hasn't collected yet.
         MacEval.commands["gc"] = { _, done in

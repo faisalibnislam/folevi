@@ -195,6 +195,18 @@ export function buildRelease({ out, universal = false, version, web: given = nul
   run("ditto", [web, join(app, "Contents", "Resources", "web")]);
   const entitlements = join(out, "Folevi.entitlements.plist");
   writeFileSync(entitlements, execFileSync("codesign", ["-d", "--entitlements", "-", "--xml", archived]));
+  // Sparkle's helpers arrive signed by Sparkle's own build: notarization needs each one signed with the team's
+  // Developer ID, the hardened runtime and a secure timestamp, from the inside out (Sparkle's documented order).
+  const sparkle = join(app, "Contents", "Frameworks", "Sparkle.framework");
+  if (existsSync(sparkle)) {
+    const b = join(sparkle, "Versions", "B");
+    const sign = (path, ...extra) => existsSync(path) && run("codesign", ["--force", "--options", "runtime", "--timestamp", ...extra, "--sign", identity(), path]);
+    sign(join(b, "XPCServices", "Installer.xpc"));
+    sign(join(b, "XPCServices", "Downloader.xpc"), "--preserve-metadata=entitlements");
+    sign(join(b, "Autoupdate"));
+    sign(join(b, "Updater.app"));
+    sign(sparkle);
+  }
   run("codesign", ["--force", "--options", "runtime", "--timestamp", "--entitlements", entitlements, "--sign", identity(), app]);
   // Xcode registers what it builds with Launch Services too: none of these copies may answer folevi:// links.
   const built = spawnSync("find", [DERIVED, "-name", "Folevi.app", "-type", "d", "-prune"], { encoding: "utf8" }).stdout.split("\n").filter(Boolean);

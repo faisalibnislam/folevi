@@ -96,7 +96,8 @@ test.describe("the iPhone app in local mode", { tag: "@local" }, () => {
     const choice = page.getByTestId("mode-choice");
     await expect(choice).toBeVisible({ timeout: 30_000 });
     const local = choice.getByRole("button", { name: /Keep notes on my devices/ });
-    await expect(local).toContainText("Recommended");
+    await expect(choice.getByRole("button", { name: /Sign in to Folevi/ })).toContainText("Recommended");
+    await expect(local).not.toContainText("Recommended");
     const bg = (name: RegExp) => choice.getByRole("button", { name }).evaluate((el) => getComputedStyle(el).backgroundColor);
     expect(await bg(/Keep notes on my devices/)).toBe(await bg(/Sign in to Folevi/));
     await shot(page, "01-mode-choice");

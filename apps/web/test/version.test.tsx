@@ -92,9 +92,9 @@ describe("scripts/version.mjs on a copy of the projects", () => {
 });
 
 describe("the repository", () => {
-  test("version.json is 1.0.00 and every project says it", () => {
+  test("version.json holds a version in the format and every project says it", () => {
     const info = v.readVersion();
-    expect(info.version).toBe("1.0.00");
+    expect(v.isVersion(info.version)).toBe(true);
     expect(Number.isInteger(info.build)).toBe(true);
     expect(v.outOfSync()).toEqual([]);
   });
@@ -141,10 +141,11 @@ describe("where it's shown", () => {
     delete (window as { foleviNative?: unknown }).foleviNative;
   });
 
-  test("the website: Folevi 1.0.00", () => {
-    expect(FOLEVI_VERSION).toBe(v.readVersion().version);
-    expect(versionLabel()).toBe("Folevi 1.0.00");
-    expect(show()).toBe("Folevi 1.0.00");
+  test("the website: Folevi and version.json's version", () => {
+    const { version } = v.readVersion();
+    expect(FOLEVI_VERSION).toBe(version);
+    expect(versionLabel()).toBe(`Folevi ${version}`);
+    expect(show()).toBe(`Folevi ${version}`);
   });
 
   test("in the iPhone app: the app's own version, never its build number", () => {

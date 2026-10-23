@@ -49,6 +49,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Places.install()
         // WM5: recording, text recognition, drag and drop, print, Share, Services, Spotlight, Shortcuts.
         Capabilities.install()
+        // Memory: pages made on demand and released, and memory pressure (App/Memory.swift).
+        Memory.install()
         Task { @MainActor in
             await WebViewFactory.prepareRules()
             WebViewFactory.scheme.modeOf = { view in WindowManager.shared.modeOf((view as? FoleviWebView)?.place) }

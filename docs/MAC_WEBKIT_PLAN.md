@@ -794,3 +794,49 @@ Then the owner dogfoods the Debug build beside Electron for a week, approves, an
 - **Polish (MAC_POLISH_PLAN.md):** only **P3, Quick Add as one growing field** with natural dates. Not chosen:
   the quiet "+" (keep the "New note" button), Ask Foli AI as a toolbar button (keep the pill), native alert
   sheets (keep Folevi's dialogs, restyled).
+
+---
+
+## 14. Memory
+
+Every page is a WebKit content process of its own (Activity Monitor's "Folevi Web Content"), so the pages the app
+keeps open are most of its footprint. Measured with `footprint` per process (the number Activity Monitor's Memory
+column shows), MB.
+
+**How to measure**: `apps/web/e2e/mac-memory.spec.ts` sets the Debug app up as a day of use looks (a folder library
+and two test accounts, so two places in the background; three windows, the first with four notes in tabs, one of
+them with a flowchart and a whiteboard; Quick Add and Settings opened and closed), waits 90 s, then measures every
+process three times idle and three times while typing (a character every 120 ms into the note):
+
+```
+E2E_MAC_MEMORY=<out.json> E2E_MAC_APP=<Folevi Dev.app> E2E_MAC_SHELL_DIR=<export> E2E_BASE_URL=http://app.localhost:3002 \
+  E2E_NO_SERVER=1 npx playwright test e2e/mac-memory.spec.ts --project account --workers=1
+```
+
+`mac.mjs cmd memory` lists every page with its role, place, address and process (Debug builds, `App/Memory.swift`).
+The machine was loaded by other builders throughout; footprints don't depend on CPU load, times do.
+
+### The owner's installed app (2026-10-23, read only)
+
+`/Applications/Folevi.app` (1.0.00, native), one main window, running 25 minutes; footprints by pid only, nothing of
+its data read: app 55, GPU 28 to 41, Networking 8, the window's page 224 to 264 (growing; 104 MB of it is graphics
+memory WebKit can reclaim, 99 MB WebKit's heap), a second page 60 (no window: a place's runner) **= 375 to 411 MB**.
+
+### Before (2026-10-23, HEAD 3832da01, Debug build)
+
+| Process | After setup | Idle | Typing |
+| --- | --- | --- | --- |
+| App | 53 | 52 | 53 |
+| Window 1 (the note with the flowchart and whiteboard; four notes in tabs) | 174 | 174 | 192 |
+| Window 2 (Tasks) | 79 | 84 | 94 |
+| Window 3 (Calendar) | 102 | 109 | 110 |
+| Quick Add (closed, kept) | 69 | 63 | 62 |
+| Runner, the second account | 61 | 60 | 60 |
+| Runner, the library | 60 | 60 | 61 |
+| Settings (closed) | released | released | released |
+| GPU | 43 | 30 | 148 |
+| Networking | 9 | 9 | 9 |
+| **Total** | **650** | **641** | **789** |
+
+So a third of an idle day's footprint (183 MB of 641) is pages nobody sees: Quick Add's after its first use and a
+runner per place in the background.

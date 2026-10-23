@@ -336,12 +336,20 @@ test("3. account mode and two places: signed in, a note syncs, the library's run
       return r.value;
     };
     await expect.poll(() => runner(`return [foleviShell.places.current, foleviShell.places.background, foleviShell.initialMode]`), { timeout: 30_000 }).toEqual(["library", true, "local"]);
-    await runner(`window.__ticks = 0; window.__tick = setInterval(() => window.__ticks++, 1000); return true;`);
+    // A 1 s timer, each gap between its runs measured in the page (performance.now). WebKit's hidden-page throttling
+    // and App Nap stretch every gap (1 s became 2 s and more); a loaded Mac only delays some. So most gaps stay
+    // near 1 s (the median), none is a long stall, and the timer kept going the whole time.
+    await runner(`window.__gaps = []; let last = performance.now(); window.__tick = setInterval(() => { const now = performance.now(); window.__gaps.push(now - last); last = now; }, 1000); return true;`);
     await app.cmd("hide", { value: true });
     await new Promise((r) => setTimeout(r, seconds * 1000));
-    const ticks = Number(await runner(`return window.__ticks`));
+    const gaps = ((await runner(`return window.__gaps`)) as number[]).slice();
     await app.cmd("hide", { value: false });
-    expect(ticks).toBeGreaterThanOrEqual(Math.floor(seconds * 0.8));
+    const sorted = [...gaps].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)] ?? Infinity;
+    const summary = `${gaps.length} runs in ${seconds} s, gaps ${gaps.map((g) => Math.round(g)).join(", ")} ms`;
+    expect(gaps.length, summary).toBeGreaterThanOrEqual(Math.floor(seconds * 0.5));
+    expect(median, summary).toBeLessThan(1500);
+    expect(sorted.at(-1) ?? Infinity, summary).toBeLessThan(10_000);
     // The list both places' pages read, and a switch to the library.
     const list = (await app.run(`return (await foleviShell.places.list()).map((p) => [p.kind, p.id])`)) as string[][];
     expect(list).toEqual([["library", "library"], ["account", id]]);

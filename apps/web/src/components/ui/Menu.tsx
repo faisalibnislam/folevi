@@ -364,8 +364,11 @@ function MenuPanel({
         setPos({ position: "fixed", left, top, width: fullWidth ? w : undefined, maxHeight: room, margin: 0, right: "auto", bottom: "auto", transformOrigin: `${align === "end" ? "right" : "left"} ${up ? "bottom" : "top"}` });
         return;
       }
-      top = Math.min(Math.max(margin + safeTop, top), bottom - h - margin);
-      setPos({ position: "fixed", left, top, width: fullWidth ? w : undefined, maxHeight: bottom - margin * 2 - safeTop, margin: 0, right: "auto", bottom: "auto", transformOrigin: `${align === "end" ? "right" : "left"} ${up ? "bottom" : "top"}` });
+      // A menu taller than the screen scrolls inside, from the top of the room (never starting above the screen,
+      // where its first items couldn't be reached).
+      const maxHeight = bottom - margin * 2 - safeTop;
+      top = Math.max(margin + safeTop, Math.min(top, bottom - Math.min(h, maxHeight) - margin));
+      setPos({ position: "fixed", left, top, width: fullWidth ? w : undefined, maxHeight, margin: 0, right: "auto", bottom: "auto", transformOrigin: `${align === "end" ? "right" : "left"} ${up ? "bottom" : "top"}` });
     };
     try {
       if (menuRef.current && !menuRef.current.matches(":popover-open")) menuRef.current.showPopover();

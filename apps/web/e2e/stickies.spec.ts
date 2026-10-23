@@ -327,6 +327,10 @@ test.describe("Sticky notes", () => {
     await expect(row).toBeVisible();
     await settle(page);
     expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    // Taller than the phone, it starts on screen and scrolls inside (its first items were above the screen).
+    const menuBox = (await page.getByRole("menu", { name: "More sticky notes tools" }).boundingBox())!;
+    expect(menuBox.y).toBeGreaterThanOrEqual(0);
+    expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(874);
     await page.keyboard.press("Escape");
     // Panels open as the app's sheets.
     if (await tools.getByRole("button", { name: "Add several notes" }).isVisible()) await tools.getByRole("button", { name: "Add several notes" }).tap();

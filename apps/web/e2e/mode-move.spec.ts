@@ -65,8 +65,21 @@ async function prepare(context: BrowserContext, b: ReturnType<typeof nodeBridge>
   });
 }
 
-/** A note row in this device's copy of the library (IndexedDB), by title. */
+/** The page loads again (a mode switch reloads it, as the apps do): what was being read went with the old page. */
+const reloading = (e: unknown) => /Execution context was destroyed|Cannot find context with specified id|navigat/i.test(e instanceof Error ? e.message : String(e));
+
+/** A note row in this device's copy of the library (IndexedDB), by title. Null while the page is loading again,
+ * so a poll asks the new page. */
 async function libraryNote(page: Page, title: string): Promise<{ id: string; title: string } | null> {
+  try {
+    return await readLibraryNote(page, title);
+  } catch (e) {
+    if (reloading(e)) return null;
+    throw e;
+  }
+}
+
+async function readLibraryNote(page: Page, title: string): Promise<{ id: string; title: string } | null> {
   return await page.evaluate(async (wanted) => {
     const names = (await indexedDB.databases()).map((d) => d.name ?? "").filter((n) => n.startsWith("folevi-local-"));
     for (const name of names) {

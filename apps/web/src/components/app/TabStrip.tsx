@@ -18,6 +18,15 @@ import { useIpadLayout } from "@/lib/iphone";
 import { PillButton } from "@/components/iphone/Glass";
 import { useAiAccess } from "@/components/ai/useAi";
 
+/** How wide the strip's soft edges are when it scrolls (the open tab is kept clear of them). */
+const FADE = 28;
+
+/** A tab's element in the strip: Home, or a tab by its id. */
+function tabElement(strip: HTMLElement, key: string | null): HTMLElement | null {
+  if (key === "home") return strip.querySelector<HTMLElement>("[data-tab-home]");
+  return key ? strip.querySelector<HTMLElement>(`[data-tab="${CSS.escape(key)}"]`) : null;
+}
+
 const ARROW = "grid h-9 w-6 flex-none place-items-center rounded-control text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 
@@ -118,39 +127,95 @@ export function TabStrip() {
   const onHome = route.name === "documents";
   const inFolder = route.name === "folder";
 
-  // Keep the open tab in view when there are more tabs than fit.
+  // Dragging a tab (with a mouse or pen; a finger scrolls the strip): it follows the pointer and trades
+  // places with a neighbour once it passes that tab's middle, as tabs do in a browser.
+  const drag = useRef<{ id: string; el: HTMLElement; startX: number; grab: number; x: number; dx: number; moved: boolean } | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+  // The tab on screen: Home, a view's tab (by its path) or a note's tab. Keyed on this (not on the route) so the
+  // strip follows once the tab itself exists: a new note's tab arrives a render after the address changes.
+  const activeKey = onHome ? "home" : (tabs.find((t) => (t.view ? t.view.path === pathname : tabPage(t) === docId))?.id ?? null);
+  const order = tabs.map((t) => t.id).join("|");
+
+  // Keep the open tab in view when there are more tabs than fit: fully inside the strip and clear of the
+  // soft edges, whenever it changes (opened, new, switched by click, keyboard, Back or Forward, a link),
+  // when tabs open or close around it, and when the strip's width changes (the window, the sidebar, or the
+  // scroll arrows coming and going).
   const navRef = useRef<HTMLElement>(null);
   const [overflow, setOverflow] = useState({ start: false, end: false });
+  const reveal = useRef<(smooth: boolean) => void>(() => undefined);
+  reveal.current = (smooth: boolean) => {
+    const el = navRef.current;
+    if (!el) return;
+    const cur = tabElement(el, activeKey);
+    if (!cur) return;
+    // Scroll the strip itself (not scrollIntoView, which would also move the browser's Tab starting point).
+    const box = el.getBoundingClientRect();
+    const r = cur.getBoundingClientRect();
+    const left = r.left - box.left + el.scrollLeft;
+    const right = left + r.width;
+    // Room for the edge fade, so the open tab never sits under it (less when the strip is barely wider than the tab).
+    const pad = Math.max(0, Math.min(FADE + 4, (el.clientWidth - r.width) / 2));
+    const max = el.scrollWidth - el.clientWidth;
+    let to = el.scrollLeft;
+    if (left - pad < to) to = left - pad;
+    else if (right + pad > to + el.clientWidth) to = right + pad - el.clientWidth;
+    to = Math.max(0, Math.min(max, Math.round(to)));
+    if (Math.abs(to - el.scrollLeft) < 1) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollTo({ left: to, behavior: smooth && !reduce ? "smooth" : "auto" });
+  };
+  const shownOnce = useRef(false);
+  useLayoutEffect(() => {
+    // (Not while a tab is being dragged: the strip stays put under the pointer.)
+    if (drag.current?.moved) return;
+    // The first time without motion (the strip just appeared); after that, smoothly.
+    reveal.current(shownOnce.current);
+    shownOnce.current = true;
+  }, [activeKey, order]);
   useEffect(() => {
     const el = navRef.current;
     if (!el) return;
-    // Scroll the strip itself (not scrollIntoView, which would also move the browser's Tab starting point).
-    const cur = el.querySelector<HTMLElement>('[aria-current="page"]')?.closest<HTMLElement>(".group") ?? el.querySelector<HTMLElement>('[aria-current="page"]');
-    if (cur) {
-      const left = cur.offsetLeft - el.offsetLeft;
-      if (left < el.scrollLeft) el.scrollLeft = left - 8;
-      else if (left + cur.offsetWidth > el.scrollLeft + el.clientWidth) el.scrollLeft = left + cur.offsetWidth - el.clientWidth + 8;
-    }
     const update = () => setOverflow({ start: el.scrollLeft > 2, end: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 });
     update();
     el.addEventListener("scroll", update, { passive: true });
-    const ro = new ResizeObserver(update);
+    let width = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      update();
+      if (el.clientWidth !== width) {
+        width = el.clientWidth;
+        if (!drag.current?.moved) reveal.current(false);
+      }
+    });
     ro.observe(el);
     return () => {
       el.removeEventListener("scroll", update);
       ro.disconnect();
     };
-  }, [docId, tabs.length]);
+  }, []);
+  // Tabs coming or going change how far the strip scrolls without a scroll event; the open tab growing (its
+  // title typed, or arriving) mustn't push its end out of view.
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    setOverflow({ start: el.scrollLeft > 2, end: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 });
+    const cur = tabElement(el, activeKey);
+    if (!cur) return;
+    let width = cur.offsetWidth;
+    const ro = new ResizeObserver(() => {
+      if (cur.offsetWidth === width) return;
+      width = cur.offsetWidth;
+      setOverflow({ start: el.scrollLeft > 2, end: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 });
+      if (!drag.current?.moved) reveal.current(false);
+    });
+    ro.observe(cur);
+    return () => ro.disconnect();
+  }, [activeKey, order]);
   const scrollTabs = (dir: 1 | -1) => {
     const el = navRef.current;
     if (!el) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollBy({ left: dir * Math.max(160, el.clientWidth * 0.7), behavior: reduce ? "auto" : "smooth" });
   };
-  // Dragging a tab (with a mouse or pen; a finger scrolls the strip): it follows the pointer and trades
-  // places with a neighbour once it passes that tab's middle, as tabs do in a browser.
-  const drag = useRef<{ id: string; el: HTMLElement; startX: number; grab: number; x: number; dx: number; moved: boolean } | null>(null);
-  const [dragging, setDragging] = useState<string | null>(null);
   const justDragged = useRef(false);
   const follow = () => {
     const d = drag.current;
@@ -205,8 +270,7 @@ export function TabStrip() {
     justDragged.current = true;
     window.setTimeout(() => (justDragged.current = false), 0);
   };
-  const fade = 28;
-  const mask = `linear-gradient(to right, ${overflow.start ? "transparent" : "#000"} 0, #000 ${fade}px, #000 calc(100% - ${fade}px), ${overflow.end ? "transparent" : "#000"} 100%)`;
+  const mask = `linear-gradient(to right, ${overflow.start ? "transparent" : "#000"} 0, #000 ${FADE}px, #000 calc(100% - ${FADE}px), ${overflow.end ? "transparent" : "#000"} 100%)`;
   const tabBase = ipad
     ? "group relative flex h-10 items-center gap-2 rounded-container px-3.5 text-[15px] outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus focus-visible:ring-2 has-[:focus-visible]:ring-2"
     : "group relative flex h-9 items-center gap-2 rounded-control px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus ring-offset-1 ring-offset-canvas focus-visible:ring-2 has-[:focus-visible]:ring-2";
@@ -260,6 +324,7 @@ export function TabStrip() {
         <AppLink
           href="/documents"
           aria-current={onHome ? "page" : undefined}
+          data-tab-home=""
           data-ipad-tab={ipad ? "" : undefined}
           className={`${tabBase} flex-none ${onHome ? tabOn : tabOff}`}
         >
@@ -277,7 +342,13 @@ export function TabStrip() {
               key={t.id}
               data-tab={t.id}
               data-ipad-tab={ipad ? "" : undefined}
-              className={`${tabBase} ${ipad ? "min-w-[150px] flex-[0_1_260px] pr-1.5" : "min-w-[172px] flex-[0_1_284px] pr-1"} ${active ? tabOn : tabOff} ${dragging === t.id ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
+              className={`${tabBase} ${
+                // The others shrink evenly to their minimum; the open one keeps room for its whole title (up to the
+                // widest a tab gets), so it stays readable however many tabs are open.
+                ipad
+                  ? `min-w-[150px] pr-1.5 ${active ? "max-w-[260px] flex-none" : "flex-[0_1_260px]"}`
+                  : `min-w-[172px] pr-1 ${active ? "max-w-[284px] flex-none" : "flex-[0_1_284px]"}`
+              } ${active ? tabOn : tabOff} ${dragging === t.id ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
               onPointerDown={(e) => dragStart(e, t.id)}
               onPointerMove={dragMove}
               onPointerUp={dragEnd}

@@ -337,7 +337,10 @@ text to `ink`. Axe runs in the e2e suite in both themes.
 
 - **Tab strip** floats in its own rounded rectangle (8px, hairline, translucent white; content scrolls
   behind it). Left to right: ‹ › scroll arrows (together, only when the tabs overflow), the tabs
-  (172–284px), then **+ New note** at the far right, always there (⌘⌥N), opening a new note in its own tab.
+  (172–284px; the others shrink evenly to 172, the open one keeps room for its whole title up to 284), then
+  **+ New note** at the far right, always there (⌘⌥N), opening a new note in its own tab. The open tab is always
+  fully in view, clear of the edge fades: the strip glides to it (jumps with Reduce Motion) whenever it changes,
+  tabs close around it, its title grows or the strip's width changes.
 - **No view title bar.** A view's name is in its tab (and a visually hidden h1 for screen readers). What
   used to sit in the bar stays only when it's real content, as a plain row with no box: e.g. Tasks'
   "Today · 88 open" + Calendar / Add task, Calendar's month + layout, Templates' New template, a note's

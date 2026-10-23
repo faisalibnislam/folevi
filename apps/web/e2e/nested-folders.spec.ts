@@ -9,7 +9,7 @@ test("a folder inside a folder: make it, file a note in it, and it's all still t
   await page.getByRole("button", { name: "New folder" }).click();
   await page.getByLabel("Folder name").fill("Work");
   await page.getByRole("button", { name: "Create folder" }).click();
-  await expect(nav.getByRole("link", { name: "Work" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Work", exact: true })).toBeVisible();
 
   // "New folder inside…" from the folder's menu.
   await nav.getByRole("button", { name: "Folder options for Work" }).click();

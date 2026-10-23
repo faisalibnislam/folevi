@@ -358,12 +358,15 @@ class WindowReplica implements SpaceReplica {
 export class Replicas implements ReplicaHub {
   private replicas = new Map<string, WindowReplica>();
   private opening = new Map<string, Promise<SpaceReplica>>();
+  /** When each space's replica was last asked for (closeIdle). */
+  private used = new Map<string, number>();
   private listeners = new Set<() => void>();
 
   constructor(private readonly o: ReplicaHubOptions) {}
 
   open(scope: WireScope): Promise<SpaceReplica> {
     const key = scopeKeyOf(scope);
+    this.used.set(key, Date.now());
     // Still opening: the same wait (the window may not be hosting it yet).
     let p = this.opening.get(key);
     if (p) return p;
@@ -403,7 +406,24 @@ export class Replicas implements ReplicaHub {
   }
 
   get(scope: WireScope): SpaceReplica | null {
-    return this.replicas.get(scopeKeyOf(scope)) ?? null;
+    const key = scopeKeyOf(scope);
+    const r = this.replicas.get(key) ?? null;
+    if (r) this.used.set(key, Date.now());
+    return r;
+  }
+
+  /**
+   * Closes the replicas no page has asked for in `idleMs` (memory is short); they open again from this device when
+   * next asked for. Returns how many closed.
+   */
+  async closeIdle(idleMs: number, now = Date.now()): Promise<number> {
+    let closed = 0;
+    await this.closeExcept((scope) => {
+      const keep = now - (this.used.get(scopeKeyOf(scope)) ?? 0) < idleMs;
+      if (!keep) closed += 1;
+      return keep;
+    });
+    return closed;
   }
 
   /** The hosted replica's store (tests, and the export's file hydration). */

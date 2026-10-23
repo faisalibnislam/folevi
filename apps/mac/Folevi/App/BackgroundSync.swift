@@ -147,6 +147,16 @@ final class BackgroundSync {
         note(place, why)
     }
 
+    /// Memory is short: runners whose page said nothing waits go now (not those still at work or held). Returns how
+    /// many went.
+    @discardableResult
+    func relieve() -> Int {
+        let now = Date()
+        let done = awake.filter { $0.value.waiting == 0 && ($0.value.holdUntil.map { now >= $0 } ?? true) }.map(\.key)
+        for place in done { release(place, why: "memory") }
+        return done.count
+    }
+
     private func release(_ place: String, why: String) {
         guard awake.removeValue(forKey: place) != nil else { return }
         lastSync[place] = Date()

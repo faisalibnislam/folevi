@@ -8,6 +8,7 @@
 //
 // Only accounts with E2EE set up get this client (lib/convex/provider.tsx); Standard accounts get the raw
 // ConvexReactClient. Even here, a call about a Standard space is passed through untouched.
+import { onMemoryPressure, type PressureLevel } from "@/lib/memoryPressure";
 import { ConvexError } from "convex/values";
 import { getFunctionName, type FunctionReference } from "convex/server";
 import { canonicalJson, DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, randomNoteEmoji, sanitizeTitle, type OpResult, type SyncOp, type WireBlock, type WireScope } from "@folevi/editor-schema";
@@ -317,6 +318,8 @@ export class E2eeRouterClient {
     };
     this.stops.push(this.spaces.subscribe(() => this.routesChanged()));
     this.stops.push(this.session.subscribe(() => this.onSession()));
+    // Memory short (the Mac's warnings, lib/memoryPressure.ts): what can be opened again goes.
+    this.stops.push(onMemoryPressure((level) => void this.relieveMemory(level)));
     this.watchSpaces();
     this.watchProfile();
   }
@@ -641,6 +644,27 @@ export class E2eeRouterClient {
     await this.replicas.closeExcept(() => false);
     configureSealer(null);
     await this.inner.close();
+  }
+
+  /**
+   * Memory is short: decrypted files nothing on the page shows go (opened again from their sealed copy when
+   * shown), and so do the copies of encrypted spaces nothing asked for lately (2 minutes; 30 s when it's
+   * critical), which open again from this device when next needed.
+   */
+  async relieveMemory(level: PressureLevel): Promise<void> {
+    const shown = new Set<string>();
+    if (typeof document !== "undefined") {
+      for (const el of document.querySelectorAll("img, video, audio, source, a[href^='blob:'], object, embed, iframe")) {
+        for (const attr of ["src", "href", "data", "poster"]) {
+          const v = el.getAttribute(attr);
+          if (v) shown.add(v);
+        }
+      }
+      // A cover or a background drawn from one.
+      for (const el of document.querySelectorAll("[style*='blob:']")) for (const m of el.getAttribute("style")?.matchAll(/blob:[^"')\s]+/g) ?? []) shown.add(m[0]);
+    }
+    this.files.trim((url) => shown.has(url));
+    if (typeof this.replicas.closeIdle === "function") await this.replicas.closeIdle(level === "critical" ? 30_000 : 120_000).catch(() => 0);
   }
 
   /** Closes what the router holds (replicas, decrypted files) without closing the Convex client (lock, switch). */

@@ -153,6 +153,19 @@ export class FileCache {
     }
   }
 
+  /** Lets go of the decrypted files `inUse` says nothing shows now (memory is short); returns the bytes freed. */
+  trim(inUse: (url: string) => boolean): number {
+    let freed = 0;
+    for (const [id, e] of [...this.entries]) {
+      if (inUse(e.url)) continue;
+      this.entries.delete(id);
+      this.total -= e.bytes;
+      freed += e.bytes;
+      (this.o.revokeUrl ?? URL.revokeObjectURL)(e.url);
+    }
+    return freed;
+  }
+
   /** Lets go of every decrypted file (lock, sign-out). */
   clear(): void {
     for (const e of this.entries.values()) (this.o.revokeUrl ?? URL.revokeObjectURL)(e.url);

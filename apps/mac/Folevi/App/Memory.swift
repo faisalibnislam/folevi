@@ -1,16 +1,52 @@
 // How much memory the app keeps (docs/MAC_WEBKIT_PLAN.md "Memory"): every page is a WebKit content process of its
 // own, so the pages the app keeps open are most of its footprint. This file holds what keeps that down across the
-// app, and the Debug command scripts measure it with.
+// app, and the Debug commands scripts measure it with.
+//
+// Memory pressure: when macOS warns that memory is short (a DispatchSource on the memory pressure events, warning
+// and critical), pages nobody needs now go (Quick Add's when closed, background places' runners that are done),
+// every page lets go of what it can get again (lib/memoryPressure.ts: kept query answers, decrypted files no note
+// shows, encrypted spaces' copies not used lately), and WebKit's in-memory resource caches and back-forward pages
+// go. WebKit's own processes get the same warnings from macOS and drop their caches by themselves (decoded images,
+// fonts, compiled code, a garbage collection); this adds what only the app knows.
 import AppKit
 import WebKit
 
 @MainActor
 enum Memory {
+    private static var source: DispatchSourceMemoryPressure?
+    /// What the last relief did (Debug: `cmd memory`).
+    private(set) static var lastRelief: [String: Any] = [:]
+
     static func install() {
         #if DEBUG
         installEval()
         WebViewFactory.extraScripts.append("memory-probe")
         #endif
+        guard !Paths.testing, source == nil else { return }
+        let s = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: .main)
+        s.setEventHandler { [weak s] in
+            guard let event = s?.data else { return }
+            MainActor.assumeIsolated { Memory.relieve(critical: event.contains(.critical), why: "macOS") }
+        }
+        s.activate()
+        source = s
+    }
+
+    /// Memory is short: everything the app can let go of goes (see the top of this file).
+    static func relieve(critical: Bool, why: String) {
+        let level = critical ? "critical" : "warning"
+        QuickAddPanel.shared.releaseNow()
+        let runners = BackgroundSync.shared.relieve()
+        var pages = 0
+        for view in WindowManager.shared.allViews where view.loaded {
+            pages += 1
+            view.evaluateJavaScript("window.__foleviMemoryPressure ? window.__foleviMemoryPressure(\"\(level)\") : 0", completionHandler: nil)
+            // Pages kept for back and forward (a full navigation's old page).
+            let clear = Selector(("_clearBackForwardCache"))
+            if view.responds(to: clear) { view.perform(clear) }
+        }
+        Paths.dataStore.removeData(ofTypes: [WKWebsiteDataTypeMemoryCache], modifiedSince: .distantPast) {}
+        lastRelief = ["level": level, "why": why, "at": Date().timeIntervalSince1970, "pages": pages, "runnersReleased": runners]
     }
 }
 
@@ -75,6 +111,20 @@ extension Memory {
     /// of the app, so a script can put a footprint on each.
     static func installEval() {
         MacEval.commands["quickAddType"] = { req, done in typeIntoQuickAdd(req["text"] as? String ?? "", done) }
+        // A full garbage collection in every page's process (WebKit's testing call; Debug only): tells what a page
+        // still holds from what it merely hasn't collected yet.
+        MacEval.commands["gc"] = { _, done in
+            guard let pool = WindowManager.shared.allViews.first?.configuration.processPool else { return done(["error": "no page"]) }
+            let gc = Selector(("_garbageCollectJavaScriptObjectsForTesting"))
+            guard pool.responds(to: gc) else { return done(["error": "not on this macOS"]) }
+            pool.perform(gc)
+            done(["value": true])
+        }
+        // As if macOS had warned: `cmd memoryPressure {"level":"warning"|"critical"}`.
+        MacEval.commands["memoryPressure"] = { req, done in
+            relieve(critical: req["level"] as? String == "critical", why: "script")
+            done(["value": lastRelief])
+        }
         MacEval.commands["memory"] = { _, done in
             let views: [[String: Any]] = WindowManager.shared.allViews.map { v in
                 [
@@ -92,6 +142,7 @@ extension Memory {
             done(["value": [
                 "app": Int(getpid()), "views": views, "helpers": helpers,
                 "quickAddShownAt": QuickAddPanel.shared.shownAt.map { $0.timeIntervalSince1970 * 1000 } ?? NSNull(),
+                "lastRelief": lastRelief,
             ] as [String: Any]])
         }
     }

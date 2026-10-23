@@ -3,7 +3,7 @@
 // two accounts, so two places in the background; three windows, one with several notes in tabs, one of them with a
 // flowchart and a whiteboard; Quick Add and Settings opened and closed), lets it settle, then puts a footprint on
 // every process (the app, each page's WebKit content process, WebKit's GPU and networking processes), idle and while
-// typing, and writes them to the file E2E_MAC_MEMORY names.
+// typing (and after a memory warning, as if macOS had sent one), and writes them to the file E2E_MAC_MEMORY names.
 //
 //   E2E_MAC_MEMORY=/tmp/memory.json E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 \
 //     npx playwright test e2e/mac-memory.spec.ts --project account --workers=1
@@ -72,10 +72,15 @@ const PAGE_KIT = `
     await sleep(300);
   };
   const block = async (word, name, done) => {
-    document.querySelector(".ProseMirror").editor.chain().focus("end").insertContent({ type: "paragraph" }).focus("end").run();
-    await sleep(300);
-    document.execCommand("insertText", false, "/" + word);
-    const opt = await until(() => [...document.querySelectorAll('[role="option"]')].find((o) => name.test(o.textContent)));
+    let opt = null;
+    // The slash menu, typed into a new line at the end (again if the menu didn't come: a busy page can miss it).
+    for (let attempt = 0; attempt < 3 && !opt; attempt++) {
+      document.querySelector(".ProseMirror").editor.chain().focus("end").insertContent({ type: "paragraph" }).focus("end").run();
+      await sleep(300 + attempt * 500);
+      document.execCommand("insertText", false, "/" + word);
+      opt = await until(() => [...document.querySelectorAll('[role="option"]')].find((o) => name.test(o.textContent)), 8000).catch(() => null);
+    }
+    if (!opt) throw new Error("no slash menu for " + word);
     opt.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     opt.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     opt.click();
@@ -209,6 +214,11 @@ test("memory in a realistic setup, per process, idle and typing", async ({ brows
     await run(`clearInterval(window.__memTyping); return true;`, first);
     result.typing = typing;
     mark("typed");
+    // As if macOS warned that memory is short (App/Memory.swift's relief, without WebKit's own), then a moment.
+    await cmd("memoryPressure", { level: "warning" }).catch(() => undefined);
+    await sleep(15_000);
+    result.afterWarning = measure((await cmd("memory")) as unknown as Snapshot);
+    mark("memory warning");
     // When the places' runners woke and went (BackgroundSync).
     result.background = ((await cmd("places")) as { background?: unknown }).background ?? null;
     writeFileSync(out!, JSON.stringify(result, null, 2));

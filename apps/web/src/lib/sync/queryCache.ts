@@ -7,6 +7,7 @@ import { canonicalJson } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
 import { QUERY_PREFIX, localDb, queryKeys } from "./db";
 import type { Outbox, OutboxEntry } from "./outbox";
+import { onMemoryPressure } from "@/lib/memoryPressure";
 
 /**
  * The last answer of each query this device has seen, so a page opened before reads the same offline: kept
@@ -120,3 +121,7 @@ export function forgetCachedQueries() {
   memory.clear();
   written.clear();
 }
+
+// Memory short: the kept answers go from memory (they're in IndexedDB, and a page waiting for its live answer
+// reads them from there again).
+onMemoryPressure(() => forgetCachedQueries());

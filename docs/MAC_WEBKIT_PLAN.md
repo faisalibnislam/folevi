@@ -953,3 +953,41 @@ the chat because the shell imported a single name from its module. Now:
 Both exports were built from the same tree, one with these edits taken out. Left as they are: the note page's code
 on Home (on purpose), and the list views (Calendar, Reviews, Changes, Shared...) that RouteView imports up front;
 they could load the same way later.
+
+### Step 5: memory pressure (`App/Memory.swift`, web `lib/memoryPressure.ts`)
+
+macOS's memory pressure events (a `DispatchSource`, warning and critical) now make the app let go of what it can:
+Quick Add's page if it's closed (and its field is empty and it's online), background places' runners whose page
+said nothing waits, WebKit's in-memory resource cache (`WKWebsiteDataTypeMemoryCache`) and pages kept for back and
+forward, and in every page (`window.__foleviMemoryPressure`, `lib/memoryPressure.ts`): the account's kept query
+answers in memory (they're in IndexedDB too), decrypted files of encrypted notes that nothing on the page shows (that
+cache may hold up to 200 MB), and the copies of encrypted spaces nothing asked for in 2 minutes (30 s when it's
+critical; they open again from this device when needed). WebKit's own processes get the same events from macOS and
+drop their decoded images, fonts and compiled code and collect garbage by themselves; nothing here turns that off.
+`cmd memoryPressure {"level"}` runs the same relief from a script (WebKit's own part needs a real warning).
+
+Measured: with Quick Add just closed, a warning took its page (61 MB) at once. In the realistic setup the steady state
+is already lean after steps 1 and 2 (no Quick Add, no runners, a local library and plain accounts), so a warning then
+moved little (454 to 475 MB across the typing that came before it). A full garbage collection (Debug `cmd gc`) of a
+window that had written six notes with flowcharts and whiteboards took it from 289 to 252 MB; a window that wrote six
+plain notes stayed at 175 to 180.
+
+Found while measuring (not fixed here): a note's editor stays in memory after its page goes when a block was added to
+it through the slash menu (any block: a heading, a table, a flowchart, a whiteboard). Seen with weak references to
+each note's editor element after leaving it and a full collection: plain notes' editors were collected, every note
+with a slash-menu insert was kept, detached. About 10 MB per such note in that window. To see it: keep a `WeakRef`
+to each note's `.ProseMirror` element as it's written, go to Home, run `cmd gc` twice, and see which still give an
+element (detached). The fix belongs in the editor (`components/editor`).
+
+### Where it ends up (the same realistic setup, MB)
+
+| | Before | After (two runs) |
+| --- | --- | --- |
+| Pages nobody sees (Quick Add after use, two runners) | 183 | 0 |
+| Idle total | 641 | 454 and 536 |
+| Typing total | 789 | 594 and 707 |
+| Startup JavaScript of a window on Home | 4.07 MB | 3.91 MB |
+
+The windows' own pages vary by 20 to 40 MB each between runs (what Calendar and the note show), which is most of the
+spread; the removed pages are the steady part. For the owner's setup (one window, a place in the background, 375 to
+411 MB), the runner's 60 MB goes, and Quick Add's after use.

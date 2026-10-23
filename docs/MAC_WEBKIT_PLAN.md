@@ -903,3 +903,28 @@ a hotkey-down prewarm buys nothing, since Carbon's hot key fires on key down alr
 
 (Measured from here on with the app started through LaunchServices, so every WebKit process it's responsible for
 is listed, spare and cached ones included; none were left.)
+
+### Step 3: hidden tabs (web, `lib/app/noteViewState.ts`, `lib/app/tabs.tsx`)
+
+Measured first: a hidden tab's note was never a page. Only the tab on screen is rendered; the strip keeps titles,
+and the five most recent note tabs keep two small subscriptions each (the note's details and page tree) so a switch
+shows the note at once. Opening notes doesn't pile up either: a fresh window on Home (130 MB, JavaScript heap 70)
+grows to 173 (heap 102) with the first note that has a flowchart and a whiteboard, the editors' code, and stays
+there through 6 such notes and 6 more visits (171 to 173). What a window holds beyond that comes from editing
+(a window that wrote 8 such notes held 289, heap 179), not from tabs.
+
+What was missing was coming back: a tab's note opened at its top with the keyboard nowhere. Now:
+
+- Each note's place in the window (scroll, the editor's selection, whether the keyboard was in it) is kept as it
+  changes and saved when its page goes (in sessionStorage, the newest 30 notes per window); the place counts from
+  the moment the person reaches outside the note (a press or ⌘-key elsewhere), since leaving moves the page first.
+- Coming back gives it back once the note's content is in (again at 250 and 800 ms as late blocks grow the page,
+  unless the person has scrolled or typed by then). An address naming a place (a block, a comment, a new note,
+  find) wins. What was typed was already saved as it was typed.
+- A tab not shown for 10 minutes stops being kept ready (its subscriptions go; tabs from an earlier visit count
+  from the window's start). Clicking it then opens the note from this device's copy, as any note opens.
+
+Memory: no change to measure (tabs held only those subscriptions). The website gets the same.
+e2e `tab-switch.spec.ts` "a tab comes back where it was left": a 70-line note scrolled to line 40 with the caret
+there, another tab, back: the same scroll (within 40 px), the caret on line 40, the keyboard in the note, and typing
+goes on there.

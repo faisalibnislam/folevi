@@ -64,6 +64,11 @@ interface TabsValue {
 const MAX_TABS = 12;
 /** Notes kept ready to show at once (their details and page tree stay loaded): the most recently used tabs. */
 const WARM_TABS = 5;
+/**
+ * A tab not shown for this long isn't kept ready any more (it holds nothing then; clicking it loads the note from
+ * this device as any note opens). Tabs left from an earlier visit count from the window's start.
+ */
+export const WARM_FOR = 10 * 60_000;
 
 // Opening a page from inside a note (a nested page, a page link, a breadcrumb) replaces the current tab;
 // opening one from anywhere else (Home, lists, search, "+", New document) opens a new tab. Callers that
@@ -101,6 +106,23 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   useEffect(() => {
     if (docId) setRecent((cur) => (cur[0] === docId ? cur : [docId, ...cur.filter((x) => x !== docId)].slice(0, 2 * WARM_TABS)));
   }, [docId]);
+  // When each note was last on screen (the one leaving counts from now), and a minute's tick to let go of the
+  // ones hidden too long.
+  const [startedAt] = useState(() => Date.now());
+  const [lastShown, setLastShown] = useState<Record<string, number>>({});
+  const [now, setNow] = useState(startedAt);
+  const shownBefore = useRef<string | null>(null);
+  useEffect(() => {
+    const at = Date.now();
+    const left = shownBefore.current;
+    shownBefore.current = docId;
+    setLastShown((cur) => ({ ...cur, ...(left ? { [left]: at } : {}), ...(docId ? { [docId]: at } : {}) }));
+    setNow(at);
+  }, [docId]);
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
   const previousDoc = useRef<string | null>(null);
   useEffect(() => {
     const from = previousDoc.current;
@@ -228,7 +250,11 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   const warmKey = (() => {
     const notes = tabs.filter((t) => !t.view);
     const open = new Set(notes.map(tabPage));
-    return [...recent, ...notes.map(tabPage)].filter((id, i, all) => id !== docId && open.has(id) && all.indexOf(id) === i).slice(0, WARM_TABS).join(",");
+    const fresh = (id: string) => now - (lastShown[id] ?? startedAt) < WARM_FOR;
+    return [...recent, ...notes.map(tabPage)]
+      .filter((id, i, all) => id !== docId && open.has(id) && all.indexOf(id) === i && fresh(id))
+      .slice(0, WARM_TABS)
+      .join(",");
   })();
   const warm = useMemo(() => (warmKey ? warmKey.split(",") : []), [warmKey]);
   const value = useMemo(() => ({ tabs, view, setView, homeHref, close, closeMany, move, place, warm }), [tabs, view, setView, homeHref, close, closeMany, move, place, warm]);

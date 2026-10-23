@@ -105,6 +105,7 @@ import "@/components/editor/wireframe/wireframe.css";
 import { Select } from "@/components/ui/Select";
 import { useFileText } from "./useFileText";
 import { useMacNoteCommands } from "@/components/app/MacCommands";
+import { useNoteViewState } from "@/lib/app/noteViewState";
 import { useLockMenuItem } from "@/components/e2ee/LockDialog";
 
 // Only a collection's row pages have properties; the collection code loads for those alone.
@@ -206,6 +207,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
     [setInspectorTab, setInspectorOpen],
   );
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
+  // Coming back to the note's tab shows it where it was left (scroll, caret, keyboard): its page went meanwhile.
+  useNoteViewState(documentId, scrollEl, editor, reconciled || cacheLoaded);
   const [focusedBlock, setFocusedBlock] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const shareButton = useRef<HTMLButtonElement>(null);

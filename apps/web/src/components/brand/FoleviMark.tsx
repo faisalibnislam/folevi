@@ -11,12 +11,12 @@
 export const MARK_SRC = "/brand/folevi-mark.svg";
 export const MARK_DARK_SRC = "/brand/folevi-mark-dark.svg";
 
-/** The mark's disc, as drawn for the current theme. */
-function MarkImage() {
+/** The mark's disc, as drawn for the current theme (or the other theme's, on a surface that inverts it). */
+function MarkImage({ inverse = false }: { inverse?: boolean }) {
   return (
     <>
-      <image href={MARK_SRC} width="512" height="512" className="dark:hidden" />
-      <image href={MARK_DARK_SRC} width="512" height="512" className="hidden dark:inline" />
+      <image href={inverse ? MARK_DARK_SRC : MARK_SRC} width="512" height="512" className="dark:hidden" />
+      <image href={inverse ? MARK_SRC : MARK_DARK_SRC} width="512" height="512" className="hidden dark:inline" />
     </>
   );
 }
@@ -25,11 +25,11 @@ function MarkImage() {
 export const LOGO_WIDTH = 2021;
 export const LOGO_HEIGHT = 512;
 
-export function FoleviMark({ size = 24, title, className }: { size?: number; title?: string; className?: string }) {
+export function FoleviMark({ size = 24, title, className, inverse }: { size?: number; title?: string; className?: string; inverse?: boolean }) {
   return (
     <svg width={size} height={size} viewBox="0 0 512 512" role={title ? "img" : undefined} aria-hidden={title ? undefined : true} aria-label={title} className={className}>
       {title ? <title>{title}</title> : null}
-      <MarkImage />
+      <MarkImage inverse={inverse} />
     </svg>
   );
 }

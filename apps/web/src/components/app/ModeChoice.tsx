@@ -4,8 +4,8 @@
 // old Mac app never see it: the host starts them in account mode (WP2). Choosing "Keep notes on my devices"
 // goes on to LibrarySetup (ShellRoot). No prices, plans or trials here, on any platform.
 import { useEffect, useState } from "react";
-import { ChevronRight, HardDrive, Loader2, UserRound } from "lucide-react";
-import { FoleviLogo } from "@/components/brand/FoleviMark";
+import { ChevronRight, HardDrive, Loader2 } from "lucide-react";
+import { FoleviLogo, FoleviMark } from "@/components/brand/FoleviMark";
 import { shell, type Backend } from "@/lib/shell";
 import { deviceWords } from "@/lib/shell/words";
 import { inAndroidApp, inIosApp } from "@/lib/nativeApp";
@@ -70,21 +70,21 @@ export function ModeChoice({ onChoose }: { onChoose: (mode: Backend) => Promise<
         </div>
         <div className="grid gap-3" role="group" aria-label="Where your notes live">
           <ChoiceButton
-            icon={<HardDrive size={20} aria-hidden />}
-            title="Keep notes on my devices"
-            detail="Free forever. No account."
-            emphasis
-            busy={busy === "local"}
-            disabled={busy !== null}
-            onClick={() => void choose("local")}
-          />
-          <ChoiceButton
-            icon={<UserRound size={20} aria-hidden />}
+            icon={<FoleviMark size={24} inverse={!mobileApp()} />}
             title="Sign in to Folevi"
             detail="Your notes in your Folevi account, with sharing."
+            emphasis
             busy={busy === "account"}
             disabled={busy !== null}
             onClick={() => void choose("account")}
+          />
+          <ChoiceButton
+            icon={<HardDrive size={20} aria-hidden />}
+            title="Keep notes on my devices"
+            detail="Free forever. No account."
+            busy={busy === "local"}
+            disabled={busy !== null}
+            onClick={() => void choose("local")}
           />
         </div>
         <p className={`text-center text-[13px] text-muted ${mobileApp() ? "px-4 leading-[18px]" : "leading-relaxed"}`}>

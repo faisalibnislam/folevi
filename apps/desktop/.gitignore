@@ -1,9 +1,0 @@
-node_modules/
-dist/
-release/
-release-dist/
-native-build/
-web/
-# The production export `pnpm release` ships (scripts/release.mjs).
-web-release/
-.release-config.json

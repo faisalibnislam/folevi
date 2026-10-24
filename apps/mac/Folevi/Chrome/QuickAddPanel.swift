@@ -268,6 +268,13 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         panel?.makeFirstResponder(host)
     }
 
+    /// Its hidden Page View started loading again or its content process ended (Navigation.swift): the native
+    /// field's engine client resubscribes once the page is back, as a main window's frame does (R14.5).
+    func pageEvent(_ page: FoleviWebView, _ event: PageLifecycle) {
+        guard page === view, let transport = nativeTransport else { return }
+        transport.pageEvent(event)
+    }
+
     private func stopNative() {
         nativeModel?.stop()
         nativeTransport?.detach()

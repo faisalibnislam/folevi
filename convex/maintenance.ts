@@ -213,7 +213,7 @@ async function purgeDocument(ctx: MutationCtx, docId: Id<"documents">, budget: B
     if (doc.kind !== "synced") await adjustDocumentCount(ctx, scope, -1);
     // Clients re-pull and notice the page is gone.
     await bumpSeq(ctx, scope);
-    // Replicas of an encrypted space are told by a tombstone (e2ee.pull `removed`).
+    // Copies on devices are told by a tombstone (e2ee.pull and sync.pullAll `removed`).
     await writeTombstone(ctx, scope, "document", doc.publicId, await headSeq(ctx, scope), doc.accessMode === "restricted");
   }
   await ctx.db.delete(docId);

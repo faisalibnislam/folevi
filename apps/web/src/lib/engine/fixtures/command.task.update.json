@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "task.update",
+  "description": "Check off a task.",
+  "args": {
+    "id": "blk_t1",
+    "checked": true
+  },
+  "result": {
+    "ok": true
+  }
+}

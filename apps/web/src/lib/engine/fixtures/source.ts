@@ -13,6 +13,8 @@
 import { applyDiff, emptyNativeList, nativeRows, windowDiff, withHash, type ListState } from "../diff";
 import { gateEvent } from "../gates";
 import { changesValue, notificationRow, searchHits, sharedRow } from "../viewsMore";
+import { taskGroups, taskRow, type TaskData } from "../viewsWork";
+import { planQuickTask } from "../quickTask";
 import {
   CONTRACT_REVISION,
   PROTOCOL_VERSION,
@@ -196,6 +198,32 @@ const SPACES = [
 
 const SYNC_SAVED: SyncStatusValue = { state: "saved", label: "Saved", pending: 0, conflicts: 0, online: true, authRequired: false, spaces: [{ space: "personal", state: "ready", have: 0, total: null }] };
 
+
+const TODAY = "2026-10-24";
+const task = (i: number, over: Partial<TaskData> = {}): TaskData => ({
+  blockId: `blk_t${i}`,
+  documentId: i % 2 ? "doc_00001" : "doc_00002",
+  documentTitle: i % 2 ? "Kyoto in November" : "Q4 planning",
+  documentIcon: i % 2 ? "🗺️" : null,
+  title: ["", "Book the ryokan", "Send the plan", "Rail pass", "Review budget", "Pack", "Call Sam"][i] ?? `Task ${i}`,
+  status: "open",
+  dueDate: TODAY,
+  dueTime: null,
+  priority: null,
+  assigneeId: null,
+  assigneeName: null,
+  reminderAt: null,
+  repeat: null,
+  completedAt: null,
+  updatedAt: NOW - i * 60_000,
+  ...over,
+});
+const TASKS = [task(1, { dueDate: "2026-10-22" }), task(2, { dueTime: "15:00", priority: "high", assigneeName: "Maya", assigneeId: "prof_2" }), task(3)];
+const UPCOMING = [task(4, { dueDate: "2026-10-25" }), task(5, { dueDate: "2026-10-27", repeat: "weekly" }), task(6, { dueDate: "2026-10-25" })];
+const parsedTask = (text: string) => {
+  const p = planQuickTask(text, TODAY, {}, new Date(NOW));
+  return { title: p.title, dueDate: p.dueDate, dueTime: p.dueTime, dateText: p.dateText, repeatLabel: p.repeatLabel, repeatText: p.repeatText };
+};
 // ---------------------------------------------------------------------------------------------------------------
 // List stories: run the real diff code, so the fixture is exactly what the engine sends
 // ---------------------------------------------------------------------------------------------------------------
@@ -651,6 +679,57 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.notification.remove": command({ name: "notification.remove", description: "Remove a notification.", args: { ids: ["n3"] }, result: { ok: true } }),
   "command.invite.accept": command({ name: "invite.accept", description: "Join a workspace.", args: { inviteId: "inv_1" }, result: { ok: true } }),
   "command.pageInvite.accept": command({ name: "pageInvite.accept", description: "Accept a shared page and open it.", args: { inviteId: "pinv_1" }, result: { noteId: "doc_s2" } }),
+
+  // ---- revision 5
+  "view.tasks.list": view({ name: "tasks.list", description: "Today: tasks grouped by note, one overdue.", args: { view: "today" }, value: { view: "today", groups: taskGroups("today", TASKS.map((t) => taskRow(t, TODAY)), TODAY), total: TASKS.length } }),
+  "view.tasks.list.upcoming": view({ name: "tasks.list", description: "Upcoming: tasks grouped by day.", args: { view: "upcoming", space: "ws_studio" }, value: { view: "upcoming", groups: taskGroups("upcoming", UPCOMING.map((t) => taskRow(t, TODAY)), TODAY), total: UPCOMING.length } }),
+  "view.tasks.counts": view({ name: "tasks.counts", description: "The task views' counts.", args: {}, value: { inbox: 3, today: 2, upcoming: 5, all: 12, mine: 7 } }),
+  "view.tasks.range": view({ name: "tasks.range", description: "A week of tasks for the calendar.", args: { from: "2026-10-19", to: "2026-10-25", includeCompleted: true }, value: { tasks: [...TASKS, ...UPCOMING].map((t) => taskRow(t, TODAY)) } }),
+  "view.calendars.events": view({
+    name: "calendars.events",
+    description: "Events from subscribed calendars in a range.",
+    args: { from: Date.UTC(2026, 9, 19), to: Date.UTC(2026, 9, 26) },
+    value: {
+      events: [
+        { id: "ev1", calendarId: "cal1", calendarName: "Work", color: "accent", title: "Standup", location: "Zoom", description: "", start: Date.UTC(2026, 9, 24, 3, 0), end: Date.UTC(2026, 9, 24, 3, 15), allDay: false },
+        { id: "ev2", calendarId: "cal2", calendarName: "Holidays", color: "moss", title: "Durga Puja", location: "", description: "", start: Date.UTC(2026, 9, 21), end: Date.UTC(2026, 9, 22), allDay: true },
+      ],
+    },
+  }),
+  "view.calendars.list": view({
+    name: "calendars.list",
+    description: "Subscribed calendars, one failing.",
+    args: {},
+    value: {
+      calendars: [
+        { id: "cal1", name: "Work", url: "https://calendar.example.com/work.ics", color: "accent", visible: true, lastFetchedAt: NOW - 600_000, lastError: null, eventCount: 120, loading: false },
+        { id: "cal2", name: "Holidays", url: "https://calendar.example.com/bd.ics", color: "moss", visible: false, lastFetchedAt: NOW - DAY, lastError: "The calendar's server didn't answer.", eventCount: 40, loading: false },
+      ],
+    },
+  }),
+  "view.members": view({
+    name: "members",
+    description: "A workspace's members, for assigning tasks.",
+    args: { space: "ws_studio" },
+    value: {
+      members: [
+        { id: "prof_1", name: "Faisal", email: "faisal@example.com", role: "admin", isYou: true },
+        { id: "prof_2", name: "Maya", email: "maya@example.com", role: "member", isYou: false },
+      ],
+    },
+  }),
+  "view.task.parse": view({ name: "task.parse", description: "Quick Add reads a date and a repeat.", args: { text: "water the plants tomorrow 9am every monday" }, value: parsedTask("water the plants tomorrow 9am every monday") }),
+  "view.task.parse.plain": view({ name: "task.parse", description: "Nothing to read: the words as typed.", args: { text: "Buy milk" }, value: parsedTask("Buy milk") }),
+  "command.task.create": command({ name: "task.create", description: "Quick Add a task to the Inbox (the date read from the words).", args: { text: "call Sam tomorrow 3pm" }, result: { id: "blk_t9", noteId: "doc_inbox", where: "Inbox" } }),
+  "command.task.create.note": command({ name: "task.create", description: "A task in a note, with the date kept as words.", args: { text: "read chapter 3 by friday", noteId: "doc_00003", keepText: true, priority: "high" }, result: { id: "blk_t10", noteId: "doc_00003", where: "Reading list" } }),
+  "command.task.update": command({ name: "task.update", description: "Check off a task.", args: { id: "blk_t1", checked: true }, result: { ok: true } }),
+  "command.task.update.date": command({ name: "task.update", description: "Move a task to tomorrow and clear its time.", args: { id: "blk_t2", dueDate: "2026-10-25", dueTime: null }, result: { ok: true } }),
+  "command.task.update.encrypted": command({ name: "task.update", description: "A task in an encrypted note is changed in the note itself.", args: { id: "blk_t3", checked: true }, error: { code: "e2ee_device_only", message: "Open the note to change this task." } }),
+  "command.task.moveToNote": command({ name: "task.moveToNote", description: "Move a task into another note.", args: { id: "blk_t1", noteId: "doc_00002" }, result: { ok: true } }),
+  "command.calendar.add": command({ name: "calendar.add", description: "Subscribe to a calendar by its link.", args: { url: "https://calendar.example.com/work.ics", name: "Work" }, result: { id: "cal1" } }),
+  "command.calendar.update": command({ name: "calendar.update", description: "Hide a calendar's events.", args: { id: "cal2", visible: false }, result: { ok: true } }),
+  "command.calendar.remove": command({ name: "calendar.remove", description: "Unsubscribe.", args: { id: "cal2" }, result: { ok: true } }),
+  "command.calendar.refresh": command({ name: "calendar.refresh", description: "Fetch a calendar again now.", args: { id: "cal1" }, result: { ok: true } }),
   // ---- commands
   "command.space.switch": command({ name: "space.switch", description: "Show the team workspace.", args: { space: "ws_studio" }, result: { space: "ws_studio" } }),
   "command.note.create": command({ name: "note.create", description: "A new note in a folder (works offline).", args: { folderId: "fld_trips", title: "" }, result: { id: "01JB7Z8K3Q4ABCDEF0123456789" } }),

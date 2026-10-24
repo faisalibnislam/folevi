@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "calendar.add",
+  "description": "Subscribe to a calendar by its link.",
+  "args": {
+    "url": "https://calendar.example.com/work.ics",
+    "name": "Work"
+  },
+  "result": {
+    "id": "cal1"
+  }
+}

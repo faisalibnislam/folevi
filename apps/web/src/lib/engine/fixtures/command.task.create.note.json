@@ -1,0 +1,16 @@
+{
+  "kind": "command",
+  "name": "task.create",
+  "description": "A task in a note, with the date kept as words.",
+  "args": {
+    "text": "read chapter 3 by friday",
+    "noteId": "doc_00003",
+    "keepText": true,
+    "priority": "high"
+  },
+  "result": {
+    "id": "blk_t10",
+    "noteId": "doc_00003",
+    "where": "Reading list"
+  }
+}

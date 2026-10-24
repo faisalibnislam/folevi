@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 4;
+export const CONTRACT_REVISION = 5;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -1256,6 +1256,213 @@ export interface SearchValue {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Revision 5: tasks, the calendar, Quick Add
+// ---------------------------------------------------------------------------------------------------------------
+
+export type TaskViewName = "inbox" | "today" | "upcoming" | "all" | "completed" | "mine";
+
+/** A to-do as the task screens show it (`tasks.list`, `tasks.range`). Its id is the to-do block's. */
+export interface TaskRow {
+  id: string;
+  noteId: string;
+  noteTitle: string;
+  noteIcon: string | null;
+  title: string;
+  /** "open", "done" or "canceled". */
+  status: string;
+  /** YYYY-MM-DD, or null. */
+  dueDate: string | null;
+  /** HH:MM, or null. */
+  dueTime: string | null;
+  /** "low", "medium", "high", or null. */
+  priority: string | null;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  reminderAt: number | null;
+  /** "daily", "weekly", "monthly", "yearly", "weekdays", ... (open), or null. */
+  repeat: string | null;
+  completedAt: number | null;
+  updatedAt: number;
+  /** Open and due before today. */
+  overdue: boolean;
+}
+
+/** A heading in a task list: a note (most views) or a day (Upcoming). */
+export interface TaskGroup {
+  /** The note's id, or the day (YYYY-MM-DD). */
+  id: string;
+  kind: "note" | "day";
+  title: string;
+  icon: string | null;
+  tasks: TaskRow[];
+}
+
+export interface TasksListArgs {
+  space?: SpaceRef;
+  view: TaskViewName;
+}
+
+export interface TasksValue {
+  view: TaskViewName;
+  groups: TaskGroup[];
+  /** Tasks in all groups. */
+  total: number;
+}
+
+export interface TaskCounts {
+  inbox: number;
+  today: number;
+  upcoming: number;
+  all: number;
+  mine: number;
+}
+
+export interface TasksRangeArgs {
+  space?: SpaceRef;
+  /** YYYY-MM-DD, both included. */
+  from: string;
+  to: string;
+  includeCompleted?: boolean;
+}
+
+export interface TasksRangeValue {
+  tasks: TaskRow[];
+}
+
+/** An event from a subscribed calendar. Times are milliseconds since 1970 (UTC); all-day events cover whole days. */
+export interface CalendarEvent {
+  id: string;
+  calendarId: string;
+  calendarName: string;
+  /** A colour key ("accent", "moss", ...). */
+  color: string;
+  title: string;
+  location: string;
+  description: string;
+  start: number;
+  end: number;
+  allDay: boolean;
+}
+
+export interface CalendarEventsArgs {
+  /** Milliseconds since 1970; at most 400 days apart. */
+  from: number;
+  to: number;
+}
+
+export interface CalendarEventsValue {
+  events: CalendarEvent[];
+}
+
+/** A calendar this person subscribed to (by its link). */
+export interface CalendarSubscription {
+  id: string;
+  name: string;
+  url: string;
+  color: string;
+  visible: boolean;
+  lastFetchedAt: number | null;
+  lastError: string | null;
+  eventCount: number | null;
+  loading: boolean;
+}
+
+export interface CalendarsValue {
+  calendars: CalendarSubscription[];
+}
+
+/** A person tasks can be assigned to in a workspace. */
+export interface MemberRow {
+  id: string;
+  name: string;
+  email: string;
+  /** "owner", "admin", "member" (open). */
+  role: string;
+  isYou: boolean;
+}
+
+export interface MembersValue {
+  members: MemberRow[];
+}
+
+/** `task.parse`: what Quick Add reads in what's typed ("call Sam tomorrow 3pm every monday"). */
+export interface TaskParseArgs {
+  text: string;
+}
+
+export interface TaskParseValue {
+  /** The task's words without the date and repeat. */
+  title: string;
+  dueDate: string | null;
+  dueTime: string | null;
+  /** The words that said the date ("tomorrow 3pm"), to show and let the person keep as text. */
+  dateText: string | null;
+  /** "Every Monday", or null. */
+  repeatLabel: string | null;
+  repeatText: string | null;
+}
+
+export interface TaskCreateArgs {
+  /** What was typed; dates and repeats in it are read unless `keepText` says not to. */
+  text: string;
+  space?: SpaceRef;
+  /** The note it goes in; left out: the Inbox page. */
+  noteId?: string;
+  /** Overrides what's read from the text. */
+  dueDate?: string | null;
+  dueTime?: string | null;
+  priority?: "low" | "medium" | "high";
+  /** Keep the date (and repeat) words as text instead of reading them. */
+  keepText?: boolean;
+}
+
+export interface TaskCreateResult {
+  id: string;
+  noteId: string;
+  /** "Inbox" or the note's title, for "Task added to …". */
+  where: string;
+}
+
+/** Changes one task; fields left out stay as they are. */
+export interface TaskUpdateArgs {
+  id: string;
+  checked?: boolean;
+  canceled?: boolean;
+  dueDate?: string | null;
+  dueTime?: string | null;
+  priority?: "none" | "low" | "medium" | "high";
+  assigneeId?: string | null;
+  reminderAt?: number | null;
+}
+
+export interface TaskMoveArgs {
+  id: string;
+  /** Left out: the Inbox page. */
+  noteId?: string;
+}
+
+export interface CalendarAddArgs {
+  url: string;
+  name?: string;
+  color?: string;
+}
+
+export interface CalendarAddResult {
+  id: string;
+}
+
+export interface CalendarUpdateArgs {
+  id: string;
+  name?: string;
+  color?: string;
+  visible?: boolean;
+}
+
+export interface CalendarIdArgs {
+  id: string;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // The maps (names to argument and result types). The codegen reads these interfaces.
 // ---------------------------------------------------------------------------------------------------------------
 
@@ -1273,6 +1480,13 @@ export interface ViewMap {
   changes: { args: EmptyArgs; value: ChangesValue };
   "notifications.list": { args: EmptyArgs; value: NotificationsValue };
   search: { args: SearchArgs; value: SearchValue };
+  "tasks.list": { args: TasksListArgs; value: TasksValue };
+  "tasks.counts": { args: SpaceArgs; value: TaskCounts };
+  "tasks.range": { args: TasksRangeArgs; value: TasksRangeValue };
+  "calendars.events": { args: CalendarEventsArgs; value: CalendarEventsValue };
+  "calendars.list": { args: EmptyArgs; value: CalendarsValue };
+  members: { args: SpaceArgs; value: MembersValue };
+  "task.parse": { args: TaskParseArgs; value: TaskParseValue };
 }
 
 export interface ListViewMap {
@@ -1313,6 +1527,13 @@ export interface CommandMap {
   "notification.remove": { args: NotificationIdsArgs; result: OkResult };
   "invite.accept": { args: InviteAcceptArgs; result: OkResult };
   "pageInvite.accept": { args: InviteAcceptArgs; result: PageInviteAcceptResult };
+  "task.create": { args: TaskCreateArgs; result: TaskCreateResult };
+  "task.update": { args: TaskUpdateArgs; result: OkResult };
+  "task.moveToNote": { args: TaskMoveArgs; result: OkResult };
+  "calendar.add": { args: CalendarAddArgs; result: CalendarAddResult };
+  "calendar.update": { args: CalendarUpdateArgs; result: OkResult };
+  "calendar.remove": { args: CalendarIdArgs; result: OkResult };
+  "calendar.refresh": { args: CalendarIdArgs; result: OkResult };
 }
 
 export interface EditorCommandMap {
@@ -1371,7 +1592,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -1407,6 +1628,13 @@ const commandNames = [
   "notification.remove",
   "invite.accept",
   "pageInvite.accept",
+  "task.create",
+  "task.update",
+  "task.moveToNote",
+  "calendar.add",
+  "calendar.update",
+  "calendar.remove",
+  "calendar.refresh",
 ] as const;
 const editorCommandNames = [
   "note.prepare",
@@ -1443,6 +1671,7 @@ export const EDITOR_PANELS: readonly EditorPanel[] = ["format", "insert", "style
 export const NOTE_MENU_ACTIONS: readonly NoteMenuAction[] = ["share", "move", "copyTo", "duplicate", "export", "history", "present", "print", "find", "delete"];
 export const NOTES_LIST_VIEWS: readonly NotesListView[] = ["all", "starred", "archive", "trash", "templates", "unsorted", "folder", "tag"];
 export const NOTES_SORTS: readonly NotesSort[] = ["updated", "created", "title", "manual"];
+export const TASK_VIEWS: readonly TaskViewName[] = ["inbox", "today", "upcoming", "all", "completed", "mine"];
 
 /** Features the hello reply lists (for native to check before using something newer than the protocol). */
 export const FEATURES: readonly string[] = ["windowed-lists", "row-hashes", "content-only", "editor-commands", "catch-up"];

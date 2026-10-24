@@ -2324,3 +2324,456 @@ public struct SearchValue: Codable, Hashable, Sendable {
         self.meaningAvailable = meaningAvailable
     }
 }
+
+public enum TaskViewName: String, Codable, Hashable, Sendable, CaseIterable {
+    case inbox
+    case today
+    case upcoming
+    case all
+    case completed
+    case mine
+}
+
+/// A to-do as the task screens show it (`tasks.list`, `tasks.range`). Its id is the to-do block's.
+public struct TaskRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var noteId: String
+    public var noteTitle: String
+    public var noteIcon: String?
+    public var title: String
+    /// "open", "done" or "canceled".
+    public var status: String
+    /// YYYY-MM-DD, or null.
+    public var dueDate: String?
+    /// HH:MM, or null.
+    public var dueTime: String?
+    /// "low", "medium", "high", or null.
+    public var priority: String?
+    public var assigneeId: String?
+    public var assigneeName: String?
+    public var reminderAt: Double?
+    /// "daily", "weekly", "monthly", "yearly", "weekdays", ... (open), or null.
+    public var `repeat`: String?
+    public var completedAt: Double?
+    public var updatedAt: Double
+    /// Open and due before today.
+    public var overdue: Bool
+
+    public init(id: String, noteId: String, noteTitle: String, noteIcon: String? = nil, title: String, status: String, dueDate: String? = nil, dueTime: String? = nil, priority: String? = nil, assigneeId: String? = nil, assigneeName: String? = nil, reminderAt: Double? = nil, repeat: String? = nil, completedAt: Double? = nil, updatedAt: Double, overdue: Bool) {
+        self.id = id
+        self.noteId = noteId
+        self.noteTitle = noteTitle
+        self.noteIcon = noteIcon
+        self.title = title
+        self.status = status
+        self.dueDate = dueDate
+        self.dueTime = dueTime
+        self.priority = priority
+        self.assigneeId = assigneeId
+        self.assigneeName = assigneeName
+        self.reminderAt = reminderAt
+        self.repeat = `repeat`
+        self.completedAt = completedAt
+        self.updatedAt = updatedAt
+        self.overdue = overdue
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(noteId, forKey: .noteId)
+        try c.encode(noteTitle, forKey: .noteTitle)
+        try c.encode(noteIcon, forKey: .noteIcon)
+        try c.encode(title, forKey: .title)
+        try c.encode(status, forKey: .status)
+        try c.encode(dueDate, forKey: .dueDate)
+        try c.encode(dueTime, forKey: .dueTime)
+        try c.encode(priority, forKey: .priority)
+        try c.encode(assigneeId, forKey: .assigneeId)
+        try c.encode(assigneeName, forKey: .assigneeName)
+        try c.encode(reminderAt, forKey: .reminderAt)
+        try c.encode(`repeat`, forKey: .`repeat`)
+        try c.encode(completedAt, forKey: .completedAt)
+        try c.encode(updatedAt, forKey: .updatedAt)
+        try c.encode(overdue, forKey: .overdue)
+    }
+}
+
+/// A heading in a task list: a note (most views) or a day (Upcoming).
+public struct TaskGroup: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case note
+        case day
+    }
+
+    /// The note's id, or the day (YYYY-MM-DD).
+    public var id: String
+    public var kind: Kind
+    public var title: String
+    public var icon: String?
+    public var tasks: [TaskRow]
+
+    public init(id: String, kind: Kind, title: String, icon: String? = nil, tasks: [TaskRow]) {
+        self.id = id
+        self.kind = kind
+        self.title = title
+        self.icon = icon
+        self.tasks = tasks
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(title, forKey: .title)
+        try c.encode(icon, forKey: .icon)
+        try c.encode(tasks, forKey: .tasks)
+    }
+}
+
+public struct TasksListArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    public var view: TaskViewName
+
+    public init(space: SpaceRef? = nil, view: TaskViewName) {
+        self.space = space
+        self.view = view
+    }
+}
+
+public struct TasksValue: Codable, Hashable, Sendable {
+    public var view: TaskViewName
+    public var groups: [TaskGroup]
+    /// Tasks in all groups.
+    public var total: Int
+
+    public init(view: TaskViewName, groups: [TaskGroup], total: Int) {
+        self.view = view
+        self.groups = groups
+        self.total = total
+    }
+}
+
+public struct TaskCounts: Codable, Hashable, Sendable {
+    public var inbox: Int
+    public var today: Int
+    public var upcoming: Int
+    public var all: Int
+    public var mine: Int
+
+    public init(inbox: Int, today: Int, upcoming: Int, all: Int, mine: Int) {
+        self.inbox = inbox
+        self.today = today
+        self.upcoming = upcoming
+        self.all = all
+        self.mine = mine
+    }
+}
+
+public struct TasksRangeArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    /// YYYY-MM-DD, both included.
+    public var from: String
+    public var to: String
+    public var includeCompleted: Bool?
+
+    public init(space: SpaceRef? = nil, from: String, to: String, includeCompleted: Bool? = nil) {
+        self.space = space
+        self.from = from
+        self.to = to
+        self.includeCompleted = includeCompleted
+    }
+}
+
+public struct TasksRangeValue: Codable, Hashable, Sendable {
+    public var tasks: [TaskRow]
+
+    public init(tasks: [TaskRow]) {
+        self.tasks = tasks
+    }
+}
+
+/// An event from a subscribed calendar. Times are milliseconds since 1970 (UTC); all-day events cover whole days.
+public struct CalendarEvent: Codable, Hashable, Sendable {
+    public var id: String
+    public var calendarId: String
+    public var calendarName: String
+    /// A colour key ("accent", "moss", ...).
+    public var color: String
+    public var title: String
+    public var location: String
+    public var description: String
+    public var start: Int
+    public var end: Int
+    public var allDay: Bool
+
+    public init(id: String, calendarId: String, calendarName: String, color: String, title: String, location: String, description: String, start: Int, end: Int, allDay: Bool) {
+        self.id = id
+        self.calendarId = calendarId
+        self.calendarName = calendarName
+        self.color = color
+        self.title = title
+        self.location = location
+        self.description = description
+        self.start = start
+        self.end = end
+        self.allDay = allDay
+    }
+}
+
+public struct CalendarEventsArgs: Codable, Hashable, Sendable {
+    /// Milliseconds since 1970; at most 400 days apart.
+    public var from: Int
+    public var to: Int
+
+    public init(from: Int, to: Int) {
+        self.from = from
+        self.to = to
+    }
+}
+
+public struct CalendarEventsValue: Codable, Hashable, Sendable {
+    public var events: [CalendarEvent]
+
+    public init(events: [CalendarEvent]) {
+        self.events = events
+    }
+}
+
+/// A calendar this person subscribed to (by its link).
+public struct CalendarSubscription: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    public var url: String
+    public var color: String
+    public var visible: Bool
+    public var lastFetchedAt: Double?
+    public var lastError: String?
+    public var eventCount: Int?
+    public var loading: Bool
+
+    public init(id: String, name: String, url: String, color: String, visible: Bool, lastFetchedAt: Double? = nil, lastError: String? = nil, eventCount: Int? = nil, loading: Bool) {
+        self.id = id
+        self.name = name
+        self.url = url
+        self.color = color
+        self.visible = visible
+        self.lastFetchedAt = lastFetchedAt
+        self.lastError = lastError
+        self.eventCount = eventCount
+        self.loading = loading
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(url, forKey: .url)
+        try c.encode(color, forKey: .color)
+        try c.encode(visible, forKey: .visible)
+        try c.encode(lastFetchedAt, forKey: .lastFetchedAt)
+        try c.encode(lastError, forKey: .lastError)
+        try c.encode(eventCount, forKey: .eventCount)
+        try c.encode(loading, forKey: .loading)
+    }
+}
+
+public struct CalendarsValue: Codable, Hashable, Sendable {
+    public var calendars: [CalendarSubscription]
+
+    public init(calendars: [CalendarSubscription]) {
+        self.calendars = calendars
+    }
+}
+
+/// A person tasks can be assigned to in a workspace.
+public struct MemberRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    public var email: String
+    /// "owner", "admin", "member" (open).
+    public var role: String
+    public var isYou: Bool
+
+    public init(id: String, name: String, email: String, role: String, isYou: Bool) {
+        self.id = id
+        self.name = name
+        self.email = email
+        self.role = role
+        self.isYou = isYou
+    }
+}
+
+public struct MembersValue: Codable, Hashable, Sendable {
+    public var members: [MemberRow]
+
+    public init(members: [MemberRow]) {
+        self.members = members
+    }
+}
+
+/// `task.parse`: what Quick Add reads in what's typed ("call Sam tomorrow 3pm every monday").
+public struct TaskParseArgs: Codable, Hashable, Sendable {
+    public var text: String
+
+    public init(text: String) {
+        self.text = text
+    }
+}
+
+public struct TaskParseValue: Codable, Hashable, Sendable {
+    /// The task's words without the date and repeat.
+    public var title: String
+    public var dueDate: String?
+    public var dueTime: String?
+    /// The words that said the date ("tomorrow 3pm"), to show and let the person keep as text.
+    public var dateText: String?
+    /// "Every Monday", or null.
+    public var repeatLabel: String?
+    public var repeatText: String?
+
+    public init(title: String, dueDate: String? = nil, dueTime: String? = nil, dateText: String? = nil, repeatLabel: String? = nil, repeatText: String? = nil) {
+        self.title = title
+        self.dueDate = dueDate
+        self.dueTime = dueTime
+        self.dateText = dateText
+        self.repeatLabel = repeatLabel
+        self.repeatText = repeatText
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(title, forKey: .title)
+        try c.encode(dueDate, forKey: .dueDate)
+        try c.encode(dueTime, forKey: .dueTime)
+        try c.encode(dateText, forKey: .dateText)
+        try c.encode(repeatLabel, forKey: .repeatLabel)
+        try c.encode(repeatText, forKey: .repeatText)
+    }
+}
+
+public struct TaskCreateArgs: Codable, Hashable, Sendable {
+    public enum Priority: String, Codable, Hashable, Sendable, CaseIterable {
+        case low
+        case medium
+        case high
+    }
+
+    /// What was typed; dates and repeats in it are read unless `keepText` says not to.
+    public var text: String
+    public var space: SpaceRef?
+    /// The note it goes in; left out: the Inbox page.
+    public var noteId: String?
+    /// Overrides what's read from the text.
+    public var dueDate: String?
+    public var dueTime: String?
+    public var priority: Priority?
+    /// Keep the date (and repeat) words as text instead of reading them.
+    public var keepText: Bool?
+
+    public init(text: String, space: SpaceRef? = nil, noteId: String? = nil, dueDate: String? = nil, dueTime: String? = nil, priority: Priority? = nil, keepText: Bool? = nil) {
+        self.text = text
+        self.space = space
+        self.noteId = noteId
+        self.dueDate = dueDate
+        self.dueTime = dueTime
+        self.priority = priority
+        self.keepText = keepText
+    }
+}
+
+public struct TaskCreateResult: Codable, Hashable, Sendable {
+    public var id: String
+    public var noteId: String
+    /// "Inbox" or the note's title, for "Task added to …".
+    public var `where`: String
+
+    public init(id: String, noteId: String, where: String) {
+        self.id = id
+        self.noteId = noteId
+        self.where = `where`
+    }
+}
+
+/// Changes one task; fields left out stay as they are.
+public struct TaskUpdateArgs: Codable, Hashable, Sendable {
+    public enum Priority: String, Codable, Hashable, Sendable, CaseIterable {
+        case none
+        case low
+        case medium
+        case high
+    }
+
+    public var id: String
+    public var checked: Bool?
+    public var canceled: Bool?
+    public var dueDate: String?
+    public var dueTime: String?
+    public var priority: Priority?
+    public var assigneeId: String?
+    public var reminderAt: Double?
+
+    public init(id: String, checked: Bool? = nil, canceled: Bool? = nil, dueDate: String? = nil, dueTime: String? = nil, priority: Priority? = nil, assigneeId: String? = nil, reminderAt: Double? = nil) {
+        self.id = id
+        self.checked = checked
+        self.canceled = canceled
+        self.dueDate = dueDate
+        self.dueTime = dueTime
+        self.priority = priority
+        self.assigneeId = assigneeId
+        self.reminderAt = reminderAt
+    }
+}
+
+public struct TaskMoveArgs: Codable, Hashable, Sendable {
+    public var id: String
+    /// Left out: the Inbox page.
+    public var noteId: String?
+
+    public init(id: String, noteId: String? = nil) {
+        self.id = id
+        self.noteId = noteId
+    }
+}
+
+public struct CalendarAddArgs: Codable, Hashable, Sendable {
+    public var url: String
+    public var name: String?
+    public var color: String?
+
+    public init(url: String, name: String? = nil, color: String? = nil) {
+        self.url = url
+        self.name = name
+        self.color = color
+    }
+}
+
+public struct CalendarAddResult: Codable, Hashable, Sendable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+}
+
+public struct CalendarUpdateArgs: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String?
+    public var color: String?
+    public var visible: Bool?
+
+    public init(id: String, name: String? = nil, color: String? = nil, visible: Bool? = nil) {
+        self.id = id
+        self.name = name
+        self.color = color
+        self.visible = visible
+    }
+}
+
+public struct CalendarIdArgs: Codable, Hashable, Sendable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+}

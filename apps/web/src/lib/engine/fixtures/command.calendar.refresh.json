@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "calendar.refresh",
+  "description": "Fetch a calendar again now.",
+  "args": {
+    "id": "cal1"
+  },
+  "result": {
+    "ok": true
+  }
+}

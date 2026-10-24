@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "task.update",
+  "description": "A task in an encrypted note is changed in the note itself.",
+  "args": {
+    "id": "blk_t3",
+    "checked": true
+  },
+  "error": {
+    "code": "e2ee_device_only",
+    "message": "Open the note to change this task."
+  }
+}

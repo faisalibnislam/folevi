@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "e625db6e"
+        "schemaHash": "b8e3aa69"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 4,
+        "revision": 5,
         "build": "dev",
-        "schemaHash": "e625db6e",
+        "schemaHash": "b8e3aa69",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -47,7 +47,14 @@
           "shared.list",
           "changes",
           "notifications.list",
-          "search"
+          "search",
+          "tasks.list",
+          "tasks.counts",
+          "tasks.range",
+          "calendars.events",
+          "calendars.list",
+          "members",
+          "task.parse"
         ],
         "listViews": [
           "notes.list"
@@ -85,7 +92,14 @@
           "notification.markAllRead",
           "notification.remove",
           "invite.accept",
-          "pageInvite.accept"
+          "pageInvite.accept",
+          "task.create",
+          "task.update",
+          "task.moveToNote",
+          "calendar.add",
+          "calendar.update",
+          "calendar.remove",
+          "calendar.refresh"
         ],
         "editorCommands": [
           "note.prepare",

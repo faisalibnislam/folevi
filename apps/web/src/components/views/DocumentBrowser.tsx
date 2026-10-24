@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, type LucideIcon } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
@@ -40,10 +40,13 @@ import { SelectionBar, type SelectionAction } from "./SelectionBar";
 import { useCardSelection } from "./useCardSelection";
 import { useNoteActions } from "./noteActions";
 import { useAiEnabled } from "@/components/ai/useAi";
-import { AiGenerateDialog } from "@/components/ai/AiGenerateDialog";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useIphoneApp } from "@/lib/iphone";
 import { IphoneNoteList } from "@/components/iphone/NoteList";
+
+// Foli AI's "Generate a template" brings the read-only drawing of every block (its preview): it loads the first
+// time it's opened, not with every list (docs/IOS_PERFORMANCE.md, "Startup").
+const AiGenerateDialog = lazy(() => import("@/components/ai/AiGenerateDialog").then((m) => ({ default: m.AiGenerateDialog })));
 
 /** Marks a page with edits on this device the server hasn't confirmed yet. */
 function UnsyncedMarker({ className = "" }: { className?: string }) {
@@ -154,6 +157,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   // Templates can be generated with AI (where AI is on and included).
   const aiOn = useAiEnabled();
   const [generating, setGenerating] = useState(false);
+  const [generated, setGenerated] = useState(false);
+  if (generating && !generated) setGenerated(true);
   const createDocument = useCreateDocument();
   const emptyTrash = useMutation(api.documents.emptyTrash);
   const toast = useToast();
@@ -466,7 +471,11 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         }
       >
         {dialogs}
-        {view === "templates" && aiOn ? <AiGenerateDialog open={generating} onClose={() => setGenerating(false)} kind="template" /> : null}
+        {view === "templates" && aiOn && generated ? (
+          <Suspense fallback={null}>
+            <AiGenerateDialog open={generating} onClose={() => setGenerating(false)} kind="template" />
+          </Suspense>
+        ) : null}
       </IphoneNoteList>
     );
   }
@@ -555,7 +564,11 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               <Plus size={14} aria-hidden /> New template
             </Button>
           ) : null}
-          {view === "templates" && aiOn ? <AiGenerateDialog open={generating} onClose={() => setGenerating(false)} kind="template" /> : null}
+          {view === "templates" && aiOn && generated ? (
+          <Suspense fallback={null}>
+            <AiGenerateDialog open={generating} onClose={() => setGenerating(false)} kind="template" />
+          </Suspense>
+        ) : null}
         </div>
 
         {subfolders.length ? (

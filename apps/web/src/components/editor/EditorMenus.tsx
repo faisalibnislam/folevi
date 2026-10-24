@@ -70,7 +70,7 @@ import {
 import { CHART_DEFAULT_HEIGHT, FLOWCHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WHITEBOARD_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, addDays, embedFor, embedProblem, repeatProps, repeatRule, sanitizeHref, ulid } from "@folevi/editor-schema";
 import { RepeatField } from "./RepeatField";
 import { api } from "@/lib/convex/api";
-import { parseNaturalDate } from "@/lib/nlDate";
+import { parseNaturalDate, useNaturalDatesReady } from "@/lib/nlDate";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { useEditorEnvironment } from "./environment";
@@ -977,6 +977,8 @@ export function EditorMenus({
   // Local mode: dates and pages only, no people (docs/LOCAL_MODE_PLAN.md §5.2).
   const mentionPeople = useCapabilities().comments;
   const people = useQuery(api.comments.mentionable, open?.kind === "mention" && mentionPeople ? { documentId } : "skip");
+  // (Its dates read again once the date parser has loaded, lib/nlDate.ts.)
+  const datesReady = useNaturalDatesReady();
   const mentionItems: MenuItem[] = useMemo(() => {
     if (open?.kind !== "mention") return [];
     const mq = open.query.toLowerCase();
@@ -987,7 +989,7 @@ export function EditorMenus({
     ];
     const typed = open.query.trim();
     // "@next friday", "@12 nov", "@2026-11-12": the day it names, first.
-    const said = typed.length >= 3 ? parseNaturalDate(typed) : null;
+    const said = datesReady && typed.length >= 3 ? parseNaturalDate(typed) : null;
     const explicit = said && !dates.some((d) => d.date === said.date) ? [{ label: formatDate(said.date), date: said.date }] : [];
     const dateItems: MenuItem[] = [...explicit, ...dates]
       .filter((d) => !mq || d === explicit[0] || d.label.toLowerCase().includes(mq) || d.date.startsWith(mq) || d.date === said?.date)
@@ -1014,7 +1016,7 @@ export function EditorMenus({
         run: () => void editor.chain().focus().insertContent({ type: "mention", attrs: { userId: m.profileId, label: m.displayName } }).insertContent(" ").run(),
       }));
     return [...peopleItems, ...dateItems];
-  }, [open, people, today, editor, special.pickDate]);
+  }, [open, people, today, editor, special.pickDate, datesReady]);
 
   const items = open?.kind === "slash" ? filteredSlash : open?.kind === "page" ? pageItems : mentionItems;
   // A different list (results arrived, people loaded above the dates): start from the top again, so the

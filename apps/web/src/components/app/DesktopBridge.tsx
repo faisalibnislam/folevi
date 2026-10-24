@@ -16,7 +16,7 @@ import { useEngineStatus } from "@/lib/hooks/useEngine";
 import { desktop, hasMenuCommand, MAC_MENU_COMMANDS, runMenuCommand, watchMenuCommands, type DesktopCommand, type MacMenuCommand } from "@/lib/desktop";
 import { openNextInNewTab, tabHref, tabPage, useTabs, type DocTab } from "@/lib/app/tabs";
 import { useAiAccess } from "@/components/ai/useAi";
-import { useCommentActions } from "@/components/doc/Comments";
+import { useCommentActions } from "@/components/doc/commentActions";
 import { textToCommentBody } from "@/components/doc/MentionInput";
 import { useCreateDocument } from "./useCreateDocument";
 import { useShell } from "./Shell";

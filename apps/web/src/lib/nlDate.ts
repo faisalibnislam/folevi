@@ -1,5 +1,45 @@
-import * as chrono from "chrono-node";
+import { useSyncExternalStore } from "react";
 import { dueLabel } from "./format";
+
+type Chrono = typeof import("chrono-node");
+
+/*
+ * chrono-node (about 170 KB) is the largest library the app would read before its first screen, and only
+ * Quick Add and the @ menu need it: it loads on its own, as soon as the browser has a moment after the app
+ * starts (or the first time a date is asked for), and parseNaturalDate answers null until then.
+ * docs/IOS_PERFORMANCE.md, "Startup".
+ */
+let chrono: Chrono | null = null;
+let loading: Promise<Chrono> | null = null;
+const ready = new Set<() => void>();
+
+/** Loads the date parser (once); resolves when parseNaturalDate can answer. */
+export function loadNaturalDates(): Promise<Chrono> {
+  loading ??= import("chrono-node").then((m) => {
+    chrono = m;
+    for (const l of ready) l();
+    return m;
+  });
+  return loading;
+}
+
+if (typeof window !== "undefined") {
+  const later = (window as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+  if (later) later(() => void loadNaturalDates(), { timeout: 3000 });
+  else setTimeout(() => void loadNaturalDates(), 1500);
+}
+
+/** Whether the date parser is here; a component that parses as it draws draws again once it is. */
+export function useNaturalDatesReady(): boolean {
+  return useSyncExternalStore(
+    (l) => {
+      ready.add(l);
+      return () => ready.delete(l);
+    },
+    () => chrono !== null,
+    () => false,
+  );
+}
 
 /*
  * Dates written in plain words, for Quick Add and the @ menu: "call Sam tomorrow 3pm", "report by Friday",
@@ -33,6 +73,10 @@ const NOT_A_DATE = new Set(["now", "today's", "second", "a second", "sec", "min"
  */
 export function parseNaturalDate(text: string, now: Date = new Date()): ParsedDate | null {
   if (!text.trim()) return null;
+  if (!chrono) {
+    void loadNaturalDates();
+    return null;
+  }
   const results = chrono.casual.parse(text, now, { forwardDate: true });
   for (const r of results) {
     const said = r.text.trim();

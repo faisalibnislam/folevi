@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { PanelLeft } from "lucide-react";
 import { api } from "@/lib/convex/api";
@@ -15,7 +15,6 @@ import { Sidebar } from "./Sidebar";
 import { RouteView } from "./RouteView";
 import { TabStrip } from "./TabStrip";
 import { CommandPalette } from "./CommandPalette";
-import { QuickAddTask } from "./QuickAddTask";
 import { AppContextMenu } from "./AppContextMenu";
 import { FolderDropLayer } from "./FolderDropLayer";
 import { AskAiChat } from "@/components/ai/AskAiChat";
@@ -36,6 +35,10 @@ import { installInputModality } from "@/components/iphone/chrome";
 import { MacCommands } from "./MacCommands";
 import { inMacApp } from "@/lib/desktop/mac";
 import { IphoneScreen, type IphoneScreenOptions } from "@/components/iphone/Screen";
+
+// Quick add (and its plain-words dates, chrono-node, the largest library the first screen would otherwise
+// read) loads the first time it's opened, then stays (docs/IOS_PERFORMANCE.md, "Startup").
+const QuickAddTask = lazy(() => import("./QuickAddTask").then((m) => ({ default: m.QuickAddTask })));
 
 interface ShellValue {
   sidebarOpen: boolean;
@@ -208,6 +211,9 @@ export function Shell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  // Mounted from its first opening on (it keeps its draft and closing animation from then).
+  const [quickAddUsed, setQuickAddUsed] = useState(false);
+  if (quickAddOpen && !quickAddUsed) setQuickAddUsed(true);
   const [quickAddDue, setQuickAddDue] = useState<string | undefined>(undefined);
   const [ambient, setAmbientCss] = useState<string | null>(null);
   const [ambientTone, setAmbientTone] = useState<"deep" | "light" | null>(null);
@@ -384,7 +390,11 @@ export function Shell() {
       <NativeBridge />
       <WarmNotes />
       <OutboxRefusals />
-      <QuickAddTask open={quickAddOpen} due={quickAddDue} onClose={() => setQuickAddOpen(false)} />
+      {quickAddUsed ? (
+        <Suspense fallback={null}>
+          <QuickAddTask open={quickAddOpen} due={quickAddDue} onClose={() => setQuickAddOpen(false)} />
+        </Suspense>
+      ) : null}
       {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
       {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} hideLauncher={(isNarrow && drawerOpen) || iphone || ipad} /> : null}
     </>

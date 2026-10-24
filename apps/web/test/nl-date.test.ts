@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { naturalDateLabel, parseNaturalDate } from "../src/lib/nlDate";
+import { beforeAll, describe, expect, it } from "vitest";
+import { loadNaturalDates, naturalDateLabel, parseNaturalDate } from "../src/lib/nlDate";
+
+// The parser loads on its own in the app (lib/nlDate.ts); here, before the first test.
+beforeAll(() => loadNaturalDates());
 
 // Wednesday 14 October 2026, 10:00 local time.
 const NOW = new Date(2026, 9, 14, 10, 0, 0);

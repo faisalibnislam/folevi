@@ -7,14 +7,11 @@ import { useMutation, useQuery } from "convex/react";
 import { useCapabilities } from "@/lib/mode";
 import { SignInToCollaborate } from "@/components/app/SignInToCollaborate";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ulid } from "@folevi/editor-schema";
 import { ArrowUp, Bell, BellMinus, BellOff, BellPlus, Check, ChevronLeft, ChevronRight, CornerDownRight, Link2, MoreHorizontal, RotateCcw, SmilePlus, Trash2, Unlink, X, Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
-import { requireOutbox } from "@/lib/app/folders";
 import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
 import { overlayThreads, type OverlayComment, type OverlayThread, type OverlayThreads } from "@/lib/sync/overlays";
-import type { OutboxArgs, OutboxMeta, OutboxName } from "@/lib/sync/outbox";
 import { Button, IconButton } from "@/components/ui/Button";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { Select } from "@/components/ui/Select";
@@ -88,11 +85,6 @@ const bodyToText = (body: BodyNode[]) => body.map((n) => (n.type === "text" ? n.
 /** A thread or comment that's still on this device (not yet on the server). */
 const isPending = (x: { waiting?: unknown }) => x.waiting !== undefined;
 
-/** A comment's text in a few words, for the sync details. */
-function excerpt(body: unknown[]): string {
-  const text = bodyToText(body as BodyNode[]).trim().replace(/\s+/g, " ");
-  return text.length > 40 ? `${text.slice(0, 39)}…` : text;
-}
 
 /**
  * A note's comment threads: the last answer seen on this device while there's no connection, with the
@@ -110,44 +102,10 @@ export function useCommentThreads(documentId: string, skip = false): CommentsDat
   return useMemo(() => (data ? overlayThreads(data, entries, documentId, me) : undefined), [data, entries, documentId, me]);
 }
 
-/**
- * Comment changes. Writing, replying, editing, resolving, deleting and reacting go through the outbox:
- * shown at once (see `useCommentThreads`), kept on this device, and sent in order when there's a connection.
- * A new comment has its ids from the start, so it can be replied to and reacted to before it's sent; one on
- * a line typed a moment ago waits for that line to reach the server. Read marks go the same way, in order
- * with the thread's other changes.
- */
-export function useCommentActions(documentId: string) {
-  const { outbox, engine } = useAppState();
-  // Throws (so the caller's `catch` hears it) only while the outbox is still opening.
-  const queue = <N extends OutboxName>(name: N, a: OutboxArgs<N>, meta: OutboxMeta) => {
-    requireOutbox(outbox).enqueue(name, a, meta);
-  };
-  return {
-    create: async (a: { documentId: string; blockId?: string; body: unknown[] }) => {
-      const threadId = ulid();
-      const commentId = ulid();
-      queue("comments.create", { ...a, threadId, commentId }, { keys: [`thread:${threadId}`, `comment:${commentId}`], label: `Comment “${excerpt(a.body)}”`, after: [{ documentId: a.documentId, blockId: a.blockId ?? null }] });
-      // A line typed a moment ago is sent now rather than after the usual pause, so the comment can follow.
-      if (engine?.waitsToSync(a.documentId, a.blockId ?? null)) engine.scheduleFlush(0);
-      return { threadId, commentId };
-    },
-    reply: async (a: { threadId: string; body: unknown[] }) => {
-      const commentId = ulid();
-      queue("comments.reply", { ...a, commentId }, { keys: [`thread:${a.threadId}`, `comment:${commentId}`], label: `Reply “${excerpt(a.body)}”` });
-      return { commentId };
-    },
-    edit: async (a: { commentId: string; body: unknown[] }) => queue("comments.edit", a, { keys: [`comment:${a.commentId}`], label: `Edit comment “${excerpt(a.body)}”` }),
-    remove: async (a: { commentId: string }) => queue("comments.remove", a, { keys: [`comment:${a.commentId}`], label: "Delete a comment" }),
-    setResolved: async (a: { threadId: string; resolved: boolean }) => queue("comments.setResolved", a, { keys: [`thread:${a.threadId}`], label: a.resolved ? "Resolve a thread" : "Reopen a thread" }),
-    deleteThread: async (a: { threadId: string }) => queue("comments.deleteThread", a, { keys: [`thread:${a.threadId}`], label: "Delete a thread" }),
-    /** Sets the caller's reaction of `kind` on or off (`on` comes from what's shown, so a resend lands as meant). */
-    react: async (a: { commentId: string; kind: ReactionKind; on: boolean }) => queue("comments.react", a, { keys: [`comment:${a.commentId}`], label: a.on ? "Add a reaction" : "Remove a reaction" }),
-    /** Reads a thread up to its latest activity as shown (`upTo`): what comes after, from others, stays unread. */
-    markThreadRead: async (a: { threadId: string; upTo: number }) => queue("comments.markThreadRead", a, { keys: [`thread:${a.threadId}`], label: "Mark a thread read" }),
-    markThreadUnread: async (a: { threadId: string }) => queue("comments.markThreadUnread", a, { keys: [`thread:${a.threadId}`], label: "Mark a thread unread" }),
-  };
-}
+// Comment changes (the outbox's calls) live in commentActions.ts, so what only sends them (the Mac's bridge)
+// doesn't bring this file's whole interface along.
+import { useCommentActions } from "./commentActions";
+export { useCommentActions };
 
 /**
  * One comment thread: header (Comments, "…", resolve, close), the comments, and a composer. With no

@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useToast } from "@/components/ui/Toast";
-import { naturalDateLabel } from "@/lib/nlDate";
+import { loadNaturalDates, naturalDateLabel } from "@/lib/nlDate";
 import type { WireBlock } from "@folevi/editor-schema";
 import { matchOwner, meetingActionItems, ownerHint, proposalsFrom, todoBlocksFor, wallClockNow, type PresetTodo, type ProposedTodo } from "@/lib/ai/actionItems";
 import { AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
@@ -123,7 +123,8 @@ function FindTodosDialog({ editor, documentId, target, items, replace, onClose }
     const mine = ++seq.current;
     setPhase({ kind: "busy" });
     try {
-      await whenSaved(engine, documentId);
+      // (The dates the to-dos name are read with the date parser, which loads on its own: lib/nlDate.ts.)
+      await Promise.all([whenSaved(engine, documentId), loadNaturalDates()]);
       if (mine !== seq.current) return;
       if (items) {
         // Already worked out: only who's here is needed, to match the owners to.

@@ -16,7 +16,8 @@ import { useAppRouter } from "@/lib/app/router";
 import { useBackendMode } from "@/lib/mode";
 import { APP_URL } from "@/lib/env";
 import { asCapabilityCommand, macDesktop, noteFromText, setNoteFileSource, type MacCapabilityCommand } from "@/lib/desktop/capabilities";
-import { exportPdf, markdownNow, markdownWithFiles } from "@/components/doc/export";
+// Export (Markdown, PDF, zips) loads when a note is first shared, printed or dragged out.
+const exporting = () => import("@/components/doc/export");
 import { spotlightItems } from "@/components/app/LocalExtensions";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 
@@ -68,7 +69,7 @@ function Capabilities() {
       const held = engine?.documentBlocks(id) ?? [];
       const [doc, listed] = await Promise.all([client.query(api.documents.get, { documentId: id }), held.length ? null : client.query(api.blocks.list, { documentId: id })]);
       if (!doc) return null;
-      return await markdownWithFiles(client, doc.document.title, held.length ? held : (listed?.blocks ?? []), folder);
+      return await (await exporting()).markdownWithFiles(client, doc.document.title, held.length ? held : (listed?.blocks ?? []), folder);
     });
     return () => setNoteFileSource(null);
   }, [client, engine]);
@@ -82,11 +83,11 @@ function Capabilities() {
       switch (c.type) {
         case "share": {
           if (!now.docId) return { ok: false };
-          return { ok: true, title: now.title || "Untitled", text: markdownNow(now.title, now.engine?.documentBlocks(now.docId) ?? []), url: now.link };
+          return { ok: true, title: now.title || "Untitled", text: (await exporting()).markdownNow(now.title, now.engine?.documentBlocks(now.docId) ?? []), url: now.link };
         }
         case "print": {
           if (!now.docId) return { handled: false };
-          await exportPdf(now.client, now.title, now.engine?.documentBlocks(now.docId) ?? []);
+          await (await exporting()).exportPdf(now.client, now.title, now.engine?.documentBlocks(now.docId) ?? []);
           return { handled: true };
         }
         case "new-note-with-text": {

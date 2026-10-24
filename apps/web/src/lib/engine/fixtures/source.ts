@@ -301,7 +301,7 @@ export const FIXTURES: Record<string, Fixture> = {
     batch: [
       { kind: "update", sub: "sync", rev: 4, value: SYNC_SAVED },
       { kind: "event", name: "sync.status", data: SYNC_SAVED },
-      { kind: "event", name: "toast", data: { message: "Starred", tone: "info", undo: { command: "note.star", args: { ids: ["doc_00001"], starred: false } } } },
+      { kind: "event", name: "toast", data: { message: "Starred", tone: "info", undo: { command: "note.star", args: { ids: ["doc_00001"], starred: false } }, action: null } },
     ],
   },
 
@@ -566,6 +566,7 @@ export const FIXTURES: Record<string, Fixture> = {
     error: { code: "ai_credits_exhausted", message: "You've used this month's AI credits. They reset on November 1." },
   }),
   "command.catchUp.clear": command({ name: "catchUp.clear", description: "Close the brief.", args: {}, result: { ok: true } }),
+  "command.toast.action": command({ name: "toast.action", description: "The toast's button was tapped.", args: { id: "t7" }, result: { ok: true } }),
   "command.engine.refresh": command({ name: "engine.refresh", description: "Pull to refresh: send what waits and pull now.", args: {}, result: { ok: true } }),
 
   // ---- editor commands
@@ -603,8 +604,9 @@ export const FIXTURES: Record<string, Fixture> = {
   "event.gate.changed.locked": event({ name: "gate.changed", description: "The encrypted space needs unlocking.", data: { gate: "e2eeLocked" } }),
   "event.sync.status": event({ name: "sync.status", description: "Saving.", data: { ...SYNC_SAVED, state: "saving", label: "Saving…", pending: 1 } }),
   "event.place.changed": event({ name: "place.changed", description: "The space changed.", data: { place: "acct:user_1", space: "ws_studio" } }),
-  "event.toast": event({ name: "toast", description: "A toast with Undo.", data: { message: "Moved to Trips", tone: "info", undo: { command: "note.move", args: { ids: ["doc_00001"], folderId: null } } } }),
-  "event.toast.error": event({ name: "toast", description: "An error toast.", data: { message: "1 note couldn’t be changed. You may not have permission.", tone: "error", undo: null } }),
+  "event.toast": event({ name: "toast", description: "A toast with Undo.", data: { message: "Moved to Trips", tone: "info", undo: { command: "note.move", args: { ids: ["doc_00001"], folderId: null } }, action: null } }),
+  "event.toast.action": event({ name: "toast", description: "A toast from the note page with its own button (revision 2).", data: { message: "Link copied", tone: "success", undo: null, action: { id: "t7", label: "Open" } } }),
+  "event.toast.error": event({ name: "toast", description: "An error toast.", data: { message: "1 note couldn’t be changed. You may not have permission.", tone: "error", undo: null, action: null } }),
   "event.navigate.request": event({ name: "navigate.request", description: "A page link inside a note.", data: { route: "/d/doc_00002", noteId: "doc_00002", external: false } }),
   "event.navigate.request.external": event({ name: "navigate.request", description: "A web link inside a note.", data: { route: "https://example.com/article", noteId: null, external: true } }),
   "event.note.ready": event({ name: "note.ready", description: "The note's first frame is drawn.", data: { id: "doc_00001", title: "Kyoto in November" } }),

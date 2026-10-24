@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "80241393"
+        "schemaHash": "8925e71b"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 1,
+        "revision": 2,
         "build": "dev",
-        "schemaHash": "80241393",
+        "schemaHash": "8925e71b",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -57,7 +57,8 @@
           "folder.create",
           "catchUp.run",
           "catchUp.clear",
-          "engine.refresh"
+          "engine.refresh",
+          "toast.action"
         ],
         "editorCommands": [
           "note.prepare",

@@ -18,7 +18,8 @@
 // Transport (section 3.1):
 // - JavaScript to native: `window.webkit.messageHandlers.foleviEngine.postMessage(json)` where `json` is a JSON
 //   string holding an array of `FromEngine` updates and events (`EngineBatch`), flushed at most once per
-//   animation frame.
+//   animation frame. A batch over `BIG_PAYLOAD_BYTES` is POSTed to `/_bridge/<id>` first and the message is then
+//   the JSON object `{ "bodyId": "<id>" }` (`BigBatchPointer`): native reads the batch with one GET of that path.
 // - Native to JavaScript: `callAsyncJavaScript("return __foleviEngine.handle(m)", arguments: ["m": json])` where
 //   `json` is one `ToEngine` message as a JSON string. It resolves with the reply as a JSON string (`Reply`).
 //   Replies never travel through postMessage.
@@ -34,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 1;
+export const CONTRACT_REVISION = 2;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -190,6 +191,11 @@ export interface EventMessage {
 
 export type FromEngine = Reply | UpdateMessage | EventMessage;
 
+/** A big batch's stand-in in the message: GET `/_bridge/<bodyId>` once for the `EngineBatch`. */
+export interface BigBatchPointer {
+  bodyId: string;
+}
+
 /** What one postMessage carries: updates and events in the order they happened. */
 export type EngineBatch = (UpdateMessage | EventMessage)[];
 
@@ -213,6 +219,7 @@ export type BridgeErrorCode =
   | "invalid_args"
   | "no_note" // an editor command while no note is open
   | "read_only" // the open note can't be edited by this person
+  | "unavailable" // the action isn't offered for this note or here
   | "page_gone" // native only: the content process ended; wait for the reload
   | "failed"; // anything else (the message says what)
 
@@ -228,6 +235,7 @@ export const BRIDGE_ERROR_CODES: readonly BridgeErrorCode[] = [
   "invalid_args",
   "no_note",
   "read_only",
+  "unavailable",
   "page_gone",
   "failed",
 ];
@@ -724,6 +732,11 @@ export interface FolderCreateResult {
   id: string;
 }
 
+/** Taps a toast's button (`ToastEvent.action`). */
+export interface ToastActionArgs {
+  id: string;
+}
+
 export interface OkResult {
   ok: true;
 }
@@ -840,6 +853,16 @@ export interface ToastEvent {
   tone: "info" | "success" | "error";
   /** A command that undoes what the toast reports. */
   undo: ToastUndo | null;
+  /**
+   * Revision 2: a button the web page attached to its toast (Undo, Retry, Open, ...). Native shows `label` and
+   * sends `toast.action { id }` when it's tapped; ids are good for a minute.
+   */
+  action: ToastAction | null;
+}
+
+export interface ToastAction {
+  id: string;
+  label: string;
 }
 
 /** A link inside a note (to another note or a screen) that native should open. */
@@ -909,6 +932,7 @@ export interface CommandMap {
   "catchUp.run": { args: SpaceArgs; result: CatchUpCard };
   "catchUp.clear": { args: SpaceArgs; result: OkResult };
   "engine.refresh": { args: EmptyArgs; result: OkResult };
+  "toast.action": { args: ToastActionArgs; result: OkResult };
 }
 
 export interface EditorCommandMap {
@@ -982,6 +1006,7 @@ const commandNames = [
   "catchUp.run",
   "catchUp.clear",
   "engine.refresh",
+  "toast.action",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

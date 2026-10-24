@@ -147,7 +147,7 @@ public final class NotesListModel {
         let sort: NotesSort = (kind.view == .trash && savedSort == .manual) ? .updated : (savedSort ?? .updated)
         self.sort = sort
         self.layout = defaults.string(forKey: "folevi.layout.\(kind.view.rawValue)").flatMap(NotesLayout.init(rawValue:)) ?? ((kind.view == .trash || kind.view == .archive) ? .list : .cards)
-        self.store = client.watchList(.notesList(space: space, view: kind.view, folderId: kind.folderId, tagId: kind.tagId, sort: sort))
+        self.store = client.watchList(.notesList(space: space, view: kind.view, folderId: kind.folderId, tagId: kind.tagId, sort: sort), snapshotKey: Self.snapshotKey(client: client, space: space, kind: kind, sort: sort))
         self.tree = client.watch(.foldersTree(space: space))
         self.session = client.watch(.session, snapshotKey: "session.\(client.place)")
         self.places = client.watch(.placesList)
@@ -157,7 +157,14 @@ public final class NotesListModel {
 
     private func restart() {
         visible.removeAll()
-        store = client.watchList(.notesList(space: space, view: kind.view, folderId: kind.folderId, tagId: kind.tagId, sort: sort, filter: serverFilter.isEmpty ? nil : serverFilter))
+        let filter = serverFilter.isEmpty ? nil : serverFilter
+        // A filtered list isn't what launch draws: only the plain list keeps a snapshot.
+        store = client.watchList(.notesList(space: space, view: kind.view, folderId: kind.folderId, tagId: kind.tagId, sort: sort, filter: filter), snapshotKey: filter == nil ? Self.snapshotKey(client: client, space: space, kind: kind, sort: sort) : nil)
+    }
+
+    /// The list's key in the launch snapshot (plan 4.6: the top of each list that was on screen).
+    static func snapshotKey(client: EngineClient, space: SpaceRef?, kind: NotesListKind, sort: NotesSort) -> String {
+        "list.\(client.place).\(space ?? "current").\(kind.view.rawValue).\(kind.folderId ?? kind.tagId ?? "-").\(sort.rawValue)"
     }
 
     // MARK: Title and state

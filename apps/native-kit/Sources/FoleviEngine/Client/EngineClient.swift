@@ -104,14 +104,20 @@ public final class EngineClient {
         return store
     }
 
-    /// Starts a live windowed list. Without a window it asks for the first `2 * overscan` rows.
-    public func watchList<L: EngineListSpec>(_ list: L, window: ListWindow? = nil, windowing: ListWindowing = ListWindowing()) -> ListStore<L.Row> {
+    /// Starts a live windowed list. Without a window it asks for the first `2 * overscan` rows. `snapshotKey`
+    /// keeps the top of the list (its first 40 rows) in the launch snapshot, so the next launch draws it at once.
+    public func watchList<L: EngineListSpec>(_ list: L, window: ListWindow? = nil, windowing: ListWindowing = ListWindowing(), snapshotKey: String? = nil) -> ListStore<L.Row> {
         let sub = newId("l")
         let spec = SubscriptionSpec(name: L.name, args: AnyArgs(list.args), isList: true, decoder: .list(L.Row.self))
         let win = window ?? ListWindow(start: 0, count: windowing.overscan * 2)
-        let store = ListStore<L.Row>(sub: sub, spec: spec, client: self, window: win, windowing: windowing)
+        let initial: ListSnapshot<L.Row>? = snapshotKey.flatMap { snapshot?.value(ListSnapshot<L.Row>.self, key: $0) }
+        let store = ListStore<L.Row>(sub: sub, spec: spec, client: self, window: win, windowing: windowing, initial: initial)
+        let snapshot = snapshotKey.flatMap { key in self.snapshot.map { (key, $0) } }
         register(sub, spec: spec, window: win, store: store) { [weak store] rev, payload, stale, error in
-            store?.apply(rev: rev, payload: payload, stale: stale, error: error) ?? true
+            guard let store else { return true }
+            let ok = store.apply(rev: rev, payload: payload, stale: stale, error: error)
+            if ok, let (key, snap) = snapshot, let top = store.state.snapshot() { snap.set(top, key: key) }
+            return ok
         } disconnected: { [weak store] in
             store?.status = .disconnected
             store?.lastRev = 0

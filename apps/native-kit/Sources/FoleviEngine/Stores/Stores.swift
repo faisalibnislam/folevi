@@ -94,7 +94,8 @@ public final class ListStore<Row: EngineRow> {
     @ObservationIgnored var visibility = VisibilityTimer()
     @ObservationIgnored private let token: SubscriptionToken
 
-    init(sub: String, spec: SubscriptionSpec, client: EngineClient, window: ListWindow, windowing: ListWindowing) {
+    init(sub: String, spec: SubscriptionSpec, client: EngineClient, window: ListWindow, windowing: ListWindowing, initial: ListSnapshot<Row>? = nil) {
+        if let initial { self.state = ListState(snapshot: initial) }
         self.sub = sub
         self.spec = spec
         self.client = client

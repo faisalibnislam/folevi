@@ -295,6 +295,29 @@ struct NotesListModelTests {
         #expect(model.subfolders.first?.notes.isEmpty == cards.first?.previews.isEmpty)
     }
 
+    @Test func aListStartsFromTheLaunchSnapshot() async {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("folevi-n7-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let engine = FakeEngine()
+        let client = engine.client()
+        let snap = LaunchSnapshotStore(url: url)
+        snap.throttle = 0
+        client.snapshot = snap
+        let d = defaults()
+        let model = NotesListModel(client: client, kind: NotesListKind(.all), defaults: d)
+        await eventually { model.total == 25 }
+        snap.flush()
+        // The next launch, before the engine answers anything.
+        let quiet = ScriptedTransport { _ in try await Task.sleep(for: .seconds(30)); return .null }
+        let client2 = EngineClient(transport: quiet, place: "acct:u1", app: AppInfo(platform: .ios, version: "1.1.00", build: "1", protocol: EngineContract.protocolVersion))
+        client2.snapshot = LaunchSnapshotStore(url: url)
+        let model2 = NotesListModel(client: client2, kind: NotesListKind(.all), defaults: d)
+        #expect(!model2.isLoading)
+        #expect(model2.total == 25)
+        #expect(model2.slot(at: 0).row?.id == "n00000")
+        #expect(model2.slot(at: 39).row == nil, "only the first rows are kept")
+    }
+
     @Test func emptyStatesUseTheWebWording() async {
         let engine = FakeEngine(rows: 0)
         let model = NotesListModel(client: engine.client(), kind: NotesListKind(.unsorted), defaults: defaults())

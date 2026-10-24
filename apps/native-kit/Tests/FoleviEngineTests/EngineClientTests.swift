@@ -23,6 +23,8 @@ final class FakeEngine {
                 "protocol": .number(Double(EngineContract.protocolVersion)), "revision": .number(Double(EngineContract.revision)), "build": .string("test"),
                 "schemaHash": .string(EngineContract.schemaHash), "ready": .bool(ready), "place": .string("acct:u1"),
                 "features": .array([]), "views": .array([]), "listViews": .array([]), "commands": .array([]), "editorCommands": .array([]), "events": .array([]),
+                // Revision 3 made `gate` part of the hello reply: the contract fixture's own.
+                "gate": FakeEngine.helloGate,
             ])
         case "watch":
             let sub = m["sub"]?.string ?? ""
@@ -41,6 +43,14 @@ final class FakeEngine {
     }
 
     func push(_ items: [JSONValue]) { transport.push(.array(items)) }
+
+    /// The hello fixture's `gate` (every field the current contract requires).
+    static let helloGate: JSONValue = {
+        guard let data = try? Data(contentsOf: Fixtures.dir.appendingPathComponent("envelope.hello.json")),
+              let v = try? JSONDecoder().decode(JSONValue.self, from: data), case .array(let replies)? = v["fromEngine"],
+              let gate = replies.first?["value"]?["gate"] else { return .object([:]) }
+        return gate
+    }()
 
     static func syncStatus(_ state: String, pending: Int = 0) -> JSONValue {
         .object(["state": .string(state), "label": .string(state.capitalized), "pending": .number(Double(pending)), "conflicts": .number(0), "online": .bool(true), "authRequired": .bool(false), "spaces": .array([])])

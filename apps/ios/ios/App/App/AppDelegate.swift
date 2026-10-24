@@ -7,6 +7,7 @@ import UIKit
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        PhoneMetrics.mark("didFinishLaunching")
         // Links from App Intents go to the page from here on (an intent can run before the window exists).
         PendingLink.handler = { url in Task { @MainActor in DeepLinkRouter.open(url) } }
         // Before launching finishes: a notification that opened the app (or a button pressed on one) arrives.
@@ -16,6 +17,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         BackgroundRefresh.register()
         // The page starts loading now (a background launch for a refresh or a silent push doesn't need it).
         if application.applicationState != .background { WebHost.prewarm() }
+        PhoneMetrics.mark("prewarmed")
         #if DEBUG && targetEnvironment(simulator)
         DebugHooks.seedFromEnvironment()
         #endif

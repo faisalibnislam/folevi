@@ -182,7 +182,8 @@ final class NoteViewController: UIViewController, PageViewOwner {
             coverTitle.text = meta.title.isEmpty ? "Untitled" : meta.title
             navigationItem.backButtonTitle = meta.title.isEmpty ? "Untitled" : meta.title
         }
-        let canEdit = meta?.canEdit ?? true
+        // Until the page knows the note (found), its tools stay as for an editable note rather than flicker.
+        let canEdit = meta.map { $0.found ? $0.canEdit : true } ?? true
         let editing = model.editing && model.shownNote == noteId
         let panelOpen = model.editorPanel != nil
         // Writing: Done in place of Share and "…".

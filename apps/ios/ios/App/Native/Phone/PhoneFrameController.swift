@@ -42,6 +42,7 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
     private var authService: PhoneAuthService?
 
     init(host given: WebHost? = nil) {
+        PhoneMetrics.mark("frame.init")
         PhoneMetrics.launchBegan()
         let host = given ?? WebHost.take()
         self.host = host
@@ -145,6 +146,7 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
             if self.model.session.value?.spaces.contains(where: { $0.encrypted }) == true { self.snapshot.clear(lock: true) }
         })
         model.start()
+        PhoneMetrics.mark("frame.viewDidLoad")
         if let path = FoleviViewController.startPath {
             FoleviViewController.startPath = nil
             openPath(path)

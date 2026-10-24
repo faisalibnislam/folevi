@@ -125,6 +125,12 @@ enum PhoneMetrics {
         return Date().timeIntervalSince1970 - started
     }
 
+    /// A launch stage, with the time since the process started, in the log (finding where launch time goes).
+    static func mark(_ stage: String) {
+        guard !launchReported else { return }
+        PhoneFrame.log.notice("launch.stage \(stage, privacy: .public) \(Int(secondsSinceProcessStart() * 1000), privacy: .public) ms")
+    }
+
     static func launchBegan() {
         guard launchState == nil else { return }
         launchState = PhoneFrame.signposter.beginInterval("launch.firstFrame")

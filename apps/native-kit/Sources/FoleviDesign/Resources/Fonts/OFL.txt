@@ -1,0 +1,11 @@
+The fonts in this folder are licensed under the SIL Open Font License, Version 1.1
+(https://openfontlicense.org). They were copied from Folevi's web app build (next/font self-hosting of
+Google Fonts) by apps/native-kit/scripts/import-fonts.swift, unmodified apart from the container format
+(WOFF2 to TrueType) and the Latin subset next/font serves.
+
+- Instrument Sans: Copyright 2022 The Instrument Sans Project Authors
+- Spectral: Copyright 2017 The Spectral Project Authors
+- JetBrains Mono: Copyright 2020 The JetBrains Mono Project Authors
+- Inter: Copyright 2016 The Inter Project Authors
+
+The full license text must ship with the fonts: add it below before release.

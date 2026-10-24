@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-// Generates CSS custom properties and a TypeScript module from src/tokens.json.
+// Generates CSS custom properties and a TypeScript module from src/tokens.json, and the Swift tokens of the
+// native apps (apps/native-kit FoleviDesign: colours, chrome, glass, shadows, spacing, radii, type, motion, the
+// note themes' colours from covers/covers.json and the folder colours, docs/NATIVE_APP_PLAN.md section 7).
 // `--check` fails when generated files are stale (used in CI).
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -104,9 +106,139 @@ export type DocumentAccent = (typeof documentAccents)[number];
 `;
 }
 
+// Swift (apps/native-kit/Sources/FoleviDesign/Generated/Tokens.swift). Colours become RGBA literals in
+// light/dark pairs; FoleviDesign turns them into dynamic SwiftUI, UIKit and AppKit colours.
+function rgba(value) {
+  const v = String(value).trim();
+  let m = v.match(/^#([0-9a-f]{6})([0-9a-f]{2})?$/i);
+  if (m) {
+    const n = parseInt(m[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255, m[2] ? parseInt(m[2], 16) / 255 : 1];
+  }
+  m = v.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i);
+  if (m) return [Number(m[1]), Number(m[2]), Number(m[3]), m[4] === undefined ? 1 : Number(m[4])];
+  throw new Error(`Can't read the colour ${v}`);
+}
+const num = (n) => (Number.isInteger(n) ? `${n}` : `${Number(n.toFixed(4))}`);
+const swiftRGBA = (value) => {
+  const [r, g, b, a] = rgba(value);
+  return `RGBA(${r}, ${g}, ${b}${a === 1 ? "" : `, ${num(a)}`})`;
+};
+// Spacing steps are numbers ("0.5" becomes s0_5); other keys are already camelCase.
+const swiftName = (k) => (/^[0-9]/.test(k) ? `s${k.replace(".", "_")}` : k.replace(/[^A-Za-z0-9]+(.)/g, (_, c) => c.toUpperCase()));
+const swiftString = (s) => JSON.stringify(String(s));
+
+function buildSwift() {
+  const { color, chrome, glass, space, radius, font, layout, motion, shadow } = tokens;
+  const covers = JSON.parse(readFileSync(resolve(root, "covers/covers.json"), "utf8"));
+  const folders = JSON.parse(readFileSync(resolve(root, "covers/folder-colors.json"), "utf8"));
+  const legacy = JSON.parse(readFileSync(resolve(root, "covers/folder-colors-legacy.json"), "utf8"));
+  const pairs = (light, dark) =>
+    Object.keys(light)
+      .filter((k) => !k.startsWith("$"))
+      .map((k) => `        public static let ${swiftName(k)} = ColorPair(light: ${swiftRGBA(light[k])}, dark: ${swiftRGBA(dark[k])})`)
+      .join("\n");
+  // The neutral chrome overrides some of the warm palette's tokens; the rest (ember, moss, destructive, ...) carry over.
+  const chromeLight = { ...color.light, ...stripMeta(chrome.light) };
+  const chromeDark = { ...color.dark, ...stripMeta(chrome.dark) };
+  const shadows = Object.keys(shadow.light)
+    .map((k) => {
+      const layers = (theme) =>
+        shadow[theme][k].map(([x, y, blur, spread, c, inset]) => `ShadowLayer(x: ${x}, y: ${y}, blur: ${blur}, spread: ${spread}, color: ${swiftRGBA(c)}${inset ? ", inset: true" : ""})`).join(", ");
+      return `        public static let ${swiftName(k)} = ShadowPair(light: [${layers("light")}], dark: [${layers("dark")}])`;
+    })
+    .join("\n");
+  const numbers = (obj) => Object.entries(obj).map(([k, v]) => `        public static let ${swiftName(k)}: CGFloat = ${num(v)}`).join("\n");
+  const bezier = String(motion.easing).match(/cubic-bezier\(([^)]+)\)/)[1].split(",").map((x) => num(Number(x.trim())));
+  const themes = covers
+    .map(
+      (c) =>
+        `        NoteTheme(id: ${swiftString(c.id)}, name: ${swiftString(c.name)}, paper: ${swiftRGBA(c.paper)}, ink: ${swiftRGBA(c.ink)}, paperDark: ${swiftRGBA(c.paperDark)}, inkDark: ${swiftRGBA(c.inkDark)}, accent: ${swiftRGBA(c.accent)}, accentDark: ${swiftRGBA(c.accentDark)}, deepCover: ${c.tone === "deep"})`,
+    )
+    .join(",\n");
+  const folderList = folders.map((f) => `        FolderColor(id: ${swiftString(f.id)}, name: ${swiftString(f.name)}, color: ${swiftRGBA(f.hex)})`).join(",\n");
+  const legacyList = Object.entries(legacy).map(([k, v]) => `        ${swiftString(k)}: ${swiftString(v)}`).join(",\n");
+  return `// ${HEADER}
+// Source: packages/design-tokens/src/tokens.json, covers/covers.json, covers/folder-colors*.json.
+import CoreGraphics
+
+public enum FoleviTokens {
+    /// The warm palette (marketing site, and the tokens the neutral chrome doesn't override).
+    public enum Warm {
+${pairs(color.light, color.dark)}
+    }
+
+    /// Neutral app chrome (docs/DESIGN_SYSTEM.md "Neutral app chrome"): white / near-black, notes carry the colour.
+    public enum Chrome {
+${pairs(chromeLight, chromeDark)}
+    }
+
+    /// Glass: translucent chrome over the canvas.
+    public enum Glass {
+${pairs(stripMeta(glass.light), stripMeta(glass.dark))}
+    }
+
+    public enum Shadow {
+${shadows}
+    }
+
+    public enum Space {
+${numbers(space)}
+    }
+
+    public enum Radius {
+${numbers(radius)}
+    }
+
+    public enum FontSize {
+${numbers(font.size)}
+    }
+
+    public enum LineHeight {
+${numbers(font.lineHeight)}
+    }
+
+    /// Letter spacing in em.
+    public enum Tracking {
+${numbers(font.tracking)}
+    }
+
+    public enum FontFamily {
+${Object.entries(font.family).map(([k, v]) => `        public static let ${swiftName(k)} = ${swiftString(v)}`).join("\n")}
+    }
+
+    public enum Layout {
+${numbers(layout)}
+    }
+
+    /// Durations in seconds, and the easing curve's control points.
+    public enum Motion {
+${Object.entries(motion).filter(([, v]) => typeof v === "number").map(([k, v]) => `        public static let ${swiftName(k)}: Double = ${num(v / 1000)}`).join("\n")}
+        public static let easing: (CGFloat, CGFloat, CGFloat, CGFloat) = (${bezier.join(", ")})
+    }
+
+    /// The built-in note themes' colours (art-01 ...), for card covers and previews drawn natively.
+    public static let noteThemes: [NoteTheme] = [
+${themes}
+    ]
+
+    /// Folder colours (25), in picker order.
+    public static let folderColors: [FolderColor] = [
+${folderList}
+    ]
+
+    /// Earlier folder colour ids and the colour each shows now.
+    public static let legacyFolderColors: [String: String] = [
+${legacyList}
+    ]
+}
+`;
+}
+
 const outputs = [
   [resolve(root, "generated/tokens.css"), buildCss()],
   [resolve(root, "generated/tokens.ts"), buildTs()],
+  [resolve(repo, "apps/native-kit/Sources/FoleviDesign/Generated/Tokens.swift"), buildSwift()],
 ];
 
 let stale = false;

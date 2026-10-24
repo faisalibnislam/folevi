@@ -207,6 +207,29 @@ function playZoom(kind: "push" | "pop", entering: HTMLElement, leaving: HTMLElem
   }
   out.onfinish = done;
   out.oncancel = done;
+  // Opening: the note grows once it has something to show (its words arrive from the library a moment after
+  // the screen is drawn), waiting at most a few frames on the card so it never zooms into an empty page.
+  if (kind === "push" && !noteReady(entering)) {
+    const all = [...entering.getAnimations(), ...leaving.getAnimations(), ...dim.getAnimations()];
+    all.forEach((a) => a.pause());
+    const started = performance.now();
+    const wait = () => {
+      if (noteReady(entering) || performance.now() - started > ZOOM_WAIT_MS) all.forEach((a) => a.play());
+      else requestAnimationFrame(wait);
+    };
+    requestAnimationFrame(wait);
+  }
+}
+
+/** How long a zoom waits on the card for the note's content, at most. */
+const ZOOM_WAIT_MS = 150;
+
+/** Whether the note on the screen has its title or text in (not still loading). */
+function noteReady(screen: HTMLElement): boolean {
+  const title = screen.querySelector<HTMLTextAreaElement>("textarea[id^='title-']");
+  if (title?.value) return true;
+  const body = screen.querySelector('[aria-label="Document body"]');
+  return Boolean(body && body.textContent && body.textContent.trim().length > 0);
 }
 
 /** The shell's screen container and the layer pictures go in; returns the function that stops. */

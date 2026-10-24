@@ -47,16 +47,17 @@ export function LocalGate() {
   const me = useQuery(api.users.me, {});
   const local = useLocalClient();
   const control = useLibraryControl();
-  // Only the facts this gate decides on: it draws the whole app, so not again on every sync step and save.
+  const needsSetup = me?.state === "needs_bootstrap";
+  // Only the facts this gate decides on, and only while it needs them: it draws the whole app, so not again on
+  // every sync step and save (a sync turning `settled` over and back, the note count growing).
   const locked = useLibraryStatusPick(control, (s) => s?.state === "locked");
-  const settled = useLibraryStatusPick(control, (s) => !!s && s.lastSyncAt !== null && !s.syncing && !s.health.downloading.some((h) => h.path.startsWith("index/")));
-  const found = useLibraryStatusPick(control, (s) => s?.notes.total ?? 0);
-  const where = useLibraryStatusPick(control, (s) => s?.info?.displayPath ?? null);
+  const settled = useLibraryStatusPick(control, (s) => needsSetup && !!s && s.lastSyncAt !== null && !s.syncing && !s.health.downloading.some((h) => h.path.startsWith("index/")));
+  const found = useLibraryStatusPick(control, (s) => (needsSetup ? (s?.notes.total ?? 0) : 0));
+  const where = useLibraryStatusPick(control, (s) => (s?.state === "locked" ? (s.info?.displayPath ?? null) : null));
   const { route } = useAppRouter();
   const started = useRef(false);
   const [setupError, setSetupError] = useState<string | null>(null);
   const [joining, setJoining] = useState<boolean | null>(null);
-  const needsSetup = me?.state === "needs_bootstrap";
 
   // The product uses neutral chrome so the notes carry the colour (globals.css, data-chrome).
   useEffect(() => {

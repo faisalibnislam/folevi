@@ -1,0 +1,30 @@
+- [Mac app history](mac-is-electron.md): Electron (2026-10-09) superseded 2026-10-23 by the native apps/mac app; apps/desktop deleted
+- [Auth: built-in Better Auth](auth-built-in-better-auth.md): email+password + optional TOTP 2FA (required for admins) on Convex; Auth0 replaced; Mac uses PKCE
+- [Neutral chrome, notes carry colour](neutral-chrome-notes-carry-color.md): app UI pure white / near-black; Craft-style tabs + page sidebar
+- [No OS-default controls](no-os-default-controls.md): custom Select for every dropdown; notes show no emoji
+- [No deploy until told](push-after-changes.md): commit locally; never push/deploy until the user explicitly says so (push to main = Vercel deploy), since 2026-10-05
+- [Native apps in monorepo](native-apps-in-monorepo.md): apps beside web (desktop = Electron); Vercel builds only apps/web
+- [Mac follows web](mac-follows-web.md): every web change also ships to the Mac app (rebuild and install after each push); iOS/iPadOS resumed and Android started 2026-10-22; web changes ship to all apps
+- [Production setup status](production-setup-status.md): Vercel/Convex live; email now Resend only (see email-provider-resend)
+- [Account model: Personal ≠ Workspace](account-model-personal-vs-workspace.md): 2026-09-29 spec + decisions; per-seat workspace plans; phases B–E on account-model branch until prod migration approved
+- [No em dashes](no-em-dashes.md): never write "—" anywhere; copy follows the human-writer skill
+- [Pricing 2026-09-29](pricing-2026-09-29.md): Free/Core/Pro/Pro AI personal + per-seat team; revised 2026-10-11 (Free AI trial-only 500 MB, Core/Pro 10 GB, Pro AI $13.99/$159 50 GB); 30% margin rule
+- [Assistant is named Foli AI](assistant-named-foli.md): "Foli AI" everywhere, even in sentences and actions; page /foli-ai; "AI credits", "Pro AI", "Settings > AI" stay
+- [E2E port](e2e-port.md): run e2e with E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1; port 3000 may be another app
+- [Roadmap 2026-10-14](roadmap-2026-10-14.md): user approved building the whole roadmap (phases 0-4 + P2); MCP for everyone r/w; owner decisions recorded
+- [Email on Resend](email-provider-resend.md): Resend only, one domain folevi.com; sending blocked since 2026-10-15 by pending "send" SPF records (revisit)
+- [iOS app](ios-app.md): 2026-10-15 Capacitor shell loading app.folevi.com, iPhone+iPad, iOS 17+, no in-app buying, Developer Program since 2026-10-22
+- [Platforms](platforms-mac-ios-web-only.md): web, Mac, iOS and (since 2026-10-22) Android; Windows dropped 2026-10-16
+- [Local mode decisions](local-mode-decisions.md): 2026-10-20 free "Keep notes on my devices" mode for Mac/iPhone/iPad: folder of files, iCloud or any folder, on-device AI + own key, built-in UI
+- [E2EE decisions](e2ee-decisions.md): 2026-10-21 opt-in levels + per-feature switches + per-folder lock, titles encrypted, Personal and workspaces, 2 recovery methods, every plan
+- [Multi-account decisions](multi-account-decisions.md): 2026-10-21 one Mac library + many accounts (web too), switcher in sidebar bottom account menu, ask move/keep after sign-in, takeout file, all places sync
+- [Apple Developer account](apple-developer-account.md): since 2026-10-22 paid team 7K32QQ2FX8 for all iOS/iPadOS/macOS work; Developer ID signing, notary profile folevi-notary
+- [Android app](android-app.md): 2026-10-22 Capacitor + Kotlin extras, API 33+, phones/tablets/foldables, local mode (Drive, Dropbox, Gemini Nano), no in-app buying, Play; built; PAUSED since 2026-10-23
+- [iOS polish 2026-10-22](ios-polish-2026-10-22.md): iPhone UI "feels amateur"; Folevi look polished, native UIMenu/sheets/haptics, Craft reference, all screens + iPad
+- [Mac WebKit shell](mac-webkit-shell.md): 2026-10-22 replace Electron with AppKit + WKWebView reusing iOS Swift bridge (option A); Electron stays until the switch
+- [Protect the real library](protect-real-library.md): ~/Documents/Folevi Library + Electron support folder + Folevi Safe Storage are the owner's real data; tests use scratch only
+- [Unified version](unified-version.md): since 2026-10-23 all platforms share #.#.## from 1.0.00, no build number shown; native Mac ships now, Electron removed completely
+- [Mac downloads hosting](mac-downloads-hosting.md): R2 folevi-updates via folevi.com/download/... (Vercel proxy to r2.dev); DNS at Namecheap
+- [Cloudflare cost plan](cloudflare-cost-plan.md): 2026-10-23 files to private R2 + signed links, AI Gateway (no logs) + Workers AI embeddings, compressed covers; DNS/email/images stay
+- [iPhone feedback also iPad](iphone-feedback-applies-to-ipad.md): every iPhone fix/request also applies to and is verified on iPad (since 2026-10-24)
+- [Native UI decisions](native-ui-decisions.md): 2026-10-24 everything but the editor goes native Swift on iPhone/iPad/Mac, data via web layer bridge, one big release

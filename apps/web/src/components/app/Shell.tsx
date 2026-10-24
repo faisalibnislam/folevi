@@ -34,6 +34,7 @@ import { nativeApp, nativeChrome } from "@/lib/nativeApp";
 import { EngineHost } from "@/lib/engine/EngineHost";
 import { NativeGate } from "@/lib/engine/NativeGate";
 import { WEB_SETTINGS_SECTIONS } from "@/lib/engine/host";
+import { editorZoom } from "@/lib/engine/viewsAccount";
 import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
 import { installInputModality } from "@/components/iphone/chrome";
@@ -206,6 +207,8 @@ function NativeContentShell() {
   }, []);
   useLayoutEffect(() => {
     document.documentElement.setAttribute("data-native-chrome", "");
+    // The editor's text size on this device (settings.update { editorZoom }).
+    document.documentElement.style.setProperty("--editor-zoom", String(editorZoom()));
   }, []);
   // The note page's code starts loading at once: the first note native opens should not wait for it.
   useEffect(() => {
@@ -253,6 +256,8 @@ function NativeContentShell() {
         <NativeGate gate={null} />
         <NativeBridge />
         <PlaceRunners />
+        {/* Every note of the place kept on this device (Settings > This device, device.storage). */}
+        <DeviceCopyRunner />
         <OutboxRefusals />
       </ShellContext.Provider>
     </TabsProvider>

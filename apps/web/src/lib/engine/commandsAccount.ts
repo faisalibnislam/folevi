@@ -5,7 +5,7 @@ import { api } from "@/lib/convex/api";
 import { APP_URL } from "@/lib/env";
 import type { EngineDeps } from "./context";
 import type { CommandDef } from "./commands";
-import { topicEmailPatch, type NotificationPrefs } from "./viewsAccount";
+import { EDITOR_ZOOMS, setEditorZoom, topicEmailPatch, type NotificationPrefs } from "./viewsAccount";
 import { BridgeError, bool, id, num, oneOf, only, text } from "./validate";
 import { AI_PREF_KEYS, type CommandName } from "./protocol";
 
@@ -31,8 +31,14 @@ function fullPrefs(p: NotificationPrefs): Record<string, unknown> {
 export const ACCOUNT_COMMANDS = {
   "settings.update": {
     async run(deps, args) {
-      only(args, ["name", "appearance", "timeZone", "reviewAppEdits", "aiEnabled"]);
+      only(args, ["name", "appearance", "timeZone", "reviewAppEdits", "aiEnabled", "editorZoom"]);
       const patch: Record<string, unknown> = {};
+      // The editor's text size is this device's own (not the profile's).
+      if (args.editorZoom !== undefined) {
+        const z = num(args, "editorZoom", { min: 0.85, max: 1.35 });
+        setEditorZoom(EDITOR_ZOOMS.reduce((a, b) => (Math.abs(b - z) < Math.abs(a - z) ? b : a), 1));
+        if (Object.keys(args).length === 1) return { ok: true };
+      }
       if (args.name !== undefined) patch.displayName = (text(args, "name", { max: 80 }) as string).trim();
       if (args.appearance !== undefined) patch.appearance = oneOf(args, "appearance", ["system", "light", "dark"] as const);
       if (args.timeZone !== undefined) patch.timeZone = text(args, "timeZone", { max: 64 });

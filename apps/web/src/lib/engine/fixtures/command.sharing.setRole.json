@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "sharing.setRole",
+  "description": "Make someone an editor of a note.",
+  "args": {
+    "noteId": "doc_00002",
+    "profileId": "prof_9",
+    "role": "editor"
+  },
+  "result": {
+    "ok": true
+  }
+}

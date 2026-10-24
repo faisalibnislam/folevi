@@ -1768,10 +1768,40 @@ public struct E2eeGateInfo: Codable, Hashable, Sendable {
 }
 
 public struct OnboardingGateInfo: Codable, Hashable, Sendable {
+    /// "workspace" (welcome), "uses", "style", "appearance", "ai", "welcome" (ready).
     public var step: String
+    /// Revision 10 (R14.2, R5.2): where it is, and the choices so far. The gate's actions: "continue" (with the
+    /// step's values: `useCases` as ids joined by commas, `noteStyle`, `appearance`, `aiEnabled` "true" or "false"),
+    /// "back", "skip" (this step), "skipAll" (to the summary) and, on the last step, "finish".
+    public var index: Int
+    public var total: Int
+    public var useCases: [String]
+    public var useCaseOptions: [OnboardingChoice]
+    public var noteStyle: String
+    public var noteStyleOptions: [String]
+    public var appearance: String
+    public var aiEnabled: Bool
 
-    public init(step: String) {
+    public init(step: String, index: Int, total: Int, useCases: [String], useCaseOptions: [OnboardingChoice], noteStyle: String, noteStyleOptions: [String], appearance: String, aiEnabled: Bool) {
         self.step = step
+        self.index = index
+        self.total = total
+        self.useCases = useCases
+        self.useCaseOptions = useCaseOptions
+        self.noteStyle = noteStyle
+        self.noteStyleOptions = noteStyleOptions
+        self.appearance = appearance
+        self.aiEnabled = aiEnabled
+    }
+}
+
+public struct OnboardingChoice: Codable, Hashable, Sendable {
+    public var id: String
+    public var label: String
+
+    public init(id: String, label: String) {
+        self.id = id
+        self.label = label
     }
 }
 
@@ -3217,9 +3247,15 @@ public struct AppearanceSettings: Codable, Hashable, Sendable {
     }
 
     public var appearance: Appearance
+    /// Revision 10 (R13.1): the editor's text size on this device, 0.85 to 1.35 (1 is the default).
+    public var editorZoom: Int
+    /// The sizes offered.
+    public var editorZooms: [Int]
 
-    public init(appearance: Appearance) {
+    public init(appearance: Appearance, editorZoom: Int, editorZooms: [Int]) {
         self.appearance = appearance
+        self.editorZoom = editorZoom
+        self.editorZooms = editorZooms
     }
 }
 
@@ -3304,9 +3340,47 @@ public struct SessionRow: Codable, Hashable, Sendable {
 /// Settings > Security, the basics: where this account is signed in.
 public struct SecuritySettings: Codable, Hashable, Sendable {
     public var sessions: [SessionRow]
+    /// Revision 10 (R13.2): two-step verification is on; null until the sign-in service answered.
+    public var twoFactor: Bool?
+    public var passkeys: [PasskeyRow]
+    /// Ways to sign in: "password", "google", "apple" (open).
+    public var methods: [String]
 
-    public init(sessions: [SessionRow]) {
+    public init(sessions: [SessionRow], twoFactor: Bool? = nil, passkeys: [PasskeyRow], methods: [String]) {
         self.sessions = sessions
+        self.twoFactor = twoFactor
+        self.passkeys = passkeys
+        self.methods = methods
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(sessions, forKey: .sessions)
+        try c.encode(twoFactor, forKey: .twoFactor)
+        try c.encode(passkeys, forKey: .passkeys)
+        try c.encode(methods, forKey: .methods)
+    }
+}
+
+public struct PasskeyRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    public var createdAt: Double?
+    public var lastUsedAt: Double?
+
+    public init(id: String, name: String, createdAt: Double? = nil, lastUsedAt: Double? = nil) {
+        self.id = id
+        self.name = name
+        self.createdAt = createdAt
+        self.lastUsedAt = lastUsedAt
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(lastUsedAt, forKey: .lastUsedAt)
     }
 }
 
@@ -3322,13 +3396,16 @@ public struct SettingsUpdateArgs: Codable, Hashable, Sendable {
     public var timeZone: String?
     public var reviewAppEdits: Bool?
     public var aiEnabled: Bool?
+    /// Revision 10 (R13.1): the editor's text size on this device (one of `AppearanceSettings.editorZooms`).
+    public var editorZoom: Int?
 
-    public init(name: String? = nil, appearance: Appearance? = nil, timeZone: String? = nil, reviewAppEdits: Bool? = nil, aiEnabled: Bool? = nil) {
+    public init(name: String? = nil, appearance: Appearance? = nil, timeZone: String? = nil, reviewAppEdits: Bool? = nil, aiEnabled: Bool? = nil, editorZoom: Int? = nil) {
         self.name = name
         self.appearance = appearance
         self.timeZone = timeZone
         self.reviewAppEdits = reviewAppEdits
         self.aiEnabled = aiEnabled
+        self.editorZoom = editorZoom
     }
 }
 
@@ -3736,6 +3813,10 @@ public enum WebPage: String, Codable, Hashable, Sendable, CaseIterable {
     case settingsAiExport = "settings.aiExport"
     case reviews
     case graph
+    case settingsSecurity = "settings.security"
+    case settingsPrivacy = "settings.privacy"
+    case settingsWorkspace = "settings.workspace"
+    case settingsDeleteAccount = "settings.deleteAccount"
 }
 
 public struct WebShowArgs: Codable, Hashable, Sendable {
@@ -4802,5 +4883,127 @@ public struct RecentValue: Codable, Hashable, Sendable {
 
     public init(rows: [RecentRow]) {
         self.rows = rows
+    }
+}
+
+/// One space's device copy (plan 11.8), as Settings > This device shows it.
+public struct SpaceCopyInfo: Codable, Hashable, Sendable {
+    public var space: SpaceRef
+    public var name: String
+    /// "listing", "filling", "live"; "encrypted" for a space with end-to-end encryption (its own copy).
+    public var phase: String
+    public var have: Int
+    public var total: Int?
+
+    public init(space: SpaceRef, name: String, phase: String, have: Int, total: Int? = nil) {
+        self.space = space
+        self.name = name
+        self.phase = phase
+        self.have = have
+        self.total = total
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(space, forKey: .space)
+        try c.encode(name, forKey: .name)
+        try c.encode(phase, forKey: .phase)
+        try c.encode(have, forKey: .have)
+        try c.encode(total, forKey: .total)
+    }
+}
+
+/// `device.storage` (R13.3): this place's copy on this device.
+public struct DeviceStorageValue: Codable, Hashable, Sendable {
+    public var place: String?
+    /// "Keep all notes on this device" (this account, on this device).
+    public var keepAll: Bool
+    /// The copy is running here (account mode, not a public computer).
+    public var available: Bool
+    public var spaces: [SpaceCopyInfo]
+    public var notesKept: Int?
+    public var attachmentsKept: Int?
+    public var attachmentsBytes: Int?
+    /// What Folevi takes on this device, and what's free (the browser's estimate); null when unknown.
+    public var usedBytes: Int?
+    public var freeBytes: Int?
+    /// The attachments' budget: 2 GB or a tenth of the free space, whichever is smaller.
+    public var attachmentLimitBytes: Int?
+    /// Changes on this device waiting to sync (never removed with the copy).
+    public var waiting: Int
+
+    public init(place: String? = nil, keepAll: Bool, available: Bool, spaces: [SpaceCopyInfo], notesKept: Int? = nil, attachmentsKept: Int? = nil, attachmentsBytes: Int? = nil, usedBytes: Int? = nil, freeBytes: Int? = nil, attachmentLimitBytes: Int? = nil, waiting: Int) {
+        self.place = place
+        self.keepAll = keepAll
+        self.available = available
+        self.spaces = spaces
+        self.notesKept = notesKept
+        self.attachmentsKept = attachmentsKept
+        self.attachmentsBytes = attachmentsBytes
+        self.usedBytes = usedBytes
+        self.freeBytes = freeBytes
+        self.attachmentLimitBytes = attachmentLimitBytes
+        self.waiting = waiting
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(place, forKey: .place)
+        try c.encode(keepAll, forKey: .keepAll)
+        try c.encode(available, forKey: .available)
+        try c.encode(spaces, forKey: .spaces)
+        try c.encode(notesKept, forKey: .notesKept)
+        try c.encode(attachmentsKept, forKey: .attachmentsKept)
+        try c.encode(attachmentsBytes, forKey: .attachmentsBytes)
+        try c.encode(usedBytes, forKey: .usedBytes)
+        try c.encode(freeBytes, forKey: .freeBytes)
+        try c.encode(attachmentLimitBytes, forKey: .attachmentLimitBytes)
+        try c.encode(waiting, forKey: .waiting)
+    }
+}
+
+public struct DeviceKeepAllArgs: Codable, Hashable, Sendable {
+    public var on: Bool
+
+    public init(on: Bool) {
+        self.on = on
+    }
+}
+
+public struct DeviceRemoveCopyArgs: Codable, Hashable, Sendable {
+    /// Remove even when changes wait (they stay either way; this only skips the question).
+    public var force: Bool?
+
+    public init(force: Bool? = nil) {
+        self.force = force
+    }
+}
+
+public struct DeviceRemoveCopyResult: Codable, Hashable, Sendable {
+    public var removed: Bool
+    /// Changes waiting: without `force`, nothing is removed and native asks first.
+    public var waiting: Int
+
+    public init(removed: Bool, waiting: Int) {
+        self.removed = removed
+        self.waiting = waiting
+    }
+}
+
+public struct ShareRoleArgs: Codable, Hashable, Sendable {
+    public enum Role: String, Codable, Hashable, Sendable, CaseIterable {
+        case editor
+        case commenter
+        case viewer
+    }
+
+    public var noteId: String
+    public var profileId: String
+    public var role: Role
+
+    public init(noteId: String, profileId: String, role: Role) {
+        self.noteId = noteId
+        self.profileId = profileId
+        self.role = role
     }
 }

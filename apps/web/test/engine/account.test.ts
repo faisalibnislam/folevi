@@ -49,14 +49,14 @@ describe("account and Settings", () => {
   it("the native sections read the profile", async () => {
     expect(await query("settings.account")).toEqual({ name: "Faisal", email: "f@example.com", avatarUrl: null, timeZone: "UTC" });
     expect(await query("settings.general")).toEqual({ timeZone: "UTC", locale: "en", reviewAppEdits: false });
-    expect(await query("settings.appearance")).toEqual({ appearance: "system" });
+    expect(await query("settings.appearance")).toMatchObject({ appearance: "system", editorZoom: 1 });
     const notes = (await query("settings.notifications")) as NotificationSettings;
     expect(notes.topics.find((t) => t.id === "comments")).toMatchObject({ inApp: false, email: true });
     expect(notes.topics.find((t) => t.id === "replies")).toMatchObject({ inApp: true, email: true });
     const ai = (await query("settings.ai")) as AiSettings;
     expect(ai).toMatchObject({ included: true, enabled: true, memory: false, deviceText: true });
     r.client.answer("users:listSessions", [{ id: "s1", label: "iPhone", client: "ios", current: true, lastSeenAt: 9, extra: 1 }]);
-    expect(await query("settings.security")).toEqual({ sessions: [{ id: "s1", label: "iPhone", client: "ios", current: true, lastSeenAt: 9 }] });
+    expect(await query("settings.security")).toMatchObject({ sessions: [{ id: "s1", label: "iPhone", client: "ios", current: true, lastSeenAt: 9 }] });
   });
 
   it("changes go through users.updateProfile with the whole notification prefs", async () => {

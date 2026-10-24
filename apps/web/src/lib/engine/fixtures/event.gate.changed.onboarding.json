@@ -14,7 +14,27 @@
     "deviceLimit": null,
     "e2ee": null,
     "onboarding": {
-      "step": "useCases"
+      "index": 1,
+      "total": 6,
+      "useCases": [],
+      "useCaseOptions": [
+        {
+          "id": "work",
+          "label": "Work"
+        },
+        {
+          "id": "study",
+          "label": "Study"
+        }
+      ],
+      "noteStyle": "",
+      "noteStyleOptions": [
+        "art-03",
+        "art-39"
+      ],
+      "appearance": "system",
+      "aiEnabled": true,
+      "step": "uses"
     },
     "error": null
   }

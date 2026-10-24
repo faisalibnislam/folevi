@@ -41,6 +41,7 @@ import { PlacesReporter } from "@/components/places/PlacesReporter";
 import { PlaceSync, reportToParent } from "@/components/places/PlaceSync";
 import { PlaceMoveGate } from "@/components/places/MovePlaces";
 import { NativeGate } from "@/lib/engine/NativeGate";
+import { onboardingInfo } from "@/lib/engine/gates";
 
 // The Mac app's Quick Add window (its own page): loaded only there.
 const DesktopQuickAdd = lazy(() => import("./DesktopQuickAdd").then((m) => ({ default: m.DesktopQuickAdd })));
@@ -333,8 +334,8 @@ function ReadyApp({
           <ShareSheet />
         ) : profile.onboardingStep !== "done" || route === "onboarding" ? (
           <>
-            <NativeGate gate="onboarding" onboarding={{ step: String(profile.onboardingStep ?? "start") }} />
-            <Suspense fallback={<FullPageMessage title="Opening your folio…" busy gate="onboarding" onboarding={{ step: String(profile.onboardingStep ?? "start") }} />}>
+            <NativeGate gate="onboarding" onboarding={onboardingInfo({ step: String(profile.onboardingStep ?? "workspace") })} />
+            <Suspense fallback={<FullPageMessage title="Opening your folio…" busy gate="onboarding" onboarding={onboardingInfo({ step: String(profile.onboardingStep ?? "workspace") })} />}>
               <Onboarding />
             </Suspense>
           </>

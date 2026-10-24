@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "050e1ac0"
+        "schemaHash": "adf9c9b5"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 9,
+        "revision": 10,
         "build": "dev",
-        "schemaHash": "050e1ac0",
+        "schemaHash": "adf9c9b5",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -74,7 +74,8 @@
           "calendar.feed",
           "tasks.unscheduled",
           "files.urls",
-          "recent"
+          "recent",
+          "device.storage"
         ],
         "listViews": [
           "notes.list"
@@ -154,7 +155,12 @@
           "settings.setAvatar",
           "calendar.feedCreate",
           "calendar.feedRevoke",
-          "calendar.feedWorkspaces"
+          "calendar.feedWorkspaces",
+          "device.keepAll",
+          "device.download",
+          "device.removeCopy",
+          "device.removeFiles",
+          "sharing.setRole"
         ],
         "editorCommands": [
           "note.prepare",

@@ -52,10 +52,14 @@ export const WEB_PAGE_ROUTES = {
   "settings.aiExport": "/settings/ai",
   reviews: "/review",
   graph: "/graph",
+  "settings.security": "/settings/security",
+  "settings.privacy": "/settings/privacy",
+  "settings.workspace": "/settings/workspace",
+  "settings.deleteAccount": "/settings/account",
 } as const;
 
 /** The Settings sections the native app shows as web pages (everything else in Settings is native). */
-export const WEB_SETTINGS_SECTIONS = new Set(["connected-apps", "workspace-data", "data", "ai"]);
+export const WEB_SETTINGS_SECTIONS = new Set(["connected-apps", "workspace-data", "data", "ai", "security", "privacy", "workspace", "members", "workspace-guests", "workspace-billing", "workspace-privacy", "account"]);
 
 export interface HostOptions {
   /** Hands one batch (a JSON string) to native. Default: the WebKit message handler. */

@@ -1,7 +1,7 @@
 {
   "kind": "view",
   "name": "settings.security",
-  "description": "Where the account is signed in.",
+  "description": "Where the account is signed in, with two-step on, one passkey, and password plus Google sign-in.",
   "args": {},
   "value": {
     "sessions": [
@@ -19,6 +19,19 @@
         "current": false,
         "lastSeenAt": 1792573200000
       }
+    ],
+    "twoFactor": true,
+    "passkeys": [
+      {
+        "id": "pk_1",
+        "name": "iCloud Keychain",
+        "createdAt": 1789376400000,
+        "lastUsedAt": 1792746000000
+      }
+    ],
+    "methods": [
+      "password",
+      "google"
     ]
   }
 }

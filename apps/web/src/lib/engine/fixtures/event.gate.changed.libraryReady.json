@@ -1,0 +1,39 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "A new library is ready; an optional passphrase, then Open Folevi.",
+  "data": {
+    "gate": "librarySetup",
+    "title": "Your library is ready",
+    "message": "Folevi keeps your notes as files in iCloud Drive › Folevi.",
+    "busy": false,
+    "actions": [
+      {
+        "id": "open",
+        "label": "Open Folevi",
+        "style": "primary",
+        "enabled": true
+      },
+      {
+        "id": "elsewhere",
+        "label": "Choose another place",
+        "style": "quiet",
+        "enabled": true
+      }
+    ],
+    "fields": [
+      {
+        "id": "passphrase",
+        "kind": "secret",
+        "label": "Passphrase (optional)",
+        "placeholder": ""
+      }
+    ],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": null,
+    "e2ee": null,
+    "onboarding": null,
+    "error": null
+  }
+}

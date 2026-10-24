@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 9;
+export const CONTRACT_REVISION = 10;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -963,7 +963,26 @@ export interface E2eeGateInfo {
 }
 
 export interface OnboardingGateInfo {
+  /** "workspace" (welcome), "uses", "style", "appearance", "ai", "welcome" (ready). */
   step: string;
+  /**
+   * Revision 10 (R14.2, R5.2): where it is, and the choices so far. The gate's actions: "continue" (with the
+   * step's values: `useCases` as ids joined by commas, `noteStyle`, `appearance`, `aiEnabled` "true" or "false"),
+   * "back", "skip" (this step), "skipAll" (to the summary) and, on the last step, "finish".
+   */
+  index: number;
+  total: number;
+  useCases: string[];
+  useCaseOptions: OnboardingChoice[];
+  noteStyle: string;
+  noteStyleOptions: string[];
+  appearance: string;
+  aiEnabled: boolean;
+}
+
+export interface OnboardingChoice {
+  id: string;
+  label: string;
 }
 
 export interface PlaceChangedEvent {
@@ -1561,6 +1580,10 @@ export interface GeneralSettings {
 /** Settings > Appearance. */
 export interface AppearanceSettings {
   appearance: "system" | "light" | "dark";
+  /** Revision 10 (R13.1): the editor's text size on this device, 0.85 to 1.35 (1 is the default). */
+  editorZoom: number;
+  /** The sizes offered. */
+  editorZooms: number[];
 }
 
 /** One kind of notification: in the app (the bell) and by email. */
@@ -1609,6 +1632,18 @@ export interface SessionRow {
 /** Settings > Security, the basics: where this account is signed in. */
 export interface SecuritySettings {
   sessions: SessionRow[];
+  /** Revision 10 (R13.2): two-step verification is on; null until the sign-in service answered. */
+  twoFactor: boolean | null;
+  passkeys: PasskeyRow[];
+  /** Ways to sign in: "password", "google", "apple" (open). */
+  methods: string[];
+}
+
+export interface PasskeyRow {
+  id: string;
+  name: string;
+  createdAt: number | null;
+  lastUsedAt: number | null;
 }
 
 export interface SettingsUpdateArgs {
@@ -1617,6 +1652,8 @@ export interface SettingsUpdateArgs {
   timeZone?: string;
   reviewAppEdits?: boolean;
   aiEnabled?: boolean;
+  /** Revision 10 (R13.1): the editor's text size on this device (one of `AppearanceSettings.editorZooms`). */
+  editorZoom?: number;
 }
 
 export type AiPrefKey = "history" | "memory" | "suggestions" | "attachments" | "webResearch" | "digests" | "readImages" | "deviceText";
@@ -1776,7 +1813,19 @@ export interface InviteTokenAcceptResult {
 }
 
 /** Web pages the native app shows in the Page View with its own bars (owner decision Q1 and Q2). */
-export type WebPage = "settings.connectedApps" | "settings.workspaceData" | "settings.data" | "settings.aiExport" | "reviews" | "graph";
+export type WebPage =
+  | "settings.connectedApps"
+  | "settings.workspaceData"
+  | "settings.data"
+  | "settings.aiExport"
+  | "reviews"
+  | "graph"
+  // Revision 10 (R13.2, R13.4): two-step verification and passkeys (WebAuthn), encryption, the workspace's
+  // members, guests, billing and privacy, and deleting the account.
+  | "settings.security"
+  | "settings.privacy"
+  | "settings.workspace"
+  | "settings.deleteAccount";
 
 export interface WebShowArgs {
   page: WebPage;
@@ -2280,6 +2329,61 @@ export interface RecentValue {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Revision 10: the Settings and sign-in requests (R13.1 to R14.4)
+// ---------------------------------------------------------------------------------------------------------------
+
+/** One space's device copy (plan 11.8), as Settings > This device shows it. */
+export interface SpaceCopyInfo {
+  space: SpaceRef;
+  name: string;
+  /** "listing", "filling", "live"; "encrypted" for a space with end-to-end encryption (its own copy). */
+  phase: string;
+  have: number;
+  total: number | null;
+}
+
+/** `device.storage` (R13.3): this place's copy on this device. */
+export interface DeviceStorageValue {
+  place: string | null;
+  /** "Keep all notes on this device" (this account, on this device). */
+  keepAll: boolean;
+  /** The copy is running here (account mode, not a public computer). */
+  available: boolean;
+  spaces: SpaceCopyInfo[];
+  notesKept: number | null;
+  attachmentsKept: number | null;
+  attachmentsBytes: number | null;
+  /** What Folevi takes on this device, and what's free (the browser's estimate); null when unknown. */
+  usedBytes: number | null;
+  freeBytes: number | null;
+  /** The attachments' budget: 2 GB or a tenth of the free space, whichever is smaller. */
+  attachmentLimitBytes: number | null;
+  /** Changes on this device waiting to sync (never removed with the copy). */
+  waiting: number;
+}
+
+export interface DeviceKeepAllArgs {
+  on: boolean;
+}
+
+export interface DeviceRemoveCopyArgs {
+  /** Remove even when changes wait (they stay either way; this only skips the question). */
+  force?: boolean;
+}
+
+export interface DeviceRemoveCopyResult {
+  removed: boolean;
+  /** Changes waiting: without `force`, nothing is removed and native asks first. */
+  waiting: number;
+}
+
+export interface ShareRoleArgs {
+  noteId: string;
+  profileId: string;
+  role: "editor" | "commenter" | "viewer";
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // The maps (names to argument and result types). The codegen reads these interfaces.
 // ---------------------------------------------------------------------------------------------------------------
 
@@ -2324,6 +2428,7 @@ export interface ViewMap {
   "tasks.unscheduled": { args: SpaceArgs; value: TasksRangeValue };
   "files.urls": { args: FileUrlsArgs; value: FileUrlsValue };
   recent: { args: RecentArgs; value: RecentValue };
+  "device.storage": { args: EmptyArgs; value: DeviceStorageValue };
 }
 
 export interface ListViewMap {
@@ -2406,6 +2511,11 @@ export interface CommandMap {
   "calendar.feedCreate": { args: CalendarFeedCreateArgs; result: CalendarFeedCreateResult };
   "calendar.feedRevoke": { args: EmptyArgs; result: OkResult };
   "calendar.feedWorkspaces": { args: CalendarFeedWorkspacesArgs; result: OkResult };
+  "device.keepAll": { args: DeviceKeepAllArgs; result: OkResult };
+  "device.download": { args: EmptyArgs; result: OkResult };
+  "device.removeCopy": { args: DeviceRemoveCopyArgs; result: DeviceRemoveCopyResult };
+  "device.removeFiles": { args: EmptyArgs; result: OkResult };
+  "sharing.setRole": { args: ShareRoleArgs; result: OkResult };
 }
 
 export interface EditorCommandMap {
@@ -2469,7 +2579,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -2547,6 +2657,11 @@ const commandNames = [
   "calendar.feedCreate",
   "calendar.feedRevoke",
   "calendar.feedWorkspaces",
+  "device.keepAll",
+  "device.download",
+  "device.removeCopy",
+  "device.removeFiles",
+  "sharing.setRole",
 ] as const;
 const editorCommandNames = [
   "note.prepare",
@@ -2588,7 +2703,7 @@ export const EDITOR_PANELS: readonly EditorPanel[] = ["format", "insert", "style
 export const NOTE_MENU_ACTIONS: readonly NoteMenuAction[] = ["share", "move", "copyTo", "duplicate", "export", "history", "present", "print", "find", "delete"];
 export const NOTES_LIST_VIEWS: readonly NotesListView[] = ["all", "starred", "archive", "trash", "templates", "unsorted", "folder", "tag"];
 export const NOTES_SORTS: readonly NotesSort[] = ["updated", "created", "title", "manual"];
-export const WEB_PAGES: readonly WebPage[] = ["settings.connectedApps", "settings.workspaceData", "settings.data", "settings.aiExport", "reviews", "graph"];
+export const WEB_PAGES: readonly WebPage[] = ["settings.connectedApps", "settings.workspaceData", "settings.data", "settings.aiExport", "reviews", "graph", "settings.security", "settings.privacy", "settings.workspace", "settings.deleteAccount"];
 export const AI_PREF_KEYS: readonly AiPrefKey[] = ["history", "memory", "suggestions", "attachments", "webResearch", "digests", "readImages", "deviceText"];
 export const TASK_VIEWS: readonly TaskViewName[] = ["inbox", "today", "upcoming", "all", "completed", "mine"];
 

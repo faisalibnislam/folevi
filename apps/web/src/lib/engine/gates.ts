@@ -3,7 +3,12 @@
 // reports itself here in native chrome mode (components/engine/NativeGate.tsx), with its buttons as actions;
 // the app itself reports "no gate". The last one reported wins: only one of them is on screen at a time.
 import { BridgeError } from "./validate";
-import type { E2eeGateInfo, GateChangedEvent } from "./protocol";
+import type { E2eeGateInfo, GateChangedEvent, OnboardingGateInfo } from "./protocol";
+
+/** An onboarding gate's info with every field filled in (only `step` is known before the steps load). */
+export function onboardingInfo(p: Pick<OnboardingGateInfo, "step"> & Partial<OnboardingGateInfo>): OnboardingGateInfo {
+  return { index: 0, total: 6, useCases: [], useCaseOptions: [], noteStyle: "", noteStyleOptions: [], appearance: "system", aiEnabled: true, ...p };
+}
 
 /** An E2EE gate's info with the revision 8 fields filled in. */
 export function e2eeInfo(p: Pick<E2eeGateInfo, "space" | "spaceName" | "view" | "methods"> & Partial<E2eeGateInfo>): E2eeGateInfo {

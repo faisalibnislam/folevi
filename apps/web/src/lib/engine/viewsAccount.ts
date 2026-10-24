@@ -6,6 +6,7 @@ import { api } from "@/lib/convex/api";
 import { TIER_NAMES } from "@/lib/plans";
 import type { EngineDeps, ViewContext } from "./context";
 import { source, type ValueViewDef } from "./views";
+import { Emitter } from "./live";
 import { id, oneOf, only, text } from "./validate";
 import type { AccountDetails, AiSettings, NotificationSettings, NotificationTopicSetting, SharingValue, ViewName } from "./protocol";
 
@@ -78,10 +79,40 @@ const settingsGeneral: ValueViewDef = {
   create: (ctx) => fromDeps(ctx, (d) => ({ timeZone: d.app.timeZone, locale: str(d.app.profileData.locale, "en"), reviewAppEdits: d.app.profileData.reviewAppEdits === true })),
 };
 
+/** The editor's text sizes (components/views/settings/AppearanceSection.tsx ZOOMS), kept per device. */
+export const EDITOR_ZOOMS = [0.85, 0.9, 0.95, 1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35];
+export const EDITOR_ZOOM_KEY = "folevi:editor-zoom";
+
+export function editorZoom(): number {
+  try {
+    const raw = localStorage.getItem(EDITOR_ZOOM_KEY);
+    const v = raw === null ? 1 : Number(JSON.parse(raw));
+    return Number.isFinite(v) ? v : 1;
+  } catch {
+    return 1;
+  }
+}
+
+/** Sets the editor's text size on this device, as Settings > Appearance does on the web. */
+export function setEditorZoom(v: number): void {
+  try {
+    localStorage.setItem(EDITOR_ZOOM_KEY, JSON.stringify(v));
+  } catch {
+    /* this visit only */
+  }
+  document.documentElement.style.setProperty("--editor-zoom", String(v));
+  window.dispatchEvent(new Event(`folevi-ls:${EDITOR_ZOOM_KEY}`));
+}
+
+const zoomSignal = new Emitter((emit) => {
+  window.addEventListener(`folevi-ls:${EDITOR_ZOOM_KEY}`, emit);
+  return () => window.removeEventListener(`folevi-ls:${EDITOR_ZOOM_KEY}`, emit);
+});
+
 const settingsAppearance: ValueViewDef = {
   kind: "value",
   parse: noArgs,
-  create: (ctx) => fromDeps(ctx, (d) => ({ appearance: d.app.appearance })),
+  create: (ctx) => ({ signals: [ctx.appSignal, zoomSignal], compute: () => ({ value: { appearance: ctx.deps().app.appearance, editorZoom: editorZoom(), editorZooms: EDITOR_ZOOMS }, stale: false, error: null }) }),
 };
 
 /** The topics of Settings > Notifications (components/views/settings/NotificationsSection.tsx ROWS). */
@@ -155,18 +186,64 @@ const settingsAi: ValueViewDef = { kind: "value", parse: noArgs, create: (ctx) =
 
 type SessionData = { id: string; label: string; client: string; current: boolean; lastSeenAt: number }[];
 
+type AuthFacts = { twoFactor: boolean | null; passkeys: { id: string; name: string; createdAt: number | null }[]; methods: string[] };
+
+const toTime = (v: unknown): number | null => {
+  const t = typeof v === "number" ? v : typeof v === "string" || v instanceof Date ? new Date(v).getTime() : NaN;
+  return Number.isFinite(t) ? t : null;
+};
+
+/** What the sign-in service says (Better Auth, through the host in the apps): two-step, passkeys, ways to sign in. */
+export async function authFacts(): Promise<AuthFacts> {
+  const { authClient } = await import("@/lib/auth/client");
+  const [session, passkeys, accounts] = await Promise.all([
+    authClient.getSession().catch(() => null),
+    authClient.$fetch("/passkey/list-user-passkeys", { method: "GET" }).catch(() => null),
+    authClient.listAccounts().catch(() => null),
+  ]);
+  const user = (session as { data?: { user?: { twoFactorEnabled?: boolean | null } } } | null)?.data?.user;
+  const keys = ((passkeys as { data?: unknown } | null)?.data ?? []) as { id: string; name?: string | null; createdAt?: unknown }[];
+  const linked = ((accounts as { data?: unknown } | null)?.data ?? []) as { providerId?: string }[];
+  return {
+    twoFactor: user ? user.twoFactorEnabled === true : null,
+    passkeys: Array.isArray(keys) ? keys.map((k) => ({ id: k.id, name: k.name || "Passkey", createdAt: toTime(k.createdAt) })) : [],
+    methods: Array.isArray(linked) ? [...new Set(linked.map((a) => (a.providerId === "credential" ? "password" : (a.providerId ?? ""))).filter(Boolean))] : [],
+  };
+}
+
 const settingsSecurity: ValueViewDef = {
   kind: "value",
   parse: noArgs,
   create: (ctx) => {
-    if (ctx.deps().app.mode === "local") return { signals: [], compute: () => ({ value: { sessions: [] }, stale: false, error: null }) };
+    if (ctx.deps().app.mode === "local") return { signals: [], compute: () => ({ value: { sessions: [], twoFactor: null, passkeys: [], methods: [] }, stale: false, error: null }) };
     const src = source<SessionData>(ctx, api.users.listSessions, {}, null);
+    const used = source<{ passkeyId: string; lastUsedAt: number }[]>(ctx, api.passkeyUsage.lastUsed, {}, null);
+    let facts: AuthFacts | null = null;
+    const answered = new Emitter();
+    void authFacts().then(
+      (f) => {
+        facts = f;
+        answered.emit();
+      },
+      () => undefined,
+    );
     return {
-      signals: [src],
+      signals: [src, used, answered],
       compute: () => {
         const s = src.snapshot();
         if (s.error) return { value: undefined, stale: false, error: s.error };
-        return { value: s.value === undefined ? undefined : { sessions: s.value.map((x) => ({ id: x.id, label: x.label, client: x.client, current: x.current, lastSeenAt: x.lastSeenAt })) }, stale: s.stale, error: null };
+        if (s.value === undefined) return { value: undefined, stale: true, error: null };
+        const last = new Map((used.snapshot().value ?? []).map((u) => [u.passkeyId, u.lastUsedAt]));
+        return {
+          value: {
+            sessions: s.value.map((x) => ({ id: x.id, label: x.label, client: x.client, current: x.current, lastSeenAt: x.lastSeenAt })),
+            twoFactor: facts?.twoFactor ?? null,
+            passkeys: (facts?.passkeys ?? []).map((p) => ({ ...p, lastUsedAt: last.get(p.id) ?? null })),
+            methods: facts?.methods ?? [],
+          },
+          stale: s.stale || facts === null,
+          error: null,
+        };
       },
     };
   },

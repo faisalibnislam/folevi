@@ -1,0 +1,41 @@
+{
+  "kind": "view",
+  "name": "device.storage",
+  "description": "Keep all notes on: Personal live, a workspace still filling, one encrypted space.",
+  "args": {},
+  "value": {
+    "place": "acct:faisal",
+    "keepAll": true,
+    "available": true,
+    "spaces": [
+      {
+        "space": "personal",
+        "name": "Personal",
+        "phase": "live",
+        "have": 412,
+        "total": 412
+      },
+      {
+        "space": "ws_studio",
+        "name": "Airly Studio",
+        "phase": "filling",
+        "have": 120,
+        "total": 380
+      },
+      {
+        "space": "ws_private",
+        "name": "Private",
+        "phase": "encrypted",
+        "have": 0,
+        "total": null
+      }
+    ],
+    "notesKept": 532,
+    "attachmentsKept": 48,
+    "attachmentsBytes": 210000000,
+    "usedBytes": 260000000,
+    "freeBytes": 40000000000,
+    "attachmentLimitBytes": 2000000000,
+    "waiting": 0
+  }
+}

@@ -324,7 +324,7 @@ selection, which opens the editor's own slash menu (`SlashMenu`), as typing it d
 
 Meanwhile "/" opens the Insert panel (`panel.open { panel: "insert" }`).
 
-### R5.2 The onboarding gate has no actions **open**
+### R5.2 The onboarding gate has no actions **added** (revision 10: see R14.2)
 
 `AccountGate.tsx` reports `<NativeGate gate="onboarding" onboarding={{ step }} />` with no `actions`, so a native
 screen can't move a new account past onboarding (N14 draws the steps; this frame only shows the gate). Either
@@ -458,13 +458,13 @@ same. If the engine has recents across every space of the place, `"recent": { ar
 Built in `apps/native-kit/Sources/FoleviScreens/{Onboarding,Auth,Settings,Sharing,QuickAdd,AppLock}`. No stand-ins:
 what's missing is left out of the native screens (or opens the web page) until it's added.
 
-### R13.1 Appearance: the editor text size **open**
+### R13.1 Appearance: the editor text size **added** (revision 10: `AppearanceSettings.editorZoom` and `editorZooms` (the steps, 0.85 to 1.35); `settings.update { editorZoom }` snaps to the nearest step and keeps it on this device, as the web does)
 
 The web's Appearance has "Editor text size" (85 % to 135 %, `AppearanceSection.tsx` `ZOOMS`), kept per device.
 Request: `AppearanceSettings.editorZoom: number` and `settings.update { editorZoom?: number }` (or an editor command
 if it stays per device). Native shows Theme only until then.
 
-### R13.2 Security: two-step verification, passkeys, password, sign-in methods **open**
+### R13.2 Security: two-step verification, passkeys, password, sign-in methods **added** (revision 10: `SecuritySettings.twoFactor` (null when unknown), `passkeys: PasskeyRow[]` (`lastUsedAt` from passkeyUsage) and `methods` ("password", "google", "apple"); the changes stay web: `web.show { page: "settings.security" }`)
 
 `settings.security` has the sessions only. The web's Security also shows two-step status and its actions, passkeys
 and the sign-in methods (`SecuritySection.tsx`, `SignInMethods.tsx`). Request:
@@ -477,11 +477,11 @@ export interface SecuritySettings { sessions: SessionRow[]; twoFactor: boolean; 
 
 Until then native Security shows "Where you're signed in" with Sign out per device.
 
-### R13.3 This device: storage and "Keep all notes on this device" (plan 11.8) **open**
+### R13.3 This device: storage and "Keep all notes on this device" (plan 11.8) **added** (revision 10, per place because each Page View serves one place: view `device.storage` gives `{ place, keepAll, available, spaces: SpaceCopyInfo[], notesKept, attachmentsKept, attachmentsBytes, usedBytes, freeBytes, attachmentLimitBytes, waiting }`; commands `device.keepAll { on }`, `device.download`, `device.removeCopy { force? }` (replies `{ removed: false, waiting }` first when changes wait; they are never removed), `device.removeFiles`. Not added: `device.attachments`, since attachments follow the fixed rule (2 GB or 10 % of free space, Wi-Fi only) with no setting on the web either)
 
 Needs a view `device.storage { places: { place, name, keepAll, notesBytes, attachmentsBytes, otherBytes, downloading?: GateProgress }[]; freeBytes; attachments: "wifi" | "cellular" | "opened"; limitBytes: number | null }` and commands `device.keepAll { place, on }`, `device.download { place }`, `device.removeCopy { place }` (asks first when changes wait: reply `{ waiting: number }`), `device.attachments { policy?, limitBytes? }`, `device.removeFiles`. The section is hidden until then.
 
-### R13.4 Privacy and encryption, workspace sections, delete account **open**
+### R13.4 Privacy and encryption, workspace sections, delete account **added** (revision 10: `WebPage` adds `settings.security`, `settings.privacy`, `settings.workspace` and `settings.deleteAccount` (Settings > Account, where the delete button is))
 
 Native Privacy has the Face ID / Touch ID lock (the hosts' AppLock, through `AppLockSettings`) and the policy link;
 its footer says encryption is set up on the web. Request web pages for what stays web this release, through
@@ -489,7 +489,7 @@ its footer says encryption is set up on the web. Request web pages for what stay
 workspace billing and privacy) and `settings.deleteAccount`. With those, Settings lists them as web rows like
 Connected apps.
 
-### R13.5 Help: the support form **open**
+### R13.5 Help: the support form **open: needs a backend change** (`/api/support` takes the website's session cookie and checks the origin, so the apps can't call it, and there's no Convex path for it. Reported to the coordinator; keep the mailto until then)
 
 Native Help sends email to support@folevi.com (mailto). Request `support.send { subject, body, includeDiagnostics }`
 (the web's `SupportForm.tsx`), so the app can send without a mail client.
@@ -506,23 +506,23 @@ one request), `signUp`, `requestPasswordReset` and `sendVerificationEmail`, each
 `authErrorMessage` text. Until then an adapter answers `.useWebSignIn` for email and the screen opens the website's
 sign-in page in the sheet, as today.
 
-### R14.2 Onboarding actions (see R5.2) **open**
+### R14.2 Onboarding actions (see R5.2) **added** (revision 10: `OnboardingGateInfo` has `step, index, total, useCases, useCaseOptions, noteStyle, noteStyleOptions, appearance, aiEnabled`; actions `continue` (values `useCases` comma list, `noteStyle`, `appearance`, `aiEnabled` "true"/"false", for the step shown), `back`, `skip`, `skipAll`, and `finish` on the last step)
 
 The onboarding gate draws the web's six steps (progress, headings, text, the intro facts) but has no actions to press.
 With R5.2's actions (or `onboarding.complete`), native adds the use-case, theme, appearance and Foli AI choices.
 
-### R14.3 Library setup: picking the folder natively **open**
+### R14.3 Library setup: picking the folder natively **added** (revision 10, without a new field: the `librarySetup` gate has an action per place, `place:icloud`, `place:dropbox`, `place:gdrive`, `place:folder`, `place:device`, plus `back`. Pressing `place:folder` runs `library.setup({ kind: "folder" })`, where the host already shows NSOpenPanel / UIDocumentPicker and keeps the bookmark. A new library then shows `open` (optional `passphrase` field, 8 characters or more) and `elsewhere`)
 
 `librarySetup` needs a folder from `UIDocumentPickerViewController` / `NSOpenPanel` with a security-scoped bookmark,
 which only the host can make. Request: the gate's action `chooseFolder` marked as native (`GateAction.native?: "pickFolder"`),
 so the screen asks the host (LibraryService) and then sends `gate.act { action: "useFolder", values: { bookmark } }`.
 
-### R14.4 Sharing folders, and changing a person's role **open**
+### R14.4 Sharing folders, and changing a person's role **added in part** (revision 10: `sharing.setRole { noteId, profileId, role }`. Folder sharing needs a backend change: there's no folder sharing on the server at all. Reported to the coordinator)
 
 `sharing.get` takes a note id. Request `sharing.get { folderId }` (the folder's people and access) and
 `sharing.setRole { noteId | folderId, profileId, role }`; today a role changes only by removing and inviting again.
 
-### R14.5 The Mac Quick Add panel's page lifecycle (Mac host) **open**
+### R14.5 The Mac Quick Add panel's page lifecycle (Mac host) **done** (f4579341: `Navigation.swift` routes the `.quickAdd` view's reloads and ended processes to `QuickAddPanel.shared.pageEvent`)
 
 The native Quick Add field talks to its panel's hidden Page View through `MacEngineTransport`, but
 `Navigation.swift` reports reloads and ended content processes only for main windows' frames

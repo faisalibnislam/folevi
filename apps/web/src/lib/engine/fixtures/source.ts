@@ -11,7 +11,7 @@
 // - "event": one event's data.
 // - "envelope": raw messages in both directions (handshake, errors, a batch).
 import { applyDiff, emptyNativeList, nativeRows, windowDiff, withHash, type ListState } from "../diff";
-import { e2eeInfo, gateEvent } from "../gates";
+import { e2eeInfo, gateEvent, onboardingInfo } from "../gates";
 import { changesValue, notificationRow, searchHits, sharedRow } from "../viewsMore";
 import { taskGroups, taskRow, type TaskData } from "../viewsWork";
 import { datesReady, planQuickTask } from "../quickTask";
@@ -756,7 +756,7 @@ export const FIXTURES: Record<string, Fixture> = {
   }),
   "view.settings.account": view({ name: "settings.account", description: "Settings > Account.", args: {}, value: { name: "Faisal", email: "faisal@example.com", avatarUrl: null, timeZone: "Asia/Dhaka" } }),
   "view.settings.general": view({ name: "settings.general", description: "Settings > General.", args: {}, value: { timeZone: "Asia/Dhaka", locale: "en", reviewAppEdits: true } }),
-  "view.settings.appearance": view({ name: "settings.appearance", description: "Settings > Appearance.", args: {}, value: { appearance: "dark" } }),
+  "view.settings.appearance": view({ name: "settings.appearance", description: "Settings > Appearance.", args: {}, value: { appearance: "dark", editorZoom: 1.1, editorZooms: [0.85, 0.9, 0.95, 1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35] } }),
   "view.settings.notifications": view({
     name: "settings.notifications",
     description: "Settings > Notifications: comments only in the app, replies follow comments by email.",
@@ -766,13 +766,38 @@ export const FIXTURES: Record<string, Fixture> = {
   "view.settings.ai": view({ name: "settings.ai", description: "Settings > Foli AI, the basics.", args: {}, value: { included: true, enabled: true, history: true, memory: false, suggestions: true, attachments: true, webResearch: true, digests: false, readImages: false, deviceText: true } }),
   "view.settings.security": view({
     name: "settings.security",
-    description: "Where the account is signed in.",
+    description: "Where the account is signed in, with two-step on, one passkey, and password plus Google sign-in.",
     args: {},
     value: {
       sessions: [
         { id: "sess_1", label: "iPhone 17 Pro", client: "ios", current: true, lastSeenAt: NOW },
         { id: "sess_2", label: "Safari on Mac", client: "web", current: false, lastSeenAt: NOW - 3 * DAY },
       ],
+      twoFactor: true,
+      passkeys: [{ id: "pk_1", name: "iCloud Keychain", createdAt: NOW - 40 * DAY, lastUsedAt: NOW - DAY }],
+      methods: ["password", "google"],
+    },
+  }),
+  "view.device.storage": view({
+    name: "device.storage",
+    description: "Keep all notes on: Personal live, a workspace still filling, one encrypted space.",
+    args: {},
+    value: {
+      place: "acct:faisal",
+      keepAll: true,
+      available: true,
+      spaces: [
+        { space: "personal", name: "Personal", phase: "live", have: 412, total: 412 },
+        { space: "ws_studio", name: "Airly Studio", phase: "filling", have: 120, total: 380 },
+        { space: "ws_private", name: "Private", phase: "encrypted", have: 0, total: null },
+      ],
+      notesKept: 532,
+      attachmentsKept: 48,
+      attachmentsBytes: 210_000_000,
+      usedBytes: 260_000_000,
+      freeBytes: 40_000_000_000,
+      attachmentLimitBytes: 2_000_000_000,
+      waiting: 0,
     },
   }),
   "view.sharing.get": view({
@@ -811,6 +836,12 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.session.revoke": command({ name: "session.revoke", description: "Sign out another device.", args: { id: "sess_2" }, result: { ok: true } }),
   "command.sharing.invite": command({ name: "sharing.invite", description: "Share a note by email (no account yet: an invitation goes out).", args: { noteId: "doc_00002", email: "kim@example.com", role: "viewer" }, result: { status: "invited" } }),
   "command.sharing.revoke": command({ name: "sharing.revoke", description: "Remove someone's access.", args: { noteId: "doc_00002", profileId: "prof_9" }, result: { ok: true } }),
+  "command.sharing.setRole": command({ name: "sharing.setRole", description: "Make someone an editor of a note.", args: { noteId: "doc_00002", profileId: "prof_9", role: "editor" }, result: { ok: true } }),
+  "command.device.keepAll": command({ name: "device.keepAll", description: "Keep all notes on this device.", args: { on: true }, result: { ok: true } }),
+  "command.device.download": command({ name: "device.download", description: "Download everything now (the copy runs in the foreground).", args: {}, result: { ok: true } }),
+  "command.device.removeCopy": command({ name: "device.removeCopy", description: "Remove the copy; two changes still waiting, so it asks first.", args: {}, result: { removed: false, waiting: 2 } }),
+  "command.device.removeCopy.force": command({ name: "device.removeCopy", description: "Remove the copy anyway (waiting changes stay).", args: { force: true }, result: { removed: true, waiting: 2 } }),
+  "command.device.removeFiles": command({ name: "device.removeFiles", description: "Remove the kept attachments.", args: {}, result: { ok: true } }),
   "command.sharing.cancelInvite": command({ name: "sharing.cancelInvite", description: "Cancel an invitation.", args: { inviteId: "pinv_2" }, result: { ok: true } }),
   "command.sharing.setAccessMode": command({ name: "sharing.setAccessMode", description: "Only the people listed.", args: { noteId: "doc_00002", mode: "restricted" }, result: { ok: true } }),
   "command.publicLink.create": command({ name: "publicLink.create", description: "A public link with the Article look.", args: { noteId: "doc_00002", theme: "article" }, result: { id: "lnk_2", url: "https://app.folevi.com/s/k3XaQ9vY2mP4tR7w" } }),
@@ -819,6 +850,8 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.publicLink.setTheme": command({ name: "publicLink.setTheme", description: "Change a link's look.", args: { linkId: "lnk_1", theme: "minimal" }, result: { ok: true } }),
   "command.publicLink.revoke": command({ name: "publicLink.revoke", description: "Turn a link off.", args: { linkId: "lnk_1" }, result: { ok: true } }),
   "command.invite.acceptLink": command({ name: "invite.acceptLink", description: "Accept a page invitation link and open the page.", args: { kind: "page", token: "tok_page" }, result: { noteId: "doc_s2", space: null } }),
+  "editor.web.show.privacy": editor({ name: "web.show", description: "Show Settings > Privacy as a web page.", args: { page: "settings.privacy" }, result: { id: "settings.privacy", ready: true } }),
+  "editor.web.show.deleteAccount": editor({ name: "web.show", description: "Show the delete account page.", args: { page: "settings.deleteAccount" }, result: { id: "settings.deleteAccount", ready: true } }),
   "editor.web.show": editor({ name: "web.show", description: "Show Connected apps (a web page with native bars).", args: { page: "settings.connectedApps" }, result: { id: "settings.connectedApps", ready: true } }),
 
   // ---- revision 7
@@ -1103,7 +1136,35 @@ export const FIXTURES: Record<string, Fixture> = {
     description: "Too many devices on this plan.",
     data: gateEvent({ gate: "deviceLimit", title: "This plan works on 3 devices", deviceLimit: { limit: 3, devices: [{ id: "sess_a", label: "MacBook Air", lastSeenAt: NOW - DAY }] }, actions: [{ id: "signOut:sess_a", label: "Sign out MacBook Air", style: "secondary", enabled: true }] }),
   }),
-  "event.gate.changed.onboarding": event({ name: "gate.changed", description: "Onboarding isn't finished.", data: gateEvent({ gate: "onboarding", onboarding: { step: "useCases" } }) }),
+  "event.gate.changed.librarySetup": event({
+    name: "gate.changed",
+    description: "Where the library should live; native shows the places (Choose a folder opens the system picker).",
+    data: gateEvent({
+      gate: "librarySetup",
+      title: "Where should your library live?",
+      actions: [
+        { id: "place:icloud", label: "Sync with iCloud", style: "secondary", enabled: true },
+        { id: "place:folder", label: "Choose a folder", style: "secondary", enabled: true },
+        { id: "place:device", label: "This device only", style: "secondary", enabled: true },
+        { id: "back", label: "Back", style: "quiet", enabled: true },
+      ],
+    }),
+  }),
+  "event.gate.changed.libraryReady": event({
+    name: "gate.changed",
+    description: "A new library is ready; an optional passphrase, then Open Folevi.",
+    data: gateEvent({
+      gate: "librarySetup",
+      title: "Your library is ready",
+      message: "Folevi keeps your notes as files in iCloud Drive › Folevi.",
+      fields: [{ id: "passphrase", kind: "secret", label: "Passphrase (optional)", placeholder: "" }],
+      actions: [
+        { id: "open", label: "Open Folevi", style: "primary", enabled: true },
+        { id: "elsewhere", label: "Choose another place", style: "quiet", enabled: true },
+      ],
+    }),
+  }),
+  "event.gate.changed.onboarding": event({ name: "gate.changed", description: "Onboarding isn't finished.", data: gateEvent({ gate: "onboarding", onboarding: onboardingInfo({ step: "uses", index: 1, useCaseOptions: [{ id: "work", label: "Work" }, { id: "study", label: "Study" }], noteStyleOptions: ["art-03", "art-39"] }) }) }),
   "event.gate.changed.migration": event({
     name: "gate.changed",
     description: "Signed in from a library: move the notes into the account, or keep them separate.",

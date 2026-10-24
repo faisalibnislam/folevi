@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "device.removeCopy",
+  "description": "Remove the copy anyway (waiting changes stay).",
+  "args": {
+    "force": true
+  },
+  "result": {
+    "removed": true,
+    "waiting": 2
+  }
+}

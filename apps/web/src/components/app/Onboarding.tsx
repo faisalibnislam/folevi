@@ -19,6 +19,8 @@ import { captureTemplateFromUrl, pendingTemplate } from "@/lib/pendingTemplate";
 import { OnboardingPreview, artOf, artThumb, type PreviewScene } from "./onboarding/OnboardingPreview";
 import "./onboarding/onboarding.css";
 import { withoutPurchaseHints } from "@/lib/nativeApp";
+import { NativeGate } from "@/lib/engine/NativeGate";
+import { onboardingInfo } from "@/lib/engine/gates";
 
 /** The steps, in order, and the server step each one completes (convex/lib/onboarding.ts). */
 const STEPS = [
@@ -158,6 +160,62 @@ export function Onboarding() {
     saveAndGo({ step: "ai" }, LAST);
   };
 
+  // The native apps draw these steps themselves (native chrome mode): the step, the choices, and the buttons.
+  const nativeValues = (v: Record<string, string>) => {
+    if (step === 1 && v.useCases !== undefined) return { step: "uses" as const, useCases: v.useCases.split(",").map((x) => x.trim()).filter(Boolean) };
+    if (step === 2 && v.noteStyle !== undefined && isOnboardingNoteStyle(v.noteStyle)) return { step: "style" as const, noteStyle: v.noteStyle };
+    const a = v.appearance;
+    if (step === 3 && (a === "light" || a === "dark" || a === "system")) {
+      setAppearance(a);
+      return { step: "appearance" as const, appearance: a as Appearance };
+    }
+    if (step === 4 && (v.aiEnabled === "true" || v.aiEnabled === "false")) return { step: "ai" as const, aiEnabled: v.aiEnabled === "true" };
+    return null;
+  };
+  const nativeGate = (
+    <NativeGate
+      gate="onboarding"
+      title={STEPS[step]!.name}
+      busy={busy}
+      error={error ? { code: "failed", message: error } : null}
+      onboarding={onboardingInfo({
+        step: STEPS[step]!.key,
+        index: step,
+        total: STEPS.length,
+        useCases: picks,
+        useCaseOptions: USE_CASES.map((u) => ({ id: u.id, label: u.label })),
+        noteStyle: styleId,
+        noteStyleOptions: [PLAIN_STYLE, ...ONBOARDING_NOTE_STYLES],
+        appearance: look,
+        aiEnabled: ai,
+      })}
+      actions={[
+        ...(step < LAST
+          ? [
+              {
+                id: "continue",
+                label: "Continue",
+                style: "primary" as const,
+                enabled: !busy,
+                run: (v: Record<string, string>) => {
+                  const args = nativeValues(v);
+                  if (!args) return cont();
+                  if (args.step === "uses") setPicks(args.useCases);
+                  if (args.step === "style") setStyleId(args.noteStyle);
+                  if (args.step === "appearance") setLook(args.appearance);
+                  if (args.step === "ai") setAi(args.aiEnabled);
+                  saveAndGo(args);
+                },
+              },
+              { id: "skip", label: "Skip", style: "quiet" as const, enabled: !busy && step > 0, run: () => skip() },
+              { id: "skipAll", label: "Skip setup", style: "quiet" as const, enabled: !busy, run: () => skipAll() },
+            ]
+          : [{ id: "finish", label: "Open Folevi", style: "primary" as const, enabled: !busy, run: () => cont() }]),
+        ...(step > 0 ? [{ id: "back", label: "Back", style: "quiet" as const, enabled: !busy, run: () => go(step - 1) }] : []),
+      ]}
+    />
+  );
+
   /** Switches the theme live; where supported, the new theme spreads out from the chosen card. */
   const pickAppearance = (value: Appearance, from: HTMLElement | null) => {
     if (value === look) return;
@@ -222,6 +280,7 @@ export function Onboarding() {
 
   return (
     <main id="main" tabIndex={-1} className="ob-root min-h-dvh outline-none lg:grid lg:grid-cols-[minmax(460px,600px)_minmax(0,1fr)]">
+      {nativeGate}
       <div className="flex min-h-dvh flex-col px-4 pt-4 sm:px-10 sm:pt-8 lg:px-14 lg:pt-10">
         <header className="flex h-9 items-center justify-between gap-3">
           <FoleviLogo height={26} className="text-heading" />

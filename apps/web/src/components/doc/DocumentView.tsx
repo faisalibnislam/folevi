@@ -92,6 +92,11 @@ import { useNoteActions } from "@/components/views/noteActions";
 import { PageDock } from "./PageDock";
 import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
 import { NoteBars } from "@/components/iphone/NoteBars";
+import { nativeChrome } from "@/lib/nativeApp";
+import { useNativeNote } from "@/lib/engine/editorCommands";
+
+/** Native chrome mode (the native apps draw the note's bars): fixed for the page's life. */
+const nativeChromeMode = typeof window !== "undefined" && nativeChrome() !== null;
 import { NotePlaceChip, NoteTrailing, ToolSheet } from "@/components/iphone/NoteChrome";
 import { useKeyboardInset } from "@/lib/hooks/useVisualViewport";
 import "@/components/editor/editor.css";
@@ -741,6 +746,33 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // End-to-end encryption: "Always fully encrypted" for a note of yours (docs/E2EE_DESIGN.md §10.8; nothing for Standard accounts).
   const lockItem = useLockMenuItem(meta?.isMember && inCurrentScope(meta.document, meta.isMember, scopeKey) ? { kind: "document", id: documentId, name: summary?.title ?? "", locked: (meta.document as { locked?: boolean }).locked } : null);
   const actions: (MenuItem | "separator")[] = [...(noteNotify.length ? [...docActions, "separator" as const, ...noteNotify] : docActions), ...(lockItem ? ["separator" as const, lockItem] : [])];
+  // Native chrome mode (the native apps): the note takes the native toolbar's and menus' commands (lib/engine).
+  useNativeNote({
+    documentId,
+    editor,
+    readOnly,
+    title: summary?.title || localTitle || "",
+    ready: reconciled || cacheLoaded,
+    panel: inspectorOpen ? inspectorTab : null,
+    openPanel: (t) => {
+      if (t === "comments") setFocusThreadId(null);
+      setInspectorTab(t);
+      setInspectorOpen(true);
+    },
+    closePanel: () => setInspectorOpen(false),
+    menu: {
+      share: meta && caps.sharing ? () => setShareOpen(true) : undefined,
+      move: canFile || canNest ? () => setMoveOpen(true) : undefined,
+      copyTo: caps.copyTo && meta && !meta.inTrash && (canCopy || !meta.isMember) ? () => setCopyOpen(true) : undefined,
+      export: () => setExportOpen(true),
+      history: canEditPage ? () => setHistoryOpen(true) : undefined,
+      present,
+      print: () => window.print(),
+      find: editor ? () => openFind(!readOnly) : undefined,
+      delete: meta && !readOnly ? () => setDeleteOpen(true) : undefined,
+    },
+    scrollEl,
+  });
 
   if (meta === null && !pendingCreate && !waitingRow && (server === null || server === undefined) && (online || cacheLoaded)) {
     if (meta === null && server === null) {
@@ -1071,7 +1103,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         </div>
         {/* The floating bar: AI, Insert, Format and Style, then the note's people, Share and its "…" menu. A tool opens
             in the right sidebar (on a phone, a sheet above the bar); AI opens the assistant on this note. */}
-        {iphone ? (
+        {nativeChromeMode ? null : iphone ? (
           <NoteBars
             editor={editor}
             ai={aiOn}

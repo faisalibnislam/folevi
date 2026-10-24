@@ -50,6 +50,8 @@ export type Route =
   | { name: "oauth-consent" }
   | { name: "invite"; token: string }
   | { name: "share-invite"; token: string }
+  /** The native apps' idle page (native chrome mode, docs/NATIVE_APP_PLAN.md section 8): the engine, nothing drawn. */
+  | { name: "native" }
   | { name: "not_found" };
 
 const TASK_VIEWS = ["inbox", "today", "upcoming", "all", "completed", "mine"] as const;
@@ -106,6 +108,8 @@ export function parseRoute(pathname: string): Route {
       return a ? { name: "invite", token: a } : { name: "not_found" };
     case "share-invite":
       return a ? { name: "share-invite", token: a } : { name: "not_found" };
+    case "native":
+      return { name: "native" };
     default:
       return { name: "not_found" };
   }

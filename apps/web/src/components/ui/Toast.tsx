@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { withoutPurchaseHints } from "@/lib/nativeApp";
+import { nativeToast } from "@/lib/engine/toasts";
 
 type Tone = "neutral" | "success" | "error";
 interface Toast {
@@ -19,6 +20,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const dismiss = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
   const show = useCallback(
     (message: string, opts?: { tone?: Tone; action?: Toast["action"]; duration?: number }) => {
+      // The native apps show toasts themselves (native chrome mode, lib/engine/toasts.ts).
+      if (nativeToast(withoutPurchaseHints(message), opts)) return;
       const id = Date.now() + Math.random();
       setToasts((t) => [...t.slice(-3), { id, message, tone: opts?.tone ?? "neutral", action: opts?.action }]);
       setTimeout(() => dismiss(id), opts?.duration ?? (opts?.action ? 8000 : 4500));

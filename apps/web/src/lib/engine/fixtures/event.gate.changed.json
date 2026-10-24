@@ -1,0 +1,8 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "Signed in and ready: no gate.",
+  "data": {
+    "gate": null
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "event",
+  "name": "editor.panel",
+  "description": "The Format panel opened.",
+  "data": {
+    "panel": "format"
+  }
+}

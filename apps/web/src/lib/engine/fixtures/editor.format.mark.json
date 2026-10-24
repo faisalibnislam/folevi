@@ -1,0 +1,11 @@
+{
+  "kind": "editor",
+  "name": "format",
+  "description": "Bold.",
+  "args": {
+    "mark": "bold"
+  },
+  "result": {
+    "ok": true
+  }
+}

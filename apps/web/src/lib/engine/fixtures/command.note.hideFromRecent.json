@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "note.hideFromRecent",
+  "description": "Remove a card from Home's recents.",
+  "args": {
+    "ids": [
+      "doc_00002"
+    ]
+  },
+  "result": {
+    "hidden": 1
+  }
+}

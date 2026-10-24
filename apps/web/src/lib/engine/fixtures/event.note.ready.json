@@ -1,0 +1,9 @@
+{
+  "kind": "event",
+  "name": "note.ready",
+  "description": "The note's first frame is drawn.",
+  "data": {
+    "id": "doc_00001",
+    "title": "Kyoto in November"
+  }
+}

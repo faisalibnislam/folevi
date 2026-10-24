@@ -1,0 +1,10 @@
+{
+  "kind": "event",
+  "name": "navigate.request",
+  "description": "A web link inside a note.",
+  "data": {
+    "route": "https://example.com/article",
+    "noteId": null,
+    "external": true
+  }
+}

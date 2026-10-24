@@ -1,0 +1,66 @@
+{
+  "kind": "envelope",
+  "description": "One postMessage: updates and events in the order they happened.",
+  "toEngine": [],
+  "fromEngine": [],
+  "batch": [
+    {
+      "kind": "update",
+      "sub": "sync",
+      "rev": 4,
+      "value": {
+        "state": "saved",
+        "label": "Saved",
+        "pending": 0,
+        "conflicts": 0,
+        "online": true,
+        "authRequired": false,
+        "spaces": [
+          {
+            "space": "personal",
+            "state": "ready",
+            "have": 0,
+            "total": null
+          }
+        ]
+      }
+    },
+    {
+      "kind": "event",
+      "name": "sync.status",
+      "data": {
+        "state": "saved",
+        "label": "Saved",
+        "pending": 0,
+        "conflicts": 0,
+        "online": true,
+        "authRequired": false,
+        "spaces": [
+          {
+            "space": "personal",
+            "state": "ready",
+            "have": 0,
+            "total": null
+          }
+        ]
+      }
+    },
+    {
+      "kind": "event",
+      "name": "toast",
+      "data": {
+        "message": "Starred",
+        "tone": "info",
+        "undo": {
+          "command": "note.star",
+          "args": {
+            "ids": [
+              "doc_00001"
+            ],
+            "starred": false
+          }
+        }
+      }
+    }
+  ]
+}

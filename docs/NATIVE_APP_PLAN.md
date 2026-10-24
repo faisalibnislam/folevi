@@ -1,6 +1,7 @@
 # Native Folevi for iPhone, iPad and Mac (2026-10-24)
 
-**Status:** plan, not started. Nothing in this document has been built yet.
+**Status:** started 2026-10-24 on branch `native-app` (ships as 1.1.00). The bridge contract is
+`apps/web/src/lib/engine/protocol.ts` with fixtures in `apps/web/src/lib/engine/fixtures/`.
 
 Everything outside the editor becomes native Swift in the iPhone, iPad and Mac apps: the app frame (bars,
 tab bar, back swipe, the zoom from a card into its note, sheets, menus, the keyboard toolbar, startup), every
@@ -41,6 +42,17 @@ by this plan; section 12 says which parts), `docs/MAC_WEBKIT_PLAN.md` (the nativ
   storage budget; E2EE stored encrypted at rest; respect Low Power Mode, Low Data Mode and cellular settings;
   "Keep all notes on this device" (default on) with storage shown, per place; server cost within the pricing
   and 30% margin rules. The cache and the offline outbox are the same local store.
+
+**Follow-up decisions (2026-10-24, final; they answer section 14):**
+
+- **Q1, technical Settings sections:** Webhooks, API tokens, Connected apps (MCP), AI export and workspace Data open
+  as in-app web pages (the Page View with native bars) this release. Every other Settings section is native.
+- **Q2, Reviews and Graph:** stay web inside the Page View with native bars, as recommended.
+- **Q3, background sync on Free:** every plan, Free included, gets silent pushes, the nightly processing task and
+  background refresh.
+- **Q4, attachment storage:** default 2 GB or 10% of free space, whichever is smaller; Wi-Fi only by default.
+- **Q5, the web phone layout:** keep improving it for phone browsers (and the paused Android app); it isn't frozen.
+- **Start:** now. The release ships as **1.1.00**.
 
 These replace the 2026-10-22 decision to keep the iOS app hybrid and polish it (`docs/IOS_POLISH_PLAN.md`
 section 6, the "ios-polish" notes): the owner chose native on 2026-10-24.
@@ -1092,6 +1104,10 @@ E2EE at rest (11.6) ships with 1 for encrypted spaces, since it changes the same
 ---
 
 ## 14. Open questions for the owner
+
+All five were answered on 2026-10-24 (section 0, "Follow-up decisions"): Q1 the listed technical sections open as
+in-app web pages this release; Q2 agreed; Q3 every plan including Free; Q4 the proposed defaults; Q5 keep
+improving the web phone layout. Kept below for the record.
 
 1. **Developer and admin Settings sections.** Build every Settings section native (the plan), or let Webhooks, API
    tokens, Connected apps (MCP), AI export and workspace Data open as web pages inside the app for this release

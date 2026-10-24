@@ -1,0 +1,8 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "The encrypted space needs unlocking.",
+  "data": {
+    "gate": "e2eeLocked"
+  }
+}

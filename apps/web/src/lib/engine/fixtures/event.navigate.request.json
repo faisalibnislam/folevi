@@ -1,0 +1,10 @@
+{
+  "kind": "event",
+  "name": "navigate.request",
+  "description": "A page link inside a note.",
+  "data": {
+    "route": "/d/doc_00002",
+    "noteId": "doc_00002",
+    "external": false
+  }
+}

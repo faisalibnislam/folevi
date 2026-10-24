@@ -1,0 +1,37 @@
+{
+  "kind": "list",
+  "name": "notes.list",
+  "description": "A folder that isn't there any more: an error update with an empty list.",
+  "args": {
+    "view": "folder",
+    "folderId": "fld_gone"
+  },
+  "window": {
+    "start": 0,
+    "count": 50
+  },
+  "updates": [
+    {
+      "kind": "update",
+      "sub": "s1",
+      "rev": 1,
+      "diff": {
+        "reset": true,
+        "total": 0,
+        "complete": true,
+        "start": 0,
+        "order": []
+      },
+      "error": {
+        "code": "not_found",
+        "message": "Folder not found."
+      }
+    }
+  ],
+  "expected": {
+    "total": 0,
+    "complete": true,
+    "start": 0,
+    "rows": []
+  }
+}

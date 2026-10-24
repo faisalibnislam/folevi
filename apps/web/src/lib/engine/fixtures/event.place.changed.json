@@ -1,0 +1,9 @@
+{
+  "kind": "event",
+  "name": "place.changed",
+  "description": "The space changed.",
+  "data": {
+    "place": "acct:user_1",
+    "space": "ws_studio"
+  }
+}

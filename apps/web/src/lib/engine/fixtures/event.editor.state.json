@@ -1,0 +1,15 @@
+{
+  "kind": "event",
+  "name": "editor.state",
+  "description": "The caret moved into a heading.",
+  "data": {
+    "noteId": "doc_00001",
+    "focused": true,
+    "canEdit": true,
+    "block": "heading2",
+    "marks": [],
+    "link": false,
+    "undo": true,
+    "redo": true
+  }
+}

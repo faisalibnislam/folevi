@@ -1,0 +1,9 @@
+{
+  "kind": "command",
+  "name": "engine.refresh",
+  "description": "Pull to refresh: send what waits and pull now.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

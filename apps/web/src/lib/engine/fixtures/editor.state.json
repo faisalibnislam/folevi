@@ -1,0 +1,18 @@
+{
+  "kind": "editor",
+  "name": "state",
+  "description": "The editor's state now (also sent as editor.state events).",
+  "args": {},
+  "result": {
+    "noteId": "doc_00001",
+    "focused": true,
+    "canEdit": true,
+    "block": "todo",
+    "marks": [
+      "bold"
+    ],
+    "link": false,
+    "undo": true,
+    "redo": false
+  }
+}

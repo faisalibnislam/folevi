@@ -1,0 +1,9 @@
+{
+  "kind": "editor",
+  "name": "scrollToTop",
+  "description": "A tap on the status bar.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

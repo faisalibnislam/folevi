@@ -1,0 +1,12 @@
+{
+  "kind": "editor",
+  "name": "note.menu",
+  "description": "No note is open.",
+  "args": {
+    "action": "share"
+  },
+  "error": {
+    "code": "no_note",
+    "message": "No note is open."
+  }
+}

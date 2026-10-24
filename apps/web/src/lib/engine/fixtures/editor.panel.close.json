@@ -1,0 +1,9 @@
+{
+  "kind": "editor",
+  "name": "panel.close",
+  "description": "Close the open panel.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "kind": "editor",
+  "name": "outdent",
+  "description": "Outdent the line.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

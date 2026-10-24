@@ -1,0 +1,9 @@
+{
+  "kind": "command",
+  "name": "catchUp.clear",
+  "description": "Close the brief.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

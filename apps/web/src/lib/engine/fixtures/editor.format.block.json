@@ -1,0 +1,11 @@
+{
+  "kind": "editor",
+  "name": "format",
+  "description": "Turn the line into a to-do (or back into a paragraph).",
+  "args": {
+    "block": "todo"
+  },
+  "result": {
+    "ok": true
+  }
+}

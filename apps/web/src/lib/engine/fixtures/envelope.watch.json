@@ -1,0 +1,52 @@
+{
+  "kind": "envelope",
+  "description": "A watch is acknowledged with its sub; the first update (posted separately) carries the whole value.",
+  "toEngine": [
+    {
+      "v": 1,
+      "id": "7",
+      "kind": "watch",
+      "sub": "home-1",
+      "place": "acct:user_1",
+      "name": "home",
+      "args": {}
+    }
+  ],
+  "fromEngine": [
+    {
+      "kind": "reply",
+      "id": "7",
+      "ok": true,
+      "value": {
+        "sub": "home-1"
+      }
+    }
+  ],
+  "batch": [
+    {
+      "kind": "update",
+      "sub": "home-1",
+      "rev": 1,
+      "value": {
+        "space": "personal",
+        "spaceName": "Personal",
+        "recents": [],
+        "recentsLoaded": false,
+        "catchUp": {
+          "available": true,
+          "state": "idle",
+          "brief": null,
+          "error": null
+        },
+        "rows": [],
+        "starred": {
+          "rows": [],
+          "more": false
+        },
+        "folders": [],
+        "tags": []
+      },
+      "stale": true
+    }
+  ]
+}

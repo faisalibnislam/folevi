@@ -1,0 +1,13 @@
+{
+  "kind": "editor",
+  "name": "note.show",
+  "description": "Show a new note ready to type in.",
+  "args": {
+    "id": "doc_00001",
+    "focus": true
+  },
+  "result": {
+    "id": "doc_00001",
+    "ready": true
+  }
+}

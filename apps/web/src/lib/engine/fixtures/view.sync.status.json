@@ -1,0 +1,22 @@
+{
+  "kind": "view",
+  "name": "sync.status",
+  "description": "Everything saved.",
+  "args": {},
+  "value": {
+    "state": "saved",
+    "label": "Saved",
+    "pending": 0,
+    "conflicts": 0,
+    "online": true,
+    "authRequired": false,
+    "spaces": [
+      {
+        "space": "personal",
+        "state": "ready",
+        "have": 0,
+        "total": null
+      }
+    ]
+  }
+}

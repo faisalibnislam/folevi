@@ -1,0 +1,35 @@
+{
+  "kind": "view",
+  "name": "note.meta",
+  "description": "A note this device doesn't know yet (or no longer can open).",
+  "args": {
+    "id": "doc_99999"
+  },
+  "value": {
+    "id": "doc_99999",
+    "found": false,
+    "title": "",
+    "icon": null,
+    "kind": "document",
+    "space": null,
+    "folder": null,
+    "breadcrumbs": [],
+    "starred": false,
+    "access": "read",
+    "canEdit": false,
+    "encrypted": false,
+    "archived": false,
+    "inTrash": false,
+    "cover": {
+      "kind": "none"
+    },
+    "style": {
+      "font": "modern",
+      "width": "normal",
+      "background": "paper",
+      "accent": "ember",
+      "card": "plain"
+    },
+    "sync": "saved"
+  }
+}

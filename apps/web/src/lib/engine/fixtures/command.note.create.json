@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "note.create",
+  "description": "A new note in a folder (works offline).",
+  "args": {
+    "folderId": "fld_trips",
+    "title": ""
+  },
+  "result": {
+    "id": "01JB7Z8K3Q4ABCDEF0123456789"
+  }
+}

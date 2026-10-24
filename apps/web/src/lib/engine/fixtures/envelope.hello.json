@@ -1,0 +1,99 @@
+{
+  "kind": "envelope",
+  "description": "The handshake: native says hello, the engine replies with its protocol, contract hash and names.",
+  "toEngine": [
+    {
+      "v": 1,
+      "id": "1",
+      "kind": "hello",
+      "app": {
+        "platform": "ios",
+        "version": "1.1.00",
+        "build": "1100",
+        "protocol": 1,
+        "schemaHash": "80241393"
+      }
+    }
+  ],
+  "fromEngine": [
+    {
+      "kind": "reply",
+      "id": "1",
+      "ok": true,
+      "value": {
+        "protocol": 1,
+        "revision": 1,
+        "build": "dev",
+        "schemaHash": "80241393",
+        "ready": true,
+        "place": "acct:user_1",
+        "features": [
+          "windowed-lists",
+          "row-hashes",
+          "content-only",
+          "editor-commands",
+          "catch-up"
+        ],
+        "views": [
+          "session",
+          "places.list",
+          "home",
+          "folders.tree",
+          "sync.status",
+          "note.meta"
+        ],
+        "listViews": [
+          "notes.list"
+        ],
+        "commands": [
+          "space.switch",
+          "note.create",
+          "note.star",
+          "note.move",
+          "note.archive",
+          "note.trash",
+          "note.restore",
+          "note.hideFromRecent",
+          "folder.create",
+          "catchUp.run",
+          "catchUp.clear",
+          "engine.refresh"
+        ],
+        "editorCommands": [
+          "note.prepare",
+          "note.show",
+          "note.close",
+          "format",
+          "insert",
+          "link",
+          "undo",
+          "redo",
+          "indent",
+          "outdent",
+          "focus",
+          "dismissKeyboard",
+          "panel.open",
+          "panel.close",
+          "ai",
+          "note.menu",
+          "scrollToTop",
+          "insets",
+          "state"
+        ],
+        "events": [
+          "engine.ready",
+          "gate.changed",
+          "sync.status",
+          "place.changed",
+          "toast",
+          "navigate.request",
+          "note.ready",
+          "note.meta",
+          "editor.state",
+          "editor.panel",
+          "memory.relieved"
+        ]
+      }
+    }
+  ]
+}

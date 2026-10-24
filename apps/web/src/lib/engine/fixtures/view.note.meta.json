@@ -1,0 +1,46 @@
+{
+  "kind": "view",
+  "name": "note.meta",
+  "description": "A note in a folder, inside a parent page, starred.",
+  "args": {
+    "id": "doc_00003"
+  },
+  "value": {
+    "id": "doc_00003",
+    "found": true,
+    "title": "Reading list",
+    "icon": null,
+    "kind": "document",
+    "space": "personal",
+    "folder": {
+      "id": "fld_reading",
+      "name": "Reading",
+      "color": "plum"
+    },
+    "breadcrumbs": [
+      {
+        "id": "doc_00009",
+        "title": "Books",
+        "icon": "📚"
+      }
+    ],
+    "starred": true,
+    "access": "full",
+    "canEdit": true,
+    "encrypted": false,
+    "archived": false,
+    "inTrash": false,
+    "cover": {
+      "kind": "theme",
+      "value": "art-27"
+    },
+    "style": {
+      "font": "modern",
+      "width": "normal",
+      "background": "paper",
+      "accent": "ember",
+      "card": "plain"
+    },
+    "sync": "saved"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "catchUp.run",
+  "description": "Out of AI credits: the server's own code and words.",
+  "args": {
+    "space": "personal"
+  },
+  "error": {
+    "code": "ai_credits_exhausted",
+    "message": "You've used this month's AI credits. They reset on November 1."
+  }
+}

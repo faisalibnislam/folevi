@@ -1,0 +1,34 @@
+{
+  "kind": "view",
+  "name": "home",
+  "description": "An end-to-end encrypted workspace while this device is locked: nothing readable is shown.",
+  "args": {
+    "space": "ws_vault"
+  },
+  "value": {
+    "space": "ws_vault",
+    "spaceName": "Vault",
+    "recents": [],
+    "recentsLoaded": false,
+    "catchUp": {
+      "available": true,
+      "state": "idle",
+      "brief": null,
+      "error": null
+    },
+    "rows": [
+      {
+        "id": "notes",
+        "title": "All notes",
+        "count": null,
+        "route": "/notes"
+      }
+    ],
+    "starred": {
+      "rows": [],
+      "more": false
+    },
+    "folders": [],
+    "tags": []
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "kind": "envelope",
+  "description": "Bridge errors: engine not ready, another place, an unknown view, bad arguments, an unknown subscription, and a server error passed through.",
+  "toEngine": [
+    {
+      "v": 1,
+      "id": "1",
+      "kind": "watch",
+      "sub": "a",
+      "place": "acct:user_1",
+      "name": "home",
+      "args": {}
+    },
+    {
+      "v": 1,
+      "id": "2",
+      "kind": "watch",
+      "sub": "b",
+      "place": "acct:user_2",
+      "name": "home",
+      "args": {}
+    },
+    {
+      "v": 1,
+      "id": "3",
+      "kind": "query",
+      "place": "acct:user_1",
+      "name": "nope",
+      "args": {}
+    },
+    {
+      "v": 1,
+      "id": "4",
+      "kind": "command",
+      "place": "acct:user_1",
+      "name": "note.star",
+      "args": {
+        "ids": "doc_1"
+      }
+    },
+    {
+      "v": 1,
+      "id": "5",
+      "kind": "window",
+      "sub": "zzz",
+      "window": {
+        "start": 0,
+        "count": 50
+      }
+    },
+    {
+      "v": 1,
+      "id": "6",
+      "kind": "command",
+      "place": "acct:user_1",
+      "name": "note.move",
+      "args": {
+        "ids": [
+          "doc_00001"
+        ],
+        "folderId": "fld_gone"
+      }
+    }
+  ],
+  "fromEngine": [
+    {
+      "kind": "reply",
+      "id": "1",
+      "ok": false,
+      "error": {
+        "code": "engine_not_ready",
+        "message": "Folevi is still starting."
+      }
+    },
+    {
+      "kind": "reply",
+      "id": "2",
+      "ok": false,
+      "error": {
+        "code": "place_mismatch",
+        "message": "This window shows another place.",
+        "data": {
+          "expected": "acct:user_1",
+          "got": "acct:user_2"
+        }
+      }
+    },
+    {
+      "kind": "reply",
+      "id": "3",
+      "ok": false,
+      "error": {
+        "code": "unknown_view",
+        "message": "There's no view named “nope”."
+      }
+    },
+    {
+      "kind": "reply",
+      "id": "4",
+      "ok": false,
+      "error": {
+        "code": "invalid_args",
+        "message": "ids must be a list of note ids."
+      }
+    },
+    {
+      "kind": "reply",
+      "id": "5",
+      "ok": false,
+      "error": {
+        "code": "unknown_subscription",
+        "message": "There's no subscription “zzz”."
+      }
+    },
+    {
+      "kind": "reply",
+      "id": "6",
+      "ok": false,
+      "error": {
+        "code": "not_found",
+        "message": "Folder not found."
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "kind": "event",
+  "name": "engine.ready",
+  "description": "The data layer is up.",
+  "data": {
+    "place": "acct:user_1",
+    "protocol": 1,
+    "revision": 1
+  }
+}

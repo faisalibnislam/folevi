@@ -2,7 +2,10 @@
 // repeat ("every monday") first, so its day isn't also taken as the due date, then a date ("tomorrow 3pm").
 // Pure, so the native Quick Add shows exactly what the web would save.
 import { describeRepeat, parseRepeatPhrase, repeatProps, stepOccurrence, type RepeatRule } from "@folevi/editor-schema";
-import { parseNaturalDate } from "@/lib/nlDate";
+import { loadNaturalDates, parseNaturalDate } from "@/lib/nlDate";
+
+/** The date parser loads on its own after the app starts; anything that saves a task waits for it. */
+export const datesReady = (): Promise<unknown> => loadNaturalDates();
 
 export interface QuickTaskPlan {
   title: string;

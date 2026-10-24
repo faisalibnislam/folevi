@@ -54,6 +54,7 @@ import { NoteSuggestions } from "./NoteSuggestions";
 import { sameItems, useEngineSelector, useLocalStorage } from "@/lib/hooks/useEngine";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { localDb } from "@/lib/sync/db";
+import { isSealedDocument } from "@/lib/e2ee/router/hooks";
 import { Button } from "@/components/ui/Button";
 import { SyncedRedirect } from "@/components/editor/synced/SyncedRedirect";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
@@ -75,6 +76,7 @@ import { BlockThread, useCommentThreads, useNoteNotifyItems } from "./Comments";
 import { AI_OPEN_EVENT, AI_RUN_EVENT, NoteAiContext, useAi, useAiEnabled, type AiRunDetail, type NoteAi } from "@/components/ai/useAi";
 import { DocumentSidebar, type Crumb, type DocSidebarTab } from "./DocumentSidebar";
 import { useDocTab } from "@/lib/app/tabs";
+import { localTitle as queuedLocalTitle } from "@/lib/sync/localNotes";
 import { ShareDialog } from "./ShareDialog";
 import { useCanCall, useCapabilities } from "@/lib/mode";
 import { Popover } from "@/components/ui/Popover";
@@ -96,10 +98,10 @@ import { nativeChrome } from "@/lib/nativeApp";
 import { useNativeNote } from "@/lib/engine/editorCommands";
 import { requestNavigation } from "@/lib/engine/navigation";
 import { nativeToast } from "@/lib/engine/toasts";
+import { NotePlaceChip, NoteSyncTrailing, NoteTrailing, ToolSheet } from "@/components/iphone/NoteChrome";
 
 /** Native chrome mode (the native apps draw the note's bars): fixed for the page's life. */
 const nativeChromeMode = typeof window !== "undefined" && nativeChrome() !== null;
-import { NotePlaceChip, NoteTrailing, ToolSheet } from "@/components/iphone/NoteChrome";
 import { useKeyboardInset } from "@/lib/hooks/useVisualViewport";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
@@ -255,16 +257,31 @@ export function DocumentView({ documentId }: { documentId: string }) {
   if (meta) localCreate.current = undefined;
   const pendingCreate = pendingCreateOp ?? localCreate.current;
 
-  // Offline reload: seed the engine from the last-known copy of this document.
+  // The note as this device holds it (the device copy, docs/NATIVE_APP_PLAN.md §11, or the last time it was
+  // open): shown at once and reconciled when the server's answer arrives. With nothing on the device, the view
+  // waits for the server as before (offline: shows that there's nothing).
+  const [copied, setCopied] = useState<unknown>(null);
   useEffect(() => {
     if (!engine || server !== undefined || cacheLoaded) return;
-    const t = setTimeout(async () => {
+    let live = true;
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const started = Date.now();
+    void (async () => {
       const db = await localDb(profile.id);
-      const cached = await db.get("blocks", documentId);
-      if (cached && !engine.documentBlocks(documentId).length) engine.reconcileDocument(documentId, cached.blocks);
-      setCacheLoaded(true);
-    }, online ? 1500 : 0);
-    return () => clearTimeout(t);
+      const [cached, row] = await Promise.all([db.get("blocks", documentId).catch(() => undefined), db.get("documents", documentId).catch(() => undefined)]);
+      if (!live) return;
+      if (row?.summary) setCopied(row.summary);
+      if (cached) {
+        if (!engine.documentBlocks(documentId).length) engine.reconcileDocument(documentId, cached.blocks);
+        setCacheLoaded(true);
+        return;
+      }
+      t = setTimeout(() => live && setCacheLoaded(true), Math.max(0, (online ? 1500 : 0) - (Date.now() - started)));
+    })();
+    return () => {
+      live = false;
+      if (t) clearTimeout(t);
+    };
   }, [engine, server, cacheLoaded, profile.id, documentId, online]);
 
   // Server → engine → editor. Local keystrokes are flushed into the durable queue first so a remote
@@ -287,12 +304,17 @@ export function DocumentView({ documentId }: { documentId: string }) {
     setReconciled(true);
     // The offline copy is the whole note: written once typing (and its echoes) settles, not per save.
     const blocks = server.blocks;
+    const head = server.head;
     const accountKey = profile.id;
     const run = () => {
       cacheWrite.current = null;
+      // An end-to-end encrypted note is never written here readable: its space's replica keeps it, sealed.
+      if (isSealedDocument(documentId)) return;
       void (async () => {
         const db = await localDb(accountKey);
-        await db.put("blocks", { documentId, blocks, cachedAt: Date.now() });
+        const prev = await db.get("blocks", documentId);
+        // `head` (live blocks only) may trail the device copy's; the higher one stays, as does who wrote it.
+        await db.put("blocks", { ...prev, documentId, blocks, cachedAt: Date.now(), head: Math.max(head, prev?.head ?? 0), by: prev?.by ?? "view" });
       })();
     };
     if (cacheWrite.current) clearTimeout(cacheWrite.current.timer);
@@ -499,25 +521,29 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const shownAbove = folderAbove.slice(-2);
 
   const summary = meta?.document ?? null;
-  const localTitle = pendingCreate && pendingCreate.kind === "document.create" ? pendingCreate.document.title : (waitingRow?.title ?? "");
-  const style: DocumentStyle = summary?.style ?? DEFAULT_DOCUMENT_STYLE;
+  // What the note looks like (title, cover, style) before the server answers: its row in the device copy.
+  const look = summary ?? (copied as typeof summary);
+  // The latest title given on this device that the server doesn't have yet (a note named offline).
+  const queuedTitle = useEngineSelector(engine, (s) => queuedLocalTitle(s, documentId));
+  const localTitle = queuedTitle ?? (pendingCreate && pendingCreate.kind === "document.create" ? pendingCreate.document.title : (waitingRow?.title ?? ""));
+  const style: DocumentStyle = look?.style ?? DEFAULT_DOCUMENT_STYLE;
   useDocTab(
     documentId,
-    summary?.title || localTitle || "",
+    queuedTitle || look?.title || localTitle || "",
     meta === undefined ? (pendingCreate?.kind === "document.create" && !pendingCreate.document.parentDocumentId ? null : undefined) : meta?.breadcrumbs[0] ? { id: meta.breadcrumbs[0].id, title: meta.breadcrumbs[0].title || "Untitled" } : null,
   );
   // Page and text colours: the chosen ones, or on Auto, taken from the note's artwork.
   // A note style can be the person's own image: its signed URL comes from the server, and its page and
   // text colours are picked from it.
-  const { url: coverImageUrl, palette: coverPalette } = useCoverImage(summary?.cover);
+  const { url: coverImageUrl, palette: coverPalette } = useCoverImage(look?.cover);
   // The note theme (redrawn when an admin changes it) also sets the typefaces behind its font types.
   useThemesVersion();
-  const themeFonts = themeFontVars(coverArtOf(summary?.cover ?? DEFAULT_COVER)?.fonts);
-  const sheetAttrs = sheetProps(style, summary?.cover ?? DEFAULT_COVER, coverPalette);
-  const blurredBackdrop = style.blur ? pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) : undefined;
+  const themeFonts = themeFontVars(coverArtOf(look?.cover ?? DEFAULT_COVER)?.fonts);
+  const sheetAttrs = sheetProps(style, look?.cover ?? DEFAULT_COVER, coverPalette);
+  const blurredBackdrop = style.blur ? pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) : undefined;
   // The note's style lights the glass chrome around it (a small image: it's heavily blurred anyway).
   const { setAmbient } = useShell();
-  const ambientCover = summary?.cover ?? DEFAULT_COVER;
+  const ambientCover = look?.cover ?? DEFAULT_COVER;
   const ambientArt = coverArtOf(ambientCover);
   const ambient = ambientArt
     ? `url(${coverArtThumbUrl(ambientArt.id)}) center / cover no-repeat`
@@ -869,7 +895,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   );
 
   return (
-    <NotePaletteProvider colors={styleColorsOf(summary?.cover ?? DEFAULT_COVER, coverPalette)} active={sheetAttrs["data-palette"] !== undefined}>
+    <NotePaletteProvider colors={styleColorsOf(look?.cover ?? DEFAULT_COVER, coverPalette)} active={sheetAttrs["data-palette"] !== undefined}>
     <ViewChrome
       tabTitle={pageTitle}
       iphone={{
@@ -884,7 +910,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
             folder={folder ? { ...folder, color: org?.folders.find((f) => f.id === folder.id)?.color ?? null } : null}
           />
         ) : undefined,
-        trailing: summary ? <NoteTrailing onShare={meta ? () => setShareOpen(true) : undefined} shared={Boolean(shareState)} actions={actions} /> : undefined,
+        // A note made on this device that the server doesn't have yet: its bar says so (and nothing else yet).
+        trailing: summary ? <NoteTrailing onShare={meta ? () => setShareOpen(true) : undefined} shared={Boolean(shareState)} actions={actions} /> : pendingCreate ? <NoteSyncTrailing /> : undefined,
       }}
       title={
         sidebarOpen ? (
@@ -931,7 +958,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
             </span>
           ))}
           <span className="truncate rounded-chip px-2 py-1 font-semibold text-heading" aria-current="page">
-            {summary?.title || localTitle || "Untitled"}
+            {look?.title || localTitle || "Untitled"}
           </span>
           {readOnly ? <span className="ui-chip ml-1 h-6 flex-none bg-sunken text-[11px] text-muted">{meta?.inTrash ? "In Trash" : "View only"}</span> : null}
         </nav>
@@ -976,13 +1003,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
           id="doc-scroll"
           ref={setScrollEl}
           data-iphone-scroll={iphone ? "" : undefined}
-          data-iphone-plain={iphone && !pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "" : undefined}
+          data-iphone-plain={iphone && !pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "" : undefined}
           className={
             iphone
-              ? `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "pt-[calc(env(safe-area-inset-top)+52px)]" : ""}`
+              ? `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "pt-[calc(env(safe-area-inset-top)+52px)]" : ""}`
               : `fb-page relative h-full overflow-y-auto rounded-panel px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`
           }
-          data-backdrop={pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? (blurredBackdrop ? "blur" : "on") : undefined}
+          data-backdrop={pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? (blurredBackdrop ? "blur" : "on") : undefined}
           data-font={style.font}
           data-width={style.width}
           style={{
@@ -992,7 +1019,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
             ["--doc-accent-soft" as string]: style.accent === "accent" ? "var(--color-ember-soft)" : `var(--color-${style.accent}-soft)`,
             // On the iPhone the note fills the screen's width under the app's neutral bar: no backdrop around it
             // (globals.css, [data-iphone-scroll] > .fb-sheet).
-            background: iphone ? "var(--color-canvas)" : blurredBackdrop ? "transparent" : (pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ?? "var(--color-surface-sunken)"),
+            background: iphone ? "var(--color-canvas)" : blurredBackdrop ? "transparent" : (pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ?? "var(--color-surface-sunken)"),
           }}
         >
           {meta?.breadcrumbs.length && !iphone ? <NestedPath crumbs={meta.breadcrumbs} title={pageTitle} /> : null}
@@ -1007,13 +1034,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
             <DocumentHeader
               documentId={documentId}
               note={meta?.document}
-              title={summary?.title ?? localTitle}
-              cover={summary?.cover ?? DEFAULT_COVER}
+              title={look?.title ?? localTitle}
+              cover={look?.cover ?? DEFAULT_COVER}
               style={style}
-              revision={summary?.revision ?? null}
+              revision={look?.revision ?? null}
               readOnly={readOnly}
               onEnter={focusEditorStart}
-              hasContent={Boolean(summary?.excerpt?.trim())}
+              hasContent={Boolean(look?.excerpt?.trim())}
             />
             {conflictBlockIds.length ? (
               <ConflictBanner
@@ -1038,7 +1065,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
             ) : null}
             {showEditors && blockAuthors && !changeMarks ? <EditorsBar authors={blockAuthors} onHide={() => setShowEditors(false)} /> : null}
             <div className={iphone ? "px-[28px] [@media(orientation:landscape)]:px-16" : "px-5 sm:px-16"}>
-              {summary?.kind === "collectionRow" || waitingRow ? (
+              {look?.kind === "collectionRow" || waitingRow ? (
                 <Suspense fallback={null}>
                   <CollectionRowProperties documentId={documentId} editable={!readOnly} />
                 </Suspense>
@@ -1275,7 +1302,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
       {copyOpen && meta ? <CopyToDialog open onClose={() => setCopyOpen(false)} documentIds={[documentId]} noteTitle={summary?.title ?? ""} from={meta.isMember ? documentScope(meta.document) : null} /> : null}
       {presenting ? (
         <Suspense fallback={null}>
-          <NotePresentation title={summary?.title ?? localTitle ?? ""} blocks={presenting} style={style} cover={summary?.cover ?? DEFAULT_COVER} coverPalette={coverPalette} onClose={() => setPresenting(null)} />
+          <NotePresentation title={look?.title ?? localTitle ?? ""} blocks={presenting} style={style} cover={look?.cover ?? DEFAULT_COVER} coverPalette={coverPalette} onClose={() => setPresenting(null)} />
         </Suspense>
       ) : null}
       <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} title={summary?.title ?? ""} blocks={() => engine?.documentBlocks(documentId) ?? []} />

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast } from "@/components/ui/Toast";
 import { Card } from "./Card";
+import { DeviceCopySettings } from "./DeviceCopySettings";
 import { t } from "@/i18n";
 import { useIphoneLook } from "@/lib/iphone";
 import { ActionRow, DestructiveRow, IosRow, IosSection } from "@/components/iphone/SettingsKit";
@@ -45,6 +46,7 @@ export function SyncSection() {
             }}
           />
         </IosSection>
+        <DeviceCopySettings iphone />
         <IosSection footer={unsent ? t("settings.sync.unsent", { count: unsent }) : "Your notes stay in your account. This device downloads them again."}>
           <DestructiveRow label="Clear data on this device" confirm="Clear local data" message={unsent ? t("settings.sync.unsent", { count: unsent }) : undefined} onConfirm={clear} />
         </IosSection>
@@ -81,6 +83,7 @@ export function SyncSection() {
           </Button>
         </div>
       </Card>
+      <DeviceCopySettings iphone={false} />
       <Dialog
         open={confirm}
         onClose={() => setConfirm(false)}

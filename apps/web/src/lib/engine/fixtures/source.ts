@@ -14,7 +14,10 @@ import { applyDiff, emptyNativeList, nativeRows, windowDiff, withHash, type List
 import { e2eeInfo, gateEvent } from "../gates";
 import { changesValue, notificationRow, searchHits, sharedRow } from "../viewsMore";
 import { taskGroups, taskRow, type TaskData } from "../viewsWork";
-import { planQuickTask } from "../quickTask";
+import { datesReady, planQuickTask } from "../quickTask";
+
+// The date parser loads on its own; the Quick Add fixtures need it.
+await datesReady();
 import { notificationSettings, sharingValue } from "../viewsAccount";
 import { chatMessage, conversationRow, conversationValue } from "../viewsAi";
 import { researchJob } from "../viewsMac";

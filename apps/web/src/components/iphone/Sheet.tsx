@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { X } from "lucide-react";
 import { SPRINGS, VelocityTracker, prefersReducedMotion, springAt, springDuration } from "@/lib/native/physics";
 import { safeInsets } from "@/lib/iphone";
+import { KEYBOARD_EASE, onKeyboardFrame } from "@/lib/native/ui";
 import { dimAt, poseFor, releaseTarget, restingDetent, settlePose, springFrames, springStart, type SheetPose } from "./sheetMotion";
 
 export type SheetSize = "fit" | "medium" | "large";
@@ -18,6 +20,11 @@ export const SHEET_BUTTON =
 /** How dark the screen behind gets (§2.4): a sheet at its large (or only) detent, and at medium. */
 const DIM_FULL = 0.25;
 const DIM_MEDIUM = 0.1;
+/**
+ * A sheet's surface: solid (the screen's raised neutral, light and dark) with the glass's fine edge and soft
+ * shadow. No backdrop blur: blurring what's under a sheet costs the web view every frame it moves.
+ */
+const SURFACE = "relative isolate bg-[var(--iphone-solid)] shadow-[var(--liquid-edge),var(--liquid-shadow)]";
 /** Below the screen with its shadow, when it's gone. */
 const OFF = 24;
 /** Going away: the sheet's spring without the bounce (nothing to see past the screen's edge), quick to settle. */
@@ -36,10 +43,27 @@ function scrollerOf(target: EventTarget | null, root: HTMLElement): HTMLElement 
 
 const NO_DRAG = 'input, textarea, select, [contenteditable="true"], [data-no-sheet-drag], [role="slider"]';
 
+/**
+ * The screen a sheet is laid out on, in points, taken when it opens (and again when the screen turns with the
+ * keyboard away): its height and how far the status bar and the home indicator reach in. The sheet is placed
+ * from the top of this, not from the bottom of the window, so the app's web view shrinking for the keyboard
+ * (Capacitor resizes it a moment after the keyboard lands) doesn't move it: the keyboard's own news does, in
+ * step with it (onKeyboardFrame).
+ */
+interface Screen {
+  h: number;
+  top: number;
+  bottom: number;
+}
+function measureScreen(keyboard = 0): Screen {
+  const { top, bottom } = safeInsets();
+  return { h: window.innerHeight + keyboard, top, bottom };
+}
+
 /** The sheet's large detent (the screen below the status bar) and medium one (a little over half), in points. */
-function screenDetents(): { large: number; medium: number } {
-  const large = window.innerHeight - safeInsets().top - 10;
-  return { large, medium: Math.min(window.innerHeight * 0.56, large) };
+function detentsOn(s: Screen): { large: number; medium: number } {
+  const large = s.h - s.top - 10;
+  return { large, medium: Math.min(Math.round(s.h * 0.56), large) };
 }
 
 /** Where a panel is drawn right now (part way through an animation, too): how far it's pushed down. */
@@ -58,10 +82,18 @@ function currentOffset(el: HTMLElement): number {
  * the finger 1:1 (from the grabber or the header anywhere, or from the content once it's scrolled to its top),
  * rubber-banded past its top, and let go it settles on the detent the fling carries it to or goes away
  * (docs/IOS_POLISH_PLAN.md §2.4). A `medium` sheet is dragged up to fill the screen (scrolling its content up
- * does that first, as on iOS). The screen behind dims with how much of the sheet shows. `variant="card"` is the
- * short-form version: a glass card in the middle (above the keyboard, which shrinks the page). Both are modal
- * <dialog>s: the page behind is inert, focus stays inside, Escape closes, and focus returns to what opened it.
- * Reduce Motion: every move is a 150 ms cross-fade.
+ * does that first, as on iOS). The screen behind dims with how much of the sheet shows; a tap there lowers a
+ * pulled-up medium sheet, or closes. `variant="card"` is the short-form version: a card in the middle (above
+ * the keyboard). Both are modal <dialog>s: the page behind is inert, focus stays inside, Escape closes, and focus
+ * returns to what opened it. Reduce Motion: every move is a 150 ms cross-fade.
+ *
+ * It comes in from below on its first frame, in points (WebKit misplaces a `calc(% + px)` transform keyframe: the
+ * sheet flew up to the top of the screen and then snapped down). A medium or large sheet draws its frame at once
+ * and its content a frame later, so the tap answers at once.
+ *
+ * The keyboard: it rides with the keyboard's own move (its height, duration and curve, from the app): a medium or
+ * large sheet goes to its large detent and its dock (its `footer`, or the element marked `data-sheet-dock` in
+ * it, like Foli AI's composer) rides up on the keyboard's top in the same move; a fitted sheet lifts whole.
  */
 export function Sheet({
   open,
@@ -79,6 +111,7 @@ export function Sheet({
   bodyClassName = "",
   labelledBy,
   snapMedium,
+  appear = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -102,11 +135,20 @@ export function Sheet({
    * after the last block that fits, not part way through one (as iOS's account sheets do).
    */
   snapMedium?: string;
+  /** false: it's already on screen (it takes over from a stand-in drawn while its code loaded), so no slide in. */
+  appear?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const wrap = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const scrim = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
+  const foot = useRef<HTMLElement>(null);
+  const lead = useRef<HTMLDivElement>(null);
+  const trail = useRef<HTMLDivElement>(null);
+  const [screen, setScreen] = useState<Screen | null>(null);
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
   // The medium detent fitted to whole blocks (snapMedium), in points; null: the usual one.
   const [mediumFit, setMediumFit] = useState<number | null>(null);
   const mediumFitRef = useRef(mediumFit);
@@ -124,20 +166,28 @@ export function Sheet({
   // The content mounts once the dialog is open, so a field marked autoFocus can take the focus.
   const [ready, setReady] = useState(false);
   const card = variant === "card";
+  const fit = size === "fit" || card;
+  // A medium or large sheet's height is known before its content: its frame comes in at once, the content next.
+  const later = !fit && !snapMedium;
 
   // What's moving the sheet now: the animations coming in or going away, a settle on a detent, a finger.
-  const motion = useRef<{ anims: Animation[]; raf: number; closing: boolean }>({ anims: [], raf: 0, closing: false });
+  const motion = useRef<{ anims: Animation[]; raf: number; closing: boolean; entering: boolean }>({ anims: [], raf: 0, closing: false, entering: false });
+  // The keyboard's move (the sheet and its dock riding with it).
+  const kb = useRef<{ height: number; anims: Animation[] }>({ height: 0, anims: [] });
   // The pose a finger or a settle has drawn (null: at rest, where its CSS puts it).
   const pose = useRef<SheetPose | null>(null);
   // A drag that let the sheet go: how fast, for the spring that takes it away (points per second, up positive).
   const releaseVelocity = useRef(0);
+  const appearRef = useRef(appear);
+  appearRef.current = appear;
 
   const detents = useCallback((): number[] => {
     const p = panel.current;
-    if (size === "fit" || card) return [p?.offsetHeight ?? 0];
-    const { large, medium } = screenDetents();
+    if (fit) return [p?.offsetHeight ?? 0];
+    const s = screenRef.current ?? measureScreen();
+    const { large, medium } = detentsOn(s);
     return size === "medium" ? [Math.min(mediumFitRef.current ?? medium, large), large] : [large];
-  }, [size, card]);
+  }, [size, fit]);
   const restDim = useCallback(() => (size === "medium" && !expandedRef.current ? DIM_MEDIUM : DIM_FULL), [size]);
   const dimsFor = useCallback((ds: number[]) => (ds.length > 1 ? [DIM_MEDIUM, DIM_FULL] : [DIM_FULL]), []);
 
@@ -154,6 +204,7 @@ export function Sheet({
     m.anims = [];
     if (m.raf) cancelAnimationFrame(m.raf);
     m.raf = 0;
+    m.entering = false;
   }, []);
 
   // Draws a pose (null: back to rest) with the screen behind dimmed to match.
@@ -182,12 +233,50 @@ export function Sheet({
     }
   }, [open, size]);
 
+  // Comes in from below the screen on a spring, in points (its height is known now: a fitted sheet's content is in).
+  const enter = useCallback(() => {
+    const p = panel.current;
+    const s = scrim.current;
+    motion.current.entering = false;
+    if (!p || !s) return;
+    const dim = restDim();
+    p.style.visibility = "";
+    if (!appearRef.current) {
+      draw(null, dim);
+      return;
+    }
+    if (prefersReducedMotion()) {
+      motion.current.anims = [p.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "linear" }), s.animate([{ opacity: 0 }, { opacity: dim }], { duration: 150, easing: "linear" })];
+      return;
+    }
+    if (card) {
+      motion.current.anims = [
+        p.animate([{ opacity: 0, transform: "scale(0.94)" }, { opacity: 1, transform: "none" }], { duration: 260, easing: "cubic-bezier(0.2, 0.9, 0.25, 1.05)" }),
+        s.animate([{ opacity: 0 }, { opacity: dim }], { duration: 220, easing: "ease-out" }),
+      ];
+      return;
+    }
+    const wrapRect = wrap.current?.getBoundingClientRect();
+    const below = wrapRect ? Math.max(0, wrapRect.bottom - p.getBoundingClientRect().bottom) : 0;
+    const from = p.offsetHeight + below + OFF;
+    const { progress, ms } = springFrames(SPRINGS.sheet);
+    motion.current.anims = [
+      p.animate(progress.map((k) => ({ transform: `translateY(${Math.round((1 - k) * from * 100) / 100}px)` })), { duration: ms, easing: "linear" }),
+      s.animate(progress.map((k) => ({ opacity: Math.min(1, Math.max(0, k * dim)) })), { duration: ms, easing: "linear" }),
+    ];
+  }, [card, draw, restDim]);
+
   // Open as a modal on a spring from below; on close, go away first.
   useLayoutEffect(() => {
     const el = ref.current;
     const p = panel.current;
     const s = scrim.current;
     if (!el || !shown) return;
+    if (open && !screen) {
+      // (The screen it's laid out on first: the next render places it, still before anything is drawn.)
+      setScreen(measureScreen());
+      return;
+    }
     if (open && (!el.open || motion.current.closing)) {
       const reopening = el.open;
       if (!reopening) {
@@ -196,27 +285,21 @@ export function Sheet({
         el.showModal();
         // The sheet itself takes the focus (not its Close button, ringed); a field that asks for it takes it next.
         p?.focus({ preventScroll: true });
-        setReady(true);
       }
       stop();
       motion.current.closing = false;
       draw(null, restDim());
       if (!p || !s) return;
-      const dim = restDim();
-      if (prefersReducedMotion()) {
-        motion.current.anims = [p.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "linear" }), s.animate([{ opacity: 0 }, { opacity: dim }], { duration: 150, easing: "linear" })];
-        return;
+      if (reopening || later) {
+        enter();
+        // The content a frame later: the sheet is on its way first.
+        if (!reopening) requestAnimationFrame(() => setReady(true));
+      } else {
+        // A fitted sheet's height is its content's: in first (hidden), then in from below.
+        p.style.visibility = "hidden";
+        motion.current.entering = true;
+        setReady(true);
       }
-      if (card) {
-        motion.current.anims = [s.animate([{ opacity: 0 }, { opacity: dim }], { duration: 220, easing: "ease-out" })];
-        return;
-      }
-      const { progress, ms } = springFrames(SPRINGS.sheet);
-      // From below the screen (a share of its own height, which is known only once its content is in).
-      motion.current.anims = [
-        p.animate(progress.map((k) => ({ transform: `translateY(calc(${(1 - k) * 100}% + ${(1 - k) * OFF}px))` })), { duration: ms, easing: "linear" }),
-        s.animate(progress.map((k) => ({ opacity: Math.min(1, Math.max(0, k * dim)) })), { duration: ms, easing: "linear" }),
-      ];
       return;
     }
     if (!open && el.open && !motion.current.closing) {
@@ -229,9 +312,14 @@ export function Sheet({
         motion.current.closing = false;
         motion.current.anims = [];
         draw(null, 0);
+        for (const a of kb.current.anims) a.cancel();
+        kb.current = { height: 0, anims: [] };
+        if (wrap.current) wrap.current.style.transform = "";
+        panel.current?.style.removeProperty("--sheet-kb");
         if (ref.current?.open) ref.current.close();
         setShown(false);
         setReady(false);
+        setScreen(null);
         const back = opener.current;
         if (back?.isConnected) back.focus({ preventScroll: true });
       };
@@ -246,7 +334,9 @@ export function Sheet({
         ];
       } else {
         // Down past the screen's edge, carried on by the finger's fling when a drag let it go.
-        const to = p.offsetHeight + OFF;
+        const wrapRect = wrap.current?.getBoundingClientRect();
+        const below = wrapRect ? Math.max(0, wrapRect.bottom - p.getBoundingClientRect().bottom + from) : 0;
+        const to = p.offsetHeight + below + OFF;
         const v = springStart(-releaseVelocity.current, to - from);
         releaseVelocity.current = 0;
         const { progress, ms } = springFrames(AWAY, Math.max(0, v), 0.01);
@@ -258,7 +348,12 @@ export function Sheet({
       motion.current.anims = anims;
       anims[0]!.onfinish = done;
     }
-  }, [open, shown, card, draw, stop, restDim]);
+  }, [open, shown, screen, card, later, draw, stop, restDim, enter]);
+
+  // A fitted sheet: its content is in (hidden), so its height is known: in it comes.
+  useLayoutEffect(() => {
+    if (ready && motion.current.entering) enter();
+  }, [ready, enter]);
 
   // Settles from where a finger left the sheet to a detent, on the sheet's spring (a new touch catches it).
   const settle = useCallback(
@@ -278,7 +373,9 @@ export function Sheet({
           draw(null, restDim());
           return;
         }
-        const at = visible + (target - visible) * springAt(t, SPRINGS.sheet, v0);
+        let at = visible + (target - visible) * springAt(t, SPRINGS.sheet, v0);
+        // Flung down onto its smallest detent, a sheet stops there (it doesn't dip below and bounce back up).
+        if (visible >= target && target <= Math.min(...ds) + 0.5 && at < target) at = target;
         draw(settlePose(at, ds), dimAt(at, ds, dims));
         motion.current.raf = requestAnimationFrame(step);
       };
@@ -329,6 +426,11 @@ export function Sheet({
       }
       if (!d.active) return false;
       if (e?.cancelable) e.preventDefault();
+      // Pulled down with the keyboard up: the keyboard goes (as a sheet's drag dismisses it on iOS).
+      if (dy > 0 && kb.current.height > 0) {
+        const a = document.activeElement;
+        if (a instanceof HTMLElement && panel.current?.contains(a)) a.blur();
+      }
       d.tracker.add(0, y);
       d.visible = d.startVisible - (y - d.startY);
       draw(poseFor(d.visible, d.ds), dimAt(d.visible, d.ds, dimsFor(d.ds)));
@@ -400,29 +502,121 @@ export function Sheet({
     window.addEventListener("pointerup", up);
   };
 
+  // The keyboard: the sheet (and its dock) ride with it, in step, from its own news (height, duration, curve).
+  const keyboardTo = useCallback(
+    (height: number, duration: number, curve: string) => {
+      const p = panel.current;
+      const w = wrap.current;
+      const s = screenRef.current;
+      if (!p || !w || !s || motion.current.closing) return;
+      const K = Math.max(0, Math.min(Math.round(height), s.h - s.top - 120));
+      if (K === kb.current.height) return;
+      kb.current.height = K;
+      const ms = prefersReducedMotion() ? 0 : Math.max(0, duration);
+      const ease = curve === "linear" ? "linear" : KEYBOARD_EASE;
+      for (const a of kb.current.anims) {
+        try {
+          a.commitStyles?.();
+        } catch {
+          /* not rendered */
+        }
+        a.cancel();
+      }
+      kb.current.anims = [];
+      if (card) return;
+      if (fit) {
+        // A fitted sheet lifts whole onto the keyboard.
+        const from = currentOffset(w);
+        w.style.transform = K ? `translateY(${-K}px)` : "";
+        if (ms) kb.current.anims.push(w.animate([{ transform: `translateY(${from}px)` }, { transform: K ? `translateY(${-K}px)` : "none" }], { duration: ms, easing: ease }));
+        return;
+      }
+      // A medium or large sheet: up to its large detent, its dock riding on the keyboard's top. (The sheet stays
+      // large when the keyboard goes: only a finger takes it down.)
+      const dock = body.current?.querySelector<HTMLElement>("[data-sheet-dock]") ?? foot.current;
+      const fingered = Boolean(drag.current?.active || pose.current);
+      const settling = motion.current.anims.length > 0 || motion.current.raf !== 0;
+      if (settling && !fingered) stop();
+      const p0 = p.getBoundingClientRect();
+      const d0 = dock?.getBoundingClientRect();
+      if (!fingered) {
+        p.style.transform = "";
+        pose.current = null;
+      }
+      if (K > 0 && size === "medium" && !expandedRef.current) {
+        expandedRef.current = true;
+        flushSync(() => setExpanded(true));
+      }
+      p.style.setProperty("--sheet-kb", `${K}px`);
+      if (scrim.current && !fingered) scrim.current.style.opacity = String(restDim());
+      if (!ms) return;
+      const p1 = p.getBoundingClientRect();
+      const d1 = dock?.getBoundingClientRect();
+      const dp = fingered ? 0 : p0.top - p1.top;
+      const dd = d0 && d1 ? d0.bottom - d1.bottom - dp : 0;
+      const opts = { duration: ms, easing: ease };
+      if (Math.abs(dp) > 0.5) kb.current.anims.push(p.animate([{ transform: `translateY(${dp}px)` }, { transform: "none" }], opts));
+      if (dock && Math.abs(dd) > 0.5) kb.current.anims.push(dock.animate([{ transform: `translateY(${dd}px)` }, { transform: "none" }], opts));
+    },
+    [card, fit, size, stop, restDim],
+  );
+
+  useEffect(() => {
+    if (!shown || !ready || card) return;
+    const off = onKeyboardFrame((f) => keyboardTo(f.visible ? f.height : 0, f.duration, f.curve));
+    return off;
+  }, [shown, ready, card, keyboardTo]);
+
+  // The screen turned (or the window changed) with the keyboard away: laid out on it again.
+  useEffect(() => {
+    if (!shown) return;
+    const onResize = () => {
+      const s = screenRef.current;
+      if (!s || kb.current.height > 0) return;
+      if (Math.abs(window.innerHeight - s.h) > 1) setScreen(measureScreen());
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [shown]);
+
   // snapMedium: the medium detent ends after the last whole block that fits in the usual one.
   useLayoutEffect(() => {
-    if (!ready || !snapMedium || size !== "medium" || card) return;
-    const measure = () => {
-      const p = panel.current;
-      const b = body.current;
-      if (!p || !b) return;
-      const pr = p.getBoundingClientRect();
-      const br = b.getBoundingClientRect();
-      const below = pr.bottom - br.bottom;
-      const { medium } = screenDetents();
-      let best = 0;
-      for (const el of b.querySelectorAll<HTMLElement>(snapMedium)) {
-        // The sheet's height that shows this block whole, with the content at its top.
-        const need = el.getBoundingClientRect().bottom - br.top + b.scrollTop + (br.top - pr.top) + below + 14;
-        if (need <= medium + 1) best = Math.max(best, need);
-      }
-      setMediumFit(best >= window.innerHeight * 0.3 ? Math.round(best) : null);
+    if (!ready || !snapMedium || size !== "medium" || card || !screen) return;
+    const p = panel.current;
+    const b = body.current;
+    if (!p || !b) return;
+    const pr = p.getBoundingClientRect();
+    const br = b.getBoundingClientRect();
+    const below = pr.bottom - br.bottom;
+    const { medium } = detentsOn(screen);
+    let best = 0;
+    for (const el of b.querySelectorAll<HTMLElement>(snapMedium)) {
+      // The sheet's height that shows this block whole, with the content at its top.
+      const need = el.getBoundingClientRect().bottom - br.top + b.scrollTop + (br.top - pr.top) + below + 14;
+      if (need <= medium + 1) best = Math.max(best, need);
+    }
+    setMediumFit(best >= screen.h * 0.3 ? Math.round(best) : null);
+  }, [ready, snapMedium, size, card, screen]);
+
+  // The header's two sides are as wide as each other (the wider one's buttons), so the title stays centred and
+  // never runs under a button.
+  useLayoutEffect(() => {
+    const l = lead.current;
+    const r = trail.current;
+    if (!l || !r) return;
+    const fitSides = () => {
+      l.style.minWidth = "";
+      r.style.minWidth = "";
+      const wide = Math.max(l.scrollWidth, r.scrollWidth, 44);
+      l.style.minWidth = `${wide}px`;
+      r.style.minWidth = `${wide}px`;
     };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [ready, snapMedium, size, card]);
+    fitSides();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(fitSides);
+    for (const el of [...l.children, ...r.children]) ro.observe(el);
+    return () => ro.disconnect();
+  });
 
   // A new detent (dragged to large, or another size asked for) dims the screen to match, once nothing moves it.
   useEffect(() => {
@@ -430,12 +624,37 @@ export function Sheet({
   }, [shown, expanded, size, restDim]);
 
   // Stops whatever is moving when the sheet goes.
-  useEffect(() => () => stop(), [stop]);
+  useEffect(
+    () => () => {
+      stop();
+      for (const a of kb.current.anims) a.cancel();
+    },
+    [stop],
+  );
+
+  // A tap on the dimmed screen: a pulled-up medium sheet goes back down (and the keyboard away); else it closes.
+  const tapOutside = () => {
+    if (size === "medium" && expandedRef.current && !motion.current.closing) {
+      const a = document.activeElement;
+      if (a instanceof HTMLElement && panel.current?.contains(a)) a.blur();
+      const ds = detents();
+      const p = panel.current;
+      const from = p ? p.offsetHeight : ds[ds.length - 1]!;
+      expandedRef.current = false;
+      setExpanded(false);
+      settle(from, ds[0]!, 0, ds);
+      return;
+    }
+    onCloseRef.current();
+  };
 
   if (!shown) return null;
-  const height = card ? undefined : size === "fit" ? undefined : expanded ? "calc(100dvh - env(safe-area-inset-top) - 10px)" : mediumFit ? `${mediumFit}px` : "min(56dvh, calc(100dvh - env(safe-area-inset-top) - 10px))";
+  const s = screen;
+  const { large, medium } = s ? detentsOn(s) : { large: 0, medium: 0 };
+  const height = card || !s ? undefined : size === "fit" ? undefined : expanded ? `${large}px` : `${Math.min(mediumFit ?? medium, large)}px`;
   const named = title ? titleId : labelledBy;
   const hasHeader = Boolean(title || leading || trailing || closeButton);
+  const safeBottom = s?.bottom ?? 0;
   return (
     <dialog
       ref={ref}
@@ -446,23 +665,31 @@ export function Sheet({
         e.preventDefault();
         onCloseRef.current();
       }}
-      // The whole screen: the dimmed page (a tap there closes) and the sheet on it.
-      className="fixed inset-0 m-0 h-full max-h-none w-full max-w-none overflow-hidden border-0 bg-transparent p-0 text-ink outline-none backdrop:bg-transparent"
+      // The whole screen: the dimmed page (a tap there closes) and the sheet on it. (`clip`: never scrolled to
+      // show a field, which would move the sheet.)
+      className="fixed inset-0 m-0 h-full max-h-none w-full max-w-none overflow-clip border-0 bg-transparent p-0 text-ink outline-none backdrop:bg-transparent"
     >
-      <div ref={scrim} aria-hidden data-sheet-scrim="" onClick={() => onCloseRef.current()} className="absolute inset-0 bg-black opacity-0" />
-      <div className={card ? "pointer-events-none absolute inset-0 grid place-items-center" : "pointer-events-none absolute inset-x-0 bottom-0 flex flex-col"}>
+      <div ref={scrim} aria-hidden data-sheet-scrim="" onClick={tapOutside} className="absolute inset-0 bg-black opacity-0" />
+      <div
+        ref={wrap}
+        style={s ? ({ height: `${s.h}px`, "--sheet-safe-b": `${safeBottom}px`, "--sheet-max": `${s.h - s.top - (card ? 24 : 10)}px` } as React.CSSProperties) : { visibility: "hidden" }}
+        className={card ? "pointer-events-none absolute inset-x-0 top-0 grid place-items-center" : "pointer-events-none absolute inset-x-0 top-0 flex flex-col justify-end"}
+      >
         <div
           ref={panel}
           data-iphone-sheet={card ? "card" : "sheet"}
+          data-sheet-expanded={expanded ? "" : undefined}
           tabIndex={-1}
-          style={card ? undefined : { height: `var(--sheet-drag-h, ${height ?? "auto"})` }}
+          // (Its bottom margin inline: the keyboard's own rule in globals.css drops a sheet's margins the moment a
+          // field takes the focus, a frame before the keyboard's news moves the sheet, which showed as a jump.)
+          style={card ? undefined : { height: `var(--sheet-drag-h, ${height ?? "auto"})`, ...(expanded ? {} : { marginBottom: 8 }) }}
           className={
             card
-              ? "ui-liquid-strong pointer-events-auto flex max-h-[calc(100dvh-env(safe-area-inset-top)-24px)] w-[min(400px,calc(100vw-24px))] flex-col overflow-hidden rounded-sheet outline-none animate-[iphone-card-in_260ms_cubic-bezier(0.2,0.9,0.25,1.05)] motion-reduce:animate-none"
-              : // As on iOS 26: a sheet that isn't full height floats as glass, inset from the screen's edges with
-                // round corners all round; pulled up to full height it meets the edges.
-                `ui-liquid-strong pointer-events-auto flex max-h-[calc(100dvh-env(safe-area-inset-top)-10px)] flex-col overflow-hidden outline-none transition-[margin,border-radius] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] [@media(orientation:landscape)]:mx-auto [@media(orientation:landscape)]:w-full [@media(orientation:landscape)]:max-w-[560px] ${
-                  expanded ? "rounded-t-sheet pb-[env(safe-area-inset-bottom)]" : "iphone-sheet-float mx-2 mb-2 rounded-float pb-[max(8px,calc(env(safe-area-inset-bottom)-14px))]"
+              ? `${SURFACE} pointer-events-auto flex max-h-[calc(var(--sheet-max)-var(--sheet-kb,0px))] w-[min(400px,calc(100vw-24px))] flex-col overflow-hidden rounded-sheet outline-none`
+              : // As on iOS 26: a sheet that isn't full height floats, inset from the screen's edges with round
+                // corners all round; pulled up to full height it meets the edges.
+                `${SURFACE} pointer-events-auto flex max-h-[var(--sheet-max)] flex-col overflow-hidden outline-none [@media(orientation:landscape)]:mx-auto [@media(orientation:landscape)]:w-full [@media(orientation:landscape)]:max-w-[560px] ${
+                  expanded ? "rounded-t-sheet pb-[max(var(--sheet-kb,0px),var(--sheet-safe-b))]" : "iphone-sheet-float mx-2 rounded-float pb-[max(8px,calc(var(--sheet-safe-b)-14px))]"
                 }`
           }
         >
@@ -473,17 +700,20 @@ export function Sheet({
             </div>
           )}
           {hasHeader ? (
-            // 56 pt tall, title centred, its buttons 44 pt with their circles 12 pt in from the sheet's corner.
+            // 56 pt tall: its buttons at the sides (44 pt, their circles 12 pt in from the sheet's corner), the
+            // title in the middle, centred on the sheet, cut short with an ellipsis before it reaches them.
             <header data-sheet-handle={card ? undefined : ""} onPointerDown={card ? undefined : onHandlePointerDown} className={`flex h-14 flex-none items-center px-1.5 ${card ? "mt-1" : ""}`}>
-              <div className="flex min-w-11 flex-1 basis-0 items-center justify-start">{leading}</div>
-              <div className="min-w-0 flex-[0_1_auto] px-1 text-center">
+              <div ref={lead} className="flex flex-none items-center justify-start">
+                {leading}
+              </div>
+              <div className="min-w-0 flex-1 px-1 text-center">
                 {title ? (
                   <h2 id={titleId} className="truncate text-[17px] font-semibold leading-[22px] text-heading">
                     {title}
                   </h2>
                 ) : null}
               </div>
-              <div className="flex min-w-11 flex-1 basis-0 items-center justify-end">
+              <div ref={trail} className="flex flex-none items-center justify-end">
                 {trailing}
                 {closeButton ? (
                   <button type="button" aria-label="Close" onClick={() => onCloseRef.current()} className={SHEET_BUTTON}>
@@ -498,8 +728,14 @@ export function Sheet({
               {description}
             </div>
           ) : null}
-          <div ref={body} className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${bodyClassName}`}>{ready ? children : null}</div>
-          {footer && ready ? <footer className="flex flex-none flex-wrap items-center gap-2 px-4 pb-4 pt-2 [&>a]:min-h-12 [&>a]:flex-1 [&>button]:min-h-12 [&>button]:flex-1 [&>button]:text-[17px]">{footer}</footer> : null}
+          <div ref={body} className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${bodyClassName}`}>
+            {ready ? children : null}
+          </div>
+          {footer && ready ? (
+            <footer ref={foot} className="flex flex-none flex-wrap items-center gap-2 px-4 pb-4 pt-2 [&>a]:min-h-12 [&>a]:flex-1 [&>button]:min-h-12 [&>button]:flex-1 [&>button]:text-[17px]">
+              {footer}
+            </footer>
+          ) : null}
         </div>
       </div>
     </dialog>

@@ -3,8 +3,10 @@
 import { AI_FOCUS_EVENT } from "./events";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { ArrowUp, Loader2, Sparkles } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader2, Sparkles } from "lucide-react";
 import { useIphoneApp } from "@/lib/iphone";
+import { inIosApp } from "@/lib/nativeApp";
+import { KEYBOARD_EASE, onKeyboardFrame } from "@/lib/native/ui";
 import { SendButton } from "@/components/iphone/SendButton";
 import { ulid } from "@folevi/editor-schema";
 import { api, type Id } from "@/lib/convex/api";
@@ -183,8 +185,92 @@ export function ChatThread({
   useEffect(() => {
     // (Nothing said yet: the suggestions stay in view from their top.)
     if (!messages.length && !showPending) return;
+    // A new message (yours, or the answer starting) takes the thread back to its end, and it follows from there.
+    follow.current = true;
+    setBehind(false);
     endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [messages.length, showPending, answering]);
+
+  // While an answer streams in, the thread keeps its end in view, unless you've scrolled up to read: then a
+  // "Jump to latest" button offers the way back down.
+  const scroller = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  const follow = useRef(true);
+  const [behind, setBehind] = useState(false);
+  const saidAnything = Boolean(messages.length || showPending);
+  const saidRef = useRef(saidAnything);
+  saidRef.current = saidAnything;
+  useEffect(() => {
+    const el = scroller.current;
+    const inner = content.current;
+    if (!el || !inner) return;
+    const atEnd = () => el.scrollHeight - el.scrollTop - el.clientHeight < 56;
+    const onScroll = () => {
+      follow.current = atEnd();
+      if (follow.current) setBehind(false);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const ro =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            if (!saidRef.current) return;
+            if (follow.current) el.scrollTop = el.scrollHeight;
+            else if (!atEnd()) setBehind(true);
+          });
+    ro?.observe(inner);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      ro?.disconnect();
+    };
+  }, []);
+  // The iPad app (a note's Foli AI panel, the AI page): the composer rides up on the keyboard in step with it.
+  // The app's web view shrinks for the keyboard only a moment after it has landed (Capacitor), which would
+  // leave the composer under the keyboard until then and then jump it up: until then the composer keeps the
+  // keyboard's room under it itself (the thread above gives it up), and it slides there on the keyboard's
+  // curve. (A sheet, and the floating chat, place themselves: [data-iphone-sheet], AskAiPanel.tsx.)
+  const dockRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const dock = dockRef.current;
+    if (!dock || !inIosApp() || dock.closest("[data-iphone-sheet], .ui-fab-panel")) return;
+    let screenH = window.innerHeight;
+    let keyboard = 0;
+    let room = 0;
+    let anim: Animation | null = null;
+    const place = (ms: number, curve: string) => {
+      // How much of the keyboard the shrunk web view doesn't already account for.
+      const next = Math.max(0, keyboard - Math.max(0, screenH - window.innerHeight));
+      if (next === room) return;
+      const before = dock.getBoundingClientRect().bottom;
+      anim?.cancel();
+      room = next;
+      dock.style.marginBottom = room ? `${room}px` : "";
+      const shift = before - dock.getBoundingClientRect().bottom;
+      if (ms > 0 && Math.abs(shift) > 0.5 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+        anim = dock.animate([{ transform: `translateY(${shift}px)` }, { transform: "none" }], { duration: ms, easing: curve === "linear" ? "linear" : KEYBOARD_EASE });
+    };
+    const off = onKeyboardFrame((f) => {
+      keyboard = f.visible ? Math.round(f.height) : 0;
+      place(f.duration, f.curve);
+    });
+    const onResize = () => {
+      if (!keyboard) screenH = window.innerHeight;
+      place(0, "linear");
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      off();
+      window.removeEventListener("resize", onResize);
+      anim?.cancel();
+      dock.style.marginBottom = "";
+    };
+  }, []);
+
+  const toLatest = () => {
+    follow.current = true;
+    setBehind(false);
+    scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
+  };
 
   // The box grows with what's typed, from two lines up to about six (then it scrolls).
   const fitInput = useCallback(() => {
@@ -406,8 +492,9 @@ export function ChatThread({
   return (
     <>
       {/* On iPhone what scrolls fades out just above the composer rather than being cut off by it. */}
-      <div className={`min-h-0 flex-1 overflow-y-auto ${page ? "px-4 py-6 sm:px-8" : variant === "panel" ? "px-0.5 py-2" : "px-4 py-4"} ${iphone && !page ? "pb-6 [mask-image:linear-gradient(to_bottom,#000_calc(100%-24px),transparent)]" : ""} ${iphone ? IPHONE_ROW_BUTTONS : ""}`}>
-        <div className={`space-y-5 ${page ? "mx-auto max-w-3xl" : ""}`}>
+      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div ref={scroller} className={`min-h-0 flex-1 overflow-y-auto ${page ? "px-4 py-6 sm:px-8" : variant === "panel" ? "px-0.5 py-2" : "px-4 py-4"} ${iphone && !page ? "pb-6 [mask-image:linear-gradient(to_bottom,#000_calc(100%-24px),transparent)]" : ""} ${iphone ? IPHONE_ROW_BUTTONS : ""}`}>
+        <div ref={content} className={`space-y-5 ${page ? "mx-auto max-w-3xl" : ""}`}>
           {loading ? (
             <p className="flex items-center gap-2 px-1 text-[13px] text-muted">
               <Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> Loading the conversation…
@@ -464,8 +551,18 @@ export function ChatThread({
           <div ref={endRef} />
         </div>
       </div>
+      {behind ? (
+        <button
+          type="button"
+          onClick={toLatest}
+          className={`absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-capsule bg-[var(--color-surface-raised)] font-medium text-heading shadow-[0_0_0_0.5px_rgb(0_0_0/0.12),0_4px_14px_-4px_rgb(0_0_0/0.25)] outline-none animate-[iphone-fade-in_160ms_ease-out] focus-visible:ring-2 focus-visible:ring-focus active:opacity-70 motion-reduce:animate-none ${iphone ? "h-9 px-3.5 text-[15px]" : "h-8 px-3 text-[12.5px]"}`}
+        >
+          <ArrowDown size={iphone ? 16 : 14} aria-hidden /> Jump to latest
+        </button>
+      ) : null}
+      </div>
 
-      <div className={`flex-none ${iphone && !page ? (variant === "panel" ? "pb-1 pt-2" : "px-4 pb-3 pt-1") : page ? "px-4 pb-4 pt-2 sm:px-8" : variant === "panel" ? "border-t border-line/70 pt-2.5" : "border-t border-line/70 px-3 pb-3 pt-2.5"}`}>
+      <div ref={dockRef} data-sheet-dock="" className={`flex-none ${iphone && !page ? (variant === "panel" ? "pb-1 pt-2" : "px-4 pb-3 pt-1") : page ? "px-4 pb-4 pt-2 sm:px-8" : variant === "panel" ? "border-t border-line/70 pt-2.5" : "border-t border-line/70 px-3 pb-3 pt-2.5"}`}>
         <div className={page ? "mx-auto max-w-3xl" : ""}>
           <AiCreditsNote className="mb-2" />
           {iphone ? null : (
@@ -511,7 +608,7 @@ export function ChatThread({
                 }
               }}
               maxLength={4000}
-              placeholder={mode === "research" ? "What should I research?" : webOn ? "Ask anything. Answers use your notes and the web…" : messages.length ? "Ask a follow-up…" : "Ask anything, or ask Foli AI to tidy or organize…"}
+              placeholder={mode === "research" ? "What should I research?" : iphone ? (messages.length ? "Ask a follow-up…" : "Ask Foli AI anything…") : webOn ? "Ask anything. Answers use your notes and the web…" : messages.length ? "Ask a follow-up…" : "Ask anything, or ask Foli AI to tidy or organize…"}
               className={`block min-h-[3rem] w-full resize-none bg-transparent text-ink outline-none placeholder:text-faint ${iphone ? "px-4 pb-1 pt-2.5 text-[17px] leading-6" : "px-3.5 pb-1.5 pt-3 text-[14px] leading-[1.5]"}`}
             />
             {/* How Foli AI helps on the left, attach and send on the right, all inside the box. */}

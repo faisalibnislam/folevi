@@ -5,11 +5,13 @@
 // queries re-run.
 //
 // On a trusted device the rows are kept in IndexedDB `folevi-e2ee-<scopeKey>` (the local library's
-// `replicaDb.ts` layout), so a launch shows the space before the first pull; a public session keeps them in
-// memory only (§6.10).
+// `replicaDb.ts` layout), encrypted at rest with a device key (sealedReplicaDb.ts, docs/NATIVE_APP_PLAN.md
+// §11.6) and opened into memory on load, so a launch shows the space before the first pull; a public session
+// keeps them in memory only (§6.10).
 import { ConvexError } from "convex/values";
 import { MemoryStore, writeKeys, type CommitHints, type LocalBlock, type LocalDocument, type LocalIndexStorage, type LocalStore, type LocalTable, type LocalTables, type StoreWrite } from "@/lib/local/store";
 import { IdbReplicaDb, MemoryReplicaDb, parseRowKey, rowKey, type ReplicaDb } from "@/lib/local/store/replicaDb";
+import { SealedReplicaDb } from "./sealedReplicaDb";
 
 /**
  * The database a space's replica is kept in (`folevi-e2ee-<scopeKey>`, §6.5), and the Web Lock and channel of the
@@ -32,7 +34,8 @@ export async function openReplicaDb(scopeKey: string, persist: boolean, profileI
       /* nothing to drop */
     }
   }
-  if (persist && typeof indexedDB !== "undefined") return await IdbReplicaDb.openNamed(name);
+  // Kept on a trusted device: encrypted at rest with this device's local storage key (sealedReplicaDb.ts).
+  if (persist && typeof indexedDB !== "undefined") return new SealedReplicaDb(await IdbReplicaDb.openNamed(name));
   // Not kept (a public session, or no IndexedDB): a fresh copy in memory each time, shared with nothing.
   return new MemoryReplicaDb();
 }

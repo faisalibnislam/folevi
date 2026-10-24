@@ -235,7 +235,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
                   <span className="mt-0.5 truncate text-[15px] leading-5 text-muted">
                     {view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}
                     {d.homeFolder && d.kind !== "template" ? ` · ${d.homeFolder.name}` : d.kind !== "template" ? " · Draft" : ""}
-                    {unsynced.has(d.id) ? " · Not synced" : ""}
+                    {unsynced.has(d.id) ? " · Waiting to sync" : ""}
                   </span>
                 </span>
               </AppLink>

@@ -4,6 +4,8 @@
 // position (`foleviAt` in history.state), so the app knows whether there's a page to go back or forward
 // to without ever leaving the app (the first page opened in this window is position 0).
 
+import { APP_ROUTE_HEADS } from "./routes";
+
 type State = { at: number; top: number };
 
 let state: State = { at: 0, top: 0 };
@@ -53,6 +55,7 @@ const stateWith = (at: number): Record<string, unknown> => ({ [KEY]: at });
 export function startHistoryNav() {
   if (started || typeof window === "undefined") return;
   started = true;
+  rememberNext(window.history.state);
   const at = window.history.state?.[KEY];
   if (typeof at === "number") emit({ at, top: at });
   else window.history.replaceState(stateWith(0), "");
@@ -73,6 +76,32 @@ function onPopState(e: PopStateEvent) {
   const at = (e.state as Record<string, unknown> | null)?.[KEY];
   if (typeof at === "number") emit({ at, top: Math.max(state.top, at) });
   notifyLocation();
+  keepInPage(e);
+}
+
+// Next.js's own state on a history entry (its router tree). An entry without it (the first one, written
+// before Next's router had marked it: the iPhone app's start page is set before any page script runs) makes
+// Next reload the whole page when Back lands on it, a restart, and offline the browser's error page.
+const NEXT_KEYS = ["__NA", "__PRIVATE_NEXTJS_INTERNALS_TREE"] as const;
+let lastNext: Record<string, unknown> | null = null;
+function rememberNext(s: unknown) {
+  if (!s || typeof s !== "object" || !("__NA" in s)) return;
+  const st = s as Record<string, unknown>;
+  lastNext = Object.fromEntries(NEXT_KEYS.filter((k) => k in st).map((k) => [k, st[k]]));
+}
+
+/**
+ * Back (or Forward) onto an app page whose entry has no Next.js state: Next doesn't hear it (it would reload),
+ * the app's own router draws the page (router.tsx follows the address), and the entry gets Next's state from
+ * now on.
+ */
+function keepInPage(e: PopStateEvent) {
+  const s = (e.state ?? {}) as Record<string, unknown>;
+  if ("__NA" in s) return rememberNext(s);
+  if (!APP_ROUTE_HEADS.has(window.location.pathname.split("/").filter(Boolean)[0] ?? "")) return;
+  e.stopImmediatePropagation();
+  // (The browser's own replaceState: Next's would add its state from the entry we're on, which has none.)
+  if (lastNext) History.prototype.replaceState.call(window.history, { ...s, ...lastNext }, "");
 }
 if (typeof window !== "undefined") {
   // (Once: a module loaded again while developing replaces its listener.)
@@ -149,6 +178,7 @@ export function pushEntry(href: string) {
   moving("push");
   const at = state.at + 1;
   window.history.pushState(stateWith(at), "", href);
+  rememberNext(window.history.state);
   emit({ at, top: at });
   notifyLocation();
 }
@@ -156,6 +186,7 @@ export function pushEntry(href: string) {
 /** The same step, a different address (the position stays). */
 export function replaceEntry(href: string) {
   window.history.replaceState(stateWith(state.at), "", href);
+  rememberNext(window.history.state);
   notifyLocation();
 }
 

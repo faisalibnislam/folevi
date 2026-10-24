@@ -6,7 +6,7 @@ import { api } from "@/lib/convex/api";
 import { quickAddOnDevice } from "@/lib/quickAddOffline";
 import type { EngineDeps } from "./context";
 import { spaceArg, type CommandDef } from "./commands";
-import { planQuickTask, repeatProps } from "./quickTask";
+import { datesReady, planQuickTask, repeatProps } from "./quickTask";
 import { BridgeError, bool, id, invalid, num, oneOf, only, optionalId, text } from "./validate";
 import type { CommandName, TaskCreateResult } from "./protocol";
 
@@ -74,6 +74,7 @@ export const WORK_COMMANDS = {
       const dueDate = dateArg(args, "dueDate", DATE, "a day (YYYY-MM-DD)");
       const dueTime = dateArg(args, "dueTime", TIME, "a time (HH:MM)");
       const priority = args.priority === undefined ? undefined : oneOf(args, "priority", PRIORITIES);
+      await datesReady();
       const plan = planQuickTask(typed, deps.app.today, { keepText: bool(args, "keepText", false), ...(dueDate !== undefined ? { dueDate } : {}), ...(dueTime !== undefined ? { dueTime } : {}) });
       if (!plan.title) throw new BridgeError("invalid_args", "Write the task first.");
       const task = {

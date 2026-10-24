@@ -63,6 +63,12 @@ export const E2EE_ROUTES: Record<string, Route> = {
   "blocks:rebalance": pass,
   // Sealed per op by the router itself (client.ts pushSealed, §6.6), not through a route.
   "sync:push": pass,
+  // The device copy (lib/sync/deviceCopy.ts): sealed or locked notes never come with content (the server keeps
+  // them back), and the copy leaves encrypted spaces to their replica.
+  "sync:head": pass,
+  "sync:manifest": pass,
+  "sync:pullDocs": pass,
+  "sync:pullAll": pass,
   "files:generateUploadUrl": pass,
   "files:finalize": pass,
   "migration:preflight": pass,

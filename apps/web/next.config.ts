@@ -90,6 +90,9 @@ const nextConfig: NextConfig = {
   env: { NEXT_PUBLIC_CONVEX_SITE_URL: convexSite, ...(isShell ? { NEXT_PUBLIC_FOLEVI_SHELL: "1" } : {}) },
   reactStrictMode: true,
   poweredByHeader: false,
+  // FOLEVI_SOURCEMAPS=1: source maps in a production build, to see what the first screen's code is made of
+  // (docs/IOS_PERFORMANCE.md, "Startup").
+  ...(process.env.FOLEVI_SOURCEMAPS === "1" ? { productionBrowserSourceMaps: true } : {}),
   // Dev only: keep Next's badge out of the tab strip (top right) and the sidebar's account button (bottom left).
   devIndicators: { position: "bottom-right" },
   transpilePackages: ["@folevi/editor-schema", "@folevi/design-tokens", "@folevi/local-store"],

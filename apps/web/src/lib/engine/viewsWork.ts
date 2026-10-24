@@ -4,11 +4,21 @@
 import { isOverdue } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import type { ViewContext } from "./context";
-import type { Snapshot } from "./live";
-import { planQuickTask } from "./quickTask";
+import { Emitter, type Snapshot } from "./live";
+import { datesReady, planQuickTask } from "./quickTask";
 import { requireSpace, source, type LiveValue, type ValueViewDef } from "./views";
 import { bool, invalid, num, oneOf, only, optionalId, text } from "./validate";
-import { TASK_VIEWS, type CalendarEvent, type CalendarSubscription, type MemberRow, type TaskGroup, type TaskRow, type TaskViewName, type TasksValue, type ViewName } from "./protocol";
+import {
+  TASK_VIEWS,
+  type CalendarEvent,
+  type CalendarSubscription,
+  type MemberRow,
+  type TaskGroup,
+  type TaskRow,
+  type TaskViewName,
+  type TasksValue,
+  type ViewName,
+} from "./protocol";
 
 type Args = Record<string, unknown>;
 
@@ -56,7 +66,20 @@ const DAY = 86_400_000;
 const dayMs = (d: string) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10));
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 /** "Tomorrow", "Monday 27 October", "Monday 27 October 2027" (another year). */
 export function dayTitle(date: string, today: string): string {
@@ -79,7 +102,15 @@ export function taskGroups(view: TaskViewName, rows: TaskRow[], today: string): 
     const key = byDay ? `day:${t.dueDate}` : `note:${t.noteId}`;
     let g = groups.get(key);
     if (!g) {
-      g = byDay ? { id: t.dueDate!, kind: "day", title: dayTitle(t.dueDate!, today), icon: null, tasks: [] } : { id: t.noteId, kind: "note", title: t.noteTitle || "Untitled", icon: t.noteIcon, tasks: [] };
+      g = byDay
+        ? { id: t.dueDate!, kind: "day", title: dayTitle(t.dueDate!, today), icon: null, tasks: [] }
+        : {
+            id: t.noteId,
+            kind: "note",
+            title: t.noteTitle || "Untitled",
+            icon: t.noteIcon,
+            tasks: [],
+          };
       groups.set(key, g);
     }
     g.tasks.push(t);
@@ -111,7 +142,12 @@ const tasksList: ValueViewDef = {
     const space = requireSpace(deps, args.space as string | undefined);
     const view = args.view as TaskViewName;
     const today = deps.app.today;
-    const src = source<TaskData[]>(ctx, api.tasks.list, { scope: space.scope, view, today }, space.scope);
+    const src = source<TaskData[]>(
+      ctx,
+      api.tasks.list,
+      { scope: space.scope, view, today },
+      space.scope,
+    );
     return {
       signals: [src, ctx.appSignal],
       compute: one(src, (v): TasksValue => {
@@ -134,8 +170,23 @@ const tasksCounts: ValueViewDef = {
   create: (ctx, args) => {
     const deps = ctx.deps();
     const space = requireSpace(deps, args.space as string | undefined);
-    const src = source<{ inbox: number; today: number; upcoming: number; all: number; mine: number }>(ctx, api.tasks.counts, { scope: space.scope, today: deps.app.today }, space.scope);
-    return { signals: [src], compute: one(src, (c) => ({ inbox: c.inbox, today: c.today, upcoming: c.upcoming, all: c.all, mine: c.mine })) };
+    const src = source<{
+      inbox: number;
+      today: number;
+      upcoming: number;
+      all: number;
+      mine: number;
+    }>(ctx, api.tasks.counts, { scope: space.scope, today: deps.app.today }, space.scope);
+    return {
+      signals: [src],
+      compute: one(src, (c) => ({
+        inbox: c.inbox,
+        today: c.today,
+        upcoming: c.upcoming,
+        all: c.all,
+        mine: c.mine,
+      })),
+    };
   },
 };
 
@@ -147,7 +198,8 @@ const tasksRange: ValueViewDef = {
     only(args, ["space", "from", "to", "includeCompleted"]);
     const from = text(args, "from", { max: 10 }) as string;
     const to = text(args, "to", { max: 10 }) as string;
-    if (!DATE.test(from) || !DATE.test(to) || to < from) throw invalid("from and to must be days (YYYY-MM-DD), from first.");
+    if (!DATE.test(from) || !DATE.test(to) || to < from)
+      throw invalid("from and to must be days (YYYY-MM-DD), from first.");
     const out: Args = { from, to };
     const space = optionalId(args, "space");
     if (space !== undefined) out.space = space;
@@ -157,8 +209,21 @@ const tasksRange: ValueViewDef = {
   create: (ctx, args) => {
     const deps = ctx.deps();
     const space = requireSpace(deps, args.space as string | undefined);
-    const src = source<TaskData[]>(ctx, api.tasks.range, { scope: space.scope, from: args.from, to: args.to, ...(args.includeCompleted ? { includeCompleted: true } : {}) }, space.scope);
-    return { signals: [src, ctx.appSignal], compute: one(src, (v) => ({ tasks: v.map((t) => taskRow(t, ctx.deps().app.today)) })) };
+    const src = source<TaskData[]>(
+      ctx,
+      api.tasks.range,
+      {
+        scope: space.scope,
+        from: args.from,
+        to: args.to,
+        ...(args.includeCompleted ? { includeCompleted: true } : {}),
+      },
+      space.scope,
+    );
+    return {
+      signals: [src, ctx.appSignal],
+      compute: one(src, (v) => ({ tasks: v.map((t) => taskRow(t, ctx.deps().app.today)) })),
+    };
   },
 };
 
@@ -170,15 +235,35 @@ const calendarsEvents: ValueViewDef = {
     only(args, ["from", "to"]);
     const from = num(args, "from", { min: 0 });
     const to = num(args, "to", { min: 0 });
-    if (to <= from || to - from > 400 * DAY) throw invalid("to must come after from, at most 400 days later.");
+    if (to <= from || to - from > 400 * DAY)
+      throw invalid("to must come after from, at most 400 days later.");
     return { from, to };
   },
   create: (ctx, args) => {
-    if (ctx.deps().app.mode === "local") return { signals: [], compute: () => ({ value: { events: [] }, stale: false, error: null }) };
-    const src = source<EventData>(ctx, api.externalCalendars.events, { from: args.from, to: args.to }, null);
+    if (ctx.deps().app.mode === "local")
+      return { signals: [], compute: () => ({ value: { events: [] }, stale: false, error: null }) };
+    const src = source<EventData>(
+      ctx,
+      api.externalCalendars.events,
+      { from: args.from, to: args.to },
+      null,
+    );
     return {
       signals: [src],
-      compute: one(src, (v) => ({ events: v.map((e) => ({ id: e.id, calendarId: e.calendarId, calendarName: e.calendarName, color: e.color, title: e.title, location: e.location ?? "", description: e.description ?? "", start: e.start, end: e.end, allDay: Boolean(e.allDay) })) })),
+      compute: one(src, (v) => ({
+        events: v.map((e) => ({
+          id: e.id,
+          calendarId: e.calendarId,
+          calendarName: e.calendarName,
+          color: e.color,
+          title: e.title,
+          location: e.location ?? "",
+          description: e.description ?? "",
+          start: e.start,
+          end: e.end,
+          allDay: Boolean(e.allDay),
+        })),
+      })),
     };
   },
 };
@@ -187,16 +272,43 @@ const calendarsList: ValueViewDef = {
   kind: "value",
   parse: (args) => (only(args, []), {}),
   create: (ctx) => {
-    if (ctx.deps().app.mode === "local") return { signals: [], compute: () => ({ value: { calendars: [] }, stale: false, error: null }) };
-    const src = source<(CalendarSubscription & { truncated?: boolean })[]>(ctx, api.externalCalendars.list, {}, null);
+    if (ctx.deps().app.mode === "local")
+      return {
+        signals: [],
+        compute: () => ({ value: { calendars: [] }, stale: false, error: null }),
+      };
+    const src = source<(CalendarSubscription & { truncated?: boolean })[]>(
+      ctx,
+      api.externalCalendars.list,
+      {},
+      null,
+    );
     return {
       signals: [src],
-      compute: one(src, (v) => ({ calendars: v.map((c) => ({ id: c.id, name: c.name, url: c.url, color: c.color, visible: c.visible, lastFetchedAt: c.lastFetchedAt ?? null, lastError: c.lastError ?? null, eventCount: c.eventCount ?? null, loading: Boolean(c.loading) })) })),
+      compute: one(src, (v) => ({
+        calendars: v.map((c) => ({
+          id: c.id,
+          name: c.name,
+          url: c.url,
+          color: c.color,
+          visible: c.visible,
+          lastFetchedAt: c.lastFetchedAt ?? null,
+          lastError: c.lastError ?? null,
+          eventCount: c.eventCount ?? null,
+          loading: Boolean(c.loading),
+        })),
+      })),
     };
   },
 };
 
-type MemberData = { profileId: string; displayName: string; email: string; role: string; isYou: boolean }[];
+type MemberData = {
+  profileId: string;
+  displayName: string;
+  email: string;
+  role: string;
+  isYou: boolean;
+}[];
 
 const members: ValueViewDef = {
   kind: "value",
@@ -206,11 +318,31 @@ const members: ValueViewDef = {
     const space = requireSpace(deps, args.space as string | undefined);
     // In Personal it's you (tasks there are assigned to people the note is shared with on the web, not here).
     if (space.kind === "personal") {
-      const me: MemberRow = { id: deps.app.profile.id, name: deps.app.profile.name, email: deps.app.profile.email, role: "owner", isYou: true };
-      return { signals: [], compute: () => ({ value: { members: [me] }, stale: false, error: null }) };
+      const me: MemberRow = {
+        id: deps.app.profile.id,
+        name: deps.app.profile.name,
+        email: deps.app.profile.email,
+        role: "owner",
+        isYou: true,
+      };
+      return {
+        signals: [],
+        compute: () => ({ value: { members: [me] }, stale: false, error: null }),
+      };
     }
     const src = source<MemberData>(ctx, api.workspaces.members, { workspaceId: space.id }, null);
-    return { signals: [src], compute: one(src, (v) => ({ members: v.map((m) => ({ id: m.profileId, name: m.displayName, email: m.email, role: m.role, isYou: m.isYou })) })) };
+    return {
+      signals: [src],
+      compute: one(src, (v) => ({
+        members: v.map((m) => ({
+          id: m.profileId,
+          name: m.displayName,
+          email: m.email,
+          role: m.role,
+          isYou: m.isYou,
+        })),
+      })),
+    };
   },
 };
 
@@ -220,13 +352,29 @@ const taskParse: ValueViewDef = {
     only(args, ["text"]);
     return { text: text(args, "text", { max: 500, allowEmpty: true }) as string };
   },
-  create: (ctx, args) => ({
-    signals: [ctx.appSignal],
-    compute: () => {
-      const plan = planQuickTask(args.text as string, ctx.deps().app.today);
-      return { value: { title: plan.title, dueDate: plan.dueDate, dueTime: plan.dueTime, dateText: plan.dateText, repeatLabel: plan.repeatLabel, repeatText: plan.repeatText }, stale: false, error: null };
-    },
-  }),
+  create: (ctx, args) => {
+    // (Read again once the date parser has loaded: it arrives a moment after the app starts.)
+    const loaded = new Emitter();
+    void datesReady().then(() => loaded.emit());
+    return {
+      signals: [ctx.appSignal, loaded],
+      compute: () => {
+        const plan = planQuickTask(args.text as string, ctx.deps().app.today);
+        return {
+          value: {
+            title: plan.title,
+            dueDate: plan.dueDate,
+            dueTime: plan.dueTime,
+            dateText: plan.dateText,
+            repeatLabel: plan.repeatLabel,
+            repeatText: plan.repeatText,
+          },
+          stale: false,
+          error: null,
+        };
+      },
+    };
+  },
 };
 
 export const WORK_VALUE_VIEWS = {

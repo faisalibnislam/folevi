@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
 import { useQuery } from "convex/react";
-import { Check, Copy, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Pencil, Play, RotateCcw, Wand2, CornerDownLeft } from "lucide-react";
+import { Check, Copy, EyeOff, FileText, Globe, MoreHorizontal, Pencil, Play, RotateCcw, Wand2, CornerDownLeft } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useIphoneApp } from "@/lib/iphone";
 import { MenuButton } from "@/components/ui/Menu";
@@ -130,7 +130,7 @@ export function UserMessage({ text, attachments, onEdit, disabled }: { text: str
     <div className="group/user flex flex-col items-end gap-0.5">
       {files?.length ? <AttachmentChips files={files} className="mb-1 max-w-[85%] justify-end" /> : null}
       <NotSharedChips count={hidden} />
-      <p className={iphone ? "ui-liquid-strong w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-container px-4 py-2.5 text-[17px] leading-6 text-ink" : "w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-panel rounded-br-tiny bg-heading px-3.5 py-2 text-[14px] text-canvas"}>{text}</p>
+      <p className={iphone ? "w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-container bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] px-4 py-2.5 text-[17px] leading-6 text-ink" : "w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-panel rounded-br-tiny bg-heading px-3.5 py-2 text-[14px] text-canvas"}>{text}</p>
       {onEdit ? (
         <button
           type="button"
@@ -139,9 +139,14 @@ export function UserMessage({ text, attachments, onEdit, disabled }: { text: str
             setDraft(text);
             setEditing(true);
           }}
-          className={`${ROW_BUTTON} opacity-0 focus-visible:opacity-100 group-hover/user:opacity-100 pointer-coarse:opacity-100`}
+          className={
+            iphone
+              ? // A small word under the bubble's end (a 44 pt target over it), not a row of its own.
+                "relative mr-2 inline-flex h-7 items-center gap-1 text-[14px] text-muted outline-none after:absolute after:-inset-x-2 after:-inset-y-2 focus-visible:underline active:opacity-60 disabled:opacity-40"
+              : `${ROW_BUTTON} opacity-0 focus-visible:opacity-100 group-hover/user:opacity-100 pointer-coarse:opacity-100`
+          }
         >
-          <Pencil size={12} aria-hidden /> Edit
+          <Pencil size={iphone ? 13 : 12} aria-hidden /> Edit
         </button>
       ) : null}
     </div>
@@ -214,12 +219,48 @@ export function Sources({ citations, webCitations = [], onCite }: { citations: C
 }
 
 /**
+ * What Foli AI is doing while it answers, on one line: three softly pulsing dots (opacity only), what it's doing
+ * in words ("Searching your notes…", "Writing…"), and Stop as a small capsule with its square.
+ */
+function RunStatus({ label, onStop, iphone, className = "" }: { label: string; onStop?: () => void; iphone: boolean; className?: string }) {
+  return (
+    <div className={`flex items-center gap-2.5 ${iphone ? "min-h-11" : "min-h-8"} ${className}`}>
+      <span aria-hidden className="flex flex-none items-center gap-[3px] text-muted">
+        {[0, 160, 320].map((d) => (
+          <span key={d} className="h-[5px] w-[5px] animate-pulse rounded-chip bg-current motion-reduce:animate-none" style={{ animationDelay: `${d}ms` }} />
+        ))}
+      </span>
+      <p role="status" className={`min-w-0 truncate text-muted ${iphone ? "text-[15px]" : "text-[13px]"}`}>
+        {label}
+      </p>
+      {onStop ? (
+        <button
+          type="button"
+          onClick={onStop}
+          className={`relative ml-1 inline-flex flex-none items-center gap-1.5 rounded-container bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] font-medium text-heading outline-none transition-opacity hover:bg-[color-mix(in_oklab,var(--color-ink)_11%,transparent)] focus-visible:ring-2 focus-visible:ring-focus active:opacity-60 ${
+            iphone ? "h-8 px-3 text-[14px] after:absolute after:-inset-y-1.5 after:inset-x-0" : "h-7 px-2.5 text-[12px]"
+          }`}
+        >
+          <span aria-hidden className="h-[9px] w-[9px] rounded-tiny bg-current" /> Stop
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * The text an answer has so far while it streams: it comes from the answer's stream (aiChat.streamText),
  * so the conversation itself isn't reloaded for every chunk. Otherwise (and once it settles) the message's.
  */
 function useLiveText(message: ChatMessageData): string {
   const live = useQuery(api.aiChat.streamText, message.live ? { messageId: message.id } : "skip");
-  return message.live && live ? live.text : message.text;
+  // The words already shown stay while the stream hands over to the finished message (the stream can go a
+  // moment before the message has its text): otherwise the answer blinks out and types itself out again.
+  const shown = useRef("");
+  if (message.live && live?.text) shown.current = live.text;
+  const text = message.live && live ? live.text : message.text;
+  if (!text && message.status === "streaming" && shown.current) return shown.current;
+  return text || (message.status === "streaming" ? shown.current : text);
 }
 
 /** Copy, download or save one answer on its own (an agent's report; a research report has its own Save as note). */
@@ -327,16 +368,7 @@ export function AssistantMessage({
   if (streaming && !liveText) {
     return (
       <div className="px-1">
-        <div className="flex items-center gap-3">
-          <p role="status" className="flex items-center gap-2 text-[13px] text-muted">
-            <Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> {readOnly ? "Still being written…" : phaseLabel(message.phase, false)}
-          </p>
-          {readOnly ? null : (
-            <button type="button" onClick={onStop} className={ROW_BUTTON}>
-              <span aria-hidden className="h-2 w-2 rounded-tiny bg-current" /> Stop
-            </button>
-          )}
-        </div>
+        <RunStatus label={readOnly ? "Still being written…" : phaseLabel(message.phase, false)} onStop={readOnly ? undefined : onStop} iphone={iphone} />
         {message.agent?.steps.length ? (
           <div className="mt-2">
             <AgentSteps steps={message.agent.steps} live />
@@ -350,11 +382,8 @@ export function AssistantMessage({
     return (
       <div className={answerBox(iphone)} aria-busy="true">
         <StreamingText text={text} cited={cited} />
-        {streaming && !readOnly ? (
-          <button type="button" onClick={onStop} className={`${ROW_BUTTON} mt-1`}>
-            <span aria-hidden className="h-2 w-2 rounded-tiny bg-current" /> Stop
-          </button>
-        ) : null}
+        {/* Still coming: what it's doing, and Stop, on one line under the words so far. */}
+        {streaming ? <RunStatus label={readOnly ? "Still being written…" : phaseLabel(message.phase, Boolean(text.trim()))} onStop={readOnly ? undefined : onStop} iphone={iphone} className="mt-2" /> : null}
       </div>
     );
   }

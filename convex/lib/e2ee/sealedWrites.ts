@@ -6,7 +6,7 @@ import type { MutationCtx } from "../../_generated/server";
 import { fail } from "../errors";
 import { nextSeq } from "../seq";
 import { insertScoped, scopeKey, scopeOfRow, type Scope } from "../scope";
-import { failE2ee, spaceE2ee } from "./state";
+import { failE2ee } from "./state";
 import { E2EE_LIMITS, type RecordKind } from "./validators";
 import { NoteKeyVersions, b64uToBytes, checkRecord } from "./sealedRows";
 
@@ -158,10 +158,11 @@ export async function startLockMigration(
 
 
 /**
- * Notes that a row of an encrypted space was deleted for good (a note purged, a tag deleted), with the change's
- * `seq`, so replicas forget it (e2ee.pull `removed`). Spaces that never set encryption up write nothing.
+ * Notes that a row was deleted for good (a note purged, a tag deleted), with the change's `seq`, so copies on
+ * devices forget it: an encrypted space's replicas (e2ee.pull `removed`) and, since the device copy
+ * (docs/NATIVE_APP_PLAN.md §11, sync.pullAll `removed`), every space's. A note purged in a Standard space
+ * used to leave nothing behind; devices that fill before this re-check the whole list weekly anyway.
  */
 export async function writeTombstone(ctx: MutationCtx, scope: Scope, kind: "document" | "tag" | "folder", publicId: string, seq: number, restricted = false): Promise<void> {
-  if (!(await spaceE2ee(ctx, scope))) return;
   await insertScoped(ctx, "e2eeTombstones", scope, { kind, publicId, deletedAt: Date.now(), seq, ...(restricted ? { restricted: true } : {}) });
 }

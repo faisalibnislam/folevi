@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { useCapabilities } from "@/lib/mode";
+import { useBackendMode, useCapabilities } from "@/lib/mode";
+import { TouchSyncButton } from "@/components/iphone/SyncStatusTouch";
 import { Bell, MoreHorizontal } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -10,6 +11,7 @@ import { PersonalMark, WorkspaceLogo } from "@/components/app/WorkspaceMenu";
 import { t } from "@/i18n";
 import { GlassPill, PillButton } from "./Glass";
 import { useIphoneActions } from "./IphoneShell";
+import { useNotificationList } from "@/components/app/NotificationsButton";
 
 /** Top left of Home, Tasks and Calendar: you (or the workspace you're in); opens the account and places sheet. */
 export function RootAvatar() {
@@ -33,9 +35,14 @@ export function RootPill({ more, moreLabel = "More" }: { more?: MenuEntry[]; mor
   // Local mode has no notifications bell.
   const { notifications } = useCapabilities();
   const unread = useQuery(api.notifications.unreadCount, notifications ? {} : "skip") ?? 0;
-  if (!notifications && !more?.length) return null;
+  // The list too, kept up to date in the background: the sheet opens on it, not on a placeholder.
+  useNotificationList(notifications);
+  // Signed in, the sync status sits beside the bell (a library on this device has nothing to sync with Folevi).
+  const synced = useBackendMode() === "account";
+  if (!notifications && !more?.length && !synced) return null;
   return (
     <GlassPill label="Screen actions">
+      {synced ? <TouchSyncButton /> : null}
       {notifications ? (
         <PillButton label={t("notifications.button.label", { count: unread })} onClick={openNotifications}>
           <Bell size={21} strokeWidth={1.9} aria-hidden />

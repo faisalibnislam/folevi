@@ -226,6 +226,102 @@ commit order; a cursor can never skip a committed change. Pages shared with you 
 Personal aren't in your Personal feed (they're in theirs); open them by id. `sync.head({ scope })` returns just the scope's counter,
 for a client that wants to pull only when it advances.
 
+## Device copy (R1, docs/NATIVE_APP_PLAN.md §11)
+
+Every note of each place an account works in (its Personal and each team workspace) is kept on the device,
+so any note opens from there at once and reads offline, then reconciles with the server. The website, the PWA
+and today's iPhone, iPad and Mac apps all get it from the web data layer. Built 2026-10-24.
+
+**Server** (`convex/sync.ts`), all permission-checked like `pull`, bounded, and on the existing `by_*_seq`
+indexes (no schema change, no migration):
+
+- `sync.manifest({ scope, after, limit ≤ 500 })`: the scope's notes in seq order, each with its summary and its
+  content head (the highest seq among its block rows, deleted ones included: one indexed read). The first
+  page's `head` is where keeping the copy fresh starts. Reads no blocks.
+- `sync.pullDocs({ ids ≤ 50 })`: whole notes as `blocks.list` returns them, any scope the caller can open;
+  `status` ok, missing, sealed or later (one call reads at most about 3,000 blocks).
+- `sync.pullAll({ scope, cursor, limit ≤ 500 })` (pull v2): `pull` plus each block row's `seq`, the scope's
+  folders and tags, and `removed` (notes, folders and tags deleted for good). Pages never split a change.
+- Tombstones (`e2eeTombstones`) are now written for every space, not only encrypted ones, so a note purged
+  from Trash in a Standard space reaches devices. `e2ee.pull` still returns nothing for a space that never set
+  encryption up.
+- Notes sealed by end-to-end encryption, or locked, never travel with content through these: ids only. Their
+  space's replica keeps them.
+
+A note's `contentSeq` settles only every 30 seconds while someone types (`lib/editSettle.ts`), so it can't
+say whether a copy is whole; the content head can, and a delta page carries the seq of each block it brings.
+
+**Client** (`apps/web/src/lib/sync/deviceCopy.ts`, run by `components/app/DeviceCopyRunner.tsx`): no new
+IndexedDB version. It fills the stores the app already reads offline in the account's database
+(`folevi-<account>`): `documents` (list rows, by scope, now with `copyGen` and `head`) and `blocks` (a note's
+whole content, with `head`, `by` and `scopeKey`); progress per scope is `meta` `copy:<scope key>`. The engine's
+queue and the outbox stay where they were and stay on top. Per scope it lists (resumable), fills the notes
+whose blocks entry is missing or older than the manifest's head (20 at a time, notes on screen and recently
+changed first, in idle time, never while someone types or has just opened a note), then keeps fresh with
+`pullAll` when the current scope's `sync.head` moves (while the page is visible; a second of quiet, at most
+every 3 seconds), on coming back to the app, on reconnecting and every 5 minutes. Kept blocks are replaced
+only by a revision at least as new. Weekly, or when the last pull is older than a week (block tombstones go
+after 30 days), it lists again and drops rows the listing didn't see (access taken away). A note with
+changes still on the device is never dropped. Failures back off from 2 seconds to a minute.
+
+- Opening a note (`DocumentView`) reads the copy at once (it used to wait 1.5 s online for the server) and
+  shows its title and look from the copy's row until `documents.get` answers.
+- Lists (`DocumentBrowser`): All notes, folders and Drafts show the copy's rows before the server's first page
+  (sorted by updated or created) and offline; Trash, Archive and the rest offline only. Offline search also
+  reads the words of every kept note.
+- Prefetch on intent: pointer down or touch start on any link to a note, or the mouse resting on one for
+  120 ms (fine pointers, not with Data Saver), asks the copy for that note first and starts its
+  `documents.get` and `blocks.list` subscriptions for 20 seconds.
+- Attachments (`deviceFiles.ts`, Cache Storage `folevi-files-<account>`, index in `meta` `copyFile:<id>`):
+  files up to 1 MB always; larger images (to 10 MB, with a 640 px thumbnail made on the device) and files (to
+  25 MB) only when large downloads are allowed: Wi-Fi or Ethernet where the browser says (Network Information
+  API), or a desktop browser that doesn't; never on cellular, with Data Saver, or in the iPhone and iPad app
+  (its bridge doesn't tell the page the network type yet: R2). Budget for large files: 2 GB or 10% of the free
+  space (`navigator.storage.estimate`), least recently used first; thumbnails and small files stay. The editor
+  shows a kept file when the server's signed link isn't there. Sealed files never come.
+- Settings > Offline & sync: "Keep all notes on this device" (per account, on by default, also on the website),
+  progress per place, storage used and free, "Download now" and "Remove downloaded copy" (removes only what
+  the copy downloaded; never anything waiting to sync, nor notes opened before). Off: no filling; notes opened
+  or prefetched are still kept. Not in local mode, and not on a public computer (memory-only database).
+- Sign-out removes the copy with the account's database and its attachment cache (`clearAccountData`,
+  `clearAllLocalData`); the service worker no longer deletes `folevi-files-*` on update. Each account has its
+  own database and each scope its own rows.
+
+**End-to-end encrypted spaces stay encrypted at rest** (owner decision 2026-10-24): the replica's database
+(`folevi-e2ee-<scope>`) is wrapped by `lib/e2ee/replica/sealedReplicaDb.ts`, which seals every row, note and
+bookkeeping value (the search index too) with AES-256-GCM under a non-extractable device key kept in that
+database, and opens them only when the replica loads into memory. Replicas written readable before are sealed
+on their first load. `DocumentView` no longer writes a sealed note's blocks to the `blocks` store. The device
+copy skips spaces whose level isn't Standard and every sealed or locked note. Honest limit: the key lives
+next to the data (as the plan accepts on the web); it protects against reading the files or dumping
+IndexedDB, not against code running in the app.
+
+**Cost per active user per month** (Convex Professional list prices assumed: about $2 per million function
+calls and $0.20 per GB of database bandwidth beyond what's included; verify before release):
+
+| Item | Heavy user (1,500 notes × 60 blocks, 3 devices, about 3,000 block changes a day) | Typical (200 notes, 2 devices, light editing) |
+| --- | --- | --- |
+| First fill, once per device | about 80 calls and 95 MB per device (manifest 5, pullDocs 75); 3 devices: about 290 MB, $0.06 once | about 12 calls, 12 MB per device |
+| Weekly re-listing | about 60 calls, 70 MB: $0.02 | under 10 MB |
+| `sync.head` re-runs on the foreground device (every accepted batch re-runs it) | about 45,000 calls, under 0.1 GB: $0.10 | about 3,000 calls |
+| `pullAll` after the head moves (at most every 3 s, mostly the device's own changes) | about 30,000 calls, 0.3 GB: $0.12 | about 2,000 calls, 20 MB |
+| **Total added** | **about $0.25 worst case** | **about $0.01 to $0.02** |
+
+Attachments are served by the files HTTP route (Convex file bandwidth and one HTTP action call per file, until
+the Cloudflare plan moves files to R2 with signed links): small files of every note once per device, large
+ones on Wi-Fi only. For an attachment-heavy account (500 images of 500 KB) that is about 250 MB per device,
+once. The plan's saving (server list subscriptions no longer re-running once the copy answers lists) is not
+taken yet: lists still subscribe to the server and only show the copy first. So against the 30% margin rule
+(Core at $1.99 leaves about $0.74 a month for all costs) the heavy-user worst case fits but uses a third of
+it, and the typical user is negligible. Levers ready if usage shows otherwise: skip the pull when the head
+moved only for this device's own accepted batches, subscribe to `sync.head` only on the focused tab, limit
+"always" attachments to recent and starred notes, and answer lists from the copy (the plan's saving).
+
+Not in R1 (R2, with the native app): silent pushes and background pulls on iOS, the native network and Low
+Power signals (`device.conditions`), the sealed space index of §11.6 (R1 seals the whole replica instead),
+the database v4 `replicaRows` layout (R1 reuses the existing stores, so no version bump that waits for old
+tabs), and Shared with me pages refreshed by `pullDocs` (they're kept when opened or prefetched).
+
 ## Attachments
 
 Uploads are two-phase: `files.generateUploadUrl` (authorized, short-lived) → direct upload →

@@ -14,7 +14,7 @@ import { ageText } from "@/lib/format";
 import { t } from "@/i18n";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useCapabilities } from "@/lib/mode";
-import { useIphoneApp } from "@/lib/iphone";
+import { isIpadApp, useIphoneApp } from "@/lib/iphone";
 import { SwipeRow } from "@/components/iphone/Swipe";
 
 type Item = FunctionReturnType<typeof api.notifications.list>[number];
@@ -35,6 +35,8 @@ export function NotificationsButton() {
 
 function NotificationsBell() {
   const unread = useQuery(api.notifications.unreadCount, {});
+  // On iPad the list is kept warm too, so the popover opens on it (a touch screen has no hover to get ahead).
+  useNotificationList(isIpadApp());
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -111,9 +113,19 @@ function startOfToday(): number {
   return d.getTime();
 }
 
+/** The list as last seen (this visit): shown at once when the panel opens again, while its query catches up. */
+let lastList: Item[] | undefined;
+
+/** The notifications list's query, kept warm by the iPhone's bell so the sheet opens on the list, not a placeholder. */
+export function useNotificationList(on = true): Item[] | undefined {
+  const items = useQuery(api.notifications.list, on ? { limit: 50 } : "skip");
+  if (items) lastList = items;
+  return items ?? lastList;
+}
+
 /** The list of notifications (the bell's panel; a sheet in the iPhone app, which shows its own title). */
 export function NotificationPanel({ unread, onClose, hideTitle = false }: { unread: number; onClose: (refocus: boolean) => void; hideTitle?: boolean }) {
-  const items = useQuery(api.notifications.list, { limit: 50 });
+  const items = useNotificationList();
   const markRead = useMutation(api.notifications.markRead);
   const { navigate } = useAppRouter();
   const [filter, setFilter] = useState<"all" | "unread">("all");
@@ -159,60 +171,103 @@ export function NotificationPanel({ unread, onClose, hideTitle = false }: { unre
     if (!n.read) void markRead({ ids: [n.id] }).catch(() => undefined);
     const href = notificationHref(n);
     if (!href) return;
-    navigate(href);
-    // Already on that note: the view listens for this to jump to the thread or block.
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    const go = () => {
+      navigate(href);
+      // Already on that note: the view listens for this to jump to the thread or block.
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    };
     onClose(false);
+    // The phone's sheet is on its way down first; the note opens under it on the next frame.
+    if (phone) requestAnimationFrame(go);
+    else go();
   };
+
+  const markAll = (
+    <button
+      type="button"
+      data-mark-all=""
+      disabled={!unread}
+      onClick={() => void markRead({}).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
+      // On a touch screen: a 44 pt button with phone-sized text, readable while there's something to mark.
+      className="inline-flex h-7 flex-none items-center gap-1 whitespace-nowrap rounded-chip px-2 text-[12px] font-medium text-muted transition-colors hover:bg-accent-soft hover:text-heading disabled:pointer-events-none disabled:opacity-40 pointer-coarse:h-11 pointer-coarse:gap-1.5 pointer-coarse:px-3.5 pointer-coarse:text-[15px] pointer-coarse:text-heading pointer-coarse:active:bg-[var(--liquid-press,var(--color-accent-soft))] pointer-coarse:disabled:text-muted pointer-coarse:disabled:opacity-50 [&>svg]:pointer-coarse:h-[18px] [&>svg]:pointer-coarse:w-[18px]"
+    >
+      <Check size={13} aria-hidden /> Mark all read
+    </button>
+  );
+  const settings = (
+    <button
+      type="button"
+      aria-label="Notification settings"
+      title="Notification settings"
+      onClick={() => {
+        navigate("/settings/notifications");
+        onClose(false);
+      }}
+      className="grid h-7 w-7 place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:text-heading pointer-coarse:active:bg-[var(--liquid-press,var(--color-accent-soft))] [&>svg]:pointer-coarse:h-5 [&>svg]:pointer-coarse:w-5"
+    >
+      <Settings size={14} aria-hidden />
+    </button>
+  );
+  const show = (
+    <div role="group" aria-label="Show" className={`ui-seg bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] ${phone ? "w-[164px] flex-none" : "w-44"}`}>
+      <button type="button" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
+        All
+      </button>
+      <button type="button" aria-pressed={filter === "unread"} onClick={() => setFilter("unread")}>
+        Unread{unread ? ` · ${unread > 99 ? "99+" : unread}` : ""}
+      </button>
+    </div>
+  );
 
   return (
     <section role="dialog" aria-labelledby="notifications-heading" className="flex min-h-0 flex-1 flex-col">
-      <header className="flex flex-none items-center gap-1 px-4 pb-2 pt-3">
-        <h2 id="notifications-heading" ref={headingRef} tabIndex={-1} className={`flex-1 text-[14px] font-semibold text-heading outline-none ${hideTitle ? "sr-only" : ""}`}>
-          Notifications
-        </h2>
-        {hideTitle ? <span className="flex-1" /> : null}
-        <button
-          type="button"
-          disabled={!unread}
-          onClick={() => void markRead({}).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
-          // On a touch screen: a 44 pt button with phone-sized text, readable while there's something to mark.
-          className="inline-flex h-7 items-center gap-1 rounded-chip px-2 text-[12px] font-medium text-muted transition-colors hover:bg-accent-soft hover:text-heading disabled:pointer-events-none disabled:opacity-40 pointer-coarse:h-11 pointer-coarse:gap-1.5 pointer-coarse:px-3.5 pointer-coarse:text-[15px] pointer-coarse:text-heading pointer-coarse:active:bg-[var(--liquid-press,var(--color-accent-soft))] pointer-coarse:disabled:text-muted pointer-coarse:disabled:opacity-50 [&>svg]:pointer-coarse:h-[18px] [&>svg]:pointer-coarse:w-[18px]"
-        >
-          <Check size={13} aria-hidden /> Mark all read
-        </button>
-        <button
-          type="button"
-          aria-label="Notification settings"
-          title="Notification settings"
-          onClick={() => {
-            navigate("/settings/notifications");
-            onClose(false);
-          }}
-          className="grid h-7 w-7 place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:text-heading pointer-coarse:active:bg-[var(--liquid-press,var(--color-accent-soft))] [&>svg]:pointer-coarse:h-5 [&>svg]:pointer-coarse:w-5"
-        >
-          <Settings size={14} aria-hidden />
-        </button>
-      </header>
-      <div className="flex-none px-4 pb-2">
-        <div role="group" aria-label="Show" className="ui-seg w-44 bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
-          <button type="button" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
-            All
-          </button>
-          <button type="button" aria-pressed={filter === "unread"} onClick={() => setFilter("unread")}>
-            Unread{unread ? ` · ${unread > 99 ? "99+" : unread}` : ""}
-          </button>
+      {hideTitle ? (
+        // The phone's sheet has the title: one toolbar row under it, All / Unread at the start, Mark all read and
+        // the settings at the end, on one line.
+        <div className="flex flex-none items-center gap-1 pb-2 pl-4 pr-2">
+          <h2 id="notifications-heading" ref={headingRef} tabIndex={-1} className="sr-only">
+            Notifications
+          </h2>
+          {show}
+          <span className="min-w-0 flex-1" />
+          {markAll}
+          {settings}
         </div>
-      </div>
+      ) : (
+        <>
+          <header className="flex flex-none items-center gap-1 px-4 pb-2 pt-3">
+            <h2 id="notifications-heading" ref={headingRef} tabIndex={-1} className="flex-1 text-[14px] font-semibold text-heading outline-none">
+              Notifications
+            </h2>
+            {markAll}
+            {settings}
+          </header>
+          <div className="flex-none px-4 pb-2">{show}</div>
+        </>
+      )}
       <div ref={listRef} onKeyDown={onListKey} className="min-h-0 flex-1 overflow-y-auto border-t border-line/70 pb-2">
         {items === undefined ? (
-          <div className="space-y-3 px-4 py-4" aria-busy aria-label="Loading notifications">
-            {[70, 90, 60].map((w) => (
-              <div key={w} className="flex gap-3">
-                <div className="h-7 w-7 flex-none animate-pulse rounded-chip bg-sunken motion-reduce:animate-none" />
-                <div className="h-3.5 animate-pulse rounded-tiny bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />
-              </div>
-            ))}
+          // Only the very first time (afterwards the last list shows at once): rows shaped like the real ones,
+          // so nothing moves when they arrive.
+          <div className={phone ? "pt-4" : "space-y-3 px-4 py-4"} aria-busy aria-label="Loading notifications">
+            {phone ? <div className="mx-5 mb-2.5 h-3 w-16 animate-pulse rounded-tiny bg-sunken motion-reduce:animate-none" /> : null}
+            {[70, 90, 60].map((w) =>
+              phone ? (
+                <div key={w} className="flex gap-3 py-3 pl-5 pr-9">
+                  <div className="h-9 w-9 flex-none animate-pulse rounded-capsule bg-sunken motion-reduce:animate-none" />
+                  <div className="min-w-0 flex-1 space-y-2 pt-0.5">
+                    <div className="h-3.5 animate-pulse rounded-tiny bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />
+                    <div className="h-3.5 w-1/2 animate-pulse rounded-tiny bg-sunken motion-reduce:animate-none" />
+                    <div className="h-3 w-12 animate-pulse rounded-tiny bg-sunken motion-reduce:animate-none" />
+                  </div>
+                </div>
+              ) : (
+                <div key={w} className="flex gap-3">
+                  <div className="h-7 w-7 flex-none animate-pulse rounded-chip bg-sunken motion-reduce:animate-none" />
+                  <div className="h-3.5 animate-pulse rounded-tiny bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />
+                </div>
+              ),
+            )}
           </div>
         ) : groups.length === 0 ? (
           <NothingHere unreadOnly={filter === "unread" && Boolean(items.length)} />

@@ -22,13 +22,33 @@ export interface CachedDocument {
   parentDocumentId: string | null;
   cachedAt: number;
   summary: unknown;
+  /** The device copy's listing pass that last saw it (deviceCopy.ts); rows it never saw lack it. */
+  copyGen?: number;
+  /** The note's content head as last heard (sync.manifest, raised by pullAll): its blocks entry is whole once it has this. */
+  head?: number;
+}
+
+/**
+ * A note's whole content as this device last had it (`blocks` store): written when the note is open
+ * (DocumentView), by the device copy (deviceCopy.ts), or by prefetching on intent. `head` is the highest
+ * block seq it includes (sync.manifest / pullDocs / pullAll); entries from before the device copy lack it.
+ */
+export interface CachedBlocks {
+  documentId: string;
+  blocks: WireBlock[];
+  cachedAt: number;
+  head?: number;
+  /** Who wrote it: the device copy ("copy") can remove its own; an open note's ("view") is kept on clearing. */
+  by?: "copy" | "view";
+  /** The note's scope key when the device copy wrote it. */
+  scopeKey?: string;
 }
 
 interface FoleviDB extends DBSchema {
   meta: { key: string; value: unknown };
   syncState: { key: string; value: SyncState };
   documents: { key: string; value: CachedDocument; indexes: { by_scope: string } };
-  blocks: { key: string; value: { documentId: string; blocks: WireBlock[]; cachedAt: number } };
+  blocks: { key: string; value: CachedBlocks };
   uploads: { key: string; value: PendingUpload };
 }
 
@@ -70,6 +90,15 @@ export const syncBlockKeys = () => IDBKeyRange.bound(SYNC_BLOCK_PREFIX, `${SYNC_
  */
 export const OUTBOX_PREFIX = "outbox:";
 export const outboxKeys = () => IDBKeyRange.bound(OUTBOX_PREFIX, `${OUTBOX_PREFIX}\uffff`);
+
+/**
+ * The device copy (deviceCopy.ts): each scope's progress (`copy:<scope key>`), its folders and tags
+ * (`copyOrg:<scope key>`), and the attachments kept on this device (`copyFile:<file id>`, deviceFiles.ts).
+ */
+export const COPY_PREFIX = "copy:";
+export const COPY_ORG_PREFIX = "copyOrg:";
+export const COPY_FILE_PREFIX = "copyFile:";
+export const copyFileKeys = () => IDBKeyRange.bound(COPY_FILE_PREFIX, `${COPY_FILE_PREFIX}\uffff`);
 
 /** The last answer of a query seen on this device, for reading it offline (`query:<name>:<args>`; see queryCache.ts). */
 export const QUERY_PREFIX = "query:";
@@ -177,7 +206,7 @@ export async function deviceId(accountKey: string): Promise<string> {
 }
 
 /** localStorage keys an account's own (each ends in its profile id, or has it after the prefix). */
-const ACCOUNT_KEY_PREFIXES = ["folevi:tabs:", "folevi:home-href:", "folevi:context:", "folevi:e2ee:", "folevi:sync-journal:", "folevi:iphone-tabs:"];
+const ACCOUNT_KEY_PREFIXES = ["folevi:device-copy:", "folevi:tabs:", "folevi:home-href:", "folevi:context:", "folevi:e2ee:", "folevi:sync-journal:", "folevi:iphone-tabs:"];
 
 function deleteDatabase(name: string): Promise<void> {
   return new Promise<void>((resolve) => {
@@ -206,6 +235,12 @@ export async function clearAccountData(profileId: string, userId?: string | null
   const isReplica = (n: string) => n.startsWith(replicas) || (n.startsWith("folevi-e2ee-") && (n === `folevi-e2ee-personal_${profileId}` || n.endsWith(`_${profileId}`)));
   await Promise.all(all.filter((d) => d.name === own || (d.name && isReplica(d.name))).map((d) => deleteDatabase(d.name!)));
   if (!all.some((d) => d.name === own)) await deleteDatabase(own);
+  // The attachments its device copy downloaded (deviceFiles.ts).
+  try {
+    if (typeof caches !== "undefined") await caches.delete(`folevi-files-${profileId}`);
+  } catch {
+    /* no Cache Storage */
+  }
   try {
     if (localStorage.getItem("folevi:last-account") === profileId) localStorage.removeItem("folevi:last-account");
     const keys: string[] = [];

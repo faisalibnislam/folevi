@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { localDate } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useLocalClient } from "@/lib/convex/provider";
@@ -13,9 +13,11 @@ import { useLibraryControl, useLibraryStatusPick } from "@/lib/local/useLibrary"
 import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/components/ui/Toast";
 import { Shell } from "./Shell";
-import { DesktopQuickAdd } from "./DesktopQuickAdd";
 import { LibraryPlaceSync } from "@/components/places/LibraryPlaceSync";
 import { LockedLibrary } from "./LockedLibrary";
+
+// The Mac app's Quick Add window (its own page): loaded only there.
+const DesktopQuickAdd = lazy(() => import("./DesktopQuickAdd").then((m) => ({ default: m.DesktopQuickAdd })));
 
 /**
  * True when this device is joining a library other devices made: LibrarySetup said so, or (without its
@@ -127,5 +129,5 @@ export function LocalGate() {
     }
     return <FullPageMessage title="Opening your folio…" busy />;
   }
-  return <AppStateProvider profile={me.profile}>{route.name === "place-sync" ? <LibraryPlaceSync /> : route.name === "quick-add" ? <DesktopQuickAdd /> : <Shell />}</AppStateProvider>;
+  return <AppStateProvider profile={me.profile}>{route.name === "place-sync" ? <LibraryPlaceSync /> : route.name === "quick-add" ? <Suspense fallback={null}><DesktopQuickAdd /></Suspense> : <Shell />}</AppStateProvider>;
 }

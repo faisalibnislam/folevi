@@ -25,7 +25,6 @@ import { errorMessage } from "@/components/ui/Toast";
 import { SignOutButton, signOutNow } from "@/components/auth/SignOut";
 import { Shell } from "./Shell";
 import { DeviceLimitScreen } from "./DeviceLimit";
-import { DesktopQuickAdd } from "./DesktopQuickAdd";
 import { OauthConsent } from "./OauthConsent";
 import { ShareSheet } from "./ShareSheet";
 import { MigrationGate } from "@/components/migrate/MigrationGate";
@@ -42,6 +41,9 @@ import { PlacesReporter } from "@/components/places/PlacesReporter";
 import { PlaceSync, reportToParent } from "@/components/places/PlaceSync";
 import { PlaceMoveGate } from "@/components/places/MovePlaces";
 import { NativeGate } from "@/lib/engine/NativeGate";
+
+// The Mac app's Quick Add window (its own page): loaded only there.
+const DesktopQuickAdd = lazy(() => import("./DesktopQuickAdd").then((m) => ({ default: m.DesktopQuickAdd })));
 
 // Seen once per account, so it loads only for people who haven't finished it.
 const Onboarding = lazy(() => import("./Onboarding").then((m) => ({ default: m.Onboarding })));
@@ -225,7 +227,7 @@ export function AccountGate() {
         {route.name === "share" ? (
           <ShareSheet />
         ) : route.name === "quick-add" && snapshot.profile.onboardingStep === "done" ? (
-          <DesktopQuickAdd />
+          <Suspense fallback={null}><DesktopQuickAdd /></Suspense>
         ) : (
           <Shell />
         )}
@@ -326,7 +328,7 @@ function ReadyApp({
         ) : route === "oauth-consent" ? (
           <OauthConsent />
         ) : route === "quick-add" && profile.onboardingStep === "done" ? (
-          <DesktopQuickAdd />
+          <Suspense fallback={null}><DesktopQuickAdd /></Suspense>
         ) : route === "share" && profile.onboardingStep === "done" ? (
           <ShareSheet />
         ) : profile.onboardingStep !== "done" || route === "onboarding" ? (

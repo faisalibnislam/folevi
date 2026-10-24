@@ -151,7 +151,11 @@ test("iPhone shell polish: bar material, tab bar, Home, cards, focus rings, swip
   expect(push?.easing).toMatch(/^linear\(/);
   expect(push!.duration).toBeGreaterThan(450);
   expect(push!.duration).toBeLessThan(800);
-  expect(anims.some((a) => a.frames.includes("translateX(-30%)") && a.frames.includes("brightness(0.88)"))).toBe(true);
+  // (The dimming is a black layer fading to 12 % over it, not a filter on the whole screen: only transforms
+  // and opacities move, docs/IOS_PERFORMANCE.md.)
+  expect(anims.some((a) => a.frames.includes("translateX(-30%)"))).toBe(true);
+  expect(anims.some((a) => a.frames.includes('"opacity":0.12'))).toBe(true);
+  expect(anims.some((a) => /brightness|boxShadow/.test(a.frames))).toBe(false);
   await expect(page.getByRole("heading", { level: 1, name: "All notes" })).toBeVisible();
   const card = page.locator("main li a[href^='/d/']").first();
   await expect(card).toBeVisible();

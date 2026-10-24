@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { loadNaturalDates } from "../src/lib/nlDate";
+
+// The date parser loads on its own in the app (lib/nlDate.ts); here, before the first test.
+beforeAll(() => loadNaturalDates());
 import { hasTodoLines, matchOwner, meetingActionItems, ownerHint, proposalsFrom, resolveWhen, todoBlocksFor, wallClockNow, type ActionItemIn } from "../src/lib/ai/actionItems";
 
 // Wednesday 14 October 2026, 10:00 local time.

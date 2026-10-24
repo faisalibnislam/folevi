@@ -201,6 +201,19 @@ retention, daily aggregate metrics.
 - Visible status (Saved / Saving / Offline + pending count / Syncing / Conflict / Error) that only says
   Saved after server acknowledgement; its details popover lists the pages with changes still waiting
   on this device (`lib/hooks/usePendingDocs.ts`, also used for unsynced markers on document cards).
+- Notes made or changed offline show everywhere at once: lists read from the server (Home's recent notes, All
+  notes, Drafts, a folder, Starred, search, the tab strip) lay the engine's queued `document.create` /
+  `document.update` ops over the server's (or the cached) answer, by id (`lib/sync/localNotes.ts`,
+  `lib/hooks/useLocalNotes.ts`), marked "Waiting to sync" until the server has them. Search also reads the
+  cached summaries while offline. The note ids are ULIDs made on the device, so the create is idempotent.
+- Reconnecting: the engine and the outbox count as online only once Convex has taken the sign-in
+  (`useBackendAuthed` in `lib/convex/provider.tsx`), and on a device that holds an account's copy the token
+  fetch waits for the network instead of answering "no token" (which ran every query and mutation as nobody:
+  the queue was parked as "sign in again" and queries threw). A change still refused for want of a sign-in
+  is retried by itself, with backoff, once the backend has the sign-in again.
+- The iPhone and iPad apps show the same status for touch (`components/iphone/SyncStatusTouch.tsx`): beside
+  the bell on the iPhone's Home, Tasks and Calendar, in a note's bar while that note has changes waiting, and
+  on the iPad in the sidebar's top row as on the Mac.
 
 ## Localization
 

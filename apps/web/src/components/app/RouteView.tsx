@@ -6,12 +6,6 @@ import { useAppRouter } from "@/lib/app/router";
 import { DocumentBrowser } from "@/components/views/DocumentBrowser";
 import { TasksView } from "@/components/views/TasksView";
 import { CalendarView } from "@/components/views/CalendarView";
-import { ReviewView } from "@/components/views/ReviewView";
-import { ChangesView } from "@/components/views/ChangesView";
-import { SharedView } from "@/components/views/SharedView";
-import { HelpView } from "@/components/views/HelpView";
-import { InviteView } from "@/components/views/InviteView";
-import { ShareInviteView } from "@/components/views/ShareInviteView";
 import { FoldersIndex, TagsIndex } from "@/components/views/OrganizeIndex";
 import { HomeDashboard } from "@/components/views/HomeDashboard";
 import { ViewChrome } from "./Shell";
@@ -42,6 +36,20 @@ const SettingsView = lazy(() => import("@/components/views/SettingsView").then((
 // (docs/MAC_WEBKIT_PLAN.md "Memory", step 4).
 const AiView = lazy(() => import("@/components/views/AiView").then((m) => ({ default: m.AiView })));
 const GraphView = lazy(() => import("@/components/views/GraphView").then((m) => ({ default: m.GraphView })));
+// Pages a few people open now and then load when they're opened too: Changes and Reviews (each brings the
+// read-only drawing of every kind of block), Shared with Me, Help and the invitations. Kept out of the code
+// every launch reads before the first screen (docs/IOS_PERFORMANCE.md, "Startup").
+const ReviewView = lazy(() => import("@/components/views/ReviewView").then((m) => ({ default: m.ReviewView })));
+const ChangesView = lazy(() => import("@/components/views/ChangesView").then((m) => ({ default: m.ChangesView })));
+const SharedView = lazy(() => import("@/components/views/SharedView").then((m) => ({ default: m.SharedView })));
+const HelpView = lazy(() => import("@/components/views/HelpView").then((m) => ({ default: m.HelpView })));
+const InviteView = lazy(() => import("@/components/views/InviteView").then((m) => ({ default: m.InviteView })));
+const ShareInviteView = lazy(() => import("@/components/views/ShareInviteView").then((m) => ({ default: m.ShareInviteView })));
+
+/** A page whose code is still on its way: its frame and title, nothing in it yet. */
+function Later({ title, children }: { title: string; children: React.ReactNode }) {
+  return <Suspense fallback={<ViewChrome title={title}>{null}</ViewChrome>}>{children}</Suspense>;
+}
 if (typeof window !== "undefined" && window.location.pathname.startsWith("/d/")) void loadDocumentView();
 
 /** Where a note will be, while its code arrives: the same frame and placeholder lines DocumentView shows. */
@@ -126,14 +134,26 @@ function Routes() {
     case "calendar":
       return <CalendarView month={route.month} />;
     case "review":
-      return <ReviewView />;
+      return (
+        <Later title="Review">
+          <ReviewView />
+        </Later>
+      );
     case "changes":
-      return <ChangesView />;
+      return (
+        <Later title="Changes">
+          <ChangesView />
+        </Later>
+      );
     case "daily":
       // Daily Notes were retired; old links land on Home.
       return <RedirectHome />;
     case "shared":
-      return <SharedView />;
+      return (
+        <Later title="Shared with Me">
+          <SharedView />
+        </Later>
+      );
     case "settings":
       return (
         <Suspense fallback={<ViewChrome title="Settings">{null}</ViewChrome>}>
@@ -141,11 +161,23 @@ function Routes() {
         </Suspense>
       );
     case "help":
-      return <HelpView />;
+      return (
+        <Later title="Help">
+          <HelpView />
+        </Later>
+      );
     case "invite":
-      return <InviteView token={route.token} />;
+      return (
+        <Later title="Invitation">
+          <InviteView token={route.token} />
+        </Later>
+      );
     case "share-invite":
-      return <ShareInviteView token={route.token} />;
+      return (
+        <Later title="Invitation">
+          <ShareInviteView token={route.token} />
+        </Later>
+      );
     default:
       return (
         <ViewChrome title="Not found">

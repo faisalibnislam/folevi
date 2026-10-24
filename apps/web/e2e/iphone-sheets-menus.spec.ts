@@ -57,6 +57,19 @@ async function drag(page: Page, from: { x: number; y: number }, path: { x: numbe
   await cdp.detach();
 }
 
+/**
+ * Opens the menu of Home's tile for the folder called `name` the way a long press does (its contextmenu: on
+ * touch the tile's "…" is out of sight and takes no taps; iphone-folder-tap.spec.ts covers the hold itself),
+ * then chooses `item`.
+ */
+async function tileMenuChoose(page: Page, name: string, item: string) {
+  const tile = page.getByRole("list", { name: "Folders" }).getByRole("link", { name: new RegExp(`^${name}, `) }).first();
+  await tile.scrollIntoViewIfNeeded();
+  const b = (await tile.boundingBox())!;
+  await tile.dispatchEvent("contextmenu", { bubbles: true, cancelable: true, clientX: b.x + b.width / 2, clientY: b.y + b.height / 2 });
+  await page.getByRole("menu", { name: `Folder options for ${name}` }).getByRole("menuitem", { name: item }).click();
+}
+
 let n = 0;
 /** An iPhone in the app, on a library of its own (the built-in interface in local mode). */
 async function iphone(browser: Browser, testInfo: TestInfo) {
@@ -141,8 +154,7 @@ test("iPhone: menus, sheets, native alerts and Quick add @local", async ({ brows
   const folders = page.getByRole("list", { name: "Folders" });
   await expect(folders.getByText("Field notes", { exact: true })).toBeVisible();
   await page.evaluate(() => ((window as unknown as { __answer: unknown }).__answer = { id: "confirm", text: "  Field journal " }));
-  await page.locator('button[aria-label="Folder options for Field notes"]').first().click();
-  await page.getByRole("menu", { name: "Folder options for Field notes" }).getByRole("menuitem", { name: "Rename…" }).click();
+  await tileMenuChoose(page, "Field notes", "Rename…");
   await expect(folders.getByText("Field journal", { exact: true })).toBeVisible();
   const rename = (await calls(page)).find((c) => c.method === "alert") as { arg: { title: string; field?: { value: string } } };
   expect(rename.arg.title).toBe("Rename folder");
@@ -152,8 +164,7 @@ test("iPhone: menus, sheets, native alerts and Quick add @local", async ({ brows
 
   // Delete folder…: the alert, destructive, and a warning felt when it's done.
   await page.evaluate(() => ((window as unknown as { __answer: unknown }).__answer = { id: "confirm" }));
-  await page.locator('button[aria-label="Folder options for Field journal"]').first().click();
-  await page.getByRole("menu", { name: "Folder options for Field journal" }).getByRole("menuitem", { name: "Delete folder…" }).click();
+  await tileMenuChoose(page, "Field journal", "Delete folder…");
   await expect(page.getByText("Folder deleted")).toBeVisible();
   const asked = (await calls(page)).filter((c) => c.method === "alert").at(-1) as { arg: { title: string; actions: { id: string; title: string; style?: string }[] } };
   expect(asked.arg.title).toBe("Delete “Field journal”?");

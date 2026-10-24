@@ -21,7 +21,9 @@ self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      for (const key of await caches.keys()) if (key.startsWith("folevi-") && key !== STATIC && key !== SHELL && key !== SHARE) await caches.delete(key);
+      // The device copy's attachments (folevi-files-<account>) are the app's own data, not this worker's cache:
+      // signing out removes them (lib/sync/db.ts), not an update of the worker.
+      for (const key of await caches.keys()) if (key.startsWith("folevi-") && !key.startsWith("folevi-files-") && key !== STATIC && key !== SHELL && key !== SHARE) await caches.delete(key);
       await self.clients.claim();
     })(),
   );

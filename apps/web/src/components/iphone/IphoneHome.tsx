@@ -9,6 +9,8 @@ import { useAppState } from "@/lib/app/state";
 import { useFolderTree } from "@/lib/app/folders";
 import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
 import { overlayFolderIndex } from "@/lib/sync/overlays";
+import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
+import { WaitingToSync, waitingOf } from "@/components/sync/WaitingToSync";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { ageText } from "@/lib/format";
 import { useMinute } from "@/lib/hooks/useMinute";
@@ -40,7 +42,18 @@ function RecentCard({ doc }: { doc: Summary }) {
         }}
       >
         <AppLink href={`/d/${doc.id}`} className={`${NOTE_CARD_LINK} active:scale-[0.97]`}>
-          <NoteCardFace title={doc.title} excerpt={doc.excerpt} preview={doc.preview} cover={doc.cover} style={doc.style} createdAt={doc.createdAt} time={ageText(doc.updatedAt)} starred={doc.starred} folder={doc.homeFolder} />
+          <NoteCardFace
+            title={doc.title}
+            excerpt={doc.excerpt}
+            preview={doc.preview}
+            cover={doc.cover}
+            style={doc.style}
+            createdAt={doc.createdAt}
+            time={ageText(doc.updatedAt)}
+            starred={doc.starred}
+            folder={doc.homeFolder}
+            extra={waitingOf(doc) ? <WaitingToSync state={waitingOf(doc)} /> : undefined}
+          />
         </AppLink>
       </div>
       {ctx ? <NoteContextMenu doc={doc} view="all" recent at={ctx} onDone={() => setCtx(null)} /> : null}
@@ -78,8 +91,12 @@ export function IphoneHome() {
   const { openNewFolder } = useIphoneActions();
   const { navigate } = useAppRouter();
   const aiOn = useAiEnabled();
-  const recent = useQuery(api.documents.recentNotes, { scope, limit: CAROUSEL });
-  const starred = useQuery(api.documents.list, { scope, view: "starred", sort: "updated", paginationOpts: { numItems: SHOWN + 1, cursor: null } });
+  // As last seen on this device while there's no live answer (offline), with notes made or renamed here laid
+  // over it: a note written offline is in Recent notes at once, marked as waiting to sync.
+  const recent = useNotesWithLocal(useOfflineQuery(api.documents.recentNotes, { scope, limit: CAROUSEL }), { include: "recent", byUpdated: true, limit: CAROUSEL });
+  const starredList = useOfflineQuery(api.documents.list, { scope, view: "starred", sort: "updated", paginationOpts: { numItems: SHOWN + 1, cursor: null } });
+  const starredPage = useNotesWithLocal(starredList?.page, { include: "none" });
+  const starred = starredList && starredPage ? { ...starredList, page: starredPage } : starredList;
   const drafts = useQuery(api.organization.draftCount, { scope });
   // Local mode has no Shared with Me or Changes (docs/LOCAL_MODE_PLAN.md §5.2).
   const caps = useCapabilities();

@@ -9,7 +9,8 @@ import { SyncEngine } from "@/lib/sync/engine";
 import { Outbox } from "@/lib/sync/outbox";
 import { deviceId as loadDeviceId, memoryLocalDbIfPublic } from "@/lib/sync/db";
 import { Uploader } from "@/lib/sync/uploads";
-import { useAuthPhase } from "@/lib/convex/provider";
+import { useAuthPhase, useBackendAuthed } from "@/lib/convex/provider";
+import { useEngineSelector } from "@/lib/hooks/useEngine";
 import { activeRouter } from "@/lib/e2ee/router/active";
 import { useBackendMode } from "@/lib/mode";
 import { saveAccountSnapshot } from "./offlineSnapshot";
@@ -209,10 +210,19 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
   const online = useOnline();
   const connection = useConvexConnectionState();
   const authPhase = useAuthPhase();
+  const authed = useBackendAuthed();
   // Offline too when the server can't be reached while the device has a network: the session check got no
   // answer, or the backend never connected and keeps retrying (a cold start against an unreachable server).
+  // Not online either until the backend has taken the sign-in: after an offline start or a reconnect the socket
+  // is back before the token is, and what's sent before then is refused as "unauthenticated" (which used to
+  // park the queue until the person signed in again, so notes written offline never reached the server). Once
+  // it has, the backend is reachable whatever the session check last said (it may not ask again until the page
+  // is next focused).
   // In local mode the engine and outbox drain to the library on this device, network or not.
-  const effectivelyOnline = local || (online && authPhase !== "offline" && (connection.isWebSocketConnected || (!connection.hasEverConnected && connection.connectionRetries === 0)));
+  const effectivelyOnline =
+    local || (online && authed && (authPhase !== "offline" || connection.isWebSocketConnected) && (connection.isWebSocketConnected || (!connection.hasEverConnected && connection.connectionRetries === 0)));
+  const onlineRef = useRef(effectivelyOnline);
+  onlineRef.current = effectivelyOnline;
   const timeZone = profile.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const today = useToday(timeZone);
   const [appearance, setAppearanceState] = useState(profile.appearance);
@@ -276,6 +286,10 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
       const up = new Uploader(convex, profile.id, e, (message) => window.dispatchEvent(new CustomEvent("folevi:error", { detail: message })));
       uploading = up;
       setUploader(up);
+      // The engine opens as the device's network says; what the backend says decides (before anything queued is
+      // sent: an offline start must not push into a socket that isn't signed in yet).
+      e.setOnline(onlineRef.current);
+      o.setOnline(onlineRef.current);
       e.scheduleFlush(0);
       up.kick(500);
     })();
@@ -295,6 +309,31 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
     outbox?.setOnline(effectivelyOnline);
     if (effectivelyOnline) uploader?.kick(0);
   }, [engine, outbox, uploader, effectivelyOnline]);
+
+  // A change refused for want of a sign-in (sent in the moment before the backend had the token again, or as
+  // the token ran out) while the backend now has it: what waits goes again by itself, a little later each time
+  // it's refused again, instead of waiting for the person to press Retry (the iPhone and iPad had no Retry).
+  const engineAuth = useEngineSelector(engine, (st) => st.authRequired);
+  const outboxAuth = useSyncExternalStore(
+    (cb) => (outbox ? outbox.subscribe(cb) : () => undefined),
+    () => outbox?.authRequired ?? false,
+    () => false,
+  );
+  const authRetry = useRef(0);
+  useEffect(() => {
+    if (local || !effectivelyOnline) return;
+    if (!engineAuth && !outboxAuth) {
+      authRetry.current = 0;
+      return;
+    }
+    const delay = Math.min(2000 * 2 ** authRetry.current, 60_000);
+    const timer = setTimeout(() => {
+      authRetry.current++;
+      if (engine?.state.authRequired) engine.authRefreshed();
+      if (outbox?.authRequired) outbox.authRefreshed();
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [engine, outbox, engineAuth, outboxAuth, effectivelyOnline, local]);
 
   // New attachments (Editor.insertFiles) start uploading right away, not on the next reload/reconnect.
   useEffect(() => {

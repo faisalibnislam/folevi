@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, type LucideIcon } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
@@ -32,6 +32,7 @@ import { TemplateTile } from "@/components/ui/TemplateIcon";
 import { DocumentCardPreview, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderBadge } from "./FolderBadge";
 import { pendingByDocument, type PendingDocument } from "@/lib/hooks/usePendingDocs";
+import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
 import { Select } from "@/components/ui/Select";
 import { MoveToFolderDialog } from "./MoveToFolderDialog";
 import { CopyToDialog, useCanCopyElsewhere } from "./CopyToDialog";
@@ -39,17 +40,20 @@ import { SelectionBar, type SelectionAction } from "./SelectionBar";
 import { useCardSelection } from "./useCardSelection";
 import { useNoteActions } from "./noteActions";
 import { useAiEnabled } from "@/components/ai/useAi";
-import { AiGenerateDialog } from "@/components/ai/AiGenerateDialog";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useIphoneApp } from "@/lib/iphone";
 import { IphoneNoteList } from "@/components/iphone/NoteList";
+
+// Foli AI's "Generate a template" brings the read-only drawing of every block (its preview): it loads the first
+// time it's opened, not with every list (docs/IOS_PERFORMANCE.md, "Startup").
+const AiGenerateDialog = lazy(() => import("@/components/ai/AiGenerateDialog").then((m) => ({ default: m.AiGenerateDialog })));
 
 /** Marks a page with edits on this device the server hasn't confirmed yet. */
 function UnsyncedMarker({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-1 text-[11px] font-medium text-heading ${className}`} title="Changes on this device haven’t synced yet">
       <span className="inline-block h-1.5 w-1.5 rounded-tiny bg-heading" aria-hidden />
-      <span>Not synced</span>
+      <span>Waiting to sync</span>
     </span>
   );
 }
@@ -137,6 +141,32 @@ export function contextPoint(e: React.MouseEvent): { x: number; y: number } {
   return { x: r.left + 16, y: r.top + 16 };
 }
 
+type KeptRow = { kind?: string; parentDocumentId?: string | null; archivedAt?: number | null; deletedAt?: number | null };
+
+/**
+ * Which notes kept on this device a view shows before (or without) the server's answer, as documents.list
+ * filters them; null where the device can't tell (tags, stars, templates, a manual order) and it waits for the
+ * server, unless offline (then the kept rows, as before).
+ */
+function cachedViewFilter(view: View, sort: Sort, online: boolean): ((d: KeptRow) => boolean) | null {
+  const page = (d: KeptRow) => d.kind === "document" || d.kind === "daily" || d.kind === undefined;
+  const live = (d: KeptRow) => !d.deletedAt && !d.archivedAt;
+  const ordered = sort === "updated" || sort === "created";
+  switch (view) {
+    case "all":
+    case "folder":
+      return ordered || !online ? (d) => page(d) && live(d) && !d.parentDocumentId : null;
+    case "unsorted":
+      return ordered || !online ? (d) => page(d) && live(d) && !d.parentDocumentId && !(d as { folderId?: string | null }).folderId : null;
+    case "trash":
+      return online ? null : (d) => Boolean(d.deletedAt) && d.kind !== "synced";
+    case "archive":
+      return online ? null : (d) => Boolean(d.archivedAt) && !d.deletedAt;
+    default:
+      return online ? null : (d) => live(d);
+  }
+}
+
 function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
   const { scope, scopeKey, profile, online, engine, outbox, canEdit } = useAppState();
   const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
@@ -153,6 +183,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   // Templates can be generated with AI (where AI is on and included).
   const aiOn = useAiEnabled();
   const [generating, setGenerating] = useState(false);
+  const [generated, setGenerated] = useState(false);
+  if (generating && !generated) setGenerated(true);
   const createDocument = useCreateDocument();
   const emptyTrash = useMutation(api.documents.emptyTrash);
   const toast = useToast();
@@ -185,7 +217,9 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         const db = await localDb(profile.id);
         const tx = db.transaction("documents", "readwrite");
         for (const [d] of changed) {
-          await tx.store.put({ id: d.id, scopeKey, title: d.title, icon: d.icon, kind: d.kind, updatedAt: d.updatedAt, excerpt: d.excerpt, parentDocumentId: d.parentDocumentId, cachedAt: Date.now(), summary: d });
+          // The device copy's bookkeeping on the row (copyGen, head) stays.
+          const prev = await tx.store.get(d.id);
+          await tx.store.put({ ...prev, id: d.id, scopeKey, title: d.title, icon: d.icon, kind: d.kind, updatedAt: d.updatedAt, excerpt: d.excerpt, parentDocumentId: d.parentDocumentId, cachedAt: Date.now(), summary: d });
         }
         await tx.done;
         for (const [d, json] of changed) written.set(d.id, json);
@@ -194,14 +228,23 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     return () => clearTimeout(timer);
   }, [results, status, view, profile.id, scopeKey]);
 
+  // Offline, or before the server's first page arrives: the notes this device keeps (the device copy fills every
+  // note of the scope, lib/sync/deviceCopy.ts), filtered as the server filters this view.
+  const fromDevice = useMemo(() => cachedViewFilter(view, sort, online), [view, sort, online]);
   useEffect(() => {
-    if (status !== "LoadingFirstPage" || online) return;
+    if (status !== "LoadingFirstPage" || !fromDevice) return;
+    let live = true;
     void (async () => {
       const db = await localDb(profile.id);
       const docs = await db.getAllFromIndex("documents", "by_scope", scopeKey);
-      setCached(docs.map((d) => d.summary as Summary).sort((a, b) => b.updatedAt - a.updatedAt));
+      const rows = docs.map((d) => ({ starred: false, tags: [], homeFolder: null, ...(d.summary as object) }) as unknown as Summary).filter(fromDevice);
+      const by = sort === "created" ? (s: Summary) => (s as { createdAt?: number }).createdAt ?? s.updatedAt : (s: Summary) => s.updatedAt;
+      if (live) setCached(rows.sort((a, b) => by(b) - by(a)));
     })();
-  }, [status, online, profile.id, scopeKey]);
+    return () => {
+      live = false;
+    };
+  }, [status, fromDevice, profile.id, scopeKey, sort]);
   // Offline, the saved copies come a page at a time too, like the live list.
   const [cachedShown, setCachedShown] = useState(PAGE_SIZE);
 
@@ -216,10 +259,19 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     const placed = moved.size ? cached.map((d) => (moved.has(d.id) ? { ...d, folderId: moved.get(d.id) ?? null } : d)) : cached;
     return view === "folder" ? placed.filter((d) => d.folderId === folderId) : placed;
   }, [cached, waiting, view, folderId]);
-  const docs = useMemo(() => (fromCache && kept ? kept.slice(0, cachedShown) : results), [fromCache, kept, cachedShown, results]);
+  const served = useMemo(() => (fromCache && kept ? kept.slice(0, cachedShown) : results), [fromCache, kept, cachedShown, results]);
+  // Notes made (or renamed, or moved) on this device that the server doesn't have yet show in their lists at
+  // once, marked as waiting to sync (lib/sync/localNotes.ts).
+  const offlineNoList = status === "LoadingFirstPage" && !cached && !online;
+  const docs =
+    useNotesWithLocal(offlineNoList ? undefined : served, {
+      include: view === "all" ? "all" : view === "unsorted" ? "drafts" : view === "folder" ? "folder" : "none",
+      folderId,
+      byUpdated: sort === "updated",
+    }) ?? served;
   const moreCached = fromCache && (kept?.length ?? 0) > cachedShown;
   const canLoadMore = status === "CanLoadMore" || moreCached;
-  const loading = status === "LoadingFirstPage" && !cached;
+  const loading = status === "LoadingFirstPage" && !cached && docs.length === 0;
   const canArrange = sort === "manual" && view !== "trash";
   // Only the pages with unsynced work, compared by value: this list shouldn't re-render on every keystroke.
   const pendingDocs = useEngineSelector(engine, pendingByDocument, samePending);
@@ -456,7 +508,11 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         }
       >
         {dialogs}
-        {view === "templates" && aiOn ? <AiGenerateDialog open={generating} onClose={() => setGenerating(false)} kind="template" /> : null}
+        {view === "templates" && aiOn && generated ? (
+          <Suspense fallback={null}>
+            <AiGenerateDialog open={generating} onClose={() => setGenerating(false)} kind="template" />
+          </Suspense>
+        ) : null}
       </IphoneNoteList>
     );
   }
@@ -545,7 +601,11 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               <Plus size={14} aria-hidden /> New template
             </Button>
           ) : null}
-          {view === "templates" && aiOn ? <AiGenerateDialog open={generating} onClose={() => setGenerating(false)} kind="template" /> : null}
+          {view === "templates" && aiOn && generated ? (
+          <Suspense fallback={null}>
+            <AiGenerateDialog open={generating} onClose={() => setGenerating(false)} kind="template" />
+          </Suspense>
+        ) : null}
         </div>
 
         {subfolders.length ? (

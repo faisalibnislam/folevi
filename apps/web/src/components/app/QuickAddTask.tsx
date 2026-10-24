@@ -4,7 +4,7 @@ import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useState, type KeyboardEvent } from "react";
 import { Inbox, X, FileText, CalendarDays } from "lucide-react";
-import { naturalDateLabel, parseNaturalDate } from "@/lib/nlDate";
+import { naturalDateLabel, parseNaturalDate, useNaturalDatesReady } from "@/lib/nlDate";
 import { describeRepeat, parseRepeatPhrase, repeatProps, stepOccurrence, type RepeatRule } from "@folevi/editor-schema";
 import { Repeat } from "lucide-react";
 import type { WireScope } from "@folevi/editor-schema";
@@ -72,11 +72,13 @@ export function useQuickAdd({ onClose, currentDoc, onAdded, initialDue }: { onCl
     return r && r.text !== repeatKept && r.rest ? r : null;
   }, [title, repeatKept]);
   const text = repeat ? repeat.rest : title;
+  // (Read again once the date parser has loaded: it arrives a moment after the app starts.)
+  const datesReady = useNaturalDatesReady();
   const parsed = useMemo(() => {
-    if (due) return null;
+    if (due || !datesReady) return null;
     const p = parseNaturalDate(text);
     return p && p.text !== keptAsText && p.rest ? p : null;
-  }, [text, due, keptAsText]);
+  }, [text, due, keptAsText, datesReady]);
   // A repeat with no date written starts on its first day from today (today itself when it fits).
   const firstDate = (rule: RepeatRule) => {
     if (rule.repeat === "monthly" || rule.repeat === "yearly") return today;

@@ -177,12 +177,16 @@ describe("e2ee.pull after WP7's integration", () => {
     expect(memberRemoved.map((r) => r.id).sort()).toEqual([open, tagId].sort());
   });
 
-  test("a Standard space without encryption writes no tombstones", async () => {
+  test("a Standard space without encryption tells devices through sync.pullAll, not e2ee.pull", async () => {
+    // Since the device copy (docs/NATIVE_APP_PLAN.md §11) every space writes tombstones; a space that never set
+    // encryption up still has nothing for e2ee.pull.
     const t = setup();
     const p = await e2eePerson(t, "pull-removed-standard@example.com");
     const { id: tagId } = await p.as.mutation(api.organization.createTag, { scope: PERSONAL, name: "plain" });
     await p.as.mutation(api.organization.deleteTag, { tagId });
-    expect(await t.run(async (ctx) => await ctx.db.query("e2eeTombstones").collect())).toEqual([]);
+    expect((await t.run(async (ctx) => await ctx.db.query("e2eeTombstones").collect())).map((r) => r.publicId)).toEqual([tagId]);
+    expect((await p.as.query(api.e2ee.pull.pull, { scope: PERSONAL, cursor: 0 })).removed).toEqual([]);
+    expect((await p.as.query(api.sync.pullAll, { scope: PERSONAL, cursor: 0, limit: 500 })).removed).toContainEqual({ kind: "tag", id: tagId });
   });
 
   test("a file committed or re-wrapped moves its note's seq, so the note comes again with the file", async () => {

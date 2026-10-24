@@ -50,7 +50,12 @@ export interface FakeShellConfig {
    * Foli AI on this pretend Mac (WP11): whether Apple's model is on. Requests get scripted answers (search
    * terms, a cited answer, a title, a rewrite) streamed in pieces, so the flows can be driven without a model.
    */
-  ai?: { onDevice?: boolean };
+  ai?: {
+    onDevice?: boolean;
+    /** The cited answer's text instead of the usual one-liner, and the pause between its pieces (default 15 ms). */
+    answer?: string;
+    pieceMs?: number;
+  };
 }
 
 /** How the FakeShell answers each library kind (WP10's setup screens; the Mac's service.ts, cloud/). */
@@ -527,7 +532,7 @@ export function installFakeShell(cfg: FakeShellConfig) {
           : system.includes("name conversations")
             ? "A local chat"
             : system.includes("Answer questions using the person's notes")
-              ? `Here is what your notes say, from this Mac [1].${system.includes("[[follow-ups]]") ? '\n[[follow-ups]] ["What else is there?"]' : ""}`
+              ? `${cfg.ai?.answer ?? "Here is what your notes say, from this Mac [1]."}${system.includes("[[follow-ups]]") ? '\n[[follow-ups]] ["What else is there?"]' : ""}`
               : system.includes("writing assistant")
                 ? "Rewritten on this Mac."
                 : "{}";
@@ -537,7 +542,7 @@ export function installFakeShell(cfg: FakeShellConfig) {
           let sent = "";
           for (const p of pieces) {
             if (cancelled) return { text: sent, stopReason: "cancelled" as const };
-            await new Promise((r) => setTimeout(r, 15));
+            await new Promise((r) => setTimeout(r, system.includes("Answer questions using the person's notes") ? (cfg.ai?.pieceMs ?? 15) : 15));
             sent += p;
             onChunk(p);
           }

@@ -374,7 +374,7 @@ whatever holds the keyboard on the note page.
 Stand-ins live in `apps/native-kit/Sources/FoleviScreens/Intents/PendingContractN10.swift` with the same names and
 shapes. Native screens work without the open ones (they hide or fall back as each entry says).
 
-### R10.1 Codegen: `?: T | null` fields must be able to send `null` (bug) **open**
+### R10.1 Codegen: `?: T | null` fields must be able to send `null` (bug) **added** (the generator emits `Patch<T>` (`.keep`, `.clear`, `.set(value)`) for every `?: T | null` field, encoded as left out / `null` / the value and read back the same way. The memberwise initializers and spec factories still take `T?` (nil: left out), so every call site compiles as before; to clear, set the property: `var a = TaskUpdateArgs(id: id); a.dueDate = .clear; client.command(Commands.TaskUpdate(a))`. Swift test: `FoleviEngineTests/PatchTests.swift`)
 
 `TaskUpdateArgs.dueDate`, `dueTime`, `assigneeId` and `reminderAt` are `?: T | null` ("left out: unchanged; null:
 clear"). The generated Swift struct has plain optionals with synthesized `Codable`, so nil is left out and "no date",

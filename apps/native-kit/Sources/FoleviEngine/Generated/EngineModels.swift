@@ -2,6 +2,47 @@
 // Regenerate with `pnpm engine:gen`; CI fails when this file is stale.
 import Foundation
 
+/// A field that may be left out (unchanged), sent as null (cleared) or sent with a value: protocol.ts's `x?: T | null`.
+/// The memberwise initializers take `T?` (nil: left out); set `.clear` on the property to send null.
+public enum Patch<Wrapped: Codable & Hashable & Sendable>: Hashable, Sendable, ExpressibleByNilLiteral {
+    case keep
+    case clear
+    case set(Wrapped)
+
+    /// nil: left out; a value: sent.
+    public init(_ value: Wrapped?) {
+        self = value.map { .set($0) } ?? .keep
+    }
+
+    public init(nilLiteral: ()) {
+        self = .keep
+    }
+
+    /// The value when it's set.
+    public var value: Wrapped? {
+        if case .set(let v) = self { return v }
+        return nil
+    }
+}
+
+public extension KeyedEncodingContainer {
+    mutating func encodePatch<T>(_ patch: Patch<T>, forKey key: Key) throws {
+        switch patch {
+        case .keep: break
+        case .clear: try encodeNil(forKey: key)
+        case .set(let v): try encode(v, forKey: key)
+        }
+    }
+}
+
+public extension KeyedDecodingContainer {
+    func decodePatch<T>(_ type: T.Type, forKey key: Key) throws -> Patch<T> {
+        guard contains(key) else { return .keep }
+        if try decodeNil(forKey: key) { return .clear }
+        return .set(try decode(T.self, forKey: key))
+    }
+}
+
 /// What the host sets as `window.__foleviNativeChrome` before the first paint.
 public struct NativeChromeMarker: Codable, Hashable, Sendable {
     public enum Platform: String, Codable, Hashable, Sendable, CaseIterable {
@@ -14,12 +55,32 @@ public struct NativeChromeMarker: Codable, Hashable, Sendable {
     /// The protocol the host speaks; must equal `PROTOCOL_VERSION`.
     public var `protocol`: Int
     /// The place this Page View is bound to (`acct:<user id>` or `library`); messages naming another are refused.
-    public var place: String?
+    public var place: Patch<String>
+
+    enum CodingKeys: String, CodingKey {
+        case platform
+        case `protocol`
+        case place
+    }
 
     public init(platform: Platform, protocol: Int, place: String? = nil) {
         self.platform = platform
         self.protocol = `protocol`
-        self.place = place
+        self.place = Patch(place)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(platform, forKey: .platform)
+        try c.encode(`protocol`, forKey: .`protocol`)
+        try c.encodePatch(place, forKey: .place)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.platform = try c.decode(Platform.self, forKey: .platform)
+        self.protocol = try c.decode(Int.self, forKey: .`protocol`)
+        self.place = try c.decodePatch(String.self, forKey: .place)
     }
 }
 
@@ -1067,12 +1128,12 @@ public struct SpaceSwitchResult: Codable, Hashable, Sendable {
 public struct NoteCreateArgs: Codable, Hashable, Sendable {
     public var space: SpaceRef?
     /// A folder to file it in; null or left out for Drafts.
-    public var folderId: String?
+    public var folderId: Patch<String>
     /// Makes it a page inside another note.
-    public var parentId: String?
+    public var parentId: Patch<String>
     public var title: String?
     /// A template: `builtin:<key>` or a template note's id.
-    public var templateId: String?
+    public var templateId: Patch<String>
     /// Open it in the note page straight away (default false: native opens it with the zoom).
     public var `open`: Bool?
     /// Revision 8 (R8.5): a note made from text (Services, Shortcuts, "New note with text"): the first line becomes the
@@ -1080,14 +1141,46 @@ public struct NoteCreateArgs: Codable, Hashable, Sendable {
     /// are ignored then.
     public var text: String?
 
+    enum CodingKeys: String, CodingKey {
+        case space
+        case folderId
+        case parentId
+        case title
+        case templateId
+        case `open`
+        case text
+    }
+
     public init(space: SpaceRef? = nil, folderId: String? = nil, parentId: String? = nil, title: String? = nil, templateId: String? = nil, open: Bool? = nil, text: String? = nil) {
         self.space = space
-        self.folderId = folderId
-        self.parentId = parentId
+        self.folderId = Patch(folderId)
+        self.parentId = Patch(parentId)
         self.title = title
-        self.templateId = templateId
+        self.templateId = Patch(templateId)
         self.open = `open`
         self.text = text
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(space, forKey: .space)
+        try c.encodePatch(folderId, forKey: .folderId)
+        try c.encodePatch(parentId, forKey: .parentId)
+        try c.encodeIfPresent(title, forKey: .title)
+        try c.encodePatch(templateId, forKey: .templateId)
+        try c.encodeIfPresent(`open`, forKey: .`open`)
+        try c.encodeIfPresent(text, forKey: .text)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.space = try c.decodeIfPresent(SpaceRef.self, forKey: .space)
+        self.folderId = try c.decodePatch(String.self, forKey: .folderId)
+        self.parentId = try c.decodePatch(String.self, forKey: .parentId)
+        self.title = try c.decodeIfPresent(String.self, forKey: .title)
+        self.templateId = try c.decodePatch(String.self, forKey: .templateId)
+        self.open = try c.decodeIfPresent(Bool.self, forKey: .`open`)
+        self.text = try c.decodeIfPresent(String.self, forKey: .text)
     }
 }
 
@@ -1171,14 +1264,37 @@ public struct HiddenResult: Codable, Hashable, Sendable {
 public struct FolderCreateArgs: Codable, Hashable, Sendable {
     public var space: SpaceRef?
     public var name: String
-    public var parentId: String?
-    public var color: String?
+    public var parentId: Patch<String>
+    public var color: Patch<String>
+
+    enum CodingKeys: String, CodingKey {
+        case space
+        case name
+        case parentId
+        case color
+    }
 
     public init(space: SpaceRef? = nil, name: String, parentId: String? = nil, color: String? = nil) {
         self.space = space
         self.name = name
-        self.parentId = parentId
-        self.color = color
+        self.parentId = Patch(parentId)
+        self.color = Patch(color)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(space, forKey: .space)
+        try c.encode(name, forKey: .name)
+        try c.encodePatch(parentId, forKey: .parentId)
+        try c.encodePatch(color, forKey: .color)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.space = try c.decodeIfPresent(SpaceRef.self, forKey: .space)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.parentId = try c.decodePatch(String.self, forKey: .parentId)
+        self.color = try c.decodePatch(String.self, forKey: .color)
     }
 }
 
@@ -1860,12 +1976,32 @@ public struct NoteCopyToArgs: Codable, Hashable, Sendable {
     /// Where the copies go: Personal or a workspace of this place.
     public var space: SpaceRef
     /// A folder there; null or left out: Drafts.
-    public var folderId: String?
+    public var folderId: Patch<String>
+
+    enum CodingKeys: String, CodingKey {
+        case ids
+        case space
+        case folderId
+    }
 
     public init(ids: [String], space: SpaceRef, folderId: String? = nil) {
         self.ids = ids
         self.space = space
-        self.folderId = folderId
+        self.folderId = Patch(folderId)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(ids, forKey: .ids)
+        try c.encode(space, forKey: .space)
+        try c.encodePatch(folderId, forKey: .folderId)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.ids = try c.decode([String].self, forKey: .ids)
+        self.space = try c.decode(SpaceRef.self, forKey: .space)
+        self.folderId = try c.decodePatch(String.self, forKey: .folderId)
     }
 }
 
@@ -1996,11 +2132,28 @@ public struct BuiltInTemplatesValue: Codable, Hashable, Sendable {
 public struct FolderCardsArgs: Codable, Hashable, Sendable {
     public var space: SpaceRef?
     /// Whose subfolders; null or left out: the top level.
-    public var parentId: String?
+    public var parentId: Patch<String>
+
+    enum CodingKeys: String, CodingKey {
+        case space
+        case parentId
+    }
 
     public init(space: SpaceRef? = nil, parentId: String? = nil) {
         self.space = space
-        self.parentId = parentId
+        self.parentId = Patch(parentId)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(space, forKey: .space)
+        try c.encodePatch(parentId, forKey: .parentId)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.space = try c.decodeIfPresent(SpaceRef.self, forKey: .space)
+        self.parentId = try c.decodePatch(String.self, forKey: .parentId)
     }
 }
 
@@ -2702,20 +2855,52 @@ public struct TaskCreateArgs: Codable, Hashable, Sendable {
     /// The note it goes in; left out: the Inbox page.
     public var noteId: String?
     /// Overrides what's read from the text.
-    public var dueDate: String?
-    public var dueTime: String?
+    public var dueDate: Patch<String>
+    public var dueTime: Patch<String>
     public var priority: Priority?
     /// Keep the date (and repeat) words as text instead of reading them.
     public var keepText: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case text
+        case space
+        case noteId
+        case dueDate
+        case dueTime
+        case priority
+        case keepText
+    }
 
     public init(text: String, space: SpaceRef? = nil, noteId: String? = nil, dueDate: String? = nil, dueTime: String? = nil, priority: Priority? = nil, keepText: Bool? = nil) {
         self.text = text
         self.space = space
         self.noteId = noteId
-        self.dueDate = dueDate
-        self.dueTime = dueTime
+        self.dueDate = Patch(dueDate)
+        self.dueTime = Patch(dueTime)
         self.priority = priority
         self.keepText = keepText
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(text, forKey: .text)
+        try c.encodeIfPresent(space, forKey: .space)
+        try c.encodeIfPresent(noteId, forKey: .noteId)
+        try c.encodePatch(dueDate, forKey: .dueDate)
+        try c.encodePatch(dueTime, forKey: .dueTime)
+        try c.encodeIfPresent(priority, forKey: .priority)
+        try c.encodeIfPresent(keepText, forKey: .keepText)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.text = try c.decode(String.self, forKey: .text)
+        self.space = try c.decodeIfPresent(SpaceRef.self, forKey: .space)
+        self.noteId = try c.decodeIfPresent(String.self, forKey: .noteId)
+        self.dueDate = try c.decodePatch(String.self, forKey: .dueDate)
+        self.dueTime = try c.decodePatch(String.self, forKey: .dueTime)
+        self.priority = try c.decodeIfPresent(Priority.self, forKey: .priority)
+        self.keepText = try c.decodeIfPresent(Bool.self, forKey: .keepText)
     }
 }
 
@@ -2744,21 +2929,56 @@ public struct TaskUpdateArgs: Codable, Hashable, Sendable {
     public var id: String
     public var checked: Bool?
     public var canceled: Bool?
-    public var dueDate: String?
-    public var dueTime: String?
+    public var dueDate: Patch<String>
+    public var dueTime: Patch<String>
     public var priority: Priority?
-    public var assigneeId: String?
-    public var reminderAt: Double?
+    public var assigneeId: Patch<String>
+    public var reminderAt: Patch<Double>
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case checked
+        case canceled
+        case dueDate
+        case dueTime
+        case priority
+        case assigneeId
+        case reminderAt
+    }
 
     public init(id: String, checked: Bool? = nil, canceled: Bool? = nil, dueDate: String? = nil, dueTime: String? = nil, priority: Priority? = nil, assigneeId: String? = nil, reminderAt: Double? = nil) {
         self.id = id
         self.checked = checked
         self.canceled = canceled
-        self.dueDate = dueDate
-        self.dueTime = dueTime
+        self.dueDate = Patch(dueDate)
+        self.dueTime = Patch(dueTime)
         self.priority = priority
-        self.assigneeId = assigneeId
-        self.reminderAt = reminderAt
+        self.assigneeId = Patch(assigneeId)
+        self.reminderAt = Patch(reminderAt)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encodeIfPresent(checked, forKey: .checked)
+        try c.encodeIfPresent(canceled, forKey: .canceled)
+        try c.encodePatch(dueDate, forKey: .dueDate)
+        try c.encodePatch(dueTime, forKey: .dueTime)
+        try c.encodeIfPresent(priority, forKey: .priority)
+        try c.encodePatch(assigneeId, forKey: .assigneeId)
+        try c.encodePatch(reminderAt, forKey: .reminderAt)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.checked = try c.decodeIfPresent(Bool.self, forKey: .checked)
+        self.canceled = try c.decodeIfPresent(Bool.self, forKey: .canceled)
+        self.dueDate = try c.decodePatch(String.self, forKey: .dueDate)
+        self.dueTime = try c.decodePatch(String.self, forKey: .dueTime)
+        self.priority = try c.decodeIfPresent(Priority.self, forKey: .priority)
+        self.assigneeId = try c.decodePatch(String.self, forKey: .assigneeId)
+        self.reminderAt = try c.decodePatch(Double.self, forKey: .reminderAt)
     }
 }
 

@@ -256,7 +256,7 @@ function propsOf(members, owner) {
     const name = m.name.getText(sf).replace(/^["']|["']$/g, "");
     const ctx = { owner, prop: name, nested };
     const mapped = mapType(m.type, ctx);
-    props.push({ name, swift: ident(/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : camel(name)), key: name, type: mapped.type, nestedName: mapped.nestedName, optional: Boolean(m.questionToken) || Boolean(mapped.optional), nullable: !m.questionToken && Boolean(mapped.optional), doc: docOf(m) });
+    props.push({ name, swift: ident(/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : camel(name)), key: name, type: mapped.type, nestedName: mapped.nestedName, optional: Boolean(m.questionToken) || Boolean(mapped.optional), nullable: !m.questionToken && Boolean(mapped.optional), patch: Boolean(m.questionToken) && Boolean(mapped.optional), doc: docOf(m) });
   }
   return { props, nested };
 }
@@ -269,9 +269,11 @@ function emitStruct(name, members, doc, indent = "", owner = name) {
   for (const nd of nested) lines.push(nd.replace(/^/gm, indent), "");
   for (const p of props) {
     if (p.doc.length) lines.push(docLines(p.doc, indent + "    "));
-    lines.push(`${indent}    public var ${p.swift}: ${p.type}${p.optional ? "?" : ""}`);
+    lines.push(`${indent}    public var ${p.swift}: ${p.patch ? `Patch<${p.type}>` : `${p.type}${p.optional ? "?" : ""}`}`);
   }
-  if (props.some((p) => p.swift.replace(/`/g, "") !== p.key)) {
+  const patched = props.some((p) => p.patch);
+  // (A struct with a three-state field codes itself, so it names its keys itself too.)
+  if (patched || props.some((p) => p.swift.replace(/`/g, "") !== p.key)) {
     lines.push("", `${indent}    enum CodingKeys: String, CodingKey {`);
     for (const p of props) lines.push(`${indent}        case ${p.swift}${p.swift.replace(/`/g, "") === p.key ? "" : ` = ${JSON.stringify(p.key)}`}`);
     lines.push(`${indent}    }`);
@@ -279,13 +281,24 @@ function emitStruct(name, members, doc, indent = "", owner = name) {
   // A public memberwise init (Swift only synthesizes an internal one); optionals default to nil.
   const params = props.map((p) => `${p.swift.replace(/`/g, "")}: ${p.type}${p.optional ? "? = nil" : ""}`);
   lines.push("", `${indent}    public init(${params.join(", ")}) {`);
-  for (const p of props) lines.push(`${indent}        self.${p.swift.replace(/`/g, "")} = ${p.swift}`);
+  for (const p of props) lines.push(`${indent}        self.${p.swift.replace(/`/g, "")} = ${p.patch ? `Patch(${p.swift})` : p.swift}`);
   lines.push(`${indent}    }`);
   // A required `T | null` field is always sent, as null when nil (synthesized Codable would leave it out, and the
   // engine refuses a missing one); only `?` fields are left out when nil.
-  if (props.some((p) => p.nullable)) {
+  if (props.some((p) => p.nullable) || patched) {
     lines.push("", `${indent}    public func encode(to encoder: any Encoder) throws {`, `${indent}        var c = encoder.container(keyedBy: CodingKeys.self)`);
-    for (const p of props) lines.push(`${indent}        try c.${p.optional && !p.nullable ? "encodeIfPresent" : "encode"}(${p.swift}, forKey: .${p.swift})`);
+    for (const p of props) lines.push(`${indent}        try c.${p.patch ? "encodePatch" : p.optional && !p.nullable ? "encodeIfPresent" : "encode"}(${p.swift}, forKey: .${p.swift})`);
+    lines.push(`${indent}    }`);
+  }
+  // A three-state field reads back as left out (.keep), null (.clear) or a value (.set).
+  if (patched) {
+    lines.push("", `${indent}    public init(from decoder: any Decoder) throws {`, `${indent}        let c = try decoder.container(keyedBy: CodingKeys.self)`);
+    for (const p of props) {
+      const name = p.swift.replace(/`/g, "");
+      if (p.patch) lines.push(`${indent}        self.${name} = try c.decodePatch(${p.type}.self, forKey: .${p.swift})`);
+      else if (p.optional) lines.push(`${indent}        self.${name} = try c.decodeIfPresent(${p.type}.self, forKey: .${p.swift})`);
+      else lines.push(`${indent}        self.${name} = try c.decode(${p.type}.self, forKey: .${p.swift})`);
+    }
     lines.push(`${indent}    }`);
   }
   lines.push(`${indent}}`);
@@ -523,8 +536,51 @@ ${eventCases.map((c) => `        case ${JSON.stringify(c.key)}: .${c.name}(try c
 }
 `;
 
+const PATCH = `/// A field that may be left out (unchanged), sent as null (cleared) or sent with a value: protocol.ts's \`x?: T | null\`.
+/// The memberwise initializers take \`T?\` (nil: left out); set \`.clear\` on the property to send null.
+public enum Patch<Wrapped: Codable & Hashable & Sendable>: Hashable, Sendable, ExpressibleByNilLiteral {
+    case keep
+    case clear
+    case set(Wrapped)
+
+    /// nil: left out; a value: sent.
+    public init(_ value: Wrapped?) {
+        self = value.map { .set($0) } ?? .keep
+    }
+
+    public init(nilLiteral: ()) {
+        self = .keep
+    }
+
+    /// The value when it's set.
+    public var value: Wrapped? {
+        if case .set(let v) = self { return v }
+        return nil
+    }
+}
+
+public extension KeyedEncodingContainer {
+    mutating func encodePatch<T>(_ patch: Patch<T>, forKey key: Key) throws {
+        switch patch {
+        case .keep: break
+        case .clear: try encodeNil(forKey: key)
+        case .set(let v): try encode(v, forKey: key)
+        }
+    }
+}
+
+public extension KeyedDecodingContainer {
+    func decodePatch<T>(_ type: T.Type, forKey key: Key) throws -> Patch<T> {
+        guard contains(key) else { return .keep }
+        if try decodeNil(forKey: key) { return .clear }
+        return .set(try decode(T.self, forKey: key))
+    }
+}`;
+
 const modelsOut = `${HEADER}
 import Foundation
+
+${PATCH}
 
 ${models.join("\n\n")}
 `;

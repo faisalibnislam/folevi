@@ -117,7 +117,7 @@ function nodeBridge(approver: () => Page) {
       await page.unrouteAll({ behavior: "ignoreErrors" });
     }
   }
-  return { bridge, store, seen };
+  return { bridge, store, seen, tokenDelay: 0 };
 }
 
 /** window.foleviShell for the shell build, with `auth` answered by the Node bridge. */
@@ -130,6 +130,8 @@ async function installShell(
   await context.exposeFunction("__e2eAuthSignOut", () => b.bridge.signOut());
   await context.exposeFunction("__e2eAuthConvexToken", async () => {
     b.seen.convexTokens++;
+    // (A slow network: the warm start test holds the token back.)
+    if (b.tokenDelay) await new Promise((r) => setTimeout(r, b.tokenDelay));
     return b.bridge.convexToken();
   });
   await context.exposeFunction(
@@ -285,6 +287,34 @@ test("the built-in interface signs in through the browser, opens a note, and sig
 
   expect(errors.filter((e) => !/ResizeObserver/.test(e))).toEqual([]);
   await direct.dispose();
+  await context.close();
+  await person.context.close();
+});
+
+test("a warm start opens the last-known folio at once, before the server has answered", async ({ browser }) => {
+  test.setTimeout(300_000);
+  const person = await newPerson(browser, "Warm Starter");
+  const b = nodeBridge(() => person.page);
+  const context = await browser.newContext();
+  await installShell(context, b);
+  const page = await context.newPage();
+  await page.goto(`${SHELL}/documents`);
+  await page.getByTestId("shell-sign-in").getByRole("button", { name: "Sign in to Folevi" }).click({ timeout: 90_000 });
+  await page.getByTestId("shell-sign-in").getByRole("button", { name: "Sign in with email" }).click();
+  const folio = page.getByRole("navigation", { name: "Folio" });
+  await expect(folio).toBeVisible({ timeout: 120_000 });
+  // (The snapshot is written once the workspaces have loaded.)
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("folevi:last-account")), { timeout: 30_000 }).toBeTruthy();
+
+  // The next launch on a slow network: the Convex token takes 8 seconds. The app is there long before.
+  b.tokenDelay = 8_000;
+  const started = Date.now();
+  await page.reload();
+  await expect(folio).toBeVisible({ timeout: 6_000 });
+  expect(Date.now() - started).toBeLessThan(6_000);
+  // ...and the server's answer then takes over in place (the sidebar stays, nothing reloads).
+  b.tokenDelay = 0;
+  await expect(folio).toBeVisible();
   await context.close();
   await person.context.close();
 });

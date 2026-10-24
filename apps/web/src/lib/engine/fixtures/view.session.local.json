@@ -30,6 +30,7 @@
     "timeZone": "Europe/London",
     "appearance": "dark",
     "capabilities": {
+      "graph": false,
       "sharing": false,
       "changes": false,
       "workspaces": false,

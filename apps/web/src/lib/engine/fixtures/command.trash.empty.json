@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "trash.empty",
+  "description": "Empty Trash.",
+  "args": {},
+  "result": {
+    "deleted": 12,
+    "skipped": 2,
+    "continuing": false
+  }
+}

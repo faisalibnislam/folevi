@@ -12,6 +12,7 @@
 // - "envelope": raw messages in both directions (handshake, errors, a batch).
 import { applyDiff, emptyNativeList, nativeRows, windowDiff, withHash, type ListState } from "../diff";
 import { gateEvent } from "../gates";
+import { changesValue, notificationRow, searchHits, sharedRow } from "../viewsMore";
 import {
   CONTRACT_REVISION,
   PROTOCOL_VERSION,
@@ -151,6 +152,7 @@ export function seedRow(i: number, over: Partial<Omit<NoteRow, "h">> = {}): Note
     encrypted: false,
     archived: false,
     inTrash: false,
+    deletedAt: null,
     sync: "saved",
     ...over,
   });
@@ -322,7 +324,7 @@ export const FIXTURES: Record<string, Fixture> = {
       today: "2026-10-24",
       timeZone: "Asia/Dhaka",
       appearance: "system",
-      capabilities: { sharing: true, changes: true, workspaces: true, ai: true, purchases: false },
+      capabilities: { graph: true, sharing: true, changes: true, workspaces: true, ai: true, purchases: false },
     },
   }),
   "view.session.local": view({
@@ -339,7 +341,7 @@ export const FIXTURES: Record<string, Fixture> = {
       today: "2026-10-24",
       timeZone: "Europe/London",
       appearance: "dark",
-      capabilities: { sharing: false, changes: false, workspaces: false, ai: false, purchases: false },
+      capabilities: { graph: false, sharing: false, changes: false, workspaces: false, ai: false, purchases: false },
     },
   }),
   "view.places.list": view({
@@ -548,6 +550,107 @@ export const FIXTURES: Record<string, Fixture> = {
   ]),
   "list.notes.5000": story("notes.list", "A 5,000-note list: one window of 200 rows with the total.", { view: "all" }, [{ ids: fiveThousand, window: { start: 0, count: 200 }, complete: true }]),
 
+
+  // ---- revision 4
+  "view.trash.summary": view({ name: "trash.summary", description: "Trash: 14 notes, 12 this person may delete for good.", args: {}, value: { total: 14, deletable: 12 } }),
+  "view.templates.builtIn": view({
+    name: "templates.builtIn",
+    description: "The built-in templates.",
+    args: {},
+    value: {
+      templates: [
+        { key: "builtin:meeting", name: "Meeting notes", description: "Agenda, notes and action items.", icon: "users" },
+        { key: "builtin:weekly", name: "Weekly review", description: "What went well, what's next.", icon: "calendar" },
+      ],
+    },
+  }),
+  "view.folders.cards": view({ name: "folders.cards", description: "A folder's subfolders as cards.", args: { parentId: "fld_trips" }, value: { folders: [folderCard(0, { id: "fld_japan", name: "Japan", parentId: "fld_trips", childCount: 1, noteCount: 5 })] } }),
+  "view.shared.list": view({
+    name: "shared.list",
+    description: "Pages shared with this person.",
+    args: {},
+    value: {
+      rows: [
+        sharedRow({ id: "doc_s1", title: "Launch plan", icon: "🚀", role: "editor", sharedBy: "Maya", sharedAt: NOW - DAY, workspaceName: "Airly Studio", ownerName: null, updatedAt: NOW - 3_600_000, excerpt: "Dates and owners." }),
+        sharedRow({ id: "doc_s2", title: "Recipes", icon: null, role: "viewer", sharedBy: "Sam", sharedAt: NOW - 5 * DAY, workspaceName: null, ownerName: "Sam", updatedAt: NOW - 4 * DAY, excerpt: "" }),
+      ],
+    },
+  }),
+  "view.changes": view({
+    name: "changes",
+    description: "A proposal from a connected app, and notes others changed.",
+    args: {},
+    value: changesValue(
+      { notes: [{ id: "doc_00002", title: "Q4 planning", icon: null, at: NOW - 7_200_000, actors: ["p_maya", "ai"], added: 3, edited: 1, removed: 0, more: false }], people: { p_maya: { name: "Maya" }, ai: { name: "Foli AI" } } },
+      [{ id: "prop_1", documentId: "doc_00001", title: "Kyoto in November", sourceName: "Claude", summary: "Add a packing list", createdAt: NOW - 600_000, problem: null }],
+    ),
+  }),
+  "view.notifications.list": view({
+    name: "notifications.list",
+    description: "The bell: a comment, a workspace invitation and a page invitation.",
+    args: {},
+    value: {
+      unread: 2,
+      rows: [
+        notificationRow({ id: "n1", kind: "comment", title: "Maya commented on Q4 planning", body: "Can we move this to Friday?", fileId: null, actorName: "Maya", actorAvatarUrl: null, documentId: "doc_00002", toChanges: false, documentTitle: "Q4 planning", threadId: "th_1", blockId: null, count: 1, inviteId: null, pageInviteId: null, createdAt: NOW - 1_800_000, read: false }),
+        notificationRow({ id: "n2", kind: "invite", title: "Sam invited you to Airly Studio", body: null, fileId: null, actorName: "Sam", actorAvatarUrl: null, documentId: null, toChanges: false, documentTitle: null, threadId: null, blockId: null, count: 1, inviteId: "inv_1", pageInviteId: null, createdAt: NOW - DAY, read: false }),
+        notificationRow({ id: "n3", kind: "share", title: "Lee shared Recipes with you", body: null, fileId: null, actorName: "Lee", actorAvatarUrl: null, documentId: null, toChanges: false, documentTitle: null, threadId: null, blockId: null, count: 1, inviteId: null, pageInviteId: "pinv_1", createdAt: NOW - 2 * DAY, read: true }),
+      ],
+    },
+  }),
+  "view.search": view({
+    name: "search",
+    description: "Search this space: a title match, a match in a PDF, and one by meaning.",
+    args: { text: "kyoto", meaning: true },
+    value: {
+      text: "kyoto",
+      meaningAvailable: true,
+      hits: [
+        ...searchHits(
+          [
+            { id: "doc_00001", title: "Kyoto in November", icon: "🗺️", kind: "document", updatedAt: NOW, snippet: "…the ryokan in Kyoto for three nights…", match: null, archived: false, homeFolder: { id: "fld_trips", name: "Trips", color: "moss" } },
+            { id: "doc_00005", title: "Rail passes", icon: null, kind: "document", updatedAt: NOW - DAY, snippet: "Tokyo to Kyoto, 2h15", match: { blockId: "blk_pdf", page: 3 }, archived: false, homeFolder: null },
+          ],
+          () => ({ space: "personal", name: "Personal" }),
+        ),
+        { id: "doc_00009", title: "Temples to see", icon: null, snippet: "Fushimi Inari at dawn", folder: null, updatedAt: 0, archived: false, kind: "document", space: "personal", spaceName: "Personal", matchIn: "meaning", blockId: null, page: null },
+      ],
+    },
+  }),
+  "view.search.everywhere": view({
+    name: "search",
+    description: "Search every space of this place.",
+    args: { text: "launch", scope: "everywhere" },
+    value: {
+      text: "launch",
+      meaningAvailable: false,
+      hits: searchHits([{ id: "doc_s1", title: "Launch plan", icon: "🚀", kind: "document", updatedAt: NOW, snippet: "Launch on the 12th", match: null, archived: false, homeFolder: null, place: { id: "ws_studio", name: "Airly Studio" } }], (p) => ({ space: p?.id ?? null, name: p?.name ?? null })),
+    },
+  }),
+  "list.notes.filter": story("notes.list", "A filter over the whole list: only matching notes, from every page.", { view: "all", filter: "plan" }, [
+    { ids: rows(40).filter((r) => r.title.toLowerCase().includes("plan")), window: { start: 0, count: 50 }, complete: true },
+  ]),
+  "list.notes.trash": story("notes.list", "Trash, with when each note went there.", { view: "trash" }, [{ ids: [seedRow(3, { inTrash: true, deletedAt: NOW - 2 * DAY }), seedRow(4, { inTrash: true, deletedAt: NOW - 5 * DAY })], window: { start: 0, count: 50 }, complete: true }]),
+  "command.note.deleteForever": command({ name: "note.deleteForever", description: "Delete notes in Trash for good.", args: { ids: ["doc_00004"] }, result: { done: ["doc_00004"], skipped: 0, queued: false } }),
+  "command.note.duplicate": command({ name: "note.duplicate", description: "Duplicate a note.", args: { id: "doc_00001" }, result: { id: "doc_00099" } }),
+  "command.note.copyTo": command({ name: "note.copyTo", description: "Copy notes into a workspace's folder.", args: { ids: ["doc_00001"], space: "ws_studio", folderId: "fld_work" }, result: { done: ["doc_00100"], skipped: 0, queued: false } }),
+  "command.note.reorder": command({ name: "note.reorder", description: "Manual sort: put a note right after another.", args: { id: "doc_00003", afterId: "doc_00001", view: "folder", folderId: "fld_trips" }, result: { ok: true } }),
+  "command.note.showInRecent": command({ name: "note.showInRecent", description: "Undo of removing from recents.", args: { ids: ["doc_00002"] }, result: { hidden: 1 } }),
+  "command.template.create": command({ name: "template.create", description: "A new template of your own.", args: { title: "Trip plan", open: true }, result: { id: "01JB7ZA1B2C3D4E5F6G7H8J9K0" } }),
+  "command.trash.empty": command({ name: "trash.empty", description: "Empty Trash.", args: {}, result: { deleted: 12, skipped: 2, continuing: false } }),
+  "command.folder.rename": command({ name: "folder.rename", description: "Rename a folder.", args: { id: "fld_trips", name: "Travel" }, result: { ok: true } }),
+  "command.folder.setColor": command({ name: "folder.setColor", description: "A folder's colour back to the default.", args: { id: "fld_trips", color: null }, result: { ok: true } }),
+  "command.folder.move": command({ name: "folder.move", description: "Nest a folder, first among its new siblings.", args: { id: "fld_iceland", parentId: "fld_japan", afterId: null }, result: { ok: true } }),
+  "command.folder.move.descendant": command({ name: "folder.move", description: "A folder can't go inside its own subfolder.", args: { id: "fld_trips", parentId: "fld_kyoto", afterId: null }, error: { code: "folder_descendant", message: "A folder can't go inside one of its subfolders." } }),
+  "command.folder.delete": command({ name: "folder.delete", description: "Delete a folder (its notes go to Drafts, subfolders up a level).", args: { id: "fld_work" }, result: { ok: true } }),
+  "command.changes.markSeen": command({ name: "changes.markSeen", description: "Seen these changes.", args: { ids: ["doc_00002"] }, result: { ok: true } }),
+  "command.proposal.accept": command({ name: "proposal.accept", description: "Accept a proposed change.", args: { id: "prop_1" }, result: { ok: true } }),
+  "command.proposal.reject": command({ name: "proposal.reject", description: "Reject a proposed change.", args: { id: "prop_1" }, result: { ok: true } }),
+  "command.notification.markRead": command({ name: "notification.markRead", description: "Mark as unread.", args: { ids: ["n1"], read: false }, result: { ok: true } }),
+  "command.notification.markAllRead": command({ name: "notification.markAllRead", description: "Mark all as read.", args: {}, result: { ok: true } }),
+  "command.notification.remove": command({ name: "notification.remove", description: "Remove a notification.", args: { ids: ["n3"] }, result: { ok: true } }),
+  "command.invite.accept": command({ name: "invite.accept", description: "Join a workspace.", args: { inviteId: "inv_1" }, result: { ok: true } }),
+  "command.pageInvite.accept": command({ name: "pageInvite.accept", description: "Accept a shared page and open it.", args: { inviteId: "pinv_1" }, result: { noteId: "doc_s2" } }),
   // ---- commands
   "command.space.switch": command({ name: "space.switch", description: "Show the team workspace.", args: { space: "ws_studio" }, result: { space: "ws_studio" } }),
   "command.note.create": command({ name: "note.create", description: "A new note in a folder (works offline).", args: { folderId: "fld_trips", title: "" }, result: { id: "01JB7Z8K3Q4ABCDEF0123456789" } }),

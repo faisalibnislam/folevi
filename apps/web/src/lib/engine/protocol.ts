@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 3;
+export const CONTRACT_REVISION = 4;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -395,6 +395,8 @@ export interface NoteRow {
   /** Archived (shown in Archive) or in Trash. */
   archived: boolean;
   inTrash: boolean;
+  /** Revision 4: when it went to Trash (milliseconds since 1970), or null when it isn't in Trash. */
+  deletedAt: number | null;
   sync: SyncMark;
   /** Content hash of the row (everything above); equal hashes mean equal rows. */
   h: string;
@@ -426,6 +428,8 @@ export interface SpaceInfo {
 }
 
 export interface Capabilities {
+  /** Revision 4: the Graph view is available (Foli AI's graph). */
+  graph: boolean;
   sharing: boolean;
   changes: boolean;
   workspaces: boolean;
@@ -658,6 +662,11 @@ export interface NotesListArgs {
   tagId?: string;
   /** Default "updated". */
   sort?: NotesSort;
+  /**
+   * Revision 4: only notes whose title or excerpt contains this (case-insensitive). The engine loads the whole
+   * list (up to 5,000 notes) to filter it, so rows outside the loaded window are found too.
+   */
+  filter?: string;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -1004,6 +1013,249 @@ export interface MemoryRelievedEvent {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Revision 4: notes, folders, Trash, templates, Shared with Me, Changes, notifications, search
+// ---------------------------------------------------------------------------------------------------------------
+
+export interface NoteReorderArgs {
+  id: string;
+  /** The note it goes right after in manual order; null: first. */
+  afterId: string | null;
+  view: NotesListView;
+  folderId?: string;
+  space?: SpaceRef;
+}
+
+export interface NoteCopyToArgs {
+  ids: string[];
+  /** Where the copies go: Personal or a workspace of this place. */
+  space: SpaceRef;
+  /** A folder there; null or left out: Drafts. */
+  folderId?: string | null;
+}
+
+export interface TemplateCreateArgs {
+  space?: SpaceRef;
+  title?: string;
+  /** Open it in the note page straight away. */
+  open?: boolean;
+}
+
+export interface TrashEmptyResult {
+  /** Notes being deleted for good now. */
+  deleted: number;
+  /** Notes left in Trash (this person may not delete them). */
+  skipped: number;
+  /** A very full Trash goes on emptying in the background. */
+  continuing: boolean;
+}
+
+export interface FolderRenameArgs {
+  id: string;
+  name: string;
+}
+
+export interface FolderSetColorArgs {
+  id: string;
+  /** A folder colour key, null for the default. */
+  color: string | null;
+}
+
+/** Refused with `folder_self`, `folder_descendant` or `folder_depth`, as folderMoveProblem refuses. */
+export interface FolderMoveArgs {
+  id: string;
+  /** New parent; null: the top level. */
+  parentId: string | null;
+  /** The sibling it goes right after; null: first among its new siblings. */
+  afterId: string | null;
+  /** The space whose folders it's checked against (default: the one shown). */
+  space?: SpaceRef;
+}
+
+export interface FolderIdArgs {
+  id: string;
+}
+
+export interface TrashSummaryValue {
+  total: number;
+  /** The ones this person may delete for good. */
+  deletable: number;
+}
+
+export interface BuiltInTemplate {
+  /** `builtin:<key>`, what `note.create { templateId }` takes. */
+  key: string;
+  name: string;
+  description: string;
+  /** An icon name from the web's template tiles ("calendar", "list-checks", ...). */
+  icon: string;
+}
+
+export interface BuiltInTemplatesValue {
+  templates: BuiltInTemplate[];
+}
+
+export interface FolderCardsArgs {
+  space?: SpaceRef;
+  /** Whose subfolders; null or left out: the top level. */
+  parentId?: string | null;
+}
+
+export interface FolderCardsValue {
+  folders: FolderCard[];
+}
+
+/** A page shared with this person (`sharing.sharedWithMe`). */
+export interface SharedRow {
+  id: string;
+  title: string;
+  excerpt: string;
+  icon: string | null;
+  sharedBy: string;
+  /** The workspace it lives in, or null for someone's Personal. */
+  workspaceName: string | null;
+  ownerName: string | null;
+  /** "editor", "commenter" or "viewer" (open). */
+  role: string;
+  sharedAt: number;
+  updatedAt: number;
+  encrypted: boolean;
+  h: string;
+}
+
+/** `shared.list`: a value view (lists of rows other than notes are value views; they're small). */
+export interface SharedValue {
+  rows: SharedRow[];
+}
+
+/** A change a connected app proposed to a note (`proposals.list`). */
+export interface ProposalRow {
+  id: string;
+  /** Null when this person can't open the note any more. */
+  noteId: string | null;
+  title: string;
+  sourceName: string;
+  /** The added lines as plain text, for the row's preview. */
+  summary: string;
+  createdAt: number;
+  /** Why it can't be accepted any more (only Reject is offered), or null. */
+  problem: string | null;
+}
+
+/** A note someone else changed since this person last looked (`changes.list`). */
+export interface ChangedNoteRow {
+  id: string;
+  title: string;
+  icon: string | null;
+  /** "Maya and 2 others". */
+  who: string;
+  /** "3 lines added, 1 removed". */
+  counts: string;
+  changedAt: number;
+}
+
+export interface ChangesValue {
+  proposals: ProposalRow[];
+  notes: ChangedNoteRow[];
+}
+
+export interface ProposalIdArgs {
+  id: string;
+}
+
+/** A notification in the bell (`notifications.list`). */
+export interface NotificationRow {
+  id: string;
+  /** "mention", "comment", "share", "invite", "reminder", "change", ... (open). */
+  kind: string;
+  title: string;
+  /** "" when there's none (or the note can't be read any more). */
+  body: string;
+  at: number;
+  read: boolean;
+  /** Where tapping it goes (an app route), or null. */
+  route: string | null;
+  actorName: string | null;
+  actorAvatarUrl: string | null;
+  noteId: string | null;
+  noteTitle: string | null;
+  /** How many events it stands for ("and 3 more"). */
+  count: number;
+  /** A workspace invitation to accept (`invite.accept`), or null. */
+  inviteId: string | null;
+  /** A page invitation to accept (`pageInvite.accept`), or null. */
+  pageInviteId: string | null;
+  /** A file to download, or null. */
+  fileId: string | null;
+}
+
+export interface NotificationsValue {
+  unread: number;
+  rows: NotificationRow[];
+}
+
+export interface NotificationMarkArgs {
+  ids: string[];
+  /** true: read; false: unread. */
+  read: boolean;
+}
+
+export interface NotificationIdsArgs {
+  ids: string[];
+}
+
+export interface InviteAcceptArgs {
+  inviteId: string;
+}
+
+export interface PageInviteAcceptResult {
+  noteId: string;
+}
+
+/** `search`: a one-off query (debounce it), or a live view while the search screen is up. */
+export interface SearchArgs {
+  text: string;
+  /** "place" (the space shown, or `space`) or "everywhere" (every space of this place). Default "place". */
+  scope?: "place" | "everywhere";
+  space?: SpaceRef;
+  folderId?: string;
+  tagId?: string;
+  /** Only notes edited after this (milliseconds since 1970). */
+  updatedAfter?: number;
+  includeArchived?: boolean;
+  /** Also search by meaning where the plan has it (`meaningAvailable`). */
+  meaning?: boolean;
+  /** Default 20, at most 40. */
+  limit?: number;
+}
+
+export interface SearchHit {
+  id: string;
+  title: string;
+  icon: string | null;
+  /** The matched text around the match. */
+  snippet: string;
+  folder: FolderChip | null;
+  updatedAt: number;
+  archived: boolean;
+  kind: string;
+  /** Everywhere: the space it's in ("personal" or a workspace id) and its name. */
+  space: SpaceRef | null;
+  spaceName: string | null;
+  /** "text" (the note's words), "file" (in a file or drawing), "meaning" (search by meaning). */
+  matchIn: string;
+  /** A match in a file: the block that holds it, and its page (PDFs). */
+  blockId: string | null;
+  page: number | null;
+}
+
+export interface SearchValue {
+  text: string;
+  hits: SearchHit[];
+  /** Search by meaning can be asked for here. */
+  meaningAvailable: boolean;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // The maps (names to argument and result types). The codegen reads these interfaces.
 // ---------------------------------------------------------------------------------------------------------------
 
@@ -1014,6 +1266,13 @@ export interface ViewMap {
   "folders.tree": { args: SpaceArgs; value: FoldersTreeValue };
   "sync.status": { args: EmptyArgs; value: SyncStatusValue };
   "note.meta": { args: NoteIdArgs; value: NoteMeta };
+  "trash.summary": { args: SpaceArgs; value: TrashSummaryValue };
+  "templates.builtIn": { args: EmptyArgs; value: BuiltInTemplatesValue };
+  "folders.cards": { args: FolderCardsArgs; value: FolderCardsValue };
+  "shared.list": { args: EmptyArgs; value: SharedValue };
+  changes: { args: EmptyArgs; value: ChangesValue };
+  "notifications.list": { args: EmptyArgs; value: NotificationsValue };
+  search: { args: SearchArgs; value: SearchValue };
 }
 
 export interface ListViewMap {
@@ -1035,6 +1294,25 @@ export interface CommandMap {
   "engine.refresh": { args: EmptyArgs; result: OkResult };
   "toast.action": { args: ToastActionArgs; result: OkResult };
   "gate.act": { args: GateActArgs; result: OkResult };
+  "note.deleteForever": { args: NoteIdsArgs; result: BulkResult };
+  "note.duplicate": { args: NoteIdArgs; result: NoteCreateResult };
+  "note.copyTo": { args: NoteCopyToArgs; result: BulkResult };
+  "note.reorder": { args: NoteReorderArgs; result: OkResult };
+  "note.showInRecent": { args: NoteIdsArgs; result: HiddenResult };
+  "template.create": { args: TemplateCreateArgs; result: NoteCreateResult };
+  "trash.empty": { args: SpaceArgs; result: TrashEmptyResult };
+  "folder.rename": { args: FolderRenameArgs; result: OkResult };
+  "folder.setColor": { args: FolderSetColorArgs; result: OkResult };
+  "folder.move": { args: FolderMoveArgs; result: OkResult };
+  "folder.delete": { args: FolderIdArgs; result: OkResult };
+  "changes.markSeen": { args: NoteIdsArgs; result: OkResult };
+  "proposal.accept": { args: ProposalIdArgs; result: OkResult };
+  "proposal.reject": { args: ProposalIdArgs; result: OkResult };
+  "notification.markRead": { args: NotificationMarkArgs; result: OkResult };
+  "notification.markAllRead": { args: EmptyArgs; result: OkResult };
+  "notification.remove": { args: NotificationIdsArgs; result: OkResult };
+  "invite.accept": { args: InviteAcceptArgs; result: OkResult };
+  "pageInvite.accept": { args: InviteAcceptArgs; result: PageInviteAcceptResult };
 }
 
 export interface EditorCommandMap {
@@ -1093,7 +1371,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -1110,6 +1388,25 @@ const commandNames = [
   "engine.refresh",
   "toast.action",
   "gate.act",
+  "note.deleteForever",
+  "note.duplicate",
+  "note.copyTo",
+  "note.reorder",
+  "note.showInRecent",
+  "template.create",
+  "trash.empty",
+  "folder.rename",
+  "folder.setColor",
+  "folder.move",
+  "folder.delete",
+  "changes.markSeen",
+  "proposal.accept",
+  "proposal.reject",
+  "notification.markRead",
+  "notification.markAllRead",
+  "notification.remove",
+  "invite.accept",
+  "pageInvite.accept",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

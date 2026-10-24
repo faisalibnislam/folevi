@@ -10,7 +10,7 @@ import { spaceOf } from "./context";
 import { toEngineError } from "./live";
 import { catchUpCard, setCatchUp } from "./catchUp";
 import { runToastAction } from "./toasts";
-import { BridgeError, argsOf, bool, id, ids, nullableId, only, optionalId, text } from "./validate";
+import { BridgeError, bool, id, ids, nullableId, only, optionalId, text } from "./validate";
 import type { BulkResult, CatchUpCard, CommandName } from "./protocol";
 
 type Args = Record<string, unknown>;
@@ -22,7 +22,7 @@ export interface CommandDef {
 /** The server takes at most this many notes per bulk call (documents.MAX_BULK). */
 const CHUNK = 50;
 
-function spaceArg(deps: EngineDeps, args: Args): EngineSpace {
+export function spaceArg(deps: EngineDeps, args: Args): EngineSpace {
   const s = spaceOf(deps.app, optionalId(args, "space"));
   if (!s) throw new BridgeError("not_found", "That Personal or workspace isn't in this place.");
   return s;
@@ -30,10 +30,10 @@ function spaceArg(deps: EngineDeps, args: Args): EngineSpace {
 
 const spaceKey = (s: EngineSpace) => (s.scope.kind === "personal" ? "personal" : s.scope.workspaceId);
 
-type BulkAction = { kind: "star"; starred: boolean } | { kind: "archive"; archived: boolean } | { kind: "trash" } | { kind: "restore" };
+type BulkAction = { kind: "star"; starred: boolean } | { kind: "archive"; archived: boolean } | { kind: "trash" } | { kind: "restore" } | { kind: "delete" };
 
 /** documents.bulkUpdate in turns of 50. Offline, it's handed to the client's queue and reported as done. */
-async function bulk(deps: EngineDeps, documentIds: string[], action: BulkAction): Promise<BulkResult> {
+export async function bulk(deps: EngineDeps, documentIds: string[], action: BulkAction): Promise<BulkResult> {
   const calls: Promise<{ done: string[]; skipped: number }>[] = [];
   for (let i = 0; i < documentIds.length; i += CHUNK) {
     calls.push(deps.client.mutation(api.documents.bulkUpdate, { documentIds: documentIds.slice(i, i + CHUNK), action }) as Promise<{ done: string[]; skipped: number }>);
@@ -49,7 +49,8 @@ async function bulk(deps: EngineDeps, documentIds: string[], action: BulkAction)
 
 const notes = (n: number) => (n === 1 ? "a note" : `${n.toLocaleString()} notes`);
 
-export const COMMANDS: Record<CommandName, CommandDef> = {
+/** The first commands (revisions 1 to 3); lib/engine/registry.ts puts every command together. */
+export const CORE_COMMANDS = {
   "space.switch": {
     async run(deps, args) {
       only(args, ["space"]);
@@ -224,9 +225,6 @@ export const COMMANDS: Record<CommandName, CommandDef> = {
       return { ok: true };
     },
   },
-};
+} satisfies Partial<Record<CommandName, CommandDef>>;
 
-/** Runs a command's handler with its checked args. */
-export async function runCommand(name: CommandName, deps: EngineDeps, raw: unknown): Promise<unknown> {
-  return COMMANDS[name].run(deps, argsOf(raw));
-}
+

@@ -1,0 +1,213 @@
+{
+  "kind": "list",
+  "name": "notes.list",
+  "description": "A filter over the whole list: only matching notes, from every page.",
+  "args": {
+    "view": "all",
+    "filter": "plan"
+  },
+  "window": {
+    "start": 0,
+    "count": 50
+  },
+  "updates": [
+    {
+      "kind": "update",
+      "sub": "s1",
+      "rev": 1,
+      "diff": {
+        "reset": true,
+        "total": 2,
+        "complete": true,
+        "start": 0,
+        "order": [
+          "doc_00002",
+          "doc_00006"
+        ],
+        "upsert": {
+          "doc_00002": {
+            "id": "doc_00002",
+            "title": "Q4 planning",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Q4 planning. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Q4 planning. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "none"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1790154000000,
+            "updatedAt": 1792828800000,
+            "folder": {
+              "id": "fld_work",
+              "name": "Work",
+              "color": null
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "57ee77eb"
+          },
+          "doc_00006": {
+            "id": "doc_00006",
+            "title": "Garden plan",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Garden plan. First lines of the note.",
+            "preview": [
+              {
+                "t": "heading",
+                "x": "Garden plan",
+                "l": 1
+              },
+              {
+                "t": "todo",
+                "x": "Book the ryokan",
+                "c": true
+              },
+              {
+                "t": "todo",
+                "x": "Rail pass",
+                "c": false
+              }
+            ],
+            "cover": {
+              "kind": "none"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1789808400000,
+            "updatedAt": 1792814400000,
+            "folder": {
+              "id": "fld_reading",
+              "name": "Reading",
+              "color": "plum"
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "ff14f067"
+          }
+        }
+      }
+    }
+  ],
+  "expected": {
+    "total": 2,
+    "complete": true,
+    "start": 0,
+    "rows": [
+      {
+        "id": "doc_00002",
+        "title": "Q4 planning",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Q4 planning. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Q4 planning. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "none"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1790154000000,
+        "updatedAt": 1792828800000,
+        "folder": {
+          "id": "fld_work",
+          "name": "Work",
+          "color": null
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "57ee77eb"
+      },
+      {
+        "id": "doc_00006",
+        "title": "Garden plan",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Garden plan. First lines of the note.",
+        "preview": [
+          {
+            "t": "heading",
+            "x": "Garden plan",
+            "l": 1
+          },
+          {
+            "t": "todo",
+            "x": "Book the ryokan",
+            "c": true
+          },
+          {
+            "t": "todo",
+            "x": "Rail pass",
+            "c": false
+          }
+        ],
+        "cover": {
+          "kind": "none"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1789808400000,
+        "updatedAt": 1792814400000,
+        "folder": {
+          "id": "fld_reading",
+          "name": "Reading",
+          "color": "plum"
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "ff14f067"
+      }
+    ]
+  }
+}

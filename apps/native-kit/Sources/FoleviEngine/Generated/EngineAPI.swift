@@ -7,9 +7,9 @@ public enum EngineContract {
     /// The envelope's major version (`v` on every message to the engine).
     public static let protocolVersion = 1
     /// Bumps with every added view, command, editor command, event or field.
-    public static let revision = 3
+    public static let revision = 4
     /// FNV-1a of the names and revision; the engine's `hello` reply carries the same when this file is current.
-    public static let schemaHash = "a0c42db3"
+    public static let schemaHash = "e625db6e"
     /// The `WKScriptMessageHandler` name the engine posts to.
     public static let messageHandler = "foleviEngine"
     /// The global the host calls (`__foleviEngine.handle(json)`).
@@ -34,6 +34,13 @@ public enum ViewName: String, Codable, Hashable, Sendable, CaseIterable {
     case foldersTree = "folders.tree"
     case syncStatus = "sync.status"
     case noteMeta = "note.meta"
+    case trashSummary = "trash.summary"
+    case templatesBuiltIn = "templates.builtIn"
+    case foldersCards = "folders.cards"
+    case sharedList = "shared.list"
+    case changes
+    case notificationsList = "notifications.list"
+    case search
 }
 
 /// Windowed list views.
@@ -57,6 +64,25 @@ public enum CommandName: String, Codable, Hashable, Sendable, CaseIterable {
     case engineRefresh = "engine.refresh"
     case toastAction = "toast.action"
     case gateAct = "gate.act"
+    case noteDeleteForever = "note.deleteForever"
+    case noteDuplicate = "note.duplicate"
+    case noteCopyTo = "note.copyTo"
+    case noteReorder = "note.reorder"
+    case noteShowInRecent = "note.showInRecent"
+    case templateCreate = "template.create"
+    case trashEmpty = "trash.empty"
+    case folderRename = "folder.rename"
+    case folderSetColor = "folder.setColor"
+    case folderMove = "folder.move"
+    case folderDelete = "folder.delete"
+    case changesMarkSeen = "changes.markSeen"
+    case proposalAccept = "proposal.accept"
+    case proposalReject = "proposal.reject"
+    case notificationMarkRead = "notification.markRead"
+    case notificationMarkAllRead = "notification.markAllRead"
+    case notificationRemove = "notification.remove"
+    case inviteAccept = "invite.accept"
+    case pageInviteAccept = "pageInvite.accept"
 }
 
 /// Editor commands (the note page).
@@ -141,6 +167,55 @@ public enum Views {
         public var args: Args
         public init(_ args: Args) { self.args = args }
     }
+    public struct TrashSummary: EngineViewSpec {
+        public static let name = "trash.summary"
+        public typealias Args = FoleviEngine.SpaceArgs
+        public typealias Value = FoleviEngine.TrashSummaryValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct TemplatesBuiltIn: EngineViewSpec {
+        public static let name = "templates.builtIn"
+        public typealias Args = FoleviEngine.EmptyArgs
+        public typealias Value = FoleviEngine.BuiltInTemplatesValue
+        public var args: Args
+        public init(_ args: Args = .init()) { self.args = args }
+    }
+    public struct FoldersCards: EngineViewSpec {
+        public static let name = "folders.cards"
+        public typealias Args = FoleviEngine.FolderCardsArgs
+        public typealias Value = FoleviEngine.FolderCardsValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct SharedList: EngineViewSpec {
+        public static let name = "shared.list"
+        public typealias Args = FoleviEngine.EmptyArgs
+        public typealias Value = FoleviEngine.SharedValue
+        public var args: Args
+        public init(_ args: Args = .init()) { self.args = args }
+    }
+    public struct Changes: EngineViewSpec {
+        public static let name = "changes"
+        public typealias Args = FoleviEngine.EmptyArgs
+        public typealias Value = FoleviEngine.ChangesValue
+        public var args: Args
+        public init(_ args: Args = .init()) { self.args = args }
+    }
+    public struct NotificationsList: EngineViewSpec {
+        public static let name = "notifications.list"
+        public typealias Args = FoleviEngine.EmptyArgs
+        public typealias Value = FoleviEngine.NotificationsValue
+        public var args: Args
+        public init(_ args: Args = .init()) { self.args = args }
+    }
+    public struct Search: EngineViewSpec {
+        public static let name = "search"
+        public typealias Args = FoleviEngine.SearchArgs
+        public typealias Value = FoleviEngine.SearchValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
 }
 
 public extension EngineViewSpec where Self == Views.Session {
@@ -167,6 +242,34 @@ public extension EngineViewSpec where Self == Views.NoteMeta {
     static func noteMeta(id: String) -> Self { Self(FoleviEngine.NoteIdArgs(id: id)) }
 }
 
+public extension EngineViewSpec where Self == Views.TrashSummary {
+    static func trashSummary(space: SpaceRef? = nil) -> Self { Self(FoleviEngine.SpaceArgs(space: space)) }
+}
+
+public extension EngineViewSpec where Self == Views.TemplatesBuiltIn {
+    static var templatesBuiltIn: Self { Self() }
+}
+
+public extension EngineViewSpec where Self == Views.FoldersCards {
+    static func foldersCards(space: SpaceRef? = nil, parentId: String? = nil) -> Self { Self(FoleviEngine.FolderCardsArgs(space: space, parentId: parentId)) }
+}
+
+public extension EngineViewSpec where Self == Views.SharedList {
+    static var sharedList: Self { Self() }
+}
+
+public extension EngineViewSpec where Self == Views.Changes {
+    static var changes: Self { Self() }
+}
+
+public extension EngineViewSpec where Self == Views.NotificationsList {
+    static var notificationsList: Self { Self() }
+}
+
+public extension EngineViewSpec where Self == Views.Search {
+    static func search(text: String, scope: FoleviEngine.SearchArgs.Scope? = nil, space: SpaceRef? = nil, folderId: String? = nil, tagId: String? = nil, updatedAfter: Int? = nil, includeArchived: Bool? = nil, meaning: Bool? = nil, limit: Int? = nil) -> Self { Self(FoleviEngine.SearchArgs(text: text, scope: scope, space: space, folderId: folderId, tagId: tagId, updatedAfter: updatedAfter, includeArchived: includeArchived, meaning: meaning, limit: limit)) }
+}
+
 /// List views: `client.watchList(.notesList(view: .folder, folderId: id))`.
 public enum ListViews {
     public struct NotesList: EngineListSpec {
@@ -179,7 +282,7 @@ public enum ListViews {
 }
 
 public extension EngineListSpec where Self == ListViews.NotesList {
-    static func notesList(space: SpaceRef? = nil, view: NotesListView, folderId: String? = nil, tagId: String? = nil, sort: NotesSort? = nil) -> Self { Self(FoleviEngine.NotesListArgs(space: space, view: view, folderId: folderId, tagId: tagId, sort: sort)) }
+    static func notesList(space: SpaceRef? = nil, view: NotesListView, folderId: String? = nil, tagId: String? = nil, sort: NotesSort? = nil, filter: String? = nil) -> Self { Self(FoleviEngine.NotesListArgs(space: space, view: view, folderId: folderId, tagId: tagId, sort: sort, filter: filter)) }
 }
 
 /// Commands: `try await client.command(.noteStar(ids: ids, starred: true))`.
@@ -282,6 +385,139 @@ public enum Commands {
         public var args: Args
         public init(_ args: Args) { self.args = args }
     }
+    public struct NoteDeleteForever: EngineCommandSpec {
+        public static let name = "note.deleteForever"
+        public typealias Args = FoleviEngine.NoteIdsArgs
+        public typealias Result = FoleviEngine.BulkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct NoteDuplicate: EngineCommandSpec {
+        public static let name = "note.duplicate"
+        public typealias Args = FoleviEngine.NoteIdArgs
+        public typealias Result = FoleviEngine.NoteCreateResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct NoteCopyTo: EngineCommandSpec {
+        public static let name = "note.copyTo"
+        public typealias Args = FoleviEngine.NoteCopyToArgs
+        public typealias Result = FoleviEngine.BulkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct NoteReorder: EngineCommandSpec {
+        public static let name = "note.reorder"
+        public typealias Args = FoleviEngine.NoteReorderArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct NoteShowInRecent: EngineCommandSpec {
+        public static let name = "note.showInRecent"
+        public typealias Args = FoleviEngine.NoteIdsArgs
+        public typealias Result = FoleviEngine.HiddenResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct TemplateCreate: EngineCommandSpec {
+        public static let name = "template.create"
+        public typealias Args = FoleviEngine.TemplateCreateArgs
+        public typealias Result = FoleviEngine.NoteCreateResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct TrashEmpty: EngineCommandSpec {
+        public static let name = "trash.empty"
+        public typealias Args = FoleviEngine.SpaceArgs
+        public typealias Result = FoleviEngine.TrashEmptyResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct FolderRename: EngineCommandSpec {
+        public static let name = "folder.rename"
+        public typealias Args = FoleviEngine.FolderRenameArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct FolderSetColor: EngineCommandSpec {
+        public static let name = "folder.setColor"
+        public typealias Args = FoleviEngine.FolderSetColorArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct FolderMove: EngineCommandSpec {
+        public static let name = "folder.move"
+        public typealias Args = FoleviEngine.FolderMoveArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct FolderDelete: EngineCommandSpec {
+        public static let name = "folder.delete"
+        public typealias Args = FoleviEngine.FolderIdArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct ChangesMarkSeen: EngineCommandSpec {
+        public static let name = "changes.markSeen"
+        public typealias Args = FoleviEngine.NoteIdsArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct ProposalAccept: EngineCommandSpec {
+        public static let name = "proposal.accept"
+        public typealias Args = FoleviEngine.ProposalIdArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct ProposalReject: EngineCommandSpec {
+        public static let name = "proposal.reject"
+        public typealias Args = FoleviEngine.ProposalIdArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct NotificationMarkRead: EngineCommandSpec {
+        public static let name = "notification.markRead"
+        public typealias Args = FoleviEngine.NotificationMarkArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct NotificationMarkAllRead: EngineCommandSpec {
+        public static let name = "notification.markAllRead"
+        public typealias Args = FoleviEngine.EmptyArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args = .init()) { self.args = args }
+    }
+    public struct NotificationRemove: EngineCommandSpec {
+        public static let name = "notification.remove"
+        public typealias Args = FoleviEngine.NotificationIdsArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct InviteAccept: EngineCommandSpec {
+        public static let name = "invite.accept"
+        public typealias Args = FoleviEngine.InviteAcceptArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct PageInviteAccept: EngineCommandSpec {
+        public static let name = "pageInvite.accept"
+        public typealias Args = FoleviEngine.InviteAcceptArgs
+        public typealias Result = FoleviEngine.PageInviteAcceptResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
 }
 
 public extension EngineCommandSpec where Self == Commands.SpaceSwitch {
@@ -338,6 +574,82 @@ public extension EngineCommandSpec where Self == Commands.ToastAction {
 
 public extension EngineCommandSpec where Self == Commands.GateAct {
     static func gateAct(action: String, values: [String: String]? = nil) -> Self { Self(FoleviEngine.GateActArgs(action: action, values: values)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.NoteDeleteForever {
+    static func noteDeleteForever(ids: [String]) -> Self { Self(FoleviEngine.NoteIdsArgs(ids: ids)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.NoteDuplicate {
+    static func noteDuplicate(id: String) -> Self { Self(FoleviEngine.NoteIdArgs(id: id)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.NoteCopyTo {
+    static func noteCopyTo(ids: [String], space: SpaceRef, folderId: String? = nil) -> Self { Self(FoleviEngine.NoteCopyToArgs(ids: ids, space: space, folderId: folderId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.NoteReorder {
+    static func noteReorder(id: String, afterId: String? = nil, view: NotesListView, folderId: String? = nil, space: SpaceRef? = nil) -> Self { Self(FoleviEngine.NoteReorderArgs(id: id, afterId: afterId, view: view, folderId: folderId, space: space)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.NoteShowInRecent {
+    static func noteShowInRecent(ids: [String]) -> Self { Self(FoleviEngine.NoteIdsArgs(ids: ids)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.TemplateCreate {
+    static func templateCreate(space: SpaceRef? = nil, title: String? = nil, open: Bool? = nil) -> Self { Self(FoleviEngine.TemplateCreateArgs(space: space, title: title, open: `open`)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.TrashEmpty {
+    static func trashEmpty(space: SpaceRef? = nil) -> Self { Self(FoleviEngine.SpaceArgs(space: space)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.FolderRename {
+    static func folderRename(id: String, name: String) -> Self { Self(FoleviEngine.FolderRenameArgs(id: id, name: name)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.FolderSetColor {
+    static func folderSetColor(id: String, color: String? = nil) -> Self { Self(FoleviEngine.FolderSetColorArgs(id: id, color: color)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.FolderMove {
+    static func folderMove(id: String, parentId: String? = nil, afterId: String? = nil, space: SpaceRef? = nil) -> Self { Self(FoleviEngine.FolderMoveArgs(id: id, parentId: parentId, afterId: afterId, space: space)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.FolderDelete {
+    static func folderDelete(id: String) -> Self { Self(FoleviEngine.FolderIdArgs(id: id)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.ChangesMarkSeen {
+    static func changesMarkSeen(ids: [String]) -> Self { Self(FoleviEngine.NoteIdsArgs(ids: ids)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.ProposalAccept {
+    static func proposalAccept(id: String) -> Self { Self(FoleviEngine.ProposalIdArgs(id: id)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.ProposalReject {
+    static func proposalReject(id: String) -> Self { Self(FoleviEngine.ProposalIdArgs(id: id)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.NotificationMarkRead {
+    static func notificationMarkRead(ids: [String], read: Bool) -> Self { Self(FoleviEngine.NotificationMarkArgs(ids: ids, read: read)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.NotificationMarkAllRead {
+    static var notificationMarkAllRead: Self { Self() }
+}
+
+public extension EngineCommandSpec where Self == Commands.NotificationRemove {
+    static func notificationRemove(ids: [String]) -> Self { Self(FoleviEngine.NotificationIdsArgs(ids: ids)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.InviteAccept {
+    static func inviteAccept(inviteId: String) -> Self { Self(FoleviEngine.InviteAcceptArgs(inviteId: inviteId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.PageInviteAccept {
+    static func pageInviteAccept(inviteId: String) -> Self { Self(FoleviEngine.InviteAcceptArgs(inviteId: inviteId)) }
 }
 
 /// Editor commands: `try await client.editor(.notePrepare(id: id))`.
@@ -556,12 +868,12 @@ public extension EngineEditorSpec where Self == EditorCommands.State {
 /// Every name with its Swift types, for tools that work by name (the contract tests, the debug console).
 public enum EngineCatalog {
     public typealias Model = any (Codable & Sendable).Type
-    public static let viewArgs: [String: Model] = ["session": FoleviEngine.EmptyArgs.self, "places.list": FoleviEngine.EmptyArgs.self, "home": FoleviEngine.SpaceArgs.self, "folders.tree": FoleviEngine.SpaceArgs.self, "sync.status": FoleviEngine.EmptyArgs.self, "note.meta": FoleviEngine.NoteIdArgs.self]
-    public static let viewValues: [String: Model] = ["session": FoleviEngine.SessionValue.self, "places.list": FoleviEngine.PlacesValue.self, "home": FoleviEngine.HomeValue.self, "folders.tree": FoleviEngine.FoldersTreeValue.self, "sync.status": FoleviEngine.SyncStatusValue.self, "note.meta": FoleviEngine.NoteMeta.self]
+    public static let viewArgs: [String: Model] = ["session": FoleviEngine.EmptyArgs.self, "places.list": FoleviEngine.EmptyArgs.self, "home": FoleviEngine.SpaceArgs.self, "folders.tree": FoleviEngine.SpaceArgs.self, "sync.status": FoleviEngine.EmptyArgs.self, "note.meta": FoleviEngine.NoteIdArgs.self, "trash.summary": FoleviEngine.SpaceArgs.self, "templates.builtIn": FoleviEngine.EmptyArgs.self, "folders.cards": FoleviEngine.FolderCardsArgs.self, "shared.list": FoleviEngine.EmptyArgs.self, "changes": FoleviEngine.EmptyArgs.self, "notifications.list": FoleviEngine.EmptyArgs.self, "search": FoleviEngine.SearchArgs.self]
+    public static let viewValues: [String: Model] = ["session": FoleviEngine.SessionValue.self, "places.list": FoleviEngine.PlacesValue.self, "home": FoleviEngine.HomeValue.self, "folders.tree": FoleviEngine.FoldersTreeValue.self, "sync.status": FoleviEngine.SyncStatusValue.self, "note.meta": FoleviEngine.NoteMeta.self, "trash.summary": FoleviEngine.TrashSummaryValue.self, "templates.builtIn": FoleviEngine.BuiltInTemplatesValue.self, "folders.cards": FoleviEngine.FolderCardsValue.self, "shared.list": FoleviEngine.SharedValue.self, "changes": FoleviEngine.ChangesValue.self, "notifications.list": FoleviEngine.NotificationsValue.self, "search": FoleviEngine.SearchValue.self]
     public static let listArgs: [String: Model] = ["notes.list": FoleviEngine.NotesListArgs.self]
     public static let listRows: [String: any EngineRow.Type] = ["notes.list": FoleviEngine.NoteRow.self]
-    public static let commandArgs: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchArgs.self, "note.create": FoleviEngine.NoteCreateArgs.self, "note.star": FoleviEngine.NoteStarArgs.self, "note.move": FoleviEngine.NoteMoveArgs.self, "note.archive": FoleviEngine.NoteArchiveArgs.self, "note.trash": FoleviEngine.NoteIdsArgs.self, "note.restore": FoleviEngine.NoteIdsArgs.self, "note.hideFromRecent": FoleviEngine.NoteIdsArgs.self, "folder.create": FoleviEngine.FolderCreateArgs.self, "catchUp.run": FoleviEngine.SpaceArgs.self, "catchUp.clear": FoleviEngine.SpaceArgs.self, "engine.refresh": FoleviEngine.EmptyArgs.self, "toast.action": FoleviEngine.ToastActionArgs.self, "gate.act": FoleviEngine.GateActArgs.self]
-    public static let commandResults: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchResult.self, "note.create": FoleviEngine.NoteCreateResult.self, "note.star": FoleviEngine.BulkResult.self, "note.move": FoleviEngine.BulkResult.self, "note.archive": FoleviEngine.BulkResult.self, "note.trash": FoleviEngine.BulkResult.self, "note.restore": FoleviEngine.BulkResult.self, "note.hideFromRecent": FoleviEngine.HiddenResult.self, "folder.create": FoleviEngine.FolderCreateResult.self, "catchUp.run": FoleviEngine.CatchUpCard.self, "catchUp.clear": FoleviEngine.OkResult.self, "engine.refresh": FoleviEngine.OkResult.self, "toast.action": FoleviEngine.OkResult.self, "gate.act": FoleviEngine.OkResult.self]
+    public static let commandArgs: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchArgs.self, "note.create": FoleviEngine.NoteCreateArgs.self, "note.star": FoleviEngine.NoteStarArgs.self, "note.move": FoleviEngine.NoteMoveArgs.self, "note.archive": FoleviEngine.NoteArchiveArgs.self, "note.trash": FoleviEngine.NoteIdsArgs.self, "note.restore": FoleviEngine.NoteIdsArgs.self, "note.hideFromRecent": FoleviEngine.NoteIdsArgs.self, "folder.create": FoleviEngine.FolderCreateArgs.self, "catchUp.run": FoleviEngine.SpaceArgs.self, "catchUp.clear": FoleviEngine.SpaceArgs.self, "engine.refresh": FoleviEngine.EmptyArgs.self, "toast.action": FoleviEngine.ToastActionArgs.self, "gate.act": FoleviEngine.GateActArgs.self, "note.deleteForever": FoleviEngine.NoteIdsArgs.self, "note.duplicate": FoleviEngine.NoteIdArgs.self, "note.copyTo": FoleviEngine.NoteCopyToArgs.self, "note.reorder": FoleviEngine.NoteReorderArgs.self, "note.showInRecent": FoleviEngine.NoteIdsArgs.self, "template.create": FoleviEngine.TemplateCreateArgs.self, "trash.empty": FoleviEngine.SpaceArgs.self, "folder.rename": FoleviEngine.FolderRenameArgs.self, "folder.setColor": FoleviEngine.FolderSetColorArgs.self, "folder.move": FoleviEngine.FolderMoveArgs.self, "folder.delete": FoleviEngine.FolderIdArgs.self, "changes.markSeen": FoleviEngine.NoteIdsArgs.self, "proposal.accept": FoleviEngine.ProposalIdArgs.self, "proposal.reject": FoleviEngine.ProposalIdArgs.self, "notification.markRead": FoleviEngine.NotificationMarkArgs.self, "notification.markAllRead": FoleviEngine.EmptyArgs.self, "notification.remove": FoleviEngine.NotificationIdsArgs.self, "invite.accept": FoleviEngine.InviteAcceptArgs.self, "pageInvite.accept": FoleviEngine.InviteAcceptArgs.self]
+    public static let commandResults: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchResult.self, "note.create": FoleviEngine.NoteCreateResult.self, "note.star": FoleviEngine.BulkResult.self, "note.move": FoleviEngine.BulkResult.self, "note.archive": FoleviEngine.BulkResult.self, "note.trash": FoleviEngine.BulkResult.self, "note.restore": FoleviEngine.BulkResult.self, "note.hideFromRecent": FoleviEngine.HiddenResult.self, "folder.create": FoleviEngine.FolderCreateResult.self, "catchUp.run": FoleviEngine.CatchUpCard.self, "catchUp.clear": FoleviEngine.OkResult.self, "engine.refresh": FoleviEngine.OkResult.self, "toast.action": FoleviEngine.OkResult.self, "gate.act": FoleviEngine.OkResult.self, "note.deleteForever": FoleviEngine.BulkResult.self, "note.duplicate": FoleviEngine.NoteCreateResult.self, "note.copyTo": FoleviEngine.BulkResult.self, "note.reorder": FoleviEngine.OkResult.self, "note.showInRecent": FoleviEngine.HiddenResult.self, "template.create": FoleviEngine.NoteCreateResult.self, "trash.empty": FoleviEngine.TrashEmptyResult.self, "folder.rename": FoleviEngine.OkResult.self, "folder.setColor": FoleviEngine.OkResult.self, "folder.move": FoleviEngine.OkResult.self, "folder.delete": FoleviEngine.OkResult.self, "changes.markSeen": FoleviEngine.OkResult.self, "proposal.accept": FoleviEngine.OkResult.self, "proposal.reject": FoleviEngine.OkResult.self, "notification.markRead": FoleviEngine.OkResult.self, "notification.markAllRead": FoleviEngine.OkResult.self, "notification.remove": FoleviEngine.OkResult.self, "invite.accept": FoleviEngine.OkResult.self, "pageInvite.accept": FoleviEngine.PageInviteAcceptResult.self]
     public static let editorArgs: [String: Model] = ["note.prepare": FoleviEngine.NotePrepareArgs.self, "note.show": FoleviEngine.NoteShowArgs.self, "note.close": FoleviEngine.EmptyArgs.self, "format": FoleviEngine.FormatArgs.self, "insert": FoleviEngine.InsertArgs.self, "link": FoleviEngine.LinkArgs.self, "undo": FoleviEngine.EmptyArgs.self, "redo": FoleviEngine.EmptyArgs.self, "indent": FoleviEngine.EmptyArgs.self, "outdent": FoleviEngine.EmptyArgs.self, "focus": FoleviEngine.EmptyArgs.self, "dismissKeyboard": FoleviEngine.EmptyArgs.self, "panel.open": FoleviEngine.PanelOpenArgs.self, "panel.close": FoleviEngine.EmptyArgs.self, "ai": FoleviEngine.AiArgs.self, "note.menu": FoleviEngine.NoteMenuArgs.self, "scrollToTop": FoleviEngine.EmptyArgs.self, "insets": FoleviEngine.InsetsArgs.self, "state": FoleviEngine.EmptyArgs.self]
     public static let editorResults: [String: Model] = ["note.prepare": FoleviEngine.NoteShownResult.self, "note.show": FoleviEngine.NoteShownResult.self, "note.close": FoleviEngine.OkResult.self, "format": FoleviEngine.OkResult.self, "insert": FoleviEngine.OkResult.self, "link": FoleviEngine.OkResult.self, "undo": FoleviEngine.OkResult.self, "redo": FoleviEngine.OkResult.self, "indent": FoleviEngine.OkResult.self, "outdent": FoleviEngine.OkResult.self, "focus": FoleviEngine.OkResult.self, "dismissKeyboard": FoleviEngine.OkResult.self, "panel.open": FoleviEngine.OkResult.self, "panel.close": FoleviEngine.OkResult.self, "ai": FoleviEngine.OkResult.self, "note.menu": FoleviEngine.OkResult.self, "scrollToTop": FoleviEngine.OkResult.self, "insets": FoleviEngine.OkResult.self, "state": FoleviEngine.EditorStateEvent.self]
     public static let events: [String: Model] = ["engine.ready": FoleviEngine.EngineReadyEvent.self, "gate.changed": FoleviEngine.GateChangedEvent.self, "sync.status": FoleviEngine.SyncStatusValue.self, "place.changed": FoleviEngine.PlaceChangedEvent.self, "toast": FoleviEngine.ToastEvent.self, "navigate.request": FoleviEngine.NavigateRequestEvent.self, "note.ready": FoleviEngine.NoteReadyEvent.self, "note.meta": FoleviEngine.NoteMeta.self, "editor.state": FoleviEngine.EditorStateEvent.self, "editor.panel": FoleviEngine.EditorPanelEvent.self, "memory.relieved": FoleviEngine.MemoryRelievedEvent.self]

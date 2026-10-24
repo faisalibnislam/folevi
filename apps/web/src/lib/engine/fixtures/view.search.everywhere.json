@@ -1,0 +1,30 @@
+{
+  "kind": "view",
+  "name": "search",
+  "description": "Search every space of this place.",
+  "args": {
+    "text": "launch",
+    "scope": "everywhere"
+  },
+  "value": {
+    "text": "launch",
+    "meaningAvailable": false,
+    "hits": [
+      {
+        "id": "doc_s1",
+        "title": "Launch plan",
+        "icon": "🚀",
+        "snippet": "Launch on the 12th",
+        "folder": null,
+        "updatedAt": 1792832400000,
+        "archived": false,
+        "kind": "document",
+        "space": "ws_studio",
+        "spaceName": "Airly Studio",
+        "matchIn": "text",
+        "blockId": null,
+        "page": null
+      }
+    ]
+  }
+}

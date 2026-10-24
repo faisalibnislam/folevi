@@ -1,0 +1,29 @@
+{
+  "kind": "view",
+  "name": "changes",
+  "description": "A proposal from a connected app, and notes others changed.",
+  "args": {},
+  "value": {
+    "proposals": [
+      {
+        "id": "prop_1",
+        "noteId": "doc_00001",
+        "title": "Kyoto in November",
+        "sourceName": "Claude",
+        "summary": "Add a packing list",
+        "createdAt": 1792831800000,
+        "problem": null
+      }
+    ],
+    "notes": [
+      {
+        "id": "doc_00002",
+        "title": "Q4 planning",
+        "icon": null,
+        "who": "Maya and 1 other",
+        "counts": "3 lines added, 1 edited",
+        "changedAt": 1792825200000
+      }
+    ]
+  }
+}

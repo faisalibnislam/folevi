@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "folder.move",
+  "description": "A folder can't go inside its own subfolder.",
+  "args": {
+    "id": "fld_trips",
+    "parentId": "fld_kyoto",
+    "afterId": null
+  },
+  "error": {
+    "code": "folder_descendant",
+    "message": "A folder can't go inside one of its subfolders."
+  }
+}

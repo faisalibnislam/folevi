@@ -256,7 +256,7 @@ function propsOf(members, owner) {
     const name = m.name.getText(sf).replace(/^["']|["']$/g, "");
     const ctx = { owner, prop: name, nested };
     const mapped = mapType(m.type, ctx);
-    props.push({ name, swift: ident(/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : camel(name)), key: name, type: mapped.type, nestedName: mapped.nestedName, optional: Boolean(m.questionToken) || Boolean(mapped.optional), doc: docOf(m) });
+    props.push({ name, swift: ident(/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : camel(name)), key: name, type: mapped.type, nestedName: mapped.nestedName, optional: Boolean(m.questionToken) || Boolean(mapped.optional), nullable: !m.questionToken && Boolean(mapped.optional), doc: docOf(m) });
   }
   return { props, nested };
 }
@@ -281,6 +281,13 @@ function emitStruct(name, members, doc, indent = "", owner = name) {
   lines.push("", `${indent}    public init(${params.join(", ")}) {`);
   for (const p of props) lines.push(`${indent}        self.${p.swift.replace(/`/g, "")} = ${p.swift}`);
   lines.push(`${indent}    }`);
+  // A required `T | null` field is always sent, as null when nil (synthesized Codable would leave it out, and the
+  // engine refuses a missing one); only `?` fields are left out when nil.
+  if (props.some((p) => p.nullable)) {
+    lines.push("", `${indent}    public func encode(to encoder: any Encoder) throws {`, `${indent}        var c = encoder.container(keyedBy: CodingKeys.self)`);
+    for (const p of props) lines.push(`${indent}        try c.${p.optional && !p.nullable ? "encodeIfPresent" : "encode"}(${p.swift}, forKey: .${p.swift})`);
+    lines.push(`${indent}    }`);
+  }
   lines.push(`${indent}}`);
   return lines.join("\n");
 }

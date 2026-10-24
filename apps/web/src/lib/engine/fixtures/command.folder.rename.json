@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "folder.rename",
+  "description": "Rename a folder.",
+  "args": {
+    "id": "fld_trips",
+    "name": "Travel"
+  },
+  "result": {
+    "ok": true
+  }
+}

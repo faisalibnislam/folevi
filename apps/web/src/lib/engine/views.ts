@@ -12,7 +12,7 @@ import { spaceOf } from "./context";
 import { Emitter, QuerySource, signalOf, type Signal, type Snapshot } from "./live";
 import { folderCardOf, folderTree, markOf, noteRowOf, pendingCreates, syncMarksOf, tagRows, type SummaryLike, type SyncMarks } from "./rows";
 import { catchUpCard, catchUpSignal } from "./catchUp";
-import { BridgeError, argsOf, id, oneOf, only, optionalId } from "./validate";
+import { BridgeError, argsOf, id, oneOf, only, optionalId, text } from "./validate";
 import {
   NOTES_LIST_VIEWS,
   NOTES_SORTS,
@@ -102,30 +102,30 @@ export function dynamicSignal(ctx: ViewContext, pick: (deps: EngineDeps) => ((cb
   });
 }
 
-const outboxSignal = (ctx: ViewContext) => dynamicSignal(ctx, (d) => (d.app.outbox ? (cb) => d.app.outbox!.subscribe(cb) : null));
-const engineSignal = (ctx: ViewContext) => dynamicSignal(ctx, (d) => (d.app.engine ? (cb) => d.app.engine!.subscribe(() => cb()) : null));
+export const outboxSignal = (ctx: ViewContext) => dynamicSignal(ctx, (d) => (d.app.outbox ? (cb) => d.app.outbox!.subscribe(cb) : null));
+export const engineSignal = (ctx: ViewContext) => dynamicSignal(ctx, (d) => (d.app.engine ? (cb) => d.app.engine!.subscribe(() => cb()) : null));
 
 const NO_ENTRIES: readonly OutboxEntry[] = [];
-const entriesOf = (deps: EngineDeps) => deps.app.outbox?.entries ?? NO_ENTRIES;
-const marksOf = (deps: EngineDeps): SyncMarks => syncMarksOf(deps.app.engine?.state ?? null, entriesOf(deps));
+export const entriesOf = (deps: EngineDeps) => deps.app.outbox?.entries ?? NO_ENTRIES;
+export const marksOf = (deps: EngineDeps): SyncMarks => syncMarksOf(deps.app.engine?.state ?? null, entriesOf(deps));
 
-function requireSpace(deps: EngineDeps, space: string | undefined): EngineSpace {
+export function requireSpace(deps: EngineDeps, space: string | undefined): EngineSpace {
   const s = spaceOf(deps.app, space);
   if (!s) throw new BridgeError("not_found", "That Personal or workspace isn't in this place.");
   return s;
 }
 
-function source<T>(ctx: ViewContext, ref: FunctionReference<"query">, args: Record<string, unknown>, scope: WireScope | null): QuerySource<T> {
+export function source<T>(ctx: ViewContext, ref: FunctionReference<"query">, args: Record<string, unknown>, scope: WireScope | null): QuerySource<T> {
   const deps = ctx.deps();
   return new QuerySource<T>(deps.client, ref, args, { kept: deps.kept, persist: () => (scope ? ctx.deps().persist(scope) : true) });
 }
 
 /** Folders by id, for rows that name their folder by id only (pending creates, moved notes). */
-function folderChips(sidebar: SidebarData | undefined): Map<string, FolderChip> {
+export function folderChips(sidebar: SidebarData | undefined): Map<string, FolderChip> {
   return new Map((sidebar?.folders ?? []).map((f) => [f.id, { id: f.id, name: f.name, color: f.color ?? null }]));
 }
 
-function spaceKey(scope: WireScope): string {
+export function spaceKey(scope: WireScope): string {
   return scope.kind === "personal" ? "personal" : scope.workspaceId;
 }
 
@@ -207,7 +207,7 @@ const syncStatus: ValueViewDef = {
 // home
 // ---------------------------------------------------------------------------------------------------------------
 
-type ListPage = { page: SummaryLike[]; isDone: boolean; continueCursor: string };
+export type ListPage = { page: SummaryLike[]; isDone: boolean; continueCursor: string };
 type ChangesData = { notes: unknown[] };
 type ReviewSummary = { due: number; new: number; hasCards: boolean };
 
@@ -435,9 +435,11 @@ const noteMeta: ValueViewDef = {
 
 /** Rows per page asked of documents.list. */
 export const PAGE_ROWS = 200;
+/** How many notes a filtered list looks through. */
+export const FILTER_ROWS = 5000;
 
 export function parseNotesListArgs(raw: Args): NotesListArgs {
-  only(raw, ["space", "view", "folderId", "tagId", "sort"]);
+  only(raw, ["space", "view", "folderId", "tagId", "sort", "filter"]);
   const view = oneOf(raw, "view", NOTES_LIST_VIEWS);
   const out: NotesListArgs = { view };
   const space = optionalId(raw, "space");
@@ -447,6 +449,7 @@ export function parseNotesListArgs(raw: Args): NotesListArgs {
   if (view === "tag") out.tagId = id(raw, "tagId");
   else if (raw.tagId !== undefined) throw new BridgeError("invalid_args", "tagId is only for view “tag”.");
   if (raw.sort !== undefined) out.sort = oneOf(raw, "sort", NOTES_SORTS);
+  if (raw.filter !== undefined) out.filter = text(raw, "filter", { max: 200, allowEmpty: true });
   return out;
 }
 
@@ -557,9 +560,11 @@ const notesList: ListViewDef = {
     if (args.tagId) queryArgs.tagId = args.tagId;
     const paged = new PagedList(ctx, queryArgs, scope);
     const sidebar = source<SidebarData>(ctx, api.organization.sidebar, { scope }, scope);
+    const filter = args.filter?.trim().toLowerCase() ?? "";
     return {
       signals: [paged, sidebar, outboxSignal(ctx), engineSignal(ctx), deps.e2eeSignal],
-      ensure: (rows) => paged.ensure(rows),
+      // A filter looks through the whole list, so it loads every page (up to FILTER_ROWS notes).
+      ensure: (rows) => paged.ensure(filter ? FILTER_ROWS : rows),
       compute: () => {
         const d = ctx.deps();
         const entries = entriesOf(d);
@@ -570,7 +575,8 @@ const notesList: ListViewDef = {
         if (snap.error) return { ids: [], rows: new Map(), complete: true, stale: false, error: snap.error };
         const engineState = d.app.engine?.state ?? null;
         const pending = pendingCreates(engineState, { scopeKey: spaceKey(scope), ...(args.view === "folder" ? { folderId: args.folderId! } : {}) });
-        const rows = notesListRows(args, snap.docs, { entries, marks: marksOf(d), pending: snap.loading && !pending.length ? [] : pending, folders: folderChips(sidebar.snapshot().value) });
+        const all = notesListRows(args, snap.docs, { entries, marks: marksOf(d), pending: snap.loading && !pending.length ? [] : pending, folders: folderChips(sidebar.snapshot().value) });
+        const rows = filter ? all.filter((r) => r.title.toLowerCase().includes(filter) || r.excerpt.toLowerCase().includes(filter)) : all;
         return { ids: rows.map((r) => r.id), rows: new Map(rows.map((r) => [r.id, r])), complete: snap.complete, stale: snap.stale || snap.loading, error: null };
       },
     };
@@ -581,14 +587,15 @@ const notesList: ListViewDef = {
 // The registry
 // ---------------------------------------------------------------------------------------------------------------
 
-export const VALUE_VIEWS: Record<ViewName, ValueViewDef> = {
+/** The first views (revision 1); lib/engine/registry.ts puts every view together. */
+export const CORE_VALUE_VIEWS = {
   session,
   "places.list": placesList,
   home,
   "folders.tree": foldersTree,
   "sync.status": syncStatus,
   "note.meta": noteMeta,
-};
+} satisfies Partial<Record<ViewName, ValueViewDef>>;
 
 export const LIST_VIEWS: Record<ListViewName, ListViewDef> = {
   "notes.list": notesList,

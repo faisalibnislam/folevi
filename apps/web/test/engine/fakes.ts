@@ -179,7 +179,7 @@ export function rig(place = "acct:user_1"): Rig {
         today: "2026-10-24",
         timeZone: "UTC",
         appearance: "system",
-        capabilities: { sharing: true, changes: true, workspaces: true, ai: true, purchases: false },
+        capabilities: { graph: true, sharing: true, changes: true, workspaces: true, ai: true, purchases: false },
         engine: engine as never,
         outbox: outbox as never,
         places: { current: place, places: [] },

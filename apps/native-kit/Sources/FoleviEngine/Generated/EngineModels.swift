@@ -124,6 +124,23 @@ public struct HelloValue: Codable, Hashable, Sendable {
         self.events = events
         self.gate = gate
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(`protocol`, forKey: .`protocol`)
+        try c.encode(revision, forKey: .revision)
+        try c.encode(build, forKey: .build)
+        try c.encode(schemaHash, forKey: .schemaHash)
+        try c.encode(ready, forKey: .ready)
+        try c.encode(place, forKey: .place)
+        try c.encode(features, forKey: .features)
+        try c.encode(views, forKey: .views)
+        try c.encode(listViews, forKey: .listViews)
+        try c.encode(commands, forKey: .commands)
+        try c.encode(editorCommands, forKey: .editorCommands)
+        try c.encode(events, forKey: .events)
+        try c.encode(gate, forKey: .gate)
+    }
 }
 
 /// The reply to watch.
@@ -280,6 +297,13 @@ public struct FolderChip: Codable, Hashable, Sendable {
         self.name = name
         self.color = color
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(color, forKey: .color)
+    }
 }
 
 public struct TagChip: Codable, Hashable, Sendable {
@@ -319,11 +343,13 @@ public struct NoteRow: Codable, Hashable, Sendable {
     /// Archived (shown in Archive) or in Trash.
     public var archived: Bool
     public var inTrash: Bool
+    /// Revision 4: when it went to Trash (milliseconds since 1970), or null when it isn't in Trash.
+    public var deletedAt: Double?
     public var sync: SyncMark
     /// Content hash of the row (everything above); equal hashes mean equal rows.
     public var h: String
 
-    public init(id: String, title: String, icon: String? = nil, kind: String, excerpt: String, preview: [PreviewLine]? = nil, cover: CardCover, style: CardStyle, starred: Bool, createdAt: Double, updatedAt: Double, folder: FolderChip? = nil, tags: [TagChip], encrypted: Bool, archived: Bool, inTrash: Bool, sync: SyncMark, h: String) {
+    public init(id: String, title: String, icon: String? = nil, kind: String, excerpt: String, preview: [PreviewLine]? = nil, cover: CardCover, style: CardStyle, starred: Bool, createdAt: Double, updatedAt: Double, folder: FolderChip? = nil, tags: [TagChip], encrypted: Bool, archived: Bool, inTrash: Bool, deletedAt: Double? = nil, sync: SyncMark, h: String) {
         self.id = id
         self.title = title
         self.icon = icon
@@ -340,8 +366,32 @@ public struct NoteRow: Codable, Hashable, Sendable {
         self.encrypted = encrypted
         self.archived = archived
         self.inTrash = inTrash
+        self.deletedAt = deletedAt
         self.sync = sync
         self.h = h
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(title, forKey: .title)
+        try c.encode(icon, forKey: .icon)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(excerpt, forKey: .excerpt)
+        try c.encode(preview, forKey: .preview)
+        try c.encode(cover, forKey: .cover)
+        try c.encode(style, forKey: .style)
+        try c.encode(starred, forKey: .starred)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(updatedAt, forKey: .updatedAt)
+        try c.encode(folder, forKey: .folder)
+        try c.encode(tags, forKey: .tags)
+        try c.encode(encrypted, forKey: .encrypted)
+        try c.encode(archived, forKey: .archived)
+        try c.encode(inTrash, forKey: .inTrash)
+        try c.encode(deletedAt, forKey: .deletedAt)
+        try c.encode(sync, forKey: .sync)
+        try c.encode(h, forKey: .h)
     }
 }
 
@@ -356,6 +406,14 @@ public struct ProfileInfo: Codable, Hashable, Sendable {
         self.name = name
         self.email = email
         self.avatarUrl = avatarUrl
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(email, forKey: .email)
+        try c.encode(avatarUrl, forKey: .avatarUrl)
     }
 }
 
@@ -390,6 +448,8 @@ public struct SpaceInfo: Codable, Hashable, Sendable {
 }
 
 public struct Capabilities: Codable, Hashable, Sendable {
+    /// Revision 4: the Graph view is available (Foli AI's graph).
+    public var graph: Bool
     public var sharing: Bool
     public var changes: Bool
     public var workspaces: Bool
@@ -398,7 +458,8 @@ public struct Capabilities: Codable, Hashable, Sendable {
     /// Plans and purchases may be shown (never on iOS, never in local mode).
     public var purchases: Bool
 
-    public init(sharing: Bool, changes: Bool, workspaces: Bool, ai: Bool, purchases: Bool) {
+    public init(graph: Bool, sharing: Bool, changes: Bool, workspaces: Bool, ai: Bool, purchases: Bool) {
+        self.graph = graph
         self.sharing = sharing
         self.changes = changes
         self.workspaces = workspaces
@@ -445,6 +506,20 @@ public struct SessionValue: Codable, Hashable, Sendable {
         self.appearance = appearance
         self.capabilities = capabilities
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(place, forKey: .place)
+        try c.encode(mode, forKey: .mode)
+        try c.encode(profile, forKey: .profile)
+        try c.encode(spaces, forKey: .spaces)
+        try c.encode(space, forKey: .space)
+        try c.encode(online, forKey: .online)
+        try c.encode(today, forKey: .today)
+        try c.encode(timeZone, forKey: .timeZone)
+        try c.encode(appearance, forKey: .appearance)
+        try c.encode(capabilities, forKey: .capabilities)
+    }
 }
 
 public struct PlaceWorkspaceInfo: Codable, Hashable, Sendable {
@@ -456,6 +531,13 @@ public struct PlaceWorkspaceInfo: Codable, Hashable, Sendable {
         self.id = id
         self.name = name
         self.logoUrl = logoUrl
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(logoUrl, forKey: .logoUrl)
     }
 }
 
@@ -490,6 +572,20 @@ public struct PlaceRow: Codable, Hashable, Sendable {
         self.reminders = reminders
         self.waiting = waiting
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(name, forKey: .name)
+        try c.encode(email, forKey: .email)
+        try c.encode(avatarUrl, forKey: .avatarUrl)
+        try c.encode(syncs, forKey: .syncs)
+        try c.encode(workspaces, forKey: .workspaces)
+        try c.encode(unread, forKey: .unread)
+        try c.encode(reminders, forKey: .reminders)
+        try c.encode(waiting, forKey: .waiting)
+    }
 }
 
 /// `places.list`: every place this device knows, for the account and place switcher.
@@ -500,6 +596,12 @@ public struct PlacesValue: Codable, Hashable, Sendable {
     public init(current: String? = nil, places: [PlaceRow]) {
         self.current = current
         self.places = places
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(current, forKey: .current)
+        try c.encode(places, forKey: .places)
     }
 }
 
@@ -523,6 +625,14 @@ public struct CatchUpCard: Codable, Hashable, Sendable {
         self.state = state
         self.brief = brief
         self.error = error
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(available, forKey: .available)
+        try c.encode(state, forKey: .state)
+        try c.encode(brief, forKey: .brief)
+        try c.encode(error, forKey: .error)
     }
 }
 
@@ -573,6 +683,14 @@ public struct HomeRow: Codable, Hashable, Sendable {
         self.count = count
         self.route = route
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(title, forKey: .title)
+        try c.encode(count, forKey: .count)
+        try c.encode(route, forKey: .route)
+    }
 }
 
 public struct FolderPreview: Codable, Hashable, Sendable {
@@ -614,6 +732,20 @@ public struct FolderCard: Codable, Hashable, Sendable {
         self.previews = previews
         self.encrypted = encrypted
         self.sync = sync
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(color, forKey: .color)
+        try c.encode(parentId, forKey: .parentId)
+        try c.encode(noteCount, forKey: .noteCount)
+        try c.encode(childCount, forKey: .childCount)
+        try c.encode(updatedAt, forKey: .updatedAt)
+        try c.encode(previews, forKey: .previews)
+        try c.encode(encrypted, forKey: .encrypted)
+        try c.encode(sync, forKey: .sync)
     }
 }
 
@@ -696,6 +828,20 @@ public struct FolderNode: Codable, Hashable, Sendable {
         self.encrypted = encrypted
         self.sync = sync
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(color, forKey: .color)
+        try c.encode(parentId, forKey: .parentId)
+        try c.encode(depth, forKey: .depth)
+        try c.encode(rank, forKey: .rank)
+        try c.encode(childCount, forKey: .childCount)
+        try c.encode(noteCount, forKey: .noteCount)
+        try c.encode(encrypted, forKey: .encrypted)
+        try c.encode(sync, forKey: .sync)
+    }
 }
 
 /// `folders.tree`: every folder (nested) and tag of a space, with what's waiting to sync laid over it.
@@ -740,6 +886,14 @@ public struct SpaceSyncInfo: Codable, Hashable, Sendable {
         self.state = state
         self.have = have
         self.total = total
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(space, forKey: .space)
+        try c.encode(state, forKey: .state)
+        try c.encode(have, forKey: .have)
+        try c.encode(total, forKey: .total)
     }
 }
 
@@ -810,6 +964,27 @@ public struct NoteMeta: Codable, Hashable, Sendable {
         self.style = style
         self.sync = sync
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(found, forKey: .found)
+        try c.encode(title, forKey: .title)
+        try c.encode(icon, forKey: .icon)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(space, forKey: .space)
+        try c.encode(folder, forKey: .folder)
+        try c.encode(breadcrumbs, forKey: .breadcrumbs)
+        try c.encode(starred, forKey: .starred)
+        try c.encode(access, forKey: .access)
+        try c.encode(canEdit, forKey: .canEdit)
+        try c.encode(encrypted, forKey: .encrypted)
+        try c.encode(archived, forKey: .archived)
+        try c.encode(inTrash, forKey: .inTrash)
+        try c.encode(cover, forKey: .cover)
+        try c.encode(style, forKey: .style)
+        try c.encode(sync, forKey: .sync)
+    }
 }
 
 public struct NoteCrumb: Codable, Hashable, Sendable {
@@ -821,6 +996,13 @@ public struct NoteCrumb: Codable, Hashable, Sendable {
         self.id = id
         self.title = title
         self.icon = icon
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(title, forKey: .title)
+        try c.encode(icon, forKey: .icon)
     }
 }
 
@@ -852,13 +1034,17 @@ public struct NotesListArgs: Codable, Hashable, Sendable {
     public var tagId: String?
     /// Default "updated".
     public var sort: NotesSort?
+    /// Revision 4: only notes whose title or excerpt contains this (case-insensitive). The engine loads the whole
+    /// list (up to 5,000 notes) to filter it, so rows outside the loaded window are found too.
+    public var filter: String?
 
-    public init(space: SpaceRef? = nil, view: NotesListView, folderId: String? = nil, tagId: String? = nil, sort: NotesSort? = nil) {
+    public init(space: SpaceRef? = nil, view: NotesListView, folderId: String? = nil, tagId: String? = nil, sort: NotesSort? = nil, filter: String? = nil) {
         self.space = space
         self.view = view
         self.folderId = folderId
         self.tagId = tagId
         self.sort = sort
+        self.filter = filter
     }
 }
 
@@ -934,6 +1120,12 @@ public struct NoteMoveArgs: Codable, Hashable, Sendable {
     public init(ids: [String], folderId: String? = nil) {
         self.ids = ids
         self.folderId = folderId
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(ids, forKey: .ids)
+        try c.encode(folderId, forKey: .folderId)
     }
 }
 
@@ -1121,6 +1313,11 @@ public struct LinkArgs: Codable, Hashable, Sendable {
     public init(href: String? = nil) {
         self.href = href
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(href, forKey: .href)
+    }
 }
 
 public struct PanelOpenArgs: Codable, Hashable, Sendable {
@@ -1188,6 +1385,13 @@ public struct EngineReadyEvent: Codable, Hashable, Sendable {
         self.protocol = `protocol`
         self.revision = revision
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(place, forKey: .place)
+        try c.encode(`protocol`, forKey: .`protocol`)
+        try c.encode(revision, forKey: .revision)
+    }
 }
 
 /// Which full screen native shows instead of the app (revision 3 adds everything but `gate`). Null `gate`: signed in
@@ -1234,6 +1438,22 @@ public struct GateChangedEvent: Codable, Hashable, Sendable {
         self.e2ee = e2ee
         self.onboarding = onboarding
         self.error = error
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(gate, forKey: .gate)
+        try c.encode(title, forKey: .title)
+        try c.encode(message, forKey: .message)
+        try c.encode(busy, forKey: .busy)
+        try c.encode(actions, forKey: .actions)
+        try c.encode(fields, forKey: .fields)
+        try c.encode(progress, forKey: .progress)
+        try c.encode(migration, forKey: .migration)
+        try c.encode(deviceLimit, forKey: .deviceLimit)
+        try c.encode(e2ee, forKey: .e2ee)
+        try c.encode(onboarding, forKey: .onboarding)
+        try c.encode(error, forKey: .error)
     }
 }
 
@@ -1290,6 +1510,13 @@ public struct GateProgress: Codable, Hashable, Sendable {
         self.total = total
         self.label = label
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(done, forKey: .done)
+        try c.encode(total, forKey: .total)
+        try c.encode(label, forKey: .label)
+    }
 }
 
 /// "Move your notes to Folevi" (and back to a library): what moves, and whether it fits.
@@ -1330,6 +1557,22 @@ public struct MigrationSummary: Codable, Hashable, Sendable {
         self.writable = writable
         self.versions = versions
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(direction, forKey: .direction)
+        try c.encode(phase, forKey: .phase)
+        try c.encode(notes, forKey: .notes)
+        try c.encode(folders, forKey: .folders)
+        try c.encode(tags, forKey: .tags)
+        try c.encode(files, forKey: .files)
+        try c.encode(fileBytes, forKey: .fileBytes)
+        try c.encode(availableBytes, forKey: .availableBytes)
+        try c.encode(fits, forKey: .fits)
+        try c.encode(existingNotes, forKey: .existingNotes)
+        try c.encode(writable, forKey: .writable)
+        try c.encode(versions, forKey: .versions)
+    }
 }
 
 public struct DeviceLimitInfo: Codable, Hashable, Sendable {
@@ -1369,6 +1612,14 @@ public struct E2eeGateInfo: Codable, Hashable, Sendable {
         self.view = view
         self.methods = methods
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(space, forKey: .space)
+        try c.encode(spaceName, forKey: .spaceName)
+        try c.encode(view, forKey: .view)
+        try c.encode(methods, forKey: .methods)
+    }
 }
 
 public struct OnboardingGateInfo: Codable, Hashable, Sendable {
@@ -1386,6 +1637,12 @@ public struct PlaceChangedEvent: Codable, Hashable, Sendable {
     public init(place: String? = nil, space: SpaceRef) {
         self.place = place
         self.space = space
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(place, forKey: .place)
+        try c.encode(space, forKey: .space)
     }
 }
 
@@ -1420,6 +1677,14 @@ public struct ToastEvent: Codable, Hashable, Sendable {
         self.undo = undo
         self.action = action
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(message, forKey: .message)
+        try c.encode(tone, forKey: .tone)
+        try c.encode(undo, forKey: .undo)
+        try c.encode(action, forKey: .action)
+    }
 }
 
 public struct ToastAction: Codable, Hashable, Sendable {
@@ -1448,6 +1713,14 @@ public struct NavigateRequestEvent: Codable, Hashable, Sendable {
         self.noteId = noteId
         self.external = external
         self.newTab = newTab
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(route, forKey: .route)
+        try c.encode(noteId, forKey: .noteId)
+        try c.encode(external, forKey: .external)
+        try c.encode(newTab, forKey: .newTab)
     }
 }
 
@@ -1483,6 +1756,18 @@ public struct EditorStateEvent: Codable, Hashable, Sendable {
         self.undo = undo
         self.redo = redo
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(noteId, forKey: .noteId)
+        try c.encode(focused, forKey: .focused)
+        try c.encode(canEdit, forKey: .canEdit)
+        try c.encode(block, forKey: .block)
+        try c.encode(marks, forKey: .marks)
+        try c.encode(link, forKey: .link)
+        try c.encode(undo, forKey: .undo)
+        try c.encode(redo, forKey: .redo)
+    }
 }
 
 public struct EditorPanelEvent: Codable, Hashable, Sendable {
@@ -1490,6 +1775,11 @@ public struct EditorPanelEvent: Codable, Hashable, Sendable {
 
     public init(panel: EditorPanel? = nil) {
         self.panel = panel
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(panel, forKey: .panel)
     }
 }
 
@@ -1499,5 +1789,538 @@ public struct MemoryRelievedEvent: Codable, Hashable, Sendable {
 
     public init(dropped: [String]) {
         self.dropped = dropped
+    }
+}
+
+public struct NoteReorderArgs: Codable, Hashable, Sendable {
+    public var id: String
+    /// The note it goes right after in manual order; null: first.
+    public var afterId: String?
+    public var view: NotesListView
+    public var folderId: String?
+    public var space: SpaceRef?
+
+    public init(id: String, afterId: String? = nil, view: NotesListView, folderId: String? = nil, space: SpaceRef? = nil) {
+        self.id = id
+        self.afterId = afterId
+        self.view = view
+        self.folderId = folderId
+        self.space = space
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(afterId, forKey: .afterId)
+        try c.encode(view, forKey: .view)
+        try c.encodeIfPresent(folderId, forKey: .folderId)
+        try c.encodeIfPresent(space, forKey: .space)
+    }
+}
+
+public struct NoteCopyToArgs: Codable, Hashable, Sendable {
+    public var ids: [String]
+    /// Where the copies go: Personal or a workspace of this place.
+    public var space: SpaceRef
+    /// A folder there; null or left out: Drafts.
+    public var folderId: String?
+
+    public init(ids: [String], space: SpaceRef, folderId: String? = nil) {
+        self.ids = ids
+        self.space = space
+        self.folderId = folderId
+    }
+}
+
+public struct TemplateCreateArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    public var title: String?
+    /// Open it in the note page straight away.
+    public var `open`: Bool?
+
+    public init(space: SpaceRef? = nil, title: String? = nil, open: Bool? = nil) {
+        self.space = space
+        self.title = title
+        self.open = `open`
+    }
+}
+
+public struct TrashEmptyResult: Codable, Hashable, Sendable {
+    /// Notes being deleted for good now.
+    public var deleted: Int
+    /// Notes left in Trash (this person may not delete them).
+    public var skipped: Int
+    /// A very full Trash goes on emptying in the background.
+    public var continuing: Bool
+
+    public init(deleted: Int, skipped: Int, continuing: Bool) {
+        self.deleted = deleted
+        self.skipped = skipped
+        self.continuing = continuing
+    }
+}
+
+public struct FolderRenameArgs: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+
+    public init(id: String, name: String) {
+        self.id = id
+        self.name = name
+    }
+}
+
+public struct FolderSetColorArgs: Codable, Hashable, Sendable {
+    public var id: String
+    /// A folder colour key, null for the default.
+    public var color: String?
+
+    public init(id: String, color: String? = nil) {
+        self.id = id
+        self.color = color
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(color, forKey: .color)
+    }
+}
+
+/// Refused with `folder_self`, `folder_descendant` or `folder_depth`, as folderMoveProblem refuses.
+public struct FolderMoveArgs: Codable, Hashable, Sendable {
+    public var id: String
+    /// New parent; null: the top level.
+    public var parentId: String?
+    /// The sibling it goes right after; null: first among its new siblings.
+    public var afterId: String?
+    /// The space whose folders it's checked against (default: the one shown).
+    public var space: SpaceRef?
+
+    public init(id: String, parentId: String? = nil, afterId: String? = nil, space: SpaceRef? = nil) {
+        self.id = id
+        self.parentId = parentId
+        self.afterId = afterId
+        self.space = space
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(parentId, forKey: .parentId)
+        try c.encode(afterId, forKey: .afterId)
+        try c.encodeIfPresent(space, forKey: .space)
+    }
+}
+
+public struct FolderIdArgs: Codable, Hashable, Sendable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+}
+
+public struct TrashSummaryValue: Codable, Hashable, Sendable {
+    public var total: Int
+    /// The ones this person may delete for good.
+    public var deletable: Int
+
+    public init(total: Int, deletable: Int) {
+        self.total = total
+        self.deletable = deletable
+    }
+}
+
+public struct BuiltInTemplate: Codable, Hashable, Sendable {
+    /// `builtin:<key>`, what `note.create { templateId }` takes.
+    public var key: String
+    public var name: String
+    public var description: String
+    /// An icon name from the web's template tiles ("calendar", "list-checks", ...).
+    public var icon: String
+
+    public init(key: String, name: String, description: String, icon: String) {
+        self.key = key
+        self.name = name
+        self.description = description
+        self.icon = icon
+    }
+}
+
+public struct BuiltInTemplatesValue: Codable, Hashable, Sendable {
+    public var templates: [BuiltInTemplate]
+
+    public init(templates: [BuiltInTemplate]) {
+        self.templates = templates
+    }
+}
+
+public struct FolderCardsArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    /// Whose subfolders; null or left out: the top level.
+    public var parentId: String?
+
+    public init(space: SpaceRef? = nil, parentId: String? = nil) {
+        self.space = space
+        self.parentId = parentId
+    }
+}
+
+public struct FolderCardsValue: Codable, Hashable, Sendable {
+    public var folders: [FolderCard]
+
+    public init(folders: [FolderCard]) {
+        self.folders = folders
+    }
+}
+
+/// A page shared with this person (`sharing.sharedWithMe`).
+public struct SharedRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var excerpt: String
+    public var icon: String?
+    public var sharedBy: String
+    /// The workspace it lives in, or null for someone's Personal.
+    public var workspaceName: String?
+    public var ownerName: String?
+    /// "editor", "commenter" or "viewer" (open).
+    public var role: String
+    public var sharedAt: Double
+    public var updatedAt: Double
+    public var encrypted: Bool
+    public var h: String
+
+    public init(id: String, title: String, excerpt: String, icon: String? = nil, sharedBy: String, workspaceName: String? = nil, ownerName: String? = nil, role: String, sharedAt: Double, updatedAt: Double, encrypted: Bool, h: String) {
+        self.id = id
+        self.title = title
+        self.excerpt = excerpt
+        self.icon = icon
+        self.sharedBy = sharedBy
+        self.workspaceName = workspaceName
+        self.ownerName = ownerName
+        self.role = role
+        self.sharedAt = sharedAt
+        self.updatedAt = updatedAt
+        self.encrypted = encrypted
+        self.h = h
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(title, forKey: .title)
+        try c.encode(excerpt, forKey: .excerpt)
+        try c.encode(icon, forKey: .icon)
+        try c.encode(sharedBy, forKey: .sharedBy)
+        try c.encode(workspaceName, forKey: .workspaceName)
+        try c.encode(ownerName, forKey: .ownerName)
+        try c.encode(role, forKey: .role)
+        try c.encode(sharedAt, forKey: .sharedAt)
+        try c.encode(updatedAt, forKey: .updatedAt)
+        try c.encode(encrypted, forKey: .encrypted)
+        try c.encode(h, forKey: .h)
+    }
+}
+
+/// `shared.list`: a value view (lists of rows other than notes are value views; they're small).
+public struct SharedValue: Codable, Hashable, Sendable {
+    public var rows: [SharedRow]
+
+    public init(rows: [SharedRow]) {
+        self.rows = rows
+    }
+}
+
+/// A change a connected app proposed to a note (`proposals.list`).
+public struct ProposalRow: Codable, Hashable, Sendable {
+    public var id: String
+    /// Null when this person can't open the note any more.
+    public var noteId: String?
+    public var title: String
+    public var sourceName: String
+    /// The added lines as plain text, for the row's preview.
+    public var summary: String
+    public var createdAt: Double
+    /// Why it can't be accepted any more (only Reject is offered), or null.
+    public var problem: String?
+
+    public init(id: String, noteId: String? = nil, title: String, sourceName: String, summary: String, createdAt: Double, problem: String? = nil) {
+        self.id = id
+        self.noteId = noteId
+        self.title = title
+        self.sourceName = sourceName
+        self.summary = summary
+        self.createdAt = createdAt
+        self.problem = problem
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(noteId, forKey: .noteId)
+        try c.encode(title, forKey: .title)
+        try c.encode(sourceName, forKey: .sourceName)
+        try c.encode(summary, forKey: .summary)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(problem, forKey: .problem)
+    }
+}
+
+/// A note someone else changed since this person last looked (`changes.list`).
+public struct ChangedNoteRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var icon: String?
+    /// "Maya and 2 others".
+    public var who: String
+    /// "3 lines added, 1 removed".
+    public var counts: String
+    public var changedAt: Double
+
+    public init(id: String, title: String, icon: String? = nil, who: String, counts: String, changedAt: Double) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+        self.who = who
+        self.counts = counts
+        self.changedAt = changedAt
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(title, forKey: .title)
+        try c.encode(icon, forKey: .icon)
+        try c.encode(who, forKey: .who)
+        try c.encode(counts, forKey: .counts)
+        try c.encode(changedAt, forKey: .changedAt)
+    }
+}
+
+public struct ChangesValue: Codable, Hashable, Sendable {
+    public var proposals: [ProposalRow]
+    public var notes: [ChangedNoteRow]
+
+    public init(proposals: [ProposalRow], notes: [ChangedNoteRow]) {
+        self.proposals = proposals
+        self.notes = notes
+    }
+}
+
+public struct ProposalIdArgs: Codable, Hashable, Sendable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+}
+
+/// A notification in the bell (`notifications.list`).
+public struct NotificationRow: Codable, Hashable, Sendable {
+    public var id: String
+    /// "mention", "comment", "share", "invite", "reminder", "change", ... (open).
+    public var kind: String
+    public var title: String
+    /// "" when there's none (or the note can't be read any more).
+    public var body: String
+    public var at: Double
+    public var read: Bool
+    /// Where tapping it goes (an app route), or null.
+    public var route: String?
+    public var actorName: String?
+    public var actorAvatarUrl: String?
+    public var noteId: String?
+    public var noteTitle: String?
+    /// How many events it stands for ("and 3 more").
+    public var count: Int
+    /// A workspace invitation to accept (`invite.accept`), or null.
+    public var inviteId: String?
+    /// A page invitation to accept (`pageInvite.accept`), or null.
+    public var pageInviteId: String?
+    /// A file to download, or null.
+    public var fileId: String?
+
+    public init(id: String, kind: String, title: String, body: String, at: Double, read: Bool, route: String? = nil, actorName: String? = nil, actorAvatarUrl: String? = nil, noteId: String? = nil, noteTitle: String? = nil, count: Int, inviteId: String? = nil, pageInviteId: String? = nil, fileId: String? = nil) {
+        self.id = id
+        self.kind = kind
+        self.title = title
+        self.body = body
+        self.at = at
+        self.read = read
+        self.route = route
+        self.actorName = actorName
+        self.actorAvatarUrl = actorAvatarUrl
+        self.noteId = noteId
+        self.noteTitle = noteTitle
+        self.count = count
+        self.inviteId = inviteId
+        self.pageInviteId = pageInviteId
+        self.fileId = fileId
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(title, forKey: .title)
+        try c.encode(body, forKey: .body)
+        try c.encode(at, forKey: .at)
+        try c.encode(read, forKey: .read)
+        try c.encode(route, forKey: .route)
+        try c.encode(actorName, forKey: .actorName)
+        try c.encode(actorAvatarUrl, forKey: .actorAvatarUrl)
+        try c.encode(noteId, forKey: .noteId)
+        try c.encode(noteTitle, forKey: .noteTitle)
+        try c.encode(count, forKey: .count)
+        try c.encode(inviteId, forKey: .inviteId)
+        try c.encode(pageInviteId, forKey: .pageInviteId)
+        try c.encode(fileId, forKey: .fileId)
+    }
+}
+
+public struct NotificationsValue: Codable, Hashable, Sendable {
+    public var unread: Int
+    public var rows: [NotificationRow]
+
+    public init(unread: Int, rows: [NotificationRow]) {
+        self.unread = unread
+        self.rows = rows
+    }
+}
+
+public struct NotificationMarkArgs: Codable, Hashable, Sendable {
+    public var ids: [String]
+    /// true: read; false: unread.
+    public var read: Bool
+
+    public init(ids: [String], read: Bool) {
+        self.ids = ids
+        self.read = read
+    }
+}
+
+public struct NotificationIdsArgs: Codable, Hashable, Sendable {
+    public var ids: [String]
+
+    public init(ids: [String]) {
+        self.ids = ids
+    }
+}
+
+public struct InviteAcceptArgs: Codable, Hashable, Sendable {
+    public var inviteId: String
+
+    public init(inviteId: String) {
+        self.inviteId = inviteId
+    }
+}
+
+public struct PageInviteAcceptResult: Codable, Hashable, Sendable {
+    public var noteId: String
+
+    public init(noteId: String) {
+        self.noteId = noteId
+    }
+}
+
+/// `search`: a one-off query (debounce it), or a live view while the search screen is up.
+public struct SearchArgs: Codable, Hashable, Sendable {
+    public enum Scope: String, Codable, Hashable, Sendable, CaseIterable {
+        case place
+        case everywhere
+    }
+
+    public var text: String
+    /// "place" (the space shown, or `space`) or "everywhere" (every space of this place). Default "place".
+    public var scope: Scope?
+    public var space: SpaceRef?
+    public var folderId: String?
+    public var tagId: String?
+    /// Only notes edited after this (milliseconds since 1970).
+    public var updatedAfter: Int?
+    public var includeArchived: Bool?
+    /// Also search by meaning where the plan has it (`meaningAvailable`).
+    public var meaning: Bool?
+    /// Default 20, at most 40.
+    public var limit: Int?
+
+    public init(text: String, scope: Scope? = nil, space: SpaceRef? = nil, folderId: String? = nil, tagId: String? = nil, updatedAfter: Int? = nil, includeArchived: Bool? = nil, meaning: Bool? = nil, limit: Int? = nil) {
+        self.text = text
+        self.scope = scope
+        self.space = space
+        self.folderId = folderId
+        self.tagId = tagId
+        self.updatedAfter = updatedAfter
+        self.includeArchived = includeArchived
+        self.meaning = meaning
+        self.limit = limit
+    }
+}
+
+public struct SearchHit: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var icon: String?
+    /// The matched text around the match.
+    public var snippet: String
+    public var folder: FolderChip?
+    public var updatedAt: Double
+    public var archived: Bool
+    public var kind: String
+    /// Everywhere: the space it's in ("personal" or a workspace id) and its name.
+    public var space: SpaceRef?
+    public var spaceName: String?
+    /// "text" (the note's words), "file" (in a file or drawing), "meaning" (search by meaning).
+    public var matchIn: String
+    /// A match in a file: the block that holds it, and its page (PDFs).
+    public var blockId: String?
+    public var page: Int?
+
+    public init(id: String, title: String, icon: String? = nil, snippet: String, folder: FolderChip? = nil, updatedAt: Double, archived: Bool, kind: String, space: SpaceRef? = nil, spaceName: String? = nil, matchIn: String, blockId: String? = nil, page: Int? = nil) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+        self.snippet = snippet
+        self.folder = folder
+        self.updatedAt = updatedAt
+        self.archived = archived
+        self.kind = kind
+        self.space = space
+        self.spaceName = spaceName
+        self.matchIn = matchIn
+        self.blockId = blockId
+        self.page = page
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(title, forKey: .title)
+        try c.encode(icon, forKey: .icon)
+        try c.encode(snippet, forKey: .snippet)
+        try c.encode(folder, forKey: .folder)
+        try c.encode(updatedAt, forKey: .updatedAt)
+        try c.encode(archived, forKey: .archived)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(space, forKey: .space)
+        try c.encode(spaceName, forKey: .spaceName)
+        try c.encode(matchIn, forKey: .matchIn)
+        try c.encode(blockId, forKey: .blockId)
+        try c.encode(page, forKey: .page)
+    }
+}
+
+public struct SearchValue: Codable, Hashable, Sendable {
+    public var text: String
+    public var hits: [SearchHit]
+    /// Search by meaning can be asked for here.
+    public var meaningAvailable: Bool
+
+    public init(text: String, hits: [SearchHit], meaningAvailable: Bool) {
+        self.text = text
+        self.hits = hits
+        self.meaningAvailable = meaningAvailable
     }
 }

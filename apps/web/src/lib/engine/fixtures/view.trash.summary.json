@@ -1,0 +1,10 @@
+{
+  "kind": "view",
+  "name": "trash.summary",
+  "description": "Trash: 14 notes, 12 this person may delete for good.",
+  "args": {},
+  "value": {
+    "total": 14,
+    "deletable": 12
+  }
+}

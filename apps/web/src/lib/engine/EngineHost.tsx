@@ -8,7 +8,8 @@ import { useConvex } from "convex/react";
 import type { WireScope } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
-import { useBackendMode, useCapabilities, canPurchaseHere } from "@/lib/mode";
+import { useBackendMode, useCanCall, useCapabilities, canPurchaseHere } from "@/lib/mode";
+import { api } from "@/lib/convex/api";
 import { usePlaces } from "@/lib/places";
 import { activeRouter, onActiveRouter } from "@/lib/e2ee/router/active";
 import { spaceStatus } from "@/lib/e2ee/router/hooks";
@@ -61,6 +62,7 @@ export function EngineHost() {
   const mode = useBackendMode();
   const caps = useCapabilities();
   const aiOn = useAiEnabled();
+  const canGraph = useCanCall(api.aiGraph.graph);
   const { places, current } = usePlaces();
   const { profile, workspaces, context, engine, outbox, online, today, timeZone, appearance, setContext } = state;
 
@@ -112,7 +114,7 @@ export function EngineHost() {
         today,
         timeZone,
         appearance,
-        capabilities: { sharing: caps.sharing, changes: caps.changes, workspaces: caps.workspaces, ai: aiOn, purchases: canPurchaseHere() },
+        capabilities: { graph: canGraph, sharing: caps.sharing, changes: caps.changes, workspaces: caps.workspaces, ai: aiOn, purchases: canPurchaseHere() },
         engine,
         outbox,
         places: placesValue,
@@ -124,7 +126,7 @@ export function EngineHost() {
       navigate: (path) => navigate(path, { replace: true, engine: true }),
       setSpace: (space) => setContext(space === "personal" ? ({ kind: "personal" } as WireScope) : ({ kind: "workspace", workspaceId: space } as WireScope)),
     }),
-    [convex, kept, current, mode, profile, spaces, context, online, today, timeZone, appearance, caps, aiOn, engine, outbox, placesValue, navigate, setContext],
+    [convex, kept, current, mode, profile, spaces, context, online, today, timeZone, appearance, caps, aiOn, canGraph, engine, outbox, placesValue, navigate, setContext],
   );
 
   useEffect(() => {

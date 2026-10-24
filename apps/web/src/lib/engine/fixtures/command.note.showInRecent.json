@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "note.showInRecent",
+  "description": "Undo of removing from recents.",
+  "args": {
+    "ids": [
+      "doc_00002"
+    ]
+  },
+  "result": {
+    "hidden": 1
+  }
+}

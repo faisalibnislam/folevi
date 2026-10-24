@@ -1,0 +1,62 @@
+{
+  "kind": "view",
+  "name": "notifications.list",
+  "description": "The bell: a comment, a workspace invitation and a page invitation.",
+  "args": {},
+  "value": {
+    "unread": 2,
+    "rows": [
+      {
+        "id": "n1",
+        "kind": "comment",
+        "title": "Maya commented on Q4 planning",
+        "body": "Can we move this to Friday?",
+        "at": 1792830600000,
+        "read": false,
+        "route": "/d/doc_00002#comment-th_1",
+        "actorName": "Maya",
+        "actorAvatarUrl": null,
+        "noteId": "doc_00002",
+        "noteTitle": "Q4 planning",
+        "count": 1,
+        "inviteId": null,
+        "pageInviteId": null,
+        "fileId": null
+      },
+      {
+        "id": "n2",
+        "kind": "invite",
+        "title": "Sam invited you to Airly Studio",
+        "body": "",
+        "at": 1792746000000,
+        "read": false,
+        "route": null,
+        "actorName": "Sam",
+        "actorAvatarUrl": null,
+        "noteId": null,
+        "noteTitle": null,
+        "count": 1,
+        "inviteId": "inv_1",
+        "pageInviteId": null,
+        "fileId": null
+      },
+      {
+        "id": "n3",
+        "kind": "share",
+        "title": "Lee shared Recipes with you",
+        "body": "",
+        "at": 1792659600000,
+        "read": true,
+        "route": null,
+        "actorName": "Lee",
+        "actorAvatarUrl": null,
+        "noteId": null,
+        "noteTitle": null,
+        "count": 1,
+        "inviteId": null,
+        "pageInviteId": "pinv_1",
+        "fileId": null
+      }
+    ]
+  }
+}

@@ -59,8 +59,9 @@
         "encrypted": false,
         "archived": false,
         "inTrash": false,
+        "deletedAt": null,
         "sync": "saved",
-        "h": "7a67822e"
+        "h": "b8d65473"
       },
       {
         "id": "doc_00002",
@@ -96,8 +97,9 @@
         "encrypted": false,
         "archived": false,
         "inTrash": false,
+        "deletedAt": null,
         "sync": "saved",
-        "h": "70533a16"
+        "h": "57ee77eb"
       },
       {
         "id": "doc_00003",
@@ -134,8 +136,9 @@
         "encrypted": false,
         "archived": false,
         "inTrash": false,
+        "deletedAt": null,
         "sync": "saved",
-        "h": "b86561bd"
+        "h": "a9a7f9f2"
       },
       {
         "id": "doc_00004",
@@ -167,8 +170,9 @@
         "encrypted": false,
         "archived": false,
         "inTrash": false,
+        "deletedAt": null,
         "sync": "saved",
-        "h": "998b873b"
+        "h": "97149c30"
       },
       {
         "id": "doc_00005",
@@ -205,8 +209,9 @@
         "encrypted": false,
         "archived": false,
         "inTrash": false,
+        "deletedAt": null,
         "sync": "saved",
-        "h": "c7455800"
+        "h": "00cb2dcd"
       },
       {
         "id": "doc_00006",
@@ -253,8 +258,9 @@
         "encrypted": false,
         "archived": false,
         "inTrash": false,
+        "deletedAt": null,
         "sync": "saved",
-        "h": "95f67c50"
+        "h": "ff14f067"
       },
       {
         "id": "doc_00007",
@@ -291,8 +297,9 @@
         "encrypted": false,
         "archived": false,
         "inTrash": false,
+        "deletedAt": null,
         "sync": "saved",
-        "h": "3eba8416"
+        "h": "d85a844b"
       },
       {
         "id": "doc_00008",
@@ -330,8 +337,9 @@
         "encrypted": false,
         "archived": false,
         "inTrash": false,
+        "deletedAt": null,
         "sync": "saved",
-        "h": "4bc2ddd1"
+        "h": "dbcff856"
       },
       {
         "id": "doc_00009",
@@ -368,8 +376,9 @@
         "encrypted": false,
         "archived": false,
         "inTrash": false,
+        "deletedAt": null,
         "sync": "saved",
-        "h": "3290f251"
+        "h": "71956f94"
       },
       {
         "id": "doc_00010",
@@ -405,8 +414,9 @@
         "encrypted": false,
         "archived": false,
         "inTrash": false,
+        "deletedAt": null,
         "sync": "saved",
-        "h": "2d786d38"
+        "h": "a0f8d8a7"
       }
     ],
     "recentsLoaded": true,
@@ -515,8 +525,9 @@
           "encrypted": false,
           "archived": false,
           "inTrash": false,
+          "deletedAt": null,
           "sync": "saved",
-          "h": "7a67822e"
+          "h": "b8d65473"
         },
         {
           "id": "doc_00007",
@@ -553,8 +564,9 @@
           "encrypted": false,
           "archived": false,
           "inTrash": false,
+          "deletedAt": null,
           "sync": "saved",
-          "h": "3eba8416"
+          "h": "d85a844b"
         },
         {
           "id": "doc_00013",
@@ -591,8 +603,9 @@
           "encrypted": false,
           "archived": false,
           "inTrash": false,
+          "deletedAt": null,
           "sync": "saved",
-          "h": "733ab921"
+          "h": "bf79e7dc"
         }
       ],
       "more": false

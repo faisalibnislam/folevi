@@ -104,6 +104,7 @@ export function noteRowOf(d: SummaryLike, marks: SyncMarks = NO_MARKS, o: { fold
     encrypted: Boolean(d.sealed || d.locked),
     archived: d.archivedAt !== null && d.archivedAt !== undefined,
     inTrash: o.inTrash ?? (d.deletedAt !== null && d.deletedAt !== undefined),
+    deletedAt: d.deletedAt ?? null,
     sync: markOf(d.id, marks),
   });
 }

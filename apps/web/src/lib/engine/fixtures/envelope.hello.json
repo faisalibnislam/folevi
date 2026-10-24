@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "a0c42db3"
+        "schemaHash": "e625db6e"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 3,
+        "revision": 4,
         "build": "dev",
-        "schemaHash": "a0c42db3",
+        "schemaHash": "e625db6e",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -40,7 +40,14 @@
           "home",
           "folders.tree",
           "sync.status",
-          "note.meta"
+          "note.meta",
+          "trash.summary",
+          "templates.builtIn",
+          "folders.cards",
+          "shared.list",
+          "changes",
+          "notifications.list",
+          "search"
         ],
         "listViews": [
           "notes.list"
@@ -59,7 +66,26 @@
           "catchUp.clear",
           "engine.refresh",
           "toast.action",
-          "gate.act"
+          "gate.act",
+          "note.deleteForever",
+          "note.duplicate",
+          "note.copyTo",
+          "note.reorder",
+          "note.showInRecent",
+          "template.create",
+          "trash.empty",
+          "folder.rename",
+          "folder.setColor",
+          "folder.move",
+          "folder.delete",
+          "changes.markSeen",
+          "proposal.accept",
+          "proposal.reject",
+          "notification.markRead",
+          "notification.markAllRead",
+          "notification.remove",
+          "invite.accept",
+          "pageInvite.accept"
         ],
         "editorCommands": [
           "note.prepare",

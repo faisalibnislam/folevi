@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "invite.accept",
+  "description": "Join a workspace.",
+  "args": {
+    "inviteId": "inv_1"
+  },
+  "result": {
+    "ok": true
+  }
+}

@@ -25,6 +25,7 @@ protocol PhoneRouting: AnyObject {
     func open(_ route: ScreenRoute, source: CardSource?)
     func openNote(_ id: String, source: CardSource?, focus: Bool)
     func openExternal(_ url: URL)
+    func share(noteId: String)
 }
 
 @MainActor
@@ -77,10 +78,9 @@ final class PhoneModel {
         // hello carries the gate too (revision 3), for a page that was up before native listened.
         helloObserver = Observer { [weak self] in
             guard let self, let hello = self.client.hello else { return }
-            if !self.gateKnown || hello.ready {
-                self.gate = hello.ready ? nil : hello.gate
-                self.gateKnown = true
-            }
+            // Each hello (a reconnect too) says which screen is up now; gate.changed events follow it.
+            self.gate = hello.gate.gate == nil ? nil : hello.gate
+            self.gateKnown = true
         }
     }
 
@@ -94,7 +94,6 @@ final class PhoneModel {
     private func handle(_ event: EngineEvent) {
         switch event {
         case .engineReady:
-            gate = nil
             gateKnown = true
             // A reloaded page shows no note: the note on screen asks again.
             readyNotes.removeAll()

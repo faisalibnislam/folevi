@@ -147,7 +147,7 @@ final class ShellAuth: NSObject {
     }
 
     /// `slot`: whose item a rotated token goes back to (nil: the open place's; `.some(id)`: that account's).
-    private func send(_ url: URL, method: String, headers: [String: String] = [:], body: String? = nil, bearer: String?, keepRotated: Bool = true, slot: String?? = nil) async throws -> (HTTPURLResponse, Data, String?) {
+    func send(_ url: URL, method: String, headers: [String: String] = [:], body: String? = nil, bearer: String?, keepRotated: Bool = true, slot: String?? = nil) async throws -> (HTTPURLResponse, Data, String?) {
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
@@ -287,6 +287,135 @@ final class ShellAuth: NSObject {
         guard (200..<300).contains(res.statusCode) else { throw URLError(.badServerResponse) }
         let jwt = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["token"] as? String
         return (jwt?.isEmpty ?? true) ? nil : jwt
+    }
+}
+
+// MARK: - Email and password, two-step, sign-up, reset (native sign-in, docs/NATIVE_CONTRACT_REQUESTS.md R14.1)
+//
+// The native sign-in screens send the form here instead of opening the website's page in the sheet. Better Auth's
+// bearer plugin answers a successful sign-in with the session's token in `set-auth-token`, which becomes this
+// device's session for that account (as the sheet's PKCE exchange does for providers). The two-step screen needs
+// Better Auth's short-lived two-factor cookie from the first answer: it's kept in memory for that one request and
+// never stored. Messages are the web's (lib/auth/client.ts authErrorMessage).
+
+extension ShellAuth {
+    enum EmailOutcome: Equatable {
+        /// Signed in: who it is (the token is stored under their own Keychain item already).
+        case signedIn(userId: String, name: String, email: String, avatarUrl: String?)
+        case twoFactor
+        case emailUnverified
+        case failed(String)
+    }
+
+    enum FormReply: Equatable {
+        case done
+        case failed(String)
+        case fieldError(field: String, message: String)
+    }
+
+    private static var twoFactorCookie: String?
+
+    private func authPost(_ path: String, _ body: [String: Any], cookie: String? = nil) async -> (status: Int, json: [String: Any], token: String?, cookies: String?)? {
+        guard let url = authURL(path), let data = try? JSONSerialization.data(withJSONObject: body) else { return nil }
+        var headers = ["content-type": "application/json"]
+        if let cookie { headers["cookie"] = cookie }
+        guard let (res, out, rotated) = try? await send(url, method: "POST", headers: headers, body: String(data: data, encoding: .utf8), bearer: nil, keepRotated: false) else { return nil }
+        let json = (try? JSONSerialization.jsonObject(with: out) as? [String: Any]) ?? [:]
+        // Only the cookie names Better Auth's two-step needs, as "name=value" pairs (no attributes).
+        var pairs: [String] = []
+        for (k, v) in res.allHeaderFields where (k as? String)?.lowercased() == "set-cookie" {
+            for part in "\(v)".components(separatedBy: ",") {
+                guard let first = part.split(separator: ";").first else { continue }
+                let pair = first.trimmingCharacters(in: .whitespaces)
+                if pair.contains("two_factor") || pair.contains("two-factor") || pair.contains("dont_remember") { pairs.append(pair) }
+            }
+        }
+        let token = rotated.flatMap { $0.range(of: #"^[A-Za-z0-9._~+/=-]{16,1024}$"#, options: .regularExpression) != nil ? $0 : nil }
+        return (res.statusCode, json, token, pairs.isEmpty ? nil : pairs.joined(separator: "; "))
+    }
+
+    static func message(_ json: [String: Any], status: Int, fallback: String = "Something went wrong. Please try again.", wait: String = "a minute") -> String {
+        let code = json["code"] as? String ?? ""
+        if status == 429 || code == "TOO_MANY_REQUESTS" { return "Too many attempts. Wait \(wait), then try again." }
+        switch code {
+        case "INVALID_EMAIL_OR_PASSWORD", "INVALID_PASSWORD", "USER_NOT_FOUND", "INVALID_EMAIL", "CREDENTIAL_ACCOUNT_NOT_FOUND": return "The email or password is incorrect."
+        case "EMAIL_NOT_VERIFIED": return "Verify your email address first. We've sent you a new link."
+        case "PASSWORD_TOO_SHORT": return "Use at least 10 characters for your password."
+        case "PASSWORD_TOO_LONG": return "Use at most 128 characters for your password."
+        case "PASSWORD_COMPROMISED": return "This password has appeared in a data breach. Choose a different one."
+        case "INVALID_CODE": return "That code didn't work. Check your authenticator app and try again."
+        case "INVALID_BACKUP_CODE": return "That backup code didn't work. Each code works only once."
+        case "OTP_HAS_EXPIRED", "TWO_FACTOR_NOT_ENABLED", "INVALID_TWO_FACTOR_COOKIE", "SESSION_EXPIRED": return "This sign-in attempt expired. Start again from the sign-in page."
+        case "INVALID_TOKEN", "TOKEN_EXPIRED": return "This link is invalid or has expired. Request a new one."
+        case "SIGNUPS_PAUSED": return "New sign-ups are paused right now. Please try again later."
+        case "ACCOUNT_TEMPORARILY_LOCKED", "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE": return "Too many incorrect codes. For your security this account is locked for a while. Try again later or reset your password."
+        default:
+            if let m = json["message"] as? String, !m.isEmpty, m.range(of: "internal", options: .caseInsensitive) == nil { return m }
+            return fallback
+        }
+    }
+
+    /// A session token from a sign-in answer becomes that account's session here.
+    private func adopt(_ token: String) async -> EmailOutcome {
+        guard let user = await userOf(token) else { return .failed("Something went wrong. Please try again.") }
+        let previous = self.token(for: user.userId)
+        setToken(token, for: user.userId)
+        if let previous, previous != token, let url = URL(string: "/api/auth/sign-out", relativeTo: service)?.absoluteURL {
+            _ = try? await send(url, method: "POST", headers: ["content-type": "application/json"], body: "{}", bearer: previous, keepRotated: false)
+        }
+        return .signedIn(userId: user.userId, name: user.name, email: user.email, avatarUrl: user.avatarUrl)
+    }
+
+    func signIn(email: String, password: String) async -> EmailOutcome {
+        Self.twoFactorCookie = nil
+        guard let r = await authPost("/api/auth/sign-in/email", ["email": email.trimmingCharacters(in: .whitespaces), "password": password, "rememberMe": true]) else { return .failed("Folevi can't be reached right now. Check your connection and try again.") }
+        if r.status == 200, r.json["twoFactorRedirect"] as? Bool == true {
+            Self.twoFactorCookie = r.cookies
+            return .twoFactor
+        }
+        if r.json["code"] as? String == "EMAIL_NOT_VERIFIED" { return .emailUnverified }
+        guard r.status == 200, let token = r.token else { return .failed(Self.message(r.json, status: r.status)) }
+        return await adopt(token)
+    }
+
+    func verifyTwoFactor(code: String, backup: Bool, trustDevice: Bool) async -> EmailOutcome {
+        guard let cookie = Self.twoFactorCookie else { return .failed("This sign-in attempt expired. Start again from the sign-in page.") }
+        let path = backup ? "/api/auth/two-factor/verify-backup-code" : "/api/auth/two-factor/verify-totp"
+        guard let r = await authPost(path, ["code": code.trimmingCharacters(in: .whitespaces), "trustDevice": trustDevice], cookie: cookie) else { return .failed("Folevi can't be reached right now. Check your connection and try again.") }
+        guard r.status == 200, let token = r.token else { return .failed(Self.message(r.json, status: r.status)) }
+        Self.twoFactorCookie = nil
+        return await adopt(token)
+    }
+
+    func signUp(name: String, email: String, password: String) async -> FormReply {
+        guard let r = await authPost("/api/auth/sign-up/email", ["name": String(name.trimmingCharacters(in: .whitespaces).prefix(80)), "email": email.trimmingCharacters(in: .whitespaces), "password": password]) else { return .failed("Folevi can't be reached right now. Check your connection and try again.") }
+        let code = r.json["code"] as? String
+        if code == "PASSWORD_COMPROMISED" { return .fieldError(field: "password", message: Self.message(r.json, status: r.status)) }
+        // An address that already has an account gets the same answer (no account enumeration), as on the web.
+        if r.status >= 400, code != "USER_ALREADY_EXISTS", code != "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" { return .failed(Self.message(r.json, status: r.status, wait: "up to an hour")) }
+        return .done
+    }
+
+    func requestPasswordReset(email: String) async -> FormReply {
+        guard let r = await authPost("/api/auth/request-password-reset", ["email": email.trimmingCharacters(in: .whitespaces), "redirectTo": "/reset-password"]) else { return .failed("Folevi can't be reached right now. Check your connection and try again.") }
+        if r.status == 429 { return .failed(Self.message(r.json, status: r.status, wait: "a few minutes")) }
+        return .done
+    }
+
+    func sendVerificationEmail(email: String) async -> FormReply {
+        guard let r = await authPost("/api/auth/send-verification-email", ["email": email.trimmingCharacters(in: .whitespaces)]) else { return .failed("Folevi can't be reached right now. Check your connection and try again.") }
+        if r.status == 429 { return .failed(Self.message(r.json, status: r.status, wait: "a few minutes")) }
+        return .done
+    }
+
+    /// Sign in with Apple's own sheet: Better Auth checks the id token (Apple's keys, the bundle ID, the nonce).
+    func signIn(appleIdToken: String, nonce: String, firstName: String? = nil, lastName: String? = nil) async -> EmailOutcome {
+        var idToken: [String: Any] = ["token": appleIdToken, "nonce": nonce]
+        // The name Apple gives only the first time, as the page sends it.
+        if firstName != nil || lastName != nil { idToken["user"] = ["name": ["firstName": firstName ?? "", "lastName": lastName ?? ""]] }
+        guard let r = await authPost("/api/auth/sign-in/social", ["provider": "apple", "idToken": idToken]) else { return .failed("Folevi can't be reached right now. Check your connection and try again.") }
+        guard r.status == 200, let token = r.token else { return .failed(Self.message(r.json, status: r.status)) }
+        return await adopt(token)
     }
 }
 

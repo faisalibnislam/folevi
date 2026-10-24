@@ -15,6 +15,8 @@ import FoleviScreens
 
 @MainActor
 final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigationObserver {
+    func share(noteId: String) { presentShare(noteId: noteId) }
+
     /// The frame on show (links, notifications and Debug hooks find it here).
     static weak var current: PhoneFrameController?
 
@@ -26,15 +28,18 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
     private let home: HomeModel
     private let tasksModel: TasksModel
     private let calendarModel: CalendarModel
-    private var tabs: PhoneTabsController!
-    private var navigator: ScreenNavigator!
-    private var feedback: ScreenFeedback!
-    private var gateHost: UIHostingController<GateView>?
+    var tabs: PhoneTabsController!
+    var navigator: ScreenNavigator!
+    var feedback: ScreenFeedback!
+    private var gateHost: UIHostingController<AnyView>?
+    private var gateModel: GateModel!
+    private var signInModel: SignInModel!
     private var splash: UIHostingController<SplashView>?
     private var toastHost: UIHostingController<ToastStack>!
     private var observers: [Observer] = []
     private var notificationTokens: [NSObjectProtocol] = []
     private var retiring: PageRetirement?
+    private var authService: PhoneAuthService?
 
     init(host given: WebHost? = nil) {
         PhoneMetrics.launchBegan()
@@ -85,6 +90,12 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
 
     // MARK: Building
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        authService?.window = view.window
+        becomeFirstResponder()
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = Chrome.canvas
@@ -100,7 +111,7 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         stacks.forEach { $0.observer = self }
         tabs = PhoneTabsController(stacks: stacks)
         tabs.bar.onFoliAI = { [weak self] in self?.presentFoliAI() }
-        tabs.bar.onQuickTask = { [weak self] in self?.model.toast("Quick task comes to the app with the next update.") }
+        tabs.bar.onQuickTask = { [weak self] in self?.presentQuickAdd(.task) }
         tabs.bar.plusMenu = plusMenu()
         addChild(tabs)
         tabs.view.frame = view.bounds
@@ -120,6 +131,11 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         view.addSubview(passthrough)
         toastHost.didMove(toParent: self)
 
+        gateModel = GateModel(client: model.client, feedback: feedback, device: .current)
+        let auth = PhoneAuthService(window: view.window)
+        auth.signedIn = { [weak self] id, name, email, avatar in self?.adoptAccount(userId: id, name: name, email: email, avatarUrl: avatar) }
+        signInModel = SignInModel(auth: auth, feedback: feedback, device: .current)
+        authService = auth
         observeKeyboard()
         observers.append(Observer { [weak self] in self?.updateCover() })
         observers.append(Observer { [weak self] in
@@ -141,10 +157,9 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         let gate = model.gate
         let showsGate = gate.map { $0.gate != nil && $0.gate != "loading" } ?? false
         if showsGate, let gate {
-            if let gateHost {
-                gateHost.rootView = gateView(gate)
-            } else {
-                let h = UIHostingController(rootView: gateView(gate))
+            gateModel.show(gate)
+            if gateHost == nil {
+                let h = UIHostingController(rootView: AnyView(GateScreen(model: gateModel, signIn: signInModel).phoneEnvironment(navigator, feedback)))
                 h.view.backgroundColor = Chrome.canvas
                 addChild(h)
                 h.view.frame = view.bounds
@@ -184,13 +199,6 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         }
     }
 
-    private func gateView(_ gate: GateChangedEvent) -> GateView {
-        GateView(gate: gate, act: { [weak self] action, values in
-            guard let self else { return }
-            self.model.perform { _ = try await self.model.client.command(.gateAct(action: action, values: values.isEmpty ? nil : values)) }
-        }, signIn: { [weak self] in self?.signIn(first: true) })
-    }
-
     private func plusMenu() -> UIMenu {
         UIMenu(children: [
             UIAction(title: "New Note", image: UIImage(systemName: "square.and.pencil")) { [weak self] _ in self?.model.newNote() },
@@ -201,7 +209,7 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
                 self.tabs.stacks[0].popToRootViewController(animated: false)
                 self.home.dialogs.open(.newFolder(parent: nil))
             },
-            UIAction(title: "Quick Task", image: UIImage(systemName: "checklist")) { [weak self] _ in self?.model.toast("Quick task comes to the app with the next update.") },
+            UIAction(title: "Quick Task", image: UIImage(systemName: "checklist")) { [weak self] _ in self?.presentQuickAdd(.task) },
         ])
     }
 
@@ -308,6 +316,7 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
     func openPath(_ path: String) {
         guard isViewLoaded, tabs != nil else { return FoleviViewController.startPath = path }
         if let f = FeatureRoute(webRoute: path) { return open(f) }
+        if let (kind, token) = Self.invite(in: path) { return presentInvite(kind: kind, token: token) }
         let route = ScreenRoute(webRoute: path)
         if case .web(let p) = route, p.hasPrefix("/documents") || p == "/" { return open(.home, source: nil) }
         open(route, source: nil)
@@ -349,13 +358,13 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         case .openCalendar(let d): open(.calendar(date: d))
         case .openNote(let id, _): openNote(id, source: nil, focus: false)
         case .openRoute(let r): openPath(r)
-        case .openSettings: model.toast("Settings come to this screen with the next update.")
+        case .openSettings(let section): openSettings(section: section)
         case .help: if let url = URL(string: "https://folevi.com/help") { openExternal(url) }
         case .switchPlace(let id, _): switchPlace(id)
         case .newWorkspace: model.toast("New workspaces come to the app with the next update.")
         case .signInAnotherAccount: signIn(first: false)
         case .moveOrCopy: model.toast("Moving notes between places comes to the app with the next update.")
-        case .signOut(let place): if let place { signOut(place) }
+        case .signOut(let place): if let place { signOutNow(place) }
         case .downloadFile: model.toast("Downloads come to the app with the next update.")
         case .dismiss: if presentedViewController != nil { dismiss(animated: true) }
         }
@@ -393,18 +402,28 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
     private func signIn(first: Bool) {
         Task { @MainActor in
             guard let u = await ShellAuth.shared.signInAccount(window: self.view.window, provider: nil) else { return }
-            let wasEmpty = ShellPlaces.state.accounts.isEmpty
-            guard let a = ShellPlaces.addAccount(userId: u.userId, name: u.name, email: u.email, avatarUrl: u.avatarUrl) else { return }
-            if wasEmpty { E2eeKeys.adoptLegacy(userId: u.userId) }
-            ShellMode.current = "account"
-            ShellPlaces.setCurrent(a.id)
-            self.dismiss(animated: true)
-            FoleviViewController.restart()
+            self.adoptAccount(userId: u.userId, name: u.name, email: u.email, avatarUrl: u.avatarUrl)
         }
     }
 
+    /// The native sign-in flow as a sheet ("Sign in to another account" could use it too).
+    func presentSignIn() {
+        PhoneSheets.present(SignInFlow(model: signInModel).phoneEnvironment(navigator, feedback), from: self, id: "sign-in-sheet", detents: [.large()])
+    }
+
+    /// A new session (native sign-in, or the sheet) becomes a place and the app opens again in it.
+    func adoptAccount(userId: String, name: String, email: String, avatarUrl: String?) {
+        let wasEmpty = ShellPlaces.state.accounts.isEmpty
+        guard let a = ShellPlaces.addAccount(userId: userId, name: name, email: email, avatarUrl: avatarUrl) else { return }
+        if wasEmpty { E2eeKeys.adoptLegacy(userId: userId) }
+        ShellMode.current = "account"
+        ShellPlaces.setCurrent(a.id)
+        if presentedViewController != nil { dismiss(animated: true) }
+        FoleviViewController.restart()
+    }
+
     /// Signs out of a place (the content has already warned and the person confirmed).
-    private func signOut(_ place: String) {
+    func signOutNow(_ place: String) {
         guard let user = ShellPlaces.userIdOf(place) else { return }
         Task { @MainActor in
             await ShellAuth.shared.signOut(userId: user)

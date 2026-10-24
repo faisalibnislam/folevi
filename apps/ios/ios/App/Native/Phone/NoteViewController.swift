@@ -329,7 +329,8 @@ final class NoteViewController: UIViewController, PageViewOwner {
         pageHost.pageView.endEditing(true)
     }
 
-    @objc private func share() { model.editor(.noteMenu(action: .share)) }
+    /// The native Share screen (people and the public link), FoleviScreens' ShareScreen.
+    @objc private func share() { router?.share(noteId: noteId) }
 
     private func openPlace() {
         let meta = model.noteMeta[noteId]
@@ -360,6 +361,9 @@ final class NoteViewController: UIViewController, PageViewOwner {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 self.model.star(self.noteId, !starred)
             })
+        }
+        if let meta, meta.found {
+            first.append(UIAction(title: "Share", image: UIImage(systemName: "square.and.arrow.up")) { [weak self] _ in self?.share() })
         }
         if full {
             first.append(page("Move", "folder", .move))

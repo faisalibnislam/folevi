@@ -153,13 +153,18 @@ public final class EngineClient {
     /// to `readyWait` for the engine to become ready.
     @discardableResult
     public func command<C: EngineCommandSpec>(_ command: C) async throws -> C.Result {
-        try await whenReady()
+        // A gate's buttons (the first-launch choice, unlocking, onboarding) run while the engine is up but not
+        // ready: that's what the gate is waiting for.
+        if !(state == .waiting && Self.gateCommands.contains(C.name)) { try await whenReady() }
         var m = OutgoingMessage(id: newId("c"), kind: .command)
         m.place = place
         m.name = C.name
         m.args = AnyArgs(command.args)
         return try await send(m, as: C.Result.self)
     }
+
+    /// Commands a gate screen sends before the engine is ready.
+    static let gateCommands: Set<String> = ["gate.act", "toast.action"]
 
     /// Drives the note page (keyboard toolbar, bars, menus, opening notes).
     @discardableResult

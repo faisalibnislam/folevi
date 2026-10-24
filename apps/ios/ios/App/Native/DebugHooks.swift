@@ -85,6 +85,38 @@ enum DebugHooks {
                 "panel": m.editorPanel?.rawValue ?? NSNull(), "ready": Array(m.readyNotes), "gate": m.gate?.gate ?? NSNull(),
                 "bar": f.debugBar(),
             ]
+        case "signedOut":
+            // Every account on this Simulator signed out (scratch test accounts only), account mode: the sign-in gate.
+            for a in ShellPlaces.state.accounts {
+                await ShellAuth.shared.signOut(userId: a.userId)
+                _ = ShellPlaces.removeAccount(a.id)
+            }
+            // A first launch again: the choice, then sign-in.
+            Platform.defaults.removeObject(forKey: "folevi.shell.mode")
+            ShellPlaces.setCurrent(nil)
+            FoleviViewController.restart()
+            return ["accounts": ShellPlaces.state.accounts.count, "mode": ShellMode.current]
+        case "signInSheet":
+            // The native sign-in flow on its own (FoleviScreens' SignInFlow over PhoneAuthService), for checking it
+            // with a scratch account whatever gate the page is on.
+            PhoneFrameController.current?.presentSignIn()
+            return ["presented": PhoneFrameController.current != nil]
+        case "authCheck":
+            // R14.1's adapter without the screens (UI tests own the Simulator meanwhile): scratch dev accounts only.
+            // Never returns tokens.
+            let email = input["email"] as? String ?? ""
+            let password = input["password"] as? String ?? ""
+            let auth = PhoneAuthService(window: nil)
+            var adopted: String?
+            auth.signedIn = { id, _, _, _ in adopted = id }
+            let wrong = await auth.signIn(email: email, password: password + "x")
+            let right = await auth.signIn(email: email, password: password)
+            let reset = await auth.requestPasswordReset(email: email)
+            let resend = await auth.resendVerification(email: email)
+            let signUp = await auth.signUp(name: "Native Check", email: "native-check-\(Int(Date().timeIntervalSince1970))@example.com", password: password)
+            let weak = await auth.signUp(name: "Native Check", email: "native-check-weak-\(Int(Date().timeIntervalSince1970))@example.com", password: "short")
+            let stored = adopted.map { ShellAuth.shared.token(for: $0) != nil } ?? false
+            return ["wrongPassword": String(describing: wrong), "rightPassword": String(describing: right), "sessionStored": stored, "reset": String(describing: reset), "resend": String(describing: resend), "signUp": String(describing: signUp), "weakPassword": String(describing: weak)]
         case "status":
             return [
                 "signedIn": SharedAccount.signedIn,

@@ -3,7 +3,7 @@
 // account, notes, an edit made offline and not sent, and local settings, is upgraded in place to this tree's build,
 // and everything must still be there and the edit must reach the server.
 //
-//   node scripts/upgrade-test.mjs [--old-ref 5b7fc87d] [--work <dir>] [--new-app <App.app>] [--rebuild-old] [--keep-device]
+//   node scripts/upgrade-test.mjs [--old-ref 5b7fc87d] [--work <dir>] [--new-app <App.app>] [--rebuild-old] [--keep-device] [--allow-other-simulators]
 //
 // 1. The shipped build from git (default 5b7fc87d, Folevi 1.0.02 build 6, the Capacitor app), built for the
 //    Simulator (Debug, so scripts can run JavaScript in its page) with one test-only addition: a native hook that
@@ -199,7 +199,7 @@ function device() {
   const all = Object.values(devices).flat();
   // At most one Simulator running: this test's own.
   const booted = all.filter((d) => d.state === "Booted" && d.name !== DEVICE_NAME);
-  if (booted.length) throw new Error(`Another Simulator is running (${booted.map((d) => d.name).join(", ")}): shut it down first.`);
+  if (booted.length && !flag("--allow-other-simulators")) throw new Error(`Another Simulator is running (${booted.map((d) => d.name).join(", ")}): shut it down first.`);
   let found = all.find((d) => d.name === DEVICE_NAME && d.isAvailable);
   if (!found) {
     const runtime = JSON.parse(simctl("list", "runtimes", "--json")).runtimes.filter((r) => r.platform === "iOS" && r.isAvailable).at(-1);
@@ -283,15 +283,15 @@ for (const d of list) {
   for (const store of Array.from(db.objectStoreNames)) {
     const { keys, values } = await all(db, store);
     info.stores[store] = keys.length;
-    if (d.name.startsWith("folevi-") && store === "meta") {
-      let pending = 0, inflight = 0, outbox = 0, hasEdit = false;
+    if (d.name.startsWith("folevi-") && d.name !== "folevi-upgrade-probe" && (store === "meta" || store === "syncState")) {
+      const sync = info.sync || (info.sync = { pending: 0, inflight: 0, outbox: 0, hasEdit: false });
       keys.forEach((k, i) => {
         const v = values[i];
-        if (k === "account" && v) { pending = (v.pending || []).length; inflight = (v.inflight || []).length; }
-        if (String(k).startsWith("outbox:")) outbox++;
-        if (JSON.stringify(v).includes(${JSON.stringify(nonce)})) hasEdit = true;
+        // The edit queue: syncState's "account" record (older states kept it in meta's).
+        if (k === "account" && v && Array.isArray(v.pending)) { sync.pending += v.pending.length; sync.inflight += (v.inflight || []).length; }
+        if (store === "meta" && String(k).startsWith("outbox:")) sync.outbox++;
+        if (JSON.stringify(v).includes(${JSON.stringify(nonce)})) sync.hasEdit = true;
       });
-      info.sync = { pending, inflight, outbox, hasEdit };
     }
     if (d.name === "folevi-upgrade-probe" && store === "probe") info.probe = values;
   }
@@ -301,13 +301,13 @@ for (const d of list) {
 return out;`;
 
 /** Presses onboarding's "Skip setup" when it's on screen (a step of a poll). */
-const SKIP_ONBOARDING_STEP = "const skip = [...document.querySelectorAll('button')].find(b => (b.textContent || '').trim() === 'Skip setup'); if (skip) { skip.click(); window.__upgradeSkipped = true; return false; }";
+const SKIP_ONBOARDING_STEP = "const btns = [...document.querySelectorAll('button')]; const skip = btns.find(b => (b.textContent || '').trim() === 'Skip setup') || btns.find(b => /^Open .Welcome to Folevi/.test((b.textContent || '').trim())); if (skip) { skip.click(); window.__upgradeSkipped = true; return false; }";
 /** Done once onboarding has been skipped (its screen is gone) and the app shows its own pages. */
-const SKIP_ONBOARDING = `${SKIP_ONBOARDING_STEP} return window.__upgradeSkipped === true && !document.body.innerText.includes('1 of 6');`;
+const SKIP_ONBOARDING = `${SKIP_ONBOARDING_STEP} return window.__upgradeSkipped === true && !/\\d of 6/.test(document.body.innerText);`;
 
 // ---------------------------------------------------------------- the run
 
-const result = { oldRef: OLD_REF, startedAt: new Date().toISOString(), checks: [], notes: [] };
+const result = { oldRef: OLD_REF, startedAt: new Date().toISOString(), checks: [], notes: [], remarks: [] };
 const check = (name, ok, detail) => {
   result.checks.push({ name, ok: !!ok, detail });
   log(`${ok ? "PASS" : "FAIL"} ${name}${detail !== undefined ? `: ${typeof detail === "string" ? detail : JSON.stringify(detail).slice(0, 300)}` : ""}`);
@@ -421,7 +421,9 @@ try {
   check("storage: the IndexedDB probe kept its record", JSON.stringify(after.dbs["folevi-upgrade-probe"]?.probe) === JSON.stringify([nonce]));
   check("storage: localStorage kept every key", Object.keys(before.local).every((k) => k in after.local), { missing: Object.keys(before.local).filter((k) => !(k in after.local)) });
   check("storage: the localStorage probe", after.probeLocal === nonce);
-  check("storage: the cookie probe", after.cookie.includes(`folevi_upgrade_probe=${nonce}`), after.cookie);
+  // WebKit keeps no document.cookie for a custom scheme like capacitor://: then there's nothing to carry over.
+  if (before.cookie.includes(`folevi_upgrade_probe=${nonce}`)) check("storage: the cookie probe", after.cookie.includes(`folevi_upgrade_probe=${nonce}`), after.cookie);
+  else result.remarks.push("cookie probe skipped: the shipped app's page can't keep cookies on capacitor:// (WebKit), so there are none to lose");
   const acctAfter = after.dbs[acct?.[0]];
   check("storage: the account's database kept its documents", acctAfter && (acctAfter.stores.documents ?? 0) >= (acct[1].stores.documents ?? 0), { before: acct?.[1].stores, after: acctAfter?.stores });
   check("sync: nothing left waiting after the upgrade", acctAfter && acctAfter.sync.pending + acctAfter.sync.inflight === 0 && acctAfter.sync.outbox === 0, acctAfter?.sync);

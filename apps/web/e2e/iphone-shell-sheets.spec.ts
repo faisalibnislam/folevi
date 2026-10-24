@@ -239,8 +239,12 @@ for (const size of [
     await expect(sheet.getByText("shared", { exact: false }).first()).toBeVisible();
     await page.waitForTimeout(900);
     await edges();
-    const surface = await sheet.evaluate((el) => getComputedStyle(el).backgroundColor);
     const list = sheet.locator('section[role="dialog"] > div.overflow-y-auto');
+    // What shows under the last row: the list's own colour (the rows'), else the sheet's.
+    const surface = await list.evaluate((el) => {
+      const own = getComputedStyle(el).backgroundColor;
+      return own && own !== "rgba(0, 0, 0, 0)" ? own : getComputedStyle(el.closest("[data-iphone-sheet]")!).backgroundColor;
+    });
     await list.evaluate((el) => (el.scrollTop = el.scrollHeight));
     await page.waitForTimeout(300);
     const last = (await sheet.locator("li").last().boundingBox())!;

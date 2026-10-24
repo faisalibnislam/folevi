@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F0AB00000000000000000011 /* FoleviEngine in Frameworks */ = {isa = PBXBuildFile; productRef = F0AB00000000000000000002 /* FoleviEngine */; };
+		F0AB00000000000000000012 /* FoleviDesign in Frameworks */ = {isa = PBXBuildFile; productRef = F0AB00000000000000000003 /* FoleviDesign */; };
 		50379B232058CBB4000EE86E /* folevi-host.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* folevi-host.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
@@ -132,6 +134,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F0AB00000000000000000011 /* FoleviEngine in Frameworks */,
+				F0AB00000000000000000012 /* FoleviDesign in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,6 +244,8 @@
 			);
 			name = App;
 			packageProductDependencies = (
+				F0AB00000000000000000002 /* FoleviEngine */,
+				F0AB00000000000000000003 /* FoleviDesign */,
 			);
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
@@ -380,6 +386,7 @@
 			);
 			mainGroup = 504EC2FB1FED79650016851F;
 			packageReferences = (
+				F0AB00000000000000000001 /* XCLocalSwiftPackageReference "../../../native-kit" */,
 			);
 			productRefGroup = 504EC3051FED79650016851F /* Products */;
 			projectDirPath = "";
@@ -973,6 +980,26 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		F0AB00000000000000000001 /* XCLocalSwiftPackageReference "../../../native-kit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../../native-kit";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F0AB00000000000000000002 /* FoleviEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F0AB00000000000000000001 /* XCLocalSwiftPackageReference "../../../native-kit" */;
+			productName = FoleviEngine;
+		};
+		F0AB00000000000000000003 /* FoleviDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F0AB00000000000000000001 /* XCLocalSwiftPackageReference "../../../native-kit" */;
+			productName = FoleviDesign;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 	};
 	rootObject = 504EC2FC1FED79650016851F /* Project object */;

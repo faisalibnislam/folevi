@@ -1727,7 +1727,7 @@ function DocumentHeader({
   return (
     <header>
       {onCover ? (
-        <div className="relative isolate flex min-h-40 items-end overflow-hidden rounded-t-chip border-b border-line/60 px-5 pb-6 pt-14 sm:min-h-48 sm:px-16">
+        <div data-note-cover className="relative isolate flex min-h-40 items-end overflow-hidden rounded-t-chip border-b border-line/60 px-5 pb-6 pt-14 sm:min-h-48 sm:px-16">
           {/* The theme's image, toned in its own colour under the title so the title reads: darkened (multiply)
               with a deep shade of its key colour where the title is white, lightened (screen) with its page
               colour where the title is dark. */}

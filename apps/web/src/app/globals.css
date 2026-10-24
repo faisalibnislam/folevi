@@ -726,6 +726,8 @@
 /* A note with a theme or a colour: the page edge to edge too, its cover band starting right under the bar (the
    app's chrome stays neutral; the note carries its colour). No backdrop shows at its sides. */
 :root[data-iphone] [data-iphone-scroll][data-backdrop] > .fb-sheet { max-width: none !important; width: 100%; min-height: 100%; border-radius: 0; box-shadow: none; margin-inline: 0; }
+/* Its cover band's top corners round like the app's other cards, not the desktop page's small inset corner. */
+:root[data-iphone] [data-iphone-scroll][data-backdrop] > .fb-sheet [data-note-cover] { border-top-left-radius: var(--radius-container); border-top-right-radius: var(--radius-container); }
 /* A task's own words head its Edit task card. */
 :root[data-iphone] .ui-task-title { font-size: 17px; line-height: 1.35; font-weight: 500; color: var(--color-ink); }
 /* Keyboard shortcut hints mean nothing on a phone. */

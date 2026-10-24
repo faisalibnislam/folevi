@@ -8,7 +8,7 @@ import { nativeApp } from "@/lib/nativeApp";
 import { hostAuth } from "@/lib/auth/shellFetch";
 import { shell } from "@/lib/shell";
 import { forgetThisDevice } from "@/lib/nativeDevice";
-import { clearAccountData, clearAllLocalData, localDb } from "@/lib/sync/db";
+import { clearAccountData, clearAllLocalData, localDb, outboxKeys } from "@/lib/sync/db";
 import { adoptNextSignIn, pinnedUserId } from "@/lib/places/pin";
 import { knownAccount } from "@/lib/places/registry";
 import { afterAccountSignedOut, signOutOfAccount } from "@/lib/places/web";
@@ -16,7 +16,7 @@ import { endKeySession, keepOnSignOut } from "@/lib/e2ee/keys";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 
-/** Changes on this device that haven't reached the server yet (queued edits, conflicts, uploads). */
+/** Changes on this device that haven't reached the server yet (queued edits, conflicts, uploads, the outbox). */
 export async function unsyncedChangeCount(accountKey: string | null): Promise<number> {
   if (!accountKey) return 0;
   try {
@@ -26,6 +26,8 @@ export async function unsyncedChangeCount(accountKey: string | null): Promise<nu
       count += (state.pending?.length ?? 0) + (state.inflight?.length ?? 0) + (state.conflicts?.length ?? 0);
     }
     count += await db.count("uploads");
+    // Folders, moves, comments and table changes waiting in the outbox (lib/sync/outbox.ts).
+    count += await db.count("meta", outboxKeys());
     return count;
   } catch {
     return 0;

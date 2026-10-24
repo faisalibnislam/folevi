@@ -17,9 +17,17 @@ export type FolderPreview = { cover: DocumentCover; title?: string; excerpt?: st
 
 /** The card's box: portrait, and the container its cqw sizes are measured against. `group` drives the hover; it isn't text to select (a held finger opens its menu). */
 export const FOLDER_CARD_BOX = "group relative aspect-[820/912] select-none [container-type:inline-size]";
-/** What lifts on hover: the whole drawing, with its soft drop shadow. */
+/** What lifts on hover: the whole drawing (its soft shadow is the back's own, FolderCardArt). */
 export const FOLDER_CARD_FRAME =
-  "absolute inset-0 block rounded-panel outline-none transition-transform duration-200 ease-[var(--ease-folio)] [filter:drop-shadow(0_8px_14px_rgb(20_20_30/0.1))_drop-shadow(0_1px_2px_rgb(20_20_30/0.06))] hover:-translate-y-1";
+  "absolute inset-0 block rounded-panel outline-none transition-transform duration-200 ease-[var(--ease-folio)] hover:-translate-y-1";
+
+/**
+ * The folder's soft shadow, cast by its back (the tab and the body, each its own rounded box): the same two
+ * shadows the whole drawing used to cast as a `drop-shadow` filter, which made WebKit draw every tile off screen
+ * and blur it again on every new screen (docs/IOS_PERFORMANCE.md). The body is drawn after the tab, so the tab's
+ * shadow never falls on it; the front cover sits inside the back, so the outline is the same.
+ */
+const BACK_SHADOW = "0 8px 14px rgb(20 20 30 / 0.1), 0 1px 2px rgb(20 20 30 / 0.06)";
 /** Where the folder's "…" menu appears on hover, over the front cover. */
 export const FOLDER_CARD_MENU =
   "absolute left-1/2 top-[70%] z-10 -translate-x-1/2 -translate-y-1/2 rounded-chip bg-white/90 text-[#17171a] opacity-0 shadow-[0_1px_3px_rgb(0_0_0/0.18)] transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100";
@@ -74,8 +82,8 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
   return (
     <>
       {/* back, with its tab */}
-      <div aria-hidden data-fc="back" className="absolute left-0 top-0 h-[9%] w-[44%] rounded-t-control shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ background: backTone, ["--fc" as string]: base }} />
-      <div aria-hidden data-fc="back" className="absolute inset-x-0 bottom-0 top-[5%] rounded-panel rounded-tl-none shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ background: backTone, ["--fc" as string]: base }} />
+      <div aria-hidden data-fc="back" className="absolute left-0 top-0 h-[9%] w-[44%] rounded-t-control" style={{ background: backTone, boxShadow: `inset 0 0 0 1px rgb(0 0 0 / 0.08), ${BACK_SHADOW}`, ["--fc" as string]: base }} />
+      <div aria-hidden data-fc="back" className="absolute inset-x-0 bottom-0 top-[5%] rounded-panel rounded-tl-none" style={{ background: backTone, boxShadow: `inset 0 0 0 1px rgb(0 0 0 / 0.08), ${BACK_SHADOW}`, ["--fc" as string]: base }} />
       {/* the notes inside, faint and soft */}
       <div aria-hidden className="absolute inset-0">
         {shown.length ? (

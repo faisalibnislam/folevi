@@ -1,6 +1,6 @@
 "use client";
 
-import { ConvexProvider, ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
+import { ConvexProvider, ConvexProviderWithAuth, ConvexReactClient, useConvexAuth } from "convex/react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { authClient } from "@/lib/auth/client";
 import { hostAuth, hostConvexToken } from "@/lib/auth/shellFetch";
@@ -116,6 +116,31 @@ async function takeEarlyToken(): Promise<TokenResult | null> {
 }
 
 /**
+ * Whether this device holds a signed-in account's copy (the offline snapshot's marker, removed on sign-out):
+ * there's a session worth waiting for when the network is away.
+ */
+function knownAccount(): boolean {
+  try {
+    return typeof localStorage !== "undefined" && Boolean(localStorage.getItem("folevi:last-account"));
+  } catch {
+    return false;
+  }
+}
+
+/** Resolves after `ms`, or sooner once the device says it's back online. */
+function waitForNetwork(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      window.removeEventListener("online", done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    window.addEventListener("online", done);
+  });
+}
+
+/**
  * Bridges Better Auth to Convex. Convex asks for a short-lived JWT (15 minutes) from
  * /api/auth/convex/token; the session cookie itself is HTTP-only and never readable here.
  */
@@ -133,31 +158,53 @@ function useFoleviAuth() {
     return () => clearTimeout(timer);
   }, [isPending, slow]);
 
+  // The session the token is for, read inside the token fetch. The fetch itself changes only when one known
+  // session gives way to another (a password change, re-verification): its first becoming known (after an
+  // offline start) or the session check going quiet offline don't, since each change makes Convex drop the
+  // sign-in and start again, and in that moment everything subscribed runs as nobody and is refused.
+  const sessionRef = useRef(sessionId);
+  sessionRef.current = sessionId;
+  const epoch = useRef({ id: sessionId, n: 0 });
+  if (sessionId && epoch.current.id && sessionId !== epoch.current.id) epoch.current = { id: sessionId, n: epoch.current.n + 1 };
+  else if (sessionId && !epoch.current.id) epoch.current = { id: sessionId, n: epoch.current.n };
+  const sessionEpoch = epoch.current.n;
+
   const fetchAccessToken = useCallback(
     async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
-      // A token belongs to one session: after a password change or re-verification the session is
-      // replaced, and the old token would be refused by the backend.
-      const cached = cache.current?.sessionId === sessionId || !sessionId ? cache.current : null;
-      if (!forceRefreshToken && cached && cached.exp - Date.now() > 60_000) return cached.token;
-      try {
-        const res = (forceRefreshToken ? null : await takeEarlyToken()) ?? (await requestToken());
-        const token = res.data?.token ?? null;
-        if (token) {
-          cache.current = { token, exp: tokenExpiry(token), sessionId };
-          return token;
+      for (let attempt = 0; ; attempt++) {
+        // A token belongs to one session: after a password change or re-verification the session is
+        // replaced, and the old token would be refused by the backend.
+        const current = sessionRef.current;
+        const cached = cache.current?.sessionId === current || !current ? cache.current : null;
+        if (!forceRefreshToken && cached && cached.exp - Date.now() > 60_000) return cached.token;
+        try {
+          const res = (forceRefreshToken || attempt ? null : await takeEarlyToken()) ?? (await requestToken());
+          const token = res.data?.token ?? null;
+          if (token) {
+            cache.current = { token, exp: tokenExpiry(token), sessionId: sessionRef.current };
+            return token;
+          }
+          const status = (res.error as { status?: number } | null)?.status;
+          if (status === 401 || status === 403) {
+            cache.current = null;
+            return null;
+          }
+        } catch {
+          // Network trouble: below.
         }
-        const status = (res.error as { status?: number } | null)?.status;
-        if (status === 401 || status === 403) {
-          cache.current = null;
-          return null;
-        }
-      } catch {
-        // Network trouble: fall through to the cached token while it's still valid.
+        if (cached && cached.exp > Date.now()) return cached.token;
+        // No answer and no token that still works (offline, or the token ran out while it was): wait for the
+        // network and ask again, rather than going on as nobody. Convex holds back every query and mutation
+        // while it waits for this, so nothing is refused for want of a sign-in; this device's copy shows
+        // meanwhile. Only a definite "no session" (401/403) ends it. (An account never seen on this device
+        // goes on as nobody, as before, so the sign-in pages work offline.)
+        if (!knownAccount()) return null;
+        await waitForNetwork(Math.min(1000 * 2 ** Math.min(attempt, 4), 15_000));
       }
-      return cached && cached.exp > Date.now() ? cached.token : null;
     },
     // A new session (sign-in, 2FA completed, password changed) must produce a new token.
-    [sessionId],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sessionEpoch],
   );
 
   // A tab that opened on the browser's active session (no account named yet) stays with it from now on.
@@ -167,13 +214,17 @@ function useFoleviAuth() {
   }, [userId]);
 
   const phase = authPhaseOf({ hasSession: Boolean(session?.session), isPending, error, online, slow });
+  // Offline (or still asking) on a device that has this account's copy: signed in as far as Convex is
+  // concerned, its token on its way (fetchAccessToken waits for the network). Switching to "not signed in"
+  // for those moments would run every query as nobody, and the app would show "This page couldn't load".
+  const known = knownAccount();
   const auth = useMemo(
     () => ({
-      isLoading: phase === "loading",
-      isAuthenticated: phase === "signed_in" || (phase === "offline" && cache.current !== null),
+      isLoading: phase === "loading" && !known,
+      isAuthenticated: phase === "signed_in" || ((phase === "offline" || phase === "loading") && (known || cache.current !== null)),
       fetchAccessToken,
     }),
-    [phase, fetchAccessToken],
+    [phase, fetchAccessToken, known],
   );
   return { auth, phase };
 }
@@ -302,10 +353,25 @@ function AccountConvex({ phase, useAuth, children }: { phase: AuthPhase; useAuth
   return (
     <AuthPhaseContext.Provider value={phase}>
       <ConvexProviderWithAuth client={client} useAuth={useAuth}>
-        {ready ? children : null}
+        <BackendAuthed>{ready ? children : null}</BackendAuthed>
       </ConvexProviderWithAuth>
     </AuthPhaseContext.Provider>
   );
+}
+
+/**
+ * Whether the backend has taken this page's sign-in (Convex confirmed the token). Until it has, anything sent is
+ * sent as nobody and refused as "unauthenticated": after an offline start, reconnecting, or a token that ran out
+ * while the device was offline, the sync engine and outbox wait for this instead of sending into that refusal
+ * (lib/app/state.tsx). Always true in local mode (no sign-in) and outside the account's provider.
+ */
+const BackendAuthedContext = createContext(true);
+export function useBackendAuthed(): boolean {
+  return useContext(BackendAuthedContext);
+}
+function BackendAuthed({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useConvexAuth();
+  return <BackendAuthedContext.Provider value={isAuthenticated}>{children}</BackendAuthedContext.Provider>;
 }
 
 const LocalClientContext = createContext<LocalClient | null>(null);

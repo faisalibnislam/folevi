@@ -9,7 +9,8 @@ import { accessAtLeast, documentAccess, documentAccessInfo, getDocumentByPublicI
 import { fail } from "../../errors";
 import { liveBlocks } from "../../documents";
 import { inScope, scopeFields, type Scope } from "../../scope";
-import { MAX_EDITS, MAX_ITEMS, MAX_MERGE, MAX_OPS, MAX_TAGS, q, type AgentOp, type BlockEdit, type OpKind } from "./ops";
+import { editSummary, MAX_EDITS, MAX_ITEMS, MAX_MERGE, MAX_NOTE_EDITS, MAX_OPS, MAX_RUN_BYTES, MAX_TAGS, q, runBytes, type AgentOp, type BlockEdit, type OpKind } from "./ops";
+import { TURN_INTO, turnIntoMarkdown, type TurnInto } from "./longNotes";
 import { scopeFolders, scopeTags, type ReadEnv } from "./read";
 import { cleanText } from "./schema";
 
@@ -92,15 +93,19 @@ export const PROPOSERS: Record<OpKind, Proposer> = {
 
   async update_note(ctx, env, args, earlier) {
     const doc = await writableNote(ctx, env.profile, env.scope, str(args.noteId));
-    if (earlier.some((o) => o.kind === "update_note" && o.noteId === doc.publicId)) fail("invalid_argument", "Put every edit to one note in a single update_note call.");
+    // A long note is edited in batches: a further call to the same note joins the run's edit of it (ops.ts addOp).
+    const before = earlier.find((o) => o.kind === "update_note" && o.noteId === doc.publicId);
     const blocks = new Map((await liveBlocks(ctx, doc._id)).map((b) => [b.blockId, b]));
     const raw = (args.edits as Record<string, unknown>[]) ?? [];
     if (!raw.length) fail("invalid_argument", "Give at least one edit.");
-    if (raw.length > MAX_EDITS) fail("invalid_argument", `At most ${MAX_EDITS} edits per note.`);
+    if (raw.length > MAX_EDITS) fail("invalid_argument", `At most ${MAX_EDITS} edits per call. Send the rest in another update_note call.`);
+    // Blocks that already have a change waiting for approval from earlier in this conversation are left alone.
+    const pending = new Set(env.pending ?? []);
     const touched = new Set<string>();
     const edits: BlockEdit[] = [];
+    let skipped = 0;
     for (const e of raw) {
-      const action = str(e.action) as BlockEdit["action"];
+      const action = str(e.action) as BlockEdit["action"] | "turn_into";
       const markdown = str(e.markdown);
       if (action === "insert") {
         const after = str(e.afterBlockId);
@@ -114,16 +119,30 @@ export const PROPOSERS: Record<OpKind, Proposer> = {
       if (!b) fail("not_found", `There's no block ${id || "(none given)"} in that note. Use the ids get_note shows.`);
       if (touched.has(id)) fail("invalid_argument", `Block ${id} is edited twice. Combine the edits.`);
       touched.add(id);
-      const before = blockSearchText({ type: b.type, text: b.text as never, props: b.props as never });
-      if (action === "replace") {
+      if (pending.has(id)) {
+        skipped++;
+        continue;
+      }
+      const was = blockSearchText({ type: b.type, text: b.text as never, props: b.props as never });
+      if (action === "turn_into") {
+        const to = str(e.type) as TurnInto;
+        if (!TURN_INTO.includes(to)) fail("invalid_argument", `turn_into needs a type: ${TURN_INTO.join(", ")}.`);
+        const md = turnIntoMarkdown({ type: b.type, text: b.text as never, props: b.props as never }, to, typeof e.level === "number" ? e.level : 2);
+        if (md === null) fail("invalid_argument", `Block ${id} isn't text, so it can't be turned into a ${to}. Use replace.`);
+        // Already that kind (a heading at that level): nothing to change.
+        if (b.type === to && (to !== "heading" || Number((b.props as Record<string, unknown>).level) === (typeof e.level === "number" ? e.level : 2))) continue;
+        edits.push({ action: "replace", blockId: id, markdown: md, before: was, baseRev: b.contentRev });
+      } else if (action === "replace") {
         if (!markdown.trim()) fail("invalid_argument", "A replace needs markdown (use delete to remove a block).");
-        edits.push({ action, blockId: id, markdown, before, baseRev: b.contentRev });
+        edits.push({ action, blockId: id, markdown, before: was, baseRev: b.contentRev });
       } else {
-        edits.push({ action: "delete", blockId: id, before, baseRev: b.contentRev });
+        edits.push({ action: "delete", blockId: id, before: was, baseRev: b.contentRev });
       }
     }
-    const n = edits.length;
-    return { summary: `Edit ${q(doc.title)} (${n} change${n === 1 ? "" : "s"})`, noteId: doc.publicId, noteTitle: doc.title || "Untitled", edits, baseContentSeq: doc.contentSeq };
+    if (!edits.length) fail("invalid_argument", skipped ? "Those blocks already have changes waiting for approval from earlier in this conversation. Leave them, and carry on with the rest." : "Those blocks are already that way. Nothing to change.");
+    const total = (before?.edits?.length ?? 0) + edits.length;
+    if (total > MAX_NOTE_EDITS) fail("limit_exceeded", `That's the most edits one request can make to a note (${MAX_NOTE_EDITS}). Finish now and say what's left: the person can press Continue for the rest.`);
+    return { summary: editSummary(doc.title, total), noteId: doc.publicId, noteTitle: doc.title || "Untitled", edits, baseContentSeq: before?.baseContentSeq ?? doc.contentSeq };
   },
 
   async append_to_note(ctx, env, args) {
@@ -239,7 +258,13 @@ export const PROPOSERS: Record<OpKind, Proposer> = {
   },
 };
 
-/** The most a run may propose, checked before each proposal. */
-export function checkRoom(earlier: AgentOp[]): void {
-  if (earlier.length >= MAX_OPS) fail("limit_exceeded", `That's the most changes one run can propose (${MAX_OPS}). Finish with what's proposed.`);
+/** The most a run may propose, checked before each proposal (a further batch of edits to a note joins its change). */
+export function checkRoom(earlier: AgentOp[], kind?: OpKind, noteId?: string): void {
+  const joins = kind === "update_note" && earlier.some((o) => o.kind === "update_note" && o.noteId === noteId);
+  if (!joins && earlier.length >= MAX_OPS) fail("limit_exceeded", `That's the most changes one run can propose (${MAX_OPS}). Finish with what's proposed.`);
+}
+
+/** A proposal that would make the run's operations too big to store is refused (the person can Continue). */
+export function checkSize(earlier: AgentOp[], op: AgentOp): void {
+  if (runBytes([...earlier, op]) > MAX_RUN_BYTES) fail("limit_exceeded", "That's as much as one request can propose. Finish now and say what's left: the person can press Continue for the rest.");
 }

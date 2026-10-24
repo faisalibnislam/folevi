@@ -99,6 +99,12 @@ export function stepLines(steps: AgentStep[]): string[] {
       case "write":
         out.push(`Proposed ${plural(g.count, "a change", "changes")}`);
         break;
+      case "get_note_page":
+        out.push(g.count === 1 ? "Read on in the note" : `Read ${g.count} more pages`);
+        break;
+      case "get_note_outline":
+        out.push("Read the outline");
+        break;
       case "list_folders":
         out.push("Looked at folders");
         break;

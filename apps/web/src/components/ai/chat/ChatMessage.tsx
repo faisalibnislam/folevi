@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
 import { useQuery } from "convex/react";
-import { Check, Copy, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Pencil, RotateCcw, Wand2, CornerDownLeft } from "lucide-react";
+import { Check, Copy, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Pencil, Play, RotateCcw, Wand2, CornerDownLeft } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useIphoneApp } from "@/lib/iphone";
 import { MenuButton } from "@/components/ui/Menu";
@@ -253,6 +253,7 @@ export function AssistantMessage({
   onDismiss,
   onOpen,
   onFix,
+  onContinue,
   onInsert,
   run,
   research,
@@ -272,6 +273,8 @@ export function AssistantMessage({
   onOpen: (href: string) => void;
   /** An answer to a request to change the note: hand it to the agent to make the change in place. */
   onFix?: () => void;
+  /** An agent's answer that stopped before it was done: carry on where it stopped. */
+  onContinue?: () => void;
   /** In a note's Foli AI panel: put the answer into the note at the cursor. */
   onInsert?: (markdown: string) => void;
   /** An agent's answer: acting on its run. */
@@ -372,6 +375,14 @@ export function AssistantMessage({
               <Wand2 size={14} aria-hidden /> Make these changes
             </button>
             <span className="text-[12px] text-muted">In the note itself. You review them first, and can undo.</span>
+          </div>
+        ) : null}
+        {onContinue && !readOnly ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button type="button" disabled={busy} onClick={onContinue} className="inline-flex h-9 items-center gap-1.5 rounded-control bg-heading px-3 text-[13px] font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-40">
+              <Play size={14} aria-hidden /> Continue
+            </button>
+            <span className="text-[12px] text-muted">Carries on from where it stopped. Changes above stay as they are.</span>
           </div>
         ) : null}
         <div className="-mb-1 mt-2 flex flex-wrap items-center gap-0.5">

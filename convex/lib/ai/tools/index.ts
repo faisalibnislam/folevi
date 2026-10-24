@@ -9,6 +9,7 @@ import { calculate, MAX_EXPRESSION } from "./calculate";
 import { MAX_EDITS, MAX_ITEMS, MAX_MERGE, MAX_OP_MARKDOWN, MAX_TAGS, OP_KINDS, type AgentOp, type OpKind } from "./ops";
 import { findRelated } from "./related";
 import { checkArgs, type ObjectSchema } from "./schema";
+import { TURN_INTO } from "./longNotes";
 import { untrusted } from "./untrusted";
 import type { PageResult, SearchResult } from "../web";
 
@@ -63,7 +64,7 @@ interface Tool {
   description: string;
   parameters: ObjectSchema;
   kind: "read" | "write" | "unavailable";
-  run(host: ToolHost, args: Record<string, unknown>, ops: AgentOp[]): Promise<{ response: Record<string, unknown>; count: number; op?: AgentOp }>;
+  run(host: ToolHost, args: Record<string, unknown>, ops: AgentOp[]): Promise<{ response: Record<string, unknown>; count: number; op?: AgentOp; step?: string }>;
 }
 
 const id = (what: string) => ({ type: "string" as const, description: what, maxLength: 64, minLength: 1 });
@@ -113,10 +114,28 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "get_note",
-    description: "Read one note: its title, folder and blocks, each line starting with the block's id in brackets (use those ids with update_note).",
-    parameters: { type: "object", properties: { noteId: id("The note's id."), maxChars: { type: "integer", description: "Characters to read (default 12000, at most 20000).", minimum: 500, maximum: 20_000 } }, required: ["noteId"] },
+    description:
+      "Read one note: its title, folder and blocks, each line starting with the block's id in brackets (use those ids with update_note). A long note comes a page at a time: the result says which blocks it shows, and fromBlock reads on from a block number.",
+    parameters: {
+      type: "object",
+      properties: {
+        noteId: id("The note's id."),
+        fromBlock: { type: "integer", description: "Start at this block number (1 is the first; a long note's result gives the next one).", minimum: 1, maximum: 100_000 },
+        maxChars: { type: "integer", description: "Characters to read (default 12000, at most 16000).", minimum: 500, maximum: 16_000 },
+      },
+      required: ["noteId"],
+    },
     kind: "read",
-    run: async (host, args) => ({ response: await host.inspect("get_note", args), count: 1 }),
+    // Reading on in a long note is its own step ("Read 3 more pages"), not another note.
+    run: async (host, args) => ({ response: await host.inspect("get_note", args), count: 1, ...(Number(args.fromBlock ?? 1) > 1 ? { step: "get_note_page" } : {}) }),
+  },
+  {
+    name: "get_note_outline",
+    description:
+      "A long note's outline: the blocks that look like section titles (headings, short bold lines, lines like \"Issue 12\" or \"3. Scope\"), each with its block number and id. Use it to find sections, then get_note with fromBlock to read one, or update_note to change those lines.",
+    parameters: { type: "object", properties: { noteId: id("The note's id.") }, required: ["noteId"] },
+    kind: "read",
+    run: async (host, args) => ({ response: await host.inspect("get_note_outline", args), count: 1 }),
   },
   {
     name: "get_notes",
@@ -246,7 +265,10 @@ export const TOOLS: Tool[] = [
     properties: { title: { type: "string", description: "Its title.", maxLength: 200, minLength: 1 }, markdown: markdown("Its body in Markdown (no title heading)."), ...folderArgs },
     required: ["title", "markdown"],
   }),
-  writeTool("update_note", "Propose block-level edits to a note: replace a block, insert new blocks after one (or at the top), or delete a block. Use block ids from get_note. Put all edits to one note in one call.", {
+  writeTool(
+    "update_note",
+    `Propose block-level edits to a note: replace a block, insert new blocks after one (or at the top), delete a block, or turn_into: make a block a heading (level 1 to 3), paragraph, list item, to-do or quote, keeping its text exactly as it is (the cheapest way to fix formatting, like lines that should be headings). Use block ids from get_note or get_note_outline. Up to ${MAX_EDITS} edits per call: for more, call update_note again with the next batch (edits to the same note add up into one change).`,
+    {
     type: "object",
     properties: {
       noteId: id("The note's id."),
@@ -257,17 +279,20 @@ export const TOOLS: Tool[] = [
         items: {
           type: "object",
           properties: {
-            action: { type: "string", enum: ["replace", "insert", "delete"] },
-            blockId: { type: "string", description: "The block to replace or delete.", maxLength: 64 },
+            action: { type: "string", enum: ["replace", "insert", "delete", "turn_into"] },
+            blockId: { type: "string", description: "The block to replace, delete or turn into another kind.", maxLength: 64 },
             afterBlockId: { type: "string", description: "insert: the block to insert after (leave out to insert at the top).", maxLength: 64 },
             markdown: markdown("replace and insert: the new content in Markdown (it may become several blocks)."),
+            type: { type: "string", description: "turn_into: what the block becomes.", enum: [...TURN_INTO] },
+            level: { type: "integer", description: "turn_into a heading: its level (1 to 3, default 2).", minimum: 1, maximum: 3 },
           },
           required: ["action"],
         },
       },
     },
     required: ["noteId", "edits"],
-  }),
+  },
+  ),
   writeTool("append_to_note", "Propose adding Markdown to the end of a note.", {
     type: "object",
     properties: { noteId: id("The note's id."), markdown: markdown("What to add, in Markdown.") },
@@ -353,7 +378,7 @@ export async function runTool(host: ToolHost, call: { name: string; args: Record
   if (!checked.ok) return { response: { error: checked.error }, step: { tool: tool.name, count: 0, ok: false } };
   try {
     const r = await tool.run(host, checked.value, ops);
-    return { response: r.response, step: { tool: tool.name, count: r.count, ok: tool.kind !== "unavailable" && !("error" in r.response) }, ...(r.op ? { op: r.op } : {}) };
+    return { response: r.response, step: { tool: r.step ?? tool.name, count: r.count, ok: tool.kind !== "unavailable" && !("error" in r.response) }, ...(r.op ? { op: r.op } : {}) };
   } catch (e) {
     return { response: { error: errorText(e) }, step: { tool: tool.name, count: 0, ok: false } };
   }

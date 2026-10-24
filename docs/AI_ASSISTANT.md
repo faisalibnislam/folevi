@@ -86,6 +86,21 @@ and reports with links. Before any write the run saves a version of each affecte
 idempotency keys per operation, and rate limits. Text from notes, files and web pages is data: it is wrapped and
 labelled as untrusted and can never call a tool on its own.
 
+Long notes (`convex/lib/ai/agentBudget.ts`, `convex/lib/ai/tools/longNotes.ts`): a note over about 1,800 words or
+200 blocks comes with the request as its first page (12,000 characters of block lines) and its outline: the blocks
+that look like section titles (headings, short all-bold lines, "Issue 12" or "3." lines, lines ending in a colon),
+each with its block number and id. `get_note` reads on a page at a time (`fromBlock`, a page always fits a tool
+result) and `get_note_outline` gives the outline of any note. `update_note` takes up to 40 edits per call and
+calls to the same note add up into one change (one preview, one Undo, at most 400 edits and a run's operations
+under 700 KB); `turn_into` makes a block a heading, paragraph, list item, to-do or quote keeping its text exactly,
+so formatting fixes cost a few tokens per block. Such a run gets a long budget (14 model calls, 40 tool calls, 5
+minutes) held at about 25 credits instead of 15; before each model call it checks that what it spent, plus that call
+and an answer after it, stays inside its hold, otherwise the call is its last. Older tool results are shortened
+once the exchange passes 60,000 characters. A run that stops before it's done (its budget, or an error after it
+proposed something) keeps its proposals, says what it proposed and what's left, and offers Continue
+(`aiMessages.agent.more`). Continue (or typing "continue") starts a new run in the conversation that's told which
+blocks already have changes waiting for approval and leaves them alone, so approving both never edits a block twice.
+
 ### Attachments (`convex/aiAttachments.ts`, `convex/lib/ai/attachments.ts`, `convex/lib/ai/attachmentFiles.ts`)
 
 Files already in Convex storage are sent to Gemini as inline data (images, PDFs up to the inline limit; larger PDFs

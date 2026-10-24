@@ -25,7 +25,7 @@ import { WebToggle } from "./WebToggle";
 import { AttachControl, AttachmentChips, AttachmentProblems, useChatAttachments, type PendingFile } from "./Attachments";
 import type { ResearchHandlers } from "./ResearchCard";
 import { useChatMode } from "./mode";
-import { asksToChange, FIX_IN_NOTE, wantsAgent } from "../editIntent";
+import { asksToChange, asksToContinue, CONTINUE_AGENT, FIX_IN_NOTE, wantsAgent } from "../editIntent";
 import { AiAnnouncer, useDoneAnnouncement } from "../announce";
 
 // Chat answers questions and makes changes, so its suggestions show both.
@@ -244,9 +244,12 @@ export function ChatThread({
     attachments.clear();
     const target = id;
     const args = { scope: conversation?.scope ?? scope, conversationId: target, text: q, context: isNew ? newContext : undefined, ...(fileIds.length ? { attachments: fileIds } : {}) };
-    // A request to change notes goes to the agent; a question gets the quick answer.
+    // A request to change notes goes to the agent; a question gets the quick answer. "Continue" after an
+    // agent answer that stopped partway carries on with the agent.
+    const last = messages[messages.length - 1];
+    const continues = Boolean(last?.agent?.more) && asksToContinue(q);
     if (as === "research") void run(() => researchStart(args));
-    else if (features.agent && (as === "agent" || wantsAgent(q))) void run(() => agentSend(args));
+    else if (features.agent && (as === "agent" || continues || wantsAgent(q))) void run(() => agentSend(args));
     else void run(() => sendAction({ ...args, ...(webOn ? { web: true } : {}) }));
   };
 
@@ -263,6 +266,8 @@ export function ChatThread({
    * own blocks in place (previewed, approved, one Undo) instead of the answer being pasted in as a copy.
    */
   const fixInNote = () => send(FIX_IN_NOTE, "agent");
+  /** Continue: an agent answer that stopped before it was done carries on in a new run. */
+  const continueAgent = () => send(CONTINUE_AGENT, "agent");
 
   const changeContext = (next: ChatContext) => {
     if (!conversation || !conversationId) return setNewContext(next);
@@ -433,6 +438,7 @@ export function ChatThread({
                 onFix={
                   features.agent && i === messages.length - 1 && !m.agent && !jobFor(m.id) && m.status === "done" && contextNotes.length && asksToChange(messages[i - 1]?.role === "user" ? messages[i - 1]!.text : "") ? fixInNote : undefined
                 }
+                onContinue={features.agent && i === messages.length - 1 && m.agent?.more && m.status === "done" ? continueAgent : undefined}
                 onApply={() => void apply(m.id, (m.actions ?? []) as AiAction[])}
                 onDismiss={() => void setOutcome({ messageId: m.id, outcome: { kind: "dismissed" } })}
                 onOpen={open}

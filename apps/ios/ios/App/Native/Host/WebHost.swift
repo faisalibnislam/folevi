@@ -10,6 +10,7 @@
 import SafariServices
 import UIKit
 import WebKit
+import FoleviEngine
 
 /// What the build put in App/folevi-host.json (scripts/sync-web.mjs): which page the app opens and where it signs in.
 struct HostConfig {
@@ -79,6 +80,8 @@ final class WebHost: NSObject {
 
     /// The page on show (the key window's), for links and app events.
     static weak var current: WebHost?
+    /// The native frame's engine transport hears the page reload or its process end (resubscribes after).
+    var onPageLifecycle: ((PageLifecycle) -> Void)?
 
     var serverURL: URL { config.serverURL }
     /// "capacitor://localhost" (or the development server's origin).
@@ -163,7 +166,7 @@ final class WebHost: NSObject {
         v.scrollView.isScrollEnabled = true
         v.scrollView.scrollsToTop = false
         v.allowsLinkPreview = false
-        v.allowsBackForwardNavigationGestures = true
+        v.allowsBackForwardNavigationGestures = !PhoneFrame.enabled
         v.backgroundColor = .systemBackground
         v.scrollView.backgroundColor = .systemBackground
         KeyboardHost.allowProgrammaticFocus()
@@ -191,7 +194,9 @@ final class WebHost: NSObject {
         }
         opaqueBeforeLoad = pageView.isOpaque
         pageView.isOpaque = false
-        pageView.load(URLRequest(url: config.startURL))
+        // The native frame (Native/Phone): the page idles on /native, drawing nothing until a note is asked for.
+        let start = PhoneFrame.enabled && config.bundled ? URL(string: AppOrigin.of(config.serverURL) + PhoneFrame.idlePath) ?? config.startURL : config.startURL
+        pageView.load(URLRequest(url: start))
     }
 
     // MARK: the bridge
@@ -306,6 +311,7 @@ extension WebHost: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         // A new page: its bridge says when it's up again.
         pageReady = false
+        onPageLifecycle?(.reloading)
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -325,6 +331,7 @@ extension WebHost: WKNavigationDelegate {
     /// in IndexedDB (edits are written there before any network call).
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         pageReady = false
+        onPageLifecycle?(.terminated)
         pageView.reload()
     }
 

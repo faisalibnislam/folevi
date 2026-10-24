@@ -16,6 +16,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         BackgroundRefresh.register()
         // The page starts loading now (a background launch for a refresh or a silent push doesn't need it).
         if application.applicationState != .background { WebHost.prewarm() }
+        #if DEBUG && targetEnvironment(simulator)
+        DebugHooks.seedFromEnvironment()
+        #endif
         return true
     }
 

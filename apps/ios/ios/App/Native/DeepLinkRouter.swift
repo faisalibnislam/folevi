@@ -28,6 +28,8 @@ enum DeepLinkRouter {
         let url = link
         guard DeepLink.parse(url.absoluteString) != nil else { return }
         guard ready else { return waiting.append(url) }
+        // The native frame opens the link's screen itself (plan 4.7).
+        if let phone = PhoneFrameController.current { return phone.openLink(url) }
         guard let host = WebHost.current else { return waiting.append(url) }
         host.openLink(url)
     }

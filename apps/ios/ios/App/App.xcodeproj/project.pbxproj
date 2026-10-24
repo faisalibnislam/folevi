@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		F0AB00000000000000000011 /* FoleviEngine in Frameworks */ = {isa = PBXBuildFile; productRef = F0AB00000000000000000002 /* FoleviEngine */; };
 		F0AB00000000000000000012 /* FoleviDesign in Frameworks */ = {isa = PBXBuildFile; productRef = F0AB00000000000000000003 /* FoleviDesign */; };
+		F0AB00000000000000000013 /* FoleviScreens in Frameworks */ = {isa = PBXBuildFile; productRef = F0AB00000000000000000004 /* FoleviScreens */; };
 		50379B232058CBB4000EE86E /* folevi-host.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* folevi-host.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
@@ -136,6 +137,7 @@
 			files = (
 				F0AB00000000000000000011 /* FoleviEngine in Frameworks */,
 				F0AB00000000000000000012 /* FoleviDesign in Frameworks */,
+				F0AB00000000000000000013 /* FoleviScreens in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -246,6 +248,7 @@
 			packageProductDependencies = (
 				F0AB00000000000000000002 /* FoleviEngine */,
 				F0AB00000000000000000003 /* FoleviDesign */,
+				F0AB00000000000000000004 /* FoleviScreens */,
 			);
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
@@ -998,6 +1001,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F0AB00000000000000000001 /* XCLocalSwiftPackageReference "../../../native-kit" */;
 			productName = FoleviDesign;
+		};
+		F0AB00000000000000000004 /* FoleviScreens */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F0AB00000000000000000001 /* XCLocalSwiftPackageReference "../../../native-kit" */;
+			productName = FoleviScreens;
 		};
 /* End XCSwiftPackageProductDependency section */
 

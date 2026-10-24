@@ -32,6 +32,22 @@ enum DebugHooks {
         }, "com.folevi.ios.native" as CFString, nil, .deliverImmediately)
     }
 
+    /// UI tests' driver (scripts/native-smoke.mjs): FOLEVI_TEST_SESSION in the launch environment is a scratch test
+    /// account's session on the development deployment; it's stored as the sign-in sheet's end would store it, and
+    /// the app opens in that account. Simulator Debug builds only; never printed.
+    static func seedFromEnvironment() {
+        guard let token = ProcessInfo.processInfo.environment["FOLEVI_TEST_SESSION"], !token.isEmpty else { return }
+        Task { @MainActor in
+            guard let u = await ShellAuth.shared.userOf(token) else { return }
+            if ShellPlaces.state.current == "acct:\(u.userId)", ShellAuth.shared.token(for: u.userId) != nil { return }
+            ShellAuth.shared.setToken(token, for: u.userId)
+            guard let a = ShellPlaces.addAccount(userId: u.userId, name: u.name, email: u.email, avatarUrl: u.avatarUrl) else { return }
+            ShellMode.current = "account"
+            ShellPlaces.setCurrent(a.id)
+            FoleviViewController.restart()
+        }
+    }
+
     private static func run() async {
         let tmp = FileManager.default.temporaryDirectory
         let out = tmp.appendingPathComponent("native-result.json")

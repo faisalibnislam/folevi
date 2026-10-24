@@ -11,7 +11,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         let window = UIWindow(windowScene: windowScene)
-        window.rootViewController = FoleviViewController()
+        window.rootViewController = PhoneFrame.enabled ? PhoneFrameController() : FoleviViewController()
         window.makeKeyAndVisible()
         self.window = window
         AppLock.shared.attach(to: window)
@@ -33,6 +33,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
+        PhoneFrameController.current?.snapshot.flush()
         AppLock.shared.didEnterBackground()
         AppServices.enteredBackground()
     }

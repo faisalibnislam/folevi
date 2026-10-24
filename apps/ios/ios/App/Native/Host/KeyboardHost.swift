@@ -124,9 +124,10 @@ final class KeyboardHost {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
-    /// The web view ends where the keyboard starts (resize "native").
+    /// The web view ends where the keyboard starts (resize "native"). Not with the native frame: the page view
+    /// stays full height and the note screen gives the page the keyboard's room as an inset (Native/Phone).
     private func updateFrame() {
-        guard let webView else { return }
+        guard let webView, !PhoneFrame.enabled else { return }
         let window = webView.window ?? UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first
         let bounds = window?.bounds ?? UIScreen.main.bounds
         let f = webView.frame

@@ -98,6 +98,8 @@ final class FoleviViewController: UIViewController {
         // The extensions' REST API is the site this app loads; links that came early can go to the page now.
         AppServices.launched(serverURL: bundled ? ShellAuth.shared.service : host.serverURL)
         if let source = bridgeScript(origin: host.appOrigin, shell: bundled ? shellBootstrap() : nil) { host.addUserScript(source) }
+        // The native frame: the page runs in native chrome mode (the engine and the note page, no web frame).
+        if PhoneFrame.enabled, bundled { host.addUserScript(PhoneFrame.markerScript(place: ShellPlaces.state.current)) }
         DeepLinkRouter.bridgeReady()
         #if DEBUG && targetEnvironment(simulator)
         SimulatorEval.install(on: host.pageView)
@@ -162,6 +164,10 @@ final class FoleviViewController: UIViewController {
     /// A new web view on the same storage, for a new mode: its scripts and network rules start from it.
     static func restart() {
         guard let window = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).flatMap(\.windows).first(where: \.isKeyWindow) else { return }
+        if let phone = window.rootViewController as? PhoneFrameController {
+            phone.retire { window.rootViewController = PhoneFrameController(host: WebHost()) }
+            return
+        }
         guard let old = window.rootViewController as? FoleviViewController else {
             window.rootViewController = FoleviViewController(host: WebHost())
             return

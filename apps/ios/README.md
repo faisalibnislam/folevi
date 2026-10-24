@@ -1,7 +1,8 @@
 # Folevi for iPhone and iPad
 
-The web app in a Capacitor shell (the Mac app, `apps/mac`, shows the same interface natively and shares this app's
-Swift services). Since
+The web app in Folevi's own web view host (`ios/App/Native/Host`, no Capacitor since 2026-10-24, docs/NATIVE_APP_PLAN.md
+N1; the page stays at `capacitor://localhost` so installs keep their data). The Mac app, `apps/mac`, shows the same
+interface the same way and shares this app's Swift services. Since
 2026-10-22 the app carries the interface built in (the shell export in `web/`, git-ignored) with
 `window.foleviShell` in Swift (`ios/App/Native/Shell`): local mode ("Keep notes on my devices", a library in
 iCloud, a folder or on the device), signing in, Foli AI on the device and end-to-end encryption keys. The native parts are in Swift: a Face ID lock, links that open in an in-app Safari view,
@@ -39,17 +40,17 @@ pnpm install --ignore-workspace
 
 # The built-in interface (apps/web's shell export) into web/, then the config into Xcode
 pnpm shell                         # development (dev Convex); pnpm release builds the production one
-FOLEVI_SERVICE_URL=http://app.localhost:3002 npx cap sync ios   # signing in against the dev server
+FOLEVI_SERVICE_URL=http://app.localhost:3002 pnpm sync   # signing in against the dev server
 pnpm sync                          # signing in against https://app.folevi.com
 
 # TestFlight (internal testing only): production export, archive, profiles, upload (docs/IOS.md)
 pnpm release                       # node scripts/release.mjs [--build <n>] [--no-upload]
 
 # The website in the app instead of the built-in interface (as before 2026-10-22)
-FOLEVI_URL=https://app.folevi.com npx cap sync ios
+FOLEVI_URL=https://app.folevi.com pnpm sync
 
 # Or the website from the local dev server (Debug builds allow its plain http; port 3002)
-pnpm sync:dev                      # FOLEVI_URL=http://app.localhost:3002 cap sync ios
+pnpm sync:dev                      # FOLEVI_URL=http://app.localhost:3002 node scripts/sync-web.mjs
 
 # Build for the Simulator, or build, install and open it there
 pnpm build                         # node scripts/simulator.mjs build ["Folevi iPhone 18 Pro"]
@@ -81,8 +82,11 @@ xcrun simctl launch booted com.folevi.ios
 open ios/App/App.xcodeproj
 ```
 
-Run `pnpm sync` again after changing `capacitor.config.ts`, `www/` or the Capacitor plugins. The generated
-`capacitor.config.json`, `config.xml` and `public/` in `ios/App/App` aren't committed.
+Run `pnpm sync` (scripts/sync-web.mjs) again after `pnpm shell` or a change to `www/`. What it writes into
+`ios/App/App` (`public/` and `folevi-host.json`) isn't committed.
+
+The upgrade release gate (the shipped build installed with data, then this build over it):
+`pnpm upgrade-test` (scripts/upgrade-test.mjs, dev deployment and the dev server on port 3002 only).
 
 The app icon: `ios/App/App/AppIcon.icon` (the Mac app's Icon Composer file) for iOS 26 and later, and a 1024 px
 PNG for iOS 17 to 25 (`pnpm icon` renders it from the same glyph).

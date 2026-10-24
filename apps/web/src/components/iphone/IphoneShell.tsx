@@ -13,7 +13,7 @@ import { TabBar } from "./TabBar";
 import { Sheet } from "./Sheet";
 import { AccountSheet } from "./AccountSheet";
 import { NewFolderSheet } from "./NewFolderSheet";
-import { attachStage, dropTransition, playTransition } from "./transitions";
+import { attachStage, dropTransition, markZoomFrom, playTransition } from "./transitions";
 import { recordRoute, resetAllTabs } from "./tabStacks";
 
 interface IphoneActions {
@@ -83,6 +83,18 @@ export function IphoneShell({ banner }: { banner?: ReactNode }) {
   const actions = useMemo<IphoneActions>(() => ({ openAccount: () => setAccount(true), openNotifications: () => setNotifications(true), openNewFolder: () => setNewFolder(true) }), []);
 
   useLayoutEffect(() => (stage.current && layer.current ? attachStage(stage.current, layer.current) : undefined), []);
+  // A note's card or row tapped in a screen's content: the note zooms out of it (transitions.ts). Heard on the
+  // way down, before the link's own click navigates.
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return;
+    const onClick = (e: MouseEvent) => {
+      const link = (e.target as Element | null)?.closest?.<HTMLElement>("main a[href^='/d/']");
+      if (link && el.contains(link) && !e.defaultPrevented && e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) markZoomFrom(link);
+    };
+    el.addEventListener("click", onClick, true);
+    return () => el.removeEventListener("click", onClick, true);
+  }, []);
   // A new screen slides in (or the old one out) on the frame it first draws; the same screen stays put.
   const shownKey = useRef(moveKey);
   useLayoutEffect(() => {

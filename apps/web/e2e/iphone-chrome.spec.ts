@@ -170,4 +170,62 @@ test.describe("the iPhone app's chrome", { tag: "@local" }, () => {
       await context.close();
     }
   });
+
+  test("a note opens out of its card and Back shrinks it into the card again; Reduce Motion cross-fades @local", async ({ browser }, testInfo) => {
+    test.setTimeout(180_000);
+    const { context, page } = await iphone(browser, testInfo);
+    // Every animation started, with its keyframes.
+    await page.evaluate(() => {
+      const seen: { target: string; frames: Keyframe[] }[] = [];
+      (window as unknown as { __anims: typeof seen }).__anims = seen;
+      const orig = Element.prototype.animate;
+      Element.prototype.animate = function (this: Element, keyframes, options) {
+        const frames = (Array.isArray(keyframes) ? keyframes : []) as Keyframe[];
+        seen.push({ target: this.hasAttribute("data-iphone-zoom") ? "note" : this.hasAttribute("data-iphone-picture") ? "picture" : this.tagName, frames: JSON.parse(JSON.stringify(frames)) });
+        return orig.call(this, keyframes, options);
+      };
+    });
+    const anims = () => page.evaluate(() => (window as unknown as { __anims: { target: string; frames: Keyframe[] }[] }).__anims.splice(0));
+    const card = page.locator("main a[href^='/d/']", { hasText: /Welcome to Folevi/ }).first();
+    const box = (await card.boundingBox())!;
+    await card.tap();
+    await expect(page.getByRole("textbox", { name: "Document body" })).toBeVisible();
+    const opened = await anims();
+    const grow = opened.find((a) => a.target === "note" && String(a.frames[0]?.transform ?? "").includes("scale("));
+    expect(grow, JSON.stringify(opened.map((a) => a.target))).toBeTruthy();
+    // From the card's box (as pressed: a few points in from its resting box)...
+    const m = /translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([\d.]+)\)/.exec(String(grow!.frames[0]!.transform))!;
+    expect(Math.abs(Number(m[1]) - box.x)).toBeLessThan(8);
+    expect(Math.abs(Number(m[2]) - box.y)).toBeLessThan(8);
+    expect(Math.abs(Number(m[3]) - box.width / 440)).toBeLessThan(0.03);
+    // ...to the whole screen.
+    expect(String(grow!.frames.at(-1)!.transform)).toContain("scale(1)");
+    expect(String(grow!.frames.at(-1)!.clipPath)).toContain("inset(0px 0px 0px 0px");
+    // The screen behind steps back.
+    expect(opened.some((a) => a.target === "picture" && String(a.frames.at(-1)?.transform).includes("scale(0.94)"))).toBe(true);
+    await page.waitForTimeout(800);
+
+    // Back: the note shrinks into the card (the picture of it ends at the card's resting box).
+    await page.getByRole("button", { name: "Back", exact: true }).tap();
+    await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
+    const closed = await anims();
+    const shrink = closed.find((a) => a.target === "picture" && String(a.frames.at(-1)?.transform ?? "").includes("translate("));
+    expect(shrink, JSON.stringify(closed.map((a) => a.target))).toBeTruthy();
+    // (Measured once Home has stepped forward again.)
+    await page.waitForTimeout(900);
+    const back = (await card.boundingBox())!;
+    const e = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(String(shrink!.frames.at(-1)!.transform))!;
+    expect(Math.abs(Number(e[1]) - back.x)).toBeLessThan(4);
+    expect(Math.abs(Number(e[2]) - back.y)).toBeLessThan(4);
+    await page.waitForTimeout(800);
+
+    // Reduce Motion: a cross-fade, nothing grows or moves.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await card.tap();
+    await expect(page.getByRole("textbox", { name: "Document body" })).toBeVisible();
+    const faded = await anims();
+    expect(faded.some((a) => a.frames.some((f) => "transform" in f))).toBe(false);
+    expect(faded.some((a) => a.frames.some((f) => "opacity" in f))).toBe(true);
+    await context.close();
+  });
 });

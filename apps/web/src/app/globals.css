@@ -730,6 +730,10 @@
 :root[data-iphone] .ui-shortcut-hint { display: none; }
 /* The picture of a screen sliding away (components/iphone/transitions.ts) doesn't replay its own animations. */
 [data-iphone-picture], [data-iphone-picture] * { animation: none !important; transition: none !important; }
+/* ...and is drawn without shadows, filters or frosted glass: it's on screen for half a second, dimmed or moving
+   away, and painting those again for it made the first frame of every push and zoom up to a third slower in
+   WebKit (docs/IOS_PERFORMANCE.md). */
+[data-iphone-picture], [data-iphone-picture] * { filter: none !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 
 /* ------------------------------------------------------------------------------------------------
  * iOS polish WP1: the shell, lists and Home on the iPhone (docs/IOS_POLISH_PLAN.md §2). Phone layout only.

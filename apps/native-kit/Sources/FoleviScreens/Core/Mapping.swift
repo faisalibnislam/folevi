@@ -32,12 +32,12 @@ public enum CardMapping {
     }
 
     /// The footer time: the last edit, or when it went to Trash.
-    public static func timeText(_ row: NoteRow, inTrash: Bool, now: Date = Date()) -> String {
-        if inTrash { return "Deleted \(AgeText.relative(Date(timeIntervalSince1970: row.updatedAt / 1000), now: now))" }
+    public static func timeText(_ row: NoteRow, inTrash: Bool, now: Date = ScreenClock.now()) -> String {
+        if inTrash { return "Deleted \(AgeText.relative(Date(timeIntervalSince1970: (row.deletedAt ?? row.updatedAt) / 1000), now: now))" }
         return AgeText.age(Date(timeIntervalSince1970: row.updatedAt / 1000), now: now)
     }
 
-    public static func noteCard(_ row: NoteRow, starred: Bool? = nil, inTrash: Bool = false, now: Date = Date()) -> NoteCardModel {
+    public static func noteCard(_ row: NoteRow, starred: Bool? = nil, inTrash: Bool = false, now: Date = ScreenClock.now()) -> NoteCardModel {
         NoteCardModel(
             id: row.id,
             title: row.title,
@@ -54,7 +54,7 @@ public enum CardMapping {
         )
     }
 
-    public static func folderCard(_ f: FolderCard, parentName: String? = nil, now: Date = Date()) -> FolderCardModel {
+    public static func folderCard(_ f: FolderCard, parentName: String? = nil, now: Date = ScreenClock.now()) -> FolderCardModel {
         FolderCardModel(
             id: f.id,
             name: f.name,
@@ -91,7 +91,7 @@ public enum CardMapping {
     public static func rowAccessibility(_ row: NoteRow, inTrash: Bool, starred: Bool) -> String {
         var parts = [row.title.isEmpty ? "Untitled" : row.title]
         if row.kind != "template" { parts.append(row.folder.map { "in \($0.name)" } ?? "Draft") }
-        parts.append(inTrash ? timeText(row, inTrash: true).lowercased() : "edited \(AgeText.relative(Date(timeIntervalSince1970: row.updatedAt / 1000)))")
+        parts.append(inTrash ? timeText(row, inTrash: true).lowercased() : "edited \(AgeText.relative(Date(timeIntervalSince1970: row.updatedAt / 1000), now: ScreenClock.now()))")
         if starred { parts.append("starred") }
         if row.sync != .saved { parts.append("not synced") }
         return parts.joined(separator: ", ")
@@ -100,3 +100,9 @@ public enum CardMapping {
 
 /// "1 note", "1,204 notes" (the web's `notes(n)`).
 func notesText(_ n: Int) -> String { n == 1 ? "1 note" : "\(n.formatted()) notes" }
+
+/// "Now" for relative times ("5 mins ago"). Tests and snapshots fix it so pictures don't drift with the clock.
+public enum ScreenClock {
+    nonisolated(unsafe) public static var fixed: Date?
+    public static func now() -> Date { fixed ?? Date() }
+}

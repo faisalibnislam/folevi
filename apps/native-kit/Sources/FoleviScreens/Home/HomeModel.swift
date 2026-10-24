@@ -66,6 +66,8 @@ public final class HomeModel {
 
     public var canEdit: Bool { currentSpace?.canEdit ?? true }
     public var aiOn: Bool { session.value?.capabilities.ai ?? false }
+    /// Home's "…" offers Graph when Foli AI's graph is available.
+    public var graphOn: Bool { session.value?.capabilities.graph ?? false }
     public var locked: Bool { currentSpace?.locked ?? false }
 
     public var unread: Int {

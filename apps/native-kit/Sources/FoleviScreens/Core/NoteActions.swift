@@ -100,7 +100,7 @@ public final class NoteActions {
         guard !ids.isEmpty else { return }
         hide(ids, true)
         await perform(ids, undoable: false, rollback: { self.unhide(ids) }, settle: { self.unhide(ids) }) {
-            try await self.client.command(PendingCommands.NoteDeleteForever(NoteIdsArgs(ids: ids)))
+            try await self.client.command(.noteDeleteForever(ids: ids))
         } message: { n in
             "\(notesText(n)) will be permanently deleted."
         } undo: { _ in }
@@ -112,7 +112,7 @@ public final class NoteActions {
         guard !ids.isEmpty else { return }
         hide(ids, leavesList)
         await perform(ids, undoable: !from.isEmpty, rollback: { self.unhide(ids) }, settle: { self.unhide(ids) }) {
-            try await self.client.command(PendingCommands.NoteMove(NoteMoveExplicitArgs(ids: ids, folderId: folder.id)))
+            try await self.client.command(.noteMove(ids: ids, folderId: folder.id))
         } message: { n in
             n == 1 ? "Moved to \(folder.name)" : "Moved \(notesText(n)) to \(folder.name)"
         } undo: { done in
@@ -121,7 +121,7 @@ public final class NoteActions {
             for id in done { byFolder[from[id] ?? nil, default: []].append(id) }
             Task {
                 for (folderId, back) in byFolder {
-                    await self.quietly { try await self.client.command(PendingCommands.NoteMove(NoteMoveExplicitArgs(ids: back, folderId: folderId))) }
+                    await self.quietly { try await self.client.command(.noteMove(ids: back, folderId: folderId)) }
                 }
             }
         }
@@ -130,7 +130,7 @@ public final class NoteActions {
     public func copy(_ ids: [String], to space: SpaceInfo) async {
         guard !ids.isEmpty else { return }
         await perform(ids, undoable: false, rollback: {}, settle: {}) {
-            try await self.client.command(PendingCommands.NoteCopyTo(NoteCopyToArgs(ids: ids, space: space.id)))
+            try await self.client.command(.noteCopyTo(ids: ids, space: space.id))
         } message: { n in
             n == 1 ? "Copied to \(space.name)" : "Copied \(notesText(n)) to \(space.name)"
         } undo: { _ in }
@@ -139,7 +139,7 @@ public final class NoteActions {
     @discardableResult
     public func duplicate(_ id: String) async -> String? {
         do {
-            let r = try await client.command(PendingCommands.NoteDuplicate(NoteIdArgs(id: id)))
+            let r = try await client.command(.noteDuplicate(id: id))
             feedback.toast(ScreenToast("Duplicated", tone: .success))
             return r.id
         } catch {
@@ -157,7 +157,7 @@ public final class NoteActions {
                 let msg = r.hidden == 1 ? "Removed from Recent notes" : "Removed \(notesText(r.hidden)) from Recent notes"
                 feedback.toast(ScreenToast(msg, actionTitle: "Undo") { [weak self] in
                     guard let self else { return }
-                    Task { await self.quietly { try await self.client.command(PendingCommands.NoteShowInRecent(NoteIdsArgs(ids: ids))) } }
+                    Task { await self.quietly { try await self.client.command(.noteShowInRecent(ids: ids)) } }
                 })
             }
             scheduleSettle { self.unhide(ids) }
@@ -179,7 +179,7 @@ public final class NoteActions {
 
     public func createTemplate() async -> String? {
         do {
-            return try await client.command(PendingCommands.TemplateCreate(TemplateCreateArgs(space: space))).id
+            return try await client.command(.templateCreate(space: space, open: false)).id
         } catch {
             report(error)
             return nil
@@ -188,7 +188,7 @@ public final class NoteActions {
 
     public func reorder(_ id: String, after afterId: String?, view: NotesListView, folderId: String?) async {
         do {
-            try await client.command(PendingCommands.NoteReorder(NoteReorderArgs(id: id, afterId: afterId, view: view, folderId: folderId)))
+            try await client.command(.noteReorder(id: id, afterId: afterId, view: view, folderId: folderId, space: space))
         } catch {
             report(error)
         }
@@ -196,9 +196,10 @@ public final class NoteActions {
 
     public func emptyTrash() async {
         do {
-            let r = try await client.command(PendingCommands.TrashEmpty(SpaceArgs(space: space)))
+            let r = try await client.command(.trashEmpty(space: space))
             if r.deleted > 0 { feedback.toast(ScreenToast("\(notesText(r.deleted)) will be permanently deleted.")) }
             if r.skipped > 0 { feedback.toast(ScreenToast("\(notesText(r.skipped)) couldn’t be deleted. You may not have permission.", tone: .error)) }
+            if r.continuing { feedback.toast(ScreenToast("The rest of Trash is being emptied in the background.")) }
         } catch {
             report(error)
         }
@@ -221,25 +222,25 @@ public final class NoteActions {
     public func renameFolder(_ id: String, to name: String) async {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        await folderCommand(PendingCommands.FolderRename(FolderRenameArgs(id: id, name: trimmed)), "Renamed")
+        await folderCommand(.folderRename(id: id, name: trimmed), "Renamed")
     }
 
     public func setFolderColor(_ id: String, _ color: String?) async {
-        await folderCommand(PendingCommands.FolderSetColor(FolderSetColorArgs(id: id, color: color)), nil)
+        await folderCommand(.folderSetColor(id: id, color: color), nil)
     }
 
     public func moveFolder(_ id: String, to place: FolderRules.Place, message: String) async {
-        await folderCommand(PendingCommands.FolderMove(FolderMoveArgs(id: id, parentId: place.parentId, afterId: place.afterId)), message)
+        await folderCommand(.folderMove(id: id, parentId: place.parentId, afterId: place.afterId, space: space), message)
     }
 
     public func deleteFolder(_ id: String) async {
         feedback.haptic(.warning)
-        await folderCommand(PendingCommands.FolderDelete(FolderIdArgs(id: id)), "Folder deleted")
+        await folderCommand(.folderDelete(id: id), "Folder deleted")
     }
 
     // MARK: Plumbing
 
-    private func folderCommand<C: EngineCommandSpec>(_ command: C, _ message: String?) async {
+    private func folderCommand<C: EngineCommandSpec>(_ command: C, _ message: String?) async where C.Result == OkResult {
         do {
             try await client.command(command)
             if let message { feedback.toast(ScreenToast(message, tone: .success)) }

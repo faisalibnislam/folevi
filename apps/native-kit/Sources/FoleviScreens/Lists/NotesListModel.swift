@@ -136,8 +136,8 @@ public final class NotesListModel {
         self.tree = client.watch(.foldersTree(space: space))
         self.session = client.watch(.session, snapshotKey: "session.\(client.place)")
         self.places = client.watch(.placesList)
-        self.subfolderCards = kind.view == .folder ? client.watch(PendingViews.FolderCards(FolderCardsArgs(space: space, parentId: kind.folderId))) : nil
-        self.builtIns = kind.view == .templates ? client.watch(PendingViews.TemplatesBuiltIn()) : nil
+        self.subfolderCards = kind.view == .folder ? client.watch(.foldersCards(space: space, parentId: kind.folderId)) : nil
+        self.builtIns = kind.view == .templates ? client.watch(.templatesBuiltIn) : nil
     }
 
     private func restart() {
@@ -214,6 +214,16 @@ public final class NotesListModel {
             out.append(NoteSlot(index: i, row: row))
         }
         return out
+    }
+
+    /// The filter field has words in it (the screen shows `slots`, the matches, instead of every position).
+    public var isFiltering: Bool { !filter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    /// The slot at a position of the whole list, without building the whole list (what the screen draws).
+    /// Every position is one view, so a list of thousands never has to count its rows; a note that just left
+    /// the list shows faded until the engine's update takes it out.
+    public func slot(at index: Int) -> NoteSlot {
+        NoteSlot(index: index, row: store.state.row(at: index))
     }
 
     public var loadedRows: [NoteRow] { store.rows.filter { !actions.isHidden($0.id) } }

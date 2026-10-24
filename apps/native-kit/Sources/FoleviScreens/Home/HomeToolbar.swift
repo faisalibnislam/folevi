@@ -1,5 +1,5 @@
 // Home's bar items (web iphone/RootBar.tsx): the avatar (the account and place switcher) on the leading side,
-// and the glass pill with the bell (unread badge) and "…" (New folder, All folders) on the trailing side. The
+// and the glass pill with the bell (unread badge) and "…" (New folder, All folders, Graph) on the trailing side. The
 // frame places them: in a UIKit navigation bar (UIHostingController items), an NSToolbar, or SwiftUI `.toolbar`.
 import SwiftUI
 import FoleviDesign
@@ -36,6 +36,9 @@ public struct HomeTrailingPill: View {
                     Button { model.dialogs.open(.newFolder(parent: nil)) } label: { Label("New folder", systemImage: "folder.badge.plus") }
                 }
                 Button { navigator.open(.allFolders, nil) } label: { Label("All folders", systemImage: "folder") }
+                if model.graphOn {
+                    Button { navigator.open(.graph, nil) } label: { Label("Graph", systemImage: "point.3.connected.trianglepath.dotted") }
+                }
                 #if os(macOS)
                 Divider()
                 Button { Task { await model.refresh() } } label: { Label("Refresh", systemImage: "arrow.clockwise") }

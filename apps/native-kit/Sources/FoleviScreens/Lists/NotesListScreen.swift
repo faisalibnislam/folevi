@@ -11,6 +11,9 @@ public struct NotesListScreen: View {
     @Bindable var model: NotesListModel
     @State private var width: CGFloat = 390
     @FocusState private var focused: String?
+    /// Every row is this tall (placeholders too), so lists of thousands never re-measure rows as the window
+    /// moves; it grows with Dynamic Type.
+    @ScaledMetric(relativeTo: .body) private var rowHeight: CGFloat = 62
     @Environment(\.screenNavigator) private var navigator
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -125,7 +128,7 @@ public struct NotesListScreen: View {
     private func builtInTemplates(_ templates: [BuiltInTemplate]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionHeader("Built-in templates", style: .caps).padding(.bottom, 4)
-            ForEach(templates) { t in
+            ForEach(templates, id: \.key) { t in
                 Button {
                     Task {
                         if let id = await model.actions.create(folderId: nil, templateId: t.key, title: t.name) { navigator.open(.note(id: id), nil) }
@@ -169,7 +172,7 @@ public struct NotesListScreen: View {
         }
     }
 
-    private var isEmpty: Bool { model.slots.isEmpty }
+    private var isEmpty: Bool { model.isFiltering ? model.slots.isEmpty : model.total == 0 }
 
     // MARK: Grid (cards)
 
@@ -191,10 +194,16 @@ public struct NotesListScreen: View {
                     emptyOrLoading
                 } else {
                     LazyVGrid(columns: gridColumns, spacing: compact ? 20 : 26) {
-                        ForEach(model.slots) { slot in
-                            gridCell(slot)
-                                .onAppear { model.slotAppeared(slot.index) }
-                                .onDisappear { model.slotDisappeared(slot.index) }
+                        if model.isFiltering {
+                            ForEach(model.slots) { slot in gridCell(slot) }
+                        } else {
+                            // Index identity over a range: moving the window changes what a position shows,
+                            // never the list's identity, so 5,000 positions cost nothing to diff.
+                            ForEach(0..<model.total, id: \.self) { i in
+                                gridCell(model.slot(at: i))
+                                    .onAppear { model.slotAppeared(i) }
+                                    .onDisappear { model.slotDisappeared(i) }
+                            }
                         }
                     }
                     .padding(.horizontal, gutter)
@@ -224,6 +233,7 @@ public struct NotesListScreen: View {
             ) {
                 rowMenu(row)
             }
+            .opacity(model.actions.isHidden(row.id) ? 0.35 : 1)
             .overlay {
                 if focused == row.id {
                     RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .continuous).strokeBorder(Folevi.color.focus, lineWidth: 2).padding(-4)
@@ -239,7 +249,7 @@ public struct NotesListScreen: View {
 
     /// Arrow keys move between cards, Return opens, Space selects (iPad keyboards and the Mac).
     private func handleKey(_ key: KeyEquivalent) -> KeyPress.Result {
-        let ids = model.slots.compactMap(\.row?.id)
+        let ids = model.loadedRows.map(\.id)
         guard !ids.isEmpty else { return .ignored }
         let i = focused.flatMap { ids.firstIndex(of: $0) } ?? -1
         switch key {
@@ -267,12 +277,24 @@ public struct NotesListScreen: View {
 
     // MARK: List (rows)
 
-    private var selectionBinding: Binding<Set<String>> {
+    /// The List selects positions (the ForEach's own ids), so it never has to read a tag from each of
+    /// thousands of rows; the model keeps note ids. Selected notes outside the loaded window stay selected.
+    private var selectionBinding: Binding<Set<Int>> {
         Binding {
-            model.selection
-        } set: { next in
-            model.selection = next.filter { !$0.hasPrefix("#") }
+            let state = model.store.state
+            var out = Set<Int>()
+            for (i, id) in state.order.enumerated() where model.selection.contains(id) { out.insert(state.start + i) }
+            return out
+        } set: { positions in
+            let state = model.store.state
+            let windowIds = Set(state.order)
+            let picked = positions.compactMap { state.row(at: $0)?.id }
+            model.selection = model.selection.subtracting(windowIds).union(picked)
         }
+    }
+
+    private func rows(at positions: Set<Int>) -> [NoteRow] {
+        positions.sorted().compactMap { model.store.state.row(at: $0) }
     }
 
     private var listLayout: some View {
@@ -290,15 +312,24 @@ public struct NotesListScreen: View {
             }
             .selectionDisabled()
             Section {
-                ForEach(model.slots) { slot in
-                    listRow(slot)
-                        .onAppear { model.slotAppeared(slot.index) }
-                        .onDisappear { model.slotDisappeared(slot.index) }
-                        .listRowBackground(Color.clear)
-                        .listRowSeparatorTint(Folevi.color.line)
-                        .listRowInsets(EdgeInsets(top: 0, leading: gutter, bottom: 0, trailing: gutter))
+                if model.isFiltering {
+                    ForEach(model.slots, id: \.index) { slot in
+                        listRow(slot)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparatorTint(Folevi.color.line)
+                            .listRowInsets(EdgeInsets(top: 0, leading: gutter, bottom: 0, trailing: gutter))
+                    }
+                } else {
+                    ForEach(0..<model.total, id: \.self) { i in
+                        listRow(model.slot(at: i))
+                            .onAppear { model.slotAppeared(i) }
+                            .onDisappear { model.slotDisappeared(i) }
+                            .listRowBackground(Color.clear)
+                            .listRowSeparatorTint(Folevi.color.line)
+                            .listRowInsets(EdgeInsets(top: 0, leading: gutter, bottom: 0, trailing: gutter))
+                    }
+                    .onMove(perform: model.canArrange ? { from, to in Task { await model.reorder(from: from, to: to) } } : nil)
                 }
-                .onMove(perform: model.canArrange ? { from, to in Task { await model.reorder(from: from, to: to) } } : nil)
             }
         }
         .listStyle(.plain)
@@ -306,12 +337,11 @@ public struct NotesListScreen: View {
         #if os(iOS)
         .environment(\.editMode, .constant(model.selecting ? .active : .inactive))
         #endif
-        .contextMenu(forSelectionType: String.self) { ids in
-            selectionMenu(ids)
-        } primaryAction: { ids in
-            guard ids.count == 1, let id = ids.first, let row = model.loadedRows.first(where: { $0.id == id }) else { return }
-            if model.selecting { return }
-            open(row, CardFrames.shared.source(for: id))
+        .contextMenu(forSelectionType: Int.self) { positions in
+            selectionMenu(Set(rows(at: positions).map(\.id)))
+        } primaryAction: { positions in
+            guard positions.count == 1, let row = rows(at: positions).first, !model.selecting else { return }
+            open(row, CardFrames.shared.source(for: row.id))
         }
         .refreshable { await model.refresh() }
     }
@@ -319,7 +349,8 @@ public struct NotesListScreen: View {
     @ViewBuilder private func listRow(_ slot: NoteSlot) -> some View {
         if let row = slot.row {
             NoteRowView(row: row, title: row.title.isEmpty ? "Untitled" : row.title, subtitle: model.subtitle(row), starred: model.isStarred(row))
-                .tag(row.id)
+                .frame(height: rowHeight)
+                .opacity(model.actions.isHidden(row.id) ? 0.35 : 1)
                 .modifier(RecordsFrame(id: row.id, kind: .noteRow))
                 .draggable(NoteDragItem(id: row.id, title: row.title, folderId: row.folder?.id))
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
@@ -336,7 +367,7 @@ public struct NotesListScreen: View {
                 }
                 .accessibilityIdentifier("note-row-\(row.id)")
         } else {
-            PlaceholderRow().tag(slot.id).selectionDisabled()
+            PlaceholderRow().frame(height: rowHeight).selectionDisabled()
         }
     }
 

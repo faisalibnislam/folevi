@@ -86,8 +86,16 @@ public struct CatchUpCardView: View {
         .accessibilityIdentifier("catch-up-card")
     }
 
+    /// Inline Markdown (bold, italics, links) with list lines drawn as bullets and headings as plain lines.
     static func markdown(_ text: String) -> AttributedString {
-        (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text)
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map { line -> String in
+            let trimmed = line.drop { $0 == " " }
+            if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") { return "• " + trimmed.dropFirst(2) }
+            if trimmed.hasPrefix("#") { return String(trimmed.drop { $0 == "#" }.drop { $0 == " " }) }
+            return String(line)
+        }
+        let joined = lines.joined(separator: "\n")
+        return (try? AttributedString(markdown: joined, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(joined)
     }
 }
 

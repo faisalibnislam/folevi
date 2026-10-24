@@ -22,10 +22,13 @@ final class FoleviViewController: CAPBridgeViewController {
         webView?.scrollView.scrollsToTop = false
         statusBarTaps.onTap = { [weak self] in self?.bridge?.triggerWindowJSEvent(eventName: "folevi:status-bar-tap") }
         view.insertSubview(statusBarTaps, at: 0)
-        // Reduce Transparency, Increase Contrast, the text size: the page asks again when one changes.
+        // Reduce Transparency, Increase Contrast, the text size: the page asks again when one changes. Not while
+        // the page is still loading (some of these are posted as the app launches, before window.Capacitor
+        // exists, which only threw "JS Eval error"): a page that loads reads them anyway (bridge.js).
         observers = SystemAccessibility.changes.map { name in
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                self?.bridge?.triggerWindowJSEvent(eventName: "folevi:accessibility")
+                guard let self, let webView = self.webView, !webView.isLoading, webView.url != nil else { return }
+                self.bridge?.triggerWindowJSEvent(eventName: "folevi:accessibility")
             }
         }
     }

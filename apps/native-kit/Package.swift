@@ -22,6 +22,7 @@ let package = Package(
         .library(name: "FoleviEngine", targets: ["FoleviEngine"]),
         .library(name: "FoleviDesign", targets: ["FoleviDesign"]),
         .library(name: "FoleviScreens", targets: ["FoleviScreens"]),
+        .library(name: "FoleviMac", targets: ["FoleviMac"]),
     ],
     targets: [
         .target(
@@ -36,6 +37,17 @@ let package = Package(
         .target(
             name: "FoleviScreens",
             dependencies: ["FoleviEngine", "FoleviDesign"],
+            swiftSettings: strict
+        ),
+        // N8: the Mac app's native frame (split view, sidebar, tab strip, top bar, frame model). macOS only.
+        .target(
+            name: "FoleviMac",
+            dependencies: ["FoleviEngine", "FoleviDesign", "FoleviScreens"],
+            swiftSettings: strict
+        ),
+        .testTarget(
+            name: "FoleviMacTests",
+            dependencies: ["FoleviMac", "FoleviEngine"],
             swiftSettings: strict
         ),
         .testTarget(

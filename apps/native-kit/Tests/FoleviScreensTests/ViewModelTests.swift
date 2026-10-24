@@ -197,6 +197,7 @@ struct NotesListModelTests {
         model.filter = "kyoto"
         #expect(model.slots.compactMap(\.row?.title).allSatisfy { $0.lowercased().contains("kyoto") })
         #expect(!model.slots.isEmpty)
+        await eventually("the engine filters too") { engine.watches.values.contains { $0["args"]?["filter"]?.string == "kyoto" } }
         model.filter = "zzz-nothing"
         #expect(model.slots.isEmpty)
         #expect(model.filterEmptyTitle == "No notes match “zzz-nothing”")

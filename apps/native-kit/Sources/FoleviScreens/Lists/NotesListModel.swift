@@ -105,8 +105,23 @@ public final class NotesListModel {
         didSet { defaults.set(layout.rawValue, forKey: "folevi.layout.\(kind.view.rawValue)") }
     }
 
-    /// The filter field ("Search" on the screen): narrows the loaded rows by title and opening text.
-    public var filter = ""
+    /// The filter field ("Search" on the screen). The engine filters the list (up to 5,000 notes, so matches
+    /// outside the window are found) a moment after typing stops; the loaded rows narrow at once meanwhile.
+    public var filter = "" {
+        didSet {
+            guard filter != oldValue else { return }
+            filterTask?.cancel()
+            let wanted = filter.trimmingCharacters(in: .whitespacesAndNewlines)
+            filterTask = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(250))
+                guard !Task.isCancelled, let self, wanted != self.serverFilter else { return }
+                self.serverFilter = wanted
+                self.restart()
+            }
+        }
+    }
+    @ObservationIgnored private var filterTask: Task<Void, Never>?
+    @ObservationIgnored private var serverFilter = ""
     public var selecting = false {
         didSet { if !selecting { selection.removeAll() } }
     }
@@ -142,7 +157,7 @@ public final class NotesListModel {
 
     private func restart() {
         visible.removeAll()
-        store = client.watchList(.notesList(space: space, view: kind.view, folderId: kind.folderId, tagId: kind.tagId, sort: sort))
+        store = client.watchList(.notesList(space: space, view: kind.view, folderId: kind.folderId, tagId: kind.tagId, sort: sort, filter: serverFilter.isEmpty ? nil : serverFilter))
     }
 
     // MARK: Title and state

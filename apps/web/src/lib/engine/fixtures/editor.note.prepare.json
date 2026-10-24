@@ -1,0 +1,12 @@
+{
+  "kind": "editor",
+  "name": "note.prepare",
+  "description": "Touch-down on a card: render the note hidden.",
+  "args": {
+    "id": "doc_00001"
+  },
+  "result": {
+    "id": "doc_00001",
+    "ready": false
+  }
+}

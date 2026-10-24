@@ -1,0 +1,11 @@
+{
+  "kind": "editor",
+  "name": "link",
+  "description": "Link the selection.",
+  "args": {
+    "href": "https://folevi.com"
+  },
+  "result": {
+    "ok": true
+  }
+}

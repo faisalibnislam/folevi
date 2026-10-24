@@ -1,0 +1,65 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "The encrypted space needs unlocking: with the passphrase or the recovery key.",
+  "data": {
+    "gate": "e2eeLocked",
+    "title": "Unlock your encrypted notes",
+    "message": "",
+    "busy": false,
+    "actions": [
+      {
+        "id": "passphrase",
+        "label": "Unlock with passphrase",
+        "style": "primary",
+        "enabled": true
+      },
+      {
+        "id": "recovery",
+        "label": "Use recovery key",
+        "style": "secondary",
+        "enabled": true
+      },
+      {
+        "id": "personal",
+        "label": "Switch to Personal",
+        "style": "quiet",
+        "enabled": true
+      }
+    ],
+    "fields": [
+      {
+        "id": "passphrase",
+        "kind": "secret",
+        "label": "Passphrase",
+        "placeholder": ""
+      },
+      {
+        "id": "recoveryKey",
+        "kind": "recoveryKey",
+        "label": "Recovery key",
+        "placeholder": "XXXX-XXXX-XXXX-XXXX"
+      }
+    ],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": null,
+    "e2ee": {
+      "approval": null,
+      "approvalCode": null,
+      "setupStep": null,
+      "recoveryKey": null,
+      "methodsAdded": [],
+      "space": "ws_vault",
+      "spaceName": "Vault",
+      "view": "choose",
+      "methods": [
+        "device",
+        "passphrase",
+        "recovery"
+      ]
+    },
+    "onboarding": null,
+    "error": null
+  }
+}

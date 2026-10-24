@@ -1,0 +1,55 @@
+{
+  "kind": "view",
+  "name": "ai.research",
+  "description": "A research job running in a conversation.",
+  "args": {
+    "conversationId": "conv_1"
+  },
+  "value": {
+    "jobs": [
+      {
+        "id": "res_1",
+        "messageId": "msg_r1",
+        "question": "Best time to see the autumn leaves in Kyoto",
+        "status": "running",
+        "steps": [
+          {
+            "kind": "plan",
+            "label": "Planning",
+            "status": "done",
+            "count": null
+          },
+          {
+            "kind": "search",
+            "label": "Searching the web",
+            "status": "running",
+            "count": 4
+          }
+        ],
+        "sources": [
+          {
+            "n": 1,
+            "kind": "web",
+            "noteId": null,
+            "url": "https://example.com/kyoto-leaves",
+            "title": "Kyoto foliage forecast",
+            "domain": "example.com"
+          },
+          {
+            "n": 2,
+            "kind": "note",
+            "noteId": "doc_00001",
+            "url": null,
+            "title": "Kyoto in November",
+            "domain": null
+          }
+        ],
+        "noteId": null,
+        "error": null,
+        "credits": null,
+        "createdAt": 1792832340000,
+        "finishedAt": null
+      }
+    ]
+  }
+}

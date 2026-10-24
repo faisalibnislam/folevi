@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "sharing.cancelInvite",
+  "description": "Cancel an invitation.",
+  "args": {
+    "inviteId": "pinv_2"
+  },
+  "result": {
+    "ok": true
+  }
+}

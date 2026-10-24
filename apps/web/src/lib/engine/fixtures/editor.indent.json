@@ -1,0 +1,9 @@
+{
+  "kind": "editor",
+  "name": "indent",
+  "description": "Indent the line.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

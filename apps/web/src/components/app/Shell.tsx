@@ -30,7 +30,12 @@ import { MovePlacesHost } from "@/components/places/MovePlaces";
 import { NativeBridge } from "./NativeBridge";
 import { DeviceCopyRunner } from "./DeviceCopyRunner";
 import { displayCornerRadius, useIpadLayout, useIphoneApp } from "@/lib/iphone";
-import { nativeApp } from "@/lib/nativeApp";
+import { nativeApp, nativeChrome } from "@/lib/nativeApp";
+import { EngineHost } from "@/lib/engine/EngineHost";
+import { NativeGate } from "@/lib/engine/NativeGate";
+import { WEB_SETTINGS_SECTIONS } from "@/lib/engine/host";
+import { useEditorZoom } from "@/lib/editorZoom";
+import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
 import { installInputModality } from "@/components/iphone/chrome";
 import { MacCommands } from "./MacCommands";
@@ -167,6 +172,112 @@ export function useShell(): ShellValue {
 }
 
 export function Shell() {
+  // The editor's text size on this device, on every page (it used to apply only while Settings > Appearance was open).
+  useEditorZoom();
+  // The native apps draw the frame themselves (docs/NATIVE_APP_PLAN.md section 8): only the note page and the
+  // engine. (Fixed for the page's life: the host marks it before the first paint.)
+  if (nativeChrome()) return <NativeContentShell />;
+  return <WebShell />;
+}
+
+// The note page's code, as RouteView loads it (handed over at once when it's already here).
+const NativeDocumentView = lazy(() => {
+  const ready = loadedDocumentView();
+  if (ready) return { then: (resolve: (m: { default: typeof ready }) => void) => resolve({ default: ready }) } as unknown as Promise<{ default: typeof ready }>;
+  return loadDocumentView().then((m) => ({ default: m.DocumentView }));
+});
+const NativeReviewView = lazy(() => import("@/components/views/ReviewView").then((m) => ({ default: m.ReviewView })));
+const NativeGraphView = lazy(() => import("@/components/views/GraphView").then((m) => ({ default: m.GraphView })));
+// The technical Settings sections (Webhooks, API tokens, Connected apps, AI export, Data) stay web pages.
+const NativeSettingsView = lazy(() => import("@/components/views/SettingsView").then((m) => ({ default: m.SettingsView })));
+
+const noop = () => undefined;
+
+/**
+ * Native chrome mode: the providers (above, in ProductApp and the gates), the bridge host (EngineHost) and, only
+ * while native shows one, a note, Reviews or Graph, with no sidebar, tab strip, iPhone frame, palette, floating
+ * Foli AI or dialogs (the native app has its own). Anything else is the idle state: nothing drawn.
+ */
+function NativeContentShell() {
+  const { route } = useAppRouter();
+  const { profile, context } = useAppState();
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const isNarrow = useMediaQuery("(max-width: 767px)");
+  const noteAi = useRef<((request: { view: "note" | "all"; question?: string }) => void) | null>(null);
+  const setNoteAi = useCallback((open: ((request: { view: "note" | "all"; question?: string }) => void) | null) => {
+    noteAi.current = open;
+  }, []);
+  useLayoutEffect(() => {
+    document.documentElement.setAttribute("data-native-chrome", "");
+  }, []);
+  // An iPhone (marker platform "ios"): the phone page layout and its styles (globals.css, editor-phone.css).
+  const iphone = useIphoneApp();
+  useLayoutEffect(() => {
+    if (!iphone) return;
+    const root = document.documentElement;
+    root.dataset.iphone = "";
+    const corner = displayCornerRadius();
+    if (corner) root.style.setProperty("--iphone-sheet-bottom", `${Math.max(28, corner - 8)}px`);
+    return () => {
+      delete root.dataset.iphone;
+      root.style.removeProperty("--iphone-sheet-bottom");
+    };
+  }, [iphone]);
+  // The note page's code starts loading at once: the first note native opens should not wait for it.
+  useEffect(() => {
+    void loadDocumentView();
+  }, []);
+  const value = useMemo<ShellValue>(
+    () => ({
+      sidebarOpen: false,
+      toggleSidebar: noop,
+      inspectorOpen,
+      setInspectorOpen,
+      openPalette: noop,
+      openQuickAdd: noop,
+      isNarrow,
+      drawerMode: isNarrow,
+      sidebarSlot: null,
+      docSidebarMode: "document",
+      setDocSidebarMode: noop,
+      focusMode: !inspectorOpen,
+      setFocusMode: noop,
+      setAmbient: noop,
+      openAsk: () => noteAi.current?.({ view: "note" }),
+      setNoteAi,
+    }),
+    [inspectorOpen, isNarrow, setNoteAi],
+  );
+  const content =
+    route.name === "doc" ? (
+      <NativeDocumentView key={route.id} documentId={route.id} />
+    ) : route.name === "review" ? (
+      <NativeReviewView />
+    ) : route.name === "graph" ? (
+      <NativeGraphView />
+    ) : route.name === "settings" && WEB_SETTINGS_SECTIONS.has(route.section) ? (
+      <NativeSettingsView section={route.section} />
+    ) : null;
+  return (
+    <TabsProvider accountKey={profile.id} workspaceId={context.kind === "workspace" ? context.workspaceId : null}>
+      <ShellContext.Provider value={value}>
+        <div data-native-content="" className="ui-canvas flex h-dvh min-h-0 flex-col overflow-hidden text-ink">
+          <Suspense fallback={null}>{content}</Suspense>
+        </div>
+        <EngineHost />
+        {/* The app is up: no gate screen for native to show. */}
+        <NativeGate gate={null} />
+        <NativeBridge />
+        <PlaceRunners />
+        {/* Every note of the place kept on this device (Settings > This device, device.storage). */}
+        <DeviceCopyRunner />
+        <OutboxRefusals />
+      </ShellContext.Provider>
+    </TabsProvider>
+  );
+}
+
+function WebShell() {
   const { route, navigate, search } = useAppRouter();
   const [collapsed, setCollapsed] = useLocalStorage("folevi:sidebar-collapsed", false);
   const [width, setWidth] = useLocalStorage("folevi:sidebar-width", 248);
@@ -503,6 +614,17 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   useViewTab(tabTitle ?? (typeof title === "string" ? title : undefined));
   const inIphone = useIphoneApp();
   const ipad = useIpadLayout();
+  if (nativeChrome()) {
+    // Native chrome mode: the native app draws the bars; the view keeps clear of them by the insets it was given.
+    return (
+      <div className="relative flex min-h-0 flex-1 flex-col pb-[var(--native-inset-bottom,0px)] pt-[var(--native-inset-top,0px)]">
+        <main id="main" tabIndex={-1} className={`min-h-0 flex-1 outline-none ${route.name === "doc" ? "overflow-hidden" : "overflow-y-auto"}`}>
+          {children}
+        </main>
+        {overlay}
+      </div>
+    );
+  }
   if (inIphone) {
     // A view that says nothing about the iPhone app gets a large title, and its facts and actions in a row under it.
     const extra = !iphone && (subtitle || leading || actions) ? (

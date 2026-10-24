@@ -1,0 +1,15 @@
+{
+  "kind": "command",
+  "name": "gate.act",
+  "description": "A wrong passphrase (the gate also shows it in its error).",
+  "args": {
+    "action": "passphrase",
+    "values": {
+      "passphrase": "nope"
+    }
+  },
+  "error": {
+    "code": "wrong_secret",
+    "message": "That passphrase isn't right."
+  }
+}

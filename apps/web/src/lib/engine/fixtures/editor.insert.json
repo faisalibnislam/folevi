@@ -1,0 +1,11 @@
+{
+  "kind": "editor",
+  "name": "insert",
+  "description": "Insert an image (the editor's photo picker).",
+  "args": {
+    "kind": "image"
+  },
+  "result": {
+    "ok": true
+  }
+}

@@ -8,6 +8,7 @@
 // where to buy goes through withoutPurchaseHints().
 
 import { currentBackendMode } from "./backendMode";
+import { MARKER_GLOBAL, type NativeChromeMarker } from "./engine/protocol";
 
 /** The Face ID lock, kept on the device (never on Folevi's servers). */
 export interface NativeSettings {
@@ -271,7 +272,24 @@ export interface NativeBridge {
 declare global {
   interface Window {
     foleviNative?: NativeBridge;
+    /** Set by the native apps' host before the first paint: native chrome mode (docs/NATIVE_APP_PLAN.md section 8). */
+    __foleviNativeChrome?: NativeChromeMarker;
   }
+}
+
+/**
+ * Native chrome mode (docs/NATIVE_APP_PLAN.md section 8): the native iPhone, iPad and Mac apps draw everything
+ * outside the note page themselves, and this page is their engine (lib/engine) and their note page, with no web
+ * frame. The host marks the page before its first paint (`window.__foleviNativeChrome`, `<html
+ * data-native-chrome>`). Null everywhere else: the website and today's apps never see any of it.
+ */
+export function nativeChrome(): NativeChromeMarker | null {
+  if (typeof window === "undefined") return null;
+  const marker = window[MARKER_GLOBAL];
+  // (A host on another protocol still gets native chrome mode: its hello is refused loudly, protocol_mismatch,
+  // rather than the page quietly drawing the whole web app behind the native frame.)
+  if (!marker || typeof marker !== "object" || typeof marker.platform !== "string") return null;
+  return marker;
 }
 
 /** The iPhone and iPad app's bridge (or the Android app's, the same extras), or null in a browser and the Mac app. */

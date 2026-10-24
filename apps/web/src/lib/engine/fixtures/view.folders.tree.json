@@ -1,0 +1,83 @@
+{
+  "kind": "view",
+  "name": "folders.tree",
+  "description": "Nested folders, flat and depth first, one waiting to sync.",
+  "args": {},
+  "value": {
+    "space": "personal",
+    "folders": [
+      {
+        "id": "fld_trips",
+        "name": "Trips",
+        "color": "moss",
+        "parentId": null,
+        "depth": 0,
+        "rank": "a0",
+        "childCount": 2,
+        "noteCount": 12,
+        "encrypted": false,
+        "sync": "saved",
+        "locked": false
+      },
+      {
+        "id": "fld_japan",
+        "name": "Japan",
+        "color": null,
+        "parentId": "fld_trips",
+        "depth": 1,
+        "rank": "a0",
+        "childCount": 1,
+        "noteCount": 5,
+        "encrypted": false,
+        "sync": "saved",
+        "locked": false
+      },
+      {
+        "id": "fld_kyoto",
+        "name": "Kyoto",
+        "color": null,
+        "parentId": "fld_japan",
+        "depth": 2,
+        "rank": "a0",
+        "childCount": 0,
+        "noteCount": 2,
+        "encrypted": false,
+        "sync": "saved",
+        "locked": false
+      },
+      {
+        "id": "fld_iceland",
+        "name": "Iceland",
+        "color": "accent",
+        "parentId": "fld_trips",
+        "depth": 1,
+        "rank": "a1",
+        "childCount": 0,
+        "noteCount": null,
+        "encrypted": false,
+        "sync": "waiting",
+        "locked": false
+      },
+      {
+        "id": "fld_work",
+        "name": "Work",
+        "color": null,
+        "parentId": null,
+        "depth": 0,
+        "rank": "a1",
+        "childCount": 0,
+        "noteCount": 7,
+        "encrypted": false,
+        "sync": "saved",
+        "locked": true
+      }
+    ],
+    "tags": [
+      {
+        "id": "tag_ideas",
+        "name": "ideas",
+        "color": "marigold"
+      }
+    ]
+  }
+}

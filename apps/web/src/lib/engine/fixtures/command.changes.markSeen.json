@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "changes.markSeen",
+  "description": "Seen these changes.",
+  "args": {
+    "ids": [
+      "doc_00002"
+    ]
+  },
+  "result": {
+    "ok": true
+  }
+}

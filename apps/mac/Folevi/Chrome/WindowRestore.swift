@@ -1,9 +1,11 @@
 // Every main window comes back where it was (docs/MAC_POLISH_PLAN.md §3.5): its frame and the page it showed,
-// front to back, in windows.json in the support folder (the tabs are the page's own, kept per account). No
+// front to back, in windows.json in the support folder (a web-frame window's tabs are the page's own, kept per
+// account; a native-frame window's tabs are saved here with it, plan 4.5). No
 // AppKit state restoration (and so no "reopen windows?" alert after a forced quit). Closing the last window
 // hides it instead, so its page keeps syncing and Quick Add and the menu bar icon keep working; the Dock icon or
 // ⌘N brings it back.
 import AppKit
+import FoleviMac
 
 @MainActor
 enum WindowRestore {
@@ -12,6 +14,8 @@ enum WindowRestore {
         var frame: [Double]
         var path: String
         var hidden: Bool?
+        /// The native frame's tabs and the one on screen (N8); nil for a web-frame window.
+        var tabs: TabsModel.Saved?
     }
 
     struct Saves: Codable, Equatable {
@@ -50,7 +54,7 @@ enum WindowRestore {
         return keep.compactMap { c in
             guard let w = c.window else { return nil }
             let f = w.styleMask.contains(.fullScreen) ? (lastFrames[ObjectIdentifier(w)] ?? w.frame) : w.frame
-            return Saved(frame: [f.origin.x, f.origin.y, f.width, f.height], path: restorablePath(c.view.url), hidden: visible.isEmpty ? true : nil)
+            return Saved(frame: [f.origin.x, f.origin.y, f.width, f.height], path: c.restorePath, hidden: visible.isEmpty ? true : nil, tabs: c.frame?.model.tabs.saved)
         }
     }
 
@@ -129,7 +133,7 @@ enum WindowRestore {
             changed()
         }
         for s in saved.reversed() {
-            let controller = WindowManager.shared.openMain(path: s.path)
+            let controller = WindowManager.shared.openMain(path: s.tabs == nil ? s.path : "/native", tabs: s.tabs)
             guard let w = controller.window else { continue }
             w.setFrame(onScreen(NSRect(x: s.frame[0], y: s.frame[1], width: s.frame[2], height: s.frame[3])), display: false)
             lastFrames[ObjectIdentifier(w)] = w.frame

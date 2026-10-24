@@ -1,0 +1,9 @@
+{
+  "kind": "command",
+  "name": "device.removeFiles",
+  "description": "Remove the kept attachments.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

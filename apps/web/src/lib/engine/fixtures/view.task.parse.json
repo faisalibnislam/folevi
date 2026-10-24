@@ -1,0 +1,16 @@
+{
+  "kind": "view",
+  "name": "task.parse",
+  "description": "Quick Add reads a date and a repeat.",
+  "args": {
+    "text": "water the plants tomorrow 9am every monday"
+  },
+  "value": {
+    "title": "water the plants",
+    "dueDate": "2026-10-25",
+    "dueTime": "09:00",
+    "dateText": "tomorrow 9am",
+    "repeatLabel": "Every Monday",
+    "repeatText": "every monday"
+  }
+}

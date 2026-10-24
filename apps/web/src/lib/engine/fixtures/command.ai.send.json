@@ -1,0 +1,18 @@
+{
+  "kind": "command",
+  "name": "ai.send",
+  "description": "A new conversation about a folder (the answer arrives through ai.conversation).",
+  "args": {
+    "text": "What's left to book?",
+    "context": {
+      "kind": "folder",
+      "ids": [
+        "fld_trips"
+      ]
+    }
+  },
+  "result": {
+    "conversationId": "01JB7ZC4N5P6Q7R8S9T0V1W2X3",
+    "messageId": null
+  }
+}

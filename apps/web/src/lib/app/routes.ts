@@ -29,4 +29,6 @@ export const APP_ROUTE_HEADS = new Set([
   "invite",
   "share-invite",
   "share",
+  // The native apps' idle page (native chrome mode): the engine runs, nothing is drawn.
+  "native",
 ]);

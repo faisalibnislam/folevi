@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "settings.setNotificationTopic",
+  "description": "Mentions: email off, the bell on.",
+  "args": {
+    "topic": "mentions",
+    "inApp": true,
+    "email": false
+  },
+  "result": {
+    "ok": true
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "kind": "command",
+  "name": "catchUp.run",
+  "description": "Make the Catch me up brief.",
+  "args": {},
+  "result": {
+    "available": true,
+    "state": "ready",
+    "brief": {
+      "text": "**This week** you planned the Kyoto trip and drafted Q4 planning.\n\n- 3 to-dos are due tomorrow\n- The interview loop needs feedback",
+      "sources": [
+        {
+          "id": "doc_00001",
+          "title": "Kyoto in November"
+        },
+        {
+          "id": "doc_00002",
+          "title": "Q4 planning"
+        }
+      ],
+      "at": 1792831800000
+    },
+    "error": null
+  }
+}

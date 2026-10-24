@@ -51,6 +51,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Capabilities.install()
         // Memory: pages made on demand and released, and memory pressure (App/Memory.swift).
         Memory.install()
+        // N8: the native frame around each main window's page (Frame/NativeFrame.swift).
+        if NativeFrame.enabled { NativeFrame.install() }
         Task { @MainActor in
             await WebViewFactory.prepareRules()
             WebViewFactory.scheme.modeOf = { view in WindowManager.shared.modeOf((view as? FoleviWebView)?.place) }

@@ -1,0 +1,12 @@
+{
+  "kind": "view",
+  "name": "ai.stream",
+  "description": "Finished: read the message itself.",
+  "args": {
+    "messageId": "msg_2"
+  },
+  "value": {
+    "messageId": "msg_2",
+    "text": null
+  }
+}

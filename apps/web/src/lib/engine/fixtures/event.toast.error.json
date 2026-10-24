@@ -1,0 +1,11 @@
+{
+  "kind": "event",
+  "name": "toast",
+  "description": "An error toast.",
+  "data": {
+    "message": "1 note couldn’t be changed. You may not have permission.",
+    "tone": "error",
+    "undo": null,
+    "action": null
+  }
+}

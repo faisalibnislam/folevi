@@ -25,6 +25,7 @@ export function ShellUpdateGate({ children }: { children: ReactNode }) {
   const mac = platform === "mac";
   return (
     <FullPageMessage
+      gate="updateRequired"
       title="Update Folevi to keep syncing"
       body={
         mac

@@ -1,0 +1,12 @@
+{
+  "kind": "editor",
+  "name": "web.show",
+  "description": "Show Settings > Privacy as a web page.",
+  "args": {
+    "page": "settings.privacy"
+  },
+  "result": {
+    "id": "settings.privacy",
+    "ready": true
+  }
+}

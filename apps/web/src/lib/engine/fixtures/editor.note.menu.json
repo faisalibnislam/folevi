@@ -1,0 +1,11 @@
+{
+  "kind": "editor",
+  "name": "note.menu",
+  "description": "Version history from the note's menu.",
+  "args": {
+    "action": "history"
+  },
+  "result": {
+    "ok": true
+  }
+}

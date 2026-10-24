@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "proposal.accept",
+  "description": "Accept a proposed change.",
+  "args": {
+    "id": "prop_1"
+  },
+  "result": {
+    "ok": true
+  }
+}

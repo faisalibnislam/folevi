@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "folder.delete",
+  "description": "Delete a folder (its notes go to Drafts, subfolders up a level).",
+  "args": {
+    "id": "fld_work"
+  },
+  "result": {
+    "ok": true
+  }
+}

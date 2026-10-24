@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "template.create",
+  "description": "A new template of your own.",
+  "args": {
+    "title": "Trip plan",
+    "open": true
+  },
+  "result": {
+    "id": "01JB7ZA1B2C3D4E5F6G7H8J9K0"
+  }
+}

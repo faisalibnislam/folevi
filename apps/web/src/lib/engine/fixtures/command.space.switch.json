@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "space.switch",
+  "description": "Show the team workspace.",
+  "args": {
+    "space": "ws_studio"
+  },
+  "result": {
+    "space": "ws_studio"
+  }
+}

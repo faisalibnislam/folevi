@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "ai.rename",
+  "description": "Rename a conversation.",
+  "args": {
+    "conversationId": "conv_1",
+    "title": "Kyoto"
+  },
+  "result": {
+    "ok": true
+  }
+}

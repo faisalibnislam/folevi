@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "folder.lock",
+  "description": "Make a folder always fully encrypted.",
+  "args": {
+    "id": "fld_work",
+    "locked": true
+  },
+  "result": {
+    "ok": true
+  }
+}

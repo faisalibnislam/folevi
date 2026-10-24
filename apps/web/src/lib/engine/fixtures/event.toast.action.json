@@ -1,0 +1,14 @@
+{
+  "kind": "event",
+  "name": "toast",
+  "description": "A toast from the note page with its own button (revision 2).",
+  "data": {
+    "message": "Link copied",
+    "tone": "success",
+    "undo": null,
+    "action": {
+      "id": "t7",
+      "label": "Open"
+    }
+  }
+}

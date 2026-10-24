@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "ai.researchSave",
+  "description": "Save a report as a note in a folder.",
+  "args": {
+    "researchId": "res_1",
+    "folderId": "fld_trips"
+  },
+  "result": {
+    "id": "doc_00131"
+  }
+}

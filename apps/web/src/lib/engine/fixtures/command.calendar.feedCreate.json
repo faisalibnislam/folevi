@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "calendar.feedCreate",
+  "description": "A new calendar feed link, shown once (the old one stops).",
+  "args": {
+    "includeWorkspaces": true
+  },
+  "result": {
+    "url": "https://app.folevi.com/api/calendar/Fq9k2LmZp4Rt7wXy0aBcDeFgHi.ics"
+  }
+}

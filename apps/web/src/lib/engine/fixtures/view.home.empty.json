@@ -1,0 +1,52 @@
+{
+  "kind": "view",
+  "name": "home",
+  "description": "A new account: nothing yet, Foli AI off (no Catch me up card).",
+  "args": {
+    "space": "personal"
+  },
+  "value": {
+    "space": "personal",
+    "spaceName": "Personal",
+    "recents": [],
+    "recentsLoaded": true,
+    "catchUp": {
+      "available": false,
+      "state": "idle",
+      "brief": null,
+      "error": null
+    },
+    "rows": [
+      {
+        "id": "notes",
+        "title": "All notes",
+        "count": null,
+        "route": "/notes"
+      },
+      {
+        "id": "drafts",
+        "title": "Drafts",
+        "count": null,
+        "route": "/drafts"
+      },
+      {
+        "id": "shared",
+        "title": "Shared with Me",
+        "count": null,
+        "route": "/shared"
+      },
+      {
+        "id": "changes",
+        "title": "Changes",
+        "count": null,
+        "route": "/changes"
+      }
+    ],
+    "starred": {
+      "rows": [],
+      "more": false
+    },
+    "folders": [],
+    "tags": []
+  }
+}

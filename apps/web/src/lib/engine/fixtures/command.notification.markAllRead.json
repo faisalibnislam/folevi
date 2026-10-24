@@ -1,0 +1,9 @@
+{
+  "kind": "command",
+  "name": "notification.markAllRead",
+  "description": "Mark all as read.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

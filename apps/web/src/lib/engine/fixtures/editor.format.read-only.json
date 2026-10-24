@@ -1,0 +1,12 @@
+{
+  "kind": "editor",
+  "name": "format",
+  "description": "A note this person can only read.",
+  "args": {
+    "mark": "italic"
+  },
+  "error": {
+    "code": "read_only",
+    "message": "You can only read this note."
+  }
+}

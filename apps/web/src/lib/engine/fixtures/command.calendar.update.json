@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "calendar.update",
+  "description": "Hide a calendar's events.",
+  "args": {
+    "id": "cal2",
+    "visible": false
+  },
+  "result": {
+    "ok": true
+  }
+}

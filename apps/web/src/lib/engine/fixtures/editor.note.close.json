@@ -1,0 +1,9 @@
+{
+  "kind": "editor",
+  "name": "note.close",
+  "description": "Back on a list screen: the page goes idle.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

@@ -245,9 +245,7 @@ export function NotificationPanel({ unread, onClose, hideTitle = false }: { unre
           <div className="flex-none px-4 pb-2">{show}</div>
         </>
       )}
-      {/* (In the phone's sheet the list runs on behind the home indicator, with room to scroll its last row clear,
-          in its rows' own colour all the way down.) */}
-      <div ref={listRef} onKeyDown={onListKey} className={`min-h-0 flex-1 overflow-y-auto border-t border-line/70 ${phone ? "bg-canvas pb-[calc(var(--sheet-safe-b,0px)+8px)]" : "pb-2"}`}>
+      <div ref={listRef} onKeyDown={onListKey} className="min-h-0 flex-1 overflow-y-auto border-t border-line/70 pb-2">
         {items === undefined ? (
           // Only the very first time (afterwards the last list shows at once): rows shaped like the real ones,
           // so nothing moves when they arrive.
@@ -330,6 +328,8 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
   const remove = useMutation(api.notifications.remove);
   const accept = useMutation(api.workspaces.acceptInvite);
   const acceptPage = useMutation(api.sharing.acceptPageInvite);
+  const decline = useMutation(api.workspaces.declineInvite);
+  const declinePage = useMutation(api.sharing.declinePageInvite);
   const { navigate } = useAppRouter();
   const toast = useToast();
   // The phone layout: phone-sized text, swipe actions, and the row's options in its long-press menu (no "…").
@@ -395,6 +395,15 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
               Accept and open
             </button>
           ) : null}
+          {n.pageInviteId ? (
+            <button
+              type="button"
+              className={`ui-btn font-medium ${phone ? "h-9 px-3.5 text-[15px]" : "h-7 px-2.5 text-xs"}`}
+              onClick={() => declinePage({ inviteId: n.pageInviteId! }).then(() => toast.show("Invitation declined."), fail)}
+            >
+              Decline
+            </button>
+          ) : null}
           {n.kind === "invite" && n.inviteId ? (
             <button
               type="button"
@@ -407,6 +416,15 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
               }
             >
               Accept invitation
+            </button>
+          ) : null}
+          {n.kind === "invite" && n.inviteId ? (
+            <button
+              type="button"
+              className={`ui-btn font-medium ${phone ? "h-9 px-3.5 text-[15px]" : "h-7 px-2.5 text-xs"}`}
+              onClick={() => decline({ inviteId: n.inviteId! }).then(() => toast.show("Invitation declined."), fail)}
+            >
+              Decline
             </button>
           ) : null}
         </div>

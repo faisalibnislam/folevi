@@ -5,12 +5,8 @@ App/App/public
 DerivedData
 xcuserdata
 
-# Cordova plugins for Capacitor
-capacitor-cordova-ios-plugins
-
-# Generated Config files
-App/App/capacitor.config.json
-App/App/config.xml
+# Written by scripts/sync-web.mjs (with App/App/public above)
+App/App/folevi-host.json
 
 # The shared Dropbox and Google Drive code, built by scripts/bundle-cloud.mjs.
 App/Native/Shell/folevi-cloud.js

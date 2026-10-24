@@ -1,0 +1,38 @@
+{
+  "kind": "view",
+  "name": "support.topics",
+  "description": "The support form's topics.",
+  "args": {},
+  "value": {
+    "topics": [
+      {
+        "id": "account",
+        "label": "Account and sign-in"
+      },
+      {
+        "id": "billing",
+        "label": "Billing and plans"
+      },
+      {
+        "id": "sync",
+        "label": "Sync and offline"
+      },
+      {
+        "id": "sharing",
+        "label": "Sharing and workspaces"
+      },
+      {
+        "id": "bug",
+        "label": "Something isn't working"
+      },
+      {
+        "id": "feedback",
+        "label": "Feedback or an idea"
+      },
+      {
+        "id": "other",
+        "label": "Something else"
+      }
+    ]
+  }
+}

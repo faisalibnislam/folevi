@@ -1,0 +1,29 @@
+{
+  "kind": "view",
+  "name": "files.urls",
+  "description": "A signed link for a notification's export, and one that can't be had.",
+  "args": {
+    "ids": [
+      "file_export",
+      "file_gone"
+    ]
+  },
+  "value": {
+    "urls": {
+      "file_export": {
+        "url": "https://files.folevi.com/signed/abc",
+        "filename": "Folevi export.zip",
+        "mimeType": "application/zip",
+        "size": 48000000,
+        "sealed": false
+      },
+      "file_gone": {
+        "url": null,
+        "filename": null,
+        "mimeType": null,
+        "size": null,
+        "sealed": false
+      }
+    }
+  }
+}

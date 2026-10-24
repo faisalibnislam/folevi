@@ -1,0 +1,19 @@
+{
+  "kind": "command",
+  "name": "note.copyTo",
+  "description": "Copy notes into a workspace's folder.",
+  "args": {
+    "ids": [
+      "doc_00001"
+    ],
+    "space": "ws_studio",
+    "folderId": "fld_work"
+  },
+  "result": {
+    "done": [
+      "doc_00100"
+    ],
+    "skipped": 0,
+    "queued": false
+  }
+}

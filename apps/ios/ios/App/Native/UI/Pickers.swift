@@ -4,7 +4,6 @@
 // (UIColorPickerViewController) and the share sheet (UIActivityViewController, a popover on iPad).
 //
 // Dates travel as the page writes them, in local time: YYYY-MM-DD, HH:MM or YYYY-MM-DDTHH:MM.
-import Capacitor
 import UIKit
 
 enum NativeDates {
@@ -192,7 +191,7 @@ private final class ColorPickerAnswer: NSObject, UIColorPickerViewControllerDele
 
 extension FoleviNativePlugin {
     /// { value?, mode, min?, max?, title?, clearable }: { value: { value } } (null value: cleared), or { value: null }.
-    @objc func pickDate(_ call: CAPPluginCall) {
+    @objc func pickDate(_ call: BridgeCall) {
         guard let mode = NativeDates.Mode(rawValue: call.getString("mode") ?? "") else { return call.reject("Unknown picker mode") }
         let value = NativeDates.parse(call.getString("value"), mode)
         let min = NativeDates.parse(call.getString("min"), mode)
@@ -211,7 +210,7 @@ extension FoleviNativePlugin {
     }
 
     /// { value?, title? }: { value: "#rrggbb" } or { value: null }.
-    @objc func pickColor(_ call: CAPPluginCall) {
+    @objc func pickColor(_ call: BridgeCall) {
         let start = NativeColors.color(call.getString("value"))
         let title = call.getString("title")
         Task { @MainActor in
@@ -237,7 +236,7 @@ extension FoleviNativePlugin {
     }
 
     /// { title?, text?, url?, anchor? }: { value: true } when something was shared.
-    @objc func share(_ call: CAPPluginCall) {
+    @objc func share(_ call: BridgeCall) {
         var items: [Any] = []
         let text = [call.getString("title"), call.getString("text")].compactMap { $0?.isEmpty == false ? $0 : nil }.joined(separator: "\n")
         if !text.isEmpty { items.append(text) }
@@ -264,7 +263,7 @@ extension FoleviNativePlugin {
 
     /// { text }: puts the text on the pasteboard. The page's own clipboard needs a tap to allow it, and WebKit
     /// doesn't count every touch as one (a held finger let go on a menu item, say): bridge.js falls back to this.
-    @objc func copyText(_ call: CAPPluginCall) {
+    @objc func copyText(_ call: BridgeCall) {
         guard let text = call.getString("text"), text.utf8.count <= 1_000_000 else { return call.reject("Nothing to copy") }
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }

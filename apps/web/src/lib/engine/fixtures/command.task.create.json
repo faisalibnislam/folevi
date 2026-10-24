@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "task.create",
+  "description": "Quick Add a task to the Inbox (the date read from the words).",
+  "args": {
+    "text": "call Sam tomorrow 3pm"
+  },
+  "result": {
+    "id": "blk_t9",
+    "noteId": "doc_inbox",
+    "where": "Inbox"
+  }
+}

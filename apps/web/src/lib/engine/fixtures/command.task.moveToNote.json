@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "task.moveToNote",
+  "description": "Move a task into another note.",
+  "args": {
+    "id": "blk_t1",
+    "noteId": "doc_00002"
+  },
+  "result": {
+    "ok": true
+  }
+}

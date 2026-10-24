@@ -1,0 +1,37 @@
+{
+  "kind": "view",
+  "name": "calendars.events",
+  "description": "Events from subscribed calendars in a range.",
+  "args": {
+    "from": 1792368000000,
+    "to": 1792972800000
+  },
+  "value": {
+    "events": [
+      {
+        "id": "ev1",
+        "calendarId": "cal1",
+        "calendarName": "Work",
+        "color": "accent",
+        "title": "Standup",
+        "location": "Zoom",
+        "description": "",
+        "start": 1792810800000,
+        "end": 1792811700000,
+        "allDay": false
+      },
+      {
+        "id": "ev2",
+        "calendarId": "cal2",
+        "calendarName": "Holidays",
+        "color": "moss",
+        "title": "Durga Puja",
+        "location": "",
+        "description": "",
+        "start": 1792540800000,
+        "end": 1792627200000,
+        "allDay": true
+      }
+    ]
+  }
+}

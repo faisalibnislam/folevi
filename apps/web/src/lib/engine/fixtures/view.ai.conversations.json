@@ -1,0 +1,40 @@
+{
+  "kind": "view",
+  "name": "ai.conversations",
+  "description": "Foli AI's conversations: one pinned, two recent, more to load.",
+  "args": {},
+  "value": {
+    "pinned": [
+      {
+        "id": "conv_1",
+        "title": "Trip planning",
+        "pinned": true,
+        "context": "folder",
+        "lastMessageAt": 1792828800000,
+        "createdAt": 1791968400000,
+        "shared": false
+      }
+    ],
+    "recent": [
+      {
+        "id": "conv_2",
+        "title": "Summarize Q4 planning",
+        "pinned": false,
+        "context": "note",
+        "lastMessageAt": 1792746000000,
+        "createdAt": 1792746000000,
+        "shared": false
+      },
+      {
+        "id": "conv_3",
+        "title": "What's due this week?",
+        "pinned": false,
+        "context": "workspace",
+        "lastMessageAt": 1792659600000,
+        "createdAt": 1792659600000,
+        "shared": true
+      }
+    ],
+    "more": true
+  }
+}

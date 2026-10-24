@@ -1,0 +1,17 @@
+{
+  "kind": "command",
+  "name": "note.deleteForever",
+  "description": "Delete notes in Trash for good.",
+  "args": {
+    "ids": [
+      "doc_00004"
+    ]
+  },
+  "result": {
+    "done": [
+      "doc_00004"
+    ],
+    "skipped": 0,
+    "queued": false
+  }
+}

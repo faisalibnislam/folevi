@@ -1,0 +1,36 @@
+{
+  "kind": "view",
+  "name": "places.move.preview",
+  "description": "Move or copy notes: the places they can go, and what goes (everything here).",
+  "args": {},
+  "value": {
+    "from": "Personal",
+    "destinations": [
+      {
+        "value": "acct:user_2|personal",
+        "label": "Faisal (work): Personal",
+        "place": "acct:user_2",
+        "space": "personal",
+        "switches": false
+      },
+      {
+        "value": "library|personal",
+        "label": "On this Mac",
+        "place": "library",
+        "space": "personal",
+        "switches": false
+      }
+    ],
+    "to": {
+      "value": "acct:user_2|personal",
+      "label": "Faisal (work): Personal",
+      "place": "acct:user_2",
+      "space": "personal",
+      "switches": false
+    },
+    "folders": 9,
+    "notes": 412,
+    "everything": true,
+    "fits": null
+  }
+}

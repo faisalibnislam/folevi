@@ -2,7 +2,6 @@
 // image on the device with Vision, for the page to save as the image's searchable text (lib/fileText). The
 // page sends images from the note (photos, screenshots) and whiteboards drawn as images (handwriting). Nothing
 // leaves the device. Like every FoleviNative call, it checks the page is Folevi's own first.
-import Capacitor
 import UIKit
 import Vision
 
@@ -31,7 +30,7 @@ enum TextRecognition {
 
 extension FoleviNativePlugin {
     /// { data (base64 bytes), type, handwriting? } -> { text }: the words in an image, read on the device.
-    @objc func recognizeText(_ call: CAPPluginCall) {
+    @objc func recognizeText(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             guard let base64 = call.getString("data"), base64.count <= TextRecognition.maxBytes / 3 * 4 + 4,

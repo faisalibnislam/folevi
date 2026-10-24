@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "device.keepAll",
+  "description": "Keep all notes on this device.",
+  "args": {
+    "on": true
+  },
+  "result": {
+    "ok": true
+  }
+}

@@ -1,8 +1,7 @@
-// The app's window: Folevi's web view (FoleviViewController), with the Face ID lock (AppLock) following the
-// scene as it comes and goes, and the widgets, share sheet and Spotlight kept fresh (AppServices). Capacitor
-// hears about links and activities through its proxy (the App plugin hands folevi:// links to the page);
-// Spotlight results become folevi:// links first (DeepLinkRouter).
-import Capacitor
+// The app's window: Folevi's web view (FoleviViewController, with the page AppDelegate started loading), with the
+// Face ID lock (AppLock) following the scene as it comes and goes, and the widgets, share sheet and Spotlight
+// kept fresh (AppServices). folevi:// links from other apps and widgets, Spotlight results and Handoff of a
+// Folevi page all become folevi:// links for the page (DeepLinkRouter).
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
@@ -12,13 +11,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         let window = UIWindow(windowScene: windowScene)
-        window.rootViewController = FoleviViewController()
+        window.rootViewController = PhoneFrame.enabled ? PhoneFrameController() : FoleviViewController()
         window.makeKeyAndVisible()
         self.window = window
         AppLock.shared.attach(to: window)
 
-        SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
-        // Opened from Spotlight (or a Folevi page handed off): the note, once the page is up.
+        // Opened by a folevi:// link, from Spotlight, or a Folevi page handed off: the page opens it once it's up.
+        for context in connectionOptions.urlContexts { DeepLinkRouter.open(context.url) }
         for activity in connectionOptions.userActivities {
             if let url = DeepLinkRouter.link(for: activity) { DeepLinkRouter.open(url) }
         }
@@ -34,16 +33,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
+        PhoneFrameController.current?.snapshot.flush()
         AppLock.shared.didEnterBackground()
         AppServices.enteredBackground()
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-        SceneDelegateProxy.shared.scene(scene, openURLContexts: URLContexts)
+        for context in URLContexts { DeepLinkRouter.open(context.url) }
     }
 
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
-        if let url = DeepLinkRouter.link(for: userActivity) { return DeepLinkRouter.open(url) }
-        SceneDelegateProxy.shared.scene(scene, continue: userActivity)
+        if let url = DeepLinkRouter.link(for: userActivity) { DeepLinkRouter.open(url) }
     }
 }

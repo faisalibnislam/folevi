@@ -1,0 +1,9 @@
+{
+  "kind": "editor",
+  "name": "undo",
+  "description": "Undo.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

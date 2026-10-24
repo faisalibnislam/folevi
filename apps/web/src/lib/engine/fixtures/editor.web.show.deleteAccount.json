@@ -1,0 +1,12 @@
+{
+  "kind": "editor",
+  "name": "web.show",
+  "description": "Show the delete account page.",
+  "args": {
+    "page": "settings.deleteAccount"
+  },
+  "result": {
+    "id": "settings.deleteAccount",
+    "ready": true
+  }
+}

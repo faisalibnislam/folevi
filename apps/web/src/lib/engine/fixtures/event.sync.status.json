@@ -1,0 +1,21 @@
+{
+  "kind": "event",
+  "name": "sync.status",
+  "description": "Saving.",
+  "data": {
+    "state": "saving",
+    "label": "Saving…",
+    "pending": 1,
+    "conflicts": 0,
+    "online": true,
+    "authRequired": false,
+    "spaces": [
+      {
+        "space": "personal",
+        "state": "ready",
+        "have": 0,
+        "total": null
+      }
+    ]
+  }
+}

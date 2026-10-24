@@ -4,6 +4,7 @@
 // the places' modes and reloads (`modeOf`, `bootstrapOf`, `reload`).
 import AppKit
 import WebKit
+import FoleviMac
 
 @MainActor
 final class WindowManager {
@@ -53,8 +54,8 @@ final class WindowManager {
 
     /// A new main window on `path` of the open place.
     @discardableResult
-    func openMain(path: String = "/") -> MainWindowController {
-        let controller = MainWindowController(place: currentPlace(), path: path)
+    func openMain(path: String = "/", tabs: TabsModel.Saved? = nil) -> MainWindowController {
+        let controller = MainWindowController(place: currentPlace(), path: path, tabs: tabs)
         mains.append(controller)
         controller.showWindow(nil)
         return controller
@@ -76,6 +77,8 @@ final class WindowManager {
     /// Sends a view to a path: as a command once its page is up (the page's router moves, nothing reloads),
     /// else when it is.
     func navigate(_ view: FoleviWebView, to path: String) {
+        // A framed window's route opens as a tab at once (no need to wait for the page).
+        if NativeFrame.handle(["type": "navigate", "path": path], to: view) { return }
         guard view.loaded else {
             pending[ObjectIdentifier(view), default: []].append(path)
             return

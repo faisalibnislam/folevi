@@ -84,8 +84,7 @@ const TITLES: Record<InspectorTab, string> = { ai: "Foli AI", insert: "Insert", 
  */
 export function ToolSheet({ open, tab, onClose, children }: { open: boolean; tab: InspectorTab; onClose: () => void; children: ReactNode }) {
   return (
-    <Sheet open={open} onClose={onClose} title={TITLES[tab]} size={tab === "ai" || tab === "comments" || tab === "style" ? "medium" : "fit"} bodyClassName="flex flex-col" bodyPad={false}>
-      {/* (The tool's own panel scrolls, behind the home indicator: Inspector keeps the room for it.) */}
+    <Sheet open={open} onClose={onClose} title={TITLES[tab]} size={tab === "ai" || tab === "comments" || tab === "style" ? "medium" : "fit"} bodyClassName="flex flex-col">
       <div id="document-inspector" className="flex min-h-0 flex-1 flex-col [&>div]:min-h-0 [&>div]:flex-1">
         {children}
       </div>

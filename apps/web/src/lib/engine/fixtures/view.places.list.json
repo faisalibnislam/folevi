@@ -1,0 +1,54 @@
+{
+  "kind": "view",
+  "name": "places.list",
+  "description": "Two accounts and the library.",
+  "args": {},
+  "value": {
+    "current": "acct:user_1",
+    "places": [
+      {
+        "id": "acct:user_1",
+        "kind": "account",
+        "name": "Faisal",
+        "email": "faisal@example.com",
+        "avatarUrl": null,
+        "syncs": null,
+        "workspaces": [
+          {
+            "id": "ws_studio",
+            "name": "Airly Studio",
+            "logoUrl": null,
+            "planName": "Team"
+          }
+        ],
+        "unread": 2,
+        "reminders": 0,
+        "waiting": 0
+      },
+      {
+        "id": "acct:user_2",
+        "kind": "account",
+        "name": "Faisal (work)",
+        "email": "f@work.example",
+        "avatarUrl": "https://example.com/a.png",
+        "syncs": null,
+        "workspaces": [],
+        "unread": 0,
+        "reminders": 1,
+        "waiting": 3
+      },
+      {
+        "id": "library",
+        "kind": "library",
+        "name": "On this iPhone",
+        "email": null,
+        "avatarUrl": null,
+        "syncs": "Syncs with iCloud Drive",
+        "workspaces": [],
+        "unread": 0,
+        "reminders": 0,
+        "waiting": 0
+      }
+    ]
+  }
+}

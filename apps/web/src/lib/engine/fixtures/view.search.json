@@ -1,0 +1,65 @@
+{
+  "kind": "view",
+  "name": "search",
+  "description": "Search this space: a title match, a match in a PDF, and one by meaning.",
+  "args": {
+    "text": "kyoto",
+    "meaning": true,
+    "creatorId": "prof_1"
+  },
+  "value": {
+    "text": "kyoto",
+    "meaningAvailable": true,
+    "hits": [
+      {
+        "id": "doc_00001",
+        "title": "Kyoto in November",
+        "icon": "🗺️",
+        "snippet": "…the ryokan in Kyoto for three nights…",
+        "folder": {
+          "id": "fld_trips",
+          "name": "Trips",
+          "color": "moss"
+        },
+        "updatedAt": 1792832400000,
+        "archived": false,
+        "kind": "document",
+        "space": "personal",
+        "spaceName": "Personal",
+        "matchIn": "text",
+        "blockId": null,
+        "page": null
+      },
+      {
+        "id": "doc_00005",
+        "title": "Rail passes",
+        "icon": null,
+        "snippet": "Tokyo to Kyoto, 2h15",
+        "folder": null,
+        "updatedAt": 1792746000000,
+        "archived": false,
+        "kind": "document",
+        "space": "personal",
+        "spaceName": "Personal",
+        "matchIn": "file",
+        "blockId": "blk_pdf",
+        "page": 3
+      },
+      {
+        "id": "doc_00009",
+        "title": "Temples to see",
+        "icon": null,
+        "snippet": "Fushimi Inari at dawn",
+        "folder": null,
+        "updatedAt": 0,
+        "archived": false,
+        "kind": "document",
+        "space": "personal",
+        "spaceName": "Personal",
+        "matchIn": "meaning",
+        "blockId": null,
+        "page": null
+      }
+    ]
+  }
+}

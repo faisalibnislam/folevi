@@ -8,14 +8,15 @@ import { RowIcon } from "@/components/iphone/Grouped";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
+import { EDITOR_ZOOMS, EDITOR_ZOOM_KEY } from "@/lib/editorZoom";
 import { Card } from "./Card";
 
-const ZOOMS = [0.85, 0.9, 0.95, 1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35];
+const ZOOMS = EDITOR_ZOOMS;
 
 export function AppearanceSection() {
   const { appearance, setAppearance } = useAppState();
   const update = useMutation(api.users.updateProfile);
-  const [zoom, setZoom] = useLocalStorage<number>("folevi:editor-zoom", 1);
+  const [zoom, setZoom] = useLocalStorage<number>(EDITOR_ZOOM_KEY, 1);
   const iphone = useIphoneLook();
   const applyZoom = (v: number) => {
     setZoom(v);

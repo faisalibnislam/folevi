@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "notification.act",
+  "description": "Reply to a comment from a banner.",
+  "args": {
+    "id": "n1",
+    "action": "reply",
+    "text": "Friday works",
+    "thread": "th_1"
+  },
+  "result": {
+    "ok": true
+  }
+}

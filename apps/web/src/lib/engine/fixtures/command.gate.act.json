@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "gate.act",
+  "description": "Unlock with the passphrase typed into the gate's field.",
+  "args": {
+    "action": "passphrase",
+    "values": {
+      "passphrase": "correct horse battery staple"
+    }
+  },
+  "result": {
+    "ok": true
+  }
+}

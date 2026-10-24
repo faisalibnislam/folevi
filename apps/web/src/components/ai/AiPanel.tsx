@@ -30,6 +30,7 @@ import { AiAnnouncer, useDoneAnnouncement } from "./announce";
 import { asksToChange } from "./editIntent";
 import { openFindTodos, scheduleResultTodos } from "./FindTodos";
 import { hasTodoLines } from "@/lib/ai/actionItems";
+import { AI_ASK_EVENT, takeNoteAiAsk } from "./chat/events";
 
 const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "summarize", label: "Summarize", icon: <FileText size={15} /> },
@@ -116,6 +117,16 @@ export function AiPanel({
     setHandoff(request);
     setMode("ask");
   };
+  // A question sent from the native apps' bars (lib/engine/editorCommands.ts): asked in Ask, about this note.
+  useEffect(() => {
+    const take = () => {
+      const q = takeNoteAiAsk();
+      if (q) fixInNote(q);
+    };
+    take();
+    window.addEventListener(AI_ASK_EVENT, take);
+    return () => window.removeEventListener(AI_ASK_EVENT, take);
+  }, []);
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<AiProblem | null>(null);

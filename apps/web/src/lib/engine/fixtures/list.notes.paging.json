@@ -1,0 +1,1690 @@
+{
+  "kind": "list",
+  "name": "notes.list",
+  "description": "A long list still loading: `complete` false until the last page arrives.",
+  "args": {
+    "view": "all"
+  },
+  "window": {
+    "start": 0,
+    "count": 20
+  },
+  "updates": [
+    {
+      "kind": "update",
+      "sub": "s1",
+      "rev": 1,
+      "diff": {
+        "reset": true,
+        "total": 200,
+        "complete": false,
+        "start": 0,
+        "order": [
+          "doc_00001",
+          "doc_00002",
+          "doc_00003",
+          "doc_00004",
+          "doc_00005",
+          "doc_00006",
+          "doc_00007",
+          "doc_00008",
+          "doc_00009",
+          "doc_00010",
+          "doc_00011",
+          "doc_00012",
+          "doc_00013",
+          "doc_00014",
+          "doc_00015",
+          "doc_00016",
+          "doc_00017",
+          "doc_00018",
+          "doc_00019",
+          "doc_00020"
+        ],
+        "upsert": {
+          "doc_00001": {
+            "id": "doc_00001",
+            "title": "Kyoto in November",
+            "icon": "🗺️",
+            "kind": "document",
+            "excerpt": "Kyoto in November. First lines of the note.",
+            "preview": [
+              {
+                "t": "heading",
+                "x": "Kyoto in November",
+                "l": 1
+              },
+              {
+                "t": "todo",
+                "x": "Book the ryokan",
+                "c": true
+              },
+              {
+                "t": "todo",
+                "x": "Rail pass",
+                "c": false
+              }
+            ],
+            "cover": {
+              "kind": "theme",
+              "value": "art-03"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": true,
+            "createdAt": 1790240400000,
+            "updatedAt": 1792832400000,
+            "folder": {
+              "id": "fld_trips",
+              "name": "Trips",
+              "color": "moss"
+            },
+            "tags": [
+              {
+                "id": "tag_ideas",
+                "name": "ideas",
+                "color": "marigold"
+              }
+            ],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "b8d65473"
+          },
+          "doc_00002": {
+            "id": "doc_00002",
+            "title": "Q4 planning",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Q4 planning. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Q4 planning. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "none"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1790154000000,
+            "updatedAt": 1792828800000,
+            "folder": {
+              "id": "fld_work",
+              "name": "Work",
+              "color": null
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "57ee77eb"
+          },
+          "doc_00003": {
+            "id": "doc_00003",
+            "title": "Reading list",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Reading list. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Reading list. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "theme",
+              "value": "art-27"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1790067600000,
+            "updatedAt": 1792825200000,
+            "folder": {
+              "id": "fld_reading",
+              "name": "Reading",
+              "color": "plum"
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "a9a7f9f2"
+          },
+          "doc_00004": {
+            "id": "doc_00004",
+            "title": "Sourdough notes",
+            "icon": "🗺️",
+            "kind": "document",
+            "excerpt": "Sourdough notes. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Sourdough notes. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "none"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1789981200000,
+            "updatedAt": 1792821600000,
+            "folder": null,
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "97149c30"
+          },
+          "doc_00005": {
+            "id": "doc_00005",
+            "title": "Interview loop",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Interview loop. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Interview loop. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "theme",
+              "value": "art-55"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1789894800000,
+            "updatedAt": 1792818000000,
+            "folder": {
+              "id": "fld_work",
+              "name": "Work",
+              "color": null
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "00cb2dcd"
+          },
+          "doc_00006": {
+            "id": "doc_00006",
+            "title": "Garden plan",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Garden plan. First lines of the note.",
+            "preview": [
+              {
+                "t": "heading",
+                "x": "Garden plan",
+                "l": 1
+              },
+              {
+                "t": "todo",
+                "x": "Book the ryokan",
+                "c": true
+              },
+              {
+                "t": "todo",
+                "x": "Rail pass",
+                "c": false
+              }
+            ],
+            "cover": {
+              "kind": "none"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1789808400000,
+            "updatedAt": 1792814400000,
+            "folder": {
+              "id": "fld_reading",
+              "name": "Reading",
+              "color": "plum"
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "ff14f067"
+          },
+          "doc_00007": {
+            "id": "doc_00007",
+            "title": "Weekly review",
+            "icon": "🗺️",
+            "kind": "document",
+            "excerpt": "Weekly review. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Weekly review. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "theme",
+              "value": "art-12"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": true,
+            "createdAt": 1789722000000,
+            "updatedAt": 1792810800000,
+            "folder": {
+              "id": "fld_trips",
+              "name": "Trips",
+              "color": "moss"
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "d85a844b"
+          },
+          "doc_00008": {
+            "id": "doc_00008",
+            "title": "Book club: The Overstory",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Book club: The Overstory. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Book club: The Overstory. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "none"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1789635600000,
+            "updatedAt": 1792807200000,
+            "folder": null,
+            "tags": [
+              {
+                "id": "tag_ideas",
+                "name": "ideas",
+                "color": "marigold"
+              }
+            ],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "dbcff856"
+          },
+          "doc_00009": {
+            "id": "doc_00009",
+            "title": "Note 9",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Note 9. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Note 9. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "theme",
+              "value": "art-41"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1789549200000,
+            "updatedAt": 1792803600000,
+            "folder": {
+              "id": "fld_reading",
+              "name": "Reading",
+              "color": "plum"
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "71956f94"
+          },
+          "doc_00010": {
+            "id": "doc_00010",
+            "title": "Note 10",
+            "icon": "🗺️",
+            "kind": "document",
+            "excerpt": "Note 10. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Note 10. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "none"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1789462800000,
+            "updatedAt": 1792800000000,
+            "folder": {
+              "id": "fld_trips",
+              "name": "Trips",
+              "color": "moss"
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "a0f8d8a7"
+          },
+          "doc_00011": {
+            "id": "doc_00011",
+            "title": "Note 11",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Note 11. First lines of the note.",
+            "preview": [
+              {
+                "t": "heading",
+                "x": "Note 11",
+                "l": 1
+              },
+              {
+                "t": "todo",
+                "x": "Book the ryokan",
+                "c": true
+              },
+              {
+                "t": "todo",
+                "x": "Rail pass",
+                "c": false
+              }
+            ],
+            "cover": {
+              "kind": "theme",
+              "value": "art-03"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1789376400000,
+            "updatedAt": 1792796400000,
+            "folder": {
+              "id": "fld_work",
+              "name": "Work",
+              "color": null
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "b64db570"
+          },
+          "doc_00012": {
+            "id": "doc_00012",
+            "title": "Note 12",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Note 12. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Note 12. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "none"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1789290000000,
+            "updatedAt": 1792792800000,
+            "folder": null,
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "e6eeae54"
+          },
+          "doc_00013": {
+            "id": "doc_00013",
+            "title": "Note 13",
+            "icon": "🗺️",
+            "kind": "document",
+            "excerpt": "Note 13. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Note 13. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "theme",
+              "value": "art-27"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": true,
+            "createdAt": 1789203600000,
+            "updatedAt": 1792789200000,
+            "folder": {
+              "id": "fld_trips",
+              "name": "Trips",
+              "color": "moss"
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "bf79e7dc"
+          },
+          "doc_00014": {
+            "id": "doc_00014",
+            "title": "Note 14",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Note 14. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Note 14. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "none"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1789117200000,
+            "updatedAt": 1792785600000,
+            "folder": {
+              "id": "fld_work",
+              "name": "Work",
+              "color": null
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "524094dc"
+          },
+          "doc_00015": {
+            "id": "doc_00015",
+            "title": "Note 15",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Note 15. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Note 15. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "theme",
+              "value": "art-55"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1789030800000,
+            "updatedAt": 1792782000000,
+            "folder": {
+              "id": "fld_reading",
+              "name": "Reading",
+              "color": "plum"
+            },
+            "tags": [
+              {
+                "id": "tag_ideas",
+                "name": "ideas",
+                "color": "marigold"
+              }
+            ],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "d2f5532b"
+          },
+          "doc_00016": {
+            "id": "doc_00016",
+            "title": "Note 16",
+            "icon": "🗺️",
+            "kind": "document",
+            "excerpt": "Note 16. First lines of the note.",
+            "preview": [
+              {
+                "t": "heading",
+                "x": "Note 16",
+                "l": 1
+              },
+              {
+                "t": "todo",
+                "x": "Book the ryokan",
+                "c": true
+              },
+              {
+                "t": "todo",
+                "x": "Rail pass",
+                "c": false
+              }
+            ],
+            "cover": {
+              "kind": "none"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1788944400000,
+            "updatedAt": 1792778400000,
+            "folder": null,
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "70aae944"
+          },
+          "doc_00017": {
+            "id": "doc_00017",
+            "title": "Note 17",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Note 17. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Note 17. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "theme",
+              "value": "art-12"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1788858000000,
+            "updatedAt": 1792774800000,
+            "folder": {
+              "id": "fld_work",
+              "name": "Work",
+              "color": null
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "60468fa4"
+          },
+          "doc_00018": {
+            "id": "doc_00018",
+            "title": "Note 18",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Note 18. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Note 18. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "none"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1788771600000,
+            "updatedAt": 1792771200000,
+            "folder": {
+              "id": "fld_reading",
+              "name": "Reading",
+              "color": "plum"
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "8f5815e3"
+          },
+          "doc_00019": {
+            "id": "doc_00019",
+            "title": "Note 19",
+            "icon": "🗺️",
+            "kind": "document",
+            "excerpt": "Note 19. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Note 19. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "theme",
+              "value": "art-41"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": true,
+            "createdAt": 1788685200000,
+            "updatedAt": 1792767600000,
+            "folder": {
+              "id": "fld_trips",
+              "name": "Trips",
+              "color": "moss"
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "bd21e483"
+          },
+          "doc_00020": {
+            "id": "doc_00020",
+            "title": "Note 20",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Note 20. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Note 20. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "none"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1788598800000,
+            "updatedAt": 1792764000000,
+            "folder": null,
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": false,
+            "deletedAt": null,
+            "sync": "saved",
+            "h": "d7e98cb7"
+          }
+        }
+      }
+    },
+    {
+      "kind": "update",
+      "sub": "s1",
+      "rev": 2,
+      "diff": {
+        "total": 260,
+        "complete": true,
+        "start": 0
+      }
+    }
+  ],
+  "expected": {
+    "total": 260,
+    "complete": true,
+    "start": 0,
+    "rows": [
+      {
+        "id": "doc_00001",
+        "title": "Kyoto in November",
+        "icon": "🗺️",
+        "kind": "document",
+        "excerpt": "Kyoto in November. First lines of the note.",
+        "preview": [
+          {
+            "t": "heading",
+            "x": "Kyoto in November",
+            "l": 1
+          },
+          {
+            "t": "todo",
+            "x": "Book the ryokan",
+            "c": true
+          },
+          {
+            "t": "todo",
+            "x": "Rail pass",
+            "c": false
+          }
+        ],
+        "cover": {
+          "kind": "theme",
+          "value": "art-03"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": true,
+        "createdAt": 1790240400000,
+        "updatedAt": 1792832400000,
+        "folder": {
+          "id": "fld_trips",
+          "name": "Trips",
+          "color": "moss"
+        },
+        "tags": [
+          {
+            "id": "tag_ideas",
+            "name": "ideas",
+            "color": "marigold"
+          }
+        ],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "b8d65473"
+      },
+      {
+        "id": "doc_00002",
+        "title": "Q4 planning",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Q4 planning. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Q4 planning. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "none"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1790154000000,
+        "updatedAt": 1792828800000,
+        "folder": {
+          "id": "fld_work",
+          "name": "Work",
+          "color": null
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "57ee77eb"
+      },
+      {
+        "id": "doc_00003",
+        "title": "Reading list",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Reading list. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Reading list. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "theme",
+          "value": "art-27"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1790067600000,
+        "updatedAt": 1792825200000,
+        "folder": {
+          "id": "fld_reading",
+          "name": "Reading",
+          "color": "plum"
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "a9a7f9f2"
+      },
+      {
+        "id": "doc_00004",
+        "title": "Sourdough notes",
+        "icon": "🗺️",
+        "kind": "document",
+        "excerpt": "Sourdough notes. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Sourdough notes. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "none"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1789981200000,
+        "updatedAt": 1792821600000,
+        "folder": null,
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "97149c30"
+      },
+      {
+        "id": "doc_00005",
+        "title": "Interview loop",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Interview loop. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Interview loop. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "theme",
+          "value": "art-55"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1789894800000,
+        "updatedAt": 1792818000000,
+        "folder": {
+          "id": "fld_work",
+          "name": "Work",
+          "color": null
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "00cb2dcd"
+      },
+      {
+        "id": "doc_00006",
+        "title": "Garden plan",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Garden plan. First lines of the note.",
+        "preview": [
+          {
+            "t": "heading",
+            "x": "Garden plan",
+            "l": 1
+          },
+          {
+            "t": "todo",
+            "x": "Book the ryokan",
+            "c": true
+          },
+          {
+            "t": "todo",
+            "x": "Rail pass",
+            "c": false
+          }
+        ],
+        "cover": {
+          "kind": "none"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1789808400000,
+        "updatedAt": 1792814400000,
+        "folder": {
+          "id": "fld_reading",
+          "name": "Reading",
+          "color": "plum"
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "ff14f067"
+      },
+      {
+        "id": "doc_00007",
+        "title": "Weekly review",
+        "icon": "🗺️",
+        "kind": "document",
+        "excerpt": "Weekly review. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Weekly review. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "theme",
+          "value": "art-12"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": true,
+        "createdAt": 1789722000000,
+        "updatedAt": 1792810800000,
+        "folder": {
+          "id": "fld_trips",
+          "name": "Trips",
+          "color": "moss"
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "d85a844b"
+      },
+      {
+        "id": "doc_00008",
+        "title": "Book club: The Overstory",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Book club: The Overstory. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Book club: The Overstory. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "none"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1789635600000,
+        "updatedAt": 1792807200000,
+        "folder": null,
+        "tags": [
+          {
+            "id": "tag_ideas",
+            "name": "ideas",
+            "color": "marigold"
+          }
+        ],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "dbcff856"
+      },
+      {
+        "id": "doc_00009",
+        "title": "Note 9",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Note 9. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Note 9. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "theme",
+          "value": "art-41"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1789549200000,
+        "updatedAt": 1792803600000,
+        "folder": {
+          "id": "fld_reading",
+          "name": "Reading",
+          "color": "plum"
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "71956f94"
+      },
+      {
+        "id": "doc_00010",
+        "title": "Note 10",
+        "icon": "🗺️",
+        "kind": "document",
+        "excerpt": "Note 10. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Note 10. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "none"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1789462800000,
+        "updatedAt": 1792800000000,
+        "folder": {
+          "id": "fld_trips",
+          "name": "Trips",
+          "color": "moss"
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "a0f8d8a7"
+      },
+      {
+        "id": "doc_00011",
+        "title": "Note 11",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Note 11. First lines of the note.",
+        "preview": [
+          {
+            "t": "heading",
+            "x": "Note 11",
+            "l": 1
+          },
+          {
+            "t": "todo",
+            "x": "Book the ryokan",
+            "c": true
+          },
+          {
+            "t": "todo",
+            "x": "Rail pass",
+            "c": false
+          }
+        ],
+        "cover": {
+          "kind": "theme",
+          "value": "art-03"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1789376400000,
+        "updatedAt": 1792796400000,
+        "folder": {
+          "id": "fld_work",
+          "name": "Work",
+          "color": null
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "b64db570"
+      },
+      {
+        "id": "doc_00012",
+        "title": "Note 12",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Note 12. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Note 12. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "none"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1789290000000,
+        "updatedAt": 1792792800000,
+        "folder": null,
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "e6eeae54"
+      },
+      {
+        "id": "doc_00013",
+        "title": "Note 13",
+        "icon": "🗺️",
+        "kind": "document",
+        "excerpt": "Note 13. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Note 13. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "theme",
+          "value": "art-27"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": true,
+        "createdAt": 1789203600000,
+        "updatedAt": 1792789200000,
+        "folder": {
+          "id": "fld_trips",
+          "name": "Trips",
+          "color": "moss"
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "bf79e7dc"
+      },
+      {
+        "id": "doc_00014",
+        "title": "Note 14",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Note 14. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Note 14. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "none"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1789117200000,
+        "updatedAt": 1792785600000,
+        "folder": {
+          "id": "fld_work",
+          "name": "Work",
+          "color": null
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "524094dc"
+      },
+      {
+        "id": "doc_00015",
+        "title": "Note 15",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Note 15. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Note 15. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "theme",
+          "value": "art-55"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1789030800000,
+        "updatedAt": 1792782000000,
+        "folder": {
+          "id": "fld_reading",
+          "name": "Reading",
+          "color": "plum"
+        },
+        "tags": [
+          {
+            "id": "tag_ideas",
+            "name": "ideas",
+            "color": "marigold"
+          }
+        ],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "d2f5532b"
+      },
+      {
+        "id": "doc_00016",
+        "title": "Note 16",
+        "icon": "🗺️",
+        "kind": "document",
+        "excerpt": "Note 16. First lines of the note.",
+        "preview": [
+          {
+            "t": "heading",
+            "x": "Note 16",
+            "l": 1
+          },
+          {
+            "t": "todo",
+            "x": "Book the ryokan",
+            "c": true
+          },
+          {
+            "t": "todo",
+            "x": "Rail pass",
+            "c": false
+          }
+        ],
+        "cover": {
+          "kind": "none"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1788944400000,
+        "updatedAt": 1792778400000,
+        "folder": null,
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "70aae944"
+      },
+      {
+        "id": "doc_00017",
+        "title": "Note 17",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Note 17. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Note 17. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "theme",
+          "value": "art-12"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1788858000000,
+        "updatedAt": 1792774800000,
+        "folder": {
+          "id": "fld_work",
+          "name": "Work",
+          "color": null
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "60468fa4"
+      },
+      {
+        "id": "doc_00018",
+        "title": "Note 18",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Note 18. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Note 18. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "none"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1788771600000,
+        "updatedAt": 1792771200000,
+        "folder": {
+          "id": "fld_reading",
+          "name": "Reading",
+          "color": "plum"
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "8f5815e3"
+      },
+      {
+        "id": "doc_00019",
+        "title": "Note 19",
+        "icon": "🗺️",
+        "kind": "document",
+        "excerpt": "Note 19. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Note 19. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "theme",
+          "value": "art-41"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": true,
+        "createdAt": 1788685200000,
+        "updatedAt": 1792767600000,
+        "folder": {
+          "id": "fld_trips",
+          "name": "Trips",
+          "color": "moss"
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "bd21e483"
+      },
+      {
+        "id": "doc_00020",
+        "title": "Note 20",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Note 20. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Note 20. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "none"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1788598800000,
+        "updatedAt": 1792764000000,
+        "folder": null,
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": false,
+        "deletedAt": null,
+        "sync": "saved",
+        "h": "d7e98cb7"
+      }
+    ]
+  }
+}

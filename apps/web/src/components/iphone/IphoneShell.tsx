@@ -132,7 +132,7 @@ function NotificationsSheet({ open, onClose }: { open: boolean; onClose: () => v
   const { notifications } = useCapabilities();
   const unread = useQuery(api.notifications.unreadCount, open && notifications ? {} : "skip");
   return (
-    <Sheet open={open} onClose={onClose} title="Notifications" size="medium" bodyClassName="flex flex-col" bodyPad={false}>
+    <Sheet open={open} onClose={onClose} title="Notifications" size="medium" bodyClassName="flex flex-col">
       <NotificationPanel unread={unread ?? 0} onClose={onClose} hideTitle />
     </Sheet>
   );

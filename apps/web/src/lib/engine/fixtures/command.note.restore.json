@@ -1,0 +1,17 @@
+{
+  "kind": "command",
+  "name": "note.restore",
+  "description": "Restore a note from Trash.",
+  "args": {
+    "ids": [
+      "doc_00004"
+    ]
+  },
+  "result": {
+    "done": [
+      "doc_00004"
+    ],
+    "skipped": 0,
+    "queued": false
+  }
+}

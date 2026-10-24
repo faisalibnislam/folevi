@@ -2,8 +2,16 @@
 // toolbar, one item per section (SF Symbols: native chrome), and the section's page below, from the open place
 // (/settings/<section>?window=1; the page draws the section alone there, WM4). 720 wide, as tall as needed,
 // remembers its last section and its place on screen; Escape or ⌘W closes it.
+//
+// With the native frame (NativeFrame.enabled) the common sections are native (N13, FoleviScreens'
+// SettingsSectionScreen on the front main window's engine client): Account, Appearance, Notifications, Foli AI,
+// Security and Devices. General (the Mac's own settings), Privacy (encryption), Offline & Sync, Library and Import &
+// Export stay the page's until the bridge has them.
 import AppKit
+import SwiftUI
 import WebKit
+import FoleviEngine
+import FoleviScreens
 
 final class SettingsNSWindow: NSWindow {
     override func cancelOperation(_ sender: Any?) {
@@ -50,6 +58,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
 
     private(set) var window: SettingsNSWindow?
     private(set) var view: FoleviWebView?
+    private var native: NSHostingView<AnyView>?
+    private var nativeModel: SettingsModel?
     private var sections: [Section] = []
     private var urlObservation: NSKeyValueObservation?
     private static let sectionKey = "folevi.settings.section"
@@ -71,6 +81,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
         rebuildToolbar()
         if view == nil || view?.place != place {
             load(place: place)
+            updateNative()
         } else {
             go(to: current)
         }
@@ -120,6 +131,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
         current = section
         window?.toolbar?.selectedItemIdentifier = NSToolbarItem.Identifier(section)
         window?.title = sections.first { $0.id == section }?.title ?? "Settings"
+        updateNative()
         guard let view else { return }
         if view.url.map(WindowRestore.restorablePath) == Self.path(section) { return }
         WindowManager.shared.navigate(view, to: Self.path(section))
@@ -157,6 +169,62 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
         go(to: sender.itemIdentifier.rawValue)
     }
 
+    // MARK: Native sections
+
+    /// The Mac's section ids drawn natively (SettingsSection(macId:) maps them).
+    nonisolated static let nativeSections: Set<String> = ["account", "appearance", "notifications", "ai", "security", "devices"]
+
+    /// The front main window's engine client for the open place, when its window has the native frame.
+    private func nativeClient() -> EngineClient? {
+        guard NativeFrame.enabled else { return nil }
+        let place = WindowManager.shared.currentPlace()
+        return WindowManager.shared.mains.first { $0.place == place && $0.frame != nil }?.frame?.model.client
+    }
+
+    /// Shows the native section over the page, or the page.
+    private func updateNative() {
+        guard let content = window?.contentView, Self.nativeSections.contains(current), let section = SettingsSection(macId: current), let client = nativeClient() else {
+            native?.isHidden = true
+            view?.isHidden = false
+            return
+        }
+        if nativeModel?.client !== client {
+            nativeModel = SettingsModel(client: client, host: SettingsHost(
+                version: Paths.version,
+                openURL: { NSWorkspace.shared.open($0) },
+                pickAvatar: { await SettingsWindow.pickImage() }
+            ), feedback: ScreenFeedback(toast: { t in
+                guard t.tone == .error, let w = SettingsWindow.shared.window else { return }
+                let alert = NSAlert()
+                alert.messageText = t.message
+                alert.beginSheetModal(for: w)
+            }), platform: .mac)
+        }
+        guard let model = nativeModel else { return }
+        let root = AnyView(SettingsSectionScreen(model: model, section: section).frame(maxWidth: .infinity, maxHeight: .infinity))
+        if let native {
+            native.rootView = root
+        } else {
+            let host = NSHostingView(rootView: root)
+            host.frame = content.bounds
+            host.autoresizingMask = [.width, .height]
+            content.addSubview(host)
+            native = host
+        }
+        native?.isHidden = false
+        view?.isHidden = true
+    }
+
+    /// A profile picture from disk: JPEG, PNG, WebP or GIF.
+    static func pickImage() async -> (data: Data, mimeType: String)? {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.jpeg, .png, .webP, .gif]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url, let data = try? Data(contentsOf: url) else { return nil }
+        let types = ["jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp", "gif": "image/gif"]
+        return (data, types[url.pathExtension.lowercased()] ?? "image/jpeg")
+    }
+
     // MARK: NSToolbarDelegate
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier id: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
@@ -184,5 +252,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
         view?.removeFromSuperview()
         view = nil
         urlObservation = nil
+        native?.removeFromSuperview()
+        native = nil
+        nativeModel = nil
     }
 }

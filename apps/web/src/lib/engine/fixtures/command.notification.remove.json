@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "notification.remove",
+  "description": "Remove a notification.",
+  "args": {
+    "ids": [
+      "n3"
+    ]
+  },
+  "result": {
+    "ok": true
+  }
+}

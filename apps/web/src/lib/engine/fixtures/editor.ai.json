@@ -1,0 +1,12 @@
+{
+  "kind": "editor",
+  "name": "ai",
+  "description": "Ask Foli AI about this note.",
+  "args": {
+    "action": "ask",
+    "prompt": "Summarize this note"
+  },
+  "result": {
+    "ok": true
+  }
+}

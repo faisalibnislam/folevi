@@ -1,0 +1,37 @@
+{
+  "kind": "event",
+  "name": "note.meta",
+  "description": "The open note's title changed.",
+  "data": {
+    "id": "doc_00001",
+    "found": true,
+    "title": "Kyoto in late November",
+    "icon": "🗺️",
+    "kind": "document",
+    "space": "personal",
+    "folder": {
+      "id": "fld_trips",
+      "name": "Trips",
+      "color": "moss"
+    },
+    "breadcrumbs": [],
+    "starred": false,
+    "access": "full",
+    "canEdit": true,
+    "encrypted": false,
+    "archived": false,
+    "inTrash": false,
+    "cover": {
+      "kind": "theme",
+      "value": "art-03"
+    },
+    "style": {
+      "font": "modern",
+      "width": "normal",
+      "background": "paper",
+      "accent": "ember",
+      "card": "plain"
+    },
+    "sync": "waiting"
+  }
+}

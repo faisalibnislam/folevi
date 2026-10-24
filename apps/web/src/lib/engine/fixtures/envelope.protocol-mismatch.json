@@ -1,0 +1,32 @@
+{
+  "kind": "envelope",
+  "description": "An app built against another protocol is refused loudly.",
+  "toEngine": [
+    {
+      "v": 1,
+      "id": "1",
+      "kind": "hello",
+      "app": {
+        "platform": "macos",
+        "version": "1.1.00",
+        "build": "1100",
+        "protocol": 2
+      }
+    }
+  ],
+  "fromEngine": [
+    {
+      "kind": "reply",
+      "id": "1",
+      "ok": false,
+      "error": {
+        "code": "protocol_mismatch",
+        "message": "This app speaks bridge protocol 2; the page speaks 1. Reinstall Folevi.",
+        "data": {
+          "app": 2,
+          "page": 1
+        }
+      }
+    }
+  ]
+}

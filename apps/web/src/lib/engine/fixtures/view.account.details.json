@@ -1,0 +1,54 @@
+{
+  "kind": "view",
+  "name": "account.details",
+  "description": "The open account for the switcher: plan, storage, devices, spaces.",
+  "args": {},
+  "value": {
+    "profile": {
+      "id": "prof_1",
+      "name": "Faisal",
+      "email": "faisal@example.com",
+      "avatarUrl": null
+    },
+    "plan": {
+      "tier": "pro",
+      "id": "personal_pro_month",
+      "paid": true,
+      "trialing": false,
+      "trialEndsAt": null,
+      "ai": false
+    },
+    "storage": {
+      "usedBytes": 1200000000,
+      "limitBytes": 10000000000
+    },
+    "devicesActive": 3,
+    "deviceLimit": null,
+    "spaces": [
+      {
+        "id": "personal",
+        "kind": "personal",
+        "name": "Personal",
+        "logoUrl": null,
+        "role": "owner",
+        "storage": {
+          "usedBytes": 1200000000,
+          "limitBytes": 10000000000
+        },
+        "planName": "Pro"
+      },
+      {
+        "id": "ws_studio",
+        "kind": "workspace",
+        "name": "Airly Studio",
+        "logoUrl": "https://example.com/logo.png",
+        "role": "admin",
+        "storage": {
+          "usedBytes": 300000000,
+          "limitBytes": 5000000000
+        },
+        "planName": "Team"
+      }
+    ]
+  }
+}

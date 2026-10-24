@@ -1,0 +1,55 @@
+{
+  "kind": "view",
+  "name": "session",
+  "description": "A signed-in account with a team workspace, Personal showing.",
+  "args": {},
+  "value": {
+    "place": "acct:user_1",
+    "mode": "account",
+    "profile": {
+      "id": "prof_1",
+      "name": "Faisal",
+      "email": "faisal@example.com",
+      "avatarUrl": null
+    },
+    "spaces": [
+      {
+        "id": "personal",
+        "kind": "personal",
+        "name": "Personal",
+        "role": "owner",
+        "canEdit": true,
+        "canManage": false,
+        "encrypted": false,
+        "locked": false,
+        "canLock": true,
+        "level": "standard"
+      },
+      {
+        "id": "ws_studio",
+        "kind": "workspace",
+        "name": "Airly Studio",
+        "role": "admin",
+        "canEdit": true,
+        "canManage": true,
+        "encrypted": false,
+        "locked": false,
+        "canLock": true,
+        "level": "standard"
+      }
+    ],
+    "space": "personal",
+    "online": true,
+    "today": "2026-10-24",
+    "timeZone": "Asia/Dhaka",
+    "appearance": "system",
+    "capabilities": {
+      "graph": true,
+      "sharing": true,
+      "changes": true,
+      "workspaces": true,
+      "ai": true,
+      "purchases": false
+    }
+  }
+}

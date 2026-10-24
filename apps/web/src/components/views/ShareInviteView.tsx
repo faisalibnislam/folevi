@@ -16,6 +16,7 @@ import { ViewChrome } from "@/components/app/Shell";
 export function ShareInviteView({ token }: { token: string }) {
   const preview = useQuery(api.sharing.previewPageInvite, { token });
   const accept = useMutation(api.sharing.acceptPageInvite);
+  const decline = useMutation(api.sharing.declinePageInvite);
   const { profile } = useAppState();
   const { navigate } = useAppRouter();
   const [error, setError] = useState<string | null>(null);
@@ -43,25 +44,43 @@ export function ShareInviteView({ token }: { token: string }) {
             <p className="mt-2 text-muted">
               {preview.inviterName} shared this page with you ({preview.roleLabel.toLowerCase()}). You’ll see this page and the pages inside it, and nothing else of theirs.
             </p>
-            <Button
-              className="mt-6"
-              variant="primary"
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true);
-                setError(null);
-                try {
-                  const r = await accept({ token });
-                  navigate(`/d/${r.documentId}`, { replace: true });
-                } catch (e) {
-                  setError(errorMessage(e));
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              Open the page
-            </Button>
+            <div className="mt-6 flex gap-2">
+              <Button
+                variant="primary"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    const r = await accept({ token });
+                    navigate(`/d/${r.documentId}`, { replace: true });
+                  } catch (e) {
+                    setError(errorMessage(e));
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Open the page
+              </Button>
+              <Button
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    await decline({ token });
+                    navigate("/documents", { replace: true });
+                  } catch (e) {
+                    setError(errorMessage(e));
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Decline
+              </Button>
+            </div>
             {error ? (
               <p role="alert" className="mt-3 text-sm text-danger">
                 {error}

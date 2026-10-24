@@ -1,0 +1,9 @@
+{
+  "kind": "command",
+  "name": "calendar.feedRevoke",
+  "description": "Stop the calendar feed.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

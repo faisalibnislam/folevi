@@ -100,6 +100,24 @@ export function useCachedQuery<Q extends FunctionReference<"query">>(query: Q, a
   return { data: kept as FunctionReturnType<Q> | undefined, fromCache: kept !== undefined };
 }
 
+/**
+ * The same kept answers outside React (the native apps' engine, lib/engine): the last answer seen on this device
+ * for `name(args)`, from memory or the account's IndexedDB, or undefined.
+ */
+export async function keptAnswer(accountKey: string, name: string, args: unknown): Promise<unknown> {
+  const key = queryKey(name, args);
+  const memoryKey = `${accountKey}|${key}`;
+  if (memory.has(memoryKey)) return memory.get(memoryKey);
+  const value = await recall(accountKey, key);
+  if (value !== undefined) memory.set(memoryKey, value);
+  return value;
+}
+
+/** Keeps `value` as the last answer of `name(args)` (written once the answers settle, as useCachedQuery does). */
+export function keepAnswer(accountKey: string, name: string, args: unknown, value: unknown): void {
+  remember(accountKey, queryKey(name, args), value);
+}
+
 /** `useCachedQuery`'s answer alone. */
 export function useOfflineQuery<Q extends FunctionReference<"query">>(query: Q, args: FunctionArgs<Q> | "skip"): FunctionReturnType<Q> | undefined {
   return useCachedQuery(query, args).data;

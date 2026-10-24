@@ -1,0 +1,8 @@
+{
+  "kind": "event",
+  "name": "editor.panel",
+  "description": "The panel closed.",
+  "data": {
+    "panel": null
+  }
+}

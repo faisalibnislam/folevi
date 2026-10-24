@@ -1,0 +1,11 @@
+{
+  "kind": "event",
+  "name": "memory.relieved",
+  "description": "Memory was short: the editor and caches were dropped.",
+  "data": {
+    "dropped": [
+      "editor",
+      "caches"
+    ]
+  }
+}

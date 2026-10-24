@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "folder.setColor",
+  "description": "A folder's colour back to the default.",
+  "args": {
+    "id": "fld_trips",
+    "color": null
+  },
+  "result": {
+    "ok": true
+  }
+}

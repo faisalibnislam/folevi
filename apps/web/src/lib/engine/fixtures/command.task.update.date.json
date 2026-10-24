@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "task.update",
+  "description": "Move a task to tomorrow and clear its time.",
+  "args": {
+    "id": "blk_t2",
+    "dueDate": "2026-10-25",
+    "dueTime": null
+  },
+  "result": {
+    "ok": true
+  }
+}

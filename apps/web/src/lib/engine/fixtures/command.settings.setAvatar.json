@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "settings.setAvatar",
+  "description": "A new profile picture, POSTed to /_bridge first.",
+  "args": {
+    "bodyId": "av_1",
+    "mimeType": "image/jpeg",
+    "name": "me.jpg"
+  },
+  "result": {
+    "ok": true
+  }
+}

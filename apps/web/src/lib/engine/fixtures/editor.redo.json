@@ -1,0 +1,9 @@
+{
+  "kind": "editor",
+  "name": "redo",
+  "description": "Redo.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

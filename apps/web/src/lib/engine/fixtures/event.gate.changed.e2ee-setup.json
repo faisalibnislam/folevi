@@ -1,0 +1,57 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "Setting encryption up: the recovery key, shown once, to confirm with groups 3 and 7.",
+  "data": {
+    "gate": "e2eeSetup",
+    "title": "This workspace is encrypted",
+    "message": "",
+    "busy": false,
+    "actions": [
+      {
+        "id": "confirmRecovery",
+        "label": "Confirm",
+        "style": "primary",
+        "enabled": true
+      },
+      {
+        "id": "back",
+        "label": "Back",
+        "style": "quiet",
+        "enabled": true
+      }
+    ],
+    "fields": [
+      {
+        "id": "group3",
+        "kind": "code",
+        "label": "Group 3",
+        "placeholder": "XXXX"
+      },
+      {
+        "id": "group7",
+        "kind": "code",
+        "label": "Group 7",
+        "placeholder": "XXXX"
+      }
+    ],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": null,
+    "e2ee": {
+      "approval": null,
+      "approvalCode": null,
+      "setupStep": "recovery",
+      "recoveryKey": "K7QM-2RTX-9VBN-4HJW-PL3D-8SZC-6YFE-MA5G-UQ2N",
+      "methodsAdded": [
+        "passphrase"
+      ],
+      "space": "ws_vault",
+      "spaceName": "Vault",
+      "view": "needsSetup",
+      "methods": []
+    },
+    "onboarding": null,
+    "error": null
+  }
+}

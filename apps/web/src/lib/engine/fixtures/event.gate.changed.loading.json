@@ -1,0 +1,19 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "Starting: checking the session.",
+  "data": {
+    "gate": "loading",
+    "title": "Opening your folio…",
+    "message": "",
+    "busy": true,
+    "actions": [],
+    "fields": [],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": null,
+    "e2ee": null,
+    "onboarding": null,
+    "error": null
+  }
+}

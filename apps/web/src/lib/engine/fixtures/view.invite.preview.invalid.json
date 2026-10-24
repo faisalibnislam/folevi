@@ -1,0 +1,17 @@
+{
+  "kind": "view",
+  "name": "invite.preview",
+  "description": "An invitation that expired or was used.",
+  "args": {
+    "kind": "page",
+    "token": "tok_old"
+  },
+  "value": {
+    "valid": false,
+    "kind": "page",
+    "inviterName": null,
+    "name": null,
+    "roleLabel": null,
+    "emailMatches": false
+  }
+}

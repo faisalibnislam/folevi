@@ -1,0 +1,84 @@
+{
+  "kind": "view",
+  "name": "tasks.list",
+  "description": "Today: tasks grouped by note, one overdue.",
+  "args": {
+    "view": "today"
+  },
+  "value": {
+    "view": "today",
+    "groups": [
+      {
+        "id": "doc_00001",
+        "kind": "note",
+        "title": "Kyoto in November",
+        "icon": "🗺️",
+        "tasks": [
+          {
+            "id": "blk_t1",
+            "noteId": "doc_00001",
+            "noteTitle": "Kyoto in November",
+            "noteIcon": "🗺️",
+            "title": "Book the ryokan",
+            "status": "open",
+            "dueDate": "2026-10-22",
+            "dueTime": null,
+            "priority": null,
+            "assigneeId": null,
+            "assigneeName": null,
+            "reminderAt": null,
+            "repeat": null,
+            "completedAt": null,
+            "updatedAt": 1792832340000,
+            "overdue": true
+          },
+          {
+            "id": "blk_t3",
+            "noteId": "doc_00001",
+            "noteTitle": "Kyoto in November",
+            "noteIcon": "🗺️",
+            "title": "Rail pass",
+            "status": "open",
+            "dueDate": "2026-10-24",
+            "dueTime": null,
+            "priority": null,
+            "assigneeId": null,
+            "assigneeName": null,
+            "reminderAt": null,
+            "repeat": null,
+            "completedAt": null,
+            "updatedAt": 1792832220000,
+            "overdue": false
+          }
+        ]
+      },
+      {
+        "id": "doc_00002",
+        "kind": "note",
+        "title": "Q4 planning",
+        "icon": null,
+        "tasks": [
+          {
+            "id": "blk_t2",
+            "noteId": "doc_00002",
+            "noteTitle": "Q4 planning",
+            "noteIcon": null,
+            "title": "Send the plan",
+            "status": "open",
+            "dueDate": "2026-10-24",
+            "dueTime": "15:00",
+            "priority": "high",
+            "assigneeId": "prof_2",
+            "assigneeName": "Maya",
+            "reminderAt": null,
+            "repeat": null,
+            "completedAt": null,
+            "updatedAt": 1792832280000,
+            "overdue": false
+          }
+        ]
+      }
+    ],
+    "total": 3
+  }
+}

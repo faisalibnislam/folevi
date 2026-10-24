@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "notification.markRead",
+  "description": "Mark as unread.",
+  "args": {
+    "ids": [
+      "n1"
+    ],
+    "read": false
+  },
+  "result": {
+    "ok": true
+  }
+}

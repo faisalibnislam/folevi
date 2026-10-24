@@ -1,0 +1,22 @@
+{
+  "kind": "view",
+  "name": "templates.builtIn",
+  "description": "The built-in templates.",
+  "args": {},
+  "value": {
+    "templates": [
+      {
+        "key": "builtin:meeting",
+        "name": "Meeting notes",
+        "description": "Agenda, notes and action items.",
+        "icon": "users"
+      },
+      {
+        "key": "builtin:weekly",
+        "name": "Weekly review",
+        "description": "What went well, what's next.",
+        "icon": "calendar"
+      }
+    ]
+  }
+}

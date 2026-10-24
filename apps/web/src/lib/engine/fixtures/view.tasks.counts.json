@@ -1,0 +1,13 @@
+{
+  "kind": "view",
+  "name": "tasks.counts",
+  "description": "The task views' counts.",
+  "args": {},
+  "value": {
+    "inbox": 3,
+    "today": 2,
+    "upcoming": 5,
+    "all": 12,
+    "mine": 7
+  }
+}

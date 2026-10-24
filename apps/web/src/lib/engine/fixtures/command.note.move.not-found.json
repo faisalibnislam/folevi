@@ -1,0 +1,15 @@
+{
+  "kind": "command",
+  "name": "note.move",
+  "description": "A move into a folder that's gone.",
+  "args": {
+    "ids": [
+      "doc_00001"
+    ],
+    "folderId": "fld_gone"
+  },
+  "error": {
+    "code": "not_found",
+    "message": "Folder not found."
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "kind": "command",
+  "name": "note.archive",
+  "description": "Archive one note, one skipped (no permission).",
+  "args": {
+    "ids": [
+      "doc_00001",
+      "doc_00002"
+    ],
+    "archived": true
+  },
+  "result": {
+    "done": [
+      "doc_00001"
+    ],
+    "skipped": 1,
+    "queued": false
+  }
+}

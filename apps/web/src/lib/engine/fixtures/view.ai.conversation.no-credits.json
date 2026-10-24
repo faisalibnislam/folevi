@@ -1,0 +1,49 @@
+{
+  "kind": "view",
+  "name": "ai.conversation",
+  "description": "An answer refused for credits: the refusal is on the answer.",
+  "args": {
+    "conversationId": "conv_2"
+  },
+  "value": {
+    "found": true,
+    "conversation": {
+      "id": "conv_2",
+      "title": "Summarize Q4 planning",
+      "pinned": false,
+      "ephemeral": false,
+      "space": "personal",
+      "context": "note",
+      "shared": false,
+      "canShare": false,
+      "createdAt": 1792746000000,
+      "lastMessageAt": 1792832400000
+    },
+    "messages": [
+      {
+        "id": "msg_9",
+        "role": "assistant",
+        "text": "",
+        "status": "error",
+        "live": false,
+        "phase": null,
+        "error": {
+          "code": "ai_credits_exhausted",
+          "message": "You've used this month's AI credits. They reset on November 1."
+        },
+        "citations": [],
+        "webCitations": [],
+        "suggestions": [],
+        "credits": null,
+        "attachments": [],
+        "actions": [],
+        "actionsOutcome": null,
+        "agentSteps": [],
+        "agentMore": false,
+        "memory": null,
+        "createdAt": 1792832400000,
+        "agentRun": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "Where the library should live; native shows the places (Choose a folder opens the system picker).",
+  "data": {
+    "gate": "librarySetup",
+    "title": "Where should your library live?",
+    "message": "",
+    "busy": false,
+    "actions": [
+      {
+        "id": "place:icloud",
+        "label": "Sync with iCloud",
+        "style": "secondary",
+        "enabled": true
+      },
+      {
+        "id": "place:folder",
+        "label": "Choose a folder",
+        "style": "secondary",
+        "enabled": true
+      },
+      {
+        "id": "place:device",
+        "label": "This device only",
+        "style": "secondary",
+        "enabled": true
+      },
+      {
+        "id": "back",
+        "label": "Back",
+        "style": "quiet",
+        "enabled": true
+      }
+    ],
+    "fields": [],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": null,
+    "e2ee": null,
+    "onboarding": null,
+    "error": null
+  }
+}

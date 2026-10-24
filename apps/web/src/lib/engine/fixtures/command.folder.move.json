@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "folder.move",
+  "description": "Nest a folder, first among its new siblings.",
+  "args": {
+    "id": "fld_iceland",
+    "parentId": "fld_japan",
+    "afterId": null
+  },
+  "result": {
+    "ok": true
+  }
+}

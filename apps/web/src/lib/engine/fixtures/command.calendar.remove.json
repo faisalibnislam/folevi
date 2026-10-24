@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "calendar.remove",
+  "description": "Unsubscribe.",
+  "args": {
+    "id": "cal2"
+  },
+  "result": {
+    "ok": true
+  }
+}

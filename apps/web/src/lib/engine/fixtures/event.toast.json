@@ -1,0 +1,19 @@
+{
+  "kind": "event",
+  "name": "toast",
+  "description": "A toast with Undo.",
+  "data": {
+    "message": "Moved to Trips",
+    "tone": "info",
+    "undo": {
+      "command": "note.move",
+      "args": {
+        "ids": [
+          "doc_00001"
+        ],
+        "folderId": null
+      }
+    },
+    "action": null
+  }
+}

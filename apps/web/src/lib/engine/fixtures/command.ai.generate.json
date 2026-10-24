@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "ai.generate",
+  "description": "A template written by Foli AI.",
+  "args": {
+    "kind": "template",
+    "instruction": "A weekly review with wins, problems and next steps"
+  },
+  "result": {
+    "title": "Weekly review",
+    "text": "## Wins\n\n- \n\n## Problems\n\n- \n\n## Next steps\n\n- [ ] "
+  }
+}

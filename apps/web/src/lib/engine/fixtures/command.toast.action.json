@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "toast.action",
+  "description": "The toast's button was tapped.",
+  "args": {
+    "id": "t7"
+  },
+  "result": {
+    "ok": true
+  }
+}

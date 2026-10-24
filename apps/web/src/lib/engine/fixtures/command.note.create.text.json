@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "note.create",
+  "description": "A note from text (Services, Shortcuts): the first line is its title.",
+  "args": {
+    "text": "Groceries\nMilk\nRice",
+    "open": true
+  },
+  "result": {
+    "id": "doc_00130"
+  }
+}

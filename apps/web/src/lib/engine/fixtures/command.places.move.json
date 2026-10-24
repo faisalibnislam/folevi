@@ -1,0 +1,18 @@
+{
+  "kind": "command",
+  "name": "places.move",
+  "description": "Copy two folders to another account (progress as the placeMove gate).",
+  "args": {
+    "to": "acct:user_2|personal",
+    "folders": [
+      "fld_trips",
+      "fld_work"
+    ],
+    "copy": true
+  },
+  "result": {
+    "status": "done",
+    "notes": 19,
+    "problems": 0
+  }
+}

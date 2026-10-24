@@ -22,6 +22,7 @@ import { deviceWords } from "@/lib/shell/words";
 import type { CloudProvider, LibraryInfo, LibraryKind, ShellLibrary } from "@/lib/shell/types";
 import { useCloudStatus } from "@/lib/local/useLibrary";
 import { holdsLibrary, hostError, placeProblem, providerName, providerOf, rememberSetupIntent } from "@/lib/local/libraryPlace";
+import { NativeGate, type NativeGateAction } from "@/lib/engine/NativeGate";
 import { ChoiceButton, PRE_APP_PAGE, mobileApp, preAppBackground, preAppTitle, useSystemTheme } from "./ModeChoice";
 
 export const MIN_PASSPHRASE = 8;
@@ -246,6 +247,8 @@ export function LibrarySetup({ onDone, onBack }: { onDone: (result: { joining: b
   // A new library, set up and waiting for "Open Folevi" (and maybe a passphrase first).
   const [made, setMade] = useState<LibraryInfo | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const cloud = useCloudStatus();
+  const [nativeBusy, setNativeBusy] = useState(false);
 
   const pick = async (kind: LibraryKind, onConnecting: (p: CloudProvider | null) => void): Promise<string | null> => {
     if (!library) return "There's no library on this device to set up.";
@@ -261,8 +264,73 @@ export function LibrarySetup({ onDone, onBack }: { onDone: (result: { joining: b
     return null;
   };
 
+  const open = async (passphrase: string | null) => {
+    setFailed(null);
+    try {
+      if (passphrase && library) await library.setPassphrase(passphrase);
+      await onDone({ joining: false });
+    } catch (e) {
+      setFailed(hostError(e).message || "That didn't work. Try again.");
+    }
+  };
+
+  // Native chrome mode: native draws the place list and its buttons; each press runs the same setup, and
+  // `library.setup` shows the system folder picker (NSOpenPanel, UIDocumentPicker) for "Choose a folder".
+  const nativeRun = (fn: () => Promise<unknown>) => async () => {
+    setNativeBusy(true);
+    setFailed(null);
+    try {
+      await fn();
+    } finally {
+      setNativeBusy(false);
+    }
+  };
+  const nativeActions: NativeGateAction[] = made
+    ? [
+        {
+          id: "open",
+          label: "Open Folevi",
+          style: "primary",
+          enabled: !nativeBusy,
+          run: async (v) => {
+            const passphrase = v.passphrase?.trim() ? v.passphrase : null;
+            if (passphrase && passphrase.length < MIN_PASSPHRASE) return setFailed(`Use at least ${MIN_PASSPHRASE} characters.`);
+            await nativeRun(() => open(passphrase))();
+          },
+        },
+        { id: "elsewhere", label: "Choose another place", style: "quiet", enabled: !nativeBusy, run: () => setMade(null) },
+      ]
+    : [
+        ...places(cloud?.available ?? null).map(
+          (p): NativeGateAction => ({
+            id: `place:${p.kind}`,
+            label: p.title,
+            style: "secondary",
+            enabled: !nativeBusy,
+            run: nativeRun(async () => {
+              try {
+                const text = await pick(p.kind, () => undefined);
+                if (text) setFailed(text);
+              } catch (e) {
+                setFailed(placeProblem(p.kind, e));
+              }
+            }),
+          }),
+        ),
+        ...(onBack ? [{ id: "back", label: "Back", style: "quiet" as const, enabled: !nativeBusy, run: () => onBack() }] : []),
+      ];
+
   return (
     <main id="main" tabIndex={-1} data-pre-app="" className={`${PRE_APP_PAGE} ${preAppBackground()}`} data-testid="library-setup">
+      <NativeGate
+        gate="librarySetup"
+        title={made ? "Your library is ready" : "Where should your library live?"}
+        message={made ? `Folevi keeps your notes as files in ${made.displayPath}.` : ""}
+        busy={nativeBusy}
+        error={failed ? { code: "failed", message: failed } : null}
+        fields={made && passphraseHere() ? [{ id: "passphrase", kind: "secret", label: "Passphrase (optional)", placeholder: "" }] : []}
+        actions={nativeActions}
+      />
       <div className="grid w-full max-w-md gap-7">
         <div className="grid justify-items-center gap-5 text-center">
           <FoleviLogo height={26} className="text-ink" />
@@ -283,15 +351,7 @@ export function LibrarySetup({ onDone, onBack }: { onDone: (result: { joining: b
         {made ? (
           <NewLibrary
             info={made}
-            onOpen={async (passphrase) => {
-              setFailed(null);
-              try {
-                if (passphrase && library) await library.setPassphrase(passphrase);
-                await onDone({ joining: false });
-              } catch (e) {
-                setFailed(hostError(e).message || "That didn't work. Try again.");
-              }
-            }}
+            onOpen={open}
             onElsewhere={() => setMade(null)}
             failed={failed}
           />

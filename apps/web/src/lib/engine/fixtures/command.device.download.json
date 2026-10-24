@@ -1,0 +1,9 @@
+{
+  "kind": "command",
+  "name": "device.download",
+  "description": "Download everything now (the copy runs in the foreground).",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

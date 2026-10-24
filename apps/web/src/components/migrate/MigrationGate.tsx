@@ -16,6 +16,7 @@ import type { MigrationProblem, MigrationProgress, MigrationState } from "@/lib/
 import { forgetUpload, libraryCounts, markMigrated, preflightUpload, uploadLibrary, uploadState, type LibraryCounts, type Preflight } from "@/lib/migrate/uploadLibrary";
 import { fileSize } from "@/lib/migrate/remap";
 import { deviceWords } from "@/lib/shell/words";
+import type { GateProgress } from "@/lib/engine/protocol";
 
 /** Shows the move under way instead of the app, and the app once there's none. */
 export function MigrationGate({ children }: { children: ReactNode }) {
@@ -30,6 +31,11 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString
 function listOf(parts: (string | null)[]): string {
   const p = parts.filter((x): x is string => Boolean(x));
   return p.length <= 1 ? (p[0] ?? "") : `${p.slice(0, -1).join(", ")} and ${p[p.length - 1]}`;
+}
+
+/** The move's progress as the native apps show it. */
+function gateProgress(p: MigrationProgress | null, verb: string): GateProgress {
+  return { done: p?.notesDone ?? 0, total: p?.notesTotal ?? null, label: verb };
 }
 
 function Progress({ p, verb }: { p: MigrationProgress | null; verb: string }) {
@@ -199,7 +205,15 @@ function UploadToAccount({ move }: { move: Extract<PendingMove, { direction: "up
 
   if (error || phase.kind === "failed") {
     return (
-      <FullPageMessage title="The library couldn’t be opened" body={error ?? (phase.kind === "failed" ? phase.message : "")}>
+      <FullPageMessage
+        title="The library couldn’t be opened"
+        body={error ?? (phase.kind === "failed" ? phase.message : "")}
+        gate="migration"
+        actions={[
+          { id: "retry", label: "Try again", style: "primary", run: () => window.location.reload() },
+          { id: "back", label: "Back to my library", style: "secondary", run: () => backToLibrary() },
+        ]}
+      >
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" onClick={() => window.location.reload()}>
             Try again
@@ -209,12 +223,20 @@ function UploadToAccount({ move }: { move: Extract<PendingMove, { direction: "up
       </FullPageMessage>
     );
   }
-  if (phase.kind === "checking") return <FullPageMessage title="Getting your library ready…" busy />;
+  if (phase.kind === "checking") return <FullPageMessage title="Getting your library ready…" busy gate="migration" />;
   if (phase.kind === "ready") {
     const { counts, pre } = phase;
     return (
       <FullPageMessage
         title="Move your notes to Folevi"
+        gate="migration"
+        migration={{ direction: "upload", phase: "ready", notes: counts.notes, folders: counts.folders, tags: counts.tags, files: counts.files, fileBytes: counts.fileBytes, availableBytes: pre.availableBytes ?? null, fits: pre.fits, existingNotes: pre.existingNotes ?? 0, writable: pre.writable, versions }}
+        actions={[
+          { id: "move", label: "Move my notes into this account", style: "primary", enabled: Boolean(engine && lib && pre.writable), run: () => lib && void run(lib) },
+          { id: "versions", label: "Bring version history", style: "quiet", run: () => setVersions(!versions) },
+          { id: "keep", label: `Keep them separate on ${deviceWords().here}`, style: "secondary", run: () => openApp() },
+          { id: "back", label: "Back to my library", style: "quiet", run: () => backToLibrary() },
+        ]}
         body={
           <div className="space-y-3" data-testid="migration-summary">
             <p>{listOf([plural(counts.notes, "note"), counts.folders ? plural(counts.folders, "folder") : null, counts.tags ? plural(counts.tags, "tag") : null, counts.files ? `${plural(counts.files, "file")} (${fileSize(counts.fileBytes)})` : null])} go into your account, with the same links between them.</p>
@@ -250,7 +272,7 @@ function UploadToAccount({ move }: { move: Extract<PendingMove, { direction: "up
   }
   if (phase.kind === "moving") {
     return (
-      <FullPageMessage title="Moving your notes to Folevi" body="Keep Folevi open. If it closes, the move goes on from here next time.">
+      <FullPageMessage title="Moving your notes to Folevi" body="Keep Folevi open. If it closes, the move goes on from here next time." gate="migration" progress={gateProgress(progress, "Moving notes")} actions={[{ id: "stop", label: "Stop", run: () => abort.current?.abort() }]}>
         <Progress p={progress} verb="Moving notes" />
         <div className="mt-4">
           <Button onClick={() => abort.current?.abort()}>Stop</Button>
@@ -261,7 +283,14 @@ function UploadToAccount({ move }: { move: Extract<PendingMove, { direction: "up
   if (phase.kind === "stopped") {
     const done = phase.state ? Object.keys(phase.state.notes).length : 0;
     return (
-      <FullPageMessage title="The move stopped" body={<>{phase.message ? <p>{phase.message}</p> : null}<p className="mt-2">{plural(done, "note")} {done === 1 ? "is" : "are"} in your account so far. Going on picks up from there.</p></>}>
+      <FullPageMessage
+        title="The move stopped"
+        gate="migration"
+        actions={[
+          { id: "goOn", label: "Go on", style: "primary", enabled: Boolean(lib), run: () => lib && void run(lib) },
+          { id: "back", label: "Back to my library", run: () => backToLibrary() },
+        ]}
+        body={<>{phase.message ? <p>{phase.message}</p> : null}<p className="mt-2">{plural(done, "note")} {done === 1 ? "is" : "are"} in your account so far. Going on picks up from there.</p></>}>
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" disabled={!lib} onClick={() => lib && void run(lib)}>
             Go on
@@ -272,7 +301,7 @@ function UploadToAccount({ move }: { move: Extract<PendingMove, { direction: "up
     );
   }
   return (
-    <FullPageMessage title="Your notes are in Folevi" body={<><p>Everything from your library is in your account now. The library folder on {deviceWords().here} is still there, untouched.</p><Problems problems={phase.state.problems} /></>}>
+    <FullPageMessage title="Your notes are in Folevi" gate="migration" actions={[{ id: "open", label: "Open Folevi", style: "primary", run: () => openApp() }]} body={<><p>Everything from your library is in your account now. The library folder on {deviceWords().here} is still there, untouched.</p><Problems problems={phase.state.problems} /></>}>
       <Button variant="primary" onClick={() => void openApp()}>
         Open Folevi
       </Button>
@@ -331,7 +360,15 @@ function ExportToLibrary({ move }: { move: Extract<PendingMove, { direction: "ex
 
   if (error) {
     return (
-      <FullPageMessage title="The library couldn’t be opened" body={error}>
+      <FullPageMessage
+        title="The library couldn’t be opened"
+        body={error}
+        gate="migration"
+        actions={[
+          { id: "retry", label: "Try again", style: "primary", run: () => window.location.reload() },
+          { id: "cancel", label: "Cancel the move", run: () => cancel() },
+        ]}
+      >
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" onClick={() => window.location.reload()}>
             Try again
@@ -341,11 +378,16 @@ function ExportToLibrary({ move }: { move: Extract<PendingMove, { direction: "ex
       </FullPageMessage>
     );
   }
-  if (phase.kind === "starting") return <FullPageMessage title="Getting the library ready…" busy />;
-  if (phase.kind === "signing-out") return <FullPageMessage title={`Signing out of Folevi on ${deviceWords().here}…`} busy />;
+  if (phase.kind === "starting") return <FullPageMessage title="Getting the library ready…" busy gate="migration" />;
+  if (phase.kind === "signing-out") return <FullPageMessage title={`Signing out of Folevi on ${deviceWords().here}…`} busy gate="migration" />;
   if (phase.kind === "moving") {
     return (
-      <FullPageMessage title={`Bringing your notes to ${deviceWords().here}`} body={`Keep Folevi open. If it closes, this goes on from here next time.${progress?.place && progress.place !== "Personal" ? ` Now: ${progress.place}.` : ""}`}>
+      <FullPageMessage
+        title={`Bringing your notes to ${deviceWords().here}`}
+        gate="migration"
+        progress={gateProgress(progress, "Bringing notes")}
+        actions={[{ id: "stop", label: "Stop", run: () => abort.current?.abort() }]}
+        body={`Keep Folevi open. If it closes, this goes on from here next time.${progress?.place && progress.place !== "Personal" ? ` Now: ${progress.place}.` : ""}`}>
         <Progress p={progress} verb="Bringing notes" />
         <div className="mt-4">
           <Button onClick={() => abort.current?.abort()}>Stop</Button>
@@ -355,7 +397,14 @@ function ExportToLibrary({ move }: { move: Extract<PendingMove, { direction: "ex
   }
   if (phase.kind === "stopped") {
     return (
-      <FullPageMessage title="This stopped partway" body={<>{phase.message ? <p>{phase.message}</p> : null}<p className="mt-2">Nothing in your account changed. Going on picks up where it stopped.</p></>}>
+      <FullPageMessage
+        title="This stopped partway"
+        gate="migration"
+        actions={[
+          { id: "goOn", label: "Go on", style: "primary", enabled: Boolean(lib), run: () => lib && void run(lib) },
+          { id: "cancel", label: "Cancel", run: () => cancel() },
+        ]}
+        body={<>{phase.message ? <p>{phase.message}</p> : null}<p className="mt-2">Nothing in your account changed. Going on picks up where it stopped.</p></>}>
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" disabled={!lib} onClick={() => lib && void run(lib)}>
             Go on
@@ -368,6 +417,8 @@ function ExportToLibrary({ move }: { move: Extract<PendingMove, { direction: "ex
   return (
     <FullPageMessage
       title={`Your notes are on ${deviceWords().here}`}
+      gate="migration"
+      actions={[{ id: "finish", label: "Sign out and open my library", style: "primary", run: () => finish() }]}
       body={
         <>
           <p>Every note, folder, tag and file is in the library now. Comments, sharing and workspace members stay in your account; a record of them is in the library’s “exported” folder.</p>

@@ -1,0 +1,26 @@
+{
+  "kind": "view",
+  "name": "members",
+  "description": "A workspace's members, for assigning tasks.",
+  "args": {
+    "space": "ws_studio"
+  },
+  "value": {
+    "members": [
+      {
+        "id": "prof_1",
+        "name": "Faisal",
+        "email": "faisal@example.com",
+        "role": "admin",
+        "isYou": true
+      },
+      {
+        "id": "prof_2",
+        "name": "Maya",
+        "email": "maya@example.com",
+        "role": "member",
+        "isYou": false
+      }
+    ]
+  }
+}

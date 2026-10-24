@@ -449,3 +449,19 @@ describe("POST /webhooks/resend (received email)", () => {
     expect(await tickets(t)).toHaveLength(0);
   });
 });
+
+describe("requests from the apps (submitFromApp)", () => {
+  test("filed under the session's account, validated, rate limited per account", async () => {
+    const t = setup();
+    const p = await person(t, "app-reader@example.com");
+    expect(await codeOf(t.mutation(api.support.submitFromApp, { name: "A", topic: "sync", message: "Hello there, it broke." }))).not.toBeUndefined();
+    const r = await p.as.mutation(api.support.submitFromApp, { name: "", topic: "sync", message: "My notes didn't sync after I came back online." });
+    expect(r.number).toBeGreaterThan(0);
+    const [ticket] = await tickets(t);
+    expect(ticket).toMatchObject({ requesterEmail: "app-reader@example.com", source: "in_app", profileId: p.profileId });
+    expect(await codeOf(p.as.mutation(api.support.submitFromApp, { name: "A", topic: "telepathy", message: "My notes didn't sync." }))).toBe("invalid_argument");
+    let last: string | undefined;
+    for (let i = 0; i < 6 && last !== "rate_limited"; i++) last = await codeOf(p.as.mutation(api.support.submitFromApp, { name: "A", topic: "sync", message: `Still broken, attempt ${i}.` }));
+    expect(last).toBe("rate_limited");
+  });
+});

@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "ai.saveAsNote",
+  "description": "Save an answer as a note.",
+  "args": {
+    "conversationId": "conv_1",
+    "messageId": "msg_2"
+  },
+  "result": {
+    "id": "doc_00120"
+  }
+}

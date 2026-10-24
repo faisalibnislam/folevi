@@ -33,6 +33,8 @@ enum Events {
     /// A command for the page (foleviDesktop.onCommand): { type: "navigate", path }, { type: "new-note" }, ...
     @MainActor
     static func command(_ command: [String: Any], to view: FoleviWebView) {
+        // A window with the native frame does what it can itself (Frame/NativeFrame.swift).
+        if NativeFrame.handle(command, to: view) { return }
         view.events.emit("FoleviDesktop", "command", command)
     }
 }

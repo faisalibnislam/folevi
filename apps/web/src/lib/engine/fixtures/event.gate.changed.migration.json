@@ -1,0 +1,51 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "Signed in from a library: move the notes into the account, or keep them separate.",
+  "data": {
+    "gate": "migration",
+    "title": "Move your notes to Folevi",
+    "message": "Your library folder stays as it is either way.",
+    "busy": false,
+    "actions": [
+      {
+        "id": "move",
+        "label": "Move my notes into this account",
+        "style": "primary",
+        "enabled": true
+      },
+      {
+        "id": "keep",
+        "label": "Keep them separate on this iPhone",
+        "style": "secondary",
+        "enabled": true
+      },
+      {
+        "id": "back",
+        "label": "Back to my library",
+        "style": "quiet",
+        "enabled": true
+      }
+    ],
+    "fields": [],
+    "progress": null,
+    "migration": {
+      "direction": "upload",
+      "phase": "ready",
+      "notes": 412,
+      "folders": 9,
+      "tags": 4,
+      "files": 37,
+      "fileBytes": 182000000,
+      "availableBytes": 10000000000,
+      "fits": true,
+      "existingNotes": 0,
+      "writable": true,
+      "versions": true
+    },
+    "deviceLimit": null,
+    "e2ee": null,
+    "onboarding": null,
+    "error": null
+  }
+}

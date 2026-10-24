@@ -1,0 +1,11 @@
+{
+  "kind": "editor",
+  "name": "block.move",
+  "description": "Move the block up.",
+  "args": {
+    "dir": "up"
+  },
+  "result": {
+    "ok": true
+  }
+}

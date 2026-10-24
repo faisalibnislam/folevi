@@ -57,7 +57,7 @@ extension FoleviViewController {
 
     /// Hands a shortcut to the page (on Folevi's own pages only).
     func press(_ shortcut: FoleviShortcut) {
-        guard let webView, let page = webView.url, let server = bridge?.config.serverURL, AppOrigin.of(page) == AppOrigin.of(server) else { return }
+        guard let webView, let page = webView.url, let server = bridge?.serverURL, AppOrigin.of(page) == AppOrigin.of(server) else { return }
         webView.evaluateJavaScript(shortcut.script)
     }
 }

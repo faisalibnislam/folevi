@@ -1,0 +1,11 @@
+{
+  "kind": "editor",
+  "name": "insert",
+  "description": "Type / at the caret: the slash menu opens.",
+  "args": {
+    "kind": "slash"
+  },
+  "result": {
+    "ok": true
+  }
+}

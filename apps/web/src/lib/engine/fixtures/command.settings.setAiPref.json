@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "settings.setAiPref",
+  "description": "Turn Foli AI's memory off.",
+  "args": {
+    "key": "memory",
+    "on": false
+  },
+  "result": {
+    "ok": true
+  }
+}

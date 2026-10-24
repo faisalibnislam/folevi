@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "settings.setNotificationEmails",
+  "description": "A daily digest email.",
+  "args": {
+    "digest": "daily"
+  },
+  "result": {
+    "ok": true
+  }
+}

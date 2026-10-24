@@ -1,0 +1,13 @@
+{
+  "kind": "view",
+  "name": "calendar.feed",
+  "description": "A calendar feed link exists (its link was shown once, when made).",
+  "args": {},
+  "value": {
+    "active": true,
+    "url": null,
+    "createdAt": 1790240400000,
+    "lastFetchedAt": 1792828800000,
+    "includeWorkspaces": true
+  }
+}

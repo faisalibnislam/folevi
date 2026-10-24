@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "session.revoke",
+  "description": "Sign out another device.",
+  "args": {
+    "id": "sess_2"
+  },
+  "result": {
+    "ok": true
+  }
+}

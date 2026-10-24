@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "note.create",
+  "description": "A new note from a built-in template, opened in the page at once.",
+  "args": {
+    "templateId": "builtin:meeting",
+    "open": true
+  },
+  "result": {
+    "id": "01JB7Z8K3Q4ABCDEF0123456790"
+  }
+}

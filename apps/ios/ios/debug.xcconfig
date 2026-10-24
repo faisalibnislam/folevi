@@ -1,1 +1,2 @@
-CAPACITOR_DEBUG = true
+// Debug-only build settings for the app and its extensions (none at the moment; CAPACITOR_DEBUG went with
+// Capacitor, docs/NATIVE_APP_PLAN.md N1).

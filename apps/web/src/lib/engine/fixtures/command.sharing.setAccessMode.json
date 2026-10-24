@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "sharing.setAccessMode",
+  "description": "Only the people listed.",
+  "args": {
+    "noteId": "doc_00002",
+    "mode": "restricted"
+  },
+  "result": {
+    "ok": true
+  }
+}

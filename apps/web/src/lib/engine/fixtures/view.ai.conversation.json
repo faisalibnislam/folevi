@@ -1,0 +1,180 @@
+{
+  "kind": "view",
+  "name": "ai.conversation",
+  "description": "A conversation: a question, a cited answer with a proposed note, and an answer still streaming.",
+  "args": {
+    "conversationId": "conv_1"
+  },
+  "value": {
+    "found": true,
+    "conversation": {
+      "id": "conv_1",
+      "title": "Trip planning",
+      "pinned": true,
+      "ephemeral": false,
+      "space": "personal",
+      "context": "folder",
+      "shared": false,
+      "canShare": false,
+      "createdAt": 1791968400000,
+      "lastMessageAt": 1792832400000
+    },
+    "messages": [
+      {
+        "id": "msg_1",
+        "role": "user",
+        "text": "What's left to book for Kyoto?",
+        "status": "done",
+        "live": false,
+        "phase": null,
+        "error": null,
+        "citations": [],
+        "webCitations": [],
+        "suggestions": [],
+        "credits": null,
+        "attachments": [],
+        "actions": [],
+        "actionsOutcome": null,
+        "agentSteps": [],
+        "agentMore": false,
+        "memory": null,
+        "createdAt": 1792832280000,
+        "agentRun": null
+      },
+      {
+        "id": "msg_2",
+        "role": "assistant",
+        "text": "The rail pass is still open [1]. Want a packing list?",
+        "status": "done",
+        "live": false,
+        "phase": null,
+        "error": null,
+        "citations": [
+          {
+            "n": 1,
+            "noteId": "doc_00001",
+            "title": "Kyoto in November",
+            "blockId": "blk_rail"
+          }
+        ],
+        "webCitations": [],
+        "suggestions": [
+          "Make a packing list"
+        ],
+        "credits": 2,
+        "attachments": [],
+        "actions": [
+          {
+            "type": "createNote",
+            "title": "Packing list",
+            "markdown": "- Passport\n- Rail pass",
+            "noteId": null,
+            "folderId": "fld_trips",
+            "folderName": "Trips"
+          }
+        ],
+        "actionsOutcome": null,
+        "agentSteps": [],
+        "agentMore": false,
+        "memory": {
+          "kind": "length",
+          "text": "Keeps answers short",
+          "status": "proposed"
+        },
+        "createdAt": 1792832290000,
+        "agentRun": null
+      },
+      {
+        "id": "msg_3",
+        "role": "user",
+        "text": "Yes, and what's the weather like?",
+        "status": "done",
+        "live": false,
+        "phase": null,
+        "error": null,
+        "citations": [],
+        "webCitations": [],
+        "suggestions": [],
+        "credits": null,
+        "attachments": [],
+        "actions": [],
+        "actionsOutcome": null,
+        "agentSteps": [],
+        "agentMore": false,
+        "memory": null,
+        "createdAt": 1792832390000,
+        "agentRun": null
+      },
+      {
+        "id": "msg_3b",
+        "role": "assistant",
+        "text": "I can add the packing list to Kyoto in November.",
+        "status": "done",
+        "live": false,
+        "phase": null,
+        "error": null,
+        "citations": [],
+        "webCitations": [],
+        "suggestions": [],
+        "credits": 3,
+        "attachments": [],
+        "actions": [],
+        "actionsOutcome": null,
+        "agentSteps": [
+          {
+            "tool": "read_note",
+            "count": 1,
+            "ok": true
+          }
+        ],
+        "agentMore": false,
+        "memory": null,
+        "createdAt": 1792832390500,
+        "agentRun": {
+          "id": "run_1",
+          "status": "preview",
+          "operations": [
+            {
+              "id": "op_1",
+              "kind": "edit_note",
+              "summary": "Add a packing list",
+              "status": "pending",
+              "error": null,
+              "noteId": "doc_00001",
+              "noteTitle": "Kyoto in November",
+              "markdown": null,
+              "edits": [
+                {
+                  "action": "insert",
+                  "before": "",
+                  "after": "- Passport\n- Rail pass"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "msg_4",
+        "role": "assistant",
+        "text": "",
+        "status": "streaming",
+        "live": true,
+        "phase": "Searching the web",
+        "error": null,
+        "citations": [],
+        "webCitations": [],
+        "suggestions": [],
+        "credits": null,
+        "attachments": [],
+        "actions": [],
+        "actionsOutcome": null,
+        "agentSteps": [],
+        "agentMore": false,
+        "memory": null,
+        "createdAt": 1792832391000,
+        "agentRun": null
+      }
+    ]
+  }
+}

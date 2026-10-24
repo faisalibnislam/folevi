@@ -1,0 +1,9 @@
+{
+  "kind": "editor",
+  "name": "dismissKeyboard",
+  "description": "Put the keyboard away.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

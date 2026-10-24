@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "publicLink.setTheme",
+  "description": "Change a link's look.",
+  "args": {
+    "linkId": "lnk_1",
+    "theme": "minimal"
+  },
+  "result": {
+    "ok": true
+  }
+}

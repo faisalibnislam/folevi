@@ -1,0 +1,12 @@
+{
+  "kind": "view",
+  "name": "settings.account",
+  "description": "Settings > Account.",
+  "args": {},
+  "value": {
+    "name": "Faisal",
+    "email": "faisal@example.com",
+    "avatarUrl": null,
+    "timeZone": "Asia/Dhaka"
+  }
+}

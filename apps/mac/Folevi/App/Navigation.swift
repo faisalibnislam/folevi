@@ -8,6 +8,7 @@
 import AppKit
 import UniformTypeIdentifiers
 import WebKit
+import FoleviEngine
 
 @MainActor
 final class Navigation: NSObject, WKNavigationDelegate, WKUIDelegate {
@@ -43,6 +44,11 @@ final class Navigation: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        // A Page View loading again (a reload, a recovery): its engine client resubscribes once it's back.
+        if let view = webView as? FoleviWebView, view.nativeFrame, view.loaded { lifecycle(view, .reloading) }
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard let view = webView as? FoleviWebView, !view.loaded, Links.isAppUrl(webView.url ?? URL(fileURLWithPath: "/")) else { return }
         view.loaded = true
@@ -70,7 +76,14 @@ final class Navigation: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         // The page's process ended (memory pressure, a crash): it starts again where it was.
+        if let view = webView as? FoleviWebView, view.nativeFrame { lifecycle(view, .terminated) }
         webView.reload()
+    }
+
+    /// A Page View's reload or ended process, to whoever holds its engine client: the Quick Add panel's own page,
+    /// or a main window's frame.
+    private func lifecycle(_ view: FoleviWebView, _ event: PageLifecycle) {
+        if view.role == .quickAdd { QuickAddPanel.shared.pageEvent(view, event) } else { NativeFrame.pageEvent(view, event) }
     }
 
     // MARK: new windows, permissions, panels

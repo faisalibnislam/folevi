@@ -163,6 +163,8 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
             key.performClose(nil)
             return
         }
+        // A window with the native frame runs its commands natively (Frame/NativeFrame.swift).
+        if let frame = NativeFrame.controller(for: Chrome.keyMainView), FrameCommands.run(id, frame: frame) { return }
         if let view = Chrome.keyMainView {
             // Find in a page that has no find bar of its own: the system's (WKWebView is a text finder client).
             if let action = Self.finderActions[id], Chrome.states[ObjectIdentifier(view)]?.find != true {
@@ -240,7 +242,23 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
         guard let id = item.representedObject as? String else { return true }
         let base = id.hasSuffix(".alt") ? String(id.dropLast(4)) : id
         let view = Chrome.keyMainView
-        let state = view.flatMap { Chrome.states[ObjectIdentifier($0)] } ?? PageState()
+        var state = view.flatMap { Chrome.states[ObjectIdentifier($0)] } ?? PageState()
+        let frame = NativeFrame.controller(for: view)
+        if let frame {
+            // The framed window's state: its sidebar, the note's focus mode and lock, the list's layout, the theme.
+            state.sidebar = !frame.model.sidebarCollapsed
+            state.focus = frame.model.focusMode
+            state.locked = frame.model.noteLocked
+            var checked = Set<String>()
+            if let cards = frame.root.split.content.listShowsCards { checked.insert(cards ? "view.cards" : "view.list") }
+            switch frame.model.session.value?.appearance {
+            case .light?: checked.insert("view.appearance-light")
+            case .dark?: checked.insert("view.appearance-dark")
+            case .system?: checked.insert("view.appearance-system")
+            case nil: break
+            }
+            state.checked = checked
+        }
         item.state = state.checked.contains(base) ? .on : .off
         switch base {
         case "view.sidebar": item.title = state.sidebar == false ? "Show Sidebar" : "Hide Sidebar"
@@ -256,6 +274,7 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
         case .page(let command):
             if command == "file.close-tab" { return NSApp.keyWindow != nil || view != nil }
             if spec.needsWindow && view == nil { return false }
+            if let frame, let on = FrameCommands.isEnabled(command, frame: frame) { return on }
             return !state.disabled.contains(command)
         case .app(let command):
             switch command {

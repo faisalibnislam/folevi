@@ -1,0 +1,28 @@
+{
+  "kind": "view",
+  "name": "sync.status",
+  "description": "Offline with changes waiting; the encrypted workspace's copy still downloading.",
+  "args": {},
+  "value": {
+    "state": "offline",
+    "label": "Offline",
+    "pending": 4,
+    "conflicts": 0,
+    "online": false,
+    "authRequired": false,
+    "spaces": [
+      {
+        "space": "personal",
+        "state": "ready",
+        "have": 0,
+        "total": null
+      },
+      {
+        "space": "ws_vault",
+        "state": "downloading",
+        "have": 412,
+        "total": 1530
+      }
+    ]
+  }
+}

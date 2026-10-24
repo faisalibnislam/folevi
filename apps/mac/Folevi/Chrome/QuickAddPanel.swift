@@ -7,8 +7,16 @@
 // picking another place there opens it again in that place. Its page is made when it's first opened and let go a
 // while after it closes (`releaseAfter`, docs/MAC_WEBKIT_PLAN.md "Memory": 60 MB otherwise kept all day), unless
 // something is still in its field or it has no connection (an offline task waits in its page's queue).
+//
+// With the native frame (NativeFrame.enabled, plan 5.12) the field is native: FoleviScreens' QuickAddView (the one
+// growing field, natural-language chips, the place it goes, Return / Shift-Return / Command-Return) over the same
+// material, talking to the Quick Add place's engine in this panel's page (a Page View in native chrome mode, kept
+// hidden). What can't reach an engine waits in QuickAddQueue on this Mac and goes when the page is ready.
 import AppKit
+import SwiftUI
 import WebKit
+import FoleviEngine
+import FoleviScreens
 
 final class QuickAddWindow: NSPanel {
     override var canBecomeKey: Bool { true }
@@ -49,6 +57,11 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
     /// Whether the page's field has the keyboard (false while a new page is on its way); keys wait in `held`.
     private(set) var ready = false
     private var held: [NSEvent] = []
+    /// The native field (with the native frame) and what drives it.
+    private var nativeHost: NSHostingView<AnyView>?
+    private var nativeModel: QuickAddModel?
+    private var nativeTransport: MacEngineTransport?
+    private static let nativeQueue = QuickAddQueue()
 
     /// How long its page stays after it closes (FOLEVI_QUICK_ADD_RELEASE seconds for test runs).
     static let releaseAfter: TimeInterval = ProcessInfo.processInfo.environment["FOLEVI_QUICK_ADD_RELEASE"].flatMap(TimeInterval.init).map { max(1, $0) } ?? 60
@@ -79,7 +92,7 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         position(panel)
         panel.alphaValue = 1
         panel.makeKeyAndOrderFront(nil)
-        if let view { panel.makeFirstResponder(view) }
+        if let first = nativeHost ?? view { panel.makeFirstResponder(first) }
         if let view { Chrome.whenLoaded(view) { Events.command(["type": "quick-add-shown"], to: $0) } }
     }
 
@@ -111,6 +124,15 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
     func releaseNow() {
         release = nil
         guard let view, !isShown else { return }
+        if let model = nativeModel {
+            // Something typed, or something still waiting for the engine: keep the page.
+            guard model.trimmed.isEmpty, model.queue.count == 0 else { return releaseLater() }
+            stopNative()
+            view.load(URLRequest(url: URL(string: "about:blank")!))
+            view.removeFromSuperview()
+            self.view = nil
+            return
+        }
         view.callAsyncJavaScript("const f = document.getElementById('qa-title'); return navigator.onLine && !(f && f.value.trim());", arguments: [:], in: nil, in: .page) { result in
             MainActor.assumeIsolated {
                 let q = QuickAddPanel.shared
@@ -190,7 +212,9 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         let place = self.place
         let path = place.map { "/quick-add?place=\($0.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")" } ?? "/quick-add"
         let old = view
-        let next = WebViewFactory.make(place: place, role: .quickAdd, bootstrap: WindowManager.shared.bootstrapOf(place, .quickAdd), frame: content.bounds, window: { [weak panel] in panel })
+        let native = NativeFrame.enabled
+        stopNative()
+        let next = WebViewFactory.make(place: place, role: .quickAdd, bootstrap: WindowManager.shared.bootstrapOf(place, .quickAdd), frame: content.bounds, nativeFrame: native, window: { [weak panel] in panel })
         next.autoresizingMask = [.width, .height]
         next.wantsLayer = true
         next.layer?.cornerRadius = Self.radius
@@ -199,10 +223,65 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         old?.removeFromSuperview()
         content.addSubview(next)
         view = next
+        if native {
+            next.configuration.userContentController.addUserScript(FrameController.markerScript(place: place))
+            next.isHidden = true
+            next.load(URLRequest(url: Links.appURL("/native")))
+            startNative(next, place: place, in: content)
+            ready = true
+            held = []
+            return
+        }
         next.load(URLRequest(url: Links.appURL(path)))
         ready = false
         held = []
         watchReady(next, until: Date().addingTimeInterval(5))
+    }
+
+    /// The native field over the material, on an engine client for this panel's hidden page.
+    private func startNative(_ page: FoleviWebView, place: String?, in content: NSView) {
+        let transport = MacEngineTransport(view: page)
+        let client = EngineClient(transport: transport, place: place ?? "", app: AppInfo(platform: .macos, version: Paths.version, build: Paths.build, protocol: EngineContract.protocolVersion, schemaHash: EngineContract.schemaHash))
+        let model = QuickAddModel(client: client, queue: Self.nativeQueue)
+        model.onSaved = { _, open in
+            QuickAddPanel.shared.hide()
+            if open { WindowManager.shared.showMain() }
+        }
+        client.start()
+        let root = AnyView(
+            QuickAddView(model: model, style: .panel, close: { QuickAddPanel.shared.hide() })
+                .fixedSize(horizontal: false, vertical: true)
+                .background(GeometryReader { g in
+                    Color.clear
+                        .onAppear { QuickAddPanel.shared.size(height: g.size.height) }
+                        .onChange(of: g.size.height) { _, h in QuickAddPanel.shared.size(height: h) }
+                })
+                .frame(maxHeight: .infinity, alignment: .top)
+        )
+        let host = NSHostingView(rootView: root)
+        host.frame = content.bounds
+        host.autoresizingMask = [.width, .height]
+        content.addSubview(host)
+        nativeHost = host
+        nativeModel = model
+        nativeTransport = transport
+        panel?.makeFirstResponder(host)
+    }
+
+    /// Its hidden Page View started loading again or its content process ended (Navigation.swift): the native
+    /// field's engine client resubscribes once the page is back, as a main window's frame does (R14.5).
+    func pageEvent(_ page: FoleviWebView, _ event: PageLifecycle) {
+        guard page === view, let transport = nativeTransport else { return }
+        transport.pageEvent(event)
+    }
+
+    private func stopNative() {
+        nativeModel?.stop()
+        nativeTransport?.detach()
+        nativeHost?.removeFromSuperview()
+        nativeHost = nil
+        nativeModel = nil
+        nativeTransport = nil
     }
 
     /// Once the new page's field has the keyboard, the keys typed meanwhile go to it, in order.

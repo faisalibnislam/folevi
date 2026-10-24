@@ -1,0 +1,18 @@
+{
+  "kind": "command",
+  "name": "note.move",
+  "description": "Move a note to Drafts while offline: queued.",
+  "args": {
+    "ids": [
+      "doc_00001"
+    ],
+    "folderId": null
+  },
+  "result": {
+    "done": [
+      "doc_00001"
+    ],
+    "skipped": 0,
+    "queued": true
+  }
+}

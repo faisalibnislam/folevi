@@ -9,7 +9,6 @@
 // if another app had (no "Open in Folevi?" prompt), and focusing a text field from a script raises the
 // keyboard (WebKit's input delegate, which only these builds set).
 #if DEBUG && targetEnvironment(simulator)
-import Capacitor
 import Foundation
 import UIKit
 import WebKit
@@ -37,8 +36,8 @@ enum SimulatorEval {
         try? FileManager.default.removeItem(at: out)
         guard let webView, let script = try? String(contentsOf: tmp.appendingPathComponent("eval.js"), encoding: .utf8) else { return }
         if script.hasPrefix("//open "), let url = URL(string: String(script.dropFirst(7)).trimmingCharacters(in: .whitespacesAndNewlines)) {
-            let opened = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: url, options: [:])
-            try? JSONSerialization.data(withJSONObject: ["value": opened]).write(to: out)
+            MainActor.assumeIsolated { DeepLinkRouter.open(url) }
+            try? JSONSerialization.data(withJSONObject: ["value": true]).write(to: out)
             return
         }
         webView.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { result in

@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "ai.edit",
+  "description": "Change a question and answer again.",
+  "args": {
+    "conversationId": "conv_1",
+    "messageId": "msg_3",
+    "text": "What's the weather in late November?"
+  },
+  "result": {
+    "conversationId": "conv_1",
+    "messageId": null
+  }
+}

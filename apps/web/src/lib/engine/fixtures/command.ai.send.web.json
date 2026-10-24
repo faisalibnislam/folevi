@@ -1,0 +1,15 @@
+{
+  "kind": "command",
+  "name": "ai.send",
+  "description": "A question in an existing conversation, searching the web.",
+  "args": {
+    "conversationId": "conv_1",
+    "text": "And the weather?",
+    "web": true,
+    "mode": "ask"
+  },
+  "result": {
+    "conversationId": "conv_1",
+    "messageId": null
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "kind": "view",
+  "name": "session",
+  "description": "Local mode: the library on this device, no sharing, Changes or workspaces.",
+  "args": {},
+  "value": {
+    "place": "library",
+    "mode": "local",
+    "profile": {
+      "id": "local",
+      "name": "You",
+      "email": "",
+      "avatarUrl": null
+    },
+    "spaces": [
+      {
+        "id": "personal",
+        "kind": "personal",
+        "name": "Personal",
+        "role": "owner",
+        "canEdit": true,
+        "canManage": false,
+        "encrypted": false,
+        "locked": false,
+        "canLock": false,
+        "level": "standard"
+      }
+    ],
+    "space": "personal",
+    "online": false,
+    "today": "2026-10-24",
+    "timeZone": "Europe/London",
+    "appearance": "dark",
+    "capabilities": {
+      "graph": false,
+      "sharing": false,
+      "changes": false,
+      "workspaces": false,
+      "ai": false,
+      "purchases": false
+    }
+  }
+}

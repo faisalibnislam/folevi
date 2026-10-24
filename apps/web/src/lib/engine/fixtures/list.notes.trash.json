@@ -1,0 +1,184 @@
+{
+  "kind": "list",
+  "name": "notes.list",
+  "description": "Trash, with when each note went there.",
+  "args": {
+    "view": "trash"
+  },
+  "window": {
+    "start": 0,
+    "count": 50
+  },
+  "updates": [
+    {
+      "kind": "update",
+      "sub": "s1",
+      "rev": 1,
+      "diff": {
+        "reset": true,
+        "total": 2,
+        "complete": true,
+        "start": 0,
+        "order": [
+          "doc_00004",
+          "doc_00005"
+        ],
+        "upsert": {
+          "doc_00004": {
+            "id": "doc_00004",
+            "title": "Sourdough notes",
+            "icon": "🗺️",
+            "kind": "document",
+            "excerpt": "Sourdough notes. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Sourdough notes. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "none"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1789981200000,
+            "updatedAt": 1792821600000,
+            "folder": null,
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": true,
+            "deletedAt": 1792659600000,
+            "sync": "saved",
+            "h": "77d34ce9"
+          },
+          "doc_00005": {
+            "id": "doc_00005",
+            "title": "Interview loop",
+            "icon": null,
+            "kind": "document",
+            "excerpt": "Interview loop. First lines of the note.",
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Interview loop. First lines of the note."
+              }
+            ],
+            "cover": {
+              "kind": "theme",
+              "value": "art-55"
+            },
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "starred": false,
+            "createdAt": 1789894800000,
+            "updatedAt": 1792818000000,
+            "folder": {
+              "id": "fld_work",
+              "name": "Work",
+              "color": null
+            },
+            "tags": [],
+            "encrypted": false,
+            "archived": false,
+            "inTrash": true,
+            "deletedAt": 1792400400000,
+            "sync": "saved",
+            "h": "6430b722"
+          }
+        }
+      }
+    }
+  ],
+  "expected": {
+    "total": 2,
+    "complete": true,
+    "start": 0,
+    "rows": [
+      {
+        "id": "doc_00004",
+        "title": "Sourdough notes",
+        "icon": "🗺️",
+        "kind": "document",
+        "excerpt": "Sourdough notes. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Sourdough notes. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "none"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1789981200000,
+        "updatedAt": 1792821600000,
+        "folder": null,
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": true,
+        "deletedAt": 1792659600000,
+        "sync": "saved",
+        "h": "77d34ce9"
+      },
+      {
+        "id": "doc_00005",
+        "title": "Interview loop",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Interview loop. First lines of the note.",
+        "preview": [
+          {
+            "t": "paragraph",
+            "x": "Interview loop. First lines of the note."
+          }
+        ],
+        "cover": {
+          "kind": "theme",
+          "value": "art-55"
+        },
+        "style": {
+          "font": "modern",
+          "width": "normal",
+          "background": "paper",
+          "accent": "ember",
+          "card": "plain"
+        },
+        "starred": false,
+        "createdAt": 1789894800000,
+        "updatedAt": 1792818000000,
+        "folder": {
+          "id": "fld_work",
+          "name": "Work",
+          "color": null
+        },
+        "tags": [],
+        "encrypted": false,
+        "archived": false,
+        "inTrash": true,
+        "deletedAt": 1792400400000,
+        "sync": "saved",
+        "h": "6430b722"
+      }
+    ]
+  }
+}

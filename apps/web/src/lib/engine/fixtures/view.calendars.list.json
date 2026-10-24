@@ -1,0 +1,32 @@
+{
+  "kind": "view",
+  "name": "calendars.list",
+  "description": "Subscribed calendars, one failing.",
+  "args": {},
+  "value": {
+    "calendars": [
+      {
+        "id": "cal1",
+        "name": "Work",
+        "url": "https://calendar.example.com/work.ics",
+        "color": "accent",
+        "visible": true,
+        "lastFetchedAt": 1792831800000,
+        "lastError": null,
+        "eventCount": 120,
+        "loading": false
+      },
+      {
+        "id": "cal2",
+        "name": "Holidays",
+        "url": "https://calendar.example.com/bd.ics",
+        "color": "moss",
+        "visible": false,
+        "lastFetchedAt": 1792746000000,
+        "lastError": "The calendar's server didn't answer.",
+        "eventCount": 40,
+        "loading": false
+      }
+    ]
+  }
+}

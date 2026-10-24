@@ -1,0 +1,9 @@
+{
+  "kind": "editor",
+  "name": "focus",
+  "description": "Put the caret back in the note.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

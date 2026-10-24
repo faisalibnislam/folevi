@@ -1,0 +1,12 @@
+{
+  "kind": "editor",
+  "name": "insets",
+  "description": "The native bars' sizes.",
+  "args": {
+    "top": 96,
+    "bottom": 44
+  },
+  "result": {
+    "ok": true
+  }
+}

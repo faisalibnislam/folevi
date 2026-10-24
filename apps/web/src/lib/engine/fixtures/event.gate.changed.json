@@ -1,0 +1,19 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "Signed in and ready: no gate.",
+  "data": {
+    "gate": null,
+    "title": "",
+    "message": "",
+    "busy": false,
+    "actions": [],
+    "fields": [],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": null,
+    "e2ee": null,
+    "onboarding": null,
+    "error": null
+  }
+}

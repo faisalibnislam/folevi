@@ -143,7 +143,7 @@ export function ShellSignIn() {
       </main>
     );
   return (
-    <FullPageMessage title="Sign in to Folevi" body={body}>
+    <FullPageMessage title="Sign in to Folevi" body={body} gate="signedOut">
       <div className="grid gap-3" data-testid="shell-sign-in">
         {choices}
         <Button variant="ghost" className={MAC_BUTTON} onClick={() => void keepLocally()}>

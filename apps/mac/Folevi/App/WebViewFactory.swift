@@ -18,13 +18,17 @@ final class FoleviWebView: WKWebView {
     let events = ViewEvents()
     /// Set once the first page finished loading (links and commands wait for it).
     var loaded = false
+    /// The window's Page View inside the native frame (N8): the page is in native chrome mode and the app draws
+    /// the window's chrome, so the page's title bar reports (button spots, drag areas, title) don't apply.
+    let nativeFrame: Bool
 
     /// WM2 (TitleBar.swift): a mouse down the window takes (a drag area of the page's top bar). True when taken.
     var mouseDownHook: ((FoleviWebView, NSEvent) -> Bool)?
 
-    init(frame: NSRect, configuration: WKWebViewConfiguration, place: String?, role: ViewRole) {
+    init(frame: NSRect, configuration: WKWebViewConfiguration, place: String?, role: ViewRole, nativeFrame: Bool = false) {
         self.place = place
         self.role = role
+        self.nativeFrame = nativeFrame
         super.init(frame: frame, configuration: configuration)
         events.view = self
     }
@@ -85,7 +89,7 @@ enum WebViewFactory {
         return "\(scheme)://\(host)\(url.port.map { ":\($0)" } ?? "")"
     }
 
-    static func make(place: String?, role: ViewRole, bootstrap: Bootstrap, frame: NSRect = .zero, window: @escaping () -> NSWindow?) -> FoleviWebView {
+    static func make(place: String?, role: ViewRole, bootstrap: Bootstrap, frame: NSRect = .zero, nativeFrame: Bool = false, window: @escaping () -> NSWindow?) -> FoleviWebView {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = Paths.dataStore
         config.setURLSchemeHandler(scheme, forURLScheme: AppScheme.scheme)
@@ -104,7 +108,7 @@ enum WebViewFactory {
         for list in rules + (rulesFor?(place, role) ?? []) { ucc.add(list) }
         config.userContentController = ucc
 
-        let view = FoleviWebView(frame: frame, configuration: config, place: place, role: role)
+        let view = FoleviWebView(frame: frame, configuration: config, place: place, role: role, nativeFrame: nativeFrame)
         let router = MessageRouter(context: BridgeContext(
             place: { [weak view] in view?.place },
             window: { [weak view] in view?.window ?? window() },

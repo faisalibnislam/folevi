@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "folder.create",
+  "description": "A subfolder (queued in the outbox, works offline).",
+  "args": {
+    "name": "Kyoto",
+    "parentId": "fld_japan",
+    "color": null
+  },
+  "result": {
+    "id": "01JB7Z9M2W8ABCDEF0123456789"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "note.duplicate",
+  "description": "Duplicate a note.",
+  "args": {
+    "id": "doc_00001"
+  },
+  "result": {
+    "id": "doc_00099"
+  }
+}

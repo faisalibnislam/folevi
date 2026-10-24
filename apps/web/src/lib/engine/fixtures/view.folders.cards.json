@@ -1,0 +1,51 @@
+{
+  "kind": "view",
+  "name": "folders.cards",
+  "description": "A folder's subfolders as cards.",
+  "args": {
+    "parentId": "fld_trips"
+  },
+  "value": {
+    "folders": [
+      {
+        "id": "fld_japan",
+        "name": "Japan",
+        "color": "moss",
+        "parentId": "fld_trips",
+        "noteCount": 5,
+        "childCount": 1,
+        "updatedAt": 1792832400000,
+        "previews": [
+          {
+            "title": "Kyoto in November",
+            "excerpt": "Kyoto in November. First lines of the note.",
+            "cover": {
+              "kind": "theme",
+              "value": "art-03"
+            }
+          },
+          {
+            "title": "Q4 planning",
+            "excerpt": "Q4 planning. First lines of the note.",
+            "cover": {
+              "kind": "none"
+            }
+          },
+          {
+            "title": "Reading list",
+            "excerpt": "Reading list. First lines of the note.",
+            "cover": {
+              "kind": "theme",
+              "value": "art-27"
+            }
+          }
+        ],
+        "encrypted": false,
+        "sync": "saved",
+        "locked": false,
+        "path": null,
+        "createdAt": 1790240400000
+      }
+    ]
+  }
+}

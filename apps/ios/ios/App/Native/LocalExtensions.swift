@@ -2,18 +2,17 @@
 // lib/nativeApp.ts, components/app/NativeBridge.tsx): the page hands over the widgets' tasks and notes, the
 // notes Shortcuts can pick from and Spotlight's notes, and takes what a widget, Siri or Shortcuts did while it
 // wasn't there. Only in local mode, and only for Folevi's own page, like every FoleviNative call.
-import Capacitor
 import UIKit
 import WidgetKit
 
 @MainActor
 enum LocalExtensions {
-    private static weak var bridge: CAPBridgeProtocol?
+    private static weak var bridge: WebHost?
     private static var observing = false
 
     /// Tells the page when a widget or an intent queues something while the app is running (the widget
     /// extension says so with a Darwin notification), so it's in the library at once.
-    static func attach(_ bridge: CAPBridgeProtocol?) {
+    static func attach(_ bridge: WebHost?) {
         self.bridge = bridge
         guard !observing else { return }
         observing = true
@@ -47,7 +46,7 @@ private func orNull(_ value: Any?) -> Any { value ?? NSNull() }
 
 extension FoleviNativePlugin {
     /// The queue's calls: in local mode, and with several places in an account too (what was saved to it offline).
-    @MainActor private func queueAllowed(_ call: CAPPluginCall) -> Bool {
+    @MainActor private func queueAllowed(_ call: BridgeCall) -> Bool {
         guard fromFolevi else {
             call.reject("Not allowed here")
             return false
@@ -62,7 +61,7 @@ extension FoleviNativePlugin {
     /// The place whose actions the open page puts in: the library in local mode, else the open account.
     @MainActor private var openPlace: String? { LocalMode.on ? SaveTargets.library : SaveTargets.current() }
 
-    @MainActor private func localOnly(_ call: CAPPluginCall) -> Bool {
+    @MainActor private func localOnly(_ call: BridgeCall) -> Bool {
         guard fromFolevi else {
             call.reject("Not allowed here")
             return false
@@ -76,7 +75,7 @@ extension FoleviNativePlugin {
 
     /// { day, tasks, notes, catalog }: the widgets' copy (open tasks through tomorrow, the recent notes) and the
     /// notes Shortcuts offers, then the widgets draw again.
-    @objc func setWidgetSnapshot(_ call: CAPPluginCall) {
+    @objc func setWidgetSnapshot(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.localOnly(call) else { return }
             guard let day = call.getString("day"), day.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil,
@@ -92,7 +91,7 @@ extension FoleviNativePlugin {
     }
 
     /// What's waiting for the page, oldest first: [{ id, kind, taskId, completed, text, dueDate, noteId, title, markdown }].
-    @objc func takeLocalActions(_ call: CAPPluginCall) {
+    @objc func takeLocalActions(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.queueAllowed(call) else { return }
             let list: [[String: Any]] = LocalActions.shared.for(place: self.openPlace).map { a in
@@ -113,7 +112,7 @@ extension FoleviNativePlugin {
     }
 
     /// { id }: the page put it in the library (or there was nothing to do): it goes from the queue.
-    @objc func finishLocalAction(_ call: CAPPluginCall) {
+    @objc func finishLocalAction(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.queueAllowed(call) else { return }
             guard let id = call.getString("id"), LocalActions.validId(id) else { return call.reject("Not an action") }
@@ -129,7 +128,7 @@ extension FoleviNativePlugin {
     }
 
     /// { items: [{ id, title, excerpt, location, starred, updatedAt }] }: the notes Spotlight finds.
-    @objc func indexSpotlight(_ call: CAPPluginCall) {
+    @objc func indexSpotlight(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.localOnly(call) else { return }
             let raw = call.getArray("items") ?? []

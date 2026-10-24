@@ -94,7 +94,14 @@ import { useNoteActions } from "@/components/views/noteActions";
 import { PageDock } from "./PageDock";
 import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
 import { NoteBars } from "@/components/iphone/NoteBars";
+import { nativeChrome } from "@/lib/nativeApp";
+import { useNativeNote } from "@/lib/engine/editorCommands";
+import { requestNavigation } from "@/lib/engine/navigation";
+import { nativeToast } from "@/lib/engine/toasts";
 import { NotePlaceChip, NoteSyncTrailing, NoteTrailing, ToolSheet } from "@/components/iphone/NoteChrome";
+
+/** Native chrome mode (the native apps draw the note's bars): fixed for the page's life. */
+const nativeChromeMode = typeof window !== "undefined" && nativeChrome() !== null;
 import { useKeyboardInset } from "@/lib/hooks/useVisualViewport";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
@@ -767,6 +774,38 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // End-to-end encryption: "Always fully encrypted" for a note of yours (docs/E2EE_DESIGN.md §10.8; nothing for Standard accounts).
   const lockItem = useLockMenuItem(meta?.isMember && inCurrentScope(meta.document, meta.isMember, scopeKey) ? { kind: "document", id: documentId, name: summary?.title ?? "", locked: (meta.document as { locked?: boolean }).locked } : null);
   const actions: (MenuItem | "separator")[] = [...(noteNotify.length ? [...docActions, "separator" as const, ...noteNotify] : docActions), ...(lockItem ? ["separator" as const, lockItem] : [])];
+  // Native chrome mode (the native apps): the note takes the native toolbar's and menus' commands (lib/engine).
+  const duplicateNote = useMutation(api.documents.duplicate);
+  useNativeNote({
+    documentId,
+    editor,
+    readOnly,
+    title: summary?.title || localTitle || "",
+    ready: reconciled || cacheLoaded,
+    panel: inspectorOpen ? inspectorTab : null,
+    openPanel: (t) => {
+      if (t === "comments") setFocusThreadId(null);
+      setInspectorTab(t);
+      setInspectorOpen(true);
+    },
+    closePanel: () => setInspectorOpen(false),
+    menu: {
+      share: meta && caps.sharing ? () => setShareOpen(true) : undefined,
+      move: canFile || canNest ? () => setMoveOpen(true) : undefined,
+      // The copy opens as its own note: native is asked to show it (navigate.request).
+      duplicate: meta && !meta.inTrash ? () => void duplicateNote({ documentId }).then((d) => void requestNavigation(`/d/${d.id}`), (e) => void nativeToast(errorMessage(e), { tone: "error" })) : undefined,
+      copyTo: caps.copyTo && meta && !meta.inTrash && (canCopy || !meta.isMember) ? () => setCopyOpen(true) : undefined,
+      export: () => setExportOpen(true),
+      history: canEditPage ? () => setHistoryOpen(true) : undefined,
+      present,
+      print: () => window.print(),
+      find: editor ? () => openFind(!readOnly) : undefined,
+      delete: meta && !readOnly ? () => setDeleteOpen(true) : undefined,
+    },
+    scrollEl,
+    locked: Boolean((meta?.document as { locked?: boolean } | undefined)?.locked),
+    lock: lockItem?.onSelect ? () => lockItem.onSelect?.() : undefined,
+  });
 
   if (meta === null && !pendingCreate && !waitingRow && (server === null || server === undefined) && (online || cacheLoaded)) {
     if (meta === null && server === null) {
@@ -967,7 +1006,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
           data-iphone-plain={iphone && !pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "" : undefined}
           className={
             iphone
-              ? `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "pt-[calc(env(safe-area-inset-top)+52px)]" : ""}`
+              ? nativeChromeMode
+                ? // Native chrome mode: the bars' room is the holder's padding (--native-inset-*), so the page
+                  // starts right under the native bar and needs only a little room at the end.
+                  "fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-6"
+                : `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "pt-[calc(env(safe-area-inset-top)+52px)]" : ""}`
               : `fb-page relative h-full overflow-y-auto rounded-panel px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`
           }
           data-backdrop={pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? (blurredBackdrop ? "blur" : "on") : undefined}
@@ -1098,7 +1141,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         </div>
         {/* The floating bar: AI, Insert, Format and Style, then the note's people, Share and its "…" menu. A tool opens
             in the right sidebar (on a phone, a sheet above the bar); AI opens the assistant on this note. */}
-        {iphone ? (
+        {nativeChromeMode ? null : iphone ? (
           <NoteBars
             editor={editor}
             ai={aiOn}
@@ -1727,7 +1770,7 @@ function DocumentHeader({
   return (
     <header>
       {onCover ? (
-        <div data-note-cover className="relative isolate flex min-h-40 items-end overflow-hidden rounded-t-chip border-b border-line/60 px-5 pb-6 pt-14 sm:min-h-48 sm:px-16">
+        <div className="relative isolate flex min-h-40 items-end overflow-hidden rounded-t-chip border-b border-line/60 px-5 pb-6 pt-14 sm:min-h-48 sm:px-16">
           {/* The theme's image, toned in its own colour under the title so the title reads: darkened (multiply)
               with a deep shade of its key colour where the title is white, lightened (screen) with its page
               colour where the title is dark. */}

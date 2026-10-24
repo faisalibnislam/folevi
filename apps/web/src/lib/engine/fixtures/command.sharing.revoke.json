@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "sharing.revoke",
+  "description": "Remove someone's access.",
+  "args": {
+    "noteId": "doc_00002",
+    "profileId": "prof_9"
+  },
+  "result": {
+    "ok": true
+  }
+}

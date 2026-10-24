@@ -1,0 +1,11 @@
+{
+  "kind": "editor",
+  "name": "panel.open",
+  "description": "Open the Style panel.",
+  "args": {
+    "panel": "style"
+  },
+  "result": {
+    "ok": true
+  }
+}

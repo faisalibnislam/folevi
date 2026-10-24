@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "note.reorder",
+  "description": "Manual sort: put a note right after another.",
+  "args": {
+    "id": "doc_00003",
+    "afterId": "doc_00001",
+    "view": "folder",
+    "folderId": "fld_trips"
+  },
+  "result": {
+    "ok": true
+  }
+}

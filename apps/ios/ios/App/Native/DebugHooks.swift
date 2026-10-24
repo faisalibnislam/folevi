@@ -32,6 +32,22 @@ enum DebugHooks {
         }, "com.folevi.ios.native" as CFString, nil, .deliverImmediately)
     }
 
+    /// UI tests' driver (scripts/native-smoke.mjs): FOLEVI_TEST_SESSION in the launch environment is a scratch test
+    /// account's session on the development deployment; it's stored as the sign-in sheet's end would store it, and
+    /// the app opens in that account. Simulator Debug builds only; never printed.
+    static func seedFromEnvironment() {
+        guard let token = ProcessInfo.processInfo.environment["FOLEVI_TEST_SESSION"], !token.isEmpty else { return }
+        Task { @MainActor in
+            guard let u = await ShellAuth.shared.userOf(token) else { return }
+            if ShellPlaces.state.current == "acct:\(u.userId)", ShellAuth.shared.token(for: u.userId) != nil { return }
+            ShellAuth.shared.setToken(token, for: u.userId)
+            guard let a = ShellPlaces.addAccount(userId: u.userId, name: u.name, email: u.email, avatarUrl: u.avatarUrl) else { return }
+            ShellMode.current = "account"
+            ShellPlaces.setCurrent(a.id)
+            FoleviViewController.restart()
+        }
+    }
+
     private static func run() async {
         let tmp = FileManager.default.temporaryDirectory
         let out = tmp.appendingPathComponent("native-result.json")
@@ -58,6 +74,49 @@ enum DebugHooks {
                 (root as? FoleviViewController)?.press(shortcut)
             }
             return ["pressed": title]
+        case "frame":
+            // The native frame's state (Native/Phone): what the bars are drawn from.
+            guard let f = PhoneFrameController.current else { return ["frame": false] }
+            let m = f.model
+            return [
+                "frame": true, "client": String(describing: m.client.state), "shownNote": m.shownNote ?? NSNull(),
+                "keyboardVisible": m.keyboardVisible, "keyboardOverlap": Double(m.keyboardOverlap), "editing": m.editing,
+                "editorNote": m.editorState?.noteId ?? NSNull(), "editorFocused": m.editorState?.focused ?? NSNull(),
+                "panel": m.editorPanel?.rawValue ?? NSNull(), "ready": Array(m.readyNotes), "gate": m.gate?.gate ?? NSNull(),
+                "bar": f.debugBar(),
+            ]
+        case "signedOut":
+            // Every account on this Simulator signed out (scratch test accounts only), account mode: the sign-in gate.
+            for a in ShellPlaces.state.accounts {
+                await ShellAuth.shared.signOut(userId: a.userId)
+                _ = ShellPlaces.removeAccount(a.id)
+            }
+            // A first launch again: the choice, then sign-in.
+            Platform.defaults.removeObject(forKey: "folevi.shell.mode")
+            ShellPlaces.setCurrent(nil)
+            FoleviViewController.restart()
+            return ["accounts": ShellPlaces.state.accounts.count, "mode": ShellMode.current]
+        case "signInSheet":
+            // The native sign-in flow on its own (FoleviScreens' SignInFlow over PhoneAuthService), for checking it
+            // with a scratch account whatever gate the page is on.
+            PhoneFrameController.current?.presentSignIn()
+            return ["presented": PhoneFrameController.current != nil]
+        case "authCheck":
+            // R14.1's adapter without the screens (UI tests own the Simulator meanwhile): scratch dev accounts only.
+            // Never returns tokens.
+            let email = input["email"] as? String ?? ""
+            let password = input["password"] as? String ?? ""
+            let auth = PhoneAuthService(window: nil)
+            var adopted: String?
+            auth.signedIn = { id, _, _, _ in adopted = id }
+            let wrong = await auth.signIn(email: email, password: password + "x")
+            let right = await auth.signIn(email: email, password: password)
+            let reset = await auth.requestPasswordReset(email: email)
+            let resend = await auth.resendVerification(email: email)
+            let signUp = await auth.signUp(name: "Native Check", email: "native-check-\(Int(Date().timeIntervalSince1970))@example.com", password: password)
+            let weak = await auth.signUp(name: "Native Check", email: "native-check-weak-\(Int(Date().timeIntervalSince1970))@example.com", password: "short")
+            let stored = adopted.map { ShellAuth.shared.token(for: $0) != nil } ?? false
+            return ["wrongPassword": String(describing: wrong), "rightPassword": String(describing: right), "sessionStored": stored, "reset": String(describing: reset), "resend": String(describing: resend), "signUp": String(describing: signUp), "weakPassword": String(describing: weak)]
         case "status":
             return [
                 "signedIn": SharedAccount.signedIn,

@@ -5,7 +5,6 @@
 // was closed. The page signs in with the id token (Better Auth checks it against Apple's keys, the bundle ID and
 // the nonce) and hands the code to /api/auth/apple/native-code so Folevi can revoke Apple's tokens later.
 import AuthenticationServices
-import Capacitor
 import CryptoKit
 import UIKit
 
@@ -64,7 +63,7 @@ final class AppleSignInSheet: NSObject, ASAuthorizationControllerDelegate, ASAut
 
 extension FoleviNativePlugin {
     /// { nonce } -> { idToken, authorizationCode, firstName, lastName } or { value: null } when cancelled.
-    @objc func signInWithApple(_ call: CAPPluginCall) {
+    @objc func signInWithApple(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             guard let nonce = call.getString("nonce"), nonce.range(of: #"^[A-Za-z0-9_-]{16,128}$"#, options: .regularExpression) != nil else {

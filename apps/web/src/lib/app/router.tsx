@@ -4,6 +4,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, type AnchorHTMLAttributes, type MouseEvent, type ReactNode } from "react";
 import { historyNavServerSnapshot, historyNavSnapshot, locationSnapshot, notifyLocation, pushEntry, replaceEntry, startHistoryNav, subscribeHistoryNav, subscribeLocation } from "./historyNav";
 import { APP_ROUTE_HEADS } from "./routes";
+import { nativeChrome } from "@/lib/nativeApp";
+import { requestNavigation } from "@/lib/engine/navigation";
 
 /**
  * Client-side routing for the product shell. Every product URL is rendered by one catch-all route, and
@@ -50,6 +52,8 @@ export type Route =
   | { name: "oauth-consent" }
   | { name: "invite"; token: string }
   | { name: "share-invite"; token: string }
+  /** The native apps' idle page (native chrome mode, docs/NATIVE_APP_PLAN.md section 8): the engine, nothing drawn. */
+  | { name: "native" }
   | { name: "not_found" };
 
 const TASK_VIEWS = ["inbox", "today", "upcoming", "all", "completed", "mine"] as const;
@@ -106,6 +110,8 @@ export function parseRoute(pathname: string): Route {
       return a ? { name: "invite", token: a } : { name: "not_found" };
     case "share-invite":
       return a ? { name: "share-invite", token: a } : { name: "not_found" };
+    case "native":
+      return { name: "native" };
     default:
       return { name: "not_found" };
   }
@@ -117,7 +123,8 @@ export interface RouterValue {
   route: Route;
   pathname: string;
   search: URLSearchParams;
-  navigate: (href: string, opts?: { replace?: boolean }) => void;
+  /** `engine`: the native apps' engine moving the page (native chrome mode; everything else asks native). */
+  navigate: (href: string, opts?: { replace?: boolean; engine?: boolean }) => void;
   back: () => void;
   /** Back and Forward inside the app (lib/app/historyNav.ts): whether there's a page each way. */
   forward?: () => void;
@@ -154,8 +161,16 @@ export function AppRouterProvider({ children }: { children: ReactNode }) {
   }, []);
   const nav = useSyncExternalStore(subscribeHistoryNav, historyNavSnapshot, historyNavServerSnapshot);
   const route = useMemo(() => parseRoute(pathname), [pathname]);
-  const navigate = useCallback((href: string, opts?: { replace?: boolean }) => {
+  const navigate = useCallback((href: string, opts?: { replace?: boolean; engine?: boolean }) => {
     startHistoryNav();
+    // Native chrome mode: only the engine moves the page, and always in place; anything else that would navigate
+    // asks native (lib/engine/navigation.ts), except a change of the same page's query (a note's ?new=1 cleared).
+    if (nativeChrome()) {
+      const here = window.location.pathname;
+      const to = new URL(href, window.location.href);
+      if (opts?.engine || (to.origin === window.location.origin && to.pathname === here) || !requestNavigation(href)) replaceEntry(href);
+      return;
+    }
     if (opts?.replace) replaceEntry(href);
     else pushEntry(href);
     // Move focus to the main region for screen-reader users after navigation.

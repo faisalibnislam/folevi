@@ -6,7 +6,6 @@
 // The page scrolls inside its own views, not as a page, so the web view's scroll view has nothing to scroll
 // when the status bar is tapped. A scroll view of the app's own (StatusBarTapProxy, behind the web view) is
 // the one iOS asks instead, and the page is told (the "folevi:status-bar-tap" window event).
-import Capacitor
 import GameController
 import UIKit
 
@@ -81,7 +80,7 @@ extension FoleviNativePlugin {
     /// { r, g, b }: the colour behind the web view. While the keyboard is up the web view ends at its top, and
     /// the keyboard's rounded corners show what's behind (black by default); the page sets this to what's on
     /// screen just above the keyboard (the note, an open sheet), so it reads as carrying on behind it.
-    @objc func setBackdrop(_ call: CAPPluginCall) {
+    @objc func setBackdrop(_ call: BridgeCall) {
         let channel = { (key: String) in CGFloat(min(max(call.getDouble(key) ?? 255, 0), 255) / 255) }
         let color = UIColor(red: channel("r"), green: channel("g"), blue: channel("b"), alpha: 1)
         Task { @MainActor in
@@ -93,7 +92,7 @@ extension FoleviNativePlugin {
     }
 
     /// { reduceTransparency, increaseContrast, boldText, reduceMotion, textScale, hardwareKeyboard } (SystemAccessibility).
-    @objc func accessibility(_ call: CAPPluginCall) {
+    @objc func accessibility(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             call.resolve(SystemAccessibility.current())

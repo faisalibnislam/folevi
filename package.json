@@ -18,6 +18,7 @@
     "contract:update": "UPDATE_API_SNAPSHOT=1 vitest run --project contract",
     "tokens": "pnpm --filter @folevi/design-tokens build",
     "schema:gen": "pnpm --filter @folevi/editor-schema generate",
+    "engine:gen": "node scripts/engine-codegen.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

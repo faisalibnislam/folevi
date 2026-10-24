@@ -1,0 +1,38 @@
+{
+  "kind": "view",
+  "name": "shared.list",
+  "description": "Pages shared with this person.",
+  "args": {},
+  "value": {
+    "rows": [
+      {
+        "id": "doc_s1",
+        "title": "Launch plan",
+        "excerpt": "Dates and owners.",
+        "icon": "🚀",
+        "sharedBy": "Maya",
+        "workspaceName": "Airly Studio",
+        "ownerName": null,
+        "role": "editor",
+        "sharedAt": 1792746000000,
+        "updatedAt": 1792828800000,
+        "encrypted": false,
+        "h": "57fb5e7f"
+      },
+      {
+        "id": "doc_s2",
+        "title": "Recipes",
+        "excerpt": "",
+        "icon": null,
+        "sharedBy": "Sam",
+        "workspaceName": null,
+        "ownerName": "Sam",
+        "role": "viewer",
+        "sharedAt": 1792400400000,
+        "updatedAt": 1792486800000,
+        "encrypted": false,
+        "h": "995080ec"
+      }
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "view",
+  "name": "settings.ai",
+  "description": "Settings > Foli AI, the basics.",
+  "args": {},
+  "value": {
+    "included": true,
+    "enabled": true,
+    "history": true,
+    "memory": false,
+    "suggestions": true,
+    "attachments": true,
+    "webResearch": true,
+    "digests": false,
+    "readImages": false,
+    "deviceText": true
+  }
+}

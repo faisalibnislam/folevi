@@ -22,7 +22,7 @@ enum ZoomSources {
     }
 
     /// A stand-in for the card at `windowFrame`, inside `host` (the screen's view); nil when it isn't on screen.
-    static func make(in host: UIView, windowFrame: CGRect, cornerRadius: CGFloat) -> UIView? {
+    static func make(in host: UIView, windowFrame: CGRect, cornerRadius: CGFloat, coordinator: (() -> UIViewControllerTransitionCoordinator?)? = nil) -> UIView? {
         guard host.window != nil, !windowFrame.isEmpty else { return nil }
         let rect = host.convert(windowFrame, from: nil)
         let visible = host.bounds.inset(by: host.safeAreaInsets)
@@ -42,6 +42,14 @@ enum ZoomSources {
         host.addSubview(hole)
         host.addSubview(still)
         views = [hole, still]
+        // Gone once the transition ends (UIKit can ask for the source again as it finishes, after didShow).
+        DispatchQueue.main.async {
+            if let c = coordinator?() {
+                c.animate(alongsideTransition: nil) { _ in DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { removeAll() } }
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { removeAll() }
+            }
+        }
         return still
     }
 
@@ -70,7 +78,9 @@ enum NoteTransitions {
                 // Closing: where the card is now (the list may have scrolled since).
                 let current = note.source.flatMap { CardFrames.shared.source(for: $0.id) } ?? note.source
                 guard let host, let current else { return nil }
-                return ZoomSources.make(in: host, windowFrame: current.frame, cornerRadius: ZoomSources.radius(for: current.kind))
+                return ZoomSources.make(in: host, windowFrame: current.frame, cornerRadius: ZoomSources.radius(for: current.kind)) { [weak note] in
+                    note?.navigationController?.transitionCoordinator
+                }
             }
         }
     }

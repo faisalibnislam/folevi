@@ -101,7 +101,7 @@ final class NativeFrameUITests: XCTestCase {
         waitHome(10)
         sleep(2)
         shot("06-home-after")
-        let card = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Native smoke note'")).firstMatch
+        let card = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'note-card-' AND label CONTAINS 'Native smoke note'")).firstMatch
         XCTAssertTrue(card.waitForExistence(timeout: 15), "the note's card on Home")
         card.tap()
         XCTAssertTrue(element("note-screen").waitForExistence(timeout: 10))
@@ -124,7 +124,9 @@ final class NativeFrameUITests: XCTestCase {
         XCTAssertTrue(element("account-sheet").waitForExistence(timeout: 5), "the account sheet")
         sleep(1)
         shot("09-account-sheet")
-        element("sheet-close").tap()
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Sign out'")).firstMatch.exists, "the places menu's Sign out")
+        element("account-sheet").swipeDown(velocity: .fast)
+        sleep(1)
 
         // The sync sheet from the pill.
         element("root-sync").tap()
@@ -132,6 +134,16 @@ final class NativeFrameUITests: XCTestCase {
         sleep(1)
         shot("10-sync-sheet")
         element("sheet-close").tap()
+
+        // Tasks and Calendar tabs (FoleviScreens' screens).
+        element("tab-tasks").tap()
+        sleep(2)
+        shot("12-tasks")
+        element("tab-calendar").tap()
+        sleep(2)
+        shot("13-calendar")
+        element("tab-home").tap()
+        sleep(1)
 
         // Scrolled Home: the title collapses into the bar and never runs under the avatar or the pill.
         app.swipeUp()
@@ -151,12 +163,10 @@ final class NativeFrameUITests: XCTestCase {
         sleep(3)
         let metric = XCTOSSignpostMetric(subsystem: "com.folevi.ios", category: "frame", name: "note.open")
         measure(metrics: [metric], options: Self.options(5)) {
-            let card = app.descendants(matching: .any).matching(identifier: "note-card").firstMatch
-            if card.waitForExistence(timeout: 10) {
-                card.tap()
-            } else {
-                app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Native smoke note'")).firstMatch.tap()
-            }
+            // The first recent card (a new account has its Welcome page).
+            let card = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'note-card-'")).firstMatch
+            XCTAssertTrue(card.waitForExistence(timeout: 15), "a note card on Home")
+            card.tap()
             _ = element("note-screen").waitForExistence(timeout: 10)
             sleep(2)
             back()

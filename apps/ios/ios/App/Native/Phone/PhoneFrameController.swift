@@ -24,6 +24,8 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
     let snapshot: LaunchSnapshotStore
     private let transport: PhoneEngineTransport
     private let home: HomeModel
+    private let tasksModel: TasksModel
+    private let calendarModel: CalendarModel
     private var tabs: PhoneTabsController!
     private var navigator: ScreenNavigator!
     private var feedback: ScreenFeedback!
@@ -52,6 +54,8 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         pageHost = PageViewHost(pageView: host.pageView)
         // Home subscribes now (with the snapshot), before the window draws.
         home = HomeModel(client: client, feedback: ScreenFeedback())
+        tasksModel = TasksModel(client: client)
+        calendarModel = CalendarModel(client: client)
         super.init(nibName: nil, bundle: nil)
         host.viewController = self
         WebHost.current = host
@@ -88,10 +92,10 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         pageHost.parking = view
         pageHost.park()
 
-        let actions = RootBarActions(account: { [weak self] in self?.presentAccount() }, notifications: { [weak self] in self?.presentNotifications() }, sync: { [weak self] in self?.presentSync() })
+        let actions = RootBarActions(account: { [weak self] in self?.presentAccount(from: $0) }, notifications: { [weak self] in self?.presentNotifications(from: $0) }, sync: { [weak self] in self?.presentSync(from: $0) })
         let homeScreen = HomeScreenController(home: home, phone: model, navigator: navigator, feedback: feedback, actions: actions)
-        let tasks = TabRootPlaceholder(title: "Tasks", symbol: "checkmark.square", message: "Your tasks come to this screen with the next update.", phone: model, actions: actions, id: "tasks")
-        let calendar = TabRootPlaceholder(title: "Calendar", symbol: "calendar", message: "Your calendar comes to this screen with the next update.", phone: model, actions: actions, id: "calendar")
+        let tasks = TabRootController(title: TasksScreen.title, content: AnyView(TasksScreen(model: tasksModel, showsHeader: true).phoneEnvironment(navigator, feedback)), trailing: barItem(TasksTrailingMenu(model: tasksModel).phoneEnvironment(navigator, feedback), glass: true), phone: model, actions: actions)
+        let calendar = TabRootController(title: "Calendar", content: AnyView(CalendarScreen(model: calendarModel, showsHeader: true).phoneEnvironment(navigator, feedback)), trailing: nil, phone: model, actions: actions)
         let stacks = [homeScreen, tasks, calendar].map { PhoneNavigationController(rootViewController: $0) }
         stacks.forEach { $0.observer = self }
         tabs = PhoneTabsController(stacks: stacks)
@@ -223,7 +227,9 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         guard let window = view.window else { return }
         let overlap = hiding ? 0 : KeyboardBridge.coveredHeight(keyboard: end, bounds: window.bounds)
         model.keyboardOverlap = overlap
+        let appeared = overlap > 0 && !model.keyboardVisible
         model.keyboardVisible = overlap > 0
+        if appeared { model.refreshEditorState() }
         if overlap > 0 { tabs.hideReasons.insert("keyboard") } else { tabs.hideReasons.remove("keyboard") }
     }
 
@@ -257,14 +263,14 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         case .changes: nav.pushViewController(ChangesScreenController(model: ChangesModel(client: model.client, feedback: feedback), navigator: navigator, feedback: feedback), animated: true)
         case .reviews: nav.pushViewController(PageScreenController(page: .reviews, title: "Reviews", model: model, pageHost: pageHost), animated: true)
         case .graph: nav.pushViewController(PageScreenController(page: .graph, title: "Graph", model: model, pageHost: pageHost), animated: true)
-        case .search(let prompt): nav.pushViewController(SearchScreenController(client: model.client, prompt: prompt, navigator: navigator), animated: true)
-        case .notifications: presentNotifications()
-        case .places: presentAccount()
+        case .search: openSearch("")
+        case .notifications: presentNotifications(from: nil)
+        case .places: presentAccount(from: nil)
         case .note(let id), .noteInNewTab(let id): openNote(id, source: source, focus: false)
         case .foliAI: presentFoliAI()
         case .invite, .movePlaces: model.toast("That comes to the app with the next update.")
         case .web(let path):
-            if path.hasPrefix("/tasks") { tabs.show(.tasks) } else if path.hasPrefix("/calendar") { tabs.show(.calendar) } else { model.toast("That page comes to the app with the next update.") }
+            if let f = FeatureRoute(webRoute: path) { open(f) } else { model.toast("That page comes to the app with the next update.") }
         }
     }
 
@@ -301,6 +307,7 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
 
     func openPath(_ path: String) {
         guard isViewLoaded, tabs != nil else { return FoleviViewController.startPath = path }
+        if let f = FeatureRoute(webRoute: path) { return open(f) }
         let route = ScreenRoute(webRoute: path)
         if case .web(let p) = route, p.hasPrefix("/documents") || p == "/" { return open(.home, source: nil) }
         open(route, source: nil)
@@ -312,30 +319,66 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         return top
     }
 
-    // MARK: Sheets
+    // MARK: Tasks, Calendar, Search (FeatureRoute) and the screens' intents
 
-    func presentAccount() {
-        PhoneSheets.present(AccountSheet(phone: model, switchTo: { [weak self] id in self?.switchPlace(id) }, addAccount: { [weak self] in self?.signIn(first: false) }, signOut: { [weak self] place in self?.confirmSignOut(place) }), from: self, id: "account-sheet")
+    func open(_ f: FeatureRoute) {
+        switch f {
+        case .tasks(let v):
+            tabs.show(.tasks)
+            tabs.stacks[1].popToRootViewController(animated: false)
+            tasksModel.select(v)
+        case .calendar(let date):
+            tabs.show(.calendar)
+            tabs.stacks[2].popToRootViewController(animated: false)
+            if let date { calendarModel.select(date) }
+        case .search(let text): openSearch(text)
+        case .notifications: presentNotifications(from: nil)
+        case .noteBlock(let id, _): openNote(id, source: nil, focus: false)
+        }
     }
 
-    func presentNotifications() {
-        let store = model.client.watch(.notificationsList)
-        PhoneSheets.present(NotificationsSheet(store: store, markAllRead: { [weak self] in
-            guard let self else { return }
-            self.model.perform { _ = try await self.model.client.command(.notificationMarkAllRead) }
-        }, open: { [weak self] row in
-            guard let self else { return }
-            self.dismiss(animated: true)
-            if let id = row.noteId { self.openNote(id, source: nil, focus: false) } else if let r = row.route { self.openPath(r) }
-        }), from: self, id: "notifications-sheet")
+    func openSearch(_ text: String) {
+        let screen = SearchScreenController(model: SearchModel(client: model.client, text: text, feedback: feedback)) { [navigator, feedback] v in AnyView(v.phoneEnvironment(navigator!, feedback)) }
+        tabs.currentStack.pushViewController(screen, animated: true)
+    }
+
+    /// What FoleviScreens' Tasks, Calendar, Search, Notifications and Places ask for (ScreenIntent).
+    func handle(_ intent: ScreenIntent) {
+        switch intent {
+        case .openTasks(let v): open(.tasks(v))
+        case .openCalendar(let d): open(.calendar(date: d))
+        case .openNote(let id, _): openNote(id, source: nil, focus: false)
+        case .openRoute(let r): openPath(r)
+        case .openSettings: model.toast("Settings come to this screen with the next update.")
+        case .help: if let url = URL(string: "https://folevi.com/help") { openExternal(url) }
+        case .switchPlace(let id, _): switchPlace(id)
+        case .newWorkspace: model.toast("New workspaces come to the app with the next update.")
+        case .signInAnotherAccount: signIn(first: false)
+        case .moveOrCopy: model.toast("Moving notes between places comes to the app with the next update.")
+        case .signOut(let place): if let place { signOut(place) }
+        case .downloadFile: model.toast("Downloads come to the app with the next update.")
+        case .dismiss: if presentedViewController != nil { dismiss(animated: true) }
+        }
+    }
+
+    // MARK: Sheets
+
+    func presentAccount(from anchor: UIBarButtonItem?) {
+        let content = PlacesMenuContent(model: PlacesModel(client: model.client, feedback: feedback), phone: UIDevice.current.userInterfaceIdiom != .pad).phoneEnvironment(navigator, feedback)
+        PhoneSheets.present(content, from: self, id: "account-sheet", anchor: anchor)
+    }
+
+    func presentNotifications(from anchor: UIBarButtonItem?) {
+        let content = NotificationsContent(model: NotificationsModel(client: model.client, feedback: feedback), phone: UIDevice.current.userInterfaceIdiom != .pad).phoneEnvironment(navigator, feedback)
+        PhoneSheets.present(content, from: self, id: "notifications-sheet", anchor: anchor)
     }
 
     func presentFoliAI() {
         PhoneSheets.present(FoliAISheet(), from: self, id: "foli-sheet")
     }
 
-    func presentSync() {
-        PhoneSheets.present(SyncSheet(phone: model), from: self, id: "sync-sheet", detents: [.medium()])
+    func presentSync(from anchor: UIBarButtonItem?) {
+        PhoneSheets.present(SyncSheet(phone: model), from: self, id: "sync-sheet", detents: [.medium()], anchor: anchor, popoverSize: CGSize(width: 340, height: 260))
     }
 
     // MARK: Places and sign-in (ShellAuth and ShellPlaces, as the page's foleviShell did)
@@ -360,24 +403,17 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         }
     }
 
-    private func confirmSignOut(_ place: String) {
+    /// Signs out of a place (the content has already warned and the person confirmed).
+    private func signOut(_ place: String) {
         guard let user = ShellPlaces.userIdOf(place) else { return }
-        let pending = model.sync.value?.pending ?? 0
-        let name = model.profileName.isEmpty ? "this account" : model.profileName
-        let alert = UIAlertController(title: "Sign out of \(name)?", message: pending > 0 ? "\(pending) \(pending == 1 ? "change hasn't" : "changes haven't") reached Folevi yet. If you sign out now, \(pending == 1 ? "it" : "they") will be lost on this iPhone." : "Your other accounts stay signed in on this iPhone.", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: pending > 0 ? "Sign Out Anyway" : "Sign Out", style: .destructive) { [weak self] _ in
-            Task { @MainActor in
-                await ShellAuth.shared.signOut(userId: user)
-                E2eeKeys.forget(userId: user)
-                let after = ShellPlaces.removeAccount(place)
-                ShellPlaces.setCurrent(after)
-                self?.snapshot.clear()
-                self?.dismiss(animated: true)
-                FoleviViewController.restart()
-            }
-        })
-        topmost().present(alert, animated: true)
+        Task { @MainActor in
+            await ShellAuth.shared.signOut(userId: user)
+            E2eeKeys.forget(userId: user)
+            let after = ShellPlaces.removeAccount(place)
+            ShellPlaces.setCurrent(after)
+            self.snapshot.clear()
+            FoleviViewController.restart()
+        }
     }
 
     // MARK: Restart (a mode or place switch: a new page on the same storage)
@@ -395,6 +431,22 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         retiring = load
     }
 
+    #if DEBUG
+    /// The top bar as drawn (Debug hooks): the item's title and every label in the bar with its alpha.
+    func debugBar() -> [String: Any] {
+        let nav = tabs.currentStack
+        var labels: [String] = []
+        func walk(_ v: UIView, _ a: CGFloat) {
+            let alpha = a * v.alpha
+            if let l = v as? UILabel, let t = l.text { labels.append("\(t) a=\(alpha) hidden=\(v.isHidden) f=\(l.frame)") }
+            v.subviews.forEach { walk($0, alpha) }
+        }
+        walk(nav.navigationBar, 1)
+        let item = nav.topViewController?.navigationItem
+        return ["title": item?.title ?? "nil", "vcTitle": nav.topViewController?.title ?? "nil", "large": item?.largeTitleDisplayMode.rawValue ?? -1, "prefers": nav.navigationBar.prefersLargeTitles, "labels": labels]
+    }
+    #endif
+
     // MARK: Keyboard shortcuts (KeyCommands.swift's list, as native actions)
 
     override var canBecomeFirstResponder: Bool { true }
@@ -411,9 +463,9 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
     func press(_ shortcut: FoleviShortcut) {
         switch shortcut.title {
         case "New Note": model.newNote()
-        case "Search": open(.search(prompt: home.searchPrompt), source: nil)
+        case "Search": openSearch("")
         case "Ask Foli AI": presentFoliAI()
-        case "Today's Tasks": tabs.show(.tasks)
+        case "Today's Tasks": open(.tasks(.today))
         case "Back": tabs.currentStack.popViewController(animated: true)
         default: model.toast("\(shortcut.title) comes to the app with the next update.")
         }

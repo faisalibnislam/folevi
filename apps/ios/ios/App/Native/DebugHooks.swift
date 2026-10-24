@@ -74,6 +74,17 @@ enum DebugHooks {
                 (root as? FoleviViewController)?.press(shortcut)
             }
             return ["pressed": title]
+        case "frame":
+            // The native frame's state (Native/Phone): what the bars are drawn from.
+            guard let f = PhoneFrameController.current else { return ["frame": false] }
+            let m = f.model
+            return [
+                "frame": true, "client": String(describing: m.client.state), "shownNote": m.shownNote ?? NSNull(),
+                "keyboardVisible": m.keyboardVisible, "keyboardOverlap": Double(m.keyboardOverlap), "editing": m.editing,
+                "editorNote": m.editorState?.noteId ?? NSNull(), "editorFocused": m.editorState?.focused ?? NSNull(),
+                "panel": m.editorPanel?.rawValue ?? NSNull(), "ready": Array(m.readyNotes), "gate": m.gate?.gate ?? NSNull(),
+                "bar": f.debugBar(),
+            ]
         case "status":
             return [
                 "signedIn": SharedAccount.signedIn,

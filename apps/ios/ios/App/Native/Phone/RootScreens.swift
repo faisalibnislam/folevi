@@ -1,7 +1,6 @@
-// The screens in the tab stacks: Home and the note lists from FoleviScreens (N7), Shared with Me and Changes, with
-// their bar items put where UIKit wants them, and the frame's own small screens for what later packages fill:
-// Tasks and Calendar (N10), search (N11) and the web pages that stay web (Reviews, Graph) in the Page View under
-// native bars.
+// The screens in the tab stacks, all FoleviScreens' (N7, N10, N11): Home, the note lists, Shared with Me and Changes,
+// Tasks and Calendar on their tabs, Search, with their bar items put where UIKit wants them; plus the web pages that
+// stay web (Reviews, Graph) in the Page View under native bars.
 //
 // The root bar (web iphone/RootBar.tsx) on Home, Tasks and Calendar: the avatar on the left (the account and places
 // sheet) and, on the right, one pill with the sync status, the bell (notifications) and "…" (the screen's menu).
@@ -16,29 +15,36 @@ import FoleviScreens
 /// What the root bars' buttons do (the frame presents the sheets).
 @MainActor
 struct RootBarActions {
-    var account: () -> Void
-    var notifications: () -> Void
-    var sync: () -> Void
+    /// Each gets the bar item it came from (the iPad anchors its popover there).
+    var account: (UIBarButtonItem?) -> Void
+    var notifications: (UIBarButtonItem?) -> Void
+    var sync: (UIBarButtonItem?) -> Void
 }
 
 @MainActor
 enum RootBar {
     /// The avatar: the person (initials until avatars are drawn from `avatarUrl`), opening the account sheet.
-    static func avatar(_ phone: PhoneModel, action: @escaping () -> Void) -> UIBarButtonItem {
-        let item = barItem(RootAvatar(phone: phone, action: action))
+    static func avatar(_ phone: PhoneModel, action: @escaping (UIBarButtonItem?) -> Void) -> UIBarButtonItem {
+        let anchor = WeakItem()
+        let item = barItem(RootAvatar(phone: phone, action: { action(anchor.item) }))
+        anchor.item = item
         item.accessibilityIdentifier = "root-avatar"
         return item
     }
 
-    static func bell(action: @escaping () -> Void) -> UIBarButtonItem {
-        let item = UIBarButtonItem(image: UIImage(systemName: "bell"), primaryAction: UIAction { _ in action() })
+    static func bell(action: @escaping (UIBarButtonItem?) -> Void) -> UIBarButtonItem {
+        let anchor = WeakItem()
+        let item = UIBarButtonItem(image: UIImage(systemName: "bell"), primaryAction: UIAction { _ in action(anchor.item) })
+        anchor.item = item
         item.accessibilityLabel = "Notifications"
         item.accessibilityIdentifier = "root-bell"
         return item
     }
 
-    static func sync(action: @escaping () -> Void) -> UIBarButtonItem {
-        let item = UIBarButtonItem(image: UIImage(systemName: "checkmark.icloud"), primaryAction: UIAction { _ in action() })
+    static func sync(action: @escaping (UIBarButtonItem?) -> Void) -> UIBarButtonItem {
+        let anchor = WeakItem()
+        let item = UIBarButtonItem(image: UIImage(systemName: "checkmark.icloud"), primaryAction: UIAction { _ in action(anchor.item) })
+        anchor.item = item
         item.accessibilityLabel = "Sync status"
         item.accessibilityIdentifier = "root-sync"
         return item
@@ -66,6 +72,8 @@ enum RootBar {
         sync.tintColor = attention ? Chrome.coral : nil
     }
 }
+
+final class WeakItem { weak var item: UIBarButtonItem? }
 
 private struct RootAvatar: View {
     let phone: PhoneModel
@@ -98,15 +106,14 @@ final class HomeScreenController: HostedScreen<AnyView> {
         self.home = home
         self.phone = phone
         self.actions = actions
-        super.init(rootView: AnyView(HomeScreen(model: home).environment(\.screenNavigator, navigator).environment(\.screenFeedback, feedback)))
-        title = HomeScreen.title
-        navigationItem.largeTitleDisplayMode = .always
+        super.init(rootView: AnyView(HomeScreen(model: home, showsHeader: true).phoneEnvironment(navigator, feedback)))
+        collapsingTitle = HomeScreen.title
+        collapseAfter = 50
         navigationItem.leftBarButtonItem = RootBar.avatar(phone, action: actions.account)
         let more = RootBar.more(UIMenu(children: [UIDeferredMenuElement.uncached { [weak self] done in done(self?.menu() ?? []) }]))
         navigationItem.rightBarButtonItems = [more, bell, syncItem]
     }
 
-    @MainActor required dynamic init?(coder aDecoder: NSCoder) { fatalError("init(coder:) is not used") }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -114,7 +121,6 @@ final class HomeScreenController: HostedScreen<AnyView> {
         observer = Observer { [weak self] in
             guard let self else { return }
             RootBar.update(bell: self.bell, sync: self.syncItem, phone: self.phone)
-            if #available(iOS 26.0, *) { self.navigationItem.subtitle = self.home.eyebrow }
         }
     }
 
@@ -158,15 +164,15 @@ final class ListScreenController: HostedScreen<AnyView> {
         self.list = list
         self.tabs = tabs
         self.navigatorEnv = navigator
-        trailing = barItem(NotesListTrailingItems(model: list).environment(\.screenNavigator, navigator))
-        leading = barItem(NotesListLeadingItems(model: list).environment(\.screenNavigator, navigator))
-        super.init(rootView: AnyView(NotesListScreen(model: list).environment(\.screenNavigator, navigator).environment(\.screenFeedback, feedback)))
-        navigationItem.largeTitleDisplayMode = .always
+        trailing = barItem(NotesListTrailingItems(model: list).phoneEnvironment(navigator, nil))
+        leading = barItem(NotesListLeadingItems(model: list).phoneEnvironment(navigator, nil))
+        super.init(rootView: AnyView(NotesListScreen(model: list).phoneEnvironment(navigator, feedback)))
+        title = list.title
+        navigationItem.largeTitleDisplayMode = .never
         navigationItem.rightBarButtonItem = trailing
         tabBarRoom = PhoneTabsController.room
     }
 
-    @MainActor required dynamic init?(coder aDecoder: NSCoder) { fatalError("init(coder:) is not used") }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -190,47 +196,45 @@ final class ListScreenController: HostedScreen<AnyView> {
 
 final class SharedScreenController: HostedScreen<AnyView> {
     init(model: SharedListModel, navigator: ScreenNavigator, feedback: ScreenFeedback) {
-        super.init(rootView: AnyView(SharedListScreen(model: model).environment(\.screenNavigator, navigator).environment(\.screenFeedback, feedback)))
+        super.init(rootView: AnyView(SharedListScreen(model: model).phoneEnvironment(navigator, feedback)))
         title = model.title
-        navigationItem.largeTitleDisplayMode = .always
+        navigationItem.largeTitleDisplayMode = .never
         tabBarRoom = PhoneTabsController.room
     }
 
-    @MainActor required dynamic init?(coder aDecoder: NSCoder) { fatalError("init(coder:) is not used") }
 }
 
 final class ChangesScreenController: HostedScreen<AnyView> {
     init(model: ChangesModel, navigator: ScreenNavigator, feedback: ScreenFeedback) {
-        super.init(rootView: AnyView(ChangesScreen(model: model).environment(\.screenNavigator, navigator).environment(\.screenFeedback, feedback)))
+        super.init(rootView: AnyView(ChangesScreen(model: model).phoneEnvironment(navigator, feedback)))
         title = "Changes"
-        navigationItem.largeTitleDisplayMode = .always
+        navigationItem.largeTitleDisplayMode = .never
         tabBarRoom = PhoneTabsController.room
     }
 
-    @MainActor required dynamic init?(coder aDecoder: NSCoder) { fatalError("init(coder:) is not used") }
 }
 
-// MARK: - Tasks and Calendar (N10 fills them)
+// MARK: - Tasks and Calendar (FoleviScreens, N10)
 
-final class TabRootPlaceholder: HostedScreen<AnyView> {
+/// A tab's root other than Home: its screen with the large title in its content, the avatar, and the pill with the
+/// screen's own menu, the bell and the sync status.
+final class TabRootController: HostedScreen<AnyView> {
     private let phone: PhoneModel
     private let bell: UIBarButtonItem
     private let syncItem: UIBarButtonItem
     private var observer: Observer?
 
-    init(title: String, symbol: String, message: String, phone: PhoneModel, actions: RootBarActions, id: String) {
+    init(title: String, content: AnyView, trailing: UIBarButtonItem?, phone: PhoneModel, actions: RootBarActions) {
         self.phone = phone
         bell = RootBar.bell(action: actions.notifications)
         syncItem = RootBar.sync(action: actions.sync)
-        super.init(rootView: AnyView(PlaceholderRoot(symbol: symbol, title: title, message: message).accessibilityIdentifier(id)))
-        self.title = title
-        navigationItem.largeTitleDisplayMode = .always
+        super.init(rootView: content)
+        collapsingTitle = title
+        collapseAfter = 50
         navigationItem.leftBarButtonItem = RootBar.avatar(phone, action: actions.account)
-        navigationItem.rightBarButtonItems = [bell, syncItem]
+        navigationItem.rightBarButtonItems = [trailing, bell, syncItem].compactMap { $0 }
         tabBarRoom = PhoneTabsController.room
     }
-
-    @MainActor required dynamic init?(coder aDecoder: NSCoder) { fatalError("init(coder:) is not used") }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -241,93 +245,14 @@ final class TabRootPlaceholder: HostedScreen<AnyView> {
     }
 }
 
-private struct PlaceholderRoot: View {
-    let symbol: String
-    let title: String
-    let message: String
-    var body: some View {
-        ScrollView {
-            EmptyState(systemImage: symbol, title: title, message: message)
-                .padding(.top, 80)
-                .frame(maxWidth: .infinity)
-        }
-        .background(DS.color.canvas)
-    }
-}
-
-// MARK: - Search (N11 replaces it with the full screen)
+// MARK: - Search (FoleviScreens, N11)
 
 final class SearchScreenController: HostedScreen<AnyView> {
-    init(client: EngineClient, prompt: String, navigator: ScreenNavigator) {
-        super.init(rootView: AnyView(PhoneSearchView(client: client, prompt: prompt).environment(\.screenNavigator, navigator)))
+    init(model: SearchModel, environment: @escaping (AnyView) -> AnyView) {
+        super.init(rootView: environment(AnyView(SearchScreen(model: model, showsCancel: false))))
         title = "Search"
         navigationItem.largeTitleDisplayMode = .never
         tabBarRoom = PhoneTabsController.room
-    }
-
-    @MainActor required dynamic init?(coder aDecoder: NSCoder) { fatalError("init(coder:) is not used") }
-}
-
-private struct PhoneSearchView: View {
-    let client: EngineClient
-    let prompt: String
-    @State private var text = ""
-    @State private var hits: [SearchHit] = []
-    @State private var searched = false
-    @FocusState private var focused: Bool
-    @Environment(\.screenNavigator) private var navigator
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 7) {
-                Image(systemName: "magnifyingglass").foregroundStyle(DS.color.inkFaint)
-                TextField(prompt, text: $text)
-                    .foleviFont(.body)
-                    .focused($focused)
-                    .submitLabel(.search)
-                    .autocorrectionDisabled()
-                    .accessibilityIdentifier("search-field")
-            }
-            .padding(.horizontal, 10)
-            .frame(minHeight: 40)
-            .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.control, style: .continuous).fill(DS.color.surfaceSunken))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            List(hits, id: \.id) { hit in
-                Button {
-                    navigator.prepareNote(hit.id)
-                    navigator.open(.note(id: hit.id), nil)
-                } label: {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(hit.title.isEmpty ? "Untitled" : hit.title).foleviFont(.headline).foregroundStyle(DS.color.heading).lineLimit(1)
-                        if !hit.snippet.isEmpty {
-                            Text(hit.snippet).foleviFont(.callout).foregroundStyle(DS.color.inkMuted).lineLimit(2)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-                .listRowBackground(DS.color.canvas)
-            }
-            .listStyle(.plain)
-            .scrollDismissesKeyboard(.immediately)
-            .overlay {
-                if searched && hits.isEmpty && !text.isEmpty {
-                    EmptyState(systemImage: "magnifyingglass", title: "No notes found", message: "Try other words.")
-                }
-            }
-        }
-        .background(DS.color.canvas)
-        .onAppear { focused = true }
-        .task(id: text) {
-            let q = text.trimmingCharacters(in: .whitespaces)
-            guard !q.isEmpty else { hits = []; searched = false; return }
-            try? await Task.sleep(for: .milliseconds(180))
-            guard !Task.isCancelled else { return }
-            if let v = try? await client.query(.search(text: q)) {
-                hits = v.hits
-                searched = true
-            }
-        }
     }
 }
 
@@ -373,4 +298,17 @@ final class PageScreenController: UIViewController, PageViewOwner {
     }
 
     func pageViewWillLeave(_ pageView: WKWebView) {}
+}
+
+
+// MARK: - The screens' environment
+
+extension View {
+    /// What every FoleviScreens view gets from the iPhone frame: the navigator (routes), feedback (toasts and
+    /// haptics) and intents (tabs, places, sheets), all handled by the frame on show.
+    func phoneEnvironment(_ navigator: ScreenNavigator, _ feedback: ScreenFeedback?) -> some View {
+        self.environment(\.screenNavigator, navigator)
+            .environment(\.screenFeedback, feedback ?? ScreenFeedback())
+            .environment(\.screenIntents, ScreenIntents { intent in PhoneFrameController.current?.handle(intent) })
+    }
 }

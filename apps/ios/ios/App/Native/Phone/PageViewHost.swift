@@ -3,6 +3,7 @@
 // WebKit keeps its timers running), covered by the opaque screens and taking no touches; a note screen adopts it
 // as its content, and gives it back when no note is on screen any more. A note screen that loses it to another
 // (a link from one note to the next) keeps a still of the page in its place until it gets it back.
+import ObjectiveC
 import UIKit
 import WebKit
 
@@ -23,6 +24,17 @@ final class PageViewHost {
 
     init(pageView: WKWebView) {
         self.pageView = pageView
+        Self.withoutSafeArea(pageView)
+    }
+
+    /// The page's env(safe-area-inset-*) reads 0: native sends the bars' room with `insets` instead, so the two
+    /// never add up (WebKit's `_setUnobscuredSafeAreaInsets:`, the call Safari makes for its own bars; skipped when
+    /// a WebKit build doesn't have it).
+    static func withoutSafeArea(_ v: WKWebView) {
+        let sel = NSSelectorFromString("_setUnobscuredSafeAreaInsets:")
+        guard v.responds(to: sel), let m = class_getInstanceMethod(WKWebView.self, sel) else { return }
+        typealias Setter = @convention(c) (AnyObject, Selector, UIEdgeInsets) -> Void
+        unsafeBitCast(method_getImplementation(m), to: Setter.self)(v, sel, .zero)
     }
 
     /// Back behind the native root (no note on screen).

@@ -132,6 +132,13 @@ final class NoteViewController: UIViewController, PageViewOwner {
         super.viewDidAppear(animated)
         appeared = true
         update()
+        // The page hasn't said the note is drawn after a second and a half (a note it can't load, a note made
+        // somewhere else that hasn't arrived): show the page as it is rather than the placeholder for ever.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let self, self.coverShown, self.pageHost.isOwned(by: self) else { return }
+            PhoneFrame.log.error("note.ready didn't come for \(self.noteId, privacy: .public) in 1.5 s")
+            self.hideCover()
+        }
     }
 
     override func viewWillDisappear(_ animated: Bool) {

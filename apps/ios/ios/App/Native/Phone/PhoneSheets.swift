@@ -1,6 +1,7 @@
 // Native sheets (plan 6.2): UISheetPresentationController with the medium and large detents, a grabber and the
-// sheet radius (28), for the account and places switcher, notifications, Foli AI and the sync details. Later
-// packages fill them (N11 the account and notifications, N12 the Foli AI chat); the frame only presents them.
+// sheet radius (28), for the account and places switcher and the notifications (FoleviScreens' content, N11), Foli
+// AI (a placeholder until N12) and the sync details. On an iPad they're popovers anchored to the bar item they came
+// from.
 import SwiftUI
 import UIKit
 import FoleviDesign
@@ -10,12 +11,19 @@ import FoleviScreens
 @MainActor
 enum PhoneSheets {
     /// Presents `content` as a sheet from the topmost controller over `from`.
-    static func present<V: View>(_ content: V, from: UIViewController, id: String, detents: [UISheetPresentationController.Detent] = [.medium(), .large()]) {
+    static func present<V: View>(_ content: V, from: UIViewController, id: String, detents: [UISheetPresentationController.Detent] = [.medium(), .large()], anchor: UIBarButtonItem? = nil, popoverSize: CGSize = CGSize(width: 380, height: 560)) {
         var top = from
         while let p = top.presentedViewController { top = p }
         let host = UIHostingController(rootView: content.environment(\.font, FoleviFonts.font(.ui, size: 17)))
         host.view.backgroundColor = Chrome.canvas
         host.view.accessibilityIdentifier = id
+        if UIDevice.current.userInterfaceIdiom == .pad, from.traitCollection.horizontalSizeClass == .regular, let anchor {
+            host.modalPresentationStyle = .popover
+            host.preferredContentSize = popoverSize
+            host.popoverPresentationController?.sourceItem = anchor
+            top.present(host, animated: true)
+            return
+        }
         host.modalPresentationStyle = .pageSheet
         if let sheet = host.sheetPresentationController {
             sheet.detents = detents
@@ -47,127 +55,6 @@ private struct SheetHeader: View {
         .padding(.leading, 20)
         .padding(.trailing, 8)
         .padding(.top, 14)
-    }
-}
-
-// MARK: - Account and places (N11 fills in the rest)
-
-struct AccountSheet: View {
-    let phone: PhoneModel
-    let switchTo: (String) -> Void
-    let addAccount: () -> Void
-    let signOut: (String) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SheetHeader(title: "Account")
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    if let p = phone.session.value?.profile {
-                        HStack(spacing: 12) {
-                            Avatar(name: p.name.isEmpty ? p.email : p.name, size: 48).clipShape(Circle())
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(p.name.isEmpty ? "Folevi" : p.name).foleviFont(.headline).foregroundStyle(DS.color.heading)
-                                if !p.email.isEmpty { Text(p.email).foleviFont(.callout).foregroundStyle(DS.color.inkMuted) }
-                            }
-                        }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("account-profile")
-                    }
-                    if let places = phone.places.value, !places.places.isEmpty {
-                        Text("Places on this iPhone").foleviFont(.caption).foregroundStyle(DS.color.inkFaint).textCase(.uppercase)
-                        VStack(spacing: 0) {
-                            ForEach(places.places, id: \.id) { place in
-                                Button { if place.id != places.current { switchTo(place.id) } } label: {
-                                    HStack(spacing: 12) {
-                                        Image(systemName: place.kind == .library ? "internaldrive" : "person.crop.circle")
-                                            .font(.system(size: 18)).foregroundStyle(DS.color.inkMuted).frame(width: 28)
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(place.name).foleviFont(.body).foregroundStyle(DS.color.heading)
-                                            if let email = place.email { Text(email).foleviFont(.caption).foregroundStyle(DS.color.inkMuted) }
-                                        }
-                                        Spacer()
-                                        if place.id == places.current { Image(systemName: "checkmark").foregroundStyle(DS.color.heading) }
-                                    }
-                                    .padding(.vertical, 10)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("account-place-\(place.id)")
-                            }
-                        }
-                    }
-                    Button(action: addAccount) {
-                        Label("Add an account", systemImage: "plus").frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(FoleviButtonStyle(.secondary, fullWidth: true))
-                    .accessibilityIdentifier("account-add")
-                    if let current = phone.places.value?.current, current.hasPrefix("acct:") {
-                        Button(role: .destructive) { signOut(current) } label: {
-                            Text("Sign out").frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(FoleviButtonStyle(.secondary, fullWidth: true))
-                        .accessibilityIdentifier("account-sign-out")
-                    }
-                    Text("Settings, workspaces and the rest of your account come to this sheet with the next update.")
-                        .foleviFont(.caption).foregroundStyle(DS.color.inkFaint)
-                }
-                .padding(20)
-            }
-        }
-        .background(DS.color.canvas)
-    }
-}
-
-// MARK: - Notifications (N11 replaces it with the full screen)
-
-struct NotificationsSheet: View {
-    let store: ValueStore<NotificationsValue>
-    let markAllRead: () -> Void
-    let open: (NotificationRow) -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                SheetHeader(title: "Notifications")
-            }
-            if let v = store.value {
-                if v.rows.isEmpty {
-                    EmptyState(systemImage: "bell", title: "No notifications", message: "Mentions, comments and invitations show up here.")
-                        .padding(.top, 40)
-                    Spacer()
-                } else {
-                    if v.unread > 0 {
-                        Button("Mark all as read", action: markAllRead)
-                            .foleviFont(.button)
-                            .foregroundStyle(DS.color.heading)
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                            .padding(.horizontal, 20)
-                            .frame(minHeight: 44)
-                            .accessibilityIdentifier("notifications-read-all")
-                    }
-                    List(v.rows, id: \.id) { row in
-                        Button { open(row) } label: {
-                            HStack(alignment: .top, spacing: 10) {
-                                Circle().fill(row.read ? Color.clear : DS.color.ember).frame(width: 8, height: 8).padding(.top, 7)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(row.title).foleviFont(.body).foregroundStyle(DS.color.heading).lineLimit(2)
-                                    if !row.body.isEmpty { Text(row.body).foleviFont(.callout).foregroundStyle(DS.color.inkMuted).lineLimit(2) }
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        }
-                        .listRowBackground(DS.color.canvas)
-                    }
-                    .listStyle(.plain)
-                }
-            } else {
-                ProgressView().padding(.top, 40)
-                Spacer()
-            }
-        }
-        .background(DS.color.canvas)
-        .onDisappear { store.cancel() }
     }
 }
 

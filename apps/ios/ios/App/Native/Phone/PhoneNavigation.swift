@@ -107,25 +107,107 @@ final class PhoneNavigationController: UINavigationController, UINavigationContr
 // MARK: - Screens hosted in a stack
 
 /// A SwiftUI screen in a tab's stack: its title for the bar, the tab bar's room at the bottom, and the scroll view
-/// UIKit collapses the large title with.
-class HostedScreen<Content: View>: UIHostingController<Content> {
+/// UIKit collapses the large title with. The hosting controller is a child of this plain controller, so SwiftUI's
+/// own navigation-title bridging never reaches the bar (it resets the title and drops the large title of a pushed
+/// screen on iOS 26); the bar shows what UIKit sets here.
+class HostedScreen<Content: View>: UIViewController {
+    let host: UIHostingController<Content>
     /// Room for the floating tab bar (its capsules float over content, which scrolls under them at full strength).
     var tabBarRoom: CGFloat = 0 { didSet { if tabBarRoom != oldValue { additionalSafeAreaInsets.bottom = tabBarRoom } } }
     private var scrollViewFound = false
 
+    init(rootView: Content) {
+        host = UIHostingController(rootView: rootView)
+        super.init(nibName: nil, bundle: nil)
+        navigationItem.backButtonDisplayMode = .minimal
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = Chrome.canvas
-        navigationItem.backButtonDisplayMode = .minimal
+        host.view.backgroundColor = Chrome.canvas
+        addChild(host)
+        host.view.frame = view.bounds
+        host.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(host.view)
+        host.didMove(toParent: self)
         additionalSafeAreaInsets.bottom = tabBarRoom
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        // The large title collapses with the screen's own scroll view (SwiftUI's, found once it exists).
-        guard !scrollViewFound, let scroll = firstScrollView(in: view) else { return }
+        findScrollView()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        findScrollView()
+    }
+
+    /// The large title collapses with the screen's own scroll view (SwiftUI's, found once it exists: the hosting
+    /// controller lays its content out after this controller, so it looks again on the next turns until found).
+    private func findScrollView(retries: Int = 10) {
+        guard !scrollViewFound else { return }
+        guard let scroll = firstScrollView(in: host.view) else {
+            if retries > 0 { DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in self?.findScrollView(retries: retries - 1) } }
+            return
+        }
         scrollViewFound = true
         setContentScrollView(scroll, for: .top)
+        if collapsingTitle != nil {
+            offsetObservation = scroll.observe(\.contentOffset, options: [.new]) { [weak self] s, _ in
+                MainActor.assumeIsolated { self?.scrolled(s) }
+            }
+            scrolled(scroll)
+        }
+    }
+
+    // MARK: The title in the content
+
+    /// Tab roots draw their large title in their own content (Home's header: the place, "Home", the sync status),
+    /// and the bar shows the small title only once that has scrolled under it, centred between the bar's items and
+    /// truncated with "…", so it never overlaps the avatar or the pill. (The system large title isn't used for
+    /// them: on iOS 27 it isn't drawn again after a push and pop, and it can't hold the place and the sync status.)
+    var collapsingTitle: String? {
+        didSet {
+            guard let collapsingTitle else { return }
+            navigationItem.largeTitleDisplayMode = .never
+            // No item title (the bar would draw it at once); the back button and the label carry the name.
+            navigationItem.title = nil
+            navigationItem.backButtonTitle = collapsingTitle
+            smallTitle.text = collapsingTitle
+            smallTitle.sizeToFit()
+            titleBox.frame = smallTitle.bounds
+            smallTitle.frame = titleBox.bounds
+            smallTitle.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            titleBox.addSubview(smallTitle)
+            navigationItem.titleView = titleBox
+        }
+    }
+    /// How far the content scrolls before the small title shows (the header's height, about).
+    var collapseAfter: CGFloat = 44
+    private lazy var smallTitle: UILabel = {
+        let l = UILabel()
+        l.font = FoleviFonts.uiFont(.ui, size: 17, weight: .semibold)
+        l.textColor = Chrome.heading
+        l.lineBreakMode = .byTruncatingTail
+        l.alpha = 0
+        l.accessibilityTraits = .header
+        return l
+    }()
+    private let titleBox = UIView()
+    private var offsetObservation: NSKeyValueObservation?
+    private var smallTitleShown = false
+
+    private func scrolled(_ s: UIScrollView) {
+        let y = s.contentOffset.y + s.adjustedContentInset.top
+        let show = y > collapseAfter
+        guard show != smallTitleShown else { return }
+        smallTitleShown = show
+        UIView.animate(withDuration: 0.15) { self.smallTitle.alpha = show ? 1 : 0 }
     }
 }
 

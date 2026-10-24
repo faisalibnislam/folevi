@@ -165,7 +165,15 @@ final class FoleviViewController: UIViewController {
     static func restart() {
         guard let window = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).flatMap(\.windows).first(where: \.isKeyWindow) else { return }
         if let phone = window.rootViewController as? PhoneFrameController {
-            phone.retire { window.rootViewController = PhoneFrameController(host: WebHost()) }
+            // The new place crossfades in (FoleviScreens' placeCrossfade for the frame's root).
+            phone.retire {
+                let next = PhoneFrameController(host: WebHost())
+                if UIAccessibility.isReduceMotionEnabled {
+                    window.rootViewController = next
+                } else {
+                    UIView.transition(with: window, duration: 0.28, options: [.transitionCrossDissolve, .allowAnimatedContent]) { window.rootViewController = next }
+                }
+            }
             return
         }
         guard let old = window.rootViewController as? FoleviViewController else {

@@ -174,6 +174,20 @@ final class PhoneModel {
 
     func isReady(_ id: String) -> Bool { readyNotes.contains(id) }
 
+    /// Asks the page where the selection is (the keyboard came up without an `editor.state` event: a focus the
+    /// page made itself, the title; docs/NATIVE_CONTRACT_REQUESTS.md R5.5). Retried briefly while focus lands.
+    func refreshEditorState() {
+        guard shownNote != nil else { return }
+        Task {
+            for delay in [0, 150, 400] {
+                if delay > 0 { try? await Task.sleep(for: .milliseconds(delay)) }
+                guard keyboardVisible, let s = try? await client.editor(.state) else { continue }
+                editorState = s
+                if s.focused { return }
+            }
+        }
+    }
+
     /// An editor command; a refusal (no note, read only) is quiet except for real failures.
     func editor<E: EngineEditorSpec>(_ command: E) {
         Task {

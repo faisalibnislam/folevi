@@ -13,8 +13,21 @@
 import { haptic } from "./nativeApp";
 import { ARM_MS, liftController } from "./native/lift";
 
-/** How long a finger rests before the menu opens; just under iOS's own text selection, so the menu wins. */
-const HOLD_MS = 450;
+/** How long a finger rests before the menu opens: iOS's own long press (its text selection is held off meanwhile). */
+export const HOLD_MS = 500;
+/** A hold timer that runs this much later than asked ran after the page was busy: the finger may have lifted meanwhile. */
+export const LATE_MS = 60;
+/** How long a late timer waits for touch events that queued up while the page was busy. */
+export const RECHECK_MS = 48;
+
+/**
+ * Whether a hold timer may open the menu now (`fire`) or must first let touch events that queued while the page
+ * was busy arrive (`recheck`): a timer that ran late can be ahead of the lift that ended a plain tap, and opening
+ * the menu then turns a tap into a long press. `startedAt` and `now` are on the same clock (performance.now()).
+ */
+export function holdTimerVerdict(startedAt: number, now: number, rechecked: boolean): "fire" | "recheck" {
+  return !rechecked && now - startedAt - HOLD_MS > LATE_MS ? "recheck" : "fire";
+}
 /** A finger that moves further than this is scrolling or dragging, not holding. */
 const SLOP = 10;
 
@@ -250,7 +263,7 @@ function installAndroidGuard(): () => void {
 export function installTouchContextMenu(): () => void {
   if (!needsLongPress()) return androidTouch() ? installAndroidGuard() : () => undefined;
   let timer: ReturnType<typeof setTimeout> | null = null;
-  let start: { x: number; y: number; target: Element } | null = null;
+  let start: { x: number; y: number; target: Element; at: number; rechecked: boolean } | null = null;
   let held = false;
   // While a held menu is up, the view under the finger stays still, so moving the finger can move the
   // thing held (not scroll the page).
@@ -281,6 +294,12 @@ export function installTouchContextMenu(): () => void {
   const fire = () => {
     timer = null;
     if (!start || !start.target.isConnected) return;
+    // Late (the page was busy): the finger's lift may be queued behind this timer. It goes first.
+    if (holdTimerVerdict(start.at, performance.now(), start.rechecked) === "recheck") {
+      start.rechecked = true;
+      timer = setTimeout(fire, RECHECK_MS);
+      return;
+    }
     const event = new MouseEvent("contextmenu", {
       bubbles: true,
       cancelable: true,
@@ -326,7 +345,10 @@ export function installTouchContextMenu(): () => void {
     // (A moment later: its touchend, which comes just after, ends the hold itself when it arrives. A
     // pointercancel can also just mean the browser gave the finger to scrolling: touches still moving after it
     // say the finger is down, and the hold goes on.)
-    if (e.pointerType !== "touch" || !held) return;
+    if (e.pointerType !== "touch") return;
+    // Not held yet: the finger lifted, or the browser took it for a scroll. Either way it isn't a hold (should
+    // its touchend or touchmoves not reach the document).
+    if (!held) return void (start && cancel());
     if (ending) clearTimeout(ending);
     ending = setTimeout(
       () => {
@@ -344,7 +366,7 @@ export function installTouchContextMenu(): () => void {
     const target = e.target instanceof Element ? e.target : null;
     // Text fields keep iOS's own (its loupe, select and paste); so do media, embedded pages and anything marked native.
     if (!touch || !target || target.closest("input, textarea, select, video, audio, iframe, [data-native-menu]")) return;
-    start = { x: touch.clientX, y: touch.clientY, target };
+    start = { x: touch.clientX, y: touch.clientY, target, at: performance.now(), rechecked: false };
     guard.press(target);
     timer = setTimeout(fire, HOLD_MS);
   };

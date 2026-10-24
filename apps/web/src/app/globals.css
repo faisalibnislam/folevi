@@ -698,8 +698,10 @@
 .iphone-composer :is(.rounded-chip, .ui-seg, .ui-seg > *) { border-radius: var(--radius-capsule); }
 /* A card's or row's "…" (shown on touch elsewhere) stays out of sight: a long press opens the same menu
    (AppContextMenu, through [data-ctx-host]). It stays in place for that and for VoiceOver, and shows only for
-   keyboard focus (the focus a closing menu hands back after a tap doesn't bring it back). */
-:root[data-iphone] [data-ctx-host] .pointer-coarse\:opacity-100:not(:has(:focus-visible)) { opacity: 0; }
+   keyboard focus (the focus a closing menu hands back after a tap doesn't bring it back). Out of sight it takes
+   no taps either: a folder tile's sits in the middle of its cover, so a plain tap there opened the menu instead
+   of the folder. */
+:root[data-iphone] [data-ctx-host] .pointer-coarse\:opacity-100:not(:has(:focus-visible)) { opacity: 0; pointer-events: none; }
 /* What a held finger opened a menu on lifts while the menu is open (lib/touchContextMenu.ts): a card or a row
    with its own menu grows a little, a link or button row gets the pressed tint. */
 :root:is([data-iphone], [data-native]) [data-held-lift]:is([data-ctx-host], [data-lift]) { transform: translateY(var(--held-shift, 0px)) scale(1.04); transition: transform 220ms cubic-bezier(0.2, 0.9, 0.25, 1.08); }
@@ -852,9 +854,14 @@
 :root[data-iphone][data-theme="dark"] [data-fc="name"] { color: #f6f6f8 !important; }
 :root[data-iphone][data-theme="dark"] [data-fc="age"] { color: color-mix(in oklab, var(--fc) 22%, #dcdee5) !important; }
 :root[data-iphone][data-theme="dark"] [data-fc="count"] { background: color-mix(in oklab, var(--fc) 34%, #0c0d10) !important; color: #f6f6f8 !important; }
-/* The iPad app: a card's or folder's "…" stays out of sight on touch, as on the iPhone (a long press opens the
-   same menu); a pointer hovering shows it. */
-:root[data-native="ios"]:not([data-iphone]) [data-ctx-host]:not(:hover) .pointer-coarse\:opacity-100:not(:has(:focus-visible)) { opacity: 0; }
+/* The iPad app: a card's or folder's "…" stays out of sight on touch, as on the iPhone (a long press or a
+   right-click opens the same menu), and out of sight takes no taps (a finger or Pencil tapping the middle of a
+   folder's cover opens the folder). With a trackpad or mouse attached, hovering shows it and it can be clicked;
+   the hover a tap leaves behind on a touch-only iPad doesn't. */
+:root[data-native="ios"]:not([data-iphone]) [data-ctx-host] .pointer-coarse\:opacity-100:not(:has(:focus-visible)) { opacity: 0; pointer-events: none; }
+@media (any-pointer: fine) {
+  :root[data-native="ios"]:not([data-iphone]) [data-ctx-host]:hover .pointer-coarse\:opacity-100 { opacity: 1; pointer-events: auto; }
+}
 /* Reduce Transparency, Increase Contrast, and Android (no iOS glass there): a solid menu. */
 :root:is([data-reduce-transparency], [data-increase-contrast], [data-native="android"]):is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]).ui-pop { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
 :root[data-increase-contrast]:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]).ui-pop { box-shadow: 0 0 0 1px var(--color-line-strong), 0 18px 50px -12px rgb(0 0 0 / 0.3); }

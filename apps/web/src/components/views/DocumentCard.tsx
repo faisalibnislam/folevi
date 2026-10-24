@@ -138,7 +138,7 @@ export function NoteCardFace({
       <div aria-hidden className="relative w-[6%] flex-none shadow-[inset_-1px_0_0_rgb(0_0_0/0.06)]" style={{ background: strip }} />
       {/* the cover's face: title, preview and footer */}
       <div className="flex min-w-0 flex-1 flex-col pb-[6cqw] pl-[7cqw] pr-[6cqw] pt-[8cqw]">
-        <h3 data-card="title" className="line-clamp-2 break-words pr-[7cqw] font-serif text-[6.6cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
+        <h3 data-card="title" className="line-clamp-2 text-ellipsis wrap-normal break-normal pr-[7cqw] font-serif text-[6.6cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
         <p data-card="created" className="mt-[1cqw] truncate text-[4.5cqw] leading-[1.3] text-faint">
           <span className="sr-only">Created </span>
           {ageText(createdAt)}
@@ -191,7 +191,7 @@ export function DocumentCardPreview({ title, style, footer }: { title: string; s
       style={{ ["--card-accent" as string]: accentVar(style.accent), ["--card-accent-soft" as string]: softVar(style.accent) }}
     >
       <div className="p-3.5">
-        <h3 className="line-clamp-2 font-serif text-[16.5px] font-semibold leading-snug text-heading">
+        <h3 className="line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[16.5px] font-semibold leading-snug text-heading">
           {title || "Untitled"}
         </h3>
       </div>

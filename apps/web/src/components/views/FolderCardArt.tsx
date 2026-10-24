@@ -51,7 +51,7 @@ function FolderNote({ note, index }: { note: FolderPreview; index: number }) {
     >
       {art ? <div className="absolute inset-y-0 left-0 w-[7%]" style={{ background: `url(${coverArtThumbUrl(art.id)}) center / cover no-repeat` }} /> : null}
       <div className="absolute inset-0 left-[13%] right-[7%] top-[7%] overflow-hidden">
-        <p className="line-clamp-2 font-serif text-[5.4cqw] font-medium leading-[1.2]" style={{ color: ink }}>
+        <p className="line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[5.4cqw] font-medium leading-[1.2]" style={{ color: ink }}>
           {note.title || "Untitled"}
         </p>
         <p className="mt-[2cqw] whitespace-pre-line break-words text-[3.2cqw] leading-[1.45]" style={{ color: `color-mix(in oklab, ${ink} 82%, ${colors?.paper ?? "#ffffff"})` }}>
@@ -106,7 +106,7 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
           {age}
         </span>
         {/* name */}
-        <span data-fc="name" className="absolute bottom-[11.48%] left-[7%] right-[7%] line-clamp-2 break-words font-serif text-[clamp(16px,9.4cqw,40px)] leading-[1.12] tracking-[-0.01em] text-[#0d0d10]">
+        <span data-fc="name" className="absolute bottom-[11.48%] left-[7%] right-[7%] line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[clamp(16px,9.4cqw,40px)] leading-[1.12] tracking-[-0.01em] text-[#0d0d10]">
           {name}
         </span>
       </div>

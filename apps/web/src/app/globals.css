@@ -840,9 +840,10 @@
 :root[data-iphone] [data-card="created"] { display: none; }
 :root[data-iphone] [data-card="title"] { font-size: 17px; line-height: 22px; font-weight: 600; letter-spacing: -0.005em; }
 :root[data-iphone][data-theme="dark"] [data-card="edge"] { box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.08); }
-/* Folder tiles (FolderCardArt.tsx) on the phone: the name in Spectral 20/24; in dark the folder's darker tone with
-   light words on it (4.5:1 on every colour). */
-:root[data-iphone] [data-fc="name"] { font-size: 20px; line-height: 24px; }
+/* Folder tiles (FolderCardArt.tsx) on the phone: the name in Spectral 19/24 (19 so a 13-letter word such as
+   "Brainstorming" fits the 142 px tile; longer ones end in "…"); in dark the folder's darker tone with light
+   words on it (4.5:1 on every colour). */
+:root[data-iphone] [data-fc="name"] { font-size: 19px; line-height: 24px; }
 :root[data-iphone][data-theme="dark"] [data-fc="back"] { background: color-mix(in oklab, var(--fc) 38%, #23252c) !important; }
 :root[data-iphone][data-theme="dark"] [data-fc="front"] {
   background: linear-gradient(180deg, color-mix(in oklab, color-mix(in oklab, var(--fc) 46%, #121318) 72%, transparent), color-mix(in oklab, color-mix(in oklab, var(--fc) 46%, #121318) 94%, transparent)) !important;

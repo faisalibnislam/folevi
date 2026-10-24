@@ -16,7 +16,8 @@
         "childCount": 2,
         "noteCount": 12,
         "encrypted": false,
-        "sync": "saved"
+        "sync": "saved",
+        "locked": false
       },
       {
         "id": "fld_japan",
@@ -28,7 +29,8 @@
         "childCount": 1,
         "noteCount": 5,
         "encrypted": false,
-        "sync": "saved"
+        "sync": "saved",
+        "locked": false
       },
       {
         "id": "fld_kyoto",
@@ -40,7 +42,8 @@
         "childCount": 0,
         "noteCount": 2,
         "encrypted": false,
-        "sync": "saved"
+        "sync": "saved",
+        "locked": false
       },
       {
         "id": "fld_iceland",
@@ -52,7 +55,8 @@
         "childCount": 0,
         "noteCount": null,
         "encrypted": false,
-        "sync": "waiting"
+        "sync": "waiting",
+        "locked": false
       },
       {
         "id": "fld_work",
@@ -64,7 +68,8 @@
         "childCount": 0,
         "noteCount": 7,
         "encrypted": false,
-        "sync": "saved"
+        "sync": "saved",
+        "locked": true
       }
     ],
     "tags": [

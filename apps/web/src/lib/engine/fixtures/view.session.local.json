@@ -21,7 +21,9 @@
         "canEdit": true,
         "canManage": false,
         "encrypted": false,
-        "locked": false
+        "locked": false,
+        "canLock": false,
+        "level": "standard"
       }
     ],
     "space": "personal",

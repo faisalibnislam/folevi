@@ -210,6 +210,19 @@ function NativeContentShell() {
   useLayoutEffect(() => {
     document.documentElement.setAttribute("data-native-chrome", "");
   }, []);
+  // An iPhone (marker platform "ios"): the phone page layout and its styles (globals.css, editor-phone.css).
+  const iphone = useIphoneApp();
+  useLayoutEffect(() => {
+    if (!iphone) return;
+    const root = document.documentElement;
+    root.dataset.iphone = "";
+    const corner = displayCornerRadius();
+    if (corner) root.style.setProperty("--iphone-sheet-bottom", `${Math.max(28, corner - 8)}px`);
+    return () => {
+      delete root.dataset.iphone;
+      root.style.removeProperty("--iphone-sheet-bottom");
+    };
+  }, [iphone]);
   // The note page's code starts loading at once: the first note native opens should not wait for it.
   useEffect(() => {
     void loadDocumentView();

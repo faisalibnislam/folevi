@@ -645,7 +645,10 @@
           }
         ],
         "encrypted": false,
-        "sync": "saved"
+        "sync": "saved",
+        "locked": false,
+        "path": null,
+        "createdAt": 1790240400000
       },
       {
         "id": "fld_work",
@@ -680,7 +683,10 @@
           }
         ],
         "encrypted": false,
-        "sync": "saved"
+        "sync": "saved",
+        "locked": false,
+        "path": null,
+        "createdAt": 1790240400000
       },
       {
         "id": "fld_reading",
@@ -716,7 +722,10 @@
           }
         ],
         "encrypted": false,
-        "sync": "saved"
+        "sync": "saved",
+        "locked": false,
+        "path": null,
+        "createdAt": 1790240400000
       }
     ],
     "tags": [

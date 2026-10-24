@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "invite.decline",
+  "description": "Decline a page invitation from its link.",
+  "args": {
+    "kind": "page",
+    "token": "tok_abc"
+  },
+  "result": {
+    "ok": true
+  }
+}

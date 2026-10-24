@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "adf9c9b5"
+        "schemaHash": "8faa5d67"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 10,
+        "revision": 11,
         "build": "dev",
-        "schemaHash": "adf9c9b5",
+        "schemaHash": "8faa5d67",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -75,7 +75,9 @@
           "tasks.unscheduled",
           "files.urls",
           "recent",
-          "device.storage"
+          "device.storage",
+          "support.topics",
+          "changes.diff"
         ],
         "listViews": [
           "notes.list"
@@ -160,7 +162,12 @@
           "device.download",
           "device.removeCopy",
           "device.removeFiles",
-          "sharing.setRole"
+          "sharing.setRole",
+          "invite.decline",
+          "support.send",
+          "folder.lock",
+          "ai.generate",
+          "ai.saveDraft"
         ],
         "editorCommands": [
           "note.prepare",

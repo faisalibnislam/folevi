@@ -70,17 +70,17 @@ public struct NativeChromeMarker: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(platform, forKey: .platform)
-        try c.encode(`protocol`, forKey: .`protocol`)
-        try c.encodePatch(place, forKey: .place)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.platform, forKey: .platform)
+        try container.encode(self.protocol, forKey: .`protocol`)
+        try container.encodePatch(self.place, forKey: .place)
     }
 
     public init(from decoder: any Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.platform = try c.decode(Platform.self, forKey: .platform)
-        self.protocol = try c.decode(Int.self, forKey: .`protocol`)
-        self.place = try c.decodePatch(String.self, forKey: .place)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.platform = try container.decode(Platform.self, forKey: .platform)
+        self.protocol = try container.decode(Int.self, forKey: .`protocol`)
+        self.place = try container.decodePatch(String.self, forKey: .place)
     }
 }
 
@@ -187,20 +187,20 @@ public struct HelloValue: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(`protocol`, forKey: .`protocol`)
-        try c.encode(revision, forKey: .revision)
-        try c.encode(build, forKey: .build)
-        try c.encode(schemaHash, forKey: .schemaHash)
-        try c.encode(ready, forKey: .ready)
-        try c.encode(place, forKey: .place)
-        try c.encode(features, forKey: .features)
-        try c.encode(views, forKey: .views)
-        try c.encode(listViews, forKey: .listViews)
-        try c.encode(commands, forKey: .commands)
-        try c.encode(editorCommands, forKey: .editorCommands)
-        try c.encode(events, forKey: .events)
-        try c.encode(gate, forKey: .gate)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.protocol, forKey: .`protocol`)
+        try container.encode(self.revision, forKey: .revision)
+        try container.encode(self.build, forKey: .build)
+        try container.encode(self.schemaHash, forKey: .schemaHash)
+        try container.encode(self.ready, forKey: .ready)
+        try container.encode(self.place, forKey: .place)
+        try container.encode(self.features, forKey: .features)
+        try container.encode(self.views, forKey: .views)
+        try container.encode(self.listViews, forKey: .listViews)
+        try container.encode(self.commands, forKey: .commands)
+        try container.encode(self.editorCommands, forKey: .editorCommands)
+        try container.encode(self.events, forKey: .events)
+        try container.encode(self.gate, forKey: .gate)
     }
 }
 
@@ -360,10 +360,10 @@ public struct FolderChip: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(name, forKey: .name)
-        try c.encode(color, forKey: .color)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.color, forKey: .color)
     }
 }
 
@@ -433,26 +433,26 @@ public struct NoteRow: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(title, forKey: .title)
-        try c.encode(icon, forKey: .icon)
-        try c.encode(kind, forKey: .kind)
-        try c.encode(excerpt, forKey: .excerpt)
-        try c.encode(preview, forKey: .preview)
-        try c.encode(cover, forKey: .cover)
-        try c.encode(style, forKey: .style)
-        try c.encode(starred, forKey: .starred)
-        try c.encode(createdAt, forKey: .createdAt)
-        try c.encode(updatedAt, forKey: .updatedAt)
-        try c.encode(folder, forKey: .folder)
-        try c.encode(tags, forKey: .tags)
-        try c.encode(encrypted, forKey: .encrypted)
-        try c.encode(archived, forKey: .archived)
-        try c.encode(inTrash, forKey: .inTrash)
-        try c.encode(deletedAt, forKey: .deletedAt)
-        try c.encode(sync, forKey: .sync)
-        try c.encode(h, forKey: .h)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.icon, forKey: .icon)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.excerpt, forKey: .excerpt)
+        try container.encode(self.preview, forKey: .preview)
+        try container.encode(self.cover, forKey: .cover)
+        try container.encode(self.style, forKey: .style)
+        try container.encode(self.starred, forKey: .starred)
+        try container.encode(self.createdAt, forKey: .createdAt)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+        try container.encode(self.folder, forKey: .folder)
+        try container.encode(self.tags, forKey: .tags)
+        try container.encode(self.encrypted, forKey: .encrypted)
+        try container.encode(self.archived, forKey: .archived)
+        try container.encode(self.inTrash, forKey: .inTrash)
+        try container.encode(self.deletedAt, forKey: .deletedAt)
+        try container.encode(self.sync, forKey: .sync)
+        try container.encode(self.h, forKey: .h)
     }
 }
 
@@ -470,11 +470,11 @@ public struct ProfileInfo: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(name, forKey: .name)
-        try c.encode(email, forKey: .email)
-        try c.encode(avatarUrl, forKey: .avatarUrl)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.email, forKey: .email)
+        try container.encode(self.avatarUrl, forKey: .avatarUrl)
     }
 }
 
@@ -495,8 +495,13 @@ public struct SpaceInfo: Codable, Hashable, Sendable {
     public var encrypted: Bool
     /// Encrypted and this device is locked: lists show nothing until it's unlocked.
     public var locked: Bool
+    /// Revision 11 (R9.1): "Always fully encrypted" is offered in this space's folder menus (`folder.lock`): the
+    /// account has encryption keys, and the person may (Personal: its owner; a workspace: owner and admins).
+    public var canLock: Bool
+    /// Revision 11 (R9.1): "standard" or "encrypted", the space's level (the stop wording differs).
+    public var level: String
 
-    public init(id: SpaceRef, kind: Kind, name: String, role: String, canEdit: Bool, canManage: Bool, encrypted: Bool, locked: Bool) {
+    public init(id: SpaceRef, kind: Kind, name: String, role: String, canEdit: Bool, canManage: Bool, encrypted: Bool, locked: Bool, canLock: Bool = false, level: String = "standard") {
         self.id = id
         self.kind = kind
         self.name = name
@@ -505,6 +510,8 @@ public struct SpaceInfo: Codable, Hashable, Sendable {
         self.canManage = canManage
         self.encrypted = encrypted
         self.locked = locked
+        self.canLock = canLock
+        self.level = level
     }
 }
 
@@ -569,17 +576,17 @@ public struct SessionValue: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(place, forKey: .place)
-        try c.encode(mode, forKey: .mode)
-        try c.encode(profile, forKey: .profile)
-        try c.encode(spaces, forKey: .spaces)
-        try c.encode(space, forKey: .space)
-        try c.encode(online, forKey: .online)
-        try c.encode(today, forKey: .today)
-        try c.encode(timeZone, forKey: .timeZone)
-        try c.encode(appearance, forKey: .appearance)
-        try c.encode(capabilities, forKey: .capabilities)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.place, forKey: .place)
+        try container.encode(self.mode, forKey: .mode)
+        try container.encode(self.profile, forKey: .profile)
+        try container.encode(self.spaces, forKey: .spaces)
+        try container.encode(self.space, forKey: .space)
+        try container.encode(self.online, forKey: .online)
+        try container.encode(self.today, forKey: .today)
+        try container.encode(self.timeZone, forKey: .timeZone)
+        try container.encode(self.appearance, forKey: .appearance)
+        try container.encode(self.capabilities, forKey: .capabilities)
     }
 }
 
@@ -598,11 +605,11 @@ public struct PlaceWorkspaceInfo: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(name, forKey: .name)
-        try c.encode(logoUrl, forKey: .logoUrl)
-        try c.encode(planName, forKey: .planName)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.logoUrl, forKey: .logoUrl)
+        try container.encode(self.planName, forKey: .planName)
     }
 }
 
@@ -639,17 +646,17 @@ public struct PlaceRow: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(kind, forKey: .kind)
-        try c.encode(name, forKey: .name)
-        try c.encode(email, forKey: .email)
-        try c.encode(avatarUrl, forKey: .avatarUrl)
-        try c.encode(syncs, forKey: .syncs)
-        try c.encode(workspaces, forKey: .workspaces)
-        try c.encode(unread, forKey: .unread)
-        try c.encode(reminders, forKey: .reminders)
-        try c.encode(waiting, forKey: .waiting)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.email, forKey: .email)
+        try container.encode(self.avatarUrl, forKey: .avatarUrl)
+        try container.encode(self.syncs, forKey: .syncs)
+        try container.encode(self.workspaces, forKey: .workspaces)
+        try container.encode(self.unread, forKey: .unread)
+        try container.encode(self.reminders, forKey: .reminders)
+        try container.encode(self.waiting, forKey: .waiting)
     }
 }
 
@@ -664,9 +671,9 @@ public struct PlacesValue: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(current, forKey: .current)
-        try c.encode(places, forKey: .places)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.current, forKey: .current)
+        try container.encode(self.places, forKey: .places)
     }
 }
 
@@ -693,11 +700,11 @@ public struct CatchUpCard: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(available, forKey: .available)
-        try c.encode(state, forKey: .state)
-        try c.encode(brief, forKey: .brief)
-        try c.encode(error, forKey: .error)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.available, forKey: .available)
+        try container.encode(self.state, forKey: .state)
+        try container.encode(self.brief, forKey: .brief)
+        try container.encode(self.error, forKey: .error)
     }
 }
 
@@ -750,11 +757,11 @@ public struct HomeRow: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(title, forKey: .title)
-        try c.encode(count, forKey: .count)
-        try c.encode(route, forKey: .route)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.count, forKey: .count)
+        try container.encode(self.route, forKey: .route)
     }
 }
 
@@ -785,8 +792,14 @@ public struct FolderCard: Codable, Hashable, Sendable {
     public var previews: [FolderPreview]
     public var encrypted: Bool
     public var sync: SyncMark
+    /// Revision 11 (R9.1): always fully encrypted.
+    public var locked: Bool
+    /// Revision 11 (R9.3): where a nested folder is, its ancestors' names ("Work / Clients"); null at the top level.
+    public var path: String?
+    /// Revision 11 (R9.3): for All folders' "Newest" sort (0 when unknown).
+    public var createdAt: Double
 
-    public init(id: String, name: String, color: String? = nil, parentId: String? = nil, noteCount: Int, childCount: Int, updatedAt: Double, previews: [FolderPreview], encrypted: Bool, sync: SyncMark) {
+    public init(id: String, name: String, color: String? = nil, parentId: String? = nil, noteCount: Int, childCount: Int, updatedAt: Double, previews: [FolderPreview], encrypted: Bool, sync: SyncMark, locked: Bool = false, path: String? = nil, createdAt: Double = 0) {
         self.id = id
         self.name = name
         self.color = color
@@ -797,20 +810,26 @@ public struct FolderCard: Codable, Hashable, Sendable {
         self.previews = previews
         self.encrypted = encrypted
         self.sync = sync
+        self.locked = locked
+        self.path = path
+        self.createdAt = createdAt
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(name, forKey: .name)
-        try c.encode(color, forKey: .color)
-        try c.encode(parentId, forKey: .parentId)
-        try c.encode(noteCount, forKey: .noteCount)
-        try c.encode(childCount, forKey: .childCount)
-        try c.encode(updatedAt, forKey: .updatedAt)
-        try c.encode(previews, forKey: .previews)
-        try c.encode(encrypted, forKey: .encrypted)
-        try c.encode(sync, forKey: .sync)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.color, forKey: .color)
+        try container.encode(self.parentId, forKey: .parentId)
+        try container.encode(self.noteCount, forKey: .noteCount)
+        try container.encode(self.childCount, forKey: .childCount)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+        try container.encode(self.previews, forKey: .previews)
+        try container.encode(self.encrypted, forKey: .encrypted)
+        try container.encode(self.sync, forKey: .sync)
+        try container.encode(self.locked, forKey: .locked)
+        try container.encode(self.path, forKey: .path)
+        try container.encode(self.createdAt, forKey: .createdAt)
     }
 }
 
@@ -880,8 +899,10 @@ public struct FolderNode: Codable, Hashable, Sendable {
     public var noteCount: Int?
     public var encrypted: Bool
     public var sync: SyncMark
+    /// Revision 11 (R9.1): always fully encrypted.
+    public var locked: Bool
 
-    public init(id: String, name: String, color: String? = nil, parentId: String? = nil, depth: Int, rank: String, childCount: Int, noteCount: Int? = nil, encrypted: Bool, sync: SyncMark) {
+    public init(id: String, name: String, color: String? = nil, parentId: String? = nil, depth: Int, rank: String, childCount: Int, noteCount: Int? = nil, encrypted: Bool, sync: SyncMark, locked: Bool = false) {
         self.id = id
         self.name = name
         self.color = color
@@ -892,20 +913,22 @@ public struct FolderNode: Codable, Hashable, Sendable {
         self.noteCount = noteCount
         self.encrypted = encrypted
         self.sync = sync
+        self.locked = locked
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(name, forKey: .name)
-        try c.encode(color, forKey: .color)
-        try c.encode(parentId, forKey: .parentId)
-        try c.encode(depth, forKey: .depth)
-        try c.encode(rank, forKey: .rank)
-        try c.encode(childCount, forKey: .childCount)
-        try c.encode(noteCount, forKey: .noteCount)
-        try c.encode(encrypted, forKey: .encrypted)
-        try c.encode(sync, forKey: .sync)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.color, forKey: .color)
+        try container.encode(self.parentId, forKey: .parentId)
+        try container.encode(self.depth, forKey: .depth)
+        try container.encode(self.rank, forKey: .rank)
+        try container.encode(self.childCount, forKey: .childCount)
+        try container.encode(self.noteCount, forKey: .noteCount)
+        try container.encode(self.encrypted, forKey: .encrypted)
+        try container.encode(self.sync, forKey: .sync)
+        try container.encode(self.locked, forKey: .locked)
     }
 }
 
@@ -954,11 +977,11 @@ public struct SpaceSyncInfo: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(space, forKey: .space)
-        try c.encode(state, forKey: .state)
-        try c.encode(have, forKey: .have)
-        try c.encode(total, forKey: .total)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.space, forKey: .space)
+        try container.encode(self.state, forKey: .state)
+        try container.encode(self.have, forKey: .have)
+        try container.encode(self.total, forKey: .total)
     }
 }
 
@@ -1031,24 +1054,24 @@ public struct NoteMeta: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(found, forKey: .found)
-        try c.encode(title, forKey: .title)
-        try c.encode(icon, forKey: .icon)
-        try c.encode(kind, forKey: .kind)
-        try c.encode(space, forKey: .space)
-        try c.encode(folder, forKey: .folder)
-        try c.encode(breadcrumbs, forKey: .breadcrumbs)
-        try c.encode(starred, forKey: .starred)
-        try c.encode(access, forKey: .access)
-        try c.encode(canEdit, forKey: .canEdit)
-        try c.encode(encrypted, forKey: .encrypted)
-        try c.encode(archived, forKey: .archived)
-        try c.encode(inTrash, forKey: .inTrash)
-        try c.encode(cover, forKey: .cover)
-        try c.encode(style, forKey: .style)
-        try c.encode(sync, forKey: .sync)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.found, forKey: .found)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.icon, forKey: .icon)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.space, forKey: .space)
+        try container.encode(self.folder, forKey: .folder)
+        try container.encode(self.breadcrumbs, forKey: .breadcrumbs)
+        try container.encode(self.starred, forKey: .starred)
+        try container.encode(self.access, forKey: .access)
+        try container.encode(self.canEdit, forKey: .canEdit)
+        try container.encode(self.encrypted, forKey: .encrypted)
+        try container.encode(self.archived, forKey: .archived)
+        try container.encode(self.inTrash, forKey: .inTrash)
+        try container.encode(self.cover, forKey: .cover)
+        try container.encode(self.style, forKey: .style)
+        try container.encode(self.sync, forKey: .sync)
     }
 }
 
@@ -1064,10 +1087,10 @@ public struct NoteCrumb: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(title, forKey: .title)
-        try c.encode(icon, forKey: .icon)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.icon, forKey: .icon)
     }
 }
 
@@ -1166,25 +1189,25 @@ public struct NoteCreateArgs: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encodeIfPresent(space, forKey: .space)
-        try c.encodePatch(folderId, forKey: .folderId)
-        try c.encodePatch(parentId, forKey: .parentId)
-        try c.encodeIfPresent(title, forKey: .title)
-        try c.encodePatch(templateId, forKey: .templateId)
-        try c.encodeIfPresent(`open`, forKey: .`open`)
-        try c.encodeIfPresent(text, forKey: .text)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(self.space, forKey: .space)
+        try container.encodePatch(self.folderId, forKey: .folderId)
+        try container.encodePatch(self.parentId, forKey: .parentId)
+        try container.encodeIfPresent(self.title, forKey: .title)
+        try container.encodePatch(self.templateId, forKey: .templateId)
+        try container.encodeIfPresent(self.open, forKey: .`open`)
+        try container.encodeIfPresent(self.text, forKey: .text)
     }
 
     public init(from decoder: any Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.space = try c.decodeIfPresent(SpaceRef.self, forKey: .space)
-        self.folderId = try c.decodePatch(String.self, forKey: .folderId)
-        self.parentId = try c.decodePatch(String.self, forKey: .parentId)
-        self.title = try c.decodeIfPresent(String.self, forKey: .title)
-        self.templateId = try c.decodePatch(String.self, forKey: .templateId)
-        self.open = try c.decodeIfPresent(Bool.self, forKey: .`open`)
-        self.text = try c.decodeIfPresent(String.self, forKey: .text)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.space = try container.decodeIfPresent(SpaceRef.self, forKey: .space)
+        self.folderId = try container.decodePatch(String.self, forKey: .folderId)
+        self.parentId = try container.decodePatch(String.self, forKey: .parentId)
+        self.title = try container.decodeIfPresent(String.self, forKey: .title)
+        self.templateId = try container.decodePatch(String.self, forKey: .templateId)
+        self.open = try container.decodeIfPresent(Bool.self, forKey: .`open`)
+        self.text = try container.decodeIfPresent(String.self, forKey: .text)
     }
 }
 
@@ -1225,9 +1248,9 @@ public struct NoteMoveArgs: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(ids, forKey: .ids)
-        try c.encode(folderId, forKey: .folderId)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.ids, forKey: .ids)
+        try container.encode(self.folderId, forKey: .folderId)
     }
 }
 
@@ -1286,19 +1309,19 @@ public struct FolderCreateArgs: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encodeIfPresent(space, forKey: .space)
-        try c.encode(name, forKey: .name)
-        try c.encodePatch(parentId, forKey: .parentId)
-        try c.encodePatch(color, forKey: .color)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(self.space, forKey: .space)
+        try container.encode(self.name, forKey: .name)
+        try container.encodePatch(self.parentId, forKey: .parentId)
+        try container.encodePatch(self.color, forKey: .color)
     }
 
     public init(from decoder: any Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.space = try c.decodeIfPresent(SpaceRef.self, forKey: .space)
-        self.name = try c.decode(String.self, forKey: .name)
-        self.parentId = try c.decodePatch(String.self, forKey: .parentId)
-        self.color = try c.decodePatch(String.self, forKey: .color)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.space = try container.decodeIfPresent(SpaceRef.self, forKey: .space)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.parentId = try container.decodePatch(String.self, forKey: .parentId)
+        self.color = try container.decodePatch(String.self, forKey: .color)
     }
 }
 
@@ -1375,7 +1398,8 @@ public enum EditorPanel: String, Codable, Hashable, Sendable, CaseIterable {
     case related
 }
 
-/// What `insert { kind }` adds: a block ("divider", "table", "code", "mention" types `@`), or a special insert the
+/// What `insert { kind }` adds: a block ("divider", "table", "code", "mention" types `@`, "slash" types `/` and opens
+/// the slash menu at the caret (revision 11, R5.1)), or a special insert the
 /// editor's menus run ("image", "file", "scan", "page", "bookmark", "embed", "date", "columns2", "tabs", ...; the
 /// editor's SpecialInsert list).
 public typealias EditorInsertKind = String
@@ -1404,7 +1428,7 @@ public struct NotePrepareArgs: Codable, Hashable, Sendable {
 
 public struct NoteShowArgs: Codable, Hashable, Sendable {
     public var id: String
-    /// Focus the editor (a new note opens ready to type in).
+    /// Focus the editor (a new note opens ready to type in): an untitled, empty note in its title (revision 11, R5.4).
     public var focus: Bool?
 
     public init(id: String, focus: Bool? = nil) {
@@ -1440,8 +1464,8 @@ public struct LinkArgs: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(href, forKey: .href)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.href, forKey: .href)
     }
 }
 
@@ -1512,10 +1536,10 @@ public struct EngineReadyEvent: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(place, forKey: .place)
-        try c.encode(`protocol`, forKey: .`protocol`)
-        try c.encode(revision, forKey: .revision)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.place, forKey: .place)
+        try container.encode(self.protocol, forKey: .`protocol`)
+        try container.encode(self.revision, forKey: .revision)
     }
 }
 
@@ -1566,19 +1590,19 @@ public struct GateChangedEvent: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(gate, forKey: .gate)
-        try c.encode(title, forKey: .title)
-        try c.encode(message, forKey: .message)
-        try c.encode(busy, forKey: .busy)
-        try c.encode(actions, forKey: .actions)
-        try c.encode(fields, forKey: .fields)
-        try c.encode(progress, forKey: .progress)
-        try c.encode(migration, forKey: .migration)
-        try c.encode(deviceLimit, forKey: .deviceLimit)
-        try c.encode(e2ee, forKey: .e2ee)
-        try c.encode(onboarding, forKey: .onboarding)
-        try c.encode(error, forKey: .error)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.gate, forKey: .gate)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.message, forKey: .message)
+        try container.encode(self.busy, forKey: .busy)
+        try container.encode(self.actions, forKey: .actions)
+        try container.encode(self.fields, forKey: .fields)
+        try container.encode(self.progress, forKey: .progress)
+        try container.encode(self.migration, forKey: .migration)
+        try container.encode(self.deviceLimit, forKey: .deviceLimit)
+        try container.encode(self.e2ee, forKey: .e2ee)
+        try container.encode(self.onboarding, forKey: .onboarding)
+        try container.encode(self.error, forKey: .error)
     }
 }
 
@@ -1637,10 +1661,10 @@ public struct GateProgress: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(done, forKey: .done)
-        try c.encode(total, forKey: .total)
-        try c.encode(label, forKey: .label)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.done, forKey: .done)
+        try container.encode(self.total, forKey: .total)
+        try container.encode(self.label, forKey: .label)
     }
 }
 
@@ -1684,19 +1708,19 @@ public struct MigrationSummary: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(direction, forKey: .direction)
-        try c.encode(phase, forKey: .phase)
-        try c.encode(notes, forKey: .notes)
-        try c.encode(folders, forKey: .folders)
-        try c.encode(tags, forKey: .tags)
-        try c.encode(files, forKey: .files)
-        try c.encode(fileBytes, forKey: .fileBytes)
-        try c.encode(availableBytes, forKey: .availableBytes)
-        try c.encode(fits, forKey: .fits)
-        try c.encode(existingNotes, forKey: .existingNotes)
-        try c.encode(writable, forKey: .writable)
-        try c.encode(versions, forKey: .versions)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.direction, forKey: .direction)
+        try container.encode(self.phase, forKey: .phase)
+        try container.encode(self.notes, forKey: .notes)
+        try container.encode(self.folders, forKey: .folders)
+        try container.encode(self.tags, forKey: .tags)
+        try container.encode(self.files, forKey: .files)
+        try container.encode(self.fileBytes, forKey: .fileBytes)
+        try container.encode(self.availableBytes, forKey: .availableBytes)
+        try container.encode(self.fits, forKey: .fits)
+        try container.encode(self.existingNotes, forKey: .existingNotes)
+        try container.encode(self.writable, forKey: .writable)
+        try container.encode(self.versions, forKey: .versions)
     }
 }
 
@@ -1754,16 +1778,16 @@ public struct E2eeGateInfo: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(space, forKey: .space)
-        try c.encode(spaceName, forKey: .spaceName)
-        try c.encode(view, forKey: .view)
-        try c.encode(methods, forKey: .methods)
-        try c.encode(approval, forKey: .approval)
-        try c.encode(approvalCode, forKey: .approvalCode)
-        try c.encode(setupStep, forKey: .setupStep)
-        try c.encode(recoveryKey, forKey: .recoveryKey)
-        try c.encode(methodsAdded, forKey: .methodsAdded)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.space, forKey: .space)
+        try container.encode(self.spaceName, forKey: .spaceName)
+        try container.encode(self.view, forKey: .view)
+        try container.encode(self.methods, forKey: .methods)
+        try container.encode(self.approval, forKey: .approval)
+        try container.encode(self.approvalCode, forKey: .approvalCode)
+        try container.encode(self.setupStep, forKey: .setupStep)
+        try container.encode(self.recoveryKey, forKey: .recoveryKey)
+        try container.encode(self.methodsAdded, forKey: .methodsAdded)
     }
 }
 
@@ -1815,9 +1839,9 @@ public struct PlaceChangedEvent: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(place, forKey: .place)
-        try c.encode(space, forKey: .space)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.place, forKey: .place)
+        try container.encode(self.space, forKey: .space)
     }
 }
 
@@ -1854,11 +1878,11 @@ public struct ToastEvent: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(message, forKey: .message)
-        try c.encode(tone, forKey: .tone)
-        try c.encode(undo, forKey: .undo)
-        try c.encode(action, forKey: .action)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.message, forKey: .message)
+        try container.encode(self.tone, forKey: .tone)
+        try container.encode(self.undo, forKey: .undo)
+        try container.encode(self.action, forKey: .action)
     }
 }
 
@@ -1891,11 +1915,11 @@ public struct NavigateRequestEvent: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(route, forKey: .route)
-        try c.encode(noteId, forKey: .noteId)
-        try c.encode(external, forKey: .external)
-        try c.encode(newTab, forKey: .newTab)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.route, forKey: .route)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.external, forKey: .external)
+        try container.encode(self.newTab, forKey: .newTab)
     }
 }
 
@@ -1942,18 +1966,18 @@ public struct EditorStateEvent: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(noteId, forKey: .noteId)
-        try c.encode(focused, forKey: .focused)
-        try c.encode(canEdit, forKey: .canEdit)
-        try c.encode(block, forKey: .block)
-        try c.encode(marks, forKey: .marks)
-        try c.encode(link, forKey: .link)
-        try c.encode(undo, forKey: .undo)
-        try c.encode(redo, forKey: .redo)
-        try c.encode(focus, forKey: .focus)
-        try c.encode(locked, forKey: .locked)
-        try c.encode(canLock, forKey: .canLock)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.focused, forKey: .focused)
+        try container.encode(self.canEdit, forKey: .canEdit)
+        try container.encode(self.block, forKey: .block)
+        try container.encode(self.marks, forKey: .marks)
+        try container.encode(self.link, forKey: .link)
+        try container.encode(self.undo, forKey: .undo)
+        try container.encode(self.redo, forKey: .redo)
+        try container.encode(self.focus, forKey: .focus)
+        try container.encode(self.locked, forKey: .locked)
+        try container.encode(self.canLock, forKey: .canLock)
     }
 }
 
@@ -1965,8 +1989,8 @@ public struct EditorPanelEvent: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(panel, forKey: .panel)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.panel, forKey: .panel)
     }
 }
 
@@ -1996,12 +2020,12 @@ public struct NoteReorderArgs: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(afterId, forKey: .afterId)
-        try c.encode(view, forKey: .view)
-        try c.encodeIfPresent(folderId, forKey: .folderId)
-        try c.encodeIfPresent(space, forKey: .space)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.afterId, forKey: .afterId)
+        try container.encode(self.view, forKey: .view)
+        try container.encodeIfPresent(self.folderId, forKey: .folderId)
+        try container.encodeIfPresent(self.space, forKey: .space)
     }
 }
 
@@ -2025,17 +2049,17 @@ public struct NoteCopyToArgs: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(ids, forKey: .ids)
-        try c.encode(space, forKey: .space)
-        try c.encodePatch(folderId, forKey: .folderId)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.ids, forKey: .ids)
+        try container.encode(self.space, forKey: .space)
+        try container.encodePatch(self.folderId, forKey: .folderId)
     }
 
     public init(from decoder: any Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.ids = try c.decode([String].self, forKey: .ids)
-        self.space = try c.decode(SpaceRef.self, forKey: .space)
-        self.folderId = try c.decodePatch(String.self, forKey: .folderId)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.ids = try container.decode([String].self, forKey: .ids)
+        self.space = try container.decode(SpaceRef.self, forKey: .space)
+        self.folderId = try container.decodePatch(String.self, forKey: .folderId)
     }
 }
 
@@ -2088,9 +2112,9 @@ public struct FolderSetColorArgs: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(color, forKey: .color)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.color, forKey: .color)
     }
 }
 
@@ -2112,11 +2136,11 @@ public struct FolderMoveArgs: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(parentId, forKey: .parentId)
-        try c.encode(afterId, forKey: .afterId)
-        try c.encodeIfPresent(space, forKey: .space)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.parentId, forKey: .parentId)
+        try container.encode(self.afterId, forKey: .afterId)
+        try container.encodeIfPresent(self.space, forKey: .space)
     }
 }
 
@@ -2167,27 +2191,33 @@ public struct FolderCardsArgs: Codable, Hashable, Sendable {
     public var space: SpaceRef?
     /// Whose subfolders; null or left out: the top level.
     public var parentId: Patch<String>
+    /// Revision 11 (R9.3): every folder of the space, nested ones too, in tree order (`parentId` is then ignored).
+    public var all: Bool?
 
     enum CodingKeys: String, CodingKey {
         case space
         case parentId
+        case all
     }
 
-    public init(space: SpaceRef? = nil, parentId: String? = nil) {
+    public init(space: SpaceRef? = nil, parentId: String? = nil, all: Bool? = nil) {
         self.space = space
         self.parentId = Patch(parentId)
+        self.all = all
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encodeIfPresent(space, forKey: .space)
-        try c.encodePatch(parentId, forKey: .parentId)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(self.space, forKey: .space)
+        try container.encodePatch(self.parentId, forKey: .parentId)
+        try container.encodeIfPresent(self.all, forKey: .all)
     }
 
     public init(from decoder: any Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.space = try c.decodeIfPresent(SpaceRef.self, forKey: .space)
-        self.parentId = try c.decodePatch(String.self, forKey: .parentId)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.space = try container.decodeIfPresent(SpaceRef.self, forKey: .space)
+        self.parentId = try container.decodePatch(String.self, forKey: .parentId)
+        self.all = try container.decodeIfPresent(Bool.self, forKey: .all)
     }
 }
 
@@ -2232,19 +2262,19 @@ public struct SharedRow: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(title, forKey: .title)
-        try c.encode(excerpt, forKey: .excerpt)
-        try c.encode(icon, forKey: .icon)
-        try c.encode(sharedBy, forKey: .sharedBy)
-        try c.encode(workspaceName, forKey: .workspaceName)
-        try c.encode(ownerName, forKey: .ownerName)
-        try c.encode(role, forKey: .role)
-        try c.encode(sharedAt, forKey: .sharedAt)
-        try c.encode(updatedAt, forKey: .updatedAt)
-        try c.encode(encrypted, forKey: .encrypted)
-        try c.encode(h, forKey: .h)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.excerpt, forKey: .excerpt)
+        try container.encode(self.icon, forKey: .icon)
+        try container.encode(self.sharedBy, forKey: .sharedBy)
+        try container.encode(self.workspaceName, forKey: .workspaceName)
+        try container.encode(self.ownerName, forKey: .ownerName)
+        try container.encode(self.role, forKey: .role)
+        try container.encode(self.sharedAt, forKey: .sharedAt)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+        try container.encode(self.encrypted, forKey: .encrypted)
+        try container.encode(self.h, forKey: .h)
     }
 }
 
@@ -2281,14 +2311,14 @@ public struct ProposalRow: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(noteId, forKey: .noteId)
-        try c.encode(title, forKey: .title)
-        try c.encode(sourceName, forKey: .sourceName)
-        try c.encode(summary, forKey: .summary)
-        try c.encode(createdAt, forKey: .createdAt)
-        try c.encode(problem, forKey: .problem)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.sourceName, forKey: .sourceName)
+        try container.encode(self.summary, forKey: .summary)
+        try container.encode(self.createdAt, forKey: .createdAt)
+        try container.encode(self.problem, forKey: .problem)
     }
 }
 
@@ -2313,13 +2343,13 @@ public struct ChangedNoteRow: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(title, forKey: .title)
-        try c.encode(icon, forKey: .icon)
-        try c.encode(who, forKey: .who)
-        try c.encode(counts, forKey: .counts)
-        try c.encode(changedAt, forKey: .changedAt)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.icon, forKey: .icon)
+        try container.encode(self.who, forKey: .who)
+        try container.encode(self.counts, forKey: .counts)
+        try container.encode(self.changedAt, forKey: .changedAt)
     }
 }
 
@@ -2385,22 +2415,22 @@ public struct NotificationRow: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(kind, forKey: .kind)
-        try c.encode(title, forKey: .title)
-        try c.encode(body, forKey: .body)
-        try c.encode(at, forKey: .at)
-        try c.encode(read, forKey: .read)
-        try c.encode(route, forKey: .route)
-        try c.encode(actorName, forKey: .actorName)
-        try c.encode(actorAvatarUrl, forKey: .actorAvatarUrl)
-        try c.encode(noteId, forKey: .noteId)
-        try c.encode(noteTitle, forKey: .noteTitle)
-        try c.encode(count, forKey: .count)
-        try c.encode(inviteId, forKey: .inviteId)
-        try c.encode(pageInviteId, forKey: .pageInviteId)
-        try c.encode(fileId, forKey: .fileId)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.body, forKey: .body)
+        try container.encode(self.at, forKey: .at)
+        try container.encode(self.read, forKey: .read)
+        try container.encode(self.route, forKey: .route)
+        try container.encode(self.actorName, forKey: .actorName)
+        try container.encode(self.actorAvatarUrl, forKey: .actorAvatarUrl)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.noteTitle, forKey: .noteTitle)
+        try container.encode(self.count, forKey: .count)
+        try container.encode(self.inviteId, forKey: .inviteId)
+        try container.encode(self.pageInviteId, forKey: .pageInviteId)
+        try container.encode(self.fileId, forKey: .fileId)
     }
 }
 
@@ -2522,20 +2552,20 @@ public struct SearchHit: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(title, forKey: .title)
-        try c.encode(icon, forKey: .icon)
-        try c.encode(snippet, forKey: .snippet)
-        try c.encode(folder, forKey: .folder)
-        try c.encode(updatedAt, forKey: .updatedAt)
-        try c.encode(archived, forKey: .archived)
-        try c.encode(kind, forKey: .kind)
-        try c.encode(space, forKey: .space)
-        try c.encode(spaceName, forKey: .spaceName)
-        try c.encode(matchIn, forKey: .matchIn)
-        try c.encode(blockId, forKey: .blockId)
-        try c.encode(page, forKey: .page)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.icon, forKey: .icon)
+        try container.encode(self.snippet, forKey: .snippet)
+        try container.encode(self.folder, forKey: .folder)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+        try container.encode(self.archived, forKey: .archived)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.space, forKey: .space)
+        try container.encode(self.spaceName, forKey: .spaceName)
+        try container.encode(self.matchIn, forKey: .matchIn)
+        try container.encode(self.blockId, forKey: .blockId)
+        try container.encode(self.page, forKey: .page)
     }
 }
 
@@ -2606,23 +2636,23 @@ public struct TaskRow: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(noteId, forKey: .noteId)
-        try c.encode(noteTitle, forKey: .noteTitle)
-        try c.encode(noteIcon, forKey: .noteIcon)
-        try c.encode(title, forKey: .title)
-        try c.encode(status, forKey: .status)
-        try c.encode(dueDate, forKey: .dueDate)
-        try c.encode(dueTime, forKey: .dueTime)
-        try c.encode(priority, forKey: .priority)
-        try c.encode(assigneeId, forKey: .assigneeId)
-        try c.encode(assigneeName, forKey: .assigneeName)
-        try c.encode(reminderAt, forKey: .reminderAt)
-        try c.encode(`repeat`, forKey: .`repeat`)
-        try c.encode(completedAt, forKey: .completedAt)
-        try c.encode(updatedAt, forKey: .updatedAt)
-        try c.encode(overdue, forKey: .overdue)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.noteTitle, forKey: .noteTitle)
+        try container.encode(self.noteIcon, forKey: .noteIcon)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.status, forKey: .status)
+        try container.encode(self.dueDate, forKey: .dueDate)
+        try container.encode(self.dueTime, forKey: .dueTime)
+        try container.encode(self.priority, forKey: .priority)
+        try container.encode(self.assigneeId, forKey: .assigneeId)
+        try container.encode(self.assigneeName, forKey: .assigneeName)
+        try container.encode(self.reminderAt, forKey: .reminderAt)
+        try container.encode(self.repeat, forKey: .`repeat`)
+        try container.encode(self.completedAt, forKey: .completedAt)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+        try container.encode(self.overdue, forKey: .overdue)
     }
 }
 
@@ -2649,12 +2679,12 @@ public struct TaskGroup: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(kind, forKey: .kind)
-        try c.encode(title, forKey: .title)
-        try c.encode(icon, forKey: .icon)
-        try c.encode(tasks, forKey: .tasks)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.icon, forKey: .icon)
+        try container.encode(self.tasks, forKey: .tasks)
     }
 }
 
@@ -2792,16 +2822,16 @@ public struct CalendarSubscription: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(name, forKey: .name)
-        try c.encode(url, forKey: .url)
-        try c.encode(color, forKey: .color)
-        try c.encode(visible, forKey: .visible)
-        try c.encode(lastFetchedAt, forKey: .lastFetchedAt)
-        try c.encode(lastError, forKey: .lastError)
-        try c.encode(eventCount, forKey: .eventCount)
-        try c.encode(loading, forKey: .loading)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.url, forKey: .url)
+        try container.encode(self.color, forKey: .color)
+        try container.encode(self.visible, forKey: .visible)
+        try container.encode(self.lastFetchedAt, forKey: .lastFetchedAt)
+        try container.encode(self.lastError, forKey: .lastError)
+        try container.encode(self.eventCount, forKey: .eventCount)
+        try container.encode(self.loading, forKey: .loading)
     }
 }
 
@@ -2869,13 +2899,13 @@ public struct TaskParseValue: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(title, forKey: .title)
-        try c.encode(dueDate, forKey: .dueDate)
-        try c.encode(dueTime, forKey: .dueTime)
-        try c.encode(dateText, forKey: .dateText)
-        try c.encode(repeatLabel, forKey: .repeatLabel)
-        try c.encode(repeatText, forKey: .repeatText)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.dueDate, forKey: .dueDate)
+        try container.encode(self.dueTime, forKey: .dueTime)
+        try container.encode(self.dateText, forKey: .dateText)
+        try container.encode(self.repeatLabel, forKey: .repeatLabel)
+        try container.encode(self.repeatText, forKey: .repeatText)
     }
 }
 
@@ -2919,25 +2949,25 @@ public struct TaskCreateArgs: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(text, forKey: .text)
-        try c.encodeIfPresent(space, forKey: .space)
-        try c.encodeIfPresent(noteId, forKey: .noteId)
-        try c.encodePatch(dueDate, forKey: .dueDate)
-        try c.encodePatch(dueTime, forKey: .dueTime)
-        try c.encodeIfPresent(priority, forKey: .priority)
-        try c.encodeIfPresent(keepText, forKey: .keepText)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.text, forKey: .text)
+        try container.encodeIfPresent(self.space, forKey: .space)
+        try container.encodeIfPresent(self.noteId, forKey: .noteId)
+        try container.encodePatch(self.dueDate, forKey: .dueDate)
+        try container.encodePatch(self.dueTime, forKey: .dueTime)
+        try container.encodeIfPresent(self.priority, forKey: .priority)
+        try container.encodeIfPresent(self.keepText, forKey: .keepText)
     }
 
     public init(from decoder: any Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.text = try c.decode(String.self, forKey: .text)
-        self.space = try c.decodeIfPresent(SpaceRef.self, forKey: .space)
-        self.noteId = try c.decodeIfPresent(String.self, forKey: .noteId)
-        self.dueDate = try c.decodePatch(String.self, forKey: .dueDate)
-        self.dueTime = try c.decodePatch(String.self, forKey: .dueTime)
-        self.priority = try c.decodeIfPresent(Priority.self, forKey: .priority)
-        self.keepText = try c.decodeIfPresent(Bool.self, forKey: .keepText)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.text = try container.decode(String.self, forKey: .text)
+        self.space = try container.decodeIfPresent(SpaceRef.self, forKey: .space)
+        self.noteId = try container.decodeIfPresent(String.self, forKey: .noteId)
+        self.dueDate = try container.decodePatch(String.self, forKey: .dueDate)
+        self.dueTime = try container.decodePatch(String.self, forKey: .dueTime)
+        self.priority = try container.decodeIfPresent(Priority.self, forKey: .priority)
+        self.keepText = try container.decodeIfPresent(Bool.self, forKey: .keepText)
     }
 }
 
@@ -3004,31 +3034,31 @@ public struct TaskUpdateArgs: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encodeIfPresent(checked, forKey: .checked)
-        try c.encodeIfPresent(canceled, forKey: .canceled)
-        try c.encodePatch(dueDate, forKey: .dueDate)
-        try c.encodePatch(dueTime, forKey: .dueTime)
-        try c.encodeIfPresent(priority, forKey: .priority)
-        try c.encodePatch(assigneeId, forKey: .assigneeId)
-        try c.encodePatch(reminderAt, forKey: .reminderAt)
-        try c.encodePatch(`repeat`, forKey: .`repeat`)
-        try c.encodeIfPresent(noteId, forKey: .noteId)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encodeIfPresent(self.checked, forKey: .checked)
+        try container.encodeIfPresent(self.canceled, forKey: .canceled)
+        try container.encodePatch(self.dueDate, forKey: .dueDate)
+        try container.encodePatch(self.dueTime, forKey: .dueTime)
+        try container.encodeIfPresent(self.priority, forKey: .priority)
+        try container.encodePatch(self.assigneeId, forKey: .assigneeId)
+        try container.encodePatch(self.reminderAt, forKey: .reminderAt)
+        try container.encodePatch(self.repeat, forKey: .`repeat`)
+        try container.encodeIfPresent(self.noteId, forKey: .noteId)
     }
 
     public init(from decoder: any Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try c.decode(String.self, forKey: .id)
-        self.checked = try c.decodeIfPresent(Bool.self, forKey: .checked)
-        self.canceled = try c.decodeIfPresent(Bool.self, forKey: .canceled)
-        self.dueDate = try c.decodePatch(String.self, forKey: .dueDate)
-        self.dueTime = try c.decodePatch(String.self, forKey: .dueTime)
-        self.priority = try c.decodeIfPresent(Priority.self, forKey: .priority)
-        self.assigneeId = try c.decodePatch(String.self, forKey: .assigneeId)
-        self.reminderAt = try c.decodePatch(Double.self, forKey: .reminderAt)
-        self.repeat = try c.decodePatch(String.self, forKey: .`repeat`)
-        self.noteId = try c.decodeIfPresent(String.self, forKey: .noteId)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.checked = try container.decodeIfPresent(Bool.self, forKey: .checked)
+        self.canceled = try container.decodeIfPresent(Bool.self, forKey: .canceled)
+        self.dueDate = try container.decodePatch(String.self, forKey: .dueDate)
+        self.dueTime = try container.decodePatch(String.self, forKey: .dueTime)
+        self.priority = try container.decodeIfPresent(Priority.self, forKey: .priority)
+        self.assigneeId = try container.decodePatch(String.self, forKey: .assigneeId)
+        self.reminderAt = try container.decodePatch(Double.self, forKey: .reminderAt)
+        self.repeat = try container.decodePatch(String.self, forKey: .`repeat`)
+        self.noteId = try container.decodeIfPresent(String.self, forKey: .noteId)
     }
 }
 
@@ -3106,13 +3136,13 @@ public struct PlanInfo: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(tier, forKey: .tier)
-        try c.encode(id, forKey: .id)
-        try c.encode(paid, forKey: .paid)
-        try c.encode(trialing, forKey: .trialing)
-        try c.encode(trialEndsAt, forKey: .trialEndsAt)
-        try c.encode(ai, forKey: .ai)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.tier, forKey: .tier)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.paid, forKey: .paid)
+        try container.encode(self.trialing, forKey: .trialing)
+        try container.encode(self.trialEndsAt, forKey: .trialEndsAt)
+        try container.encode(self.ai, forKey: .ai)
     }
 }
 
@@ -3127,9 +3157,9 @@ public struct StorageInfo: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(usedBytes, forKey: .usedBytes)
-        try c.encode(limitBytes, forKey: .limitBytes)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.usedBytes, forKey: .usedBytes)
+        try container.encode(self.limitBytes, forKey: .limitBytes)
     }
 }
 
@@ -3159,14 +3189,14 @@ public struct AccountSpace: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(kind, forKey: .kind)
-        try c.encode(name, forKey: .name)
-        try c.encode(logoUrl, forKey: .logoUrl)
-        try c.encode(role, forKey: .role)
-        try c.encode(storage, forKey: .storage)
-        try c.encode(planName, forKey: .planName)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.logoUrl, forKey: .logoUrl)
+        try container.encode(self.role, forKey: .role)
+        try container.encode(self.storage, forKey: .storage)
+        try container.encode(self.planName, forKey: .planName)
     }
 }
 
@@ -3191,13 +3221,13 @@ public struct AccountDetails: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(profile, forKey: .profile)
-        try c.encode(plan, forKey: .plan)
-        try c.encode(storage, forKey: .storage)
-        try c.encode(devicesActive, forKey: .devicesActive)
-        try c.encode(deviceLimit, forKey: .deviceLimit)
-        try c.encode(spaces, forKey: .spaces)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.profile, forKey: .profile)
+        try container.encode(self.plan, forKey: .plan)
+        try container.encode(self.storage, forKey: .storage)
+        try container.encode(self.devicesActive, forKey: .devicesActive)
+        try container.encode(self.deviceLimit, forKey: .deviceLimit)
+        try container.encode(self.spaces, forKey: .spaces)
     }
 }
 
@@ -3216,11 +3246,11 @@ public struct AccountSettings: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(name, forKey: .name)
-        try c.encode(email, forKey: .email)
-        try c.encode(avatarUrl, forKey: .avatarUrl)
-        try c.encode(timeZone, forKey: .timeZone)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.email, forKey: .email)
+        try container.encode(self.avatarUrl, forKey: .avatarUrl)
+        try container.encode(self.timeZone, forKey: .timeZone)
     }
 }
 
@@ -3354,11 +3384,11 @@ public struct SecuritySettings: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(sessions, forKey: .sessions)
-        try c.encode(twoFactor, forKey: .twoFactor)
-        try c.encode(passkeys, forKey: .passkeys)
-        try c.encode(methods, forKey: .methods)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.sessions, forKey: .sessions)
+        try container.encode(self.twoFactor, forKey: .twoFactor)
+        try container.encode(self.passkeys, forKey: .passkeys)
+        try container.encode(self.methods, forKey: .methods)
     }
 }
 
@@ -3376,11 +3406,11 @@ public struct PasskeyRow: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(name, forKey: .name)
-        try c.encode(createdAt, forKey: .createdAt)
-        try c.encode(lastUsedAt, forKey: .lastUsedAt)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.createdAt, forKey: .createdAt)
+        try container.encode(self.lastUsedAt, forKey: .lastUsedAt)
     }
 }
 
@@ -3488,14 +3518,14 @@ public struct ShareGrant: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(profileId, forKey: .profileId)
-        try c.encode(name, forKey: .name)
-        try c.encode(email, forKey: .email)
-        try c.encode(role, forKey: .role)
-        try c.encode(guest, forKey: .guest)
-        try c.encode(isYou, forKey: .isYou)
-        try c.encode(canChange, forKey: .canChange)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.profileId, forKey: .profileId)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.email, forKey: .email)
+        try container.encode(self.role, forKey: .role)
+        try container.encode(self.guest, forKey: .guest)
+        try container.encode(self.isYou, forKey: .isYou)
+        try container.encode(self.canChange, forKey: .canChange)
     }
 }
 
@@ -3543,17 +3573,17 @@ public struct PublicLinkRow: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(tokenHint, forKey: .tokenHint)
-        try c.encode(expiresAt, forKey: .expiresAt)
-        try c.encode(expired, forKey: .expired)
-        try c.encode(hasPassword, forKey: .hasPassword)
-        try c.encode(allowIndexing, forKey: .allowIndexing)
-        try c.encode(theme, forKey: .theme)
-        try c.encode(viewCount, forKey: .viewCount)
-        try c.encode(createdAt, forKey: .createdAt)
-        try c.encode(encrypted, forKey: .encrypted)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.tokenHint, forKey: .tokenHint)
+        try container.encode(self.expiresAt, forKey: .expiresAt)
+        try container.encode(self.expired, forKey: .expired)
+        try container.encode(self.hasPassword, forKey: .hasPassword)
+        try container.encode(self.allowIndexing, forKey: .allowIndexing)
+        try container.encode(self.theme, forKey: .theme)
+        try container.encode(self.viewCount, forKey: .viewCount)
+        try container.encode(self.createdAt, forKey: .createdAt)
+        try container.encode(self.encrypted, forKey: .encrypted)
     }
 }
 
@@ -3595,21 +3625,21 @@ public struct SharingValue: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(noteId, forKey: .noteId)
-        try c.encode(accessMode, forKey: .accessMode)
-        try c.encode(yourAccess, forKey: .yourAccess)
-        try c.encode(canManage, forKey: .canManage)
-        try c.encode(canShare, forKey: .canShare)
-        try c.encode(maxRole, forKey: .maxRole)
-        try c.encode(youAreGuest, forKey: .youAreGuest)
-        try c.encode(ownerName, forKey: .ownerName)
-        try c.encode(sharedBy, forKey: .sharedBy)
-        try c.encode(people, forKey: .people)
-        try c.encode(invites, forKey: .invites)
-        try c.encode(links, forKey: .links)
-        try c.encode(publicLinksAvailable, forKey: .publicLinksAvailable)
-        try c.encode(encrypted, forKey: .encrypted)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.accessMode, forKey: .accessMode)
+        try container.encode(self.yourAccess, forKey: .yourAccess)
+        try container.encode(self.canManage, forKey: .canManage)
+        try container.encode(self.canShare, forKey: .canShare)
+        try container.encode(self.maxRole, forKey: .maxRole)
+        try container.encode(self.youAreGuest, forKey: .youAreGuest)
+        try container.encode(self.ownerName, forKey: .ownerName)
+        try container.encode(self.sharedBy, forKey: .sharedBy)
+        try container.encode(self.people, forKey: .people)
+        try container.encode(self.invites, forKey: .invites)
+        try container.encode(self.links, forKey: .links)
+        try container.encode(self.publicLinksAvailable, forKey: .publicLinksAvailable)
+        try container.encode(self.encrypted, forKey: .encrypted)
     }
 }
 
@@ -3778,13 +3808,13 @@ public struct InvitePreview: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(valid, forKey: .valid)
-        try c.encode(kind, forKey: .kind)
-        try c.encode(inviterName, forKey: .inviterName)
-        try c.encode(name, forKey: .name)
-        try c.encode(roleLabel, forKey: .roleLabel)
-        try c.encode(emailMatches, forKey: .emailMatches)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.valid, forKey: .valid)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.inviterName, forKey: .inviterName)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.roleLabel, forKey: .roleLabel)
+        try container.encode(self.emailMatches, forKey: .emailMatches)
     }
 }
 
@@ -3799,9 +3829,9 @@ public struct InviteTokenAcceptResult: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(noteId, forKey: .noteId)
-        try c.encode(space, forKey: .space)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.space, forKey: .space)
     }
 }
 
@@ -3886,11 +3916,11 @@ public struct ChatCitation: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(n, forKey: .n)
-        try c.encode(noteId, forKey: .noteId)
-        try c.encode(title, forKey: .title)
-        try c.encode(blockId, forKey: .blockId)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.n, forKey: .n)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.blockId, forKey: .blockId)
     }
 }
 
@@ -3948,13 +3978,13 @@ public struct ChatAction: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(type, forKey: .type)
-        try c.encode(title, forKey: .title)
-        try c.encode(markdown, forKey: .markdown)
-        try c.encode(noteId, forKey: .noteId)
-        try c.encode(folderId, forKey: .folderId)
-        try c.encode(folderName, forKey: .folderName)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.type, forKey: .type)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.markdown, forKey: .markdown)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.folderId, forKey: .folderId)
+        try container.encode(self.folderName, forKey: .folderName)
     }
 }
 
@@ -4028,26 +4058,26 @@ public struct ChatMessage: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(role, forKey: .role)
-        try c.encode(text, forKey: .text)
-        try c.encode(status, forKey: .status)
-        try c.encode(live, forKey: .live)
-        try c.encode(phase, forKey: .phase)
-        try c.encode(error, forKey: .error)
-        try c.encode(citations, forKey: .citations)
-        try c.encode(webCitations, forKey: .webCitations)
-        try c.encode(suggestions, forKey: .suggestions)
-        try c.encode(credits, forKey: .credits)
-        try c.encode(attachments, forKey: .attachments)
-        try c.encode(actions, forKey: .actions)
-        try c.encode(actionsOutcome, forKey: .actionsOutcome)
-        try c.encode(agentSteps, forKey: .agentSteps)
-        try c.encode(agentMore, forKey: .agentMore)
-        try c.encode(memory, forKey: .memory)
-        try c.encode(createdAt, forKey: .createdAt)
-        try c.encode(agentRun, forKey: .agentRun)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.role, forKey: .role)
+        try container.encode(self.text, forKey: .text)
+        try container.encode(self.status, forKey: .status)
+        try container.encode(self.live, forKey: .live)
+        try container.encode(self.phase, forKey: .phase)
+        try container.encode(self.error, forKey: .error)
+        try container.encode(self.citations, forKey: .citations)
+        try container.encode(self.webCitations, forKey: .webCitations)
+        try container.encode(self.suggestions, forKey: .suggestions)
+        try container.encode(self.credits, forKey: .credits)
+        try container.encode(self.attachments, forKey: .attachments)
+        try container.encode(self.actions, forKey: .actions)
+        try container.encode(self.actionsOutcome, forKey: .actionsOutcome)
+        try container.encode(self.agentSteps, forKey: .agentSteps)
+        try container.encode(self.agentMore, forKey: .agentMore)
+        try container.encode(self.memory, forKey: .memory)
+        try container.encode(self.createdAt, forKey: .createdAt)
+        try container.encode(self.agentRun, forKey: .agentRun)
     }
 }
 
@@ -4093,16 +4123,16 @@ public struct ChatAgentOperation: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(kind, forKey: .kind)
-        try c.encode(summary, forKey: .summary)
-        try c.encode(status, forKey: .status)
-        try c.encode(error, forKey: .error)
-        try c.encode(noteId, forKey: .noteId)
-        try c.encode(noteTitle, forKey: .noteTitle)
-        try c.encode(markdown, forKey: .markdown)
-        try c.encode(edits, forKey: .edits)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.summary, forKey: .summary)
+        try container.encode(self.status, forKey: .status)
+        try container.encode(self.error, forKey: .error)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.noteTitle, forKey: .noteTitle)
+        try container.encode(self.markdown, forKey: .markdown)
+        try container.encode(self.edits, forKey: .edits)
     }
 }
 
@@ -4173,10 +4203,10 @@ public struct ChatConversationValue: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(found, forKey: .found)
-        try c.encode(conversation, forKey: .conversation)
-        try c.encode(messages, forKey: .messages)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.found, forKey: .found)
+        try container.encode(self.conversation, forKey: .conversation)
+        try container.encode(self.messages, forKey: .messages)
     }
 }
 
@@ -4199,9 +4229,9 @@ public struct ChatStreamValue: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(messageId, forKey: .messageId)
-        try c.encode(text, forKey: .text)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.messageId, forKey: .messageId)
+        try container.encode(self.text, forKey: .text)
     }
 }
 
@@ -4288,9 +4318,9 @@ public struct ChatSendResult: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(conversationId, forKey: .conversationId)
-        try c.encode(messageId, forKey: .messageId)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.conversationId, forKey: .conversationId)
+        try container.encode(self.messageId, forKey: .messageId)
     }
 }
 
@@ -4452,14 +4482,14 @@ public struct PlaceMovePreview: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(from, forKey: .from)
-        try c.encode(destinations, forKey: .destinations)
-        try c.encode(to, forKey: .to)
-        try c.encode(folders, forKey: .folders)
-        try c.encode(notes, forKey: .notes)
-        try c.encode(everything, forKey: .everything)
-        try c.encode(fits, forKey: .fits)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.from, forKey: .from)
+        try container.encode(self.destinations, forKey: .destinations)
+        try container.encode(self.to, forKey: .to)
+        try container.encode(self.folders, forKey: .folders)
+        try container.encode(self.notes, forKey: .notes)
+        try container.encode(self.everything, forKey: .everything)
+        try container.encode(self.fits, forKey: .fits)
     }
 }
 
@@ -4522,12 +4552,12 @@ public struct NoteBrief: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(found, forKey: .found)
-        try c.encode(title, forKey: .title)
-        try c.encode(icon, forKey: .icon)
-        try c.encode(inTrash, forKey: .inTrash)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.found, forKey: .found)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.icon, forKey: .icon)
+        try container.encode(self.inTrash, forKey: .inTrash)
     }
 }
 
@@ -4570,11 +4600,11 @@ public struct ResearchStep: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(kind, forKey: .kind)
-        try c.encode(label, forKey: .label)
-        try c.encode(status, forKey: .status)
-        try c.encode(count, forKey: .count)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.label, forKey: .label)
+        try container.encode(self.status, forKey: .status)
+        try container.encode(self.count, forKey: .count)
     }
 }
 
@@ -4598,13 +4628,13 @@ public struct ResearchSource: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(n, forKey: .n)
-        try c.encode(kind, forKey: .kind)
-        try c.encode(noteId, forKey: .noteId)
-        try c.encode(url, forKey: .url)
-        try c.encode(title, forKey: .title)
-        try c.encode(domain, forKey: .domain)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.n, forKey: .n)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.url, forKey: .url)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.domain, forKey: .domain)
     }
 }
 
@@ -4638,18 +4668,18 @@ public struct ResearchJob: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(messageId, forKey: .messageId)
-        try c.encode(question, forKey: .question)
-        try c.encode(status, forKey: .status)
-        try c.encode(steps, forKey: .steps)
-        try c.encode(sources, forKey: .sources)
-        try c.encode(noteId, forKey: .noteId)
-        try c.encode(error, forKey: .error)
-        try c.encode(credits, forKey: .credits)
-        try c.encode(createdAt, forKey: .createdAt)
-        try c.encode(finishedAt, forKey: .finishedAt)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.messageId, forKey: .messageId)
+        try container.encode(self.question, forKey: .question)
+        try container.encode(self.status, forKey: .status)
+        try container.encode(self.steps, forKey: .steps)
+        try container.encode(self.sources, forKey: .sources)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.error, forKey: .error)
+        try container.encode(self.credits, forKey: .credits)
+        try container.encode(self.createdAt, forKey: .createdAt)
+        try container.encode(self.finishedAt, forKey: .finishedAt)
     }
 }
 
@@ -4769,12 +4799,12 @@ public struct CalendarFeedValue: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(active, forKey: .active)
-        try c.encode(url, forKey: .url)
-        try c.encode(createdAt, forKey: .createdAt)
-        try c.encode(lastFetchedAt, forKey: .lastFetchedAt)
-        try c.encode(includeWorkspaces, forKey: .includeWorkspaces)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.active, forKey: .active)
+        try container.encode(self.url, forKey: .url)
+        try container.encode(self.createdAt, forKey: .createdAt)
+        try container.encode(self.lastFetchedAt, forKey: .lastFetchedAt)
+        try container.encode(self.includeWorkspaces, forKey: .includeWorkspaces)
     }
 }
 
@@ -4830,12 +4860,12 @@ public struct FileLink: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(url, forKey: .url)
-        try c.encode(filename, forKey: .filename)
-        try c.encode(mimeType, forKey: .mimeType)
-        try c.encode(size, forKey: .size)
-        try c.encode(sealed, forKey: .sealed)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.url, forKey: .url)
+        try container.encode(self.filename, forKey: .filename)
+        try container.encode(self.mimeType, forKey: .mimeType)
+        try container.encode(self.size, forKey: .size)
+        try container.encode(self.sealed, forKey: .sealed)
     }
 }
 
@@ -4904,12 +4934,12 @@ public struct SpaceCopyInfo: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(space, forKey: .space)
-        try c.encode(name, forKey: .name)
-        try c.encode(phase, forKey: .phase)
-        try c.encode(have, forKey: .have)
-        try c.encode(total, forKey: .total)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.space, forKey: .space)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.phase, forKey: .phase)
+        try container.encode(self.have, forKey: .have)
+        try container.encode(self.total, forKey: .total)
     }
 }
 
@@ -4947,18 +4977,18 @@ public struct DeviceStorageValue: Codable, Hashable, Sendable {
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(place, forKey: .place)
-        try c.encode(keepAll, forKey: .keepAll)
-        try c.encode(available, forKey: .available)
-        try c.encode(spaces, forKey: .spaces)
-        try c.encode(notesKept, forKey: .notesKept)
-        try c.encode(attachmentsKept, forKey: .attachmentsKept)
-        try c.encode(attachmentsBytes, forKey: .attachmentsBytes)
-        try c.encode(usedBytes, forKey: .usedBytes)
-        try c.encode(freeBytes, forKey: .freeBytes)
-        try c.encode(attachmentLimitBytes, forKey: .attachmentLimitBytes)
-        try c.encode(waiting, forKey: .waiting)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.place, forKey: .place)
+        try container.encode(self.keepAll, forKey: .keepAll)
+        try container.encode(self.available, forKey: .available)
+        try container.encode(self.spaces, forKey: .spaces)
+        try container.encode(self.notesKept, forKey: .notesKept)
+        try container.encode(self.attachmentsKept, forKey: .attachmentsKept)
+        try container.encode(self.attachmentsBytes, forKey: .attachmentsBytes)
+        try container.encode(self.usedBytes, forKey: .usedBytes)
+        try container.encode(self.freeBytes, forKey: .freeBytes)
+        try container.encode(self.attachmentLimitBytes, forKey: .attachmentLimitBytes)
+        try container.encode(self.waiting, forKey: .waiting)
     }
 }
 
@@ -5005,5 +5035,246 @@ public struct ShareRoleArgs: Codable, Hashable, Sendable {
         self.noteId = noteId
         self.profileId = profileId
         self.role = role
+    }
+}
+
+/// `invite.decline` (R11.2): by the notification's id, or by the link's token (`invite.preview`).
+public struct InviteDeclineArgs: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case workspace
+        case page
+    }
+
+    public var kind: Kind
+    public var inviteId: String?
+    public var token: String?
+
+    public init(kind: Kind, inviteId: String? = nil, token: String? = nil) {
+        self.kind = kind
+        self.inviteId = inviteId
+        self.token = token
+    }
+}
+
+/// A topic of the support form.
+public struct SupportTopic: Codable, Hashable, Sendable {
+    public var id: String
+    public var label: String
+
+    public init(id: String, label: String) {
+        self.id = id
+        self.label = label
+    }
+}
+
+/// `support.topics` (R13.5): the form's topics, in order.
+public struct SupportTopicsValue: Codable, Hashable, Sendable {
+    public var topics: [SupportTopic]
+
+    public init(topics: [SupportTopic]) {
+        self.topics = topics
+    }
+}
+
+/// `support.send` (R13.5): filed under the signed-in account and its address; `name` left out: the profile's.
+public struct SupportSendArgs: Codable, Hashable, Sendable {
+    public var topic: String
+    /// 10 to 5000 characters.
+    public var message: String
+    public var name: String?
+
+    public init(topic: String, message: String, name: String? = nil) {
+        self.topic = topic
+        self.message = message
+        self.name = name
+    }
+}
+
+public struct SupportSendResult: Codable, Hashable, Sendable {
+    /// The request's number (#1234) for the confirmation.
+    public var number: Int?
+
+    public init(number: Int? = nil) {
+        self.number = number
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.number, forKey: .number)
+    }
+}
+
+/// `folder.lock` (R9.1): makes the space's key first when it has none; "e2ee_not_set_up" when the account has no keys.
+public struct FolderLockArgs: Codable, Hashable, Sendable {
+    public var id: String
+    public var locked: Bool
+    public var space: SpaceRef?
+
+    public init(id: String, locked: Bool, space: SpaceRef? = nil) {
+        self.id = id
+        self.locked = locked
+        self.space = space
+    }
+}
+
+public struct ChangeDiffArgs: Codable, Hashable, Sendable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+}
+
+/// A run of an edited line's words: "same", "added" or "removed".
+public struct ChangeTextPart: Codable, Hashable, Sendable {
+    public var kind: String
+    public var text: String
+
+    public init(kind: String, text: String) {
+        self.kind = kind
+        self.text = text
+    }
+}
+
+/// One changed block of `changes.diff` (R9.2), drawn from text.
+public struct ChangeDiffBlock: Codable, Hashable, Sendable {
+    public var id: String
+    /// "added", "removed", "changed" (the words) or "styled" (the same words, another type or format).
+    public var change: String
+    /// Block type as in PreviewLine.t ("paragraph", "heading", "todo", ...); `l` heading level, `c` checked.
+    public var t: String
+    public var x: String
+    public var l: Int?
+    public var c: Bool?
+    /// "changed": the text before, and the words kept, added and removed (when the version from before is known).
+    public var before: String?
+    public var parts: [ChangeTextPart]?
+    /// Who made it (a person's name, an app, "Foli AI"), when known.
+    public var who: String?
+    public var at: Double?
+
+    public init(id: String, change: String, t: String, x: String, l: Int? = nil, c: Bool? = nil, before: String? = nil, parts: [ChangeTextPart]? = nil, who: String? = nil, at: Double? = nil) {
+        self.id = id
+        self.change = change
+        self.t = t
+        self.x = x
+        self.l = l
+        self.c = c
+        self.before = before
+        self.parts = parts
+        self.who = who
+        self.at = at
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.change, forKey: .change)
+        try container.encode(self.t, forKey: .t)
+        try container.encode(self.x, forKey: .x)
+        try container.encodeIfPresent(self.l, forKey: .l)
+        try container.encodeIfPresent(self.c, forKey: .c)
+        try container.encodeIfPresent(self.before, forKey: .before)
+        try container.encodeIfPresent(self.parts, forKey: .parts)
+        try container.encode(self.who, forKey: .who)
+        try container.encode(self.at, forKey: .at)
+    }
+}
+
+public struct ChangeDiffValue: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var blocks: [ChangeDiffBlock]
+    /// More changed lines than the server sends.
+    public var truncated: Bool
+    /// End-to-end encrypted: the lines open only on the note page (`blocks` is empty).
+    public var encrypted: Bool
+    /// "Undo these changes" is possible.
+    public var canUndo: Bool
+
+    public init(id: String, title: String, blocks: [ChangeDiffBlock], truncated: Bool, encrypted: Bool, canUndo: Bool) {
+        self.id = id
+        self.title = title
+        self.blocks = blocks
+        self.truncated = truncated
+        self.encrypted = encrypted
+        self.canUndo = canUndo
+    }
+}
+
+/// `ai.generate` (R9.4): a template or a note written by Foli AI from a description.
+public struct AiGenerateArgs: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case template
+        case note
+    }
+
+    public var kind: Kind
+    public var instruction: String
+    public var space: SpaceRef?
+
+    public init(kind: Kind, instruction: String, space: SpaceRef? = nil) {
+        self.kind = kind
+        self.instruction = instruction
+        self.space = space
+    }
+}
+
+public struct AiGenerateResult: Codable, Hashable, Sendable {
+    public var title: String
+    /// Markdown.
+    public var text: String
+
+    public init(title: String, text: String) {
+        self.title = title
+        self.text = text
+    }
+}
+
+public struct AiSaveDraftArgs: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case template
+        case note
+    }
+
+    public var kind: Kind
+    public var title: String
+    /// Markdown (becomes real blocks).
+    public var text: String
+    public var space: SpaceRef?
+    public var folderId: Patch<String>
+
+    enum CodingKeys: String, CodingKey {
+        case kind
+        case title
+        case text
+        case space
+        case folderId
+    }
+
+    public init(kind: Kind, title: String, text: String, space: SpaceRef? = nil, folderId: String? = nil) {
+        self.kind = kind
+        self.title = title
+        self.text = text
+        self.space = space
+        self.folderId = Patch(folderId)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.text, forKey: .text)
+        try container.encodeIfPresent(self.space, forKey: .space)
+        try container.encodePatch(self.folderId, forKey: .folderId)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.kind = try container.decode(Kind.self, forKey: .kind)
+        self.title = try container.decode(String.self, forKey: .title)
+        self.text = try container.decode(String.self, forKey: .text)
+        self.space = try container.decodeIfPresent(SpaceRef.self, forKey: .space)
+        self.folderId = try container.decodePatch(String.self, forKey: .folderId)
     }
 }

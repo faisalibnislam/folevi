@@ -131,6 +131,10 @@ export function EngineHost() {
       persist: (s) => spaceStatus(s).level === "standard",
       spaceStatus: statusOf,
       e2eeSignal,
+      hasKeys: () => {
+        const r = activeRouter();
+        return Boolean(r && r.env.session.state() !== "none");
+      },
       navigate: (path) => navigate(path, { replace: true, engine: true }),
       setSpace: (space) => setContext(space === "personal" ? ({ kind: "personal" } as WireScope) : ({ kind: "workspace", workspaceId: space } as WireScope)),
     }),

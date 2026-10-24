@@ -78,6 +78,8 @@ public final class FoliChatModel {
     public private(set) var research: ValueStore<ResearchValue>?
     @ObservationIgnored private var streams: [String: ValueStore<ChatStreamValue>] = [:]
     @ObservationIgnored private var answers: [String: FoliAnswer] = [:]
+    /// Bumped when an answer's display is made or dropped, so views that asked for one before it existed redraw.
+    private var answersVersion = 0
 
     // Composer
     public var draft = ""
@@ -98,17 +100,15 @@ public final class FoliChatModel {
     public private(set) var busy: Set<String> = []
     /// Shown in the history list.
     public var historyOpen = false
-    /// Changes every time something on screen grew (the thread follows it when it's at the bottom).
-    public private(set) var growth = 0
     /// Said to VoiceOver once an answer is done (the streaming text isn't read word by word).
     public private(set) var announcement: String?
 
     /// Reduce Motion: answers appear whole.
     @ObservationIgnored public var reduceMotion = false
     /// Opens a route (a cited note, a note made from an answer). The container also closes a covering sheet.
-    @ObservationIgnored public var onOpen: @MainActor (ScreenRoute) -> Void = { _ in }
+    @ObservationIgnored public var onOpen: @MainActor @Sendable (ScreenRoute) -> Void = { _ in }
     /// Closes the chat's container.
-    @ObservationIgnored public var onClose: @MainActor () -> Void = {}
+    @ObservationIgnored public var onClose: @MainActor @Sendable () -> Void = {}
     @ObservationIgnored private var lastSentMessageId: String?
     @ObservationIgnored private var ticker: Task<Void, Never>?
     @ObservationIgnored private var observing = false
@@ -221,7 +221,10 @@ public final class FoliChatModel {
         }
     }
 
-    public func answer(_ messageId: String) -> FoliAnswer? { answers[messageId] }
+    public func answer(_ messageId: String) -> FoliAnswer? {
+        _ = answersVersion
+        return answers[messageId]
+    }
 
     public func job(for messageId: String) -> ResearchJob? { research?.value?.jobs.first { $0.messageId == messageId } }
 
@@ -238,7 +241,7 @@ public final class FoliChatModel {
         if let editing = editingMessageId, let id = conversationId, text == nil {
             editingMessageId = nil
             draft = ""
-            run(pendingText: q, after: max(0, (messages.firstIndex { $0.id == editing } ?? messages.count))) {
+            run(pendingText: nil, after: messages.count) {
                 try await self.client.command(.aiEdit(conversationId: id, messageId: editing, text: q, web: self.webOn ? true : nil))
             }
             return
@@ -265,7 +268,6 @@ public final class FoliChatModel {
         problem = nil
         sending = true
         if let pendingText { pending = FoliPendingQuestion(text: pendingText, after: after) }
-        growth &+= 1
         feedback.haptic(.impactLight)
         Task {
             do {
@@ -380,6 +382,7 @@ public final class FoliChatModel {
         for s in streams.values { s.cancel() }
         streams = [:]
         answers = [:]
+        answersVersion &+= 1
         pending = nil
         lastSentMessageId = nil
         conversationId = nil
@@ -392,8 +395,6 @@ public final class FoliChatModel {
         conversationId = id
         conversation = client.watch(.aiConversation(conversationId: id))
         if webAvailable || caps == nil { research = client.watch(.aiResearch(conversationId: id)) }
-        observing = false
-        observe()
     }
 
     public func rename(_ id: String, to title: String) {
@@ -424,7 +425,7 @@ public final class FoliChatModel {
         guard let id = conversationId else { return }
         act(messageId ?? id) {
             let r = try await self.client.command(.aiSaveAsNote(conversationId: id, messageId: messageId))
-            self.feedback.toast(ScreenToast("Saved as a note.", tone: .success, actionTitle: "Open") { [weak self] in self?.onOpen(.note(id: r.id)) })
+            self.feedback.toast(ScreenToast("Saved as a note.", tone: .success, actionTitle: "Open") { [open = self.onOpen] in open(.note(id: r.id)) })
         }
     }
 
@@ -476,7 +477,7 @@ public final class FoliChatModel {
         if let note = job.noteId { return onOpen(.note(id: note)) }
         act(job.id) {
             let r = try await self.client.command(.aiResearchSave(researchId: job.id))
-            self.feedback.toast(ScreenToast("Report saved as a note.", tone: .success, actionTitle: "Open") { [weak self] in self?.onOpen(.note(id: r.id)) })
+            self.feedback.toast(ScreenToast("Report saved as a note.", tone: .success, actionTitle: "Open") { [open = self.onOpen] in open(.note(id: r.id)) })
         }
     }
 
@@ -492,7 +493,7 @@ public final class FoliChatModel {
         return false
     }
 
-    private func act(_ key: String, success: String? = nil, _ work: @escaping @MainActor () async throws -> some Sendable) {
+    private func act<T: Sendable>(_ key: String, success: String? = nil, _ work: @escaping @MainActor () async throws -> T) {
         busy.insert(key)
         Task {
             do {
@@ -513,11 +514,14 @@ public final class FoliChatModel {
 
     // MARK: Following the views
 
-    /// Re-arms an observation of the conversation, its streams and its research jobs, and syncs on each change.
+    /// Syncs, then arms one observation of the conversation, its streams and its research jobs (re-armed after
+    /// each change, so there's never more than one).
     private func observe() {
+        sync()
         guard !observing else { return }
         observing = true
         withObservationTracking {
+            _ = conversation
             _ = conversation?.value
             _ = research?.value
             _ = capabilities.value
@@ -526,11 +530,9 @@ public final class FoliChatModel {
             Task { @MainActor in
                 guard let self else { return }
                 self.observing = false
-                self.sync()
                 self.observe()
             }
         }
-        sync()
     }
 
     /// Brings the answers' displays and the stream subscriptions in line with the conversation.
@@ -540,10 +542,7 @@ public final class FoliChatModel {
         for m in msgs where m.role == .assistant {
             if m.live {
                 live.insert(m.id)
-                if streams[m.id] == nil {
-                    streams[m.id] = client.watch(.aiStream(messageId: m.id))
-                    observing = false
-                }
+                if streams[m.id] == nil { streams[m.id] = client.watch(.aiStream(messageId: m.id)) }
             }
             let text = m.live ? (streams[m.id]?.value?.text ?? m.text) : m.text
             let a: FoliAnswer
@@ -552,6 +551,7 @@ public final class FoliChatModel {
             } else {
                 a = FoliAnswer(messageId: m.id)
                 answers[m.id] = a
+                answersVersion &+= 1
                 if m.status == "streaming" { a.reveal = StreamReveal() }
             }
             if a.reveal != nil {
@@ -577,7 +577,6 @@ public final class FoliChatModel {
             announcement = nil
         }
         wasWorking = working
-        growth &+= 1
     }
 
     /// Reveals streaming answers a few words every 30 ms until they've caught up.
@@ -597,21 +596,16 @@ public final class FoliChatModel {
     @discardableResult
     func tick() -> Bool {
         var any = false
-        var grew = false
         for a in answers.values where a.reveal != nil {
             any = true
             if a.reveal!.tick(reduceMotion: reduceMotion) {
                 a.show(a.reveal!.shown)
-                grew = true
             }
             if a.reveal!.caughtUp, let m = messages.first(where: { $0.id == a.messageId }), m.status != "streaming" {
                 a.reveal = nil
                 a.show(m.text[...])
-                grew = true
             }
         }
-        if grew { growth &+= 1 }
-        if !any { sync() }
         return any
     }
 

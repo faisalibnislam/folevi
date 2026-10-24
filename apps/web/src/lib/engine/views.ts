@@ -141,7 +141,11 @@ export function sessionValue(deps: EngineDeps): SessionValue {
     profile: app.profile,
     spaces: app.spaces.map((s): SpaceInfo => {
       const status = deps.spaceStatus(s.scope);
-      return { id: s.id, kind: s.kind, name: s.name, role: s.role, canEdit: s.canEdit, canManage: s.canManage, encrypted: status.encrypted, locked: status.locked };
+      // "Always fully encrypted" (components/e2ee/LockDialog.tsx useLockMenuItem): keys, and Personal's owner or a
+      // workspace's owner and admins.
+      const allowed = s.kind === "workspace" ? s.canManage : s.canEdit;
+      const canLock = app.mode === "account" && allowed && Boolean(deps.hasKeys?.());
+      return { id: s.id, kind: s.kind, name: s.name, role: s.role, canEdit: s.canEdit, canManage: s.canManage, encrypted: status.encrypted, locked: status.locked, canLock, level: status.encrypted ? "encrypted" : "standard" };
     }),
     space: app.space,
     online: app.online,
@@ -259,7 +263,7 @@ export function homeValue(i: HomeInputs): HomeValue {
   const childCount = (folderId: string) => tree.filter((f) => f.parentFolderId === folderId).length;
   const folders = tree
     .filter((f) => !f.parentFolderId)
-    .map((f) => folderCardOf(byId.get(f.id) ?? { id: f.id, name: f.name, color: f.color ?? null, parentFolderId: null, updatedAt: 0, documentCount: 0, previews: [], sealedName: (f as { sealedName?: unknown }).sealedName }, childCount(f.id), i.marks));
+    .map((f) => folderCardOf(byId.get(f.id) ?? { id: f.id, name: f.name, color: f.color ?? null, parentFolderId: null, updatedAt: 0, documentCount: 0, previews: [], sealedName: (f as { sealedName?: unknown }).sealedName, locked: (f as { locked?: boolean }).locked }, childCount(f.id), i.marks));
   return {
     space: i.space.id,
     spaceName: i.space.name,

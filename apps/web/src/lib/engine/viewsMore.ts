@@ -7,7 +7,7 @@ import { overlayFolderIndex, overlaySidebar, type FolderIndexData, type SidebarD
 import { changeCounts, whoChanged } from "@/lib/history/changeWords";
 import type { ViewContext } from "./context";
 import { QuerySource, type Signal, type Snapshot } from "./live";
-import { folderCardOf } from "./rows";
+import { folderCardOf, folderTree } from "./rows";
 import { entriesOf, engineSignal, marksOf, outboxSignal, requireSpace, source, type LiveValue, type ValueViewDef } from "./views";
 import { bool, nullableId, num, oneOf, only, optionalId, text } from "./validate";
 import { fnv1a, type ChangesValue, type FolderChip, type NotificationRow, type SearchArgs, type SearchHit, type SearchValue, type SharedRow, type ViewName } from "./protocol";
@@ -60,8 +60,9 @@ const templatesBuiltIn: ValueViewDef = {
 const foldersCards: ValueViewDef = {
   kind: "value",
   parse: (args) => {
-    only(args, ["space", "parentId"]);
+    only(args, ["space", "parentId", "all"]);
     const out: Args = {};
+    if (args.all !== undefined) out.all = bool(args, "all");
     const space = optionalId(args, "space");
     if (space !== undefined) out.space = space;
     const parentId = nullableId(args, "parentId");
@@ -71,6 +72,7 @@ const foldersCards: ValueViewDef = {
   create: (ctx, args) => {
     const space = requireSpace(ctx.deps(), args.space as string | undefined);
     const parentId = (args.parentId as string | null | undefined) ?? null;
+    const all = args.all === true;
     const sidebar = source<SidebarData>(ctx, api.organization.sidebar, { scope: space.scope }, space.scope);
     const index = source<FolderIndexData>(ctx, api.organization.index, { scope: space.scope, only: "folders" }, space.scope);
     return {
@@ -86,9 +88,24 @@ const foldersCards: ValueViewDef = {
         const tree = overlaySidebar(s.value, entries, space.scope).folders;
         const byId = new Map((i.value ? overlayFolderIndex(i.value, entries, space.scope).folders : []).map((f) => [f.id, f]));
         const marks = marksOf(d);
-        const folders = tree
-          .filter((f) => (f.parentFolderId ?? null) === parentId)
-          .map((f) => folderCardOf(byId.get(f.id) ?? { id: f.id, name: f.name, color: f.color ?? null, parentFolderId: f.parentFolderId ?? null, updatedAt: 0, documentCount: 0, previews: [] }, tree.filter((c) => c.parentFolderId === f.id).length, marks));
+        const card = (f: (typeof tree)[number], path: string | null) => {
+          const row = byId.get(f.id) ?? { id: f.id, name: f.name, color: f.color ?? null, parentFolderId: f.parentFolderId ?? null, updatedAt: 0, documentCount: 0, previews: [] };
+          const locked = (f as { locked?: boolean }).locked === true || (row as { locked?: boolean }).locked === true;
+          return folderCardOf({ ...row, locked }, tree.filter((c) => c.parentFolderId === f.id).length, marks, path);
+        };
+        let folders;
+        if (all) {
+          // Every folder in tree order (folders.tree's order), each with where it is ("Work / Clients").
+          const byTreeId = new Map(tree.map((f) => [f.id, f]));
+          const names = new Map(tree.map((f) => [f.id, f.name]));
+          folders = folderTree(tree, null).map((n) => {
+            const trail: string[] = [];
+            for (let p = n.parentId, guard = 0; p && byTreeId.has(p) && guard < 50; p = byTreeId.get(p)?.parentFolderId ?? null, guard++) trail.unshift(names.get(p) ?? "");
+            return card(byTreeId.get(n.id)!, trail.length ? trail.join(" / ") : null);
+          });
+        } else {
+          folders = tree.filter((f) => (f.parentFolderId ?? null) === parentId).map((f) => card(f, null));
+        }
         return { value: { folders }, stale: s.stale || i.stale, error: null };
       },
     };

@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "ai.saveDraft",
+  "description": "Save the draft as a template.",
+  "args": {
+    "kind": "template",
+    "title": "Weekly review",
+    "text": "## Wins\n\n- "
+  },
+  "result": {
+    "id": "doc_00090"
+  }
+}

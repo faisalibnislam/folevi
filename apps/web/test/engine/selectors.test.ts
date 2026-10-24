@@ -46,7 +46,7 @@ describe("selectors reproduce the fixtures", () => {
   it("folderTree: organization.sidebar's flat list becomes the fixture's depth-first tree", () => {
     const fixture = (FIXTURES["view.folders.tree"] as ViewFixture<"folders.tree">).value as FoldersTreeValue;
     // The server's order is by rank only; children come in any order.
-    const sidebar = [...fixture.folders].reverse().map((f) => ({ id: f.id, name: f.name, color: f.color, parentFolderId: f.parentId, rank: f.rank }));
+    const sidebar = [...fixture.folders].reverse().map((f) => ({ id: f.id, name: f.name, color: f.color, parentFolderId: f.parentId, rank: f.rank, ...(f.locked ? { locked: true } : {}) }));
     const counts = new Map(fixture.folders.filter((f) => f.noteCount !== null).map((f) => [f.id, f.noteCount!]));
     const marks = syncMarksOf(null, [{ id: "e1", name: "organization.createFolder", args: {} as never, keys: ["folder:fld_iceland"], label: "New folder", createdAt: 0, attempts: 0 }]);
     const tree = folderTree(sidebar, counts, marks).map((f) => (f.id === "fld_iceland" ? { ...f, noteCount: null } : f));

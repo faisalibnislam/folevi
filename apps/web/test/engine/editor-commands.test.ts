@@ -63,6 +63,31 @@ describe("editor commands", () => {
     expect(runEditorCommand(options({ editor: fakeEditor as never }), "state", {})).toMatchObject({ noteId: "doc_1", undo: true, redo: false });
   });
 
+  it("insert slash types / where the caret is (the slash menu)", () => {
+    const typed: string[] = [];
+    const chain = { focus: () => chain, insertContent: (t: string) => (typed.push(t), chain), run: () => true };
+    runEditorCommand(options({ editor: { ...fakeEditor, chain: () => chain } as never }), "insert", { kind: "slash" });
+    expect(typed).toEqual(["/"]);
+  });
+
+  it("focus: an untitled, empty note starts in its title; state counts the title as focused", () => {
+    const title = document.createElement("textarea");
+    title.id = "title-doc_1";
+    document.body.append(title);
+    const focused: string[] = [];
+    const editor = { ...fakeEditor, isEmpty: true, commands: { focus: () => (focused.push("body"), true), blur: () => true } };
+    runEditorCommand(options({ editor: editor as never }), "focus", {});
+    expect(document.activeElement).toBe(title);
+    expect(focused).toEqual([]);
+    expect(editorState(editor as never, "doc_1", false).focused).toBe(true);
+    title.blur();
+    expect(editorState(editor as never, "doc_1", false).focused).toBe(false);
+    title.value = "Kyoto";
+    runEditorCommand(options({ editor: editor as never }), "focus", {});
+    expect(focused).toEqual(["body"]);
+    title.remove();
+  });
+
   it("note.prepare, note.show and note.close belong to the host", () => {
     expect(code(() => runEditorCommand(options(), "note.show", { id: "doc_1" }))).toBe("unknown_editor_command");
   });

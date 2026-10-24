@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "invite.decline",
+  "description": "Decline a workspace invitation from the bell.",
+  "args": {
+    "kind": "workspace",
+    "inviteId": "winv_1"
+  },
+  "result": {
+    "ok": true
+  }
+}

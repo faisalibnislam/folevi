@@ -46,13 +46,31 @@ export function blockAtSelection(editor: Editor): string {
   return node.type.name;
 }
 
+/** The note's title field (DocumentView's DocTitle). */
+export function titleField(noteId: string): HTMLTextAreaElement | null {
+  if (typeof document === "undefined") return null;
+  const el = document.getElementById(`title-${noteId}`);
+  return el instanceof HTMLTextAreaElement ? el : null;
+}
+
+/** Something on the note page that holds the keyboard: the title, the editor, or a field inside the note. */
+function typingOnPage(): boolean {
+  if (typeof document === "undefined") return false;
+  const el = document.activeElement as HTMLElement | null;
+  if (!el || el === document.body) return false;
+  if (el instanceof HTMLTextAreaElement) return !el.readOnly;
+  if (el instanceof HTMLInputElement) return !el.readOnly && !["button", "checkbox", "radio", "range", "color", "file", "submit", "reset"].includes(el.type);
+  return el.isContentEditable;
+}
+
 export function editorState(editor: Editor | null, noteId: string, readOnly: boolean, lock: { locked?: boolean; canLock?: boolean } = {}): EditorStateEvent {
   const extra = { focus: focusMode(), locked: Boolean(lock.locked), canLock: Boolean(lock.canLock) };
-  if (!editor || editor.isDestroyed) return { noteId, focused: false, canEdit: !readOnly, block: "paragraph", marks: [], link: false, undo: false, redo: false, ...extra };
+  if (!editor || editor.isDestroyed) return { noteId, focused: typingOnPage(), canEdit: !readOnly, block: "paragraph", marks: [], link: false, undo: false, redo: false, ...extra };
   return {
     ...extra,
     noteId,
-    focused: editor.isFocused || editor.view.hasFocus(),
+    // Whatever holds the keyboard on the note page (the title too), so native's toolbar and Done follow it.
+    focused: editor.isFocused || editor.view.hasFocus() || typingOnPage(),
     canEdit: !readOnly,
     block: blockAtSelection(editor),
     marks: EDITOR_MARKS.filter((m) => editor.isActive(m)),
@@ -112,6 +130,8 @@ export function runEditorCommand(o: NativeNoteOptions, name: EditorCommandName, 
       const e = editing();
       const kind = text(args, "kind", { max: 40 }) as string;
       if (kind === "mention") e.chain().focus().insertContent("@").run();
+      // "/" where the caret is: the editor's own slash menu opens, as typing it does.
+      else if (kind === "slash") e.chain().focus().insertContent("/").run();
       else if (kind === "divider") insertBlockAfterCurrent(e, "divider");
       else if (kind === "code") insertBlockAfterCurrent(e, "codeBlock");
       else if ((SPECIAL as readonly string[]).includes(kind)) requestSpecialInsert(e, kind as SpecialInsert);
@@ -144,7 +164,12 @@ export function runEditorCommand(o: NativeNoteOptions, name: EditorCommandName, 
     case "focus":
       only(args, []);
       if (!editor || editor.isDestroyed) throw new BridgeError("no_note", "The note is still opening.");
-      editor.commands.focus();
+      // An untitled, empty note starts in its title (as the web's new note does); any other in the body.
+      {
+        const title = titleField(o.documentId);
+        if (title && !o.readOnly && !title.value.trim() && editor.isEmpty) title.focus();
+        else editor.commands.focus();
+      }
       return ok;
     case "dismissKeyboard":
       only(args, []);
@@ -267,8 +292,13 @@ export function useNativeNote(o: NativeNoteOptions): void {
     editor.on("blur", send);
     // Focus Mode turning on or off changes the state too.
     const offFocus = onNoteHost(send);
+    // The title (or any field on the page) taking or leaving the keyboard, not only the editor's selection.
+    document.addEventListener("focusin", send);
+    document.addEventListener("focusout", send);
     return () => {
       offFocus();
+      document.removeEventListener("focusin", send);
+      document.removeEventListener("focusout", send);
       cancelAnimationFrame(frame);
       editor.off("selectionUpdate", send);
       editor.off("transaction", send);

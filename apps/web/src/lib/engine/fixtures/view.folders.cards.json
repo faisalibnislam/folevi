@@ -41,7 +41,10 @@
           }
         ],
         "encrypted": false,
-        "sync": "saved"
+        "sync": "saved",
+        "locked": false,
+        "path": null,
+        "createdAt": 1790240400000
       }
     ]
   }

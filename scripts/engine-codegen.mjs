@@ -248,6 +248,21 @@ function emitEnum(name, values, doc, indent = "") {
   return lines.join("\n");
 }
 
+/**
+ * A field added to a type native already builds (demo engines, tests) can say what its memberwise init takes
+ * when the argument is left out: `@default false` in its doc comment (a Swift literal). It is still always sent.
+ */
+function initDefaultOf(node) {
+  for (const d of node.jsDoc ?? []) {
+    for (const t of d.tags ?? []) {
+      if (t.tagName.text !== "default") continue;
+      const c = typeof t.comment === "string" ? t.comment : (t.comment ?? []).map((p) => p.text ?? "").join("");
+      if (c.trim()) return c.trim();
+    }
+  }
+  return null;
+}
+
 function propsOf(members, owner) {
   const props = [];
   const nested = [];
@@ -256,7 +271,7 @@ function propsOf(members, owner) {
     const name = m.name.getText(sf).replace(/^["']|["']$/g, "");
     const ctx = { owner, prop: name, nested };
     const mapped = mapType(m.type, ctx);
-    props.push({ name, swift: ident(/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : camel(name)), key: name, type: mapped.type, nestedName: mapped.nestedName, optional: Boolean(m.questionToken) || Boolean(mapped.optional), nullable: !m.questionToken && Boolean(mapped.optional), patch: Boolean(m.questionToken) && Boolean(mapped.optional), doc: docOf(m) });
+    props.push({ name, swift: ident(/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : camel(name)), key: name, type: mapped.type, nestedName: mapped.nestedName, optional: Boolean(m.questionToken) || Boolean(mapped.optional), nullable: !m.questionToken && Boolean(mapped.optional), patch: Boolean(m.questionToken) && Boolean(mapped.optional), doc: docOf(m), init: initDefaultOf(m) });
   }
   return { props, nested };
 }
@@ -279,25 +294,26 @@ function emitStruct(name, members, doc, indent = "", owner = name) {
     lines.push(`${indent}    }`);
   }
   // A public memberwise init (Swift only synthesizes an internal one); optionals default to nil.
-  const params = props.map((p) => `${p.swift.replace(/`/g, "")}: ${p.type}${p.optional ? "? = nil" : ""}`);
+  const params = props.map((p) => `${p.swift.replace(/`/g, "")}: ${p.type}${p.optional ? "? = nil" : p.init !== null ? ` = ${p.init}` : ""}`);
   lines.push("", `${indent}    public init(${params.join(", ")}) {`);
   for (const p of props) lines.push(`${indent}        self.${p.swift.replace(/`/g, "")} = ${p.patch ? `Patch(${p.swift})` : p.swift}`);
   lines.push(`${indent}    }`);
   // A required `T | null` field is always sent, as null when nil (synthesized Codable would leave it out, and the
   // engine refuses a missing one); only `?` fields are left out when nil.
   if (props.some((p) => p.nullable) || patched) {
-    lines.push("", `${indent}    public func encode(to encoder: any Encoder) throws {`, `${indent}        var c = encoder.container(keyedBy: CodingKeys.self)`);
-    for (const p of props) lines.push(`${indent}        try c.${p.patch ? "encodePatch" : p.optional && !p.nullable ? "encodeIfPresent" : "encode"}(${p.swift}, forKey: .${p.swift})`);
+    // (The container isn't called `c`: a field may be, as PreviewLine's checked `c` is; `self.` keeps them apart.)
+    lines.push("", `${indent}    public func encode(to encoder: any Encoder) throws {`, `${indent}        var container = encoder.container(keyedBy: CodingKeys.self)`);
+    for (const p of props) lines.push(`${indent}        try container.${p.patch ? "encodePatch" : p.optional && !p.nullable ? "encodeIfPresent" : "encode"}(self.${p.swift.replace(/`/g, "")}, forKey: .${p.swift})`);
     lines.push(`${indent}    }`);
   }
   // A three-state field reads back as left out (.keep), null (.clear) or a value (.set).
   if (patched) {
-    lines.push("", `${indent}    public init(from decoder: any Decoder) throws {`, `${indent}        let c = try decoder.container(keyedBy: CodingKeys.self)`);
+    lines.push("", `${indent}    public init(from decoder: any Decoder) throws {`, `${indent}        let container = try decoder.container(keyedBy: CodingKeys.self)`);
     for (const p of props) {
       const name = p.swift.replace(/`/g, "");
-      if (p.patch) lines.push(`${indent}        self.${name} = try c.decodePatch(${p.type}.self, forKey: .${p.swift})`);
-      else if (p.optional) lines.push(`${indent}        self.${name} = try c.decodeIfPresent(${p.type}.self, forKey: .${p.swift})`);
-      else lines.push(`${indent}        self.${name} = try c.decode(${p.type}.self, forKey: .${p.swift})`);
+      if (p.patch) lines.push(`${indent}        self.${name} = try container.decodePatch(${p.type}.self, forKey: .${p.swift})`);
+      else if (p.optional) lines.push(`${indent}        self.${name} = try container.decodeIfPresent(${p.type}.self, forKey: .${p.swift})`);
+      else lines.push(`${indent}        self.${name} = try container.decode(${p.type}.self, forKey: .${p.swift})`);
     }
     lines.push(`${indent}    }`);
   }

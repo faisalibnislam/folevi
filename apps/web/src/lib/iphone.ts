@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useSyncExternalStore } from "react";
-import { inAndroidApp, inIosApp } from "./nativeApp";
+import { inAndroidApp, inIosApp, nativeChrome } from "./nativeApp";
 
 // The iPhone app's own interface (components/iphone): a navigation stack with large titles, a floating glass
 // tab bar, bottom sheets. Only inside the iOS app (data-native="ios"), on an iPhone, or on an iPad in a
@@ -53,6 +53,9 @@ export function displayCornerRadius(): number | null {
  */
 export function isIphoneApp(): boolean {
   if (typeof navigator === "undefined") return false;
+  // Native chrome mode on an iPhone: the note page takes the phone layout (the native app draws the bars).
+  const marker = nativeChrome();
+  if (marker) return marker.platform === "ios";
   if (inAndroidApp()) return typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches;
   if (!inIosApp()) return false;
   if (/\b(iPhone|iPod)\b/.test(navigator.userAgent)) return true;

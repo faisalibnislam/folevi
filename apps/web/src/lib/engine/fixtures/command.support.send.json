@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "support.send",
+  "description": "Send a support request from the app.",
+  "args": {
+    "topic": "sync",
+    "message": "My notes didn't sync after I came back online."
+  },
+  "result": {
+    "number": 1042
+  }
+}

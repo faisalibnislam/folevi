@@ -15,11 +15,13 @@ import { PLANNER_VALUE_VIEWS } from "./viewsPlanner";
 import { PLANNER_COMMANDS } from "./commandsPlanner";
 import { DEVICE_VALUE_VIEWS } from "./viewsDevice";
 import { DEVICE_COMMANDS } from "./commandsDevice";
+import { EXTRA_VALUE_VIEWS } from "./viewsExtra";
+import { EXTRA_COMMANDS } from "./commandsExtra";
 import { CORE_VALUE_VIEWS, LIST_VIEWS, type ValueViewDef } from "./views";
 import { MORE_VALUE_VIEWS } from "./viewsMore";
 
-export const VALUE_VIEWS: Record<ViewName, ValueViewDef> = { ...CORE_VALUE_VIEWS, ...MORE_VALUE_VIEWS, ...WORK_VALUE_VIEWS, ...ACCOUNT_VALUE_VIEWS, ...AI_VALUE_VIEWS, ...MAC_VALUE_VIEWS, ...PLANNER_VALUE_VIEWS, ...DEVICE_VALUE_VIEWS };
+export const VALUE_VIEWS: Record<ViewName, ValueViewDef> = { ...CORE_VALUE_VIEWS, ...MORE_VALUE_VIEWS, ...WORK_VALUE_VIEWS, ...ACCOUNT_VALUE_VIEWS, ...AI_VALUE_VIEWS, ...MAC_VALUE_VIEWS, ...PLANNER_VALUE_VIEWS, ...DEVICE_VALUE_VIEWS, ...EXTRA_VALUE_VIEWS };
 
 export { LIST_VIEWS };
 
-export const COMMANDS: Record<CommandName, CommandDef> = { ...CORE_COMMANDS, ...MORE_COMMANDS, ...WORK_COMMANDS, ...ACCOUNT_COMMANDS, ...AI_COMMANDS, ...MAC_COMMANDS, ...PLANNER_COMMANDS, ...DEVICE_COMMANDS };
+export const COMMANDS: Record<CommandName, CommandDef> = { ...CORE_COMMANDS, ...MORE_COMMANDS, ...WORK_COMMANDS, ...ACCOUNT_COMMANDS, ...AI_COMMANDS, ...MAC_COMMANDS, ...PLANNER_COMMANDS, ...DEVICE_COMMANDS, ...EXTRA_COMMANDS };

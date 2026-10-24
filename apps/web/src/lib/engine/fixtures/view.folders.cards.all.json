@@ -1,0 +1,128 @@
+{
+  "kind": "view",
+  "name": "folders.cards",
+  "description": "All folders, nested ones too, in tree order with where each is.",
+  "args": {
+    "all": true
+  },
+  "value": {
+    "folders": [
+      {
+        "id": "fld_trips",
+        "name": "Trips",
+        "color": "moss",
+        "parentId": null,
+        "noteCount": 12,
+        "childCount": 1,
+        "updatedAt": 1792832400000,
+        "previews": [
+          {
+            "title": "Kyoto in November",
+            "excerpt": "Kyoto in November. First lines of the note.",
+            "cover": {
+              "kind": "theme",
+              "value": "art-03"
+            }
+          },
+          {
+            "title": "Q4 planning",
+            "excerpt": "Q4 planning. First lines of the note.",
+            "cover": {
+              "kind": "none"
+            }
+          },
+          {
+            "title": "Reading list",
+            "excerpt": "Reading list. First lines of the note.",
+            "cover": {
+              "kind": "theme",
+              "value": "art-27"
+            }
+          }
+        ],
+        "encrypted": false,
+        "sync": "saved",
+        "locked": false,
+        "path": null,
+        "createdAt": 1790240400000
+      },
+      {
+        "id": "fld_japan",
+        "name": "Japan",
+        "color": null,
+        "parentId": "fld_trips",
+        "noteCount": 5,
+        "childCount": 0,
+        "updatedAt": 1792746000000,
+        "previews": [
+          {
+            "title": "Sourdough notes",
+            "excerpt": "Sourdough notes. First lines of the note.",
+            "cover": {
+              "kind": "none"
+            }
+          },
+          {
+            "title": "Interview loop",
+            "excerpt": "Interview loop. First lines of the note.",
+            "cover": {
+              "kind": "theme",
+              "value": "art-55"
+            }
+          },
+          {
+            "title": "Garden plan",
+            "excerpt": "Garden plan. First lines of the note.",
+            "cover": {
+              "kind": "none"
+            }
+          }
+        ],
+        "encrypted": false,
+        "sync": "saved",
+        "locked": false,
+        "path": "Trips",
+        "createdAt": 1790240400000
+      },
+      {
+        "id": "fld_work",
+        "name": "Work",
+        "color": "plum",
+        "parentId": null,
+        "noteCount": 31,
+        "childCount": 0,
+        "updatedAt": 1792659600000,
+        "previews": [
+          {
+            "title": "Weekly review",
+            "excerpt": "Weekly review. First lines of the note.",
+            "cover": {
+              "kind": "theme",
+              "value": "art-12"
+            }
+          },
+          {
+            "title": "Book club: The Overstory",
+            "excerpt": "Book club: The Overstory. First lines of the note.",
+            "cover": {
+              "kind": "none"
+            }
+          },
+          {
+            "title": "Note 9",
+            "excerpt": "Note 9. First lines of the note.",
+            "cover": {
+              "kind": "theme",
+              "value": "art-41"
+            }
+          }
+        ],
+        "encrypted": false,
+        "sync": "saved",
+        "locked": true,
+        "path": null,
+        "createdAt": 1790240400000
+      }
+    ]
+  }
+}

@@ -179,6 +179,9 @@ const folderCard = (i: number, over: Partial<FolderCard> = {}): FolderCard => ({
   previews: rows(3, i * 3).map((r) => ({ title: r.title, excerpt: r.excerpt, cover: r.cover })),
   encrypted: false,
   sync: "saved",
+  locked: false,
+  path: null,
+  createdAt: NOW - 30 * DAY,
   ...over,
 });
 
@@ -198,8 +201,8 @@ const CATCH_UP_READY: CatchUpCard = {
 };
 
 const SPACES = [
-  { id: "personal", kind: "personal" as const, name: "Personal", role: "owner", canEdit: true, canManage: false, encrypted: false, locked: false },
-  { id: "ws_studio", kind: "workspace" as const, name: "Airly Studio", role: "admin", canEdit: true, canManage: true, encrypted: false, locked: false },
+  { id: "personal", kind: "personal" as const, name: "Personal", role: "owner", canEdit: true, canManage: false, encrypted: false, locked: false, canLock: true, level: "standard" },
+  { id: "ws_studio", kind: "workspace" as const, name: "Airly Studio", role: "admin", canEdit: true, canManage: true, encrypted: false, locked: false, canLock: true, level: "standard" },
 ];
 
 const SYNC_SAVED: SyncStatusValue = { state: "saved", label: "Saved", pending: 0, conflicts: 0, online: true, authRequired: false, spaces: [{ space: "personal", state: "ready", have: 0, total: null }] };
@@ -369,7 +372,7 @@ export const FIXTURES: Record<string, Fixture> = {
       place: "library",
       mode: "local",
       profile: { id: "local", name: "You", email: "", avatarUrl: null },
-      spaces: [{ id: "personal", kind: "personal", name: "Personal", role: "owner", canEdit: true, canManage: false, encrypted: false, locked: false }],
+      spaces: [{ id: "personal", kind: "personal", name: "Personal", role: "owner", canEdit: true, canManage: false, encrypted: false, locked: false, canLock: false, level: "standard" }],
       space: "personal",
       online: false,
       today: "2026-10-24",
@@ -477,11 +480,11 @@ export const FIXTURES: Record<string, Fixture> = {
     value: {
       space: "personal",
       folders: [
-        { id: "fld_trips", name: "Trips", color: "moss", parentId: null, depth: 0, rank: "a0", childCount: 2, noteCount: 12, encrypted: false, sync: "saved" },
-        { id: "fld_japan", name: "Japan", color: null, parentId: "fld_trips", depth: 1, rank: "a0", childCount: 1, noteCount: 5, encrypted: false, sync: "saved" },
-        { id: "fld_kyoto", name: "Kyoto", color: null, parentId: "fld_japan", depth: 2, rank: "a0", childCount: 0, noteCount: 2, encrypted: false, sync: "saved" },
-        { id: "fld_iceland", name: "Iceland", color: "accent", parentId: "fld_trips", depth: 1, rank: "a1", childCount: 0, noteCount: null, encrypted: false, sync: "waiting" },
-        { id: "fld_work", name: "Work", color: null, parentId: null, depth: 0, rank: "a1", childCount: 0, noteCount: 7, encrypted: false, sync: "saved" },
+        { id: "fld_trips", name: "Trips", color: "moss", parentId: null, depth: 0, rank: "a0", childCount: 2, noteCount: 12, encrypted: false, sync: "saved", locked: false },
+        { id: "fld_japan", name: "Japan", color: null, parentId: "fld_trips", depth: 1, rank: "a0", childCount: 1, noteCount: 5, encrypted: false, sync: "saved", locked: false },
+        { id: "fld_kyoto", name: "Kyoto", color: null, parentId: "fld_japan", depth: 2, rank: "a0", childCount: 0, noteCount: 2, encrypted: false, sync: "saved", locked: false },
+        { id: "fld_iceland", name: "Iceland", color: "accent", parentId: "fld_trips", depth: 1, rank: "a1", childCount: 0, noteCount: null, encrypted: false, sync: "waiting", locked: false },
+        { id: "fld_work", name: "Work", color: null, parentId: null, depth: 0, rank: "a1", childCount: 0, noteCount: 7, encrypted: false, sync: "saved", locked: true },
       ],
       tags: [{ id: "tag_ideas", name: "ideas", color: "marigold" }],
     },
@@ -599,6 +602,62 @@ export const FIXTURES: Record<string, Fixture> = {
     },
   }),
   "view.folders.cards": view({ name: "folders.cards", description: "A folder's subfolders as cards.", args: { parentId: "fld_trips" }, value: { folders: [folderCard(0, { id: "fld_japan", name: "Japan", parentId: "fld_trips", childCount: 1, noteCount: 5 })] } }),
+  "view.folders.cards.all": view({
+    name: "folders.cards",
+    description: "All folders, nested ones too, in tree order with where each is.",
+    args: { all: true },
+    value: {
+      folders: [
+        folderCard(0, { id: "fld_trips", name: "Trips", childCount: 1 }),
+        folderCard(1, { id: "fld_japan", name: "Japan", parentId: "fld_trips", childCount: 0, noteCount: 5, path: "Trips" }),
+        folderCard(2, { id: "fld_work", name: "Work", childCount: 0, locked: true }),
+      ],
+    },
+  }),
+  "view.support.topics": view({
+    name: "support.topics",
+    description: "The support form's topics.",
+    args: {},
+    value: {
+      topics: [
+        { id: "account", label: "Account and sign-in" },
+        { id: "billing", label: "Billing and plans" },
+        { id: "sync", label: "Sync and offline" },
+        { id: "sharing", label: "Sharing and workspaces" },
+        { id: "bug", label: "Something isn't working" },
+        { id: "feedback", label: "Feedback or an idea" },
+        { id: "other", label: "Something else" },
+      ],
+    },
+  }),
+  "view.changes.diff": view({
+    name: "changes.diff",
+    description: "A note's changes since you last looked: a line added by Kim, one edited word by word.",
+    args: { id: "doc_00002" },
+    value: {
+      id: "doc_00002",
+      title: "Kyoto itinerary",
+      blocks: [
+        { id: "blk_1", change: "added", t: "todo", x: "Book the ryokan", c: false, who: "Kim", at: NOW - 3_600_000 },
+        {
+          id: "blk_2",
+          change: "changed",
+          t: "paragraph",
+          x: "Day two: Fushimi Inari at dawn",
+          before: "Day two: Fushimi Inari",
+          parts: [
+            { kind: "same", text: "Day two: Fushimi Inari" },
+            { kind: "added", text: " at dawn" },
+          ],
+          who: "Foli AI",
+          at: NOW - 1_800_000,
+        },
+      ],
+      truncated: false,
+      encrypted: false,
+      canUndo: true,
+    },
+  }),
   "view.shared.list": view({
     name: "shared.list",
     description: "Pages shared with this person.",
@@ -842,6 +901,12 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.device.removeCopy": command({ name: "device.removeCopy", description: "Remove the copy; two changes still waiting, so it asks first.", args: {}, result: { removed: false, waiting: 2 } }),
   "command.device.removeCopy.force": command({ name: "device.removeCopy", description: "Remove the copy anyway (waiting changes stay).", args: { force: true }, result: { removed: true, waiting: 2 } }),
   "command.device.removeFiles": command({ name: "device.removeFiles", description: "Remove the kept attachments.", args: {}, result: { ok: true } }),
+  "command.invite.decline": command({ name: "invite.decline", description: "Decline a workspace invitation from the bell.", args: { kind: "workspace", inviteId: "winv_1" }, result: { ok: true } }),
+  "command.invite.decline.page": command({ name: "invite.decline", description: "Decline a page invitation from its link.", args: { kind: "page", token: "tok_abc" }, result: { ok: true } }),
+  "command.support.send": command({ name: "support.send", description: "Send a support request from the app.", args: { topic: "sync", message: "My notes didn't sync after I came back online." }, result: { number: 1042 } }),
+  "command.folder.lock": command({ name: "folder.lock", description: "Make a folder always fully encrypted.", args: { id: "fld_work", locked: true }, result: { ok: true } }),
+  "command.ai.generate": command({ name: "ai.generate", description: "A template written by Foli AI.", args: { kind: "template", instruction: "A weekly review with wins, problems and next steps" }, result: { title: "Weekly review", text: "## Wins\n\n- \n\n## Problems\n\n- \n\n## Next steps\n\n- [ ] " } }),
+  "command.ai.saveDraft": command({ name: "ai.saveDraft", description: "Save the draft as a template.", args: { kind: "template", title: "Weekly review", text: "## Wins\n\n- " }, result: { id: "doc_00090" } }),
   "command.sharing.cancelInvite": command({ name: "sharing.cancelInvite", description: "Cancel an invitation.", args: { inviteId: "pinv_2" }, result: { ok: true } }),
   "command.sharing.setAccessMode": command({ name: "sharing.setAccessMode", description: "Only the people listed.", args: { noteId: "doc_00002", mode: "restricted" }, result: { ok: true } }),
   "command.publicLink.create": command({ name: "publicLink.create", description: "A public link with the Article look.", args: { noteId: "doc_00002", theme: "article" }, result: { id: "lnk_2", url: "https://app.folevi.com/s/k3XaQ9vY2mP4tR7w" } }),
@@ -850,6 +915,7 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.publicLink.setTheme": command({ name: "publicLink.setTheme", description: "Change a link's look.", args: { linkId: "lnk_1", theme: "minimal" }, result: { ok: true } }),
   "command.publicLink.revoke": command({ name: "publicLink.revoke", description: "Turn a link off.", args: { linkId: "lnk_1" }, result: { ok: true } }),
   "command.invite.acceptLink": command({ name: "invite.acceptLink", description: "Accept a page invitation link and open the page.", args: { kind: "page", token: "tok_page" }, result: { noteId: "doc_s2", space: null } }),
+  "editor.insert.slash": editor({ name: "insert", description: "Type / at the caret: the slash menu opens.", args: { kind: "slash" }, result: { ok: true } }),
   "editor.web.show.privacy": editor({ name: "web.show", description: "Show Settings > Privacy as a web page.", args: { page: "settings.privacy" }, result: { id: "settings.privacy", ready: true } }),
   "editor.web.show.deleteAccount": editor({ name: "web.show", description: "Show the delete account page.", args: { page: "settings.deleteAccount" }, result: { id: "settings.deleteAccount", ready: true } }),
   "editor.web.show": editor({ name: "web.show", description: "Show Connected apps (a web page with native bars).", args: { page: "settings.connectedApps" }, result: { id: "settings.connectedApps", ready: true } }),

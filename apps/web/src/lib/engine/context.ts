@@ -60,6 +60,8 @@ export interface EngineDeps {
   spaceStatus(scope: WireScope): EngineSpaceStatus;
   /** Fires when the E2EE router's spaces, replicas or lock change. */
   e2eeSignal: Signal;
+  /** The account has end-to-end encryption keys (folder locks are offered); false when left out. */
+  hasKeys?(): boolean;
   /** Moves the page (always a replace in native chrome mode: the web history stays one entry). */
   navigate(path: string): void;
   /** Shows another space (Personal or a workspace) in this place. */

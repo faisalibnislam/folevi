@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 10;
+export const CONTRACT_REVISION = 11;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -425,6 +425,17 @@ export interface SpaceInfo {
   encrypted: boolean;
   /** Encrypted and this device is locked: lists show nothing until it's unlocked. */
   locked: boolean;
+  /**
+   * Revision 11 (R9.1): "Always fully encrypted" is offered in this space's folder menus (`folder.lock`): the
+   * account has encryption keys, and the person may (Personal: its owner; a workspace: owner and admins).
+   * @default false
+   */
+  canLock: boolean;
+  /**
+   * Revision 11 (R9.1): "standard" or "encrypted", the space's level (the stop wording differs).
+   * @default "standard"
+   */
+  level: string;
 }
 
 export interface Capabilities {
@@ -537,6 +548,18 @@ export interface FolderCard {
   previews: FolderPreview[];
   encrypted: boolean;
   sync: SyncMark;
+  /**
+   * Revision 11 (R9.1): always fully encrypted.
+   * @default false
+   */
+  locked: boolean;
+  /** Revision 11 (R9.3): where a nested folder is, its ancestors' names ("Work / Clients"); null at the top level. */
+  path: string | null;
+  /**
+   * Revision 11 (R9.3): for All folders' "Newest" sort (0 when unknown).
+   * @default 0
+   */
+  createdAt: number;
 }
 
 export interface TagRow {
@@ -582,6 +605,11 @@ export interface FolderNode {
   noteCount: number | null;
   encrypted: boolean;
   sync: SyncMark;
+  /**
+   * Revision 11 (R9.1): always fully encrypted.
+   * @default false
+   */
+  locked: boolean;
 }
 
 /** `folders.tree`: every folder (nested) and tag of a space, with what's waiting to sync laid over it. */
@@ -784,7 +812,8 @@ export type EditorBlock = "paragraph" | "heading1" | "heading2" | "heading3" | "
 export type EditorPanel = "format" | "insert" | "style" | "comments" | "ai" | "info" | "related";
 
 /**
- * What `insert { kind }` adds: a block ("divider", "table", "code", "mention" types `@`), or a special insert the
+ * What `insert { kind }` adds: a block ("divider", "table", "code", "mention" types `@`, "slash" types `/` and opens
+ * the slash menu at the caret (revision 11, R5.1)), or a special insert the
  * editor's menus run ("image", "file", "scan", "page", "bookmark", "embed", "date", "columns2", "tabs", ...; the
  * editor's SpecialInsert list).
  */
@@ -799,7 +828,7 @@ export interface NotePrepareArgs {
 
 export interface NoteShowArgs {
   id: string;
-  /** Focus the editor (a new note opens ready to type in). */
+  /** Focus the editor (a new note opens ready to type in): an untitled, empty note in its title (revision 11, R5.4). */
   focus?: boolean;
 }
 
@@ -1143,6 +1172,8 @@ export interface FolderCardsArgs {
   space?: SpaceRef;
   /** Whose subfolders; null or left out: the top level. */
   parentId?: string | null;
+  /** Revision 11 (R9.3): every folder of the space, nested ones too, in tree order (`parentId` is then ignored). */
+  all?: boolean;
 }
 
 export interface FolderCardsValue {
@@ -2387,6 +2418,110 @@ export interface ShareRoleArgs {
 // The maps (names to argument and result types). The codegen reads these interfaces.
 // ---------------------------------------------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------------------------------------------
+// Revision 11: declining invitations, the support form, folder locks, a note's changes, All folders, Foli AI drafts
+// ---------------------------------------------------------------------------------------------------------------
+
+/** `invite.decline` (R11.2): by the notification's id, or by the link's token (`invite.preview`). */
+export interface InviteDeclineArgs {
+  kind: "workspace" | "page";
+  inviteId?: string;
+  token?: string;
+}
+
+/** A topic of the support form. */
+export interface SupportTopic {
+  id: string;
+  label: string;
+}
+
+/** `support.topics` (R13.5): the form's topics, in order. */
+export interface SupportTopicsValue {
+  topics: SupportTopic[];
+}
+
+/** `support.send` (R13.5): filed under the signed-in account and its address; `name` left out: the profile's. */
+export interface SupportSendArgs {
+  topic: string;
+  /** 10 to 5000 characters. */
+  message: string;
+  name?: string;
+}
+
+export interface SupportSendResult {
+  /** The request's number (#1234) for the confirmation. */
+  number: number | null;
+}
+
+/** `folder.lock` (R9.1): makes the space's key first when it has none; "e2ee_not_set_up" when the account has no keys. */
+export interface FolderLockArgs {
+  id: string;
+  locked: boolean;
+  space?: SpaceRef;
+}
+
+export interface ChangeDiffArgs {
+  id: string;
+}
+
+/** A run of an edited line's words: "same", "added" or "removed". */
+export interface ChangeTextPart {
+  kind: string;
+  text: string;
+}
+
+/** One changed block of `changes.diff` (R9.2), drawn from text. */
+export interface ChangeDiffBlock {
+  id: string;
+  /** "added", "removed", "changed" (the words) or "styled" (the same words, another type or format). */
+  change: string;
+  /** Block type as in PreviewLine.t ("paragraph", "heading", "todo", ...); `l` heading level, `c` checked. */
+  t: string;
+  x: string;
+  l?: number;
+  c?: boolean;
+  /** "changed": the text before, and the words kept, added and removed (when the version from before is known). */
+  before?: string;
+  parts?: ChangeTextPart[];
+  /** Who made it (a person's name, an app, "Foli AI"), when known. */
+  who: string | null;
+  at: number | null;
+}
+
+export interface ChangeDiffValue {
+  id: string;
+  title: string;
+  blocks: ChangeDiffBlock[];
+  /** More changed lines than the server sends. */
+  truncated: boolean;
+  /** End-to-end encrypted: the lines open only on the note page (`blocks` is empty). */
+  encrypted: boolean;
+  /** "Undo these changes" is possible. */
+  canUndo: boolean;
+}
+
+/** `ai.generate` (R9.4): a template or a note written by Foli AI from a description. */
+export interface AiGenerateArgs {
+  kind: "template" | "note";
+  instruction: string;
+  space?: SpaceRef;
+}
+
+export interface AiGenerateResult {
+  title: string;
+  /** Markdown. */
+  text: string;
+}
+
+export interface AiSaveDraftArgs {
+  kind: "template" | "note";
+  title: string;
+  /** Markdown (becomes real blocks). */
+  text: string;
+  space?: SpaceRef;
+  folderId?: string | null;
+}
+
 export interface ViewMap {
   session: { args: EmptyArgs; value: SessionValue };
   "places.list": { args: EmptyArgs; value: PlacesValue };
@@ -2429,6 +2564,8 @@ export interface ViewMap {
   "files.urls": { args: FileUrlsArgs; value: FileUrlsValue };
   recent: { args: RecentArgs; value: RecentValue };
   "device.storage": { args: EmptyArgs; value: DeviceStorageValue };
+  "support.topics": { args: EmptyArgs; value: SupportTopicsValue };
+  "changes.diff": { args: ChangeDiffArgs; value: ChangeDiffValue };
 }
 
 export interface ListViewMap {
@@ -2516,6 +2653,11 @@ export interface CommandMap {
   "device.removeCopy": { args: DeviceRemoveCopyArgs; result: DeviceRemoveCopyResult };
   "device.removeFiles": { args: EmptyArgs; result: OkResult };
   "sharing.setRole": { args: ShareRoleArgs; result: OkResult };
+  "invite.decline": { args: InviteDeclineArgs; result: OkResult };
+  "support.send": { args: SupportSendArgs; result: SupportSendResult };
+  "folder.lock": { args: FolderLockArgs; result: OkResult };
+  "ai.generate": { args: AiGenerateArgs; result: AiGenerateResult };
+  "ai.saveDraft": { args: AiSaveDraftArgs; result: NoteCreateResult };
 }
 
 export interface EditorCommandMap {
@@ -2579,7 +2721,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -2662,6 +2804,11 @@ const commandNames = [
   "device.removeCopy",
   "device.removeFiles",
   "sharing.setRole",
+  "invite.decline",
+  "support.send",
+  "folder.lock",
+  "ai.generate",
+  "ai.saveDraft",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

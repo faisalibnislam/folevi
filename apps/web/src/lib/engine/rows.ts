@@ -153,7 +153,7 @@ export function ulidTime(id: string): number | null {
 
 /** organization.sidebar's folders (sorted by rank) and tags, as the protocol's folder tree: flat, depth first. */
 export function folderTree(
-  folders: readonly { id: string; name: string; color: string | null; parentFolderId: string | null; rank: string; sealedName?: unknown }[],
+  folders: readonly { id: string; name: string; color: string | null; parentFolderId: string | null; rank: string; sealedName?: unknown; locked?: boolean }[],
   counts: ReadonlyMap<string, number> | null,
   marks: SyncMarks = NO_MARKS,
 ): FolderNode[] {
@@ -182,6 +182,7 @@ export function folderTree(
         noteCount: counts ? (counts.get(f.id) ?? 0) : null,
         encrypted: Boolean(f.sealedName),
         sync: markOf(f.id, marks),
+        locked: f.locked === true,
       });
       walk(f.id, depth + 1);
     }
@@ -196,9 +197,10 @@ export function tagRows(tags: readonly { id: string; name: string; color: string
 
 /** A folder of organization.index as a folder card. */
 export function folderCardOf(
-  f: { id: string; name: string; color: string | null; parentFolderId: string | null; updatedAt: number; documentCount: number; previews?: { cover: CardCover; title: string; excerpt: string; sealed?: unknown }[]; sealedName?: unknown },
+  f: { id: string; name: string; color: string | null; parentFolderId: string | null; updatedAt: number; createdAt?: number; documentCount: number; previews?: { cover: CardCover; title: string; excerpt: string; sealed?: unknown }[]; sealedName?: unknown; locked?: boolean },
   childCount: number,
   marks: SyncMarks = NO_MARKS,
+  path: string | null = null,
 ): FolderCard {
   return {
     id: f.id,
@@ -211,5 +213,8 @@ export function folderCardOf(
     previews: (f.previews ?? []).slice(0, 3).map((p) => ({ title: p.title ?? "", excerpt: p.excerpt ?? "", cover: coverOf(p.cover) })),
     encrypted: Boolean(f.sealedName),
     sync: markOf(f.id, marks),
+    locked: f.locked === true,
+    path,
+    createdAt: f.createdAt ?? 0,
   };
 }

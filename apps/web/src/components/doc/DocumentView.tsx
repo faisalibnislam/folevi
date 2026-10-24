@@ -1006,7 +1006,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
           data-iphone-plain={iphone && !pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "" : undefined}
           className={
             iphone
-              ? `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "pt-[calc(env(safe-area-inset-top)+52px)]" : ""}`
+              ? nativeChromeMode
+                ? // Native chrome mode: the bars' room is the holder's padding (--native-inset-*), so the page
+                  // starts right under the native bar and needs only a little room at the end.
+                  "fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-6"
+                : `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "pt-[calc(env(safe-area-inset-top)+52px)]" : ""}`
               : `fb-page relative h-full overflow-y-auto rounded-panel px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`
           }
           data-backdrop={pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? (blurredBackdrop ? "blur" : "on") : undefined}

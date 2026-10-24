@@ -1,0 +1,45 @@
+{
+  "kind": "view",
+  "name": "changes.diff",
+  "description": "A note's changes since you last looked: a line added by Kim, one edited word by word.",
+  "args": {
+    "id": "doc_00002"
+  },
+  "value": {
+    "id": "doc_00002",
+    "title": "Kyoto itinerary",
+    "blocks": [
+      {
+        "id": "blk_1",
+        "change": "added",
+        "t": "todo",
+        "x": "Book the ryokan",
+        "c": false,
+        "who": "Kim",
+        "at": 1792828800000
+      },
+      {
+        "id": "blk_2",
+        "change": "changed",
+        "t": "paragraph",
+        "x": "Day two: Fushimi Inari at dawn",
+        "before": "Day two: Fushimi Inari",
+        "parts": [
+          {
+            "kind": "same",
+            "text": "Day two: Fushimi Inari"
+          },
+          {
+            "kind": "added",
+            "text": " at dawn"
+          }
+        ],
+        "who": "Foli AI",
+        "at": 1792830600000
+      }
+    ],
+    "truncated": false,
+    "encrypted": false,
+    "canUndo": true
+  }
+}

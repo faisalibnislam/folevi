@@ -32,6 +32,7 @@ import { TemplateTile } from "@/components/ui/TemplateIcon";
 import { DocumentCardPreview, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderBadge } from "./FolderBadge";
 import { pendingByDocument, type PendingDocument } from "@/lib/hooks/usePendingDocs";
+import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
 import { Select } from "@/components/ui/Select";
 import { MoveToFolderDialog } from "./MoveToFolderDialog";
 import { CopyToDialog, useCanCopyElsewhere } from "./CopyToDialog";
@@ -49,7 +50,7 @@ function UnsyncedMarker({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-1 text-[11px] font-medium text-heading ${className}`} title="Changes on this device haven’t synced yet">
       <span className="inline-block h-1.5 w-1.5 rounded-tiny bg-heading" aria-hidden />
-      <span>Not synced</span>
+      <span>Waiting to sync</span>
     </span>
   );
 }
@@ -216,10 +217,19 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     const placed = moved.size ? cached.map((d) => (moved.has(d.id) ? { ...d, folderId: moved.get(d.id) ?? null } : d)) : cached;
     return view === "folder" ? placed.filter((d) => d.folderId === folderId) : placed;
   }, [cached, waiting, view, folderId]);
-  const docs = useMemo(() => (fromCache && kept ? kept.slice(0, cachedShown) : results), [fromCache, kept, cachedShown, results]);
+  const served = useMemo(() => (fromCache && kept ? kept.slice(0, cachedShown) : results), [fromCache, kept, cachedShown, results]);
+  // Notes made (or renamed, or moved) on this device that the server doesn't have yet show in their lists at
+  // once, marked as waiting to sync (lib/sync/localNotes.ts).
+  const offlineNoList = status === "LoadingFirstPage" && !cached && !online;
+  const docs =
+    useNotesWithLocal(offlineNoList ? undefined : served, {
+      include: view === "all" ? "all" : view === "unsorted" ? "drafts" : view === "folder" ? "folder" : "none",
+      folderId,
+      byUpdated: sort === "updated",
+    }) ?? served;
   const moreCached = fromCache && (kept?.length ?? 0) > cachedShown;
   const canLoadMore = status === "CanLoadMore" || moreCached;
-  const loading = status === "LoadingFirstPage" && !cached;
+  const loading = status === "LoadingFirstPage" && !cached && docs.length === 0;
   const canArrange = sort === "manual" && view !== "trash";
   // Only the pages with unsynced work, compared by value: this list shouldn't re-render on every keystroke.
   const pendingDocs = useEngineSelector(engine, pendingByDocument, samePending);

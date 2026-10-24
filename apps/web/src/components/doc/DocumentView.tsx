@@ -75,6 +75,7 @@ import { BlockThread, useCommentThreads, useNoteNotifyItems } from "./Comments";
 import { AI_OPEN_EVENT, AI_RUN_EVENT, NoteAiContext, useAi, useAiEnabled, type AiRunDetail, type NoteAi } from "@/components/ai/useAi";
 import { DocumentSidebar, type Crumb, type DocSidebarTab } from "./DocumentSidebar";
 import { useDocTab } from "@/lib/app/tabs";
+import { localTitle as queuedLocalTitle } from "@/lib/sync/localNotes";
 import { ShareDialog } from "./ShareDialog";
 import { useCanCall, useCapabilities } from "@/lib/mode";
 import { Popover } from "@/components/ui/Popover";
@@ -92,7 +93,7 @@ import { useNoteActions } from "@/components/views/noteActions";
 import { PageDock } from "./PageDock";
 import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
 import { NoteBars } from "@/components/iphone/NoteBars";
-import { NotePlaceChip, NoteTrailing, ToolSheet } from "@/components/iphone/NoteChrome";
+import { NotePlaceChip, NoteSyncTrailing, NoteTrailing, ToolSheet } from "@/components/iphone/NoteChrome";
 import { useKeyboardInset } from "@/lib/hooks/useVisualViewport";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
@@ -492,11 +493,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const shownAbove = folderAbove.slice(-2);
 
   const summary = meta?.document ?? null;
-  const localTitle = pendingCreate && pendingCreate.kind === "document.create" ? pendingCreate.document.title : (waitingRow?.title ?? "");
+  // The latest title given on this device that the server doesn't have yet (a note named offline).
+  const queuedTitle = useEngineSelector(engine, (s) => queuedLocalTitle(s, documentId));
+  const localTitle = queuedTitle ?? (pendingCreate && pendingCreate.kind === "document.create" ? pendingCreate.document.title : (waitingRow?.title ?? ""));
   const style: DocumentStyle = summary?.style ?? DEFAULT_DOCUMENT_STYLE;
   useDocTab(
     documentId,
-    summary?.title || localTitle || "",
+    queuedTitle || summary?.title || localTitle || "",
     meta === undefined ? (pendingCreate?.kind === "document.create" && !pendingCreate.document.parentDocumentId ? null : undefined) : meta?.breadcrumbs[0] ? { id: meta.breadcrumbs[0].id, title: meta.breadcrumbs[0].title || "Untitled" } : null,
   );
   // Page and text colours: the chosen ones, or on Auto, taken from the note's artwork.
@@ -845,7 +848,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
             folder={folder ? { ...folder, color: org?.folders.find((f) => f.id === folder.id)?.color ?? null } : null}
           />
         ) : undefined,
-        trailing: summary ? <NoteTrailing onShare={meta ? () => setShareOpen(true) : undefined} shared={Boolean(shareState)} actions={actions} /> : undefined,
+        // A note made on this device that the server doesn't have yet: its bar says so (and nothing else yet).
+        trailing: summary ? <NoteTrailing onShare={meta ? () => setShareOpen(true) : undefined} shared={Boolean(shareState)} actions={actions} /> : pendingCreate ? <NoteSyncTrailing /> : undefined,
       }}
       title={
         sidebarOpen ? (

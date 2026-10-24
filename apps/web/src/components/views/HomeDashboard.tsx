@@ -15,6 +15,9 @@ import { NOTE_CARD_ASPECT, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderCard } from "./FolderCard";
 import { DocMenu, NoteContextMenu, contextPoint, type Summary as DocSummary } from "./DocumentBrowser";
 import { startNoteDrag } from "@/lib/app/noteDrag";
+import { useOfflineQuery } from "@/lib/sync/queryCache";
+import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
+import { WaitingToSync, waitingOf } from "@/components/sync/WaitingToSync";
 import { cardCount, useReviewWindow } from "@/components/study/review";
 
 const CARD_WIDTH = 250;
@@ -93,6 +96,7 @@ function NoteCard({ d, recent }: { d: Summary; recent?: boolean }) {
           time={ageText(d.updatedAt)}
           starred={d.starred}
           folder={d.homeFolder}
+          extra={waitingOf(d) ? <WaitingToSync state={waitingOf(d)} /> : undefined}
         />
       </AppLink>
       <div data-card-menu="" className={`absolute top-2 ${d.starred ? "right-[calc(12cqw+8px)]" : "right-2"} opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100`}>
@@ -212,11 +216,15 @@ export function HomeDashboard() {
   const aiOn = useAiEnabled();
   const { scope } = useAppState();
   // The latest edited notes, minus any this person removed from the list.
-  const recent = useQuery(api.documents.recentNotes, { scope, limit: CAROUSEL_COUNT });
-  const starred = useQuery(api.documents.list, { scope, view: "starred", sort: "updated", paginationOpts: { numItems: CAROUSEL_COUNT, cursor: null } });
+  // As last seen on this device while there's no live answer (offline), with notes made or renamed here laid
+  // over it: a note written offline is in Recent notes at once, marked as waiting to sync.
+  const recent = useNotesWithLocal(useOfflineQuery(api.documents.recentNotes, { scope, limit: CAROUSEL_COUNT }), { include: "recent", byUpdated: true, limit: CAROUSEL_COUNT });
+  const starredList = useOfflineQuery(api.documents.list, { scope, view: "starred", sort: "updated", paginationOpts: { numItems: CAROUSEL_COUNT, cursor: null } });
+  const starredPage = useNotesWithLocal(starredList?.page, { include: "none" });
+  const starred = starredList && starredPage ? { ...starredList, page: starredPage } : starredList;
   const folders = useColumns(FOLDER_MIN);
   // Only the most recently changed folders are counted (a fixed minimum, so resizing rarely refetches).
-  const org = useQuery(api.organization.recentFolders, { scope, limit: Math.max(RECENT_FOLDERS, folders.cols * 2) });
+  const org = useOfflineQuery(api.organization.recentFolders, { scope, limit: Math.max(RECENT_FOLDERS, folders.cols * 2) });
   const recentFolders = (org?.folders ?? []).slice(0, folders.cols * 2);
 
   return (

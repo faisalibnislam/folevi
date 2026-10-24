@@ -1,6 +1,7 @@
 "use client";
 
 import { useAction, useQuery } from "convex/react";
+import { useLocalSearch } from "@/lib/hooks/useLocalNotes";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { ArrowRight, CalendarDays, CheckSquare, FileDiff, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2 } from "lucide-react";
@@ -67,6 +68,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   );
   const all = useQuery(api.search.everywhere, open && debounced && allPlaces ? { query: debounced, limit: 24 } : "skip");
   const results = allPlaces ? all : here;
+  const onDevice = useLocalSearch(open ? debounced : "");
   // Search by meaning (plans with the notes index): extra notes about what was typed, after a pause.
   const meaningOn = useQuery(api.search.meaningAvailable, open ? { scope } : "skip");
   const byMeaning = useAction(api.search.byMeaning);
@@ -132,6 +134,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const docs: Item[] = debounced
       ? (results ?? []).map((r) => ({ kind: "doc" as const, id: r.id, title: r.title, icon: r.icon, snippet: r.snippet, updatedAt: r.updatedAt, place: "place" in r ? (r.place as { name: string }).name : undefined, match: r.match }))
       : (recent ?? []).map((r) => ({ kind: "doc" as const, id: r.id, title: r.title, icon: r.icon, updatedAt: r.updatedAt }));
+    // Notes on this device the server's search can't know yet (made offline), or can't be asked about (offline).
+    if (debounced && !allPlaces) {
+      const found = new Set(docs.map((d) => d.id));
+      docs.unshift(...onDevice.filter((h) => !found.has(h.id)).map((h) => ({ kind: "doc" as const, id: h.id, title: h.title, icon: h.icon, snippet: h.snippet, updatedAt: h.updatedAt })));
+    }
     // By meaning: only notes the keyword search didn't already find, for what's typed now.
     const seen = new Set(docs.map((d) => d.id));
     const extra: Item[] =
@@ -149,7 +156,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       run: () => openAsk(query.trim() || undefined),
     };
     return [...docs, ...(aiOn ? [askAi] : []), ...matchingActions];
-  }, [q, query, actions, debounced, results, recent, openAsk, aiOn, meaning, allPlaces]);
+  }, [q, query, actions, debounced, results, recent, openAsk, aiOn, meaning, allPlaces, onDevice]);
 
   useEffect(() => setActive(0), [debounced]);
 
@@ -165,7 +172,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   // Enter pressed while the search for what was typed is still in flight opens the top result once
   // it arrives (fast typists shouldn't get a stale "recent" document or nothing at all).
-  const settled = !query.trim() || (debounced === query.trim() && results !== undefined);
+  const settled = !query.trim() || (debounced === query.trim() && (results !== undefined || onDevice.length > 0));
   const [pendingEnter, setPendingEnter] = useState(false);
   useEffect(() => {
     if (!pendingEnter || !settled) return;
@@ -293,7 +300,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           )}
           <div className={iphone ? "min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+16px)]" : "max-h-[55vh] overflow-y-auto p-2"}>
             {debounced && results === undefined ? <p className={iphone ? "px-5 py-3 text-[15px] text-muted" : "px-3 py-2 text-sm text-muted"}>Searching…</p> : null}
-            {debounced && results?.length === 0 ? <p className={iphone ? "px-5 py-3 text-[15px] text-muted" : "px-3 py-2 text-sm text-muted"}>No {iphone ? "notes" : "documents"} match “{debounced}”.</p> : null}
+            {debounced && results?.length === 0 && onDevice.length === 0 ? <p className={iphone ? "px-5 py-3 text-[15px] text-muted" : "px-3 py-2 text-sm text-muted"}>No {iphone ? "notes" : "documents"} match “{debounced}”.</p> : null}
             <p className={iphone ? IPHONE_CAPS.replace("pt-6", "pt-3") : "ui-caps px-3 pb-1.5 pt-2"}>{debounced ? (iphone ? "Notes" : "Documents") : "Recent"}</p>
             <ul id={listId} role="listbox" aria-label="Results">
               {items.map((item, i) => {

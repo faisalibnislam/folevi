@@ -91,6 +91,11 @@ enum Capabilities {
         }
     }
 
+    /// Answers an `ask` natively (a window with the native frame did the command itself, Frame/NativeFrame.swift).
+    static func answer(_ id: String, _ value: [String: Any]) {
+        waiting.removeValue(forKey: id)?.resume(returning: value)
+    }
+
     private static func commandDone(_ o: [String: Any]) {
         guard let id = o["id"] as? String, let cont = waiting.removeValue(forKey: id) else { return }
         cont.resume(returning: (o["value"] as? [String: Any]) ?? ["ok": o["ok"] as? Bool ?? true])

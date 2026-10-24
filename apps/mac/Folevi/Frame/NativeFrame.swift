@@ -8,6 +8,7 @@
 // Switches: on by default on this branch. FOLEVI_WEB_FRAME=1 (or the `folevi.webFrame` setting) brings back the
 // web frame; FOLEVI_FRAME_DEMO=1 (Debug only) runs the frame against the scripted demo engine, no web needed.
 import AppKit
+import UserNotifications
 import WebKit
 import FoleviEngine
 import FoleviDesign
@@ -156,9 +157,39 @@ final class FrameController: FrameHost {
             guard let id = command["id"] as? String else { return true }
             return FrameCommands.run(id, frame: self)
         case "notification":
-            // Opening a notification (or its "Open" action) shows its page; other actions need the page's
-            // notification handling, which the engine doesn't offer yet (docs/NATIVE_CONTRACT_REQUESTS.md).
-            if let path = command["path"] as? String { model.open(FrameRoute(path: path)) }
+            // A banner's action (revision 8, notification.act): reply, read, done, snooze; "open" shows its page.
+            let action = command["action"] as? String ?? "open"
+            if action == "open" || action == UNNotificationDefaultActionIdentifier {
+                if let path = command["path"] as? String { model.open(FrameRoute(path: path)) }
+            } else if let id = command["id"] as? String {
+                let text = (command["text"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+                model.notificationAction(id: id, action: action, text: text, thread: command["thread"] as? String)
+            }
+            return true
+        case "new-note-with-text":
+            // Services, Shortcuts (revision 8: note.create { text }); answered as the page answered.
+            let ask = command["id"] as? String
+            let text = command["text"] as? String ?? ""
+            Task { @MainActor in
+                do {
+                    let id = try await model.newNote(text: text)
+                    if let ask { Capabilities.answer(ask, ["ok": true, "id": id]) }
+                } catch {
+                    if let ask { Capabilities.answer(ask, ["ok": false, "message": (error as? EngineFailure)?.message ?? "Folevi couldn't make the note."]) }
+                }
+            }
+            return true
+        case "add-task":
+            let ask = command["id"] as? String
+            let text = command["text"] as? String ?? ""
+            Task { @MainActor in
+                do {
+                    let r = try await model.addTask(text: text, dueDate: command["dueDate"] as? String)
+                    if let ask { Capabilities.answer(ask, ["ok": true, "message": "Added to \(r.where)."]) }
+                } catch {
+                    if let ask { Capabilities.answer(ask, ["ok": false, "message": (error as? EngineFailure)?.message ?? "Folevi couldn't add the task."]) }
+                }
+            }
             return true
         default:
             return false
@@ -200,9 +231,8 @@ final class FrameController: FrameHost {
     }
 
     func frameMoveOrCopy() {
-        // The move between places is the web's dialog (MovePlaces.tsx); until the engine offers it, Settings'
-        // data section holds the takeout file (docs/NATIVE_CONTRACT_REQUESTS.md).
-        SettingsWindow.shared.show(section: "data")
+        // Revision 8: places.move.preview and places.move, in a sheet over the window.
+        PlaceMove.present(from: root, model: model)
     }
 
     func frameOpenHelp() {
@@ -276,6 +306,17 @@ enum FrameCommands {
         case "format.indent": m.editor(.indent)
         case "format.outdent": m.editor(.outdent)
         case "format.style": m.editor(.panelOpen(panel: .style))
+        case "format.move-up": m.editor(.blockMove(dir: .up))
+        case "format.move-down": m.editor(.blockMove(dir: .down))
+        case "format.duplicate": m.editor(.blockDuplicate)
+        case "view.focus": m.editor(.focusToggle)
+        case "note.lock": m.editor(.noteLock)
+        case "view.appearance-light": m.setAppearance(.light)
+        case "view.appearance-dark": m.setAppearance(.dark)
+        case "view.appearance-system": m.setAppearance(.system)
+        case "view.cards", "view.list":
+            guard frame.root.split.content.listShowsCards != nil else { return true }
+            frame.root.split.content.setListCards(id == "view.cards")
         case "edit.find", "edit.find-next", "edit.find-previous", "edit.find-selection":
             if noteOpen { m.noteMenu(.find) } else { frame.sidebar.focusSearch() }
         case "view.sidebar": frame.root.split.toggleSidebar(nil)
@@ -304,7 +345,9 @@ enum FrameCommands {
     /// Whether a page command can run now in a framed window (note commands need a note on screen).
     static func isEnabled(_ id: String, frame: FrameController) -> Bool? {
         let noteOpen = frame.model.route.isNote
-        if id.hasPrefix("format.") || id.hasPrefix("note.") || id == "file.export" || id == "view.inspector" { return noteOpen }
+        if id == "note.lock" { return noteOpen && frame.model.canLockNote }
+        if id.hasPrefix("format.") || id.hasPrefix("note.") || id == "file.export" || id == "view.inspector" || id == "view.focus" { return noteOpen }
+        if id == "view.cards" || id == "view.list" { return frame.root.split.content.listShowsCards != nil }
         switch id {
         case "go.back": return frame.model.history.canGoBack
         case "go.forward": return frame.model.history.canGoForward

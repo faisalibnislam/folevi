@@ -6,7 +6,7 @@
 //   cmd frame {"do":"close","tab":"<id>"}           close a tab (the one on screen without "tab")
 //   cmd frame {"do":"next"} / {"do":"previous"}     ⌃Tab / ⌃⇧Tab
 //   cmd frame {"do":"back"} / {"do":"forward"}
-//   cmd frame {"do":"newNote"} / {"do":"sidebar"}   ⌘N / ⌘\
+//   cmd frame {"do":"newNote"} / {"do":"sidebar"}   ⌘N / ⌘\ ; {"do":"moveOrCopy"} the Move or copy sheet
 //   cmd frame {"do":"popover","which":"sync"|"notifications"|"account"|"none"}
 //   cmd frame {"do":"menu","item":"go.next-tab"}    a menu bar item as if chosen
 //   cmd frame {"do":"resize","w":1280,"h":820}      the window's content size; {"do":"front"} brings it forward;
@@ -33,6 +33,7 @@ extension NativeFrame {
             case "back": m.goBack()
             case "forward": m.goForward()
             case "newNote": m.newNote()
+            case "moveOrCopy": frame.frameMoveOrCopy()
             case "sidebar": frame.root.split.toggleSidebar(nil)
             case "popover":
                 switch req["which"] as? String {

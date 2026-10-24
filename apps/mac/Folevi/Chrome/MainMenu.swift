@@ -244,7 +244,21 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
         let view = Chrome.keyMainView
         var state = view.flatMap { Chrome.states[ObjectIdentifier($0)] } ?? PageState()
         let frame = NativeFrame.controller(for: view)
-        if let frame { state.sidebar = !frame.model.sidebarCollapsed }
+        if let frame {
+            // The framed window's state: its sidebar, the note's focus mode and lock, the list's layout, the theme.
+            state.sidebar = !frame.model.sidebarCollapsed
+            state.focus = frame.model.focusMode
+            state.locked = frame.model.noteLocked
+            var checked = Set<String>()
+            if let cards = frame.root.split.content.listShowsCards { checked.insert(cards ? "view.cards" : "view.list") }
+            switch frame.model.session.value?.appearance {
+            case .light?: checked.insert("view.appearance-light")
+            case .dark?: checked.insert("view.appearance-dark")
+            case .system?: checked.insert("view.appearance-system")
+            case nil: break
+            }
+            state.checked = checked
+        }
         item.state = state.checked.contains(base) ? .on : .off
         switch base {
         case "view.sidebar": item.title = state.sidebar == false ? "Show Sidebar" : "Hide Sidebar"

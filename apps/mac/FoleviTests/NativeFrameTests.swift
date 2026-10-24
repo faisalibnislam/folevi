@@ -44,17 +44,31 @@ final class NativeFrameTests: XCTestCase {
         XCTAssertTrue(frame.model.route.isNote)
         XCTAssertTrue(FrameCommands.run("go.back", frame: frame))
         XCTAssertFalse(FrameCommands.run("help.whats-new", frame: frame), "unknown to the frame: the page's")
+        // Revision 8's editor menu commands.
+        XCTAssertTrue(FrameCommands.run("go.tab-9", frame: frame))
+        for id in ["format.move-up", "format.duplicate", "view.focus", "note.lock"] { XCTAssertTrue(FrameCommands.run(id, frame: frame), id) }
+        wait("editor commands") { ["block.move", "block.duplicate", "focus.toggle", "note.lock"].allSatisfy(demo.editorLog.contains) }
+        XCTAssertTrue(FrameCommands.run("view.appearance-dark", frame: frame))
+        wait("appearance") { demo.commandLog.contains("settings.update") }
         frame.stop()
     }
 
     func testAppCommandsReachTheFrame() {
-        let (frame, _, _) = makeFrame()
+        let (frame, demo, _) = makeFrame()
         wait("ready") { frame.model.isEngineReady }
         XCTAssertTrue(frame.handle(["type": "navigate", "path": "/folders/fld_trips"]))
         XCTAssertEqual(frame.model.route, .folder("fld_trips"))
         XCTAssertTrue(frame.handle(["type": "notification", "action": "open", "path": "/d/doc_kyoto"]))
         XCTAssertEqual(frame.model.route, .note("doc_kyoto"))
-        XCTAssertFalse(frame.handle(["type": "new-note-with-text", "text": "x"]))
+        // Services and Shortcuts: a note from text (revision 8), opened in its tab.
+        XCTAssertTrue(frame.handle(["type": "new-note-with-text", "text": "Groceries\nMilk"]))
+        wait("note from text") { demo.notes.contains { $0.title == "Groceries" } && frame.model.route.noteId?.hasPrefix("doc_new") == true }
+        XCTAssertTrue(frame.handle(["type": "add-task", "text": "Call Lina"]))
+        wait("task") { demo.commandLog.contains("task.create") }
+        // A banner's action goes to the engine; "open" stays native.
+        XCTAssertTrue(frame.handle(["type": "notification", "action": "snooze-hour", "id": "n4", "kind": "local-reminder"]))
+        wait("notification.act") { demo.commandLog.contains("notification.act") }
+        XCTAssertFalse(frame.handle(["type": "print"]), "unknown to the frame: the page's")
         frame.stop()
     }
 

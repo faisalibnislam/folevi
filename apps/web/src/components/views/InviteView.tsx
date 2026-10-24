@@ -12,6 +12,7 @@ import { ViewChrome } from "@/components/app/Shell";
 export function InviteView({ token }: { token: string }) {
   const preview = useQuery(api.workspaces.previewInvite, { token });
   const accept = useMutation(api.workspaces.acceptInvite);
+  const decline = useMutation(api.workspaces.declineInvite);
   const { setContext, profile } = useAppState();
   const { navigate } = useAppRouter();
   const [error, setError] = useState<string | null>(null);
@@ -36,21 +37,34 @@ export function InviteView({ token }: { token: string }) {
                 This invitation was sent to a different address than the one you’re signed in with ({profile.email}). Sign in with the invited address to accept it.
               </p>
             ) : (
-              <Button
-                className="mt-6"
-                variant="primary"
-                onClick={async () => {
-                  try {
-                    const r = await accept({ token });
-                    setContext({ kind: "workspace", workspaceId: r.workspaceId });
-                    navigate("/documents", { replace: true });
-                  } catch (e) {
-                    setError(errorMessage(e));
-                  }
-                }}
-              >
-                Accept invitation
-              </Button>
+              <div className="mt-6 flex gap-2">
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    try {
+                      const r = await accept({ token });
+                      setContext({ kind: "workspace", workspaceId: r.workspaceId });
+                      navigate("/documents", { replace: true });
+                    } catch (e) {
+                      setError(errorMessage(e));
+                    }
+                  }}
+                >
+                  Accept invitation
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await decline({ token });
+                      navigate("/documents", { replace: true });
+                    } catch (e) {
+                      setError(errorMessage(e));
+                    }
+                  }}
+                >
+                  Decline
+                </Button>
+              </div>
             )}
             {error ? (
               <p role="alert" className="mt-3 text-sm text-danger">

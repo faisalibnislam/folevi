@@ -439,3 +439,13 @@ export function mentionedIds(nodes: unknown): string[] {
   }
   return [...out];
 }
+
+/** Deletes this person's notifications about an invitation (declined: nothing left to act on). */
+export async function removeInviteNotices(ctx: MutationCtx, profileId: Id<"profiles">, about: (n: Doc<"notifications">) => boolean): Promise<void> {
+  const notes = await ctx.db
+    .query("notifications")
+    .withIndex("by_profile_created", (q) => q.eq("profileId", profileId))
+    .order("desc")
+    .take(500);
+  for (const n of notes) if (about(n)) await ctx.db.delete(n._id);
+}

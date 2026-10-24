@@ -31,7 +31,7 @@ import { insertScoped, workspaceScope } from "./lib/scope";
 import { PLAN_CATALOG, TIER_NAMES, planName } from "./lib/plans";
 import { canInviteMember, canManageMember, canManageWorkspace, memberCanManageBilling, requireWorkspaceManager } from "./lib/permissions";
 import { billableSeatCount, seatsChanged, seatSummary } from "./lib/seats";
-import { appUrl, notifyAccessChange, notifyInvite, workspaceRoleLabel } from "./lib/notify";
+import { appUrl, notifyAccessChange, notifyInvite, removeInviteNotices, workspaceRoleLabel } from "./lib/notify";
 import { workspaceClosing } from "./workspaceBilling";
 import { isSealed, spaceE2ee } from "./lib/e2ee/state";
 import { addPendingGrant, dropMemberKeys, dropNoteGrant, hasNoteGrant } from "./lib/e2ee/coreGuards";
@@ -412,6 +412,36 @@ export const acceptInvite = mutation({
       .collect();
     for (const n of notes) if (n.inviteId === invite._id && !n.readAt) await ctx.db.patch(n._id, { readAt: Date.now() });
     return { workspaceId: workspace.publicId };
+  },
+});
+
+/**
+ * Declines a workspace invitation sent to this person's verified address: it can't be used any more, and its
+ * notification goes from the bell. Nobody is told. Declining again (or one already used up) does nothing.
+ */
+export const declineInvite = mutation({
+  args: { token: v.optional(v.string()), inviteId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    let invite: Doc<"workspaceInvites"> | null = null;
+    if (args.token) {
+      const hash = await sha256Hex(args.token);
+      invite = await ctx.db
+        .query("workspaceInvites")
+        .withIndex("by_token_hash", (q) => q.eq("tokenHash", hash))
+        .unique();
+    } else if (args.inviteId) {
+      invite = await ctx.db
+        .query("workspaceInvites")
+        .withIndex("by_public_id", (q) => q.eq("publicId", args.inviteId!))
+        .unique();
+    }
+    if (!invite) fail("not_found", "This invitation is no longer valid.");
+    if (invite.email !== profile.email) fail("forbidden", "This invitation was sent to a different email address.");
+    if (invite.status === "pending") await ctx.db.patch(invite._id, { status: "declined" });
+    const id = invite._id;
+    await removeInviteNotices(ctx, profile._id, (n) => n.inviteId === id);
+    return null;
   },
 });
 

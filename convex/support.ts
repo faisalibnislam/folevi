@@ -201,33 +201,56 @@ export const submit = mutation({
       console.log(JSON.stringify({ event: "support.honeypot" }));
       return { status: "received" as const, number: null };
     }
-    // Cheap size guard before any work (the fields are validated precisely below).
-    if (args.name.length > 1000 || args.message.length > 50_000 || (args.email ?? "").length > 1000) fail("invalid_argument", "That request is too long.");
-    const request = validateRequest({
-      name: args.name || profile?.displayName || "",
-      email: profile ? profile.email : (args.email ?? ""),
-      topic: args.topic,
-      message: args.message,
-    });
-    const client = await keyedHash(args.clientKey.slice(0, 200), "client");
-    await consume(ctx, "supportSubmit", client);
-    await consume(ctx, "supportSubmitEmail", request.email);
-    const source = profile && args.source === "in_app" ? "in_app" : "web_form";
-    const { ticket, messageId } = await createTicket(ctx, {
-      email: request.email,
-      name: request.name,
-      topic: request.topic,
-      subject: subjectFrom(request.message),
-      message: request.message,
-      source,
-      profileId: profile?._id,
-    });
-    await sendConfirmation(ctx, ticket, request.message);
-    await notifyStaff(ctx, ticket, "new", messageId);
-    console.log(JSON.stringify({ event: "support.ticket_created", ticket: ticket.number, source, signedIn: Boolean(profile) }));
-    return { status: "received" as const, number: ticket.number };
+    return await fileRequest(ctx, profile, { name: args.name, email: args.email, topic: args.topic, message: args.message, source: args.source }, await keyedHash(args.clientKey.slice(0, 200), "client"));
   },
 });
+
+/**
+ * Opens a support request from the apps (the native Help screen, through the bridge's `support.send`), which
+ * call Convex with their own session and can't reach the web server's /api/support route. Same checks,
+ * limits and emails as `submit`; the account and its address come from the session, and the rate limit's
+ * client key is the account.
+ */
+export const submitFromApp = mutation({
+  args: { name: v.string(), topic: v.string(), message: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    return await fileRequest(ctx, profile, { name: args.name, topic: args.topic, message: args.message, source: "in_app" }, await keyedHash(`profile:${profile._id}`, "client"));
+  },
+});
+
+/** Validates, rate-limits, files the ticket, confirms to the requester and tells staff (submit, submitFromApp). */
+async function fileRequest(
+  ctx: MutationCtx,
+  profile: Doc<"profiles"> | null,
+  args: { name: string; email?: string; topic: string; message: string; source?: "web_form" | "in_app" },
+  client: string,
+): Promise<{ status: "received"; number: number | null }> {
+  // Cheap size guard before any work (the fields are validated precisely below).
+  if (args.name.length > 1000 || args.message.length > 50_000 || (args.email ?? "").length > 1000) fail("invalid_argument", "That request is too long.");
+  const request = validateRequest({
+    name: args.name || profile?.displayName || "",
+    email: profile ? profile.email : (args.email ?? ""),
+    topic: args.topic,
+    message: args.message,
+  });
+  await consume(ctx, "supportSubmit", client);
+  await consume(ctx, "supportSubmitEmail", request.email);
+  const source = profile && args.source === "in_app" ? "in_app" : "web_form";
+  const { ticket, messageId } = await createTicket(ctx, {
+    email: request.email,
+    name: request.name,
+    topic: request.topic,
+    subject: subjectFrom(request.message),
+    message: request.message,
+    source,
+    profileId: profile?._id,
+  });
+  await sendConfirmation(ctx, ticket, request.message);
+  await notifyStaff(ctx, ticket, "new", messageId);
+  console.log(JSON.stringify({ event: "support.ticket_created", ticket: ticket.number, source, signedIn: Boolean(profile) }));
+  return { status: "received" as const, number: ticket.number };
+}
 
 /** The signed-in person's support requests (filed from their account), newest first, with replies. Notes are never included. */
 export const myRequests = query({

@@ -2777,3 +2777,685 @@ public struct CalendarIdArgs: Codable, Hashable, Sendable {
         self.id = id
     }
 }
+
+public struct PlanInfo: Codable, Hashable, Sendable {
+    /// "free", "core", "pro", "pro_ai", "team", ... (open).
+    public var tier: String
+    /// The plan's id ("personal_pro_month", ...), open.
+    public var id: String
+    public var paid: Bool
+    public var trialing: Bool
+    public var trialEndsAt: Double?
+    /// Foli AI is included.
+    public var ai: Bool
+
+    public init(tier: String, id: String, paid: Bool, trialing: Bool, trialEndsAt: Double? = nil, ai: Bool) {
+        self.tier = tier
+        self.id = id
+        self.paid = paid
+        self.trialing = trialing
+        self.trialEndsAt = trialEndsAt
+        self.ai = ai
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(tier, forKey: .tier)
+        try c.encode(id, forKey: .id)
+        try c.encode(paid, forKey: .paid)
+        try c.encode(trialing, forKey: .trialing)
+        try c.encode(trialEndsAt, forKey: .trialEndsAt)
+        try c.encode(ai, forKey: .ai)
+    }
+}
+
+public struct StorageInfo: Codable, Hashable, Sendable {
+    public var usedBytes: Int
+    /// Null: no limit.
+    public var limitBytes: Int?
+
+    public init(usedBytes: Int, limitBytes: Int? = nil) {
+        self.usedBytes = usedBytes
+        self.limitBytes = limitBytes
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(usedBytes, forKey: .usedBytes)
+        try c.encode(limitBytes, forKey: .limitBytes)
+    }
+}
+
+public struct AccountSpace: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case personal
+        case workspace
+    }
+
+    public var id: SpaceRef
+    public var kind: Kind
+    public var name: String
+    public var logoUrl: String?
+    public var role: String
+    public var storage: StorageInfo?
+
+    public init(id: SpaceRef, kind: Kind, name: String, logoUrl: String? = nil, role: String, storage: StorageInfo? = nil) {
+        self.id = id
+        self.kind = kind
+        self.name = name
+        self.logoUrl = logoUrl
+        self.role = role
+        self.storage = storage
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(name, forKey: .name)
+        try c.encode(logoUrl, forKey: .logoUrl)
+        try c.encode(role, forKey: .role)
+        try c.encode(storage, forKey: .storage)
+    }
+}
+
+/// `account.details`: the open account for the account and place switcher and Settings > Account.
+public struct AccountDetails: Codable, Hashable, Sendable {
+    public var profile: ProfileInfo
+    public var plan: PlanInfo?
+    /// Personal storage, once the server has answered.
+    public var storage: StorageInfo?
+    public var devicesActive: Int?
+    /// How many devices the plan allows; null: unlimited.
+    public var deviceLimit: Int?
+    public var spaces: [AccountSpace]
+
+    public init(profile: ProfileInfo, plan: PlanInfo? = nil, storage: StorageInfo? = nil, devicesActive: Int? = nil, deviceLimit: Int? = nil, spaces: [AccountSpace]) {
+        self.profile = profile
+        self.plan = plan
+        self.storage = storage
+        self.devicesActive = devicesActive
+        self.deviceLimit = deviceLimit
+        self.spaces = spaces
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(profile, forKey: .profile)
+        try c.encode(plan, forKey: .plan)
+        try c.encode(storage, forKey: .storage)
+        try c.encode(devicesActive, forKey: .devicesActive)
+        try c.encode(deviceLimit, forKey: .deviceLimit)
+        try c.encode(spaces, forKey: .spaces)
+    }
+}
+
+/// Settings > Account.
+public struct AccountSettings: Codable, Hashable, Sendable {
+    public var name: String
+    public var email: String
+    public var avatarUrl: String?
+    public var timeZone: String
+
+    public init(name: String, email: String, avatarUrl: String? = nil, timeZone: String) {
+        self.name = name
+        self.email = email
+        self.avatarUrl = avatarUrl
+        self.timeZone = timeZone
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(name, forKey: .name)
+        try c.encode(email, forKey: .email)
+        try c.encode(avatarUrl, forKey: .avatarUrl)
+        try c.encode(timeZone, forKey: .timeZone)
+    }
+}
+
+/// Settings > General.
+public struct GeneralSettings: Codable, Hashable, Sendable {
+    public var timeZone: String
+    public var locale: String
+    /// Changes connected apps make to existing notes wait in Changes for review.
+    public var reviewAppEdits: Bool
+
+    public init(timeZone: String, locale: String, reviewAppEdits: Bool) {
+        self.timeZone = timeZone
+        self.locale = locale
+        self.reviewAppEdits = reviewAppEdits
+    }
+}
+
+/// Settings > Appearance.
+public struct AppearanceSettings: Codable, Hashable, Sendable {
+    public enum Appearance: String, Codable, Hashable, Sendable, CaseIterable {
+        case system
+        case light
+        case dark
+    }
+
+    public var appearance: Appearance
+
+    public init(appearance: Appearance) {
+        self.appearance = appearance
+    }
+}
+
+/// One kind of notification: in the app (the bell) and by email.
+public struct NotificationTopicSetting: Codable, Hashable, Sendable {
+    /// "comments", "replies", "mentions", "shares", "access", "reminders".
+    public var id: String
+    public var label: String
+    public var hint: String
+    public var inApp: Bool
+    public var email: Bool
+
+    public init(id: String, label: String, hint: String, inApp: Bool, email: Bool) {
+        self.id = id
+        self.label = label
+        self.hint = hint
+        self.inApp = inApp
+        self.email = email
+    }
+}
+
+/// Settings > Notifications.
+public struct NotificationSettings: Codable, Hashable, Sendable {
+    public var topics: [NotificationTopicSetting]
+    /// "off" or "daily".
+    public var digest: String
+    public var productEmail: Bool
+
+    public init(topics: [NotificationTopicSetting], digest: String, productEmail: Bool) {
+        self.topics = topics
+        self.digest = digest
+        self.productEmail = productEmail
+    }
+}
+
+/// Settings > Foli AI, the basics.
+public struct AiSettings: Codable, Hashable, Sendable {
+    /// Foli AI is on the plan here.
+    public var included: Bool
+    /// Turned on by this person.
+    public var enabled: Bool
+    public var history: Bool
+    public var memory: Bool
+    public var suggestions: Bool
+    public var attachments: Bool
+    public var webResearch: Bool
+    public var digests: Bool
+    public var readImages: Bool
+    public var deviceText: Bool
+
+    public init(included: Bool, enabled: Bool, history: Bool, memory: Bool, suggestions: Bool, attachments: Bool, webResearch: Bool, digests: Bool, readImages: Bool, deviceText: Bool) {
+        self.included = included
+        self.enabled = enabled
+        self.history = history
+        self.memory = memory
+        self.suggestions = suggestions
+        self.attachments = attachments
+        self.webResearch = webResearch
+        self.digests = digests
+        self.readImages = readImages
+        self.deviceText = deviceText
+    }
+}
+
+public struct SessionRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var label: String
+    /// "web", "mac", "ios", "android" (open).
+    public var client: String
+    public var current: Bool
+    public var lastSeenAt: Double
+
+    public init(id: String, label: String, client: String, current: Bool, lastSeenAt: Double) {
+        self.id = id
+        self.label = label
+        self.client = client
+        self.current = current
+        self.lastSeenAt = lastSeenAt
+    }
+}
+
+/// Settings > Security, the basics: where this account is signed in.
+public struct SecuritySettings: Codable, Hashable, Sendable {
+    public var sessions: [SessionRow]
+
+    public init(sessions: [SessionRow]) {
+        self.sessions = sessions
+    }
+}
+
+public struct SettingsUpdateArgs: Codable, Hashable, Sendable {
+    public enum Appearance: String, Codable, Hashable, Sendable, CaseIterable {
+        case system
+        case light
+        case dark
+    }
+
+    public var name: String?
+    public var appearance: Appearance?
+    public var timeZone: String?
+    public var reviewAppEdits: Bool?
+    public var aiEnabled: Bool?
+
+    public init(name: String? = nil, appearance: Appearance? = nil, timeZone: String? = nil, reviewAppEdits: Bool? = nil, aiEnabled: Bool? = nil) {
+        self.name = name
+        self.appearance = appearance
+        self.timeZone = timeZone
+        self.reviewAppEdits = reviewAppEdits
+        self.aiEnabled = aiEnabled
+    }
+}
+
+public enum AiPrefKey: String, Codable, Hashable, Sendable, CaseIterable {
+    case history
+    case memory
+    case suggestions
+    case attachments
+    case webResearch
+    case digests
+    case readImages
+    case deviceText
+}
+
+public struct AiPrefArgs: Codable, Hashable, Sendable {
+    public var key: AiPrefKey
+    public var on: Bool
+
+    public init(key: AiPrefKey, on: Bool) {
+        self.key = key
+        self.on = on
+    }
+}
+
+public struct NotificationTopicArgs: Codable, Hashable, Sendable {
+    public var topic: String
+    public var inApp: Bool?
+    public var email: Bool?
+
+    public init(topic: String, inApp: Bool? = nil, email: Bool? = nil) {
+        self.topic = topic
+        self.inApp = inApp
+        self.email = email
+    }
+}
+
+public struct NotificationEmailsArgs: Codable, Hashable, Sendable {
+    public enum Digest: String, Codable, Hashable, Sendable, CaseIterable {
+        case off
+        case daily
+    }
+
+    public var digest: Digest?
+    public var productEmail: Bool?
+
+    public init(digest: Digest? = nil, productEmail: Bool? = nil) {
+        self.digest = digest
+        self.productEmail = productEmail
+    }
+}
+
+public struct SessionIdArgs: Codable, Hashable, Sendable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+}
+
+/// Someone with access to a note.
+public struct ShareGrant: Codable, Hashable, Sendable {
+    public var profileId: String
+    public var name: String
+    /// Only for people who manage the note.
+    public var email: String?
+    /// "editor", "commenter", "viewer".
+    public var role: String
+    public var guest: Bool
+    public var isYou: Bool
+    public var canChange: Bool
+
+    public init(profileId: String, name: String, email: String? = nil, role: String, guest: Bool, isYou: Bool, canChange: Bool) {
+        self.profileId = profileId
+        self.name = name
+        self.email = email
+        self.role = role
+        self.guest = guest
+        self.isYou = isYou
+        self.canChange = canChange
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(profileId, forKey: .profileId)
+        try c.encode(name, forKey: .name)
+        try c.encode(email, forKey: .email)
+        try c.encode(role, forKey: .role)
+        try c.encode(guest, forKey: .guest)
+        try c.encode(isYou, forKey: .isYou)
+        try c.encode(canChange, forKey: .canChange)
+    }
+}
+
+public struct ShareInvite: Codable, Hashable, Sendable {
+    public var id: String
+    public var email: String
+    public var role: String
+    public var expiresAt: Double
+    public var expired: Bool
+
+    public init(id: String, email: String, role: String, expiresAt: Double, expired: Bool) {
+        self.id = id
+        self.email = email
+        self.role = role
+        self.expiresAt = expiresAt
+        self.expired = expired
+    }
+}
+
+public struct PublicLinkRow: Codable, Hashable, Sendable {
+    public var id: String
+    /// The link's first characters (the whole link is shown once, when made).
+    public var tokenHint: String
+    public var expiresAt: Double?
+    public var expired: Bool
+    public var hasPassword: Bool
+    public var allowIndexing: Bool
+    /// "note", "article", "docs", "minimal".
+    public var theme: String
+    public var viewCount: Int
+    public var createdAt: Double
+    public var encrypted: Bool
+
+    public init(id: String, tokenHint: String, expiresAt: Double? = nil, expired: Bool, hasPassword: Bool, allowIndexing: Bool, theme: String, viewCount: Int, createdAt: Double, encrypted: Bool) {
+        self.id = id
+        self.tokenHint = tokenHint
+        self.expiresAt = expiresAt
+        self.expired = expired
+        self.hasPassword = hasPassword
+        self.allowIndexing = allowIndexing
+        self.theme = theme
+        self.viewCount = viewCount
+        self.createdAt = createdAt
+        self.encrypted = encrypted
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(tokenHint, forKey: .tokenHint)
+        try c.encode(expiresAt, forKey: .expiresAt)
+        try c.encode(expired, forKey: .expired)
+        try c.encode(hasPassword, forKey: .hasPassword)
+        try c.encode(allowIndexing, forKey: .allowIndexing)
+        try c.encode(theme, forKey: .theme)
+        try c.encode(viewCount, forKey: .viewCount)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(encrypted, forKey: .encrypted)
+    }
+}
+
+/// `sharing.get`: who has a note, its invitations and public links, and what this person may change.
+public struct SharingValue: Codable, Hashable, Sendable {
+    public var noteId: String
+    /// "workspace" (everyone in the workspace) or "restricted".
+    public var accessMode: String
+    public var yourAccess: String
+    public var canManage: Bool
+    public var canShare: Bool
+    /// The highest role this person may give, or null.
+    public var maxRole: String?
+    public var youAreGuest: Bool
+    public var ownerName: String
+    public var sharedBy: String?
+    public var people: [ShareGrant]
+    public var invites: [ShareInvite]
+    public var links: [PublicLinkRow]
+    public var publicLinksAvailable: Bool
+    /// End-to-end encrypted: public links are made from the note page (`note.menu share`).
+    public var encrypted: Bool
+
+    public init(noteId: String, accessMode: String, yourAccess: String, canManage: Bool, canShare: Bool, maxRole: String? = nil, youAreGuest: Bool, ownerName: String, sharedBy: String? = nil, people: [ShareGrant], invites: [ShareInvite], links: [PublicLinkRow], publicLinksAvailable: Bool, encrypted: Bool) {
+        self.noteId = noteId
+        self.accessMode = accessMode
+        self.yourAccess = yourAccess
+        self.canManage = canManage
+        self.canShare = canShare
+        self.maxRole = maxRole
+        self.youAreGuest = youAreGuest
+        self.ownerName = ownerName
+        self.sharedBy = sharedBy
+        self.people = people
+        self.invites = invites
+        self.links = links
+        self.publicLinksAvailable = publicLinksAvailable
+        self.encrypted = encrypted
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(noteId, forKey: .noteId)
+        try c.encode(accessMode, forKey: .accessMode)
+        try c.encode(yourAccess, forKey: .yourAccess)
+        try c.encode(canManage, forKey: .canManage)
+        try c.encode(canShare, forKey: .canShare)
+        try c.encode(maxRole, forKey: .maxRole)
+        try c.encode(youAreGuest, forKey: .youAreGuest)
+        try c.encode(ownerName, forKey: .ownerName)
+        try c.encode(sharedBy, forKey: .sharedBy)
+        try c.encode(people, forKey: .people)
+        try c.encode(invites, forKey: .invites)
+        try c.encode(links, forKey: .links)
+        try c.encode(publicLinksAvailable, forKey: .publicLinksAvailable)
+        try c.encode(encrypted, forKey: .encrypted)
+    }
+}
+
+public struct ShareInviteArgs: Codable, Hashable, Sendable {
+    public enum Role: String, Codable, Hashable, Sendable, CaseIterable {
+        case editor
+        case commenter
+        case viewer
+    }
+
+    public var noteId: String
+    public var email: String
+    public var role: Role
+
+    public init(noteId: String, email: String, role: Role) {
+        self.noteId = noteId
+        self.email = email
+        self.role = role
+    }
+}
+
+public struct ShareInviteResult: Codable, Hashable, Sendable {
+    /// "shared" (they have an account) or "invited" (an email went out).
+    public var status: String
+
+    public init(status: String) {
+        self.status = status
+    }
+}
+
+public struct ShareRevokeArgs: Codable, Hashable, Sendable {
+    public var noteId: String
+    public var profileId: String
+
+    public init(noteId: String, profileId: String) {
+        self.noteId = noteId
+        self.profileId = profileId
+    }
+}
+
+public struct ShareInviteIdArgs: Codable, Hashable, Sendable {
+    public var inviteId: String
+
+    public init(inviteId: String) {
+        self.inviteId = inviteId
+    }
+}
+
+public struct AccessModeArgs: Codable, Hashable, Sendable {
+    public enum Mode: String, Codable, Hashable, Sendable, CaseIterable {
+        case workspace
+        case restricted
+    }
+
+    public var noteId: String
+    public var mode: Mode
+
+    public init(noteId: String, mode: Mode) {
+        self.noteId = noteId
+        self.mode = mode
+    }
+}
+
+public struct PublicLinkCreateArgs: Codable, Hashable, Sendable {
+    public enum Theme: String, Codable, Hashable, Sendable, CaseIterable {
+        case note
+        case article
+        case docs
+        case minimal
+    }
+
+    public var noteId: String
+    public var expiresAt: Double?
+    public var password: String?
+    public var allowIndexing: Bool?
+    public var theme: Theme?
+
+    public init(noteId: String, expiresAt: Double? = nil, password: String? = nil, allowIndexing: Bool? = nil, theme: Theme? = nil) {
+        self.noteId = noteId
+        self.expiresAt = expiresAt
+        self.password = password
+        self.allowIndexing = allowIndexing
+        self.theme = theme
+    }
+}
+
+public struct PublicLinkCreateResult: Codable, Hashable, Sendable {
+    public var id: String
+    /// The whole link, shown (and copied) once.
+    public var url: String
+
+    public init(id: String, url: String) {
+        self.id = id
+        self.url = url
+    }
+}
+
+public struct PublicLinkThemeArgs: Codable, Hashable, Sendable {
+    public enum Theme: String, Codable, Hashable, Sendable, CaseIterable {
+        case note
+        case article
+        case docs
+        case minimal
+    }
+
+    public var linkId: String
+    public var theme: Theme
+
+    public init(linkId: String, theme: Theme) {
+        self.linkId = linkId
+        self.theme = theme
+    }
+}
+
+public struct PublicLinkIdArgs: Codable, Hashable, Sendable {
+    public var linkId: String
+
+    public init(linkId: String) {
+        self.linkId = linkId
+    }
+}
+
+public struct InviteTokenArgs: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case workspace
+        case page
+    }
+
+    /// "workspace" or "page".
+    public var kind: Kind
+    public var token: String
+
+    public init(kind: Kind, token: String) {
+        self.kind = kind
+        self.token = token
+    }
+}
+
+/// `invite.preview`: an invitation link opened in the app.
+public struct InvitePreview: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case workspace
+        case page
+    }
+
+    public var valid: Bool
+    public var kind: Kind
+    public var inviterName: String?
+    /// The workspace's name or the page's title (null when the invitation is for another address).
+    public var name: String?
+    public var roleLabel: String?
+    public var emailMatches: Bool
+
+    public init(valid: Bool, kind: Kind, inviterName: String? = nil, name: String? = nil, roleLabel: String? = nil, emailMatches: Bool) {
+        self.valid = valid
+        self.kind = kind
+        self.inviterName = inviterName
+        self.name = name
+        self.roleLabel = roleLabel
+        self.emailMatches = emailMatches
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(valid, forKey: .valid)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(inviterName, forKey: .inviterName)
+        try c.encode(name, forKey: .name)
+        try c.encode(roleLabel, forKey: .roleLabel)
+        try c.encode(emailMatches, forKey: .emailMatches)
+    }
+}
+
+public struct InviteTokenAcceptResult: Codable, Hashable, Sendable {
+    /// The page to open (page invitations) or the workspace to show.
+    public var noteId: String?
+    public var space: SpaceRef?
+
+    public init(noteId: String? = nil, space: SpaceRef? = nil) {
+        self.noteId = noteId
+        self.space = space
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(noteId, forKey: .noteId)
+        try c.encode(space, forKey: .space)
+    }
+}
+
+/// Web pages the native app shows in the Page View with its own bars (owner decision Q1 and Q2).
+public enum WebPage: String, Codable, Hashable, Sendable, CaseIterable {
+    case settingsConnectedApps = "settings.connectedApps"
+    case settingsWorkspaceData = "settings.workspaceData"
+    case settingsData = "settings.data"
+    case settingsAiExport = "settings.aiExport"
+    case reviews
+    case graph
+}
+
+public struct WebShowArgs: Codable, Hashable, Sendable {
+    public var page: WebPage
+
+    public init(page: WebPage) {
+        self.page = page
+    }
+}

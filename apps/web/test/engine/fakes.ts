@@ -173,6 +173,8 @@ export function rig(place = "acct:user_1"): Rig {
         mode: "account",
         accountKey: "prof_1",
         profile: { id: "prof_1", name: "Faisal", email: "f@example.com", avatarUrl: null },
+        profileData: { id: "prof_1", displayName: "Faisal", email: "f@example.com", avatarUrl: null, appearance: "system", timeZone: "UTC", locale: "en", reviewAppEdits: false, aiEnabled: true, aiPrefs: { history: true, memory: false, suggestions: true, attachments: true, webResearch: true, digests: false, readImages: false, deviceText: true }, notificationPrefs: { mentions: true, comments: true, shares: true, invites: true, digest: "off", productEmail: false, inApp: { comments: false } }, entitlements: { planId: "personal_pro_month", plan: "pro", paid: true, trialing: false, trialEndsAt: null, ai: true, devices: 5 } },
+        workspaceData: { ws1: { id: "ws1", name: "Studio", logoUrl: null, role: "admin", storageUsedBytes: 100, storageQuotaBytes: 1000 } },
         spaces: [PERSONAL, STUDIO, VAULT],
         space: "personal",
         online: true,

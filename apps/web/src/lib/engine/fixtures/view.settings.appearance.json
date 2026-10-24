@@ -1,0 +1,9 @@
+{
+  "kind": "view",
+  "name": "settings.appearance",
+  "description": "Settings > Appearance.",
+  "args": {},
+  "value": {
+    "appearance": "dark"
+  }
+}

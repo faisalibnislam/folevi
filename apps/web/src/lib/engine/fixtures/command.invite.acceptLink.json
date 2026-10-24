@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "invite.acceptLink",
+  "description": "Accept a page invitation link and open the page.",
+  "args": {
+    "kind": "page",
+    "token": "tok_page"
+  },
+  "result": {
+    "noteId": "doc_s2",
+    "space": null
+  }
+}

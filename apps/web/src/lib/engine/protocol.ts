@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 5;
+export const CONTRACT_REVISION = 6;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -1463,6 +1463,283 @@ export interface CalendarIdArgs {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Revision 6: the account, Settings, sharing and invitations, web pages
+// ---------------------------------------------------------------------------------------------------------------
+
+export interface PlanInfo {
+  /** "free", "core", "pro", "pro_ai", "team", ... (open). */
+  tier: string;
+  /** The plan's id ("personal_pro_month", ...), open. */
+  id: string;
+  paid: boolean;
+  trialing: boolean;
+  trialEndsAt: number | null;
+  /** Foli AI is included. */
+  ai: boolean;
+}
+
+export interface StorageInfo {
+  usedBytes: number;
+  /** Null: no limit. */
+  limitBytes: number | null;
+}
+
+export interface AccountSpace {
+  id: SpaceRef;
+  kind: "personal" | "workspace";
+  name: string;
+  logoUrl: string | null;
+  role: string;
+  storage: StorageInfo | null;
+}
+
+/** `account.details`: the open account for the account and place switcher and Settings > Account. */
+export interface AccountDetails {
+  profile: ProfileInfo;
+  plan: PlanInfo | null;
+  /** Personal storage, once the server has answered. */
+  storage: StorageInfo | null;
+  devicesActive: number | null;
+  /** How many devices the plan allows; null: unlimited. */
+  deviceLimit: number | null;
+  spaces: AccountSpace[];
+}
+
+/** Settings > Account. */
+export interface AccountSettings {
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  timeZone: string;
+}
+
+/** Settings > General. */
+export interface GeneralSettings {
+  timeZone: string;
+  locale: string;
+  /** Changes connected apps make to existing notes wait in Changes for review. */
+  reviewAppEdits: boolean;
+}
+
+/** Settings > Appearance. */
+export interface AppearanceSettings {
+  appearance: "system" | "light" | "dark";
+}
+
+/** One kind of notification: in the app (the bell) and by email. */
+export interface NotificationTopicSetting {
+  /** "comments", "replies", "mentions", "shares", "access", "reminders". */
+  id: string;
+  label: string;
+  hint: string;
+  inApp: boolean;
+  email: boolean;
+}
+
+/** Settings > Notifications. */
+export interface NotificationSettings {
+  topics: NotificationTopicSetting[];
+  /** "off" or "daily". */
+  digest: string;
+  productEmail: boolean;
+}
+
+/** Settings > Foli AI, the basics. */
+export interface AiSettings {
+  /** Foli AI is on the plan here. */
+  included: boolean;
+  /** Turned on by this person. */
+  enabled: boolean;
+  history: boolean;
+  memory: boolean;
+  suggestions: boolean;
+  attachments: boolean;
+  webResearch: boolean;
+  digests: boolean;
+  readImages: boolean;
+  deviceText: boolean;
+}
+
+export interface SessionRow {
+  id: string;
+  label: string;
+  /** "web", "mac", "ios", "android" (open). */
+  client: string;
+  current: boolean;
+  lastSeenAt: number;
+}
+
+/** Settings > Security, the basics: where this account is signed in. */
+export interface SecuritySettings {
+  sessions: SessionRow[];
+}
+
+export interface SettingsUpdateArgs {
+  name?: string;
+  appearance?: "system" | "light" | "dark";
+  timeZone?: string;
+  reviewAppEdits?: boolean;
+  aiEnabled?: boolean;
+}
+
+export type AiPrefKey = "history" | "memory" | "suggestions" | "attachments" | "webResearch" | "digests" | "readImages" | "deviceText";
+
+export interface AiPrefArgs {
+  key: AiPrefKey;
+  on: boolean;
+}
+
+export interface NotificationTopicArgs {
+  topic: string;
+  inApp?: boolean;
+  email?: boolean;
+}
+
+export interface NotificationEmailsArgs {
+  digest?: "off" | "daily";
+  productEmail?: boolean;
+}
+
+export interface SessionIdArgs {
+  id: string;
+}
+
+/** Someone with access to a note. */
+export interface ShareGrant {
+  profileId: string;
+  name: string;
+  /** Only for people who manage the note. */
+  email: string | null;
+  /** "editor", "commenter", "viewer". */
+  role: string;
+  guest: boolean;
+  isYou: boolean;
+  canChange: boolean;
+}
+
+export interface ShareInvite {
+  id: string;
+  email: string;
+  role: string;
+  expiresAt: number;
+  expired: boolean;
+}
+
+export interface PublicLinkRow {
+  id: string;
+  /** The link's first characters (the whole link is shown once, when made). */
+  tokenHint: string;
+  expiresAt: number | null;
+  expired: boolean;
+  hasPassword: boolean;
+  allowIndexing: boolean;
+  /** "note", "article", "docs", "minimal". */
+  theme: string;
+  viewCount: number;
+  createdAt: number;
+  encrypted: boolean;
+}
+
+/** `sharing.get`: who has a note, its invitations and public links, and what this person may change. */
+export interface SharingValue {
+  noteId: string;
+  /** "workspace" (everyone in the workspace) or "restricted". */
+  accessMode: string;
+  yourAccess: string;
+  canManage: boolean;
+  canShare: boolean;
+  /** The highest role this person may give, or null. */
+  maxRole: string | null;
+  youAreGuest: boolean;
+  ownerName: string;
+  sharedBy: string | null;
+  people: ShareGrant[];
+  invites: ShareInvite[];
+  links: PublicLinkRow[];
+  publicLinksAvailable: boolean;
+  /** End-to-end encrypted: public links are made from the note page (`note.menu share`). */
+  encrypted: boolean;
+}
+
+export interface ShareInviteArgs {
+  noteId: string;
+  email: string;
+  role: "editor" | "commenter" | "viewer";
+}
+
+export interface ShareInviteResult {
+  /** "shared" (they have an account) or "invited" (an email went out). */
+  status: string;
+}
+
+export interface ShareRevokeArgs {
+  noteId: string;
+  profileId: string;
+}
+
+export interface ShareInviteIdArgs {
+  inviteId: string;
+}
+
+export interface AccessModeArgs {
+  noteId: string;
+  mode: "workspace" | "restricted";
+}
+
+export interface PublicLinkCreateArgs {
+  noteId: string;
+  expiresAt?: number;
+  password?: string;
+  allowIndexing?: boolean;
+  theme?: "note" | "article" | "docs" | "minimal";
+}
+
+export interface PublicLinkCreateResult {
+  id: string;
+  /** The whole link, shown (and copied) once. */
+  url: string;
+}
+
+export interface PublicLinkThemeArgs {
+  linkId: string;
+  theme: "note" | "article" | "docs" | "minimal";
+}
+
+export interface PublicLinkIdArgs {
+  linkId: string;
+}
+
+export interface InviteTokenArgs {
+  /** "workspace" or "page". */
+  kind: "workspace" | "page";
+  token: string;
+}
+
+/** `invite.preview`: an invitation link opened in the app. */
+export interface InvitePreview {
+  valid: boolean;
+  kind: "workspace" | "page";
+  inviterName: string | null;
+  /** The workspace's name or the page's title (null when the invitation is for another address). */
+  name: string | null;
+  roleLabel: string | null;
+  emailMatches: boolean;
+}
+
+export interface InviteTokenAcceptResult {
+  /** The page to open (page invitations) or the workspace to show. */
+  noteId: string | null;
+  space: SpaceRef | null;
+}
+
+/** Web pages the native app shows in the Page View with its own bars (owner decision Q1 and Q2). */
+export type WebPage = "settings.connectedApps" | "settings.workspaceData" | "settings.data" | "settings.aiExport" | "reviews" | "graph";
+
+export interface WebShowArgs {
+  page: WebPage;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // The maps (names to argument and result types). The codegen reads these interfaces.
 // ---------------------------------------------------------------------------------------------------------------
 
@@ -1487,6 +1764,15 @@ export interface ViewMap {
   "calendars.list": { args: EmptyArgs; value: CalendarsValue };
   members: { args: SpaceArgs; value: MembersValue };
   "task.parse": { args: TaskParseArgs; value: TaskParseValue };
+  "account.details": { args: EmptyArgs; value: AccountDetails };
+  "settings.account": { args: EmptyArgs; value: AccountSettings };
+  "settings.general": { args: EmptyArgs; value: GeneralSettings };
+  "settings.appearance": { args: EmptyArgs; value: AppearanceSettings };
+  "settings.notifications": { args: EmptyArgs; value: NotificationSettings };
+  "settings.ai": { args: EmptyArgs; value: AiSettings };
+  "settings.security": { args: EmptyArgs; value: SecuritySettings };
+  "sharing.get": { args: NoteIdArgs; value: SharingValue };
+  "invite.preview": { args: InviteTokenArgs; value: InvitePreview };
 }
 
 export interface ListViewMap {
@@ -1534,6 +1820,20 @@ export interface CommandMap {
   "calendar.update": { args: CalendarUpdateArgs; result: OkResult };
   "calendar.remove": { args: CalendarIdArgs; result: OkResult };
   "calendar.refresh": { args: CalendarIdArgs; result: OkResult };
+  "settings.update": { args: SettingsUpdateArgs; result: OkResult };
+  "settings.setAiPref": { args: AiPrefArgs; result: OkResult };
+  "settings.setNotificationTopic": { args: NotificationTopicArgs; result: OkResult };
+  "settings.setNotificationEmails": { args: NotificationEmailsArgs; result: OkResult };
+  "settings.removeAvatar": { args: EmptyArgs; result: OkResult };
+  "session.revoke": { args: SessionIdArgs; result: OkResult };
+  "sharing.invite": { args: ShareInviteArgs; result: ShareInviteResult };
+  "sharing.revoke": { args: ShareRevokeArgs; result: OkResult };
+  "sharing.cancelInvite": { args: ShareInviteIdArgs; result: OkResult };
+  "sharing.setAccessMode": { args: AccessModeArgs; result: OkResult };
+  "publicLink.create": { args: PublicLinkCreateArgs; result: PublicLinkCreateResult };
+  "publicLink.setTheme": { args: PublicLinkThemeArgs; result: OkResult };
+  "publicLink.revoke": { args: PublicLinkIdArgs; result: OkResult };
+  "invite.acceptLink": { args: InviteTokenArgs; result: InviteTokenAcceptResult };
 }
 
 export interface EditorCommandMap {
@@ -1556,6 +1856,7 @@ export interface EditorCommandMap {
   scrollToTop: { args: EmptyArgs; result: OkResult };
   insets: { args: InsetsArgs; result: OkResult };
   state: { args: EmptyArgs; result: EditorStateEvent };
+  "web.show": { args: WebShowArgs; result: NoteShownResult };
 }
 
 export interface EventMap {
@@ -1592,7 +1893,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -1635,6 +1936,20 @@ const commandNames = [
   "calendar.update",
   "calendar.remove",
   "calendar.refresh",
+  "settings.update",
+  "settings.setAiPref",
+  "settings.setNotificationTopic",
+  "settings.setNotificationEmails",
+  "settings.removeAvatar",
+  "session.revoke",
+  "sharing.invite",
+  "sharing.revoke",
+  "sharing.cancelInvite",
+  "sharing.setAccessMode",
+  "publicLink.create",
+  "publicLink.setTheme",
+  "publicLink.revoke",
+  "invite.acceptLink",
 ] as const;
 const editorCommandNames = [
   "note.prepare",
@@ -1656,6 +1971,7 @@ const editorCommandNames = [
   "scrollToTop",
   "insets",
   "state",
+  "web.show",
 ] as const;
 const eventNames = ["engine.ready", "gate.changed", "sync.status", "place.changed", "toast", "navigate.request", "note.ready", "note.meta", "editor.state", "editor.panel", "memory.relieved"] as const;
 
@@ -1671,6 +1987,8 @@ export const EDITOR_PANELS: readonly EditorPanel[] = ["format", "insert", "style
 export const NOTE_MENU_ACTIONS: readonly NoteMenuAction[] = ["share", "move", "copyTo", "duplicate", "export", "history", "present", "print", "find", "delete"];
 export const NOTES_LIST_VIEWS: readonly NotesListView[] = ["all", "starred", "archive", "trash", "templates", "unsorted", "folder", "tag"];
 export const NOTES_SORTS: readonly NotesSort[] = ["updated", "created", "title", "manual"];
+export const WEB_PAGES: readonly WebPage[] = ["settings.connectedApps", "settings.workspaceData", "settings.data", "settings.aiExport", "reviews", "graph"];
+export const AI_PREF_KEYS: readonly AiPrefKey[] = ["history", "memory", "suggestions", "attachments", "webResearch", "digests", "readImages", "deviceText"];
 export const TASK_VIEWS: readonly TaskViewName[] = ["inbox", "today", "upcoming", "all", "completed", "mine"];
 
 /** Features the hello reply lists (for native to check before using something newer than the protocol). */

@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "publicLink.create",
+  "description": "A public link with the Article look.",
+  "args": {
+    "noteId": "doc_00002",
+    "theme": "article"
+  },
+  "result": {
+    "id": "lnk_2",
+    "url": "https://app.folevi.com/s/k3XaQ9vY2mP4tR7w"
+  }
+}

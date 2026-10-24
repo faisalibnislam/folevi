@@ -5,11 +5,13 @@ import { CORE_COMMANDS, type CommandDef } from "./commands";
 import { MORE_COMMANDS } from "./commandsMore";
 import { WORK_COMMANDS } from "./commandsWork";
 import { WORK_VALUE_VIEWS } from "./viewsWork";
+import { ACCOUNT_VALUE_VIEWS } from "./viewsAccount";
+import { ACCOUNT_COMMANDS } from "./commandsAccount";
 import { CORE_VALUE_VIEWS, LIST_VIEWS, type ValueViewDef } from "./views";
 import { MORE_VALUE_VIEWS } from "./viewsMore";
 
-export const VALUE_VIEWS: Record<ViewName, ValueViewDef> = { ...CORE_VALUE_VIEWS, ...MORE_VALUE_VIEWS, ...WORK_VALUE_VIEWS };
+export const VALUE_VIEWS: Record<ViewName, ValueViewDef> = { ...CORE_VALUE_VIEWS, ...MORE_VALUE_VIEWS, ...WORK_VALUE_VIEWS, ...ACCOUNT_VALUE_VIEWS };
 
 export { LIST_VIEWS };
 
-export const COMMANDS: Record<CommandName, CommandDef> = { ...CORE_COMMANDS, ...MORE_COMMANDS, ...WORK_COMMANDS };
+export const COMMANDS: Record<CommandName, CommandDef> = { ...CORE_COMMANDS, ...MORE_COMMANDS, ...WORK_COMMANDS, ...ACCOUNT_COMMANDS };

@@ -1,0 +1,64 @@
+{
+  "kind": "view",
+  "name": "sharing.get",
+  "description": "A workspace note: two people, a pending invitation, one public link.",
+  "args": {
+    "id": "doc_00002"
+  },
+  "value": {
+    "noteId": "doc_00002",
+    "accessMode": "workspace",
+    "yourAccess": "manage",
+    "canManage": true,
+    "canShare": true,
+    "maxRole": "editor",
+    "youAreGuest": false,
+    "ownerName": "Faisal",
+    "sharedBy": null,
+    "people": [
+      {
+        "profileId": "prof_1",
+        "name": "Faisal",
+        "email": "faisal@example.com",
+        "role": "editor",
+        "guest": false,
+        "isYou": true,
+        "canChange": false
+      },
+      {
+        "profileId": "prof_9",
+        "name": "Lee",
+        "email": "lee@example.com",
+        "role": "commenter",
+        "guest": true,
+        "isYou": false,
+        "canChange": true
+      }
+    ],
+    "invites": [
+      {
+        "id": "pinv_2",
+        "email": "kim@example.com",
+        "role": "viewer",
+        "expiresAt": 1793696400000,
+        "expired": false
+      }
+    ],
+    "links": [
+      {
+        "id": "lnk_1",
+        "tokenHint": "k3Xa",
+        "expiresAt": null,
+        "expired": false,
+        "hasPassword": false,
+        "allowIndexing": false,
+        "theme": "article",
+        "viewCount": 42,
+        "createdAt": 1792227600000,
+        "encrypted": false
+      }
+    ],
+    "publicLinksAvailable": true,
+    "encrypted": false
+  }
+}

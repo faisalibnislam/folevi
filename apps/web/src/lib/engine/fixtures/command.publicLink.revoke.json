@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "publicLink.revoke",
+  "description": "Turn a link off.",
+  "args": {
+    "linkId": "lnk_1"
+  },
+  "result": {
+    "ok": true
+  }
+}

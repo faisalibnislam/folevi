@@ -33,6 +33,7 @@ import { displayCornerRadius, useIpadLayout, useIphoneApp } from "@/lib/iphone";
 import { nativeApp, nativeChrome } from "@/lib/nativeApp";
 import { EngineHost } from "@/lib/engine/EngineHost";
 import { NativeGate } from "@/lib/engine/NativeGate";
+import { WEB_SETTINGS_SECTIONS } from "@/lib/engine/host";
 import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
 import { installInputModality } from "@/components/iphone/chrome";
@@ -180,6 +181,8 @@ const NativeDocumentView = lazy(() => {
 });
 const NativeReviewView = lazy(() => import("@/components/views/ReviewView").then((m) => ({ default: m.ReviewView })));
 const NativeGraphView = lazy(() => import("@/components/views/GraphView").then((m) => ({ default: m.GraphView })));
+// The technical Settings sections (Webhooks, API tokens, Connected apps, AI export, Data) stay web pages.
+const NativeSettingsView = lazy(() => import("@/components/views/SettingsView").then((m) => ({ default: m.SettingsView })));
 
 const noop = () => undefined;
 
@@ -232,6 +235,8 @@ function NativeContentShell() {
       <NativeReviewView />
     ) : route.name === "graph" ? (
       <NativeGraphView />
+    ) : route.name === "settings" && WEB_SETTINGS_SECTIONS.has(route.section) ? (
+      <NativeSettingsView section={route.section} />
     ) : null;
   return (
     <TabsProvider accountKey={profile.id} workspaceId={context.kind === "workspace" ? context.workspaceId : null}>

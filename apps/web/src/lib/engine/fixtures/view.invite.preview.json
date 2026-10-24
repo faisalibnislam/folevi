@@ -1,0 +1,17 @@
+{
+  "kind": "view",
+  "name": "invite.preview",
+  "description": "A workspace invitation link opened in the app.",
+  "args": {
+    "kind": "workspace",
+    "token": "tok_ws"
+  },
+  "value": {
+    "valid": true,
+    "kind": "workspace",
+    "inviterName": "Sam",
+    "name": "Airly Studio",
+    "roleLabel": "Member",
+    "emailMatches": true
+  }
+}

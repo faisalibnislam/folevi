@@ -1,0 +1,12 @@
+{
+  "kind": "editor",
+  "name": "web.show",
+  "description": "Show Connected apps (a web page with native bars).",
+  "args": {
+    "page": "settings.connectedApps"
+  },
+  "result": {
+    "id": "settings.connectedApps",
+    "ready": true
+  }
+}

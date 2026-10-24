@@ -15,6 +15,7 @@ import { gateEvent } from "../gates";
 import { changesValue, notificationRow, searchHits, sharedRow } from "../viewsMore";
 import { taskGroups, taskRow, type TaskData } from "../viewsWork";
 import { planQuickTask } from "../quickTask";
+import { notificationSettings, sharingValue } from "../viewsAccount";
 import {
   CONTRACT_REVISION,
   PROTOCOL_VERSION,
@@ -730,6 +731,89 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.calendar.update": command({ name: "calendar.update", description: "Hide a calendar's events.", args: { id: "cal2", visible: false }, result: { ok: true } }),
   "command.calendar.remove": command({ name: "calendar.remove", description: "Unsubscribe.", args: { id: "cal2" }, result: { ok: true } }),
   "command.calendar.refresh": command({ name: "calendar.refresh", description: "Fetch a calendar again now.", args: { id: "cal1" }, result: { ok: true } }),
+
+  // ---- revision 6
+  "view.account.details": view({
+    name: "account.details",
+    description: "The open account for the switcher: plan, storage, devices, spaces.",
+    args: {},
+    value: {
+      profile: { id: "prof_1", name: "Faisal", email: "faisal@example.com", avatarUrl: null },
+      plan: { tier: "pro", id: "personal_pro_month", paid: true, trialing: false, trialEndsAt: null, ai: false },
+      storage: { usedBytes: 1_200_000_000, limitBytes: 10_000_000_000 },
+      devicesActive: 3,
+      deviceLimit: null,
+      spaces: [
+        { id: "personal", kind: "personal", name: "Personal", logoUrl: null, role: "owner", storage: { usedBytes: 1_200_000_000, limitBytes: 10_000_000_000 } },
+        { id: "ws_studio", kind: "workspace", name: "Airly Studio", logoUrl: "https://example.com/logo.png", role: "admin", storage: { usedBytes: 300_000_000, limitBytes: 5_000_000_000 } },
+      ],
+    },
+  }),
+  "view.settings.account": view({ name: "settings.account", description: "Settings > Account.", args: {}, value: { name: "Faisal", email: "faisal@example.com", avatarUrl: null, timeZone: "Asia/Dhaka" } }),
+  "view.settings.general": view({ name: "settings.general", description: "Settings > General.", args: {}, value: { timeZone: "Asia/Dhaka", locale: "en", reviewAppEdits: true } }),
+  "view.settings.appearance": view({ name: "settings.appearance", description: "Settings > Appearance.", args: {}, value: { appearance: "dark" } }),
+  "view.settings.notifications": view({
+    name: "settings.notifications",
+    description: "Settings > Notifications: comments only in the app, replies follow comments by email.",
+    args: {},
+    value: notificationSettings({ mentions: true, comments: true, shares: true, invites: false, digest: "daily", productEmail: false, inApp: { comments: false } }),
+  }),
+  "view.settings.ai": view({ name: "settings.ai", description: "Settings > Foli AI, the basics.", args: {}, value: { included: true, enabled: true, history: true, memory: false, suggestions: true, attachments: true, webResearch: true, digests: false, readImages: false, deviceText: true } }),
+  "view.settings.security": view({
+    name: "settings.security",
+    description: "Where the account is signed in.",
+    args: {},
+    value: {
+      sessions: [
+        { id: "sess_1", label: "iPhone 17 Pro", client: "ios", current: true, lastSeenAt: NOW },
+        { id: "sess_2", label: "Safari on Mac", client: "web", current: false, lastSeenAt: NOW - 3 * DAY },
+      ],
+    },
+  }),
+  "view.sharing.get": view({
+    name: "sharing.get",
+    description: "A workspace note: two people, a pending invitation, one public link.",
+    args: { id: "doc_00002" },
+    value: sharingValue(
+      "doc_00002",
+      {
+        accessMode: "workspace",
+        yourAccess: "manage",
+        canManage: true,
+        canShare: true,
+        maxRole: "editor",
+        youAreGuest: false,
+        ownerName: "Faisal",
+        sharedBy: null,
+        people: [
+          { profileId: "prof_1", displayName: "Faisal", email: "faisal@example.com", role: "editor", guest: false, isYou: true, canChange: false },
+          { profileId: "prof_9", displayName: "Lee", email: "lee@example.com", role: "commenter", guest: true, isYou: false, canChange: true },
+        ],
+        pendingInvites: [{ id: "pinv_2", email: "kim@example.com", role: "viewer", expiresAt: NOW + 10 * DAY, expired: false }],
+        links: [{ id: "lnk_1", tokenHint: "k3Xa", expiresAt: null, expired: false, hasPassword: false, allowIndexing: false, theme: "article", viewCount: 42, createdAt: NOW - 7 * DAY }],
+        publicLinksAvailable: true,
+      },
+      false,
+    ),
+  }),
+  "view.invite.preview": view({ name: "invite.preview", description: "A workspace invitation link opened in the app.", args: { kind: "workspace", token: "tok_ws" }, value: { valid: true, kind: "workspace", inviterName: "Sam", name: "Airly Studio", roleLabel: "Member", emailMatches: true } }),
+  "view.invite.preview.invalid": view({ name: "invite.preview", description: "An invitation that expired or was used.", args: { kind: "page", token: "tok_old" }, value: { valid: false, kind: "page", inviterName: null, name: null, roleLabel: null, emailMatches: false } }),
+  "command.settings.update": command({ name: "settings.update", description: "Change the name and appearance.", args: { name: "Faisal Islam", appearance: "light" }, result: { ok: true } }),
+  "command.settings.setAiPref": command({ name: "settings.setAiPref", description: "Turn Foli AI's memory off.", args: { key: "memory", on: false }, result: { ok: true } }),
+  "command.settings.setNotificationTopic": command({ name: "settings.setNotificationTopic", description: "Mentions: email off, the bell on.", args: { topic: "mentions", inApp: true, email: false }, result: { ok: true } }),
+  "command.settings.setNotificationEmails": command({ name: "settings.setNotificationEmails", description: "A daily digest email.", args: { digest: "daily" }, result: { ok: true } }),
+  "command.settings.removeAvatar": command({ name: "settings.removeAvatar", description: "Remove the profile picture.", args: {}, result: { ok: true } }),
+  "command.session.revoke": command({ name: "session.revoke", description: "Sign out another device.", args: { id: "sess_2" }, result: { ok: true } }),
+  "command.sharing.invite": command({ name: "sharing.invite", description: "Share a note by email (no account yet: an invitation goes out).", args: { noteId: "doc_00002", email: "kim@example.com", role: "viewer" }, result: { status: "invited" } }),
+  "command.sharing.revoke": command({ name: "sharing.revoke", description: "Remove someone's access.", args: { noteId: "doc_00002", profileId: "prof_9" }, result: { ok: true } }),
+  "command.sharing.cancelInvite": command({ name: "sharing.cancelInvite", description: "Cancel an invitation.", args: { inviteId: "pinv_2" }, result: { ok: true } }),
+  "command.sharing.setAccessMode": command({ name: "sharing.setAccessMode", description: "Only the people listed.", args: { noteId: "doc_00002", mode: "restricted" }, result: { ok: true } }),
+  "command.publicLink.create": command({ name: "publicLink.create", description: "A public link with the Article look.", args: { noteId: "doc_00002", theme: "article" }, result: { id: "lnk_2", url: "https://app.folevi.com/s/k3XaQ9vY2mP4tR7w" } }),
+  "command.publicLink.create.encrypted": command({ name: "publicLink.create", description: "An encrypted note's link is made on the note page.", args: { noteId: "doc_sealed" }, error: { code: "invalid_argument", message: "This note is end-to-end encrypted: share it from the note's Share button." } }),
+  "command.publicLink.setTheme": command({ name: "publicLink.setTheme", description: "Change a link's look.", args: { linkId: "lnk_1", theme: "minimal" }, result: { ok: true } }),
+  "command.publicLink.revoke": command({ name: "publicLink.revoke", description: "Turn a link off.", args: { linkId: "lnk_1" }, result: { ok: true } }),
+  "command.invite.acceptLink": command({ name: "invite.acceptLink", description: "Accept a page invitation link and open the page.", args: { kind: "page", token: "tok_page" }, result: { noteId: "doc_s2", space: null } }),
+  "editor.web.show": editor({ name: "web.show", description: "Show Connected apps (a web page with native bars).", args: { page: "settings.connectedApps" }, result: { id: "settings.connectedApps", ready: true } }),
   // ---- commands
   "command.space.switch": command({ name: "space.switch", description: "Show the team workspace.", args: { space: "ws_studio" }, result: { space: "ws_studio" } }),
   "command.note.create": command({ name: "note.create", description: "A new note in a folder (works offline).", args: { folderId: "fld_trips", title: "" }, result: { id: "01JB7Z8K3Q4ABCDEF0123456789" } }),

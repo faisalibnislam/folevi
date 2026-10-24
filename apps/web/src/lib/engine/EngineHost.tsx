@@ -108,6 +108,8 @@ export function EngineHost() {
         mode,
         accountKey: profile.id,
         profile: { id: profile.id, name: profile.displayName ?? "", email: profile.email ?? "", avatarUrl: (profile as { avatarUrl?: string | null }).avatarUrl ?? null },
+        profileData: profile as unknown as Record<string, unknown>,
+        workspaceData: Object.fromEntries(workspaces.map((w) => [w.id, w as unknown as Record<string, unknown>])),
         spaces,
         space: context.kind === "personal" ? "personal" : context.workspaceId,
         online,

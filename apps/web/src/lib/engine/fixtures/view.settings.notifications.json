@@ -1,0 +1,54 @@
+{
+  "kind": "view",
+  "name": "settings.notifications",
+  "description": "Settings > Notifications: comments only in the app, replies follow comments by email.",
+  "args": {},
+  "value": {
+    "topics": [
+      {
+        "id": "comments",
+        "label": "Comments",
+        "hint": "On notes you created or follow",
+        "inApp": false,
+        "email": true
+      },
+      {
+        "id": "replies",
+        "label": "Replies",
+        "hint": "In comment threads you took part in",
+        "inApp": true,
+        "email": true
+      },
+      {
+        "id": "mentions",
+        "label": "Mentions",
+        "hint": "When someone @mentions you in a note or a comment",
+        "inApp": true,
+        "email": true
+      },
+      {
+        "id": "shares",
+        "label": "Shares and invitations",
+        "hint": "Pages shared with you and workspace invitations",
+        "inApp": true,
+        "email": false
+      },
+      {
+        "id": "access",
+        "label": "Access changes",
+        "hint": "When your access to a page or workspace changes",
+        "inApp": true,
+        "email": true
+      },
+      {
+        "id": "reminders",
+        "label": "Task reminders",
+        "hint": "When a reminder you set on a to-do is due. The email shows that to-do line.",
+        "inApp": true,
+        "email": true
+      }
+    ],
+    "digest": "daily",
+    "productEmail": false
+  }
+}

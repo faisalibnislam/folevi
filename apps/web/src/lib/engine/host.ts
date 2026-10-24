@@ -12,7 +12,7 @@ import { activeNote, isNoteReady, onNoteHost, resetNoteReady, setNoteEmitter } f
 import { setToastSink } from "./toasts";
 import { actOnGate, currentGate, onGate } from "./gates";
 import { routeWindowOpen } from "./navigation";
-import { BridgeError, argsOf, bool, id as idArg, only } from "./validate";
+import { BridgeError, argsOf, bool, id as idArg, oneOf, only } from "./validate";
 import {
   BIG_PAYLOAD_BYTES,
   COMMAND_NAMES,
@@ -24,6 +24,7 @@ import {
   MESSAGE_HANDLER,
   PROTOCOL_VERSION,
   VIEW_NAMES,
+  WEB_PAGES,
   schemaHash,
   type CommandName,
   type EditorCommandName,
@@ -42,6 +43,19 @@ import {
 } from "./protocol";
 
 type Outgoing = UpdateMessage | EventMessage;
+
+/** Where each web page the native app shows lives (owner decisions Q1 and Q2). */
+export const WEB_PAGE_ROUTES = {
+  "settings.connectedApps": "/settings/connected-apps",
+  "settings.workspaceData": "/settings/workspace-data",
+  "settings.data": "/settings/data",
+  "settings.aiExport": "/settings/ai",
+  reviews: "/review",
+  graph: "/graph",
+} as const;
+
+/** The Settings sections the native app shows as web pages (everything else in Settings is native). */
+export const WEB_SETTINGS_SECTIONS = new Set(["connected-apps", "workspace-data", "data", "ai"]);
 
 export interface HostOptions {
   /** Hands one batch (a JSON string) to native. Default: the WebKit message handler. */
@@ -553,6 +567,13 @@ export class BridgeHost {
         }
         this.showMeta(noteId);
         return { id: noteId, ready: isNoteReady(noteId) };
+      }
+      case "web.show": {
+        only(args, ["page"]);
+        const page = oneOf(args, "page", WEB_PAGES);
+        this.ctx.deps().navigate(WEB_PAGE_ROUTES[page]);
+        this.showMeta(null);
+        return { id: page, ready: true };
       }
       case "note.close": {
         only(args, []);

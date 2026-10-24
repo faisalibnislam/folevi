@@ -33,6 +33,10 @@ export interface EngineApp {
   /** Names the account's data on this device (the profile id): the kept answers' key. */
   accountKey: string;
   profile: ProfileInfo;
+  /** The profile as users.me answers it (settings, entitlements, preferences), for the Settings views. */
+  profileData: Record<string, unknown>;
+  /** The workspaces as workspaces.mine answers them (logo, storage), by id. */
+  workspaceData: Record<string, Record<string, unknown>>;
   /** Personal first, then the team workspaces. */
   spaces: EngineSpace[];
   /** The space the page shows now. */

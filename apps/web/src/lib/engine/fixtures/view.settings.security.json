@@ -1,0 +1,24 @@
+{
+  "kind": "view",
+  "name": "settings.security",
+  "description": "Where the account is signed in.",
+  "args": {},
+  "value": {
+    "sessions": [
+      {
+        "id": "sess_1",
+        "label": "iPhone 17 Pro",
+        "client": "ios",
+        "current": true,
+        "lastSeenAt": 1792832400000
+      },
+      {
+        "id": "sess_2",
+        "label": "Safari on Mac",
+        "client": "web",
+        "current": false,
+        "lastSeenAt": 1792573200000
+      }
+    ]
+  }
+}

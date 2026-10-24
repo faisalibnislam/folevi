@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "b8e3aa69"
+        "schemaHash": "a6751aae"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 5,
+        "revision": 6,
         "build": "dev",
-        "schemaHash": "b8e3aa69",
+        "schemaHash": "a6751aae",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -54,7 +54,16 @@
           "calendars.events",
           "calendars.list",
           "members",
-          "task.parse"
+          "task.parse",
+          "account.details",
+          "settings.account",
+          "settings.general",
+          "settings.appearance",
+          "settings.notifications",
+          "settings.ai",
+          "settings.security",
+          "sharing.get",
+          "invite.preview"
         ],
         "listViews": [
           "notes.list"
@@ -99,7 +108,21 @@
           "calendar.add",
           "calendar.update",
           "calendar.remove",
-          "calendar.refresh"
+          "calendar.refresh",
+          "settings.update",
+          "settings.setAiPref",
+          "settings.setNotificationTopic",
+          "settings.setNotificationEmails",
+          "settings.removeAvatar",
+          "session.revoke",
+          "sharing.invite",
+          "sharing.revoke",
+          "sharing.cancelInvite",
+          "sharing.setAccessMode",
+          "publicLink.create",
+          "publicLink.setTheme",
+          "publicLink.revoke",
+          "invite.acceptLink"
         ],
         "editorCommands": [
           "note.prepare",
@@ -120,7 +143,8 @@
           "note.menu",
           "scrollToTop",
           "insets",
-          "state"
+          "state",
+          "web.show"
         ],
         "events": [
           "engine.ready",

@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "settings.update",
+  "description": "Change the name and appearance.",
+  "args": {
+    "name": "Faisal Islam",
+    "appearance": "light"
+  },
+  "result": {
+    "ok": true
+  }
+}

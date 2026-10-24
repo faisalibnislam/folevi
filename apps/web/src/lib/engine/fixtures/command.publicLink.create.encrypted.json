@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "publicLink.create",
+  "description": "An encrypted note's link is made on the note page.",
+  "args": {
+    "noteId": "doc_sealed"
+  },
+  "error": {
+    "code": "invalid_argument",
+    "message": "This note is end-to-end encrypted: share it from the note's Share button."
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "kind": "command",
+  "name": "settings.removeAvatar",
+  "description": "Remove the profile picture.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

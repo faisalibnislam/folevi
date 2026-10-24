@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "sharing.invite",
+  "description": "Share a note by email (no account yet: an invitation goes out).",
+  "args": {
+    "noteId": "doc_00002",
+    "email": "kim@example.com",
+    "role": "viewer"
+  },
+  "result": {
+    "status": "invited"
+  }
+}

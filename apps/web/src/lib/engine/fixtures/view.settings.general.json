@@ -1,0 +1,11 @@
+{
+  "kind": "view",
+  "name": "settings.general",
+  "description": "Settings > General.",
+  "args": {},
+  "value": {
+    "timeZone": "Asia/Dhaka",
+    "locale": "en",
+    "reviewAppEdits": true
+  }
+}

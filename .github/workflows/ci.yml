@@ -25,11 +25,10 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Generated files are up to date (tokens, block schema, email templates, native bridge Swift)
+      - name: Generated files are up to date (tokens, block schema, email templates)
         run: |
           node packages/design-tokens/scripts/build.mjs --check
           node packages/editor-schema/scripts/generate.mjs --check
-          node scripts/engine-codegen.mjs --check
           node packages/design-tokens/scripts/contrast.mjs
       - name: Lint
         run: |

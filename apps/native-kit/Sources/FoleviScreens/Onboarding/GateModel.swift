@@ -75,7 +75,7 @@ public enum GateKind: Equatable, Hashable, Sendable {
 public enum DeviceWords: Sendable, Equatable {
     case iPhone, iPad, mac
 
-    public static var current: DeviceWords {
+    @MainActor public static var current: DeviceWords {
         #if os(macOS)
         return .mac
         #else

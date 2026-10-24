@@ -112,6 +112,7 @@ export function Sheet({
   labelledBy,
   snapMedium,
   appear = true,
+  bodyPad = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -135,6 +136,8 @@ export function Sheet({
    * after the last block that fits, not part way through one (as iOS's account sheets do).
    */
   snapMedium?: string;
+  /** false: the content scrolls inside a list of its own, which keeps the home indicator's room itself (--sheet-safe-b). */
+  bodyPad?: boolean;
   /** false: it's already on screen (it takes over from a stand-in drawn while its code loaded), so no slide in. */
   appear?: boolean;
 }) {
@@ -316,6 +319,7 @@ export function Sheet({
         kb.current = { height: 0, anims: [] };
         if (wrap.current) wrap.current.style.transform = "";
         panel.current?.style.removeProperty("--sheet-kb");
+        panel.current?.style.removeProperty("--sheet-safe-b");
         if (ref.current?.open) ref.current.close();
         setShown(false);
         setReady(false);
@@ -527,6 +531,9 @@ export function Sheet({
       if (fit) {
         // A fitted sheet lifts whole onto the keyboard.
         const from = currentOffset(w);
+        // Above the keyboard there's no home indicator to keep clear of.
+        if (K) p.style.setProperty("--sheet-safe-b", "0px");
+        else p.style.removeProperty("--sheet-safe-b");
         w.style.transform = K ? `translateY(${-K}px)` : "";
         if (ms) kb.current.anims.push(w.animate([{ transform: `translateY(${from}px)` }, { transform: K ? `translateY(${-K}px)` : "none" }], { duration: ms, easing: ease }));
         return;
@@ -680,17 +687,13 @@ export function Sheet({
           data-iphone-sheet={card ? "card" : "sheet"}
           data-sheet-expanded={expanded ? "" : undefined}
           tabIndex={-1}
-          // (Its bottom margin inline: the keyboard's own rule in globals.css drops a sheet's margins the moment a
-          // field takes the focus, a frame before the keyboard's news moves the sheet, which showed as a jump.)
-          style={card ? undefined : { height: `var(--sheet-drag-h, ${height ?? "auto"})`, ...(expanded ? {} : { marginBottom: 8 }) }}
+          style={card ? undefined : { height: `var(--sheet-drag-h, ${height ?? "auto"})` }}
           className={
             card
               ? `${SURFACE} pointer-events-auto flex max-h-[calc(var(--sheet-max)-var(--sheet-kb,0px))] w-[min(400px,calc(100vw-24px))] flex-col overflow-hidden rounded-sheet outline-none`
-              : // As on iOS 26: a sheet that isn't full height floats, inset from the screen's edges with round
-                // corners all round; pulled up to full height it meets the edges.
-                `${SURFACE} pointer-events-auto flex max-h-[var(--sheet-max)] flex-col overflow-hidden outline-none [@media(orientation:landscape)]:mx-auto [@media(orientation:landscape)]:w-full [@media(orientation:landscape)]:max-w-[560px] ${
-                  expanded ? "rounded-t-sheet pb-[max(var(--sheet-kb,0px),var(--sheet-safe-b))]" : "iphone-sheet-float mx-2 rounded-float pb-[max(8px,calc(var(--sheet-safe-b)-14px))]"
-                }`
+              : // Attached to the screen's bottom and side edges at every height, round only at the top (the
+                // display's own corners round its foot); its surface runs on behind the home indicator.
+                `${SURFACE} pointer-events-auto flex max-h-[var(--sheet-max)] flex-col overflow-hidden rounded-t-sheet pb-[var(--sheet-kb,0px)] outline-none [@media(orientation:landscape)]:mx-auto [@media(orientation:landscape)]:w-full [@media(orientation:landscape)]:max-w-[560px]`
           }
         >
           {card ? null : (
@@ -728,11 +731,14 @@ export function Sheet({
               {description}
             </div>
           ) : null}
+          {/* What it shows runs on behind the home indicator: room for it at the end (less what the keyboard
+              covers), so the last row scrolls up clear of it. A list that scrolls inside reads --sheet-safe-b. */}
           <div ref={body} className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${bodyClassName}`}>
             {ready ? children : null}
+            {footer || card || !bodyPad ? null : <div aria-hidden data-sheet-safe-room="" className="h-[max(0px,calc(var(--sheet-safe-b,0px)-var(--sheet-kb,0px)))] flex-none" />}
           </div>
           {footer && ready ? (
-            <footer ref={foot} className="flex flex-none flex-wrap items-center gap-2 px-4 pb-4 pt-2 [&>a]:min-h-12 [&>a]:flex-1 [&>button]:min-h-12 [&>button]:flex-1 [&>button]:text-[17px]">
+            <footer ref={foot} className="flex flex-none flex-wrap items-center gap-2 px-4 pb-[max(16px,calc(var(--sheet-safe-b,0px)-var(--sheet-kb,0px)))] pt-2 [&>a]:min-h-12 [&>a]:flex-1 [&>button]:min-h-12 [&>button]:flex-1 [&>button]:text-[17px]">
               {footer}
             </footer>
           ) : null}

@@ -245,7 +245,8 @@ export function NotificationPanel({ unread, onClose, hideTitle = false }: { unre
           <div className="flex-none px-4 pb-2">{show}</div>
         </>
       )}
-      <div ref={listRef} onKeyDown={onListKey} className="min-h-0 flex-1 overflow-y-auto border-t border-line/70 pb-2">
+      {/* (In the phone's sheet the list runs on behind the home indicator, with room to scroll its last row clear.) */}
+      <div ref={listRef} onKeyDown={onListKey} className={`min-h-0 flex-1 overflow-y-auto border-t border-line/70 ${phone ? "pb-[calc(var(--sheet-safe-b,0px)+8px)]" : "pb-2"}`}>
         {items === undefined ? (
           // Only the very first time (afterwards the last list shows at once): rows shaped like the real ones,
           // so nothing moves when they arrive.

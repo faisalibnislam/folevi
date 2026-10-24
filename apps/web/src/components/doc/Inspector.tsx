@@ -187,7 +187,7 @@ export function Inspector({
           Insert, Format and Style are grids of controls: they run clear to the edge instead. */}
       {/* Foli AI's chat (data-ai-fill) fills the panel instead, its composer at the bottom with the usual inset. */}
       <div className={`relative min-h-0 flex-1 [&:has([data-ai-fill])>.ui-blur-bottom]:hidden ${tab === "ai" && aiOn ? "flex flex-col" : ""}`}>
-      <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className={`relative h-full ${tab === "ai" && aiOn ? "flex min-h-0 flex-1 flex-col has-[>[data-ai-fill]]:!pb-3" : ""} ${sheet && tab === "insert" ? "" : "overflow-y-auto"} ${sheet ? "px-4 pt-1" : "px-3 pt-3"} ${bare && !toEdge ? "pb-16" : "pb-4"}`}>
+      <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className={`relative h-full ${tab === "ai" && aiOn ? "flex min-h-0 flex-1 flex-col has-[>[data-ai-fill]]:!pb-[calc(var(--sheet-safe-b,0px)+12px)]" : ""} ${sheet && tab === "insert" ? "" : "overflow-y-auto"} ${sheet ? "px-4 pt-1" : "px-3 pt-3"} ${sheet ? "pb-[calc(var(--sheet-safe-b,0px)+16px)]" : bare && !toEdge ? "pb-16" : "pb-4"}`}>
         {/* AI in a note is about this note (the chat with all notes is the floating one, elsewhere). */}
         {tab === "ai" && aiOn ? (
           <Suspense fallback={null}>

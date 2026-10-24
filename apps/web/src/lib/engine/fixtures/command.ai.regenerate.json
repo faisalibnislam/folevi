@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "ai.regenerate",
+  "description": "Write the last answer again.",
+  "args": {
+    "conversationId": "conv_1"
+  },
+  "result": {
+    "conversationId": "conv_1",
+    "messageId": null
+  }
+}

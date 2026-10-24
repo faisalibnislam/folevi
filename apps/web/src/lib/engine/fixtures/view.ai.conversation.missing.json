@@ -1,0 +1,13 @@
+{
+  "kind": "view",
+  "name": "ai.conversation",
+  "description": "Gone, or new and not sent yet.",
+  "args": {
+    "conversationId": "conv_gone"
+  },
+  "value": {
+    "found": false,
+    "conversation": null,
+    "messages": []
+  }
+}

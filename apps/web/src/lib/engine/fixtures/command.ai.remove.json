@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "ai.remove",
+  "description": "Delete a conversation.",
+  "args": {
+    "conversationId": "conv_3"
+  },
+  "result": {
+    "ok": true
+  }
+}

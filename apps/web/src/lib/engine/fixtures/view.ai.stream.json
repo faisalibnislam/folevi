@@ -1,0 +1,12 @@
+{
+  "kind": "view",
+  "name": "ai.stream",
+  "description": "The answer's text so far.",
+  "args": {
+    "messageId": "msg_4"
+  },
+  "value": {
+    "messageId": "msg_4",
+    "text": "November in Kyoto is mild, 10 to 18"
+  }
+}

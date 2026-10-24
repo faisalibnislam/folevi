@@ -3459,3 +3459,482 @@ public struct WebShowArgs: Codable, Hashable, Sendable {
         self.page = page
     }
 }
+
+public struct ChatConversationRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var pinned: Bool
+    /// What it's about: "note", "notes", "folder", "workspace", "selection", "none" (open).
+    public var context: String
+    public var lastMessageAt: Double
+    public var createdAt: Double
+    public var shared: Bool
+
+    public init(id: String, title: String, pinned: Bool, context: String, lastMessageAt: Double, createdAt: Double, shared: Bool) {
+        self.id = id
+        self.title = title
+        self.pinned = pinned
+        self.context = context
+        self.lastMessageAt = lastMessageAt
+        self.createdAt = createdAt
+        self.shared = shared
+    }
+}
+
+public struct ChatConversationsArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    /// Titles and messages containing this (one page of matches, pinned first).
+    public var search: String?
+
+    public init(space: SpaceRef? = nil, search: String? = nil) {
+        self.space = space
+        self.search = search
+    }
+}
+
+public struct ChatConversationsValue: Codable, Hashable, Sendable {
+    public var pinned: [ChatConversationRow]
+    public var recent: [ChatConversationRow]
+    /// More older conversations than these.
+    public var more: Bool
+
+    public init(pinned: [ChatConversationRow], recent: [ChatConversationRow], more: Bool) {
+        self.pinned = pinned
+        self.recent = recent
+        self.more = more
+    }
+}
+
+public struct ChatCitation: Codable, Hashable, Sendable {
+    public var n: Int
+    public var noteId: String
+    public var title: String
+    public var blockId: String?
+
+    public init(n: Int, noteId: String, title: String, blockId: String? = nil) {
+        self.n = n
+        self.noteId = noteId
+        self.title = title
+        self.blockId = blockId
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(n, forKey: .n)
+        try c.encode(noteId, forKey: .noteId)
+        try c.encode(title, forKey: .title)
+        try c.encode(blockId, forKey: .blockId)
+    }
+}
+
+public struct ChatWebCitation: Codable, Hashable, Sendable {
+    public var n: Int
+    public var url: String
+    public var title: String
+    public var domain: String
+
+    public init(n: Int, url: String, title: String, domain: String) {
+        self.n = n
+        self.url = url
+        self.title = title
+        self.domain = domain
+    }
+}
+
+public struct ChatAttachment: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    public var mimeType: String
+    public var size: Int
+    /// "image", "pdf", "sheet", "text", "audio", "file" (open).
+    public var kind: String
+
+    public init(id: String, name: String, mimeType: String, size: Int, kind: String) {
+        self.id = id
+        self.name = name
+        self.mimeType = mimeType
+        self.size = size
+        self.kind = kind
+    }
+}
+
+/// A change an answer proposes (Apply or Dismiss): make a folder, make a note, move a note.
+public struct ChatAction: Codable, Hashable, Sendable {
+    /// "createFolder", "createNote", "moveNote" (open).
+    public var type: String
+    /// The folder's name, the note's title (to make or to move).
+    public var title: String
+    /// A note to make: its Markdown.
+    public var markdown: String?
+    /// The note to move.
+    public var noteId: String?
+    public var folderId: String?
+    public var folderName: String?
+
+    public init(type: String, title: String, markdown: String? = nil, noteId: String? = nil, folderId: String? = nil, folderName: String? = nil) {
+        self.type = type
+        self.title = title
+        self.markdown = markdown
+        self.noteId = noteId
+        self.folderId = folderId
+        self.folderName = folderName
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(type, forKey: .type)
+        try c.encode(title, forKey: .title)
+        try c.encode(markdown, forKey: .markdown)
+        try c.encode(noteId, forKey: .noteId)
+        try c.encode(folderId, forKey: .folderId)
+        try c.encode(folderName, forKey: .folderName)
+    }
+}
+
+public struct ChatAgentStep: Codable, Hashable, Sendable {
+    public var tool: String
+    public var count: Int
+    public var ok: Bool
+
+    public init(tool: String, count: Int, ok: Bool) {
+        self.tool = tool
+        self.count = count
+        self.ok = ok
+    }
+}
+
+public struct ChatMessage: Codable, Hashable, Sendable {
+    public enum Role: String, Codable, Hashable, Sendable, CaseIterable {
+        case user
+        case assistant
+    }
+
+    public var id: String
+    public var role: Role
+    /// Markdown. While `live`, the rest of it streams in `ai.stream`.
+    public var text: String
+    /// "streaming", "done", "stopped", "error".
+    public var status: String
+    /// The text so far is in `ai.stream { messageId }`.
+    public var live: Bool
+    /// What it's doing ("Reading your notes"), while it streams.
+    public var phase: String?
+    public var error: EngineError?
+    public var citations: [ChatCitation]
+    public var webCitations: [ChatWebCitation]
+    /// Follow-up questions to offer.
+    public var suggestions: [String]
+    public var credits: Int?
+    public var attachments: [ChatAttachment]
+    public var actions: [ChatAction]
+    /// "applied", "dismissed", or null while it waits for an answer.
+    public var actionsOutcome: String?
+    /// An agent's answer: the steps it took, and whether it offers Continue.
+    public var agentSteps: [ChatAgentStep]
+    public var agentMore: Bool
+    /// A preference it offers to remember (Save or Not now).
+    public var memory: ChatMemoryOffer?
+    public var createdAt: Double
+
+    public init(id: String, role: Role, text: String, status: String, live: Bool, phase: String? = nil, error: EngineError? = nil, citations: [ChatCitation], webCitations: [ChatWebCitation], suggestions: [String], credits: Int? = nil, attachments: [ChatAttachment], actions: [ChatAction], actionsOutcome: String? = nil, agentSteps: [ChatAgentStep], agentMore: Bool, memory: ChatMemoryOffer? = nil, createdAt: Double) {
+        self.id = id
+        self.role = role
+        self.text = text
+        self.status = status
+        self.live = live
+        self.phase = phase
+        self.error = error
+        self.citations = citations
+        self.webCitations = webCitations
+        self.suggestions = suggestions
+        self.credits = credits
+        self.attachments = attachments
+        self.actions = actions
+        self.actionsOutcome = actionsOutcome
+        self.agentSteps = agentSteps
+        self.agentMore = agentMore
+        self.memory = memory
+        self.createdAt = createdAt
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(role, forKey: .role)
+        try c.encode(text, forKey: .text)
+        try c.encode(status, forKey: .status)
+        try c.encode(live, forKey: .live)
+        try c.encode(phase, forKey: .phase)
+        try c.encode(error, forKey: .error)
+        try c.encode(citations, forKey: .citations)
+        try c.encode(webCitations, forKey: .webCitations)
+        try c.encode(suggestions, forKey: .suggestions)
+        try c.encode(credits, forKey: .credits)
+        try c.encode(attachments, forKey: .attachments)
+        try c.encode(actions, forKey: .actions)
+        try c.encode(actionsOutcome, forKey: .actionsOutcome)
+        try c.encode(agentSteps, forKey: .agentSteps)
+        try c.encode(agentMore, forKey: .agentMore)
+        try c.encode(memory, forKey: .memory)
+        try c.encode(createdAt, forKey: .createdAt)
+    }
+}
+
+public struct ChatMemoryOffer: Codable, Hashable, Sendable {
+    /// "tone", "language", "length", "term", "instruction" (open).
+    public var kind: String
+    public var text: String
+    /// "proposed", "saved", "dismissed".
+    public var status: String
+
+    public init(kind: String, text: String, status: String) {
+        self.kind = kind
+        self.text = text
+        self.status = status
+    }
+}
+
+public struct ChatConversationInfo: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var pinned: Bool
+    /// Not kept (history off): it lasts while the chat is open.
+    public var ephemeral: Bool
+    public var space: SpaceRef
+    public var context: String
+    public var shared: Bool
+    public var canShare: Bool
+    public var createdAt: Double
+    public var lastMessageAt: Double
+
+    public init(id: String, title: String, pinned: Bool, ephemeral: Bool, space: SpaceRef, context: String, shared: Bool, canShare: Bool, createdAt: Double, lastMessageAt: Double) {
+        self.id = id
+        self.title = title
+        self.pinned = pinned
+        self.ephemeral = ephemeral
+        self.space = space
+        self.context = context
+        self.shared = shared
+        self.canShare = canShare
+        self.createdAt = createdAt
+        self.lastMessageAt = lastMessageAt
+    }
+}
+
+public struct ChatConversationValue: Codable, Hashable, Sendable {
+    /// False when it's gone (or not this person's), or new and not yet sent.
+    public var found: Bool
+    public var conversation: ChatConversationInfo?
+    public var messages: [ChatMessage]
+
+    public init(found: Bool, conversation: ChatConversationInfo? = nil, messages: [ChatMessage]) {
+        self.found = found
+        self.conversation = conversation
+        self.messages = messages
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(found, forKey: .found)
+        try c.encode(conversation, forKey: .conversation)
+        try c.encode(messages, forKey: .messages)
+    }
+}
+
+public struct ChatStreamArgs: Codable, Hashable, Sendable {
+    public var messageId: String
+
+    public init(messageId: String) {
+        self.messageId = messageId
+    }
+}
+
+/// `ai.stream`: the answer's text so far (null once it's finished; read the message then).
+public struct ChatStreamValue: Codable, Hashable, Sendable {
+    public var messageId: String
+    public var text: String?
+
+    public init(messageId: String, text: String? = nil) {
+        self.messageId = messageId
+        self.text = text
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(messageId, forKey: .messageId)
+        try c.encode(text, forKey: .text)
+    }
+}
+
+/// What Foli AI can do here.
+public struct ChatCapabilities: Codable, Hashable, Sendable {
+    /// On the plan here and turned on.
+    public var available: Bool
+    public var vision: Bool
+    public var webResearch: Bool
+    public var attachments: Bool
+    /// Conversations are kept (Settings > Foli AI > History).
+    public var history: Bool
+    public var agent: Bool
+
+    public init(available: Bool, vision: Bool, webResearch: Bool, attachments: Bool, history: Bool, agent: Bool) {
+        self.available = available
+        self.vision = vision
+        self.webResearch = webResearch
+        self.attachments = attachments
+        self.history = history
+        self.agent = agent
+    }
+}
+
+public struct ChatContextArgs: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case note
+        case notes
+        case folder
+        case workspace
+    }
+
+    /// "note", "notes", "folder", "workspace".
+    public var kind: Kind
+    public var ids: [String]
+
+    public init(kind: Kind, ids: [String]) {
+        self.kind = kind
+        self.ids = ids
+    }
+}
+
+public struct ChatSendArgs: Codable, Hashable, Sendable {
+    public enum Mode: String, Codable, Hashable, Sendable, CaseIterable {
+        case auto
+        case ask
+        case agent
+    }
+
+    /// Left out: a new conversation (its id comes back).
+    public var conversationId: String?
+    public var text: String
+    public var space: SpaceRef?
+    /// What a new conversation is about.
+    public var context: ChatContextArgs?
+    /// Let it search the web.
+    public var web: Bool?
+    /// Files uploaded for the chat.
+    public var attachments: [String]?
+    /// "auto" (the default: a request to change notes goes to the agent, a question gets the quick answer), "ask", "agent".
+    public var mode: Mode?
+
+    public init(conversationId: String? = nil, text: String, space: SpaceRef? = nil, context: ChatContextArgs? = nil, web: Bool? = nil, attachments: [String]? = nil, mode: Mode? = nil) {
+        self.conversationId = conversationId
+        self.text = text
+        self.space = space
+        self.context = context
+        self.web = web
+        self.attachments = attachments
+        self.mode = mode
+    }
+}
+
+public struct ChatSendResult: Codable, Hashable, Sendable {
+    public var conversationId: String
+    /// The answer being written: watch `ai.conversation` (and `ai.stream` while it's live).
+    public var messageId: String?
+
+    public init(conversationId: String, messageId: String? = nil) {
+        self.conversationId = conversationId
+        self.messageId = messageId
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(conversationId, forKey: .conversationId)
+        try c.encode(messageId, forKey: .messageId)
+    }
+}
+
+public struct ChatEditArgs: Codable, Hashable, Sendable {
+    public var conversationId: String
+    public var messageId: String
+    public var text: String
+    public var web: Bool?
+
+    public init(conversationId: String, messageId: String, text: String, web: Bool? = nil) {
+        self.conversationId = conversationId
+        self.messageId = messageId
+        self.text = text
+        self.web = web
+    }
+}
+
+public struct ChatConversationArgs: Codable, Hashable, Sendable {
+    public var conversationId: String
+    public var web: Bool?
+
+    public init(conversationId: String, web: Bool? = nil) {
+        self.conversationId = conversationId
+        self.web = web
+    }
+}
+
+public struct ChatRenameArgs: Codable, Hashable, Sendable {
+    public var conversationId: String
+    public var title: String
+
+    public init(conversationId: String, title: String) {
+        self.conversationId = conversationId
+        self.title = title
+    }
+}
+
+public struct ChatPinArgs: Codable, Hashable, Sendable {
+    public var conversationId: String
+    public var pinned: Bool
+
+    public init(conversationId: String, pinned: Bool) {
+        self.conversationId = conversationId
+        self.pinned = pinned
+    }
+}
+
+public struct ChatMessageArgs: Codable, Hashable, Sendable {
+    public var messageId: String
+
+    public init(messageId: String) {
+        self.messageId = messageId
+    }
+}
+
+public struct ChatSaveArgs: Codable, Hashable, Sendable {
+    public var conversationId: String
+    /// Just one answer (and its question); left out: the whole conversation.
+    public var messageId: String?
+
+    public init(conversationId: String, messageId: String? = nil) {
+        self.conversationId = conversationId
+        self.messageId = messageId
+    }
+}
+
+public struct ChatActionsArgs: Codable, Hashable, Sendable {
+    public var conversationId: String
+    public var messageId: String
+    /// Apply the proposed changes, or dismiss them.
+    public var apply: Bool
+
+    public init(conversationId: String, messageId: String, apply: Bool) {
+        self.conversationId = conversationId
+        self.messageId = messageId
+        self.apply = apply
+    }
+}
+
+public struct ChatMemoryArgs: Codable, Hashable, Sendable {
+    public var messageId: String
+    public var save: Bool
+
+    public init(messageId: String, save: Bool) {
+        self.messageId = messageId
+        self.save = save
+    }
+}

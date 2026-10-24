@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "ai.stop",
+  "description": "Stop the answer being written.",
+  "args": {
+    "messageId": "msg_4"
+  },
+  "result": {
+    "ok": true
+  }
+}

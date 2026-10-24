@@ -16,6 +16,7 @@ import { changesValue, notificationRow, searchHits, sharedRow } from "../viewsMo
 import { taskGroups, taskRow, type TaskData } from "../viewsWork";
 import { planQuickTask } from "../quickTask";
 import { notificationSettings, sharingValue } from "../viewsAccount";
+import { chatMessage, conversationRow, conversationValue } from "../viewsAi";
 import {
   CONTRACT_REVISION,
   PROTOCOL_VERSION,
@@ -814,6 +815,80 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.publicLink.revoke": command({ name: "publicLink.revoke", description: "Turn a link off.", args: { linkId: "lnk_1" }, result: { ok: true } }),
   "command.invite.acceptLink": command({ name: "invite.acceptLink", description: "Accept a page invitation link and open the page.", args: { kind: "page", token: "tok_page" }, result: { noteId: "doc_s2", space: null } }),
   "editor.web.show": editor({ name: "web.show", description: "Show Connected apps (a web page with native bars).", args: { page: "settings.connectedApps" }, result: { id: "settings.connectedApps", ready: true } }),
+
+  // ---- revision 7
+  "view.ai.conversations": view({
+    name: "ai.conversations",
+    description: "Foli AI's conversations: one pinned, two recent, more to load.",
+    args: {},
+    value: {
+      pinned: [conversationRow({ id: "conv_1", title: "Trip planning", pinned: true, context: "folder", lastMessageAt: NOW - 3_600_000, createdAt: NOW - 10 * DAY, shared: false })],
+      recent: [
+        conversationRow({ id: "conv_2", title: "Summarize Q4 planning", pinned: false, context: "note", lastMessageAt: NOW - DAY, createdAt: NOW - DAY, shared: false }),
+        conversationRow({ id: "conv_3", title: "What's due this week?", pinned: false, context: "workspace", lastMessageAt: NOW - 2 * DAY, createdAt: NOW - 2 * DAY, shared: true }),
+      ],
+      more: true,
+    },
+  }),
+  "view.ai.conversation": view({
+    name: "ai.conversation",
+    description: "A conversation: a question, a cited answer with a proposed note, and an answer still streaming.",
+    args: { conversationId: "conv_1" },
+    value: conversationValue({
+      conversation: { id: "conv_1", title: "Trip planning", pinned: true, ephemeral: false, scope: { kind: "personal" }, context: { kind: "folder" }, shared: false, canShare: false, createdAt: NOW - 10 * DAY, lastMessageAt: NOW },
+      messages: [
+        { id: "msg_1", role: "user", text: "What's left to book for Kyoto?", citations: [], webCitations: [], suggestions: [], status: "done", live: false, phase: null, error: null, credits: null, attachments: [], actions: null, actionsOutcome: null, agent: null, memory: null, createdAt: NOW - 120_000 },
+        {
+          id: "msg_2",
+          role: "assistant",
+          text: "The rail pass is still open [1]. Want a packing list?",
+          citations: [{ n: 1, noteId: "doc_00001", title: "Kyoto in November", blockId: "blk_rail" }],
+          webCitations: [],
+          suggestions: ["Make a packing list"],
+          status: "done",
+          live: false,
+          phase: null,
+          error: null,
+          credits: 2,
+          attachments: [],
+          actions: [{ type: "createNote", title: "Packing list", markdown: "- Passport\n- Rail pass", folderId: "fld_trips", folderName: "Trips" }],
+          actionsOutcome: null,
+          agent: null,
+          memory: { kind: "length", text: "Keeps answers short", status: "proposed" },
+          createdAt: NOW - 110_000,
+        },
+        { id: "msg_3", role: "user", text: "Yes, and what's the weather like?", citations: [], webCitations: [], suggestions: [], status: "done", live: false, phase: null, error: null, credits: null, attachments: [], actions: null, actionsOutcome: null, agent: null, memory: null, createdAt: NOW - 10_000 },
+        { id: "msg_4", role: "assistant", text: "", citations: [], webCitations: [], suggestions: [], status: "streaming", live: true, phase: "Searching the web", error: null, credits: null, attachments: [], actions: null, actionsOutcome: null, agent: null, memory: null, createdAt: NOW - 9_000 },
+      ],
+    }),
+  }),
+  "view.ai.conversation.missing": view({ name: "ai.conversation", description: "Gone, or new and not sent yet.", args: { conversationId: "conv_gone" }, value: conversationValue(null) }),
+  "view.ai.conversation.no-credits": view({
+    name: "ai.conversation",
+    description: "An answer refused for credits: the refusal is on the answer.",
+    args: { conversationId: "conv_2" },
+    value: {
+      found: true,
+      conversation: { id: "conv_2", title: "Summarize Q4 planning", pinned: false, ephemeral: false, space: "personal", context: "note", shared: false, canShare: false, createdAt: NOW - DAY, lastMessageAt: NOW },
+      messages: [
+        chatMessage({ id: "msg_9", role: "assistant", text: "", citations: [], webCitations: [], suggestions: [], status: "error", live: false, phase: null, error: { code: "ai_credits_exhausted", message: "You've used this month's AI credits. They reset on November 1." }, credits: null, attachments: [], actions: null, actionsOutcome: null, agent: null, memory: null, createdAt: NOW }),
+      ],
+    },
+  }),
+  "view.ai.stream": view({ name: "ai.stream", description: "The answer's text so far.", args: { messageId: "msg_4" }, value: { messageId: "msg_4", text: "November in Kyoto is mild, 10 to 18" } }),
+  "view.ai.stream.done": view({ name: "ai.stream", description: "Finished: read the message itself.", args: { messageId: "msg_2" }, value: { messageId: "msg_2", text: null } }),
+  "view.ai.capabilities": view({ name: "ai.capabilities", description: "What Foli AI can do here.", args: {}, value: { available: true, vision: true, webResearch: true, attachments: true, history: true, agent: true } }),
+  "command.ai.send": command({ name: "ai.send", description: "A new conversation about a folder (the answer arrives through ai.conversation).", args: { text: "What's left to book?", context: { kind: "folder", ids: ["fld_trips"] } }, result: { conversationId: "01JB7ZC4N5P6Q7R8S9T0V1W2X3", messageId: null } }),
+  "command.ai.send.web": command({ name: "ai.send", description: "A question in an existing conversation, searching the web.", args: { conversationId: "conv_1", text: "And the weather?", web: true, mode: "ask" }, result: { conversationId: "conv_1", messageId: null } }),
+  "command.ai.stop": command({ name: "ai.stop", description: "Stop the answer being written.", args: { messageId: "msg_4" }, result: { ok: true } }),
+  "command.ai.regenerate": command({ name: "ai.regenerate", description: "Write the last answer again.", args: { conversationId: "conv_1" }, result: { conversationId: "conv_1", messageId: null } }),
+  "command.ai.edit": command({ name: "ai.edit", description: "Change a question and answer again.", args: { conversationId: "conv_1", messageId: "msg_3", text: "What's the weather in late November?" }, result: { conversationId: "conv_1", messageId: null } }),
+  "command.ai.rename": command({ name: "ai.rename", description: "Rename a conversation.", args: { conversationId: "conv_1", title: "Kyoto" }, result: { ok: true } }),
+  "command.ai.pin": command({ name: "ai.pin", description: "Pin a conversation.", args: { conversationId: "conv_2", pinned: true }, result: { ok: true } }),
+  "command.ai.remove": command({ name: "ai.remove", description: "Delete a conversation.", args: { conversationId: "conv_3" }, result: { ok: true } }),
+  "command.ai.saveAsNote": command({ name: "ai.saveAsNote", description: "Save an answer as a note.", args: { conversationId: "conv_1", messageId: "msg_2" }, result: { id: "doc_00120" } }),
+  "command.ai.actions": command({ name: "ai.actions", description: "Apply an answer's proposed changes.", args: { conversationId: "conv_1", messageId: "msg_2", apply: true }, result: { ok: true } }),
+  "command.ai.memory": command({ name: "ai.memory", description: "Remember the preference it offered.", args: { messageId: "msg_2", save: true }, result: { ok: true } }),
   // ---- commands
   "command.space.switch": command({ name: "space.switch", description: "Show the team workspace.", args: { space: "ws_studio" }, result: { space: "ws_studio" } }),
   "command.note.create": command({ name: "note.create", description: "A new note in a folder (works offline).", args: { folderId: "fld_trips", title: "" }, result: { id: "01JB7Z8K3Q4ABCDEF0123456789" } }),

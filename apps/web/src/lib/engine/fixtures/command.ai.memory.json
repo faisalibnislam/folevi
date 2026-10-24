@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "ai.memory",
+  "description": "Remember the preference it offered.",
+  "args": {
+    "messageId": "msg_2",
+    "save": true
+  },
+  "result": {
+    "ok": true
+  }
+}

@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 6;
+export const CONTRACT_REVISION = 7;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -1740,6 +1740,228 @@ export interface WebShowArgs {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Revision 7: the Foli AI chat (section 5.9: native screens; the answer streams as a live view)
+// ---------------------------------------------------------------------------------------------------------------
+
+export interface ChatConversationRow {
+  id: string;
+  title: string;
+  pinned: boolean;
+  /** What it's about: "note", "notes", "folder", "workspace", "selection", "none" (open). */
+  context: string;
+  lastMessageAt: number;
+  createdAt: number;
+  shared: boolean;
+}
+
+export interface ChatConversationsArgs {
+  space?: SpaceRef;
+  /** Titles and messages containing this (one page of matches, pinned first). */
+  search?: string;
+}
+
+export interface ChatConversationsValue {
+  pinned: ChatConversationRow[];
+  recent: ChatConversationRow[];
+  /** More older conversations than these. */
+  more: boolean;
+}
+
+export interface ChatCitation {
+  n: number;
+  noteId: string;
+  title: string;
+  blockId: string | null;
+}
+
+export interface ChatWebCitation {
+  n: number;
+  url: string;
+  title: string;
+  domain: string;
+}
+
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  /** "image", "pdf", "sheet", "text", "audio", "file" (open). */
+  kind: string;
+}
+
+/** A change an answer proposes (Apply or Dismiss): make a folder, make a note, move a note. */
+export interface ChatAction {
+  /** "createFolder", "createNote", "moveNote" (open). */
+  type: string;
+  /** The folder's name, the note's title (to make or to move). */
+  title: string;
+  /** A note to make: its Markdown. */
+  markdown: string | null;
+  /** The note to move. */
+  noteId: string | null;
+  folderId: string | null;
+  folderName: string | null;
+}
+
+export interface ChatAgentStep {
+  tool: string;
+  count: number;
+  ok: boolean;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  /** Markdown. While `live`, the rest of it streams in `ai.stream`. */
+  text: string;
+  /** "streaming", "done", "stopped", "error". */
+  status: string;
+  /** The text so far is in `ai.stream { messageId }`. */
+  live: boolean;
+  /** What it's doing ("Reading your notes"), while it streams. */
+  phase: string | null;
+  error: EngineError | null;
+  citations: ChatCitation[];
+  webCitations: ChatWebCitation[];
+  /** Follow-up questions to offer. */
+  suggestions: string[];
+  credits: number | null;
+  attachments: ChatAttachment[];
+  actions: ChatAction[];
+  /** "applied", "dismissed", or null while it waits for an answer. */
+  actionsOutcome: string | null;
+  /** An agent's answer: the steps it took, and whether it offers Continue. */
+  agentSteps: ChatAgentStep[];
+  agentMore: boolean;
+  /** A preference it offers to remember (Save or Not now). */
+  memory: ChatMemoryOffer | null;
+  createdAt: number;
+}
+
+export interface ChatMemoryOffer {
+  /** "tone", "language", "length", "term", "instruction" (open). */
+  kind: string;
+  text: string;
+  /** "proposed", "saved", "dismissed". */
+  status: string;
+}
+
+export interface ChatConversationInfo {
+  id: string;
+  title: string;
+  pinned: boolean;
+  /** Not kept (history off): it lasts while the chat is open. */
+  ephemeral: boolean;
+  space: SpaceRef;
+  context: string;
+  shared: boolean;
+  canShare: boolean;
+  createdAt: number;
+  lastMessageAt: number;
+}
+
+export interface ChatConversationValue {
+  /** False when it's gone (or not this person's), or new and not yet sent. */
+  found: boolean;
+  conversation: ChatConversationInfo | null;
+  messages: ChatMessage[];
+}
+
+export interface ChatStreamArgs {
+  messageId: string;
+}
+
+/** `ai.stream`: the answer's text so far (null once it's finished; read the message then). */
+export interface ChatStreamValue {
+  messageId: string;
+  text: string | null;
+}
+
+/** What Foli AI can do here. */
+export interface ChatCapabilities {
+  /** On the plan here and turned on. */
+  available: boolean;
+  vision: boolean;
+  webResearch: boolean;
+  attachments: boolean;
+  /** Conversations are kept (Settings > Foli AI > History). */
+  history: boolean;
+  agent: boolean;
+}
+
+export interface ChatContextArgs {
+  /** "note", "notes", "folder", "workspace". */
+  kind: "note" | "notes" | "folder" | "workspace";
+  ids: string[];
+}
+
+export interface ChatSendArgs {
+  /** Left out: a new conversation (its id comes back). */
+  conversationId?: string;
+  text: string;
+  space?: SpaceRef;
+  /** What a new conversation is about. */
+  context?: ChatContextArgs;
+  /** Let it search the web. */
+  web?: boolean;
+  /** Files uploaded for the chat. */
+  attachments?: string[];
+  /** "auto" (the default: a request to change notes goes to the agent, a question gets the quick answer), "ask", "agent". */
+  mode?: "auto" | "ask" | "agent";
+}
+
+export interface ChatSendResult {
+  conversationId: string;
+  /** The answer being written: watch `ai.conversation` (and `ai.stream` while it's live). */
+  messageId: string | null;
+}
+
+export interface ChatEditArgs {
+  conversationId: string;
+  messageId: string;
+  text: string;
+  web?: boolean;
+}
+
+export interface ChatConversationArgs {
+  conversationId: string;
+  web?: boolean;
+}
+
+export interface ChatRenameArgs {
+  conversationId: string;
+  title: string;
+}
+
+export interface ChatPinArgs {
+  conversationId: string;
+  pinned: boolean;
+}
+
+export interface ChatMessageArgs {
+  messageId: string;
+}
+
+export interface ChatSaveArgs {
+  conversationId: string;
+  /** Just one answer (and its question); left out: the whole conversation. */
+  messageId?: string;
+}
+
+export interface ChatActionsArgs {
+  conversationId: string;
+  messageId: string;
+  /** Apply the proposed changes, or dismiss them. */
+  apply: boolean;
+}
+
+export interface ChatMemoryArgs {
+  messageId: string;
+  save: boolean;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // The maps (names to argument and result types). The codegen reads these interfaces.
 // ---------------------------------------------------------------------------------------------------------------
 
@@ -1773,6 +1995,10 @@ export interface ViewMap {
   "settings.security": { args: EmptyArgs; value: SecuritySettings };
   "sharing.get": { args: NoteIdArgs; value: SharingValue };
   "invite.preview": { args: InviteTokenArgs; value: InvitePreview };
+  "ai.conversations": { args: ChatConversationsArgs; value: ChatConversationsValue };
+  "ai.conversation": { args: ChatConversationArgs; value: ChatConversationValue };
+  "ai.stream": { args: ChatStreamArgs; value: ChatStreamValue };
+  "ai.capabilities": { args: EmptyArgs; value: ChatCapabilities };
 }
 
 export interface ListViewMap {
@@ -1834,6 +2060,16 @@ export interface CommandMap {
   "publicLink.setTheme": { args: PublicLinkThemeArgs; result: OkResult };
   "publicLink.revoke": { args: PublicLinkIdArgs; result: OkResult };
   "invite.acceptLink": { args: InviteTokenArgs; result: InviteTokenAcceptResult };
+  "ai.send": { args: ChatSendArgs; result: ChatSendResult };
+  "ai.stop": { args: ChatMessageArgs; result: OkResult };
+  "ai.regenerate": { args: ChatConversationArgs; result: ChatSendResult };
+  "ai.edit": { args: ChatEditArgs; result: ChatSendResult };
+  "ai.rename": { args: ChatRenameArgs; result: OkResult };
+  "ai.pin": { args: ChatPinArgs; result: OkResult };
+  "ai.remove": { args: ChatConversationArgs; result: OkResult };
+  "ai.saveAsNote": { args: ChatSaveArgs; result: NoteCreateResult };
+  "ai.actions": { args: ChatActionsArgs; result: OkResult };
+  "ai.memory": { args: ChatMemoryArgs; result: OkResult };
 }
 
 export interface EditorCommandMap {
@@ -1893,7 +2129,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -1950,6 +2186,16 @@ const commandNames = [
   "publicLink.setTheme",
   "publicLink.revoke",
   "invite.acceptLink",
+  "ai.send",
+  "ai.stop",
+  "ai.regenerate",
+  "ai.edit",
+  "ai.rename",
+  "ai.pin",
+  "ai.remove",
+  "ai.saveAsNote",
+  "ai.actions",
+  "ai.memory",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

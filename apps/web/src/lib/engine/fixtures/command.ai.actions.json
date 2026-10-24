@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "ai.actions",
+  "description": "Apply an answer's proposed changes.",
+  "args": {
+    "conversationId": "conv_1",
+    "messageId": "msg_2",
+    "apply": true
+  },
+  "result": {
+    "ok": true
+  }
+}

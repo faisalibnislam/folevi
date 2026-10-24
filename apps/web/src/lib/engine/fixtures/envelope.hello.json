@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "a6751aae"
+        "schemaHash": "d4ed9d88"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 6,
+        "revision": 7,
         "build": "dev",
-        "schemaHash": "a6751aae",
+        "schemaHash": "d4ed9d88",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -63,7 +63,11 @@
           "settings.ai",
           "settings.security",
           "sharing.get",
-          "invite.preview"
+          "invite.preview",
+          "ai.conversations",
+          "ai.conversation",
+          "ai.stream",
+          "ai.capabilities"
         ],
         "listViews": [
           "notes.list"
@@ -122,7 +126,17 @@
           "publicLink.create",
           "publicLink.setTheme",
           "publicLink.revoke",
-          "invite.acceptLink"
+          "invite.acceptLink",
+          "ai.send",
+          "ai.stop",
+          "ai.regenerate",
+          "ai.edit",
+          "ai.rename",
+          "ai.pin",
+          "ai.remove",
+          "ai.saveAsNote",
+          "ai.actions",
+          "ai.memory"
         ],
         "editorCommands": [
           "note.prepare",

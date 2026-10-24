@@ -1,0 +1,14 @@
+{
+  "kind": "view",
+  "name": "ai.capabilities",
+  "description": "What Foli AI can do here.",
+  "args": {},
+  "value": {
+    "available": true,
+    "vision": true,
+    "webResearch": true,
+    "attachments": true,
+    "history": true,
+    "agent": true
+  }
+}

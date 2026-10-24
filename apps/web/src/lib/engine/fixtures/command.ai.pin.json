@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "ai.pin",
+  "description": "Pin a conversation.",
+  "args": {
+    "conversationId": "conv_2",
+    "pinned": true
+  },
+  "result": {
+    "ok": true
+  }
+}

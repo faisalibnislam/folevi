@@ -50,10 +50,10 @@ final class ShellTests: XCTestCase {
         for m in ["mirrorRead", "mirrorWrite", "mirrorDelete", "mirrorPaths", "mirrorLoadState", "mirrorSaveState", "libSetCloud", "cloudRequest", "cloudStatus"] {
             XCTAssertTrue(ShellRouter.methods.contains(m), m)
         }
-        // The same list as the iOS plugin.
+        // The same list as the iOS plugin (FoleviShellPlugin.names since the app left Capacitor, N1).
         let plugin = try String(contentsOf: Self.repo.appendingPathComponent("apps/ios/ios/App/Native/Shell/FoleviShellPlugin.swift"), encoding: .utf8)
-        let start = try XCTUnwrap(plugin.range(of: "pluginMethods"))
-        let end = try XCTUnwrap(plugin.range(of: "].map", range: start.upperBound..<plugin.endIndex))
+        let start = try XCTUnwrap(plugin.range(of: "static let names: Set<String> = ["))
+        let end = try XCTUnwrap(plugin.range(of: "\n    ]", range: start.upperBound..<plugin.endIndex))
         let names = try NSRegularExpression(pattern: #""([A-Za-z0-9]+)""#).matches(in: String(plugin[start.upperBound..<end.lowerBound]), range: NSRange(location: 0, length: plugin[start.upperBound..<end.lowerBound].utf16.count))
         let list = String(plugin[start.upperBound..<end.lowerBound])
         let ios = Set(names.map { String(list[Range($0.range(at: 1), in: list)!]) })

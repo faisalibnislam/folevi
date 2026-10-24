@@ -43,8 +43,12 @@ public final class SidebarViewController: NSViewController {
     private var cache: [String: SidebarItem] = [:]
     private var observers: [Observer] = []
     private var popover: NSPopover?
+    /// The bell's content (FoleviScreens' NotificationsContent); its live list also gives the badge.
+    private lazy var notifications = NotificationsModel(client: model.client, feedback: ScreenModels(frame: model).feedback)
     private var reloading = false
     static let expandedKey = "folevi.sidebar.expanded"
+    /// Where the open sections and folders are remembered (the app passes its own, per run with FOLEVI_USER_DATA).
+    public static var defaults: UserDefaults = .standard
     static let pasteTypes: [NSPasteboard.PasteboardType] = [.init(FrameDrag.noteType), .init(FrameDrag.folderType)]
 
     public init(model: FrameModel) {
@@ -237,8 +241,8 @@ public final class SidebarViewController: NSViewController {
     }
 
     private var expandedIds: Set<String> {
-        get { Set(UserDefaults.standard.stringArray(forKey: Self.expandedKey) ?? [SidebarModel.foldersHeader, SidebarModel.tagsHeader, SidebarModel.moreHeader]) }
-        set { UserDefaults.standard.set(Array(newValue).sorted(), forKey: Self.expandedKey) }
+        get { Set(Self.defaults.stringArray(forKey: Self.expandedKey) ?? [SidebarModel.foldersHeader, SidebarModel.tagsHeader, SidebarModel.moreHeader]) }
+        set { Self.defaults.set(Array(newValue).sorted(), forKey: Self.expandedKey) }
     }
 
     private func restoreExpansion() {
@@ -281,7 +285,7 @@ public final class SidebarViewController: NSViewController {
         accountButton.update(name: model.accountName.isEmpty ? (session?.mode == .local ? "On this Mac" : "Folevi") : model.accountName,
                              detail: session?.mode == .local ? (current?.syncs ?? "On this Mac") : (session?.profile.email ?? ""),
                              others: (place?.places ?? []).filter { $0.id != place?.current }.reduce(0) { $0 + $1.unread })
-        bell.count = model.unreadCount
+        bell.count = notifications.isLoading ? model.unreadCount : notifications.unread
         syncButton.toolTip = model.sync.value?.headline ?? "Connecting…"
         syncButton.setAccessibilityLabel("Sync: \(model.sync.value?.headline ?? "connecting")")
         toggle.isHidden = model.sidebarCollapsed
@@ -331,8 +335,14 @@ public final class SidebarViewController: NSViewController {
     }
 
     @objc private func showNotifications(_ sender: NSButton) {
-        model.loadNotifications()
-        show(AnyView(NotificationsPopover(model: model) { [weak self] in self?.popover?.close() }), from: sender)
+        let close: @MainActor () -> Void = { [weak self] in self?.popover?.close() }
+        let content = NotificationsContent(model: notifications, phone: false)
+            .frame(width: 384, height: 480)
+            .environment(\.screenIntents, FrameNavigation.intents(model, close: close))
+            .environment(\.screenNavigator, FrameNavigation.navigator(model))
+            .environment(\.screenFeedback, ScreenModels(frame: model).feedback)
+            .accessibilityIdentifier("popover.notifications")
+        show(AnyView(content), from: sender)
     }
 
     private func show(_ content: AnyView, from view: NSView) {
@@ -421,7 +431,9 @@ extension SidebarViewController: NSOutlineViewDataSource, NSOutlineViewDelegate 
     }
 
     public func outlineViewItemDidCollapse(_ notification: Notification) {
-        guard !reloading, let it = notification.userInfo?["NSObject"] as? SidebarItem else { return }
+        // Only the person's own clicks and keys count (AppKit collapses rows on its own while laying out).
+        let byPerson = [NSEvent.EventType.leftMouseUp, .leftMouseDown, .keyDown].contains(NSApp.currentEvent?.type ?? .applicationDefined)
+        guard !reloading, byPerson, let it = notification.userInfo?["NSObject"] as? SidebarItem else { return }
         expandedIds.remove(it.id)
     }
 
@@ -448,7 +460,7 @@ extension SidebarViewController: NSOutlineViewDataSource, NSOutlineViewDelegate 
         if let folder = pb.pasteboardItems?.first.flatMap(FrameDrag.folderId) {
             return SidebarDrop.folder(folder, onto: target?.node, parentIsFolders: target?.id == SidebarModel.foldersHeader, index: index, tree: FolderTree(model.folders.value?.folders ?? [])) == nil ? [] : .move
         }
-        if pb.pasteboardItems?.contains(where: { FrameDrag.noteId($0) != nil }) == true {
+        if pb.pasteboardItems?.contains(where: { !FrameDrag.noteIds($0).isEmpty }) == true {
             return SidebarDrop.notesTarget(target?.node, index: index) == nil ? [] : .move
         }
         return []
@@ -462,7 +474,7 @@ extension SidebarViewController: NSOutlineViewDataSource, NSOutlineViewDelegate 
             model.move(folder: folder, into: move.parentId, after: move.afterId)
             return true
         }
-        let ids = (pb.pasteboardItems ?? []).compactMap(FrameDrag.noteId)
+        let ids = (pb.pasteboardItems ?? []).flatMap(FrameDrag.noteIds)
         guard !ids.isEmpty, let dest = SidebarDrop.notesTarget(target?.node, index: index) else { return false }
         model.move(notes: ids, to: dest.folderId)
         return true

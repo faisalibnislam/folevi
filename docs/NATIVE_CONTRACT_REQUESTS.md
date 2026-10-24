@@ -528,3 +528,81 @@ The native Quick Add field talks to its panel's hidden Page View through `MacEng
 `Navigation.swift` reports reloads and ended content processes only for main windows' frames
 (`NativeFrame.pageEvent` finds controllers by main window). Route the `.quickAdd` view's events to
 `QuickAddPanel.shared` too (it keeps the transport), so its client resubscribes after a reload.
+
+---
+
+## N12 Foli AI chat (2026-10-24)
+
+Built on revision 8: chat, Research (`mode: "research"`, `ai.research`, cancel, save), proposed changes
+(`ai.actions`), the agent's changes (`agentRun`, `ai.agentApprove`, `ai.agentDiscard`, `ai.agentUndo`), memory
+offers, rename, pin, delete, save as note, edit, regenerate, stop. No stand-ins: each gap below is left out of the
+native chat (or shown read-only) until it's added.
+
+### R12.1 What an existing chat is about, and changing it **open**
+
+`ChatConversationInfo.context` is only the kind, so an existing chat's chip says "This folder" or "A note" with no
+name, and it can't be changed (the web's chips call `aiChat.setContext`). Request:
+
+```ts
+export interface ChatContextItem { kind: "note" | "folder"; id: string; name: string }
+// ChatConversationInfo
+  contextItems: ChatContextItem[];
+export interface ChatSetContextArgs { conversationId: string; context: ChatContextArgs }
+"ai.setContext": { args: ChatSetContextArgs; result: OkResult };   // aiChat.setContext
+```
+
+### R12.2 What Apply made **open**
+
+After `ai.actions { apply: true }` the message's `actionsOutcome` is just `"applied"`; the web's card then links the
+folders and notes it made (`setActionsOutcome { kind: "applied", folders, notes, moved }`). Request on `ChatMessage`:
+
+```ts
+  /** Once applied: what was made, to open. */
+  actionsResult: { folders: { id: string; name: string }[]; notes: { id: string; title: string }[]; moved: number } | null;
+```
+
+### R12.3 Older chats in the history **open**
+
+`ai.conversations` says `more: true` but takes no cursor, so the history shows the newest 50. Request
+`ChatConversationsArgs.limit?: number` (the engine pages up to it), or a windowed list view like `notes.list`.
+
+### R12.4 Attachments from native **open**
+
+`ai.send { attachments }` takes uploaded file ids, but native has no way to upload one (the web's
+`useChatAttachments` uploads through Convex storage). Request `ai.attach { bodyId | data, mimeType, name }`
+(bytes posted like `settings.setAvatar`) answering `ChatAttachment`, plus `ChatCapabilities.audio` and the size
+limit, so the composer can offer photos, files and the document scanner.
+
+### R12.5 Google Search suggestions on web answers **open**
+
+Answers that used Google Search grounding must show Google's search suggestions (web `SearchSuggestions.tsx`,
+`message.searchEntryPoints`). They aren't in `ChatMessage`, so native can't show them. Native offers the Web chip and Research as asked; this
+needs adding before release. Request:
+
+```ts
+  /** Google Search suggestions to show under a grounded answer (query and link). */
+  searchSuggestions: { query: string; url: string }[];
+```
+
+### R12.6 Sharing a chat with the workspace, and the encrypted-content consent **open**
+
+`ChatConversationInfo.canShare` exists but there's no command (web `ConversationActions` shares with the workspace):
+`ai.share { conversationId, shared }`. Plan 5.9 also lists `ai.consent` (asking before Foli AI reads encrypted
+notes); it isn't in the contract, so the native chat can't ask and relies on the engine to refuse with a message.
+
+### R12.7 Credits left (usage only) **open**
+
+The web composer shows a credits note (`AiCreditsNote`: "12 AI credits left this month"). Request
+`ChatCapabilities.credits: { available: number; included: boolean } | null` (never a purchase surface on iOS).
+
+### R8.10 `note.show { blockId }` (open, small)
+
+FoleviScreens' `ScreenIntent.openNote(id:, blockId:)` (a task's to-do, a search match in a file) and
+`/d/<id>#block-<blockId>` links open the note, but nothing scrolls it to the block. Request `blockId?: string` on
+`note.show` (and `note.prepare`): the page scrolls the block into view and flashes it, as the web's `#block-` links do.
+
+### R8.11 a notification's file link (open, small)
+
+`ScreenIntent.downloadFile(id:)` (an export a notification delivers, `NotificationRow.fileId`) needs the file's
+signed link: `files.url { id }` answering `{ url, name, size }` (the web's `files.urls`). Until then the Mac says
+to download it on the web.

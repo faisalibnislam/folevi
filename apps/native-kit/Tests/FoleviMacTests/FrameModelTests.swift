@@ -21,7 +21,7 @@ func eventually(_ what: String = "", timeout: Duration = .seconds(3), _ conditio
 @Suite("Routes")
 struct RouteTests {
     @Test func pathsRoundTrip() {
-        let routes: [FrameRoute] = [.home, .catchUp, .notes(.all), .notes(.unsorted), .notes(.starred), .notes(.archive), .notes(.trash), .notes(.templates), .folder("f 1"), .tag("t1"), .shared, .changes, .tasks, .calendar, .search("kyoto trip"), .note("doc_1")]
+        let routes: [FrameRoute] = [.home, .catchUp, .notes(.all), .notes(.unsorted), .notes(.starred), .notes(.archive), .notes(.trash), .notes(.templates), .folder("f 1"), .tag("t1"), .shared, .changes, .tasks(.today), .tasks(.upcoming), .calendar(nil), .calendar("2026-10-24"), .search("kyoto trip"), .note("doc_1")]
         for r in routes { #expect(FrameRoute(path: r.path) == r, "\(r.path)") }
     }
 
@@ -32,6 +32,10 @@ struct RouteTests {
         #expect(FrameRoute(path: "/d/abc?x=1") == .note("abc"))
         #expect(FrameRoute(path: "/folders") == .home)
         #expect(FrameRoute(path: "/graph") == .web("/graph"))
+        #expect(FrameRoute(path: "/inbox") == .tasks(.inbox))
+        #expect(FrameRoute(path: "/tasks/nope") == .tasks(.today))
+        #expect(FrameRoute(path: "/calendar?date=2026-11-02") == .calendar("2026-11-02"))
+        #expect(FrameRoute(path: "/calendar?date=junk") == .calendar(nil))
     }
 
     @Test func tabKeysFollowTheWeb() {
@@ -156,6 +160,33 @@ struct TabsTests {
         #expect(t.activeID == "view:folder:f")
         t.restore(.init(tabs: [], active: "gone"))
         #expect(t.activeID == "home")
+    }
+}
+
+@Suite("Feature routes") @MainActor
+struct FeatureRouteTests {
+    @Test func theScreensPathsBecomeTabs() {
+        #expect(FrameNavigation.webRoute("/tasks/upcoming") == .tasks(.upcoming))
+        #expect(FrameNavigation.webRoute("/calendar?date=2026-10-30") == .calendar("2026-10-30"))
+        #expect(FrameNavigation.webRoute("/search?q=kyoto") == .search("kyoto"))
+        #expect(FrameNavigation.webRoute("/d/n1#block-b2") == .note("n1"))
+        #expect(FrameNavigation.webRoute("/folders/f") == .folder("f"))
+    }
+
+    @Test func intentsOpenTabs() async {
+        let demo = DemoEngine()
+        let model = FrameModel(client: demo.client())
+        var closed = 0
+        let intents = FrameNavigation.intents(model) { closed += 1 }
+        intents.send(.openTasks(.inbox))
+        #expect(model.route == .tasks(.inbox))
+        intents.send(.openCalendar(date: "2026-11-01"))
+        #expect(model.route == .calendar("2026-11-01"))
+        #expect(model.tabs.tabs.filter { $0.id == "view:calendar" }.count == 1)
+        intents.send(.openNote(id: "doc_kyoto", blockId: "b1"))
+        #expect(model.route == .note("doc_kyoto"))
+        intents.send(.dismiss)
+        #expect(closed == 4)
     }
 }
 
@@ -392,6 +423,20 @@ struct FrameModelTests {
         demo.emit("engine.ready", .object(["place": .string(demo.place), "protocol": .number(1), "revision": .number(Double(EngineContract.revision))]))
         demo.emit("gate.changed", DemoEngine.gate(nil))
         await eventually("back") { model.isEngineReady }
+    }
+
+    @Test func gatePayloadAndWhichDrawNatively() async {
+        let (demo, model) = await make()
+        demo.emit("gate.changed", DemoEngine.gate("deviceLimit"))
+        await eventually("gate payload") { model.gateEvent?.gate == "deviceLimit" }
+        #expect(!model.isEngineReady)
+        #expect(FrameRootViewController.drawsNatively(.deviceLimit))
+        #expect(FrameRootViewController.drawsNatively(.modeChoice))
+        #expect(!FrameRootViewController.drawsNatively(.signedOut), "sign-in stays the page's until the Mac hands the screens an AuthService")
+        #expect(!FrameRootViewController.drawsNatively(.librarySetup))
+        #expect(!FrameRootViewController.drawsNatively(.loading))
+        demo.emit("gate.changed", DemoEngine.gate(nil))
+        await eventually("cleared") { model.isEngineReady && model.gateEvent?.gate == nil }
     }
 
     @Test func editorPanelState() async {

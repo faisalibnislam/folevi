@@ -1,7 +1,7 @@
-// The native screens a Mac window shows outside a note: the shared SwiftUI screens (FoleviScreens, N7: Home,
-// every note list and folder, Shared with me, Changes), given the frame's navigator (routes become tabs) and
-// feedback (toasts), plus the frame's own small screens for what no package has built yet: Catch me up on its
-// own, search over the notes, and quiet placeholders for Tasks and Calendar (N10).
+// The native screens a Mac window shows outside a note: the shared SwiftUI screens (FoleviScreens: Home, every
+// note list and folder, Shared with me, Changes, Tasks, Calendar, Search), given the frame's navigator (routes
+// become tabs), intents (places, Settings, sign-in, notes at a block) and feedback (toasts), plus Catch me up on
+// its own screen.
 #if os(macOS)
 import SwiftUI
 import FoleviDesign
@@ -13,13 +13,12 @@ public enum FrameDrag {
     public static let noteType = "com.folevi.note-ref"
     public static let folderType = "com.folevi.folder-ref"
 
-    /// The note ids on a pasteboard item (FoleviScreens' JSON, or a bare id from older sources).
-    static func noteId(_ item: NSPasteboardItem) -> String? {
-        if let data = item.data(forType: .init(noteType)) {
-            if let d = try? JSONDecoder().decode(NoteDragItem.self, from: data) { return d.id }
-            if let s = String(data: data, encoding: .utf8), !s.isEmpty, !s.hasPrefix("{") { return s }
-        }
-        return nil
+    /// The note ids on a pasteboard item (FoleviScreens' JSON: one note or a whole selection; or a bare id).
+    static func noteIds(_ item: NSPasteboardItem) -> [String] {
+        guard let data = item.data(forType: .init(noteType)) else { return [] }
+        if let d = try? JSONDecoder().decode(NoteDragItem.self, from: data) { return d.ids }
+        if let s = String(data: data, encoding: .utf8), !s.isEmpty, !s.hasPrefix("{") { return [s] }
+        return []
     }
 
     static func folderId(_ item: NSPasteboardItem) -> String? {
@@ -40,6 +39,9 @@ final class ScreenModels {
     private var lists: [NotesListKind: NotesListModel] = [:]
     private var shared: SharedListModel?
     private var changes: ChangesModel?
+    private var tasks: TasksModel?
+    private var calendar: CalendarModel?
+    private var search: SearchModel?
 
     init(frame: FrameModel) { self.frame = frame }
 
@@ -77,6 +79,37 @@ final class ScreenModels {
         return m
     }
 
+    func tasksModel() -> TasksModel {
+        if let tasks { return tasks }
+        let m = TasksModel(client: frame.client, feedback: feedback)
+        tasks = m
+        return m
+    }
+
+    func calendarModel() -> CalendarModel {
+        if let calendar { return calendar }
+        let m = CalendarModel(client: frame.client, feedback: feedback)
+        calendar = m
+        return m
+    }
+
+    func searchModel() -> SearchModel {
+        if let search { return search }
+        let m = SearchModel(client: frame.client, feedback: feedback)
+        search = m
+        return m
+    }
+
+    /// Brings a kept screen to what the route asks before it shows (a Tasks view, a calendar day, the words).
+    func prepare(_ route: FrameRoute) {
+        switch route {
+        case .tasks(let v): tasksModel().select(v)
+        case .calendar(let d): if let d { calendarModel().select(d) }
+        case .search(let q): if !q.isEmpty, searchModel().text != q { searchModel().text = q }
+        default: break
+        }
+    }
+
     /// The note list on screen for a route, when it has been shown.
     func listModel(for route: FrameRoute) -> NotesListModel? {
         switch route {
@@ -98,6 +131,9 @@ final class ScreenModels {
         }
         if !routes.contains(.shared) { shared = nil }
         if !routes.contains(.changes) { changes = nil }
+        if !routes.contains(where: { if case .tasks = $0 { return true } else { return false } }) { tasks = nil }
+        if !routes.contains(where: { if case .calendar = $0 { return true } else { return false } }) { calendar = nil }
+        if !routes.contains(where: { if case .search = $0 { return true } else { return false } }) { search = nil }
     }
 }
 
@@ -117,8 +153,53 @@ enum FrameNavigation {
         case .graph: return .web("/graph")
         case .search(let prompt): return .search(prompt)
         case .note(let id), .noteInNewTab(let id): return .note(id)
-        case .web(let path): return FrameRoute(path: path)
-        case .notifications, .places, .foliAI, .invite, .movePlaces: return nil
+        case .web(let path): return webRoute(path)
+        default: return nil
+        }
+    }
+
+    /// A web path, the features' own paths first (FeatureRoute: /tasks, /calendar?date=, /search?q=, a note at a
+    /// block).
+    static func webRoute(_ path: String) -> FrameRoute {
+        switch FeatureRoute(webRoute: path) {
+        case .tasks(let v)?: return .tasks(v)
+        case .calendar(let d)?: return .calendar(d)
+        case .search(let t)?: return .search(t)
+        case .noteBlock(let id, _)?: return .note(id)
+        case .notifications?, nil: return FrameRoute(path: path)
+        }
+    }
+
+    /// What the screens ask beyond routes (ScreenIntent). `close` closes the popover or sheet the content is in.
+    static func intents(_ frame: FrameModel, close: (@MainActor () -> Void)? = nil) -> ScreenIntents {
+        ScreenIntents { [weak frame] intent in
+            guard let frame else { return }
+            switch intent {
+            case .openTasks(let v): frame.open(.tasks(v))
+            case .openCalendar(let d): frame.open(.calendar(d))
+            case .openNote(let id, _):
+                // The block (a task's to-do, a match in a file) needs note.show { blockId } (requested, R8.10).
+                frame.open(.note(id))
+            case .openRoute(let r): frame.open(webRoute(r))
+            case .openSettings(let section): frame.host?.frameOpenSettings(section: section)
+            case .help: frame.host?.frameOpenHelp()
+            case .switchPlace(let id, let ws): frame.host?.frameSwitchPlace(id, space: ws)
+            case .newWorkspace: frame.host?.frameOpenSettings(section: "workspace")
+            case .signInAnotherAccount: frame.host?.frameSignInAnotherAccount()
+            case .moveOrCopy: frame.host?.frameMoveOrCopy()
+            case .signOut(let place): if let p = place ?? frame.session.value?.place { frame.host?.frameSignOutConfirmed(place: p) }
+            case .downloadFile(let id): frame.host?.frameDownloadFile(id)
+            case .dismiss: break
+            @unknown default: break
+            }
+            if case .dismiss = intent { close?() } else if intentCloses(intent) { close?() }
+        }
+    }
+
+    private static func intentCloses(_ i: ScreenIntent) -> Bool {
+        switch i {
+        case .openTasks, .openCalendar, .openNote, .openRoute, .openSettings, .help, .switchPlace, .moveOrCopy, .signInAnotherAccount: return true
+        default: return false
         }
     }
 
@@ -132,7 +213,7 @@ enum FrameNavigation {
             switch r {
             case .movePlaces: frame.host?.frameMoveOrCopy()
             case .invite: frame.host?.frameOpenSettings(section: "members")
-            case .places, .notifications: frame.toast("Use the account button at the bottom of the sidebar.")
+            case .places, .notifications: frame.toast("They're at the bottom of the sidebar: the account button and the bell.")
             case .foliAI: frame.toast("The Foli AI chat comes to the Mac with the next update.")
             default: break
             }
@@ -157,17 +238,20 @@ struct ScreenRoot: View {
             case .shared: SharedListScreen(model: models.sharedModel())
             case .changes: ChangesScreen(model: models.changesModel())
             case .catchUp: CatchUpScreen(model: model)
-            case .search(let q): SearchScreen(model: model, text: q)
-            case .tasks: Placeholder(symbol: "checklist", title: "Tasks", message: "Your tasks will be listed here.")
-            case .calendar: Placeholder(symbol: "calendar", title: "Calendar", message: "Your week and month will show here.")
+            case .search: SearchScreen(model: models.searchModel(), showsCancel: false)
+            case .tasks: TasksScreen(model: models.tasksModel(), showsHeader: true)
+            case .calendar: CalendarScreen(model: models.calendarModel(), showsHeader: true)
             case .web(let path): Placeholder(symbol: "globe", title: "Not here yet", message: "\(path) doesn't have a screen in the Mac app yet.")
             case .note: Color.clear
             }
         }
-        .id(route)
+        .id(route.tabKey)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Folevi.color.canvas)
+        // Another place or space: the screen crossfades instead of cutting.
+        .placeCrossfade("\(model.session.value?.place ?? "")|\(model.session.value?.space ?? "")")
         .environment(\.screenNavigator, FrameNavigation.navigator(model))
+        .environment(\.screenIntents, FrameNavigation.intents(model))
         .environment(\.screenFeedback, models.feedback)
     }
 }
@@ -195,67 +279,6 @@ struct CatchUpScreen: View {
             .frame(maxWidth: 760, alignment: .leading)
         }
         .accessibilityIdentifier("screen.catchUp")
-    }
-}
-
-/// Search over the place: the engine's `search` (revision 4), else (an older engine) the loaded notes of All notes
-/// filtered by their title and first lines.
-@MainActor
-@Observable
-final class SearchState {
-    var hits: [SearchHit]?
-    var store: ListStore<NoteRow>?
-}
-
-struct SearchScreen: View {
-    let model: FrameModel
-    let text: String
-    @State private var state = SearchState()
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(text.isEmpty ? "Search" : "Results for \u{201C}\(text)\u{201D}").font(FoleviFonts.font(.display, size: 24, weight: .semibold)).foregroundStyle(Folevi.color.heading)
-                .padding(.horizontal, 32).padding(.top, 24)
-            ScrollView {
-                RowGroup {
-                    ForEach(results, id: \.id) { r in
-                        Button { model.open(.note(r.id), title: r.title, icon: r.icon) } label: {
-                            ListRow(r.title.isEmpty ? "Untitled" : r.title, subtitle: r.snippet) {
-                                if let icon = r.icon, !icon.isEmpty { Text(icon).frame(width: 22) } else { RowIcon("doc.text") }
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 32)
-                if results.isEmpty, state.hits != nil || state.store?.status == .live {
-                    EmptyState(systemImage: "magnifyingglass", title: "No results", message: "Nothing matches \u{201C}\(text)\u{201D}.").padding(.top, 40).frame(maxWidth: .infinity)
-                }
-            }
-        }
-        .task(id: text) {
-            if let v = try? await model.client.query(.search(text: text)) {
-                state.hits = v.hits
-            } else {
-                state.hits = nil
-                if state.store == nil { state.store = model.client.watchList(.notesList(view: .all)) }
-            }
-        }
-        .accessibilityIdentifier("screen.search")
-    }
-
-    private struct Result: Identifiable {
-        var id: String
-        var title: String
-        var icon: String?
-        var snippet: String
-    }
-
-    private var results: [Result] {
-        if let hits = state.hits { return hits.map { Result(id: $0.id, title: $0.title, icon: $0.icon, snippet: $0.snippet) } }
-        let rows = state.store?.rows ?? []
-        return rows.filter { text.isEmpty || $0.title.localizedCaseInsensitiveContains(text) || $0.excerpt.localizedCaseInsensitiveContains(text) }
-            .map { Result(id: $0.id, title: $0.title, icon: $0.icon, snippet: $0.excerpt) }
     }
 }
 

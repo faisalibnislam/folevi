@@ -17,6 +17,10 @@ public protocol FrameHost: AnyObject {
     func frameSwitchPlace(_ place: String, space: String?)
     func frameSignInAnotherAccount()
     func frameSignOut(place: String)
+    /// Sign out without asking again (the screen already warned about unsynced changes and the person confirmed).
+    func frameSignOutConfirmed(place: String)
+    /// A file a notification delivers (an export).
+    func frameDownloadFile(_ id: String)
     func frameMoveOrCopy()
     func frameOpenHelp()
     func frameOpenExternal(_ url: URL)
@@ -110,6 +114,9 @@ public final class FrameModel {
     /// Which full-screen web gate the page shows (sign in, onboarding, lock), as `gate.changed` says.
     /// Nil while the engine is up; "loading" while it isn't attached (signed out, switching places, a lock).
     public private(set) var gate: String?
+    /// The whole last `gate.changed` (its words, fields and buttons), for the native gate screen.
+    public var gateEvent: GateChangedEvent? { gateSeen ? lastGateEvent : client.hello?.gate }
+    private var lastGateEvent: GateChangedEvent?
     public private(set) var toasts: [FrameToast] = []
     /// Notifications (`notifications.list`): nil until the engine answers.
     public private(set) var notifications: NotificationsValue?
@@ -166,7 +173,7 @@ public final class FrameModel {
         return (gateSeen ? gate : client.hello?.gate.gate) == nil
     }
 
-    @ObservationIgnored private var gateSeen = false
+    private var gateSeen = false
 
     /// The sidebar's sections now.
     public var sidebar: [SidebarNode] { SidebarModel.sections(session: session.value, home: home.value, tree: folders.value) }
@@ -348,11 +355,13 @@ public final class FrameModel {
             // A reloaded page shows no note: show the one on screen again.
             shownNote = nil
             gate = nil
+            lastGateEvent = nil
             gateSeen = true
             routeChanged()
             loadNotifications()
         case .gateChanged(let e):
             gateSeen = true
+            lastGateEvent = e
             gate = e.gate
             if e.gate == nil { routeChanged() }
         case .noteMeta(let meta):

@@ -15,6 +15,7 @@ import AppKit
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
+import FoleviScreens
 
 @MainActor
 public final class FrameRootViewController: NSViewController {
@@ -23,6 +24,19 @@ public final class FrameRootViewController: NSViewController {
     let pageView: NSView
     private var observers: [Observer] = []
     private var gateShown = false
+    /// The native gate screen (FoleviScreens' GateScreen), over the frame while it shows.
+    private var gateHost: NSHostingView<AnyView>?
+    private lazy var gateModel = GateModel(client: model.client, feedback: ScreenModels(frame: model).feedback, device: .mac)
+    /// Which gates draw natively; the rest (and every gate with `nativeGates` off) are the page's own screens,
+    /// full window. Sign-in needs the host's AuthService and the library's setup and lock its folder pickers,
+    /// which the Mac doesn't hand the screens yet, so those stay the page's.
+    public static var nativeGates = true
+    nonisolated static func drawsNatively(_ kind: GateKind) -> Bool {
+        switch kind {
+        case .loading, .signedOut, .librarySetup, .libraryLocked, .other: return false
+        default: return true
+        }
+    }
 
     /// `pageView`: the window's Page View (it must be loading the app in native chrome mode).
     public init(model: FrameModel, pageView: NSView) {
@@ -47,13 +61,32 @@ public final class FrameRootViewController: NSViewController {
         super.viewDidLoad()
         observers.append(Observer { [weak self] in
             guard let self else { return }
-            self.setGate(!self.model.isEngineReady)
+            let event = self.model.gateEvent
+            if let event { self.gateModel.show(event) }
+            let kind = event?.gate.map(GateKind.init)
+            let native = Self.nativeGates && kind.map(Self.drawsNatively) == true
+            self.setGate(!self.model.isEngineReady, native: native)
         })
     }
 
     /// The web gate (sign-in, onboarding, a lock, the page booting) takes the whole window; the frame comes back
     /// once the engine is up.
-    private func setGate(_ on: Bool) {
+    private func setGate(_ on: Bool, native: Bool) {
+        // Native gate: GateScreen over the frame; the page's own screen stays mounted (hidden behind it) and its
+        // buttons are pressed with gate.act.
+        if on && native {
+            if gateShown { leaveWebGate() }
+            if gateHost == nil {
+                let host = NSHostingView(rootView: AnyView(GateScreen(model: gateModel, signIn: nil).frame(maxWidth: .infinity, maxHeight: .infinity).background(Folevi.color.canvas)))
+                host.frame = view.bounds
+                host.autoresizingMask = [.width, .height]
+                view.addSubview(host, positioned: .above, relativeTo: nil)
+                gateHost = host
+            }
+            return
+        }
+        gateHost?.removeFromSuperview()
+        gateHost = nil
         guard on != gateShown else { return }
         gateShown = on
         if on {
@@ -63,13 +96,20 @@ public final class FrameRootViewController: NSViewController {
             view.addSubview(pageView, positioned: .above, relativeTo: split.view)
             split.view.isHidden = true
         } else {
-            split.view.isHidden = false
-            split.content.adoptPageView()
+            leaveWebGate()
         }
+    }
+
+    private func leaveWebGate() {
+        gateShown = false
+        split.view.isHidden = false
+        split.content.adoptPageView()
     }
 
     /// Whether the web gate is on screen (tests, the eval hook).
     public var showsGate: Bool { gateShown }
+    /// Whether the native gate screen is on screen.
+    public var showsNativeGate: Bool { gateHost != nil }
 }
 
 @MainActor
@@ -199,6 +239,7 @@ public final class ContentViewController: NSViewController {
             screen?.isHidden = true
             if pageView.superview === body { view.window?.makeFirstResponder(pageView) }
         } else {
+            models.prepare(route)
             if let s = screen {
                 if shownRoute != route { s.rootView = ScreenRoot(model: model, models: models, route: route) }
                 s.isHidden = false

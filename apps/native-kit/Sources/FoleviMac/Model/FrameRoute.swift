@@ -15,8 +15,10 @@ public enum FrameRoute: Hashable, Sendable {
     case tag(String)
     case shared
     case changes
-    case tasks
-    case calendar
+    /// Tasks on one of its views (Inbox, Today, Upcoming, All, Completed, Mine).
+    case tasks(TaskViewName)
+    /// The calendar on a day (YYYY-MM-DD), or today.
+    case calendar(String?)
     /// Search over the open place (native until the search screen lands, N11).
     case search(String)
     case note(String)
@@ -42,8 +44,8 @@ public enum FrameRoute: Hashable, Sendable {
         case .tag(let id): return "/tags/\(Self.escape(id))"
         case .shared: return "/shared"
         case .changes: return "/changes"
-        case .tasks: return "/tasks/today"
-        case .calendar: return "/calendar"
+        case .tasks(let v): return "/tasks/\(v.rawValue)"
+        case .calendar(let d): return d.map { "/calendar?date=\($0)" } ?? "/calendar"
         case .search(let q):
             var c = URLComponents()
             c.path = "/search"
@@ -71,8 +73,11 @@ public enum FrameRoute: Hashable, Sendable {
         case "templates": self = .notes(.templates)
         case "shared": self = .shared
         case "changes": self = .changes
-        case "tasks", "inbox": self = .tasks
-        case "calendar": self = .calendar
+        case "inbox": self = .tasks(.inbox)
+        case "tasks": self = .tasks(a.flatMap(TaskViewName.init(rawValue:)) ?? .today)
+        case "calendar":
+            let date = comps?.queryItems?.first { $0.name == "date" }?.value ?? a
+            self = .calendar(date.flatMap { $0.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil ? $0 : nil })
         case "search": self = .search(comps?.queryItems?.first { $0.name == "q" }?.value ?? "")
         case "folders": self = a.map { .folder($0) } ?? .home
         case "tags": self = a.map { .tag($0) } ?? .home

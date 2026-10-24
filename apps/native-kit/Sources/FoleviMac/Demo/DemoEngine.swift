@@ -14,6 +14,7 @@ public final class DemoEngine {
 
     public var notes: [NoteRow] = []
     public var notificationRows: [NotificationRow] = []
+    public var taskRows: [TaskRow] = []
     public var folders: [FolderNode] = []
     public var tags: [TagRow] = []
     public var space = "personal"
@@ -131,6 +132,22 @@ public final class DemoEngine {
         case "note.meta":
             let id = args["id"]?.string ?? ""
             return try .from(meta(id))
+        case "tasks.list":
+            let v = TaskViewName(rawValue: args["view"]?.string ?? "today") ?? .today
+            let rows = tasks(for: v)
+            let groups = Dictionary(grouping: rows, by: \.noteId).map { id, ts in
+                TaskGroup(id: id, kind: .note, title: ts[0].noteTitle, icon: ts[0].noteIcon, tasks: ts)
+            }.sorted { $0.title < $1.title }
+            return try .from(TasksValue(view: v, groups: groups, total: rows.count))
+        case "tasks.counts":
+            return try .from(TaskCounts(inbox: tasks(for: .inbox).count, today: tasks(for: .today).count, upcoming: tasks(for: .upcoming).count, all: tasks(for: .all).count, mine: 0))
+        case "tasks.range":
+            let from = args["from"]?.string ?? "", to = args["to"]?.string ?? "~"
+            return try .from(TasksRangeValue(tasks: taskRows.filter { ($0.dueDate ?? "") >= from && ($0.dueDate ?? "") <= to }))
+        case "calendars.events":
+            return try .from(CalendarEventsValue(events: []))
+        case "calendars.list":
+            return try .from(CalendarsValue(calendars: []))
         case "notes.meta":
             let ids = (try? args["ids"]?.decode([String].self)) ?? []
             return try .from(NotesMetaValue(notes: ids.map { id in
@@ -251,6 +268,19 @@ public final class DemoEngine {
         return NoteMeta(id: n.id, found: true, title: n.title, icon: n.icon, kind: n.kind, space: space, folder: n.folder, breadcrumbs: [], starred: n.starred, access: "full", canEdit: true, encrypted: false, archived: n.archived, inTrash: n.inTrash, cover: n.cover, style: n.style, sync: n.sync)
     }
 
+    static let today = "2026-10-24"
+
+    func tasks(for v: TaskViewName) -> [TaskRow] {
+        let open = taskRows.filter { $0.status == "open" }
+        switch v {
+        case .inbox: return open.filter { $0.noteId == "inbox" }
+        case .today: return open.filter { ($0.dueDate ?? "~") <= Self.today && $0.dueDate != nil }
+        case .upcoming: return open.filter { ($0.dueDate ?? "") > Self.today }
+        case .all, .mine: return open
+        case .completed: return taskRows.filter { $0.status == "done" }
+        }
+    }
+
     // MARK: commands
 
     func command(_ name: String, args: JSONValue) throws -> JSONValue {
@@ -330,6 +360,13 @@ public final class DemoEngine {
         case "places.move":
             return .object(["status": .string("done"), "notes": .number(Double(notes.count)), "problems": .number(0)])
         case "engine.refresh", "catchUp.run", "catchUp.clear", "toast.action", "notification.act", "settings.update":
+            return .object(["ok": .bool(true)])
+        case _ where name.hasPrefix("task."):
+            // Check off, reschedule, edit: applied as the engine would, for the demo's lists.
+            if let id = args["id"]?.string, let i = taskRows.firstIndex(where: { $0.id == id }) {
+                if let done = args["done"]?.bool { taskRows[i].status = done ? "done" : "open" }
+                if let due = args["dueDate"]?.string { taskRows[i].dueDate = due }
+            }
             return .object(["ok": .bool(true)])
         default:
             throw EngineFailure.engine(EngineError(code: "unknown_command", message: "No command named \(name)."))
@@ -436,6 +473,18 @@ public final class DemoEngine {
         trashed.inTrash = true
         notes += [archived, trashed]
         let ms = { (h: Double) in ago(h).timeIntervalSince1970 * 1000 }
+        func task(_ id: String, _ title: String, note: String, _ noteTitle: String, icon: String? = nil, due: String?, time: String? = nil, done: Bool = false, overdue: Bool = false) -> TaskRow {
+            TaskRow(id: id, noteId: note, noteTitle: noteTitle, noteIcon: icon, title: title, status: done ? "done" : "open", dueDate: due, dueTime: time, updatedAt: ms(2), overdue: overdue)
+        }
+        taskRows = [
+            task("t1", "Book the ryokan", note: "doc_kyoto", "Kyoto in November", icon: "🗺️", due: "2026-10-24", time: "10:00"),
+            task("t2", "Rail pass", note: "doc_kyoto", "Kyoto in November", icon: "🗺️", due: "2026-10-28"),
+            task("t3", "Send the Mac frame screenshots", note: "doc_launch", "Launch plan", icon: "🚀", due: "2026-10-23", overdue: true),
+            task("t4", "TestFlight build for the owner", note: "doc_launch", "Launch plan", icon: "🚀", due: "2026-10-30"),
+            task("t5", "Call Lina about pricing", note: "inbox", "Inbox", due: nil),
+            task("t6", "Feed the levain", note: "doc_bread", "Sourdough", icon: "🍞", due: "2026-10-24", time: "21:00"),
+            task("t7", "Order flour", note: "doc_bread", "Sourdough", icon: "🍞", due: "2026-10-20", done: true),
+        ]
         notificationRows = [
             NotificationRow(id: "n1", kind: "mention", title: "Lina mentioned you in Launch plan", body: "Can you check the Mac frame screenshots?", at: ms(0.5), read: false, route: "/d/doc_launch", actorName: "Lina", noteId: "doc_launch", noteTitle: "Launch plan", count: 1),
             NotificationRow(id: "n2", kind: "comment", title: "2 new comments on Kyoto in November", body: "", at: ms(3), read: false, route: "/d/doc_kyoto", actorName: "Sam", noteId: "doc_kyoto", noteTitle: "Kyoto in November", count: 2),

@@ -34,67 +34,6 @@ struct SyncPopover: View {
     }
 }
 
-struct NotificationsPopover: View {
-    let model: FrameModel
-    let close: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Notifications").foleviFont(.headline).foregroundStyle(Folevi.color.heading)
-                Spacer()
-                if let n = model.notifications, n.unread > 0 {
-                    Button("Mark all read") { model.markAllNotificationsRead() }.buttonStyle(.folevi(.ghost, size: .small))
-                }
-            }
-            .padding(.horizontal, 16).padding(.vertical, 12)
-            Divider()
-            if let n = model.notifications {
-                if n.rows.isEmpty {
-                    EmptyState(systemImage: "bell", title: "You're all caught up", message: nil).padding(24)
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 0) {
-                            ForEach(n.rows, id: \.id) { row in
-                                Button {
-                                    if !row.read { model.markNotificationsRead([row.id]) }
-                                    if let r = row.route { model.open(FrameRoute(path: r)) }
-                                    close()
-                                } label: {
-                                    HStack(alignment: .top, spacing: 10) {
-                                        SignalDot(row.read ? .clear : Folevi.color.ember).padding(.top, 6)
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(row.title).foleviFont(.callout).foregroundStyle(Folevi.color.ink)
-                                            if !row.body.isEmpty { Text(row.body).foleviFont(.footnote).foregroundStyle(Folevi.color.inkMuted).lineLimit(2) }
-                                            Text(AgeText.age(ms: row.at)).foleviFont(.caption).foregroundStyle(Folevi.color.inkFaint)
-                                        }
-                                        Spacer(minLength: 0)
-                                    }
-                                    .padding(.horizontal, 16).padding(.vertical, 10)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-                    // A popover sizes to its content's ideal size, which a ScrollView doesn't have.
-                    .frame(height: min(CGFloat(n.rows.count) * 72, 380))
-                }
-            } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    let unread = model.unreadCount
-                    Text(unread > 0 ? "\(unread) unread" : "Nothing new").foleviFont(.bodyStrong).foregroundStyle(Folevi.color.ink)
-                    Text(model.notificationsUnavailable ? "The list of notifications comes to the Mac app with the next engine update." : "Loading…")
-                        .foleviFont(.footnote).foregroundStyle(Folevi.color.inkMuted).fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(16)
-            }
-        }
-        .frame(width: 320, alignment: .leading)
-        .accessibilityIdentifier("popover.notifications")
-    }
-}
-
 struct ToastStack: View {
     let model: FrameModel
 

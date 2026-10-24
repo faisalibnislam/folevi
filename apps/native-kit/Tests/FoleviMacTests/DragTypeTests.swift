@@ -12,11 +12,15 @@ struct DragTypeTests {
     @Test func notesFromTheListScreens() throws {
         let item = NSPasteboardItem()
         item.setData(try JSONEncoder().encode(NoteDragItem(id: "doc_1", title: "A", folderId: nil)), forType: .init(FrameDrag.noteType))
-        #expect(FrameDrag.noteId(item) == "doc_1")
+        #expect(FrameDrag.noteIds(item) == ["doc_1"])
         #expect(FrameDrag.folderId(item) == nil)
+        // A whole selection dragged from a list (Shift or Command clicks on the Mac).
+        let many = NSPasteboardItem()
+        many.setData(try JSONEncoder().encode(NoteDragItem(notes: [NoteRef(id: "a", title: "A", folderId: nil), NoteRef(id: "b", title: "B", folderId: "f")])), forType: .init(FrameDrag.noteType))
+        #expect(FrameDrag.noteIds(many) == ["a", "b"])
         let bare = NSPasteboardItem()
         bare.setString("doc_2", forType: .init(FrameDrag.noteType))
-        #expect(FrameDrag.noteId(bare) == "doc_2")
+        #expect(FrameDrag.noteIds(bare) == ["doc_2"])
     }
 
     @Test func foldersFromCardsAndTheSidebar() throws {

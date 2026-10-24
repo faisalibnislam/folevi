@@ -86,12 +86,14 @@ async function convex(token, path, args) {
 // ---- the Simulator
 function device() {
   const all = Object.values(JSON.parse(simctl("list", "devices", "--json")).devices).flat();
-  const booted = all.filter((d) => d.state === "Booted");
-  if (booted.length) {
-    log(`reusing the booted Simulator ${booted[0].name}`);
-    return { udid: booted[0].udid, bootedHere: false };
+  // The named Simulator, reused when it's up already (another run's, or another builder's: coordinate by sharing
+  // it rather than booting a second one). Other projects' booted Simulators are left alone.
+  const named = all.find((x) => (x.name === DEVICE || x.udid === DEVICE) && x.state === "Booted");
+  if (named) {
+    log(`reusing the booted Simulator ${named.name}`);
+    return { udid: named.udid, bootedHere: false };
   }
-  const d = all.find((x) => x.name === DEVICE && x.isAvailable);
+  const d = all.find((x) => (x.name === DEVICE || x.udid === DEVICE) && x.isAvailable);
   if (!d) throw new Error(`No Simulator named ${DEVICE}.`);
   // The software keyboard (the Simulator's I/O > Keyboard > Connect Hardware Keyboard off), set before booting.
   const before = spawnSync("defaults", ["read", "com.apple.iphonesimulator", "ConnectHardwareKeyboard"], { encoding: "utf8" });

@@ -161,8 +161,10 @@ final class NativeFrameUITests: XCTestCase {
         app.launch()
         waitHome()
         sleep(3)
+        // The app's own interval (tap to the note drawn) and UIKit's navigation transition hitches (the zoom in
+        // and back out: hitch time ratio and total hitch time, as Instruments' Animation Hitches counts them).
         let metric = XCTOSSignpostMetric(subsystem: "com.folevi.ios", category: "frame", name: "note.open")
-        measure(metrics: [metric], options: Self.options(5)) {
+        measure(metrics: [metric, XCTOSSignpostMetric.navigationTransitionMetric], options: Self.options(5)) {
             // The first recent card (a new account has its Welcome page).
             let card = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'note-card-'")).firstMatch
             XCTAssertTrue(card.waitForExistence(timeout: 15), "a note card on Home")

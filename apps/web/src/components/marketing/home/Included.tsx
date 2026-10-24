@@ -93,7 +93,7 @@ export function Included() {
                   {tile.picture}
                 </div>
               </div>
-              <h3 className="mk-h3 mt-2 text-[15.5px]">
+              <h3 className="mk-h3 mt-2 text-[16px]">
                 {tile.href ? (
                   <Link href={tile.href} className="group inline-flex min-h-11 items-center gap-1.5 hover:underline">
                     {tile.title} <ArrowRight size={14} aria-hidden="true" className="text-muted transition-transform group-hover:translate-x-0.5" />
@@ -162,7 +162,7 @@ function SyncPicture() {
         <div className="px-3 pb-3 pt-2">
           <span className={title}>Seed library</span>
           <MiniLines widths={["90%", "70%"]} />
-          <span className="mk-mini-typed mt-2 block text-[10.5px] text-ink">
+          <span className="mk-mini-typed mt-2 block text-[11px] text-ink">
             Print seed labels<span className="mk-mini-caret" />
           </span>
         </div>
@@ -218,7 +218,7 @@ function AudioPicture() {
             <span key={i} className="w-[3px] flex-none rounded-tiny" style={{ height: h, background: i < 7 ? "var(--mk-violet)" : "color-mix(in oklab, var(--color-ink) 22%, transparent)" }} />
           ))}
         </span>
-        <span className="flex-none text-[10.5px] tabular-nums text-muted">0:42</span>
+        <span className="flex-none text-[11px] tabular-nums text-muted">0:42</span>
       </span>
     </div>
   );
@@ -267,11 +267,11 @@ function HistoryPicture() {
   return (
     <div className={cx(card, "px-1.5 py-1.5")}>
       {rows.map((r) => (
-        <span key={r.when} className={cx("flex items-center gap-2 whitespace-nowrap rounded-small px-2 py-1.5 text-[10.5px]", r.on && "bg-(--glass-hover)")}>
+        <span key={r.when} className={cx("flex items-center gap-2 whitespace-nowrap rounded-small px-2 py-1.5 text-[11px]", r.on && "bg-(--glass-hover)")}>
           <History size={11} className="flex-none text-muted" />
           <span className="font-semibold text-(--color-heading)">{r.when}</span>
           <span className="min-w-0 flex-1 truncate text-muted">{r.who}</span>
-          {r.restore ? <span className="flex-none rounded-chip bg-(--color-heading) px-1.5 py-0.5 text-[9.5px] font-semibold text-(--color-canvas)">Restore</span> : null}
+          {r.restore ? <span className="flex-none rounded-chip bg-(--color-heading) px-1.5 py-0.5 text-[10px] font-semibold text-(--color-canvas)">Restore</span> : null}
         </span>
       ))}
     </div>
@@ -293,7 +293,7 @@ function TogetherPicture() {
           </span>
         </span>
         <MiniLines widths={["92%", "70%"]} />
-        <span className="mt-2 flex items-center gap-1 whitespace-nowrap text-[10.5px] text-ink">
+        <span className="mt-2 flex items-center gap-1 whitespace-nowrap text-[11px] text-ink">
           Book the ferry
           <span className="h-3 w-[2px] rounded-tiny" style={{ background: PEOPLE.maya.color }} />
           <span className="inline-flex items-center gap-1 rounded-chip py-px pl-px pr-1.5 text-[9px] font-semibold text-white" style={{ background: PEOPLE.maya.color }}>
@@ -306,7 +306,7 @@ function TogetherPicture() {
         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-(--color-heading)">
           <Avatar who="sam" size={18} /> Sam
         </span>
-        <span className="mt-1.5 block text-[10.5px] leading-snug text-ink">
+        <span className="mt-1.5 block text-[11px] leading-snug text-ink">
           <span className="rounded-tiny bg-(--mk-violet-soft) px-0.5 font-semibold text-(--mk-violet-ink)">@Maya</span> can you check the ferry times?
         </span>
       </div>
@@ -326,16 +326,16 @@ function TasksPicture() {
       <div className={cx(cardBase, "w-[212px] flex-none")}>
         <span className={title}>Today</span>
         {tasks.map((x) => (
-          <span key={x.t} className="mt-2 flex items-center gap-1.5 text-[10.5px]">
+          <span key={x.t} className="mt-2 flex items-center gap-1.5 text-[11px]">
             <span className={cx("grid size-3 flex-none place-items-center rounded-tiny", x.done ? "bg-(--mk-violet-strong) text-white" : "shadow-[inset_0_0_0_1.2px_var(--color-line-strong)]")}>
               {x.done ? <Check size={8} strokeWidth={3} /> : null}
             </span>
             <span className={cx("min-w-0 flex-1 truncate", x.done ? "text-muted line-through" : "text-ink")}>{x.t}</span>
-            <span className="flex-none rounded-chip bg-(--color-surface-sunken) px-1.5 text-[9.5px] text-muted">{x.d}</span>
+            <span className="flex-none rounded-chip bg-(--color-surface-sunken) px-1.5 text-[10px] text-muted">{x.d}</span>
           </span>
         ))}
       </div>
-      <div className="mk-mini-card grid w-[148px] flex-none grid-cols-7 gap-0.5 px-2.5 py-2.5 text-center text-[8.5px] text-muted max-xl:hidden">
+      <div className="mk-mini-card grid w-[148px] flex-none grid-cols-7 gap-0.5 px-2.5 py-2.5 text-center text-[9px] text-muted max-xl:hidden">
         {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
           <span key={i} className="font-semibold">
             {d}

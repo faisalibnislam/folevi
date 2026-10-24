@@ -31,7 +31,7 @@ import { insertScoped, workspaceScope } from "./lib/scope";
 import { PLAN_CATALOG, TIER_NAMES, planName } from "./lib/plans";
 import { canInviteMember, canManageMember, canManageWorkspace, memberCanManageBilling, requireWorkspaceManager } from "./lib/permissions";
 import { billableSeatCount, seatsChanged, seatSummary } from "./lib/seats";
-import { appUrl, notifyAccessChange, notifyInvite, workspaceRoleLabel } from "./lib/notify";
+import { appUrl, notifyAccessChange, notifyInvite, removeInviteNotices, workspaceRoleLabel } from "./lib/notify";
 import { workspaceClosing } from "./workspaceBilling";
 import { isSealed, spaceE2ee } from "./lib/e2ee/state";
 import { addPendingGrant, dropMemberKeys, dropNoteGrant, hasNoteGrant } from "./lib/e2ee/coreGuards";
@@ -416,6 +416,36 @@ export const acceptInvite = mutation({
 });
 
 /**
+ * Declines a workspace invitation sent to this person's verified address: it can't be used any more, and its
+ * notification goes from the bell. Nobody is told. Declining again (or one already used up) does nothing.
+ */
+export const declineInvite = mutation({
+  args: { token: v.optional(v.string()), inviteId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    let invite: Doc<"workspaceInvites"> | null = null;
+    if (args.token) {
+      const hash = await sha256Hex(args.token);
+      invite = await ctx.db
+        .query("workspaceInvites")
+        .withIndex("by_token_hash", (q) => q.eq("tokenHash", hash))
+        .unique();
+    } else if (args.inviteId) {
+      invite = await ctx.db
+        .query("workspaceInvites")
+        .withIndex("by_public_id", (q) => q.eq("publicId", args.inviteId!))
+        .unique();
+    }
+    if (!invite) fail("not_found", "This invitation is no longer valid.");
+    if (invite.email !== profile.email) fail("forbidden", "This invitation was sent to a different email address.");
+    if (invite.status === "pending") await ctx.db.patch(invite._id, { status: "declined" });
+    const id = invite._id;
+    await removeInviteNotices(ctx, profile._id, (n) => n.inviteId === id);
+    return null;
+  },
+});
+
+/**
  * Changes a member's role (Member ↔ Admin; only the owner changes admins) or a member's access (edit,
  * comment, view only). Seats don't change: every membership role takes one.
  */
@@ -459,6 +489,14 @@ async function revokeWorkspaceGrants(ctx: MutationCtx, workspace: Doc<"workspace
     if (g.workspaceId !== workspace._id) continue;
     await ctx.db.delete(g._id);
     if (e2ee) await dropNoteGrant(ctx, g.documentId, profileId);
+    n++;
+  }
+  // Folders shared with them here go too (docs/SHARING.md).
+  for (const g of await ctx.db
+    .query("folderPermissions")
+    .withIndex("by_profile_workspace", (q) => q.eq("profileId", profileId).eq("workspaceId", workspace._id))
+    .take(500)) {
+    await ctx.db.delete(g._id);
     n++;
   }
   return n;
@@ -563,7 +601,12 @@ async function requireGuest(ctx: MutationCtx, workspace: Doc<"workspaces">, rawP
       .withIndex("by_profile", (q) => q.eq("profileId", guest._id))
       .collect()
   ).filter((g) => g.workspaceId === workspace._id);
-  if (!grants.length) fail("not_found", "Guest not found.");
+  // A folder shared with them is guest access too (docs/SHARING.md).
+  const viaFolder = await ctx.db
+    .query("folderPermissions")
+    .withIndex("by_profile_workspace", (q) => q.eq("profileId", guest._id).eq("workspaceId", workspace._id))
+    .first();
+  if (!grants.length && !viaFolder) fail("not_found", "Guest not found.");
   return { guest, grants };
 }
 
@@ -596,6 +639,16 @@ export const guests = query({
       list.push(g);
       byPerson.set(g.profileId, list);
     }
+    // Folders shared with people outside the workspace (docs/SHARING.md).
+    const folderGrants = new Map<string, Doc<"folderPermissions">[]>();
+    for (const g of await ctx.db
+      .query("folderPermissions")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id))
+      .take(2000)) {
+      if (members.has(g.profileId)) continue;
+      folderGrants.set(g.profileId, [...(folderGrants.get(g.profileId) ?? []), g]);
+      if (!byPerson.has(g.profileId)) byPerson.set(g.profileId, []);
+    }
     const out = [];
     for (const [id, list] of byPerson) {
       const p = await ctx.db.get(id as Id<"profiles">);
@@ -616,7 +669,14 @@ export const guests = query({
         });
       }
       pages.sort((a, b) => a.title.localeCompare(b.title));
-      out.push({ profileId: p._id as string, displayName: p.displayName, email: p.email, pages });
+      const folders = [];
+      for (const g of folderGrants.get(id) ?? []) {
+        const f = await ctx.db.get(g.folderId);
+        if (!f || f.deletedAt !== undefined) continue;
+        folders.push({ folderId: f.publicId, name: f.name || "Untitled", role: g.role, grantedAt: g.createdAt });
+      }
+      folders.sort((a, b) => a.name.localeCompare(b.name));
+      out.push({ profileId: p._id as string, displayName: p.displayName, email: p.email, pages, folders });
     }
     out.sort((a, b) => a.displayName.localeCompare(b.displayName));
     const pending = [];

@@ -41,7 +41,7 @@ export function TableStatic({ props }: { props: Record<string, unknown> }) {
   const order = useMemo(() => tableRowOrder(evaluated, tableOptions(t), t.view), [evaluated, t]);
   return (
     <div className="fb-hscroll my-3 overflow-x-auto">
-      <table className="fb-table w-full border-collapse text-sm">
+      <table className="fb-table w-full border-collapse text-subheadline">
         <tbody>
           {order.map((r) => {
             const row = t.rows[r]!;

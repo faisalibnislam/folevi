@@ -152,8 +152,8 @@ export function SetupWizard({
   if (step === "start") {
     const things = copy.meaning.things(copy.meaning.backupDays);
     body = (
-      <div className="space-y-4 text-sm">
-        <h3 className="ui-display text-[17px]">{w.start.heading}</h3>
+      <div className="space-y-4 text-subheadline">
+        <h3 className="ui-display text-title-3">{w.start.heading}</h3>
         {reason ? <p className="font-medium text-heading">{reason}</p> : null}
         <p className="text-muted">{w.start.body}</p>
         {workspaceName ? <p className="text-muted">{w.start.workspace}</p> : null}
@@ -200,8 +200,8 @@ export function SetupWizard({
     const rows: MethodId[] = ["recoveryKey", ...(onMac ? [] : (["passkey"] as const)), "passphrase", "device"];
     const devices = methods.filter((m) => m.kind === "device").length;
     body = (
-      <div className="space-y-4 text-sm">
-        <h3 className="ui-display text-[17px]">{w.methods.heading}</h3>
+      <div className="space-y-4 text-subheadline">
+        <h3 className="ui-display text-title-3">{w.methods.heading}</h3>
         <p className="text-muted">{w.methods.body}</p>
         <ul className="divide-y divide-line rounded-control border border-line">
           {rows.map((kind) => {
@@ -213,11 +213,11 @@ export function SetupWizard({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium text-heading">{w.methods[kind].label}</span>
-                  <span className="block text-[13px] text-muted">{kind === "device" ? `${w.methods.device.body} ${w.methods.deviceCount(devices)}.` : w.methods[kind].body}</span>
-                  {kind === "passkey" && (passkeyNote || !passkeyHere) ? <span className="mt-1 block text-[13px] text-muted">{passkeyNote ?? w.methods.passkeyUnsupported}</span> : null}
+                  <span className="block text-subheadline text-muted">{kind === "device" ? `${w.methods.device.body} ${w.methods.deviceCount(devices)}.` : w.methods[kind].body}</span>
+                  {kind === "passkey" && (passkeyNote || !passkeyHere) ? <span className="mt-1 block text-subheadline text-muted">{passkeyNote ?? w.methods.passkeyUnsupported}</span> : null}
                 </span>
                 {done ? (
-                  <span className="inline-flex h-8 flex-none items-center gap-1 rounded-chip px-2 text-[13px] font-medium text-heading">
+                  <span className="inline-flex h-8 flex-none items-center gap-1 rounded-chip px-2 text-subheadline font-medium text-heading">
                     <Check size={15} aria-hidden /> {w.methods.added}
                     <span className="sr-only">: {w.methods[kind].label}</span>
                   </span>
@@ -248,12 +248,12 @@ export function SetupWizard({
             );
           })}
         </ul>
-        {onMac ? <p className="text-[13px] text-muted">{w.methods.passkeyMac}</p> : null}
+        {onMac ? <p className="text-subheadline text-muted">{w.methods.passkeyMac}</p> : null}
       </div>
     );
     footer = (
       <>
-        <span role="status" className="mr-auto self-center text-[13px] font-medium text-muted">
+        <span role="status" className="mr-auto self-center text-subheadline font-medium text-muted">
           {w.methods.counter(kinds.size, 2)}
         </span>
         <Button onClick={() => setStep("start")}>{w.back}</Button>
@@ -265,7 +265,7 @@ export function SetupWizard({
   } else if (step === "recovery" && recovery) {
     body = (
       <div className="space-y-3">
-        <h3 className="ui-display text-[17px]">{w.recovery.heading}</h3>
+        <h3 className="ui-display text-title-3">{w.recovery.heading}</h3>
         <RecoveryKeyPanel
           text={recovery.text}
           email={profile.email ?? ""}
@@ -283,23 +283,23 @@ export function SetupWizard({
   } else if (step === "confirm") {
     const on = (Object.keys(copy.switches) as SwitchId[]).filter((k) => (k === "foliAi" ? chosen.foliAi !== "off" : chosen[k]));
     body = (
-      <div className="space-y-4 text-sm">
-        <h3 className="ui-display text-[17px]">{w.confirm.heading(workspaceName)}</h3>
+      <div className="space-y-4 text-subheadline">
+        <h3 className="ui-display text-title-3">{w.confirm.heading(workspaceName)}</h3>
         <dl className="divide-y divide-line rounded-control border border-line">
           <div className="px-4 py-3">
-            <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-faint">{w.confirm.level}</dt>
+            <dt className="text-footnote font-semibold uppercase tracking-[0.06em] text-faint">{w.confirm.level}</dt>
             <dd className="mt-0.5 font-medium text-heading">{copy.privacy.levels[level].title}</dd>
           </div>
           {level === "selected" ? (
             <div className="px-4 py-3">
-              <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-faint">{w.confirm.features}</dt>
+              <dt className="text-footnote font-semibold uppercase tracking-[0.06em] text-faint">{w.confirm.features}</dt>
               <dd className="mt-0.5 text-ink">
                 {on.length ? on.map((k) => (k === "foliAi" ? `${copy.switches.foliAi.label} (${copy.switches.foliAi.options[chosen.foliAi].toLowerCase()})` : copy.switches[k].label)).join(", ") : w.confirm.none}
               </dd>
             </div>
           ) : null}
           <div className="px-4 py-3">
-            <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-faint">{w.confirm.methods}</dt>
+            <dt className="text-footnote font-semibold uppercase tracking-[0.06em] text-faint">{w.confirm.methods}</dt>
             <dd className="mt-0.5 text-ink">{[...kinds].map((k) => w.methods[k].label).join(", ")}</dd>
           </div>
         </dl>
@@ -326,12 +326,12 @@ export function SetupWizard({
     );
   } else if (step === "done") {
     body = (
-      <div className="space-y-4 text-sm">
+      <div className="space-y-4 text-subheadline">
         <div className="flex items-center gap-3">
           <span aria-hidden className="grid h-10 w-10 flex-none place-items-center rounded-control bg-heading text-canvas">
             <LockKeyhole size={18} />
           </span>
-          <h3 className="ui-display text-[19px]">{w.done.heading}</h3>
+          <h3 className="ui-display text-title-3">{w.done.heading}</h3>
         </div>
         <p className="text-muted">{w.done.body}</p>
         {progress ? <MigrationBar progress={progress} /> : null}
@@ -351,7 +351,7 @@ export function SetupWizard({
   }
 
   return (
-    <Dialog open={open} onClose={close} title={title} description={<span className="text-[12.5px]">{w.stepOf(Math.min(stepNumber, total), total)}</span>} size="md" footer={footer}>
+    <Dialog open={open} onClose={close} title={title} description={<span className="text-subheadline">{w.stepOf(Math.min(stepNumber, total), total)}</span>} size="md" footer={footer}>
       <div data-e2ee-step={step}>{body}</div>
     </Dialog>
   );
@@ -369,7 +369,7 @@ export function PassphraseForm({ onSaved, onCancel }: { onSaved: () => void; onC
   const ok = strength === "fine" || strength === "strong";
   return (
     <form
-      className="space-y-4 text-sm"
+      className="space-y-4 text-subheadline"
       onSubmit={async (e) => {
         e.preventDefault();
         if (busy || !ok) return;
@@ -389,7 +389,7 @@ export function PassphraseForm({ onSaved, onCancel }: { onSaved: () => void; onC
         }
       }}
     >
-      <h3 className="ui-display text-[17px]">{c.heading}</h3>
+      <h3 className="ui-display text-title-3">{c.heading}</h3>
       <p id={`${uid}-hint`} className="text-muted">
         {c.body}
       </p>
@@ -405,10 +405,10 @@ export function PassphraseForm({ onSaved, onCancel }: { onSaved: () => void; onC
             setError(null);
           }}
           aria-describedby={`${uid}-hint ${uid}-strength`}
-          className="ui-input mt-1 block h-10 w-full rounded-control px-3 text-sm font-normal pointer-coarse:h-11"
+          className="ui-input mt-1 block h-10 w-full rounded-control px-3 text-callout font-normal pointer-coarse:h-11"
         />
       </label>
-      <p id={`${uid}-strength`} aria-live="polite" className={`-mt-2 text-[13px] ${p1 ? (ok ? "text-heading" : "text-danger") : "text-muted"}`}>
+      <p id={`${uid}-strength`} aria-live="polite" className={`-mt-2 text-subheadline ${p1 ? (ok ? "text-heading" : "text-danger") : "text-muted"}`}>
         {p1 ? c.strength[strength] : c.strength.short}
       </p>
       <label className="block font-medium text-heading">
@@ -423,7 +423,7 @@ export function PassphraseForm({ onSaved, onCancel }: { onSaved: () => void; onC
           }}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${uid}-error` : undefined}
-          className="ui-input mt-1 block h-10 w-full rounded-control px-3 text-sm font-normal pointer-coarse:h-11"
+          className="ui-input mt-1 block h-10 w-full rounded-control px-3 text-callout font-normal pointer-coarse:h-11"
         />
       </label>
       {error ? (

@@ -140,8 +140,8 @@ export function UserDetailView({ id }: { id: string }) {
               { label: "Personal storage", value: formatBytes(user.usage.storageBytes) },
             ].map((s) => (
               <div key={s.label} className="rounded-control bg-[var(--glass-hover)] px-3 py-2.5">
-                <dt className="text-[12px] font-medium text-muted">{s.label}</dt>
-                <dd className="mt-0.5 ui-display text-[24px] leading-tight tabular-nums">{s.value}</dd>
+                <dt className="text-footnote font-medium text-muted">{s.label}</dt>
+                <dd className="mt-0.5 ui-display text-title-1 leading-tight tabular-nums">{s.value}</dd>
               </div>
             ))}
           </dl>
@@ -351,7 +351,7 @@ function UserActions({ user, role, canManage, selfId, onAction }: { user: UserDe
           <Trash2 size={14} aria-hidden /> Schedule deletion…
         </Button>
       </div>
-      {notes.length ? <p className="mt-2 px-0.5 text-xs text-muted">{notes.join(" ")}</p> : null}
+      {notes.length ? <p className="mt-2 px-0.5 text-footnote text-muted">{notes.join(" ")}</p> : null}
     </section>
   );
 }

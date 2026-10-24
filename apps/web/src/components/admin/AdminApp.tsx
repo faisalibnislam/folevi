@@ -32,8 +32,8 @@ export function AdminNotFound() {
     <main className="grid min-h-dvh place-items-center bg-canvas px-6 text-ink">
       <title>404: This page could not be found.</title>
       <div className="flex items-center gap-5">
-        <h1 className="border-r border-line-strong pr-5 text-2xl font-medium leading-[49px]">404</h1>
-        <p className="text-sm">This page could not be found.</p>
+        <h1 className="border-r border-line-strong pr-5 text-title-1 font-medium leading-[49px]">404</h1>
+        <p className="text-subheadline">This page could not be found.</p>
       </div>
     </main>
   );

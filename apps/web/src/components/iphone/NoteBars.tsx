@@ -370,7 +370,7 @@ function KeyboardBar({ editor, ai, onPick, ride, leaving = false }: { editor: Ed
             feel("toggle");
             onPick("insert");
           }, { menu: true })}
-          {key("Format", <span className="text-[17px] font-semibold leading-none tracking-[-0.01em]">Aa</span>, () => {
+          {key("Format", <span className="text-headline font-semibold leading-none tracking-[-0.01em]">Aa</span>, () => {
             feel("toggle");
             onPick("format");
           }, { menu: true })}

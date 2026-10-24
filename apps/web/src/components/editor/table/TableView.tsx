@@ -427,7 +427,7 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
             if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusWithin(false);
           }}
         >
-          <table ref={tableRef} className={`fb-table w-full border-collapse text-sm ${formulaMode ? "fb-table-formula" : ""}`}>
+          <table ref={tableRef} className={`fb-table w-full border-collapse text-subheadline ${formulaMode ? "fb-table-formula" : ""}`}>
             {editable ? (
               <thead className={tools ? undefined : "invisible"} aria-hidden={tools ? undefined : true}>
                 <tr>
@@ -572,7 +572,7 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
             ) : null}
           </table>
           {editable && !preview && !(phone && !tools) ? (
-            <div className={`mt-1.5 flex flex-wrap gap-2 text-xs text-muted ${phone ? "fb-table-tools-phone" : ""}`}>
+            <div className={`mt-1.5 flex flex-wrap gap-2 text-footnote text-muted ${phone ? "fb-table-tools-phone" : ""}`}>
               {phone ? null : (
               <>
               <button type="button" onClick={() => addRowAndOpen(0)} disabled={t.rows.length >= LIMITS.maxTableRows} className="inline-flex items-center gap-1 rounded-chip px-2 py-1 hover:bg-accent-soft hover:text-heading disabled:opacity-40">

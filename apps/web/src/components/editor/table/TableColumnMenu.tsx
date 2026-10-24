@@ -94,8 +94,8 @@ export function TableColumnMenu({
 
   return (
     <Popover open={open} onClose={onClose} anchor={anchor} label={`${label} options`} className="w-72">
-      <div className="space-y-4 p-3 text-sm" data-cell-tools="">
-        <p className="ui-display truncate px-0.5 text-[15px] font-semibold text-heading">{label}</p>
+      <div className="space-y-4 p-3 text-subheadline" data-cell-tools="">
+        <p className="ui-display truncate px-0.5 text-headline font-semibold text-heading">{label}</p>
         <section aria-labelledby={`${id}-format`}>
           <h3 id={`${id}-format`} className={caps}>
             Numbers
@@ -165,14 +165,14 @@ export function TableColumnMenu({
             Sort the table
           </h3>
           <div className="grid grid-cols-2 gap-1.5">
-            <button type="button" aria-pressed={Boolean(sortedHere && !sortedHere.desc)} onClick={() => setSort(sortedHere && !sortedHere.desc ? null : false)} className={`inline-flex h-9 items-center text-[13px] justify-center gap-1.5 rounded-chip ${sortedHere && !sortedHere.desc ? "bg-accent-soft font-semibold text-heading" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+            <button type="button" aria-pressed={Boolean(sortedHere && !sortedHere.desc)} onClick={() => setSort(sortedHere && !sortedHere.desc ? null : false)} className={`inline-flex h-9 items-center text-subheadline justify-center gap-1.5 rounded-chip ${sortedHere && !sortedHere.desc ? "bg-accent-soft font-semibold text-heading" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
               <ArrowUpNarrowWide size={14} aria-hidden /> A to Z
             </button>
-            <button type="button" aria-pressed={Boolean(sortedHere?.desc)} onClick={() => setSort(sortedHere?.desc ? null : true)} className={`inline-flex h-9 items-center text-[13px] justify-center gap-1.5 rounded-chip ${sortedHere?.desc ? "bg-accent-soft font-semibold text-heading" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+            <button type="button" aria-pressed={Boolean(sortedHere?.desc)} onClick={() => setSort(sortedHere?.desc ? null : true)} className={`inline-flex h-9 items-center text-subheadline justify-center gap-1.5 rounded-chip ${sortedHere?.desc ? "bg-accent-soft font-semibold text-heading" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
               <ArrowDownWideNarrow size={14} aria-hidden /> Z to A
             </button>
           </div>
-          <p className="mt-1.5 px-0.5 text-xs text-muted">Everyone sees the table sorted. The rows stay where they are, so clearing it puts them back.</p>
+          <p className="mt-1.5 px-0.5 text-footnote text-muted">Everyone sees the table sorted. The rows stay where they are, so clearing it puts them back.</p>
         </section>
         <section aria-labelledby={`${id}-filter`}>
           <h3 id={`${id}-filter`} className={caps}>
@@ -192,7 +192,7 @@ export function TableColumnMenu({
                 </option>
               ))}
             </Select>
-            {NO_VALUE.includes(op) ? null : <input value={value} onChange={(e) => setValue(e.target.value)} aria-label="Filter value" placeholder="Value" maxLength={500} className="ui-input h-8 w-full rounded-chip px-3 text-sm" />}
+            {NO_VALUE.includes(op) ? null : <input value={value} onChange={(e) => setValue(e.target.value)} aria-label="Filter value" placeholder="Value" maxLength={500} className="ui-input h-8 w-full rounded-chip px-3 text-callout" />}
             <div className="flex gap-1.5">
               <Button size="sm" type="submit" disabled={!NO_VALUE.includes(op) && !value.trim()}>
                 {filter ? "Update filter" : "Filter"}

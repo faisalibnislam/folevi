@@ -24,7 +24,7 @@ import { liveBlocks, toWireBlock } from "./lib/documents";
 import { sharedLabels } from "./lib/linkLabels";
 import { withSyncedShared } from "./lib/synced";
 import { signFileUrl } from "./lib/fileUrls";
-import { appUrl, notify, notifyAccessChange, notifyAccessLostOnRestrict, shareRoleLabel } from "./lib/notify";
+import { appUrl, notify, notifyAccessChange, notifyAccessLostOnRestrict, removeInviteNotices, shareRoleLabel } from "./lib/notify";
 import { sharePermissions } from "./lib/permissions";
 import { vPublishTheme, vShareRole } from "./lib/validators";
 import { isFeatureEnabled } from "./lib/flags";
@@ -651,6 +651,24 @@ export const acceptPageInvite = mutation({
       .take(200);
     for (const n of notes) if (n.pageInviteId === invite._id && !n.readAt) await ctx.db.patch(n._id, { readAt: Date.now() });
     return { documentId: doc.publicId };
+  },
+});
+
+/**
+ * Declines a page invitation sent to this person's verified address: it can't be used any more, and its
+ * notification goes from the bell. Nobody is told. Declining again (or one already used up) does nothing.
+ */
+export const declinePageInvite = mutation({
+  args: { token: v.optional(v.string()), inviteId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const invite = await pageInviteBy(ctx, args);
+    if (!invite) fail("not_found", "This invitation is no longer valid.");
+    if (invite.email !== profile.email) fail("forbidden", "This invitation was sent to a different email address.");
+    if (invite.status === "pending") await ctx.db.patch(invite._id, { status: "declined" });
+    const id = invite._id;
+    await removeInviteNotices(ctx, profile._id, (n) => n.pageInviteId === id);
+    return null;
   },
 });
 

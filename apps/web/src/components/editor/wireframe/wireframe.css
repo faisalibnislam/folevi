@@ -134,13 +134,13 @@
 .wf-text-edit { position: absolute; z-index: 5; padding: 6px; border-radius: var(--radius-panel); }
 .wf-text-edit textarea {
   display: block; width: 100%; resize: none; border: 0; outline: none; padding: 6px 8px; border-radius: var(--radius-small);
-  background: var(--color-surface-sunken); color: var(--color-ink); font: 14px/1.45 var(--font-sans);
+  background: var(--color-surface-sunken); color: var(--color-ink); font: var(--type-body)/1.45 var(--font-sans);
 }
 .wf-text-edit textarea:focus-visible { box-shadow: 0 0 0 2px var(--color-focus); }
-.wf-text-hint { margin: 5px 4px 1px; font: 11.5px/1.35 var(--font-sans); color: var(--color-ink-faint); }
+.wf-text-hint { margin: 6px 4px 1px; font: var(--type-footnote)/1.35 var(--font-sans); color: var(--color-ink-faint); }
 .wf-name-edit {
   position: absolute; z-index: 5; height: 26px; padding: 0 8px; border: 0; outline: none; border-radius: var(--radius-chip);
-  background: var(--color-surface-raised); color: var(--color-ink); font: 600 14px/1 var(--font-sans);
+  background: var(--color-surface-raised); color: var(--color-ink); font: 600 var(--type-body)/1 var(--font-sans);
   box-shadow: 0 0 0 1.5px var(--wf-select);
 }
 
@@ -150,7 +150,7 @@
   border-radius: var(--radius-panel); background: var(--glass-pop);
   -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
   box-shadow: var(--glass-edge), 0 6px 20px -8px rgb(0 0 0 / 0.18);
-  font: 500 12.5px/1 var(--font-sans); color: var(--color-ink);
+  font: 500 var(--type-subheadline)/1 var(--font-sans); color: var(--color-ink);
 }
 .wf-bar-zoom { right: 10px; bottom: 10px; }
 .wf-bar-float { transform: translateX(-50%); white-space: nowrap; max-width: calc(100% - 20px); overflow-x: auto; scrollbar-width: none; }
@@ -158,11 +158,11 @@
 /* A narrow bar drops the part's name before any tool folds into More (the toolbar's name still says it). */
 .wf-bar-kind[data-squeezed] { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .wf-zoom { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; color: var(--color-ink-muted); }
-.wf-btn-text { padding: 0 9px; font-weight: 550; color: var(--color-ink); }
+.wf-btn-text { padding: 0 10px; font-weight: 550; color: var(--color-ink); }
 .wf-ai-mark { color: #7c6cf0; }
 /* Two or three choices side by side (Clean and Sketch, Primary and Secondary). */
 .wf-seg { flex: none; display: inline-flex; gap: 2px; padding: 3px; margin: 0 2px; border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-surface-sunken) 70%, transparent); }
-.wf-seg button { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: var(--radius-small); font: 550 12px/1 var(--font-sans); color: var(--color-ink-muted); }
+.wf-seg button { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: var(--radius-small); font: 550 var(--type-footnote)/1 var(--font-sans); color: var(--color-ink-muted); }
 .wf-seg button[aria-pressed="true"] { background: var(--color-surface-raised); color: var(--color-heading); box-shadow: var(--shadow-control); }
 .wf-seg button:disabled { opacity: 0.4; }
 .wf-seg button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
@@ -172,23 +172,23 @@
 
 .wf-empty {
   position: absolute; inset: 52px 16px 16px; display: grid; place-content: center; justify-items: center; gap: 12px;
-  pointer-events: none; text-align: center; font: 13.5px/1.5 var(--font-sans); color: var(--color-ink-muted);
+  pointer-events: none; text-align: center; font: var(--type-body)/1.5 var(--font-sans); color: var(--color-ink-muted);
 }
 .wf-empty p { margin: 0; max-width: 36ch; }
 .wf-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; pointer-events: auto; }
 .wf-chip {
-  height: 32px; padding: 0 12px; border-radius: var(--radius-control); font: 550 13px/1 var(--font-sans); color: var(--color-ink);
+  height: 32px; padding: 0 12px; border-radius: var(--radius-control); font: 550 var(--type-subheadline)/1 var(--font-sans); color: var(--color-ink);
   background: var(--glass-pop); box-shadow: var(--glass-edge);
 }
 .wf-chip:hover { background: var(--glass-hover); color: var(--color-heading); }
 .wf-chip:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .wf-warning {
   position: absolute; left: 10px; bottom: 10px; z-index: 3; margin: 0; padding: 6px 10px; border-radius: var(--radius-control);
-  font: 500 12.5px/1.4 var(--font-sans); color: var(--color-danger, #b42318); background: var(--color-surface-raised); box-shadow: var(--glass-edge);
+  font: 500 var(--type-subheadline)/1.4 var(--font-sans); color: var(--color-danger, #b42318); background: var(--color-surface-raised); box-shadow: var(--glass-edge);
 }
 .wf-ghost {
   position: absolute; z-index: 6; transform: translate(-50%, -120%); padding: 6px 10px; border-radius: var(--radius-control);
-  font: 600 12.5px/1 var(--font-sans); color: var(--color-heading); pointer-events: none; white-space: nowrap;
+  font: 600 var(--type-subheadline)/1 var(--font-sans); color: var(--color-heading); pointer-events: none; white-space: nowrap;
 }
 
 /* ---------------------------------------------------------------- the parts library */
@@ -196,17 +196,17 @@
 .wf-library { top: 56px; left: 10px; bottom: 10px; width: 252px; }
 .wf-library[data-compact] { top: auto; left: 10px; right: 10px; width: auto; height: min(60%, 360px); }
 .wf-panel-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 2px 14px; }
-.wf-panel-title { font: 600 13.5px/1 var(--font-sans); color: var(--color-heading); }
+.wf-panel-title { font: 600 var(--type-body)/1 var(--font-sans); color: var(--color-heading); }
 .wf-search {
   display: flex; align-items: center; gap: 6px; margin: 4px 10px 6px; padding: 0 10px; height: 32px; border-radius: var(--radius-control);
   background: var(--color-surface-sunken); color: var(--color-ink-muted);
 }
 .wf-search:focus-within { box-shadow: 0 0 0 2px var(--color-focus); }
-.wf-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: 13.5px/1 var(--font-sans); color: var(--color-ink); }
+.wf-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: var(--type-body)/1 var(--font-sans); color: var(--color-ink); }
 .wf-search input::placeholder { color: var(--color-ink-faint); }
 .wf-search input::-webkit-search-cancel-button { display: none; }
 .wf-library-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 10px 10px; overscroll-behavior: contain; }
-.wf-library h4 { margin: 10px 2px 6px; font: 600 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); }
+.wf-library h4 { margin: 10px 2px 6px; font: 600 var(--type-caption-2)/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); }
 .wf-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
 .wf-tile {
   display: grid; justify-items: center; gap: 4px; width: 100%; padding: 6px 4px; border-radius: var(--radius-control);
@@ -217,29 +217,29 @@
 .wf-tile-art { display: grid; place-items: center; width: 100%; height: 40px; border-radius: var(--radius-small); background: color-mix(in oklab, var(--color-surface-sunken) 60%, transparent); }
 .wf-tile-art svg { width: 56px; height: 34px; }
 .wf-tile-frame { color: var(--color-ink-muted); }
-.wf-tile-label { font: 500 11.5px/1.2 var(--font-sans); text-align: center; }
-.wf-library-none { margin: 12px 4px; font-size: 13px; color: var(--color-ink-muted); }
+.wf-tile-label { font: 500 var(--type-footnote)/1.2 var(--font-sans); text-align: center; }
+.wf-library-none { margin: 12px 4px; font-size: var(--type-subheadline); color: var(--color-ink-muted); }
 
 /* ---------------------------------------------------------------- Foli AI */
 .wf-ai { position: absolute; z-index: 4; top: 56px; right: 10px; width: min(380px, calc(100% - 20px)); border-radius: var(--radius-panel); overflow: hidden; font-family: var(--font-sans); color: var(--color-ink); }
 .wf-ai-modes { display: flex; align-items: center; gap: 4px; padding: 6px 6px 0 10px; }
-.wf-ai-modes > button:not(.fb-vc-btn) { padding: 4px 9px; border-radius: var(--radius-chip); font: 550 12px/1.2 var(--font-sans); color: var(--color-ink-muted); }
+.wf-ai-modes > button:not(.fb-vc-btn) { padding: 4px 10px; border-radius: var(--radius-chip); font: 550 var(--type-footnote)/1.2 var(--font-sans); color: var(--color-ink-muted); }
 .wf-ai-modes > button[aria-pressed="true"] { background: var(--glass-hover); color: var(--color-heading); box-shadow: inset 0 0 0 1px var(--glass-border); }
 .wf-ai-modes > button:disabled { opacity: 0.4; }
-.wf-ai-about { margin: 6px 14px 0; font-size: 12px; color: var(--color-ink-muted); }
+.wf-ai-about { margin: 6px 14px 0; font-size: var(--type-footnote); color: var(--color-ink-muted); }
 .wf-ai-options { padding: 8px 8px 0; }
 .wf-ai-form { display: flex; align-items: flex-start; gap: 8px; padding: 10px; }
-.wf-ai-form .wf-ai-mark { margin-top: 5px; }
-.wf-ai-form textarea { flex: 1; min-width: 0; resize: none; border: 0; outline: none; background: transparent; font: 14px/1.45 var(--font-sans); color: var(--color-ink); }
+.wf-ai-form .wf-ai-mark { margin-top: 6px; }
+.wf-ai-form textarea { flex: 1; min-width: 0; resize: none; border: 0; outline: none; background: transparent; font: var(--type-body)/1.45 var(--font-sans); color: var(--color-ink); }
 .wf-ai-form textarea::placeholder { color: var(--color-ink-faint); }
 .wf-ai-send { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-chip); background: var(--color-heading); color: var(--color-canvas); }
 .wf-ai-send:disabled { opacity: 0.3; }
 .wf-ai-ideas { margin: 0; padding: 4px 6px 6px; list-style: none; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); }
-.wf-ai-ideas button { width: 100%; padding: 6px 8px; border-radius: var(--radius-control); text-align: left; font-size: 13px; color: var(--color-ink-muted); }
+.wf-ai-ideas button { width: 100%; padding: 6px 8px; border-radius: var(--radius-control); text-align: left; font-size: var(--type-subheadline); color: var(--color-ink-muted); }
 .wf-ai-ideas button:hover { background: var(--glass-hover); color: var(--color-heading); }
-.wf-ai-status, .wf-ai-error { margin: 0; padding: 4px 14px 10px; font-size: 13px; color: var(--color-ink-muted); }
+.wf-ai-status, .wf-ai-error { margin: 0; padding: 4px 14px 10px; font-size: var(--type-subheadline); color: var(--color-ink-muted); }
 .wf-ai-error { color: var(--color-danger, #b42318); }
-.wf-ai-foot { margin: 0; padding: 7px 14px; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); font-size: 11px; color: var(--color-ink-faint); }
+.wf-ai-foot { margin: 0; padding: 8px 14px; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); font-size: var(--type-footnote); color: var(--color-ink-faint); }
 .wf-ai button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 
 /* ---------------------------------------------------------------- read-only (share pages, history) */

@@ -208,12 +208,12 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
         <span aria-hidden className="grid h-5 w-5 flex-none place-items-center rounded-chip bg-heading text-canvas">
           <Check size={13} strokeWidth={3} />
         </span>
-        <p className="min-w-0 flex-1 truncate text-[15px]">
+        <p className="min-w-0 flex-1 truncate text-body">
           Added to <span className="font-semibold text-heading">{added.where}</span>
         </p>
         <button
           type="button"
-          className="ui-btn ui-btn-secondary h-7 rounded-small px-3 text-[13px]"
+          className="ui-btn ui-btn-secondary h-7 rounded-small px-3 text-callout"
           onClick={() => {
             bridge?.openInMain(`/d/${added.documentId}`);
             bridge?.closeQuickAdd();
@@ -226,7 +226,7 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
     );
   }
 
-  const chip = "inline-flex h-7 max-w-[15rem] flex-none items-center gap-1.5 rounded-small px-2.5 text-[13px] leading-none outline-none transition-colors hover:bg-[var(--mac-press)] focus-visible:ring-2 focus-visible:ring-focus [&>svg]:flex-none";
+  const chip = "inline-flex h-7 max-w-[15rem] flex-none items-center gap-1.5 rounded-small px-2.5 text-subheadline leading-none outline-none transition-colors hover:bg-[var(--mac-press)] focus-visible:ring-2 focus-visible:ring-focus [&>svg]:flex-none";
   const removeBtn = "-mr-1.5 grid h-5 w-5 flex-none place-items-center rounded-tiny text-faint hover:text-heading";
   return (
     <main ref={panel} aria-label="Quick add task" className="ui-desktop-quick-add mac-quick-add text-ink" onKeyDown={onPanelKey}>
@@ -257,7 +257,7 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
           spellCheck
           aria-describedby={hint ? "qa-hint" : undefined}
           aria-keyshortcuts="Enter Meta+Enter Shift+Enter Escape"
-          className="h-10 min-w-0 flex-1 bg-transparent text-[17px] leading-6 text-heading outline-none placeholder:text-faint"
+          className="h-10 min-w-0 flex-1 bg-transparent text-title-3 leading-6 text-heading outline-none placeholder:text-faint"
         />
         <button
           type="button"
@@ -331,7 +331,7 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
         </span>
         <span className="flex-1" />
         {q.error ? (
-          <p role="alert" className="truncate text-[12px] text-danger">
+          <p role="alert" className="truncate text-footnote text-danger">
             {q.error}
           </p>
         ) : null}
@@ -339,7 +339,7 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
 
       {/* An editor for one chip, under the row. */}
       {editor === "date" ? (
-        <div className="flex items-center gap-2 border-t border-line px-4 py-2.5 text-[13px]">
+        <div className="flex items-center gap-2 border-t border-line px-4 py-2.5 text-subheadline">
           <DateField value={q.due || due} onChange={(v) => q.setDue(v)} aria-label="Due date" className="w-40" />
           {q.due || due ? <TimeField value={q.due ? q.time : time ?? ""} onChange={(v) => (q.due ? q.setTime(v) : (q.setDue(due), q.setTime(v)))} emptyLabel="All day" aria-label="Due time" className="w-28" /> : null}
         </div>
@@ -383,7 +383,7 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
       ) : null}
 
       {hint && !second && editor === null ? (
-        <p id="qa-hint" className="-mt-2 px-4 pb-2.5 pl-12 text-[12px] leading-4 text-faint">
+        <p id="qa-hint" className="-mt-2 px-4 pb-2.5 pl-12 text-footnote leading-4 text-faint">
           Return adds it, ⌘Return opens it too. Try “tomorrow 9am”, “!high” or “#page”.
         </p>
       ) : null}

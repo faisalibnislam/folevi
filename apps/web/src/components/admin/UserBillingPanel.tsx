@@ -89,7 +89,7 @@ export function UserBillingPanel({
   if (!data) {
     return (
       <Panel title="Plan & billing">
-        {error ? <ErrorNotice error={error} onRetry={() => void refresh()} /> : <p className="text-sm text-muted">Loading…</p>}
+        {error ? <ErrorNotice error={error} onRetry={() => void refresh()} /> : <p className="text-subheadline text-muted">Loading…</p>}
       </Panel>
     );
   }
@@ -117,7 +117,7 @@ export function UserBillingPanel({
       >
         <div className="flex flex-wrap items-center gap-2">
           <PlanBadge plan={e.plan} trialing={e.trialing} />
-          {e.trialing && e.trialEndsAt ? <span className="text-sm text-muted">Trial ends {day(e.trialEndsAt)} · pays for {PLANS[e.paidPlan].name}</span> : null}
+          {e.trialing && e.trialEndsAt ? <span className="text-subheadline text-muted">Trial ends {day(e.trialEndsAt)} · pays for {PLANS[e.paidPlan].name}</span> : null}
           {data.polarBilled ? <Badge tone="outline">Billed through Polar</Badge> : null}
           {sub.cancelAtPeriodEnd ? <Badge tone="warning">Cancels at period end</Badge> : null}
           {sub.status === "past_due" ? <Badge tone="danger">Payment past due</Badge> : null}
@@ -142,7 +142,7 @@ export function UserBillingPanel({
         </div>
 
         <div className="mt-4">
-          <div className="mb-1.5 flex items-baseline justify-between gap-3 text-[12.5px]">
+          <div className="mb-1.5 flex items-baseline justify-between gap-3 text-subheadline">
             <span className="text-muted">Personal storage · {sub.storageOverrideBytes ? STORAGE_RULE.override : STORAGE_RULE[data.storageRule]}</span>
             <span className="whitespace-nowrap tabular-nums">
               {formatBytes(data.storageUsedBytes)} of {limit(data.storageLimitBytes)}
@@ -152,13 +152,13 @@ export function UserBillingPanel({
         </div>
 
         <div className="mt-4">
-          <div className="mb-1.5 flex items-baseline justify-between gap-3 text-[12.5px]">
+          <div className="mb-1.5 flex items-baseline justify-between gap-3 text-subheadline">
             <span className="text-muted">AI credits {c.trialing ? "in the trial" : "this period"} · {c.plan}</span>
             <span className="whitespace-nowrap tabular-nums">{e.ai ? `${n(c.used)} of ${n(c.allowance)} used` : "No AI"}</span>
           </div>
           <Meter value={c.used} max={c.allowance} label="Monthly AI credits used" />
           {e.ai ? (
-            <p className="mt-1.5 text-[12.5px] text-muted">
+            <p className="mt-1.5 text-subheadline text-muted">
               {n(c.available)} available now
               {c.held ? ` (${n(c.held)} held by requests in progress)` : ""}. {c.trialing ? "Trial ends" : "Resets"} {day(c.resetsAt)}. Bought and granted: {n(c.packCredits)} left
               {c.nextPackExpiry ? `, next expiry ${day(c.nextPackExpiry)}` : ""}.
@@ -183,8 +183,8 @@ export function UserBillingPanel({
             <FileArchive size={14} aria-hidden /> Prepare export for user…
           </Button>
         </div>
-        {notes.length ? <p className="mt-2 text-xs text-muted">{notes.join(" ")}</p> : null}
-        {data.polarBilled ? <p className="mt-2 text-xs text-muted">This plan is billed through Polar. Change or cancel it in Polar; Folevi updates when Polar tells it.</p> : null}
+        {notes.length ? <p className="mt-2 text-footnote text-muted">{notes.join(" ")}</p> : null}
+        {data.polarBilled ? <p className="mt-2 text-footnote text-muted">This plan is billed through Polar. Change or cancel it in Polar; Folevi updates when Polar tells it.</p> : null}
       </Panel>
 
       <Panel title="AI credit packs and grants" description="Bought and granted credits, Personal and workspace seats, newest first. They're used after the monthly credits." flush>

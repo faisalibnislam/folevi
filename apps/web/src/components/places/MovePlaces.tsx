@@ -238,9 +238,9 @@ function MovePlacesDialog({ initialPick, onClose }: { initialPick: Pick | null; 
     >
       {phase.kind === "form" ? (
         options.length === 0 ? (
-          <p className="text-sm text-muted">There&apos;s no other place yet. Sign in to another account from the account menu first.</p>
+          <p className="text-subheadline text-muted">There&apos;s no other place yet. Sign in to another account from the account menu first.</p>
         ) : (
-          <div className="space-y-4 text-sm">
+          <div className="space-y-4 text-subheadline">
             <Row label="To">
               <Select aria-label="To" value={to} onChange={(e) => setTo(e.target.value)} className="w-full">
                 {options.map((o) => (
@@ -275,7 +275,7 @@ function MovePlacesDialog({ initialPick, onClose }: { initialPick: Pick | null; 
       ) : phase.kind === "done" ? (
         <Summary state={phase.state} move={phase.move} />
       ) : (
-        <p className="text-sm text-muted">{phase.message ?? "The move was stopped. What came along so far stays there; trying again goes on from where it was."}</p>
+        <p className="text-subheadline text-muted">{phase.message ?? "The move was stopped. What came along so far stays there; trying again goes on from where it was."}</p>
       )}
     </Dialog>
   );
@@ -332,7 +332,7 @@ function Picker({ client, scope, pick, onChange }: { client: MigrationClient; sc
           ))}
         </div>
       ) : null}
-      <p className="text-[12.5px] text-muted">A folder brings its folders and notes; a note brings the pages under it.</p>
+      <p className="text-subheadline text-muted">A folder brings its folders and notes; a note brings the pages under it.</p>
     </div>
   );
 }
@@ -346,7 +346,7 @@ function MoveProgress({ p, trashing }: { p: MigrationProgress | null; trashing: 
       <div className="h-1.5 overflow-hidden rounded-tiny bg-sunken" role="progressbar" aria-label="Moving notes" aria-valuemin={0} aria-valuemax={total || 1} aria-valuenow={done}>
         <div className="h-full rounded-tiny bg-heading transition-[width] duration-300" style={{ width: `${pct}%` }} />
       </div>
-      <p className="mt-3 text-sm text-muted" role="status" aria-live="polite">
+      <p className="mt-3 text-subheadline text-muted" role="status" aria-live="polite">
         {trashing
           ? `Putting the originals in Trash: ${trashing.done} of ${trashing.total}`
           : !p || p.phase === "organizing"
@@ -363,7 +363,7 @@ function Summary({ state, move }: { state: MigrationState; move: PlaceMove }) {
   const n = Object.keys(state.notes).length;
   const files = state.problems.filter((p) => p.kind === "file");
   return (
-    <div className="space-y-2 text-sm" data-testid="place-move-done">
+    <div className="space-y-2 text-subheadline" data-testid="place-move-done">
       <p className="text-ink">
         {plural(n, "note")} {move.mode === "move" ? "moved" : "copied"} to {move.to.label}.{move.mode === "move" ? " The originals are in Trash here for 30 days." : ""}
       </p>

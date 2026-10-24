@@ -17,8 +17,8 @@ export function NotePlaceholder({ state }: { state: "downloading" | "waiting" })
       <span className="grid h-12 w-12 place-items-center rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] text-heading">
         {downloading ? <CloudDownload size={22} aria-hidden /> : <Hourglass size={22} aria-hidden />}
       </span>
-      <p className="text-[17px] font-semibold text-heading">{downloading ? downloadingFrom(kind) : "Waiting for this from your other device"}</p>
-      <p className="max-w-sm text-[14px] leading-relaxed text-muted">
+      <p className="text-title-3 font-semibold text-heading">{downloading ? downloadingFrom(kind) : "Waiting for this from your other device"}</p>
+      <p className="max-w-sm text-body leading-relaxed text-muted">
         {downloading
           ? `This note is on its way from ${where}. It opens here as soon as it arrives.`
           : "Another device has this note but hasn't synced it yet. Open Folevi on that device and it comes through."}

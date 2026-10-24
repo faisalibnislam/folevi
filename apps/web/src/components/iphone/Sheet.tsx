@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { X } from "lucide-react";
-import { SPRINGS, VelocityTracker, prefersReducedMotion, springAt, springDuration } from "@/lib/native/physics";
+import { SPRINGS, VelocityTracker, prefersReducedMotion } from "@/lib/native/physics";
 import { safeInsets } from "@/lib/iphone";
 import { KEYBOARD_EASE, onKeyboardFrame } from "@/lib/native/ui";
-import { dimAt, poseFor, releaseTarget, restingDetent, settlePose, springFrames, springStart, type SheetPose } from "./sheetMotion";
+import { dimAt, poseFor, releaseTarget, restingDetent, springFrames, springStart, type SheetPose } from "./sheetMotion";
 
 export type SheetSize = "fit" | "medium" | "large";
 
@@ -359,31 +359,49 @@ export function Sheet({
     if (ready && motion.current.entering) enter();
   }, [ready, enter]);
 
-  // Settles from where a finger left the sheet to a detent, on the sheet's spring (a new touch catches it).
+  // Settles from where a finger left the sheet to a detent, on the sheet's spring (a new touch catches it). Only
+  // its transform and the scrim's opacity move, as Web Animations sampled from the spring, so Core Animation
+  // runs it at the display's rate (120 Hz on ProMotion) with nothing for the page to lay out per frame: the
+  // panel takes the larger of its two heights for the way (the part below the screen's edge doesn't show),
+  // slides, and takes its resting height at the end (docs/IOS_PERFORMANCE.md, "120 Hz").
   const settle = useCallback(
     (visible: number, target: number, velocity: number, ds: number[]) => {
+      const p = panel.current;
+      const s = scrim.current;
       const dims = dimsFor(ds);
-      if (prefersReducedMotion()) {
+      if (prefersReducedMotion() || !p || !s) {
         draw(null, restDim());
         return;
       }
       const v0 = springStart(velocity, target - visible);
-      const duration = springDuration(SPRINGS.sheet, v0);
-      const start = performance.now();
-      const step = (now: number) => {
-        const t = (now - start) / 1000;
-        if (t >= duration) {
-          motion.current.raf = 0;
-          draw(null, restDim());
-          return;
-        }
-        let at = visible + (target - visible) * springAt(t, SPRINGS.sheet, v0);
+      const { progress, ms } = springFrames(SPRINGS.sheet, v0);
+      const min = Math.min(...ds);
+      const height = Math.max(visible, target, min);
+      const at = (k: number) => {
+        let v = visible + (target - visible) * k;
         // Flung down onto its smallest detent, a sheet stops there (it doesn't dip below and bounce back up).
-        if (visible >= target && target <= Math.min(...ds) + 0.5 && at < target) at = target;
-        draw(settlePose(at, ds), dimAt(at, ds, dims));
-        motion.current.raf = requestAnimationFrame(step);
+        if (visible >= target && target <= min + 0.5 && v < target) v = target;
+        return v;
       };
-      motion.current.raf = requestAnimationFrame(step);
+      draw({ height, offset: height - visible }, dimAt(visible, ds, dims));
+      // (Caught by a new touch, it's read from where the animation has it: begin() reads the transform.)
+      pose.current = null;
+      p.style.willChange = "transform";
+      const t: KeyframeAnimationOptions = { duration: ms, easing: "linear" };
+      const slide = p.animate(progress.map((k) => ({ transform: `translateY(${Math.round((height - at(k)) * 100) / 100}px)` })), t);
+      const fade = s.animate(progress.map((k) => ({ opacity: Math.max(0, Math.min(1, dimAt(at(k), ds, dims))) })), t);
+      motion.current.anims = [slide, fade];
+      slide.onfinish = () => {
+        if (!motion.current.anims.includes(slide)) return;
+        motion.current.anims = [];
+        p.style.willChange = "";
+        draw(null, restDim());
+        slide.cancel();
+        fade.cancel();
+      };
+      slide.oncancel = () => {
+        p.style.willChange = "";
+      };
     },
     [draw, dimsFor, restDim],
   );

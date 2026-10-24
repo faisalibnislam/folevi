@@ -27,7 +27,7 @@ export const AI_INTRO: Record<AiIntroPlace, { lead: string }> = {
 
 /** What Foli AI does in this place, that it shows changes first, where requests go and what they cost. */
 export function AiIntroBody({ place, credits, size = "sm" }: { place: AiIntroPlace; credits?: number | null; size?: "sm" | "md" }) {
-  const text = size === "md" ? "text-[13.5px]" : "text-[12.5px]";
+  const text = size === "md" ? "text-body" : "text-subheadline";
   return (
     <>
       <p className={`mt-1.5 ${text} leading-snug text-ink`}>{AI_INTRO[place].lead}</p>

@@ -38,7 +38,7 @@ function SearchField({ value, onChange, label }: { value: string; onChange: (v: 
         {label}
       </label>
       <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
-      <input id={id} type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={label} autoComplete="off" className="ui-input h-9 w-full rounded-chip pl-8 pr-8 text-sm" />
+      <input id={id} type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={label} autoComplete="off" className="ui-input h-9 w-full rounded-chip pl-8 pr-8 text-callout" />
       {value ? (
         <button type="button" aria-label="Clear search" onClick={() => onChange("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint hover:text-ink">
           <X size={13} aria-hidden />
@@ -50,9 +50,9 @@ function SearchField({ value, onChange, label }: { value: string; onChange: (v: 
 
 function SortSelect<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: [T, string][] }) {
   return (
-    <label className="flex items-center gap-2 text-sm text-muted">
+    <label className="flex items-center gap-2 text-subheadline text-muted">
       Sort
-      <Select value={value} onChange={(e) => onChange(e.target.value as T)} className="ui-input h-9 rounded-chip px-3 text-sm text-ink">
+      <Select value={value} onChange={(e) => onChange(e.target.value as T)} className="ui-input h-9 rounded-chip px-3 text-callout text-ink">
         {options.map(([v, label]) => (
           <option key={v} value={v}>
             {label}
@@ -121,7 +121,7 @@ export function FoldersIndex() {
     );
   return (
     <ViewChrome
-      title={<h1 className="text-sm font-semibold">Folders</h1>}
+      title={<h1 className="text-subheadline font-semibold">Folders</h1>}
       tabTitle="Folders"
       actions={
         canEdit ? (
@@ -134,7 +134,7 @@ export function FoldersIndex() {
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         <div className="flex flex-wrap items-center gap-3">
           <SearchField value={q} onChange={setQ} label="Search folders" />
-          <p role="status" className="min-w-0 truncate text-[13px] text-muted">
+          <p role="status" className="min-w-0 truncate text-subheadline text-muted">
             {data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.folders.length} folders` : `${data.folders.length} ${data.folders.length === 1 ? "folder" : "folders"}`}
           </p>
           <span className="flex-1" />
@@ -176,10 +176,10 @@ export function FoldersIndex() {
                   <FolderGlyph color={f.color} size={24} />
                   <span className="min-w-0 flex-1 truncate font-medium">
                     {f.name}
-                    {f.parentFolderId ? <span className="ml-2 text-xs font-normal text-muted">in {names.get(f.id) || "a folder"}</span> : null}
+                    {f.parentFolderId ? <span className="ml-2 text-footnote font-normal text-muted">in {names.get(f.id) || "a folder"}</span> : null}
                   </span>
-                  <span className="w-20 text-right text-xs tabular-nums text-muted">{pages(f.documentCount)}</span>
-                  <span className="hidden w-32 text-right text-xs text-faint sm:block">{ageText(f.updatedAt)}</span>
+                  <span className="w-20 text-right text-footnote tabular-nums text-muted">{pages(f.documentCount)}</span>
+                  <span className="hidden w-32 text-right text-footnote text-faint sm:block">{ageText(f.updatedAt)}</span>
                 </AppLink>
                 <FolderMenu folder={f} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100" />
               </li>
@@ -237,13 +237,13 @@ export function TagsIndex() {
     );
   return (
     <ViewChrome
-      title={<h1 className="text-sm font-semibold">Tags</h1>}
+      title={<h1 className="text-subheadline font-semibold">Tags</h1>}
       tabTitle="Tags"
     >
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         <div className="flex flex-wrap items-center gap-3">
           <SearchField value={q} onChange={setQ} label="Search tags" />
-          <p role="status" className="min-w-0 truncate text-[13px] text-muted">
+          <p role="status" className="min-w-0 truncate text-subheadline text-muted">
             {data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.tags.length} tags` : `${data.tags.length} ${data.tags.length === 1 ? "tag" : "tags"}`}
           </p>
           <span className="flex-1" />
@@ -263,10 +263,10 @@ export function TagsIndex() {
           <ul className="mt-6 flex flex-wrap gap-2" aria-label="Tags">
             {list.map((t) => (
               <li key={t.id}>
-                <AppLink href={`/tags/${t.id}`} className="ui-raised inline-flex h-9 items-center gap-2 rounded-chip pl-3 pr-2 text-[13.5px] outline-none transition-colors hover:bg-accent-soft focus-visible:ring-2 focus-visible:ring-focus">
+                <AppLink href={`/tags/${t.id}`} className="ui-raised inline-flex h-9 items-center gap-2 rounded-chip pl-3 pr-2 text-body outline-none transition-colors hover:bg-accent-soft focus-visible:ring-2 focus-visible:ring-focus">
                   <Hash size={14} style={{ color: tagColor(t.color) }} aria-hidden />
                   <span className="font-medium text-ink">{t.name}</span>
-                  <span className="rounded-chip bg-sunken px-2 py-0.5 text-[11px] tabular-nums text-muted">
+                  <span className="rounded-chip bg-sunken px-2 py-0.5 text-caption-2 tabular-nums text-muted">
                     <span className="sr-only">, </span>
                     {pages(t.documentCount)}
                   </span>

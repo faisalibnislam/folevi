@@ -45,7 +45,7 @@ export function RepeatField({ rule, dueDate, onChange }: { rule: RepeatRule | nu
   return (
     <div className="grid gap-1">
       <label className="grid gap-1">
-        <span className="text-xs text-muted">Repeat</span>
+        <span className="text-footnote text-muted">Repeat</span>
         <Select value={choice} onChange={(e) => pick(e.target.value as Choice)} className="h-8 ui-input rounded-chip px-3">
           <option value="none">Never</option>
           <option value="daily">Every day</option>
@@ -70,7 +70,7 @@ export function RepeatField({ rule, dueDate, onChange }: { rule: RepeatRule | nu
                   const next = on ? days.filter((x) => x !== d.n) : [...days, d.n].sort((a, b) => a - b);
                   onChange({ repeat: "weekly", ...(choice === "biweekly" ? { every: 2 } : {}), ...(next.length ? { days: next } : {}) });
                 }}
-                className={`grid h-7 w-7 place-items-center rounded-chip text-[12px] font-medium transition-colors ${on ? "bg-heading text-canvas" : "text-muted hover:bg-[var(--glass-hover)] hover:text-ink"}`}
+                className={`grid h-7 w-7 place-items-center rounded-chip text-footnote font-medium transition-colors ${on ? "bg-heading text-canvas" : "text-muted hover:bg-[var(--glass-hover)] hover:text-ink"}`}
               >
                 {d.short}
               </button>
@@ -78,7 +78,7 @@ export function RepeatField({ rule, dueDate, onChange }: { rule: RepeatRule | nu
           })}
         </div>
       ) : null}
-      {rule ? <p className="text-[11.5px] text-muted">{describeRepeat(rule)}. Checking it off brings it back on the next date.</p> : null}
+      {rule ? <p className="text-footnote text-muted">{describeRepeat(rule)}. Checking it off brings it back on the next date.</p> : null}
     </div>
   );
 }

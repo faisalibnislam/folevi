@@ -182,7 +182,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
     // as on the iPhone (its grouped lists, switches, choices on screens of their own, IphoneLookContext).
     const title = noWorkspace ? "Workspace" : sectionHidden ? "Not found" : (heading ?? "Settings");
     return (
-      <ViewChrome title={<h1 className="text-sm font-semibold">Settings</h1>} tabTitle="Settings">
+      <ViewChrome title={<h1 className="text-subheadline font-semibold">Settings</h1>} tabTitle="Settings">
         <div className="-mt-[68px] min-h-[calc(100%+68px)] bg-[var(--iphone-grouped)] pt-[68px]" data-ipad-settings="">
           <div className="mx-auto grid max-w-5xl grid-cols-[minmax(0,280px)_minmax(0,1fr)] gap-2 pb-16 pr-2 pt-4 [@media(min-width:1200px)]:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
             <nav aria-label="Settings sections" className="sticky top-4 space-y-7 self-start">
@@ -233,13 +233,13 @@ export function SettingsView({ section: asked }: { section: Section }) {
     );
   }
   return (
-    <ViewChrome title={<h1 className="text-sm font-semibold">Settings</h1>} tabTitle="Settings">
+    <ViewChrome title={<h1 className="text-subheadline font-semibold">Settings</h1>} tabTitle="Settings">
       <div data-mac-settings-window={settingsWindow ? "" : undefined} className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8 md:grid-cols-[216px_minmax(0,1fr)] md:gap-10">
         <nav aria-label="Settings sections" hidden={settingsWindow} className="md:sticky md:top-6 md:self-start">
           <div className="flex gap-6 overflow-x-auto pb-1 md:flex-col md:gap-5 md:overflow-visible md:pb-0">
             {groups.map((g) => (
               <div key={g.label} className="flex-none">
-                <p className="mb-1.5 truncate px-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-faint">{g.label}</p>
+                <p className="mb-1.5 truncate px-2.5 text-caption-2 font-semibold uppercase tracking-[0.07em] text-faint">{g.label}</p>
                 <ul className="flex gap-0.5 md:flex-col">
                   {g.items.map((s) => {
                     const active = section === s.id;
@@ -249,7 +249,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
                         <AppLink
                           href={`/settings/${s.id}`}
                           aria-current={active ? "page" : undefined}
-                          className={`group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${
+                          className={`group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-body outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${
                             active ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"
                           }`}
                         >
@@ -267,7 +267,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
           </div>
         </nav>
         <div className="min-w-0 space-y-5">
-          <h2 className={settingsWindow ? "sr-only" : "ui-display text-[34px] leading-tight"}>{noWorkspace ? "Workspace" : sectionHidden ? "Not found" : heading}</h2>
+          <h2 className={settingsWindow ? "sr-only" : "ui-display text-large-title leading-tight"}>{noWorkspace ? "Workspace" : sectionHidden ? "Not found" : heading}</h2>
           {section === "account" ? <AccountSection /> : null}
           {section === "ai" ? caps.account ? <AiSection /> : <LocalAiSection /> : null}
           {section === "billing" ? <BillingSection /> : null}
@@ -294,7 +294,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
           {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
           {section === "desktop" ? <DesktopSection /> : null}
           {section === "this-device" ? <ThisDeviceSection /> : null}
-          <VersionFooter className="pt-4 text-[12px] leading-4 text-muted" />
+          <VersionFooter className="pt-4 text-footnote leading-4 text-muted" />
         </div>
       </div>
     </ViewChrome>
@@ -323,7 +323,7 @@ function IpadSubscreenBar({ title, actions }: { title: string; actions: (el: HTM
       <PillButton label="Back" onClick={() => screens?.back()}>
         <ChevronLeft size={24} strokeWidth={2.2} aria-hidden />
       </PillButton>
-      <h2 className="ui-large-title min-w-0 flex-1 truncate !text-[28px]">{title}</h2>
+      <h2 className="ui-large-title min-w-0 flex-1 truncate !text-title-1">{title}</h2>
       <span ref={actions} className="contents" />
     </div>
   );
@@ -334,7 +334,7 @@ function SectionBody({ section, noWorkspace, sectionHidden }: { section: Section
   const { workspace } = useAppState();
   const caps = useCapabilities();
   return (
-    <div className="space-y-7 pb-4 pt-3 [&_.ui-btn]:min-h-11 [&_.ui-btn]:text-[15px]">
+    <div className="space-y-7 pb-4 pt-3 [&_.ui-btn]:min-h-11 [&_.ui-btn]:text-subheadline">
       {section === "account" ? <AccountSection /> : null}
       {section === "ai" ? caps.account ? <AiSection /> : <LocalAiSection /> : null}
       {section === "billing" ? <BillingSection /> : null}
@@ -386,11 +386,11 @@ function SupportGroup({ look }: { look: "web" | "ios" }) {
         {dialog}
       </IosSection>
     );
-  const row = "group flex h-8 w-full items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-left text-[13.5px] text-ink/90 outline-none transition-[background-color,color] duration-150 hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
+  const row = "group flex h-8 w-full items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-left text-body text-ink/90 outline-none transition-[background-color,color] duration-150 hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
   const icon = "flex-none text-muted transition-colors group-hover:text-heading";
   return (
     <div className="flex-none">
-      <p className="mb-1.5 truncate px-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-faint">Support</p>
+      <p className="mb-1.5 truncate px-2.5 text-caption-2 font-semibold uppercase tracking-[0.07em] text-faint">Support</p>
       <ul className="flex gap-0.5 md:flex-col">
         <li>
           <AppLink href="/help" className={row}>
@@ -444,8 +444,8 @@ function CreateWorkspaceNudge() {
   const { navigate } = useAppRouter();
   return (
     <div className="hidden flex-none rounded-control border border-line p-3 md:mt-1 md:block">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-faint">Workspace</p>
-      <p className="mt-1 max-w-52 text-[12.5px] text-muted">Work with a team: shared notes, folders and tasks, with its own plan and members.</p>
+      <p className="text-caption-2 font-semibold uppercase tracking-[0.07em] text-faint">Workspace</p>
+      <p className="mt-1 max-w-52 text-subheadline text-muted">Work with a team: shared notes, folders and tasks, with its own plan and members.</p>
       <Button size="sm" className="mt-2" onClick={() => setOpen(true)}>
         <Plus size={14} aria-hidden /> Create a workspace
       </Button>

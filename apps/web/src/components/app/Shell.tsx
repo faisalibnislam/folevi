@@ -426,7 +426,7 @@ export function Shell() {
           <IphoneShell
             banner={
               settings?.bannerMessage ? (
-                <div role="status" className="rounded-panel bg-warning-soft px-4 py-2 text-center text-sm text-ink shadow-[var(--glass-shadow)]">
+                <div role="status" className="rounded-panel bg-warning-soft px-4 py-2 text-center text-subheadline text-ink shadow-[var(--glass-shadow)]">
                   {settings.bannerMessage}
                   {settings.readOnly ? " Folevi is read-only right now; your edits are kept on this device." : ""}
                 </div>
@@ -446,7 +446,7 @@ export function Shell() {
         Skip to content
       </a>
       {settings?.bannerMessage ? (
-        <div role="status" className="border-b border-line bg-warning-soft px-4 py-2 text-center text-sm text-ink">
+        <div role="status" className="border-b border-line bg-warning-soft px-4 py-2 text-center text-subheadline text-ink">
           {settings.bannerMessage}
           {settings.readOnly ? " Folevi is read-only right now; your edits are kept on this device." : ""}
         </div>
@@ -509,7 +509,7 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
       <div className="flex flex-wrap items-center gap-2 px-5 pb-2 pt-1">
         {leading}
         {subtitle ? (
-          <span role="status" className="mr-auto min-w-0 truncate text-[15px] text-muted">
+          <span role="status" className="mr-auto min-w-0 truncate text-body text-muted">
             {subtitle}
           </span>
         ) : (
@@ -543,10 +543,10 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
           </IconButton>
         ) : null}
         {leading}
-        <div className="flex min-w-0 flex-1 items-baseline gap-2 truncate text-sm">
+        <div className="flex min-w-0 flex-1 items-baseline gap-2 truncate text-subheadline">
           <div className={showTitle ? "min-w-0 truncate" : "sr-only"}>{title}</div>
           {subtitle ? (
-            <span role="status" className="min-w-0 truncate text-[13px] text-muted">
+            <span role="status" className="min-w-0 truncate text-subheadline text-muted">
               {subtitle}
             </span>
           ) : null}

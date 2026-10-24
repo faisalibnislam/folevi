@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { SyncOp } from "@folevi/editor-schema";
-import { assertWritable, requireProfile, resolveScope, documentAccess, accessAtLeast, getDocumentByPublicId, PageReader } from "./lib/auth";
+import { assertWritable, requireProfile, resolveScope, documentAccess, accessAtLeast, getDocumentByPublicId, membership, PageReader } from "./lib/auth";
+import { folderSubtree } from "./folderSharing";
 import { consume } from "./lib/rateLimit";
 import { fail } from "./lib/errors";
 import { SyncEngine, MAX_BATCH } from "./lib/syncEngine";
@@ -365,5 +366,136 @@ export const pullAll = query({
     const reader = new PageReader(ctx, profile, standing);
     const removed = tombstones.rows.filter((r) => r.seq <= upTo && (!r.restricted || reader.opensEverything)).map((r) => ({ kind: r.kind, id: r.publicId }));
     return { documents: outDocs, blocks: outBlocks, folders: outFolders, tags: outTags, removed, nextCursor: upTo, hasMore, head };
+  },
+});
+
+// ---------------------------------------------------------------------------------------------------------
+// Shared with the caller (docs/SHARING.md): the device copy also keeps the notes people shared with this
+// person outside their own places, pages shared on their own (with the pages under them) and every note in a
+// folder shared with them (its subfolders too). They have no scope of their own to stream, so the copy lists
+// them whole (sharedManifest), keeps what's listed and drops the rest (a share that was revoked, a note moved
+// out of a shared folder); sharedHead moves whenever that list could have changed, so it lists again.
+
+const SHARED_MAX = 1000;
+const SHARED_WALK = 2000;
+
+/** The notes shared with `profile` outside their own places: candidates only (access is checked by the caller). */
+async function sharedCandidates(ctx: QueryCtx, profile: Doc<"profiles">): Promise<{ docs: Doc<"documents">[]; folders: Doc<"folders">[]; pageGrants: Doc<"documentPermissions">[]; folderGrants: Doc<"folderPermissions">[] }> {
+  const pageGrants = await ctx.db
+    .query("documentPermissions")
+    .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+    .take(500);
+  const folderGrants = await ctx.db
+    .query("folderPermissions")
+    .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+    .take(200);
+  const seen = new Set<string>();
+  const docs: Doc<"documents">[] = [];
+  const add = (d: Doc<"documents"> | null) => {
+    if (!d || seen.has(d._id) || docs.length >= SHARED_WALK) return;
+    seen.add(d._id);
+    docs.push(d);
+  };
+  for (const g of pageGrants) add(await ctx.db.get(g.documentId));
+  const folders: Doc<"folders">[] = [];
+  for (const g of folderGrants) {
+    const root = await ctx.db.get(g.folderId);
+    if (!root || root.deletedAt !== undefined) continue;
+    for (const f of await folderSubtree(ctx, root)) {
+      if (folders.some((x) => x._id === f._id)) continue;
+      folders.push(f);
+      for (const d of await ctx.db
+        .query("documents")
+        .withIndex("by_folder", (q) => q.eq("folderId", f._id))
+        .take(SHARED_WALK)) {
+        add(d);
+      }
+    }
+  }
+  // The pages under each of them (a grant and a folder both reach nested pages).
+  for (let i = 0; i < docs.length && docs.length < SHARED_WALK; i++) {
+    for (const kid of await ctx.db
+      .query("documents")
+      .withIndex("by_parent", (q) => q.eq("parentDocumentId", docs[i]!._id))
+      .take(200)) {
+      add(kid);
+    }
+  }
+  return { docs, folders, pageGrants, folderGrants };
+}
+
+/** Whether a row is in one of the caller's own places (their Personal, a workspace they're a member of). */
+function ownPlaces(ctx: QueryCtx, profile: Doc<"profiles">) {
+  const members = new Map<string, boolean>();
+  return async (row: { ownerProfileId?: Id<"profiles">; workspaceId?: Id<"workspaces"> }) => {
+    if (row.ownerProfileId !== undefined) return row.ownerProfileId === profile._id;
+    if (row.workspaceId === undefined) return false;
+    let m = members.get(row.workspaceId);
+    if (m === undefined) {
+      m = (await membership(ctx, profile._id, row.workspaceId)) !== null;
+      members.set(row.workspaceId, m);
+    }
+    return m;
+  };
+}
+
+/**
+ * Every note shared with the caller outside their own places, as `manifest` lists a scope's: id, content head
+ * and summary (sealed notes as ids only). `complete` is false when there were more than a device keeps.
+ */
+export const sharedManifest = query({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await requireProfile(ctx);
+    const { docs } = await sharedCandidates(ctx, profile);
+    const mine = ownPlaces(ctx, profile);
+    const ids = new IdResolver(ctx);
+    const place = new Placement(ctx, profile);
+    const notes: { id: string; head: number; sealed: boolean; summary: Awaited<ReturnType<Placement["summary"]>> | null }[] = [];
+    let complete = true;
+    for (const d of docs) {
+      if (d.inTrash || d.kind === "synced" || (await mine(d))) continue;
+      if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
+      if (notes.length >= SHARED_MAX) {
+        complete = false;
+        break;
+      }
+      if (isSealedNote(d)) notes.push({ id: d.publicId, head: 0, sealed: true, summary: null });
+      else notes.push({ id: d.publicId, head: await contentHead(ctx, d._id), sealed: false, summary: await place.summary(ids, d) });
+    }
+    return { notes, complete };
+  },
+});
+
+/** A small fingerprint (FNV-1a) of what decides the shared list, so the device copy knows when to list it again. */
+function fingerprint(parts: string[]): string {
+  let h = 0x811c9dc5;
+  for (const part of parts) {
+    for (let i = 0; i < part.length; i++) {
+      h ^= part.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    h ^= 0x2c;
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return `${parts.length}:${h.toString(36)}`;
+}
+
+/**
+ * Moves whenever the notes shared with the caller could have changed: a page or folder shared, changed or
+ * revoked, a note added to, moved out of or removed from a shared folder. Subscribed to while the app is open.
+ */
+export const sharedHead = query({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await requireProfile(ctx);
+    const { docs, folders, pageGrants, folderGrants } = await sharedCandidates(ctx, profile);
+    const parts = [
+      ...pageGrants.map((g) => `p${g._id}${g.role}`),
+      ...folderGrants.map((g) => `f${g._id}${g.role}`),
+      ...folders.map((f) => `d${f._id}${f.parentFolderId ?? ""}`),
+      ...docs.map((d) => `n${d._id}${d.inTrash ? 1 : 0}${d.folderId ?? ""}${d.accessMode}${d.sealedAt ?? ""}`),
+    ];
+    return { key: fingerprint(parts) };
   },
 });

@@ -55,7 +55,7 @@ export { AI_FOCUS_EVENT };
  * A new conversation gets its id on the first question (`onConversation`).
  */
 /** The small actions under an answer (Copy, Regenerate, Edit) at a finger's size in the iPhone app: 44 pt tall, 15 pt words. */
-const IPHONE_ROW_BUTTONS = "[&_.ai-row-btn]:h-11 [&_.ai-row-btn]:gap-1.5 [&_.ai-row-btn]:px-2.5 [&_.ai-row-btn]:text-[15px] [&_.ai-row-btn_svg]:h-4 [&_.ai-row-btn_svg]:w-4";
+const IPHONE_ROW_BUTTONS = "[&_.ai-row-btn]:h-11 [&_.ai-row-btn]:gap-1.5 [&_.ai-row-btn]:px-2.5 [&_.ai-row-btn]:text-subheadline [&_.ai-row-btn_svg]:h-4 [&_.ai-row-btn_svg]:w-4";
 
 export function ChatThread({
   conversationId,
@@ -434,15 +434,15 @@ export function ChatThread({
       // Meet Foli AI: what it does, that it shows changes first, where requests go and what they cost.
       <div className="mx-auto max-w-2xl pt-[8vh]">
         <AiIcon size={28} aria-hidden />
-        <h2 className="ui-display mt-4 text-[28px] leading-tight text-heading">Meet Foli AI</h2>
+        <h2 className="ui-display mt-4 text-title-1 leading-tight text-heading">Meet Foli AI</h2>
         <AiIntroBody place={introPlace} credits={introCredits?.aiIncluded ? introCredits.available : null} size="md" />
-        {mode === "research" ? <p className="mt-3 text-[13.5px] text-muted">{modeLine}</p> : null}
-        <p className="mb-2.5 mt-6 flex items-center gap-2 text-[12.5px] font-medium text-muted">
+        {mode === "research" ? <p className="mt-3 text-body text-muted">{modeLine}</p> : null}
+        <p className="mb-2.5 mt-6 flex items-center gap-2 text-subheadline font-medium text-muted">
           <AiIcon size={13} aria-hidden /> Try asking
         </p>
         <div className="flex flex-wrap gap-2">
           {suggestions.map((s) => (
-            <button key={s} type="button" onClick={() => send(s)} className="rounded-control bg-[var(--glass-hover)] px-3.5 py-2 text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+            <button key={s} type="button" onClick={() => send(s)} className="rounded-control bg-[var(--glass-hover)] px-3.5 py-2 text-subheadline text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
               {s}
             </button>
           ))}
@@ -450,37 +450,37 @@ export function ChatThread({
       </div>
     ) : iphone ? (
       <div>
-        <h3 className="text-[17px] font-semibold text-heading">Suggestions</h3>
+        <h3 className="text-headline font-semibold text-heading">Suggestions</h3>
         <ul className="mt-1">
           {suggestions.map((s) => (
             <li key={s}>
-              <button type="button" onClick={() => send(s)} className="flex min-h-11 w-full items-center gap-3 py-2 text-left text-[16px] text-ink outline-none active:opacity-60 focus-visible:underline">
+              <button type="button" onClick={() => send(s)} className="flex min-h-11 w-full items-center gap-3 py-2 text-left text-callout text-ink outline-none active:opacity-60 focus-visible:underline">
                 <Sparkles size={18} strokeWidth={1.8} aria-hidden className="flex-none text-muted" />
                 {s}
               </button>
             </li>
           ))}
         </ul>
-        <p className="mt-5 text-[13px] leading-snug text-muted">Answers link to the notes they come from. Foli AI shows you any change before it makes it, and each request uses AI credits.</p>
+        <p className="mt-5 text-subheadline leading-snug text-muted">Answers link to the notes they come from. Foli AI shows you any change before it makes it, and each request uses AI credits.</p>
       </div>
     ) : (
       <div>
         {variant === "floating" ? (
           // Meet Foli AI: what it does here, that it shows changes first, where requests go and what they cost.
           <>
-            <h3 className="flex items-center gap-2 text-[14px] font-semibold text-heading">
+            <h3 className="flex items-center gap-2 text-body font-semibold text-heading">
               <AiIcon size={16} aria-hidden /> Meet Foli AI
             </h3>
             <AiIntroBody place={introPlace} credits={introCredits?.aiIncluded ? introCredits.available : null} size="md" />
-            {mode === "research" ? <p className="mt-3 text-[13.5px] text-muted">{modeLine}</p> : null}
+            {mode === "research" ? <p className="mt-3 text-body text-muted">{modeLine}</p> : null}
           </>
         ) : null}
-        <p className="mb-2.5 mt-5 flex items-center gap-2 text-[12.5px] font-medium text-muted">
+        <p className="mb-2.5 mt-5 flex items-center gap-2 text-subheadline font-medium text-muted">
           <AiIcon size={13} aria-hidden /> Try asking
         </p>
         <div className="flex flex-col items-start gap-2">
           {suggestions.map((s) => (
-            <button key={s} type="button" onClick={() => send(s)} className="rounded-control bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+            <button key={s} type="button" onClick={() => send(s)} className="rounded-control bg-[var(--glass-hover)] px-3 py-1.5 text-left text-subheadline text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
               {s}
             </button>
           ))}
@@ -496,11 +496,11 @@ export function ChatThread({
       <div ref={scroller} className={`min-h-0 flex-1 overflow-y-auto ${page ? "px-4 py-6 sm:px-8" : variant === "panel" ? "px-0.5 py-2" : "px-4 py-4"} ${iphone && !page ? "pb-6 [mask-image:linear-gradient(to_bottom,#000_calc(100%-24px),transparent)]" : ""} ${iphone ? IPHONE_ROW_BUTTONS : ""}`}>
         <div ref={content} className={`space-y-5 ${page ? "mx-auto max-w-3xl" : ""}`}>
           {loading ? (
-            <p className="flex items-center gap-2 px-1 text-[13px] text-muted">
+            <p className="flex items-center gap-2 px-1 text-subheadline text-muted">
               <Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> Loading the conversation…
             </p>
           ) : null}
-          {conversationId && data === null ? <p className="px-1 text-[13.5px] text-muted">This conversation isn&apos;t here anymore. Ask something to start a new one.</p> : null}
+          {conversationId && data === null ? <p className="px-1 text-body text-muted">This conversation isn&apos;t here anymore. Ask something to start a new one.</p> : null}
           {intro}
           {messages.map((m, i) =>
             m.role === "user" ? (
@@ -541,12 +541,12 @@ export function ChatThread({
           {showPending ? (
             <>
               <UserMessage text={showPending} attachments={pending?.files} />
-              <p role="status" className="flex items-center gap-2 px-1 text-[13px] text-muted">
+              <p role="status" className="flex items-center gap-2 px-1 text-subheadline text-muted">
                 <Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> Thinking…
               </p>
             </>
           ) : null}
-          {problem ? <AiProblemNotice problem={problem} className={problem.kind === "other" ? "rounded-panel bg-danger-soft px-3 py-2.5 text-[13px] text-danger" : undefined} /> : null}
+          {problem ? <AiProblemNotice problem={problem} className={problem.kind === "other" ? "rounded-panel bg-danger-soft px-3 py-2.5 text-subheadline text-danger" : undefined} /> : null}
           <AiAnnouncer text={announce} />
           <div ref={endRef} />
         </div>
@@ -555,7 +555,7 @@ export function ChatThread({
         <button
           type="button"
           onClick={toLatest}
-          className={`absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-capsule bg-[var(--color-surface-raised)] font-medium text-heading shadow-[0_0_0_0.5px_rgb(0_0_0/0.12),0_4px_14px_-4px_rgb(0_0_0/0.25)] outline-none animate-[iphone-fade-in_160ms_ease-out] focus-visible:ring-2 focus-visible:ring-focus active:opacity-70 motion-reduce:animate-none ${iphone ? "h-9 px-3.5 text-[15px]" : "h-8 px-3 text-[12.5px]"}`}
+          className={`absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-capsule bg-[var(--color-surface-raised)] font-medium text-heading shadow-[0_0_0_0.5px_rgb(0_0_0/0.12),0_4px_14px_-4px_rgb(0_0_0/0.25)] outline-none animate-[iphone-fade-in_160ms_ease-out] focus-visible:ring-2 focus-visible:ring-focus active:opacity-70 motion-reduce:animate-none ${iphone ? "h-9 px-3.5 text-subheadline" : "h-8 px-3 text-subheadline"}`}
         >
           <ArrowDown size={iphone ? 16 : 14} aria-hidden /> Jump to latest
         </button>
@@ -609,7 +609,7 @@ export function ChatThread({
               }}
               maxLength={4000}
               placeholder={mode === "research" ? "What should I research?" : iphone ? (messages.length ? "Ask a follow-up…" : "Ask Foli AI anything…") : webOn ? "Ask anything. Answers use your notes and the web…" : messages.length ? "Ask a follow-up…" : "Ask anything, or ask Foli AI to tidy or organize…"}
-              className={`block min-h-[3rem] w-full resize-none bg-transparent text-ink outline-none placeholder:text-faint ${iphone ? "px-4 pb-1 pt-2.5 text-[17px] leading-6" : "px-3.5 pb-1.5 pt-3 text-[14px] leading-[1.5]"}`}
+              className={`block min-h-[3rem] w-full resize-none bg-transparent text-ink outline-none placeholder:text-faint ${iphone ? "px-4 pb-1 pt-2.5 text-body leading-6" : "px-3.5 pb-1.5 pt-3 text-body leading-[1.5]"}`}
             />
             {/* How Foli AI helps on the left, attach and send on the right, all inside the box. */}
             {/* 4px from the box's edge: the switch and Send are 10px-cornered inside its 14px corners. */}
@@ -637,7 +637,7 @@ export function ChatThread({
               </div>
             </div>
           </div>
-          <p className={iphone ? "mt-2 px-4 text-center text-[13px] leading-[18px] text-faint" : "mt-2 px-1 text-[11px] text-faint"}>
+          <p className={iphone ? "mt-2 px-4 text-center text-footnote leading-[18px] text-faint" : "mt-2 px-1 text-footnote text-faint"}>
             Foli AI can make mistakes.
             {footNotes.length ? ` ${footNotes.join(" ")}` : ""}
           </p>

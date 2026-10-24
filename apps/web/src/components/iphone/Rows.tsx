@@ -20,8 +20,8 @@ export function ListRow({ href, onClick, icon, label, detail, chevron = true, on
     <>
       {icon ? <span aria-hidden className="grid w-7 flex-none place-items-center text-muted [&_svg]:h-[22px] [&_svg]:w-[22px]">{icon}</span> : null}
       <span className="ui-row-sep flex min-h-[52px] min-w-0 flex-1 items-center gap-2 pr-1">
-        <span className="min-w-0 flex-1 truncate text-[17px] leading-[22px] text-ink">{label}</span>
-        {detail !== undefined && detail !== null && detail !== "" ? <span className="flex-none text-[17px] leading-[22px] tabular-nums text-muted">{detail}</span> : null}
+        <span className="min-w-0 flex-1 truncate text-body leading-[22px] text-ink">{label}</span>
+        {detail !== undefined && detail !== null && detail !== "" ? <span className="flex-none text-body leading-[22px] tabular-nums text-muted">{detail}</span> : null}
         {chevron ? <RowChevron /> : null}
       </span>
       {children}
@@ -52,7 +52,7 @@ export function HomeSection({ id, title, href, menu, children, empty, collapsibl
   const chevron = <ChevronRight size={20} strokeWidth={2.6} absoluteStrokeWidth aria-hidden className={`mt-px flex-none text-faint transition-transform duration-200 motion-reduce:transition-none ${collapsible && open ? "rotate-90" : ""}`} />;
   const heading = (
     <>
-      <span className="ui-display text-[22px] leading-7 tracking-[-0.01em] text-heading">{title}</span>
+      <span className="ui-display text-title-2 leading-7 tracking-[-0.01em] text-heading">{title}</span>
       {collapsible || href ? chevron : null}
     </>
   );
@@ -91,13 +91,13 @@ export function HomeSection({ id, title, href, menu, children, empty, collapsibl
 
 /** What an empty Home section says: one quiet line in a 56-point box (§2.1). */
 export function EmptyBox({ children }: { children: ReactNode }) {
-  return <p className="mx-4 grid min-h-14 place-items-center rounded-container bg-[color-mix(in_oklab,var(--color-ink)_4%,transparent)] px-5 text-center font-serif text-[15px] italic leading-5 text-muted">{children}</p>;
+  return <p className="mx-4 grid min-h-14 place-items-center rounded-container bg-[color-mix(in_oklab,var(--color-ink)_4%,transparent)] px-5 text-center font-serif text-subheadline italic leading-5 text-muted">{children}</p>;
 }
 
 /** The search field under a large title: a button that opens search (Home), or a field that filters a list. */
 export function SearchField({ placeholder, onOpen, value, onChange, trailing }: { placeholder: string; onOpen?: () => void; value?: string; onChange?: (v: string) => void; trailing?: ReactNode }) {
   const [focused, setFocused] = useState(false);
-  const box = "flex h-11 items-center gap-2 rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_6.5%,transparent)] px-3 text-[17px]";
+  const box = "flex h-11 items-center gap-2 rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_6.5%,transparent)] px-3 text-body";
   if (onOpen)
     return (
       <div className="px-4 pb-1 pt-2">
@@ -133,7 +133,7 @@ export function SearchField({ placeholder, onOpen, value, onChange, trailing }: 
             onChange?.("");
             (document.activeElement as HTMLElement | null)?.blur();
           }}
-          className="h-11 flex-none px-1 text-[17px] text-heading"
+          className="h-11 flex-none px-1 text-body text-heading"
         >
           Cancel
         </button>
@@ -154,8 +154,8 @@ export function ScreenEmpty({ icon: Icon, title, body, action }: { icon?: Lucide
           <Icon size={40} strokeWidth={1.5} />
         </span>
       ) : null}
-      <h2 className="text-[17px] font-semibold leading-[22px] text-heading">{title}</h2>
-      {body ? <p className="mt-1 text-[15px] leading-5 text-muted">{body}</p> : null}
+      <h2 className="text-headline font-semibold leading-[22px] text-heading">{title}</h2>
+      {body ? <p className="mt-1 text-subheadline leading-5 text-muted">{body}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}
     </div>
   );

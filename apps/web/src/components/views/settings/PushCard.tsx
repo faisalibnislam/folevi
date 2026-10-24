@@ -106,12 +106,12 @@ function WebPushCard() {
   return (
     <Card title="Notifications on this device" description="Reminders and mentions show up here even when Folevi isn’t open, following the In app choices above. A reminder shows its to-do line; a mention says only who and where.">
       {!supported ? (
-        <p className="text-sm text-muted">This browser can’t show notifications from websites. On iPhone and iPad, add Folevi to your Home Screen first.</p>
+        <p className="text-subheadline text-muted">This browser can’t show notifications from websites. On iPhone and iPad, add Folevi to your Home Screen first.</p>
       ) : permission === "denied" ? (
-        <p className="text-sm text-muted">Notifications are blocked for Folevi in this browser’s settings. Allow them there, then come back.</p>
+        <p className="text-subheadline text-muted">Notifications are blocked for Folevi in this browser’s settings. Allow them there, then come back.</p>
       ) : (
         <div className="flex max-w-xl items-center justify-between gap-4">
-          <p className="text-sm text-ink">
+          <p className="text-subheadline text-ink">
             {on ? "On for this device." : "Off for this device."}
             {status && status.devices > (on ? 1 : 0) ? <span className="text-muted"> {status.devices - (on ? 1 : 0)} other device{status.devices - (on ? 1 : 0) === 1 ? "" : "s"} too.</span> : null}
           </p>

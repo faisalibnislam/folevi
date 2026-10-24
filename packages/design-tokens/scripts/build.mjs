@@ -24,14 +24,19 @@ const shadowCss = (layers) =>
   layers.map(([x, y, blur, spread, c, inset]) => `${inset ? "inset " : ""}${x}px ${y}px ${blur}px ${spread}px ${c}`).join(", ");
 const shadowVars = (theme) => Object.entries(tokens.shadow[theme]).map(([k, v]) => `  --shadow-${kebab(k)}: ${shadowCss(v)};`);
 
+/** The UI type scale's roles (largeTitle → --type-large-title, title1 → --type-title-1) with their line heights. */
+const roleName = (r) => kebab(r).replace(/(\d)/, "-$1");
+const typeVars = (scale) => Object.entries(scale).flatMap(([r, { size, leading }]) => [`  --type-${roleName(r)}: ${size}px;`, `  --type-${roleName(r)}-leading: ${leading}px;`]);
+
 function buildCss() {
   const { color, space, radius, font, layout, motion } = tokens;
   const light = [...cssVars(color.light, "color"), ...shadowVars("light")].join("\n");
   const dark = [...cssVars(color.dark, "color"), ...shadowVars("dark")].join("\n");
   const shared = [
-    ...cssVars(space, "space", "px"),
+    ...Object.entries(stripMeta(space)).map(([k, v]) => `  --space-${k.replace(".", "_")}: ${v}px;`),
     ...cssVars(radius, "radius", "px"),
-    ...cssVars(font.size, "text", "px"),
+    ...typeVars(font.role.desktop),
+    `  --type-input-min: ${font.inputMin}px;`,
     ...Object.entries(font.lineHeight).map(([k, v]) => `  --leading-${kebab(k)}: ${v};`),
     ...Object.entries(font.weight).map(([k, v]) => `  --weight-${kebab(k)}: ${v};`),
     ...Object.entries(font.tracking).map(([k, v]) => `  --tracking-${kebab(k)}: ${v}em;`),
@@ -48,6 +53,11 @@ function buildCss() {
 ${shared}
   color-scheme: light;
 ${light}
+}
+
+/* The iPhone and iPad apps (and Android's): Apple's default Dynamic Type sizes for the same roles. */
+:root:is([data-iphone], [data-native]) {
+${typeVars(font.role.ios).join("\n")}
 }
 
 @media (prefers-color-scheme: dark) {

@@ -49,11 +49,11 @@ export function ThemePreview({ theme, dark }: { theme: PreviewTheme; dark: boole
     <div className="overflow-hidden rounded-panel p-4" style={{ background: theme.image ? `${theme.image} center / cover no-repeat` : "var(--color-surface-sunken)" }}>
       <article className="overflow-hidden rounded-control shadow-[var(--shadow-sheet)]" style={{ background: paper, color: ink }}>
         <div className="relative h-24" style={{ background: theme.image ? `${theme.image} center / cover no-repeat` : "transparent" }}>
-          <h3 className="absolute bottom-2 left-5 right-5 truncate text-[26px] font-semibold leading-tight" style={{ fontFamily: titleFont(d, fonts), color: titleOnCover, textShadow: p.tone === "deep" ? "0 1px 14px rgb(0 0 0 / 0.4)" : undefined }}>
+          <h3 className="absolute bottom-2 left-5 right-5 truncate text-title-1 font-semibold leading-tight" style={{ fontFamily: titleFont(d, fonts), color: titleOnCover, textShadow: p.tone === "deep" ? "0 1px 14px rgb(0 0 0 / 0.4)" : undefined }}>
             {theme.name || "Untitled theme"}
           </h3>
         </div>
-        <div className="px-5 pb-5 pt-4 text-[14.5px] leading-relaxed" style={{ fontFamily: familyFor(d.font, fonts) }}>
+        <div className="px-5 pb-5 pt-4 text-body leading-relaxed" style={{ fontFamily: familyFor(d.font, fonts) }}>
           <p>
             A quiet morning, <strong>bold</strong> and <em>italic</em>, with a{" "}
             <span className="rounded-tiny px-0.5" style={{ background: hl[0] }}>
@@ -68,7 +68,7 @@ export function ThemePreview({ theme, dark }: { theme: PreviewTheme; dark: boole
           <Separator kind={d.separator} color={line} />
           <ul className="space-y-1">
             <li className="flex items-center gap-2">
-              <span aria-hidden className="grid size-4 place-items-center rounded-tiny text-[10px] text-white" style={{ background: accent }}>
+              <span aria-hidden className="grid size-4 place-items-center rounded-tiny text-footnote text-white" style={{ background: accent }}>
                 ✓
               </span>
               <span className="line-through opacity-60">Water the plants</span>
@@ -81,21 +81,21 @@ export function ThemePreview({ theme, dark }: { theme: PreviewTheme; dark: boole
           <blockquote className="mt-3 pl-3" style={{ borderLeft: `3px solid ${accent}` }}>
             Slow mornings make fast afternoons.
           </blockquote>
-          <p className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[13px]">
+          <p className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-subheadline">
             {text.map((c, i) => (
               <span key={i} className="font-semibold" style={{ color: c }}>
                 {p.names[i] ?? "Colour"}
               </span>
             ))}
           </p>
-          <p className="mt-1.5 flex flex-wrap gap-1.5 text-[12.5px]">
+          <p className="mt-1.5 flex flex-wrap gap-1.5 text-subheadline">
             {hl.map((c, i) => (
               <span key={i} className="rounded-tiny px-1" style={{ background: c }}>
                 Highlight {i + 1}
               </span>
             ))}
           </p>
-          <p className="mt-3 text-[12.5px]" style={{ fontFamily: familyFor("mono", fonts) }}>
+          <p className="mt-3 text-subheadline" style={{ fontFamily: familyFor("mono", fonts) }}>
             const note = &quot;mono&quot;;
           </p>
         </div>

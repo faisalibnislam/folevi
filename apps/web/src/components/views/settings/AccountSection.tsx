@@ -87,7 +87,7 @@ export function AccountSection() {
     <>
       <Card title="Profile">
         <div className="mb-5">
-          <p className="mb-2 text-sm font-medium">Profile picture</p>
+          <p className="mb-2 text-subheadline font-medium">Profile picture</p>
           <IdentityImageField
             label="Profile picture"
             shape="circle"
@@ -110,21 +110,21 @@ export function AccountSection() {
             update({ displayName: name }).then(() => toast.show("Saved", { tone: "success" }), (err) => toast.show(errorMessage(err), { tone: "error" }));
           }}
         >
-          <label className="text-sm">
+          <label className="text-subheadline">
             <span className="mb-1 block font-medium">Name</span>
             <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} className="h-9 w-full ui-input rounded-chip px-3" />
           </label>
-          <label className="text-sm">
+          <label className="text-subheadline">
             <span className="mb-1 block font-medium">Email</span>
             <input value={profile.email} readOnly aria-describedby="email-hint" className="h-9 w-full ui-well rounded-chip px-3 text-muted" />
-            <span id="email-hint" className="mt-1 block text-xs text-muted">
+            <span id="email-hint" className="mt-1 block text-footnote text-muted">
               Your sign-in address. Contact support to change it.
             </span>
           </label>
-          <label className="text-sm">
+          <label className="text-subheadline">
             <span className="mb-1 block font-medium">Time zone</span>
             {zoneField}
-            <span className="mt-1 block text-xs text-muted">Used for Today, the calendar and reminders.</span>
+            <span className="mt-1 block text-footnote text-muted">Used for Today, the calendar and reminders.</span>
           </label>
           <div>
             <Button type="submit" variant="primary">
@@ -167,7 +167,7 @@ export function AiSettingCard() {
   return (
     <Card title="Foli AI">
       <div className="flex items-start justify-between gap-6">
-        <p id={descId} className="max-w-prose text-sm text-muted">
+        <p id={descId} className="max-w-prose text-subheadline text-muted">
           {core ? (
             <>
               <span className="font-medium text-heading">Not included in Core.</span> Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include Foli AI.{" "}

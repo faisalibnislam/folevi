@@ -182,7 +182,7 @@ function Routes() {
       return (
         <ViewChrome title="Not found">
           <div className="mx-auto max-w-lg px-6 py-24 text-center">
-            <h1 className="ui-display text-4xl">This page doesn’t exist</h1>
+            <h1 className="ui-display text-large-title">This page doesn’t exist</h1>
             <p className="mt-3 text-muted">It may have been moved, or the link is incomplete.</p>
             <a href="/documents" className="mt-6 inline-block text-accent underline underline-offset-2">
               Go to Home

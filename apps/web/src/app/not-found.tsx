@@ -41,16 +41,16 @@ function AppNotFound() {
       </header>
       <main id="main" className="px-3 pb-16 sm:px-6">
         <div className="mx-auto mt-24 max-w-md text-center">
-          <h1 className="ui-display text-4xl">This page isn’t here</h1>
+          <h1 className="ui-display text-large-title">This page isn’t here</h1>
           <p className="mt-3 text-muted">The link may be old, or the address has a typo.</p>
           <nav aria-label="Ways back" className="mt-6 flex flex-wrap items-center justify-center gap-2">
-            <a href="/documents" className="ui-btn ui-btn-primary h-9 px-4 text-sm">
+            <a href="/documents" className="ui-btn ui-btn-primary h-9 px-4 text-callout">
               Open Folevi
             </a>
-            <a href={`${MARKETING_URL}/docs`} className="ui-btn ui-btn-secondary h-9 px-4 text-sm">
+            <a href={`${MARKETING_URL}/docs`} className="ui-btn ui-btn-secondary h-9 px-4 text-callout">
               Docs
             </a>
-            <a href={MARKETING_URL} className="ui-btn ui-btn-ghost h-9 px-4 text-sm">
+            <a href={MARKETING_URL} className="ui-btn ui-btn-ghost h-9 px-4 text-callout">
               Home
             </a>
           </nav>

@@ -15,7 +15,7 @@ export interface ResearchHandlers {
   onSave: () => void;
 }
 
-const BUTTON = "inline-flex h-7 items-center gap-1 rounded-chip px-1.5 text-[12px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40";
+const BUTTON = "inline-flex h-7 items-center gap-1 rounded-chip px-1.5 text-footnote text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40";
 
 function StepIcon({ status }: { status: ResearchJob["steps"][number]["status"] }) {
   if (status === "running") return <Loader2 size={13} className="animate-spin motion-reduce:animate-none" aria-hidden />;
@@ -32,7 +32,7 @@ export function ResearchSteps({ job }: { job: ResearchJob }) {
   return (
     <ol aria-label={job.status === "running" ? "Research in progress" : "Research steps"} className="space-y-1">
       {job.steps.map((s, i) => (
-        <li key={`${i}-${s.kind}`} className={`flex items-start gap-2 text-[12.5px] ${s.status === "running" ? "text-ink" : "text-muted"}`}>
+        <li key={`${i}-${s.kind}`} className={`flex items-start gap-2 text-subheadline ${s.status === "running" ? "text-ink" : "text-muted"}`}>
           <span className="mt-[2px] flex-none">
             <StepIcon status={s.status} />
           </span>
@@ -52,7 +52,7 @@ export function ResearchProgress({ research }: { research: ResearchHandlers }) {
   return (
     <div className="rounded-panel rounded-bl-tiny bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <p role="status" className="flex items-center gap-2 text-[13px] font-medium text-heading">
+        <p role="status" className="flex items-center gap-2 text-subheadline font-medium text-heading">
           <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> Researching…
         </p>
         <button type="button" onClick={research.onCancel} className={BUTTON}>
@@ -60,7 +60,7 @@ export function ResearchProgress({ research }: { research: ResearchHandlers }) {
         </button>
       </div>
       <ResearchSteps job={job} />
-      <p className="mt-2 text-[11.5px] text-faint">This can take a few minutes. You can leave; the report appears here when it&apos;s ready.</p>
+      <p className="mt-2 text-footnote text-faint">This can take a few minutes. You can leave; the report appears here when it&apos;s ready.</p>
     </div>
   );
 }
@@ -68,7 +68,7 @@ export function ResearchProgress({ research }: { research: ResearchHandlers }) {
 /** Under a finished report: Save as note (or Open note once saved). Cancelled jobs say so. */
 export function ResearchFooter({ research, onOpen }: { research: ResearchHandlers; onOpen: (href: string) => void }) {
   const { job, saving } = research;
-  if (job.status === "cancelled") return <span className="px-1.5 text-[12px] text-faint">Research cancelled</span>;
+  if (job.status === "cancelled") return <span className="px-1.5 text-footnote text-faint">Research cancelled</span>;
   if (job.status !== "done") return null;
   return (
     <>
@@ -83,7 +83,7 @@ export function ResearchFooter({ research, onOpen }: { research: ResearchHandler
         </button>
       )}
       {saving && saving !== "saving" ? (
-        <span role="alert" className="px-1.5 text-[12px] text-danger">
+        <span role="alert" className="px-1.5 text-footnote text-danger">
           {saving.error}
         </span>
       ) : null}

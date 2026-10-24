@@ -361,10 +361,10 @@ function StylePanel({ art, onPick }: { art: CoverArt; styles?: readonly CoverArt
   useThemesVersion();
   const themes = pickableThemes();
   return (
-    <div className="space-y-4 px-1 text-sm">
+    <div className="space-y-4 px-1 text-[13px]">
       <div aria-hidden className="relative block h-28 w-full overflow-hidden rounded-chip bg-cover bg-center shadow-[var(--shadow-card)]" style={{ backgroundImage: `url("${coverArtThumbUrl(art.id)}")` }}>
         <span className="absolute bottom-0 left-1/2 top-3 w-[38%] -translate-x-1/2 rounded-t-chip px-2 pt-2 text-left shadow-[0_6px_18px_-6px_rgb(0_0_0/0.35)]" style={{ background: art.paper, color: art.ink }}>
-          <span className="block text-[10.5px] font-semibold leading-tight">{art.name}</span>
+          <span className="block text-[11px] font-semibold leading-tight">{art.name}</span>
           <span className="mt-1.5 block h-1 w-4/5 rounded-tiny opacity-25" style={{ background: art.ink }} />
           <span className="mt-1 block h-1 w-3/5 rounded-tiny opacity-25" style={{ background: art.ink }} />
         </span>
@@ -372,7 +372,7 @@ function StylePanel({ art, onPick }: { art: CoverArt; styles?: readonly CoverArt
       <div>
         <div className="mb-2 flex items-center justify-between px-1">
           <p className="ui-caps">Note Theme</p>
-          <button type="button" aria-haspopup="dialog" onClick={() => setGallery(true)} className="rounded-chip px-2 py-1 text-[12.5px] font-medium text-ink transition-colors hover:bg-accent-soft/60">
+          <button type="button" aria-haspopup="dialog" onClick={() => setGallery(true)} className="rounded-chip px-2 py-1 text-[13px] font-medium text-ink transition-colors hover:bg-accent-soft/60">
             Browse all
           </button>
         </div>
@@ -392,7 +392,7 @@ function StylePanel({ art, onPick }: { art: CoverArt; styles?: readonly CoverArt
               >
                 <span aria-hidden className="relative block aspect-[4/3] bg-cover bg-center" style={{ backgroundImage: `url("${coverArtThumbUrl(t.id)}")` }}>
                   <span className="absolute bottom-0 left-1/2 top-3 w-[62%] -translate-x-1/2 rounded-t-tiny px-1.5 pt-1" style={{ background: t.paper, color: t.ink }}>
-                    <span className="block truncate text-[9.5px] font-semibold leading-tight">{t.name}</span>
+                    <span className="block truncate text-[10px] font-semibold leading-tight">{t.name}</span>
                     <span className="mt-1 block h-[3px] w-4/5 rounded-tiny opacity-25" style={{ background: t.ink }} />
                   </span>
                 </span>
@@ -423,7 +423,7 @@ function NoticeBody({ notice }: { notice: Notice }) {
       {notice.items ? (
         <ul className="mt-3 space-y-0.5" aria-label="Not available here">
           {notice.items.map((item) => (
-            <li key={item} aria-disabled="true" className="flex h-8 items-center gap-2 rounded-chip px-2 text-[13.5px] text-muted">
+            <li key={item} aria-disabled="true" className="flex h-8 items-center gap-2 rounded-chip px-2 text-[14px] text-muted">
               <AiIcon size={14} />
               {item}
             </li>

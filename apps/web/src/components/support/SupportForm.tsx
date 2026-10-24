@@ -96,18 +96,18 @@ export function SupportForm({
   };
 
   const site = variant === "site";
-  const input = `ui-input w-full rounded-chip px-3 text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)] ${site ? "h-11 text-[15px]" : "h-9 text-sm"}`;
-  const label = site ? "mb-1.5 block text-[14px] font-medium text-(--color-heading)" : "mb-1 block text-sm font-medium text-heading";
-  const hint = site ? "mt-1.5 text-[13px] text-muted" : "mt-1 text-[12.5px] text-muted";
-  const errorCls = site ? "mt-1.5 text-[13px] text-danger" : "mt-1 text-[12.5px] text-danger";
+  const input = `ui-input w-full rounded-chip px-3 text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)] ${site ? "h-11 text-body" : "h-9 text-subheadline"}`;
+  const label = site ? "mb-1.5 block text-body font-medium text-(--color-heading)" : "mb-1 block text-subheadline font-medium text-heading";
+  const hint = site ? "mt-1.5 text-subheadline text-muted" : "mt-1 text-subheadline text-muted";
+  const errorCls = site ? "mt-1.5 text-subheadline text-danger" : "mt-1 text-subheadline text-danger";
 
   if (sent) {
     return (
       <div role="status" aria-live="polite" className={site ? "py-2" : ""}>
-        <p className={site ? "text-[18px] font-semibold text-(--color-heading)" : "text-[15px] font-semibold text-heading"}>
+        <p className={site ? "text-title-3 font-semibold text-(--color-heading)" : "text-headline font-semibold text-heading"}>
           {sent.number ? `We got your message. Your request number is #${sent.number}.` : "We got your message."}
         </p>
-        <p className={site ? "mt-2 text-[15px] leading-relaxed text-muted" : "mt-1.5 text-sm text-muted"}>
+        <p className={site ? "mt-2 text-body leading-relaxed text-muted" : "mt-1.5 text-subheadline text-muted"}>
           We sent a confirmation to <span className="font-medium text-ink">{sent.email}</span> and will reply there. To add details, reply to that email.
           {account ? " Replies also appear in Help, under Your support requests." : ""}
         </p>
@@ -115,7 +115,7 @@ export function SupportForm({
           {site ? (
             <button
               type="button"
-              className="mk-btn mk-btn-secondary h-10 px-4 text-[14px]"
+              className="mk-btn mk-btn-secondary h-10 px-4 text-body"
               onClick={() => {
                 setSent(null);
                 setMessage("");
@@ -273,7 +273,7 @@ export function SupportForm({
       </div>
 
       {formError ? (
-        <p role="alert" className={`rounded-control bg-danger-soft px-3 py-2 ${site ? "text-[14px]" : "text-sm"} text-danger`}>
+        <p role="alert" className={`rounded-control bg-danger-soft px-3 py-2 ${site ? "text-body" : "text-subheadline"} text-danger`}>
           {formError}
         </p>
       ) : null}
@@ -285,7 +285,7 @@ export function SupportForm({
           </Button>
         ) : null}
         {site ? (
-          <button type="submit" className="mk-btn mk-btn-primary h-11 px-5 text-[15px]" aria-busy={busy || undefined} disabled={busy}>
+          <button type="submit" className="mk-btn mk-btn-primary h-11 px-5 text-body" aria-busy={busy || undefined} disabled={busy}>
             {busy ? "Sending…" : "Send message"}
           </button>
         ) : (

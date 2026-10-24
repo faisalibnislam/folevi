@@ -10,7 +10,7 @@ import { PrivacyPanel } from "@/components/e2ee/PrivacyPanel";
 export function PrivacySection() {
   return (
     <>
-      <p className="max-w-prose text-sm text-muted">{copy.privacy.intro}</p>
+      <p className="max-w-prose text-subheadline text-muted">{copy.privacy.intro}</p>
       <PrivacyPanel scope={{ kind: "personal" }} />
     </>
   );

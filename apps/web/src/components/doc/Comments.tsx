@@ -235,17 +235,17 @@ export function CommentThreadCard({
     >
       <header className="flex items-center gap-0.5 border-b border-line/70 py-2 pl-4 pr-2">
         <div className="min-w-0 flex-1">
-          <h2 id={titleId} className="text-[14px] font-semibold text-heading">
+          <h2 id={titleId} className="text-body font-semibold text-heading">
             {embedded ? "Thread" : "Comments"}
           </h2>
           {thread?.blockExists === false ? (
-            <p className="flex items-center gap-1 text-[11.5px] text-muted">
+            <p className="flex items-center gap-1 text-footnote text-muted">
               <Unlink size={11} aria-hidden /> On a deleted block
             </p>
           ) : null}
         </div>
         {siblings.length > 1 && at >= 0 ? (
-          <div className="mr-1 flex items-center text-[11.5px] text-muted" role="group" aria-label="Threads on this block">
+          <div className="mr-1 flex items-center text-footnote text-muted" role="group" aria-label="Threads on this block">
             <IconButton label="Previous thread" className="!h-6 !w-6 pointer-coarse:!h-11 pointer-coarse:!w-11" disabled={at === 0} onClick={() => onSelectThread?.(siblings[at - 1]!.id)}>
               <ChevronLeft size={13} aria-hidden />
             </IconButton>
@@ -286,7 +286,7 @@ export function CommentThreadCard({
       </header>
 
       {confirmDelete && thread ? (
-        <div role="alert" className="flex items-center gap-2 border-b border-line/70 bg-danger-soft/40 px-4 py-2.5 text-[12.5px]">
+        <div role="alert" className="flex items-center gap-2 border-b border-line/70 bg-danger-soft/40 px-4 py-2.5 text-subheadline">
           <span className="flex-1">Delete this thread and its {thread.comments.length === 1 ? "comment" : `${thread.comments.length} comments`}?</span>
           <Button size="sm" variant="quiet" onClick={() => setConfirmDelete(false)}>
             Cancel
@@ -306,7 +306,7 @@ export function CommentThreadCard({
       ) : null}
 
       {resolved && !showResolved ? (
-        <div className="flex items-center gap-2 px-4 py-3 text-[12.5px] text-muted">
+        <div className="flex items-center gap-2 px-4 py-3 text-subheadline text-muted">
           <Check size={14} className="flex-none text-heading" aria-hidden />
           <span className="flex-1">
             Resolved{thread?.resolvedBy ? ` by ${thread.resolvedBy}` : ""}
@@ -359,7 +359,7 @@ export function CommentThreadCard({
               people={people}
               onSubmitShortcut={send}
               onEscape={embedded ? undefined : onClose}
-              className="block w-full resize-none bg-transparent py-1.5 text-[13.5px] leading-snug text-ink outline-none placeholder:text-faint"
+              className="block w-full resize-none bg-transparent py-1.5 text-body leading-snug text-ink outline-none placeholder:text-faint"
             />
             <span id={hintId} className="sr-only">
               Enter to send, Shift+Enter for a new line. Type @ to mention someone who can see this page.
@@ -370,7 +370,7 @@ export function CommentThreadCard({
           </IconButton>
         </form>
       ) : !canComment && !thread ? (
-        <p className="px-4 py-3 text-[12.5px] text-muted">You can read comments on this note but not add them.</p>
+        <p className="px-4 py-3 text-subheadline text-muted">You can read comments on this note but not add them.</p>
       ) : null}
     </section>
   );
@@ -419,7 +419,7 @@ function CommentRow({
     <li data-ctx-host="" className={`group relative flex gap-2.5 px-4 py-2 ${isPending(c) ? "opacity-60" : ""}`}>
       <Avatar name={c.authorName} url={c.authorAvatarUrl} size={24} className="mt-0.5" />
       <div className="min-w-0 flex-1">
-        <p className={`flex items-baseline gap-1 text-[12.5px] ${reactable ? "pr-14" : "pr-7"}`}>
+        <p className={`flex items-baseline gap-1 text-subheadline ${reactable ? "pr-14" : "pr-7"}`}>
           <span className="truncate font-semibold text-heading">{c.authorName}</span>
           <span className="flex-none text-faint">
             · {failed ? "Not sent" : isPending(c) ? (online ? "Sending…" : "Waiting to send") : formatRelative(c.createdAt)}
@@ -443,7 +443,7 @@ function CommentRow({
               value={editing}
               onChange={onEditChange}
               people={people}
-              className="ui-input block w-full resize-none rounded-chip px-2 py-1.5 text-[13.5px] leading-snug"
+              className="ui-input block w-full resize-none rounded-chip px-2 py-1.5 text-body leading-snug"
               onSubmitShortcut={onEditSave}
               onEscape={onEditCancel}
             />
@@ -457,11 +457,11 @@ function CommentRow({
             </div>
           </form>
         ) : (
-          <p className={`mt-0.5 whitespace-pre-wrap break-words text-[13.5px] leading-snug ${c.deleted ? "italic text-faint" : "text-ink"}`}>{c.deleted ? "Comment deleted" : <CommentBody body={c.body} />}</p>
+          <p className={`mt-0.5 whitespace-pre-wrap break-words text-body leading-snug ${c.deleted ? "italic text-faint" : "text-ink"}`}>{c.deleted ? "Comment deleted" : <CommentBody body={c.body} />}</p>
         )}
         {failed && c.entryId ? (
           // The server refused it: the text stays here until the person sends it again or lets it go.
-          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-danger">
+          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-footnote text-danger">
             <span>This comment wasn’t saved.</span>
             <button type="button" className="rounded-chip px-1.5 py-0.5 font-medium text-heading hover:bg-accent-soft" onClick={() => outbox?.retry(c.entryId!)}>
               Retry
@@ -706,7 +706,7 @@ function CommentsList({ documentId, onOpenThread, focusThreadId = null }: { docu
     setExpanded(t.id);
     setFilter(t.status);
   }, [focusThreadId, data, setFilter]);
-  if (!data) return <p className="text-sm text-muted">Loading comments…</p>;
+  if (!data) return <p className="text-subheadline text-muted">Loading comments…</p>;
   const everyone: MentionPerson[] = people ?? [];
   const open = data.threads.filter((t) => t.status === "open");
   const resolved = data.threads.filter((t) => t.status === "resolved");
@@ -752,7 +752,7 @@ function CommentsList({ documentId, onOpenThread, focusThreadId = null }: { docu
     });
   };
   return (
-    <div className="space-y-3 text-sm">
+    <div className="space-y-3 text-subheadline">
       <NoteNotifications documentId={documentId} />
       {data.canComment ? (
         <form
@@ -774,11 +774,11 @@ function CommentsList({ documentId, onOpenThread, focusThreadId = null }: { docu
             people={everyone}
             describedBy="comment-hint"
             placeholder="Comment on the whole note"
-            className="block w-full resize-none pr-2 bg-transparent text-[13.5px] leading-snug outline-none placeholder:text-faint"
+            className="block w-full resize-none pr-2 bg-transparent text-body leading-snug outline-none placeholder:text-faint"
             onSubmitShortcut={submit}
           />
           <div className="mt-1.5 flex items-center justify-between gap-2">
-            <p id="comment-hint" className="text-[11.5px] text-faint">
+            <p id="comment-hint" className="text-footnote text-faint">
               @ to mention · Enter to send
             </p>
             <Button size="sm" variant="primary" type="submit" disabled={!draft.trim()}>
@@ -805,7 +805,7 @@ function CommentsList({ documentId, onOpenThread, focusThreadId = null }: { docu
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search comments"
             aria-label="Search comments"
-            className="h-8 w-full ui-input rounded-chip px-2.5 text-[13px]"
+            className="h-8 w-full ui-input rounded-chip px-2.5 text-callout"
           />
         ) : null}
       </div>
@@ -831,7 +831,7 @@ function CommentsList({ documentId, onOpenThread, focusThreadId = null }: { docu
                   />
                 ) : null}
                 {confirmDelete === t.id ? (
-                  <div role="alert" className="mb-1 flex items-center gap-2 rounded-control bg-danger-soft/40 px-2.5 py-2 text-[12.5px]">
+                  <div role="alert" className="mb-1 flex items-center gap-2 rounded-control bg-danger-soft/40 px-2.5 py-2 text-subheadline">
                     <span className="flex-1">Delete this thread and its {t.comments.length === 1 ? "comment" : `${t.comments.length} comments`}?</span>
                     <Button size="sm" variant="quiet" onClick={() => setConfirmDelete(null)}>
                       Cancel
@@ -854,19 +854,19 @@ function CommentsList({ documentId, onOpenThread, focusThreadId = null }: { docu
                   onClick={() => (inline ? setExpanded(expanded === t.id ? null : t.id) : onOpenThread(t))}
                   className="block w-full rounded-control px-2.5 py-2 text-left transition-colors hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-progress"
                 >
-                  <span className="flex min-w-0 items-center gap-1 pr-8 text-[11.5px] text-faint">{anchorLabel(t)}</span>
+                  <span className="flex min-w-0 items-center gap-1 pr-8 text-footnote text-faint">{anchorLabel(t)}</span>
                   <span className="mt-1.5 flex items-center gap-2">
                     <Avatar name={first.authorName} url={first.authorAvatarUrl} size={20} />
-                    <span className="min-w-0 flex-1 truncate text-[12.5px]">
+                    <span className="min-w-0 flex-1 truncate text-subheadline">
                       <span className="font-semibold text-heading">{first.authorName}</span> <span className="text-faint">· {t.waiting === "failed" ? "Not sent" : isPending(t) ? "Waiting to send" : formatRelative(t.lastActivityAt)}</span>
                     </span>
                     {t.unread ? <span className="h-2 w-2 flex-none rounded-tiny bg-coral" aria-label="Unread" role="img" /> : null}
                   </span>
-                  <span className={`mt-1 line-clamp-2 block whitespace-pre-wrap text-[13px] leading-snug ${first.deleted ? "italic text-faint" : "text-ink"}`}>
+                  <span className={`mt-1 line-clamp-2 block whitespace-pre-wrap text-subheadline leading-snug ${first.deleted ? "italic text-faint" : "text-ink"}`}>
                     {first.deleted ? "Comment deleted" : <CommentBody body={first.body} links={false} />}
                   </span>
                   {replies > 0 || t.status === "resolved" ? (
-                    <span className="mt-1 flex items-center gap-2 text-[11.5px] text-muted">
+                    <span className="mt-1 flex items-center gap-2 text-footnote text-muted">
                       {replies > 0 ? (
                         <span className="inline-flex items-center gap-1">
                           <CornerDownRight size={11} aria-hidden /> {replies} {replies === 1 ? "reply" : "replies"}
@@ -927,7 +927,7 @@ export function NoteNotifications({ documentId }: { documentId: string }) {
   const value = sub.isAuthor && sub.mode === "follow" ? "default" : sub.mode;
   return (
     <div className="flex items-center justify-between gap-3 border-b border-line/70 px-1 pb-3">
-      <label htmlFor={`note-notify-${documentId}`} className="text-[12.5px] text-muted">
+      <label htmlFor={`note-notify-${documentId}`} className="text-subheadline text-muted">
         Notify
       </label>
       <Select
@@ -939,7 +939,7 @@ export function NoteNotifications({ documentId }: { documentId: string }) {
             (err) => toast.show(errorMessage(err), { tone: "error" }),
           )
         }
-        className="ui-input h-8 w-48 rounded-chip px-2.5 text-[12.5px]"
+        className="ui-input h-8 w-48 rounded-chip px-2.5 text-callout"
       >
         {sub.isAuthor ? <option value="default">All comments</option> : <option value="follow">All comments</option>}
         {sub.isAuthor ? null : <option value="default">Replies and @mentions</option>}

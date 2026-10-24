@@ -272,8 +272,8 @@ export function TabStrip() {
   };
   const mask = `linear-gradient(to right, ${overflow.start ? "transparent" : "#000"} 0, #000 ${FADE}px, #000 calc(100% - ${FADE}px), ${overflow.end ? "transparent" : "#000"} 100%)`;
   const tabBase = ipad
-    ? "group relative flex h-10 items-center gap-2 rounded-container px-3.5 text-[15px] outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus focus-visible:ring-2 has-[:focus-visible]:ring-2"
-    : "group relative flex h-9 items-center gap-2 rounded-control px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus ring-offset-1 ring-offset-canvas focus-visible:ring-2 has-[:focus-visible]:ring-2";
+    ? "group relative flex h-10 items-center gap-2 rounded-container px-3.5 text-body outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus focus-visible:ring-2 has-[:focus-visible]:ring-2"
+    : "group relative flex h-9 items-center gap-2 rounded-control px-2.5 text-subheadline outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus ring-offset-1 ring-offset-canvas focus-visible:ring-2 has-[:focus-visible]:ring-2";
   // Every tab is an outlined rounded rectangle. Closed tabs sit back (a light grey fill, quiet text); the
   // open one comes forward: white, a firm dark outline, a soft shadow and bold text. On the iPad: no outline,
   // the open tab a raised capsule, the others plain text that tints under the finger.

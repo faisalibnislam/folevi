@@ -42,7 +42,7 @@ function Progress({ p, verb }: { p: MigrationProgress | null; verb: string }) {
       <div className="h-1.5 overflow-hidden rounded-tiny bg-sunken" role="progressbar" aria-label={verb} aria-valuemin={0} aria-valuemax={total || 1} aria-valuenow={done}>
         <div className="h-full rounded-tiny bg-heading transition-[width] duration-300" style={{ width: `${p?.phase === "done" ? 100 : pct}%` }} />
       </div>
-      <p className="mt-3 text-sm text-muted" role="status" aria-live="polite">
+      <p className="mt-3 text-subheadline text-muted" role="status" aria-live="polite">
         {!p || p.phase === "organizing"
           ? "Bringing folders and tags…"
           : p.phase === "trash"
@@ -60,7 +60,7 @@ function Problems({ problems }: { problems: MigrationProblem[] }) {
   const files = problems.filter((p) => p.kind === "file");
   const other = problems.filter((p) => p.kind !== "file");
   return (
-    <div className="mt-4 text-sm" data-testid="migration-problems">
+    <div className="mt-4 text-subheadline" data-testid="migration-problems">
       {files.length ? (
         <>
           <p className="font-medium text-ink">Some files didn’t come along</p>
@@ -232,7 +232,7 @@ function UploadToAccount({ move }: { move: Extract<PendingMove, { direction: "up
               <span>Bring version history</span>
               <Switch checked={versions} onChange={setVersions} label="Bring version history" />
             </label>
-            <p className="text-sm">Your library folder stays as it is either way. Keep them separate to use this account with nothing moved: both stay in the account menu, and you can move notes later with Move or copy notes.</p>
+            <p className="text-subheadline">Your library folder stays as it is either way. Keep them separate to use this account with nothing moved: both stay in the account menu, and you can move notes later with Move or copy notes.</p>
           </div>
         }
       >

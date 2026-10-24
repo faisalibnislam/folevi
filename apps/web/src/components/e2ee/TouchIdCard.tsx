@@ -30,8 +30,8 @@ export function TouchIdCard() {
     <Card title="Encrypted notes">
       <div className="flex max-w-xl items-center justify-between gap-6">
         <span className="min-w-0">
-          <span className="block text-sm text-ink">{d.touchId}</span>
-          <span id={id} className="block text-xs text-muted">
+          <span className="block text-subheadline text-ink">{d.touchId}</span>
+          <span id={id} className="block text-footnote text-muted">
             {value.available ? d.touchIdBody : d.touchIdUnavailable}
           </span>
         </span>

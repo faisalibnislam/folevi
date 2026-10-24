@@ -59,8 +59,8 @@ export function E2eeGate({ children }: { children: ReactNode }) {
             <span aria-hidden className="grid h-11 w-11 place-items-center rounded-control bg-heading text-canvas">
               <LockKeyhole size={20} />
             </span>
-            <h1 className="ui-display mt-4 text-[24px] leading-tight">{copy.unlock.lockedSpace}</h1>
-            <p className="mt-2 text-sm text-muted">{copy.unlock.needsSetup}</p>
+            <h1 className="ui-display mt-4 text-title-1 leading-tight">{copy.unlock.lockedSpace}</h1>
+            <p className="mt-2 text-subheadline text-muted">{copy.unlock.needsSetup}</p>
             <Button variant="primary" className="mt-6" onClick={() => setWizard(true)}>
               {copy.unlock.setUp}
             </Button>
@@ -74,9 +74,9 @@ export function E2eeGate({ children }: { children: ReactNode }) {
       <GatePage>
         <div className="flex min-h-full items-start justify-center px-4 py-16 sm:items-center">
           <section role="status" className="ui-card w-full max-w-md rounded-container p-6 sm:p-8">
-            <h1 className="ui-display text-[24px] leading-tight">{copy.unlock.waitingTitle}</h1>
-            <p className="mt-2 text-sm text-muted">{copy.unlock.waitingForKey}</p>
-            {workspace ? <p className="mt-3 text-[13px] text-faint">{workspace.name}</p> : null}
+            <h1 className="ui-display text-title-1 leading-tight">{copy.unlock.waitingTitle}</h1>
+            <p className="mt-2 text-subheadline text-muted">{copy.unlock.waitingForKey}</p>
+            {workspace ? <p className="mt-3 text-subheadline text-faint">{workspace.name}</p> : null}
           </section>
         </div>
         {/* The wizard opened from "Set up encryption" carries on here once the keys exist (ways to unlock). */}

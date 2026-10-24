@@ -100,7 +100,7 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
           footer={workspace.storageUsedBytes > workspace.storageQuotaBytes ? "Over the storage limit. Everything already stored stays available; new uploads are paused until space is freed." : storageLabel}
         >
           <div className="relative px-4 py-3">
-            <p className="flex items-baseline justify-between gap-3 text-[17px]">
+            <p className="flex items-baseline justify-between gap-3 text-body">
               <span className="text-ink">Used</span>
               <span className="text-muted">
                 {formatBytes(workspace.storageUsedBytes)} of {formatBytes(workspace.storageQuotaBytes)}
@@ -139,18 +139,18 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
             <label className="sr-only" htmlFor="ws-name">
               Workspace name
             </label>
-            <input id="ws-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} className="h-9 flex-1 ui-input rounded-chip px-3 text-sm" />
+            <input id="ws-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} className="h-9 flex-1 ui-input rounded-chip px-3 text-callout" />
             <Button type="submit" disabled={!name.trim() || name.trim() === workspace.name}>
               Rename
             </Button>
           </form>
         ) : (
-          <p className="text-sm">
-            <span className="text-muted">Name:</span> {workspace.name} <span className="text-xs text-faint">(owners and admins can rename it)</span>
+          <p className="text-subheadline">
+            <span className="text-muted">Name:</span> {workspace.name} <span className="text-footnote text-faint">(owners and admins can rename it)</span>
           </p>
         )}
         <div className="mt-5">
-          <p className="mb-2 text-sm font-medium">Logo</p>
+          <p className="mb-2 text-subheadline font-medium">Logo</p>
           {canAdmin ? (
             <IdentityImageField
               label="Workspace logo"
@@ -166,11 +166,11 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
               }}
             />
           ) : (
-            <p className="text-sm text-muted">Owners and admins can change the logo.</p>
+            <p className="text-subheadline text-muted">Owners and admins can change the logo.</p>
           )}
         </div>
         {/* A workspace has its own plan and storage, separate from anyone's Personal plan. */}
-        <p className="mt-4 text-sm text-muted">
+        <p className="mt-4 text-subheadline text-muted">
           Plan: <span className="text-ink">{workspace.plan.name}</span>
           {workspace.canManageBilling ? (
             <>
@@ -181,7 +181,7 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
             </>
           ) : null}
         </p>
-        <p className="mt-1 text-sm text-muted">
+        <p className="mt-1 text-subheadline text-muted">
           {/* Your view of storage here: the owner's free 500 MB (shared with their Personal and free workspaces), or your own quota on a paid plan. */}
           {workspace.storageRule === "shared_free" ? (workspace.role === "owner" ? "Your free storage, shared with the free workspaces you own" : "The owner’s free storage") : workspace.storageRule === "per_person" ? "Your storage here" : "Workspace storage"}:{" "}
           {formatBytes(workspace.storageUsedBytes)} of {formatBytes(workspace.storageQuotaBytes)} used
@@ -190,11 +190,11 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
           <div className="h-full bg-accent" style={{ width: `${Math.min(100, pct)}%` }} />
         </div>
         {workspace.storageUsedBytes > workspace.storageQuotaBytes ? (
-          <p role="status" className="mt-2 max-w-md text-sm text-danger">
+          <p role="status" className="mt-2 max-w-md text-subheadline text-danger">
             Over the storage limit. Everything already stored stays available; new uploads are paused until space is freed{workspace.canManageBilling && canPurchaseHere() ? " or the plan is upgraded" : ""}.
           </p>
         ) : null}
-        <p className="mt-3 text-xs text-muted">
+        <p className="mt-3 text-footnote text-muted">
           Your role: {workspaceRoleLabel(workspace.role)}
           {workspace.role === "member" && workspace.memberAccess !== "edit" ? ` · ${workspace.memberAccess === "comment" ? "can comment" : "view only"}` : ""}
         </p>
@@ -208,7 +208,7 @@ function WorkspaceSettings({ workspace }: { workspace: Workspace }) {
       ) : scheduled === null ? (
         <>
           <Card title="Leave workspace" description="You own this workspace, so you can’t leave it. Make another member the owner first (Members → Make owner), or delete the workspace below.">
-            <AppLink href="/settings/members" className="text-sm font-medium text-heading underline decoration-line-strong underline-offset-2 hover:decoration-heading">
+            <AppLink href="/settings/members" className="text-subheadline font-medium text-heading underline decoration-line-strong underline-offset-2 hover:decoration-heading">
               Go to Members
             </AppLink>
           </Card>
@@ -303,10 +303,10 @@ function DeleteWorkspaceCard({ workspace }: { workspace: Workspace }) {
           </>
         }
       >
-        <label className="text-sm" htmlFor="confirm-workspace-name">
+        <label className="text-subheadline" htmlFor="confirm-workspace-name">
           Type <strong>{workspace.name}</strong> to confirm
         </label>
-        <input id="confirm-workspace-name" value={typed} onChange={(e) => setTyped(e.target.value)} className="mt-2 h-10 w-full ui-input rounded-chip px-3 text-sm" autoComplete="off" />
+        <input id="confirm-workspace-name" value={typed} onChange={(e) => setTyped(e.target.value)} className="mt-2 h-10 w-full ui-input rounded-chip px-3 text-callout" autoComplete="off" />
       </Dialog>
     </>
   );

@@ -56,7 +56,7 @@ function HexField({ label, value, onChange, disabled, note }: { label: string; v
   const valid = /^#[0-9a-f]{6}$/i.test(text);
   return (
     <div className="flex items-center gap-2">
-      <label htmlFor={id} className="w-20 flex-none truncate text-[12.5px] text-muted">
+      <label htmlFor={id} className="w-20 flex-none truncate text-subheadline text-muted">
         {label}
       </label>
       <span aria-hidden className="size-7 flex-none rounded-chip shadow-[inset_0_0_0_1px_rgb(0_0_0/0.12)]" style={{ background: valid ? text : value }} />
@@ -72,7 +72,7 @@ function HexField({ label, value, onChange, disabled, note }: { label: string; v
           if (/^#[0-9a-f]{6}$/i.test(v)) onChange(v.toLowerCase());
         }}
         onBlur={() => setText(value)}
-        className={`${inputCls} min-w-0 flex-1 font-mono text-[12.5px]`}
+        className={`${inputCls} min-w-0 flex-1 font-mono text-subheadline`}
       />
       <span className="flex w-[72px] flex-none justify-end">{note}</span>
     </div>
@@ -105,9 +105,9 @@ function Seg<T extends string>({ label, value, options, onChange, disabled, font
 function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <p className="text-[12.5px] font-semibold text-heading">{label}</p>
+      <p className="text-subheadline font-semibold text-heading">{label}</p>
       {children}
-      {hint ? <p className="text-[12px] text-muted">{hint}</p> : null}
+      {hint ? <p className="text-footnote text-muted">{hint}</p> : null}
     </div>
   );
 }
@@ -165,7 +165,7 @@ export function ThemeEditor({ themeKey }: { themeKey: string }) {
       </>
     );
   }
-  if (!form) return <p className="text-sm text-muted">Loading…</p>;
+  if (!form) return <p className="text-subheadline text-muted">Loading…</p>;
 
   const dirty = JSON.stringify(form) !== savedKey;
   const set = (patch: Partial<Form>) => setForm({ ...form, ...patch });
@@ -252,7 +252,7 @@ export function ThemeEditor({ themeKey }: { themeKey: string }) {
       <PageHeader
         eyebrow={
           <>
-            <Link href="/admin/themes" className="inline-flex items-center gap-1 text-[12.5px] text-muted hover:text-heading">
+            <Link href="/admin/themes" className="inline-flex items-center gap-1 text-subheadline text-muted hover:text-heading">
               <ArrowLeft size={13} aria-hidden /> Note themes
             </Link>
             {!isNew ? <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge> : <Badge tone="outline">Draft</Badge>}
@@ -325,7 +325,7 @@ export function ThemeEditor({ themeKey }: { themeKey: string }) {
                     {busy === "image" ? "Preparing…" : imageCss ? "Replace image…" : "Choose image…"}
                   </Button>
                 </div>
-                <p className="text-[12px] text-muted">{THEME_IMAGE_HINT} A new image brings its own colours.</p>
+                <p className="text-footnote text-muted">{THEME_IMAGE_HINT} A new image brings its own colours.</p>
               </div>
             </div>
           </Panel>
@@ -352,11 +352,11 @@ export function ThemeEditor({ themeKey }: { themeKey: string }) {
                       <HexField label="Page" value={paper} disabled={disabled} onChange={(v) => setPalette(d ? { paperDark: v } : { paper: v })} />
                       <HexField label="Text" value={d ? p.inkDark : p.ink} disabled={disabled} onChange={(v) => setPalette(d ? { inkDark: v } : { ink: v })} note={<Ratio a={d ? p.inkDark : p.ink} b={paper} min={7} />} />
                       <HexField label="Accent" value={d ? p.accentDark : p.accent} disabled={disabled} onChange={(v) => setPalette(d ? { accentDark: v } : { accent: v })} note={<Ratio a={d ? p.accentDark : p.accent} b={paper} min={4.5} />} />
-                      <p className="pt-2 text-[12px] font-semibold text-heading">Text colours</p>
+                      <p className="pt-2 text-footnote font-semibold text-heading">Text colours</p>
                       {(d ? p.textDark : p.text).map((c, i) => (
                         <HexField key={`t${i}`} label={p.names[i] ?? `Colour ${i + 1}`} value={c} disabled={disabled} onChange={(v) => setAt(d ? "textDark" : "text", i, v)} note={<Ratio a={c} b={paper} min={4.5} />} />
                       ))}
-                      <p className="pt-2 text-[12px] font-semibold text-heading">Highlights</p>
+                      <p className="pt-2 text-footnote font-semibold text-heading">Highlights</p>
                       {(d ? p.highlightDark : p.highlight).map((c, i) => (
                         <HexField key={`h${i}`} label={`Highlight ${i + 1}`} value={c} disabled={disabled} onChange={(v) => setAt(d ? "highlightDark" : "highlight", i, v)} note={<Ratio a={d ? p.inkDark : p.ink} b={c} min={4.5} />} />
                       ))}
@@ -365,14 +365,14 @@ export function ThemeEditor({ themeKey }: { themeKey: string }) {
                 })}
               </div>
               <div className="mt-5 space-y-2">
-                <p className="text-[12px] font-semibold text-heading">Colour names (shown in the text colour menu)</p>
+                <p className="text-footnote font-semibold text-heading">Colour names (shown in the text colour menu)</p>
                 <div className="grid gap-2 sm:grid-cols-5">
                   {p.names.map((n, i) => (
                     <input key={i} value={n} maxLength={24} disabled={disabled} aria-label={`Name of text colour ${i + 1}`} onChange={(e) => setAt("names", i, e.target.value)} className={inputCls} />
                   ))}
                 </div>
                 <div className="flex items-center gap-2 pt-2">
-                  <span className="text-[12.5px] text-muted">Title on the cover</span>
+                  <span className="text-subheadline text-muted">Title on the cover</span>
                   <Seg label="Title on the cover" value={p.tone} disabled={disabled} options={[{ id: "deep", name: "White" }, { id: "light", name: "Text colour" }]} onChange={(tone) => setPalette({ tone })} />
                 </div>
               </div>
@@ -461,7 +461,7 @@ export function ThemeEditor({ themeKey }: { themeKey: string }) {
           {p ? (
             <ThemePreview theme={{ name: form.name, image: imageCss, palette: p, defaults: form.defaults, fonts: form.fonts }} dark={dark} />
           ) : (
-            <div className="grid aspect-[4/5] place-items-center rounded-panel bg-sunken px-6 text-center text-sm text-muted">Choose an image to see the theme.</div>
+            <div className="grid aspect-[4/5] place-items-center rounded-panel bg-sunken px-6 text-center text-subheadline text-muted">Choose an image to see the theme.</div>
           )}
         </aside>
       </div>

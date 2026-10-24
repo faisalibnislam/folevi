@@ -164,7 +164,7 @@ function PlaceCard({ info, status, onChanged, syncNow }: { info: LibraryInfo | n
   };
   return (
     <Card title="Where your library is" description="Folevi keeps your notes as files in one folder. Other devices that use the same place share the library.">
-      <dl className="grid max-w-lg grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+      <dl className="grid max-w-lg grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-4 gap-y-2 text-subheadline">
         <dt className="text-muted">Syncs with</dt>
         <dd data-testid="library-kind">{info ? placeName(info.kind) : "…"}</dd>
         <dt className="text-muted">Location</dt>
@@ -242,7 +242,7 @@ function Connection({ provider, cloud }: { provider: CloudProvider; cloud: Retur
   return (
     <div className="mt-4 grid gap-3 rounded-control border border-line px-4 py-3" data-testid="library-connection">
       {busy === "connect" ? (
-        <div role="status" className="flex flex-wrap items-center gap-3 text-sm">
+        <div role="status" className="flex flex-wrap items-center gap-3 text-subheadline">
           <Loader2 size={15} aria-hidden className="animate-spin text-heading motion-reduce:animate-none" />
           <span className="min-w-0 flex-1">Finish signing in to {name} in {deviceWords().signInPlace}.</span>
           <Button size="sm" onClick={() => void shell()?.library.cloud?.cancel()}>
@@ -250,17 +250,17 @@ function Connection({ provider, cloud }: { provider: CloudProvider; cloud: Retur
           </Button>
         </div>
       ) : state === "connected" || state === "offline" ? (
-        <p className="text-sm">
+        <p className="text-subheadline">
           Connected as <span className="font-medium text-heading">{here?.account ?? `your ${name} account`}</span>
           {state === "offline" ? <span className="text-muted">. Offline: changes go up when {deviceWords().here} is back online.</span> : null}
         </p>
       ) : state === "reconnect" ? (
-        <p className="flex gap-2 text-sm">
+        <p className="flex gap-2 text-subheadline">
           <AlertTriangle size={16} aria-hidden className="mt-0.5 flex-none text-danger" />
           {name} stopped letting Folevi in (the access was removed or it expired). Reconnect to keep syncing. Your notes are safe on {deviceWords().here} meanwhile.
         </p>
       ) : (
-        <p className="text-sm text-muted">Not connected to {name}. Your notes are kept on {deviceWords().here} and sync once you connect again.</p>
+        <p className="text-subheadline text-muted">Not connected to {name}. Your notes are kept on {deviceWords().here} and sync once you connect again.</p>
       )}
       {busy !== "connect" ? (
         <div className="flex flex-wrap gap-2">
@@ -320,24 +320,24 @@ function DevicesCard({ status }: { status: LibraryStatus }) {
   return (
     <Card title="Devices" description="Every device that opens this library, and when each last synced with it.">
       {status.devices.length === 0 ? (
-        <p className="text-sm text-muted">No device has synced yet.</p>
+        <p className="text-subheadline text-muted">No device has synced yet.</p>
       ) : (
         <ul className="divide-y divide-line" data-testid="library-devices">
           {status.devices.map((d) => (
             <li key={d.deviceId} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
               <span className="grid h-8 w-8 flex-none place-items-center rounded-small bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] text-ink">{d.platform === "ios" || d.platform === "android" ? <Smartphone size={16} aria-hidden /> : <Laptop size={16} aria-hidden />}</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-heading">
+                <span className="block truncate text-subheadline font-medium text-heading">
                   {/* The store names a device "This device" until the host gives it a name of its own. */}
                   {d.name && d.name !== "This device" ? d.name : d.thisDevice ? platform(d.platform) : `Another ${platform(d.platform)}`}
-                  {d.thisDevice ? <span className="ml-2 text-xs font-normal text-muted">{deviceWords().Here}</span> : null}
+                  {d.thisDevice ? <span className="ml-2 text-footnote font-normal text-muted">{deviceWords().Here}</span> : null}
                 </span>
-                <span className="block truncate text-xs text-muted">
+                <span className="block truncate text-footnote text-muted">
                   {platform(d.platform)}
                   {d.appVersion ? ` · Folevi ${d.appVersion}` : ""}
                 </span>
               </span>
-              <span className="flex-none text-xs text-muted">{d.thisDevice && status.syncing ? "Syncing…" : `Last synced ${formatRelative(d.lastSeen)}`}</span>
+              <span className="flex-none text-footnote text-muted">{d.thisDevice && status.syncing ? "Syncing…" : `Last synced ${formatRelative(d.lastSeen)}`}</span>
             </li>
           ))}
         </ul>
@@ -374,18 +374,18 @@ function HealthCard({ status }: { status: LibraryStatus }) {
   return (
     <Card title="Library health" description={total === 0 ? `Every file in the library could be read. ${status.notes.total} ${status.notes.total === 1 ? "note" : "notes"} on ${thisDevice()}.` : "Some files need a moment, or need a look."}>
       <div className="space-y-4" data-testid="library-health">
-        {total === 0 ? <p className="text-sm text-muted">Nothing to fix.</p> : null}
+        {total === 0 ? <p className="text-subheadline text-muted">Nothing to fix.</p> : null}
         {HEALTH.map((h) => {
           const items = status.health[h.key];
           if (!items.length) return null;
           return (
             <section key={h.key} aria-label={h.title} data-health={h.key}>
-              <h4 className="flex items-center gap-2 text-sm font-semibold text-heading">
+              <h4 className="flex items-center gap-2 text-subheadline font-semibold text-heading">
                 {h.icon}
                 {h.title} <span className="font-normal text-muted">{items.length}</span>
               </h4>
-              <p className="mt-1 max-w-xl text-[13px] leading-snug text-muted">{h.why}</p>
-              <ul className="mt-2 space-y-1 text-[13px]">
+              <p className="mt-1 max-w-xl text-subheadline leading-snug text-muted">{h.why}</p>
+              <ul className="mt-2 space-y-1 text-subheadline">
                 {items.slice(0, 20).map((item) => (
                   <HealthRow key={item.path} item={item} />
                 ))}
@@ -403,7 +403,7 @@ function HealthRow({ item }: { item: HealthItem }) {
   return (
     <li className="flex flex-wrap items-baseline gap-x-2">
       <span className="font-medium text-ink">{item.title || item.path}</span>
-      {item.title ? <span className="truncate font-mono text-[11.5px] text-faint">{item.path}</span> : null}
+      {item.title ? <span className="truncate font-mono text-footnote text-faint">{item.path}</span> : null}
       <span className="text-muted">since {formatRelative(item.since)}</span>
       {item.detail ? <span className="w-full text-muted">{item.detail}</span> : null}
     </li>
@@ -559,9 +559,9 @@ function ChangePassphraseDialog({ open, onClose, onDone }: { open: boolean; onCl
       }
     >
       <div className="grid gap-3">
-        <label className="grid gap-1 text-[13px] text-muted" htmlFor={`${id}-current`}>
+        <label className="grid gap-1 text-subheadline text-muted" htmlFor={`${id}-current`}>
           Current passphrase
-          <input id={`${id}-current`} type="password" autoComplete="current-password" value={current} onChange={(e) => (setCurrent(e.target.value), setProblem(null))} className="ui-input h-10 rounded-chip px-3 text-[15px] text-ink" />
+          <input id={`${id}-current`} type="password" autoComplete="current-password" value={current} onChange={(e) => (setCurrent(e.target.value), setProblem(null))} className="ui-input h-10 rounded-chip px-3 text-body text-ink" />
         </label>
         <PassphraseFields
           newLabel="New passphrase"
@@ -624,12 +624,12 @@ function RemovePassphraseDialog({ open, onClose, onDone }: { open: boolean; onCl
         </>
       }
     >
-      <label className="grid gap-1 text-[13px] text-muted" htmlFor={`${id}-p`}>
+      <label className="grid gap-1 text-subheadline text-muted" htmlFor={`${id}-p`}>
         Passphrase
-        <input id={`${id}-p`} type="password" autoComplete="current-password" value={current} onChange={(e) => (setCurrent(e.target.value), setProblem(null))} className="ui-input h-10 rounded-chip px-3 text-[15px] text-ink" />
+        <input id={`${id}-p`} type="password" autoComplete="current-password" value={current} onChange={(e) => (setCurrent(e.target.value), setProblem(null))} className="ui-input h-10 rounded-chip px-3 text-body text-ink" />
       </label>
       {problem ? (
-        <p role="alert" className="mt-2 text-[13.5px] text-danger">
+        <p role="alert" className="mt-2 text-body text-danger">
           {problem}
         </p>
       ) : null}
@@ -678,15 +678,15 @@ function LockCard() {
     <Card title="App lock" description={unavailable ? `${deviceWords().Here} has no ${deviceWords().ios ? "Face ID or passcode" : shell()?.platform === "android" ? "fingerprint, face or screen lock" : "Touch ID"}, or it isn't set up in ${deviceWords().settings}, so Folevi can't lock.` : `Folevi asks for ${name} when it opens, and when you come back to it. It covers your notes until then.`}>
       <div className="grid gap-4" data-testid="library-lock">
         <div className="flex items-center justify-between gap-4">
-          <span id={descId} className="text-sm text-ink">
+          <span id={descId} className="text-subheadline text-ink">
             Lock Folevi with {name}
           </span>
           <Switch checked={settings.lock} onChange={(on) => void change({ lock: on })} label={`Lock Folevi with ${name}`} describedBy={descId} disabled={unavailable || busy} />
         </div>
         {settings.lock ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-sm text-ink">Ask again when you come back</span>
-            <Select value={String(settings.lockAfter)} onChange={(e) => void change({ lockAfter: Number(e.target.value) })} aria-label="Ask again when you come back" className="ui-input h-9 w-48 rounded-chip px-3 text-sm" disabled={busy}>
+            <span className="text-subheadline text-ink">Ask again when you come back</span>
+            <Select value={String(settings.lockAfter)} onChange={(e) => void change({ lockAfter: Number(e.target.value) })} aria-label="Ask again when you come back" className="ui-input h-9 w-48 rounded-chip px-3 text-callout" disabled={busy}>
               {LOCK_AFTER.map((o) => (
                 <option key={o.value} value={String(o.value)}>
                   {o.label}
@@ -705,7 +705,7 @@ function LockCard() {
 function AiKeysCard() {
   return (
     <Card title="Foli AI" description={`In a library on your devices, Foli AI runs on ${deviceWords().onDeviceModel} on ${deviceWords().here}, or on your own OpenAI, Anthropic or Google key, called straight from ${deviceWords().here}.`}>
-      <p className="text-sm text-muted" data-testid="library-ai-keys">
+      <p className="text-subheadline text-muted" data-testid="library-ai-keys">
         Choose the model and add your keys in{" "}
         <AppLink href="/settings/ai" className="text-ink underline underline-offset-2">
           Settings, under AI
@@ -826,7 +826,7 @@ function IphonePlace({ info, status, onChanged, syncNow }: { info: LibraryInfo |
       </Subscreen>
       <Subscreen id="library-move" title="Move library">
         <div className="grid gap-2 px-4">
-          <p className="px-4 pb-1 text-[13px] leading-[18px] text-muted">Folevi copies every file to the new place, checks each one arrived, then uses it. Keep Folevi open until it&apos;s done. Other devices need to be moved too.</p>
+          <p className="px-4 pb-1 text-subheadline leading-[18px] text-muted">Folevi copies every file to the new place, checks each one arrived, then uses it. Keep Folevi open until it&apos;s done. Other devices need to be moved too.</p>
           <PlaceList
             label="Move the library to"
             current={info?.kind}

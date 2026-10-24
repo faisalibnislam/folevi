@@ -14,19 +14,19 @@ export default async function DevMailboxPage() {
   return (
     <main className="ui-canvas min-h-dvh px-6 py-10">
       <div className="mx-auto max-w-2xl">
-        <h1 className="ui-display text-3xl">Development mailbox</h1>
-        <p className="mt-2 text-sm text-muted">
+        <h1 className="ui-display text-large-title">Development mailbox</h1>
+        <p className="mt-2 text-subheadline text-muted">
           Identity emails captured on this non-production deployment (they are also handed to the email provider when one is configured; outside production only test or allowlisted addresses are actually sent). Newest first.
         </p>
         <ul className="mt-6 space-y-3">
-          {messages.length === 0 ? <li className="ui-card p-4 text-sm text-muted">No messages yet.</li> : null}
+          {messages.length === 0 ? <li className="ui-card p-4 text-subheadline text-muted">No messages yet.</li> : null}
           {messages.map((m) => (
             <li key={`${m.to}-${m.createdAt}`} className="ui-card p-4">
-              <p className="text-sm font-semibold text-heading">{LABELS[m.key] ?? m.key}</p>
-              <p className="text-xs text-muted">
+              <p className="text-subheadline font-semibold text-heading">{LABELS[m.key] ?? m.key}</p>
+              <p className="text-footnote text-muted">
                 To {m.to} · {new Date(m.createdAt).toLocaleString()}
               </p>
-              <a href={m.actionUrl} className="mt-2 inline-block break-all text-sm text-accent underline underline-offset-2">
+              <a href={m.actionUrl} className="mt-2 inline-block break-all text-subheadline text-accent underline underline-offset-2">
                 {m.actionUrl}
               </a>
             </li>

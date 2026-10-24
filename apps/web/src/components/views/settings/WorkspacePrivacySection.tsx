@@ -12,8 +12,8 @@ export function WorkspacePrivacySection({ workspace }: { workspace: Workspace })
   const canChange = workspace.canManage === true;
   return (
     <>
-      <p className="max-w-prose text-sm text-muted">{copy.privacy.workspaceIntro(workspace.name)}</p>
-      {canChange ? null : <p className="text-sm text-muted">{copy.privacy.workspaceReadOnly}</p>}
+      <p className="max-w-prose text-subheadline text-muted">{copy.privacy.workspaceIntro(workspace.name)}</p>
+      {canChange ? null : <p className="text-subheadline text-muted">{copy.privacy.workspaceReadOnly}</p>}
       <PrivacyPanel scope={{ kind: "workspace", workspaceId: workspace.id }} workspaceName={workspace.name} canChange={canChange} />
     </>
   );

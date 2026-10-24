@@ -19,7 +19,7 @@ export function Breadcrumbs({ items, className }: { items: Crumb[]; className?: 
     <>
       <JsonLd data={breadcrumbLd(items)} />
       <nav aria-label="Breadcrumb" className={className}>
-        <ol className="flex flex-wrap items-center gap-x-0.5 gap-y-1 text-[13.5px] text-muted">
+        <ol className="flex flex-wrap items-center gap-x-0.5 gap-y-1 text-[14px] text-muted">
           {items.map((item, i) => {
             const last = i === items.length - 1;
             return (
@@ -101,7 +101,7 @@ export function FaqSection({
                   index > 0 && "border-t mk-hair",
                 )}
               >
-                <dt className="text-[16.5px] font-semibold tracking-[-0.012em] text-(--color-heading)">
+                <dt className="text-[17px] font-semibold tracking-[-0.012em] text-(--color-heading)">
                   {item.q}
                 </dt>
                 <dd className="text-muted">{item.a}</dd>
@@ -162,7 +162,7 @@ export function LinkCard({
       ) : null}
       <div className={cx("flex flex-col", grow ? "flex-none" : "flex-1", cover ? "p-5 sm:p-6" : undefined, wide && "lg:flex-1 lg:justify-center lg:p-10")}>
         {icon ? <span className="mb-4">{icon}</span> : null}
-        <Heading className={cx("mk-h3 text-[16.5px] leading-snug", wide && "lg:text-[24px]")}>
+        <Heading className={cx("mk-h3 text-[17px] leading-snug", wide && "lg:text-[24px]")}>
           <Link
             href={href}
             className="after:absolute after:inset-0 after:rounded-control focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-(--color-focus)"
@@ -170,10 +170,10 @@ export function LinkCard({
             {title}
           </Link>
         </Heading>
-        <div className={cx("mt-1.5 text-[14.5px] leading-relaxed text-muted", grow ? undefined : "flex-1", wide && "lg:mt-3 lg:text-[16px]")}>{body}</div>
+        <div className={cx("mt-1.5 text-[15px] leading-relaxed text-muted", grow ? undefined : "flex-1", wide && "lg:mt-3 lg:text-[16px]")}>{body}</div>
         <span
           aria-hidden="true"
-          className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-(--color-heading)"
+          className="mt-4 inline-flex items-center gap-1.5 text-[14px] font-medium text-(--color-heading)"
         >
           Read more{" "}
           <Icon

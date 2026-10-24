@@ -141,11 +141,11 @@ export function PagePicker({
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Search pages"
-        className="ui-input h-10 w-full rounded-chip px-4 text-sm"
+        className="ui-input h-10 w-full rounded-chip px-4 text-callout"
         aria-describedby={error ? `${baseId}-err` : undefined}
       />
       {error ? (
-        <p id={`${baseId}-err`} role="alert" className="mt-2 text-sm text-danger">
+        <p id={`${baseId}-err`} role="alert" className="mt-2 text-subheadline text-danger">
           {error}
         </p>
       ) : null}
@@ -169,8 +169,8 @@ export function PagePicker({
             </button>
           </li>
         ))}
-        {!loading && !list.length ? <li className="px-2 py-3 text-sm text-muted">{query ? `No pages match “${query}”.` : "Search for the page to move this one into."}</li> : null}
-        {loading ? <li className="px-2 py-3 text-sm text-muted">Loading…</li> : null}
+        {!loading && !list.length ? <li className="px-2 py-3 text-subheadline text-muted">{query ? `No pages match “${query}”.` : "Search for the page to move this one into."}</li> : null}
+        {loading ? <li className="px-2 py-3 text-subheadline text-muted">Loading…</li> : null}
       </ul>
     </>
   );

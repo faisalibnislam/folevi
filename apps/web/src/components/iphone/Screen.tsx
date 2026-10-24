@@ -246,7 +246,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
           aria-hidden={status ? undefined : !smallTitle}
           data-status={status ? "" : undefined}
           style={status ? ({ ["--title-in" as string]: 1 } as React.CSSProperties) : undefined}
-          className={`iphone-small-title pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+4px)] flex h-11 -translate-x-1/2 items-center text-[17px] font-semibold leading-[22px] text-heading`}
+          className={`iphone-small-title pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+4px)] flex h-11 -translate-x-1/2 items-center text-headline font-semibold leading-[22px] text-heading`}
         >
           <span className="truncate">{status ?? title}</span>
         </p>
@@ -268,7 +268,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
             <h1 ref={titleRef} className="ui-large-title">
               {title}
             </h1>
-            {subtitle ? <div className="mt-0.5 text-[15px] leading-5 text-muted">{subtitle}</div> : null}
+            {subtitle ? <div className="mt-0.5 text-subheadline leading-5 text-muted">{subtitle}</div> : null}
           </div>
         ) : (
           <h1 className="sr-only">{title}</h1>

@@ -56,8 +56,8 @@ export function BuyCreditsDialog({ open, onClose, target, name }: { open: boolea
           return (
             <li key={id} className="flex items-center gap-3 rounded-control bg-[var(--glass-hover)] px-4 py-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
               <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-semibold text-heading">{pack.credits.toLocaleString()} AI credits</p>
-                <p className="text-[12.5px] text-muted">{formatPrice(pack.priceCents)}, one time</p>
+                <p className="text-body font-semibold text-heading">{pack.credits.toLocaleString()} AI credits</p>
+                <p className="text-subheadline text-muted">{formatPrice(pack.priceCents)}, one time</p>
               </div>
               <Button variant={id === "credits_1000" ? "primary" : "secondary"} size="sm" disabled={!canBuy || busy !== null} aria-busy={busy === id || undefined} aria-label={`Buy ${pack.credits.toLocaleString()} AI credits for ${formatPrice(pack.priceCents)}${test ? " (test)" : ""}`} onClick={() => void purchase(id)}>
                 {busy === id ? (test ? "Adding…" : "Opening checkout…") : `Buy${test ? " (test)" : ""}`}
@@ -66,9 +66,9 @@ export function BuyCreditsDialog({ open, onClose, target, name }: { open: boolea
           );
         })}
       </ul>
-      {status && !canBuy ? <p className="mt-3 text-[12.5px] text-faint">Buying credits isn&apos;t available yet.</p> : null}
-      {test ? <p className="mt-3 text-[12.5px] text-faint">Payments aren&apos;t connected, so this adds a test pack (development only). Nothing is charged.</p> : null}
-      {status?.checkoutAvailable ? <p className="mt-3 text-[12.5px] text-faint">Any tax is added at checkout.</p> : null}
+      {status && !canBuy ? <p className="mt-3 text-subheadline text-faint">Buying credits isn&apos;t available yet.</p> : null}
+      {test ? <p className="mt-3 text-subheadline text-faint">Payments aren&apos;t connected, so this adds a test pack (development only). Nothing is charged.</p> : null}
+      {status?.checkoutAvailable ? <p className="mt-3 text-subheadline text-faint">Any tax is added at checkout.</p> : null}
     </Dialog>
   );
 }

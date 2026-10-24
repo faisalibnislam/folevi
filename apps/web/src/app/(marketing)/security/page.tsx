@@ -66,7 +66,7 @@ function Section({
         <h2 id={`${id}-title`} className="mk-display text-[30px] leading-[1.05] sm:text-[36px]">
           {title}
         </h2>
-        <p className="mt-3 max-w-[60ch] text-[15.5px] leading-relaxed text-muted">{lead}</p>
+        <p className="mt-3 max-w-[60ch] text-[16px] leading-relaxed text-muted">{lead}</p>
         <Checks items={items} className="mt-5" />
       </div>
       {children}
@@ -79,7 +79,7 @@ function CodePicture() {
   return (
     <Play className="mt-7">
       <div role="img" aria-label="Signing in asks for the 6-digit code from your authenticator app." className="mk-panel rounded-panel p-4 sm:p-5">
-        <p className="text-[12.5px] font-medium text-muted">6-digit code</p>
+        <p className="text-[13px] font-medium text-muted">6-digit code</p>
         <div className="mt-2 flex gap-1.5">
           {["4", "8", "1", "9", "2", "7"].map((digit, i) => (
             <span
@@ -119,7 +119,7 @@ function LinkPicture() {
             <span data-step className="mk-chip gap-1.5">
               <Icon name="lock" size={13} /> Password protected
             </span>
-            <span data-step className="ml-auto text-[12.5px] font-medium text-coral-ink">
+            <span data-step className="ml-auto text-[13px] font-medium text-coral-ink">
               Revoke
             </span>
           </div>
@@ -138,7 +138,7 @@ function LinkPicture() {
 /** A small piece of the sign-in settings, floating in the header. */
 function TwoStepPiece() {
   return (
-    <div className="mk-app-pop flex w-max items-center gap-2.5 rounded-panel px-3 py-2.5 text-[12.5px] text-ink">
+    <div className="mk-app-pop flex w-max items-center gap-2.5 rounded-panel px-3 py-2.5 text-[13px] text-ink">
       <Icon name="key" size={14} />
       <span className="font-medium text-(--color-heading)">Two-step verification</span>
       <span className="rounded-chip bg-(--mk-violet-soft) px-1.5 py-0.5 text-[11px] font-semibold text-(--mk-violet-ink)">On</span>

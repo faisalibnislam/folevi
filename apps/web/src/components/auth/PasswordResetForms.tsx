@@ -36,7 +36,7 @@ export function ForgotPasswordForm() {
           <SubmitButton busy={busy}>Send reset link</SubmitButton>
         </form>
       )}
-      <p className="mt-6 text-sm text-muted">
+      <p className="mt-6 text-subheadline text-muted">
         Remembered it? <TextLink href="/signin">Sign in</TextLink>
       </p>
     </>
@@ -54,7 +54,7 @@ export function ResetPasswordForm({ token, linkError }: { token: string | null; 
     return (
       <>
         <AuthHeading title="This link can't be used" lede="Reset links expire after an hour and work only once." />
-        <p className="text-sm">
+        <p className="text-subheadline">
           <TextLink href="/forgot-password">Request a new reset link</TextLink>
         </p>
       </>
@@ -64,7 +64,7 @@ export function ResetPasswordForm({ token, linkError }: { token: string | null; 
     return (
       <>
         <AuthHeading title="Password changed" lede="For your security, every other device has been signed out. Sign in with your new password." />
-        <a href="/signin" className="ui-btn ui-btn-primary h-11 w-full text-[15px]">
+        <a href="/signin" className="ui-btn ui-btn-primary h-11 w-full text-body">
           Sign in
         </a>
       </>

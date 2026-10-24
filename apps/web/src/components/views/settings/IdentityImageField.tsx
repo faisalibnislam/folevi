@@ -52,7 +52,7 @@ export function IdentityImageField({
         // eslint-disable-next-line @next/next/no-img-element -- a small signed storage URL, not an optimisable asset
         <img src={shown} alt="" width={56} height={56} onError={() => setFailedSrc(shown)} className={`size-14 flex-none object-cover ${radius} border border-line`} />
       ) : (
-        <span aria-hidden className={`grid size-14 flex-none place-items-center bg-heading text-xl font-semibold text-canvas ${radius}`}>
+        <span aria-hidden className={`grid size-14 flex-none place-items-center bg-heading text-title-2 font-semibold text-canvas ${radius}`}>
           {initial.trim().slice(0, 1).toUpperCase() || "·"}
         </span>
       )}
@@ -87,7 +87,7 @@ export function IdentityImageField({
             </Button>
           ) : null}
         </div>
-        <p id={hintId} className="mt-1.5 text-xs text-muted">
+        <p id={hintId} className="mt-1.5 text-footnote text-muted">
           PNG, JPEG, WebP or GIF, up to 2 MB. A square image works best.
         </p>
       </div>

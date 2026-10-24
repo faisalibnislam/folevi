@@ -29,7 +29,7 @@ export function ResearchList({ activeId, onNavigate }: { activeId: string | null
     return (
       <section aria-label="Research" className="flex-none border-t border-line/70 px-2.5 pb-3 pt-2.5">
         <p className="ui-caps px-2.5 pb-1">Research</p>
-        <p className="px-2.5 text-[12.5px] leading-snug text-muted">Reports you start show up here. Pick Research under the box, then ask a question. It takes a few minutes.</p>
+        <p className="px-2.5 text-subheadline leading-snug text-muted">Reports you start show up here. Pick Research under the box, then ask a question. It takes a few minutes.</p>
       </section>
     );
   }
@@ -43,12 +43,12 @@ export function ResearchList({ activeId, onNavigate }: { activeId: string | null
               href={`/ai/${j.conversationId}`}
               onClick={onNavigate}
               aria-current={j.conversationId === activeId ? "page" : undefined}
-              className={`flex flex-col rounded-chip px-2.5 py-1.5 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
+              className={`flex flex-col rounded-chip px-2.5 py-1.5 text-subheadline outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
                 j.conversationId === activeId ? "bg-[var(--glass-active)] text-heading shadow-[var(--glass-edge)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"
               }`}
             >
               <span className="truncate">{j.question || "Research"}</span>
-              <span className="flex items-center gap-1.5 text-[11.5px] text-faint">
+              <span className="flex items-center gap-1.5 text-footnote text-faint">
                 {j.status === "running" ? <Loader2 size={11} className="animate-spin motion-reduce:animate-none" aria-hidden /> : null}
                 {STATUS[j.status] ?? j.status}
                 <span aria-hidden>·</span>

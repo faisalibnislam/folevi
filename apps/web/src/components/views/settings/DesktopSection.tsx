@@ -18,11 +18,11 @@ export function DesktopSection() {
   if (!bridge) {
     return (
       <Card title="Folevi for Mac" description="These settings are for the Folevi Mac app: Quick Add from any app, opening at login, the menu bar icon and Mac notifications. Open Settings in the Mac app to change them." >
-        <p className="text-sm text-muted">You're using Folevi in a browser.</p>
+        <p className="text-subheadline text-muted">You're using Folevi in a browser.</p>
       </Card>
     );
   }
-  if (!state) return <p className="text-sm text-muted">Loading…</p>;
+  if (!state) return <p className="text-subheadline text-muted">Loading…</p>;
   const save = (patch: Partial<DesktopSettings>) => void bridge.setSettings(patch).then((next) => next && setState(next));
   const { settings } = state;
   return (
@@ -53,8 +53,8 @@ function Row({ label, hint, checked, onChange }: { label: string; hint: string; 
   return (
     <div className="flex items-center justify-between gap-6 py-3 first:pt-0 last:pb-0">
       <span className="min-w-0">
-        <span className="block text-sm text-ink">{label}</span>
-        <span id={id} className="block text-xs text-muted">
+        <span className="block text-subheadline text-ink">{label}</span>
+        <span id={id} className="block text-footnote text-muted">
           {hint}
         </span>
       </span>
@@ -93,7 +93,7 @@ function ShortcutField({ value, error, onChange }: { value: string; error: strin
     onChange(accelerator);
   };
   return (
-    <div className="text-sm">
+    <div className="text-subheadline">
       <span className="block text-muted">Shortcut</span>
       <div className="mt-1 flex flex-wrap items-center gap-2">
         <button
@@ -110,7 +110,7 @@ function ShortcutField({ value, error, onChange }: { value: string; error: strin
         {value ? <Button onClick={() => onChange("")}>Turn off</Button> : null}
         {value !== fallback ? <Button onClick={() => onChange(fallback)}>Use {shortcutLabel(fallback)}</Button> : null}
       </div>
-      <p id={hintId} role={error || hint ? "alert" : undefined} className={`mt-1.5 text-xs ${error || hint ? "text-danger" : "text-muted"}`}>
+      <p id={hintId} role={error || hint ? "alert" : undefined} className={`mt-1.5 text-footnote ${error || hint ? "text-danger" : "text-muted"}`}>
         {hint ?? error ?? (recording ? "Press the keys together. Esc cancels." : "Click, then press the keys you want.")}
       </p>
     </div>

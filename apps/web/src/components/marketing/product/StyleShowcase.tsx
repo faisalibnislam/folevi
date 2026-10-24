@@ -36,7 +36,7 @@ export function StyleShowcase({ artSize = "large" }: { artSize?: "thumb" | "larg
         className="h-[500px] sm:h-[540px] lg:h-[600px]"
       />
       <div className="mt-5 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">
-        <p id="hero-style-label" className="text-[13.5px] text-muted">
+        <p id="hero-style-label" className="text-[14px] text-muted">
           Note theme: <span className="font-semibold text-(--color-heading)">{art.name}</span>
         </p>
         <div role="radiogroup" aria-labelledby="hero-style-label" className="flex items-center gap-2">

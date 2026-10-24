@@ -11,7 +11,7 @@ export type UnavailableFeature = Exclude<keyof typeof copy.unavailable, "downloa
 export function UnavailableNote({ feature, text, link = false, className = "" }: { feature?: UnavailableFeature; text?: string; link?: boolean; className?: string }) {
   const body = text ?? (feature ? copy.unavailable[feature] : "");
   return (
-    <p role="note" className={`flex items-start gap-2 rounded-control bg-[var(--glass-hover)] px-3 py-2.5 text-[13px] leading-snug text-muted ${className}`}>
+    <p role="note" className={`flex items-start gap-2 rounded-control bg-[var(--glass-hover)] px-3 py-2.5 text-subheadline leading-snug text-muted ${className}`}>
       <LockKeyhole size={14} aria-hidden className="mt-0.5 flex-none" />
       <span className="min-w-0">
         {body}

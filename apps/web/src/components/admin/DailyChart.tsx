@@ -112,10 +112,10 @@ export function DailyChart({
   return (
     <figure className="min-w-0 ui-card" aria-labelledby={`${id}-t`}>
       <div className="flex items-baseline justify-between gap-3 px-5 pb-2 pt-4">
-        <figcaption id={`${id}-t`} className="ui-display text-[17px] leading-snug">
+        <figcaption id={`${id}-t`} className="ui-display text-title-3 leading-snug">
           {title}
         </figcaption>
-        <span className="text-[12px] text-muted">{description}</span>
+        <span className="text-footnote text-muted">{description}</span>
       </div>
       <div ref={wrapRef} className="relative px-2 pt-2">
         {hasData ? (
@@ -176,12 +176,12 @@ export function DailyChart({
               )}
           </svg>
         ) : (
-          <div className="grid h-[168px] place-items-center px-6 text-center text-[13px] text-muted">{emptyMessage}</div>
+          <div className="grid h-[168px] place-items-center px-6 text-center text-subheadline text-muted">{emptyMessage}</div>
         )}
         {hovered ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute top-2 z-10 -translate-x-1/2 whitespace-nowrap ui-pop rounded-control px-2.5 py-1.5 text-[12px]"
+            className="pointer-events-none absolute top-2 z-10 -translate-x-1/2 whitespace-nowrap ui-pop rounded-control px-2.5 py-1.5 text-footnote"
             style={{ left: Math.min(Math.max(x(hover!) + 8, 60), width - 50) }}
           >
             <div className="text-muted">{formatDate(hovered.date, { weekday: "short", month: "short", day: "numeric" })}</div>
@@ -189,10 +189,10 @@ export function DailyChart({
           </div>
         ) : null}
       </div>
-      <details className="border-t border-line px-5 py-2 text-[13px]">
+      <details className="border-t border-line px-5 py-2 text-subheadline">
         <summary className="cursor-pointer rounded-tiny text-muted hover:text-ink">Show data table</summary>
         <div className="mt-2 max-h-56 overflow-y-auto">
-          <table className="w-full border-collapse text-[12.5px]">
+          <table className="w-full border-collapse text-subheadline">
             <caption className="sr-only">{`${title} by day`}</caption>
             <thead>
               <tr>

@@ -259,7 +259,7 @@ export function AccountGate() {
         >
           <div className="flex gap-2">
             <a
-              className="ui-btn ui-btn-primary h-9 px-4 text-sm"
+              className="ui-btn ui-btn-primary h-9 px-4 text-callout"
               href={websitePage("/verify-email")}
             >
               Send a new link

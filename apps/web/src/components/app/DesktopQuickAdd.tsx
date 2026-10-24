@@ -32,10 +32,10 @@ export function DesktopQuickAdd() {
   return (
     <main aria-labelledby="quick-add-heading" className="ui-canvas mx-4 mt-16 max-w-lg rounded-panel p-5 text-ink shadow-[var(--glass-edge)] sm:mx-auto">
       <div className="ui-drag mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h1 id="quick-add-heading" className="ui-display whitespace-nowrap text-[19px] text-heading">
+        <h1 id="quick-add-heading" className="ui-display whitespace-nowrap text-title-3 text-heading">
           Quick add task
         </h1>
-        <p className="text-xs text-muted">Tasks without a page go to your Inbox.</p>
+        <p className="text-footnote text-muted">Tasks without a page go to your Inbox.</p>
       </div>
       <QuickAddPlace />
       <QuickAddForm
@@ -57,7 +57,7 @@ function QuickAddPlace() {
   if (!host?.setQuickAddPlace || places.length < 2) return null;
   const label = (p: (typeof places)[number]) => (p.kind === "library" ? `On ${deviceWords().here}` : p.name || p.email || "Folevi account");
   return (
-    <div className="mb-3 flex items-center gap-2 text-[13px] text-muted">
+    <div className="mb-3 flex items-center gap-2 text-subheadline text-muted">
       <span>Add to</span>
       <Select aria-label="Add to" value={current ?? ""} onChange={(e) => void host.setQuickAddPlace?.(e.target.value)} className="min-w-0 flex-1">
         {places.map((p) => (

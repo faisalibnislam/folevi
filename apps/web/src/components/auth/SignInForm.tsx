@@ -124,29 +124,29 @@ export function SignInForm({
         ) : null}
         <Field label="Email" type="email" name="email" autoComplete="username webauthn" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
         <PasswordField label="Password" name="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-        <div className="flex justify-end text-sm">
+        <div className="flex justify-end text-subheadline">
           <TextLink href="/forgot-password">Forgot your password?</TextLink>
         </div>
         <SubmitButton busy={busy}>Sign in</SubmitButton>
       </form>
       {passkeys ? (
         <>
-          <div className="my-4 flex items-center gap-3 text-xs text-muted" aria-hidden>
+          <div className="my-4 flex items-center gap-3 text-footnote text-muted" aria-hidden>
             <span className="h-px flex-1 bg-line" />
             or
             <span className="h-px flex-1 bg-line" />
           </div>
-          <button type="button" onClick={() => void signInWithPasskey()} disabled={passkeyBusy || busy} aria-busy={passkeyBusy} className="ui-btn ui-btn-secondary h-11 w-full text-[15px]">
+          <button type="button" onClick={() => void signInWithPasskey()} disabled={passkeyBusy || busy} aria-busy={passkeyBusy} className="ui-btn ui-btn-secondary h-11 w-full text-body">
             {passkeyBusy ? <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <KeyRound size={16} aria-hidden />}
             Sign in with a passkey
           </button>
         </>
       ) : null}
-      <p className="mt-6 text-sm text-muted">
+      <p className="mt-6 text-subheadline text-muted">
         New to Folevi? <TextLink href={adding ? "/signup?add=1" : "/signup"}>Create an account</TextLink>
       </p>
       {adding ? (
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-2 text-subheadline text-muted">
           <TextLink href={destination}>Back to Folevi</TextLink>
         </p>
       ) : null}

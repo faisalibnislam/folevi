@@ -122,7 +122,7 @@ export default async function TemplatePage({ params }: Params) {
             <div className="mk-panel p-4 sm:p-8">
               <TemplateSheet blocks={t.blocks} title={t.name} topHeading={3} className="mx-auto max-w-[720px]" />
             </div>
-            <p className="mt-3 px-1 pb-1 text-[13.5px] text-muted sm:px-2">A new page from this template, as Folevi creates it. The empty lines are where you write.</p>
+            <p className="mt-3 px-1 pb-1 text-[14px] text-muted sm:px-2">A new page from this template, as Folevi creates it. The empty lines are where you write.</p>
           </section>
 
           <div className="space-y-(--mk-stack-gap) self-start lg:sticky lg:top-8">
@@ -131,7 +131,7 @@ export default async function TemplatePage({ params }: Params) {
                 What’s in it
               </h2>
               {sections.length ? (
-                <ul className="mt-3 space-y-1.5 text-[14.5px] text-ink">
+                <ul className="mt-3 space-y-1.5 text-[15px] text-ink">
                   {sections.map((s) => (
                     <li key={s} className="flex gap-2.5">
                       <span aria-hidden="true" className="mt-[9px] size-[5px] flex-none rounded-tiny bg-(--color-ink-muted)" />
@@ -151,7 +151,7 @@ export default async function TemplatePage({ params }: Params) {
               <h2 id="how-title" className="text-[16px] font-semibold text-(--color-heading)">
                 How to use it
               </h2>
-              <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[14.5px] leading-relaxed text-ink marker:text-muted">
+              <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[15px] leading-relaxed text-ink marker:text-muted">
                 <li>Sign in to Folevi, or create a free account.</li>
                 <li>Open Templates in the sidebar.</li>
                 <li>

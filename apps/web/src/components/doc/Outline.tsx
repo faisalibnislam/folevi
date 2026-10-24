@@ -21,11 +21,11 @@ export function Outline({ documentId, onJump }: { documentId: string; onJump: (b
   const current = useCurrentHeading(items.filter((b) => b.type === "heading").map((b) => b.id));
 
   if (!items.length) {
-    return <p className="px-1 py-6 text-center text-sm text-muted">Add headings or nested pages and they’ll appear here.</p>;
+    return <p className="px-1 py-6 text-center text-subheadline text-muted">Add headings or nested pages and they’ll appear here.</p>;
   }
   return (
     <nav aria-label="Outline">
-      <ul className="space-y-0.5 text-[13px]">
+      <ul className="space-y-0.5 text-subheadline">
         {items.map((b) => {
           const p = b.props as { level?: number; documentId?: string; titleCache?: string };
           if (b.type === "page") {

@@ -77,10 +77,10 @@ interface Request {
  * and a result you can insert, use to replace the selection, copy, retry or discard.
  */
 /**
- * The note's Foli AI sheet in the iPhone app: the quick actions as 52 pt tiles with 15 pt words, the rest of
- * the panel's small controls at a finger's size.
+ * The note's Foli AI sheet in the iPhone app: the quick actions as 52 pt tiles with Body (17 pt) words, the
+ * panel's buttons 44 pt tall; the type roles themselves take Apple's sizes there (text-body is 17 pt).
  */
-const IPHONE_PANEL = "[&_.grid-cols-2>button]:h-[52px] [&_.grid-cols-2>button]:px-3.5 [&_.grid-cols-2>button]:text-[15px] [&_.grid-cols-2>button]:gap-2.5";
+const IPHONE_PANEL = "[&_.grid-cols-2>button]:h-[52px] [&_.grid-cols-2>button]:px-3.5 [&_.grid-cols-2>button]:text-body [&_.grid-cols-2>button]:gap-2.5 [&_.ui-btn:not(.w-8)]:h-11 [&_.ui-btn:not(.w-8)]:px-4";
 
 export function AiPanel({
   documentId,
@@ -264,7 +264,7 @@ export function AiPanel({
     return (
       // It fills the tool panel's height (composer at the bottom); where the panel takes its height from what's
       // in it (the narrow window's pop-up), it starts at the height it always had.
-      <div data-ai-fill className="flex min-h-0 flex-[1_1_min(70vh,640px)] flex-col text-sm [&>:first-child]:flex-none">
+      <div data-ai-fill className="flex min-h-0 flex-[1_1_min(70vh,640px)] flex-col text-subheadline [&>:first-child]:flex-none">
         {modes}
         <div className="flex min-h-0 flex-1 flex-col">
           <ChatThread conversationId={chatConversation} onConversation={setChatConversation} initialContext={noteContext} variant="panel" autoFocus autoSend={handoff ?? undefined} onInsert={editor && !readOnly ? (md) => void insertAiMarkdown(editor, md, { kind: "cursor" }) : undefined} />
@@ -276,7 +276,7 @@ export function AiPanel({
   // Study: the note's flashcards and quiz; making more goes through the usual preview (in Write).
   if (mode === "study") {
     return (
-      <div className="text-sm">
+      <div className="text-subheadline">
         {modes}
         <StudyMode
           editor={editor}
@@ -292,7 +292,7 @@ export function AiPanel({
   }
 
   return (
-    <div className={`space-y-4 text-sm ${iphone ? IPHONE_PANEL : ""}`}>
+    <div className={`space-y-4 text-subheadline ${iphone ? IPHONE_PANEL : ""}`}>
       {/* Prompt */}
       <section aria-label="Ask Foli AI">
         {modes}
@@ -314,7 +314,7 @@ export function AiPanel({
               }
             }}
             placeholder="Write a friendly intro paragraph…"
-            className={`block w-full resize-none bg-transparent text-ink outline-none placeholder:text-faint ${iphone ? "px-4 pb-12 pt-3 text-[17px] leading-6" : "px-3 pb-9 pt-2.5 text-[13.5px]"}`}
+            className={`block w-full resize-none bg-transparent text-ink outline-none placeholder:text-faint ${iphone ? "px-4 pb-12 pt-3 text-body leading-6" : "px-3 pb-9 pt-2.5 text-body"}`}
           />
           {iphone ? (
             <SendButton label="Write" disabled={!prompt.trim() || Boolean(busy) || (mode === "write" && readOnly)} onClick={submit} className="absolute bottom-0.5 right-0.5" />
@@ -330,7 +330,7 @@ export function AiPanel({
             </button>
           )}
         </div>
-        <p className={iphone ? "mt-2 px-1 text-[13px] leading-[18px] text-muted" : "mt-1.5 px-1 text-[11.5px] text-faint"}>
+        <p className={`px-1 text-footnote text-muted ${iphone ? "mt-2" : "mt-1.5"}`}>
           Write something new, or ask for a change (fix, shorten, reorganise) and Foli AI edits the note.{iphone ? "" : " ↵ to send."}
         </p>
         <AiCreditsNote documentId={documentId} className="mt-2" />
@@ -343,7 +343,7 @@ export function AiPanel({
             For this note
           </h3>
           {/* An empty note: say where to start (most actions need something to work on). */}
-          {editor && !editor.state.doc.textContent.trim() ? <p className="mb-2 px-1 text-[12.5px] text-muted">This note is empty. Tell Foli AI what to write above, or brainstorm ideas to get started.</p> : null}
+          {editor && !editor.state.doc.textContent.trim() ? <p className="mb-2 px-1 text-subheadline text-muted">This note is empty. Tell Foli AI what to write above, or brainstorm ideas to get started.</p> : null}
           <div className="grid grid-cols-2 gap-1.5">
             {NOTE_ACTIONS.map((a) => (
               <button
@@ -351,7 +351,7 @@ export function AiPanel({
                 type="button"
                 disabled={Boolean(busy) || (readOnly && a.task !== "summarize" && !TOOL_TASKS.has(a.task))}
                 onClick={() => (TOOL_TASKS.has(a.task) ? runTool(a.task) : void doWrite({ task: a.task, placement: a.task === "summarize" ? { kind: "cursor" } : a.task === "continue" ? { kind: "end" } : { kind: "cursor" } }))}
-                className="flex h-10 items-center gap-2 rounded-control bg-[var(--glass-hover)] px-2.5 text-left text-[13px] text-ink transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
+                className="flex h-10 items-center gap-2 rounded-control bg-[var(--glass-hover)] px-2.5 text-left text-subheadline text-ink transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
               >
                 <span aria-hidden className="text-muted">
                   {a.icon}
@@ -364,7 +364,7 @@ export function AiPanel({
               type="button"
               disabled={Boolean(busy) || readOnly || !editor}
               onClick={() => editor && openFindTodos(editor.view.dom, { target: selectionText() })}
-              className="flex h-10 items-center gap-2 rounded-control bg-[var(--glass-hover)] px-2.5 text-left text-[13px] text-ink transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
+              className="flex h-10 items-center gap-2 rounded-control bg-[var(--glass-hover)] px-2.5 text-left text-subheadline text-ink transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
             >
               <span aria-hidden className="text-muted">
                 <CalendarCheck size={15} />
@@ -379,7 +379,7 @@ export function AiPanel({
                 onClick={() => {
                   if (editor && !flowchartFromNoteWithAi(editor, documentId)) setNotice("Couldn't add a flowchart here.");
                 }}
-                className="flex h-10 items-center gap-2 rounded-control bg-[var(--glass-hover)] px-2.5 text-left text-[13px] text-ink transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
+                className="flex h-10 items-center gap-2 rounded-control bg-[var(--glass-hover)] px-2.5 text-left text-subheadline text-ink transition-colors hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-40"
               >
                 <span aria-hidden className="text-muted">
                   <Workflow size={15} />
@@ -396,13 +396,13 @@ export function AiPanel({
       <div className="empty:hidden">
         {busy && stream.text ? (
           <div className="rounded-panel bg-[var(--glass-active)] p-3 shadow-[var(--glass-edge)]" aria-busy="true">
-            <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
+            <p className="mb-1.5 flex items-center gap-1.5 text-footnote font-semibold text-muted">
               <AiIcon size={13} aria-hidden className="animate-pulse motion-reduce:animate-none" /> {busy}…
             </p>
             <div className="max-h-[320px] overflow-y-auto pr-1">
               <StreamingText text={stream.text} />
             </div>
-            <button type="button" onClick={() => stream.stop()} className="mt-1 inline-flex items-center gap-1.5 rounded-chip px-1.5 py-0.5 text-[12px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+            <button type="button" onClick={() => stream.stop()} className="mt-1 inline-flex items-center gap-1.5 rounded-chip px-1.5 py-0.5 text-footnote text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
               <span aria-hidden className="h-2 w-2 rounded-tiny bg-current" /> Stop
             </button>
           </div>
@@ -413,7 +413,7 @@ export function AiPanel({
         ) : null}
         {error ? <AiProblemNotice problem={error} /> : null}
         {notice ? (
-          <p role="status" className="px-1 text-[12.5px] text-muted">
+          <p role="status" className="px-1 text-subheadline text-muted">
             {notice}
           </p>
         ) : null}
@@ -422,14 +422,14 @@ export function AiPanel({
       {/* Result */}
       {result && !busy ? (
         <section aria-label="AI result" className="rounded-panel bg-[var(--glass-active)] p-3 shadow-[var(--glass-edge)]">
-          <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
+          <div className="mb-2 flex items-center gap-1.5 text-footnote font-semibold text-muted">
             <AiIcon size={13} aria-hidden /> {labelFor(result.task)}
             {result.kind === "write" && result.task === "translate" ? (
               <Select
                 aria-label="Language"
                 value={result.request.language ?? "English"}
                 onChange={(e) => void doWrite({ ...result.request, language: e.target.value })}
-                className="ml-auto h-7 rounded-chip bg-[var(--glass-hover)] px-2 text-[12px] font-medium text-ink"
+                className="ml-auto h-7 rounded-chip bg-[var(--glass-hover)] px-2 text-footnote font-medium text-ink"
               >
                 {AI_LANGUAGES.map((l) => (
                   <option key={l} value={l}>
@@ -440,7 +440,7 @@ export function AiPanel({
             ) : null}
           </div>
           {result.kind === "write" && result.task === "title" ? (
-            <p className="font-serif text-[18px] font-semibold text-heading">{result.text}</p>
+            <p className="font-serif text-title-3 font-semibold text-heading">{result.text}</p>
           ) : changes ? (
             // A rewrite of the selection: what it would remove and add, before anything changes.
             <div className="max-h-[320px] overflow-y-auto pr-1">
@@ -454,37 +454,37 @@ export function AiPanel({
           )}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {result.kind === "write" && result.task === "title" ? (
-              <button type="button" disabled={readOnly} onClick={() => (onTitle(result.text), setResult(null))} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+              <button type="button" disabled={readOnly} onClick={() => (onTitle(result.text), setResult(null))} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
                 <Check size={14} aria-hidden /> Use as title
               </button>
             ) : result.kind === "write" && result.placement.kind === "replace" && REWRITE_TASKS.has(result.task) ? (
               <>
-                <button type="button" disabled={readOnly} onClick={() => apply(result.placement)} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+                <button type="button" disabled={readOnly} onClick={() => apply(result.placement)} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
                   <Check size={14} aria-hidden /> Replace selection
                 </button>
-                <button type="button" disabled={readOnly} onClick={() => apply({ kind: "cursor" })} className="ui-btn ui-btn-secondary h-8 px-3 text-[12.5px]">
+                <button type="button" disabled={readOnly} onClick={() => apply({ kind: "cursor" })} className="ui-btn ui-btn-secondary h-8 px-3 text-callout">
                   <CornerDownLeft size={14} aria-hidden /> Insert below
                 </button>
               </>
             ) : result.kind === "write" && TOOL_TASKS.has(result.task) ? (
               <>
-                <button type="button" disabled={readOnly} onClick={() => apply(result.placement)} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+                <button type="button" disabled={readOnly} onClick={() => apply(result.placement)} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
                   <CornerDownLeft size={14} aria-hidden /> {result.placement.kind === "below" ? "Insert below" : "Insert into note"}
                 </button>
-                <button type="button" disabled={readOnly} onClick={() => apply({ kind: "end" })} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+                <button type="button" disabled={readOnly} onClick={() => apply({ kind: "end" })} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
                   <ArrowDownToLine size={14} aria-hidden /> Append
                 </button>
-                <button type="button" onClick={() => void saveAsNote()} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+                <button type="button" onClick={() => void saveAsNote()} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
                   <FilePlus2 size={14} aria-hidden /> Create note
                 </button>
               </>
             ) : (
-              <button type="button" disabled={readOnly} onClick={() => apply(result.kind === "write" && result.placement.kind === "end" ? { kind: "end" } : { kind: "cursor" })} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+              <button type="button" disabled={readOnly} onClick={() => apply(result.kind === "write" && result.placement.kind === "end" ? { kind: "end" } : { kind: "cursor" })} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
                 <CornerDownLeft size={14} aria-hidden /> {result.kind === "write" && result.placement.kind === "end" ? "Add to the end" : "Insert into note"}
               </button>
             )}
             {result.kind === "write" && (result.task === "meetingSummary" || result.task === "actions") && hasTodoLines(result.text) ? (
-              <button type="button" disabled={readOnly || !editor} onClick={schedule} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+              <button type="button" disabled={readOnly || !editor} onClick={schedule} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
                 <CalendarCheck size={14} aria-hidden /> Add dates and people
               </button>
             ) : null}
@@ -518,7 +518,7 @@ export function AiPanel({
                   type="button"
                   // A tool runs again with the request (its result keeps its shape); anything else is revised.
                   onClick={() => void doWrite(TOOL_TASKS.has(result.task) ? { ...result.request, instruction: r } : { task: "refine", text: result.text, instruction: r, placement: result.placement })}
-                  className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading"
+                  className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-footnote text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading"
                 >
                   {r}
                 </button>
@@ -537,7 +537,7 @@ export function AiPanel({
             </h3>
             {THINK_GROUPS.map((g) => (
               <div key={g.group} role="group" aria-label={g.label}>
-                <p className="mb-1.5 px-1 text-[12px] font-medium text-muted">{g.label}</p>
+                <p className="mb-2 px-1 text-headline text-heading">{g.label}</p>
                 <ul className="space-y-1">
                   {THINK.filter((a) => a.group === g.group).map((a) => (
                     <li key={a.task}>
@@ -553,8 +553,8 @@ export function AiPanel({
                           {TOOL_ICONS[a.task]}
                         </span>
                         <span className="min-w-0">
-                          <span className="block text-[13px] leading-snug text-ink">{a.label}</span>
-                          <span id={`${uid}-hint-${a.task}`} className="block text-[11.5px] leading-snug text-muted">{THINK_HINTS[a.task]}</span>
+                          <span className="block text-body text-ink">{a.label}</span>
+                          <span id={`${uid}-hint-${a.task}`} className="mt-0.5 block text-subheadline text-muted">{THINK_HINTS[a.task]}</span>
                         </span>
                       </button>
                     </li>
@@ -567,7 +567,7 @@ export function AiPanel({
         </>
       ) : null}
 
-      <p className="px-1 text-[11px] leading-snug text-faint">Foli AI can make mistakes.</p>
+      <p className="px-1 text-footnote text-muted">Foli AI can make mistakes.</p>
     </div>
   );
 }

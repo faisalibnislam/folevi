@@ -57,7 +57,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
     if (q) replaceEntry(window.location.pathname);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!data) return iphone ? null : <p className="text-sm text-muted">Loading the workspace plan…</p>;
+  if (!data) return iphone ? null : <p className="text-subheadline text-muted">Loading the workspace plan…</p>;
   const { entitlements: e, plan, subscription: sub } = data;
   const current = WORKSPACE_PLANS[plan.tier];
   const now = Date.now();
@@ -77,8 +77,8 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
     return (
       <Card title="Workspace plan">
         <p className="flex flex-wrap items-center gap-2">
-          <span className="ui-display text-[24px]">{current.name}</span>
-          {status ? <span className={`rounded-chip px-2 py-0.5 text-[12px] ${status === "Past due" ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-muted"}`}>{status}</span> : null}
+          <span className="ui-display text-title-1">{current.name}</span>
+          {status ? <span className={`rounded-chip px-2 py-0.5 text-footnote ${status === "Past due" ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-muted"}`}>{status}</span> : null}
         </p>
       </Card>
     );
@@ -129,11 +129,11 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="flex flex-wrap items-center gap-2">
-              <span className="ui-display text-[24px]">{current.name}</span>
-              {e.paid && plan.interval ? <span className="rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-[12px] text-muted">{plan.interval === "year" ? "Annual" : "Monthly"}</span> : null}
-              {status ? <span className={`rounded-chip px-2 py-0.5 text-[12px] ${status === "Past due" ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-muted"}`}>{status}</span> : null}
+              <span className="ui-display text-title-1">{current.name}</span>
+              {e.paid && plan.interval ? <span className="rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-footnote text-muted">{plan.interval === "year" ? "Annual" : "Monthly"}</span> : null}
+              {status ? <span className={`rounded-chip px-2 py-0.5 text-footnote ${status === "Past due" ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-muted"}`}>{status}</span> : null}
             </p>
-            <p className="mt-1 text-sm text-muted">
+            <p className="mt-1 text-subheadline text-muted">
               {!e.paid
                 ? current.blurb
                 : sub?.status === "past_due"
@@ -151,12 +151,12 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
                           : current.blurb}
             </p>
             {e.paid ? (
-              <p className="mt-1 text-sm text-muted">
+              <p className="mt-1 text-subheadline text-muted">
                 {seatPrice} per member / {per(plan.interval ?? "month")}
                 {sub?.paymentMethod ? ` · Paid with ${sub.paymentMethod}` : ""}
               </p>
             ) : null}
-            {polar && !sub?.youPay ? <p className="mt-1 text-[12.5px] text-faint">The person who started this subscription pays for it, and only they can open the billing portal for invoices and the payment method. You can still change, cancel or resume the plan here.</p> : null}
+            {polar && !sub?.youPay ? <p className="mt-1 text-subheadline text-faint">The person who started this subscription pays for it, and only they can open the billing portal for invoices and the payment method. You can still change, cancel or resume the plan here.</p> : null}
           </div>
           <div className="flex flex-wrap gap-2">
             {polar && sub?.youPay ? (
@@ -180,19 +180,19 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <Tile icon={<Users size={15} aria-hidden />} title={`Billable seats: ${data.seats.toLocaleString()}`}>
-            <p className="mt-1 text-sm text-muted">Guests: {data.guests.toLocaleString()} · Not billed</p>
-            {data.pendingInvites ? <p className="mt-1 text-[12.5px] text-faint">{plural(data.pendingInvites, "pending invitation")}, billed once accepted.</p> : null}
+            <p className="mt-1 text-subheadline text-muted">Guests: {data.guests.toLocaleString()} · Not billed</p>
+            {data.pendingInvites ? <p className="mt-1 text-subheadline text-faint">{plural(data.pendingInvites, "pending invitation")}, billed once accepted.</p> : null}
           </Tile>
           <Tile icon={<CreditCard size={15} aria-hidden />} title="Estimated charge">
-            <p className="mt-1 text-sm text-muted">{e.paid && plan.interval ? `${data.seats.toLocaleString()} × ${seatPrice} = ${formatPrice(data.estimatedChargeCents)}/${per(plan.interval)}` : "Free. Nothing is charged."}</p>
-            {e.paid && sub?.quantity !== null && sub?.quantity !== undefined && sub.quantity !== billedQuantity(data.seats) ? <p className="mt-1 text-[12.5px] text-faint">Updating the billed seats ({sub.quantity}) to match…</p> : null}
+            <p className="mt-1 text-subheadline text-muted">{e.paid && plan.interval ? `${data.seats.toLocaleString()} × ${seatPrice} = ${formatPrice(data.estimatedChargeCents)}/${per(plan.interval)}` : "Free. Nothing is charged."}</p>
+            {e.paid && sub?.quantity !== null && sub?.quantity !== undefined && sub.quantity !== billedQuantity(data.seats) ? <p className="mt-1 text-subheadline text-faint">Updating the billed seats ({sub.quantity}) to match…</p> : null}
           </Tile>
           <Tile icon={<HardDrive size={15} aria-hidden />} title={perMember ? "Your storage here" : "Workspace storage"}>
-            <p className="mt-1 text-sm text-muted">
+            <p className="mt-1 text-subheadline text-muted">
               {formatBytes(storageUsed)} of {formatBytes(storageLimit)} used
             </p>
             <UsageMeter label={perMember ? "Your storage used here" : "Workspace storage used"} pct={(storageUsed / Math.max(1, storageLimit)) * 100} />
-            <p className="mt-2 text-[12.5px] text-faint">
+            <p className="mt-2 text-subheadline text-faint">
               {perMember
                 ? `Each member has ${formatBytes(storageLimit)} here, and their own uploads count against it. Everyone's uploads: ${formatBytes(data.storageUsedBytes)}.`
                 : data.storageRule === "override"
@@ -202,12 +202,12 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
           </Tile>
           <Tile icon={<AiIcon size={15} aria-hidden className="text-[#7c6cf0]" />} title="AI credits">
             {!e.ai ? (
-              <p className="mt-1 text-sm text-muted">Core doesn&apos;t include AI, so nothing in this workspace is sent to an AI model.</p>
+              <p className="mt-1 text-subheadline text-muted">Core doesn&apos;t include AI, so nothing in this workspace is sent to an AI model.</p>
             ) : !e.paid ? (
-              <p className="mt-1 text-sm text-muted">On Free, each member uses their own personal AI credits here.</p>
+              <p className="mt-1 text-subheadline text-muted">On Free, each member uses their own personal AI credits here.</p>
             ) : data.credits ? (
               <>
-                <p className="mt-1 text-[12.5px] text-faint">Yours in this workspace. Every member has their own.</p>
+                <p className="mt-1 text-subheadline text-faint">Yours in this workspace. Every member has their own.</p>
                 <CreditLines c={{ ...data.credits, trialing: false }} />
                 {data.credits.canBuy ? (
                   <Button size="sm" className="mt-3" onClick={() => setBuying(true)}>
@@ -216,12 +216,12 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
                 ) : null}
               </>
             ) : (
-              <p className="mt-1 text-sm text-muted">{`${e.monthlyCredits.toLocaleString()} AI credits per member each month.`}</p>
+              <p className="mt-1 text-subheadline text-muted">{`${e.monthlyCredits.toLocaleString()} AI credits per member each month.`}</p>
             )}
           </Tile>
         </div>
         {overLimit ? (
-          <p role="status" className="mt-4 rounded-control bg-danger-soft px-4 py-3 text-sm text-danger">
+          <p role="status" className="mt-4 rounded-control bg-danger-soft px-4 py-3 text-subheadline text-danger">
             <strong className="font-semibold">Over the storage limit.</strong> Everything already stored stays available, but new uploads are paused until space is freed or the plan is upgraded.
           </p>
         ) : null}
@@ -235,7 +235,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
           </button>
           <button type="button" aria-pressed={interval === "year"} onClick={() => setInterval("year")} className="h-8 whitespace-nowrap !px-3.5">
             Yearly
-            <span className="whitespace-nowrap rounded-chip bg-[color-mix(in_oklab,#2f9e62_14%,transparent)] px-2 py-0.5 text-[11px] font-semibold leading-none text-[#1f7a4a] dark:text-[#6fd39b]">Save up to {BEST_YEARLY_SAVING}%</span>
+            <span className="whitespace-nowrap rounded-chip bg-[color-mix(in_oklab,#2f9e62_14%,transparent)] px-2 py-0.5 text-footnote font-semibold leading-none text-[#1f7a4a] dark:text-[#6fd39b]">Save up to {BEST_YEARLY_SAVING}%</span>
           </button>
         </div>
         <PlanRows>
@@ -284,7 +284,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
             );
           })}
         </PlanRows>
-        <p className="mt-3 text-[12.5px] text-faint">
+        <p className="mt-3 text-subheadline text-faint">
           {polarLive || data.checkoutAvailable
             ? "Payments are handled by Polar, which works out any tax. Adding or removing members changes the seats, prorated."
             : data.testPurchases
@@ -295,9 +295,9 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
 
       <Card title="Billing history" description={`Payments for ${workspace.name} only.`}>
         {data.payments.length ? (
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-left text-subheadline">
             <thead>
-              <tr className="text-[12px] text-muted">
+              <tr className="text-footnote text-muted">
                 <th className="pb-2 font-medium">Date</th>
                 <th className="pb-2 font-medium">Plan</th>
                 <th className="pb-2 text-right font-medium">Amount</th>

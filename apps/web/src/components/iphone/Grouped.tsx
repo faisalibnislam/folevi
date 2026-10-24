@@ -11,7 +11,7 @@ export function GroupedSection({ title, footer, children, className = "" }: { ti
     <section className={`px-4 ${className}`}>
       {title ? <h2 className="ui-caption-caps px-4 pb-2">{title}</h2> : null}
       <div className="ui-grouped">{children}</div>
-      {footer ? <p className="px-4 pt-2 text-[13px] leading-[18px] text-muted">{footer}</p> : null}
+      {footer ? <p className="px-4 pt-2 text-footnote leading-[18px] text-muted">{footer}</p> : null}
     </section>
   );
 }
@@ -64,10 +64,10 @@ export function GroupedRow({
     <>
       {icon}
       <span className={`min-w-0 flex-1 ${description ? "py-2.5" : "py-[15px]"}`}>
-        <span className={`block truncate text-[17px] leading-[22px] ${danger ? "text-danger" : "text-ink"}`}>{label}</span>
-        {description ? <span className="mt-0.5 block truncate text-[15px] leading-5 text-muted">{description}</span> : null}
+        <span className={`block truncate text-body leading-[22px] ${danger ? "text-danger" : "text-ink"}`}>{label}</span>
+        {description ? <span className="mt-0.5 block truncate text-subheadline leading-5 text-muted">{description}</span> : null}
       </span>
-      {detail !== undefined && detail !== null ? <span className="max-w-[55%] flex-none truncate text-[17px] leading-[22px] tabular-nums text-muted">{detail}</span> : null}
+      {detail !== undefined && detail !== null ? <span className="max-w-[55%] flex-none truncate text-body leading-[22px] tabular-nums text-muted">{detail}</span> : null}
       {trailing}
       {checked ? <Check size={20} strokeWidth={2.4} aria-hidden className="flex-none text-heading" /> : null}
       {chevron ?? Boolean(href) ? <RowChevron /> : null}

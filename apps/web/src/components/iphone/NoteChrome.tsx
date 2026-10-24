@@ -25,7 +25,7 @@ export function NoteTrailing({ onShare, shared, actions }: { onShare?: () => voi
           feel("toggle");
           (document.activeElement as HTMLElement | null)?.blur();
         }}
-        className="iphone-done ui-liquid ui-glass-press h-11 items-center rounded-capsule px-4 text-[17px] font-semibold leading-[22px] text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="iphone-done ui-liquid ui-glass-press h-11 items-center rounded-capsule px-4 text-headline font-semibold leading-[22px] text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         Done
       </button>
@@ -66,7 +66,7 @@ export function NotePlaceChip({ parent, folder }: { parent?: { id: string; title
     <AppLink
       href={href}
       aria-label={`In ${label}`}
-      className="ui-liquid flex h-8 max-w-full items-center gap-1.5 rounded-capsule pl-2.5 pr-2 text-[13px] font-medium text-heading outline-none active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-focus"
+      className="ui-liquid flex h-8 max-w-full items-center gap-1.5 rounded-capsule pl-2.5 pr-2 text-footnote font-medium text-heading outline-none active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-focus"
     >
       {parent ? <FileText size={14} aria-hidden className="flex-none text-muted" /> : <FolderGlyph color={folder?.color ?? null} size={15} />}
       <span className="min-w-0 truncate">{label}</span>

@@ -160,8 +160,8 @@ test.describe("the iPhone app's chrome", { tag: "@local" }, () => {
       expect(await scroller.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(canvas);
       const back = page.getByRole("button", { name: "Back", exact: true });
       const nav = await back.evaluate((el) => el.closest("header")!.getBoundingClientRect().toJSON());
-      // The cover band (the sheet's top) starts right below the bar's row.
-      expect(Math.abs(box.top - (nav.bottom + 4))).toBeLessThanOrEqual(4);
+      // The cover band (the sheet's top) starts 12 pt below the bar's row, the app's neutral colour between.
+      expect(Math.abs(box.top - (nav.bottom + 12))).toBeLessThanOrEqual(2);
       // Scrolled, the bar's material is the neutral colour too.
       await scroller.evaluate((el) => (el.scrollTop = 400));
       const bar = page.locator(".iphone-bar").last();
@@ -200,7 +200,10 @@ test.describe("the iPhone app's chrome", { tag: "@local" }, () => {
     expect(Math.abs(Number(m[3]) - box.width / 440)).toBeLessThan(0.03);
     // ...to the whole screen.
     expect(String(grow!.frames.at(-1)!.transform)).toContain("scale(1)");
-    expect(String(grow!.frames.at(-1)!.clipPath)).toContain("inset(0px 0px 0px 0px");
+    // Only transforms and opacities move (no clip-path or corner radius, which WebKit would draw on the page's
+    // own thread every frame): Core Animation runs it at the display's rate.
+    const props = (list: { frames: Keyframe[] }[]) => [...new Set(list.flatMap((a) => a.frames.flatMap((f) => Object.keys(f))))].filter((k) => !["offset", "easing", "composite"].includes(k));
+    expect(props(opened).sort()).toEqual(["opacity", "transform"]);
     // The screen behind steps back.
     expect(opened.some((a) => a.target === "picture" && String(a.frames.at(-1)?.transform).includes("scale(0.94)"))).toBe(true);
     await page.waitForTimeout(800);
@@ -211,6 +214,7 @@ test.describe("the iPhone app's chrome", { tag: "@local" }, () => {
     const closed = await anims();
     const shrink = closed.find((a) => a.target === "picture" && String(a.frames.at(-1)?.transform ?? "").includes("translate("));
     expect(shrink, JSON.stringify(closed.map((a) => a.target))).toBeTruthy();
+    expect(props(closed).sort()).toEqual(["opacity", "transform"]);
     // (Measured once Home has stepped forward again.)
     await page.waitForTimeout(900);
     const back = (await card.boundingBox())!;

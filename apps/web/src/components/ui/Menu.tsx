@@ -579,23 +579,23 @@ function MenuPanel({
               <span data-menu-part="label" className="min-w-0 flex-1 leading-tight">
                 <span className="block truncate">{item.label}</span>
                 {item.middle ? (
-                  <span data-menu-part="description" className="mt-0.5 flex min-w-0 text-[11.5px] text-muted">{middleCut(item.description)}</span>
+                  <span data-menu-part="description" className="mt-0.5 flex min-w-0 text-footnote text-muted">{middleCut(item.description)}</span>
                 ) : (
-                  <span data-menu-part="description" className="mt-0.5 block truncate text-[11.5px] text-muted">{item.description}</span>
+                  <span data-menu-part="description" className="mt-0.5 block truncate text-footnote text-muted">{item.description}</span>
                 )}
               </span>
             ) : (
               <span data-menu-part="label" className="flex-1">{item.label}</span>
             )}
-            {item.detail ? <span data-menu-part="detail" className="flex-none text-xs text-muted">{item.detail}</span> : null}
+            {item.detail ? <span data-menu-part="detail" className="flex-none text-footnote text-muted">{item.detail}</span> : null}
             {item.badge ? (
-              <span data-menu-part="badge" aria-hidden className="grid h-4 min-w-4 flex-none place-items-center rounded-chip bg-coral px-1 text-[10px] font-semibold leading-none text-white">
+              <span data-menu-part="badge" aria-hidden className="grid h-4 min-w-4 flex-none place-items-center rounded-chip bg-coral px-1 text-caption-2 font-semibold leading-none text-white">
                 {item.badge > 99 ? "99+" : item.badge}
               </span>
             ) : item.dot ? (
               <span data-menu-part="badge" aria-hidden className="h-2 w-2 flex-none rounded-tiny bg-coral" />
             ) : null}
-            {item.shortcut ? <span data-menu-part="shortcut" className="text-xs text-faint pointer-coarse:hidden">{keyLabel(item.shortcut)}</span> : null}
+            {item.shortcut ? <span data-menu-part="shortcut" className="text-footnote text-faint pointer-coarse:hidden">{keyLabel(item.shortcut)}</span> : null}
           </button>
         ),
       )}

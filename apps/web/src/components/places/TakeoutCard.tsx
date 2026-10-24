@@ -104,7 +104,7 @@ export function TakeoutCard() {
         <input ref={input} type="file" accept=".zip,application/zip" hidden aria-hidden tabIndex={-1} onChange={(e) => e.target.files?.[0] && void importFile(e.target.files[0])} />
       </div>
       {status ? (
-        <p className="mt-2 text-xs text-muted" role="status">
+        <p className="mt-2 text-footnote text-muted" role="status">
           {status}
         </p>
       ) : null}

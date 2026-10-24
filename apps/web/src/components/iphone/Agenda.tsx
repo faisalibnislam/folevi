@@ -96,8 +96,8 @@ export function IphoneAgenda({
           <span className="h-[22px] w-1 rounded-capsule" style={{ background: calendarColor(ev.color) }} />
         </span>
         <span className="ui-row-sep flex min-h-16 min-w-0 flex-1 flex-col justify-center py-2.5">
-          <span className="block truncate text-[17px] leading-[22px] text-ink">{ev.title || "Untitled event"}</span>
-          <span className="mt-0.5 block truncate text-[15px] leading-5 text-muted">
+          <span className="block truncate text-body leading-[22px] text-ink">{ev.title || "Untitled event"}</span>
+          <span className="mt-0.5 block truncate text-subheadline leading-5 text-muted">
             {eventWhen(ev, timeZone)} · {ev.calendarName}
           </span>
         </span>
@@ -147,7 +147,7 @@ export function IphoneAgenda({
           <section key={d} aria-label={d === today ? `Today, ${label}` : label} className={i ? "mt-5" : "mt-2"}>
             <DayHeader date={d} today={today} onAdd={() => openQuickAdd({ due: d })} />
             {empty ? (
-              <p className="mx-5 flex min-h-14 items-center text-[15px] italic leading-5 text-faint [font-family:var(--font-display)]">Nothing planned</p>
+              <p className="mx-5 flex min-h-14 items-center text-subheadline italic leading-5 text-faint [font-family:var(--font-display)]">Nothing planned</p>
             ) : (
               <ul data-iphone-tappable="">
                 {lead.map((t) => (
@@ -166,7 +166,7 @@ export function IphoneAgenda({
           </section>
         );
       })}
-      {shown.length <= 1 ? <p className="mx-5 mt-8 text-center text-[15px] leading-5 text-muted">Nothing else in the next 30 days.</p> : null}
+      {shown.length <= 1 ? <p className="mx-5 mt-8 text-center text-subheadline leading-5 text-muted">Nothing else in the next 30 days.</p> : null}
       {children}
     </ViewChrome>
   );
@@ -181,7 +181,7 @@ function DayHeader({ date, today, onAdd }: { date: string; today: string; onAdd:
   const rest = formatCalendarDate(date, near === "Today" || near === "Tomorrow" || near === "Yesterday" ? { weekday: "long", month: "short", day: "numeric" } : { month: "short", day: "numeric" });
   return (
     <div className="flex min-h-11 items-center pl-5 pr-2">
-      <h2 className="min-w-0 flex-1 truncate text-[17px] leading-[22px]">
+      <h2 className="min-w-0 flex-1 truncate text-body leading-[22px]">
         <span className="font-semibold text-heading">{near}</span>
         <span className="text-muted"> · {rest}</span>
       </h2>

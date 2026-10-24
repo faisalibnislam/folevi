@@ -208,6 +208,25 @@ async function linkPendingInvites(ctx: MutationCtx, profile: Doc<"profiles">) {
       createdAt: Date.now(),
     });
   }
+  // Folders shared with this address before the account existed (docs/SHARING.md): the same, to accept or decline.
+  const folderInvites = await ctx.db
+    .query("folderInvites")
+    .withIndex("by_email", (q) => q.eq("email", profile.email))
+    .take(100);
+  for (const invite of folderInvites) {
+    if (invite.status !== "pending" || invite.expiresAt < Date.now()) continue;
+    const folder = await ctx.db.get(invite.folderId);
+    if (!folder || folder.deletedAt !== undefined || !wantsInApp(profile.notificationPrefs, "share")) continue;
+    const inviter = await ctx.db.get(invite.invitedBy);
+    await ctx.db.insert("notifications", {
+      profileId: profile._id,
+      kind: "share",
+      actorId: invite.invitedBy,
+      folderInviteId: invite._id,
+      title: `${inviter?.displayName ?? "Someone"} shared the folder “${(folder.name || "Untitled").slice(0, 100)}” with you`.slice(0, 200),
+      createdAt: Date.now(),
+    });
+  }
 }
 
 /**

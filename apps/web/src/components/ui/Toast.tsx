@@ -35,7 +35,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div
               key={t.id}
               role={t.tone === "error" ? "alert" : "status"}
-              className={`pointer-events-auto flex max-w-md items-center gap-3 rounded-chip py-2 pl-5 pr-2.5 text-sm font-medium shadow-[var(--shadow-pop)] animate-[folio-rise_180ms_var(--ease-folio)] ${
+              className={`pointer-events-auto flex max-w-md items-center gap-3 rounded-chip py-2 pl-5 pr-2.5 text-subheadline font-medium shadow-[var(--shadow-pop)] animate-[folio-rise_180ms_var(--ease-folio)] ${
                 t.tone === "error" ? "bg-danger-soft text-ink" : t.tone === "success" ? "bg-success-soft text-ink" : "bg-[var(--color-accent-strong)] text-[var(--color-accent-ink)]"
               }`}
             >

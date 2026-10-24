@@ -6,8 +6,8 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 export function AuthHeading({ title, lede }: { title: string; lede?: ReactNode }) {
   return (
     <header className="mb-6">
-      <h1 className="ui-display text-[34px] leading-[1.08]">{title}</h1>
-      {lede ? <p className="mt-2 text-[15px] leading-relaxed text-muted">{lede}</p> : null}
+      <h1 className="ui-display text-large-title leading-[1.08]">{title}</h1>
+      {lede ? <p className="mt-2 text-body leading-relaxed text-muted">{lede}</p> : null}
     </header>
   );
 }
@@ -22,7 +22,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ l
   const errorId = `${inputId}-error`;
   return (
     <div className={compact ? "space-y-1" : "space-y-1.5"}>
-      <label htmlFor={inputId} className="block text-sm font-medium text-ink">
+      <label htmlFor={inputId} className="block text-subheadline font-medium text-ink">
         {label}
       </label>
       <input
@@ -30,16 +30,16 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ l
         id={inputId}
         aria-invalid={error ? true : undefined}
         aria-describedby={[hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined}
-        className={`ui-input w-full rounded-chip text-ink ${compact ? "h-9 px-3 text-sm" : "h-11 px-4 text-[15px]"} placeholder:text-[var(--color-ink-faint)] ${error ? "shadow-[0_0_0_1.5px_var(--color-destructive)]" : ""} ${className ?? ""}`}
+        className={`ui-input w-full rounded-chip text-ink ${compact ? "h-9 px-3 text-subheadline" : "h-11 px-4 text-body"} placeholder:text-[var(--color-ink-faint)] ${error ? "shadow-[0_0_0_1.5px_var(--color-destructive)]" : ""} ${className ?? ""}`}
         {...rest}
       />
       {hint ? (
-        <p id={hintId} className="text-xs text-muted">
+        <p id={hintId} className="text-footnote text-muted">
           {hint}
         </p>
       ) : null}
       {error ? (
-        <p id={errorId} className="text-xs font-medium text-danger">
+        <p id={errorId} className="text-footnote font-medium text-danger">
           {error}
         </p>
       ) : null}
@@ -67,7 +67,7 @@ export function PasswordField(props: Omit<FieldProps, "type">) {
 
 export function SubmitButton({ busy, children, disabled }: { busy: boolean; children: ReactNode; disabled?: boolean }) {
   return (
-    <button type="submit" disabled={busy || disabled} aria-busy={busy} className="ui-btn ui-btn-primary h-11 w-full text-[15px]">
+    <button type="submit" disabled={busy || disabled} aria-busy={busy} className="ui-btn ui-btn-primary h-11 w-full text-body">
       {busy ? <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden /> : null}
       {children}
     </button>
@@ -82,7 +82,7 @@ export function Alert({ tone = "error", children }: { tone?: "error" | "success"
         ? "bg-success-soft text-ink shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-success)_25%,transparent)]"
         : "bg-accent-soft text-ink";
   return (
-    <div role={tone === "error" ? "alert" : "status"} className={`rounded-chip px-4 py-3 text-sm leading-relaxed ${cls}`}>
+    <div role={tone === "error" ? "alert" : "status"} className={`rounded-chip px-4 py-3 text-subheadline leading-relaxed ${cls}`}>
       {children}
     </div>
   );

@@ -238,8 +238,8 @@ function LibraryMenu({ onNavigate }: { onNavigate?: () => void }) {
         <>
           <PersonalMark size={28} />
           <span className="min-w-0 flex-1 leading-tight">
-            <span className="block truncate text-[13.5px] font-semibold text-heading">{profile.displayName}</span>
-            <span className="block truncate text-[11.5px] text-muted">On your devices</span>
+            <span className="block truncate text-body font-semibold text-heading">{profile.displayName}</span>
+            <span className="block truncate text-footnote text-muted">On your devices</span>
           </span>
           <ChevronsUpDown size={14} aria-hidden className="flex-none text-faint" />
         </>
@@ -303,7 +303,7 @@ function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       {pill && !store ? (
-        <p className="mb-1.5 flex h-8 w-full items-center gap-1.5 rounded-chip bg-[linear-gradient(100deg,color-mix(in_oklab,#8b7cf6_14%,transparent),color-mix(in_oklab,#f58ab8_12%,transparent))] px-2 text-xs font-medium text-heading shadow-[inset_0_0_0_1px_var(--glass-border)]">
+        <p className="mb-1.5 flex h-8 w-full items-center gap-1.5 rounded-chip bg-[linear-gradient(100deg,color-mix(in_oklab,#8b7cf6_14%,transparent),color-mix(in_oklab,#f58ab8_12%,transparent))] px-2 text-footnote font-medium text-heading shadow-[inset_0_0_0_1px_var(--glass-border)]">
           <AiIcon size={13} aria-hidden className="text-[#7c6cf0]" />
           <span className="flex-1 truncate">{pill}</span>
         </p>
@@ -311,11 +311,11 @@ function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
         <button
           type="button"
           onClick={() => go("/settings/billing")}
-          className="mb-1.5 flex h-8 w-full items-center gap-1.5 rounded-chip bg-[linear-gradient(100deg,color-mix(in_oklab,#8b7cf6_14%,transparent),color-mix(in_oklab,#f58ab8_12%,transparent))] px-2 text-left text-xs font-medium text-heading shadow-[inset_0_0_0_1px_var(--glass-border)] transition-[filter] hover:brightness-[1.03]"
+          className="mb-1.5 flex h-8 w-full items-center gap-1.5 rounded-chip bg-[linear-gradient(100deg,color-mix(in_oklab,#8b7cf6_14%,transparent),color-mix(in_oklab,#f58ab8_12%,transparent))] px-2 text-left text-footnote font-medium text-heading shadow-[inset_0_0_0_1px_var(--glass-border)] transition-[filter] hover:brightness-[1.03]"
         >
           <AiIcon size={13} aria-hidden className="text-[#7c6cf0]" />
           <span className="flex-1 truncate">{pill}</span>
-          <span className="flex-none text-[11.5px] text-muted">{ent?.trialing ? "Choose plan" : "See plans"}</span>
+          <span className="flex-none text-footnote text-muted">{ent?.trialing ? "Choose plan" : "See plans"}</span>
         </button>
       ) : null}
       <MenuButton
@@ -327,8 +327,8 @@ function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
           <>
             {workspace ? <WorkspaceLogo workspace={workspace} size={28} /> : <PersonalMark size={28} />}
             <span className="min-w-0 flex-1 leading-tight">
-              <span className="block truncate text-[13.5px] font-semibold text-heading">{title}</span>
-              <span className="block truncate text-[11.5px] text-muted">{workspace ? profile.displayName : "Personal"}</span>
+              <span className="block truncate text-body font-semibold text-heading">{title}</span>
+              <span className="block truncate text-footnote text-muted">{workspace ? profile.displayName : "Personal"}</span>
             </span>
             <ChevronsUpDown size={14} aria-hidden className="flex-none text-faint" />
           </>

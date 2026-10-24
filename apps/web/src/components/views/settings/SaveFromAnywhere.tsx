@@ -50,7 +50,7 @@ export function SaveFromAnywhereCard() {
             e.preventDefault();
             toast.show("Drag it to your bookmarks bar, then click it on the page you want to save.");
           }}
-          className="ui-btn ui-btn-primary h-9 cursor-grab px-4 text-sm"
+          className="ui-btn ui-btn-primary h-9 cursor-grab px-4 text-callout"
         >
           <BookmarkPlus size={14} aria-hidden /> Save to Folevi
         </a>
@@ -58,7 +58,7 @@ export function SaveFromAnywhereCard() {
           <Copy size={13} aria-hidden /> Copy as text
         </Button>
       </div>
-      <p className="mt-4 text-[13px] text-muted">On Android, install Folevi from your browser’s menu (Add to home screen), then pick Folevi in any app’s Share menu. Links, text, images and PDFs go to your Inbox.</p>
+      <p className="mt-4 text-subheadline text-muted">On Android, install Folevi from your browser’s menu (Add to home screen), then pick Folevi in any app’s Share menu. Links, text, images and PDFs go to your Inbox.</p>
     </Card>
   );
 }

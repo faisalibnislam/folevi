@@ -46,7 +46,7 @@ export function CheckInbox({ email: initialEmail, callbackURL = "/documents" }: 
         {initialEmail ? null : <Field label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />}
         <SubmitButton busy={busy}>Send a new link</SubmitButton>
       </form>
-      <p className="mt-6 text-sm text-muted">
+      <p className="mt-6 text-subheadline text-muted">
         Already confirmed? <TextLink href="/signin">Sign in</TextLink>
       </p>
     </>

@@ -220,7 +220,7 @@ export function FlowchartDemo() {
           </span>
         </div>
         <div className="grid items-start md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <div className="mk-app-pop m-3 overflow-hidden rounded-panel text-[13.5px] md:m-5">
+          <div className="mk-app-pop m-3 overflow-hidden rounded-panel text-[14px] md:m-5">
             {chart ? (
               <div className="flex gap-1 px-2 pt-2 text-[12px] font-[550]" role="group" aria-label="What the AI should do">
                 {(["update", "create"] as const).map((m) => (

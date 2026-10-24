@@ -143,7 +143,7 @@ export default function PricingPage() {
       </HeaderCard>
       <Card aria-label="Plans">
         <PlanPicker headingLevel="h2" />
-        <p className="mt-5 text-[13.5px] text-muted">
+        <p className="mt-5 text-[14px] text-muted">
           Prices in US dollars. Any sales tax or VAT is added at checkout.
         </p>
       </Card>
@@ -165,7 +165,7 @@ export default function PricingPage() {
             <h3 className="text-[16px] font-semibold text-(--color-heading)">
               What’s an AI credit?
             </h3>
-            <dl className="mt-4 border-y mk-hair text-[14.5px]">
+            <dl className="mt-4 border-y mk-hair text-[15px]">
               {CREDIT_EXAMPLES.map((e, i) => (
                 <div
                   key={e.action}
@@ -179,11 +179,11 @@ export default function PricingPage() {
                 </div>
               ))}
             </dl>
-            <h4 className="mt-6 text-[14.5px] font-semibold text-(--color-heading)">
+            <h4 className="mt-6 text-[15px] font-semibold text-(--color-heading)">
               Credits each month
             </h4>
             <Play className="mt-3">
-              <ul className="space-y-2.5 text-[14.5px] text-ink">
+              <ul className="space-y-2.5 text-[15px] text-ink">
                 {PLAN_ORDER.map((tier) => {
                   const n = MONTHLY_CREDITS[tier];
                   return (
@@ -214,13 +214,13 @@ export default function PricingPage() {
                 })}
               </ul>
             </Play>
-            <p className="mt-4 text-[13.5px] leading-relaxed text-muted">
+            <p className="mt-4 text-[14px] leading-relaxed text-muted">
               On team plans, each member gets these credits in the workspace.
             </p>
           </div>
           <div className="mk-card flex flex-col p-6 sm:p-7">
             <h3 className="text-[16px] font-semibold text-(--color-heading)">Credit packs</h3>
-            <p className="mt-3 text-[14.5px] leading-relaxed text-ink">
+            <p className="mt-3 text-[15px] leading-relaxed text-ink">
               More AI when you need it, on {TIER_NAMES.pro} and {TIER_NAMES.pro_ai}.
             </p>
             <ul className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -228,7 +228,7 @@ export default function PricingPage() {
                 const pack = CREDIT_PACKS[id];
                 return (
                   <li key={id} className="rounded-control bg-(--color-surface-sunken) p-4">
-                    <p className="text-[14.5px] font-semibold text-(--color-heading)">
+                    <p className="text-[15px] font-semibold text-(--color-heading)">
                       {credits(pack.credits)} credits
                     </p>
                     <p className="mk-display mt-2 text-[32px] leading-none">

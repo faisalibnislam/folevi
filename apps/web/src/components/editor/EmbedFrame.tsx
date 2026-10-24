@@ -28,9 +28,9 @@ export function EmbedFrame({ url, children }: { url: string; children?: React.Re
           />
         </div>
       ) : (
-        <p className="p-4 text-sm text-muted">This embed can&apos;t be shown.</p>
+        <p className="p-4 text-subheadline text-muted">This embed can&apos;t be shown.</p>
       )}
-      <div className="flex min-h-9 items-center gap-2 border-t border-line px-3 text-xs text-muted">
+      <div className="flex min-h-9 items-center gap-2 border-t border-line px-3 text-footnote text-muted">
         <span className="font-medium text-heading">{label}</span>
         <a
           href={href}

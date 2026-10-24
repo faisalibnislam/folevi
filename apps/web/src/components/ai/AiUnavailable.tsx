@@ -43,13 +43,13 @@ export function AiUnavailable({ ai, compact = false, headingLevel = 2 }: { ai: P
   const Heading = `h${headingLevel}` as "h1" | "h2" | "h3";
   if (compact) {
     return (
-      <section data-testid="ai-unavailable" aria-label={copy.title} className="space-y-2 rounded-panel bg-[var(--glass-hover)] p-3.5 text-sm">
-        <Heading className="flex items-center gap-2 text-[13.5px] font-semibold text-heading">
+      <section data-testid="ai-unavailable" aria-label={copy.title} className="space-y-2 rounded-panel bg-[var(--glass-hover)] p-3.5 text-subheadline">
+        <Heading className="flex items-center gap-2 text-body font-semibold text-heading">
           <AiIcon size={14} aria-hidden /> {copy.title}
         </Heading>
-        <p className="text-[12.5px] leading-snug text-muted">{copy.body}</p>
+        <p className="text-subheadline leading-snug text-muted">{copy.body}</p>
         {copy.link ? (
-          <AppLink href={copy.link.href} className="ui-btn ui-btn-secondary inline-flex h-8 items-center px-3 text-[12.5px]">
+          <AppLink href={copy.link.href} className="ui-btn ui-btn-secondary inline-flex h-8 items-center px-3 text-callout">
             {copy.link.label}
           </AppLink>
         ) : null}
@@ -59,10 +59,10 @@ export function AiUnavailable({ ai, compact = false, headingLevel = 2 }: { ai: P
   return (
     <div data-testid="ai-unavailable" className="mx-auto max-w-md px-6 py-24 text-center">
       <AiIcon size={28} aria-hidden className="mx-auto" />
-      <Heading className="ui-display mt-4 text-[26px]">{copy.title}</Heading>
-      <p className="mt-2 text-[14px] text-muted">{copy.body}</p>
+      <Heading className="ui-display mt-4 text-title-1">{copy.title}</Heading>
+      <p className="mt-2 text-body text-muted">{copy.body}</p>
       {copy.link ? (
-        <AppLink href={copy.link.href} className="ui-btn ui-btn-secondary mt-6 inline-flex h-9 items-center px-4 text-sm">
+        <AppLink href={copy.link.href} className="ui-btn ui-btn-secondary mt-6 inline-flex h-9 items-center px-4 text-callout">
           {copy.link.label}
         </AppLink>
       ) : null}

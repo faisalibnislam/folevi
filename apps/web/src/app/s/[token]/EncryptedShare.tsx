@@ -46,7 +46,7 @@ export function EncryptedShare({ payload, updatedLabel }: { payload: SharePayloa
   if (state.kind === "missing") {
     return (
       <div className="mx-auto mt-24 max-w-md text-center">
-        <h1 className="ui-display text-4xl">Page unavailable</h1>
+        <h1 className="ui-display text-large-title">Page unavailable</h1>
         <p role="alert" className="mt-3 text-muted">
           {copy.share.missingKey}
         </p>
@@ -59,7 +59,7 @@ export function EncryptedShare({ payload, updatedLabel }: { payload: SharePayloa
       <div className="h-8" />
       <div className="px-5 pb-6 pt-4 sm:px-16">
         <h1 className="mt-2 px-0.5 text-[40px] font-semibold leading-tight tracking-tight">{share.title || "Untitled"}</h1>
-        <p className="mb-6 mt-1 px-0.5 text-xs text-muted">{updatedLabel}</p>
+        <p className="mb-6 mt-1 px-0.5 text-footnote text-muted">{updatedLabel}</p>
         <ReadOnlyBlocks blocks={share.blocks as WireBlock[]} fileUrls={share.fileUrls} collections={share.collections as never} />
       </div>
     </article>

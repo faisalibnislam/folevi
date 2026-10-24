@@ -14,22 +14,32 @@
 //
 // A note opened from its card or row zooms out of it instead (as in Craft): the note grows from the card's
 // box to the whole screen while the screen behind steps back a little and dims, and Back shrinks it into the
-// card again (wherever the card now is; a card out of sight gets the usual slide). Transform, opacity and a
-// clip on one layer each.
+// card again (wherever the card now is; a card out of sight gets the usual slide).
+//
+// Every move is a Web Animation of transform and opacity only, its spring sampled 120 times a second into
+// keyframes played linearly (not a CSS linear() curve, a clip-path or a border-radius, which WebKit may run on
+// the page's own thread): Core Animation runs them at the display's rate (120 Hz on ProMotion) whatever the
+// page is doing. Layers are promoted (will-change) for the move only, and a move to a note waits (up to
+// 150 ms) for the note's words and the pictures on screen, so the page isn't busy drawing them while it moves
+// (docs/IOS_PERFORMANCE.md, "120 Hz").
 //
 // The edge swipe isn't animated here: WebKit draws its own interactive swipe (allowsBackForwardNavigationGestures
 // in FoleviViewController; it follows the finger 1:1 and finishes with its release speed), so only Back pressed
 // in the bar plays the pop. Switching tabs never animates (as on iOS).
 
 import { onHistoryMove } from "@/lib/app/historyNav";
-import { SPRINGS, springCss } from "@/lib/native/physics";
+import { SPRINGS, type Spring } from "@/lib/native/physics";
+import { springFrames } from "./sheetMotion";
 
-/** The navigation spring as a CSS timing function (Safari 17.2 and later), else UIKit's older push curve. */
-const PUSH = springCss(SPRINGS.push);
-const supportsLinear = () => typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("transition-timing-function", "linear(0, 1)");
-const timing = (): KeyframeAnimationOptions => (supportsLinear() ? { duration: PUSH.ms, easing: PUSH.easing } : { duration: 420, easing: "cubic-bezier(0.32, 0.72, 0, 1)" });
+/** A spring as keyframes: `frame(k)` at each 120th of a second of its progress `k` (0 to 1, past 1 on overshoot). */
+function track(spring: Spring, frame: (k: number) => Keyframe): { frames: Keyframe[]; ms: number } {
+  const { progress, ms } = springFrames(spring);
+  return { frames: progress.map(frame), ms };
+}
+const linear = (ms: number): KeyframeAnimationOptions => ({ duration: ms, easing: "linear" });
+const round = (n: number) => Math.round(n * 1000) / 1000;
 /** How far the screen underneath moves, and how dark it gets (12 % black over it). */
-const UNDER_SHIFT = "-30%";
+const UNDER_SHIFT = -30;
 const UNDER_DIM = 0.12;
 /** The shadow the moving screen casts on the one underneath, as a strip just outside its leading edge. */
 const SHADOW_WIDTH = 32;
@@ -50,7 +60,7 @@ let tapped: { zoom: Zoom; at: number } | null = null;
 let zoomed: string | null = null;
 
 /** The zoom's spring: a little quicker than a push, barely any overshoot. */
-const ZOOM = springCss({ response: 0.38, damping: 0.94 });
+const ZOOM: Spring = { response: 0.38, damping: 0.94 };
 /** How far the screen behind steps back while a note is zoomed over it. */
 const BEHIND_SCALE = 0.94;
 
@@ -144,16 +154,49 @@ function onMove(kind: "push" | "pop") {
   pending = { kind, picture: picture(current), scrolls: scrollersOf(current).map((s) => s.scrollTop), zoom: kind === "push" ? (tap ?? undefined) : back };
 }
 
-/** The transform and clip that draw a whole screen (w × h) in `rect` with `radius` corners (origin top left). */
-function inBox(rect: DOMRect, radius: number, w: number, h: number): Keyframe {
-  const s = rect.width / w;
-  const visible = Math.min(h, rect.height / s);
-  return {
-    transform: `translate(${rect.left}px, ${rect.top}px) scale(${s})`,
-    clipPath: `inset(0px 0px ${Math.max(0, h - visible)}px 0px round ${radius / s}px)`,
+/** Where the whole screen (`w` wide) sits drawn into `rect`: its top left there, scaled to the card's width. */
+function inBox(rect: DOMRect, w: number): { x: number; y: number; s: number } {
+  return { x: rect.left, y: rect.top, s: rect.width / w };
+}
+/** The screen `k` of the way from the card (0) to full screen (1). */
+const between = (b: { x: number; y: number; s: number }, k: number): Keyframe => ({
+  transform: `translate(${round(b.x * (1 - k))}px, ${round(b.y * (1 - k))}px) scale(${round(b.s + (1 - b.s) * k)})`,
+});
+
+/** Promotes the elements that move to layers of their own for the move, and back after. */
+function promote(els: HTMLElement[]): () => void {
+  for (const el of els) el.style.willChange = "transform, opacity";
+  return () => {
+    for (const el of els) el.style.willChange = "";
   };
 }
-const FULL: Keyframe = { transform: "translate(0px, 0px) scale(1)", clipPath: "inset(0px 0px 0px 0px round 0px)" };
+
+/**
+ * Starts the animations once the screen coming in is ready to be moved: a note with its words in, the pictures
+ * on screen decoded, at most 150 ms after the tap's screen is drawn. Until then they wait on their first frame.
+ */
+function whenReady(entering: HTMLElement, anims: Animation[], note: boolean) {
+  const images = [...entering.querySelectorAll<HTMLImageElement>("img")].filter((i) => {
+    const r = i.getBoundingClientRect();
+    return r.bottom > 0 && r.top < window.innerHeight && !i.complete;
+  });
+  if (!images.length && (!note || noteHasText(entering))) return;
+  anims.forEach((a) => a.pause());
+  let decoded = images.length === 0;
+  if (!decoded) void Promise.all(images.map((i) => i.decode().catch(() => undefined))).then(() => (decoded = true));
+  const started = performance.now();
+  let titled = 0;
+  const wait = () => {
+    const now = performance.now();
+    // A note's text usually lands a frame or two after its title: wait for it a little too, so the page draws
+    // it before the move rather than in the middle of it (an empty note has none to wait for).
+    if (note && !titled && noteReady(entering)) titled = now;
+    const noteIn = !note || noteHasText(entering) || (titled > 0 && now - titled > 60);
+    if ((decoded && noteIn) || now - started > READY_WAIT_MS) anims.forEach((a) => a.play());
+    else requestAnimationFrame(wait);
+  };
+  requestAnimationFrame(wait);
+}
 
 /** The note's card on the screen coming back, if it's on screen to shrink into. */
 function cardIn(screen: HTMLElement, href: string): { rect: DOMRect; radius: number } | null {
@@ -170,59 +213,60 @@ function cardIn(screen: HTMLElement, href: string): { rect: DOMRect; radius: num
 
 function playZoom(kind: "push" | "pop", entering: HTMLElement, leaving: HTMLElement, scrolls: number[], pictures: HTMLElement, box: { rect: DOMRect; radius: number }, href: string) {
   const w = pictures.clientWidth || window.innerWidth;
-  const h = pictures.clientHeight || window.innerHeight;
   const dim = document.createElement("div");
   dim.style.cssText = "position:absolute;inset:0;background:#000;opacity:0;pointer-events:none";
   dim.setAttribute("data-iphone-zoom-dim", "");
-  const t: KeyframeAnimationOptions = { duration: ZOOM.ms, easing: ZOOM.easing };
-  const card = inBox(box.rect, box.radius, w, h);
-  const behind = { transform: `scale(${BEHIND_SCALE})` };
+  const card = inBox(box.rect, w);
+  const unpromote = promote([entering, leaving, dim]);
   const done = () => {
     if (leaving.parentElement === pictures) pictures.replaceChildren();
     entering.removeAttribute("data-iphone-zoom");
+    entering.style.transformOrigin = "";
+    unpromote();
   };
   entering.setAttribute("data-iphone-zoom", kind);
   let out: Animation;
+  const anims: Animation[] = [];
   if (kind === "push") {
     // The screen left behind under the note, stepping back and dimming; the note on top, out of the card.
     pictures.replaceChildren(leaving, dim);
     pictures.style.zIndex = "0";
     scrollersOf(leaving).forEach((el, i) => (el.scrollTop = scrolls[i] ?? 0));
-    out = leaving.animate([{ transform: "scale(1)" }, behind], t);
-    dim.animate([{ opacity: 0 }, { opacity: UNDER_DIM }], t);
-    entering.animate([{ ...card, transformOrigin: "0 0" }, { ...FULL, transformOrigin: "0 0" }], t);
+    const grow = track(ZOOM, (k) => between(card, k));
+    const t = linear(grow.ms);
+    out = leaving.animate(track(ZOOM, (k) => ({ transform: `scale(${round(1 - (1 - BEHIND_SCALE) * k)})` })).frames, t);
+    anims.push(out, dim.animate(track(ZOOM, (k) => ({ opacity: round(UNDER_DIM * Math.min(1, k)) })).frames, t));
+    entering.style.transformOrigin = "0 0";
+    anims.push(entering.animate(grow.frames, t));
     // Its first moments fade in over the card, so the card's face gives way to the note's.
-    entering.animate([{ opacity: 0.35 }, { opacity: 1, offset: 0.35 }, { opacity: 1 }], t);
+    anims.push(entering.animate([{ opacity: 0.2 }, { opacity: 1, offset: 0.3 }, { opacity: 1 }], t));
     zoomed = href;
+    whenReady(entering, anims, true);
   } else {
     // The screen coming back steps forward under the note, which shrinks into the card and fades at the end.
     pictures.replaceChildren(dim, leaving);
     pictures.style.zIndex = "2";
     scrollersOf(leaving).forEach((el, i) => (el.scrollTop = scrolls[i] ?? 0));
-    entering.animate([behind, { transform: "scale(1)" }], t);
-    dim.animate([{ opacity: UNDER_DIM }, { opacity: 0 }], t);
+    const shrink = track(ZOOM, (k) => between(card, 1 - k));
+    const t = linear(shrink.ms);
+    entering.animate(track(ZOOM, (k) => ({ transform: `scale(${round(BEHIND_SCALE + (1 - BEHIND_SCALE) * k)})` })).frames, t);
+    dim.animate(track(ZOOM, (k) => ({ opacity: round(Math.max(0, UNDER_DIM * (1 - k))) })).frames, t);
     leaving.style.transformOrigin = "0 0";
-    out = leaving.animate([FULL, card], t);
-    leaving.animate([{ opacity: 1 }, { opacity: 1, offset: 0.65 }, { opacity: 0 }], t);
+    out = leaving.animate(shrink.frames, t);
+    leaving.animate([{ opacity: 1 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }], t);
   }
   out.onfinish = done;
   out.oncancel = done;
-  // Opening: the note grows once it has something to show (its words arrive from the library a moment after
-  // the screen is drawn), waiting at most a few frames on the card so it never zooms into an empty page.
-  if (kind === "push" && !noteReady(entering)) {
-    const all = [...entering.getAnimations(), ...leaving.getAnimations(), ...dim.getAnimations()];
-    all.forEach((a) => a.pause());
-    const started = performance.now();
-    const wait = () => {
-      if (noteReady(entering) || performance.now() - started > ZOOM_WAIT_MS) all.forEach((a) => a.play());
-      else requestAnimationFrame(wait);
-    };
-    requestAnimationFrame(wait);
-  }
 }
 
-/** How long a zoom waits on the card for the note's content, at most. */
-const ZOOM_WAIT_MS = 150;
+/** How long a move waits for the screen coming in (a note's words, its pictures), at most. */
+const READY_WAIT_MS = 150;
+
+/** Whether the note on the screen has its text in. */
+function noteHasText(screen: HTMLElement): boolean {
+  const body = screen.querySelector('[aria-label="Document body"]');
+  return Boolean(body && body.textContent && body.textContent.trim().length > 0);
+}
 
 /** Whether the note on the screen has its title or text in (not still loading). */
 function noteReady(screen: HTMLElement): boolean {
@@ -275,22 +319,31 @@ export function playTransition(entering: HTMLElement | null) {
   layer.replaceChildren(...(kind === "push" ? [leaving, dim, shadow] : [dim, leaving, shadow]));
   layer.style.zIndex = kind === "pop" ? "2" : "0";
   scrollersOf(leaving).forEach((s, i) => (s.scrollTop = scrolls[i] ?? 0));
-  const t = timing();
   const pictures = layer;
+  const unpromote = promote([entering, leaving, dim, shadow]);
   const done = () => {
     if (leaving.parentElement === pictures) pictures.replaceChildren();
+    unpromote();
   };
+  const at = (k: number) => round(k * 100);
+  const slide = track(SPRINGS.push, (k) => ({ transform: `translateX(${at(1 - k)}%)` }));
+  const t = linear(slide.ms);
+  const under = (k: number) => `translateX(${round(UNDER_SHIFT * k)}%)`;
   let out: Animation;
+  const anims: Animation[] = [];
   if (kind === "push") {
-    entering.animate([{ transform: "translateX(100%)" }, { transform: "translateX(0)" }], t);
-    shadow.animate([{ transform: "translateX(100vw)", opacity: 1 }, { transform: "translateX(0)", opacity: 0 }], t);
-    dim.animate([{ opacity: 0 }, { opacity: UNDER_DIM }], t);
-    out = leaving.animate([{ transform: "translateX(0)" }, { transform: `translateX(${UNDER_SHIFT})` }], t);
+    anims.push(entering.animate(slide.frames, t));
+    anims.push(shadow.animate(track(SPRINGS.push, (k) => ({ transform: `translateX(${round((1 - k) * 100)}vw)`, opacity: round(Math.max(0, 1 - k)) })).frames, t));
+    anims.push(dim.animate(track(SPRINGS.push, (k) => ({ opacity: round(UNDER_DIM * Math.min(1, k)) })).frames, t));
+    out = leaving.animate(track(SPRINGS.push, (k) => ({ transform: under(k) })).frames, t);
+    anims.push(out);
+    // A note slid in (a link to it): it moves once its words are in. A new note has none to wait for.
+    whenReady(entering, anims, location.pathname.startsWith("/d/") && new URLSearchParams(location.search).get("new") !== "1");
   } else {
-    entering.animate([{ transform: `translateX(${UNDER_SHIFT})` }, { transform: "translateX(0)" }], t);
-    dim.animate([{ opacity: UNDER_DIM }, { opacity: 0 }], t);
-    shadow.animate([{ transform: "translateX(0)" }, { transform: "translateX(100vw)" }], t);
-    out = leaving.animate([{ transform: "translateX(0)" }, { transform: "translateX(100%)" }], t);
+    entering.animate(track(SPRINGS.push, (k) => ({ transform: under(1 - k) })).frames, t);
+    dim.animate(track(SPRINGS.push, (k) => ({ opacity: round(Math.max(0, UNDER_DIM * (1 - k))) })).frames, t);
+    shadow.animate(track(SPRINGS.push, (k) => ({ transform: `translateX(${round(k * 100)}vw)` })).frames, t);
+    out = leaving.animate(track(SPRINGS.push, (k) => ({ transform: `translateX(${at(k)}%)` })).frames, t);
   }
   out.onfinish = done;
   out.oncancel = done;

@@ -133,7 +133,7 @@ test("iPhone shell polish: bar material, tab bar, Home, cards, focus rings, swip
   await page.locator("main#main").evaluate((m) => (m.scrollTop = 0));
   await expect(bar).not.toHaveAttribute("data-on", "");
 
-  // All notes slides in on the navigation spring (a linear() spring curve, not the old 420 ms ease), and the
+  // All notes slides in on the navigation spring (sampled keyframes, not the old 420 ms ease), and the
   // screen underneath moves 30 % and dims.
   await page.evaluate(() => {
     const seen: { easing: string; duration: number; frames: string }[] = [];
@@ -148,7 +148,10 @@ test("iPhone shell polish: bar material, tab bar, Home, cards, focus rings, swip
   await page.getByRole("link", { name: "All notes" }).click();
   const anims = await page.evaluate(() => (window as unknown as { __anims: { easing: string; duration: number; frames: string }[] }).__anims);
   const push = anims.find((a) => a.frames.includes("translateX(100%)"));
-  expect(push?.easing).toMatch(/^linear\(/);
+  // (The spring sampled 120 times a second into keyframes played linearly: Core Animation runs it at the
+  // display's rate, docs/IOS_PERFORMANCE.md "120 Hz".)
+  expect(push?.easing).toBe("linear");
+  expect((JSON.parse(push!.frames) as unknown[]).length).toBeGreaterThan(40);
   expect(push!.duration).toBeGreaterThan(450);
   expect(push!.duration).toBeLessThan(800);
   // (The dimming is a black layer fading to 12 % over it, not a filter on the whole screen: only transforms

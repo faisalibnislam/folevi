@@ -79,7 +79,7 @@ function NotificationsBell() {
         {count ? (
           <span
             aria-hidden
-            className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-chip bg-coral px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-[var(--color-sidebar)]"
+            className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-chip bg-coral px-1 text-caption-2 font-semibold leading-none text-white ring-2 ring-[var(--color-sidebar)]"
           >
             {count > 9 ? "9+" : count}
           </span>
@@ -189,7 +189,7 @@ export function NotificationPanel({ unread, onClose, hideTitle = false }: { unre
       disabled={!unread}
       onClick={() => void markRead({}).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
       // On a touch screen: a 44 pt button with phone-sized text, readable while there's something to mark.
-      className="inline-flex h-7 flex-none items-center gap-1 whitespace-nowrap rounded-chip px-2 text-[12px] font-medium text-muted transition-colors hover:bg-accent-soft hover:text-heading disabled:pointer-events-none disabled:opacity-40 pointer-coarse:h-11 pointer-coarse:gap-1.5 pointer-coarse:px-3.5 pointer-coarse:text-[15px] pointer-coarse:text-heading pointer-coarse:active:bg-[var(--liquid-press,var(--color-accent-soft))] pointer-coarse:disabled:text-muted pointer-coarse:disabled:opacity-50 [&>svg]:pointer-coarse:h-[18px] [&>svg]:pointer-coarse:w-[18px]"
+      className="inline-flex h-7 flex-none items-center gap-1 whitespace-nowrap rounded-chip px-2 text-caption-1 font-medium text-muted transition-colors hover:bg-accent-soft hover:text-heading disabled:pointer-events-none disabled:opacity-40 pointer-coarse:h-11 pointer-coarse:gap-1.5 pointer-coarse:px-3.5 pointer-coarse:text-subheadline pointer-coarse:text-heading pointer-coarse:active:bg-[var(--liquid-press,var(--color-accent-soft))] pointer-coarse:disabled:text-muted pointer-coarse:disabled:opacity-50 [&>svg]:pointer-coarse:h-[18px] [&>svg]:pointer-coarse:w-[18px]"
     >
       <Check size={13} aria-hidden /> Mark all read
     </button>
@@ -236,7 +236,7 @@ export function NotificationPanel({ unread, onClose, hideTitle = false }: { unre
       ) : (
         <>
           <header className="flex flex-none items-center gap-1 px-4 pb-2 pt-3">
-            <h2 id="notifications-heading" ref={headingRef} tabIndex={-1} className="flex-1 text-[14px] font-semibold text-heading outline-none">
+            <h2 id="notifications-heading" ref={headingRef} tabIndex={-1} className="flex-1 text-body font-semibold text-heading outline-none">
               Notifications
             </h2>
             {markAll}
@@ -330,6 +330,8 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
   const remove = useMutation(api.notifications.remove);
   const accept = useMutation(api.workspaces.acceptInvite);
   const acceptPage = useMutation(api.sharing.acceptPageInvite);
+  const decline = useMutation(api.workspaces.declineInvite);
+  const declinePage = useMutation(api.sharing.declinePageInvite);
   const { navigate } = useAppRouter();
   const toast = useToast();
   // The phone layout: phone-sized text, swipe actions, and the row's options in its long-press menu (no "…").
@@ -365,13 +367,13 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           {n.actorName ? <KindIcon kind={n.kind} /> : null}
         </span>
         <span className="min-w-0 flex-1">
-          <span className={`block ${phone ? "text-[15px] leading-5" : "text-[13px] leading-snug"} ${n.read ? "text-muted" : "text-ink"}`}>
+          <span className={`block ${phone ? "text-subheadline leading-5" : "text-subheadline leading-snug"} ${n.read ? "text-muted" : "text-ink"}`}>
             <Sentence n={n} />
           </span>
           {n.body ? (
-            <span className={`mt-1 line-clamp-2 block border-l-2 border-line-strong pl-2 text-muted ${phone ? "text-[15px] leading-5" : "text-[12.5px] leading-snug"}`}>{n.body}</span>
+            <span className={`mt-1 line-clamp-2 block border-l-2 border-line-strong pl-2 text-muted ${phone ? "text-subheadline leading-5" : "text-subheadline leading-snug"}`}>{n.body}</span>
           ) : null}
-          <span id={`${n.id}-meta`} className={`mt-1 block text-faint ${phone ? "text-[13px] leading-[18px]" : "text-[11.5px]"}`}>
+          <span id={`${n.id}-meta`} className={`mt-1 block text-faint ${phone ? "text-footnote leading-[18px]" : "text-footnote"}`}>
             {ageText(n.createdAt)}
             {n.read ? null : <span className="sr-only">, unread</span>}
           </span>
@@ -384,7 +386,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           {n.pageInviteId ? (
             <button
               type="button"
-              className={`ui-btn ui-btn-primary font-medium ${phone ? "h-9 px-3.5 text-[15px]" : "h-7 px-2.5 text-xs"}`}
+              className={`ui-btn ui-btn-primary font-medium ${phone ? "h-9 px-3.5 text-subheadline" : "h-7 px-2.5 text-footnote"}`}
               onClick={() =>
                 acceptPage({ inviteId: n.pageInviteId! }).then((r) => {
                   toast.show("The page was added to Shared with Me.", { tone: "success" });
@@ -395,10 +397,19 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
               Accept and open
             </button>
           ) : null}
+          {n.pageInviteId ? (
+            <button
+              type="button"
+              className={`ui-btn font-medium ${phone ? "h-9 px-3.5 text-[15px]" : "h-7 px-2.5 text-xs"}`}
+              onClick={() => declinePage({ inviteId: n.pageInviteId! }).then(() => toast.show("Invitation declined."), fail)}
+            >
+              Decline
+            </button>
+          ) : null}
           {n.kind === "invite" && n.inviteId ? (
             <button
               type="button"
-              className={`ui-btn ui-btn-primary font-medium ${phone ? "h-9 px-3.5 text-[15px]" : "h-7 px-2.5 text-xs"}`}
+              className={`ui-btn ui-btn-primary font-medium ${phone ? "h-9 px-3.5 text-subheadline" : "h-7 px-2.5 text-footnote"}`}
               onClick={() =>
                 accept({ inviteId: n.inviteId! }).then(
                   () => toast.show("You joined the workspace.", { tone: "success" }),
@@ -407,6 +418,15 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
               }
             >
               Accept invitation
+            </button>
+          ) : null}
+          {n.kind === "invite" && n.inviteId ? (
+            <button
+              type="button"
+              className={`ui-btn font-medium ${phone ? "h-9 px-3.5 text-[15px]" : "h-7 px-2.5 text-xs"}`}
+              onClick={() => decline({ inviteId: n.inviteId! }).then(() => toast.show("Invitation declined."), fail)}
+            >
+              Decline
             </button>
           ) : null}
         </div>
@@ -447,7 +467,7 @@ function DownloadFile({ fileId }: { fileId: string }) {
   return (
     <button
       type="button"
-      className="ui-btn ui-btn-secondary h-7 px-2.5 text-xs font-medium"
+      className="ui-btn ui-btn-secondary h-7 px-2.5 text-footnote font-medium"
       onClick={async () => {
         try {
           const urls = await convex.query(api.files.urls, { fileIds: [fileId], now: Math.floor(Date.now() / 3_600_000) * 3_600_000 });

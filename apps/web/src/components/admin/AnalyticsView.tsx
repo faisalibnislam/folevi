@@ -28,7 +28,7 @@ export function AnalyticsView() {
         description="Growth, activity, plans and AI use across Folevi. Counts only. No individual records or content."
         actions={
           <div className="flex items-center gap-2">
-            <label htmlFor={`${uid}-days`} className="text-[13px] text-muted">
+            <label htmlFor={`${uid}-days`} className="text-subheadline text-muted">
               Window
             </label>
             <Select id={`${uid}-days`} value={String(days)} onChange={(e) => setDays(Number(e.target.value))} className={`${selectCls} w-36`}>
@@ -80,7 +80,7 @@ export function AnalyticsView() {
           <ul className="space-y-3">
             {PLAN_ORDER.map((p) => (
               <li key={p}>
-                <div className="mb-1 flex items-baseline justify-between text-[13px]">
+                <div className="mb-1 flex items-baseline justify-between text-subheadline">
                   <span>{PLANS[p].name}</span>
                   <span className="tabular-nums text-muted">
                     {d ? n(d.plans[p]) : "…"}

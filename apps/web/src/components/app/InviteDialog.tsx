@@ -32,7 +32,7 @@ export function InviteForm({ workspace, onSent }: { workspace: InviteWorkspace; 
   const e2ee = useE2eeSpace({ kind: "workspace", workspaceId: workspace.id });
   return (
     <>
-      {e2ee && e2ee.level !== "standard" ? <p className="mb-3 text-[13px] text-muted">{copy.invite.encryptedWorkspace}</p> : null}
+      {e2ee && e2ee.level !== "standard" ? <p className="mb-3 text-subheadline text-muted">{copy.invite.encryptedWorkspace}</p> : null}
       <form
         className="flex flex-wrap gap-2"
         onSubmit={async (e) => {
@@ -68,9 +68,9 @@ export function InviteForm({ workspace, onSent }: { workspace: InviteWorkspace; 
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${uid}-error` : undefined}
           placeholder="name@example.com"
-          className="h-9 min-w-0 flex-1 ui-input rounded-chip px-3 text-sm"
+          className="h-9 min-w-0 flex-1 ui-input rounded-chip px-3 text-callout"
         />
-        <Select aria-label="Role" value={offer} onChange={(e) => setOffer(e.target.value as Offer)} className="h-9 ui-input rounded-chip px-3 text-sm">
+        <Select aria-label="Role" value={offer} onChange={(e) => setOffer(e.target.value as Offer)} className="h-9 ui-input rounded-chip px-3 text-callout">
           <option value="member:edit">Member</option>
           <option value="member:comment">Member · can comment</option>
           <option value="member:view">Member · view only</option>
@@ -81,13 +81,13 @@ export function InviteForm({ workspace, onSent }: { workspace: InviteWorkspace; 
         </Button>
       </form>
       {error ? (
-        <p id={`${uid}-error`} role="alert" className="mt-2 text-sm text-danger">
+        <p id={`${uid}-error`} role="alert" className="mt-2 text-subheadline text-danger">
           {error}
         </p>
       ) : null}
       {/* On a paid plan, what one more member costs (the server bills it once they accept). No prices in the iOS app. */}
       {data?.seats?.paid && data.seats.interval && canPurchaseHere() ? (
-        <p className="mt-2 text-[12.5px] text-muted">
+        <p className="mt-2 text-subheadline text-muted">
           Adds a seat when they accept: +{formatPrice(data.seats.seatPriceCents)}/{data.seats.interval === "year" ? "year" : "month"} on {data.seats.planName}.
         </p>
       ) : null}

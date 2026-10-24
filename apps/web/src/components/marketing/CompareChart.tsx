@@ -9,7 +9,7 @@ import { Sticker } from "./fun";
 // stay put while the table scrolls sideways (it's wider than a phone).
 
 const KEYS = Object.keys(FOLEVI_ROWS) as (keyof typeof FOLEVI_ROWS)[];
-const cell = "border-b mk-hair px-4 py-3.5 align-top text-[13.5px] leading-relaxed";
+const cell = "border-b mk-hair px-4 py-3.5 align-top text-[14px] leading-relaxed";
 // Folevi's column: a light wash of the accent, so the eye finds it first.
 const us = "bg-[color-mix(in_oklab,var(--mk-violet)_9%,var(--color-surface))]";
 
@@ -29,7 +29,7 @@ export function CompareChart() {
               <span className="flex items-center gap-2.5">
                 Folevi
                 <span aria-hidden="true">
-                  <Sticker tone="violet" rotate={-6} className="px-2.5 py-1 text-[11.5px]">
+                  <Sticker tone="violet" rotate={-6} className="px-2.5 py-1 text-[12px]">
                     That’s us
                   </Sticker>
                 </span>

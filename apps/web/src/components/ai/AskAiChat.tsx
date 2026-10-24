@@ -39,7 +39,7 @@ export const AskAiLauncher = forwardRef<HTMLButtonElement, { open: boolean; onCl
       onClick={onClick}
       onPointerEnter={onWarm}
       onFocus={onWarm}
-      className={`ui-fab fixed bottom-9 right-[calc(2.25rem+var(--tools-panel,0px))] z-[70] inline-flex h-12 items-center gap-2.5 rounded-panel bg-black pl-4 pr-5 text-[15px] font-medium text-white ${SHADOW} transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-[#1c1c1f] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black max-sm:bottom-3 max-sm:right-3`}
+      className={`ui-fab fixed bottom-9 right-[calc(2.25rem+var(--tools-panel,0px))] z-[70] inline-flex h-12 items-center gap-2.5 rounded-panel bg-black pl-4 pr-5 text-body font-medium text-white ${SHADOW} transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-[#1c1c1f] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black max-sm:bottom-3 max-sm:right-3`}
     >
       {open ? <X size={18} aria-hidden /> : <AiIcon size={17} />}
       <span>Ask Foli AI</span>
@@ -118,7 +118,7 @@ function StandInSheet({ open, onClose, onDrawn }: { open: boolean; onClose: () =
       <div className="min-h-0 flex-1" aria-busy="true" />
       <div className="flex-none px-4 pb-3 pt-1">
         <div className="h-[104px] rounded-sheet bg-surface shadow-[0_0_0_0.5px_rgb(0_0_0/0.1),0_8px_24px_-10px_rgb(0_0_0/0.25)] dark:bg-raised">
-          <p className="px-4 pt-3 text-[17px] leading-6 text-faint">Ask Foli AI anything…</p>
+          <p className="px-4 pt-3 text-body leading-6 text-faint">Ask Foli AI anything…</p>
         </div>
       </div>
     </Sheet>

@@ -55,19 +55,19 @@ type State = { phase: "idle" } | { phase: "confirm" } | { phase: "working" } | {
 export function TranscribeConfirm({ minutes, credits, onConfirm, onCancel }: { minutes: number; credits: number; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div role="region" aria-label="Transcribe this recording" className="ui-card ui-app-colors mt-1.5 overflow-hidden rounded-panel text-ink" contentEditable={false}>
-      <p className="px-4 pb-1 pt-3.5 text-[13.5px] leading-[1.5]">
+      <p className="px-4 pb-1 pt-3.5 text-body leading-[1.5]">
         Transcribing this {minutes}-minute recording uses {aboutCredits(credits)}.
       </p>
-      <p className="px-4 text-[12px] text-muted">Long recordings take a few minutes. The transcript shows here before anything goes into the note.</p>
+      <p className="px-4 text-footnote text-muted">Long recordings take a few minutes. The transcript shows here before anything goes into the note.</p>
       <div className="flex items-center gap-1.5 px-3 py-2.5">
-        <button type="button" onClick={onConfirm} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+        <button type="button" onClick={onConfirm} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
           <Captions size={14} aria-hidden /> Transcribe
         </button>
-        <button type="button" onClick={onCancel} className="ui-btn ui-btn-ghost h-8 px-2.5 text-[12.5px]">
+        <button type="button" onClick={onCancel} className="ui-btn ui-btn-ghost h-8 px-2.5 text-callout">
           Cancel
         </button>
       </div>
-      <p className="border-t border-line/60 px-3.5 py-1.5 text-[11px] text-faint">The recording is sent to Google Gemini.</p>
+      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">The recording is sent to Google Gemini.</p>
     </div>
   );
 }

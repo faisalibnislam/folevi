@@ -16,23 +16,23 @@ export function InviteView({ token }: { token: string }) {
   const { navigate } = useAppRouter();
   const [error, setError] = useState<string | null>(null);
   return (
-    <ViewChrome title={<h1 className="text-sm font-semibold">Invitation</h1>}>
+    <ViewChrome title={<h1 className="text-subheadline font-semibold">Invitation</h1>}>
       <div className="mx-auto max-w-md px-6 py-20">
         {preview === undefined ? (
           <p className="text-muted">Checking your invitation…</p>
         ) : !preview.valid ? (
           <>
-            <h2 className="ui-display text-3xl">This invitation is no longer valid</h2>
+            <h2 className="ui-display text-large-title">This invitation is no longer valid</h2>
             <p className="mt-2 text-muted">It may have expired or been revoked. Ask for a new one.</p>
           </>
         ) : (
           <>
-            <h2 className="ui-display text-3xl">Join {preview.workspaceName}</h2>
+            <h2 className="ui-display text-large-title">Join {preview.workspaceName}</h2>
             <p className="mt-2 text-muted">
               {preview.inviterName} invited you to join as {preview.role === "admin" ? "an admin" : preview.memberAccess === "edit" ? "a member" : `a member who can ${preview.memberAccess === "comment" ? "comment" : "view"} only`}.
             </p>
             {!preview.emailMatches ? (
-              <p className="mt-4 rounded-chip border border-warning/30 bg-warning-soft p-3 text-sm">
+              <p className="mt-4 rounded-chip border border-warning/30 bg-warning-soft p-3 text-subheadline">
                 This invitation was sent to a different address than the one you’re signed in with ({profile.email}). Sign in with the invited address to accept it.
               </p>
             ) : (
@@ -53,7 +53,7 @@ export function InviteView({ token }: { token: string }) {
               </Button>
             )}
             {error ? (
-              <p role="alert" className="mt-3 text-sm text-danger">
+              <p role="alert" className="mt-3 text-subheadline text-danger">
                 {error}
               </p>
             ) : null}

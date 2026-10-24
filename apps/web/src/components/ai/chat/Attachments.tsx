@@ -146,7 +146,7 @@ export function useChatAttachments({ scope, caps }: { scope: WireScope; caps: Mo
   };
 }
 
-const CHIP = "inline-flex h-7 max-w-full items-center gap-1.5 rounded-chip bg-[var(--glass-hover)] pl-2.5 text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)]";
+const CHIP = "inline-flex h-7 max-w-full items-center gap-1.5 rounded-chip bg-[var(--glass-hover)] pl-2.5 text-subheadline text-ink shadow-[inset_0_0_0_1px_var(--glass-border)]";
 
 /** The files attached to a message (or to the next one, with × to take one off). */
 export function AttachmentChips({ files, onRemove, disabled, className }: { files: (PendingFile | AttachmentInfo)[]; onRemove?: (key: string) => void; disabled?: boolean; className?: string }) {
@@ -177,7 +177,7 @@ export function AttachmentChips({ files, onRemove, disabled, className }: { file
 export function AttachmentProblems({ problems, onDismiss }: { problems: { name: string; reason: string }[]; onDismiss: () => void }) {
   if (!problems.length) return null;
   return (
-    <div role="alert" className="flex items-start gap-2 rounded-control bg-danger-soft px-3 py-2 text-[12.5px] text-danger">
+    <div role="alert" className="flex items-start gap-2 rounded-control bg-danger-soft px-3 py-2 text-subheadline text-danger">
       <ul className="min-w-0 flex-1 space-y-0.5">
         {problems.map((p, i) => (
           <li key={`${p.name}-${i}`}>{p.reason}</li>

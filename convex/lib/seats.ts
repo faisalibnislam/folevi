@@ -81,7 +81,11 @@ export async function seatSummary(ctx: Ctx, workspaceId: Id<"workspaces">, now =
     .query("documentPermissions")
     .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
     .collect();
-  const guests = new Set(grants.map((g) => g.profileId as string).filter((id) => !memberIds.has(id)));
+  const folderGrants = await ctx.db
+    .query("folderPermissions")
+    .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+    .collect();
+  const guests = new Set([...grants, ...folderGrants].map((g) => g.profileId as string).filter((id) => !memberIds.has(id)));
   const invites = await ctx.db
     .query("workspaceInvites")
     .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))

@@ -26,8 +26,8 @@ export function RecoveryKeyPanel({ text, email, onConfirm, onDone }: { text: str
   const file = `Folevi recovery key\n\n${text}\n\nKeep this somewhere safe, away from your devices. Anyone with it can unlock your encrypted notes.\nAccount: ${email}\nMade on ${date}\n`;
   return (
     <div className="space-y-5">
-      <p className="text-sm text-muted">{c.body}</p>
-      <ol aria-label={copy.wizard.recovery.heading} className="grid grid-cols-3 gap-2 rounded-control bg-sunken p-3 font-mono text-[15px] tracking-[0.06em] text-ink sm:p-4">
+      <p className="text-subheadline text-muted">{c.body}</p>
+      <ol aria-label={copy.wizard.recovery.heading} className="grid grid-cols-3 gap-2 rounded-control bg-sunken p-3 font-mono text-body tracking-[0.06em] text-ink sm:p-4">
         {groups.map((g, i) => (
           <li key={i} className="rounded-chip bg-surface px-2 py-1.5 text-center shadow-[var(--shadow-hairline)]">
             <span className="sr-only">{c.group(i + 1)}: </span>
@@ -69,12 +69,12 @@ export function RecoveryKeyPanel({ text, email, onConfirm, onDone }: { text: str
           else setError(c.wrong);
         }}
       >
-        <p id={`${uid}-check`} className="text-sm font-medium text-heading">
+        <p id={`${uid}-check`} className="text-subheadline font-medium text-heading">
           {c.check}
         </p>
         <div className="grid grid-cols-2 gap-3">
           {([3, 7] as const).map((i) => (
-            <label key={i} className="block text-[13px] text-muted">
+            <label key={i} className="block text-subheadline text-muted">
               {c.group(i)}
               <input
                 value={i === 3 ? g3 : g7}
@@ -88,13 +88,13 @@ export function RecoveryKeyPanel({ text, email, onConfirm, onDone }: { text: str
                 spellCheck={false}
                 aria-describedby={`${uid}-check${error ? ` ${uid}-error` : ""}`}
                 aria-invalid={error ? true : undefined}
-                className="ui-input mt-1 block h-10 w-full rounded-control px-3 font-mono text-[15px] uppercase tracking-[0.08em] text-ink pointer-coarse:h-11"
+                className="ui-input mt-1 block h-10 w-full rounded-control px-3 font-mono text-body uppercase tracking-[0.08em] text-ink pointer-coarse:h-11"
               />
             </label>
           ))}
         </div>
         {error ? (
-          <p id={`${uid}-error`} role="alert" className="text-sm text-danger">
+          <p id={`${uid}-error`} role="alert" className="text-subheadline text-danger">
             {error}
           </p>
         ) : null}

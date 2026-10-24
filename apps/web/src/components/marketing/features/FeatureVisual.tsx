@@ -228,11 +228,11 @@ function SyncStatuses() {
               <span className="w-[150px] flex-none">
                 <StatusPill status={row.status} detail={row.detail} />
               </span>
-              <span className="text-[13.5px] leading-snug text-ink">{row.body}</span>
+              <span className="text-[14px] leading-snug text-ink">{row.body}</span>
             </li>
           ))}
         </ul>
-        <div className="flex flex-wrap items-center gap-2 border-t mk-hair bg-(--mk-well) px-4 py-2 text-[12.5px]">
+        <div className="flex flex-wrap items-center gap-2 border-t mk-hair bg-(--mk-well) px-4 py-2 text-[13px]">
           <span className="text-muted">Conflict:</span>
           {["Keep mine", "Keep theirs", "Keep both"].map((label) => (
             <span key={label} className="mk-btn mk-btn-secondary h-7 px-2.5 text-[12px]">
@@ -271,13 +271,13 @@ function FlowchartPicture({ art }: { art: string }) {
         <figcaption className="sr-only">A flowchart drawn by Folevi from the Mermaid sample in the next panel.</figcaption>
       </figure>
       <div className="mk-card overflow-hidden">
-        <p className="flex h-10 items-center gap-2 border-b mk-hair px-4 text-[12.5px] font-semibold text-(--color-heading)">
+        <p className="flex h-10 items-center gap-2 border-b mk-hair px-4 text-[13px] font-semibold text-(--color-heading)">
           <FileCode size={14} aria-hidden="true" className="text-muted" /> Mermaid diagram
         </p>
-        <pre className="overflow-x-auto px-4 py-4 font-mono text-[12.5px] leading-[1.7] text-ink">
+        <pre className="overflow-x-auto px-4 py-4 font-mono text-[13px] leading-[1.7] text-ink">
           <code>{MERMAID_SAMPLE}</code>
         </pre>
-        <p className="border-t mk-hair px-4 py-3 text-[12.5px] text-muted">
+        <p className="border-t mk-hair px-4 py-3 text-[13px] text-muted">
           <span className="font-medium text-(--color-heading)">Convert to flowchart</span> turns this into the chart beside it.
         </p>
       </div>
@@ -369,10 +369,10 @@ function SharePanel() {
           <p className="text-[13px] font-semibold text-(--color-heading)">Who has access</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <span className="mk-app-well flex h-9 min-w-0 flex-1 items-center rounded-chip px-3 text-faint">name@example.com</span>
-            <span className="mk-btn mk-btn-secondary h-9 gap-1 px-3 text-[12.5px]">
+            <span className="mk-btn mk-btn-secondary h-9 gap-1 px-3 text-[13px]">
               Can view <ChevronDown size={13} />
             </span>
-            <span className="mk-btn mk-btn-primary h-9 px-3 text-[12.5px]">Invite</span>
+            <span className="mk-btn mk-btn-primary h-9 px-3 text-[13px]">Invite</span>
           </div>
           <ul className="mt-3 space-y-1">
             {people.map((p) => (
@@ -380,7 +380,7 @@ function SharePanel() {
                 <Avatar who={personNamed(p.name) ?? "alex"} size={28} />
                 <span className="min-w-0 flex-1 leading-tight">
                   <span className="block truncate font-medium text-ink">{p.name}</span>
-                  <span className="block truncate text-[11.5px] text-muted">{p.note}</span>
+                  <span className="block truncate text-[12px] text-muted">{p.note}</span>
                 </span>
                 <span className="flex-none text-[12px] text-muted">{p.role}</span>
               </li>
@@ -394,17 +394,17 @@ function SharePanel() {
           <p className="mt-1 text-[12px] leading-relaxed text-muted">Off by default. Anyone with the link can read this page (not its comments or nested pages). Search engines skip it unless you let them find it, and you can revoke it instantly.</p>
           <div className="mt-3 flex items-center gap-3 rounded-chip border border-(--color-line) px-3 py-2">
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-mono text-[11.5px] text-ink">…/s/k3Jd••••••••</span>
-              <span className="block truncate text-[11.5px] text-muted">Expires 12 Oct · Password protected · 4 views</span>
+              <span className="block truncate font-mono text-[12px] text-ink">…/s/k3Jd••••••••</span>
+              <span className="block truncate text-[12px] text-muted">Expires 12 Oct · Password protected · 4 views</span>
             </span>
             <span className="flex-none text-[12px] font-medium text-coral-ink">Revoke</span>
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-            <span className="text-[11.5px] text-muted">
+            <span className="text-[12px] text-muted">
               Expires (optional)
               <span className="mk-app-well mt-1 block h-8 rounded-chip" />
             </span>
-            <span className="text-[11.5px] text-muted">
+            <span className="text-[12px] text-muted">
               Password (optional, 8+ characters)
               <span className="mk-app-well mt-1 block h-8 rounded-chip" />
             </span>
@@ -438,13 +438,13 @@ function WorkspacePanels() {
       className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]"
     >
       <div aria-hidden="true" className="mk-app-pop mx-auto w-full max-w-[340px] rounded-panel p-1.5 text-[13px]">
-        <p className="mk-caps px-2.5 pb-1 pt-2 text-[10.5px]">Switch to</p>
+        <p className="mk-caps px-2.5 pb-1 pt-2 text-[11px]">Switch to</p>
         <ul className="space-y-0.5">
           {spaces.map((s) => (
             <li key={s.name} className={cx("flex h-10 items-center gap-2.5 rounded-control px-2.5", s.on ? "mk-app-row-on" : "text-ink")}>
               <span className="grid size-6 flex-none place-items-center rounded-chip bg-(--color-heading) text-[11px] font-semibold text-(--color-canvas)">{s.name[0]}</span>
               <span className="min-w-0 flex-1 truncate">{s.name}</span>
-              <span className="flex-none text-[11.5px] font-normal text-muted">{s.role}</span>
+              <span className="flex-none text-[12px] font-normal text-muted">{s.role}</span>
             </li>
           ))}
         </ul>
@@ -455,7 +455,7 @@ function WorkspacePanels() {
       <div aria-hidden="true" className="mk-card overflow-hidden text-[13px]">
         <div className="flex items-center justify-between gap-3 border-b mk-hair px-4 py-3">
           <p className="font-semibold text-(--color-heading)">Members</p>
-          <span className="rounded-chip bg-(--color-surface-sunken) px-2 text-[11.5px] font-medium leading-6 text-muted">4 seats · Pro</span>
+          <span className="rounded-chip bg-(--color-surface-sunken) px-2 text-[12px] font-medium leading-6 text-muted">4 seats · Pro</span>
         </div>
         <ul className="divide-y divide-(--mk-hair)">
           {members.map((m) => (
@@ -463,7 +463,7 @@ function WorkspacePanels() {
               <Avatar who={personNamed(m.name) ?? "alex"} size={28} />
               <span className="min-w-0 flex-1 truncate text-ink">{m.name}</span>
               <span className="flex-none text-[12px] text-muted">{m.role}</span>
-              <span className={cx("hidden w-14 flex-none text-right text-[11.5px] sm:block", m.seat ? "text-muted" : "font-medium text-moss-ink")}>{m.seat ? "Seat" : "Free"}</span>
+              <span className={cx("hidden w-14 flex-none text-right text-[12px] sm:block", m.seat ? "text-muted" : "font-medium text-moss-ink")}>{m.seat ? "Seat" : "Free"}</span>
             </li>
           ))}
         </ul>
@@ -516,23 +516,23 @@ function ExportPanels() {
         </ul>
       </div>
       <div aria-hidden="true" className="mk-card space-y-5 p-5 text-[13px]">
-        <p className="mk-caps text-[10.5px]">Settings · Import &amp; export</p>
+        <p className="mk-caps text-[11px]">Settings · Import &amp; export</p>
         <div>
           <p className="font-semibold text-(--color-heading)">Import into Personal</p>
-          <p className="mt-1 text-[12.5px] leading-relaxed text-muted">Markdown or text files, a folder, or a ZIP. Images they link to come along.</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-muted">Markdown or text files, a folder, or a ZIP. Images they link to come along.</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="mk-btn mk-btn-secondary h-8 gap-1.5 px-3 text-[12.5px]">
+            <span className="mk-btn mk-btn-secondary h-8 gap-1.5 px-3 text-[13px]">
               <Upload size={13} /> Choose files…
             </span>
-            <span className="mk-btn mk-btn-secondary h-8 gap-1.5 px-3 text-[12.5px]">
+            <span className="mk-btn mk-btn-secondary h-8 gap-1.5 px-3 text-[13px]">
               <FolderUp size={13} /> Import a folder…
             </span>
           </div>
         </div>
         <div className="border-t mk-hair pt-5">
           <p className="font-semibold text-(--color-heading)">Export Personal</p>
-          <p className="mt-1 text-[12.5px] leading-relaxed text-muted">A ZIP with every document as Markdown, all attachments in an assets folder, and a manifest.json.</p>
-          <span className="mk-btn mk-btn-primary mt-3 h-8 px-3 text-[12.5px]">Export Personal (.zip)</span>
+          <p className="mt-1 text-[13px] leading-relaxed text-muted">A ZIP with every document as Markdown, all attachments in an assets folder, and a manifest.json.</p>
+          <span className="mk-btn mk-btn-primary mt-3 h-8 px-3 text-[13px]">Export Personal (.zip)</span>
         </div>
       </div>
     </div>
@@ -550,8 +550,8 @@ function SecurityGrid() {
             <span className="mk-tile">
               <Icon name={control.icon} size={17} />
             </span>
-            <p className="mk-h3 mt-3.5 text-[15.5px]">{control.title}</p>
-            <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted">{control.body}</p>
+            <p className="mk-h3 mt-3.5 text-[16px]">{control.title}</p>
+            <p className="mt-1.5 text-[15px] leading-relaxed text-muted">{control.body}</p>
           </li>
         ))}
       </ul>

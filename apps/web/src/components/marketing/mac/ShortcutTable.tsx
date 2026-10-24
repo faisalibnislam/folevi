@@ -3,7 +3,7 @@ import { cx } from "../ui";
 
 export function ShortcutTable({ caption, className }: { caption: string; className?: string }) {
   return (
-    <table className={cx("mk-table text-[14.5px]", className)}>
+    <table className={cx("mk-table text-[15px]", className)}>
       <caption className="pb-2 text-left text-[13px] text-muted">{caption}</caption>
       <thead>
         <tr>

@@ -94,7 +94,7 @@ export function EmailsView() {
       </div>
 
       <div className="mb-3 flex flex-wrap items-end gap-3">
-        <div className="text-sm">
+        <div className="text-subheadline">
           <label htmlFor={`${uid}-status`} className="mb-1 block font-medium">
             Status
           </label>
@@ -107,7 +107,7 @@ export function EmailsView() {
             ))}
           </Select>
         </div>
-        {!canResend ? <p className="pb-2 text-xs text-muted">Resending: {rolesFor("emails.resend")}</p> : null}
+        {!canResend ? <p className="pb-2 text-footnote text-muted">Resending: {rolesFor("emails.resend")}</p> : null}
       </div>
 
       {error ? (
@@ -145,20 +145,20 @@ export function EmailsView() {
                   <tr key={a.id}>
                     <td className={td}>
                       <Mono>{a.templateKey}</Mono>
-                      <div className="mt-0.5 text-xs text-muted">{humanize(a.category)}</div>
+                      <div className="mt-0.5 text-footnote text-muted">{humanize(a.category)}</div>
                     </td>
                     <td className={td}>
                       <Mono>{a.recipientHint}</Mono>
                     </td>
                     <td className={td}>
                       <StatusBadge status={a.status} />
-                      {a.provider ? <div className="mt-0.5 text-xs text-muted">{PROVIDER_LABELS[a.provider] ?? a.provider}</div> : null}
+                      {a.provider ? <div className="mt-0.5 text-footnote text-muted">{PROVIDER_LABELS[a.provider] ?? a.provider}</div> : null}
                     </td>
                     <td className={tdNum}>{a.attempts}</td>
                     <td className={td}>
                       {a.errorCode ? <Mono>{a.errorCode}</Mono> : <span className="text-muted">None</span>}
-                      {a.httpStatus ? <div className="mt-0.5 text-xs text-muted">HTTP {a.httpStatus}</div> : null}
-                      {a.providerError ? <div className="mt-0.5 max-w-[280px] text-xs text-muted">{a.providerError}</div> : null}
+                      {a.httpStatus ? <div className="mt-0.5 text-footnote text-muted">HTTP {a.httpStatus}</div> : null}
+                      {a.providerError ? <div className="mt-0.5 max-w-[280px] text-footnote text-muted">{a.providerError}</div> : null}
                     </td>
                     <td className={td}>
                       {a.deliveryStatus ? (
@@ -186,7 +186,7 @@ export function EmailsView() {
                     </td>
                     <td className={td}>
                       <ShortId value={a.requestId} head={4} tail={6} />
-                      <div className="mt-0.5 text-xs text-muted">
+                      <div className="mt-0.5 text-footnote text-muted">
                         {a.environment}
                         {a.hasProviderId ? " · provider id" : ""}
                       </div>
@@ -197,7 +197,7 @@ export function EmailsView() {
                     <td className={`${td} text-right`}>
                       {a.status === "failed" && canResend ? (
                         identity ? (
-                          <span className="text-xs text-muted" title="Identity emails carry one-time links. Use “Resend verification” or a user-requested password reset on the user's page.">
+                          <span className="text-footnote text-muted" title="Identity emails carry one-time links. Use “Resend verification” or a user-requested password reset on the user's page.">
                             Use user page
                           </span>
                         ) : (

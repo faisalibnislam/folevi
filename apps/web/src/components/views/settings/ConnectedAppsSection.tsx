@@ -131,12 +131,12 @@ export function ConnectedAppsSection() {
         description="AI apps like Claude, ChatGPT and Cursor can search and read your notes, add new ones and manage tasks through Folevi’s MCP server. You choose what each one may do and where when you connect it. It uses the app’s own AI, so no Folevi AI credits are spent."
       >
         <div className="flex max-w-xl items-center gap-2">
-          <input readOnly value={address} aria-label="MCP server address" onFocus={(e) => e.target.select()} className="h-9 min-w-0 flex-1 ui-well rounded-chip px-3 font-mono text-[13px]" />
+          <input readOnly value={address} aria-label="MCP server address" onFocus={(e) => e.target.select()} className="h-9 min-w-0 flex-1 ui-well rounded-chip px-3 font-mono text-subheadline" />
           <Button onClick={() => void navigator.clipboard.writeText(address).then(() => toast.show("Address copied"))}>
             <Copy size={13} aria-hidden /> Copy
           </Button>
         </div>
-        <dl className="mt-4 grid max-w-xl gap-2 text-[13px]">
+        <dl className="mt-4 grid max-w-xl gap-2 text-subheadline">
           {HOW.map((h) => (
             <div key={h.app} className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-2">
               <dt className="font-medium text-ink">{h.app}</dt>
@@ -148,7 +148,7 @@ export function ConnectedAppsSection() {
 
       <Card title="Connected apps" description="Disconnecting stops an app at once; it has to ask again to come back. Everything an app changes is in the note’s version history.">
         {grants === undefined ? (
-          <p className="text-sm text-muted">Loading…</p>
+          <p className="text-subheadline text-muted">Loading…</p>
         ) : grants.length === 0 ? (
           <EmptyState size="inline" icon={Plug} title="No apps are connected" />
         ) : (
@@ -157,17 +157,17 @@ export function ConnectedAppsSection() {
               <li key={g.id} aria-label={g.name} className="py-4 first:pt-0 last:pb-0">
                 <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
                   <div className="min-w-0 flex-1 basis-64">
-                    <p className="text-[14px] font-semibold text-heading">{g.name}</p>
-                    <p className="mt-0.5 text-[12.5px] text-muted">
+                    <p className="text-body font-semibold text-heading">{g.name}</p>
+                    <p className="mt-0.5 text-subheadline text-muted">
                       {g.redirectHost ? `Returns to ${g.redirectHost} · ` : ""}Connected {formatRelative(g.connectedAt)}
                       {g.lastUsedAt ? ` · last used ${formatRelative(g.lastUsedAt)}` : " · not used yet"}
                     </p>
-                    <p className="mt-1.5 text-[13px] text-ink">
+                    <p className="mt-1.5 text-subheadline text-ink">
                       {!g.canRead ? "Only adds new things" : g.canWrite ? (g.createOnly ? "Reads and adds new things" : "Reads and makes changes") : "Reads only"} in {g.places.join(", ") || "no places"}
                       {g.includeShared ? ", plus pages shared with you" : ""}
                     </p>
                     {g.recent.length ? (
-                      <ul className="mt-2 space-y-0.5 text-[12.5px] text-muted">
+                      <ul className="mt-2 space-y-0.5 text-subheadline text-muted">
                         {g.recent.slice(0, 5).map((e, i) => (
                           <li key={i}>
                             {TOOL_LABELS[e.tool] ?? e.tool}
@@ -240,8 +240,8 @@ function ReviewChangesCard() {
     <Card title="Review changes">
       <div className="flex items-start justify-between gap-6">
         <div className="min-w-0 max-w-prose">
-          <p className="text-sm font-medium text-heading">Ask me before changes are made to existing notes</p>
-          <p id={descId} className="mt-0.5 text-sm text-muted">
+          <p className="text-subheadline font-medium text-heading">Ask me before changes are made to existing notes</p>
+          <p id={descId} className="mt-0.5 text-subheadline text-muted">
             When an app or a token adds to a note you already have, it waits in Changes for you to accept or reject, and the app is told so. New notes and tasks, and checking off or rescheduling a task, still happen at once. A change you don’t answer expires after 14 days.
           </p>
         </div>

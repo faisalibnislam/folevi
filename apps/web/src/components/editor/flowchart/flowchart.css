@@ -157,7 +157,7 @@
   background: var(--glass-pop);
   -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
   box-shadow: var(--glass-edge), 0 6px 20px -8px rgb(0 0 0 / 0.18);
-  font: 500 12.5px/1 var(--font-sans); color: var(--color-ink);
+  font: 500 var(--type-subheadline)/1 var(--font-sans); color: var(--color-ink);
 }
 .fc-bar-main { top: 10px; left: 10px; max-width: calc(100% - 20px); overflow-x: auto; scrollbar-width: none; }
 .fc-bar-zoom { right: 10px; bottom: 10px; }
@@ -165,14 +165,14 @@
 .fc-group { display: inline-flex; align-items: center; gap: 2px; }
 .fc-sep { flex: none; width: 1px; height: 18px; margin: 0 4px; background: var(--color-line-strong); }
 .fc-btn {
-  flex: none; display: inline-grid; grid-auto-flow: column; align-items: center; justify-content: center; gap: 5px;
+  flex: none; display: inline-grid; grid-auto-flow: column; align-items: center; justify-content: center; gap: 6px;
   min-width: 30px; height: 30px; padding: 0 6px; border-radius: var(--radius-control);
   color: var(--color-ink-muted); transition: background-color 100ms, color 100ms;
 }
 .fc-btn:hover:not(:disabled), .fc-btn[aria-pressed="true"], .fc-btn[aria-expanded="true"] { background: var(--glass-hover); color: var(--color-heading); }
 .fc-btn[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--glass-border); }
 .fc-btn:disabled { opacity: 0.35; }
-.fc-btn-text { padding: 0 9px; font-weight: 550; color: var(--color-ink); }
+.fc-btn-text { padding: 0 10px; font-weight: 550; color: var(--color-ink); }
 .fc-ai-mark { color: #7c6cf0; }
 .fc-zoom { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; color: var(--color-ink-muted); }
 .fc-swatch {
@@ -222,13 +222,13 @@
 
 .fc-empty {
   position: absolute; inset: 52px 16px 16px; display: grid; place-content: center; justify-items: center; gap: 10px;
-  pointer-events: none; text-align: center; font: 13.5px/1.5 var(--font-sans); color: var(--color-ink-muted);
+  pointer-events: none; text-align: center; font: var(--type-body)/1.5 var(--font-sans); color: var(--color-ink-muted);
 }
 .fc-empty p { margin: 0; }
 .fc-empty-ai { pointer-events: auto; background: var(--glass-pop); box-shadow: var(--glass-edge); }
 .fc-warning {
   position: absolute; left: 10px; bottom: 10px; z-index: 3; margin: 0; padding: 6px 10px; border-radius: var(--radius-control);
-  font: 500 12.5px/1.4 var(--font-sans); color: var(--color-danger, #b42318); background: var(--color-surface-raised);
+  font: 500 var(--type-subheadline)/1.4 var(--font-sans); color: var(--color-danger, #b42318); background: var(--color-surface-raised);
   box-shadow: var(--glass-edge);
 }
 
@@ -238,23 +238,23 @@
   border-radius: var(--radius-panel); overflow: hidden; font-family: var(--font-sans); color: var(--color-ink);
 }
 .fc-ai-modes { display: flex; gap: 4px; padding: 8px 10px 0; }
-.fc-ai-modes button { padding: 4px 9px; border-radius: var(--radius-chip); font: 550 12px/1.2 var(--font-sans); color: var(--color-ink-muted); }
+.fc-ai-modes button { padding: 4px 10px; border-radius: var(--radius-chip); font: 550 var(--type-footnote)/1.2 var(--font-sans); color: var(--color-ink-muted); }
 .fc-ai-modes button[aria-pressed="true"] { background: var(--glass-hover); color: var(--color-heading); box-shadow: inset 0 0 0 1px var(--glass-border); }
 .fc-ai-form { display: flex; align-items: flex-start; gap: 8px; padding: 10px; }
-.fc-ai-form .fc-ai-mark { margin-top: 5px; }
+.fc-ai-form .fc-ai-mark { margin-top: 6px; }
 .fc-ai-form textarea {
   flex: 1; min-width: 0; resize: none; border: 0; outline: none; background: transparent;
-  font: 14px/1.45 var(--font-sans); color: var(--color-ink);
+  font: var(--type-body)/1.45 var(--font-sans); color: var(--color-ink);
 }
 .fc-ai-form textarea::placeholder { color: var(--color-ink-faint); }
 .fc-ai-send { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-chip); background: var(--color-heading); color: var(--color-canvas); }
 .fc-ai-send:disabled { opacity: 0.3; }
 .fc-ai-ideas { margin: 0; padding: 4px 6px 6px; list-style: none; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); }
-.fc-ai-ideas button { width: 100%; padding: 6px 8px; border-radius: var(--radius-control); text-align: left; font-size: 13px; color: var(--color-ink-muted); }
+.fc-ai-ideas button { width: 100%; padding: 6px 8px; border-radius: var(--radius-control); text-align: left; font-size: var(--type-subheadline); color: var(--color-ink-muted); }
 .fc-ai-ideas button:hover { background: var(--glass-hover); color: var(--color-heading); }
-.fc-ai-status, .fc-ai-error { margin: 0; padding: 4px 14px 10px; font-size: 13px; color: var(--color-ink-muted); }
+.fc-ai-status, .fc-ai-error { margin: 0; padding: 4px 14px 10px; font-size: var(--type-subheadline); color: var(--color-ink-muted); }
 .fc-ai-error { color: var(--color-danger, #b42318); }
-.fc-ai-foot { margin: 0; padding: 7px 14px; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); font-size: 11px; color: var(--color-ink-faint); }
+.fc-ai-foot { margin: 0; padding: 8px 14px; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); font-size: var(--type-footnote); color: var(--color-ink-faint); }
 
 /* ---------------------------------------------------------------- building faster (quick add, picker, guides) */
 /* The + arrows around a shape: neutral until hovered, then the selection blue. */
@@ -275,23 +275,23 @@
 }
 .fc-picker-search {
   flex: none; height: 32px; margin: 0 0 4px; padding: 0 10px; border: 0; outline: none; border-radius: var(--radius-small);
-  background: color-mix(in oklab, var(--color-ink) 6%, transparent); font: 13.5px/1 var(--font-sans); color: var(--color-ink);
+  background: color-mix(in oklab, var(--color-ink) 6%, transparent); font: var(--type-body)/1 var(--font-sans); color: var(--color-ink);
 }
 .fc-picker-search::placeholder { color: var(--color-ink-faint); }
 .fc-picker-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.fc-picker-head { padding: 8px 10px 4px; font: 600 11px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-faint); }
+.fc-picker-head { padding: 8px 10px 4px; font: 600 var(--type-caption-2)/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-faint); }
 .fc-picker-option {
   display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 10px; border-radius: var(--radius-small);
-  font-size: 13.5px; color: var(--color-ink); cursor: pointer; user-select: none;
+  font-size: var(--type-body); color: var(--color-ink); cursor: pointer; user-select: none;
 }
 .fc-picker-option[aria-selected="true"] { background: color-mix(in oklab, var(--color-ink) 9%, transparent); color: var(--color-heading); }
-.fc-picker-none { margin: 0; padding: 10px; font-size: 13px; color: var(--color-ink-muted); }
+.fc-picker-none { margin: 0; padding: 10px; font-size: var(--type-subheadline); color: var(--color-ink-muted); }
 .fc-mini-shape { flex: none; overflow: visible; }
 .fc-mini-shape path { fill: none; stroke: currentColor; stroke-width: 1.3px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .fc-mini-shape .fc-mini-detail { stroke-width: 1px; }
 @media (pointer: coarse) {
   .fc-picker { width: 280px; }
-  .fc-picker-search { height: 44px; font-size: 16px; }
+  .fc-picker-search { height: 44px; font-size: var(--type-input-min); }
   .fc-picker-option { min-height: 44px; }
 }
 
@@ -358,7 +358,7 @@
 .fc-static-zoom { position: absolute; right: 6px; bottom: 6px; display: flex; gap: 2px; padding: 3px; border-radius: var(--radius-panel); background: var(--glass-pop); box-shadow: var(--glass-edge); opacity: 0; transition: opacity 140ms; }
 .fc-static:hover .fc-static-zoom, .fc-static:focus-within .fc-static-zoom { opacity: 1; }
 @media (pointer: coarse) { .fc-static-zoom { opacity: 1; } }
-.fc-static-empty { padding: 20px; font: 13px var(--font-sans); color: var(--color-ink-muted); }
+.fc-static-empty { padding: 20px; font: var(--type-subheadline) var(--font-sans); color: var(--color-ink-muted); }
 .fb-readonly-flowchart { margin: 0.6em 0; border-radius: var(--radius-panel); box-shadow: 0 0 0 1px var(--color-line); background: var(--color-surface); }
 
 @media (forced-colors: active) {
@@ -419,12 +419,12 @@
 .fc-rt-link-icon { flex: none; color: var(--color-ink-muted); }
 .fc-input {
   height: 30px; min-width: 0; padding: 0 8px; border: 0; outline: none; border-radius: var(--radius-control);
-  background: transparent; font: 13px/1.2 var(--font-sans); color: var(--color-ink);
+  background: transparent; font: var(--type-subheadline)/1.2 var(--font-sans); color: var(--color-ink);
 }
 .fc-input::placeholder { color: var(--color-ink-faint); }
 .fc-input:focus-visible { box-shadow: inset 0 0 0 1.5px var(--fc-select); }
 .fc-rt-link .fc-input { width: min(240px, 50vw); }
-.fc-rt-swatch { display: grid; place-items: center; width: 18px; height: 18px; font: 700 13px/1 var(--font-sans); color: var(--color-ink); }
+.fc-rt-swatch { display: grid; place-items: center; width: 18px; height: 18px; font: 700 var(--type-subheadline)/1 var(--font-sans); color: var(--color-ink); }
 
 /* ---------------------------------------------------------------- shape panels (chrome/FlowPanel.tsx and friends)
    The shape library, icons, colours, page links and notes: glass panels inside the canvas, docked under
@@ -435,21 +435,21 @@
   background: var(--glass-pop);
   -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
   box-shadow: var(--glass-edge), 0 12px 32px -12px rgb(0 0 0 / 0.28);
-  font: 13px/1.4 var(--font-sans); color: var(--color-ink);
+  font: var(--type-subheadline)/1.4 var(--font-sans); color: var(--color-ink);
 }
 .fc-panel-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 2px 14px; }
-.fc-panel-title { margin: 0; font: 600 13px/1.2 var(--font-sans); color: var(--color-heading); }
+.fc-panel-title { margin: 0; font: 600 var(--type-subheadline)/1.2 var(--font-sans); color: var(--color-heading); }
 .fc-panel-search {
   flex: none; display: flex; align-items: center; gap: 4px; margin: 4px 10px 6px; padding-left: 10px;
   border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-ink) 6%, transparent); color: var(--color-ink-muted);
 }
 .fc-panel-search .fc-input { flex: 1; padding-left: 4px; }
 .fc-panel-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 8px 8px; }
-.fc-panel-heading { margin: 10px 6px 4px; font: 600 11.5px/1.2 var(--font-sans); color: var(--color-ink-muted); }
-.fc-panel-empty, .fc-panel-note, .fc-panel-foot { margin: 6px; font-size: 12.5px; color: var(--color-ink-muted); }
-.fc-panel-foot { flex: none; margin: 0; padding: 7px 14px; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); font-size: 11.5px; color: var(--color-ink-faint); }
+.fc-panel-heading { margin: 10px 6px 4px; font: 600 var(--type-footnote)/1.2 var(--font-sans); color: var(--color-ink-muted); }
+.fc-panel-empty, .fc-panel-note, .fc-panel-foot { margin: 6px; font-size: var(--type-subheadline); color: var(--color-ink-muted); }
+.fc-panel-foot { flex: none; margin: 0; padding: 8px 14px; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); font-size: var(--type-footnote); color: var(--color-ink-faint); }
 .fc-panel-actions { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 4px; padding: 6px 8px 8px; }
-.fc-panel-count { margin-right: auto; padding-left: 6px; font-size: 11.5px; color: var(--color-ink-faint); }
+.fc-panel-count { margin-right: auto; padding-left: 6px; font-size: var(--type-footnote); color: var(--color-ink-faint); }
 .fc-link-btn { padding: 0; color: var(--color-accent); text-decoration: underline; text-underline-offset: 2px; }
 .fc-btn-primary { background: var(--color-heading); color: var(--color-canvas); }
 .fc-btn-primary:hover:not(:disabled) { background: color-mix(in oklab, var(--color-heading) 85%, var(--color-canvas)); color: var(--color-canvas); }
@@ -457,18 +457,18 @@
 /* The library's tiles. */
 .fc-lib-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; }
 .fc-lib-tile {
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; min-height: 66px; padding: 7px 2px 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; min-height: 66px; padding: 8px 2px 6px;
   border-radius: var(--radius-control); color: var(--color-ink-muted); cursor: pointer; touch-action: manipulation;
 }
 .fc-lib-tile:hover, .fc-lib-tile:focus-visible { background: var(--glass-hover); color: var(--color-heading); }
 .fc-lib-tile:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
 .fc-lib-tile[aria-pressed="true"] { background: var(--glass-hover); color: var(--color-heading); box-shadow: inset 0 0 0 1.5px var(--fc-select); }
-.fc-lib-name { max-width: 100%; font-size: 10.5px; line-height: 1.2; text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.fc-lib-name { max-width: 100%; font-size: var(--type-caption-2); line-height: 1.2; text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .fc-thumb, .fc-shape-icon { flex: none; overflow: visible; }
 .fc-thumb-shape { fill: var(--color-surface-raised); stroke: currentColor; stroke-width: 1.2px; stroke-linejoin: round; }
 .fc-thumb-bare { fill: none; stroke: currentColor; stroke-width: 1.2px; stroke-dasharray: 2 2; }
 .fc-thumb-detail { fill: none; stroke: currentColor; stroke-width: 1px; stroke-linecap: round; }
-.fc-thumb-text { font: 600 11px var(--font-sans); fill: currentColor; }
+.fc-thumb-text { font: 600 var(--type-caption-2) var(--font-sans); fill: currentColor; }
 .fc-shape-icon .fc-thumb-shape { fill: none; stroke-width: 1.5px; }
 .fc-drag-ghost { position: absolute; z-index: 6; pointer-events: none; transform: translate(-50%, -50%); color: var(--fc-select); opacity: 0.55; }
 .fc-drag-ghost[data-over] { opacity: 0.95; }
@@ -477,7 +477,7 @@
 /* Segmented choices (where an icon goes, what to colour, outline width and style). */
 .fc-seg { flex: none; display: flex; gap: 2px; margin: 2px 10px 6px; padding: 2px; border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-ink) 6%, transparent); }
 .fc-panel-scroll .fc-seg { margin: 2px 0 4px; }
-.fc-seg-btn { flex: 1; display: grid; place-items: center; min-height: 28px; padding: 0 6px; border-radius: var(--radius-chip); font: 550 12px/1.2 var(--font-sans); color: var(--color-ink-muted); }
+.fc-seg-btn { flex: 1; display: grid; place-items: center; min-height: 28px; padding: 0 6px; border-radius: var(--radius-chip); font: 550 var(--type-footnote)/1.2 var(--font-sans); color: var(--color-ink-muted); }
 .fc-seg-btn:hover { color: var(--color-heading); }
 .fc-seg-btn[aria-checked="true"] { background: var(--color-surface-raised); color: var(--color-heading); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), inset 0 0 0 1px var(--glass-border); }
 .fc-seg-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
@@ -495,11 +495,11 @@
 .fc-swatch-grid .fc-swatch { width: 26px; height: 26px; margin: 0; }
 .fc-swatch-custom { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 18%, transparent); }
 .fc-swatch-none, .fc-text-swatch { display: grid; place-items: center; background: var(--color-surface-raised); color: var(--color-ink-muted); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 18%, transparent); }
-.fc-text-swatch span { font: 650 14px/1 var(--font-sans); }
+.fc-text-swatch span { font: 650 var(--type-body)/1 var(--font-sans); }
 .fc-text-swatch span:not([class]) { color: var(--color-ink); }
 .fc-hex { display: flex; align-items: center; gap: 6px; margin: 6px 4px 2px; padding-left: 8px; border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-ink) 6%, transparent); }
 .fc-hex-chip { flex: none; width: 16px; height: 16px; border-radius: var(--radius-tiny); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 22%, transparent); }
-.fc-hex .fc-input { flex: 1; font-family: var(--font-mono); font-size: 12.5px; }
+.fc-hex .fc-input { flex: 1; font-family: var(--font-mono); font-size: var(--type-subheadline); }
 .fc-hex .fc-input[aria-invalid] { color: var(--color-danger, #b42318); }
 
 /* Page links. */
@@ -517,15 +517,15 @@
 .fc-note-input {
   display: block; width: calc(100% - 20px); margin: 4px 10px 0; padding: 8px 10px; resize: vertical; min-height: 96px; max-height: 220px;
   border: 0; outline: none; border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-ink) 5%, transparent);
-  font: 13.5px/1.5 var(--font-sans); color: var(--color-ink);
+  font: var(--type-body)/1.5 var(--font-sans); color: var(--color-ink);
 }
 .fc-note-input:focus-visible { box-shadow: inset 0 0 0 1.5px var(--fc-select); }
 .fc-note-input::placeholder { color: var(--color-ink-faint); }
-.fc-note-text { margin: 2px 0 0; padding: 4px 14px 8px; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.5; }
+.fc-note-text { margin: 2px 0 0; padding: 4px 14px 8px; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--type-body); line-height: 1.5; }
 
 .fc-status {
   position: absolute; left: 50%; bottom: 12px; z-index: 4; margin: 0; padding: 6px 12px; transform: translateX(-50%);
-  border-radius: var(--radius-control); background: var(--glass-pop); box-shadow: var(--glass-edge); font: 500 12.5px/1.3 var(--font-sans); color: var(--color-ink-muted);
+  border-radius: var(--radius-control); background: var(--glass-pop); box-shadow: var(--glass-edge); font: 500 var(--type-subheadline)/1.3 var(--font-sans); color: var(--color-ink-muted);
 }
 
 /* Fingers: 44 pt targets in the panels and the shape bar; 16 px fields so the iPhone doesn't zoom. */
@@ -533,5 +533,5 @@
   .fc-panel .fc-btn, .fc-rt-bar .fc-btn { min-width: 44px; height: 44px; }
   .fc-lib-tile, .fc-icon-tile, .fc-page-item, .fc-seg-btn { min-height: 44px; }
   .fc-swatch-grid .fc-swatch { width: 36px; height: 36px; }
-  .fc-panel .fc-input, .fc-note-input, .fc-rt-link .fc-input { font-size: 16px; height: 40px; }
+  .fc-panel .fc-input, .fc-note-input, .fc-rt-link .fc-input { font-size: var(--type-input-min); height: 40px; }
 }

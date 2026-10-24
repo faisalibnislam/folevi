@@ -96,13 +96,13 @@ export function RelatedList({
   onLink?: (targetId: string, title: string) => Promise<unknown>;
 }) {
   const [linking, setLinking] = useState<string | null>(null);
-  if (!related) return <p className="px-1 text-sm text-muted">Looking for related notes…</p>;
+  if (!related) return <p className="px-1 text-subheadline text-muted">Looking for related notes…</p>;
   const dupes = duplicates?.items ?? [];
   const clashes = contradictions?.items ?? [];
   const unlinked = missing?.items ?? [];
   const empty = !related.items.length && !dupes.length && !clashes.length && !unlinked.length;
   return (
-    <div className="space-y-5 text-sm">
+    <div className="space-y-5 text-subheadline">
       {clashes.length ? (
         <section aria-labelledby="related-clashes">
           <h3 id="related-clashes" className="ui-caps mb-2 px-1">
@@ -111,15 +111,15 @@ export function RelatedList({
           <ul className="space-y-2">
             {clashes.map((c) => (
               <li key={`${c.from.blockId}:${c.to.blockId}`} className="rounded-control bg-sunken/70 p-2">
-                <p className="flex items-center gap-1.5 px-1 text-[12px] text-muted">
+                <p className="flex items-center gap-1.5 px-1 text-footnote text-muted">
                   <Split size={12} aria-hidden />
                   {c.kind === "supersedes" ? "Replaces an earlier note" : "Says something different"}
                   {c.reason ? <span className="truncate"> · {c.reason}</span> : null}
                 </p>
                 {[c.from, c.to].map((side) => (
                   <NoteLink key={side.blockId} id={side.id} title={side.title} blockId={side.blockId} onOpen={onOpen} className="mt-1 flex-col !gap-0.5">
-                    <span className="truncate text-[12px] font-medium text-heading">{side.title || "Untitled"}</span>
-                    <q className="line-clamp-3 text-[13px] text-ink">{side.quote}</q>
+                    <span className="truncate text-footnote font-medium text-heading">{side.title || "Untitled"}</span>
+                    <q className="line-clamp-3 text-subheadline text-ink">{side.quote}</q>
                   </NoteLink>
                 ))}
               </li>
@@ -139,7 +139,7 @@ export function RelatedList({
                   <Copy size={14} aria-hidden className="mt-0.5 flex-none text-muted" />
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-heading">{d.b.title || "Untitled"}</span>
-                    <span className="block text-[12px] text-muted">Almost the same content</span>
+                    <span className="block text-footnote text-muted">Almost the same content</span>
                   </span>
                 </NoteLink>
               </li>
@@ -159,7 +159,7 @@ export function RelatedList({
                   <FileText size={14} aria-hidden className="mt-0.5 flex-none text-muted" />
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-heading">{r.title || "Untitled"}</span>
-                    <span className="block text-[12px] text-muted">{r.reasons.join(" · ")}</span>
+                    <span className="block text-footnote text-muted">{r.reasons.join(" · ")}</span>
                   </span>
                 </NoteLink>
               </li>
@@ -179,7 +179,7 @@ export function RelatedList({
                   <Link2 size={14} aria-hidden className="mt-0.5 flex-none text-muted" />
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-heading">{m.title || "Untitled"}</span>
-                    <span className="block text-[12px] text-muted">{m.reason}</span>
+                    <span className="block text-footnote text-muted">{m.reason}</span>
                   </span>
                 </NoteLink>
                 {onLink ? (
@@ -206,10 +206,10 @@ export function RelatedList({
       {empty ? (
         <div className="space-y-1.5 px-1">
           <p className="text-muted">Nothing related yet. Links to and from this note show up here.</p>
-          <p className="text-[12.5px] text-faint">Type [[ in the note to link another one. Notes that look alike or say something different show up here too.</p>
+          <p className="text-subheadline text-faint">Type [[ in the note to link another one. Notes that look alike or say something different show up here too.</p>
         </div>
       ) : null}
-      {related.note ? <p className="px-1 text-[12px] text-faint">{related.note}</p> : null}
+      {related.note ? <p className="px-1 text-footnote text-faint">{related.note}</p> : null}
     </div>
   );
 }

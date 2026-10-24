@@ -107,8 +107,8 @@ export function OnboardingPreview(props: PreviewProps) {
                 <div key={card.id} className="ob-deck-card" style={{ ["--x" as string]: `${card.x}px`, ["--y" as string]: `${card.y}px`, ["--r" as string]: `${card.r}deg`, ["--i" as string]: i, zIndex: i === 4 ? 5 : i < 2 ? i : 4 - i }}>
                   <div className="ob-art" style={{ ["--ob-art" as string]: artLarge(card.id) }} />
                   <div className={`absolute inset-x-0 bottom-0 flex h-16 flex-col justify-center px-4 ${card.x > 0 ? "items-end text-right" : ""}`} style={{ background: art.paper, color: art.ink }}>
-                    <p className="font-[family-name:var(--font-display)] text-[19px] font-semibold leading-tight">{art.name}</p>
-                    <p className="text-[11.5px] opacity-70">Note theme</p>
+                    <p className="font-[family-name:var(--font-display)] text-title-3 font-semibold leading-tight">{art.name}</p>
+                    <p className="text-footnote opacity-70">Note theme</p>
                   </div>
                 </div>
               );
@@ -172,48 +172,48 @@ function Sidebar({ pages, note, name }: { pages: StarterPage[]; note: boolean; n
           <PanelLeft size={15} />
         </span>
       </div>
-      <div className="ob-well mx-1 mt-1 flex h-8 items-center gap-2 rounded-chip pl-2.5 pr-1.5 text-[12px] text-muted">
+      <div className="ob-well mx-1 mt-1 flex h-8 items-center gap-2 rounded-chip pl-2.5 pr-1.5 text-footnote text-muted">
         <Search size={13} />
         <span className="flex-1 truncate">Search or jump to…</span>
-        <span className="rounded-tiny bg-raised px-1 text-[10px] font-semibold leading-[18px] shadow-[0_0_0_1px_var(--color-line)]">⌘K</span>
+        <span className="rounded-tiny bg-raised px-1 text-caption-2 font-semibold leading-[18px] shadow-[0_0_0_1px_var(--color-line)]">⌘K</span>
       </div>
       <ul className="mt-3 space-y-0.5 px-1">
         {rows.map(({ icon: RowIcon, label }) => (
-          <li key={label} className={`flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[12.5px] ${label === "Home" && !note ? "ob-row-on" : "text-ink"}`}>
+          <li key={label} className={`flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-subheadline ${label === "Home" && !note ? "ob-row-on" : "text-ink"}`}>
             <RowIcon size={15} className={label === "Home" && !note ? "text-heading" : "text-muted"} />
             <span className="truncate">{label}</span>
           </li>
         ))}
       </ul>
-      <p className="ui-caps mt-4 px-3.5 text-[10.5px]">Pages</p>
+      <p className="ui-caps mt-4 px-3.5 text-footnote">Pages</p>
       <ul className="relative mt-1 min-h-0 flex-1 space-y-0.5 overflow-hidden px-1 [mask-image:linear-gradient(black_78%,transparent)]">
-        <li className={`flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[12.5px] ${note ? "ob-row-on" : "text-ink"}`}>
+        <li className={`flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-subheadline ${note ? "ob-row-on" : "text-ink"}`}>
           <FileText size={14} className={note ? "text-heading" : "text-muted"} />
           <span className="truncate">Welcome to Folevi</span>
         </li>
         {pages.map((page, i) => (
-          <li key={page.template} className="ob-arrive flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[12.5px] text-ink" style={{ ["--i" as string]: i % 2 }}>
+          <li key={page.template} className="ob-arrive flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-subheadline text-ink" style={{ ["--i" as string]: i % 2 }}>
             <TemplateTile name={page.icon} size={18} iconSize={11} className="!rounded-tiny" />
             <span className="truncate">{page.title}</span>
           </li>
         ))}
         {SEED_PAGES.map((title) => (
-          <li key={title} className="flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[12.5px] text-ink">
+          <li key={title} className="flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-subheadline text-ink">
             <FileText size={14} className="text-muted" />
             <span className="truncate">{title}</span>
           </li>
         ))}
       </ul>
       <ul className="mt-2 space-y-0.5 px-1">
-        <li className="flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[12.5px] text-ink">
+        <li className="flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-subheadline text-ink">
           <Archive size={15} className="text-muted" /> Archive
         </li>
       </ul>
       <div className="flex flex-none items-center gap-2.5 px-2 pb-1 pt-2">
-        <span className="grid size-7 flex-none place-items-center rounded-chip bg-heading text-[11px] font-semibold text-canvas">{name.trim().slice(0, 1).toUpperCase() || "F"}</span>
+        <span className="grid size-7 flex-none place-items-center rounded-chip bg-heading text-footnote font-semibold text-canvas">{name.trim().slice(0, 1).toUpperCase() || "F"}</span>
         <span className="min-w-0 flex-1 leading-tight">
-          <span className="block truncate text-[12.5px] font-semibold text-heading">{name}</span>
-          <span className="block truncate text-[11px] text-muted">Personal</span>
+          <span className="block truncate text-subheadline font-semibold text-heading">{name}</span>
+          <span className="block truncate text-footnote text-muted">Personal</span>
         </span>
       </div>
     </div>
@@ -234,7 +234,7 @@ function Tabs({ note, compact }: { note: boolean; compact?: boolean }) {
         <X size={11} className="flex-none text-faint" />
       </span>
       <span className="flex-1" />
-      <span className="ui-btn ui-btn-primary h-8 flex-none gap-1.5 px-3 text-[12.5px]">
+      <span className="ui-btn ui-btn-primary h-8 flex-none gap-1.5 px-3 text-callout">
         <Plus size={14} /> New note
       </span>
     </div>
@@ -246,20 +246,20 @@ function Home({ pages, art, ai, compact }: { pages: StarterPage[]; art: CoverArt
   const seeds = SEED_PAGES.slice(0, Math.max(0, cols * 2 - 1 - pages.length));
   return (
     <div className="ob-content absolute inset-0 overflow-hidden rounded-panel px-8 pt-7">
-      <p className="ui-display text-[30px] leading-none">Home</p>
-      <div className={`mt-4 flex h-9 w-fit items-center gap-2 rounded-control bg-[var(--glass-active)] px-3.5 text-[12.5px] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)] transition-opacity duration-500 ${ai ? "" : "opacity-0"}`}>
+      <p className="ui-display text-large-title leading-none">Home</p>
+      <div className={`mt-4 flex h-9 w-fit items-center gap-2 rounded-control bg-[var(--glass-active)] px-3.5 text-subheadline font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)] transition-opacity duration-500 ${ai ? "" : "opacity-0"}`}>
         <AiIcon size={14} /> Catch me up
       </div>
-      <p className="ui-caps mt-6 text-[10.5px]">Recent notes</p>
+      <p className="ui-caps mt-6 text-footnote">Recent notes</p>
       <ul className={`mt-2.5 grid gap-3 ${cols === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
         {pages.slice(0, cols * 2 - 1).map((page, i) => (
           <li key={page.template} className="ob-arrive h-[132px]" style={{ ["--i" as string]: i % 2 }}>
             <div className="ob-note flex h-full flex-col rounded-control px-4 py-3.5 shadow-[var(--shadow-card)]">
               <div className="flex items-center gap-2">
                 <TemplateTile name={page.icon} size={24} iconSize={13} className="!rounded-chip" />
-                <span className="text-[11px] text-muted">Just now</span>
+                <span className="text-footnote text-muted">Just now</span>
               </div>
-              <p className="ob-note-h mt-2.5 truncate text-[16px]">{page.title}</p>
+              <p className="ob-note-h mt-2.5 truncate text-body">{page.title}</p>
               <span className="mt-2.5 block h-1.5 w-4/5 rounded-tiny bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />
               <span className="mt-1.5 block h-1.5 w-3/5 rounded-tiny bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />
             </div>
@@ -269,16 +269,16 @@ function Home({ pages, art, ai, compact }: { pages: StarterPage[]; art: CoverArt
           <div className="ob-note grid h-full grid-cols-[14px_minmax(0,1fr)] overflow-hidden rounded-control shadow-[var(--shadow-card)]" style={noteVars(art)}>
             <span className="transition-[background] duration-500" style={{ background: art ? `${artThumb(art.id)} center / cover no-repeat` : "var(--color-surface-sunken)" }} />
             <div className="min-w-0 px-4 py-3.5">
-              <p className="ob-note-h truncate text-[16px]">Welcome to Folevi</p>
-              <p className="ob-note-muted mt-0.5 text-[11px]">{art ? art.name : "Plain"}</p>
-              <p className="mt-2 line-clamp-2 text-[11.5px] leading-[1.45]">A quiet place for ideas that keep growing.</p>
+              <p className="ob-note-h truncate text-body">Welcome to Folevi</p>
+              <p className="ob-note-muted mt-0.5 text-footnote">{art ? art.name : "Plain"}</p>
+              <p className="mt-2 line-clamp-2 text-footnote leading-[1.45]">A quiet place for ideas that keep growing.</p>
             </div>
           </div>
         </li>
         {seeds.map((title) => (
           <li key={title} className="h-[132px]">
             <div className="ob-note flex h-full flex-col rounded-control px-4 py-3.5 shadow-[var(--shadow-card)]">
-              <p className="ob-note-h line-clamp-2 text-[16px] leading-snug">{title}</p>
+              <p className="ob-note-h line-clamp-2 text-body leading-snug">{title}</p>
               <span className="mt-auto block h-1.5 w-4/5 rounded-tiny bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />
               <span className="mt-1.5 block h-1.5 w-3/5 rounded-tiny bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />
             </div>
@@ -301,14 +301,14 @@ function NotePage({ art, styleId, seen, ai, highlight, compact }: { art: CoverAr
             <div key={id} className="ob-note-cover-art" data-on={id === styleId} style={{ ["--ob-art" as string]: artLarge(id) }} />
           ))}
         </div>
-        <div className={`${compact ? "px-6" : "px-12"} pb-24 ${art ? "pt-5" : "pt-9"} text-[13.5px] leading-[1.6]`} style={{ fontFamily: "var(--font-serif)" }}>
-          <p className={`ob-note-title ${compact ? "text-[26px]" : "text-[34px]"}`}>Welcome to Folevi</p>
+        <div className={`${compact ? "px-6" : "px-12"} pb-24 ${art ? "pt-5" : "pt-9"} text-body leading-[1.6]`} style={{ fontFamily: "var(--font-serif)" }}>
+          <p className={`ob-note-title ${compact ? "text-title-1" : "text-large-title"}`}>Welcome to Folevi</p>
           <p className="mt-3">Folevi is a quiet place for ideas that keep growing. Start with a loose thought, give it shape when you are ready, and find it again when you need it.</p>
           <p className="ob-note-callout mt-3 flex gap-2.5 px-3.5 py-2.5">
             <Asterisk size={14} className="ob-note-accent mt-[3px] flex-none" />
             <span>Everything you type here is saved as you go.</span>
           </p>
-          <p className="ob-note-h mt-4 text-[19px]">Capture in three seconds</p>
+          <p className="ob-note-h mt-4 text-title-3">Capture in three seconds</p>
           <p className="mt-1.5 flex gap-2">
             <span className="ob-note-accent">•</span>
             <span>
@@ -321,7 +321,7 @@ function NotePage({ art, styleId, seen, ai, highlight, compact }: { art: CoverAr
               Type <span className="ob-note-accent font-sans font-semibold">[[</span> to link to another page.
             </span>
           </p>
-          <p className="ob-note-h mt-4 text-[19px]">Try these</p>
+          <p className="ob-note-h mt-4 text-title-3">Try these</p>
           <p className="mt-1.5 flex items-center gap-2.5">
             <span className="ob-note-check" />
             Add a task with Quick Add
@@ -365,7 +365,7 @@ function Dock({ ai, highlight, compact }: { ai: boolean; highlight: "style" | "a
         return (
           <span
             key={item.id}
-            className={`flex h-8 items-center gap-1.5 overflow-hidden rounded-chip text-[12.5px] font-medium transition-all duration-500 ${hidden ? "max-w-0 px-0 opacity-0" : "max-w-[100px] px-2.5"} ${highlight === item.id ? "ob-dock-on" : "text-ink"}`}
+            className={`flex h-8 items-center gap-1.5 overflow-hidden rounded-chip text-subheadline font-medium transition-all duration-500 ${hidden ? "max-w-0 px-0 opacity-0" : "max-w-[100px] px-2.5"} ${highlight === item.id ? "ob-dock-on" : "text-ink"}`}
           >
             {item.icon}
             <span className={compact && highlight !== item.id ? "hidden" : ""}>{item.label}</span>
@@ -393,17 +393,17 @@ function Dock({ ai, highlight, compact }: { ai: boolean; highlight: "style" | "a
 /** The Ask AI panel, floating above the dock, with one question and its answer. */
 function AskPanel({ on, compact }: { on: boolean; compact?: boolean }) {
   return (
-    <div className={`ob-ai-pop ob-pop absolute bottom-16 flex flex-col overflow-hidden rounded-container text-[12.5px] ${compact ? "inset-x-4" : "right-6 w-[330px]"}`} data-on={on}>
+    <div className={`ob-ai-pop ob-pop absolute bottom-16 flex flex-col overflow-hidden rounded-container text-subheadline ${compact ? "inset-x-4" : "right-6 w-[330px]"}`} data-on={on}>
       <div className="flex items-center gap-2 border-b border-line px-3.5 py-2.5">
         <AiIcon size={15} />
-        <p className="flex-1 text-[13.5px] font-semibold text-heading">Ask Foli AI</p>
+        <p className="flex-1 text-body font-semibold text-heading">Ask Foli AI</p>
         <X size={14} className="text-muted" />
       </div>
       <div className="space-y-2 px-3.5 py-3">
         <p className="ml-auto w-fit max-w-[85%] rounded-panel rounded-br-tiny bg-heading px-3 py-1.5 text-canvas">What should I try first?</p>
         <div className="rounded-panel rounded-bl-tiny bg-[var(--glass-active)] px-3 py-2.5 leading-relaxed text-ink shadow-[var(--glass-edge)]">
           <p>Start with the Try these list on your Welcome page: add a task with Quick Add, then give it a due date.</p>
-          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
+          <p className="mt-2 flex items-center gap-1.5 text-footnote text-muted">
             <span className="inline-flex items-center gap-1 rounded-chip bg-[var(--glass-hover)] px-2 py-0.5">
               <FileText size={11} /> Welcome to Folevi
             </span>

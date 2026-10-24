@@ -98,9 +98,9 @@ export function Subscreen({ id, title, trailing, children }: { id: string; title
 }
 
 /** A group's heading: 13/18 semibold capitals (docs/IOS_POLISH_PLAN.md §2.2 "caption caps"), the same on every screen. */
-export const GROUP_HEADER = "px-4 pb-2 text-[13px] font-semibold uppercase leading-[18px] tracking-[0.04em] text-muted";
+export const GROUP_HEADER = "px-4 pb-2 text-footnote font-semibold uppercase leading-[18px] tracking-[0.04em] text-muted";
 /** The explanation under a group: 13/18, muted, 8 below it. */
-export const GROUP_FOOTER = "px-4 pt-2 text-[13px] leading-[18px] text-muted [&_a]:underline [&_a]:underline-offset-2";
+export const GROUP_FOOTER = "px-4 pt-2 text-footnote leading-[18px] text-muted [&_a]:underline [&_a]:underline-offset-2";
 
 /** A section of an inset grouped list: a short heading in capitals, rounded rows, an explanation under it. */
 export function IosSection({ header, footer, children, label, role, data }: { header?: ReactNode; footer?: ReactNode; children: ReactNode; /** The section's name for VoiceOver when it has no heading. */ label?: string; /** The rows' own role (a radio group of choices). */ role?: string; /** data-* attributes for the rows' box (a test id, a state). */ data?: Record<`data-${string}`, string> }) {
@@ -173,10 +173,10 @@ export function IosRow({
     <>
       {icon}
       <span className={`min-w-0 flex-1 ${description ? "py-[11px]" : "py-[15px]"} ${center ? "text-center" : ""}`}>
-        <span className={`block text-[17px] leading-[22px] [overflow-wrap:anywhere] ${danger ? "text-danger" : opens && !screen && !chevron && checked === undefined && !trailing && value === undefined ? "font-medium text-heading" : "text-ink"}`}>{label}</span>
-        {description ? <span className="mt-0.5 block text-[15px] leading-[20px] text-muted [overflow-wrap:anywhere]">{description}</span> : null}
+        <span className={`block text-body leading-[22px] [overflow-wrap:anywhere] ${danger ? "text-danger" : opens && !screen && !chevron && checked === undefined && !trailing && value === undefined ? "font-medium text-heading" : "text-ink"}`}>{label}</span>
+        {description ? <span className="mt-0.5 block text-subheadline leading-[20px] text-muted [overflow-wrap:anywhere]">{description}</span> : null}
       </span>
-      {value !== undefined && value !== null ? <span className="max-w-[55%] flex-none truncate text-right text-[17px] leading-[22px] text-muted">{value}</span> : null}
+      {value !== undefined && value !== null ? <span className="max-w-[55%] flex-none truncate text-right text-body leading-[22px] text-muted">{value}</span> : null}
       {trailing}
       {checked ? <Check size={20} strokeWidth={2.4} aria-hidden className="flex-none text-heading" /> : checked === false ? <span aria-hidden className="w-5 flex-none" /> : null}
       {(chevron ?? Boolean(screen || (href && !current))) ? <ChevronRight size={18} strokeWidth={2.2} aria-hidden className="-mr-1 flex-none text-faint" /> : null}
@@ -300,7 +300,7 @@ function ChoiceList<T extends string>({ label, value, choices, onChange, header,
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search"
             aria-label={`Search ${label.toLowerCase()}`}
-            className="h-10 w-full rounded-control bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] px-3 text-[17px] text-ink outline-none placeholder:text-faint"
+            className="h-10 w-full rounded-control bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] px-3 text-body text-ink outline-none placeholder:text-faint"
           />
         </div>
       ) : null}
@@ -320,13 +320,13 @@ function ChoiceList<T extends string>({ label, value, choices, onChange, header,
             >
               {c.icon}
               <span className={`min-w-0 flex-1 ${c.description ? "py-[11px]" : "py-[15px]"}`}>
-                <span className="block text-[17px] leading-[22px] text-ink [overflow-wrap:anywhere]">{c.label}</span>
-                {c.description ? <span className="mt-0.5 block text-[15px] leading-[20px] text-muted">{c.description}</span> : null}
+                <span className="block text-body leading-[22px] text-ink [overflow-wrap:anywhere]">{c.label}</span>
+                {c.description ? <span className="mt-0.5 block text-subheadline leading-[20px] text-muted">{c.description}</span> : null}
               </span>
               {c.value === value ? <Check size={20} strokeWidth={2.4} aria-hidden className="flex-none text-heading" /> : null}
             </button>
           ))}
-          {!shown.length ? <p className="px-4 py-3 text-[15px] text-muted">No matches</p> : null}
+          {!shown.length ? <p className="px-4 py-3 text-subheadline text-muted">No matches</p> : null}
       </IosSection>
     </>
   );
@@ -365,7 +365,7 @@ export function TextRow({
   const id = useId();
   return (
     <label htmlFor={id} className={`relative flex min-h-[52px] w-full px-4 ${stacked ? "flex-col justify-center gap-0.5 py-2" : "items-center gap-3"}`} style={insetFor(false)}>
-      <span className={`flex-none ${stacked ? "text-[13px] text-muted" : "text-[17px] text-ink"}`}>{label}</span>
+      <span className={`flex-none ${stacked ? "text-footnote text-muted" : "text-body text-ink"}`}>{label}</span>
       <input
         id={id}
         type={type}
@@ -384,7 +384,7 @@ export function TextRow({
             (e.target as HTMLInputElement).blur();
           }
         }}
-        className={`min-w-0 flex-1 bg-transparent text-[17px] outline-none placeholder:text-faint ${stacked ? "py-0.5" : "py-[15px] text-right"} ${readOnly ? "text-muted" : "text-ink"}`}
+        className={`min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-faint ${stacked ? "py-0.5" : "py-[15px] text-right"} ${readOnly ? "text-muted" : "text-ink"}`}
       />
     </label>
   );
@@ -428,7 +428,7 @@ export function EditScreen({ screen, label, value, onSave, placeholder, multilin
             placeholder={placeholder}
             aria-label={label}
             onChange={(e) => setDraft(e.target.value)}
-            className="block min-h-36 w-full resize-none bg-transparent px-4 py-3 text-[17px] leading-snug text-ink outline-none placeholder:text-faint"
+            className="block min-h-36 w-full resize-none bg-transparent px-4 py-3 text-body leading-snug text-ink outline-none placeholder:text-faint"
           />
         ) : (
           <input
@@ -444,7 +444,7 @@ export function EditScreen({ screen, label, value, onSave, placeholder, multilin
                 void done();
               }
             }}
-            className="block h-[52px] w-full bg-transparent px-4 text-[17px] text-ink outline-none placeholder:text-faint"
+            className="block h-[52px] w-full bg-transparent px-4 text-body text-ink outline-none placeholder:text-faint"
           />
         )}
       </IosSection>
@@ -472,7 +472,7 @@ export function ActionSheet({ open, onClose, title, message, actions }: { open: 
     if (open && !el.open) el.showModal();
     if (!open && el.open) el.close();
   }, [open]);
-  const btn = "flex min-h-[56px] w-full items-center justify-center px-4 text-[19px] outline-none transition-colors active:bg-[var(--liquid-press)] focus-visible:bg-[var(--liquid-active)]";
+  const btn = "flex min-h-[56px] w-full items-center justify-center px-4 text-title-3 outline-none transition-colors active:bg-[var(--liquid-press)] focus-visible:bg-[var(--liquid-active)]";
   return (
     <dialog
       ref={ref}
@@ -493,12 +493,12 @@ export function ActionSheet({ open, onClose, title, message, actions }: { open: 
             {title || message ? (
               <div className="px-5 pb-3.5 pt-4 text-center">
                 {title ? (
-                  <h2 id={titleId} className="text-[13px] font-semibold text-muted">
+                  <h2 id={titleId} className="text-footnote font-semibold text-muted">
                     {title}
                   </h2>
                 ) : null}
                 {message ? (
-                  <div id={msgId} className="mt-1 text-[13px] leading-snug text-muted">
+                  <div id={msgId} className="mt-1 text-footnote leading-snug text-muted">
                     {message}
                   </div>
                 ) : null}
@@ -559,7 +559,7 @@ export function ActionRow({ label, onClick, disabled, icon, busy }: { label: str
 
 /** Plain text inside a grouped section (an explanation, a status) with a row's padding. */
 export function IosText({ children, muted }: { children: ReactNode; muted?: boolean }) {
-  return <div className={`relative px-4 py-3 text-[15px] leading-snug ${muted ? "text-muted" : "text-ink"}`} style={insetFor(false)}>{children}</div>;
+  return <div className={`relative px-4 py-3 text-subheadline leading-snug ${muted ? "text-muted" : "text-ink"}`} style={insetFor(false)}>{children}</div>;
 }
 
 /** The last thing on the root Settings screen: which Folevi this is ("Folevi 1.0.00"), centred and quiet. The
@@ -567,7 +567,7 @@ export function IosText({ children, muted }: { children: ReactNode; muted?: bool
 export function VersionFooter({ className }: { className?: string }) {
   const version = useShownVersion();
   return (
-    <p className={className ?? "px-8 pb-2 pt-1 text-center text-[13px] leading-[18px] text-muted"} data-testid="settings-version">
+    <p className={className ?? "px-8 pb-2 pt-1 text-center text-footnote leading-[18px] text-muted"} data-testid="settings-version">
       {versionLabel(version)}
     </p>
   );

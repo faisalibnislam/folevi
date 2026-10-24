@@ -55,7 +55,7 @@ export function WebhooksCard() {
             {hooks === undefined ? <IosText muted>Loading…</IosText> : null}
             {hooks?.length === 0 ? <IosText muted>No webhooks yet</IosText> : null}
             {hooks?.map((h) => (
-              <IosRow key={h.id} label={<span className="font-mono text-[15px]">{h.url}</span>} description={what(h)} value={h.enabled ? "On" : "Off"} screen={`webhooks.${h.id}`} />
+              <IosRow key={h.id} label={<span className="font-mono text-subheadline">{h.url}</span>} description={what(h)} value={h.enabled ? "On" : "Off"} screen={`webhooks.${h.id}`} />
             ))}
           </IosSection>
           <IosSection footer={full ? `You can have up to ${MAX_WEBHOOKS} webhooks.` : undefined}>
@@ -86,7 +86,7 @@ export function WebhooksCard() {
                     h.attempts.map((a, i) => (
                       <IosRow
                         key={i}
-                        label={<span className="font-mono text-[15px]">{a.type}</span>}
+                        label={<span className="font-mono text-subheadline">{a.type}</span>}
                         description={<span className={a.ok ? undefined : "text-danger"}>{`${a.ok ? `${a.statusCode} delivered` : a.statusCode ? `${a.statusCode}${a.error ? `, ${a.error}` : ""}` : (a.error ?? "failed")} · ${a.durationMs} ms`}</span>}
                         value={ageText(a.at)}
                       />
@@ -117,7 +117,7 @@ export function WebhooksCard() {
       }
     >
       {hooks === undefined ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-subheadline text-muted">Loading…</p>
       ) : hooks.length === 0 ? (
         <EmptyState size="inline" icon={Webhook} title="No webhooks yet" />
       ) : (
@@ -128,19 +128,19 @@ export function WebhooksCard() {
               <li key={h.id} aria-label={h.url} className="py-4 first:pt-0 last:pb-0">
                 <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
                   <div className="min-w-0 flex-1 basis-64">
-                    <p className="truncate font-mono text-[13px] text-heading" title={h.url}>
+                    <p className="truncate font-mono text-subheadline text-heading" title={h.url}>
                       {h.url}
                     </p>
-                    <p className="mt-1 text-[13px] text-ink">
+                    <p className="mt-1 text-subheadline text-ink">
                       {h.events.length === EVENT_LABELS.length ? "Every event" : h.events.join(", ")} in {h.places.join(", ") || "no places"}
                     </p>
-                    <p className="mt-0.5 text-[12.5px] text-muted">
+                    <p className="mt-0.5 text-subheadline text-muted">
                       {h.disabledAt ? <span className="text-danger">Turned off {formatRelative(h.disabledAt)} because deliveries kept failing. </span> : null}
                       {last ? `Last attempt ${formatRelative(last.at)}: ${last.ok ? `delivered (${last.statusCode})` : `failed (${last.statusCode ?? last.error})`}` : "Nothing sent yet"}
                     </p>
                   </div>
                   <div className="flex flex-none items-center gap-2">
-                    <span className="text-[12.5px] text-muted">{h.enabled ? "On" : "Off"}</span>
+                    <span className="text-subheadline text-muted">{h.enabled ? "On" : "Off"}</span>
                     <Switch checked={h.enabled} onChange={(on) => void setEnabled({ webhookId: h.id, enabled: on }).catch(fail)} label={`Send events to ${h.url}`} />
                   </div>
                 </div>
@@ -168,7 +168,7 @@ export function WebhooksCard() {
                 </div>
                 {logOpen === h.id ? (
                   h.attempts.length ? (
-                    <table className="mt-3 w-full text-left text-[12.5px]" aria-label={`Recent deliveries to ${h.url}`}>
+                    <table className="mt-3 w-full text-left text-subheadline" aria-label={`Recent deliveries to ${h.url}`}>
                       <thead className="text-muted">
                         <tr>
                           <th className="py-1 pr-3 font-medium">When</th>
@@ -180,7 +180,7 @@ export function WebhooksCard() {
                         {h.attempts.map((a, i) => (
                           <tr key={i} className="border-t border-line/60">
                             <td className="py-1 pr-3 text-muted">{ageText(a.at)}</td>
-                            <td className="py-1 pr-3 font-mono text-[12px]">{a.type}</td>
+                            <td className="py-1 pr-3 font-mono text-footnote">{a.type}</td>
                             <td className={`py-1 ${a.ok ? "text-ink" : "text-danger"}`}>
                               {a.ok ? `${a.statusCode} delivered` : a.statusCode ? `${a.statusCode}${a.error ? `, ${a.error}` : ""}` : (a.error ?? "failed")} · {a.durationMs} ms
                             </td>
@@ -189,7 +189,7 @@ export function WebhooksCard() {
                       </tbody>
                     </table>
                   ) : (
-                    <p className="mt-3 text-[12.5px] text-muted">No deliveries yet. Send a test event to try it.</p>
+                    <p className="mt-3 text-subheadline text-muted">No deliveries yet. Send a test event to try it.</p>
                   )
                 ) : null}
               </li>
@@ -246,7 +246,7 @@ function NewWebhookDialog({ onClose }: { onClose: () => void }) {
         }
       >
         <div className="flex gap-2">
-          <input readOnly value={secret} aria-label="Signing secret" onFocus={(e) => e.target.select()} className="h-9 min-w-0 flex-1 ui-well rounded-chip px-3 font-mono text-[13px]" />
+          <input readOnly value={secret} aria-label="Signing secret" onFocus={(e) => e.target.select()} className="h-9 min-w-0 flex-1 ui-well rounded-chip px-3 font-mono text-subheadline" />
           <Button onClick={() => void navigator.clipboard.writeText(secret).then(() => toast.show("Secret copied"))}>
             <Copy size={13} aria-hidden /> Copy
           </Button>
@@ -274,7 +274,7 @@ function NewWebhookDialog({ onClose }: { onClose: () => void }) {
       <label htmlFor="webhook-url" className="ui-caps mb-1.5 block">
         Endpoint address
       </label>
-      <input id="webhook-url" autoFocus type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value)} maxLength={2000} className="h-9 w-full ui-input rounded-chip px-3 font-mono text-[13px] outline-none" />
+      <input id="webhook-url" autoFocus type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value)} maxLength={2000} className="h-9 w-full ui-input rounded-chip px-3 font-mono text-callout outline-none" />
       <fieldset className="mt-5">
         <legend className="ui-caps mb-2">Events</legend>
         <div className="space-y-2">
@@ -289,7 +289,7 @@ function NewWebhookDialog({ onClose }: { onClose: () => void }) {
                 setEvents(next);
               }}
             >
-              <span className="text-[14px] text-ink">{e.label}</span>
+              <span className="text-body text-ink">{e.label}</span>
             </Checkbox>
           ))}
         </div>
@@ -298,17 +298,17 @@ function NewWebhookDialog({ onClose }: { onClose: () => void }) {
         <legend className="ui-caps mb-2">Where</legend>
         <div className="space-y-2">
           <Checkbox checked={personal} onChange={setPersonal}>
-            <span className="text-[14px] text-ink">Personal</span>
+            <span className="text-body text-ink">Personal</span>
           </Checkbox>
           {workspaces.map((w) => (
             <Checkbox key={w.id} checked={workspaceIds.includes(w.id)} onChange={(on) => setWorkspaceIds(on ? [...workspaceIds, w.id] : workspaceIds.filter((x) => x !== w.id))}>
-              <span className="text-[14px] text-ink">{w.name}</span>
+              <span className="text-body text-ink">{w.name}</span>
             </Checkbox>
           ))}
         </div>
       </fieldset>
       {error ? (
-        <p role="alert" className="mt-3 text-[13px] text-danger">
+        <p role="alert" className="mt-3 text-subheadline text-danger">
           {error}
         </p>
       ) : null}

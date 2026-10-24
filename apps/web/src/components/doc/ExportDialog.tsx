@@ -106,7 +106,7 @@ export function ExportDialog({ open, onClose, title, blocks }: { open: boolean; 
         </>
       }
     >
-      <div className="space-y-4 pb-1 text-sm">
+      <div className="space-y-4 pb-1 text-subheadline">
         <div role="radiogroup" aria-label="Format" ref={group.ref} onKeyDown={group.onKeyDown} className="grid gap-2 sm:grid-cols-3">
           {FORMATS.map((f) => {
             const on = f.id === format;
@@ -125,9 +125,9 @@ export function ExportDialog({ open, onClose, title, blocks }: { open: boolean; 
                 <span>
                   <span className="flex items-baseline gap-1.5">
                     <span className="font-medium text-heading">{f.label}</span>
-                    <span className="text-xs text-faint">{f.ext}</span>
+                    <span className="text-footnote text-faint">{f.ext}</span>
                   </span>
-                  <span className="mt-0.5 block text-xs leading-snug text-muted">{f.desc}</span>
+                  <span className="mt-0.5 block text-footnote leading-snug text-muted">{f.desc}</span>
                 </span>
               </button>
             );
@@ -145,13 +145,13 @@ export function ExportDialog({ open, onClose, title, blocks }: { open: boolean; 
             <FileText size={18} className="flex-none text-muted" aria-hidden />
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium text-heading">{(title || "Untitled").replace(/[/\\:*?"<>|]+/g, "-")}.md</span>
-              <span className="block text-xs text-muted">Drag to Finder or another app{files ? ". Attachments stay links to the note." : "."}</span>
+              <span className="block text-footnote text-muted">Drag to Finder or another app{files ? ". Attachments stay links to the note." : "."}</span>
             </span>
             <GripVertical size={16} className="flex-none text-faint" aria-hidden />
           </div>
         ) : null}
         {files ? (
-          <p className="flex items-start gap-2 rounded-control bg-[var(--glass-hover)] px-3 py-2.5 text-xs text-muted">
+          <p className="flex items-start gap-2 rounded-control bg-[var(--glass-hover)] px-3 py-2.5 text-footnote text-muted">
             <Paperclip size={14} className="mt-px flex-none" aria-hidden />
             <span>{attachmentNote(format, files)}</span>
           </p>

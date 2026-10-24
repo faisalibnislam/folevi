@@ -219,7 +219,7 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
       >
         <header className="flex flex-none items-center gap-1 border-b border-line/70 py-3 pl-4 pr-3">
           <AiIcon size={20} aria-hidden className="mr-1.5 flex-none" />
-          <h2 id={`${uid}-title`} className="flex-1 text-[14.5px] font-semibold text-heading">
+          <h2 id={`${uid}-title`} className="flex-1 text-body font-semibold text-heading">
             Foli AI
           </h2>
           {actions.items.length ? <MenuButton label="Conversation options" triggerClassName={HEADER_BUTTON} trigger={<MoreHorizontal size={16} aria-hidden />} items={actions.items} /> : null}

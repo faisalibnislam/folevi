@@ -123,14 +123,14 @@ export function WorkspaceDetailView({ id }: { id: string }) {
         <Button size="sm" onClick={() => setAction("quota")} disabled={!canQuota}>
           <Gauge size={14} aria-hidden /> Set quota…
         </Button>
-        {!canQuota ? <span className="text-xs text-muted">Suspending and quotas: {rolesFor("workspaces.quota")}</span> : null}
+        {!canQuota ? <span className="text-footnote text-muted">Suspending and quotas: {rolesFor("workspaces.quota")}</span> : null}
       </section>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[2fr_3fr]">
         <Panel title="Usage & quotas">
           <div className="grid gap-4">
             <div>
-              <div className="mb-1.5 flex justify-between text-[13px]">
+              <div className="mb-1.5 flex justify-between text-subheadline">
                 <span className="text-muted">Storage · {w.storageOverridden ? "custom limit" : w.planName}</span>
                 <span className="tabular-nums">
                   {formatBytes(w.storageUsedBytes)} of {formatBytes(w.storageQuotaBytes)}
@@ -139,7 +139,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
               <Meter value={w.storageUsedBytes} max={w.storageQuotaBytes} label="Storage used of quota" />
             </div>
             <div>
-              <div className="mb-1.5 flex justify-between text-[13px]">
+              <div className="mb-1.5 flex justify-between text-subheadline">
                 <span className="text-muted">Members</span>
                 <span className="tabular-nums">
                   {w.members.length} of {w.memberLimit}
@@ -171,7 +171,7 @@ export function WorkspaceDetailView({ id }: { id: string }) {
               { label: "Polar customer", value: b.subscription?.polarCustomerId ? <Mono>{b.subscription.polarCustomerId}</Mono> : "None" },
             ]}
           />
-          {b.polarBilled ? <p className="mt-3 text-xs text-muted">This plan is billed through Polar. Change or cancel it in Polar; Folevi updates when Polar tells it.</p> : null}
+          {b.polarBilled ? <p className="mt-3 text-footnote text-muted">This plan is billed through Polar. Change or cancel it in Polar; Folevi updates when Polar tells it.</p> : null}
         </Panel>
 
         <Panel title="Workspace payments" description="This workspace only." flush>

@@ -30,7 +30,7 @@ function MonthlyBars({ caption, rows, format }: { caption: string; rows: { month
             </td>
             <td className={`${tdNum} whitespace-nowrap`}>
               {format(r.value)}
-              {r.note ? <span className="ml-1.5 text-xs text-muted">{r.note}</span> : null}
+              {r.note ? <span className="ml-1.5 text-footnote text-muted">{r.note}</span> : null}
             </td>
           </tr>
         ))}
@@ -58,7 +58,7 @@ export function RevenueView() {
         description="Recurring revenue and payments. Plans set by hand (comps) aren't counted as revenue."
         actions={
           <div className="flex flex-wrap items-center gap-3">
-            <span className="flex items-center gap-2 text-[13px] text-muted">
+            <span className="flex items-center gap-2 text-subheadline text-muted">
               <Switch checked={includeTest} onChange={setIncludeTest} label="Include test purchases" />
               Include test purchases
             </span>
@@ -102,7 +102,7 @@ export function RevenueView() {
               format={money}
             />
           ) : (
-            <p className="p-4 text-sm text-muted">Loading…</p>
+            <p className="p-4 text-subheadline text-muted">Loading…</p>
           )}
         </Panel>
         <Panel title="Subscribers" description="Per plan and billing period, today" flush>
@@ -139,10 +139,10 @@ export function RevenueView() {
           </DataTable>
         </Panel>
         <Panel title="New paying accounts" description="By the month they started paying" flush>
-          {r ? <MonthlyBars caption="New paying accounts by month" rows={r.newByMonth.map((m) => ({ month: m.month, value: m.count }))} format={n} /> : <p className="p-4 text-sm text-muted">Loading…</p>}
+          {r ? <MonthlyBars caption="New paying accounts by month" rows={r.newByMonth.map((m) => ({ month: m.month, value: m.count }))} format={n} /> : <p className="p-4 text-subheadline text-muted">Loading…</p>}
         </Panel>
         <Panel title="Cancellations" description="Paid plans that ended, by month" flush>
-          {r ? <MonthlyBars caption="Cancellations by month" rows={r.churnByMonth.map((m) => ({ month: m.month, value: m.count }))} format={n} /> : <p className="p-4 text-sm text-muted">Loading…</p>}
+          {r ? <MonthlyBars caption="Cancellations by month" rows={r.churnByMonth.map((m) => ({ month: m.month, value: m.count }))} format={n} /> : <p className="p-4 text-subheadline text-muted">Loading…</p>}
         </Panel>
       </div>
 
@@ -178,7 +178,7 @@ export function RevenueView() {
                       ) : (
                         p.name
                       )}{" "}
-                      <span className="text-xs text-muted">{p.email}</span>
+                      <span className="text-footnote text-muted">{p.email}</span>
                     </td>
                     <td className={td}>{paymentLabel(p)}</td>
                     <td className={tdNum}>{money(p.amountCents)}</td>

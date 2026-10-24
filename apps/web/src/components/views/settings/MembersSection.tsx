@@ -39,7 +39,7 @@ function choiceOf(role: string, access: MemberAccess): Choice {
 
 function RoleChip({ access }: { access: MemberAccess }) {
   const chip = ACCESS_CHIP[access];
-  return chip ? <span className="ml-1.5 rounded-chip border border-line px-1.5 py-px text-[11px] font-medium text-muted">{chip}</span> : null;
+  return chip ? <span className="ml-1.5 rounded-chip border border-line px-1.5 py-px text-caption-2 font-medium text-muted">{chip}</span> : null;
 }
 
 /** Members of the current team workspace. Only shown when a workspace is open: Personal has no members. */
@@ -172,7 +172,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
                 label={i.email}
                 description={`${ROLE_LABEL[i.role] ?? "Member"}${i.role === "member" && ACCESS_CHIP[i.memberAccess] ? `, ${ACCESS_CHIP[i.memberAccess]!.toLowerCase()}` : ""} · ${i.expired ? "expired" : `expires ${formatRelative(i.expiresAt)}`}`}
                 trailing={
-                  <button type="button" aria-label={`Revoke the invitation to ${i.email}`} onClick={() => setRevoking(i.id)} className="-mr-2 flex h-11 items-center px-2 text-[17px] text-danger outline-none">
+                  <button type="button" aria-label={`Revoke the invitation to ${i.email}`} onClick={() => setRevoking(i.id)} className="-mr-2 flex h-11 items-center px-2 text-body text-danger outline-none">
                     Revoke
                   </button>
                 }
@@ -222,12 +222,12 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
         }
       >
         {keys?.rotation ? (
-          <p role="status" className="mb-3 text-[13px] font-medium text-heading">
+          <p role="status" className="mb-3 text-subheadline font-medium text-heading">
             {copy.members.rotating(keys.rotation.done, keys.rotation.total)}
           </p>
         ) : null}
         {keys && canAdmin && keys.pending.size ? (
-          <p role="status" className="mb-3 text-[13px] text-muted">
+          <p role="status" className="mb-3 text-subheadline text-muted">
             <span className="font-medium text-heading">{copy.members.waitingBadge(keys.pending.size)}</span>. {copy.members.waitingHint}
           </p>
         ) : null}
@@ -235,15 +235,15 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
           {data?.members.map((m) => (
             <li key={m.profileId} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium">
-                  {m.displayName} {m.isYou ? <span className="text-xs text-muted">(you)</span> : null}
-                  {keys?.pending.has(m.profileId) ? <span className="ml-1.5 rounded-chip border border-line px-1.5 py-px text-[11px] font-medium text-muted">{copy.members.waiting}</span> : null}
+                <span className="block text-subheadline font-medium">
+                  {m.displayName} {m.isYou ? <span className="text-footnote text-muted">(you)</span> : null}
+                  {keys?.pending.has(m.profileId) ? <span className="ml-1.5 rounded-chip border border-line px-1.5 py-px text-caption-2 font-medium text-muted">{copy.members.waiting}</span> : null}
                 </span>
-                <span className="block text-xs text-muted">{m.email}</span>
-                {keys?.keyChanged.has(m.profileId) ? <span className="mt-0.5 block text-xs text-ink">{copy.members.keyChanged(m.displayName)}</span> : null}
+                <span className="block text-footnote text-muted">{m.email}</span>
+                {keys?.keyChanged.has(m.profileId) ? <span className="mt-0.5 block text-footnote text-ink">{copy.members.keyChanged(m.displayName)}</span> : null}
                 {/* The owner decides which admins may manage the plan and billing. */}
                 {isOwner && m.role === "admin" ? (
-                  <span className="mt-1.5 flex items-center gap-2 text-xs text-muted">
+                  <span className="mt-1.5 flex items-center gap-2 text-footnote text-muted">
                     <Switch
                       checked={m.canManageBilling}
                       label={`${m.displayName} can manage billing`}
@@ -254,7 +254,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
                     Can manage billing
                   </span>
                 ) : m.role === "admin" && m.canManageBilling ? (
-                  <span className="mt-0.5 block text-xs text-muted">Can manage billing</span>
+                  <span className="mt-0.5 block text-footnote text-muted">Can manage billing</span>
                 ) : null}
               </span>
               {keys && !m.isYou && !keys.pending.has(m.profileId) ? (
@@ -268,7 +268,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
                     aria-label={`Role for ${m.displayName}`}
                     value={choiceOf(m.role, m.memberAccess)}
                     onChange={(e) => setChoice(m.profileId, m.displayName, e.target.value as Choice)}
-                    className="h-8 ui-input rounded-chip px-3 text-sm"
+                    className="h-8 ui-input rounded-chip px-3 text-callout"
                   >
                     <option value="member:edit">Member</option>
                     <option value="member:comment">Member · can comment</option>
@@ -288,7 +288,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
                   </Button>
                 </>
               ) : (
-                <span className="text-sm text-muted">
+                <span className="text-subheadline text-muted">
                   {ROLE_LABEL[m.role] ?? "Member"}
                   {m.role === "member" ? <RoleChip access={m.memberAccess} /> : null}
                 </span>
@@ -298,12 +298,12 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
         </ul>
         {data?.invites.length ? (
           <>
-            <h4 className="mb-2 mt-5 text-sm font-semibold">Pending invitations</h4>
+            <h4 className="mb-2 mt-5 text-subheadline font-semibold">Pending invitations</h4>
             <ul className="divide-y divide-line rounded-control border border-line">
               {data.invites.map((i) => (
-                <li key={i.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                <li key={i.id} className="flex items-center gap-3 px-4 py-2.5 text-subheadline">
                   <span className="flex-1">{i.email}</span>
-                  <span className="text-xs text-muted">
+                  <span className="text-footnote text-muted">
                     {ROLE_LABEL[i.role] ?? "Member"}
                     {i.role === "member" && ACCESS_CHIP[i.memberAccess] ? ` · ${ACCESS_CHIP[i.memberAccess]!.toLowerCase()}` : ""} · {i.expired ? "expired" : `expires ${formatRelative(i.expiresAt)}`}
                   </span>
@@ -315,7 +315,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
             </ul>
           </>
         ) : null}
-        {data && !canAdmin ? <p className="mt-3 text-sm text-muted">Only owners and admins can invite people or change roles.</p> : null}
+        {data && !canAdmin ? <p className="mt-3 text-subheadline text-muted">Only owners and admins can invite people or change roles.</p> : null}
       </Card>
       <SecurityCodeDialog member={codeFor} onClose={() => setCodeFor(null)} />
       <Dialog
@@ -410,11 +410,11 @@ function SecurityCodeDialog({ member, onClose }: { member: { profileId: string; 
   return (
     <Dialog open={member !== null} onClose={onClose} title={member ? copy.members.securityTitle(member.name) : ""} description={member ? copy.members.securityBody(member.name) : undefined} size="sm" footer={<Button onClick={onClose}>{copy.members.close}</Button>}>
       {code ? (
-        <p className="py-2 text-center font-mono text-[26px] font-semibold tracking-[0.1em] text-heading tabular-nums" aria-label={code.split("").join(" ")}>
+        <p className="py-2 text-center font-mono text-title-1 font-semibold tracking-[0.1em] text-heading tabular-nums" aria-label={code.split("").join(" ")}>
           {code.match(/.{3}/g)?.join(" ")}
         </p>
       ) : (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-subheadline text-muted">Loading…</p>
       )}
     </Dialog>
   );

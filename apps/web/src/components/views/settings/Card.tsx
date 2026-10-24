@@ -14,16 +14,16 @@ export function Card({ title, description, children }: { title: string; descript
         <h3 id={id} className={GROUP_HEADER}>
           {title}
         </h3>
-        <div className="ui-grouped px-4 py-3.5 text-[15px]">{children}</div>
+        <div className="ui-grouped px-4 py-3.5 text-subheadline">{children}</div>
         {description ? <p className={GROUP_FOOTER}>{description}</p> : null}
       </section>
     );
   return (
     <section className="ui-card rounded-control p-5" aria-labelledby={id}>
-      <h3 id={id} className="ui-display text-[17px]">
+      <h3 id={id} className="ui-display text-title-3">
         {title}
       </h3>
-      {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
+      {description ? <p className="mt-1 text-subheadline text-muted">{description}</p> : null}
       <div className="mt-4">{children}</div>
     </section>
   );

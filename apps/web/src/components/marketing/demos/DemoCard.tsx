@@ -29,7 +29,7 @@ export function DemoCard({
           <button
             type="button"
             onClick={onReset}
-            className="mk-btn mk-btn-ghost -mr-2 h-11 gap-1.5 px-2.5 text-[12.5px] sm:h-8"
+            className="mk-btn mk-btn-ghost -mr-2 h-11 gap-1.5 px-2.5 text-[13px] sm:h-8"
           >
             <Icon name="reset" size={14} />
             Reset

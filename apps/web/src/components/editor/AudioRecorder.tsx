@@ -401,7 +401,7 @@ export function AudioRecorder({
   }, [unsaved]);
   return (
     <div
-      className="grid gap-3 p-2.5 text-sm"
+      className="grid gap-3 p-2.5 text-subheadline"
       onKeyDown={(e) => {
         // Escape only closes before anything is recorded, so a stray key can't throw a recording away.
         if (e.key === "Escape" && !unsaved) {
@@ -439,7 +439,7 @@ export function AudioRecorder({
                       : "Recording"}
           </p>
           {unsaved ? (
-            <p className="text-xs tabular-nums text-muted" aria-live="off">
+            <p className="text-footnote tabular-nums text-muted" aria-live="off">
               {formatDuration(elapsed / 1000)}
               <span className="text-faint"> / {formatDuration(MAX_RECORDING_MS / 1000)}</span>
             </p>
@@ -463,30 +463,30 @@ export function AudioRecorder({
               type="button"
               onClick={() => void begin("mic")}
               aria-label="Microphone"
-              className="ui-btn ui-btn-secondary h-auto flex-col gap-0.5 whitespace-normal rounded-control px-3 py-2.5 text-center text-[13px]"
+              className="ui-btn ui-btn-secondary h-auto flex-col gap-0.5 whitespace-normal rounded-control px-3 py-2.5 text-center text-callout"
             >
               <Mic size={16} aria-hidden className="mb-0.5" />
               <span>Microphone</span>
-              <span className="text-[11.5px] font-normal text-muted">Voice notes and memos</span>
+              <span className="text-footnote font-normal text-muted">Voice notes and memos</span>
             </button>
             <button
               type="button"
               onClick={() => void begin("call")}
               aria-label="Call (mic and Mac sound)"
-              className="ui-btn ui-btn-secondary h-auto flex-col gap-0.5 whitespace-normal rounded-control px-3 py-2.5 text-center text-[13px]"
+              className="ui-btn ui-btn-secondary h-auto flex-col gap-0.5 whitespace-normal rounded-control px-3 py-2.5 text-center text-callout"
             >
               <PhoneCall size={16} aria-hidden className="mb-0.5" />
               <span>Call</span>
-              <span className="text-[11.5px] font-normal text-muted">Your mic and this Mac’s sound</span>
+              <span className="text-footnote font-normal text-muted">Your mic and this Mac’s sound</span>
             </button>
           </div>
-          <p className="text-xs text-muted">
+          <p className="text-footnote text-muted">
             A call recording has your microphone and everything this Mac plays. Let everyone on the call know you’re recording.
           </p>
         </div>
       ) : phase.kind === "error" ? (
         <div className="grid gap-2">
-          <p className="rounded-control bg-danger-soft px-3 py-2 text-[13px] text-danger" role="alert">
+          <p className="rounded-control bg-danger-soft px-3 py-2 text-subheadline text-danger" role="alert">
             {phase.message}
           </p>
           {phase.settings && desktop()?.openSystemSettings ? (
@@ -494,14 +494,14 @@ export function AudioRecorder({
               <button
                 type="button"
                 onClick={() => desktop()?.openSystemSettings?.("screen-recording")}
-                className="ui-btn ui-btn-secondary h-9 px-3 text-[13px]"
+                className="ui-btn ui-btn-secondary h-9 px-3 text-callout"
               >
                 Open System Settings
               </button>
               <button
                 type="button"
                 onClick={() => void begin("call")}
-                className="ui-btn ui-btn-ghost ml-auto h-9 px-3 text-[13px]"
+                className="ui-btn ui-btn-ghost ml-auto h-9 px-3 text-callout"
               >
                 Try again
               </button>
@@ -509,7 +509,7 @@ export function AudioRecorder({
           ) : null}
         </div>
       ) : stopped ? (
-        <p className="rounded-control bg-sunken px-3 py-2 text-[13px] text-ink" role="alert">
+        <p className="rounded-control bg-sunken px-3 py-2 text-subheadline text-ink" role="alert">
           {stopped.message}
         </p>
       ) : (
@@ -533,7 +533,7 @@ export function AudioRecorder({
             <button
               type="button"
               onClick={resume}
-              className="ui-btn ui-btn-secondary h-9 px-3 text-[13px]"
+              className="ui-btn ui-btn-secondary h-9 px-3 text-callout"
             >
               <Play size={14} aria-hidden /> Resume
             </button>
@@ -542,7 +542,7 @@ export function AudioRecorder({
               type="button"
               onClick={pause}
               disabled={phase.kind !== "recording"}
-              className="ui-btn ui-btn-secondary h-9 px-3 text-[13px]"
+              className="ui-btn ui-btn-secondary h-9 px-3 text-callout"
             >
               <Pause size={14} aria-hidden /> Pause
             </button>
@@ -551,7 +551,7 @@ export function AudioRecorder({
             type="button"
             onClick={save}
             disabled={phase.kind === "saving"}
-            className="ui-btn ui-btn-primary ml-auto h-9 px-3.5 text-[13px]"
+            className="ui-btn ui-btn-primary ml-auto h-9 px-3.5 text-callout"
           >
             <Square size={12} aria-hidden className="fill-current" /> Stop and save
           </button>
@@ -559,20 +559,20 @@ export function AudioRecorder({
       ) : null}
       {stopped ? (
         <div className="flex items-center gap-2">
-          <button type="button" onClick={cancel} className="ui-btn ui-btn-secondary h-9 px-3 text-[13px]">
+          <button type="button" onClick={cancel} className="ui-btn ui-btn-secondary h-9 px-3 text-callout">
             Discard
           </button>
           <button
             type="button"
             onClick={() => void store(stopped.file, stopped.seconds)}
-            className="ui-btn ui-btn-primary ml-auto h-9 px-3.5 text-[13px]"
+            className="ui-btn ui-btn-primary ml-auto h-9 px-3.5 text-callout"
           >
             Save recording
           </button>
         </div>
       ) : null}
       {live ? (
-        <p className="text-xs text-muted">
+        <p className="text-footnote text-muted">
           {source === "call" ? "Let everyone on the call know you’re recording. " : ""}
           The recording is added to this note when you save. It counts towards your storage.
         </p>

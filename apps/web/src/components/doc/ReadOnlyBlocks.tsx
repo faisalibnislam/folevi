@@ -468,7 +468,7 @@ export function ReadOnlyBlocks({
                     className="w-full rounded-chip border border-line"
                   />
                   {p.caption ? (
-                    <figcaption className="mt-1 text-center text-sm text-muted">
+                    <figcaption className="mt-1 text-center text-subheadline text-muted">
                       {String(p.caption)}
                     </figcaption>
                   ) : null}
@@ -508,7 +508,7 @@ export function ReadOnlyBlocks({
                   {/* A plain document glyph, as everywhere a page needs a marker (no emoji). */}
                   <FileText size={15} aria-hidden className="mt-[calc((1lh-15px)/2)] flex-none" />
                   <span>
-                    {String(p.titleCache ?? "Nested page")} <span className="text-xs">(not included in this shared page)</span>
+                    {String(p.titleCache ?? "Nested page")} <span className="text-footnote">(not included in this shared page)</span>
                   </span>
                 </p>
               );
@@ -520,7 +520,7 @@ export function ReadOnlyBlocks({
               // A synced block (version history): its content is whatever it shows now, in the note itself.
               return (
                 <div key={block.id} className="fb fb-synced-static" style={style}>
-                  <p className="flex items-center gap-1.5 text-xs text-muted">
+                  <p className="flex items-center gap-1.5 text-footnote text-muted">
                     <RefreshCw size={12} aria-hidden /> Synced block <span className="text-faint">(shows its current content in the note)</span>
                   </p>
                 </div>

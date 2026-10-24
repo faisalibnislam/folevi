@@ -58,7 +58,7 @@ export function ReactionChips({ reactions, canReact, onToggle }: { reactions: Re
             <span className="tabular-nums">{r.count}</span>
           </>
         );
-        const cls = `inline-flex h-6 items-center gap-1 rounded-chip px-2 text-[11.5px] font-medium transition-colors ${
+        const cls = `inline-flex h-6 items-center gap-1 rounded-chip px-2 text-footnote font-medium transition-colors ${
           r.mine ? "bg-[var(--glass-active)] text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.08)]" : "bg-[var(--glass-hover)] text-muted"
         }`;
         return canReact ? (

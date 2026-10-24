@@ -126,7 +126,7 @@ export function SupportTicketView({ number }: { number: number }) {
                 <UserCheck size={14} aria-hidden /> Assign to me
               </Button>
             )}
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 text-subheadline">
               <label id={`${uid}-status-label`} htmlFor={`${uid}-status`} className="font-medium">
                 Status
               </label>
@@ -168,7 +168,7 @@ export function SupportTicketView({ number }: { number: number }) {
                     m.kind === "note" ? "bg-warning-soft" : m.kind === "staff" ? "bg-[var(--glass-hover)]" : "shadow-[inset_0_0_0_1px_var(--color-line-strong)]"
                   }`}
                 >
-                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-subheadline text-muted">
                     <span className="font-semibold text-heading">{m.author}</span>
                     {m.kind === "note" ? (
                       <Badge tone="warning">
@@ -186,7 +186,7 @@ export function SupportTicketView({ number }: { number: number }) {
                     ) : null}
                     <time dateTime={new Date(m.createdAt).toISOString()}>{formatDateTime(m.createdAt)}</time>
                   </p>
-                  <p className="mt-1.5 whitespace-pre-wrap break-words text-[13.5px] leading-relaxed text-ink">{m.body}</p>
+                  <p className="mt-1.5 whitespace-pre-wrap break-words text-body leading-relaxed text-ink">{m.body}</p>
                 </li>
               ))}
             </ol>
@@ -222,15 +222,15 @@ export function SupportTicketView({ number }: { number: number }) {
                   aria-invalid={textError ? true : undefined}
                   aria-describedby={`${uid}-hint${textError ? ` ${uid}-error` : ""}`}
                   placeholder={mode === "reply" ? `Write to ${ticket.name}…` : "Only staff can see notes."}
-                  className="ui-input w-full resize-y rounded-chip px-3 py-2.5 text-[13.5px] leading-relaxed text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)]"
+                  className="ui-input w-full resize-y rounded-chip px-3 py-2.5 text-body leading-relaxed text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)]"
                 />
-                <p id={`${uid}-hint`} className="mt-1 text-[12.5px] text-muted">
+                <p id={`${uid}-hint`} className="mt-1 text-subheadline text-muted">
                   {mode === "reply"
                     ? `Emailed to ${ticket.email} with “[Folevi #${ticket.number}]” in the subject, so their answer comes back here. The ticket becomes Pending.`
                     : "Never emailed and never shown to the requester."}
                 </p>
                 {textError ? (
-                  <p id={`${uid}-error`} role="alert" className="mt-1 text-[12.5px] text-danger">
+                  <p id={`${uid}-error`} role="alert" className="mt-1 text-subheadline text-danger">
                     {textError}
                   </p>
                 ) : null}
@@ -241,7 +241,7 @@ export function SupportTicketView({ number }: { number: number }) {
                 </div>
               </form>
             ) : (
-              <p className="text-sm text-muted">Replying: {rolesFor("support.reply")}</p>
+              <p className="text-subheadline text-muted">Replying: {rolesFor("support.reply")}</p>
             )}
           </Panel>
         </div>
@@ -259,7 +259,7 @@ export function SupportTicketView({ number }: { number: number }) {
                       <Link href={`/admin/users/${encodeURIComponent(ticket.account.id)}`} className={recordLink}>
                         {ticket.account.name || "Open account"}
                       </Link>
-                      <div className="mt-0.5 text-xs text-muted">
+                      <div className="mt-0.5 text-footnote text-muted">
                         {ticket.account.filedSignedIn ? "Sent while signed in to this account." : "An account uses this address. The request wasn't sent signed in, so the address isn't proven."}
                       </div>
                     </>
@@ -281,9 +281,9 @@ export function SupportTicketView({ number }: { number: number }) {
           ) : null}
           <Panel title="History" description="Audit entries for this ticket, newest first.">
             {ticket.history.length === 0 ? (
-              <p className="text-sm text-muted">No entries yet.</p>
+              <p className="text-subheadline text-muted">No entries yet.</p>
             ) : (
-              <ul className="space-y-2 text-[13px]">
+              <ul className="space-y-2 text-subheadline">
                 {ticket.history.map((h) => (
                   <li key={h.id} className="flex flex-wrap items-baseline gap-x-2">
                     <span className="font-medium text-heading">{humanize(h.action.replace(/^support\./, ""))}</span>

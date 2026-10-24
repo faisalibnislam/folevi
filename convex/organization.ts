@@ -392,6 +392,9 @@ export const deleteFolder = mutation({
       }
     }
     await ctx.db.patch(folder._id, { deletedAt: Date.now(), seq });
+    // Its sharing goes with it (docs/SHARING.md): its notes are in Drafts now, its subfolders a level up.
+    for (const g of await ctx.db.query("folderPermissions").withIndex("by_folder", (q) => q.eq("folderId", folder._id)).take(500)) await ctx.db.delete(g._id);
+    for (const i of await ctx.db.query("folderInvites").withIndex("by_folder", (q) => q.eq("folderId", folder._id)).take(500)) if (i.status === "pending") await ctx.db.patch(i._id, { status: "revoked" });
     // A locked folder that goes: its notes stay sealed (Drafts), its subfolders' notes follow their new place.
     if (folder.locked) {
       const space = await spaceE2ee(ctx, scopeOfRow(folder));

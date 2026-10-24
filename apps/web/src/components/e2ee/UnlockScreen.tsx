@@ -43,15 +43,15 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
           />
         ) : (
           <>
-            <h1 id="e2ee-unlock-title" className="ui-display mt-4 text-[26px] leading-tight">
+            <h1 id="e2ee-unlock-title" className="ui-display mt-4 text-title-1 leading-tight">
               {u.title}
             </h1>
-            <p className="mt-2 text-sm text-muted">{u.body}</p>
+            <p className="mt-2 text-subheadline text-muted">{u.body}</p>
             {view === "choose" ? (
               <div className="mt-6 flex flex-col gap-2">
                 <Button
                   variant="primary"
-                  className="h-11 w-full justify-center text-[14px]"
+                  className="h-11 w-full justify-center text-body"
                   onClick={() => {
                     onStart?.();
                     setApproving(true);
@@ -61,7 +61,7 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
                 </Button>
                 {onMac ? null : (
                   <Button
-                    className="h-11 w-full justify-center text-[14px]"
+                    className="h-11 w-full justify-center text-body"
                     onClick={async () => {
                       setNote(null);
                       onStart?.();
@@ -74,7 +74,7 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
                   </Button>
                 )}
                 <Button
-                  className="h-11 w-full justify-center text-[14px]"
+                  className="h-11 w-full justify-center text-body"
                   onClick={() => {
                     onStart?.();
                     setView("passphrase");
@@ -83,7 +83,7 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
                   <LockKeyhole size={15} aria-hidden /> {u.passphrase}
                 </Button>
                 <Button
-                  className="h-11 w-full justify-center text-[14px]"
+                  className="h-11 w-full justify-center text-body"
                   onClick={() => {
                     onStart?.();
                     setView("recovery");
@@ -92,11 +92,11 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
                   <ScrollText size={15} aria-hidden /> {u.recoveryKey}
                 </Button>
                 {note ? (
-                  <p role="alert" className="mt-1 text-[13px] text-danger">
+                  <p role="alert" className="mt-1 text-subheadline text-danger">
                     {note}
                   </p>
                 ) : null}
-                {onMac ? <p className="mt-1 text-[13px] text-muted">{u.passkeyApp(thisDevice())}</p> : null}
+                {onMac ? <p className="mt-1 text-subheadline text-muted">{u.passkeyApp(thisDevice())}</p> : null}
               </div>
             ) : (
               <SecretForm kind={view} onBack={() => setView("choose")} onUnlocked={unlocked} />
@@ -141,7 +141,7 @@ function SecretForm({ kind, onBack, onUnlocked }: { kind: "passphrase" | "recove
         }
       }}
     >
-      <label htmlFor={`${uid}-secret`} className="block text-sm font-medium text-heading">
+      <label htmlFor={`${uid}-secret`} className="block text-subheadline font-medium text-heading">
         {kind === "passphrase" ? u.passphraseField : u.recoveryField}
       </label>
       <input
@@ -159,10 +159,10 @@ function SecretForm({ kind, onBack, onUnlocked }: { kind: "passphrase" | "recove
         }}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${uid}-error` : undefined}
-        className={`ui-input block h-11 w-full rounded-control px-3 text-sm ${kind === "recovery" ? "font-mono uppercase tracking-[0.06em]" : ""}`}
+        className={`ui-input block h-11 w-full rounded-control px-3 text-callout ${kind === "recovery" ? "font-mono uppercase tracking-[0.06em]" : ""}`}
       />
       {error ? (
-        <p id={`${uid}-error`} role="alert" className="text-[13px] text-danger">
+        <p id={`${uid}-error`} role="alert" className="text-subheadline text-danger">
           {error}
         </p>
       ) : null}
@@ -186,7 +186,7 @@ function TrustChoice({ onContinue }: { onContinue: (mode: "browser" | "public") 
   const group = useRadioGroup();
   return (
     <>
-      <h1 id="e2ee-unlock-title" className="ui-display mt-4 text-[26px] leading-tight">
+      <h1 id="e2ee-unlock-title" className="ui-display mt-4 text-title-1 leading-tight">
         {u.trustTitle}
       </h1>
       <div role="radiogroup" aria-labelledby="e2ee-unlock-title" ref={group.ref} onKeyDown={group.onKeyDown} className="mt-5 space-y-2">
@@ -208,8 +208,8 @@ function TrustChoice({ onContinue }: { onContinue: (mode: "browser" | "public") 
               {mode === id ? <span className="h-1.5 w-1.5 rounded-tiny bg-canvas" /> : null}
             </span>
             <span className="min-w-0">
-              <span className="block text-sm font-medium text-heading">{c.label}</span>
-              <span className="mt-0.5 block text-[13px] text-muted">{c.body}</span>
+              <span className="block text-subheadline font-medium text-heading">{c.label}</span>
+              <span className="mt-0.5 block text-subheadline text-muted">{c.body}</span>
             </span>
           </button>
         ))}

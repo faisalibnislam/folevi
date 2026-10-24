@@ -125,7 +125,7 @@ function NavItem({
       draggable={dragFolderId || dragNoteId ? true : undefined}
       onDragStart={dragFolderId ? (e) => startFolderDrag(e, dragFolderId) : dragNoteId ? (e) => startNoteDrag(e, [dragNoteId], () => label) : undefined}
       onDragEnd={dragFolderId || dragNoteId ? endFolderDrag : undefined}
-      className={`group relative flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 motion-reduce:transition-none pointer-coarse:h-11 ${
+      className={`group relative flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-body outline-none transition-[background-color,box-shadow,color] duration-150 motion-reduce:transition-none pointer-coarse:h-11 ${
         active ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"
       } ${over ? "bg-[var(--glass-active)] text-heading ring-2 ring-heading" : ""} focus-visible:ring-2 focus-visible:ring-focus`}
     >
@@ -134,7 +134,7 @@ function NavItem({
       </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {locked ? <LockGlyph /> : null}
-      {count ? <span className={`min-w-5 rounded-chip px-1.5 text-center text-[11px] font-semibold leading-5 tabular-nums ${active ? "bg-heading text-canvas" : "bg-[var(--glass-hover)] text-muted"}`}>{count}</span> : null}
+      {count ? <span className={`min-w-5 rounded-chip px-1.5 text-center text-caption-2 font-semibold leading-5 tabular-nums ${active ? "bg-heading text-canvas" : "bg-[var(--glass-hover)] text-muted"}`}>{count}</span> : null}
     </AppLink>
   );
 }
@@ -183,13 +183,13 @@ function MoreLink({ href, count, noun, onNavigate, exact = true }: { href: strin
   if (count <= 0) return null;
   if (!exact) {
     return (
-      <AppLink href={href} onClick={onNavigate} className="flex h-8 items-center rounded-chip px-2.5 pl-8 text-[12.5px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+      <AppLink href={href} onClick={onNavigate} className="flex h-8 items-center rounded-chip px-2.5 pl-8 text-subheadline text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
         View all <span className="sr-only">{noun}</span>
       </AppLink>
     );
   }
   return (
-    <AppLink href={href} onClick={onNavigate} className="flex h-8 items-center rounded-chip px-2.5 pl-8 text-[12.5px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+    <AppLink href={href} onClick={onNavigate} className="flex h-8 items-center rounded-chip px-2.5 pl-8 text-subheadline text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
       +{count.toLocaleString()} more <span className="sr-only">{noun}</span>
     </AppLink>
   );
@@ -250,7 +250,7 @@ function TopLevelDrop() {
     <div
       data-drop-folder="@top"
       data-drop-name="the top level"
-      className={`ml-5 flex h-8 items-center rounded-chip border border-dashed px-2.5 text-[12.5px] transition-colors motion-reduce:transition-none pointer-coarse:h-11 ${over ? "border-heading bg-[var(--glass-active)] text-heading" : "border-line-strong text-muted"}`}
+      className={`ml-5 flex h-8 items-center rounded-chip border border-dashed px-2.5 text-subheadline transition-colors motion-reduce:transition-none pointer-coarse:h-11 ${over ? "border-heading bg-[var(--glass-active)] text-heading" : "border-line-strong text-muted"}`}
     >
       Move to the top level
     </div>
@@ -317,7 +317,7 @@ function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) 
             }
           }}
         >
-          <label className="block text-sm font-medium" htmlFor={`tag-name-${tag.id}`}>
+          <label className="block text-subheadline font-medium" htmlFor={`tag-name-${tag.id}`}>
             Name
           </label>
           <input
@@ -330,13 +330,13 @@ function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) 
               setError(null);
             }}
             aria-invalid={error ? true : undefined}
-            className="ui-input mt-2 h-10 w-full rounded-chip px-3 text-sm"
+            className="ui-input mt-2 h-10 w-full rounded-chip px-3 text-callout"
           />
           <fieldset className="mt-4">
-            <legend className="text-sm font-medium">Color</legend>
+            <legend className="text-subheadline font-medium">Color</legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {TAG_COLORS.map((c) => (
-                <label key={c.id} className="flex cursor-pointer items-center gap-1.5 rounded-chip px-2 py-1 text-sm has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus">
+                <label key={c.id} className="flex cursor-pointer items-center gap-1.5 rounded-chip px-2 py-1 text-subheadline has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus">
                   <input type="radio" name={`tag-color-${tag.id}`} value={c.id} checked={color === c.id} onChange={() => setColor(c.id)} className="sr-only" />
                   <span className="inline-block h-3 w-3 rounded-chip" style={{ background: tagColorVar(c.id) }} aria-hidden />
                   {c.label}
@@ -345,7 +345,7 @@ function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) 
             </div>
           </fieldset>
           {error ? (
-            <p role="alert" className="mt-3 text-sm text-danger">
+            <p role="alert" className="mt-3 text-subheadline text-danger">
               {error}
             </p>
           ) : null}
@@ -399,7 +399,7 @@ export function SidebarSearch() {
     <button
       type="button"
       onClick={openPalette}
-      className="ui-well flex h-9 w-full items-center gap-2 rounded-control pl-3 pr-1.5 text-left text-[13px] text-muted transition-colors hover:text-ink pointer-coarse:h-11"
+      className="ui-well flex h-9 w-full items-center gap-2 rounded-control pl-3 pr-1.5 text-left text-subheadline text-muted transition-colors hover:text-ink pointer-coarse:h-11"
     >
       <Search size={14} aria-hidden />
       <span className="flex-1">Search or jump to…</span>
@@ -582,25 +582,25 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             </IconButton>
           }
         >
-          {roots.length === 0 ? <p className="px-2 py-1 text-xs text-faint">No folders yet</p> : null}
+          {roots.length === 0 ? <p className="px-2 py-1 text-footnote text-faint">No folders yet</p> : null}
           {/* Every folder, once "+N more" is pressed: past half the window's height the list scrolls by itself. */}
           <div data-drag-scroll="" aria-label={allFoldersShown ? "All folders" : undefined} role={allFoldersShown ? "group" : undefined} className={`space-y-0.5 ${allFoldersShown ? "-mx-1 max-h-[50dvh] overflow-y-auto overscroll-contain px-1 py-0.5" : ""}`}>
             {shownRoots.map((f) => renderFolder(f, 0))}
           </div>
           {draggedIsNested && canEdit ? <TopLevelDrop /> : null}
           {hiddenFolders > 0 ? (
-            <button type="button" data-drop-expand="" onClick={() => setAllFoldersShown(true)} className="flex h-8 w-full items-center rounded-chip px-2.5 pl-8 text-left text-[12.5px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11">
+            <button type="button" data-drop-expand="" onClick={() => setAllFoldersShown(true)} className="flex h-8 w-full items-center rounded-chip px-2.5 pl-8 text-left text-subheadline text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11">
               +{hiddenFolders.toLocaleString()} more <span className="sr-only">folders</span>
             </button>
           ) : allFoldersShown && roots.length > SIDEBAR_LIMIT ? (
-            <button type="button" onClick={() => setAllFoldersShown(false)} className="flex h-8 w-full items-center rounded-chip px-2.5 pl-8 text-left text-[12.5px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11">
+            <button type="button" onClick={() => setAllFoldersShown(false)} className="flex h-8 w-full items-center rounded-chip px-2.5 pl-8 text-left text-subheadline text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11">
               Show less <span className="sr-only">folders</span>
             </button>
           ) : null}
         </Section>
 
         <Section title="Tags" href="/tags" onNavigate={onNavigate} defaultOpen={false}>
-          {org?.tags.length === 0 ? <p className="px-2 py-1 text-xs text-faint">Tag documents from the inspector</p> : null}
+          {org?.tags.length === 0 ? <p className="px-2 py-1 text-footnote text-faint">Tag documents from the inspector</p> : null}
           {shownTags.map((t) => (
             <div key={t.id} data-ctx-host="" className="group/tag flex items-center">
               <div className="min-w-0 flex-1">

@@ -271,11 +271,11 @@ export function DataSection({ target }: { target: DataTarget }) {
             <FolderUp size={14} aria-hidden /> Import a folder…
           </Button>
         </div>
-        <p className="mt-2 text-xs text-muted" role="status" aria-live="polite">
+        <p className="mt-2 text-footnote text-muted" role="status" aria-live="polite">
           {progress}
         </p>
         {results.length ? (
-          <ul className="mt-3 space-y-2 text-sm" aria-label="Import results">
+          <ul className="mt-3 space-y-2 text-subheadline" aria-label="Import results">
             {results.map((r, i) => (
               <li key={`${r.name}-${i}`} className="ui-card rounded-control p-3">
                 <p className="font-medium">
@@ -288,9 +288,9 @@ export function DataSection({ target }: { target: DataTarget }) {
                   )}
                   {r.error ? <span className="ml-2 text-danger">{r.error}</span> : null}
                 </p>
-                {r.images ? <p className="text-xs text-muted">{r.images === 1 ? "1 image uploaded" : `${r.images} images uploaded`}</p> : null}
+                {r.images ? <p className="text-footnote text-muted">{r.images === 1 ? "1 image uploaded" : `${r.images} images uploaded`}</p> : null}
                 {r.warnings.length ? (
-                  <ul className="mt-1 list-disc pl-5 text-xs text-muted">
+                  <ul className="mt-1 list-disc pl-5 text-footnote text-muted">
                     {r.warnings.map((w, j) => (
                       <li key={j}>
                         {w.line ? `Line ${w.line}: ` : ""}
@@ -299,7 +299,7 @@ export function DataSection({ target }: { target: DataTarget }) {
                     ))}
                   </ul>
                 ) : r.id ? (
-                  <p className="text-xs text-muted">Imported without changes.</p>
+                  <p className="text-footnote text-muted">Imported without changes.</p>
                 ) : null}
               </li>
             ))}
@@ -319,7 +319,7 @@ export function DataSection({ target }: { target: DataTarget }) {
           {busy ? "Preparing…" : `Export ${where} (.zip)`}
         </Button>
         {exportNote ? (
-          <p className="mt-2 text-xs text-muted" role="status">
+          <p className="mt-2 text-footnote text-muted" role="status">
             {exportNote}
           </p>
         ) : null}

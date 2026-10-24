@@ -104,11 +104,11 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
     <div className="py-3.5 first:pt-0 last:pb-0">
       <div className="flex items-start justify-between gap-6">
         <div className="min-w-0 max-w-prose">
-          <p className="text-sm font-medium text-heading">{r.name}</p>
-          <p id={descId} className="mt-0.5 text-sm text-muted">
+          <p className="text-subheadline font-medium text-heading">{r.name}</p>
+          <p id={descId} className="mt-0.5 text-subheadline text-muted">
             {DESCRIPTIONS[r.kind]}
           </p>
-          <p className="mt-1 text-sm text-muted">{estimateSentence(r)}</p>
+          <p className="mt-1 text-subheadline text-muted">{estimateSentence(r)}</p>
         </div>
         <span className="mt-0.5 flex-none">
           <Switch checked={r.enabled} disabled={locked && !r.enabled} label={r.name} describedBy={descId} onChange={(next) => change({ enabled: next }, next ? `${r.name} turned on` : `${r.name} turned off`)} />
@@ -118,9 +118,9 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
         <>
           <div className="mt-3 grid max-w-xl gap-3 sm:grid-cols-2">
             {r.kind === "openLoops" ? (
-              <label className="space-y-1 text-sm">
+              <label className="space-y-1 text-subheadline">
                 <span className="block font-medium text-heading">Day</span>
-                <Select value={String(r.weekday)} onChange={(e) => change({ weekday: Number(e.target.value) })} aria-label={`${r.name} day`} className="ui-input h-9 rounded-chip px-3 text-sm w-full">
+                <Select value={String(r.weekday)} onChange={(e) => change({ weekday: Number(e.target.value) })} aria-label={`${r.name} day`} className="ui-input h-9 rounded-chip px-3 text-callout w-full">
                   {DAY_ORDER.map((d) => (
                     <option key={d} value={String(d)}>
                       {DAYS[d]}
@@ -129,9 +129,9 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
                 </Select>
               </label>
             ) : null}
-            <label className="space-y-1 text-sm">
+            <label className="space-y-1 text-subheadline">
               <span className="block font-medium text-heading">Time</span>
-              <Select value={String(r.hour)} onChange={(e) => change({ hour: Number(e.target.value) })} aria-label={`${r.name} time`} className="ui-input h-9 rounded-chip px-3 text-sm w-full">
+              <Select value={String(r.hour)} onChange={(e) => change({ hour: Number(e.target.value) })} aria-label={`${r.name} time`} className="ui-input h-9 rounded-chip px-3 text-callout w-full">
                 {Array.from({ length: 24 }, (_, h) => (
                   <option key={h} value={String(h)}>
                     {hourLabel(h, locale)}
@@ -139,9 +139,9 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
                 ))}
               </Select>
             </label>
-            <label className="space-y-1 text-sm">
+            <label className="space-y-1 text-subheadline">
               <span className="block font-medium text-heading">About</span>
-              <Select value={where} onChange={(e) => change({ scope: e.target.value === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: e.target.value } })} aria-label={`${r.name} about`} className="ui-input h-9 rounded-chip px-3 text-sm w-full">
+              <Select value={where} onChange={(e) => change({ scope: e.target.value === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: e.target.value } })} aria-label={`${r.name} about`} className="ui-input h-9 rounded-chip px-3 text-callout w-full">
                 <option value="personal">Personal</option>
                 {places.map((w) => (
                   <option key={w.id} value={w.id}>
@@ -150,9 +150,9 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
                 ))}
               </Select>
             </label>
-            <label className="space-y-1 text-sm">
+            <label className="space-y-1 text-subheadline">
               <span className="block font-medium text-heading">Monthly limit</span>
-              <Select value={String(r.monthlyCap)} onChange={(e) => change({ monthlyCap: Number(e.target.value) })} aria-label={`${r.name} monthly limit`} className="ui-input h-9 rounded-chip px-3 text-sm w-full">
+              <Select value={String(r.monthlyCap)} onChange={(e) => change({ monthlyCap: Number(e.target.value) })} aria-label={`${r.name} monthly limit`} className="ui-input h-9 rounded-chip px-3 text-callout w-full">
                 {capChoices.map((c) => (
                   <option key={c} value={String(c)}>
                     {credits(c)}
@@ -161,7 +161,7 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
               </Select>
             </label>
           </div>
-          <p className="mt-3 text-sm text-muted">
+          <p className="mt-3 text-subheadline text-muted">
             Used {r.spent} of {credits(r.monthlyCap)} this month.{" "}
             {r.nextAt ? `Next one: ${nextLabel(r.nextAt, timeZone, locale)} (${timeZone}).` : "Not scheduled yet."}
             {r.lastNoteId ? (
@@ -205,7 +205,7 @@ export function AiRoutinesCard() {
   return (
     <Card title="Routines" description="Foli AI writes a new note in your Inbox on a schedule and lets you know. Each run uses AI credits, up to the monthly limit you pick.">
       {locked ? (
-        <p className="mb-3 text-sm text-muted">
+        <p className="mb-3 text-subheadline text-muted">
           Routines are part of Pro and Pro AI.{" "}
           {canPurchaseHere() ? (
             <AppLink href="/settings/billing" className="font-medium text-heading underline underline-offset-2">

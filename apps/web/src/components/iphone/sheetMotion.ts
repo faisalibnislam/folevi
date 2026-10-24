@@ -55,13 +55,13 @@ export function releaseTarget(visible: number, velocity: number, detents: readon
 export const springStart = (velocity: number, distance: number): number => (Math.abs(distance) < 0.5 ? 0 : velocity / distance);
 
 /**
- * A spring sampled for the Web Animations API (one keyframe a frame, played linearly), so it runs on the
+ * A spring sampled for the Web Animations API (one keyframe a ProMotion frame, 120 a second, played linearly), so it runs on the
  * compositor even while the page is busy mounting the sheet's content: the progress at each frame from 0 to 1
  * and the duration in milliseconds. (CSS `linear()` would do the same, but iOS 17.0 and 17.1 don't have it.)
  */
 export function springFrames(spring: Spring, v0 = 0, epsilon = 0.001): { progress: number[]; ms: number } {
   const duration = Math.max(1 / 60, springDuration(spring, v0, epsilon));
-  const steps = Math.max(2, Math.round(duration * 60));
+  const steps = Math.max(2, Math.round(duration * 120));
   const progress: number[] = [];
   for (let i = 0; i <= steps; i++) progress.push(i === steps ? 1 : springAt((i / steps) * duration, spring, v0));
   return { progress, ms: Math.round(duration * 1000) };

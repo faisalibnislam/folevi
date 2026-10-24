@@ -37,7 +37,7 @@ function Extra({ icon, title, plans }: { icon: ReactNode; title: string; plans?:
         {icon}
       </span>
       <div className="min-w-0">
-        <h3 className="mk-h3 text-[15.5px]">{title}</h3>
+        <h3 className="mk-h3 text-[16px]">{title}</h3>
         {plans ? <p className="mt-0.5 text-[13px] text-muted">{plans}</p> : null}
       </div>
     </li>

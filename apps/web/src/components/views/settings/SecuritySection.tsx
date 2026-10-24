@@ -124,7 +124,7 @@ function TwoStepCard() {
         title="Two-step verification"
         description="Optional. When it's on, signing in on a new device needs a code from your authenticator app as well as your password, so a stolen password isn't enough."
       >
-        <p className="flex items-center gap-2 text-sm font-medium text-muted">
+        <p className="flex items-center gap-2 text-subheadline font-medium text-muted">
           <ShieldOff size={16} aria-hidden /> Off
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -140,10 +140,10 @@ function TwoStepCard() {
       title="Two-step verification"
       description="Folevi asks for a code from your authenticator app every time you sign in on a new device."
     >
-      <p className="flex items-center gap-2 text-sm font-medium text-success">
+      <p className="flex items-center gap-2 text-subheadline font-medium text-success">
         <ShieldCheck size={16} aria-hidden /> On (authenticator app)
       </p>
-      <p className="mt-2 text-xs text-muted">
+      <p className="mt-2 text-footnote text-muted">
         When you tick “Trust this device for 30 days” while signing in, that browser skips the code for 30 days. Signing out, revoking the session below, or changing your
         password ends it.
       </p>
@@ -328,7 +328,7 @@ function PasskeysCard() {
       description="Sign in with your fingerprint, face or screen lock instead of typing your password. A passkey only works on Folevi, so it can't be phished or reused."
     >
       <ul className="ui-card divide-y divide-line overflow-hidden rounded-control" aria-label="Your passkeys" aria-busy={isPending || undefined}>
-        {isPending ? <li className="px-4 py-3 text-sm text-muted">Loading…</li> : null}
+        {isPending ? <li className="px-4 py-3 text-subheadline text-muted">Loading…</li> : null}
         {!isPending && passkeys.length === 0 ? (
           <li>
             <EmptyState size="inline" icon={KeyRound} title="No passkeys yet" />
@@ -340,8 +340,8 @@ function PasskeysCard() {
               <KeyRound size={17} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-heading">{label(p)}</span>
-              <span className="block text-xs text-muted">
+              <span className="block truncate text-subheadline font-medium text-heading">{label(p)}</span>
+              <span className="block text-footnote text-muted">
                 {p.createdAt ? `Added ${formatDateTime(new Date(p.createdAt).getTime())}` : "Added earlier"}
                 {p.backedUp ? " · syncs across your devices" : " · on one device"}
                 {usage === undefined ? "" : lastUsed.has(p.id) ? ` · Last used ${formatRelative(lastUsed.get(p.id)!)}` : " · Not used yet"}
@@ -357,7 +357,7 @@ function PasskeysCard() {
         ))}
       </ul>
       {supported === false ? (
-        <p className="mt-3 text-sm text-muted">
+        <p className="mt-3 text-subheadline text-muted">
           {nativeApp()
             ? "The iPhone and iPad app can't use passkeys yet. Add one in your browser and sign in there with it."
             : desktop()
@@ -550,7 +550,7 @@ function PasswordCard() {
           <Button type="submit" variant="primary" disabled={busy}>
             Change password
           </Button>
-          <a href="/forgot-password" className="text-sm text-accent underline underline-offset-2">
+          <a href="/forgot-password" className="text-subheadline text-accent underline underline-offset-2">
             Forgot your current password?
           </a>
         </div>

@@ -64,7 +64,7 @@ export function UnsplashDialog({ open, onClose, onPick }: { open: boolean; onClo
   return (
     <Dialog open={open} onClose={onClose} title="Image from Unsplash" description="Free photos from Unsplash, credited to the photographer." size="lg">
       {state.kind === "unconfigured" ? (
-        <div className="rounded-chip bg-sunken px-4 py-5 text-sm" role="status">
+        <div className="rounded-chip bg-sunken px-4 py-5 text-subheadline" role="status">
           <p className="font-medium text-heading">Unsplash isn’t set up for this Folevi server yet</p>
           <p className="mt-1 text-muted">An administrator can turn it on by adding an Unsplash access key (UNSPLASH_ACCESS_KEY) to the server’s settings.</p>
         </div>
@@ -79,7 +79,7 @@ export function UnsplashDialog({ open, onClose, onPick }: { open: boolean; onClo
             }}
             className="flex gap-2"
           >
-            <label className="ui-well flex h-10 min-w-0 flex-1 items-center gap-2 rounded-chip px-3.5 text-sm text-muted focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
+            <label className="ui-well flex h-10 min-w-0 flex-1 items-center gap-2 rounded-chip px-3.5 text-subheadline text-muted focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
               <Search size={15} aria-hidden />
               <input
                 autoFocus
@@ -95,13 +95,13 @@ export function UnsplashDialog({ open, onClose, onPick }: { open: boolean; onClo
             </Button>
           </form>
           <div className="mt-4 min-h-[12rem]" aria-live="polite">
-            {state.kind === "loading" ? <p className="py-10 text-center text-sm text-muted">Searching…</p> : null}
+            {state.kind === "loading" ? <p className="py-10 text-center text-subheadline text-muted">Searching…</p> : null}
             {state.kind === "error" ? (
-              <p className="py-10 text-center text-sm text-danger" role="alert">
+              <p className="py-10 text-center text-subheadline text-danger" role="alert">
                 {state.message}
               </p>
             ) : null}
-            {state.kind === "results" && !state.photos.length ? <p className="py-10 text-center text-sm text-muted">No photos found for “{state.query}”.</p> : null}
+            {state.kind === "results" && !state.photos.length ? <p className="py-10 text-center text-subheadline text-muted">No photos found for “{state.query}”.</p> : null}
             {state.kind === "results" && state.photos.length ? (
               <>
                 <p className="sr-only">{state.photos.length} photos</p>
@@ -118,7 +118,7 @@ export function UnsplashDialog({ open, onClose, onPick }: { open: boolean; onClo
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={p.thumbUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]" />
                       </button>
-                      <p className="mt-1 truncate text-[11.5px] text-muted">
+                      <p className="mt-1 truncate text-footnote text-muted">
                         <a href={p.photographerUrl} target="_blank" rel="noopener noreferrer" className="hover:text-ink hover:underline">
                           {p.photographer}
                         </a>
@@ -136,7 +136,7 @@ export function UnsplashDialog({ open, onClose, onPick }: { open: boolean; onClo
               </>
             ) : null}
           </div>
-          <p className="mt-3 text-[11.5px] text-muted">
+          <p className="mt-3 text-footnote text-muted">
             Photos from{" "}
             <a href="https://unsplash.com/?utm_source=folevi&utm_medium=referral" target="_blank" rel="noopener noreferrer" className="underline">
               Unsplash

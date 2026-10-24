@@ -35,7 +35,7 @@ function SummaryCell({ target, rows, summary, canEdit, onChange }: { target: { i
       side="top"
       trigger={shown}
       items={items}
-      triggerClassName="flex h-7 w-full min-w-0 items-center rounded-chip px-1 text-left text-xs hover:bg-surface pointer-coarse:h-11"
+      triggerClassName="flex h-7 w-full min-w-0 items-center rounded-chip px-1 text-left text-footnote hover:bg-surface pointer-coarse:h-11"
     />
   );
 }
@@ -64,7 +64,7 @@ export function SummaryRow({
   const targets = [{ id: TITLE_ID, name: "Name", type: "title" as const }, ...visible.map((p) => ({ id: p.id, name: p.name, type: p.type, numberFormat: p.numberFormat }))];
   return (
     <tfoot>
-      <tr className="group/summary text-xs text-muted" aria-label="Summaries">
+      <tr className="group/summary text-footnote text-muted" aria-label="Summaries">
         {targets.map((t, i) => (
           <td key={t.id} className={`px-2 py-1 ${i ? "border-l border-line" : ""}`}>
             <SummaryCell target={t} rows={rows} summary={fnOf(t.id)} canEdit={canEdit} onChange={(fn) => set(t.id, fn)} />
@@ -128,7 +128,7 @@ export function ExportMenu(props: { name: string; rows: readonly ViewRow[]; visi
         </span>
       }
       items={items}
-      triggerClassName="inline-flex h-7 items-center rounded-chip px-2.5 text-xs text-muted hover:bg-surface pointer-coarse:h-11"
+      triggerClassName="inline-flex h-7 items-center rounded-chip px-2.5 text-footnote text-muted hover:bg-surface pointer-coarse:h-11"
     />
   );
 }

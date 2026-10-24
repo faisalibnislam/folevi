@@ -36,7 +36,7 @@ function Value({ prop, value }: { prop: ViewProperty; value: unknown }) {
       return <span>{value ? "✓" : ""}</span>;
     case "select": {
       const o = prop.options.find((x) => x.id === value);
-      return o ? <span className="rounded-chip px-2 py-0.5 text-[11px]" style={optionStyle(o.color)}>{o.name}</span> : null;
+      return o ? <span className="rounded-chip px-2 py-0.5 text-footnote" style={optionStyle(o.color)}>{o.name}</span> : null;
     }
     case "multiSelect":
       return (
@@ -44,7 +44,7 @@ function Value({ prop, value }: { prop: ViewProperty; value: unknown }) {
           {(Array.isArray(value) ? value : []).map((id) => {
             const o = prop.options.find((x) => x.id === id);
             return o ? (
-              <span key={String(id)} className="rounded-chip px-2 py-0.5 text-[11px]" style={optionStyle(o.color)}>
+              <span key={String(id)} className="rounded-chip px-2 py-0.5 text-footnote" style={optionStyle(o.color)}>
                 {o.name}
               </span>
             ) : null;
@@ -66,7 +66,7 @@ function Value({ prop, value }: { prop: ViewProperty; value: unknown }) {
 
 /** A collection as its view shows it: filters and sorts applied, visible properties only. */
 export function ReadOnlyCollection({ data }: { data: ReadOnlyCollectionData | undefined }) {
-  if (!data) return <p className="fb my-3 rounded-chip border border-dashed border-line p-4 text-sm text-muted">This collection isn’t available.</p>;
+  if (!data) return <p className="fb my-3 rounded-chip border border-dashed border-line p-4 text-subheadline text-muted">This collection isn’t available.</p>;
   // Formula results are worked out here, from the values the page shares (people as names, relations as counts).
   const all = withFormulaValues(data.rows, data.properties);
   const rows = applyView(all, data.config, data.properties);
@@ -85,7 +85,7 @@ export function ReadOnlyCollection({ data }: { data: ReadOnlyCollectionData | un
   };
   return (
     <section className="my-4 overflow-hidden ui-card rounded-control" aria-label={`Collection ${data.name}`}>
-      <h3 className="border-b border-line px-3 py-2 text-sm font-semibold text-heading">{data.name}</h3>
+      <h3 className="border-b border-line px-3 py-2 text-subheadline font-semibold text-heading">{data.name}</h3>
       {formulaGroup ? (
         <div className="flex gap-3 overflow-x-auto p-3">
           {formulaGroups(all, formulaGroup.id).map((col) => {
@@ -93,15 +93,15 @@ export function ReadOnlyCollection({ data }: { data: ReadOnlyCollectionData | un
             const name = col.key === "empty" ? `No ${formulaGroup.name.toLowerCase()}` : col.key === "error" ? "Errors" : col.result.kind === "date" ? formatCalendarDate(String(col.result.value)) : col.result.display;
             return (
               <section key={col.key} aria-label={`${name}, ${items.length}`} className="flex w-60 flex-none flex-col rounded-chip bg-sunken p-2">
-                <h4 className="mb-2 px-1 text-xs font-semibold">{name}</h4>
+                <h4 className="mb-2 px-1 text-footnote font-semibold">{name}</h4>
                 <ul className="space-y-2">
                   {items.map((r) => (
-                    <li key={r.id} className="rounded-chip border border-line bg-raised p-2.5 text-sm">
+                    <li key={r.id} className="rounded-chip border border-line bg-raised p-2.5 text-subheadline">
                       <p className="font-medium">{r.title || "Untitled"}</p>
                       {visible
                         .filter((p) => p.id !== formulaGroup.id)
                         .map((p) => (
-                          <p key={p.id} className="mt-0.5 flex gap-1 text-xs text-muted">
+                          <p key={p.id} className="mt-0.5 flex gap-1 text-footnote text-muted">
                             <span className="text-faint">{p.name}:</span> <Value prop={p} value={r.values[p.id]} />
                           </p>
                         ))}
@@ -118,14 +118,14 @@ export function ReadOnlyCollection({ data }: { data: ReadOnlyCollectionData | un
             const items = rows.filter((r) => ((r.values[group.id] as string | undefined) ?? null) === col.id);
             return (
               <section key={col.id ?? "none"} aria-label={`${col.name}, ${items.length}`} className="flex w-60 flex-none flex-col rounded-chip bg-sunken p-2">
-                <h4 className="mb-2 px-1 text-xs font-semibold">
+                <h4 className="mb-2 px-1 text-footnote font-semibold">
                   <span className="rounded-chip px-2 py-0.5" style={optionStyle(col.color)}>
                     {col.name}
                   </span>
                 </h4>
                 <ul className="space-y-2">
                   {items.map((r) => (
-                    <li key={r.id} className="rounded-chip border border-line bg-raised p-2.5 text-sm">
+                    <li key={r.id} className="rounded-chip border border-line bg-raised p-2.5 text-subheadline">
                       <p className="font-medium">
                         
                         {r.title || "Untitled"}
@@ -133,7 +133,7 @@ export function ReadOnlyCollection({ data }: { data: ReadOnlyCollectionData | un
                       {visible
                         .filter((p) => p.id !== group.id)
                         .map((p) => (
-                          <p key={p.id} className="mt-0.5 flex gap-1 text-xs text-muted">
+                          <p key={p.id} className="mt-0.5 flex gap-1 text-footnote text-muted">
                             <span className="text-faint">{p.name}:</span> <Value prop={p} value={r.values[p.id]} />
                           </p>
                         ))}
@@ -147,13 +147,13 @@ export function ReadOnlyCollection({ data }: { data: ReadOnlyCollectionData | un
       ) : data.viewType === "gallery" ? (
         <ul className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((r) => (
-            <li key={r.id} className="ui-card rounded-control p-3 text-sm">
+            <li key={r.id} className="ui-card rounded-control p-3 text-subheadline">
               <p className="font-medium">
                 
                 {r.title || "Untitled"}
               </p>
               {visible.map((p) => (
-                <p key={p.id} className="mt-0.5 text-xs text-muted">
+                <p key={p.id} className="mt-0.5 text-footnote text-muted">
                   <Value prop={p} value={r.values[p.id]} />
                 </p>
               ))}
@@ -162,9 +162,9 @@ export function ReadOnlyCollection({ data }: { data: ReadOnlyCollectionData | un
         </ul>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className="w-full border-collapse text-subheadline">
             <thead>
-              <tr className="text-left text-xs text-muted">
+              <tr className="text-left text-footnote text-muted">
                 <th scope="col" className="border-b border-line px-3 py-2 font-medium">
                   Name
                 </th>
@@ -199,7 +199,7 @@ export function ReadOnlyCollection({ data }: { data: ReadOnlyCollectionData | un
             </tbody>
             {summaries.length && data.viewType === "table" ? (
               <tfoot>
-                <tr className="text-xs text-muted" aria-label="Summaries">
+                <tr className="text-footnote text-muted" aria-label="Summaries">
                   <td className="px-3 py-1.5">{summaryOf(TITLE_ID, "title")}</td>
                   {visible.map((p) => (
                     <td key={p.id} className="border-l border-line px-3 py-1.5">

@@ -50,7 +50,7 @@ function CodeBlock({ block }: { block: WireBlock }) {
             setTimeout(() => setCopied(false), 1500);
           });
         }}
-        className="absolute right-1.5 top-1.5 inline-flex h-7 items-center gap-1 rounded-chip bg-[var(--glass-active)] px-2 text-[11.5px] text-muted opacity-0 shadow-[var(--glass-edge)] transition-opacity hover:text-heading focus-visible:opacity-100 group-hover/code:opacity-100 pointer-coarse:opacity-100"
+        className="absolute right-1.5 top-1.5 inline-flex h-7 items-center gap-1 rounded-chip bg-[var(--glass-active)] px-2 text-footnote text-muted opacity-0 shadow-[var(--glass-edge)] transition-opacity hover:text-heading focus-visible:opacity-100 group-hover/code:opacity-100 pointer-coarse:opacity-100"
       >
         {copied ? <Check size={12} aria-hidden /> : <Copy size={12} aria-hidden />}
         {language ? <span className="font-mono">{language}</span> : null}
@@ -101,7 +101,7 @@ export function AiMarkdown({
   return (
     <div
       onClick={onClick}
-      className={`fb-ai-answer text-[14px] leading-[1.6] [&>.fb-editor]:!pb-0 ${className}`}
+      className={`fb-ai-answer text-body leading-[1.6] [&>.fb-editor]:!pb-0 ${className}`}
       style={{ ["--doc-accent" as string]: "var(--color-heading)", ["--doc-accent-soft" as string]: "var(--glass-hover)" }}
     >
       {segments.map((s, i) => (s.kind === "code" ? <CodeBlock key={s.block.id} block={s.block} /> : <ReadOnlyBlocks key={i} blocks={s.blocks} fileUrls={{}} />))}
@@ -114,7 +114,7 @@ export function AiMindmapPreview({ data, markdown }: { data: string; markdown: s
   const block = useMemo(() => aiMindmapBlock(data), [data]);
   if (!block) return <AiMarkdown markdown={markdown} />;
   return (
-    <div className="fb-ai-answer text-[14px] leading-[1.6] [&>.fb-editor]:!pb-0">
+    <div className="fb-ai-answer text-body leading-[1.6] [&>.fb-editor]:!pb-0">
       <ReadOnlyBlocks blocks={[block]} fileUrls={{}} />
     </div>
   );

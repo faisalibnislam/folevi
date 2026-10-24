@@ -54,7 +54,7 @@ export function DeletionJobsView() {
                     <td className={td}>{humanize(j.kind)}</td>
                     <td className={td}>
                       <StatusBadge status={j.status} />
-                      {j.error ? <div className="mt-1 max-w-[220px] text-xs text-danger">{j.error}</div> : null}
+                      {j.error ? <div className="mt-1 max-w-[220px] text-footnote text-danger">{j.error}</div> : null}
                     </td>
                     <td className={td}>
                       <div className="flex items-center gap-2">
@@ -73,11 +73,11 @@ export function DeletionJobsView() {
                     </td>
                     <td className={td}>
                       <span className="whitespace-nowrap">{formatDateTime(j.scheduledFor)}</span>
-                      {future && j.status === "scheduled" ? <div className="mt-0.5 text-xs text-muted">Grace period</div> : null}
+                      {future && j.status === "scheduled" ? <div className="mt-0.5 text-footnote text-muted">Grace period</div> : null}
                     </td>
                     <td className={td}>
                       <Time ts={j.createdAt} />
-                      <div className="mt-0.5 text-xs text-muted">{j.requestedByAdmin ? "By an admin" : "By the owner"}</div>
+                      <div className="mt-0.5 text-footnote text-muted">{j.requestedByAdmin ? "By an admin" : "By the owner"}</div>
                     </td>
                     <td className={td}>
                       <Time ts={j.completedAt} />

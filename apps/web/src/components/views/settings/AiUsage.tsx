@@ -59,12 +59,12 @@ export function UsageChart({ days }: { days: { day: string; credits: number }[] 
           })}
         </svg>
         {shown ? (
-          <p aria-hidden className="pointer-events-none absolute -top-7 rounded-chip bg-[var(--glass-active)] px-2 py-0.5 text-[12px] text-ink shadow-[var(--glass-edge)]" style={{ left: `clamp(0px, calc(${((hover! + 0.5) / days.length) * 100}% - 3.5rem), calc(100% - 7rem))` }}>
+          <p aria-hidden className="pointer-events-none absolute -top-7 rounded-chip bg-[var(--glass-active)] px-2 py-0.5 text-footnote text-ink shadow-[var(--glass-edge)]" style={{ left: `clamp(0px, calc(${((hover! + 0.5) / days.length) * 100}% - 3.5rem), calc(100% - 7rem))` }}>
             {shortDay(shown.day)}: {credits(shown.credits)}
           </p>
         ) : null}
       </div>
-      <figcaption className="mt-1 flex justify-between text-[11.5px] text-faint" aria-hidden>
+      <figcaption className="mt-1 flex justify-between text-footnote text-faint" aria-hidden>
         <span>{days.length ? shortDay(days[0]!.day) : ""}</span>
         <span>{days.length > 1 ? shortDay(days[days.length - 1]!.day) : ""}</span>
       </figcaption>
@@ -97,8 +97,8 @@ function roundedTop(x: number, y: number, w: number, h: number, r: number): stri
 function Figure({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[12px] text-muted">{label}</dt>
-      <dd className="mt-0.5 text-[15px] font-semibold tabular-nums text-heading">{value}</dd>
+      <dt className="text-footnote text-muted">{label}</dt>
+      <dd className="mt-0.5 text-headline font-semibold tabular-nums text-heading">{value}</dd>
     </div>
   );
 }
@@ -107,7 +107,7 @@ function Figure({ label, value }: { label: string; value: string }) {
 export function UsageSummary({ usage }: { usage: AiUsageData }) {
   if (!usage.aiIncluded) {
     return (
-      <p className="text-sm text-muted">
+      <p className="text-subheadline text-muted">
         {withoutPurchaseHints(usage.blockedReason ?? "Foli AI isn't included here.")}{" "}
         {canPurchaseHere() ? (
           <AppLink href="/settings/billing" className="underline underline-offset-2 hover:text-heading">
@@ -126,7 +126,7 @@ export function UsageSummary({ usage }: { usage: AiUsageData }) {
         <Figure label="Extra credits" value={usage.packCredits.toLocaleString()} />
         <Figure label="Left" value={usage.available.toLocaleString()} />
       </dl>
-      <p className="text-[12.5px] text-muted">
+      <p className="text-subheadline text-muted">
         {usage.trialing ? `Your trial ends on ${creditDate(usage.resetsAt)}.` : `Monthly credits reset on ${creditDate(usage.resetsAt)}.`} Extra credits are used after the monthly ones.
         {usage.canBuy && canPurchaseHere() ? (
           <>
@@ -141,7 +141,7 @@ export function UsageSummary({ usage }: { usage: AiUsageData }) {
         <p className="ui-caps mb-2">By feature</p>
         <ul className="space-y-1.5">
           {usage.features.map((f) => (
-            <li key={f.feature} className="grid grid-cols-[8.5rem_1fr_auto] items-center gap-3 text-[13px]">
+            <li key={f.feature} className="grid grid-cols-[8.5rem_1fr_auto] items-center gap-3 text-subheadline">
               <span className="truncate text-ink">{f.label}</span>
               <span aria-hidden className="h-1.5 overflow-hidden rounded-tiny bg-[var(--glass-hover)]">
                 <span className="block h-full rounded-chip bg-[color-mix(in_oklab,var(--color-heading)_55%,transparent)]" style={{ width: `${(f.credits / most) * 100}%` }} />
@@ -156,9 +156,9 @@ export function UsageSummary({ usage }: { usage: AiUsageData }) {
         {usage.days.some((d) => d.credits > 0) ? (
           <UsageChart days={usage.days} />
         ) : (
-          <p className="text-[12.5px] text-muted">{usage.used ? "Nothing to show by day yet." : "No credits used yet this period."}</p>
+          <p className="text-subheadline text-muted">{usage.used ? "Nothing to show by day yet." : "No credits used yet this period."}</p>
         )}
-        {usage.untrackedDays > 0 ? <p className="mt-2 text-[12px] text-faint">{credits(usage.untrackedDays)} used before daily tracking started aren&apos;t in the chart.</p> : null}
+        {usage.untrackedDays > 0 ? <p className="mt-2 text-footnote text-faint">{credits(usage.untrackedDays)} used before daily tracking started aren&apos;t in the chart.</p> : null}
       </section>
     </div>
   );
@@ -219,7 +219,7 @@ export function AiUsageCard() {
         {usage?.aiIncluded ? (
           <IosSection header="By day" footer={usage.untrackedDays > 0 ? `${credits(usage.untrackedDays)} used before daily tracking started aren't in the chart.` : undefined}>
             <div className="px-4 pb-3 pt-9">
-              {usage.days.some((d) => d.credits > 0) ? <UsageChart days={usage.days} /> : <p className="-mt-6 text-[15px] text-muted">{usage.used ? "Nothing to show by day yet." : "No credits used yet this period."}</p>}
+              {usage.days.some((d) => d.credits > 0) ? <UsageChart days={usage.days} /> : <p className="-mt-6 text-body text-muted">{usage.used ? "Nothing to show by day yet." : "No credits used yet this period."}</p>}
             </div>
           </IosSection>
         ) : null}
@@ -234,7 +234,7 @@ export function AiUsageCard() {
     >
       {seats.length ? (
         <div className="mb-4">
-          <Select value={pick} onChange={(e) => setWhich(e.target.value)} aria-label="Credits for" className="ui-input h-9 rounded-chip px-3 text-sm w-56">
+          <Select value={pick} onChange={(e) => setWhich(e.target.value)} aria-label="Credits for" className="ui-input h-9 rounded-chip px-3 text-callout w-56">
             <option value="personal">Personal</option>
             {seats.map((a) => (
               <option key={a.workspaceId} value={a.workspaceId!}>
@@ -244,7 +244,7 @@ export function AiUsageCard() {
           </Select>
         </div>
       ) : null}
-      {usage ? <UsageSummary usage={usage} /> : <p className="text-sm text-muted">Loading your usage…</p>}
+      {usage ? <UsageSummary usage={usage} /> : <p className="text-subheadline text-muted">Loading your usage…</p>}
     </Card>
   );
 }

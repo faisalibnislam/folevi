@@ -58,7 +58,7 @@ function routeHere(): Route {
 
 /** Apple's own button: black on a light page, white on a dark one, with Apple's logo and "Continue with Apple". */
 export const APPLE_BUTTON =
-  "ui-btn h-11 w-full gap-2 text-[15px] [font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif] bg-black text-white hover:bg-[#1d1d1f] active:bg-[#2c2c2e] dark:bg-white dark:text-black dark:hover:bg-[#f2f2f4] dark:active:bg-[#e5e5ea] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]";
+  "ui-btn h-11 w-full gap-2 text-body [font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif] bg-black text-white hover:bg-[#1d1d1f] active:bg-[#2c2c2e] dark:bg-white dark:text-black dark:hover:bg-[#f2f2f4] dark:active:bg-[#e5e5ea] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]";
 
 /**
  * "Continue with Apple" and "Continue with Google" (each only when the server offers it), above the email
@@ -157,13 +157,13 @@ export function SocialSignIn({
           </button>
         ) : null}
         {providers.google ? (
-          <button type="button" onClick={() => void go("google")} disabled={busy !== null} aria-busy={busy === "google"} className="ui-btn ui-btn-secondary h-11 w-full gap-2.5 text-[15px]">
+          <button type="button" onClick={() => void go("google")} disabled={busy !== null} aria-busy={busy === "google"} className="ui-btn ui-btn-secondary h-11 w-full gap-2.5 text-body">
             {busy === "google" ? spinner : <GoogleMark />}
             Continue with Google
           </button>
         ) : null}
       </div>
-      <div className="mt-4 flex items-center gap-3 text-xs text-muted" aria-hidden>
+      <div className="mt-4 flex items-center gap-3 text-footnote text-muted" aria-hidden>
         <span className="h-px flex-1 bg-line" />
         or
         <span className="h-px flex-1 bg-line" />

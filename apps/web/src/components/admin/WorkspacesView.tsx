@@ -96,7 +96,7 @@ export function WorkspacesView() {
                         ) : null}
                       </span>
                       {interval || w.planEndsAt ? (
-                        <span className="mt-0.5 block text-[12px] text-muted">
+                        <span className="mt-0.5 block text-footnote text-muted">
                           {interval === "year" ? "Yearly" : interval === "month" ? "Monthly" : ""}
                           {w.planEndsAt ? `${interval ? " · " : ""}ends ${shortDate(w.planEndsAt)}` : ""}
                         </span>

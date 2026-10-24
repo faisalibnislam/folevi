@@ -78,7 +78,7 @@ function currentHref(pathname: string): string | null {
 
 // The app's sidebar row (components/app/Sidebar.tsx NavItem): the open page comes forward on light glass.
 const ROW =
-  "group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
+  "group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-[14px] outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
 const ROW_ON =
   "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]";
 const ROW_OFF = "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading";

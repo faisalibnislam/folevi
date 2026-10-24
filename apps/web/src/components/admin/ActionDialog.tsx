@@ -178,7 +178,7 @@ export function ActionDialog({
             "aria-describedby": describedBy(f.name, Boolean(f.hint)),
           } as const;
           return (
-            <div key={f.name} className="text-sm">
+            <div key={f.name} className="text-subheadline">
               <label htmlFor={id} className="mb-1 block font-medium">
                 {f.label}
               </label>
@@ -216,12 +216,12 @@ export function ActionDialog({
                 </div>
               )}
               {f.hint ? (
-                <p id={`${id}-hint`} className="mt-1 text-xs text-muted">
+                <p id={`${id}-hint`} className="mt-1 text-footnote text-muted">
                   {f.hint}
                 </p>
               ) : null}
               {errors[f.name] ? (
-                <p id={`${id}-error`} className="mt-1 text-xs font-medium text-danger">
+                <p id={`${id}-error`} className="mt-1 text-footnote font-medium text-danger">
                   {errors[f.name]}
                 </p>
               ) : null}
@@ -229,7 +229,7 @@ export function ActionDialog({
           );
         })}
         {confirm ? (
-          <div className="text-sm">
+          <div className="text-subheadline">
             <label htmlFor={`${uid}-confirm`} className="mb-1 block">
               {confirm.label}
             </label>
@@ -244,25 +244,25 @@ export function ActionDialog({
               className={inputCls}
             />
             {errors.confirm ? (
-              <p id={`${uid}-confirm-error`} className="mt-1 text-xs font-medium text-danger">
+              <p id={`${uid}-confirm-error`} className="mt-1 text-footnote font-medium text-danger">
                 {errors.confirm}
               </p>
             ) : null}
           </div>
         ) : null}
         {acknowledge ? (
-          <div className="text-sm">
+          <div className="text-subheadline">
             <Checkbox id={`${uid}-ack`} checked={ack} onChange={setAck} describedBy={describedBy("ack", false)} className="gap-2.5">
               {acknowledge}
             </Checkbox>
             {errors.ack ? (
-              <p id={`${uid}-ack-error`} className="mt-1 text-xs font-medium text-danger">
+              <p id={`${uid}-ack-error`} className="mt-1 text-footnote font-medium text-danger">
                 {errors.ack}
               </p>
             ) : null}
           </div>
         ) : null}
-        <div className="text-sm">
+        <div className="text-subheadline">
           <label htmlFor={`${uid}-reason`} className="mb-1 block font-medium">
             Reason
           </label>
@@ -279,17 +279,17 @@ export function ActionDialog({
             placeholder="e.g. Ticket #4821: user reported a lost device"
             className={`${inputCls} h-auto py-2`}
           />
-          <p id={`${uid}-reason-hint`} className="mt-1 text-xs text-muted">
+          <p id={`${uid}-reason-hint`} className="mt-1 text-footnote text-muted">
             Required, at least {REASON_MIN} characters. Stored permanently with this action in the audit log.
           </p>
           {errors.reason ? (
-            <p id={`${uid}-reason-error`} className="mt-1 text-xs font-medium text-danger">
+            <p id={`${uid}-reason-error`} className="mt-1 text-footnote font-medium text-danger">
               {errors.reason}
             </p>
           ) : null}
         </div>
         {formError ? (
-          <div role="alert" className="rounded-control bg-danger-soft px-3 py-2 text-[13px]">
+          <div role="alert" className="rounded-control bg-danger-soft px-3 py-2 text-subheadline">
             {formError}
           </div>
         ) : null}

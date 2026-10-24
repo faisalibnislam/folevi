@@ -55,6 +55,7 @@ function instrument() {
     names: new Map<string, number>(),
     roots: new Map<string, number>(),
     longTasks: [] as number[],
+    longAt: [] as [number, number][],
     events: [] as { name: string; duration: number; delay: number }[],
     timeouts: 0,
     intervals: 0,
@@ -109,7 +110,7 @@ function instrument() {
     },
   });
   try {
-    new PerformanceObserver((list) => list.getEntries().forEach((e) => m.longTasks.push(e.duration))).observe({ type: "longtask", buffered: true });
+    new PerformanceObserver((list) => list.getEntries().forEach((e) => (m.longTasks.push(e.duration), m.longAt.push([e.startTime, e.duration])))).observe({ type: "longtask", buffered: true });
   } catch {
     // (No long-task entries in this engine.)
   }
@@ -176,6 +177,16 @@ async function measure(page: Page, cdp: CDPSession | null, label: string, act: (
       const tick = () => {
         if (w.__perf.lastInput) (w.__perf as unknown as { marks: [string, number][] }).marks.push(["frame", performance.now()]);
         if (!w.__perf.lastInput || !test()) return void requestAnimationFrame(tick);
+        // What's moving: every animated property of every animation running now (transform and opacity are
+        // what the compositor runs on its own; anything else is the page's work every frame).
+        const props = new Set<string>();
+        for (const a of document.getAnimations()) {
+          const fx = a.effect as KeyframeEffect | null;
+          const kfs = fx && typeof fx.getKeyframes === "function" ? fx.getKeyframes() : [];
+          for (const kf of kfs) for (const k of Object.keys(kf)) if (!["offset", "computedOffset", "easing", "composite"].includes(k)) props.add(k);
+          if (a instanceof CSSTransition) props.add(String(a.transitionProperty));
+        }
+        (w as unknown as { __props: string[] }).__props = [...props];
         // The frame that shows it.
         requestAnimationFrame((t) => {
           const paint = t - w.__perf.lastInput;
@@ -204,14 +215,24 @@ async function measure(page: Page, cdp: CDPSession | null, label: string, act: (
   await page.waitForTimeout(300);
   const after = await snapshot(page, cdp);
   const events = await page.evaluate(() => (window as unknown as { __perf: Meter }).__perf.events.slice());
+  // While it moves (from its first frame to when it's still): the main thread's long tasks and React's commits.
+  const during = await page.evaluate(({ paint, settled }) => {
+    const m = (window as unknown as { __perf: { lastInput: number; longAt: [number, number][]; marks: [string, number][] } }).__perf;
+    const from = m.lastInput + paint;
+    const to = m.lastInput + settled;
+    const busy = m.longAt.reduce((a, [st, d]) => a + Math.max(0, Math.min(st + d, to) - Math.max(st, from)), 0);
+    const commits = m.marks.filter(([n, t]) => n === "commit" && t >= from && t <= to).length;
+    return { busy: Math.round(busy), commits };
+  }, timing);
+  const animated = await page.evaluate(() => (window as unknown as { __props?: string[] }).__props ?? []);
   const marks = await page.evaluate(() => {
     const m = (window as unknown as { __perf: { lastInput: number; marks: [string, number][] } }).__perf;
     return m.marks.filter(([, t]) => t - m.lastInput < 1500).map(([n, t]) => `${n}@${Math.round(t - m.lastInput)}`).join(" ");
   });
   const worst = events.reduce((a, e) => Math.max(a, e.duration), 0);
   const d = diff(before, after);
-  const row = { label, paintMs: Math.round(timing.paint), settledMs: Math.round(timing.settled), lateFrames: timing.late, worstFrameMs: Math.round(timing.worstFrame), worstEventMs: Math.round(worst), commits: d.commits, rendered: d.rendered, longTasks: d.longTasks, longTaskMs: Math.round(d.longTaskMs), styles: d.styles, layouts: d.layouts, styleMs: Math.round(d.styleMs), layoutMs: Math.round(d.layoutMs), scriptMs: Math.round(d.scriptMs) };
-  results.interactions.push({ ...row, marks });
+  const row = { label, paintMs: Math.round(timing.paint), settledMs: Math.round(timing.settled), animLongTaskMs: during.busy, animCommits: during.commits, lateFrames: timing.late, worstFrameMs: Math.round(timing.worstFrame), worstEventMs: Math.round(worst), commits: d.commits, rendered: d.rendered, longTasks: d.longTasks, longTaskMs: Math.round(d.longTaskMs), styles: d.styles, layouts: d.layouts, styleMs: Math.round(d.styleMs), layoutMs: Math.round(d.layoutMs), scriptMs: Math.round(d.scriptMs) };
+  results.interactions.push({ ...row, marks, animated: animated.join(","), offCompositor: animated.filter((p) => !["transform", "opacity"].includes(p)).join(",") });
   console.log(new Date().toISOString().slice(11, 19), JSON.stringify(row));
   return row;
 }
@@ -575,6 +596,12 @@ test.describe("the iPhone app's speed", { tag: ["@local", "@iphone-perf"] }, () 
     const idleOf = (label: string) => results.idle.find((r) => r.label === label) as { commits: number; rafs: number; intervals: number } | undefined;
     expect(idleOf("home")?.commits, "commits on Home while nothing happens").toBe(0);
     expect(idleOf("long note")?.commits, "commits in a note while nothing happens").toBe(0);
+    // Moves between screens animate only what the compositor runs on its own (transform, opacity), so they can
+    // run at 120 Hz on ProMotion whatever the page is doing (docs/IOS_PERFORMANCE.md, "120 Hz").
+    for (const label of ["open note (Home card)", "Back to Home", "push All notes", "Back from All notes", "New note", "open long note", "Back from long note", "open + menu", "open account sheet"]) {
+      const r = results.interactions.find((x) => x.label === label) as { offCompositor?: string } | undefined;
+      expect(r?.offCompositor ?? "", `${label}: animated off the compositor`).toBe("");
+    }
     const dev = /:3003\b/.test(results.base);
     if (chromium && !dev && CPU >= 4) {
       expect(results.startup["again.usableMs"], "Home usable on a second launch").toBeLessThanOrEqual(1500);

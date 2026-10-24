@@ -56,7 +56,7 @@ function CompareTable({ competitor }: { competitor: Competitor }) {
       <dl className="mk-card px-5 sm:hidden">
         {competitor.rows.map((row, i) => (
           <div key={row.key} className={cx("py-4", i > 0 && "border-t mk-hair")}>
-            <dt className="text-[15.5px] font-semibold text-(--color-heading)">{FOLEVI_ROWS[row.key].label}</dt>
+            <dt className="text-[16px] font-semibold text-(--color-heading)">{FOLEVI_ROWS[row.key].label}</dt>
             <dd className="mt-2 grid gap-2.5 text-[15px] leading-relaxed">
               <p>
                 <span className="mk-caps block">Folevi</span>
@@ -154,7 +154,7 @@ export default async function ComparePage({ params }: Params) {
               See pricing
             </ButtonLink>
           </div>
-          <p className="mt-4 text-[13.5px] text-muted">
+          <p className="mt-4 text-[14px] text-muted">
             {competitor.name}’s details checked on <time dateTime={COMPARE_CHECKED}>{formatDay(COMPARE_CHECKED)}</time>. Updated <time dateTime={competitor.updated}>{formatDay(competitor.updated)}</time>.
           </p>
         </HeaderCard>
@@ -227,7 +227,7 @@ export default async function ComparePage({ params }: Params) {
                   </li>
                 ))}
               </ol>
-              <p className="text-[14.5px] text-muted">
+              <p className="text-[15px] text-muted">
                 Prices and features of other products are from their public websites on {formatDay(COMPARE_CHECKED)} and may have changed. {trademarkLine(competitor.trademarks)} If something here is out of date, <Link href="/support">tell us</Link> and we’ll fix it.
               </p>
             </section>
@@ -245,7 +245,7 @@ export default async function ComparePage({ params }: Params) {
               </li>
             ))}
           </ul>
-          <p className="mt-6 text-[14.5px] text-muted">
+          <p className="mt-6 text-[15px] text-muted">
             <Link href="/compare" className="mk-link">
               All comparisons
             </Link>

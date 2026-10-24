@@ -160,10 +160,10 @@ export function ChartAiPanel({ chart, data, documentId, onApply, onClose }: { ch
           {result.kind === "patch" && result.task === "explain" && result.patch.takeaway ? <Takeaway text={result.patch.takeaway} className="fb-chart-takeaway" /> : <p>{describe(result, chart)}</p>}
           {result.kind === "patch" && result.patch.reason ? <p className="fb-chart-ai-reason">{result.patch.reason}</p> : null}
           <div className="fb-chart-ai-buttons">
-            <button type="button" className="ui-btn ui-btn-primary h-8 px-3 text-[13px] pointer-coarse:h-11" onClick={apply}>
+            <button type="button" className="ui-btn ui-btn-primary h-8 px-3 text-callout pointer-coarse:h-11" onClick={apply}>
               {result.kind === "patch" && result.task === "explain" ? "Use as takeaway" : result.kind === "chart" && hasData ? "Replace this chart" : "Apply"}
             </button>
-            <button type="button" className="ui-btn ui-btn-ghost h-8 px-3 text-[13px] pointer-coarse:h-11" onClick={() => setResult(null)}>
+            <button type="button" className="ui-btn ui-btn-ghost h-8 px-3 text-callout pointer-coarse:h-11" onClick={() => setResult(null)}>
               Discard
             </button>
           </div>

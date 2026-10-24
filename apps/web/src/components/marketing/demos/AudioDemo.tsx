@@ -144,7 +144,7 @@ export function AudioDemo() {
             {playing ? <Pause size={15} className="fill-current" /> : <Play size={15} className="ml-0.5 fill-current" />}
           </button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13.5px] font-medium">{NAME}</p>
+            <p className="truncate text-[14px] font-medium">{NAME}</p>
             <div className="mt-1.5 flex items-center gap-2.5">
               <div
                 role="slider"

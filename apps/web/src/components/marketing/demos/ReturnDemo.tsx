@@ -184,7 +184,7 @@ export function ReturnDemo() {
             </li>
           ))}
           {terms.length > 0 && results.length === 0 ? (
-            <li className="px-4 py-8 text-center text-[13.5px] text-muted">No pages match. Try “printer” or “April”.</li>
+            <li className="px-4 py-8 text-center text-[14px] text-muted">No pages match. Try “printer” or “April”.</li>
           ) : null}
         </ul>
       </div>

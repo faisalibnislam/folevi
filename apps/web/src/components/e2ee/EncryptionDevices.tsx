@@ -44,18 +44,18 @@ export function EncryptionDevices() {
   return (
     <Card title={copy.devices.title} description={copy.devices.body}>
       <ul className="ui-card divide-y divide-line overflow-hidden rounded-control" aria-busy={rows === undefined || undefined}>
-        {rows === undefined ? <li className="px-4 py-3 text-sm text-muted">Loading…</li> : null}
+        {rows === undefined ? <li className="px-4 py-3 text-subheadline text-muted">Loading…</li> : null}
         {shown.map((r) => (
           <li key={r.deviceId} className="flex items-center gap-3 px-4 py-3">
             <Icon row={r} />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-heading">{r.label}</span>
-              <span className="block text-xs text-muted">
+              <span className="block truncate text-subheadline font-medium text-heading">{r.label}</span>
+              <span className="block text-footnote text-muted">
                 {line(r)} · {copy.devices.seen(formatRelative(r.lastSeenAt))}
               </span>
             </span>
             {r.deviceId === here ? (
-              <span className="ui-chip h-6 flex-none self-center bg-moss-soft text-[11.5px] text-moss-ink">{copy.devices.thisDevice}</span>
+              <span className="ui-chip h-6 flex-none self-center bg-moss-soft text-footnote text-moss-ink">{copy.devices.thisDevice}</span>
             ) : state === "unlocked" ? (
               <MenuButton label={copy.devices.menuLabel(r.label)} trigger={<MoreHorizontal size={15} aria-hidden />} items={[{ label: copy.devices.removeFromEncryption, danger: true, onSelect: () => setRemoving(r) }]} />
             ) : null}
@@ -135,11 +135,11 @@ function RemoveFromEncryption({ device, onClose }: { device: Row; onClose: () =>
         </>
       }
     >
-      <div className="space-y-4 text-sm">
+      <div className="space-y-4 text-subheadline">
         <div className="flex items-start justify-between gap-4">
           <span className="min-w-0">
             <span className="block font-medium text-heading">{d.rotate.label}</span>
-            <span id={`${uid}-rotate`} className="mt-0.5 block text-[13px] text-muted">
+            <span id={`${uid}-rotate`} className="mt-0.5 block text-subheadline text-muted">
               {d.rotate.body}
             </span>
           </span>
@@ -154,9 +154,9 @@ function RemoveFromEncryption({ device, onClose }: { device: Row; onClose: () =>
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
               aria-describedby={`${uid}-pp`}
-              className="ui-input mt-1 block h-10 w-full rounded-control px-3 text-sm font-normal pointer-coarse:h-11"
+              className="ui-input mt-1 block h-10 w-full rounded-control px-3 text-callout font-normal pointer-coarse:h-11"
             />
-            <span id={`${uid}-pp`} className="mt-1 block text-[12.5px] font-normal text-muted">
+            <span id={`${uid}-pp`} className="mt-1 block text-subheadline font-normal text-muted">
               {d.keepPassphraseHint}
             </span>
           </label>

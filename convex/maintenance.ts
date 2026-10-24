@@ -440,6 +440,7 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("notifications").withIndex("by_profile_created", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("sessionsMirror").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("documentPermissions").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("folderPermissions").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("noteSubscriptions").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     // Their reactions to comments (the comments stay).
     () => ctx.db.query("commentReactions").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
@@ -712,6 +713,12 @@ export const housekeeping = internalMutation({
       .take(200);
     for (const i of pageInvites) await ctx.db.patch(i._id, { status: "expired" });
     backlog ||= pageInvites.length === 200;
+    const folderInvites = await ctx.db
+      .query("folderInvites")
+      .withIndex("by_status_expires", (q) => q.eq("status", "pending").lt("expiresAt", now))
+      .take(200);
+    for (const i of folderInvites) await ctx.db.patch(i._id, { status: "expired" });
+    backlog ||= folderInvites.length === 200;
     const notes = await ctx.db
       .query("notifications")
       .withIndex("by_created", (q) => q.lt("createdAt", now - 180 * 24 * 60 * 60 * 1000))

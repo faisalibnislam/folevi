@@ -105,7 +105,7 @@ export function NotificationsSection() {
         description="Choose what reaches you in the app (the bell) and by email. Emails say who did what and where, with a link. They never include your notes or comment text; a reminder shows only its own to-do line. Security emails (new sign-ins, account deletion) can't be turned off."
       >
         <div role="table" aria-label="Notification preferences" className="max-w-xl">
-          <div role="row" className="grid grid-cols-[1fr_72px_72px] items-end gap-2 border-b border-line pb-2 text-xs font-medium text-muted">
+          <div role="row" className="grid grid-cols-[1fr_72px_72px] items-end gap-2 border-b border-line pb-2 text-footnote font-medium text-muted">
             <span role="columnheader">Notify me about</span>
             <span role="columnheader" className="text-center">
               In app
@@ -117,8 +117,8 @@ export function NotificationsSection() {
           {ROWS.map((r) => (
             <div key={r.topic} role="row" className="grid grid-cols-[1fr_72px_72px] items-center gap-2 border-b border-line/70 py-3 last:border-b-0">
               <span role="rowheader" className="min-w-0">
-                <span className="block text-sm text-ink">{r.label}</span>
-                <span id={`notify-${r.topic}-hint`} className="block text-xs text-muted">
+                <span className="block text-subheadline text-ink">{r.label}</span>
+                <span id={`notify-${r.topic}-hint`} className="block text-footnote text-muted">
                   {r.hint}
                 </span>
               </span>
@@ -135,18 +135,18 @@ export function NotificationsSection() {
       <PushCard />
       <Card title="Email delivery" description="How comment, reply and mention emails arrive. Shares, invitations and access changes are always sent as they happen.">
         <div className="flex max-w-xl items-center justify-between gap-4">
-          <label htmlFor="notify-digest" className="text-sm">
+          <label htmlFor="notify-digest" className="text-subheadline">
             Send comment emails
-            <span className="block text-xs text-muted">The daily digest lists what you haven’t read yet, by page title only, once a day.</span>
+            <span className="block text-footnote text-muted">The daily digest lists what you haven’t read yet, by page title only, once a day.</span>
           </label>
-          <Select id="notify-digest" value={prefs.digest} onChange={(e) => void set({ digest: e.target.value as Prefs["digest"] })} className="ui-input h-9 w-44 flex-none rounded-chip px-3 text-sm">
+          <Select id="notify-digest" value={prefs.digest} onChange={(e) => void set({ digest: e.target.value as Prefs["digest"] })} className="ui-input h-9 w-44 flex-none rounded-chip px-3 text-callout">
             <option value="off">As they happen</option>
             <option value="daily">In a daily digest</option>
           </Select>
         </div>
       </Card>
       <Card title="Muted notes" description="To stop hearing about comments on one note, open its … menu and choose Mute comment notifications. You’ll still hear when someone @mentions you there. Follow a note the same way to hear about every comment on it.">
-        <p className="text-xs text-muted">Nobody is ever notified about their own actions, or about pages they can’t open.</p>
+        <p className="text-footnote text-muted">Nobody is ever notified about their own actions, or about pages they can’t open.</p>
       </Card>
     </div>
   );

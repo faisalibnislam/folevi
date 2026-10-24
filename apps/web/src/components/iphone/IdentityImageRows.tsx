@@ -55,13 +55,13 @@ export function IdentityImageRows({
           // eslint-disable-next-line @next/next/no-img-element -- a small signed storage URL, not an optimisable asset
           <img src={shown} alt={label} width={64} height={64} onError={() => setFailedSrc(shown)} className={`size-16 flex-none object-cover ${radius}`} />
         ) : (
-          <span role="img" aria-label={`${label}: none yet`} className={`grid size-16 flex-none place-items-center bg-heading text-[26px] font-semibold text-canvas ${radius}`}>
+          <span role="img" aria-label={`${label}: none yet`} className={`grid size-16 flex-none place-items-center bg-heading text-title-1 font-semibold text-canvas ${radius}`}>
             {initial.trim().slice(0, 1).toUpperCase() || "·"}
           </span>
         )}
         <span className="min-w-0 flex-1">
-          <span className="block text-[20px] font-semibold leading-tight text-heading [overflow-wrap:anywhere]">{name}</span>
-          {detail ? <span className="mt-0.5 block text-[15px] text-muted [overflow-wrap:anywhere]">{detail}</span> : null}
+          <span className="block text-title-3 font-semibold leading-tight text-heading [overflow-wrap:anywhere]">{name}</span>
+          {detail ? <span className="mt-0.5 block text-subheadline text-muted [overflow-wrap:anywhere]">{detail}</span> : null}
         </span>
       </div>
       <input

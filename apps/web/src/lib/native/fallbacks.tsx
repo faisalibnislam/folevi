@@ -70,7 +70,7 @@ function AskTextForm({ o, answer }: { o: AskTextOptions; answer: (v: string | nu
           if (text) answer(text);
         }}
       >
-        <label className="block text-sm font-medium" htmlFor={id}>
+        <label className="block text-subheadline font-medium" htmlFor={id}>
           {o.label ?? (o.placeholder || o.title)}
         </label>
         <input
@@ -82,7 +82,7 @@ function AskTextForm({ o, answer }: { o: AskTextOptions; answer: (v: string | nu
           onFocus={(e) => e.currentTarget.select()}
           maxLength={o.maxLength ?? 80}
           autoCapitalize={o.capitalize === "none" ? "off" : o.capitalize}
-          className="ui-input mt-2 h-10 w-full rounded-chip px-3 text-sm pointer-coarse:h-11 pointer-coarse:text-[17px]"
+          className="ui-input mt-2 h-10 w-full rounded-chip px-3 text-callout pointer-coarse:h-11 pointer-coarse:text-body"
         />
         <div className="mt-4 flex justify-end gap-2">
           <Button onClick={() => answer(null)}>{o.cancel ?? "Cancel"}</Button>

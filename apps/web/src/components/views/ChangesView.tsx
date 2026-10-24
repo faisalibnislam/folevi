@@ -51,14 +51,14 @@ export function ChangesView() {
       ? undefined
       : [waiting.length ? `${waiting.length} proposed` : null, notes.length ? `${notes.length} ${notes.length === 1 ? "note" : "notes"} changed since you last looked` : null].filter(Boolean).join(" · ") || "Nothing new";
   return (
-    <ViewChrome title={<h1 className="text-sm font-semibold">Changes</h1>} subtitle={subtitle} tabTitle="Changes">
+    <ViewChrome title={<h1 className="text-subheadline font-semibold">Changes</h1>} subtitle={subtitle} tabTitle="Changes">
       <div className="mx-auto max-w-3xl px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8">
         {waiting.length ? (
           <section aria-labelledby="changes-proposed" className="mb-10">
-            <h2 id="changes-proposed" className="text-[15px] font-semibold text-heading">
+            <h2 id="changes-proposed" className="text-headline font-semibold text-heading">
               Proposed
             </h2>
-            <p className="mt-1 max-w-xl text-sm text-muted">Changes connected apps want to make to your notes. Nothing changes until you accept.</p>
+            <p className="mt-1 max-w-xl text-subheadline text-muted">Changes connected apps want to make to your notes. Nothing changes until you accept.</p>
             <ul className="mt-4 space-y-4" aria-label="Proposed changes">
               {waiting.map((p) => (
                 <li key={p.id}>
@@ -69,7 +69,7 @@ export function ChangesView() {
           </section>
         ) : null}
         {waiting.length ? (
-          <h2 className="mb-1 text-[15px] font-semibold text-heading" id="changes-changed">
+          <h2 className="mb-1 text-headline font-semibold text-heading" id="changes-changed">
             Changed
           </h2>
         ) : null}
@@ -83,7 +83,7 @@ export function ChangesView() {
         {data === undefined ? (
           <div className="mt-6 h-32 animate-pulse rounded-control bg-surface motion-reduce:animate-none" aria-busy aria-label="Loading changes" />
         ) : notes.length === 0 && waiting.length ? (
-          <p className="mt-4 text-sm text-muted">Nothing else changed since you last looked.</p>
+          <p className="mt-4 text-subheadline text-muted">Nothing else changed since you last looked.</p>
         ) : notes.length === 0 ? (
           <EmptyState icon={FileDiff} title="You’re all caught up" body="When someone else changes a note you’ve opened, it shows up here until you look." />
         ) : (
@@ -139,7 +139,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
     <article aria-labelledby={headingId} className="ui-card overflow-hidden rounded-control">
       <header className="flex flex-wrap items-start gap-x-4 gap-y-2 px-4 pb-2 pt-3">
         <div className="min-w-0 flex-1">
-          <h3 id={headingId} className="truncate text-[15px] font-semibold text-heading">
+          <h3 id={headingId} className="truncate text-headline font-semibold text-heading">
             {proposal.documentId ? (
               <AppLink href={`/d/${proposal.documentId}`} className="rounded-tiny outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus">
                 {title}
@@ -148,10 +148,10 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
               title
             )}
           </h3>
-          <p className="mt-1 text-xs text-muted">
+          <p className="mt-1 text-footnote text-muted">
             <span className="text-ink">{proposal.sourceName}</span> proposed this {formatRelative(proposal.createdAt)}
           </p>
-          <p className="mt-0.5 text-xs text-muted">{proposal.summary}</p>
+          <p className="mt-0.5 text-footnote text-muted">{proposal.summary}</p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {!shown ? (
@@ -165,17 +165,17 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
         </div>
       </header>
       {shown ? (
-        <p role="alert" className="border-t border-line px-4 py-2 text-sm text-danger">
+        <p role="alert" className="border-t border-line px-4 py-2 text-subheadline text-danger">
           {shown}
         </p>
       ) : null}
       <div className="border-t border-line bg-[var(--color-surface-sunken)] px-4 py-3">
         {proposal.blocks.length ? (
-          <div className="fb-page max-h-80 overflow-y-auto text-[14px] [&>.fb-editor]:!pb-0" aria-label={`What ${proposal.sourceName} would add to ${title}`} role="group">
+          <div className="fb-page max-h-80 overflow-y-auto text-body [&>.fb-editor]:!pb-0" aria-label={`What ${proposal.sourceName} would add to ${title}`} role="group">
             <ReadOnlyBlocks blocks={proposal.blocks} fileUrls={NO_FILES} changes={changes} people={people} />
           </div>
         ) : (
-          <p className="text-sm text-muted">You can’t open this note, so its proposal isn’t shown.</p>
+          <p className="text-subheadline text-muted">You can’t open this note, so its proposal isn’t shown.</p>
         )}
       </div>
     </article>
@@ -238,12 +238,12 @@ function ChangeCard({ note, people }: { note: NoteChanges; people: People }) {
     <article aria-labelledby={headingId} className="ui-card overflow-hidden rounded-control">
       <header className="flex flex-wrap items-start gap-x-4 gap-y-2 px-4 pb-2 pt-3">
         <div className="min-w-0 flex-1">
-          <h2 id={headingId} className="truncate text-[15px] font-semibold text-heading">
+          <h2 id={headingId} className="truncate text-headline font-semibold text-heading">
             <AppLink href={`/d/${note.id}`} className="rounded-tiny outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus">
               {title}
             </AppLink>
           </h2>
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-footnote text-muted">
             <span className="inline-flex items-center -space-x-1" aria-hidden>
               {note.actors.slice(0, 3).map((k) => (
                 <Avatar key={k} name={everyone[k]?.name ?? "Someone"} url={everyone[k]?.avatarUrl} size={16} ring={`var(--color-${everyone[k]?.color ?? "ink-muted"})`} />
@@ -253,7 +253,7 @@ function ChangeCard({ note, people }: { note: NoteChanges; people: People }) {
               <span className="text-ink">{whoChanged(names)}</span> · {formatRelative(note.at)}
             </span>
           </p>
-          <p className="mt-0.5 text-xs text-muted">{changeCounts(note)}</p>
+          <p className="mt-0.5 text-footnote text-muted">{changeCounts(note)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Button size="sm" variant="ghost" onClick={() => navigate(`/d/${note.id}`)}>
@@ -273,11 +273,11 @@ function ChangeCard({ note, people }: { note: NoteChanges; people: People }) {
         {!diff ? (
           <div className="h-10 animate-pulse rounded-tiny bg-sunken motion-reduce:animate-none" aria-busy aria-label="Loading what changed" />
         ) : diff.blocks.length ? (
-          <div className="fb-page max-h-80 overflow-y-auto text-[14px] [&>.fb-editor]:!pb-0" aria-label={`What changed in ${title}`} role="group">
+          <div className="fb-page max-h-80 overflow-y-auto text-body [&>.fb-editor]:!pb-0" aria-label={`What changed in ${title}`} role="group">
             <ReadOnlyBlocks blocks={diff.blocks} fileUrls={fileUrls} changes={diff.changes} people={everyone} />
           </div>
         ) : (
-          <p className="text-sm text-muted">{note.removed ? "Lines were removed." : "Only formatting or order changed."}</p>
+          <p className="text-subheadline text-muted">{note.removed ? "Lines were removed." : "Only formatting or order changed."}</p>
         )}
       </div>
     </article>

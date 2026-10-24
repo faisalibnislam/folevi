@@ -51,7 +51,7 @@ export function IphoneScopes({
       triggerClassName={`group grid h-11 flex-none place-items-center outline-none ${disabled ? "pointer-events-none opacity-40" : ""}`}
       trigger={
         <span
-          className={`flex min-h-8 max-w-[180px] items-center gap-1 rounded-capsule py-1 pl-3.5 pr-2.5 text-[15px] leading-5 transition-colors group-active:scale-[0.96] group-focus-visible:ring-2 group-focus-visible:ring-focus ${
+          className={`flex min-h-8 max-w-[180px] items-center gap-1 rounded-capsule py-1 pl-3.5 pr-2.5 text-subheadline leading-5 transition-colors group-active:scale-[0.96] group-focus-visible:ring-2 group-focus-visible:ring-focus ${
             chosen ? "bg-heading font-medium text-canvas" : "bg-[color-mix(in_oklab,var(--color-ink)_6.5%,transparent)] text-ink"
           }`}
         >

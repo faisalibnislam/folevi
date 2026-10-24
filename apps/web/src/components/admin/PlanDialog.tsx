@@ -247,7 +247,7 @@ function PlanChangeDialog({
         </Callout>
       ) : null}
       <fieldset disabled={polar}>
-        <legend className="mb-1.5 text-sm font-medium">Plan</legend>
+        <legend className="mb-1.5 text-subheadline font-medium">Plan</legend>
         <div className="grid grid-cols-2 gap-2">
           {tiers.map((t) => {
             const checked = t.tier === tier;
@@ -255,7 +255,7 @@ function PlanChangeDialog({
             return (
               <label
                 key={t.tier}
-                className={`relative flex cursor-pointer flex-col rounded-control px-3 py-2.5 text-[12.5px] transition-[background-color,box-shadow] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus ${
+                className={`relative flex cursor-pointer flex-col rounded-control px-3 py-2.5 text-subheadline transition-[background-color,box-shadow] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus ${
                   checked
                     ? "bg-[var(--color-surface-raised)] shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_var(--color-heading)]"
                     : "bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)]"
@@ -263,8 +263,8 @@ function PlanChangeDialog({
               >
                 <input type="radio" name={`${uid}-plan`} value={t.tier} checked={checked} onChange={() => setTier(t.tier)} aria-label={t.name} aria-describedby={`${uid}-${t.tier}`} className="absolute inset-0 m-0 h-full w-full cursor-pointer appearance-none rounded-control opacity-0" />
                 <span className="flex items-center gap-1.5">
-                  <span className="ui-display text-[16px] text-heading">{t.name}</span>
-                  {isCurrent ? <span className="ml-auto rounded-chip bg-[var(--glass-hover)] px-1.5 text-[10.5px] font-semibold leading-[16px] text-muted">Current</span> : null}
+                  <span className="ui-display text-body text-heading">{t.name}</span>
+                  {isCurrent ? <span className="ml-auto rounded-chip bg-[var(--glass-hover)] px-1.5 text-caption-2 font-semibold leading-[16px] text-muted">Current</span> : null}
                 </span>
                 <span id={`${uid}-${t.tier}`} className="mt-1 text-muted">
                   {t.tier === "free" ? "No charge" : `${formatPrice(interval === "year" ? t.yearlyCents : t.monthlyCents)} / ${interval === "year" ? "year" : "month"}`}
@@ -279,7 +279,7 @@ function PlanChangeDialog({
 
       {paid && !polar ? (
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="text-sm">
+          <div className="text-subheadline">
             <p id={`${uid}-interval`} className="mb-1 font-medium">
               Counted as
             </p>
@@ -292,7 +292,7 @@ function PlanChangeDialog({
               </button>
             </div>
           </div>
-          <div className="text-sm">
+          <div className="text-subheadline">
             <label htmlFor={`${uid}-end`} className="mb-1 block font-medium">
               Ends
             </label>
@@ -305,7 +305,7 @@ function PlanChangeDialog({
             </Select>
           </div>
           {end === "date" ? (
-            <div className="text-sm sm:col-span-2">
+            <div className="text-subheadline sm:col-span-2">
               <label htmlFor={`${uid}-date`} className="mb-1 block font-medium">
                 End date
               </label>
@@ -322,11 +322,11 @@ function PlanChangeDialog({
                 aria-describedby={`${uid}-date-hint${dateTouched && dateError ? ` ${uid}-date-error` : ""}`}
                 className={`${inputCls} max-w-[200px] tabular-nums`}
               />
-              <p id={`${uid}-date-hint`} className="mt-1 text-xs text-muted">
+              <p id={`${uid}-date-hint`} className="mt-1 text-footnote text-muted">
                 The plan ends at the end of that day (UTC). Then it goes back to {backTo}.
               </p>
               {dateTouched && dateError ? (
-                <p id={`${uid}-date-error`} className="mt-1 text-xs font-medium text-danger">
+                <p id={`${uid}-date-error`} className="mt-1 text-footnote font-medium text-danger">
                   {dateError}
                 </p>
               ) : null}
@@ -335,7 +335,7 @@ function PlanChangeDialog({
         </div>
       ) : null}
 
-      <section aria-label="What changes" className="rounded-control bg-[var(--glass-hover)] px-4 py-3 text-[13px]">
+      <section aria-label="What changes" className="rounded-control bg-[var(--glass-hover)] px-4 py-3 text-subheadline">
         <p className="mb-2 font-semibold text-heading">{changed ? "What changes" : "Nothing changes yet"}</p>
         <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5">
           {rows.map((r) => {

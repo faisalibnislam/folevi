@@ -117,7 +117,7 @@ export function ApiTokensCard() {
       title="Personal access tokens"
       description={
         <>
-          For your own scripts and automation tools (Zapier, n8n, Make) through Folevi’s REST API at <span className="font-mono text-[12.5px]">/api/v1</span>. A token works as you, only in the places
+          For your own scripts and automation tools (Zapier, n8n, Make) through Folevi’s REST API at <span className="font-mono text-subheadline">/api/v1</span>. A token works as you, only in the places
           and for the things you choose. Treat it like a password.{" "}
           <a className="underline underline-offset-2" href="https://folevi.com/docs/rest-api" target="_blank" rel="noreferrer">
             How to use the API
@@ -126,7 +126,7 @@ export function ApiTokensCard() {
       }
     >
       {all === undefined ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-subheadline text-muted">Loading…</p>
       ) : all.length === 0 ? (
         <EmptyState size="inline" icon={KeyRound} title="No tokens yet" />
       ) : (
@@ -136,15 +136,15 @@ export function ApiTokensCard() {
             return (
               <li key={t.id} aria-label={t.name} className="flex flex-wrap items-start gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0">
                 <div className="min-w-0 flex-1 basis-64">
-                  <p className="text-[14px] font-semibold text-heading">
-                    {t.name} <span className="ml-1 font-mono text-[12px] font-normal text-muted">{t.hint}…</span>
-                    {t.deviceId && t.deviceId === here?.id ? <span className="ml-2 rounded-chip bg-sunken px-1.5 py-0.5 text-[11.5px] font-medium text-muted">This device</span> : null}
+                  <p className="text-body font-semibold text-heading">
+                    {t.name} <span className="ml-1 font-mono text-footnote font-normal text-muted">{t.hint}…</span>
+                    {t.deviceId && t.deviceId === here?.id ? <span className="ml-2 rounded-chip bg-sunken px-1.5 py-0.5 text-footnote font-medium text-muted">This device</span> : null}
                   </p>
-                  <p className="mt-0.5 text-[13px] text-ink">
+                  <p className="mt-0.5 text-subheadline text-ink">
                     {t.deviceId ? "The app’s widgets, share sheet, Shortcuts and Spotlight: " : ""}
                     {t.deviceId ? describeScopes(t.scopes).toLowerCase() : describeScopes(t.scopes)} in {t.places.join(", ") || "no places"}
                   </p>
-                  <p className="mt-0.5 text-[12.5px] text-muted">
+                  <p className="mt-0.5 text-subheadline text-muted">
                     Made {formatRelative(t.createdAt)} · {t.lastUsedAt ? `last used ${formatRelative(t.lastUsedAt)}` : "not used yet"} ·{" "}
                     {expired ? <span className="text-danger">expired</span> : t.expiresAt ? `expires ${new Date(t.expiresAt).toLocaleDateString()}` : "never expires"}
                   </p>
@@ -223,7 +223,7 @@ function NewTokenDialog({ onClose }: { onClose: () => void }) {
         }
       >
         <div className="flex gap-2">
-          <input readOnly value={token} aria-label="Your new token" onFocus={(e) => e.target.select()} className="h-9 min-w-0 flex-1 ui-well rounded-chip px-3 font-mono text-[13px]" />
+          <input readOnly value={token} aria-label="Your new token" onFocus={(e) => e.target.select()} className="h-9 min-w-0 flex-1 ui-well rounded-chip px-3 font-mono text-subheadline" />
           <Button onClick={() => void navigator.clipboard.writeText(token).then(() => toast.show("Token copied"))}>
             <Copy size={13} aria-hidden /> Copy
           </Button>
@@ -251,7 +251,7 @@ function NewTokenDialog({ onClose }: { onClose: () => void }) {
       <label htmlFor="token-name" className="ui-caps mb-1.5 block">
         Name
       </label>
-      <input id="token-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Zapier, my backup script…" className="h-9 w-full ui-input rounded-chip px-3 text-sm outline-none" />
+      <input id="token-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Zapier, my backup script…" className="h-9 w-full ui-input rounded-chip px-3 text-callout outline-none" />
       <fieldset className="mt-5">
         <legend className="ui-caps mb-2">What it can do</legend>
         <div className="space-y-2">
@@ -266,7 +266,7 @@ function NewTokenDialog({ onClose }: { onClose: () => void }) {
                 setScopes(next);
               }}
             >
-              <span className="text-[14px] text-ink">{s.label}</span>
+              <span className="text-body text-ink">{s.label}</span>
             </Checkbox>
           ))}
         </div>
@@ -275,11 +275,11 @@ function NewTokenDialog({ onClose }: { onClose: () => void }) {
         <legend className="ui-caps mb-2">Where</legend>
         <div className="space-y-2">
           <Checkbox checked={personal} onChange={setPersonal}>
-            <span className="text-[14px] text-ink">Personal</span>
+            <span className="text-body text-ink">Personal</span>
           </Checkbox>
           {workspaces.map((w) => (
             <Checkbox key={w.id} checked={workspaceIds.includes(w.id)} onChange={(on) => setWorkspaceIds(on ? [...workspaceIds, w.id] : workspaceIds.filter((x) => x !== w.id))}>
-              <span className="text-[14px] text-ink">{w.name}</span>
+              <span className="text-body text-ink">{w.name}</span>
             </Checkbox>
           ))}
         </div>
@@ -295,7 +295,7 @@ function NewTokenDialog({ onClose }: { onClose: () => void }) {
         ))}
       </Select>
       {error ? (
-        <p role="alert" className="mt-3 text-[13px] text-danger">
+        <p role="alert" className="mt-3 text-subheadline text-danger">
           {error}
         </p>
       ) : null}

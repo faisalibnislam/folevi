@@ -202,7 +202,7 @@ function FindTodosDialog({ editor, documentId, target, items, replace, onClose }
       }
     >
       {phase.kind === "busy" ? (
-        <p className="flex items-center gap-2 py-6 text-sm text-muted" role="status">
+        <p className="flex items-center gap-2 py-6 text-subheadline text-muted" role="status">
           <Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> Finding to-dos…
         </p>
       ) : phase.kind === "error" ? (
@@ -213,7 +213,7 @@ function FindTodosDialog({ editor, documentId, target, items, replace, onClose }
           </Button>
         </div>
       ) : !rows.length ? (
-        <p className="py-6 text-sm text-muted" role="status">
+        <p className="py-6 text-subheadline text-muted" role="status">
           No to-dos found. Foli AI looks for things someone agreed or was asked to do.
         </p>
       ) : (
@@ -232,9 +232,9 @@ function FindTodosDialog({ editor, documentId, target, items, replace, onClose }
                       value={r.text}
                       onChange={(e) => update(r.key, { text: e.target.value })}
                       aria-label={`To-do ${i + 1}`}
-                      className="h-9 w-full ui-input rounded-chip px-3 text-[14px] outline-none"
+                      className="h-9 w-full ui-input rounded-chip px-3 text-body outline-none"
                     />
-                    <div className="flex flex-wrap items-center gap-2 text-[13px]">
+                    <div className="flex flex-wrap items-center gap-2 text-subheadline">
                       <DateField value={r.date} onChange={(date) => update(r.key, date ? { date } : { date: "", time: "" })} aria-label={`Due date for ${label}`} className="w-40" />
                       {r.date ? <TimeField value={r.time} onChange={(time) => update(r.key, { time })} emptyLabel="All day" aria-label={`Due time for ${label}`} className="w-28" /> : null}
                       <Select value={r.assigneeId} onChange={(e) => update(r.key, { assigneeId: e.target.value })} aria-label={`Assignee for ${label}`} className="h-8 ui-input rounded-chip px-3">
@@ -252,7 +252,7 @@ function FindTodosDialog({ editor, documentId, target, items, replace, onClose }
                         </span>
                       ) : null}
                     </div>
-                    <p id={`${uid}-${r.key}-from`} className="text-[12px] leading-snug text-muted">
+                    <p id={`${uid}-${r.key}-from`} className="text-footnote leading-snug text-muted">
                       {r.date ? <>Due {naturalDateLabel({ date: r.date, time: r.time || undefined }, today)}. </> : r.unreadWhen ? <>No date: couldn’t read “{r.when}” as one. </> : null}
                       {r.quote ? <>From: “{r.quote}”</> : r.when ? <>From: “{r.when}”</> : null}
                     </p>

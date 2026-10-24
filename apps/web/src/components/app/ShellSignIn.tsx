@@ -21,8 +21,8 @@ import { ModeChoice, PRE_APP_PAGE, mobileApp, preAppBackground, preAppTitle } fr
 import { MOBILE_TEXT_BUTTON } from "./LibrarySetup";
 
 /** The phone and tablet apps' sign-in buttons: full width, 50 tall, 17 pt (12 apart, from the grid). */
-const MOBILE_BUTTON = "!h-[50px] w-full !rounded-control !text-[17px] font-semibold";
-const MAC_BUTTON = "h-11 w-full text-[15px]";
+const MOBILE_BUTTON = "!h-[50px] w-full !rounded-control !text-headline font-semibold";
+const MAC_BUTTON = "h-11 w-full text-body";
 
 const WAY_NAMES: Record<SignInWay, string> = { apple: "Apple", google: "Google", email: "Folevi" };
 
@@ -101,12 +101,12 @@ export function ShellSignIn() {
         </>
       )}
       {typeof apple === "object" && !waiting ? (
-        <p role="alert" className={mobile ? "text-center text-[15px] leading-[20px] text-danger" : "text-[14px] text-muted"}>
+        <p role="alert" className={mobile ? "text-center text-subheadline leading-[20px] text-danger" : "text-body text-muted"}>
           {apple.error}
         </p>
       ) : null}
       {state === "failed" ? (
-        <p role="alert" className={mobile ? "text-center text-[15px] leading-[20px] text-muted" : "text-[14px] text-muted"}>
+        <p role="alert" className={mobile ? "text-center text-subheadline leading-[20px] text-muted" : "text-body text-muted"}>
           Signing in didn’t finish. Try again.
         </p>
       ) : null}
@@ -131,7 +131,7 @@ export function ShellSignIn() {
           <div className="grid justify-items-center gap-5 text-center">
             <FoleviLogo height={26} className="text-ink" />
             <h1 className={preAppTitle()}>Sign in to Folevi</h1>
-            <p className="px-2 text-[15px] leading-[20px] text-muted">{body}</p>
+            <p className="px-2 text-body leading-[20px] text-muted">{body}</p>
           </div>
           <div className="grid gap-3" data-testid="shell-sign-in">
             {choices}

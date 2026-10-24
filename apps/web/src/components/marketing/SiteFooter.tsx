@@ -55,7 +55,7 @@ export function SiteFooter() {
       <div className={cx(container, "grid gap-10 py-12 sm:py-14 xl:grid-cols-[0.9fr_2.1fr]")}>
         <div>
           <Wordmark markSize={24} />
-          <p className="mt-4 max-w-[34ch] text-[14.5px] leading-relaxed text-muted">
+          <p className="mt-4 max-w-[34ch] text-[15px] leading-relaxed text-muted">
             Notes, documents and tasks on the web. The Mac app is coming soon.
           </p>
           <p className="mt-5 text-[14px] text-muted">
@@ -82,7 +82,7 @@ export function SiteFooter() {
                     <Link
                       href={link.href}
                       prefetch={false}
-                      className="-ml-2 inline-flex min-h-11 items-center rounded-chip px-2 text-[14.5px] text-ink transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading) sm:min-h-9"
+                      className="-ml-2 inline-flex min-h-11 items-center rounded-chip px-2 text-[15px] text-ink transition-colors duration-150 hover:bg-(--color-surface-sunken) hover:text-(--color-heading) sm:min-h-9"
                     >
                       {link.label}
                     </Link>

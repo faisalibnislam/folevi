@@ -44,7 +44,7 @@ export function refusalText(problem: "self" | "descendant" | "depth"): string {
 /** The few words a target shows when what's dragged can't go there. */
 export function DropRefusal({ text, className = "", style }: { text: string; className?: string; style?: React.CSSProperties }) {
   return (
-    <span role="status" style={style} className={`pointer-events-none absolute z-20 whitespace-nowrap rounded-chip bg-heading px-2 py-1 text-[11.5px] font-medium text-canvas shadow-[0_4px_12px_rgb(0_0_0/0.18)] ${className}`}>
+    <span role="status" style={style} className={`pointer-events-none absolute z-20 whitespace-nowrap rounded-chip bg-heading px-2 py-1 text-footnote font-medium text-canvas shadow-[0_4px_12px_rgb(0_0_0/0.18)] ${className}`}>
       {text}
     </span>
   );

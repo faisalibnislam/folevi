@@ -660,7 +660,7 @@ function buildEntries({
         label: "Text color",
         icon: <Palette size={14} />,
         items: [
-          ...TEXT_COLORS.map((c): Item => ({ label: colorName(palette, c), icon: <span className={`fb-color-${c} w-3.5 text-center text-[13px] font-semibold`}>A</span>, checked: editor.isActive("textColor", { value: c }), run: () => setTextColor(editor, c) })),
+          ...TEXT_COLORS.map((c): Item => ({ label: colorName(palette, c), icon: <span className={`fb-color-${c} w-3.5 text-center text-subheadline font-semibold`}>A</span>, checked: editor.isActive("textColor", { value: c }), run: () => setTextColor(editor, c) })),
           "separator",
           { label: "Default", run: () => setTextColor(editor, null) },
         ],
@@ -1145,13 +1145,13 @@ function Panel({
                 else if (open) hoverTimer.current = setTimeout(() => setOpen(null), wait);
               }}
               onClick={() => activate(i, false)}
-              className={`ui-menu-item !min-h-[30px] !text-[13px] disabled:opacity-40 pointer-coarse:!min-h-11 ${!isSub(entry) && entry.danger ? "!text-danger" : ""}`}
+              className={`ui-menu-item !min-h-[30px] !text-subheadline disabled:opacity-40 pointer-coarse:!min-h-11 ${!isSub(entry) && entry.danger ? "!text-danger" : ""}`}
             >
               <span className="grid w-4 flex-none place-items-center text-muted" aria-hidden>
                 {entry.icon}
               </span>
               <span className="min-w-0 flex-1 truncate">{entry.label}</span>
-              {!isSub(entry) && entry.shortcut ? <span className="flex-none pl-3 text-xs text-faint pointer-coarse:hidden">{keyLabel(entry.shortcut)}</span> : null}
+              {!isSub(entry) && entry.shortcut ? <span className="flex-none pl-3 text-footnote text-faint pointer-coarse:hidden">{keyLabel(entry.shortcut)}</span> : null}
               {!isSub(entry) && entry.checked ? <Check size={14} strokeWidth={2.5} aria-hidden className="flex-none text-heading" /> : null}
               {isSub(entry) ? <ChevronRight size={14} aria-hidden className="flex-none text-faint" /> : null}
             </button>

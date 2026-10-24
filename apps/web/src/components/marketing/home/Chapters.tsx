@@ -51,9 +51,9 @@ function Chapter({
           <h3 id={`${id}-title`} className="mk-h2 mt-5">
             {title}
           </h3>
-          <p className="mt-4 text-[16.5px] leading-relaxed text-muted">{lead}</p>
+          <p className="mt-4 text-[17px] leading-relaxed text-muted">{lead}</p>
           <Checks className="mt-5" items={points} />
-          <Link href={more.href} className="mk-link mt-5 inline-flex min-h-11 items-center gap-1.5 text-[14.5px]">
+          <Link href={more.href} className="mk-link mt-5 inline-flex min-h-11 items-center gap-1.5 text-[15px]">
             {more.label} <Icon name="arrow-right" size={15} />
           </Link>
         </div>

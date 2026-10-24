@@ -137,7 +137,7 @@
 }
 /* Small caps label (the app's .ui-caps). */
 .mk-caps {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: var(--tracking-caps, 0.06em);
   text-transform: uppercase;
@@ -324,7 +324,7 @@
   min-height: 26px;
   padding: 0 10px;
   border-radius: var(--radius-chip);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 550;
   color: var(--color-ink);
   background: var(--color-surface-sunken);
@@ -555,7 +555,7 @@
   height: 36px;
   padding: 0 10px;
   border-radius: var(--radius-control);
-  font-size: 12.5px;
+  font-size: 13px;
   white-space: nowrap;
   color: var(--color-ink-muted);
   background: var(--glass-hover);
@@ -818,7 +818,7 @@
   height: 24px;
   padding: 0 8px;
   border-radius: var(--radius-chip);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
   color: var(--color-ink-muted);
@@ -1052,7 +1052,7 @@
 }
 
 /* Long-form pages (docs, legal) ------------------------------------------------------------------ */
-.mk-prose { color: var(--color-ink); font-size: 16.5px; line-height: 1.7; letter-spacing: -0.006em; }
+.mk-prose { color: var(--color-ink); font-size: 17px; line-height: 1.7; letter-spacing: -0.006em; }
 .mk-prose > * + * { margin-top: 1em; }
 .mk-prose h2 {
   font-family: var(--font-display);
@@ -1066,7 +1066,7 @@
 }
 .mk-prose h2:first-child { margin-top: 0; }
 .mk-prose h3 {
-  font-size: 17.5px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--color-heading);
   letter-spacing: -0.012em;
@@ -1118,7 +1118,7 @@
   background: var(--color-surface-sunken);
   color: var(--color-code-ink);
   font-family: var(--font-mono);
-  font-size: 13.5px;
+  font-size: 14px;
   line-height: 1.65;
   letter-spacing: 0;
   tab-size: 2;
@@ -1126,7 +1126,7 @@
 .mk-prose pre code { padding: 0; border-radius: 0; background: none; font-size: inherit; }
 .mk-prose table { width: 100%; border-collapse: collapse; font-size: 15px; }
 .mk-prose th { text-align: left; font-weight: 500; color: var(--color-ink); }
-.mk-prose thead th { font-weight: 600; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); }
+.mk-prose thead th { font-weight: 600; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); }
 .mk-prose th, .mk-prose td { padding: 12px 14px 12px 0; border-bottom: 1px solid var(--mk-hair); vertical-align: top; }
 .mk-prose tbody tr:last-child > * { border-bottom: 0; }
 /* Tables sit on a card so they read as one object. */
@@ -1141,7 +1141,7 @@
 .mk-table th, .mk-table td { border-bottom: 1px solid var(--mk-hair); padding: 10px 12px 10px 0; vertical-align: middle; }
 .mk-table th { text-align: start; }
 .mk-table td { text-align: end; }
-.mk-table thead th { font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); }
+.mk-table thead th { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); }
 .mk-table tbody:last-child tr:last-child > * { border-bottom: 0; }
 
 @media (prefers-reduced-motion: reduce) {

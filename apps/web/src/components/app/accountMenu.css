@@ -14,7 +14,7 @@
 }
 :root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] .ui-caps {
   padding: 8px 10px 6px;
-  font-size: 11px;
+  font-size: var(--type-footnote);
   line-height: 14px;
   font-weight: 600;
   letter-spacing: var(--tracking-caps);
@@ -26,7 +26,7 @@
   gap: 10px;
   padding-block: 0;
   padding-inline: 10px;
-  font-size: 13.5px;
+  font-size: var(--type-body);
   line-height: 18px;
 }
 :root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-menu-part="icon"] {
@@ -42,7 +42,7 @@
 }
 :root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-menu-part="shortcut"] {
   padding-left: 12px;
-  font-size: 12px;
+  font-size: var(--type-footnote);
   color: var(--color-ink-faint);
 }
 
@@ -60,7 +60,7 @@
 }
 :root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-row="place"] [data-menu-part="description"] {
   margin-top: 1px;
-  font-size: 12px;
+  font-size: var(--type-footnote);
   line-height: 16px;
   color: var(--color-ink-muted);
 }
@@ -79,7 +79,7 @@
   white-space: nowrap;
 }
 :root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-menu-part="detail"] {
-  font-size: 12px;
+  font-size: var(--type-footnote);
   color: var(--color-ink-faint);
 }
 

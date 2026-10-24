@@ -22,7 +22,7 @@ const clockTime = (hhmm: string) => new Date(`2000-01-01T${hhmm}:00`).toLocaleTi
 
 /** A glass chip under the phone's task field: 36 tall (in a 44 pt row), its words 15 pt. */
 const CHIP =
-  "ui-liquid inline-flex h-9 max-w-[14rem] flex-none items-center gap-1.5 rounded-capsule px-3.5 text-[15px] leading-5 text-ink outline-none transition-transform active:scale-[0.97] [&>svg]:h-[17px] [&>svg]:w-[17px] [&>svg]:flex-none";
+  "ui-liquid inline-flex h-9 max-w-[14rem] flex-none items-center gap-1.5 rounded-capsule px-3.5 text-subheadline leading-5 text-ink outline-none transition-transform active:scale-[0.97] [&>svg]:h-[17px] [&>svg]:w-[17px] [&>svg]:flex-none";
 
 /**
  * Quick add on the phone: the task's words in a 17 pt field with a round add button, and under it a row of
@@ -70,7 +70,7 @@ export function PhoneQuickAdd({ onClose, currentDoc, initialDue }: { onClose: ()
           autoComplete="off"
           aria-invalid={q.error ? true : undefined}
           aria-describedby={q.parsed ? "qa-when" : undefined}
-          className="min-h-11 min-w-0 flex-1 bg-transparent px-1 text-[17px] leading-[22px] text-ink outline-none placeholder:text-faint"
+          className="min-h-11 min-w-0 flex-1 bg-transparent px-1 text-body leading-[22px] text-ink outline-none placeholder:text-faint"
         />
         {/* The round add button: 34 pt in the heading colour, in a 44 pt target; faint until there's a task. */}
         <button
@@ -86,7 +86,7 @@ export function PhoneQuickAdd({ onClose, currentDoc, initialDue }: { onClose: ()
         </button>
       </div>
       {q.repeat || q.parsed ? (
-        <div className="flex flex-wrap gap-2 px-1 pb-1 pt-0.5 text-[13px] leading-[18px] text-muted">
+        <div className="flex flex-wrap gap-2 px-1 pb-1 pt-0.5 text-footnote leading-[18px] text-muted">
           {q.repeat ? (
             <span className="inline-flex items-center gap-1">
               Repeats {describeRepeat(q.repeat.rule).toLowerCase()}
@@ -106,7 +106,7 @@ export function PhoneQuickAdd({ onClose, currentDoc, initialDue }: { onClose: ()
         </div>
       ) : null}
       {q.error ? (
-        <p role="alert" className="px-1 pb-1 text-[15px] leading-5 text-danger">
+        <p role="alert" className="px-1 pb-1 text-subheadline leading-5 text-danger">
           {q.error}
         </p>
       ) : null}

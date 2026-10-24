@@ -20,16 +20,16 @@ function CodeField({ value, onChange, label = "6-digit code", autoFocus = true }
       autoFocus={autoFocus}
       value={value}
       onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
-      className="text-center font-mono text-[20px] tracking-[0.4em]"
+      className="text-center font-mono text-title-2 tracking-[0.4em]"
     />
   );
 }
 
 function TrustDevice({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <Checkbox checked={checked} onChange={onChange} className="w-full gap-3 bg-sunken px-4 py-3 text-sm">
+    <Checkbox checked={checked} onChange={onChange} className="w-full gap-3 bg-sunken px-4 py-3 text-subheadline">
       <span className="font-medium text-ink">Trust this device for 30 days</span>
-      <span className="block text-xs text-muted">You won&apos;t be asked for a code here again until then. Don&apos;t use this on shared computers.</span>
+      <span className="block text-footnote text-muted">You won&apos;t be asked for a code here again until then. Don&apos;t use this on shared computers.</span>
     </Checkbox>
   );
 }
@@ -84,7 +84,7 @@ export function TwoFactorChallenge({ returnTo }: { returnTo?: string }) {
         <TrustDevice checked={trust} onChange={setTrust} />
         <SubmitButton busy={busy}>Verify</SubmitButton>
       </form>
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-sm text-muted">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-subheadline text-muted">
         <button
           type="button"
           className="font-medium text-accent underline decoration-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] underline-offset-2 hover:decoration-current"
@@ -119,7 +119,7 @@ export function BackupCodes({ codes, onDone, doneLabel = "Continue" }: { codes: 
   const text = useMemo(() => `Folevi backup codes\nEach code works once. Keep them somewhere safe.\n\n${codes.join("\n")}\n`, [codes]);
   return (
     <div className="space-y-4">
-      <ol className="grid grid-cols-2 gap-2 rounded-chip bg-sunken p-4 font-mono text-[15px] text-ink" aria-label="Backup codes">
+      <ol className="grid grid-cols-2 gap-2 rounded-chip bg-sunken p-4 font-mono text-body text-ink" aria-label="Backup codes">
         {codes.map((c) => (
           <li key={c} className="rounded-chip bg-surface px-3 py-1.5 text-center shadow-[var(--shadow-hairline)]">
             {c}
@@ -129,7 +129,7 @@ export function BackupCodes({ codes, onDone, doneLabel = "Continue" }: { codes: 
       <div className="flex gap-2">
         <button
           type="button"
-          className="ui-btn ui-btn-secondary h-10 flex-1 text-sm"
+          className="ui-btn ui-btn-secondary h-10 flex-1 text-callout"
           onClick={() => {
             void navigator.clipboard.writeText(text).then(() => {
               setCopied(true);
@@ -141,7 +141,7 @@ export function BackupCodes({ codes, onDone, doneLabel = "Continue" }: { codes: 
         </button>
         <button
           type="button"
-          className="ui-btn ui-btn-secondary h-10 flex-1 text-sm"
+          className="ui-btn ui-btn-secondary h-10 flex-1 text-callout"
           onClick={() => {
             const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
             const a = document.createElement("a");
@@ -154,10 +154,10 @@ export function BackupCodes({ codes, onDone, doneLabel = "Continue" }: { codes: 
           <Download size={15} aria-hidden /> Download
         </button>
       </div>
-      <Checkbox checked={saved} onChange={setSaved} className="gap-3 text-sm">
+      <Checkbox checked={saved} onChange={setSaved} className="gap-3 text-subheadline">
         I saved these codes somewhere safe. Each one works once, and they&apos;re the only way in if I lose my authenticator app.
       </Checkbox>
-      <button type="button" disabled={!saved} onClick={onDone} className="ui-btn ui-btn-primary h-11 w-full text-[15px]">
+      <button type="button" disabled={!saved} onClick={onDone} className="ui-btn ui-btn-primary h-11 w-full text-body">
         {doneLabel}
       </button>
     </div>
@@ -183,17 +183,17 @@ export function TotpEnrollment({ totpUri }: { totpUri: string }) {
       <div className="grid h-[188px] w-[188px] flex-none place-items-center rounded-chip bg-white p-3 shadow-[var(--shadow-card)]">
         {/* A locally generated data-URI QR code; next/image adds nothing here. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {qr ? <img src={qr} alt="QR code to add Folevi to your authenticator app" width={164} height={164} /> : <span className="text-xs text-muted">Preparing…</span>}
+        {qr ? <img src={qr} alt="QR code to add Folevi to your authenticator app" width={164} height={164} /> : <span className="text-footnote text-muted">Preparing…</span>}
       </div>
-      <div className="min-w-0 text-sm">
+      <div className="min-w-0 text-subheadline">
         <p className="text-muted">Scan with an authenticator app (1Password, Google Authenticator, Authy, Microsoft Authenticator…), or enter this key:</p>
         <p className="mt-2 flex items-center gap-2 rounded-chip bg-sunken px-3 py-2">
           <KeyRound size={14} className="flex-none text-muted" aria-hidden />
-          <code className="select-all break-all font-mono text-[13px] text-ink" data-testid="totp-secret">
+          <code className="select-all break-all font-mono text-subheadline text-ink" data-testid="totp-secret">
             {groupSecret(secret)}
           </code>
         </p>
-        <p className="mt-2 text-xs text-muted">Time-based, 6 digits, every 30 seconds.</p>
+        <p className="mt-2 text-footnote text-muted">Time-based, 6 digits, every 30 seconds.</p>
       </div>
     </div>
   );
@@ -216,11 +216,11 @@ export function TwoFactorSetup({ returnTo }: { returnTo?: string }) {
     else if (user?.twoFactorEnabled && step === "password") window.location.replace(destination);
   }, [isPending, session, user?.twoFactorEnabled, destination, step]);
 
-  if (isPending || !session) return <p className="text-sm text-muted">Loading…</p>;
+  if (isPending || !session) return <p className="text-subheadline text-muted">Loading…</p>;
 
   return (
     <>
-      <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.06em] text-faint" aria-label={`Step ${step === "password" ? 1 : step === "scan" ? 2 : 3} of 3`}>
+      <div className="mb-4 flex items-center gap-2 text-footnote font-semibold uppercase tracking-[0.06em] text-faint" aria-label={`Step ${step === "password" ? 1 : step === "scan" ? 2 : 3} of 3`}>
         {["Confirm", "Scan", "Save codes"].map((label, i) => {
           const active = (step === "password" ? 0 : step === "scan" ? 1 : 2) >= i;
           return (
@@ -290,13 +290,13 @@ export function TwoFactorSetup({ returnTo }: { returnTo?: string }) {
         </>
       ) : null}
       {step !== "codes" ? (
-        <p className="mt-6 text-sm text-muted">
+        <p className="mt-6 text-subheadline text-muted">
           <a href={destination} className="font-medium text-accent underline decoration-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] underline-offset-2 hover:decoration-current">
             {step === "password" ? "Not now" : "Cancel"}
           </a>
         </p>
       ) : null}
-      <p className="mt-3 text-sm text-muted">
+      <p className="mt-3 text-subheadline text-muted">
         Signed in as {user?.email}.{" "}
         <button
           type="button"

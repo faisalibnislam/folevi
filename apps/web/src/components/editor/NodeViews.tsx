@@ -257,7 +257,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
             <img src={src} alt={a.alt || ""} className="block h-auto max-w-full rounded-chip border border-line bg-sunken" draggable={false} />
             {selected && editable ? (
               <div
-                className="ui-pop absolute bottom-2 left-1/2 z-20 flex w-max -translate-x-1/2 max-w-[min(32rem,calc(100vw-2rem))] flex-wrap items-center gap-2 px-2 py-1.5 text-xs text-muted"
+                className="ui-pop absolute bottom-2 left-1/2 z-20 flex w-max -translate-x-1/2 max-w-[min(32rem,calc(100vw-2rem))] flex-wrap items-center gap-2 px-2 py-1.5 text-footnote text-muted"
                 contentEditable={false}
               >
                 <label className="flex items-center gap-1">
@@ -287,7 +287,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
             ) : null}
           </div>
         ) : (
-          <div className="grid h-40 place-items-center rounded-chip border border-dashed border-line-strong text-sm text-muted">
+          <div className="grid h-40 place-items-center rounded-chip border border-dashed border-line-strong text-subheadline text-muted">
             {a.fileId && !missing ? (
               "Loading image…"
             ) : (
@@ -298,7 +298,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
           </div>
         )}
         {upload ? (
-          <p className="mt-1 text-xs text-muted" role="status">
+          <p className="mt-1 text-footnote text-muted" role="status">
             {upload.state === "failed"
               ? `Upload interrupted. Retrying (attempt ${upload.attempts + 1})`
               : navigator.onLine
@@ -314,10 +314,10 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
               onExit={() => selectBlock(editor, getPos)}
               placeholder="Add a caption"
               aria-label="Image caption"
-              className="w-full bg-transparent text-center text-sm text-muted outline-none placeholder:text-faint"
+              className="w-full bg-transparent text-center text-subheadline text-muted outline-none placeholder:text-faint"
             />
           ) : a.caption ? (
-            <span className="block text-center text-sm text-muted">{a.caption}</span>
+            <span className="block text-center text-subheadline text-muted">{a.caption}</span>
           ) : null}
         </figcaption>
       </figure>
@@ -351,8 +351,8 @@ function FileView({ node, selected }: ReactNodeViewProps) {
       <div className="my-1.5 flex items-center gap-3 ui-card rounded-control px-3 py-2.5">
         <FileText size={20} className="text-muted" aria-hidden />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{a.name ?? "Attachment"}</p>
-          <p className="text-xs text-muted">
+          <p className="truncate text-subheadline font-medium">{a.name ?? "Attachment"}</p>
+          <p className="text-footnote text-muted">
             {a.size ? formatBytes(a.size) : ""}
             {upload
               ? upload.state === "failed"
@@ -367,7 +367,7 @@ function FileView({ node, selected }: ReactNodeViewProps) {
           <button
             type="button"
             onClick={() => void quickLookFile(file.url, a.name ?? "Attachment")}
-            className="inline-flex h-8 items-center gap-1.5 rounded-chip border border-line px-2.5 text-xs hover:bg-surface"
+            className="inline-flex h-8 items-center gap-1.5 rounded-chip border border-line px-2.5 text-footnote hover:bg-surface"
             contentEditable={false}
             title="Quick Look"
           >
@@ -377,7 +377,7 @@ function FileView({ node, selected }: ReactNodeViewProps) {
         {file ? (
           <a
             href={file.url}
-            className="inline-flex h-8 items-center gap-1.5 rounded-chip border border-line px-2.5 text-xs hover:bg-surface"
+            className="inline-flex h-8 items-center gap-1.5 rounded-chip border border-line px-2.5 text-footnote hover:bg-surface"
             download={a.name ?? true}
             contentEditable={false}
           >
@@ -481,7 +481,7 @@ function PageView({ node, selected }: ReactNodeViewProps) {
         <FileText size={20} aria-hidden className="mt-0.5 flex-none text-muted" />
         <span className="min-w-0 flex-1">
           <span className={`block font-semibold ${gone ? "text-muted line-through" : "text-ink"}`}>{title}</span>
-          <span className="line-clamp-2 block text-sm text-muted">
+          <span className="line-clamp-2 block text-subheadline text-muted">
             {missing
               ? "This page is unavailable or you no longer have access."
               : trashed
@@ -640,8 +640,8 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
               <Link2 size={18} className="mb-1 text-muted" aria-hidden />
             )}
             <span className="block truncate font-semibold text-ink">{a.title || host}</span>
-            {a.description ? <span className="line-clamp-2 block text-sm leading-snug text-muted">{a.description}</span> : null}
-            <span className="block truncate text-xs text-faint">
+            {a.description ? <span className="line-clamp-2 block text-subheadline leading-snug text-muted">{a.description}</span> : null}
+            <span className="block truncate text-footnote text-faint">
               {a.siteName ? `${a.siteName} · ` : ""}
               {host}
             </span>
@@ -667,7 +667,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
         ) : null}
         {editing && editable ? (
           <form
-            className="grid gap-2 border-t border-line p-4 text-xs"
+            className="grid gap-2 border-t border-line p-4 text-footnote"
             onSubmit={(e) => {
               e.preventDefault();
               finish();
@@ -694,7 +694,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
                   if (address.trim() !== (a.url ?? "")) saveAddress();
                 }}
                 aria-invalid={Boolean(addressError)}
-                className={`h-8 ui-input rounded-chip px-2 text-sm text-ink ${addressError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
+                className={`h-8 ui-input rounded-chip px-2 text-callout text-ink ${addressError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
               />
               {addressError ? (
                 <span role="alert" className="text-danger">
@@ -704,23 +704,23 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
             </label>
             <label className="grid gap-1">
               Title
-              <DraftInput value={a.title ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ title: v || null })} className="h-8 ui-input rounded-chip px-2 text-sm text-ink" />
+              <DraftInput value={a.title ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ title: v || null })} className="h-8 ui-input rounded-chip px-2 text-callout text-ink" />
             </label>
             <label className="grid gap-1">
               Description
-              <DraftInput value={a.description ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ description: v || null })} className="h-8 ui-input rounded-chip px-2 text-sm text-ink" />
+              <DraftInput value={a.description ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ description: v || null })} className="h-8 ui-input rounded-chip px-2 text-callout text-ink" />
             </label>
             <div className="flex items-center justify-between gap-2">
               <button
                 type="button"
-                className="ui-btn ui-btn-quiet h-8 px-3 text-xs"
+                className="ui-btn ui-btn-quiet h-8 px-3 text-footnote"
                 onClick={() => {
                   if (a.url) void loadPreview(a.url, true);
                 }}
               >
                 Refresh preview
               </button>
-              <button type="submit" className="ui-btn ui-btn-primary h-8 px-3.5 text-xs">
+              <button type="submit" className="ui-btn ui-btn-primary h-8 px-3.5 text-footnote">
                 Done
               </button>
             </div>
@@ -752,7 +752,7 @@ function UnknownView({ node, selected, deleteNode, editor }: ReactNodeViewProps)
     <Frame selected={selected} label="Unsupported block">
       <div
         contentEditable={false}
-        className="my-2 flex items-center gap-3 rounded-chip border border-dashed border-line-strong bg-sunken px-4 py-3 text-sm text-muted"
+        className="my-2 flex items-center gap-3 rounded-chip border border-dashed border-line-strong bg-sunken px-4 py-3 text-subheadline text-muted"
       >
         <span className="flex-1">
           This “{wire?.type ?? "unknown"}” block was created by a newer version of Folevi. It’s kept

@@ -125,10 +125,10 @@ export function DevicesSection() {
             <MonitorSmartphone size={20} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-semibold text-heading">
+            <p className="text-headline font-semibold text-heading">
               {count === undefined ? "…" : limit === null ? `${count} ${plural(count)} connected` : `${count} of ${limit} ${plural(limit)} connected`}
             </p>
-            <p className="mt-0.5 text-[13px] text-muted">
+            <p className="mt-0.5 text-subheadline text-muted">
               {limit === null
                 ? entitlements?.trialing
                   ? `Unlimited devices during your ${TIER_NAMES[TRIAL_TIER]} trial.`
@@ -142,7 +142,7 @@ export function DevicesSection() {
             ) : null}
           </div>
           {limit !== null && canPurchaseHere() ? (
-            <AppLink href="/settings/billing" className="ui-btn ui-btn-secondary h-9 px-4 text-sm">
+            <AppLink href="/settings/billing" className="ui-btn ui-btn-secondary h-9 px-4 text-callout">
               Get unlimited devices
             </AppLink>
           ) : null}
@@ -151,18 +151,18 @@ export function DevicesSection() {
 
       <Card title="Signed in" description="Browsers and apps signed in to your account. Signing a device out ends its session right away; it asks for your password and code to sign in again.">
         <ul className="ui-card divide-y divide-line overflow-hidden rounded-control" aria-busy={sessions === undefined || undefined}>
-          {sessions === undefined ? <li className="px-4 py-3 text-sm text-muted">Loading…</li> : null}
+          {sessions === undefined ? <li className="px-4 py-3 text-subheadline text-muted">Loading…</li> : null}
           {sessions?.map((s) => (
             <li key={s.id} className="flex items-center gap-3 px-4 py-3">
               <DeviceIcon client={s.client} label={s.label} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-heading">{s.label}</span>
-                <span className="block text-xs text-muted">
+                <span className="block truncate text-subheadline font-medium text-heading">{s.label}</span>
+                <span className="block text-footnote text-muted">
                   Signed in {formatDateTime(s.createdAt)} · active {formatRelative(s.lastSeenAt)}
                 </span>
               </span>
               {s.current ? (
-                <span className="ui-chip h-6 flex-none self-center bg-moss-soft text-[11.5px] text-moss-ink">This device</span>
+                <span className="ui-chip h-6 flex-none self-center bg-moss-soft text-footnote text-moss-ink">This device</span>
               ) : (
                 <Button size="sm" aria-label={`Sign out ${s.label}`} onClick={() => signOut(s.id)}>
                   Sign out

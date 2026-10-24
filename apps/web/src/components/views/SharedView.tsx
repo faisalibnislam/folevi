@@ -12,7 +12,7 @@ export function SharedView() {
   const docs = useQuery(api.sharing.sharedWithMe, {});
   return (
     <ViewChrome
-      title={<h1 className="text-sm font-semibold">Shared with Me</h1>}
+      title={<h1 className="text-subheadline font-semibold">Shared with Me</h1>}
       subtitle={docs === undefined ? undefined : `${docs.length} ${docs.length === 1 ? "page" : "pages"} · from anyone`}
       tabTitle="Shared with Me"
       iphone={{ title: "Shared with Me", subtitle: docs && docs.length ? `${docs.length} ${docs.length === 1 ? "page" : "pages"}` : undefined }}
@@ -27,13 +27,13 @@ export function SharedView() {
             {docs.map((d) => (
               <li key={d.id}>
                 <AppLink href={`/d/${d.id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-surface">
-                  <span className="text-xl" aria-hidden>
+                  <span className="text-title-2" aria-hidden>
                     <FileText size={16} className="text-muted" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-medium">{d.title || "Untitled"}</span>
-                    <span className="block truncate text-sm text-muted">{d.excerpt}</span>
-                    <span className="block text-xs text-faint">
+                    <span className="block truncate text-subheadline text-muted">{d.excerpt}</span>
+                    <span className="block text-footnote text-faint">
                       Shared by {d.sharedBy} · {d.workspaceName ?? `Personal · ${d.ownerName ?? "someone"}`} · {d.role === "editor" ? "Can edit" : d.role === "commenter" ? "Can comment" : "Can view"} · updated {formatRelative(d.updatedAt)}
                     </span>
                   </span>

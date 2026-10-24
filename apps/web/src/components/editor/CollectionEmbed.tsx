@@ -235,7 +235,7 @@ function ConfirmDialog({ open, title, body, confirmLabel, onCancel, onConfirm }:
         </>
       }
     >
-      <p className="text-sm text-muted">{body}</p>
+      <p className="text-subheadline text-muted">{body}</p>
     </Dialog>
   );
 }
@@ -251,7 +251,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
   const phone = useIphoneApp();
 
   if (data === undefined) return <div className="h-40 animate-pulse ui-card rounded-control motion-reduce:animate-none" aria-busy />;
-  if (data === null) return <p className="rounded-chip border border-dashed border-line p-4 text-sm text-muted">This collection is unavailable.</p>;
+  if (data === null) return <p className="rounded-chip border border-dashed border-line p-4 text-subheadline text-muted">This collection is unavailable.</p>;
   const view = data.views.find((v) => v.id === viewId) ?? data.views.find((v) => v.id === initialViewId) ?? data.views[0]!;
   const canEdit = editable && data.canEdit;
   const rows = applyView(data.rows, view.config, data.properties);
@@ -324,11 +324,11 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
             value={data.name}
             label="Collection name"
             maxLength={80}
-            className="mr-2 w-44 text-sm font-semibold text-heading"
+            className="mr-2 w-44 text-subheadline font-semibold text-heading"
             onCommit={(name) => void rename({ collectionId, name: name || "Collection" }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
           />
         ) : (
-          <h3 className="mr-2 text-sm font-semibold text-heading">{data.name}</h3>
+          <h3 className="mr-2 text-subheadline font-semibold text-heading">{data.name}</h3>
         )}
         <div role="group" aria-label="Views" className="flex flex-wrap gap-1">
           {data.views.map((v) => (
@@ -337,7 +337,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
               type="button"
               aria-pressed={v.id === view.id}
               onClick={() => setViewId(v.id)}
-              className={`inline-flex h-7 items-center gap-1.5 rounded-chip px-2.5 text-xs ${v.id === view.id ? "bg-accent-soft text-accent-soft-ink" : "text-muted hover:bg-surface"}`}
+              className={`inline-flex h-7 items-center gap-1.5 rounded-chip px-2.5 text-footnote ${v.id === view.id ? "bg-accent-soft text-accent-soft-ink" : "text-muted hover:bg-surface"}`}
             >
               <ViewIcon type={v.type} />
               {v.name}
@@ -353,7 +353,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
           <ExportMenu name={data.name} rows={rows} visible={visible} people={data.people} />
           {canEdit ? (
             <>
-              <button type="button" onClick={() => setSettingsOpen(true)} className="inline-flex h-7 items-center gap-1 rounded-chip px-2.5 text-xs text-muted hover:bg-surface" aria-label="View settings: filter, sort, group, properties">
+              <button type="button" onClick={() => setSettingsOpen(true)} className="inline-flex h-7 items-center gap-1 rounded-chip px-2.5 text-footnote text-muted hover:bg-surface" aria-label="View settings: filter, sort, group, properties">
                 <Settings2 size={13} aria-hidden /> View
               </button>
               <Select
@@ -363,7 +363,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
                   const type = e.target.value as View["type"];
                   if (type) addViewOf(type);
                 }}
-                className="h-7 ui-input rounded-chip px-3 text-xs text-muted"
+                className="h-7 ui-input rounded-chip px-3 text-footnote text-muted"
               >
                 <option value="">+ View</option>
                 <option value="table">Table</option>
@@ -388,7 +388,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
         <GalleryCollection data={data} view={view} rows={rows} visible={visible} />
       )}
       {canEdit && (view.type !== "board" || data.properties.some((p) => p.id === view.config.groupBy && p.type === "formula")) ? (
-        <button type="button" onClick={() => void add()} className="flex w-full items-center gap-1.5 border-t border-line px-3 py-2 text-left text-xs text-muted hover:bg-surface">
+        <button type="button" onClick={() => void add()} className="flex w-full items-center gap-1.5 border-t border-line px-3 py-2 text-left text-footnote text-muted hover:bg-surface">
           <Plus size={13} aria-hidden /> New row
         </button>
       ) : null}
@@ -458,12 +458,12 @@ function PhoneCollection({
     <section className="iphone-collection" aria-label={`Collection ${data.name}`}>
       <header className="flex min-h-11 items-center gap-2 pl-4 pr-1">
         {canEdit ? (
-          <InlineText value={data.name} label="Collection name" maxLength={80} className="min-w-0 flex-1 text-[17px] font-semibold text-heading" onCommit={onRename} />
+          <InlineText value={data.name} label="Collection name" maxLength={80} className="min-w-0 flex-1 text-headline font-semibold text-heading" onCommit={onRename} />
         ) : (
-          <h3 className="min-w-0 flex-1 truncate text-[17px] font-semibold text-heading">{data.name}</h3>
+          <h3 className="min-w-0 flex-1 truncate text-headline font-semibold text-heading">{data.name}</h3>
         )}
         {view.config.filters.length ? (
-          <span className="inline-flex h-7 flex-none items-center gap-1 iphone-round bg-accent-soft px-2.5 text-[13px] text-accent-soft-ink">
+          <span className="inline-flex h-7 flex-none items-center gap-1 iphone-round bg-accent-soft px-2.5 text-footnote text-accent-soft-ink">
             <Filter size={12} aria-hidden /> {view.config.filters.length}
           </span>
         ) : null}
@@ -497,9 +497,9 @@ function PhoneCollection({
                   <RowLink row={row} className="flex min-h-16 items-center gap-3 px-4 py-2.5 outline-none active:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
                     <FileText size={20} strokeWidth={1.9} aria-hidden className="flex-none text-muted" />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[17px] leading-[22px] text-ink">{row.title || "Untitled"}</span>
+                      <span className="block truncate text-body leading-[22px] text-ink">{row.title || "Untitled"}</span>
                       {shown.length ? (
-                        <span className="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-[15px] leading-5 text-muted">
+                        <span className="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-subheadline leading-5 text-muted">
                           {shown.map((p, i) => (
                             <span key={p.id} className="flex min-w-0 items-center gap-1.5">
                               {i ? <span aria-hidden>·</span> : null}
@@ -518,7 +518,7 @@ function PhoneCollection({
             })}
           </ul>
         ) : (
-          <p className="px-4 pb-3 text-[15px] italic text-muted">No rows{data.rows.length ? " match this view" : " yet"}.</p>
+          <p className="px-4 pb-3 text-subheadline italic text-muted">No rows{data.rows.length ? " match this view" : " yet"}.</p>
         )
       ) : view.type === "gallery" ? (
         <ul className="grid grid-cols-2 gap-3 px-3 pb-3">
@@ -527,13 +527,13 @@ function PhoneCollection({
               <RowLink row={row} className="block overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-hairline)] outline-none transition-transform active:scale-[0.98]">
                 {view.config.cardPreview !== "none" ? (
                   <GalleryCover cover={row.cover}>
-                    {view.config.cardPreview === "content" ? <p className="line-clamp-4 p-3 text-[13px] leading-[18px] text-muted">{row.excerpt}</p> : <div className="grid h-full place-items-center text-faint"><FileText size={26} aria-hidden /></div>}
+                    {view.config.cardPreview === "content" ? <p className="line-clamp-4 p-3 text-subheadline leading-[18px] text-muted">{row.excerpt}</p> : <div className="grid h-full place-items-center text-faint"><FileText size={26} aria-hidden /></div>}
                   </GalleryCover>
                 ) : null}
                 <div className="px-3 py-2.5">
-                  <p className="line-clamp-2 text-[15px] font-semibold leading-5 text-heading">{row.title || "Untitled"}</p>
+                  <p className="line-clamp-2 text-subheadline font-semibold leading-5 text-heading">{row.title || "Untitled"}</p>
                   {subtitle.length ? (
-                    <div className="mt-1 space-y-0.5 text-[13px] leading-[18px] text-muted">
+                    <div className="mt-1 space-y-0.5 text-subheadline leading-[18px] text-muted">
                       {subtitle.map((p) => (
                         <div key={p.id} className="truncate">
                           <CellDisplay prop={p} value={row.values[p.id]} people={data.people} inLink />
@@ -552,7 +552,7 @@ function PhoneCollection({
         <CalendarCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onAdd={onAdd} />
       )}
       {canEdit && (view.type !== "board" || data.properties.some((p) => p.id === view.config.groupBy && p.type === "formula")) ? (
-        <button type="button" onClick={() => void onAdd()} className="flex min-h-11 w-full items-center gap-2.5 px-4 text-left text-[17px] text-heading outline-none active:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
+        <button type="button" onClick={() => void onAdd()} className="flex min-h-11 w-full items-center gap-2.5 px-4 text-left text-body text-heading outline-none active:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
           <Plus size={20} strokeWidth={2.2} aria-hidden /> New row
         </button>
       ) : null}
@@ -620,12 +620,12 @@ function PropertyEditor({
           {prop.options.map((o) => {
             const on = selected.includes(o.id);
             return (
-              <button key={o.id} type="button" aria-pressed={on} onClick={() => void save(on ? selected.filter((x) => x !== o.id) : [...selected, o.id])} className={`rounded-chip px-2 py-0.5 text-[11px] ${on ? "" : "opacity-40"}`} style={optionColor(o.color)}>
+              <button key={o.id} type="button" aria-pressed={on} onClick={() => void save(on ? selected.filter((x) => x !== o.id) : [...selected, o.id])} className={`rounded-chip px-2 py-0.5 text-footnote ${on ? "" : "opacity-40"}`} style={optionColor(o.color)}>
                 {o.name}
               </button>
             );
           })}
-          {prop.options.length === 0 ? <span className="text-xs text-faint">No options yet (View settings)</span> : null}
+          {prop.options.length === 0 ? <span className="text-footnote text-faint">No options yet (View settings)</span> : null}
         </div>
       );
     }
@@ -668,7 +668,7 @@ function RelationEditor({ label, scope, value, onChange }: { label: string; scop
   return (
     <div className="flex flex-wrap items-center gap-1" role="group" aria-label={label}>
       {value.map((id) => (
-        <span key={id} className="inline-flex items-center gap-1 rounded-chip bg-sunken px-2 py-0.5 text-[11px]">
+        <span key={id} className="inline-flex items-center gap-1 rounded-chip bg-sunken px-2 py-0.5 text-footnote">
           <AppLink href={`/d/${id}`} className="hover:underline">
             {titles?.[id]?.title || "Untitled"}
           </AppLink>
@@ -678,7 +678,7 @@ function RelationEditor({ label, scope, value, onChange }: { label: string; scop
         </span>
       ))}
       {scope ? (
-        <button type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} className="rounded-chip px-1.5 py-0.5 text-[11px] text-muted hover:bg-sunken">
+        <button type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} className="rounded-chip px-1.5 py-0.5 text-caption-2 text-muted hover:bg-sunken">
           + Link page
         </button>
       ) : null}
@@ -741,7 +741,7 @@ function PagePicker({ scope, exclude, onPick }: { scope: WireScope; exclude: str
           }}
           onKeyDown={onKey}
           placeholder="Search pages…"
-          className="h-9 min-w-0 flex-1 bg-transparent text-sm outline-none"
+          className="h-9 min-w-0 flex-1 bg-transparent text-subheadline outline-none"
         />
       </label>
       <p className="ui-caps mt-3 px-1">{debounced ? "Matching pages" : "Recent pages"}</p>
@@ -756,13 +756,13 @@ function PagePicker({ scope, exclude, onPick }: { scope: WireScope; exclude: str
             onMouseEnter={() => setActive(i)}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => pick(d.id)}
-            className="ui-menu-item flex cursor-pointer items-center gap-2 rounded-chip px-2 py-1.5 text-sm"
+            className="ui-menu-item flex cursor-pointer items-center gap-2 rounded-chip px-2 py-1.5 text-subheadline"
           >
             <FileText size={14} aria-hidden className="flex-none text-muted" />
             <span className="truncate">{d.title || "Untitled"}</span>
           </li>
         ))}
-        {loaded !== undefined && options.length === 0 ? <li className="px-2 py-2 text-sm text-muted">{debounced ? "No matching pages" : "No recent pages"}</li> : null}
+        {loaded !== undefined && options.length === 0 ? <li className="px-2 py-2 text-subheadline text-muted">{debounced ? "No matching pages" : "No recent pages"}</li> : null}
       </ul>
     </div>
   );
@@ -777,7 +777,7 @@ function CellDisplay({ prop, value, people, inLink }: { prop: Property; value: u
   if (prop.type === "checkbox") return <span>{value ? "✓" : ""}</span>;
   if (prop.type === "select") {
     const o = prop.options.find((x) => x.id === value);
-    return o ? <span className="rounded-chip px-2 py-0.5 text-[11px]" style={optionColor(o.color)}>{o.name}</span> : null;
+    return o ? <span className="rounded-chip px-2 py-0.5 text-footnote" style={optionColor(o.color)}>{o.name}</span> : null;
   }
   if (prop.type === "multiSelect" && Array.isArray(value)) {
     return (
@@ -785,7 +785,7 @@ function CellDisplay({ prop, value, people, inLink }: { prop: Property; value: u
         {value.map((id) => {
           const o = prop.options.find((x) => x.id === id);
           return o ? (
-            <span key={id} className="rounded-chip px-2 py-0.5 text-[11px]" style={optionColor(o.color)}>
+            <span key={id} className="rounded-chip px-2 py-0.5 text-footnote" style={optionColor(o.color)}>
               {o.name}
             </span>
           ) : null;
@@ -818,9 +818,9 @@ function TableCollection({ data, view, rows, visible, canEdit, onEditFormula }: 
   const [confirm, setConfirm] = useState<Row | null>(null);
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full border-collapse text-subheadline">
         <thead>
-          <tr className="text-left text-xs text-muted">
+          <tr className="text-left text-footnote text-muted">
             <th scope="col" className="border-b border-line px-3 py-2 font-medium">
               Name
             </th>
@@ -866,7 +866,7 @@ function TableCollection({ data, view, rows, visible, canEdit, onEditFormula }: 
                       <ArrowUpRight size={13} aria-hidden />
                     </AppLink>
                   ) : null}
-                  {row.waiting ? <span className="flex-none text-[11px] text-faint">{row.waiting === "failed" ? "Not saved" : "Waiting to send"}</span> : null}
+                  {row.waiting ? <span className="flex-none text-footnote text-faint">{row.waiting === "failed" ? "Not saved" : "Waiting to send"}</span> : null}
                 </div>
               </td>
               {visible.map((p) => (
@@ -885,7 +885,7 @@ function TableCollection({ data, view, rows, visible, canEdit, onEditFormula }: 
           ))}
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={visible.length + 2} className="px-3 py-6 text-center text-sm text-muted">
+              <td colSpan={visible.length + 2} className="px-3 py-6 text-center text-subheadline text-muted">
                 {data.rows.length ? "No rows match this view." : "No rows yet."}
               </td>
             </tr>
@@ -927,7 +927,7 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
   const [dragging, setDragging] = useState<string | null>(null);
   const formulaGroup = data.properties.find((p) => p.id === view.config.groupBy && p.type === "formula");
   if (formulaGroup) return <FormulaBoard data={data} group={formulaGroup} rows={rows} visible={visible} />;
-  if (!group) return <p className="p-4 text-sm text-muted">Choose a single-select or formula property to group this board by (View settings).</p>;
+  if (!group) return <p className="p-4 text-subheadline text-muted">Choose a single-select or formula property to group this board by (View settings).</p>;
   const columns = [...group.options.map((o) => ({ id: o.id as string | null, name: o.name, color: o.color })), { id: null, name: "No " + group.name.toLowerCase(), color: "muted" }];
   const move = (rowId: string, to: string | null, after: string | null) =>
     moveRow({ collectionId: data.id, rowId, afterRowId: after, groupPropertyId: group.id, groupValue: to }).catch((e) => toast.show(errorMessage(e), { tone: "error" }));
@@ -953,7 +953,7 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
               void move(rowId, col.id, last?.id ?? null);
             }}
           >
-            <h4 className="mb-2 flex items-center gap-2 px-1 text-xs font-semibold">
+            <h4 className="mb-2 flex items-center gap-2 px-1 text-footnote font-semibold">
               <span className="rounded-chip px-2 py-0.5" style={optionColor(col.color)}>
                 {col.name}
               </span>
@@ -972,11 +972,11 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
                     setDragging(row.id);
                   }}
                   onDragEnd={() => setDragging(null)}
-                  className="rounded-chip border border-line bg-raised p-2.5 text-sm shadow-[0_1px_0_var(--color-line)]">
+                  className="rounded-chip border border-line bg-raised p-2.5 text-subheadline shadow-[0_1px_0_var(--color-line)]">
                   <RowLink row={row} className="font-medium hover:underline">
                     {row.title || "Untitled"}
                   </RowLink>
-                  <div className="mt-1 space-y-0.5 text-xs text-muted">
+                  <div className="mt-1 space-y-0.5 text-footnote text-muted">
                     {visible
                       .filter((p) => p.id !== group.id)
                       .map((p) => (
@@ -986,7 +986,7 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
                       ))}
                   </div>
                   {canEdit ? (
-                    <label className="mt-1.5 flex items-center gap-1 text-[11px] text-faint">
+                    <label className="mt-1.5 flex items-center gap-1 text-footnote text-faint">
                       <span className="sr-only">Move {row.title || "card"} to</span>
                       <Select value={col.id ?? ""} onChange={(e) => void move(row.id, e.target.value || null, null)} className="bg-transparent">
                         {columns.map((c) => (
@@ -1001,7 +1001,7 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
               ))}
             </ul>
             {canEdit ? (
-              <button type="button" onClick={() => void onAdd(col.id ? { [group.id]: col.id } : undefined)} className="mt-2 flex items-center gap-1 rounded-chip px-2 py-1 text-xs text-muted hover:bg-raised">
+              <button type="button" onClick={() => void onAdd(col.id ? { [group.id]: col.id } : undefined)} className="mt-2 flex items-center gap-1 rounded-chip px-2 py-1 text-footnote text-muted hover:bg-raised">
                 <Plus size={12} aria-hidden /> New
               </button>
             ) : null}
@@ -1025,17 +1025,17 @@ function FormulaBoard({ data, group, rows, visible }: { data: CollectionData; gr
         const name = col.key === "empty" ? `No ${group.name.toLowerCase()}` : col.key === "error" ? "Errors" : col.result.kind === "date" ? formatCalendarDate(String(col.result.value)) : col.result.display;
         return (
           <section key={col.key} aria-label={t("collection.board.column", { name, count: items.length })} className="flex w-64 flex-none flex-col rounded-chip bg-sunken p-2">
-            <h4 className="mb-2 flex items-center gap-2 px-1 text-xs font-semibold">
+            <h4 className="mb-2 flex items-center gap-2 px-1 text-footnote font-semibold">
               <span className="truncate rounded-chip bg-raised px-2 py-0.5 shadow-[0_0_0_1px_var(--color-line)]">{name}</span>
               <span className="text-faint">{items.length}</span>
             </h4>
             <ul className="space-y-2">
               {items.map((row) => (
-                <li key={row.id} className="rounded-chip border border-line bg-raised p-2.5 text-sm shadow-[0_1px_0_var(--color-line)]">
+                <li key={row.id} className="rounded-chip border border-line bg-raised p-2.5 text-subheadline shadow-[0_1px_0_var(--color-line)]">
                   <RowLink row={row} className="font-medium hover:underline">
                     {row.title || "Untitled"}
                   </RowLink>
-                  <div className="mt-1 space-y-0.5 text-xs text-muted">
+                  <div className="mt-1 space-y-0.5 text-footnote text-muted">
                     {visible
                       .filter((p) => p.id !== group.id)
                       .map((p) => (
@@ -1050,7 +1050,7 @@ function FormulaBoard({ data, group, rows, visible }: { data: CollectionData; gr
           </section>
         );
       })}
-      {columns.length === 0 ? <p className="p-1 text-sm text-muted">No rows yet.</p> : null}
+      {columns.length === 0 ? <p className="p-1 text-subheadline text-muted">No rows yet.</p> : null}
     </div>
   );
 }
@@ -1068,7 +1068,7 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
   const [month, setMonth] = useState(() => today.slice(0, 7));
   const [dragging, setDragging] = useState<string | null>(null);
   const prop = data.properties.find((p) => p.id === view.config.dateBy && p.type === "date");
-  if (!prop) return <p className="p-4 text-sm text-muted">Choose a date property to place rows on this calendar (View settings).</p>;
+  if (!prop) return <p className="p-4 text-subheadline text-muted">Choose a date property to place rows on this calendar (View settings).</p>;
   const { byDate, undated } = rowsByDate(rows, prop.id);
   const days = monthGrid(month);
   const monthLabel = formatCalendarDate(`${month}-01`, { month: "long", year: "numeric" });
@@ -1109,7 +1109,7 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
       }}
       onDragEnd={() => setDragging(null)}
       title={chipTitle(row)}
-      className={`block truncate rounded-tiny bg-accent-soft px-1 text-[11.5px] leading-5 text-accent-soft-ink hover:underline ${canEdit ? "cursor-grab" : ""}`}
+      className={`block truncate rounded-tiny bg-accent-soft px-1 text-footnote leading-5 text-accent-soft-ink hover:underline ${canEdit ? "cursor-grab" : ""}`}
     >
       {row.title || "Untitled"}
     </RowLink>
@@ -1117,7 +1117,7 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
   return (
     <div className="p-3">
       <div className="mb-2 flex items-center gap-1">
-        <h4 className="text-sm font-semibold">{monthLabel}</h4>
+        <h4 className="text-subheadline font-semibold">{monthLabel}</h4>
         <div className="ml-auto flex items-center gap-1">
           <IconButton label="Previous month" onClick={() => setMonth(shiftMonth(month, -1))}>
             <ChevronLeft size={15} aria-hidden />
@@ -1131,7 +1131,7 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
         </div>
       </div>
       <div role="grid" aria-label={`${data.name}, ${monthLabel}`} className="overflow-hidden rounded-chip border border-line">
-        <div role="row" className="grid grid-cols-7 border-b border-line bg-surface text-center text-[11px] font-medium text-muted">
+        <div role="row" className="grid grid-cols-7 border-b border-line bg-surface text-center text-footnote font-medium text-muted">
           {weekdays.map((w) => (
             <div key={w} role="columnheader" className="py-1.5">
               {w}
@@ -1154,7 +1154,7 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
                   className={`group/day min-h-[88px] min-w-0 border-b border-r border-line p-1 last:border-r-0 ${inMonth ? "" : "bg-surface/60"}`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={`grid h-5 min-w-5 place-items-center rounded-chip px-1 text-[11px] tabular-nums ${date === today ? "bg-heading font-semibold text-canvas" : inMonth ? "text-ink" : "text-faint"}`}>{Number(date.slice(8))}</span>
+                    <span className={`grid h-5 min-w-5 place-items-center rounded-chip px-1 text-caption-2 tabular-nums ${date === today ? "bg-heading font-semibold text-canvas" : inMonth ? "text-ink" : "text-faint"}`}>{Number(date.slice(8))}</span>
                     {canEdit ? (
                       <button
                         type="button"
@@ -1171,7 +1171,7 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
                     {items.slice(0, 4).map((row) => (
                       <li key={row.id}>{chip(row)}</li>
                     ))}
-                    {items.length > 4 ? <li className="px-1 text-[11px] text-muted">+{items.length - 4} more</li> : null}
+                    {items.length > 4 ? <li className="px-1 text-footnote text-muted">+{items.length - 4} more</li> : null}
                   </ul>
                 </div>
               );
@@ -1181,7 +1181,7 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
       </div>
       {undated.length || canEdit ? (
         <section aria-label="No date" {...dropTarget(null)} className="mt-3 rounded-chip bg-sunken p-2">
-          <h4 className="mb-1.5 flex items-center gap-2 px-1 text-xs font-semibold">
+          <h4 className="mb-1.5 flex items-center gap-2 px-1 text-footnote font-semibold">
             No date <span className="font-normal text-faint">{undated.length}</span>
           </h4>
           {undated.length ? (
@@ -1193,7 +1193,7 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
               ))}
             </ul>
           ) : (
-            <p className="px-1 text-xs text-muted">Every row has a date. Drag one here to clear it.</p>
+            <p className="px-1 text-footnote text-muted">Every row has a date. Drag one here to clear it.</p>
           )}
         </section>
       ) : null}
@@ -1221,12 +1221,12 @@ function GalleryCollection({ data, view, rows, visible }: { data: CollectionData
           <RowLink row={row} className="block overflow-hidden ui-card rounded-control transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]">
             {view.config.cardPreview !== "none" ? (
               <GalleryCover cover={row.cover}>
-                {view.config.cardPreview === "content" ? <p className="line-clamp-4 p-3 text-xs text-muted">{row.excerpt}</p> : <div className="grid h-full place-items-center text-faint"><FileText size={28} aria-hidden /></div>}
+                {view.config.cardPreview === "content" ? <p className="line-clamp-4 p-3 text-footnote text-muted">{row.excerpt}</p> : <div className="grid h-full place-items-center text-faint"><FileText size={28} aria-hidden /></div>}
               </GalleryCover>
             ) : null}
             <div className="p-3">
               <p className="font-medium">{row.title || "Untitled"}</p>
-              <div className="mt-1 space-y-0.5 text-xs text-muted">
+              <div className="mt-1 space-y-0.5 text-footnote text-muted">
                 {visible.map((p) => (
                   <div key={p.id}>
                     <CellDisplay prop={p} value={row.values[p.id]} people={data.people} inLink />
@@ -1326,7 +1326,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
     <Dialog open={open} onClose={onClose} title={`${view.name} settings`} description="Filters, sorting, grouping and visible properties are saved with this view for everyone." size="lg">
       <div className="grid gap-6 md:grid-cols-2">
         <section>
-          <label className="mb-4 block text-sm">
+          <label className="mb-4 block text-subheadline">
             <span className="font-semibold">View name</span>
             <InlineText
               value={view.name}
@@ -1336,14 +1336,14 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
               onCommit={(name) => void updateView({ collectionId: data.id, viewId: view.id, name: name || view.name }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
             />
           </label>
-          <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+          <h3 className="mb-2 flex items-center gap-1.5 text-subheadline font-semibold">
             <Filter size={14} aria-hidden /> Filters
           </h3>
           {config.filters.map((f, i) => {
             const target = targets.find((t) => t.id === f.propertyId);
             const ops = target ? OPS[target.type] : [f.op];
             return (
-              <div key={i} className="mb-2 flex flex-wrap items-center gap-1.5 text-sm" role="group" aria-label={`Filter ${i + 1}`}>
+              <div key={i} className="mb-2 flex flex-wrap items-center gap-1.5 text-subheadline" role="group" aria-label={`Filter ${i + 1}`}>
                 <Select
                   aria-label="Property"
                   value={f.propertyId}
@@ -1379,11 +1379,11 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
             <Plus size={12} aria-hidden /> Add filter
           </Button>
 
-          <h3 className="mb-2 mt-6 flex items-center gap-1.5 text-sm font-semibold">
+          <h3 className="mb-2 mt-6 flex items-center gap-1.5 text-subheadline font-semibold">
             <ArrowDownUp size={14} aria-hidden /> Sort
           </h3>
           {config.sorts.map((s, i) => (
-            <div key={i} className="mb-2 flex items-center gap-1.5 text-sm">
+            <div key={i} className="mb-2 flex items-center gap-1.5 text-subheadline">
               <Select aria-label="Sort property" value={s.propertyId} onChange={(e) => void save({ sorts: current().sorts.map((x, j) => (j === i ? { ...x, propertyId: e.target.value } : x)) })} className="h-8 ui-input rounded-chip px-3">
                 <option value={TITLE_ID}>Name</option>
                 {data.properties.map((p) => (
@@ -1406,9 +1406,9 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
           </Button>
 
           {view.type === "board" ? (
-            <label className="mt-6 block text-sm">
+            <label className="mt-6 block text-subheadline">
               <span className="font-semibold">Group by</span>
-              <span className="mt-0.5 block text-xs text-muted">A single-select, or a formula (a column per result).</span>
+              <span className="mt-0.5 block text-footnote text-muted">A single-select, or a formula (a column per result).</span>
               <Select value={config.groupBy ?? ""} onChange={(e) => void save({ groupBy: e.target.value || undefined })} className="mt-1 flex h-8 ui-input rounded-chip px-3">
                 {selectProps.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -1419,7 +1419,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
             </label>
           ) : null}
           {view.type === "calendar" ? (
-            <label className="mt-6 block text-sm">
+            <label className="mt-6 block text-subheadline">
               <span className="font-semibold">Show rows by</span>
               <Select value={config.dateBy ?? ""} onChange={(e) => void save({ dateBy: e.target.value || undefined })} className="mt-1 flex h-8 ui-input rounded-chip px-3">
                 {config.dateBy && !dateProps.some((p) => p.id === config.dateBy) ? <option value={config.dateBy}>Deleted property</option> : null}
@@ -1433,7 +1433,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
             </label>
           ) : null}
           {view.type === "gallery" ? (
-            <div className="mt-6 flex gap-4 text-sm">
+            <div className="mt-6 flex gap-4 text-subheadline">
               <label>
                 <span className="font-semibold">Card preview</span>
                 <Select value={config.cardPreview} onChange={(e) => void save({ cardPreview: e.target.value as ViewConfig["cardPreview"] })} className="mt-1 flex h-8 ui-input rounded-chip px-3">
@@ -1454,10 +1454,10 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
           ) : null}
         </section>
         <section>
-          <h3 className="mb-2 text-sm font-semibold">Properties</h3>
+          <h3 className="mb-2 text-subheadline font-semibold">Properties</h3>
           <ul className="space-y-1.5">
             {data.properties.map((p) => (
-              <li key={p.id} className="flex items-center gap-2 text-sm">
+              <li key={p.id} className="flex items-center gap-2 text-subheadline">
                 <Checkbox
                   checked={config.visibleProperties.includes(p.id)}
                   onChange={(next) => {
@@ -1475,11 +1475,11 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
                   onCommit={(name) => name && void updateProperty({ collectionId: data.id, propertyId: p.id, name }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
                 />
                 {p.type === "formula" ? (
-                  <button type="button" onClick={() => onEditFormula(p.id)} aria-label={`Edit formula ${p.name}`} title={p.formula || "No formula yet"} className="inline-flex h-7 items-center gap-1 rounded-chip px-2 text-xs text-muted hover:bg-sunken hover:text-heading pointer-coarse:h-11">
+                  <button type="button" onClick={() => onEditFormula(p.id)} aria-label={`Edit formula ${p.name}`} title={p.formula || "No formula yet"} className="inline-flex h-7 items-center gap-1 rounded-chip px-2 text-footnote text-muted hover:bg-sunken hover:text-heading pointer-coarse:h-11">
                     <SquareFunction size={13} aria-hidden /> Edit formula
                   </button>
                 ) : (
-                  <span className="text-xs text-faint">{TYPE_LABELS[p.type]}</span>
+                  <span className="text-footnote text-faint">{TYPE_LABELS[p.type]}</span>
                 )}
                 <button type="button" aria-label={`Delete property ${p.name}`} onClick={() => setConfirmProp(p)} className="grid h-7 w-7 place-items-center rounded-chip text-faint hover:bg-sunken hover:text-danger">
                   <Trash2 size={13} aria-hidden />
@@ -1490,7 +1490,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
           {data.properties
             .filter((p) => p.type === "select" || p.type === "multiSelect")
             .map((p) => (
-              <label key={p.id} className="mt-3 block text-xs">
+              <label key={p.id} className="mt-3 block text-footnote">
                 Options for {p.name} (comma-separated)
                 <input
                   key={p.options.map((o) => o.name).join(",")}
@@ -1505,14 +1505,14 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
                     });
                     void updateProperty({ collectionId: data.id, propertyId: p.id, options }).catch((err) => toast.show(errorMessage(err), { tone: "error" }));
                   }}
-                  className="mt-1 block h-8 w-full ui-input rounded-chip px-3 text-sm"
+                  className="mt-1 block h-8 w-full ui-input rounded-chip px-3 text-callout"
                 />
               </label>
             ))}
           {data.properties
             .filter((p) => p.type === "number")
             .map((p) => (
-              <div key={p.id} className="mt-3 text-xs">
+              <div key={p.id} className="mt-3 text-footnote">
                 <p className="mb-1">Numbers in {p.name}</p>
                 <NumberFormatFields
                   compact
@@ -1538,11 +1538,11 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
               );
             }}
           >
-            <label className="flex-1 text-xs">
+            <label className="flex-1 text-footnote">
               New property
-              <input value={newProp.name} onChange={(e) => setNewProp({ ...newProp, name: e.target.value })} className="mt-1 block h-8 w-full ui-input rounded-chip px-3 text-sm" />
+              <input value={newProp.name} onChange={(e) => setNewProp({ ...newProp, name: e.target.value })} className="mt-1 block h-8 w-full ui-input rounded-chip px-3 text-callout" />
             </label>
-            <Select aria-label="Property type" value={newProp.type} onChange={(e) => setNewProp({ ...newProp, type: e.target.value as Property["type"] })} className="h-8 ui-input rounded-chip px-3 text-sm">
+            <Select aria-label="Property type" value={newProp.type} onChange={(e) => setNewProp({ ...newProp, type: e.target.value as Property["type"] })} className="h-8 ui-input rounded-chip px-3 text-callout">
               {Object.entries(TYPE_LABELS).map(([k, v]) => (
                 <option key={k} value={k}>
                   {v}
@@ -1615,7 +1615,7 @@ export function CollectionRowProperties({ documentId, editable }: { documentId: 
   const name = info?.collection.name ?? data.name;
   const hostDocumentId = info ? info.collection.hostDocumentId : data.hostDocumentId;
   return (
-    <section aria-label={`Properties in ${name}`} className="mb-6 rounded-chip ui-well px-3 py-2 text-sm">
+    <section aria-label={`Properties in ${name}`} className="mb-6 rounded-chip ui-well px-3 py-2 text-subheadline">
       <p className="ui-caps mb-1.5">
         {hostDocumentId ? (
           <AppLink href={`/d/${hostDocumentId}`} className="hover:underline">

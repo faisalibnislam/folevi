@@ -99,6 +99,11 @@ targets:
         product: FoleviEngine
       - package: FoleviKit
         product: FoleviDesign
+      # N8: the native frame (and the shared screens it shows).
+      - package: FoleviKit
+        product: FoleviScreens
+      - package: FoleviKit
+        product: FoleviMac
     settings:
       base:
         PRODUCT_MODULE_NAME: Folevi

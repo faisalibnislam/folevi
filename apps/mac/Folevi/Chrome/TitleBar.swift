@@ -9,6 +9,8 @@
 //   Control and VoiceOver;
 // - the system's translucent sidebar (decision M3): an NSVisualEffectView behind the page, which draws its
 //   sidebar clear under <html data-vibrancy="sidebar"> (the page's CSS, WM4).
+// A window with the native frame (N8) draws its own chrome: its buttons sit on the frame's 52 pt top bar (the
+// same spot rule, at zoom 1), the page's reports are ignored, and the frame names the window.
 import AppKit
 import WebKit
 
@@ -25,6 +27,10 @@ enum TitleBar {
     static var regions: [ObjectIdentifier: (drag: [CGRect], noDrag: [CGRect])] = [:]
     /// The page's spot for the window buttons, per window.
     static var spots: [ObjectIdentifier: ButtonSpot] = [:]
+    /// Windows with the native frame (their spot is the frame's, never the page's).
+    static var nativeWindows = Set<ObjectIdentifier>()
+    /// The frame's spot: the first button at x 20, centred on the 52 pt top bar (polish 2.1).
+    static let nativeSpot = ButtonSpot(x: 18, y: 0, height: 52)
     private static var observations: [ObjectIdentifier: [NSKeyValueObservation]] = [:]
     private static var installed = false
 
@@ -56,9 +62,19 @@ enum TitleBar {
         // Installed in its window right after it's made (WindowManager.openMain, MainWindowController.rebuild).
         DispatchQueue.main.async { [weak view] in
             guard let view, let window = view.window else { return }
-            if view.role == .main, WindowManager.shared.mains.contains(where: { $0.window === window }) { attachMaterial(window) }
+            if view.role == .main, !view.nativeFrame, WindowManager.shared.mains.contains(where: { $0.window === window }) { attachMaterial(window) }
             relayout(window)
         }
+    }
+
+    /// A window got the native frame: the buttons go on its top bar.
+    static func adoptNative(_ window: NSWindow) {
+        let id = ObjectIdentifier(window)
+        nativeWindows.insert(id)
+        spots[id] = nativeSpot
+        // A material a web frame left behind (a rebuild) would sit under the frame's own sidebar.
+        window.contentView?.subviews.filter { $0 is SidebarMaterial }.forEach { $0.removeFromSuperview() }
+        DispatchQueue.main.async { [weak window] in if let window { relayout(window) } }
     }
 
     /// The page's title as the window's ("Meeting notes · Folevi" → "Meeting notes"; the start page is "Folevi").
@@ -72,6 +88,8 @@ enum TitleBar {
     }
 
     private static func titleChanged(_ view: FoleviWebView) {
+        // The native frame names its window from the tab on screen.
+        guard !view.nativeFrame else { return WindowRestore.changed() }
         guard view.role == .main, let window = view.window, WindowManager.shared.mains.contains(where: { $0.window === window }) else { return }
         var title = cleanTitle(view.title)
         // With several places, the Window menu says which place each window shows (polish §3.16).
@@ -115,7 +133,7 @@ enum TitleBar {
             "fullscreen": window?.styleMask.contains(.fullScreen) == true,
             "active": window?.isKeyWindow == true || view.role == .quickAdd,
             "keyboard": NSApp.isFullKeyboardAccessEnabled,
-            "vibrancy": view.role == .main ? "sidebar" : view.role == .quickAdd ? "hud" : "",
+            "vibrancy": view.role == .main && !view.nativeFrame ? "sidebar" : view.role == .quickAdd ? "hud" : "",
             "panel": view.role == .quickAdd ? "quick-add" : (window === SettingsWindow.shared.window ? "settings" : ""),
         ]
         view.callAsyncJavaScript("window.__foleviChrome && window.__foleviChrome(attrs)", arguments: ["attrs": attrs], in: nil, in: .page, completionHandler: nil)
@@ -163,6 +181,7 @@ enum TitleBar {
 
     /// The page reported its spot for the buttons in `window`.
     static func place(_ spot: ButtonSpot, in window: NSWindow) {
+        guard !nativeWindows.contains(ObjectIdentifier(window)) else { return }
         spots[ObjectIdentifier(window)] = spot
         relayout(window)
     }
@@ -178,7 +197,7 @@ enum TitleBar {
         guard let spot = spots[ObjectIdentifier(window)], let close = window.standardWindowButton(.closeButton),
               let mini = window.standardWindowButton(.miniaturizeButton), let zoomButton = window.standardWindowButton(.zoomButton),
               let titlebar = close.superview, let container = titlebar.superview else { return }
-        let zoom = WindowManager.shared.mains.first { $0.window === window }?.view.pageZoom ?? 1
+        let zoom = nativeWindows.contains(ObjectIdentifier(window)) ? 1 : (WindowManager.shared.mains.first { $0.window === window }?.view.pageZoom ?? 1)
         let frames = layout(spot: spot, zoom: zoom, buttonSize: close.frame.size, spacing: mini.frame.minX - close.frame.minX, windowHeight: window.frame.height)
         guard !laying else { return }
         laying = true
@@ -234,6 +253,7 @@ enum TitleBar {
 
     /// A mouse down in a view: in a drag area it moves the window (or zooms or minimises it on a double-click).
     static func mouseDown(_ view: FoleviWebView, _ event: NSEvent) -> Bool {
+        guard !view.nativeFrame || !(view.window.map { nativeWindows.contains(ObjectIdentifier($0)) } ?? false) || isGateShown(view) else { return false }
         guard let window = view.window, let r = regions[ObjectIdentifier(view)], !r.drag.isEmpty else { return false }
         let local = view.convert(event.locationInWindow, from: nil)
         let y = view.isFlipped ? local.y : view.bounds.height - local.y
@@ -274,6 +294,11 @@ enum TitleBar {
             return CGRect(x: a[0], y: a[1], width: a[2], height: a[3])
         }
         regions[ObjectIdentifier(view)] = (Array(drag.prefix(200).compactMap(rect)), Array(noDrag.prefix(2000).compactMap(rect)))
+    }
+
+    /// A framed window's page showing its web gate full window (sign-in, onboarding): its drag areas count.
+    private static func isGateShown(_ view: FoleviWebView) -> Bool {
+        NativeFrame.controller(for: view)?.root.showsGate ?? false
     }
 
     static func forget(_ view: FoleviWebView) {

@@ -8,6 +8,7 @@
 import AppKit
 import UniformTypeIdentifiers
 import WebKit
+import FoleviEngine
 
 @MainActor
 final class Navigation: NSObject, WKNavigationDelegate, WKUIDelegate {
@@ -43,6 +44,11 @@ final class Navigation: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        // A Page View loading again (a reload, a recovery): its engine client resubscribes once it's back.
+        if let view = webView as? FoleviWebView, view.nativeFrame, view.loaded { NativeFrame.pageEvent(view, .reloading) }
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard let view = webView as? FoleviWebView, !view.loaded, Links.isAppUrl(webView.url ?? URL(fileURLWithPath: "/")) else { return }
         view.loaded = true
@@ -70,6 +76,7 @@ final class Navigation: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         // The page's process ended (memory pressure, a crash): it starts again where it was.
+        if let view = webView as? FoleviWebView, view.nativeFrame { NativeFrame.pageEvent(view, .terminated) }
         webView.reload()
     }
 

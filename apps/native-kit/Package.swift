@@ -21,6 +21,7 @@ let package = Package(
     products: [
         .library(name: "FoleviEngine", targets: ["FoleviEngine"]),
         .library(name: "FoleviDesign", targets: ["FoleviDesign"]),
+        .library(name: "FoleviScreens", targets: ["FoleviScreens"]),
     ],
     targets: [
         .target(
@@ -32,6 +33,11 @@ let package = Package(
             resources: [.copy("Resources/Fonts")],
             swiftSettings: strict
         ),
+        .target(
+            name: "FoleviScreens",
+            dependencies: ["FoleviEngine", "FoleviDesign"],
+            swiftSettings: strict
+        ),
         .testTarget(
             name: "FoleviEngineTests",
             dependencies: ["FoleviEngine"],
@@ -40,6 +46,12 @@ let package = Package(
         .testTarget(
             name: "FoleviDesignTests",
             dependencies: ["FoleviDesign"],
+            exclude: ["__Snapshots__"],
+            swiftSettings: strict
+        ),
+        .testTarget(
+            name: "FoleviScreensTests",
+            dependencies: ["FoleviScreens", "FoleviEngine", "FoleviDesign"],
             exclude: ["__Snapshots__"],
             swiftSettings: strict
         ),

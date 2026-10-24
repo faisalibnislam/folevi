@@ -6,6 +6,7 @@ public struct SearchField: View {
     let prompt: String
     var onSubmit: () -> Void
     @FocusState private var focused: Bool
+    @ScaledMetric(relativeTo: .body) private var glyph: CGFloat = 14
 
     public init(text: Binding<String>, prompt: String = "Search", onSubmit: @escaping () -> Void = {}) {
         _text = text
@@ -16,7 +17,7 @@ public struct SearchField: View {
     public var body: some View {
         HStack(spacing: 7) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: glyph, weight: .medium))
                 .foregroundStyle(Folevi.color.inkFaint)
                 .accessibilityHidden(true)
             TextField(prompt, text: $text)

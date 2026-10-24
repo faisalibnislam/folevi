@@ -41,7 +41,8 @@ public struct NotesListTrailingItems: View {
             }
         }
         .foleviFont(.button)
-        .foregroundStyle(Folevi.color.heading)
+        // In a system toolbar the system colours its buttons for its glass; ours only on our own pill.
+        .foregroundStyle(glass ? AnyShapeStyle(Folevi.color.heading) : AnyShapeStyle(.primary))
     }
 
     @ViewBuilder private var menu: some View {

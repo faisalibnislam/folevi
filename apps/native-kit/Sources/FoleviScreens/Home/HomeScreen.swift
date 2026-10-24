@@ -16,6 +16,7 @@ public struct HomeScreen: View {
     @State private var width: CGFloat = 390
     @Environment(\.screenNavigator) private var navigator
     @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .body) private var searchGlyph: CGFloat = 14
 
     public init(model: HomeModel, showsHeader: Bool = false) {
         self.model = model
@@ -61,12 +62,13 @@ public struct HomeScreen: View {
     private var searchEntry: some View {
         Button { navigator.open(.search(prompt: model.searchPrompt), nil) } label: {
             HStack(spacing: 7) {
-                Image(systemName: "magnifyingglass").font(.system(size: 14, weight: .medium)).foregroundStyle(Folevi.color.inkFaint)
-                Text(model.searchPrompt).foleviFont(.body).foregroundStyle(Folevi.color.inkFaint).lineLimit(1)
+                Image(systemName: "magnifyingglass").font(.system(size: searchGlyph, weight: .medium)).foregroundStyle(Folevi.color.inkFaint)
+                Text(model.searchPrompt).foleviFont(.body).foregroundStyle(Folevi.color.inkMuted).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 10)
-            .frame(minHeight: 38)
+            .padding(.vertical, 8)
+            .frame(minHeight: 44)
             .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.control, style: .continuous).fill(Folevi.color.surfaceSunken))
             .contentShape(Rectangle())
         }

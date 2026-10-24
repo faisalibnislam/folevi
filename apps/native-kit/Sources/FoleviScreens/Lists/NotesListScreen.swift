@@ -13,7 +13,9 @@ public struct NotesListScreen: View {
     @FocusState private var focused: String?
     /// Every row is this tall (placeholders too), so lists of thousands never re-measure rows as the window
     /// moves; it grows with Dynamic Type.
-    @ScaledMetric(relativeTo: .body) private var rowHeight: CGFloat = 62
+    @ScaledMetric(relativeTo: .body) private var baseRowHeight: CGFloat = 62
+    /// Two lines each for title and detail at accessibility sizes.
+    private var rowHeight: CGFloat { typeSize.isAccessibilitySize ? baseRowHeight * 1.75 : baseRowHeight }
     @Environment(\.screenNavigator) private var navigator
     @Environment(\.screenFeedback) private var feedback
     @Environment(\.dynamicTypeSize) private var typeSize

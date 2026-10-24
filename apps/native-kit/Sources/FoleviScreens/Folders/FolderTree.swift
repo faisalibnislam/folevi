@@ -55,7 +55,7 @@ struct FolderRowCell: View {
                         if let path { Text("in \(path)").foleviFont(.caption).foregroundStyle(Folevi.color.inkFaint).lineLimit(1) }
                     }
                     Spacer(minLength: 8)
-                    if let n = node.noteCount, n > 0 { Text(n.formatted()).foleviFont(.callout).foregroundStyle(Folevi.color.inkFaint).monospacedDigit() }
+                    if let n = node.noteCount, n > 0 { Text(n.formatted()).foleviFont(.callout).foregroundStyle(Folevi.color.inkMuted).monospacedDigit() }
                 }
                 .frame(maxHeight: .infinity)
                 .contentShape(Rectangle())
@@ -236,7 +236,9 @@ struct FolderPathBar: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 4) {
                 Button { navigator.open(.allFolders, nil) } label: {
-                    Image(systemName: "folder").font(.system(size: 12, weight: .medium)).foregroundStyle(Folevi.color.inkMuted).frame(width: 26, height: 26)
+                    Image(systemName: "folder").font(.system(size: 13, weight: .medium)).foregroundStyle(Folevi.color.inkMuted).frame(width: 30, height: 30)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("All folders")
@@ -271,8 +273,10 @@ private struct PathChip: View {
             .foleviFont(.footnote)
             .foregroundStyle(Folevi.color.ink)
             .padding(.horizontal, 8)
-            .frame(minHeight: 26)
+            .frame(minHeight: 28)
             .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .continuous).fill(zone != nil ? Folevi.color.emberSoft : Folevi.color.accentSoft))
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onDrop(of: [.foleviNoteRef, .foleviFolderRef], delegate: FolderDrop(folderId: node.id, axis: .horizontal, length: 0, zone: $zone, spring: spring, onSpring: onOpen, onNotes: { items in

@@ -83,6 +83,8 @@ struct NoteCardCell<Menu: View>: View {
             if selecting { onToggle() } else { onTap(CardFrames.shared.source(for: row.id)) }
         } label: {
             NoteCardView(model)
+                // One element for the card (its label below); the drawing's text isn't read on its own.
+                .accessibilityHidden(true)
                 .overlay(alignment: .topTrailing) {
                     if selecting { SelectMark(on: selected).padding(8) }
                 }
@@ -143,17 +145,20 @@ struct NoteRowView: View {
     let title: String
     let subtitle: String
     let starred: Bool
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// At accessibility sizes titles and their line wrap to two lines instead of cutting off.
+    private var lines: Int { typeSize.isAccessibilitySize ? 2 : 1 }
 
     var body: some View {
         HStack(spacing: 12) {
             NoteGlyph(folderColor: row.folder?.color, plain: row.kind == "template" || row.folder == nil)
             VStack(alignment: .leading, spacing: 2) {
+                // As the web's rows: the glyph, the title and a star (no emoji; the card and the note show it).
                 HStack(spacing: 5) {
-                    if let icon = row.icon, !icon.isEmpty { Text(icon).font(.system(size: 15)) }
                     Text(title)
                         .foleviFont(.body)
                         .foregroundStyle(Folevi.color.ink)
-                        .lineLimit(1)
+                        .lineLimit(lines)
                     if starred {
                         Image(systemName: "star.fill").font(.system(size: 11)).foregroundStyle(Folevi.color.inkFaint).accessibilityLabel("Starred")
                     }
@@ -161,7 +166,7 @@ struct NoteRowView: View {
                 Text(subtitle)
                     .foleviFont(.footnote)
                     .foregroundStyle(row.sync == .saved ? Folevi.color.inkMuted : Folevi.color.emberInk)
-                    .lineLimit(1)
+                    .lineLimit(lines)
             }
             Spacer(minLength: 0)
         }
@@ -226,6 +231,7 @@ struct FolderCardCell: View {
             onOpen(CardFrames.shared.source(for: folder.id))
         } label: {
             FolderCardView(card)
+                .accessibilityHidden(true)
                 .overlay { dropIndicator }
                 .contentShape(Rectangle())
         }

@@ -31,11 +31,12 @@ sync).
 | --- | --- | --- |
 | `main` (origin) | 1.0.04 as released | Pushing to `main` deploys the website AND production Convex. Never push `main` without the owner's explicit OK. |
 | `wip/handoff-2026-10-24` | `main` + 3 finished commits not yet released (`0df7309c` themed note cover corners 18 pt on iPhone, `88b0057c` and `dd73d298` iPhone sheets reach the bottom edge with 28 pt top corners) + one WIP snapshot commit `4e9271b6` of unfinished work (section 3) | No (Vercel skips previews, see `scripts/vercel-ignore.sh`) |
-| `native-app` | The native Swift app project (section 4). Based on `main` at 1.0.04. Last commit `e04b1b5e` is a WIP snapshot. | No |
+| `native-app-snapshot` | The native Swift app project (section 4), as ONE squashed commit on top of `main` 1.0.04 (identical tree to the owner's local `native-app` branch, whose ~67 commits could not be pushed: their history edits `.github/workflows/ci.yml` and the Mac's GitHub token lacks the `workflow` scope). The CI change is in `docs/ci-workflow-native.patch`; apply it with `git apply docs/ci-workflow-native.patch` from an account that can push workflows. The last part of the work is a WIP snapshot (native Foli AI chat, contract revision 11). | No |
 
-On the owner's Mac the native branch was checked out as a second worktree at
-`../folevi-native` (sibling of this repo). On a new computer: clone, then
-`git worktree add ../folevi-native native-app` (or just check the branch out).
+On the owner's Mac the native branch was a second worktree at `../folevi-native` (local branch
+`native-app` with full history). On a new computer: clone, then
+`git worktree add ../folevi-native native-app-snapshot` (or check the branch out). This handoff file is on
+both branches.
 
 Setup on a fresh machine:
 - `CI=true pnpm install --frozen-lockfile` at the root; in `apps/ios` run
@@ -87,7 +88,7 @@ related e2e specs, then release as 1.0.05 (section 6).
    change there broke the 375x667 drag-to-medium check in `e2e/iphone-ai-sheet.spec.ts`; fix it). No
    private WebKit APIs. Needs a real-device profile (section 5).
 
-## 4. The native app (`native-app` branch)
+## 4. The native app (`native-app-snapshot` branch)
 
 Owner decisions (2026-10-24, final): everything except the editor/note page becomes native Swift on iPhone,
 iPad and Mac; native screens get data from the existing web layer through a bridge (one source of truth for
@@ -95,7 +96,7 @@ sync, offline, E2EE, multi-account); one big release as 1.1.00; technical Settin
 tokens, Connected apps, AI export, workspace Data) open as in-app web pages; Reviews and Graph stay web
 inside native bars; background sync for every plan including Free; attachments 2 GB or 10% of free space,
 Wi-Fi only; keep improving the web phone layout. Plan: `docs/NATIVE_APP_PLAN.md`. Contract requests and
-their status: `docs/NATIVE_CONTRACT_REQUESTS.md` (on `native-app`).
+their status: `docs/NATIVE_CONTRACT_REQUESTS.md` (on `native-app-snapshot`).
 
 Architecture in one paragraph: one WKWebView per window runs the web data layer ("engine") and is also the
 note editor; native screens subscribe to typed live views and send commands over the bridge. The contract is

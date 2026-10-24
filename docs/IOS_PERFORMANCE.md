@@ -156,14 +156,38 @@ launch within 1.5 s, a note's first frame within 600 ms and a list's within 250 
   the keyboard gains Foli AI. e2e in iphone-editor.spec.ts.
 - The zoom from cards and rows (Reduce Motion: a cross-fade). The colour stays out of the bar, unlike Craft's.
 
+## Second pass (same day)
+
+- **Folder tiles' shadow** (7d223b7d): the double `drop-shadow` filter over each tile is now the same two
+  shadows as the back's own `box-shadow` (its tab and body); it looks the same (close-ups before and after,
+  light and dark, in the session's scratchpad). WebKit, interleaved runs with the Mac under heavy load: Home's tab
+  93 and 160 ms to its first frame with the filter, 46 and 54 without; Back to Home 126 and 215 against 83 and
+  121; push All notes 100 and 166 against 79 and 90.
+- **"JS Eval error" at launch** (c71efd23): an accessibility notification posted as the app launches (the
+  Simulator's hardware keyboard) sent `folevi:accessibility` before `window.Capacitor` existed
+  (`TypeError: undefined is not an object (evaluating 'window.Capacitor.triggerEvent')`). It now waits for a
+  loaded page; the page reads the settings itself at start.
+- **Startup code** (5b4c2096): the JavaScript run before the first screen went from 3.43 MB to 2.97 MB
+  (`FOLEVI_SOURCEMAPS=1` builds with source maps; what each source adds was counted from them). Out of it:
+  tiptap and prosemirror-view (the Mac bridge's comment actions pulled them in; now `commentActions.ts`), the
+  read-only drawing of every block (Foli AI's template dialog and catch-up card on desktop Home), chrono-node
+  (Quick add loads on first open; the parser itself when the browser is idle, and its callers draw again once
+  it's in), the export module, the Mac's Quick Add window, and the rare pages (Changes, Reviews, Shared with
+  Me, Help, invitations). Six launches each: Chromium 4×, usable Home 870 to 745 ms and script 435 to 342 ms;
+  WebKit, usable Home 330 to 297 ms.
+  Still in it: Next.js (440 KB), Convex (97 KB), the editor schema's flowchart, table formula and markdown code
+  (about 150 KB, through its index), E2EE's crypto (72 KB), fflate, ts-fsrs, and the block drawings again
+  through the iPhone Home's catch-up card (IphoneHome.tsx was another agent's work in progress, left alone).
+- **Back to the first screen** (e3db3767): an entry without Next.js's state made Back reload the page; it now
+  stays in the page, online and offline (e2e/history-back-first.spec.ts).
+
 ## Still to measure on the phone
 
 - Real launch: native start to first paint in a Release build (the Simulator's Debug numbers are inflated), and
   the warm start on the owner's account (how fast the snapshot and the query cache read on device).
 - Instruments (Time Profiler, Animation Hitches) on the device during push, zoom and typing; the GPU cost of the
-  remaining backdrop blurs (6 to 8 on screen) and of the folder tiles' drop-shadow filter (FolderCardArt.tsx,
-  owned by the folder-card work right now: replacing that filter with a box-shadow is the next biggest paint win).
+  remaining backdrop blurs (6 to 8 on screen).
 - The keyboard bar riding on the real keyboard (the Simulator here had a hardware keyboard attached), and the
   edge swipe after a zoom (WebKit's own back gesture still slides).
-- Bundle size: 3.4 MB of JavaScript is parsed at every launch; splitting the editor's rare blocks further would
-  shorten startup on the phone (not attempted here).
+- Startup code: 2.97 MB is still read at every launch (above, "Second pass"); the editor schema's index and the
+  iPhone Home's catch-up card are the next splits.

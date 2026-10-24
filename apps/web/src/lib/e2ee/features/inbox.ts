@@ -11,6 +11,7 @@ import {
   localDate,
   markdownToBlocks,
   rankBetween,
+  rankSequence,
   repeatProps,
   SCHEMA_VERSION,
   scopeIdKey,
@@ -88,16 +89,14 @@ async function lastRank(store: LocalReader, documentId: string): Promise<string 
 
 /** Valid blocks only, root blocks placed one after the other from `after`. */
 function placed(blocks: WireBlock[], after: string | null): WireBlock[] {
-  let prev = after;
+  // Spread evenly after `after` (one after the other would grow the ranks past the server's limit).
+  const ranks = rankSequence(blocks.filter((b) => b.parentId === null).length, after, null);
   const out: WireBlock[] = [];
   for (const b of blocks) {
     const { revision: _r, ...rest } = b;
     void _r;
     const block = rest as WireBlock;
-    if (block.parentId === null) {
-      block.rank = rankBetween(prev, null);
-      prev = block.rank;
-    }
+    if (block.parentId === null) block.rank = ranks.shift()!;
     if (!validateWireBlock(block).length) out.push(block);
   }
   return out;

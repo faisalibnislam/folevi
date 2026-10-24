@@ -166,6 +166,8 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
                 type="button"
                 className="ui-btn ui-btn-secondary h-8 px-3 text-xs"
                 onClick={() => {
+                  // Refused changes whose content was kept are sent again (a refused rank is repaired first).
+                  engine?.retryRejected();
                   engine?.authRefreshed();
                   engine?.scheduleFlush(0);
                   outbox?.authRefreshed();

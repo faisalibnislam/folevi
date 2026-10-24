@@ -176,8 +176,8 @@ export function wireMessage(m: Doc<"aiMessages">, now: number, runs: Map<Id<"aiR
     credits: m.usage?.credits ?? null,
     /** Files sent with the message (the ones the person can still open). */
     attachments: (m.attachments ?? []).flatMap((id) => files.get(id) ?? []),
-    /** An agent's answer: the steps it took, and the changes it proposed (aiAgent.ts). */
-    agent: m.agent ? { steps: m.agent.steps, run: run ? wireRun(run) : null } : null,
+    /** An agent's answer: the steps it took, the changes it proposed, and whether it offers Continue (aiAgent.ts). */
+    agent: m.agent ? { steps: m.agent.steps, run: run ? wireRun(run) : null, more: m.agent.more === true } : null,
     /** A preference the answer offers to remember (Save or Not now; aiMemory.ts). */
     memory: m.memory ? { kind: m.memory.kind, text: m.memory.text, status: m.memory.status } : null,
     createdAt: m.createdAt,

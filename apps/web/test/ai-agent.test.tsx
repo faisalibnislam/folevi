@@ -81,6 +81,18 @@ describe("steps", () => {
     expect(stepLines([])).toEqual([]);
     expect(phaseLabel("planning", false)).toBe("Planning…");
   });
+
+  test("a long note's outline and pages read as their own steps, not as more notes", () => {
+    expect(
+      stepLines([
+        { tool: "get_note_outline", count: 1, ok: true },
+        { tool: "get_note_page", count: 1, ok: true },
+        { tool: "get_note_page", count: 1, ok: true },
+        { tool: "update_note", count: 1, ok: true },
+      ]),
+    ).toEqual(["Read the outline", "Read 2 more pages", "Proposed a change"]);
+    expect(stepLines([{ tool: "get_note_page", count: 1, ok: true }])).toEqual(["Read on in the note"]);
+  });
 });
 
 describe("the preview card", () => {

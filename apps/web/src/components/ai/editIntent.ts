@@ -33,3 +33,16 @@ export function wantsAgent(text: string): boolean {
 
 /** What the person says when they ask the agent to make an answer's changes ("Make these changes"). */
 export const FIX_IN_NOTE = "Make these changes in the note itself.";
+
+/**
+ * What Continue sends when the agent stopped before it was done (convex/lib/ai/agentBudget.ts CONTINUE_TEXT
+ * says the same): it carries on in a new run, leaving the changes already proposed alone.
+ */
+export const CONTINUE_AGENT = "Continue where you stopped.";
+
+/** Typed words that mean Continue, after an agent answer that offers it ("continue", "keep going"…). */
+const CONTINUE = /^(please )?(continue|keep going|go on|carry on|do the rest|finish( it| the rest)?|next( batch)?)( where you (stopped|left off))?\b[\s.!]*(please)?[\s.!]*$/;
+
+export function asksToContinue(text: string): boolean {
+  return CONTINUE.test(text.trim().toLowerCase());
+}

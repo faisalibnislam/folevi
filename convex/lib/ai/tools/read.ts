@@ -11,6 +11,7 @@ import { liveBlocks, toWireBlock } from "../../documents";
 import { ReaderLabels } from "../../linkLabels";
 import { inScope, type Scope } from "../../scope";
 import { duplicatePairs, noteSimilarity } from "./similarity";
+import { allBold, outlineOf, pageNote, pageOf } from "./longNotes";
 import { untrusted } from "./untrusted";
 import { withSyncedForReader } from "../../synced";
 import { isSealed } from "../../e2ee/state";
@@ -22,10 +23,16 @@ export interface ReadEnv {
   /** What the conversation is about (public ids), for get_workspace_context. */
   context: { kind: string; ids: string[] };
   today: string;
+  /** Blocks with changes waiting for approval from earlier in the conversation (update_note leaves them alone). */
+  pending?: string[];
 }
 
-/** Characters of one note get_note returns (get_notes: each). */
+/** Characters of one note get_note returns (get_notes: each); a longer note is read a page at a time. */
 export const NOTE_CHARS = 12_000;
+/** The most one get_note page may hold (it has to fit in a tool result, aiAgent.ts RESULT_CHARS). */
+export const MAX_NOTE_CHARS = 16_000;
+/** Characters of a long note's outline (get_note_outline, and with the request). */
+export const OUTLINE_CHARS = 10_000;
 export const NOTES_CHARS = 5_000;
 const NOT_HERE = "There's no note with that id here (or you can't open it).";
 
@@ -41,7 +48,9 @@ export async function readableNote(ctx: QueryCtx, env: ReadEnv, noteId: string):
 /** One block as a line the model can read and point at: its id, a type mark, its text. */
 function blockLine(b: WireBlock, depth: number): string {
   const p = b.props as Record<string, unknown>;
-  const text = blockSearchText(b).replace(/\s+/g, " ").trim();
+  let text = blockSearchText(b).replace(/\s+/g, " ").trim();
+  // A line that's all bold shows it (a heading written as a bold paragraph is worth knowing about).
+  if (text && b.type !== "heading" && allBold(b)) text = `**${text}**`;
   let mark = "";
   switch (b.type) {
     case "heading":
@@ -79,17 +88,19 @@ export async function readerBlocks(ctx: QueryCtx, env: ReadEnv, doc: Doc<"docume
   return await new ReaderLabels(ctx, env.profile).blocks(await withSyncedForReader(ctx, env.profile, (await liveBlocks(ctx, doc._id)).map(toWireBlock)));
 }
 
-/** A note as the model reads it: block lines with ids, cut at `max` characters. */
-export async function noteForModel(ctx: QueryCtx, env: ReadEnv, doc: Doc<"documents">, max: number) {
+/** A note's blocks in reading order with the lines the model reads (id, type mark, text). */
+async function noteLines(ctx: QueryCtx, env: ReadEnv, doc: Doc<"documents">): Promise<{ block: WireBlock; line: string }[]> {
   const blocks = await readerBlocks(ctx, env, doc);
-  const lines = flattenTree(blocks).map((e) => blockLine(e.block, e.depth));
-  let text = "";
-  let shown = 0;
-  for (const line of lines) {
-    if (text.length + line.length + 1 > max) break;
-    text += `${line}\n`;
-    shown++;
-  }
+  return flattenTree(blocks).map((e) => ({ block: e.block, line: blockLine(e.block, e.depth) }));
+}
+
+/**
+ * A note as the model reads it: block lines with ids, from block `fromBlock` (1-based) on, cut at `max`
+ * characters. A longer note says which blocks it shows and where to read on.
+ */
+export async function noteForModel(ctx: QueryCtx, env: ReadEnv, doc: Doc<"documents">, max: number, fromBlock = 1) {
+  const lines = (await noteLines(ctx, env, doc)).map((e) => e.line);
+  const page = pageOf(lines, max, fromBlock);
   const folder = doc.folderId ? await ctx.db.get(doc.folderId) : null;
   const title = doc.title || "Untitled";
   return {
@@ -98,8 +109,26 @@ export async function noteForModel(ctx: QueryCtx, env: ReadEnv, doc: Doc<"docume
     folder: folder && !folder.deletedAt ? { id: folder.publicId, name: folder.name } : null,
     updated: new Date(doc.updatedAt).toISOString().slice(0, 10),
     blocks: lines.length,
-    ...(shown < lines.length ? { truncated: `Showing the first ${shown} of ${lines.length} blocks.` } : {}),
-    content: untrusted("note", { id: doc.publicId, title }, text.trimEnd() || "(empty note)"),
+    ...pageNote(page),
+    content: untrusted("note", { id: doc.publicId, title }, page.text || (lines.length ? "(no blocks here)" : "(empty note)")),
+  };
+}
+
+/**
+ * A note's outline: the blocks that look like section titles (headings, short all-bold lines, "Issue 12"
+ * or "3." lines), each with its block number (for get_note fromBlock) and its line.
+ */
+export async function outlineForModel(ctx: QueryCtx, env: ReadEnv, doc: Doc<"documents">, max = OUTLINE_CHARS) {
+  const entries = await noteLines(ctx, env, doc);
+  const o = outlineOf(entries, max);
+  const title = doc.title || "Untitled";
+  return {
+    id: doc.publicId,
+    title,
+    blocks: entries.length,
+    sections: o.sections,
+    ...(o.more ? { truncated: `The outline shows ${o.lines.length} of ${o.sections} section lines.` } : {}),
+    outline: untrusted("note", { id: doc.publicId, title }, o.lines.join("\n") || "(no lines that look like section titles)"),
   };
 }
 
@@ -147,7 +176,11 @@ const num = (v: unknown, fallback: number) => (typeof v === "number" ? v : fallb
 export const READERS: Record<string, Reader> = {
   async get_note(ctx, env, args) {
     const doc = await readableNote(ctx, env, str(args.noteId));
-    return await noteForModel(ctx, env, doc, Math.min(num(args.maxChars, NOTE_CHARS), 20_000));
+    return await noteForModel(ctx, env, doc, Math.min(num(args.maxChars, NOTE_CHARS), MAX_NOTE_CHARS), num(args.fromBlock, 1));
+  },
+
+  async get_note_outline(ctx, env, args) {
+    return await outlineForModel(ctx, env, await readableNote(ctx, env, str(args.noteId)));
   },
 
   async get_notes(ctx, env, args) {

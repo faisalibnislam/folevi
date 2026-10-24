@@ -907,8 +907,11 @@ export default defineSchema({
      * conversation's query isn't re-run on every chunk; the text comes back here when it settles.
      */
     streamId: v.optional(v.id("aiStreams")),
-    /** An agent run's answer (convex/aiAgent.ts): the steps it took, and its proposed changes (aiRuns). */
-    agent: v.optional(v.object({ steps: v.array(v.object({ tool: v.string(), count: v.number(), ok: v.boolean() })), runId: v.optional(v.id("aiRuns")) })),
+    /**
+     * An agent run's answer (convex/aiAgent.ts): the steps it took, its proposed changes (aiRuns), and
+     * whether it stopped before it was done (`more`: the answer offers Continue).
+     */
+    agent: v.optional(v.object({ steps: v.array(v.object({ tool: v.string(), count: v.number(), ok: v.boolean() })), runId: v.optional(v.id("aiRuns")), more: v.optional(v.boolean()) })),
     /** A preference the answer offers to remember (lib/ai/memory.ts): saved only when the person clicks Save. */
     memory: v.optional(v.object({ kind: vMemoryKind, text: v.string(), status: v.union(v.literal("proposed"), v.literal("saved"), v.literal("dismissed")) })),
     createdAt: v.number(),

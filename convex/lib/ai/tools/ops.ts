@@ -21,8 +21,15 @@ export type OpKind = (typeof OP_KINDS)[number];
 export const MAX_OPS = 20;
 /** Markdown one operation may write. */
 export const MAX_OP_MARKDOWN = 20_000;
-/** Block edits one update_note may make. */
+/** Block edits one update_note call may make (a long note is edited in several calls: they add up). */
 export const MAX_EDITS = 40;
+/** Block edits one run may make to one note, over all its update_note calls. */
+export const MAX_NOTE_EDITS = 400;
+/**
+ * The most a run's operations may hold, as stored (UTF-8 JSON): the aiRuns row has to stay well under
+ * Convex's 1 MiB document limit.
+ */
+export const MAX_RUN_BYTES = 700_000;
 /** Items one checklist or task list may hold. */
 export const MAX_ITEMS = 50;
 /** Notes one merge may fold into another. */
@@ -141,3 +148,33 @@ export function changesNote(op: Pick<AgentOp, "kind" | "noteId">): boolean {
 
 /** Quotes a title for a summary line. */
 export const q = (s: string) => `“${s.replace(/\s+/g, " ").trim().slice(0, 80) || "Untitled"}”`;
+
+/** A run's operations as stored, in bytes (UTF-8 JSON). */
+export function runBytes(ops: AgentOp[]): number {
+  return new TextEncoder().encode(JSON.stringify(ops)).length;
+}
+
+/** "Edit “Plans” (3 changes)" */
+export const editSummary = (title: string, n: number) => `Edit ${q(title)} (${n} change${n === 1 ? "" : "s"})`;
+
+/**
+ * Adds a proposal to a run's operations. A further update_note to a note the run already edits joins that
+ * operation (a long note is edited in batches, reviewed and undone as one change): a block edited again
+ * takes the newer edit, the rest are added in order. Returns the operation the proposal ended up in.
+ */
+export function addOp(ops: AgentOp[], op: AgentOp): AgentOp {
+  const same = op.kind === "update_note" ? ops.find((o) => o.kind === "update_note" && o.noteId === op.noteId) : undefined;
+  if (!same) {
+    ops.push(op);
+    return op;
+  }
+  const edits = [...(same.edits ?? [])];
+  for (const e of op.edits ?? []) {
+    const at = e.action === "insert" ? -1 : edits.findIndex((x) => x.action !== "insert" && x.blockId === e.blockId);
+    if (at >= 0) edits[at] = e;
+    else edits.push(e);
+  }
+  const merged: AgentOp = { ...same, edits, summary: editSummary(same.noteTitle ?? "Untitled", edits.length) };
+  ops[ops.indexOf(same)] = merged;
+  return merged;
+}

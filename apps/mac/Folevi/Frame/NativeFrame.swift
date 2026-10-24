@@ -6,7 +6,8 @@
 // commands (menus, links, notifications) turned into frame actions, and the Debug hooks scripts drive it with.
 //
 // Switches: on by default on this branch. FOLEVI_WEB_FRAME=1 (or the `folevi.webFrame` setting) brings back the
-// web frame; FOLEVI_FRAME_DEMO=1 (Debug only) runs the frame against the scripted demo engine, no web needed.
+// web frame; FOLEVI_FRAME_DEMO=1 (Debug only) runs the frame against the scripted demo engine, no web needed;
+// FOLEVI_WEB_GATES=1 shows every gate as the page's own screen instead of FoleviScreens' GateScreen.
 import AppKit
 import UserNotifications
 import WebKit
@@ -40,6 +41,9 @@ enum NativeFrame {
         guard !installed else { return }
         installed = true
         _ = FoleviFonts.register()
+        SidebarViewController.defaults = Paths.defaults
+        // FOLEVI_WEB_GATES=1: every gate is the page's own screen, full window (the fallback).
+        FrameRootViewController.nativeGates = env["FOLEVI_WEB_GATES"] != "1"
         #if DEBUG
         installEval()
         #endif
@@ -230,6 +234,15 @@ final class FrameController: FrameHost {
         }
     }
 
+    func frameSignOutConfirmed(place: String) {
+        Task { @MainActor in await Places.shared.signOut(place, next: nil) }
+    }
+
+    func frameDownloadFile(_ id: String) {
+        // A notification's file needs its signed link from the engine (requested, R8.11).
+        model.toast("Open Folevi on the web to download this file for now.")
+    }
+
     func frameMoveOrCopy() {
         // Revision 8: places.move.preview and places.move, in a sheet over the window.
         PlaceMove.present(from: root, model: model)
@@ -325,8 +338,9 @@ enum FrameCommands {
         case "go.back": m.goBack()
         case "go.forward": m.goForward()
         case "go.home": m.open(.home)
-        case "go.today", "go.inbox": m.open(.tasks)
-        case "go.calendar": m.open(.calendar)
+        case "go.today": m.open(.tasks(.today))
+        case "go.inbox": m.open(.tasks(.inbox))
+        case "go.calendar": m.open(.calendar(nil))
         case "go.ask-ai":
             if noteOpen { m.toggleNoteAI() } else { m.toast("The Foli AI chat comes to the Mac with the next update.") }
         case "go.next-tab": m.nextTab(1)

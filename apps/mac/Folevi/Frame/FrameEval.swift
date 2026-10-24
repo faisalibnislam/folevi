@@ -89,6 +89,8 @@ extension NativeFrame {
             "sidebar": rows(m.sidebar),
             "sidebarCollapsed": m.sidebarCollapsed,
             "gate": frame.root.showsGate,
+            "nativeGate": frame.root.showsNativeGate,
+            "gateKind": m.gateEvent?.gate ?? NSNull(),
             "engine": String(describing: m.client.state),
             "nativeScreen": frame.root.split.content.showsNativeScreen,
             "toasts": m.toasts.map(\.message),

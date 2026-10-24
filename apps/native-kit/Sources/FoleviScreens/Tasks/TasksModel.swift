@@ -60,7 +60,7 @@ public struct PendingTask: Hashable, Sendable, Identifiable {
 
 @MainActor
 @Observable
-public final class TasksModel {
+public final class TasksModel: TaskSheetHost {
     public let client: EngineClient
     let feedback: ScreenFeedback
     public let space: SpaceRef?
@@ -73,12 +73,8 @@ public final class TasksModel {
 
     public var filter = ""
     public private(set) var folded: Set<String>
-    /// Statuses shown before the engine has them (a box ticked a moment ago).
-    public private(set) var shownStatus: [String: String] = [:]
-    /// Tasks that left the list (checked, moved out of the view) before the engine's update says so.
-    public private(set) var gone: Set<String> = []
-    /// Due dates shown before the engine has them.
-    public private(set) var shownDue: [String: (date: String?, time: String?)] = [:]
+    /// Ticked boxes, moved dates and details changes shown before the engine confirms them.
+    public let edits: TaskEdits
     public private(set) var pending: [PendingTask] = []
     /// The task whose details are open.
     public var detail: TaskRow?
@@ -89,12 +85,9 @@ public final class TasksModel {
     /// The person tapped the date chip's x: the date words stay text.
     public var keepText = false
 
-    /// How long a checked task stays, ticked, before it goes (as in Reminders; web CHECK_HOLD_MS).
-    @ObservationIgnored public var checkHold: Duration = .milliseconds(420)
     @ObservationIgnored public var parseDelay: Duration = .milliseconds(150)
     @ObservationIgnored private var parseTask: Task<Void, Never>?
     @ObservationIgnored private let defaults: UserDefaults
-    @ObservationIgnored private var holds: [String: Task<Void, Never>] = [:]
 
     public init(client: EngineClient, view: TaskViewName = .today, space: SpaceRef? = nil, feedback: ScreenFeedback = ScreenFeedback(), defaults: UserDefaults = .standard) {
         self.client = client
@@ -106,6 +99,8 @@ public final class TasksModel {
         self.list = client.watch(.tasksList(space: space, view: view), snapshotKey: Self.snapshotKey(client.place, space, view))
         self.counts = client.watch(.tasksCounts(space: space), snapshotKey: "tasks.counts.\(client.place).\(space ?? "current")")
         self.session = client.watch(.session, snapshotKey: "session.\(client.place)")
+        self.edits = TaskEdits(client: client, feedback: feedback)
+        edits.today = { [weak self] in self?.today ?? TaskDates.today() }
     }
 
     static let foldKey = "folevi.tasks.folded"
@@ -169,7 +164,7 @@ public final class TasksModel {
         for g in value.groups {
             var tasks: [TaskRow] = []
             tasks.reserveCapacity(g.tasks.count)
-            for t in g.tasks where !gone.contains(t.id) {
+            for t in g.tasks where !edits.isGone(t.id) {
                 if !needle.isEmpty && !Self.matches(t, needle) { continue }
                 tasks.append(shown(t))
             }
@@ -208,17 +203,8 @@ public final class TasksModel {
             || t.noteTitle.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil
     }
 
-    /// A task as it is now: a status or date changed here shows before the engine confirms it.
-    public func shown(_ t: TaskRow) -> TaskRow {
-        var t = t
-        if let s = shownStatus[t.id] { t.status = s }
-        if let d = shownDue[t.id] {
-            t.dueDate = d.date
-            t.dueTime = d.time
-        }
-        t.overdue = t.status == "open" && (t.dueDate.map { $0 < today } ?? false)
-        return t
-    }
+    /// A task as it is now (with changes made here that the engine hasn't confirmed yet).
+    public func shown(_ t: TaskRow) -> TaskRow { edits.shown(t) }
 
     // MARK: Folding
 
@@ -235,102 +221,23 @@ public final class TasksModel {
 
     // MARK: Checking off
 
-    /// The box: an open task ticks at once and leaves after `checkHold` (with Undo); a done or canceled one reopens.
+    /// The box: an open task ticks at once and leaves after a moment (with Undo); a done or canceled one reopens.
     public func toggle(_ task: TaskRow) {
-        let t = shown(task)
-        if holds[t.id] != nil { return }
-        if t.status == "open" {
-            shownStatus[t.id] = "done"
-            feedback.haptic(.success)
-            holds[t.id] = Task { [weak self] in
-                guard let self else { return }
-                try? await Task.sleep(for: self.checkHold)
-                self.holds[t.id] = nil
-                await self.complete(t)
-            }
-        } else {
-            shownStatus[t.id] = "open"
-            feedback.haptic(.impactLight)
-            Task { await self.reopen(t) }
-        }
-    }
-
-    func complete(_ t: TaskRow) async {
-        if view != .completed { gone.insert(t.id) }
-        do {
-            try await client.command(.taskPatch(TaskPatchArgs(id: t.id, checked: true)))
-            feedback.toast(ScreenToast("Done", tone: .success, actionTitle: "Undo") { [weak self] in
-                guard let self else { return }
-                Task { await self.undoComplete(t) }
-            })
-        } catch {
-            gone.remove(t.id)
-            shownStatus[t.id] = nil
-            fail(error)
-        }
-    }
-
-    func undoComplete(_ t: TaskRow) async {
-        gone.remove(t.id)
-        shownStatus[t.id] = t.status == "canceled" ? "canceled" : "open"
-        let args = t.status == "canceled" ? TaskPatchArgs(id: t.id, canceled: true) : TaskPatchArgs(id: t.id, checked: false)
-        do { try await client.command(.taskPatch(args)) } catch {
-            shownStatus[t.id] = "done"
-            fail(error)
-        }
-    }
-
-    func reopen(_ t: TaskRow) async {
-        if view == .completed { gone.insert(t.id) }
-        let args = t.status == "canceled" ? TaskPatchArgs(id: t.id, canceled: false) : TaskPatchArgs(id: t.id, checked: false)
-        do { try await client.command(.taskPatch(args)) } catch {
-            gone.remove(t.id)
-            shownStatus[t.id] = nil
-            fail(error)
-        }
+        let view = self.view
+        edits.toggle(task) { status in status == "done" ? view != .completed : view == .completed }
     }
 
     // MARK: Dates
 
     /// Swipe left, Tomorrow (web `moveTo`): with Undo.
     public func moveToTomorrow(_ task: TaskRow) async {
-        await setDue(task, date: TaskDates.add(today, days: 1), time: .keep, message: "Moved to tomorrow")
+        let day = TaskDates.add(today, days: 1)
+        await edits.setDue(task, date: day, message: "Moved to tomorrow", leaves: leavesView(dueDate: day))
     }
 
     /// Sets the due date (and time); nil clears it. With a toast and Undo when `message` is given.
     public func setDue(_ task: TaskRow, date: String?, time: PatchField<String> = .keep, message: String? = nil) async {
-        let before = shown(task)
-        var newTime: String? = before.dueTime
-        switch time {
-        case .keep: break
-        case .clear: newTime = nil
-        case .set(let v): newTime = v
-        }
-        if date == nil { newTime = nil }
-        shownDue[task.id] = (date, newTime)
-        if leavesView(dueDate: date) { gone.insert(task.id) }
-        let args = TaskPatchArgs(id: task.id, dueDate: date.map { .set($0) } ?? .clear, dueTime: date == nil ? .clear : time)
-        do {
-            try await client.command(.taskPatch(args))
-            feedback.haptic(.selection)
-            if let message {
-                feedback.toast(ScreenToast(message, actionTitle: "Undo") { [weak self] in
-                    guard let self else { return }
-                    Task { await self.restoreDue(before) }
-                })
-            }
-        } catch {
-            shownDue[task.id] = nil
-            gone.remove(task.id)
-            fail(error)
-        }
-    }
-
-    func restoreDue(_ before: TaskRow) async {
-        gone.remove(before.id)
-        shownDue[before.id] = (before.dueDate, before.dueDate == nil ? nil : before.dueTime)
-        let args = TaskPatchArgs(id: before.id, dueDate: before.dueDate.map { .set($0) } ?? .clear, dueTime: before.dueDate == nil ? .clear : (before.dueTime.map { .set($0) } ?? .clear))
-        do { try await client.command(.taskPatch(args)) } catch { fail(error) }
+        await edits.setDue(task, date: date, time: time, message: message, leaves: leavesView(dueDate: date))
     }
 
     /// Today shows what's due today or before; moving a task later takes it out of Today at once.
@@ -356,30 +263,7 @@ public final class TasksModel {
         return [MemberRow(id: s.profile.id, name: s.profile.name, email: s.profile.email, role: "owner", isYou: true)]
     }
 
-    /// Changes a task from its details; shows the change at once and puts it back when the engine refuses.
-    public func update(_ task: TaskRow, _ patch: TaskPatchArgs) async -> Bool {
-        let before = (shownStatus[task.id], shownDue[task.id])
-        if patch.checked == true || patch.canceled == true { shownStatus[task.id] = patch.canceled == true ? "canceled" : "done" }
-        if patch.checked == false || patch.canceled == false { shownStatus[task.id] = "open" }
-        if !patch.dueDate.isKept || !patch.dueTime.isKept {
-            let cur = shown(task)
-            var date = cur.dueDate, time = cur.dueTime
-            if case .set(let d) = patch.dueDate { date = d }
-            if case .clear = patch.dueDate { date = nil; time = nil }
-            if case .set(let t) = patch.dueTime { time = t }
-            if case .clear = patch.dueTime { time = nil }
-            shownDue[task.id] = (date, time)
-        }
-        do {
-            try await client.command(.taskPatch(patch))
-            return true
-        } catch {
-            shownStatus[task.id] = before.0
-            shownDue[task.id] = before.1
-            fail(error)
-            return false
-        }
-    }
+    public func latest(_ id: String) -> TaskRow? { value?.groups.lazy.flatMap(\.tasks).first { $0.id == id } }
 
     // MARK: Quick Add
 
@@ -468,14 +352,10 @@ public final class TasksModel {
         if visible { Task { await retry() } }
     }
 
-    /// The engine's value replaced what was shown here: drop overrides it now agrees with.
+    /// The engine's value replaced what was shown here: drop changes it now agrees with.
     public func reconcile() {
         guard let value else { return }
-        var seen: [String: TaskRow] = [:]
-        for g in value.groups { for t in g.tasks { seen[t.id] = t } }
-        for (id, s) in shownStatus where seen[id]?.status == s { shownStatus[id] = nil }
-        for (id, d) in shownDue where seen[id].map({ $0.dueDate == d.date && $0.dueTime == d.time }) ?? false { shownDue[id] = nil }
-        gone = gone.filter { seen[$0] != nil }
+        edits.reconcile(value.groups.lazy.flatMap(\.tasks))
     }
 
     func fail(_ error: any Error) {

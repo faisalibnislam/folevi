@@ -72,10 +72,10 @@ public enum GateKind: Equatable, Hashable, Sendable {
 }
 
 /// Which platform the words are for ("on this iPhone", "Check for Updates in the Folevi menu").
-public enum DeviceWords: Sendable, Equatable {
+public enum ScreenDevice: Sendable, Equatable {
     case iPhone, iPad, mac
 
-    @MainActor public static var current: DeviceWords {
+    @MainActor public static var current: ScreenDevice {
         #if os(macOS)
         return .mac
         #else
@@ -98,7 +98,7 @@ public enum DeviceWords: Sendable, Equatable {
 public final class GateModel {
     public let client: EngineClient
     let feedback: ScreenFeedback
-    let device: DeviceWords
+    let device: ScreenDevice
 
     /// The screen to show, or nil (signed in and ready, or not known yet).
     public private(set) var gate: GateChangedEvent?
@@ -115,7 +115,7 @@ public final class GateModel {
 
     @ObservationIgnored private var listener: Task<Void, Never>?
 
-    public init(client: EngineClient, feedback: ScreenFeedback = ScreenFeedback(), device: DeviceWords = .current, gate: GateChangedEvent? = nil) {
+    public init(client: EngineClient, feedback: ScreenFeedback = ScreenFeedback(), device: ScreenDevice = .current, gate: GateChangedEvent? = nil) {
         self.client = client
         self.feedback = feedback
         self.device = device
@@ -291,7 +291,7 @@ public final class GateModel {
     }
 
     /// Native words where the web left the heading empty.
-    static func fallbackTitle(_ kind: GateKind, device: DeviceWords) -> String {
+    static func fallbackTitle(_ kind: GateKind, device: ScreenDevice) -> String {
         switch kind {
         case .loading: "Opening your folio…"
         case .modeChoice: "Where should your notes live?"
@@ -316,7 +316,7 @@ public final class GateModel {
         }
     }
 
-    static func fallbackMessage(_ kind: GateKind, device: DeviceWords) -> String {
+    static func fallbackMessage(_ kind: GateKind, device: ScreenDevice) -> String {
         switch kind {
         case .updateRequired:
             device == .mac

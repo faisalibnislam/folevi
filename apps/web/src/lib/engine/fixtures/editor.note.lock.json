@@ -1,0 +1,9 @@
+{
+  "kind": "editor",
+  "name": "note.lock",
+  "description": "Lock: the note's Always fully encrypted dialog.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

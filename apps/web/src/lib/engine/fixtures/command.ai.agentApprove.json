@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "ai.agentApprove",
+  "description": "Apply the agent's proposed changes.",
+  "args": {
+    "runId": "run_1",
+    "operationIds": [
+      "op_1"
+    ]
+  },
+  "result": {
+    "ok": true
+  }
+}

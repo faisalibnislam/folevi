@@ -1,0 +1,9 @@
+{
+  "kind": "editor",
+  "name": "focus.toggle",
+  "description": "Focus Mode on or off (editor.state says which).",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

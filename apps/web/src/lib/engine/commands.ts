@@ -5,6 +5,7 @@
 import { ulid, DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { requireOutbox } from "@/lib/app/folders";
+import { noteFromText } from "@/lib/desktop/capabilities";
 import type { EngineDeps, EngineSpace } from "./context";
 import { spaceOf } from "./context";
 import { toEngineError } from "./live";
@@ -63,7 +64,7 @@ export const CORE_COMMANDS = {
 
   "note.create": {
     async run(deps, args) {
-      only(args, ["space", "folderId", "parentId", "title", "templateId", "open"]);
+      only(args, ["space", "folderId", "parentId", "title", "templateId", "open", "text"]);
       const engine = deps.app.engine;
       if (!engine) throw new BridgeError("engine_not_ready", "Folevi is still starting. Try again in a moment.");
       const space = spaceArg(deps, args);
@@ -73,6 +74,13 @@ export const CORE_COMMANDS = {
       const templateId = args.templateId === undefined || args.templateId === null ? null : (text(args, "templateId", { max: 200 }) as string);
       const title = (text(args, "title", { optional: true, allowEmpty: true, max: 500 }) ?? "").trim();
       const open = bool(args, "open", false);
+      // From text (Services, Shortcuts): as the Mac's "New note with text" made it, through imports.importText.
+      if (args.text !== undefined) {
+        const { title: t, body } = noteFromText(text(args, "text", { max: 500_000 }) as string);
+        const made = (await deps.client.mutation(api.imports.importText, { scope: space.scope, filename: t, content: body.split(/\n+/).join("\n\n"), format: "text", ...(folderId ? { folderId } : {}) })) as { document: { id: string } };
+        if (open) deps.navigate(`/d/${made.document.id}`);
+        return { id: made.document.id };
+      }
       const noteId = ulid();
       engine.createDocument({
         id: noteId,

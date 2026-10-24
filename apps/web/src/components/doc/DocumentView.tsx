@@ -777,6 +777,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
       delete: meta && !readOnly ? () => setDeleteOpen(true) : undefined,
     },
     scrollEl,
+    locked: Boolean((meta?.document as { locked?: boolean } | undefined)?.locked),
+    lock: lockItem?.onSelect ? () => lockItem.onSelect?.() : undefined,
   });
 
   if (meta === null && !pendingCreate && !waitingRow && (server === null || server === undefined) && (online || cacheLoaded)) {

@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "ai.agentUndo",
+  "description": "Undo applied changes; a note changed since is named.",
+  "args": {
+    "runId": "run_1"
+  },
+  "result": {
+    "status": "changed",
+    "changed": [
+      "Kyoto in November"
+    ]
+  }
+}

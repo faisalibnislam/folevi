@@ -8,6 +8,8 @@ import { copy } from "@/lib/e2ee/copy";
 import { getKeySession, inNativeApp, thisDevice } from "@/lib/e2ee/keys";
 import { NewDeviceApprovalDialog } from "./ApproveDeviceDialog";
 import { NativeGate } from "@/lib/engine/NativeGate";
+import type { ApprovalHandle } from "@/lib/e2ee/keys/session";
+import { e2eeInfo } from "@/lib/engine/gates";
 import { BridgeError } from "@/lib/engine/validate";
 
 type View = "choose" | "passphrase" | "recovery" | "trust";
@@ -24,6 +26,23 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
   const [approving, setApproving] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [gateError, setGateError] = useState<{ code: string; message: string } | null>(null);
+  // Approving from another device, from the native apps: the request, then the code both devices compare.
+  const [approval, setApproval] = useState<{ state: "waiting" | "compare" | "failed"; code: string | null; handle: ApprovalHandle | null } | null>(null);
+  const approve = async () => {
+    onStart?.();
+    setApproval({ state: "waiting", code: null, handle: null });
+    try {
+      const h = await session.requestApproval();
+      setApproval({ state: "waiting", code: null, handle: h });
+      void h.code.then((c) => setApproval((a) => (a ? { ...a, state: "compare", code: c } : a)), () => undefined);
+      void h.done.then(
+        (ok) => (ok ? (setApproval(null), unlocked()) : setApproval((a) => (a ? { ...a, state: "failed" } : a))),
+        () => setApproval((a) => (a ? { ...a, state: "failed" } : a)),
+      );
+    } catch {
+      setApproval({ state: "failed", code: null, handle: null });
+    }
+  };
   // No passkeys in the native apps (Mac, iPhone and iPad, Android): they unlock another way (§6.11).
   const onMac = inNativeApp();
   const unlocked = () => {
@@ -42,7 +61,7 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
       <NativeGate
         gate="e2eeTrust"
         title={u.trustTitle}
-        e2ee={{ space: null, spaceName: null, view: "trust", methods }}
+        e2ee={e2eeInfo({ space: null, spaceName: null, view: "trust", methods })}
         actions={[
           { id: "trustBrowser", label: u.trustBrowser.label, style: "primary", run: async () => { await session.trust("browser"); onDone?.(); } },
           { id: "public", label: u.publicComputer.label, style: "secondary", run: async () => { await session.trust("public"); onDone?.(); } },
@@ -53,13 +72,16 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
         gate="e2eeLocked"
         title={u.title}
         message={u.body}
-        e2ee={{ space: null, spaceName: null, view, methods }}
+        e2ee={e2eeInfo({ space: null, spaceName: null, view, methods, approval: approval?.state ?? null, approvalCode: approval?.code ?? null })}
         error={gateError}
         fields={[
           { id: "passphrase", kind: "secret", label: u.passphraseField, placeholder: "" },
           { id: "recoveryKey", kind: "recoveryKey", label: u.recoveryField, placeholder: u.recoveryPlaceholder },
         ]}
         actions={[
+          ...(approval && approval.state !== "failed"
+            ? [{ id: "cancelApproval", label: copy.approve.cancel, style: "quiet" as const, run: () => { approval.handle?.cancel(); setApproval(null); } }]
+            : [{ id: "approve", label: u.approve, style: "secondary" as const, run: () => approve() }]),
           { id: "passphrase", label: u.passphrase, style: "primary", run: async (v) => {
             onStart?.();
             const r = await session.unlockWithPassphrase((v.passphrase ?? "").normalize("NFC"));

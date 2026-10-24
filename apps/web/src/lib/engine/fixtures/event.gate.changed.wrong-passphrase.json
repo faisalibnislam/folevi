@@ -27,6 +27,11 @@
     "migration": null,
     "deviceLimit": null,
     "e2ee": {
+      "approval": null,
+      "approvalCode": null,
+      "setupStep": null,
+      "recoveryKey": null,
+      "methodsAdded": [],
       "space": "personal",
       "spaceName": "Personal",
       "view": "passphrase",

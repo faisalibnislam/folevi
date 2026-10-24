@@ -45,6 +45,11 @@
     "migration": null,
     "deviceLimit": null,
     "e2ee": {
+      "approval": null,
+      "approvalCode": null,
+      "setupStep": null,
+      "recoveryKey": null,
+      "methodsAdded": [],
       "space": "ws_vault",
       "spaceName": "Vault",
       "view": "choose",

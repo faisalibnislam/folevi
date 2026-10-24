@@ -10,6 +10,9 @@
     "marks": [],
     "link": false,
     "undo": true,
-    "redo": true
+    "redo": true,
+    "focus": true,
+    "locked": false,
+    "canLock": false
   }
 }

@@ -1,0 +1,9 @@
+{
+  "kind": "editor",
+  "name": "block.duplicate",
+  "description": "Duplicate the block.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

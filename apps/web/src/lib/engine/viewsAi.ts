@@ -8,7 +8,7 @@ import type { ViewContext } from "./context";
 import { QuerySource } from "./live";
 import { requireSpace, type ValueViewDef } from "./views";
 import { id, only, optionalId, text } from "./validate";
-import type { ChatAction, ChatConversationRow, ChatConversationValue, ChatMessage, EngineError, ViewName } from "./protocol";
+import type { ChatAgentRun, ChatAction, ChatConversationRow, ChatConversationValue, ChatMessage, EngineError, ViewName } from "./protocol";
 
 type Args = Record<string, unknown>;
 
@@ -70,6 +70,20 @@ export function chatAction(a: ActionData): ChatAction {
   };
 }
 
+type RunData = {
+  id: string;
+  status: string;
+  operations: { id: string; kind: string; summary: string; status: string; error: string | null; noteId: string | null; noteTitle: string | null; markdown: string | null; edits: { action: string; before: string; after: string }[] }[];
+};
+
+export function agentRun(r: RunData): ChatAgentRun {
+  return {
+    id: r.id,
+    status: r.status,
+    operations: r.operations.map((o) => ({ id: o.id, kind: o.kind, summary: o.summary, status: o.status, error: o.error ?? null, noteId: o.noteId ?? null, noteTitle: o.noteTitle ?? null, markdown: o.markdown ?? null, edits: (o.edits ?? []).map((e) => ({ action: e.action, before: e.before ?? "", after: e.after ?? "" })) })),
+  };
+}
+
 type MessageData = {
   id: string;
   role: "user" | "assistant";
@@ -85,7 +99,7 @@ type MessageData = {
   attachments: { id: string; name: string; mimeType: string; size: number; kind: string }[];
   actions: ActionData[] | null;
   actionsOutcome: { kind: string } | null;
-  agent: { steps: { tool: string; count: number; ok: boolean }[]; more: boolean } | null;
+  agent: { steps: { tool: string; count: number; ok: boolean }[]; more: boolean; run?: RunData | null } | null;
   memory: { kind: string; text: string; status: string } | null;
   createdAt: number;
 };
@@ -111,6 +125,7 @@ export function chatMessage(m: MessageData): ChatMessage {
     agentMore: Boolean(m.agent?.more),
     memory: m.memory ? { kind: m.memory.kind, text: m.memory.text, status: m.memory.status } : null,
     createdAt: m.createdAt,
+    agentRun: m.agent?.run ? agentRun(m.agent.run) : null,
   };
 }
 

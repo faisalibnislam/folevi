@@ -75,8 +75,22 @@ export function onNoteHost(cb: () => void): () => void {
   };
 }
 
+let focus = false;
+
+/** Focus Mode (R8.9): the native app hides its bars around the note; the page closes its panel. */
+export function focusMode(): boolean {
+  return focus;
+}
+
+export function setFocusMode(on: boolean): void {
+  if (focus === on) return;
+  focus = on;
+  for (const l of [...listeners]) l();
+}
+
 /** For tests. */
 export function resetNoteHost(): void {
+  focus = false;
   active = null;
   ready.clear();
   listeners.clear();

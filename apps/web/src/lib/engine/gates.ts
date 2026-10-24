@@ -3,7 +3,12 @@
 // reports itself here in native chrome mode (components/engine/NativeGate.tsx), with its buttons as actions;
 // the app itself reports "no gate". The last one reported wins: only one of them is on screen at a time.
 import { BridgeError } from "./validate";
-import type { GateChangedEvent } from "./protocol";
+import type { E2eeGateInfo, GateChangedEvent } from "./protocol";
+
+/** An E2EE gate's info with the revision 8 fields filled in. */
+export function e2eeInfo(p: Pick<E2eeGateInfo, "space" | "spaceName" | "view" | "methods"> & Partial<E2eeGateInfo>): E2eeGateInfo {
+  return { approval: null, approvalCode: null, setupStep: null, recoveryKey: null, methodsAdded: [], ...p };
+}
 
 export type GateHandler = (values: Record<string, string>) => unknown | Promise<unknown>;
 

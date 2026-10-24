@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "notification.act",
+  "description": "Snooze a reminder until tomorrow morning.",
+  "args": {
+    "id": "n4",
+    "action": "snooze-tomorrow"
+  },
+  "result": {
+    "ok": true
+  }
+}

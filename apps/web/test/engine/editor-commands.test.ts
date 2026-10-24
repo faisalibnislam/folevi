@@ -59,7 +59,7 @@ describe("editor commands", () => {
     expect(document.documentElement.style.getPropertyValue("--native-inset-top")).toBe("96px");
     expect(document.documentElement.style.getPropertyValue("--native-inset-bottom")).toBe("44px");
     expect(code(() => runEditorCommand(options(), "insets", { top: -1, bottom: 0 }))).toBe("invalid_args");
-    expect(editorState(null, "doc_1", false)).toEqual({ noteId: "doc_1", focused: false, canEdit: true, block: "paragraph", marks: [], link: false, undo: false, redo: false });
+    expect(editorState(null, "doc_1", false)).toEqual({ noteId: "doc_1", focused: false, canEdit: true, block: "paragraph", marks: [], link: false, undo: false, redo: false, focus: false, locked: false, canLock: false });
     expect(runEditorCommand(options({ editor: fakeEditor as never }), "state", {})).toMatchObject({ noteId: "doc_1", undo: true, redo: false });
   });
 

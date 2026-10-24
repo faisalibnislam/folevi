@@ -1,0 +1,29 @@
+{
+  "kind": "view",
+  "name": "notes.meta",
+  "description": "Restored tabs' current titles: one renamed, one gone.",
+  "args": {
+    "ids": [
+      "doc_00001",
+      "doc_gone"
+    ]
+  },
+  "value": {
+    "notes": [
+      {
+        "id": "doc_00001",
+        "found": true,
+        "title": "Kyoto in late November",
+        "icon": "🗺️",
+        "inTrash": false
+      },
+      {
+        "id": "doc_gone",
+        "found": false,
+        "title": "",
+        "icon": null,
+        "inTrash": false
+      }
+    ]
+  }
+}

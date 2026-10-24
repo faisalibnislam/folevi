@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "d4ed9d88"
+        "schemaHash": "c0e1bbf7"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 7,
+        "revision": 8,
         "build": "dev",
-        "schemaHash": "d4ed9d88",
+        "schemaHash": "c0e1bbf7",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -67,7 +67,10 @@
           "ai.conversations",
           "ai.conversation",
           "ai.stream",
-          "ai.capabilities"
+          "ai.capabilities",
+          "places.move.preview",
+          "notes.meta",
+          "ai.research"
         ],
         "listViews": [
           "notes.list"
@@ -136,7 +139,15 @@
           "ai.remove",
           "ai.saveAsNote",
           "ai.actions",
-          "ai.memory"
+          "ai.memory",
+          "notification.act",
+          "places.move",
+          "ai.researchCancel",
+          "ai.researchSave",
+          "ai.agentApprove",
+          "ai.agentDiscard",
+          "ai.agentUndo",
+          "settings.setAvatar"
         ],
         "editorCommands": [
           "note.prepare",
@@ -158,7 +169,11 @@
           "scrollToTop",
           "insets",
           "state",
-          "web.show"
+          "web.show",
+          "block.move",
+          "block.duplicate",
+          "focus.toggle",
+          "note.lock"
         ],
         "events": [
           "engine.ready",

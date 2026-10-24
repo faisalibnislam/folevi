@@ -1,0 +1,40 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "Approving from another device: the code both devices compare.",
+  "data": {
+    "gate": "e2eeLocked",
+    "title": "Unlock your encrypted notes",
+    "message": "",
+    "busy": false,
+    "actions": [
+      {
+        "id": "cancelApproval",
+        "label": "Cancel",
+        "style": "quiet",
+        "enabled": true
+      }
+    ],
+    "fields": [],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": null,
+    "e2ee": {
+      "approval": "compare",
+      "approvalCode": "482 913",
+      "setupStep": null,
+      "recoveryKey": null,
+      "methodsAdded": [],
+      "space": null,
+      "spaceName": null,
+      "view": "choose",
+      "methods": [
+        "device",
+        "passphrase",
+        "recovery"
+      ]
+    },
+    "onboarding": null,
+    "error": null
+  }
+}

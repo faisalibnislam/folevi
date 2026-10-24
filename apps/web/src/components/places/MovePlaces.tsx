@@ -166,38 +166,24 @@ function MovePlacesDialog({ initialPick, onClose }: { initialPick: Pick | null; 
       key: newMoveKey(),
       startedAt: Date.now(),
     };
-    // The library's page reaches nothing but this device: an account side runs from the account's own page.
-    if (mode === "local" && dest.place.kind === "account") {
-      writePending({ ...move, runIn: dest.place.id });
-      await local?.local.library?.flush().catch(() => undefined);
-      await switchToPlace(dest.place);
-      return;
-    }
     const ctrl = new AbortController();
     abort.current = ctrl;
-    setPhase({ kind: "running", progress: null, trashing: null });
-    let other: MoveEnd | null = null;
+    if (!(mode === "local" && dest.place.kind === "account")) setPhase({ kind: "running", progress: null, trashing: null });
     try {
-      // (From the library's own page a move always runs in the account, above: here the open place is an account.)
-      const fromEnd = pageEnd(convex, "account");
-      other = dest.place.kind === "library" ? await libraryEnd() : await otherAccountEnd(dest.place.id);
-      const state = await runPlaceMove({
+      const r = await startPlaceMove({
+        convex,
+        flushLibrary: () => local?.local.library?.flush(),
+        local: mode === "local",
+        deviceId,
         move,
-        from: fromEnd,
-        to: other,
-        open: "from",
-        deviceId: deviceId ?? "web-move",
-        progress: storedProgress(move.key),
+        to: dest.place,
         onProgress: (p) => setPhase({ kind: "running", progress: p, trashing: null }),
         onTrash: (done, total) => setPhase((ph) => (ph.kind === "running" ? { ...ph, trashing: { done, total } } : ph)),
         signal: ctrl.signal,
       });
-      forgetProgress(move.key);
-      setPhase({ kind: "done", state, move, to: dest.place });
+      if (r.kind === "done") setPhase({ kind: "done", state: r.state, move, to: dest.place });
     } catch (e) {
       setPhase({ kind: "stopped", message: e instanceof MigrationError && e.code === "cancelled" ? null : errorText(e) });
-    } finally {
-      await other?.close().catch(() => undefined);
     }
   };
 
@@ -280,6 +266,56 @@ function MovePlacesDialog({ initialPick, onClose }: { initialPick: Pick | null; 
     </Dialog>
   );
 }
+
+/**
+ * Runs a move or copy between places from this page (the dialog above; the native apps' engine, lib/engine):
+ * here when this page reaches both places, else (the library's page, to an account) kept for the account's page,
+ * which it switches to and which runs it on opening (PlaceMoveGate). Throws what stopped it.
+ */
+export async function startPlaceMove(o: {
+  convex: MigrationClient;
+  /** This page is the library's (local mode). */
+  local: boolean;
+  flushLibrary?: () => Promise<void> | undefined;
+  deviceId: string | null;
+  move: PlaceMove;
+  to: Place;
+  onProgress?: (p: MigrationProgress) => void;
+  onTrash?: (done: number, total: number) => void;
+  signal?: AbortSignal;
+}): Promise<{ kind: "switched" } | { kind: "done"; state: MigrationState }> {
+  // The library's page reaches nothing but this device: an account side runs from the account's own page.
+  if (o.local && o.to.kind === "account") {
+    writePending({ ...o.move, runIn: o.to.id });
+    await o.flushLibrary?.()?.catch(() => undefined);
+    await switchToPlace(o.to);
+    return { kind: "switched" };
+  }
+  let other: MoveEnd | null = null;
+  try {
+    // (From the library's own page a move always runs in the account, above: here the open place is an account.)
+    const fromEnd = pageEnd(o.convex, "account");
+    other = o.to.kind === "library" ? await libraryEnd() : await otherAccountEnd(o.to.id);
+    const state = await runPlaceMove({
+      move: o.move,
+      from: fromEnd,
+      to: other,
+      open: "from",
+      deviceId: o.deviceId ?? "web-move",
+      progress: storedProgress(o.move.key),
+      onProgress: (p) => o.onProgress?.(p),
+      onTrash: (done, total) => o.onTrash?.(done, total),
+      signal: o.signal,
+    });
+    forgetProgress(o.move.key);
+    return { kind: "done", state };
+  } finally {
+    await other?.close().catch(() => undefined);
+  }
+}
+
+/** Where notes can go from the open place: every other place, and an account's Personal or each workspace. */
+export { destinations as placeDestinations, placeLabel };
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (

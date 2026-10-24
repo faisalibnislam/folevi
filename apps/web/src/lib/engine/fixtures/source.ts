@@ -11,12 +11,13 @@
 // - "event": one event's data.
 // - "envelope": raw messages in both directions (handshake, errors, a batch).
 import { applyDiff, emptyNativeList, nativeRows, windowDiff, withHash, type ListState } from "../diff";
-import { gateEvent } from "../gates";
+import { e2eeInfo, gateEvent } from "../gates";
 import { changesValue, notificationRow, searchHits, sharedRow } from "../viewsMore";
 import { taskGroups, taskRow, type TaskData } from "../viewsWork";
 import { planQuickTask } from "../quickTask";
 import { notificationSettings, sharingValue } from "../viewsAccount";
 import { chatMessage, conversationRow, conversationValue } from "../viewsAi";
+import { researchJob } from "../viewsMac";
 import {
   CONTRACT_REVISION,
   PROTOCOL_VERSION,
@@ -810,7 +811,8 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.sharing.cancelInvite": command({ name: "sharing.cancelInvite", description: "Cancel an invitation.", args: { inviteId: "pinv_2" }, result: { ok: true } }),
   "command.sharing.setAccessMode": command({ name: "sharing.setAccessMode", description: "Only the people listed.", args: { noteId: "doc_00002", mode: "restricted" }, result: { ok: true } }),
   "command.publicLink.create": command({ name: "publicLink.create", description: "A public link with the Article look.", args: { noteId: "doc_00002", theme: "article" }, result: { id: "lnk_2", url: "https://app.folevi.com/s/k3XaQ9vY2mP4tR7w" } }),
-  "command.publicLink.create.encrypted": command({ name: "publicLink.create", description: "An encrypted note's link is made on the note page.", args: { noteId: "doc_sealed" }, error: { code: "invalid_argument", message: "This note is end-to-end encrypted: share it from the note's Share button." } }),
+  "command.publicLink.create.encrypted": command({ name: "publicLink.create", description: "An encrypted note's link (revision 8): its key in the link's fragment, made on this device.", args: { noteId: "doc_sealed" }, result: { id: "lnk_e1", url: "https://app.folevi.com/s/q7Lm2Zx9#k=Vh3bS0eQ" } }),
+  "command.publicLink.create.copy": command({ name: "publicLink.create", description: "A readable copy of an encrypted note (after the person confirmed).", args: { noteId: "doc_sealed", plainCopy: true }, result: { id: "lnk_e2", url: "https://app.folevi.com/s/Rt5yW8cK" } }),
   "command.publicLink.setTheme": command({ name: "publicLink.setTheme", description: "Change a link's look.", args: { linkId: "lnk_1", theme: "minimal" }, result: { ok: true } }),
   "command.publicLink.revoke": command({ name: "publicLink.revoke", description: "Turn a link off.", args: { linkId: "lnk_1" }, result: { ok: true } }),
   "command.invite.acceptLink": command({ name: "invite.acceptLink", description: "Accept a page invitation link and open the page.", args: { kind: "page", token: "tok_page" }, result: { noteId: "doc_s2", space: null } }),
@@ -858,6 +860,25 @@ export const FIXTURES: Record<string, Fixture> = {
           createdAt: NOW - 110_000,
         },
         { id: "msg_3", role: "user", text: "Yes, and what's the weather like?", citations: [], webCitations: [], suggestions: [], status: "done", live: false, phase: null, error: null, credits: null, attachments: [], actions: null, actionsOutcome: null, agent: null, memory: null, createdAt: NOW - 10_000 },
+        {
+          id: "msg_3b",
+          role: "assistant",
+          text: "I can add the packing list to Kyoto in November.",
+          citations: [],
+          webCitations: [],
+          suggestions: [],
+          status: "done",
+          live: false,
+          phase: null,
+          error: null,
+          credits: 3,
+          attachments: [],
+          actions: null,
+          actionsOutcome: null,
+          agent: { steps: [{ tool: "read_note", count: 1, ok: true }], more: false, run: { id: "run_1", status: "preview", operations: [{ id: "op_1", kind: "edit_note", summary: "Add a packing list", status: "pending", error: null, noteId: "doc_00001", noteTitle: "Kyoto in November", markdown: null, edits: [{ action: "insert", before: "", after: "- Passport\n- Rail pass" }] }] } },
+          memory: null,
+          createdAt: NOW - 9_500,
+        },
         { id: "msg_4", role: "assistant", text: "", citations: [], webCitations: [], suggestions: [], status: "streaming", live: true, phase: "Searching the web", error: null, credits: null, attachments: [], actions: null, actionsOutcome: null, agent: null, memory: null, createdAt: NOW - 9_000 },
       ],
     }),
@@ -889,6 +910,99 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.ai.saveAsNote": command({ name: "ai.saveAsNote", description: "Save an answer as a note.", args: { conversationId: "conv_1", messageId: "msg_2" }, result: { id: "doc_00120" } }),
   "command.ai.actions": command({ name: "ai.actions", description: "Apply an answer's proposed changes.", args: { conversationId: "conv_1", messageId: "msg_2", apply: true }, result: { ok: true } }),
   "command.ai.memory": command({ name: "ai.memory", description: "Remember the preference it offered.", args: { messageId: "msg_2", save: true }, result: { ok: true } }),
+
+  // ---- revision 8
+  "view.places.move.preview": view({
+    name: "places.move.preview",
+    description: "Move or copy notes: the places they can go, and what goes (everything here).",
+    args: {},
+    value: {
+      from: "Personal",
+      destinations: [
+        { value: "acct:user_2|personal", label: "Faisal (work): Personal", place: "acct:user_2", space: "personal", switches: false },
+        { value: "library|personal", label: "On this Mac", place: "library", space: "personal", switches: false },
+      ],
+      to: { value: "acct:user_2|personal", label: "Faisal (work): Personal", place: "acct:user_2", space: "personal", switches: false },
+      folders: 9,
+      notes: 412,
+      everything: true,
+      fits: null,
+    },
+  }),
+  "view.notes.meta": view({
+    name: "notes.meta",
+    description: "Restored tabs' current titles: one renamed, one gone.",
+    args: { ids: ["doc_00001", "doc_gone"] },
+    value: { notes: [{ id: "doc_00001", found: true, title: "Kyoto in late November", icon: "🗺️", inTrash: false }, { id: "doc_gone", found: false, title: "", icon: null, inTrash: false }] },
+  }),
+  "view.ai.research": view({
+    name: "ai.research",
+    description: "A research job running in a conversation.",
+    args: { conversationId: "conv_1" },
+    value: {
+      jobs: [
+        researchJob({
+          id: "res_1",
+          messageId: "msg_r1",
+          question: "Best time to see the autumn leaves in Kyoto",
+          status: "running",
+          steps: [
+            { kind: "plan", label: "Planning", status: "done" },
+            { kind: "search", label: "Searching the web", status: "running", count: 4 },
+          ],
+          sources: [{ n: 1, kind: "web", url: "https://example.com/kyoto-leaves", title: "Kyoto foliage forecast", domain: "example.com" }, { n: 2, kind: "note", id: "doc_00001", title: "Kyoto in November" }],
+          noteId: null,
+          error: null,
+          credits: null,
+          createdAt: NOW - 60_000,
+          finishedAt: null,
+        }),
+      ],
+    },
+  }),
+  "event.gate.changed.e2ee-setup": event({
+    name: "gate.changed",
+    description: "Setting encryption up: the recovery key, shown once, to confirm with groups 3 and 7.",
+    data: gateEvent({
+      gate: "e2eeSetup",
+      title: "This workspace is encrypted",
+      e2ee: e2eeInfo({ space: "ws_vault", spaceName: "Vault", view: "needsSetup", methods: [], setupStep: "recovery", recoveryKey: "K7QM-2RTX-9VBN-4HJW-PL3D-8SZC-6YFE-MA5G-UQ2N", methodsAdded: ["passphrase"] }),
+      fields: [
+        { id: "group3", kind: "code", label: "Group 3", placeholder: "XXXX" },
+        { id: "group7", kind: "code", label: "Group 7", placeholder: "XXXX" },
+      ],
+      actions: [
+        { id: "confirmRecovery", label: "Confirm", style: "primary", enabled: true },
+        { id: "back", label: "Back", style: "quiet", enabled: true },
+      ],
+    }),
+  }),
+  "event.gate.changed.approval": event({
+    name: "gate.changed",
+    description: "Approving from another device: the code both devices compare.",
+    data: gateEvent({
+      gate: "e2eeLocked",
+      title: "Unlock your encrypted notes",
+      e2ee: e2eeInfo({ space: null, spaceName: null, view: "choose", methods: ["device", "passphrase", "recovery"], approval: "compare", approvalCode: "482 913" }),
+      actions: [{ id: "cancelApproval", label: "Cancel", style: "quiet", enabled: true }],
+    }),
+  }),
+  "command.note.create.text": command({ name: "note.create", description: "A note from text (Services, Shortcuts): the first line is its title.", args: { text: "Groceries\nMilk\nRice", open: true }, result: { id: "doc_00130" } }),
+  "command.notification.act": command({ name: "notification.act", description: "Reply to a comment from a banner.", args: { id: "n1", action: "reply", text: "Friday works", thread: "th_1" }, result: { ok: true } }),
+  "command.notification.act.snooze": command({ name: "notification.act", description: "Snooze a reminder until tomorrow morning.", args: { id: "n4", action: "snooze-tomorrow" }, result: { ok: true } }),
+  "command.places.move": command({ name: "places.move", description: "Copy two folders to another account (progress as the placeMove gate).", args: { to: "acct:user_2|personal", folders: ["fld_trips", "fld_work"], copy: true }, result: { status: "done", notes: 19, problems: 0 } }),
+  "command.places.move.switch": command({ name: "places.move", description: "From the library to an account: the page switches there to run it.", args: { to: "acct:user_1|personal", copy: false, versions: false }, result: { status: "switched", notes: 0, problems: 0 } }),
+  "command.ai.send.research": command({ name: "ai.send", description: "Research mode: a report from the web and the notes.", args: { text: "Best time to see the leaves in Kyoto", mode: "research" }, result: { conversationId: "01JB7ZD5P6Q7R8S9T0V1W2X3Y4", messageId: null } }),
+  "command.ai.researchCancel": command({ name: "ai.researchCancel", description: "Stop a research job.", args: { researchId: "res_1" }, result: { ok: true } }),
+  "command.ai.researchSave": command({ name: "ai.researchSave", description: "Save a report as a note in a folder.", args: { researchId: "res_1", folderId: "fld_trips" }, result: { id: "doc_00131" } }),
+  "command.ai.agentApprove": command({ name: "ai.agentApprove", description: "Apply the agent's proposed changes.", args: { runId: "run_1", operationIds: ["op_1"] }, result: { ok: true } }),
+  "command.ai.agentDiscard": command({ name: "ai.agentDiscard", description: "Discard them.", args: { runId: "run_1" }, result: { ok: true } }),
+  "command.ai.agentUndo": command({ name: "ai.agentUndo", description: "Undo applied changes; a note changed since is named.", args: { runId: "run_1" }, result: { status: "changed", changed: ["Kyoto in November"] } }),
+  "command.settings.setAvatar": command({ name: "settings.setAvatar", description: "A new profile picture, POSTed to /_bridge first.", args: { bodyId: "av_1", mimeType: "image/jpeg", name: "me.jpg" }, result: { ok: true } }),
+  "editor.block.move": editor({ name: "block.move", description: "Move the block up.", args: { dir: "up" }, result: { ok: true } }),
+  "editor.block.duplicate": editor({ name: "block.duplicate", description: "Duplicate the block.", args: {}, result: { ok: true } }),
+  "editor.focus.toggle": editor({ name: "focus.toggle", description: "Focus Mode on or off (editor.state says which).", args: {}, result: { ok: true } }),
+  "editor.note.lock": editor({ name: "note.lock", description: "Lock: the note's Always fully encrypted dialog.", args: {}, result: { ok: true } }),
   // ---- commands
   "command.space.switch": command({ name: "space.switch", description: "Show the team workspace.", args: { space: "ws_studio" }, result: { space: "ws_studio" } }),
   "command.note.create": command({ name: "note.create", description: "A new note in a folder (works offline).", args: { folderId: "fld_trips", title: "" }, result: { id: "01JB7Z8K3Q4ABCDEF0123456789" } }),
@@ -940,7 +1054,7 @@ export const FIXTURES: Record<string, Fixture> = {
     name: "state",
     description: "The editor's state now (also sent as editor.state events).",
     args: {},
-    result: { noteId: "doc_00001", focused: true, canEdit: true, block: "todo", marks: ["bold"], link: false, undo: true, redo: false },
+    result: { noteId: "doc_00001", focused: true, canEdit: true, block: "todo", marks: ["bold"], link: false, undo: true, redo: false, focus: false, locked: false, canLock: true },
   }),
 
   // ---- events
@@ -999,7 +1113,7 @@ export const FIXTURES: Record<string, Fixture> = {
     data: gateEvent({
       gate: "e2eeLocked",
       title: "Unlock your encrypted notes",
-      e2ee: { space: "ws_vault", spaceName: "Vault", view: "choose", methods: ["device", "passphrase", "recovery"] },
+      e2ee: e2eeInfo({ space: "ws_vault", spaceName: "Vault", view: "choose", methods: ["device", "passphrase", "recovery"] }),
       fields: [
         { id: "passphrase", kind: "secret", label: "Passphrase", placeholder: "" },
         { id: "recoveryKey", kind: "recoveryKey", label: "Recovery key", placeholder: "XXXX-XXXX-XXXX-XXXX" },
@@ -1017,7 +1131,7 @@ export const FIXTURES: Record<string, Fixture> = {
     data: gateEvent({
       gate: "e2eeLocked",
       title: "Unlock your encrypted notes",
-      e2ee: { space: "personal", spaceName: "Personal", view: "passphrase", methods: ["passphrase", "recovery"] },
+      e2ee: e2eeInfo({ space: "personal", spaceName: "Personal", view: "passphrase", methods: ["passphrase", "recovery"] }),
       fields: [{ id: "passphrase", kind: "secret", label: "Passphrase", placeholder: "" }],
       actions: [{ id: "passphrase", label: "Unlock", style: "primary", enabled: true }],
       error: { code: "wrong_secret", message: "That passphrase isn't right." },
@@ -1055,7 +1169,7 @@ export const FIXTURES: Record<string, Fixture> = {
       sync: "waiting",
     },
   }),
-  "event.editor.state": event({ name: "editor.state", description: "The caret moved into a heading.", data: { noteId: "doc_00001", focused: true, canEdit: true, block: "heading2", marks: [], link: false, undo: true, redo: true } }),
+  "event.editor.state": event({ name: "editor.state", description: "The caret moved into a heading.", data: { noteId: "doc_00001", focused: true, canEdit: true, block: "heading2", marks: [], link: false, undo: true, redo: true, focus: true, locked: false, canLock: false } }),
   "event.editor.panel": event({ name: "editor.panel", description: "The Format panel opened.", data: { panel: "format" } }),
   "event.editor.panel.closed": event({ name: "editor.panel", description: "The panel closed.", data: { panel: null } }),
   "event.memory.relieved": event({ name: "memory.relieved", description: "Memory was short: the editor and caches were dropped.", data: { dropped: ["editor", "caches"] } }),

@@ -7,11 +7,11 @@
 // `note.ready`. Imported only by the note page, so it loads with the editor's code, never with the first screen.
 import { useEffect, useRef } from "react";
 import type { Editor } from "@tiptap/core";
-import { applyLink, changeDepth, insertBlockAfterCurrent, removeLink, turnInto } from "@/components/editor/commands";
+import { applyLink, changeDepth, duplicateBlocks, insertBlockAfterCurrent, moveBlock, removeLink, turnInto } from "@/components/editor/commands";
 import { requestSpecialInsert, type SpecialInsert } from "@/components/editor/EditorMenus";
 import { AI_FOCUS_EVENT, askNoteAi } from "@/components/ai/chat/events";
 import { nativeChrome } from "@/lib/nativeApp";
-import { bridgeListening, emitNoteEvent, markNoteReady, registerNote, type NoteHandle } from "./noteHost";
+import { bridgeListening, emitNoteEvent, focusMode, markNoteReady, onNoteHost, registerNote, setFocusMode, type NoteHandle } from "./noteHost";
 import { BridgeError, num, oneOf, only, text } from "./validate";
 import { EDITOR_BLOCKS, EDITOR_MARKS, EDITOR_PANELS, NOTE_MENU_ACTIONS, type EditorBlock, type EditorCommandName, type EditorMark, type EditorPanel, type EditorStateEvent, type NoteMenuAction } from "./protocol";
 
@@ -31,6 +31,10 @@ export interface NativeNoteOptions {
   /** The "..." menu's actions this note offers now (missing ones are refused). */
   menu: Partial<Record<NoteMenuAction, () => void>>;
   scrollEl: HTMLElement | null;
+  /** The note is always fully encrypted. */
+  locked?: boolean;
+  /** "Lock" is offered here: opens the Lock dialog over the note. */
+  lock?: () => void;
 }
 
 /** The block the caret is in, as the protocol names it ("heading2", "todo", "image", ...). */
@@ -42,9 +46,11 @@ export function blockAtSelection(editor: Editor): string {
   return node.type.name;
 }
 
-export function editorState(editor: Editor | null, noteId: string, readOnly: boolean): EditorStateEvent {
-  if (!editor || editor.isDestroyed) return { noteId, focused: false, canEdit: !readOnly, block: "paragraph", marks: [], link: false, undo: false, redo: false };
+export function editorState(editor: Editor | null, noteId: string, readOnly: boolean, lock: { locked?: boolean; canLock?: boolean } = {}): EditorStateEvent {
+  const extra = { focus: focusMode(), locked: Boolean(lock.locked), canLock: Boolean(lock.canLock) };
+  if (!editor || editor.isDestroyed) return { noteId, focused: false, canEdit: !readOnly, block: "paragraph", marks: [], link: false, undo: false, redo: false, ...extra };
   return {
+    ...extra,
     noteId,
     focused: editor.isFocused || editor.view.hasFocus(),
     canEdit: !readOnly,
@@ -182,7 +188,25 @@ export function runEditorCommand(o: NativeNoteOptions, name: EditorCommandName, 
       return ok;
     case "state":
       only(args, []);
-      return editorState(editor, o.documentId, o.readOnly);
+      return editorState(editor, o.documentId, o.readOnly, { locked: o.locked, canLock: Boolean(o.lock) });
+    case "block.move":
+      only(args, ["dir"]);
+      moveBlock(editing(), oneOf(args, "dir", ["up", "down"] as const) === "up" ? -1 : 1);
+      return ok;
+    case "block.duplicate":
+      only(args, []);
+      duplicateBlocks(editing());
+      return ok;
+    case "focus.toggle":
+      only(args, []);
+      setFocusMode(!focusMode());
+      if (focusMode()) o.closePanel();
+      return ok;
+    case "note.lock":
+      only(args, []);
+      if (!o.lock) throw new BridgeError("unavailable", "Lock isn't offered for this note.");
+      o.lock();
+      return ok;
     default:
       // note.prepare, note.show and note.close are the host's.
       throw new BridgeError("unknown_editor_command", `The note page doesn't run “${name}”.`);
@@ -202,7 +226,7 @@ export function useNativeNote(o: NativeNoteOptions): void {
     const handle: NoteHandle = {
       noteId: documentId,
       run: (name, args) => runEditorCommand(latest.current, name, args),
-      state: () => editorState(latest.current.editor, documentId, latest.current.readOnly),
+      state: () => editorState(latest.current.editor, documentId, latest.current.readOnly, { locked: latest.current.locked, canLock: Boolean(latest.current.lock) }),
       panel: () => latest.current.panel,
     };
     return registerNote(handle);
@@ -229,7 +253,7 @@ export function useNativeNote(o: NativeNoteOptions): void {
     const send = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const state = editorState(editor, documentId, latest.current.readOnly);
+        const state = editorState(editor, documentId, latest.current.readOnly, { locked: latest.current.locked, canLock: Boolean(latest.current.lock) });
         const json = JSON.stringify(state);
         if (json === last) return;
         last = json;
@@ -241,7 +265,10 @@ export function useNativeNote(o: NativeNoteOptions): void {
     editor.on("transaction", send);
     editor.on("focus", send);
     editor.on("blur", send);
+    // Focus Mode turning on or off changes the state too.
+    const offFocus = onNoteHost(send);
     return () => {
+      offFocus();
       cancelAnimationFrame(frame);
       editor.off("selectionUpdate", send);
       editor.off("transaction", send);

@@ -13,6 +13,9 @@
     ],
     "link": false,
     "undo": true,
-    "redo": false
+    "redo": false,
+    "focus": false,
+    "locked": false,
+    "canLock": true
   }
 }

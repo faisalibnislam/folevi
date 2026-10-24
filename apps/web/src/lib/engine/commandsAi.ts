@@ -26,7 +26,7 @@ export const AI_COMMANDS = {
       const q = (text(args, "text", { max: 4000 }) as string).trim();
       const space = spaceArg(deps, args);
       const conversationId = args.conversationId === undefined ? ulid() : id(args, "conversationId");
-      const mode = args.mode === undefined ? "auto" : oneOf(args, "mode", ["auto", "ask", "agent"] as const);
+      const mode = args.mode === undefined ? "auto" : oneOf(args, "mode", ["auto", "ask", "agent", "research"] as const);
       let context: { kind: string; ids: string[] } | undefined;
       if (args.context !== undefined) {
         const c = args.context as Record<string, unknown>;
@@ -35,6 +35,12 @@ export const AI_COMMANDS = {
       }
       const attachments = Array.isArray(args.attachments) && args.attachments.every((x) => typeof x === "string") ? (args.attachments as string[]) : undefined;
       const base = { scope: space.scope, conversationId, text: q, ...(context ? { context } : {}), ...(attachments?.length ? { attachments } : {}) };
+      // Research: a report from the web and the notes, its steps in `ai.research`.
+      if (mode === "research") {
+        if (deps.app.mode !== "account") throw new BridgeError("unavailable", "Research needs a Folevi account.");
+        background(deps.client.action(api.aiResearch.start, base));
+        return { conversationId, messageId: null };
+      }
       const agent = deps.app.mode === "account" && (mode === "agent" || (mode === "auto" && wantsAgent(q)));
       background(agent ? deps.client.action(api.aiAgent.send, base) : deps.client.action(api.aiChat.send, { ...base, ...(bool(args, "web", false) ? { web: true } : {}) }));
       return { conversationId, messageId: null };

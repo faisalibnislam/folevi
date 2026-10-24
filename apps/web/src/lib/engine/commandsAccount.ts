@@ -10,6 +10,12 @@ import { BridgeError, bool, id, num, oneOf, only, text } from "./validate";
 import { AI_PREF_KEYS, type CommandName } from "./protocol";
 
 const THEMES = ["note", "article", "docs", "minimal"] as const;
+
+/** A link on Folevi's own address (the apps' pages run on capacitor://localhost or app://folevi). */
+export function onAppOrigin(url: string): string {
+  const u = new URL(url);
+  return `${APP_URL.replace(/\/$/, "")}${u.pathname}${u.search}${u.hash}`;
+}
 const ROLES = ["editor", "commenter", "viewer"] as const;
 const TOPICS = ["comments", "replies", "mentions", "shares", "access", "reminders"] as const;
 
@@ -124,9 +130,24 @@ export const ACCOUNT_COMMANDS = {
   "publicLink.create": {
     // Standard notes only: an encrypted note's link wraps its key on the device (the note page's Share does it).
     async run(deps, args) {
-      only(args, ["noteId", "expiresAt", "password", "allowIndexing", "theme"]);
+      only(args, ["noteId", "expiresAt", "password", "allowIndexing", "theme", "plainCopy"]);
+      const noteId = id(args, "noteId");
+      // An encrypted note: the link wraps its key on this device (lib/e2ee/links.ts), or publishes a readable copy.
+      const meta = (await deps.client.query(api.documents.get, { documentId: noteId }).catch(() => null)) as { document: { sealed?: unknown; locked?: true } } | null;
+      if (meta?.document.sealed || meta?.document.locked) {
+        const [links, { requireActiveRouter }] = await Promise.all([import("@/lib/e2ee/links"), import("@/lib/e2ee/router/active")]);
+        const router = requireActiveRouter();
+        const made = bool(args, "plainCopy", false)
+          ? await links.publishPlainCopyWith(router, noteId)
+          : await links.createEncryptedLinkWith(router, noteId, {
+              ...(args.expiresAt !== undefined ? { expiresAt: num(args, "expiresAt", { min: 0 }) } : {}),
+              ...(args.password !== undefined ? { password: text(args, "password", { max: 200 }) } : {}),
+              ...(args.theme !== undefined ? { theme: oneOf(args, "theme", THEMES) } : {}),
+            });
+        return { id: made.linkId, url: onAppOrigin(made.url) };
+      }
       const r = (await deps.client.mutation(api.sharing.createPublicLink, {
-        documentId: id(args, "noteId"),
+        documentId: noteId,
         ...(args.expiresAt !== undefined ? { expiresAt: num(args, "expiresAt", { min: 0 }) } : {}),
         ...(args.password !== undefined ? { password: text(args, "password", { max: 200 }) } : {}),
         ...(args.allowIndexing !== undefined ? { allowIndexing: bool(args, "allowIndexing") } : {}),

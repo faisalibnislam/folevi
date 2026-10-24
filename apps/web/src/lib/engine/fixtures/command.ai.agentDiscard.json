@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "ai.agentDiscard",
+  "description": "Discard them.",
+  "args": {
+    "runId": "run_1"
+  },
+  "result": {
+    "ok": true
+  }
+}

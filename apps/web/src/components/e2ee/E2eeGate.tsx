@@ -13,6 +13,8 @@ import { IncomingApprovalHost } from "./ApproveDeviceDialog";
 import { ConsentHost } from "./ConsentPopover";
 import { LOCK_MENU_FOR_EVERYONE, LockDialogHost } from "./LockDialog";
 import { NativeGate } from "@/lib/engine/NativeGate";
+import { NativeE2eeSetup } from "./NativeE2eeSetup";
+import { e2eeInfo } from "@/lib/engine/gates";
 
 /** The full page the gate shows instead of the app, with a way back to Personal from a locked workspace. */
 function GatePage({ children }: { children: ReactNode }) {
@@ -57,7 +59,7 @@ export function E2eeGate({ children }: { children: ReactNode }) {
   if (access === "needs_setup")
     return (
       <GatePage>
-        <NativeGate gate="e2eeSetup" title={copy.unlock.lockedSpace} message={copy.unlock.needsSetup} e2ee={{ ...spaceInfo, view: "needsSetup", methods: [] }} actions={personal} />
+        <NativeE2eeSetup space={spaceInfo.space} spaceName={spaceInfo.spaceName} extra={personal} />
         <div className="flex min-h-full items-start justify-center px-4 py-16 sm:items-center">
           <section className="ui-card w-full max-w-md rounded-container p-6 sm:p-8">
             <span aria-hidden className="grid h-11 w-11 place-items-center rounded-control bg-heading text-canvas">
@@ -76,7 +78,7 @@ export function E2eeGate({ children }: { children: ReactNode }) {
   if (access === "waiting_for_key")
     return (
       <GatePage>
-        <NativeGate gate="e2eeWaiting" title={copy.unlock.waitingTitle} message={copy.unlock.waitingForKey} e2ee={{ ...spaceInfo, view: "waitingForKey", methods: [] }} actions={personal} />
+        <NativeGate gate="e2eeWaiting" title={copy.unlock.waitingTitle} message={copy.unlock.waitingForKey} e2ee={e2eeInfo({ ...spaceInfo, view: "waitingForKey", methods: [] })} actions={personal} />
         <div className="flex min-h-full items-start justify-center px-4 py-16 sm:items-center">
           <section role="status" className="ui-card w-full max-w-md rounded-container p-6 sm:p-8">
             <h1 className="ui-display text-[24px] leading-tight">{copy.unlock.waitingTitle}</h1>

@@ -1,0 +1,15 @@
+{
+  "kind": "command",
+  "name": "places.move",
+  "description": "From the library to an account: the page switches there to run it.",
+  "args": {
+    "to": "acct:user_1|personal",
+    "copy": false,
+    "versions": false
+  },
+  "result": {
+    "status": "switched",
+    "notes": 0,
+    "problems": 0
+  }
+}

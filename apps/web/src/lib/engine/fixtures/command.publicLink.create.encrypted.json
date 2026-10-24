@@ -1,12 +1,12 @@
 {
   "kind": "command",
   "name": "publicLink.create",
-  "description": "An encrypted note's link is made on the note page.",
+  "description": "An encrypted note's link (revision 8): its key in the link's fragment, made on this device.",
   "args": {
     "noteId": "doc_sealed"
   },
-  "error": {
-    "code": "invalid_argument",
-    "message": "This note is end-to-end encrypted: share it from the note's Share button."
+  "result": {
+    "id": "lnk_e1",
+    "url": "https://app.folevi.com/s/q7Lm2Zx9#k=Vh3bS0eQ"
   }
 }

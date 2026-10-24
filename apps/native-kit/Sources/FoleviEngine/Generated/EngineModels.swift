@@ -1075,14 +1075,19 @@ public struct NoteCreateArgs: Codable, Hashable, Sendable {
     public var templateId: String?
     /// Open it in the note page straight away (default false: native opens it with the zoom).
     public var `open`: Bool?
+    /// Revision 8 (R8.5): a note made from text (Services, Shortcuts, "New note with text"): the first line becomes the
+    /// title (unless it's a long paragraph) and the rest the body, each line a paragraph. `title` and `templateId`
+    /// are ignored then.
+    public var text: String?
 
-    public init(space: SpaceRef? = nil, folderId: String? = nil, parentId: String? = nil, title: String? = nil, templateId: String? = nil, open: Bool? = nil) {
+    public init(space: SpaceRef? = nil, folderId: String? = nil, parentId: String? = nil, title: String? = nil, templateId: String? = nil, open: Bool? = nil, text: String? = nil) {
         self.space = space
         self.folderId = folderId
         self.parentId = parentId
         self.title = title
         self.templateId = templateId
         self.open = `open`
+        self.text = text
     }
 }
 
@@ -1605,12 +1610,27 @@ public struct E2eeGateInfo: Codable, Hashable, Sendable {
     public var view: String
     /// Ways this device can unlock: "device" (approve from another device), "passkey", "passphrase", "recovery".
     public var methods: [String]
+    /// Revision 8, approving from another device: "waiting" (asked), "compare" (`approvalCode` to compare on both
+    /// devices), "failed" (cancelled or expired), or null.
+    public var approval: String?
+    public var approvalCode: String?
+    /// Revision 8, setting encryption up ("e2eeSetup"): the step, "start", "methods", "recovery", "passphrase", "done".
+    public var setupStep: String?
+    /// The new recovery key, shown once while `setupStep` is "recovery" (confirm groups 3 and 7 with `confirmRecovery`).
+    public var recoveryKey: String?
+    /// Ways to unlock added so far ("recoveryKey", "passphrase", "passkey", "device"); two are needed.
+    public var methodsAdded: [String]
 
-    public init(space: SpaceRef? = nil, spaceName: String? = nil, view: String, methods: [String]) {
+    public init(space: SpaceRef? = nil, spaceName: String? = nil, view: String, methods: [String], approval: String? = nil, approvalCode: String? = nil, setupStep: String? = nil, recoveryKey: String? = nil, methodsAdded: [String]) {
         self.space = space
         self.spaceName = spaceName
         self.view = view
         self.methods = methods
+        self.approval = approval
+        self.approvalCode = approvalCode
+        self.setupStep = setupStep
+        self.recoveryKey = recoveryKey
+        self.methodsAdded = methodsAdded
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -1619,6 +1639,11 @@ public struct E2eeGateInfo: Codable, Hashable, Sendable {
         try c.encode(spaceName, forKey: .spaceName)
         try c.encode(view, forKey: .view)
         try c.encode(methods, forKey: .methods)
+        try c.encode(approval, forKey: .approval)
+        try c.encode(approvalCode, forKey: .approvalCode)
+        try c.encode(setupStep, forKey: .setupStep)
+        try c.encode(recoveryKey, forKey: .recoveryKey)
+        try c.encode(methodsAdded, forKey: .methodsAdded)
     }
 }
 
@@ -1745,8 +1770,14 @@ public struct EditorStateEvent: Codable, Hashable, Sendable {
     public var link: Bool
     public var undo: Bool
     public var redo: Bool
+    /// Revision 8 (R8.9): Focus Mode is on (native hides its bars).
+    public var focus: Bool
+    /// Revision 8 (R8.9): the note is always fully encrypted ("Lock").
+    public var locked: Bool
+    /// Revision 8: "Lock" is offered for this note (an account with encryption, the person's own space).
+    public var canLock: Bool
 
-    public init(noteId: String? = nil, focused: Bool, canEdit: Bool, block: String, marks: [EditorMark], link: Bool, undo: Bool, redo: Bool) {
+    public init(noteId: String? = nil, focused: Bool, canEdit: Bool, block: String, marks: [EditorMark], link: Bool, undo: Bool, redo: Bool, focus: Bool, locked: Bool, canLock: Bool) {
         self.noteId = noteId
         self.focused = focused
         self.canEdit = canEdit
@@ -1755,6 +1786,9 @@ public struct EditorStateEvent: Codable, Hashable, Sendable {
         self.link = link
         self.undo = undo
         self.redo = redo
+        self.focus = focus
+        self.locked = locked
+        self.canLock = canLock
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -1767,6 +1801,9 @@ public struct EditorStateEvent: Codable, Hashable, Sendable {
         try c.encode(link, forKey: .link)
         try c.encode(undo, forKey: .undo)
         try c.encode(redo, forKey: .redo)
+        try c.encode(focus, forKey: .focus)
+        try c.encode(locked, forKey: .locked)
+        try c.encode(canLock, forKey: .canLock)
     }
 }
 
@@ -3328,13 +3365,18 @@ public struct PublicLinkCreateArgs: Codable, Hashable, Sendable {
     public var password: String?
     public var allowIndexing: Bool?
     public var theme: Theme?
+    /// Revision 8, an end-to-end encrypted note: false or left out makes an encrypted link (its key in the link's
+    /// fragment; the reader's browser opens it); true publishes a readable copy (after the person confirmed that it
+    /// won't be encrypted and won't follow later edits).
+    public var plainCopy: Bool?
 
-    public init(noteId: String, expiresAt: Double? = nil, password: String? = nil, allowIndexing: Bool? = nil, theme: Theme? = nil) {
+    public init(noteId: String, expiresAt: Double? = nil, password: String? = nil, allowIndexing: Bool? = nil, theme: Theme? = nil, plainCopy: Bool? = nil) {
         self.noteId = noteId
         self.expiresAt = expiresAt
         self.password = password
         self.allowIndexing = allowIndexing
         self.theme = theme
+        self.plainCopy = plainCopy
     }
 }
 
@@ -3635,8 +3677,10 @@ public struct ChatMessage: Codable, Hashable, Sendable {
     /// A preference it offers to remember (Save or Not now).
     public var memory: ChatMemoryOffer?
     public var createdAt: Double
+    /// Revision 8: the agent's proposed changes, to approve (`ai.agentApprove`), discard, or undo once done.
+    public var agentRun: ChatAgentRun?
 
-    public init(id: String, role: Role, text: String, status: String, live: Bool, phase: String? = nil, error: EngineError? = nil, citations: [ChatCitation], webCitations: [ChatWebCitation], suggestions: [String], credits: Int? = nil, attachments: [ChatAttachment], actions: [ChatAction], actionsOutcome: String? = nil, agentSteps: [ChatAgentStep], agentMore: Bool, memory: ChatMemoryOffer? = nil, createdAt: Double) {
+    public init(id: String, role: Role, text: String, status: String, live: Bool, phase: String? = nil, error: EngineError? = nil, citations: [ChatCitation], webCitations: [ChatWebCitation], suggestions: [String], credits: Int? = nil, attachments: [ChatAttachment], actions: [ChatAction], actionsOutcome: String? = nil, agentSteps: [ChatAgentStep], agentMore: Bool, memory: ChatMemoryOffer? = nil, createdAt: Double, agentRun: ChatAgentRun? = nil) {
         self.id = id
         self.role = role
         self.text = text
@@ -3655,6 +3699,7 @@ public struct ChatMessage: Codable, Hashable, Sendable {
         self.agentMore = agentMore
         self.memory = memory
         self.createdAt = createdAt
+        self.agentRun = agentRun
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -3677,6 +3722,75 @@ public struct ChatMessage: Codable, Hashable, Sendable {
         try c.encode(agentMore, forKey: .agentMore)
         try c.encode(memory, forKey: .memory)
         try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(agentRun, forKey: .agentRun)
+    }
+}
+
+public struct ChatAgentRun: Codable, Hashable, Sendable {
+    public var id: String
+    /// "preview" (waiting for approval), "running", "done", "discarded", "undone", "failed" (open).
+    public var status: String
+    public var operations: [ChatAgentOperation]
+
+    public init(id: String, status: String, operations: [ChatAgentOperation]) {
+        self.id = id
+        self.status = status
+        self.operations = operations
+    }
+}
+
+public struct ChatAgentOperation: Codable, Hashable, Sendable {
+    public var id: String
+    /// "edit_note", "create_note", "move_note", "tag_note", ... (open).
+    public var kind: String
+    /// What it does, for people.
+    public var summary: String
+    /// "pending", "done", "failed", "skipped", ... (open).
+    public var status: String
+    public var error: String?
+    public var noteId: String?
+    public var noteTitle: String?
+    /// A note to make, or text to add: the start of its Markdown.
+    public var markdown: String?
+    /// A note's edits: what each changes.
+    public var edits: [ChatAgentEdit]
+
+    public init(id: String, kind: String, summary: String, status: String, error: String? = nil, noteId: String? = nil, noteTitle: String? = nil, markdown: String? = nil, edits: [ChatAgentEdit]) {
+        self.id = id
+        self.kind = kind
+        self.summary = summary
+        self.status = status
+        self.error = error
+        self.noteId = noteId
+        self.noteTitle = noteTitle
+        self.markdown = markdown
+        self.edits = edits
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(summary, forKey: .summary)
+        try c.encode(status, forKey: .status)
+        try c.encode(error, forKey: .error)
+        try c.encode(noteId, forKey: .noteId)
+        try c.encode(noteTitle, forKey: .noteTitle)
+        try c.encode(markdown, forKey: .markdown)
+        try c.encode(edits, forKey: .edits)
+    }
+}
+
+public struct ChatAgentEdit: Codable, Hashable, Sendable {
+    /// "replace", "insert", "delete" (open).
+    public var action: String
+    public var before: String
+    public var after: String
+
+    public init(action: String, before: String, after: String) {
+        self.action = action
+        self.before = before
+        self.after = after
     }
 }
 
@@ -3810,6 +3924,7 @@ public struct ChatSendArgs: Codable, Hashable, Sendable {
         case auto
         case ask
         case agent
+        case research
     }
 
     /// Left out: a new conversation (its id comes back).
@@ -3822,7 +3937,8 @@ public struct ChatSendArgs: Codable, Hashable, Sendable {
     public var web: Bool?
     /// Files uploaded for the chat.
     public var attachments: [String]?
-    /// "auto" (the default: a request to change notes goes to the agent, a question gets the quick answer), "ask", "agent".
+    /// "auto" (the default: a request to change notes goes to the agent, a question gets the quick answer), "ask",
+    /// "agent", or (revision 8) "research": a report from the web and the notes, followed in `ai.research`.
     public var mode: Mode?
 
     public init(conversationId: String? = nil, text: String, space: SpaceRef? = nil, context: ChatContextArgs? = nil, web: Bool? = nil, attachments: [String]? = nil, mode: Mode? = nil) {
@@ -3936,5 +4052,374 @@ public struct ChatMemoryArgs: Codable, Hashable, Sendable {
     public init(messageId: String, save: Bool) {
         self.messageId = messageId
         self.save = save
+    }
+}
+
+/// R8.6: a macOS banner's action.
+public struct NotificationActArgs: Codable, Hashable, Sendable {
+    /// The notification's id.
+    public var id: String
+    /// "reply" (with `text`), "read", "done" (a task), "snooze-hour", "snooze-evening", "snooze-tomorrow" (a reminder).
+    public var action: String
+    public var text: String?
+    /// The comment thread to reply in, when the banner knows it.
+    public var thread: String?
+
+    public init(id: String, action: String, text: String? = nil, thread: String? = nil) {
+        self.id = id
+        self.action = action
+        self.text = text
+        self.thread = thread
+    }
+}
+
+/// R8.7: where notes can go from the open place.
+public struct PlaceMoveDestination: Codable, Hashable, Sendable {
+    /// Pass as `to`: "<place id>|personal" or "<place id>|ws:<workspace id>".
+    public var value: String
+    public var label: String
+    public var place: String
+    public var space: SpaceRef
+    /// The library's page can't reach accounts: the move runs from the account's page after switching there.
+    public var switches: Bool
+
+    public init(value: String, label: String, place: String, space: SpaceRef, switches: Bool) {
+        self.value = value
+        self.label = label
+        self.place = place
+        self.space = space
+        self.switches = switches
+    }
+}
+
+public struct PlaceMovePreviewArgs: Codable, Hashable, Sendable {
+    /// A destination's `value`; left out: the first one.
+    public var to: String?
+    public var folders: [String]?
+    public var notes: [String]?
+
+    public init(to: String? = nil, folders: [String]? = nil, notes: [String]? = nil) {
+        self.to = to
+        self.folders = folders
+        self.notes = notes
+    }
+}
+
+/// `places.move.preview`: the destinations, and what goes (everything here, or the folders and notes picked).
+public struct PlaceMovePreview: Codable, Hashable, Sendable {
+    public var from: String
+    public var destinations: [PlaceMoveDestination]
+    public var to: PlaceMoveDestination?
+    public var folders: Int
+    public var notes: Int
+    public var everything: Bool
+    /// Whether it fits the destination's storage, when known (null: not known; the move says if it doesn't).
+    public var fits: Bool?
+
+    public init(from: String, destinations: [PlaceMoveDestination], to: PlaceMoveDestination? = nil, folders: Int, notes: Int, everything: Bool, fits: Bool? = nil) {
+        self.from = from
+        self.destinations = destinations
+        self.to = to
+        self.folders = folders
+        self.notes = notes
+        self.everything = everything
+        self.fits = fits
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(from, forKey: .from)
+        try c.encode(destinations, forKey: .destinations)
+        try c.encode(to, forKey: .to)
+        try c.encode(folders, forKey: .folders)
+        try c.encode(notes, forKey: .notes)
+        try c.encode(everything, forKey: .everything)
+        try c.encode(fits, forKey: .fits)
+    }
+}
+
+public struct PlaceMoveArgs: Codable, Hashable, Sendable {
+    public var to: String
+    /// Left out or both empty: everything in the open space.
+    public var folders: [String]?
+    public var notes: [String]?
+    /// true: copy (they stay here too); false: move (they go to Trash here).
+    public var copy: Bool
+    /// Bring version history (default true).
+    public var versions: Bool?
+
+    public init(to: String, folders: [String]? = nil, notes: [String]? = nil, copy: Bool, versions: Bool? = nil) {
+        self.to = to
+        self.folders = folders
+        self.notes = notes
+        self.copy = copy
+        self.versions = versions
+    }
+}
+
+/// The move's result; its progress shows as the `placeMove` gate while it runs.
+public struct PlaceMoveResult: Codable, Hashable, Sendable {
+    /// "done", or "switched" (the page goes to the account to run it there).
+    public var status: String
+    public var notes: Int
+    public var problems: Int
+
+    public init(status: String, notes: Int, problems: Int) {
+        self.status = status
+        self.notes = notes
+        self.problems = problems
+    }
+}
+
+/// R8.8: notes' current titles, for restored tabs.
+public struct NotesMetaArgs: Codable, Hashable, Sendable {
+    public var ids: [String]
+
+    public init(ids: [String]) {
+        self.ids = ids
+    }
+}
+
+public struct NoteBrief: Codable, Hashable, Sendable {
+    public var id: String
+    /// False: gone, or not readable any more.
+    public var found: Bool
+    public var title: String
+    public var icon: String?
+    public var inTrash: Bool
+
+    public init(id: String, found: Bool, title: String, icon: String? = nil, inTrash: Bool) {
+        self.id = id
+        self.found = found
+        self.title = title
+        self.icon = icon
+        self.inTrash = inTrash
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(found, forKey: .found)
+        try c.encode(title, forKey: .title)
+        try c.encode(icon, forKey: .icon)
+        try c.encode(inTrash, forKey: .inTrash)
+    }
+}
+
+public struct NotesMetaValue: Codable, Hashable, Sendable {
+    public var notes: [NoteBrief]
+
+    public init(notes: [NoteBrief]) {
+        self.notes = notes
+    }
+}
+
+/// R8.9
+public struct BlockMoveArgs: Codable, Hashable, Sendable {
+    public enum Dir: String, Codable, Hashable, Sendable, CaseIterable {
+        case up
+        case down
+    }
+
+    public var dir: Dir
+
+    public init(dir: Dir) {
+        self.dir = dir
+    }
+}
+
+/// A research job for a conversation (`ai.research`): its steps and its report's sources.
+public struct ResearchStep: Codable, Hashable, Sendable {
+    /// "plan", "notes", "search", "read", "write".
+    public var kind: String
+    public var label: String
+    /// "running", "done", "failed", "skipped".
+    public var status: String
+    public var count: Int?
+
+    public init(kind: String, label: String, status: String, count: Int? = nil) {
+        self.kind = kind
+        self.label = label
+        self.status = status
+        self.count = count
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(label, forKey: .label)
+        try c.encode(status, forKey: .status)
+        try c.encode(count, forKey: .count)
+    }
+}
+
+public struct ResearchSource: Codable, Hashable, Sendable {
+    public var n: Int
+    /// "note" or "web".
+    public var kind: String
+    /// The note's id, or null for a web page.
+    public var noteId: String?
+    public var url: String?
+    public var title: String
+    public var domain: String?
+
+    public init(n: Int, kind: String, noteId: String? = nil, url: String? = nil, title: String, domain: String? = nil) {
+        self.n = n
+        self.kind = kind
+        self.noteId = noteId
+        self.url = url
+        self.title = title
+        self.domain = domain
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(n, forKey: .n)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(noteId, forKey: .noteId)
+        try c.encode(url, forKey: .url)
+        try c.encode(title, forKey: .title)
+        try c.encode(domain, forKey: .domain)
+    }
+}
+
+public struct ResearchJob: Codable, Hashable, Sendable {
+    public var id: String
+    public var messageId: String
+    public var question: String
+    /// "running", "done", "failed", "cancelled".
+    public var status: String
+    public var steps: [ResearchStep]
+    public var sources: [ResearchSource]
+    /// The report saved as a note, once it is.
+    public var noteId: String?
+    public var error: EngineError?
+    public var credits: Int?
+    public var createdAt: Double
+    public var finishedAt: Double?
+
+    public init(id: String, messageId: String, question: String, status: String, steps: [ResearchStep], sources: [ResearchSource], noteId: String? = nil, error: EngineError? = nil, credits: Int? = nil, createdAt: Double, finishedAt: Double? = nil) {
+        self.id = id
+        self.messageId = messageId
+        self.question = question
+        self.status = status
+        self.steps = steps
+        self.sources = sources
+        self.noteId = noteId
+        self.error = error
+        self.credits = credits
+        self.createdAt = createdAt
+        self.finishedAt = finishedAt
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(messageId, forKey: .messageId)
+        try c.encode(question, forKey: .question)
+        try c.encode(status, forKey: .status)
+        try c.encode(steps, forKey: .steps)
+        try c.encode(sources, forKey: .sources)
+        try c.encode(noteId, forKey: .noteId)
+        try c.encode(error, forKey: .error)
+        try c.encode(credits, forKey: .credits)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(finishedAt, forKey: .finishedAt)
+    }
+}
+
+public struct ResearchArgs: Codable, Hashable, Sendable {
+    public var conversationId: String
+
+    public init(conversationId: String) {
+        self.conversationId = conversationId
+    }
+}
+
+public struct ResearchValue: Codable, Hashable, Sendable {
+    public var jobs: [ResearchJob]
+
+    public init(jobs: [ResearchJob]) {
+        self.jobs = jobs
+    }
+}
+
+public struct ResearchIdArgs: Codable, Hashable, Sendable {
+    public var researchId: String
+
+    public init(researchId: String) {
+        self.researchId = researchId
+    }
+}
+
+public struct ResearchSaveArgs: Codable, Hashable, Sendable {
+    public var researchId: String
+    public var folderId: String?
+
+    public init(researchId: String, folderId: String? = nil) {
+        self.researchId = researchId
+        self.folderId = folderId
+    }
+}
+
+public struct AgentApproveArgs: Codable, Hashable, Sendable {
+    public var runId: String
+    /// The operations to run (all of `ChatAgentRun.operations`, or the ones the person kept ticked).
+    public var operationIds: [String]
+
+    public init(runId: String, operationIds: [String]) {
+        self.runId = runId
+        self.operationIds = operationIds
+    }
+}
+
+public struct AgentRunArgs: Codable, Hashable, Sendable {
+    public var runId: String
+
+    public init(runId: String) {
+        self.runId = runId
+    }
+}
+
+public struct AgentUndoResult: Codable, Hashable, Sendable {
+    /// "undone", or "changed" (some notes changed since: `changed` lists them; undo again with `force`).
+    public var status: String
+    public var changed: [String]
+
+    public init(status: String, changed: [String]) {
+        self.status = status
+        self.changed = changed
+    }
+}
+
+public struct AgentUndoArgs: Codable, Hashable, Sendable {
+    public enum Force: String, Codable, Hashable, Sendable, CaseIterable {
+        case all
+        case rest
+    }
+
+    public var runId: String
+    /// Undo even what changed since ("all"), or only what didn't ("rest").
+    public var force: Force?
+
+    public init(runId: String, force: Force? = nil) {
+        self.runId = runId
+        self.force = force
+    }
+}
+
+/// The profile picture: the image's bytes as base64 in `data`, or POSTed to `/_bridge/<bodyId>` (big ones).
+public struct AvatarArgs: Codable, Hashable, Sendable {
+    public var data: String?
+    public var bodyId: String?
+    /// "image/jpeg", "image/png", "image/webp", "image/gif".
+    public var mimeType: String
+    public var name: String?
+
+    public init(data: String? = nil, bodyId: String? = nil, mimeType: String, name: String? = nil) {
+        self.data = data
+        self.bodyId = bodyId
+        self.mimeType = mimeType
+        self.name = name
     }
 }

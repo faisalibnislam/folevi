@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "ai.researchCancel",
+  "description": "Stop a research job.",
+  "args": {
+    "researchId": "res_1"
+  },
+  "result": {
+    "ok": true
+  }
+}

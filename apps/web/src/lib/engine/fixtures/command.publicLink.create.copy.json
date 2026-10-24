@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "publicLink.create",
+  "description": "A readable copy of an encrypted note (after the person confirmed).",
+  "args": {
+    "noteId": "doc_sealed",
+    "plainCopy": true
+  },
+  "result": {
+    "id": "lnk_e2",
+    "url": "https://app.folevi.com/s/Rt5yW8cK"
+  }
+}

@@ -183,34 +183,34 @@ Filed by the web bridge builder from the Mac frame's stand-ins, so they're on re
 `spaceName`, `matchIn` ("text", "file", "meaning"), `blockId` and `page`; `SearchValue` also has `text` and
 `meaningAvailable`. It works as a one-off `query` (debounced) or as a live view.
 
-### R8.5 `note.create` with body text (open)
+### R8.5 `note.create` with body text **added** (revision 8: `note.create { text, open? }`, the web's `noteFromText`, through `imports.importText`)
 
 The Mac's Services menu, Shortcuts/App Intents and "New note with text" (`new-note-with-text`, the page's
 DesktopBridge handled it) need a note made from text: `note.create { ..., text?: string }`, where the first line
 becomes the title and the rest the body (the web's `newNoteFromText`). Until then a framed window can't answer
 those app commands (they reach no page: DesktopBridge isn't rendered in native chrome mode).
 
-### R8.6 notification actions from macOS banners (open)
+### R8.6 notification actions from macOS banners **added** (revision 8: `notification.act { id, action, text?, thread? }` with the action ids Notifications.swift sends: `reply`, `read`, `done` (or `complete`), `snooze-hour`, `snooze-evening`, `snooze-tomorrow`; `open` stays native. A reply goes through the outbox; done and snooze change the reminder's task)
 
 A banner's actions (`notification` app command: reply to a comment, mark done, snooze a reminder) went to the
 page's DesktopBridge. Request: `notification.act { id, action, text? }` with the action names Notifications.swift
 sends (`reply`, `done`, `snooze`, `open`). "Open" works natively now (the frame opens `path`).
 
-### R8.7 moving or copying notes between places (open)
+### R8.7 moving or copying notes between places **added** (revision 8: `places.move.preview { to?, folders?, notes? }` lists the destinations with their `value`s, the counts, and `fits` (null: not known before the move); `places.move { to, folders?, notes?, copy, versions? }` runs it here with its progress as the `placeMove` gate, or replies `switched` when the library's page goes to the account to run it there)
 
 The account menu's "Move or copy notes…" opened the web's MovePlaces dialog. Request: a view
 `places.move.preview { to, folders?, notes? }` (counts, fits) and a command `places.move { to, folders, notes,
 copy }` with progress through `gate.changed` `placeMove` (it already reports it). Until then the item opens
 Settings > Data (takeout).
 
-### R8.8 `note.meta` for the tab strip without showing the note (open, small)
+### R8.8 `note.meta` for the tab strip without showing the note **added** (revision 8: the value view `notes.meta { ids }`, up to 200, live)
 
 Restored tabs show their saved titles; a note renamed elsewhere keeps its old title until it's shown. A list view
 `notes.meta { ids }` (title, icon, inTrash per id), or `note.meta` answered from the device copy for notes not
 open, would keep restored tabs current. (`query note.meta` works today for one id; the frame could poll, but a
 batch is cheaper.)
 
-### R8.9 web menu state in native chrome mode (open)
+### R8.9 web menu state in native chrome mode **added** (revision 8: editor commands `block.move { dir }`, `block.duplicate`, `focus.toggle`, `note.lock` (opens the note's Always fully encrypted dialog over the note); `editor.state` has `focus`, `locked` and `canLock`. As Cards / As List and Appearance are native's own: the list layout is native, appearance is `settings.update { appearance }`)
 
 Menu items the page owned (View > Focus Mode, As Cards / As List, Appearance, Format > Move Block Up/Down,
 Duplicate Block, Note > Lock) have no editor command and no state. Request editor commands `block.move { dir }`,

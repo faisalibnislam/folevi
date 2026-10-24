@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 7;
+export const CONTRACT_REVISION = 8;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -692,6 +692,12 @@ export interface NoteCreateArgs {
   templateId?: string | null;
   /** Open it in the note page straight away (default false: native opens it with the zoom). */
   open?: boolean;
+  /**
+   * Revision 8 (R8.5): a note made from text (Services, Shortcuts, "New note with text"): the first line becomes the
+   * title (unless it's a long paragraph) and the rest the body, each line a paragraph. `title` and `templateId`
+   * are ignored then.
+   */
+  text?: string;
 }
 
 export interface NoteCreateResult {
@@ -940,6 +946,18 @@ export interface E2eeGateInfo {
   view: string;
   /** Ways this device can unlock: "device" (approve from another device), "passkey", "passphrase", "recovery". */
   methods: string[];
+  /**
+   * Revision 8, approving from another device: "waiting" (asked), "compare" (`approvalCode` to compare on both
+   * devices), "failed" (cancelled or expired), or null.
+   */
+  approval: string | null;
+  approvalCode: string | null;
+  /** Revision 8, setting encryption up ("e2eeSetup"): the step, "start", "methods", "recovery", "passphrase", "done". */
+  setupStep: string | null;
+  /** The new recovery key, shown once while `setupStep` is "recovery" (confirm groups 3 and 7 with `confirmRecovery`). */
+  recoveryKey: string | null;
+  /** Ways to unlock added so far ("recoveryKey", "passphrase", "passkey", "device"); two are needed. */
+  methodsAdded: string[];
 }
 
 export interface OnboardingGateInfo {
@@ -1001,6 +1019,12 @@ export interface EditorStateEvent {
   link: boolean;
   undo: boolean;
   redo: boolean;
+  /** Revision 8 (R8.9): Focus Mode is on (native hides its bars). */
+  focus: boolean;
+  /** Revision 8 (R8.9): the note is always fully encrypted ("Lock"). */
+  locked: boolean;
+  /** Revision 8: "Lock" is offered for this note (an account with encryption, the person's own space). */
+  canLock: boolean;
 }
 
 export interface EditorPanelEvent {
@@ -1692,6 +1716,12 @@ export interface PublicLinkCreateArgs {
   password?: string;
   allowIndexing?: boolean;
   theme?: "note" | "article" | "docs" | "minimal";
+  /**
+   * Revision 8, an end-to-end encrypted note: false or left out makes an encrypted link (its key in the link's
+   * fragment; the reader's browser opens it); true publishes a readable copy (after the person confirmed that it
+   * won't be encrypted and won't follow later edits).
+   */
+  plainCopy?: boolean;
 }
 
 export interface PublicLinkCreateResult {
@@ -1837,6 +1867,39 @@ export interface ChatMessage {
   /** A preference it offers to remember (Save or Not now). */
   memory: ChatMemoryOffer | null;
   createdAt: number;
+  /** Revision 8: the agent's proposed changes, to approve (`ai.agentApprove`), discard, or undo once done. */
+  agentRun: ChatAgentRun | null;
+}
+
+export interface ChatAgentRun {
+  id: string;
+  /** "preview" (waiting for approval), "running", "done", "discarded", "undone", "failed" (open). */
+  status: string;
+  operations: ChatAgentOperation[];
+}
+
+export interface ChatAgentOperation {
+  id: string;
+  /** "edit_note", "create_note", "move_note", "tag_note", ... (open). */
+  kind: string;
+  /** What it does, for people. */
+  summary: string;
+  /** "pending", "done", "failed", "skipped", ... (open). */
+  status: string;
+  error: string | null;
+  noteId: string | null;
+  noteTitle: string | null;
+  /** A note to make, or text to add: the start of its Markdown. */
+  markdown: string | null;
+  /** A note's edits: what each changes. */
+  edits: ChatAgentEdit[];
+}
+
+export interface ChatAgentEdit {
+  /** "replace", "insert", "delete" (open). */
+  action: string;
+  before: string;
+  after: string;
 }
 
 export interface ChatMemoryOffer {
@@ -1907,8 +1970,11 @@ export interface ChatSendArgs {
   web?: boolean;
   /** Files uploaded for the chat. */
   attachments?: string[];
-  /** "auto" (the default: a request to change notes goes to the agent, a question gets the quick answer), "ask", "agent". */
-  mode?: "auto" | "ask" | "agent";
+  /**
+   * "auto" (the default: a request to change notes goes to the agent, a question gets the quick answer), "ask",
+   * "agent", or (revision 8) "research": a report from the web and the notes, followed in `ai.research`.
+   */
+  mode?: "auto" | "ask" | "agent" | "research";
 }
 
 export interface ChatSendResult {
@@ -1962,6 +2028,178 @@ export interface ChatMemoryArgs {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Revision 8: the Mac frame's R8.5 to R8.9, research, the agent's changes, the profile picture
+// ---------------------------------------------------------------------------------------------------------------
+
+/** R8.6: a macOS banner's action. */
+export interface NotificationActArgs {
+  /** The notification's id. */
+  id: string;
+  /** "reply" (with `text`), "read", "done" (a task), "snooze-hour", "snooze-evening", "snooze-tomorrow" (a reminder). */
+  action: string;
+  text?: string;
+  /** The comment thread to reply in, when the banner knows it. */
+  thread?: string;
+}
+
+/** R8.7: where notes can go from the open place. */
+export interface PlaceMoveDestination {
+  /** Pass as `to`: "<place id>|personal" or "<place id>|ws:<workspace id>". */
+  value: string;
+  label: string;
+  place: string;
+  space: SpaceRef;
+  /** The library's page can't reach accounts: the move runs from the account's page after switching there. */
+  switches: boolean;
+}
+
+export interface PlaceMovePreviewArgs {
+  /** A destination's `value`; left out: the first one. */
+  to?: string;
+  folders?: string[];
+  notes?: string[];
+}
+
+/** `places.move.preview`: the destinations, and what goes (everything here, or the folders and notes picked). */
+export interface PlaceMovePreview {
+  from: string;
+  destinations: PlaceMoveDestination[];
+  to: PlaceMoveDestination | null;
+  folders: number;
+  notes: number;
+  everything: boolean;
+  /** Whether it fits the destination's storage, when known (null: not known; the move says if it doesn't). */
+  fits: boolean | null;
+}
+
+export interface PlaceMoveArgs {
+  to: string;
+  /** Left out or both empty: everything in the open space. */
+  folders?: string[];
+  notes?: string[];
+  /** true: copy (they stay here too); false: move (they go to Trash here). */
+  copy: boolean;
+  /** Bring version history (default true). */
+  versions?: boolean;
+}
+
+/** The move's result; its progress shows as the `placeMove` gate while it runs. */
+export interface PlaceMoveResult {
+  /** "done", or "switched" (the page goes to the account to run it there). */
+  status: string;
+  notes: number;
+  problems: number;
+}
+
+/** R8.8: notes' current titles, for restored tabs. */
+export interface NotesMetaArgs {
+  ids: string[];
+}
+
+export interface NoteBrief {
+  id: string;
+  /** False: gone, or not readable any more. */
+  found: boolean;
+  title: string;
+  icon: string | null;
+  inTrash: boolean;
+}
+
+export interface NotesMetaValue {
+  notes: NoteBrief[];
+}
+
+/** R8.9 */
+export interface BlockMoveArgs {
+  dir: "up" | "down";
+}
+
+/** A research job for a conversation (`ai.research`): its steps and its report's sources. */
+export interface ResearchStep {
+  /** "plan", "notes", "search", "read", "write". */
+  kind: string;
+  label: string;
+  /** "running", "done", "failed", "skipped". */
+  status: string;
+  count: number | null;
+}
+
+export interface ResearchSource {
+  n: number;
+  /** "note" or "web". */
+  kind: string;
+  /** The note's id, or null for a web page. */
+  noteId: string | null;
+  url: string | null;
+  title: string;
+  domain: string | null;
+}
+
+export interface ResearchJob {
+  id: string;
+  messageId: string;
+  question: string;
+  /** "running", "done", "failed", "cancelled". */
+  status: string;
+  steps: ResearchStep[];
+  sources: ResearchSource[];
+  /** The report saved as a note, once it is. */
+  noteId: string | null;
+  error: EngineError | null;
+  credits: number | null;
+  createdAt: number;
+  finishedAt: number | null;
+}
+
+export interface ResearchArgs {
+  conversationId: string;
+}
+
+export interface ResearchValue {
+  jobs: ResearchJob[];
+}
+
+export interface ResearchIdArgs {
+  researchId: string;
+}
+
+export interface ResearchSaveArgs {
+  researchId: string;
+  folderId?: string;
+}
+
+export interface AgentApproveArgs {
+  runId: string;
+  /** The operations to run (all of `ChatAgentRun.operations`, or the ones the person kept ticked). */
+  operationIds: string[];
+}
+
+export interface AgentRunArgs {
+  runId: string;
+}
+
+export interface AgentUndoResult {
+  /** "undone", or "changed" (some notes changed since: `changed` lists them; undo again with `force`). */
+  status: string;
+  changed: string[];
+}
+
+export interface AgentUndoArgs {
+  runId: string;
+  /** Undo even what changed since ("all"), or only what didn't ("rest"). */
+  force?: "all" | "rest";
+}
+
+/** The profile picture: the image's bytes as base64 in `data`, or POSTed to `/_bridge/<bodyId>` (big ones). */
+export interface AvatarArgs {
+  data?: string;
+  bodyId?: string;
+  /** "image/jpeg", "image/png", "image/webp", "image/gif". */
+  mimeType: string;
+  name?: string;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // The maps (names to argument and result types). The codegen reads these interfaces.
 // ---------------------------------------------------------------------------------------------------------------
 
@@ -1999,6 +2237,9 @@ export interface ViewMap {
   "ai.conversation": { args: ChatConversationArgs; value: ChatConversationValue };
   "ai.stream": { args: ChatStreamArgs; value: ChatStreamValue };
   "ai.capabilities": { args: EmptyArgs; value: ChatCapabilities };
+  "places.move.preview": { args: PlaceMovePreviewArgs; value: PlaceMovePreview };
+  "notes.meta": { args: NotesMetaArgs; value: NotesMetaValue };
+  "ai.research": { args: ResearchArgs; value: ResearchValue };
 }
 
 export interface ListViewMap {
@@ -2070,6 +2311,14 @@ export interface CommandMap {
   "ai.saveAsNote": { args: ChatSaveArgs; result: NoteCreateResult };
   "ai.actions": { args: ChatActionsArgs; result: OkResult };
   "ai.memory": { args: ChatMemoryArgs; result: OkResult };
+  "notification.act": { args: NotificationActArgs; result: OkResult };
+  "places.move": { args: PlaceMoveArgs; result: PlaceMoveResult };
+  "ai.researchCancel": { args: ResearchIdArgs; result: OkResult };
+  "ai.researchSave": { args: ResearchSaveArgs; result: NoteCreateResult };
+  "ai.agentApprove": { args: AgentApproveArgs; result: OkResult };
+  "ai.agentDiscard": { args: AgentRunArgs; result: OkResult };
+  "ai.agentUndo": { args: AgentUndoArgs; result: AgentUndoResult };
+  "settings.setAvatar": { args: AvatarArgs; result: OkResult };
 }
 
 export interface EditorCommandMap {
@@ -2093,6 +2342,10 @@ export interface EditorCommandMap {
   insets: { args: InsetsArgs; result: OkResult };
   state: { args: EmptyArgs; result: EditorStateEvent };
   "web.show": { args: WebShowArgs; result: NoteShownResult };
+  "block.move": { args: BlockMoveArgs; result: OkResult };
+  "block.duplicate": { args: EmptyArgs; result: OkResult };
+  "focus.toggle": { args: EmptyArgs; result: OkResult };
+  "note.lock": { args: EmptyArgs; result: OkResult };
 }
 
 export interface EventMap {
@@ -2129,7 +2382,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -2196,6 +2449,14 @@ const commandNames = [
   "ai.saveAsNote",
   "ai.actions",
   "ai.memory",
+  "notification.act",
+  "places.move",
+  "ai.researchCancel",
+  "ai.researchSave",
+  "ai.agentApprove",
+  "ai.agentDiscard",
+  "ai.agentUndo",
+  "settings.setAvatar",
 ] as const;
 const editorCommandNames = [
   "note.prepare",
@@ -2218,6 +2479,10 @@ const editorCommandNames = [
   "insets",
   "state",
   "web.show",
+  "block.move",
+  "block.duplicate",
+  "focus.toggle",
+  "note.lock",
 ] as const;
 const eventNames = ["engine.ready", "gate.changed", "sync.status", "place.changed", "toast", "navigate.request", "note.ready", "note.meta", "editor.state", "editor.panel", "memory.relieved"] as const;
 

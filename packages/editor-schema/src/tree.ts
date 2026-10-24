@@ -1,5 +1,5 @@
 import { LIMITS } from "./generated/schema";
-import { compareRank, rankBetween } from "./rank";
+import { compareRank, rankBetween, rankSequence } from "./rank";
 
 export interface TreeNodeLike {
   id: string;
@@ -151,24 +151,29 @@ export function assignTreePositions(
       return e.rank !== undefined && e.parentId === parentId ? e.rank : undefined;
     });
     const keep = longestIncreasing(ranks);
+    const assigned = new Array<string>(idxs.length);
     let prevRank: string | null = null;
-    for (let k = 0; k < idxs.length; k++) {
-      const e = flat[idxs[k]!]!;
+    for (let k = 0; k < idxs.length; ) {
       if (keep.has(k)) {
         prevRank = ranks[k]!;
-      } else {
-        // Next kept rank bounds this one from above.
-        let nextRank: string | null = null;
-        for (let j = k + 1; j < idxs.length; j++) {
-          if (keep.has(j)) {
-            nextRank = ranks[j]!;
-            break;
-          }
-        }
-        prevRank = rankBetween(prevRank, nextRank);
+        assigned[k] = prevRank;
+        k++;
+        continue;
       }
-      result.set(e.id, { parentId, rank: prevRank });
+      // A run of blocks without a usable rank (new, moved, pasted) between two kept ones is spread evenly
+      // over the gap. One after the other (each between the last and the next kept rank) would grow the
+      // rank a character every six blocks or so, past the server's limit after about 1,280: a big paste.
+      let end = k;
+      while (end < idxs.length && !keep.has(end)) end++;
+      const nextRank = end < idxs.length ? ranks[end]! : null;
+      const run = rankSequence(end - k, prevRank, nextRank);
+      for (let j = k; j < end; j++) assigned[j] = run[j - k]!;
+      prevRank = run[run.length - 1]!;
+      k = end;
     }
+    // Ranks this long would be refused: the whole sibling list is spread out again instead.
+    const fresh = assigned.some((r) => r.length > LIMITS.maxRankLength) ? rankSequence(idxs.length) : assigned;
+    idxs.forEach((i, k) => result.set(flat[i]!.id, { parentId, rank: fresh[k]! }));
   }
   return result;
 }

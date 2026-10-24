@@ -486,6 +486,21 @@ export class SyncEngine {
     this.commit(sync.clearErrors(this.state));
   }
 
+  /**
+   * Retry for refused changes: blocks whose content was kept are sent again (with a valid rank where theirs
+   * was refused), and the open editor shows them again. Returns how many were sent again.
+   */
+  retryRejected(): number {
+    const docs = new Set(this.state.errors.flatMap((e) => (e.block && e.documentId ? [e.documentId] : [])));
+    const before = this.state.pending.length;
+    const next = sync.retryRejected(this.state);
+    if (next.errors.length === this.state.errors.length && next.pending.length === before) return 0;
+    this.commit(next);
+    for (const documentId of docs) this.emit({ type: "remote", documentId });
+    this.scheduleFlush(0);
+    return next.pending.length - before;
+  }
+
   // ------------------------------------------------------------------ remote changes
 
   /** Server rows for one document (subscription). Also drops rows the server no longer has. */

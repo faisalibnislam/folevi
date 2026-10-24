@@ -6,7 +6,7 @@
 // "couldn't finish"), stays inside the credits it held, and Continue carries on without proposing the
 // waiting blocks again. Gemini is a stubbed `fetch` whose turns can look at the request they answer.
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { markdownToBlocks, rankSequence, SCHEMA_VERSION, type WireBlock } from "@folevi/editor-schema";
+import { LIMITS, markdownToBlocks, rankSequence, SCHEMA_VERSION, validateWireBlock, type WireBlock } from "@folevi/editor-schema";
 import { api } from "../../convex/_generated/api";
 import { compactContents, CONTINUE_TEXT, contentChars, isLongNote, LONG_BUDGET, mustWrapUp, STANDARD_BUDGET, stoppedText } from "../../convex/lib/ai/agentBudget";
 import { estimateCredits } from "../../convex/lib/credits";
@@ -255,8 +255,9 @@ describe("an agent run on a long note", () => {
       expect(b.props).toMatchObject({ level: 2 });
       expect(b.text).toEqual([{ type: "text", text: `Issue ${String(n).padStart(2, "0")}. Loading state on screen ${n}` }]);
     }
-    // The bodies are untouched, in order.
+    // The bodies are untouched, in order, and every rank is one the server takes.
     expect(after.map((b) => b.id)).toEqual(note.blocks.map((b) => b.id));
+    expect(after.every((b) => validateWireBlock({ ...b, revision: undefined }).length === 0 && b.rank.length <= LIMITS.maxRankLength)).toBe(true);
     expect(after.filter((b) => b.type === "paragraph")).toHaveLength(150);
 
     // One Undo puts every title back as it was.
@@ -348,6 +349,27 @@ describe("an agent run on a long note", () => {
     expect(answer.agent!.more).toBe(true);
     expect(answer.text).toMatch(/^Something went wrong partway \(The AI is busy right now\. Try again in a minute\)\. So far I've proposed 10 edits/);
     expect(run!.operations[0]!.edits).toHaveLength(10);
+  });
+
+  test("AI batches that insert 320 blocks after the same block keep every rank short and in order", async () => {
+    const t = setup();
+    const a = await person(t, "long-inserts@example.com");
+    const note = await longNote(a);
+    const batch = (b: number) => Array.from({ length: 40 }, (_, i) => ({ action: "insert", afterBlockId: "DESC1", markdown: `Added line ${b * 40 + i + 1}` }));
+    stub((_b, i) => (i < 8 ? { calls: [{ name: "update_note", args: { noteId: note.id, edits: batch(i) } }] } : { text: "Added 320 lines." }));
+    const { run } = await ask(a, "Add 320 placeholder lines under the first description", { noteId: note.id });
+    expect(run!.operations).toHaveLength(1);
+    expect((await a.as.action(api.aiAgent.approve, { runId: run!.id, operationIds: [run!.operations[0]!.id] })).status).toBe("done");
+    const after = await blocksOf(a, note.id);
+    expect(after).toHaveLength(520);
+    const added = after.filter((b) => b.text[0]?.type === "text" && /^Added line /.test(b.text[0].text));
+    expect(added.map((b) => (b.text[0] as { text: string }).text)).toEqual(Array.from({ length: 320 }, (_, i) => `Added line ${i + 1}`));
+    // In order, right after the first description (before the next block), in reading order.
+    const byRank = [...after].sort((x, y) => (x.rank < y.rank ? -1 : x.rank > y.rank ? 1 : 0));
+    const at = byRank.findIndex((b) => b.id === "DESC1");
+    expect(byRank.slice(at + 1, at + 321).map((b) => b.id)).toEqual(added.map((b) => b.id));
+    expect(byRank[at + 321]!.id).toBe("EXPL1");
+    expect(Math.max(...after.map((b) => b.rank.length))).toBeLessThanOrEqual(LIMITS.maxRankLength / 2);
   });
 
   test("a short note keeps the short budget and no outline", async () => {

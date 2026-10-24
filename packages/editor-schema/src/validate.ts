@@ -12,6 +12,15 @@ import { parseWireframe, serializeWireframe, wireframeDataIssue } from "./wirefr
 import { embedFor } from "./embeds";
 import { isColumnWidth } from "./columns";
 
+/**
+ * The longest rank a block may carry. Ranks are made well under LIMITS.maxRankLength (rank.ts, tree.ts) and
+ * re-spaced past half of it, but earlier builds placed a big paste's blocks one after the other, a
+ * rank character longer every six or so: past the old limit (twice maxRankLength) after about 1,280 blocks,
+ * so the rest of the paste was refused. Accepting eight times maxRankLength lets those builds save a paste
+ * as long as a note can be (maxBlocksPerDocument) until they update; the server re-spaces long ranks after.
+ */
+export const MAX_ACCEPTED_RANK = LIMITS.maxRankLength * 8;
+
 export interface ValidationIssue {
   path: string;
   code: string;
@@ -166,7 +175,7 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
   if (
     typeof b.rank !== "string" ||
     !isValidRank(b.rank) ||
-    b.rank.length > LIMITS.maxRankLength * 2
+    b.rank.length > MAX_ACCEPTED_RANK
   ) {
     issues.push({ path: "rank", code: "rank", message: "invalid rank" });
   }

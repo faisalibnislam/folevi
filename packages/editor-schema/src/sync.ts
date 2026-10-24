@@ -3,6 +3,8 @@
 // See docs/SYNC_PROTOCOL.md for the normative rules.
 import type { WireBlock, WireDocumentCreate, WireDocumentPatch } from "./types";
 import { canonicalJson } from "./parse";
+import { LIMITS } from "./generated/schema";
+import { compareRank, isValidRank, rankSequence } from "./rank";
 
 /**
  * What an upsert changes. "collapsed" is a toggle opened or closed, and nothing else: it's taken last-writer-wins,
@@ -76,8 +78,12 @@ export interface SyncState {
   pending: SyncOp[];
   inflight: SyncOp[];
   conflicts: ConflictRecord[];
-  /** Changes the server refused: its code, and its reason and the block's type (for the person, and for us). */
-  errors: { opId: string; code: string; message?: string; blockType?: string }[];
+  /**
+   * Changes the server refused: its code, and its reason and the block's type (for the person, and for us).
+   * A refused block's content stays here (`documentId`, `block`), so Retry can send it again and nothing the
+   * person wrote is dropped (retryRejected).
+   */
+  errors: { opId: string; code: string; message?: string; blockType?: string; documentId?: string; block?: WireBlock }[];
   uploads: UploadRecord[];
   connection: "online" | "offline";
   authRequired: boolean;
@@ -318,6 +324,7 @@ export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
   const state: SyncState = { ...prev, blocks: { ...prev.blocks }, pending: [...prev.pending], conflicts: [...prev.conflicts], errors: [...prev.errors] };
   const byId = new Map(results.map((r) => [r.opId, r]));
   const unanswered: SyncOp[] = [];
+  const reranks: Extract<SyncOp, { kind: "block.upsert" }>[] = [];
   for (const op of state.inflight) {
     const result = byId.get(op.opId);
     if (!result) {
@@ -407,11 +414,18 @@ export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
         break;
       }
       case "rejected": {
+        // Refused only for its rank (a rank that grew too long): it's given a valid one and sent again, below.
+        if (op.kind === "block.upsert" && isRankRefusal(result) && !op.opId.endsWith(RERANKED)) {
+          reranks.push(op);
+          if (entity && result.block && entity.serverRevision === null) entity.serverRevision = result.block.revision ?? null;
+          else if (!entity) state.blocks[blockId] = { documentId: op.documentId, block: clone(op.block), serverRevision: result.block?.revision ?? null, deleted: false };
+          break;
+        }
         state.errors.push({
           opId: op.opId,
           code: result.error?.code ?? "rejected",
           ...(result.error?.message ? { message: result.error.message.slice(0, 200) } : {}),
-          ...(op.kind === "block.upsert" ? { blockType: op.block.type } : {}),
+          ...(op.kind === "block.upsert" ? { blockType: op.block.type, documentId: op.documentId, block: clone(entity?.block ?? op.block) } : {}),
         });
         if (!entity) break;
         if (result.block) {
@@ -431,7 +445,101 @@ export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
   state.inflight = [];
   // Ops the server did not answer are retried first, in their original order.
   state.pending = [...unanswered, ...state.pending];
+  if (reranks.length) requeueReranked(state, reranks.map((op) => ({ opId: op.opId, documentId: op.documentId, blockId: op.block.id, fields: op.fields })));
   if (results.length) state.authRequired = false;
+  return state;
+}
+
+/** The suffix of an op that sends a block again with a repaired rank (it's never repaired twice). */
+const RERANKED = "-rerank";
+
+/** A refusal for the block's rank alone (validate.ts: "rank: invalid rank"). */
+function isRankRefusal(result: OpResult): boolean {
+  return result.error?.code === "invalid_block" && /^rank:/.test(result.error.message ?? "");
+}
+
+/** A rank the server takes. */
+const usableRank = (rank: string) => isValidRank(rank) && rank.length <= LIMITS.maxRankLength;
+
+/**
+ * Gives blocks valid ranks in their place and queues each again (new op ids: the server answers the old ones
+ * as "rejected earlier" for good). Each block keeps its place among its siblings: blocks to repair, and
+ * siblings with ranks the server wouldn't take, are spread evenly between the nearest good ranks around them.
+ */
+function requeueReranked(state: SyncState, items: { opId: string; documentId: string; blockId: string; fields: ChangedField[] }[]): void {
+  const fix = new Set(items.map((i) => i.blockId));
+  const groups = new Map<string, { documentId: string; parentId: string | null }>();
+  for (const i of items) {
+    const e = state.blocks[i.blockId];
+    if (e) groups.set(`${e.documentId}\u0000${e.block.parentId ?? ""}`, { documentId: e.documentId, parentId: e.block.parentId });
+  }
+  const ranks = new Map<string, string>();
+  for (const { documentId, parentId } of groups.values()) {
+    const siblings = Object.entries(state.blocks)
+      .filter(([, e]) => e.documentId === documentId && e.block.parentId === parentId && !e.deleted)
+      .map(([id, e]) => ({ id, rank: e.block.rank }))
+      .sort((a, b) => compareRank(a.rank, b.rank) || (a.id < b.id ? -1 : 1));
+    let prev: string | null = null;
+    for (let k = 0; k < siblings.length; ) {
+      const s = siblings[k]!;
+      const good = !fix.has(s.id) && usableRank(s.rank) && (prev === null || compareRank(prev, s.rank) < 0);
+      if (good) {
+        prev = s.rank;
+        k++;
+        continue;
+      }
+      let end = k;
+      while (end < siblings.length && (fix.has(siblings[end]!.id) || !usableRank(siblings[end]!.rank) || (prev !== null && compareRank(prev, siblings[end]!.rank) >= 0))) end++;
+      const next = end < siblings.length ? siblings[end]!.rank : null;
+      const run = rankSequence(end - k, prev, next);
+      for (let j = k; j < end; j++) if (fix.has(siblings[j]!.id)) ranks.set(siblings[j]!.id, run[j - k]!);
+      prev = run[run.length - 1]!;
+      k = end;
+    }
+  }
+  for (const i of items) {
+    const e = state.blocks[i.blockId];
+    const rank = ranks.get(i.blockId);
+    if (!e || !rank) continue;
+    const block = { ...clone(e.block), rank };
+    state.blocks[i.blockId] = { ...e, block };
+    // Anything queued for it carries the new rank too (the old one would be refused again).
+    state.pending = state.pending.map((p) => (p.kind === "block.upsert" && p.block.id === i.blockId && !p.sent ? { ...p, block: { ...p.block, rank } } : p));
+    const fields: ChangedField[] = i.fields.includes("position") ? i.fields : [...i.fields, "position"];
+    state.pending.push({ opId: `${i.opId}${RERANKED}`, kind: "block.upsert", documentId: i.documentId, block: clone(block), baseRevision: e.serverRevision, fields: e.serverRevision === null && !fields.includes("content") ? ["content", ...fields] : fields });
+  }
+}
+
+/**
+ * Retry for changes the server refused: each refused block whose content was kept (and isn't on its way
+ * again or deleted since) is sent again with a fresh op id and a valid rank in its place. A refusal for
+ * another reason may come back again, and stays listed; nothing is dropped.
+ */
+export function retryRejected(prev: SyncState): SyncState {
+  const state: SyncState = { ...prev, blocks: { ...prev.blocks }, pending: [...prev.pending], errors: [...prev.errors] };
+  const items: { opId: string; documentId: string; blockId: string; fields: ChangedField[] }[] = [];
+  const outstanding = new Set([...state.pending, ...state.inflight].flatMap((op) => (op.kind === "block.upsert" ? [op.block.id] : [])));
+  state.errors = state.errors.filter((err) => {
+    if (!err.block || !err.documentId) return true;
+    const id = err.block.id;
+    const held = state.blocks[id];
+    // Already on its way again, deleted here since, or listed twice: nothing more to send for it.
+    if (outstanding.has(id) || held?.deleted || items.some((i) => i.blockId === id)) return false;
+    // The newest content this device has for it; the refused copy when it's no longer held.
+    if (!held) state.blocks[id] = { documentId: err.documentId, block: clone(err.block), serverRevision: null, deleted: false };
+    items.push({ opId: `${err.opId}-retry`, documentId: err.documentId, blockId: id, fields: ["content", "position"] });
+    return false;
+  });
+  if (items.length) {
+    // Retried ops get a fresh rank only when theirs wouldn't be taken; otherwise they're sent as they are.
+    const needRank = items.filter((i) => !usableRank(state.blocks[i.blockId]!.block.rank));
+    const asIs = items.filter((i) => usableRank(state.blocks[i.blockId]!.block.rank));
+    for (const i of asIs) {
+      const e = state.blocks[i.blockId]!;
+      state.pending.push({ opId: i.opId, kind: "block.upsert", documentId: i.documentId, block: clone(e.block), baseRevision: e.serverRevision, fields: i.fields });
+    }
+    if (needRank.length) requeueReranked(state, needRank);
+  }
   return state;
 }
 
@@ -620,7 +728,7 @@ export function canonicalSyncState(state: SyncState): string {
     pending: state.pending.map((op) => opSummary(op)),
     inflight: state.inflight.map((op) => opSummary(op)),
     conflicts: state.conflicts.map((c) => ({ blockId: c.blockId, client: c.client, id: c.id, reason: c.reason })),
-    errors: state.errors,
+    errors: state.errors.map(({ block: _b, documentId: _d, ...e }) => e),
     uploads: state.uploads,
     connection: state.connection,
     authRequired: state.authRequired,

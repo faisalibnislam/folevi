@@ -42,18 +42,6 @@ async function sync(ctx: MutationCtx, env: ExecEnv, ops: SyncOp[]): Promise<void
   }
 }
 
-/** New blocks from Markdown, their top-level ones placed under `parentId` between two ranks. */
-function blocksFrom(markdown: string, parentId: string | null, after: string | null, before: string | null): WireBlock[] {
-  const { blocks } = markdownToBlocks(markdown, { titleFromHeading: false });
-  const top = blocks.filter((b) => b.parentId === null);
-  const ranks = rankSequence(top.length, after, before);
-  top.forEach((b, i) => {
-    b.parentId = parentId;
-    b.rank = ranks[i]!;
-  });
-  return blocks;
-}
-
 const upsert = (opId: string, documentId: string, block: WireBlock, baseRevision: number | null = null): SyncOp => ({
   opId,
   kind: "block.upsert",
@@ -259,14 +247,23 @@ export async function executeOp(ctx: MutationCtx, env: ExecEnv, op: AgentOp, ops
       await beforeChange(ctx, env, doc, notes);
       const syncOps: SyncOp[] = [];
       const deletes: SyncOp[] = [];
-      // Where the next blocks after an anchor go (several inserts after one block keep their order).
-      const cursor = new Map<string, string>();
-      const place = (anchor: Doc<"blocks"> | null) => {
-        const key = anchor?.blockId ?? "";
-        const after = cursor.get(key) ?? anchor?.rank ?? null;
-        const before = anchor ? nextSiblingRank(rows, anchor) : firstRootRank(rows);
-        return { parentId: anchor?.parentId ?? null, after, before, key };
-      };
+      // New blocks after each anchor (a replaced block's extra blocks, inserts after it, or at the top) are
+      // counted first and spread evenly over the gap to the next block in one go: one after the other, each
+      // between the last and the next, ranks would grow a character every few blocks (long, then refused).
+      const anchorOf = (e: (typeof edits)[number]) => (e.action === "replace" ? byId.get(e.blockId!)! : e.afterBlockId ? byId.get(e.afterBlockId)! : null);
+      const edits = (op.edits ?? []).filter((e) => e.action !== "delete");
+      const parsed = new Map(edits.map((e) => [e, markdownToBlocks(e.markdown ?? "", { titleFromHeading: false }).blocks]));
+      const counts = new Map<string, number>();
+      for (const e of edits) {
+        const top = parsed.get(e)!.filter((x) => x.parentId === null).length;
+        const key = anchorOf(e)?.blockId ?? "";
+        counts.set(key, (counts.get(key) ?? 0) + Math.max(0, e.action === "replace" ? top - 1 : top));
+      }
+      const pools = new Map<string, string[]>();
+      for (const [key, count] of counts) {
+        const anchor = key ? byId.get(key)! : null;
+        pools.set(key, rankSequence(count, anchor?.rank ?? null, anchor ? nextSiblingRank(rows, anchor) : firstRootRank(rows)));
+      }
       let n = 0;
       const id = () => `${op.id}.${n++}`;
       for (const e of op.edits ?? []) {
@@ -274,22 +271,28 @@ export async function executeOp(ctx: MutationCtx, env: ExecEnv, op: AgentOp, ops
           deletes.push({ opId: id(), kind: "block.delete", documentId: doc.publicId, blockId: e.blockId!, baseRevision: null });
           continue;
         }
-        const anchor = e.action === "replace" ? byId.get(e.blockId!)! : e.afterBlockId ? byId.get(e.afterBlockId)! : null;
-        const spot = place(anchor);
-        const fresh = blocksFrom(e.markdown ?? "", spot.parentId, spot.after, spot.before);
+        const anchor = anchorOf(e);
+        const parentId = anchor?.parentId ?? null;
+        const pool = pools.get(anchor?.blockId ?? "")!;
+        const fresh = parsed.get(e)!;
+        const top = fresh.filter((x) => x.parentId === null);
         if (e.action === "replace") {
           // The first new block takes the old one's place (and id); the rest follow it.
-          const first = fresh.find((b) => b.parentId === spot.parentId);
+          const first = top[0];
           if (!first) continue;
-          for (const b of fresh) if (b.parentId === first.id) b.parentId = anchor!.blockId;
+          for (const x of fresh) if (x.parentId === first.id) x.parentId = anchor!.blockId;
+          for (const x of top.slice(1)) {
+            x.parentId = parentId;
+            x.rank = pool.shift()!;
+          }
           syncOps.push(upsert(id(), doc.publicId, { ...first, id: anchor!.blockId, parentId: anchor!.parentId, rank: anchor!.rank }, anchor!.revision));
-          for (const b of fresh) if (b !== first) syncOps.push(upsert(id(), doc.publicId, b));
-          const rest = fresh.filter((b) => b !== first && b.parentId === spot.parentId);
-          if (rest.length) cursor.set(spot.key, rest[rest.length - 1]!.rank);
+          for (const x of fresh) if (x !== first) syncOps.push(upsert(id(), doc.publicId, x));
         } else {
-          for (const b of fresh) syncOps.push(upsert(id(), doc.publicId, b));
-          const top = fresh.filter((b) => b.parentId === spot.parentId);
-          if (top.length) cursor.set(spot.key, top[top.length - 1]!.rank);
+          for (const x of top) {
+            x.parentId = parentId;
+            x.rank = pool.shift()!;
+          }
+          for (const x of fresh) syncOps.push(upsert(id(), doc.publicId, x));
         }
       }
       if (rows.length + syncOps.length > LIMITS.maxBlocksPerDocument) fail("limit_exceeded", `${q(doc.title)} would have too many blocks.`);

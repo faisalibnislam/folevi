@@ -20,6 +20,7 @@ import { webAddressIn } from "./autolink";
 import { api } from "@/lib/convex/api";
 import { canCallHere } from "@/lib/mode";
 import { useAppState } from "@/lib/app/state";
+import { keptFileUrl } from "@/lib/sync/deviceFiles";
 import { AppLink } from "@/lib/app/router";
 import { useEngineSelector } from "@/lib/hooks/useEngine";
 import { localPreviewUrl, releaseLocalPreview } from "@/lib/sync/uploads";
@@ -143,9 +144,23 @@ function useFileUrl(fileId: string | null): { file: FileInfo | undefined; missin
   const fresh = fileId && urls ? urls[fileId] : undefined;
   const [last, setLast] = useState<{ fileId: string; file: FileInfo } | null>(null);
   if (fileId && fresh && (last?.fileId !== fileId || last.file.url !== fresh.url)) setLast({ fileId, file: fresh });
+  // No answer from the server (offline, or not yet): the copy this device keeps (lib/sync/deviceFiles.ts), if any.
+  const { profile } = useAppState();
+  const [kept, setKept] = useState<{ fileId: string; file: FileInfo } | null>(null);
+  const waiting = Boolean(fileId) && !urls && last?.fileId !== fileId;
+  useEffect(() => {
+    if (!waiting || !fileId) return;
+    let live = true;
+    void keptFileUrl(profile.id, fileId).then((k) => {
+      if (live && k) setKept({ fileId, file: { ...k, palette: null } as FileInfo });
+    });
+    return () => {
+      live = false;
+    };
+  }, [waiting, fileId, profile.id]);
   if (!fileId) return { file: undefined, missing: false };
   if (urls) return { file: fresh, missing: !fresh };
-  return { file: last?.fileId === fileId ? last.file : undefined, missing: false };
+  return { file: last?.fileId === fileId ? last.file : kept?.fileId === fileId ? kept.file : undefined, missing: false };
 }
 
 /**

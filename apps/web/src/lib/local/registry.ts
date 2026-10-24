@@ -191,6 +191,11 @@ export const LOCAL_HIDDEN: Readonly<Record<string, Capability>> = {
   "notifications:*": "notifications",
   // Whether a library fits in the account it moves to (lib/migrate): asked of the account, never of a library.
   "migration:preflight": "account",
+  // The device copy (lib/sync/deviceCopy.ts): an account's notes kept on a device; a library is on it already.
+  "sync:head": "account",
+  "sync:manifest": "account",
+  "sync:pullDocs": "account",
+  "sync:pullAll": "account",
 };
 
 /**

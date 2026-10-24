@@ -28,6 +28,7 @@ import { DesktopCapabilities } from "./DesktopCapabilities";
 import { PlaceRunners } from "@/components/places/PlaceRunners";
 import { MovePlacesHost } from "@/components/places/MovePlaces";
 import { NativeBridge } from "./NativeBridge";
+import { DeviceCopyRunner } from "./DeviceCopyRunner";
 import { displayCornerRadius, useIpadLayout, useIphoneApp } from "@/lib/iphone";
 import { nativeApp } from "@/lib/nativeApp";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
@@ -389,6 +390,8 @@ export function Shell() {
       <MovePlacesHost />
       <NativeBridge />
       <WarmNotes />
+      {/* Every note kept on this device, and prefetch on intent (docs/NATIVE_APP_PLAN.md §11). */}
+      <DeviceCopyRunner />
       <OutboxRefusals />
       {quickAddUsed ? (
         <Suspense fallback={null}>

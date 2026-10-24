@@ -141,6 +141,32 @@ export function contextPoint(e: React.MouseEvent): { x: number; y: number } {
   return { x: r.left + 16, y: r.top + 16 };
 }
 
+type KeptRow = { kind?: string; parentDocumentId?: string | null; archivedAt?: number | null; deletedAt?: number | null };
+
+/**
+ * Which notes kept on this device a view shows before (or without) the server's answer, as documents.list
+ * filters them; null where the device can't tell (tags, stars, templates, a manual order) and it waits for the
+ * server, unless offline (then the kept rows, as before).
+ */
+function cachedViewFilter(view: View, sort: Sort, online: boolean): ((d: KeptRow) => boolean) | null {
+  const page = (d: KeptRow) => d.kind === "document" || d.kind === "daily" || d.kind === undefined;
+  const live = (d: KeptRow) => !d.deletedAt && !d.archivedAt;
+  const ordered = sort === "updated" || sort === "created";
+  switch (view) {
+    case "all":
+    case "folder":
+      return ordered || !online ? (d) => page(d) && live(d) && !d.parentDocumentId : null;
+    case "unsorted":
+      return ordered || !online ? (d) => page(d) && live(d) && !d.parentDocumentId && !(d as { folderId?: string | null }).folderId : null;
+    case "trash":
+      return online ? null : (d) => Boolean(d.deletedAt) && d.kind !== "synced";
+    case "archive":
+      return online ? null : (d) => Boolean(d.archivedAt) && !d.deletedAt;
+    default:
+      return online ? null : (d) => live(d);
+  }
+}
+
 function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
   const { scope, scopeKey, profile, online, engine, outbox, canEdit } = useAppState();
   const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
@@ -191,7 +217,9 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         const db = await localDb(profile.id);
         const tx = db.transaction("documents", "readwrite");
         for (const [d] of changed) {
-          await tx.store.put({ id: d.id, scopeKey, title: d.title, icon: d.icon, kind: d.kind, updatedAt: d.updatedAt, excerpt: d.excerpt, parentDocumentId: d.parentDocumentId, cachedAt: Date.now(), summary: d });
+          // The device copy's bookkeeping on the row (copyGen, head) stays.
+          const prev = await tx.store.get(d.id);
+          await tx.store.put({ ...prev, id: d.id, scopeKey, title: d.title, icon: d.icon, kind: d.kind, updatedAt: d.updatedAt, excerpt: d.excerpt, parentDocumentId: d.parentDocumentId, cachedAt: Date.now(), summary: d });
         }
         await tx.done;
         for (const [d, json] of changed) written.set(d.id, json);
@@ -200,14 +228,23 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     return () => clearTimeout(timer);
   }, [results, status, view, profile.id, scopeKey]);
 
+  // Offline, or before the server's first page arrives: the notes this device keeps (the device copy fills every
+  // note of the scope, lib/sync/deviceCopy.ts), filtered as the server filters this view.
+  const fromDevice = useMemo(() => cachedViewFilter(view, sort, online), [view, sort, online]);
   useEffect(() => {
-    if (status !== "LoadingFirstPage" || online) return;
+    if (status !== "LoadingFirstPage" || !fromDevice) return;
+    let live = true;
     void (async () => {
       const db = await localDb(profile.id);
       const docs = await db.getAllFromIndex("documents", "by_scope", scopeKey);
-      setCached(docs.map((d) => d.summary as Summary).sort((a, b) => b.updatedAt - a.updatedAt));
+      const rows = docs.map((d) => ({ starred: false, tags: [], homeFolder: null, ...(d.summary as object) }) as unknown as Summary).filter(fromDevice);
+      const by = sort === "created" ? (s: Summary) => (s as { createdAt?: number }).createdAt ?? s.updatedAt : (s: Summary) => s.updatedAt;
+      if (live) setCached(rows.sort((a, b) => by(b) - by(a)));
     })();
-  }, [status, online, profile.id, scopeKey]);
+    return () => {
+      live = false;
+    };
+  }, [status, fromDevice, profile.id, scopeKey, sort]);
   // Offline, the saved copies come a page at a time too, like the live list.
   const [cachedShown, setCachedShown] = useState(PAGE_SIZE);
 

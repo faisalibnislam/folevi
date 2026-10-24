@@ -40,7 +40,8 @@ export interface LocalSearchHit {
 
 /**
  * Search with what's on this device: notes made or renamed here (always, so a note written offline is found
- * at once) and, while offline, the notes kept from the last lists seen (titles and first words). The server's
+ * at once) and, while offline, the notes kept on this device (titles, first words, and the words of every note
+ * the device copy keeps whole). The server's
  * search covers the rest when there's a connection.
  */
 export function useLocalSearch(query: string): LocalSearchHit[] {
@@ -54,12 +55,26 @@ export function useLocalSearch(query: string): LocalSearchHit[] {
     void (async () => {
       try {
         const db = await localDb(profile.id);
-        const docs = await db.getAllFromIndex("documents", "by_scope", scopeKey);
+        const docs = (await db.getAllFromIndex("documents", "by_scope", scopeKey)).filter((d) => !(d.summary as { deletedAt?: number | null } | null)?.deletedAt);
+        const byTitle = docs.filter((d) => `${d.title} ${d.excerpt}`.toLowerCase().includes(q));
+        // And the words inside the notes this device keeps whole (the device copy, lib/sync/deviceCopy.ts).
+        const found = new Map(byTitle.map((d) => [d.id, d.excerpt.slice(0, 120)]));
+        if (found.size < 20) {
+          const tx = db.transaction("blocks");
+          for (const d of docs) {
+            if (found.has(d.id)) continue;
+            const entry = await tx.store.get(d.id);
+            const line = entry?.blocks.map((b) => (Array.isArray(b.text) ? b.text.map((t) => String((t as { text?: unknown }).text ?? "")).join("") : "")).find((t) => t.toLowerCase().includes(q));
+            if (line !== undefined) found.set(d.id, line.slice(0, 120));
+            if (found.size >= 20) break;
+          }
+          await tx.done;
+        }
         const hits = docs
-          .filter((d) => `${d.title} ${d.excerpt}`.toLowerCase().includes(q))
+          .filter((d) => found.has(d.id))
           .sort((a, b) => b.updatedAt - a.updatedAt)
           .slice(0, 20)
-          .map((d) => ({ id: d.id, title: d.title, icon: d.icon, updatedAt: d.updatedAt, snippet: d.excerpt.slice(0, 120) }));
+          .map((d) => ({ id: d.id, title: d.title, icon: d.icon, updatedAt: d.updatedAt, snippet: found.get(d.id) ?? "" }));
         if (live) setKept({ key: `${scopeKey}:${q}`, hits });
       } catch {
         /* nothing kept on this device */

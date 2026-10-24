@@ -7,8 +7,8 @@
 // down in a view that scrolls takes the keyboard with the finger, as in Notes and Craft, and the page gets the
 // keyboard's height every frame while it follows the finger (duration 0, "linear").
 //
-// WKWebView's own bar above the keyboard ("‹ › Done") is already hidden by Capacitor's Keyboard plugin (its
-// hideFormAccessoryBar is on from launch).
+// WKWebView's own bar above the keyboard ("‹ › Done") is hidden from launch by Native/Host/KeyboardHost.swift (as
+// Capacitor's Keyboard plugin did before).
 import UIKit
 import WebKit
 

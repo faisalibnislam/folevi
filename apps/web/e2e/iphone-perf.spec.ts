@@ -8,7 +8,8 @@
 //   E2E_LOCAL_BASE_URL=http://127.0.0.1:4320 E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 \
 //     npx playwright test e2e/iphone-perf.spec.ts --project local --workers=1
 // PERF_OUT=<file.json> saves the numbers; PERF_CPU sets the slow-down (default 4). Against `next dev` (3003) the
-// numbers are React's development build's (much slower); the budgets are only checked against an export.
+// numbers are React's development build's (much slower); the time budgets are only checked against an export
+// (PERF_BUDGETS=0 skips every budget, for experiments).
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -564,5 +565,23 @@ test.describe("the iPhone app's speed", { tag: ["@local", "@iphone-perf"] }, () 
     if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
     if (process.env.PERF_OUT) writeFileSync(process.env.PERF_OUT, JSON.stringify(results, null, 2));
     await context.close();
+
+    // Budgets (docs/IOS_PERFORMANCE.md): what React does per keystroke and while nothing happens, in any build;
+    // the times only for an export (not React's development build) in Chromium with the CPU slowed down.
+    if (process.env.PERF_BUDGETS === "0") return;
+    const typing = results.typing as { commitsPerKey: number; renderedPerKey: number };
+    expect(typing.commitsPerKey, "React commits per keystroke").toBeLessThanOrEqual(1);
+    expect(typing.renderedPerKey, "components drawn per keystroke").toBeLessThanOrEqual(30);
+    const idleOf = (label: string) => results.idle.find((r) => r.label === label) as { commits: number; rafs: number; intervals: number } | undefined;
+    expect(idleOf("home")?.commits, "commits on Home while nothing happens").toBe(0);
+    expect(idleOf("long note")?.commits, "commits in a note while nothing happens").toBe(0);
+    const dev = /:3003\b/.test(results.base);
+    if (chromium && !dev && CPU >= 4) {
+      expect(results.startup["again.usableMs"], "Home usable on a second launch").toBeLessThanOrEqual(1500);
+      const open = results.interactions.find((r) => r.label === "open note (Home card)") as { paintMs: number; longTaskMs: number };
+      expect(open.paintMs, "a note's first frame after the tap").toBeLessThanOrEqual(600);
+      const push = results.interactions.find((r) => r.label === "push All notes") as { paintMs: number };
+      expect(push.paintMs, "a list's first frame after the tap").toBeLessThanOrEqual(250);
+    }
   });
 });

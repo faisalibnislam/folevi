@@ -34,7 +34,7 @@ import { nativeApp, nativeChrome } from "@/lib/nativeApp";
 import { EngineHost } from "@/lib/engine/EngineHost";
 import { NativeGate } from "@/lib/engine/NativeGate";
 import { WEB_SETTINGS_SECTIONS } from "@/lib/engine/host";
-import { editorZoom } from "@/lib/engine/viewsAccount";
+import { useEditorZoom } from "@/lib/editorZoom";
 import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
 import { installInputModality } from "@/components/iphone/chrome";
@@ -172,6 +172,8 @@ export function useShell(): ShellValue {
 }
 
 export function Shell() {
+  // The editor's text size on this device, on every page (it used to apply only while Settings > Appearance was open).
+  useEditorZoom();
   // The native apps draw the frame themselves (docs/NATIVE_APP_PLAN.md section 8): only the note page and the
   // engine. (Fixed for the page's life: the host marks it before the first paint.)
   if (nativeChrome()) return <NativeContentShell />;
@@ -207,8 +209,6 @@ function NativeContentShell() {
   }, []);
   useLayoutEffect(() => {
     document.documentElement.setAttribute("data-native-chrome", "");
-    // The editor's text size on this device (settings.update { editorZoom }).
-    document.documentElement.style.setProperty("--editor-zoom", String(editorZoom()));
   }, []);
   // The note page's code starts loading at once: the first note native opens should not wait for it.
   useEffect(() => {

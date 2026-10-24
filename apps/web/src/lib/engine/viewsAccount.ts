@@ -3,6 +3,7 @@
 // security's sessions), a note's sharing, and invitation links. Settings read the profile the page already has
 // (users.me), so they change the moment a setting is saved.
 import { api } from "@/lib/convex/api";
+import { EDITOR_ZOOMS, EDITOR_ZOOM_KEY, editorZoom } from "@/lib/editorZoom";
 import { TIER_NAMES } from "@/lib/plans";
 import type { EngineDeps, ViewContext } from "./context";
 import { source, type ValueViewDef } from "./views";
@@ -79,21 +80,9 @@ const settingsGeneral: ValueViewDef = {
   create: (ctx) => fromDeps(ctx, (d) => ({ timeZone: d.app.timeZone, locale: str(d.app.profileData.locale, "en"), reviewAppEdits: d.app.profileData.reviewAppEdits === true })),
 };
 
-/** The editor's text sizes (components/views/settings/AppearanceSection.tsx ZOOMS), kept per device. */
-export const EDITOR_ZOOMS = [0.85, 0.9, 0.95, 1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35];
-export const EDITOR_ZOOM_KEY = "folevi:editor-zoom";
+/** The editor's text sizes, kept per device (lib/editorZoom.ts). */
+export { EDITOR_ZOOMS, EDITOR_ZOOM_KEY, editorZoom };
 
-export function editorZoom(): number {
-  try {
-    const raw = localStorage.getItem(EDITOR_ZOOM_KEY);
-    const v = raw === null ? 1 : Number(JSON.parse(raw));
-    return Number.isFinite(v) ? v : 1;
-  } catch {
-    return 1;
-  }
-}
-
-/** Sets the editor's text size on this device, as Settings > Appearance does on the web. */
 export function setEditorZoom(v: number): void {
   try {
     localStorage.setItem(EDITOR_ZOOM_KEY, JSON.stringify(v));

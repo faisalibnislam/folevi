@@ -8,8 +8,9 @@
 //   cmd frame {"do":"back"} / {"do":"forward"}
 //   cmd frame {"do":"newNote"} / {"do":"sidebar"}   ⌘N / ⌘\
 //   cmd frame {"do":"popover","which":"sync"|"notifications"|"account"|"none"}
-//   cmd frame {"do":"menu","id":"go.next-tab"}      a menu bar item as if chosen
-//   cmd frame {"do":"resize","w":1280,"h":820}      the window's content size; {"do":"front"} brings it forward
+//   cmd frame {"do":"menu","item":"go.next-tab"}    a menu bar item as if chosen
+//   cmd frame {"do":"resize","w":1280,"h":820}      the window's content size; {"do":"front"} brings it forward;
+//                                                  {"do":"float","on":true} keeps it over other apps' windows
 //   cmd frameShot {"out":"/path.png","window":0}    the window as drawn (AppKit's own rendering of its views)
 #if DEBUG
 import AppKit
@@ -39,7 +40,7 @@ extension NativeFrame {
                 case "notifications": frame.sidebar.openNotificationsPopover()
                 default: frame.sidebar.shownPopover?.close()
                 }
-            case "menu": if let id = req["id"] as? String { MainMenu.shared.run(id) }
+            case "menu": if let id = req["item"] as? String { MainMenu.shared.run(id) }
             case "resize":
                 if let w = mains[i].window {
                     let size = NSSize(width: req["w"] as? Double ?? 1280, height: req["h"] as? Double ?? 820)
@@ -49,6 +50,10 @@ extension NativeFrame {
             case "front":
                 mains[i].window?.makeKeyAndOrderFront(nil)
                 NSApp.activate()
+            case "float":
+                // Over every app's windows (a script's screenshots when Folevi can't become the active app).
+                mains[i].window?.level = (req["on"] as? Bool ?? true) ? .floating : .normal
+                mains[i].window?.orderFrontRegardless()
             default: break
             }
             // Answer after the frame has drawn the change.
@@ -88,6 +93,8 @@ extension NativeFrame {
             "toasts": m.toasts.map(\.message),
             "popover": frame.sidebar.shownPopover != nil,
             "windowTitle": window?.title ?? "",
+            "windowVisible": window?.occlusionState.contains(.visible) ?? false,
+            "appActive": NSApp.isActive,
             "canGoBack": m.history.canGoBack,
             "shownNote": m.shownNote ?? NSNull(),
             "demo": NativeFrame.demo,

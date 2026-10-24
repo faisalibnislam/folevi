@@ -452,3 +452,79 @@ Rows with `fileId` (an export ready to download) need a signed link. Native send
 Before typing, native shows Home's recents (`home.recents`, this space only). With scope Everywhere the web shows the
 same. If the engine has recents across every space of the place, `"recent": { args: { scope?: "place" | "everywhere"; limit?: number }; value: { rows: NoteRow[] } }`
 (the plan's 5.7 `recent` view) would let native show them for Everywhere.
+
+## N13 Settings and N14 sign-in, gates, sharing, Quick Add (2026-10-24)
+
+Built in `apps/native-kit/Sources/FoleviScreens/{Onboarding,Auth,Settings,Sharing,QuickAdd,AppLock}`. No stand-ins:
+what's missing is left out of the native screens (or opens the web page) until it's added.
+
+### R13.1 Appearance: the editor text size **open**
+
+The web's Appearance has "Editor text size" (85 % to 135 %, `AppearanceSection.tsx` `ZOOMS`), kept per device.
+Request: `AppearanceSettings.editorZoom: number` and `settings.update { editorZoom?: number }` (or an editor command
+if it stays per device). Native shows Theme only until then.
+
+### R13.2 Security: two-step verification, passkeys, password, sign-in methods **open**
+
+`settings.security` has the sessions only. The web's Security also shows two-step status and its actions, passkeys
+and the sign-in methods (`SecuritySection.tsx`, `SignInMethods.tsx`). Request:
+
+```ts
+export interface SecuritySettings { sessions: SessionRow[]; twoFactor: boolean; passkeys: { id: string; name: string; createdAt: number; lastUsedAt: number | null }[]; methods: ("password" | "google" | "apple")[] }
+// Commands that need the current password or a code go through the gate pattern (fields + gate.act) or native
+// ShellAuth calls (R14.1); passkey create/remove need WebAuthn, so they can stay web: `web.show { page: "settings.security" }`.
+```
+
+Until then native Security shows "Where you're signed in" with Sign out per device.
+
+### R13.3 This device: storage and "Keep all notes on this device" (plan 11.8) **open**
+
+Needs a view `device.storage { places: { place, name, keepAll, notesBytes, attachmentsBytes, otherBytes, downloading?: GateProgress }[]; freeBytes; attachments: "wifi" | "cellular" | "opened"; limitBytes: number | null }` and commands `device.keepAll { place, on }`, `device.download { place }`, `device.removeCopy { place }` (asks first when changes wait: reply `{ waiting: number }`), `device.attachments { policy?, limitBytes? }`, `device.removeFiles`. The section is hidden until then.
+
+### R13.4 Privacy and encryption, workspace sections, delete account **open**
+
+Native Privacy has the Face ID / Touch ID lock (the hosts' AppLock, through `AppLockSettings`) and the policy link;
+its footer says encryption is set up on the web. Request web pages for what stays web this release, through
+`WebPage`: `settings.privacy` (E2EE levels, recovery key, encrypted devices), `settings.workspace` (members, guests,
+workspace billing and privacy) and `settings.deleteAccount`. With those, Settings lists them as web rows like
+Connected apps.
+
+### R13.5 Help: the support form **open**
+
+Native Help sends email to support@folevi.com (mailto). Request `support.send { subject, body, includeDiagnostics }`
+(the web's `SupportForm.tsx`), so the app can send without a mail client.
+
+### R14.1 ShellAuth: native email and password, two-step, sign-up, reset (Swift services, not protocol.ts) **open**
+
+The sign-in screens call `AuthService` (FoleviScreens/Auth/AuthService.swift). The hosts need an adapter over
+`ShellAuth`: `signIn(provider:)` is `ShellAuth.signInAccount(window:provider:)` (Apple on iOS: AppleSignIn.swift);
+`signInOnWeb()` is the same without a provider. Missing in ShellAuth: `signIn(email:password:)` (POST
+`/api/auth/sign-in/email` with no bearer, keep `set-auth-token`; `twoFactorRedirect` → `.twoFactor`;
+`EMAIL_NOT_VERIFIED` → `.emailUnverified`), `verifyTwoFactor` (`/api/auth/two-factor/verify-totp` and
+`verify-backup-code`, which need Better Auth's two-factor cookie from the first call: keep it in memory for that
+one request), `signUp`, `requestPasswordReset` and `sendVerificationEmail`, each returning the web's
+`authErrorMessage` text. Until then an adapter answers `.useWebSignIn` for email and the screen opens the website's
+sign-in page in the sheet, as today.
+
+### R14.2 Onboarding actions (see R5.2) **open**
+
+The onboarding gate draws the web's six steps (progress, headings, text, the intro facts) but has no actions to press.
+With R5.2's actions (or `onboarding.complete`), native adds the use-case, theme, appearance and Foli AI choices.
+
+### R14.3 Library setup: picking the folder natively **open**
+
+`librarySetup` needs a folder from `UIDocumentPickerViewController` / `NSOpenPanel` with a security-scoped bookmark,
+which only the host can make. Request: the gate's action `chooseFolder` marked as native (`GateAction.native?: "pickFolder"`),
+so the screen asks the host (LibraryService) and then sends `gate.act { action: "useFolder", values: { bookmark } }`.
+
+### R14.4 Sharing folders, and changing a person's role **open**
+
+`sharing.get` takes a note id. Request `sharing.get { folderId }` (the folder's people and access) and
+`sharing.setRole { noteId | folderId, profileId, role }`; today a role changes only by removing and inviting again.
+
+### R14.5 The Mac Quick Add panel's page lifecycle (Mac host) **open**
+
+The native Quick Add field talks to its panel's hidden Page View through `MacEngineTransport`, but
+`Navigation.swift` reports reloads and ended content processes only for main windows' frames
+(`NativeFrame.pageEvent` finds controllers by main window). Route the `.quickAdd` view's events to
+`QuickAddPanel.shared` too (it keeps the transport), so its client resubscribes after a reload.

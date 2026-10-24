@@ -55,8 +55,7 @@ public struct ShareScreen: View {
             if v.canManage { links(v) }
         }
         .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .background(Folevi.color.canvas)
+        .settingsBackground()
     }
 
     // MARK: Who has access

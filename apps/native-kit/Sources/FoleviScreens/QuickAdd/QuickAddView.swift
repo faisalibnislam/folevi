@@ -152,10 +152,12 @@ public struct QuickAddView: View {
 
     @ViewBuilder private var readLines: some View {
         if model.repeatLine != nil || model.parsedLine != nil {
-            HStack(spacing: 4) {
-                if let r = model.repeatLine { Text(r) }
-                if let line = model.parsedLine {
-                    Text(line).accessibilityIdentifier("quick-add-parsed")
+            HStack(alignment: .center, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
+                    if let r = model.repeatLine { Text(r) }
+                    if let line = model.parsedLine { Text(line).accessibilityIdentifier("quick-add-parsed") }
+                }
+                if model.parsedLine != nil {
                     Button { model.keepDateAsText() } label: { Image(systemName: "xmark").font(.system(size: 11, weight: .semibold)).frame(width: 28, height: 28) }
                         .buttonStyle(.plain)
                         .foregroundStyle(Folevi.color.inkFaint)

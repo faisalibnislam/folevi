@@ -58,8 +58,7 @@ public struct SettingsList: View {
             }
         }
         .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .background(Folevi.color.canvas)
+        .settingsBackground()
         .navigationTitle("Settings")
         .accessibilityIdentifier("settings-list")
     }
@@ -158,8 +157,7 @@ public struct SettingsSectionScreen: View {
     public var body: some View {
         Form { content }
             .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            .background(Folevi.color.canvas)
+            .settingsBackground()
             .navigationTitle(section.title)
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -571,5 +569,17 @@ struct AboutSettingsSection: View {
 struct LoadingSection: View {
     var body: some View {
         Section { ProgressView().frame(maxWidth: .infinity).padding(.vertical, 8) }
+    }
+}
+
+extension View {
+    /// The Mac draws grouped rows on the window's canvas; iOS keeps the system's grouped background so the rows'
+    /// groups read as cards on the white chrome.
+    func settingsBackground() -> some View {
+        #if os(macOS)
+        return self.scrollContentBackground(.hidden).background(Folevi.color.canvas)
+        #else
+        return self
+        #endif
     }
 }
